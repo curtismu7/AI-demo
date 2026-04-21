@@ -28,13 +28,6 @@ const REQUIRED_VARS = {
     'AGENT_OAUTH_CLIENT_SCOPES',
   ],
 
-  // Vercel-specific configuration
-  vercel: [
-    'VERCEL_URL',
-    'KV_REST_API_URL',
-    'KV_REST_API_TOKEN',
-  ],
-
   // Management API configuration
   managementApi: [
     'PINGONE_MANAGEMENT_API_TOKEN',
@@ -73,10 +66,6 @@ function validateEnvironment() {
     validateRequiredVars(REQUIRED_VARS.twoExchange, results, '2-exchange delegation');
   }
 
-  if (hosting.isVercel()) {
-    validateRequiredVars(REQUIRED_VARS.vercel, results, 'Vercel deployment');
-  }
-
   if (results.scenario.includes('management-api')) {
     validateRequiredVars(REQUIRED_VARS.managementApi, results, 'Management API');
   }
@@ -99,11 +88,6 @@ function determineScenario() {
   // Check for 2-exchange delegation
   if (process.env.USE_AGENT_ACTOR_FOR_MCP === 'true') {
     scenarios.push('two-exchange');
-  }
-
-  // Check for Vercel deployment
-  if (hosting.isVercel()) {
-    scenarios.push('vercel');
   }
 
   // Check for Management API usage
@@ -181,20 +165,6 @@ function generateRecommendations(results) {
     });
   }
 
-  // Vercel recommendations
-  if (hosting.isVercel() && results.missing.includes('KV_REST_API_URL')) {
-    recommendations.push({
-      priority: 'medium',
-      title: 'Configure Vercel KV Storage',
-      description: 'Set up Upstash KV for persistent configuration storage on Vercel',
-      steps: [
-        'Go to Vercel project settings → Storage',
-        'Create or connect an Upstash KV database',
-        'Set KV_REST_API_URL and KV_REST_API_TOKEN in environment variables'
-      ]
-    });
-  }
-
   // Management API recommendations
   if (results.missing.includes('PINGONE_MANAGEMENT_API_TOKEN') && results.scenario.includes('management-api')) {
     recommendations.push({
@@ -225,7 +195,7 @@ function getValidationSummary() {
     warningCount: validation.warnings.length,
     missingVars: validation.missing,
     recommendations: validation.recommendations,
-    hostedOn: hosting.isVercel() ? 'vercel' : hosting.isReplit() ? 'replit' : 'local'
+    hostedOn: hosting.isReplit() ? 'replit' : 'local'
   };
 }
 
@@ -243,12 +213,10 @@ function isTwoExchangeConfigured() {
 }
 
 /**
- * Check if Vercel KV storage is configured
+ * Check if Vercel KV storage is configured (always true — Vercel removed)
  */
 function isVercelKvConfigured() {
-  if (!hosting.isVercel()) return true; // Not required for non-Vercel
-  
-  return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+  return true;
 }
 
 /**
@@ -268,9 +236,9 @@ function getConfigurationStatus() {
       missing: REQUIRED_VARS.twoExchange.filter(varName => !process.env[varName])
     },
     vercel: {
-      hosted: hosting.isVercel(),
-      kvConfigured: isVercelKvConfigured(),
-      missing: hosting.isVercel() ? REQUIRED_VARS.vercel.filter(varName => !process.env[varName]) : []
+      hosted: false,
+      kvConfigured: true,
+      missing: []
     },
     managementApi: {
       available: !!(process.env.PINGONE_MANAGEMENT_API_TOKEN),

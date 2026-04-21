@@ -811,6 +811,9 @@ pre.tcd-jwt-dump {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .tcd-hist-entry {
@@ -818,6 +821,7 @@ pre.tcd-jwt-dump {
   border-radius: 8px;
   overflow: hidden;
   background: #fff;
+  flex-shrink: 0;
 }
 
 .tcd-hist-head {
@@ -828,34 +832,53 @@ pre.tcd-jwt-dump {
   padding: 7px 10px;
   background: #fafafa;
   border: none;
-  cursor: pointer;
   font-size: 14px;
   text-align: left;
-  transition: background 0.1s;
 }
 
-.tcd-hist-head:hover {
-  background: #f0f0f0;
+/* Static (non-interactive) variant — no hover cursor */
+.tcd-hist-head--static {
+  cursor: default;
 }
 
 .tcd-hist-tool {
   font-weight: 700;
   color: #161616;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tcd-hist-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.tcd-hist-status {
+  font-size: 11px;
+  font-weight: 700;
+}
+.tcd-hist-status--success { color: #16a34a; }
+.tcd-hist-status--error   { color: #dc2626; }
+.tcd-hist-status--partial { color: #d97706; }
+
+.tcd-hist-steps {
+  font-size: 11px;
+  color: #6b7280;
 }
 
 .tcd-hist-ts {
   font-size: 12px;
   color: #4b5563;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.tcd-hist-chev {
-  font-size: 11px;
-  color: #374151;
-}
-
-/* Events inside an open history entry */
+/* Events inside an open history entry (kept for backwards compat if any) */
 .tcd-hist-entry .tcd-events {
   padding: 6px 8px;
   border-top: 1px solid #e0e0e0;

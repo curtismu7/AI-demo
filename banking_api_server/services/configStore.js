@@ -1,9 +1,7 @@
 /**
  * ConfigStore — persists app configuration across server/browser restarts.
  *
- * Local (no KV_REST_API_URL):  SQLite via better-sqlite3  →  data/config.db
- * Vercel + KV (KV_REST_API_URL set): @vercel/kv (Upstash Redis) → banking:config hash;
- *   runtime Config UI persists here (SaaS). Vercel without KV: env vars only (read-only UI).
+ * Uses SQLite via better-sqlite3 → data/config.db
  *
  * Secrets (clientSecret, sessionSecret) are encrypted with AES-256-GCM before
  * being written to storage, using a key derived from CONFIG_ENCRYPTION_KEY or
@@ -25,12 +23,6 @@ const fs     = require('fs');
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-// Vercel KV (managed) OR direct Upstash (via marketplace integration)
-const KV_URL   = process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_REST_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN  || process.env.UPSTASH_REDIS_REST_TOKEN;
-const USE_KV   = !!(KV_URL && KV_TOKEN);
-const KV_HASH_KEY = 'banking:config';
 
 // Fields that must be encrypted at rest
 const SECRET_KEYS = new Set([
@@ -149,7 +141,7 @@ const FIELD_DEFS = {
   // audience before forwarding to the MCP server (act claim identifies the Backend-for-Frontend (BFF)).
   PINGONE_RESOURCE_MCP_SERVER_URI:        { public: true,  default: '' },
 
-  // Demo Data — persistent demo accounts (JSON string for Vercel, ignored for local SQLite)
+  // Demo Data — persistent demo accounts (JSON string, ignored for local SQLite)
   demo_accounts:              { public: false, default: '' },
 
   // Vertical — active demo vertical (banking, retail, workforce)
@@ -274,15 +266,10 @@ class ConfigStore {
   }
 
   async _initialize() {
-    if (USE_KV) {
-      await this._loadFromKV();
-    } else {
-      try {
-        this._loadFromSQLite();
-      } catch (err) {
-        console.warn('[ConfigStore] SQLite initialization failed, using in-memory fallback:', err.message);
-        // Continue with empty cache - config will be in-memory only
-      }
+    try {
+      this._loadFromSQLite();
+    } catch (err) {
+      console.warn('[ConfigStore] SQLite initialization failed, using in-memory fallback:', err.message);
     }
   }
 
@@ -291,17 +278,6 @@ class ConfigStore {
     const rows = db.prepare('SELECT key, value FROM config').all();
     for (const row of rows) {
       this._cache[row.key] = SECRET_KEYS.has(row.key) ? _decrypt(row.value) : row.value;
-    }
-  }
-
-  async _loadFromKV() {
-    const { createClient } = require('@vercel/kv');
-    const kv = createClient({ url: KV_URL, token: KV_TOKEN });
-    const data = await kv.hgetall(KV_HASH_KEY);
-    if (data) {
-      for (const [key, value] of Object.entries(data)) {
-        this._cache[key] = SECRET_KEYS.has(key) ? _decrypt(value) : value;
-      }
     }
   }
 
@@ -322,12 +298,9 @@ class ConfigStore {
    * Persist new configuration values.
    * Accepts partial updates — only sets keys that are provided and non-empty.
    * Secrets are encrypted before writing to storage.
-   *
-   * On Vercel without KV, env vars are the only store — this is a no-op.
-   * On Vercel with KV (or local SQLite), values are persisted.
+   * Persists config values to SQLite.
    */
   async setConfig(data) {
-    if (process.env.VERCEL && !USE_KV) return;
     await this.ensureInitialized();
 
     // Validate DEMO_ACCOUNTS if present
@@ -355,26 +328,19 @@ class ConfigStore {
 
     if (Object.keys(updates).length === 0) return;
 
-    if (USE_KV) {
-      const { createClient } = require('@vercel/kv');
-      const kv = createClient({ url: KV_URL, token: KV_TOKEN });
-      await kv.hset(KV_HASH_KEY, updates);
-    } else {
-      try {
-        const db = _getSQLite();
-        const upsert = db.prepare(
-          'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)'
-        );
-        const now = new Date().toISOString();
-        db.transaction(() => {
-          for (const [key, value] of Object.entries(updates)) {
-            upsert.run(key, value, now);
-          }
-        })();
-      } catch (err) {
-        console.warn('[ConfigStore] SQLite write failed, config will be in-memory only:', err.message);
-        // Continue - config stays in memory only
-      }
+    try {
+      const db = _getSQLite();
+      const upsert = db.prepare(
+        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)'
+      );
+      const now = new Date().toISOString();
+      db.transaction(() => {
+        for (const [key, value] of Object.entries(updates)) {
+          upsert.run(key, value, now);
+        }
+      })();
+    } catch (err) {
+      console.warn('[ConfigStore] SQLite write failed, config will be in-memory only:', err.message);
     }
 
     // Update cache last, so failures above leave cache consistent
@@ -402,14 +368,14 @@ class ConfigStore {
 
   /**
    * Returns the effective value for a key:
-   * - With persisted store (SQLite or KV): cache first, then env fallbacks, then default.
-   * - On Vercel without KV: env vars only (no runtime persistence).
+   * - With persisted store (SQLite): cache first, then env fallbacks, then default.
+   * - Without persistence: env vars only (no runtime persistence).
    * This is what config/oauth.js getters call.
    */
   getEffective(key) {
     // Env-var fallback map (PINGONE_CORE_* / PINGONE_AI_CORE_* / PINGONE_ADMIN_* all refer to the same PingOne apps)
-    // NOTE: env vars always take priority — over KV, SQLite, and committed defaults.
-    // This ensures Vercel env vars override anything saved in the Config UI.
+    // NOTE: env vars always take priority — over SQLite and committed defaults.
+    // This ensures env vars override anything saved in the Config UI.
     const envFallbackMap = {
       pingone_environment_id: ['PINGONE_ENVIRONMENT_ID'],
       pingone_region:         ['PINGONE_REGION'],
@@ -499,8 +465,8 @@ class ConfigStore {
       if (v) return v.trim();
     }
 
-    // KV / SQLite stored config — after env vars so Vercel env vars always win.
-    if (!process.env.VERCEL || USE_KV) {
+    // SQLite stored config — after env vars so env vars always win.
+    {
       const stored = this.get(key);
       if (stored) return stored;
     }
@@ -519,26 +485,20 @@ class ConfigStore {
     return FIELD_DEFS[key]?.default || '';
   }
 
-  /** True when config cannot be changed at runtime (Vercel without KV). */
+  /** Config is always writable (SQLite). */
   isReadOnly() {
-    return !!process.env.VERCEL && !USE_KV;
+    return false;
   }
 
-  /** True when KV/Upstash is wired — SaaS-style persistence on Vercel. */
-  hasKvStorage() {
-    return USE_KV;
-  }
-
-  /** 'vercel-kv', 'upstash-direct', or 'sqlite' */
+  /** Storage type. */
   getStorageType() {
-    if (USE_KV) return KV_URL?.includes('upstash.io') ? 'upstash-direct' : 'vercel-kv';
     return 'sqlite';
   }
 
   /**
    * True once admin PingOne OAuth can run.
-   * Uses getEffective (same as config/oauth.js) so on Vercel this matches env vars,
-   * not KV cache alone — avoids redirecting to PingOne with empty client_id or //as path.
+   * Uses getEffective (same as config/oauth.js) so this matches env vars,
+   * not cache alone — avoids redirecting to PingOne with empty client_id or //as path.
    */
   isConfigured() {
     const envId = String(this.getEffective('pingone_environment_id') || '').trim();
@@ -561,30 +521,16 @@ class ConfigStore {
     if (key !== 'admin_client_secret' && key !== 'user_client_secret') {
       throw new Error('clearOAuthClientSecret: invalid key');
     }
-    if (process.env.VERCEL && !USE_KV) return;
     await this.ensureInitialized();
     delete this._cache[key];
-    if (USE_KV) {
-      const { createClient } = require('@vercel/kv');
-      const kv = createClient({ url: KV_URL, token: KV_TOKEN });
-      await kv.hdel(KV_HASH_KEY, key);
-    } else {
-      const db = _getSQLite();
-      db.prepare('DELETE FROM config WHERE key = ?').run(key);
-    }
+    const db = _getSQLite();
+    db.prepare('DELETE FROM config WHERE key = ?').run(key);
   }
 
-  /** Wipe stored config (KV or SQLite). No-op on Vercel without KV. */
+  /** Wipe stored config (SQLite). */
   async resetConfig() {
-    if (process.env.VERCEL && !USE_KV) return;
-    if (USE_KV) {
-      const { createClient } = require('@vercel/kv');
-      const kv = createClient({ url: KV_URL, token: KV_TOKEN });
-      await kv.del(KV_HASH_KEY);
-    } else {
-      const db = _getSQLite();
-      db.prepare('DELETE FROM config').run();
-    }
+    const db = _getSQLite();
+    db.prepare('DELETE FROM config').run();
     this._cache = {};
     this._initPromise = null;
   }

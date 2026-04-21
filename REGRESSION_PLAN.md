@@ -82,6 +82,17 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-20 — Phase 208: Fix 36 failing test suites + NL heuristic toolsCalled names
+
+- **Root cause (tests):** 36 test suites accumulated drift: wrong import paths (configStore, protectedResourceMetadata), stale auth middleware mocks, assertion mismatches against evolved service APIs, delegation URL format changes, configStore API removal (hasKvStorage), empty test suite.
+- **Root cause (NL path):** `bankingAgentLangGraphService.js` `executeHeuristicBanking()` used generic `toolsCalled` names (`['accounts']`, `['balance']`, `['transactions']`) that didn't match MCP tool names, so `bankingAgentRoutes.js` token event resolution couldn't resolve scopes. Also only displayed accountType + balance (no account numbers).
+- **Fix:**
+  1. 36 test files — import path corrections, mock drift fixes, assertion updates (16 root cause categories)
+  2. `bankingAgentLangGraphService.js` — enriched heuristic account display with accountNumber + currency; corrected toolsCalled to `['get_my_accounts']`, `['get_account_balance']`, `['get_my_transactions']`
+- **Files modified:** 36 test files in `banking_api_server/src/__tests__/`, `banking_api_server/services/bankingAgentLangGraphService.js`
+- **Verification:** `npm test` → 94 suites passed, 0 failed, 1847 tests; heuristic NL tests 80/80 passed
+- **Do not break:** Test suite green state (0 failures); heuristic NL toolsCalled must use actual MCP tool names; account display must include account numbers
+
 ### 2026-04-20 — MCP server build error: `isError` property not found
 
 - **Root cause:** TypeScript compilation error in `BankingToolProvider.ts` line 216. The code tried to access `result.isError`, but the `BankingToolResult` interface only defines an `error?: string` property (not `isError`). This caused dist files to be built incorrectly, and at runtime when AuditLogger tried to require compiled modules, it would fail with MODULE_NOT_FOUND cascading from the broken build.

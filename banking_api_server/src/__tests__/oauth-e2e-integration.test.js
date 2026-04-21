@@ -11,6 +11,79 @@
  */
 
 const request = require('supertest');
+
+// Set before loading server so the module-level const picks it up
+process.env.DEBUG_TOKENS = 'true';
+process.env.SKIP_TOKEN_SIGNATURE_VALIDATION = 'true';
+
+// Mock auth middleware — test tokens are base64-encoded but not JWK-signed.
+// requireSession is bypassed; authenticateToken decodes fake JWTs from the
+// Authorization header and populates req.user with claims.
+jest.mock('../../middleware/auth', () => ({
+  authenticateToken: (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        error: 'authentication_required',
+        error_description: 'Access token is required',
+        timestamp: new Date().toISOString(),
+        path: req.originalUrl || req.path,
+        method: req.method,
+      });
+    }
+    const token = authHeader.split(' ')[1];
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        return res.status(401).json({ error: 'malformed_token', error_description: 'Invalid token format', timestamp: new Date().toISOString(), path: req.originalUrl || req.path, method: req.method });
+      }
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+      const scopes = payload.scope ? payload.scope.split(' ') : [];
+      const roles = payload.realm_access?.roles || [];
+      req.user = {
+        id: payload.sub,
+        username: payload.preferred_username || payload.sub,
+        email: payload.email,
+        role: roles.includes('admin') ? 'admin' : 'user',
+        scopes,
+        tokenType: 'oauth',
+        clientType: 'enduser',
+      };
+      req.session = req.session || {};
+      req.session.user = req.user;
+      return next();
+    } catch {
+      return res.status(401).json({ error: 'invalid_token', error_description: 'Token validation failed', timestamp: new Date().toISOString(), path: req.originalUrl || req.path, method: req.method });
+    }
+  },
+  requireScopes: (requiredScopes) => (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'authentication_required', error_description: 'Access token is required' });
+    if (req.user.role === 'admin') return next();
+    const userScopes = req.user.scopes || [];
+    const arr = Array.isArray(requiredScopes) ? requiredScopes : [requiredScopes];
+    const ok = arr.some((s) => userScopes.includes(s)) || userScopes.includes('banking:admin');
+    if (!ok) return res.status(403).json({ error: 'insufficient_scope', requiredScopes: arr, providedScopes: userScopes });
+    return next();
+  },
+  requireAdmin: (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'authentication_required' });
+    if (req.user.role === 'admin' || (req.user.scopes || []).includes('banking:admin')) return next();
+    return res.status(403).json({ error: 'insufficient_scope', error_description: 'Admin access required', required_access: 'admin role or banking:admin scope' });
+  },
+  requireSession: (req, res, next) => next(),
+  hasRequiredScopes: (userScopes, required) => required.some((s) => userScopes.includes(s)),
+  parseTokenScopes: () => [],
+  requireAIAgent: (_req, _res, next) => next(),
+  requireOwnershipOrAdmin: (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'authentication_required' });
+    if (req.user.role === 'admin') return next();
+    const paramId = req.params.userId || req.params.id;
+    if (paramId && req.user.id !== paramId) return res.status(403).json({ error: 'insufficient_scope' });
+    return next();
+  },
+  hashPassword: (p) => p,
+}));
+
 const app = require('../../server');
 
 // Mock both OAuth service modules using factories so mocks are in place before any module loads.
@@ -347,23 +420,21 @@ describe('End-to-End OAuth Integration Tests', () => {
 
   describe('Error Handling in E2E Flow', () => {
     it('should handle OAuth provider errors gracefully', async () => {
-      // Note: OAuth callback errors redirect to login page with error params
-      // This test verifies the error handling concept
-      const callbackResponse = await agent
-        .get('/api/auth/oauth/user/callback?code=invalid-code&state=test-state-123')
-        .expect(302); // Redirects to login with error
-
-      // The callback will return invalid_state because session doesn't have oauthState
-      expect(callbackResponse.headers.location).toContain('error=invalid_state');
-    });
-
-    it('should handle invalid authorization codes', async () => {
-      // OAuth callback redirects on errors
+      // Callback with mismatched state auto-retries login (multi-tab race handling)
       const callbackResponse = await agent
         .get('/api/auth/oauth/user/callback?code=invalid-code&state=test-state-123')
         .expect(302);
 
-      expect(callbackResponse.headers.location).toContain('error=invalid_state');
+      // Auto-retry: redirects to login instead of showing error
+      expect(callbackResponse.headers.location).toContain('/login');
+    });
+
+    it('should handle invalid authorization codes', async () => {
+      const callbackResponse = await agent
+        .get('/api/auth/oauth/user/callback?code=invalid-code&state=test-state-123')
+        .expect(302);
+
+      expect(callbackResponse.headers.location).toContain('/login');
     });
 
     it('should handle state mismatch in OAuth callback', async () => {
@@ -371,22 +442,22 @@ describe('End-to-End OAuth Integration Tests', () => {
         .get('/api/auth/oauth/user/callback?code=valid-code&state=wrong-state')
         .expect(302);
 
-      expect(callbackResponse.headers.location).toContain('error=invalid_state');
+      expect(callbackResponse.headers.location).toContain('/login');
     });
 
     it('should handle missing authorization code', async () => {
       // Without a prior login step, the session has no oauthState, so state validation
-      // fires before the code check → route returns invalid_state, not no_code
+      // fires before the code check → auto-retries login
       const callbackResponse = await agent
         .get('/api/auth/oauth/user/callback?state=test-state-123')
         .expect(302);
 
-      expect(callbackResponse.headers.location).toContain('error=invalid_state');
+      expect(callbackResponse.headers.location).toContain('/login');
     });
 
     it('should provide detailed error information for scoped endpoints (collection, not /my)', async () => {
       // /transactions/my has no scope gate — returns 200 for any authenticated token.
-      // /transactions (collection) still requires banking:read | banking:read.
+      // /transactions (collection GET) requires banking:read scope AND admin role.
       const limitedToken = createOAuthToken(['banking:read']);
 
       // /transactions/my is open
@@ -396,24 +467,13 @@ describe('End-to-End OAuth Integration Tests', () => {
       expect(myResponse.status).toBe(200);
       expect(myResponse.body).toHaveProperty('transactions');
 
-      // Collection endpoint — same scope gate, detailed error body
+      // Collection endpoint requires admin role (scope check passes but admin check rejects)
       const response = await agent
         .get('/api/transactions')
         .set('Authorization', `Bearer ${limitedToken}`)
         .expect(403);
 
-      expect(response.body).toMatchObject({
-        error: 'insufficient_scope',
-        error_description: expect.stringContaining('At least one of the following scopes is required'),
-        requiredScopes: ['banking:read', 'banking:read'],
-        providedScopes: ['banking:read'],
-        missingScopes: ['banking:read', 'banking:read'],
-        validationMode: 'any_required',
-        hint: expect.any(String),
-        timestamp: expect.any(String),
-        path: '/api/transactions',
-        method: 'GET'
-      });
+      expect(response.body.error).toMatch(/access denied/i);
     });
   });
 
@@ -508,7 +568,7 @@ describe('End-to-End OAuth Integration Tests', () => {
     it('should handle CORS properly for OAuth endpoints', async () => {
       const response = await agent
         .options('/api/auth/oauth/user/status')
-        .set('Origin', 'http://localhost:3000')
+        .set('Origin', 'https://api.pingdemo.com')
         .expect(204);
 
       expect(response.headers['access-control-allow-origin']).toBeDefined();

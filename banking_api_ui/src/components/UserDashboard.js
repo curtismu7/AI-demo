@@ -1785,6 +1785,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                 embeddedFocus="banking"
                 distinctFloatingChrome
                 splitColumnChrome
+                showPopOut
               />
             </div>
           </section>
@@ -1807,6 +1808,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                 embeddedFocus="banking"
                 distinctFloatingChrome
                 splitColumnChrome
+                showPopOut
               />
             </div>
           </section>

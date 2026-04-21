@@ -94,6 +94,8 @@ export interface TokenChainExecutionResult {
 export class AuditLogger {
   private logger: Logger;
   private static instance: AuditLogger;
+  private static eventStore: AuditEvent[] = []; // In-memory audit event storage (max 1000 events)
+  private static readonly MAX_EVENTS = 1000;
 
   constructor(logger: Logger) {
     this.logger = logger;
@@ -108,8 +110,20 @@ export class AuditLogger {
     return result;
   }
 
+  /**
+   * Store audit event in memory (replaces Redis)
+   */
+  private static addEventToStore(event: AuditEvent): void {
+    AuditLogger.eventStore.push(event);
+    // Keep only last MAX_EVENTS to prevent unbounded memory growth
+    if (AuditLogger.eventStore.length > AuditLogger.MAX_EVENTS) {
+      AuditLogger.eventStore.shift();
+    }
+  }
+
   private async writeToRedis(event: AuditEvent): Promise<void> {
-    // No-op — Redis/Upstash removed. Audit events are logged via Logger only.
+    // Store in memory instead of Redis (Redis/Upstash removed)
+    AuditLogger.addEventToStore(event);
   }
 
   static getInstance(logger?: Logger): AuditLogger {
@@ -469,9 +483,26 @@ export class AuditLogger {
     endTime?: Date;
     limit?: number;
   }): Promise<AuditEvent[]> {
-    // Redis/Upstash removed — audit query returns empty
-    await this.logger.debug('Audit log query: Redis not configured, returning empty', { filters, operation: 'audit_query' });
-    return [];
+    // Query from in-memory event store
+    let results = AuditLogger.eventStore.filter(event => {
+      // Apply all filters
+      if (filters.eventType && event.eventType !== filters.eventType) return false;
+      if (filters.operation && event.operation !== filters.operation) return false;
+      if (filters.userId && event.userId !== filters.userId) return false;
+      if (filters.agentId && event.agentId !== filters.agentId) return false;
+      if (filters.sessionId && event.sessionId !== filters.sessionId) return false;
+      if (filters.outcome && event.outcome !== filters.outcome) return false;
+      if (filters.startTime && new Date(event.timestamp) < filters.startTime) return false;
+      if (filters.endTime && new Date(event.timestamp) > filters.endTime) return false;
+      return true;
+    });
+
+    // Apply limit
+    if (filters.limit && filters.limit > 0) {
+      results = results.slice(-filters.limit); // Return most recent N
+    }
+
+    return results;
   }
 
   /**

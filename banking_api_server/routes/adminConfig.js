@@ -13,7 +13,6 @@
  *  • GET is open (returns masked data — no secret exposure).
  *  • POST is open when no config is stored yet (first-run setup).
  *  • POST is restricted to admin OAuth session once config exists (or X-Config-Password on hosted stacks).
- *  • On Vercel without KV, POST/reset return 403 (env-only); with KV, writes go to Upstash.
  *  • Reset uses the same gate as POST; on hosted stacks prefer ADMIN_CONFIG_PASSWORD for auth.
  */
 
@@ -60,14 +59,14 @@ function isAdminSession(req) {
  * Gate: allow request if (a) no config is stored yet, OR (b) caller is admin,
  * OR (c) hosted mode and the correct ADMIN_CONFIG_PASSWORD header is provided,
  * OR (d) hosted mode and ADMIN_CONFIG_PASSWORD is not set (open demo mode).
- * OR (e) local dev (not Vercel / Replit) — always open.
+ * OR (e) local dev (not Replit) — always open.
  */
 function requireAdminOrUnconfigured(req, res, next) {
   if (!configStore.isConfigured()) return next(); // first-run: always open
-  if (!hosting.isVercel() && !hosting.isReplit()) return next(); // local dev: always open
+  if (!hosting.isReplit()) return next(); // local dev: always open
   if (isAdminSession(req)) return next();          // OAuth admin session
 
-  // Vercel / opt-in Replit: sessions may not persist — optional admin password header.
+  // Hosted Replit: sessions may not persist — optional admin password header.
   if (hosting.useConfigPasswordHeader()) {
     const envPassword = process.env.ADMIN_CONFIG_PASSWORD;
     if (!envPassword) return next(); // no password configured → open demo mode
@@ -107,12 +106,12 @@ router.get('/', configReadLimiter, async (req, res) => {
       isConfigured: configStore.isConfigured(),
       storageType:  configStore.getStorageType(),
       readOnly:     configStore.isReadOnly(),
-      /** Hosted (Vercel or REPLIT_MANAGED_OAUTH): OAuth clients from env/KV — UI may be deployment-managed. */
+      /** Hosted (Replit with REPLIT_MANAGED_OAUTH): OAuth clients from env — UI may be deployment-managed. */
       deploymentManagedPingOneOAuth: hosting.isDeploymentManagedPingOneOAuth(),
       /** Demo mode: destructive operations are limited — set via DEMO_MODE env var on shared/public deployments. */
       demoMode: !!process.env.DEMO_MODE,
-      /** Deployment platform: 'vercel' | 'replit' | 'local' -- used by UI to show environment-specific tabs. */
-      hostedOn: hosting.isVercel() ? 'vercel' : hosting.isReplit() ? 'replit' : 'local',
+      /** Deployment platform: 'replit' | 'local' -- used by UI to show environment-specific tabs. */
+      hostedOn: hosting.isReplit() ? 'replit' : 'local',
       /** Exact redirect URIs to register in PingOne for this deployment (server-computed). */
       redirectInfo,
       /** Environment validation and configuration status */
@@ -137,13 +136,6 @@ router.get('/', configReadLimiter, async (req, res) => {
 // ---------------------------------------------------------------------------
 
 router.post('/', requireAdminOrUnconfigured, async (req, res) => {
-  if (hosting.isVercel() && !configStore.hasKvStorage()) {
-    return res.status(403).json({
-      error:   'read_only',
-      message:
-        'This Vercel deployment has no KV / Upstash connection. Set KV_REST_API_URL and KV_REST_API_TOKEN (or the Vercel KV integration), or manage PingOne settings via environment variables only.',
-    });
-  }
   try {
     const data = req.body;
     if (!data || typeof data !== 'object') {
@@ -226,13 +218,6 @@ router.post('/test', requireAdminOrUnconfigured, async (req, res) => {
 // ---------------------------------------------------------------------------
 
 router.post('/reset', blockInDemoMode('config reset'), requireAdminOrUnconfigured, async (req, res) => {
-  if (hosting.isVercel() && !configStore.hasKvStorage()) {
-    return res.status(403).json({
-      error:   'read_only',
-      message:
-        'This Vercel deployment has no KV store. Reset is only available when KV_REST_API_URL and KV_REST_API_TOKEN are configured.',
-    });
-  }
   try {
     await configStore.ensureInitialized();
     await configStore.resetConfig();

@@ -104,6 +104,10 @@ describe('mcpToolAuthorizationService', () => {
         if (k === 'PINGONE_RESOURCE_MCP_SERVER_URI') return 'https://mcp.example';
         return null;
       });
+      configStore.getEffective = jest.fn((k) => {
+        if (k === 'mcp_resource_uri') return 'https://mcp.example';
+        return configStore.get(k);
+      });
       simulatedAuthorizeService.isSimulatedModeEnabled.mockReturnValue(true);
       simulatedAuthorizeService.evaluateMcpFirstTool.mockResolvedValue({
         decision: 'PERMIT',
@@ -162,6 +166,60 @@ describe('mcpToolAuthorizationService', () => {
       expect(r.block.body.error).toBe('mcp_authorization_denied');
     });
 
+    it('returns 428 block when simulated requires HITL', async () => {
+      configStore.get.mockImplementation((k) =>
+        k === 'ff_authorize_mcp_first_tool' ? 'true' : null,
+      );
+      simulatedAuthorizeService.isSimulatedModeEnabled.mockReturnValue(true);
+      simulatedAuthorizeService.evaluateMcpFirstTool.mockResolvedValue({
+        decision: 'INDETERMINATE',
+        stepUpRequired: false,
+        hitlRequired: true,
+        path: 'simulated',
+        decisionId: 'sim-hitl-1',
+        raw: {},
+      });
+
+      const r = await evaluateMcpFirstToolGate({
+        req: { session: { user: { role: 'user' } } },
+        tool: 'create_transfer',
+        agentToken: jwtWithPayload({ sub: 'u1' }),
+        userSub: 'u1',
+      });
+
+      expect(r.ran).toBe(true);
+      expect(r.block.status).toBe(428);
+      expect(r.block.body.error).toBe('mcp_hitl_required');
+      expect(r.block.body.authorize_engine).toBe('simulated');
+    });
+
+    it('returns 428 step-up before HITL when both are set (simulated)', async () => {
+      configStore.get.mockImplementation((k) =>
+        k === 'ff_authorize_mcp_first_tool' ? 'true' : null,
+      );
+      simulatedAuthorizeService.isSimulatedModeEnabled.mockReturnValue(true);
+      simulatedAuthorizeService.evaluateMcpFirstTool.mockResolvedValue({
+        decision: 'INDETERMINATE',
+        stepUpRequired: true,
+        hitlRequired: true,
+        path: 'simulated',
+        decisionId: 'sim-both',
+        raw: {},
+      });
+
+      const r = await evaluateMcpFirstToolGate({
+        req: { session: { user: { role: 'user' } } },
+        tool: 'create_transfer',
+        agentToken: jwtWithPayload({ sub: 'u1' }),
+        userSub: 'u1',
+      });
+
+      // Step-up should take priority over HITL
+      expect(r.ran).toBe(true);
+      expect(r.block.status).toBe(428);
+      expect(r.block.body.error).toBe('mcp_step_up_required');
+    });
+
     it('calls PingOne when live and MCP endpoint ready', async () => {
       configStore.get.mockImplementation((k) => {
         if (k === 'ff_authorize_mcp_first_tool') return 'true';
@@ -190,6 +248,39 @@ describe('mcpToolAuthorizationService', () => {
       expect(r.ran).toBe(true);
       expect(r.permit).toBe(true);
       expect(pingOneAuthorizeService.evaluateMcpToolDelegation).toHaveBeenCalled();
+    });
+
+    it('returns 428 HITL block when PingOne live requires human approval', async () => {
+      configStore.get.mockImplementation((k) => {
+        if (k === 'ff_authorize_mcp_first_tool') return 'true';
+        if (k === 'ff_authorize_fail_open') return 'false';
+        if (k === 'authorize_mcp_decision_endpoint_id') return 'mcp-endpoint-uuid';
+        if (k === 'PINGONE_RESOURCE_MCP_SERVER_URI') return 'https://mcp';
+        return null;
+      });
+      simulatedAuthorizeService.isSimulatedModeEnabled.mockReturnValue(false);
+      pingOneAuthorizeService.isMcpDelegationDecisionReady.mockReturnValue(true);
+      pingOneAuthorizeService.evaluateMcpToolDelegation.mockResolvedValue({
+        decision: 'INDETERMINATE',
+        stepUpRequired: false,
+        hitlRequired: true,
+        path: 'decision-endpoint',
+        decisionId: 'p1-hitl-1',
+        raw: {},
+      });
+
+      const r = await evaluateMcpFirstToolGate({
+        req: { session: { user: { role: 'user' } } },
+        tool: 'create_transfer',
+        agentToken: jwtWithPayload({ sub: 'sub-99', aud: 'https://mcp' }),
+        userSub: 'sub-99',
+      });
+
+      expect(r.ran).toBe(true);
+      expect(r.block.status).toBe(428);
+      expect(r.block.body.error).toBe('mcp_hitl_required');
+      expect(r.block.body.authorize_engine).toBe('pingone');
+      expect(r.block.body.decisionId).toBe('p1-hitl-1');
     });
   });
 

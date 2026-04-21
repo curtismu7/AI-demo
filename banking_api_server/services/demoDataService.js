@@ -4,10 +4,8 @@ const fs = require('fs');
 const crypto = require('crypto');
 const configStore = require('./configStore');
 
-// Determine storage backend
-const isVercel = process.env.VERCEL === '1';
-const useEnvVar = isVercel && process.env.DEMO_ACCOUNTS;
-const useSQLite = !isVercel;
+// Determine storage backend — always SQLite
+const useSQLite = true;
 
 let db = null;
 
@@ -45,24 +43,10 @@ if (useSQLite) {
   }
 }
 
-// Helper to update Vercel environment variable
-async function updateVercelEnvVar(key, value) {
-  // This would use Vercel API to update environment variables
-  // For now, log and return success
-  console.log(`[demoDataService] Would update Vercel env var ${key} with ${value?.length || 0} chars`);
-  return { ok: true };
-}
-
 // Core functions
 
 async function getDemoAccounts(userId = null) {
   try {
-    if (useEnvVar) {
-      // Parse from environment variable
-      const envAccounts = process.env.DEMO_ACCOUNTS ? JSON.parse(process.env.DEMO_ACCOUNTS) : [];
-      return userId ? envAccounts.filter(acc => acc.userId === userId) : envAccounts;
-    }
-    
     if (useSQLite && db) {
       // Query from SQLite
       let query = 'SELECT * FROM demo_accounts';
@@ -109,14 +93,6 @@ async function createDemoAccount(accountData) {
       createdAt: new Date().toISOString()
     };
     
-    if (useEnvVar) {
-      // Read current accounts, add new one, update environment variable
-      const currentAccounts = process.env.DEMO_ACCOUNTS ? JSON.parse(process.env.DEMO_ACCOUNTS) : [];
-      currentAccounts.push(account);
-      await updateVercelEnvVar('DEMO_ACCOUNTS', JSON.stringify(currentAccounts));
-      return account;
-    }
-    
     if (useSQLite && db) {
       // Insert into SQLite
       const stmt = db.prepare(`
@@ -137,19 +113,6 @@ async function createDemoAccount(accountData) {
 
 async function deleteDemoAccount(accountId, userId) {
   try {
-    if (useEnvVar) {
-      // Filter accounts by ID, update environment variable
-      const currentAccounts = process.env.DEMO_ACCOUNTS ? JSON.parse(process.env.DEMO_ACCOUNTS) : [];
-      const filteredAccounts = currentAccounts.filter(acc => !(acc.id === accountId && acc.userId === userId));
-      
-      if (filteredAccounts.length === currentAccounts.length) {
-        return { ok: false, error: 'not_found' };
-      }
-      
-      await updateVercelEnvVar('DEMO_ACCOUNTS', JSON.stringify(filteredAccounts));
-      return { ok: true };
-    }
-    
     if (useSQLite && db) {
       // Delete from SQLite
       const stmt = db.prepare('DELETE FROM demo_accounts WHERE id = ? AND userId = ?');
@@ -216,8 +179,8 @@ async function migrateAccounts() {
     
     console.log(`[demoDataService] Migration completed: ${migratedCount} accounts migrated`);
     
-    if (useEnvVar && migratedCount > 0) {
-      console.log('[demoDataService] NOTE: For Vercel deployment, manually set DEMO_ACCOUNTS environment variable with the migrated accounts');
+    if (migratedCount > 0) {
+      console.log('[demoDataService] NOTE: Accounts migrated to SQLite');
     }
     
     return { ok: true, migrated: migratedCount, existing: 0 };
@@ -230,9 +193,7 @@ async function migrateAccounts() {
 // Get backend info for UI
 function getBackendInfo() {
   return {
-    backend: useEnvVar ? 'env_var' : (useSQLite ? 'sqlite' : 'unknown'),
-    isVercel,
-    useEnvVar,
+    backend: useSQLite ? 'sqlite' : 'unknown',
     useSQLite,
     accountCount: null // Will be populated by caller
   };
@@ -244,7 +205,5 @@ module.exports = {
   deleteDemoAccount,
   migrateAccounts,
   getBackendInfo,
-  isVercel,
-  useEnvVar,
   useSQLite
 };

@@ -3,7 +3,7 @@
 /**
  * authStateCookie.js
  *
- * Vercel / serverless deployments cannot share in-memory sessions across
+ * Serverless / multi-instance deployments cannot share in-memory sessions across
  * function invocations.  After a successful OAuth callback the session is saved
  * to a particular instance's memory; the very next request (e.g. React's
  * /api/auth/oauth/user/status) may land on a *different* instance and find an

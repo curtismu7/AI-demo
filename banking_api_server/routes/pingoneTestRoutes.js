@@ -103,10 +103,9 @@ router.post('/worker-config', async (req, res) => {
       });
     }
 
-    const isVercel = process.env.VERCEL === '1';
-    const storageMethod = isVercel ? 'Vercel Environment Variables' : 'Local .env file';
+    const storageMethod = 'Local .env file';
 
-    // Update configStore with the new values (persisted to SQLite/KV)
+    // Update configStore with the new values (persisted to SQLite)
     await configStore.setConfig({
       pingone_worker_token_client_id: clientId,
       pingone_worker_token_client_secret: clientSecret,
@@ -116,15 +115,7 @@ router.post('/worker-config', async (req, res) => {
 
     let updateDetails = {};
 
-    if (isVercel) {
-      // On Vercel, we can't update environment variables at runtime
-      // The user must set them via Vercel dashboard or CLI
-      updateDetails = {
-        method: 'Vercel Environment Variables',
-        message: 'Configuration saved to configStore (SQLite/KV). To persist on Vercel, set PINGONE_WORKER_TOKEN_CLIENT_ID, PINGONE_WORKER_TOKEN_CLIENT_SECRET, and PINGONE_WORKER_TOKEN_AUTH_METHOD in Vercel dashboard or CLI.',
-        requiresManualSetup: true
-      };
-    } else {
+    {
       // Local development: update .env file
       const fs = require('fs');
       const path = require('path');
@@ -188,7 +179,7 @@ router.post('/worker-config', async (req, res) => {
         console.error('[PingOneTest] Failed to update .env file:', fsError.message);
         updateDetails = {
           method: 'SQLite only',
-        message: 'Configuration saved to SQLite/KV only. Failed to update .env file: ' + fsError.message,
+        message: 'Configuration saved to SQLite only. Failed to update .env file: ' + fsError.message,
           requiresRestart: false
         };
       }

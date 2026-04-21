@@ -41,7 +41,7 @@ export default function DashboardQuickNav({ user }) {
     window.open('/logs', 'BankingLogs', POPOUT);
   };
 
-  const homeActive = pathname === '/marketing';
+  const homeActive = pathname === '/' || pathname === '';
   const dashActive = user
     ? (isAdmin ? pathname === '/admin' : pathname === '/dashboard')
     : pathname === '/dashboard';
@@ -50,7 +50,7 @@ export default function DashboardQuickNav({ user }) {
   return (
     <nav className="dashboard-quick-nav" aria-label="Quick navigation">
       <Link
-        to="/marketing"
+        to="/"
         className={`dashboard-quick-nav__btn${homeActive ? ' dashboard-quick-nav__btn--active' : ''}`}
         title="Home"
       >
@@ -68,7 +68,7 @@ export default function DashboardQuickNav({ user }) {
         className="dashboard-quick-nav__btn"
         title="Open AI Agent panel"
         onClick={() => {
-          const agentRoutes = ['/', '/admin', '/dashboard', '/marketing'];
+          const agentRoutes = ['/', '/admin', '/dashboard'];
           const norm = pathname.replace(/\/$/, '') || '/';
           if (agentRoutes.includes(norm)) {
             window.dispatchEvent(new CustomEvent('banking-agent-open'));

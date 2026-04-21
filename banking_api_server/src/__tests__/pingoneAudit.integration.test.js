@@ -3,14 +3,45 @@
  */
 
 const request = require('supertest');
-const axios = require('axios');
+
+// Mock express-session to inject session data from x-test-user header
+jest.mock('express-session', () => {
+  return () => (req, _res, next) => {
+    req.session = req.session || {};
+    req.session.save = (cb) => cb && cb();
+    req.session.destroy = (cb) => cb && cb();
+    const h = req.headers['x-test-user'];
+    if (h) {
+      try {
+        req.session.user = JSON.parse(h);
+        req.session.oauthTokens = { accessToken: 'mock-token' };
+      } catch { /* ignore */ }
+    }
+    next();
+  };
+});
+
+// Mock the services the route calls directly
+const mockValidateResources = jest.fn();
+const mockAuditResourceScopes = jest.fn();
+
+jest.mock('../../services/resourceValidationService', () => ({
+  validateResources: (...args) => mockValidateResources(...args),
+}));
+
+jest.mock('../../services/scopeAuditService', () => ({
+  auditResourceScopes: (...args) => mockAuditResourceScopes(...args),
+}));
+
 const app = require('../../server');
 
-jest.mock('axios');
-
 describe('GET /api/pingone/audit', () => {
-  const mockEnvId = '12345678-1234-1234-1234-123456789012';
-  const mockToken = 'mock-bearer-token';
+  const authenticatedUser = JSON.stringify({
+    id: 'test-admin-id',
+    username: 'admin',
+    email: 'admin@bank.com',
+    role: 'admin',
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,81 +52,27 @@ describe('GET /api/pingone/audit', () => {
       .get('/api/pingone/audit')
       .expect(401);
 
-    expect(response.body.error).toBe('unauthorized');
+    expect(response.body.error).toBe('Unauthorized - authentication required');
   });
 
   it('should validate resources and scopes for authenticated user', async () => {
-    // Mock token fetch
-    axios.post.mockResolvedValueOnce({
-      data: { access_token: mockToken }
+    mockValidateResources.mockResolvedValueOnce({
+      status: 'success',
+      resourceValidation: [
+        { resourceName: 'Super Banking AI Agent', audienceUri: 'https://ai-agent.pingdemo.com', status: 'CORRECT' },
+        { resourceName: 'Super Banking MCP Server', audienceUri: 'https://mcp-server.pingdemo.com', status: 'CORRECT' },
+      ],
+    });
+    mockAuditResourceScopes.mockResolvedValueOnce({
+      status: 'success',
+      scopeAudit: [
+        { resourceName: 'Super Banking AI Agent', expectedScopes: ['banking:ai:agent'], currentScopes: ['banking:ai:agent'], status: 'OK' },
+      ],
     });
 
-    // Mock resource listing
-    const mockResources = [
-      {
-        id: 'res-1',
-        name: 'Super Banking AI Agent',
-        audience: 'https://ai-agent.pingdemo.com',
-        authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-      },
-      {
-        id: 'res-2',
-        name: 'Super Banking MCP Server',
-        audience: 'https://mcp-server.pingdemo.com',
-        authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-      },
-      {
-        id: 'res-3',
-        name: 'Super Banking Banking API',
-        audience: 'https://banking-api.pingdemo.com',
-        authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-      },
-      {
-        id: 'res-4',
-        name: 'Super Banking Agent Gateway',
-        audience: 'https://agent-gateway.pingdemo.com',
-        authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-      },
-      {
-        id: 'res-5',
-        name: 'PingOne API',
-        audience: 'https://api.pingone.com',
-        authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-      }
-    ];
-
-    axios.get.mockResolvedValueOnce({
-      data: { _embedded: { resources: mockResources } }
-    });
-
-    // Mock scope fetches for each resource (5 resources)
-    const scopeResponses = [
-      { data: { _embedded: { scopes: [{ name: 'banking:ai:agent' }] } } },
-      { data: { _embedded: { scopes: [
-        { name: 'banking:read' },
-        { name: 'banking:read' },
-        { name: 'banking:write' }
-      ] } } },
-      { data: { _embedded: { scopes: [
-        { name: 'banking:read' },
-        { name: 'banking:read' },
-        { name: 'banking:write' }
-      ] } } },
-      { data: { _embedded: { scopes: [] } } },
-      { data: { _embedded: { scopes: [
-        { name: 'p1:read:user' },
-        { name: 'p1:update:user' }
-      ] } } }
-    ];
-
-    scopeResponses.forEach(resp => {
-      axios.get.mockResolvedValueOnce(resp);
-    });
-
-    // Create a mock session
     const response = await request(app)
       .get('/api/pingone/audit')
-      .set('Cookie', 'connect.sid=mock-session-id')
+      .set('x-test-user', authenticatedUser)
       .expect(200);
 
     expect(response.body).toHaveProperty('status');
@@ -105,30 +82,22 @@ describe('GET /api/pingone/audit', () => {
   });
 
   it('should return detailed resource validation results', async () => {
-    axios.post.mockResolvedValueOnce({
-      data: { access_token: mockToken }
+    mockValidateResources.mockResolvedValueOnce({
+      status: 'success',
+      resourceValidation: [
+        { resourceName: 'Super Banking AI Agent', audienceUri: 'https://ai-agent.pingdemo.com', status: 'CORRECT' },
+      ],
     });
-
-    const mockResources = [
-      {
-        id: 'res-1',
-        name: 'Super Banking AI Agent',
-        audience: 'https://ai-agent.pingdemo.com',
-        authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-      }
-    ];
-
-    axios.get.mockResolvedValueOnce({
-      data: { _embedded: { resources: mockResources } }
-    });
-
-    axios.get.mockResolvedValueOnce({
-      data: { _embedded: { scopes: [{ name: 'banking:ai:agent' }] } }
+    mockAuditResourceScopes.mockResolvedValueOnce({
+      status: 'success',
+      scopeAudit: [
+        { resourceName: 'Super Banking AI Agent', expectedScopes: ['banking:ai:agent'], currentScopes: ['banking:ai:agent'], status: 'OK' },
+      ],
     });
 
     const response = await request(app)
       .get('/api/pingone/audit')
-      .set('Cookie', 'connect.sid=mock-session-id')
+      .set('x-test-user', authenticatedUser)
       .expect(200);
 
     const resourceValidation = response.body.resourceValidation;
@@ -142,30 +111,22 @@ describe('GET /api/pingone/audit', () => {
   });
 
   it('should include scope audit details', async () => {
-    axios.post.mockResolvedValueOnce({
-      data: { access_token: mockToken }
+    mockValidateResources.mockResolvedValueOnce({
+      status: 'success',
+      resourceValidation: [
+        { resourceName: 'Super Banking AI Agent', audienceUri: 'https://ai-agent.pingdemo.com', status: 'CORRECT' },
+      ],
     });
-
-    const mockResources = [
-      {
-        id: 'res-1',
-        name: 'Super Banking AI Agent',
-        audience: 'https://ai-agent.pingdemo.com',
-        authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-      }
-    ];
-
-    axios.get.mockResolvedValueOnce({
-      data: { _embedded: { resources: mockResources } }
-    });
-
-    axios.get.mockResolvedValueOnce({
-      data: { _embedded: { scopes: [{ name: 'banking:ai:agent' }] } }
+    mockAuditResourceScopes.mockResolvedValueOnce({
+      status: 'success',
+      scopeAudit: [
+        { resourceName: 'Super Banking AI Agent', expectedScopes: ['banking:ai:agent'], currentScopes: ['banking:ai:agent'], status: 'OK' },
+      ],
     });
 
     const response = await request(app)
       .get('/api/pingone/audit')
-      .set('Cookie', 'connect.sid=mock-session-id')
+      .set('x-test-user', authenticatedUser)
       .expect(200);
 
     const scopeAudit = response.body.scopeAudit;
@@ -177,43 +138,43 @@ describe('GET /api/pingone/audit', () => {
   });
 
   it('should return error response when resource validation fails', async () => {
-    axios.post.mockResolvedValueOnce({
-      data: { access_token: mockToken }
+    mockValidateResources.mockResolvedValueOnce({
+      status: 'error',
+      error: 'PingOne API error',
     });
-
-    axios.get.mockRejectedValueOnce(new Error('PingOne API error'));
 
     const response = await request(app)
       .get('/api/pingone/audit')
-      .set('Cookie', 'connect.sid=mock-session-id')
+      .set('x-test-user', authenticatedUser)
       .expect(500);
 
     expect(response.body).toHaveProperty('error');
   });
 
   it('should return error when authentication token cannot be obtained', async () => {
-    axios.post.mockRejectedValueOnce(new Error('Failed to get management token'));
+    mockValidateResources.mockRejectedValueOnce(new Error('Failed to get management token'));
 
     const response = await request(app)
       .get('/api/pingone/audit')
-      .set('Cookie', 'connect.sid=mock-session-id')
+      .set('x-test-user', authenticatedUser)
       .expect(500);
 
     expect(response.body).toHaveProperty('error');
   });
 
   it('should include auditedAt timestamp', async () => {
-    axios.post.mockResolvedValueOnce({
-      data: { access_token: mockToken }
+    mockValidateResources.mockResolvedValueOnce({
+      status: 'success',
+      resourceValidation: [],
     });
-
-    axios.get.mockResolvedValueOnce({
-      data: { _embedded: { resources: [] } }
+    mockAuditResourceScopes.mockResolvedValueOnce({
+      status: 'success',
+      scopeAudit: [],
     });
 
     const response = await request(app)
       .get('/api/pingone/audit')
-      .set('Cookie', 'connect.sid=mock-session-id')
+      .set('x-test-user', authenticatedUser)
       .expect(200);
 
     expect(response.body).toHaveProperty('auditedAt');

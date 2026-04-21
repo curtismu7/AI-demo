@@ -19,7 +19,7 @@
     "test:oauth-e2e": "jest --testPathPattern=oauth-e2e-integration.test.js --verbose --forceExit",
     "test:mcp-inspector": "jest --testPathPattern=mcp-inspector --forceExit --verbose",
     "test:bff-tokens": "jest --testPathPattern='redisWireUrl|bffSessionGating' --forceExit --verbose",
-    "test:session": "jest --testPathPattern='authSession|authStateCookie|bffSessionGating|upstashSessionStore|session-store-resilience|oauth-e2e-integration' --forceExit",
+    "test:session": "jest --testPathPattern='authSession|authStateCookie|bffSessionGating|session-store-resilience|oauth-e2e-integration' --forceExit",
     "verify:token-exchange": "node scripts/verify-token-exchange.js",
     "verify:scopes": "node scripts/verify-scope-configuration.js",
     "verify:scopes:fix": "node scripts/verify-scope-configuration.js --fix",
@@ -32,12 +32,10 @@
     "heroku-postbuild": "npm run install-client && npm run build"
   },
   "dependencies": {
-    "@langchain/anthropic": "^1.3.26",
     "@langchain/core": "^1.1.39",
-    "@langchain/groq": "^1.2.0",
     "@langchain/langgraph": "^1.2.8",
+    "@langchain/ollama": "^1.2.6",
     "@langchain/openai": "^1.4.4",
-    "@vercel/kv": "^3.0.0",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.9.0",

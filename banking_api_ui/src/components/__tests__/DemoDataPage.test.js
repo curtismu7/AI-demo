@@ -41,6 +41,15 @@ jest.mock('../../context/AgentUiModeContext', () => ({
 
 jest.mock('../../context/EducationUIContext', () => ({
   useEducationUI: () => ({ open: jest.fn() }),
+  useEducationUIOptional: () => ({ open: jest.fn() }),
+}));
+
+jest.mock('../../services/apiClient', () => ({
+  get: jest.fn(() => Promise.resolve({ data: {} })),
+  post: jest.fn(() => Promise.resolve({ data: {} })),
+  patch: jest.fn(() => Promise.resolve({ data: {} })),
+  put: jest.fn(() => Promise.resolve({ data: {} })),
+  delete: jest.fn(() => Promise.resolve({ data: {} })),
 }));
 
 jest.mock('react-toastify', () => ({

@@ -18,10 +18,10 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Don't show on setup/marketing pages
+  // Don't show on landing page, setup, or logout pages
   const shouldHide = hideOnPaths.some(p => pathname.startsWith(p)) || 
                     pathname === '/' || 
-                    pathname === '/marketing' ||
+                    pathname === '/' ||
                     pathname === '/onboarding' ||
                     pathname === '/setup' ||
                     pathname === '/setup/wizard' ||
@@ -101,10 +101,10 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
   const handleLogout = async () => {
     try {
       await bffAxios.post('/api/auth/logout');
-      navigate('/marketing');
+      navigate('/');
     } catch (err) {
       console.error('Logout error:', err.message);
-      navigate('/marketing');
+      navigate('/');
     }
   };
 

@@ -1,7 +1,7 @@
 .split-pane-layout {
   display: flex;
   flex-direction: row;
-  gap: 16px;
+  gap: 0;
   padding: 16px;
   height: 100vh;
   width: 100%;
@@ -17,6 +17,38 @@
   border-radius: 4px;
 }
 
+/* Drag handle between panes */
+.split-pane-resize-handle {
+  flex: 0 0 6px;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  z-index: 2;
+  transition: background 0.15s ease;
+}
+
+.split-pane-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 32px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.15);
+  transition: background 0.15s ease, height 0.15s ease;
+}
+
+.split-pane-resize-handle:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.split-pane-resize-handle:hover::after {
+  background: rgba(0, 0, 0, 0.3);
+  height: 48px;
+}
+
 .split-pane-architecture-pane {
   flex: 0 0 40%;
   position: sticky;
@@ -30,17 +62,8 @@
 
 /* Tablet: 768px - 1023px */
 @media (max-width: 1024px) {
-  .split-pane-agent-pane {
-    flex-basis: 55%;
-  }
-
-  .split-pane-architecture-pane {
-    flex-basis: 45%;
-  }
-
   .split-pane-layout {
     padding: 12px;
-    gap: 12px;
   }
 }
 
@@ -51,19 +74,22 @@
     height: auto;
     min-height: 100vh;
     padding: 8px;
-    gap: 8px;
   }
 
   .split-pane-agent-pane {
-    flex: 0 0 auto;
+    flex: 0 0 auto !important;
     width: 100%;
     min-height: auto;
     max-height: none;
   }
 
+  .split-pane-resize-handle {
+    display: none;
+  }
+
   .split-pane-architecture-pane {
     position: static;
-    flex: 0 0 auto;
+    flex: 0 0 auto !important;
     width: 100%;
     max-height: none;
     display: none;
@@ -83,5 +109,17 @@
   .split-pane-architecture-pane {
     background: var(--app-bg-color, #1a1a1a);
     box-shadow: 0 1px 3px rgba(255, 255, 255, 0.05);
+  }
+
+  .split-pane-resize-handle::after {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .split-pane-resize-handle:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .split-pane-resize-handle:hover::after {
+    background: rgba(255, 255, 255, 0.4);
   }
 }

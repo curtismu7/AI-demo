@@ -2,13 +2,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const LCEL_CODE = `# LangChain 0.3.x LCEL agent — multi-provider
-from langchain_groq import ChatGroq          # or ChatOpenAI, ChatAnthropic, …
+const LCEL_CODE = `# LangChain 0.3.x LCEL agent — Ollama (local)
+from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from .llm_factory import get_llm             # multi-provider factory
 
-# 1. Pick your provider at runtime
-llm = get_llm(provider="groq", model="llama-3.1-8b-instant")
+# 1. Local Ollama model
+llm = ChatOllama(model="llama3.2", base_url="http://localhost:11434")
 
 # 2. Build a prompt with tool scratchpad
 prompt = ChatPromptTemplate.from_messages([
@@ -18,7 +17,7 @@ prompt = ChatPromptTemplate.from_messages([
     MessagesPlaceholder("agent_scratchpad"),
 ])
 
-# 3. Bind tools — works the same for every provider
+# 3. Bind tools
 chain = prompt | llm.bind_tools(tools)
 
 # 4. Simple tool-calling loop
@@ -33,11 +32,7 @@ async def run(user_msg: str, chat_history: list) -> str:
     return result.content`;
 
 const PROVIDERS = [
-  { id: 'groq',      label: 'Groq',       package: 'langchain-groq',           defaultModel: 'llama-3.1-8b-instant',      notes: 'Free tier · fastest inference' },
-  { id: 'openai',    label: 'OpenAI',     package: 'langchain-openai',          defaultModel: 'gpt-4o-mini',               notes: 'Most capable function calling' },
-  { id: 'anthropic', label: 'Anthropic',  package: 'langchain-anthropic',       defaultModel: 'claude-haiku-4-20250414', notes: 'Long context · strong reasoning' },
-  { id: 'google',    label: 'Google AI',  package: 'langchain-google-genai',    defaultModel: 'gemini-2.0-flash',          notes: 'Google Gemini models' },
-  { id: 'ollama',    label: 'Ollama',     package: 'langchain-ollama',          defaultModel: 'gemma4:e4b',                  notes: 'Local — Gemma 4 default, no API key' },
+  { id: 'ollama',    label: 'Ollama',     package: 'langchain-ollama',          defaultModel: 'llama3.2',                  notes: 'Local inference — no API key needed' },
 ];
 
 export default function LangChainPage() {
@@ -151,7 +146,7 @@ export default function LangChainPage() {
         <p style={{ lineHeight: 1.6, color: '#333' }}>
           API keys are stored exclusively in <code>req.session.langchain_config</code> on the BFF.
           The <code>GET /api/langchain/config/status</code> endpoint returns only boolean flags
-          (<code>key_set: &#123; groq: true, openai: false, … &#125;</code>) — never the key values.
+          (<code>key_set: &#123; ollama: true &#125;</code>) — never any key values.
           This follows the same security pattern as the PingOne OAuth client secrets.
         </p>
       </section>

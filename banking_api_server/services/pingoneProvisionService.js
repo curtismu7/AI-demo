@@ -310,43 +310,6 @@ class PingOneProvisionService {
   }
 
   /**
-   * Set Vercel environment variables
-   */
-  async setVercelEnvVars(config, provisioned) {
-    if (!config.vercelToken || !config.vercelProjectId) {
-      throw new Error('Vercel token and project ID required for Vercel deployment');
-    }
-
-    const envVars = this.generateVercelEnvVars(config, provisioned);
-    const results = [];
-
-    for (const [key, value] of Object.entries(envVars)) {
-      try {
-        await axios.post(
-          `https://api.vercel.com/v9/projects/${config.vercelProjectId}/env`,
-          {
-            key,
-            value,
-            type: 'plain',
-            target: ['production', 'preview', 'development']
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${config.vercelToken}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        results.push({ key, success: true });
-      } catch (error) {
-        results.push({ key, success: false, error: error.message });
-      }
-    }
-
-    return results;
-  }
-
-  /**
    * Generate .env file content
    */
   generateEnvContent(config, provisioned) {
@@ -398,30 +361,7 @@ class PingOneProvisionService {
     return lines.join('\n');
   }
 
-  /**
-   * Generate Vercel environment variables
-   */
-  generateVercelEnvVars(config, provisioned) {
-    return {
-      PINGONE_ENVIRONMENT_ID: config.envId,
-      PINGONE_REGION: config.region,
-      PINGONE_ADMIN_CLIENT_ID: provisioned.adminApp.clientId,
-      PINGONE_ADMIN_CLIENT_SECRET: provisioned.adminApp.clientSecret || '<set-in-pingone-console>',
-      PINGONE_ADMIN_REDIRECT_URI: `${config.publicAppUrl}/api/auth/oauth/callback`,
-      PINGONE_CORE_CLIENT_ID: provisioned.userApp.clientId,
-      PINGONE_CORE_CLIENT_SECRET: provisioned.userApp.clientSecret || '<set-in-pingone-console>',
-      PINGONE_CORE_REDIRECT_URI: `${config.publicAppUrl}/api/auth/oauth/callback`,
-      ENDUSER_AUDIENCE: provisioned.resourceServer.audience[0],
-      MCP_RESOURCE_URI: provisioned.mcpResourceServer?.audience?.[0] || 'https://mcp-server.pingdemo.com',
-      PINGONE_MCP_EXCHANGER_CLIENT_ID: provisioned.mcpExchangerApp?.clientId || '',
-      PINGONE_MCP_EXCHANGER_CLIENT_ID: provisioned.mcpExchangerApp?.clientId || '',
-      ff_admin_token_exchange: 'true',
-      ADMIN_TOKEN_LIFETIME: '7200',
-      ADMIN_REFRESH_TOKEN_LIFETIME: '86400',
-      PINGONE_WORKER_CLIENT_ID: config.workerClientId,
-      PINGONE_WORKER_CLIENT_SECRET: config.workerClientSecret,
-    };
-  }
+
 
   /**
    * Main provisioning function
@@ -937,18 +877,10 @@ class PingOneProvisionService {
       onStep(steps[steps.length - 1]);
 
       // Step 21: Write configuration
-      steps.push({ step: 'config', icon: '📝', message: config.isVercel ? 'Setting Vercel environment variables...' : 'Writing .env file...' });
+      steps.push({ step: 'config', icon: '📝', message: 'Writing .env file...' });
       onStep(steps[steps.length - 1]);
       
-      if (config.isVercel) {
-        const vercelResults = await this.setVercelEnvVars(config, provisioned);
-        const successCount = vercelResults.filter(r => r.success).length;
-        steps.push({ 
-          step: 'config', 
-          icon: successCount === vercelResults.length ? '✅' : '⚠️', 
-          message: `Set ${successCount}/${vercelResults.length} Vercel environment variables` 
-        });
-      } else {
+      {
         const envPath = await this.writeEnvFile(config, provisioned);
         steps.push({ step: 'config', icon: '✅', message: `.env file written to ${envPath}` });
       }

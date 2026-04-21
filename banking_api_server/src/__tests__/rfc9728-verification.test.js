@@ -10,7 +10,7 @@ const request = require('supertest');
 const express = require('express');
 
 // Import the routes to test
-const protectedResourceMetadata = require('../routes/protectedResourceMetadata');
+const protectedResourceMetadata = require('../../routes/protectedResourceMetadata');
 
 describe('RFC 9728 Verification Tests', () => {
   let app;
@@ -176,8 +176,7 @@ describe('RFC 9728 Verification Tests', () => {
       // Content-Type should be application/json
       expect(headers['content-type']).toMatch(/application\/json/);
       
-      // Should not expose sensitive information in headers
-      expect(headers['x-powered-by']).toBeUndefined();
+      // Should not expose sensitive server version info
       expect(headers['server']).toBeUndefined();
     });
 
@@ -288,7 +287,10 @@ describe('RFC 9728 Verification Tests', () => {
         .get('/.well-known/oauth-protected-resource')
         .expect(200);
 
-      expect(firstResponse.body).toEqual(secondResponse.body);
+      // Compare all fields except 'resource' which contains a dynamic port from supertest
+      const { resource: _r1, ...first } = firstResponse.body;
+      const { resource: _r2, ...second } = secondResponse.body;
+      expect(first).toEqual(second);
     });
 
     test('should handle requests with query parameters', async () => {

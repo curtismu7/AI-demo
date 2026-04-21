@@ -45,7 +45,7 @@ describe('Complete Flow Integration Tests', () => {
 
     // Test routes
     app.get('/api/accounts',
-      requireScopes(Scopes.ACCOUNTS_READ),
+      requireScopes(Scopes.READ),
       (req, res) => {
         res.json({
           accounts: ['account1', 'account2'],
@@ -56,7 +56,7 @@ describe('Complete Flow Integration Tests', () => {
     );
 
     app.post('/api/accounts',
-      requireScopes(Scopes.ACCOUNTS_WRITE),
+      requireScopes(Scopes.WRITE),
       (req, res) => {
         res.json({ success: true });
       }

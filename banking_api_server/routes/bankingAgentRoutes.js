@@ -85,7 +85,8 @@ router.post('/message', async (req, res) => {
       userToken: accessToken,
       sessionId: req.session.id,
       tokenEvents: tokenEvents || [],
-      langchainConfig
+      langchainConfig,
+      req,
     });
     console.log('[banking-agent/message] processAgentMessage response received');
     console.log('[banking-agent/message] Response keys:', Object.keys(response || {}));
@@ -123,9 +124,39 @@ router.post('/message', async (req, res) => {
       });
     }
 
+    // ── Token chain events for NL path ──────────────────────────────────────
+    // The heuristic/LangGraph service executes tools locally (via dataStore) and
+    // returns tokenEvents: []. To keep the Token Chain panel updated on the NL path
+    // (just like the chip/action → POST /api/mcp/tool path), resolve token events
+    // from the session when the agent called any tool.
+    let resolvedTokenEvents = response.tokenEvents || [];
+    if (resolvedTokenEvents.length === 0 && response.toolsCalled?.length > 0) {
+      try {
+        const { resolveMcpAccessTokenWithEvents } = require('../services/agentMcpTokenService');
+        const toolName = response.toolsCalled[0];
+        const resolved = await resolveMcpAccessTokenWithEvents(req, toolName);
+        resolvedTokenEvents = resolved.tokenEvents || [];
+        console.log('[banking-agent/message] Generated %d token events for NL tool call (%s)',
+          resolvedTokenEvents.length, toolName);
+      } catch (tokenErr) {
+        // Exchange may fail (unconfigured, scope mismatch, etc.) — use whatever events were
+        // collected before the error. Fall back to session preview if nothing available.
+        resolvedTokenEvents = tokenErr.tokenEvents || [];
+        if (resolvedTokenEvents.length === 0) {
+          try {
+            const { buildSessionPreviewTokenEvents } = require('../services/agentMcpTokenService');
+            resolvedTokenEvents = buildSessionPreviewTokenEvents(req).tokenEvents || [];
+          } catch (_) { /* non-fatal */ }
+        }
+        console.log('[banking-agent/message] Token event generation failed (%s), using %d fallback events',
+          tokenErr.code || tokenErr.message, resolvedTokenEvents.length);
+      }
+    }
+    // ───────────────────────────────────────────────────────────────────────
+
     console.log('[banking-agent/message] Returning agent response');
     appEventService.logEvent('agent', 'info', 'Agent response sent', { tag: 'agent/route' });
-    return res.json({
+    const responseBody = {
       reply: response.reply,
       success: response.success,
       toolsCalled: response.toolsCalled,
@@ -133,8 +164,24 @@ router.post('/message', async (req, res) => {
       requiresConsent: response.requiresConsent,
       agentConfigured: response.agentConfigured,
       error: response.error,
-      tokenEvents: response.tokenEvents || []
-    });
+      tokenEvents: resolvedTokenEvents
+    };
+    
+    // Include account data if present (for account details panel display)
+    if (response.accountData) {
+      responseBody.accountData = response.accountData;
+    }
+    // Forward HITL consent challenge signal so the frontend can show the consent modal
+    if (response.consent_challenge_required) {
+      responseBody.consent_challenge_required = true;
+      responseBody.hitl_threshold_usd = response.hitl_threshold_usd ?? 0;
+    }
+    // Include structured list data so client NL handler can infer panel type
+    if (response.accounts)              responseBody.accounts      = response.accounts;
+    if (response.transactions)          responseBody.transactions  = response.transactions;
+    if (response.balance !== undefined) responseBody.balance       = response.balance;
+
+    return res.json(responseBody);
   } catch (error) {
     console.error('[banking-agent/message] ERROR: Agent message error');
     console.error('[banking-agent/message] Error name:', error.name);

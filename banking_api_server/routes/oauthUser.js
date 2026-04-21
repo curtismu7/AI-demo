@@ -17,7 +17,7 @@ const STEP_UP_TTL_MS = 5 * 60 * 1000; // 5 min step-up validity
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
 /**
- * Same-origin SPA path only — used after customer OAuth to return to marketing home instead of /dashboard.
+ * Same-origin SPA path only — used after customer OAuth to return to landing page instead of /dashboard.
  * @param {unknown} raw
  * @returns {string|null}
  */
@@ -31,18 +31,18 @@ function sanitizePostLoginReturnPath(raw) {
 
 /**
  * After end-user OAuth failure, redirect to an SPA path where App still mounts BankingAgent
- * (`/` and `/marketing`). `/login` is not in that set — users lose FAB + dock there.
+ * (`/`). `/login` is not in that set — users lose FAB + dock there.
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  * @param {Record<string, string>} params query keys (values truncated)
- * @param {string|null} [pathOverride] e.g. postLoginReturnToPath || '/marketing'
+ * @param {string|null} [pathOverride] e.g. postLoginReturnToPath
  */
 function redirectEndUserOAuthSpaFailure(req, res, params, pathOverride) {
   const origin = getFrontendOrigin(req);
   const path =
     typeof pathOverride === 'string' && pathOverride.startsWith('/')
       ? pathOverride
-      : (sanitizePostLoginReturnPath(req.session?.postLoginReturnToPath) || '/marketing');
+      : (sanitizePostLoginReturnPath(req.session?.postLoginReturnToPath) || '/');
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v == null) continue;
@@ -181,9 +181,10 @@ router.get('/login', (req, res) => {
     const isUserAuthenticated = !!(req.session.user && hasOAuthToken && tokenNotExpired && req.session.oauthType === 'user');
 
     if (isUserAuthenticated) {
-      // User already has an active session - redirect to dashboard
-      console.log('[oauth/user/login] User already authenticated, redirecting to dashboard:', req.session.user.email);
-      return res.redirect(`${getFrontendOrigin(req)}/dashboard`);
+      // User already has an active session — honour return_to (e.g. /) instead of always going to /dashboard
+      const returnPath = sanitizePostLoginReturnPath(req.query.return_to) || '/dashboard';
+      console.log('[oauth/user/login] User already authenticated, redirecting to:', returnPath, req.session.user.email);
+      return res.redirect(`${getFrontendOrigin(req)}${returnPath}`);
     }
 
     // Drop any prior admin session so Customer sign-in starts fresh.
@@ -452,7 +453,8 @@ router.get('/callback', async (req, res) => {
       idToken: tokenData.id_token || null,
       refreshToken: tokenData.refresh_token,
       expiresAt: Date.now() + (tokenData.expires_in * 1000),
-      tokenType: tokenData.token_type || 'Bearer'
+      tokenType: tokenData.token_type || 'Bearer',
+      scope: tokenData.scope || null,
     };
 
     // Determine client type from the original OAuth token
@@ -496,7 +498,7 @@ router.get('/callback', async (req, res) => {
           req,
           res,
           { error: 'session_regenerate_failed' },
-          postLoginReturnToPath || '/marketing'
+          postLoginReturnToPath || '/'
         );
       }
 
@@ -532,7 +534,7 @@ router.get('/callback', async (req, res) => {
               req,
               res,
               { error: 'session_persist_failed' },
-              postLoginReturnToPath || '/marketing'
+              postLoginReturnToPath || '/'
             );
           });
         }

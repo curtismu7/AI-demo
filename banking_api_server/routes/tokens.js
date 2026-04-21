@@ -252,28 +252,36 @@ router.get('/session-preview', (req, res) => {
  * Silently fetches the MCP Token Exchanger's client-credentials token server-side.
  * Returns only decoded claims (header + payload), never the raw JWT.
  * If AGENT_OAUTH_CLIENT_ID is not configured, returns a "not configured" placeholder event.
+ * Cached for 10 minutes to avoid hammering PingOne on every page load.
  */
+let _ccCache = { events: null, expiresAt: 0, clientId: null };
+const CC_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 router.get('/agent-cc-preview', async (req, res) => {
   try {
     const clientId =
       configStore.getEffective('pingone_mcp_token_exchanger_client_id') ||
       process.env.AGENT_OAUTH_CLIENT_ID;
 
+    // Return cached response if still valid and same clientId
+    if (_ccCache.events && _ccCache.clientId === (clientId || null) && Date.now() < _ccCache.expiresAt) {
+      return res.json({ tokenEvents: _ccCache.events });
+    }
+
     // If not configured, return a helpful placeholder event
     if (!clientId) {
-      return res.json({
-        tokenEvents: [
-          agentMcpTokenService.buildTokenEvent(
-            'agent-cc-not-configured',
-            'Agent Actor Token (CC) — Not Configured',
-            'skipped',
-            null,
-            'AGENT_OAUTH_CLIENT_ID is not set. Configure PingOne MCP Token Exchanger credentials ' +
-            'in Admin → Config to enable dual-token exchange.',
-            { rfc: 'RFC 8693 §2.1' }
-          )
-        ]
-      });
+      const notConfigured = [
+        agentMcpTokenService.buildTokenEvent(
+          'agent-cc-not-configured',
+          'Agent Actor Token (CC) — Not Configured',
+          'skipped',
+          null,
+          'AGENT_OAUTH_CLIENT_ID is not set. Configure PingOne MCP Token Exchanger credentials ' +
+          'in Admin → Config to enable dual-token exchange.',
+          { rfc: 'RFC 8693 §2.1' }
+        )
+      ];
+      _ccCache = { events: notConfigured, expiresAt: Date.now() + CC_CACHE_TTL_MS, clientId: null };
+      return res.json({ tokenEvents: notConfigured });
     }
 
     // Fetch the CC token server-side
@@ -297,21 +305,21 @@ router.get('/agent-cc-preview', async (req, res) => {
         });
       }
 
-      // Return decoded token as event
-      return res.json({
-        tokenEvents: [
-          agentMcpTokenService.buildTokenEvent(
-            'agent-actor-token-prefetch',
-            'Agent Actor Token (CC) — prefetched',
-            'active',
-            decoded,
-            `Client-credentials token for the AI Agent (${clientId.substring(0, 8)}...). ` +
-            'This token is used as the actor_token in RFC 8693 Token Exchange when a banking tool is invoked via MCP. ' +
-            'It carries the agent\'s identity — the resulting MCP access token will have act.client_id proving which agent performed the delegation.',
-            { rfc: 'RFC 8693 §2.1' }
-          )
-        ]
-      });
+      // Cache and return decoded token as event
+      const events = [
+        agentMcpTokenService.buildTokenEvent(
+          'agent-actor-token-prefetch',
+          'Agent Actor Token (CC) — prefetched',
+          'active',
+          decoded,
+          `Client-credentials token for the AI Agent (${clientId.substring(0, 8)}...). ` +
+          'This token is used as the actor_token in RFC 8693 Token Exchange when a banking tool is invoked via MCP. ' +
+          'It carries the agent\'s identity — the resulting MCP access token will have act.client_id proving which agent performed the delegation.',
+          { rfc: 'RFC 8693 §2.1' }
+        )
+      ];
+      _ccCache = { events, expiresAt: Date.now() + CC_CACHE_TTL_MS, clientId };
+      return res.json({ tokenEvents: events });
     } catch (fetchErr) {
       console.warn('[agent-cc-preview] CC token fetch failed:', fetchErr.message);
       return res.json({

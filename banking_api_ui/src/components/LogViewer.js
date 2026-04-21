@@ -201,7 +201,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
   }, [standalone, openState, onClose]);
 
   // Draggable + resizable panel position (defaults to bottom-left, matching prior CSS).
-  const { pos, size, handleDragStart, handleResizeStart } = useDraggablePanel(
+  const { pos, size, handleDragStart, handleResizeStart, createResizeHandler } = useDraggablePanel(
     () => ({
       x: Math.max(16, window.innerWidth - Math.min(1400, Math.round(window.innerWidth * 0.92)) - 16),
       y: Math.max(16, window.innerHeight - Math.round(window.innerHeight * 0.70) - 16),
@@ -503,12 +503,21 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
       aria-label="Log Viewer"
     >
       {inner}
-      <div
-        className="log-viewer-resize-grip"
-        onMouseDown={handleResizeStart}
-        aria-hidden="true"
-        title="Drag to resize"
-      />
+      
+      {/* 8-direction resize handles */}
+      <div className="drp-resize-handles">
+        {/* Corner handles */}
+        <div className="drp-resize-handle drp-resize-handle--nw" onMouseDown={createResizeHandler('nw')} aria-hidden title="Resize from top-left" />
+        <div className="drp-resize-handle drp-resize-handle--ne" onMouseDown={createResizeHandler('ne')} aria-hidden title="Resize from top-right" />
+        <div className="drp-resize-handle drp-resize-handle--sw" onMouseDown={createResizeHandler('sw')} aria-hidden title="Resize from bottom-left" />
+        <div className="drp-resize-handle drp-resize-handle--se" onMouseDown={createResizeHandler('se')} aria-hidden title="Resize from bottom-right" />
+        
+        {/* Edge handles */}
+        <div className="drp-resize-handle drp-resize-handle--n" onMouseDown={createResizeHandler('n')} aria-hidden title="Resize from top" />
+        <div className="drp-resize-handle drp-resize-handle--s" onMouseDown={createResizeHandler('s')} aria-hidden title="Resize from bottom" />
+        <div className="drp-resize-handle drp-resize-handle--e" onMouseDown={createResizeHandler('e')} aria-hidden title="Resize from right" />
+        <div className="drp-resize-handle drp-resize-handle--w" onMouseDown={createResizeHandler('w')} aria-hidden title="Resize from left" />
+      </div>
     </div>,
     document.body
   );

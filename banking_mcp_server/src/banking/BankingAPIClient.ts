@@ -22,11 +22,25 @@ export interface BankingAPIClientOptions extends Partial<BankingAPIConfig> {
   retryConfig?: Partial<RetryConfig>;
 }
 
+/** One captured HTTP call made to the banking API */
+export interface HttpTraceEntry {
+  method: string;
+  url: string;
+  requestBody?: unknown;
+  status?: number;
+  responseBody?: unknown;
+  durationMs: number;
+  ok: boolean;
+  error?: string;
+}
+
 export class BankingAPIClient {
   private client: AxiosInstance;
   private config: BankingAPIConfig;
   private circuitBreaker: CircuitBreaker;
   private retryManager: RetryManager;
+  /** Trace entries collected during the current startTrace() window, or null if not tracing */
+  private _traceEntries: HttpTraceEntry[] | null = null;
 
   constructor(options: BankingAPIClientOptions = {}) {
     this.config = {
@@ -69,6 +83,8 @@ export class BankingAPIClient {
     this.client.interceptors.request.use(
       (config) => {
         console.log(`Banking API Request: ${config.method?.toUpperCase()} ${config.url}`);
+        // Stamp start time for duration tracking
+        (config as any)._traceStart = Date.now();
         return config;
       },
       (error) => {
@@ -82,15 +98,53 @@ export class BankingAPIClient {
       (response) => {
         if (response != null) {
           console.log(`Banking API Response: ${response.status} ${response.config.url}`);
+          if (this._traceEntries !== null) {
+            const start = (response.config as any)._traceStart ?? Date.now();
+            this._traceEntries.push({
+              method: response.config.method?.toUpperCase() ?? 'GET',
+              url: response.config.url ?? '',
+              requestBody: response.config.data ? tryParseJson(response.config.data) : undefined,
+              status: response.status,
+              responseBody: response.data,
+              durationMs: Date.now() - start,
+              ok: true,
+            });
+          }
         }
         return response;
       },
       (error) => {
+        const axErr = error as AxiosError;
+        if (this._traceEntries !== null) {
+          const start = (axErr.config as any)?._traceStart ?? Date.now();
+          this._traceEntries.push({
+            method: axErr.config?.method?.toUpperCase() ?? 'GET',
+            url: axErr.config?.url ?? '',
+            requestBody: axErr.config?.data ? tryParseJson(axErr.config.data) : undefined,
+            status: axErr.response?.status,
+            responseBody: (axErr.response?.data as any),
+            durationMs: Date.now() - start,
+            ok: false,
+            error: axErr.message,
+          });
+        }
         const bankingError = this.mapError(error);
         console.error('Banking API Error:', bankingError);
         return Promise.reject(bankingError);
       }
     );
+  }
+
+  /** Start collecting HTTP trace entries. Call stopTrace() to retrieve them. */
+  startTrace(): void {
+    this._traceEntries = [];
+  }
+
+  /** Stop collecting and return all entries captured since startTrace(). */
+  stopTrace(): HttpTraceEntry[] {
+    const entries = this._traceEntries ?? [];
+    this._traceEntries = null;
+    return entries;
   }
 
   /**
@@ -565,4 +619,10 @@ export class BankingAPIClient {
   resetCircuitBreaker(): void {
     this.circuitBreaker.manualReset();
   }
+}
+
+/** Safe JSON parse — returns parsed object or the raw value if already an object. */
+function tryParseJson(data: unknown): unknown {
+  if (typeof data !== 'string') return data;
+  try { return JSON.parse(data); } catch { return data; }
 }

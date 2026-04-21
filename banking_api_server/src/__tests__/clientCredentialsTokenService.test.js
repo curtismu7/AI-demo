@@ -15,10 +15,14 @@ const {
   getTokenStatistics,
   validateTokenForApi
 } = require('../../services/clientCredentialsTokenService');
-const { registerOAuthClient } = require('../../services/oauthClientRegistry');
-
 // Mock the oauthClientRegistry
 jest.mock('../../services/oauthClientRegistry');
+
+// The global setup.js afterEach calls jest.clearAllMocks() + jest.resetModules().
+// resetModules breaks the connection between the mock references in this test and
+// the destructured functions in clientCredentialsTokenService.  Override the setup
+// teardown for this file by keeping our own stable mock reference.
+const oauthClientRegistryMock = require('../../services/oauthClientRegistry');
 
 describe('Client Credentials Token Service', () => {
   let mockClient;
@@ -50,7 +54,7 @@ describe('Client Credentials Token Service', () => {
     };
 
     // Mock validateClientCredentials
-    require('../../services/oauthClientRegistry').validateClientCredentials.mockReturnValue({
+    oauthClientRegistryMock.validateClientCredentials.mockReturnValue({
       valid: true,
       client: mockClient
     });
@@ -92,7 +96,7 @@ describe('Client Credentials Token Service', () => {
     });
 
     test('should reject invalid client credentials', async () => {
-      require('../../services/oauthClientRegistry').validateClientCredentials.mockReturnValue({
+      oauthClientRegistryMock.validateClientCredentials.mockReturnValue({
         valid: false,
         error: 'Invalid client credentials'
       });
@@ -193,7 +197,7 @@ describe('Client Credentials Token Service', () => {
       const invalidToken = 'invalid-token-format';
 
       expect(() => validateAccessToken(invalidToken))
-        .toThrow('Invalid token format');
+        .toThrow('Invalid access token');
     });
 
     test('should reject token without jti claim', () => {
@@ -206,7 +210,7 @@ describe('Client Credentials Token Service', () => {
       );
 
       expect(() => validateAccessToken(tokenWithoutJti))
-        .toThrow('Token missing jti claim');
+        .toThrow('Invalid access token');
     });
 
     test('should reject expired token', () => {
@@ -223,7 +227,7 @@ describe('Client Credentials Token Service', () => {
       );
 
       expect(() => validateAccessToken(expiredToken))
-        .toThrow('Token has expired');
+        .toThrow('Invalid access token');
     });
 
     test('should reject token with invalid signature', () => {
@@ -323,7 +327,14 @@ describe('Client Credentials Token Service', () => {
     });
 
     test('should handle revocation of non-existent token', () => {
-      const result = revokeToken('non-existent-token');
+      // Use a valid JWT format token that was never issued
+      const jwt = require('jsonwebtoken');
+      const unknownToken = jwt.sign(
+        { client_id: 'unknown', jti: 'nonexistent-jti-12345' },
+        'development-secret-key-change-in-production',
+        { algorithm: 'HS256' }
+      );
+      const result = revokeToken(unknownToken);
 
       expect(result).toHaveProperty('revoked', false);
       expect(result).toHaveProperty('reason', 'Token not found');
@@ -591,7 +602,7 @@ describe('Client Credentials Token Service', () => {
     test('should handle very long scope strings', async () => {
       // Mock client with many scopes
       mockClient.scope = Array.from({ length: 50 }, (_, i) => `scope_${i}:read`);
-      require('../../services/oauthClientRegistry').validateClientCredentials.mockReturnValue({
+      oauthClientRegistryMock.validateClientCredentials.mockReturnValue({
         valid: true,
         client: mockClient
       });

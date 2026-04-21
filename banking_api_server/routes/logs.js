@@ -144,7 +144,7 @@ router.get('/exchange', async (req, res) => {
     res.json({
       logs,
       total: logs.length,
-      source: exchangeAuditStore.USE_KV ? 'redis' : 'in-process',
+      source: 'in-process',
     });
   } catch (error) {
     res.status(500).json({ error: error.message, logs: [] });
@@ -211,20 +211,16 @@ router.get('/console', async (req, res) => {
 
   let filteredLogs = [...recentLogs];
 
-  // Merge Redis exchange audit events so they survive Vercel Lambda isolation.
-  // If the token exchange happened in a different Lambda, its recentLogs are
-  // empty here — Redis is the cross-Lambda bridge.
-  if (exchangeAuditStore.USE_KV) {
+  // Merge in-memory exchange audit events
+  {
     try {
-      const redisEvents = await exchangeAuditStore.readExchangeEvents(200);
-      // Build a quick-lookup set from in-process messages to avoid exact duplicates
-      // (same Lambda: event already captured in recentLogs via console interceptor).
+      const auditEvents = await exchangeAuditStore.readExchangeEvents(200);
       const inProcessMessages = new Set(recentLogs.map((l) => l.message));
-      for (const ev of redisEvents) {
+      for (const ev of auditEvents) {
         const msg = ev.message || JSON.stringify(ev);
-        if (inProcessMessages.has(msg)) continue; // already present from same Lambda
+        if (inProcessMessages.has(msg)) continue;
         filteredLogs.push({
-          id: `redis:${ev.timestamp || Date.now()}:${ev.type || 'exchange'}`,
+          id: `audit:${ev.timestamp || Date.now()}:${ev.type || 'exchange'}`,
           timestamp: ev.timestamp || new Date().toISOString(),
           level: ev.level || (ev.type === 'exchange-failed' ? 'error' : 'info'),
           message: msg,

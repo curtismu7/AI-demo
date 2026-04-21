@@ -67,26 +67,17 @@ class LangChainMCPAgent(TracingMixin):
         logger.info("Initialized LangChain MCP Agent")
     
     def _initialize_llm(self) -> BaseChatModel:
-        """Initialize the language model for the agent via multi-provider factory."""
+        """Initialize the language model for the agent via Ollama factory."""
         lc = self.config.langchain
-        provider = getattr(lc, "provider", None) or "groq"
-        api_key_map = {
-            "groq": getattr(lc, "groq_api_key", ""),
-            "openai": getattr(lc, "openai_api_key", ""),
-            "anthropic": getattr(lc, "anthropic_api_key", ""),
-            "google": getattr(lc, "google_api_key", ""),
-        }
         llm = get_llm(
-            provider=provider,
+            provider="ollama",
             model=lc.model_name or None,
-            api_key=api_key_map.get(provider) or None,
             temperature=lc.temperature,
             max_tokens=lc.max_tokens,
             streaming=bool(getattr(lc, "stream_llm_tokens", True)),
             ollama_base_url=getattr(lc, "ollama_base_url", "http://localhost:11434"),
-            lmstudio_base_url=getattr(lc, "lm_studio_base_url", "http://localhost:1234/v1"),
         )
-        logger.info("Initialized LLM via factory: provider=%s model=%s", provider, lc.model_name)
+        logger.info("Initialized LLM via factory: provider=ollama model=%s", lc.model_name)
         return llm
     
     async def initialize_tools(self) -> None:

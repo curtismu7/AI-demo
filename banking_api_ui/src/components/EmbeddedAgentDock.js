@@ -1,9 +1,8 @@
 // banking_api_ui/src/components/EmbeddedAgentDock.js
-import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import BankingAgent from './BankingAgent';
-import { isEmbeddedAgentDockRoute, isMarketingEmbeddedDockSurface } from '../utils/embeddedAgentFabVisibility';
+import { isEmbeddedAgentDockRoute } from '../utils/embeddedAgentFabVisibility';
 
 const HEIGHT_KEY = 'embedded_agent_dock_height_px';
 const COLLAPSE_KEY = 'embedded_agent_dock_collapsed';
@@ -63,10 +62,10 @@ export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  // Marketing: expand bottom agent — collapsed toolbar looked like “no real agent”.
+  // Resize: expand bottom agent on config page — collapsed toolbar looked like "no real agent".
   useEffect(() => {
-    if (isMarketingEmbeddedDockSurface(pathname, user)) setCollapsed(false);
-  }, [pathname, user]);
+    if (pathname.replace(/\/$/, '') === '/config') setCollapsed(false);
+  }, [pathname]);
 
   const onResizeMouseDown = useCallback(
     (e) => {
@@ -94,22 +93,10 @@ export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
     [dockHeight]
   );
 
-  const marketingDockSurface = isMarketingEmbeddedDockSurface(pathname, user);
   const authenticatedStandardDock =
     Boolean(user) && agentPlacement === 'bottom' && isEmbeddedAgentDockRoute(pathname);
 
-  const [marketingPortalEl, setMarketingPortalEl] = useState(null);
-
-  useLayoutEffect(() => {
-    if (!marketingDockSurface) {
-      setMarketingPortalEl(null);
-      return;
-    }
-    const el = document.getElementById('marketing-embedded-dock-slot');
-    setMarketingPortalEl(el || null);
-  }, [marketingDockSurface, pathname, user]);
-
-  if (!marketingDockSurface && !authenticatedStandardDock) {
+  if (!authenticatedStandardDock) {
     return null;
   }
 
@@ -181,10 +168,6 @@ export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
       )}
     </div>
   );
-
-  if (marketingDockSurface && marketingPortalEl) {
-    return createPortal(dockNode, marketingPortalEl);
-  }
 
   return dockNode;
 }

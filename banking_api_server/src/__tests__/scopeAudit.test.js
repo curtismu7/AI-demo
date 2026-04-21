@@ -4,10 +4,10 @@
 
 const axios = require('axios');
 const { auditResourceScopes, SCOPE_REFERENCE_TABLE } = require('../../services/scopeAuditService');
-const configStore = require('../../config/configStore');
+const configStore = require('../../services/configStore');
 
 jest.mock('axios');
-jest.mock('../../config/configStore');
+jest.mock('../../services/configStore');
 
 describe('Scope Audit Service', () => {
   const mockEnvId = '12345678-1234-1234-1234-123456789012';
@@ -18,9 +18,8 @@ describe('Scope Audit Service', () => {
     configStore.getEffective.mockImplementation((key) => {
       if (key === 'pingone_environment_id') return mockEnvId;
       if (key === 'pingone_region') return 'com';
-      if (key === 'pingone_worker_client_id') return 'worker-client-id';
-      if (key === 'pingone_worker_client_secret') return 'worker-secret';
-      if (key === 'pingone_worker_oauth_endpoint') return 'https://auth.pingone.com';
+      if (key === 'pingone_client_id') return 'worker-client-id';
+      if (key === 'pingone_client_secret') return 'worker-secret';
       return null;
     });
   });
@@ -35,15 +34,15 @@ describe('Scope Audit Service', () => {
       const mockValidatedResources = [
         {
           resourceId: 'res-1',
-          resourceName: 'Super Banking AI Agent',
+          name: 'Super Banking AI Agent',
           status: 'CORRECT',
-          audienceUri: 'https://ai-agent.pingdemo.com'
+          audience: 'https://ai-agent.pingdemo.com'
         },
         {
           resourceId: 'res-2',
-          resourceName: 'Super Banking Banking API',
+          name: 'Super Banking Banking API',
           status: 'CORRECT',
-          audienceUri: 'https://banking-api.pingdemo.com'
+          audience: 'https://banking-api.pingdemo.com'
         }
       ];
 
@@ -51,22 +50,18 @@ describe('Scope Audit Service', () => {
       axios.get
         .mockResolvedValueOnce({
           data: {
-            _embedded: {
-              scopes: [
-                { name: 'banking:ai:agent' }
-              ]
-            }
+            scopes: [
+              { name: 'banking:agent:invoke' }
+            ]
           }
         })
         .mockResolvedValueOnce({
           data: {
-            _embedded: {
-              scopes: [
-                { name: 'banking:read' },
-                { name: 'banking:read' },
-                { name: 'banking:write' }
-              ]
-            }
+            scopes: [
+              { name: 'banking:accounts:read' },
+              { name: 'banking:transactions:read' },
+              { name: 'banking:transactions:write' }
+            ]
           }
         });
 
@@ -75,7 +70,7 @@ describe('Scope Audit Service', () => {
       expect(result.status).toBe('success');
       expect(result.scopeAudit).toHaveLength(2);
       expect(result.scopeAudit[0].status).toBe('CORRECT');
-      expect(result.scopeAudit[0].resourceName).toBe('Super Banking AI Agent');
+      expect(result.scopeAudit[0].name).toBe('Super Banking AI Agent');
     });
 
     it('should detect MISMATCH when scopes differ', async () => {
@@ -86,27 +81,25 @@ describe('Scope Audit Service', () => {
       const mockValidatedResources = [
         {
           resourceId: 'res-1',
-          resourceName: 'Super Banking AI Agent',
+          name: 'Super Banking AI Agent',
           status: 'CORRECT',
-          audienceUri: 'https://ai-agent.pingdemo.com'
+          audience: 'https://ai-agent.pingdemo.com'
         }
       ];
 
       // Mock scope with wrong scopes
       axios.get.mockResolvedValueOnce({
         data: {
-          _embedded: {
-            scopes: [
-              { name: 'wrong:scope' }  // Not in expected
-            ]
-          }
+          scopes: [
+            { name: 'wrong:scope' }  // Not in expected
+          ]
         }
       });
 
       const result = await auditResourceScopes(mockValidatedResources);
 
       expect(result.status).toBe('success');
-      const mismatch = result.scopeAudit.find(r => r.resourceName === 'Super Banking AI Agent');
+      const mismatch = result.scopeAudit.find(r => r.name === 'Super Banking AI Agent');
       expect(mismatch.status).toBe('MISMATCH');
       expect(mismatch.mismatches).toBeDefined();
     });
@@ -119,25 +112,23 @@ describe('Scope Audit Service', () => {
       const mockValidatedResources = [
         {
           resourceId: 'res-1',
-          resourceName: 'Super Banking AI Agent',
+          name: 'Super Banking AI Agent',
           status: 'CORRECT',
-          audienceUri: 'https://ai-agent.pingdemo.com'
+          audience: 'https://ai-agent.pingdemo.com'
         },
         {
           resourceId: null,
-          resourceName: 'Missing Resource',
+          name: 'Missing Resource',
           status: 'MISSING',
-          audienceUri: null
+          audience: null
         }
       ];
 
       axios.get.mockResolvedValueOnce({
         data: {
-          _embedded: {
-            scopes: [
-              { name: 'banking:ai:agent' }
-            ]
-          }
+          scopes: [
+            { name: 'banking:agent:invoke' }
+          ]
         }
       });
 
@@ -146,7 +137,7 @@ describe('Scope Audit Service', () => {
       expect(result.status).toBe('success');
       // Should only audit the non-MISSING resource
       expect(result.scopeAudit).toHaveLength(1);
-      expect(result.scopeAudit[0].resourceName).toBe('Super Banking AI Agent');
+      expect(result.scopeAudit[0].name).toBe('Super Banking AI Agent');
     });
 
     it('should handle empty scope lists', async () => {
@@ -157,18 +148,16 @@ describe('Scope Audit Service', () => {
       const mockValidatedResources = [
         {
           resourceId: 'res-1',
-          resourceName: 'Super Banking Agent Gateway',
+          name: 'Super Banking Agent Gateway',
           status: 'CORRECT',
-          audienceUri: 'https://agent-gateway.pingdemo.com'
+          audience: 'https://agent-gateway.pingdemo.com'
         }
       ];
 
       // Agent Gateway has no expected scopes
       axios.get.mockResolvedValueOnce({
         data: {
-          _embedded: {
-            scopes: []
-          }
+          scopes: []
         }
       });
 
@@ -187,9 +176,9 @@ describe('Scope Audit Service', () => {
       const mockValidatedResources = [
         {
           resourceId: 'res-1',
-          resourceName: 'Super Banking AI Agent',
+          name: 'Super Banking AI Agent',
           status: 'CORRECT',
-          audienceUri: 'https://ai-agent.pingdemo.com'
+          audience: 'https://ai-agent.pingdemo.com'
         }
       ];
 
@@ -221,21 +210,21 @@ describe('Scope Audit Service', () => {
 
     it('should have correct scopes for AI Agent', () => {
       const aiAgentScopes = SCOPE_REFERENCE_TABLE['Super Banking AI Agent'];
-      expect(aiAgentScopes).toContain('banking:ai:agent');
+      expect(aiAgentScopes).toContain('banking:agent:invoke');
     });
 
     it('should have correct scopes for MCP Server', () => {
       const mcpScopes = SCOPE_REFERENCE_TABLE['Super Banking MCP Server'];
-      expect(mcpScopes).toContain('banking:read');
-      expect(mcpScopes).toContain('banking:read');
-      expect(mcpScopes).toContain('banking:write');
+      expect(mcpScopes).toContain('banking:accounts:read');
+      expect(mcpScopes).toContain('banking:transactions:read');
+      expect(mcpScopes).toContain('banking:transactions:write');
     });
 
     it('should have correct scopes for Banking API', () => {
       const bankingApiScopes = SCOPE_REFERENCE_TABLE['Super Banking Banking API'];
-      expect(bankingApiScopes).toContain('banking:read');
-      expect(bankingApiScopes).toContain('banking:read');
-      expect(bankingApiScopes).toContain('banking:write');
+      expect(bankingApiScopes).toContain('banking:accounts:read');
+      expect(bankingApiScopes).toContain('banking:transactions:read');
+      expect(bankingApiScopes).toContain('banking:transactions:write');
     });
 
     it('should have empty scopes for Agent Gateway', () => {

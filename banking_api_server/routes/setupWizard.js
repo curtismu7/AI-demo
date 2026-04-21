@@ -32,8 +32,6 @@ router.post('/run', requireAdmin, async (req, res) => {
         workerClientSecret,
         region,
         publicAppUrl,
-        vercelToken,
-        vercelProjectId,
         audience,
         stepUpAcrValue
     } = req.body;
@@ -78,11 +76,8 @@ router.post('/run', requireAdmin, async (req, res) => {
             workerClientSecret,
             region: region || 'com',
             publicAppUrl: publicAppUrl || process.env.PUBLIC_APP_URL || 'http://localhost:3000',
-            vercelToken,
-            vercelProjectId,
             audience: audience || 'banking_api_enduser',
-            stepUpAcrValue: stepUpAcrValue || 'Multi_factor',
-            isVercel: !!process.env.VERCEL
+            stepUpAcrValue: stepUpAcrValue || 'Multi_factor'
         };
 
         console.log(`[setupWizard] Starting setup for environment ${envId}`);
@@ -352,7 +347,7 @@ router.get('/config-template', requireAdmin, async (req, res) => {
                 label: 'Public App URL',
                 type: 'url',
                 description: 'Public URL of your application',
-                example: 'https://your-app.vercel.app',
+                example: 'https://your-app.example.com',
                 default: process.env.PUBLIC_APP_URL || 'http://localhost:3000'
             },
             audience: {
@@ -361,20 +356,6 @@ router.get('/config-template', requireAdmin, async (req, res) => {
                 description: 'Audience for the resource server',
                 example: 'banking_api_enduser',
                 default: 'banking_api_enduser'
-            }
-        },
-        vercel: {
-            vercelToken: {
-                label: 'Vercel API Token',
-                type: 'password',
-                description: 'Vercel API token for setting environment variables',
-                example: 'vercel-api-token'
-            },
-            vercelProjectId: {
-                label: 'Vercel Project ID',
-                type: 'string',
-                description: 'Vercel project ID for setting environment variables',
-                example: 'prj_12345678901234567890123456789012'
             }
         }
     };

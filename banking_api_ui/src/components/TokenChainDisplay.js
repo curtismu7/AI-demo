@@ -874,21 +874,56 @@ function EventRow({ event, isLast, onInspect, hints }) {
   );
 }
 
-// ─── History entry ─────────────────────────────────────────────────────────────
+// ─── History entry — compact summary row (full detail is in "Current call") ────
 
-function HistoryEntry({ entry, index, onInspect, hints }) {
-  const [open, setOpen] = useState(index === 0);
+function HistoryEntry({ entry }) {
+  const [expanded, setExpanded] = React.useState(false);
   const ts = new Date(entry.timestamp).toLocaleTimeString();
+  const total = entry.events.length;
+  const errors = entry.events.filter(e => e.status === 'error').length;
+  const successes = entry.events.filter(e => e.status === 'success').length;
+  const statusClass = errors > 0 ? 'error' : successes === total && total > 0 ? 'success' : 'partial';
+  const statusIcon = errors > 0 ? '✗' : successes === total && total > 0 ? '✓' : '~';
   return (
-    <div className="tcd-hist-entry">
-      <button type="button" className="tcd-hist-head" onClick={() => setOpen(o => !o)}>
+    <div className="tcd-hist-entry" style={{ cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
+      <div className="tcd-hist-head tcd-hist-head--static" style={{ userSelect: 'none' }}>
+        <span style={{ marginRight: 6, fontSize: '0.75rem', color: '#64748b' }}>{expanded ? '▼' : '▶'}</span>
         <span className="tcd-hist-tool">{entry.tool}</span>
+        <span className="tcd-hist-meta">
+          <span className={`tcd-hist-status tcd-hist-status--${statusClass}`}>{statusIcon}</span>
+          <span className="tcd-hist-steps">{total} step{total !== 1 ? 's' : ''}</span>
+        </span>
         <span className="tcd-hist-ts">{ts}</span>
-        <span className="tcd-hist-chev">{open ? '▾' : '▸'}</span>
-      </button>
-      {open && entry.events.map((ev, i) => (
-        <EventRow key={ev.id} event={ev} isLast={i === entry.events.length - 1} onInspect={onInspect} hints={hints} />
-      ))}
+      </div>
+      {expanded && (
+        <div style={{ padding: '6px 12px 10px 28px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+          {entry.events.length === 0 ? (
+            <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>No step detail available.</span>
+          ) : entry.events.map((ev, i) => {
+            const evStatus = ev.status === 'error' ? '✗' : ev.status === 'success' ? '✓' : '~';
+            const evColor = ev.status === 'error' ? '#dc2626' : ev.status === 'success' ? '#16a34a' : '#64748b';
+            const scopeSummary = ev.claims?.scope
+              ? (typeof ev.claims.scope === 'string' ? ev.claims.scope.split(' ') : []).slice(0, 3).join(', ') + (ev.claims.scope.split(' ').length > 3 ? '…' : '')
+              : null;
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '4px 0', borderBottom: i < entry.events.length - 1 ? '1px dashed #e2e8f0' : 'none' }}>
+                <span style={{ color: evColor, fontWeight: 700, fontSize: '0.8rem', flexShrink: 0, marginTop: 1 }}>{evStatus}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {ev.label || ev.id}
+                  </div>
+                  {scopeSummary && (
+                    <div style={{ fontSize: '0.72rem', color: '#2563eb', marginTop: 1 }}>🔑 {scopeSummary}</div>
+                  )}
+                  {ev.rfc && (
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: 1 }}>{ev.rfc}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -955,7 +990,7 @@ function ExchangeModeBanner({ events }) {
   );
 }
 
-const TokenChainDisplay = ({ idTokenMode = false }) => {
+const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
   const ctx = useTokenChainOptional();
   const [tab, setTab] = useState('current');
   const [sessionPreviewEvents, setSessionPreviewEvents] = useState(null);
@@ -1134,6 +1169,7 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
   return (
     <>
       <div className="tcd-root">
+        {!hideHeader && (
         <div className="tcd-header">
           <div className="tcd-header-title-row">
             <div className="tcd-header-title">
@@ -1160,6 +1196,7 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
             {idTokenMode ? 'User ID token stays in Backend-for-Frontend (BFF) → RFC 8693 exchange → MCP access token → MCP server → Banking API' : 'User access token stays in Backend-for-Frontend (BFF) → RFC 8693 exchange → MCP access token → MCP server → Banking API'}
           </p>
         </div>
+        )}
 
         <div className="tcd-tabs">
           <button type="button" className={`tcd-tab ${tab === 'current' ? 'active' : ''}`} onClick={() => setTab('current')}>
@@ -1234,8 +1271,8 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
           <div className="tcd-history">
             {history.length === 0
               ? <div className="tcd-placeholder-note">No history yet</div>
-              : history.map((entry, i) => (
-                  <HistoryEntry key={`${entry.timestamp}-${entry.tool}`} entry={entry} index={i} onInspect={handleInspect} hints={identityHints} />
+              : history.map((entry) => (
+                  <HistoryEntry key={`${entry.timestamp}-${entry.tool}`} entry={entry} />
                 ))
             }
           </div>

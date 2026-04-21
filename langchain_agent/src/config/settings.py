@@ -63,13 +63,8 @@ class LangChainConfig:
     stream_mcp_tool_events: bool = True
     stream_llm_tokens: bool = True
     # Multi-provider support
-    provider: str = "groq"
-    groq_api_key: str = ""
-    anthropic_api_key: str = ""
-    google_api_key: str = ""
+    provider: str = "ollama"
     ollama_base_url: str = "http://localhost:11434"
-    lm_studio_base_url: str = "http://localhost:1234/v1"
-    lm_studio_model: str = ""
 
 
 @dataclass

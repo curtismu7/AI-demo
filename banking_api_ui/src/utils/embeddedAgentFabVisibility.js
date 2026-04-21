@@ -8,7 +8,7 @@
 export function isBankingAgentDashboardRoute(pathname) {
   if (pathname == null || typeof pathname !== 'string') return false;
   const p = pathname.replace(/\/$/, '') || '/';
-  return p === '/' || p === '/admin' || p === '/dashboard' || p === '/marketing';
+  return p === '/' || p === '/admin' || p === '/dashboard';
 }
 
 /**
@@ -32,23 +32,7 @@ export function isEmbeddedAgentDockRoute(pathname) {
 export function isPublicMarketingAgentPath(pathname) {
   if (pathname == null || typeof pathname !== 'string') return false;
   const p = pathname.replace(/\/$/, '') || '/';
-  return p === '/' || p === '/marketing' || p === '/dashboard';
-}
-
-/**
- * App-level bottom dock on marketing: guests on `/` or `/marketing`, or any user on `/marketing`.
- * Does not include signed-in `/` (that is UserDashboard or admin home).
- * @param {string} [pathname]
- * @param {unknown} user
- * @returns {boolean}
- */
-export function isMarketingEmbeddedDockSurface(pathname, user) {
-  if (pathname == null || typeof pathname !== 'string') return false;
-  const p = pathname.replace(/\/$/, '') || '/';
-  // Only guests on landing pages get the marketing embedded dock. Signed-in
-  // /marketing shows ONLY the float agent — no embedded dock, no inline column.
-  if (!user && (p === '/' || p === '/marketing' || p === '/dashboard')) return true;
-  return false;
+  return p === '/' || p === '/dashboard';
 }
 
 /**

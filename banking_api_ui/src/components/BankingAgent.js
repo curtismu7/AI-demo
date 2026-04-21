@@ -879,6 +879,7 @@ export default function BankingAgent({
   embeddedFocus = 'banking',
   distinctFloatingChrome = false,
   splitColumnChrome = false,
+  showPopOut = false,
 }) {
   const isInline = mode === 'inline';
   const isBottomDock = isInline && embeddedDockBottom;
@@ -3030,6 +3031,26 @@ export default function BankingAgent({
         return;
       }
 
+      // Sensitive data HITL — NL path: show consent modal before revealing account details
+      if (response.consent_challenge_required) {
+        addMessage('assistant',
+          '🔒 **Sensitive Account Data Request**\n\nThis will reveal your **full account numbers, routing numbers, SWIFT, and IBAN**. Please confirm before proceeding.',
+          'sensitive-account-details'
+        );
+        setHitlPendingIntent({
+          actionId: 'sensitive-account-details',
+          form: {},
+          intentPayload: {
+            type: 'Sensitive Data Access',
+            description: 'Full account numbers · Routing numbers · SWIFT / IBAN',
+            amount: 0,
+          },
+          threshold: 0,
+          isSensitiveData: true,
+        });
+        return;
+      }
+
       if (response.error || !response.success) {
         // MCP scope denial via NL path: show inline chat message
         if (response.error === 'mcp_scope_denied') {
@@ -3444,8 +3465,8 @@ export default function BankingAgent({
                     {isExpanded ? '⊟' : '⊞'}
                   </button>
                 )}
-                {/* Popout window only available in float mode */}
-                {!isInline && (
+                {/* Popout window only available in float mode, or explicitly enabled via showPopOut */}
+                {(!isInline || showPopOut) && (
                   <button
                     type="button"
                     className="ba-icon-btn"

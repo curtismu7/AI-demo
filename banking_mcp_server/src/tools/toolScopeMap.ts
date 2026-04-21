@@ -6,6 +6,8 @@
  * rather than requesting the full set of user scopes.
  */
 
+import type { BankingToolDefinition } from './BankingToolRegistry';
+
 export const TOOL_SCOPES: Record<string, string[]> = {
   // Read-only tools
   get_my_accounts: ['banking:read'],
@@ -31,4 +33,30 @@ export const TOOL_SCOPES: Record<string, string[]> = {
  */
 export function getScopesForTool(toolName: string): string[] {
   return TOOL_SCOPES[toolName] ?? ['banking:read'];
+}
+
+/**
+ * Filter a list of tool definitions to only those permitted by the given token scopes.
+ *
+ * Registry and token scopes both use the flat format (banking:read, banking:write),
+ * so matching is a direct set membership check. Wildcards '*' and 'banking:*' grant all.
+ * Tools with no requiredScopes (e.g. sequential_think) are always included.
+ *
+ * Called from the tools/list handler — no authz server call needed.
+ * PingOne Authorize compatible: same flat scope model works with PA's scope claim evaluation.
+ */
+export function filterToolsByScope(
+  tools: BankingToolDefinition[],
+  tokenScopes: string[],
+): BankingToolDefinition[] {
+  // No scopes decoded yet — return full list; token validation already enforced auth.
+  if (tokenScopes.length === 0) return tools;
+
+  const hasWildcard = tokenScopes.includes('*') || tokenScopes.includes('banking:*');
+  if (hasWildcard) return tools;
+
+  return tools.filter(tool =>
+    tool.requiredScopes.length === 0 ||
+    tool.requiredScopes.every(s => tokenScopes.includes(s)),
+  );
 }

@@ -70,6 +70,8 @@ jest.mock('../components/McpInspector',  () => () => null);
 jest.mock('../components/OAuthDebugLogViewer', () => () => null);
 jest.mock('../components/ClientRegistrationPage', () => () => null);
 jest.mock('../components/LogViewer',     () => () => null);
+jest.mock('../components/AgentFlowDiagramPanel', () => () => null);
+jest.mock('../components/UnifiedTokenFlowInspector', () => () => null);
 jest.mock('../components/education/EducationPanelsHost', () => () => null);
 jest.mock('../context/EducationUIContext', () => ({
   EducationUIProvider: ({ children }) => children,

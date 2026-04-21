@@ -10,7 +10,7 @@ export const TOUR_STEPS = [
   {
     title: 'Flow 1 — Customer Login',
     body: 'A customer logs in via Authorization Code + PKCE. Their tokens stay on the server. The browser only gets a session cookie.',
-    action: { label: 'Log in as customer', route: '/marketing' },
+    action: { label: 'Log in as customer', route: '/' },
   },
   {
     title: 'Tokens held server-side',

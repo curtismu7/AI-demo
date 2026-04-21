@@ -142,6 +142,9 @@ function parseBanking(t) {
   if (/\b(logout|log out|sign out|signout)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'logout' } };
   }
+  if (/\b(sensitive|full account|routing number|account number|account details)\b/.test(t)) {
+    return { kind: 'banking', banking: { action: 'sensitive_account_details' } };
+  }
   // Web search: general queries not related to banking or OAuth education
   if (
     /\b(search|find info|look up|look up|what is|tell me about|who is)\b/i.test(t) &&

@@ -64,6 +64,15 @@ jest.mock('../../context/AgentUiModeContext', () => ({
 }));
 jest.mock('../../context/EducationUIContext', () => ({
   useEducationUI: () => ({ open: jest.fn(), close: jest.fn() }),
+  useEducationUIOptional: () => ({ open: jest.fn(), close: jest.fn() }),
+}));
+jest.mock('../../context/ExchangeModeContext', () => ({
+  useExchangeMode: () => ({ mode: 'single', setMode: jest.fn() }),
+  ExchangeModeProvider: ({ children }) => children,
+}));
+jest.mock('../../context/TokenChainContext', () => ({
+  useTokenChainOptional: () => null,
+  TokenChainProvider: ({ children }) => children,
 }));
 jest.mock('../../context/ThemeContext', () => ({
   useTheme: () => ({ theme: 'light', toggleTheme: jest.fn() }),
@@ -128,9 +137,9 @@ function renderAt(Component, path, props = {}) {
 import DashboardQuickNav from '../DashboardQuickNav';
 
 describe('DashboardQuickNav', () => {
-  it('Home link points to /marketing', () => {
+  it('Home link points to /', () => {
     renderAt(DashboardQuickNav, '/dashboard', { user: customerUser });
-    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/marketing');
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
   });
 
   it('Dashboard link points to /dashboard for customer', () => {

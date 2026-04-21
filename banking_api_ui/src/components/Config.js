@@ -405,11 +405,7 @@ function LangChainAgentConfig() {
   const [messages, setMessages] = React.useState({});
 
   const PROVIDERS = [
-    { id: 'groq',      label: 'Groq',      placeholder: 'gsk_…'          },
-    { id: 'openai',    label: 'OpenAI',     placeholder: 'sk-…'           },
-    { id: 'anthropic', label: 'Anthropic',  placeholder: 'sk-ant-…'       },
-    { id: 'google',    label: 'Google AI',  placeholder: 'AIza…'          },
-    { id: 'ollama',    label: 'Local Model (LM Studio / Ollama)',     placeholder: '(local — no key needed)' },
+    { id: 'ollama',    label: 'Ollama (Local LLM)',     placeholder: '(local — no key needed)' },
   ];
 
   useEffect(() => {
@@ -486,7 +482,7 @@ function LangChainAgentConfig() {
 
   if (!status) return <p style={{ padding: '8px', color: '#888' }}>Loading LangChain config…</p>;
 
-  const activeProvider = status.provider || 'groq';
+  const activeProvider = status.provider || 'ollama';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

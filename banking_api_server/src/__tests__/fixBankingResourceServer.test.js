@@ -265,7 +265,7 @@ describe('POST /api/pingone-test/fix-banking-resource-server', () => {
         .expect(500);
 
       expect(res.body.success).toBe(false);
-      expect(res.body.error).toBe('Network timeout');
+      expect(res.body.error).toBe('Operation failed. Check server logs.');
     });
   });
 

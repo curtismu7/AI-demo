@@ -192,8 +192,8 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null) {
         } catch (e) { /* token decode failed — step-up will be required */ }
       }
       const result = await get_sensitive_account_details({}, userId, effectiveReq);
-      if (result.step_up_required) {
-        return { reply: '🔒 Viewing sensitive account details requires step-up authentication (MFA). Please complete the step-up challenge first.', success: false, toolsCalled: ['get_sensitive_account_details'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [], stepUpRequired: true, stepUpMethod: result.step_up_method };
+      if (result.consent_challenge_required) {
+        return { reply: '🔒 Viewing sensitive account details requires your approval. Please confirm in the consent modal to continue.', success: false, toolsCalled: ['get_sensitive_account_details'], tokensUsed: 0, requiresConsent: true, agentConfigured: true, tokenEvents: [], consent_challenge_required: true, hitl_threshold_usd: 0 };
       }
       if (!result.ok) {
         return { reply: `❌ ${result.error || 'Could not retrieve sensitive account details.'}`, success: false, toolsCalled: ['get_sensitive_account_details'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
@@ -240,11 +240,8 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     console.log('[processAgentMessage] tokenEvents count:', tokenEvents?.length || 0);
     console.log('[processAgentMessage] message length:', message?.length || 0);
 
-    // ── Heuristic disabled: let all queries go through LangGraph → MCP ──
-    // (Heuristic short-circuits the MCP flow and produces no MCP Traffic; disabled for demo fidelity)
-    // To re-enable: uncomment the block below and set HEURISTIC_ENABLED=true
-    const _heuristic_disabled = true; // eslint-disable-line
-    /*
+    // ── Heuristic first: handle known banking intents without LLM ──
+    // Falls through to LangGraph/LLM only if heuristic doesn't match.
     const heuristic = parseHeuristic(message);
     if (heuristic && heuristic.kind === 'banking') {
       const heuristicResult = await executeHeuristicBanking(heuristic, userId, userToken, req);
@@ -255,7 +252,6 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       }
       // Heuristic matched but couldn't execute (transfer/deposit/etc.) — fall through to LLM
     }
-    */
 
     // Note: Ollama (default) needs no API key. Cloud LLMs need keys added via /llm-config.
 

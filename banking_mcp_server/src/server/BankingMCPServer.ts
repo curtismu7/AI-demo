@@ -623,10 +623,11 @@ export class BankingMCPServer extends EventEmitter {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const pathname = url.pathname;
 
-    // Spec-compliant HTTP MCP transport routes (RFC 9728 metadata + POST /mcp)
+    // Spec-compliant HTTP MCP transport routes (RFC 9728 metadata + POST /mcp + /audit)
     if (this.httpTransport &&
         (pathname === '/.well-known/oauth-protected-resource' ||
-         pathname === '/mcp')) {
+         pathname === '/mcp' ||
+         pathname === '/audit')) {
       await this.httpTransport.handleRequest(req, res, pathname);
       return;
     }

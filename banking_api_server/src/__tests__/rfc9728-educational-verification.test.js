@@ -6,25 +6,10 @@
  * Tests educational content against RFC 9728 specification and implementation
  */
 
-const React = require('react');
-const { JSDOM } = require('jsdom');
-
-// Mock React component for testing
-const mockReact = {
-  useState: jest.fn(),
-  useEffect: jest.fn(),
-  createElement: jest.fn(),
-};
-
 describe('RFC 9728 Educational Content Verification', () => {
-  let dom;
   let mockRFC9728Content;
 
   beforeEach(() => {
-    // Set up DOM environment
-    dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
-    global.window = dom.window;
-    global.document = dom.window;
     global.fetch = jest.fn();
     
     // Mock the RFC9728Content component
@@ -36,7 +21,7 @@ describe('RFC 9728 Educational Content Verification', () => {
         sections: [
           {
             title: 'Well-known URL Structure',
-            content: 'RFC 9728 defines a deterministic URL pattern',
+            content: 'RFC 9728 defines a deterministic URL pattern for resource discovery used by MCP and AI agents',
             examples: [
               'Resource URL: https://api.bank.com/v1/accounts',
               'Discovery URL: https://api.bank.com/.well-known/oauth-protected-resource'
@@ -44,7 +29,7 @@ describe('RFC 9728 Educational Content Verification', () => {
           },
           {
             title: 'Response shape (RFC 9728 §3.2)',
-            content: 'JSON structure with required, recommended, and optional fields',
+            content: 'JSON structure with required, recommended, and optional fields including the resource identifier and authorization servers for Model Context Protocol integration',
             example: {
               resource: 'REQUIRED',
               authorization_servers: 'OPTIONAL',
@@ -60,9 +45,6 @@ describe('RFC 9728 Educational Content Verification', () => {
   });
 
   afterEach(() => {
-    dom = null;
-    global.window = undefined;
-    global.document = undefined;
     global.fetch = jest.fn();
   });
 

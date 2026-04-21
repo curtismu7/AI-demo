@@ -5,15 +5,13 @@
  * Pattern (per LangGraph):
  * - StateGraph with defined state schema
  * - Nodes for agent reasoning and tool execution
- * - ChatAnthropic/ChatGroq model with system prompt
+ * - ChatOllama model with system prompt
  * - Tools from createMcpToolRegistry()
  * - Config-driven agent context (auth, tokens, events)
  */
 
 const { StateGraph } = require('@langchain/langgraph');
-const { ChatGroq } = require('@langchain/groq');
-const { ChatAnthropic } = require('@langchain/anthropic');
-const { ChatOpenAI } = require('@langchain/openai');
+const { ChatOllama } = require('@langchain/ollama');
 const { ToolMessage } = require('@langchain/core/messages');
 const { Annotation } = require('@langchain/langgraph');
 const { createMcpToolRegistry } = require('../utils/mcpToolRegistry');
@@ -78,14 +76,12 @@ const AgentAnnotation = Annotation.Root({
  * @param {string} config.userToken - User's OAuth access token
  * @param {string} config.sessionId - Express session ID
  * @param {array} config.tokenEvents - Token event tracking array (passed by reference)
- * @param {object} config.langchainConfig - Session LLM config: { provider, model, fallback_order, groq_api_key, openai_api_key, ... }
+ * @param {object} config.langchainConfig - Session LLM config: { model, ollama_base_url }
  * @returns {Promise<object>} LangGraph agent ready for invoke()
  */
 /**
  * Ensure tool_call args is always a plain object.
- * Prevents Anthropic API "Input should be a valid dictionary" errors
- * when args is empty string, undefined, or other non-object type
- * (can happen with cross-provider fallback or empty-schema tools).
+ * Prevents API errors when args is empty string, undefined, or other non-object type.
  */
 function normalizeToolCallArgs(args) {
   if (args && typeof args === 'object' && !Array.isArray(args)) return args;
@@ -139,160 +135,24 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       console.log('[agentBuilder] tokenEvents count after adding:', tokenEvents.length);
     }
 
-        // Initialize model with fallback chain support
-    // Priority: session langchain_config.fallback_order > environment variables > hardcoded defaults
+        // Initialize Ollama model (local, free, no API key needed)
     let model;
-    let provider;
+    let provider = 'ollama';
     
-    // Default model names per provider — matched with langchainConfig.js and llm_factory.py
-    const PROVIDER_DEFAULT_MODELS = {
-      groq: 'llama-3.3-70b-versatile',
-      anthropic: 'claude-haiku-4-20250414',
-      openai: 'gpt-4o-mini',
-      google: 'gemini-2.0-flash',
-      lmstudio: 'default',
-    };
-
-    // Build provider config map from session + environment
-    const groqKey = langchainConfig?.groq_api_key || process.env.GROQ_API_KEY;
-    const anthropicKey = langchainConfig?.anthropic_api_key || process.env.ANTHROPIC_API_KEY;
-    const openaiKey = langchainConfig?.openai_api_key || process.env.OPENAI_API_KEY;
-    const googleKey = langchainConfig?.google_api_key || process.env.GOOGLE_API_KEY;
-    const lmStudioBase = langchainConfig?.lmstudio_base_url || process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1';
+    const ollamaBase = langchainConfig?.ollama_base_url || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+    const ollamaModel = langchainConfig?.model || 'llama3.2';
     
-    // Determine fallback order
-    const fallbackOrder = langchainConfig?.fallback_order || ['groq', 'anthropic'];
-    console.log('[agentBuilder] Fallback chain (from session config):', fallbackOrder);
-    
-    // Try to initialize model based on fallback order
-    let initialized = false;
-    for (const providerName of fallbackOrder) {
-      try {
-        // Resolve model: prefer an explicitly set model that belongs to this provider;
-        // otherwise fall back to the per-provider default so cross-provider model names
-        // don't leak (e.g. a Groq model name is never sent to OpenAI).
-        const requestedModel = langchainConfig?.model;
-        const defaultModel = PROVIDER_DEFAULT_MODELS[providerName];
-        const resolvedModel = requestedModel || defaultModel;
-
-        if (providerName === 'groq' && groqKey) {
-          console.log('[agentBuilder] Initializing Groq LLM');
-          model = new ChatGroq({
-            model: resolvedModel,
-            temperature: 0.7,
-            maxTokens: 1024,
-            apiKey: groqKey,
-            timeout: 30000,
-          });
-          provider = 'groq';
-          initialized = true;
-          console.log(`[agentBuilder] LLM initialized: groq/${resolvedModel}`);
-          break;
-        } else if (providerName === 'anthropic' && anthropicKey) {
-          console.log('[agentBuilder] Initializing Anthropic LLM');
-          model = new ChatAnthropic({
-            model: resolvedModel,
-            temperature: 0.7,
-            maxTokens: 1024,
-            apiKey: anthropicKey,
-            timeout: 30000,
-          });
-          provider = 'anthropic';
-          initialized = true;
-          console.log(`[agentBuilder] LLM initialized: anthropic/${resolvedModel}`);
-          break;
-        } else if (providerName === 'openai' && openaiKey) {
-          console.log('[agentBuilder] Initializing OpenAI LLM');
-          model = new ChatOpenAI({
-            model: resolvedModel,
-            temperature: 0.7,
-            maxTokens: 1024,
-            streaming: true,
-            apiKey: openaiKey,
-            timeout: 30000,
-          });
-          provider = 'openai';
-          initialized = true;
-          console.log(`[agentBuilder] LLM initialized: openai/${resolvedModel}`);
-          break;
-        } else if (providerName === 'lmstudio') {
-          // LM Studio exposes an OpenAI-compatible endpoint — no API key required
-          console.log('[agentBuilder] Initializing LM Studio LLM (OpenAI-compatible)');
-          const lmModel = resolvedModel === 'default' ? '' : resolvedModel;
-          model = new ChatOpenAI({
-            model: lmModel,
-            temperature: 0.7,
-            maxTokens: 1024,
-            streaming: true,
-            apiKey: 'lm-studio',
-            configuration: { baseURL: lmStudioBase },
-            timeout: 30000,
-          });
-          provider = 'lmstudio';
-          initialized = true;
-          console.log(`[agentBuilder] LLM initialized: lmstudio@${lmStudioBase}`);
-          break;
-        } else if (providerName === 'google' && googleKey) {
-          console.log('[agentBuilder] Google Generative AI not yet available in this runtime (missing @langchain/google-genai)');
-          continue;
-        } else if (providerName === 'ollama') {
-          console.log('[agentBuilder] Ollama not yet available in this runtime (missing @langchain/ollama)');
-          continue;
-        }
-      } catch (err) {
-        console.warn(`[agentBuilder] Failed to initialize ${providerName}:`, err.message);
-        continue;
-      }
-    }
-    
-    // Fallback to environment variables if session config didn't work
-    if (!initialized) {
-      console.log('[agentBuilder] No provider initialized from fallback chain, trying environment defaults');
-      if (process.env.GROQ_API_KEY) {
-        console.log('[agentBuilder] Using Groq from environment');
-        model = new ChatGroq({
-          model: 'llama-3.3-70b-versatile',
-          temperature: 0.7,
-          maxTokens: 1024,
-          apiKey: process.env.GROQ_API_KEY,
-          timeout: 30000,
-        });
-        provider = 'groq';
-        initialized = true;
-      } else if (process.env.ANTHROPIC_API_KEY) {
-        console.log('[agentBuilder] Using Anthropic from environment');
-        model = new ChatAnthropic({
-          model: 'claude-haiku-4-20250414',
-          temperature: 0.7,
-          maxTokens: 1024,
-          apiKey: process.env.ANTHROPIC_API_KEY,
-          timeout: 30000,
-        });
-        provider = 'anthropic';
-        initialized = true;
-      }
-    }
-    
-    if (!initialized || !model) {
-      console.error('[agentBuilder] ERROR: No LLM provider could be initialized');
-      throw new Error('No LLM provider available. Configure at least one provider in /llm-config or set GROQ_API_KEY/ANTHROPIC_API_KEY.');
-    }
-
-    // Build fallback model for 429 rate-limit recovery (Anthropic if primary is not Anthropic)
-    let fallbackModel = null;
-    if (provider !== 'anthropic' && anthropicKey) {
-      try {
-        fallbackModel = new ChatAnthropic({
-          model: PROVIDER_DEFAULT_MODELS.anthropic,
-          temperature: 0.7,
-          maxTokens: 1024,
-          apiKey: anthropicKey,
-          timeout: 30000,
-        });
-        console.log('[agentBuilder] Fallback model ready: anthropic');
-      } catch (err) {
-        console.warn('[agentBuilder] Could not initialize fallback model:', err.message);
-      }
+    console.log(`[agentBuilder] Initializing Ollama LLM: ${ollamaModel} at ${ollamaBase}`);
+    try {
+      model = new ChatOllama({
+        model: ollamaModel,
+        temperature: 0.7,
+        baseUrl: ollamaBase,
+      });
+      console.log(`[agentBuilder] LLM initialized: ollama/${ollamaModel} at ${ollamaBase}`);
+    } catch (ollamaErr) {
+      console.error('[agentBuilder] ERROR: Ollama initialization failed:', ollamaErr.message);
+      throw new Error('Ollama LLM not available. Make sure Ollama is running at ' + ollamaBase);
     }
 
     // Define the agent node with tools

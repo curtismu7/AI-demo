@@ -14,19 +14,17 @@ const REQUIRED = [
   { name: 'PINGONE_USER_CLIENT_ID',   desc: 'User OAuth app client ID' },
   { name: 'PINGONE_USER_CLIENT_SECRET',  desc: 'User OAuth app client secret' },
   { name: 'SESSION_SECRET',           desc: 'Express session signing secret (min 32 chars)' },
-  { name: 'PUBLIC_APP_URL',           desc: 'BFF public origin — drives OAuth redirect URIs (e.g. http://localhost:3001 or https://banking-demo-puce.vercel.app)' },
+  { name: 'PUBLIC_APP_URL',           desc: 'BFF public origin — drives OAuth redirect URIs (e.g. http://localhost:3001)' },
 ];
 
 const RECOMMENDED = [
-  { name: 'GROQ_API_KEY',       desc: 'Groq LLM key for natural language agent (falls back to keyword parser)' },
-  { name: 'KV_REST_API_URL',    desc: 'Upstash Redis URL for persistent session store on Vercel' },
-  { name: 'KV_REST_API_TOKEN',  desc: 'Upstash Redis token for persistent session store on Vercel' },
+  { name: 'OLLAMA_BASE_URL',    desc: 'Ollama server URL for local LLM inference (default: http://localhost:11434)' },
 ];
 
 function checkEnv() {
   if (process.env.NODE_ENV === 'test') return { ok: true, missing: [] };
 
-  const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL;
+  const isProduction = process.env.NODE_ENV === 'production';
 
   const missing = REQUIRED.filter(v => !process.env[v.name] || process.env[v.name].trim() === '');
   const missingRecommended = RECOMMENDED.filter(v => !process.env[v.name] || process.env[v.name].trim() === '');

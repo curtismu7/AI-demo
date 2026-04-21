@@ -16,7 +16,7 @@ const CONFIGURATION_TABS = [
     id: 'quick-start',
     label: 'Quick Start',
     icon: 'rocket',
-    description: 'Get started with basic configuration',
+    description: 'Minimum setup to run the demo — PingOne region, environment ID, and branding',
     requiresAuth: false,
     sections: ['pingone-basics', 'demo-data-setup', 'industry-branding']
   },
@@ -24,7 +24,7 @@ const CONFIGURATION_TABS = [
     id: 'pingone-config',
     label: 'PingOne Setup',
     icon: 'shield',
-    description: 'Configure PingOne authentication and services',
+    description: 'OAuth clients, MFA policies, and token exchange — the full PingOne wiring',
     requiresAuth: true,
     requiredRole: 'admin',
     sections: ['pingone-connection', 'oauth-flows', 'mfa-settings', 'token-exchange']
@@ -33,7 +33,7 @@ const CONFIGURATION_TABS = [
     id: 'demo-management',
     label: 'Demo Data',
     icon: 'database',
-    description: 'Manage demo scenarios and test data',
+    description: 'Sample accounts, transactions, and demo presets — no PingOne credentials needed',
     requiresAuth: false,
     sections: ['demo-scenarios', 'account-setup', 'transaction-data', 'agent-modes']
   },
@@ -41,7 +41,7 @@ const CONFIGURATION_TABS = [
     id: 'agent-configuration',
     label: 'Agent Settings',
     icon: 'robot',
-    description: 'Configure AI agent behavior and integration',
+    description: 'AI agent chat mode, MCP tool scopes, education panels, and token chain display',
     requiresAuth: true,
     sections: ['agent-ui-mode', 'mcp-scopes', 'mcp-tools', 'education-settings', 'token-chain']
   },
@@ -49,7 +49,7 @@ const CONFIGURATION_TABS = [
     id: 'advanced',
     label: 'Advanced',
     icon: 'settings',
-    description: 'Advanced configuration and troubleshooting',
+    description: 'Vercel deploy URL, worker app secrets, debug logging, and RSA keypair generation',
     requiresAuth: true,
     requiredRole: 'admin',
     sections: ['vercel-config', 'worker-app', 'debug-settings', 'api-keys']
@@ -58,7 +58,7 @@ const CONFIGURATION_TABS = [
     id: 'idp-setup',
     label: 'IDP Setup',
     icon: '🏛',
-    description: 'PingOne Identity Provider configuration reference',
+    description: 'Read-only reference — PingOne endpoints and registered OAuth client IDs',
     requiresAuth: true,
     requiredRole: 'admin',
     sections: ['idp-overview', 'idp-clients']
@@ -67,7 +67,7 @@ const CONFIGURATION_TABS = [
     id: 'feature-flags',
     label: 'Feature Flags',
     icon: '🚩',
-    description: 'Toggle in-development features',
+    description: 'Enable or disable experimental features — changes take effect immediately',
     requiresAuth: true,
     requiredRole: 'admin',
     sections: ['feature-flags']
@@ -736,7 +736,7 @@ const UnifiedConfigurationPage: FC<{
     // PingOne Config tab
     if (s === 'pingone-connection') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Connect this demo to your PingOne environment. Enter the environment details, then test the connection.</p>
+        <p className="cfg-section-desc">Connect this demo to your PingOne environment. You need three values from the PingOne admin console — the region your tenant is in, the environment UUID, and a worker app client ID that has Management API roles assigned. After entering them, click <strong>Test Connection</strong> to verify the BFF can reach PingOne.</p>
         <CfgSelect
           label="PingOne Region"
           value={state.pingoneRegion}
@@ -748,20 +748,21 @@ const UnifiedConfigurationPage: FC<{
             { value: 'asia',   label: 'Asia-Pacific (.asia)' },
             { value: 'com.au', label: 'Australia (.com.au)' },
           ]}
+          help="The geographic region where your PingOne tenant was created. This determines the base URL for all API calls (e.g. auth.pingone.com vs auth.pingone.eu). Find it in PingOne Admin → Environment → Properties."
         />
         <CfgField
           label="Environment ID"
           value={state.pingoneEnvironmentId}
           onChange={field('pingoneEnvironmentId')}
           placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          help="Found in PingOne Admin → Environment → Properties"
+          help="The UUID that uniquely identifies your PingOne environment. Find it in PingOne Admin → Environment → Properties → Environment ID. All OAuth and Management API calls include this in the URL path."
         />
         <CfgField
           label="Admin Client ID"
           value={state.adminClientId}
           onChange={field('adminClientId')}
           placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          help="Worker app client ID with Management API roles"
+          help="Client ID of a PingOne Worker application with Management API roles (e.g. Environment Admin or Identity Data Admin). The BFF uses this to call PingOne Management APIs for user lookup, MFA enrollment, and configuration queries. Create one in PingOne → Applications → + Application → Worker."
         />
         <div className="cfg-test-connection">
           <button
@@ -783,48 +784,48 @@ const UnifiedConfigurationPage: FC<{
 
     if (s === 'oauth-flows') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Configure OAuth 2.0 client credentials for admin and customer user flows.</p>
+        <p className="cfg-section-desc">Two OAuth 2.0 clients are needed: one for <strong>admin</strong> access (manages PingOne config) and one for <strong>end-user</strong> banking login. Both use Authorization Code flow. The admin app is a confidential client (has a secret); the user app uses PKCE (public client). Create each in PingOne → Applications, then paste the client ID, secret, and redirect URI here.</p>
         <h3 className="cfg-subsection-title">Admin App (Authorization Code)</h3>
-        <CfgField label="Admin Client ID" value={state.adminClientId} onChange={field('adminClientId')} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" help="OAuth Client ID for admin portal access. Created in PingOne → Applications → Web App" />
-        <CfgSecretField label="Admin Client Secret" fieldKey="adminClientSecret" value={state.adminClientSecret} showSecrets={state.showSecrets} onToggle={toggleSecret} onChange={field('adminClientSecret')} />
-        <CfgField label="Admin Redirect URI" value={state.adminRedirectUri} onChange={field('adminRedirectUri')} placeholder="https://yourdomain.com/api/auth/oauth/admin/callback" help="OAuth callback URL where PingOne redirects after admin login. Must match PingOne app settings" />
+        <CfgField label="Admin Client ID" value={state.adminClientId} onChange={field('adminClientId')} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" help="Client ID of the PingOne web application used for admin login (/admin route). In PingOne: Applications → your admin app → Overview → Client ID." />
+        <CfgSecretField label="Admin Client Secret" fieldKey="adminClientSecret" value={state.adminClientSecret} showSecrets={state.showSecrets} onToggle={toggleSecret} onChange={field('adminClientSecret')} help="The client secret for the admin app. In PingOne: Applications → your admin app → Overview → Client Secret. This is sent server-side only — never exposed to the browser." />
+        <CfgField label="Admin Redirect URI" value={state.adminRedirectUri} onChange={field('adminRedirectUri')} placeholder="https://yourdomain.com/api/auth/oauth/admin/callback" help="The callback URL PingOne redirects to after admin login. Must exactly match what’s registered in PingOne → admin app → Configuration → Redirect URIs. Format: https://yourdomain.com/api/auth/oauth/admin/callback" />
         <h3 className="cfg-subsection-title">User App (Authorization Code + PKCE)</h3>
-        <CfgField label="User Client ID" value={state.userClientId} onChange={field('userClientId')} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" help="OAuth Client ID for end-user login flow. Created in PingOne → Applications → Single-Page App (SPA)" />
-        <CfgSecretField label="User Client Secret" fieldKey="userClientSecret" value={state.userClientSecret} showSecrets={state.showSecrets} onToggle={toggleSecret} onChange={field('userClientSecret')} />
-        <CfgField label="User Redirect URI" value={state.userRedirectUri} onChange={field('userRedirectUri')} placeholder="https://yourdomain.com/api/auth/oauth/user/callback" help="OAuth callback URL where PingOne redirects after user login. Must match PingOne SPA app settings" />
+        <CfgField label="User Client ID" value={state.userClientId} onChange={field('userClientId')} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" help="Client ID of the PingOne SPA application used for end-user banking login. In PingOne: Applications → your user app → Overview → Client ID. This app should have PKCE enabled (no client secret required for the flow)." />
+        <CfgSecretField label="User Client Secret" fieldKey="userClientSecret" value={state.userClientSecret} showSecrets={state.showSecrets} onToggle={toggleSecret} onChange={field('userClientSecret')} help="Optional for PKCE flows. If your PingOne user app is configured as a confidential client, enter the secret here. For public SPA clients, leave blank." />
+        <CfgField label="User Redirect URI" value={state.userRedirectUri} onChange={field('userRedirectUri')} placeholder="https://yourdomain.com/api/auth/oauth/user/callback" help="The callback URL PingOne redirects to after user login. Must exactly match the redirect URI in PingOne → user app → Configuration. Format: https://yourdomain.com/api/auth/oauth/user/callback" />
       </div>
     );
 
     if (s === 'mfa-settings') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Configure PingOne MFA policy and step-up authentication thresholds.</p>
+        <p className="cfg-section-desc">Multi-Factor Authentication adds a second verification step for sensitive actions. When the AI agent tries to execute a transfer above the step-up threshold, the BFF triggers a PingOne MFA challenge (push notification, TOTP, or email OTP depending on your policy). Configure the MFA policy ID and the dollar thresholds that trigger step-up here.</p>
         <CfgField
           label="MFA Policy ID"
           value={state.mfaPolicyId}
           onChange={field('mfaPolicyId')}
           placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          help="PingOne Admin → Security → MFA → Policies"
+          help="UUID of the MFA policy to use for step-up challenges. Find it in PingOne Admin → Security → MFA → Policies → click your policy → copy the ID from the URL or Properties panel. The policy controls which MFA methods are available (push, TOTP, email, SMS)."
         />
         <CfgField
           label="Step-Up Threshold (USD)"
           value={String(state.mfaStepUpThreshold)}
           onChange={v => setState(prev => ({ ...prev, mfaStepUpThreshold: Number(v) || 0, saveStatus: 'idle' }))}
           type="number"
-          help="Transactions above this amount require MFA step-up. Default: 500"
+          help="Dollar amount that triggers MFA step-up. Any single transfer at or above this value will require the user to complete an MFA challenge before the agent can proceed. Default: $500. Set to 0 to require MFA for every transfer."
         />
         <CfgField
           label="Agent Transaction Count Limit"
           value={String(state.agentTransactionCountLimit)}
           onChange={v => setState(prev => ({ ...prev, agentTransactionCountLimit: Number(v) || 0, saveStatus: 'idle' }))}
           type="number"
-          help="Delegated agent stop limit by transaction count per approval window. Set 0 for unlimited."
+          help="Maximum number of transactions the AI agent can execute within a single approval window before requiring fresh human approval. This prevents runaway batch operations. Set 0 for unlimited."
         />
         <CfgField
           label="Agent Transaction Value Limit (USD)"
           value={String(state.agentTransactionValueLimit)}
           onChange={v => setState(prev => ({ ...prev, agentTransactionValueLimit: Number(v) || 0, saveStatus: 'idle' }))}
           type="number"
-          help="Delegated agent stop limit by cumulative value per approval window. Set 0 for unlimited."
+          help="Maximum cumulative dollar value the AI agent can transfer within a single approval window. Once this limit is reached, the agent pauses and asks for fresh human consent. Set 0 for unlimited."
         />
         <div className="form-group">
           <label className="form-label">
@@ -836,34 +837,34 @@ const UnifiedConfigurationPage: FC<{
             />
             Enable CIBA (Backchannel Authentication)
           </label>
-          <p className="cfg-field-help">Required for out-of-band MFA push notifications via PingOne.</p>
+          <p className="cfg-field-help">CIBA (Client-Initiated Backchannel Authentication) sends out-of-band push notifications to the user’s registered device for MFA. When enabled, high-value transfers trigger a PingOne push instead of an inline challenge. Requires a PingOne MFA policy with push notifications configured.</p>
         </div>
       </div>
     );
 
     if (s === 'token-exchange') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Configure RFC 8693 Token Exchange for the AI Agent MCP server.</p>
+        <p className="cfg-section-desc">RFC 8693 Token Exchange lets the BFF swap a user’s access token (and optionally an agent client-credentials token) for a narrowly-scoped MCP Gateway token. This is how the AI agent gets permission to call banking tools on the user’s behalf — the resulting token carries an <code>act</code> claim showing who delegated and who is acting. Configure the MCP server connection and the PingOne app that performs the exchange.</p>
         <CfgField
           label="MCP Server URL"
           value={state.mcpServerUrl}
           onChange={field('mcpServerUrl')}
           placeholder="wss://your-mcp-server.railway.app"
-          help="WebSocket URL of the deployed MCP server"
+          help="WebSocket URL where the MCP tool server is running. The BFF connects here to execute banking tools (get_accounts, transfer_funds, etc.). Usually deployed to Railway, Render, or Fly.io. Format: wss://your-host.railway.app"
         />
         <CfgField
           label="MCP Resource URI"
           value={state.mcpResourceUri}
           onChange={field('mcpResourceUri')}
           placeholder="https://your-mcp-server.railway.app"
-          help="RFC 8693 audience URI for the MCP access token"
+          help="The audience (aud) claim value for exchanged MCP tokens. This must match the resource URI registered in PingOne for the MCP Token Exchanger app. PingOne uses this to scope the resulting token to only this resource server. Usually the HTTPS URL of your MCP server."
         />
         <CfgField
           label="Worker Client ID"
           value={state.workerClientId}
           onChange={field('workerClientId')}
           placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          help="PingOne Authorize worker app for token exchange decisions"
+          help="Client ID of the PingOne MCP Token Exchanger application (type: Worker or AI Agent). This app has the \u2018Token Exchange\u2019 grant type enabled and performs the RFC 8693 exchange. In PingOne: Applications → MCP Token Exchanger → Overview → Client ID."
         />
       </div>
     );
@@ -872,7 +873,7 @@ const UnifiedConfigurationPage: FC<{
     if (s === 'pingone-basics') return (
       <div className="cfg-section">
         <p className="cfg-section-desc">
-          Enter your PingOne environment details to get started. For full OAuth credentials and advanced settings, go to the <strong>PingOne Config</strong> tab.
+          <strong>Step 1:</strong> Enter the two values that connect this demo to your PingOne tenant. You only need a PingOne environment ID and region to get started. For full OAuth client credentials, MFA, and token exchange setup, go to the <strong>PingOne Setup</strong> tab after completing this step.
         </p>
         <CfgSelect
           label="PingOne Region"
@@ -885,14 +886,14 @@ const UnifiedConfigurationPage: FC<{
             { value: 'asia',   label: 'Asia-Pacific (.asia)' },
             { value: 'com.au', label: 'Australia (.com.au)' },
           ]}
-          help="Select the region where your PingOne environment is hosted"
+          help="The geographic region of your PingOne tenant. This sets the base URL for all API calls (e.g. auth.pingone.com). Find it in PingOne Admin → Environment → Properties."
         />
         <CfgField
           label="Environment ID"
           value={state.pingoneEnvironmentId}
           onChange={field('pingoneEnvironmentId')}
           placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          help="Found in PingOne Admin → Environment → Properties"
+          help="The UUID identifying your PingOne environment. Find it in PingOne Admin → Environment → Properties → Environment ID. This value appears in all OAuth and API URLs."
         />
         <div className="cfg-next-step-hint">
           <span>&#10003; Next:</span> Go to <strong>PingOne Config &#8594; OAuth Flows</strong> to add client credentials.
@@ -903,7 +904,7 @@ const UnifiedConfigurationPage: FC<{
     if (s === 'demo-data-setup') return (
       <div className="cfg-section">
         <p className="cfg-section-desc">
-          Choose the demo scenario that best fits your use case. This sets the default transactions, accounts, and agent behaviour shown in the demo.
+          <strong>Step 2:</strong> Pick a demo scenario. Each preset loads different sample bank accounts, transaction amounts, and agent prompts. For example, <em>High-Value Transactions</em> pre-loads transfers above the MFA threshold so step-up authentication triggers immediately during a demo.
         </p>
         <CfgSelect
           label="Demo Scenario"
@@ -915,7 +916,7 @@ const UnifiedConfigurationPage: FC<{
             { value: 'agent-focused', label: 'AI Agent Showcase' },
             { value: 'mfa-heavy',     label: 'MFA & Step-Up Auth Focus' },
           ]}
-          help="Controls which transactions, alerts, and agent prompts appear by default"
+          help="Default: balanced mix of accounts and transactions. High-Value: large transfers that trigger MFA step-up. Agent Showcase: optimised for demonstrating AI agent delegation and consent flows. MFA Heavy: every action requires multi-factor authentication."
         />
       </div>
     );
@@ -923,7 +924,7 @@ const UnifiedConfigurationPage: FC<{
     if (s === 'industry-branding') return (
       <div className="cfg-section">
         <p className="cfg-section-desc">
-          Select an industry to apply the matching branding preset — logo, colour palette, and sample account names update automatically.
+          <strong>Step 3:</strong> Choose an industry vertical to rebrand the entire demo. Selecting a preset changes the logo, colour scheme, sidebar icons, and sample account names across the app. This lets you tailor the demo for a specific audience without editing code.
         </p>
         <div className="cfg-industry-tiles">
           {[
@@ -950,7 +951,7 @@ const UnifiedConfigurationPage: FC<{
     // Demo Management tab
     if (s === 'demo-scenarios') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Configure which demo banking scenarios are available to testers.</p>
+        <p className="cfg-section-desc">Choose the starting scenario for new demo sessions. Each preset configures the combination of accounts, transaction amounts, alert triggers, and agent prompt suggestions that appear when a user logs in. Switch scenarios between demos to showcase different capabilities.</p>
         <CfgSelect
           label="Active Demo Scenario"
           value={state.demoScenario}
@@ -961,27 +962,27 @@ const UnifiedConfigurationPage: FC<{
             { value: 'agent-focused', label: 'AI Agent Showcase' },
             { value: 'mfa-heavy',     label: 'MFA & Step-Up Auth Focus' },
           ]}
-          help="Sets the starting scenario when a new demo session begins"
+          help="Changing the scenario takes effect on the next session or page refresh. It does not affect currently active sessions."
         />
       </div>
     );
 
     if (s === 'account-setup') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Configure demo bank accounts generated for each test user.</p>
+        <p className="cfg-section-desc">Set how many sample bank accounts each demo user gets. These are auto-generated with realistic names (Checking, Savings, Investment, etc.) and balances. More accounts give the AI agent more data to work with when answering questions like “What’s my total balance?”</p>
         <CfgField
           label="Number of Demo Accounts"
           value={String(state.accountCount)}
           onChange={v => setState(prev => ({ ...prev, accountCount: Number(v) || 1, saveStatus: 'idle' }))}
           type="number"
-          help="How many bank accounts each demo user gets (1-5)"
+          help="Range: 1–5. Each account gets a random balance and recent transaction history. The AI agent can query all accounts."
         />
       </div>
     );
 
     if (s === 'transaction-data') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Configure the sample transaction data shown on the dashboard and used for MFA step-up testing.</p>
+        <p className="cfg-section-desc">Control the sample transaction data that populates the dashboard and feeds into MFA step-up testing. The <em>High-Value</em> preset includes transactions above the step-up threshold, so MFA challenges trigger automatically during the demo. The <em>Mixed</em> preset gives a realistic range.</p>
         <CfgSelect
           label="Transaction Preset"
           value={state.transactionPreset}
@@ -991,14 +992,14 @@ const UnifiedConfigurationPage: FC<{
             { value: 'high-value', label: 'High-Value (some above MFA threshold)' },
             { value: 'mixed',      label: 'Mixed (range of values)' },
           ]}
-          help="Controls which sample transactions appear in the demo dashboards"
+          help="Standard: all transactions are below the MFA step-up threshold — no MFA triggers. High-Value: includes transfers of $500+ that will trigger step-up. Mixed: realistic variety from $5 to $2,000+."
         />
       </div>
     );
 
     if (s === 'agent-modes') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Choose how the AI agent operates during a demo session.</p>
+        <p className="cfg-section-desc">Set whether the AI banking agent requires human approval before acting. <strong>Human-in-the-Loop (HITL)</strong> is recommended for demos — the agent explains what it wants to do and waits for you to approve or deny each action. <em>Autonomous</em> mode lets the agent execute without asking (useful for automated testing). <em>Disabled</em> hides the agent entirely.</p>
         <CfgSelect
           label="Agent Operating Mode"
           value={state.agentMode}
@@ -1008,7 +1009,7 @@ const UnifiedConfigurationPage: FC<{
             { value: 'autonomous', label: 'Autonomous (agent acts without approval)' },
             { value: 'disabled',   label: 'Disabled (no agent visible)' },
           ]}
-          help="HITL mode requires human approval before executing transactions"
+          help="HITL: the agent pauses before each bank action and shows a consent card. Autonomous: the agent executes immediately. Disabled: the FAB button and chat panel are hidden."
         />
       </div>
     );
@@ -1016,7 +1017,7 @@ const UnifiedConfigurationPage: FC<{
     // Agent Configuration tab
     if (s === 'agent-ui-mode') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Control how much of the agent UI chrome is shown to end users.</p>
+        <p className="cfg-section-desc">Control how the AI agent UI appears in the banking app. <em>Standard</em> shows the floating action button (FAB) in the corner and a chat panel that slides in. <em>Minimal</em> shows just the FAB with no animations. <em>Advanced</em> adds developer overlays showing internal state and tool calls. <em>Disabled</em> removes the agent completely.</p>
         <CfgSelect
           label="Agent UI Mode"
           value={state.agentUiMode}
@@ -1027,7 +1028,7 @@ const UnifiedConfigurationPage: FC<{
             { value: 'advanced',  label: 'Advanced (dev controls visible)' },
             { value: 'disabled',  label: 'Disabled (no agent UI shown)' },
           ]}
-          help="Controls the FAB button, chat panel, and agent debug overlays"
+          help="Standard: best for customer-facing demos. Minimal: reduced visual footprint. Advanced: shows token details and tool execution in realtime — great for developer audiences. Disabled: hides all agent UI elements."
         />
       </div>
     );
@@ -1035,7 +1036,7 @@ const UnifiedConfigurationPage: FC<{
     if (s === 'mcp-scopes') return (
       <div className="cfg-section">
         <p className="cfg-section-desc">
-          Scopes the AI agent is allowed to request when exchanging tokens via the MCP server. Enter one scope per line.
+          Define which OAuth scopes the AI agent is allowed to request when performing an RFC 8693 token exchange. These scopes determine what the agent can do with the resulting MCP token. Enter one scope per line. Common scopes: <code>openid</code> (identity), <code>profile</code> (name/email), <code>p1:read:user</code> (PingOne user data), <code>bankingapi</code> (banking operations).
         </p>
         <div className="form-group">
           <label className="form-label">Allowed MCP Scopes</label>
@@ -1047,7 +1048,7 @@ const UnifiedConfigurationPage: FC<{
             placeholder={'openid\nprofile\nemail\np1:read:user\nbankingapi'}
             spellCheck={false}
           />
-          <p className="cfg-field-help">One scope per line. Passed as the &lsquo;scope&rsquo; parameter during RFC 8693 token exchange.</p>
+          <p className="cfg-field-help">One scope per line. These are passed as the <code>scope</code> parameter during RFC 8693 token exchange. The PingOne token endpoint will only grant scopes that are also configured on the MCP Token Exchanger application in PingOne. If a scope is listed here but not granted to the app, PingOne silently ignores it.</p>
         </div>
       </div>
     );
@@ -1055,37 +1056,37 @@ const UnifiedConfigurationPage: FC<{
 
     if (s === 'mcp-tools') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Browse the MCP banking tools available to AI agents, including required scopes and parameters.</p>
+        <p className="cfg-section-desc">Browse all MCP banking tools available to the AI agent. Each tool shows its name, required scopes, input parameters, and what it returns. Tools are registered in the MCP server and called via the <code>tools/call</code> protocol. The agent cannot invoke a tool unless the exchanged MCP token carries the required scopes.</p>
         <MCPToolsEducation />
       </div>
     );
     if (s === 'education-settings') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Control the educational overlays and annotations shown during the demo.</p>
+        <p className="cfg-section-desc">The education panel is a step-by-step overlay that explains what’s happening during OAuth flows (login, token exchange, MFA). It’s useful for demos and learning, but you may want to hide it for polished customer presentations.</p>
         <CfgToggle
           label="Show Education Panel"
           checked={state.showEducationPanel}
           onChange={v => setState(prev => ({ ...prev, showEducationPanel: v, saveStatus: 'idle' }))}
-          help="Displays the step-by-step OAuth flow explanation panel on login pages"
+          help="When enabled, an annotated step-by-step panel appears on the dashboard showing the real-time OAuth flow: authorization code, token exchange, MFA step-up, and agent delegation. Disable for a cleaner demo experience."
         />
       </div>
     );
 
     if (s === 'token-chain') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Configure the token chain display that shows how tokens flow through the system.</p>
+        <p className="cfg-section-desc">The token chain display is a live visualisation showing every token involved in the current session — from the initial authorization code exchange through agent delegation to MCP tool calls. Each token is shown with its claims, expiry, and lineage (which parent token it was derived from). This is the core educational feature of the demo.</p>
         <CfgToggle
           label="Enable Token Chain Display"
           checked={state.enableTokenChainDisplay}
           onChange={v => setState(prev => ({ ...prev, enableTokenChainDisplay: v, saveStatus: 'idle' }))}
-          help="Shows the live token chain visualiser on the dashboard"
+          help="Shows/hides the token chain timeline panel on the dashboard. When enabled, you can see each token event as it happens: user access token → agent CC token → RFC 8693 exchange → MCP gateway token."
         />
         <CfgField
           label="Max Token History to Display"
           value={String(state.maxTokenChainHistory)}
           onChange={v => setState(prev => ({ ...prev, maxTokenChainHistory: Number(v) || 5, saveStatus: 'idle' }))}
           type="number"
-          help="How many recent tokens to show in the chain (5-50)"
+          help="How many recent token events to keep visible in the chain (5–50). Older events scroll off. Higher values use more memory but are useful for long demo sessions with many exchanges."
         />
       </div>
     );

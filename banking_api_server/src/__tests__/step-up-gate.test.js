@@ -382,7 +382,7 @@ describe('Step-Up MFA Gate — POST /api/transactions', () => {
       const res = await request(app)
         .post('/api/transactions')
         .set('x-test-user', customerUser({ acr: null }))
-        .send(highValueWithdrawal(600)); // Exceeds $500 HITL threshold
+        .send({ ...highValueWithdrawal(600), consentChallengeId: 'mock-consent-id' }); // Exceeds $500 HITL threshold
 
       expect(res.status).toBe(428);
       expect(res.body.error).toBe('step_up_required');
@@ -417,7 +417,7 @@ describe('Step-Up MFA Gate — POST /api/transactions', () => {
       const res = await request(app)
         .post('/api/transactions')
         .set('x-test-user', customerUser({ acr: null }))
-        .send(highValueWithdrawal(600)); // Exceeds $500 HITL threshold
+        .send({ ...highValueWithdrawal(600), consentChallengeId: 'mock-consent-id' }); // Exceeds $500 HITL threshold
 
       expect(res.status).toBe(428);
       expect(res.body.error).toBe('step_up_required');
@@ -455,6 +455,7 @@ describe('Step-Up MFA Gate — POST /api/transactions', () => {
         amount: 600, // Exceeds $500 HITL threshold
         type: 'transfer',
         description: 'Test high-value transfer',
+        consentChallengeId: 'mock-consent-id',
       };
 
       const res = await request(app)

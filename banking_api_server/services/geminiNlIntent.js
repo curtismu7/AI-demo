@@ -1,19 +1,17 @@
 // banking_api_server/services/geminiNlIntent.js
 /**
- * Intent parsing — priority: HEURISTIC (instant) → LM Studio → Groq → Anthropic (fallback).
+ * Intent parsing — priority: HEURISTIC (instant) → Ollama (local LLM fallback).
  * Heuristic handles all known commands (accounts, balance, transfer, education topics) with zero latency.
- * LLM is only called when heuristic returns kind:'none' (unrecognized input).
- * Set LM_STUDIO_BASE_URL for local inference; GROQ_API_KEY for cloud; ANTHROPIC_API_KEY as fallback; neither = free heuristic only.
+ * Ollama is only called when heuristic returns kind:'none' (unrecognized input).
  */
 'use strict';
 
 const { parseHeuristic, EDU } = require('./nlIntentParser');
-const { parseWithGroq } = require('./groqNlIntent');
 const { sanitizeNlResult } = require('./nlIntentSanitize');
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-20250414';
-const ANTHROPIC_TIMEOUT_MS = 10000;
+const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2';
+const OLLAMA_TIMEOUT_MS = 10000;
 
 const SYSTEM = `You are a strict JSON router for a banking demo SPA.
 Return ONLY a JSON object (no markdown) with one of:
@@ -51,125 +49,57 @@ Examples of mcp_tools (always banking, never education):
 Only route to education panel mcp-protocol when the user asks HOW MCP works or WHAT MCP is (no list/show/get verb).
 If the user asks to pay, transfer, or send money involving a "credit card", "credit account", or "investment account" → {"kind":"none","message":"This demo only supports Checking and Savings accounts. Credit cards and investment accounts are not available."}`;
 
-const LM_STUDIO_BASE_URL = process.env.LM_STUDIO_BASE_URL || '';
-const LM_STUDIO_MODEL = process.env.LM_STUDIO_MODEL || 'gemma-4-4b';
-const LM_STUDIO_TIMEOUT_MS = 5000;
-
-/**
- * @param {string} userMessage
- * @param {{ role?: string, firstName?: string }} [context]
- * @returns {Promise<object|null>} parsed intent or null to fall through
- */
-async function parseWithLmStudio(userMessage, context = {}) {
-  if (!LM_STUDIO_BASE_URL) return null;
-
-  const systemWithCtx = context.role
-    ? `${SYSTEM}\n\nSigned-in user: role=${context.role}${context.firstName ? ', name=' + context.firstName : ''}. ${
-        context.role === 'admin'
-          ? 'Admin users can query ALL accounts and transactions system-wide, not just their own.'
-          : 'This is a regular customer \u2014 banking actions apply to their own accounts only.'
-      }`
-    : SYSTEM;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), LM_STUDIO_TIMEOUT_MS);
-
-  try {
-    const body = {
-      messages: [
-        { role: 'system', content: systemWithCtx },
-        { role: 'user', content: userMessage },
-      ],
-      temperature: 0.1,
-      max_tokens: 256,
-      response_format: { type: 'json_object' },
-    };
-    if (LM_STUDIO_MODEL) body.model = LM_STUDIO_MODEL;
-
-    const res = await fetch(`${LM_STUDIO_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      console.warn('[lmStudioNlIntent] LM Studio HTTP', res.status);
-      return null;
-    }
-
-    const data = await res.json();
-    const text = data?.choices?.[0]?.message?.content;
-    if (!text) return null;
-
-    const parsed = JSON.parse(text.trim());
-    if (parsed && typeof parsed === 'object' && parsed.kind) return parsed;
-  } catch (e) {
-    if (e.name === 'AbortError') {
-      console.warn('[lmStudioNlIntent] LM Studio timeout (%dms) \u2014 skipping', LM_STUDIO_TIMEOUT_MS);
-    } else {
-      console.warn('[lmStudioNlIntent] LM Studio error:', e.message);
-    }
-  } finally {
-    clearTimeout(timeout);
-  }
-  return null;
-}
-
 /**
  * @param {string} userMessage
  * @param {{ role?: string, firstName?: string }} [context]
  * @returns {Promise<object|null>} parsed result object or null to fall through
  */
-async function parseWithAnthropic(userMessage, context = {}) {
-  if (!ANTHROPIC_API_KEY) return null;
-
+async function parseWithOllama(userMessage, context = {}) {
   const systemWithCtx = context.role
     ? `${SYSTEM}\n\nSigned-in user: role=${context.role}${context.firstName ? ', name=' + context.firstName : ''}. ${
         context.role === 'admin'
           ? 'Admin users can query ALL accounts and transactions system-wide, not just their own.'
-          : 'This is a regular customer \u2014 banking actions apply to their own accounts only.'
+          : 'This is a regular customer — banking actions apply to their own accounts only.'
       }`
     : SYSTEM;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ANTHROPIC_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: 256,
-        system: systemWithCtx,
-        messages: [{ role: 'user', content: userMessage }],
+        model: OLLAMA_MODEL,
+        messages: [
+          { role: 'system', content: systemWithCtx },
+          { role: 'user', content: userMessage },
+        ],
+        stream: false,
+        options: { temperature: 0.1 },
+        format: 'json',
       }),
       signal: controller.signal,
     });
 
     if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      console.warn('[nlIntent] Anthropic HTTP', res.status, errText.slice(0, 200));
+      console.warn('[nlIntent] Ollama HTTP', res.status);
       return null;
     }
 
     const data = await res.json();
-    let text = data?.content?.[0]?.text;
+    const text = data?.message?.content;
     if (!text) return null;
-    text = text.replace(/^```json\s*/i, '').replace(/```\s*$/m, '').trim();
 
-    const parsed = JSON.parse(text);
+    const cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/m, '').trim();
+    const parsed = JSON.parse(cleaned);
     if (parsed && typeof parsed === 'object' && parsed.kind) return parsed;
   } catch (e) {
     if (e.name === 'AbortError') {
-      console.warn('[nlIntent] Anthropic timeout (%dms) \u2014 skipping', ANTHROPIC_TIMEOUT_MS);
+      console.warn('[nlIntent] Ollama timeout (%dms) — skipping', OLLAMA_TIMEOUT_MS);
     } else {
-      console.warn('[nlIntent] Anthropic error:', e.message);
+      console.warn('[nlIntent] Ollama error:', e.message);
     }
   } finally {
     clearTimeout(timeout);
@@ -180,11 +110,11 @@ async function parseWithAnthropic(userMessage, context = {}) {
 /**
  * @param {string} message
  * @param {{ role?: string, firstName?: string }} [context] - user context for role-aware routing
- * @returns {Promise<{ source: 'lmstudio'|'groq'|'anthropic'|'heuristic', result: object }>}
+ * @returns {Promise<{ source: 'ollama'|'heuristic', result: object }>}
  */
 async function parseNaturalLanguage(message, context = {}) {
   // Heuristic-first routing: handles all recognized commands instantly (zero cost, zero latency).
-  // LLM is only attempted when heuristic returns kind:'none' (unrecognized input).
+  // Ollama is only attempted when heuristic returns kind:'none' (unrecognized input).
   
   // 1. Heuristic first — instant, zero-cost, handles all known intents
   const heuristicResult = parseHeuristic(message);
@@ -192,40 +122,18 @@ async function parseNaturalLanguage(message, context = {}) {
     return { source: 'heuristic', result: heuristicResult };
   }
 
-  // 2. Try LM Studio (local, fastest when running) — only for unrecognized input
-  const lmStudio = await parseWithLmStudio(message, context).catch((e) => {
-    console.warn('[nlIntent] LM Studio error:', e.message);
+  // 2. Try Ollama (local LLM) — only for unrecognized input
+  const ollama = await parseWithOllama(message, context).catch((e) => {
+    console.warn('[nlIntent] Ollama error:', e.message);
     return null;
   });
-  if (lmStudio) {
-    const { result, rejected, reason } = sanitizeNlResult(lmStudio, message);
-    if (rejected) console.warn('[nlIntent] LM Studio output rejected → heuristic:', reason);
-    return { source: rejected ? 'heuristic' : 'lmstudio', result };
+  if (ollama) {
+    const { result, rejected, reason } = sanitizeNlResult(ollama, message);
+    if (rejected) console.warn('[nlIntent] Ollama output rejected → heuristic:', reason);
+    return { source: rejected ? 'heuristic' : 'ollama', result };
   }
 
-  // 3. Try Groq (cloud, OpenAI-compatible)
-  const groq = await parseWithGroq(message, context).catch((e) => {
-    console.warn('[nlIntent] Groq error:', e.message);
-    return null;
-  });
-  if (groq) {
-    const { result, rejected, reason } = sanitizeNlResult(groq, message);
-    if (rejected) console.warn('[nlIntent] Groq output rejected → heuristic:', reason);
-    return { source: rejected ? 'heuristic' : 'groq', result };
-  }
-
-  // 4. Try Anthropic (cloud fallback)
-  const anthropic = await parseWithAnthropic(message, context).catch((e) => {
-    console.warn('[nlIntent] Anthropic error:', e.message);
-    return null;
-  });
-  if (anthropic) {
-    const { result, rejected, reason } = sanitizeNlResult(anthropic, message);
-    if (rejected) console.warn('[nlIntent] Anthropic output rejected → heuristic:', reason);
-    return { source: rejected ? 'heuristic' : 'anthropic', result };
-  }
-
-  // 5. Final fallback: heuristic returns kind:'none' (unrecognized)
+  // 3. Final fallback: heuristic returns kind:'none' (unrecognized)
   return { source: 'heuristic', result: heuristicResult };
 }
 

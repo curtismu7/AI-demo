@@ -270,7 +270,8 @@ router.get('/callback', async (req, res) => {
       idToken: tokenData.id_token || null,
       refreshToken: tokenData.refresh_token,
       expiresAt: Date.now() + (tokenData.expires_in * 1000),
-      tokenType: tokenData.token_type || 'Bearer'
+      tokenType: tokenData.token_type || 'Bearer',
+      scope: tokenData.scope || null,
     };
     const clientType = determineClientType(tokenData.access_token);
     const authedUser = user;

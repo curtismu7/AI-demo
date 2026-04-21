@@ -173,7 +173,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 /* Floating: narrower compact rail — chips are smaller and the column scrolls */
 .banking-agent-panel:not(.ba-mode-inline) .ba-left-col {
-  width: 140px;
+  width: 172px;
   gap: 8px;
   padding: 12px 10px;
   border-right: 1px solid var(--ba-border);
@@ -325,6 +325,53 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 .ba-left-config-btn:hover { background: var(--ba-accent-h); color: #fff; }
 .ba-left-config-btn.configured { border-color: var(--ba-accent); color: #fff; background: var(--ba-accent); }
+
+/* ─── Middle column (token chain) ─────────────────────────────────────── */
+.ba-middle-col {
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  align-self: stretch;
+  border-right: 1px solid var(--ba-border);
+  background: var(--ba-surface);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(65, 105, 225, 0.3) transparent;
+}
+
+.ba-middle-col::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ba-middle-col::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ba-middle-col::-webkit-scrollbar-thumb {
+  background: rgba(65, 105, 225, 0.3);
+  border-radius: 3px;
+}
+
+.ba-middle-col::-webkit-scrollbar-thumb:hover {
+  background: rgba(65, 105, 225, 0.5);
+}
+
+/* Resize handle between middle and right columns */
+.ba-middle-col-resize-handle {
+  width: 4px;
+  flex-shrink: 0;
+  background: transparent;
+  cursor: col-resize;
+  border-right: 1px solid transparent;
+  transition: background-color 0.15s, border-color 0.15s;
+  user-select: none;
+}
+
+.ba-middle-col-resize-handle:hover,
+.ba-middle-col-resize-handle:active {
+  background-color: rgba(65, 105, 225, 0.3);
+  border-right-color: rgba(65, 105, 225, 0.6);
+}
 
 /* ─── Right column ────────────────────────────────────────────────────── */
 .ba-right-col {
@@ -1326,8 +1373,8 @@ body > .banking-agent-float-root .banking-agent-panel {
   right: calc(var(--float-edge, 28px) + 400px + 16px);
   bottom: var(--agent-panel-bottom, 96px);
   z-index: 10058; /* just below the agent */
-  width: 220px;
-  max-height: min(50vh, 360px);
+  width: 340px;
+  max-height: min(70vh, 520px);
   display: flex;
   flex-direction: column;
   background: #fff;
@@ -1335,6 +1382,8 @@ body > .banking-agent-float-root .banking-agent-panel {
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.16);
   overflow: hidden;
   animation: agent-slide-up 0.2s ease;
+  /* Width/height are driven by JS resize state — CSS sets only the floor */
+  min-width: 240px;
 }
 
 .bar-rp-header {
@@ -1405,6 +1454,13 @@ body > .banking-agent-float-root .banking-agent-panel {
   border-bottom: 1px solid #f0f0f0;
   color: #161616;
   vertical-align: middle;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar-rp-table td.bar-rp-desc {
+  max-width: 200px;
 }
 
 .bar-rp-table tr:hover td {
@@ -1473,6 +1529,48 @@ body > .banking-agent-float-root .banking-agent-panel {
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 12px;
+}
+
+/* ─── Resize handles ─────────────────────────────────────────── */
+.bar-rp-resize-e,
+.bar-rp-resize-s,
+.bar-rp-resize-se {
+  position: absolute;
+  z-index: 1;
+}
+.bar-rp-resize-e {
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: calc(100% - 12px);
+  cursor: ew-resize;
+}
+.bar-rp-resize-s {
+  bottom: 0;
+  left: 0;
+  width: calc(100% - 12px);
+  height: 6px;
+  cursor: s-resize;
+}
+.bar-rp-resize-se {
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  background: radial-gradient(circle at 80% 80%, rgba(65,105,225,0.35) 40%, transparent 41%),
+              radial-gradient(circle at 80% 80%, rgba(65,105,225,0.20) 60%, transparent 61%);
+  border-bottom-right-radius: 14px;
+}
+.bar-rp-resize-se::after {
+  content: '⟱';
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  font-size: 9px;
+  color: rgba(65,105,225,0.55);
+  line-height: 1;
+  pointer-events: none;
 }
 
 /* ─── Responsive: hide results panel on narrow screens ──────── */

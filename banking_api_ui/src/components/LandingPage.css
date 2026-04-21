@@ -358,6 +358,67 @@
   justify-content: center;
 }
 
+/* ========== Token Chain Section ========== */
+
+.landing-token-chain {
+  padding: 60px 16px 80px;
+  background-color: #FFFFFF;
+  position: relative;
+  z-index: 1;
+}
+
+.landing-token-chain-heading {
+  text-align: left;
+  margin-bottom: 32px;
+}
+
+.landing-token-chain-heading h2 {
+  font-size: 36px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: var(--chase-dark-gray, #333333);
+}
+
+.landing-token-chain-heading p {
+  font-size: 16px;
+  color: #666666;
+  margin: 0;
+  max-width: 640px;
+  line-height: 1.6;
+}
+
+.landing-token-chain-wrapper {
+  max-width: 600px;
+  margin: 0;
+}
+
+/* Side-by-side floating panels row */
+.landing-panels-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+/* Panel overrides for landing page context */
+.fp-token-chain {
+  flex: 0 0 auto;
+}
+
+.fp-token-inspector {
+  flex: 0 0 auto;
+}
+
+/* Compact the inspector when embedded */
+.fp-token-inspector .otdp-container {
+  max-width: 100%;
+  padding: 1rem;
+}
+
+.fp-token-inspector .otdp-grid {
+  grid-template-columns: 1fr;
+}
+
 /* ========== Agent Dock Container (bottom-right on desktop) ========== */
 
 .landing-agent-dock-container {

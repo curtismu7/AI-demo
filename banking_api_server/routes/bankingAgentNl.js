@@ -3,7 +3,7 @@
  * POST /api/banking-agent/nl — natural language → education or banking intent.
  * Authenticated users get role context. Anonymous calls are allowed (marketing agent UX):
  * the SPA routes education + NL hints without PingOne; banking execution still requires sign-in client-side.
- * LLM priority: Groq (GROQ_API_KEY) → Gemini (GEMINI_API_KEY) → heuristic regex.
+ * LLM: heuristic first, then Ollama (local) for unrecognized input.
  */
 'use strict';
 
@@ -33,15 +33,11 @@ router.post('/nl', async (req, res) => {
 
 /** GET /api/banking-agent/nl/status — which LLM backends are configured (no secrets returned). */
 router.get('/nl/status', (req, res) => {
-  const groq = !!process.env.GROQ_API_KEY;
-  const gemini = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY);
-  const activeProvider = groq ? 'groq' : gemini ? 'gemini' : 'heuristic';
+  const ollamaBase = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
   return res.json({
-    groqConfigured: groq,
-    groqModel: groq ? (process.env.GROQ_MODEL || 'llama-3.3-70b-versatile') : null,
-    geminiConfigured: gemini,
-    geminiModel: gemini ? (process.env.GEMINI_MODEL || 'gemini-1.5-flash') : null,
-    activeProvider,
+    activeProvider: 'ollama',
+    ollamaBaseUrl: ollamaBase,
+    ollamaModel: process.env.OLLAMA_MODEL || 'llama3.2',
     heuristicAlwaysAvailable: true,
   });
 });

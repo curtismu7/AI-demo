@@ -25,6 +25,8 @@ jest.mock('../../middleware/auth', () => ({
     }
     try {
       req.user = JSON.parse(h);
+      req.session = req.session || {};
+      req.session.user = req.user;
       return next();
     } catch {
       return res.status(401).json({ error: 'invalid_token' });
@@ -63,6 +65,12 @@ jest.mock('../../services/pingOneAuthorizeService', () => ({
   evaluateTransaction: jest.fn().mockResolvedValue({ decision: 'PERMIT', raw: {} }),
   evaluateMcpToolDelegation: jest.fn().mockResolvedValue({ decision: 'PERMIT', stepUpRequired: false, raw: {} }),
   isMcpDelegationDecisionReady: jest.fn(() => false),
+}));
+
+// ─── Mock HITL consent gate so transfer tests can bypass it ───────────────────
+jest.mock('../../services/transactionConsentChallenge', () => ({
+  ...jest.requireActual('../../services/transactionConsentChallenge'),
+  verifyAndConsumeChallenge: jest.fn(() => ({ ok: true })),
 }));
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -256,6 +264,7 @@ describe('Transaction Flows — POST /api/transactions', () => {
           amount: 100,
           type: 'transfer',
           description: 'Emergency fund',
+          consentChallengeId: 'mock-consent-id',
         });
 
       expect(res.status).toBe(201);

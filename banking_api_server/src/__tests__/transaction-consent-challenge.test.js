@@ -21,6 +21,8 @@ jest.mock('../../middleware/auth', () => ({
     }
     try {
       req.user = JSON.parse(userHeader);
+      req.session = req.session || {};
+      req.session.user = req.user;
       return next();
     } catch {
       return res.status(401).json({ error: 'invalid_token' });
@@ -150,7 +152,7 @@ describe('Transaction consent challenge', () => {
         type: 'withdrawal',
         description: 'x',
       });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(428);
     expect(res.body.error).toBe('consent_challenge_required');
   });
 

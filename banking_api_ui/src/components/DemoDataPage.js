@@ -19,7 +19,7 @@ import './DemoDataPage.css';
 const AGENT_AUTH_DEMO_STORAGE_KEY = 'bx-agent-auth-demo-mode';
 const AGENT_AUTH_DEMO = {
   OAUTH_PKCE: 'oauth_pkce',
-  /** PingOne pi.flow from the /marketing slide panel (hosted login UI), not a password grant. */
+  /** PingOne pi.flow from the `/` landing slide panel (hosted login UI), not a password grant. */
   PI_FLOW_MARKETING: 'pi_flow_marketing',
   BEARER_PASTE: 'bearer_paste',
 };
@@ -916,13 +916,13 @@ export default function DemoDataPage({ user, onLogout }) {
                     idea lives under Application setup if you prefer).
                   </li>
                   <li>
-                    Visit <Link to="/marketing">/marketing</Link>, open the sign-in slide, and continue. Behind the scenes
+                    Visit <Link to="/">/</Link>, open the sign-in slide, and continue. Behind the scenes
                     the app asks PingOne for a <code>pi.flow</code> response so the real login UI is still PingOne’s — not a
                     legacy “password grant” to the token endpoint.
                   </li>
                 </ol>
                 <div className="demo-data-actions demo-data-actions--wrap">
-                  <Link className="demo-data-btn primary" to="/marketing">
+                  <Link className="demo-data-btn primary" to="/">
                     Open marketing page (try sign-in)
                   </Link>
                   <button

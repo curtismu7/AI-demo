@@ -91,6 +91,21 @@ jest.mock('../../data/store', () => ({
   getTransactionById: jest.fn(() => null),
 }));
 
+// ─── Mock configStore to prevent simulated mode from interfering ──────────────
+jest.mock('../../services/configStore', () => ({
+  get: jest.fn((key) => {
+    if (key === 'ff_authorize_simulated') return 'false';
+    if (key === 'authorize_enabled') return null;
+    if (key === 'authorize_policy_id') return null;
+    if (key === 'authorize_decision_endpoint_id') return null;
+    if (key === 'ff_authorize_deposits') return 'false';
+    if (key === 'ff_authorize_fail_open') return 'true';
+    return null;
+  }),
+  getEffective: jest.fn((key) => null),
+  ensureInitialized: jest.fn().mockResolvedValue(undefined),
+}));
+
 // ─── Mock PingOne Authorize service ───────────────────────────────────────────
 // Default decision is PERMIT. Tests can set global.__authorizeGateMockDecision
 // to control the fallback when no mockResolvedValueOnce has been queued.

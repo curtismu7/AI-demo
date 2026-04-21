@@ -4,10 +4,10 @@
 
 const axios = require('axios');
 const { validateResources, RESOURCE_REFERENCE_TABLE } = require('../../services/resourceValidationService');
-const configStore = require('../../config/configStore');
+const configStore = require('../../services/configStore');
 
 jest.mock('axios');
-jest.mock('../../config/configStore');
+jest.mock('../../services/configStore');
 
 describe('Resource Validation Service', () => {
   const mockEnvId = '12345678-1234-1234-1234-123456789012';
@@ -18,9 +18,8 @@ describe('Resource Validation Service', () => {
     configStore.getEffective.mockImplementation((key) => {
       if (key === 'pingone_environment_id') return mockEnvId;
       if (key === 'pingone_region') return 'com';
-      if (key === 'pingone_worker_client_id') return 'worker-client-id';
-      if (key === 'pingone_worker_client_secret') return 'worker-secret';
-      if (key === 'pingone_worker_oauth_endpoint') return 'https://auth.pingone.com';
+      if (key === 'pingone_client_id') return 'worker-client-id';
+      if (key === 'pingone_client_secret') return 'worker-secret';
       return null;
     });
   });
@@ -66,14 +65,14 @@ describe('Resource Validation Service', () => {
         }
       ];
 
-      axios.get.mockResolvedValueOnce({ data: { _embedded: { resources: mockResources } } });
+      axios.get.mockResolvedValueOnce({ data: { resources: mockResources } });
 
       const result = await validateResources();
 
       expect(result.status).toBe('success');
       expect(result.resourceValidation).toHaveLength(5);
       expect(result.resourceValidation[0].status).toBe('CORRECT');
-      expect(result.resourceValidation[0].resourceName).toBe('Super Banking AI Agent');
+      expect(result.resourceValidation[0].name).toBe('Super Banking AI Agent');
     });
 
     it('should detect MISSING resources', async () => {
@@ -97,7 +96,7 @@ describe('Resource Validation Service', () => {
         }
       ];
 
-      axios.get.mockResolvedValueOnce({ data: { _embedded: { resources: mockResources } } });
+      axios.get.mockResolvedValueOnce({ data: { resources: mockResources } });
 
       const result = await validateResources();
 
@@ -106,7 +105,8 @@ describe('Resource Validation Service', () => {
       
       const missingResources = result.resourceValidation.filter(r => r.status === 'MISSING');
       expect(missingResources.length).toBeGreaterThan(0);
-      expect(missingResources[0].resourceName).toBe('Super Banking Banking API');
+      const missingNames = missingResources.map(r => r.name);
+      expect(missingNames).toContain('Super Banking Banking API');
     });
 
     it('should detect CONFIG_ERROR when audience URI does not match', async () => {
@@ -124,7 +124,7 @@ describe('Resource Validation Service', () => {
         }
       ];
 
-      axios.get.mockResolvedValueOnce({ data: { _embedded: { resources: mockResources } } });
+      axios.get.mockResolvedValueOnce({ data: { resources: mockResources } });
 
       const result = await validateResources();
 
@@ -154,14 +154,14 @@ describe('Resource Validation Service', () => {
         }
       ];
 
-      axios.get.mockResolvedValueOnce({ data: { _embedded: { resources: mockResources } } });
+      axios.get.mockResolvedValueOnce({ data: { resources: mockResources } });
 
       const result = await validateResources();
 
       expect(result.status).toBe('success');
       const unexpected = result.resourceValidation.filter(r => r.status === 'UNEXPECTED');
       expect(unexpected.length).toBe(1);
-      expect(unexpected[0].resourceName).toBe('Unexpected Resource');
+      expect(unexpected[0].name).toBe('Unexpected Resource');
     });
 
     it('should handle API errors gracefully', async () => {

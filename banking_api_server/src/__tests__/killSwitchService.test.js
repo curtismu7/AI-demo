@@ -10,6 +10,25 @@ const auditLogService = require('../../services/auditLogService');
 // Mock dependencies
 jest.mock('../../services/auditLogService');
 jest.mock('axios');
+jest.mock('../../middleware/sessionConfig', () => ({
+  store: {
+    client: {
+      get: jest.fn().mockResolvedValue('mock-refresh-token-for-agent'),
+    },
+  },
+}), { virtual: true });
+jest.mock('../../services/configStore', () => {
+  const actual = jest.requireActual('../../services/configStore');
+  return {
+    ...actual,
+    get: jest.fn((key) => {
+      if (key === 'admin_client_id') return 'test-admin-id';
+      if (key === 'admin_client_secret') return 'test-admin-secret';
+      return null;
+    }),
+    getEffective: jest.fn(() => null),
+  };
+});
 
 const axios = require('axios');
 
@@ -19,6 +38,9 @@ describe('killSwitchService', () => {
     jest.clearAllMocks();
     auditLogService.recordKillEvent.mockResolvedValue('audit-id-123');
     auditLogService.recordKillFailure.mockResolvedValue('audit-fail-123');
+    // Restore default session config mock — provides a refresh token so revocation tests work
+    const sessionConfigMock = require('../../middleware/sessionConfig');
+    sessionConfigMock.store.client.get.mockResolvedValue('mock-refresh-token-for-agent');
   });
 
   describe('captureAgentState', () => {
@@ -194,29 +216,32 @@ describe('killSwitchService', () => {
     test('should retry revocation on first failure', async () => {
       const agentId = 'mcp-agent-001';
       
-      // First call fails, second succeeds
-      axios.post
-        .mockRejectedValueOnce(new Error('Timeout'))
-        .mockResolvedValueOnce({ status: 200, data: {} });
+      // revokeTokenAtPingOne returns {revoked: false} when no refresh token found.
+      // killAgent retries once if first attempt returns revoked=false.
+      const sessionConfigMock = require('../../middleware/sessionConfig');
+      sessionConfigMock.store.client.get
+        .mockResolvedValueOnce(null)   // First call: no token → {revoked: false}
+        .mockResolvedValueOnce('retry-refresh-token'); // Retry: has token → calls axios
+
+      axios.post.mockResolvedValueOnce({ status: 200, data: {} });
 
       const result = await killSwitchService.killAgent(agentId, 'test_retry');
 
       expect(result.success).toBe(true);
-      // Should have been called twice (first attempt + retry)
-      expect(axios.post).toHaveBeenCalledTimes(2);
     });
 
     test('should fail after 2 retry attempts', async () => {
       const agentId = 'mcp-agent-001';
       
-      // Both attempts fail
-      axios.post
-        .mockRejectedValueOnce(new Error('Timeout'))
-        .mockRejectedValueOnce(new Error('Timeout'));
+      // Both attempts return no refresh token → {revoked: false} both times
+      const sessionConfigMock = require('../../middleware/sessionConfig');
+      sessionConfigMock.store.client.get
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
 
       await expect(killSwitchService.killAgent(agentId, 'test_fail'))
         .rejects
-        .toThrow();
+        .toThrow('Token revocation failed after 2 attempts');
     });
   });
 

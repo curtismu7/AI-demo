@@ -4,6 +4,7 @@
  */
 
 import { BankingAPIClient } from '../banking/BankingAPIClient';
+import type { HttpTraceEntry } from '../banking/BankingAPIClient';
 import { BankingAuthenticationManager } from '../auth/BankingAuthenticationManager';
 import { BankingSessionManager } from '../storage/BankingSessionManager';
 import { BankingToolRegistry, BankingToolDefinition } from './BankingToolRegistry';
@@ -17,7 +18,7 @@ import { TokenExchangeRequest } from '../interfaces/tokenExchange';
 import { AuditLogger, UserTokenInfo, ExchangedTokenInfo, TokenChainExecutionResult } from '../utils/AuditLogger';
 import { Logger, createDefaultLoggerConfig } from '../utils/Logger';
 import { tokenCache } from '../services/tokenCacheService';
-import { getScopesForTool } from './toolScopeMap';
+import { getScopesForTool, filterToolsByScope } from './toolScopeMap';
 
 export interface ToolExecutionContext {
   session: Session;
@@ -31,6 +32,8 @@ export interface BankingToolResult extends ToolResult {
   success?: boolean;
   error?: string;
   authChallenge?: AuthorizationRequest;
+  originalRequest?: Record<string, any>;  // Original tool params, included in errors for debugging
+  httpTrace?: HttpTraceEntry[];           // Actual HTTP calls made to the banking API
 }
 
 export class BankingToolProvider {
@@ -78,7 +81,7 @@ export class BankingToolProvider {
       const tool = BankingToolRegistry.getTool(toolName);
       if (!tool) {
         console.error(`[BankingToolProvider] Unknown tool requested: ${toolName}`);
-        return this.createErrorResult(`Unknown tool: ${toolName}`);
+        return this.createErrorResult(`Unknown tool: ${toolName}`, params);
       }
 
       console.log(`[BankingToolProvider] Tool found: ${tool.name}, required scopes: [${tool.requiredScopes.join(', ')}]`);
@@ -87,7 +90,7 @@ export class BankingToolProvider {
       const paramValidation = BankingToolValidator.validateToolParams(toolName, params);
       if (!paramValidation.isValid) {
         console.error(`[BankingToolProvider] Parameter validation failed for ${toolName}:`, paramValidation.errors);
-        return this.createErrorResult(`Invalid parameters: ${paramValidation.errors.join(', ')}`);
+        return this.createErrorResult(`Invalid parameters: ${paramValidation.errors.join(', ')}`, params);
       }
 
       console.log(`[BankingToolProvider] Parameters validated successfully for ${toolName}`);
@@ -125,7 +128,9 @@ export class BankingToolProvider {
       };
 
       console.log(`[BankingToolProvider] Executing tool handler: ${tool.handler}`);
+      this.apiClient.startTrace();
       const result = await this.executeSpecificTool(tool, context, agentToken);
+      result.httpTrace = this.apiClient.stopTrace();
 
       const executionTime = Date.now() - startTime;
       console.log(`[BankingToolProvider] Tool execution completed: ${toolName} (${executionTime}ms) - Success: ${result.success}`);
@@ -213,7 +218,7 @@ export class BankingToolProvider {
             toolResultSummary,
             toolResultJson: result.success ? {
               text: result.text,
-              isError: result.isError
+              isError: !!result.error
             } : undefined
           }
         );
@@ -225,8 +230,15 @@ export class BankingToolProvider {
       return result;
 
     } catch (error) {
+      // Collect any HTTP trace entries captured before the exception
+      const errorTrace = this.apiClient.stopTrace();
       const executionTime = Date.now() - startTime;
       console.error(`[BankingToolProvider] Error executing tool ${toolName} (${executionTime}ms):`, error);
+
+      const attachTrace = (r: BankingToolResult): BankingToolResult => {
+        if (errorTrace.length > 0) r.httpTrace = errorTrace;
+        return r;
+      };
 
       if (error instanceof AuthenticationError) {
         console.error(`[BankingToolProvider] Authentication error for ${toolName}: ${error.message}`);
@@ -238,24 +250,33 @@ export class BankingToolProvider {
           );
           return this.createAuthChallengeResult(challenge);
         }
-        return this.createErrorResult(`Authentication error: ${error.message}`);
+        return attachTrace(this.createErrorResult(`Authentication error: ${error.message}`, params));
       }
 
       if (error instanceof BankingAPIError) {
         console.error(`[BankingToolProvider] Banking API error for ${toolName}: ${error.message}`);
-        return this.createErrorResult(`Banking API error: ${error.message}`);
+        return attachTrace(this.createErrorResult(`Banking API error: ${error.message}`, params));
       }
 
       console.error(`[BankingToolProvider] Unexpected error for ${toolName}:`, error);
-      return this.createErrorResult(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return attachTrace(this.createErrorResult(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`, params));
     }
   }
 
   /**
-   * Get available tools for MCP protocol
+   * Get all available tools for MCP protocol (unfiltered).
    */
   getAvailableTools(): BankingToolDefinition[] {
     return BankingToolRegistry.getAllTools();
+  }
+
+  /**
+   * Get tools permitted for the given token scopes (tools/list filtering).
+   * Uses flat scope matching: banking:read / banking:write.
+   * No authz server call — pure token introspection.
+   */
+  getAvailableToolsForToken(tokenScopes: string[]): BankingToolDefinition[] {
+    return filterToolsByScope(BankingToolRegistry.getAllTools(), tokenScopes);
   }
 
   /**
@@ -321,7 +342,7 @@ export class BankingToolProvider {
             context.params as { query: string; context?: string }
           );
         default:
-          return this.createErrorResult(`Unknown non-auth tool handler: ${tool.handler}`);
+          return this.createErrorResult(`Unknown non-auth tool handler: ${tool.handler}`, context.params);
       }
     }
 
@@ -429,7 +450,7 @@ export class BankingToolProvider {
         return await this.executeGetSensitiveAccountDetails(token);
 
       default:
-        return this.createErrorResult(`Unknown tool handler: ${tool.handler}`);
+        return this.createErrorResult(`Unknown tool handler: ${tool.handler}`, context.params);
     }
   }
 
@@ -920,13 +941,20 @@ export class BankingToolProvider {
   /**
    * Create an error tool result
    */
-  private createErrorResult(error: string): BankingToolResult {
-    return {
+  private createErrorResult(error: string, originalRequest?: Record<string, any>): BankingToolResult {
+    const result: BankingToolResult = {
       type: 'text',
       text: `Error: ${error}`,
       success: false,
       error
     };
+    
+    // Include original request in error for debugging (request params are not sensitive auth tokens)
+    if (originalRequest) {
+      result.originalRequest = originalRequest;
+    }
+    
+    return result;
   }
 
   /**

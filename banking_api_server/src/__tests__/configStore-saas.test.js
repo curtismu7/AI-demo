@@ -30,15 +30,15 @@ describe('configStore SaaS / Vercel', () => {
     process.env.KV_REST_API_TOKEN = 'tok';
     const configStore = require('../../services/configStore');
     expect(configStore.isReadOnly()).toBe(false);
-    expect(configStore.hasKvStorage()).toBe(true);
   });
 
-  it('isReadOnly is true when VERCEL without KV', () => {
+  it('isReadOnly is false with SQLite storage backend', () => {
     process.env.VERCEL = '1';
     delete process.env.KV_REST_API_URL;
     delete process.env.KV_REST_API_TOKEN;
     const configStore = require('../../services/configStore');
-    expect(configStore.isReadOnly()).toBe(true);
-    expect(configStore.hasKvStorage()).toBe(false);
+    // SQLite configStore always returns false for isReadOnly
+    expect(configStore.isReadOnly()).toBe(false);
+    expect(configStore.getStorageType()).toBe('sqlite');
   });
 });

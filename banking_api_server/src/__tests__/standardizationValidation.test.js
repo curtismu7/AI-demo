@@ -36,7 +36,7 @@ const STANDARDIZATION_RULES = {
       'JWKS_CACHE_MAX_AGE',
       'STEP_UP_AMOUNT_THRESHOLD',
       'STEP_UP_ACR_VALUE',
-      'GROQ_API_KEY',
+      'OLLAMA_BASE_URL',
       'CIBA_ENABLED',
       'CIBA_TOKEN_DELIVERY_MODE',
       'CIBA_BINDING_MESSAGE',
@@ -640,7 +640,16 @@ module.exports = {
   run100StandardizationValidation
 };
 
-// Run validation if called directly
-if (require.main === module) {
-  run100StandardizationValidation().catch(console.error);
-}
+describe('StandardizationValidator', () => {
+  test('should export validator class and rules', () => {
+    expect(StandardizationValidator).toBeDefined();
+    expect(STANDARDIZATION_RULES).toBeDefined();
+    expect(typeof run100StandardizationValidation).toBe('function');
+  });
+
+  test('should create validator instance', () => {
+    const validator = new StandardizationValidator();
+    expect(validator).toBeDefined();
+    expect(validator.rules).toBeDefined();
+  });
+});

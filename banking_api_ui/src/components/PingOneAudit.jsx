@@ -101,6 +101,7 @@ export default function PingOneAudit() {
   if (!auditResults) {
     return (
       <div className="pingone-audit-container">
+        <h3 className="pingone-audit-title">PingOne Configuration Audit</h3>
         <div className="pingone-audit-empty">
           <p>Click <strong>Run Audit</strong> to validate your PingOne resource configuration.</p>
           <button className="pingone-audit-button pingone-audit-button--primary" onClick={handleRefreshAudit}>

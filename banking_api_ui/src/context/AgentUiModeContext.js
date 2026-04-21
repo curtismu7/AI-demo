@@ -6,7 +6,7 @@ const STORAGE_KEY_V2 = 'banking_agent_ui_v2';
 
 /**
  * @typedef {object} AgentUiState
- * @property {'middle' | 'bottom' | 'none' | 'right-dock'} placement — Middle = split column agent; Bottom = dock; none = float-only; right-dock = collapsible right sidebar (width-resizable).
+ * @property {'middle' | 'bottom' | 'none' | 'right-dock' | 'left-dock'} placement — Middle = split column agent; Bottom = dock; none = float-only; right-dock = collapsible right sidebar (width-resizable); left-dock = collapsible left sidebar.
  * @property {boolean} fab — Also show floating FAB on dashboard routes (invalid with placement none unless true).
  */
 
@@ -49,6 +49,10 @@ function syncLegacyString(state) {
       localStorage.setItem(STORAGE_KEY_LEGACY, 'both');
       return;
     }
+    if (state.placement === 'left-dock') {
+      localStorage.setItem(STORAGE_KEY_LEGACY, 'both');
+      return;
+    }
     localStorage.setItem(STORAGE_KEY_LEGACY, 'both');
   } catch {
     /* ignore */
@@ -66,7 +70,7 @@ function readState() {
       const p = o?.placement;
       const fab = o?.fab;
       if (
-        (p === 'middle' || p === 'bottom' || p === 'none' || p === 'right-dock') &&
+        (p === 'middle' || p === 'bottom' || p === 'none' || p === 'right-dock' || p === 'left-dock') &&
         typeof fab === 'boolean'
       ) {
         if (p === 'none' && !fab) {
@@ -75,7 +79,7 @@ function readState() {
         return { placement: p, fab };
       }
       // Dock types with non-boolean fab default to true
-      if (p === 'right-dock' && typeof fab !== 'boolean') {
+      if ((p === 'right-dock' || p === 'left-dock') && typeof fab !== 'boolean') {
         return { placement: p, fab: true };
       }
     }

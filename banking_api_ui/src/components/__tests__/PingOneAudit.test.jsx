@@ -9,7 +9,8 @@ import PingOneAudit from '../PingOneAudit';
 import apiClient from '../../services/apiClient';
 
 jest.mock('../../services/apiClient', () => ({
-  get: jest.fn()
+  get: jest.fn(() => Promise.resolve({ data: {} })),
+  post: jest.fn(() => Promise.resolve({ data: {} })),
 }));
 
 describe('PingOneAudit Component', () => {
@@ -22,7 +23,7 @@ describe('PingOneAudit Component', () => {
       render(<PingOneAudit />);
       
       expect(screen.getByText(/Click/i)).toBeInTheDocument();
-      expect(screen.getByText('Run Audit')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Run Audit' })).toBeInTheDocument();
     });
 
     it('should display component title', () => {

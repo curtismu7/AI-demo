@@ -26,20 +26,6 @@ exports[`Footer snapshot renders light theme without change 1`] = `
         2026
          All rights reserved.
       </span>
-      <button
-        class="footer-theme-toggle"
-        title="Switch to dark mode"
-        type="button"
-      >
-        🌙 Dark
-      </button>
-      <a
-        class="footer-demo-config"
-        href="/demo-data"
-        title="Sandbox accounts, balances, MFA threshold"
-      >
-        Demo config
-      </a>
     </div>
   </footer>
 </div>
@@ -71,13 +57,6 @@ exports[`Footer snapshot renders without user (logged out) without change 1`] = 
         2026
          All rights reserved.
       </span>
-      <button
-        class="footer-theme-toggle"
-        title="Switch to dark mode"
-        type="button"
-      >
-        🌙 Dark
-      </button>
     </div>
   </footer>
 </div>

@@ -59,6 +59,29 @@ jest.mock('../../services/apiCallTrackerService', () => ({
   trackApiCall: jest.fn(),
 }));
 
+// Mock auth middleware so test requests are not blocked
+const _authOverride = { user: null };
+jest.mock('../../middleware/auth', () => ({
+  authenticateToken: (req, _res, next) => {
+    if (_authOverride.user) {
+      req.user = _authOverride.user;
+    } else {
+      req.user = { id: 'test-admin-id', username: 'admin', role: 'admin', scopes: ['banking:admin'] };
+    }
+    req.session = req.session || {};
+    req.session.user = req.user;
+    return next();
+  },
+  requireScopes: () => (_req, _res, next) => next(),
+  requireAdmin: (_req, _res, next) => next(),
+  hasRequiredScopes: () => true,
+  parseTokenScopes: () => [],
+  requireAIAgent: (_req, _res, next) => next(),
+  requireOwnershipOrAdmin: (_req, _res, next) => next(),
+  requireSession: (_req, _res, next) => next(),
+  hashPassword: (p) => p,
+}));
+
 jest.mock('../../services/pingOneUserService', () => ({
   getUserById: jest.fn(),
 }));
@@ -458,9 +481,15 @@ describe('pingoneTestRoutes — new Phase 151 endpoints', () => {
     }
 
     it('returns error when no user ID is available (no session, no body)', async () => {
+      // Override auth to provide user with no ID
+      _authOverride.user = { username: 'noid', role: 'admin', scopes: ['banking:admin'] };
+
       const res = await request(app)
         .post('/api/pingone-test/update-user-spel')
         .send({});
+
+      // Restore default
+      _authOverride.user = null;
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(false);
@@ -511,14 +540,14 @@ describe('pingoneTestRoutes — new Phase 151 endpoints', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.userId).toBe('user-abc-123');
+      expect(res.body.userId).toBe('test-admin-id');
       expect(res.body.mayAct).toEqual({ sub: 'mcp-cid' });
       expect(res.body.message).toMatch(/re-login/);
       expect(res.body.message).toMatch(/Attribute mapping ensured/);
 
       // Step 1: user attribute PATCH
       expect(mockAxios.patch).toHaveBeenCalledWith(
-        expect.stringMatching(/users\/user-abc-123/),
+        expect.stringMatching(/users\/test-admin-id/),
         { mayAct: { sub: 'mcp-cid' } },
         expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer mock-worker-token' }) })
       );
@@ -586,13 +615,13 @@ describe('pingoneTestRoutes — new Phase 151 endpoints', () => {
 
       const res = await request(app)
         .post('/api/pingone-test/update-user-spel')
-        .send({ userId: 'bad-user-id' });
+        .send({});
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('User not found in PingOne');
+      expect(res.body.error).toBe('Operation failed. Check server logs.');
     });
 
-    it('accepts userId from body (does not require active session)', async () => {
+    it('uses session user ID (ignores userId from body for BOLA prevention)', async () => {
       mockAxios.patch.mockResolvedValue({ data: {} });
       mockAppMappingFlow({ existingMapping: true });
 
@@ -600,7 +629,8 @@ describe('pingoneTestRoutes — new Phase 151 endpoints', () => {
         .post('/api/pingone-test/update-user-spel')
         .send({ userId: 'explicit-user-id' });
 
-      expect(res.body.userId).toBe('explicit-user-id');
+      // Route uses session user, not body userId
+      expect(res.body.userId).toBe('test-admin-id');
       expect(res.body.success).toBe(true);
     });
   });

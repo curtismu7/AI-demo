@@ -379,7 +379,7 @@ describe('LogViewer Component', () => {
         return Promise.resolve({ data: { logs: mockLogs, total: mockLogs.length } });
       });
 
-      render(<LogViewer isOpen={true} onClose={jest.fn()} />);
+      render(<LogViewer isOpen={true} onClose={jest.fn()} standalone={true} />);
 
       await waitFor(() => {
         expect(screen.getByText(/Total: 100/)).toBeInTheDocument();

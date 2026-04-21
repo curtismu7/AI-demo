@@ -13,8 +13,7 @@ class LLMProvider(ABC):
     """
     Abstract base class for pluggable LLM provider adapters.
 
-    Implementations wrap a specific LangChain chat-model backend (Groq,
-    OpenAI, Anthropic, Google, Ollama, LM Studio, …) behind a uniform
+    Implementations wrap a specific LangChain chat-model backend (Ollama) behind a uniform
     interface so the agent core never imports provider-specific packages
     directly.
     """
@@ -22,7 +21,7 @@ class LLMProvider(ABC):
     @property
     @abstractmethod
     def provider_name(self) -> str:
-        """Human-readable provider identifier (e.g. 'groq', 'openai')."""
+        """Human-readable provider identifier (e.g. 'ollama')."""
 
     @property
     @abstractmethod

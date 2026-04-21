@@ -24,21 +24,14 @@ const BUFFER_MAX = 24;
 const CLAIM_TTL_MS = 60_000;
 const TRACE_CLEANUP_MS = 120_000;
 
-// == Vercel KV cross-instance event bridge ==
-// publish() RPUSHes to KV list so SSE subscribers on other Lambda
-// instances receive events via polling. Uses @vercel/kv (HTTP REST).
+// == Cross-instance event bridge (disabled — no KV/Redis) ==
 
-const KV_URL   = process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_REST_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN  || process.env.UPSTASH_REDIS_REST_TOKEN;
+const KV_URL   = null;
+const KV_TOKEN = null;
 let _kvClientOverride = null;
 
 function _getKvClient() {
-  if (_kvClientOverride) return _kvClientOverride;
-  if (!KV_URL || !KV_TOKEN) return null;
-  try {
-    const { createClient } = require('@vercel/kv');
-    return createClient({ url: KV_URL, token: KV_TOKEN });
-  } catch (_) { return null; }
+  return _kvClientOverride || null;
 }
 
 function _kvKey(traceId) {
@@ -46,14 +39,7 @@ function _kvKey(traceId) {
 }
 
 async function kvPublish(traceId, payload) {
-  const kv = _getKvClient();
-  if (!kv) return;
-  try {
-    await kv.rpush(_kvKey(traceId), JSON.stringify(payload));
-    await kv.expire(_kvKey(traceId), 120);
-  } catch (e) {
-    console.warn('[mcpFlowSseHub] kv publish error:', e.message);
-  }
+  // No-op — no KV configured
 }
 
 function startKvPoller(traceId, res) {

@@ -3,7 +3,7 @@
 /**
  * pkceStateCookie.js
  *
- * Vercel (and any serverless host) may route the OAuth callback to a *different*
+ * Serverless / multi-instance hosts may route the OAuth callback to a *different*
  * function instance than the one that initiated the login.  The in-memory
  * express-session cannot share data across instances, so the PKCE state /
  * code_verifier set in the session during /login is missing by the time

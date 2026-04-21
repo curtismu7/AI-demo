@@ -617,12 +617,13 @@ async function get_sensitive_account_details(params, userId, req) {
     const hasElevatedAcr = userAcr === STEP_UP_ACR || userAcr.split(' ').includes(STEP_UP_ACR);
 
     if (!hasElevatedAcr) {
-      // No elevated ACR — trigger step-up (same pattern as high-value transactions)
+      // No session consent and no elevated ACR — require HITL consent before revealing sensitive data.
+      // This mirrors the HITL rule for high-value transactions: human approval IS the authorization.
       return {
         ok: false,
-        step_up_required: true,
-        error: 'step_up_required',
-        step_up_method: runtimeSettings.get('stepUpMethod') || 'email',
+        consent_challenge_required: true,
+        error: 'consent_challenge_required',
+        hitl_threshold_usd: 0,
       };
     }
   }
