@@ -1574,6 +1574,7 @@ export default function BankingAgent({
   }, [isOpen, isLoggedIn]);
 
   // ── Drag-to-move ──────────────────────────────────────────────────────────
+  // Uses pointer capture so dragging continues off-screen onto a second monitor.
   const handleDragStart = useCallback((e) => {
     // Don't intercept button/input clicks
     if (e.target.closest('button, input, textarea, select')) return;
@@ -1586,24 +1587,33 @@ export default function BankingAgent({
     setIsExpanded(false);
     setDragPos({ x: rect.left, y: rect.top });
     e.preventDefault();
+    document.body.style.userSelect = 'none';
+
+    // Capture pointer on the panel so events keep firing even off-browser-window
+    const target = panelRef.current || e.currentTarget;
+    try { target.setPointerCapture(e.pointerId); } catch (_) { /* noop if not pointer event */ }
+
+    function onMove(ev) {
+      if (!isDraggingRef.current) return;
+      // No clamping — allow drag to second screen
+      const x = ev.clientX - dragOffsetRef.current.x;
+      const y = ev.clientY - dragOffsetRef.current.y;
+      setDragPos({ x, y });
+    }
+    function onUp() {
+      isDraggingRef.current = false;
+      document.body.style.userSelect = '';
+      target.removeEventListener('pointermove', onMove);
+      target.removeEventListener('pointerup', onUp);
+      target.removeEventListener('pointercancel', onUp);
+    }
+    target.addEventListener('pointermove', onMove);
+    target.addEventListener('pointerup', onUp);
+    target.addEventListener('pointercancel', onUp);
   }, []);
 
-  useEffect(() => {
-    const onMove = (e) => {
-      if (!isDraggingRef.current) return;
-      // Allow dragging off-page - no constraints
-      const x = e.clientX - dragOffsetRef.current.x;
-      const y = e.clientY - dragOffsetRef.current.y;
-      setDragPos({ x, y });
-    };
-    const onUp = () => { isDraggingRef.current = false; };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup',   onUp);
-    return () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup',   onUp);
-    };
-  }, []);
+  // (drag listeners now attached inline in handleDragStart via pointer capture)
+  useEffect(() => { /* no-op — kept for hook ordering stability */ }, []);
 
   // Resize handler — works whether the panel is at CSS default position or has been dragged.
   // Supports all 8 directions: n, ne, e, se, s, sw, w, nw.
@@ -3426,7 +3436,7 @@ export default function BankingAgent({
             role="button"
             tabIndex={isInline ? -1 : 0}
             className={`ba-header${isInline ? '' : ' banking-agent-drag-handle'}`}
-            onMouseDown={isInline ? undefined : handleDragStart}
+            onPointerDown={isInline ? undefined : handleDragStart}
           >
             <div className="ba-header-top">
               <div className="ba-header-left">
