@@ -381,4 +381,56 @@ router.get('/startup', (_req, res) => {
   });
 });
 
+/**
+ * GET /demo-status
+ * Lightweight startup check used by the UI on first load.
+ * Returns which required servers are reachable and exact start commands for any that are not.
+ * No auth required — called before the user may have logged in.
+ */
+router.get('/demo-status', async (_req, res) => {
+  // Normalise WebSocket URLs (ws:// / wss://) to HTTP so axios health check works
+  const _rawMcpUrl = process.env.MCP_SERVER_URL || 'http://localhost:8080';
+  const mcpServerUrl = _rawMcpUrl.replace(/^ws:\/\//, 'http://').replace(/^wss:\/\//, 'https://');
+  const servers = [];
+
+  // ── BFF API Server ─────────────────────────────────────────────────────────
+  // The fact that this endpoint is responding means the API server is up.
+  servers.push({
+    name: 'Banking API Server',
+    key: 'api_server',
+    up: true,
+    startCmd: 'cd banking_api_server && npm start',
+    description: 'Express BFF — OAuth, sessions, banking REST API',
+    port: process.env.PORT || 3001,
+  });
+
+  // ── MCP Tool Server ─────────────────────────────────────────────────────────
+  let mcpUp = false;
+  let mcpError = null;
+  try {
+    await axios.get(`${mcpServerUrl}/health`, { timeout: 2500 });
+    mcpUp = true;
+  } catch (e) {
+    mcpError = e.code || e.message;
+  }
+  servers.push({
+    name: 'Banking MCP Server',
+    key: 'mcp_server',
+    up: mcpUp,
+    startCmd: 'cd banking_mcp_server && npm run dev',
+    description: 'MCP tool server — provides AI agent banking tools over WebSocket',
+    port: 8080,
+    url: mcpServerUrl,
+    error: mcpUp ? undefined : mcpError,
+  });
+
+  const allUp = servers.every(s => s.up);
+  return res.status(allUp ? 200 : 503).json({
+    ok: allUp,
+    servers,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 module.exports = router;
+
