@@ -136,7 +136,7 @@ export default function LandingPage({ user, onLogout }) {
         </div>
       </section>
 
-      {/* Token Chain + Unified Flow Inspector — side by side, draggable/resizable */}
+      {/* Live Token Chain — draggable/resizable */}
       <section className="landing-token-chain" aria-label="Token chain visualization">
         <div className="landing-token-chain-heading">
           <h2>Live Token Chain &amp; Agent Flow Inspector</h2>
@@ -146,7 +146,7 @@ export default function LandingPage({ user, onLogout }) {
           <FloatingPanel title="Live Token Chain" defaultWidth={480} defaultHeight={520} className="fp-token-chain">
             <TokenChainDisplay />
           </FloatingPanel>
-          <FloatingPanel title="Agent & Token Flow Inspector" defaultWidth={880} defaultHeight={520} className="fp-unified-inspector">
+          <FloatingPanel title="Agent &amp; Token Flow Inspector" defaultWidth={880} defaultHeight={520} className="fp-unified-inspector">
             <UnifiedTokenFlowInspector floatingByDefault={false} showToggle={true} />
           </FloatingPanel>
         </div>
