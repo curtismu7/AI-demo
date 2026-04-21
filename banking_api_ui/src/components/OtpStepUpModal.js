@@ -418,6 +418,19 @@ export default function OtpStepUpModal({
             Cancel
           </button>
         </div>
+
+        <div className="otp-step-up-modal__rfc-footer">
+          <span className="otp-step-up-modal__rfc-label">
+            🔐 <strong>RFC 9470</strong> — OAuth 2.0 Step-Up Authentication Challenge Protocol
+          </span>
+          <span className="otp-step-up-modal__rfc-detail">
+            This resource requires a higher ACR than your current token provides.
+            After verification, a new token with <code>acr: Multi_Factor</code> is issued — the agent retries automatically.
+          </span>
+          <span className="otp-step-up-modal__rfc-refs">
+            RFC 9470 · RFC 6750 §3.1 (WWW-Authenticate) · RFC 8693 (token exchange)
+          </span>
+        </div>
       </div>
     </div>
   );

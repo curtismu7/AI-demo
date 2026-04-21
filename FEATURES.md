@@ -3,6 +3,8 @@
 Every user-visible feature in Super Banking, grouped by area.
 Update this file when a feature is **added**, **removed**, or when test coverage changes.
 
+<!-- SESSION 2026-04-21: Contextual RFC education -->
+
 **Column guide:**
 - `Status`: `active` | `experimental` | `disabled` | `removed` (include last version if removed)
 - `Test file`: path relative to project root. `—` means no automated test — consider adding one.

@@ -1048,6 +1048,41 @@
   color: #0284c7;
 }
 
+/* OTP Step-Up Modal — RFC 9470 education footer */
+.otp-step-up-modal__rfc-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 1.1rem;
+  padding: 0.6rem 0.75rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  color: #0369a1;
+  line-height: 1.45;
+}
+.otp-step-up-modal__rfc-label {
+  font-weight: 600;
+  color: #0c4a6e;
+}
+.otp-step-up-modal__rfc-detail {
+  color: #0369a1;
+}
+.otp-step-up-modal__rfc-detail code {
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  background: #e0f2fe;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+.otp-step-up-modal__rfc-refs {
+  font-size: 0.68rem;
+  color: #0369a1;
+  opacity: 0.8;
+  font-style: italic;
+}
+
 /* ── Phase 163: Sidebar layout offset ─────────────────────────────────────────
    Push main content right so the fixed sidebar doesn't overlay it.
    Only applies when sidebar is rendered (user is logged in).

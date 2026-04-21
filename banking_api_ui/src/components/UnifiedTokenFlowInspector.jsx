@@ -24,21 +24,21 @@ import './UnifiedTokenFlowInspector.css';
 // ============================================================================
 
 const CLAIM_GLOSSARY = {
-  sub: 'Subject — unique identifier of the authenticated user',
-  iss: 'Issuer — the PingOne authorization server that issued this token',
-  aud: 'Audience — the resource server(s) this token is valid for',
-  exp: 'Expiration — Unix epoch time after which the token MUST be rejected',
-  iat: 'Issued At — Unix epoch time when the token was created',
-  scope: 'Scopes — permissions granted to the bearer',
-  client_id: 'Client ID — the OAuth 2.0 application that requested this token',
-  env: 'PingOne Environment ID',
-  org: 'PingOne Organization ID',
-  act: 'Actor claim (RFC 8693) — identifies the party acting on behalf of the subject',
-  may_act: 'May Act — allows the named client to perform a Token Exchange with this token',
-  acr: 'Authentication Context Class Reference — level of assurance (e.g. Multi_Factor)',
-  amr: 'Authentication Methods References — how the user authenticated',
-  sid: 'Session ID — PingOne session identifier',
-  auth_time: 'Authentication Time — when the user last authenticated',
+  sub: 'Subject (RFC 7519 §4.1.2) — unique identifier of the authenticated user. The resource server uses sub to identify who the token represents.',
+  iss: 'Issuer (RFC 7519 §4.1.1) — the PingOne authorization server URL that signed and issued this token. Relying parties MUST verify iss.',
+  aud: 'Audience (RFC 7519 §4.1.3 · RFC 8707) — resource server(s) this token is scoped to. RFC 8707 Resource Indicators bind the token to a single audience, preventing reuse on other services.',
+  exp: 'Expiration (RFC 7519 §4.1.4) — Unix epoch after which the token MUST be rejected. Short-lived tokens limit blast radius if intercepted.',
+  iat: 'Issued At (RFC 7519 §4.1.6) — Unix epoch when the token was created by PingOne AS.',
+  scope: 'Scope (RFC 6749 §3.3) — permissions granted to the bearer. Scope is space-delimited; resource servers MUST reject tokens missing a required scope. Token Exchange (RFC 8693) can only narrow scope, never expand it.',
+  client_id: 'Client ID — the OAuth 2.0 application (RFC 6749 §2.2) that originally requested this token.',
+  env: 'PingOne Environment ID — identifies the tenant/environment that issued the token.',
+  org: 'PingOne Organization ID.',
+  act: 'Actor (RFC 8693 §4.1) — identifies the party currently acting on behalf of the subject. Present on tokens issued via Token Exchange; proves delegation chain. Nested act = multi-hop delegation.',
+  may_act: 'May Act (RFC 8693 §4.2) — claim on the SUBJECT token that pre-authorizes a named client_id to perform Token Exchange on the subject\'s behalf. Without may_act, the BFF cannot exchange this token.',
+  acr: 'Authentication Context Class Reference (RFC 9470 · OpenID Core §2) — level of assurance. "Multi_Factor" means MFA was used. Resources that require step-up authentication reject tokens with a lower ACR.',
+  amr: 'Authentication Methods References (OpenID Core §2) — how the user authenticated (e.g. pwd, otp, fido).',
+  sid: 'Session ID — PingOne session identifier used for Single Sign-Out.',
+  auth_time: 'Authentication Time (OpenID Core §2) — when the user last authenticated. Used to enforce max_age and step-up policies.',
 };
 
 function formatTimestamp(ts) {
@@ -61,7 +61,19 @@ function calculateTimeRemaining(expTs) {
 }
 
 function ScopesBadges({ scope }) {
-  if (!scope) return <span className="utfi-muted">No scopes</span>;
+  if (!scope) return (
+    <div className="utfi-no-scopes-callout">
+      <span className="utfi-no-scopes-icon">⚠️</span>
+      <div className="utfi-no-scopes-body">
+        <span className="utfi-no-scopes-title">No scopes on this token</span>
+        <span className="utfi-no-scopes-detail">
+          RFC 6749 §3.3 — scopes are required for MCP tool calls.
+          Sign out → sign in with the PingOne app that requests
+          <code>banking:read</code>, <code>banking:write</code> scopes.
+        </span>
+      </div>
+    </div>
+  );
   const scopes = typeof scope === 'string' ? scope.split(' ') : scope;
   return (
     <div className="utfi-scopes">
@@ -104,7 +116,7 @@ function statusBadge(status) {
 // LEFT: AGENT REQUEST FLOW SECTION
 // ============================================================================
 
-function AgentFlowSection({ compact = false }) {
+function AgentFlowSection({ compact = false, onSelectToken, selectedTokenId: selectedTokenIdFromParent }) {
   const [snap, setSnap] = useState(() => agentFlowDiagram.getState());
   const [tokenChain, setTokenChain] = useState([]);
   const [showTokenChain, setShowTokenChain] = useState(false);
@@ -162,6 +174,16 @@ function AgentFlowSection({ compact = false }) {
         <div className="utfi-empty-state">
           <p>Use the Banking Agent (e.g. My Accounts) to see the request flow here.</p>
         </div>
+        <div className="utfi-flow-primer">
+          <div className="utfi-primer-title">What you&apos;ll see when an action runs:</div>
+          <ol className="utfi-primer-steps">
+            <li><strong>BFF receives user token</strong> — httpOnly cookie, never in the browser</li>
+            <li><strong>RFC 8693 Token Exchange</strong> — user token → MCP-scoped access token with <code>act</code> claim</li>
+            <li><strong>RFC 8707 Audience binding</strong> — token locked to <code>mcp-server</code> audience only</li>
+            <li><strong>RFC 6749 §3.3 Scope narrowing</strong> — only the tool&apos;s required scopes survive the exchange</li>
+            <li><strong>MCP tool executes</strong> — Banking API validates token <code>aud</code>, <code>scope</code>, and <code>act</code></li>
+          </ol>
+        </div>
       </div>
     );
   }
@@ -178,7 +200,14 @@ function AgentFlowSection({ compact = false }) {
 
       <div className="utfi-agent-flow-body">
         {hint && steps.length === 0 && <p className="utfi-hint">{hint}</p>}
-        {steps.length === 0 && !hint && <p className="utfi-empty-msg">Ready for agent requests…</p>}
+        {steps.length === 0 && !hint && (
+          <div className="utfi-ready-state">
+            <p className="utfi-empty-msg">Ready for agent requests…</p>
+            <div className="utfi-ready-rfc-hint">
+              Each action triggers: <strong>PKCE login</strong> → <strong>RFC 8693 exchange</strong> → <strong>RFC 8707 aud binding</strong> → <strong>scope-narrowed MCP token</strong>
+            </div>
+          </div>
+        )}
 
         {/* Token Exchange Flow Diagram */}
         {steps.length > 0 && (
@@ -226,7 +255,7 @@ function AgentFlowSection({ compact = false }) {
         {showTokenChain && tokenChain.length > 0 && (
           <div className="utfi-token-chain-section">
             <div className="utfi-token-chain-header">
-              <span>Current Token Chain</span>
+              <span>Current Token Chain (click to inspect)</span>
               <button
                 className="utfi-btn utfi-btn-sm"
                 onClick={() => setShowTokenChain(!showTokenChain)}
@@ -238,7 +267,19 @@ function AgentFlowSection({ compact = false }) {
             {showTokenChain && (
               <div className="utfi-token-chain">
                 {tokenChain.map((token) => (
-                  <div key={token.id} className="utfi-token-event">
+                  <div 
+                    key={token.id} 
+                    className={`utfi-token-event ${selectedTokenIdFromParent === token.id ? 'utfi-token-event--selected' : ''}`}
+                    onClick={() => onSelectToken?.(token)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSelectToken?.(token);
+                      }
+                    }}
+                  >
                     <div className="utfi-token-meta">
                       <span className={`utfi-token-type utfi-token-type--${token.tokenType}`}>
                         {token.tokenType?.replace('_', ' ').toUpperCase() || 'TOKEN'}
@@ -268,7 +309,7 @@ function AgentFlowSection({ compact = false }) {
 // RIGHT: OAUTH TOKEN INSPECTOR SECTION
 // ============================================================================
 
-function OAuthInspectorSection() {
+function OAuthInspectorSection({ selectedToken }) {
   const [userStatus, setUserStatus] = useState(null);
   const [tokenClaims, setTokenClaims] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -284,45 +325,90 @@ function OAuthInspectorSection() {
     provider: true,
     account: true,
     rawJson: false,
+    tokenExchange: true,
   });
 
-  useEffect(() => {
-    let cancelled = false;
+  // Token exchange details state
+  const [tokenExchangeEvents, setTokenExchangeEvents] = useState([]);
+  const [displayedTokenId, setDisplayedTokenId] = useState(null);
 
-    async function fetchTokenData() {
-      try {
-        const statusRes = await bffAxios.get('/api/auth/oauth/user/status');
-        if (!cancelled) setUserStatus(statusRes.data);
+  // Refetch token data whenever auth state changes or agent actions complete
+  const fetchTokenData = useCallback(async (skipLoading = false) => {
+    if (!skipLoading) setLoading(true);
 
-        if (!statusRes.data.authenticated) {
-          if (!cancelled) {
-            setError('no_session');
-            setLoading(false);
-          }
-          return;
-        }
+    try {
+      const statusRes = await bffAxios.get('/api/auth/oauth/user/status');
+      setUserStatus(statusRes.data);
+      setError(null);
 
-        const previewRes = await bffAxios.get('/api/tokens/session-preview');
-        const events = previewRes.data?.tokenEvents || [];
-        const userTokenEvent = events.find(
-          (e) => e.decoded && (e.id === 'user-token' || e.label?.toLowerCase().includes('user'))
-        );
-        if (!cancelled) {
-          setTokenClaims(userTokenEvent?.decoded || null);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error('OAuthInspectorSection fetch error:', err.message);
-        if (!cancelled) {
-          setError('fetch_failed');
-          setLoading(false);
-        }
+      if (!statusRes.data.authenticated) {
+        setError('no_session');
+        setTokenClaims(null);
+        setEnrichedInfo(null);
+        setLoading(false);
+        return;
       }
-    }
 
-    fetchTokenData();
-    return () => { cancelled = true; };
+      const previewRes = await bffAxios.get('/api/tokens/session-preview');
+      const events = previewRes.data?.tokenEvents || [];
+      const userTokenEvent = events.find(
+        (e) => e.decoded && (e.id === 'user-token' || e.label?.toLowerCase().includes('user'))
+      );
+      setTokenClaims(userTokenEvent?.decoded || null);
+      setTokenExchangeEvents(events);
+      setError(null);
+      setLoading(false);
+    } catch (err) {
+      console.error('OAuthInspectorSection fetch error:', err.message);
+      setError('fetch_failed');
+      setLoading(false);
+    }
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    fetchTokenData();
+  }, [fetchTokenData]);
+
+  // When selectedToken changes, update the displayed token claims
+  useEffect(() => {
+    if (selectedToken) {
+      // Use decoded data directly from the selected token if available
+      if (selectedToken.decoded) {
+        setTokenClaims(selectedToken.decoded);
+        setDisplayedTokenId(selectedToken.id);
+      } else {
+        // If token doesn't have decoded data but has raw fields, construct claims
+        // Extract all token-related fields (they might use different naming conventions)
+        const constructedPayload = {
+          sub: selectedToken.tokenSub,
+          act: selectedToken.tokenAct,
+          scope: selectedToken.tokenScope || selectedToken.scope,
+          aud: selectedToken.tokenAud || selectedToken.aud,
+          iat: selectedToken.tokenIat || selectedToken.iat,
+          exp: selectedToken.tokenExp || selectedToken.exp,
+          client_id: selectedToken.client_id,
+          env: selectedToken.env,
+          iss: selectedToken.iss,
+          may_act: selectedToken.may_act,
+          acr: selectedToken.acr,
+        };
+        // Filter out undefined/null values
+        const payload = Object.fromEntries(
+          Object.entries(constructedPayload).filter(([_, v]) => v !== undefined && v !== null)
+        );
+        setTokenClaims({ payload });
+        setDisplayedTokenId(selectedToken.id);
+      }
+    } else if (displayedTokenId && tokenExchangeEvents.length > 0) {
+      // If no token selected, revert to user token
+      const userTokenEvent = tokenExchangeEvents.find(
+        (e) => e.decoded && (e.id === 'user-token' || e.label?.toLowerCase().includes('user'))
+      );
+      setTokenClaims(userTokenEvent?.decoded || null);
+      setDisplayedTokenId(null);
+    }
+  }, [selectedToken, tokenExchangeEvents, displayedTokenId]);
 
   useEffect(() => {
     if (!userStatus?.authenticated) return;
@@ -333,6 +419,47 @@ function OAuthInspectorSection() {
       .finally(() => { if (!cancelled) setEnrichedLoading(false); });
     return () => { cancelled = true; };
   }, [userStatus?.authenticated]);
+
+  // Refetch token data when user authenticates (login)
+  useEffect(() => {
+    const handleAuth = () => {
+      fetchTokenData(true); // skipLoading = true for faster UX
+    };
+    window.addEventListener('userAuthenticated', handleAuth);
+    return () => window.removeEventListener('userAuthenticated', handleAuth);
+  }, [fetchTokenData]);
+
+  // Refetch token data when agent action completes (token exchange, etc.)
+  useEffect(() => {
+    const handleAgentResult = () => {
+      fetchTokenData(true); // skipLoading = true for faster UX
+    };
+    window.addEventListener('banking-agent-result', handleAgentResult);
+    return () => window.removeEventListener('banking-agent-result', handleAgentResult);
+  }, [fetchTokenData]);
+
+  // Periodically refetch to catch token refreshes and expiry updates (every 30s)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (userStatus?.authenticated) {
+        fetchTokenData(true); // skipLoading = true for background refresh
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [userStatus?.authenticated, fetchTokenData]);
+
+  // Clear state when user logs out
+  useEffect(() => {
+    const handleLogout = () => {
+      setUserStatus(null);
+      setTokenClaims(null);
+      setEnrichedInfo(null);
+      setError('no_session');
+      setLoading(false);
+    };
+    window.addEventListener('userLoggedOut', handleLogout);
+    return () => window.removeEventListener('userLoggedOut', handleLogout);
+  }, []);
 
   const expTs = tokenClaims?.payload?.exp;
   const updateTimeRemaining = useCallback(() => {
@@ -346,6 +473,38 @@ function OAuthInspectorSection() {
     const interval = setInterval(updateTimeRemaining, 30000);
     return () => clearInterval(interval);
   }, [expTs, updateTimeRemaining]);
+
+  // Capture token exchange events from agent actions
+  useEffect(() => {
+    const handleAgentResult = (e) => {
+      const detail = e.detail || {};
+      if (detail.tokenEvents && Array.isArray(detail.tokenEvents)) {
+        setTokenExchangeEvents(prev => {
+          const merged = [...(prev || []), ...detail.tokenEvents];
+          // Keep last 20 events
+          return merged.slice(-20);
+        });
+      }
+    };
+    window.addEventListener('banking-agent-token-events', handleAgentResult);
+    return () => window.removeEventListener('banking-agent-token-events', handleAgentResult);
+  }, []);
+
+  // Also listen for generic agent result and extract token events from response
+  useEffect(() => {
+    const handleAgentResult = () => {
+      // Fetch latest token events from session preview
+      bffAxios.get('/api/tokens/session-preview')
+        .then(res => {
+          if (res.data?.tokenEvents) {
+            setTokenExchangeEvents(res.data.tokenEvents);
+          }
+        })
+        .catch(() => {});
+    };
+    window.addEventListener('banking-agent-result', handleAgentResult);
+    return () => window.removeEventListener('banking-agent-result', handleAgentResult);
+  }, []);
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -433,6 +592,9 @@ function OAuthInspectorSection() {
         <span className="utfi-section-icon">🔑</span>
         <h3>OAuth Token Inspector</h3>
         <div className="utfi-status-badges">
+          {displayedTokenId && (
+            <span className="utfi-badge utfi-badge--info">Selected: {displayedTokenId}</span>
+          )}
           {isExpired ? (
             <span className="utfi-badge utfi-badge--expired">⚠ Expired</span>
           ) : (
@@ -462,14 +624,124 @@ function OAuthInspectorSection() {
               </span>
               <ScopesBadges scope={payload.scope} />
             </div>
+            {!payload.scope && (
+              <div className="utfi-rfc-inline-hint">RFC 6749 §3.3 — this token has no scope claim. It cannot authorize MCP tool calls. Re-authenticate with a PingOne app configured to request banking scopes.</div>
+            )}
             <ClaimRow label="Audience (aud)" value={Array.isArray(payload.aud) ? payload.aud.join(', ') : payload.aud} glossary={CLAIM_GLOSSARY.aud} />
             <ClaimRow label="Client ID" value={payload.client_id} glossary={CLAIM_GLOSSARY.client_id} />
-            {payload.may_act && <ClaimRow label="May Act" value={payload.may_act} glossary={CLAIM_GLOSSARY.may_act} />}
-            {payload.act && <ClaimRow label="Actor (act)" value={payload.act} glossary={CLAIM_GLOSSARY.act} />}
+            {payload.may_act && (
+              <>
+                <ClaimRow label="may_act" value={typeof payload.may_act === 'object' ? JSON.stringify(payload.may_act) : payload.may_act} glossary={CLAIM_GLOSSARY.may_act} />
+                <div className="utfi-rfc-inline-hint utfi-rfc-inline-hint--good">✅ RFC 8693 §4.2 — may_act present. The BFF (client_id above) is pre-authorized to call Token Exchange on this user&apos;s behalf and obtain a delegated MCP token.</div>
+              </>
+            )}
+            {!payload.may_act && payload.sub && (
+              <div className="utfi-rfc-inline-hint">⚠️ RFC 8693 §4.2 — may_act absent. Token Exchange will fall back to subject-only mode (no act claim in MCP token, weaker delegation proof). Enable may_act in PingOne for full delegation.</div>
+            )}
+            {payload.act && (
+              <>
+                <div className="utfi-act-chain">
+                  <span className="utfi-act-chain-label" title={CLAIM_GLOSSARY.act}>Actor chain (act) — RFC 8693 §4.1</span>
+                  <code className="utfi-act-chain-value">{typeof payload.act === 'object' ? JSON.stringify(payload.act, null, 2) : payload.act}</code>
+                  <div className="utfi-rfc-inline-hint utfi-rfc-inline-hint--good">✅ act claim present — BFF identity is cryptographically bound in this token. MCP server can verify the delegation chain without trusting the caller.</div>
+                </div>
+              </>
+            )}
+            {payload.scope && (
+              <div className="utfi-rfc-inline-hint utfi-rfc-inline-hint--info">RFC 6749 §3.3 · RFC 8693 §2.1 — Token Exchange can only narrow these scopes. The MCP token will carry a subset of what you see here.</div>
+            )}
           </>
         ))}
 
-        {renderSection('validity', 'Token Validity', '⏱', (
+        {renderSection('tokenExchange', 'Token Exchange & Scopes', '🔄', (
+          <div className="utfi-token-exchange-events">
+            {tokenExchangeEvents.length === 0 ? (
+              <div className="utfi-exchange-empty">
+                <p className="utfi-exchange-desc">Perform a banking action (transfer, deposit, etc.) to see token exchanges and scopes in real-time</p>
+                <div className="utfi-exchange-rfc-primer">
+                  <div className="utfi-exchange-primer-row"><span className="utfi-primer-rfc">RFC 8693 §3.1</span> Subject token in → MCP access token out, scope narrowed, <code>act</code> claim added</div>
+                  <div className="utfi-exchange-primer-row"><span className="utfi-primer-rfc">RFC 8707</span> <code>resource</code> parameter binds the new token to a single audience</div>
+                  <div className="utfi-exchange-primer-row"><span className="utfi-primer-rfc">RFC 6749 §3.3</span> Exchange cannot grant scopes the user token doesn&apos;t already have</div>
+                  <div className="utfi-exchange-primer-row"><span className="utfi-primer-rfc">RFC 9470</span> Step-up: if ACR is insufficient, the server challenges before exchange</div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="utfi-exchange-desc">Real-time token lifecycle — scopes and claims as tokens are exchanged</p>
+                <div className="utfi-exchange-timeline">
+                  {tokenExchangeEvents.map((evt, idx) => (
+                    <div key={idx} className="utfi-exchange-event">
+                      <div className="utfi-event-header">
+                        <span className="utfi-event-time">
+                          {evt.timestamp ? new Date(evt.timestamp).toLocaleTimeString() : 'N/A'}
+                        </span>
+                        <span className={`utfi-event-status utfi-event-status--${evt.status || 'info'}`}>
+                          {evt.label || evt.id || 'Event'}
+                        </span>
+                      </div>
+                      
+                      <div className="utfi-event-details">
+                        {evt.decoded?.payload && (
+                          <div className="utfi-event-claims">
+                            {evt.decoded.payload.scope && (
+                              <div className="utfi-event-row">
+                                <span className="utfi-event-label">Scopes:</span>
+                                <div className="utfi-scopes-inline">
+                                  {typeof evt.decoded.payload.scope === 'string' 
+                                    ? evt.decoded.payload.scope.split(' ').map((s, i) => (
+                                        <span key={i} className="utfi-scope-badge">{s}</span>
+                                      ))
+                                    : <span className="utfi-scope-badge">{evt.decoded.payload.scope}</span>
+                                  }
+                                </div>
+                              </div>
+                            )}
+                            {evt.decoded.payload.aud && (
+                              <div className="utfi-event-row">
+                                <span className="utfi-event-label">Audience (aud):</span>
+                                <code className="utfi-event-value">{evt.decoded.payload.aud}</code>
+                              </div>
+                            )}
+                            {evt.decoded.payload.act && (
+                              <div className="utfi-event-row">
+                                <span className="utfi-event-label">Actor (act):</span>
+                                <code className="utfi-event-value">{JSON.stringify(evt.decoded.payload.act)}</code>
+                              </div>
+                            )}
+                            {evt.decoded.payload.may_act && (
+                              <div className="utfi-event-row">
+                                <span className="utfi-event-label">May Act:</span>
+                                <code className="utfi-event-value">✓ Delegation authorized</code>
+                              </div>
+                            )}
+                            {evt.decoded.payload.sub && (
+                              <div className="utfi-event-row">
+                                <span className="utfi-event-label">Subject:</span>
+                                <code className="utfi-event-value">{evt.decoded.payload.sub.slice(0, 16)}…</code>
+                              </div>
+                            )}
+                            {evt.decoded.payload.acr && (
+                              <div className="utfi-event-row">
+                                <span className="utfi-event-label">Auth Level (acr):</span>
+                                <span className="utfi-event-value">{evt.decoded.payload.acr}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {evt.message && (
+                          <div className="utfi-event-message">{evt.message}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+
+        {(payload.iat || payload.exp || timeRemaining) && renderSection('validity', 'Token Validity', '⏱', (
           <>
             <ClaimRow label="Issued At" value={payload.iat ? formatTimestamp(payload.iat) : null} glossary={CLAIM_GLOSSARY.iat} />
             <ClaimRow label="Expires At" value={payload.exp ? formatTimestamp(payload.exp) : null} glossary={CLAIM_GLOSSARY.exp} />
@@ -484,7 +756,7 @@ function OAuthInspectorSection() {
           </>
         ))}
 
-        {renderSection('provider', 'Provider', '🏛', (
+        {(payload.iss || header.alg || payload.env) && renderSection('provider', 'Provider', '🏛', (
           <>
             <ClaimRow label="Issuer (iss)" value={payload.iss} glossary={CLAIM_GLOSSARY.iss} />
             <ClaimRow label="Algorithm" value={header.alg} />
@@ -521,6 +793,8 @@ function OAuthInspectorSection() {
 export default function UnifiedTokenFlowInspector({ floatingByDefault = false, showToggle = true }) {
   const [isFloating, setIsFloating] = useState(floatingByDefault);
   const [snap, setSnap] = useState(() => agentFlowDiagram.getState());
+  const [visible, setVisible] = useState(true);
+  const [selectedToken, setSelectedToken] = useState(null);
 
   const { pos, size, handleDragStart } = useDraggablePanel(
     () => ({
@@ -537,6 +811,7 @@ export default function UnifiedTokenFlowInspector({ floatingByDefault = false, s
 
   useEffect(() => {
     const onOpen = () => {
+      setVisible(true);
       agentFlowDiagram.open();
       if (!agentFlowDiagram.getState().steps?.length) {
         agentFlowDiagram.reset();
@@ -546,17 +821,34 @@ export default function UnifiedTokenFlowInspector({ floatingByDefault = false, s
     return () => window.removeEventListener('agent-flow-diagram-open', onOpen);
   }, []);
 
-  const handleEsc = useCallback((e) => {
-    if (e.key === 'Escape' && isFloating) {
+  const handleClose = useCallback(() => {
+    if (isFloating) {
       agentFlowDiagram.close();
+    }
+    setVisible(false);
+    // If opened as a standalone pop-out (/agent), try to close the window
+    // (Note: window.close() only works for windows opened by JavaScript, but won't harm)
+    try {
+      if (window.name === 'BankingAgent' && window.opener) {
+        window.close();
+      }
+    } catch (e) {
+      // Silently ignore if close is not allowed (security restriction)
     }
   }, [isFloating]);
 
+  const handleEsc = useCallback((e) => {
+    if (e.key === 'Escape') {
+      handleClose();
+    }
+  }, [handleClose]);
+
   useEffect(() => {
-    if (!isFloating) return;
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
-  }, [isFloating, handleEsc]);
+  }, [handleEsc]);
+
+  if (!visible) return null;
 
   const content = (
     <div className={`utfi-container ${isFloating ? 'utfi-floating' : 'utfi-fixed'}`}>
@@ -576,26 +868,24 @@ export default function UnifiedTokenFlowInspector({ floatingByDefault = false, s
               {isFloating ? '📌' : '⛓'}
             </button>
           )}
-          {isFloating && (
-            <button
-              className="utfi-btn"
-              onClick={() => agentFlowDiagram.close()}
-              title="Close (Esc)"
-              aria-label="Close"
-            >
-              ×
-            </button>
-          )}
+          <button
+            className="utfi-btn utfi-btn-close"
+            onClick={handleClose}
+            title="Close (Esc)"
+            aria-label="Close"
+          >
+            ×
+          </button>
         </div>
       </div>
 
       <div className="utfi-content">
         <div className="utfi-left">
-          <AgentFlowSection />
+          <AgentFlowSection onSelectToken={setSelectedToken} selectedTokenId={selectedToken?.id} />
         </div>
         <div className="utfi-divider"></div>
         <div className="utfi-right">
-          <OAuthInspectorSection />
+          <OAuthInspectorSection selectedToken={selectedToken} />
         </div>
       </div>
     </div>
