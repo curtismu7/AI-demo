@@ -48,6 +48,7 @@ function writeMcpTrafficEntry(entry) {
         ok: true,
         summary: '',
         correlationId: null,
+        payload: null,
         ...entry,
     };
     // Ring buffer (newest first)

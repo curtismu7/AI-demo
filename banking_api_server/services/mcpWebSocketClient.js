@@ -227,6 +227,7 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
               ok: true,
               summary: `RPC → ${followMethod}${followParams && followParams.name ? ' ' + followParams.name : ''}`,
               correlationId: correlationId || null,
+              payload: { method: followMethod, params: followParams },
             });
             ws.send(
               JSON.stringify({
@@ -264,6 +265,7 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
                 ok: false,
                 summary: `RPC ← ${followMethod} ERROR: ${mcpErr.message}`,
                 correlationId: correlationId || null,
+                payload: { error: msg.error },
               });
               reject(mcpErr);
             } else {
@@ -277,6 +279,7 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
                 ok: true,
                 summary: `RPC ← ${followMethod}${followParams && followParams.name ? ' ' + followParams.name : ''} OK (${Date.now() - _mcpTrafficT0}ms)`,
                 correlationId: correlationId || null,
+                payload: { result: msg.result },
               });
               resolve(msg.result);
             }

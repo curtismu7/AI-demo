@@ -381,7 +381,7 @@ function generateTransactionId() {
 async function exchangeTokenRfc8693(userToken, actorToken, mcpResourceUri, finalScopes) {
   let exchangedToken = null;
   const _exchangeT0 = Date.now();
-  writeMcpTrafficEntry({ dir: 'BFF→PingOne', type: 'exchange_request', method: 'token_exchange', tool: null, ok: true, summary: `RFC 8693 exchange → scopes: ${(finalScopes||[]).join(' ')} aud: ${mcpResourceUri||'(default)'}` });
+  writeMcpTrafficEntry({ dir: 'BFF→PingOne', type: 'exchange_request', method: 'token_exchange', tool: null, ok: true, summary: `RFC 8693 exchange → scopes: ${(finalScopes||[]).join(' ')} aud: ${mcpResourceUri||'(default)'}`, payload: { grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange', audience: mcpResourceUri, scope: (finalScopes||[]).join(' '), has_actor_token: !!(actorToken) } });
   
   try {
     const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
@@ -402,11 +402,11 @@ async function exchangeTokenRfc8693(userToken, actorToken, mcpResourceUri, final
     }
   } catch (err) {
     errorLog('[RFC8693Exchange]', err.message);
-    writeMcpTrafficEntry({ dir: 'PingOne→BFF', type: 'error', method: 'token_exchange', tool: null, durationMs: Date.now()-_exchangeT0, ok: false, summary: `RFC 8693 exchange ← ERROR: ${err.message}` });
+    writeMcpTrafficEntry({ dir: 'PingOne→BFF', type: 'error', method: 'token_exchange', tool: null, durationMs: Date.now()-_exchangeT0, ok: false, summary: `RFC 8693 exchange ← ERROR: ${err.message}`, payload: { error: err.message, code: err.code } });
     return null;
   }
   
-  writeMcpTrafficEntry({ dir: 'PingOne→BFF', type: 'exchange_response', method: 'token_exchange', tool: null, durationMs: Date.now()-_exchangeT0, ok: !!exchangedToken, summary: `RFC 8693 exchange ← ${exchangedToken?'OK token received':'FAILED no token'} (${Date.now()-_exchangeT0}ms)` });
+  writeMcpTrafficEntry({ dir: 'PingOne→BFF', type: 'exchange_response', method: 'token_exchange', tool: null, durationMs: Date.now()-_exchangeT0, ok: !!exchangedToken, summary: `RFC 8693 exchange ← ${exchangedToken?'OK token received':'FAILED no token'} (${Date.now()-_exchangeT0}ms)`, payload: { token_received: !!exchangedToken } });
   return exchangedToken;
 }
 
