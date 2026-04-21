@@ -2306,13 +2306,14 @@ Plans:
 
 ### Phase 213: Dev Tools Dashboard — complete data wiring, deduplication, and panel polish
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Fix three DevToolsDashboard pain points: (1) UnifiedTokenFlowInspector × button permanently hides the panel when embedded — remove close button in embedded mode; (2) McpTrafficPage shows raw HTTP 401 error when unauthenticated — replace with friendly empty state; (3) Banking Agent results side card (accounts/transactions/balance) lost after displayMode localStorage guard and inline positioning bugs — always show the card, fix positioning.
+**Requirements**: None (polish/bug fixes)
 **Depends on:** Phase 212
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 213 to break down)
+- [ ] 213-01-PLAN.md — UTFI embedded close bug fix + McpTrafficPage 401 state + DevToolsDashboard overflow audit
+- [ ] 213-02-PLAN.md — Banking Agent ResultsPanel restoration (remove displayMode guard, fix inline positioning)
 
 ---
 
