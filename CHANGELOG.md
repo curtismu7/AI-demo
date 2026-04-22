@@ -17,6 +17,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- **Planning todos — PingOne Test follow-up fixes** — Captured pending work for a proper clear-token reset flow on the PingOne Test page and for diagnosing the empty SPEL/Policies explorer when token policies are not returned.
 - **BankingAgent — fix `effectiveIsOpen` TDZ crash** — Moved `const effectiveIsOpen` declaration before the `useEffect` that references it in its dependency array, resolving `ReferenceError: Cannot access 'effectiveIsOpen' before initialization` on load.
 - **Scope upgrade consent modal u2014 Phase 211 UI** u2014 Replaced static `scopeErrorModal` dead-end with 4-state machine (erroru2192confirmu2192exchangingu2192done). `handleScopeUpgradeConfirm` calls `POST /api/mcp/scope-upgrade`; on success caches write token and auto-replays the original transfer/deposit/withdraw action via `runAction` with `skipUserLabel: true`. Chat panel emits RFC-educational token-event messages at each state transition. TokenChainContext updated with exchange events.
 - **Scope upgrade redemption flow — Phase 211 BFF routes** — Added `POST /api/mcp/scope-upgrade` endpoint performing RFC 8693 token exchange for `banking:write` scope; caches resulting write token in `session.mcpWriteToken`. Added `WRITE_TOOLS_REQUIRING_CACHE` fast-path in `POST /api/mcp/tool` so cached write tokens bypass redundant exchange.

@@ -212,7 +212,6 @@ Next phase: 127+ (available for planning)
 
 ### Pending Todos
 
-- 3 pending todos
-- Latest: Resize dashboard columns - token chain, user data, and agent positioning
-- Other: Marketing pages should only show float agent, never bottom positioning
-- Other: Align UI with 2-token exchange
+- 2 pending todos
+- Latest: Fix PingOne token policy explorer
+- Other: Add clear token reset button
