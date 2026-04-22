@@ -52,8 +52,9 @@ export default function DevToolsOverlay({ defaultOpen = false }) {
           left: 0,
           zIndex: 9000,
           pointerEvents: 'none',
-          width: '100vw',
-          height: '100vh',
+          width: 0,
+          height: 0,
+          overflow: 'visible',
         }}>
           <div style={{ pointerEvents: 'auto', display: 'inline-block' }}>
             <DevToolsDashboard
