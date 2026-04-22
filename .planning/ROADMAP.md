@@ -56,6 +56,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 195 | security-hardening-act-delegation | RFC 8693 act claim validation, status codes, fallback removal | SEC-01..05 | 1 plan |
 | 207 | agent-ai-digital-assistant-login-flow | MCP token exchange + home-built authz gate + scope-based tool list filtering | Complete | 2026-04-20 |
 | 208 | mtls-mutual-tls-a2a-service-authentication | mTLS cert-bound tokens for BFF↔MCP↔PingOne A2A; RFC 8705; 5 waves | MTLS-01..06 | 0 plans |
+| 214 | pingone-authorize-test-page | Wire AuthzTestPage — CSS, route, nav; live PERMIT/STEP_UP/DENY evaluation against active policy engine | Complete | 2026-04-22 |
 
 ---
 
