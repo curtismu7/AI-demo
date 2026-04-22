@@ -377,15 +377,17 @@ router.get('/integration/challenge/:daId/status', async (req, res) => {
 /**
  * POST /api/mfa/test/integration/enroll-email
  * Enroll an email OTP device using PingOne MFA
+ * Body: { email?: string }  - if provided, overrides session email
  */
 router.post('/integration/enroll-email', async (req, res) => {
   try {
-    const { userId, email } = await _resolveCredentials(req);
-    if (!userId || !email) {
-      return res.status(400).json({ success: false, error: 'missing_user', message: 'No user available for enrollment.' });
+    const { userId, email: sessionEmail } = await _resolveCredentials(req);
+    const emailToUse = req.body?.email || sessionEmail;
+    if (!userId || !emailToUse) {
+      return res.status(400).json({ success: false, error: 'missing_user', message: 'No user or email available for enrollment.' });
     }
     const _t4 = Date.now();
-    const device = await mfaService.enrollEmailDevice(userId, email);
+    const device = await mfaService.enrollEmailDevice(userId, emailToUse);
     const resBody = {
       success: true,
       deviceId: device.id,
@@ -426,11 +428,11 @@ router.post('/integration/enroll-fido2-init', async (req, res) => {
 router.post('/integration/enroll-fido2-complete', async (req, res) => {
   try {
     const { userId } = await _resolveCredentials(req);
-    const { deviceId, attestation } = req.body;
+    const { deviceId, attestation, origin } = req.body;
     if (!deviceId || !attestation) {
       return res.status(400).json({ success: false, error: 'invalid_body', message: 'Provide deviceId and attestation.' });
     }
-    const result = await mfaService.completeFido2Registration(userId, deviceId, attestation);
+    const result = await mfaService.completeFido2Registration(userId, deviceId, attestation, origin);
     res.json({
       success: true,
       deviceId: result.id,

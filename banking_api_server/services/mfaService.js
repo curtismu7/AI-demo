@@ -1,74 +1,85 @@
-'use strict';
-const axios = require('axios');
-const configStore = require('./configStore');
+const axios = require("axios");
+const configStore = require("./configStore");
 
 function _authBaseUrl() {
-  const region = configStore.getEffective('pingone_region') || 'com';
-  const envId = configStore.getEffective('pingone_environment_id');
-  return `https://auth.pingone.${region}/${envId}`;
+	const region = configStore.getEffective("pingone_region") || "com";
+	const envId = configStore.getEffective("pingone_environment_id");
+	return `https://auth.pingone.${region}/${envId}`;
 }
 
 function _apiBaseUrl() {
-  const region = configStore.getEffective('pingone_region') || 'com';
-  const envId = configStore.getEffective('pingone_environment_id');
-  return `https://api.pingone.${region}/v1/environments/${envId}`;
+	const region = configStore.getEffective("pingone_region") || "com";
+	const envId = configStore.getEffective("pingone_environment_id");
+	return `https://api.pingone.${region}/v1/environments/${envId}`;
 }
 
 async function _getWorkerToken() {
-  const region = configStore.getEffective('pingone_region') || 'com';
-  const envId = configStore.getEffective('pingone_environment_id');
-  // Use PINGONE_WORKER_TOKEN credentials, falling back to management credentials
-  const clientId = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID
-    || configStore.getEffective('pingone_worker_token_client_id')
-    || configStore.getEffective('pingone_mgmt_client_id')
-    || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_ID');
-  const clientSecret = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET
-    || configStore.getEffective('pingone_worker_token_client_secret')
-    || configStore.getEffective('pingone_mgmt_client_secret')
-    || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_SECRET');
-  const authMethod = (process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || 'basic').toLowerCase();
-  if (!envId || !clientId || !clientSecret) throw new Error('PingOne worker credentials not configured. Set PINGONE_WORKER_TOKEN_CLIENT_ID/SECRET or pingone_mgmt_client_id/secret via the Worker App tab at /config.');
-  const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;
-  const body = new URLSearchParams({ grant_type: 'client_credentials' });
-  const reqConfig = { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 10000 };
-  if (authMethod === 'post') {
-    body.set('client_id', clientId);
-    body.set('client_secret', clientSecret);
-  } else {
-    reqConfig.auth = { username: clientId, password: clientSecret };
-  }
-  const resp = await axios.post(tokenUrl, body.toString(), reqConfig);
-  return resp.data.access_token;
+	const region = configStore.getEffective("pingone_region") || "com";
+	const envId = configStore.getEffective("pingone_environment_id");
+	// Use PINGONE_WORKER_TOKEN credentials, falling back to management credentials
+	const clientId =
+		process.env.PINGONE_WORKER_TOKEN_CLIENT_ID ||
+		configStore.getEffective("pingone_worker_token_client_id") ||
+		configStore.getEffective("pingone_mgmt_client_id") ||
+		configStore.getEffective("PINGONE_MANAGEMENT_CLIENT_ID");
+	const clientSecret =
+		process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET ||
+		configStore.getEffective("pingone_worker_token_client_secret") ||
+		configStore.getEffective("pingone_mgmt_client_secret") ||
+		configStore.getEffective("PINGONE_MANAGEMENT_CLIENT_SECRET");
+	const authMethod = (
+		process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || "basic"
+	).toLowerCase();
+	if (!envId || !clientId || !clientSecret)
+		throw new Error(
+			"PingOne worker credentials not configured. Set PINGONE_WORKER_TOKEN_CLIENT_ID/SECRET or pingone_mgmt_client_id/secret via the Worker App tab at /config.",
+		);
+	const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;
+	const body = new URLSearchParams({ grant_type: "client_credentials" });
+	const reqConfig = {
+		headers: { "Content-Type": "application/x-www-form-urlencoded" },
+		timeout: 10000,
+	};
+	if (authMethod === "post") {
+		body.set("client_id", clientId);
+		body.set("client_secret", clientSecret);
+	} else {
+		reqConfig.auth = { username: clientId, password: clientSecret };
+	}
+	const resp = await axios.post(tokenUrl, body.toString(), reqConfig);
+	return resp.data.access_token;
 }
 
 let _cachedDefaultPolicyId = null;
 
 async function _getDefaultMfaPolicy() {
-  if (_cachedDefaultPolicyId) return _cachedDefaultPolicyId;
-  const workerToken = await _getWorkerToken();
-  const { data } = await axios.get(`${_apiBaseUrl()}/mfaPolicies`, {
-    headers: { Authorization: `Bearer ${workerToken}` },
-    timeout: 10000,
-  });
-  const policies = data._embedded?.mfaPolicies || [];
-  const def = policies.find(p => p.default === true) || policies[0];
-  if (!def) throw new Error('No MFA policies found in PingOne environment');
-  console.log('[MFA] resolved default policy id=%s name=%s', def.id, def.name);
-  _cachedDefaultPolicyId = def.id;
-  return def.id;
+	if (_cachedDefaultPolicyId) return _cachedDefaultPolicyId;
+	const workerToken = await _getWorkerToken();
+	const { data } = await axios.get(`${_apiBaseUrl()}/mfaPolicies`, {
+		headers: { Authorization: `Bearer ${workerToken}` },
+		timeout: 10000,
+	});
+	const policies = data._embedded?.mfaPolicies || [];
+	const def = policies.find((p) => p.default === true) || policies[0];
+	if (!def) throw new Error("No MFA policies found in PingOne environment");
+	console.log("[MFA] resolved default policy id=%s name=%s", def.id, def.name);
+	_cachedDefaultPolicyId = def.id;
+	return def.id;
 }
 
 function _wrapError(fnName, err) {
-  const pingErr = err.response?.data;
-  console.error(`[MFA] ${fnName} failed:`, pingErr || err.message);
-  const e = new Error(pingErr?.message || pingErr?.detail || 'MFA operation failed');
-  e.status = err.response?.status || 500;
-  e.pingError = pingErr;
-  // Attach semantic code for challenge lifecycle errors
-  const status = err.response?.status;
-  if (status === 401) e.code = 'token_expired';
-  else if (status === 404 || status === 410) e.code = 'challenge_expired';
-  return e;
+	const pingErr = err.response?.data;
+	console.error(`[MFA] ${fnName} failed:`, pingErr || err.message);
+	const e = new Error(
+		pingErr?.message || pingErr?.detail || "MFA operation failed",
+	);
+	e.status = err.response?.status || 500;
+	e.pingError = pingErr;
+	// Attach semantic code for challenge lifecycle errors
+	const status = err.response?.status;
+	if (status === 401) e.code = "token_expired";
+	else if (status === 404 || status === 410) e.code = "challenge_expired";
+	return e;
 }
 
 /**
@@ -78,36 +89,45 @@ function _wrapError(fnName, err) {
  * Status at this point: DEVICE_SELECTION_REQUIRED
  */
 async function initiateDeviceAuth(userId, userAccessToken) {
-  let policyId = configStore.getEffective('pingone_mfa_policy_id');
-  if (!policyId) {
-    console.log('[MFA] PINGONE_MFA_POLICY_ID not set — resolving default policy from PingOne');
-    try {
-      policyId = await _getDefaultMfaPolicy();
-    } catch (resolveErr) {
-      const e = new Error('PINGONE_MFA_POLICY_ID is not configured and default policy could not be resolved: ' + resolveErr.message);
-      e.status = 503;
-      e.code = 'mfa_not_configured';
-      throw e;
-    }
-  }
-  try {
-    const url = `${_authBaseUrl()}/deviceAuthentications`;
-    const { data } = await axios.post(
-      url,
-      { user: { id: userId }, policy: { id: policyId } },
-      {
-        headers: {
-          Authorization: `Bearer ${userAccessToken}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 10000,
-      }
-    );
-    console.log('[MFA] initiated deviceAuth daId=%s status=%s', data.id, data.status);
-    return data;
-  } catch (err) {
-    throw _wrapError('initiateDeviceAuth', err);
-  }
+	let policyId = configStore.getEffective("pingone_mfa_policy_id");
+	if (!policyId) {
+		console.log(
+			"[MFA] PINGONE_MFA_POLICY_ID not set — resolving default policy from PingOne",
+		);
+		try {
+			policyId = await _getDefaultMfaPolicy();
+		} catch (resolveErr) {
+			const e = new Error(
+				"PINGONE_MFA_POLICY_ID is not configured and default policy could not be resolved: " +
+					resolveErr.message,
+			);
+			e.status = 503;
+			e.code = "mfa_not_configured";
+			throw e;
+		}
+	}
+	try {
+		const url = `${_authBaseUrl()}/deviceAuthentications`;
+		const { data } = await axios.post(
+			url,
+			{ user: { id: userId }, policy: { id: policyId } },
+			{
+				headers: {
+					Authorization: `Bearer ${userAccessToken}`,
+					"Content-Type": "application/json",
+				},
+				timeout: 10000,
+			},
+		);
+		console.log(
+			"[MFA] initiated deviceAuth daId=%s status=%s",
+			data.id,
+			data.status,
+		);
+		return data;
+	} catch (err) {
+		throw _wrapError("initiateDeviceAuth", err);
+	}
 }
 
 /**
@@ -117,23 +137,23 @@ async function initiateDeviceAuth(userId, userAccessToken) {
  * Status transitions: DEVICE_SELECTION_REQUIRED → OTP_REQUIRED | ASSERTION_REQUIRED | PUSH_CONFIRMATION_REQUIRED
  */
 async function selectDevice(daId, deviceId, userAccessToken) {
-  try {
-    const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
-    const { data } = await axios.put(
-      url,
-      { selectedDevice: { id: deviceId } },
-      {
-        headers: {
-          Authorization: `Bearer ${userAccessToken}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 10000,
-      }
-    );
-    return data;
-  } catch (err) {
-    throw _wrapError('selectDevice', err);
-  }
+	try {
+		const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
+		const { data } = await axios.put(
+			url,
+			{ selectedDevice: { id: deviceId } },
+			{
+				headers: {
+					Authorization: `Bearer ${userAccessToken}`,
+					"Content-Type": "application/json",
+				},
+				timeout: 10000,
+			},
+		);
+		return data;
+	} catch (err) {
+		throw _wrapError("selectDevice", err);
+	}
 }
 
 /**
@@ -142,23 +162,23 @@ async function selectDevice(daId, deviceId, userAccessToken) {
  * Status transitions: OTP_REQUIRED → COMPLETED | FAILED
  */
 async function submitOtp(daId, deviceId, otp, userAccessToken) {
-  try {
-    const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
-    const { data } = await axios.put(
-      url,
-      { selectedDevice: { id: deviceId, otp: String(otp) } },
-      {
-        headers: {
-          Authorization: `Bearer ${userAccessToken}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 10000,
-      }
-    );
-    return data;
-  } catch (err) {
-    throw _wrapError('submitOtp', err);
-  }
+	try {
+		const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
+		const { data } = await axios.put(
+			url,
+			{ selectedDevice: { id: deviceId, otp: String(otp) } },
+			{
+				headers: {
+					Authorization: `Bearer ${userAccessToken}`,
+					"Content-Type": "application/json",
+				},
+				timeout: 10000,
+			},
+		);
+		return data;
+	} catch (err) {
+		throw _wrapError("submitOtp", err);
+	}
 }
 
 /**
@@ -168,16 +188,16 @@ async function submitOtp(daId, deviceId, otp, userAccessToken) {
  *   - FIDO2: retrieve publicKeyCredentialRequestOptions (status: ASSERTION_REQUIRED)
  */
 async function getDeviceAuthStatus(daId, userAccessToken) {
-  try {
-    const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
-    const { data } = await axios.get(url, {
-      headers: { Authorization: `Bearer ${userAccessToken}` },
-      timeout: 10000,
-    });
-    return data;
-  } catch (err) {
-    throw _wrapError('getDeviceAuthStatus', err);
-  }
+	try {
+		const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
+		const { data } = await axios.get(url, {
+			headers: { Authorization: `Bearer ${userAccessToken}` },
+			timeout: 10000,
+		});
+		return data;
+	} catch (err) {
+		throw _wrapError("getDeviceAuthStatus", err);
+	}
 }
 
 /**
@@ -186,23 +206,23 @@ async function getDeviceAuthStatus(daId, userAccessToken) {
  * Status transitions: ASSERTION_REQUIRED → COMPLETED | FAILED
  */
 async function submitFido2Assertion(daId, assertion, userAccessToken) {
-  try {
-    const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
-    const { data } = await axios.put(
-      url,
-      { assertion },
-      {
-        headers: {
-          Authorization: `Bearer ${userAccessToken}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 15000,
-      }
-    );
-    return data;
-  } catch (err) {
-    throw _wrapError('submitFido2Assertion', err);
-  }
+	try {
+		const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
+		const { data } = await axios.put(
+			url,
+			{ assertion },
+			{
+				headers: {
+					Authorization: `Bearer ${userAccessToken}`,
+					"Content-Type": "application/json",
+				},
+				timeout: 15000,
+			},
+		);
+		return data;
+	} catch (err) {
+		throw _wrapError("submitFido2Assertion", err);
+	}
 }
 
 /**
@@ -211,19 +231,18 @@ async function submitFido2Assertion(daId, assertion, userAccessToken) {
  * (deviceAuthentications already returns devices at DEVICE_SELECTION_REQUIRED).
  */
 async function listMfaDevices(userId) {
-  try {
-    const workerToken = await _getWorkerToken();
-    const url = `${_apiBaseUrl()}/users/${userId}/devices?filter=(status eq "ACTIVE")`;
-    const { data } = await axios.get(url, {
-      headers: { Authorization: `Bearer ${workerToken}` },
-      timeout: 10000,
-    });
-    return data._embedded?.devices || [];
-  } catch (err) {
-    throw _wrapError('listMfaDevices', err);
-  }
+	try {
+		const workerToken = await _getWorkerToken();
+		const url = `${_apiBaseUrl()}/users/${userId}/devices?filter=(status eq "ACTIVE")`;
+		const { data } = await axios.get(url, {
+			headers: { Authorization: `Bearer ${workerToken}` },
+			timeout: 10000,
+		});
+		return data._embedded?.devices || [];
+	} catch (err) {
+		throw _wrapError("listMfaDevices", err);
+	}
 }
-
 
 /**
  * Enroll an email OTP device for a user via Management API (worker token).
@@ -232,19 +251,29 @@ async function listMfaDevices(userId) {
  * Returns { id, type, email, status }
  */
 async function enrollEmailDevice(userId, email) {
-  try {
-    const workerToken = await _getWorkerToken();
-    const url = `${_apiBaseUrl()}/users/${userId}/devices`;
-    const { data } = await axios.post(
-      url,
-      { type: 'EMAIL', email },
-      { headers: { Authorization: `Bearer ${workerToken}`, 'Content-Type': 'application/json' }, timeout: 10000 }
-    );
-    console.log('[MFA] enrolled email device userId=%s deviceId=%s', userId, data.id);
-    return data;
-  } catch (err) {
-    throw _wrapError('enrollEmailDevice', err);
-  }
+	try {
+		const workerToken = await _getWorkerToken();
+		const url = `${_apiBaseUrl()}/users/${userId}/devices`;
+		const { data } = await axios.post(
+			url,
+			{ type: "EMAIL", email },
+			{
+				headers: {
+					Authorization: `Bearer ${workerToken}`,
+					"Content-Type": "application/json",
+				},
+				timeout: 10000,
+			},
+		);
+		console.log(
+			"[MFA] enrolled email device userId=%s deviceId=%s",
+			userId,
+			data.id,
+		);
+		return data;
+	} catch (err) {
+		throw _wrapError("enrollEmailDevice", err);
+	}
 }
 
 /**
@@ -252,19 +281,36 @@ async function enrollEmailDevice(userId, email) {
  * Returns { deviceId, publicKeyCredentialCreationOptions }
  */
 async function initFido2Registration(userId) {
-  try {
-    const workerToken = await _getWorkerToken();
-    const url = `${_apiBaseUrl()}/users/${userId}/devices`;
-    const { data } = await axios.post(
-      url,
-      { type: 'FIDO2_PLATFORM' },
-      { headers: { Authorization: `Bearer ${workerToken}`, 'Content-Type': 'application/json' }, timeout: 10000 }
-    );
-    console.log('[MFA] initiated FIDO2 registration userId=%s deviceId=%s', userId, data.id);
-    return { deviceId: data.id, publicKeyCredentialCreationOptions: data.publicKeyCredentialCreationOptions };
-  } catch (err) {
-    throw _wrapError('initFido2Registration', err);
-  }
+	try {
+		const workerToken = await _getWorkerToken();
+		const url = `${_apiBaseUrl()}/users/${userId}/devices`;
+		const { data } = await axios.post(
+			url,
+			{ 
+				type: "FIDO2",
+				nickname: "My Passkey"
+			},
+			{
+				headers: {
+					Authorization: `Bearer ${workerToken}`,
+					"Content-Type": "application/json",
+				},
+				timeout: 10000,
+			},
+		);
+		console.log(
+			"[MFA] initiated FIDO2 registration userId=%s deviceId=%s",
+			userId,
+			data.id,
+		);
+		return {
+			deviceId: data.id,
+			publicKeyCredentialCreationOptions:
+				data.publicKeyCredentialCreationOptions,
+		};
+	} catch (err) {
+		throw _wrapError("initFido2Registration", err);
+	}
 }
 
 /**
@@ -274,33 +320,48 @@ async function initFido2Registration(userId) {
  * @param {object} attestation - base64-encoded fields from navigator.credentials.create()
  * Returns { id, status }
  */
-async function completeFido2Registration(userId, deviceId, attestation) {
-  try {
-    const workerToken = await _getWorkerToken();
-    const url = `${_apiBaseUrl()}/users/${userId}/devices/${deviceId}`;
-    const { data } = await axios.put(
-      url,
-      { attestation },
-      { headers: { Authorization: `Bearer ${workerToken}`, 'Content-Type': 'application/json' }, timeout: 15000 }
-    );
-    console.log('[MFA] completed FIDO2 registration userId=%s deviceId=%s status=%s', userId, deviceId, data.status);
-    return data;
-  } catch (err) {
-    throw _wrapError('completeFido2Registration', err);
-  }
+async function completeFido2Registration(userId, deviceId, attestation, origin) {
+	try {
+		const workerToken = await _getWorkerToken();
+		const url = `${_apiBaseUrl()}/users/${userId}/devices/${deviceId}`;
+		const body = { attestation };
+		if (origin) body.origin = origin;
+		const { data } = await axios.put(
+			url,
+			body,
+			{
+				headers: {
+					Authorization: `Bearer ${workerToken}`,
+					"Content-Type": "application/json",
+				},
+				timeout: 15000,
+			},
+		);
+		console.log(
+			"[MFA] completed FIDO2 registration userId=%s deviceId=%s status=%s",
+			userId,
+			deviceId,
+			data.status,
+		);
+		return data;
+	} catch (err) {
+		throw _wrapError("completeFido2Registration", err);
+	}
 }
 
 module.exports = {
-  initiateDeviceAuth,
-  selectDevice,
-  submitOtp,
-  getDeviceAuthStatus,
-  submitFido2Assertion,
-  listMfaDevices,
-  enrollEmailDevice,
-  initFido2Registration,
-  completeFido2Registration,
-  getWorkerToken: _getWorkerToken,
-  // Test helper — resets the cached default policy ID (used in unit tests)
-  _resetDefaultPolicyCache() { _cachedDefaultPolicyId = null; },
+	initiateDeviceAuth,
+	selectDevice,
+	submitOtp,
+	getDeviceAuthStatus,
+	submitFido2Assertion,
+	listMfaDevices,
+	enrollEmailDevice,
+	initFido2Registration,
+	completeFido2Registration,
+	getWorkerToken: _getWorkerToken,
+	// Test helper — resets the cached default policy ID (used in unit tests)
+	_resetDefaultPolicyCache() {
+		_cachedDefaultPolicyId = null;
+	},
 };

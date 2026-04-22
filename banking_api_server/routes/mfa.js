@@ -221,14 +221,14 @@ router.post('/enroll/fido2-init', authenticateToken, async (req, res) => {
 router.post('/enroll/fido2-complete', authenticateToken, async (req, res) => {
   try {
     const userId = req.session.user?.id;
-    const { deviceId, attestation } = req.body;
+    const { deviceId, attestation, origin } = req.body;
     if (!userId) {
       return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
     }
     if (!deviceId || !attestation) {
       return res.status(400).json({ error: 'invalid_body', message: 'Provide deviceId and attestation.' });
     }
-    const result = await mfaService.completeFido2Registration(userId, deviceId, attestation);
+    const result = await mfaService.completeFido2Registration(userId, deviceId, attestation, origin);
     res.json({ deviceId: result.id, status: result.status });
   } catch (err) {
     console.error('[MFA route] POST /enroll/fido2-complete failed:', err.message);

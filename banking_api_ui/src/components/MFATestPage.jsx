@@ -569,6 +569,7 @@ export default function MFATestPage() {
 				{
 					deviceId: fidoEnrollData.deviceId,
 					attestation,
+					origin: window.location.origin,
 				},
 			);
 			if (data.success) {
