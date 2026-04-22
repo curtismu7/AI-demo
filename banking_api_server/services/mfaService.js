@@ -17,13 +17,17 @@ function _apiBaseUrl() {
 async function _getWorkerToken() {
   const region = configStore.getEffective('PINGONE_REGION') || 'com';
   const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
-  // Use PINGONE_WORKER_TOKEN credentials (worker app with Management API access)
+  // Use PINGONE_WORKER_TOKEN credentials, falling back to management credentials
   const clientId = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID
-    || configStore.getEffective('pingone_worker_token_client_id');
+    || configStore.getEffective('pingone_worker_token_client_id')
+    || configStore.getEffective('pingone_mgmt_client_id')
+    || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_ID');
   const clientSecret = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET
-    || configStore.getEffective('pingone_worker_token_client_secret');
+    || configStore.getEffective('pingone_worker_token_client_secret')
+    || configStore.getEffective('pingone_mgmt_client_secret')
+    || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_SECRET');
   const authMethod = (process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || 'basic').toLowerCase();
-  if (!envId || !clientId || !clientSecret) throw new Error('PingOne worker credentials not configured (set PINGONE_WORKER_TOKEN_CLIENT_ID/SECRET)');
+  if (!envId || !clientId || !clientSecret) throw new Error('PingOne worker credentials not configured. Set PINGONE_WORKER_TOKEN_CLIENT_ID/SECRET or pingone_mgmt_client_id/secret via the Worker App tab at /config.');
   const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;
   const body = new URLSearchParams({ grant_type: 'client_credentials' });
   const reqConfig = { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 10000 };
