@@ -568,10 +568,22 @@ export default function AuthzTestPage() {
 
 			{/* Preset scenarios */}
 			<section className="authz-section">
-				<h2 className="authz-section-title">Preset Scenarios</h2>
+				<div className="authz-section-title-row">
+					<h2 className="authz-section-title">Preset Scenarios</h2>
+					<EngineBadge engine={activeEngine} />
+				</div>
 				<p className="authz-section-desc">
-					Each card tests a specific policy branch. Run them individually or all
-					at once.
+					Each card tests a specific policy branch against the{" "}
+					<strong>
+						{activeEngine === "simulated"
+							? "in-process simulated"
+							: activeEngine === "pingone"
+							? "live PingOne Authorize"
+							: activeEngine === "off"
+							? "disabled (bypass)"
+							: "unconfigured"}
+					</strong>{" "}
+					engine. Run them individually or all at once.
 				</p>
 				<div className="authz-scenarios-grid">
 					{PRESET_SCENARIOS.map((scenario) => {
