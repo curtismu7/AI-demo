@@ -186,6 +186,17 @@ export default function AuthzTestPage() {
 		loadStatus();
 	}, [loadStatus]);
 
+	const resetPage = useCallback(() => {
+		setScenarioResults({});
+		setScenarioRunning({});
+		setCustomResult(null);
+		setCustomAmount("5000");
+		setCustomType("transfer");
+		setCustomAcr("");
+		setHistory([]);
+		setEngineSaveMsg(null);
+	}, []);
+
 	const applyEngine = useCallback(async () => {
 		setEngineSaving(true);
 		setEngineSaveMsg(null);
@@ -355,7 +366,17 @@ export default function AuthzTestPage() {
 		<div className="authz-test-page">
 			{/* Header */}
 			<div className="authz-header">
-				<h1 className="authz-title">PingOne Authorize Test Page</h1>
+				<div className="authz-header-row">
+					<h1 className="authz-title">PingOne Authorize Test Page</h1>
+					<button
+						type="button"
+						className="authz-btn authz-btn--secondary"
+						onClick={resetPage}
+						title="Clear all results and reset to initial state"
+					>
+						↺ Reset
+					</button>
+				</div>
 				<p className="authz-subtitle">
 					Evaluate authorization decisions against the active policy engine
 					without submitting a real transaction.

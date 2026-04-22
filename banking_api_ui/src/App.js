@@ -22,7 +22,6 @@ import Accounts from "./components/Accounts";
 import ActivityLogs from "./components/ActivityLogs";
 import { ActorTokenEducation } from "./components/ActorTokenEducation";
 import AdminErrorAuditLog from "./components/AdminErrorAuditLog";
-import AdminLayout from "./components/AdminLayout";
 import AdminSideNav from "./components/AdminSideNav";
 import AdminTokenComplianceAudit from "./components/AdminTokenComplianceAudit";
 import AgentFlowDiagramPanel from "./components/AgentFlowDiagramPanel";
@@ -181,7 +180,7 @@ function AdminRoute({ user, children }) {
 		}
 	}, [isAdmin]);
 
-	if (isAdmin) return <AdminLayout>{children}</AdminLayout>;
+	if (isAdmin) return children;
 
 	if (dismissed) {
 		navigate(-1);

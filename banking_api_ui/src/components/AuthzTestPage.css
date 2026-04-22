@@ -202,10 +202,18 @@
   margin-bottom: 24px;
 }
 
+.authz-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
 .authz-title {
   font-size: 1.75rem;
   font-weight: 700;
-  margin: 0 0 6px;
+  margin: 0;
   color: var(--color-heading, #0d1117);
 }
 
