@@ -830,6 +830,7 @@ export default function MFATestPage() {
 										value={smsOtp}
 										onChange={(e) => setSmsOtp(e.target.value)}
 										maxLength={6}
+										autoFocus
 									/>
 									<button
 										type="button"
@@ -903,6 +904,7 @@ export default function MFATestPage() {
 										value={emailOtp}
 										onChange={(e) => setEmailOtp(e.target.value)}
 										maxLength={6}
+										autoFocus
 									/>
 									<button
 										type="button"
