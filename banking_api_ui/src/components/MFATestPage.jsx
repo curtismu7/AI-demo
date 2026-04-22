@@ -534,6 +534,7 @@ export default function MFATestPage() {
 				typeof rawOpts === "string" ? JSON.parse(rawOpts) : rawOpts;
 			if (!creationOpts)
 				throw new Error("Missing publicKeyCredentialCreationOptions");
+			console.log("[FIDO2] creationOpts challenge:", creationOpts.challenge, "user.id:", creationOpts.user?.id);
 
 			// Convert base64url (PingOne) → standard base64 → Uint8Array
 			const safeBase64ToBytes = (val) => {
@@ -541,12 +542,19 @@ export default function MFATestPage() {
 					throw new Error(`Expected base64url but got: ${JSON.stringify(val)}`);
 				if (val instanceof Uint8Array) return val;
 				if (val instanceof ArrayBuffer) return new Uint8Array(val);
-				const s = String(val);
-				const b64 = s
+				// Strip whitespace, normalise alphabet, strip any existing = then re-pad correctly
+				const stripped = String(val)
+					.replace(/\s/g, "")
 					.replace(/-/g, "+")
 					.replace(/_/g, "/")
-					.padEnd(Math.ceil(s.length / 4) * 4, "=");
-				return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+					.replace(/=+$/, "");
+				const padded = stripped + "=".repeat((4 - (stripped.length % 4)) % 4);
+				try {
+					return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+				} catch (e) {
+					console.error("[FIDO2] atob failed — raw val:", val, "padded:", padded);
+					throw new Error(`base64 decode failed (first 20: "${padded.slice(0, 20)}"): ${e.message}`);
+				}
 			};
 
 			const publicKey = {
