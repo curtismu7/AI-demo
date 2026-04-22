@@ -570,7 +570,7 @@ function AppWithAuth() {
             {/* Demo config accessible without login - needed to configure flags before PingOne is set up */}
             <Route path="/configure" element={
               <>
-                {user && <AdminSideNav user={user} />}
+                <AdminSideNav user={user} />
 
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
@@ -580,7 +580,7 @@ function AppWithAuth() {
             } />
             <Route path="/demo-data" element={
               <>
-                {user && <AdminSideNav user={user} />}
+                <AdminSideNav user={user} />
 
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
@@ -591,7 +591,7 @@ function AppWithAuth() {
             {/* Self-service user provisioning — accessible without login */}
             <Route path="/self-service" element={
               <>
-                {user && <AdminSideNav user={user} />}
+                <AdminSideNav user={user} />
 
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
@@ -602,7 +602,7 @@ function AppWithAuth() {
             {/* Test & educational pages — accessible without login */}
             <Route path="/pingone-test" element={
               <>
-                {user && <AdminSideNav user={user} />}
+                <AdminSideNav user={user} />
 
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
@@ -612,7 +612,7 @@ function AppWithAuth() {
             } />
             <Route path="/mfa-test" element={
               <>
-                {user && <AdminSideNav user={user} />}
+                <AdminSideNav user={user} />
 
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
@@ -669,7 +669,7 @@ function AppWithAuth() {
                 )
               ) : (
                 <>
-                  {user && <AdminSideNav user={user} />}
+                  <AdminSideNav user={user} />
 
                   <TopNav user={user} onLogout={logout} />
                   <main className="main-content">
