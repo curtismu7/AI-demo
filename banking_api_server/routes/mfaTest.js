@@ -6,7 +6,6 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
 const mfaService = require('../services/mfaService');
 const oauthService = require('../services/oauthService');
 const apiCallTrackerService = require('../services/apiCallTrackerService');
@@ -54,9 +53,6 @@ router.get('/config', (_req, res) => {
  * Returns available MFA methods for current user
  */
 router.get('/methods', (req, res) => {
-  if (!req.session || !req.session.user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
   
   const methods = {
     otp: true,
@@ -71,12 +67,9 @@ router.get('/methods', (req, res) => {
  * GET /api/mfa/test/devices
  * Returns registered MFA devices for current user (proxies to PingOne Management API)
  */
-router.get('/devices', authenticateToken, async (req, res) => {
+router.get('/devices', async (req, res) => {
   try {
-    const userId = req.session.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
+    const userId = req.session?.user?.id || MFA_TEST_USER_ID;
     const devices = await mfaService.listMfaDevices(userId);
     res.json({ devices });
   } catch (err) {
@@ -200,12 +193,9 @@ router.post('/simulate-otp', (req, res) => {
  * Returns MFA testing status
  */
 router.get('/status', (req, res) => {
-  if (!req.session || !req.session.user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
+  const hasSession = !!(req.session && req.session.user);
   res.json({
-    authenticated: true,
+    authenticated: hasSession,
     // mfaConfigured is always true — if no explicit policy ID the server auto-resolves default
     mfaConfigured: true,
     policySource: process.env.PINGONE_MFA_POLICY_ID ? 'configured' : 'auto',
@@ -237,21 +227,45 @@ async function _tryRefresh(req) {
 }
 
 /**
+ * Resolve userId + accessToken for MFA test operations.
+ * Prefers session credentials (logged-in user), falls back to worker token + test userId.
+ * Test userId comes from: req.body.userId > MFA_TEST_USER_ID env > bankuser default.
+ */
+const MFA_TEST_USER_ID = process.env.MFA_TEST_USER_ID || '6689a774-46af-4198-a6ff-38198dc341ac';
+const MFA_TEST_USER_EMAIL = process.env.MFA_TEST_USER_EMAIL || 'cmuir+bankuser@pingone.com';
+
+async function _resolveCredentials(req) {
+  // Prefer session credentials if available
+  const sessionUserId = req.session?.user?.id;
+  const sessionToken = req.session?.oauthTokens?.accessToken;
+  if (sessionUserId && sessionToken) {
+    return {
+      userId: sessionUserId,
+      accessToken: sessionToken,
+      email: req.session.user?.email,
+      source: 'session',
+    };
+  }
+  // Fall back to worker token + configurable test user
+  const workerToken = await mfaService.getWorkerToken();
+  const userId = req.body?.userId || MFA_TEST_USER_ID;
+  const email = req.body?.email || MFA_TEST_USER_EMAIL;
+  return { userId, accessToken: workerToken, email, source: 'worker' };
+}
+
+
+/**
  * POST /api/mfa/test/integration/initiate
  * Initiate PingOne deviceAuthentications challenge for testing
  * Body: { method: 'sms' | 'email' | 'fido2' }
  */
-router.post('/integration/initiate', authenticateToken, async (req, res) => {
+router.post('/integration/initiate', async (req, res) => {
   try {
     const { method } = req.body;
-    const userId = req.session.user?.id;
-    const userAccessToken = req.session.oauthTokens?.accessToken;
-    if (!userId || !userAccessToken) {
-      return res.status(401).json({ success: false, error: 'no_session', message: 'Not authenticated.' });
-    }
+    const { userId, accessToken, source } = await _resolveCredentials(req);
 
     const _t1 = Date.now();
-    const result = await mfaService.initiateDeviceAuth(userId, userAccessToken);
+    const result = await mfaService.initiateDeviceAuth(userId, accessToken);
     const resBody = {
       success: true,
       daId: result.id,
@@ -265,8 +279,10 @@ router.post('/integration/initiate', authenticateToken, async (req, res) => {
     console.error('[MFA Test Integration] POST /initiate failed:', err.message);
     if (err.code === 'token_expired') {
       try {
-        const newToken = await _tryRefresh(req);
-        const result = await mfaService.initiateDeviceAuth(req.session.user?.id, newToken);
+        // Try refresh if session-based, or re-acquire worker token
+        const workerToken = await mfaService.getWorkerToken();
+        const userId = req.body?.userId || req.session?.user?.id || MFA_TEST_USER_ID;
+        const result = await mfaService.initiateDeviceAuth(userId, workerToken);
         return res.json({
           success: true,
           daId: result.id,
@@ -274,7 +290,7 @@ router.post('/integration/initiate', authenticateToken, async (req, res) => {
           devices: result._embedded?.devices || [],
         });
       } catch (_) {
-        return res.status(401).json({ success: false, error: 'session_expired', message: 'Your session has expired. Please log in again.' });
+        return res.status(401).json({ success: false, error: 'session_expired', message: 'Failed to acquire token for MFA test.' });
       }
     }
     res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
@@ -286,19 +302,16 @@ router.post('/integration/initiate', authenticateToken, async (req, res) => {
  * Verify OTP code (SMS or Email) using PingOne MFA
  * Body: { daId, deviceId, otp }
  */
-router.post('/integration/verify-otp', authenticateToken, async (req, res) => {
+router.post('/integration/verify-otp', async (req, res) => {
   try {
     const { daId, deviceId, otp } = req.body;
-    const userAccessToken = req.session.oauthTokens?.accessToken;
-    if (!userAccessToken) {
-      return res.status(401).json({ success: false, error: 'no_session', message: 'Not authenticated.' });
-    }
+    const { accessToken } = await _resolveCredentials(req);
     if (!daId || !deviceId || !otp) {
       return res.status(400).json({ success: false, error: 'invalid_body', message: 'Provide daId, deviceId, and otp.' });
     }
 
     const _t3 = Date.now();
-    const result = await mfaService.submitOtp(daId, deviceId, otp, userAccessToken);
+    const result = await mfaService.submitOtp(daId, deviceId, otp, accessToken);
     const resBody = {
       success: true,
       daId,
@@ -318,18 +331,15 @@ router.post('/integration/verify-otp', authenticateToken, async (req, res) => {
  * Verify FIDO2 assertion using PingOne MFA
  * Body: { daId, assertion }
  */
-router.post('/integration/verify-fido2', authenticateToken, async (req, res) => {
+router.post('/integration/verify-fido2', async (req, res) => {
   try {
     const { daId, assertion } = req.body;
-    const userAccessToken = req.session.oauthTokens?.accessToken;
-    if (!userAccessToken) {
-      return res.status(401).json({ success: false, error: 'no_session', message: 'Not authenticated.' });
-    }
+    const { accessToken } = await _resolveCredentials(req);
     if (!daId || !assertion) {
       return res.status(400).json({ success: false, error: 'invalid_body', message: 'Provide daId and assertion.' });
     }
 
-    const result = await mfaService.submitFido2Assertion(daId, assertion, userAccessToken);
+    const result = await mfaService.submitFido2Assertion(daId, assertion, accessToken);
     res.json({
       success: true,
       daId,
@@ -346,14 +356,11 @@ router.post('/integration/verify-fido2', authenticateToken, async (req, res) => 
  * GET /api/mfa/test/integration/challenge/:daId/status
  * Poll device authentication status for testing
  */
-router.get('/integration/challenge/:daId/status', authenticateToken, async (req, res) => {
+router.get('/integration/challenge/:daId/status', async (req, res) => {
   try {
     const { daId } = req.params;
-    const userAccessToken = req.session.oauthTokens?.accessToken;
-    if (!userAccessToken) {
-      return res.status(401).json({ success: false, error: 'no_session', message: 'Not authenticated.' });
-    }
-    const result = await mfaService.getDeviceAuthStatus(daId, userAccessToken);
+    const { accessToken } = await _resolveCredentials(req);
+    const result = await mfaService.getDeviceAuthStatus(daId, accessToken);
     res.json({
       success: true,
       daId,
@@ -371,12 +378,11 @@ router.get('/integration/challenge/:daId/status', authenticateToken, async (req,
  * POST /api/mfa/test/integration/enroll-email
  * Enroll an email OTP device using PingOne MFA
  */
-router.post('/integration/enroll-email', authenticateToken, async (req, res) => {
+router.post('/integration/enroll-email', async (req, res) => {
   try {
-    const userId = req.session.user?.id;
-    const email = req.session.user?.email;
+    const { userId, email } = await _resolveCredentials(req);
     if (!userId || !email) {
-      return res.status(401).json({ success: false, error: 'no_session', message: 'Not authenticated.' });
+      return res.status(400).json({ success: false, error: 'missing_user', message: 'No user available for enrollment.' });
     }
     const _t4 = Date.now();
     const device = await mfaService.enrollEmailDevice(userId, email);
@@ -398,12 +404,9 @@ router.post('/integration/enroll-email', authenticateToken, async (req, res) => 
  * POST /api/mfa/test/integration/enroll-fido2-init
  * Initiate FIDO2/passkey device registration using PingOne MFA
  */
-router.post('/integration/enroll-fido2-init', authenticateToken, async (req, res) => {
+router.post('/integration/enroll-fido2-init', async (req, res) => {
   try {
-    const userId = req.session.user?.id;
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'no_session', message: 'Not authenticated.' });
-    }
+    const { userId } = await _resolveCredentials(req);
     const _t5 = Date.now();
     const result = await mfaService.initFido2Registration(userId);
     const resBody = { success: true, ...result };
@@ -420,13 +423,10 @@ router.post('/integration/enroll-fido2-init', authenticateToken, async (req, res
  * Complete FIDO2/passkey registration using PingOne MFA
  * Body: { deviceId, attestation }
  */
-router.post('/integration/enroll-fido2-complete', authenticateToken, async (req, res) => {
+router.post('/integration/enroll-fido2-complete', async (req, res) => {
   try {
-    const userId = req.session.user?.id;
+    const { userId } = await _resolveCredentials(req);
     const { deviceId, attestation } = req.body;
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'no_session', message: 'Not authenticated.' });
-    }
     if (!deviceId || !attestation) {
       return res.status(400).json({ success: false, error: 'invalid_body', message: 'Provide deviceId and attestation.' });
     }
@@ -446,12 +446,9 @@ router.post('/integration/enroll-fido2-complete', authenticateToken, async (req,
  * GET /api/mfa/test/integration/devices
  * List enrolled MFA devices using PingOne MFA
  */
-router.get('/integration/devices', authenticateToken, async (req, res) => {
+router.get('/integration/devices', async (req, res) => {
   try {
-    const userId = req.session.user?.id;
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'no_session', message: 'Not authenticated.' });
-    }
+    const { userId } = await _resolveCredentials(req);
 
     const _t6 = Date.now();
     const devices = await mfaService.listMfaDevices(userId);
