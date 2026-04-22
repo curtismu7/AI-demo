@@ -1,7 +1,6 @@
 /* ========== Floating Panel ========== */
 
 .fp-panel {
-  position: relative;
   display: flex;
   flex-direction: column;
   border: 1px solid #d1d5db;

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import ReactDOM, { createPortal } from 'react-dom';
 import './FloatingPanel.css';
 
 /**
@@ -197,14 +197,17 @@ export default function FloatingPanel({
     );
   }
 
-  return (
+  const panel = (
     <div
       ref={panelRef}
       className={`fp-panel ${className} ${isDragging ? 'fp-dragging' : ''} ${isCollapsed ? 'fp-collapsed' : ''}`}
       style={{
-        transform: `translate(${pos.x}px, ${pos.y}px)`,
+        position: 'fixed',
+        left: pos.x,
+        top: pos.y,
         width: size.w,
         height: isCollapsed ? 'auto' : size.h,
+        zIndex: 9000,
       }}
     >
       {/* 8 resize handles */}
@@ -240,4 +243,6 @@ export default function FloatingPanel({
       )}
     </div>
   );
+
+  return ReactDOM.createPortal(panel, document.body);
 }
