@@ -155,6 +155,27 @@
   background: #fee2e2;
   color: #991b1b;
   border: 1px solid #fca5a5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.authz-btn--login {
+  background: #1a2332;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.authz-btn--login:hover {
+  background: #2d3f5a;
 }
 
 /* ─── Settings action row ────────────────────────────────────────────────── */

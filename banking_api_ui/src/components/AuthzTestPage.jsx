@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import apiClient from "../services/apiClient";
 import { notifyError, notifySuccess } from "../utils/appToast";
+import { navigateToAdminOAuthLogin } from "../utils/authUi";
 import "./AuthzTestPage.css";
 
 // ---------------------------------------------------------------------------
@@ -152,7 +153,7 @@ export default function AuthzTestPage() {
 	const [history, setHistory] = useState([]);
 
 	// Engine settings panel
-	const [engineSettingsOpen, setEngineSettingsOpen] = useState(false);
+	const [engineSettingsOpen, setEngineSettingsOpen] = useState(true);
 	const [engineMode, setEngineMode] = useState("simulated"); // "simulated" | "pingone"
 	const [endpointId, setEndpointId] = useState("");
 	const [workerClientId, setWorkerClientId] = useState("");
@@ -176,6 +177,9 @@ export default function AuthzTestPage() {
 				if (data.simulatedMode) setEngineMode("simulated");
 				else if (data.activeEngine === "pingone") setEngineMode("pingone");
 				else if (data.authorizeEnabled === false) setEngineMode("simulated");
+				// Prefill credential fields from server config
+				if (data.decisionEndpointId) setEndpointId(data.decisionEndpointId);
+				if (data.workerClientId) setWorkerClientId(data.workerClientId);
 			})
 			.catch((err) => setStatus({ error: err.message }))
 			.finally(() => setStatusLoading(false));
@@ -210,12 +214,12 @@ export default function AuthzTestPage() {
 			});
 			if (!flagRes.data?.updated) throw new Error("Feature flag save failed");
 
-			// 2. If PingOne mode, save credentials + endpoint ID
+			// 2. If PingOne mode, save credentials + endpoint ID (use FIELD_DEFS key names)
 			if (engineMode === "pingone") {
 				const cfgBody = {};
-				if (endpointId.trim()) cfgBody.authorize_decision_endpoint_id = endpointId.trim();
-				if (workerClientId.trim()) cfgBody.authorize_worker_client_id = workerClientId.trim();
-				if (workerClientSecret.trim()) cfgBody.authorize_worker_client_secret = workerClientSecret.trim();
+				if (endpointId.trim()) cfgBody.PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID = endpointId.trim();
+				if (workerClientId.trim()) cfgBody.PINGONE_AUTHORIZE_WORKER_CLIENT_ID = workerClientId.trim();
+				if (workerClientSecret.trim()) cfgBody.PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET = workerClientSecret.trim();
 				if (Object.keys(cfgBody).length > 0) {
 					const cfgRes = await apiClient.post("/api/admin/config", cfgBody);
 					if (!cfgRes.data?.ok) throw new Error("Config save failed");
@@ -227,12 +231,14 @@ export default function AuthzTestPage() {
 			setEngineSettingsOpen(false);
 			await loadStatus();
 		} catch (err) {
-			const msg = err.response?.status === 401
+			const status = err.response?.status;
+			const needsLogin = status === 401 || status === 403;
+			const msg = status === 401
 				? "Admin login required — sign in to change the engine."
-				: err.response?.status === 403
-					? "Admin role required — switch to admin and try again."
+				: status === 403
+					? "Admin role required — sign in as admin and try again."
 					: err.message || "Save failed";
-			setEngineSaveMsg({ ok: false, text: msg });
+			setEngineSaveMsg({ ok: false, text: msg, needsLogin });
 		} finally {
 			setEngineSaving(false);
 		}
@@ -526,7 +532,16 @@ export default function AuthzTestPage() {
 						{/* Save feedback */}
 						{engineSaveMsg && (
 							<div className={`authz-engine-save-msg${engineSaveMsg.ok ? " authz-engine-save-msg--ok" : " authz-engine-save-msg--err"}`}>
-								{engineSaveMsg.text}
+								<span>{engineSaveMsg.text}</span>
+								{engineSaveMsg.needsLogin && (
+									<button
+										type="button"
+										className="authz-btn authz-btn--login"
+										onClick={navigateToAdminOAuthLogin}
+									>
+										🔓 Sign in as Admin
+									</button>
+								)}
 							</div>
 						)}
 
