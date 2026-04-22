@@ -111,9 +111,11 @@ function EngineBadge({ engine }) {
 	);
 }
 
-function RawJson({ data }) {
+function RawJson({ data, label }) {
 	const [open, setOpen] = useState(false);
 	if (!data) return null;
+	const closedLabel = label ? `▸ ${label}` : "▸ Show full response";
+	const openLabel   = label ? `▾ Hide ${label.replace(/^Show /i, "").replace(/^show /i, "")}` : "▾ Hide full response";
 	return (
 		<div className="authz-raw">
 			<button
@@ -121,7 +123,7 @@ function RawJson({ data }) {
 				className="authz-raw-toggle"
 				onClick={() => setOpen((o) => !o)}
 			>
-				{open ? "▾ Hide raw response" : "▸ Show raw response"}
+				{open ? openLabel : closedLabel}
 			</button>
 			{open && (
 				<pre className="authz-raw-body">{JSON.stringify(data, null, 2)}</pre>
@@ -334,7 +336,18 @@ export default function AuthzTestPage() {
 				</div>
 			);
 		}
-		return (
+		const displayData = result.raw ?? {
+			decision: result.decision,
+			engine: result.engine,
+			path: result.path,
+			...(result.decisionId ? { decisionId: result.decisionId } : {}),
+			parameters: result.parameters,
+			...(result.note ? { note: result.note } : {}),
+		};
+	const rawLabel = result.engine === "pingone"
+		? "Show PingOne Authorize response"
+		: "Show full response";
+	return (
 			<div className="authz-scenario-result">
 				<DecisionBadge
 					decision={result.decision}
@@ -346,7 +359,7 @@ export default function AuthzTestPage() {
 						? ` · ${result.path}`
 						: ""}
 				</span>
-				<RawJson data={result.raw} />
+				<RawJson data={displayData} label={rawLabel} />
 			</div>
 		);
 	}
