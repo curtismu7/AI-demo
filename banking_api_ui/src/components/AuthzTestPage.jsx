@@ -537,7 +537,7 @@ export default function AuthzTestPage() {
 									<button
 										type="button"
 										className="authz-btn authz-btn--login"
-										onClick={navigateToAdminOAuthLogin}
+										onClick={() => navigateToAdminOAuthLogin("/authz-test")}
 									>
 										🔓 Sign in as Admin
 									</button>

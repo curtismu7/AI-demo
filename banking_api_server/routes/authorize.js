@@ -15,8 +15,12 @@ const {
   isConfigured,
   isWorkerCredentialReady,
   provisionDemoDecisionEndpoints,
+  evaluateTransaction: evaluatePingOneTransaction,
 } = require('../services/pingOneAuthorizeService');
-const { getSimulatedRecentDecisions } = require('../services/simulatedAuthorizeService');
+const {
+  getSimulatedRecentDecisions,
+  evaluateTransaction: evaluateSimulatedTransaction,
+} = require('../services/simulatedAuthorizeService');
 const { getAuthorizationStatusSummary } = require('../services/transactionAuthorizationService');
 const { getMcpFirstToolGateStatus } = require('../services/mcpToolAuthorizationService');
 
@@ -189,6 +193,139 @@ router.post('/bootstrap-demo-endpoints', authenticateToken, requireScopes(['open
   } catch (err) {
     console.error('[authorize/bootstrap-demo-endpoints] Error:', err.message);
     return res.status(502).json({ error: 'upstream_error', message: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Test routes — no authentication required (safe: read-only evaluation calls)
+// ---------------------------------------------------------------------------
+
+const TEST_FALLBACK_USER_ID = process.env.AUTHZ_TEST_USER_ID || 'test-user';
+
+/**
+ * GET /api/authorize/test-status
+ * Returns current engine status and thresholds for the test page.
+ * No authentication required.
+ */
+router.get('/test-status', async (_req, res) => {
+  try {
+    const summary = getAuthorizationStatusSummary();
+    const simulatedStepUp = parseFloat(process.env.SIMULATED_AUTHORIZE_POLICY_STEPUP_AMOUNT || '15000');
+    const simulatedDeny   = parseFloat(process.env.SIMULATED_AUTHORIZE_DENY_AMOUNT         || '50000');
+    const depositsIncluded = configStore.get('ff_authorize_deposits') === 'true';
+
+    // getEffective('authorize_decision_endpoint_id') → env var PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID first
+    // then fall back to the FIELD_DEF cache key used when saved via POST /api/admin/config
+    const storedEndpointId =
+      configStore.getEffective('authorize_decision_endpoint_id') ||
+      configStore.get('PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID') ||
+      '';
+    // alias: pingone_worker_client_id → env PINGONE_AUTHORIZE_WORKER_CLIENT_ID
+    const storedWorkerClientId =
+      configStore.getEffective('pingone_worker_client_id') ||
+      configStore.get('PINGONE_AUTHORIZE_WORKER_CLIENT_ID') ||
+      '';
+
+    return res.json({
+      activeEngine: summary.activeEngine,
+      authorizeEnabled: summary.authorizeEnabledConfig,
+      simulatedMode: summary.simulatedMode,
+      pingoneConfigured: summary.pingoneConfigured,
+      hasDecisionEndpointId: summary.hasDecisionEndpointId,
+      hasPolicyId: summary.hasPolicyId,
+      decisionEndpointId: storedEndpointId,
+      workerClientId: storedWorkerClientId,
+      thresholds: {
+        simulated: {
+          stepUp: simulatedStepUp,
+          deny: simulatedDeny,
+          stepUpTypes: ['transfer', 'withdrawal'],
+          depositsIncluded,
+        },
+        pingone: {
+          stepUp: 10000,
+          deny: 50000,
+          note: 'As configured in the Super Banking Transaction Authorization policy in PingOne Authorize',
+          stepUpTypes: ['transfer', 'withdrawal'],
+          depositsIncluded,
+        },
+      },
+    });
+  } catch (err) {
+    console.error('[authorize/test-status] Error:', err.message);
+    return res.status(500).json({ error: 'internal_error', message: err.message });
+  }
+});
+
+/**
+ * POST /api/authorize/test-evaluate
+ * Evaluate a transaction against the active authorization engine (simulated or PingOne).
+ * No authentication required — safe because this is a read-only policy decision call.
+ *
+ * Body: { amount: number, type: 'transfer'|'withdrawal'|'deposit', acr?: string, userId?: string }
+ */
+router.post('/test-evaluate', async (req, res) => {
+  const { amount, type, acr, userId: bodyUserId } = req.body || {};
+
+  if (amount == null || !type) {
+    return res.status(400).json({ error: 'amount and type are required' });
+  }
+  const numAmount = parseFloat(amount);
+  if (isNaN(numAmount) || numAmount <= 0) {
+    return res.status(400).json({ error: 'amount must be a positive number' });
+  }
+
+  const userId = bodyUserId || req.session?.user?.id || TEST_FALLBACK_USER_ID;
+  const summary = getAuthorizationStatusSummary();
+
+  // If authorization is off entirely, return an informational permit
+  if (!summary.authorizeEnabledConfig && !summary.simulatedMode) {
+    return res.json({
+      ok: true,
+      decision: 'PERMIT',
+      stepUpRequired: false,
+      hitlRequired: false,
+      engine: 'off',
+      path: 'bypass',
+      parameters: { Amount: numAmount, TransactionType: type, UserId: userId, ...(acr ? { Acr: acr } : {}) },
+      note: 'Authorization is currently disabled. Enable it in Application Configuration to evaluate policies.',
+    });
+  }
+
+  try {
+    let result;
+
+    if (summary.simulatedMode) {
+      result = await evaluateSimulatedTransaction({ userId, amount: numAmount, type, acr: acr || undefined });
+      return res.json({
+        ok: true,
+        decision: result.decision,
+        stepUpRequired: result.stepUpRequired,
+        hitlRequired: result.hitlRequired || false,
+        engine: 'simulated',
+        path: result.path,
+        decisionId: result.decisionId,
+        parameters: result.raw?.parameters || { Amount: numAmount, TransactionType: type, UserId: userId },
+        raw: result.raw,
+      });
+    }
+
+    // PingOne Authorize (live)
+    result = await evaluatePingOneTransaction({ userId, amount: numAmount, type, acr: acr || undefined });
+    return res.json({
+      ok: true,
+      decision: result.decision,
+      stepUpRequired: result.stepUpRequired,
+      hitlRequired: result.hitlRequired || false,
+      engine: 'pingone',
+      path: result.path,
+      decisionId: result.decisionId,
+      parameters: { Amount: numAmount, TransactionType: type, UserId: userId, ...(acr ? { Acr: acr } : {}) },
+      raw: result.raw,
+    });
+  } catch (err) {
+    console.error('[authorize/test-evaluate] Error:', err.message);
+    return res.status(502).json({ ok: false, error: err.message });
   }
 });
 
