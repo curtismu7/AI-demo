@@ -76,6 +76,8 @@
   border-radius: 4px;
   font-size: 0.875rem;
   font-weight: 500;
+  white-space: nowrap;
+  display: inline-block;
 }
 
 .status-indicator--success {

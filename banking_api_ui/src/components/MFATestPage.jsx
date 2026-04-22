@@ -120,7 +120,7 @@ export default function MFATestPage() {
 
   const loadWorkerToken = useCallback(async () => {
     try {
-      const { data } = await apiClient.get('/api/pingone-test/worker-token');
+      const { data } = await apiClient.get('/api/mfa/test/worker-token');
       if (data.success) {
         setWorkerTokenStatus('valid');
         setWorkerTokenError(null);

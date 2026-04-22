@@ -464,4 +464,24 @@ router.get('/integration/devices', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/mfa/test/worker-token
+ * Test worker token acquisition (no user auth required — uses client_credentials)
+ */
+router.get('/worker-token', async (req, res) => {
+  try {
+    const configStore = require('../services/configStore');
+    await configStore.ensureInitialized();
+    const token = await oauthService.getAgentClientCredentialsTokenWithExpiry();
+    res.json({
+      success: true,
+      status: token.token ? 'valid' : 'missing',
+      expiresAt: token.expiresAt,
+    });
+  } catch (err) {
+    console.error('[MFA Test] Worker token error:', err.message);
+    res.json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
