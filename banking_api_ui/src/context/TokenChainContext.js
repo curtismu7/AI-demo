@@ -97,9 +97,11 @@ export function TokenChainProvider({ children }) {
       fetchMCPToolCalls();
       if (!pollInterval) pollInterval = setInterval(fetchMCPToolCalls, 15000);
     };
-    // Start polling immediately only if we might already be authenticated;
-    // otherwise wait for the userAuthenticated event.
-    startPolling();
+    // Only start polling after confirming authentication to avoid 401 noise.
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d && d.authenticated && !cancelled) startPolling(); })
+      .catch(() => {});
     window.addEventListener('userAuthenticated', startPolling);
     return () => {
       cancelled = true;
