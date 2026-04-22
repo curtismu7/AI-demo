@@ -98,12 +98,12 @@ export default function MFATestPage() {
 				setConfig(data);
 				setLoading(false);
 			} else {
-				setError("Failed to load config: " + data.error);
+				setError(`Failed to load config: ${data.error}`);
 				setLoading(false);
 			}
 		} catch (err) {
 			console.error("Config error:", err);
-			setError("Failed to load config: " + err.message);
+			setError(`Failed to load config: ${err.message}`);
 			setLoading(false);
 		}
 	}, []);
@@ -142,7 +142,7 @@ export default function MFATestPage() {
 		} catch (err) {
 			setWorkerTokenStatus("error");
 			setWorkerTokenError(err.message);
-			notifyError("Worker token error: " + err.message);
+			notifyError(`Worker token error: ${err.message}`);
 		}
 	}, []);
 
@@ -164,9 +164,7 @@ export default function MFATestPage() {
 				// No options arrived — user doesn't have FIDO2 enrolled
 				setNoFidoDeviceDetected(true);
 				setAutoEnrollFido(true);
-				notifyInfo(
-					"No FIDO2 device found. Starting automatic enrollment…",
-				);
+				notifyInfo("No FIDO2 device found. Starting automatic enrollment…");
 			}, 5000);
 			return () => clearTimeout(timer);
 		}
@@ -184,9 +182,7 @@ export default function MFATestPage() {
 				// No SMS device found
 				setNoSmsDeviceDetected(true);
 				setAutoEnrollSms(true);
-				notifyInfo(
-					"No SMS device found. Starting automatic enrollment…",
-				);
+				notifyInfo("No SMS device found. Starting automatic enrollment…");
 			}, 5000);
 			return () => clearTimeout(timer);
 		}
@@ -204,9 +200,7 @@ export default function MFATestPage() {
 				// No Email device found
 				setNoEmailDeviceDetected(true);
 				setAutoEnrollEmail(true);
-				notifyInfo(
-					"No Email device found. Starting automatic enrollment…",
-				);
+				notifyInfo("No Email device found. Starting automatic enrollment…");
 			}, 5000);
 			return () => clearTimeout(timer);
 		}
@@ -229,12 +223,12 @@ export default function MFATestPage() {
 			} else {
 				setSmsInitiateStatus("failed");
 				setSmsInitiateError(data.error);
-				notifyError("SMS OTP initiation failed: " + data.error);
+				notifyError(`SMS OTP initiation failed: ${data.error}`);
 			}
 		} catch (err) {
 			setSmsInitiateStatus("failed");
 			setSmsInitiateError(err.message);
-			notifyError("SMS OTP initiation failed: " + err.message);
+			notifyError(`SMS OTP initiation failed: ${err.message}`);
 		}
 	}, []);
 
@@ -264,12 +258,12 @@ export default function MFATestPage() {
 			} else {
 				setSmsVerifyStatus("failed");
 				setSmsVerifyError(data.error);
-				notifyError("SMS OTP verification failed: " + data.error);
+				notifyError(`SMS OTP verification failed: ${data.error}`);
 			}
 		} catch (err) {
 			setSmsVerifyStatus("failed");
 			setSmsVerifyError(err.message);
-			notifyError("SMS OTP verification failed: " + err.message);
+			notifyError(`SMS OTP verification failed: ${err.message}`);
 		}
 	}, [smsDaId, smsDevices, smsOtp]);
 
@@ -290,12 +284,12 @@ export default function MFATestPage() {
 			} else {
 				setEmailInitiateStatus("failed");
 				setEmailInitiateError(data.error);
-				notifyError("Email OTP initiation failed: " + data.error);
+				notifyError(`Email OTP initiation failed: ${data.error}`);
 			}
 		} catch (err) {
 			setEmailInitiateStatus("failed");
 			setEmailInitiateError(err.message);
-			notifyError("Email OTP initiation failed: " + err.message);
+			notifyError(`Email OTP initiation failed: ${err.message}`);
 		}
 	}, []);
 
@@ -325,12 +319,12 @@ export default function MFATestPage() {
 			} else {
 				setEmailVerifyStatus("failed");
 				setEmailVerifyError(data.error);
-				notifyError("Email OTP verification failed: " + data.error);
+				notifyError(`Email OTP verification failed: ${data.error}`);
 			}
 		} catch (err) {
 			setEmailVerifyStatus("failed");
 			setEmailVerifyError(err.message);
-			notifyError("Email OTP verification failed: " + err.message);
+			notifyError(`Email OTP verification failed: ${err.message}`);
 		}
 	}, [emailDaId, emailDevices, emailOtp]);
 
@@ -366,12 +360,12 @@ export default function MFATestPage() {
 			} else {
 				setFidoInitiateStatus("failed");
 				setFidoInitiateError(data.error);
-				notifyError("FIDO2 initiation failed: " + data.error);
+				notifyError(`FIDO2 initiation failed: ${data.error}`);
 			}
 		} catch (err) {
 			setFidoInitiateStatus("failed");
 			setFidoInitiateError(err.message);
-			notifyError("FIDO2 initiation failed: " + err.message);
+			notifyError(`FIDO2 initiation failed: ${err.message}`);
 		}
 	}, []);
 
@@ -385,14 +379,14 @@ export default function MFATestPage() {
 		try {
 			if (!navigator.credentials)
 				throw new Error("WebAuthn not supported in this browser");
-			
+
 			// Safe base64 decode helper
 			const safeBase64ToBytes = (str) => {
 				try {
 					return Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
 				} catch (e) {
 					// If decoding fails, try treating as UTF-8 string
-					if (typeof str === 'string') {
+					if (typeof str === "string") {
 						const bytes = new Uint8Array(str.length);
 						for (let i = 0; i < str.length; i++) {
 							bytes[i] = str.charCodeAt(i);
@@ -402,7 +396,7 @@ export default function MFATestPage() {
 					throw e;
 				}
 			};
-			
+
 			const opts = {
 				...fidoChallengeOptions,
 				challenge: safeBase64ToBytes(fidoChallengeOptions.challenge),
@@ -439,12 +433,12 @@ export default function MFATestPage() {
 			} else {
 				setFidoVerifyStatus("failed");
 				setFidoVerifyError(data.error);
-				notifyError("FIDO2 verification failed: " + data.error);
+				notifyError(`FIDO2 verification failed: ${data.error}`);
 			}
 		} catch (err) {
 			setFidoVerifyStatus("failed");
 			setFidoVerifyError(err.message);
-			notifyError("FIDO2 verification error: " + err.message);
+			notifyError(`FIDO2 verification error: ${err.message}`);
 		}
 	}, [fidoDaId, fidoChallengeOptions]);
 
@@ -459,7 +453,7 @@ export default function MFATestPage() {
 		try {
 			const { data } = await apiClient.post(
 				"/api/mfa/test/integration/enroll-email",
-				{ email: enrollEmailInput.trim() }
+				{ email: enrollEmailInput.trim() },
 			);
 			if (data.success) {
 				setEnrollEmailStatus("passed");
@@ -469,12 +463,12 @@ export default function MFATestPage() {
 			} else {
 				setEnrollEmailStatus("failed");
 				setEnrollEmailError(data.error);
-				notifyError("Email enrollment failed: " + data.error);
+				notifyError(`Email enrollment failed: ${data.error}`);
 			}
 		} catch (err) {
 			setEnrollEmailStatus("failed");
 			setEnrollEmailError(err.message);
-			notifyError("Email enrollment failed: " + err.message);
+			notifyError(`Email enrollment failed: ${err.message}`);
 		}
 	}, [enrollEmailInput, loadDevices]);
 
@@ -495,12 +489,12 @@ export default function MFATestPage() {
 			} else {
 				setFidoEnrollInitStatus("failed");
 				setFidoEnrollInitError(data.error);
-				notifyError("FIDO2 enrollment initiation failed: " + data.error);
+				notifyError(`FIDO2 enrollment initiation failed: ${data.error}`);
 			}
 		} catch (err) {
 			setFidoEnrollInitStatus("failed");
 			setFidoEnrollInitError(err.message);
-			notifyError("FIDO2 enrollment initiation failed: " + err.message);
+			notifyError(`FIDO2 enrollment initiation failed: ${err.message}`);
 		}
 	}, []);
 
@@ -520,7 +514,7 @@ export default function MFATestPage() {
 
 	// Note: SMS enrollment is automatic via PingOne profile phone number update
 	// No direct enrollment endpoint, but detection alerts user to phone number configuration
-	
+
 	const testFidoEnrollComplete = useCallback(async () => {
 		if (
 			!fidoEnrollData?.deviceId ||
@@ -536,12 +530,15 @@ export default function MFATestPage() {
 				throw new Error("WebAuthn not supported in this browser");
 			// PingOne may return publicKeyCredentialCreationOptions as a JSON string
 			const rawOpts = fidoEnrollData.publicKeyCredentialCreationOptions;
-			const creationOpts = typeof rawOpts === "string" ? JSON.parse(rawOpts) : rawOpts;
-			if (!creationOpts) throw new Error("Missing publicKeyCredentialCreationOptions");
-			
+			const creationOpts =
+				typeof rawOpts === "string" ? JSON.parse(rawOpts) : rawOpts;
+			if (!creationOpts)
+				throw new Error("Missing publicKeyCredentialCreationOptions");
+
 			// Convert base64url (PingOne) → standard base64 → Uint8Array
 			const safeBase64ToBytes = (val) => {
-				if (!val) throw new Error(`Expected base64url but got: ${JSON.stringify(val)}`);
+				if (!val)
+					throw new Error(`Expected base64url but got: ${JSON.stringify(val)}`);
 				if (val instanceof Uint8Array) return val;
 				if (val instanceof ArrayBuffer) return new Uint8Array(val);
 				const s = String(val);
@@ -551,7 +548,7 @@ export default function MFATestPage() {
 					.padEnd(Math.ceil(s.length / 4) * 4, "=");
 				return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 			};
-			
+
 			const publicKey = {
 				...creationOpts,
 				challenge: safeBase64ToBytes(creationOpts.challenge),
@@ -586,12 +583,12 @@ export default function MFATestPage() {
 			} else {
 				setFidoEnrollCompleteStatus("failed");
 				setFidoEnrollCompleteError(data.error);
-				notifyError("FIDO2 registration failed: " + data.error);
+				notifyError(`FIDO2 registration failed: ${data.error}`);
 			}
 		} catch (err) {
 			setFidoEnrollCompleteStatus("failed");
 			setFidoEnrollCompleteError(err.message);
-			notifyError("FIDO2 registration error: " + err.message);
+			notifyError(`FIDO2 registration error: ${err.message}`);
 		}
 	}, [fidoEnrollData, loadDevices]);
 
@@ -669,7 +666,7 @@ export default function MFATestPage() {
 			<div className="mfa-test-content">
 				{/* Info banner when using auto-resolved default policy */}
 				{config?.policySource === "auto" && (
-					<div className="mfa-test-info-banner" role="status">
+					<div className="mfa-test-info-banner">
 						<strong>ℹ️ Using default MFA policy</strong>
 						<p>
 							<code>PINGONE_MFA_POLICY_ID</code> is not set — the server will
@@ -741,10 +738,18 @@ export default function MFATestPage() {
 						]}
 					/>
 					<div style={{ marginBottom: "1rem" }}>
-						<label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+						<label
+							htmlFor="enroll-email-input"
+							style={{
+								display: "block",
+								marginBottom: "0.5rem",
+								fontWeight: "600",
+							}}
+						>
 							Email to Enroll:
 						</label>
 						<input
+							id="enroll-email-input"
 							type="email"
 							className="otp-input"
 							placeholder="user@example.com"
@@ -815,10 +820,16 @@ export default function MFATestPage() {
 							{noSmsDeviceDetected ? (
 								<div className="otp-no-device-banner">
 									<p className="info-text">
-										📱 <strong>No SMS device found</strong> — this user needs an SMS-enabled phone number registered in PingOne.
+										📱 <strong>No SMS device found</strong> — this user needs an
+										SMS-enabled phone number registered in PingOne.
 									</p>
-									<p className="info-text" style={{ fontSize: "0.9em", marginTop: "8px" }}>
-										SMS devices are managed via the PingOne user profile phone number field. Update the user's phone number or enroll a different MFA method (Email, FIDO2).
+									<p
+										className="info-text"
+										style={{ fontSize: "0.9em", marginTop: "8px" }}
+									>
+										SMS devices are managed via the PingOne user profile phone
+										number field. Update the user's phone number or enroll a
+										different MFA method (Email, FIDO2).
 									</p>
 								</div>
 							) : (
@@ -830,7 +841,6 @@ export default function MFATestPage() {
 										value={smsOtp}
 										onChange={(e) => setSmsOtp(e.target.value)}
 										maxLength={6}
-										autoFocus
 									/>
 									<button
 										type="button"
@@ -888,11 +898,17 @@ export default function MFATestPage() {
 							{noEmailDeviceDetected ? (
 								<div className="otp-no-device-banner">
 									<p className="info-text">
-										📧 <strong>No Email device found</strong> — automatic enrollment started above.
+										📧 <strong>No Email device found</strong> — automatic
+										enrollment started above.
 									</p>
-									<p className="info-text" style={{ fontSize: "0.9em", marginTop: "8px" }}>
-										Scroll up to the <strong>Device Enrollment</strong> section and click "Enroll Email Device" to register an email OTP device.
-										Once registered, you'll be able to verify with this email address.
+									<p
+										className="info-text"
+										style={{ fontSize: "0.9em", marginTop: "8px" }}
+									>
+										Scroll up to the <strong>Device Enrollment</strong> section
+										and click "Enroll Email Device" to register an email OTP
+										device. Once registered, you'll be able to verify with this
+										email address.
 									</p>
 								</div>
 							) : (
@@ -904,7 +920,6 @@ export default function MFATestPage() {
 										value={emailOtp}
 										onChange={(e) => setEmailOtp(e.target.value)}
 										maxLength={6}
-										autoFocus
 									/>
 									<button
 										type="button"
@@ -983,11 +998,16 @@ export default function MFATestPage() {
 							) : noFidoDeviceDetected ? (
 								<div className="fido-no-device-banner">
 									<p className="info-text">
-										🔐 <strong>No FIDO2 device found</strong> — automatic enrollment started above.
+										🔐 <strong>No FIDO2 device found</strong> — automatic
+										enrollment started above.
 									</p>
-									<p className="info-text" style={{ fontSize: "0.9em", marginTop: "8px" }}>
-										Scroll up to the <strong>Device Enrollment</strong> section to complete FIDO2 registration.
-										Once registered, you'll be able to verify with this passkey.
+									<p
+										className="info-text"
+										style={{ fontSize: "0.9em", marginTop: "8px" }}
+									>
+										Scroll up to the <strong>Device Enrollment</strong> section
+										to complete FIDO2 registration. Once registered, you'll be
+										able to verify with this passkey.
 									</p>
 								</div>
 							) : (
@@ -1084,8 +1104,8 @@ function WhatIsHappening({ title, steps, apiFlow }) {
 				<div className="wih-body">
 					{steps && (
 						<ol className="wih-steps">
-							{steps.map((s, i) => (
-								<li key={i} className="wih-step">
+							{steps.map((s) => (
+								<li key={s} className="wih-step">
 									{s}
 								</li>
 							))}
@@ -1094,8 +1114,8 @@ function WhatIsHappening({ title, steps, apiFlow }) {
 					{apiFlow && (
 						<div className="wih-api">
 							<div className="wih-api-title">API Calls Involved</div>
-							{apiFlow.map((a, i) => (
-								<div key={i} className="wih-api-row">
+							{apiFlow.map((a) => (
+								<div key={`${a.method}-${a.endpoint}`} className="wih-api-row">
 									<span
 										className={`wih-method wih-method--${a.method?.toLowerCase()}`}
 									>

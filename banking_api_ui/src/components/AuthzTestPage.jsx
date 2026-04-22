@@ -115,7 +115,9 @@ function RawJson({ data, label }) {
 	const [open, setOpen] = useState(false);
 	if (!data) return null;
 	const closedLabel = label ? `▸ ${label}` : "▸ Show full response";
-	const openLabel   = label ? `▾ Hide ${label.replace(/^Show /i, "").replace(/^show /i, "")}` : "▾ Hide full response";
+	const openLabel = label
+		? `▾ Hide ${label.replace(/^Show /i, "").replace(/^show /i, "")}`
+		: "▾ Hide full response";
 	return (
 		<div className="authz-raw">
 			<button
@@ -219,27 +221,35 @@ export default function AuthzTestPage() {
 			// 2. If PingOne mode, save credentials + endpoint ID (use FIELD_DEFS key names)
 			if (engineMode === "pingone") {
 				const cfgBody = {};
-				if (endpointId.trim()) cfgBody.PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID = endpointId.trim();
-				if (workerClientId.trim()) cfgBody.PINGONE_AUTHORIZE_WORKER_CLIENT_ID = workerClientId.trim();
-				if (workerClientSecret.trim()) cfgBody.PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET = workerClientSecret.trim();
+				if (endpointId.trim())
+					cfgBody.PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID = endpointId.trim();
+				if (workerClientId.trim())
+					cfgBody.PINGONE_AUTHORIZE_WORKER_CLIENT_ID = workerClientId.trim();
+				if (workerClientSecret.trim())
+					cfgBody.PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET =
+						workerClientSecret.trim();
 				if (Object.keys(cfgBody).length > 0) {
 					const cfgRes = await apiClient.post("/api/admin/config", cfgBody);
 					if (!cfgRes.data?.ok) throw new Error("Config save failed");
 				}
 			}
 
-			setEngineSaveMsg({ ok: true, text: `Engine set to ${engineMode === "simulated" ? "Simulated" : "PingOne Authorize"}. Reloading status…` });
+			setEngineSaveMsg({
+				ok: true,
+				text: `Engine set to ${engineMode === "simulated" ? "Simulated" : "PingOne Authorize"}. Reloading status…`,
+			});
 			setWorkerClientSecret(""); // clear secret from UI after save
 			setEngineSettingsOpen(false);
 			await loadStatus();
 		} catch (err) {
 			const status = err.response?.status;
 			const needsLogin = status === 401 || status === 403;
-			const msg = status === 401
-				? "Admin login required — sign in to change the engine."
-				: status === 403
-					? "Admin role required — sign in as admin and try again."
-					: err.message || "Save failed";
+			const msg =
+				status === 401
+					? "Admin login required — sign in to change the engine."
+					: status === 403
+						? "Admin role required — sign in as admin and try again."
+						: err.message || "Save failed";
 			setEngineSaveMsg({ ok: false, text: msg, needsLogin });
 		} finally {
 			setEngineSaving(false);
@@ -316,7 +326,7 @@ export default function AuthzTestPage() {
 			pushHistory(result, "Custom");
 		} catch (err) {
 			setCustomResult({ ok: false, error: err.message });
-			notifyError("Evaluation failed: " + err.message);
+			notifyError(`Evaluation failed: ${err.message}`);
 		} finally {
 			setCustomRunning(false);
 		}
@@ -368,10 +378,11 @@ export default function AuthzTestPage() {
 			parameters: result.parameters,
 			...(result.note ? { note: result.note } : {}),
 		};
-	const rawLabel = result.engine === "pingone"
-		? "Show PingOne Authorize response"
-		: "Show full response";
-	return (
+		const rawLabel =
+			result.engine === "pingone"
+				? "Show PingOne Authorize response"
+				: "Show full response";
+		return (
 			<div className="authz-scenario-result">
 				<DecisionBadge
 					decision={result.decision}
@@ -504,7 +515,9 @@ export default function AuthzTestPage() {
 
 						{/* Radio toggle */}
 						<div className="authz-engine-radio-group">
-							<label className={`authz-engine-radio-label${engineMode === "simulated" ? " authz-engine-radio-label--active" : ""}`}>
+							<label
+								className={`authz-engine-radio-label${engineMode === "simulated" ? " authz-engine-radio-label--active" : ""}`}
+							>
 								<input
 									type="radio"
 									name="authz-engine"
@@ -512,14 +525,18 @@ export default function AuthzTestPage() {
 									checked={engineMode === "simulated"}
 									onChange={() => setEngineMode("simulated")}
 								/>
-								<span className="authz-engine-radio-title">Simulated (in-process)</span>
+								<span className="authz-engine-radio-title">
+									Simulated (in-process)
+								</span>
 								<span className="authz-engine-radio-desc">
 									In-process policy — identical HTTP shape to PingOne Authorize.
 									No PingOne credentials required. Best for education and demos.
 								</span>
 							</label>
 
-							<label className={`authz-engine-radio-label${engineMode === "pingone" ? " authz-engine-radio-label--active" : ""}`}>
+							<label
+								className={`authz-engine-radio-label${engineMode === "pingone" ? " authz-engine-radio-label--active" : ""}`}
+							>
 								<input
 									type="radio"
 									name="authz-engine"
@@ -527,7 +544,9 @@ export default function AuthzTestPage() {
 									checked={engineMode === "pingone"}
 									onChange={() => setEngineMode("pingone")}
 								/>
-								<span className="authz-engine-radio-title">PingOne Authorize (live)</span>
+								<span className="authz-engine-radio-title">
+									PingOne Authorize (live)
+								</span>
 								<span className="authz-engine-radio-desc">
 									Calls your real PingOne Authorize decision endpoint. Requires
 									worker app credentials and a configured decision endpoint ID.
@@ -538,7 +557,9 @@ export default function AuthzTestPage() {
 						{/* PingOne credentials — shown only when pingone selected */}
 						{engineMode === "pingone" && (
 							<div className="authz-engine-creds">
-								<h4 className="authz-engine-creds-title">PingOne Authorize Credentials</h4>
+								<h4 className="authz-engine-creds-title">
+									PingOne Authorize Credentials
+								</h4>
 								<div className="authz-engine-creds-grid">
 									<label className="authz-label">
 										Decision Endpoint ID
@@ -585,7 +606,9 @@ export default function AuthzTestPage() {
 
 						{/* Save feedback */}
 						{engineSaveMsg && (
-							<div className={`authz-engine-save-msg${engineSaveMsg.ok ? " authz-engine-save-msg--ok" : " authz-engine-save-msg--err"}`}>
+							<div
+								className={`authz-engine-save-msg${engineSaveMsg.ok ? " authz-engine-save-msg--ok" : " authz-engine-save-msg--err"}`}
+							>
 								<span>{engineSaveMsg.text}</span>
 								{engineSaveMsg.needsLogin && (
 									<button
@@ -632,10 +655,10 @@ export default function AuthzTestPage() {
 						{activeEngine === "simulated"
 							? "in-process simulated"
 							: activeEngine === "pingone"
-							? "live PingOne Authorize"
-							: activeEngine === "off"
-							? "disabled (bypass)"
-							: "unconfigured"}
+								? "live PingOne Authorize"
+								: activeEngine === "off"
+									? "disabled (bypass)"
+									: "unconfigured"}
 					</strong>{" "}
 					engine. Run them individually or all at once.
 				</p>
@@ -683,7 +706,11 @@ export default function AuthzTestPage() {
 					type="button"
 					className="authz-btn authz-btn--secondary"
 					disabled={Object.values(scenarioRunning).some(Boolean)}
-					onClick={() => PRESET_SCENARIOS.forEach((s) => runScenario(s))}
+					onClick={() =>
+						PRESET_SCENARIOS.forEach((s) => {
+							runScenario(s);
+						})
+					}
 				>
 					Run All Scenarios
 				</button>
@@ -802,8 +829,8 @@ export default function AuthzTestPage() {
 							</tr>
 						</thead>
 						<tbody>
-							{history.map((h, i) => (
-								<tr key={i}>
+							{history.map((h) => (
+								<tr key={`${h._label}-${h._ts ?? ""}`}>
 									<td>{h._label}</td>
 									<td>
 										<DecisionBadge
