@@ -450,11 +450,12 @@ export default function MFATestPage() {
         <h1 className="mfa-test-title">PingOne MFA Test Page</h1>
         <div className="mfa-test-meta">
           <div className="mfa-test-status">
-            <span className={`status-indicator ${config?.mfaEnabled ? 'status-indicator--success' : 'status-indicator--error'}`}>
-              {config?.mfaEnabled ? 'MFA Enabled' : 'MFA Disabled'}
-            </span>
-            <span className={`status-indicator ${workerTokenStatus === 'valid' ? 'status-indicator--success' : 'status-indicator--error'}`}>
-              {workerTokenStatus === 'valid' ? 'Worker Token: Active' : 'Worker Token: Missing'}
+            <span className={`mfa-status-pill ${config?.mfaEnabled && workerTokenStatus === 'valid' ? 'mfa-status-pill--success' : 'mfa-status-pill--error'}`}>
+              {config?.mfaEnabled && workerTokenStatus === 'valid'
+                ? '✓ Ready'
+                : !config?.mfaEnabled
+                  ? '✗ MFA Disabled'
+                  : '✗ Worker Token Missing'}
             </span>
           </div>
           <div className="mfa-test-actions">

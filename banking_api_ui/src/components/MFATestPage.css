@@ -71,7 +71,7 @@
   flex-wrap: wrap;
 }
 
-.status-indicator {
+.mfa-status-pill {
   padding: 0.5rem 1rem;
   border-radius: 4px;
   font-size: 0.875rem;
@@ -80,12 +80,12 @@
   display: inline-block;
 }
 
-.status-indicator--success {
+.mfa-status-pill--success {
   background-color: #d4edda;
   color: #155724;
 }
 
-.status-indicator--error {
+.mfa-status-pill--error {
   background-color: #f8d7da;
   color: #721c24;
 }
