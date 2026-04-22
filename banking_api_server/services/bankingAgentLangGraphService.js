@@ -115,8 +115,8 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null) {
         return { reply: `❌ Insufficient funds in ${fromAcct.accountType}. Balance: $${Number(fromAcct.balance).toFixed(2)}`, success: false, toolsCalled: ['transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
       try {
-        await dataStore.createTransaction({ userId, accountId: fromAcct.id, type: 'transfer_out', amount: -amount, description: `Transfer to ${toAcct.accountType}` });
-        await dataStore.createTransaction({ userId, accountId: toAcct.id, type: 'transfer_in', amount, description: `Transfer from ${fromAcct.accountType}` });
+        await dataStore.createTransaction({ userId, accountId: fromAcct.id, type: 'transfer_out', amount: -amount, description: `Transfer to ${toAcct.accountType}`, clientType: 'ai_agent' });
+        await dataStore.createTransaction({ userId, accountId: toAcct.id, type: 'transfer_in', amount, description: `Transfer from ${fromAcct.accountType}`, clientType: 'ai_agent' });
         await dataStore.updateAccountBalance(fromAcct.id, -amount);
         await dataStore.updateAccountBalance(toAcct.id, amount);
         return { reply: `✅ Transferred **$${amount.toFixed(2)}** from ${fromAcct.accountType} to ${toAcct.accountType}.`, success: true, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
@@ -142,7 +142,7 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null) {
         return { reply: '❌ Please specify a valid positive amount.', success: false, toolsCalled: ['deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
       try {
-        await dataStore.createTransaction({ userId, accountId: toAcct.id, type: 'deposit', amount, description: params.description || 'Agent deposit' });
+        await dataStore.createTransaction({ userId, accountId: toAcct.id, type: 'deposit', amount, description: params.description || 'Agent deposit', clientType: 'ai_agent' });
         await dataStore.updateAccountBalance(toAcct.id, amount);
         return { reply: `✅ Deposited **$${amount.toFixed(2)}** into ${toAcct.accountType}.`, success: true, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       } catch (err) {
@@ -170,7 +170,7 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null) {
         return { reply: `❌ Insufficient funds in ${fromAcct.accountType}. Balance: $${Number(fromAcct.balance).toFixed(2)}`, success: false, toolsCalled: ['withdraw'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
       try {
-        await dataStore.createTransaction({ userId, accountId: fromAcct.id, type: 'withdrawal', amount: -amount, description: params.description || 'Agent withdrawal' });
+        await dataStore.createTransaction({ userId, accountId: fromAcct.id, type: 'withdrawal', amount: -amount, description: params.description || 'Agent withdrawal', clientType: 'ai_agent' });
         await dataStore.updateAccountBalance(fromAcct.id, -amount);
         return { reply: `✅ Withdrew **$${amount.toFixed(2)}** from ${fromAcct.accountType}.`, success: true, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       } catch (err) {

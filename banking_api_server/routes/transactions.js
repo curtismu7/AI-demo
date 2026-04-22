@@ -105,11 +105,7 @@ router.get('/my', authenticateToken, async (req, res) => {
       console.log(`[transactions] Delegated access — sub=${req.user.id} act.sub=${req.user.actor?.sub}`);
     }
 
-    // Add cache headers for frequent polling
-    res.set({
-      'Cache-Control': 'private, max-age=10', // Cache for 10 seconds
-      'ETag': `"transactions-${req.user.id}-${Date.now()}"`,
-    });
+    res.set({ 'Cache-Control': 'no-store' });
     
     const userTransactions = dataStore.getTransactionsByUserId(req.user.id);
     const user = dataStore.getUserById(req.user.id);

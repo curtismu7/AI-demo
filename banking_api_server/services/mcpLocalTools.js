@@ -282,6 +282,7 @@ async function create_deposit(params, userId) {
     amount: rounded,
     type: 'deposit',
     description: description || 'Agent deposit',
+    clientType: 'ai_agent',
     status: 'completed',
     createdAt: new Date(),
   });
@@ -343,6 +344,7 @@ async function create_withdrawal(params, userId, req) {
     amount: rounded,
     type: 'withdrawal',
     description: description || 'Agent withdrawal',
+    clientType: 'ai_agent',
     status: 'completed',
     createdAt: new Date(),
   });
@@ -404,6 +406,7 @@ async function create_transfer(params, userId, req) {
     amount: rounded,
     type: 'transfer',
     description: description || 'Agent transfer',
+    clientType: 'ai_agent',
     status: 'completed',
     createdAt: new Date(),
   });
