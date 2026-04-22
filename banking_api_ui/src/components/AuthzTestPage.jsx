@@ -151,20 +151,81 @@ export default function AuthzTestPage() {
 	// History (client-side ring buffer)
 	const [history, setHistory] = useState([]);
 
+	// Engine settings panel
+	const [engineSettingsOpen, setEngineSettingsOpen] = useState(false);
+	const [engineMode, setEngineMode] = useState("simulated"); // "simulated" | "pingone"
+	const [endpointId, setEndpointId] = useState("");
+	const [workerClientId, setWorkerClientId] = useState("");
+	const [workerClientSecret, setWorkerClientSecret] = useState("");
+	const [engineSaving, setEngineSaving] = useState(false);
+	const [engineSaveMsg, setEngineSaveMsg] = useState(null); // {ok, text}
+
 	const pushHistory = useCallback((result, label) => {
 		setHistory((h) =>
 			[{ ...result, _label: label, _ts: Date.now() }, ...h].slice(0, 8),
 		);
 	}, []);
 
-	// Load engine status on mount
-	useEffect(() => {
+	const loadStatus = useCallback(() => {
+		setStatusLoading(true);
 		apiClient
 			.get("/api/authorize/test-status")
-			.then(({ data }) => setStatus(data))
+			.then(({ data }) => {
+				setStatus(data);
+				// Sync engine toggle to what server reports
+				if (data.simulatedMode) setEngineMode("simulated");
+				else if (data.activeEngine === "pingone") setEngineMode("pingone");
+				else if (data.authorizeEnabled === false) setEngineMode("simulated");
+			})
 			.catch((err) => setStatus({ error: err.message }))
 			.finally(() => setStatusLoading(false));
 	}, []);
+
+	// Load engine status on mount
+	useEffect(() => {
+		loadStatus();
+	}, [loadStatus]);
+
+	const applyEngine = useCallback(async () => {
+		setEngineSaving(true);
+		setEngineSaveMsg(null);
+		try {
+			// 1. Set feature flags — enable authorize, set simulated on/off
+			const flagRes = await apiClient.patch("/api/admin/feature-flags", {
+				updates: {
+					authorize_enabled: "true",
+					ff_authorize_simulated: engineMode === "simulated" ? "true" : "false",
+				},
+			});
+			if (!flagRes.data?.updated) throw new Error("Feature flag save failed");
+
+			// 2. If PingOne mode, save credentials + endpoint ID
+			if (engineMode === "pingone") {
+				const cfgBody = {};
+				if (endpointId.trim()) cfgBody.authorize_decision_endpoint_id = endpointId.trim();
+				if (workerClientId.trim()) cfgBody.authorize_worker_client_id = workerClientId.trim();
+				if (workerClientSecret.trim()) cfgBody.authorize_worker_client_secret = workerClientSecret.trim();
+				if (Object.keys(cfgBody).length > 0) {
+					const cfgRes = await apiClient.post("/api/admin/config", cfgBody);
+					if (!cfgRes.data?.ok) throw new Error("Config save failed");
+				}
+			}
+
+			setEngineSaveMsg({ ok: true, text: `Engine set to ${engineMode === "simulated" ? "Simulated" : "PingOne Authorize"}. Reloading status…` });
+			setWorkerClientSecret(""); // clear secret from UI after save
+			setEngineSettingsOpen(false);
+			await loadStatus();
+		} catch (err) {
+			const msg = err.response?.status === 401
+				? "Admin login required — sign in to change the engine."
+				: err.response?.status === 403
+					? "Admin role required — switch to admin and try again."
+					: err.message || "Save failed";
+			setEngineSaveMsg({ ok: false, text: msg });
+		} finally {
+			setEngineSaving(false);
+		}
+	}, [engineMode, endpointId, workerClientId, workerClientSecret, loadStatus]);
 
 	const callEvaluate = useCallback(async (amount, type, acr) => {
 		const { data } = await apiClient.post("/api/authorize/test-evaluate", {
@@ -335,6 +396,138 @@ export default function AuthzTestPage() {
 					)}
 				</div>
 				{renderThresholds()}
+			</div>
+
+			{/* Engine Settings panel */}
+			<div className="authz-engine-settings">
+				<button
+					type="button"
+					className="authz-engine-settings-toggle"
+					onClick={() => {
+						setEngineSettingsOpen((o) => !o);
+						setEngineSaveMsg(null);
+					}}
+				>
+					<span>⚙ Engine Settings</span>
+					<span className="authz-engine-settings-chevron">
+						{engineSettingsOpen ? "▾" : "▸"}
+					</span>
+				</button>
+
+				{engineSettingsOpen && (
+					<div className="authz-engine-settings-body">
+						<p className="authz-engine-settings-note">
+							Changes require an <strong>admin session</strong>. Toggle which
+							authorization engine evaluates test scenarios.
+						</p>
+
+						{/* Radio toggle */}
+						<div className="authz-engine-radio-group">
+							<label className={`authz-engine-radio-label${engineMode === "simulated" ? " authz-engine-radio-label--active" : ""}`}>
+								<input
+									type="radio"
+									name="authz-engine"
+									value="simulated"
+									checked={engineMode === "simulated"}
+									onChange={() => setEngineMode("simulated")}
+								/>
+								<span className="authz-engine-radio-title">Simulated (in-process)</span>
+								<span className="authz-engine-radio-desc">
+									In-process policy — identical HTTP shape to PingOne Authorize.
+									No PingOne credentials required. Best for education and demos.
+								</span>
+							</label>
+
+							<label className={`authz-engine-radio-label${engineMode === "pingone" ? " authz-engine-radio-label--active" : ""}`}>
+								<input
+									type="radio"
+									name="authz-engine"
+									value="pingone"
+									checked={engineMode === "pingone"}
+									onChange={() => setEngineMode("pingone")}
+								/>
+								<span className="authz-engine-radio-title">PingOne Authorize (live)</span>
+								<span className="authz-engine-radio-desc">
+									Calls your real PingOne Authorize decision endpoint. Requires
+									worker app credentials and a configured decision endpoint ID.
+								</span>
+							</label>
+						</div>
+
+						{/* PingOne credentials — shown only when pingone selected */}
+						{engineMode === "pingone" && (
+							<div className="authz-engine-creds">
+								<h4 className="authz-engine-creds-title">PingOne Authorize Credentials</h4>
+								<div className="authz-engine-creds-grid">
+									<label className="authz-label">
+										Decision Endpoint ID
+										<input
+											type="text"
+											className="authz-input"
+											value={endpointId}
+											onChange={(e) => setEndpointId(e.target.value)}
+											placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+											autoComplete="off"
+										/>
+										<span className="authz-engine-creds-hint">
+											From PingOne Authorize → Decision Endpoints
+										</span>
+									</label>
+									<label className="authz-label">
+										Worker App Client ID
+										<input
+											type="text"
+											className="authz-input"
+											value={workerClientId}
+											onChange={(e) => setWorkerClientId(e.target.value)}
+											placeholder="Worker application client_id"
+											autoComplete="off"
+										/>
+									</label>
+									<label className="authz-label">
+										Worker App Client Secret
+										<input
+											type="password"
+											className="authz-input"
+											value={workerClientSecret}
+											onChange={(e) => setWorkerClientSecret(e.target.value)}
+											placeholder="Leave blank to keep existing secret"
+											autoComplete="new-password"
+										/>
+										<span className="authz-engine-creds-hint">
+											Cleared from UI after save. Stored server-side only.
+										</span>
+									</label>
+								</div>
+							</div>
+						)}
+
+						{/* Save feedback */}
+						{engineSaveMsg && (
+							<div className={`authz-engine-save-msg${engineSaveMsg.ok ? " authz-engine-save-msg--ok" : " authz-engine-save-msg--err"}`}>
+								{engineSaveMsg.text}
+							</div>
+						)}
+
+						<div className="authz-engine-settings-actions">
+							<button
+								type="button"
+								className="authz-btn authz-btn--primary"
+								disabled={engineSaving}
+								onClick={applyEngine}
+							>
+								{engineSaving ? "Applying…" : "Apply Engine"}
+							</button>
+							<button
+								type="button"
+								className="authz-btn authz-btn--secondary"
+								onClick={() => setEngineSettingsOpen(false)}
+							>
+								Cancel
+							</button>
+						</div>
+					</div>
+				)}
 			</div>
 
 			{/* Preset scenarios */}
