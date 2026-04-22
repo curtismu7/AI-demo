@@ -78,6 +78,10 @@ export default function MFATestPage() {
   const [fidoEnrollCompleteStatus, setFidoEnrollCompleteStatus] = useState('pending');
   const [fidoEnrollCompleteError, setFidoEnrollCompleteError] = useState(null);
 
+  // Worker token state (shared with PingOne test page)
+  const [workerTokenStatus, setWorkerTokenStatus] = useState(null);
+  const [workerTokenError, setWorkerTokenError] = useState(null);
+
   const loadConfig = useCallback(async () => {
     try {
       const { data } = await apiClient.get('/api/mfa/test/config');
@@ -114,9 +118,29 @@ export default function MFATestPage() {
     }
   }, []);
 
+  const loadWorkerToken = useCallback(async () => {
+    try {
+      const { data } = await apiClient.get('/api/pingone-test/worker-token');
+      if (data.success) {
+        setWorkerTokenStatus('valid');
+        setWorkerTokenError(null);
+        notifySuccess('Worker token fetched successfully');
+      } else {
+        setWorkerTokenStatus('error');
+        setWorkerTokenError(data.error || 'Failed to fetch worker token');
+        notifyError(data.error || 'Failed to fetch worker token');
+      }
+    } catch (err) {
+      setWorkerTokenStatus('error');
+      setWorkerTokenError(err.message);
+      notifyError('Worker token error: ' + err.message);
+    }
+  }, []);
+
   useEffect(() => {
     loadConfig();
-  }, [loadConfig]);
+    loadWorkerToken();
+  }, [loadConfig, loadWorkerToken]);
 
   // SMS OTP test functions
   const testSmsInitiate = useCallback(async () => {
@@ -429,15 +453,32 @@ export default function MFATestPage() {
             <span className={`status-indicator ${config?.mfaEnabled ? 'status-indicator--success' : 'status-indicator--error'}`}>
               {config?.mfaEnabled ? 'MFA Enabled' : 'MFA Disabled'}
             </span>
+            <span className={`status-indicator ${workerTokenStatus === 'valid' ? 'status-indicator--success' : 'status-indicator--error'}`}>
+              {workerTokenStatus === 'valid' ? 'Worker Token: Active' : 'Worker Token: Missing'}
+            </span>
           </div>
-          <button
-            type="button"
-            className="mfa-test-button mfa-test-button--secondary"
-            onClick={loadDevices}
-          >
-            Refresh Devices
-          </button>
+          <div className="mfa-test-actions">
+            <button
+              type="button"
+              className="mfa-test-button mfa-test-button--secondary"
+              onClick={loadWorkerToken}
+            >
+              Refresh Worker Token
+            </button>
+            <button
+              type="button"
+              className="mfa-test-button mfa-test-button--secondary"
+              onClick={loadDevices}
+            >
+              Refresh Devices
+            </button>
+          </div>
         </div>
+        {workerTokenError && (
+          <div className="mfa-test-info-banner mfa-test-info-banner--error" role="alert">
+            <strong>⚠️ Worker Token Error:</strong> {workerTokenError}
+          </div>
+        )}
       </div>
 
       <div className="mfa-test-content">
