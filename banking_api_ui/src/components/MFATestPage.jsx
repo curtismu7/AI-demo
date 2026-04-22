@@ -534,14 +534,21 @@ export default function MFATestPage() {
 		try {
 			if (!navigator.credentials)
 				throw new Error("WebAuthn not supported in this browser");
-			const creationOpts = fidoEnrollData.publicKeyCredentialCreationOptions;
+			// PingOne may return publicKeyCredentialCreationOptions as a JSON string
+			const rawOpts = fidoEnrollData.publicKeyCredentialCreationOptions;
+			const creationOpts = typeof rawOpts === "string" ? JSON.parse(rawOpts) : rawOpts;
+			if (!creationOpts) throw new Error("Missing publicKeyCredentialCreationOptions");
 			
 			// Convert base64url (PingOne) → standard base64 → Uint8Array
-			const safeBase64ToBytes = (str) => {
-				const b64 = str
+			const safeBase64ToBytes = (val) => {
+				if (!val) throw new Error(`Expected base64url but got: ${JSON.stringify(val)}`);
+				if (val instanceof Uint8Array) return val;
+				if (val instanceof ArrayBuffer) return new Uint8Array(val);
+				const s = String(val);
+				const b64 = s
 					.replace(/-/g, "+")
 					.replace(/_/g, "/")
-					.padEnd(Math.ceil(str.length / 4) * 4, "=");
+					.padEnd(Math.ceil(s.length / 4) * 4, "=");
 				return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 			};
 			
@@ -550,7 +557,7 @@ export default function MFATestPage() {
 				challenge: safeBase64ToBytes(creationOpts.challenge),
 				user: {
 					...creationOpts.user,
-					id: safeBase64ToBytes(creationOpts.user.id),
+					id: safeBase64ToBytes(creationOpts.user?.id),
 				},
 			};
 			const credential = await navigator.credentials.create({ publicKey });
