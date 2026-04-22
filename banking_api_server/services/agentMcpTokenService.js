@@ -388,8 +388,13 @@ async function exchangeTokenRfc8693(userToken, actorToken, mcpResourceUri, final
     const exchangerClientSecret = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
     
     if (actorToken && exchangerClientId && exchangerClientSecret) {
+      const exchangerAuthMethod = (
+        process.env.PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD ||
+        process.env.PINGONE_MCP_TOKEN_EXCHANGER_AUTH_METHOD ||
+        'post'
+      ).toLowerCase();
       exchangedToken = await oauthService.performTokenExchangeAs(
-        userToken, actorToken, exchangerClientId, exchangerClientSecret, mcpResourceUri, finalScopes
+        userToken, actorToken, exchangerClientId, exchangerClientSecret, mcpResourceUri, finalScopes, exchangerAuthMethod
       );
     } else if (actorToken) {
       exchangedToken = await oauthService.performTokenExchangeWithActor(
@@ -1023,8 +1028,13 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
         configStore.getEffective('pingone_mcp_token_exchanger_client_secret') ||
         process.env.AGENT_OAUTH_CLIENT_SECRET;
       if (exchangerClientId && exchangerClientSecret) {
+        const exchangerAuthMethod = (
+          process.env.PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD ||
+          process.env.PINGONE_MCP_TOKEN_EXCHANGER_AUTH_METHOD ||
+          'post'
+        ).toLowerCase();
         exchangedToken = await oauthService.performTokenExchangeAs(
-          userToken, actorToken, exchangerClientId, exchangerClientSecret, mcpResourceUri, finalScopes
+          userToken, actorToken, exchangerClientId, exchangerClientSecret, mcpResourceUri, finalScopes, exchangerAuthMethod
         );
       } else {
         exchangedToken = await oauthService.performTokenExchangeWithActor(
