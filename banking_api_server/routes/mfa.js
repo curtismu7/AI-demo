@@ -176,6 +176,48 @@ router.get('/challenge/:daId/status', authenticateToken, async (req, res) => {
   }
 });
 
+// POST /api/auth/mfa/enroll/sms-init
+// Enroll an SMS OTP device. Body: { phone } (E.164 format).
+// PingOne sends an OTP to the phone — complete with /enroll/sms-complete.
+router.post('/enroll/sms-init', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.session.user?.id;
+    const { phone } = req.body;
+    if (!userId) {
+      return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
+    }
+    if (!phone) {
+      return res.status(400).json({ error: 'missing_phone', message: 'Provide phone in E.164 format.' });
+    }
+    const device = await mfaService.enrollSmsDevice(userId, phone);
+    res.json({ deviceId: device.id, type: device.type, phone: device.phone, status: device.status });
+  } catch (err) {
+    console.error('[MFA route] POST /enroll/sms-init failed:', err.message);
+    res.status(err.status || 500).json({ error: 'enroll_sms_init_failed', message: err.message, pingError: err.pingError });
+  }
+});
+
+// POST /api/auth/mfa/enroll/sms-complete
+// Activate SMS device by submitting the OTP texted to the phone.
+// Body: { deviceId, otp }
+router.post('/enroll/sms-complete', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.session.user?.id;
+    const { deviceId, otp } = req.body;
+    if (!userId) {
+      return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
+    }
+    if (!deviceId || !otp) {
+      return res.status(400).json({ error: 'invalid_body', message: 'Provide deviceId and otp.' });
+    }
+    const result = await mfaService.completeSmsEnrollment(userId, deviceId, otp);
+    res.json({ deviceId: result.id, status: result.status });
+  } catch (err) {
+    console.error('[MFA route] POST /enroll/sms-complete failed:', err.message);
+    res.status(err.status || 500).json({ error: 'enroll_sms_complete_failed', message: err.message, pingError: err.pingError });
+  }
+});
+
 // POST /api/auth/mfa/enroll/email
 // Enroll an email OTP device for the logged-in user.
 // Email is taken from the session user object.

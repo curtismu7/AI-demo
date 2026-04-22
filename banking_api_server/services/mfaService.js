@@ -277,6 +277,74 @@ async function enrollEmailDevice(userId, email) {
 }
 
 /**
+ * Enroll an SMS OTP device for a user via Management API (worker token).
+ * PingOne immediately sends an OTP to the phone — complete with completeSmsEnrollment.
+ * @param {string} userId
+ * @param {string} phone  - E.164 format e.g. +15551234567
+ * Returns { id, type, phone, status }
+ */
+async function enrollSmsDevice(userId, phone) {
+	try {
+		const workerToken = await _getWorkerToken();
+		const url = `${_apiBaseUrl()}/users/${userId}/devices`;
+		const { data } = await axios.post(
+			url,
+			{ type: "SMS", phone },
+			{
+				headers: {
+					Authorization: `Bearer ${workerToken}`,
+					"Content-Type": "application/json",
+				},
+				timeout: 10000,
+			},
+		);
+		console.log(
+			"[MFA] enrolled SMS device userId=%s deviceId=%s status=%s",
+			userId,
+			data.id,
+			data.status,
+		);
+		return data;
+	} catch (err) {
+		throw _wrapError("enrollSmsDevice", err);
+	}
+}
+
+/**
+ * Complete SMS device enrollment by submitting the OTP sent to the phone.
+ * @param {string} userId
+ * @param {string} deviceId - from enrollSmsDevice
+ * @param {string} otp      - 6-digit code texted to the phone
+ * Returns { id, status }
+ */
+async function completeSmsEnrollment(userId, deviceId, otp) {
+	try {
+		const workerToken = await _getWorkerToken();
+		const url = `${_apiBaseUrl()}/users/${userId}/devices/${deviceId}`;
+		const { data } = await axios.put(
+			url,
+			{ otp },
+			{
+				headers: {
+					Authorization: `Bearer ${workerToken}`,
+					"Content-Type": "application/json",
+				},
+				timeout: 10000,
+			},
+		);
+		console.log(
+			"[MFA] completed SMS enrollment userId=%s deviceId=%s status=%s",
+			userId,
+			data.id,
+			data.status,
+		);
+		return data;
+	} catch (err) {
+		throw _wrapError("completeSmsEnrollment", err);
+	}
+}
+
+/**
  * Initiate FIDO2/passkey device registration for a user via Management API.
  * Returns { deviceId, publicKeyCredentialCreationOptions }
  */
@@ -357,6 +425,8 @@ module.exports = {
 	submitFido2Assertion,
 	listMfaDevices,
 	enrollEmailDevice,
+	enrollSmsDevice,
+	completeSmsEnrollment,
 	initFido2Registration,
 	completeFido2Registration,
 	getWorkerToken: _getWorkerToken,

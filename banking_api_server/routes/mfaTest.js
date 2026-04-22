@@ -375,6 +375,52 @@ router.get('/integration/challenge/:daId/status', async (req, res) => {
 });
 
 /**
+ * POST /api/mfa/test/integration/enroll-sms-init
+ * Enroll an SMS OTP device using PingOne MFA — PingOne sends OTP to the phone.
+ * Body: { phone: string }  - E.164 format e.g. +15551234567
+ */
+router.post('/integration/enroll-sms-init', async (req, res) => {
+  try {
+    const { userId } = await _resolveCredentials(req);
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ success: false, error: 'missing_phone', message: 'Provide phone in E.164 format e.g. +15551234567.' });
+    }
+    const _t = Date.now();
+    const device = await mfaService.enrollSmsDevice(userId, phone);
+    const resBody = { success: true, deviceId: device.id, type: device.type, phone: device.phone, status: device.status };
+    res.json(resBody);
+    trackMfaApiCall(req, res, _t, resBody, 'Enroll SMS OTP device');
+  } catch (err) {
+    console.error('[MFA Test Integration] POST /enroll-sms-init failed:', err.message);
+    res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
+  }
+});
+
+/**
+ * POST /api/mfa/test/integration/enroll-sms-complete
+ * Activate an SMS device by submitting the OTP sent to the phone.
+ * Body: { deviceId, otp }
+ */
+router.post('/integration/enroll-sms-complete', async (req, res) => {
+  try {
+    const { userId } = await _resolveCredentials(req);
+    const { deviceId, otp } = req.body;
+    if (!deviceId || !otp) {
+      return res.status(400).json({ success: false, error: 'invalid_body', message: 'Provide deviceId and otp.' });
+    }
+    const _t = Date.now();
+    const result = await mfaService.completeSmsEnrollment(userId, deviceId, otp);
+    const resBody = { success: true, deviceId: result.id, status: result.status };
+    res.json(resBody);
+    trackMfaApiCall(req, res, _t, resBody, 'Complete SMS device enrollment');
+  } catch (err) {
+    console.error('[MFA Test Integration] POST /enroll-sms-complete failed:', err.message);
+    res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
+  }
+});
+
+/**
  * POST /api/mfa/test/integration/enroll-email
  * Enroll an email OTP device using PingOne MFA
  * Body: { email?: string }  - if provided, overrides session email

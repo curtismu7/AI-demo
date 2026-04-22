@@ -62,6 +62,13 @@ export default function MFATestPage() {
 	const [devicesError, setDevicesError] = useState(null);
 
 	// Enrollment state
+	const [enrollSmsPhone, setEnrollSmsPhone] = useState("");
+	const [enrollSmsInitStatus, setEnrollSmsInitStatus] = useState("pending");
+	const [enrollSmsInitError, setEnrollSmsInitError] = useState(null);
+	const [enrollSmsDeviceId, setEnrollSmsDeviceId] = useState(null);
+	const [enrollSmsOtp, setEnrollSmsOtp] = useState("");
+	const [enrollSmsCompleteStatus, setEnrollSmsCompleteStatus] = useState("pending");
+	const [enrollSmsCompleteError, setEnrollSmsCompleteError] = useState(null);
 	const [enrollEmailStatus, setEnrollEmailStatus] = useState("pending");
 	const [enrollEmailError, setEnrollEmailError] = useState(null);
 	const [enrollEmailInput, setEnrollEmailInput] = useState("");
@@ -443,6 +450,67 @@ export default function MFATestPage() {
 	}, [fidoDaId, fidoChallengeOptions]);
 
 	// Device enrollment functions
+	const testEnrollSmsInit = useCallback(async () => {
+		if (!enrollSmsPhone.trim()) {
+			notifyError("Enter a phone number in E.164 format e.g. +15551234567");
+			return;
+		}
+		setEnrollSmsInitStatus("pending");
+		setEnrollSmsInitError(null);
+		setEnrollSmsDeviceId(null);
+		setEnrollSmsOtp("");
+		setEnrollSmsCompleteStatus("pending");
+		setEnrollSmsCompleteError(null);
+		try {
+			const { data } = await apiClient.post(
+				"/api/mfa/test/integration/enroll-sms-init",
+				{ phone: enrollSmsPhone.trim() },
+			);
+			if (data.success) {
+				setEnrollSmsDeviceId(data.deviceId);
+				setEnrollSmsInitStatus("passed");
+				notifySuccess(`SMS device created — OTP sent to ${data.phone || enrollSmsPhone}`);
+			} else {
+				setEnrollSmsInitStatus("failed");
+				setEnrollSmsInitError(data.error);
+				notifyError(`SMS enrollment failed: ${data.error}`);
+			}
+		} catch (err) {
+			setEnrollSmsInitStatus("failed");
+			setEnrollSmsInitError(err.message);
+			notifyError(`SMS enrollment failed: ${err.message}`);
+		}
+	}, [enrollSmsPhone]);
+
+	const testEnrollSmsComplete = useCallback(async () => {
+		if (!enrollSmsOtp || enrollSmsOtp.length !== 6) {
+			notifyError("Enter the 6-digit OTP sent to your phone");
+			return;
+		}
+		setEnrollSmsCompleteStatus("pending");
+		setEnrollSmsCompleteError(null);
+		try {
+			const { data } = await apiClient.post(
+				"/api/mfa/test/integration/enroll-sms-complete",
+				{ deviceId: enrollSmsDeviceId, otp: enrollSmsOtp },
+			);
+			if (data.success) {
+				setEnrollSmsCompleteStatus("passed");
+				notifySuccess("SMS device activated successfully!");
+				setEnrollSmsOtp("");
+				loadDevices();
+			} else {
+				setEnrollSmsCompleteStatus("failed");
+				setEnrollSmsCompleteError(data.error);
+				notifyError(`SMS activation failed: ${data.error}`);
+			}
+		} catch (err) {
+			setEnrollSmsCompleteStatus("failed");
+			setEnrollSmsCompleteError(err.message);
+			notifyError(`SMS activation failed: ${err.message}`);
+		}
+	}, [enrollSmsDeviceId, enrollSmsOtp, loadDevices]);
+
 	const testEnrollEmail = useCallback(async () => {
 		if (!enrollEmailInput || !enrollEmailInput.trim()) {
 			notifyError("Please enter an email address");
@@ -721,30 +789,82 @@ export default function MFATestPage() {
 					<WhatIsHappening
 						title="Device Enrollment — Registering a New MFA Device"
 						steps={[
-							"Email enrollment: POST /api/mfa/test/integration/enroll-email → PingOne creates an EMAIL device record for the user",
-							"FIDO2 enrollment (Step 1): POST /api/mfa/test/integration/enroll-fido2-init → PingOne returns publicKeyCredentialCreationOptions",
-							"FIDO2 enrollment (Step 2): Browser calls navigator.credentials.create() using the challenge — private key stays in device secure enclave",
-							"FIDO2 enrollment (Step 3): POST /api/mfa/test/integration/enroll-fido2-complete with attestation → PingOne stores the public key",
-							"After enrollment, the device appears in Device Management and can be used for MFA challenges",
+							"SMS enrollment (Step 1): POST enroll-sms-init with phone → PingOne creates SMS device and texts an OTP",
+							"SMS enrollment (Step 2): POST enroll-sms-complete with deviceId + OTP → PingOne activates the device",
+							"Email enrollment: POST enroll-email → PingOne creates an EMAIL device record for the user",
+							"FIDO2 enrollment (Step 1): POST enroll-fido2-init → PingOne returns publicKeyCredentialCreationOptions",
+							"FIDO2 enrollment (Step 2): Browser calls navigator.credentials.create() — private key stays in device secure enclave",
+							"FIDO2 enrollment (Step 3): POST enroll-fido2-complete with attestation → PingOne stores the public key",
 						]}
 						apiFlow={[
-							{
-								method: "POST",
-								endpoint: "/api/mfa/test/integration/enroll-email",
-								note: "Register email device",
-							},
-							{
-								method: "POST",
-								endpoint: "/api/mfa/test/integration/enroll-fido2-init",
-								note: "Get WebAuthn creation options",
-							},
-							{
-								method: "POST",
-								endpoint: "/api/mfa/test/integration/enroll-fido2-complete",
-								note: "Submit attestation",
-							},
+							{ method: "POST", endpoint: "/api/mfa/test/integration/enroll-sms-init", note: "Create SMS device + send OTP" },
+							{ method: "POST", endpoint: "/api/mfa/test/integration/enroll-sms-complete", note: "Activate with OTP" },
+							{ method: "POST", endpoint: "/api/mfa/test/integration/enroll-email", note: "Register email device" },
+							{ method: "POST", endpoint: "/api/mfa/test/integration/enroll-fido2-init", note: "Get WebAuthn creation options" },
+							{ method: "POST", endpoint: "/api/mfa/test/integration/enroll-fido2-complete", note: "Submit attestation" },
 						]}
 					/>
+
+					{/* ── SMS Enrollment ── */}
+					<h3 style={{ margin: "1rem 0 0.5rem", fontSize: "1rem", fontWeight: 600 }}>SMS Device</h3>
+					<div style={{ marginBottom: "1rem" }}>
+						<label
+							htmlFor="enroll-sms-phone"
+							style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}
+						>
+							Phone Number (E.164):
+						</label>
+						<input
+							id="enroll-sms-phone"
+							type="tel"
+							className="otp-input"
+							placeholder="+15551234567"
+							value={enrollSmsPhone}
+							onChange={(e) => setEnrollSmsPhone(e.target.value)}
+							maxLength={20}
+							style={{ width: "100%", marginBottom: "0.75rem", letterSpacing: "0.1rem" }}
+						/>
+					</div>
+					<TestCard
+						title="Enroll SMS Device (Step 1 — sends OTP)"
+						status={enrollSmsInitStatus}
+						error={enrollSmsInitError}
+						onTest={testEnrollSmsInit}
+					/>
+					{enrollSmsDeviceId && (
+						<div className="otp-verify-section" style={{ marginTop: "0.5rem" }}>
+							<p className="info-text" style={{ marginBottom: "0.5rem" }}>
+								OTP sent — enter the code from your phone to activate:
+							</p>
+							<div className="otp-input-group">
+								<input
+									type="text"
+									className="otp-input"
+									placeholder="6-digit OTP"
+									value={enrollSmsOtp}
+									onChange={(e) => setEnrollSmsOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+									maxLength={6}
+									autoFocus
+								/>
+								<button
+									type="button"
+									className="mfa-test-button mfa-test-button--primary"
+									onClick={testEnrollSmsComplete}
+									disabled={enrollSmsOtp.length !== 6}
+								>
+									Activate SMS Device
+								</button>
+							</div>
+							<TestCard
+								title="Activate SMS Device (Step 2)"
+								status={enrollSmsCompleteStatus}
+								error={enrollSmsCompleteError}
+							/>
+						</div>
+					)}
+
+					{/* ── Email Enrollment ── */}
+					<h3 style={{ margin: "1rem 0 0.5rem", fontSize: "1rem", fontWeight: 600 }}>Email Device</h3>
 					<div style={{ marginBottom: "1rem" }}>
 						<label
 							htmlFor="enroll-email-input"
@@ -773,6 +893,9 @@ export default function MFATestPage() {
 						error={enrollEmailError}
 						onTest={testEnrollEmail}
 					/>
+
+					{/* ── FIDO2 Enrollment ── */}
+					<h3 style={{ margin: "1rem 0 0.5rem", fontSize: "1rem", fontWeight: 600 }}>FIDO2 / Passkey</h3>
 					<TestCard
 						title="Initiate FIDO2 Enrollment"
 						status={fidoEnrollInitStatus}
@@ -787,7 +910,6 @@ export default function MFATestPage() {
 							onTest={testFidoEnrollComplete}
 						/>
 					)}
-					<SectionApiCalls />
 				</section>
 
 				{/* SMS OTP Test Section */}
