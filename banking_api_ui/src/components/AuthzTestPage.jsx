@@ -255,6 +255,30 @@ export default function AuthzTestPage() {
 		return data;
 	}, []);
 
+	const [quickEnabling, setQuickEnabling] = useState(false);
+
+	const enableSimulated = useCallback(async () => {
+		setQuickEnabling(true);
+		try {
+			const res = await apiClient.patch("/api/admin/feature-flags", {
+				updates: { authorize_enabled: "true", ff_authorize_simulated: "true" },
+			});
+			if (!res.data?.updated) throw new Error("Flag update failed");
+			notifySuccess("Simulated authorization enabled");
+			await loadStatus();
+		} catch (err) {
+			const status = err.response?.status;
+			if (status === 401 || status === 403) {
+				notifyError("Admin login required — sign in first");
+				navigateToAdminOAuthLogin();
+			} else {
+				notifyError(`Enable failed: ${err.message}`);
+			}
+		} finally {
+			setQuickEnabling(false);
+		}
+	}, [loadStatus]);
+
 	const runScenario = useCallback(
 		async (scenario) => {
 			setScenarioRunning((r) => ({ ...r, [scenario.id]: true }));
@@ -422,17 +446,34 @@ export default function AuthzTestPage() {
 						</span>
 					)}
 					{activeEngine === "off" && (
-						<span className="authz-banner-note">
-							Authorization is disabled. Enable it in Application Configuration
-							→ PingOne Authorize. Test calls will return PERMIT (bypass mode).
-						</span>
+						<>
+							<span className="authz-banner-note">
+								Authorization is disabled — test calls return PERMIT (bypass).
+							</span>
+							<button
+								type="button"
+								className="authz-btn authz-btn--enable"
+								disabled={quickEnabling}
+								onClick={enableSimulated}
+							>
+								{quickEnabling ? "Enabling…" : "⚡ Enable Simulated Mode"}
+							</button>
+						</>
 					)}
 					{activeEngine === "pending_config" && (
-						<span className="authz-banner-note">
-							Authorization is enabled but the decision endpoint is not
-							configured yet. Set authorize_decision_endpoint_id or switch to
-							Simulated mode.
-						</span>
+						<>
+							<span className="authz-banner-note">
+								Authorization enabled but no decision endpoint configured.
+							</span>
+							<button
+								type="button"
+								className="authz-btn authz-btn--enable"
+								disabled={quickEnabling}
+								onClick={enableSimulated}
+							>
+								{quickEnabling ? "Enabling…" : "⚡ Switch to Simulated Mode"}
+							</button>
+						</>
 					)}
 				</div>
 				{renderThresholds()}
