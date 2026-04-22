@@ -3,7 +3,7 @@ import { useState, useCallback, useRef } from 'react';
 
 /**
  * Shared hook for draggable + resizable fixed-position panels.
- * No viewport clamping -- panel can be dragged off any edge or to a second screen.
+ * No viewport clamping — panel can be dragged to any position including off-screen (second monitor).
  *
  * @param {() => { x: number, y: number } | { x: number, y: number }} initialPos  Lazy initialiser or plain object.
  * @param {{ w: number, h: number }}       initialSize
@@ -58,12 +58,8 @@ export function useDraggablePanel(initialPos, initialSize, options = {}) {
       target.setPointerCapture(e.pointerId);
     }
     const onMove = (ev) => {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      // Clamp so at least the header bar (40px) stays on screen
-      const clampedX = Math.min(Math.max(-(sizeRef.current.w - 80), ev.clientX - offX), vw - 80);
-      const clampedY = Math.min(Math.max(0, ev.clientY - offY), vh - 40);
-      setPos({ x: clampedX, y: clampedY });
+      // No clamping — allow drag off-screen to second monitor
+      setPos({ x: ev.clientX - offX, y: ev.clientY - offY });
     };
     const onUp   = () => {
       target.removeEventListener('pointermove', onMove);
