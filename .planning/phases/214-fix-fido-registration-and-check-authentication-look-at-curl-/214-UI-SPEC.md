@@ -107,7 +107,7 @@ Accent (`--chase-navy`) is reserved for: primary action buttons (the `Test` butt
   )}
   {open && copySupported && (
     <button class="test-card-raw-copy">
-      Copy
+      Copy curl
     </button>
   )}
 </div>
@@ -126,7 +126,7 @@ Accent (`--chase-navy`) is reserved for: primary action buttons (the `Test` butt
 2. Toggle starts closed (`open = false`). User must click to expand.
 3. When open, the full curl string is rendered inside a `<pre>` block using React text children — no `dangerouslySetInnerHTML`.
 4. `whiteSpace: pre-wrap` and `wordBreak: break-all` on the pre block ensure long URLs and headers wrap rather than overflow horizontally.
-5. Copy button is shown only when `open === true` AND `navigator.clipboard` is defined. On click, calls `navigator.clipboard.writeText(curlCommand).catch(() => {})`. Button label is "Copy". No success feedback state required.
+5. Copy button is shown only when `open === true` AND `navigator.clipboard` is defined. On click, calls `navigator.clipboard.writeText(curlCommand).catch(() => {})`. Button label is "Copy curl". No success feedback state required.
 6. Copy button is placed below the `<pre>` block, not inside it.
 
 ### State
@@ -200,8 +200,8 @@ This overrides the `white-space: pre` from `.test-card-raw-json` to prevent hori
   border: 1px solid #6b7280;
   color: #6b7280;
   font-size: 0.75rem;
-  border-radius: 3px;
-  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
   cursor: pointer;
   margin-top: 0.25rem;
   display: inline-block;
@@ -223,7 +223,7 @@ No other new CSS rules are needed for this phase.
 |---------|------|-------|
 | Toggle — closed state | `▸ Show curl — {label}` | `{label}` is the step label from the placement table above |
 | Toggle — open state | `▾ Hide curl — {label}` | Matches "▸ Show P1 Response" / "▾ Hide P1 Response" pattern |
-| Copy button | `Copy` | Minimal — no icon, no success animation required |
+| Copy button | `Copy curl` | Verb + noun — no icon, no success animation required |
 | Empty / not-yet-loaded state | (nothing rendered) | Component renders null when `curlCommand` is falsy |
 | Error state | (none per component) | Curl context load failure is surfaced at section level, not per-curl-card |
 | Authorization header placeholder | `Bearer $WORKER_TOKEN` | Literal string — never a real token value |
