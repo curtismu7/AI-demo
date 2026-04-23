@@ -70,7 +70,7 @@ router.post('/challenge', authenticateToken, async (req, res) => {
 router.put('/challenge/:daId', authenticateToken, async (req, res) => {
   try {
     const { daId } = req.params;
-    const { deviceId, otp, assertion } = req.body;
+    const { deviceId, otp, assertion, origin } = req.body;
     const userAccessToken = req.session.oauthTokens?.accessToken;
     if (!userAccessToken) {
       return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
@@ -78,7 +78,7 @@ router.put('/challenge/:daId', authenticateToken, async (req, res) => {
 
     let result;
     if (assertion) {
-      result = await mfaService.submitFido2Assertion(daId, assertion, userAccessToken);
+      result = await mfaService.submitFido2Assertion(daId, assertion, userAccessToken, origin || req.headers.origin);
     } else if (otp) {
       result = await mfaService.submitOtp(daId, deviceId, otp, userAccessToken);
     } else if (deviceId) {
@@ -108,9 +108,9 @@ router.put('/challenge/:daId', authenticateToken, async (req, res) => {
       try {
         const newToken = await _tryRefresh(req);
         const { daId } = req.params;
-        const { deviceId, otp, assertion } = req.body;
+        const { deviceId, otp, assertion, origin } = req.body;
         let result;
-        if (assertion) result = await mfaService.submitFido2Assertion(daId, assertion, newToken);
+        if (assertion) result = await mfaService.submitFido2Assertion(daId, assertion, newToken, origin || req.headers.origin);
         else if (otp) result = await mfaService.submitOtp(daId, deviceId, otp, newToken);
         else result = await mfaService.selectDevice(daId, deviceId, newToken);
         const completed = result.status === 'COMPLETED';
@@ -182,6 +182,7 @@ router.get('/challenge/:daId/status', authenticateToken, async (req, res) => {
 router.post('/enroll/sms-init', authenticateToken, async (req, res) => {
   try {
     const userId = req.session.user?.id;
+    const userAccessToken = req.session.oauthTokens?.accessToken;
     const { phone } = req.body;
     if (!userId) {
       return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
@@ -189,7 +190,7 @@ router.post('/enroll/sms-init', authenticateToken, async (req, res) => {
     if (!phone) {
       return res.status(400).json({ error: 'missing_phone', message: 'Provide phone in E.164 format.' });
     }
-    const device = await mfaService.enrollSmsDevice(userId, phone);
+    const device = await mfaService.enrollSmsDevice(userId, phone, userAccessToken);
     res.json({ deviceId: device.id, type: device.type, phone: device.phone, status: device.status });
   } catch (err) {
     console.error('[MFA route] POST /enroll/sms-init failed:', err.message);
@@ -263,14 +264,14 @@ router.post('/enroll/fido2-init', authenticateToken, async (req, res) => {
 router.post('/enroll/fido2-complete', authenticateToken, async (req, res) => {
   try {
     const userId = req.session.user?.id;
-    const { deviceId, attestation, origin } = req.body;
+    const { deviceId, attestation } = req.body;
     if (!userId) {
       return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
     }
     if (!deviceId || !attestation) {
       return res.status(400).json({ error: 'invalid_body', message: 'Provide deviceId and attestation.' });
     }
-    const result = await mfaService.completeFido2Registration(userId, deviceId, attestation, origin);
+    const result = await mfaService.completeFido2Registration(userId, deviceId, attestation);
     res.json({ deviceId: result.id, status: result.status });
   } catch (err) {
     console.error('[MFA route] POST /enroll/fido2-complete failed:', err.message);

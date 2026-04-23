@@ -235,6 +235,20 @@ const MFA_TEST_USER_ID = process.env.MFA_TEST_USER_ID || '6689a774-46af-4198-a6f
 const MFA_TEST_USER_EMAIL = process.env.MFA_TEST_USER_EMAIL || 'cmuir+bankuser@pingone.com';
 
 async function _resolveCredentials(req) {
+  // Explicit userId override from body or query (for testing other users)
+  const overrideUserId = req.body?.userId || req.query?.userId;
+
+  if (overrideUserId) {
+    // Override mode: use worker token for the specified user
+    const workerToken = await mfaService.getWorkerToken();
+    return {
+      userId: overrideUserId,
+      accessToken: workerToken,
+      email: req.body?.email || req.query?.email || null,
+      source: 'worker-override',
+    };
+  }
+
   // Prefer session credentials if available
   const sessionUserId = req.session?.user?.id;
   const sessionToken = req.session?.oauthTokens?.accessToken;
@@ -248,8 +262,8 @@ async function _resolveCredentials(req) {
   }
   // Fall back to worker token + configurable test user
   const workerToken = await mfaService.getWorkerToken();
-  const userId = req.body?.userId || MFA_TEST_USER_ID;
-  const email = req.body?.email || MFA_TEST_USER_EMAIL;
+  const userId = MFA_TEST_USER_ID;
+  const email = MFA_TEST_USER_EMAIL;
   return { userId, accessToken: workerToken, email, source: 'worker' };
 }
 
@@ -262,17 +276,40 @@ async function _resolveCredentials(req) {
 router.post('/integration/initiate', async (req, res) => {
   try {
     const { method } = req.body;
-    const { userId, accessToken, source } = await _resolveCredentials(req);
+    const { userId, accessToken } = await _resolveCredentials(req);
 
     const _t1 = Date.now();
     const result = await mfaService.initiateDeviceAuth(userId, accessToken);
+    const devices = result._embedded?.devices || [];
     const resBody = {
       success: true,
       daId: result.id,
       status: result.status,
-      devices: result._embedded?.devices || [],
+      devices,
       method,
     };
+
+    // For FIDO2: auto-select the enrolled FIDO2 device to transition to ASSERTION_REQUIRED
+    // and return publicKeyCredentialRequestOptions in the same response.
+    if (method === 'fido2') {
+      const fidoDevice = devices.find(d => d.type === 'FIDO2');
+      if (fidoDevice) {
+        try {
+          const selected = await mfaService.selectDevice(result.id, fidoDevice.id, accessToken);
+          resBody.status = selected.status;
+          resBody.selectedDeviceId = fidoDevice.id;
+          let pkcro = selected.publicKeyCredentialRequestOptions || null;
+          if (pkcro && typeof pkcro === 'string') pkcro = JSON.parse(pkcro);
+          resBody.publicKeyCredentialRequestOptions = pkcro;
+          console.log('[MFA Test] FIDO2 auto-selected device=%s status=%s', fidoDevice.id, selected.status);
+        } catch (selErr) {
+          console.warn('[MFA Test] FIDO2 device selection failed:', selErr.message);
+        }
+      } else {
+        resBody.noFidoDevice = true;
+      }
+    }
+
     res.json(resBody);
     trackMfaApiCall(req, res, _t1, resBody, 'Initiate MFA device authentication');
   } catch (err) {
@@ -329,23 +366,28 @@ router.post('/integration/verify-otp', async (req, res) => {
 /**
  * POST /api/mfa/test/integration/verify-fido2
  * Verify FIDO2 assertion using PingOne MFA
- * Body: { daId, assertion }
+ * Body: { daId, assertion, origin }
  */
 router.post('/integration/verify-fido2', async (req, res) => {
   try {
-    const { daId, assertion } = req.body;
+    const { daId, assertion, origin } = req.body;
     const { accessToken } = await _resolveCredentials(req);
     if (!daId || !assertion) {
       return res.status(400).json({ success: false, error: 'invalid_body', message: 'Provide daId and assertion.' });
     }
 
-    const result = await mfaService.submitFido2Assertion(daId, assertion, accessToken);
-    res.json({
+    const result = await mfaService.submitFido2Assertion(daId, assertion, accessToken, origin || req.headers.origin);
+    const resBody = {
       success: true,
       daId,
       status: result.status,
       completed: result.status === 'COMPLETED',
-    });
+    };
+    if (result._debug) {
+      resBody.pingoneRequest = result._debug.request;
+      resBody.pingoneResponse = result._debug.response;
+    }
+    res.json(resBody);
   } catch (err) {
     console.error('[MFA Test Integration] POST /verify-fido2 failed:', err.message);
     res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
@@ -361,12 +403,20 @@ router.get('/integration/challenge/:daId/status', async (req, res) => {
     const { daId } = req.params;
     const { accessToken } = await _resolveCredentials(req);
     const result = await mfaService.getDeviceAuthStatus(daId, accessToken);
+
+    // Parse publicKeyCredentialRequestOptions if stringified; preserve PingOne's original rpId
+    let pkcro = result.publicKeyCredentialRequestOptions || null;
+    if (pkcro) {
+      if (typeof pkcro === 'string') pkcro = JSON.parse(pkcro);
+      console.log('[MFA Test] FIDO2 challenge: PingOne rpId=%s', pkcro.rpId);
+    }
+
     res.json({
       success: true,
       daId,
       status: result.status,
       completed: result.status === 'COMPLETED',
-      publicKeyCredentialRequestOptions: result.publicKeyCredentialRequestOptions || null,
+      publicKeyCredentialRequestOptions: pkcro,
     });
   } catch (err) {
     console.error('[MFA Test Integration] GET /challenge/:daId/status failed:', err.message);
@@ -381,13 +431,13 @@ router.get('/integration/challenge/:daId/status', async (req, res) => {
  */
 router.post('/integration/enroll-sms-init', async (req, res) => {
   try {
-    const { userId } = await _resolveCredentials(req);
+    const { userId, accessToken } = await _resolveCredentials(req);
     const { phone } = req.body;
     if (!phone) {
       return res.status(400).json({ success: false, error: 'missing_phone', message: 'Provide phone in E.164 format e.g. +15551234567.' });
     }
     const _t = Date.now();
-    const device = await mfaService.enrollSmsDevice(userId, phone);
+    const device = await mfaService.enrollSmsDevice(userId, phone, accessToken);
     const resBody = { success: true, deviceId: device.id, type: device.type, phone: device.phone, status: device.status };
     res.json(resBody);
     trackMfaApiCall(req, res, _t, resBody, 'Enroll SMS OTP device');
@@ -457,7 +507,22 @@ router.post('/integration/enroll-fido2-init', async (req, res) => {
     const { userId } = await _resolveCredentials(req);
     const _t5 = Date.now();
     const result = await mfaService.initFido2Registration(userId);
-    const resBody = { success: true, ...result };
+
+    // Parse creationOptions if stringified; preserve PingOne's original rp.id
+    // so the attestation cryptographic binding matches what PingOne expects at completion.
+    if (result.publicKeyCredentialCreationOptions) {
+      const opts = typeof result.publicKeyCredentialCreationOptions === 'string'
+        ? JSON.parse(result.publicKeyCredentialCreationOptions)
+        : result.publicKeyCredentialCreationOptions;
+      console.log('[MFA Test] FIDO2 init: PingOne rp.id=%s rp.name=%s', opts.rp?.id, opts.rp?.name);
+      result.publicKeyCredentialCreationOptions = opts;
+    }
+
+    const resBody = { success: true, deviceId: result.deviceId, publicKeyCredentialCreationOptions: result.publicKeyCredentialCreationOptions };
+    if (result._debug) {
+      resBody.pingoneRequest = result._debug.request;
+      resBody.pingoneResponse = result._debug.response;
+    }
     res.json(resBody);
     trackMfaApiCall(req, res, _t5, resBody, 'Initiate FIDO2/passkey registration');
   } catch (err) {
@@ -474,16 +539,21 @@ router.post('/integration/enroll-fido2-init', async (req, res) => {
 router.post('/integration/enroll-fido2-complete', async (req, res) => {
   try {
     const { userId } = await _resolveCredentials(req);
-    const { deviceId, attestation, origin } = req.body;
+    const { deviceId, attestation } = req.body;
     if (!deviceId || !attestation) {
       return res.status(400).json({ success: false, error: 'invalid_body', message: 'Provide deviceId and attestation.' });
     }
-    const result = await mfaService.completeFido2Registration(userId, deviceId, attestation, origin);
-    res.json({
+    const result = await mfaService.completeFido2Registration(userId, deviceId, attestation);
+    const completeResBody = {
       success: true,
       deviceId: result.id,
-      status: result.status
-    });
+      status: result.status,
+    };
+    if (result._debug) {
+      completeResBody.pingoneRequest = result._debug.request;
+      completeResBody.pingoneResponse = result._debug.response;
+    }
+    res.json(completeResBody);
   } catch (err) {
     console.error('[MFA Test Integration] POST /enroll-fido2-complete failed:', err.message);
     res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });

@@ -33,6 +33,9 @@ export default function MFATestPage() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 
+	// User override — allows testing MFA for any PingOne user (userId or username)
+	const [testUserId, setTestUserId] = useState("");
+
 	// SMS OTP test state
 	const [smsInitiateStatus, setSmsInitiateStatus] = useState("pending");
 	const [smsInitiateError, setSmsInitiateError] = useState(null);
@@ -63,9 +66,11 @@ export default function MFATestPage() {
 
 	// Enrollment state
 	const [enrollSmsPhone, setEnrollSmsPhone] = useState("");
+	const [enrollSmsCountryCode, setEnrollSmsCountryCode] = useState("+1");
 	const [enrollSmsInitStatus, setEnrollSmsInitStatus] = useState("pending");
 	const [enrollSmsInitError, setEnrollSmsInitError] = useState(null);
 	const [enrollSmsDeviceId, setEnrollSmsDeviceId] = useState(null);
+	const [enrollSmsAlreadyActive, setEnrollSmsAlreadyActive] = useState(false);
 	const [enrollSmsOtp, setEnrollSmsOtp] = useState("");
 	const [enrollSmsCompleteStatus, setEnrollSmsCompleteStatus] = useState("pending");
 	const [enrollSmsCompleteError, setEnrollSmsCompleteError] = useState(null);
@@ -86,6 +91,14 @@ export default function MFATestPage() {
 		useState("pending");
 	const [fidoEnrollCompleteError, setFidoEnrollCompleteError] = useState(null);
 
+	// FIDO2 PingOne request/response debug state
+	const [fidoEnrollInitPingoneReq, setFidoEnrollInitPingoneReq] = useState(null);
+	const [fidoEnrollInitPingoneRes, setFidoEnrollInitPingoneRes] = useState(null);
+	const [fidoEnrollCompletePingoneReq, setFidoEnrollCompletePingoneReq] = useState(null);
+	const [fidoEnrollCompletePingoneRes, setFidoEnrollCompletePingoneRes] = useState(null);
+	const [fidoVerifyPingoneReq, setFidoVerifyPingoneReq] = useState(null);
+	const [fidoVerifyPingoneRes, setFidoVerifyPingoneRes] = useState(null);
+
 	// Worker token state (shared with PingOne test page)
 	const [workerTokenStatus, setWorkerTokenStatus] = useState(null);
 	const [workerTokenError, setWorkerTokenError] = useState(null);
@@ -97,6 +110,20 @@ export default function MFATestPage() {
 	const [noSmsDeviceDetected, setNoSmsDeviceDetected] = useState(false);
 	const [autoEnrollEmail, setAutoEnrollEmail] = useState(false);
 	const [noEmailDeviceDetected, setNoEmailDeviceDetected] = useState(false);
+
+	// Raw P1 response state — one per action
+	const [rawSmsInitiate, setRawSmsInitiate] = useState(null);
+	const [rawSmsVerify, setRawSmsVerify] = useState(null);
+	const [rawEmailInitiate, setRawEmailInitiate] = useState(null);
+	const [rawEmailVerify, setRawEmailVerify] = useState(null);
+	const [rawFidoInitiate, setRawFidoInitiate] = useState(null);
+	const [rawFidoVerify, setRawFidoVerify] = useState(null);
+	const [rawEnrollSmsInit, setRawEnrollSmsInit] = useState(null);
+	const [rawEnrollSmsComplete, setRawEnrollSmsComplete] = useState(null);
+	const [rawEnrollEmail, setRawEnrollEmail] = useState(null);
+	const [rawFidoEnrollInit, setRawFidoEnrollInit] = useState(null);
+	const [rawFidoEnrollComplete, setRawFidoEnrollComplete] = useState(null);
+	const [rawDevices, setRawDevices] = useState(null);
 
 	const loadConfig = useCallback(async () => {
 		try {
@@ -119,7 +146,9 @@ export default function MFATestPage() {
 		try {
 			setDevicesStatus("pending");
 			setDevicesError(null);
-			const { data } = await apiClient.get("/api/mfa/test/integration/devices");
+			const params = testUserId ? `?userId=${encodeURIComponent(testUserId)}` : "";
+			const { data } = await apiClient.get(`/api/mfa/test/integration/devices${params}`);
+			setRawDevices(data);
 			if (data.success) {
 				setDevices(data.devices || []);
 				setDevicesStatus("passed");
@@ -128,11 +157,12 @@ export default function MFATestPage() {
 				setDevicesError(data.error);
 			}
 		} catch (err) {
+			setRawDevices({ error: err.message });
 			console.error("Devices error:", err);
 			setDevicesStatus("failed");
 			setDevicesError(err.message);
 		}
-	}, []);
+	}, [testUserId]);
 
 	const loadWorkerToken = useCallback(async () => {
 		try {
@@ -220,8 +250,9 @@ export default function MFATestPage() {
 		try {
 			const { data } = await apiClient.post(
 				"/api/mfa/test/integration/initiate",
-				{ method: "sms" },
+				{ method: "sms", ...(testUserId && { userId: testUserId }) },
 			);
+			setRawSmsInitiate(data);
 			if (data.success) {
 				setSmsDaId(data.daId);
 				setSmsDevices(data.devices || []);
@@ -233,11 +264,12 @@ export default function MFATestPage() {
 				notifyError(`SMS OTP initiation failed: ${data.error}`);
 			}
 		} catch (err) {
+			setRawSmsInitiate({ error: err.message });
 			setSmsInitiateStatus("failed");
 			setSmsInitiateError(err.message);
 			notifyError(`SMS OTP initiation failed: ${err.message}`);
 		}
-	}, []);
+	}, [testUserId]);
 
 	const testSmsVerify = useCallback(async () => {
 		if (!smsDaId || !smsOtp || smsDevices.length === 0) {
@@ -253,8 +285,10 @@ export default function MFATestPage() {
 					daId: smsDaId,
 					deviceId: smsDevices[0].id,
 					otp: smsOtp,
+					...(testUserId && { userId: testUserId }),
 				},
 			);
+			setRawSmsVerify(data);
 			if (data.success) {
 				setSmsVerifyStatus(data.completed ? "passed" : "pending");
 				if (data.completed) {
@@ -268,6 +302,7 @@ export default function MFATestPage() {
 				notifyError(`SMS OTP verification failed: ${data.error}`);
 			}
 		} catch (err) {
+			setRawSmsVerify({ error: err.message });
 			setSmsVerifyStatus("failed");
 			setSmsVerifyError(err.message);
 			notifyError(`SMS OTP verification failed: ${err.message}`);
@@ -281,8 +316,9 @@ export default function MFATestPage() {
 		try {
 			const { data } = await apiClient.post(
 				"/api/mfa/test/integration/initiate",
-				{ method: "email" },
+				{ method: "email", ...(testUserId && { userId: testUserId }) },
 			);
+			setRawEmailInitiate(data);
 			if (data.success) {
 				setEmailDaId(data.daId);
 				setEmailDevices(data.devices || []);
@@ -294,11 +330,12 @@ export default function MFATestPage() {
 				notifyError(`Email OTP initiation failed: ${data.error}`);
 			}
 		} catch (err) {
+			setRawEmailInitiate({ error: err.message });
 			setEmailInitiateStatus("failed");
 			setEmailInitiateError(err.message);
 			notifyError(`Email OTP initiation failed: ${err.message}`);
 		}
-	}, []);
+	}, [testUserId]);
 
 	const testEmailVerify = useCallback(async () => {
 		if (!emailDaId || !emailOtp || emailDevices.length === 0) {
@@ -314,8 +351,10 @@ export default function MFATestPage() {
 					daId: emailDaId,
 					deviceId: emailDevices[0].id,
 					otp: emailOtp,
+					...(testUserId && { userId: testUserId }),
 				},
 			);
+			setRawEmailVerify(data);
 			if (data.success) {
 				setEmailVerifyStatus(data.completed ? "passed" : "pending");
 				if (data.completed) {
@@ -329,6 +368,7 @@ export default function MFATestPage() {
 				notifyError(`Email OTP verification failed: ${data.error}`);
 			}
 		} catch (err) {
+			setRawEmailVerify({ error: err.message });
 			setEmailVerifyStatus("failed");
 			setEmailVerifyError(err.message);
 			notifyError(`Email OTP verification failed: ${err.message}`);
@@ -343,8 +383,9 @@ export default function MFATestPage() {
 		try {
 			const { data } = await apiClient.post(
 				"/api/mfa/test/integration/initiate",
-				{ method: "fido2" },
+				{ method: "fido2", ...(testUserId && { userId: testUserId }) },
 			);
+			setRawFidoInitiate(data);
 			if (data.success) {
 				setFidoDaId(data.daId);
 				setFidoInitiateStatus("passed");
@@ -370,11 +411,12 @@ export default function MFATestPage() {
 				notifyError(`FIDO2 initiation failed: ${data.error}`);
 			}
 		} catch (err) {
+			setRawFidoInitiate({ error: err.message });
 			setFidoInitiateStatus("failed");
 			setFidoInitiateError(err.message);
 			notifyError(`FIDO2 initiation failed: ${err.message}`);
 		}
-	}, []);
+	}, [testUserId]);
 
 	const testFidoVerify = useCallback(async () => {
 		if (!fidoDaId || !fidoChallengeOptions) {
@@ -428,10 +470,14 @@ export default function MFATestPage() {
 				{
 					daId: fidoDaId,
 					assertion: assertionPayload,
+					...(testUserId && { userId: testUserId }),
 				},
 			);
+			setRawFidoVerify(data);
 			if (data.success) {
 				setFidoVerifyStatus(data.completed ? "passed" : "pending");
+				if (data.pingoneRequest) setFidoVerifyPingoneReq(data.pingoneRequest);
+				if (data.pingoneResponse) setFidoVerifyPingoneRes(data.pingoneResponse);
 				notifySuccess(
 					data.completed
 						? "FIDO2 verified ✓"
@@ -443,6 +489,7 @@ export default function MFATestPage() {
 				notifyError(`FIDO2 verification failed: ${data.error}`);
 			}
 		} catch (err) {
+			setRawFidoVerify({ error: err.message });
 			setFidoVerifyStatus("failed");
 			setFidoVerifyError(err.message);
 			notifyError(`FIDO2 verification error: ${err.message}`);
@@ -452,35 +499,54 @@ export default function MFATestPage() {
 	// Device enrollment functions
 	const testEnrollSmsInit = useCallback(async () => {
 		if (!enrollSmsPhone.trim()) {
-			notifyError("Enter a phone number in E.164 format e.g. +15551234567");
+			notifyError("Enter your phone number");
 			return;
 		}
+		// Build E.164: dial code + local digits (strip non-digits and leading zeros)
+		const dialCode = enrollSmsCountryCode.split("-")[0];
+		const localPart = enrollSmsPhone.trim().replace(/\D/g, "").replace(/^0+/, "");
+		const e164 = `${dialCode}${localPart}`;
 		setEnrollSmsInitStatus("pending");
 		setEnrollSmsInitError(null);
 		setEnrollSmsDeviceId(null);
+		setEnrollSmsAlreadyActive(false);
 		setEnrollSmsOtp("");
 		setEnrollSmsCompleteStatus("pending");
 		setEnrollSmsCompleteError(null);
 		try {
 			const { data } = await apiClient.post(
 				"/api/mfa/test/integration/enroll-sms-init",
-				{ phone: enrollSmsPhone.trim() },
+				{ phone: e164, ...(testUserId && { userId: testUserId }) },
 			);
+			setRawEnrollSmsInit(data);
 			if (data.success) {
 				setEnrollSmsDeviceId(data.deviceId);
 				setEnrollSmsInitStatus("passed");
-				notifySuccess(`SMS device created — OTP sent to ${data.phone || enrollSmsPhone}`);
+				if (data.status === "ACTIVE") {
+					// Management API enrolled the device directly as active — no OTP needed
+					setEnrollSmsAlreadyActive(true);
+					setEnrollSmsCompleteStatus("passed");
+					notifySuccess(`SMS device enrolled and active for ${data.phone || e164}`);
+					loadDevices();
+				} else {
+					notifySuccess(`SMS device created — OTP sent to ${data.phone || e164}`);
+				}
 			} else {
 				setEnrollSmsInitStatus("failed");
 				setEnrollSmsInitError(data.error);
 				notifyError(`SMS enrollment failed: ${data.error}`);
 			}
 		} catch (err) {
+			const detail =
+				err?.response?.data?.error ||
+				err?.response?.data?.message ||
+				err.message;
+			setRawEnrollSmsInit(err?.response?.data || { error: detail });
 			setEnrollSmsInitStatus("failed");
-			setEnrollSmsInitError(err.message);
-			notifyError(`SMS enrollment failed: ${err.message}`);
+			setEnrollSmsInitError(detail);
+			notifyError(`SMS enrollment failed: ${detail}`);
 		}
-	}, [enrollSmsPhone]);
+	}, [enrollSmsPhone, enrollSmsCountryCode, loadDevices]);
 
 	const testEnrollSmsComplete = useCallback(async () => {
 		if (!enrollSmsOtp || enrollSmsOtp.length !== 6) {
@@ -492,8 +558,9 @@ export default function MFATestPage() {
 		try {
 			const { data } = await apiClient.post(
 				"/api/mfa/test/integration/enroll-sms-complete",
-				{ deviceId: enrollSmsDeviceId, otp: enrollSmsOtp },
+				{ deviceId: enrollSmsDeviceId, otp: enrollSmsOtp, ...(testUserId && { userId: testUserId }) },
 			);
+			setRawEnrollSmsComplete(data);
 			if (data.success) {
 				setEnrollSmsCompleteStatus("passed");
 				notifySuccess("SMS device activated successfully!");
@@ -505,6 +572,7 @@ export default function MFATestPage() {
 				notifyError(`SMS activation failed: ${data.error}`);
 			}
 		} catch (err) {
+			setRawEnrollSmsComplete({ error: err.message });
 			setEnrollSmsCompleteStatus("failed");
 			setEnrollSmsCompleteError(err.message);
 			notifyError(`SMS activation failed: ${err.message}`);
@@ -521,8 +589,9 @@ export default function MFATestPage() {
 		try {
 			const { data } = await apiClient.post(
 				"/api/mfa/test/integration/enroll-email",
-				{ email: enrollEmailInput.trim() },
+				{ email: enrollEmailInput.trim(), ...(testUserId && { userId: testUserId }) },
 			);
+			setRawEnrollEmail(data);
 			if (data.success) {
 				setEnrollEmailStatus("passed");
 				notifySuccess("Email device enrolled successfully");
@@ -534,6 +603,7 @@ export default function MFATestPage() {
 				notifyError(`Email enrollment failed: ${data.error}`);
 			}
 		} catch (err) {
+			setRawEnrollEmail({ error: err.message });
 			setEnrollEmailStatus("failed");
 			setEnrollEmailError(err.message);
 			notifyError(`Email enrollment failed: ${err.message}`);
@@ -547,10 +617,14 @@ export default function MFATestPage() {
 		try {
 			const { data } = await apiClient.post(
 				"/api/mfa/test/integration/enroll-fido2-init",
+				{ ...(testUserId && { userId: testUserId }) },
 			);
+			setRawFidoEnrollInit(data);
 			if (data.success) {
 				setFidoEnrollData(data);
 				setFidoEnrollInitStatus("passed");
+				if (data.pingoneRequest) setFidoEnrollInitPingoneReq(data.pingoneRequest);
+				if (data.pingoneResponse) setFidoEnrollInitPingoneRes(data.pingoneResponse);
 				notifySuccess(
 					"FIDO2 enrollment initiated — click Complete Registration to register your device",
 				);
@@ -560,9 +634,14 @@ export default function MFATestPage() {
 				notifyError(`FIDO2 enrollment initiation failed: ${data.error}`);
 			}
 		} catch (err) {
+			const detail =
+				err?.response?.data?.error ||
+				err?.response?.data?.message ||
+				err.message;
+			setRawFidoEnrollInit(err?.response?.data || { error: detail });
 			setFidoEnrollInitStatus("failed");
-			setFidoEnrollInitError(err.message);
-			notifyError(`FIDO2 enrollment initiation failed: ${err.message}`);
+			setFidoEnrollInitError(detail);
+			notifyError(`FIDO2 enrollment initiation failed: ${detail}`);
 		}
 	}, []);
 
@@ -604,13 +683,15 @@ export default function MFATestPage() {
 				throw new Error("Missing publicKeyCredentialCreationOptions");
 			console.log("[FIDO2] creationOpts challenge:", creationOpts.challenge, "user.id:", creationOpts.user?.id);
 
-			// Convert base64url (PingOne) → standard base64 → Uint8Array
+			// Convert base64url or signed byte array (PingOne) → Uint8Array
 			const safeBase64ToBytes = (val) => {
 				if (!val)
 					throw new Error(`Expected base64url but got: ${JSON.stringify(val)}`);
 				if (val instanceof Uint8Array) return val;
 				if (val instanceof ArrayBuffer) return new Uint8Array(val);
-				// Strip whitespace, normalise alphabet, strip any existing = then re-pad correctly
+				// PingOne sometimes returns signed byte arrays (Java-style) — convert directly
+				if (Array.isArray(val)) return new Uint8Array(val.map((b) => b & 0xff));
+				// Strip whitespace, normalise base64url alphabet, re-pad
 				const stripped = String(val)
 					.replace(/\s/g, "")
 					.replace(/-/g, "+")
@@ -633,15 +714,36 @@ export default function MFATestPage() {
 					id: safeBase64ToBytes(creationOpts.user?.id),
 				},
 			};
+			// Convert excludeCredentials ids (PingOne sends base64url strings)
+			if (Array.isArray(publicKey.excludeCredentials)) {
+				publicKey.excludeCredentials = publicKey.excludeCredentials.map((c) => ({
+					...c,
+					id: safeBase64ToBytes(c.id),
+				}));
+			}
+			console.log("[FIDO2] publicKey for navigator.credentials.create:", JSON.stringify({
+				rpId: publicKey.rp?.id,
+				rpName: publicKey.rp?.name,
+				authenticatorSelection: publicKey.authenticatorSelection,
+				attestation: publicKey.attestation,
+				excludeCredentials: (publicKey.excludeCredentials || []).length + " entries",
+				pubKeyCredParams: publicKey.pubKeyCredParams,
+			}, null, 2));
 			const credential = await navigator.credentials.create({ publicKey });
-			const toB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+			// PingOne expects base64url encoding (RFC 4648 §5) — no +/= characters
+			const toB64url = (buf) => {
+				const bytes = new Uint8Array(buf);
+				let binary = "";
+				for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+				return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+			};
 			const attestation = {
 				id: credential.id,
-				rawId: toB64(credential.rawId),
+				rawId: toB64url(credential.rawId),
 				type: credential.type,
 				response: {
-					clientDataJSON: toB64(credential.response.clientDataJSON),
-					attestationObject: toB64(credential.response.attestationObject),
+					clientDataJSON: toB64url(credential.response.clientDataJSON),
+					attestationObject: toB64url(credential.response.attestationObject),
 				},
 			};
 			const { data } = await apiClient.post(
@@ -649,11 +751,14 @@ export default function MFATestPage() {
 				{
 					deviceId: fidoEnrollData.deviceId,
 					attestation,
-					origin: window.location.origin,
+					...(testUserId && { userId: testUserId }),
 				},
 			);
+			setRawFidoEnrollComplete(data);
 			if (data.success) {
 				setFidoEnrollCompleteStatus("passed");
+				if (data.pingoneRequest) setFidoEnrollCompletePingoneReq(data.pingoneRequest);
+				if (data.pingoneResponse) setFidoEnrollCompletePingoneRes(data.pingoneResponse);
 				notifySuccess("FIDO2 device registered ✓");
 				loadDevices();
 			} else {
@@ -662,9 +767,14 @@ export default function MFATestPage() {
 				notifyError(`FIDO2 registration failed: ${data.error}`);
 			}
 		} catch (err) {
+			const detail =
+				err?.response?.data?.error ||
+				err?.response?.data?.message ||
+				err.message;
+			setRawFidoEnrollComplete(err?.response?.data || { error: detail });
 			setFidoEnrollCompleteStatus("failed");
-			setFidoEnrollCompleteError(err.message);
-			notifyError(`FIDO2 registration error: ${err.message}`);
+			setFidoEnrollCompleteError(detail);
+			notifyError(`FIDO2 registration error: ${detail}`);
 		}
 	}, [fidoEnrollData, loadDevices]);
 
@@ -729,6 +839,46 @@ export default function MFATestPage() {
 						</button>
 					</div>
 				</div>
+
+				{/* User override — test MFA for any PingOne user */}
+				<div style={{
+					display: "flex", alignItems: "center", gap: 10, margin: "0.75rem 0",
+					padding: "0.5rem 0.75rem", background: "#f8fafc", border: "1px solid #e2e8f0",
+					borderRadius: 8, fontSize: "0.85rem",
+				}}>
+					<label htmlFor="mfa-user-override" style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+						Test User ID:
+					</label>
+					<input
+						id="mfa-user-override"
+						type="text"
+						value={testUserId}
+						onChange={(e) => setTestUserId(e.target.value.trim())}
+						placeholder="Leave empty for session user (bankadmin)"
+						style={{
+							flex: 1, padding: "6px 10px", border: "1px solid #cbd5e1",
+							borderRadius: 6, fontFamily: "monospace", fontSize: "0.85rem",
+						}}
+					/>
+					{testUserId && (
+						<button
+							type="button"
+							onClick={() => { setTestUserId(""); loadDevices(); }}
+							style={{
+								padding: "4px 10px", border: "1px solid #cbd5e1", borderRadius: 6,
+								background: "#fff", cursor: "pointer", fontSize: "0.8rem",
+							}}
+						>
+							Clear
+						</button>
+					)}
+					{testUserId && (
+						<span style={{ color: "#2563eb", fontWeight: 500 }}>
+							⚠ Using override user
+						</span>
+					)}
+				</div>
+
 				{workerTokenError && (
 					<div
 						className="mfa-test-info-banner mfa-test-info-banner--error"
@@ -812,26 +962,76 @@ export default function MFATestPage() {
 							htmlFor="enroll-sms-phone"
 							style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}
 						>
-							Phone Number (E.164):
+							Phone Number:
 						</label>
-						<input
-							id="enroll-sms-phone"
-							type="tel"
-							className="otp-input"
-							placeholder="+15551234567"
-							value={enrollSmsPhone}
-							onChange={(e) => setEnrollSmsPhone(e.target.value)}
-							maxLength={20}
-							style={{ width: "100%", marginBottom: "0.75rem", letterSpacing: "0.1rem" }}
-						/>
+						<div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.25rem" }}>
+							<select
+								value={enrollSmsCountryCode}
+								onChange={(e) => setEnrollSmsCountryCode(e.target.value)}
+								style={{
+									flexShrink: 0,
+									width: "8rem",
+									padding: "0.5rem",
+									borderRadius: "0.375rem",
+									border: "1px solid #d1d5db",
+									fontSize: "0.875rem",
+								}}
+							>
+								<option value="+1">🇺🇸 +1 US</option>
+								<option value="+1-CA">🇨🇦 +1 CA</option>
+								<option value="+44">🇬🇧 +44 UK</option>
+								<option value="+61">🇦🇺 +61 AU</option>
+								<option value="+64">🇳🇿 +64 NZ</option>
+								<option value="+49">🇩🇪 +49 DE</option>
+								<option value="+33">🇫🇷 +33 FR</option>
+								<option value="+34">🇪🇸 +34 ES</option>
+								<option value="+39">🇮🇹 +39 IT</option>
+								<option value="+31">🇳🇱 +31 NL</option>
+								<option value="+46">🇸🇪 +46 SE</option>
+								<option value="+47">🇳🇴 +47 NO</option>
+								<option value="+45">🇩🇰 +45 DK</option>
+								<option value="+358">🇫🇮 +358 FI</option>
+								<option value="+41">🇨🇭 +41 CH</option>
+								<option value="+43">🇦🇹 +43 AT</option>
+								<option value="+32">🇧🇪 +32 BE</option>
+								<option value="+353">🇮🇪 +353 IE</option>
+								<option value="+351">🇵🇹 +351 PT</option>
+								<option value="+81">🇯🇵 +81 JP</option>
+								<option value="+82">🇰🇷 +82 KR</option>
+								<option value="+86">🇨🇳 +86 CN</option>
+								<option value="+91">🇮🇳 +91 IN</option>
+								<option value="+65">🇸🇬 +65 SG</option>
+								<option value="+60">🇲🇾 +60 MY</option>
+								<option value="+52">🇲🇽 +52 MX</option>
+								<option value="+55">🇧🇷 +55 BR</option>
+								<option value="+27">🇿🇦 +27 ZA</option>
+								<option value="+971">🇦🇪 +971 AE</option>
+								<option value="+966">🇸🇦 +966 SA</option>
+								<option value="+972">🇮🇱 +972 IL</option>
+							</select>
+							<input
+								id="enroll-sms-phone"
+								type="tel"
+								className="otp-input"
+								placeholder="415 555 0100"
+								value={enrollSmsPhone}
+								onChange={(e) => setEnrollSmsPhone(e.target.value)}
+								maxLength={15}
+								style={{ flex: 1, letterSpacing: "0.05rem" }}
+							/>
+						</div>
+						<p style={{ fontSize: "0.75rem", color: "#6b7280", margin: "0 0 0.75rem" }}>
+							Digits only, no leading zero — e.g. 415 555 0100
+						</p>
 					</div>
 					<TestCard
-						title="Enroll SMS Device (Step 1 — sends OTP)"
+						title="Enroll SMS Device"
 						status={enrollSmsInitStatus}
 						error={enrollSmsInitError}
 						onTest={testEnrollSmsInit}
+						rawResult={rawEnrollSmsInit}
 					/>
-					{enrollSmsDeviceId && (
+					{enrollSmsDeviceId && !enrollSmsAlreadyActive && (
 						<div className="otp-verify-section" style={{ marginTop: "0.5rem" }}>
 							<p className="info-text" style={{ marginBottom: "0.5rem" }}>
 								OTP sent — enter the code from your phone to activate:
@@ -859,6 +1059,7 @@ export default function MFATestPage() {
 								title="Activate SMS Device (Step 2)"
 								status={enrollSmsCompleteStatus}
 								error={enrollSmsCompleteError}
+								rawResult={rawEnrollSmsComplete}
 							/>
 						</div>
 					)}
@@ -892,6 +1093,7 @@ export default function MFATestPage() {
 						status={enrollEmailStatus}
 						error={enrollEmailError}
 						onTest={testEnrollEmail}
+						rawResult={rawEnrollEmail}
 					/>
 
 					{/* ── FIDO2 Enrollment ── */}
@@ -901,13 +1103,53 @@ export default function MFATestPage() {
 						status={fidoEnrollInitStatus}
 						error={fidoEnrollInitError}
 						onTest={testFidoEnrollInit}
+						rawResult={rawFidoEnrollInit}
 					/>
+					{fidoEnrollData?.publicKeyCredentialCreationOptions && (() => {
+						const raw = fidoEnrollData.publicKeyCredentialCreationOptions;
+						const opts = typeof raw === "string" ? JSON.parse(raw) : raw;
+						const rpId = opts?.rp?.id || "—";
+						const rpName = opts?.rp?.name || "—";
+						const currentOrigin = window.location.origin;
+						const currentHostname = window.location.hostname;
+						const match = rpId === currentHostname || currentHostname.endsWith(`.${rpId}`);
+						const excludeCount = (opts?.excludeCredentials || []).length;
+						const authSel = opts?.authenticatorSelection;
+						return (
+							<div style={{
+								margin: "0.5rem 0",
+								padding: "0.75rem 1rem",
+								background: match ? "#f0fdf4" : "#fef2f2",
+								border: `1px solid ${match ? "#bbf7d0" : "#fecaca"}`,
+								borderRadius: 8,
+								fontSize: "0.85rem",
+								fontFamily: "monospace",
+							}}>
+								<div style={{ fontWeight: 700, marginBottom: 4, color: match ? "#166534" : "#991b1b" }}>
+									{match ? "✓" : "✗"} FIDO2 RP ID Debug
+								</div>
+								<div><strong>PingOne rp.id:</strong> {rpId}</div>
+								<div><strong>PingOne rp.name:</strong> {rpName}</div>
+								<div><strong>Browser origin:</strong> {currentOrigin}</div>
+								<div><strong>Browser hostname:</strong> {currentHostname}</div>
+								<div><strong>RP ID match:</strong> {match
+									? <span style={{ color: "#166534" }}>✓ Hostname matches RP ID</span>
+									: <span style={{ color: "#991b1b" }}>✗ MISMATCH — browser will reject or PingOne will fail attestation validation</span>
+								}</div>
+								<div><strong>excludeCredentials:</strong> {excludeCount} device(s){excludeCount > 0 && <span style={{ color: "#991b1b" }}> — existing passkey may block re-enrollment</span>}</div>
+								{authSel && (
+									<div><strong>authenticatorSelection:</strong> attachment={authSel.authenticatorAttachment || "any"}, residentKey={authSel.residentKey || "—"}, userVerification={authSel.userVerification || "—"}</div>
+								)}
+							</div>
+						);
+					})()}
 					{fidoEnrollData?.publicKeyCredentialCreationOptions && (
 						<TestCard
 							title="Complete FIDO2 Registration"
 							status={fidoEnrollCompleteStatus}
 							error={fidoEnrollCompleteError}
 							onTest={testFidoEnrollComplete}
+							rawResult={rawFidoEnrollComplete}
 						/>
 					)}
 				</section>
@@ -942,6 +1184,7 @@ export default function MFATestPage() {
 						status={smsInitiateStatus}
 						error={smsInitiateError}
 						onTest={testSmsInitiate}
+						rawResult={rawSmsInitiate}
 					/>
 					{smsDaId && (
 						<div className="otp-verify-section">
@@ -986,6 +1229,7 @@ export default function MFATestPage() {
 								title="Verify SMS OTP"
 								status={smsVerifyStatus}
 								error={smsVerifyError}
+								rawResult={rawSmsVerify}
 							/>
 						</div>
 					)}
@@ -1020,6 +1264,7 @@ export default function MFATestPage() {
 						status={emailInitiateStatus}
 						error={emailInitiateError}
 						onTest={testEmailInitiate}
+						rawResult={rawEmailInitiate}
 					/>
 					{emailDaId && (
 						<div className="otp-verify-section">
@@ -1065,6 +1310,7 @@ export default function MFATestPage() {
 								title="Verify Email OTP"
 								status={emailVerifyStatus}
 								error={emailVerifyError}
+								rawResult={rawEmailVerify}
 							/>
 						</div>
 					)}
@@ -1107,6 +1353,7 @@ export default function MFATestPage() {
 						status={fidoInitiateStatus}
 						error={fidoInitiateError}
 						onTest={testFidoInitiate}
+						rawResult={rawFidoInitiate}
 					/>
 					{fidoDaId && (
 						<div className="fido-verify-section">
@@ -1123,6 +1370,7 @@ export default function MFATestPage() {
 										status={fidoVerifyStatus}
 										error={fidoVerifyError}
 										onTest={testFidoVerify}
+										rawResult={rawFidoVerify}
 									/>
 								</>
 							) : noFidoDeviceDetected ? (
@@ -1179,6 +1427,7 @@ export default function MFATestPage() {
 						status={devicesStatus}
 						error={devicesError}
 						onTest={loadDevices}
+						rawResult={rawDevices}
 					/>
 					{devices.length > 0 && (
 						<div className="devices-list">
@@ -1300,7 +1549,10 @@ function DaResponseCard({ daId, method }) {
 	);
 }
 
-function TestCard({ title, status, error, onTest }) {
+function TestCard({ title, status, error, onTest, rawResult, pingoneRequest, pingoneResponse }) {
+	const [rawOpen, setRawOpen] = useState(false);
+	const [reqOpen, setReqOpen] = useState(false);
+	const [resOpen, setResOpen] = useState(false);
 	return (
 		<div className={`test-card test-card--${status}`}>
 			<div className="test-card-header">
@@ -1322,6 +1574,60 @@ function TestCard({ title, status, error, onTest }) {
 				>
 					{status === "running" ? "Running..." : "Test"}
 				</button>
+			)}
+			{pingoneRequest && (
+				<div className="test-card-raw">
+					<button
+						type="button"
+						className="test-card-raw-toggle"
+						onClick={() => setReqOpen((o) => !o)}
+					>
+						{reqOpen ? "▾ Hide PingOne Request" : "▸ Show PingOne Request"}
+					</button>
+					{reqOpen && (
+						<>
+							<div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: 4 }}>
+								<strong>{pingoneRequest.method}</strong> {pingoneRequest.url}
+								{pingoneRequest.contentType && <span> — <code>{pingoneRequest.contentType}</code></span>}
+							</div>
+							<pre className="test-card-raw-json">
+								{JSON.stringify(pingoneRequest.body, null, 2)}
+							</pre>
+						</>
+					)}
+				</div>
+			)}
+			{pingoneResponse && (
+				<div className="test-card-raw">
+					<button
+						type="button"
+						className="test-card-raw-toggle"
+						onClick={() => setResOpen((o) => !o)}
+					>
+						{resOpen ? "▾ Hide PingOne Response" : "▸ Show PingOne Response"}
+					</button>
+					{resOpen && (
+						<pre className="test-card-raw-json">
+							{JSON.stringify(pingoneResponse, null, 2)}
+						</pre>
+					)}
+				</div>
+			)}
+			{!pingoneResponse && rawResult !== undefined && rawResult !== null && (
+				<div className="test-card-raw">
+					<button
+						type="button"
+						className="test-card-raw-toggle"
+						onClick={() => setRawOpen((o) => !o)}
+					>
+						{rawOpen ? "▾ Hide P1 Response" : "▸ Show P1 Response"}
+					</button>
+					{rawOpen && (
+						<pre className="test-card-raw-json">
+							{JSON.stringify(rawResult, null, 2)}
+						</pre>
+					)}
+				</div>
 			)}
 		</div>
 	);

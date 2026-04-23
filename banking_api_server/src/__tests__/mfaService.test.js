@@ -365,16 +365,34 @@ describe('initFido2Registration', () => {
 // ─── completeFido2Registration ────────────────────────────────────────────────
 
 describe('completeFido2Registration', () => {
-  it('sends PUT to /devices/:deviceId with attestation', async () => {
+  it('sends POST to /devices/:deviceId with activation content-type and flat attestation + origin', async () => {
     mockWorkerTokenSuccess();
-    axios.put.mockResolvedValueOnce({ data: { id: 'dev-fido', status: 'ACTIVE' } });
-    const attestation = { id: 'att-id', response: { attestationObject: 'xyz', clientDataJSON: 'abc' } };
+    // axios.post: [0] = worker token, [1] = device activation
+    axios.post.mockResolvedValueOnce({ data: { id: 'dev-fido', status: 'ACTIVE' } });
+    const attestation = { id: 'att-id', rawId: 'att-id', type: 'public-key', response: { attestationObject: 'xyz', clientDataJSON: 'abc' } };
 
     const result = await mfaService.completeFido2Registration('user-1', 'dev-fido', attestation);
 
     expect(result.status).toBe('ACTIVE');
-    const [url, body] = axios.put.mock.calls[0];
+    // Must be POST (activation), not PUT
+    const [url, body, cfg] = axios.post.mock.calls[1];
     expect(url).toContain('users/user-1/devices/dev-fido');
-    expect(body).toEqual({ attestation });
+    // Attestation fields spread at body root — NOT nested under { attestation }
+    expect(body.id).toBe('att-id');
+    expect(body.response).toEqual(attestation.response);
+    // origin field appended
+    expect(body.origin).toMatch(/^https:\/\/auth\.pingone\./);
+    // Correct activation content-type
+    expect(cfg.headers['Content-Type']).toBe('application/vnd.pingidentity.device.activate+json');
+  });
+
+  it('wraps PingOne error on activation failure', async () => {
+    mockWorkerTokenSuccess();
+    axios.post.mockRejectedValueOnce(pingoneError(400, 'INVALID_ATTESTATION', 'Attestation verification failed'));
+    const attestation = { id: 'bad', rawId: 'bad', type: 'public-key', response: {} };
+
+    const err = await mfaService.completeFido2Registration('user-1', 'dev-fido', attestation).catch(e => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.status).toBe(400);
   });
 });

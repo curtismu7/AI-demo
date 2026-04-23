@@ -205,21 +205,38 @@ async function getDeviceAuthStatus(daId, userAccessToken) {
  * Body: { assertion: { ... } } — base64-encoded fields from navigator.credentials.get()
  * Status transitions: ASSERTION_REQUIRED → COMPLETED | FAILED
  */
-async function submitFido2Assertion(daId, assertion, userAccessToken) {
+async function submitFido2Assertion(daId, assertion, userAccessToken, origin) {
 	try {
 		const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
-		const { data } = await axios.put(
+		const body = {
+			origin: origin || "",
+			assertion,
+			compatibility: "FULL",
+		};
+		console.log(
+			"[MFA] submitFido2Assertion: POST %s origin=%s",
 			url,
-			{ assertion },
+			body.origin || "(none)",
+		);
+		const { data } = await axios.post(
+			url,
+			body,
 			{
 				headers: {
 					Authorization: `Bearer ${userAccessToken}`,
-					"Content-Type": "application/json",
+					"Content-Type": "application/vnd.pingidentity.assertion.check+json",
 				},
 				timeout: 15000,
 			},
 		);
-		return data;
+		const debugUrl = url.replace(/\/[0-9a-f-]{36}\/deviceAuthentications/, "/{envId}/deviceAuthentications");
+		return {
+			...data,
+			_debug: {
+				request: { method: "POST", url: debugUrl, body: { ...body, assertion: "<base64-encoded WebAuthn assertion>" }, contentType: "application/vnd.pingidentity.assertion.check+json" },
+				response: data,
+			},
+		};
 	} catch (err) {
 		throw _wrapError("submitFido2Assertion", err);
 	}
@@ -277,35 +294,60 @@ async function enrollEmailDevice(userId, email) {
 }
 
 /**
- * Enroll an SMS OTP device for a user via Management API (worker token).
- * PingOne immediately sends an OTP to the phone — complete with completeSmsEnrollment.
+ * Enroll an SMS OTP device for a user.
+ * When called with the user's own access token, PingOne uses the user-facing enrollment
+ * flow which sends an OTP and returns ACTIVATION_REQUIRED (phone verification required).
+ * When called with a worker token only, PingOne creates the device as ACTIVE immediately.
  * @param {string} userId
  * @param {string} phone  - E.164 format e.g. +15551234567
+ * @param {string} [userAccessToken] - user's OIDC access token; if provided, forces OTP flow
  * Returns { id, type, phone, status }
  */
-async function enrollSmsDevice(userId, phone) {
+async function enrollSmsDevice(userId, phone, userAccessToken) {
 	try {
-		const workerToken = await _getWorkerToken();
+		// Prefer user token — PingOne will send OTP and return ACTIVATION_REQUIRED.
+		// Fall back to worker token only when no session token is available.
+		const token = userAccessToken || (await _getWorkerToken());
 		const url = `${_apiBaseUrl()}/users/${userId}/devices`;
 		const { data } = await axios.post(
 			url,
 			{ type: "SMS", phone },
 			{
 				headers: {
-					Authorization: `Bearer ${workerToken}`,
+					Authorization: `Bearer ${token}`,
 					"Content-Type": "application/json",
 				},
 				timeout: 10000,
 			},
 		);
 		console.log(
-			"[MFA] enrolled SMS device userId=%s deviceId=%s status=%s",
+			"[MFA] enrolled SMS device userId=%s deviceId=%s status=%s (token-source=%s)",
 			userId,
 			data.id,
 			data.status,
+			userAccessToken ? "user" : "worker",
 		);
 		return data;
 	} catch (err) {
+		// If user token cannot access device enrollment, retry with worker token.
+		// PingOne may return 401 or 403 for this path depending on app/resource setup.
+		const status = err.response?.status;
+		const pingMsg = String(
+			err.response?.data?.message || err.response?.data?.error || err.message || "",
+		).toLowerCase();
+		const accessDenied =
+			status === 401 ||
+			status === 403 ||
+			pingMsg.includes("do not have access") ||
+			pingMsg.includes("insufficient") ||
+			pingMsg.includes("scope");
+		if (userAccessToken && accessDenied) {
+			console.warn(
+				"[MFA] enrollSmsDevice: user token denied (status=%s), retrying with worker token",
+				status,
+			);
+			return enrollSmsDevice(userId, phone);
+		}
 		throw _wrapError("enrollSmsDevice", err);
 	}
 }
@@ -346,18 +388,16 @@ async function completeSmsEnrollment(userId, deviceId, otp) {
 
 /**
  * Initiate FIDO2/passkey device registration for a user via Management API.
- * Returns { deviceId, publicKeyCredentialCreationOptions }
+ * Returns { deviceId, publicKeyCredentialCreationOptions, _debug }
  */
-async function initFido2Registration(userId) {
+async function initFido2Registration(userId, allowCleanupRetry = true) {
+	const workerToken = await _getWorkerToken();
 	try {
-		const workerToken = await _getWorkerToken();
 		const url = `${_apiBaseUrl()}/users/${userId}/devices`;
+		const reqBody = { type: "FIDO2", nickname: "My Passkey" };
 		const { data } = await axios.post(
 			url,
-			{ 
-				type: "FIDO2",
-				nickname: "My Passkey"
-			},
+			reqBody,
 			{
 				headers: {
 					Authorization: `Bearer ${workerToken}`,
@@ -375,8 +415,42 @@ async function initFido2Registration(userId) {
 			deviceId: data.id,
 			publicKeyCredentialCreationOptions:
 				data.publicKeyCredentialCreationOptions,
+			_debug: {
+				request: { method: "POST", url: url.replace(/\/environments\/[^/]+\//, "/environments/{envId}/"), body: reqBody, contentType: "application/json" },
+				response: data,
+			},
 		};
 	} catch (err) {
+		const pingErr = err.response?.data;
+		const limitReached =
+			pingErr?.code === "REQUEST_LIMITED" ||
+			(pingErr?.details || []).some((d) => d?.code === "LIMIT_EXCEEDED");
+		if (allowCleanupRetry && limitReached) {
+			try {
+				const active = await listMfaDevices(userId);
+				const fidoDevices = active.filter((d) =>
+					String(d?.type || "").toUpperCase().startsWith("FIDO2"),
+				);
+				if (fidoDevices.length > 0) {
+					const deviceToRemove = fidoDevices[0];
+					const delUrl = `${_apiBaseUrl()}/users/${userId}/devices/${deviceToRemove.id}`;
+					await axios.delete(delUrl, {
+						headers: { Authorization: `Bearer ${workerToken}` },
+						timeout: 10000,
+					});
+					console.warn(
+						"[MFA] initFido2Registration: removed deviceId=%s due to LIMIT_EXCEEDED, retrying",
+						deviceToRemove.id,
+					);
+					return initFido2Registration(userId, false);
+				}
+			} catch (cleanupErr) {
+				console.error(
+					"[MFA] initFido2Registration cleanup retry failed:",
+					cleanupErr.response?.data || cleanupErr.message,
+				);
+			}
+		}
 		throw _wrapError("initFido2Registration", err);
 	}
 }
@@ -386,32 +460,69 @@ async function initFido2Registration(userId) {
  * @param {string} userId
  * @param {string} deviceId  - from initFido2Registration
  * @param {object} attestation - base64-encoded fields from navigator.credentials.create()
+ *   Must include: id, rawId, type, response.attestationObject, response.clientDataJSON
+ *   Origin is appended server-side from PINGONE_FIDO2_ORIGIN env or auth base URL.
  * Returns { id, status }
  */
-async function completeFido2Registration(userId, deviceId, attestation, origin) {
+async function completeFido2Registration(userId, deviceId, attestation) {
 	try {
 		const workerToken = await _getWorkerToken();
 		const url = `${_apiBaseUrl()}/users/${userId}/devices/${deviceId}`;
-		const body = { attestation };
-		if (origin) body.origin = origin;
-		const { data } = await axios.put(
-			url,
-			body,
-			{
+
+		// PingOne device activation requires a dedicated content-type and the
+		// attestation fields sent at the body root — NOT nested under { attestation }.
+		// Origin must match the RP origin registered in PingOne (derived from auth base URL).
+		const region = configStore.getEffective("pingone_region") || "com";
+		const origin =
+			configStore.getEffective("pingone_fido2_origin") ||
+			process.env.PINGONE_FIDO2_ORIGIN ||
+			`https://auth.pingone.${region}`;
+
+		const body = {
+			...attestation,
+			origin,
+		};
+
+		const debugUrl = url.replace(/\/environments\/[^/]+\//, "/environments/{envId}/");
+		let data;
+		try {
+			const resp = await axios.post(url, body, {
 				headers: {
 					Authorization: `Bearer ${workerToken}`,
-					"Content-Type": "application/json",
+					"Content-Type": "application/vnd.pingidentity.device.activate+json",
 				},
 				timeout: 15000,
-			},
-		);
+			});
+			data = resp.data;
+		} catch (err) {
+			const pingErr = err.response?.data;
+			console.error(
+				"[MFA] completeFido2Registration failed: status=%s code=%s details=%j",
+				err.response?.status,
+				pingErr?.code,
+				pingErr?.details || pingErr?.message,
+			);
+			throw err;
+		}
+
 		console.log(
 			"[MFA] completed FIDO2 registration userId=%s deviceId=%s status=%s",
 			userId,
 			deviceId,
 			data.status,
 		);
-		return data;
+		return {
+			...data,
+			_debug: {
+				request: {
+					method: "POST",
+					url: debugUrl,
+					body: { ...body, rawId: "<base64url>", response: "<WebAuthn response>" },
+					contentType: "application/vnd.pingidentity.device.activate+json",
+				},
+				response: data,
+			},
+		};
 	} catch (err) {
 		throw _wrapError("completeFido2Registration", err);
 	}
