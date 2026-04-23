@@ -36,7 +36,7 @@ fi
 
 # ── FEATURES check (only if a route, component, service, or middleware changed) ──
 FEATURE_RELEVANT=$(echo "$STAGED" | grep -E \
-  "routes/|components/|services/|middleware/|mcp_server/" | grep -v "__tests__" | grep -v "\.css$")
+  "routes/|components/|services/|middleware/|mcp_server/" | grep -v "__tests__" | grep -v "\.css$" || true)
 
 if [ -n "$FEATURE_RELEVANT" ] && ! echo "$STAGED" | grep -q "FEATURES.md"; then
   warn "FEATURES.md not staged — but feature-related files changed:"
@@ -46,7 +46,7 @@ if [ -n "$FEATURE_RELEVANT" ] && ! echo "$STAGED" | grep -q "FEATURES.md"; then
 fi
 
 # ── REGRESSION_LOG check (only if a test file was staged) ──────────────────
-TEST_FILES=$(echo "$STAGED" | grep -E "\.test\.(js|ts)$")
+TEST_FILES=$(echo "$STAGED" | grep -E "\.test\.(js|ts)$" || true)
 
 if [ -n "$TEST_FILES" ] && ! echo "$STAGED" | grep -q "REGRESSION_LOG.md"; then
   warn "Test files staged but REGRESSION_LOG.md not staged."
