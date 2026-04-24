@@ -142,10 +142,10 @@ Plans:
 
 **Requirements:** None
 
-**Plans:** 0 plans — run /gsd-plan-phase 227 to break down
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 227 to break down)
+- [ ] 227-01-PLAN.md — Remove AdminSideNav from App.js/AdminLayout.jsx, Admin Dashboard buttons from LandingPage.js and BankingAgent.js, and isOnSidebarRoute FAB guard
 
 ### Phase 1: auth-flows
 
