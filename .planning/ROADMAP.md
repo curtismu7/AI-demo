@@ -115,7 +115,7 @@ Plans:
 
 ### Phase 225: retail-theme-toggle
 
-**Goal:** Add a runtime `ff_retail_mode` feature flag that switches the app between Banking and Retail (Best Buy-style electronics) experiences. Retail mode swaps the theme (colors, logo, card layouts), replaces banking data (accounts/transactions) with electronics product/cart mock data, and re-skins agent copy and tool labels — while keeping all OAuth, MCP, PingOne Authorize, FIDO2, token chain, and Dev Tools panels unchanged. Users can toggle Banking ↔ Retail from the Config UI or a persistent banner toggle.
+**Goal:** Add a runtime `ff_retail_mode` feature flag that switches the app between Banking and Retail (Best Buy-style electronics) experiences. Retail mode swaps the theme (colors, logo, card layouts), replaces banking data (accounts/transactions) with electronics product/cart mock data, and re-skins agent greeting copy — while keeping all OAuth, MCP, PingOne Authorize, FIDO2, token chain, and Dev Tools panels unchanged. Users can toggle Banking ↔ Retail from the Config UI or a persistent banner toggle.
 
 **Requirements:** None
 
@@ -1653,6 +1653,17 @@ Plans:
 - Add tool calling nodes for MCP tool integration
 - Implement multi-agent patterns for complex operations
 - Add conditional edges for HITL consent flows
+
+### Phase 228: Admin agent chip routing — fix heuristic so chips like 'show all customer accounts' and 'show last 5 errors' never fall back to LLM; add sample data to support those prompts
+
+**Goal:** Fix two admin agent chips that produce wrong or LLM-fallback results. "Show all customer accounts" hits the user-scoped accounts handler instead of all-accounts; "Show me last 5 errors" bypasses parseLogPrompt and falls to LLM. Add admin_accounts + admin_errors heuristic branches (BFF), admin role guard, and parseLogPrompt guard at the chip call site (UI).
+**Requirements**: None
+**Depends on:** Phase 227
+**Plans:** 2 plans
+
+Plans:
+- [ ] 228-01-PLAN.md — BFF: add admin_accounts + admin_errors regex branches to parseBanking(); add execution handlers with role guard to executeHeuristicBanking()
+- [ ] 228-02-PLAN.md — UI: add parseLogPrompt guard at chip dispatch call site in BankingAgent.js; human-verify both chips
 
 ---
 
