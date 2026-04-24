@@ -119,10 +119,33 @@ Plans:
 
 **Requirements:** None
 
-**Plans:** 0 plans — run /gsd-plan-phase 225 to break down
+**Plans:** 3 plans
+
+- [ ] 225-01-PLAN.md — Register ff_retail_mode BFF flag, add retail industry preset + mock data, fix BrandLogo null guard
+- [ ] 225-02-PLAN.md — Create RetailModeBanner component and CSS (persistent mode toggle banner)
+- [ ] 225-03-PLAN.md — Wire retail mode into UserDashboard.js + UserDashboard.css + BankingAgent greeting copy
+
+### Phase 226: agent-popout-close-existing
+
+**Goal:** When the user pops out the agent panel into a separate window/view, automatically close the existing inline agent so both are not open simultaneously — preventing duplicate agent state and UI confusion.
+
+**Requirements:** None
+
+**Plans:** 0 plans — run /gsd-plan-phase 226 to break down
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 225 to break down)
+- [ ] TBD (run /gsd-plan-phase 226 to break down)
+
+### Phase 227: remove-side-menu-admin-dashboard-button
+
+**Goal:** Remove the side navigation menu and the "Admin Dashboard" button from the UI, simplifying the navigation and reducing clutter for demo users.
+
+**Requirements:** None
+
+**Plans:** 0 plans — run /gsd-plan-phase 227 to break down
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 227 to break down)
 
 ### Phase 1: auth-flows
 
