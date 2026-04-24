@@ -131,10 +131,10 @@ Plans:
 
 **Requirements:** None
 
-**Plans:** 0 plans — run /gsd-plan-phase 226 to break down
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 226 to break down)
+- [ ] 226-01-PLAN.md — Add onPopout callback prop to BankingAgent; wire at both UserDashboard inline render sites to close inline panel on pop-out
 
 ### Phase 227: remove-side-menu-admin-dashboard-button
 
