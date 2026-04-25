@@ -110,9 +110,9 @@ describe('nlIntentParser — CIMD education', () => {
     expect(edu('how does dcr work').education.panel).toBe('cimd');
   });
 
-  it('routes "rfc 7591" → rfc-index (rfc-index check fires before cimd)', () => {
-    // The rfc-index check `/\b(rfc)\b/` matches before the cimd check; use 'dcr' to target cimd
-    expect(edu('what is rfc 7591').education.panel).toBe('rfc-index');
+  it('routes "rfc 7591" → cimd panel (specific cimd rule now fires before broad rfc fallback)', () => {
+    // rfc-index broad rule moved to end of parseEducation(); cimd's rfc.?7591 pattern fires first
+    expect(edu('what is rfc 7591').education.panel).toBe('cimd');
   });
 
   it('routes "register client" → cimd panel', () => {
