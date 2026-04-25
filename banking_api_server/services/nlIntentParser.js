@@ -6,6 +6,7 @@
 'use strict';
 
 const EDU = {
+  // existing — keep exactly as-is
   LOGIN_FLOW: 'login-flow',
   TOKEN_EXCHANGE: 'token-exchange',
   MAY_ACT: 'may-act',
@@ -18,6 +19,27 @@ const EDU = {
   CIMD: 'cimd',
   CUA: 'cua',
   HUMAN_IN_LOOP: 'human-in-loop',
+  // new for Phase 231 — values verified against educationIds.js
+  BEST_PRACTICES: 'best-practices',
+  PAR: 'par',
+  RAR: 'rar',
+  JWT_CLIENT_AUTH: 'jwt-client-auth',
+  AGENTIC_MATURITY: 'agentic-maturity',
+  OIDC_21: 'oidc-21',
+  LANGCHAIN: 'langchain',
+  AGENT_BUILDER_LANDSCAPE: 'agent-builder-landscape',
+  LLM_LANDSCAPE: 'llm-landscape',
+  SENSITIVE_DATA: 'sensitive-data',
+  AI_PLATFORM_LANDSCAPE: 'ai-platform-landscape',
+  PINGGATEWAY_MCP: 'pinggateway-mcp',
+  ARCHITECTURE_DIAGRAM: 'architecture-diagram',
+  TOKEN_CHAIN: 'token-chain',
+  RFC_8693: 'rfc-8693',
+  FLOW_DIAGRAMS: 'flow-diagrams',
+  IETF_STANDARDS: 'ietf-standards',
+  TOKEN_FLOW: 'token-flow',
+  AI_PRIMER: 'ai-primer',
+  ID_JAG: 'id-jag',
 };
 
 function norm(s) {
@@ -77,7 +99,91 @@ function parseEducation(t) {
     return { kind: 'education', education: { panel: EDU.CUA, tab: 'what' } };
   }
   if (/\b(langchain|lang chain|lcel|llm orchestrat|multi.?provider.*llm|model.?agnostic.*llm)\b/.test(t)) {
-    return { kind: 'education', education: { panel: 'langchain', tab: 'overview' } };
+    return { kind: 'education', education: { panel: EDU.LANGCHAIN, tab: 'overview' } };
+  }
+  // Token Chain (covers: "🔗 Token Chain", "🔗 Token Chain: JWT Claims", "🔗 Token Chain: Exchange Paths")
+  if (/\b(token[- ]chain)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.TOKEN_CHAIN, tab: 'overview' } };
+  }
+  // AI Best Practices (covers: "⭐ AI Agent Best Practices")
+  if (/\b(best[- ]practices|ai[- ]agent[- ]best)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.BEST_PRACTICES, tab: 'overview' } };
+  }
+  // Agentic Maturity Model (covers: "⭐ Agentic Maturity Model")
+  if (/\b(agentic[- ]maturity|maturity[- ]model)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.AGENTIC_MATURITY, tab: 'overview' } };
+  }
+  // PAR — Pushed Authorization Requests (covers: "PAR (RFC 9126)")
+  if (/\b(par\b|rfc[- ]?9126|pushed[- ]authorization)/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.PAR, tab: 'what' } };
+  }
+  // RAR — Rich Authorization Requests (covers: "RAR (RFC 9396)", "🔒 Selective Disclosure: RAR / RFC 9396")
+  if (/\b(rar\b|rfc[- ]?9396|rich[- ]authorization)/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.RAR, tab: 'what' } };
+  }
+  // JWT Client Authentication (covers: "JWT client auth (RFC 7523)")
+  if (/\b(jwt[- ]client[- ]auth|rfc[- ]?7523)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.JWT_CLIENT_AUTH, tab: 'what' } };
+  }
+  // LLM Landscape / Comparison / How LLMs Work
+  if (/\b(llm[- ]landscape|llm[- ]comparison|how[- ]llms?[- ]work)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.LLM_LANDSCAPE, tab: 'commercial' } };
+  }
+  // Agent Builder Landscape / Comparison
+  if (/\b(agent[- ]builder|agent[- ]framework[- ]landscape)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.AGENT_BUILDER_LANDSCAPE, tab: 'langchain' } };
+  }
+  // AI Platform Landscape / Comparison
+  if (/\b(ai[- ]platform[- ]landscape|ai[- ]platform[- ]comparison)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.AI_PLATFORM_LANDSCAPE, tab: 'overview' } };
+  }
+  // Sensitive Data & Selective Disclosure
+  if (/\b(sensitive[- ]data|selective[- ]disclosure)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.SENSITIVE_DATA, tab: 'overview' } };
+  }
+  // PingGateway MCP Security
+  if (/\b(pinggateway|ping[- ]gateway)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.PINGGATEWAY_MCP, tab: 'overview' } };
+  }
+  // Architecture Diagrams (covers: "🏗️ C4 Architecture Diagram", "🏗️ BFF Component Diagram")
+  if (/\b(c4[- ]architecture|architecture[- ]diagram|bff[- ]component)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.ARCHITECTURE_DIAGRAM, tab: 'context' } };
+  }
+  // IETF Standards for Agentic Identity
+  if (/\b(ietf[- ]standards|agentic[- ]identity|rfc7523bis)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.IETF_STANDARDS, tab: 'overview' } };
+  }
+  // AI Primer
+  if (/\b(ai[- ]primer)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.AI_PRIMER, tab: 'overview' } };
+  }
+  // ID-JAG / Cross-App Access (XAA)
+  if (/\b(id[- ]jag|cross[- ]app[- ]access|xaa)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.ID_JAG, tab: 'overview' } };
+  }
+  // Step-up: deviceAuthentications API sub-topic
+  if (/\b(device[- ]authentications?|deviceauthentications)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.STEP_UP, tab: 'device' } };
+  }
+  // Authorize sub-topics: policy & AI/MCP security, MCP PingOne & env
+  if (/\b(authorize[- ]policy|ai.?mcp[- ]security|mcp[- ]pingone)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.PINGONE_AUTHORIZE, tab: 'policy' } };
+  }
+  // Agent request flow diagram
+  if (/\b(agent[- ]request[- ]flow|agent[- ]flow[- ]diagram)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.FLOW_DIAGRAMS, tab: 'agent-flow' } };
+  }
+  // OIDC 2.1 (norm() strips the dot so "oidc 2.1" → "oidc 2 1")
+  if (/\b(oidc[- ]?2[\s.]?1|oidc 2 1|openid[- ]connect[- ]2)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.OIDC_21, tab: 'overview' } };
+  }
+  // RFC 8693 Token Exchange (explicit RFC reference)
+  if (/\b(rfc[- ]?8693)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.TOKEN_EXCHANGE, tab: 'overview' } };
+  }
+  // Token Flow — end-to-end 2-exchange delegation
+  if (/\b(token[- ]flow|2[- ]exchange[- ]flow)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.TOKEN_FLOW, tab: 'overview' } };
   }
   return null;
 }
@@ -142,7 +248,7 @@ function parseBanking(t) {
   if (/\b(logout|log out|sign out|signout)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'logout' } };
   }
-  if (/\b(sensitive|full account|routing number|account number|account details)\b/.test(t)) {
+  if (/\b(sensitive account details|full account|routing number|account number|account details)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'sensitive_account_details' } };
   }
   // Web search: general queries not related to banking or OAuth education
