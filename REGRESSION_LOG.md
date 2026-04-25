@@ -5,6 +5,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-04-25 — Pre-existing test/code mismatches fixed (Phase 231 test-suite maintenance)
+
+**Symptoms**: `AgentUiModeContext.test.js` had 3 assertions expecting `placement: "none"` for empty/unrecognised localStorage; `PingOneAudit.test.jsx` had `getByText("Run Audit")` matching both a `<strong>` and `<button>` element (ambiguous query), and `getByText("banking:ai:agent")` matching duplicate scope-tag spans.
+
+**Root cause**: Tests were written against an earlier default of `placement: "none"`, but `defaultState` and `readLegacyMode()` were later changed to return `"middle"`. The PingOne audit component renders the same scope value in both "expected" and "current" columns, making exact-text queries ambiguous.
+
+**Fix**: Updated 3 assertions in `AgentUiModeContext.test.js` to expect `"middle"`. Replaced all `getByText("Run Audit")` click targets with `getByRole("button", { name: /run audit/i })`. Changed duplicate scope assertion to `getAllByText(...).length > 0`.
+
+**Tests**: `AgentUiModeContext.test.js` 9/9 pass; `PingOneAudit.test.jsx` 14/14 pass.
+
+---
+
 ## 2025-06 — 2-exchange delegation: hardcoded client_secret_post caused auth failure (commit `3497664`)
 
 **Symptoms**: AI-Agent→MCP 2-exchange delegation path returned "Unsupported authentication method" from PingOne when using the `_performTwoExchangeDelegation` flow. Affected all 4 PingOne calls in that path (2× client_credentials, 2× token-exchange).

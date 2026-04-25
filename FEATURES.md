@@ -109,6 +109,7 @@ git checkout <last-version-tag> -- <key-file>
 | Middle split-column agent — slim token rail, 3-column grid | active | `banking_api_ui/src/components/UserDashboard.js`, `banking_api_ui/src/components/UserDashboard.css` | — |
 | Agent ↔ customer dashboard sync (`banking-agent-result`; post-write **`get_my_transactions`**) | active | `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/components/UserDashboard.js` | — |
 | Agent layout preference persisted to server | active | `banking_api_ui/src/services/demoScenarioService.js`, `banking_api_server/routes/demoScenario.js` | `s:demo-scenario-api.test.js` |
+| Agent chip groups — collapsible sections with count badges, collapse-all toolbar, "⊞ All actions" discovery popout with live search (Phase 231) | active | `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/components/BankingAgent.css` | `u:components/__tests__/BankingAgent.chips.test.js` |
 | Natural-language banking intents (NL → API) | active | `banking_api_server/routes/bankingAgentNl.js`, `banking_api_server/services/nlIntentParser.js`, `banking_api_ui/src/services/bankingAgentNlService.js` | `s:bankingAgentNl.test.js`, `s:nlIntentParser.test.js` |
 | NL intent sanitization | active | `banking_api_server/services/nlIntentSanitize.js` | `s:nlIntentSanitize.test.js` |
 | Gemini NL backend | active | `banking_api_server/services/geminiNlIntent.js` | `s:nlIntentParser.test.js` |

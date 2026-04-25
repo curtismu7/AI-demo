@@ -63,11 +63,19 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
       <div
         class="sidenav-group"
       >
-        <div
-          class="sidenav-group-label"
+        <button
+          class="sidenav-group-label sidenav-group-toggle"
+          type="button"
         >
-          Overview
-        </div>
+          <span>
+            Overview
+          </span>
+          <span
+            class="sidenav-group-chevron"
+          >
+            ▾
+          </span>
+        </button>
         <a
           class="sidenav-link"
           href="/admin"
@@ -133,11 +141,19 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
       <div
         class="sidenav-group"
       >
-        <div
-          class="sidenav-group-label"
+        <button
+          class="sidenav-group-label sidenav-group-toggle"
+          type="button"
         >
-          Management
-        </div>
+          <span>
+            Management
+          </span>
+          <span
+            class="sidenav-group-chevron"
+          >
+            ▾
+          </span>
+        </button>
         <a
           class="sidenav-link"
           href="/activity"
@@ -308,11 +324,19 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
       <div
         class="sidenav-group"
       >
-        <div
-          class="sidenav-group-label"
+        <button
+          class="sidenav-group-label sidenav-group-toggle"
+          type="button"
         >
-          Configuration
-        </div>
+          <span>
+            Configuration
+          </span>
+          <span
+            class="sidenav-group-chevron"
+          >
+            ▾
+          </span>
+        </button>
         <a
           class="sidenav-link"
           href="/configure"
@@ -416,11 +440,24 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
           class="sidenav-link"
           href="/onboarding"
         >
-          <span
+          <svg
             class="sidenav-icon"
+            fill="currentColor"
+            height="20"
+            stroke="currentColor"
+            stroke-width="0"
+            viewBox="0 0 24 24"
+            width="20"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            MdDeploy
-          </span>
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+            />
+            <path
+              d="M9.19 6.35c-2.04 2.29-3.44 5.58-3.57 5.89L2 10.69l4.05-4.05c.47-.47 1.15-.68 1.81-.55l1.33.26zM11.17 17s3.74-1.55 5.89-3.7c5.4-5.4 4.5-9.62 4.21-10.57-.95-.3-5.17-1.19-10.57 4.21C8.55 9.09 7 12.83 7 12.83L11.17 17zm6.48-2.19c-2.29 2.04-5.58 3.44-5.89 3.57L13.31 22l4.05-4.05c.47-.47.68-1.15.55-1.81l-.26-1.33zM9 18c0 .83-.34 1.58-.88 2.12C6.94 21.3 2 22 2 22s.7-4.94 1.88-6.12A2.996 2.996 0 0 1 9 18zm4-9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"
+            />
+          </svg>
           <span
             class="sidenav-link-label"
           >
@@ -459,11 +496,24 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
           class="sidenav-link"
           href="/setup/wizard"
         >
-          <span
+          <svg
             class="sidenav-icon"
+            fill="currentColor"
+            height="20"
+            stroke="currentColor"
+            stroke-width="0"
+            viewBox="0 0 24 24"
+            width="20"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            MdDeploy
-          </span>
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+            />
+            <path
+              d="M9.19 6.35c-2.04 2.29-3.44 5.58-3.57 5.89L2 10.69l4.05-4.05c.47-.47 1.15-.68 1.81-.55l1.33.26zM11.17 17s3.74-1.55 5.89-3.7c5.4-5.4 4.5-9.62 4.21-10.57-.95-.3-5.17-1.19-10.57 4.21C8.55 9.09 7 12.83 7 12.83L11.17 17zm6.48-2.19c-2.29 2.04-5.58 3.44-5.89 3.57L13.31 22l4.05-4.05c.47-.47.68-1.15.55-1.81l-.26-1.33zM9 18c0 .83-.34 1.58-.88 2.12C6.94 21.3 2 22 2 22s.7-4.94 1.88-6.12A2.996 2.996 0 0 1 9 18zm4-9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"
+            />
+          </svg>
           <span
             class="sidenav-link-label"
           >
@@ -517,11 +567,19 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
       <div
         class="sidenav-group"
       >
-        <div
-          class="sidenav-group-label"
+        <button
+          class="sidenav-group-label sidenav-group-toggle"
+          type="button"
         >
-          User Management
-        </div>
+          <span>
+            User Management
+          </span>
+          <span
+            class="sidenav-group-chevron"
+          >
+            ▾
+          </span>
+        </button>
         <a
           class="sidenav-link"
           href="/self-service"
@@ -554,11 +612,19 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
       <div
         class="sidenav-group"
       >
-        <div
-          class="sidenav-group-label"
+        <button
+          class="sidenav-group-label sidenav-group-toggle"
+          type="button"
         >
-          Developer Tools
-        </div>
+          <span>
+            Developer Tools
+          </span>
+          <span
+            class="sidenav-group-chevron"
+          >
+            ▾
+          </span>
+        </button>
         <a
           class="sidenav-link"
           href="/pingone-test"
@@ -591,11 +657,24 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
           class="sidenav-link"
           href="/mcp-inspector"
         >
-          <span
+          <svg
             class="sidenav-icon"
+            fill="currentColor"
+            height="20"
+            stroke="currentColor"
+            stroke-width="0"
+            viewBox="0 0 24 24"
+            width="20"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            MdPlug
-          </span>
+            <path
+              d="M0 0h24v24H0V0z"
+              fill="none"
+            />
+            <path
+              d="M13 3h-2v10h2V3zm4.83 2.17-1.42 1.42A6.92 6.92 0 0 1 19 12c0 3.87-3.13 7-7 7A6.995 6.995 0 0 1 7.58 6.58L6.17 5.17A8.932 8.932 0 0 0 3 12a9 9 0 0 0 18 0c0-2.74-1.23-5.18-3.17-6.83z"
+            />
+          </svg>
           <span
             class="sidenav-link-label"
           >
@@ -690,11 +769,24 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
           class="sidenav-link"
           href="/client-registration"
         >
-          <span
+          <svg
             class="sidenav-icon"
+            fill="currentColor"
+            height="20"
+            stroke="currentColor"
+            stroke-width="0"
+            viewBox="0 0 24 24"
+            width="20"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            MdFileText
-          </span>
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+            />
+            <path
+              d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"
+            />
+          </svg>
           <span
             class="sidenav-link-label"
           >
@@ -737,11 +829,19 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
     <div
       class="sidenav-group sidenav-learn"
     >
-      <div
-        class="sidenav-group-label"
+      <button
+        class="sidenav-group-label sidenav-group-toggle"
+        type="button"
       >
-        Learn & Explore
-      </div>
+        <span>
+          Learn & Explore
+        </span>
+        <span
+          class="sidenav-group-chevron"
+        >
+          ▾
+        </span>
+      </button>
       <button
         class="sidenav-link sidenav-learn-btn"
         title="Login Flow"
@@ -863,11 +963,24 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
         title="CIBA"
         type="button"
       >
-        <span
+        <svg
           class="sidenav-icon"
+          fill="currentColor"
+          height="20"
+          stroke="currentColor"
+          stroke-width="0"
+          viewBox="0 0 24 24"
+          width="20"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          MdPlug
-        </span>
+          <path
+            d="M0 0h24v24H0V0z"
+            fill="none"
+          />
+          <path
+            d="M13 3h-2v10h2V3zm4.83 2.17-1.42 1.42A6.92 6.92 0 0 1 19 12c0 3.87-3.13 7-7 7A6.995 6.995 0 0 1 7.58 6.58L6.17 5.17A8.932 8.932 0 0 0 3 12a9 9 0 0 0 18 0c0-2.74-1.23-5.18-3.17-6.83z"
+          />
+        </svg>
         <span
           class="sidenav-link-label"
         >
@@ -879,11 +992,24 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
         title="MCP Protocol"
         type="button"
       >
-        <span
+        <svg
           class="sidenav-icon"
+          fill="currentColor"
+          height="20"
+          stroke="currentColor"
+          stroke-width="0"
+          viewBox="0 0 24 24"
+          width="20"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          MdPlug
-        </span>
+          <path
+            d="M0 0h24v24H0V0z"
+            fill="none"
+          />
+          <path
+            d="M13 3h-2v10h2V3zm4.83 2.17-1.42 1.42A6.92 6.92 0 0 1 19 12c0 3.87-3.13 7-7 7A6.995 6.995 0 0 1 7.58 6.58L6.17 5.17A8.932 8.932 0 0 0 3 12a9 9 0 0 0 18 0c0-2.74-1.23-5.18-3.17-6.83z"
+          />
+        </svg>
         <span
           class="sidenav-link-label"
         >
@@ -953,11 +1079,24 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
         title="RFC Index"
         type="button"
       >
-        <span
+        <svg
           class="sidenav-icon"
+          fill="currentColor"
+          height="20"
+          stroke="currentColor"
+          stroke-width="0"
+          viewBox="0 0 24 24"
+          width="20"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          MdFileText
-        </span>
+          <path
+            d="M0 0h24v24H0z"
+            fill="none"
+          />
+          <path
+            d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"
+          />
+        </svg>
         <span
           class="sidenav-link-label"
         >
@@ -1125,20 +1264,38 @@ exports[`SideNav snapshot renders user nav without change 1`] = `
       <div
         class="sidenav-group"
       >
-        <div
-          class="sidenav-group-label"
+        <button
+          class="sidenav-group-label sidenav-group-toggle"
+          type="button"
         >
-          My Banking
-        </div>
+          <span>
+            My Banking
+          </span>
+          <span
+            class="sidenav-group-chevron"
+          >
+            ▾
+          </span>
+        </button>
         <a
           class="sidenav-link"
           href="/dashboard"
         >
-          <span
+          <svg
+            aria-hidden="true"
             class="sidenav-icon"
+            fill="currentColor"
+            height="20"
+            stroke="currentColor"
+            stroke-width="0"
+            viewBox="0 0 20 20"
+            width="20"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            HiOutlineBarChart3
-          </span>
+            <path
+              d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"
+            />
+          </svg>
           <span
             class="sidenav-link-label"
           >
@@ -1175,99 +1332,6 @@ exports[`SideNav snapshot renders user nav without change 1`] = `
         </a>
         <a
           class="sidenav-link"
-          href="/demo-data"
-        >
-          <svg
-            class="sidenav-icon"
-            fill="currentColor"
-            height="20"
-            stroke="currentColor"
-            stroke-width="0"
-            viewBox="0 0 24 24"
-            width="20"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M0 0h24v24H0V0z"
-              fill="none"
-            />
-            <path
-              d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"
-            />
-          </svg>
-          <span
-            class="sidenav-link-label"
-          >
-            Demo config
-          </span>
-        </a>
-        <a
-          class="sidenav-link"
-          href="/pingone-test"
-        >
-          <svg
-            class="sidenav-icon"
-            fill="currentColor"
-            height="20"
-            stroke="currentColor"
-            stroke-width="0"
-            viewBox="0 0 24 24"
-            width="20"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M0 0h24v24H0V0z"
-              fill="none"
-            />
-            <path
-              d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"
-            />
-          </svg>
-          <span
-            class="sidenav-link-label"
-          >
-            Test Page
-          </span>
-        </a>
-      </div>
-      <div
-        class="sidenav-group"
-      >
-        <div
-          class="sidenav-group-label"
-        >
-          Self Service
-        </div>
-        <a
-          class="sidenav-link"
-          href="/self-service"
-        >
-          <svg
-            class="sidenav-icon"
-            fill="currentColor"
-            height="20"
-            stroke="currentColor"
-            stroke-width="0"
-            viewBox="0 0 24 24"
-            width="20"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-            />
-            <path
-              d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
-            />
-          </svg>
-          <span
-            class="sidenav-link-label"
-          >
-            Create Account
-          </span>
-        </a>
-        <a
-          class="sidenav-link"
           href="/accounts"
         >
           <svg
@@ -1298,15 +1362,73 @@ exports[`SideNav snapshot renders user nav without change 1`] = `
           class="sidenav-link"
           href="/transactions"
         >
-          <span
+          <svg
             class="sidenav-icon"
+            fill="currentColor"
+            height="20"
+            stroke="currentColor"
+            stroke-width="0"
+            viewBox="0 0 24 24"
+            width="20"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            MdMoneyExchange
-          </span>
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+            />
+            <path
+              d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"
+            />
+          </svg>
           <span
             class="sidenav-link-label"
           >
             Transfer Money
+          </span>
+        </a>
+      </div>
+      <div
+        class="sidenav-group"
+      >
+        <button
+          class="sidenav-group-label sidenav-group-toggle"
+          type="button"
+        >
+          <span>
+            Self Service
+          </span>
+          <span
+            class="sidenav-group-chevron"
+          >
+            ▾
+          </span>
+        </button>
+        <a
+          class="sidenav-link"
+          href="/self-service"
+        >
+          <svg
+            class="sidenav-icon"
+            fill="currentColor"
+            height="20"
+            stroke="currentColor"
+            stroke-width="0"
+            viewBox="0 0 24 24"
+            width="20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+            />
+            <path
+              d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+            />
+          </svg>
+          <span
+            class="sidenav-link-label"
+          >
+            Create Account
           </span>
         </a>
         <a
@@ -1393,15 +1515,124 @@ exports[`SideNav snapshot renders user nav without change 1`] = `
           </span>
         </a>
       </div>
+      <div
+        class="sidenav-group"
+      >
+        <button
+          class="sidenav-group-label sidenav-group-toggle"
+          type="button"
+        >
+          <span>
+            Testing
+          </span>
+          <span
+            class="sidenav-group-chevron"
+          >
+            ▾
+          </span>
+        </button>
+        <a
+          class="sidenav-link"
+          href="/pingone-test"
+        >
+          <svg
+            class="sidenav-icon"
+            fill="currentColor"
+            height="20"
+            stroke="currentColor"
+            stroke-width="0"
+            viewBox="0 0 24 24"
+            width="20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M0 0h24v24H0V0z"
+              fill="none"
+            />
+            <path
+              d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"
+            />
+          </svg>
+          <span
+            class="sidenav-link-label"
+          >
+            PingOne Test
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/mfa-test"
+        >
+          <svg
+            class="sidenav-icon"
+            fill="currentColor"
+            height="20"
+            stroke="currentColor"
+            stroke-width="0"
+            viewBox="0 0 24 24"
+            width="20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+            />
+            <path
+              d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"
+            />
+          </svg>
+          <span
+            class="sidenav-link-label"
+          >
+            MFA Test
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/authz-test"
+        >
+          <svg
+            class="sidenav-icon"
+            fill="currentColor"
+            height="20"
+            stroke="currentColor"
+            stroke-width="0"
+            viewBox="0 0 24 24"
+            width="20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+            />
+            <path
+              d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"
+            />
+          </svg>
+          <span
+            class="sidenav-link-label"
+          >
+            Authz Test
+          </span>
+        </a>
+      </div>
     </nav>
     <div
       class="sidenav-group sidenav-learn"
     >
-      <div
-        class="sidenav-group-label"
+      <button
+        class="sidenav-group-label sidenav-group-toggle"
+        type="button"
       >
-        Learn & Explore
-      </div>
+        <span>
+          Learn & Explore
+        </span>
+        <span
+          class="sidenav-group-chevron"
+        >
+          ▾
+        </span>
+      </button>
       <button
         class="sidenav-link sidenav-learn-btn"
         title="Login Flow"
@@ -1523,11 +1754,24 @@ exports[`SideNav snapshot renders user nav without change 1`] = `
         title="CIBA"
         type="button"
       >
-        <span
+        <svg
           class="sidenav-icon"
+          fill="currentColor"
+          height="20"
+          stroke="currentColor"
+          stroke-width="0"
+          viewBox="0 0 24 24"
+          width="20"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          MdPlug
-        </span>
+          <path
+            d="M0 0h24v24H0V0z"
+            fill="none"
+          />
+          <path
+            d="M13 3h-2v10h2V3zm4.83 2.17-1.42 1.42A6.92 6.92 0 0 1 19 12c0 3.87-3.13 7-7 7A6.995 6.995 0 0 1 7.58 6.58L6.17 5.17A8.932 8.932 0 0 0 3 12a9 9 0 0 0 18 0c0-2.74-1.23-5.18-3.17-6.83z"
+          />
+        </svg>
         <span
           class="sidenav-link-label"
         >
@@ -1539,11 +1783,24 @@ exports[`SideNav snapshot renders user nav without change 1`] = `
         title="MCP Protocol"
         type="button"
       >
-        <span
+        <svg
           class="sidenav-icon"
+          fill="currentColor"
+          height="20"
+          stroke="currentColor"
+          stroke-width="0"
+          viewBox="0 0 24 24"
+          width="20"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          MdPlug
-        </span>
+          <path
+            d="M0 0h24v24H0V0z"
+            fill="none"
+          />
+          <path
+            d="M13 3h-2v10h2V3zm4.83 2.17-1.42 1.42A6.92 6.92 0 0 1 19 12c0 3.87-3.13 7-7 7A6.995 6.995 0 0 1 7.58 6.58L6.17 5.17A8.932 8.932 0 0 0 3 12a9 9 0 0 0 18 0c0-2.74-1.23-5.18-3.17-6.83z"
+          />
+        </svg>
         <span
           class="sidenav-link-label"
         >
@@ -1613,11 +1870,24 @@ exports[`SideNav snapshot renders user nav without change 1`] = `
         title="RFC Index"
         type="button"
       >
-        <span
+        <svg
           class="sidenav-icon"
+          fill="currentColor"
+          height="20"
+          stroke="currentColor"
+          stroke-width="0"
+          viewBox="0 0 24 24"
+          width="20"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          MdFileText
-        </span>
+          <path
+            d="M0 0h24v24H0z"
+            fill="none"
+          />
+          <path
+            d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"
+          />
+        </svg>
         <span
           class="sidenav-link-label"
         >
