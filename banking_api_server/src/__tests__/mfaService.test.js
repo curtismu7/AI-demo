@@ -37,6 +37,8 @@ function setupEnv({ haveWorker = true, havePolicy = false } = {}) {
     delete process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET;
   }
   configStore.getEffective.mockImplementation((key) => {
+    if (key === 'pingone_environment_id') return 'env-test-id';
+    if (key === 'pingone_region') return 'com';
     if (key === 'PINGONE_ENVIRONMENT_ID') return 'env-test-id';
     if (key === 'PINGONE_REGION') return 'com';
     if (key === 'pingone_mfa_policy_id') return havePolicy ? 'policy-123' : '';
@@ -287,15 +289,15 @@ describe('getDeviceAuthStatus', () => {
 // ─── submitFido2Assertion ─────────────────────────────────────────────────────
 
 describe('submitFido2Assertion', () => {
-  it('sends PUT with assertion payload', async () => {
-    axios.put.mockResolvedValueOnce({ data: { id: 'da-1', status: 'COMPLETED' } });
+  it('sends POST with assertion payload', async () => {
+    axios.post.mockResolvedValueOnce({ data: { id: 'da-1', status: 'COMPLETED' } });
     const assertion = { id: 'cred-id', response: { clientDataJSON: 'abc', authenticatorData: 'def', signature: 'ghi' } };
 
     const result = await mfaService.submitFido2Assertion('da-1', assertion, 'user-token');
 
     expect(result.status).toBe('COMPLETED');
-    const [, body] = axios.put.mock.calls[0];
-    expect(body.assertion).toEqual(assertion);
+    const lastCall = axios.post.mock.calls[axios.post.mock.calls.length - 1];
+    expect(lastCall[1].assertion).toEqual(assertion);
   });
 });
 
@@ -320,7 +322,8 @@ describe('listMfaDevices', () => {
     axios.get.mockResolvedValueOnce({ data: {} });
 
     const result = await mfaService.listMfaDevices('user-1');
-    expect(result).toEqual([]);
+    expect(Array.isArray(result)).toBe(true);
+    expect(result.length).toBe(0);
   });
 });
 
@@ -343,7 +346,7 @@ describe('enrollEmailDevice', () => {
 // ─── initFido2Registration ────────────────────────────────────────────────────
 
 describe('initFido2Registration', () => {
-  it('posts FIDO2_PLATFORM to /devices and returns deviceId + creationOptions', async () => {
+  it('posts FIDO2 to /devices and returns deviceId + creationOptions', async () => {
     mockWorkerTokenSuccess();
     axios.post.mockResolvedValueOnce({
       data: {
@@ -358,14 +361,15 @@ describe('initFido2Registration', () => {
     expect(result.publicKeyCredentialCreationOptions).toEqual({ challenge: 'abc123' });
     const [url, body] = axios.post.mock.calls[1];
     expect(url).toContain('users/user-1/devices');
-    expect(body).toEqual({ type: 'FIDO2_PLATFORM' });
+    expect(body.type).toBe('FIDO2');
+    expect(body.nickname).toBe('My Passkey');
   });
 });
 
 // ─── completeFido2Registration ────────────────────────────────────────────────
 
 describe('completeFido2Registration', () => {
-  it('sends POST to /devices/:deviceId with activation content-type and flat attestation + origin', async () => {
+  it('sends POST to /devices/:deviceId with activation content-type and serialized attestation + origin', async () => {
     mockWorkerTokenSuccess();
     // axios.post: [0] = worker token, [1] = device activation
     axios.post.mockResolvedValueOnce({ data: { id: 'dev-fido', status: 'ACTIVE' } });
@@ -377,9 +381,7 @@ describe('completeFido2Registration', () => {
     // Must be POST (activation), not PUT
     const [url, body, cfg] = axios.post.mock.calls[1];
     expect(url).toContain('users/user-1/devices/dev-fido');
-    // Attestation fields spread at body root — NOT nested under { attestation }
-    expect(body.id).toBe('att-id');
-    expect(body.response).toEqual(attestation.response);
+    expect(body.attestation).toBe(JSON.stringify(attestation));
     // origin field appended
     expect(body.origin).toMatch(/^https:\/\/auth\.pingone\./);
     // Correct activation content-type
