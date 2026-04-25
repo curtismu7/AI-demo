@@ -83,9 +83,6 @@ function parseEducation(t) {
   if (/\b(agent gateway|resource indicator|8707|9728|rfc 8707)\b/.test(t)) {
     return { kind: 'education', education: { panel: EDU.AGENT_GATEWAY, tab: 'overview' } };
   }
-  if (/\b(rfc|spec index|standards)\b/.test(t)) {
-    return { kind: 'education', education: { panel: EDU.RFC_INDEX, tab: 'index' } };
-  }
   if (/\b(step[- ]?up|mfa threshold|acr)\b/.test(t)) {
     return { kind: 'education', education: { panel: EDU.STEP_UP, tab: 'what' } };
   }
@@ -185,6 +182,10 @@ function parseEducation(t) {
   if (/\b(token[- ]flow|2[- ]exchange[- ]flow)\b/.test(t)) {
     return { kind: 'education', education: { panel: EDU.TOKEN_FLOW, tab: 'overview' } };
   }
+  // Broad RFC / standards fallback — must come after all specific RFC rules above
+  if (/\b(rfc|spec index|standards)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.RFC_INDEX, tab: 'index' } };
+  }
   return null;
 }
 
@@ -256,7 +257,7 @@ function parseBanking(t) {
     /\b(search|find info|look up|look up|what is|tell me about|who is)\b/i.test(t) &&
     !/\b(account|balance|transaction|transfer|deposit|withdraw|mcp|rfc|oauth|token|ciba|pkce|scope|login|oidc)\b/i.test(t)
   ) {
-    return { kind: 'banking', banking: { action: 'web_search', query: message } };
+    return { kind: 'banking', banking: { action: 'web_search', query: t } };
   }
   return null;
 }
