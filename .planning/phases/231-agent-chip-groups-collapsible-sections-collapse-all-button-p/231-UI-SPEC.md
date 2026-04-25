@@ -53,7 +53,7 @@ All new elements must use these existing CSS custom properties declared on `.ban
 | `--ba-chip-bg` | `rgba(65,105,225,0.18)` | Chip fill |
 | `--ba-chip-bd` | `#5b7ef0` | Chip border |
 | `--ba-chip-txt` | `#c7d7ff` | Chip label text |
-| `--ba-accent` | `#b91c1c` | Destructive-only accent (existing) |
+| `--ba-accent` | `#b91c1c` | Destructive + active-state accent (existing) |
 | `--ba-accent-h` | `#991b1b` | Destructive hover |
 
 Light-mode equivalents already exist via `.ba-mode-light` overrides — new elements inherit them automatically if they use the tokens above.
@@ -74,9 +74,9 @@ Declared values (multiples of 4):
 | 2xl | 32px | Popout overlay gap from panel edge |
 
 Exceptions:
-- Group header padding: `6px 8px` (existing `.ba-group-header` — preserve for visual continuity)
-- Count badge pill: `2px 6px` (smaller than xs to stay within the 11px header line)
-- Chip pill padding: `4px 10px` (existing `.ba-action-chip` — preserve)
+- Group header padding: `6px 8px` (existing `.ba-group-header` — preserve for visual continuity; preserved — no CSS change)
+- Count badge pill: `4px 8px` (smaller than xs to stay within the 11px header line)
+- Chip pill padding: `4px 10px` (existing `.ba-action-chip` — preserve; preserved — no CSS change)
 - Touch-target minimum: 28px height on all interactive chips (already satisfied by existing styles)
 
 ---
@@ -85,12 +85,17 @@ Exceptions:
 
 All sizes and weights must match the panel's existing type ramp. No new fonts introduced.
 
+Maximum 2 weights: regular (400) and semibold (600). Bold (700) is not used — all non-regular text uses 600.
+
+The sizes in this panel span a narrow range (10–13px). Hierarchy between these sizes relies on font-weight and color contrast rather than size alone — executors must preserve weight and color assignments strictly; changing weight or color on any row below breaks the visual hierarchy even if the pixel size is unchanged.
+
 | Role | Size | Weight | Line Height | Element |
 |------|------|--------|-------------|---------|
 | Body / chip label | 11px | 400 (regular) | 1.3 | `.ba-action-chip`, `.ba-chip` |
 | Group header label | 11px | 600 (semibold) | 1 | `.ba-group-header .ba-group-name` |
-| Section label / badge | 10px | 700 (bold) | 1 | `.ba-commands-section`, count badge |
+| Section label / badge | 10px | 600 (semibold) | 1 | `.ba-commands-section`, count badge |
 | Popout search input | 12px | 400 (regular) | 1.4 | `[data-role="popout-search"]` |
+| Popout heading | 13px | 600 (semibold) | 1.2 | `.ba-discovery-header` title |
 
 Source: codebase scan — existing rules at BankingAgent.css lines 209–212, 3480–3522.
 
@@ -115,6 +120,12 @@ Do NOT use accent on: group header backgrounds, popout section headers, collapse
 
 ---
 
+## Visuals
+
+The `⊞ All actions` button is the primary visual anchor of the left-rail footer; the chip groups are secondary content.
+
+---
+
 ## Spacing / Layout Constraints
 
 ### Left-rail chip area height cap (critical)
@@ -131,7 +142,7 @@ Position: inline on the right side of `.ba-group-header`, between the group name
 [ Group Name ]  [  (n)  ]  [ ▼ ]
 ```
 
-Size: `font-size: 10px`, `padding: 2px 6px`, `border-radius: 999px`, background `rgba(65,105,225,0.18)`, border `1px solid var(--ba-chip-bd)`, color `var(--ba-muted)`.
+Size: `font-size: 10px`, `font-weight: 600`, `padding: 4px 8px`, `border-radius: 999px`, background `rgba(65,105,225,0.18)`, border `1px solid var(--ba-chip-bd)`, color `var(--ba-muted)`.
 
 When group is expanded, badge shows count of chips in that group. When collapsed, same count — always visible.
 
@@ -141,7 +152,7 @@ Position: a single small button rendered above the first action group in `.ba-le
 
 Label: when any group is expanded → "Collapse all"; when all groups are collapsed → "Expand all".
 
-Size: `font-size: 10px`, `padding: 3px 8px`, `border-radius: 6px`, border `1px solid var(--ba-border)`, background transparent, color `var(--ba-muted)`. On hover: background `rgba(65,105,225,0.1)`.
+Size: `font-size: 10px`, `padding: 4px 8px`, `border-radius: 6px`, border `1px solid var(--ba-border)`, background transparent, color `var(--ba-muted)`. On hover: background `rgba(65,105,225,0.1)`.
 
 ### "All actions" trigger button
 
@@ -189,14 +200,14 @@ Background: `var(--ba-surface)`. Border: `1px solid var(--ba-border)`. Border-ra
 Label: "All actions" at `font-size: 13px`, `font-weight: 600`, color `var(--ba-text)`.
 Close button: `✕` (U+2715), `width: 28px`, `height: 28px`, `border-radius: 6px`, no background, color `var(--ba-muted)`. On hover: background `rgba(65,105,225,0.12)`, color `var(--ba-text)`.
 
-Padding: `12px 14px 8px`. Border-bottom: `1px solid var(--ba-border)`.
+Padding: `12px 16px 8px`. Border-bottom: `1px solid var(--ba-border)`.
 
 ### Search input
 
 Below the header, before the first section group.
 
 Placeholder: `Search actions…`
-Size: `width: 100%`, `font-size: 12px`, `padding: 7px 10px`, `border-radius: 8px`. Background `var(--ba-bg)`. Border `1px solid var(--ba-input-bd)` (maps to `--ba-input-bd: rgba(65,105,225,0.45)`). Color `var(--ba-text)`.
+Size: `width: 100%`, `font-size: 12px`, `padding: 8px 12px`, `border-radius: 8px`. Background `var(--ba-bg)`. Border `1px solid var(--ba-input-bd)` (maps to `--ba-input-bd: rgba(65,105,225,0.45)`). Color `var(--ba-text)`.
 
 Search behavior: live filter on chip label text as the user types. Case-insensitive substring match. When no results match, show the empty state (see Copywriting below). Section headers for empty groups are hidden when search is active and that group has no matches.
 
@@ -207,8 +218,8 @@ Keyboard: `Escape` clears search and returns focus to trigger button if search i
 Groups displayed in order: Account, Transaction, Admin, Testing, Learn & Explore.
 
 Each group:
-- Section header: `font-size: 10px`, `font-weight: 700`, `letter-spacing: 0.08em`, `text-transform: uppercase`, color `var(--ba-muted)`. Padding `8px 14px 4px`. Uses existing `.ba-commands-section` class.
-- Chips: `display: flex; flex-wrap: wrap; gap: 4px; padding: 0 10px 8px`. Uses existing `.ba-chips` + `.ba-chip` classes. No new chip styles needed.
+- Section header: `font-size: 10px`, `font-weight: 600`, `letter-spacing: 0.08em`, `text-transform: uppercase`, color `var(--ba-muted)`. Padding `8px 16px 4px`. Uses existing `.ba-commands-section` class.
+- Chips: `display: flex; flex-wrap: wrap; gap: 4px; padding: 0 14px 8px`. Uses existing `.ba-chips` + `.ba-chip` classes. No new chip styles needed.
 - "Learn & Explore" group chips use existing `.ba-chip--learn` class.
 
 All 60 `EDUCATION_COMMANDS` entries are shown in the Learn & Explore section. The four `ACTION_GROUPS` (account: 3, transaction: 4, admin: 2, testing: 4) are shown in their respective sections.
