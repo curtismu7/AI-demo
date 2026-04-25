@@ -3,12 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-04-21T22:28:01.493Z"
+last_updated: "2026-04-25T12:35:46.037Z"
 progress:
-  total_phases: 222
-  completed_phases: 192
-  total_plans: 395
-  completed_plans: 396
+  total_phases: 122
+  completed_phases: 100
+  total_plans: 190
+  completed_plans: 190
+  percent: 100
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,11 +21,16 @@ progress:
 
 ## Current Position
 
-Phase: 213 (dev-tools-dashboard-complete-data-wiring-deduplication-and-panel-polish) — EXECUTING
-Plan: 1 of 2
-Next phase: 127+ (available for planning)
+Phase: 224 (token-audit-trail-and-decoder) — COMPLETE
+Next phase: 225 (retail-theme-toggle) — available for planning
 
 ## Recent Progress
+
+✅ **Phase 224 COMPLETE**
+
+- Plan 224-01: Added Audit Trail (📋) and Token Decoder (🔍) tabs to DevToolsDashboard; AuditTrailTab reads context.history with Set-based multi-row inline expand + colored category badges via deriveTokenCategory; TokenDecoderTab shows horizontal scrollable DecodedTokenPanel columns from ctx.events; jwtFullDecode adapter { header, payload: claims } applied in both sub-components; 12 new CSS classes appended to TokenDisplay.css
+- Files: banking_api_ui/src/components/DevToolsDashboard.jsx, banking_api_ui/src/components/TokenDisplay.css
+- Build: npm run build exit 0
 
 📊 **Phase 205 PLANNED** (1 plan)
 
@@ -86,6 +92,17 @@ Next phase: 127+ (available for planning)
 
 ## Roadmap Evolution
 
+- Phase 233 added: Enrich activity log with decoded token payloads — full JWT header+claims per token, introspection results, PingOne API req/resp bodies, LLM prompts, agent reasoning steps, PKCE details, CIBA, step-up MFA triggers, scope resolution, session snapshots
+- Phase 232 added: Unified activity log — append-only structured log file for token exchanges, MCP tool calls, PingOne API calls, authorize gate decisions, agent prompts, and auth events; wire to Activity Logs UI
+- Phase 231 expanded: Agent chip groups — remove Learn & Explore chips from inline panel, keep full list in LangGraph regex (no LLM fallback), collapsible sections, popout discovery panel showing all chips by group
+- Phase 230 added: Authorize gate — never silently skip, warn user when not calling P1Authorize and show reason
+- Phase 229 added: Token introspection configuration — show setup guide when introspection not configured, explain how to enable it
+- Phase 228 added: Admin agent chip routing — fix heuristic so chips like "show all customer accounts" and "show last 5 errors" never fall back to LLM; add sample data to support those prompts
+- Phase 227 added: Remove side menu and "Admin Dashboard" button — simplify navigation, reduce demo clutter
+- Phase 226 added: Agent popout closes existing inline agent — prevent duplicate agent state when popping out to separate window
+- Phase 225 added: Retail theme toggle — ff_retail_mode FF switches Banking ↔ Best Buy-style electronics; swaps theme/data/agent copy, keeps all auth/MCP/PingOne panels unchanged
+- Phase 224 added: Token Audit Trail + Token Decoder — dual-tab panel in Dev Tools Dashboard; audit trail shows timestamped ops with scope badges + click-through detail; token decoder shows side-by-side decoded JWT columns per token in chain
+- Phase 214 added: Fix FIDO registration and check authentication. Look at Curl commands. Show the request and response for FIDO on the test page under each section for FIDO2
 - Phase 213 added: Dev Tools Dashboard — complete data wiring, deduplication, and panel polish
 
 - Phase 211 added: Scope-gated write tools: 403-to-HITL-to-token-exchange flow for transfer/deposit/withdraw with scope-upgrade and request replay
@@ -215,3 +232,5 @@ Next phase: 127+ (available for planning)
 - 2 pending todos
 - Latest: Fix PingOne token policy explorer
 - Other: Add clear token reset button
+
+**Planned Phase:** 231 (agent-chip-groups-collapsible-sections-collapse-all-button-p) — 2 plans — 2026-04-25T12:35:46.012Z
