@@ -213,29 +213,35 @@ async function submitFido2Assertion(daId, assertion, userAccessToken, origin) {
 			assertion,
 			compatibility: "FULL",
 		};
+		const debugUrl = url.replace(/\/[-0-9a-f]{36}\/deviceAuthentications/, "/{envId}/deviceAuthentications");
+		const debugRequest = {
+			method: "POST",
+			url: debugUrl,
+			body: { ...body, assertion: "<base64-encoded WebAuthn assertion>" },
+			contentType: "application/vnd.pingidentity.assertion.check+json",
+		};
 		console.log(
 			"[MFA] submitFido2Assertion: POST %s origin=%s",
 			url,
 			body.origin || "(none)",
 		);
-		const { data } = await axios.post(
-			url,
-			body,
-			{
+		let data;
+		try {
+			const resp = await axios.post(url, body, {
 				headers: {
 					Authorization: `Bearer ${userAccessToken}`,
 					"Content-Type": "application/vnd.pingidentity.assertion.check+json",
 				},
 				timeout: 15000,
-			},
-		);
-		const debugUrl = url.replace(/\/[0-9a-f-]{36}\/deviceAuthentications/, "/{envId}/deviceAuthentications");
+			});
+			data = resp.data;
+		} catch (err) {
+			err._debug = { request: debugRequest, response: err.response?.data || null };
+			throw err;
+		}
 		return {
 			...data,
-			_debug: {
-				request: { method: "POST", url: debugUrl, body: { ...body, assertion: "<base64-encoded WebAuthn assertion>" }, contentType: "application/vnd.pingidentity.assertion.check+json" },
-				response: data,
-			},
+			_debug: { request: debugRequest, response: data },
 		};
 	} catch (err) {
 		throw _wrapError("submitFido2Assertion", err);
@@ -484,6 +490,12 @@ async function completeFido2Registration(userId, deviceId, attestation) {
 		};
 
 		const debugUrl = url.replace(/\/environments\/[^/]+\//, "/environments/{envId}/");
+		const debugRequest = {
+			method: "POST",
+			url: debugUrl,
+			body,
+			contentType: "application/vnd.pingidentity.device.activate+json",
+		};
 		let data;
 		try {
 			const resp = await axios.post(url, body, {
@@ -502,6 +514,8 @@ async function completeFido2Registration(userId, deviceId, attestation) {
 				pingErr?.code,
 				pingErr?.details || pingErr?.message,
 			);
+			// Attach debug so the route can surface request/response even on failure
+			err._debug = { request: debugRequest, response: pingErr || null };
 			throw err;
 		}
 
@@ -514,12 +528,7 @@ async function completeFido2Registration(userId, deviceId, attestation) {
 		return {
 			...data,
 			_debug: {
-				request: {
-					method: "POST",
-					url: debugUrl,
-					body: { ...body, rawId: "<base64url>", response: "<WebAuthn response>" },
-					contentType: "application/vnd.pingidentity.device.activate+json",
-				},
+				request: debugRequest,
 				response: data,
 			},
 		};

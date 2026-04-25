@@ -390,7 +390,12 @@ router.post('/integration/verify-fido2', async (req, res) => {
     res.json(resBody);
   } catch (err) {
     console.error('[MFA Test Integration] POST /verify-fido2 failed:', err.message);
-    res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
+    const errBody = { success: false, error: err.message, pingError: err.pingError };
+    if (err._debug) {
+      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneResponse = err._debug.response;
+    }
+    res.status(err.status || 500).json(errBody);
   }
 });
 
@@ -556,7 +561,12 @@ router.post('/integration/enroll-fido2-complete', async (req, res) => {
     res.json(completeResBody);
   } catch (err) {
     console.error('[MFA Test Integration] POST /enroll-fido2-complete failed:', err.message);
-    res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
+    const errBody = { success: false, error: err.message, pingError: err.pingError };
+    if (err._debug) {
+      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneResponse = err._debug.response;
+    }
+    res.status(err.status || 500).json(errBody);
   }
 });
 
