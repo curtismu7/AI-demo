@@ -1665,6 +1665,57 @@ Plans:
 - [ ] 228-01-PLAN.md — BFF: add admin_accounts + admin_errors regex branches to parseBanking(); add execution handlers with role guard to executeHeuristicBanking()
 - [ ] 228-02-PLAN.md — UI: add parseLogPrompt guard at chip dispatch call site in BankingAgent.js; human-verify both chips
 
+### Phase 229: Token introspection configuration — show setup guide when introspection not configured, explain how to enable it
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 228
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 229 to break down)
+
+### Phase 230: Authorize gate — never silently skip, warn user when not calling P1Authorize and show reason
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 229
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 230 to break down)
+
+### Phase 231: Agent chip groups — remove Learn & Explore chips from inline groups, maintain full chip list in LangGraph regex (no LLM fallback), collapsible sections, popout panel showing all available chips with nice UI
+
+**Goal:** Redesign the BankingAgent left-rail chip area: remove inline Learn & Explore, add per-group count badges and collapse-all toolbar, and add a searchable discovery popout for all chips
+**Requirements**: REQ-1 (remove inline edu chips), REQ-2 (LangGraph heuristic coverage), REQ-3 (collapsible groups + collapse-all), REQ-4 (discovery popout with polished UI)
+**Depends on:** Phase 230
+**Plans:** 2 plans
+
+Plans:
+- [ ] 231-01-PLAN.md — CSS foundations + BankingAgent.js full left-rail redesign (remove dead state, add count badges, collapse-all toolbar, discovery popout JSX)
+- [ ] 231-02-PLAN.md — BFF nlIntentParser.js heuristic completeness (extend EDU constants + 18 new parseEducation() if-blocks)
+
+### Phase 232: Unified activity log — append-only structured log file for token exchanges, MCP tool calls, PingOne API calls, authorize gate decisions, agent prompts, auth events, and UI loading/spinner states; wire to Activity Logs UI
+
+**Goal:** [To be planned]
+**Requirements**: TBD — includes: token exchanges, MCP tool calls, PingOne API calls, authorize gate decisions, agent prompts, auth events (login/logout/refresh/introspection), AND all UI spinner/loading events (every async operation that triggers a loading indicator: agent processing, token exchange in progress, MCP tool execution, PingOne API in-flight, step-up MFA challenge, CIBA polling, HITL consent waiting, session refresh)
+**Depends on:** Phase 231
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 232 to break down)
+
+### Phase 233: Enrich activity log with decoded token payloads — log full JWT header+claims for every token in chain, introspection results, PingOne API request/response bodies, LLM prompts and system prompt, agent reasoning steps, PKCE details, CIBA request details, step-up MFA trigger events, scope resolution decisions, session state snapshots
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 232
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 233 to break down)
+
 ---
 
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
