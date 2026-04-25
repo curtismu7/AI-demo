@@ -381,7 +381,11 @@ describe('completeFido2Registration', () => {
     // Must be POST (activation), not PUT
     const [url, body, cfg] = axios.post.mock.calls[1];
     expect(url).toContain('users/user-1/devices/dev-fido');
-    expect(body.attestation).toBe(JSON.stringify(attestation));
+    // Fields spread flat at body root (not nested under { attestation })
+    expect(body.id).toBe(attestation.id);
+    expect(body.rawId).toBe(attestation.rawId);
+    expect(body.type).toBe(attestation.type);
+    expect(body.response).toEqual(attestation.response);
     // origin field appended
     expect(body.origin).toMatch(/^https:\/\/auth\.pingone\./);
     // Correct activation content-type
