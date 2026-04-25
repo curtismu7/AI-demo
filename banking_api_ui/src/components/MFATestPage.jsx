@@ -486,13 +486,19 @@ export default function MFATestPage() {
 			} else {
 				setFidoVerifyStatus("failed");
 				setFidoVerifyError(data.error);
+				if (data.pingoneRequest) setFidoVerifyPingoneReq(data.pingoneRequest);
+				if (data.pingoneResponse) setFidoVerifyPingoneRes(data.pingoneResponse);
 				notifyError(`FIDO2 verification failed: ${data.error}`);
 			}
 		} catch (err) {
-			setRawFidoVerify({ error: err.message });
+			const errData = err?.response?.data;
+			const detail = errData?.error || errData?.message || err.message;
+			setRawFidoVerify(errData || { error: detail });
 			setFidoVerifyStatus("failed");
-			setFidoVerifyError(err.message);
-			notifyError(`FIDO2 verification error: ${err.message}`);
+			setFidoVerifyError(detail);
+			if (errData?.pingoneRequest) setFidoVerifyPingoneReq(errData.pingoneRequest);
+			if (errData?.pingoneResponse) setFidoVerifyPingoneRes(errData.pingoneResponse);
+			notifyError(`FIDO2 verification error: ${detail}`);
 		}
 	}, [fidoDaId, fidoChallengeOptions]);
 
@@ -631,16 +637,18 @@ export default function MFATestPage() {
 			} else {
 				setFidoEnrollInitStatus("failed");
 				setFidoEnrollInitError(data.error);
+				if (data.pingoneRequest) setFidoEnrollInitPingoneReq(data.pingoneRequest);
+				if (data.pingoneResponse) setFidoEnrollInitPingoneRes(data.pingoneResponse);
 				notifyError(`FIDO2 enrollment initiation failed: ${data.error}`);
 			}
 		} catch (err) {
-			const detail =
-				err?.response?.data?.error ||
-				err?.response?.data?.message ||
-				err.message;
-			setRawFidoEnrollInit(err?.response?.data || { error: detail });
+			const errData = err?.response?.data;
+			const detail = errData?.error || errData?.message || err.message;
+			setRawFidoEnrollInit(errData || { error: detail });
 			setFidoEnrollInitStatus("failed");
 			setFidoEnrollInitError(detail);
+			if (errData?.pingoneRequest) setFidoEnrollInitPingoneReq(errData.pingoneRequest);
+			if (errData?.pingoneResponse) setFidoEnrollInitPingoneRes(errData.pingoneResponse);
 			notifyError(`FIDO2 enrollment initiation failed: ${detail}`);
 		}
 	}, []);
@@ -764,16 +772,18 @@ export default function MFATestPage() {
 			} else {
 				setFidoEnrollCompleteStatus("failed");
 				setFidoEnrollCompleteError(data.error);
+				if (data.pingoneRequest) setFidoEnrollCompletePingoneReq(data.pingoneRequest);
+				if (data.pingoneResponse) setFidoEnrollCompletePingoneRes(data.pingoneResponse);
 				notifyError(`FIDO2 registration failed: ${data.error}`);
 			}
 		} catch (err) {
-			const detail =
-				err?.response?.data?.error ||
-				err?.response?.data?.message ||
-				err.message;
-			setRawFidoEnrollComplete(err?.response?.data || { error: detail });
+			const errData = err?.response?.data;
+			const detail = errData?.error || errData?.message || err.message;
+			setRawFidoEnrollComplete(errData || { error: detail });
 			setFidoEnrollCompleteStatus("failed");
 			setFidoEnrollCompleteError(detail);
+			if (errData?.pingoneRequest) setFidoEnrollCompletePingoneReq(errData.pingoneRequest);
+			if (errData?.pingoneResponse) setFidoEnrollCompletePingoneRes(errData.pingoneResponse);
 			notifyError(`FIDO2 registration error: ${detail}`);
 		}
 	}, [fidoEnrollData, loadDevices]);
