@@ -469,8 +469,8 @@ async function completeFido2Registration(userId, deviceId, attestation) {
 		const workerToken = await _getWorkerToken();
 		const url = `${_apiBaseUrl()}/users/${userId}/devices/${deviceId}`;
 
-		// PingOne device activation requires a dedicated content-type and the
-		// attestation fields sent at the body root — NOT nested under { attestation }.
+		// PingOne device activation requires a dedicated content-type.
+		// The WebAuthn attestation fields must be wrapped under the "fido2" key.
 		// Origin must match the RP origin registered in PingOne (derived from auth base URL).
 		const region = configStore.getEffective("pingone_region") || "com";
 		const origin =
@@ -479,7 +479,7 @@ async function completeFido2Registration(userId, deviceId, attestation) {
 			`https://auth.pingone.${region}`;
 
 		const body = {
-			...attestation,
+			fido2: attestation,
 			origin,
 		};
 
