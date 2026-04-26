@@ -3,7 +3,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const router = express.Router();
 const dataStore = require('../data/store');
-const { requireAdmin, requireScopes } = require('../middleware/auth');
+const { requireAdmin, requireScopes, authenticateToken } = require('../middleware/auth');
 const runtimeSettings = require('../config/runtimeSettings');
 const {
   resolvePingOneUserForLookup,
@@ -985,5 +985,29 @@ router.get('/app-events/categories', requireAdmin, requireScopes(['banking:admin
   } catch (error) {
     console.error('Get app-events categories error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/admin/app-events — Accept a frontend-emitted app event
+ * Auth: authenticateToken only (valid session, any role) — per D-05
+ * Body: { category, severity, message, tag?, metadata? }
+ */
+router.post('/app-events', authenticateToken, (req, res) => {
+  try {
+    const { category, severity, message, tag, metadata } = req.body;
+
+    if (!category || !severity || !message) {
+      return res.status(400).json({
+        error: 'missing_fields',
+        message: 'category, severity, and message are required',
+      });
+    }
+
+    const event = appEventService.logEvent(category, severity, message, { tag, metadata });
+    res.status(201).json({ event });
+  } catch (error) {
+    console.error('[admin] POST /app-events error:', error);
+    res.status(500).json({ error: 'internal_server_error' });
   }
 });
