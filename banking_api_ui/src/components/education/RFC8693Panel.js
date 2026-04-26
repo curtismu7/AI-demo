@@ -1,6 +1,7 @@
 // banking_api_ui/src/components/education/RFC8693Panel.js
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import RfcLink from '../shared/RfcLink';
 
 export default function RFC8693Panel({ isOpen, onClose, initialTabId }) {
   const tabs = [
@@ -11,8 +12,8 @@ export default function RFC8693Panel({ isOpen, onClose, initialTabId }) {
         <>
           <h3>OAuth 2.0 Token Exchange (RFC 8693)</h3>
           <p>
-            <strong>RFC 8693</strong> defines an OAuth 2.0 extension that allows clients to obtain security tokens 
-            from authorization servers by presenting existing tokens. This enables delegation scenarios where 
+            <RfcLink rfc="RFC_8693" /> defines an OAuth 2.0 extension that allows clients to obtain security tokens
+            from authorization servers by presenting existing tokens. This enables delegation scenarios where
             one service can act on behalf of a user without sharing their original credentials.
           </p>
           
@@ -183,6 +184,72 @@ Content-Type: application/json
       ),
     },
     {
+      id: 'hops',
+      label: 'Exchange Hops',
+      content: (
+        <>
+          <h3>JWT Payloads at Each Exchange Hop</h3>
+          <p>
+            The <strong>2-Token Exchange</strong> flow produces three distinct tokens — one per hop.
+            Each hop narrows the audience and adds (or preserves) the <code>act</code> delegation claim.
+            Your live tokens appear in the Token Chain panel above. <RfcLink rfc="RFC_8693" />
+          </p>
+
+          <h4>Hop 0 — User Token (from login)</h4>
+          <p>What your browser session holds after OIDC login. Audience is the BFF resource server.</p>
+          <pre className="edu-code">{`{
+  "sub":   "user-abc123",
+  "aud":   "olb-resource.bxf.com",
+  "iss":   "https://auth.pingone.com/...",
+  "scope": "banking:read banking:write",
+  "iat":   1714000000,
+  "exp":   1714003600
+  // No "act" claim — this is the raw user token
+}`}</pre>
+
+          <h4>Hop 1 — GW Delegated Token (Exchange #1)</h4>
+          <p>
+            After Exchange #1: <code>subject_token</code> = User Token, <code>actor_token</code> = Agent CC token.
+            Audience narrows to the MCP Gateway. The <code>act</code> claim is added.
+          </p>
+          <pre className="edu-code">{`{
+  "sub":   "user-abc123",           // preserved from Hop 0
+  "aud":   "https://mcp-gw.bxf.com",  // narrowed to gateway audience
+  "iss":   "https://auth.pingone.com/...",
+  "scope": "banking:read banking:write ai_agent",
+  "act": {
+    "sub": "agent1-client-id"       // who is acting on behalf of the user
+  },
+  "iat":   1714000005,
+  "exp":   1714001805
+}`}</pre>
+
+          <h4>Hop 2 — Backend Token (Exchange #2)</h4>
+          <p>
+            After Exchange #2: the gateway re-exchanges for the backend resource server.
+            Audience narrows further; <code>act</code> is preserved unchanged.
+          </p>
+          <pre className="edu-code">{`{
+  "sub":   "user-abc123",             // still the human user
+  "aud":   "https://mcp-olb.bxf.com", // narrowed to backend audience
+  "iss":   "https://auth.pingone.com/...",
+  "scope": "banking:read banking:write",
+  "act": {
+    "sub": "agent1-client-id"         // preserved from Hop 1
+  },
+  "iat":   1714000010,
+  "exp":   1714001810
+}`}</pre>
+
+          <div className="edu-info-box">
+            <strong>What changes hop-to-hop:</strong> <code>aud</code> narrows at each step (least privilege).
+            <code>sub</code> always stays as the human user. <code>act.sub</code> is added at Hop 1 and
+            preserved at Hop 2 — this is the audit trail proving the agent acted on the user's behalf.
+          </div>
+        </>
+      ),
+    },
+    {
       id: 'security',
       label: 'Security Considerations',
       content: (
@@ -251,7 +318,7 @@ Content-Type: application/json
         <>
           <h3>RFC 8693 in Super Banking - Code Examples</h3>
           
-          <h4>1-Exchange (Simple Delegation)</h4>
+          <h4>Simple Delegation (No Actor Token)</h4>
           <p>
             User token → MCP token without actor identification
           </p>
@@ -274,9 +341,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
   "scope": "banking:accounts:read"
 }`}</pre>
 
-          <h4>2-Exchange (Agent Delegation)</h4>
+          <h4>2-Token Exchange (Agent Delegation)</h4>
           <p>
-            User token + Agent token → MCP token with actor identification
+            User token + Agent token → MCP token with actor identification (<RfcLink rfc="RFC_8693" section="§4" />)
           </p>
           <pre className="edu-code">{`// Request
 POST /as/token HTTP/1.1

@@ -552,7 +552,7 @@ const SelfServicePage = () => {
                             className={`ssp-mode-card ${formData.mayActMode === '2exchange' ? 'ssp-mode-card--selected' : ''}`}
                             onClick={() => handleInputChange('mayActMode', '2exchange')}
                           >
-                            <div className="ssp-mode-title">2-Exchange</div>
+                            <div className="ssp-mode-title">2-Token Exchange</div>
                             <div className="ssp-mode-desc">Agent → BFF → MCP nested exchange</div>
                           </div>
                         </div>
@@ -569,7 +569,7 @@ const SelfServicePage = () => {
                           </p>
                           <ul>
                             <li><strong>1-Exchange:</strong> may_act.client_id = Banking App (BFF) — the Backend-for-Frontend exchanges the user token directly for an MCP token.</li>
-                            <li><strong>2-Exchange:</strong> may_act.client_id = AI Agent App — the AI Agent first exchanges its own credentials, then the BFF exchanges again for the final MCP token with nested act.act claims.</li>
+                            <li><strong>2-Token Exchange:</strong> may_act.client_id = AI Agent App — the AI Agent first exchanges its own credentials, then the BFF exchanges again for the final MCP token with nested act.act claims.</li>
                           </ul>
                         </div>
                       </div>

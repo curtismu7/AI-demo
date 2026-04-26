@@ -246,7 +246,7 @@ export default function AgentFlowDiagramPanel() {
         <div className="afd-flow-section">
           <div className="afd-flow-section-header">
             <span className="afd-flow-section-title">
-              {mode === 'double' ? '2-Exchange Flow (RFC 8693 §4)' : '1-Exchange Flow (RFC 8693 §2.1)'}
+              {mode === 'double' ? '2-Token Exchange Flow (RFC 8693 §4)' : '1-Exchange Flow (RFC 8693 §2.1)'}
             </span>
             <button
               type="button"

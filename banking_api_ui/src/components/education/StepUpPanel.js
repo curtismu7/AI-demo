@@ -144,7 +144,7 @@ FIDO2/WebAuthn:
             <li><strong>Feature Flag</strong>: <code>ff_two_exchange_delegation=false</code></li>
           </ul>
           
-          <h4>2-Exchange / Dual-Token (User + Agent → MCP)</h4>
+          <h4>2-Token Exchange (User + Agent → MCP)</h4>
           <ul>
             <li><strong>Flow</strong>: Single POST with <code>subject_token</code> (user T1) + <code>actor_token</code> (agent CC)</li>
             <li><strong>aud</strong>: <code>https://banking-ai-agent.banking-demo.com</code> (MCP Gateway)</li>

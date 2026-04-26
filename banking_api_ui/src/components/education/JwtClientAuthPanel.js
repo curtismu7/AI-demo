@@ -1,7 +1,8 @@
 // banking_api_ui/src/components/education/JwtClientAuthPanel.js
-// Education drawer — JWT-based client authentication (RFC 7523 / private_key_jwt)
+// Education drawer — JWT-based client authentication (RFC 7521 / private_key_jwt)
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import RfcLink from '../shared/RfcLink';
 import { EduImplIntro, SNIP_JWT_CLIENT_AUTH_MOCK } from './educationImplementationSnippets';
 
 const Code = ({ children }) => (
@@ -20,8 +21,8 @@ export default function JwtClientAuthPanel({ isOpen, onClose, initialTabId }) {
       content: (
         <>
           <p>
-            <strong>JWT-based client authentication</strong> — RFC 7523 — lets an OAuth client
-            prove its identity to the authorization server using a <em>signed JWT</em> instead of
+            <strong>JWT-based client authentication</strong> — <RfcLink rfc="RFC_7521" section="§4.2" /> — lets
+            an OAuth client prove its identity to the authorization server using a <em>signed JWT</em> instead of
             a shared secret (<code>client_secret</code>). This is also called
             <strong>private_key_jwt</strong> (for asymmetric keys) or
             <strong>client_secret_jwt</strong> (for HMAC).
@@ -47,7 +48,7 @@ grant_type=authorization_code
       label: 'JWT assertion structure',
       content: (
         <>
-          <h4 style={{ marginTop: 0 }}>Required claims in the client assertion JWT</h4>
+          <h4 style={{ marginTop: 0 }}>Required claims in the client assertion JWT (<RfcLink rfc="RFC_7521" section="§4.2" />)</h4>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #e5e7eb', textAlign: 'left' }}>

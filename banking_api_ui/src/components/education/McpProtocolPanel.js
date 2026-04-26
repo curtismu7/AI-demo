@@ -2,6 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import EducationDrawer from '../shared/EducationDrawer';
+import RfcLink from '../shared/RfcLink';
 import { useEducationUI } from '../../context/EducationUIContext';
 import { EDU } from './educationIds';
 import { McpProtocolContent, OAuthApiCheatsheet } from './educationContent';
@@ -281,6 +282,100 @@ At/above threshold (step-up):
   On approval → retry POST /api/mcp/tool (same body)
   → 200 { result: "Transfer complete" }`
           }</pre>
+        </>
+      ),
+    },
+    {
+      id: 'handshake',
+      label: 'Handshake sequence',
+      content: (
+        <>
+          <h3>MCP JSON-RPC Handshake</h3>
+          <p>
+            Every MCP session opens with a fixed four-step handshake over WebSocket.
+            Messages are JSON-RPC 2.0. <RfcLink rfc="MCP_SPEC" />
+          </p>
+
+          <h4>Step 1 — Client → Server: <code>initialize</code></h4>
+          <pre className="edu-code">{`{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-11-25",
+    "capabilities": { "tools": {} },
+    "clientInfo": { "name": "super-banking-bff", "version": "1.0.0" }
+  }
+}`}</pre>
+
+          <h4>Step 2 — Server → Client: initialize response</h4>
+          <pre className="edu-code">{`{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "protocolVersion": "2025-11-25",
+    "capabilities": { "tools": { "listChanged": false } },
+    "serverInfo": { "name": "super-banking-mcp", "version": "1.0.0" }
+  }
+}`}</pre>
+
+          <h4>Step 3 — Client → Server: <code>notifications/initialized</code></h4>
+          <p>Notification only — no response expected from server.</p>
+          <pre className="edu-code">{`{
+  "jsonrpc": "2.0",
+  "method": "notifications/initialized"
+}`}</pre>
+
+          <h4>Step 4 — Client → Server: <code>tools/list</code></h4>
+          <pre className="edu-code">{`// Request
+{ "jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {} }
+
+// Response (excerpt)
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "tools": [
+      {
+        "name": "get_my_accounts",
+        "description": "List accounts for the authenticated user",
+        "inputSchema": { "type": "object", "properties": {}, "required": [] }
+      }
+    ]
+  }
+}`}</pre>
+
+          <h4>Calling a tool — <code>tools/call</code></h4>
+          <pre className="edu-code">{`// Request
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "get_my_accounts",
+    "arguments": {}
+  }
+}
+
+// Response
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"accountId\":\"chk-001\",\"balance\":4823.50,...}]"
+      }
+    ]
+  }
+}`}</pre>
+
+          <div className="edu-info-box">
+            The BFF performs the MCP handshake server-side and proxies tool calls via
+            <code>POST /api/mcp/tool</code>. The browser never opens a WebSocket directly —
+            all token exchange and session management stays in the BFF.
+          </div>
         </>
       ),
     },

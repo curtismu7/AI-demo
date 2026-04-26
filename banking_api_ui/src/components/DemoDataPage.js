@@ -211,7 +211,7 @@ export default function DemoDataPage({ user, onLogout }) {
     try {
       await apiClient.patch('/api/demo/may-act', { enabled: enable, mode: delegationMode });
       setMayActEnabled(enable);
-      const modeLabel = delegationMode === '2exchange' ? '(AI Agent Client ID — 2-Exchange)' : '(Banking App Client ID — 1-Exchange)';
+      const modeLabel = delegationMode === '2exchange' ? '(AI Agent Client ID — 2-Token Exchange)' : '(Banking App Client ID — 1-Exchange)';
       notifySuccess(
         enable
           ? `may_act ${modeLabel} written to your PingOne user record. Sign out and back in to see it in your token.`
@@ -1701,12 +1701,12 @@ export default function DemoDataPage({ user, onLogout }) {
                       checked={delegationMode === '2exchange'}
                       onChange={() => setDelegationMode('2exchange')}
                     />
-                    <strong>2-Exchange</strong>
+                    <strong>2-Token Exchange</strong>
                     <span style={{ color: '#6b7280' }}>— AI Agent Client ID (exchange #1: user → agent token, exchange #2: agent → MCP token with nested <code>act</code>)</span>
                   </label>
                   {delegationMode === '2exchange' && (
                     <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: '#92400e', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 4, padding: '0.35rem 0.6rem' }}>
-                      ⚠️ Also enable the <strong>"2-Exchange Delegated Chain"</strong> feature flag and set <code>AI_AGENT_CLIENT_ID</code> + <code>AI_AGENT_CLIENT_SECRET</code> in <strong>Vercel → Settings → Environment Variables</strong> (or your <code>.env</code> file for local dev).
+                      ⚠️ Also enable the <strong>"2-Token Exchange Delegated Chain"</strong> feature flag and set <code>AI_AGENT_CLIENT_ID</code> + <code>AI_AGENT_CLIENT_SECRET</code> in <strong>Vercel → Settings → Environment Variables</strong> (or your <code>.env</code> file for local dev).
                     </div>
                   )}
                 </div>
