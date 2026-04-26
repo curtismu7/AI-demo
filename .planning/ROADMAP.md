@@ -1759,6 +1759,21 @@ Plans:
 - [ ] 236-03-PLAN.md — Review auth/token services and core infrastructure (oauthService, cibaService, agentTokenService, agentMcpTokenService, delegationService, audValidationService, configStore, pingOneAuthorizeService, simulatedAuthorizeService, configHostnameService)
 - [ ] 236-04-PLAN.md — Assemble all findings into banking_api_server/REVIEW.md with executive summary and severity-sorted table
 
+### Phase 239: PingOne API docs audit, simulated Authorize parity, test suite, and doc links on all test pages
+
+**Goal:** Audit every PingOne API call the BFF makes against official docs; fix any shape mismatches; make simulated Authorize response byte-for-byte identical to real PingOne Authorize; add ApiCallPreviewCard to all test pages showing endpoint URL + request JSON + doc link; create integration test suite.
+**Requirements**: TBD
+**Depends on:** Phase 238
+**Plans:** 4 plans
+
+Plans:
+- [ ] 239-01: PingOne API audit — compare BFF calls to docs, produce PINGONE_API_FINDINGS.md
+- [ ] 239-02: Simulated Authorize parity — fix response shape to match PingOne exactly
+- [ ] 239-03: ApiCallPreviewCard on all test pages — endpoint URL, request JSON, doc link
+- [ ] 239-04: Integration test suite — client_credentials, introspection, simulated Authorize parity
+
+---
+
 ### Phase 238: Dashboard overhaul: token diff view, architecture diagram, MCP inspector, API call explorer, and RFC-linked learning panels
 
 **Goal:** Replace placeholder-heavy dashboard panels with a full educational learning center: horizontal JWT claim diff across exchange hops, interactive architecture diagram (Lucidchart-style), MCP JSON-RPC pair view, API call explorer with annotations, and "What's Happening Now" narrative panel.
@@ -1772,6 +1787,26 @@ Plans:
 - [ ] 238-03: MCP Inspector Enhancement — Pair View (request+response side-by-side) + MCP spec links
 - [ ] 238-04: ApiExplorerPanel — expandable accordion for all BFF API calls with RFC annotations
 - [ ] 238-05: Dashboard Learning Center — NarrativePanel + DevToolsOverlay open by default
+
+### Phase 239: make sure all tests pages have, and look for other pages this makes sense and make a plan for those: 1) Actual PingOne API 2) Actual Request to pingOne for that call (JSON) 3) Actual Response from pingone Call (JSON) 4) LInk to actual PingOne api docs page, for that call https://developer.pingidentity.com/apis.html
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 238
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 239 to break down)
+
+### Phase 240: make sure all tests pages have, and look for other pages this makes sense and make a plan for those: 1) Actual PingOne API 2) Actual Request to pingOne for that call (JSON) 3) Actual Response from pingone Call (JSON) 4) LInk to actual PingOne api docs page, for that call https://developer.pingidentity.com/apis.html
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 239
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 240 to break down)
 
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
