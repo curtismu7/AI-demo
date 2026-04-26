@@ -22,6 +22,7 @@ const EVENT_CATEGORIES = {
   AUTHORIZE: 'authorize',
   AGENT_PROMPT: 'agent_prompt',
   DELEGATION: 'delegation',
+  INTROSPECTION: 'introspection',
 };
 
 // Event severity levels

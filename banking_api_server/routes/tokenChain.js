@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getTokenChain, getCurrentTokens, synthesizeFromSession, getMCPToolCalls } = require('../services/tokenChainService');
 const { logEvent: logAppEvent } = require('../services/appEventService');
+const validationModeConfig = require('../config/validationModeConfig');
 
 // GET /api/token-chain — get token chain for authenticated user (including MCP delegation trail)
 router.get('/', async (req, res) => {
@@ -18,6 +19,7 @@ router.get('/', async (req, res) => {
     res.json({
       tokenChain,
       mcpToolCallsChain,
+      validationMode: validationModeConfig.getValidationMode(),
       metadata: {
         userId: req.user.id,
         totalEvents: tokenChain.length,

@@ -20,6 +20,8 @@ export function TokenChainProvider({ children, activePath = "" }) {
   const [sessionTokenEvent, setSessionTokenEvent] = useState(null);
   // MCP tool call delegation trail (fetched from /api/token-chain)
   const [mcpToolCalls, setMCPToolCalls] = useState([]);
+  // Current BFF token validation mode ('introspection' | 'jwt' | null)
+  const [validationMode, setValidationMode] = useState(null);
   // Resolved identity — friendly user/actor names derived from current BFF session.
   // { currentUser: { sub, name, email } | null, knownClients: { [clientId]: label } }
   const [resolvedIdentity, setResolvedIdentity] = useState(null);
@@ -104,6 +106,7 @@ export function TokenChainProvider({ children, activePath = "" }) {
         postAppEvent('token_exchange', 'info', 'Token exchange complete', { tag: 'token_exchange/frontend-exchange-end' });
         if (!cancelled) {
           setMCPToolCalls(data.mcpToolCallsChain || []);
+          if (data.validationMode) setValidationMode(data.validationMode);
         }
       } catch {
         // Silently fail — user may not be authenticated
@@ -192,9 +195,9 @@ export function TokenChainProvider({ children, activePath = "" }) {
     () => {
       // Use tool events if available, otherwise show session token
       const displayEvents = events.length > 0 ? events : (sessionTokenEvent ? [sessionTokenEvent] : []);
-      return { events: displayEvents, history, mcpToolCalls, resolvedIdentity, setTokenEvents, clearEvents, setSessionToken, clearHistory };
+      return { events: displayEvents, history, mcpToolCalls, validationMode, resolvedIdentity, setTokenEvents, clearEvents, setSessionToken, clearHistory };
     },
-    [events, sessionTokenEvent, history, mcpToolCalls, resolvedIdentity, setTokenEvents, clearEvents, setSessionToken, clearHistory]
+    [events, sessionTokenEvent, history, mcpToolCalls, validationMode, resolvedIdentity, setTokenEvents, clearEvents, setSessionToken, clearHistory]
   );
 
   return (

@@ -13,6 +13,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 const configStore = require('./configStore');
 const { logger, LOG_CATEGORIES } = require('../utils/logger');
+const { logEvent: logAppEvent } = require('./appEventService');
 
 // In-memory token introspection cache
 const introspectionCache = new Map();
@@ -116,6 +117,10 @@ async function validateToken(token) {
       scopes: scopes.length,
       client_id: result.client_id,
     });
+    logAppEvent('introspection', result.valid ? 'info' : 'warning',
+      result.valid ? 'Token introspected — PingOne confirmed active' : 'Token introspected — PingOne returned inactive',
+      { tag: result.valid ? 'introspection/active' : 'introspection/inactive',
+        metadata: { active: result.valid, sub: result.sub || null, client_id: result.client_id || null, scopeCount: (result.scopes || []).length, scopes: result.scopes || [], exp: result.exp || null } });
 
     return result;
   } catch (error) {
@@ -124,6 +129,8 @@ async function validateToken(token) {
       endpoint: process.env.PINGONE_INTROSPECTION_ENDPOINT,
       timeout: error.code === 'ECONNABORTED',
     });
+    logAppEvent('introspection', 'error', `Token introspection failed: ${error.message}`,
+      { tag: 'introspection/error', metadata: { error: error.message } });
 
     return {
       valid: false,

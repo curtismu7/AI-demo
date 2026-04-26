@@ -8,6 +8,7 @@
 
 const axios = require('axios');
 const { logger } = require('../utils/logger');
+const { logEvent: logAppEvent } = require('../services/appEventService');
 
 
 // Cache for introspection results to reduce PingOne load
@@ -112,6 +113,9 @@ async function tokenIntrospectionMiddleware(req, _res, next) {
         sub: introspectionResult.sub,
         path: req.path
       });
+      logAppEvent('introspection', 'warning', 'Token rejected — PingOne returned inactive',
+        { tag: 'introspection/middleware-inactive',
+          metadata: { sub: introspectionResult.sub || null, path: req.path } });
       return next(new Error('Token is not active or has been revoked'));
     }
 
@@ -130,6 +134,9 @@ async function tokenIntrospectionMiddleware(req, _res, next) {
       active: introspectionResult.active,
       path: req.path
     });
+    logAppEvent('introspection', 'info', 'Token validated via PingOne introspection',
+      { tag: 'introspection/middleware-validated',
+        metadata: { active: true, sub: introspectionResult.sub || null, path: req.path, scope: introspectionResult.scope || null } });
 
     next();
   } catch (error) {
@@ -137,6 +144,8 @@ async function tokenIntrospectionMiddleware(req, _res, next) {
       error: error.message,
       path: req.path
     });
+    logAppEvent('introspection', 'error', `Token introspection middleware failed: ${error.message}`,
+      { tag: 'introspection/middleware-error', metadata: { error: error.message, path: req.path } });
     
     // Decide whether to fail open or closed
     // For production, should fail closed (reject request)

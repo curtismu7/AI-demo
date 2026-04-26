@@ -22,6 +22,7 @@ const CATEGORY_ICONS = {
   authorize: '\u{1F6AA}',
   agent_prompt: '\u{1F9E0}',
   delegation: '\u{1F91D}',
+  introspection: '\u{1F52C}',
 };
 
 const CATEGORY_LABELS = {
@@ -34,6 +35,7 @@ const CATEGORY_LABELS = {
   authorize: 'Authorize Gate',
   agent_prompt: 'Agent Prompt',
   delegation: 'Delegation',
+  introspection: 'Introspection',
 };
 
 const SEVERITY_BORDER = {

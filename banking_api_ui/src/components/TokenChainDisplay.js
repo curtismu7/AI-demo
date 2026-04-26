@@ -720,7 +720,7 @@ function ClaimsStrip({ event, hints }) {
 }
 
 /** Renders one step in the token chain. The inspect icon (right side) opens the floating inspector panel. */
-function EventRow({ event, isLast, onInspect, hints }) {
+function EventRow({ event, isLast, onInspect, hints, validationMode }) {
   const inspectBtnRef = useRef(null);
   const hasDetail = event.claims || event.explanation || event.exchangeRequest || event.jwtFullDecode
     || event.mayActPresent !== undefined || event.actPresent !== undefined;
@@ -753,6 +753,12 @@ function EventRow({ event, isLast, onInspect, hints }) {
   const scopeInjectedHint =
     event.scopeInjected === true
       ? { text: '⚡ Scopes INJECTED (demo)', cls: 'warn' }
+      : null;
+  // introspection hint — shows when BFF validates tokens via PingOne introspection (not just local JWT decode)
+  const introspectionHint =
+    validationMode === 'introspection' &&
+    (event.tokenType === 'user_token' || event.eventType === 'auth' || event.id === 'user-token' || (event.id && event.id.startsWith('synthetic-session')))
+      ? { text: '\u{1F52C} PingOne verified', cls: 'ok' }
       : null;
   // aud hint — only on tokens where we have explicit validation data
   const audHintRaw = event.claims?.aud;
@@ -853,13 +859,14 @@ function EventRow({ event, isLast, onInspect, hints }) {
             )}
             <StatusBadge status={event.status} />
           </div>
-          {(triggerHint || mayActHint || actHint || audHint) && (
+          {(triggerHint || mayActHint || actHint || audHint || introspectionHint) && (
             <div className="tcd-event-hints">
               {triggerHint && <span className={`tcd-event-hint tcd-event-hint--${triggerHint.cls}`}>{triggerHint.text}</span>}
               {audHint    && <span className={`tcd-event-hint tcd-event-hint--${audHint.cls}`}>{audHint.text}</span>}
               {mayActHint && <span className={`tcd-event-hint tcd-event-hint--${mayActHint.cls}`}>{mayActHint.text}</span>}
               {actHint    && <span className={`tcd-event-hint tcd-event-hint--${actHint.cls}`}>{actHint.text}</span>}
               {scopeInjectedHint && <span className={`tcd-event-hint tcd-event-hint--${scopeInjectedHint.cls}`}>{scopeInjectedHint.text}</span>}
+              {introspectionHint && <span className={`tcd-event-hint tcd-event-hint--${introspectionHint.cls}`}>{introspectionHint.text}</span>}
             </div>
           )}
           <ClaimsStrip event={event} hints={hints} />
@@ -1232,7 +1239,7 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
               </div>
             )}
             {(!isPlaceholder || !identityHints?.currentUser) && currentEventsWithCc.map((ev, i) => (
-              <EventRow key={ev.id} event={ev} isLast={i === currentEventsWithCc.length - 1} onInspect={handleInspect} hints={identityHints} />
+              <EventRow key={ev.id} event={ev} isLast={i === currentEventsWithCc.length - 1} onInspect={handleInspect} hints={identityHints} validationMode={ctx?.validationMode} />
             ))}
           </div>
           </>
