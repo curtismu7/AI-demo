@@ -5,6 +5,7 @@
  * Click any row to expand request/response JSON details in a side panel.
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import McpPairView from './McpPairView';
 
 const API_POLL_MS = 3000;
 const DEFAULT_LIMIT = 200;
@@ -209,6 +210,7 @@ export default function McpTrafficPage() {
   const [error, setError] = useState(null);
   const [logFile, setLogFile] = useState('');
   const [selected, setSelected] = useState(null);
+  const [viewMode, setViewMode] = useState('list');
   const intervalRef = useRef(null);
   const liveRef = useRef(live);
   liveRef.current = live;
@@ -257,6 +259,12 @@ export default function McpTrafficPage() {
             <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>— click a row to inspect</span>
           )}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+            <button type="button" onClick={() => setViewMode(v => v === 'pairs' ? 'list' : 'pairs')} style={{
+              padding: '6px 14px', borderRadius: '6px', border: '1px solid var(--border-light,#e2e8f0)',
+              backgroundColor: viewMode === 'pairs' ? '#ede9fe' : 'var(--surface-1,#fff)',
+              color: viewMode === 'pairs' ? '#6d28d9' : 'var(--text-secondary,#475569)',
+              cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',
+            }}>{viewMode === 'pairs' ? '☰ List' : '⇄ Pairs'}</button>
             <button type="button" onClick={handleLiveToggle} style={{
               padding: '6px 14px', borderRadius: '6px', border: '1px solid var(--border-light,#e2e8f0)',
               backgroundColor: live ? '#dcfce7' : 'var(--surface-1,#fff)',
@@ -290,42 +298,50 @@ export default function McpTrafficPage() {
       </div>
 
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', borderTop: '1px solid var(--border-light,#e2e8f0)' }}>
-        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
-          {entries.length === 0 ? (
-            <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-muted,#94a3b8)' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🔌</div>
-              <div>No MCP traffic yet. Use the AI agent to generate tool calls.</div>
+        {viewMode === 'pairs' ? (
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <McpPairView entries={entries} />
+          </div>
+        ) : (
+          <>
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
+              {entries.length === 0 ? (
+                <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-muted,#94a3b8)' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🔌</div>
+                  <div>No MCP traffic yet. Use the AI agent to generate tool calls.</div>
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                    <tr style={{ backgroundColor: 'var(--surface-2,#f8fafc)', borderBottom: '2px solid var(--border-light,#e2e8f0)' }}>
+                      {['Time', 'Direction', 'Type', 'Method', 'Tool', 'Duration', 'Summary', 'Actions'].map((h) => (
+                        <th key={h} style={{ padding: '8px 8px', textAlign: 'left', fontSize: '0.73rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted,#64748b)', whiteSpace: 'nowrap' }}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reversed.map((entry, idx) => {
+                      const key = `${entry.ts}-${idx}`;
+                      const isSel = selected && selected._key === key;
+                      return (
+                        <EntryRow
+                          key={key}
+                          entry={entry}
+                          idx={idx}
+                          isSelected={isSel}
+                          onClick={() => setSelected(isSel ? null : Object.assign({}, entry, { _key: key }))}
+                        />
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                <tr style={{ backgroundColor: 'var(--surface-2,#f8fafc)', borderBottom: '2px solid var(--border-light,#e2e8f0)' }}>
-                  {['Time', 'Direction', 'Type', 'Method', 'Tool', 'Duration', 'Summary', ''].map((h, i) => (
-                    <th key={i} style={{ padding: '8px 8px', textAlign: 'left', fontSize: '0.73rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted,#64748b)', whiteSpace: 'nowrap' }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {reversed.map((entry, idx) => {
-                  const key = `${entry.ts}-${idx}`;
-                  const isSel = selected && selected._key === key;
-                  return (
-                    <EntryRow
-                      key={key}
-                      entry={entry}
-                      idx={idx}
-                      isSelected={isSel}
-                      onClick={() => setSelected(isSel ? null : Object.assign({}, entry, { _key: key }))}
-                    />
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-        {selected && <DetailPanel entry={selected} onClose={() => setSelected(null)} />}
+            {selected && <DetailPanel entry={selected} onClose={() => setSelected(null)} />}
+          </>
+        )}
       </div>
 
       <style>{'@keyframes mtp-blink { 0%,100%{opacity:1} 50%{opacity:0.3} } tbody tr:hover td { background-color: #eff6ff; }'}</style>
