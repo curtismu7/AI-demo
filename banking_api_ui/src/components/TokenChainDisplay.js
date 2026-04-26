@@ -58,6 +58,15 @@ function ClaimsPanel({ claims, alg }) {
     return key;
   };
 
+  const claimTooltip = (key) => {
+    if (key === 'aud')   { return 'Audience — which resource server accepts this token (RFC 8693 §3)'; }
+    if (key === 'act')   { return 'Delegation chain — which agent is acting on behalf of the user (RFC 8693 §4.1)'; }
+    if (key === 'sub')   { return 'Subject — the human user this token represents'; }
+    if (key === 'scope') { return 'Authorized scopes for this audience'; }
+    if (key === 'may_act') { return 'Permitted actor — pre-authorises delegation at login time (RFC 8693 §4.1)'; }
+    return undefined;
+  };
+
   const fmtVal = (key, val) => {
     if (typeof val === 'object') { return JSON.stringify(val, null, 2); }
     if (key === 'exp' || key === 'iat' || key === 'nbf') {
@@ -72,7 +81,7 @@ function ClaimsPanel({ claims, alg }) {
       {alg && <div className="tcd-claims-alg">alg: {alg}</div>}
       {Object.entries(claims).map(([k, v]) => (
         <div key={k} className={`tcd-claim ${highlight(k, v)}`}>
-          <span className="tcd-claim-key">{claimLabel(k)}</span>
+          <span className="tcd-claim-key" title={claimTooltip(k)}>{claimLabel(k)}</span>
           <span className="tcd-claim-sep">:</span>
           {k === 'act' && v && typeof v === 'object' && v.sub && (
             <span className="tcd-claim-agent-id"> Agent ID: {v.sub}</span>
@@ -720,7 +729,7 @@ function ClaimsStrip({ event, hints }) {
 }
 
 /** Renders one step in the token chain. The inspect icon (right side) opens the floating inspector panel. */
-function EventRow({ event, isLast, onInspect, hints, validationMode }) {
+function EventRow({ event, isLast, nextEvent, idTokenMode, onInspect, hints, validationMode }) {
   const inspectBtnRef = useRef(null);
   const hasDetail = event.claims || event.explanation || event.exchangeRequest || event.jwtFullDecode
     || event.mayActPresent !== undefined || event.actPresent !== undefined;
@@ -873,7 +882,22 @@ function EventRow({ event, isLast, onInspect, hints, validationMode }) {
         </div>
       </div>
 
-      {!isLast && <div className="tcd-connector"><div className="tcd-connector-line" /><span className="tcd-connector-arrow">↓</span></div>}
+      {!isLast && (
+        <div className="tcd-connector">
+          <div className="tcd-connector-line" />
+          <span className="tcd-connector-arrow">↓</span>
+          <div className="tcd-rfc-annotation">
+            <a className="tcd-rfc-link" href="https://www.rfc-editor.org/rfc/rfc8693" target="_blank" rel="noopener noreferrer">RFC 8693</a>
+            {' · '}
+            <span>{idTokenMode ? 'ID Token 2-Token Exchange' : '2-Token Exchange'}</span>
+            {nextEvent?.claims?.aud && (
+              <span className="tcd-aud-label">
+                {' → aud: '}{Array.isArray(nextEvent.claims.aud) ? nextEvent.claims.aud[0] : nextEvent.claims.aud}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1202,7 +1226,7 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
             </button>
           </div>
           <p className="tcd-header-sub">
-            {idTokenMode ? 'User ID token stays in Backend-for-Frontend (BFF) → RFC 8693 exchange → MCP access token → MCP server → Banking API' : 'User access token stays in Backend-for-Frontend (BFF) → RFC 8693 exchange → MCP access token → MCP server → Banking API'}
+            {idTokenMode ? 'ID Token 2-Token Exchange Flow — ID token → RFC 8693 exchange → MCP access token → MCP server → Banking API' : '2-Token Exchange Flow — User access token stays in BFF → RFC 8693 exchange → MCP access token → MCP server → Banking API'}
           </p>
         </div>
         )}
@@ -1239,7 +1263,7 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
               </div>
             )}
             {(!isPlaceholder || !identityHints?.currentUser) && currentEventsWithCc.map((ev, i) => (
-              <EventRow key={ev.id} event={ev} isLast={i === currentEventsWithCc.length - 1} onInspect={handleInspect} hints={identityHints} validationMode={ctx?.validationMode} />
+              <EventRow key={ev.id} event={ev} isLast={i === currentEventsWithCc.length - 1} nextEvent={currentEventsWithCc[i + 1]} idTokenMode={idTokenMode} onInspect={handleInspect} hints={identityHints} validationMode={ctx?.validationMode} />
             ))}
           </div>
           </>
