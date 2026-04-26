@@ -71,4 +71,42 @@ router.get('/metadata', (req, res) => {
   res.json(buildMetadata(req));
 });
 
+/**
+ * GET /all — served at /api/rfc9728/all
+ * Fetches RFC 9728 metadata from BFF (self) and all downstream MCP services.
+ * Each entry includes a _status field: "ok" | "unreachable" | "error"
+ */
+router.get('/all', async (req, res) => {
+  const TIMEOUT_MS = 3000;
+  const services = [
+    { key: 'mcp_olb',    url: `http://localhost:${process.env.MCP_SERVER_PORT   || 8080}/.well-known/oauth-protected-resource` },
+    { key: 'mcp_gw',     url: `http://localhost:${process.env.MCP_GW_PORT       || 3005}/.well-known/oauth-protected-resource` },
+    { key: 'mcp_invest', url: `http://localhost:${process.env.MCP_INVEST_PORT   || 8081}/.well-known/oauth-protected-resource` },
+  ];
+
+  async function fetchWithTimeout(url) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    try {
+      const r = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      if (!r.ok) return { _status: 'error', _error: `HTTP ${r.status}` };
+      const data = await r.json();
+      return { ...data, _status: 'ok' };
+    } catch (e) {
+      clearTimeout(timer);
+      return { _status: e.name === 'AbortError' ? 'unreachable' : 'unreachable', _error: e.message };
+    }
+  }
+
+  const result = { bff: { ...buildMetadata(req), _status: 'ok' } };
+  await Promise.all(
+    services.map(async ({ key, url }) => {
+      result[key] = await fetchWithTimeout(url);
+    })
+  );
+
+  res.json(result);
+});
+
 module.exports = router;

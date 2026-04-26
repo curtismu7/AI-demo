@@ -2,6 +2,7 @@
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 import RfcLink from '../shared/RfcLink';
+import TokenAudienceChain from './TokenAudienceChain';
 
 export default function RFC8693Panel({ isOpen, onClose, initialTabId }) {
   const tabs = [
@@ -194,6 +195,8 @@ Content-Type: application/json
             Each hop narrows the audience and adds (or preserves) the <code>act</code> delegation claim.
             Your live tokens appear in the Token Chain panel above. <RfcLink rfc="RFC_8693" />
           </p>
+
+          <TokenAudienceChain />
 
           <h4>Hop 0 — User Token (from login)</h4>
           <p>What your browser session holds after OIDC login. Audience is the BFF resource server.</p>

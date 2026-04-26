@@ -1,249 +1,165 @@
-/**
- * Enhanced RFC 9728 Content Component
- * Updated educational content with improved technical accuracy and current implementation details
- * 
- * Phase 59-02: Educational Content Review
- * Enhanced RFC 9728 educational component with accurate, comprehensive content
- */
-
 import React from 'react';
+import RfcLink from '../shared/RfcLink';
 
-// ── Enhanced RFC9728Content ─────────────────────────────────────────────────────────────
+const FIELD_ANNOTATIONS = {
+  resource:                 { required: 'REQUIRED',     note: 'Canonical URI of this resource server' },
+  authorization_servers:    { required: 'RECOMMENDED',  note: 'AS issuer URIs — tells clients which AS issues tokens' },
+  bearer_methods_supported: { required: 'OPTIONAL',     note: 'How to send the bearer token (typically ["header"])' },
+  scopes_supported:         { required: 'OPTIONAL',     note: 'Scopes this RS accepts — helps clients request the right scopes' },
+  resource_documentation:   { required: 'OPTIONAL',     note: 'Link to API docs (OpenAPI, README, etc.)' },
+  resource_name:            { required: 'OPTIONAL',     note: 'Human-readable display name for this RS' },
+};
+
+const STATUS_COLORS = {
+  ok:          { bg: '#f0fdf4', border: '#86efac', text: '#166534', label: '● reachable' },
+  unreachable: { bg: '#fef3c7', border: '#fcd34d', text: '#92400e', label: '◌ unreachable' },
+  error:       { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', label: '✕ error' },
+};
+
+const SERVICE_NAMES = {
+  bff:       { label: 'BFF (this server)', port: process.env.REACT_APP_API_PORT || 3001 },
+  mcp_olb:   { label: 'MCP OLB Server',   port: 8080 },
+  mcp_gw:    { label: 'MCP Gateway',      port: 3005 },
+  mcp_invest: { label: 'MCP Invest',      port: 8081 },
+};
+
+function StatusBadge({ status }) {
+  const s = STATUS_COLORS[status] || STATUS_COLORS.unreachable;
+  return (
+    <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 999, background: s.bg, border: `1px solid ${s.border}`, color: s.text, fontWeight: 600 }}>
+      {s.label}
+    </span>
+  );
+}
+
+function ServiceCard({ serviceKey, data }) {
+  const [open, setOpen] = React.useState(serviceKey === 'bff');
+  const svc = SERVICE_NAMES[serviceKey] || { label: serviceKey, port: '?' };
+  const status = data._status || 'unreachable';
+
+  return (
+    <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, marginBottom: 10, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f8fafc', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '0.82rem', fontWeight: 600 }}
+      >
+        <span style={{ flex: 1 }}>{svc.label}</span>
+        <code style={{ fontSize: '0.72rem', color: '#64748b' }}>:{svc.port}</code>
+        <StatusBadge status={status} />
+        <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: 4 }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div style={{ padding: '10px 14px', fontSize: '0.8rem' }}>
+          {status !== 'ok' ? (
+            <p style={{ color: '#92400e', margin: 0 }}>
+              {status === 'unreachable' ? 'Service not running or unreachable. Start it to see live data.' : `Error: ${data._error || 'unknown'}`}
+            </p>
+          ) : (
+            <table className="edu-table" style={{ marginTop: 0 }}>
+              <thead>
+                <tr>
+                  <th>Field</th>
+                  <th>Value</th>
+                  <th>RFC 9728 §3.2</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(data)
+                  .filter(([k]) => !k.startsWith('_'))
+                  .map(([k, v]) => {
+                    const ann = FIELD_ANNOTATIONS[k] || {};
+                    return (
+                      <tr key={k}>
+                        <td><code>{k}</code></td>
+                        <td style={{ maxWidth: 180, wordBreak: 'break-all', fontSize: '0.72rem' }}>{Array.isArray(v) ? v.join(', ') : String(v)}</td>
+                        <td><span style={{ fontSize: '0.68rem', fontWeight: 600, color: ann.required === 'REQUIRED' ? '#166534' : ann.required === 'RECOMMENDED' ? '#1e40af' : '#64748b' }}>{ann.required || 'OPTIONAL'}</span></td>
+                        <td style={{ fontSize: '0.72rem', color: '#64748b' }}>{ann.note || ''}</td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function RFC9728Content() {
-  const [metadata, setMetadata]     = React.useState(null);
-  const [fetchError, setFetchError] = React.useState(null);
-  const [complianceScore, setComplianceScore] = React.useState(null);
+  const [allData, setAllData]   = React.useState(null);
+  const [fetching, setFetching] = React.useState(false);
+  const [fetchErr, setFetchErr] = React.useState(null);
 
-  React.useEffect(() => {
-    // Fetch live metadata
-    fetch('/api/rfc9728/metadata')
-      .then((r) => {
-        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-        return r.json();
-      })
-      .then(setMetadata)
-      .catch((e) => setFetchError(e.message));
-
-    // Fetch compliance score
-    fetch('/api/rfc9728/audit/summary')
-      .then((r) => {
-        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-        return r.json();
-      })
-      .then((data) => setComplianceScore(data.summary.overall_score))
-      .catch(() => {
-        // Compliance endpoint might not be available, ignore error
-      });
-  }, []);
+  const handleFetch = () => {
+    setFetching(true);
+    setFetchErr(null);
+    fetch('/api/rfc9728/all')
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(data => { setAllData(data); setFetching(false); })
+      .catch(e => { setFetchErr(e.message); setFetching(false); });
+  };
 
   return (
     <>
-      <h3>What is RFC 9728?</h3>
+      <h3 style={{ marginTop: 0 }}>OAuth 2.0 Protected Resource Metadata — <RfcLink rfc="RFC_9728" /></h3>
       <p>
-        <strong>RFC 9728 — OAuth 2.0 Protected Resource Metadata</strong> (published April 2025,
-        IETF Standards Track) defines a discovery document that a resource server publishes at a
-        well-known URL so OAuth clients and authorization servers can find out:
+        RFC 9728 (IETF Standards Track, April 2025) defines a well-known discovery document every
+        OAuth protected resource publishes. It lets clients and AI agents auto-discover which
+        authorization server issues tokens for a resource — without hard-coded config.
       </p>
-      <ul>
-        <li>Which <strong>authorization server(s)</strong> the RS accepts tokens from</li>
-        <li>Which <strong>scopes</strong> the RS is willing to disclose</li>
-        <li>Which <strong>bearer token methods</strong> the RS supports (header, body, query)</li>
-        <li>
-          Human-readable metadata such as <code>resource_name</code> and{' '}
-          <code>resource_documentation</code>
-        </li>
-      </ul>
 
-      <h3>Well-known URL Structure</h3>
+      <h4>Why it matters for MCP &amp; AI agents</h4>
       <p>
-        RFC 9728 defines a deterministic URL pattern for discovering protected resource metadata.
-        The endpoint is constructed by inserting <code>/.well-known/oauth-protected-resource</code>{' '}
-        between the host and path of the resource identifier.
+        When an agent gets a <code>401 WWW-Authenticate: Bearer resource_metadata=…</code> response,
+        it can fetch that URL, learn which AS to use, and bootstrap the OAuth flow automatically.
+        This is how agentic workflows discover new resource servers at runtime.
       </p>
-      <pre className="edu-code">{`Resource URL: https://api.bank.com/v1/accounts
-Discovery URL: https://api.bank.com/.well-known/oauth-protected-resource
 
-HTTP/1.1 GET /.well-known/oauth-protected-resource
+      <h4>Well-known URL pattern</h4>
+      <pre className="edu-code">{`GET /.well-known/oauth-protected-resource
 Host: api.bank.com
-Accept: application/json`}</pre>
 
-      <h3>Why it matters for AI agents and MCP</h3>
+# Response
+{
+  "resource":              "https://api.bank.com/api",     // REQUIRED
+  "authorization_servers": ["https://auth.pingone.com/…"], // RECOMMENDED
+  "bearer_methods_supported": ["header"],                  // OPTIONAL
+  "scopes_supported": ["banking:read", "banking:write"],   // OPTIONAL
+  "resource_name":         "Super Banking Banking API",    // OPTIONAL
+  "resource_documentation": "https://…"                   // OPTIONAL
+}`}</pre>
+
+      <h4>Security: resource identifier validation (<RfcLink rfc="RFC_9728" section="§3.3" />)</h4>
       <p>
-        The MCP specification references RFC 9728 for resource server discovery. An AI agent or
-        MCP client that encounters a{' '}
-        <code>{'401 WWW-Authenticate: Bearer resource_metadata=\u2026'}</code>{' '}
-        response can fetch the metadata URL, discover which authorization server to use, and
-        bootstrap the OAuth flow without hard-coded configuration. This is critical for
-        agentic workflows where the agent may encounter resource servers it has never seen before.
+        Clients <strong>MUST</strong> verify the <code>resource</code> field matches the URL they queried.
+        This prevents impersonation attacks where an attacker publishes fraudulent metadata.
       </p>
+      <pre className="edu-code">{`if (metadata.resource !== requestedUrl) {
+  throw new Error('Resource identifier mismatch — possible impersonation');
+}`}</pre>
 
-      <div
-        style={{
-          marginBottom: 14,
-          padding: '12px 14px',
-          background: '#f0fdf4',
-          borderRadius: 8,
-          border: '1px solid #86efac',
-        }}
+      <h4>Live Metadata — All Services</h4>
+      <p style={{ fontSize: '0.82rem', color: '#64748b' }}>
+        Fetches <code>/.well-known/oauth-protected-resource</code> from the BFF and all downstream MCP services (server-side proxy, no CORS).
+      </p>
+      <button
+        type="button"
+        onClick={handleFetch}
+        disabled={fetching}
+        style={{ marginBottom: 12, padding: '6px 16px', background: '#1e3a5f', color: '#fff', border: 'none', borderRadius: 4, fontSize: '0.82rem', cursor: fetching ? 'default' : 'pointer', opacity: fetching ? 0.7 : 1 }}
       >
-        <h4 style={{ margin: '0 0 8px', fontSize: '0.95rem' }}>Implementation in this monorepo</h4>
-        <p style={{ margin: '0 0 8px', fontSize: '0.85rem' }}>
-          The metadata endpoint is implemented in{' '}
-          <code>banking_api_server/routes/protectedResourceMetadata.js</code> and mounted at both:
-        </p>
-        <ul style={{ margin: '0 0 8px', fontSize: '0.85rem' }}>
-          <li><code>/.well-known/oauth-protected-resource</code> (RFC 9728 compliant)</li>
-          <li><code>/api/rfc9728/metadata</code> (same-origin proxy for UI access)</li>
-        </ul>
-      </div>
-
-      <h3>Response shape (RFC 9728 §3.2)</h3>
-      <pre className="edu-code">{`{
-  "resource":                 REQUIRED  -- This RS's canonical URL
-  "authorization_servers":    OPTIONAL  -- [PingOne issuer URI, ...]
-  "scopes_supported":         RECOMMENDED -- ["banking:read", ...]
-  "bearer_methods_supported": OPTIONAL  -- ["header"]
-  "resource_name":            OPTIONAL  -- Human-readable display name
-  "resource_documentation":   OPTIONAL  -- Documentation URL
-}`}</pre>
-
-      <h3>Field Requirements and Validation</h3>
-      <div style={{ marginBottom: 16 }}>
-        <h4 style={{ margin: '0 0 8px', fontSize: '0.9rem' }}>Required Fields</h4>
-        <ul style={{ margin: '0 0 12px', fontSize: '0.85rem' }}>
-          <li><strong>resource</strong>: The resource identifier being described (must be a valid URI)</li>
-        </ul>
-        
-        <h4 style={{ margin: '0 0 8px', fontSize: '0.9rem' }}>Recommended Fields</h4>
-        <ul style={{ margin: '0 0 12px', fontSize: '0.85rem' }}>
-          <li><strong>scopes_supported</strong>: Array of scope strings the RS supports</li>
-          <li><strong>authorization_servers</strong>: Array of AS issuer identifiers</li>
-        </ul>
-        
-        <h4 style={{ margin: '0 0 8px', fontSize: '0.9rem' }}>Optional Fields</h4>
-        <ul style={{ margin: '0 0 12px', fontSize: '0.85rem' }}>
-          <li><strong>bearer_methods_supported</strong>: Array of methods (header, body, query)</li>
-          <li><strong>resource_name</strong>: Human-readable name</li>
-          <li><strong>resource_documentation</strong>: URL to documentation</li>
-        </ul>
-      </div>
-
-      <h3>Security: resource identifier validation (RFC 9728 §3.3)</h3>
-      <p>
-        Clients <strong>MUST</strong> check that the <code>resource</code> value in the response exactly matches the
-        URL they queried. This prevents impersonation attacks where an attacker might publish a fraudulent
-        metadata document for a legitimate resource server.
-      </p>
-      <pre className="edu-code">{`Client validation pseudocode:
-
-if (metadata.resource !== requested_resource_url) {
-  throw new Error('Resource identifier mismatch - possible impersonation');
-}`}</pre>
-
-      <h3>Live metadata from this BFF</h3>
-      {metadata ? (
-        <>
-          <p>Fetched from <code>/api/rfc9728/metadata</code>:</p>
-          <pre className="edu-code">{JSON.stringify(metadata, null, 2)}</pre>
-          {complianceScore !== null && (
-            <div
-              style={{
-                marginTop: 12,
-                padding: '8px 12px',
-                background: complianceScore >= 90 ? '#f0fdf4' : 
-                           complianceScore >= 75 ? '#fffbeb' : '#fef2f2',
-                borderRadius: 6,
-                border: `1px solid ${
-                  complianceScore >= 90 ? '#86efac' : 
-                  complianceScore >= 75 ? '#fbbf24' : '#ef4444'
-                }`,
-              }}
-            >
-              <strong>RFC 9728 Compliance Score: {complianceScore}%</strong>
-              <span style={{ marginLeft: 8, fontSize: '0.85rem' }}>
-                ({complianceScore >= 90 ? 'Excellent' : 
-                  complianceScore >= 75 ? 'Good' : 
-                  complianceScore >= 60 ? 'Fair' : 'Needs Improvement'})
-              </span>
-            </div>
-          )}
-        </>
-      ) : fetchError ? (
-        <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>
-          Could not load live metadata: {fetchError}. Is the BFF running?
-        </p>
-      ) : (
-        <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading live metadata\u2026</p>
+        {fetching ? 'Fetching…' : '⟳ Fetch Live Metadata'}
+      </button>
+      {fetchErr && <p style={{ color: '#b91c1c', fontSize: '0.82rem' }}>Error: {fetchErr}</p>}
+      {allData && Object.entries(allData).map(([key, data]) => (
+        <ServiceCard key={key} serviceKey={key} data={data} />
+      ))}
+      {!allData && !fetchErr && (
+        <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Click the button to fetch live metadata from all running services.</p>
       )}
-
-      <h3>Integration with OAuth flows</h3>
-      <p>
-        RFC 9728 metadata is typically used in these scenarios:
-      </p>
-      <ul style={{ fontSize: '0.85rem' }}>
-        <li><strong>Resource indicator discovery</strong>: Clients discover which AS to use for a resource</li>
-        <li><strong>Scope validation</strong>: Clients verify requested scopes are supported</li>
-        <li><strong>Dynamic client registration</strong>: Clients configure themselves for new resources</li>
-        <li><strong>Multi-resource scenarios</strong>: Clients handle multiple resource servers</li>
-      </ul>
-
-      <h3>MCP and AI Agent Integration</h3>
-      <p>
-        In the Model Context Protocol (MCP) ecosystem, RFC 9728 enables:
-      </p>
-      <ul style={{ fontSize: '0.85rem' }}>
-        <li><strong>Automatic resource discovery</strong>: MCP servers can discover OAuth requirements</li>
-        <li><strong>Dynamic token audience</strong>: Agents can determine correct audience for token exchange</li>
-        <li><strong>Scope negotiation</strong>: Clients can request appropriate scopes for MCP tools</li>
-        <li><strong>Federated authorization</strong>: Support for multi-AS environments</li>
-      </ul>
-
-      <h3>Implementation Best Practices</h3>
-      <div style={{ marginBottom: 16 }}>
-        <h4 style={{ margin: '0 0 8px', fontSize: '0.9rem' }}>Security Considerations</h4>
-        <ul style={{ margin: '0 0 12px', fontSize: '0.85rem' }}>
-          <li>Always validate <code>resource</code> field matches requested URL</li>
-          <li>Use HTTPS in production environments</li>
-          <li>Set appropriate caching headers (metadata changes infrequently)</li>
-          <li>Never include sensitive data in metadata</li>
-        </ul>
-        
-        <h4 style={{ margin: '0 0 8px', fontSize: '0.9rem' }}>Performance Optimization</h4>
-        <ul style={{ margin: '0 0 12px', fontSize: '0.85rem' }}>
-          <li>Cache responses with appropriate <code>Cache-Control</code> headers</li>
-          <li>Consider CDN distribution for high-traffic endpoints</li>
-          <li>Minimize metadata size while maintaining completeness</li>
-          <li>Monitor for abuse and implement rate limiting if needed</li>
-        </ul>
-      </div>
-
-      <h3>Testing and Validation</h3>
-      <p>
-        This implementation includes comprehensive testing and validation:
-      </p>
-      <ul style={{ fontSize: '0.85rem' }}>
-        <li>Automated compliance audit via <code>/api/rfc9728/audit/compliance</code></li>
-        <li>Field validation against RFC 9728 specification requirements</li>
-        <li>Security testing for resource identifier validation</li>
-        <li>Performance monitoring and caching validation</li>
-      </ul>
-
-      <div
-        style={{
-          marginTop: 16,
-          padding: '12px 14px',
-          background: '#eff6ff',
-          borderRadius: 8,
-          border: '1px solid var(--brand-navy)',
-        }}
-      >
-        <h4 style={{ margin: '0 0 8px', fontSize: '0.95rem' }}>Current Implementation Status</h4>
-        <p style={{ margin: '0', fontSize: '0.85rem' }}>
-          This BFF implements RFC 9728 with full compliance including all required fields,
-          recommended fields, and optional fields. The endpoint is accessible at both the
-          standard well-known URL and a same-origin proxy for UI integration.
-        </p>
-      </div>
     </>
   );
 }
