@@ -1718,8 +1718,17 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 233 to break down)
 
----
+### Phase 234: Token-chain is updated way to often. It should only udpate when we are on a UI page that has tokken-chain.
 
+**Goal:** Restrict token-chain updates to routes that render token-chain UI, and prevent background token-chain polling/refresh on unrelated pages.
+**Requirements**: D-01, D-02, D-03
+**Depends on:** Phase 233
+**Plans:** 1 plans
+
+Plans:
+- [ ] 234-01-PLAN.md — Route-scope token-chain polling and refresh behavior in UI context
+
+---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
