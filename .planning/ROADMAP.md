@@ -1670,10 +1670,10 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 228
-**Plans:** 0 plans
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 229 to break down)
+- [x] TBD (run /gsd-plan-phase 229 to break down) (completed 2026-04-26)
 
 ### Phase 230: Authorize gate — never silently skip, warn user when not calling P1Authorize and show reason
 
@@ -1715,16 +1715,16 @@ Plans:
 **Goal:** Enrich the Phase 232 activity log with structured payload data: JWT header+claims decoded inline for all token types, PingOne API request/response bodies, full LLM prompt and system prompt text, PKCE and CIBA request details, and session state snapshots. Add holistic cleanup pass and frontend loading-state events via POST endpoint.
 **Requirements**: D-01, D-02, D-03, D-04, D-05, D-06, D-07, D-08
 **Depends on:** Phase 232
-**Plans:** 7 plans
+**Plans:** 7/7 plans complete
 
 Plans:
-- [ ] 233-01-PLAN.md — Holistic review + cleanup: delegation category, MAX_EVENTS=200, metadata expand UI, full prompt text
-- [ ] 233-02-PLAN.md — Extract tokenUtils.js with decodeJwt(); update agentMcpTokenService to import it
-- [ ] 233-03-PLAN.md — JWT decode enrichment at all four token call sites (oauth, CIBA, RFC 8693, agent actor)
-- [ ] 233-04-PLAN.md — PingOne API body capture with sanitizePingOneResponse; request+response metadata
-- [ ] 233-05-PLAN.md — LLM prompt + system prompt + model + toolsAvailable in agent_prompt events
-- [ ] 233-06-PLAN.md — PKCE details, idTokenClaims, bindingMessage, session-snapshot events
-- [ ] 233-07-PLAN.md — POST /api/admin/app-events endpoint + appEventClient.js + loading-state hooks
+- [x] 233-01-PLAN.md — Holistic review + cleanup: delegation category, MAX_EVENTS=200, metadata expand UI, full prompt text
+- [x] 233-02-PLAN.md — Extract tokenUtils.js with decodeJwt(); update agentMcpTokenService to import it
+- [x] 233-03-PLAN.md — JWT decode enrichment at all four token call sites (oauth, CIBA, RFC 8693, agent actor)
+- [x] 233-04-PLAN.md — PingOne API body capture with sanitizePingOneResponse; request+response metadata
+- [x] 233-05-PLAN.md — LLM prompt + system prompt + model + toolsAvailable in agent_prompt events
+- [x] 233-06-PLAN.md — PKCE details, idTokenClaims, bindingMessage, session-snapshot events
+- [x] 233-07-PLAN.md — POST /api/admin/app-events endpoint + appEventClient.js + loading-state hooks
 
 ### Phase 234: Token-chain is updated way to often. It should only udpate when we are on a UI page that has tokken-chain.
 
@@ -1735,6 +1735,29 @@ Plans:
 
 Plans:
 - [x] 234-01-PLAN.md — Route-scope token-chain polling and refresh behavior in UI context (completed 2026-04-26)
+
+### Phase 235: Surface introspection validation results in token chain and activity log — show that PingOne confirmed a token active, not just decoded
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 234
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] TBD (run /gsd-plan-phase 235 to break down) (completed 2026-04-26)
+
+### Phase 236: Code review pass — async patterns, memory leaks, security, and modern JS standards audit
+
+**Goal:** Produce a structured REVIEW.md with severity-classified findings (Critical/Major/Minor) for all backend services and routes, covering async patterns, memory leaks, security, and modern JS standards. No code is modified — output is the report only.
+**Requirements**: REVIEW-01
+**Depends on:** Phase 235
+**Plans:** 4 plans
+
+Plans:
+- [ ] 236-01-PLAN.md — Review high-priority recently-changed services (appEventService, tokenIntrospectionService, tokenIntrospection middleware, transactionAuthorizationService, mcpToolAuthorizationService)
+- [ ] 236-02-PLAN.md — Review server.js complexity hotspot and key routes (transactions.js, tokenChain.js, oauth.js)
+- [ ] 236-03-PLAN.md — Review auth/token services and core infrastructure (oauthService, cibaService, agentTokenService, agentMcpTokenService, delegationService, audValidationService, configStore, pingOneAuthorizeService, simulatedAuthorizeService, configHostnameService)
+- [ ] 236-04-PLAN.md — Assemble all findings into banking_api_server/REVIEW.md with executive summary and severity-sorted table
 
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
