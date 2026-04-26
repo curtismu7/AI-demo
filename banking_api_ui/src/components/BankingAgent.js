@@ -53,6 +53,7 @@ import OtpStepUpModal from "./OtpStepUpModal";
 import TokenChainDisplay from "./TokenChainDisplay";
 import TransactionConsentModal from "./TransactionConsentModal";
 import "./BankingAgent.css";
+import { postAppEvent } from '../services/appEventClient';
 
 /** NL message to replay after customer OAuth redirect from marketing agent (sessionStorage). */
 const BX_AGENT_PENDING_NL_KEY = "bx_agent_pending_nl";
@@ -2454,6 +2455,7 @@ export default function BankingAgent({
 			addMessage("user", label);
 		}
 		setLoading(true);
+		postAppEvent('agent', 'info', 'Agent processing started', { tag: 'agent/processing-start', metadata: { userId: effectiveUser?.id || effectiveUser?.username } });
 
 		// Toast: show in-progress indicator
 		const toastId = `agent-${actionId}-${Date.now()}`;
@@ -3298,6 +3300,7 @@ export default function BankingAgent({
 				}
 			}
 
+			postAppEvent('agent', 'info', 'Agent processing complete', { tag: 'agent/processing-end', metadata: { userId: effectiveUser?.id || effectiveUser?.username } });
 			// Dismiss loading toast and show success
 			toast.update(toastId, {
 				render: `✅ ${label} complete`,

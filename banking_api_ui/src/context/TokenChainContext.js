@@ -7,6 +7,7 @@
 // current BFF session, cached here so all token surfaces share one fetch.
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { isTokenChainRoute } from '../utils/embeddedAgentFabVisibility';
+import { postAppEvent } from '../services/appEventClient';
 
 const TokenChainContext = createContext(null);
 
@@ -96,9 +97,11 @@ export function TokenChainProvider({ children, activePath = "" }) {
         return;
       }
       try {
+        postAppEvent('token_exchange', 'info', 'Token exchange in flight', { tag: 'token_exchange/frontend-exchange-start' });
         const res = await fetch('/api/token-chain', { credentials: 'include' });
         if (!res.ok) return;
         const data = await res.json();
+        postAppEvent('token_exchange', 'info', 'Token exchange complete', { tag: 'token_exchange/frontend-exchange-end' });
         if (!cancelled) {
           setMCPToolCalls(data.mcpToolCallsChain || []);
         }
