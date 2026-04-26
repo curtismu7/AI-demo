@@ -430,7 +430,7 @@ function openInNewWindow(event) {
   
   const claimsHtml = event.claims
     ? Object.entries(event.claims).map(([k, v]) => {
-        const highlight = { may_act: 'var(--chase-navy)', act: '#0f766e', scope: '#6d28d9', aud: '#166534' }[k] || '';
+        const highlight = { may_act: 'var(--brand-navy)', act: '#0f766e', scope: '#6d28d9', aud: '#166534' }[k] || '';
         const bg = highlight ? `background:${highlight}22;` : '';
         const valStr = typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v);
         return `<div class="claim" style="${bg}">
