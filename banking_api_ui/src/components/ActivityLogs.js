@@ -19,6 +19,8 @@ const CATEGORY_ICONS = {
   jwks: '\u{1F6E1}\uFE0F',
   mcp: '\u{1F916}',
   auth_lifecycle: '\u{1F510}',
+  authorize: '\u{1F6AA}',
+  agent_prompt: '\u{1F9E0}',
 };
 
 const CATEGORY_LABELS = {
@@ -28,6 +30,8 @@ const CATEGORY_LABELS = {
   jwks: 'JWKS',
   mcp: 'MCP',
   auth_lifecycle: 'Auth Lifecycle',
+  authorize: 'Authorize Gate',
+  agent_prompt: 'Agent Prompt',
 };
 
 const SEVERITY_BORDER = {

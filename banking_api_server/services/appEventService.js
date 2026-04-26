@@ -7,6 +7,8 @@
  */
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 // Event categories
 const EVENT_CATEGORIES = {
@@ -17,6 +19,8 @@ const EVENT_CATEGORIES = {
   MCP: 'mcp',
   AUTH_LIFECYCLE: 'auth_lifecycle',
   AGENT: 'agent',
+  AUTHORIZE: 'authorize',
+  AGENT_PROMPT: 'agent_prompt',
 };
 
 // Event severity levels
@@ -25,6 +29,16 @@ const EVENT_SEVERITIES = {
   WARNING: 'warning',
   ERROR: 'error',
 };
+
+// File persistence — D-01
+const _logFilePath = path.resolve(
+  process.env.ACTIVITY_LOG_FILE || path.join(__dirname, '..', 'logs', 'activity.ndjson')
+);
+try {
+  fs.mkdirSync(path.dirname(_logFilePath), { recursive: true });
+} catch (_e) {
+  console.warn('[appEventService] Could not create log directory:', _e.message);
+}
 
 // Configuration
 const MAX_EVENTS = 500;
@@ -63,6 +77,13 @@ function logEvent(category, severity, message, options = {}) {
   };
 
   events.push(event);
+
+  // Persist to NDJSON file — D-01
+  try {
+    fs.appendFileSync(_logFilePath, JSON.stringify(event) + '\n');
+  } catch (_writeErr) {
+    console.warn('[appEventService] Log file write failed:', _writeErr.message);
+  }
 
   // Evict oldest event if buffer is full
   if (events.length > MAX_EVENTS) {
