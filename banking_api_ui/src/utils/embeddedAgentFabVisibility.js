@@ -25,6 +25,18 @@ export function isEmbeddedAgentDockRoute(pathname) {
 }
 
 /**
+ * Routes that render a token-chain surface. Update this list when adding new
+ * pages that show token-chain UI so background refresh stays route-scoped.
+ * @param {string} [pathname]
+ * @returns {boolean}
+ */
+export function isTokenChainRoute(pathname) {
+  if (pathname == null || typeof pathname !== 'string') return false;
+  const p = pathname.replace(/\/$/, '') || '/';
+  return p === '/' || p === '/dashboard' || p === '/admin' || p === '/agent-flow-inspector';
+}
+
+/**
  * Marketing / landing surfaces where we show the banking agent before sign-in (SPA path only).
  * @param {string} [pathname]
  * @returns {boolean}
