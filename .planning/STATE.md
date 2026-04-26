@@ -102,6 +102,8 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) �
 
 ## Roadmap Evolution
 
+- Phase 240 added: make sure all tests pages have, and look for other pages this makes sense and make a plan for those: 1) Actual PingOne API 2) Actual Request to pingOne for that call (JSON) 3) Actual Response from pingone Call (JSON) 4) LInk to actual PingOne api docs page, for that call https://developer.pingidentity.com/apis.html
+- Phase 239 added: make sure all tests pages have, and look for other pages this makes sense and make a plan for those: 1) Actual PingOne API 2) Actual Request to pingOne for that call (JSON) 3) Actual Response from pingone Call (JSON) 4) LInk to actual PingOne api docs page, for that call https://developer.pingidentity.com/apis.html
 - Phase 238 added: Dashboard overhaul — token diff view, architecture diagram, MCP inspector, API call explorer, and RFC-linked learning panels
 - Phase 237 added: Frontend RFC visualization + production polish (rfcLinks, RfcLink, exchange hop JWT examples, token chain annotations, RFC 9728 live metadata)
 - Phase 236 added: Code review pass — async patterns, memory leaks, security, and modern JS standards audit

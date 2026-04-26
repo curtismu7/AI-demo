@@ -1800,13 +1800,15 @@ Plans:
 
 ### Phase 240: make sure all tests pages have, and look for other pages this makes sense and make a plan for those: 1) Actual PingOne API 2) Actual Request to pingOne for that call (JSON) 3) Actual Response from pingone Call (JSON) 4) LInk to actual PingOne api docs page, for that call https://developer.pingidentity.com/apis.html
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Standardize PingOne trace transparency across mandatory test pages and selected adjacent diagnostic pages so each surfaced call shows actual endpoint, request JSON, response JSON, and PingOne docs link.
+**Requirements**: D-01, D-02, D-03, D-04
 **Depends on:** Phase 239
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 240 to break down)
+- [ ] 240-01-PLAN.md — Coverage audit and scoped inclusion decisions for test and adjacent pages
+- [ ] 240-02-PLAN.md — Shared UI panel + per-section wiring for endpoint/request/response/docs link
+- [ ] 240-03-PLAN.md — Backend payload normalization and regression tests for trace fields
 
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
