@@ -23,6 +23,7 @@ const {
 } = require('../services/simulatedAuthorizeService');
 const { getAuthorizationStatusSummary } = require('../services/transactionAuthorizationService');
 const { getMcpFirstToolGateStatus } = require('../services/mcpToolAuthorizationService');
+const { logEvent } = require('../services/appEventService');
 
 const router = express.Router();
 
@@ -280,6 +281,8 @@ router.post('/test-evaluate', async (req, res) => {
 
   // If authorization is off entirely, return an informational permit
   if (!summary.authorizeEnabledConfig && !summary.simulatedMode) {
+    logEvent('authorize', 'info', `Authorize bypassed — authorization is disabled`,
+      { tag: 'authorize/bypass', metadata: { engine: 'off', type, amount: numAmount, userId } });
     return res.json({
       ok: true,
       decision: 'PERMIT',
@@ -297,6 +300,10 @@ router.post('/test-evaluate', async (req, res) => {
 
     if (summary.simulatedMode) {
       result = await evaluateSimulatedTransaction({ userId, amount: numAmount, type, acr: acr || undefined });
+      logEvent('authorize', result.decision === 'PERMIT' ? 'info' : 'warning',
+        `Authorize [simulated] ${result.decision} — ${type} $${numAmount}`,
+        { tag: result.decision === 'PERMIT' ? 'authorize/permit' : 'authorize/deny',
+          metadata: { engine: 'simulated', decision: result.decision, type, amount: numAmount, userId, stepUpRequired: result.stepUpRequired, path: result.path } });
       return res.json({
         ok: true,
         decision: result.decision,
@@ -312,6 +319,10 @@ router.post('/test-evaluate', async (req, res) => {
 
     // PingOne Authorize (live)
     result = await evaluatePingOneTransaction({ userId, amount: numAmount, type, acr: acr || undefined });
+    logEvent('authorize', result.decision === 'PERMIT' ? 'info' : 'warning',
+      `Authorize [pingone] ${result.decision} — ${type} $${numAmount}`,
+      { tag: result.decision === 'PERMIT' ? 'authorize/permit' : 'authorize/deny',
+        metadata: { engine: 'pingone', decision: result.decision, type, amount: numAmount, userId, stepUpRequired: result.stepUpRequired, decisionId: result.decisionId, path: result.path } });
     return res.json({
       ok: true,
       decision: result.decision,
@@ -322,9 +333,13 @@ router.post('/test-evaluate', async (req, res) => {
       decisionId: result.decisionId,
       parameters: { Amount: numAmount, TransactionType: type, UserId: userId, ...(acr ? { Acr: acr } : {}) },
       raw: result.raw,
+      pingoneRequest: result._debug?.request,
+      pingoneResponse: result._debug?.response,
     });
   } catch (err) {
     console.error('[authorize/test-evaluate] Error:', err.message);
+    logEvent('authorize', 'error', `Authorize evaluation error: ${err.message}`,
+      { tag: 'authorize/error', metadata: { type, amount: numAmount, userId, error: err.message } });
     return res.status(502).json({ ok: false, error: err.message });
   }
 });

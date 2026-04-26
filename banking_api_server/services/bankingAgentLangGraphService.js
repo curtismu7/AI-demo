@@ -248,6 +248,8 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       if (heuristicResult) {
         console.log('[processAgentMessage] Heuristic matched:', heuristic.banking?.action, '— skipping LLM');
         appEventService.logEvent('agent', 'info', `Heuristic: ${heuristic.banking?.action}`, { tag: 'agent/heuristic' });
+        appEventService.logEvent('agent_prompt', 'info', `Heuristic tool dispatch: ${heuristic.banking?.action}`,
+          { tag: 'agent_prompt/heuristic_tool', metadata: { action: heuristic.banking?.action, userId } });
         return heuristicResult;
       }
       // Heuristic matched but couldn't execute (transfer/deposit/etc.) — fall through to LLM
@@ -269,6 +271,8 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     // Invoke the LangGraph with the user message
     console.log('[processAgentMessage] Invoking LangGraph agent...');
     appEventService.logEvent('agent', 'info', 'LLM reasoning…', { tag: 'agent/invoke' });
+    appEventService.logEvent('agent_prompt', 'info', `LLM prompt: ${String(message).slice(0, 120)}`,
+      { tag: 'agent_prompt/llm_invoke', metadata: { userId, messageLength: message?.length || 0, sessionId } });
     let finalState;
     try {
       finalState = await graph.invoke({
@@ -280,6 +284,8 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     }
     console.log('[processAgentMessage] Agent invoke completed');
     appEventService.logEvent('agent', 'info', 'Agent response ready', { tag: 'agent/complete' });
+    appEventService.logEvent('agent_prompt', 'info', `LLM response: ${String(finalState?.messages?.[finalState.messages.length - 1]?.content || '').slice(0, 120)}`,
+      { tag: 'agent_prompt/llm_complete', metadata: { userId, messageCount: finalState?.messages?.length || 0 } });
     console.log('[processAgentMessage] Final state keys:', Object.keys(finalState || {}));
     console.log('[processAgentMessage] Final messages count:', finalState?.messages?.length || 0);
     console.log('[processAgentMessage] Token events count:', finalState?.tokenEvents?.length || 0);
