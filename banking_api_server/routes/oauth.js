@@ -19,6 +19,7 @@ const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAutho
 const { trackTokenEvent } = require('../services/tokenChainService');
 const { trackToken } = require('../services/apiCallTrackerService');
 const { logEvent: logAppEvent } = require('../services/appEventService');
+const { decodeJwt } = require('../utils/tokenUtils');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -335,9 +336,15 @@ router.get('/callback', async (req, res) => {
           });
         }
         console.debug('[oauth/callback] Session saved OK sid=' + (req.session?.id || '').slice(0, 8) + '…');
+        const _idTokenDecoded = decodeJwt(oauthTokens?.idToken);
         logAppEvent('oauth', 'info', `OAuth admin login success: ${authedUser?.username || authedUser?.email || 'unknown'}`,
           { tag: 'oauth/callback-success', username: authedUser?.username,
-            metadata: { role: authedUser?.role, clientType, hasIdToken: !!(oauthTokens?.idToken) } });
+            metadata: { role: authedUser?.role, clientType, hasIdToken: !!(oauthTokens?.idToken), jwtFullDecode: _idTokenDecoded || undefined, response: { hasAccessToken: !!(oauthTokens?.accessToken), hasIdToken: !!(oauthTokens?.idToken), tokenType: oauthTokens?.tokenType || 'Bearer' }, pkce: { code_challenge_method: 'S256', code_challenge_length: codeVerifier ? String(codeVerifier).length : 0 }, idTokenClaims: { sub: _idTokenDecoded?.claims?.sub || undefined, email: _idTokenDecoded?.claims?.email || undefined, acr: _idTokenDecoded?.claims?.acr || undefined } } });
+        const _sessionHash = crypto.createHash('sha256').update(req.session.id || '').digest('hex').slice(0, 8);
+        logAppEvent('auth_lifecycle', 'info', 'Session snapshot: admin login', {
+          tag: 'auth_lifecycle/session-snapshot',
+          metadata: { sessionId_hash: _sessionHash, event: 'login', role: authedUser?.role, hasAccessToken: !!(req.session.oauthTokens?.accessToken || oauthTokens?.accessToken), hasIdToken: !!(req.session.oauthTokens?.idToken || oauthTokens?.idToken), hasRefreshToken: !!(req.session.oauthTokens?.refreshToken) },
+        });
         // Set a signed auth-state cookie so the session-restore middleware can
         // answer /status and /nl requests even when the session hits a different
         // serverless instance on Vercel.
@@ -382,6 +389,10 @@ router.get('/logout', (req, res) => {
     if (err) {
       console.error('Session destruction error:', err);
     }
+    logAppEvent('auth_lifecycle', 'info', 'Session snapshot: admin logout', {
+      tag: 'auth_lifecycle/session-snapshot',
+      metadata: { event: 'logout', role: null, hasAccessToken: false, hasIdToken: false, hasRefreshToken: false },
+    });
 
     // Redirect to PingOne RP-Initiated Logout so the SSO session is cleared.
     // PingOne signoff endpoint: /as/signoff
