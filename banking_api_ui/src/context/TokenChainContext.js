@@ -6,12 +6,13 @@
 // Also provides resolvedIdentity — friendly user/actor labels derived from the
 // current BFF session, cached here so all token surfaces share one fetch.
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { isTokenChainRoute } from '../utils/embeddedAgentFabVisibility';
 
 const TokenChainContext = createContext(null);
 
 const TOKEN_CHAIN_HISTORY_KEY = 'tokenChainHistory';
 
-export function TokenChainProvider({ children }) {
+export function TokenChainProvider({ children, activePath = "" }) {
   // Array of token event objects — latest tool call only (replaced on each call)
   const [events, setEvents] = useState([]);
   // Current session token event — shown when no tool events (e.g., on dashboard load)
@@ -76,12 +77,24 @@ export function TokenChainProvider({ children }) {
     try { localStorage.removeItem(TOKEN_CHAIN_HISTORY_KEY); } catch {}
   }, []);
 
-  // Fetch MCP tool calls from /api/token-chain — only after authentication.
-  // Starts polling on 'userAuthenticated' event; stops on unmount.
+  // Fetch MCP tool calls from /api/token-chain — only after authentication and
+  // only on routes that actually render token-chain UI.
   useEffect(() => {
     let cancelled = false;
     let pollInterval = null;
+
+    const stopPolling = () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    };
+
     const fetchMCPToolCalls = async () => {
+      if (!isTokenChainRoute(activePath)) {
+        stopPolling();
+        return;
+      }
       try {
         const res = await fetch('/api/token-chain', { credentials: 'include' });
         if (!res.ok) return;
@@ -93,22 +106,38 @@ export function TokenChainProvider({ children }) {
         // Silently fail — user may not be authenticated
       }
     };
+
     const startPolling = () => {
-      fetchMCPToolCalls();
+      if (!isTokenChainRoute(activePath)) {
+        stopPolling();
+        return;
+      }
+      void fetchMCPToolCalls();
       if (!pollInterval) pollInterval = setInterval(fetchMCPToolCalls, 15000);
     };
+
+    const syncPollingForRoute = () => {
+      if (isTokenChainRoute(activePath)) {
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
     // Only start polling after confirming authentication to avoid 401 noise.
     fetch('/api/auth/session', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d && d.authenticated && !cancelled) startPolling(); })
+      .then(d => { if (d && d.authenticated && !cancelled) syncPollingForRoute(); })
       .catch(() => {});
+
     window.addEventListener('userAuthenticated', startPolling);
+
     return () => {
       cancelled = true;
-      if (pollInterval) clearInterval(pollInterval);
+      stopPolling();
       window.removeEventListener('userAuthenticated', startPolling);
     };
-  }, []);
+  }, [activePath]);
 
   /** Fetch resolved identity once on mount (and on re-auth). Shared across all token surfaces. */
   const loadResolvedIdentity = useCallback(async () => {

@@ -651,7 +651,7 @@ function AppWithAuth() {
 	return (
 		<DemoTourProvider>
 			<EducationUIProvider>
-				<TokenChainProvider>
+				<TokenChainProvider activePath={pathname}>
 					<SessionExpiryTimer
 						hideOnPaths={[
 							"/configure",
