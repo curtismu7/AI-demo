@@ -1698,13 +1698,15 @@ Plans:
 
 ### Phase 232: Unified activity log — append-only structured log file for token exchanges, MCP tool calls, PingOne API calls, authorize gate decisions, agent prompts, auth events, and UI loading/spinner states; wire to Activity Logs UI
 
-**Goal:** [To be planned]
-**Requirements**: TBD — includes: token exchanges, MCP tool calls, PingOne API calls, authorize gate decisions, agent prompts, auth events (login/logout/refresh/introspection), AND all UI spinner/loading events (every async operation that triggers a loading indicator: agent processing, token exchange in progress, MCP tool execution, PingOne API in-flight, step-up MFA challenge, CIBA polling, HITL consent waiting, session refresh)
+**Goal:** Extend appEventService.js with append-only NDJSON file persistence, add authorize and agent_prompt categories, instrument the authorize gate and agent prompt paths, and fill OAuth/CIBA/MCP token exchange instrumentation gaps.
+**Requirements**: D-01, D-03, D-04, D-05
 **Depends on:** Phase 231
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 232 to break down)
+- [ ] 232-01-PLAN.md — File persistence + new categories + ActivityLogs icons
+- [ ] 232-02-PLAN.md — Authorize gate + agent_prompt instrumentation
+- [ ] 232-03-PLAN.md — OAuth callback + CIBA + agentMcpTokenService gap fill
 
 ### Phase 233: Enrich activity log with decoded token payloads — log full JWT header+claims for every token in chain, introspection results, PingOne API request/response bodies, LLM prompts and system prompt, agent reasoning steps, PKCE details, CIBA request details, step-up MFA trigger events, scope resolution decisions, session state snapshots
 
