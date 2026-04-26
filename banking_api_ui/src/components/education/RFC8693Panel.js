@@ -52,54 +52,54 @@ export default function RFC8693Panel({ isOpen, onClose, initialTabId }) {
           <pre className="edu-code">{`grant_type=urn:ietf:params:oauth:grant-type:token-exchange`}</pre>
           
           <h4>Request Parameters</h4>
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '16px' }}>
+          <table className="edu-table">
             <thead>
-              <tr style={{ background: '#1e293b', color: '#f1f5f9' }}>
-                <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #334155' }}>Parameter</th>
-                <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #334155' }}>Required</th>
-                <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #334155' }}>Description</th>
+              <tr >
+                <th >Parameter</th>
+                <th >Required</th>
+                <th >Description</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}><code>grant_type</code></td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Yes</td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Must be the token-exchange URN</td>
+                <td ><code>grant_type</code></td>
+                <td >Yes</td>
+                <td >Must be the token-exchange URN</td>
               </tr>
               <tr>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}><code>subject_token</code></td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Yes</td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>The token being exchanged (user's access token)</td>
+                <td ><code>subject_token</code></td>
+                <td >Yes</td>
+                <td >The token being exchanged (user's access token)</td>
               </tr>
               <tr>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}><code>subject_token_type</code></td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Yes</td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Type of subject token (usually <code>urn:ietf:params:oauth:token-type:access_token</code>)</td>
+                <td ><code>subject_token_type</code></td>
+                <td >Yes</td>
+                <td >Type of subject token (usually <code>urn:ietf:params:oauth:token-type:access_token</code>)</td>
               </tr>
               <tr>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}><code>actor_token</code></td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>No</td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Optional token representing the acting service</td>
+                <td ><code>actor_token</code></td>
+                <td >No</td>
+                <td >Optional token representing the acting service</td>
               </tr>
               <tr>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}><code>actor_token_type</code></td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>No</td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Type of actor token (if actor_token is provided)</td>
+                <td ><code>actor_token_type</code></td>
+                <td >No</td>
+                <td >Type of actor token (if actor_token is provided)</td>
               </tr>
               <tr>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}><code>audience</code></td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>No</td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Target resource server URI</td>
+                <td ><code>audience</code></td>
+                <td >No</td>
+                <td >Target resource server URI</td>
               </tr>
               <tr>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}><code>scope</code></td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>No</td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Requested scopes for the issued token</td>
+                <td ><code>scope</code></td>
+                <td >No</td>
+                <td >Requested scopes for the issued token</td>
               </tr>
               <tr>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}><code>requested_token_type</code></td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>No</td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Type of token to issue (usually access_token)</td>
+                <td ><code>requested_token_type</code></td>
+                <td >No</td>
+                <td >Type of token to issue (usually access_token)</td>
               </tr>
             </tbody>
           </table>
@@ -206,29 +206,29 @@ Content-Type: application/json
           </ul>
 
           <h4>Common Attack Vectors</h4>
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '16px' }}>
+          <table className="edu-table">
             <thead>
-              <tr style={{ background: '#1e293b', color: '#f1f5f9' }}>
-                <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #334155' }}>Attack</th>
-                <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #334155' }}>Mitigation</th>
+              <tr >
+                <th >Attack</th>
+                <th >Mitigation</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Token Replay</td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Use short expiration times, unique token IDs</td>
+                <td >Token Replay</td>
+                <td >Use short expiration times, unique token IDs</td>
               </tr>
               <tr>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Privilege Escalation</td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Strict scope validation, policy enforcement</td>
+                <td >Privilege Escalation</td>
+                <td >Strict scope validation, policy enforcement</td>
               </tr>
               <tr>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Actor Impersonation</td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Validate actor token permissions, may_act policies</td>
+                <td >Actor Impersonation</td>
+                <td >Validate actor token permissions, may_act policies</td>
               </tr>
               <tr>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Cross-Tenant Access</td>
-                <td style={{ padding: '12px', border: '1px solid #334155' }}>Audience validation, tenant isolation</td>
+                <td >Cross-Tenant Access</td>
+                <td >Audience validation, tenant isolation</td>
               </tr>
             </tbody>
           </table>

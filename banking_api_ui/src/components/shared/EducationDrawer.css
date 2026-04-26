@@ -36,7 +36,7 @@
   gap: 0.75rem;
   padding: 0.65rem 3rem 0.5rem 0.75rem; /* right padding keeps tabs from hiding under X */
   border-bottom: 1px solid #e5e7eb;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
 }
 
 .edu-drawer-tabs {
@@ -96,7 +96,7 @@
   padding: 0.35rem 0.65rem;
   font-size: 0.7rem;
   cursor: pointer;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
 }
 
 .edu-drawer-tab--active {
@@ -111,12 +111,12 @@
   padding: 1rem 1.25rem 1.5rem;
   font-size: 0.875rem;
   line-height: 1.55;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
 }
 
 .edu-drawer-body pre,
 .edu-code {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border-radius: 0.375rem;
   padding: 0.75rem;
   font-size: 0.75rem;
@@ -149,7 +149,7 @@
 }
 
 .edu-drawer-body a {
-  color: var(--chase-navy);
+  color: var(--brand-navy);
 }
 
 .edu-modal {
@@ -181,16 +181,91 @@
   padding: 1rem 1.25rem 1.5rem;
   font-size: 0.875rem;
   line-height: 1.55;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
 }
 
 .edu-modal-body pre,
 .edu-modal-body .edu-code {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border-radius: 0.375rem;
   padding: 0.75rem;
   font-size: 0.7rem;
   overflow: auto;
   border: 1px solid #DDDDDD;
+}
+
+/* ── Education panel shared table styles ─────────────────────────────────── */
+.edu-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.8rem;
+}
+
+.edu-table thead tr {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+.edu-table th {
+  padding: 0.75rem;
+  text-align: left;
+  border: 1px solid #334155;
+  font-weight: 600;
+}
+
+.edu-table td {
+  padding: 0.75rem;
+  border: 1px solid #334155;
+  vertical-align: top;
+}
+
+.edu-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+/* ── Education section / info box ────────────────────────────────────────── */
+.edu-section {
+  margin: 1rem 0;
+}
+
+.edu-section + .edu-section {
+  margin-top: 1.5rem;
+}
+
+.edu-info-box {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 0.375rem;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.edu-info-box--warning {
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.edu-rfc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--brand-navy, #004687);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+
+.edu-rfc-link:hover {
+  text-decoration: underline;
+}
+
+.edu-rfc-link svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  opacity: 0.7;
+  flex-shrink: 0;
 }
 
