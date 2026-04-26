@@ -21,6 +21,7 @@ const EVENT_CATEGORIES = {
   AGENT: 'agent',
   AUTHORIZE: 'authorize',
   AGENT_PROMPT: 'agent_prompt',
+  DELEGATION: 'delegation',
 };
 
 // Event severity levels
@@ -41,7 +42,7 @@ try {
 }
 
 // Configuration
-const MAX_EVENTS = 500;
+const MAX_EVENTS = 200;
 let events = [];
 
 /**

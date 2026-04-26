@@ -21,6 +21,7 @@ const CATEGORY_ICONS = {
   auth_lifecycle: '\u{1F510}',
   authorize: '\u{1F6AA}',
   agent_prompt: '\u{1F9E0}',
+  delegation: '\u{1F91D}',
 };
 
 const CATEGORY_LABELS = {
@@ -32,6 +33,7 @@ const CATEGORY_LABELS = {
   auth_lifecycle: 'Auth Lifecycle',
   authorize: 'Authorize Gate',
   agent_prompt: 'Agent Prompt',
+  delegation: 'Delegation',
 };
 
 const SEVERITY_BORDER = {
@@ -83,6 +85,10 @@ const ActivityLogs = ({ user, onLogout }) => {
   const [eventFilter, setEventFilter] = useState({ category: '', severity: '' });
   const [expandedFlowIds, setExpandedFlowIds] = useState(new Set());
   const [expandedEventIds, setExpandedEventIds] = useState(new Set());
+  const [expandedMetaKeys, setExpandedMetaKeys] = useState(new Set());
+  const toggleMetaKey = (key) => {
+    setExpandedMetaKeys(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  };
   const pollRef = useRef(null);
 
   const [logs, setLogs] = useState([]);
@@ -315,13 +321,34 @@ const ActivityLogs = ({ user, onLogout }) => {
             {evt.metadata && Object.keys(evt.metadata).length > 0 && (
               <div style={{ marginTop: '0.35rem' }}>
                 <strong>Metadata:</strong>
-                <div style={{ marginTop: '0.25rem', padding: '0.5rem', backgroundColor: 'var(--code-bg, #f1f5f9)', borderRadius: '0.25rem', fontFamily: 'monospace', fontSize: '0.75rem', overflowX: 'auto' }}>
-                  {Object.entries(evt.metadata).map(([k, v]) => (
-                    <div key={k} style={{ marginBottom: '0.15rem' }}>
-                      <span style={{ color: '#6366f1' }}>{k}:</span>{' '}
-                      <span>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
-                    </div>
-                  ))}
+                <div style={{ marginTop: '0.25rem', padding: '0.5rem', backgroundColor: 'var(--code-bg, #f1f5f9)', borderRadius: '0.25rem', fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                  {Object.entries(evt.metadata).map(([k, v]) => {
+                    const isObj = v !== null && typeof v === 'object';
+                    const metaKey = evt.id + ':' + k;
+                    const isMetaExpanded = expandedMetaKeys.has(metaKey);
+                    return (
+                      <div key={k} style={{ marginBottom: '0.25rem' }}>
+                        <div
+                          onClick={isObj ? (e) => { e.stopPropagation(); toggleMetaKey(metaKey); } : undefined}
+                          style={{ cursor: isObj ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                        >
+                          {isObj && (
+                            <span style={{ fontSize: '0.65rem', transition: 'transform 0.1s', transform: isMetaExpanded ? 'rotate(90deg)' : 'rotate(0)', color: '#94a3b8' }}>{'▶'}</span>
+                          )}
+                          <span style={{ color: '#6366f1' }}>{k}:</span>{' '}
+                          {isObj
+                            ? <span style={{ color: '#94a3b8' }}>{isMetaExpanded ? '(expanded below)' : '{' + Object.keys(v).join(', ') + '}'}</span>
+                            : <span>{String(v)}</span>
+                          }
+                        </div>
+                        {isObj && isMetaExpanded && (
+                          <pre style={{ marginTop: '0.25rem', marginLeft: '1rem', padding: '0.4rem', backgroundColor: 'var(--code-bg-dark, #e2e8f0)', borderRadius: '0.2rem', overflowX: 'auto', maxHeight: '300px', fontSize: '0.7rem', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                            {JSON.stringify(v, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

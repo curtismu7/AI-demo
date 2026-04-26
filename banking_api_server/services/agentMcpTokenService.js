@@ -47,6 +47,7 @@ const { writeMcpTrafficEntry } = require('./mcpTrafficLogger');
 const { trackTokenEvent } = require('./tokenChainService');
 const { trackToken } = require('./apiCallTrackerService');
 const { logEvent: logAppEvent } = require('./appEventService');
+const { decodeJwt, sanitizePingOneResponse } = require('../utils/tokenUtils');
 const tokenExchangeConfig = require('../config/tokenExchangeConfig');
 
 /** Minimum distinct scopes on the User access token before RFC 8693 to MCP (so PingOne can narrow audience + scope). */
@@ -90,16 +91,7 @@ function throwTokenResolutionError(tokenEvents, code, message, httpStatus = 502)
  * NEVER returns the raw token string.
  */
 function decodeJwtClaims(token) {
-  if (!token || typeof token !== 'string') { return null; }
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) { return null; }
-    const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
-    const claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-    return { header, claims };
-  } catch (_e) {
-    return null;
-  }
+  return decodeJwt(token);
 }
 
 /**
@@ -415,8 +407,16 @@ async function exchangeTokenRfc8693(userToken, actorToken, mcpResourceUri, final
   }
 
   writeMcpTrafficEntry({ dir: 'PingOne→BFF', type: 'exchange_response', method: 'token_exchange', tool: null, durationMs: Date.now()-_exchangeT0, ok: !!exchangedToken, summary: `RFC 8693 exchange ← ${exchangedToken?'OK token received':'FAILED no token'} (${Date.now()-_exchangeT0}ms)`, payload: { token_received: !!exchangedToken } });
+  const _exchangedDecoded = decodeJwt(exchangedToken);
+  const _rfc8693Request = {
+    grantType: 'urn:ietf:params:oauth:grant-type:token-exchange',
+    audience: mcpResourceUri,
+    scope: (finalScopes || []).join(' '),
+    hasActorToken: !!(actorToken),
+  };
+  const _rfc8693Response = sanitizePingOneResponse(_exchangedDecoded?.claims || {});
   logAppEvent('token_exchange', 'info', 'RFC 8693 token exchange success — MCP access token obtained',
-    { tag: 'token_exchange/rfc8693-success', metadata: { mcpResourceUri, scopeCount: (finalScopes || []).length, hasActorToken: !!(actorToken), durationMs: Date.now()-_exchangeT0 } });
+    { tag: 'token_exchange/rfc8693-success', metadata: { mcpResourceUri, scopeCount: (finalScopes || []).length, hasActorToken: !!(actorToken), durationMs: Date.now()-_exchangeT0, request: _rfc8693Request, response: { aud: _rfc8693Response.aud, scope: _rfc8693Response.scope, hasActClaim: !!(_exchangedDecoded?.claims?.act) }, jwtFullDecode: _exchangedDecoded || undefined } });
   return exchangedToken;
 }
 
