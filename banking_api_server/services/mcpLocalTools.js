@@ -13,6 +13,7 @@
 
 const dataStore = require('../data/store');
 const runtimeSettings = require('../config/runtimeSettings');
+const { writeMcpTrafficEntry } = require('./mcpTrafficLogger');
 const txConsent = require('./transactionConsentChallenge');
 
 /**
@@ -597,10 +598,45 @@ const TOOL_MAP = {
  */
 async function callToolLocal(tool, params, userId, req) {
   const handler = TOOL_MAP[tool];
+  const t0 = Date.now();
+  const corrId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+  writeMcpTrafficEntry({
+    dir: 'BFF→MCP', type: 'rpc_request', method: 'tools/call', tool,
+    ok: true, correlationId: corrId,
+    summary: `tools/call → ${tool}`,
+    payload: { jsonrpc: '2.0', method: 'tools/call', params: { name: tool, arguments: params || {} } },
+  });
+
   if (!handler) {
-    return { error: `Unknown tool "${tool}". Available: ${Object.keys(TOOL_MAP).filter(k => !['list_accounts','list_transactions','deposit','withdraw','transfer'].includes(k)).join(', ')}` };
+    const errMsg = `Unknown tool "${tool}"`;
+    writeMcpTrafficEntry({
+      dir: 'MCP→BFF', type: 'rpc_response', method: 'tools/call', tool,
+      ok: false, durationMs: Date.now() - t0, correlationId: corrId,
+      summary: `tools/call ← ERROR: ${errMsg}`,
+      payload: { error: { code: -32601, message: errMsg } },
+    });
+    return { error: `${errMsg}. Available: ${Object.keys(TOOL_MAP).filter(k => !['list_accounts','list_transactions','deposit','withdraw','transfer'].includes(k)).join(', ')}` };
   }
-  return handler(params || {}, userId, req);
+
+  try {
+    const result = await handler(params || {}, userId, req);
+    writeMcpTrafficEntry({
+      dir: 'MCP→BFF', type: 'rpc_response', method: 'tools/call', tool,
+      ok: !result?.error, durationMs: Date.now() - t0, correlationId: corrId,
+      summary: `tools/call ← ${tool} ${result?.error ? 'ERROR' : 'OK'} (${Date.now() - t0}ms)`,
+      payload: result,
+    });
+    return result;
+  } catch (err) {
+    writeMcpTrafficEntry({
+      dir: 'MCP→BFF', type: 'error', method: 'tools/call', tool,
+      ok: false, durationMs: Date.now() - t0, correlationId: corrId,
+      summary: `tools/call ← THROW: ${err.message}`,
+      payload: { error: err.message },
+    });
+    throw err;
+  }
 }
 
 

@@ -121,7 +121,7 @@ const EMPTY_FORM = {
   mcp_resource_uri: '',         // RFC 8693 MCP audience URI — required for token exchange
   debug_oauth: 'false',
   // PingOne Authorize (in-app authorization policy gate)
-  authorize_enabled: 'false',
+  authorize_enabled: 'true',
   authorize_decision_endpoint_id: '', // Phase 2 — preferred path
   authorize_mcp_decision_endpoint_id: '', // MCP first-tool gate (DecisionContext=McpFirstTool)
   authorize_policy_id: '',            // Phase 1 — legacy fallback

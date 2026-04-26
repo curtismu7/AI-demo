@@ -108,7 +108,7 @@ const FIELD_DEFS = {
   ff_authorize_fail_open:  { public: true, default: 'true'  }, // fail open (allow) on Authorize errors
   ff_authorize_deposits:   { public: true, default: 'false' }, // apply Authorize to deposits too
   // When true with authorize_enabled: run in-process simulated Authorize (education); no PingOne call
-  ff_authorize_simulated:  { public: true, default: 'false' },
+  ff_authorize_simulated:  { public: true, default: 'true' },
   // PingOne Authorize (or simulated) once per session on first BankingAgent MCP tool call — see docs/PINGONE_AUTHORIZE_PLAN.md §7
   ff_authorize_mcp_first_tool: { public: true, default: 'false' },
   ff_hitl_enabled:         { public: true, default: 'true'  }, // require human approval for agent-initiated high-value transactions
@@ -183,6 +183,9 @@ const FIELD_DEFS = {
 
 function _getEncryptionKey() {
   const rawKey = process.env.CONFIG_ENCRYPTION_KEY || process.env.SESSION_SECRET || 'dev-fallback-key-do-not-use-in-production';
+  if (!process.env.CONFIG_ENCRYPTION_KEY && !process.env.SESSION_SECRET) {
+    console.error('[ConfigStore] CRITICAL: No CONFIG_ENCRYPTION_KEY or SESSION_SECRET set — using insecure dev fallback key. Set one of these env vars in production.');
+  }
   // Derive a stable 32-byte key using scrypt with a fixed salt
   return crypto.scryptSync(rawKey, 'banking-config-salt-v1', 32);
 }
@@ -210,8 +213,10 @@ function _decrypt(ciphertext) {
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
     decipher.setAuthTag(tag);
     return Buffer.concat([decipher.update(enc), decipher.final()]).toString('utf8');
-  } catch (_) {
-    // Corrupted or mis-keyed — return empty so the field shows as "not set"
+  } catch (err) {
+    // Corrupted or mis-keyed ciphertext — likely a key rotation or env mismatch.
+    // Return '' so the field shows as "not set", but warn so operators can diagnose.
+    console.warn('[ConfigStore] Decryption failed — possible key mismatch or key rotation. Re-enter the affected credential in the admin UI.', err.message);
     return '';
   }
 }
@@ -371,6 +376,10 @@ class ConfigStore {
    * - With persisted store (SQLite): cache first, then env fallbacks, then default.
    * - Without persistence: env vars only (no runtime persistence).
    * This is what config/oauth.js getters call.
+   *
+   * IMPORTANT: keys passed to getEffective() must be lowercase (e.g. 'pingone_environment_id').
+   * The env-var fallback map uses lowercase keys — passing UPPERCASE will silently miss the fallback.
+   * Use configStore.get() for FIELD_DEFS keys (which are UPPERCASE).
    */
   getEffective(key) {
     // Env-var fallback map (PINGONE_CORE_* / PINGONE_AI_CORE_* / PINGONE_ADMIN_* all refer to the same PingOne apps)

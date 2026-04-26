@@ -38,7 +38,7 @@ const FLAG_REGISTRY = [
       'ON + Simulated → in-process PERMIT/DENY/428 identical HTTP shape to PingOne. ' +
       'ON + not simulated → calls PingOne (requires worker app + endpoint or policy ID). OFF → no Authorize gate.',
     type:         'boolean',
-    defaultValue: false,
+    defaultValue: true,
     docsUrl:      'https://docs.PingOneentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html',
   },
   {
@@ -51,7 +51,7 @@ const FLAG_REGISTRY = [
     impact:
       'ON = education mode: deny above $50k (configurable via SIMULATED_AUTHORIZE_DENY_AMOUNT); policy step-up for large transfers/withdrawals without strong ACR (see simulatedAuthorizeService.js). OFF = live PingOne only.',
     type:         'boolean',
-    defaultValue: false,
+    defaultValue: true,
     warnIfEnabled: true,
   },
   {

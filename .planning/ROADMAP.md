@@ -1759,6 +1759,20 @@ Plans:
 - [ ] 236-03-PLAN.md — Review auth/token services and core infrastructure (oauthService, cibaService, agentTokenService, agentMcpTokenService, delegationService, audValidationService, configStore, pingOneAuthorizeService, simulatedAuthorizeService, configHostnameService)
 - [ ] 236-04-PLAN.md — Assemble all findings into banking_api_server/REVIEW.md with executive summary and severity-sorted table
 
+### Phase 238: Dashboard overhaul: token diff view, architecture diagram, MCP inspector, API call explorer, and RFC-linked learning panels
+
+**Goal:** Replace placeholder-heavy dashboard panels with a full educational learning center: horizontal JWT claim diff across exchange hops, interactive architecture diagram (Lucidchart-style), MCP JSON-RPC pair view, API call explorer with annotations, and "What's Happening Now" narrative panel.
+**Requirements**: TBD
+**Depends on:** Phase 237
+**Plans:** 5 plans
+
+Plans:
+- [ ] 238-01: TokenDiffPanel — horizontal JWT claim diff across exchange hops
+- [ ] 238-02: InteractiveArchDiagram — CSS architecture diagram matching Lucidchart (User→BFF→PingOne→agent→LLM→MCP GW→MCP OLB/Invest→APIs)
+- [ ] 238-03: MCP Inspector Enhancement — Pair View (request+response side-by-side) + MCP spec links
+- [ ] 238-04: ApiExplorerPanel — expandable accordion for all BFF API calls with RFC annotations
+- [ ] 238-05: Dashboard Learning Center — NarrativePanel + DevToolsOverlay open by default
+
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 

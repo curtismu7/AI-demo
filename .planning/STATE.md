@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-04-26T11:23:30.175Z"
+last_updated: "2026-04-26T20:59:30.794Z"
 progress:
-  total_phases: 123
-  completed_phases: 103
-  total_plans: 202
-  completed_plans: 197
-  percent: 98
+  total_phases: 125
+  completed_phases: 108
+  total_plans: 209
+  completed_plans: 211
+  percent: 100
 ---
 
 # State — Super Banking AI Banking Demo
@@ -21,9 +21,9 @@ progress:
 
 ## Current Position
 
-Phase: --phase (233) — EXECUTING
+Phase: --phase (237) — EXECUTING
 Plan: 1 of --name
-Next phase: 225 (retail-theme-toggle) — available for planning
+Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) — available for planning
 
 ## Recent Progress
 
@@ -102,6 +102,10 @@ Next phase: 225 (retail-theme-toggle) — available for planning
 
 ## Roadmap Evolution
 
+- Phase 238 added: Dashboard overhaul — token diff view, architecture diagram, MCP inspector, API call explorer, and RFC-linked learning panels
+- Phase 237 added: Frontend RFC visualization + production polish (rfcLinks, RfcLink, exchange hop JWT examples, token chain annotations, RFC 9728 live metadata)
+- Phase 236 added: Code review pass — async patterns, memory leaks, security, and modern JS standards audit
+- Phase 235 added: Surface introspection validation results in token chain and activity log — show that PingOne confirmed a token active, not just decoded
 - Phase 234 added: Token-chain updates too often; update token-chain only when the active UI page contains token-chain
 - Phase 233 added: Enrich activity log with decoded token payloads — full JWT header+claims per token, introspection results, PingOne API req/resp bodies, LLM prompts, agent reasoning steps, PKCE details, CIBA, step-up MFA triggers, scope resolution, session snapshots
 - Phase 232 added: Unified activity log — append-only structured log file for token exchanges, MCP tool calls, PingOne API calls, authorize gate decisions, agent prompts, and auth events; wire to Activity Logs UI
@@ -240,10 +244,12 @@ Next phase: 225 (retail-theme-toggle) — available for planning
 
 ### Pending Todos
 
-- 4 pending todos
+- 6 pending todos
 - Latest: Update token-chain only on token-chain UI pages
 - Other: Remove icons from agent panel; fix pop-out agent taking too much space
 - Other: Fix PingOne token policy explorer
 - Other: Add clear token reset button
+- NEW: Simulated Authorize output must be byte-for-byte indistinguishable from real PingOne Authorize — same JSON shape, field names, HTTP status codes, error formats, and timing characteristics. API requests must also mimic PingOne Authorize request format exactly.
+- NEW: All test pages (PingOne Test, MFA Test, Authz Test, etc.) must show (1) the actual PingOne API endpoint being called and (2) the full JSON request body for that call, so users can learn what each API does.
 
-**Planned Phase:** 232 (unified-activity-log-append-only-structured-log-file-for-tok) — 4 plans — 2026-04-26T03:03:11.425Z
+**Planned Phase:** 236 (code-review-pass-async-patterns-memory-leaks-security-and-mo) — 4 plans — 2026-04-26T16:11:25.213Z
