@@ -11,12 +11,14 @@ import TokenChainDisplay from './TokenChainDisplay';
 import UnifiedTokenFlowInspector from './UnifiedTokenFlowInspector';
 import McpTrafficPage from './McpTrafficPage';
 import TokenDiffPanel from './TokenDiffPanel';
+import ApiExplorerPanel from './ApiExplorerPanel';
 
 const TABS = [
   { id: 'chain',     icon: '🔗', label: 'Token Chain' },
   { id: 'diff',      icon: '📊', label: 'Token Diff' },
   { id: 'inspector', icon: '🔬', label: 'Flow Inspector' },
   { id: 'traffic',   icon: '🔌', label: 'MCP Traffic' },
+  { id: 'api',       icon: '📡', label: 'API Explorer' },
 ];
 
 export default function DevToolsDashboard({
@@ -100,6 +102,9 @@ export default function DevToolsDashboard({
         </div>
         <div style={{ display: activeTab === 'traffic' ? 'flex' : 'none', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
           <McpTrafficPage />
+        </div>
+        <div style={{ display: activeTab === 'api' ? 'flex' : 'none', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+          <ApiExplorerPanel />
         </div>
       </div>
       </div>{/* end full-height wrapper */}
