@@ -10,7 +10,7 @@ export default function TokenFlowPanel({ isOpen, onClose, initialTabId }) {
       label: 'Diagram',
       content: (
         <>
-          <h3 style={{ marginTop: 0 }}>2-Exchange Delegation Flow — Visual</h3>
+          <h3 style={{ marginTop: 0 }}>2-Token Exchange Flow — Visual</h3>
           <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: 12 }}>
             End-to-end token journey from user login through two RFC 8693 exchanges to the final MCP tool call.
           </p>
@@ -23,7 +23,7 @@ export default function TokenFlowPanel({ isOpen, onClose, initialTabId }) {
       label: 'Overview',
       content: (
         <>
-          <h3>2-Exchange Delegation Flow</h3>
+          <h3>2-Token Exchange Flow</h3>
           <p>
             BX Finance uses a <strong>two-step RFC 8693 token exchange chain</strong> to safely
             delegate a user's banking authority to an AI agent and then to an MCP server tool —
@@ -521,7 +521,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
     <EducationDrawer
       isOpen={isOpen}
       onClose={onClose}
-      title="2-Exchange Delegation Flow"
+      title="2-Token Exchange Flow"
       tabs={tabs}
       initialTabId={initialTabId}
     />

@@ -82,6 +82,19 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-26 — Phase 237: Frontend RFC visualization + production polish
+
+- **CSS variable rename:** `--chase-*` → `--brand-*` across all UI source files (~88 files). Removes brand-specific naming so the design system is reusable across banking, retail, and future themes.
+- **RFC links:** Added `src/config/rfcLinks.js` (single source of truth) and `RfcLink` shared component. All RFC references in education panels now render as clickable external links.
+- **Token chain RFC annotations:** Exchange connector arrows in `TokenChainDisplay` now show RFC 8693 link, canonical exchange type label, and target audience at each hop.
+- **Exchange flow canonical naming:** Renamed "2-Exchange" → "2-Token Exchange" everywhere in rendered UI (TokenChainDisplay, StepUpPanel, AgentFlowDiagramPanel, SelfServicePage, DemoDataPage, TokenFlowPanel).
+- **JWT hop examples:** RFC 8693 panel "Exchange Hops" tab shows decoded JWT payloads at Hop 0 (user token), Hop 1 (GW delegated token), Hop 2 (backend token).
+- **MCP handshake tab:** McpProtocolPanel now has a "Handshake sequence" tab showing full JSON-RPC initialize → notifications/initialized → tools/list → tools/call flow.
+- **RFC 9728 live metadata:** BFF `GET /api/rfc9728/all` proxies /.well-known/oauth-protected-resource from all 4 services. UI "Fetch Live Metadata" button renders collapsible service cards with field annotations.
+- **TokenAudienceChain diagram:** New CSS-only component showing User Token → GW Token → Backend Token with aud values and RFC 8693 exchange arrows.
+- **Deleted:** Duplicate `RFC9728Content.js` (merged into `enhancedRFC9728Content.js`).
+- **Do not break:** Exchange flow labels must say "2-Token Exchange" / "ID Token 2-Token Exchange"; RfcLink must render as external link with icon; token chain connector RFC annotation must appear between all non-last events.
+
 ### 2026-04-20 — Phase 208: Fix 36 failing test suites + NL heuristic toolsCalled names
 
 - **Root cause (tests):** 36 test suites accumulated drift: wrong import paths (configStore, protectedResourceMetadata), stale auth middleware mocks, assertion mismatches against evolved service APIs, delegation URL format changes, configStore API removal (hasKvStorage), empty test suite.

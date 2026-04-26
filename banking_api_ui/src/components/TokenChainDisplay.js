@@ -999,7 +999,7 @@ function calcInitialPos(triggerEl) {
 // ---------- Exchange mode banner -----------------------------------------
 
 const EXCHANGE_MODE_MAP = {
-  '2-exchange':   { label: '2-Exchange Delegation',    cls: 'tcd-exc-banner--teal',  desc: 'Nested act: subject → agent → MCP (RFC 8693)' },
+  '2-exchange':   { label: '2-Token Exchange',    cls: 'tcd-exc-banner--teal',  desc: 'Nested act: subject → agent → MCP (RFC 8693)' },
   'with-actor':   { label: '1-Exchange + actor token', cls: 'tcd-exc-banner--blue',  desc: 'act claim present — BFF delegated per RFC 8693' },
   'subject-only': { label: '1-Exchange (no actor)',    cls: 'tcd-exc-banner--slate', desc: 'No act claim — subject-only RFC 8693' },
 };
