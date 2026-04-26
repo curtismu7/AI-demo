@@ -1,0 +1,123 @@
+// banking_api_ui/src/components/NarrativePanel.js
+import React from 'react';
+import { useTokenChainOptional } from '../context/TokenChainContext';
+import RfcLink from './shared/RfcLink';
+import './NarrativePanel.css';
+
+function dotClass(status) {
+  if (status === 'success' || status === 'acquired') return 'np-dot np-dot--success';
+  if (status === 'error') return 'np-dot np-dot--error';
+  if (status === 'active' || status === 'pending') return 'np-dot np-dot--pending';
+  return 'np-dot';
+}
+
+function claimPills(claims, prev) {
+  if (!claims || Object.keys(claims).length === 0) return null;
+  const KEY_ORDER = ['sub', 'aud', 'scope', 'act', 'may_act', 'client_id'];
+  const keys = [...KEY_ORDER.filter(k => k in claims), ...Object.keys(claims).filter(k => !KEY_ORDER.includes(k))].slice(0, 8);
+  return keys.map(k => {
+    const val = claims[k];
+    const display = typeof val === 'object' ? JSON.stringify(val) : String(val);
+    const prevVal = prev?.[k];
+    const isNew = prevVal === undefined;
+    const isChanged = !isNew && JSON.stringify(prevVal) !== JSON.stringify(val);
+    const isKey = ['sub', 'aud', 'act'].includes(k);
+    const cls = isNew ? 'np-claim np-claim--new' : isChanged ? 'np-claim np-claim--changed' : isKey ? 'np-claim np-claim--highlight' : 'np-claim';
+    return (
+      <span key={k} className={cls} title={`${k}: ${display}`}>
+        {k}: {display.length > 30 ? display.slice(0, 30) + '…' : display}
+      </span>
+    );
+  });
+}
+
+function buildSteps(events) {
+  return events.map((ev, i) => {
+    const prev = i > 0 ? events[i - 1].claims : null;
+    const id = ev.id || '';
+    const claims = ev.claims || {};
+
+    let label = ev.label || id;
+    let body = null;
+    let rfcNode = null;
+
+    if (id === 'user-token' || id.startsWith('synthetic-session')) {
+      label = 'User authenticated';
+      body = `Session token acquired via PKCE. Subject: ${claims.sub || '—'}. Audience: ${claims.aud || '—'}.`;
+      rfcNode = <RfcLink rfc="RFC_7636" />;
+    } else if (id === 'cc-token' || id.includes('agent-actor') || id.includes('cc')) {
+      label = 'Agent credentials token obtained';
+      body = `AI agent obtained a client credentials token to identify itself during the token exchange.`;
+      rfcNode = <RfcLink rfc="RFC_6749" />;
+    } else if (id === 'exchange' || id.includes('exchange')) {
+      label = 'Token exchange initiated (RFC 8693)';
+      body = `BFF sent user token + agent CC token to PingOne. PingOne issues a new token with narrowed audience${claims.act ? ' and delegation chain (act claim)' : ''}.`;
+      rfcNode = <RfcLink rfc="RFC_8693" section="§3" />;
+    } else if (id.includes('mcp') || id.includes('exchanged')) {
+      label = 'MCP-scoped token issued';
+      const actSub = claims.act?.sub;
+      body = `Audience narrowed to MCP server. Subject preserved: ${claims.sub || '—'}.${actSub ? ` Delegation: act.sub = ${actSub} (agent identity).` : ''}`;
+      rfcNode = <RfcLink rfc="RFC_8693" section="§4.1" />;
+    }
+
+    return { ev, label, body, rfcNode, claims, prev };
+  });
+}
+
+function buildSummary(events) {
+  if (events.length === 0) return null;
+  const hasExchange = events.some(ev => ev.id?.includes('exchange') || ev.id?.includes('mcp'));
+  const hasAct = events.some(ev => ev.claims?.act);
+  const lastAud = events[events.length - 1]?.claims?.aud;
+
+  if (hasExchange && hasAct) {
+    return `2-Exchange flow complete. User identity delegated to AI agent via RFC 8693. Token audience narrowed to ${lastAud || 'MCP server'} with act claim preserving agent identity.`;
+  }
+  if (hasExchange) {
+    return `1-Exchange flow complete. User token narrowed to ${lastAud || 'MCP server'} audience. No delegation chain — subject-only exchange.`;
+  }
+  return `User session token active. Run the AI agent to trigger an RFC 8693 token exchange and see the full chain.`;
+}
+
+export default function NarrativePanel() {
+  const ctx = useTokenChainOptional();
+  const events = ctx?.events || [];
+
+  if (events.length === 0) {
+    return (
+      <div className="np-root">
+        <div className="np-title">What's Happening</div>
+        <div className="np-subtitle">Plain-English walkthrough of the token exchange flow</div>
+        <div className="np-idle">
+          <div className="np-idle-icon">🔐</div>
+          <div>No token exchange in progress.</div>
+          <div style={{ marginTop: 6, fontSize: '0.78rem' }}>Use the AI agent to trigger an RFC 8693 exchange and see the story unfold here.</div>
+        </div>
+      </div>
+    );
+  }
+
+  const steps = buildSteps(events);
+  const summary = buildSummary(events);
+
+  return (
+    <div className="np-root">
+      <div className="np-title">What's Happening</div>
+      <div className="np-subtitle">Plain-English walkthrough · <RfcLink rfc="RFC_8693" /></div>
+
+      <div className="np-timeline">
+        {steps.map(({ ev, label, body, rfcNode, claims, prev }) => (
+          <div key={ev.id} className="np-step">
+            <div className={dotClass(ev.status)} />
+            <div className="np-step-label">{label}</div>
+            {body && <div className="np-step-body">{body}</div>}
+            <div className="np-step-claims">{claimPills(claims, prev)}</div>
+            {rfcNode && <div className="np-rfc">{rfcNode}</div>}
+          </div>
+        ))}
+      </div>
+
+      {summary && <div className="np-summary">{summary}</div>}
+    </div>
+  );
+}

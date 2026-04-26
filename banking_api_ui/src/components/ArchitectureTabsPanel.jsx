@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useExchangeMode } from '../context/ExchangeModeContext';
 import TokenExchangeFlowDiagram from './TokenExchangeFlowDiagram';
 import InteractiveArchDiagram from './education/InteractiveArchDiagram';
+import NarrativePanel from './NarrativePanel';
 import './ArchitectureTabsPanel.css';
 
 /**
@@ -42,6 +43,15 @@ const ArchitectureTabsPanel = () => {
         >
           Token Exchange Flow
         </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === 'narrative'}
+          aria-controls="narrative-content"
+          onClick={() => setActiveTab('narrative')}
+          className="architecture-tab-button"
+        >
+          What's Happening
+        </button>
       </div>
 
       {/* Tab content panels */}
@@ -58,6 +68,10 @@ const ArchitectureTabsPanel = () => {
             <TokenExchangeFlowDiagram mode={mode} />
           </div>
         )}
+      </div>
+
+      <div role="tabpanel" id="narrative-content" className="architecture-tab-content">
+        {activeTab === 'narrative' && <NarrativePanel />}
       </div>
     </div>
   );

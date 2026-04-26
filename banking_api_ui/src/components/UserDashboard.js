@@ -3284,7 +3284,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 				</div>
 			)}
 
-			<DevToolsOverlay />
+			<DevToolsOverlay defaultOpen />
 		</div>
 	);
 };
