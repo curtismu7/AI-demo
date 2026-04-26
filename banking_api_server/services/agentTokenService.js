@@ -15,6 +15,7 @@
  */
 
 const { logger } = require("../utils/logger");
+const { logEvent: logAppEvent } = require('./appEventService');
 
 /**
  * Validate that a token is a valid agent (actor) token
@@ -50,17 +51,24 @@ async function validateAgentActorToken(token, expectedAudience) {
       hasActClaim: true // would be actual check
     });
 
-    return {
+    const result = {
       valid: true,
       actorId: 'placeholder-actor-id',
       subject: 'placeholder-user-id',
       scopes: ['banking:read', 'banking:transfer']
     };
+    logAppEvent('token_exchange', 'info', 'Agent actor token validated successfully',
+      { tag: 'token_exchange/agent-token-valid', metadata: { actorId: result.actorId, subject: result.subject, scopeCount: (result.scopes || []).length } }
+    );
+    return result;
   } catch (error) {
     logger.warn('Actor (agent) token validation failed', {
       error: error.message,
       expectedAudience
     });
+    logAppEvent('token_exchange', 'warning', `Agent actor token validation failed: ${error.message}`,
+      { tag: 'token_exchange/agent-token-invalid', metadata: { error: error.message } }
+    );
     return {
       valid: false,
       error: error.message

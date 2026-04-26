@@ -5,6 +5,7 @@ const fs      = require('fs');
 const crypto  = require('crypto');
 const axios   = require('axios');
 const configStore = require('./configStore');
+const { logEvent: logAppEvent } = require('./appEventService');
 const { getManagementToken } = require('./pingOneClientService');
 const { fetchPingOneUserByUsername } = require('./pingOneUserLookupService');
 const { fetchFirstPopulationId } = require('./pingoneBootstrapService');
@@ -185,6 +186,9 @@ async function grantDelegation({ delegatorUserId, delegatorEmail, delegateEmail,
         console.warn('[delegationService] Management credentials not configured — storing delegation without PingOne user provisioning');
         // delegateUserId remains null; delegation is stored locally
       } else {
+        logAppEvent('auth_lifecycle', 'warning', 'Delegation grant failed — PingOne provisioning error',
+          { tag: 'delegation/grant-provisioning-failed', metadata: { delegatorUserId, delegateEmail, scopeCount: (scopes || []).length } }
+        );
         return {
           ok: false,
           error: 'provisioning_failed',
@@ -223,6 +227,9 @@ async function grantDelegation({ delegatorUserId, delegatorEmail, delegateEmail,
     _sendDelegationEmail(delegateUserId, 'grant', delegatorEmail).catch(() => {})
   );
 
+  logAppEvent('auth_lifecycle', 'info', `Delegation granted: ${delegatorEmail} → ${delegateEmail}`,
+    { tag: 'delegation/grant-success', metadata: { delegationId: record.id, delegatorUserId, delegateEmail, scopeCount: (scopes || []).length } }
+  );
   return { ok: true, delegation: toRecord(record) };
 }
 
@@ -239,6 +246,9 @@ async function revokeDelegation(id, delegatorUserId) {
       'SELECT * FROM delegations WHERE id = ? AND delegator_user_id = ?'
     ).get(id, delegatorUserId);
     if (!row || row.status === 'revoked') {
+      logAppEvent('auth_lifecycle', 'warning', 'Delegation revoke failed — not found or already revoked',
+        { tag: 'delegation/revoke-not-found', metadata: { delegationId: id, delegatorUserId } }
+      );
       return { ok: false, error: 'not_found' };
     }
     storage.db.prepare(
@@ -254,6 +264,9 @@ async function revokeDelegation(id, delegatorUserId) {
   } else {
     const rec = storage.map.get(id);
     if (!rec || rec.delegator_user_id !== delegatorUserId || rec.status === 'revoked') {
+      logAppEvent('auth_lifecycle', 'warning', 'Delegation revoke failed — not found or already revoked',
+        { tag: 'delegation/revoke-not-found', metadata: { delegationId: id, delegatorUserId } }
+      );
       return { ok: false, error: 'not_found' };
     }
     rec.status = 'revoked';
@@ -265,6 +278,9 @@ async function revokeDelegation(id, delegatorUserId) {
     );
   }
 
+  logAppEvent('auth_lifecycle', 'info', `Delegation revoked: id=${id}`,
+    { tag: 'delegation/revoke-success', metadata: { delegationId: id, delegatorUserId } }
+  );
   return { ok: true };
 }
 

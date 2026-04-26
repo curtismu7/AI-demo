@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getTokenChain, getCurrentTokens, synthesizeFromSession, getMCPToolCalls } = require('../services/tokenChainService');
+const { logEvent: logAppEvent } = require('../services/appEventService');
 
 // GET /api/token-chain — get token chain for authenticated user (including MCP delegation trail)
 router.get('/', async (req, res) => {
@@ -24,8 +25,14 @@ router.get('/', async (req, res) => {
         lastUpdated: new Date().toISOString()
       }
     });
+    logAppEvent('token_exchange', 'info', `Token chain fetched — ${tokenChain.length} events, ${mcpToolCallsChain.length} MCP tool calls`,
+      { tag: 'token_chain/fetched', metadata: { userId: req.user.id, chainLength: tokenChain.length, mcpToolCalls: mcpToolCallsChain.length } }
+    );
   } catch (err) {
     console.error('[tokenChain] GET error:', err.message);
+    logAppEvent('token_exchange', 'error', `Token chain fetch failed: ${err.message}`,
+      { tag: 'token_chain/error', metadata: { userId: req.user?.id, error: err.message } }
+    );
     res.status(500).json({ error: 'internal_error', message: err.message });
   }
 });
