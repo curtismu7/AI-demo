@@ -1701,12 +1701,14 @@ Plans:
 **Goal:** Extend appEventService.js with append-only NDJSON file persistence, add authorize and agent_prompt categories, instrument the authorize gate and agent prompt paths, and fill OAuth/CIBA/MCP token exchange instrumentation gaps.
 **Requirements**: D-01, D-03, D-04, D-05
 **Depends on:** Phase 231
-**Plans:** 3 plans
+**Status:** ✅ COMPLETE (2026-04-26)
+**Plans:** 4 plans
 
 Plans:
-- [ ] 232-01-PLAN.md — File persistence + new categories + ActivityLogs icons
-- [ ] 232-02-PLAN.md — Authorize gate + agent_prompt instrumentation
-- [ ] 232-03-PLAN.md — OAuth callback + CIBA + agentMcpTokenService gap fill
+- [x] 232-01-PLAN.md — File persistence + new categories + ActivityLogs icons
+- [x] 232-02-PLAN.md — Authorize gate + agent_prompt instrumentation
+- [x] 232-03-PLAN.md — OAuth callback + CIBA + agentMcpTokenService gap fill
+- [x] 232-04-PLAN.md — Token chain, agent token validation, delegation grant/revoke
 
 ### Phase 233: Enrich activity log with decoded token payloads — log full JWT header+claims for every token in chain, introspection results, PingOne API request/response bodies, LLM prompts and system prompt, agent reasoning steps, PKCE details, CIBA request details, step-up MFA trigger events, scope resolution decisions, session state snapshots
 

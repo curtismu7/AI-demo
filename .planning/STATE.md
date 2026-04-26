@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-04-26T09:58:54.799Z"
+last_updated: "2026-04-26T00:00:00.000Z"
 progress:
   total_phases: 122
-  completed_phases: 101
-  total_plans: 194
-  completed_plans: 192
+  completed_phases: 102
+  total_plans: 198
+  completed_plans: 196
   percent: 99
 ---
 
@@ -21,11 +21,19 @@ progress:
 
 ## Current Position
 
-Phase: --phase (232) — EXECUTING
-Plan: 1 of --name
+Phase: 232 — COMPLETE
 Next phase: 225 (retail-theme-toggle) — available for planning
 
 ## Recent Progress
+
+✅ **Phase 232 COMPLETE**
+
+- Plan 232-01: NDJSON file persistence in appEventService.js (`ACTIVITY_LOG_FILE` env var, `appendFileSync`, `mkdirSync`); added `authorize` and `agent_prompt` EVENT_CATEGORIES; added icons/labels to ActivityLogs.js
+- Plan 232-02: Instrumented authorize.js (4 calls: bypass/permit/deny/error) and bankingAgentLangGraphService.js (3 calls: heuristic_tool/llm_invoke/llm_complete)
+- Plan 232-03: Instrumented oauth.js (5 calls: callback-error/state-mismatch/nonce-mismatch/session-regen-failed/callback-success), cibaService.js (4 calls: initiate/initiated/denied/timeout), agentMcpTokenService.js (2 calls: rfc8693-success/rfc8693-error)
+- Plan 232-04: Instrumented tokenChain.js (2 calls: fetched/error), agentTokenService.js (2 calls: agent-token-valid/agent-token-invalid), delegationService.js (5 calls: grant-success/grant-provisioning-failed/revoke-success/revoke-not-found×2)
+- Commits: 8afdd056, 05bf7bf0, 60d94a91, 731a5463
+- Build: npm run build exit 0
 
 ✅ **Phase 224 COMPLETE**
 
@@ -93,6 +101,7 @@ Next phase: 225 (retail-theme-toggle) — available for planning
 
 ## Roadmap Evolution
 
+- Phase 234 added: Token-chain updates too often; update token-chain only when the active UI page contains token-chain
 - Phase 233 added: Enrich activity log with decoded token payloads — full JWT header+claims per token, introspection results, PingOne API req/resp bodies, LLM prompts, agent reasoning steps, PKCE details, CIBA, step-up MFA triggers, scope resolution, session snapshots
 - Phase 232 added: Unified activity log — append-only structured log file for token exchanges, MCP tool calls, PingOne API calls, authorize gate decisions, agent prompts, and auth events; wire to Activity Logs UI
 - Phase 231 expanded: Agent chip groups — remove Learn & Explore chips from inline panel, keep full list in LangGraph regex (no LLM fallback), collapsible sections, popout discovery panel showing all chips by group
