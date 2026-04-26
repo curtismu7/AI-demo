@@ -7,6 +7,7 @@ import DecodedTokenPanel from "./DecodedTokenPanel";
 import ScopeNarrowingVisualization from "./ScopeNarrowingVisualization";
 import { TokenColorLegend } from "./TokenColorSystem";
 import "./PingOneTestPage.css";
+import PingOneApiPanel from "./PingOneApiPanel";
 
 // Configuration details for each test - what users need to verify in PingOne
 const TEST_CONFIG = {
@@ -218,6 +219,8 @@ export default function PingOneTestPage() {
 	const [agentTokenStatus, setAgentTokenStatus] = useState("pending");
 	const [authzTokenError, setAuthzTokenError] = useState(null);
 	const [agentTokenError, setAgentTokenError] = useState(null);
+	const [agentPingoneReq, setAgentPingoneReq] = useState(null);
+	const [agentPingoneRes, setAgentPingoneRes] = useState(null);
 
 	// Token exchange tests state
 	const [exchange1Status, setExchange1Status] = useState("pending");
@@ -225,9 +228,13 @@ export default function PingOneTestPage() {
 	const [exchange401Status, setExchange401Status] = useState("pending");
 	const [exchange1Error, setExchange1Error] = useState(null);
 	const [exchange2Error, setExchange2Error] = useState(null);
+	const [exchange2PingoneReq, setExchange2PingoneReq] = useState(null);
+	const [exchange2PingoneRes, setExchange2PingoneRes] = useState(null);
 	const [exchange401Error, setExchange401Error] = useState(null);
 	const [exchange401Decoded, setExchange401Decoded] = useState(null);
 	const [exchange401Steps, setExchange401Steps] = useState([]);
+	const [exchange401PingoneReq, setExchange401PingoneReq] = useState(null);
+	const [exchange401PingoneRes, setExchange401PingoneRes] = useState(null);
 	/* eslint-disable no-unused-vars */
 	const [_exchangeIdTokenStatus, setExchangeIdTokenStatus] =
 		useState("pending");
@@ -242,6 +249,8 @@ export default function PingOneTestPage() {
 	const [exchange186SubjectDecoded, setExchange186SubjectDecoded] =
 		useState(null);
 	const [exchange186ActorDecoded, setExchange186ActorDecoded] = useState(null);
+	const [exchange186PingoneReq, setExchange186PingoneReq] = useState(null);
+	const [exchange186PingoneRes, setExchange186PingoneRes] = useState(null);
 	const [ffIdTokenExchange, _setFfIdTokenExchange] = useState(false);
 
 	// Decoded token claims from BFF (server-side decode — no raw JWT in browser)
@@ -1516,6 +1525,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 								}
 								config={TEST_CONFIG.agentToken}
 								testLabel="Get Token"
+					pingoneRequest={agentPingoneReq}
+					pingoneResponse={agentPingoneRes}
 							/>
 							<DecodedTokenPanel
 								decoded={agentDecoded}
@@ -1841,6 +1852,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 													: undefined
 											}
 											config={TEST_CONFIG.exchange2}
+										pingoneRequest={exchange2PingoneReq}
+										pingoneResponse={exchange2PingoneRes}
 										/>
 										{(exchange2SubjectDecoded || exchange2ActorDecoded) && (
 											<>
@@ -1897,6 +1910,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 									audience: "https://mcp-server.pingdemo.com",
 									spel: "MCP server returns 401 → BFF uses ID token (subject) + Agent CC token (actor) → RFC 8693 dual exchange → MCP Gateway token with act claim",
 								}}
+							pingoneRequest={exchange186PingoneReq}
+							pingoneResponse={exchange186PingoneRes}
 							/>
 							{!ffIdTokenExchange && (
 								<div
@@ -1970,6 +1985,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 									audience: "https://mcp-server.pingdemo.com",
 									spel: "User access token sent to MCP → MCP returns 401 → agent fetches CC token → RFC 8693 access token exchange → retry MCP with MCP token",
 								}}
+							pingoneRequest={exchange401PingoneReq}
+							pingoneResponse={exchange401PingoneRes}
 							/>
 							{exchange401Steps.length > 0 && (
 								<ul
@@ -2205,6 +2222,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 							onUpdate={() => runTest("update-apps", updateApps)}
 							updateLabel="Update Apps"
 							updateResult={testResults["update-apps"]}
+						pingoneRequest={testResults.apps?.result?.pingoneRequest}
+						pingoneResponse={testResults.apps?.result?.pingoneResponse}
 						/>
 						<TestCard
 							title="Resource Servers"
@@ -2219,6 +2238,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 							onUpdate={() => runTest("update-resources", updateResources)}
 							updateLabel="Update Resources"
 							updateResult={testResults["update-resources"]}
+						pingoneRequest={testResults.resources?.result?.pingoneRequest}
+						pingoneResponse={testResults.resources?.result?.pingoneResponse}
 						/>
 						<TestCard
 							title="Scopes"
@@ -2233,6 +2254,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 							onUpdate={() => runTest("update-scopes", updateScopes)}
 							updateLabel="Update Scopes"
 							updateResult={testResults["update-scopes"]}
+						pingoneRequest={testResults.scopes?.result?.pingoneRequest}
+						pingoneResponse={testResults.scopes?.result?.pingoneResponse}
 						/>
 						<TestCard
 							title="Users"
@@ -2244,6 +2267,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 							status={testResults.users?.status || "pending"}
 							onTest={() => runTest("users", testUsers)}
 							onFix={() => fixIssue("users")}
+						pingoneRequest={testResults.users?.result?.pingoneRequest}
+						pingoneResponse={testResults.users?.result?.pingoneResponse}
 						/>
 						<TestCard
 							title="AI Agent Apps"
@@ -2475,6 +2500,8 @@ const TestCard = ({
 	envVar,
 	format,
 	failMsg,
+	pingoneRequest,
+	pingoneResponse,
 }) => {
 	const [testing, setTesting] = React.useState(false);
 	const [updating, setUpdating] = React.useState(false);
@@ -2672,6 +2699,7 @@ const TestCard = ({
 					</button>
 				)}
 			</div>
+			<PingOneApiPanel request={pingoneRequest} response={pingoneResponse} />
 		</div>
 	);
 };

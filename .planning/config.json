@@ -1,5 +1,5 @@
 {
-  "model_profile": "quality",
+  "model_profile": "budget",
   "commit_docs": true,
   "parallelization": true,
   "search_gitignored": false,
@@ -32,7 +32,7 @@
     "context_warnings": true
   },
   "agent_skills": {},
-  "resolve_model_ids": "omit",
+  "resolve_model_ids": true,
   "mode": "yolo",
   "granularity": "standard"
 }

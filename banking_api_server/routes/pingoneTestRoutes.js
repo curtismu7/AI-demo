@@ -88,6 +88,15 @@ function buildExchangeTokenEvent(id, label, status, decoded, explanation) {
   };
 }
 
+
+/**
+ * Build a pingoneRequest debug object for display in the UI.
+ * Never includes client_secret or bearer tokens.
+ */
+function _p1ReqDebug(method, url, contentType, body) {
+  return { method, url, contentType: contentType || null, body: body || null };
+}
+
 /**
  * POST /api/pingone-test/worker-config
  * Save worker token configuration to .env and Vercel variables
@@ -513,12 +522,24 @@ router.get('/agent-token', async (req, res) => {
     await configStore.ensureInitialized();
 
     const tokenData = await oauthService.getAgentClientCredentialsTokenWithExpiry();
+    const _tokenEndpoint = oauthService.config?.tokenEndpoint;
+    const _clientId = oauthService.config?.clientId;
 
     const responseData = {
       success: true,
       token: tokenData.token ? tokenData.token.substring(0, 20) + '...' : 'undefined',
       decoded: tokenData.token ? decodeJwtForDisplay(tokenData.token) : null,
-      expires_in: tokenData.expiresIn
+      expires_in: tokenData.expiresIn,
+      pingoneRequest: _tokenEndpoint ? _p1ReqDebug('POST', _tokenEndpoint, 'application/x-www-form-urlencoded', {
+        grant_type: 'client_credentials',
+        client_id: _clientId,
+      }) : undefined,
+      pingoneResponse: tokenData.token ? {
+        token_type: 'Bearer',
+        expires_in: tokenData.expiresIn,
+        access_token: tokenData.token.substring(0, 20) + '...(truncated)',
+        scope: tokenData.token ? decodeJwtForDisplay(tokenData.token)?.payload?.scope : undefined,
+      } : undefined,
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Agent token (client credentials)');
     res.json(responseData);
@@ -581,6 +602,8 @@ router.get('/exchange-user-to-mcp', async (req, res) => {
       buildExchangeTokenEvent('user-token', 'User access token', 'active', subjectDecoded1, 'Authorization Code token from user login (subject token for exchange)'),
       buildExchangeTokenEvent('mcp-token', 'MCP access token', exchangedToken ? 'active' : 'failed', mcpDecoded1, 'RFC 8693 exchanged token — narrowly scoped to MCP server audience'),
     ];
+    const _tokenEp = oauthService.config?.tokenEndpoint;
+    const _exchangerCid = mcpExchangerClientId1 || oauthService.config?.clientId;
     const responseData = {
       success: true,
       token: exchangedToken ? exchangedToken.substring(0, 20) + '...' : 'undefined',
@@ -588,6 +611,14 @@ router.get('/exchange-user-to-mcp', async (req, res) => {
       subjectTokenDecoded: subjectDecoded1,
       requestedScopes: mcpScopes1,
       tokenEvents: tokenEvents1,
+      pingoneRequest: _tokenEp ? _p1ReqDebug('POST', _tokenEp, 'application/x-www-form-urlencoded', {
+        grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+        subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+        audience: mcpAudience1,
+        scope: mcpScopes1.join(' '),
+        client_id: _exchangerCid,
+      }) : undefined,
+      pingoneResponse: mcpDecoded1 ? { token_type: 'Bearer', scope: mcpDecoded1.payload?.scope } : undefined,
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) for MCP token');
     res.json(responseData);
@@ -722,6 +753,7 @@ router.get('/exchange-idtoken-agent-to-mcp', async (req, res) => {
       buildExchangeTokenEvent('actor-token', 'Agent actor token', 'active', actorDecoded, 'Client Credentials token from MCP Token Exchanger (actor in RFC 8693)'),
       buildExchangeTokenEvent('mcp-token', 'MCP access token', exchangedToken ? 'active' : 'failed', mcpDecoded, 'RFC 8693 exchanged token — ID token + actor → MCP gateway token with act claim'),
     ];
+    const _tokenEp186 = oauthService.config?.tokenEndpoint;
     const responseData = {
       success: true,
       token: exchangedToken ? exchangedToken.substring(0, 20) + '...' : 'undefined',
@@ -730,6 +762,15 @@ router.get('/exchange-idtoken-agent-to-mcp', async (req, res) => {
       actorTokenDecoded: actorDecoded,
       requestedScopes: mcpScopes,
       tokenEvents,
+      pingoneRequest: _tokenEp186 ? _p1ReqDebug('POST', _tokenEp186, 'application/x-www-form-urlencoded', {
+        grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+        subject_token_type: 'urn:ietf:params:oauth:token-type:id_token',
+        actor_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+        audience: gatewayUri,
+        scope: mcpScopes.join(' '),
+        client_id: mcpExchangerClientId,
+      }) : undefined,
+      pingoneResponse: mcpDecoded ? { token_type: 'Bearer', scope: mcpDecoded.payload?.scope } : undefined,
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Phase 186: exchange ID token + agent CC for MCP Gateway token');
     res.json(responseData);
@@ -1075,7 +1116,9 @@ router.get('/apps', async (req, res) => {
       success: result.success,
       apps: result.applications || [],
       count: result.applications?.length || 0,
-      error: result.error
+      error: result.error,
+      pingoneRequest: managementService.baseURL ? _p1ReqDebug('GET', `${managementService.baseURL}/applications`) : undefined,
+      pingoneResponse: result.success ? { applications_count: result.applications?.length || 0 } : { error: result.error },
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Applications via Management API');
     res.json(responseData);
@@ -1122,7 +1165,9 @@ router.get('/resources', async (req, res) => {
       success: result.success,
       resources: result.resourceServers || [],
       count: result.resourceServers?.length || 0,
-      error: result.error
+      error: result.error,
+      pingoneRequest: managementService.baseURL ? _p1ReqDebug('GET', `${managementService.baseURL}/resourceServers`) : undefined,
+      pingoneResponse: result.success ? { resourceServers_count: result.resourceServers?.length || 0 } : { error: result.error },
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Resource Servers via Management API');
     res.json(responseData);
@@ -1182,7 +1227,9 @@ router.get('/scopes', async (req, res) => {
       scopes: result.scopes || [],
       count: result.scopes?.length || 0,
       resourceServerId,
-      error: result.error
+      error: result.error,
+      pingoneRequest: managementService.baseURL ? _p1ReqDebug('GET', `${managementService.baseURL}/resourceServers/${resourceServerId}/scopes`) : undefined,
+      pingoneResponse: result.success ? { scopes_count: result.scopes?.length || 0 } : { error: result.error },
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Scopes via Management API');
     res.json(responseData);
@@ -1233,7 +1280,9 @@ router.get('/users', async (req, res) => {
       success: true,
       users,
       count: users.length,
-      error: null
+      error: null,
+      pingoneRequest: managementService.baseURL ? _p1ReqDebug('GET', `${managementService.baseURL}/users?limit=20`) : undefined,
+      pingoneResponse: { users_count: users.length },
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Users via Management API using worker token');
     res.json(responseData);
@@ -2223,6 +2272,7 @@ router.get('/exchange-1token-401-flow', async (req, res) => {
       buildExchangeTokenEvent('mcp-token', 'MCP Access Token', mcpToken ? 'active' : 'failed', mcpDecoded, 'RFC 8693 1-token exchange result — subject-only exchange, aud narrowed to MCP server'),
     ];
 
+    const _tokenEp401 = oauthService.config?.tokenEndpoint;
     const responseData = {
       success: !!mcpToken,
       steps,
@@ -2230,6 +2280,13 @@ router.get('/exchange-1token-401-flow', async (req, res) => {
       agentTokenDecoded: agentDecoded,
       subjectTokenDecoded: subjectDecoded,
       tokenEvents,
+      pingoneRequest: _tokenEp401 ? _p1ReqDebug('POST', _tokenEp401, 'application/x-www-form-urlencoded', {
+        grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+        subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+        audience: mcpResourceUri,
+        scope: mcpScopes.join(' '),
+      }) : undefined,
+      pingoneResponse: mcpDecoded ? { token_type: 'Bearer', scope: mcpDecoded.payload?.scope } : undefined,
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Phase 187: 1-token 401 flow');
     res.json(responseData);

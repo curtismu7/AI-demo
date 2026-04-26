@@ -3,6 +3,7 @@ import apiClient from "../services/apiClient";
 import { notifyError, notifyInfo, notifySuccess } from "../utils/appToast";
 import "./MFATestPage.css";
 import ApiCallDisplay from "./ApiCallDisplay";
+import PingOneApiPanel from "./PingOneApiPanel";
 
 /**
  * Collapsible per-section API call display toggle (Phase 135)
@@ -1637,8 +1638,6 @@ function DaResponseCard({ daId, method }) {
 
 function TestCard({ title, status, error, onTest, rawResult, pingoneRequest, pingoneResponse }) {
 	const [rawOpen, setRawOpen] = useState(false);
-	const [reqOpen, setReqOpen] = useState(false);
-	const [resOpen, setResOpen] = useState(false);
 	return (
 		<div className={`test-card test-card--${status}`}>
 			<div className="test-card-header">
@@ -1661,44 +1660,7 @@ function TestCard({ title, status, error, onTest, rawResult, pingoneRequest, pin
 					{status === "running" ? "Running..." : "Test"}
 				</button>
 			)}
-			{pingoneRequest && (
-				<div className="test-card-raw">
-					<button
-						type="button"
-						className="test-card-raw-toggle"
-						onClick={() => setReqOpen((o) => !o)}
-					>
-						{reqOpen ? "▾ Hide PingOne Request" : "▸ Show PingOne Request"}
-					</button>
-					{reqOpen && (
-						<>
-							<div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: 4 }}>
-								<strong>{pingoneRequest.method}</strong> {pingoneRequest.url}
-								{pingoneRequest.contentType && <span> — <code>{pingoneRequest.contentType}</code></span>}
-							</div>
-							<pre className="test-card-raw-json">
-								{JSON.stringify(pingoneRequest.body, null, 2)}
-							</pre>
-						</>
-					)}
-				</div>
-			)}
-			{pingoneResponse && (
-				<div className="test-card-raw">
-					<button
-						type="button"
-						className="test-card-raw-toggle"
-						onClick={() => setResOpen((o) => !o)}
-					>
-						{resOpen ? "▾ Hide PingOne Response" : "▸ Show PingOne Response"}
-					</button>
-					{resOpen && (
-						<pre className="test-card-raw-json">
-							{JSON.stringify(pingoneResponse, null, 2)}
-						</pre>
-					)}
-				</div>
-			)}
+				<PingOneApiPanel request={pingoneRequest} response={pingoneResponse} />
 			{!pingoneResponse && rawResult !== undefined && rawResult !== null && (
 				<div className="test-card-raw">
 					<button

@@ -1,0 +1,44 @@
+/* PingOneApiPanel — shared collapsible request/response panels for all test pages */
+
+.p1-api-panel {
+  margin-top: 6px;
+}
+
+.p1-api-panel-toggle {
+  background: none;
+  border: none;
+  color: var(--color-primary, #005f99);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 500;
+}
+
+.p1-api-panel-toggle:hover {
+  text-decoration: underline;
+}
+
+.p1-api-panel-meta {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 4px;
+  margin-top: 6px;
+}
+
+.p1-api-panel-meta strong {
+  font-weight: 700;
+}
+
+.p1-api-panel-body {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 0.78rem;
+  overflow-x: auto;
+  margin-top: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre;
+  font-family: "Fira Code", "Cascadia Code", monospace;
+}

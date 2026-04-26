@@ -179,7 +179,11 @@ async function _postDecisionEndpoint(endpointId, parameters) {
 
   const decisionId = raw.id || raw.decisionId || null;
 
-  return { decision, stepUpRequired, hitlRequired, raw, decisionId, path: 'decision-endpoint' };
+  const _debug = {
+    request: { method: 'POST', url, contentType: 'application/json', body: { parameters } },
+    response: raw,
+  };
+  return { decision, stepUpRequired, hitlRequired, raw, decisionId, path: 'decision-endpoint', _debug };
 }
 
 /**

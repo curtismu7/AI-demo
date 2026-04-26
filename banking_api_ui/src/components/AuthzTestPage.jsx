@@ -3,6 +3,7 @@ import apiClient from "../services/apiClient";
 import { notifyError, notifySuccess } from "../utils/appToast";
 import { navigateToAdminOAuthLogin } from "../utils/authUi";
 import "./AuthzTestPage.css";
+import PingOneApiPanel from "./PingOneApiPanel";
 
 // ---------------------------------------------------------------------------
 // Preset scenarios — cover all three decision branches
@@ -118,6 +119,7 @@ function RawJson({ data, label }) {
 	const openLabel = label
 		? `▾ Hide ${label.replace(/^Show /i, "").replace(/^show /i, "")}`
 		: "▾ Hide full response";
+	const isRequest = data && data.method && data.url;
 	return (
 		<div className="authz-raw">
 			<button
@@ -128,7 +130,15 @@ function RawJson({ data, label }) {
 				{open ? openLabel : closedLabel}
 			</button>
 			{open && (
-				<pre className="authz-raw-body">{JSON.stringify(data, null, 2)}</pre>
+				<>
+					{isRequest && (
+						<div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: 4 }}>
+							<strong>{data.method}</strong> {data.url}
+							{data.contentType && <span> — <code>{data.contentType}</code></span>}
+						</div>
+					)}
+					<pre className="authz-raw-body">{JSON.stringify(isRequest ? data.body : data, null, 2)}</pre>
+				</>
 			)}
 		</div>
 	);
@@ -394,7 +404,8 @@ export default function AuthzTestPage() {
 						? ` · ${result.path}`
 						: ""}
 				</span>
-				<RawJson data={displayData} label={rawLabel} />
+				<PingOneApiPanel request={result.pingoneRequest} response={result.engine === "pingone" ? (result.raw ?? displayData) : null} />
+				{result.engine !== "pingone" && <RawJson data={displayData} label={rawLabel} />}
 			</div>
 		);
 	}
@@ -807,7 +818,8 @@ export default function AuthzTestPage() {
 										</span>
 									</div>
 								</div>
-								<RawJson data={customResult.raw} />
+								<PingOneApiPanel request={customResult.pingoneRequest} response={customResult.engine === "pingone" ? customResult.raw : null} />
+							{customResult.engine !== "pingone" && <RawJson data={customResult.raw} label="Show full response" />}
 							</>
 						)}
 					</div>
