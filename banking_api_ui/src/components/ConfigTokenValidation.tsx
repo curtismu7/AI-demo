@@ -218,6 +218,13 @@ export const ConfigTokenValidation: React.FC = () => {
         </div>
       )}
 
+      {/* Proactive banner when introspection mode selected but not yet tested */}
+      {validationMode === 'introspection' && !healthStatus && (
+        <div className={styles.proactiveBanner}>
+          ℹ️ Introspection mode is selected. Click <strong>Test PingOne Connection</strong> below to verify your configuration. If you haven't set up the env vars yet, the test will show a step-by-step setup guide.
+        </div>
+      )}
+
       {/* PingOne connectivity test */}
       <div className={styles.healthSection}>
         <h4 className={styles.healthTitle}>PingOne Connectivity</h4>
@@ -282,6 +289,54 @@ export const ConfigTokenValidation: React.FC = () => {
             <p className={styles.timestamp}>
               Tested: {new Date(healthStatus.timestamp).toLocaleTimeString()}
             </p>
+          </div>
+        )}
+
+        {/* Inline setup guide — shown when health check confirms introspection is not configured */}
+        {healthStatus?.status === 'not_configured' && (
+          <div className={styles.setupGuide}>
+            <p className={styles.setupGuideTitle}>⚙ How to enable token introspection</p>
+
+            <div className={styles.setupStep}>
+              <div className={styles.setupStepHeader}>
+                <span className={styles.setupStepNum}>1</span>
+                <span className={styles.setupStepTitle}>Find your introspection endpoint URL</span>
+              </div>
+              <div className={styles.setupStepBody}>
+                PingOne provides the introspection endpoint at:<br />
+                <code className={styles.code}>https://auth.pingone.com/&#123;environment-id&#125;/as/introspect</code><br /><br />
+                Find your <strong>Environment ID</strong>: PingOne Admin → Environments → select your environment → the ID appears in the URL or on the Overview tab.
+              </div>
+            </div>
+
+            <div className={styles.setupStep}>
+              <div className={styles.setupStepHeader}>
+                <span className={styles.setupStepNum}>2</span>
+                <span className={styles.setupStepTitle}>Create a Worker Application in PingOne</span>
+              </div>
+              <div className={styles.setupStepBody}>
+                <ol>
+                  <li>In PingOne Admin, go to <strong>Applications → Applications</strong></li>
+                  <li>Click <strong>+ Add Application</strong> and select <strong>Worker</strong></li>
+                  <li>Name it (e.g. "Banking Demo Introspection Worker") and save</li>
+                  <li>Open the app → <strong>Configuration</strong> tab → copy <strong>Client ID</strong> and <strong>Client Secret</strong></li>
+                  <li>Make sure the application is <strong>enabled</strong></li>
+                </ol>
+              </div>
+            </div>
+
+            <div className={styles.setupStep}>
+              <div className={styles.setupStepHeader}>
+                <span className={styles.setupStepNum}>3</span>
+                <span className={styles.setupStepTitle}>Add to your .env file and restart</span>
+              </div>
+              <div className={styles.setupStepBody}>
+                <pre className={styles.setupCode}>{`PINGONE_INTROSPECTION_ENDPOINT=https://auth.pingone.com/{env-id}/as/introspect
+PINGONE_WORKER_CLIENT_ID=your-worker-client-id
+PINGONE_WORKER_CLIENT_SECRET=your-worker-client-secret`}</pre>
+                <p className={styles.setupNote}>Replace <code>{'{env-id}'}</code> with your PingOne Environment ID. Restart the BFF server after saving.</p>
+              </div>
+            </div>
           </div>
         )}
 
