@@ -1690,11 +1690,11 @@ Plans:
 **Goal:** Redesign the BankingAgent left-rail chip area: remove inline Learn & Explore, add per-group count badges and collapse-all toolbar, and add a searchable discovery popout for all chips
 **Requirements**: REQ-1 (remove inline edu chips), REQ-2 (LangGraph heuristic coverage), REQ-3 (collapsible groups + collapse-all), REQ-4 (discovery popout with polished UI)
 **Depends on:** Phase 230
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 231-01-PLAN.md — CSS foundations + BankingAgent.js full left-rail redesign (remove dead state, add count badges, collapse-all toolbar, discovery popout JSX)
-- [ ] 231-02-PLAN.md — BFF nlIntentParser.js heuristic completeness (extend EDU constants + 18 new parseEducation() if-blocks)
+- [x] 231-01-PLAN.md — CSS foundations + BankingAgent.js full left-rail redesign (remove dead state, add count badges, collapse-all toolbar, discovery popout JSX)
+- [x] 231-02-PLAN.md — BFF nlIntentParser.js heuristic completeness (extend EDU constants + 18 new parseEducation() if-blocks)
 
 ### Phase 232: Unified activity log — append-only structured log file for token exchanges, MCP tool calls, PingOne API calls, authorize gate decisions, agent prompts, auth events, and UI loading/spinner states; wire to Activity Logs UI
 
