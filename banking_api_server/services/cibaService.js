@@ -28,6 +28,7 @@ const crypto = require('crypto');
 const oauthConfig = require('../config/oauth');
 const configStore = require('./configStore');
 const { PINGONE_OIDC_DEFAULT_SCOPES_SPACE } = require('../config/scopes');
+const { logEvent: logAppEvent } = require('./appEventService');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -96,6 +97,8 @@ async function initiateBackchannelAuth(loginHint, bindingMessage, scope = PINGON
     }
   }
 
+  logAppEvent('auth_lifecycle', 'info', `CIBA: initiating backchannel auth for ${loginHint}`,
+    { tag: 'ciba/initiate', metadata: { loginHint, scope, deliveryMode, hasAcrValues: !!(acrValues) } });
   const response = await axios.post(endpoint, params.toString(), {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -106,6 +109,8 @@ async function initiateBackchannelAuth(loginHint, bindingMessage, scope = PINGON
 
   // PingOne returns: { auth_req_id, expires_in, interval }
   const { auth_req_id, expires_in, interval } = response.data;
+  logAppEvent('auth_lifecycle', 'info', `CIBA: auth request accepted — auth_req_id received`,
+    { tag: 'ciba/initiated', metadata: { expiresIn: expires_in, interval, deliveryMode } });
   return {
     auth_req_id,
     expires_in: expires_in || 300,
@@ -167,10 +172,14 @@ async function waitForApproval(authReqId, intervalSeconds = 5, maxAttempts = 60)
         continue;
       }
       // access_denied, expired_token, invalid_grant, etc.
+      logAppEvent('auth_lifecycle', 'error', `CIBA: auth denied or failed — ${errorCode || 'unknown'}`,
+        { tag: 'ciba/denied', metadata: { errorCode, attempt } });
       throw err;
     }
   }
 
+  logAppEvent('auth_lifecycle', 'error', 'CIBA: authentication timed out',
+    { tag: 'ciba/timeout', metadata: { maxAttempts } });
   throw new Error('CIBA authentication timed out — user did not respond in time');
 }
 

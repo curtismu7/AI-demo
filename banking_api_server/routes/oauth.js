@@ -18,6 +18,7 @@ const oauthConfig = require('../config/oauth');
 const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAuthorizeResource');
 const { trackTokenEvent } = require('../services/tokenChainService');
 const { trackToken } = require('../services/apiCallTrackerService');
+const { logEvent: logAppEvent } = require('../services/appEventService');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -173,6 +174,8 @@ router.get('/callback', async (req, res) => {
     // Check for OAuth errors
     if (error) {
       console.error('OAuth error:', error);
+      logAppEvent('oauth', 'error', `OAuth callback error from PingOne: ${error}`,
+        { tag: 'oauth/callback-error', metadata: { oauthError: error } });
       return res.redirect(`${getFrontendOrigin(req)}/login?error=oauth_error`);
     }
 
@@ -183,6 +186,8 @@ router.get('/callback', async (req, res) => {
 
     if (!state || state !== resolvedState) {
       console.error('[oauth/callback] Invalid state parameter. session:', sessionState, 'cookie:', pkceCookie?.state, 'received:', state);
+      logAppEvent('oauth', 'warning', 'OAuth state mismatch — possible multi-tab race or CSRF attempt',
+        { tag: 'oauth/state-mismatch', metadata: { sessionStatePresent: !!sessionState, cookieStatePresent: !!pkceCookie?.state } });
       clearPkceCookie(res, _isProd());
       // Auto-retry login instead of showing error (multi-tab race)
       console.log('[oauth/callback] Auto-retrying login after invalid_state (multi-tab race)');
@@ -214,6 +219,8 @@ router.get('/callback', async (req, res) => {
           console.warn('[oauth/callback] ID token has no nonce claim');
         } else if (idPayload.nonce !== expectedNonce) {
           console.error('[oauth/callback] Nonce mismatch — possible ID token replay attack');
+          logAppEvent('oauth', 'error', 'OAuth nonce mismatch — possible ID token replay attack',
+            { tag: 'oauth/nonce-mismatch' });
           return res.redirect(`${getFrontendOrigin(req)}/login?error=nonce_mismatch`);
         }
       } catch (e) {
@@ -283,6 +290,8 @@ router.get('/callback', async (req, res) => {
     req.session.regenerate((regenErr) => {
       if (regenErr) {
         console.error('[oauth/callback] Session regenerate FAILED — aborting login (session fixation risk):', regenErr.message);
+        logAppEvent('oauth', 'error', 'OAuth session regeneration failed',
+          { tag: 'oauth/session-regen-failed', metadata: { error: regenErr.message } });
         clearAuthCookie(res, _isProd());
         return res.redirect(`${redirectOrigin}/login?error=session_regenerate_failed`);
       }
@@ -326,6 +335,9 @@ router.get('/callback', async (req, res) => {
           });
         }
         console.debug('[oauth/callback] Session saved OK sid=' + (req.session?.id || '').slice(0, 8) + '…');
+        logAppEvent('oauth', 'info', `OAuth admin login success: ${authedUser?.username || authedUser?.email || 'unknown'}`,
+          { tag: 'oauth/callback-success', username: authedUser?.username,
+            metadata: { role: authedUser?.role, clientType, hasIdToken: !!(oauthTokens?.idToken) } });
         // Set a signed auth-state cookie so the session-restore middleware can
         // answer /status and /nl requests even when the session hits a different
         // serverless instance on Vercel.

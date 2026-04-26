@@ -46,6 +46,7 @@ const adminTokenService = require('./adminTokenService');
 const { writeMcpTrafficEntry } = require('./mcpTrafficLogger');
 const { trackTokenEvent } = require('./tokenChainService');
 const { trackToken } = require('./apiCallTrackerService');
+const { logEvent: logAppEvent } = require('./appEventService');
 const tokenExchangeConfig = require('../config/tokenExchangeConfig');
 
 /** Minimum distinct scopes on the User access token before RFC 8693 to MCP (so PingOne can narrow audience + scope). */
@@ -408,10 +409,14 @@ async function exchangeTokenRfc8693(userToken, actorToken, mcpResourceUri, final
   } catch (err) {
     errorLog('[RFC8693Exchange]', err.message);
     writeMcpTrafficEntry({ dir: 'PingOne→BFF', type: 'error', method: 'token_exchange', tool: null, durationMs: Date.now()-_exchangeT0, ok: false, summary: `RFC 8693 exchange ← ERROR: ${err.message}`, payload: { error: err.message, code: err.code } });
+    logAppEvent('token_exchange', 'error', `RFC 8693 exchange failed: ${err.message}`,
+      { tag: 'token_exchange/rfc8693-error', metadata: { mcpResourceUri, errorMessage: err.message, durationMs: Date.now()-_exchangeT0 } });
     return null;
   }
-  
+
   writeMcpTrafficEntry({ dir: 'PingOne→BFF', type: 'exchange_response', method: 'token_exchange', tool: null, durationMs: Date.now()-_exchangeT0, ok: !!exchangedToken, summary: `RFC 8693 exchange ← ${exchangedToken?'OK token received':'FAILED no token'} (${Date.now()-_exchangeT0}ms)`, payload: { token_received: !!exchangedToken } });
+  logAppEvent('token_exchange', 'info', 'RFC 8693 token exchange success — MCP access token obtained',
+    { tag: 'token_exchange/rfc8693-success', metadata: { mcpResourceUri, scopeCount: (finalScopes || []).length, hasActorToken: !!(actorToken), durationMs: Date.now()-_exchangeT0 } });
   return exchangedToken;
 }
 
