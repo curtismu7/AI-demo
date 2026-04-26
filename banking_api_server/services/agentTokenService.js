@@ -16,6 +16,7 @@
 
 const { logger } = require("../utils/logger");
 const { logEvent: logAppEvent } = require('./appEventService');
+const { decodeJwt } = require('../utils/tokenUtils');
 
 /**
  * Validate that a token is a valid agent (actor) token
@@ -57,8 +58,9 @@ async function validateAgentActorToken(token, expectedAudience) {
       subject: 'placeholder-user-id',
       scopes: ['banking:read', 'banking:transfer']
     };
+    const _actorDecoded = decodeJwt(token);
     logAppEvent('token_exchange', 'info', 'Agent actor token validated successfully',
-      { tag: 'token_exchange/agent-token-valid', metadata: { actorId: result.actorId, subject: result.subject, scopeCount: (result.scopes || []).length } }
+      { tag: 'token_exchange/agent-token-valid', metadata: { actorId: result.actorId, subject: result.subject, scopeCount: (result.scopes || []).length, jwtFullDecode: _actorDecoded || undefined } }
     );
     return result;
   } catch (error) {

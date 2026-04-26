@@ -29,6 +29,7 @@ const oauthConfig = require('../config/oauth');
 const configStore = require('./configStore');
 const { PINGONE_OIDC_DEFAULT_SCOPES_SPACE } = require('../config/scopes');
 const { logEvent: logAppEvent } = require('./appEventService');
+const { decodeJwt } = require('../utils/tokenUtils');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -98,7 +99,7 @@ async function initiateBackchannelAuth(loginHint, bindingMessage, scope = PINGON
   }
 
   logAppEvent('auth_lifecycle', 'info', `CIBA: initiating backchannel auth for ${loginHint}`,
-    { tag: 'ciba/initiate', metadata: { loginHint, scope, deliveryMode, hasAcrValues: !!(acrValues) } });
+    { tag: 'ciba/initiate', metadata: { loginHint, scope, deliveryMode, hasAcrValues: !!(acrValues), bindingMessage: bindingMessage || undefined, request: { scope, deliveryMode, loginHintType: typeof loginHint, bindingMessage: bindingMessage || undefined } } });
   const response = await axios.post(endpoint, params.toString(), {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -110,7 +111,7 @@ async function initiateBackchannelAuth(loginHint, bindingMessage, scope = PINGON
   // PingOne returns: { auth_req_id, expires_in, interval }
   const { auth_req_id, expires_in, interval } = response.data;
   logAppEvent('auth_lifecycle', 'info', `CIBA: auth request accepted — auth_req_id received`,
-    { tag: 'ciba/initiated', metadata: { expiresIn: expires_in, interval, deliveryMode } });
+    { tag: 'ciba/initiated', metadata: { expiresIn: expires_in, interval, deliveryMode, authReqId_length: auth_req_id ? auth_req_id.length : 0 } });
   return {
     auth_req_id,
     expires_in: expires_in || 300,
@@ -158,6 +159,8 @@ async function waitForApproval(authReqId, intervalSeconds = 5, maxAttempts = 60)
 
     try {
       const tokens = await pollForTokens(authReqId);
+      logAppEvent('auth_lifecycle', 'info', 'CIBA: tokens received after user approval',
+        { tag: 'ciba/tokens-received', metadata: { jwtFullDecode: decodeJwt(tokens?.access_token) || undefined } });
       return tokens;
     } catch (err) {
       const errorCode = err.response?.data?.error;
