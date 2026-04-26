@@ -9,6 +9,7 @@ const configStore = require('../services/configStore');
 const { sendTransactionConfirmation } = require('../services/emailService');
 const txConsent = require('../services/transactionConsentChallenge');
 const demoScenarioStore = require('../services/demoScenarioStore');
+const { logEvent: logAppEvent } = require('../services/appEventService');
 
 /**
  * Re-hydrate a user's accounts from the Redis snapshot on cold-start.
@@ -484,6 +485,10 @@ router.post('/', authenticateToken, async (req, res) => {
           );
         }
       }
+    } else {
+      logAppEvent('authorize', 'info',
+        `Authorize gate skipped — ${authz.reason || 'unknown'}`,
+        { tag: 'authorize/gate-skipped', metadata: { reason: authz.reason, type, userId: req.user?.id } });
     }
     // ── End Authorize gate ────────────────────────────────────────────────────
 

@@ -55,7 +55,7 @@ function buildDenyBody({ useSimulated, policyId }) {
  * @param {string} opts.type
  * @param {string} [opts.acr]
  * @returns {Promise<
- *   | { ran: false }
+ *   | { ran: false, reason: string }
  *   | { ran: true, permit: true, evaluation: object }
  *   | { ran: true, block: { status: number, body: object } }
  *   | { ran: true, simulatedError: Error }
@@ -84,14 +84,17 @@ async function evaluateTransactionPolicy({
     : ['transfer', 'withdrawal'];
 
   const PINGONE_READY = !!(AUTHORIZE_DECISION_ENDPOINT_ID || AUTHORIZE_POLICY_ID);
-  const SHOULD_RUN =
-    AUTHORIZE_ENABLED &&
-    userRole !== 'admin' &&
-    AUTHORIZE_TYPES.includes(type) &&
-    (USE_SIMULATED || PINGONE_READY);
-
-  if (!SHOULD_RUN) {
-    return { ran: false };
+  if (!AUTHORIZE_ENABLED) {
+    return { ran: false, reason: 'authorize_disabled' };
+  }
+  if (userRole === 'admin') {
+    return { ran: false, reason: 'admin_role_exempt' };
+  }
+  if (!AUTHORIZE_TYPES.includes(type)) {
+    return { ran: false, reason: 'type_not_in_scope' };
+  }
+  if (!USE_SIMULATED && !PINGONE_READY) {
+    return { ran: false, reason: 'not_configured' };
   }
 
   try {

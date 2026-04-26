@@ -1320,8 +1320,12 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
         }
         if (!mcpAuthz.ran) {
             emit({
-                phase: 'authorize_gate_skipped'
+                phase: 'authorize_gate_skipped',
+                reason: mcpAuthz.reason,
             });
+            _appEvents.logEvent('authorize', 'info',
+                `Authorize gate skipped — ${mcpAuthz.reason || 'unknown'}`,
+                { tag: 'authorize/gate-skipped', metadata: { reason: mcpAuthz.reason } });
         }
     } catch (mcpAuthzErr) {
         emit({

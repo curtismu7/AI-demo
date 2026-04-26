@@ -70,19 +70,19 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
     configStore.get('ff_authorize_mcp_first_tool') === 'true';
 
   if (!flag) {
-    return { ran: false };
+    return { ran: false, reason: 'feature_flag_disabled' };
   }
 
   if (!agentToken || typeof agentToken !== 'string') {
-    return { ran: false };
+    return { ran: false, reason: 'no_agent_token' };
   }
 
   if (req.session?.mcpFirstToolAuthorizeDone) {
-    return { ran: false };
+    return { ran: false, reason: 'already_evaluated' };
   }
 
   if (req.session?.user?.role === 'admin') {
-    return { ran: false };
+    return { ran: false, reason: 'admin_role_exempt' };
   }
 
   const USE_SIMULATED = simulatedAuthorizeService.isSimulatedModeEnabled(configStore);
