@@ -75,6 +75,7 @@ function _wrapError(fnName, err) {
 	);
 	e.status = err.response?.status || 500;
 	e.pingError = pingErr;
+	if (err._debug) e._debug = err._debug;
 	// Attach semantic code for challenge lifecycle errors
 	const status = err.response?.status;
 	if (status === 401) e.code = "token_expired";
@@ -106,25 +107,31 @@ async function initiateDeviceAuth(userId, userAccessToken) {
 			throw e;
 		}
 	}
+	const url = `${_authBaseUrl()}/deviceAuthentications`;
+	const reqBody = { user: { id: userId }, policy: { id: policyId } };
+	const debugRequest = {
+		method: "POST",
+		url: url.replace(/\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\/deviceAuthentications/, "/{envId}/deviceAuthentications"),
+		body: reqBody,
+		contentType: "application/json",
+	};
 	try {
-		const url = `${_authBaseUrl()}/deviceAuthentications`;
-		const { data } = await axios.post(
-			url,
-			{ user: { id: userId }, policy: { id: policyId } },
-			{
+		let data;
+		try {
+			const resp = await axios.post(url, reqBody, {
 				headers: {
 					Authorization: `Bearer ${userAccessToken}`,
 					"Content-Type": "application/json",
 				},
 				timeout: 10000,
-			},
-		);
-		console.log(
-			"[MFA] initiated deviceAuth daId=%s status=%s",
-			data.id,
-			data.status,
-		);
-		return data;
+			});
+			data = resp.data;
+		} catch (err) {
+			err._debug = { request: debugRequest, response: err.response?.data || null };
+			throw err;
+		}
+		console.log("[MFA] initiated deviceAuth daId=%s status=%s", data.id, data.status);
+		return { ...data, _debug: { request: debugRequest, response: data } };
 	} catch (err) {
 		throw _wrapError("initiateDeviceAuth", err);
 	}
@@ -137,20 +144,30 @@ async function initiateDeviceAuth(userId, userAccessToken) {
  * Status transitions: DEVICE_SELECTION_REQUIRED → OTP_REQUIRED | ASSERTION_REQUIRED | PUSH_CONFIRMATION_REQUIRED
  */
 async function selectDevice(daId, deviceId, userAccessToken) {
+	const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
+	const reqBody = { selectedDevice: { id: deviceId } };
+	const debugRequest = {
+		method: "PUT",
+		url: url.replace(/\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\/deviceAuthentications/, "/{envId}/deviceAuthentications"),
+		body: reqBody,
+		contentType: "application/json",
+	};
 	try {
-		const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
-		const { data } = await axios.put(
-			url,
-			{ selectedDevice: { id: deviceId } },
-			{
+		let data;
+		try {
+			const resp = await axios.put(url, reqBody, {
 				headers: {
 					Authorization: `Bearer ${userAccessToken}`,
 					"Content-Type": "application/json",
 				},
 				timeout: 10000,
-			},
-		);
-		return data;
+			});
+			data = resp.data;
+		} catch (err) {
+			err._debug = { request: debugRequest, response: err.response?.data || null };
+			throw err;
+		}
+		return { ...data, _debug: { request: debugRequest, response: data } };
 	} catch (err) {
 		throw _wrapError("selectDevice", err);
 	}
@@ -162,20 +179,30 @@ async function selectDevice(daId, deviceId, userAccessToken) {
  * Status transitions: OTP_REQUIRED → COMPLETED | FAILED
  */
 async function submitOtp(daId, deviceId, otp, userAccessToken) {
+	const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
+	const reqBody = { selectedDevice: { id: deviceId, otp: String(otp) } };
+	const debugRequest = {
+		method: "PUT",
+		url: url.replace(/\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\/deviceAuthentications/, "/{envId}/deviceAuthentications"),
+		body: reqBody,
+		contentType: "application/json",
+	};
 	try {
-		const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
-		const { data } = await axios.put(
-			url,
-			{ selectedDevice: { id: deviceId, otp: String(otp) } },
-			{
+		let data;
+		try {
+			const resp = await axios.put(url, reqBody, {
 				headers: {
 					Authorization: `Bearer ${userAccessToken}`,
 					"Content-Type": "application/json",
 				},
 				timeout: 10000,
-			},
-		);
-		return data;
+			});
+			data = resp.data;
+		} catch (err) {
+			err._debug = { request: debugRequest, response: err.response?.data || null };
+			throw err;
+		}
+		return { ...data, _debug: { request: debugRequest, response: data } };
 	} catch (err) {
 		throw _wrapError("submitOtp", err);
 	}
@@ -277,23 +304,29 @@ async function enrollEmailDevice(userId, email) {
 	try {
 		const workerToken = await _getWorkerToken();
 		const url = `${_apiBaseUrl()}/users/${userId}/devices`;
-		const { data } = await axios.post(
-			url,
-			{ type: "EMAIL", email },
-			{
+		const reqBody = { type: "EMAIL", email };
+		const debugRequest = {
+			method: "POST",
+			url: url.replace(/\/environments\/[^/]+\//, "/environments/{envId}/"),
+			body: reqBody,
+			contentType: "application/json",
+		};
+		let data;
+		try {
+			const resp = await axios.post(url, reqBody, {
 				headers: {
 					Authorization: `Bearer ${workerToken}`,
 					"Content-Type": "application/json",
 				},
 				timeout: 10000,
-			},
-		);
-		console.log(
-			"[MFA] enrolled email device userId=%s deviceId=%s",
-			userId,
-			data.id,
-		);
-		return data;
+			});
+			data = resp.data;
+		} catch (err) {
+			err._debug = { request: debugRequest, response: err.response?.data || null };
+			throw err;
+		}
+		console.log("[MFA] enrolled email device userId=%s deviceId=%s", userId, data.id);
+		return { ...data, _debug: { request: debugRequest, response: data } };
 	} catch (err) {
 		throw _wrapError("enrollEmailDevice", err);
 	}
@@ -315,25 +348,32 @@ async function enrollSmsDevice(userId, phone, userAccessToken) {
 		// Fall back to worker token only when no session token is available.
 		const token = userAccessToken || (await _getWorkerToken());
 		const url = `${_apiBaseUrl()}/users/${userId}/devices`;
-		const { data } = await axios.post(
-			url,
-			{ type: "SMS", phone },
-			{
+		const reqBody = { type: "SMS", phone };
+		const debugRequest = {
+			method: "POST",
+			url: url.replace(/\/environments\/[^/]+\//, "/environments/{envId}/"),
+			body: reqBody,
+			contentType: "application/json",
+		};
+		let data;
+		try {
+			const resp = await axios.post(url, reqBody, {
 				headers: {
 					Authorization: `Bearer ${token}`,
 					"Content-Type": "application/json",
 				},
 				timeout: 10000,
-			},
-		);
+			});
+			data = resp.data;
+		} catch (err) {
+			err._debug = { request: debugRequest, response: err.response?.data || null };
+			throw err;
+		}
 		console.log(
 			"[MFA] enrolled SMS device userId=%s deviceId=%s status=%s (token-source=%s)",
-			userId,
-			data.id,
-			data.status,
-			userAccessToken ? "user" : "worker",
+			userId, data.id, data.status, userAccessToken ? "user" : "worker",
 		);
-		return data;
+		return { ...data, _debug: { request: debugRequest, response: data } };
 	} catch (err) {
 		// If user token cannot access device enrollment, retry with worker token.
 		// PingOne may return 401 or 403 for this path depending on app/resource setup.
@@ -369,24 +409,32 @@ async function completeSmsEnrollment(userId, deviceId, otp) {
 	try {
 		const workerToken = await _getWorkerToken();
 		const url = `${_apiBaseUrl()}/users/${userId}/devices/${deviceId}`;
-		const { data } = await axios.put(
-			url,
-			{ otp },
-			{
+		const reqBody = { otp };
+		const debugRequest = {
+			method: "PUT",
+			url: url.replace(/\/environments\/[^/]+\//, "/environments/{envId}/"),
+			body: reqBody,
+			contentType: "application/json",
+		};
+		let data;
+		try {
+			const resp = await axios.put(url, reqBody, {
 				headers: {
 					Authorization: `Bearer ${workerToken}`,
 					"Content-Type": "application/json",
 				},
 				timeout: 10000,
-			},
-		);
+			});
+			data = resp.data;
+		} catch (err) {
+			err._debug = { request: debugRequest, response: err.response?.data || null };
+			throw err;
+		}
 		console.log(
 			"[MFA] completed SMS enrollment userId=%s deviceId=%s status=%s",
-			userId,
-			data.id,
-			data.status,
+			userId, data.id, data.status,
 		);
-		return data;
+		return { ...data, _debug: { request: debugRequest, response: data } };
 	} catch (err) {
 		throw _wrapError("completeSmsEnrollment", err);
 	}
@@ -470,19 +518,18 @@ async function initFido2Registration(userId, allowCleanupRetry = true) {
  *   Origin is appended server-side from PINGONE_FIDO2_ORIGIN env or auth base URL.
  * Returns { id, status }
  */
-async function completeFido2Registration(userId, deviceId, attestation) {
+async function completeFido2Registration(userId, deviceId, attestation, requestOrigin) {
 	try {
 		const workerToken = await _getWorkerToken();
 		const url = `${_apiBaseUrl()}/users/${userId}/devices/${deviceId}`;
 
-		// PingOne device activation requires a dedicated content-type.
-		// The WebAuthn attestation fields must be wrapped under the "fido2" key.
-		// Origin must match the RP origin registered in PingOne (derived from auth base URL).
-		const region = configStore.getEffective("pingone_region") || "com";
+		// Origin must match the RP origin where navigator.credentials.create() ran (browser origin).
+		// requestOrigin comes from the client (window.location.origin) and takes precedence.
 		const origin =
+			requestOrigin ||
 			configStore.getEffective("pingone_fido2_origin") ||
 			process.env.PINGONE_FIDO2_ORIGIN ||
-			`https://auth.pingone.${region}`;
+			null;
 
 		const body = {
 			fido2: attestation,

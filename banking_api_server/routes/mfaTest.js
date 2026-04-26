@@ -288,6 +288,10 @@ router.post('/integration/initiate', async (req, res) => {
       devices,
       method,
     };
+    if (result._debug) {
+      resBody.pingoneRequest = result._debug.request;
+      resBody.pingoneResponse = result._debug.response;
+    }
 
     // For FIDO2: auto-select the enrolled FIDO2 device to transition to ASSERTION_REQUIRED
     // and return publicKeyCredentialRequestOptions in the same response.
@@ -330,7 +334,12 @@ router.post('/integration/initiate', async (req, res) => {
         return res.status(401).json({ success: false, error: 'session_expired', message: 'Failed to acquire token for MFA test.' });
       }
     }
-    res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
+    const errBody = { success: false, error: err.message, pingError: err.pingError };
+    if (err._debug) {
+      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneResponse = err._debug.response;
+    }
+    res.status(err.status || 500).json(errBody);
   }
 });
 
@@ -355,11 +364,20 @@ router.post('/integration/verify-otp', async (req, res) => {
       status: result.status,
       completed: result.status === 'COMPLETED',
     };
+    if (result._debug) {
+      resBody.pingoneRequest = result._debug.request;
+      resBody.pingoneResponse = result._debug.response;
+    }
     res.json(resBody);
     trackMfaApiCall(req, res, _t3, resBody, 'Verify OTP code via PingOne MFA');
   } catch (err) {
     console.error('[MFA Test Integration] POST /verify-otp failed:', err.message);
-    res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
+    const errBody = { success: false, error: err.message, pingError: err.pingError };
+    if (err._debug) {
+      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneResponse = err._debug.response;
+    }
+    res.status(err.status || 500).json(errBody);
   }
 });
 
@@ -444,11 +462,20 @@ router.post('/integration/enroll-sms-init', async (req, res) => {
     const _t = Date.now();
     const device = await mfaService.enrollSmsDevice(userId, phone, accessToken);
     const resBody = { success: true, deviceId: device.id, type: device.type, phone: device.phone, status: device.status };
+    if (device._debug) {
+      resBody.pingoneRequest = device._debug.request;
+      resBody.pingoneResponse = device._debug.response;
+    }
     res.json(resBody);
     trackMfaApiCall(req, res, _t, resBody, 'Enroll SMS OTP device');
   } catch (err) {
     console.error('[MFA Test Integration] POST /enroll-sms-init failed:', err.message);
-    res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
+    const errBody = { success: false, error: err.message, pingError: err.pingError };
+    if (err._debug) {
+      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneResponse = err._debug.response;
+    }
+    res.status(err.status || 500).json(errBody);
   }
 });
 
@@ -467,11 +494,20 @@ router.post('/integration/enroll-sms-complete', async (req, res) => {
     const _t = Date.now();
     const result = await mfaService.completeSmsEnrollment(userId, deviceId, otp);
     const resBody = { success: true, deviceId: result.id, status: result.status };
+    if (result._debug) {
+      resBody.pingoneRequest = result._debug.request;
+      resBody.pingoneResponse = result._debug.response;
+    }
     res.json(resBody);
     trackMfaApiCall(req, res, _t, resBody, 'Complete SMS device enrollment');
   } catch (err) {
     console.error('[MFA Test Integration] POST /enroll-sms-complete failed:', err.message);
-    res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
+    const errBody = { success: false, error: err.message, pingError: err.pingError };
+    if (err._debug) {
+      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneResponse = err._debug.response;
+    }
+    res.status(err.status || 500).json(errBody);
   }
 });
 
@@ -495,11 +531,20 @@ router.post('/integration/enroll-email', async (req, res) => {
       type: device.type,
       email: device.email
     };
+    if (device._debug) {
+      resBody.pingoneRequest = device._debug.request;
+      resBody.pingoneResponse = device._debug.response;
+    }
     res.json(resBody);
     trackMfaApiCall(req, res, _t4, resBody, 'Enroll email OTP device');
   } catch (err) {
     console.error('[MFA Test Integration] POST /enroll-email failed:', err.message);
-    res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
+    const errBody = { success: false, error: err.message, pingError: err.pingError };
+    if (err._debug) {
+      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneResponse = err._debug.response;
+    }
+    res.status(err.status || 500).json(errBody);
   }
 });
 
@@ -544,11 +589,11 @@ router.post('/integration/enroll-fido2-init', async (req, res) => {
 router.post('/integration/enroll-fido2-complete', async (req, res) => {
   try {
     const { userId } = await _resolveCredentials(req);
-    const { deviceId, attestation } = req.body;
+    const { deviceId, attestation, origin } = req.body;
     if (!deviceId || !attestation) {
       return res.status(400).json({ success: false, error: 'invalid_body', message: 'Provide deviceId and attestation.' });
     }
-    const result = await mfaService.completeFido2Registration(userId, deviceId, attestation);
+    const result = await mfaService.completeFido2Registration(userId, deviceId, attestation, origin || req.headers.origin);
     const completeResBody = {
       success: true,
       deviceId: result.id,

@@ -98,6 +98,22 @@ export default function MFATestPage() {
 	const [fidoEnrollCompletePingoneRes, setFidoEnrollCompletePingoneRes] = useState(null);
 	const [fidoVerifyPingoneReq, setFidoVerifyPingoneReq] = useState(null);
 	const [fidoVerifyPingoneRes, setFidoVerifyPingoneRes] = useState(null);
+	const [fidoInitiatePingoneReq, setFidoInitiatePingoneReq] = useState(null);
+	const [fidoInitiatePingoneRes, setFidoInitiatePingoneRes] = useState(null);
+	const [smsInitiatePingoneReq, setSmsInitiatePingoneReq] = useState(null);
+	const [smsInitiatePingoneRes, setSmsInitiatePingoneRes] = useState(null);
+	const [smsVerifyPingoneReq, setSmsVerifyPingoneReq] = useState(null);
+	const [smsVerifyPingoneRes, setSmsVerifyPingoneRes] = useState(null);
+	const [emailInitiatePingoneReq, setEmailInitiatePingoneReq] = useState(null);
+	const [emailInitiatePingoneRes, setEmailInitiatePingoneRes] = useState(null);
+	const [emailVerifyPingoneReq, setEmailVerifyPingoneReq] = useState(null);
+	const [emailVerifyPingoneRes, setEmailVerifyPingoneRes] = useState(null);
+	const [enrollSmsInitPingoneReq, setEnrollSmsInitPingoneReq] = useState(null);
+	const [enrollSmsInitPingoneRes, setEnrollSmsInitPingoneRes] = useState(null);
+	const [enrollSmsCompletePingoneReq, setEnrollSmsCompletePingoneReq] = useState(null);
+	const [enrollSmsCompletePingoneRes, setEnrollSmsCompletePingoneRes] = useState(null);
+	const [enrollEmailPingoneReq, setEnrollEmailPingoneReq] = useState(null);
+	const [enrollEmailPingoneRes, setEnrollEmailPingoneRes] = useState(null);
 
 	// Worker token state (shared with PingOne test page)
 	const [workerTokenStatus, setWorkerTokenStatus] = useState(null);
@@ -253,6 +269,8 @@ export default function MFATestPage() {
 				{ method: "sms", ...(testUserId && { userId: testUserId }) },
 			);
 			setRawSmsInitiate(data);
+			if (data.pingoneRequest) setSmsInitiatePingoneReq(data.pingoneRequest);
+			if (data.pingoneResponse) setSmsInitiatePingoneRes(data.pingoneResponse);
 			if (data.success) {
 				setSmsDaId(data.daId);
 				setSmsDevices(data.devices || []);
@@ -264,7 +282,10 @@ export default function MFATestPage() {
 				notifyError(`SMS OTP initiation failed: ${data.error}`);
 			}
 		} catch (err) {
-			setRawSmsInitiate({ error: err.message });
+			const errData = err?.response?.data;
+			setRawSmsInitiate(errData || { error: err.message });
+			if (errData?.pingoneRequest) setSmsInitiatePingoneReq(errData.pingoneRequest);
+			if (errData?.pingoneResponse) setSmsInitiatePingoneRes(errData.pingoneResponse);
 			setSmsInitiateStatus("failed");
 			setSmsInitiateError(err.message);
 			notifyError(`SMS OTP initiation failed: ${err.message}`);
@@ -289,6 +310,8 @@ export default function MFATestPage() {
 				},
 			);
 			setRawSmsVerify(data);
+			if (data.pingoneRequest) setSmsVerifyPingoneReq(data.pingoneRequest);
+			if (data.pingoneResponse) setSmsVerifyPingoneRes(data.pingoneResponse);
 			if (data.success) {
 				setSmsVerifyStatus(data.completed ? "passed" : "pending");
 				if (data.completed) {
@@ -302,7 +325,10 @@ export default function MFATestPage() {
 				notifyError(`SMS OTP verification failed: ${data.error}`);
 			}
 		} catch (err) {
-			setRawSmsVerify({ error: err.message });
+			const errData = err?.response?.data;
+			setRawSmsVerify(errData || { error: err.message });
+			if (errData?.pingoneRequest) setSmsVerifyPingoneReq(errData.pingoneRequest);
+			if (errData?.pingoneResponse) setSmsVerifyPingoneRes(errData.pingoneResponse);
 			setSmsVerifyStatus("failed");
 			setSmsVerifyError(err.message);
 			notifyError(`SMS OTP verification failed: ${err.message}`);
@@ -319,6 +345,8 @@ export default function MFATestPage() {
 				{ method: "email", ...(testUserId && { userId: testUserId }) },
 			);
 			setRawEmailInitiate(data);
+			if (data.pingoneRequest) setEmailInitiatePingoneReq(data.pingoneRequest);
+			if (data.pingoneResponse) setEmailInitiatePingoneRes(data.pingoneResponse);
 			if (data.success) {
 				setEmailDaId(data.daId);
 				setEmailDevices(data.devices || []);
@@ -330,7 +358,10 @@ export default function MFATestPage() {
 				notifyError(`Email OTP initiation failed: ${data.error}`);
 			}
 		} catch (err) {
-			setRawEmailInitiate({ error: err.message });
+			const errData = err?.response?.data;
+			setRawEmailInitiate(errData || { error: err.message });
+			if (errData?.pingoneRequest) setEmailInitiatePingoneReq(errData.pingoneRequest);
+			if (errData?.pingoneResponse) setEmailInitiatePingoneRes(errData.pingoneResponse);
 			setEmailInitiateStatus("failed");
 			setEmailInitiateError(err.message);
 			notifyError(`Email OTP initiation failed: ${err.message}`);
@@ -355,6 +386,8 @@ export default function MFATestPage() {
 				},
 			);
 			setRawEmailVerify(data);
+			if (data.pingoneRequest) setEmailVerifyPingoneReq(data.pingoneRequest);
+			if (data.pingoneResponse) setEmailVerifyPingoneRes(data.pingoneResponse);
 			if (data.success) {
 				setEmailVerifyStatus(data.completed ? "passed" : "pending");
 				if (data.completed) {
@@ -368,7 +401,10 @@ export default function MFATestPage() {
 				notifyError(`Email OTP verification failed: ${data.error}`);
 			}
 		} catch (err) {
-			setRawEmailVerify({ error: err.message });
+			const errData = err?.response?.data;
+			setRawEmailVerify(errData || { error: err.message });
+			if (errData?.pingoneRequest) setEmailVerifyPingoneReq(errData.pingoneRequest);
+			if (errData?.pingoneResponse) setEmailVerifyPingoneRes(errData.pingoneResponse);
 			setEmailVerifyStatus("failed");
 			setEmailVerifyError(err.message);
 			notifyError(`Email OTP verification failed: ${err.message}`);
@@ -386,6 +422,8 @@ export default function MFATestPage() {
 				{ method: "fido2", ...(testUserId && { userId: testUserId }) },
 			);
 			setRawFidoInitiate(data);
+			if (data.pingoneRequest) setFidoInitiatePingoneReq(data.pingoneRequest);
+			if (data.pingoneResponse) setFidoInitiatePingoneRes(data.pingoneResponse);
 			if (data.success) {
 				setFidoDaId(data.daId);
 				setFidoInitiateStatus("passed");
@@ -411,7 +449,10 @@ export default function MFATestPage() {
 				notifyError(`FIDO2 initiation failed: ${data.error}`);
 			}
 		} catch (err) {
-			setRawFidoInitiate({ error: err.message });
+			const errData = err?.response?.data;
+			setRawFidoInitiate(errData || { error: err.message });
+			if (errData?.pingoneRequest) setFidoInitiatePingoneReq(errData.pingoneRequest);
+			if (errData?.pingoneResponse) setFidoInitiatePingoneRes(errData.pingoneResponse);
 			setFidoInitiateStatus("failed");
 			setFidoInitiateError(err.message);
 			notifyError(`FIDO2 initiation failed: ${err.message}`);
@@ -525,6 +566,8 @@ export default function MFATestPage() {
 				{ phone: e164, ...(testUserId && { userId: testUserId }) },
 			);
 			setRawEnrollSmsInit(data);
+			if (data.pingoneRequest) setEnrollSmsInitPingoneReq(data.pingoneRequest);
+			if (data.pingoneResponse) setEnrollSmsInitPingoneRes(data.pingoneResponse);
 			if (data.success) {
 				setEnrollSmsDeviceId(data.deviceId);
 				setEnrollSmsInitStatus("passed");
@@ -543,11 +586,11 @@ export default function MFATestPage() {
 				notifyError(`SMS enrollment failed: ${data.error}`);
 			}
 		} catch (err) {
-			const detail =
-				err?.response?.data?.error ||
-				err?.response?.data?.message ||
-				err.message;
-			setRawEnrollSmsInit(err?.response?.data || { error: detail });
+			const errData = err?.response?.data;
+			const detail = errData?.error || errData?.message || err.message;
+			setRawEnrollSmsInit(errData || { error: detail });
+			if (errData?.pingoneRequest) setEnrollSmsInitPingoneReq(errData.pingoneRequest);
+			if (errData?.pingoneResponse) setEnrollSmsInitPingoneRes(errData.pingoneResponse);
 			setEnrollSmsInitStatus("failed");
 			setEnrollSmsInitError(detail);
 			notifyError(`SMS enrollment failed: ${detail}`);
@@ -567,6 +610,8 @@ export default function MFATestPage() {
 				{ deviceId: enrollSmsDeviceId, otp: enrollSmsOtp, ...(testUserId && { userId: testUserId }) },
 			);
 			setRawEnrollSmsComplete(data);
+			if (data.pingoneRequest) setEnrollSmsCompletePingoneReq(data.pingoneRequest);
+			if (data.pingoneResponse) setEnrollSmsCompletePingoneRes(data.pingoneResponse);
 			if (data.success) {
 				setEnrollSmsCompleteStatus("passed");
 				notifySuccess("SMS device activated successfully!");
@@ -578,7 +623,10 @@ export default function MFATestPage() {
 				notifyError(`SMS activation failed: ${data.error}`);
 			}
 		} catch (err) {
-			setRawEnrollSmsComplete({ error: err.message });
+			const errData = err?.response?.data;
+			setRawEnrollSmsComplete(errData || { error: err.message });
+			if (errData?.pingoneRequest) setEnrollSmsCompletePingoneReq(errData.pingoneRequest);
+			if (errData?.pingoneResponse) setEnrollSmsCompletePingoneRes(errData.pingoneResponse);
 			setEnrollSmsCompleteStatus("failed");
 			setEnrollSmsCompleteError(err.message);
 			notifyError(`SMS activation failed: ${err.message}`);
@@ -598,6 +646,8 @@ export default function MFATestPage() {
 				{ email: enrollEmailInput.trim(), ...(testUserId && { userId: testUserId }) },
 			);
 			setRawEnrollEmail(data);
+			if (data.pingoneRequest) setEnrollEmailPingoneReq(data.pingoneRequest);
+			if (data.pingoneResponse) setEnrollEmailPingoneRes(data.pingoneResponse);
 			if (data.success) {
 				setEnrollEmailStatus("passed");
 				notifySuccess("Email device enrolled successfully");
@@ -609,7 +659,10 @@ export default function MFATestPage() {
 				notifyError(`Email enrollment failed: ${data.error}`);
 			}
 		} catch (err) {
-			setRawEnrollEmail({ error: err.message });
+			const errData = err?.response?.data;
+			setRawEnrollEmail(errData || { error: err.message });
+			if (errData?.pingoneRequest) setEnrollEmailPingoneReq(errData.pingoneRequest);
+			if (errData?.pingoneResponse) setEnrollEmailPingoneRes(errData.pingoneResponse);
 			setEnrollEmailStatus("failed");
 			setEnrollEmailError(err.message);
 			notifyError(`Email enrollment failed: ${err.message}`);
@@ -759,6 +812,7 @@ export default function MFATestPage() {
 				{
 					deviceId: fidoEnrollData.deviceId,
 					attestation,
+					origin: window.location.origin,
 					...(testUserId && { userId: testUserId }),
 				},
 			);
@@ -1040,6 +1094,8 @@ export default function MFATestPage() {
 						error={enrollSmsInitError}
 						onTest={testEnrollSmsInit}
 						rawResult={rawEnrollSmsInit}
+						pingoneRequest={enrollSmsInitPingoneReq}
+						pingoneResponse={enrollSmsInitPingoneRes}
 					/>
 					{enrollSmsDeviceId && !enrollSmsAlreadyActive && (
 						<div className="otp-verify-section" style={{ marginTop: "0.5rem" }}>
@@ -1070,6 +1126,8 @@ export default function MFATestPage() {
 								status={enrollSmsCompleteStatus}
 								error={enrollSmsCompleteError}
 								rawResult={rawEnrollSmsComplete}
+								pingoneRequest={enrollSmsCompletePingoneReq}
+								pingoneResponse={enrollSmsCompletePingoneRes}
 							/>
 						</div>
 					)}
@@ -1104,6 +1162,8 @@ export default function MFATestPage() {
 						error={enrollEmailError}
 						onTest={testEnrollEmail}
 						rawResult={rawEnrollEmail}
+						pingoneRequest={enrollEmailPingoneReq}
+						pingoneResponse={enrollEmailPingoneRes}
 					/>
 
 					{/* ── FIDO2 Enrollment ── */}
@@ -1114,6 +1174,8 @@ export default function MFATestPage() {
 						error={fidoEnrollInitError}
 						onTest={testFidoEnrollInit}
 						rawResult={rawFidoEnrollInit}
+						pingoneRequest={fidoEnrollInitPingoneReq}
+						pingoneResponse={fidoEnrollInitPingoneRes}
 					/>
 					{fidoEnrollData?.publicKeyCredentialCreationOptions && (() => {
 						const raw = fidoEnrollData.publicKeyCredentialCreationOptions;
@@ -1160,6 +1222,8 @@ export default function MFATestPage() {
 							error={fidoEnrollCompleteError}
 							onTest={testFidoEnrollComplete}
 							rawResult={rawFidoEnrollComplete}
+							pingoneRequest={fidoEnrollCompletePingoneReq}
+							pingoneResponse={fidoEnrollCompletePingoneRes}
 						/>
 					)}
 				</section>
@@ -1195,6 +1259,8 @@ export default function MFATestPage() {
 						error={smsInitiateError}
 						onTest={testSmsInitiate}
 						rawResult={rawSmsInitiate}
+						pingoneRequest={smsInitiatePingoneReq}
+						pingoneResponse={smsInitiatePingoneRes}
 					/>
 					{smsDaId && (
 						<div className="otp-verify-section">
@@ -1240,6 +1306,8 @@ export default function MFATestPage() {
 								status={smsVerifyStatus}
 								error={smsVerifyError}
 								rawResult={rawSmsVerify}
+								pingoneRequest={smsVerifyPingoneReq}
+								pingoneResponse={smsVerifyPingoneRes}
 							/>
 						</div>
 					)}
@@ -1275,6 +1343,8 @@ export default function MFATestPage() {
 						error={emailInitiateError}
 						onTest={testEmailInitiate}
 						rawResult={rawEmailInitiate}
+						pingoneRequest={emailInitiatePingoneReq}
+						pingoneResponse={emailInitiatePingoneRes}
 					/>
 					{emailDaId && (
 						<div className="otp-verify-section">
@@ -1321,6 +1391,8 @@ export default function MFATestPage() {
 								status={emailVerifyStatus}
 								error={emailVerifyError}
 								rawResult={rawEmailVerify}
+								pingoneRequest={emailVerifyPingoneReq}
+								pingoneResponse={emailVerifyPingoneRes}
 							/>
 						</div>
 					)}
@@ -1364,6 +1436,8 @@ export default function MFATestPage() {
 						error={fidoInitiateError}
 						onTest={testFidoInitiate}
 						rawResult={rawFidoInitiate}
+						pingoneRequest={fidoInitiatePingoneReq}
+						pingoneResponse={fidoInitiatePingoneRes}
 					/>
 					{fidoDaId && (
 						<div className="fido-verify-section">
@@ -1381,6 +1455,8 @@ export default function MFATestPage() {
 										error={fidoVerifyError}
 										onTest={testFidoVerify}
 										rawResult={rawFidoVerify}
+										pingoneRequest={fidoVerifyPingoneReq}
+										pingoneResponse={fidoVerifyPingoneRes}
 									/>
 								</>
 							) : noFidoDeviceDetected ? (

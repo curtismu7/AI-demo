@@ -383,8 +383,8 @@ describe('completeFido2Registration', () => {
     expect(url).toContain('users/user-1/devices/dev-fido');
     // Attestation wrapped under fido2 key per PingOne activation API contract
     expect(body.fido2).toEqual(attestation);
-    // origin field at body root
-    expect(body.origin).toMatch(/^https:\/\/auth\.pingone\./);
+    // origin comes from requestOrigin param; null when not provided (no wrong fallback)
+    expect(body.origin).toBeNull();
     // Correct activation content-type
     expect(cfg.headers['Content-Type']).toBe('application/vnd.pingidentity.device.activate+json');
   });
