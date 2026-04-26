@@ -82,12 +82,12 @@
   z-index: 12;
   pointer-events: auto;
   background: #fff;
-  border-top: 2px solid var(--chase-medium-gray);
+  border-top: 2px solid var(--brand-medium-gray);
 }
 
 /* Collapsed: just the header bar */
 .global-embedded-agent-dock-wrap--collapsed {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
 }
 
 /* Toolbar — looks like a page section header, not a widget titlebar */
@@ -97,10 +97,10 @@
   justify-content: space-between;
   gap: 12px;
   padding: 8px 20px;
-  background: var(--chase-light-gray);
-  border-bottom: 1px solid var(--chase-medium-gray);
+  background: var(--brand-light-gray);
+  border-bottom: 1px solid var(--brand-medium-gray);
   /* Left accent bar — anchors it to the page visually */
-  border-left: 4px solid var(--chase-navy);
+  border-left: 4px solid var(--brand-navy);
 }
 
 .embedded-agent-dock__toolbar .embedded-agent-dock__head {
@@ -147,8 +147,8 @@
   transition: background 0.15s, color 0.15s;
 }
 .embedded-dock-collapse-btn:hover {
-  background: var(--chase-medium-gray);
-  color: var(--chase-dark-gray);
+  background: var(--brand-medium-gray);
+  color: var(--brand-dark-gray);
 }
 
 /* Resize handle — minimal drag grip between content and dock */
@@ -163,7 +163,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   user-select: none;
   -webkit-user-select: none;
   transition: background 0.15s;
@@ -198,7 +198,7 @@
 }
 
 .embedded-dock-resize-handle:hover {
-  background: var(--chase-medium-gray);
+  background: var(--brand-medium-gray);
 }
 
 .embedded-dock-resize-handle:hover .embedded-dock-resize-handle__bar {
@@ -294,7 +294,7 @@
   height: 20px;
   margin-left: 0.5rem;
   border: 2px solid #e5e7eb;
-  border-top: 2px solid var(--chase-navy);
+  border-top: 2px solid var(--brand-navy);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -424,7 +424,7 @@
   min-height: var(--stack-fab-height, 44px);
   padding: 0 12px;
   border-radius: 0 0 8px 8px;
-  background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 100%);
+  background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy) 100%);
   border: none;
   border-top: 1px solid rgba(255, 255, 255, 0.10);
   color: #fff;
@@ -445,7 +445,7 @@
 .demo-config-fab:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.45);
-  background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 100%);
+  background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy) 100%);
 }
 
 .demo-config-fab:active {
@@ -792,7 +792,7 @@
   border-radius: 12px;
   padding: 1.5rem 1.5rem 1.25rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--chase-medium-gray);
+  border: 1px solid var(--brand-medium-gray);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -828,7 +828,7 @@
 }
 
 .otp-step-up-modal__close:hover {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
 }
 
 .otp-step-up-modal__body {
@@ -843,7 +843,7 @@
 }
 
 .otp-step-up-modal__lead strong {
-  color: var(--chase-navy);
+  color: var(--brand-navy);
   font-weight: 600;
 }
 
@@ -855,7 +855,7 @@
   letter-spacing: 0.35em;
   font-variant-numeric: tabular-nums;
   text-align: center;
-  border: 2px solid var(--chase-medium-gray);
+  border: 2px solid var(--brand-medium-gray);
   border-radius: 10px;
   padding: 0.65rem 0.5rem;
   outline: none;
@@ -899,7 +899,7 @@
   padding: 0.625rem 1rem;
   border-radius: 8px;
   border: none;
-  background: var(--chase-navy);
+  background: var(--brand-navy);
   color: #fff;
   font-size: 0.95rem;
   font-weight: 600;
@@ -908,7 +908,7 @@
 }
 
 .otp-step-up-modal__btn-primary:hover:not(:disabled) {
-  background: var(--chase-navy);
+  background: var(--brand-navy);
 }
 
 .otp-step-up-modal__btn-primary:disabled {
@@ -929,7 +929,7 @@
 }
 
 .otp-step-up-modal__btn-ghost:hover:not(:disabled) {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border-color: #94a3b8;
 }
 
@@ -955,25 +955,25 @@
 .otp-step-up-modal {
   max-width: 420px; width: 100%; background: #fff; border-radius: 12px;
   padding: 1.5rem 1.5rem 1.25rem;
-  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--chase-medium-gray);
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--brand-medium-gray);
 }
 .otp-step-up-modal__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
 .otp-step-up-modal__title { font-size: 1.125rem; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.3; }
 .otp-step-up-modal__close { width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent; color: #999999; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; padding: 0; transition: background 0.15s; }
-.otp-step-up-modal__close:hover { background: var(--chase-light-gray); }
+.otp-step-up-modal__close:hover { background: var(--brand-light-gray); }
 .otp-step-up-modal__lead { font-size: 0.9rem; color: #374151; line-height: 1.55; margin-bottom: 1rem; }
-.otp-step-up-modal__lead strong { color: var(--chase-navy); font-weight: 600; }
-.otp-step-up-modal__input { width: 100%; box-sizing: border-box; font-size: 1.5rem; font-weight: 700; letter-spacing: 0.35em; font-variant-numeric: tabular-nums; text-align: center; border: 2px solid var(--chase-medium-gray); border-radius: 10px; padding: 0.65rem 0.5rem; outline: none; transition: border-color 0.15s; }
+.otp-step-up-modal__lead strong { color: var(--brand-navy); font-weight: 600; }
+.otp-step-up-modal__input { width: 100%; box-sizing: border-box; font-size: 1.5rem; font-weight: 700; letter-spacing: 0.35em; font-variant-numeric: tabular-nums; text-align: center; border: 2px solid var(--brand-medium-gray); border-radius: 10px; padding: 0.65rem 0.5rem; outline: none; transition: border-color 0.15s; }
 .otp-step-up-modal__input:focus { border-color: #0ea5e9; }
 .otp-step-up-modal__input--error { border-color: #dc2626; background: #fff5f5; }
 .otp-step-up-modal__error { font-size: 0.82rem; font-weight: 500; color: #dc2626; line-height: 1.4; margin-top: 0.5rem; margin-bottom: 0; }
 .otp-step-up-modal__hint { font-size: 0.75rem; color: #6b7280; line-height: 1.4; margin-top: 0.5rem; margin-bottom: 0; }
 .otp-step-up-modal__actions { display: flex; gap: 10px; margin-top: 1.25rem; }
-.otp-step-up-modal__btn-primary { flex: 1; padding: 0.625rem 1rem; border-radius: 8px; border: none; background: var(--chase-navy); color: #fff; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
-.otp-step-up-modal__btn-primary:hover:not(:disabled) { background: var(--chase-navy); }
+.otp-step-up-modal__btn-primary { flex: 1; padding: 0.625rem 1rem; border-radius: 8px; border: none; background: var(--brand-navy); color: #fff; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.otp-step-up-modal__btn-primary:hover:not(:disabled) { background: var(--brand-navy); }
 .otp-step-up-modal__btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
 .otp-step-up-modal__btn-ghost { padding: 0.625rem 1rem; border-radius: 8px; border: 1px solid #CCCCCC; background: #fff; color: #6b7280; font-size: 0.95rem; font-weight: 500; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
-.otp-step-up-modal__btn-ghost:hover:not(:disabled) { background: var(--chase-light-gray); border-color: #94a3b8; }
+.otp-step-up-modal__btn-ghost:hover:not(:disabled) { background: var(--brand-light-gray); border-color: #94a3b8; }
 .otp-step-up-modal__btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Push notification waiting panel */
@@ -981,8 +981,8 @@
   width: 48px;
   height: 48px;
   margin: 0 auto;
-  border: 4px solid var(--chase-medium-gray);
-  border-top-color: var(--chase-navy);
+  border: 4px solid var(--brand-medium-gray);
+  border-top-color: var(--brand-navy);
   border-radius: 50%;
   animation: push-spin 0.9s linear infinite;
 }

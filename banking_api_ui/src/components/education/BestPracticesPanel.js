@@ -71,7 +71,7 @@ const PRACTICES = [
     title: 'Know Your Agents',
     tagline: 'Identify & Classify AI Agents',
     bullets: ['Assign sponsors to govern agent access', 'Manage agent lifecycles'],
-    colour: 'var(--chase-navy)',
+    colour: 'var(--brand-navy)',
   },
   {
     id: 'detect',

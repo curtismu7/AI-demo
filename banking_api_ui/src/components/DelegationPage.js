@@ -16,9 +16,9 @@ const S = {
   inner: { maxWidth: 860, margin: '0 auto' },
   headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   h1: { fontSize: 22, fontWeight: 700, color: '#1e3a5f', margin: 0 },
-  backLink: { fontSize: 13, color: 'var(--chase-navy)', textDecoration: 'none' },
+  backLink: { fontSize: 13, color: 'var(--brand-navy)', textDecoration: 'none' },
   card: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 24, marginBottom: 24 },
-  sectionHeading: { fontSize: 16, fontWeight: 700, color: 'var(--chase-navy)', marginTop: 0, marginBottom: 8 },
+  sectionHeading: { fontSize: 16, fontWeight: 700, color: 'var(--brand-navy)', marginTop: 0, marginBottom: 8 },
   muted: { color: '#6b7280', fontSize: 13, margin: '0 0 16px 0' },
   input: {
     width: '100%', maxWidth: 400, padding: '9px 12px',
@@ -29,7 +29,7 @@ const S = {
   scopeLabel: { fontWeight: 600, fontSize: 13, color: '#374151' },
   scopeDesc: { fontSize: 12, color: '#9ca3af', marginLeft: 4 },
   primaryBtn: {
-    padding: '9px 22px', background: 'var(--chase-navy)', color: '#fff',
+    padding: '9px 22px', background: 'var(--brand-navy)', color: '#fff',
     border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer',
   },
   primaryBtnDisabled: {
@@ -59,8 +59,8 @@ const S = {
     padding: '9px 20px', background: 'none', border: 'none',
     cursor: 'pointer', fontSize: 14,
     fontWeight: active ? 700 : 400,
-    borderBottom: active ? '2px solid var(--chase-navy)' : '2px solid transparent',
-    color: active ? 'var(--chase-navy)' : '#6b7280',
+    borderBottom: active ? '2px solid var(--brand-navy)' : '2px solid transparent',
+    color: active ? 'var(--brand-navy)' : '#6b7280',
     marginBottom: -1,
   }),
   delegCard: {
@@ -72,7 +72,7 @@ const S = {
   delegMeta: { fontSize: 12, color: '#9ca3af', marginBottom: 6 },
   pillsRow: { display: 'flex', flexWrap: 'wrap', gap: 4 },
   pill: {
-    background: '#eff6ff', color: 'var(--chase-navy)', fontSize: 11, fontWeight: 600,
+    background: '#eff6ff', color: 'var(--brand-navy)', fontSize: 11, fontWeight: 600,
     padding: '2px 9px', borderRadius: 12, textTransform: 'capitalize',
   },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },

@@ -46,7 +46,7 @@
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
 }
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
@@ -55,7 +55,7 @@
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border-bottom: 1px solid #DDDDDD;
   border-radius: 10px 10px 0 0;
   cursor: grab;
@@ -124,7 +124,7 @@
   outline: none;
 }
 .api-traffic-search::placeholder { color: #94a3b8; }
-.api-traffic-search:focus { border-color: var(--chase-navy); box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+.api-traffic-search:focus { border-color: var(--brand-navy); box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
 
 .api-traffic-filter-label {
   position: relative;
@@ -157,7 +157,7 @@
   font-family: inherit;
 }
 .api-traffic-filter-select:focus {
-  border-color: var(--chase-navy);
+  border-color: var(--brand-navy);
 }
 
 .api-traffic-btn {
@@ -175,7 +175,7 @@
 }
 .api-traffic-btn:hover {
   background: #eff6ff;
-  color: var(--chase-navy);
+  color: var(--brand-navy);
   border-color: #93c5fd;
 }
 /* Freeze active state */
@@ -208,7 +208,7 @@
   border-right: 1px solid #DDDDDD;
   overflow-y: auto;
   flex-shrink: 0;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
 }
 
 .api-traffic-empty {
@@ -224,7 +224,7 @@
   align-items: center;
   gap: 8px;
   padding: 7px 12px;
-  border-bottom: 1px solid var(--chase-light-gray);
+  border-bottom: 1px solid var(--brand-light-gray);
   cursor: pointer;
   transition: background 0.12s;
   background: #ffffff;
@@ -273,7 +273,7 @@
 
 .api-entry-url {
   font-size: 15px;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -309,7 +309,7 @@
   gap: 0;
   border-bottom: 1px solid #DDDDDD;
   flex-shrink: 0;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
 }
 
 .api-detail-tab {
@@ -323,8 +323,8 @@
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }
-.api-detail-tab:hover { color: var(--chase-dark-gray); }
-.api-detail-tab--active { color: var(--chase-navy); border-bottom-color: var(--chase-navy); }
+.api-detail-tab:hover { color: var(--brand-dark-gray); }
+.api-detail-tab--active { color: var(--brand-navy); border-bottom-color: var(--brand-navy); }
 
 .api-detail-content {
   flex: 1;
@@ -395,13 +395,13 @@ pre.api-json {
   margin: 0;
   font-size: 15px;
   font-family: 'SF Mono', 'Fira Code', 'Fira Mono', ui-monospace, monospace;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
   white-space: pre-wrap;
   word-break: break-all;
   line-height: 1.55;
 }
 
-.api-json-key   { color: var(--chase-navy); }
+.api-json-key   { color: var(--brand-navy); }
 .api-json-str   { color: #15803d; }
 .api-json-num   { color: #b45309; }
 .api-json-bool  { color: #dc2626; }
@@ -414,8 +414,8 @@ pre.api-json {
   font-size: 15px;
   font-family: 'SF Mono', 'Fira Code', 'Fira Mono', ui-monospace, monospace;
 }
-.api-detail-kv-key   { color: var(--chase-navy); padding: 2px 0; white-space: nowrap; }
-.api-detail-kv-val   { color: var(--chase-dark-gray); padding: 2px 0; word-break: break-all; }
+.api-detail-kv-key   { color: var(--brand-navy); padding: 2px 0; white-space: nowrap; }
+.api-detail-kv-val   { color: var(--brand-dark-gray); padding: 2px 0; word-break: break-all; }
 
 .api-detail-err {
   font-size: 15px;
@@ -461,7 +461,7 @@ pre.api-json {
 .api-token-event-status--skipped   { background: #fef9c3; color: #713f12; }
 .api-token-event-status--failed    { background: #fee2e2; color: #b91c1c; }
 .api-token-event-status--reused    { background: #e0f2fe; color: #0369a1; }
-.api-token-event-status--acquiring { background: var(--chase-light-gray); color: #999999; }
+.api-token-event-status--acquiring { background: var(--brand-light-gray); color: #999999; }
 
 .api-token-event-alg {
   font-size: 12px;
@@ -491,6 +491,6 @@ pre.api-json {
 .api-traffic-list::-webkit-scrollbar,
 .api-detail-content::-webkit-scrollbar { width: 6px; height: 6px; }
 .api-traffic-list::-webkit-scrollbar-track,
-.api-detail-content::-webkit-scrollbar-track { background: var(--chase-light-gray); }
+.api-detail-content::-webkit-scrollbar-track { background: var(--brand-light-gray); }
 .api-traffic-list::-webkit-scrollbar-thumb,
 .api-detail-content::-webkit-scrollbar-thumb { background: #CCCCCC; border-radius: 3px; }

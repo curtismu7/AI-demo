@@ -872,15 +872,15 @@ a.pingone-test-button--primary:visited {
 /* Per-section API Calls toggle (Phase 133) */
 .section-api-calls {
   margin-top: 1.25rem;
-  border-top: 1px solid var(--chase-light-gray, #ddd);
+  border-top: 1px solid var(--brand-light-gray, #ddd);
   padding-top: 0.75rem;
 }
 
 .section-api-toggle {
   background: none;
-  border: 1px solid var(--chase-medium-gray, #bbb);
+  border: 1px solid var(--brand-medium-gray, #bbb);
   border-radius: 4px;
-  color: var(--chase-dark-gray, #495057);
+  color: var(--brand-dark-gray, #495057);
   cursor: pointer;
   font-size: 0.8rem;
   padding: 4px 10px;
@@ -888,7 +888,7 @@ a.pingone-test-button--primary:visited {
 }
 
 .section-api-toggle:hover {
-  background: var(--chase-light-gray, #f0f0f0);
+  background: var(--brand-light-gray, #f0f0f0);
 }
 
 /* ── Asset Tabs (Phase 139) ──────────────────────────────────────────── */

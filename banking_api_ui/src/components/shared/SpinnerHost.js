@@ -45,7 +45,7 @@ export default function SpinnerHost() {
 
   if (!visible) return null;
 
-  const accentColor = color || 'var(--chase-navy)';
+  const accentColor = color || 'var(--brand-navy)';
 
   // Strip origin from endpoint for compact display: "GET https://host:4000/api/foo" → "GET /api/foo"
   const shortEndpoint = endpoint ? endpoint.replace(/^(\w+\s+)https?:\/\/[^/]+/, '$1') : null;

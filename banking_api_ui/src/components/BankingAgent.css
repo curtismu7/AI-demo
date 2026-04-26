@@ -466,7 +466,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	--ba-input-bd: #c7d2fe;
 	--ba-chip-bg: #eff6ff;
 	--ba-chip-bd: #4169e1;
-	--ba-chip-txt: var(--chase-navy);
+	--ba-chip-txt: var(--brand-navy);
 	--ba-shadow: 0 8px 40px rgba(65, 105, 225, 0.12);
 }
 
@@ -486,7 +486,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	--ba-agent-txt: #0f172a;
 	--ba-chip-bg: #e0e7ff;
 	--ba-chip-bd: #4169e1;
-	--ba-chip-txt: var(--chase-navy);
+	--ba-chip-txt: var(--brand-navy);
 	--ba-accent: #4169e1;
 	--ba-accent-h: #3158d3;
 }
@@ -623,14 +623,14 @@ body > .banking-agent-float-root .banking-agent-panel {
 .banking-agent-panel:not(.ba-mode-inline).ba-mode-light .ba-action-item {
 	background: #dbeafe;
 	border-color: #93c5fd;
-	color: var(--chase-navy);
+	color: var(--brand-navy);
 }
 .banking-agent-panel:not(.ba-mode-inline).ba-mode-light .ba-suggestion:hover,
 .banking-agent-panel:not(.ba-mode-inline).ba-mode-light
 	.ba-action-item:hover:not(:disabled) {
 	background: #bfdbfe;
-	border-color: var(--chase-navy-light);
-	color: var(--chase-navy);
+	border-color: var(--brand-navy-light);
+	color: var(--brand-navy);
 }
 
 .banking-agent-panel:not(.ba-mode-inline).ba-mode-light
@@ -728,7 +728,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	line-height: 1.4;
 }
 .banking-agent-panel.ba-mode-light .ba-subtitle {
-	color: var(--chase-dark-gray);
+	color: var(--brand-dark-gray);
 }
 .ba-header-tools {
 	display: flex;
@@ -833,9 +833,9 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 /* Light agent panel: dark emerald on mint wash (readable on white/lavender surfaces) */
 .banking-agent-panel.ba-mode-light .ba-server-chip {
-	color: var(--chase-dark-gray);
+	color: var(--brand-dark-gray);
 	border-color: #cccccc;
-	background: var(--chase-light-gray);
+	background: var(--brand-light-gray);
 }
 .banking-agent-panel.ba-mode-light .ba-server-chip--active {
 	border-color: #059669;
@@ -1009,7 +1009,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	border-radius: 999px;
 	border: 1px solid #c6d4ff;
 	background: #fff;
-	color: var(--chase-navy);
+	color: var(--brand-navy);
 	cursor: pointer;
 	text-align: left;
 	line-height: 1.25;
@@ -1178,7 +1178,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 .ba-session-fix-btn--secondary {
 	border-color: #999999;
-	background: var(--chase-light-gray);
+	background: var(--brand-light-gray);
 	color: #0f172a;
 }
 
@@ -1786,7 +1786,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	font-weight: 600;
 	text-transform: capitalize;
 	background: #e8f0fe;
-	color: var(--chase-navy);
+	color: var(--brand-navy);
 }
 .bar-rp-type-transfer {
 	background: #fff3cd;
@@ -2080,7 +2080,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	border: 1px solid #e5e7eb;
 	border-radius: 12px;
 	overflow: hidden;
-	background: var(--chase-light-gray);
+	background: var(--brand-light-gray);
 }
 
 .embedded-banking-agent:not(.embedded-banking-agent--bottom)
@@ -2569,11 +2569,11 @@ body > .banking-agent-float-root .banking-agent-panel {
 .ba-consent-denied-banner__btn--secondary {
 	border-color: #999999;
 	background: #fff;
-	color: var(--chase-dark-gray);
+	color: var(--brand-dark-gray);
 }
 
 .ba-consent-denied-banner__btn--secondary:hover {
-	background: var(--chase-light-gray);
+	background: var(--brand-light-gray);
 }
 
 /* Floating agent — visually “separate product” vs page-integrated embedded dock */
@@ -2594,8 +2594,8 @@ body > .banking-agent-float-root .banking-agent-panel {
 .banking-agent-panel.ba-mode-inline.ba-split-column {
 	--ba-split-navy: #1e3a5f;
 	--ba-split-navy-deep: #172554;
-	--ba-bg: var(--chase-light-gray);
-	--ba-surface: var(--chase-light-gray);
+	--ba-bg: var(--brand-light-gray);
+	--ba-surface: var(--brand-light-gray);
 	--ba-text: #0f172a;
 	--ba-muted: #999999;
 	--ba-border: #cccccc;
@@ -2609,7 +2609,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	--ba-input-bd: #cccccc;
 	--ba-chip-bg: #dddddd;
 	--ba-chip-bd: #94a3b8;
-	--ba-chip-txt: var(--chase-dark-gray);
+	--ba-chip-txt: var(--brand-dark-gray);
 	border-radius: 0;
 	overflow: hidden;
 	box-shadow: none;
@@ -2703,7 +2703,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	max-width: 7.5rem;
 	border-color: rgba(255, 255, 255, 0.35);
 	background: rgba(15, 23, 42, 0.35);
-	color: var(--chase-light-gray);
+	color: var(--brand-light-gray);
 }
 
 .banking-agent-panel.ba-mode-inline.ba-split-column
@@ -2822,7 +2822,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	flex-shrink: 0;
 	border-right: none;
 	border-top: 1px solid #cccccc;
-	background: var(--chase-light-gray);
+	background: var(--brand-light-gray);
 	display: flex;
 	flex-direction: row;
 	flex-wrap: wrap;
@@ -2860,7 +2860,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	border-radius: 16px;
 	background: #dbeafe;
 	border: 1px solid #93c5fd;
-	color: var(--chase-navy);
+	color: var(--brand-navy);
 	font-size: 12px;
 	font-weight: 500;
 	transition:
@@ -2875,8 +2875,8 @@ body > .banking-agent-float-root .banking-agent-panel {
 	.ba-left-col
 	.ba-action-item:hover:not(:disabled) {
 	background: #bfdbfe;
-	border-color: var(--chase-navy-light);
-	color: var(--chase-navy);
+	border-color: var(--brand-navy-light);
+	color: var(--brand-navy);
 }
 .banking-agent-panel.ba-mode-inline.ba-split-column
 	.ba-left-col
@@ -2986,7 +2986,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	border-radius: 6px;
 	background: rgba(65, 105, 225, 0.08);
 	border: 1px solid rgba(65, 105, 225, 0.15);
-	color: var(--ba-text-primary, var(--chase-dark-gray));
+	color: var(--ba-text-primary, var(--brand-dark-gray));
 	font-size: 11px;
 	font-weight: 500;
 	transition: all 0.15s ease;
@@ -3005,29 +3005,29 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 /* Light mode adjustments */
 .ba-mode-light .ba-action-item--login {
-	background: linear-gradient(135deg, var(--chase-navy), var(--chase-navy));
-	border-color: var(--chase-navy);
+	background: linear-gradient(135deg, var(--brand-navy), var(--brand-navy));
+	border-color: var(--brand-navy);
 }
 
 .ba-mode-light .ba-action-item--login:hover:not(:disabled) {
 	background: linear-gradient(
 		135deg,
-		var(--chase-navy),
-		var(--chase-navy-light)
+		var(--brand-navy),
+		var(--brand-navy-light)
 	);
-	border-color: var(--chase-navy);
+	border-color: var(--brand-navy);
 }
 
 .ba-mode-light .ba-action-item--guest {
 	background: rgba(37, 99, 235, 0.06);
 	border-color: rgba(37, 99, 235, 0.12);
-	color: var(--chase-dark-gray);
+	color: var(--brand-dark-gray);
 }
 
 .ba-mode-light .ba-action-item--guest:hover:not(:disabled) {
 	background: rgba(37, 99, 235, 0.12);
 	border-color: rgba(37, 99, 235, 0.2);
-	color: var(--chase-navy);
+	color: var(--brand-navy);
 }
 
 /* Session expiry timer styles */
@@ -3174,7 +3174,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	border-radius: 99px;
 	background: #dbeafe;
 	border: 1px dashed #93c5fd;
-	color: var(--chase-navy);
+	color: var(--brand-navy);
 	cursor: pointer;
 	transition:
 		background 0.12s,
@@ -3184,8 +3184,8 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 .banking-agent-panel.ba-mode-inline.ba-split-column .ba-suggestion:hover {
 	background: #bfdbfe;
-	border-color: var(--chase-navy-light);
-	color: var(--chase-navy);
+	border-color: var(--brand-navy-light);
+	color: var(--brand-navy);
 }
 
 .banking-agent-panel.ba-mode-inline.ba-split-column .ba-bottom {
@@ -3221,7 +3221,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 /* ─── Marketing page: white site chrome → agents read as bold black/dark widgets ─ */
 .App--marketing-page .global-embedded-agent-dock-wrap {
-	background: var(--chase-light-gray) !important;
+	background: var(--brand-light-gray) !important;
 	border-top: 3px solid #cccccc !important;
 	box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.07);
 }
@@ -3234,11 +3234,11 @@ body > .banking-agent-float-root .banking-agent-panel {
 .App--marketing-page .embedded-agent-dock__toolbar {
 	background: #e8edf3 !important;
 	border-bottom-color: #cccccc !important;
-	border-left-color: var(--chase-navy) !important;
+	border-left-color: var(--brand-navy) !important;
 }
 
 .App--marketing-page .embedded-agent-dock__title {
-	color: var(--chase-dark-gray) !important;
+	color: var(--brand-dark-gray) !important;
 	font-size: 0.8125rem !important;
 	letter-spacing: 0.08em !important;
 }
@@ -3250,7 +3250,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 .App--marketing-page .embedded-dock-collapse-btn:hover {
 	background: #dddddd !important;
-	color: var(--chase-dark-gray) !important;
+	color: var(--brand-dark-gray) !important;
 }
 
 .App--marketing-page .embedded-dock-resize-handle {
@@ -3275,7 +3275,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	--ba-border: rgba(148, 163, 184, 0.35);
 	--ba-text: #fafafa;
 	--ba-muted: #a3a3a3;
-	--ba-user-bg: var(--chase-navy);
+	--ba-user-bg: var(--brand-navy);
 	--ba-user-txt: #ffffff;
 	--ba-agent-bg: #262626;
 	--ba-agent-txt: #fafafa;
@@ -3359,7 +3359,7 @@ html[data-theme="dark"]
 	margin: 2px 0 0;
 }
 .ba-reasoning__conclusion {
-	color: var(--chase-navy);
+	color: var(--brand-navy);
 	font-style: italic;
 	margin-top: 8px;
 	padding: 6px;

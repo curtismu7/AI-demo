@@ -55,7 +55,7 @@ const SPINNER_QUIPS = [
 ];
 
 const SPINNER_COLORS = [
-  'var(--chase-navy)', // blue
+  'var(--brand-navy)', // blue
   '#7c3aed', // violet
   '#059669', // emerald
   '#dc2626', // red

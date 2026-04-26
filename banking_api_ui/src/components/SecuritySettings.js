@@ -96,7 +96,7 @@ function Toggle({ value, onChange, disabled }) {
         borderRadius: '13px',
         border: 'none',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        background: value ? 'var(--chase-navy)' : '#d1d5db',
+        background: value ? 'var(--brand-navy)' : '#d1d5db',
         transition: 'background 0.2s',
         padding: 0,
         opacity: disabled ? 0.5 : 1,
@@ -137,9 +137,9 @@ function MultiSelect({ value = [], options, onChange, disabled }) {
             padding: '4px 12px',
             borderRadius: '20px',
             border: '2px solid',
-            borderColor: value.includes(opt) ? 'var(--chase-navy)' : '#d1d5db',
+            borderColor: value.includes(opt) ? 'var(--brand-navy)' : '#d1d5db',
             background: value.includes(opt) ? '#eff6ff' : 'white',
-            color: value.includes(opt) ? 'var(--chase-navy)' : '#6b7280',
+            color: value.includes(opt) ? 'var(--brand-navy)' : '#6b7280',
             fontWeight: value.includes(opt) ? '600' : '400',
             cursor: disabled ? 'not-allowed' : 'pointer',
             fontSize: '0.85rem',
@@ -358,7 +358,7 @@ const SecuritySettings = ({ user, onLogout }) => {
                 type="button"
                 onClick={handleSave}
                 disabled={!dirty || saving}
-                style={{ padding: '10px 24px', background: dirty ? 'var(--chase-navy)' : '#9ca3af', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '0.875rem', cursor: dirty ? 'pointer' : 'not-allowed', transition: 'background 0.2s' }}
+                style={{ padding: '10px 24px', background: dirty ? 'var(--brand-navy)' : '#9ca3af', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '0.875rem', cursor: dirty ? 'pointer' : 'not-allowed', transition: 'background 0.2s' }}
               >
                 {saving ? 'Saving…' : 'Save Changes'}
               </button>

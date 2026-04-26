@@ -2,13 +2,13 @@
 
 .security-center-page,
 .security-overview {
-  background: var(--chase-light-gray, #F5F5F5);
+  background: var(--brand-light-gray, #F5F5F5);
   min-height: 100vh;
   padding: 1.5rem;
 }
 
 .security-card {
-  background: var(--chase-white, #FFFFFF);
+  background: var(--brand-white, #FFFFFF);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin-bottom: 1.5rem;
@@ -16,8 +16,8 @@
 }
 
 .security-card__header {
-  background: var(--chase-navy, #004687);
-  color: var(--chase-white, #FFFFFF);
+  background: var(--brand-navy, #004687);
+  color: var(--brand-white, #FFFFFF);
   padding: 0.875rem 1.5rem;
   display: flex;
   align-items: center;
@@ -26,7 +26,7 @@
 
 .security-card__header h2,
 .security-card__header h3 {
-  color: var(--chase-white, #FFFFFF);
+  color: var(--brand-white, #FFFFFF);
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
@@ -38,7 +38,7 @@
 
 /* Security status grid */
 .security-status {
-  background: var(--chase-white, #FFFFFF);
+  background: var(--brand-white, #FFFFFF);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   padding: 1.5rem;
@@ -56,9 +56,9 @@
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.75rem;
-  border: 1px solid var(--chase-medium-gray, #E0E0E0);
+  border: 1px solid var(--brand-medium-gray, #E0E0E0);
   border-radius: 6px;
-  background: var(--chase-light-gray, #F5F5F5);
+  background: var(--brand-light-gray, #F5F5F5);
 }
 
 .status-icon {
@@ -70,7 +70,7 @@
 .status-title {
   font-weight: 600;
   font-size: 0.875rem;
-  color: var(--chase-dark-gray, #333333);
+  color: var(--brand-dark-gray, #333333);
 }
 
 .status-desc {
@@ -81,16 +81,16 @@
 
 /* Status indicators */
 .security-status--ok {
-  color: var(--chase-success, #4CAF50);
+  color: var(--brand-success, #4CAF50);
   font-weight: 600;
 }
 
 .security-status--warn {
-  color: var(--chase-warning, #FF9800);
+  color: var(--brand-warning, #FF9800);
   font-weight: 600;
 }
 
 .security-status--error {
-  color: var(--chase-error, #F44336);
+  color: var(--brand-error, #F44336);
   font-weight: 600;
 }

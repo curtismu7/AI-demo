@@ -42,13 +42,13 @@
 }
 
 .transaction-consent-learn-btn--dark {
-  background: var(--chase-navy);
-  border: 1px solid var(--chase-navy);
+  background: var(--brand-navy);
+  border: 1px solid var(--brand-navy);
   color: #fff;
 }
 
 .transaction-consent-learn-btn--dark:hover {
-  background: var(--chase-navy);
+  background: var(--brand-navy);
 }
 
 .transaction-consent-card--in-popup {
@@ -89,7 +89,7 @@
 .hitl-consent-banner__title {
   display: block;
   font-size: 0.95rem;
-  color: var(--chase-light-gray);
+  color: var(--brand-light-gray);
   letter-spacing: 0.02em;
   margin-bottom: 0.25rem;
 }
@@ -156,14 +156,14 @@
   margin-top: 0.75rem;
   padding: 0.45rem 0.9rem;
   border-radius: 8px;
-  background: var(--chase-navy);
+  background: var(--brand-navy);
   color: #fff !important;
   font-weight: 600;
   text-decoration: none;
 }
 
 .transaction-consent-learn-btn--inline:hover {
-  background: var(--chase-navy);
+  background: var(--brand-navy);
 }
 
 .transaction-consent-card {
@@ -186,7 +186,7 @@
 .transaction-consent-card__summary {
   margin: 0 0 1.25rem;
   padding-left: 1.25rem;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
   line-height: 1.55;
 }
 
@@ -200,7 +200,7 @@
   line-height: 1.55;
   margin-bottom: 1.25rem;
   padding: 0.75rem 1rem;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border-radius: 8px;
   border: 1px solid #DDDDDD;
 }
@@ -215,7 +215,7 @@
   gap: 0.75rem;
   cursor: pointer;
   font-size: 0.95rem;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
   line-height: 1.45;
   margin-bottom: 1rem;
 }
@@ -260,20 +260,20 @@
 .transaction-consent-btn--ghost {
   background: #fff;
   border-color: #CCCCCC;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
 }
 
 .transaction-consent-btn--ghost:hover:not(:disabled) {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
 }
 
 .transaction-consent-btn--primary {
-  background: var(--chase-navy);
+  background: var(--brand-navy);
   color: #fff;
 }
 
 .transaction-consent-btn--primary:hover:not(:disabled) {
-  background: var(--chase-navy);
+  background: var(--brand-navy);
 }
 
 .transaction-consent-btn--danger {
@@ -317,7 +317,7 @@
   margin: 0 0 0.75rem;
   font-size: 0.95rem;
   line-height: 1.5;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
 }
 
 .transaction-consent-modal__body--emphasis {

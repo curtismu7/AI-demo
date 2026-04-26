@@ -600,7 +600,7 @@
 }
 
 .cfg-section-desc {
-  color: var(--chase-dark-gray, #374151);
+  color: var(--brand-dark-gray, #374151);
   margin: 0 0 1.5rem;
   line-height: 1.5;
   font-size: 0.9rem;
@@ -609,15 +609,15 @@
 .cfg-subsection-title {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--chase-navy, #004687);
+  color: var(--brand-navy, #004687);
   margin: 1.5rem 0 0.75rem;
   padding-bottom: 0.375rem;
-  border-bottom: 1px solid var(--chase-light-gray, #e5e7eb);
+  border-bottom: 1px solid var(--brand-light-gray, #e5e7eb);
 }
 
 .cfg-field-help {
   font-size: 0.75rem;
-  color: var(--chase-medium-gray, #6b7280);
+  color: var(--brand-medium-gray, #6b7280);
   margin: 0.25rem 0 0;
 }
 
@@ -641,7 +641,7 @@
   padding: 4px;
   font-size: 1rem;
   line-height: 1;
-  color: var(--chase-dark-gray, #374151);
+  color: var(--brand-dark-gray, #374151);
 }
 
 /* Test connection row */
@@ -660,7 +660,7 @@
 
 .cfg-test-result--success { color: #16a34a; }
 .cfg-test-result--error   { color: #dc2626; }
-.cfg-test-result--testing { color: var(--chase-medium-gray, #6b7280); }
+.cfg-test-result--testing { color: var(--brand-medium-gray, #6b7280); }
 
 /* ── Quick-start tab styles ───────────────────────────────────── */
 .cfg-next-step-hint {
@@ -686,7 +686,7 @@
   align-items: center;
   gap: 6px;
   padding: 14px 18px;
-  border: 2px solid var(--chase-light-gray, #e5e7eb);
+  border: 2px solid var(--brand-light-gray, #e5e7eb);
   border-radius: 8px;
   background: white;
   cursor: pointer;
@@ -695,12 +695,12 @@
 }
 
 .cfg-industry-tile:hover {
-  border-color: var(--chase-navy, #004687);
+  border-color: var(--brand-navy, #004687);
   background: #f0f4ff;
 }
 
 .cfg-industry-tile--active {
-  border-color: var(--chase-navy, #004687);
+  border-color: var(--brand-navy, #004687);
   background: #eff6ff;
 }
 
@@ -713,7 +713,7 @@
   font-size: 0.75rem;
   font-weight: 500;
   text-align: center;
-  color: var(--chase-dark-gray, #374151);
+  color: var(--brand-dark-gray, #374151);
 }
 
 /* ── Toggle + scopes (Phase 137 Plan 03) ─────────────────────── */
@@ -737,7 +737,7 @@
 
 .cfg-toggle-text {
   font-size: 0.9rem;
-  color: var(--chase-dark-gray, #374151);
+  color: var(--brand-dark-gray, #374151);
 }
 
 .cfg-scopes-textarea {
@@ -762,6 +762,6 @@
 
 /* Ensure no stray placeholder paragraph gets styled as content */
 .configuration-section__content > p:only-child {
-  color: var(--chase-medium-gray, #6b7280);
+  color: var(--brand-medium-gray, #6b7280);
   font-style: italic;
 }

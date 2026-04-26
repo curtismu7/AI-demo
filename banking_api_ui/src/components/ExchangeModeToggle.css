@@ -1,6 +1,6 @@
 /* banking_api_ui/src/components/ExchangeModeToggle.css */
 .emt-root {
-  background: var(--color-surface-raised, var(--chase-light-gray));
+  background: var(--color-surface-raised, var(--brand-light-gray));
   border: 1px solid var(--color-border, #DDDDDD);
   border-radius: 10px;
   padding: 10px 14px;
@@ -25,7 +25,7 @@
 .emt-rfc {
   font-size: 0.72rem;
   font-weight: 600;
-  color: var(--chase-navy);
+  color: var(--brand-navy);
   font-family: monospace;
   background: rgba(37, 99, 235, 0.08);
   padding: 2px 8px;
@@ -60,7 +60,7 @@
   display: grid;
   grid-template-columns: 1fr 1.2fr 1.1fr 1.2fr;
   gap: 0;
-  background: var(--chase-navy);
+  background: var(--brand-navy);
   color: white;
   font-weight: 600;
   padding: 8px 10px;
@@ -91,7 +91,7 @@
 }
 
 .emt-token-row--user .emt-tokens-col-name {
-  color: var(--chase-navy);
+  color: var(--brand-navy);
   font-weight: 600;
 }
 
@@ -134,7 +134,7 @@
   margin: 0;
   padding: 8px 10px;
   background: rgba(59, 130, 246, 0.05);
-  border-left: 2px solid var(--chase-navy);
+  border-left: 2px solid var(--brand-navy);
   color: var(--color-text-secondary, #666666);
   border-radius: 4px;
 }

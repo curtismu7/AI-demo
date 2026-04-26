@@ -1790,7 +1790,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 							style={{
 								background: "none",
 								border: "none",
-								color: "var(--chase-navy)",
+								color: "var(--brand-navy)",
 								fontWeight: 600,
 								cursor: "pointer",
 								padding: 0,
@@ -2267,7 +2267,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 							style={{
 								background: "none",
 								border: "none",
-								color: "var(--chase-navy)",
+								color: "var(--brand-navy)",
 								fontWeight: 600,
 								cursor: "pointer",
 								padding: 0,
@@ -3121,7 +3121,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 													<span
 														style={{
 															background: "#1e3a5f",
-															border: "1px solid var(--chase-navy)",
+															border: "1px solid var(--brand-navy)",
 															borderRadius: "4px",
 															padding: "2px 8px",
 															fontSize: "0.75rem",

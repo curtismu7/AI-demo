@@ -23,7 +23,7 @@
 
 /* Header */
 .ssp-header {
-  background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 100%);
+  background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy) 100%);
   color: white;
   padding: 2rem;
   text-align: center;
@@ -81,7 +81,7 @@
 /* Tabs */
 .ssp-tabs {
   display: flex;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border-bottom: 1px solid #DDDDDD;
 }
 
@@ -99,14 +99,14 @@
 }
 
 .ssp-tab:hover {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   color: #666666;
 }
 
 .ssp-tab--active {
-  color: var(--chase-navy);
+  color: var(--brand-navy);
   background: white;
-  border-bottom-color: var(--chase-navy);
+  border-bottom-color: var(--brand-navy);
 }
 
 /* Card Container */
@@ -132,7 +132,7 @@
 
 .ssp-form-section h3 {
   margin: 0 0 1.5rem 0;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
   font-size: 1.25rem;
   font-weight: 600;
 }
@@ -166,7 +166,7 @@
 
 .ssp-input:focus {
   outline: none;
-  border-color: var(--chase-navy);
+  border-color: var(--brand-navy);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
@@ -215,12 +215,12 @@
 }
 
 .ssp-role-card:hover {
-  border-color: var(--chase-navy);
+  border-color: var(--brand-navy);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
 }
 
 .ssp-role-card--selected {
-  border-color: var(--chase-navy);
+  border-color: var(--brand-navy);
   background: #eff6ff;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
 }
@@ -232,7 +232,7 @@
 
 .ssp-role-title {
   font-weight: 600;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
   margin-bottom: 0.25rem;
 }
 
@@ -277,7 +277,7 @@
 
 /* mayAct Section */
 .ssp-mayact-section {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border: 1px solid #DDDDDD;
   border-radius: 8px;
   padding: 1.5rem;
@@ -339,7 +339,7 @@
 }
 
 .ssp-toggle-switch input:checked + .ssp-toggle-slider {
-  background-color: var(--chase-navy);
+  background-color: var(--brand-navy);
 }
 
 .ssp-toggle-switch input:checked + .ssp-toggle-slider:before {
@@ -378,18 +378,18 @@
 }
 
 .ssp-mode-card:hover {
-  border-color: var(--chase-navy);
+  border-color: var(--brand-navy);
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
 }
 
 .ssp-mode-card--selected {
-  border-color: var(--chase-navy);
+  border-color: var(--brand-navy);
   background: #eff6ff;
 }
 
 .ssp-mode-title {
   font-weight: 600;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
   margin-bottom: 0.25rem;
 }
 
@@ -447,7 +447,7 @@
 }
 
 .ssp-submit-btn {
-  background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 100%);
+  background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy) 100%);
   color: white;
   border: none;
   padding: 1rem 2rem;
@@ -460,7 +460,7 @@
 }
 
 .ssp-submit-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 100%);
+  background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy) 100%);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
@@ -532,7 +532,7 @@
 }
 
 .ssp-profile-card h2 {
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
   margin-bottom: 1rem;
   font-size: 1.5rem;
 }
@@ -572,7 +572,7 @@
 }
 
 .ssp-info-value {
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
 }
 
 .ssp-status--active {
@@ -614,7 +614,7 @@
 
 /* Diagnostic Panel */
 .ssp-diagnosis-panel {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border: 1px solid #DDDDDD;
   border-radius: 8px;
   padding: 1.5rem;

@@ -28,38 +28,38 @@ h1, h2, h3, h4, h5, h6 {
 /* ========== Shared App Shell Styling ========== */
 
 .app-page-shell__hero {
-  background: var(--chase-light-gray, #F5F5F5);
+  background: var(--brand-light-gray, #F5F5F5);
   padding: 24px 32px;
-  border-bottom: 1px solid var(--chase-medium-gray, #EEEEEE);
+  border-bottom: 1px solid var(--brand-medium-gray, #EEEEEE);
 }
 
 .app-page-shell__title {
-  color: var(--chase-navy, #004687);
+  color: var(--brand-navy, #004687);
   font-size: 28px;
   font-weight: 700;
   margin: 0;
 }
 
 .app-page-shell__subtitle {
-  color: var(--chase-dark-gray, #555555);
+  color: var(--brand-dark-gray, #555555);
   font-size: 14px;
   margin: 8px 0 0;
 }
 
 .app-page-toolbar {
-  background: var(--chase-light-gray, #F5F5F5);
+  background: var(--brand-light-gray, #F5F5F5);
   padding: 16px 24px;
   display: flex;
   gap: 12px;
   align-items: center;
-  border-bottom: 1px solid var(--chase-medium-gray, #EEEEEE);
+  border-bottom: 1px solid var(--brand-medium-gray, #EEEEEE);
   flex-wrap: wrap;
 }
 
 .app-page-toolbar-btn {
   background: white;
-  border: 1px solid var(--chase-medium-gray, #EEEEEE);
-  color: var(--chase-navy, #004687);
+  border: 1px solid var(--brand-medium-gray, #EEEEEE);
+  color: var(--brand-navy, #004687);
   padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
@@ -69,21 +69,21 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .app-page-toolbar-btn:hover {
-  background: var(--chase-navy, #004687);
+  background: var(--brand-navy, #004687);
   color: white;
-  border-color: var(--chase-navy, #004687);
+  border-color: var(--brand-navy, #004687);
 }
 
 .app-page-toolbar-btn:active {
-  background: var(--chase-navy-dark, #003DA5);
-  border-color: var(--chase-navy-dark, #003DA5);
+  background: var(--brand-navy-dark, #003DA5);
+  border-color: var(--brand-navy-dark, #003DA5);
 }
 
 /* ========== Shared Card Styling ========== */
 
 .app-page-card {
   background: white;
-  border: 1px solid var(--chase-medium-gray, #EEEEEE);
+  border: 1px solid var(--brand-medium-gray, #EEEEEE);
   border-radius: 8px;
   padding: 24px;
 }
@@ -91,18 +91,18 @@ h1, h2, h3, h4, h5, h6 {
 .app-page-card__header {
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--chase-light-gray, #F5F5F5);
+  border-bottom: 1px solid var(--brand-light-gray, #F5F5F5);
 }
 
 .app-page-card__title {
-  color: var(--chase-navy, #004687);
+  color: var(--brand-navy, #004687);
   font-size: 18px;
   font-weight: 700;
   margin: 0;
 }
 
 .app-page-card__description {
-  color: var(--chase-dark-gray, #555555);
+  color: var(--brand-dark-gray, #555555);
   font-size: 14px;
   margin: 4px 0 0;
 }
@@ -116,12 +116,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .app-table thead {
-  background: var(--chase-light-gray, #F5F5F5);
-  border-bottom: 2px solid var(--chase-medium-gray, #EEEEEE);
+  background: var(--brand-light-gray, #F5F5F5);
+  border-bottom: 2px solid var(--brand-medium-gray, #EEEEEE);
 }
 
 .app-table thead th {
-  color: var(--chase-navy, #004687);
+  color: var(--brand-navy, #004687);
   font-weight: 700;
   padding: 12px 16px;
   text-align: left;
@@ -129,7 +129,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .app-table tbody tr {
-  border-bottom: 1px solid var(--chase-light-gray, #F5F5F5);
+  border-bottom: 1px solid var(--brand-light-gray, #F5F5F5);
 }
 
 .app-table tbody tr:hover {
@@ -138,7 +138,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .app-table tbody td {
   padding: 12px 16px;
-  color: var(--chase-dark-gray, #555555);
+  color: var(--brand-dark-gray, #555555);
   font-size: 14px;
 }
 
@@ -169,19 +169,19 @@ h1, h2, h3, h4, h5, h6 {
 
 .app-badge--info {
   background: rgba(0, 102, 204, 0.1);
-  color: var(--chase-blue, #0066CC);
+  color: var(--brand-blue, #0066CC);
 }
 
 /* ========== Link Styling ========== */
 
 .app-link {
-  color: var(--chase-blue, #0066CC);
+  color: var(--brand-blue, #0066CC);
   text-decoration: none;
   transition: color 0.2s;
 }
 
 .app-link:hover {
-  color: var(--chase-navy-dark, #003DA5);
+  color: var(--brand-navy-dark, #003DA5);
   text-decoration: underline;
 }
 
@@ -190,24 +190,24 @@ h1, h2, h3, h4, h5, h6 {
 .app-input,
 .app-select,
 .app-textarea {
-  border: 1px solid var(--chase-medium-gray, #EEEEEE);
+  border: 1px solid var(--brand-medium-gray, #EEEEEE);
   border-radius: 6px;
   padding: 8px 12px;
   font-family: inherit;
   font-size: 14px;
-  color: var(--chase-dark-gray, #555555);
+  color: var(--brand-dark-gray, #555555);
 }
 
 .app-input:focus,
 .app-select:focus,
 .app-textarea:focus {
   outline: none;
-  border-color: var(--chase-navy, #004687);
+  border-color: var(--brand-navy, #004687);
   box-shadow: 0 0 0 3px rgba(0, 70, 135, 0.1);
 }
 
 .app-input::placeholder {
-  color: var(--chase-medium-gray, #AAAAAA);
+  color: var(--brand-medium-gray, #AAAAAA);
 }
 
 /* ========== Dark Mode Overrides ========== */
@@ -237,8 +237,8 @@ html[data-theme='dark'] .app-page-toolbar-btn {
 }
 
 html[data-theme='dark'] .app-page-toolbar-btn:hover {
-  background: var(--chase-navy, #004687);
-  border-color: var(--chase-navy, #004687);
+  background: var(--brand-navy, #004687);
+  border-color: var(--brand-navy, #004687);
   color: white;
 }
 
@@ -291,7 +291,7 @@ html[data-theme='dark'] .app-textarea {
 html[data-theme='dark'] .app-input:focus,
 html[data-theme='dark'] .app-select:focus,
 html[data-theme='dark'] .app-textarea:focus {
-  border-color: var(--chase-blue, #0066CC);
+  border-color: var(--brand-blue, #0066CC);
   box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.2);
 }
 

@@ -195,7 +195,7 @@
 /* ---------- Tabs ---------- */
 .ciba-tabs {
   display: flex;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border-bottom: 2px solid #DDDDDD;
   flex-shrink: 0;
   overflow-x: auto;
@@ -223,7 +223,7 @@
 .ciba-tab--active {
   color: #1e3a5f;
   font-weight: 700;
-  border-bottom-color: var(--chase-navy);
+  border-bottom-color: var(--brand-navy);
 }
 
 /* ---------- Scrollable body ---------- */
@@ -305,7 +305,7 @@
   gap: 0.6rem;
   align-items: flex-start;
   padding: 0.75rem;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border: 1px solid #DDDDDD;
   border-radius: 8px;
   font-size: 0.8rem;
@@ -329,8 +329,8 @@
 
 .ciba-notice--info {
   background: #eff6ff;
-  border-left: 3px solid var(--chase-navy);
-  color: var(--chase-navy);
+  border-left: 3px solid var(--brand-navy);
+  color: var(--brand-navy);
 }
 
 .ciba-notice--warning {
@@ -378,7 +378,7 @@
 }
 
 .ciba-input:focus {
-  border-color: var(--chase-navy);
+  border-color: var(--brand-navy);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
@@ -483,7 +483,7 @@
   gap: 0.5rem;
   font-size: 0.79rem;
   padding: 0.5rem 0.65rem;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border: 1px solid #DDDDDD;
   border-radius: 6px;
 }
@@ -511,7 +511,7 @@
   text-align: center;
 }
 
-.ciba-method--get  { background: #eff6ff; color: var(--chase-navy); }
+.ciba-method--get  { background: #eff6ff; color: var(--brand-navy); }
 .ciba-method--post { background: #fef9c3; color: #854d0e; }
 
 /* ---------- Setup steps ---------- */

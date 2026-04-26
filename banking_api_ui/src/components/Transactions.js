@@ -43,7 +43,7 @@ const Transactions = ({ user, onLogout }) => {
 
   const getTransactionTypeColor = (type) => {
     const colors = {
-      'transfer': 'var(--chase-navy)',
+      'transfer': 'var(--brand-navy)',
       'deposit': '#10b981',
       'withdrawal': '#f59e0b'
     };
@@ -52,7 +52,7 @@ const Transactions = ({ user, onLogout }) => {
 
   const getClientTypeIcon = (clientType) => {
     if (clientType === 'enduser') {
-      return { icon: '👤', label: 'End User', color: 'var(--chase-navy)' };
+      return { icon: '👤', label: 'End User', color: 'var(--brand-navy)' };
     } else if (clientType === 'ai_agent') {
       return { icon: '🤖', label: 'AI Agent', color: '#8b5cf6' };
     } else {

@@ -5,7 +5,7 @@
   top: var(--topnav-height, 56px);
   bottom: 0;
   z-index: 900;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -88,7 +88,7 @@
 
 .side-agent-dock__collapse-btn:hover {
   background: #CCCCCC;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
 }
 
 /* Agent body — fills the dock, overflow handled by BankingAgent internals */

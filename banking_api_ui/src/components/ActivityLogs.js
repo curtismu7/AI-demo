@@ -371,9 +371,9 @@ const ActivityLogs = ({ user, onLogout }) => {
   const tabStyle = (tab) => ({
     padding: '0.5rem 1rem',
     border: 'none',
-    borderBottom: activeTab === tab ? '2px solid var(--chase-blue, #0060f0)' : '2px solid transparent',
+    borderBottom: activeTab === tab ? '2px solid var(--brand-blue, #0060f0)' : '2px solid transparent',
     backgroundColor: 'transparent',
-    color: activeTab === tab ? 'var(--chase-blue, #0060f0)' : '#64748b',
+    color: activeTab === tab ? 'var(--brand-blue, #0060f0)' : '#64748b',
     fontWeight: activeTab === tab ? '600' : '400',
     cursor: 'pointer',
     fontSize: '0.9rem',
@@ -556,7 +556,7 @@ const ActivityLogs = ({ user, onLogout }) => {
 
 const getActionColor = (action) => {
   const colors = {
-    'LOGIN': '#10b981', 'REGISTER': 'var(--chase-navy)', 'TRANSFER_MONEY': '#f59e0b',
+    'LOGIN': '#10b981', 'REGISTER': 'var(--brand-navy)', 'TRANSFER_MONEY': '#f59e0b',
     'CHECK_BALANCE': '#8b5cf6', 'GET_TRANSACTIONS': '#06b6d4', 'CREATE_USER': '#84cc16',
     'UPDATE_USER': '#f97316', 'DELETE_USER': '#ef4444', 'ADMIN_ACCESS': '#6366f1',
     'VIEW_ACTIVITY_LOGS': '#ec4899', 'API_ROOT': '#8b5cf6', 'GET_CURRENT_USER': '#06b6d4'

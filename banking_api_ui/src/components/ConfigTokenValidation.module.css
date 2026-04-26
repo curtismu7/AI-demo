@@ -49,7 +49,7 @@
 }
 
 .modeOption.selected {
-  border-color: var(--chase-navy);
+  border-color: var(--brand-navy);
   background: #eff6ff;
 }
 
@@ -63,7 +63,7 @@
 .radio {
   width: 16px;
   height: 16px;
-  accent-color: var(--chase-navy);
+  accent-color: var(--brand-navy);
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -79,7 +79,7 @@
   display: inline-block;
   padding: 2px 10px;
   background: #dbeafe;
-  color: var(--chase-navy);
+  color: var(--brand-navy);
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
@@ -113,7 +113,7 @@
 
 /* Mode details (pros/cons) */
 .modeDetails {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border: 1px solid #DDDDDD;
   border-radius: 6px;
   padding: 14px 16px;
@@ -195,7 +195,7 @@
 
 .testButton {
   padding: 9px 18px;
-  background: var(--chase-navy);
+  background: var(--brand-navy);
   color: white;
   border: none;
   border-radius: 6px;
@@ -209,7 +209,7 @@
 }
 
 .testButton:hover:not(:disabled) {
-  background: var(--chase-navy);
+  background: var(--brand-navy);
 }
 
 .testButton:disabled {
@@ -383,7 +383,7 @@
 }
 
 .infoFooter a {
-  color: var(--chase-navy);
+  color: var(--brand-navy);
   text-decoration: none;
 }
 

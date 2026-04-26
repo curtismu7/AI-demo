@@ -370,7 +370,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--chase-navy, #004687);
+  color: var(--brand-navy, #004687);
   margin-bottom: 0.1rem;
 }
 

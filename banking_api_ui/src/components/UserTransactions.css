@@ -1,14 +1,14 @@
 /* UserTransactions.css — Chase-branded transactions page styles */
 
 .user-transactions {
-  background: var(--chase-light-gray, #F5F5F5);
+  background: var(--brand-light-gray, #F5F5F5);
   min-height: 100vh;
   padding: 1.5rem;
 }
 
 .transactions-header {
-  background: var(--chase-navy, #004687);
-  color: var(--chase-white, #FFFFFF);
+  background: var(--brand-navy, #004687);
+  color: var(--brand-white, #FFFFFF);
   padding: 1rem 1.5rem;
   border-radius: 8px 8px 0 0;
   font-size: 1.1rem;
@@ -17,7 +17,7 @@
 }
 
 .transfer-section {
-  background: var(--chase-white, #FFFFFF);
+  background: var(--brand-white, #FFFFFF);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   padding: 1.25rem 1.5rem;
@@ -31,8 +31,8 @@
 }
 
 .transfer-card {
-  background: var(--chase-light-gray, #F5F5F5);
-  border: 1px solid var(--chase-medium-gray, #E0E0E0);
+  background: var(--brand-light-gray, #F5F5F5);
+  border: 1px solid var(--brand-medium-gray, #E0E0E0);
   border-radius: 8px;
   padding: 1rem 1.25rem;
   flex: 1;
@@ -44,7 +44,7 @@
 }
 
 .transfer-card:hover {
-  border-color: var(--chase-navy, #004687);
+  border-color: var(--brand-navy, #004687);
 }
 
 .transfer-icon {

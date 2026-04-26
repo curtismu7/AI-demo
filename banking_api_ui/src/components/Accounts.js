@@ -10,7 +10,7 @@ import PageNav from './PageNav';
 import { useTheme } from '../context/ThemeContext';
 
 const ACCOUNT_TYPE_BADGE_COLORS = {
-  checking: 'var(--chase-navy)',
+  checking: 'var(--brand-navy)',
   savings: '#10b981',
   investment: '#8b5cf6',
   money_market: '#06b6d4',

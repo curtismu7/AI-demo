@@ -10,7 +10,7 @@
 }
 
 .vc-tab__description a {
-  color: var(--chase-navy);
+  color: var(--brand-navy);
   text-decoration: underline;
 }
 
@@ -67,7 +67,7 @@
 
 .vc-tab__input:focus {
   outline: none;
-  border-color: var(--chase-navy);
+  border-color: var(--brand-navy);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
@@ -80,7 +80,7 @@
 .vc-tab__save-btn {
   padding: 0.25rem 0.75rem;
   border-radius: 4px;
-  background: var(--chase-navy);
+  background: var(--brand-navy);
   color: #fff;
   border: none;
   cursor: pointer;
@@ -89,7 +89,7 @@
 }
 
 .vc-tab__save-btn:hover:not(:disabled) {
-  background: var(--chase-navy);
+  background: var(--brand-navy);
 }
 
 .vc-tab__save-btn--saving {
@@ -118,7 +118,7 @@
 }
 
 .vc-tab__vercel-link:hover {
-  color: var(--chase-navy);
+  color: var(--brand-navy);
   text-decoration: underline;
 }
 

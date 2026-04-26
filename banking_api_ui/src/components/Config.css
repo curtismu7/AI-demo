@@ -160,7 +160,7 @@
 /* ── Checklist card ─────────────────────────────────────── */
 .config-page__card--steps {
   border-color: rgba(99, 102, 241, 0.25);
-  background: linear-gradient(180deg, var(--chase-light-gray) 0%, var(--chase-light-gray) 100%);
+  background: linear-gradient(180deg, var(--brand-light-gray) 0%, var(--brand-light-gray) 100%);
 }
 
 .config-page__card--steps .card-title {
@@ -527,7 +527,7 @@
 }
 
 .config-page__expand-btn:hover {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border-color: var(--p1-primary);
 }
 
@@ -569,7 +569,7 @@
   font-weight: 700;
 }
 
-.config-page__path-card--indigo .config-page__path-title { color: var(--chase-navy); }
+.config-page__path-card--indigo .config-page__path-title { color: var(--brand-navy); }
 .config-page__path-card--green .config-page__path-title  { color: #14532d; }
 
 .config-page__path-desc {

@@ -166,7 +166,7 @@ const Login = () => {
           </div>
 
           <p className="login-onboarding-hint" style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.9rem' }}>
-            <Link to="/onboarding" style={{ color: 'var(--chase-navy)', fontWeight: 500 }}>
+            <Link to="/onboarding" style={{ color: 'var(--brand-navy)', fontWeight: 500 }}>
               First-time setup — what to configure in PingOne
             </Link>
           </p>

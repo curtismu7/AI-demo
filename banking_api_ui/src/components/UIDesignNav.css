@@ -17,14 +17,14 @@
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.06em;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
   cursor: pointer;
 }
 
 .ui-design-nav__toggle:hover {
   background: #fff;
   border-color: rgba(37, 99, 235, 0.4);
-  color: var(--chase-navy);
+  color: var(--brand-navy);
 }
 
 .ui-design-nav__menu {
@@ -71,12 +71,12 @@
 }
 
 .ui-design-nav__link:hover {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
 }
 
 .ui-design-nav__link--active {
   font-weight: 600;
-  color: var(--chase-navy);
+  color: var(--brand-navy);
   background: rgba(37, 99, 235, 0.08);
 }
 

@@ -5,7 +5,7 @@
   z-index: 10056;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(165deg, var(--chase-light-gray) 0%, #eef2ff 100%);
+  background: linear-gradient(165deg, var(--brand-light-gray) 0%, #eef2ff 100%);
   border: 1px solid #c7d2fe;
   border-radius: 12px;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.6) inset;
@@ -80,7 +80,7 @@
 }
 
 .afd-btn:hover {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border-color: #94a3b8;
 }
 
@@ -139,7 +139,7 @@
 }
 
 .afd-step--pending .afd-step-dot {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border-color: #CCCCCC;
 }
 
@@ -229,7 +229,7 @@
 }
 
 .afd-badge--pending {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   color: #999999;
 }
 
@@ -356,13 +356,13 @@
   margin-bottom: 0.5rem;
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
 }
 
 .afd-token-toggle {
   padding: 0.25rem 0.5rem;
   font-size: 0.7rem;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border: 1px solid #CCCCCC;
   border-radius: 4px;
   cursor: pointer;
@@ -384,7 +384,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border: 1px solid #DDDDDD;
   border-radius: 6px;
   font-size: 0.7rem;
@@ -401,8 +401,8 @@
 
 .afd-token-type--user_token {
   background: #dbeafe;
-  color: var(--chase-navy);
-  border: 1px solid var(--chase-navy-light);
+  color: var(--brand-navy);
+  border: 1px solid var(--brand-navy-light);
 }
 
 .afd-token-type--agent_token {

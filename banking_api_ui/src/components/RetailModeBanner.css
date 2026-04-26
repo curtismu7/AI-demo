@@ -1,7 +1,7 @@
 /* RetailModeBanner.css
    Persistent mode indicator + toggle banner for UserDashboard.
    Shown in both Banking and Retail modes (always visible on dashboard).
-   Colors: Retail ON = #0046BE bg / #FFE000 btn; Banking = #f5f5f5 bg / var(--chase-navy) btn.
+   Colors: Retail ON = #0046BE bg / #FFE000 btn; Banking = #f5f5f5 bg / var(--brand-navy) btn.
 */
 
 .retail-mode-banner {
@@ -21,7 +21,7 @@
 }
 
 .retail-mode-banner--banking {
-  background-color: var(--chase-light-gray, #f5f5f5);
+  background-color: var(--brand-light-gray, #f5f5f5);
   color: #1a1a1a;
 }
 
@@ -63,7 +63,7 @@
 }
 
 .retail-mode-banner__btn--banking {
-  background-color: var(--chase-navy, #002d62);
+  background-color: var(--brand-navy, #002d62);
   color: #ffffff;
 }
 

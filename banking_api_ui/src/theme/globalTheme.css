@@ -2,8 +2,8 @@
  * Global light/dark driven by html[data-theme="light"|"dark"] (set by ThemeContext). */
 
 html[data-theme='light'] body {
-  background-color: var(--chase-light-gray);
-  color: var(--chase-dark-gray);
+  background-color: var(--brand-light-gray);
+  color: var(--brand-dark-gray);
 }
 
 /* ─── Dark: base + chrome ─────────────────────────────────────────── */
@@ -17,17 +17,17 @@ html[data-theme='dark'] .loading {
 }
 
 html[data-theme='dark'] .loading::after {
-  border-color: var(--chase-dark-gray);
+  border-color: var(--brand-dark-gray);
   border-top-color: #4169e1;
 }
 
 html[data-theme='dark'] .footer {
-  background: var(--chase-dark-gray);
-  border-top-color: var(--chase-dark-gray);
+  background: var(--brand-dark-gray);
+  border-top-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .footer-brand-text {
-  color: var(--chase-light-gray);
+  color: var(--brand-light-gray);
 }
 
 html[data-theme='dark'] .footer-copyright {
@@ -36,7 +36,7 @@ html[data-theme='dark'] .footer-copyright {
 
 html[data-theme='dark'] .footer-demo-config {
   background: #0f172a;
-  border-color: var(--chase-dark-gray);
+  border-color: var(--brand-dark-gray);
   color: #93c5fd;
 }
 
@@ -48,7 +48,7 @@ html[data-theme='dark'] .footer-demo-config:hover {
 
 html[data-theme='dark'] .footer-theme-toggle {
   background: #0f172a;
-  border-color: var(--chase-dark-gray);
+  border-color: var(--brand-dark-gray);
   color: #DDDDDD;
 }
 
@@ -59,12 +59,12 @@ html[data-theme='dark'] .footer-theme-toggle:hover {
 
 /* App shell pages (Config, Demo data, admin tables, etc.) */
 html[data-theme='dark'] .app-page-shell {
-  background: linear-gradient(180deg, #0f172a 0%, var(--chase-dark-gray) 100%);
+  background: linear-gradient(180deg, #0f172a 0%, var(--brand-dark-gray) 100%);
 }
 
 html[data-theme='dark'] .app-page-toolbar {
-  background: var(--chase-dark-gray);
-  border-color: var(--chase-dark-gray);
+  background: var(--brand-dark-gray);
+  border-color: var(--brand-dark-gray);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
@@ -73,14 +73,14 @@ html[data-theme='dark'] .page-nav__trail {
 }
 
 html[data-theme='dark'] .app-page-card {
-  background: var(--chase-dark-gray);
-  border-color: var(--chase-dark-gray);
+  background: var(--brand-dark-gray);
+  border-color: var(--brand-dark-gray);
   color: #DDDDDD;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 
 html[data-theme='dark'] .app-page-card h2 {
-  color: var(--chase-light-gray);
+  color: var(--brand-light-gray);
 }
 
 html[data-theme='dark'] .admin-dashboard__reset-msg {
@@ -94,32 +94,32 @@ html[data-theme='dark'] .user-dashboard {
 }
 
 html[data-theme='dark'] .dashboard-toolbar {
-  background: var(--chase-dark-gray);
-  border-top-color: var(--chase-dark-gray);
+  background: var(--brand-dark-gray);
+  border-top-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .section {
   background: rgba(30, 41, 59, 0.95);
-  border-color: var(--chase-dark-gray);
+  border-color: var(--brand-dark-gray);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.35);
 }
 
 html[data-theme='dark'] .section h2 {
-  color: var(--chase-light-gray);
+  color: var(--brand-light-gray);
 }
 
 html[data-theme='dark'] .account-summary-table {
-  border-color: var(--chase-dark-gray);
-  background: var(--chase-dark-gray);
+  border-color: var(--brand-dark-gray);
+  background: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .account-summary-header {
   background: #0f172a;
-  border-bottom-color: var(--chase-dark-gray);
+  border-bottom-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .account-summary-row {
-  border-bottom-color: var(--chase-dark-gray);
+  border-bottom-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .account-summary-cell {
@@ -132,17 +132,17 @@ html[data-theme='dark'] .account-summary-header .account-summary-cell {
 
 html[data-theme='dark'] .ud-left,
 html[data-theme='dark'] .ud-right {
-  background: var(--chase-dark-gray);
-  border-color: var(--chase-dark-gray);
+  background: var(--brand-dark-gray);
+  border-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .ud-token-panel {
-  border-bottom-color: var(--chase-dark-gray);
+  border-bottom-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .ud-tp-header {
   background: #0f172a;
-  border-color: var(--chase-dark-gray);
+  border-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .ud-tp-header:hover {
@@ -150,7 +150,7 @@ html[data-theme='dark'] .ud-tp-header:hover {
 }
 
 html[data-theme='dark'] .ud-tp-section {
-  border-bottom-color: var(--chase-dark-gray);
+  border-bottom-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .ud-tp-val {
@@ -160,16 +160,16 @@ html[data-theme='dark'] .ud-tp-val {
 
 html[data-theme='dark'] .ud-account-card {
   background: #0f172a;
-  border-color: var(--chase-dark-gray);
+  border-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .ud-action-drawer {
-  background: var(--chase-dark-gray);
-  border-color: var(--chase-dark-gray);
+  background: var(--brand-dark-gray);
+  border-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .ud-drawer-header {
-  border-bottom-color: var(--chase-dark-gray);
+  border-bottom-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .ud-txn-section {
@@ -177,7 +177,7 @@ html[data-theme='dark'] .ud-txn-section {
 }
 
 html[data-theme='dark'] .ud-txn-row {
-  border-bottom-color: var(--chase-dark-gray);
+  border-bottom-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .ud-txn-desc {
@@ -189,8 +189,8 @@ html[data-theme='dark'] .ud-txn-date {
 }
 
 html[data-theme='dark'] .embedded-banking-agent {
-  background: var(--chase-dark-gray);
-  border-color: var(--chase-dark-gray);
+  background: var(--brand-dark-gray);
+  border-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .global-embedded-agent-dock-wrap {
@@ -198,8 +198,8 @@ html[data-theme='dark'] .global-embedded-agent-dock-wrap {
 }
 
 html[data-theme='dark'] .global-embedded-agent-dock-wrap--collapsed {
-  border-top-color: var(--chase-dark-gray);
-  background: linear-gradient(180deg, #0f172a 0%, var(--chase-dark-gray) 100%);
+  border-top-color: var(--brand-dark-gray);
+  background: linear-gradient(180deg, #0f172a 0%, var(--brand-dark-gray) 100%);
   box-shadow: 0 -3px 16px rgba(0, 0, 0, 0.35);
 }
 
@@ -218,7 +218,7 @@ html[data-theme='dark'] .embedded-agent-dock__lead {
 }
 
 html[data-theme='dark'] .embedded-banking-agent-title {
-  color: var(--chase-light-gray);
+  color: var(--brand-light-gray);
 }
 
 html[data-theme='dark'] .embedded-banking-agent-lead {
@@ -226,13 +226,13 @@ html[data-theme='dark'] .embedded-banking-agent-lead {
 }
 
 html[data-theme='dark'] .edu-bar-panel {
-  background: var(--chase-dark-gray);
-  border-color: var(--chase-dark-gray);
+  background: var(--brand-dark-gray);
+  border-color: var(--brand-dark-gray);
   box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.5);
 }
 
 html[data-theme='dark'] .edu-bar-panel__title {
-  color: var(--chase-light-gray);
+  color: var(--brand-light-gray);
 }
 
 html[data-theme='dark'] .edu-bar-panel__heading {
@@ -277,7 +277,7 @@ html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] .embedded
 }
 
 html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] .embedded-banking-agent {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border-color: #e5e7eb;
 }
 
@@ -308,7 +308,7 @@ html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] .embedded
     rgba(239, 246, 255, 0.98) 0%,
     rgba(219, 234, 254, 0.75) 100%
   );
-  color: var(--chase-navy);
+  color: var(--brand-navy);
 }
 
 html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] .embedded-dock-resize-handle:hover .embedded-dock-resize-handle__bar {
@@ -316,33 +316,33 @@ html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] .embedded
 }
 
 html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] .embedded-dock-resize-handle:hover .embedded-dock-resize-handle__label {
-  color: var(--chase-navy);
+  color: var(--brand-navy);
 }
 
 /* ─── Shared index.css primitives (admin lists, modals, etc.) ───────────── */
 html[data-theme='dark'] .card {
-  background: var(--chase-dark-gray);
+  background: var(--brand-dark-gray);
   color: #DDDDDD;
-  border: 1px solid var(--chase-dark-gray);
+  border: 1px solid var(--brand-dark-gray);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 html[data-theme='dark'] .card-header {
-  border-bottom-color: var(--chase-dark-gray);
+  border-bottom-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .card-title {
-  color: var(--chase-light-gray);
+  color: var(--brand-light-gray);
 }
 
 html[data-theme='dark'] .stat-card {
-  background: var(--chase-dark-gray);
+  background: var(--brand-dark-gray);
   border-left-color: #4169e1;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 html[data-theme='dark'] .stat-value {
-  color: var(--chase-light-gray);
+  color: var(--brand-light-gray);
 }
 
 html[data-theme='dark'] .stat-label {
@@ -350,13 +350,13 @@ html[data-theme='dark'] .stat-label {
 }
 
 html[data-theme='dark'] .table {
-  background: var(--chase-dark-gray);
+  background: var(--brand-dark-gray);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 html[data-theme='dark'] .table th,
 html[data-theme='dark'] .table td {
-  border-bottom-color: var(--chase-dark-gray);
+  border-bottom-color: var(--brand-dark-gray);
   color: #DDDDDD;
 }
 
@@ -365,20 +365,20 @@ html[data-theme='dark'] .modal-overlay {
 }
 
 html[data-theme='dark'] .modal-content {
-  background: var(--chase-dark-gray);
+  background: var(--brand-dark-gray);
   color: #DDDDDD;
-  border: 1px solid var(--chase-dark-gray);
+  border: 1px solid var(--brand-dark-gray);
 }
 
 /* Config page (uses CSS variables — override tokens in dark mode) */
 html[data-theme='dark'] .config-page {
-  background: linear-gradient(165deg, #0f172a 0%, var(--chase-dark-gray) 45%, #172554 100%);
+  background: linear-gradient(165deg, #0f172a 0%, var(--brand-dark-gray) 45%, #172554 100%);
   color: #DDDDDD;
-  --p1-surface: var(--chase-dark-gray);
+  --p1-surface: var(--brand-dark-gray);
   --p1-surface-muted: #0f172a;
   --p1-surface-accent: #1e3a5f;
   --p1-border: rgba(148, 163, 184, 0.28);
-  --p1-text: var(--chase-light-gray);
+  --p1-text: var(--brand-light-gray);
   --p1-text-secondary: #94a3b8;
   --p1-primary-soft: rgba(65, 105, 225, 0.15);
 }
@@ -391,7 +391,7 @@ html[data-theme='dark'] .config-page .card {
 
 html[data-theme='dark'] .config-page__banner--info {
   background: rgba(30, 58, 110, 0.35);
-  border-color: var(--chase-dark-gray);
+  border-color: var(--brand-dark-gray);
   color: #CCCCCC;
 }
 
@@ -408,11 +408,11 @@ html[data-theme='dark'] .mcp-inspector-page .mcp-inspector {
 
 html[data-theme='dark'] .mcp-inspector-page .app-page-card--muted {
   background: #0f172a;
-  border-color: var(--chase-dark-gray);
+  border-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .mcp-inspector__header {
-  border-bottom-color: var(--chase-dark-gray);
+  border-bottom-color: var(--brand-dark-gray);
 }
 
 html[data-theme='dark'] .mcp-inspector__subtitle {
@@ -420,8 +420,8 @@ html[data-theme='dark'] .mcp-inspector__subtitle {
 }
 
 html[data-theme='dark'] .mcp-inspector__panel {
-  background: var(--chase-dark-gray);
-  border-color: var(--chase-dark-gray);
+  background: var(--brand-dark-gray);
+  border-color: var(--brand-dark-gray);
   color: #DDDDDD;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
@@ -445,7 +445,7 @@ html[data-theme='dark'] .mcp-inspector__link {
 
 html[data-theme='dark'] .mcp-inspector__tool-chip {
   background: #0f172a;
-  border-color: var(--chase-dark-gray);
+  border-color: var(--brand-dark-gray);
   color: #DDDDDD;
 }
 
@@ -456,7 +456,7 @@ html[data-theme='dark'] .mcp-inspector__tool-chip.is-selected {
 
 html[data-theme='dark'] .mcp-inspector__textarea {
   background: #0f172a;
-  border-color: var(--chase-dark-gray);
+  border-color: var(--brand-dark-gray);
   color: #DDDDDD;
 }
 
@@ -512,7 +512,7 @@ html[data-theme='dark'] .landing-page.landing-page--light .cta-content h2 {
 }
 
 html[data-theme='dark'] .landing-page.landing-page--light .features {
-  background: linear-gradient(to bottom, #ffffff, var(--chase-light-gray)) !important;
+  background: linear-gradient(to bottom, #ffffff, var(--brand-light-gray)) !important;
 }
 
 html[data-theme='dark'] .landing-page.landing-page--light .how-it-works {
@@ -530,7 +530,7 @@ html[data-theme='dark'] .landing-page.landing-page--light .floating-card {
 }
 
 html[data-theme='dark'] .landing-page.landing-page--light .message-bubble {
-  background: var(--chase-light-gray) !important;
+  background: var(--brand-light-gray) !important;
   color: #0f172a !important;
 }
 
@@ -554,7 +554,7 @@ html[data-theme='dark'] .App--marketing-page > footer.footer .footer-copyright {
 }
 
 html[data-theme='dark'] .App--marketing-page > footer.footer .footer-theme-toggle {
-  background: var(--chase-light-gray) !important;
+  background: var(--brand-light-gray) !important;
   border-color: #e5e7eb !important;
   color: #0f172a !important;
 }
@@ -562,5 +562,5 @@ html[data-theme='dark'] .App--marketing-page > footer.footer .footer-theme-toggl
 html[data-theme='dark'] .App--marketing-page > footer.footer .footer-demo-config {
   background: #ffffff !important;
   border-color: #CCCCCC !important;
-  color: var(--chase-navy) !important;
+  color: var(--brand-navy) !important;
 }

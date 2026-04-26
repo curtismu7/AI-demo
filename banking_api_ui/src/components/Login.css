@@ -2,13 +2,13 @@
 
 /* Page wrapper */
 .login-page {
-  background: var(--chase-light-gray, #F5F5F5);
+  background: var(--brand-light-gray, #F5F5F5);
 }
 
 /* Card header — chase navy brand bar */
 .login-card__header {
-  background: var(--chase-navy, #004687);
-  color: var(--chase-white, #FFFFFF);
+  background: var(--brand-navy, #004687);
+  color: var(--brand-white, #FFFFFF);
   padding: 1.5rem 2rem 1.25rem;
   text-align: center;
   border-radius: 8px 8px 0 0;
@@ -17,7 +17,7 @@
 
 .login-card__header h1,
 .login-card__header h2 {
-  color: var(--chase-white, #FFFFFF);
+  color: var(--brand-white, #FFFFFF);
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
@@ -33,6 +33,6 @@
   text-align: center;
   margin-top: 1rem;
   font-size: 0.8rem;
-  color: var(--chase-dark-gray, #333333);
+  color: var(--brand-dark-gray, #333333);
   opacity: 0.7;
 }

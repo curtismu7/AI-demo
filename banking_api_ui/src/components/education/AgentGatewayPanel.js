@@ -22,7 +22,7 @@ export default function AgentGatewayPanel({ isOpen, onClose, initialTabId }) {
             <button
               type="button"
               onClick={() => open(EDU.CUA, 'what')}
-              style={{ background: 'none', border: 'none', color: 'var(--chase-navy)', cursor: 'pointer', padding: 0, textDecoration: 'underline', font: 'inherit' }}
+              style={{ background: 'none', border: 'none', color: 'var(--brand-navy)', cursor: 'pointer', padding: 0, textDecoration: 'underline', font: 'inherit' }}
             >
               Computer Use Agent (CUA)
             </button>

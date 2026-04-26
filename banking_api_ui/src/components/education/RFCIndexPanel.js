@@ -61,7 +61,7 @@ export default function RFCIndexPanel({ isOpen, onClose, initialTabId }) {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: 'var(--chase-navy)',
+                    color: 'var(--brand-navy)',
                     cursor: 'pointer',
                     textDecoration: 'underline',
                     padding: 0,

@@ -43,7 +43,7 @@
   width: 40px;
   height: 40px;
   border: 3px solid #DDDDDD;
-  border-top-color: var(--chase-navy);
+  border-top-color: var(--brand-navy);
   border-radius: 50%;
   animation: lo-spin 0.8s linear infinite;
 }
@@ -56,7 +56,7 @@
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--chase-dark-gray);
+  color: var(--brand-dark-gray);
   line-height: 1.4;
 }
 
@@ -69,14 +69,14 @@
 
 /* Color accent stripe on the card top edge (color driven by inline style via SpinnerHost) */
 .lo-card {
-  border-top: 3px solid var(--chase-navy);
+  border-top: 3px solid var(--brand-navy);
 }
 
 /* Blue monospace pill showing the live API endpoint */
 .lo-endpoint {
   font-size: 0.75rem;
   font-family: monospace;
-  color: var(--chase-navy);
+  color: var(--brand-navy);
   background: #eff6ff;
   padding: 2px 10px;
   border-radius: 4px;
@@ -89,12 +89,12 @@
 /* Dark-mode aware */
 @media (prefers-color-scheme: dark) {
   .lo-card {
-    background: var(--chase-dark-gray);
+    background: var(--brand-dark-gray);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
   }
-  .lo-message  { color: var(--chase-light-gray); }
+  .lo-message  { color: var(--brand-light-gray); }
   .lo-sub      { color: #94a3b8; }
-  .lo-spinner  { border-color: var(--chase-dark-gray); border-top-color: var(--chase-navy-light); }
+  .lo-spinner  { border-color: var(--brand-dark-gray); border-top-color: var(--brand-navy-light); }
   .lo-endpoint { background: #1e3a5f; color: #93c5fd; }
 }
 

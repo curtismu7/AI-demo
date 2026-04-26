@@ -214,7 +214,7 @@
 .token-chain-copy:hover {
   background: #eff6ff;
   border-color: #93c5fd;
-  color: var(--chase-navy);
+  color: var(--brand-navy);
 }
 
 .token-chain-detail {
@@ -229,7 +229,7 @@
 .token-chain-detail pre {
   margin: 0.4rem 0 0;
   padding: 0.5rem 0.55rem;
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
   border: 1px solid #DDDDDD;
   border-radius: 0.35rem;
   font-size: 0.68rem;

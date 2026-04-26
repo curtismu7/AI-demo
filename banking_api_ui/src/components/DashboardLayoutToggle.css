@@ -33,10 +33,10 @@
 }
 
 .dashboard-layout-toggle__btn:hover {
-  background: var(--chase-light-gray);
+  background: var(--brand-light-gray);
 }
 
 .dashboard-layout-toggle__btn--active {
   background: #e0e7ff;
-  color: var(--chase-navy);
+  color: var(--brand-navy);
 }

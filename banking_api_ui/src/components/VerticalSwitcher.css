@@ -11,19 +11,19 @@
   font-weight: 600;
   border: 1px solid var(--dash-border, #DDDDDD);
   border-radius: 6px;
-  background: var(--dash-surface-2, var(--chase-light-gray));
-  color: var(--dash-text, var(--chase-dark-gray));
+  background: var(--dash-surface-2, var(--brand-light-gray));
+  color: var(--dash-text, var(--brand-dark-gray));
   cursor: pointer;
   outline: none;
   transition: border-color 0.15s;
 }
 
 .vertical-switcher__select:hover {
-  border-color: var(--dash-primary, var(--chase-navy));
+  border-color: var(--dash-primary, var(--brand-navy));
 }
 
 .vertical-switcher__select:focus {
-  border-color: var(--dash-primary, var(--chase-navy));
+  border-color: var(--dash-primary, var(--brand-navy));
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
@@ -45,7 +45,7 @@
   padding: 0.6rem 1rem;
   border: 2px solid var(--dash-border, #DDDDDD);
   border-radius: 10px;
-  background: var(--dash-surface-2, var(--chase-light-gray));
+  background: var(--dash-surface-2, var(--brand-light-gray));
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   font-family: inherit;
@@ -78,7 +78,7 @@
 .vertical-switcher__label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--dash-text, var(--chase-dark-gray));
+  color: var(--dash-text, var(--brand-dark-gray));
   white-space: nowrap;
 }
 

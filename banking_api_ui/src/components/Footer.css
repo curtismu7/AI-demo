@@ -22,7 +22,7 @@
   padding: 6px 12px;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--chase-navy);
+  color: var(--brand-navy);
   text-decoration: none;
   border: 1px solid #bfdbfe;
   border-radius: 6px;
@@ -34,7 +34,7 @@
   background: #eff6ff;
   border-color: #93c5fd;
   text-decoration: none;
-  color: var(--chase-navy);
+  color: var(--brand-navy);
 }
 
 .footer-theme-toggle {
@@ -43,7 +43,7 @@
   font-size: 0.8125rem;
   font-weight: 600;
   font-family: inherit;
-  color: var(--chase-navy);
+  color: var(--brand-navy);
   border: 1px solid #bfdbfe;
   border-radius: 6px;
   background: #fff;

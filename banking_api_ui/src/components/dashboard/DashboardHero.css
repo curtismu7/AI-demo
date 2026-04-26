@@ -4,8 +4,8 @@
 .dashboard-hero {
   position: relative;
   min-height: var(--dashboard-hero-height);
-  background: var(--chase-navy);
-  color: var(--chase-white);
+  background: var(--brand-navy);
+  color: var(--brand-white);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -76,7 +76,7 @@
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-tight);
   margin: 0 0 var(--space-4) 0;
-  color: var(--chase-white);
+  color: var(--brand-white);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -124,7 +124,7 @@
 .dashboard-hero__stat-value {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
-  color: var(--chase-white);
+  color: var(--brand-white);
 }
 
 /* Actions */
