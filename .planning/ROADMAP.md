@@ -1728,7 +1728,7 @@ Plans:
 **Plans:** 1 plans
 
 Plans:
-- [ ] 234-01-PLAN.md — Route-scope token-chain polling and refresh behavior in UI context
+- [x] 234-01-PLAN.md — Route-scope token-chain polling and refresh behavior in UI context (completed 2026-04-26)
 
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
