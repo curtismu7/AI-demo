@@ -204,3 +204,74 @@
 /* Loading / error */
 .mgc-loading { padding: 40px; text-align: center; color: #888; }
 .mgc-error   { padding: 20px; color: #dc3545; }
+
+/* Push Config form */
+.mgc-push-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mgc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mgc-field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.mgc-field-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mgc-input {
+  padding: 6px 10px;
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-family: monospace;
+  background: var(--background, #fff);
+  color: var(--text, #111827);
+  width: 100%;
+  box-sizing: border-box;
+}
+.mgc-input:focus {
+  outline: none;
+  border-color: var(--primary, #2563eb);
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+}
+.mgc-push-btn {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 8px 20px;
+  background: var(--primary, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mgc-push-btn:hover:not(:disabled) { background: #1d4ed8; }
+.mgc-push-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.mgc-alert--success {
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  color: #065f46;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.mgc-alert--error {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}

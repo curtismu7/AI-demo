@@ -98,6 +98,71 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
     return;
   }
 
+  // ---------------------------------------------------------------------------
+  // POST /admin/config — push dynamic config updates without restart.
+  // Only non-sensitive, non-binding fields are accepted.
+  // Localhost-only in practice (gateway binds to 0.0.0.0 but BFF proxies).
+  // ---------------------------------------------------------------------------
+  if (url === '/admin/config' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const updates: Partial<Record<string, string | boolean>> = JSON.parse(body || '{}');
+        const allowed: Array<keyof typeof config> = [
+          'gatewayResourceUri',
+          'mcpOlbWsUrl', 'mcpInvestWsUrl',
+          'mcpOlbResourceUri', 'mcpInvestResourceUri',
+          'pingAuthorizeEndpoint', 'pingAuthorizeWorkerId',
+          'hitlServiceUrl',
+          'devBypass',
+        ];
+        for (const key of allowed) {
+          if (key in updates) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (config as any)[key] = updates[key as string];
+          }
+        }
+        console.log('[GW] /admin/config updated:', Object.keys(updates).filter(k => allowed.includes(k as keyof typeof config)));
+        const safe = {
+          gatewayResourceUri:    config.gatewayResourceUri,
+          mcpOlbWsUrl:           config.mcpOlbWsUrl,
+          mcpInvestWsUrl:        config.mcpInvestWsUrl,
+          mcpOlbResourceUri:     config.mcpOlbResourceUri,
+          mcpInvestResourceUri:  config.mcpInvestResourceUri,
+          pingAuthorizeEndpoint: config.pingAuthorizeEndpoint,
+          pingAuthorizeWorkerId: config.pingAuthorizeWorkerId,
+          hitlServiceUrl:        config.hitlServiceUrl,
+          devBypass:             config.devBypass,
+        };
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, config: safe }));
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+      }
+    });
+    return;
+  }
+
+  // GET /admin/config — read current live config (no secrets)
+  if (url === '/admin/config' && req.method === 'GET') {
+    const safe = {
+      gatewayResourceUri:    config.gatewayResourceUri,
+      mcpOlbWsUrl:           config.mcpOlbWsUrl,
+      mcpInvestWsUrl:        config.mcpInvestWsUrl,
+      mcpOlbResourceUri:     config.mcpOlbResourceUri,
+      mcpInvestResourceUri:  config.mcpInvestResourceUri,
+      pingAuthorizeEndpoint: config.pingAuthorizeEndpoint,
+      pingAuthorizeWorkerId: config.pingAuthorizeWorkerId,
+      hitlServiceUrl:        config.hitlServiceUrl,
+      devBypass:             config.devBypass,
+    };
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(safe));
+    return;
+  }
+
   res.writeHead(404);
   res.end();
 }

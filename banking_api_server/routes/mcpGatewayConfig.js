@@ -232,4 +232,66 @@ router.get('/config', async (req, res) => {
     });
 });
 
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/mcp-gateway/config — push config to the running mock gateway
+// ---------------------------------------------------------------------------
+router.post('/config', async (req, res) => {
+    const gatewayUrl = process.env.MCP_GATEWAY_HTTP_URL || 'http://localhost:3005';
+
+    const allowed = [
+        'gatewayResourceUri', 'mcpOlbWsUrl', 'mcpInvestWsUrl',
+        'mcpOlbResourceUri', 'mcpInvestResourceUri',
+        'pingAuthorizeEndpoint', 'pingAuthorizeWorkerId',
+        'hitlServiceUrl', 'devBypass',
+    ];
+
+    const updates = {};
+    for (const key of allowed) {
+        if (key in (req.body || {})) {
+            updates[key] = req.body[key];
+        }
+    }
+
+    if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    try {
+        const target = new URL('/admin/config', gatewayUrl);
+        const body = JSON.stringify(updates);
+
+        const response = await new Promise((resolve, reject) => {
+            const http = require('http');
+            const opts = {
+                hostname: target.hostname,
+                port: parseInt(target.port || '3005', 10),
+                path: target.pathname,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+                timeout: 5000,
+            };
+            const req2 = http.request(opts, (r) => {
+                let data = '';
+                r.on('data', (c) => { data += c; });
+                r.on('end', () => {
+                    try { resolve({ status: r.statusCode, body: JSON.parse(data) }); }
+                    catch { resolve({ status: r.statusCode, body: data }); }
+                });
+            });
+            req2.on('error', reject);
+            req2.on('timeout', () => { req2.destroy(); reject(new Error('Gateway config push timed out')); });
+            req2.write(body);
+            req2.end();
+        });
+
+        if (response.status !== 200) {
+            return res.status(502).json({ error: 'Gateway returned error', detail: response.body });
+        }
+        res.json({ ok: true, pushed: updates, gatewayConfig: response.body.config });
+    } catch (err) {
+        res.status(502).json({ error: 'Could not reach mock gateway', detail: err.message });
+    }
+});
+
 module.exports = router;

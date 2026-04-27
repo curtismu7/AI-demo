@@ -66,6 +66,50 @@ export default function McpGatewayConfig() {
 	}, []);
 
 	useEffect(() => { fetchConfig(); }, [fetchConfig]);
+	const [pushForm, setPushForm] = useState({});
+	const [pushResult, setPushResult] = useState(null);
+	const [pushing, setPushing] = useState(false);
+
+	const handlePush = useCallback(async () => {
+		setPushing(true);
+		setPushResult(null);
+		try {
+			const res = await fetch(`${API_BASE}/api/admin/mcp-gateway/config`, {
+				method: "POST",
+				credentials: "include",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(pushForm),
+			});
+			const json = await res.json();
+			if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+			setPushResult({ ok: true, msg: "Config pushed successfully", config: json.gatewayConfig });
+			fetchConfig();
+		} catch (e) {
+			setPushResult({ ok: false, msg: e.message });
+		} finally {
+			setPushing(false);
+		}
+	}, [pushForm, fetchConfig]);
+
+
+
+	// Seed push form with live config values on first load
+	useEffect(() => {
+		if (data) {
+			const { config: c, mock: m } = data;
+			setPushForm({
+				gatewayResourceUri: c.gatewayResourceUri || "",
+				mcpOlbWsUrl: c.upstreamMcpUrl || "",
+				mcpOlbResourceUri: "",
+				mcpInvestWsUrl: "",
+				mcpInvestResourceUri: "",
+				pingAuthorizeEndpoint: c.pingAuthorizeEndpoint || "",
+				hitlServiceUrl: "",
+				devBypass: m.devBypass,
+			});
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [!!data]);
 
 	if (loading) return <div className="mgc-loading">Loading gateway config…</div>;
 	if (error) return <div className="mgc-error">Error: {error} <button onClick={fetchConfig}>Retry</button></div>;
@@ -172,6 +216,53 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.bxf.com
 							</div>
 						)}
 					</div>
+
+				<div className="mgc-section">
+					<h4>Push Config to Gateway</h4>
+					<p>Update the running mock gateway without restart. Changes are in-memory only.</p>
+					<div className="mgc-push-form">
+						{[
+							{ key: "gatewayResourceUri", label: "Gateway Resource URI", type: "text", placeholder: "https://mcp-gw.bxf.com" },
+							{ key: "mcpOlbWsUrl", label: "OLB WS URL", type: "text", placeholder: "ws://localhost:8080" },
+							{ key: "mcpOlbResourceUri", label: "OLB Resource URI", type: "text", placeholder: "https://mcp-olb.bxf.com" },
+							{ key: "mcpInvestWsUrl", label: "Invest WS URL", type: "text", placeholder: "ws://localhost:8081" },
+							{ key: "mcpInvestResourceUri", label: "Invest Resource URI", type: "text", placeholder: "https://mcp-invest.bxf.com" },
+							{ key: "pingAuthorizeEndpoint", label: "PingAuthorize Endpoint", type: "text", placeholder: "(blank = permit-all)" },
+							{ key: "hitlServiceUrl", label: "HITL Service URL", type: "text", placeholder: "(blank = disabled)" },
+						].map(({ key, label, type, placeholder }) => (
+							<label key={key} className="mgc-field">
+								<span className="mgc-field-label">{label}</span>
+								<input
+									type={type}
+									className="mgc-input"
+									placeholder={placeholder}
+									value={pushForm[key] ?? ""}
+									onChange={(e) => setPushForm((f) => ({ ...f, [key]: e.target.value }))}
+								/>
+							</label>
+						))}
+						<label className="mgc-field mgc-field--inline">
+							<input
+								type="checkbox"
+								checked={!!pushForm.devBypass}
+								onChange={(e) => setPushForm((f) => ({ ...f, devBypass: e.target.checked }))}
+							/>
+							<span className="mgc-field-label">Dev Bypass (permit-all, no PingOne creds)</span>
+						</label>
+						<button
+							className="mgc-push-btn"
+							onClick={handlePush}
+							disabled={pushing}
+						>
+							{pushing ? "Pushing…" : "⬆ Push to Gateway"}
+						</button>
+						{pushResult && (
+							<div className={`mgc-alert ${pushResult.ok ? "mgc-alert--success" : "mgc-alert--error"}`}>
+								{pushResult.ok ? "✅ " : "❌ "}{pushResult.msg}
+							</div>
+						)}
+					</div>
+				</div>
 				</div>
 			)}
 
