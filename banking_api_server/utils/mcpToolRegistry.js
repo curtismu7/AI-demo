@@ -11,6 +11,7 @@ const { decodeJwtClaims, buildTokenEvent } = require('../services/agentMcpTokenS
 
 
 const braveSearchService = require('../services/braveSearchService');
+const oauthService = require('../services/oauthService');
 
 /**
  * Internal MCP tool call with agent token (bypasses requireSession for agent context)
@@ -98,9 +99,13 @@ async function callMcpToolInternal(toolName, params, agentToken, userId, tokenEv
  * This endpoint handles token exchange before calling the MCP server
  * Used by external callers (browser, inspector) that have session cookies
  */
-async function callMcpTool(toolName, params, agentToken, userId, tokenEvents = []) {
+/**
+ * Call an MCP tool via the BFF /api/mcp/tool endpoint.
+ * Automatically attempts RFC 8693 scope upgrade on mcp_scope_denied (403) — retries once.
+ * Used by external callers (browser, inspector) that have session cookies.
+ */
+async function callMcpTool(toolName, params, agentToken, userId, tokenEvents = [], _scopeUpgradeAttempted = false) {
   try {
-    // Call BFF /api/mcp/tool endpoint (same process)
     const mcpEndpoint = process.env.MCP_TOOL_ENDPOINT || 'http://localhost:3001/api/mcp/tool';
 
     const response = await fetch(mcpEndpoint, {
@@ -110,48 +115,75 @@ async function callMcpTool(toolName, params, agentToken, userId, tokenEvents = [
         ...(agentToken && { 'Authorization': `Bearer ${agentToken}` }),
         ...(userId && { 'X-User-Id': userId }),
       },
-      body: JSON.stringify({
-        tool: toolName,
-        params: params,
-      }),
+      body: JSON.stringify({ tool: toolName, params }),
     });
 
     const data = await response.json();
 
-    // Track tool call event
-    if (tokenEvents) {
-      tokenEvents.push({
-        type: 'tool_call',
-        timestamp: new Date().toISOString(),
-        tool: toolName,
-        status: response.ok ? 'success' : 'failed',
-        statusCode: response.status,
-        actor: 'agent',
-        onBehalfOf: userId,
-      });
-    }
-
     if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Unauthorized: agent token may have expired');
+      // Scope upgrade: intercept mcp_scope_denied — RFC 8693 token exchange + single retry
+      if (
+        response.status === 403 &&
+        data && data.error === 'mcp_scope_denied' &&
+        !_scopeUpgradeAttempted &&
+        agentToken
+      ) {
+        const audience = process.env.MCP_SERVER_RESOURCE_URI;
+        const requestedScopes = [
+          ...(data.availableScopes || []),
+          ...(data.missingScopes || []),
+        ];
+        if (tokenEvents) {
+          tokenEvents.push({
+            type: 'scope_upgrade',
+            timestamp: new Date().toISOString(),
+            tool: toolName,
+            missingScopes: data.missingScopes || [],
+            requestedScopes,
+            audience,
+            actor: 'agent',
+          });
+        }
+        let upgradedToken;
+        try {
+          const exchangeResult = await oauthService.performTokenExchange(agentToken, audience, requestedScopes);
+          upgradedToken = exchangeResult.access_token;
+        } catch (exchangeError) {
+          if (tokenEvents) {
+            tokenEvents.push({
+              type: 'tool_error',
+              timestamp: new Date().toISOString(),
+              tool: toolName,
+              error: 'scope_upgrade_failed: ' + exchangeError.message,
+              missingScopes: data.missingScopes || [],
+              actor: 'agent',
+            });
+          }
+          throw new Error('Insufficient scope and upgrade failed (missing: ' + (data.missingScopes || []).join(', ') + '): ' + exchangeError.message);
+        }
+        // Retry exactly once with upgraded token
+        return callMcpTool(toolName, params, upgradedToken, userId, tokenEvents, true);
       }
-      throw new Error(data.error || `MCP tool failed: ${response.statusText}`);
+
+      if (tokenEvents) {
+        tokenEvents.push({ type: 'tool_call', timestamp: new Date().toISOString(), tool: toolName, status: 'failed', statusCode: response.status, actor: 'agent', onBehalfOf: userId });
+      }
+      if (response.status === 401) throw new Error('Unauthorized: agent token may have expired');
+      throw new Error(data.error || 'MCP tool failed: ' + response.statusText);
     }
 
+    if (tokenEvents) {
+      tokenEvents.push({ type: 'tool_call', timestamp: new Date().toISOString(), tool: toolName, status: 'success', statusCode: response.status, actor: 'agent', onBehalfOf: userId });
+    }
     return data.result || data;
   } catch (error) {
     if (tokenEvents) {
-      tokenEvents.push({
-        type: 'tool_error',
-        timestamp: new Date().toISOString(),
-        tool: toolName,
-        error: error.message,
-        actor: 'agent',
-      });
+      tokenEvents.push({ type: 'tool_error', timestamp: new Date().toISOString(), tool: toolName, error: error.message, actor: 'agent' });
     }
     throw error;
   }
 }
+
 
 /**
  * Helper to extract auth context from LangChain config
