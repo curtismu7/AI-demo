@@ -16,6 +16,7 @@ interface MCPToolInfo {
   requiredScopes: string[];
   readOnly: boolean;
   params: MCPToolParam[];
+  exampleResponse?: string;
 }
 
 interface ToolCategory {
@@ -38,7 +39,41 @@ const TOOL_CATEGORIES: ToolCategory[] = [
         requiresUserAuth: true,
         requiredScopes: ['banking:accounts:read'],
         readOnly: true,
-        params: []
+        params: [],
+        exampleResponse: `{
+  "success": true,
+  "count": 2,
+  "accounts": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "accountType": "checking",
+      "name": "Primary Checking",
+      "accountNumber": "****4321",
+      "balance": 4823.50,
+      "currency": "USD",
+      "status": "active",
+      "accountHolderName": "Alex Morgan",
+      "swiftCode": "BXFIUS33",
+      "iban": "US12BXFI0001234567890",
+      "branchName": "Main Street Branch",
+      "openedDate": "2021-03-15T00:00:00.000Z"
+    },
+    {
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "accountType": "savings",
+      "name": "High-Yield Savings",
+      "accountNumber": "****7654",
+      "balance": 12450.00,
+      "currency": "USD",
+      "status": "active",
+      "accountHolderName": "Alex Morgan",
+      "swiftCode": "BXFIUS33",
+      "iban": "US12BXFI0001234567891",
+      "branchName": "Main Street Branch",
+      "openedDate": "2021-03-15T00:00:00.000Z"
+    }
+  ]
+}`
       },
       {
         name: 'get_account_balance',
@@ -49,7 +84,12 @@ const TOOL_CATEGORIES: ToolCategory[] = [
         readOnly: true,
         params: [
           { name: 'account_id', type: 'string', description: 'Account ID (UUID format)', required: true }
-        ]
+        ],
+        exampleResponse: `{
+  "success": true,
+  "accountId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "balance": 4823.50
+}`
       },
       {
         name: 'get_my_transactions',
@@ -58,7 +98,31 @@ const TOOL_CATEGORIES: ToolCategory[] = [
         requiresUserAuth: true,
         requiredScopes: ['banking:transactions:read'],
         readOnly: true,
-        params: []
+        params: [],
+        exampleResponse: `{
+  "success": true,
+  "count": 3,
+  "transactions": [
+    {
+      "id": "tx-001-abcd",
+      "type": "deposit",
+      "amount": 500.00,
+      "date": "2026-04-25T14:32:00.000Z",
+      "fromAccountId": null,
+      "toAccountId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "description": "Direct deposit"
+    },
+    {
+      "id": "tx-002-efgh",
+      "type": "transfer",
+      "amount": 200.00,
+      "date": "2026-04-24T09:15:00.000Z",
+      "fromAccountId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "toAccountId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "description": "Savings transfer"
+    }
+  ]
+}`
       },
       {
         name: 'sequential_think',
@@ -70,7 +134,18 @@ const TOOL_CATEGORIES: ToolCategory[] = [
         params: [
           { name: 'query', type: 'string', description: 'The question or decision to reason through', required: true },
           { name: 'context', type: 'string', description: 'Optional additional context', required: false }
-        ]
+        ],
+        exampleResponse: `{
+  "success": true,
+  "query": "Should I move money from checking to savings?",
+  "steps": [
+    { "step": 1, "reasoning": "Check current checking balance: $4823.50 — sufficient funds available." },
+    { "step": 2, "reasoning": "Savings rate is 4.1% APY vs 0.01% on checking — opportunity cost is real." },
+    { "step": 3, "reasoning": "User has $1200 in upcoming bills this month — keep at least $2000 in checking as buffer." }
+  ],
+  "conclusion": "Transferring $2000 to savings is safe and maximises interest without impacting bill payments.",
+  "confidence": "high"
+}`
       }
     ]
   },
@@ -90,7 +165,28 @@ const TOOL_CATEGORIES: ToolCategory[] = [
           { name: 'to_account_id', type: 'string', description: 'Account ID to deposit to', required: true },
           { name: 'amount', type: 'number', description: 'Amount to deposit', required: true },
           { name: 'description', type: 'string', description: 'Transaction description', required: false }
-        ]
+        ],
+        exampleResponse: `{
+  "success": true,
+  "operation": "deposit",
+  "message": "Deposit of $250.00 completed successfully",
+  "transaction": {
+    "id": "tx-003-ijkl",
+    "amount": 250.00,
+    "toAccountId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "description": "Agent deposit"
+  },
+  "amount": 250.00,
+  "accountId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+
+// If amount > $500 and no HITL consent:
+{
+  "error": "consent_challenge_required",
+  "message": "High-value transaction requires human approval. Please approve in the dashboard.",
+  "consent_challenge_required": true,
+  "hitl_threshold_usd": 500
+}`
       },
       {
         name: 'create_withdrawal',
@@ -103,7 +199,20 @@ const TOOL_CATEGORIES: ToolCategory[] = [
           { name: 'from_account_id', type: 'string', description: 'Account ID to withdraw from', required: true },
           { name: 'amount', type: 'number', description: 'Amount to withdraw', required: true },
           { name: 'description', type: 'string', description: 'Transaction description', required: false }
-        ]
+        ],
+        exampleResponse: `{
+  "success": true,
+  "operation": "withdrawal",
+  "message": "Withdrawal of $100.00 completed successfully",
+  "transaction": {
+    "id": "tx-004-mnop",
+    "amount": 100.00,
+    "fromAccountId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "description": "ATM withdrawal"
+  },
+  "amount": 100.00,
+  "accountId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}`
       },
       {
         name: 'create_transfer',
@@ -117,7 +226,20 @@ const TOOL_CATEGORIES: ToolCategory[] = [
           { name: 'to_account_id', type: 'string', description: 'Destination account ID', required: true },
           { name: 'amount', type: 'number', description: 'Amount to transfer', required: true },
           { name: 'description', type: 'string', description: 'Transfer description', required: false }
-        ]
+        ],
+        exampleResponse: `{
+  "success": true,
+  "operation": "transfer",
+  "message": "Transfer of $300.00 completed successfully",
+  "transaction": {
+    "id": "tx-005-qrst",
+    "amount": 300.00,
+    "fromAccountId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "toAccountId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "description": "Monthly savings"
+  },
+  "amount": 300.00
+}`
       },
       {
         name: 'get_sensitive_account_details',
@@ -126,7 +248,19 @@ const TOOL_CATEGORIES: ToolCategory[] = [
         requiresUserAuth: true,
         requiredScopes: ['banking:sensitive:read'],
         readOnly: false,
-        params: []
+        params: [],
+        exampleResponse: `{
+  "success": true,
+  "accounts": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "accountNumber": "123456789012",
+      "routingNumber": "021000021",
+      "accountType": "checking",
+      "name": "Primary Checking"
+    }
+  ]
+}`
       }
     ]
   },
@@ -144,7 +278,23 @@ const TOOL_CATEGORIES: ToolCategory[] = [
         readOnly: false,
         params: [
           { name: 'email', type: 'string', description: 'Email address to search for', required: true }
-        ]
+        ],
+        exampleResponse: `{
+  "success": true,
+  "found": true,
+  "user": {
+    "id": "user-uuid-here",
+    "email": "alex@example.com",
+    "username": "alex.morgan"
+  }
+}
+
+// If not found:
+{
+  "success": true,
+  "found": false,
+  "message": "No user found with email alex@example.com"
+}`
       }
     ]
   }
@@ -152,6 +302,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
 
 export const MCPToolsEducation: React.FC = () => {
   const [elicitationOpen, setElicitationOpen] = useState(false);
+  const [openExamples, setOpenExamples] = useState<Record<string, boolean>>({});
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(
     () => Object.fromEntries(TOOL_CATEGORIES.map(cat => [cat.name, cat.defaultExpanded]))
   );
@@ -161,6 +312,10 @@ export const MCPToolsEducation: React.FC = () => {
       ...prev,
       [categoryName]: !prev[categoryName]
     }));
+  };
+
+  const toggleExample = (toolName: string) => {
+    setOpenExamples(prev => ({ ...prev, [toolName]: !prev[toolName] }));
   };
 
   const totalTools = TOOL_CATEGORIES.reduce((sum, cat) => sum + cat.tools.length, 0);
@@ -235,6 +390,23 @@ export const MCPToolsEducation: React.FC = () => {
                           </div>
                         )}
                       </div>
+
+                      {tool.exampleResponse && (
+                        <div className={styles.exampleSection}>
+                          <button
+                            className={styles.exampleToggle}
+                            onClick={() => toggleExample(tool.name)}
+                            type="button"
+                            aria-expanded={!!openExamples[tool.name]}
+                          >
+                            <span className={openExamples[tool.name] ? styles.chevronExpanded : styles.chevron}>▶</span>
+                            Example Response
+                          </button>
+                          {openExamples[tool.name] && (
+                            <pre className={styles.exampleCode}>{tool.exampleResponse}</pre>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
