@@ -491,31 +491,8 @@ function formatResult(result) {
 										? "Credit Card"
 										: "Account";
 
-				const lines = [];
-				lines.push("\u{1f3e6} **" + name + "** (" + (num || a.id || "") + ")");
-				lines.push(
-					"  Balance:    " +
-						formatCurrency(a.balance) +
-						" " +
-						(a.currency || "USD"),
-				);
-				if (a.status) lines.push("  Status:     " + a.status);
-				if (a.accountHolderName)
-					lines.push("  Holder:     " + a.accountHolderName);
-				if (a.iban) lines.push("  IBAN:       " + a.iban);
-				if (a.swiftCode) lines.push("  SWIFT/BIC:  " + a.swiftCode);
-				if (a.branchName)
-					lines.push(
-						"  Branch:     " +
-							a.branchName +
-							(a.branchCode ? " (" + a.branchCode + ")" : ""),
-					);
-				if (a.openedDate)
-					lines.push(
-						"  Opened:     " + new Date(a.openedDate).toLocaleDateString(),
-					);
-				lines.push("  Account ID: " + (a.id || ""));
-				return lines.join("\n");
+				// Show only basic account info — IBAN/SWIFT/routing are revealed only via "View Sensitive Account Details"
+				return "\u{1f3e6} **" + name + "** (" + (num || "—") + ") — " + formatCurrency(a.balance) + " " + (a.currency || "USD");
 			})
 			.join("\n\n");
 	}
