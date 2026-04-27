@@ -103,13 +103,12 @@ export default function AdminSideNav({ user }) {
 		{
 			label: "Monitoring",
 			icon: "📋",
-			adminOnly: true,
 			children: [
-				{ label: "Activity Logs", path: "/activity", icon: "📝" },
-				{ label: "Audit Trail", path: "/audit", icon: "🔍" },
-				{ label: "API Traffic", path: "/api-traffic", icon: "📡" },
-				{ label: "MCP Traffic", path: "/mcp-traffic", icon: "🔌" },
-				{ label: "Dev Tools", path: "/dev-tools", icon: "🛠" },
+				{ label: "Activity Logs", path: "/activity", icon: "📝", adminOnly: true },
+				{ label: "Audit Trail", path: "/audit", icon: "🔍", adminOnly: true },
+				{ label: "API Traffic", path: "/api-traffic", icon: "📡", adminOnly: true },
+				{ label: "MCP Traffic", path: "/mcp-traffic", icon: "🔌", adminOnly: true },
+				{ label: "Dev Tools", path: "/dev-tools", icon: "🛠", adminOnly: true },
 				{ label: "Token Chain", path: "/monitoring/token-chain", icon: "🔗" },
 				{ label: "Token Diff", path: "/monitoring/token-diff", icon: "📊" },
 				{ label: "Flow Inspector", path: "/monitoring/flow-inspector", icon: "🔬" },
@@ -146,6 +145,7 @@ export default function AdminSideNav({ user }) {
 					icon: "🚩",
 				},
 				{ label: "MCP Inspector", path: "/mcp-inspector", icon: "🔬" },
+				{ label: "MCP Gateway", path: "/mcp-gateway", icon: "🛡️" },
 				{ label: "MCP Tools", path: "/mcp-tools", icon: "🧰" },
 				{ label: "LLM Config", path: "/llm-config", icon: "🤖" },
 				{ label: "Demo Config", path: "/demo-data", icon: "🎛" },
@@ -353,7 +353,7 @@ export default function AdminSideNav({ user }) {
 					</button>
 					{isExpanded && !collapsed && (
 						<div className="admin-side-nav__submenu">
-							{item.children.map((child, childIdx) => (
+							{item.children.filter((child) => !child.adminOnly || isAdmin).map((child, childIdx) => (
 								<Link
 									key={`${itemKey}-child-${childIdx}`}
 									to={child.path}

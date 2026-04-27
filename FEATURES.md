@@ -188,6 +188,7 @@ git checkout <last-version-tag> -- <key-file>
 | DecodedTokenPanel — JWT claim glossary hover tooltips | active | `banking_api_ui/src/components/DecodedTokenPanel.jsx` (`CLAIM_GLOSSARY`) | — |
 | PingOne Test Page — TokenLineageDiff claim diff for exchange cards | active | `banking_api_ui/src/components/PingOneTestPage.jsx` (`TokenLineageDiff`), `banking_api_ui/src/components/PingOneTestPage.css` | — |
 | PingOne Authorize Test Page — PERMIT/STEP UP/DENY live policy evaluation | active | `banking_api_ui/src/components/AuthzTestPage.jsx`, `banking_api_ui/src/components/AuthzTestPage.css`, `banking_api_server/routes/authorize.js` (`test-status`, `test-evaluate`) | — |
+| Monitoring pages — Token Chain, Token Diff, Flow Inspector, MCP Traffic, API Explorer (visible to admin + customer) | active | `banking_api_ui/src/App.js`, `banking_api_ui/src/components/AdminSideNav.jsx` | — |
 
 ---
 

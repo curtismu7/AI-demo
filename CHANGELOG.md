@@ -17,6 +17,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- **Phase 241 — Monitoring sidebar pages** — 5 new `/monitoring/*` routes (Token Chain, Token Diff, Flow Inspector, MCP Traffic, API Explorer) visible to both admin and customer users; legacy Monitoring items (Activity Logs, Audit Trail, API Traffic, MCP Traffic, Dev Tools) remain admin-only.
 - **Phase 231 — Agent chip panel redesign** — Removed inline "Learn & Explore" chip section; replaced with collapsible `ACTION_GROUPS` sections with per-group count badges and a collapse-all toolbar button. Added "⊞ All actions" discovery popout showing all chips organised by group with live search and Escape-to-close. Extended `nlIntentParser.js` heuristics with 9 new intent mappings (CIBA, token-chain, agent-tokens, client-credentials, PKCE, consent, step-up, MFA, revocation) so no chip falls through to the LLM.
 - **Phase 214 context** — captured design decisions for FIDO2 registration fix, authentication flow verification, and dynamic PingOne Management API curl display across all MFA sections.
 - **Authz Test Page — Engine Settings toggle** — Collapsible panel on `/authz-test` to switch between Simulated (in-process) and PingOne Authorize (live) without leaving the page. PingOne mode exposes credential fields: Decision Endpoint ID, Worker Client ID, Worker Client Secret. Saves via `PATCH /api/admin/feature-flags` + `POST /api/admin/config`; reloads engine status banner on apply. Shows clear error if admin session is missing.
