@@ -4,6 +4,7 @@ import { notifyError, notifySuccess } from "../utils/appToast";
 import { navigateToAdminOAuthLogin } from "../utils/authUi";
 import "./AuthzTestPage.css";
 import PingOneApiPanel from "./PingOneApiPanel";
+import ApiCallPreviewCard from "./shared/ApiCallPreviewCard";
 
 // ---------------------------------------------------------------------------
 // Preset scenarios — cover all three decision branches
@@ -654,6 +655,21 @@ export default function AuthzTestPage() {
 				)}
 			</div>
 
+			<ApiCallPreviewCard
+				method="POST"
+				endpoint="https://api.pingone.com/v1/environments/{environmentId}/decisionEndpoints/{endpointId}/decisions"
+				requestBody={{
+					parameters: {
+						transactionAmount: 5000,
+						userId: "<user_id>",
+						accountId: "<account_id>",
+						transactionType: "transfer",
+					},
+				}}
+				docUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-decision"
+				docLabel="PingOne Authorize Docs"
+				description="PingOne Authorize policy decision — evaluates Trust Framework parameters and returns PERMIT / DENY / step-up obligation"
+			/>
 			{/* Preset scenarios */}
 			<section className="authz-section">
 				<div className="authz-section-title-row">

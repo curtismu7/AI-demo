@@ -4,6 +4,7 @@ import { notifyError, notifyInfo, notifySuccess } from "../utils/appToast";
 import "./MFATestPage.css";
 import ApiCallDisplay from "./ApiCallDisplay";
 import PingOneApiPanel from "./PingOneApiPanel";
+import ApiCallPreviewCard from "./shared/ApiCallPreviewCard";
 
 /**
  * Collapsible per-section API call display toggle (Phase 135)
@@ -972,6 +973,19 @@ export default function MFATestPage() {
 					</div>
 				)}
 
+			<ApiCallPreviewCard
+					method="POST"
+					endpoint="https://auth.pingone.com/{environmentId}/as/bc-authorize"
+					requestBody={{
+						scope: "openid",
+						login_hint: "<user_email>",
+						binding_message: "Approve banking transaction",
+						request_expiry: 120,
+					}}
+					docUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-backchannel-authentication-request"
+					docLabel="PingOne CIBA Docs"
+					description="CIBA back-channel authentication — sends push notification to user's authenticator app for step-up approval"
+				/>
 				{/* Configuration Section */}
 				<section className="mfa-test-section">
 					<h2 className="mfa-test-section-title">MFA Configuration</h2>

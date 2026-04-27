@@ -8,6 +8,7 @@ import ScopeNarrowingVisualization from "./ScopeNarrowingVisualization";
 import { TokenColorLegend } from "./TokenColorSystem";
 import "./PingOneTestPage.css";
 import PingOneApiPanel from "./PingOneApiPanel";
+import ApiCallPreviewCard from "./shared/ApiCallPreviewCard";
 
 // Configuration details for each test - what users need to verify in PingOne
 const TEST_CONFIG = {
@@ -1594,7 +1595,23 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 								</a>
 							</div>
 						)}
-					{/* MCP Exchange Diagnostic Panel */}
+					<ApiCallPreviewCard
+						method="POST"
+						endpoint="https://auth.pingone.com/{environmentId}/as/token"
+						requestBody={{
+							grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+							subject_token: "<user_access_token>",
+							subject_token_type: "urn:ietf:params:oauth:token-type:access_token",
+							actor_token: "<agent_cc_token>",
+							actor_token_type: "urn:ietf:params:oauth:token-type:access_token",
+							audience: "<mcp_resource_uri>",
+							scope: "banking:read banking:write",
+						}}
+						docUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
+						docLabel="PingOne Token Endpoint Docs"
+						description="RFC 8693 Token Exchange — swaps user access token + agent CC token for MCP-scoped token with act claim"
+					/>
+				{/* MCP Exchange Diagnostic Panel */}
 					<div className="scope-fix-panel" style={{ marginBottom: "1rem" }}>
 						<div className="scope-fix-panel__header">
 							<span>MCP Exchange Diagnostics</span>

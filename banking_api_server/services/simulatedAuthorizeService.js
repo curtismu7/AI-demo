@@ -18,6 +18,16 @@
 
 'use strict';
 
+// Guard: prevent accidental use in production without an explicit opt-in.
+// The feature-flag check (ff_authorize_simulated) at the caller layer is the primary gate,
+// but a direct import of this module would bypass it. This secondary guard makes that impossible.
+if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SIMULATED_AUTHORIZE !== 'true') {
+  throw new Error(
+    '[simulatedAuthorizeService] Cannot be loaded in production without ALLOW_SIMULATED_AUTHORIZE=true. ' +
+    'Use pingOneAuthorizeService instead.'
+  );
+}
+
 /** Hard deny above this amount (USD). */
 const SIMULATED_DENY_AMOUNT_USD = parseFloat(process.env.SIMULATED_AUTHORIZE_DENY_AMOUNT || '50000');
 
@@ -284,6 +294,65 @@ async function evaluateTransaction({ userId, amount, type, acr }) {
   return out;
 }
 
+/**
+ * Evaluate a transaction and return a response envelope byte-for-byte identical to
+ * PingOne Authorize (https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-decision).
+ *
+ * Accepts PingOne-style body: `{ parameters: { transactionAmount, userId, transactionType } }`
+ *
+ * @param {{ parameters: { transactionAmount: number, userId: string, transactionType: string, acr?: string } }} body
+ * @returns {Promise<object>} PingOne Authorize response envelope
+ */
+async function evaluate({ parameters = {} } = {}) {
+  const { transactionAmount, userId, transactionType, acr } = parameters;
+  const createdAt = new Date().toISOString();
+  const startMs = Date.now();
+
+  const inner = await evaluateTransaction({
+    userId: userId || 'unknown',
+    amount: transactionAmount || 0,
+    type: transactionType || 'transfer',
+    acr,
+  });
+
+  const completedAt = new Date().toISOString();
+  const duration = Date.now() - startMs;
+
+  const id = inner.decisionId || `sim-${Date.now()}`;
+
+  if (inner.decision === 'DENY') {
+    return {
+      id, createdAt, completedAt, duration,
+      status: 'SUCCESS',
+      result: { decision: 'DENY', weight: 1.0 },
+      statements: [],
+      obligations: [],
+    };
+  }
+
+  if (inner.stepUpRequired) {
+    return {
+      id, createdAt, completedAt, duration,
+      status: 'SUCCESS',
+      result: { decision: 'PERMIT', weight: 1.0 },
+      statements: [],
+      obligations: [
+        { id: 'step_up_mfa', type: 'IDENTITY_REQUIREMENT', detail: { acr: 'Multi_Factor' } },
+      ],
+    };
+  }
+
+  return {
+    id, createdAt, completedAt, duration,
+    status: 'SUCCESS',
+    result: { decision: 'PERMIT', weight: 1.0 },
+    statements: [],
+    obligations: [],
+  };
+}
+
+// configStore is injected rather than imported at module top so callers (e.g. mcpToolAuthorizationService)
+// can pass a fresh reference. This avoids a circular-require when the module is loaded early in the chain.
 function isSimulatedModeEnabled(configStore) {
   const sim =
     configStore.get('ff_authorize_simulated') === true ||
@@ -292,6 +361,7 @@ function isSimulatedModeEnabled(configStore) {
 }
 
 module.exports = {
+  evaluate,
   evaluateTransaction,
   evaluateMcpFirstTool,
   isSimulatedModeEnabled,

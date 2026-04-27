@@ -12,7 +12,8 @@ module.exports = {
     '!**/node_modules/**'
   ],
   testMatch: [
-    '**/src/__tests__/**/*.test.js'
+    '**/src/__tests__/**/*.test.js',
+    '**/tests/**/*.test.js',
   ],
   verbose: true,
   silent: true // Suppress console output during tests
