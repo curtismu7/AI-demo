@@ -629,7 +629,7 @@ function AppWithAuth() {
 
 	const showFloatingAgent =
 		!isApiTrafficOnlyPage &&
-		!hasEmbeddedDockLayout &&
+		(!hasEmbeddedDockLayout || onMonitoringRoute) &&
 		(marketingAgentSurface ||
 			(Boolean(user) && agentPlacement === "none") ||
 			(Boolean(user) && onMonitoringRoute) ||
