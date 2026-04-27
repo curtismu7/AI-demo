@@ -63,6 +63,16 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
     res: ServerResponse,
     forward: (upstreamToken: string, body: Buffer) => Promise<void>,
   ): Promise<void> => {
+    // ── Dev bypass: passthrough mode (MCP_GW_DEV_BYPASS=true) ───────────────────────
+    // Skip all validation, policy eval, and token exchange. Forward the
+    // original bearer token directly to the upstream MCP server.
+    // The gateway still handles routing and observability; auth is bypassed.
+    if (config.devBypass) {
+      console.log('[GW] Dev bypass: forwarding request without auth pipeline');
+      await forward(bearerToken, body);
+      return;
+    }
+
     // ── 1. Decode claims + apply gateway token policy ─────────────────────
     // Note: GatewayServer already validated aud/exp before invoking middleware.
     // Here we jwt.decode (no re-throw on aud/exp) to extract sub/act for Authorize.

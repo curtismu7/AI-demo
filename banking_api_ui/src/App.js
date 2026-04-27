@@ -53,6 +53,7 @@ import LogViewer from "./components/LogViewer";
 import LogViewerPage from "./components/LogViewerPage";
 import { MCPToolsEducation } from "./components/MCPToolsEducation";
 import McpInspector from "./components/McpInspector";
+import McpGatewayConfig from "./components/McpGatewayConfig";
 import McpTrafficPage from "./components/McpTrafficPage";
 import AuthzTestPage from "./components/AuthzTestPage";
 import MFATestPage from "./components/MFATestPage";
@@ -1021,6 +1022,14 @@ function AppWithAuth() {
 														path="/mcp-inspector"
 														element={
 															<McpInspector user={user} onLogout={logout} />
+														}
+													/>
+													<Route
+														path="/mcp-gateway"
+														element={
+															<AdminRoute user={user}>
+																<McpGatewayConfig />
+															</AdminRoute>
 														}
 													/>
 													<Route

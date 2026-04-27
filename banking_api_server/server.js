@@ -86,6 +86,7 @@ const {
 const mcpInspectorRoutes = require('./routes/mcpInspector');
 const mcpTrafficRoutes = require('./routes/mcpTraffic');
 const mcpToolScopesRouter = require('./routes/mcpToolScopes');
+const mcpGatewayConfigRouter = require('./routes/mcpGatewayConfig');
 const mcpAuditRouter = require('./routes/mcpAudit');
 const agentIdentityRoutes = require('./routes/agentIdentity');
 const agentDelegationRoutes = require('./routes/agentDelegation');
@@ -662,6 +663,8 @@ app.use('/api/setup', setupRoutes);
 // unauthenticated visitors; tools/call and context check auth inside each handler.
 app.use('/api/mcp', mcpToolScopesRouter);
 app.use('/api/mcp/inspector', mcpInspectorRoutes);
+// MCP Gateway Config — status + generated PingGateway mcp.json (admin-accessible)
+app.use('/api/admin/mcp-gateway', authenticateToken, mcpGatewayConfigRouter);
 app.use('/api/mcp/traffic', requireSession, mcpTrafficRoutes);
 // MCP Audit: admin-only route — proxies to MCP server /audit internal endpoint (D-11)
 app.use('/api/mcp/audit', (req, res, next) => {
