@@ -1847,13 +1847,15 @@ Plans:
 
 ### Phase 244: Interactive architecture diagram walkthrough — highlight components on Ping Identity Digital Assistants diagram and detailed token-flow diagram as each step is processed
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Two dedicated pages showing Ping Identity architecture diagrams with SVG overlay regions that highlight in real-time driven by banking agent events and live system events (MCP calls, token exchanges, PingAuthorize decisions).
+**Requirements**: ARCH-01, ARCH-02, ARCH-03, ARCH-04
 **Depends on:** Phase 243
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 244 to break down)
+- [ ] 244-01-PLAN.md — Foundation: image assets, region config files, DiagramHighlighter component + CSS
+- [ ] 244-02-PLAN.md — Event wiring: ArchitectureOverviewPage + ArchitectureTokenFlowPage with polling and keyword scan
+- [ ] 244-03-PLAN.md — Routes + nav + FAB: App.js route, AdminSideNav Architecture group, embeddedAgentFabVisibility
 
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
