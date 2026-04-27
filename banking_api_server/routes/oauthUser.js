@@ -11,6 +11,7 @@ const { getFrontendOrigin, getUserRedirectUri, validateRedirectUriOrigin, getExp
 const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/pkceStateCookie');
 const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie');
 const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAuthorizeResource');
+const { getRoleFromClaims } = require('../services/roleClaimResolver');
 
 const STEP_UP_TTL_MS = 5 * 60 * 1000; // 5 min step-up validity
 
@@ -395,9 +396,13 @@ router.get('/callback', async (req, res) => {
     // Signal 4: existing record — don't downgrade someone already marked admin
     const existingRoleAdmin = user?.role === 'admin';
 
-    if (usernameIsAdmin || populationIsAdmin || claimIsAdmin || existingRoleAdmin) {
+    // Signal 5: roleClaimResolver — new oauth_role_claim_* config (any IDP)
+    const resolvedRole    = getRoleFromClaims(mergedUserInfo);
+    const resolverIsAdmin = resolvedRole === 'admin';
+
+    if (usernameIsAdmin || populationIsAdmin || claimIsAdmin || existingRoleAdmin || resolverIsAdmin) {
       oauthUser.role = 'admin';
-      console.log(`[oauth/user/callback] Granting admin to ${oauthUser.username} (allowlist=${usernameIsAdmin}, population=${populationIsAdmin}, claim[${configuredRoleClaim}]=${claimIsAdmin}, existing=${existingRoleAdmin})`);
+      console.log(`[oauth/user/callback] Granting admin to ${oauthUser.username} (allowlist=${usernameIsAdmin}, population=${populationIsAdmin}, claim[${configuredRoleClaim}]=${claimIsAdmin}, existing=${existingRoleAdmin}, resolver=${resolverIsAdmin})`);
     } else {
       oauthUser.role = 'customer';
       console.log(`[oauth/user/callback] Granting customer role to ${oauthUser.username}`);

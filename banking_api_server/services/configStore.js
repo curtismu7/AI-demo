@@ -187,6 +187,11 @@ const FIELD_DEFS = {
   oauth_discovery_enabled:       { public: true,  default: 'false' },
   oauth_admin_callback_path:     { public: true,  default: '/api/auth/oauth/callback' },
   oauth_user_callback_path:      { public: true,  default: '/api/auth/oauth/user/callback' },
+  // Role claim mapping — which token claim contains role/group info?
+  oauth_role_claim_name:           { public: true,  default: 'population_id' },
+  oauth_role_claim_value_admin:    { public: true,  default: '' },
+  oauth_role_claim_value_customer: { public: true,  default: '' },
+  oauth_role_claim_is_array:       { public: true,  default: 'false' },
 };
 
 // ---------------------------------------------------------------------------
@@ -485,8 +490,12 @@ class ConfigStore {
       oauth_issuer:                  ['OAUTH_ISSUER'],
       oauth_discovery_endpoint:      ['OAUTH_DISCOVERY_ENDPOINT'],
       oauth_discovery_enabled:       ['OAUTH_DISCOVERY_ENABLED'],
-      oauth_admin_callback_path:     ['OAUTH_ADMIN_CALLBACK_PATH'],
-      oauth_user_callback_path:      ['OAUTH_USER_CALLBACK_PATH'],
+      oauth_admin_callback_path:       ['OAUTH_ADMIN_CALLBACK_PATH'],
+      oauth_user_callback_path:        ['OAUTH_USER_CALLBACK_PATH'],
+      oauth_role_claim_name:           ['OAUTH_ROLE_CLAIM_NAME'],
+      oauth_role_claim_value_admin:    ['OAUTH_ROLE_CLAIM_VALUE_ADMIN'],
+      oauth_role_claim_value_customer: ['OAUTH_ROLE_CLAIM_VALUE_CUSTOMER'],
+      oauth_role_claim_is_array:       ['OAUTH_ROLE_CLAIM_IS_ARRAY'],
     };
 
     const envVars = envFallbackMap[key] || [];
