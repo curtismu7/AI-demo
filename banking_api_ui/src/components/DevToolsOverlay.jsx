@@ -61,6 +61,7 @@ export default function DevToolsOverlay({ defaultOpen = false }) {
               defaultX={Math.max(20, window.innerWidth - 1140)}
               defaultY={60}
               defaultTab="chain"
+              onClose={() => setOpen(false)}
             />
           </div>
         </div>

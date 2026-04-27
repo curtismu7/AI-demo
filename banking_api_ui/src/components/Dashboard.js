@@ -1026,7 +1026,7 @@ const Dashboard = ({ user, onLogout }) => {
       )}
 
       <ApiCallsModal open={apiCallsModalOpen} onClose={() => setApiCallsModalOpen(false)} />
-      <DevToolsOverlay defaultOpen />
+      <DevToolsOverlay />
 
       </div>
     </div>

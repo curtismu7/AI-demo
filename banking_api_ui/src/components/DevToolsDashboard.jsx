@@ -28,6 +28,7 @@ export default function DevToolsDashboard({
   defaultY = 0,
   defaultTab = 'chain',
   className = '',
+  onClose,
 }) {
   const [activeTab, setActiveTab] = useState(defaultTab);
 
@@ -88,6 +89,20 @@ export default function DevToolsDashboard({
         <span style={{ alignSelf: "center", paddingBottom: 8, paddingRight: 10, fontSize: "0.7rem", color: "rgba(255,255,255,0.5)" }}>
           drag · resize · ↗ pop out
         </span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close Dev Tools"
+            style={{
+              alignSelf: "center", marginBottom: 8, marginRight: 6,
+              background: "none", border: "1px solid rgba(255,255,255,0.25)",
+              borderRadius: "4px", color: "rgba(255,255,255,0.7)",
+              cursor: "pointer", fontSize: "1rem", lineHeight: 1,
+              padding: "2px 7px", fontWeight: 700,
+            }}
+          >✕</button>
+        )}
       </div>
       {/* Tab panels — all mounted to preserve polling/state */}
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>

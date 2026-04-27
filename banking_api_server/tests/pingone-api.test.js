@@ -10,12 +10,16 @@
  * PingOne API docs: https://apidocs.pingidentity.com/pingone/platform/v1/api/
  */
 
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+
 const axios = require('axios');
 
 const ENV_ID        = process.env.PINGONE_ENVIRONMENT_ID;
-const AUTH_URL      = process.env.PINGONE_AUTH_URL;   // e.g. https://auth.pingone.com/{envId}
-const CLIENT_ID     = process.env.PINGONE_CLIENT_ID;
-const CLIENT_SECRET = process.env.PINGONE_CLIENT_SECRET;
+const REGION        = process.env.PINGONE_REGION || 'com';
+const AUTH_URL      = process.env.PINGONE_AUTH_URL
+  || (ENV_ID ? `https://auth.pingone.${REGION}/${ENV_ID}` : null);
+const CLIENT_ID     = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID || process.env.PINGONE_CLIENT_ID;
+const CLIENT_SECRET = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET || process.env.PINGONE_CLIENT_SECRET;
 
 const HAVE_CREDENTIALS = !!(ENV_ID && AUTH_URL && CLIENT_ID && CLIENT_SECRET);
 const it_ = HAVE_CREDENTIALS ? it : it.skip;
@@ -89,11 +93,12 @@ describe('POST /as/introspect — RFC 7662', () => {
     expect(res.status).toBe(200);
     expect(res.data).toMatchObject({
       active: true,
-      sub: expect.any(String),
       iss: expect.any(String),
       exp: expect.any(Number),
       iat: expect.any(Number),
     });
+    // client_credentials tokens use client_id as identity; sub is optional
+    expect(res.data.sub || res.data.client_id).toBeTruthy();
   });
 });
 
