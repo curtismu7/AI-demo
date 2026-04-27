@@ -76,3 +76,26 @@ export function shouldShowGlobalFloatingBankingAgentFab({ user, placement, fab, 
   if (placement !== 'none' && !fab) return false;
   return isBankingAgentDashboardRoute(pathname);
 }
+
+/**
+ * Monitoring / observability routes where the floating agent FAB is shown so
+ * users can trigger tool calls and see audit/traffic/token results on the same page.
+ * @param {string} [pathname]
+ * @returns {boolean}
+ */
+export function isMonitoringRoute(pathname) {
+  if (pathname == null || typeof pathname !== 'string') return false;
+  const p = pathname.replace(/\/$/, '') || '/';
+  const MONITORING_PREFIXES = [
+    '/activity',
+    '/audit',
+    '/logs',
+    '/api-traffic',
+    '/mcp-traffic',
+    '/dev-tools',
+    '/monitoring',       // covers /monitoring/token-chain, /monitoring/token-diff,
+                         //         /monitoring/flow-inspector, /monitoring/mcp-traffic,
+                         //         /monitoring/api-explorer
+  ];
+  return MONITORING_PREFIXES.some(prefix => p === prefix || p.startsWith(prefix + '/'));
+}

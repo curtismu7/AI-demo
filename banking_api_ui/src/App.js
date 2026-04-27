@@ -113,6 +113,7 @@ import {
 	isBankingAgentDashboardRoute,
 	isEmbeddedAgentDockRoute,
 	isPublicMarketingAgentPath,
+	isMonitoringRoute,
 } from "./utils/embeddedAgentFabVisibility";
 import {
 	showEndUserOAuthErrorToast,
@@ -621,11 +622,14 @@ function AppWithAuth() {
 	const hasEmbeddedDockLayout =
 		Boolean(user) && agentPlacement === "bottom" && onEmbeddedDockRoute;
 
+	const onMonitoringRoute = isMonitoringRoute(pathname);
+
 	const showFloatingAgent =
 		!isApiTrafficOnlyPage &&
 		!hasEmbeddedDockLayout &&
 		(marketingAgentSurface ||
 			(Boolean(user) && agentPlacement === "none") ||
+			(Boolean(user) && onMonitoringRoute) ||
 			(Boolean(user) &&
 				agentPlacement !== "none" &&
 				onDashboardAgentRoute &&
@@ -890,6 +894,7 @@ function AppWithAuth() {
 															<DevToolsDashboard
 																defaultWidth={1200}
 																defaultHeight={700}
+																onClose={() => window.history.back()}
 															/>
 														}
 													/>
