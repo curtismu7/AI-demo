@@ -28,6 +28,7 @@ import { proxyJsonRpc, JsonRpcRequest, JsonRpcResponse } from './proxy';
 import { guardToolsList, guardToolCall } from './pingAuthorizeGuard';
 import { createHitlChallenge, getHitlChallengeStatus } from './hitlClient';
 import { GatewayServer } from './server/GatewayServer';
+import { buildAuthorizeMcpRequest } from './middleware/authorizeMcpRequest';
 
 let config: GatewayConfig;
 try {
@@ -294,7 +295,10 @@ async function proxyToolsList(target: 'olb' | 'invest', inboundToken: string): P
 // Start
 // ---------------------------------------------------------------------------
 
-const gatewayServer = new GatewayServer({ config });
+const gatewayServer = new GatewayServer({
+  config,
+  requestMiddleware: buildAuthorizeMcpRequest(config),
+});
 const httpServer = gatewayServer.httpServer;
 const wss = new WebSocket.Server({ server: httpServer });
 

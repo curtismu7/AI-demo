@@ -38,4 +38,4 @@ Add self-service button to side menu (ui, 0d ago)
 Fix Vercel Env tab requires VERCEL_TOKEN and VERCEL_PROJECT_ID (ui, 2d ago)
 Make config page tabs more visually obvious (ui, 2d ago)
 Support all 4 PingOne token auth methods for management worker including JWT generation (api, 2d ago)
-Worker App config tab credentials lost on browser refresh (api, 2d ago)
+Worker App config tab credentials lost on browser refresh (api, 2d ago)- [ ] MCP Gateway Config UI: BFF `GET /api/gateway/config` + UI page with live config display and downloadable PingGateway `mcp.json` route export (generated from env vars). Add as follow-on to phase 243.
