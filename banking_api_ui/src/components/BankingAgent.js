@@ -5473,17 +5473,11 @@ export default function BankingAgent({
 									<button
 										type="button"
 										className="ba-action-item"
-										onClick={() =>
-											handleLoginAction(
-												effectiveUser?.role === "admin"
-													? "login_admin"
-													: "login_user",
-											)
-										}
-										disabled={loading || consentBlocked}
-										title="Sign in again if refresh fails"
+										onClick={() => onLogout?.()}
+										disabled={loading}
+										title="Sign out of your session"
 									>
-										🔐 Sign in
+										🚪 Sign out
 									</button>
 								</div>
 							)}
