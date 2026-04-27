@@ -475,11 +475,7 @@ cmd_start() {
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
 
-  # Default to showing all logs (auto-tail all)
-  echo -e "${CYAN}Starting live log view (all services)…${NC}"
-  echo "Press Ctrl+C to stop tailing logs (services will keep running)."
-  echo ""
-  cmd_logs "all"
+  cmd_logs
 }
 
 # ── Test ─────────────────────────────────────────────────────────────────────

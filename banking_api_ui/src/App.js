@@ -787,6 +787,66 @@ function AppWithAuth() {
 									)
 								}
 							/>
+							{/* Monitoring outer routes — explicit so customers navigating from /dashboard don't hit
+							    the path="*" inner-Routes catch-all which redirects back to /dashboard */}
+							<Route
+								path="/monitoring/*"
+								element={
+									<>
+										<AdminSideNav user={user} />
+										<TopNav user={user} onLogout={logout} />
+										<main className="main-content">
+											<Routes>
+												<Route path="token-chain" element={<TokenChainDisplay />} />
+												<Route path="token-diff" element={<TokenDiffPanel />} />
+												<Route path="flow-inspector" element={<UnifiedTokenFlowInspector floatingByDefault={false} showToggle={false} />} />
+												<Route path="mcp-traffic" element={<McpTrafficPage />} />
+												<Route path="api-explorer" element={<ApiExplorerPanel />} />
+											</Routes>
+										</main>
+									</>
+								}
+							/>
+							<Route
+								path="/api-traffic"
+								element={
+									<>
+										<AdminSideNav user={user} />
+										<TopNav user={user} onLogout={logout} />
+										<main className="main-content">
+											<ApiTrafficPage />
+										</main>
+									</>
+								}
+							/>
+							<Route
+								path="/mcp-traffic"
+								element={
+									<>
+										<AdminSideNav user={user} />
+										<TopNav user={user} onLogout={logout} />
+										<main className="main-content">
+											<McpTrafficPage />
+										</main>
+									</>
+								}
+							/>
+							<Route
+								path="/dev-tools"
+								element={
+									<>
+										<AdminSideNav user={user} />
+										<TopNav user={user} onLogout={logout} />
+										<main className="main-content">
+											<DevToolsDashboard
+												defaultWidth={1200}
+												defaultHeight={700}
+												onClose={() => window.history.back()}
+											/>
+										</main>
+									</>
+								}
+							/>
 							{/* Explicit /dashboard so guests see UserDashboard with demo data, not LandingPage */}
 							<Route
 								path="/dashboard"

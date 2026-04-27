@@ -121,8 +121,8 @@ export default function AdminSideNav({ user }) {
 			label: "Monitoring",
 			icon: "📋",
 			children: [
-				{ label: "Activity Logs", path: "/activity", icon: "📝" },
-				{ label: "Audit Trail", path: "/audit", icon: "🔍" },
+				{ label: "Activity Logs", path: "/activity", icon: "📝", adminOnly: true },
+				{ label: "Audit Trail", path: "/audit", icon: "🔍", adminOnly: true },
 				{ label: "API Traffic", path: "/api-traffic", icon: "📡" },
 				{ label: "MCP Traffic", path: "/mcp-traffic", icon: "🔌" },
 				{ label: "Dev Tools", path: "/dev-tools", icon: "🛠" },

@@ -406,9 +406,15 @@ app.use(
 // Applied to all /api/ routes after authentication.
 app.use('/api', audValidationMiddleware);
 
-// Auto-track all /api/* calls into the API Explorer (skips /api/api-calls itself to avoid loops)
+// High-frequency polling paths excluded from API Explorer tracking to avoid noise
+const TRACKING_SKIP_PREFIXES = [
+    '/api-calls', '/tokens/session-preview', '/tokens/agent-cc-preview',
+    '/healthz', '/health', '/mcp/traffic', '/oauth/monitor',
+];
+
+// Auto-track all /api/* calls into the API Explorer (skips polling endpoints to avoid noise)
 app.use('/api', (req, res, next) => {
-    if (req.path.startsWith('/api-calls')) return next();
+    if (TRACKING_SKIP_PREFIXES.some(p => req.path.startsWith(p))) return next();
     const start = Date.now();
     const origJson = res.json.bind(res);
     let captured = null;

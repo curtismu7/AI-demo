@@ -629,8 +629,4 @@ echo ""
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
 
-# Default to showing all logs (auto-tail all)
-echo -e "${CYAN}Starting live log view (all services)…${RESET}"
-echo "Press Ctrl+C to stop tailing logs (services will keep running)."
-echo ""
-tail_bank_logs "all"
+tail_bank_logs
