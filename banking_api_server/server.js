@@ -964,6 +964,7 @@ const {
 } = require('./middleware/tokenIntrospection');
 const mcpFlowSseHub = require('./services/mcpFlowSseHub');
 const http2McpBridge = require("./services/http2McpBridge");
+const mcpGatewayClient = require('./services/mcpGatewayClient');
 
 // Session-scoped exchange mode toggle (GET/POST /api/mcp/exchange-mode)
 const mcpExchangeMode = require('./routes/mcpExchangeMode');
@@ -1405,17 +1406,26 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
     }
 
     // ── Try remote MCP server first; fall back to local handler if unreachable ──
+    // When MCP_GATEWAY_HTTP_URL is set, route through the banking-mcp-gateway (Phase 243).
+    // The gateway owns RFC 9728 metadata, runs PingOne Authorize policy evaluation, and
+    // performs RFC 8693 token exchange to the upstream MCP server — the mcpAccessToken
+    // must already be scoped to the gateway audience (MCP_GW_RESOURCE_URI).
+    // Graceful fallback: if MCP_GATEWAY_HTTP_URL is not set, use the previous direct path.
+    const gatewayHttpUrl = mcpGatewayClient.getMcpGatewayHttpUrl();
+    const useGateway = !!process.env.MCP_GATEWAY_HTTP_URL;
     const mcpUrl = getMcpServerUrl();
     const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;
-    const useHttp2 = mcpUrl.startsWith("http://") || mcpUrl.startsWith("https://");
+    const useHttp2 = !useGateway && (mcpUrl.startsWith("http://") || mcpUrl.startsWith("https://"));
 
     try {
         emit({
             phase: 'mcp_remote_begin'
         });
-        appEventService.logEvent('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, mcpServerUrl: getMcpServerUrl() } });
+        appEventService.logEvent('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, gatewayUrl: useGateway ? gatewayHttpUrl : mcpUrl, via: useGateway ? 'gateway' : 'direct' } });
         let result;
-        if (useHttp2) {
+        if (useGateway) {
+            result = await mcpGatewayClient.callToolViaGateway(gatewayHttpUrl, mcpAccessToken, tool, params || {}, { correlationId: req.correlationId });
+        } else if (useHttp2) {
             const h2Session = http2McpBridge.createHttp2Session(mcpUrl, mcpAccessToken);
             result = await http2McpBridge.forwardToolCall(h2Session, tool, params || {}, mcpAccessToken, userSub, req.correlationId);
         } else {

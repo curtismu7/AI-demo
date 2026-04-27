@@ -304,7 +304,9 @@ class TokenManager:
         if scope_string:
             token_data["scope"] = scope_string
         # Add resource indicator for audience binding when MCP_SERVER_RESOURCE_URI is configured
-        mcp_resource_uri = os.environ.get('MCP_SERVER_RESOURCE_URI')
+        # MCP_GW_RESOURCE_URI is the gateway audience (Phase 243). Fall back to
+        # MCP_SERVER_RESOURCE_URI for backward compatibility.
+        mcp_resource_uri = os.environ.get('MCP_GW_RESOURCE_URI') or os.environ.get('MCP_SERVER_RESOURCE_URI')
         if mcp_resource_uri:
             token_data["resource"] = mcp_resource_uri
             logger.info(f"Agent token request includes resource indicator: {mcp_resource_uri}")

@@ -1,0 +1,109 @@
+'use strict';
+/**
+ * mcpGatewayClient.js — HTTP client for the banking-mcp-gateway.
+ *
+ * Routes tool calls through the MCP gateway instead of directly to the MCP
+ * server. The gateway owns RFC 9728 protected-resource metadata, runs
+ * PingOne Authorize policy evaluation, and performs the final RFC 8693
+ * token exchange to the upstream MCP server — the BFF-issued token is the
+ * bearer here and must already be scoped to the gateway audience.
+ *
+ * Env vars:
+ *   MCP_GATEWAY_HTTP_URL   — base URL of banking-mcp-gateway (default: http://localhost:3005)
+ *   MCP_GATEWAY_TIMEOUT_MS — per-request timeout in ms (default: 30000)
+ */
+
+const axios = require('axios');
+
+const DEFAULT_GATEWAY_URL = 'http://localhost:3005';
+const DEFAULT_TIMEOUT_MS  = 30_000;
+const MCP_PROTOCOL_VERSION = '2025-11-25';
+
+/**
+ * Call an MCP tool via the gateway HTTP endpoint.
+ *
+ * @param {string} gatewayUrl   Base URL of the gateway (no trailing slash)
+ * @param {string} bearerToken  Access token scoped to the gateway audience (MCP_GW_RESOURCE_URI)
+ * @param {string} tool         MCP tool name (e.g. "get_accounts")
+ * @param {object} params       Tool arguments
+ * @param {object} [opts]
+ * @param {string} [opts.correlationId]  Forwarded as JSON-RPC id for tracing
+ * @param {string} [opts.sessionId]      Forwarded as mcp-session-id header if present
+ * @returns {Promise<any>}  The JSON-RPC result value
+ *
+ * @throws {Error} with `.code` and `.httpStatus` for 401/403/5xx
+ */
+async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, opts = {}) {
+    const base = (gatewayUrl || DEFAULT_GATEWAY_URL).replace(/\/$/, '');
+    const url  = `${base}/mcp`;
+
+    const body = {
+        jsonrpc: '2.0',
+        id:      opts.correlationId || Date.now(),
+        method:  'tools/call',
+        params:  { name: tool, arguments: params },
+    };
+
+    const headers = {
+        'Authorization':        `Bearer ${bearerToken}`,
+        'Content-Type':         'application/json',
+        'Accept':               'application/json',
+        'MCP-Protocol-Version': MCP_PROTOCOL_VERSION,
+    };
+    if (opts.sessionId) {
+        headers['mcp-session-id'] = opts.sessionId;
+    }
+
+    const timeoutMs = parseInt(process.env.MCP_GATEWAY_TIMEOUT_MS || '', 10) || DEFAULT_TIMEOUT_MS;
+
+    const response = await axios.post(url, body, {
+        headers,
+        timeout: timeoutMs,
+        // Handle error status codes ourselves so we can emit structured errors
+        validateStatus: () => true,
+    });
+
+    const status = response.status;
+
+    if (status === 401) {
+        throw Object.assign(
+            new Error('Gateway authentication failed — token may be missing or expired'),
+            { code: 'gateway_auth_failed', httpStatus: 401 },
+        );
+    }
+
+    if (status === 403) {
+        throw Object.assign(
+            new Error('Gateway policy denied the tool call'),
+            { code: 'gateway_policy_denied', httpStatus: 403 },
+        );
+    }
+
+    if (status >= 500) {
+        throw Object.assign(
+            new Error(`Gateway upstream error (HTTP ${status})`),
+            { code: 'gateway_upstream_error', httpStatus: status },
+        );
+    }
+
+    if (status >= 400) {
+        throw Object.assign(
+            new Error(`Gateway returned HTTP ${status}`),
+            { code: 'gateway_client_error', httpStatus: status },
+        );
+    }
+
+    // JSON-RPC responses: prefer .result, fall through to full body for
+    // non-standard / direct responses from the upstream MCP server.
+    return response.data?.result ?? response.data;
+}
+
+/**
+ * Resolve the configured gateway base URL.
+ * Falls back to DEFAULT_GATEWAY_URL when env var is unset.
+ */
+function getMcpGatewayHttpUrl() {
+    return (process.env.MCP_GATEWAY_HTTP_URL || DEFAULT_GATEWAY_URL).replace(/\/$/, '');
+}
+
+module.exports = { callToolViaGateway, getMcpGatewayHttpUrl };
