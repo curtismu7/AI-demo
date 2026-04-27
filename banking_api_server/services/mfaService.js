@@ -1,10 +1,9 @@
 const axios = require("axios");
 const configStore = require("./configStore");
+const { getTokenEndpoint, getIssuer } = require("./oauthEndpointResolver");
 
 function _authBaseUrl() {
-	const region = configStore.getEffective("pingone_region") || "com";
-	const envId = configStore.getEffective("pingone_environment_id");
-	return `https://auth.pingone.${region}/${envId}`;
+	return getIssuer();
 }
 
 function _apiBaseUrl() {
@@ -14,7 +13,6 @@ function _apiBaseUrl() {
 }
 
 async function _getWorkerToken() {
-	const region = configStore.getEffective("pingone_region") || "com";
 	const envId = configStore.getEffective("pingone_environment_id");
 	// Use PINGONE_WORKER_TOKEN credentials, falling back to management credentials
 	const clientId =
@@ -34,7 +32,7 @@ async function _getWorkerToken() {
 		throw new Error(
 			"PingOne worker credentials not configured. Set PINGONE_WORKER_TOKEN_CLIENT_ID/SECRET or pingone_mgmt_client_id/secret via the Worker App tab at /config.",
 		);
-	const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;
+	const tokenUrl = getTokenEndpoint();
 	const body = new URLSearchParams({ grant_type: "client_credentials" });
 	const reqConfig = {
 		headers: { "Content-Type": "application/x-www-form-urlencoded" },

@@ -2,6 +2,7 @@
 
 const axios = require('axios');
 const configStore = require('./configStore');
+const { getTokenEndpoint } = require('./oauthEndpointResolver');
 
 /**
  * Reference table: Expected PingOne resources for Super Banking
@@ -50,7 +51,6 @@ const RESOURCE_REFERENCE_TABLE = [
  */
 async function getManagementToken() {
   const envId = configStore.getEffective('pingone_environment_id');
-  const region = configStore.getEffective('pingone_region') || 'com';
   const clientId = configStore.getEffective('pingone_client_id');
   const clientSecret = configStore.getEffective('pingone_client_secret');
 
@@ -58,7 +58,7 @@ async function getManagementToken() {
     throw new Error('PingOne admin credentials not configured');
   }
 
-  const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;
+  const tokenUrl = getTokenEndpoint();
   const response = await axios.post(
     tokenUrl,
     'grant_type=client_credentials',
