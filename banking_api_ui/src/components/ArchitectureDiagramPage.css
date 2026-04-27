@@ -1,11 +1,94 @@
 /* ArchitectureDiagramPage.css — Architecture diagram overlay styles */
 
-/* Diagram container: position:relative + inline-block so SVG matches rendered image bounds exactly */
+/* Page wrapper spacing */
+.arch-diagram-page {
+  padding: 0 0.5rem;
+}
+
+/* Toolbar: zoom controls + simulate button on same row */
+.arch-diagram-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.arch-diagram-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+}
+
+.arch-zoom-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  color: #334155;
+  transition: background 0.15s;
+}
+.arch-zoom-btn:hover {
+  background: #e2e8f0;
+}
+
+.arch-zoom-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  min-width: 2.8rem;
+  text-align: center;
+}
+
+.arch-zoom-reset {
+  font-size: 0.95rem;
+  color: #64748b;
+}
+
+/* Simulate button */
+.arch-simulate-btn {
+  padding: 0.4rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #004687;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.arch-simulate-btn:hover:not(:disabled) {
+  background: #003366;
+}
+.arch-simulate-btn:disabled,
+.arch-simulate-btn--running {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Scroll wrapper: clips zoomed content with scrollbars */
+.arch-diagram-scroll-wrapper {
+  overflow: auto;
+  max-height: 75vh;
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+/* Diagram container: position:relative so SVG matches rendered image bounds exactly.
+   Width is set inline by zoom level (e.g. zoom=2 → width:200%). */
 .arch-diagram-container {
   position: relative;
   display: inline-block;
-  width: 100%;
-  max-width: 1200px;
+  min-width: 100%;
   line-height: 0; /* eliminate gap below inline img */
 }
 
@@ -23,7 +106,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  pointer-events: none; /* pass mouse events through to image below */
+  pointer-events: none;
   overflow: visible;
 }
 
@@ -34,19 +117,18 @@
   stroke-width: 2;
   transition: fill 0.3s ease, stroke 0.3s ease, opacity 0.3s ease;
   cursor: default;
-  rx: 4;
 }
 
-/* Active region: glowing brand-navy highlight with pulse */
+/* Active: brand-navy */
 .diagram-region--active {
-  fill: rgba(0, 70, 135, 0.18);      /* --brand-navy at 18% opacity */
-  stroke: #004687;                    /* --brand-navy */
+  fill: rgba(0, 70, 135, 0.18);
+  stroke: #004687;
   stroke-width: 3;
   animation: diagram-pulse 1.2s ease-in-out infinite;
   filter: drop-shadow(0 0 6px rgba(0, 102, 204, 0.7));
 }
 
-/* Error variant: authorize/deny or token_exchange error */
+/* Error: authorize/deny or token_exchange error */
 .diagram-region--active-error {
   fill: rgba(239, 68, 68, 0.15);
   stroke: #ef4444;
@@ -55,7 +137,7 @@
   filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.6));
 }
 
-/* Permit variant: authorize/permit */
+/* Permit: authorize/permit */
 .diagram-region--active-permit {
   fill: rgba(76, 175, 80, 0.15);
   stroke: #4CAF50;
@@ -68,34 +150,4 @@
   0%   { stroke-width: 3; opacity: 1; }
   50%  { stroke-width: 4; opacity: 0.72; }
   100% { stroke-width: 3; opacity: 1; }
-}
-
-/* Non-admin notice */
-.arch-diagram-notice {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.875rem;
-  padding: 0.5rem 0.875rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.82rem;
-  color: #64748b;
-}
-
-.arch-diagram-notice-icon {
-  font-size: 1rem;
-}
-
-/* Page wrapper spacing */
-.arch-diagram-page {
-  padding: 0 0.5rem;
-}
-
-.arch-diagram-page h2 {
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0 0 1rem 0;
 }
