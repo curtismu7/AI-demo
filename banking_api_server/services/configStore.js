@@ -175,6 +175,15 @@ const FIELD_DEFS = {
     default:
       'banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write ai_agent',
   },
+
+  // Multi-IDP: configurable OAuth endpoints — optional overrides for non-PingOne IDPs.
+  // When empty, services fall back to computing PingOne URLs from environment_id + region.
+  oauth_authorization_endpoint: { public: true,  default: '' },
+  oauth_token_endpoint:          { public: true,  default: '' },
+  oauth_userinfo_endpoint:       { public: true,  default: '' },
+  oauth_jwks_uri:                { public: true,  default: '' },
+  oauth_issuer:                  { public: true,  default: '' },
+  oauth_discovery_endpoint:      { public: true,  default: '' },
 };
 
 // ---------------------------------------------------------------------------
@@ -466,6 +475,12 @@ class ConfigStore {
       marketing_demo_password_hint: ['MARKETING_DEMO_PASSWORD_HINT'],
       ai_agent_token_endpoint_auth_method:   ['AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD'],
       mcp_exchanger_token_endpoint_auth_method: ['MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD'],
+      oauth_authorization_endpoint: ['OAUTH_AUTHORIZATION_ENDPOINT'],
+      oauth_token_endpoint:          ['OAUTH_TOKEN_ENDPOINT'],
+      oauth_userinfo_endpoint:       ['OAUTH_USERINFO_ENDPOINT'],
+      oauth_jwks_uri:                ['OAUTH_JWKS_URI'],
+      oauth_issuer:                  ['OAUTH_ISSUER'],
+      oauth_discovery_endpoint:      ['OAUTH_DISCOVERY_ENDPOINT'],
     };
 
     const envVars = envFallbackMap[key] || [];
