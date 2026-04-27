@@ -1866,8 +1866,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 245-01-PLAN.md — Scope upgrade: intercept 403 in callMcpTool(), retry with RFC 8693 token exchange
-- [ ] 245-02-PLAN.md — Introspection consolidation: middleware delegates to service, fix eviction + type guard
+- [x] 245-01-PLAN.md — Scope upgrade: intercept 403 in callMcpTool(), retry with RFC 8693 token exchange
+- [x] 245-02-PLAN.md — Introspection consolidation: middleware delegates to service, fix eviction + type guard
 
 
 ---
