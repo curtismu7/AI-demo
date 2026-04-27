@@ -1814,11 +1814,11 @@ Plans:
 **Goal:** Add 5 standalone monitoring pages accessible from admin sidebar under the existing Monitoring nav group — Token Chain, Token Diff, Flow Inspector, MCP Traffic, API Explorer.
 **Requirements**: MONITORING-PAGES-01, MONITORING-PAGES-02, MONITORING-PAGES-03, MONITORING-PAGES-04
 **Depends on:** Phase 240
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 241-01-PLAN.md — Route registration + sidebar nav entries for all 5 monitoring pages
-- [ ] 241-02-PLAN.md — Build verification + human sign-off on sidebar navigation
+- [x] 241-01-PLAN.md — Route registration + sidebar nav entries for all 5 monitoring pages
+- [x] 241-02-PLAN.md — Build verification + human sign-off on sidebar navigation
 
 ### Phase 242: PingOne API transparency — all test pages show actual API endpoint, request JSON, response JSON, and link to PingOne docs
 

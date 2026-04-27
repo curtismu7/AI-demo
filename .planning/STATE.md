@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-04-26T20:59:30.794Z"
+status: ready_to_plan
+last_updated: "2026-04-27T17:43:59.145Z"
 progress:
-  total_phases: 125
-  completed_phases: 108
-  total_plans: 209
-  completed_plans: 211
-  percent: 100
+  total_phases: 132
+  completed_phases: 113
+  total_plans: 229
+  completed_plans: 229
+  percent: 86
 ---
 
 # State — Super Banking AI Banking Demo
@@ -21,8 +21,8 @@ progress:
 
 ## Current Position
 
-Phase: --phase (237) — EXECUTING
-Plan: 1 of --name
+Phase: 242
+Plan: Not started
 Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) — available for planning
 
 ## Recent Progress
@@ -102,6 +102,7 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) �
 
 ## Roadmap Evolution
 
+- Phase 243 added: Build a real MCP Gateway in front of the MCP server with RFC 9728 protected resource metadata, PingOne Authorize-led policy evaluation, token passing and token exchange to the MCP server, no tokens ever exposed to the LLM, and strict audience-per-hop validation so each token aud maps only to the next hop in the flow
 - Phase 240 added: make sure all tests pages have, and look for other pages this makes sense and make a plan for those: 1) Actual PingOne API 2) Actual Request to pingOne for that call (JSON) 3) Actual Response from pingone Call (JSON) 4) LInk to actual PingOne api docs page, for that call https://developer.pingidentity.com/apis.html
 - Phase 239 added: make sure all tests pages have, and look for other pages this makes sense and make a plan for those: 1) Actual PingOne API 2) Actual Request to pingOne for that call (JSON) 3) Actual Response from pingone Call (JSON) 4) LInk to actual PingOne api docs page, for that call https://developer.pingidentity.com/apis.html
 - Phase 238 added: Dashboard overhaul — token diff view, architecture diagram, MCP inspector, API call explorer, and RFC-linked learning panels
