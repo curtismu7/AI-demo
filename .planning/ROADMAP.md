@@ -1823,13 +1823,15 @@ Plans:
 
 ### Phase 242: PingOne API transparency — all test pages show actual API endpoint, request JSON, response JSON, and link to PingOne docs
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Every test/demo page (PingOneTestPage, MFATestPage, AuthzTestPage) shows the actual PingOne API endpoint URL, full request JSON, live response JSON, and a direct link to PingOne developer docs for each API call it exercises — via a reusable ApiCallPreviewCard component.
+**Requirements**: 242-component, 242-pingone-test, 242-mfa-test, 242-authz-test
 **Depends on:** Phase 241
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 242 to break down)
+- [ ] 242-01-PLAN.md — ApiCallPreviewCard shared component + PingOneApiPanel docs props
+- [ ] 242-02-PLAN.md — Wire ApiCallPreviewCard into PingOneTestPage (token + management API calls)
+- [ ] 242-03-PLAN.md — Wire ApiCallPreviewCard into MFATestPage and AuthzTestPage
 
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
