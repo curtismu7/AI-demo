@@ -48,16 +48,9 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null) {
         branchCode: a.branchCode || null,
         openedDate: a.openedDate || null,
       }));
-      const lines = accounts.map(a => {
-        const parts = [`• **${a.accountType}** (${a.accountNumber || '—'}) — **$${Number(a.balance).toFixed(2)}** ${a.currency || 'USD'}`];
-        if (a.accountHolderName) parts.push(`  Holder: ${a.accountHolderName}`);
-        if (a.iban) parts.push(`  IBAN: ${a.iban}`);
-        if (a.swiftCode) parts.push(`  SWIFT: ${a.swiftCode}`);
-        if (a.branchName) parts.push(`  Branch: ${a.branchName}${a.branchCode ? ` (${a.branchCode})` : ''}`);
-        if (a.openedDate) parts.push(`  Opened: ${a.openedDate}`);
-        if (a.status) parts.push(`  Status: ${a.status}`);
-        return parts.join('\n');
-      });
+      const lines = accounts.map(a =>
+        `• **${a.accountType}** (${a.accountNumber || '—'}) — **$${Number(a.balance).toFixed(2)}** ${a.currency || 'USD'}`
+      );
       return { reply: `${isAdmin ? 'Here are all customer accounts' : 'Here are your accounts'}:\n\n${lines.join('\n\n')}`, success: true, toolsCalled: ['get_my_accounts'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [], accounts: normalizedAccounts };
     }
 
