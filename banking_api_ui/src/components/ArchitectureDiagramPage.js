@@ -46,8 +46,6 @@ export default function ArchitectureDiagramPage({
   activeRegions = {},
   user,
 }) {
-  const isAdmin = user?.role === 'admin';
-
   return (
     <AdminSubPageShell title={title}>
       <div className="arch-diagram-page">
@@ -71,13 +69,6 @@ export default function ArchitectureDiagramPage({
             ))}
           </svg>
         </div>
-
-        {!isAdmin && (
-          <div className="arch-diagram-notice">
-            <span className="arch-diagram-notice-icon">ℹ️</span>
-            Live event highlighting requires admin role. Viewing static diagram.
-          </div>
-        )}
       </div>
     </AdminSubPageShell>
   );

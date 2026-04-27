@@ -99,7 +99,7 @@ export default function ArchitectureTokenFlowPage({ user }) {
   );
 
   const fetchEvents = useCallback(async () => {
-    if (user?.role !== 'admin') return;
+    if (!user) return;
     try {
       const params = new URLSearchParams({ limit: '50' });
       if (lastFetchedAt.current) params.append('since', lastFetchedAt.current);

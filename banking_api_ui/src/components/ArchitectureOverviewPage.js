@@ -104,7 +104,7 @@ export default function ArchitectureOverviewPage({ user }) {
   );
 
   const fetchEvents = useCallback(async () => {
-    if (user?.role !== 'admin') return;
+    if (!user) return;
     try {
       const params = new URLSearchParams({ limit: '50' });
       if (lastFetchedAt.current) params.append('since', lastFetchedAt.current);
