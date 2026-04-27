@@ -16,6 +16,9 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ## [Unreleased]
 
+### Fixed
+- **Monitoring pages — agent FAB visible on all monitoring routes** — `isEmbeddedAgentDockRoute` now returns true for all `isMonitoringRoute` paths so the floating agent icon appears on Token Chain, Token Diff, Flow Inspector, MCP Traffic, API Explorer, API Traffic, and Dev Tools pages for both admin and customer users.
+
 ### Added
 - **Phase 241 — Monitoring sidebar pages** — 5 new `/monitoring/*` routes (Token Chain, Token Diff, Flow Inspector, MCP Traffic, API Explorer) visible to both admin and customer users; legacy Monitoring items (Activity Logs, Audit Trail, API Traffic, MCP Traffic, Dev Tools) remain admin-only.
 - **Phase 231 — Agent chip panel redesign** — Removed inline "Learn & Explore" chip section; replaced with collapsible `ACTION_GROUPS` sections with per-group count badges and a collapse-all toolbar button. Added "⊞ All actions" discovery popout showing all chips organised by group with live search and Escape-to-close. Extended `nlIntentParser.js` heuristics with 9 new intent mappings (CIBA, token-chain, agent-tokens, client-credentials, PKCE, consent, step-up, MFA, revocation) so no chip falls through to the LLM.

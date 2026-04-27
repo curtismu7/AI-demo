@@ -21,6 +21,9 @@ export function isEmbeddedAgentDockRoute(pathname) {
   if (pathname == null || typeof pathname !== 'string') return false;
   const p = pathname.replace(/\/$/, '') || '/';
   if (p === '/config') return true;
+  // Monitoring sidebar pages — agent FAB lets users trigger tool calls and see results live.
+  // Excludes /logs and /activity/audit (no agent interaction needed there).
+  if (p.startsWith('/monitoring') || p === '/api-traffic' || p === '/mcp-traffic' || p === '/dev-tools') return true;
   return isBankingAgentDashboardRoute(pathname);
 }
 
