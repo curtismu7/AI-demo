@@ -300,14 +300,17 @@ export class GatewayServer {
       return;
     }
 
-    try {
-      validateInboundToken(bearerToken, this.config.gatewayResourceUri);
-    } catch (err) {
-      if (err instanceof TokenValidationError) {
-        this.sendUnauthorized(res, err.code, err.message);
-        return;
+    // Dev bypass: skip inbound token validation so the gateway works without real PingOne tokens.
+    if (!this.config.devBypass) {
+      try {
+        validateInboundToken(bearerToken, this.config.gatewayResourceUri);
+      } catch (err) {
+        if (err instanceof TokenValidationError) {
+          this.sendUnauthorized(res, err.code, err.message);
+          return;
+        }
+        throw err;
       }
-      throw err;
     }
 
     // Read the request body
