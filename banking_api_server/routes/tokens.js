@@ -256,7 +256,9 @@ router.get('/session-preview', (req, res) => {
  */
 let _ccCache = { events: null, expiresAt: 0, clientId: null };
 const CC_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
-router.get('/agent-cc-preview', async (req, res) => {
+// Exported so server.js can register this under requireSession (not authenticateToken)
+// since it fetches the agent's CC token server-side — it doesn't need the user's token.
+async function agentCcPreviewHandler(req, res) {
   try {
     const clientId =
       configStore.getEffective('pingone_mcp_token_exchanger_client_id') ||
@@ -339,7 +341,8 @@ router.get('/agent-cc-preview', async (req, res) => {
     console.error('Token agent-cc-preview error:', error);
     res.status(500).json({ error: 'Failed to load agent CC token preview' });
   }
-});
+}
+router.get('/agent-cc-preview', agentCcPreviewHandler);
 
 
 
@@ -441,3 +444,4 @@ router.post('/validate', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.agentCcPreviewHandler = agentCcPreviewHandler;

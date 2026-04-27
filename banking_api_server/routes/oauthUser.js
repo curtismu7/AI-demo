@@ -847,23 +847,36 @@ router.post('/initiate-otp', async (req, res) => {
     }
 
     const user = req.session.user;
-    console.log(`[OTP] Generated step-up OTP for user ${user?.id} — code=${code}`);
+    // oauthId is the PingOne UUID; id may be a legacy numeric key on bootstrap users
+    const pingoneUserId = user?.oauthId || user?.id;
+    console.log(`[OTP] Generated step-up OTP for user ${pingoneUserId} — code=${code}`);
 
-    // Send email (non-fatal if PingOne Notifications not configured)
+    const method = (req.body && req.body.method === 'sms') ? 'sms' : 'email';
+
+    // Send via chosen delivery method (non-fatal if PingOne Notifications not configured)
     try {
-      const { sendOtpEmail } = require('../services/emailService');
-      await sendOtpEmail(user.id, {
-        otpCode: code,
-        amount: 0,
-        transactionType: 'transaction',
-        userName: user.firstName || user.username || 'Customer',
-        expiresInMin: 5,
-      });
-    } catch (emailErr) {
-      console.error('[OTP] Email send failed (non-fatal):', emailErr.message);
+      if (method === 'sms') {
+        const { sendOtpSms } = require('../services/emailService');
+        await sendOtpSms(pingoneUserId, {
+          otpCode: code,
+          userName: user.firstName || user.username || 'Customer',
+          expiresInMin: 5,
+        });
+      } else {
+        const { sendOtpEmail } = require('../services/emailService');
+        await sendOtpEmail(pingoneUserId, {
+          otpCode: code,
+          amount: 0,
+          transactionType: 'transaction',
+          userName: user.firstName || user.username || 'Customer',
+          expiresInMin: 5,
+        });
+      }
+    } catch (sendErr) {
+      console.error(`[OTP] ${method} send failed (non-fatal):`, sendErr.message);
     }
 
-    res.json({ otpSent: true, expiresIn: 300, email: user.email || '' });
+    res.json({ otpSent: true, method, expiresIn: 300, email: user.email || '' });
   });
 });
 

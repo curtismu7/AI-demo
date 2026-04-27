@@ -1112,6 +1112,7 @@ export default function MFATestPage() {
 						pingoneRequest={enrollSmsInitPingoneReq}
 						pingoneResponse={enrollSmsInitPingoneRes}
 						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-create-device-sms"
+						docsSectionTitle="MFA Enroll SMS Device — Init"
 					/>
 					{enrollSmsDeviceId && !enrollSmsAlreadyActive && (
 						<div className="otp-verify-section" style={{ marginTop: "0.5rem" }}>
@@ -1145,6 +1146,7 @@ export default function MFATestPage() {
 								pingoneRequest={enrollSmsCompletePingoneReq}
 								pingoneResponse={enrollSmsCompletePingoneRes}
 								docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-activate-device"
+								docsSectionTitle="MFA Enroll SMS Device — Complete"
 							/>
 						</div>
 					)}
@@ -1182,6 +1184,7 @@ export default function MFATestPage() {
 						pingoneRequest={enrollEmailPingoneReq}
 						pingoneResponse={enrollEmailPingoneRes}
 						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-create-device-email"
+						docsSectionTitle="MFA Enroll Email Device"
 					/>
 
 					{/* ── FIDO2 Enrollment ── */}
@@ -1195,6 +1198,7 @@ export default function MFATestPage() {
 						pingoneRequest={fidoEnrollInitPingoneReq}
 						pingoneResponse={fidoEnrollInitPingoneRes}
 						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-create-device-fido2"
+						docsSectionTitle="FIDO2 Enroll — Init Registration"
 					/>
 					{fidoEnrollData?.publicKeyCredentialCreationOptions && (() => {
 						const raw = fidoEnrollData.publicKeyCredentialCreationOptions;
@@ -1244,6 +1248,7 @@ export default function MFATestPage() {
 							pingoneRequest={fidoEnrollCompletePingoneReq}
 							pingoneResponse={fidoEnrollCompletePingoneRes}
 							docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-activate-device"
+							docsSectionTitle="FIDO2 Enroll — Complete Registration"
 						/>
 					)}
 				</section>
@@ -1282,6 +1287,7 @@ export default function MFATestPage() {
 						pingoneRequest={smsInitiatePingoneReq}
 						pingoneResponse={smsInitiatePingoneRes}
 						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-send-otp-sms-email"
+						docsSectionTitle="MFA Challenge — Initiate (SMS)"
 					/>
 					{smsDaId && (
 						<div className="otp-verify-section">
@@ -1330,6 +1336,7 @@ export default function MFATestPage() {
 								pingoneRequest={smsVerifyPingoneReq}
 								pingoneResponse={smsVerifyPingoneRes}
 								docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-check-otp"
+								docsSectionTitle="MFA Verify OTP (SMS)"
 							/>
 						</div>
 					)}
@@ -1368,6 +1375,7 @@ export default function MFATestPage() {
 						pingoneRequest={emailInitiatePingoneReq}
 						pingoneResponse={emailInitiatePingoneRes}
 						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-send-otp-sms-email"
+						docsSectionTitle="MFA Challenge — Initiate (Email OTP)"
 					/>
 					{emailDaId && (
 						<div className="otp-verify-section">
@@ -1417,6 +1425,7 @@ export default function MFATestPage() {
 								pingoneRequest={emailVerifyPingoneReq}
 								pingoneResponse={emailVerifyPingoneRes}
 								docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-check-otp"
+								docsSectionTitle="MFA Verify OTP (Email)"
 							/>
 						</div>
 					)}
@@ -1463,6 +1472,7 @@ export default function MFATestPage() {
 						pingoneRequest={fidoInitiatePingoneReq}
 						pingoneResponse={fidoInitiatePingoneRes}
 						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-authenticate-with-fido2"
+						docsSectionTitle="MFA Challenge — Initiate (FIDO2)"
 					/>
 					{fidoDaId && (
 						<div className="fido-verify-section">
@@ -1483,6 +1493,7 @@ export default function MFATestPage() {
 										pingoneRequest={fidoVerifyPingoneReq}
 										pingoneResponse={fidoVerifyPingoneRes}
 										docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-authenticate-with-fido2"
+										docsSectionTitle="MFA Verify Assertion (FIDO2)"
 									/>
 								</>
 							) : noFidoDeviceDetected ? (
@@ -1661,7 +1672,7 @@ function DaResponseCard({ daId, method }) {
 	);
 }
 
-function TestCard({ title, status, error, onTest, rawResult, pingoneRequest, pingoneResponse, docsUrl }) {
+function TestCard({ title, status, error, onTest, rawResult, pingoneRequest, pingoneResponse, docsUrl, docsSectionTitle }) {
 	const [rawOpen, setRawOpen] = useState(false);
 	return (
 		<div className={`test-card test-card--${status}`}>
@@ -1686,6 +1697,17 @@ function TestCard({ title, status, error, onTest, rawResult, pingoneRequest, pin
 				</button>
 			)}
 				<PingOneApiPanel request={pingoneRequest} response={pingoneResponse} docsUrl={docsUrl} />
+			{pingoneRequest && (
+				<ApiCallPreviewCard
+					endpoint={pingoneRequest.url || "PingOne MFA API"}
+					method={pingoneRequest.method || "POST"}
+					docsUrl={docsUrl}
+					docsSectionTitle={docsSectionTitle}
+					requestBody={pingoneRequest.body}
+					responseBody={pingoneResponse}
+					responseStatus={pingoneResponse?.status ?? (pingoneResponse?.error ? 400 : pingoneResponse ? 200 : null)}
+				/>
+			)}
 			{!pingoneResponse && rawResult !== undefined && rawResult !== null && (
 				<div className="test-card-raw">
 					<button

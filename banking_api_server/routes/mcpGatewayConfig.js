@@ -174,7 +174,8 @@ function buildAdminJsonSnippet() {
 // GET /api/admin/mcp-gateway/config
 // ---------------------------------------------------------------------------
 router.get('/config', async (req, res) => {
-    const gatewayUrl     = process.env.MCP_GATEWAY_HTTP_URL || 'http://localhost:3005';
+    const defaultGatewayUrl = `http://${req.hostname}:3005`;
+    const gatewayUrl     = process.env.MCP_GATEWAY_HTTP_URL || defaultGatewayUrl;
     const gatewayEnabled = !!process.env.MCP_GATEWAY_HTTP_URL;
     const devBypass      = process.env.MCP_GW_DEV_BYPASS === 'true';
 
@@ -187,6 +188,10 @@ router.get('/config', async (req, res) => {
         // Mock gateway fields
         gatewayResourceUri:    process.env.MCP_GW_RESOURCE_URI     || configStore.getEffective('pingone_resource_mcp_gateway_uri') || '',
         upstreamMcpUrl:        process.env.MCP_OLB_WS_URL           || configStore.getEffective('mcp_server_url') || 'http://localhost:8000',
+        mcpOlbResourceUri:     process.env.MCP_OLB_RESOURCE_URI    || '',
+        mcpInvestWsUrl:        process.env.MCP_INVEST_WS_URL        || '',
+        mcpInvestResourceUri:  process.env.MCP_INVEST_RESOURCE_URI  || '',
+        hitlServiceUrl:        process.env.HITL_SERVICE_URL         || '',
         pingAuthorizeEndpoint: process.env.PINGAUTHORIZE_ENDPOINT   || '',
         pingAuthorizeWorkerId: process.env.PINGAUTHORIZE_WORKER_ID  || '',
 

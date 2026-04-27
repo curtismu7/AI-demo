@@ -100,11 +100,11 @@ export default function McpGatewayConfig() {
 			setPushForm({
 				gatewayResourceUri: c.gatewayResourceUri || "",
 				mcpOlbWsUrl: c.upstreamMcpUrl || "",
-				mcpOlbResourceUri: "",
-				mcpInvestWsUrl: "",
-				mcpInvestResourceUri: "",
+				mcpOlbResourceUri: c.mcpOlbResourceUri || "",
+				mcpInvestWsUrl: c.mcpInvestWsUrl || "",
+				mcpInvestResourceUri: c.mcpInvestResourceUri || "",
 				pingAuthorizeEndpoint: c.pingAuthorizeEndpoint || "",
-				hitlServiceUrl: "",
+				hitlServiceUrl: c.hitlServiceUrl || "",
 				devBypass: m.devBypass,
 			});
 		}
@@ -222,23 +222,24 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.bxf.com
 					<p>Update the running mock gateway without restart. Changes are in-memory only.</p>
 					<div className="mgc-push-form">
 						{[
-							{ key: "gatewayResourceUri", label: "Gateway Resource URI", type: "text", placeholder: "https://mcp-gw.bxf.com" },
-							{ key: "mcpOlbWsUrl", label: "OLB WS URL", type: "text", placeholder: "ws://localhost:8080" },
-							{ key: "mcpOlbResourceUri", label: "OLB Resource URI", type: "text", placeholder: "https://mcp-olb.bxf.com" },
-							{ key: "mcpInvestWsUrl", label: "Invest WS URL", type: "text", placeholder: "ws://localhost:8081" },
-							{ key: "mcpInvestResourceUri", label: "Invest Resource URI", type: "text", placeholder: "https://mcp-invest.bxf.com" },
-							{ key: "pingAuthorizeEndpoint", label: "PingAuthorize Endpoint", type: "text", placeholder: "(blank = permit-all)" },
-							{ key: "hitlServiceUrl", label: "HITL Service URL", type: "text", placeholder: "(blank = disabled)" },
-						].map(({ key, label, type, placeholder }) => (
+							{ key: "gatewayResourceUri", label: "Gateway Resource URI", placeholder: "https://mcp-gw.bxf.com", hint: "MCP_GW_RESOURCE_URI — the PingOne resource URI registered for this gateway (used as the 'aud' in token exchange)" },
+							{ key: "mcpOlbWsUrl", label: "OLB WebSocket URL", placeholder: "ws://localhost:8080", hint: "MCP_OLB_WS_URL — WebSocket address of the Online Banking MCP server the gateway proxies to" },
+							{ key: "mcpOlbResourceUri", label: "OLB Resource URI", placeholder: "https://mcp-olb.bxf.com", hint: "MCP_OLB_RESOURCE_URI — PingOne resource URI for the OLB MCP server (used to scope token exchange)" },
+							{ key: "mcpInvestWsUrl", label: "Invest WebSocket URL", placeholder: "ws://localhost:8081", hint: "MCP_INVEST_WS_URL — WebSocket address of the Investments MCP server" },
+							{ key: "mcpInvestResourceUri", label: "Invest Resource URI", placeholder: "https://mcp-invest.bxf.com", hint: "MCP_INVEST_RESOURCE_URI — PingOne resource URI for the Investments MCP server" },
+							{ key: "pingAuthorizeEndpoint", label: "PingAuthorize Endpoint", placeholder: "(blank = permit-all)", hint: "PINGAUTHORIZE_ENDPOINT — optional PingOne Authorize policy URL; leave blank to skip per-call policy evaluation (permit-all)" },
+							{ key: "hitlServiceUrl", label: "HITL Service URL", placeholder: "(blank = disabled)", hint: "HITL_SERVICE_URL — optional Human-in-the-Loop approval service; leave blank to disable step-up consent flow" },
+						].map(({ key, label, placeholder, hint }) => (
 							<label key={key} className="mgc-field">
 								<span className="mgc-field-label">{label}</span>
 								<input
-									type={type}
+									type="text"
 									className="mgc-input"
 									placeholder={placeholder}
 									value={pushForm[key] ?? ""}
 									onChange={(e) => setPushForm((f) => ({ ...f, [key]: e.target.value }))}
 								/>
+								{hint && <span className="mgc-field-hint">{hint}</span>}
 							</label>
 						))}
 						<label className="mgc-field mgc-field--inline">

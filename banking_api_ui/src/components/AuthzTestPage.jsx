@@ -406,6 +406,29 @@ export default function AuthzTestPage() {
 						: ""}
 				</span>
 				<PingOneApiPanel request={result.pingoneRequest} response={result.engine === "pingone" ? (result.raw ?? displayData) : null} docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-evaluate-decision" />
+				{result.engine === "pingone" && result.pingoneRequest && (
+					<ApiCallPreviewCard
+						endpoint={result.pingoneRequest.url || "POST https://api.pingone.{region}/v1/environments/{envId}/decisionEndpoints/{endpointId}"}
+						method={result.pingoneRequest.method || "POST"}
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-evaluate-decision"
+						docsSectionTitle="PingOne Authorize — Evaluate Decision"
+						requestBody={result.pingoneRequest.body}
+						responseBody={result.raw ?? null}
+						responseStatus={result.raw?.status ?? (result.decision ? 200 : null)}
+						label="PingOne Authorize Decision Endpoint"
+					/>
+				)}
+				{result.engine !== "pingone" && (
+					<ApiCallPreviewCard
+						endpoint="POST https://api.pingone.{region}/v1/environments/{envId}/decisionEndpoints/{endpointId}"
+						method="POST"
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-evaluate-decision"
+						docsSectionTitle="PingOne Authorize — Evaluate Decision"
+						requestBody={null}
+						responseBody={null}
+						label="Simulated mode — switch to PingOne engine to see live API calls"
+					/>
+				)}
 				{result.engine !== "pingone" && <RawJson data={displayData} label={rawLabel} />}
 			</div>
 		);
@@ -835,6 +858,17 @@ export default function AuthzTestPage() {
 									</div>
 								</div>
 								<PingOneApiPanel request={customResult.pingoneRequest} response={customResult.engine === "pingone" ? customResult.raw : null} docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-evaluate-decision" />
+							{customResult.engine === "pingone" && customResult.pingoneRequest && (
+								<ApiCallPreviewCard
+									endpoint={customResult.pingoneRequest.url || "POST https://api.pingone.{region}/v1/environments/{envId}/decisionEndpoints/{endpointId}"}
+									method={customResult.pingoneRequest.method || "POST"}
+									docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-evaluate-decision"
+									docsSectionTitle="PingOne Authorize — Evaluate Decision"
+									requestBody={customResult.pingoneRequest.body}
+									responseBody={customResult.raw ?? null}
+									label="Custom Scenario — PingOne Decision"
+								/>
+							)}
 							{customResult.engine !== "pingone" && <RawJson data={customResult.raw} label="Show full response" />}
 							</>
 						)}

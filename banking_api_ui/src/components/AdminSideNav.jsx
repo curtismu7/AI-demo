@@ -27,7 +27,24 @@ export default function AdminSideNav({ user }) {
 	const location = useLocation();
 	const navigate = useNavigate();
 	const [collapsed, setCollapsed] = useState(false);
-	const [expandedSections, setExpandedSections] = useState({});
+
+	// Auto-expand the section that contains the current path on mount/remount.
+	// Prevents the sidebar collapsing when the layout remounts (e.g. customer navigating /dashboard → /monitoring/*).
+	// Index offsets differ by role: customers have "Family Delegation" at idx 2, pushing later items up by 1.
+	const [expandedSections, setExpandedSections] = useState(() => {
+		const initial = {};
+		const path = location.pathname;
+		const isAdminUser = user?.role === 'admin';
+		const monitoringPaths = ['/monitoring', '/activity', '/audit', '/api-traffic', '/mcp-traffic', '/dev-tools'];
+		const usersPaths = ['/users', '/accounts', '/transactions'];
+		if (monitoringPaths.some(p => path === p || path.startsWith(p + '/'))) {
+			initial[isAdminUser ? 'nav-3' : 'nav-4'] = true;
+		}
+		if (usersPaths.some(p => path === p || path.startsWith(p + '/'))) {
+			initial[isAdminUser ? 'nav-2' : 'nav-3'] = true;
+		}
+		return initial;
+	});
 
 	const isAdmin = user?.role === "admin";
 	const { placement, fab, setAgentUi } = useAgentUiMode();
@@ -104,11 +121,11 @@ export default function AdminSideNav({ user }) {
 			label: "Monitoring",
 			icon: "📋",
 			children: [
-				{ label: "Activity Logs", path: "/activity", icon: "📝", adminOnly: true },
-				{ label: "Audit Trail", path: "/audit", icon: "🔍", adminOnly: true },
-				{ label: "API Traffic", path: "/api-traffic", icon: "📡", adminOnly: true },
-				{ label: "MCP Traffic", path: "/mcp-traffic", icon: "🔌", adminOnly: true },
-				{ label: "Dev Tools", path: "/dev-tools", icon: "🛠", adminOnly: true },
+				{ label: "Activity Logs", path: "/activity", icon: "📝" },
+				{ label: "Audit Trail", path: "/audit", icon: "🔍" },
+				{ label: "API Traffic", path: "/api-traffic", icon: "📡" },
+				{ label: "MCP Traffic", path: "/mcp-traffic", icon: "🔌" },
+				{ label: "Dev Tools", path: "/dev-tools", icon: "🛠" },
 				{ label: "Token Chain", path: "/monitoring/token-chain", icon: "🔗" },
 				{ label: "Token Diff", path: "/monitoring/token-diff", icon: "📊" },
 				{ label: "Flow Inspector", path: "/monitoring/flow-inspector", icon: "🔬" },

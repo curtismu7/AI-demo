@@ -27,6 +27,8 @@ export default function DevToolsDashboard({
   defaultX = 0,
   defaultY = 0,
   defaultTab = 'chain',
+  defaultCollapsed = false,
+  bottomDock = false,
   className = '',
   onClose,
 }) {
@@ -39,6 +41,8 @@ export default function DevToolsDashboard({
       defaultHeight={defaultHeight}
       defaultX={defaultX}
       defaultY={defaultY}
+      defaultCollapsed={defaultCollapsed}
+      bottomDock={bottomDock}
       minWidth={380}
       minHeight={320}
       className={`devtools-panel ${className}`}

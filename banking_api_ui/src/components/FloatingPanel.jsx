@@ -25,6 +25,8 @@ export default function FloatingPanel({
   defaultHeight = 500,
   defaultX = 0,
   defaultY = 0,
+  defaultCollapsed = false,
+  bottomDock = false,
   children,
   className = '',
   minWidth = 280,
@@ -33,7 +35,7 @@ export default function FloatingPanel({
   const [pos, setPos] = useState({ x: defaultX, y: defaultY });
   const [size, setSize] = useState({ w: defaultWidth, h: defaultHeight });
   const [isDragging, setIsDragging] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [popoutWin, setPopoutWin] = useState(null);
   const panelRef = useRef(null);
   const dragStartRef = useRef({ mx: 0, my: 0, px: 0, py: 0 });
@@ -203,9 +205,11 @@ export default function FloatingPanel({
       className={`fp-panel ${className} ${isDragging ? 'fp-dragging' : ''} ${isCollapsed ? 'fp-collapsed' : ''}`}
       style={{
         position: 'fixed',
-        left: pos.x,
-        top: pos.y,
-        width: size.w,
+        ...(bottomDock && isCollapsed
+          ? { bottom: 0, left: 0, right: 0, width: '100%' }
+          : bottomDock
+          ? { bottom: 0, left: pos.x, width: size.w }
+          : { top: pos.y, left: pos.x, width: size.w }),
         height: isCollapsed ? 'auto' : size.h,
         zIndex: 9000,
       }}

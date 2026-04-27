@@ -126,6 +126,7 @@ const pingoneAuditRoutes = require('./routes/pingoneAudit');
 const pingoneTestRoutes = require('./routes/pingoneTestRoutes');
 const tokenDisplayRoutes = require('./routes/tokenDisplay');
 const apiCallTrackerRoutes = require('./routes/apiCallTracker');
+const { trackApiCall } = require('./services/apiCallTrackerService');
 const resourceServerRoutes = require('./routes/resourceServer');
 const resourceServerCCRoutes = require('./routes/resourceServerCC');
 const { initializeDiscovery } = require('./services/oauthEndpointResolver');
@@ -404,6 +405,31 @@ app.use(
 // Fails closed: if aud doesn't match, return 401 Unauthorized.
 // Applied to all /api/ routes after authentication.
 app.use('/api', audValidationMiddleware);
+
+// Auto-track all /api/* calls into the API Explorer (skips /api/api-calls itself to avoid loops)
+app.use('/api', (req, res, next) => {
+    if (req.path.startsWith('/api-calls')) return next();
+    const start = Date.now();
+    const origJson = res.json.bind(res);
+    let captured = null;
+    res.json = (body) => {
+        captured = body;
+        return origJson(body);
+    };
+    res.on('finish', () => {
+        trackApiCall({
+            sessionId: req.session?.id || 'default',
+            method: req.method,
+            url: req.originalUrl,
+            requestBody: req.body && Object.keys(req.body).length ? req.body : null,
+            responseStatus: res.statusCode,
+            responseBody: captured,
+            duration: Date.now() - start,
+            category: 'api',
+        }).catch(() => {});
+    });
+    next();
+});
 
 // Health check endpoint
 app.get('/api/healthz', (req, res) => {
@@ -716,6 +742,9 @@ app.get('/api/app-events', (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+// agent-cc-preview fetches the agent's own CC token — no user OAuth token needed.
+// Register before the authenticateToken block so customers with a valid session can access it.
+app.get('/api/tokens/agent-cc-preview', requireSession, tokenRoutes.agentCcPreviewHandler);
 app.use('/api/tokens', authenticateToken, tokenRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/self-service/users', authenticateToken, selfServiceUsersRoutes);

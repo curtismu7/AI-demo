@@ -251,4 +251,44 @@ async function sendOtpEmail(userId, opts) {
   }
 }
 
-module.exports = { sendTransactionConfirmation, sendOtpEmail };
+async function sendOtpSms(userId, opts) {
+  const envId  = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
+
+  if (!envId || !userId) return;
+
+  const { otpCode, userName = 'Valued Customer', expiresInMin = 5 } = opts;
+
+  try {
+    const token = await getManagementToken();
+    if (!token) {
+      console.warn(`📱 [OTP SMS] No management token available — OTP SMS skipped for user ${userId}`);
+      return;
+    }
+    await axios.post(
+      `https://api.pingone.${region}/v1/environments/${envId}/users/${userId}/messages`,
+      {
+        content: [
+          {
+            deliveryMethod: 'SMS',
+            body: `Super Banking: Your verification code is ${otpCode}. Expires in ${expiresInMin} minutes. Do not share this code.`,
+          },
+        ],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      }
+    );
+    console.log(`📱 [OTP SMS] Sent to user ${userId}`);
+  } catch (err) {
+    const detail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+    console.error(`📱 [OTP SMS] Failed for user ${userId}: ${detail}`);
+    throw err;
+  }
+}
+
+module.exports = { sendTransactionConfirmation, sendOtpEmail, sendOtpSms };

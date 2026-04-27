@@ -6,6 +6,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import McpPairView from './McpPairView';
+import OtpStepUpModal from './OtpStepUpModal';
 
 const API_POLL_MS = 3000;
 const DEFAULT_LIMIT = 200;
@@ -254,20 +255,89 @@ function McpToolsPanel() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
   const [source, setSource] = useState(null);
+  const [showMethodPicker, setShowMethodPicker] = useState(false);
+  const [showStepUp, setShowStepUp] = useState(false);
+  const [stepUpMethod, setStepUpMethod] = useState('email');
+  const [stepUpDaId, setStepUpDaId] = useState(null);
+  const [stepUpDevices, setStepUpDevices] = useState([]);
+  const [otpDeliveryMethod, setOtpDeliveryMethod] = useState(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true); setErr(null);
     try {
       const res = await fetch('/api/mcp/inspector/tools', { credentials: 'include' });
       const data = await res.json();
-      setTools(data.tools || []);
-      setSource(data._source || null);
+      if (data.mfa_required) {
+        const method = data.step_up_method || 'email';
+        setStepUpMethod(method);
+        setTools([]);
+        if (method === 'p1mfa') {
+          try {
+            const mfaRes = await fetch('/api/auth/mfa/challenge', {
+              method: 'POST', credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+            });
+            const mfaData = await mfaRes.json();
+            setStepUpDaId(mfaData.daId || null);
+            setStepUpDevices(mfaData.devices || []);
+          } catch (_) {
+            setStepUpDaId(null);
+            setStepUpDevices([]);
+          }
+          setShowStepUp(true);
+        } else {
+          setOtpDeliveryMethod(null);
+          setShowMethodPicker(true);
+        }
+      } else {
+        setTools(data.tools || []);
+        setSource(data._source || null);
+      }
     } catch (e) {
       setErr(e.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const handleDeliveryMethodChosen = useCallback(async (method) => {
+    setShowMethodPicker(false);
+    setOtpDeliveryMethod(method);
+    try {
+      await fetch('/api/auth/oauth/user/initiate-otp', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method }),
+      });
+    } catch (_) { /* non-fatal — modal still opens */ }
+    setShowStepUp(true);
+  }, []);
+
+  const handleStepUpComplete = useCallback(() => {
+    setShowStepUp(false);
+    load();
+  }, [load]);
+
+  const handleOtpSubmit = useCallback(async (otp) => {
+    try {
+      const r = await fetch('/api/auth/oauth/user/verify-otp', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: otp }),
+      });
+      if (r.ok) {
+        setShowStepUp(false);
+        load();
+      } else {
+        const d = await r.json().catch(() => ({}));
+        setErr(d.message || 'OTP verification failed. Please try again.');
+        setShowStepUp(false);
+      }
+    } catch (e) {
+      setErr(e.message);
+      setShowStepUp(false);
+    }
+  }, [load]);
 
   return (
     <div style={{ padding: '0 24px 20px', borderBottom: '2px solid var(--border-light,#e2e8f0)' }}>
@@ -275,15 +345,16 @@ function McpToolsPanel() {
         <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary,#1e293b)' }}>
           🛠 MCP Tools
         </h2>
-        {tools !== null && (
+        {tools !== null && tools.length > 0 && (
           <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
             {tools.length} tool{tools.length !== 1 ? 's' : ''}{source ? ` · ${source}` : ''}
           </span>
         )}
         <button type="button" onClick={load} disabled={loading} style={{
-          padding: '5px 14px', borderRadius: '6px', border: '1px solid var(--border-light,#e2e8f0)',
-          backgroundColor: tools === null ? '#3b82f6' : 'var(--surface-1,#fff)',
-          color: tools === null ? '#fff' : 'var(--text-secondary,#475569)',
+          padding: '5px 14px', borderRadius: '6px',
+          border: '1px solid ' + (tools === null ? '#3b82f6' : '#94a3b8'),
+          backgroundColor: tools === null ? '#3b82f6' : '#f1f5f9',
+          color: tools === null ? '#fff' : '#334155',
           cursor: loading ? 'wait' : 'pointer', fontWeight: 600, fontSize: '0.83rem',
         }}>
           {loading ? '⏳ Loading…' : tools === null ? 'Show Tools' : '↻ Refresh'}
@@ -292,14 +363,67 @@ function McpToolsPanel() {
       {err && (
         <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#fee2e2', color: '#991b1b', fontSize: '0.83rem' }}>⚠️ {err}</div>
       )}
-      {tools !== null && tools.length === 0 && !err && (
-        <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>No tools returned.</div>
+      {tools !== null && tools.length === 0 && !err && !showStepUp && (
+        <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#f1f5f9', color: '#475569', fontSize: '0.85rem' }}>
+          No tools returned — MCP server may be offline or not connected.
+        </div>
       )}
       {tools && tools.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '8px' }}>
           {tools.map(t => <ToolCard key={t.name} tool={t} />)}
         </div>
       )}
+      {showMethodPicker && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '12px', padding: '28px 32px',
+            width: '340px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          }}>
+            <div style={{ fontSize: '1.3rem', marginBottom: '8px' }}>🔐</div>
+            <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1e293b', marginBottom: '6px' }}>
+              Verify Your Identity
+            </div>
+            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 20px' }}>
+              Step-up MFA is required to view MCP tools. How would you like to receive your verification code?
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button type="button" onClick={() => handleDeliveryMethodChosen('email')} style={{
+                flex: 1, padding: '10px', borderRadius: '8px',
+                border: '1px solid #3b82f6', background: '#eff6ff',
+                color: '#1d4ed8', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer',
+              }}>📧 Email</button>
+              <button type="button" onClick={() => handleDeliveryMethodChosen('sms')} style={{
+                flex: 1, padding: '10px', borderRadius: '8px',
+                border: '1px solid #10b981', background: '#ecfdf5',
+                color: '#065f46', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer',
+              }}>📱 SMS</button>
+            </div>
+            <button type="button" onClick={() => setShowMethodPicker(false)} style={{
+              marginTop: '12px', width: '100%', padding: '8px',
+              background: 'none', border: 'none', color: '#94a3b8',
+              fontSize: '0.82rem', cursor: 'pointer',
+            }}>Cancel</button>
+          </div>
+        </div>
+      )}
+      <OtpStepUpModal
+        show={showStepUp}
+        mode={stepUpMethod === 'p1mfa' ? 'p1mfa' : 'stub'}
+        daId={stepUpDaId}
+        devices={stepUpDevices}
+        contextLine={
+          otpDeliveryMethod === 'sms'
+            ? 'Check your phone — a verification code was sent via SMS.'
+            : 'Check your email — a verification code was sent. If not received, check server logs.'
+        }
+        onSubmit={handleOtpSubmit}
+        onCancel={() => setShowStepUp(false)}
+        onP1MfaComplete={handleStepUpComplete}
+        onP1MfaError={(e) => { setErr(e?.message || 'MFA failed'); setShowStepUp(false); }}
+      />
     </div>
   );
 }
@@ -387,8 +511,15 @@ export default function McpTrafficPage() {
         {error === 'unauthenticated' ? (
           <div style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
             <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>🔒</div>
-            <div style={{ fontWeight: 600, marginBottom: '4px' }}>Sign in to view MCP traffic</div>
-            <div style={{ fontSize: '0.82rem' }}>MCP traffic is only available in authenticated sessions.</div>
+            <div style={{ fontWeight: 600, marginBottom: '4px' }}>Session expired</div>
+            <div style={{ fontSize: '0.82rem', marginBottom: '12px' }}>Your session has expired. Please refresh the page to sign in again.</div>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid #3b82f6', background: '#eff6ff', color: '#1d4ed8', fontSize: '0.82rem', cursor: 'pointer', fontWeight: 600 }}
+            >
+              Refresh Page
+            </button>
           </div>
         ) : error ? (
           <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#fee2e2', color: '#991b1b', fontSize: '0.85rem', marginTop: '8px' }}>

@@ -165,24 +165,27 @@ export default function LandingPage({ user, onLogout }) {
 				</div>
 			</section>
 
-			{/* Dev Tools Dashboard — single draggable/resizable/poppable panel */}
-			<section className="landing-token-chain" aria-label="Dev tools dashboard">
-				<div className="landing-token-chain-heading">
-					<h2>🛠 Dev Tools Dashboard</h2>
-					<p>
-						Live Token Chain, Agent &amp; Token Flow Inspector, and MCP Traffic
-						— all in one draggable, resizable panel. Hit ↗ to pop out to a
-						second screen.
-					</p>
-				</div>
-				<div className="landing-panels-row">
-					<DevToolsDashboard
-						defaultWidth={1100}
-						defaultHeight={580}
-						defaultCollapsed
-					/>
-				</div>
-			</section>
+			{/* Dev Tools Dashboard — only for unauthenticated visitors; logged-in users get it via UserDashboard */}
+			{!user && (
+				<section className="landing-token-chain" aria-label="Dev tools dashboard">
+					<div className="landing-token-chain-heading">
+						<h2>🛠 Dev Tools Dashboard</h2>
+						<p>
+							Live Token Chain, Agent &amp; Token Flow Inspector, and MCP Traffic
+							— all in one draggable, resizable panel. Hit ↗ to pop out to a
+							second screen.
+						</p>
+					</div>
+					<div className="landing-panels-row">
+						<DevToolsDashboard
+							defaultWidth={1100}
+							defaultHeight={580}
+							defaultCollapsed
+							bottomDock
+						/>
+					</div>
+				</section>
+			)}
 		</div>
 	);
 }

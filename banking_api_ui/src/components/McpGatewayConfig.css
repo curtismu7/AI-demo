@@ -244,6 +244,12 @@
   border-color: var(--primary, #2563eb);
   box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
 }
+.mgc-field-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #6b7280);
+  line-height: 1.4;
+  margin-top: 2px;
+}
 .mgc-push-btn {
   align-self: flex-start;
   margin-top: 6px;

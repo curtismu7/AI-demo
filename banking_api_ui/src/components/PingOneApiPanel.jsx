@@ -13,7 +13,7 @@
 import React, { useState } from "react";
 import "./PingOneApiPanel.css";
 
-export default function PingOneApiPanel({ request, response, endpoint, docsUrl }) {
+export default function PingOneApiPanel({ request, response, endpoint, docsUrl, docsSectionTitle }) {
 	const [reqOpen, setReqOpen] = useState(false);
 	const [resOpen, setResOpen] = useState(false);
 
@@ -36,6 +36,7 @@ export default function PingOneApiPanel({ request, response, endpoint, docsUrl }
 							target="_blank"
 							rel="noopener noreferrer"
 							className="p1-api-panel-docs-link"
+							title={docsSectionTitle || "PingOne API docs"}
 						>
 							PingOne Docs ↗
 						</a>

@@ -8,7 +8,7 @@ import ScopeNarrowingVisualization from "./ScopeNarrowingVisualization";
 import { TokenColorLegend } from "./TokenColorSystem";
 import "./PingOneTestPage.css";
 import PingOneApiPanel from "./PingOneApiPanel";
-import ApiCallPreviewCard from "./shared/ApiCallPreviewCard";
+import ApiCallPreviewCard from "./ApiCallPreviewCard";
 
 // Configuration details for each test - what users need to verify in PingOne
 const TEST_CONFIG = {
@@ -1278,6 +1278,15 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 							</p>
 						</div>
 					</div>
+					<ApiCallPreviewCard
+						method="POST"
+						endpoint="POST https://auth.pingone.{region}/{envId}/as/token"
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
+						docsSectionTitle="Worker Token — client_credentials grant"
+						requestBody={null}
+						responseBody={null}
+						label="Worker Token (PingOne Management API access)"
+					/>
 					<SectionApiCalls />
 				</section>
 
@@ -1529,7 +1538,21 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 					pingoneRequest={agentPingoneReq}
 					pingoneResponse={agentPingoneRes}
 					docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
+					docsSectionTitle="Token Endpoint — client_credentials (RFC 6749)"
+					endpoint="POST https://auth.pingone.{region}/{envId}/as/token"
 							/>
+							{agentPingoneReq && (
+								<ApiCallPreviewCard
+									endpoint={agentPingoneReq.url || "POST https://auth.pingone.{region}/{envId}/as/token"}
+									method={agentPingoneReq.method || "POST"}
+									docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
+									docsSectionTitle="Token Endpoint — client_credentials (RFC 6749)"
+									requestBody={agentPingoneReq.body}
+									responseBody={agentPingoneRes}
+									responseStatus={agentPingoneRes?.status_code ?? (agentPingoneRes?.error ? 400 : agentPingoneRes ? 200 : null)}
+									label="Agent Token (Client Credentials)"
+								/>
+							)}
 							<DecodedTokenPanel
 								decoded={agentDecoded}
 								label="Agent Token (Client Credentials)"
@@ -1608,9 +1631,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 							audience: "<mcp_resource_uri>",
 							scope: "banking:read banking:write",
 						}}
-						docUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
-						docLabel="PingOne Token Endpoint Docs"
-						description="RFC 8693 Token Exchange — swaps user access token + agent CC token for MCP-scoped token with act claim"
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
+						docsSectionTitle="RFC 8693 Token Exchange — swaps user access token + agent CC token for MCP-scoped token with act claim"
+						label="Token Exchange Example"
 					/>
 				{/* MCP Exchange Diagnostic Panel */}
 					<div className="scope-fix-panel" style={{ marginBottom: "1rem" }}>
@@ -1873,7 +1896,21 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 										pingoneRequest={exchange2PingoneReq}
 										pingoneResponse={exchange2PingoneRes}
 										docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
+										docsSectionTitle="Token Exchange (RFC 8693 — subject + actor)"
+										endpoint="POST https://auth.pingone.{region}/{envId}/as/token"
 										/>
+										{exchange2PingoneReq && (
+											<ApiCallPreviewCard
+												endpoint={exchange2PingoneReq.url || "POST https://auth.pingone.{region}/{envId}/as/token"}
+												method={exchange2PingoneReq.method || "POST"}
+												docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
+												docsSectionTitle="Token Exchange (RFC 8693 — subject + actor)"
+												requestBody={exchange2PingoneReq.body}
+												responseBody={exchange2PingoneRes}
+												responseStatus={exchange2PingoneRes?.status_code ?? (exchange2PingoneRes?.error ? 400 : exchange2PingoneRes ? 200 : null)}
+												label="2-Exchange: User Token + Agent CC → MCP Gateway"
+											/>
+										)}
 										{(exchange2SubjectDecoded || exchange2ActorDecoded) && (
 											<>
 												<DecodedTokenPanel
@@ -1932,7 +1969,21 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 							pingoneRequest={exchange186PingoneReq}
 							pingoneResponse={exchange186PingoneRes}
 							docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
+							docsSectionTitle="Token Exchange (RFC 8693 — ID token subject)"
+							endpoint="POST https://auth.pingone.{region}/{envId}/as/token"
 							/>
+							{exchange186PingoneReq && (
+								<ApiCallPreviewCard
+									endpoint={exchange186PingoneReq.url || "POST https://auth.pingone.{region}/{envId}/as/token"}
+									method={exchange186PingoneReq.method || "POST"}
+									docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
+									docsSectionTitle="Token Exchange (RFC 8693 — ID token subject)"
+									requestBody={exchange186PingoneReq.body}
+									responseBody={exchange186PingoneRes}
+									responseStatus={exchange186PingoneRes?.status_code ?? (exchange186PingoneRes?.error ? 400 : exchange186PingoneRes ? 200 : null)}
+									label="2-Exchange: ID Token + Agent CC → MCP Gateway"
+								/>
+							)}
 							{!ffIdTokenExchange && (
 								<div
 									className="pingone-test-ff-warning"
@@ -2008,6 +2059,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 							pingoneRequest={exchange401PingoneReq}
 							pingoneResponse={exchange401PingoneRes}
 							docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
+							docsSectionTitle="Token Exchange (RFC 8693 — 401 trigger)"
+							endpoint="POST https://auth.pingone.{region}/{envId}/as/token"
 							/>
 							{exchange401Steps.length > 0 && (
 								<ul
@@ -2246,6 +2299,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 						pingoneRequest={testResults.apps?.result?.pingoneRequest}
 						pingoneResponse={testResults.apps?.result?.pingoneResponse}
 						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#get-read-all-applications"
+						docsSectionTitle="Management API — List Applications"
+						endpoint="GET https://api.pingone.{region}/v1/environments/{envId}/applications"
 						/>
 						<TestCard
 							title="Resource Servers"
@@ -2263,6 +2318,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 						pingoneRequest={testResults.resources?.result?.pingoneRequest}
 						pingoneResponse={testResults.resources?.result?.pingoneResponse}
 						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#get-read-all-resources"
+						docsSectionTitle="Management API — List Resource Servers"
+						endpoint="GET https://api.pingone.{region}/v1/environments/{envId}/resources"
 						/>
 						<TestCard
 							title="Scopes"
@@ -2280,6 +2337,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 						pingoneRequest={testResults.scopes?.result?.pingoneRequest}
 						pingoneResponse={testResults.scopes?.result?.pingoneResponse}
 						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#get-read-all-resource-scopes"
+						docsSectionTitle="Management API — List Scopes"
+						endpoint="GET https://api.pingone.{region}/v1/environments/{envId}/resources/{resourceId}/scopes"
 						/>
 						<TestCard
 							title="Users"
@@ -2294,6 +2353,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 						pingoneRequest={testResults.users?.result?.pingoneRequest}
 						pingoneResponse={testResults.users?.result?.pingoneResponse}
 						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#get-read-all-users"
+						docsSectionTitle="Management API — List Users"
+						endpoint="GET https://api.pingone.{region}/v1/environments/{envId}/users"
 						/>
 						<TestCard
 							title="AI Agent Apps"
@@ -2528,6 +2589,9 @@ const TestCard = ({
 	pingoneRequest,
 	pingoneResponse,
 	docsUrl,
+	docsSectionTitle,
+	endpoint,
+	label,
 }) => {
 	const [testing, setTesting] = React.useState(false);
 	const [updating, setUpdating] = React.useState(false);
@@ -2725,7 +2789,7 @@ const TestCard = ({
 					</button>
 				)}
 			</div>
-			<PingOneApiPanel request={pingoneRequest} response={pingoneResponse} docsUrl={docsUrl} />
+			<PingOneApiPanel request={pingoneRequest} response={pingoneResponse} docsUrl={docsUrl} docsSectionTitle={docsSectionTitle} />
 		</div>
 	);
 };

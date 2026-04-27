@@ -84,7 +84,7 @@ router.get('/methods', (req, res) => {
  */
 router.get('/devices', async (req, res) => {
   try {
-    const userId = req.session?.user?.id || MFA_TEST_USER_ID;
+    const userId = req.session?.user?.oauthId || req.session?.user?.id || MFA_TEST_USER_ID;
     const devices = await mfaService.listMfaDevices(userId);
     res.json({ devices });
   } catch (err) {
@@ -265,7 +265,8 @@ async function _resolveCredentials(req) {
   }
 
   // Prefer session credentials if available
-  const sessionUserId = req.session?.user?.id;
+  // oauthId is the PingOne UUID; id may be a legacy numeric key on bootstrap users
+  const sessionUserId = req.session?.user?.oauthId || req.session?.user?.id;
   const sessionToken = req.session?.oauthTokens?.accessToken;
   if (sessionUserId && sessionToken) {
     return {
@@ -337,7 +338,7 @@ router.post('/integration/initiate', async (req, res) => {
       try {
         // Try refresh if session-based, or re-acquire worker token
         const workerToken = await mfaService.getWorkerToken();
-        const userId = req.body?.userId || req.session?.user?.id || MFA_TEST_USER_ID;
+        const userId = req.body?.userId || req.session?.user?.oauthId || req.session?.user?.id || MFA_TEST_USER_ID;
         const result = await mfaService.initiateDeviceAuth(userId, workerToken);
         return res.json({
           success: true,
