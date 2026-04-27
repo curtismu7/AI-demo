@@ -136,6 +136,8 @@ describe('GatewayServer — Plan 243-01 foundational tests', () => {
       expect(res.status).toBe(401);
       expect(res.headers['www-authenticate']).toBeDefined();
       expect(res.headers['www-authenticate']).toMatch(/Bearer/i);
+      // McpProtectionFilter equivalent: resource_metadata directive for AS discovery (RFC 9728 §4)
+      expect(res.headers['www-authenticate']).toMatch(/resource_metadata=/i);
     });
 
     it('returns 401 when Authorization is not a Bearer token', async () => {
@@ -210,14 +212,30 @@ describe('GatewayServer — Plan 243-01 foundational tests', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 3. GET /mcp returns 405 (SSE/streaming not supported)
+  // 3. GET /mcp — SSE proxy (PingGateway: ReverseProxyHandler with streaming)
+  // Requires bearer token just like POST /mcp.
+  // When upstream is unreachable: 502 (auth passed) not 401 (auth failed).
   // -------------------------------------------------------------------------
 
-  describe('GET /mcp', () => {
-    it('returns 405 Method Not Allowed', async () => {
+  describe('GET /mcp — SSE proxy', () => {
+    it('returns 401 + WWW-Authenticate when Authorization header is absent', async () => {
       const res = await request.get('/mcp');
 
-      expect(res.status).toBe(405);
+      expect(res.status).toBe(401);
+      expect(res.headers['www-authenticate']).toMatch(/Bearer/i);
+    });
+
+    it('proceeds to upstream when token has correct gateway audience (auth passed → 502 upstream down)', async () => {
+      const validToken = makeToken(GATEWAY_AUDIENCE);
+
+      const res = await request
+        .get('/mcp')
+        .set('Authorization', `Bearer ${validToken}`)
+        .set('Accept', 'text/event-stream');
+
+      // Auth passed — upstream unreachable → 502, not 401
+      expect(res.status).toBe(502);
+      expect(res.body.error).toBe('upstream_unavailable');
     });
   });
 

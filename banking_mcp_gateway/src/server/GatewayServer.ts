@@ -67,6 +67,7 @@ export class GatewayServer {
   private readonly config: GatewayConfig;
   private readonly upstreamMcpUrl: string;
   private readonly middleware: McpRequestMiddleware;
+  private readonly acceptedOriginsRe: RegExp;
 
   constructor({ config, upstreamMcpUrl, requestMiddleware }: GatewayServerOptions) {
     this.config = config;
@@ -76,6 +77,8 @@ export class GatewayServer {
       'http://localhost:8080'
     ).replace(/\/$/, '');
     this.middleware = requestMiddleware ?? defaultMiddleware;
+    // McpValidationFilter equivalent: accepted origins for CORS (default: allow all)
+    this.acceptedOriginsRe = new RegExp(process.env.MCP_ACCEPTED_ORIGINS ?? '.*');
     this.server = http.createServer((req, res) => {
       this.handleRequest(req, res).catch((err) => {
         console.error('[GatewayServer] Unhandled error:', err);
@@ -117,11 +120,15 @@ export class GatewayServer {
           await this.handleMcpPost(req, res);
           return;
         case 'GET':
-          res.writeHead(405, { Allow: 'POST', 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'method_not_allowed', message: 'Use POST for MCP requests' }));
+          // SSE passthrough — PingGateway: ReverseProxyHandler with streamingEnabled
+          await this.handleMcpGet(req, res);
+          return;
+        case 'DELETE':
+          // Session termination — forward to upstream
+          await this.handleMcpDelete(req, res);
           return;
         default:
-          res.writeHead(405, { Allow: 'POST' });
+          res.writeHead(405, { Allow: 'POST, GET, DELETE' });
           res.end();
           return;
       }
@@ -166,6 +173,105 @@ export class GatewayServer {
   }
 
   // ---------------------------------------------------------------------------
+  // GET /mcp — SSE passthrough (PingGateway: ReverseProxyHandler + streamingEnabled)
+  // Mirror of McpProtectionFilter + McpValidationFilter for GET requests.
+  // ---------------------------------------------------------------------------
+
+  private async handleMcpGet(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    if (!this.validateCors(req, res)) return;
+    const bearerToken = extractBearerToken(req.headers['authorization'] as string | undefined);
+    if (!bearerToken) {
+      this.sendUnauthorized(res, 'invalid_token', 'Bearer token required');
+      return;
+    }
+    try {
+      validateInboundToken(bearerToken, this.config.gatewayResourceUri);
+    } catch (err) {
+      if (err instanceof TokenValidationError) {
+        this.sendUnauthorized(res, err.code, err.message);
+        return;
+      }
+      throw err;
+    }
+    await this.pipeGetToUpstream(req, res, bearerToken);
+  }
+
+  // ---------------------------------------------------------------------------
+  // DELETE /mcp — session termination (MCP spec 2025-11-25)
+  // ---------------------------------------------------------------------------
+
+  private async handleMcpDelete(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const bearerToken = extractBearerToken(req.headers['authorization'] as string | undefined);
+    if (!bearerToken) {
+      this.sendUnauthorized(res, 'invalid_token', 'Bearer token required');
+      return;
+    }
+    try {
+      validateInboundToken(bearerToken, this.config.gatewayResourceUri);
+    } catch (err) {
+      if (err instanceof TokenValidationError) {
+        this.sendUnauthorized(res, err.code, err.message);
+        return;
+      }
+      throw err;
+    }
+    try {
+      const upstream = await axios.delete(`${this.upstreamMcpUrl}/mcp`, {
+        headers: { Authorization: `Bearer ${bearerToken}` },
+        validateStatus: () => true,
+        timeout: 5000,
+      });
+      const sessionId = req.headers[MCP_SESSION_HEADER] as string | undefined;
+      res.writeHead(upstream.status, sessionId ? { [MCP_SESSION_HEADER]: sessionId } : {});
+      res.end();
+    } catch {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'upstream_unavailable' }));
+    }
+  }
+
+  // SSE pipeline — pipe GET /mcp to upstream without buffering (Node http.request)
+  // PingGateway equivalent: ReverseProxyHandler with soTimeout: 20 seconds
+  private pipeGetToUpstream(req: IncomingMessage, res: ServerResponse, bearerToken: string): Promise<void> {
+    return new Promise((resolve) => {
+      const upstreamTarget = new URL(`${this.upstreamMcpUrl}/mcp`);
+      const outHeaders: Record<string, string> = {
+        Authorization: `Bearer ${bearerToken}`,
+        Accept: (req.headers['accept'] as string | undefined) ?? 'text/event-stream',
+      };
+      const sessionId = req.headers[MCP_SESSION_HEADER] as string | undefined;
+      if (sessionId) outHeaders[MCP_SESSION_HEADER] = sessionId;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const transport = upstreamTarget.protocol === 'https:' ? require('https') : require('http');
+      const upstreamReq = transport.request(
+        {
+          hostname: upstreamTarget.hostname,
+          port: upstreamTarget.port || (upstreamTarget.protocol === 'https:' ? 443 : 80),
+          path: upstreamTarget.pathname,
+          method: 'GET',
+          headers: outHeaders,
+          timeout: parseInt(process.env.GW_UPSTREAM_TIMEOUT_MS || '30000', 10),
+        },
+        (upstreamRes: IncomingMessage) => {
+          const upstreamHeaders = upstreamRes.headers as Record<string, string | string[]>;
+          res.writeHead(upstreamRes.statusCode ?? 200, upstreamHeaders);
+          upstreamRes.pipe(res, { end: true });
+          upstreamRes.on('end', resolve);
+          upstreamRes.on('error', () => resolve());
+        },
+      );
+      upstreamReq.on('error', () => {
+        if (!res.headersSent) {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'upstream_unavailable' }));
+        }
+        resolve();
+      });
+      upstreamReq.end();
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // POST /mcp — client-facing HTTP MCP ingress (D-01, D-03)
   //
   // 1. Require bearer token → 401 + WWW-Authenticate if missing
@@ -175,6 +281,17 @@ export class GatewayServer {
   // ---------------------------------------------------------------------------
 
   private async handleMcpPost(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    // McpValidationFilter equivalent: CORS origin check
+    if (!this.validateCors(req, res)) return;
+
+    // McpValidationFilter equivalent: Accept header (must accept application/json)
+    const acceptHeader = (req.headers['accept'] as string | undefined) ?? '';
+    if (acceptHeader && !acceptHeader.includes('application/json') && !acceptHeader.includes('*/*')) {
+      res.writeHead(406, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'not_acceptable', message: 'Accept must include application/json' }));
+      return;
+    }
+
     const authHeader = req.headers['authorization'] as string | undefined;
     const bearerToken = extractBearerToken(authHeader);
 
@@ -200,6 +317,14 @@ export class GatewayServer {
     } catch {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'bad_request', message: 'Could not read request body' }));
+      return;
+    }
+
+    // McpValidationFilter equivalent: JSON-RPC 2.0 format validation
+    const jsonRpcError = this.validateJsonRpc(body);
+    if (jsonRpcError) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32700, message: jsonRpcError }, id: null }));
       return;
     }
 
@@ -275,13 +400,49 @@ export class GatewayServer {
   // Helpers
   // ---------------------------------------------------------------------------
 
+  // McpProtectionFilter equivalent: WWW-Authenticate with resource_metadata per RFC 9728 §4
   private sendUnauthorized(res: ServerResponse, errorCode: string, description: string): void {
     const realm = 'banking-mcp-gateway';
+    const metadataUrl = `${this.config.gatewayResourceUri}/.well-known/oauth-protected-resource`;
+    const safeDesc = description.replace(/"/g, "'");
     res.writeHead(401, {
       'Content-Type': 'application/json',
-      'WWW-Authenticate': `Bearer realm="${realm}", error="${errorCode}", error_description="${description}"`,
+      'WWW-Authenticate': [
+        `Bearer realm="${realm}"`,
+        `resource_metadata="${metadataUrl}"`,
+        `error="${errorCode}"`,
+        `error_description="${safeDesc}"`,
+      ].join(', '),
     });
     res.end(JSON.stringify({ error: errorCode, message: description }));
+  }
+
+  // McpValidationFilter equivalent: CORS origin validation
+  // MCP_ACCEPTED_ORIGINS env var — regex pattern, default .* (allow all)
+  private validateCors(req: IncomingMessage, res: ServerResponse): boolean {
+    const origin = req.headers['origin'] as string | undefined;
+    if (!origin) return true; // non-browser agents do not send Origin
+    if (this.acceptedOriginsRe.test(origin)) return true;
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'forbidden', message: `Origin not permitted: ${origin}` }));
+    return false;
+  }
+
+  // McpValidationFilter equivalent: JSON-RPC 2.0 format validation
+  private validateJsonRpc(body: Buffer): string | null {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body.toString('utf-8'));
+    } catch {
+      return 'Invalid JSON in request body';
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return 'JSON-RPC payload must be a JSON object';
+    }
+    const obj = parsed as Record<string, unknown>;
+    if (obj.jsonrpc !== '2.0') return 'Missing or invalid jsonrpc field (must be "2.0")';
+    if (typeof obj.method !== 'string' || !obj.method) return 'Missing or invalid method field';
+    return null;
   }
 
   private readBody(req: IncomingMessage): Promise<Buffer> {
