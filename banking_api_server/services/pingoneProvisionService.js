@@ -10,6 +10,7 @@
 const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');
+const { getTokenEndpoint } = require('./oauthEndpointResolver');
 
 class PingOneProvisionService {
   constructor() {
@@ -25,8 +26,9 @@ class PingOneProvisionService {
    */
   async getWorkerToken(envId, clientId, clientSecret, region = 'com') {
     try {
+      const tokenUrl = getTokenEndpoint() || `https://auth.pingone.${region}/${envId}/as/token`;
       const response = await axios.post(
-        `https://auth.pingone.${region}/${envId}/as/token`,
+        tokenUrl,
         'grant_type=client_credentials',
         {
           auth: { username: clientId, password: clientSecret },

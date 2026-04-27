@@ -18,11 +18,11 @@
 
 const axios = require('axios');
 const configStore = require('./configStore');
+const { getTokenEndpoint } = require('./oauthEndpointResolver');
 
 // ── Management token (reuses the worker client credentials) ──────────────────
 async function getManagementToken() {
   const envId        = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
-  const region       = configStore.getEffective('PINGONE_REGION') || 'com';
   // Use PINGONE_ADMIN_CLIENT_ID / PINGONE_ADMIN_CLIENT_SECRET — the keys that map to PINGONE_*_CLIENT_ID env vars.
   // 'PINGONE_MANAGEMENT_CLIENT_ID' is not in the configStore env-fallback map and always returns null.
   const clientId     = configStore.getEffective('PINGONE_ADMIN_CLIENT_ID');
@@ -30,7 +30,7 @@ async function getManagementToken() {
 
   if (!envId || !clientId || !clientSecret) return null;
 
-  const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;
+  const tokenUrl = getTokenEndpoint();
   const response = await axios.post(
     tokenUrl,
     'grant_type=client_credentials',

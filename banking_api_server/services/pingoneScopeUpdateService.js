@@ -11,6 +11,7 @@
 
 const axios = require('axios');
 const configStore = require('./configStore');
+const { getTokenEndpoint } = require('./oauthEndpointResolver');
 
 class PingOneScopeUpdateService {
   constructor() {
@@ -52,8 +53,9 @@ class PingOneScopeUpdateService {
         throw new Error('Worker client credentials not configured');
       }
       
+      const tokenUrl = getTokenEndpoint() || `https://auth.pingone.${region}/${envId}/as/token`;
       const response = await axios.post(
-        `https://auth.pingone.${region}/${envId}/as/token`,
+        tokenUrl,
         'grant_type=client_credentials',
         {
           auth: { username: workerClientId, password: workerClientSecret },
@@ -61,7 +63,7 @@ class PingOneScopeUpdateService {
           timeout: 10000
         }
       );
-      
+
       // Cache the new token
       this.tokenCache.token = response.data.access_token;
       this.tokenCache.expiresAt = now + this.tokenCache.ttl;
@@ -110,8 +112,9 @@ class PingOneScopeUpdateService {
       this.baseURL = `https://api.pingone.${region}/${envId}`;
       
       // Get worker token with provided credentials
+      const tokenUrl = getTokenEndpoint() || `https://auth.pingone.${region}/${envId}/as/token`;
       const response = await axios.post(
-        `https://auth.pingone.${region}/${envId}/as/token`,
+        tokenUrl,
         'grant_type=client_credentials',
         {
           auth: { username: workerClientId, password: workerClientSecret },

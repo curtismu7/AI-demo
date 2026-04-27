@@ -8,6 +8,7 @@
 const axios = require('axios');
 const configStore = require('./configStore');
 const { logger, LOG_CATEGORIES } = require('../utils/logger');
+const { getTokenEndpoint } = require('./oauthEndpointResolver');
 
 class PingOneUserService {
   constructor() {
@@ -57,12 +58,10 @@ class PingOneUserService {
     }
 
     try {
-      const region = process.env.PINGONE_REGION || configStore.getEffective('pingone_region') || 'com';
-      const tokenEndpoint = `https://auth.pingone.${region}/${this.environmentId}/as/token`;
+      const tokenEndpoint = getTokenEndpoint();
       const authMethod = (process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || configStore.getEffective('pingone_mgmt_token_auth_method') || 'basic').toLowerCase();
 
       console.log('[pingOneUserService] Getting worker app token:', {
-        region,
         environmentId: this.environmentId,
         authMethod,
         hasClientId: !!this.workerAppClientId,
