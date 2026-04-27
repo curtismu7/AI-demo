@@ -70,8 +70,10 @@ Matches existing admin page shell — do not introduce new sizes.
 |------|------|--------|-------------|
 | Body | 14px | 400 | 1.5 |
 | Label / nav child | 13px | 400 | 1.4 |
-| Nav parent / heading | 14px | 600 | 1.4 |
+| Nav parent / heading | 14px | 700 | 1.4 |
 | Page title (h1) | 24px | 700 | 1.2 |
+
+Declared weights: 400 (normal) and 700 (bold). Implementation files (e.g. `AdminSideNav.css`) may use `font-weight: 600` as an implementation detail; the design contract declares only these two weights.
 
 Source: `AdminSideNav.css` lines 85–88 (14px, 400) and child items line 160 (13px); `appShellPages.css` `.app-page-shell__title` (1.5rem / ~24px, 700).
 
