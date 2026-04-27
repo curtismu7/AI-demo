@@ -1837,13 +1837,23 @@ Plans:
 **Goal:** Add a real standalone MCP Gateway in front of the banking MCP server so the gateway becomes the MCP-facing protected resource, owns RFC 9728 discovery + HTTP ingress, calls PingOne Authorize for policy, exchanges tokens for the upstream MCP-server audience, keeps tokens out of the LLM path, and enforces next-hop `aud` at every hop
 **Requirements**: D-01, D-02, D-03, D-04, D-05, D-06
 **Depends on:** Phase 242
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 243-01-PLAN.md - Create the standalone gateway runtime and RFC 9728 / HTTP MCP ingress surface
-- [ ] 243-02-PLAN.md - Implement gateway audience validation, PingOne Authorize policy, and upstream token exchange
-- [ ] 243-03-PLAN.md - Cut the BFF and LangChain host over to the gateway and enforce the no-token-to-LLM boundary
-- [ ] 243-04-PLAN.md - Harden the upstream MCP server, add gateway startup wiring, and finish end-to-end verification/docs
+- [x] 243-01-PLAN.md - Create the standalone gateway runtime and RFC 9728 / HTTP MCP ingress surface
+- [x] 243-02-PLAN.md - Implement gateway audience validation, PingOne Authorize policy, and upstream token exchange
+- [x] 243-03-PLAN.md - Cut the BFF and LangChain host over to the gateway and enforce the no-token-to-LLM boundary
+- [x] 243-04-PLAN.md - Harden the upstream MCP server, add gateway startup wiring, and finish end-to-end verification/docs
+
+### Phase 244: Interactive architecture diagram walkthrough — highlight components on Ping Identity Digital Assistants diagram and detailed token-flow diagram as each step is processed
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 243
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 244 to break down)
 
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
