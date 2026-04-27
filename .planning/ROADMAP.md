@@ -1863,7 +1863,11 @@ Plans:
 **Goal:** When the agent receives a 403 with insufficient_scope, it automatically attempts a scope upgrade (RFC 8693 token exchange) and retries the operation. All authorization servers (PingOne and custom BFF) validate tokens via live PingOne introspection rather than local JWT verification alone, ensuring revoked/expired tokens are rejected in real time.
 **Requirements**: SCOPE-01, SCOPE-02, SCOPE-03, INTROSPECT-01, INTROSPECT-02
 **Depends on:** Phase 243
-**Plans:** Not planned yet
+**Plans:** 2 plans
+
+Plans:
+- [ ] 245-01-PLAN.md — Scope upgrade: intercept 403 in callMcpTool(), retry with RFC 8693 token exchange
+- [ ] 245-02-PLAN.md — Introspection consolidation: middleware delegates to service, fix eviction + type guard
 
 
 ---
