@@ -1832,6 +1832,19 @@ Plans:
 - [ ] 242-02-PLAN.md — Wire ApiCallPreviewCard into PingOneTestPage (token + management API calls)
 - [ ] 242-03-PLAN.md — Wire ApiCallPreviewCard into MFATestPage and AuthzTestPage
 
+### Phase 243: Build a real MCP Gateway in front of the MCP server with RFC 9728 protected resource metadata, PingOne Authorize-led policy evaluation, token passing and token exchange to the MCP server, no tokens ever exposed to the LLM, and strict audience-per-hop validation so each token aud maps only to the next hop in the flow
+
+**Goal:** Add a real standalone MCP Gateway in front of the banking MCP server so the gateway becomes the MCP-facing protected resource, owns RFC 9728 discovery + HTTP ingress, calls PingOne Authorize for policy, exchanges tokens for the upstream MCP-server audience, keeps tokens out of the LLM path, and enforces next-hop `aud` at every hop
+**Requirements**: D-01, D-02, D-03, D-04, D-05, D-06
+**Depends on:** Phase 242
+**Plans:** 4 plans
+
+Plans:
+- [ ] 243-01-PLAN.md - Create the standalone gateway runtime and RFC 9728 / HTTP MCP ingress surface
+- [ ] 243-02-PLAN.md - Implement gateway audience validation, PingOne Authorize policy, and upstream token exchange
+- [ ] 243-03-PLAN.md - Cut the BFF and LangChain host over to the gateway and enforce the no-token-to-LLM boundary
+- [ ] 243-04-PLAN.md - Harden the upstream MCP server, add gateway startup wiring, and finish end-to-end verification/docs
+
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
