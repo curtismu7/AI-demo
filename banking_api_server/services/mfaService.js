@@ -109,7 +109,7 @@ async function initiateDeviceAuth(userId, userAccessToken) {
 	const reqBody = { user: { id: userId }, policy: { id: policyId } };
 	const debugRequest = {
 		method: "POST",
-		url: url.replace(/\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\/deviceAuthentications/, "/{envId}/deviceAuthentications"),
+		url: url,
 		body: reqBody,
 		contentType: "application/json",
 	};
@@ -146,7 +146,7 @@ async function selectDevice(daId, deviceId, userAccessToken) {
 	const reqBody = { selectedDevice: { id: deviceId } };
 	const debugRequest = {
 		method: "PUT",
-		url: url.replace(/\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\/deviceAuthentications/, "/{envId}/deviceAuthentications"),
+		url: url,
 		body: reqBody,
 		contentType: "application/json",
 	};
@@ -181,7 +181,7 @@ async function submitOtp(daId, deviceId, otp, userAccessToken) {
 	const reqBody = { selectedDevice: { id: deviceId, otp: String(otp) } };
 	const debugRequest = {
 		method: "PUT",
-		url: url.replace(/\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\/deviceAuthentications/, "/{envId}/deviceAuthentications"),
+		url: url,
 		body: reqBody,
 		contentType: "application/json",
 	};
@@ -238,7 +238,7 @@ async function submitFido2Assertion(daId, assertion, userAccessToken, origin) {
 			assertion,
 			compatibility: "FULL",
 		};
-		const debugUrl = url.replace(/\/[-0-9a-f]{36}\/deviceAuthentications/, "/{envId}/deviceAuthentications");
+		const debugUrl = url;
 		const debugRequest = {
 			method: "POST",
 			url: debugUrl,
@@ -305,7 +305,7 @@ async function enrollEmailDevice(userId, email) {
 		const reqBody = { type: "EMAIL", email };
 		const debugRequest = {
 			method: "POST",
-			url: url.replace(/\/environments\/[^/]+\//, "/environments/{envId}/"),
+			url: url,
 			body: reqBody,
 			contentType: "application/json",
 		};
@@ -349,7 +349,7 @@ async function enrollSmsDevice(userId, phone, userAccessToken) {
 		const reqBody = { type: "SMS", phone };
 		const debugRequest = {
 			method: "POST",
-			url: url.replace(/\/environments\/[^/]+\//, "/environments/{envId}/"),
+			url: url,
 			body: reqBody,
 			contentType: "application/json",
 		};
@@ -410,7 +410,7 @@ async function completeSmsEnrollment(userId, deviceId, otp) {
 		const reqBody = { otp };
 		const debugRequest = {
 			method: "PUT",
-			url: url.replace(/\/environments\/[^/]+\//, "/environments/{envId}/"),
+			url: url,
 			body: reqBody,
 			contentType: "application/json",
 		};
@@ -468,7 +468,7 @@ async function initFido2Registration(userId, allowCleanupRetry = true) {
 			publicKeyCredentialCreationOptions:
 				data.publicKeyCredentialCreationOptions,
 			_debug: {
-				request: { method: "POST", url: url.replace(/\/environments\/[^/]+\//, "/environments/{envId}/"), body: reqBody, contentType: "application/json" },
+				request: { method: "POST", url: url, body: reqBody, contentType: "application/json" },
 				response: data,
 			},
 		};
@@ -534,7 +534,7 @@ async function completeFido2Registration(userId, deviceId, attestation, requestO
 			origin,
 		};
 
-		const debugUrl = url.replace(/\/environments\/[^/]+\//, "/environments/{envId}/");
+		const debugUrl = url;
 		const debugRequest = {
 			method: "POST",
 			url: debugUrl,
