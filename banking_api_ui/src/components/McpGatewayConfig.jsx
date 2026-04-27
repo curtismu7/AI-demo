@@ -70,8 +70,9 @@ export default function McpGatewayConfig() {
 	if (loading) return <div className="mgc-loading">Loading gateway config…</div>;
 	if (error) return <div className="mgc-error">Error: {error} <button onClick={fetchConfig}>Retry</button></div>;
 
-	const { mock, config, envVars, pingGatewayJson } = data;
+	const { mock, config, envVars, pingGatewayJson, pingGatewayAdminJson } = data;
 	const pingGwJsonStr = JSON.stringify(pingGatewayJson, null, 2);
+	const pingGwAdminJsonStr = JSON.stringify(pingGatewayAdminJson, null, 2);
 
 	return (
 		<div className="mgc-root">
@@ -177,10 +178,11 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.bxf.com
 			{activeTab === "real" && (
 				<div className="mgc-panel">
 					<div className="mgc-section">
-						<h4>PingGateway Route File (<code>mcp.json</code>)</h4>
+						<h4>1 — Route file: <code>mcp.json</code></h4>
 						<p>
-							Drop this into your PingGateway <code>config/routes/</code> directory.
-							It configures the same filter chain our mock implements.
+							Drop into <code>$HOME/.openig/config/routes/mcp.json</code> (Linux) or{" "}
+							<code>%appdata%\OpenIG\config\routes\mcp.json</code> (Windows).
+							Values in <code>properties</code> are pre-filled from your environment.
 						</p>
 						<div className="mgc-code-block">
 							<CopyButton text={pingGwJsonStr} label="Copy mcp.json" />
@@ -189,21 +191,38 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.bxf.com
 					</div>
 
 					<div className="mgc-section">
-						<h4>PingGateway setup steps</h4>
+						<h4>2 — Merge into <code>admin.json</code></h4>
+						<p>
+							<strong>streamingEnabled: true</strong> is required for MCP SSE transport.
+							Merge the fields below into your existing PingGateway <code>admin.json</code>.
+						</p>
+						<div className="mgc-code-block">
+							<CopyButton text={pingGwAdminJsonStr} label="Copy admin.json snippet" />
+							<pre className="mgc-pre mgc-pre--code">{pingGwAdminJsonStr}</pre>
+						</div>
+					</div>
+
+					<div className="mgc-section">
+						<h4>3 — Set <code>RESOURCE_SECRET_ID</code> env var</h4>
+						<p>
+							PingGateway reads the PingOne resource client secret from an env var (no trailing newline):
+						</p>
+						<pre className="mgc-pre">{`printf '%s' "<resource_client_secret>" | base64\nexport RESOURCE_SECRET_ID=<result>`}</pre>
+					</div>
+
+					<div className="mgc-section">
+						<h4>4 — Switch BFF to real PingGateway</h4>
 						<ol className="mgc-steps">
-							<li>Install PingGateway 2024.x+ with the MCP integration module</li>
-							<li>Add the generated <code>mcp.json</code> to <code>$GATEWAY_HOME/config/routes/</code></li>
-							<li>Set <code>MCP_GW_RESOURCE_URI</code> to match your PingOne resource registration</li>
-							<li>
-								Point the BFF at PingGateway instead of the mock:{" "}
-								<code>MCP_GATEWAY_HTTP_URL=https://pinggateway.example.com</code>
-							</li>
-							<li>Disable dev bypass: remove <code>MCP_GW_DEV_BYPASS</code> from the gateway env</li>
+							<li>Set <code>MCP_GATEWAY_HTTP_URL=https://ig.example.com:8443</code> in BFF env</li>
+							<li>Remove <code>MCP_GW_DEV_BYPASS</code> (or set to <code>false</code>) in gateway env</li>
+							<li>Set real <code>MCP_GW_CLIENT_ID</code> / <code>MCP_GW_CLIENT_SECRET</code> (PingOne test resource)</li>
+							<li>Set <code>PINGONE_TOKEN_ENDPOINT</code> to <code>https://auth.pingone.com/&lt;envId&gt;/as/token</code></li>
+							<li>Restart both the BFF and PingGateway</li>
 						</ol>
 					</div>
 
 					<div className="mgc-section">
-						<h4>Current config values (used to generate above)</h4>
+						<h4>Config values used to generate above</h4>
 						<table className="mgc-env-table">
 							<tbody>
 								{Object.entries(config).map(([k, v]) => (
