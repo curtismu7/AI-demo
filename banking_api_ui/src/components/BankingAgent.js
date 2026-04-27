@@ -104,55 +104,55 @@ function SessionExpiryTimer({ sessionInfo, className = "" }) {
 
 const ACTION_GROUPS = {
 	account: [
-		{ id: "accounts", label: "🏦 My Accounts", desc: "List all your accounts" },
+		{ id: "accounts", label: "My Accounts", desc: "List all your accounts" },
 		{
 			id: "balance",
-			label: "💰 Check Balance",
+			label: "Check Balance",
 			desc: "Balance for an account",
 		},
 		{
 			id: "sensitive-account-details",
-			label: "👁 View Sensitive Account Details",
+			label: "View Sensitive Account Details",
 			desc: "View full account number and routing number (requires consent)",
 		},
 	],
 	transaction: [
 		{
 			id: "transactions",
-			label: "📋 Recent Transactions",
+			label: "Recent Transactions",
 			desc: "View recent activity",
 		},
-		{ id: "deposit", label: "⬇ Deposit", desc: "Deposit into an account" },
-		{ id: "withdraw", label: "⬆ Withdraw", desc: "Withdraw from an account" },
-		{ id: "transfer", label: "↔ Transfer", desc: "Transfer between accounts" },
+		{ id: "deposit", label: "Deposit", desc: "Deposit into an account" },
+		{ id: "withdraw", label: "Withdraw", desc: "Withdraw from an account" },
+		{ id: "transfer", label: "Transfer", desc: "Transfer between accounts" },
 	],
 	admin: [
 		{
 			id: "mcp_tools",
-			label: "🔧 MCP Tools",
+			label: "MCP Tools",
 			desc: "List all available MCP banking tools",
 		},
-		{ id: "logout", label: "🚪 Log Out", desc: "Sign out of your account" },
+		{ id: "logout", label: "Log Out", desc: "Sign out of your account" },
 	],
 	testing: [
 		{
 			id: "test_wrong_scope",
-			label: "⚠️ Test Wrong Scope",
+			label: "Test Wrong Scope",
 			desc: "Send request with unauthorized scope (auth rejection)",
 		},
 		{
 			id: "test_wrong_audience",
-			label: "⚠️ Test Wrong Audience",
+			label: "Test Wrong Audience",
 			desc: "Send request with wrong audience (auth rejection)",
 		},
 		{
 			id: "test_hitl_required",
-			label: "🔐 Test HITL Transfer",
+			label: "Test HITL Transfer",
 			desc: "Attempt high-value transfer (requires consent)",
 		},
 		{
 			id: "test_otp_required",
-			label: "📱 Test OTP Challenge",
+			label: "Test OTP Challenge",
 			desc: "Trigger OTP/MFA step-up authentication",
 		},
 	],
@@ -3221,7 +3221,7 @@ export default function BankingAgent({
 			if (resultType) {
 				const titleMap = {
 					accounts: "🏦 Accounts",
-					transactions: "📋 Recent Transactions",
+					transactions: "Recent Transactions",
 					balance: "💰 Balance",
 					confirm: `✅ ${label} confirmed`,
 				};
