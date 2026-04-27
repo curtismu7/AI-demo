@@ -1858,6 +1858,15 @@ Plans:
 - [ ] 244-03-PLAN.md — Routes + nav + FAB: App.js route, AdminSideNav Architecture group, embeddedAgentFabVisibility
 
 ---
+### Phase 245: 403 scope trap and token introspection — 403 insufficient scope errors are trapped by the agent, trigger automatic scope upgrade via token exchange, and all tokens are validated via PingOne introspection endpoint
+
+**Goal:** When the agent receives a 403 with insufficient_scope, it automatically attempts a scope upgrade (RFC 8693 token exchange) and retries the operation. All authorization servers (PingOne and custom BFF) validate tokens via live PingOne introspection rather than local JWT verification alone, ensuring revoked/expired tokens are rejected in real time.
+**Requirements**: SCOPE-01, SCOPE-02, SCOPE-03, INTROSPECT-01, INTROSPECT-02
+**Depends on:** Phase 243
+**Plans:** Not planned yet
+
+
+---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
