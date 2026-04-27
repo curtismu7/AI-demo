@@ -34,6 +34,7 @@ import IETFStandardsPanel from './IETFStandardsPanel';
 import TokenFlowPanel from './TokenFlowPanel';
 import AiPrimerPanel from './AiPrimerPanel';
 import IdJagPanel from './IdJagPanel';
+import GleanPanel from './GleanPanel';
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -75,6 +76,7 @@ export default function EducationPanelsHost() {
       <TokenFlowPanel isOpen={panel === EDU.TOKEN_FLOW} onClose={close} initialTabId={tab} />
       <AiPrimerPanel isOpen={panel === EDU.AI_PRIMER} onClose={close} initialTabId={tab} />
       <IdJagPanel isOpen={panel === EDU.ID_JAG} onClose={close} initialTabId={tab} />
+      <GleanPanel isOpen={panel === EDU.GLEAN} onClose={close} initialTabId={tab} />
     </>
   );
 }

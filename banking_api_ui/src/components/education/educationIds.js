@@ -54,4 +54,6 @@ export const EDU = {
   AI_PRIMER: 'ai-primer',
   /** ID-JAG / Cross-App Access (XAA) — Identity Assertion JWT Authorization Grant — IETF draft, PingOne SSO, limitations */
   ID_JAG: 'id-jag',
+  /** Glean Integration — Enterprise AI assistant with PingFed, PingAuthorize, CIBA, and MCP Gateway */
+  GLEAN: 'glean',
 };

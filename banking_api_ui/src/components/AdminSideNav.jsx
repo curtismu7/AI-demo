@@ -257,6 +257,11 @@ export default function AdminSideNav({ user }) {
 			icon: "🎭",
 			action: () => openEdu(EDU.TOKEN_FLOW, "diagram"),
 		},
+		{
+			label: "Glean + PingOne",
+			icon: "🔗",
+			action: () => openEdu(EDU.GLEAN, "overview"),
+		},
 	];
 
 	// Agent UI placement options for the expandable dropdown

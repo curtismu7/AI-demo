@@ -376,6 +376,20 @@ export default function EducationBar() {
               Agent flow diagram
             </button>
           </div>
+
+          <div className="edu-bar-panel__section">
+            <p className="edu-bar-panel__heading">Integrations</p>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.GLEAN, 'overview');
+                close();
+              }}
+            >
+              Glean + PingOne
+            </button>
+          </div>
         </div>
       )}
     </div>
