@@ -7,18 +7,20 @@
 'use strict';
 const configStore = require('../services/configStore');
 const { getScopesForUserType, BANKING_SCOPES } = require('./scopes');
+const endpointResolver = require('../services/oauthEndpointResolver');
 
 const config = {
   get environmentId()         { return configStore.getEffective('pingone_environment_id'); },
   get _region()               { return configStore.getEffective('pingone_region') || 'com'; },
+  // _base kept for backward compatibility
   get _base()                 { return `https://auth.pingone.${this._region}/${this.environmentId}/as`; },
 
-  // OAuth2 endpoints (same AS, different client)
-  get authorizationEndpoint() { return `${this._base}/authorize`; },
-  get tokenEndpoint()         { return `${this._base}/token`; },
-  get userInfoEndpoint()      { return `${this._base}/userinfo`; },
-  get jwksEndpoint()          { return `${this._base}/jwks`; },
-  get issuer()                { return this._base; },
+  // OAuth2 endpoints — resolved via endpointResolver (explicit config > PingOne fallback)
+  get authorizationEndpoint() { return endpointResolver.getAuthorizationEndpoint(); },
+  get tokenEndpoint()         { return endpointResolver.getTokenEndpoint(); },
+  get userInfoEndpoint()      { return endpointResolver.getUserInfoEndpoint(); },
+  get jwksEndpoint()          { return endpointResolver.getJwksUri(); },
+  get issuer()                { return endpointResolver.getIssuer(); },
 
   // End-user Web application client
   get clientId()              { return configStore.getEffective('user_client_id'); },
