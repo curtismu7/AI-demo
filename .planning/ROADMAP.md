@@ -1803,12 +1803,11 @@ Plans:
 **Goal:** Standardize PingOne trace transparency across mandatory test pages and selected adjacent diagnostic pages so each surfaced call shows actual endpoint, request JSON, response JSON, and PingOne docs link.
 **Requirements**: D-01, D-02, D-03, D-04
 **Depends on:** Phase 239
-**Plans:** 3 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] 240-01-PLAN.md — Coverage audit and scoped inclusion decisions for test and adjacent pages
-- [ ] 240-02-PLAN.md — Shared UI panel + per-section wiring for endpoint/request/response/docs link
-- [ ] 240-03-PLAN.md — Backend payload normalization and regression tests for trace fields
+- [ ] 240-01-PLAN.md — Inline audit + PingOneApiPanel extension + per-section wiring (UI, Wave 1)
+- [ ] 240-02-PLAN.md — Test-route pingoneRequest normalization + regression tests (backend, Wave 1)
 
 ### Phase 241: Monitoring pages — promote tracking panels to sidebar pages under Monitoring nav group
 
