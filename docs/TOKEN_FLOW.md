@@ -190,6 +190,105 @@ Each `tokenEvent` shape:
 }
 ```
 
+
+---
+
+## Gateway-First Token Flow (Phase 243 — MCP Gateway)
+
+> **Architecture change (Phase 243):** When `MCP_GATEWAY_HTTP_URL` is configured on the BFF,
+> all MCP tool calls are routed through the **banking-mcp-gateway** service rather than
+> directly to the MCP server. The gateway owns RFC 9728 protected resource metadata,
+> runs PingOne Authorize policy evaluation per call, and performs a final RFC 8693
+> token exchange before forwarding to the upstream MCP server.
+
+### Token Chain with Gateway (Phase 243)
+
+```
+Final MCP Token                      Gateway-Issued Upstream Token
+(aud = MCP_GW_RESOURCE_URI)      →   (aud = MCP_UPSTREAM_RESOURCE_URI)
+           |                                       |
+           v                                       v
+   banking-mcp-gateway                  banking_mcp_server
+   (port 3005)                          (port 8080)
+```
+
+**Full end-to-end chain:**
+```
+1–2. Same as 2-Exchange path above → Final MCP Token (aud = MCP_GW_RESOURCE_URI)
+
+3. BFF: POST /mcp → banking-mcp-gateway
+   Bearer: Final MCP Token (aud = MCP_GW_RESOURCE_URI)
+   
+   Gateway pipeline (PingGateway filter chain equivalent):
+   ├─ McpValidationFilter equivalent: Origin check, Accept header, JSON-RPC 2.0 format
+   ├─ McpProtectionFilter equivalent: Decode + validate JWT (aud, exp, sub)
+   │   GatewayTokenPolicy: reject if aud ∈ upstream URIs (D-05 anti-bypass)
+   ├─ PingOne Authorize: POST /governance/pap/alpha/policy/{workerId}/decision
+   │   Decision context: method, toolName, clientId, scopes, audience
+   │   PERMIT → continue    DENY / INDETERMINATE → 403
+   └─ RFC 8693 Token Exchange: gateway exchanges Final MCP Token for upstream token
+       subject_token = Final MCP Token
+       target token  aud = MCP_UPSTREAM_RESOURCE_URI (OLB or invest, per tool route)
+       actor_token   = gateway CC token
+       ────────────────────────────────────────────────────────
+       → Upstream Token (gateway-issued, aud = MCP_UPSTREAM_RESOURCE_URI)
+
+4. Gateway → upstream MCP server (port 8080)
+   Bearer: Upstream Token (aud = MCP_UPSTREAM_RESOURCE_URI)
+   
+   Upstream enforcement (D-05):
+   ├─ MCP_GATEWAY_MODE=true: HttpMCPTransport.enforceUpstreamContract()
+   │   Reject if aud includes MCP_GW_RESOURCE_URI (anti-bypass)
+   │   Accept only if aud = MCP_UPSTREAM_RESOURCE_URI
+   └─ authManager.validateAgentToken() — signature + claims
+
+5. Tool executes → result returned gateway → BFF
+
+6. UI receives decoded claims only — NO raw tokens leave the BFF (D-04)
+   The LLM (LangChain) calls the gateway directly:
+   aud = MCP_GW_RESOURCE_URI (set via MCP_GW_RESOURCE_URI on MCP_SERVER_BANKING_ENDPOINT)
+   Result returned without token exposure to the model context window.
+```
+
+### Security Properties (Phase 243)
+
+| Decision | Enforcement |
+|----------|-------------|
+| D-01: Real gateway (not a stub) | `banking-mcp-gateway/` service, port 3005 |
+| D-02: Gateway owns RFC 9728 | `GET /.well-known/oauth-protected-resource` on gateway (not upstream) |
+| D-03: Gateway handles token passing/exchange | `McpTokenExchangeClient` in gateway |
+| D-04: NO TOKENS TO LLM | `callToolViaGateway` result-only return; LangChain gets tool result, not token |
+| D-05: aud = next hop only | `GatewayTokenPolicy` + `HttpMCPTransport.enforceUpstreamContract` |
+| D-06: PingOne Authorize does policy | `PingOneAuthorizeClient.evaluate()` per call |
+
+### Gateway Env Vars (banking-mcp-gateway)
+
+| Variable | Purpose |
+|----------|---------|
+| `MCP_GW_RESOURCE_URI` | Inbound audience — what tokens must be issued for (gateway) |
+| `UPSTREAM_MCP_URL` | Upstream MCP server base URL (default `http://localhost:8080`) |
+| `PINGAUTHORIZE_ENDPOINT` | PingOne Authorize base URL |
+| `PINGAUTHORIZE_WORKER_ID` | Policy worker ID for per-call decisions |
+| `MCP_OLB_RESOURCE_URI` | Upstream audience for OLB banking tools |
+| `MCP_INVEST_RESOURCE_URI` | Upstream audience for invest tools |
+| `MCP_ACCEPTED_ORIGINS` | Regex for CORS origin validation |
+
+### BFF Env Vars (banking-mcp-gateway cutover)
+
+| Variable | Purpose |
+|----------|---------|
+| `MCP_GATEWAY_HTTP_URL` | When set, BFF routes tools through gateway (default: bypass) |
+| `MCP_GATEWAY_TIMEOUT_MS` | Per-call timeout (default 30000 ms) |
+
+### Upstream MCP Server Env Vars (hardening)
+
+| Variable | Purpose |
+|----------|---------|
+| `MCP_GATEWAY_MODE` | When `true`, upstream enforces next-hop contract (D-05) |
+| `MCP_UPSTREAM_RESOURCE_URI` | Expected upstream audience in gateway-issued tokens |
+| `MCP_GW_RESOURCE_URI` | Gateway audience — rejected at upstream (anti-bypass) |
+
+
 ---
 
 ## Environment Variables Reference

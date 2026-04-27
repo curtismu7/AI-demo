@@ -74,6 +74,8 @@ LOG_UI=/tmp/bank-ui.log
 LOG_MCP=/tmp/bank-mcp-server.log
 LOG_AGENT=/tmp/bank-langchain-agent.log
 LOG_MCP_TRAFFIC=/tmp/bank-mcp-traffic.log
+PID_GW=/tmp/bank-mcp-gateway.pid
+LOG_GW=/tmp/bank-mcp-gateway.log
 
 # Terminal colors (global — used by banner, status, and tail_bank_logs)
 BOLD='\033[1m'
@@ -271,6 +273,7 @@ print_status_table() {
   echo -e "${WHITE}${BOLD}  SERVICES${RESET}"
   service_status_line "Banking API Server"  ${API_PORT}  "${API_URL}"
   service_status_line "Banking MCP Server"  8080         "ws://localhost:8080"
+  service_status_line "MCP Gateway"          3005         "http://localhost:3005"
   service_status_line "LangChain Agent"     8888         "http://localhost:8888"
   if port_listening ${UI_PORT}; then
     printf "  ${GREEN}${BOLD}  ✅  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
@@ -283,7 +286,7 @@ print_status_table() {
 cmd_stop() {
   echo "🛑 Stopping Banking services (run-bank.sh)..."
   set +e
-  for pid_file in "$PID_API" "$PID_MCP" "$PID_AGENT" "$PID_UI"; do
+  for pid_file in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_AGENT" "$PID_UI"; do
     if [[ -f "$pid_file" ]]; then
       PID=$(cat "$pid_file" 2>/dev/null || true)
       rm -f "$pid_file"
@@ -294,7 +297,7 @@ cmd_stop() {
     fi
   done
   sleep 1
-  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :8080, Agent :8888)…"
+  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :8080, GW :3005, Agent :8888)…"
   stop_listeners_on_banking_ports
   sleep 1
   force_kill_listeners_on_banking_ports
@@ -378,14 +381,16 @@ cmd_help() {
   echo -e "${WHITE}${BOLD}  Port Layout:${RESET}"
   echo "    Banking API Server   :${API_PORT}  (HTTPS)"
   echo "    Banking UI (React)   :${UI_PORT}  (HTTPS)"
-  echo "    Banking MCP Server   :8080"
+  echo "    Banking MCP Server   :8080
+    MCP Gateway          :3005"
   echo "    LangChain Agent      :8888"
   echo ""
   echo -e "${WHITE}${BOLD}  Log Files:${RESET}"
   echo "    ${LOG_API}"
   echo "    ${LOG_UI}"
   echo "    ${LOG_MCP}"
-  echo "    ${LOG_AGENT}"
+  echo "    ${LOG_AGENT}
+    ${LOG_GW}"
   echo ""
   echo -e "${WHITE}${BOLD}  One-time Setup:${RESET}"
   echo "    echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts"
@@ -515,6 +520,18 @@ if [[ -d "$BASEDIR/banking_mcp_server" ]]; then
     npm start > /tmp/bank-mcp-server.log 2>&1
   ) &
   echo $! > "$PID_MCP"
+fi
+
+# ── MCP Gateway on :3005 (Phase 243) ────────────────────────────────────────────
+if [[ -d "$BASEDIR/banking_mcp_gateway" ]]; then
+  echo "🛡️  Starting MCP Gateway on :3005..."
+  (
+    cd "$BASEDIR/banking_mcp_gateway"
+    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
+    npm run build > /dev/null 2>&1 || true
+    npm start > "${LOG_GW}" 2>&1
+  ) &
+  echo $! > "$PID_GW"
 fi
 
 # ── LangChain Agent on :8888 ─────────────────────────────────────────────────

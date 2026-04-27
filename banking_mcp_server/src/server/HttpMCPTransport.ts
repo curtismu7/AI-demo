@@ -94,6 +94,76 @@ export class HttpMCPTransport {
   ) {}
 
   // -------------------------------------------------------------------------
+  // Static helpers — exported for testability (D-05, gateway mode)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Enforce the gateway-first next-hop token contract at the upstream MCP
+   * server boundary (D-05).
+   *
+   * Rules:
+   *  1. If gatewayAudience is configured: the token's aud MUST NOT include the
+   *     gateway URI — a gateway-aud token cannot bypass the gateway's policy
+   *     evaluation and RFC 8693 exchange.
+   *  2. If upstreamAudience is configured: the token's aud MUST include the
+   *     upstream MCP server URI.
+   *
+   * When neither constraint is configured, the check is a no-op (dev mode).
+   */
+  static enforceUpstreamContract(
+    claims: Record<string, unknown>,
+    options: { upstreamAudience?: string; gatewayAudience?: string },
+  ): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    const aud = claims?.aud;
+    if (!aud) {
+      errors.push('Missing aud claim — cannot enforce upstream contract');
+      return { valid: false, errors };
+    }
+
+    const audValues: string[] = Array.isArray(aud)
+      ? aud.map(String)
+      : [String(aud)];
+
+    // Rule 1: D-05 anti-bypass — reject gateway-audience tokens at the upstream
+    if (options.gatewayAudience && audValues.includes(options.gatewayAudience)) {
+      errors.push(
+        `D-05 violation: gateway-audience token cannot be used at upstream ` +
+        `(aud includes "${options.gatewayAudience}"). ` +
+        `The gateway must perform RFC 8693 exchange before forwarding.`,
+      );
+    }
+
+    // Rule 2: upstream audience must match
+    if (options.upstreamAudience && !audValues.includes(options.upstreamAudience)) {
+      errors.push(
+        `Upstream aud mismatch: expected "${options.upstreamAudience}", ` +
+        `got [${audValues.join(', ')}]`,
+      );
+    }
+
+    return { valid: errors.length === 0, errors };
+  }
+
+  /**
+   * Build RFC 9728 metadata hints that signal this server is a protected
+   * upstream behind the gateway (not a public front door).
+   * Embedded in the /.well-known/oauth-protected-resource response when
+   * MCP_GATEWAY_MODE=true.
+   */
+  static buildGatewayModeMetadataHints(
+    upstreamResourceUrl: string,
+    gatewayUri: string,
+  ): Record<string, string> {
+    return {
+      x_gateway_protected_by: gatewayUri,
+      x_direct_access:        'blocked_in_gateway_mode',
+      x_upstream_resource:    upstreamResourceUrl,
+    };
+  }
+
+  // -------------------------------------------------------------------------
   // Entry point — called by BankingMCPServer.handleHttpRequest
   // -------------------------------------------------------------------------
 
@@ -158,7 +228,7 @@ export class HttpMCPTransport {
 
   private handleMetadata(_req: IncomingMessage, res: ServerResponse): void {
     const base = this.resourceBaseUrl();
-    const metadata = {
+    const baseMetadata = {
       resource: `${base}/mcp`,
       authorization_servers: [this.config.authServerUrl],
       bearer_methods_supported: ['header'],
@@ -167,6 +237,13 @@ export class HttpMCPTransport {
       resource_documentation:
         'https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization',
     };
+
+    // Gateway mode (Phase 243, D-02): indicate this server is a protected upstream.
+    const gatewayUri = process.env.MCP_GW_RESOURCE_URI;
+    const metadata: Record<string, unknown> =
+      process.env.MCP_GATEWAY_MODE === 'true' && gatewayUri
+        ? { ...baseMetadata, ...HttpMCPTransport.buildGatewayModeMetadataHints(`${base}/mcp`, gatewayUri) }
+        : baseMetadata;
 
     res.writeHead(200, {
       'Content-Type': 'application/json',
@@ -332,6 +409,24 @@ export class HttpMCPTransport {
       return;
     }
 
+    // 3b. Gateway mode: enforce next-hop upstream contract (D-05, Phase 243)
+    if (process.env.MCP_GATEWAY_MODE === 'true') {
+      const claims = this.decodeTokenPayload(bearerToken);
+      const upstreamAudience =
+        process.env.MCP_UPSTREAM_RESOURCE_URI ||
+        process.env.MCP_AUDIENCE ||
+        process.env.PINGONE_RESOURCE_MCP_URI;
+      const gatewayAudience = process.env.MCP_GW_RESOURCE_URI;
+      const contractCheck = HttpMCPTransport.enforceUpstreamContract(claims, {
+        upstreamAudience,
+        gatewayAudience,
+      });
+      if (!contractCheck.valid) {
+        this.sendUnauthorized(res, `Gateway next-hop contract violation: ${contractCheck.errors[0]}`);
+        return;
+      }
+    }
+
     // 4. MCP-Protocol-Version header — required on non-initialize requests
     if (!isInitialize) {
       const protoHeader = (req.headers[MCP_PROTO_HEADER] as string | undefined)?.trim();
@@ -450,6 +545,23 @@ export class HttpMCPTransport {
     const auth = req.headers['authorization'] as string | undefined;
     if (!auth || !auth.toLowerCase().startsWith('bearer ')) return null;
     return auth.slice(7).trim() || null;
+  }
+
+  /**
+   * Decode the payload of a JWT without signature verification.
+   * The signature was already verified by authManager.validateAgentToken.
+   * Used for gateway-mode claims inspection (D-05, Phase 243).
+   */
+  private decodeTokenPayload(token: string): Record<string, unknown> {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return {};
+      const padded = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const json = Buffer.from(padded, 'base64').toString('utf8');
+      return JSON.parse(json) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
   }
 
   private sendUnauthorized(res: ServerResponse, detail: string, options?: {

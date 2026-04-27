@@ -67,3 +67,45 @@ export function validateTokenAtGateway(claims, options = {}) {
     warnings,
   };
 }
+
+/**
+ * Enforce the gateway-first next-hop token contract at the upstream MCP
+ * server boundary (D-05, Phase 243).
+ *
+ * Used by the WebSocket/Express path (HTTP path uses HttpMCPTransport.enforceUpstreamContract).
+ *
+ * @param {object} claims - Decoded JWT claims
+ * @param {object} [options]
+ * @param {string} [options.upstreamAudience] - Expected aud for the upstream MCP server
+ * @param {string} [options.gatewayAudience]  - Gateway aud to reject (anti-bypass D-05)
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+export function enforceUpstreamContract(claims, { upstreamAudience, gatewayAudience } = {}) {
+  const errors = [];
+
+  const aud = claims?.aud;
+  if (!aud) {
+    errors.push('Missing aud claim — cannot enforce upstream contract');
+    return { valid: false, errors };
+  }
+
+  const audValues = Array.isArray(aud) ? aud.map(String) : [String(aud)];
+
+  // Rule 1: D-05 anti-bypass — reject gateway-audience tokens at the upstream
+  if (gatewayAudience && audValues.includes(gatewayAudience)) {
+    errors.push(
+      `D-05 violation: gateway-audience token cannot be used at upstream ` +
+      `(aud includes "${gatewayAudience}"). ` +
+      `The gateway must perform RFC 8693 exchange before forwarding.`
+    );
+  }
+
+  // Rule 2: upstream audience must match
+  if (upstreamAudience && !audValues.includes(upstreamAudience)) {
+    errors.push(
+      `Upstream aud mismatch: expected "${upstreamAudience}", got [${audValues.join(', ')}]`
+    );
+  }
+
+  return { valid: errors.length === 0, errors };
+}
