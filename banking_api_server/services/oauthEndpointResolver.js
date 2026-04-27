@@ -4,9 +4,13 @@ const configStore = require('./configStore');
 /**
  * Resolves OAuth endpoints using priority:
  * 1. Explicit configStore value (supports any IDP via OAUTH_* env vars or Config UI)
- * 2. PingOne pattern computed from environment_id + region
- * 3. Empty string (not configured)
+ * 2. OIDC discovery cache (populated at startup when oauth_discovery_enabled=true)
+ * 3. PingOne pattern computed from environment_id + region
+ * 4. Empty string (not configured)
  */
+
+// Module-level sync cache populated by initializeDiscovery()
+let _discoveryCache = null;
 
 function _pingOneBase() {
   const region = configStore.getEffective('pingone_region') || 'com';
@@ -15,9 +19,15 @@ function _pingOneBase() {
   return `https://auth.pingone.${region}/${envId}/as`;
 }
 
+function _fromCache(field) {
+  return _discoveryCache?.[field] ?? null;
+}
+
 function getAuthorizationEndpoint() {
   const explicit = configStore.getEffective('oauth_authorization_endpoint');
   if (explicit) return explicit;
+  const cached = _fromCache('authorization_endpoint');
+  if (cached) return cached;
   const base = _pingOneBase();
   return base ? `${base}/authorize` : '';
 }
@@ -25,6 +35,8 @@ function getAuthorizationEndpoint() {
 function getTokenEndpoint() {
   const explicit = configStore.getEffective('oauth_token_endpoint');
   if (explicit) return explicit;
+  const cached = _fromCache('token_endpoint');
+  if (cached) return cached;
   const base = _pingOneBase();
   return base ? `${base}/token` : '';
 }
@@ -32,6 +44,8 @@ function getTokenEndpoint() {
 function getUserInfoEndpoint() {
   const explicit = configStore.getEffective('oauth_userinfo_endpoint');
   if (explicit) return explicit;
+  const cached = _fromCache('userinfo_endpoint');
+  if (cached) return cached;
   const base = _pingOneBase();
   return base ? `${base}/userinfo` : '';
 }
@@ -39,6 +53,8 @@ function getUserInfoEndpoint() {
 function getJwksUri() {
   const explicit = configStore.getEffective('oauth_jwks_uri');
   if (explicit) return explicit;
+  const cached = _fromCache('jwks_uri');
+  if (cached) return cached;
   const base = _pingOneBase();
   return base ? `${base}/jwks` : '';
 }
@@ -46,6 +62,8 @@ function getJwksUri() {
 function getIssuer() {
   const explicit = configStore.getEffective('oauth_issuer');
   if (explicit) return explicit;
+  const cached = _fromCache('issuer');
+  if (cached) return cached;
   return _pingOneBase();
 }
 
@@ -69,6 +87,39 @@ function getOAuthEndpoints() {
   };
 }
 
+/**
+ * Async startup initializer — fetches OIDC discovery metadata and populates
+ * the module-level cache. Called once at server startup; never blocks sync getters.
+ * No-ops when oauth_discovery_enabled != 'true'.
+ */
+async function initializeDiscovery() {
+  const enabled = configStore.getEffective('oauth_discovery_enabled');
+  if (enabled !== 'true') return;
+
+  try {
+    const { fetchDiscoveryMetadata, extractEndpoints } = require('./oauthDiscoveryService');
+    const discoveryUrl = getDiscoveryEndpoint();
+    if (!discoveryUrl) return;
+
+    console.log(`[oauth-resolver] Fetching OIDC discovery from ${discoveryUrl}`);
+    const metadata = await fetchDiscoveryMetadata(discoveryUrl);
+    if (!metadata) {
+      console.warn('[oauth-resolver] Discovery returned no metadata — using fallback resolution');
+      return;
+    }
+
+    _discoveryCache = extractEndpoints(metadata);
+    console.log('[oauth-resolver] OIDC discovery cache populated');
+  } catch (err) {
+    console.warn('[oauth-resolver] Discovery initialization failed:', err.message);
+  }
+}
+
+/** Clears the discovery cache (used in tests). */
+function _resetDiscoveryCache() {
+  _discoveryCache = null;
+}
+
 module.exports = {
   getAuthorizationEndpoint,
   getTokenEndpoint,
@@ -77,4 +128,6 @@ module.exports = {
   getIssuer,
   getDiscoveryEndpoint,
   getOAuthEndpoints,
+  initializeDiscovery,
+  _resetDiscoveryCache,
 };

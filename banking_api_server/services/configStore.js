@@ -184,6 +184,7 @@ const FIELD_DEFS = {
   oauth_jwks_uri:                { public: true,  default: '' },
   oauth_issuer:                  { public: true,  default: '' },
   oauth_discovery_endpoint:      { public: true,  default: '' },
+  oauth_discovery_enabled:       { public: true,  default: 'false' },
 };
 
 // ---------------------------------------------------------------------------
@@ -481,6 +482,7 @@ class ConfigStore {
       oauth_jwks_uri:                ['OAUTH_JWKS_URI'],
       oauth_issuer:                  ['OAUTH_ISSUER'],
       oauth_discovery_endpoint:      ['OAUTH_DISCOVERY_ENDPOINT'],
+      oauth_discovery_enabled:       ['OAUTH_DISCOVERY_ENABLED'],
     };
 
     const envVars = envFallbackMap[key] || [];

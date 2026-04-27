@@ -13,6 +13,7 @@ require('./scripts/check-env');
 
 // ConfigStore must be required early so oauth config module getters are ready
 const configStore = require('./services/configStore');
+const appEventService = require('./services/appEventService');
 const {
     mcpNoBearerResponse
 } = require('./services/bffSessionGating');
@@ -126,6 +127,7 @@ const tokenDisplayRoutes = require('./routes/tokenDisplay');
 const apiCallTrackerRoutes = require('./routes/apiCallTracker');
 const resourceServerRoutes = require('./routes/resourceServer');
 const resourceServerCCRoutes = require('./routes/resourceServerCC');
+const { initializeDiscovery } = require('./services/oauthEndpointResolver');
 
 // Import middleware
 const {
@@ -240,13 +242,17 @@ const _rateLimitHandler = (req, res) => {
         error: 'Too many requests. Please wait a few minutes and try again.'
     });
 };
+const DEV_GLOBAL_LIMIT  = 20000;
+const PROD_GLOBAL_LIMIT = 8000;
+const DEV_AUTH_LIMIT    = 500;
+const PROD_AUTH_LIMIT   = 300;
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     // Generous defaults for demos/testing; override with RATE_LIMIT_MAX. Production can tighten via env.
     max: (() => {
         const n = parseInt(process.env.RATE_LIMIT_MAX || '', 10);
         if (Number.isFinite(n) && n > 0) return n;
-        return process.env.NODE_ENV === 'development' ? 20000 : 8000;
+        return process.env.NODE_ENV === 'development' ? DEV_GLOBAL_LIMIT : PROD_GLOBAL_LIMIT;
     })(),
     handler: _rateLimitHandler,
     skip: () => rateLimitDisabled,
@@ -283,7 +289,7 @@ const authLimiter = rateLimit({
     max: (() => {
         const n = parseInt(process.env.RATE_LIMIT_AUTH_MAX || '', 10);
         if (Number.isFinite(n) && n > 0) return n;
-        return process.env.NODE_ENV === 'development' ? 500 : 300;
+        return process.env.NODE_ENV === 'development' ? DEV_AUTH_LIMIT : PROD_AUTH_LIMIT;
     })(),
     handler: _rateLimitHandler,
     skip: () => rateLimitDisabled,
@@ -350,13 +356,23 @@ app.use(delegationAuditMiddleware);
 
 // Ensure configStore is loaded before any request touches OAuth config.
 // The promise is memoised — this is a no-op after the first request.
-app.use((req, res, next) => {
-    configStore.ensureInitialized().then(() => next()).catch(next);
+app.use(async (_req, _res, next) => {
+    try {
+        await configStore.ensureInitialized();
+        next();
+    } catch (err) {
+        next(err);
+    }
 });
 
 // Migrate demo accounts to persistent storage on startup
 migrateAccounts().catch(err => {
     console.error('[server] Demo accounts migration failed:', err.message);
+});
+
+// Non-blocking OIDC discovery — populates endpoint cache when oauth_discovery_enabled=true
+initializeDiscovery().catch(err => {
+    console.warn('[server] OIDC discovery initialization failed:', err.message);
 });
 
 // Restore session user from signed _auth cookie when in-memory session is empty.
@@ -464,10 +480,12 @@ app.get('/api/auth/logout', async (req, res) => {
     // RFC 7009 — revoke tokens before destroying the session so they can no
     // longer be used even if intercepted.  Runs in parallel; non-fatal on error.
     if (accessToken && accessToken !== '_cookie_session') {
-        oauthService.revokeToken(accessToken, 'access_token');
+        oauthService.revokeToken(accessToken, 'access_token')
+            .catch(err => console.warn('[logout] access token revoke error:', err.message));
     }
     if (refreshToken && refreshToken !== '_cookie_session') {
-        oauthService.revokeToken(refreshToken, 'refresh_token');
+        oauthService.revokeToken(refreshToken, 'refresh_token')
+            .catch(err => console.warn('[logout] refresh token revoke error:', err.message));
     }
 
     req.session.destroy((err) => {
@@ -658,9 +676,6 @@ app.use('/api/mcp/audit', (req, res, next) => {
 app.get('/api/tokens/session-preview', (req, res) => {
     try {
         const {
-            buildSessionPreviewTokenEvents
-        } = require('./services/agentMcpTokenService');
-        const {
             tokenEvents
         } = buildSessionPreviewTokenEvents(req);
         res.json({
@@ -678,13 +693,17 @@ app.get('/api/tokens/session-preview', (req, res) => {
 // so the spinner activity feed works for customer dashboards too.
 app.get('/api/app-events', (req, res) => {
     try {
-        const appEventService = require('./services/appEventService');
+        const VALID_CATEGORIES = new Set(['oauth','token_exchange','session','jwks','mcp','auth_lifecycle','agent','authorize','agent_prompt','delegation','introspection']);
+        const VALID_SEVERITIES = new Set(['info','warning','error','warn']);
         const { category, severity, limit = 100, since } = req.query;
+        const safeCategory = VALID_CATEGORIES.has(category) ? category : undefined;
+        const safeSeverity = VALID_SEVERITIES.has(severity) ? severity : undefined;
+        const safeSince = since && (/^\d{4}-\d{2}-\d{2}(T[\d:.Z\-+]+)?$/).test(since) ? since : undefined;
         const events = appEventService.getEvents({
-            category,
-            severity,
+            category: safeCategory,
+            severity: safeSeverity,
             limit: Math.min(parseInt(limit) || 100, 500),
-            since,
+            since: safeSince,
         });
         res.json({ events, total: events.length });
     } catch (error) {
@@ -922,7 +941,8 @@ const {
 // scoped to the MCP server audience — the user's raw token never leaves the Backend-for-Frontend (BFF).
 
 const {
-    resolveMcpAccessTokenWithEvents
+    resolveMcpAccessTokenWithEvents,
+    buildSessionPreviewTokenEvents,
 } = require('./services/agentMcpTokenService');
 
 // Write tools that require a banking:write-scoped token obtained via scope upgrade.
@@ -977,16 +997,16 @@ app.post('/api/mcp/scope-upgrade', express.json(), requireSession, async (req, r
     }
 });
 // POST /api/mcp/tool — call a banking MCP tool
-app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
+app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next) => {
+  try {
     // Log incoming request details for debugging 400 errors
     const startTime = Date.now();
-    const _appEvents = require('./services/appEventService');
     const userAgent = req.headers['user-agent'] || 'unknown';
     const contentType = req.headers['content-type'] || 'unknown';
     const contentLength = req.headers['content-length'] || 'unknown';
 
     console.log('[/api/mcp/tool] REQUEST: userAgent=%s contentType=%s contentLength=%s sessionID=%s',
-        userAgent, contentType, contentLength, req.sessionID);
+        userAgent, contentType, contentLength, req.sessionID ? `${req.sessionID.substring(0, 8)}...` : 'none');
 
     // Log request body (safely) for debugging
     if (req.body && Object.keys(req.body).length > 0) {
@@ -1323,7 +1343,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
                 phase: 'authorize_gate_skipped',
                 reason: mcpAuthz.reason,
             });
-            _appEvents.logEvent('authorize', 'info',
+            appEventService.logEvent('authorize', 'info',
                 `Authorize gate skipped — ${mcpAuthz.reason || 'unknown'}`,
                 { tag: 'authorize/gate-skipped', metadata: { reason: mcpAuthz.reason } });
         }
@@ -1391,7 +1411,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
         emit({
             phase: 'mcp_remote_begin'
         });
-        _appEvents.logEvent('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, mcpServerUrl: getMcpServerUrl() } });
+        appEventService.logEvent('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, mcpServerUrl: getMcpServerUrl() } });
         let result;
         if (useHttp2) {
             const h2Session = http2McpBridge.createHttp2Session(mcpUrl, mcpAccessToken);
@@ -1399,7 +1419,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
         } else {
             result = await mcpCallTool(tool, params || {}, mcpAccessToken, userSub, req.correlationId);
         }
-        _appEvents.logEvent('mcp', 'info', `MCP tool done ← ${tool} (${Date.now() - startTime}ms)`, { tag: 'mcp/tool', metadata: { tool, durationMs: Date.now() - startTime } });
+        appEventService.logEvent('mcp', 'info', `MCP tool done ← ${tool} (${Date.now() - startTime}ms)`, { tag: 'mcp/tool', metadata: { tool, durationMs: Date.now() - startTime } });
         emit({
             phase: 'mcp_remote_done'
         });
@@ -1533,6 +1553,9 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
             });
         }
     }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ── Static file serving ──────────────────────────────────────────────────────
@@ -1594,6 +1617,16 @@ app.use((err, req, res, _next) => {
     });
 });
 
+process.on('unhandledRejection', (reason) => {
+    console.error('[unhandledRejection]', reason);
+    process.exit(1);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('[uncaughtException]', err);
+    process.exit(1);
+});
+
 // Only start the server if this file is run directly (not imported for testing)
 if (require.main === module) {
     const fs = require('fs');
@@ -1601,20 +1634,26 @@ if (require.main === module) {
     const certFile = path.join(certDir, 'api.pingdemo.com+2.pem');
     const keyFile = path.join(certDir, 'api.pingdemo.com+2-key.pem');
 
+    let server;
     if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
         const https = require('https');
-        https.createServer({
+        server = https.createServer({
             key: fs.readFileSync(keyFile),
             cert: fs.readFileSync(certFile),
         }, app).listen(PORT, () => {
             console.log(`Banking API server (HTTPS) running on https://api.pingdemo.com:${PORT}`);
         });
     } else {
-        app.listen(PORT, () => {
+        server = app.listen(PORT, () => {
             console.log(`Banking API server running on http://localhost:${PORT}`);
             console.log('Tip: run mkcert in Banking/certs/ to enable HTTPS (see run-bank.sh)');
         });
     }
+
+    process.on('SIGTERM', () => {
+        oauthMonitor.stop();
+        server.close(() => process.exit(0));
+    });
 }
 
 
