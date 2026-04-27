@@ -13,11 +13,22 @@ const crypto = require('crypto');
 const axios = require('axios');
 const configStore = require('./configStore');
 const { logger, LOG_CATEGORIES } = require('../utils/logger');
-const { logEvent: logAppEvent } = require('./appEventService');
+const { logEvent: logAppEvent, EVENT_CATEGORIES } = require('./appEventService');
 
 // In-memory token introspection cache
 const introspectionCache = new Map();
 const CACHE_TTL_MS = 30 * 1000; // 30 seconds
+// Periodic cache eviction — prevent unbounded Map growth (fix: Review.md #19)
+// Runs every 60s; removes entries whose TTL has expired
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of introspectionCache) {
+    if (now >= entry.expiresAt) {
+      introspectionCache.delete(key);
+    }
+  }
+}, 60 * 1000).unref(); // .unref() prevents this timer from blocking process exit
+
 
 /**
  * Hash a token for cache key (never store raw token)
@@ -36,7 +47,7 @@ function hashToken(token) {
  * @returns {Promise<{valid: boolean, scopes: string[], sub: string, exp: number, aud: string, client_id: string, token_type: string}>}
  */
 async function validateToken(token) {
-  if (!token) {
+  if (typeof token !== 'string' || !token.trim()) {
     return { valid: false };
   }
 
@@ -117,7 +128,7 @@ async function validateToken(token) {
       scopes: scopes.length,
       client_id: result.client_id,
     });
-    logAppEvent('introspection', result.valid ? 'info' : 'warning',
+    logAppEvent(EVENT_CATEGORIES.INTROSPECTION, result.valid ? 'info' : 'warning',
       result.valid ? 'Token introspected — PingOne confirmed active' : 'Token introspected — PingOne returned inactive',
       { tag: result.valid ? 'introspection/active' : 'introspection/inactive',
         metadata: { active: result.valid, sub: result.sub || null, client_id: result.client_id || null, scopeCount: (result.scopes || []).length, scopes: result.scopes || [], exp: result.exp || null } });
@@ -129,7 +140,7 @@ async function validateToken(token) {
       endpoint: process.env.PINGONE_INTROSPECTION_ENDPOINT,
       timeout: error.code === 'ECONNABORTED',
     });
-    logAppEvent('introspection', 'error', `Token introspection failed: ${error.message}`,
+    logAppEvent(EVENT_CATEGORIES.INTROSPECTION, 'error', `Token introspection failed: ${error.message}`,
       { tag: 'introspection/error', metadata: { error: error.message } });
 
     return {
