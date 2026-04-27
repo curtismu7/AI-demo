@@ -27,6 +27,8 @@ import AdminTokenComplianceAudit from "./components/AdminTokenComplianceAudit";
 import AgentFlowDiagramPanel from "./components/AgentFlowDiagramPanel";
 import { AgenticTrustEducation } from "./components/AgenticTrustEducation";
 import ApiExplorerPanel from "./components/ApiExplorerPanel";
+import ArchitectureOverviewPage from "./components/ArchitectureOverviewPage";
+import ArchitectureTokenFlowPage from "./components/ArchitectureTokenFlowPage";
 import ApiTrafficPage from "./components/ApiTrafficPage";
 import AuditPage from "./components/AuditPage";
 import BankingAdminOps from "./components/BankingAdminOps";
@@ -609,6 +611,7 @@ function AppWithAuth() {
 		"/mfa-test",
 		"/authz-test",
 		"/monitoring",
+		"/architecture",
 	];
 	const isOnSidebarRoute =
 		sidebarRoutePatterns.some((pattern) => pathname.startsWith(pattern)) ||
@@ -802,6 +805,21 @@ function AppWithAuth() {
 												<Route path="flow-inspector" element={<UnifiedTokenFlowInspector floatingByDefault={false} showToggle={false} />} />
 												<Route path="mcp-traffic" element={<McpTrafficPage />} />
 												<Route path="api-explorer" element={<ApiExplorerPanel />} />
+											</Routes>
+										</main>
+									</>
+								}
+							/>
+							<Route
+								path="/architecture/*"
+								element={
+									<>
+										<AdminSideNav user={user} />
+										<TopNav user={user} onLogout={logout} />
+										<main className="main-content">
+											<Routes>
+												<Route path="overview" element={<ArchitectureOverviewPage user={user} />} />
+												<Route path="token-flow" element={<ArchitectureTokenFlowPage user={user} />} />
 											</Routes>
 										</main>
 									</>

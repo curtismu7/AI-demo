@@ -23,7 +23,7 @@ export function isEmbeddedAgentDockRoute(pathname) {
   if (p === '/config') return true;
   // Monitoring sidebar pages — agent FAB lets users trigger tool calls and see results live.
   // Excludes /logs and /activity/audit (no agent interaction needed there).
-  if (p.startsWith('/monitoring') || p === '/api-traffic' || p === '/mcp-traffic' || p === '/dev-tools') return true;
+  if (p.startsWith('/monitoring') || p === '/api-traffic' || p === '/mcp-traffic' || p === '/dev-tools' || p.startsWith('/architecture')) return true;
   return isBankingAgentDashboardRoute(pathname);
 }
 
@@ -99,6 +99,7 @@ export function isMonitoringRoute(pathname) {
     '/monitoring',       // covers /monitoring/token-chain, /monitoring/token-diff,
                          //         /monitoring/flow-inspector, /monitoring/mcp-traffic,
                          //         /monitoring/api-explorer
+    '/architecture',
   ];
   return MONITORING_PREFIXES.some(prefix => p === prefix || p.startsWith(prefix + '/'));
 }

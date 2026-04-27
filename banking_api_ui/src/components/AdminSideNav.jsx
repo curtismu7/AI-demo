@@ -35,7 +35,7 @@ export default function AdminSideNav({ user }) {
 		const initial = {};
 		const path = location.pathname;
 		const isAdminUser = user?.role === 'admin';
-		const monitoringPaths = ['/monitoring', '/activity', '/audit', '/api-traffic', '/mcp-traffic', '/dev-tools'];
+		const monitoringPaths = ['/monitoring', '/activity', '/audit', '/api-traffic', '/mcp-traffic', '/dev-tools', '/architecture'];
 		const usersPaths = ['/users', '/accounts', '/transactions'];
 		if (monitoringPaths.some(p => path === p || path.startsWith(p + '/'))) {
 			initial[isAdminUser ? 'nav-3' : 'nav-4'] = true;
@@ -131,6 +131,14 @@ export default function AdminSideNav({ user }) {
 				{ label: "Flow Inspector", path: "/monitoring/flow-inspector", icon: "🔬" },
 				{ label: "MCP Traffic", path: "/monitoring/mcp-traffic", icon: "🔌" },
 				{ label: "API Explorer", path: "/monitoring/api-explorer", icon: "📡" },
+			],
+		},
+		{
+			label: "Architecture",
+			icon: "🗺️",
+			children: [
+				{ label: "Overview Diagram", path: "/architecture/overview", icon: "🏗️" },
+				{ label: "Token Flow Diagram", path: "/architecture/token-flow", icon: "🔗" },
 			],
 		},
 		{
