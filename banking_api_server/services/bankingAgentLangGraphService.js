@@ -18,11 +18,17 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null) {
   const params = parsed?.banking?.params || {};
   if (!action) return null;
 
+  const sessionRole = req?.session?.user?.role;
+  const isAdmin = sessionRole === 'admin';
+
   try {
     if (action === 'accounts') {
-      const accounts = await dataStore.getAccountsByUserId(userId);
+      // Admin: return all accounts system-wide; user: own accounts only
+      const accounts = isAdmin
+        ? (dataStore.getAllAccounts ? dataStore.getAllAccounts() : await dataStore.getAccountsByUserId(userId))
+        : await dataStore.getAccountsByUserId(userId);
       if (!accounts || accounts.length === 0) {
-        return { reply: 'You don\'t have any accounts yet.', success: true, toolsCalled: ['get_my_accounts'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        return { reply: isAdmin ? 'No customer accounts found in the system.' : 'You don\'t have any accounts yet.', success: true, toolsCalled: ['get_my_accounts'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
       // Normalize to snake_case keeping all detail fields so AccountsTable renders full info
       const normalizedAccounts = accounts.map(a => ({
@@ -52,7 +58,7 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null) {
         if (a.status) parts.push(`  Status: ${a.status}`);
         return parts.join('\n');
       });
-      return { reply: `Here are your accounts:\n\n${lines.join('\n\n')}`, success: true, toolsCalled: ['get_my_accounts'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [], accounts: normalizedAccounts };
+      return { reply: `${isAdmin ? 'Here are all customer accounts' : 'Here are your accounts'}:\n\n${lines.join('\n\n')}`, success: true, toolsCalled: ['get_my_accounts'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [], accounts: normalizedAccounts };
     }
 
     if (action === 'balance') {
@@ -314,8 +320,8 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 
     // Return a graceful error response instead of throwing
     let userMessage = 'The banking agent encountered an error. Please try again.';
-    if (error.message.includes('model') && error.message.includes('not_found')) {
-      userMessage = 'The AI model is not available. Please contact support or try again later.';
+    if (error.message.includes('model') && (error.message.includes('not found') || error.message.includes('not_found'))) {
+      userMessage = 'No AI model is configured (Ollama not running). Your request could not be understood — try rephrasing with keywords like "show accounts", "my balance", or "transfer".';
     } else if (error.message.includes('API key') || error.message.includes('401')) {
       userMessage = 'Authentication error. Please log out and log in again.';
     } else if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT') || error.name === 'AbortError') {
