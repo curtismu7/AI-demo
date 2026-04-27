@@ -150,7 +150,7 @@ export class BankingToolProvider {
               sub: 'user',  // Placeholder - actual user ID would come from token claims
               scope: userToken.scope?.split(' ') || [],
               issuedAt: new Date(userToken.issuedAt).toISOString(),
-              expiresAt: new Date(userToken.issuedAt.getTime() + userToken.expiresIn * 1000).toISOString(),
+              expiresAt: new Date(new Date(userToken.issuedAt).getTime() + (userToken.expiresIn || 3600) * 1000).toISOString(),
               tokenId: 'user'
             }
           : {
