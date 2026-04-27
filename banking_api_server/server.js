@@ -128,6 +128,7 @@ const apiCallTrackerRoutes = require('./routes/apiCallTracker');
 const resourceServerRoutes = require('./routes/resourceServer');
 const resourceServerCCRoutes = require('./routes/resourceServerCC');
 const { initializeDiscovery } = require('./services/oauthEndpointResolver');
+const { registerCallbacks } = require('./services/callbackDispatcher');
 
 // Import middleware
 const {
@@ -641,6 +642,7 @@ app.get('/api/auth/oauth/redirect-info', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/oauth', oauthRoutes);
 app.use('/api/auth/oauth/user', oauthUserRoutes);
+registerCallbacks(app, oauthRoutes, oauthUserRoutes, authLimiter);
 app.use('/api/auth/ciba', cibaRoutes);
 app.use('/api/auth/mfa', mfaRoutes);
 app.use('/api/mfa/test', mfaTestRoutes);

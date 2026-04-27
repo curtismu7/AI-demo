@@ -185,6 +185,8 @@ const FIELD_DEFS = {
   oauth_issuer:                  { public: true,  default: '' },
   oauth_discovery_endpoint:      { public: true,  default: '' },
   oauth_discovery_enabled:       { public: true,  default: 'false' },
+  oauth_admin_callback_path:     { public: true,  default: '/api/auth/oauth/callback' },
+  oauth_user_callback_path:      { public: true,  default: '/api/auth/oauth/user/callback' },
 };
 
 // ---------------------------------------------------------------------------
@@ -483,6 +485,8 @@ class ConfigStore {
       oauth_issuer:                  ['OAUTH_ISSUER'],
       oauth_discovery_endpoint:      ['OAUTH_DISCOVERY_ENDPOINT'],
       oauth_discovery_enabled:       ['OAUTH_DISCOVERY_ENABLED'],
+      oauth_admin_callback_path:     ['OAUTH_ADMIN_CALLBACK_PATH'],
+      oauth_user_callback_path:      ['OAUTH_USER_CALLBACK_PATH'],
     };
 
     const envVars = envFallbackMap[key] || [];
