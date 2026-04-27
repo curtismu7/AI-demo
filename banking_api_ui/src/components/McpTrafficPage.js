@@ -204,6 +204,106 @@ function DetailPanel({ entry, onClose }) {
   );
 }
 
+function ToolCard({ tool }) {
+  const [open, setOpen] = useState(false);
+  const params = tool.inputSchema?.properties || {};
+  const required = tool.inputSchema?.required || [];
+  return (
+    <div style={{
+      border: '1px solid var(--border-light,#e2e8f0)', borderRadius: '8px',
+      backgroundColor: 'var(--surface-1,#fff)', overflow: 'hidden',
+    }}>
+      <button type="button" onClick={() => setOpen(o => !o)} style={{
+        display: 'flex', alignItems: 'flex-start', gap: '10px', width: '100%',
+        padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+      }}>
+        <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '3px' }}>{open ? '▾' : '▸'}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.88rem', color: '#1d4ed8' }}>{tool.name}</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary,#475569)', marginTop: '2px', lineHeight: 1.4 }}>{tool.description || '—'}</div>
+        </div>
+        <span style={{
+          padding: '2px 7px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600,
+          backgroundColor: '#dbeafe', color: '#1d4ed8', whiteSpace: 'nowrap', flexShrink: 0,
+        }}>MCP TOOL</span>
+      </button>
+      {open && Object.keys(params).length > 0 && (
+        <div style={{ padding: '0 14px 12px', borderTop: '1px solid var(--border-light,#e2e8f0)' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '6px', marginTop: '8px' }}>Parameters</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+            <tbody>
+              {Object.entries(params).map(([name, schema]) => (
+                <tr key={name} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '4px 6px', fontFamily: 'monospace', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                    {name}{required.includes(name) && <span style={{ color: '#ef4444', marginLeft: '2px' }}>*</span>}
+                  </td>
+                  <td style={{ padding: '4px 6px', color: '#7c3aed', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{schema.type || 'any'}</td>
+                  <td style={{ padding: '4px 6px', color: '#64748b' }}>{schema.description || ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function McpToolsPanel() {
+  const [tools, setTools] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState(null);
+  const [source, setSource] = useState(null);
+
+  const load = async () => {
+    setLoading(true); setErr(null);
+    try {
+      const res = await fetch('/api/mcp/inspector/tools', { credentials: 'include' });
+      const data = await res.json();
+      setTools(data.tools || []);
+      setSource(data._source || null);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: '0 24px 20px', borderBottom: '2px solid var(--border-light,#e2e8f0)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+        <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary,#1e293b)' }}>
+          🛠 MCP Tools
+        </h2>
+        {tools !== null && (
+          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+            {tools.length} tool{tools.length !== 1 ? 's' : ''}{source ? ` · ${source}` : ''}
+          </span>
+        )}
+        <button type="button" onClick={load} disabled={loading} style={{
+          padding: '5px 14px', borderRadius: '6px', border: '1px solid var(--border-light,#e2e8f0)',
+          backgroundColor: tools === null ? '#3b82f6' : 'var(--surface-1,#fff)',
+          color: tools === null ? '#fff' : 'var(--text-secondary,#475569)',
+          cursor: loading ? 'wait' : 'pointer', fontWeight: 600, fontSize: '0.83rem',
+        }}>
+          {loading ? '⏳ Loading…' : tools === null ? 'Show Tools' : '↻ Refresh'}
+        </button>
+      </div>
+      {err && (
+        <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#fee2e2', color: '#991b1b', fontSize: '0.83rem' }}>⚠️ {err}</div>
+      )}
+      {tools !== null && tools.length === 0 && !err && (
+        <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>No tools returned.</div>
+      )}
+      {tools && tools.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '8px' }}>
+          {tools.map(t => <ToolCard key={t.name} tool={t} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function McpTrafficPage() {
   const [entries, setEntries] = useState([]);
   const [live, setLive] = useState(true);
@@ -296,6 +396,8 @@ export default function McpTrafficPage() {
           </div>
         ) : null}
       </div>
+
+      <McpToolsPanel />
 
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', borderTop: '1px solid var(--border-light,#e2e8f0)' }}>
         {viewMode === 'pairs' ? (

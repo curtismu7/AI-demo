@@ -26,6 +26,7 @@ import AdminSideNav from "./components/AdminSideNav";
 import AdminTokenComplianceAudit from "./components/AdminTokenComplianceAudit";
 import AgentFlowDiagramPanel from "./components/AgentFlowDiagramPanel";
 import { AgenticTrustEducation } from "./components/AgenticTrustEducation";
+import ApiExplorerPanel from "./components/ApiExplorerPanel";
 import ApiTrafficPage from "./components/ApiTrafficPage";
 import AuditPage from "./components/AuditPage";
 import BankingAdminOps from "./components/BankingAdminOps";
@@ -77,6 +78,8 @@ import SetupPage from "./components/SetupPage";
 import SetupWizard from "./components/SetupWizard";
 import SideAgentDock from "./components/SideAgentDock";
 import SpinnerHost from "./components/shared/SpinnerHost";
+import TokenChainDisplay from "./components/TokenChainDisplay";
+import TokenDiffPanel from "./components/TokenDiffPanel";
 import TopNav from "./components/TopNav";
 import TransactionConsentPage from "./components/TransactionConsentPage";
 import Transactions from "./components/Transactions";
@@ -603,6 +606,7 @@ function AppWithAuth() {
 		"/pingone-test",
 		"/mfa-test",
 		"/authz-test",
+		"/monitoring",
 	];
 	const isOnSidebarRoute =
 		sidebarRoutePatterns.some((pattern) => pathname.startsWith(pattern)) ||
@@ -1134,6 +1138,50 @@ function AppWithAuth() {
 																	floatingByDefault={false}
 																	showToggle={true}
 																/>
+															) : (
+																<Navigate to="/" replace />
+															)
+														}
+													/>
+													<Route
+														path="/monitoring/token-chain"
+														element={
+															user ? (
+																<TokenChainDisplay />
+															) : (
+																<Navigate to="/" replace />
+															)
+														}
+													/>
+													<Route
+														path="/monitoring/token-diff"
+														element={
+															user ? (
+																<TokenDiffPanel />
+															) : (
+																<Navigate to="/" replace />
+															)
+														}
+													/>
+													<Route
+														path="/monitoring/flow-inspector"
+														element={
+															user ? (
+																<UnifiedTokenFlowInspector floatingByDefault={false} showToggle={false} />
+															) : (
+																<Navigate to="/" replace />
+															)
+														}
+													/>
+													<Route
+														path="/monitoring/mcp-traffic"
+														element={<McpTrafficPage />}
+													/>
+													<Route
+														path="/monitoring/api-explorer"
+														element={
+															user ? (
+																<ApiExplorerPanel />
 															) : (
 																<Navigate to="/" replace />
 															)

@@ -110,6 +110,11 @@ export default function AdminSideNav({ user }) {
 				{ label: "API Traffic", path: "/api-traffic", icon: "📡" },
 				{ label: "MCP Traffic", path: "/mcp-traffic", icon: "🔌" },
 				{ label: "Dev Tools", path: "/dev-tools", icon: "🛠" },
+				{ label: "Token Chain", path: "/monitoring/token-chain", icon: "🔗" },
+				{ label: "Token Diff", path: "/monitoring/token-diff", icon: "📊" },
+				{ label: "Flow Inspector", path: "/monitoring/flow-inspector", icon: "🔬" },
+				{ label: "MCP Traffic", path: "/monitoring/mcp-traffic", icon: "🔌" },
+				{ label: "API Explorer", path: "/monitoring/api-explorer", icon: "📡" },
 			],
 		},
 		{
