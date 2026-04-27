@@ -1528,6 +1528,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 								testLabel="Get Token"
 					pingoneRequest={agentPingoneReq}
 					pingoneResponse={agentPingoneRes}
+					docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
 							/>
 							<DecodedTokenPanel
 								decoded={agentDecoded}
@@ -1871,6 +1872,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 											config={TEST_CONFIG.exchange2}
 										pingoneRequest={exchange2PingoneReq}
 										pingoneResponse={exchange2PingoneRes}
+										docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
 										/>
 										{(exchange2SubjectDecoded || exchange2ActorDecoded) && (
 											<>
@@ -1929,6 +1931,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 								}}
 							pingoneRequest={exchange186PingoneReq}
 							pingoneResponse={exchange186PingoneRes}
+							docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
 							/>
 							{!ffIdTokenExchange && (
 								<div
@@ -2004,6 +2007,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 								}}
 							pingoneRequest={exchange401PingoneReq}
 							pingoneResponse={exchange401PingoneRes}
+							docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
 							/>
 							{exchange401Steps.length > 0 && (
 								<ul
@@ -2241,6 +2245,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 							updateResult={testResults["update-apps"]}
 						pingoneRequest={testResults.apps?.result?.pingoneRequest}
 						pingoneResponse={testResults.apps?.result?.pingoneResponse}
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#get-read-all-applications"
 						/>
 						<TestCard
 							title="Resource Servers"
@@ -2257,6 +2262,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 							updateResult={testResults["update-resources"]}
 						pingoneRequest={testResults.resources?.result?.pingoneRequest}
 						pingoneResponse={testResults.resources?.result?.pingoneResponse}
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#get-read-all-resources"
 						/>
 						<TestCard
 							title="Scopes"
@@ -2273,6 +2279,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 							updateResult={testResults["update-scopes"]}
 						pingoneRequest={testResults.scopes?.result?.pingoneRequest}
 						pingoneResponse={testResults.scopes?.result?.pingoneResponse}
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#get-read-all-resource-scopes"
 						/>
 						<TestCard
 							title="Users"
@@ -2286,6 +2293,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 							onFix={() => fixIssue("users")}
 						pingoneRequest={testResults.users?.result?.pingoneRequest}
 						pingoneResponse={testResults.users?.result?.pingoneResponse}
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#get-read-all-users"
 						/>
 						<TestCard
 							title="AI Agent Apps"
@@ -2519,6 +2527,7 @@ const TestCard = ({
 	failMsg,
 	pingoneRequest,
 	pingoneResponse,
+	docsUrl,
 }) => {
 	const [testing, setTesting] = React.useState(false);
 	const [updating, setUpdating] = React.useState(false);
@@ -2716,7 +2725,7 @@ const TestCard = ({
 					</button>
 				)}
 			</div>
-			<PingOneApiPanel request={pingoneRequest} response={pingoneResponse} />
+			<PingOneApiPanel request={pingoneRequest} response={pingoneResponse} docsUrl={docsUrl} />
 		</div>
 	);
 };

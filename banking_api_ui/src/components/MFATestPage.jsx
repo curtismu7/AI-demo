@@ -1111,6 +1111,7 @@ export default function MFATestPage() {
 						rawResult={rawEnrollSmsInit}
 						pingoneRequest={enrollSmsInitPingoneReq}
 						pingoneResponse={enrollSmsInitPingoneRes}
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-create-device-sms"
 					/>
 					{enrollSmsDeviceId && !enrollSmsAlreadyActive && (
 						<div className="otp-verify-section" style={{ marginTop: "0.5rem" }}>
@@ -1143,6 +1144,7 @@ export default function MFATestPage() {
 								rawResult={rawEnrollSmsComplete}
 								pingoneRequest={enrollSmsCompletePingoneReq}
 								pingoneResponse={enrollSmsCompletePingoneRes}
+								docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-activate-device"
 							/>
 						</div>
 					)}
@@ -1179,6 +1181,7 @@ export default function MFATestPage() {
 						rawResult={rawEnrollEmail}
 						pingoneRequest={enrollEmailPingoneReq}
 						pingoneResponse={enrollEmailPingoneRes}
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-create-device-email"
 					/>
 
 					{/* ── FIDO2 Enrollment ── */}
@@ -1191,6 +1194,7 @@ export default function MFATestPage() {
 						rawResult={rawFidoEnrollInit}
 						pingoneRequest={fidoEnrollInitPingoneReq}
 						pingoneResponse={fidoEnrollInitPingoneRes}
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-create-device-fido2"
 					/>
 					{fidoEnrollData?.publicKeyCredentialCreationOptions && (() => {
 						const raw = fidoEnrollData.publicKeyCredentialCreationOptions;
@@ -1239,6 +1243,7 @@ export default function MFATestPage() {
 							rawResult={rawFidoEnrollComplete}
 							pingoneRequest={fidoEnrollCompletePingoneReq}
 							pingoneResponse={fidoEnrollCompletePingoneRes}
+							docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-activate-device"
 						/>
 					)}
 				</section>
@@ -1276,6 +1281,7 @@ export default function MFATestPage() {
 						rawResult={rawSmsInitiate}
 						pingoneRequest={smsInitiatePingoneReq}
 						pingoneResponse={smsInitiatePingoneRes}
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-send-otp-sms-email"
 					/>
 					{smsDaId && (
 						<div className="otp-verify-section">
@@ -1323,6 +1329,7 @@ export default function MFATestPage() {
 								rawResult={rawSmsVerify}
 								pingoneRequest={smsVerifyPingoneReq}
 								pingoneResponse={smsVerifyPingoneRes}
+								docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-check-otp"
 							/>
 						</div>
 					)}
@@ -1360,6 +1367,7 @@ export default function MFATestPage() {
 						rawResult={rawEmailInitiate}
 						pingoneRequest={emailInitiatePingoneReq}
 						pingoneResponse={emailInitiatePingoneRes}
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-send-otp-sms-email"
 					/>
 					{emailDaId && (
 						<div className="otp-verify-section">
@@ -1408,6 +1416,7 @@ export default function MFATestPage() {
 								rawResult={rawEmailVerify}
 								pingoneRequest={emailVerifyPingoneReq}
 								pingoneResponse={emailVerifyPingoneRes}
+								docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-check-otp"
 							/>
 						</div>
 					)}
@@ -1453,6 +1462,7 @@ export default function MFATestPage() {
 						rawResult={rawFidoInitiate}
 						pingoneRequest={fidoInitiatePingoneReq}
 						pingoneResponse={fidoInitiatePingoneRes}
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-authenticate-with-fido2"
 					/>
 					{fidoDaId && (
 						<div className="fido-verify-section">
@@ -1472,6 +1482,7 @@ export default function MFATestPage() {
 										rawResult={rawFidoVerify}
 										pingoneRequest={fidoVerifyPingoneReq}
 										pingoneResponse={fidoVerifyPingoneRes}
+										docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-authenticate-with-fido2"
 									/>
 								</>
 							) : noFidoDeviceDetected ? (
@@ -1650,7 +1661,7 @@ function DaResponseCard({ daId, method }) {
 	);
 }
 
-function TestCard({ title, status, error, onTest, rawResult, pingoneRequest, pingoneResponse }) {
+function TestCard({ title, status, error, onTest, rawResult, pingoneRequest, pingoneResponse, docsUrl }) {
 	const [rawOpen, setRawOpen] = useState(false);
 	return (
 		<div className={`test-card test-card--${status}`}>
@@ -1674,7 +1685,7 @@ function TestCard({ title, status, error, onTest, rawResult, pingoneRequest, pin
 					{status === "running" ? "Running..." : "Test"}
 				</button>
 			)}
-				<PingOneApiPanel request={pingoneRequest} response={pingoneResponse} />
+				<PingOneApiPanel request={pingoneRequest} response={pingoneResponse} docsUrl={docsUrl} />
 			{!pingoneResponse && rawResult !== undefined && rawResult !== null && (
 				<div className="test-card-raw">
 					<button

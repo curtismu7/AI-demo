@@ -405,7 +405,7 @@ export default function AuthzTestPage() {
 						? ` · ${result.path}`
 						: ""}
 				</span>
-				<PingOneApiPanel request={result.pingoneRequest} response={result.engine === "pingone" ? (result.raw ?? displayData) : null} />
+				<PingOneApiPanel request={result.pingoneRequest} response={result.engine === "pingone" ? (result.raw ?? displayData) : null} docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-evaluate-decision" />
 				{result.engine !== "pingone" && <RawJson data={displayData} label={rawLabel} />}
 			</div>
 		);
@@ -834,7 +834,7 @@ export default function AuthzTestPage() {
 										</span>
 									</div>
 								</div>
-								<PingOneApiPanel request={customResult.pingoneRequest} response={customResult.engine === "pingone" ? customResult.raw : null} />
+								<PingOneApiPanel request={customResult.pingoneRequest} response={customResult.engine === "pingone" ? customResult.raw : null} docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-evaluate-decision" />
 							{customResult.engine !== "pingone" && <RawJson data={customResult.raw} label="Show full response" />}
 							</>
 						)}

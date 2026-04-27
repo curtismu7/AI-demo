@@ -10,6 +10,21 @@ const mfaService = require('../services/mfaService');
 const oauthService = require('../services/oauthService');
 const apiCallTrackerService = require('../services/apiCallTrackerService');
 
+/**
+ * Normalize a PingOne debug request object for UI trace display.
+ * Ensures method, url, body keys are always present when a call was made.
+ */
+function normalizePingoneRequest(debugReq) {
+  if (!debugReq || typeof debugReq !== 'object') { return undefined; }
+  const out = {
+    method: debugReq.method || '',
+    url: debugReq.url || '',
+    body: debugReq.body !== undefined ? debugReq.body : null,
+  };
+  if (debugReq.contentType) { out.contentType = debugReq.contentType; }
+  return out;
+}
+
 /** Track a completed API call for the mfa-test session display */
 function trackMfaApiCall(req, res, startTime, responseData, description) {
   try {
@@ -289,7 +304,7 @@ router.post('/integration/initiate', async (req, res) => {
       method,
     };
     if (result._debug) {
-      resBody.pingoneRequest = result._debug.request;
+      resBody.pingoneRequest = normalizePingoneRequest(result._debug && result._debug.request);
       resBody.pingoneResponse = result._debug.response;
     }
 
@@ -336,7 +351,7 @@ router.post('/integration/initiate', async (req, res) => {
     }
     const errBody = { success: false, error: err.message, pingError: err.pingError };
     if (err._debug) {
-      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneRequest = normalizePingoneRequest(err._debug && err._debug.request);
       errBody.pingoneResponse = err._debug.response;
     }
     res.status(err.status || 500).json(errBody);
@@ -365,7 +380,7 @@ router.post('/integration/verify-otp', async (req, res) => {
       completed: result.status === 'COMPLETED',
     };
     if (result._debug) {
-      resBody.pingoneRequest = result._debug.request;
+      resBody.pingoneRequest = normalizePingoneRequest(result._debug && result._debug.request);
       resBody.pingoneResponse = result._debug.response;
     }
     res.json(resBody);
@@ -374,7 +389,7 @@ router.post('/integration/verify-otp', async (req, res) => {
     console.error('[MFA Test Integration] POST /verify-otp failed:', err.message);
     const errBody = { success: false, error: err.message, pingError: err.pingError };
     if (err._debug) {
-      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneRequest = normalizePingoneRequest(err._debug && err._debug.request);
       errBody.pingoneResponse = err._debug.response;
     }
     res.status(err.status || 500).json(errBody);
@@ -402,7 +417,7 @@ router.post('/integration/verify-fido2', async (req, res) => {
       completed: result.status === 'COMPLETED',
     };
     if (result._debug) {
-      resBody.pingoneRequest = result._debug.request;
+      resBody.pingoneRequest = normalizePingoneRequest(result._debug && result._debug.request);
       resBody.pingoneResponse = result._debug.response;
     }
     res.json(resBody);
@@ -410,7 +425,7 @@ router.post('/integration/verify-fido2', async (req, res) => {
     console.error('[MFA Test Integration] POST /verify-fido2 failed:', err.message);
     const errBody = { success: false, error: err.message, pingError: err.pingError };
     if (err._debug) {
-      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneRequest = normalizePingoneRequest(err._debug && err._debug.request);
       errBody.pingoneResponse = err._debug.response;
     }
     res.status(err.status || 500).json(errBody);
@@ -463,7 +478,7 @@ router.post('/integration/enroll-sms-init', async (req, res) => {
     const device = await mfaService.enrollSmsDevice(userId, phone, accessToken);
     const resBody = { success: true, deviceId: device.id, type: device.type, phone: device.phone, status: device.status };
     if (device._debug) {
-      resBody.pingoneRequest = device._debug.request;
+      resBody.pingoneRequest = normalizePingoneRequest(device._debug && device._debug.request);
       resBody.pingoneResponse = device._debug.response;
     }
     res.json(resBody);
@@ -472,7 +487,7 @@ router.post('/integration/enroll-sms-init', async (req, res) => {
     console.error('[MFA Test Integration] POST /enroll-sms-init failed:', err.message);
     const errBody = { success: false, error: err.message, pingError: err.pingError };
     if (err._debug) {
-      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneRequest = normalizePingoneRequest(err._debug && err._debug.request);
       errBody.pingoneResponse = err._debug.response;
     }
     res.status(err.status || 500).json(errBody);
@@ -495,7 +510,7 @@ router.post('/integration/enroll-sms-complete', async (req, res) => {
     const result = await mfaService.completeSmsEnrollment(userId, deviceId, otp);
     const resBody = { success: true, deviceId: result.id, status: result.status };
     if (result._debug) {
-      resBody.pingoneRequest = result._debug.request;
+      resBody.pingoneRequest = normalizePingoneRequest(result._debug && result._debug.request);
       resBody.pingoneResponse = result._debug.response;
     }
     res.json(resBody);
@@ -504,7 +519,7 @@ router.post('/integration/enroll-sms-complete', async (req, res) => {
     console.error('[MFA Test Integration] POST /enroll-sms-complete failed:', err.message);
     const errBody = { success: false, error: err.message, pingError: err.pingError };
     if (err._debug) {
-      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneRequest = normalizePingoneRequest(err._debug && err._debug.request);
       errBody.pingoneResponse = err._debug.response;
     }
     res.status(err.status || 500).json(errBody);
@@ -532,7 +547,7 @@ router.post('/integration/enroll-email', async (req, res) => {
       email: device.email
     };
     if (device._debug) {
-      resBody.pingoneRequest = device._debug.request;
+      resBody.pingoneRequest = normalizePingoneRequest(device._debug && device._debug.request);
       resBody.pingoneResponse = device._debug.response;
     }
     res.json(resBody);
@@ -541,7 +556,7 @@ router.post('/integration/enroll-email', async (req, res) => {
     console.error('[MFA Test Integration] POST /enroll-email failed:', err.message);
     const errBody = { success: false, error: err.message, pingError: err.pingError };
     if (err._debug) {
-      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneRequest = normalizePingoneRequest(err._debug && err._debug.request);
       errBody.pingoneResponse = err._debug.response;
     }
     res.status(err.status || 500).json(errBody);
@@ -570,7 +585,7 @@ router.post('/integration/enroll-fido2-init', async (req, res) => {
 
     const resBody = { success: true, deviceId: result.deviceId, publicKeyCredentialCreationOptions: result.publicKeyCredentialCreationOptions };
     if (result._debug) {
-      resBody.pingoneRequest = result._debug.request;
+      resBody.pingoneRequest = normalizePingoneRequest(result._debug && result._debug.request);
       resBody.pingoneResponse = result._debug.response;
     }
     res.json(resBody);
@@ -600,7 +615,7 @@ router.post('/integration/enroll-fido2-complete', async (req, res) => {
       status: result.status,
     };
     if (result._debug) {
-      completeResBody.pingoneRequest = result._debug.request;
+      completeResBody.pingoneRequest = normalizePingoneRequest(result._debug && result._debug.request);
       completeResBody.pingoneResponse = result._debug.response;
     }
     res.json(completeResBody);
@@ -608,7 +623,7 @@ router.post('/integration/enroll-fido2-complete', async (req, res) => {
     console.error('[MFA Test Integration] POST /enroll-fido2-complete failed:', err.message);
     const errBody = { success: false, error: err.message, pingError: err.pingError };
     if (err._debug) {
-      errBody.pingoneRequest = err._debug.request;
+      errBody.pingoneRequest = normalizePingoneRequest(err._debug && err._debug.request);
       errBody.pingoneResponse = err._debug.response;
     }
     res.status(err.status || 500).json(errBody);
