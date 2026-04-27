@@ -58,6 +58,7 @@ const stubConfig: GatewayConfig = {
   pingAuthorizeEndpoint: 'https://pingauthorize.example.com',
   pingAuthorizeWorkerId: 'worker-01',
   hitlServiceUrl: '',
+  devBypass: false,
 };
 
 const stubConfigNoAuthz: GatewayConfig = {

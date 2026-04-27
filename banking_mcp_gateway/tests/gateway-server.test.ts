@@ -36,6 +36,7 @@ const stubConfig: GatewayConfig = {
   pingAuthorizeEndpoint: '',
   pingAuthorizeWorkerId: '',
   hitlServiceUrl: '',
+  devBypass: false,
 };
 
 // ---------------------------------------------------------------------------

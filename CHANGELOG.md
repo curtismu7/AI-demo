@@ -17,6 +17,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Fixed
+- **MCP Gateway auth tests** — added missing `devBypass: false` to `GatewayConfig` stubs in `gateway-auth.test.ts` and `gateway-server.test.ts` so all 35 tests pass after `devBypass` was added to `GatewayConfig` in a later fix.
 - **Monitoring pages — agent FAB visible on all monitoring routes** — `isEmbeddedAgentDockRoute` now returns true for all `isMonitoringRoute` paths so the floating agent icon appears on Token Chain, Token Diff, Flow Inspector, MCP Traffic, API Explorer, API Traffic, and Dev Tools pages for both admin and customer users.
 
 ### Added
