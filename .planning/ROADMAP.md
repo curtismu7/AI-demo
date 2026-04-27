@@ -1810,6 +1810,27 @@ Plans:
 - [ ] 240-02-PLAN.md — Shared UI panel + per-section wiring for endpoint/request/response/docs link
 - [ ] 240-03-PLAN.md — Backend payload normalization and regression tests for trace fields
 
+### Phase 241: Monitoring pages — promote tracking panels to sidebar pages under Monitoring nav group
+
+**Goal:** Add 5 standalone monitoring pages accessible from admin sidebar under the existing Monitoring nav group — Token Chain, Token Diff, Flow Inspector, MCP Traffic, API Explorer.
+**Requirements**: MONITORING-PAGES-01, MONITORING-PAGES-02, MONITORING-PAGES-03, MONITORING-PAGES-04
+**Depends on:** Phase 240
+**Plans:** 2 plans
+
+Plans:
+- [ ] 241-01-PLAN.md — Route registration + sidebar nav entries for all 5 monitoring pages
+- [ ] 241-02-PLAN.md — Build verification + human sign-off on sidebar navigation
+
+### Phase 242: PingOne API transparency — all test pages show actual API endpoint, request JSON, response JSON, and link to PingOne docs
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 241
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 242 to break down)
+
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
