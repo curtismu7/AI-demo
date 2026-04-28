@@ -1886,13 +1886,15 @@ Plans:
 
 ### Phase 247: PingOne MCP Server integration — feature-flagged option to use pingidentity/pingone-mcp-server (stdio binary) alongside existing custom MCP gateway, with adapter layer, admin UI toggle, and status chip reflecting active mode
 
-**Goal:** [To be planned]
+**Goal:** Feature-flagged BFF adapter layer to route MCP tool calls to pingidentity/pingone-mcp-server (stdio binary) as an alternative to the custom MCP gateway; admin UI toggle and status chip reflecting active mode
 **Requirements**: TBD
 **Depends on:** Phase 246
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 247 to break down)
+- [ ] 247-01-PLAN.md — Feature flag registration + mcpMode field in BFF config route
+- [ ] 247-02-PLAN.md — PingOne stdio adapter service + server.js routing branch
+- [ ] 247-03-PLAN.md — React McpModeChip component + CSS + build verification
 
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
