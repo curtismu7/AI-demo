@@ -17,6 +17,20 @@ try {
   /* ignore */
 }
 
+// Redirect localhost → canonical host (api.pingdemo.com) so CORS + cookies work correctly
+if (
+  typeof window !== 'undefined' &&
+  window.location.hostname === 'localhost' &&
+  process.env.REACT_APP_CLIENT_URL
+) {
+  const canonical = new URL(process.env.REACT_APP_CLIENT_URL);
+  if (canonical.hostname !== 'localhost') {
+    window.location.replace(
+      canonical.origin + window.location.pathname + window.location.search + window.location.hash
+    );
+  }
+}
+
 // Patch window.fetch before React renders so every /api/* call is captured
 patchFetch();
 

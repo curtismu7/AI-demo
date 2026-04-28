@@ -1,0 +1,110 @@
+'use strict';
+
+/**
+ * banking-agent-service — entry point
+ *
+ * REST API surface:
+ *   POST /api/agent/task   — run an agent task (requires Bearer user-access-token)
+ *   GET  /health           — liveness probe
+ *
+ * Token flow:
+ *   OLB App sends user's access token in Authorization header.
+ *   Agent exchanges it (subject=user, actor=agent CC) for a GW-scoped token.
+ *   Agent opens WS to MCP Gateway with GW-scoped token.
+ *   Agent runs LLM + tool loop, returns final answer.
+ *
+ * Start: AGENT_CLIENT_ID=... AGENT_CLIENT_SECRET=... node dist/index.js
+ */
+
+import dotenv from 'dotenv';
+dotenv.config();
+
+import express, { Request, Response, NextFunction } from 'express';
+import { loadConfig } from './config';
+import { resolveGatewayToken } from './tokenResolver';
+import { McpGatewayClient } from './mcpGatewayClient';
+import { runAgentTask } from './agentOrchestrator';
+
+let config;
+try {
+  config = loadConfig();
+} catch (err) {
+  console.error('[Agent] Configuration error:', err instanceof Error ? err.message : err);
+  process.exit(1);
+}
+
+const app = express();
+app.use(express.json());
+
+// ---------------------------------------------------------------------------
+// Auth middleware — extract user Bearer token
+// ---------------------------------------------------------------------------
+
+function requireBearerToken(req: Request, res: Response, next: NextFunction): void {
+  const auth = req.headers.authorization || '';
+  const parts = auth.split(' ');
+  if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
+    res.status(401).json({ error: 'Bearer token required' });
+    return;
+  }
+  (req as any).userToken = parts[1];
+  next();
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/agent/task
+// ---------------------------------------------------------------------------
+
+app.post('/api/agent/task', requireBearerToken, async (req: Request, res: Response) => {
+  const { userMessage, useCase } = req.body || {};
+  if (!userMessage || typeof userMessage !== 'string') {
+    res.status(400).json({ error: 'userMessage required' });
+    return;
+  }
+
+  const userToken: string = (req as any).userToken;
+  let gwToken: string;
+  try {
+    gwToken = await resolveGatewayToken(userToken, config!);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[Agent] Token exchange failed:', msg);
+    res.status(502).json({ error: 'token_exchange_failed', detail: msg });
+    return;
+  }
+
+  const mcpClient = new McpGatewayClient(config!.mcpGatewayWsUrl, gwToken);
+  try {
+    await mcpClient.connect();
+    const result = await runAgentTask({ userMessage, useCase }, mcpClient, config!);
+    res.json({ answer: result.answer, toolCallCount: result.toolCallCount, toolsUsed: result.toolsUsed });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[Agent] Task error:', msg);
+    res.status(500).json({ error: 'agent_task_failed', detail: msg });
+  } finally {
+    mcpClient.close();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /health
+// ---------------------------------------------------------------------------
+
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', service: 'banking-agent-service', ts: new Date().toISOString() });
+});
+
+// ---------------------------------------------------------------------------
+// Start
+// ---------------------------------------------------------------------------
+
+app.listen(config.port, config.host, () => {
+  console.log(`[Agent] banking-agent-service running on ${config!.host}:${config!.port}`);
+  console.log(`[Agent] LLM provider: ${config!.llmProvider} / model: ${config!.llmModel}`);
+  console.log(`[Agent] MCP Gateway: ${config!.mcpGatewayWsUrl}`);
+  console.log(`[Agent] PKI creds: ${config!.usePkiCreds ? 'enabled' : 'disabled (client_secret)'}`);
+});
+
+process.on('SIGINT', () => process.exit(0));
+process.on('SIGTERM', () => process.exit(0));

@@ -13,10 +13,8 @@ import { createPortal } from 'react-dom';
 import { useDraggablePanel } from '../hooks/useDraggablePanel';
 import { agentFlowDiagram } from '../services/agentFlowDiagramService';
 import { useExchangeMode } from '../context/ExchangeModeContext';
-import { useEducationUIOptional } from '../context/EducationUIContext';
 import { useTokenChainOptional } from '../context/TokenChainContext';
 import TokenExchangeFlowDiagram from './TokenExchangeFlowDiagram';
-import OidcFlowTimeline from './OidcFlowTimeline';
 import './UnifiedTokenFlowInspector.css';
 
 // ============================================================================
@@ -124,6 +122,7 @@ function AgentFlowSection({ compact = false, onSelectToken, selectedTokenId: sel
   const [showFlowDiagram, setShowFlowDiagram] = useState(false);
   const { mode } = useExchangeMode();
   const tokenChainCtx = useTokenChainOptional();
+  // eslint-disable-next-line no-unused-vars
   const resolvedIdentity = tokenChainCtx?.resolvedIdentity ?? null;
 
   const loadTokenChain = useCallback(async () => {

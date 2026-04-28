@@ -1,3 +1,10 @@
+/* eslint-disable testing-library/no-unnecessary-act */
+/* eslint-disable testing-library/no-node-access */
+/* eslint-disable testing-library/no-render-in-setup */
+/* eslint-disable testing-library/prefer-find-by */
+/* eslint-disable testing-library/no-wait-for-multiple-assertions */
+/* eslint-disable testing-library/no-wait-for-side-effects */
+/* eslint-disable testing-library/no-container */
 // banking_api_ui/src/components/__tests__/BankingAgent.chips.test.js
 /**
  * Tests for BankingAgent suggestion chips, action chips, and education chips

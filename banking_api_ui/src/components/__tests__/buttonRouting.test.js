@@ -1,3 +1,6 @@
+/* eslint-disable import/first */
+/* eslint-disable no-unused-vars */
+/* eslint-disable testing-library/no-node-access */
 // banking_api_ui/src/components/__tests__/buttonRouting.test.js
 /**
  * Routing tests for every navigation button and link across the app.

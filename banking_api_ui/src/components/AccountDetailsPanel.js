@@ -7,7 +7,8 @@ import './AccountDetailsPanel.css';
  * AccountDetailsPanel — draggable, resizable side panel displaying user profile and account details
  */
 function AccountDetailsPanel({ accountData, initialPos, onClose }) {
-  const { pos, size, handleDragStart, handleResizeStart, createResizeHandler } = useDraggablePanel(
+  // eslint-disable-next-line no-unused-vars
+  const { pos, size, handleDragStart, handleResizeStart: _handleResizeStart, createResizeHandler } = useDraggablePanel(
     initialPos,
     { w: 750, h: 800 },
     { minW: 400, minH: 320, storageKey: 'account-details-panel' }

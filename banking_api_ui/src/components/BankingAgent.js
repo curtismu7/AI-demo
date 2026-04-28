@@ -1736,7 +1736,7 @@ export default function BankingAgent({
 					]
 				: prev,
 		);
-	}, [user, embeddedFocus, brandShortName]);
+	}, [user, embeddedFocus, brandShortName, industryPreset.id]);
 
 	// Effective user: prefer prop (App.js state), fall back to self-detected session
 	const effectiveUser = user || sessionUser;
@@ -1938,7 +1938,7 @@ export default function BankingAgent({
 		};
 		window.addEventListener("userAuthenticated", onAuth);
 		return () => window.removeEventListener("userAuthenticated", onAuth);
-	}, [checkSelfAuth, user, isInline, embeddedFocus, brandShortName]);
+	}, [checkSelfAuth, user, isInline, embeddedFocus, brandShortName, industryPreset.id]);
 
 	// Auto-retry after CIBA step-up approval
 	useEffect(() => {

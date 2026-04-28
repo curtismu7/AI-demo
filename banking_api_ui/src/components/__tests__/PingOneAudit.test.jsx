@@ -1,3 +1,10 @@
+/* eslint-disable testing-library/no-unnecessary-act */
+/* eslint-disable testing-library/no-node-access */
+/* eslint-disable testing-library/no-render-in-setup */
+/* eslint-disable testing-library/prefer-find-by */
+/* eslint-disable testing-library/no-wait-for-multiple-assertions */
+/* eslint-disable testing-library/no-wait-for-side-effects */
+/* eslint-disable testing-library/no-container */
 /**
  * Tests for PingOneAudit React Component
  */

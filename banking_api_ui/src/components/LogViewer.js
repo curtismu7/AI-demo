@@ -201,7 +201,8 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
   }, [standalone, openState, onClose]);
 
   // Draggable + resizable panel position (defaults to bottom-left, matching prior CSS).
-  const { pos, size, handleDragStart, handleResizeStart, createResizeHandler } = useDraggablePanel(
+  // eslint-disable-next-line no-unused-vars
+  const { pos, size, handleDragStart, handleResizeStart: _handleResizeStart, createResizeHandler } = useDraggablePanel(
     () => ({
       x: Math.max(16, window.innerWidth - Math.min(1400, Math.round(window.innerWidth * 0.92)) - 16),
       y: Math.max(16, window.innerHeight - Math.round(window.innerHeight * 0.70) - 16),

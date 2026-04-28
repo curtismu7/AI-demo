@@ -365,7 +365,7 @@ At/above threshold (step-up):
     "content": [
       {
         "type": "text",
-        "text": "[{\"accountId\":\"chk-001\",\"balance\":4823.50,...}]"
+        "text": "[{"accountId":"chk-001","balance":4823.50,...}]"
       }
     ]
   }

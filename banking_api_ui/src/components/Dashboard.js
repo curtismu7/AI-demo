@@ -48,7 +48,7 @@ const Dashboard = ({ user, onLogout }) => {
 
   const isLocalApiHost =
     typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    false /* always use api.pingdemo.com */;
 
   const handleDownloadBootstrap = async () => {
     try {

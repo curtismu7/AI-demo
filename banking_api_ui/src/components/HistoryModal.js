@@ -123,7 +123,9 @@ export default function HistoryModal({ history, onClear }) {
   const [size,    setSize]    = useState({ w: 340, h: 460 });
   const [open,    setOpen]    = useState(true);
   const [visible, setVisible] = useState(true);
+  // eslint-disable-next-line no-unused-vars
   const dragRef   = useRef(null);
+  // eslint-disable-next-line no-unused-vars
   const resizeRef = useRef(null);
   const prevLenRef = useRef(0);
 

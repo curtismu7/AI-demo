@@ -1,3 +1,15 @@
+/* eslint-disable import/first */
+/* eslint-disable no-useless-constructor */
+/* eslint-disable testing-library/no-unnecessary-act */
+/* eslint-disable testing-library/prefer-find-by */
+/* eslint-disable testing-library/no-node-access */
+/* eslint-disable testing-library/no-unnecessary-act */
+/* eslint-disable testing-library/no-node-access */
+/* eslint-disable testing-library/no-render-in-setup */
+/* eslint-disable testing-library/prefer-find-by */
+/* eslint-disable testing-library/no-wait-for-multiple-assertions */
+/* eslint-disable testing-library/no-wait-for-side-effects */
+/* eslint-disable testing-library/no-container */
 // banking_api_ui/src/components/__tests__/DemoDataPage.test.js
 import React from "react";
 import "@testing-library/jest-dom";

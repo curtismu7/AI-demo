@@ -20,9 +20,11 @@ export default function ForensicAuditDashboard({ agentId }) {
   const [expandedEventId, setExpandedEventId] = useState(null);
 
   // Fetch audit trail on mount or when agentId changes
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     loadAuditTrail();
   }, [agentId]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const loadAuditTrail = async () => {
     setLoading(true);

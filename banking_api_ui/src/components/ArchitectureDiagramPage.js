@@ -192,6 +192,8 @@ function TokenCard({ stepDetail, stepDetail2, stepDetailOut, isTokenExchange, is
 
 // ─── History panel ────────────────────────────────────────────────────────────
 
+// eslint-disable-next-line no-unused-vars
+// eslint-disable-next-line no-unused-vars
 function HistoryPanel({ history, onClear }) {
   const [open, setOpen] = useState(true);
   if (!history || history.length === 0) return null;

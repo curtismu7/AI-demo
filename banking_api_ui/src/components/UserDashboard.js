@@ -530,7 +530,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 	const stepUpVerifyHref = useMemo(
 		() =>
 			`/api/auth/oauth/user/stepup?return_to=${encodeURIComponent(
-				(process.env.REACT_APP_CLIENT_URL || "http://localhost:4000") +
+				(process.env.REACT_APP_CLIENT_URL || "https://api.pingdemo.com:4000") +
 					"/dashboard",
 			)}`,
 		[],

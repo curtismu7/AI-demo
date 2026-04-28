@@ -70,7 +70,7 @@ export default function McpInspectorSetupWizard({ appBaseUrl, mcpAgentUrl, stora
 
   const envSnippet = `# Paste into .env for local full stack (adjust names to match your repo).
 # Banking UI + API origin (same host as the React app in this demo)
-BANKING_API_BASE_URL=${baseUrl || 'http://localhost:3000'}
+BANKING_API_BASE_URL=${baseUrl || 'https://api.pingdemo.com:4000'}
 
 # MCP server WebSocket (banking_mcp_server — default listen)
 MCP_SERVER_URL=${mcpWsUrl}
@@ -150,7 +150,7 @@ npx ${INSPECTOR_NPM}@latest
                 className="form-input"
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="http://localhost:3000"
+                placeholder="https://api.pingdemo.com:4000"
               />
               <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>
                 Same origin as <code>GET /api/auth/oauth/*</code> — used for the built-in inspector link below.

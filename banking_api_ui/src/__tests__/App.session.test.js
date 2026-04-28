@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/anchor-is-valid */
 /**
  * Tests for App.js session detection logic
  *

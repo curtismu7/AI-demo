@@ -1871,6 +1871,18 @@ Plans:
 
 
 ---
+### Phase 246: Floating agent redesign — chips to popout, simplified controls
+
+**Goal:** Simplify the floating agent panel by moving action chips into a dedicated popout triggered by a single button, removing or consolidating toolbar buttons that clutter the header, and delivering a cleaner chat-first experience that surfaces power features on demand rather than all at once.
+**Requirements**: AGENT-UI-01, AGENT-UI-02, AGENT-UI-03
+**Depends on:** Phase 231
+**Plans:** 0 plans
+
+Plans:
+- [ ] (run /gsd-plan-phase 246 to break down)
+
+
+---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data

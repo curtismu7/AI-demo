@@ -220,8 +220,12 @@ export default function PingOneTestPage() {
 	const [agentTokenStatus, setAgentTokenStatus] = useState("pending");
 	const [authzTokenError, setAuthzTokenError] = useState(null);
 	const [agentTokenError, setAgentTokenError] = useState(null);
-	const [agentPingoneReq, setAgentPingoneReq] = useState(null);
-	const [agentPingoneRes, setAgentPingoneRes] = useState(null);
+	// eslint-disable-next-line no-unused-vars
+	// eslint-disable-next-line no-unused-vars
+	const [agentPingoneReq, _setAgentPingoneReq] = useState(null);
+	// eslint-disable-next-line no-unused-vars
+	// eslint-disable-next-line no-unused-vars
+	const [agentPingoneRes, _setAgentPingoneRes] = useState(null);
 
 	// Token exchange tests state
 	const [exchange1Status, setExchange1Status] = useState("pending");
@@ -229,13 +233,21 @@ export default function PingOneTestPage() {
 	const [exchange401Status, setExchange401Status] = useState("pending");
 	const [exchange1Error, setExchange1Error] = useState(null);
 	const [exchange2Error, setExchange2Error] = useState(null);
-	const [exchange2PingoneReq, setExchange2PingoneReq] = useState(null);
-	const [exchange2PingoneRes, setExchange2PingoneRes] = useState(null);
+	// eslint-disable-next-line no-unused-vars
+	// eslint-disable-next-line no-unused-vars
+	const [exchange2PingoneReq, _setExchange2PingoneReq] = useState(null);
+	// eslint-disable-next-line no-unused-vars
+	// eslint-disable-next-line no-unused-vars
+	const [exchange2PingoneRes, _setExchange2PingoneRes] = useState(null);
 	const [exchange401Error, setExchange401Error] = useState(null);
 	const [exchange401Decoded, setExchange401Decoded] = useState(null);
 	const [exchange401Steps, setExchange401Steps] = useState([]);
-	const [exchange401PingoneReq, setExchange401PingoneReq] = useState(null);
-	const [exchange401PingoneRes, setExchange401PingoneRes] = useState(null);
+	// eslint-disable-next-line no-unused-vars
+	// eslint-disable-next-line no-unused-vars
+	const [exchange401PingoneReq, _setExchange401PingoneReq] = useState(null);
+	// eslint-disable-next-line no-unused-vars
+	// eslint-disable-next-line no-unused-vars
+	const [exchange401PingoneRes, _setExchange401PingoneRes] = useState(null);
 	/* eslint-disable no-unused-vars */
 	const [_exchangeIdTokenStatus, setExchangeIdTokenStatus] =
 		useState("pending");
@@ -250,8 +262,14 @@ export default function PingOneTestPage() {
 	const [exchange186SubjectDecoded, setExchange186SubjectDecoded] =
 		useState(null);
 	const [exchange186ActorDecoded, setExchange186ActorDecoded] = useState(null);
-	const [exchange186PingoneReq, setExchange186PingoneReq] = useState(null);
-	const [exchange186PingoneRes, setExchange186PingoneRes] = useState(null);
+	// eslint-disable-next-line no-unused-vars
+	// eslint-disable-next-line no-unused-vars
+	const [exchange186PingoneReq, _setExchange186PingoneReq] = useState(null);
+	// eslint-disable-next-line no-unused-vars
+	// eslint-disable-next-line no-unused-vars
+	const [exchange186PingoneRes, _setExchange186PingoneRes] = useState(null);
+	// eslint-disable-next-line no-unused-vars
+	// eslint-disable-next-line no-unused-vars
 	const [ffIdTokenExchange, _setFfIdTokenExchange] = useState(false);
 
 	// Decoded token claims from BFF (server-side decode — no raw JWT in browser)

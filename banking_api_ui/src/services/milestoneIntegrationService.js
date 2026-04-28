@@ -105,7 +105,7 @@ export function trackFlowComplete() {
   });
 }
 
-export default {
+const milestoneIntegrationService = {
   trackOidcLogin,
   trackExchangeStart,
   trackExchangeComplete,
@@ -113,3 +113,4 @@ export default {
   trackBackendOperation,
   trackFlowComplete,
 };
+export default milestoneIntegrationService;
