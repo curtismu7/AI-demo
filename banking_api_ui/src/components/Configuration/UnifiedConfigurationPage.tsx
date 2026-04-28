@@ -712,14 +712,10 @@ const UnifiedConfigurationPage: FC<{
 
   // Derived
 
-  const accessibleTabs = useMemo(() => {
-    return CONFIGURATION_TABS.filter(tab => {
-      if (tab.requiresAuth && !user) return false;
-      if ((tab as { requiredRole?: string }).requiredRole &&
-          (user as { role?: string })?.role !== (tab as { requiredRole?: string }).requiredRole) return false;
-      return true;
-    });
-  }, [user]);
+  // /configure is intentionally unauthenticated. Show all tabs so the page is usable
+  // for initial setup before PingOne is configured. Server routes remain protected.
+  const accessibleTabs = CONFIGURATION_TABS;
+
 
   const currentTab = useMemo(() => {
     return accessibleTabs.find(tab => tab.id === activeTab);
