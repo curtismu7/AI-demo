@@ -207,6 +207,69 @@ function TokenCard({ stepDetail, stepDetail2, stepDetailOut, isTokenExchange, is
   );
 }
 
+// ─── History panel ────────────────────────────────────────────────────────────
+
+function HistoryPanel({ history, onClear }) {
+  const [open, setOpen] = useState(true);
+  if (!history || history.length === 0) return null;
+  return (
+    <div className="arch-history">
+      <div className="arch-history__header">
+        <button className="arch-history__toggle" onClick={() => setOpen((o) => !o)}>
+          {open ? '▾' : '▸'}
+        </button>
+        <span className="arch-history__title">
+          📋 Token History — {history.length} token{history.length !== 1 ? 's' : ''} captured
+        </span>
+        <button className="arch-history__clear" onClick={onClear} title="Clear history">
+          ✕ Clear
+        </button>
+      </div>
+      {open && (
+        <div className="arch-history__scroll">
+          {history.map((entry, idx) => (
+            <div key={idx} className="arch-history__entry">
+              <div className="arch-history__entry-label">
+                <span className="arch-history__step-chip">Step {entry.stepNum}</span>
+                {entry.label}
+              </div>
+              {entry.isTokenExchange && entry.token ? (
+                <div className="arch-token-card arch-history__card" style={{ borderLeftColor: ACCENT.exchange }}>
+                  <div className="arch-token-card__head">
+                    <span className="arch-token-card__title">{entry.token.type || 'Token Exchange'}</span>
+                    {(entry.token._rfcs || ['RFC 8693']).map((r) => (
+                      <span key={r} className="arch-token-card__rfc">{r}</span>
+                    ))}
+                  </div>
+                  <div className="arch-token-card__section-label">Request →</div>
+                  {Object.entries(entry.token).filter(([k]) =>
+                    k !== 'type' && k !== '_type' && k !== '_title' && k !== '_rfcs' && k !== 'note'
+                  ).map(([k, v]) => <ClaimRow key={k} k={k} v={v} />)}
+                  {entry.tokenOut && (
+                    <>
+                      <div className="arch-token-card__section-label arch-token-card__section-label--issued">↓ Issued</div>
+                      {Object.entries(entry.tokenOut).filter(([k]) =>
+                        k !== 'type' && k !== '_type' && k !== '_rfcs' && k !== 'note'
+                      ).map(([k, v]) => <ClaimRow key={k} k={k} v={v} />)}
+                      {entry.tokenOut.note && <div className="arch-token-card__note">ℹ {entry.tokenOut.note}</div>}
+                    </>
+                  )}
+                  {entry.token.note && <div className="arch-token-card__note">ℹ {entry.token.note}</div>}
+                </div>
+              ) : (
+                <>
+                  {entry.token  && <OneCard token={entry.token}  isHitl={entry.isHitl} />}
+                  {entry.token2 && <OneCard token={entry.token2} />}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Page component ───────────────────────────────────────────────────────────
 
 export default function ArchitectureDiagramPage({
@@ -232,6 +295,8 @@ export default function ArchitectureDiagramPage({
   isTokenExchange,
   isHitl,
   audHops,
+  tokenHistory,
+  onClearHistory,
 }) {
   const [zoom, setZoom] = useState(1.0);
   const zoomIn    = () => setZoom((z) => Math.min(ZOOM_MAX, parseFloat((z + ZOOM_STEP).toFixed(2))));
@@ -310,6 +375,9 @@ export default function ArchitectureDiagramPage({
             </div>
           )}
         </div>
+
+        {/* Token history — persists after simulation for review */}
+        <HistoryPanel history={tokenHistory} onClear={onClearHistory} />
 
       </div>
     </AdminSubPageShell>

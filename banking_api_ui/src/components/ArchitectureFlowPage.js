@@ -496,6 +496,7 @@ export default function ArchitectureFlowPage({ user }) {
   const [isSimulating, setIsSimulating]  = useState(false);
   const [isPaused,     setIsPaused]      = useState(false);
   const [currentStep,  setCurrentStep]   = useState(-1);
+  const [history,      setHistory]       = useState([]);
   const pausedStep    = useRef(-1);
   const clearTimers   = useRef({});
   const simTimeouts   = useRef([]);
@@ -531,6 +532,14 @@ export default function ArchitectureFlowPage({ user }) {
         return { ...e, animated: active, style: active ? step.edgeStyle : B, label: active && step.token ? step.token.type : orig?.label };
       })
     );
+
+    if (step.token) {
+      const entry = { stepNum: i + 1, label: step.stepLabel, token: step.token, token2: null, tokenOut: step.tokenOut || null, isTokenExchange: Boolean(step.isTokenExchange), isHitl: Boolean(step.isHitl) };
+      setHistory((prev) => {
+        if (prev.some((e) => e.stepNum === entry.stepNum)) return prev;
+        return [...prev, entry].sort((a, b) => a.stepNum - b.stepNum);
+      });
+    }
   }, [setNodes, setEdges]);
 
   const resetDiagram = useCallback(() => {
@@ -559,8 +568,11 @@ export default function ArchitectureFlowPage({ user }) {
     });
   }, [applyStep, resetDiagram]);
 
+  const clearHistory = useCallback(() => setHistory([]), []);
+
   const runSimulation = useCallback(() => {
     if (isSimulating) return;
+    setHistory([]);
     setIsSimulating(true);
     setIsPaused(false);
     scheduleFrom(0);
@@ -743,6 +755,46 @@ export default function ArchitectureFlowPage({ user }) {
         <span style={{ color: '#15803d', fontWeight: 600 }}>act</span>,{' '}
         <span style={{ color: '#b45309', fontWeight: 600 }}>may_act</span> — highlighted when they change.
       </p>
+
+      {/* Token history strip — persists after simulation for review */}
+      {history.length > 0 && (
+        <FlowHistory history={history} onClear={clearHistory} />
+      )}
+    </div>
+  );
+}
+
+function FlowHistory({ history, onClear }) {
+  const [open, setOpen] = React.useState(true);
+  return (
+    <div style={{ marginTop: '1rem', border: '1px solid #e2e8f0', borderRadius: 10, background: '#f8fafc', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+        <button onClick={() => setOpen((o) => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#475569', padding: '0 2px' }}>{open ? '▾' : '▸'}</button>
+        <span style={{ flex: 1, fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
+          📋 Token History — {history.length} token{history.length !== 1 ? 's' : ''} captured
+        </span>
+        <button onClick={onClear} style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: 4, cursor: 'pointer', fontSize: '0.72rem', color: '#64748b', padding: '2px 8px' }}>✕ Clear</button>
+      </div>
+      {open && (
+        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: 12, scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+          {history.map((entry, idx) => (
+            <div key={idx} style={{ flex: '0 0 auto', width: 300, scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
+                <span style={{ background: '#004687', color: '#fff', fontSize: '0.65rem', fontWeight: 700, borderRadius: 20, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  Step {entry.stepNum}
+                </span>
+                {entry.label}
+              </div>
+              <TokenCard
+                token={entry.token}
+                tokenOut={entry.tokenOut}
+                isTokenExchange={entry.isTokenExchange}
+                isHitl={entry.isHitl}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

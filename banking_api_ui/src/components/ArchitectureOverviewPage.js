@@ -266,6 +266,7 @@ export default function ArchitectureOverviewPage({ user }) {
   const [stepDetailOut, setStepDetailOut] = useState(null);
   const [isTokenExch,   setIsTokenExch]   = useState(false);
   const [isHitl,        setIsHitl]        = useState(false);
+  const [history,       setHistory]       = useState([]);
 
   const clearTimers   = useRef({});
   const simTimeouts   = useRef([]);
@@ -329,6 +330,15 @@ export default function ArchitectureOverviewPage({ user }) {
     });
     setActiveRegions(regions);
     setRegionLabels(labels);
+
+    // Accumulate history (skip steps with no token data; don't duplicate same step)
+    if (step.token || step.token2) {
+      const entry = { stepNum: i + 1, label: step.label, token: step.token || null, token2: step.token2 || null, tokenOut: step.tokenOut || null, isTokenExchange: Boolean(step.isTokenExchange), isHitl: Boolean(step.isHitl) };
+      setHistory((prev) => {
+        if (prev.some((e) => e.stepNum === entry.stepNum)) return prev;
+        return [...prev, entry].sort((a, b) => a.stepNum - b.stepNum);
+      });
+    }
   }, []);
 
   const scheduleFrom = useCallback((startIdx) => {
@@ -350,8 +360,11 @@ export default function ArchitectureOverviewPage({ user }) {
     }
   }, [applyStep]);
 
+  const clearHistory = useCallback(() => setHistory([]), []);
+
   const runSimulation = useCallback(() => {
     if (isSimulating) return;
+    setHistory([]);
     setIsSimulating(true); setIsPaused(false);
     pausedStep.current = -1;
     scheduleFrom(0);
@@ -428,6 +441,8 @@ export default function ArchitectureOverviewPage({ user }) {
       isTokenExchange={isTokenExch}
       isHitl={isHitl}
       audHops={OVERVIEW_AUD_HOPS}
+      tokenHistory={history}
+      onClearHistory={clearHistory}
     />
   );
 }
