@@ -412,10 +412,15 @@ router.get('/verify-assets', async (req, res) => {
         data: usersResult._embedded ? usersResult._embedded.users || [] : []
       },
       tokenPolicies: {
-        // not_available = worker client lacks mgmt API permission (informational only)
-        status: tokenPoliciesResult.success ? 'passed' : 'not_available',
+        status: tokenPoliciesResult.success
+          ? 'passed'
+          : tokenPoliciesResult.status === 403
+            ? 'insufficient_scope'
+            : 'not_available',
         count: tokenPoliciesResult.tokenPolicies ? tokenPoliciesResult.tokenPolicies.length : 0,
-        data: tokenPoliciesResult.tokenPolicies || []
+        data: tokenPoliciesResult.tokenPolicies || [],
+        error: tokenPoliciesResult.error,
+        httpStatus: tokenPoliciesResult.status,
       },
       missing: {
         apps: missingApps,

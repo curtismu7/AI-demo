@@ -1440,6 +1440,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 										}}
 										users={assetVerification.users?.data || []}
 										tokenPolicies={assetVerification.tokenPolicies?.data || []}
+										tokenPoliciesMeta={assetVerification.tokenPolicies}
 										missing={
 											assetVerification.missing || {
 												apps: [],
@@ -3070,6 +3071,7 @@ function AssetTable({
 	scopesMeta,
 	users,
 	tokenPolicies,
+	tokenPoliciesMeta,
 	missing,
 	expectedApps: _expectedApps,
 	expectedScopes,
@@ -3457,8 +3459,14 @@ function AssetTable({
 				<div>
 					{(tokenPolicies || []).length === 0 ? (
 						<p style={{ padding: "1rem", color: "#888" }}>
-							No token policies returned. Ensure worker token has{" "}
-							<code>p1:read:environment:tokenPolicies</code> scope.
+							{tokenPoliciesMeta?.status === "insufficient_scope" ? (
+								<>Missing scope: worker token needs <code>p1:read:environment:tokenPolicies</code>.</>
+							) : tokenPoliciesMeta?.status === "not_available" ? (
+								<>Token policies unavailable{tokenPoliciesMeta.error ? `: ${tokenPoliciesMeta.error}` : ". Check worker token permissions."}
+								</>
+							) : (
+								<>No token policies found in this environment.</>
+							)}
 						</p>
 					) : (
 						(tokenPolicies || []).map((policy) => (
