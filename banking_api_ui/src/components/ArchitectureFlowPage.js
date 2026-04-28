@@ -118,7 +118,7 @@ const INITIAL_NODES = [
     id: 'idp-oauth-as',
     type: 'arch',
     position: { x: 340, y: 40 },
-    data: { label: 'PingOne AIC', label2: 'IdP / OAuth AS', icon: '🏛️', colorClass: '' },
+    data: { label: 'Your IdP', label2: 'OAuth AS / SSO', icon: '🏛️', colorClass: '' },
   },
   {
     id: 'pingauthorize',
