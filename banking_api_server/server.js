@@ -991,6 +991,15 @@ const {
 // Write tools that require a banking:write-scoped token obtained via scope upgrade.
 // Used by the mcpWriteToken session-cache fast-path (Phase 211).
 const WRITE_TOOLS_REQUIRING_CACHE = new Set(['create_transfer', 'create_deposit', 'create_withdrawal']);
+// PingOne management tools — routed to pingone-mcp-server when mcp_use_pingone_server flag is ON.
+// These tools bypass RFC 8693 token exchange (pingone-mcp-server handles its own auth via PKCE/keychain).
+const PINGONE_ADMIN_TOOLS = new Set([
+    'list_applications', 'get_application', 'create_oidc_application', 'update_oidc_application',
+    'list_environments', 'get_environment', 'create_environment', 'update_environment',
+    'get_environment_services', 'update_environment_services',
+    'list_populations', 'get_population', 'create_population', 'update_population',
+    'get_total_identities_by_environment',
+]);
 const mcpToolAuthorizationService = require('./services/mcpToolAuthorizationService');
 const {
     mcpCallTool,
@@ -1139,6 +1148,24 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
     emit({
         phase: 'request_accepted'
     });
+
+    // ── PingOne admin tool early-exit ──────────────────────────────────────────
+    // When mcp_use_pingone_server is ON and the tool is a PingOne management tool,
+    // route directly to pingone-mcp-server (stdio). Skips RFC 8693 token exchange —
+    // the binary manages its own PKCE auth via OS keychain.
+    if (configStore.get('mcp_use_pingone_server') === 'true' && PINGONE_ADMIN_TOOLS.has(tool)) {
+        emit({ phase: 'mcp_pingone_admin_tool' });
+        try {
+            const p1UserSub = (req.session?.user?.oauthId || req.session?.user?.id) || null;
+            const result = await mcpPingOneStdioAdapter.callToolViaStdio(tool, params || {}, '', p1UserSub, req.correlationId);
+            emit({ phase: 'mcp_remote_done' });
+            return res.json({ result, tokenEvents: [] });
+        } catch (err) {
+            emit({ phase: 'mcp_remote_error' });
+            console.error('[PingOne MCP] %s failed: %s', tool, err.message);
+            return res.status(502).json({ error: 'pingone_mcp_error', message: err.message });
+        }
+    }
 
     let mcpAccessToken; // RFC 8693 §3.2: MCP-scoped access token (result of exchange)
     let userSub = null;
@@ -1453,7 +1480,6 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
     // performs RFC 8693 token exchange to the upstream MCP server — the mcpAccessToken
     // must already be scoped to the gateway audience (MCP_GW_RESOURCE_URI).
     // Graceful fallback: if MCP_GATEWAY_HTTP_URL is not set, use the previous direct path.
-    const usePingOneStdio = configStore.get('mcp_use_pingone_server') === 'true';
     const gatewayHttpUrl = mcpGatewayClient.getMcpGatewayHttpUrl();
     const useGateway = !!process.env.MCP_GATEWAY_HTTP_URL;
     const mcpUrl = getMcpServerUrl();
@@ -1466,9 +1492,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         });
         appEventService.logEvent('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, gatewayUrl: useGateway ? gatewayHttpUrl : mcpUrl, via: useGateway ? 'gateway' : 'direct' } });
         let result;
-        if (usePingOneStdio) {
-            result = await mcpPingOneStdioAdapter.callToolViaStdio(tool, params || {}, mcpAccessToken, userSub, req.correlationId);
-        } else if (useGateway) {
+        if (useGateway) {
             result = await mcpGatewayClient.callToolViaGateway(gatewayHttpUrl, mcpAccessToken, tool, params || {}, { correlationId: req.correlationId });
         } else if (useHttp2) {
             const h2Session = http2McpBridge.createHttp2Session(mcpUrl, mcpAccessToken);
