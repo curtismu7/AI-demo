@@ -1879,8 +1879,8 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 246-01-PLAN.md — CSS: left-rail guard + all phase-246 CSS classes
-- [ ] 246-02-PLAN.md — JS: header redesign + Actions popout inline JSX
+- [x] 246-01-PLAN.md — CSS: left-rail guard + all phase-246 CSS classes
+- [x] 246-02-PLAN.md — JS: header redesign + Actions popout inline JSX
 - [ ] 246-03-PLAN.md — Build verification + human visual check
 
 
