@@ -7,7 +7,7 @@ const useChatWidget = () => {
     // index.html only calls initializeChatWidget on localhost; hosted builds use React BankingAgent.
     const isLocalhost =
       typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      false /* always use api.pingdemo.com */;
     if (!isLocalhost) {
       setIsInitialized(true);
       return;
@@ -33,7 +33,7 @@ const useChatWidget = () => {
 
     const timeout = setTimeout(() => {
       clearInterval(interval);
-      console.warn('Banking chat widget not found after 10 seconds (localhost only)');
+      console.warn('Banking chat widget not found after 10 seconds');
     }, 10000);
 
     return () => {
@@ -92,7 +92,7 @@ const useChatWidget = () => {
         if (window.initBankingChatWidget) {
           try {
             const widget = window.initBankingChatWidget({
-              apiUrl: 'ws://localhost:8082/ws',
+              apiUrl: `ws://${window.location.hostname}:8082/ws`,
               position: 'bottom-right',
               theme: 'light',
               title: 'AI Banking Assistant',

@@ -43,9 +43,9 @@ if ! grep -q "${API_HOST}" /etc/hosts 2>/dev/null; then
   echo "   Run this once to add it, then restart the script:"
   echo "   echo '127.0.0.1  ${API_HOST}' | sudo tee -a /etc/hosts"
   echo ""
-  echo "   Continuing with localhost fallback for now..."
-  API_URL="https://localhost:${API_PORT}"
-  CLIENT_URL="https://localhost:${UI_PORT}"
+  echo "   Continuing with api.pingdemo.com URLs (ensure /etc/hosts is set)..."
+  API_URL="https://api.pingdemo.com:${API_PORT}"
+  CLIENT_URL="https://api.pingdemo.com:${UI_PORT}"
 fi
 
 # ── SSL cert check / auto-generate ───────────────────────────────────────────
@@ -272,9 +272,9 @@ service_status_line() {
 print_status_table() {
   echo -e "${WHITE}${BOLD}  SERVICES${RESET}"
   service_status_line "Banking API Server"  ${API_PORT}  "${API_URL}"
-  service_status_line "Banking MCP Server"  8080         "ws://localhost:8080"
-  service_status_line "MCP Gateway"          3005         "http://localhost:3005"
-  service_status_line "LangChain Agent"     8888         "http://localhost:8888"
+  service_status_line "Banking MCP Server"  8080         "ws://localhost:8080 (internal)"
+  service_status_line "MCP Gateway"          3005         "http://localhost:3005 (internal)"
+  service_status_line "LangChain Agent"     8888         "http://localhost:8888 (internal)"
   if port_listening ${UI_PORT}; then
     printf "  ${GREEN}${BOLD}  ✅  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
   else

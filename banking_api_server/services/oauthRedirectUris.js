@@ -78,7 +78,7 @@ function getFrontendOrigin(req) {
     const proto = req.protocol === 'http' ? 'http' : 'https';
     return `${proto}://${getPublicHost(req)}`;
   }
-  return _sanitizeUrl(process.env.PUBLIC_APP_URL || 'http://localhost:4000');
+  return _sanitizeUrl(process.env.PUBLIC_APP_URL || 'https://api.pingdemo.com:4000');
 }
 
 /**

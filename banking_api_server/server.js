@@ -212,7 +212,7 @@ app.use(cors({
     // Fallback to false (block all cross-origin) rather than reflecting any Origin.
     // The React CRA dev proxy makes requests same-origin in development, so this
     // fallback only affects calls from a different origin without the env var set.
-    origin: process.env.CORS_ORIGIN || (isProduction ? false : ['https://api.pingdemo.com', 'https://localhost:4000']),
+    origin: process.env.CORS_ORIGIN || 'https://api.pingdemo.com',
     credentials: true
 }));
 
@@ -238,7 +238,7 @@ const _rateLimitHandler = (req, res) => {
     if (req.path.startsWith('/api/auth')) {
         const proto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
         const host = (req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
-        const origin = host ? `${proto}://${host}` : (process.env.REACT_APP_CLIENT_URL || process.env.PUBLIC_APP_URL || 'http://localhost:4000');
+        const origin = host ? `${proto}://${host}` : (process.env.REACT_APP_CLIENT_URL || process.env.PUBLIC_APP_URL || 'https://api.pingdemo.com:4000');
         return res.redirect(`${origin}/login?error=too_many_requests`);
     }
     res.status(429).json({
@@ -963,7 +963,7 @@ app.get('/', (req, res) => {
 
 // Redirect /login requests to frontend
 app.get('/login', (req, res) => {
-    const frontendUrl = process.env.REACT_APP_CLIENT_URL || process.env.PUBLIC_APP_URL || 'http://localhost:4000';
+    const frontendUrl = process.env.REACT_APP_CLIENT_URL || process.env.PUBLIC_APP_URL || 'https://api.pingdemo.com:4000';
     const queryString = req.url.includes('?') ? req.url.split('?')[1] : '';
     const redirectUrl = queryString ? `${frontendUrl}/?${queryString}` : `${frontendUrl}/`;
     res.redirect(redirectUrl);
@@ -1698,7 +1698,7 @@ if (require.main === module) {
         });
     } else {
         server = app.listen(PORT, () => {
-            console.log(`Banking API server running on http://localhost:${PORT}`);
+            console.log(`Banking API server running on https://api.pingdemo.com:3001 (local port ${PORT})`);
             console.log('Tip: run mkcert in Banking/certs/ to enable HTTPS (see run-bank.sh)');
         });
     }

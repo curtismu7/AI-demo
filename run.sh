@@ -85,9 +85,9 @@ info() { echo -e "  ${CYAN}→${NC}  $1"; }
 if ! grep -q "${API_HOST}" /etc/hosts 2>/dev/null; then
   echo -e "${YELLOW}⚠  ${API_HOST} is not in /etc/hosts.${NC}"
   echo "   Run this once:  echo '127.0.0.1  ${API_HOST}' | sudo tee -a /etc/hosts"
-  echo "   Continuing with localhost fallback..."
-  API_URL="https://localhost:${API_PORT}"
-  CLIENT_URL="https://localhost:${UI_PORT}"
+  echo "   Continuing with api.pingdemo.com URLs (ensure /etc/hosts is set)..."
+  API_URL="https://api.pingdemo.com:${API_PORT}"
+  CLIENT_URL="https://api.pingdemo.com:${UI_PORT}"
 fi
 
 # ── SSL cert check / auto-generate ──────────────────────────────────────────
@@ -181,8 +181,8 @@ service_status_line() {
 print_status_table() {
   echo -e "${WHITE}${BOLD}  SERVICES${NC}"
   service_status_line "Banking API Server"  "${API_PORT}"   "${API_URL}"
-  service_status_line "Banking MCP Server"  "${MCP_PORT}"   "ws://localhost:${MCP_PORT}"
-  service_status_line "LangChain Agent"     "${AGENT_PORT}" "http://localhost:${AGENT_PORT}"
+  service_status_line "Banking MCP Server"  "${MCP_PORT}"   "ws://localhost:${MCP_PORT} (internal)"
+  service_status_line "LangChain Agent"     "${AGENT_PORT}" "http://localhost:${AGENT_PORT} (internal)"
   if port_listening "${UI_PORT}"; then
     printf "  ${GREEN}${BOLD}  ✅  %-24s${NC}  ${MAGENTA}:%-6s${NC}  ${YELLOW}%s${NC}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
   else
