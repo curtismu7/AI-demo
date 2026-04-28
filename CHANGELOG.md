@@ -24,6 +24,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **Phase 245 — UI design contract** — UI-SPEC created and approved for 403 scope trap and token introspection consolidation; scope upgrade chat messages, toast copy, and color contracts locked.
+
 - **Architecture diagrams — live real-agent events populate token history** — `buildLiveHistoryEntry` maps RFC 8693, PingAuthorize, MCP tool, and OAuth events to token cards tagged 🔴 LIVE in the floating history modal on Overview and Token Flow pages.
 - **Architecture diagrams — stronger region highlights** — active fill opacity raised from 0.22 → 0.32, glow increased, white background behind diagram image for better contrast.
 - **HistoryModal — createPortal fix** — moved to `createPortal(document.body)` to eliminate stacking context interference with the floating agent FAB.
