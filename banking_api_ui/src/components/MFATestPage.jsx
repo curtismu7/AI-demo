@@ -840,23 +840,23 @@ export default function MFATestPage() {
 				pubKeyCredParams: publicKey.pubKeyCredParams,
 			}, null, 2));
 			const credential = await navigator.credentials.create({ publicKey });
-			// WebAuthn natively uses base64url for all binary values in the attestation.
-			// PingOne device activate: use base64url (no padding) to stay consistent with
-			// credential.id which the browser returns as base64url string. id and rawId
-			// must encode the same bytes — using the same alphabet ensures PingOne can compare them.
-			const toB64url = (buf) => {
+			// PingOne device activate API requires standard base64 (with = padding) for binary
+			// credential fields (rawId, clientDataJSON, attestationObject).
+			// credential.id is left as base64url (browser returns it that way per WebAuthn spec).
+			// Ref: https://developer.pingidentity.com/pingone-api/mfa/users/mfa-devices/fido2-biometrics-devices/activate-mfa-user-device-fido2.html
+			const toB64 = (buf) => {
 				const bytes = new Uint8Array(buf);
 				let binary = "";
 				for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-				return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+				return btoa(binary); // standard base64 with = padding, no URL-safe substitution
 			};
 			const attestation = {
-				id: credential.id,
-				rawId: toB64url(credential.rawId),
+				id: credential.id,       // browser returns base64url already
+				rawId: toB64(credential.rawId),
 				type: credential.type,
 				response: {
-					clientDataJSON: toB64url(credential.response.clientDataJSON),
-					attestationObject: toB64url(credential.response.attestationObject),
+					clientDataJSON: toB64(credential.response.clientDataJSON),
+					attestationObject: toB64(credential.response.attestationObject),
 				},
 				// Include authenticatorAttachment if present (passkey = "platform")
 				...(credential.authenticatorAttachment ? { authenticatorAttachment: credential.authenticatorAttachment } : {}),
