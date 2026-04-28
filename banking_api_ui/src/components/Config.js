@@ -34,46 +34,6 @@ const REGION_OPTIONS = [
 function CollapsibleCard({ title, subtitle, defaultOpen = true, className = '', passthrough = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
 
-  // ── Load hostname configuration ──  
-  useEffect(() => {
-    (async () => {
-      setHostnameLoading(true);
-      setHostnameError('');
-      try {
-        const hostname = await getHostname();
-        setHostnameState(hostname);
-        setHostnameInput(hostname);
-      } catch (error) {
-        setHostnameError(error.message);
-        notifyError('Failed to load hostname');
-      } finally {
-        setHostnameLoading(false);
-      }
-    })();
-  }, []);
-
-  // ── Handle hostname save ──
-  const handleSaveHostname = async () => {
-    if (!hostnameInput.trim()) {
-      setHostnameError('Hostname cannot be empty');
-      return;
-    }
-
-    setHostnameLoading(true);
-    setHostnameError('');
-    try {
-      const updated = await setHostname(hostnameInput);
-      setHostnameState(updated);
-      setHostnameInput(updated);
-      notifySuccess('Hostname updated successfully');
-    } catch (error) {
-      setHostnameError(error.message);
-      notifyError('Failed to update hostname');
-    } finally {
-      setHostnameLoading(false);
-    }
-  };
-
 
   return (
     <div className={`card config-page__section ${className}`}>
@@ -592,6 +552,46 @@ export default function Config() {
   const [hostnameInput, setHostnameInput] = useState('');
   const [hostnameLoading, setHostnameLoading] = useState(false);
   const [hostnameError, setHostnameError] = useState('');
+
+  // ── Load hostname configuration ──
+  useEffect(() => {
+    (async () => {
+      setHostnameLoading(true);
+      setHostnameError('');
+      try {
+        const h = await getHostname();
+        setHostnameState(h);
+        setHostnameInput(h);
+      } catch (error) {
+        setHostnameError(error.message);
+        notifyError('Failed to load hostname');
+      } finally {
+        setHostnameLoading(false);
+      }
+    })();
+  }, []);
+
+  // ── Handle hostname save ──
+  const handleSaveHostname = async () => {
+    if (!hostnameInput.trim()) {
+      setHostnameError('Hostname cannot be empty');
+      return;
+    }
+    setHostnameLoading(true);
+    setHostnameError('');
+    try {
+      const updated = await setHostname(hostnameInput);
+      setHostnameState(updated);
+      setHostnameInput(updated);
+      notifySuccess('Hostname updated successfully');
+    } catch (error) {
+      setHostnameError(error.message);
+      notifyError('Failed to update hostname');
+    } finally {
+      setHostnameLoading(false);
+    }
+  };
+
   /** Active tab: 'setup' | 'vercel' */
   const [activeTab, setActiveTab] = useState('setup');
 
@@ -1869,7 +1869,7 @@ export default function Config() {
         )}
 
           </React.Fragment>
-        )
+        )}
 
         {/* Hostname Configuration Card */}
         {activeTab === 'setup' && (
@@ -1948,7 +1948,6 @@ export default function Config() {
           </div>
         )}
 
-}
 
       </div>
       </div>

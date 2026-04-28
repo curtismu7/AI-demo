@@ -115,7 +115,7 @@ const SPECS = [
           3. PingOne issues token with txn_id claim<br/>
           4. MCP server validates txn_id matches header<br/>
           5. Tool executes with transaction context<br/>
-          6. Optional: POST /api/agent-txn/{{'{txn_id}'}}/revoke → invalidates all tokens
+          6. Optional: POST /api/agent-txn/{'{txn_id}'}/revoke → invalidates all tokens
         </code>
 
         <h4>Feature Flag Status</h4>
