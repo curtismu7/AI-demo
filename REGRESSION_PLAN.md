@@ -82,6 +82,14 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2025-05-23 — Feature flag toggles broken (configStore FIELD_DEFS bypass)
+
+- **Root cause:** `configStore.setConfig()` silently drops any key not in `FIELD_DEFS`. Feature flag IDs (lowercase, e.g. `use_authorize`, `mcp_voice_enabled`) were never in `FIELD_DEFS`, so every PATCH to `/api/admin/feature-flags` wrote nothing to cache or SQLite. The optimistic UI update flipped the toggle visually, but the confirmed server response reverted it to `defaultValue`.
+- **Fix:** Added `setRaw(data)` to `configStore` — writes arbitrary KV pairs to SQLite and `_cache`, bypassing FIELD_DEFS validation. `featureFlags.js` now calls `configStore.setRaw(toSave)`. `ensureInitialized()` already loads ALL rows from SQLite into cache via `SELECT key, value FROM config`, so persisted flags survive restarts.
+- **UI improvements:** Auto-dismiss toast (2.5 s timeout via `useEffect`), compact inline Impact display (replaced bordered box), `ff-card--saving` opacity state, `ff-card__footer` flex row for docs link + saving indicator.
+- **Files changed:** `banking_api_server/services/configStore.js` (add `setRaw`), `banking_api_server/routes/featureFlags.js` (use `setRaw`), `banking_api_ui/src/components/FeatureFlagsPage.js` (UI overhaul), `banking_api_ui/src/components/FeatureFlagsPage.css` (new classes + dark mode).
+- **Do not break:** `setConfig` must continue to validate against FIELD_DEFS for the main config store; `setRaw` is feature-flag-only.
+
 ### 2026-04-26 — Phase 237: Frontend RFC visualization + production polish
 
 - **CSS variable rename:** `--chase-*` → `--brand-*` across all UI source files (~88 files). Removes brand-specific naming so the design system is reusable across banking, retail, and future themes.

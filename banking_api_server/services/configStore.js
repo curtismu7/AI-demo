@@ -370,6 +370,31 @@ class ConfigStore {
   }
 
   /**
+   * Persist arbitrary key-value pairs to SQLite and cache without FIELD_DEFS validation.
+   * Used by feature flags, which have their own flag-ID namespace (not in FIELD_DEFS).
+   */
+  async setRaw(data) {
+    await this.ensureInitialized();
+    try {
+      const db = _getSQLite();
+      const upsert = db.prepare(
+        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)'
+      );
+      const now = new Date().toISOString();
+      db.transaction(() => {
+        for (const [key, value] of Object.entries(data)) {
+          upsert.run(key, String(value), now);
+        }
+      })();
+    } catch (err) {
+      console.warn('[ConfigStore] SQLite write failed, raw config will be in-memory only:', err.message);
+    }
+    // Update cache regardless of SQLite outcome
+    Object.assign(this._cache, data);
+  }
+
+
+  /**
    * Returns the full stored config with secrets replaced by '••••••••'.
    * Also includes a `<key>_set` boolean for each secret field.
    * Public fields are returned as-is.

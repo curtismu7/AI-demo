@@ -5,18 +5,16 @@ import './FeatureFlagsPage.css';
 
 // ─── Flag toggle card ─────────────────────────────────────────────────────────
 
-/**
- * Renders a single feature flag as a toggle card.
- */
 function FlagCard({ flag, onToggle, saving }) {
-  const isOn       = flag.value === true;
-  const showWarn   = (!isOn && flag.warnIfDisabled) || (isOn && flag.warnIfEnabled);
-  const warnMsg    = flag.warnIfDisabled
-    ? 'Disabling this flag may break transactions or reduce security. Use with care.'
+  const isOn     = flag.value === true;
+  const isSaving = saving === flag.id;
+  const showWarn = (!isOn && flag.warnIfDisabled) || (isOn && flag.warnIfEnabled);
+  const warnMsg  = flag.warnIfDisabled
+    ? 'Disabling this flag may break transactions or reduce security.'
     : 'Enabling this flag may reduce security. Use with care.';
 
   return (
-    <div className={`ff-card${isOn ? ' ff-card--on' : ''}`}>
+    <div className={`ff-card${isOn ? ' ff-card--on' : ''}${isSaving ? ' ff-card--saving' : ''}`}>
       <div className="ff-card__header">
         <div className="ff-card__meta">
           <span className={`ff-badge ${isOn ? 'ff-badge--on' : 'ff-badge--off'}`}>
@@ -26,12 +24,11 @@ function FlagCard({ flag, onToggle, saving }) {
           <code className="ff-card__id">{flag.id}</code>
         </div>
 
-        {/* Toggle switch */}
         <button
           type="button"
-          className={`ff-toggle${isOn ? ' ff-toggle--on' : ''}`}
+          className={`ff-toggle${isOn ? ' ff-toggle--on' : ''}${isSaving ? ' ff-toggle--saving' : ''}`}
           onClick={() => onToggle(flag.id, !isOn)}
-          disabled={saving === flag.id}
+          disabled={isSaving}
           aria-label={`${isOn ? 'Disable' : 'Enable'} ${flag.name}`}
           aria-pressed={isOn}
         >
@@ -41,52 +38,51 @@ function FlagCard({ flag, onToggle, saving }) {
 
       <p className="ff-card__desc">{flag.description}</p>
 
-      <div className="ff-card__impact">
-        <span className="ff-card__impact-label">Impact</span>
-        <span className="ff-card__impact-text">{flag.impact}</span>
-      </div>
+      {flag.impact && (
+        <p className="ff-card__impact-inline">
+          <span className="ff-card__impact-label">Impact</span>
+          {flag.impact}
+        </p>
+      )}
 
       {showWarn && (
-        <div className="ff-card__warn">
-          ⚠️ {warnMsg}
-        </div>
+        <div className="ff-card__warn">⚠️ {warnMsg}</div>
       )}
 
-      {flag.docsUrl && (
-        <a
-          href={flag.docsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ff-card__docs-link"
-        >
-          PingOne docs ↗
-        </a>
-      )}
-
-      {saving === flag.id && (
-        <div className="ff-card__saving">Saving…</div>
-      )}
+      <div className="ff-card__footer">
+        {flag.docsUrl && (
+          <a
+            href={flag.docsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ff-card__docs-link"
+          >
+            PingOne docs ↗
+          </a>
+        )}
+        {isSaving && <span className="ff-card__saving">Saving…</span>}
+      </div>
     </div>
   );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-/**
- * FeatureFlagsPage
- *
- * Admin-only page for toggling in-development features without a deploy.
- * Flags are persisted via /api/admin/feature-flags (configStore).
- */
 export default function FeatureFlagsPage() {
   const [flags,      setFlags]      = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState(null);
-  const [saving,     setSaving]     = useState(null); // flagId currently being saved
-  const [lastSaved,  setLastSaved]  = useState(null); // { flagId, timestamp }
+  const [saving,     setSaving]     = useState(null);
+  const [lastSaved,  setLastSaved]  = useState(null);
 
-  /** Fetch all flags from the server. */
+  /** Auto-dismiss the save toast after 2.5 s */
+  useEffect(() => {
+    if (!lastSaved) return;
+    const t = setTimeout(() => setLastSaved(null), 2500);
+    return () => clearTimeout(t);
+  }, [lastSaved]);
+
   const loadFlags = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -105,10 +101,8 @@ export default function FeatureFlagsPage() {
 
   useEffect(() => { loadFlags(); }, [loadFlags]);
 
-  /** Toggle a single flag and persist immediately. */
   const handleToggle = useCallback(async (flagId, newValue) => {
     setSaving(flagId);
-    // Optimistic update
     setFlags(prev => prev.map(f => f.id === flagId ? { ...f, value: newValue } : f));
     try {
       const res  = await fetch('/api/admin/feature-flags', {
@@ -119,17 +113,12 @@ export default function FeatureFlagsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      // Merge server's confirmed values
-      setFlags(prev => {
-        const updated = prev.map(f => {
-          const confirmed = data.flags?.find(u => u.id === f.id);
-          return confirmed ? { ...f, value: confirmed.value } : f;
-        });
-        return updated;
-      });
+      setFlags(prev => prev.map(f => {
+        const confirmed = data.flags?.find(u => u.id === f.id);
+        return confirmed ? { ...f, value: confirmed.value } : f;
+      }));
       setLastSaved({ flagId, timestamp: Date.now() });
     } catch (err) {
-      // Roll back optimistic update
       setFlags(prev => prev.map(f => f.id === flagId ? { ...f, value: !newValue } : f));
       setError(`Failed to save "${flagId}": ${err.message}`);
     } finally {
@@ -137,11 +126,7 @@ export default function FeatureFlagsPage() {
     }
   }, []);
 
-  const groupedFlags = categories.map(cat => ({
-    category: cat,
-    flags: flags.filter(f => f.category === cat),
-  }));
-
+  const groupedFlags  = categories.map(cat => ({ category: cat, flags: flags.filter(f => f.category === cat) }));
   const enabledCount  = flags.filter(f => f.value === true).length;
   const disabledCount = flags.filter(f => f.value === false).length;
 
@@ -151,7 +136,7 @@ export default function FeatureFlagsPage() {
         <div className="app-page-header__left">
           <h1 className="app-page-title">Feature Flags</h1>
           <p className="app-page-subtitle">
-            Toggle in-development features without a redeploy. Changes take effect immediately on the server.
+            Toggle in-development features without a redeploy. Changes persist immediately.
           </p>
         </div>
         <div className="ff-page-stats">
@@ -211,10 +196,9 @@ export default function FeatureFlagsPage() {
 
       <div className="ff-footer">
         <p>
-          Flags are persisted in the app's configuration store and survive server restarts (Vercel + KV or SQLite).
-          The <strong>PingOne Authorize</strong> flag also requires{' '}
-          <strong>authorize_policy_id</strong> or <strong>authorize_decision_endpoint_id</strong> to be configured on the{' '}
-          <a href="/config">Config page</a> before it takes effect.
+          Flags are persisted in the server configuration store and survive restarts.
+          Some flags (e.g. <strong>PingOne Authorize</strong>) also require related settings on the{' '}
+          <a href="/config">Config page</a> to take full effect.
         </p>
       </div>
     </div>

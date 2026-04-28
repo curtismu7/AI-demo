@@ -347,7 +347,7 @@ router.patch('/', async (req, res) => {
   }
 
   try {
-    await configStore.setConfig(toSave);
+    await configStore.setRaw(toSave);
     const updatedFlags = FLAG_REGISTRY.filter(f => f.id in toSave).map(serializeFlag);
     res.json({ updated: true, flags: updatedFlags });
   } catch (err) {
