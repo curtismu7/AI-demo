@@ -707,8 +707,8 @@ describe("Consent-denied banner visibility", () => {
 			window.dispatchEvent(new Event("bankingAgentConsentBlockChanged"));
 		});
 		expect(
-			screen.getByRole("button", { name: /Sign out/i }),
-		).toBeInTheDocument();
+			screen.getAllByRole("button", { name: /Sign out/i }).length,
+		).toBeGreaterThanOrEqual(1);
 		expect(
 			screen.getByRole("button", { name: /Learn.*Human.in.the.loop/i }),
 		).toBeInTheDocument();

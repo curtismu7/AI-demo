@@ -104,10 +104,10 @@ function SessionExpiryTimer({ sessionInfo, className = "" }) {
 
 const ACTION_GROUPS = {
 	account: [
-		{ id: "accounts", label: "My Accounts", desc: "List all your accounts" },
+		{ id: "accounts", label: "🏦 My Accounts", desc: "List all your accounts" },
 		{
 			id: "balance",
-			label: "Check Balance",
+			label: "💰 Check Balance",
 			desc: "Balance for an account",
 		},
 		{
@@ -119,20 +119,20 @@ const ACTION_GROUPS = {
 	transaction: [
 		{
 			id: "transactions",
-			label: "Recent Transactions",
+			label: "📋 Recent Transactions",
 			desc: "View recent activity",
 		},
-		{ id: "deposit", label: "Deposit", desc: "Deposit into an account" },
-		{ id: "withdraw", label: "Withdraw", desc: "Withdraw from an account" },
-		{ id: "transfer", label: "Transfer", desc: "Transfer between accounts" },
+		{ id: "deposit", label: "⬇ Deposit", desc: "Deposit into an account" },
+		{ id: "withdraw", label: "⬆ Withdraw", desc: "Withdraw from an account" },
+		{ id: "transfer", label: "↔ Transfer", desc: "Transfer between accounts" },
 	],
 	admin: [
 		{
 			id: "mcp_tools",
-			label: "MCP Tools",
+			label: "🔧 MCP Tools",
 			desc: "List all available MCP banking tools",
 		},
-		{ id: "logout", label: "Log Out", desc: "Sign out of your account" },
+		{ id: "logout", label: "🚪 Log Out", desc: "Sign out of your account" },
 	],
 	testing: [
 		{
