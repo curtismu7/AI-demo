@@ -281,3 +281,7 @@
   border-radius: 6px;
   font-size: 0.85rem;
 }
+
+/* Phase 247 — MCP mode chip */
+.mgc-badge--custom-mode  { background: #fff3cd; color: #856404; }
+.mgc-badge--pingone-mode { background: #cfe2ff; color: #0a58ca; }

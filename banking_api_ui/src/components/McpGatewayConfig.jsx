@@ -10,6 +10,21 @@ function StatusBadge({ running, devBypass, enabled }) {
 	return <span className="mgc-badge mgc-badge--error">Not Running</span>;
 }
 
+function McpModeChip({ usePingOneServer }) {
+	if (usePingOneServer) {
+		return (
+			<span className="mgc-badge mgc-badge--pingone-mode" aria-label="MCP mode: PingOne MCP Server">
+				🔵 PingOne MCP Server
+			</span>
+		);
+	}
+	return (
+		<span className="mgc-badge mgc-badge--custom-mode" aria-label="MCP mode: Custom Gateway">
+			🛡️ Custom Gateway
+		</span>
+	);
+}
+
 function CopyButton({ text, label = "Copy" }) {
 	const [copied, setCopied] = useState(false);
 	const copy = useCallback(() => {
@@ -130,6 +145,7 @@ export default function McpGatewayConfig() {
 				</div>
 				<div className="mgc-header-badge">
 					<StatusBadge running={mock.running} devBypass={mock.devBypass} enabled={mock.enabled} />
+					{data && <McpModeChip usePingOneServer={data.mcpMode === 'pingone'} />}
 					<button className="mgc-refresh-btn" onClick={fetchConfig}>↻ Refresh</button>
 				</div>
 			</div>
