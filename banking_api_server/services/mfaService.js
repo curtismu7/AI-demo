@@ -233,9 +233,12 @@ async function getDeviceAuthStatus(daId, userAccessToken) {
 async function submitFido2Assertion(daId, assertion, userAccessToken, origin) {
 	try {
 		const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
+		// PingOne requires the assertion field to be a JSON string (not an object).
+		// Ref: PingOne docs "Check Assertion (FIDO Device)" — assertion type: String
+		const assertionStr = typeof assertion === 'string' ? assertion : JSON.stringify(assertion);
 		const body = {
 			origin: origin || "",
-			assertion,
+			assertion: assertionStr,
 			compatibility: "FULL",
 		};
 		const debugUrl = url;
@@ -527,10 +530,13 @@ async function completeFido2Registration(userId, deviceId, attestation, requestO
 			requestOrigin ||
 			configStore.getEffective("pingone_fido2_origin") ||
 			process.env.PINGONE_FIDO2_ORIGIN ||
-			null;
+			process.env.REACT_APP_CLIENT_URL ||
+			'https://api.pingdemo.com:4000';
 
+		// PingOne requires fido2 to be a JSON string (same convention as assertion field).
+		const fido2Str = typeof attestation === 'string' ? attestation : JSON.stringify(attestation);
 		const body = {
-			fido2: attestation,
+			fido2: fido2Str,
 			origin,
 		};
 
