@@ -1876,10 +1876,12 @@ Plans:
 **Goal:** Simplify the floating agent panel by moving action chips into a dedicated popout triggered by a single button, removing or consolidating toolbar buttons that clutter the header, and delivering a cleaner chat-first experience that surfaces power features on demand rather than all at once.
 **Requirements**: AGENT-UI-01, AGENT-UI-02, AGENT-UI-03
 **Depends on:** Phase 231
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] (run /gsd-plan-phase 246 to break down)
+- [ ] 246-01-PLAN.md — CSS: left-rail guard + all phase-246 CSS classes
+- [ ] 246-02-PLAN.md — JS: header redesign + Actions popout inline JSX
+- [ ] 246-03-PLAN.md — Build verification + human visual check
 
 
 ---
