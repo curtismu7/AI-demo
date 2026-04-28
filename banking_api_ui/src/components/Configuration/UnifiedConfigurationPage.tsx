@@ -52,7 +52,7 @@ const CONFIGURATION_TABS = [
     description: 'Vercel deploy URL, worker app secrets, debug logging, and RSA keypair generation',
     requiresAuth: true,
     requiredRole: 'admin',
-    sections: ['vercel-config', 'worker-app', 'debug-settings', 'api-keys']
+    sections: ['worker-app', 'debug-settings', 'api-keys']
   },
   {
     id: 'idp-setup',
@@ -106,6 +106,7 @@ interface ConfigurationState {
   mcpServerUrl: string;
   mcpResourceUri: string;
   workerClientId: string;
+  workerAuthMethod: string;
   // Quick start
   demoScenario: string;
   industryId: string;
@@ -155,6 +156,7 @@ const getDefaultState = (): ConfigurationState => ({
   mcpServerUrl: '',
   mcpResourceUri: '',
   workerClientId: '',
+  workerAuthMethod: 'client_secret_basic',
   demoScenario: 'default',
   industryId: 'banking',
   agentUiMode: 'standard',
@@ -385,7 +387,6 @@ const SectionNavigation: FC<{
     'mcp-tools': 'MCP Tools',
     'education-settings': 'Education Settings',
     'token-chain': 'Token Chain',
-    'vercel-config': 'Vercel Configuration',
     'worker-app': 'Worker Application',
     'debug-settings': 'Debug Settings',
     'api-keys': 'API Keys',
@@ -459,6 +460,7 @@ const UnifiedConfigurationPage: FC<{
           mcpServerUrl: (cfg.mcp_server_url as string) || '',
           mcpResourceUri: (cfg.mcp_resource_uri as string) || '',
           workerClientId: (cfg.authorize_worker_client_id as string) || '',
+          workerAuthMethod: (cfg.pingone_admin_token_endpoint_auth_method as string) || 'client_secret_basic',
           demoScenario: (cfg.demo_scenario as string) || 'default',
           industryId: (cfg.industry_id as string) || ctxIndustryId || 'banking',
           agentUiMode: (cfg.agent_ui_mode as string) || ctxAgentUiMode || 'standard',
@@ -516,6 +518,10 @@ const UnifiedConfigurationPage: FC<{
     const tabParam = searchParams.get('tab');
     if (tabParam && CONFIGURATION_TABS.find(tab => tab.id === tabParam)) {
       setActiveTab(tabParam);
+      const tab = CONFIGURATION_TABS.find(t => t.id === tabParam);
+      if (tab && tab.sections.length > 0) {
+        setState(prev => ({ ...prev, activeSection: tab.sections[0] }));
+      }
     }
   }, [searchParams]);
 
@@ -566,12 +572,12 @@ const UnifiedConfigurationPage: FC<{
         credentials: 'include',
         body: JSON.stringify({}),
       });
-      const data = await res.json() as { success: boolean; publicKey?: string; message?: string };
+      const data = await res.json() as { ok?: boolean; success?: boolean; publicKeyPem?: string; publicKey?: string; message?: string; error?: string };
       setState(prev => ({
         ...prev,
-        keypairStatus: data.success ? 'success' : 'error',
-        keypairMessage: data.message || (data.success ? 'Keypair generated' : 'Generation failed'),
-        generatedPublicKey: data.publicKey || '',
+        keypairStatus: (data.ok || data.success) ? 'success' : 'error',
+        keypairMessage: data.message || data.error || ((data.ok || data.success) ? 'Keypair generated' : 'Generation failed'),
+        generatedPublicKey: data.publicKeyPem || data.publicKey || '',
       }));
     } catch (_e) {
       setState(prev => ({ ...prev, keypairStatus: 'error', keypairMessage: 'Network error' }));
@@ -600,6 +606,7 @@ const UnifiedConfigurationPage: FC<{
         mcp_server_url: state.mcpServerUrl,
         mcp_resource_uri: state.mcpResourceUri,
         authorize_worker_client_id: state.workerClientId,
+        pingone_admin_token_endpoint_auth_method: state.workerAuthMethod,
         demo_scenario: state.demoScenario,
         industry_id: state.industryId,
         agent_ui_mode: state.agentUiMode,
@@ -1032,7 +1039,7 @@ const UnifiedConfigurationPage: FC<{
           Define which OAuth scopes the AI agent is allowed to request when performing an RFC 8693 token exchange. These scopes determine what the agent can do with the resulting MCP token. Enter one scope per line. Common scopes: <code>openid</code> (identity), <code>profile</code> (name/email), <code>p1:read:user</code> (PingOne user data), <code>bankingapi</code> (banking operations).
         </p>
         <div className="form-group">
-          <label className="form-label">Allowed MCP Scopes</label>
+          <label className="form-label">Allowed MCP Scopes (one per line)</label>
           <textarea
             className="form-input cfg-scopes-textarea"
             value={state.mcpScopes}
@@ -1060,8 +1067,11 @@ const UnifiedConfigurationPage: FC<{
           label="Show Education Panel"
           checked={state.showEducationPanel}
           onChange={v => setState(prev => ({ ...prev, showEducationPanel: v, saveStatus: 'idle' }))}
-          help="When enabled, an annotated step-by-step panel appears on the dashboard showing the real-time OAuth flow: authorization code, token exchange, MFA step-up, and agent delegation. Disable for a cleaner demo experience."
+          help="When enabled, a step-by-step panel appears on the dashboard after you log in as a demo user. It annotates each phase of the OAuth flow in real time. Disable for cleaner customer presentations."
         />
+        <div className="cfg-info-box">
+          <strong>Not seeing the panel?</strong> Make sure you are logged in as a demo user on the <a href="/dashboard" className="cfg-inline-link">Dashboard</a> (not an admin). The panel appears after the first token is issued. Check that PingOne credentials are configured in Quick Start.
+        </div>
       </div>
     );
 
@@ -1085,21 +1095,6 @@ const UnifiedConfigurationPage: FC<{
     );
 
     // Advanced tab
-    if (s === 'vercel-config') return (
-      <div className="cfg-section">
-        <p className="cfg-section-desc">
-          Environment configuration for Vercel serverless deployments. These values override automatic detection when deploying to Vercel.
-        </p>
-        <CfgField
-          label="Deploy URL Override"
-          value={state.vercelDeployUrl}
-          onChange={field('vercelDeployUrl')}
-          placeholder="https://your-app.vercel.app"
-          help="Optional: override the auto-detected Vercel deploy URL. Leave blank in most cases."
-        />
-      </div>
-    );
-
     if (s === 'worker-app') return (
       <div className="cfg-section">
         <p className="cfg-section-desc">
@@ -1120,6 +1115,16 @@ const UnifiedConfigurationPage: FC<{
           onToggle={toggleSecret}
           onChange={field('workerClientSecret')}
           help="Keep this secret — stored server-side and never sent to the browser after initial load"
+        />
+        <CfgSelect
+          label="Token Endpoint Auth Method"
+          value={state.workerAuthMethod}
+          onChange={v => setState(prev => ({ ...prev, workerAuthMethod: v, saveStatus: 'idle' }))}
+          options={[
+            { value: 'client_secret_basic', label: 'client_secret_basic — HTTP Basic (Authorization header)' },
+            { value: 'client_secret_post',  label: 'client_secret_post — POST body (form params)' },
+          ]}
+          help="Must match the Token Endpoint Authentication Method on the worker app in PingOne Admin → Applications → Configuration."
         />
       </div>
     );
@@ -1258,7 +1263,7 @@ const UnifiedConfigurationPage: FC<{
       const categories = Array.from(new Set(featureFlags.map(f => f.category)));
       return (
         <div className="cfg-section">
-          <p className="cfg-section-desc">Toggle in-development features. Changes apply immediately.</p>
+          <p className="cfg-section-desc">Toggle in-development features. Changes apply immediately and are persisted to the server — they survive restarts.</p>
           {categories.map(cat => (
             <div key={cat} className="ff-category-group">
               <h3 className="ff-category-title">{cat}</h3>
