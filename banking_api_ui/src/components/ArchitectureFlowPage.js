@@ -111,6 +111,7 @@ const INITIAL_EDGES = [
   { id: 'mcp-authz',     source: 'mcp-gw',      target: 'pingauthorize',style: BASE_EDGE_STYLE, label: 'Introspect' },
   { id: 'mcp-svc-a',     source: 'mcp-gw',      target: 'service-a',    style: BASE_EDGE_STYLE },
   { id: 'mcp-svc-b',     source: 'mcp-gw',      target: 'service-b',    style: BASE_EDGE_STYLE },
+  { id: 'mcp-api-gw',    source: 'mcp-gw',      target: 'api-gw',       style: BASE_EDGE_STYLE },
   { id: 'api-svc-c',     source: 'api-gw',      target: 'service-c',    style: BASE_EDGE_STYLE },
   { id: 'api-svc-d',     source: 'api-gw',      target: 'service-d',    style: BASE_EDGE_STYLE },
   { id: 'agent-hitl',    source: 'agent',        target: 'hitl',         style: BASE_EDGE_STYLE, label: 'Request approval' },
