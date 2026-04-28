@@ -53,14 +53,16 @@ export function TokenChainProvider({ children, activePath = "" }) {
    */
   const setTokenEvents = useCallback((tool, newEvents) => {
     if (!Array.isArray(newEvents) || newEvents.length === 0) { return; }
-    setEvents(newEvents);
-    // Clear session token event when a tool runs (tool events take precedence)
-    setSessionTokenEvent(null);
+    // Always persist to history so it's available when the user navigates to a token-chain page.
     setHistory(prev => [
       { tool, timestamp: new Date().toISOString(), events: newEvents },
-      ...prev.slice(0, 19), // keep last 20 calls
+      ...prev.slice(0, 19),
     ]);
-  }, []);
+    // Only update the live events display on token-chain pages to avoid unnecessary re-renders.
+    if (!isTokenChainRoute(activePath)) { return; }
+    setEvents(newEvents);
+    setSessionTokenEvent(null);
+  }, [activePath]);
 
   const clearEvents = useCallback(() => {
     setEvents([]);
