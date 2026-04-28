@@ -1,11 +1,9 @@
-/* ArchitectureDiagramPage.css — Architecture diagram overlay styles */
+/* ArchitectureDiagramPage.css */
 
-/* Page wrapper spacing */
 .arch-diagram-page {
   padding: 0 0.5rem;
 }
 
-/* Toolbar: zoom controls + simulate button on same row */
 .arch-diagram-toolbar {
   display: flex;
   align-items: center;
@@ -35,9 +33,7 @@
   color: #334155;
   transition: background 0.15s;
 }
-.arch-zoom-btn:hover {
-  background: #e2e8f0;
-}
+.arch-zoom-btn:hover { background: #e2e8f0; }
 
 .arch-zoom-label {
   font-size: 0.8rem;
@@ -47,12 +43,8 @@
   text-align: center;
 }
 
-.arch-zoom-reset {
-  font-size: 0.95rem;
-  color: #64748b;
-}
+.arch-zoom-reset { font-size: 0.95rem; color: #64748b; }
 
-/* Simulate button */
 .arch-simulate-btn {
   padding: 0.4rem 1rem;
   border: none;
@@ -64,16 +56,10 @@
   cursor: pointer;
   transition: background 0.15s, opacity 0.15s;
 }
-.arch-simulate-btn:hover:not(:disabled) {
-  background: #003366;
-}
+.arch-simulate-btn:hover:not(:disabled) { background: #003366; }
 .arch-simulate-btn:disabled,
-.arch-simulate-btn--running {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
+.arch-simulate-btn--running { opacity: 0.65; cursor: not-allowed; }
 
-/* Scroll wrapper: clips zoomed content with scrollbars */
 .arch-diagram-scroll-wrapper {
   overflow: auto;
   max-height: 75vh;
@@ -83,13 +69,11 @@
   background: #f8fafc;
 }
 
-/* Diagram container: position:relative so SVG matches rendered image bounds exactly.
-   Width is set inline by zoom level (e.g. zoom=2 → width:200%). */
 .arch-diagram-container {
   position: relative;
   display: inline-block;
   min-width: 100%;
-  line-height: 0; /* eliminate gap below inline img */
+  line-height: 0;
 }
 
 .arch-diagram-img {
@@ -110,44 +94,77 @@
   overflow: visible;
 }
 
-/* Base region: invisible by default */
+/* ── Region fills ────────────────────────────────────── */
+
 .diagram-region {
   fill: transparent;
   stroke: transparent;
-  stroke-width: 2;
-  transition: fill 0.3s ease, stroke 0.3s ease, opacity 0.3s ease;
-  cursor: default;
+  stroke-width: 0.3;
+  transition: fill 0.3s ease, stroke 0.3s ease;
 }
 
-/* Active: brand-navy */
+/* Current active step — brand-navy, pulsing */
 .diagram-region--active {
-  fill: rgba(0, 70, 135, 0.18);
+  fill: rgba(0, 70, 135, 0.22);
   stroke: #004687;
-  stroke-width: 3;
+  stroke-width: 0.5;
   animation: diagram-pulse 1.2s ease-in-out infinite;
-  filter: drop-shadow(0 0 6px rgba(0, 102, 204, 0.7));
+  filter: drop-shadow(0 0 0.4px rgba(0, 102, 204, 0.8));
 }
 
-/* Error: authorize/deny or token_exchange error */
+/* Previous steps — soft grey, no pulse, stays visible */
+.diagram-region--active-prev {
+  fill: rgba(100, 116, 139, 0.12);
+  stroke: #94a3b8;
+  stroke-width: 0.4;
+}
+
+/* Error — red pulse */
 .diagram-region--active-error {
-  fill: rgba(239, 68, 68, 0.15);
+  fill: rgba(239, 68, 68, 0.18);
   stroke: #ef4444;
-  stroke-width: 3;
+  stroke-width: 0.5;
   animation: diagram-pulse 1.2s ease-in-out infinite;
-  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.6));
+  filter: drop-shadow(0 0 0.4px rgba(239, 68, 68, 0.7));
 }
 
-/* Permit: authorize/permit */
+/* Permit — green pulse */
 .diagram-region--active-permit {
-  fill: rgba(76, 175, 80, 0.15);
+  fill: rgba(76, 175, 80, 0.18);
   stroke: #4CAF50;
-  stroke-width: 3;
+  stroke-width: 0.5;
   animation: diagram-pulse 1.2s ease-in-out infinite;
-  filter: drop-shadow(0 0 6px rgba(76, 175, 80, 0.6));
+  filter: drop-shadow(0 0 0.4px rgba(76, 175, 80, 0.7));
 }
 
 @keyframes diagram-pulse {
-  0%   { stroke-width: 3; opacity: 1; }
-  50%  { stroke-width: 4; opacity: 0.72; }
-  100% { stroke-width: 3; opacity: 1; }
+  0%   { stroke-width: 0.5; opacity: 1; }
+  50%  { stroke-width: 0.7; opacity: 0.7; }
+  100% { stroke-width: 0.5; opacity: 1; }
+}
+
+/* ── Explanation text inside boxes ───────────────────── */
+
+.diagram-region-text {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  user-select: none;
+}
+
+.diagram-region-text--active {
+  fill: #003366;
+}
+
+.diagram-region-text--active-prev {
+  fill: #64748b;
+  font-weight: 500;
+}
+
+.diagram-region-text--active-error {
+  fill: #b91c1c;
+}
+
+.diagram-region-text--active-permit {
+  fill: #166534;
 }

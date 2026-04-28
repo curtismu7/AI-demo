@@ -1,22 +1,12 @@
 /**
- * ArchitectureOverviewPage.js
+ * ArchitectureOverviewPage.js — /architecture/overview
  *
- * Architecture diagram page for /architecture/overview.
- * Shows the Ping Identity Digital Assistants overview diagram with live region highlighting.
+ * Simulate Flow walks through OVERVIEW_SIMULATE_STEPS:
+ *   - Current step: bright active color + explanation label in box
+ *   - Previous steps: muted grey (active-prev) + label stays visible
+ *   - All cleared when simulation ends
  *
- * Event wiring:
- * - On mount, fetches the last 5 minutes of events so historical activity is visible
- *   immediately (even after navigating away and back).
- * - Polls /api/admin/app-events every 10s for new events; uses ?since= to avoid reprocessing.
- * - Maps event category + tag to region IDs via OVERVIEW_EVENT_MAP.
- * - Scans agent_prompt/llm_complete metadata.response for component keywords.
- * - Per-region timers (useRef) so each region clears independently.
- *   Historical events (first load) stay highlighted for 15s; live events for 4s.
- *
- * Simulate Flow:
- * - Steps through OVERVIEW_SIMULATE_STEPS in order (1.5s between each step).
- * - Activates region highlights exactly as live events do, so the diagram
- *   shows the full user→agent→MCP→PingAuthorize→service flow.
+ * Live events (admin): regions activate for 4s; historical on mount for 15s.
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import apiClient from '../services/apiClient';
@@ -37,52 +27,43 @@ const OVERVIEW_EVENT_MAP = [
   { category: 'agent', tags: ['agent/message'], regionIds: ['agent'], colorClass: 'active' },
 ];
 
-// Ordered steps for the Simulate Flow button.
-// Each step activates one or more regions with a 1.5s gap between steps.
+// Each step: which regions light up, what color, and what label to show inside the box.
 const OVERVIEW_SIMULATE_STEPS = [
-  { regionIds: ['user'],                        colorClass: 'active' },
-  { regionIds: ['user', 'idp-oauth-as'],        colorClass: 'active' },
-  { regionIds: ['idp-oauth-as', 'agent'],       colorClass: 'active' },
-  { regionIds: ['agent'],                       colorClass: 'active' },
-  { regionIds: ['agent', 'mcp-gw'],             colorClass: 'active' },
-  { regionIds: ['mcp-gw', 'pingauthorize'],     colorClass: 'active' },
-  { regionIds: ['pingauthorize'],               colorClass: 'active-permit' },
-  { regionIds: ['api-gw', 'service-a'],         colorClass: 'active' },
-  { regionIds: ['service-b', 'service-c'],      colorClass: 'active' },
+  { regionIds: ['user'],                    colorClass: 'active',        label: 'User starts request' },
+  { regionIds: ['user', 'idp-oauth-as'],   colorClass: 'active',        label: 'OAuth 2.0 PKCE login' },
+  { regionIds: ['idp-oauth-as', 'agent'],  colorClass: 'active',        label: 'Token issued to agent' },
+  { regionIds: ['agent'],                   colorClass: 'active',        label: 'Agent analyzes request' },
+  { regionIds: ['agent', 'mcp-gw'],        colorClass: 'active',        label: 'Agent calls MCP tools' },
+  { regionIds: ['mcp-gw', 'pingauthorize'],colorClass: 'active',        label: 'Policy check' },
+  { regionIds: ['pingauthorize'],           colorClass: 'active-permit', label: 'PERMIT — access granted' },
+  { regionIds: ['api-gw', 'service-a'],    colorClass: 'active',        label: 'API call to backend' },
+  { regionIds: ['service-b', 'service-c'], colorClass: 'active',        label: 'Services respond' },
 ];
 
 const HIGHLIGHT_TIMEOUT_MS  = 4000;
 const HISTORICAL_TIMEOUT_MS = 15000;
-const STEP_INTERVAL_MS      = 1500;
+const STEP_INTERVAL_MS      = 1800;
 
 function mapEventToRegions(event) {
-  const hits = [];
   for (const rule of OVERVIEW_EVENT_MAP) {
     if (event.category !== rule.category) continue;
     if (rule.tags.length > 0 && !rule.tags.includes(event.tag)) continue;
-    for (const regionId of rule.regionIds) {
-      hits.push({ regionId, colorClass: rule.colorClass });
-    }
-    break;
+    return rule.regionIds.map((regionId) => ({ regionId, colorClass: rule.colorClass }));
   }
-  return hits;
+  return [];
 }
 
 function scanKeywords(responseText) {
   if (!responseText || typeof responseText !== 'string') return [];
   const lower = responseText.toLowerCase();
-  const hits = [];
-  for (const region of OVERVIEW_REGIONS) {
-    if (!region.keywords || region.keywords.length === 0) continue;
-    if (region.keywords.some((kw) => lower.includes(kw))) {
-      hits.push({ regionId: region.id, colorClass: 'active' });
-    }
-  }
-  return hits;
+  return OVERVIEW_REGIONS.filter(
+    (r) => r.keywords?.some((kw) => lower.includes(kw))
+  ).map((r) => ({ regionId: r.id, colorClass: 'active' }));
 }
 
 export default function ArchitectureOverviewPage({ user }) {
   const [activeRegions, setActiveRegions] = useState({});
+  const [regionLabels, setRegionLabels] = useState({});
   const [isSimulating, setIsSimulating] = useState(false);
   const clearTimers = useRef({});
   const simTimeouts = useRef([]);
@@ -93,49 +74,41 @@ export default function ArchitectureOverviewPage({ user }) {
     if (clearTimers.current[regionId]) clearTimeout(clearTimers.current[regionId]);
     setActiveRegions((prev) => ({ ...prev, [regionId]: colorClass }));
     clearTimers.current[regionId] = setTimeout(() => {
-      setActiveRegions((prev) => {
-        const next = { ...prev };
-        delete next[regionId];
-        return next;
-      });
+      setActiveRegions((prev) => { const n = { ...prev }; delete n[regionId]; return n; });
       delete clearTimers.current[regionId];
     }, timeoutMs);
   }, []);
 
-  const processEvents = useCallback(
-    (events, historical = false) => {
-      const timeout = historical ? HISTORICAL_TIMEOUT_MS : HIGHLIGHT_TIMEOUT_MS;
-      events.forEach((evt) => {
-        const staticHits = mapEventToRegions(evt);
-        staticHits.forEach(({ regionId, colorClass }) => activateRegion(regionId, colorClass, timeout));
-
-        if (evt.tag === 'agent_prompt/llm_complete' && evt.metadata?.response) {
-          const kwHits = scanKeywords(evt.metadata.response);
-          kwHits.forEach(({ regionId, colorClass }) => activateRegion(regionId, colorClass, timeout));
-        }
-      });
-    },
-    [activateRegion]
-  );
+  const processEvents = useCallback((events, historical = false) => {
+    const timeout = historical ? HISTORICAL_TIMEOUT_MS : HIGHLIGHT_TIMEOUT_MS;
+    events.forEach((evt) => {
+      mapEventToRegions(evt).forEach(({ regionId, colorClass }) =>
+        activateRegion(regionId, colorClass, timeout)
+      );
+      if (evt.tag === 'agent_prompt/llm_complete' && evt.metadata?.response) {
+        scanKeywords(evt.metadata.response).forEach(({ regionId, colorClass }) =>
+          activateRegion(regionId, colorClass, timeout)
+        );
+      }
+    });
+  }, [activateRegion]);
 
   const fetchEvents = useCallback(async () => {
     if (!user) return;
     try {
-      const params = new URLSearchParams({ limit: '50' });
-      // First fetch looks back 5 minutes so events from other pages are visible immediately.
       const since = lastFetchedAt.current || new Date(Date.now() - 5 * 60 * 1000).toISOString();
       const isHistorical = !lastFetchedAt.current;
-      params.append('since', since);
-      const res = await apiClient.get(`/api/admin/app-events?${params.toString()}`);
+      const res = await apiClient.get(`/api/admin/app-events?limit=50&since=${since}`);
       const events = res.data?.events || [];
       if (events.length > 0) processEvents(events, isHistorical);
       lastFetchedAt.current = new Date().toISOString();
     } catch (_err) {
-      // Swallow 403 silently for non-admin users
       if (!lastFetchedAt.current) lastFetchedAt.current = new Date().toISOString();
     }
   }, [user, processEvents]);
 
+  // Simulate: at each step set current regions as active + all prior as active-prev.
+  // Regions carry their explanation label; previous steps' labels persist on screen.
   const runSimulation = useCallback(() => {
     if (isSimulating) return;
     setIsSimulating(true);
@@ -144,15 +117,37 @@ export default function ArchitectureOverviewPage({ user }) {
 
     OVERVIEW_SIMULATE_STEPS.forEach((step, i) => {
       const t = setTimeout(() => {
-        step.regionIds.forEach((id) => activateRegion(id, step.colorClass));
+        const regions = {};
+        const labels = {};
+
+        // All previous steps → muted grey
+        for (let j = 0; j < i; j++) {
+          OVERVIEW_SIMULATE_STEPS[j].regionIds.forEach((id) => {
+            regions[id] = 'active-prev';
+            labels[id] = OVERVIEW_SIMULATE_STEPS[j].label;
+          });
+        }
+        // Current step → active color
+        step.regionIds.forEach((id) => {
+          regions[id] = step.colorClass;
+          labels[id] = step.label;
+        });
+
+        setActiveRegions(regions);
+        setRegionLabels(labels);
+
         if (i === OVERVIEW_SIMULATE_STEPS.length - 1) {
-          const done = setTimeout(() => setIsSimulating(false), HIGHLIGHT_TIMEOUT_MS);
+          const done = setTimeout(() => {
+            setActiveRegions({});
+            setRegionLabels({});
+            setIsSimulating(false);
+          }, HIGHLIGHT_TIMEOUT_MS);
           simTimeouts.current.push(done);
         }
       }, i * STEP_INTERVAL_MS);
       simTimeouts.current.push(t);
     });
-  }, [isSimulating, activateRegion]);
+  }, [isSimulating]);
 
   useEffect(() => {
     fetchEvents();
@@ -169,9 +164,10 @@ export default function ArchitectureOverviewPage({ user }) {
     <ArchitectureDiagramPage
       title="Architecture Overview"
       imageSrc="/architecture/overview.png"
-      imageAlt="Ping Identity Digital Assistants architecture: User, Trust Boundary, IdP, Agent, MCP Gateway, PingAuthorize, Backend Services"
+      imageAlt="Ping Identity Digital Assistants: User, Trust Boundary, IdP, Agent, MCP Gateway, PingAuthorize, Backend Services"
       regions={OVERVIEW_REGIONS}
       activeRegions={activeRegions}
+      regionLabels={regionLabels}
       user={user}
       onSimulate={runSimulation}
       isSimulating={isSimulating}
