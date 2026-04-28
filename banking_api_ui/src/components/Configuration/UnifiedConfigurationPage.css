@@ -1,6 +1,7 @@
 /* banking_api_ui/src/components/Configuration/UnifiedConfigurationPage.css */
 
 .unified-configuration-page {
+  font-size: 1.0625rem; /* ~17px base — bumps all rem descendants */
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -212,7 +213,7 @@
   padding: 0.5rem 2rem;
 }
 .configuration-tab-desc-bar__text {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: var(--color-text-secondary, #6c757d);
 }
 
@@ -234,14 +235,14 @@
   border: 1px solid var(--color-border, #dee2e6);
 }
 .idp-setup-label {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--color-text-secondary, #6c757d);
   white-space: nowrap;
 }
 .idp-setup-value {
   font-family: monospace;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: var(--color-text-primary, #212529);
   overflow: auto;
   word-break: break-all;
@@ -251,7 +252,7 @@
   border: 1px solid var(--color-border, #dee2e6);
   border-radius: 4px;
   padding: 0.2rem 0.5rem;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   cursor: pointer;
   white-space: nowrap;
   color: var(--color-text-secondary, #6c757d);
@@ -319,9 +320,9 @@
   transition: left 0.2s;
 }
 .ff-toggle-btn--on .ff-toggle-thumb { left: 18px; }
-.ff-toggle-text { font-size: 0.8rem; font-weight: 600; width: 22px; }
-.ff-flag-desc { font-size: 0.8rem; color: var(--color-text-secondary, #6c757d); margin: 0.25rem 0 0; }
-.ff-flag-impact { font-size: 0.75rem; color: var(--color-text-secondary, #6c757d); margin: 0.25rem 0 0; }
+.ff-toggle-text { font-size: 0.9rem; font-weight: 600; width: 22px; }
+.ff-flag-desc { font-size: 0.9rem; color: var(--color-text-secondary, #6c757d); margin: 0.25rem 0 0; }
+.ff-flag-impact { font-size: 0.875rem; color: var(--color-text-secondary, #6c757d); margin: 0.25rem 0 0; }
 .cfg-error-text { color: var(--color-danger, #dc3545); }
 
 /* Content Layout */
@@ -615,7 +616,7 @@
 }
 
 .cfg-field-help {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--brand-medium-gray, #6b7280);
   margin: 0.25rem 0 0;
 }
@@ -709,7 +710,7 @@
 }
 
 .cfg-industry-label {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 500;
   text-align: center;
   color: var(--brand-dark-gray, #374151);
@@ -741,7 +742,7 @@
 
 .cfg-scopes-textarea {
   font-family: 'Courier New', monospace;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   line-height: 1.6;
   resize: vertical;
 }
@@ -781,9 +782,9 @@
   outline: none !important;
 }
 .unified-configuration-page input[type=checkbox] { accent-color: #4f46e5; }
-.cfg-field-help { font-size: 0.75rem; color: #374151; margin: 0.25rem 0 0; line-height: 1.45; }
-.idp-setup-label { color: #374151; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
-.idp-setup-value { color: #111827; font-family: monospace; font-size: 0.8rem; }
+.cfg-field-help { font-size: 0.875rem; color: #374151; margin: 0.25rem 0 0; line-height: 1.45; }
+.idp-setup-label { color: #374151; font-size: 0.9rem; font-weight: 600; white-space: nowrap; }
+.idp-setup-value { color: #111827; font-family: monospace; font-size: 0.9rem; }
 .cfg-info-box {
   margin-top: 1rem;
   padding: 0.75rem 1rem;
