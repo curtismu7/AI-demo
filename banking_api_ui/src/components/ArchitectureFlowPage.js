@@ -693,32 +693,43 @@ export default function ArchitectureFlowPage({ user }) {
       {/* Aud trail */}
       <AudTrail stepIndex={currentStep} />
 
-      {/* React Flow diagram */}
-      <div style={{ height: '56vh', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', background: '#f8fafc' }}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={NODE_TYPES}
-          fitView
-          fitViewOptions={{ padding: 0.15 }}
-          attributionPosition="bottom-right"
-        >
-          <Background color="#e2e8f0" gap={20} />
-          <Controls />
-          <MiniMap
-            nodeColor={(n) => { const c = COLOR[n.data?.colorClass]; return c ? c.border : '#e2e8f0'; }}
-            style={{ background: '#f1f5f9', border: '1px solid #e2e8f0' }}
-          />
-        </ReactFlow>
+      {/* Diagram + Token Inspector side by side */}
+      <div style={{ display: 'flex', gap: 8, height: '62vh' }}>
+        {/* React Flow diagram */}
+        <div style={{ flex: '1 1 0', minWidth: 0, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', background: '#f8fafc' }}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            nodeTypes={NODE_TYPES}
+            fitView
+            fitViewOptions={{ padding: 0.15 }}
+            attributionPosition="bottom-right"
+          >
+            <Background color="#e2e8f0" gap={20} />
+            <Controls />
+            <MiniMap
+              nodeColor={(n) => { const c = COLOR[n.data?.colorClass]; return c ? c.border : '#e2e8f0'; }}
+              style={{ background: '#f1f5f9', border: '1px solid #e2e8f0' }}
+            />
+          </ReactFlow>
+        </div>
+
+        {/* Token Inspector — always visible alongside the diagram */}
+        <div style={{ width: 280, flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <div style={{
+            fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase',
+            letterSpacing: '0.06em', marginBottom: 6,
+          }}>
+            Token Inspector
+          </div>
+          <TokenInspector step={activeStep} />
+        </div>
       </div>
 
-      {/* Token Inspector */}
-      <TokenInspector step={activeStep} />
-
       <p style={{ marginTop: '0.5rem', fontSize: '0.72rem', color: '#94a3b8' }}>
-        Click <strong>Simulate Flow</strong> to walk through the full token chain step by step — including RFC 8693 delegation and HITL approval. Nodes also highlight in real-time as the agent processes requests.
+        Click <strong>Simulate Flow</strong> to walk through the full token chain — RFC 8693 delegation, aud changes, and HITL approval shown in real time.
       </p>
     </div>
   );
