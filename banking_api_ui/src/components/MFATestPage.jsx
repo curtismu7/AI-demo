@@ -37,6 +37,8 @@ export default function MFATestPage() {
 
 	// User override — allows testing MFA for any PingOne user (userId or username)
 	const [testUserId, setTestUserId] = useState("");
+	const [pingoneUsers, setPingoneUsers] = useState([]); // populated from /api/mfa/test/users
+	const [usersLoading, setUsersLoading] = useState(false);
 
 	// SMS OTP test state
 	const [smsInitiateStatus, setSmsInitiateStatus] = useState("pending");
@@ -227,6 +229,18 @@ export default function MFATestPage() {
 		loadConfig();
 		loadWorkerToken();
 	}, [loadConfig, loadWorkerToken]);
+
+	// Load PingOne user list for the user picker dropdown
+	const loadPingoneUsers = useCallback(async () => {
+		setUsersLoading(true);
+		try {
+			const { data } = await apiClient.get("/api/mfa/test/users");
+			if (data.success) setPingoneUsers(data.users || []);
+		} catch (_e) { /* non-fatal */ }
+		setUsersLoading(false);
+	}, []);
+
+	useEffect(() => { loadPingoneUsers(); }, [loadPingoneUsers]);
 
 	// Auto-enroll FIDO2 if challenge initiated but no device enrolled
 	// (i.e., no WebAuthn options arrive after 5 seconds)
@@ -944,42 +958,48 @@ export default function MFATestPage() {
 					</div>
 				</div>
 
-				{/* User override — test MFA for any PingOne user */}
-				<div style={{
-					display: "flex", alignItems: "center", gap: 10, margin: "0.75rem 0",
-					padding: "0.5rem 0.75rem", background: "#f8fafc", border: "1px solid #e2e8f0",
-					borderRadius: 8, fontSize: "0.85rem",
-				}}>
-					<label htmlFor="mfa-user-override" style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
-						Test User ID:
+				{/* User picker — select any PingOne user to test MFA against */}
+				<div className="mfa-user-picker">
+					<label htmlFor="mfa-user-select" className="mfa-user-picker__label">
+						Test as User:
 					</label>
-					<input
-						id="mfa-user-override"
-						type="text"
+					<select
+						id="mfa-user-select"
+						className="mfa-user-picker__select"
 						value={testUserId}
-						onChange={(e) => setTestUserId(e.target.value.trim())}
-						placeholder="Leave empty for session user (bankadmin)"
-						style={{
-							flex: 1, padding: "6px 10px", border: "1px solid #cbd5e1",
-							borderRadius: 6, fontFamily: "monospace", fontSize: "0.85rem",
-						}}
-					/>
+						onChange={(e) => { setTestUserId(e.target.value); loadDevices(); }}
+						disabled={usersLoading}
+					>
+						<option value="">
+							{usersLoading ? "Loading users…" : "— Session user (bankadmin) —"}
+						</option>
+						{pingoneUsers.map((u) => (
+							<option key={u.id} value={u.id}>
+								{u.name || u.username} — {u.email || u.username}
+							</option>
+						))}
+					</select>
+					<button
+						type="button"
+						className="mfa-user-picker__refresh"
+						onClick={loadPingoneUsers}
+						title="Reload user list from PingOne"
+					>
+						↻
+					</button>
 					{testUserId && (
-						<button
-							type="button"
-							onClick={() => { setTestUserId(""); loadDevices(); }}
-							style={{
-								padding: "4px 10px", border: "1px solid #cbd5e1", borderRadius: 6,
-								background: "#fff", cursor: "pointer", fontSize: "0.8rem",
-							}}
-						>
-							Clear
-						</button>
-					)}
-					{testUserId && (
-						<span style={{ color: "#2563eb", fontWeight: 500 }}>
-							⚠ Using override user
-						</span>
+						<>
+							<button
+								type="button"
+								className="mfa-user-picker__clear"
+								onClick={() => { setTestUserId(""); loadDevices(); }}
+							>
+								Clear
+							</button>
+							<span className="mfa-user-picker__active">
+								⚠ Override active
+							</span>
+						</>
 					)}
 				</div>
 
@@ -1257,7 +1277,7 @@ export default function MFATestPage() {
 						rawResult={rawFidoEnrollInit}
 						pingoneRequest={fidoEnrollInitPingoneReq}
 						pingoneResponse={fidoEnrollInitPingoneRes}
-						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-create-device-fido2"
+						docsUrl="https://developer.pingidentity.com/pingone-api/mfa/users/mfa-devices/fido2-biometrics-devices/create-mfa-user-device-fido2---security_key.html"
 						docsSectionTitle="FIDO2 Enroll — Init Registration"
 					/>
 					{fidoEnrollData?.publicKeyCredentialCreationOptions && (() => {

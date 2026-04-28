@@ -755,4 +755,34 @@ router.get('/worker-token', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/mfa/test/users
+ * List PingOne users for the user picker dropdown.
+ * Returns id, username, email, name for each user (limit 100).
+ */
+router.get('/users', async (_req, res) => {
+  try {
+    const configStore = require('../services/configStore');
+    const axios = require('axios');
+    const region = configStore.getEffective('pingone_region') || 'com';
+    const envId = configStore.getEffective('pingone_environment_id');
+    const workerToken = await mfaService.getWorkerToken();
+    const url = `https://api.pingone.${region}/v1/environments/${envId}/users?limit=100`;
+    const { data } = await axios.get(url, {
+      headers: { Authorization: `Bearer ${workerToken}` },
+      timeout: 10000,
+    });
+    const users = (data._embedded?.users || []).map((u) => ({
+      id: u.id,
+      username: u.username,
+      email: u.email,
+      name: [u.name?.given, u.name?.family].filter(Boolean).join(' ') || u.username,
+    }));
+    res.json({ success: true, users });
+  } catch (err) {
+    console.error('[MFA Test] GET /users failed:', err.message);
+    res.status(err.status || 500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

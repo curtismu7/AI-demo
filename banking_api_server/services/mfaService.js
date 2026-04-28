@@ -578,8 +578,11 @@ async function completeFido2Registration(userId, deviceId, attestation, requestO
 		} catch (diagErr) {
 			console.warn('[FIDO2-DIAG] could not decode clientDataJSON:', diagErr.message);
 		}
+		// PingOne device activate: "attestation" must be a JSON string (not object).
+		// Ref: PingOne API docs "Activate a FIDO2 device" — attestation type: String
+		const attestationStr = typeof attestation === "string" ? attestation : JSON.stringify(attestation);
 		const body = {
-			fido2: attestation,
+			attestation: attestationStr,
 			origin,
 		};
 
@@ -587,7 +590,7 @@ async function completeFido2Registration(userId, deviceId, attestation, requestO
 		const debugRequest = {
 			method: "POST",
 			url: debugUrl,
-			body,
+			body: { attestation: "<JSON string of WebAuthn attestation>", origin },
 			contentType: "application/vnd.pingidentity.device.activate+json",
 			headers: _debugHeaders(workerToken, "application/vnd.pingidentity.device.activate+json"),
 		};

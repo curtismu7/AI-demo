@@ -663,3 +663,71 @@
 	margin: 1rem 0;
 	color: #78350f;
 }
+
+/* ── PingOne user picker ───────────────────────────────── */
+.mfa-user-picker {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0.75rem 0;
+        padding: 0.5rem 0.75rem;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        flex-wrap: wrap;
+}
+
+.mfa-user-picker__label {
+        font-weight: 600;
+        white-space: nowrap;
+        color: #334155;
+}
+
+.mfa-user-picker__select {
+        flex: 1;
+        min-width: 200px;
+        padding: 6px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background: #fff;
+        font-size: 0.85rem;
+        cursor: pointer;
+}
+
+.mfa-user-picker__select:disabled {
+        background: #f1f5f9;
+        color: #94a3b8;
+        cursor: not-allowed;
+}
+
+.mfa-user-picker__refresh {
+        padding: 5px 9px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background: #fff;
+        cursor: pointer;
+        font-size: 0.95rem;
+        line-height: 1;
+        color: #475569;
+}
+
+.mfa-user-picker__refresh:hover {
+        background: #f1f5f9;
+}
+
+.mfa-user-picker__clear {
+        padding: 4px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background: #fff;
+        cursor: pointer;
+        font-size: 0.8rem;
+        color: #475569;
+}
+
+.mfa-user-picker__active {
+        color: #2563eb;
+        font-weight: 500;
+        white-space: nowrap;
+}
