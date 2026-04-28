@@ -1006,6 +1006,7 @@ const {
 const mcpFlowSseHub = require('./services/mcpFlowSseHub');
 const http2McpBridge = require("./services/http2McpBridge");
 const mcpGatewayClient = require('./services/mcpGatewayClient');
+const mcpPingOneStdioAdapter = require('./services/mcpPingOneStdioAdapter');
 
 // Session-scoped exchange mode toggle (GET/POST /api/mcp/exchange-mode)
 const mcpExchangeMode = require('./routes/mcpExchangeMode');
@@ -1452,6 +1453,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
     // performs RFC 8693 token exchange to the upstream MCP server — the mcpAccessToken
     // must already be scoped to the gateway audience (MCP_GW_RESOURCE_URI).
     // Graceful fallback: if MCP_GATEWAY_HTTP_URL is not set, use the previous direct path.
+    const usePingOneStdio = configStore.get('mcp_use_pingone_server') === 'true';
     const gatewayHttpUrl = mcpGatewayClient.getMcpGatewayHttpUrl();
     const useGateway = !!process.env.MCP_GATEWAY_HTTP_URL;
     const mcpUrl = getMcpServerUrl();
@@ -1464,7 +1466,9 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         });
         appEventService.logEvent('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, gatewayUrl: useGateway ? gatewayHttpUrl : mcpUrl, via: useGateway ? 'gateway' : 'direct' } });
         let result;
-        if (useGateway) {
+        if (usePingOneStdio) {
+            result = await mcpPingOneStdioAdapter.callToolViaStdio(tool, params || {}, mcpAccessToken, userSub, req.correlationId);
+        } else if (useGateway) {
             result = await mcpGatewayClient.callToolViaGateway(gatewayHttpUrl, mcpAccessToken, tool, params || {}, { correlationId: req.correlationId });
         } else if (useHttp2) {
             const h2Session = http2McpBridge.createHttp2Session(mcpUrl, mcpAccessToken);
