@@ -843,8 +843,11 @@ app.use('/api/logs', logsRoutes);
 // PingOne Configuration Audit — admin-accessible endpoint for validating resources and scopes
 app.use('/api/pingone/audit', pingoneAuditRoutes);
 
-// PingOne Test Page — comprehensive testing of PingOne integration
-app.use('/api/pingone-test', authenticateToken, pingoneTestRoutes);
+// PingOne Test Page — /config is public (env settings only, no user data); all other endpoints require auth
+app.use('/api/pingone-test', (req, res, next) => {
+    if (req.path === '/config' && req.method === 'GET') return next();
+    authenticateToken(req, res, next);
+}, pingoneTestRoutes);
 
 // Migration API routes - mixed authentication (some public, some admin-only)
 app.use('/api/migration', migrationRoutes);
