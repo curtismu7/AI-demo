@@ -4,38 +4,52 @@
  * Shared display component for architecture diagram pages.
  * Renders a PNG image with an absolutely-positioned SVG overlay.
  *
- * The SVG uses viewBox="0 0 100 100" + preserveAspectRatio="none" so region
- * coordinates and font sizes are all in the same 0-100 unit space.
+ * Token card design: light background with colored left border so text is readable.
+ * Supports dual tokens (token + token2 stacked), RFC badges, URN abbreviation,
+ * and stacked Request/Issued layout for RFC 8693 exchange steps.
  *
  * Props:
- *   title         {string}    Page heading
- *   imageSrc      {string}    Path to PNG
- *   imageAlt      {string}    Alt text
- *   regions       {Region[]}  Array from diagram-*-regions.js
- *   activeRegions {object}    { [regionId]: 'active' | 'active-prev' | 'active-error' | 'active-permit' }
- *   regionLabels  {object}    { [regionId]: string } — explanation shown inside the box
- *   onSimulate    {function}  Simulate Flow button handler (optional)
- *   isSimulating  {boolean}   Disables simulate button while running
- *   isPaused      {boolean}
- *   onPause       {function}
- *   onResume      {function}
- *   onNextStep    {function}
- *   onStop        {function}
- *   currentStep   {number}    0-based index of current step (-1 = not started)
- *   totalSteps    {number}
- *   stepDetail    {object}    Token / authorize / exchange detail object for the card
- *   stepDetailOut {object}    Second token (for RFC 8693 exchange "Request | Issued" split)
+ *   title, imageSrc, imageAlt, regions, activeRegions, regionLabels
+ *   onSimulate, isSimulating
+ *   isPaused, onPause, onResume, onPrevStep, onNextStep, onStop
+ *   currentStep {number}  (-1 = idle)
+ *   totalSteps  {number}
+ *   stepDetail  {object}  token for primary card
+ *   stepDetail2 {object}  token for secondary card (dual display)
+ *   stepDetailOut {object} issued token for RFC 8693 exchange step
  *   isTokenExchange {boolean}
- *   isHitl       {boolean}
- *   audHops       {Array}     [{icon,label,aud,act,may_act,activeFrom,activeTo}]
+ *   isHitl      {boolean}
+ *   audHops     {Array}
  */
 import React, { useState } from 'react';
 import AdminSubPageShell from './AdminSubPageShell';
 import './ArchitectureDiagramPage.css';
 
 const ZOOM_STEP = 0.25;
-const ZOOM_MIN = 0.5;
-const ZOOM_MAX = 4.0;
+const ZOOM_MIN  = 0.5;
+const ZOOM_MAX  = 4.0;
+
+// Abbreviate long OAuth URNs to something readable
+const URN_SHORT = {
+  'urn:ietf:params:oauth:grant-type:token-exchange': 'token-exchange',
+  'urn:ietf:params:oauth:token-type:access_token':   'access_token',
+  'urn:ietf:params:oauth:token-type:id_token':        'id_token',
+  'urn:ietf:params:oauth:token-type:refresh_token':   'refresh_token',
+};
+function fmtVal(v) {
+  return URN_SHORT[v] !== undefined ? URN_SHORT[v] : v;
+}
+
+// Card accent color by _type
+const ACCENT = {
+  oauth:    '#2563eb',
+  exchange: '#7c3aed',
+  permit:   '#16a34a',
+  hitl:     '#d97706',
+  idtoken:  '#0891b2',
+  mcp:      '#475569',
+  error:    '#dc2626',
+};
 
 function wrapText(text, maxChars) {
   if (!text || text.length <= maxChars) return [text];
@@ -59,12 +73,10 @@ function HighlightRect({ region, colorVariant, label }) {
   const className = colorVariant
     ? `diagram-region diagram-region--${colorVariant}`
     : 'diagram-region';
-
-  const fontSize = Math.min(2.2, Math.max(1.0, hPct * 0.18));
-  const cx = xPct + wPct / 2;
+  const fontSize  = Math.min(2.2, Math.max(1.0, hPct * 0.18));
+  const cx        = xPct + wPct / 2;
   const labelLines = label ? wrapText(label, Math.floor(wPct / fontSize * 1.8)) : [];
-  const textY = yPct + hPct / 2 - (labelLines.length - 1) * fontSize * 0.6;
-
+  const textY      = yPct + hPct / 2 - (labelLines.length - 1) * fontSize * 0.6;
   return (
     <g>
       <rect x={xPct} y={yPct} width={wPct} height={hPct} rx={0.8}
@@ -112,60 +124,85 @@ function AudTrail({ audHops, currentStep }) {
   );
 }
 
-// ─── Token card ───────────────────────────────────────────────────────────────
+// ─── Token Card (light-background, readable) ──────────────────────────────────
 
-function TokenClaimRow({ k, v }) {
-  const isHighlight = ['aud', 'decision', 'audience', 'requested_aud', 'TokenAudience', 'DecisionContext'].includes(k);
-  const isAccent    = ['act', 'may_act', 'ActClientId'].includes(k);
-  const isMuted     = ['type', 'note', 'grant_type', 'subject_token_type'].includes(k);
+function ClaimRow({ k, v }) {
+  const isAud    = k === 'aud' || k === 'audience' || k === 'TokenAudience' || k === 'requested_aud';
+  const isAct    = k === 'act' || k === 'may_act' || k === 'ActClientId';
+  const isDecide = k === 'decision' || k === 'DecisionContext';
+  const isMeta   = k === 'note' || k === '_type';
+  if (isMeta) return null;
   return (
     <div className="arch-claim-row">
       <span className="arch-claim-key">{k}</span>
-      <span className={`arch-claim-val${isHighlight ? ' arch-claim-val--hi' : isAccent ? ' arch-claim-val--accent' : isMuted ? ' arch-claim-val--muted' : ''}`}>
-        {v}
+      <span className={`arch-claim-val${isAud ? ' arch-claim-val--aud' : isAct ? ' arch-claim-val--act' : isDecide ? ' arch-claim-val--decide' : ''}`}>
+        {fmtVal(String(v))}
       </span>
     </div>
   );
 }
 
-function TokenCard({ stepDetail, stepDetailOut, isTokenExchange, isHitl }) {
-  if (!stepDetail) return null;
-  const entries = Object.entries(stepDetail).filter(([k]) => k !== 'note');
-  const note = stepDetail.note;
+function OneCard({ token, isExchange, isHitl, label }) {
+  if (!token) return null;
 
-  const isPermit = stepDetail.decision?.includes('PERMIT') || stepDetail.decision?.includes('APPROVED');
-  let cardClass = 'arch-token-card';
-  if (isHitl)          cardClass += ' arch-token-card--hitl';
-  else if (isTokenExchange) cardClass += ' arch-token-card--exchange';
-  else if (isPermit)   cardClass += ' arch-token-card--permit';
+  const accentType = token._type || (isHitl ? 'hitl' : isExchange ? 'exchange' : 'oauth');
+  const accent = ACCENT[accentType] || ACCENT.oauth;
+  const title  = token.type  || token._title || 'Token';
+  const rfcs   = token._rfcs || [];
+  const note   = token.note;
 
-  const header = isHitl
-    ? '🧑‍⚖️  HITL'
-    : isTokenExchange
-    ? '🔄  RFC 8693 Token Exchange'
-    : '🎫  Token on Wire';
+  // For exchange steps: split into request entries + issued entries via stepDetailOut
+  const claimEntries = Object.entries(token).filter(([k]) =>
+    k !== 'type' && k !== '_type' && k !== '_title' && k !== '_rfcs' && k !== 'note'
+  );
 
   return (
-    <div className={cardClass}>
-      <div className="arch-token-card__header">{header}</div>
-      {stepDetailOut ? (
-        <div className="arch-token-card__split">
-          <div className="arch-token-card__col">
-            <div className="arch-token-card__col-label">Request</div>
-            {entries.map(([k, v]) => <TokenClaimRow key={k} k={k} v={String(v)} />)}
-          </div>
-          <div className="arch-token-card__divider" />
-          <div className="arch-token-card__col">
-            <div className="arch-token-card__col-label arch-token-card__col-label--issued">↓ Issued</div>
-            {Object.entries(stepDetailOut).filter(([k]) => k !== 'note').map(([k, v]) => (
-              <TokenClaimRow key={k} k={k} v={String(v)} />
+    <div className="arch-token-card" style={{ borderLeftColor: accent }}>
+      <div className="arch-token-card__head">
+        <span className="arch-token-card__title">{title}</span>
+        {rfcs.map((r) => (
+          <span key={r} className="arch-token-card__rfc">{r}</span>
+        ))}
+      </div>
+      {label && <div className="arch-token-card__section-label">{label}</div>}
+      {claimEntries.map(([k, v]) => <ClaimRow key={k} k={k} v={v} />)}
+      {note && <div className="arch-token-card__note">ℹ {note}</div>}
+    </div>
+  );
+}
+
+function TokenCard({ stepDetail, stepDetail2, stepDetailOut, isTokenExchange, isHitl }) {
+  if (!stepDetail && !stepDetail2) return null;
+  return (
+    <div className="arch-token-panel">
+      {isTokenExchange && stepDetail ? (
+        // RFC 8693 exchange: show Request + Issued stacked
+        <div className="arch-token-card" style={{ borderLeftColor: ACCENT.exchange }}>
+          <div className="arch-token-card__head">
+            <span className="arch-token-card__title">{stepDetail.type || 'Token Exchange'}</span>
+            {(stepDetail._rfcs || ['RFC 8693']).map((r) => (
+              <span key={r} className="arch-token-card__rfc">{r}</span>
             ))}
           </div>
+          <div className="arch-token-card__section-label">Request →</div>
+          {Object.entries(stepDetail).filter(([k]) =>
+            k !== 'type' && k !== '_type' && k !== '_title' && k !== '_rfcs' && k !== 'note'
+          ).map(([k, v]) => <ClaimRow key={k} k={k} v={v} />)}
+          {stepDetailOut && (
+            <>
+              <div className="arch-token-card__section-label arch-token-card__section-label--issued">↓ Issued</div>
+              {Object.entries(stepDetailOut).filter(([k]) =>
+                k !== 'type' && k !== '_type' && k !== '_title' && k !== '_rfcs' && k !== 'note'
+              ).map(([k, v]) => <ClaimRow key={k} k={k} v={v} />)}
+              {stepDetailOut.note && <div className="arch-token-card__note">ℹ {stepDetailOut.note}</div>}
+            </>
+          )}
+          {stepDetail.note && <div className="arch-token-card__note">ℹ {stepDetail.note}</div>}
         </div>
       ) : (
-        entries.map(([k, v]) => <TokenClaimRow key={k} k={k} v={String(v)} />)
+        <OneCard token={stepDetail} isHitl={isHitl} />
       )}
-      {note && <div className="arch-token-card__note">ℹ {note}</div>}
+      {stepDetail2 && <OneCard token={stepDetail2} />}
     </div>
   );
 }
@@ -178,30 +215,31 @@ export default function ArchitectureDiagramPage({
   imageAlt,
   regions = [],
   activeRegions = {},
-  regionLabels = {},
+  regionLabels  = {},
   onSimulate,
   isSimulating,
   isPaused,
   onPause,
   onResume,
+  onPrevStep,
   onNextStep,
   onStop,
   currentStep,
   totalSteps,
   stepDetail,
+  stepDetail2,
   stepDetailOut,
   isTokenExchange,
   isHitl,
   audHops,
 }) {
   const [zoom, setZoom] = useState(1.0);
-
   const zoomIn    = () => setZoom((z) => Math.min(ZOOM_MAX, parseFloat((z + ZOOM_STEP).toFixed(2))));
   const zoomOut   = () => setZoom((z) => Math.max(ZOOM_MIN, parseFloat((z - ZOOM_STEP).toFixed(2))));
   const zoomReset = () => setZoom(1.0);
 
   const stepNum   = currentStep != null && currentStep >= 0 ? currentStep + 1 : null;
-  const hasDetail = Boolean(stepDetail);
+  const hasCard   = isSimulating && (Boolean(stepDetail) || Boolean(stepDetail2));
 
   return (
     <AdminSubPageShell title={title}>
@@ -219,17 +257,18 @@ export default function ArchitectureDiagramPage({
           {isSimulating && stepNum != null && (
             <div className="arch-step-controls">
               <span className={`arch-step-label${isPaused ? ' arch-step-label--paused' : ''}`}>
-                {isPaused ? '⏸ Paused' : '▶'} Step {stepNum}/{totalSteps}
+                {isPaused ? '⏸' : '▶'} Step {stepNum}/{totalSteps}
               </span>
-              {!isPaused && <button className="arch-ctrl-btn arch-ctrl-btn--pause" onClick={onPause}>Pause</button>}
+              <button className="arch-ctrl-btn arch-ctrl-btn--prev"  onClick={onPrevStep}  disabled={stepNum <= 1}>← Prev</button>
+              {!isPaused && <button className="arch-ctrl-btn arch-ctrl-btn--pause"  onClick={onPause}>Pause</button>}
               {isPaused  && <button className="arch-ctrl-btn arch-ctrl-btn--resume" onClick={onResume}>Resume</button>}
-              {isPaused  && <button className="arch-ctrl-btn arch-ctrl-btn--next" onClick={onNextStep}>Next Step →</button>}
-              <button className="arch-ctrl-btn arch-ctrl-btn--stop" onClick={onStop}>Stop</button>
+              <button className="arch-ctrl-btn arch-ctrl-btn--next"  onClick={onNextStep}  disabled={!isPaused}>Next →</button>
+              <button className="arch-ctrl-btn arch-ctrl-btn--stop"  onClick={onStop}>Stop</button>
             </div>
           )}
 
           {onSimulate && !isSimulating && (
-            <button className="arch-simulate-btn" onClick={onSimulate} disabled={isSimulating}>
+            <button className="arch-simulate-btn" onClick={onSimulate}>
               ▶ Simulate Flow
             </button>
           )}
@@ -240,8 +279,8 @@ export default function ArchitectureDiagramPage({
           <AudTrail audHops={audHops} currentStep={currentStep} />
         )}
 
-        {/* Body: diagram + optional token card */}
-        <div className={`arch-diagram-body${hasDetail && isSimulating ? ' arch-diagram-body--with-card' : ''}`}>
+        {/* Body: diagram + token side panel */}
+        <div className={`arch-diagram-body${hasCard ? ' arch-diagram-body--with-card' : ''}`}>
           <div className="arch-diagram-scroll-wrapper">
             <div className="arch-diagram-container" style={{ width: `${zoom * 100}%` }}>
               <img src={imageSrc} alt={imageAlt || title} className="arch-diagram-img" />
@@ -259,10 +298,11 @@ export default function ArchitectureDiagramPage({
             </div>
           </div>
 
-          {hasDetail && isSimulating && (
+          {hasCard && (
             <div className="arch-token-side">
               <TokenCard
                 stepDetail={stepDetail}
+                stepDetail2={stepDetail2}
                 stepDetailOut={stepDetailOut}
                 isTokenExchange={isTokenExchange}
                 isHitl={isHitl}

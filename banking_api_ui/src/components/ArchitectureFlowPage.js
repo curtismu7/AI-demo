@@ -372,21 +372,34 @@ function AudTrail({ stepIndex }) {
   );
 }
 
-// ─── Token card (Panel overlay inside React Flow canvas) ──────────────────────
+// ─── Token card (light-background, readable) — Panel overlay inside React Flow ─
 
-function TokenClaimRow({ k, v }) {
-  const isHighlight = ['aud', 'decision', 'requested_aud', 'audience', 'TokenAudience', 'DecisionContext'].includes(k);
-  const isAccent    = ['act', 'may_act', 'ActClientId'].includes(k);
-  const isMuted     = ['type', 'note', 'grant_type', 'subject_token_type'].includes(k);
+const URN_SHORT = {
+  'urn:ietf:params:oauth:grant-type:token-exchange': 'token-exchange',
+  'urn:ietf:params:oauth:token-type:access_token':   'access_token',
+  'urn:ietf:params:oauth:token-type:id_token':        'id_token',
+  'urn:ietf:params:oauth:token-type:refresh_token':   'refresh_token',
+};
+const FLOW_ACCENT = {
+  oauth: '#2563eb', exchange: '#7c3aed', permit: '#16a34a',
+  hitl: '#d97706', idtoken: '#0891b2', mcp: '#475569',
+};
+
+function FlowClaimRow({ k, v }) {
+  const isAud    = k === 'aud' || k === 'audience' || k === 'TokenAudience';
+  const isAct    = k === 'act' || k === 'may_act' || k === 'ActClientId';
+  const isDecide = k === 'decision' || k === 'DecisionContext';
+  if (k === 'note' || k === '_type' || k === '_rfcs' || k === '_title') return null;
+  const val = URN_SHORT[v] !== undefined ? URN_SHORT[v] : String(v);
   return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 3, alignItems: 'flex-start' }}>
-      <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', minWidth: 90, flexShrink: 0, lineHeight: 1.4, fontFamily: 'monospace' }}>{k}</span>
+    <div style={{ display: 'flex', gap: 8, marginBottom: 4, alignItems: 'flex-start' }}>
+      <span style={{ fontSize: '0.73rem', color: '#64748b', minWidth: 100, flexShrink: 0, lineHeight: 1.5, fontFamily: 'monospace' }}>{k}</span>
       <span style={{
-        fontSize: '0.75rem', fontFamily: 'monospace', lineHeight: 1.4, wordBreak: 'break-all',
-        color: isHighlight ? '#93c5fd' : isAccent ? '#86efac' : isMuted ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.9)',
-        fontWeight: isHighlight || isAccent ? 700 : 400,
+        fontSize: '0.8rem', fontFamily: 'monospace', lineHeight: 1.5, wordBreak: 'break-word',
+        color: isAud ? '#1d4ed8' : isAct ? '#15803d' : isDecide ? '#15803d' : '#0f172a',
+        fontWeight: (isAud || isAct || isDecide) ? 700 : 500,
       }}>
-        {v}
+        {val}
       </span>
     </div>
   );
@@ -394,49 +407,53 @@ function TokenClaimRow({ k, v }) {
 
 function TokenCard({ token, tokenOut, isTokenExchange, isHitl }) {
   if (!token) return null;
-  const bg = isHitl
-    ? 'linear-gradient(140deg,#78350f,#92400e)'
-    : isTokenExchange
-    ? 'linear-gradient(140deg,#4c1d95,#6d28d9)'
-    : token.decision?.includes('PERMIT') || token.decision?.includes('APPROVED')
-    ? 'linear-gradient(140deg,#14532d,#166534)'
-    : 'linear-gradient(140deg,#1e3a5f,#1d4ed8)';
-
-  const renderClaims = (t) =>
-    Object.entries(t)
-      .filter(([k]) => k !== '_changed' && k !== 'note')
-      .map(([k, v]) => <TokenClaimRow key={k} k={k} v={String(v)} />);
+  const accentType = token._type || (isHitl ? 'hitl' : isTokenExchange ? 'exchange' : token.decision?.includes('PERMIT') || token.decision?.includes('APPROVED') ? 'permit' : 'oauth');
+  const accent = FLOW_ACCENT[accentType] || FLOW_ACCENT.oauth;
+  const rfcs   = token._rfcs || (isTokenExchange ? ['RFC 8693'] : []);
+  const title  = token.type || 'Token';
+  const note   = token.note;
+  const claimEntries = Object.entries(token).filter(([k]) =>
+    k !== 'type' && k !== '_type' && k !== '_title' && k !== '_rfcs' && k !== 'note'
+  );
 
   return (
     <div style={{
-      background: bg, color: '#fff', borderRadius: 12, padding: '12px 16px',
-      fontFamily: 'monospace', minWidth: 260, maxWidth: 340,
-      boxShadow: '0 8px 32px rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.12)',
+      background: '#fff', borderRadius: 10, padding: '12px 14px',
+      minWidth: 270, maxWidth: 340,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.14)',
+      border: '1px solid #e2e8f0',
+      borderLeft: `4px solid ${accent}`,
       pointerEvents: 'none',
     }}>
-      <div style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', marginBottom: 8 }}>
-        {isHitl ? '🧑‍⚖️  HITL' : isTokenExchange ? '🔄  RFC 8693 Token Exchange' : '🎫  Token on Wire'}
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginBottom: 9 }}>
+        <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#0f172a', flex: '1 1 auto' }}>{title}</span>
+        {rfcs.map((r) => (
+          <span key={r} style={{
+            fontSize: '0.65rem', fontWeight: 700, background: '#eff6ff', color: '#1d4ed8',
+            border: '1px solid #bfdbfe', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap',
+          }}>{r}</span>
+        ))}
       </div>
 
+      {/* Exchange: stacked Request → Issued */}
       {tokenOut ? (
-        <div style={{ display: 'flex', gap: 12 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Request</div>
-            {renderClaims(token)}
-          </div>
-          <div style={{ width: 1, background: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '0.62rem', color: '#a5f3fc', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>↓ Issued</div>
-            {renderClaims(tokenOut)}
-          </div>
-        </div>
+        <>
+          <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', marginBottom: 4, paddingBottom: 3, borderBottom: '1px solid #f1f5f9' }}>Request →</div>
+          {claimEntries.map(([k, v]) => <FlowClaimRow key={k} k={k} v={v} />)}
+          <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#16a34a', margin: '8px 0 4px', paddingBottom: 3, borderBottom: '1px solid #f1f5f9' }}>↓ Issued</div>
+          {Object.entries(tokenOut).filter(([k]) => k !== 'note' && k !== '_type' && k !== '_rfcs').map(([k, v]) => (
+            <FlowClaimRow key={k} k={k} v={v} />
+          ))}
+          {tokenOut.note && <div style={{ marginTop: 7, paddingTop: 6, borderTop: '1px solid #f1f5f9', fontSize: '0.73rem', color: '#64748b', fontStyle: 'italic', lineHeight: 1.4, fontFamily: 'system-ui,sans-serif' }}>ℹ {tokenOut.note}</div>}
+        </>
       ) : (
-        renderClaims(token)
+        claimEntries.map(([k, v]) => <FlowClaimRow key={k} k={k} v={v} />)
       )}
 
-      {token.note && (
-        <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.12)', fontSize: '0.67rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', lineHeight: 1.4 }}>
-          ℹ {token.note}
+      {note && (
+        <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid #f1f5f9', fontSize: '0.73rem', color: '#64748b', fontStyle: 'italic', lineHeight: 1.4, fontFamily: 'system-ui,sans-serif' }}>
+          ℹ {note}
         </div>
       )}
     </div>
@@ -562,6 +579,14 @@ export default function ArchitectureFlowPage({ user }) {
     scheduleFrom(pausedStep.current + 1);
   }, [isPaused, scheduleFrom]);
 
+  const prevStep = useCallback(() => {
+    if (!isPaused) return;
+    const prev = pausedStep.current - 1;
+    if (prev < 0) return;
+    applyStep(prev);
+    pausedStep.current = prev;
+  }, [isPaused, applyStep]);
+
   const nextStep = useCallback(() => {
     if (!isPaused) return;
     const next = pausedStep.current + 1;
@@ -648,11 +673,14 @@ export default function ArchitectureFlowPage({ user }) {
         )}
         {isSimulating && isPaused && (
           <>
+            <button onClick={prevStep} disabled={currentStep <= 0} style={{ padding: '0.4rem 0.8rem', border: '1px solid #94a3b8', borderRadius: 6, background: '#fff', fontSize: '0.82rem', cursor: 'pointer', fontWeight: 600, color: '#475569', opacity: currentStep <= 0 ? 0.4 : 1 }}>
+              ← Prev
+            </button>
             <button onClick={resume} style={{ padding: '0.4rem 1rem', border: 'none', borderRadius: 6, background: '#004687', color: '#fff', fontSize: '0.82rem', cursor: 'pointer', fontWeight: 600 }}>
               ▶ Resume
             </button>
             <button onClick={nextStep} style={{ padding: '0.4rem 0.9rem', border: '1px solid #004687', borderRadius: 6, background: '#fff', color: '#004687', fontSize: '0.82rem', cursor: 'pointer', fontWeight: 600 }}>
-              ⏭ Next Step
+              Next →
             </button>
           </>
         )}
