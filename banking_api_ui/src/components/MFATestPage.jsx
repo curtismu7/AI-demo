@@ -801,6 +801,15 @@ export default function MFATestPage() {
 					id: safeBase64ToBytes(creationOpts.user?.id),
 				},
 			};
+			// Fix: PingOne returns pubKeyCredParams[].alg as strings ("-7") but
+			// WebAuthn requires integers (-7). Browser silently drops string-alg entries.
+			if (Array.isArray(publicKey.pubKeyCredParams)) {
+				publicKey.pubKeyCredParams = publicKey.pubKeyCredParams.map((p) => ({
+					...p,
+					alg: typeof p.alg === "string" ? parseInt(p.alg, 10) : p.alg,
+				}));
+				console.log("[FIDO2] pubKeyCredParams alg coerced to int:", publicKey.pubKeyCredParams);
+			}
 			// Convert excludeCredentials ids (PingOne sends base64url strings)
 			if (Array.isArray(publicKey.excludeCredentials)) {
 				publicKey.excludeCredentials = publicKey.excludeCredentials.map((c) => ({
@@ -835,6 +844,8 @@ export default function MFATestPage() {
 					clientDataJSON: toB64url(credential.response.clientDataJSON),
 					attestationObject: toB64url(credential.response.attestationObject),
 				},
+				// Include authenticatorAttachment if present (passkey = "platform")
+				...(credential.authenticatorAttachment ? { authenticatorAttachment: credential.authenticatorAttachment } : {}),
 			};
 			const { data } = await apiClient.post(
 				"/api/mfa/test/integration/enroll-fido2-complete",
@@ -1199,7 +1210,7 @@ export default function MFATestPage() {
 							value={enrollEmailInput}
 							onChange={(e) => setEnrollEmailInput(e.target.value)}
 							maxLength={100}
-							style={{ width: "100%", marginBottom: "0.75rem" }}
+							style={{ width: "100%", marginBottom: "0.75rem", fontFamily: "system-ui, sans-serif", letterSpacing: "normal", fontSize: "0.95rem" }}
 						/>
 					</div>
 					<TestCard

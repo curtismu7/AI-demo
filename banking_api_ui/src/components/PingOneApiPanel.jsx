@@ -13,6 +13,16 @@
 import React, { useState } from "react";
 import "./PingOneApiPanel.css";
 
+/** Classify a Content-Type value for visual validation. */
+function _ctCheck(contentType) {
+	if (!contentType) return null;
+	const ct = String(contentType);
+	if (ct.includes("vnd.pingidentity")) return { level: "ok", label: "✓ PingOne vendor type" };
+	if (ct.includes("application/json")) return { level: "info", label: "ℹ JSON" };
+	if (ct.includes("x-www-form-urlencoded")) return { level: "info", label: "ℹ form-encoded" };
+	return { level: "warn", label: "⚠ unexpected" };
+}
+
 export default function PingOneApiPanel({ request, response, endpoint, docsUrl, docsSectionTitle }) {
 	const [reqOpen, setReqOpen] = useState(false);
 	const [resOpen, setResOpen] = useState(false);
@@ -23,6 +33,10 @@ export default function PingOneApiPanel({ request, response, endpoint, docsUrl, 
 	const badge = endpoint || (request?.method && request?.url
 		? { method: request.method, url: request.url }
 		: null);
+
+	// Always-visible content-type check (from headers if present, else contentType field).
+	const displayCt = request?.headers?.["Content-Type"] || request?.contentType || null;
+	const ctCheck = _ctCheck(displayCt);
 
 	return (
 		<>
@@ -53,6 +67,13 @@ export default function PingOneApiPanel({ request, response, endpoint, docsUrl, 
 					>
 						PingOne Docs ↗
 					</a>
+				</div>
+			)}
+			{ctCheck && (
+				<div className={`p1-api-panel-ct-check p1-api-panel-ct-check--${ctCheck.level}`}>
+					<span className="p1-api-panel-ct-label">Content-Type →</span>{" "}
+					<code className="p1-api-panel-ct-value">{displayCt}</code>{" "}
+					<span className="p1-api-panel-ct-badge">{ctCheck.label}</span>
 				</div>
 			)}
 			{request && (
