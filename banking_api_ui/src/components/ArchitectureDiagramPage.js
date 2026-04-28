@@ -23,6 +23,7 @@
  */
 import React, { useState } from 'react';
 import AdminSubPageShell from './AdminSubPageShell';
+import HistoryModal from './HistoryModal';
 import './ArchitectureDiagramPage.css';
 
 const ZOOM_STEP = 0.25;
@@ -175,30 +176,12 @@ function TokenCard({ stepDetail, stepDetail2, stepDetailOut, isTokenExchange, is
   if (!stepDetail && !stepDetail2) return null;
   return (
     <div className="arch-token-panel">
-      {isTokenExchange && stepDetail ? (
-        // RFC 8693 exchange: show Request + Issued stacked
-        <div className="arch-token-card" style={{ borderLeftColor: ACCENT.exchange }}>
-          <div className="arch-token-card__head">
-            <span className="arch-token-card__title">{stepDetail.type || 'Token Exchange'}</span>
-            {(stepDetail._rfcs || ['RFC 8693']).map((r) => (
-              <span key={r} className="arch-token-card__rfc">{r}</span>
-            ))}
-          </div>
-          <div className="arch-token-card__section-label">Request →</div>
-          {Object.entries(stepDetail).filter(([k]) =>
-            k !== 'type' && k !== '_type' && k !== '_title' && k !== '_rfcs' && k !== 'note'
-          ).map(([k, v]) => <ClaimRow key={k} k={k} v={v} />)}
-          {stepDetailOut && (
-            <>
-              <div className="arch-token-card__section-label arch-token-card__section-label--issued">↓ Issued</div>
-              {Object.entries(stepDetailOut).filter(([k]) =>
-                k !== 'type' && k !== '_type' && k !== '_title' && k !== '_rfcs' && k !== 'note'
-              ).map(([k, v]) => <ClaimRow key={k} k={k} v={v} />)}
-              {stepDetailOut.note && <div className="arch-token-card__note">ℹ {stepDetailOut.note}</div>}
-            </>
-          )}
-          {stepDetail.note && <div className="arch-token-card__note">ℹ {stepDetail.note}</div>}
-        </div>
+      {/* RFC 8693 exchange: two separate cards — subject token + issued token */}
+      {isTokenExchange && stepDetailOut ? (
+        <>
+          <OneCard token={stepDetail} />
+          <OneCard token={stepDetailOut} />
+        </>
       ) : (
         <OneCard token={stepDetail} isHitl={isHitl} />
       )}
@@ -297,6 +280,7 @@ export default function ArchitectureDiagramPage({
   audHops,
   tokenHistory,
   onClearHistory,
+  toolbarExtra,
 }) {
   const [zoom, setZoom] = useState(1.0);
   const zoomIn    = () => setZoom((z) => Math.min(ZOOM_MAX, parseFloat((z + ZOOM_STEP).toFixed(2))));
@@ -312,6 +296,7 @@ export default function ArchitectureDiagramPage({
 
         {/* Toolbar */}
         <div className="arch-diagram-toolbar">
+          {toolbarExtra}
           <div className="arch-diagram-zoom-controls">
             <button className="arch-zoom-btn" onClick={zoomOut} title="Zoom out">−</button>
             <span className="arch-zoom-label">{Math.round(zoom * 100)}%</span>
@@ -376,8 +361,8 @@ export default function ArchitectureDiagramPage({
           )}
         </div>
 
-        {/* Token history — persists after simulation for review */}
-        <HistoryPanel history={tokenHistory} onClear={onClearHistory} />
+        {/* Token history — floating draggable modal */}
+        <HistoryModal history={tokenHistory} onClear={onClearHistory} />
 
       </div>
     </AdminSubPageShell>

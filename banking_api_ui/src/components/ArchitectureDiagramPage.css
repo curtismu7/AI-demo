@@ -66,7 +66,7 @@
   width: 100%;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  background: #f8fafc;
+  background: #ffffff;
 }
 
 .arch-diagram-container {
@@ -74,6 +74,7 @@
   display: inline-block;
   min-width: 100%;
   line-height: 0;
+  background: #ffffff;
 }
 
 .arch-diagram-img {
@@ -82,6 +83,7 @@
   height: auto;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  filter: brightness(1.06) contrast(0.96);
 }
 
 .arch-diagram-svg {
@@ -105,36 +107,49 @@
 
 /* Current active step — brand-navy, pulsing */
 .diagram-region--active {
-  fill: rgba(0, 70, 135, 0.22);
+  fill: rgba(0, 70, 135, 0.32);
   stroke: #004687;
-  stroke-width: 0.5;
+  stroke-width: 0.7;
   animation: diagram-pulse 1.2s ease-in-out infinite;
-  filter: drop-shadow(0 0 0.4px rgba(0, 102, 204, 0.8));
+  filter: drop-shadow(0 0 0.8px rgba(0, 102, 204, 0.9));
 }
 
 /* Previous steps — soft grey, no pulse, stays visible */
 .diagram-region--active-prev {
-  fill: rgba(100, 116, 139, 0.12);
+  fill: rgba(100, 116, 139, 0.18);
   stroke: #94a3b8;
   stroke-width: 0.4;
 }
 
 /* Error — red pulse */
 .diagram-region--active-error {
-  fill: rgba(239, 68, 68, 0.18);
+  fill: rgba(239, 68, 68, 0.28);
   stroke: #ef4444;
-  stroke-width: 0.5;
+  stroke-width: 0.7;
   animation: diagram-pulse 1.2s ease-in-out infinite;
-  filter: drop-shadow(0 0 0.4px rgba(239, 68, 68, 0.7));
+  filter: drop-shadow(0 0 0.8px rgba(239, 68, 68, 0.9));
 }
 
 /* Permit — green pulse */
 .diagram-region--active-permit {
-  fill: rgba(76, 175, 80, 0.18);
+  fill: rgba(76, 175, 80, 0.28);
   stroke: #4CAF50;
-  stroke-width: 0.5;
+  stroke-width: 0.7;
   animation: diagram-pulse 1.2s ease-in-out infinite;
-  filter: drop-shadow(0 0 0.4px rgba(76, 175, 80, 0.7));
+  filter: drop-shadow(0 0 0.8px rgba(76, 175, 80, 0.9));
+}
+
+/* HITL — amber pulse */
+.diagram-region--active-hitl {
+  fill: rgba(217, 119, 6, 0.28);
+  stroke: #d97706;
+  stroke-width: 0.7;
+  animation: diagram-pulse 1.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 0.8px rgba(217, 119, 6, 0.9));
+}
+
+.diagram-region-text--active-hitl {
+  fill: #92400e;
 }
 
 @keyframes diagram-pulse {

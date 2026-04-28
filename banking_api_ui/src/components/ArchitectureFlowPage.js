@@ -9,6 +9,7 @@
  * Token badges on nodes show aud / act / may_act with changed claims highlighted.
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import HistoryModal from './HistoryModal';
 import {
   ReactFlow,
   Background,
@@ -266,20 +267,22 @@ const SIMULATE_STEPS = [
     activeEdgeIds: ['mcp-gw-idp'], edgeStyle: A,
     nodeBadges: {},
     token: {
-      type: 'Token Exchange Request',
-      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-      subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
-      subject_aud: 'mcp-gateway',
-      audience: 'mcp-olb-server',
-      scope: 'banking:read',
-      note: 'Scope narrowed to tool minimum  —  act chain preserved',
+      type: 'Delegated Token (subject)',
+      _type: 'exchange', _rfcs: ['RFC 8693', 'RFC 8707'],
+      aud: 'mcp-gateway',
+      sub: 'alice@bank.com',
+      scope: 'banking:read banking:write',
+      act: '{ "sub": "agent-client-id" }',
+      note: 'D-04: gateway exchanges this — original never forwarded → requested_aud: mcp-olb-server, scope: banking:read',
     },
     tokenOut: {
-      type: 'Tool-Scoped Token  (issued)',
+      type: 'Tool-Scoped Token (issued)',
+      _type: 'oauth', _rfcs: ['RFC 8693'],
       aud: 'mcp-olb-server',
       scope: 'banking:read',
       sub: 'alice@bank.com',
       act: '{ "sub": "agent-client-id" }',
+      note: 'Minimal scope — act chain preserved, MCP Server cannot use for write operations',
     },
   },
   {
@@ -335,6 +338,216 @@ const AUD_HOPS = [
   { icon: '🏦', label: 'Resource Token', aud: 'banking-api',                                         activeFrom: 15, activeTo: 15 },
 ];
 
+const SCENARIO_STEPS_FLOW = {
+  'id-token': [
+    {
+      nodeIds: ['user', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'OAuth 2.0 PKCE — code request',
+      activeEdgeIds: ['user-idp'], edgeStyle: A, nodeBadges: {},
+      token: { type: 'Authorization Code Request', _type: 'oauth', _rfcs: ['RFC 6749', 'RFC 7636'],
+        response_type: 'code', scope: 'openid profile banking:read banking:write', code_challenge_method: 'S256',
+        note: 'PKCE: code_verifier stored client-side; code_challenge sent — prevents auth-code interception' },
+    },
+    {
+      nodeIds: ['idp-oauth-as', 'agent'], colorClass: 'active', stepLabel: 'ID Token issued — UI only, never sent to APIs',
+      activeEdgeIds: ['idp-agent'], edgeStyle: A,
+      nodeBadges: { agent: { aud: 'banking-app-client', _changed: ['aud'] } },
+      token: { type: 'ID Token (OIDC)', _type: 'idtoken', _rfcs: ['RFC 7519', 'OIDC Core'],
+        iss: 'https://your-idp.example.com', sub: 'alice@bank.com', aud: 'banking-app-client',
+        email: 'alice@bank.com', name: 'Alice Smith',
+        note: 'ID token aud is ONLY the client — never sent to APIs, MCP tools, or backend services' },
+    },
+    {
+      nodeIds: ['idp-oauth-as', 'agent'], colorClass: 'active', stepLabel: 'Access Token issued — with may_act',
+      activeEdgeIds: ['idp-agent'], edgeStyle: A,
+      nodeBadges: { agent: { aud: 'banking-app-client', may_act: '{"client_id":"bff-client-id"}', _changed: ['aud', 'may_act'] } },
+      token: { type: 'Access Token', _type: 'oauth', _rfcs: ['RFC 6749', 'RFC 8693'],
+        aud: 'banking-app-client', sub: 'alice@bank.com',
+        scope: 'openid profile banking:read banking:write',
+        may_act: '{ "client_id": "bff-client-id" }',
+        note: 'may_act grants BFF permission to perform RFC 8693 exchange on behalf of this user' },
+    },
+    {
+      nodeIds: ['agent'], colorClass: 'active', stepLabel: 'BFF stores token — ID token stays in browser',
+      activeEdgeIds: [], edgeStyle: A, nodeBadges: {},
+      token: { type: 'Token Storage', _type: 'mcp',
+        id_token_location: 'Browser memory only', access_token_location: 'BFF server-side session',
+        note: 'ID token: never leaves browser. Access token: BFF holds it — never exposed to frontend' },
+    },
+  ],
+  'user-token': [
+    {
+      nodeIds: ['agent', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'RFC 8693 Exchange #1 — user token IN',
+      activeEdgeIds: ['agent-idp'], edgeStyle: A, nodeBadges: {},
+      isTokenExchange: true,
+      token: { type: 'User Access Token (subject)', _type: 'oauth', _rfcs: ['RFC 8693'],
+        aud: 'banking-app-client', sub: 'alice@bank.com',
+        scope: 'openid profile banking:read banking:write',
+        may_act: '{ "client_id": "bff-client-id" }',
+        note: 'BFF sends this as subject_token → IdP validates may_act before issuing delegation token' },
+      tokenOut: { type: 'Delegated Token (issued)', _type: 'exchange', _rfcs: ['RFC 8693'],
+        aud: 'mcp-gateway', sub: 'alice@bank.com', scope: 'banking:read banking:write',
+        act: '{ "sub": "agent-client-id" }',
+        note: 'aud narrowed to mcp-gateway — act chain added identifying the acting agent' },
+    },
+    {
+      nodeIds: ['agent', 'mcp-gw'], colorClass: 'active', stepLabel: 'Delegation token arrives at MCP Gateway',
+      activeEdgeIds: ['agent-mcp'], edgeStyle: A,
+      nodeBadges: { 'mcp-gw': { aud: 'mcp-gateway', act: '{"sub":"agent-client-id"}', _changed: ['aud', 'act'] } },
+      token: { type: 'Delegated Token (inbound)', _type: 'oauth', _rfcs: ['RFC 8693', 'RFC 6750'],
+        aud: 'mcp-gateway', sub: 'alice@bank.com', scope: 'banking:read banking:write',
+        act: '{ "sub": "agent-client-id" }',
+        note: 'Gateway validates: aud=mcp-gateway ✓  sub≠∅ ✓  act.sub≠∅ ✓  D-05 anti-bypass ✓' },
+    },
+    {
+      nodeIds: ['mcp-gw', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'RFC 8693 Exchange #2 — scope-narrowed',
+      activeEdgeIds: ['mcp-gw-idp'], edgeStyle: A, nodeBadges: {},
+      isTokenExchange: true,
+      token: { type: 'Delegated Token (subject)', _type: 'exchange', _rfcs: ['RFC 8693', 'RFC 8707'],
+        aud: 'mcp-gateway', sub: 'alice@bank.com', scope: 'banking:read banking:write',
+        act: '{ "sub": "agent-client-id" }',
+        note: 'D-04: gateway exchanges this — original never forwarded to MCP Server' },
+      tokenOut: { type: 'Tool-Scoped Token (issued)', _type: 'oauth', _rfcs: ['RFC 8693'],
+        aud: 'mcp-olb-server', scope: 'banking:read', sub: 'alice@bank.com',
+        act: '{ "sub": "agent-client-id" }',
+        note: 'aud=mcp-olb-server, scope narrowed to banking:read — act chain preserved' },
+    },
+    {
+      nodeIds: ['mcp-gw', 'mcp-server'], colorClass: 'active', stepLabel: 'Tool-scoped token delivered to MCP Server',
+      activeEdgeIds: ['mcp-gw-server'], edgeStyle: A,
+      nodeBadges: { 'mcp-server': { aud: 'mcp-olb-server', act: '{"sub":"agent-client-id"}', _changed: ['aud'] } },
+      token: { type: 'Tool-Scoped Token (delivered)', _type: 'oauth', _rfcs: ['RFC 6750'],
+        aud: 'mcp-olb-server', scope: 'banking:read', sub: 'alice@bank.com',
+        act: '{ "sub": "agent-client-id" }',
+        note: 'MCP Server validates aud=mcp-olb-server before calling any banking APIs' },
+    },
+  ],
+  'get-accounts': [
+    {
+      nodeIds: ['agent', 'llm'], colorClass: 'active', stepLabel: 'LLM decides: get_my_accounts',
+      activeEdgeIds: ['agent-llm'], edgeStyle: A, nodeBadges: {},
+      token: null,
+    },
+    {
+      nodeIds: ['mcp-gw', 'pingauthorize'], colorClass: 'active', stepLabel: 'PingAuthorize: McpToolsList',
+      activeEdgeIds: ['mcp-authz'], edgeStyle: A, nodeBadges: {},
+      token: { type: 'PingAuthorize Request', _type: 'mcp', DecisionContext: 'McpToolsList',
+        ClientId: 'alice@bank.com', ActClientId: 'agent-client-id',
+        TokenScopes: 'banking:read banking:write', TokenAudience: 'mcp-gateway' },
+    },
+    {
+      nodeIds: ['pingauthorize'], colorClass: 'active-permit', stepLabel: 'PERMIT — tools discovery allowed',
+      activeEdgeIds: [], edgeStyle: P, nodeBadges: {},
+      token: { type: 'Authorization Decision', _type: 'permit', decision: '✅ PERMIT',
+        DecisionContext: 'McpToolsList', policy: 'mcp-tools-access-v2' },
+    },
+    {
+      nodeIds: ['mcp-gw', 'pingauthorize'], colorClass: 'active', stepLabel: 'PingAuthorize: McpToolCall — get_my_accounts',
+      activeEdgeIds: ['mcp-authz'], edgeStyle: A, nodeBadges: {},
+      token: { type: 'PingAuthorize Request', _type: 'mcp', DecisionContext: 'McpToolCall',
+        ClientId: 'alice@bank.com', ActClientId: 'agent-client-id', ToolName: 'get_my_accounts',
+        TokenScopes: 'banking:read', TokenAudience: 'mcp-gateway' },
+    },
+    {
+      nodeIds: ['pingauthorize'], colorClass: 'active-permit', stepLabel: 'PERMIT — banking:read sufficient',
+      activeEdgeIds: [], edgeStyle: P, nodeBadges: {},
+      token: { type: 'Authorization Decision', _type: 'permit', decision: '✅ PERMIT',
+        DecisionContext: 'McpToolCall', ToolName: 'get_my_accounts', policy: 'mcp-tool-call-v2' },
+    },
+    {
+      nodeIds: ['mcp-server', 'banking-api'], colorClass: 'active', stepLabel: 'Banking API returns accounts — 200 OK',
+      activeEdgeIds: ['mcp-server-api'], edgeStyle: A,
+      nodeBadges: { 'banking-api': { aud: 'banking-api', _changed: ['aud'] } },
+      token: { type: 'API Response', _type: 'mcp', status: '200 OK',
+        data: '[{ "accountId":"ACC-001","balance":12450.00 },...]', scope_used: 'banking:read' },
+    },
+  ],
+  'withdrawal': [
+    {
+      nodeIds: ['agent', 'llm'], colorClass: 'active', stepLabel: 'LLM decides: create_transfer',
+      activeEdgeIds: ['agent-llm'], edgeStyle: A, nodeBadges: {},
+      token: null,
+    },
+    {
+      nodeIds: ['mcp-gw', 'pingauthorize'], colorClass: 'active', stepLabel: 'PingAuthorize: create_transfer — high-risk',
+      activeEdgeIds: ['mcp-authz'], edgeStyle: A, nodeBadges: {},
+      token: { type: 'PingAuthorize Request', _type: 'mcp', DecisionContext: 'McpToolCall',
+        ClientId: 'alice@bank.com', ActClientId: 'agent-client-id', ToolName: 'create_transfer',
+        TokenScopes: 'banking:write', TokenAudience: 'mcp-gateway',
+        note: 'Write operation triggers high-risk policy evaluation' },
+    },
+    {
+      nodeIds: ['pingauthorize'], colorClass: 'active-hitl', stepLabel: 'INDETERMINATE — HITL required',
+      isHitl: true, activeEdgeIds: [], edgeStyle: H, nodeBadges: {},
+      token: { type: 'Authorization Decision', _type: 'hitl', decision: '⚠️ INDETERMINATE',
+        DecisionContext: 'McpToolCall', ToolName: 'create_transfer',
+        note: 'PingAuthorize cannot auto-approve — HITL required before execution' },
+    },
+    {
+      nodeIds: ['agent', 'hitl'], colorClass: 'active-hitl', stepLabel: 'HITL — awaiting human approval',
+      isHitl: true, activeEdgeIds: ['agent-hitl'], edgeStyle: H, nodeBadges: {},
+      token: { type: 'HITL Approval Request', _type: 'hitl',
+        trigger: 'PingAuthorize INDETERMINATE', action: 'create_transfer $5,000 → savings',
+        risk_score: 'HIGH', status: '⏳ Awaiting user approval…' },
+    },
+    {
+      nodeIds: ['hitl', 'agent'], colorClass: 'active-permit', stepLabel: 'User approved ✓ — agent continues',
+      isHitl: true, activeEdgeIds: ['hitl-agent'], edgeStyle: P, nodeBadges: {},
+      token: { type: 'HITL Response', _type: 'permit', decision: '✅ APPROVED',
+        approved_by: 'alice@bank.com', action: 'create_transfer $5,000 → savings' },
+    },
+    {
+      nodeIds: ['mcp-server', 'banking-api'], colorClass: 'active', stepLabel: 'Banking API executes transfer — 200 OK',
+      activeEdgeIds: ['mcp-server-api'], edgeStyle: A,
+      nodeBadges: { 'banking-api': { aud: 'banking-api', _changed: ['aud'] } },
+      token: { type: 'API Response', _type: 'mcp', status: '200 OK',
+        transfer_id: 'TXN-2024-001', amount: '$5,000', from: 'CHK-001', to: 'SAV-002',
+        scope_used: 'banking:write' },
+    },
+  ],
+  'bad-scope': [
+    {
+      nodeIds: ['agent', 'mcp-gw'], colorClass: 'active', stepLabel: 'Agent attempts write with read-only token',
+      activeEdgeIds: ['agent-mcp'], edgeStyle: A,
+      nodeBadges: { 'mcp-gw': { aud: 'mcp-gateway', act: '{"sub":"agent-client-id"}' } },
+      token: { type: 'Agent Token (read-only)', _type: 'oauth', _rfcs: ['RFC 6750'],
+        aud: 'mcp-gateway', sub: 'alice@bank.com', scope: 'banking:read',
+        act: '{ "sub": "agent-client-id" }',
+        note: '⚠️ Token scope is banking:read only — create_transfer requires banking:write' },
+    },
+    {
+      nodeIds: ['mcp-gw', 'pingauthorize'], colorClass: 'active', stepLabel: 'PingAuthorize: create_transfer — insufficient scope',
+      activeEdgeIds: ['mcp-authz'], edgeStyle: A, nodeBadges: {},
+      token: { type: 'PingAuthorize Request', _type: 'mcp', DecisionContext: 'McpToolCall',
+        ClientId: 'alice@bank.com', ActClientId: 'agent-client-id', ToolName: 'create_transfer',
+        TokenScopes: 'banking:read', TokenAudience: 'mcp-gateway',
+        note: '❌ banking:write required — policy will DENY this request' },
+    },
+    {
+      nodeIds: ['pingauthorize'], colorClass: 'active-error', stepLabel: 'DENY — insufficient scope',
+      activeEdgeIds: [], edgeStyle: { stroke: '#ef4444', strokeWidth: 2.5 }, nodeBadges: {},
+      token: { type: 'Authorization Decision', _type: 'error', decision: '❌ DENY',
+        DecisionContext: 'McpToolCall', ToolName: 'create_transfer',
+        reason: 'insufficient_scope: banking:write required', policy: 'mcp-tool-call-v2' },
+    },
+    {
+      nodeIds: ['mcp-gw', 'agent'], colorClass: 'active-error', stepLabel: '403 Forbidden — propagated to agent',
+      activeEdgeIds: ['agent-mcp'], edgeStyle: { stroke: '#ef4444', strokeWidth: 2.5 }, nodeBadges: {},
+      token: { type: 'HTTP 403 Forbidden', _type: 'error', status: '403 Forbidden',
+        error: 'insufficient_scope', error_description: 'banking:write scope required for create_transfer',
+        'WWW-Authenticate': 'Bearer scope="banking:write"',
+        note: 'MCP Gateway converts DENY to 403 — agent must NOT retry with same token' },
+    },
+    {
+      nodeIds: ['agent'], colorClass: 'active-error', stepLabel: 'Agent gracefully handles 403',
+      activeEdgeIds: [], edgeStyle: A, nodeBadges: {},
+      token: { type: 'Agent Error Response', _type: 'error', http_status: '403',
+        user_message: 'Unable to complete transfer — insufficient permissions',
+        recovery: 'Re-authenticate with banking:write scope to enable transfers',
+        note: 'Graceful degradation: surface clear message, request scope upgrade, never silent-fail' },
+    },
+  ],
+};
+
 function AudTrail({ stepIndex }) {
   return (
     <div style={{
@@ -382,7 +595,7 @@ const URN_SHORT = {
 };
 const FLOW_ACCENT = {
   oauth: '#2563eb', exchange: '#7c3aed', permit: '#16a34a',
-  hitl: '#d97706', idtoken: '#0891b2', mcp: '#475569',
+  hitl: '#d97706', idtoken: '#0891b2', mcp: '#475569', error: '#dc2626',
 };
 
 function FlowClaimRow({ k, v }) {
@@ -405,17 +618,16 @@ function FlowClaimRow({ k, v }) {
   );
 }
 
-function TokenCard({ token, tokenOut, isTokenExchange, isHitl }) {
+function OneFlowCard({ token, isHitl }) {
   if (!token) return null;
-  const accentType = token._type || (isHitl ? 'hitl' : isTokenExchange ? 'exchange' : token.decision?.includes('PERMIT') || token.decision?.includes('APPROVED') ? 'permit' : 'oauth');
+  const accentType = token._type || (isHitl ? 'hitl' : token.decision?.includes('PERMIT') || token.decision?.includes('APPROVED') ? 'permit' : 'oauth');
   const accent = FLOW_ACCENT[accentType] || FLOW_ACCENT.oauth;
-  const rfcs   = token._rfcs || (isTokenExchange ? ['RFC 8693'] : []);
+  const rfcs   = token._rfcs || [];
   const title  = token.type || 'Token';
   const note   = token.note;
   const claimEntries = Object.entries(token).filter(([k]) =>
     k !== 'type' && k !== '_type' && k !== '_title' && k !== '_rfcs' && k !== 'note'
   );
-
   return (
     <div style={{
       background: '#fff', borderRadius: 10, padding: '12px 14px',
@@ -425,7 +637,6 @@ function TokenCard({ token, tokenOut, isTokenExchange, isHitl }) {
       borderLeft: `4px solid ${accent}`,
       pointerEvents: 'none',
     }}>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginBottom: 9 }}>
         <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#0f172a', flex: '1 1 auto' }}>{title}</span>
         {rfcs.map((r) => (
@@ -435,22 +646,7 @@ function TokenCard({ token, tokenOut, isTokenExchange, isHitl }) {
           }}>{r}</span>
         ))}
       </div>
-
-      {/* Exchange: stacked Request → Issued */}
-      {tokenOut ? (
-        <>
-          <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', marginBottom: 4, paddingBottom: 3, borderBottom: '1px solid #f1f5f9' }}>Request →</div>
-          {claimEntries.map(([k, v]) => <FlowClaimRow key={k} k={k} v={v} />)}
-          <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#16a34a', margin: '8px 0 4px', paddingBottom: 3, borderBottom: '1px solid #f1f5f9' }}>↓ Issued</div>
-          {Object.entries(tokenOut).filter(([k]) => k !== 'note' && k !== '_type' && k !== '_rfcs').map(([k, v]) => (
-            <FlowClaimRow key={k} k={k} v={v} />
-          ))}
-          {tokenOut.note && <div style={{ marginTop: 7, paddingTop: 6, borderTop: '1px solid #f1f5f9', fontSize: '0.73rem', color: '#64748b', fontStyle: 'italic', lineHeight: 1.4, fontFamily: 'system-ui,sans-serif' }}>ℹ {tokenOut.note}</div>}
-        </>
-      ) : (
-        claimEntries.map(([k, v]) => <FlowClaimRow key={k} k={k} v={v} />)
-      )}
-
+      {claimEntries.map(([k, v]) => <FlowClaimRow key={k} k={k} v={v} />)}
       {note && (
         <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid #f1f5f9', fontSize: '0.73rem', color: '#64748b', fontStyle: 'italic', lineHeight: 1.4, fontFamily: 'system-ui,sans-serif' }}>
           ℹ {note}
@@ -458,6 +654,19 @@ function TokenCard({ token, tokenOut, isTokenExchange, isHitl }) {
       )}
     </div>
   );
+}
+
+function TokenCard({ token, tokenOut, isTokenExchange, isHitl }) {
+  if (!token) return null;
+  if (isTokenExchange && tokenOut) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <OneFlowCard token={token} />
+        <OneFlowCard token={tokenOut} />
+      </div>
+    );
+  }
+  return <OneFlowCard token={token} isHitl={isHitl} />;
 }
 
 // ─── Event → node mapping ─────────────────────────────────────────────────────
@@ -484,6 +693,49 @@ function mapEventToNodes(event) {
   return [];
 }
 
+function eventToHistoryEntry(evt) {
+  const meta = evt.metadata || {};
+  if (evt.category === 'token_exchange') {
+    const success = evt.tag === 'token_exchange/rfc8693-success';
+    return {
+      label: success ? 'RFC 8693 Exchange (live)' : 'RFC 8693 Exchange Failed (live)',
+      isTokenExchange: true,
+      isHitl: false,
+      token: {
+        type: 'Token Exchange (live)',
+        _type: 'exchange', _rfcs: ['RFC 8693'],
+        ...(meta.subject_aud  ? { subject_aud: meta.subject_aud }   : {}),
+        ...(meta.audience     ? { requested_aud: meta.audience }     : {}),
+        ...(meta.scope        ? { scope: meta.scope }                : {}),
+        note: success ? 'Exchange succeeded ✓' : 'Exchange failed ✗',
+      },
+      tokenOut: success ? {
+        type: 'Issued Token (live)',
+        _type: 'oauth',
+        ...(meta.issued_aud || meta.audience ? { aud: meta.issued_aud || meta.audience } : {}),
+        ...(meta.issued_scope || meta.scope  ? { scope: meta.issued_scope || meta.scope } : {}),
+      } : null,
+    };
+  }
+  if (evt.category === 'authorize' && (evt.tag === 'authorize/permit' || evt.tag === 'authorize/deny')) {
+    const isPermit = evt.tag === 'authorize/permit';
+    return {
+      label: `PingAuthorize ${isPermit ? 'PERMIT' : 'DENY'} (live)`,
+      isTokenExchange: false,
+      isHitl: false,
+      token: {
+        type: 'Authorization Decision (live)',
+        _type: isPermit ? 'permit' : 'error',
+        decision: isPermit ? '✅ PERMIT' : '❌ DENY',
+        ...(meta.DecisionContext ? { DecisionContext: meta.DecisionContext } : {}),
+        ...(meta.ToolName        ? { ToolName: meta.ToolName }               : {}),
+        ...(meta.ClientId        ? { ClientId: meta.ClientId }               : {}),
+      },
+    };
+  }
+  return null;
+}
+
 // ─── Page component ───────────────────────────────────────────────────────────
 
 const HIGHLIGHT_MS  = 4000;
@@ -493,32 +745,35 @@ const STEP_MS       = 2500;
 export default function ArchitectureFlowPage({ user }) {
   const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
-  const [isSimulating, setIsSimulating]  = useState(false);
-  const [isPaused,     setIsPaused]      = useState(false);
-  const [currentStep,  setCurrentStep]   = useState(-1);
-  const [history,      setHistory]       = useState([]);
+  const [isSimulating,     setIsSimulating]     = useState(false);
+  const [isPaused,         setIsPaused]         = useState(false);
+  const [currentStep,      setCurrentStep]      = useState(-1);
+  const [history,          setHistory]          = useState([]);
+  const [selectedScenario, setSelectedScenario] = useState('full-flow');
   const pausedStep    = useRef(-1);
   const clearTimers   = useRef({});
   const simTimeouts   = useRef([]);
   const lastFetchedAt = useRef(null);
   const pollRef       = useRef(null);
+  const stepsRef      = useRef(SIMULATE_STEPS);
 
   // Apply a single step to nodes + edges
   const applyStep = useCallback((i) => {
-    const step = SIMULATE_STEPS[i];
+    const steps = stepsRef.current;
+    const step  = steps[i];
+    if (!step) return;
     setCurrentStep(i);
 
     setNodes((prev) => {
       const map = {};
       for (let j = 0; j < i; j++) {
-        SIMULATE_STEPS[j].nodeIds.forEach((id) => {
-          map[id] = { colorClass: 'active-prev', stepLabel: SIMULATE_STEPS[j].stepLabel, badge: prev.find(n => n.id === id)?.data?.badge };
+        steps[j].nodeIds.forEach((id) => {
+          map[id] = { colorClass: 'active-prev', stepLabel: steps[j].stepLabel, badge: prev.find(n => n.id === id)?.data?.badge };
         });
       }
       step.nodeIds.forEach((id) => {
         map[id] = { colorClass: step.colorClass, stepLabel: step.stepLabel, badge: step.nodeBadges?.[id] ?? prev.find(n => n.id === id)?.data?.badge };
       });
-      // Apply badges to non-active nodes too
       Object.entries(step.nodeBadges || {}).forEach(([id, badge]) => {
         if (!map[id]) map[id] = { badge };
       });
@@ -552,14 +807,15 @@ export default function ArchitectureFlowPage({ user }) {
 
   // Schedule steps from startIdx onward
   const scheduleFrom = useCallback((startIdx) => {
+    const steps = stepsRef.current;
     simTimeouts.current.forEach(clearTimeout);
     simTimeouts.current = [];
 
-    SIMULATE_STEPS.slice(startIdx).forEach((_, offset) => {
+    steps.slice(startIdx).forEach((_, offset) => {
       const i = startIdx + offset;
       const t = setTimeout(() => {
         applyStep(i);
-        if (i === SIMULATE_STEPS.length - 1) {
+        if (i === steps.length - 1) {
           const done = setTimeout(() => { resetDiagram(); setIsSimulating(false); }, HIGHLIGHT_MS);
           simTimeouts.current.push(done);
         }
@@ -570,13 +826,16 @@ export default function ArchitectureFlowPage({ user }) {
 
   const clearHistory = useCallback(() => setHistory([]), []);
 
-  const runSimulation = useCallback(() => {
+  const runSimulation = useCallback((scenarioKey) => {
     if (isSimulating) return;
+    const key   = scenarioKey || selectedScenario;
+    const steps = key === 'full-flow' ? SIMULATE_STEPS : (SCENARIO_STEPS_FLOW[key] || SIMULATE_STEPS);
+    stepsRef.current = steps;
     setHistory([]);
     setIsSimulating(true);
     setIsPaused(false);
     scheduleFrom(0);
-  }, [isSimulating, scheduleFrom]);
+  }, [isSimulating, scheduleFrom, selectedScenario]);
 
   const pause = useCallback(() => {
     simTimeouts.current.forEach(clearTimeout);
@@ -602,7 +861,7 @@ export default function ArchitectureFlowPage({ user }) {
   const nextStep = useCallback(() => {
     if (!isPaused) return;
     const next = pausedStep.current + 1;
-    if (next >= SIMULATE_STEPS.length) { resetDiagram(); setIsSimulating(false); return; }
+    if (next >= stepsRef.current.length) { resetDiagram(); setIsSimulating(false); return; }
     applyStep(next);
     pausedStep.current = next;
   }, [isPaused, applyStep, resetDiagram]);
@@ -627,7 +886,18 @@ export default function ArchitectureFlowPage({ user }) {
 
   const processEvents = useCallback((events, historical = false) => {
     const ms = historical ? HISTORICAL_MS : HIGHLIGHT_MS;
-    events.forEach((evt) => mapEventToNodes(evt).forEach(({ id, colorClass }) => activateNode(id, colorClass, ms)));
+    events.forEach((evt) => {
+      mapEventToNodes(evt).forEach(({ id, colorClass }) => activateNode(id, colorClass, ms));
+      if (!historical) {
+        const entry = eventToHistoryEntry(evt);
+        if (entry) {
+          setHistory((prev) => {
+            const stepNum = prev.length + 1;
+            return [...prev, { ...entry, stepNum }];
+          });
+        }
+      }
+    });
   }, [activateNode]);
 
   const fetchEvents = useCallback(async () => {
@@ -653,7 +923,7 @@ export default function ArchitectureFlowPage({ user }) {
     };
   }, [fetchEvents]);
 
-  const activeStep = currentStep >= 0 ? SIMULATE_STEPS[currentStep] : null;
+  const activeStep = currentStep >= 0 ? stepsRef.current[currentStep] : null;
 
   return (
     <div style={{ padding: '0 0.5rem' }}>
@@ -670,13 +940,29 @@ export default function ArchitectureFlowPage({ user }) {
         <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#1e293b' }}>
           Interactive Architecture Flow
         </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>Scenario:</label>
+          <select
+            value={selectedScenario}
+            onChange={(e) => setSelectedScenario(e.target.value)}
+            disabled={isSimulating}
+            style={{ fontSize: '0.78rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#1e293b', cursor: isSimulating ? 'not-allowed' : 'pointer' }}
+          >
+            <option value="full-flow">Full Flow</option>
+            <option value="id-token">ID Token Exchange</option>
+            <option value="user-token">Token Exchange (Both Hops)</option>
+            <option value="get-accounts">Get Accounts (Read Scope)</option>
+            <option value="withdrawal">Withdrawal + HITL</option>
+            <option value="bad-scope">Bad Scope (401 / 403)</option>
+          </select>
+        </div>
         {!isSimulating && (
           <button className="arch-simulate-btn" onClick={runSimulation}>▶ Simulate Flow</button>
         )}
         {isSimulating && !isPaused && (
           <>
             <button className="arch-simulate-btn arch-simulate-btn--running" disabled>
-              ▶ Step {currentStep + 1} / {SIMULATE_STEPS.length}
+              ▶ Step {currentStep + 1} / {stepsRef.current.length}
             </button>
             <button onClick={pause} style={{ padding: '0.4rem 0.8rem', border: '1px solid #94a3b8', borderRadius: 6, background: '#fff', fontSize: '0.82rem', cursor: 'pointer', fontWeight: 600, color: '#475569' }}>
               ⏸ Pause
@@ -756,10 +1042,8 @@ export default function ArchitectureFlowPage({ user }) {
         <span style={{ color: '#b45309', fontWeight: 600 }}>may_act</span> — highlighted when they change.
       </p>
 
-      {/* Token history strip — persists after simulation for review */}
-      {history.length > 0 && (
-        <FlowHistory history={history} onClear={clearHistory} />
-      )}
+      {/* Token history — floating draggable modal */}
+      <HistoryModal history={history} onClear={clearHistory} />
     </div>
   );
 }

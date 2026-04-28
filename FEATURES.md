@@ -191,6 +191,8 @@ git checkout <last-version-tag> -- <key-file>
 | Monitoring pages — Token Chain, Token Diff, Flow Inspector, MCP Traffic, API Explorer (visible to admin + customer) | active | `banking_api_ui/src/App.js`, `banking_api_ui/src/components/AdminSideNav.jsx` | — |
 | Architecture diagrams — Overview and Token Flow with live SVG region highlighting driven by app events (admin-only polling) | active | `banking_api_ui/src/components/ArchitectureOverviewPage.js`, `banking_api_ui/src/components/ArchitectureTokenFlowPage.js`, `banking_api_ui/src/components/ArchitectureDiagramPage.js` | — |
 | Interactive Flow diagram — React Flow graph at `/architecture/flow` with draggable nodes, animated edges, live event-driven node highlighting, and 9-step Simulate Flow walkthrough | active | `banking_api_ui/src/components/ArchitectureFlowPage.js` | — |
+| Architecture diagrams — live real-agent token history — real RFC 8693, PingAuthorize, MCP tool, and OAuth events appear as 🔴 LIVE cards in the floating HistoryModal | active | `banking_api_ui/src/components/ArchitectureOverviewPage.js`, `banking_api_ui/src/components/ArchitectureTokenFlowPage.js`, `banking_api_ui/src/components/HistoryModal.js` | — |
+| Admin sidebar — Tests group — PingOne Test, MFA Test, Authz Test, and Resource Server pages grouped under a collapsible Tests section | active | `banking_api_ui/src/components/AdminSideNav.jsx` | — |
 
 ---
 

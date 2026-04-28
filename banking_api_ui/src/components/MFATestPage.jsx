@@ -39,6 +39,8 @@ export default function MFATestPage() {
 	const [testUserId, setTestUserId] = useState("");
 	const [pingoneUsers, setPingoneUsers] = useState([]); // populated from /api/mfa/test/users
 	const [usersLoading, setUsersLoading] = useState(false);
+	const [userSearch, setUserSearch] = useState(""); // combobox filter
+	const [userPickerOpen, setUserPickerOpen] = useState(false);
 
 	// SMS OTP test state
 	const [smsInitiateStatus, setSmsInitiateStatus] = useState("pending");
@@ -962,50 +964,86 @@ export default function MFATestPage() {
 					</div>
 				</div>
 
-				{/* User picker — select any PingOne user to test MFA against */}
-				<div className="mfa-user-picker">
-					<label htmlFor="mfa-user-select" className="mfa-user-picker__label">
-						Test as User:
-					</label>
-					<select
-						id="mfa-user-select"
-						className="mfa-user-picker__select"
-						value={testUserId}
-						onChange={(e) => { setTestUserId(e.target.value); loadDevices(); }}
-						disabled={usersLoading}
-					>
-						<option value="">
-							{usersLoading ? "Loading users…" : "— Session user (bankadmin) —"}
-						</option>
-						{pingoneUsers.map((u) => (
-							<option key={u.id} value={u.id}>
-								{u.name || u.username} — {u.email || u.username}
-							</option>
-						))}
-					</select>
-					<button
-						type="button"
-						className="mfa-user-picker__refresh"
-						onClick={loadPingoneUsers}
-						title="Reload user list from PingOne"
-					>
-						↻
-					</button>
-					{testUserId && (
-						<>
+				{/* User picker combobox — searchable PingOne user list */}
+				{(() => {
+					const selectedUser = pingoneUsers.find((u) => u.id === testUserId);
+					const filteredUsers = pingoneUsers.filter((u) => {
+						const q = userSearch.toLowerCase();
+						if (!q) return true;
+						return (
+							(u.name || "").toLowerCase().includes(q) ||
+							(u.username || "").toLowerCase().includes(q) ||
+							(u.email || "").toLowerCase().includes(q)
+						);
+					});
+					return (
+						<div className="mfa-user-picker">
+							<label className="mfa-user-picker__label">Test as User:</label>
+							<div className="mfa-user-picker__combobox">
+								<input
+									id="mfa-user-search"
+									type="text"
+									className="mfa-user-picker__input"
+									placeholder={
+										usersLoading
+											? "Loading users…"
+											: selectedUser
+												? `${selectedUser.name || selectedUser.username} — ${selectedUser.email || selectedUser.username}`
+												: "Search users…"
+									}
+									value={userSearch}
+									onChange={(e) => { setUserSearch(e.target.value); setUserPickerOpen(true); }}
+									onFocus={() => setUserPickerOpen(true)}
+									onBlur={() => setTimeout(() => setUserPickerOpen(false), 150)}
+									autoComplete="off"
+									disabled={usersLoading}
+								/>
+								{userPickerOpen && filteredUsers.length > 0 && (
+									<ul className="mfa-user-picker__dropdown" role="listbox">
+										<li
+											className={"mfa-user-picker__option" + (!testUserId ? " mfa-user-picker__option--selected" : "")}
+											onMouseDown={() => { setTestUserId(""); setUserSearch(""); setUserPickerOpen(false); loadDevices(); }}
+											role="option"
+										>
+											<span className="mfa-user-picker__opt-name">— Session user (bankadmin) —</span>
+										</li>
+										{filteredUsers.map((u) => (
+											<li
+												key={u.id}
+												className={"mfa-user-picker__option" + (u.id === testUserId ? " mfa-user-picker__option--selected" : "")}
+												onMouseDown={() => { setTestUserId(u.id); setUserSearch(""); setUserPickerOpen(false); loadDevices(); }}
+												role="option"
+											>
+												<span className="mfa-user-picker__opt-name">{u.name || u.username}</span>
+												<span className="mfa-user-picker__opt-email">{u.email || u.username}</span>
+											</li>
+										))}
+									</ul>
+								)}
+							</div>
 							<button
 								type="button"
-								className="mfa-user-picker__clear"
-								onClick={() => { setTestUserId(""); loadDevices(); }}
+								className="mfa-user-picker__refresh"
+								onClick={loadPingoneUsers}
+								title="Reload user list from PingOne"
 							>
-								Clear
+								↻
 							</button>
-							<span className="mfa-user-picker__active">
-								⚠ Override active
-							</span>
-						</>
-					)}
-				</div>
+							{testUserId && (
+								<>
+									<button
+										type="button"
+										className="mfa-user-picker__clear"
+										onClick={() => { setTestUserId(""); setUserSearch(""); loadDevices(); }}
+									>
+										Clear
+									</button>
+									<span className="mfa-user-picker__active">⚠ Override active</span>
+								</>
+							)}
+						</div>
+					);
+				})()}
 
 				{workerTokenError && (
 					<div

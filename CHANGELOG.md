@@ -24,6 +24,13 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **Architecture diagrams — live real-agent events populate token history** — `buildLiveHistoryEntry` maps RFC 8693, PingAuthorize, MCP tool, and OAuth events to token cards tagged 🔴 LIVE in the floating history modal on Overview and Token Flow pages.
+- **Architecture diagrams — stronger region highlights** — active fill opacity raised from 0.22 → 0.32, glow increased, white background behind diagram image for better contrast.
+- **HistoryModal — createPortal fix** — moved to `createPortal(document.body)` to eliminate stacking context interference with the floating agent FAB.
+- **Admin sidebar — Tests group** — PingOne Test, MFA Test, Authz Test, OIDC Resource Server, CC Resource Server now grouped under a collapsible Tests section.
+- **PingOneApiPanel — light backgrounds and readable fonts** — Content-Type row and headers panel switched from dark navy to light tinted backgrounds; all fonts raised to minimum 0.8rem.
+- **MFA Test — email input font fix** — email enrollment field no longer inherits monospace + letter-spacing from the OTP input class.
+
 - **Interactive Flow diagram** — React Flow page at `/architecture/flow` with live node highlighting from app events, animated edges during simulation, 9-step Simulate Flow walkthrough, drag-to-rearrange nodes, MiniMap, and Controls; uses @xyflow/react.
 - **Phase 244 — Interactive architecture diagrams** — Overview and Token Flow diagram pages at `/architecture/overview` and `/architecture/token-flow` with SVG region overlays, live event-driven highlighting (per-region timers, admin-only polling), and Architecture nav group in AdminSideNav; agent FAB enabled on all `/architecture/*` routes.
 - **Phase 241 — Monitoring sidebar pages** — 5 new `/monitoring/*` routes (Token Chain, Token Diff, Flow Inspector, MCP Traffic, API Explorer) visible to both admin and customer users; legacy Monitoring items (Activity Logs, Audit Trail, API Traffic, MCP Traffic, Dev Tools) remain admin-only.

@@ -684,21 +684,74 @@
         color: #334155;
 }
 
-.mfa-user-picker__select {
+/* combobox wrapper — positions the dropdown list */
+.mfa-user-picker__combobox {
+        position: relative;
         flex: 1;
-        min-width: 200px;
+        min-width: 220px;
+}
+
+.mfa-user-picker__input {
+        width: 100%;
         padding: 6px 10px;
         border: 1px solid #cbd5e1;
         border-radius: 6px;
         background: #fff;
         font-size: 0.85rem;
-        cursor: pointer;
+        box-sizing: border-box;
 }
 
-.mfa-user-picker__select:disabled {
+.mfa-user-picker__input:disabled {
         background: #f1f5f9;
         color: #94a3b8;
         cursor: not-allowed;
+}
+
+.mfa-user-picker__input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.mfa-user-picker__dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        z-index: 200;
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        max-height: 220px;
+        overflow-y: auto;
+        list-style: none;
+        margin: 0;
+        padding: 4px 0;
+}
+
+.mfa-user-picker__option {
+        display: flex;
+        flex-direction: column;
+        padding: 7px 12px;
+        cursor: pointer;
+        gap: 1px;
+}
+
+.mfa-user-picker__option:hover,
+.mfa-user-picker__option--selected {
+        background: #eff6ff;
+}
+
+.mfa-user-picker__opt-name {
+        font-weight: 500;
+        color: #1e293b;
+        font-size: 0.85rem;
+}
+
+.mfa-user-picker__opt-email {
+        color: #64748b;
+        font-size: 0.78rem;
 }
 
 .mfa-user-picker__refresh {

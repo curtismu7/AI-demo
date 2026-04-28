@@ -105,17 +105,17 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ['agent1', 'pingone-aic'], colorClass: 'active', label: 'RFC 8693 Exchange #1: user token → delegation token',
     isTokenExchange: true,
     token: {
-      type: 'Token Exchange Request',
-      _type: 'exchange', _rfcs: ['RFC 8693'],
-      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-      subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
-      subject_aud: 'banking-app-client',
-      audience: 'mcp-gateway',
-      scope: 'banking:read banking:write',
-      note: 'BFF sends user access token; IdP validates may_act claim before issuing delegation token',
+      type: 'User Access Token (subject)',
+      _type: 'oauth', _rfcs: ['RFC 8693'],
+      aud: 'banking-app-client',
+      sub: 'alice@bank.com',
+      scope: 'openid profile banking:read banking:write',
+      may_act: '{ "client_id": "bff-client-id" }',
+      note: 'BFF sends this to IdP for exchange → IdP validates may_act before issuing delegation token',
     },
     tokenOut: {
       type: 'Delegated Token (issued)',
+      _type: 'exchange', _rfcs: ['RFC 8693'],
       aud: 'mcp-gateway',
       sub: 'alice@bank.com',
       scope: 'banking:read banking:write',
@@ -176,17 +176,17 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ['mcp-gateway-tf', 'mcp-olb'], colorClass: 'active', label: 'RFC 8693 Exchange #2: scope-narrowed → MCP Server',
     isTokenExchange: true,
     token: {
-      type: 'Token Exchange Request (scope-narrowed)',
+      type: 'Delegated Token (subject)',
       _type: 'exchange', _rfcs: ['RFC 8693', 'RFC 8707'],
-      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-      subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
-      subject_aud: 'mcp-gateway',
-      audience: 'mcp-olb-server',
-      scope: 'banking:read',
-      note: 'D-04: original token never forwarded — gateway requests new token scoped to MCP Server only',
+      aud: 'mcp-gateway',
+      sub: 'alice@bank.com',
+      scope: 'banking:read banking:write',
+      act: '{ "sub": "agent-client-id" }',
+      note: 'D-04: gateway exchanges this — original never forwarded → requested_aud: mcp-olb-server, scope: banking:read',
     },
     tokenOut: {
       type: 'Tool-Scoped Token (issued)',
+      _type: 'oauth', _rfcs: ['RFC 8693'],
       aud: 'mcp-olb-server',
       scope: 'banking:read',
       sub: 'alice@bank.com',
@@ -238,10 +238,213 @@ const TOKEN_FLOW_AUD_HOPS = [
   { icon: '🛠️', label: 'Tool Token',    aud: 'mcp-olb-server',     act: 'agent-client-id',      activeFrom: 13, activeTo: 14 },
 ];
 
+const SCENARIO_STEPS_TF = {
+  'id-token': [
+    {
+      regionIds: ['olb-application', 'pingone-aic'], colorClass: 'active', label: 'OAuth 2.0 PKCE — code request',
+      token: { type: 'Authorization Code Request', _type: 'oauth', _rfcs: ['RFC 6749', 'RFC 7636'],
+        response_type: 'code', scope: 'openid profile banking:read banking:write', code_challenge_method: 'S256',
+        note: 'PKCE: code_verifier stored client-side; code_challenge sent — prevents auth-code interception' },
+    },
+    {
+      regionIds: ['pingone-aic'], colorClass: 'active', label: 'Code exchange → token issuance',
+      token: { type: 'Token Request', _type: 'oauth', _rfcs: ['RFC 6749', 'RFC 7636'],
+        grant_type: 'authorization_code',
+        note: 'IdP verifies code_verifier matches stored code_challenge (S256 hash)' },
+    },
+    {
+      regionIds: ['pingone-aic', 'chatbot'], colorClass: 'active', label: 'ID Token issued — UI only',
+      token: { type: 'ID Token (OIDC)', _type: 'idtoken', _rfcs: ['RFC 7519', 'OIDC Core'],
+        iss: 'https://your-idp.example.com', sub: 'alice@bank.com', aud: 'banking-app-client',
+        email: 'alice@bank.com', name: 'Alice Smith',
+        note: 'ID token aud is ONLY the client — never sent to APIs, MCP tools, or backend services' },
+    },
+    {
+      regionIds: ['pingone-aic', 'chatbot'], colorClass: 'active', label: 'Access Token issued — with may_act',
+      token: { type: 'Access Token', _type: 'oauth', _rfcs: ['RFC 6749', 'RFC 8693'],
+        aud: 'banking-app-client', sub: 'alice@bank.com',
+        scope: 'openid profile banking:read banking:write',
+        may_act: '{ "client_id": "bff-client-id" }',
+        note: 'may_act grants BFF permission to perform RFC 8693 exchange on behalf of this user' },
+    },
+    {
+      regionIds: ['chatbot'], colorClass: 'active', label: 'BFF stores access token — ID token stays in browser',
+      token: { type: 'Token Storage', _type: 'mcp',
+        id_token_location: 'Browser memory only', access_token_location: 'BFF server-side session',
+        note: 'ID token: never leaves browser. Access token: BFF holds it — never exposed to frontend' },
+    },
+  ],
+
+  'user-token': [
+    {
+      regionIds: ['chatbot', 'agent1'], colorClass: 'active', label: 'BFF holds user access token',
+      token: { type: 'User Access Token (held by BFF)', _type: 'oauth', _rfcs: ['RFC 8693'],
+        aud: 'banking-app-client', sub: 'alice@bank.com',
+        scope: 'openid profile banking:read banking:write',
+        may_act: '{ "client_id": "bff-client-id" }',
+        note: 'may_act is the key — authorizes BFF to perform delegation exchange (RFC 8693 §4.2)' },
+    },
+    {
+      regionIds: ['agent1', 'pingone-aic'], colorClass: 'active', label: 'RFC 8693 Exchange #1 — user token IN, delegation OUT',
+      isTokenExchange: true,
+      token: { type: 'User Access Token (subject)', _type: 'oauth', _rfcs: ['RFC 8693'],
+        aud: 'banking-app-client', sub: 'alice@bank.com',
+        scope: 'openid profile banking:read banking:write',
+        may_act: '{ "client_id": "bff-client-id" }',
+        note: 'BFF sends this as subject_token → IdP validates may_act before issuing delegation token' },
+      tokenOut: { type: 'Delegated Token (issued)', _type: 'exchange', _rfcs: ['RFC 8693'],
+        aud: 'mcp-gateway', sub: 'alice@bank.com', scope: 'banking:read banking:write',
+        act: '{ "sub": "agent-client-id" }',
+        note: 'aud narrowed to mcp-gateway — act chain added identifying the acting agent' },
+    },
+    {
+      regionIds: ['token-exchange-box', 'mcp-gateway-tf'], colorClass: 'active', label: 'Delegation token arrives at MCP Gateway',
+      token: { type: 'Delegated Token (inbound)', _type: 'oauth', _rfcs: ['RFC 8693', 'RFC 6750'],
+        aud: 'mcp-gateway', sub: 'alice@bank.com', scope: 'banking:read banking:write',
+        act: '{ "sub": "agent-client-id" }',
+        note: 'Gateway validates: aud=mcp-gateway ✓  sub≠∅ ✓  act.sub≠∅ ✓  D-05 anti-bypass ✓' },
+    },
+    {
+      regionIds: ['mcp-gateway-tf', 'pingone-aic'], colorClass: 'active', label: 'RFC 8693 Exchange #2 — scope-narrowed for MCP Server',
+      isTokenExchange: true,
+      token: { type: 'Delegated Token (subject)', _type: 'exchange', _rfcs: ['RFC 8693', 'RFC 8707'],
+        aud: 'mcp-gateway', sub: 'alice@bank.com', scope: 'banking:read banking:write',
+        act: '{ "sub": "agent-client-id" }',
+        note: 'D-04: gateway exchanges this — original never forwarded to MCP Server' },
+      tokenOut: { type: 'Tool-Scoped Token (issued)', _type: 'oauth', _rfcs: ['RFC 8693'],
+        aud: 'mcp-olb-server', scope: 'banking:read', sub: 'alice@bank.com',
+        act: '{ "sub": "agent-client-id" }',
+        note: 'aud=mcp-olb-server, scope narrowed to banking:read — act chain preserved' },
+    },
+    {
+      regionIds: ['mcp-olb', 'oauth-rs'], colorClass: 'active', label: 'Tool-scoped token forwarded to MCP Server',
+      token: { type: 'Tool-Scoped Token (delivered)', _type: 'oauth', _rfcs: ['RFC 6750'],
+        aud: 'mcp-olb-server', scope: 'banking:read', sub: 'alice@bank.com',
+        act: '{ "sub": "agent-client-id" }',
+        note: 'MCP Server validates aud=mcp-olb-server before calling any banking APIs' },
+    },
+  ],
+
+  'get-accounts': [
+    {
+      regionIds: ['agent1', 'llm'], colorClass: 'active', label: 'LLM decides: get_my_accounts (banking:read)',
+      token: { type: 'LLM Reasoning', _type: 'mcp', model: 'claude-3-5-sonnet',
+        intent: '"show me my accounts"', action: 'tools/call: get_my_accounts',
+        note: 'LangGraph routes to MCP tool node — read-only, no HITL needed' },
+    },
+    {
+      regionIds: ['mcp-gateway-tf', 'pingauthorize-tf'], colorClass: 'active', label: 'PingAuthorize: McpToolsList',
+      token: { type: 'PingAuthorize Request', _type: 'mcp', DecisionContext: 'McpToolsList',
+        ClientId: 'alice@bank.com', ActClientId: 'agent-client-id',
+        TokenScopes: 'banking:read banking:write', TokenAudience: 'mcp-gateway' },
+    },
+    {
+      regionIds: ['pingauthorize-tf'], colorClass: 'active-permit', label: 'PERMIT — tools discovery allowed',
+      token: { type: 'Authorization Decision', _type: 'permit', decision: '✅ PERMIT',
+        DecisionContext: 'McpToolsList', policy: 'mcp-tools-access-v2' },
+    },
+    {
+      regionIds: ['mcp-gateway-tf', 'pingauthorize-tf'], colorClass: 'active', label: 'PingAuthorize: McpToolCall — get_my_accounts',
+      token: { type: 'PingAuthorize Request', _type: 'mcp', DecisionContext: 'McpToolCall',
+        ClientId: 'alice@bank.com', ActClientId: 'agent-client-id', ToolName: 'get_my_accounts',
+        TokenScopes: 'banking:read', TokenAudience: 'mcp-gateway' },
+    },
+    {
+      regionIds: ['pingauthorize-tf'], colorClass: 'active-permit', label: 'PERMIT — banking:read sufficient',
+      token: { type: 'Authorization Decision', _type: 'permit', decision: '✅ PERMIT',
+        DecisionContext: 'McpToolCall', ToolName: 'get_my_accounts', policy: 'mcp-tool-call-v2' },
+    },
+    {
+      regionIds: ['mcp-olb', 'oauth-rs'], colorClass: 'active', label: 'Banking API returns accounts — 200 OK',
+      token: { type: 'API Response', _type: 'mcp', status: '200 OK',
+        data: '[{ "accountId":"ACC-001","balance":12450.00 },...]', scope_used: 'banking:read' },
+    },
+  ],
+
+  'withdrawal': [
+    {
+      regionIds: ['agent1', 'llm'], colorClass: 'active', label: 'LLM decides: create_transfer (banking:write)',
+      token: { type: 'LLM Reasoning', _type: 'mcp', model: 'claude-3-5-sonnet',
+        intent: '"transfer $5,000 to savings"', action: 'tools/call: create_transfer',
+        scope_needed: 'banking:write',
+        note: 'Write operation — higher risk, likely triggers HITL approval' },
+    },
+    {
+      regionIds: ['mcp-gateway-tf', 'pingauthorize-tf'], colorClass: 'active', label: 'PingAuthorize: create_transfer — high-risk',
+      token: { type: 'PingAuthorize Request', _type: 'mcp', DecisionContext: 'McpToolCall',
+        ClientId: 'alice@bank.com', ActClientId: 'agent-client-id', ToolName: 'create_transfer',
+        TokenScopes: 'banking:write', TokenAudience: 'mcp-gateway',
+        note: 'Write operation triggers high-risk policy evaluation' },
+    },
+    {
+      regionIds: ['pingauthorize-tf'], colorClass: 'active-hitl', label: 'INDETERMINATE — human consent required',
+      isHitl: true,
+      token: { type: 'Authorization Decision', _type: 'hitl', decision: '⚠️ INDETERMINATE',
+        DecisionContext: 'McpToolCall', ToolName: 'create_transfer',
+        note: 'PingAuthorize cannot auto-approve — HITL required before execution' },
+    },
+    {
+      regionIds: ['chatbot'], colorClass: 'active-hitl', label: 'Agent awaits human approval via HITL',
+      isHitl: true,
+      token: { type: 'HITL Approval Request', _type: 'hitl',
+        trigger: 'PingAuthorize INDETERMINATE', action: 'create_transfer $5,000 → savings',
+        risk_score: 'HIGH', status: '⏳ Awaiting user approval…' },
+    },
+    {
+      regionIds: ['chatbot'], colorClass: 'active-permit', label: 'User approved ✓ — execution proceeds',
+      isHitl: true,
+      token: { type: 'HITL Response', _type: 'permit', decision: '✅ APPROVED',
+        approved_by: 'alice@bank.com', action: 'create_transfer $5,000 → savings' },
+    },
+    {
+      regionIds: ['mcp-olb', 'oauth-rs'], colorClass: 'active', label: 'Banking API executes transfer — 200 OK',
+      token: { type: 'API Response', _type: 'mcp', status: '200 OK',
+        transfer_id: 'TXN-2024-001', amount: '$5,000', from: 'CHK-001', to: 'SAV-002',
+        scope_used: 'banking:write' },
+    },
+  ],
+
+  'bad-scope': [
+    {
+      regionIds: ['chatbot', 'agent1'], colorClass: 'active', label: 'Agent holds read-only token — attempts write',
+      token: { type: 'Agent Token (read-only)', _type: 'oauth', _rfcs: ['RFC 6750'],
+        aud: 'mcp-gateway', sub: 'alice@bank.com', scope: 'banking:read',
+        act: '{ "sub": "agent-client-id" }',
+        note: '⚠️ Token scope is banking:read only — create_transfer requires banking:write' },
+    },
+    {
+      regionIds: ['mcp-gateway-tf', 'pingauthorize-tf'], colorClass: 'active', label: 'PingAuthorize: create_transfer — insufficient scope',
+      token: { type: 'PingAuthorize Request', _type: 'mcp', DecisionContext: 'McpToolCall',
+        ClientId: 'alice@bank.com', ActClientId: 'agent-client-id', ToolName: 'create_transfer',
+        TokenScopes: 'banking:read', TokenAudience: 'mcp-gateway',
+        note: '❌ banking:write required — policy will DENY this request' },
+    },
+    {
+      regionIds: ['pingauthorize-tf'], colorClass: 'active-error', label: 'DENY — insufficient scope',
+      token: { type: 'Authorization Decision', _type: 'error', decision: '❌ DENY',
+        DecisionContext: 'McpToolCall', ToolName: 'create_transfer',
+        reason: 'insufficient_scope: banking:write required', policy: 'mcp-tool-call-v2' },
+    },
+    {
+      regionIds: ['mcp-gateway-tf', 'chatbot'], colorClass: 'active-error', label: '403 Forbidden — propagated to agent',
+      token: { type: 'HTTP 403 Forbidden', _type: 'error', status: '403 Forbidden',
+        error: 'insufficient_scope', error_description: 'banking:write scope required for create_transfer',
+        'WWW-Authenticate': 'Bearer scope="banking:write"',
+        note: 'MCP Gateway converts DENY to 403 — agent must NOT retry with same token' },
+    },
+    {
+      regionIds: ['chatbot'], colorClass: 'active-error', label: 'Agent gracefully handles 403 — informs user',
+      token: { type: 'Agent Error Response', _type: 'error', http_status: '403',
+        user_message: 'Unable to complete transfer — insufficient permissions',
+        recovery: 'Re-authenticate with banking:write scope to enable transfers',
+        note: 'Graceful degradation: surface clear message, request scope upgrade, never silent-fail' },
+    },
+  ],
+};
+
 const HIGHLIGHT_MS  = 4000;
 const HISTORICAL_MS = 15000;
 const STEP_MS       = 2500;
-const TOTAL         = TOKEN_FLOW_SIMULATE_STEPS.length;
 
 function mapEventToRegions(event) {
   for (const rule of TOKEN_FLOW_EVENT_MAP) {
@@ -259,6 +462,60 @@ function scanKeywords(text) {
     .map((r) => ({ regionId: r.id, colorClass: 'active' }));
 }
 
+function buildLiveHistoryEntry(evt) {
+  const m = evt.metadata || {};
+  const ts = new Date(evt.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  if (evt.tag === 'token_exchange/rfc8693-success') {
+    const audRaw = m.response?.aud;
+    return {
+      isLive: true, label: `RFC 8693 Exchange → ${(m.request?.audience || m.mcpResourceUri || 'MCP').split('/').pop()} [${ts}]`,
+      isTokenExchange: true,
+      token: { type: 'Token Exchange Request', _type: 'exchange', _rfcs: ['RFC 8693'],
+        grant_type: 'token-exchange', audience: m.request?.audience || m.mcpResourceUri || '—',
+        scope: m.request?.scope || '—', actor_token: m.request?.hasActorToken ? 'yes' : 'no' },
+      tokenOut: { type: 'Issued Token', _type: 'oauth', _rfcs: ['RFC 8693'],
+        aud: Array.isArray(audRaw) ? audRaw.join(', ') : (audRaw || '—'),
+        scope: m.response?.scope || '—',
+        act_claim: m.response?.hasActClaim ? 'yes (chain preserved)' : 'no',
+        duration: `${m.durationMs || '?'}ms` },
+    };
+  }
+  if (evt.tag === 'token_exchange/rfc8693-error') {
+    return { isLive: true, label: `RFC 8693 Exchange FAILED [${ts}]`,
+      token: { type: 'Token Exchange Error', _type: 'error',
+        audience: m.mcpResourceUri || '—', error: m.errorMessage || 'Exchange failed', duration: `${m.durationMs || '?'}ms` } };
+  }
+  if (evt.tag === 'authorize/permit') {
+    return { isLive: true, label: `PingAuthorize: PERMIT — ${m.type || 'txn'} $${m.amount || '?'} [${ts}]`,
+      token: { type: 'Authorization Decision', _type: 'permit',
+        decision: '✅ PERMIT', engine: m.engine || '—', TransactionType: m.type || '—', Amount: String(m.amount || '—'), path: m.path || '—' } };
+  }
+  if (evt.tag === 'authorize/deny') {
+    return { isLive: true, label: `PingAuthorize: DENY — ${m.type || 'txn'} $${m.amount || '?'} [${ts}]`,
+      token: { type: 'Authorization Decision', _type: 'error',
+        decision: '❌ DENY', engine: m.engine || '—', TransactionType: m.type || '—', Amount: String(m.amount || '—'), path: m.path || '—' } };
+  }
+  if (evt.tag === 'authorize/bypass') {
+    return { isLive: true, label: `PingAuthorize: BYPASS [${ts}]`,
+      token: { type: 'Authorization Bypass', _type: 'mcp', engine: 'off',
+        note: 'Authorization disabled — all requests permitted without evaluation' } };
+  }
+  if (evt.tag === 'mcp/tool') {
+    if (m.durationMs != null) {
+      return { isLive: true, label: `MCP Tool Done: ${m.tool || '?'} (${m.durationMs}ms) [${ts}]`,
+        token: { type: 'MCP Tool Result', _type: 'mcp', tool: m.tool || '—', via: m.via || '—', duration: `${m.durationMs}ms`, status: 'success' } };
+    }
+    return { isLive: true, label: `MCP Tool Call: ${m.tool || '?'} [${ts}]`,
+      token: { type: 'MCP Tool Call', _type: 'mcp', tool: m.tool || '—', via: m.via || '—', status: 'calling…' } };
+  }
+  if (evt.tag === 'oauth/user/callback') {
+    return { isLive: true, label: `OAuth: User authenticated [${ts}]`,
+      token: { type: 'OAuth Callback', _type: 'oauth', _rfcs: ['RFC 6749'],
+        status: '✅ authenticated', note: 'PingOne issued ID Token + Access Token to BFF' } };
+  }
+  return null;
+}
+
 export default function ArchitectureTokenFlowPage({ user }) {
   const [activeRegions, setActiveRegions] = useState({});
   const [regionLabels,  setRegionLabels]  = useState({});
@@ -270,13 +527,16 @@ export default function ArchitectureTokenFlowPage({ user }) {
   const [stepDetailOut, setStepDetailOut] = useState(null);
   const [isTokenExch,   setIsTokenExch]   = useState(false);
   const [isHitl,        setIsHitl]        = useState(false);
-  const [history,       setHistory]       = useState([]);
+  const [history,          setHistory]          = useState([]);
+  const [selectedScenario, setSelectedScenario] = useState('full-flow');
+  const [totalSteps,       setTotalSteps]       = useState(TOKEN_FLOW_SIMULATE_STEPS.length);
 
   const clearTimers   = useRef({});
   const simTimeouts   = useRef([]);
   const pausedStep    = useRef(-1);
   const lastFetchedAt = useRef(null);
   const pollRef       = useRef(null);
+  const stepsRef      = useRef(TOKEN_FLOW_SIMULATE_STEPS);
 
   const activateRegion = useCallback((regionId, colorClass = 'active', ms = HIGHLIGHT_MS) => {
     if (clearTimers.current[regionId]) clearTimeout(clearTimers.current[regionId]);
@@ -293,6 +553,17 @@ export default function ArchitectureTokenFlowPage({ user }) {
       mapEventToRegions(evt).forEach(({ regionId, colorClass }) => activateRegion(regionId, colorClass, ms));
       if (evt.tag === 'agent_prompt/llm_complete' && evt.metadata?.response)
         scanKeywords(evt.metadata.response).forEach(({ regionId, colorClass }) => activateRegion(regionId, colorClass, ms));
+      if (!historical) {
+        const entry = buildLiveHistoryEntry(evt);
+        if (entry) {
+          setHistory((prev) => {
+            const cutoff = Date.now() - 4000;
+            const isDupe = prev.some((e) => e.isLive && e._tag === evt.tag && (e._ts || 0) > cutoff);
+            if (isDupe) return prev;
+            return [...prev, { ...entry, _tag: evt.tag, _ts: Date.now() }];
+          });
+        }
+      }
     });
   }, [activateRegion]);
 
@@ -311,8 +582,9 @@ export default function ArchitectureTokenFlowPage({ user }) {
   }, [user, processEvents]);
 
   const applyStep = useCallback((i) => {
-    if (i < 0 || i >= TOTAL) return;
-    const step = TOKEN_FLOW_SIMULATE_STEPS[i];
+    const steps = stepsRef.current;
+    if (i < 0 || i >= steps.length) return;
+    const step = steps[i];
     setCurrentStep(i);
     setStepDetail(step.token   || null);
     setStepDetail2(step.token2 || null);
@@ -323,9 +595,9 @@ export default function ArchitectureTokenFlowPage({ user }) {
     const regions = {};
     const labels  = {};
     for (let j = 0; j < i; j++) {
-      TOKEN_FLOW_SIMULATE_STEPS[j].regionIds.forEach((id) => {
+      steps[j].regionIds.forEach((id) => {
         regions[id] = 'active-prev';
-        labels[id]  = TOKEN_FLOW_SIMULATE_STEPS[j].label;
+        labels[id]  = steps[j].label;
       });
     }
     step.regionIds.forEach((id) => {
@@ -345,12 +617,13 @@ export default function ArchitectureTokenFlowPage({ user }) {
   }, []);
 
   const scheduleFrom = useCallback((startIdx) => {
+    const steps = stepsRef.current;
     simTimeouts.current.forEach(clearTimeout);
     simTimeouts.current = [];
-    for (let i = startIdx; i < TOTAL; i++) {
+    for (let i = startIdx; i < steps.length; i++) {
       const t = setTimeout(() => {
         applyStep(i);
-        if (i === TOTAL - 1) {
+        if (i === steps.length - 1) {
           const done = setTimeout(() => {
             setActiveRegions({}); setRegionLabels({});
             setIsSimulating(false); setIsPaused(false);
@@ -365,13 +638,17 @@ export default function ArchitectureTokenFlowPage({ user }) {
 
   const clearHistory = useCallback(() => setHistory([]), []);
 
-  const runSimulation = useCallback(() => {
+  const runSimulation = useCallback((scenarioKey) => {
     if (isSimulating) return;
+    const key = scenarioKey || selectedScenario;
+    const steps = key === 'full-flow' ? TOKEN_FLOW_SIMULATE_STEPS : (SCENARIO_STEPS_TF[key] || TOKEN_FLOW_SIMULATE_STEPS);
+    stepsRef.current = steps;
+    setTotalSteps(steps.length);
     setHistory([]);
     setIsSimulating(true); setIsPaused(false);
     pausedStep.current = -1;
     scheduleFrom(0);
-  }, [isSimulating, scheduleFrom]);
+  }, [isSimulating, scheduleFrom, selectedScenario]);
 
   const pause = useCallback(() => {
     simTimeouts.current.forEach(clearTimeout);
@@ -394,7 +671,7 @@ export default function ArchitectureTokenFlowPage({ user }) {
 
   const nextStep = useCallback(() => {
     const next = pausedStep.current + 1;
-    if (next >= TOTAL) return;
+    if (next >= stepsRef.current.length) return;
     pausedStep.current = next;
     applyStep(next);
   }, [applyStep]);
@@ -419,6 +696,25 @@ export default function ArchitectureTokenFlowPage({ user }) {
     };
   }, [fetchEvents]);
 
+  const scenarioSelector = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>Scenario:</label>
+      <select
+        value={selectedScenario}
+        onChange={(e) => setSelectedScenario(e.target.value)}
+        disabled={isSimulating}
+        style={{ fontSize: '0.78rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#1e293b', cursor: isSimulating ? 'not-allowed' : 'pointer' }}
+      >
+        <option value="full-flow">Full Flow</option>
+        <option value="id-token">ID Token Exchange</option>
+        <option value="user-token">Token Exchange (Both Hops)</option>
+        <option value="get-accounts">Get Accounts (Read Scope)</option>
+        <option value="withdrawal">Withdrawal + HITL</option>
+        <option value="bad-scope">Bad Scope (401 / 403)</option>
+      </select>
+    </div>
+  );
+
   return (
     <ArchitectureDiagramPage
       title="Token Flow Diagram"
@@ -437,7 +733,7 @@ export default function ArchitectureTokenFlowPage({ user }) {
       onNextStep={nextStep}
       onStop={stop}
       currentStep={currentStep}
-      totalSteps={TOTAL}
+      totalSteps={totalSteps}
       stepDetail={stepDetail}
       stepDetail2={stepDetail2}
       stepDetailOut={stepDetailOut}
@@ -446,6 +742,7 @@ export default function ArchitectureTokenFlowPage({ user }) {
       audHops={TOKEN_FLOW_AUD_HOPS}
       tokenHistory={history}
       onClearHistory={clearHistory}
+      toolbarExtra={scenarioSelector}
     />
   );
 }

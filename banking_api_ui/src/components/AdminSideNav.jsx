@@ -37,11 +37,15 @@ export default function AdminSideNav({ user }) {
 		const isAdminUser = user?.role === 'admin';
 		const monitoringPaths = ['/monitoring', '/activity', '/audit', '/api-traffic', '/mcp-traffic', '/dev-tools', '/architecture'];
 		const usersPaths = ['/users', '/accounts', '/transactions'];
+		const testsPaths = ['/pingone-test', '/mfa-test', '/authz-test', '/resource-server', '/resource-server-cc'];
 		if (monitoringPaths.some(p => path === p || path.startsWith(p + '/'))) {
 			initial[isAdminUser ? 'nav-3' : 'nav-4'] = true;
 		}
 		if (usersPaths.some(p => path === p || path.startsWith(p + '/'))) {
 			initial[isAdminUser ? 'nav-2' : 'nav-3'] = true;
+		}
+		if (testsPaths.some(p => path === p || path.startsWith(p + '/'))) {
+			initial[isAdminUser ? 'nav-7' : 'nav-7'] = true;
 		}
 		return initial;
 	});
@@ -179,11 +183,17 @@ export default function AdminSideNav({ user }) {
 				{ label: "Postman Collections", path: "/postman", icon: "📬" },
 			],
 		},
-		{ label: "PingOne Test", path: "/pingone-test", icon: "🧪" },
-		{ label: "MFA Test", path: "/mfa-test", icon: "🔒" },
-		{ label: "Authz Test", path: "/authz-test", icon: "⚖️" },
-		{ label: "OIDC Resource Server", path: "/resource-server", icon: "🔐" },
-		{ label: "🔑 CC Resource Server", path: "/resource-server-cc", icon: "🔑" },
+		{
+			label: "Tests",
+			icon: "🧪",
+			children: [
+				{ label: "PingOne Test", path: "/pingone-test", icon: "🧪" },
+				{ label: "MFA Test", path: "/mfa-test", icon: "🔒" },
+				{ label: "Authz Test", path: "/authz-test", icon: "⚖️" },
+				{ label: "OIDC Resource Server", path: "/resource-server", icon: "🔐" },
+				{ label: "CC Resource Server", path: "/resource-server-cc", icon: "🔑" },
+			],
+		},
 	];
 
 	// Filter by role
