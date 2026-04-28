@@ -228,9 +228,14 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 
 /* Status bar */
 .ba-popout-status-bar {
-  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  display: flex; align-items: center; gap: 6px; padding: 8px 12px;
   border-top: 1px solid var(--ba-border); font-size: 10px; color: var(--ba-muted);
+  flex-wrap: wrap;
 }
+.ba-server-chip--warn { border-color: rgba(202,138,4,0.5); background: rgba(202,138,4,0.1); color: #fcd34d; }
+.ba-server-chip--warn .ba-chip-dot { background: #eab308; }
+.ba-server-chip--off { border-color: rgba(185,28,28,0.4); background: rgba(185,28,28,0.08); color: #fca5a5; }
+.ba-server-chip--off .ba-chip-dot { background: #ef4444; }
 
 /* Settings row */
 .ba-popout-settings { padding: 4px 12px 4px; }
@@ -538,9 +543,14 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
               </div>
 
               <!-- STATUS BAR -->
-              <div class="ba-popout-status-bar">
-                <span class="ba-server-chip"><span class="ba-chip-dot"></span>BFF</span>
-                <span class="ba-server-chip"><span class="ba-chip-dot"></span>MCP server · 12 actions</span>
+              <div class="ba-popout-status-bar" id="proto-status-bar">
+                <span class="ba-server-chip" id="s-bff" title="Banking BFF — always connected when app is running"><span class="ba-chip-dot"></span>Agent</span>
+                <span class="ba-server-chip" id="s-mcp" title="MCP Gateway — click Toggle to cycle states"><span class="ba-chip-dot"></span>MCP Gateway · 12 tools</span>
+                <span class="ba-server-chip" id="s-auth" title="PingOne Authorize — click Toggle to cycle states"><span class="ba-chip-dot"></span>Authorize</span>
+              </div>
+              <div style="padding:4px 12px 8px; display:flex; gap:6px;">
+                <button onclick="cycleStatus('s-mcp','MCP Gateway','12 tools')" style="font-size:9px; padding:2px 7px; border-radius:4px; border:1px solid rgba(65,105,225,0.3); background:transparent; color:var(--ba-muted); cursor:pointer;">Toggle MCP ↻</button>
+                <button onclick="cycleStatus('s-auth','Authorize','')" style="font-size:9px; padding:2px 7px; border-radius:4px; border:1px solid rgba(65,105,225,0.3); background:transparent; color:var(--ba-muted); cursor:pointer;">Toggle Authorize ↻</button>
               </div>
             </div><!-- /popout-body -->
           </div><!-- /popout -->
@@ -560,8 +570,9 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
               </div>
             </div>
             <div class="ba-chips-footer">
-              <span class="ba-server-chip"><span class="ba-chip-dot"></span>BFF connected</span>
-              <span class="ba-server-chip"><span class="ba-chip-dot"></span>MCP server</span>
+              <span class="ba-server-chip"><span class="ba-chip-dot"></span>Agent</span>
+              <span class="ba-server-chip"><span class="ba-chip-dot"></span>MCP Gateway · 12 tools</span>
+              <span class="ba-server-chip ba-server-chip--warn"><span class="ba-chip-dot"></span>Authorize (mock)</span>
             </div>
             <div class="ba-input-row">
               <input class="ba-input" id="proto-input" placeholder="Ask me anything…" onkeydown="if(event.key==='Enter') sendMessage()">
@@ -682,8 +693,9 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
                 </div>
               </div>
               <div class="ba-popout-status-bar">
-                <span class="ba-server-chip"><span class="ba-chip-dot"></span>BFF</span>
-                <span class="ba-server-chip"><span class="ba-chip-dot"></span>MCP server · 12 actions</span>
+                <span class="ba-server-chip"><span class="ba-chip-dot"></span>Agent</span>
+                <span class="ba-server-chip"><span class="ba-chip-dot"></span>MCP Gateway · 12 tools</span>
+                <span class="ba-server-chip"><span class="ba-chip-dot"></span>Authorize</span>
               </div>
             </div>
           </div>
@@ -896,6 +908,20 @@ function sendChat(btn, text) {
   }, 500);
 }
 
+// Status cycling demo
+const statusStates = {};
+function cycleStatus(id, label, suffix) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const s = statusStates[id] || 'on';
+  const next = s === 'on' ? 'warn' : s === 'warn' ? 'off' : 'on';
+  statusStates[id] = next;
+  const sfx = suffix ? ' · ' + suffix : '';
+  el.className = 'ba-server-chip' + (next === 'warn' ? ' ba-server-chip--warn' : next === 'off' ? ' ba-server-chip--off' : '');
+  const dot = '<span class="ba-chip-dot"></span>';
+  el.innerHTML = next === 'off' ? dot + label + ' offline' : next === 'warn' ? dot + label + ' (mock)' : dot + label + sfx;
+  el.title = next === 'on' ? 'Connected' : next === 'warn' ? 'Using mock data' : 'Not connected';
+}
 function sendAction(btn, actionId) {
   closePopout();
   const labels = {

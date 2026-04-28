@@ -158,7 +158,7 @@ Triggered by the "Actions" button. Renders as an absolutely-positioned overlay a
 │  │  Agent theme: [Auto ▾]             │  │
 │  │  [☀️ Page light / 🌙 Page dark]    │  │
 │  ├────────────────────────────────────┤  │
-│  │  ● BFF  ● MCP server               │  │ ← status bar
+│  │  ● Agent  ● MCP Gateway  ● Authorize  │  │ ← status bar
 │  └────────────────────────────────────┘  │
 │                                           │
 ├──────────────────────────────────────────┤
@@ -241,7 +241,7 @@ Light mode overrides: existing `ba-mode-light` class variables apply unchanged.
 | Popout section label | `.ba-popout-section-label` | Reuses `.ba-left-label` styling; uppercase 10px/700 |
 | Popout chip row | `.ba-popout-chip-row` | `display: flex; flex-wrap: wrap; gap: 6px` |
 | Popout search input | `.ba-popout-search` | Full-width, styled like existing chat input but compact |
-| Popout status bar | `.ba-popout-status-bar` | Bottom row showing BFF/MCP server dot indicators |
+| Popout status bar | `.ba-popout-status-bar` | Bottom row: Agent (always), MCP Gateway (off=red), Authorize (mock=yellow) |
 | Popout backdrop | `.ba-popout-backdrop` | Transparent full-screen click-dismiss layer; z-index 100060 |
 
 ### Modified components
@@ -451,7 +451,7 @@ After (3 controls + 1 trigger):
          │  Agent theme: [Auto ▾]               │
          │  [☀️ Page light / dark]              │
          ├─────────────────────────────────────┤
-         │  ● BFF connected  ● MCP server       │ ← status bar
+         │  ● Agent  ● MCP Gateway · 12 tools  ● Authorize  │ ← status bar
          └─────────────────────────────────────┘
 [Actions▴][⊞][▼]       ← header (popout anchors above this row)
 ```
