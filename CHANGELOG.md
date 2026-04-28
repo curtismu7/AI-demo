@@ -24,6 +24,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **Phase 246 — Floating agent redesign UI design contract** — UI-SPEC approved: chips moved to Actions popout, header reduced from 7 to 3 controls, left rail removed in float mode, chat area gains ~45% width.
 - **Phase 245 — UI design contract** — UI-SPEC created and approved for 403 scope trap and token introspection consolidation; scope upgrade chat messages, toast copy, and color contracts locked.
 
 - **Architecture diagrams — live real-agent events populate token history** — `buildLiveHistoryEntry` maps RFC 8693, PingAuthorize, MCP tool, and OAuth events to token cards tagged 🔴 LIVE in the floating history modal on Overview and Token Flow pages.

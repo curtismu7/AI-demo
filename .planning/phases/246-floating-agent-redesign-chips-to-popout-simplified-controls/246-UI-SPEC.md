@@ -1,7 +1,8 @@
 ---
 phase: 246
 slug: floating-agent-redesign-chips-to-popout-simplified-controls
-status: draft
+status: approved
+reviewed_at: 2026-04-28
 shadcn_initialized: false
 preset: none
 created: 2026-04-28
@@ -185,11 +186,15 @@ Declared values (multiples of 4, sourced from existing BankingAgent.css patterns
 | 2xl | 48px | Not used in this phase |
 | 3xl | 64px | Not used in this phase |
 
-Exceptions:
-- Header padding stays at existing `10px 14px 9px` — do not change to preserve drag-handle usability.
-- Actions button: `6px 12px` padding (between xs and sm), matching current `.ba-icon-btn` height (28px) — keeps header row compact.
-- Popout search input: `8px 12px` internal padding.
-- Touch target minimum: 28px height for all clickable elements in header.
+**Pre-existing CSS constants (unchanged by this phase — not new spacing tokens):**
+These values exist in the current `BankingAgent.css` and must be preserved as-is. Phase 246 does not introduce them.
+- Header padding: `10px 14px 9px` — existing `.ba-header` value; do not change (preserves drag-handle usability)
+- `.ba-icon-btn` touch target height: `28px` — existing icon button height; Actions trigger matches this height
+
+**New spacing tokens introduced by Phase 246:**
+- Actions button internal padding: `8px 12px` (sm top/bottom, md-adjacent left/right — closest multiples of 4 to current icon button pattern)
+- Popout search input internal padding: `8px 16px` (sm / md)
+- Touch target minimum: `28px` (existing; not new)
 
 ---
 
@@ -200,7 +205,7 @@ Sourced from BankingAgent.css (existing tokens; do not change):
 | Role | Size | Weight | Line Height | Used For |
 |------|------|--------|-------------|----------|
 | Body / Chat | 14px | 400 | 1.5 | Chat message text, popout chip labels |
-| Label | 12px | 600 | 1.35 | Chat bubble secondary lines, input placeholder |
+| Label | 12px | 400 | 1.35 | Chat bubble secondary lines, input placeholder |
 | Section header | 10px | 700 | 1.2 | Popout section labels (SUGGESTIONS, ACCOUNT, etc.) — uppercase, 0.08em letter-spacing |
 | Title | 14px | 700 | 1.35 | Panel title ("BankName AI Agent") |
 
