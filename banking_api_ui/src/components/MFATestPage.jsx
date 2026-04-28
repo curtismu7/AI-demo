@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import apiClient from "../services/apiClient";
 import { notifyError, notifyInfo, notifySuccess } from "../utils/appToast";
 import "./MFATestPage.css";
@@ -236,17 +236,36 @@ export default function MFATestPage() {
 		loadWorkerToken();
 	}, [loadConfig, loadWorkerToken]);
 
-	// Load PingOne user list for the user picker dropdown
-	const loadPingoneUsers = useCallback(async () => {
+	// Load PingOne user list for the user picker dropdown (optional SCIM search query)
+	const loadPingoneUsers = useCallback(async (searchQuery) => {
 		setUsersLoading(true);
 		try {
-			const { data } = await apiClient.get("/api/mfa/test/users");
+			const qs = searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : "";
+			const { data } = await apiClient.get(`/api/mfa/test/users${qs}`);
 			if (data.success) setPingoneUsers(data.users || []);
-		} catch (_e) { /* non-fatal */ }
+			else console.warn("[MFA] Users load failed:", data.error);
+		} catch (e) {
+			console.warn("[MFA] Users load error:", e.message);
+		}
 		setUsersLoading(false);
 	}, []);
 
+	// Load all users on mount; debounce server search while typing
 	useEffect(() => { loadPingoneUsers(); }, [loadPingoneUsers]);
+
+	const userSearchTimerRef = useRef(null);
+	const handleUserSearch = (value) => {
+		setUserSearch(value);
+		setUserPickerOpen(true);
+		if (userSearchTimerRef.current) clearTimeout(userSearchTimerRef.current);
+		if (!value.trim()) {
+			// Empty search — reload full list
+			userSearchTimerRef.current = setTimeout(() => loadPingoneUsers(), 100);
+		} else {
+			// Debounce 300ms then hit server with SCIM filter
+			userSearchTimerRef.current = setTimeout(() => loadPingoneUsers(value.trim()), 300);
+		}
+	};
 
 	// Auto-enroll FIDO2 if challenge initiated but no device enrolled
 	// (i.e., no WebAuthn options arrive after 5 seconds)
@@ -967,15 +986,8 @@ export default function MFATestPage() {
 				{/* User picker combobox — searchable PingOne user list */}
 				{(() => {
 					const selectedUser = pingoneUsers.find((u) => u.id === testUserId);
-					const filteredUsers = pingoneUsers.filter((u) => {
-						const q = userSearch.toLowerCase();
-						if (!q) return true;
-						return (
-							(u.name || "").toLowerCase().includes(q) ||
-							(u.username || "").toLowerCase().includes(q) ||
-							(u.email || "").toLowerCase().includes(q)
-						);
-					});
+					// pingoneUsers is already server-filtered when searching; show all
+					const displayUsers = pingoneUsers;
 					return (
 						<div className="mfa-user-picker">
 							<label className="mfa-user-picker__label">Test as User:</label>
@@ -992,27 +1004,39 @@ export default function MFATestPage() {
 												: "Search users…"
 									}
 									value={userSearch}
-									onChange={(e) => { setUserSearch(e.target.value); setUserPickerOpen(true); }}
-									onFocus={() => setUserPickerOpen(true)}
+									onChange={(e) => handleUserSearch(e.target.value)}
+									onFocus={() => { setUserPickerOpen(true); if (!pingoneUsers.length) loadPingoneUsers(); }}
 									onBlur={() => setTimeout(() => setUserPickerOpen(false), 150)}
 									autoComplete="off"
 									disabled={usersLoading}
 								/>
-								{userPickerOpen && filteredUsers.length > 0 && (
+								{userPickerOpen && (
 									<ul className="mfa-user-picker__dropdown" role="listbox">
-										<li
-											className={"mfa-user-picker__option" + (!testUserId ? " mfa-user-picker__option--selected" : "")}
-											onMouseDown={() => { setTestUserId(""); setUserSearch(""); setUserPickerOpen(false); loadDevices(); }}
-											role="option"
-											aria-selected={!testUserId}
-										>
-											<span className="mfa-user-picker__opt-name">— Session user (bankadmin) —</span>
-										</li>
-										{filteredUsers.map((u) => (
+										{!userSearch && (
+											<li
+												className={"mfa-user-picker__option" + (!testUserId ? " mfa-user-picker__option--selected" : "")}
+												onMouseDown={() => { setTestUserId(""); setUserSearch(""); setUserPickerOpen(false); loadDevices(); }}
+												role="option"
+												aria-selected={!testUserId}
+											>
+												<span className="mfa-user-picker__opt-name">— Session user —</span>
+											</li>
+										)}
+										{usersLoading && (
+											<li className="mfa-user-picker__option" style={{ color: "#94a3b8", fontStyle: "italic", pointerEvents: "none" }} role="option" aria-selected={false}>
+												<span className="mfa-user-picker__opt-name">Searching…</span>
+											</li>
+										)}
+										{!usersLoading && displayUsers.length === 0 && userSearch && (
+											<li className="mfa-user-picker__option" style={{ color: "#94a3b8", fontStyle: "italic", pointerEvents: "none" }} role="option" aria-selected={false}>
+												<span className="mfa-user-picker__opt-name">No users found for "{userSearch}"</span>
+											</li>
+										)}
+										{!usersLoading && displayUsers.map((u) => (
 											<li
 												key={u.id}
 												className={"mfa-user-picker__option" + (u.id === testUserId ? " mfa-user-picker__option--selected" : "")}
-												onMouseDown={() => { setTestUserId(u.id); setUserSearch(""); setUserPickerOpen(false); loadDevices(); }}
+												onMouseDown={() => { setTestUserId(u.id); setUserSearch(""); setUserPickerOpen(false); setPingoneUsers([]); loadPingoneUsers(); loadDevices(); }}
 												role="option"
 												aria-selected={u.id === testUserId}
 											>
