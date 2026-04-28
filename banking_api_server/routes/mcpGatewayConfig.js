@@ -205,6 +205,7 @@ router.get('/config', async (req, res) => {
     };
 
     res.json({
+        mcpMode: configStore.get('mcp_use_pingone_server') === 'true' ? 'pingone' : 'custom',
         mock: {
             enabled: gatewayEnabled,
             running,

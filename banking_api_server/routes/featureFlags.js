@@ -129,6 +129,25 @@ const FLAG_REGISTRY = [
     defaultValue: false,
   },
 
+  {
+    id:           'mcp_use_pingone_server',
+    name:         'MCP — Use PingOne MCP Server (stdio)',
+    category:     'MCP Server',
+    description:
+      'When **ON**, the BFF spawns the `pingidentity/pingone-mcp-server` stdio binary and routes ' +
+      'all agent tool calls through its stdio transport via an adapter layer, bypassing the custom ' +
+      'MCP gateway. The PingOne MCP Server must be installed (npx or local binary) and configured ' +
+      'with `PINGONE_MCP_SERVER_CMD` env var. ' +
+      'When **OFF** (default), the existing custom MCP gateway continues to handle all tool calls.',
+    impact:
+      'OFF (default) = custom MCP gateway active (all Phase 243 auth, RFC 9728, PingOne Authorize). ' +
+      'ON = PingOne MCP Server stdio mode; custom gateway bypassed. Requires valid PingOne credentials ' +
+      'in env. The MCP Gateway Config panel shows active mode chip.',
+    type:         'boolean',
+    defaultValue: false,
+    warnIfEnabled: true,
+  },
+
   // ── Token Exchange ──────────────────────────────────────────────────────────
   {
     id:           'ff_inject_may_act',
