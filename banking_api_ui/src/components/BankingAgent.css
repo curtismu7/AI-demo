@@ -191,13 +191,9 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 
 /* Floating: narrower compact rail — chips are smaller and the column scrolls */
+/* Phase 246: hide left rail in float mode — chat area expands to 100% width (D-03) */
 .banking-agent-panel:not(.ba-mode-inline) .ba-left-col {
-	width: 172px;
-	gap: 8px;
-	padding: 12px 10px;
-	border-right: 1px solid var(--ba-border);
-	overflow-y: auto;
-	scrollbar-width: none;
+	display: none;
 }
 .banking-agent-panel:not(.ba-mode-inline) .ba-left-col::-webkit-scrollbar {
 	display: none;
@@ -681,6 +677,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 /* ─── New header (ba-header) ─────────────────────────────────────────────── */
 .ba-header {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -3886,3 +3883,181 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 	color: var(--ba-text);
 	margin-bottom: 6px;
 }
+
+/* ─── Phase 246: Actions trigger + popout ─────────────────────────────── */
+
+/* Pill button in header — opens the actions popout */
+.ba-actions-trigger {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 28px;
+	padding: 6px 12px;
+	border-radius: 8px;
+	border: none;
+	background: var(--ba-float-btn);
+	color: #fff;
+	font-size: 11px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.15s;
+	white-space: nowrap;
+}
+.ba-actions-trigger:hover {
+	background: #3158d3;
+}
+.ba-actions-trigger.active {
+	background: #3158d3;
+}
+.ba-actions-trigger:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+.ba-actions-trigger:focus-visible {
+	outline: 2px solid var(--ba-chip-bd);
+	outline-offset: 2px;
+}
+
+/* Popout overlay — anchored to .ba-header (position:relative), opens below header */
+.ba-actions-popout {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 14px;
+	width: 320px;
+	max-height: 380px;
+	overflow-y: auto;
+	scrollbar-width: none;
+	background: var(--ba-surface);
+	border: 1px solid var(--ba-border);
+	border-radius: 12px;
+	box-shadow: 0 8px 32px rgba(10, 20, 50, 0.45);
+	z-index: 100061;
+	animation: popout-slide-in 0.15s ease;
+}
+.ba-actions-popout::-webkit-scrollbar {
+	display: none;
+}
+@keyframes popout-slide-in {
+	from { opacity: 0; transform: translateY(-4px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Full-panel transparent backdrop — z-index below popout, catches click-outside */
+.ba-popout-backdrop {
+	position: absolute;
+	inset: 0;
+	z-index: 100060;
+	cursor: default;
+}
+
+/* Search input at top of popout */
+.ba-popout-search {
+	display: block;
+	box-sizing: border-box;
+	width: calc(100% - 24px);
+	margin: 12px 12px 8px;
+	padding: 8px 12px;
+	font-size: 12px;
+	border-radius: 8px;
+	border: 1px solid rgba(65, 105, 225, 0.45);
+	background: var(--ba-bg);
+	color: var(--ba-text);
+}
+.ba-popout-search:focus {
+	outline: none;
+	border-color: var(--ba-chip-bd);
+}
+
+/* Scrollable content area inside popout */
+.ba-popout-body {
+	padding: 0 0 8px;
+}
+
+/* Section wrapper — adds vertical padding between sections */
+.ba-popout-section {
+	padding: 8px 12px 4px;
+	border-top: 1px solid var(--ba-border);
+}
+.ba-popout-section:first-child {
+	border-top: none;
+}
+
+/* Section label — matches .ba-left-label (10px/700/uppercase) */
+.ba-popout-section-label {
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--ba-muted);
+	margin-bottom: 6px;
+	display: block;
+}
+
+/* Toggle button for collapsible sections (TESTING) */
+.ba-popout-section-toggle {
+	width: 100%;
+	text-align: left;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	color: var(--ba-muted);
+	padding: 0;
+	margin-bottom: 6px;
+}
+.ba-popout-section-toggle:hover {
+	color: var(--ba-text);
+}
+
+/* Chip rows within popout sections */
+.ba-popout-chip-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 4px;
+}
+
+/* Empty search state */
+.ba-popout-empty {
+	padding: 20px 12px;
+	text-align: center;
+	color: var(--ba-muted);
+	font-size: 11px;
+}
+.ba-popout-empty-heading {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--ba-text);
+	margin-bottom: 6px;
+}
+
+/* Status bar at popout bottom */
+.ba-popout-status-bar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border-top: 1px solid var(--ba-border);
+	font-size: 10px;
+	color: var(--ba-muted);
+}
+
+/* Warn/off states for status chips */
+.ba-server-chip--warn { border-color: rgba(202,138,4,0.5); background: rgba(202,138,4,0.1); color: #fcd34d; }
+.ba-server-chip--warn .ba-chip-dot { background: #eab308; }
+.ba-server-chip--off { border-color: rgba(185,28,28,0.4); background: rgba(185,28,28,0.08); color: #fca5a5; }
+.ba-server-chip--off .ba-chip-dot { background: #ef4444; }
+
+/* Light mode overrides for trigger and popout */
+.banking-agent-panel.ba-mode-light .ba-actions-trigger {
+	background: var(--ba-float-btn);
+	color: #fff;
+}
+.banking-agent-panel.ba-mode-light .ba-actions-trigger:hover,
+.banking-agent-panel.ba-mode-light .ba-actions-trigger.active {
+	background: #2d4fc0;
+}
+.banking-agent-panel.ba-mode-light .ba-actions-popout {
+	background: var(--ba-surface);
+	border-color: var(--ba-border);
+}
+/* ─────────────────────────────────────────────────────────────────────── */

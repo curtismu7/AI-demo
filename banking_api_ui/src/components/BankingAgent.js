@@ -4485,7 +4485,21 @@ export default function BankingAgent({
 									</div>
 								)}
 							<div className="ba-header-tools">
-								{/* Expand/restore only available in float mode */}
+								{/* Actions trigger — float mode only (D-01, D-02) */}
+								{!isInline && (
+									<button
+										ref={discoveryTriggerRef}
+										type="button"
+										className={"ba-actions-trigger" + (showDiscovery ? " active" : "")}
+										onClick={() => setShowDiscovery((v) => !v)}
+										disabled={consentBlocked}
+										aria-expanded={showDiscovery}
+										aria-haspopup="dialog"
+									>
+										Actions {showDiscovery ? "▴" : "▾"}
+									</button>
+								)}
+								{/* Expand/restore — float mode only (unchanged) */}
 								{!isInline && (
 									<button
 										type="button"
@@ -4501,53 +4515,7 @@ export default function BankingAgent({
 										{isExpanded ? "⊟" : "⊞"}
 									</button>
 								)}
-								{/* Popout window only available in float mode, or explicitly enabled via showPopOut */}
-								{(!isInline || showPopOut) && (
-									<button
-										type="button"
-										className="ba-icon-btn"
-										onClick={() => {
-											const width = 520;
-											const height = 660;
-											const left = Math.max(50, window.screenX + 100);
-											const top = Math.max(50, window.screenY + 60);
-
-											window.open(
-												"/agent",
-												"BankingAgent",
-												`width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=yes`,
-											);
-											onPopout?.();
-										}}
-										title="Open agent in new window"
-										aria-label="Open agent in new window"
-									>
-										↗
-									</button>
-								)}
-								<select
-									className="ba-agent-appearance-select"
-									value={agentAppearance}
-									onChange={(e) => setAgentAppearance(e.target.value)}
-									aria-label="Agent panel theme"
-									title="Agent: match page theme, or use its own light/dark"
-								>
-									<option value="auto">Agent: Match page</option>
-									<option value="light">Agent: Light</option>
-									<option value="dark">Agent: Dark</option>
-								</select>
-								<button
-									type="button"
-									className="ba-icon-btn"
-									onClick={() => toggleTheme()}
-									title={
-										appTheme === "dark"
-											? "Page: switch to light mode"
-											: "Page: switch to dark mode"
-									}
-								>
-									{appTheme === "dark" ? "Light" : "Dark"}
-								</button>
+								{/* Split-column sign-out — inline split-column mode only (unchanged, D-02 untouched) */}
 								{splitChrome && isLoggedIn && (
 									<button
 										type="button"
@@ -4557,31 +4525,7 @@ export default function BankingAgent({
 										Sign out
 									</button>
 								)}
-								{!isInline && isLoggedIn && (
-									<button
-										type="button"
-										className="ba-header-signout"
-										onClick={() => onLogout()}
-									>
-										Sign out
-									</button>
-								)}
-								{/* Collapse to FAB only in float mode */}
-								{!isInline && isLoggedIn && (
-									<button
-										type="button"
-										className="ba-icon-btn"
-										onClick={() => setShowTokenChain((v) => !v)}
-										aria-label={
-											showTokenChain ? "Hide token chain" : "Show token chain"
-										}
-										title={
-											showTokenChain ? "Hide token chain" : "Show token chain"
-										}
-									>
-										{showTokenChain ? "Chain" : "Chain"}
-									</button>
-								)}
+								{/* Collapse to FAB — float mode only (unchanged) */}
 								{!isInline && (
 									<button
 										type="button"
@@ -4595,7 +4539,254 @@ export default function BankingAgent({
 								)}
 							</div>
 						</div>
+						{/* Phase 246: Actions popout — anchored to ba-header (position:relative in CSS) */}
+						{showDiscovery && !isInline && (
+							<div
+								className="ba-actions-popout"
+								role="dialog"
+								aria-label="Actions"
+								aria-modal="false"
+							>
+								{/* Search */}
+								<input
+									className="ba-popout-search"
+									type="search"
+									placeholder="Search actions…"
+									value={discoverySearch}
+									onChange={(e) => setDiscoverySearch(e.target.value)}
+									autoFocus
+								/>
+								<div className="ba-popout-body">
+								{(() => {
+									const q = discoverySearch.trim().toLowerCase();
+									const visible = q
+										? suggestionList.filter((s) => s.toLowerCase().includes(q))
+										: suggestionList;
+									if (visible.length === 0) return null;
+									return (
+										<div className="ba-popout-section">
+											<span className="ba-popout-section-label">Suggestions</span>
+											<div className="ba-popout-chip-row">
+												{visible.map((s) => (
+													<button
+														key={s}
+														type="button"
+														className="ba-suggestion"
+														disabled={consentBlocked}
+														onClick={() => {
+															setShowDiscovery(false);
+															if (isAgentBlockedByConsentDecline()) {
+																addMessage("assistant", AGENT_CONSENT_BLOCK_USER_MESSAGE);
+																return;
+															}
+															if (isLoggedIn || marketingGuestChatEnabled) {
+																try { sessionStorage.setItem(BX_AGENT_PENDING_NL_KEY, s.trim()); } catch (_) {}
+																setNlInput("");
+																addMessage("user", s);
+																setNlLoading(true);
+																sendAgentMessage(s)
+																	.then((res) => {
+																		if (res.error || !res.success) reportNlFailure(res);
+																		else {
+																			try { sessionStorage.removeItem(BX_AGENT_PENDING_NL_KEY); } catch (_) {}
+																			if (res.tokenEvents?.length) {
+																				appendTokenEvents(res.tokenEvents);
+																				if (tokenChain) tokenChain.setTokenEvents("agent", res.tokenEvents);
+																			}
+																			addMessage("assistant", res.reply || "Done.");
+																		}
+																	})
+																	.catch((err) => reportNlFailure(err))
+																	.finally(() => setNlLoading(false));
+															}
+														}}
+													>
+														"{s}"
+													</button>
+												))}
+											</div>
+										</div>
+									);
+								})()}
+								{filteredDiscoveryGroups.map((group) => {
+									if (group.key === "learn") return null;
+									if (group.key === "admin" && effectiveUser?.role !== "admin") return null;
+									if (group.chips.length === 0) return null;
+									const isTestingGroup = group.key === "testing";
+									const groupExpanded = isTestingGroup ? !!chipGroupsState["testing"] : true;
+									return (
+										<div key={group.key} className="ba-popout-section">
+											{isTestingGroup ? (
+												<button
+													type="button"
+													className="ba-popout-section-label ba-popout-section-toggle"
+													onClick={() => toggleGroupExpanded("testing")}
+												>
+													{chipGroupsState["testing"] ? "▼" : "▶"} {group.label}
+												</button>
+											) : (
+												<span className="ba-popout-section-label">{group.label}</span>
+											)}
+											{groupExpanded && (
+												<div className="ba-popout-chip-row">
+													{group.chips.map((action) => (
+														<button
+															key={action.id}
+															type="button"
+															className="ba-action-item"
+															disabled={consentBlocked}
+															onClick={() => {
+																setShowDiscovery(false);
+																handleActionClick(action.id);
+															}}
+														>
+															{action.label}
+														</button>
+													))}
+												</div>
+											)}
+										</div>
+									);
+								})}
+								{discoverySearch.trim() !== "" &&
+								filteredDiscoveryGroups.filter((g) => g.key !== "learn" && g.chips.length > 0).length === 0 && (
+									<div className="ba-popout-empty">
+										<div className="ba-popout-empty-heading">No matching actions</div>
+										<div>Try a different keyword, or type directly in the chat below.</div>
+									</div>
+								)}
+								{isLoggedIn && (
+									<div className="ba-popout-section">
+										<span className="ba-popout-section-label">Session</span>
+										<div className="ba-popout-chip-row">
+											<button
+												type="button"
+												className="ba-action-item"
+												onClick={() => { setShowDiscovery(false); void handleSessionRefresh(); }}
+												disabled={sessionRefreshing || loading || consentBlocked}
+												title="Refresh your access token using PingOne refresh token"
+											>
+												{sessionRefreshing ? "Refreshing…" : "🔄 Refresh token"}
+											</button>
+											<button
+												type="button"
+												className="ba-action-item"
+												onClick={() => { setShowDiscovery(false); onLogout?.(); }}
+												disabled={loading}
+												title="Sign out of your session"
+											>
+												🚪 Sign out
+											</button>
+										</div>
+									</div>
+								)}
+								{isLoggedIn && (
+									<div className="ba-popout-section">
+										<span className="ba-popout-section-label">View</span>
+										<div className="ba-popout-chip-row">
+											<button
+												type="button"
+												className={"ba-action-item" + (showTokenChain ? " active" : "")}
+												onClick={() => setShowTokenChain((v) => !v)}
+												aria-label={showTokenChain ? "Hide token chain" : "Show token chain"}
+												title={showTokenChain ? "Hide token chain" : "Show token chain"}
+											>
+												🔗 Token chain
+											</button>
+											{(!isInline || showPopOut) && (
+												<button
+													type="button"
+													className="ba-action-item"
+													onClick={() => {
+														setShowDiscovery(false);
+														const calculateOptimalSize = () => {
+															const screenWidth = window.screen.width;
+															const screenHeight = window.screen.height;
+															const minWidth = 420;
+															const minHeight = 500;
+															const maxWidth = Math.min(800, screenWidth * 0.8);
+															const maxHeight = Math.min(900, screenHeight * 0.8);
+															const width = Math.max(minWidth, Math.min(maxWidth, panelSize.width || 420));
+															let height = Math.max(minHeight, Math.min(maxHeight, panelSize.height || 500));
+															const messageCount = messages.length;
+															if (messageCount > 10) {
+																height = Math.min(maxHeight, height + (messageCount - 10) * 30);
+															}
+															const left = Math.max(50, Math.min(screenWidth - width - 50, window.screenX + 100));
+															const top = Math.max(50, Math.min(screenHeight - height - 50, window.screenY + 100));
+															return { width, height, left, top };
+														};
+														const { width, height, left, top } = calculateOptimalSize();
+														window.open(
+															"/agent",
+															"BankingAgent",
+															`width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=yes`,
+														);
+														onPopout?.();
+													}}
+													title="Open agent in new window"
+													aria-label="Open agent in new window"
+												>
+													⧉ New window
+												</button>
+											)}
+										</div>
+									</div>
+								)}
+								<div className="ba-popout-section">
+									<span className="ba-popout-section-label">Settings</span>
+									<select
+										className="ba-agent-appearance-select"
+										value={agentAppearance}
+										onChange={(e) => setAgentAppearance(e.target.value)}
+										aria-label="Agent panel theme"
+										title="Agent: match page theme, or use its own light/dark"
+									>
+										<option value="auto">Agent: Match page</option>
+										<option value="light">Agent: Light</option>
+										<option value="dark">Agent: Dark</option>
+									</select>
+									<button
+										type="button"
+										className="ba-icon-btn"
+										onClick={() => toggleTheme()}
+										title={appTheme === "dark" ? "Page: switch to light mode" : "Page: switch to dark mode"}
+									>
+										{appTheme === "dark" ? "☀️" : "🌙"}
+									</button>
+								</div>
+								<div className="ba-popout-status-bar">
+									<span className="ba-server-chip" title="Banking Agent — always connected">
+										<span className="ba-chip-dot" />Agent
+									</span>
+									<span
+										className={`ba-server-chip${mcpStatus.connected ? "" : " ba-server-chip--off"}`}
+										title="MCP Gateway — tool execution layer"
+									>
+										<span className="ba-chip-dot" />
+										MCP Gateway
+										{mcpStatus.toolCount != null && ` · ${mcpStatus.toolCount} tools`}
+									</span>
+									<span
+										className={`ba-server-chip${isConfigured ? "" : " ba-server-chip--warn"}`}
+										title="PingOne Authorize — token policies and scope approval"
+									>
+										<span className="ba-chip-dot" />
+										Authorize{isConfigured ? "" : " (mock)"}
+									</span>
+								</div>
+								</div>
+							</div>
+						)}
 					</div>
+					{/* Phase 246: click-dismiss backdrop — covers panel, z-index below popout (D-01) */}
+					{showDiscovery && !isInline && (
+						<div
+							className="ba-popout-backdrop"
+							onClick={() => setShowDiscovery(false)}
+							aria-hidden="true"
+						/>
+					)}
 
 					{/* Two-column body */}
 					<div className="ba-body">
@@ -5740,7 +5931,7 @@ export default function BankingAgent({
 									<div className="ba-welcome">
 										<p>
 											{isLoggedIn
-												? "Type a message or pick an action on the left."
+												? "Type a message or use Actions to explore."
 												: marketingGuestChatEnabled
 													? isConfigured
 														? "Ask about OAuth or try a suggestion - we will open PingOne only when you need banking."
