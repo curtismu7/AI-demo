@@ -79,6 +79,8 @@ export default function MFATestPage() {
 	const [enrollEmailStatus, setEnrollEmailStatus] = useState("pending");
 	const [enrollEmailError, setEnrollEmailError] = useState(null);
 	const [enrollEmailInput, setEnrollEmailInput] = useState("");
+	const [existingFido2Device, setExistingFido2Device] = useState(null);
+	const [deletingDeviceId, setDeletingDeviceId] = useState(null);
 	const [fidoEnrollInitStatus, setFidoEnrollInitStatus] = useState("pending");
 	const [fidoEnrollInitError, setFidoEnrollInitError] = useState(null);
 
@@ -181,6 +183,26 @@ export default function MFATestPage() {
 			setDevicesError(err.message);
 		}
 	}, [testUserId]);
+
+	const deleteDevice = useCallback(async (deviceId) => {
+		if (!deviceId) return;
+		setDeletingDeviceId(deviceId);
+		try {
+			const params = testUserId ? `?userId=${encodeURIComponent(testUserId)}` : "";
+			await apiClient.delete(`/api/mfa/test/integration/devices/${deviceId}${params}`);
+			notifySuccess("Device deleted");
+			setExistingFido2Device(null);
+			setFidoEnrollData(null);
+			setFidoEnrollInitStatus("pending");
+			setFidoEnrollInitError(null);
+			loadDevices();
+		} catch (err) {
+			const msg = err?.response?.data?.message || err?.response?.data?.error || err.message;
+			notifyError(`Delete failed: ${msg}`);
+		} finally {
+			setDeletingDeviceId(null);
+		}
+	}, [testUserId, loadDevices]);
 
 	const loadWorkerToken = useCallback(async () => {
 		try {
@@ -691,17 +713,19 @@ export default function MFATestPage() {
 				);
 			} else {
 				setFidoEnrollInitStatus("failed");
-				setFidoEnrollInitError(data.error);
+				setFidoEnrollInitError(data.message || data.error);
+				if (data.existingDevice) setExistingFido2Device(data.existingDevice);
 				if (data.pingoneRequest) setFidoEnrollInitPingoneReq(data.pingoneRequest);
 				if (data.pingoneResponse) setFidoEnrollInitPingoneRes(data.pingoneResponse);
 				notifyError(`FIDO2 enrollment initiation failed: ${data.error}`);
 			}
 		} catch (err) {
 			const errData = err?.response?.data;
-			const detail = errData?.error || errData?.message || err.message;
+			const detail = errData?.message || errData?.error || err.message;
 			setRawFidoEnrollInit(errData || { error: detail });
 			setFidoEnrollInitStatus("failed");
 			setFidoEnrollInitError(detail);
+			if (errData?.existingDevice) setExistingFido2Device(errData.existingDevice);
 			if (errData?.pingoneRequest) setFidoEnrollInitPingoneReq(errData.pingoneRequest);
 			if (errData?.pingoneResponse) setFidoEnrollInitPingoneRes(errData.pingoneResponse);
 			notifyError(`FIDO2 enrollment initiation failed: ${detail}`);
@@ -793,7 +817,10 @@ export default function MFATestPage() {
 				pubKeyCredParams: publicKey.pubKeyCredParams,
 			}, null, 2));
 			const credential = await navigator.credentials.create({ publicKey });
-			// PingOne expects base64url encoding (RFC 4648 §5) — no +/= characters
+			// WebAuthn natively uses base64url for all binary values in the attestation.
+			// PingOne device activate: use base64url (no padding) to stay consistent with
+			// credential.id which the browser returns as base64url string. id and rawId
+			// must encode the same bytes — using the same alphabet ensures PingOne can compare them.
 			const toB64url = (buf) => {
 				const bytes = new Uint8Array(buf);
 				let binary = "";
@@ -1189,6 +1216,28 @@ export default function MFATestPage() {
 
 					{/* ── FIDO2 Enrollment ── */}
 					<h3 style={{ margin: "1rem 0 0.5rem", fontSize: "1rem", fontWeight: 600 }}>FIDO2 / Passkey</h3>
+					{existingFido2Device && (
+						<div style={{
+							padding: "0.75rem 1rem", marginBottom: "0.75rem",
+							background: "#fef3c7", border: "1px solid #f59e0b",
+							borderRadius: 8, display: "flex", alignItems: "center",
+							gap: 12, fontSize: "0.88rem",
+						}}>
+							<span>⚠️ <strong>Existing FIDO2 device detected.</strong> PingOne only allows one active passkey per RP. Delete the existing device first, then re-enroll.</span>
+							<span style={{ fontFamily: "monospace", fontSize: "0.8rem", color: "#92400e" }}>
+								{existingFido2Device.nickname || existingFido2Device.type} · {existingFido2Device.id?.slice(0, 12)}…
+							</span>
+							<button
+								type="button"
+								className="mfa-test-button mfa-test-button--danger"
+								disabled={deletingDeviceId === existingFido2Device.id}
+								onClick={() => deleteDevice(existingFido2Device.id)}
+								style={{ marginLeft: "auto", whiteSpace: "nowrap" }}
+							>
+								{deletingDeviceId === existingFido2Device.id ? "Deleting…" : "🗑 Delete & Re-enroll"}
+							</button>
+						</div>
+					)}
 					<TestCard
 						title="Initiate FIDO2 Enrollment"
 						status={fidoEnrollInitStatus}
@@ -1576,6 +1625,15 @@ export default function MFATestPage() {
 												{new Date(device.createdAt).toLocaleDateString()}
 											</span>
 										)}
+										<button
+											type="button"
+											className="mfa-test-button mfa-test-button--danger"
+											disabled={deletingDeviceId === device.id}
+											onClick={() => deleteDevice(device.id)}
+											style={{ marginLeft: "auto", padding: "2px 10px", fontSize: "0.8rem" }}
+										>
+											{deletingDeviceId === device.id ? "Deleting…" : "🗑 Delete"}
+										</button>
 									</li>
 								))}
 							</ul>
@@ -1696,18 +1754,7 @@ function TestCard({ title, status, error, onTest, rawResult, pingoneRequest, pin
 					{status === "running" ? "Running..." : "Test"}
 				</button>
 			)}
-				<PingOneApiPanel request={pingoneRequest} response={pingoneResponse} docsUrl={docsUrl} />
-			{pingoneRequest && (
-				<ApiCallPreviewCard
-					endpoint={pingoneRequest.url || "PingOne MFA API"}
-					method={pingoneRequest.method || "POST"}
-					docsUrl={docsUrl}
-					docsSectionTitle={docsSectionTitle}
-					requestBody={pingoneRequest.body}
-					responseBody={pingoneResponse}
-					responseStatus={pingoneResponse?.status ?? (pingoneResponse?.error ? 400 : pingoneResponse ? 200 : null)}
-				/>
-			)}
+				<PingOneApiPanel request={pingoneRequest} response={pingoneResponse} docsUrl={docsUrl} docsSectionTitle={docsSectionTitle} />
 			{!pingoneResponse && rawResult !== undefined && rawResult !== null && (
 				<div className="test-card-raw">
 					<button

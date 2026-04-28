@@ -68,12 +68,22 @@ export default function PingOneApiPanel({ request, response, endpoint, docsUrl, 
 						<>
 							<div className="p1-api-panel-meta">
 								<strong>{request.method}</strong> {request.url}
-								{request.contentType && (
+								{!request.headers && request.contentType && (
 									<span>
 										{" "}— <code>{request.contentType}</code>
 									</span>
 								)}
 							</div>
+							{request.headers && (
+								<div className="p1-api-panel-headers">
+									{Object.entries(request.headers).map(([k, v]) => (
+										<div key={k} className="p1-api-panel-header-row">
+											<span className="p1-api-panel-header-key">{k}:</span>{" "}
+											<code className="p1-api-panel-header-val">{v}</code>
+										</div>
+									))}
+								</div>
+							)}
 							<pre className="p1-api-panel-body">
 								{JSON.stringify(request.body, null, 2)}
 							</pre>

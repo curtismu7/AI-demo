@@ -129,6 +129,20 @@
 	background-color: #545b62;
 }
 
+.mfa-test-button--danger {
+	background-color: #dc3545;
+	color: white;
+}
+
+.mfa-test-button--danger:hover:not(:disabled) {
+	background-color: #b02a37;
+}
+
+.mfa-test-button--danger:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
 .mfa-test-button--test {
 	background-color: #28a745;
 	color: white;

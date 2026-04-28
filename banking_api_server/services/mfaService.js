@@ -81,6 +81,13 @@ function _wrapError(fnName, err) {
 	return e;
 }
 
+/** Build sanitized headers object for debug display. Bearer token is truncated for safety. */
+function _debugHeaders(token, contentType) {
+	const t = String(token || '');
+	const authVal = t.length > 20 ? `Bearer ${t.slice(0, 20)}...[truncated]` : 'Bearer [REDACTED]';
+	return { 'Authorization': authVal, 'Content-Type': contentType };
+}
+
 /**
  * Initiate PingOne deviceAuthentications for a user.
  * Uses the user's own access token (not worker token).
@@ -112,6 +119,7 @@ async function initiateDeviceAuth(userId, userAccessToken) {
 		url: url,
 		body: reqBody,
 		contentType: "application/json",
+		headers: _debugHeaders(userAccessToken, "application/json"),
 	};
 	try {
 		let data;
@@ -149,6 +157,7 @@ async function selectDevice(daId, deviceId, userAccessToken) {
 		url: url,
 		body: reqBody,
 		contentType: "application/json",
+		headers: _debugHeaders(userAccessToken, "application/json"),
 	};
 	try {
 		let data;
@@ -184,6 +193,7 @@ async function submitOtp(daId, deviceId, otp, userAccessToken) {
 		url: url,
 		body: reqBody,
 		contentType: "application/json",
+		headers: _debugHeaders(userAccessToken, "application/json"),
 	};
 	try {
 		let data;
@@ -247,6 +257,7 @@ async function submitFido2Assertion(daId, assertion, userAccessToken, origin) {
 			url: debugUrl,
 			body: { ...body, assertion: "<base64-encoded WebAuthn assertion>" },
 			contentType: "application/vnd.pingidentity.assertion.check+json",
+			headers: _debugHeaders(userAccessToken, "application/vnd.pingidentity.assertion.check+json"),
 		};
 		console.log(
 			"[MFA] submitFido2Assertion: POST %s origin=%s",
@@ -311,6 +322,7 @@ async function enrollEmailDevice(userId, email) {
 			url: url,
 			body: reqBody,
 			contentType: "application/json",
+			headers: _debugHeaders(workerToken, "application/json"),
 		};
 		let data;
 		try {
@@ -355,6 +367,7 @@ async function enrollSmsDevice(userId, phone, userAccessToken) {
 			url: url,
 			body: reqBody,
 			contentType: "application/json",
+			headers: _debugHeaders(token, "application/json"),
 		};
 		let data;
 		try {
@@ -415,14 +428,15 @@ async function completeSmsEnrollment(userId, deviceId, otp) {
 			method: "PUT",
 			url: url,
 			body: reqBody,
-			contentType: "application/json",
+			contentType: "application/vnd.pingidentity.device.activate+json",
+			headers: _debugHeaders(workerToken, "application/vnd.pingidentity.device.activate+json"),
 		};
 		let data;
 		try {
 			const resp = await axios.put(url, reqBody, {
 				headers: {
 					Authorization: `Bearer ${workerToken}`,
-					"Content-Type": "application/json",
+					"Content-Type": "application/vnd.pingidentity.device.activate+json",
 				},
 				timeout: 10000,
 			});
@@ -461,17 +475,28 @@ async function initFido2Registration(userId, allowCleanupRetry = true) {
 				timeout: 10000,
 			},
 		);
+		const rawCreationOpts = data.publicKeyCredentialCreationOptions;
+		const parsedOpts = typeof rawCreationOpts === 'string' ? JSON.parse(rawCreationOpts) : rawCreationOpts;
+		const challengeVal = parsedOpts?.challenge;
+		const userIdVal = parsedOpts?.user?.id;
 		console.log(
 			"[MFA] initiated FIDO2 registration userId=%s deviceId=%s",
 			userId,
 			data.id,
 		);
+		console.log('[FIDO2-INIT-DIAG] challenge type=%s isArray=%s value_start=%s',
+			typeof challengeVal, Array.isArray(challengeVal),
+			Array.isArray(challengeVal) ? JSON.stringify(challengeVal.slice(0,5)) : String(challengeVal).slice(0,40));
+		console.log('[FIDO2-INIT-DIAG] user.id type=%s value_start=%s',
+			typeof userIdVal, Array.isArray(userIdVal) ? JSON.stringify(userIdVal.slice(0,5)) : String(userIdVal).slice(0,40));
+		console.log('[FIDO2-INIT-DIAG] attestation=%s authenticatorSelection=%j',
+			parsedOpts?.attestation, parsedOpts?.authenticatorSelection);
 		return {
 			deviceId: data.id,
 			publicKeyCredentialCreationOptions:
 				data.publicKeyCredentialCreationOptions,
 			_debug: {
-				request: { method: "POST", url: url, body: reqBody, contentType: "application/json" },
+				request: { method: "POST", url: url, body: reqBody, contentType: "application/json", headers: _debugHeaders(workerToken, "application/json") },
 				response: data,
 			},
 		};
@@ -533,10 +558,28 @@ async function completeFido2Registration(userId, deviceId, attestation, requestO
 			process.env.REACT_APP_CLIENT_URL ||
 			'https://api.pingdemo.com:4000';
 
-		// PingOne requires fido2 to be a JSON string (same convention as assertion field).
-		const fido2Str = typeof attestation === 'string' ? attestation : JSON.stringify(attestation);
+		// PingOne device activate: fido2 is an object (not a string).
+		// The base64 fields inside (clientDataJSON, attestationObject, etc.) are standard base64.
+		// Diagnostic: decode clientDataJSON to log what origin the browser actually signed
+		try {
+			const cdjRaw = attestation?.response?.clientDataJSON;
+			if (cdjRaw) {
+				// clientDataJSON may be standard base64 or base64url — normalise before decode
+				const b64 = String(cdjRaw).replace(/-/g, '+').replace(/_/g, '/');
+				const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+				const cdj = JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+				console.log('[FIDO2-DIAG] clientDataJSON decoded: type=%s origin=%s challenge_len=%s', cdj.type, cdj.origin, (cdj.challenge||'').length);
+				console.log('[FIDO2-DIAG] request body origin=%s', origin);
+				console.log('[FIDO2-DIAG] fido2.id=%s fido2.rawId=%s (same=%s)', attestation?.id, attestation?.rawId, attestation?.id === attestation?.rawId);
+				if (cdj.origin !== origin) {
+					console.warn('[FIDO2-DIAG] ORIGIN MISMATCH: browser signed with origin=%s but body sends origin=%s', cdj.origin, origin);
+				}
+			}
+		} catch (diagErr) {
+			console.warn('[FIDO2-DIAG] could not decode clientDataJSON:', diagErr.message);
+		}
 		const body = {
-			fido2: fido2Str,
+			fido2: attestation,
 			origin,
 		};
 
@@ -546,6 +589,7 @@ async function completeFido2Registration(userId, deviceId, attestation, requestO
 			url: debugUrl,
 			body,
 			contentType: "application/vnd.pingidentity.device.activate+json",
+			headers: _debugHeaders(workerToken, "application/vnd.pingidentity.device.activate+json"),
 		};
 		let data;
 		try {
@@ -588,6 +632,26 @@ async function completeFido2Registration(userId, deviceId, attestation, requestO
 	}
 }
 
+/**
+ * Delete an MFA device for a user via Management API (worker token).
+ * @param {string} userId
+ * @param {string} deviceId
+ */
+async function deleteDevice(userId, deviceId) {
+	try {
+		const workerToken = await _getWorkerToken();
+		const url = `${_apiBaseUrl()}/users/${userId}/devices/${deviceId}`;
+		await axios.delete(url, {
+			headers: { Authorization: `Bearer ${workerToken}` },
+			timeout: 10000,
+		});
+		console.log('[MFA] deleted device userId=%s deviceId=%s', userId, deviceId);
+	} catch (err) {
+		throw _wrapError('deleteDevice', err);
+	}
+}
+
+
 module.exports = {
 	initiateDeviceAuth,
 	selectDevice,
@@ -600,6 +664,7 @@ module.exports = {
 	completeSmsEnrollment,
 	initFido2Registration,
 	completeFido2Registration,
+	deleteDevice,
 	getWorkerToken: _getWorkerToken,
 	// Test helper — resets the cached default policy ID (used in unit tests)
 	_resetDefaultPolicyCache() {

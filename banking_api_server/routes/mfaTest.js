@@ -22,6 +22,7 @@ function normalizePingoneRequest(debugReq) {
     body: debugReq.body !== undefined ? debugReq.body : null,
   };
   if (debugReq.contentType) { out.contentType = debugReq.contentType; }
+  if (debugReq.headers) { out.headers = debugReq.headers; }
   return out;
 }
 
@@ -572,6 +573,26 @@ router.post('/integration/enroll-fido2-init', async (req, res) => {
   try {
     const { userId } = await _resolveCredentials(req);
     const _t5 = Date.now();
+    // Check for existing active FIDO2 devices — PingOne only allows one active device per RP.
+    // If one exists, surface it clearly so the user can delete it before re-enrolling.
+    let existingFido2Device = null;
+    try {
+      const existingDevices = await mfaService.listMfaDevices(userId);
+      existingFido2Device = existingDevices.find(
+        (d) => String(d.type || '').toUpperCase().includes('FIDO2') && d.status === 'ACTIVE'
+      ) || null;
+    } catch (_e) { /* non-fatal — continue to init */ }
+
+    if (existingFido2Device) {
+      console.warn('[MFA Test Integration] User %s already has active FIDO2 device %s — returning conflict', userId, existingFido2Device.id);
+      return res.status(409).json({
+        success: false,
+        error: 'existing_fido2_device',
+        message: `You already have an active FIDO2 passkey registered (device ID: ${existingFido2Device.id}). Delete it first, then re-enroll.`,
+        existingDevice: existingFido2Device,
+      });
+    }
+
     const result = await mfaService.initFido2Registration(userId);
 
     // Parse creationOptions if stringified; preserve PingOne's original rp.id
@@ -580,7 +601,10 @@ router.post('/integration/enroll-fido2-init', async (req, res) => {
       const opts = typeof result.publicKeyCredentialCreationOptions === 'string'
         ? JSON.parse(result.publicKeyCredentialCreationOptions)
         : result.publicKeyCredentialCreationOptions;
-      console.log('[MFA Test] FIDO2 init: PingOne rp.id=%s rp.name=%s', opts.rp?.id, opts.rp?.name);
+      console.log('[MFA Test] FIDO2 init: PingOne rp.id=%s rp.name=%s attestation=%s', opts.rp?.id, opts.rp?.name, opts.attestation);
+      console.log('[MFA Test] FIDO2 init: challenge type=%s value_start=%s', typeof opts.challenge, JSON.stringify(opts.challenge)?.slice(0, 40));
+      console.log('[MFA Test] FIDO2 init: user.id type=%s value_start=%s', typeof opts.user?.id, JSON.stringify(opts.user?.id)?.slice(0, 40));
+      console.log('[MFA Test] FIDO2 init: authenticatorSelection=%j pubKeyCredParams=%j', opts.authenticatorSelection, opts.pubKeyCredParams);
       result.publicKeyCredentialCreationOptions = opts;
     }
 
@@ -649,6 +673,67 @@ router.get('/integration/devices', async (req, res) => {
     res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
   }
 });
+
+/**
+ * DELETE /api/mfa/test/integration/devices/:deviceId
+ * Delete an enrolled MFA device for the current user.
+ */
+router.delete('/integration/devices/:deviceId', async (req, res) => {
+  try {
+    const { userId } = await _resolveCredentials(req);
+    const { deviceId } = req.params;
+    if (!deviceId) return res.status(400).json({ success: false, error: 'deviceId required' });
+    await mfaService.deleteDevice(userId, deviceId);
+    console.log('[MFA Test Integration] Deleted device deviceId=%s userId=%s', deviceId, userId);
+    res.json({ success: true, deviceId });
+  } catch (err) {
+    console.error('[MFA Test Integration] DELETE /devices/:deviceId failed:', err.message);
+    res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
+  }
+});
+
+
+/**
+ * GET /api/mfa/test/integration/fido2-policy-diag
+ * Fetch PingOne FIDO2 policy details and user devices for diagnosis.
+ */
+router.get('/integration/fido2-policy-diag', async (req, res) => {
+  try {
+    const { userId } = await _resolveCredentials(req);
+    const axios = require('axios');
+    const configStore = require('../services/configStore');
+    const envId = configStore.getEffective('pingone_environment_id');
+    const region = configStore.getEffective('pingone_region') || 'com';
+    const apiBase = `https://api.pingone.${region}/v1/environments/${envId}`;
+    const workerToken = await mfaService.getWorkerToken ? await mfaService.getWorkerToken() : null;
+    // Fetch via mfaService internals through a workaround
+    const devices = await mfaService.listMfaDevices(userId);
+    const fido2Devices = devices.filter(d => String(d.type||'').includes('FIDO'));
+    // Fetch MFA policies
+    let policies = [];
+    let policyDetail = null;
+    try {
+      const { data: polData } = await axios.get(`${apiBase}/mfaPolicies`, {
+        headers: { Authorization: `Bearer ${(await require('../services/oauthService').getWorkerToken?.()) || ''}` },
+        timeout: 10000,
+      });
+      policies = polData._embedded?.mfaPolicies || [];
+    } catch (e) { policies = [{ error: e.message }]; }
+    res.json({
+      userId,
+      allDevices: devices,
+      fido2Devices,
+      deviceCount: devices.length,
+      fido2Count: fido2Devices.length,
+      policies: policies.map(p => ({ id: p.id, name: p.name, default: p.default })),
+      note: 'Check fido2Devices for existing registrations and policies for allowed origins'
+    });
+  } catch (err) {
+    console.error('[MFA Test] GET /fido2-policy-diag failed:', err.message);
+    res.status(err.status || 500).json({ success: false, error: err.message });
+  }
+});
+
 
 /**
  * GET /api/mfa/test/worker-token

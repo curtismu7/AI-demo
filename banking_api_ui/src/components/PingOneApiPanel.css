@@ -81,3 +81,36 @@
   white-space: pre;
   font-family: "Fira Code", "Cascadia Code", monospace;
 }
+
+/* Request headers table */
+.p1-api-panel-headers {
+  background: #1e293b;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  font-size: 0.75rem;
+}
+
+.p1-api-panel-header-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 1px 0;
+  line-height: 1.5;
+  flex-wrap: wrap;
+}
+
+.p1-api-panel-header-key {
+  color: #94a3b8;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.p1-api-panel-header-val {
+  color: #e2e8f0;
+  font-family: "Fira Code", "Cascadia Code", monospace;
+  font-size: 0.74rem;
+  word-break: break-all;
+  background: transparent;
+}
