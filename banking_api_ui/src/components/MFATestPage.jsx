@@ -377,7 +377,7 @@ export default function MFATestPage() {
 			setSmsVerifyError(err.message);
 			notifyError(`SMS OTP verification failed: ${err.message}`);
 		}
-	}, [smsDaId, smsDevices, smsOtp]);
+	}, [smsDaId, smsDevices, smsOtp, testUserId]);
 
 	// Email OTP test functions
 	const testEmailInitiate = useCallback(async () => {
@@ -453,7 +453,7 @@ export default function MFATestPage() {
 			setEmailVerifyError(err.message);
 			notifyError(`Email OTP verification failed: ${err.message}`);
 		}
-	}, [emailDaId, emailDevices, emailOtp]);
+	}, [emailDaId, emailDevices, emailOtp, testUserId]);
 
 	// FIDO2 test functions
 	const testFidoInitiate = useCallback(async () => {
@@ -585,7 +585,7 @@ export default function MFATestPage() {
 			if (errData?.pingoneResponse) setFidoVerifyPingoneRes(errData.pingoneResponse);
 			notifyError(`FIDO2 verification error: ${detail}`);
 		}
-	}, [fidoDaId, fidoChallengeOptions]);
+	}, [fidoDaId, fidoChallengeOptions, testUserId]);
 
 	// Device enrollment functions
 	const testEnrollSmsInit = useCallback(async () => {
@@ -639,7 +639,7 @@ export default function MFATestPage() {
 			setEnrollSmsInitError(detail);
 			notifyError(`SMS enrollment failed: ${detail}`);
 		}
-	}, [enrollSmsPhone, enrollSmsCountryCode, loadDevices]);
+	}, [enrollSmsPhone, enrollSmsCountryCode, loadDevices, testUserId]);
 
 	const testEnrollSmsComplete = useCallback(async () => {
 		if (!enrollSmsOtp || enrollSmsOtp.length !== 6) {
@@ -675,7 +675,7 @@ export default function MFATestPage() {
 			setEnrollSmsCompleteError(err.message);
 			notifyError(`SMS activation failed: ${err.message}`);
 		}
-	}, [enrollSmsDeviceId, enrollSmsOtp, loadDevices]);
+	}, [enrollSmsDeviceId, enrollSmsOtp, loadDevices, testUserId]);
 
 	const testEnrollEmail = useCallback(async () => {
 		if (!enrollEmailInput || !enrollEmailInput.trim()) {
@@ -711,7 +711,7 @@ export default function MFATestPage() {
 			setEnrollEmailError(err.message);
 			notifyError(`Email enrollment failed: ${err.message}`);
 		}
-	}, [enrollEmailInput, loadDevices]);
+	}, [enrollEmailInput, loadDevices, testUserId]);
 
 	const testFidoEnrollInit = useCallback(async () => {
 		setFidoEnrollInitStatus("pending");
@@ -750,7 +750,7 @@ export default function MFATestPage() {
 			if (errData?.pingoneResponse) setFidoEnrollInitPingoneRes(errData.pingoneResponse);
 			notifyError(`FIDO2 enrollment initiation failed: ${detail}`);
 		}
-	}, []);
+	}, [testUserId]);
 
 	// Auto-trigger FIDO2 enrollment when challenge initiated but no device enrolled
 	useEffect(() => {
@@ -900,7 +900,7 @@ export default function MFATestPage() {
 			if (errData?.pingoneResponse) setFidoEnrollCompletePingoneRes(errData.pingoneResponse);
 			notifyError(`FIDO2 registration error: ${detail}`);
 		}
-	}, [fidoEnrollData, loadDevices]);
+	}, [fidoEnrollData, loadDevices, testUserId]);
 
 	if (loading) {
 		return (
@@ -1004,6 +1004,7 @@ export default function MFATestPage() {
 											className={"mfa-user-picker__option" + (!testUserId ? " mfa-user-picker__option--selected" : "")}
 											onMouseDown={() => { setTestUserId(""); setUserSearch(""); setUserPickerOpen(false); loadDevices(); }}
 											role="option"
+											aria-selected={!testUserId}
 										>
 											<span className="mfa-user-picker__opt-name">— Session user (bankadmin) —</span>
 										</li>
@@ -1013,6 +1014,7 @@ export default function MFATestPage() {
 												className={"mfa-user-picker__option" + (u.id === testUserId ? " mfa-user-picker__option--selected" : "")}
 												onMouseDown={() => { setTestUserId(u.id); setUserSearch(""); setUserPickerOpen(false); loadDevices(); }}
 												role="option"
+												aria-selected={u.id === testUserId}
 											>
 												<span className="mfa-user-picker__opt-name">{u.name || u.username}</span>
 												<span className="mfa-user-picker__opt-email">{u.email || u.username}</span>
