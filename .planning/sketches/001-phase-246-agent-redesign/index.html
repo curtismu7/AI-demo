@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sketch 001 — Phase 246: Agent Redesign</title>
+<link rel="stylesheet" href="../themes/default.css">
+<style>
+/* ── Sketch chrome ────────────────────────────────────────────────── */
+body { min-height: 100vh; display: flex; flex-direction: column; }
+
+.sketch-toolbar {
+  background: #0a1628;
+  border-bottom: 1px solid rgba(65,105,225,0.3);
+  padding: 10px 20px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.sketch-toolbar h1 { font-size: 13px; font-weight: 700; color: #e8eefc; }
+.sketch-toolbar .phase-tag { font-size: 11px; color: #9db4e8; background: rgba(65,105,225,0.15); padding: 2px 8px; border-radius: 4px; }
+.tab-bar { display: flex; gap: 4px; margin-left: auto; }
+.tab-btn {
+  padding: 5px 14px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid rgba(65,105,225,0.35);
+  background: transparent; color: #9db4e8; cursor: pointer; transition: all 0.15s;
+}
+.tab-btn.active { background: #4169e1; color: #fff; border-color: #4169e1; }
+.tab-btn.winner::after { content: " ★"; }
+.sketch-note { font-size: 11px; color: #9db4e8; padding: 6px 20px; background: rgba(65,105,225,0.08); border-bottom: 1px solid rgba(65,105,225,0.15); }
+
+.canvas { flex: 1; display: flex; justify-content: center; align-items: center; padding: 40px 20px; position: relative; }
+.variant { display: none; width: 100%; min-height: 600px; justify-content: center; align-items: center; gap: 60px; flex-wrap: wrap; }
+.variant.active { display: flex; }
+
+/* ── Panel (matches BankingAgent.css geometry) ────────────────────── */
+.ba-panel {
+  width: 380px; height: 520px;
+  background: var(--ba-bg);
+  border: 1px solid var(--ba-border);
+  border-radius: 16px;
+  box-shadow: var(--ba-shadow);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--ba-text);
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* ── Header ───────────────────────────────────────────────────────── */
+.ba-header {
+  padding: 10px 14px 9px;
+  background: var(--ba-surface);
+  border-bottom: 1px solid var(--ba-border);
+  flex-shrink: 0;
+  position: relative; /* anchor for popout */
+  cursor: grab;
+  user-select: none;
+}
+.ba-header-top { display: flex; align-items: center; justify-content: space-between; }
+.ba-header-left { display: flex; align-items: center; gap: 10px; }
+.ba-status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34,197,94,0.35);
+  flex-shrink: 0;
+}
+.ba-title { font-size: 14px; font-weight: 700; line-height: 1.35; }
+.ba-subtitle { font-size: 12px; color: var(--ba-muted); line-height: 1.35; }
+
+.ba-header-tools { display: flex; align-items: center; gap: 4px; }
+.ba-icon-btn {
+  width: 28px; height: 28px; border-radius: 6px; border: none;
+  background: transparent; color: var(--ba-muted); cursor: pointer;
+  font-size: 14px; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.ba-icon-btn:hover { background: rgba(65,105,225,0.15); color: var(--ba-text); }
+
+/* Actions trigger */
+.ba-actions-trigger {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 28px; padding: 6px 12px; border-radius: 8px; border: none;
+  background: var(--ba-float-btn); color: #fff;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  transition: background 0.15s; white-space: nowrap;
+}
+.ba-actions-trigger:hover { background: #3158d3; }
+.ba-actions-trigger.active { background: #3158d3; }
+
+/* ── Body ─────────────────────────────────────────────────────────── */
+.ba-body { flex: 1; display: flex; overflow: hidden; min-height: 0; position: relative; }
+.ba-chat-col {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; min-width: 0;
+}
+
+/* Messages */
+.ba-messages {
+  flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;
+  scroll-behavior: smooth;
+}
+.ba-messages::-webkit-scrollbar { width: 4px; }
+.ba-messages::-webkit-scrollbar-track { background: transparent; }
+.ba-messages::-webkit-scrollbar-thumb { background: rgba(65,105,225,0.3); border-radius: 4px; }
+
+.ba-msg { display: flex; align-items: flex-start; gap: 8px; }
+.ba-msg.user { flex-direction: row-reverse; }
+.ba-msg-avatar { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+.ba-msg-bubble {
+  max-width: 80%; padding: 10px 14px; border-radius: 12px;
+  font-size: 13px; line-height: 1.5; white-space: pre-wrap;
+}
+.ba-msg.assistant .ba-msg-bubble { background: var(--ba-surface); color: var(--ba-text); border-radius: 4px 12px 12px 12px; }
+.ba-msg.user .ba-msg-bubble { background: var(--ba-float-btn); color: #fff; border-radius: 12px 4px 12px 12px; }
+
+/* Welcome */
+.ba-welcome { padding: 24px 14px; text-align: center; color: var(--ba-muted); font-size: 13px; line-height: 1.6; }
+
+/* Input row */
+.ba-input-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-top: 1px solid var(--ba-border); flex-shrink: 0;
+}
+.ba-input {
+  flex: 1; padding: 9px 14px; border-radius: 8px; font-size: 13px;
+  border: 1px solid var(--ba-input-bd); background: var(--ba-input-bg); color: var(--ba-text);
+  outline: none; font-family: var(--font);
+}
+.ba-input:focus { border-color: var(--ba-chip-bd); }
+.ba-send {
+  height: 36px; padding: 0 14px; border-radius: 8px; border: none;
+  background: var(--ba-float-btn); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.ba-send:hover { background: #3158d3; }
+
+/* Status footer inside chat col */
+.ba-chips-footer {
+  padding: 6px 14px 8px; display: flex; gap: 8px; flex-shrink: 0;
+}
+.ba-server-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; color: var(--ba-muted); background: rgba(65,105,225,0.1);
+  padding: 3px 8px; border-radius: 12px; border: 1px solid rgba(65,105,225,0.2);
+}
+.ba-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+
+/* ── Actions Popout ───────────────────────────────────────────────── */
+.ba-actions-popout {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 14px;
+  width: 320px;
+  max-height: 380px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  background: var(--ba-surface);
+  border: 1px solid var(--ba-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(10, 20, 50, 0.55);
+  z-index: 100;
+  animation: popout-in 0.15s ease;
+}
+.ba-actions-popout::-webkit-scrollbar { display: none; }
+@keyframes popout-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Popout backdrop */
+.ba-popout-backdrop {
+  position: absolute; inset: 0; z-index: 99; cursor: default; background: transparent;
+}
+
+/* Popout search */
+.ba-popout-search {
+  display: block; box-sizing: border-box;
+  width: calc(100% - 24px); margin: 12px 12px 8px;
+  padding: 8px 12px; font-size: 12px; border-radius: 8px;
+  border: 1px solid rgba(65,105,225,0.45); background: var(--ba-bg); color: var(--ba-text);
+  font-family: var(--font);
+}
+.ba-popout-search:focus { outline: none; border-color: var(--ba-chip-bd); }
+
+/* Popout body */
+.ba-popout-body { padding: 0 0 8px; }
+
+/* Sections */
+.ba-popout-section { padding: 8px 12px 4px; border-top: 1px solid var(--ba-border); }
+.ba-popout-section:first-child { border-top: none; }
+
+.ba-popout-section-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ba-muted); margin-bottom: 6px; display: block;
+}
+.ba-popout-section-toggle {
+  width: 100%; text-align: left; border: none; background: transparent;
+  cursor: pointer; color: var(--ba-muted); padding: 0; margin-bottom: 6px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  font-family: var(--font);
+}
+.ba-popout-section-toggle:hover { color: var(--ba-text); }
+
+/* Chip rows */
+.ba-popout-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+
+/* Action chips */
+.ba-action-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; border-radius: 16px; font-size: 11px; font-weight: 500;
+  border: 1px solid var(--ba-chip-bd); background: var(--ba-chip-bg); color: var(--ba-chip-txt);
+  cursor: pointer; transition: background 0.12s, border-color 0.12s; white-space: nowrap;
+}
+.ba-action-chip:hover { background: rgba(65,105,225,0.3); border-color: #7c9cf5; color: #e8eefc; }
+.ba-action-chip.active { background: rgba(65,105,225,0.4); border-color: #7c9cf5; color: #e8eefc; }
+
+/* Suggestion chips */
+.ba-suggestion-chip {
+  display: block; width: 100%; text-align: left;
+  padding: 7px 10px; border-radius: 8px; font-size: 11px;
+  border: 1px solid rgba(65,105,225,0.25); background: rgba(65,105,225,0.08); color: var(--ba-muted);
+  cursor: pointer; transition: background 0.12s; font-family: var(--font);
+}
+.ba-suggestion-chip:hover { background: rgba(65,105,225,0.18); color: var(--ba-text); }
+
+/* Empty state */
+.ba-popout-empty { padding: 20px 12px; text-align: center; color: var(--ba-muted); font-size: 11px; }
+.ba-popout-empty-heading { font-size: 12px; font-weight: 600; color: var(--ba-text); margin-bottom: 6px; }
+
+/* Status bar */
+.ba-popout-status-bar {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  border-top: 1px solid var(--ba-border); font-size: 10px; color: var(--ba-muted);
+}
+
+/* Settings row */
+.ba-popout-settings { padding: 4px 12px 4px; }
+.ba-appearance-select {
+  width: 100%; padding: 5px 8px; border-radius: 6px; font-size: 11px;
+  border: 1px solid var(--ba-border); background: var(--ba-bg); color: var(--ba-text);
+  margin-bottom: 6px; font-family: var(--font);
+}
+.ba-theme-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 6px; font-size: 11px;
+  border: 1px solid var(--ba-border); background: transparent; color: var(--ba-muted);
+  cursor: pointer; font-family: var(--font);
+}
+.ba-theme-btn:hover { color: var(--ba-text); border-color: var(--ba-chip-bd); }
+
+/* ── Before panel (comparison) ────────────────────────────────────── */
+.before-panel {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.before-label, .after-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ba-muted);
+}
+
+/* Old left-col sketch */
+.ba-left-col-sketch {
+  width: 140px; flex-shrink: 0; border-right: 1px solid var(--ba-border);
+  padding: 10px 8px; display: flex; flex-direction: column; gap: 6px; overflow: hidden;
+}
+.ba-left-col-sketch .ba-left-label {
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ba-muted);
+}
+.ba-old-chip {
+  display: block; width: 100%; padding: 4px 8px; border-radius: 6px; font-size: 10px;
+  border: 1px solid var(--ba-chip-bd); background: var(--ba-chip-bg); color: var(--ba-chip-txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ba-old-header-tools { display: flex; align-items: center; gap: 3px; }
+.ba-old-btn { font-size: 12px; color: var(--ba-muted); display: inline-flex; align-items: center; padding: 3px 5px; }
+
+/* Callout annotations */
+.annotation {
+  position: absolute; background: rgba(185,28,28,0.9); color: #fff;
+  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px;
+  white-space: nowrap; pointer-events: none;
+}
+
+/* Variant C — expanded */
+.ba-panel.expanded { width: 540px; height: 600px; }
+</style>
+</head>
+<body>
+
+<div class="sketch-toolbar">
+  <div>
+    <h1>Sketch 001 — Phase 246: Floating Agent Redesign</h1>
+  </div>
+  <span class="phase-tag">chips → popout · simplified controls</span>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="showVariant('a')">A: Before vs After</button>
+    <button class="tab-btn" onclick="showVariant('b')">B: Interactive Prototype</button>
+    <button class="tab-btn" onclick="showVariant('c')">C: Popout Open States</button>
+  </div>
+</div>
+<div class="sketch-note">Click tabs to switch variants. Variant B is fully interactive — open/close the popout, type in search, click chips.</div>
+
+<div class="canvas">
+
+  <!-- ═══ VARIANT A: Side-by-side Before / After ═══ -->
+  <div class="variant active" id="variant-a">
+
+    <!-- BEFORE -->
+    <div class="before-panel">
+      <div class="before-label">⚠ Before — 7 controls + left column</div>
+      <div class="ba-panel" style="opacity:0.85; filter: saturate(0.7);">
+        <div class="ba-header">
+          <div class="ba-header-top">
+            <div class="ba-header-left">
+              <div class="ba-status-dot"></div>
+              <div>
+                <div class="ba-title">BX Finance AI Agent</div>
+                <div class="ba-subtitle">Curtis · 👤 Customer</div>
+              </div>
+            </div>
+            <div class="ba-header-tools" style="gap:3px;">
+              <div class="ba-old-btn" style="font-size:11px;">⊞</div>
+              <div class="ba-old-btn" style="font-size:11px;">↗</div>
+              <div style="font-size:9px; color:#9db4e8; background:rgba(65,105,225,0.18); padding:3px 5px; border-radius:4px;">Agent: Match ▾</div>
+              <div class="ba-old-btn">☀️</div>
+              <div style="font-size:10px; color:#9db4e8; padding:2px 6px; border: 1px solid rgba(65,105,225,0.35); border-radius:4px;">Sign out</div>
+              <div class="ba-old-btn">🔗</div>
+              <div class="ba-old-btn">▼</div>
+            </div>
+          </div>
+        </div>
+        <div class="ba-body" style="flex-wrap:nowrap;">
+          <!-- Old left col -->
+          <div class="ba-left-col-sketch">
+            <div class="ba-left-label">Session</div>
+            <div class="ba-old-chip">🔄 Refresh</div>
+            <div class="ba-old-chip">🚪 Sign out</div>
+            <div style="height:1px; background:var(--ba-border); margin:4px 0;"></div>
+            <div class="ba-left-label">Suggestions</div>
+            <div class="ba-old-chip">"Show my accounts"</div>
+            <div class="ba-old-chip">"Transfer $100..."</div>
+            <div class="ba-old-chip">"Deposit $50..."</div>
+            <div style="height:1px; background:var(--ba-border); margin:4px 0;"></div>
+            <div class="ba-left-label">Account ▼</div>
+            <div class="ba-old-chip">🏦 My Accounts</div>
+            <div class="ba-old-chip">💰 Check Balance</div>
+            <div class="ba-left-label">Transaction ▶</div>
+            <div class="ba-left-label">Admin ▶</div>
+            <div class="ba-left-label">Testing ▶</div>
+            <div style="flex:1;"></div>
+            <div style="display:flex; gap:4px;">
+              <div class="ba-old-chip" style="background:rgba(34,197,94,0.12); border-color:rgba(34,197,94,0.4); color:#86efac; font-size:9px;">● BFF</div>
+              <div class="ba-old-chip" style="background:rgba(34,197,94,0.12); border-color:rgba(34,197,94,0.4); color:#86efac; font-size:9px;">● MCP</div>
+            </div>
+          </div>
+          <!-- Narrowed chat -->
+          <div class="ba-chat-col" style="flex:1; min-width:0;">
+            <div class="ba-messages">
+              <div class="ba-welcome">Type a message or pick an action on the left.</div>
+            </div>
+            <div class="ba-input-row">
+              <input class="ba-input" placeholder="Ask me anything…" disabled style="opacity:0.6;">
+              <button class="ba-send" disabled style="opacity:0.6;">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Annotation: chat width -->
+      <div style="font-size:10px; color:#b91c1c; margin-top:4px; font-weight:600;">↔ Chat area: ~190px (cramped)</div>
+    </div>
+
+    <!-- AFTER -->
+    <div class="before-panel">
+      <div class="after-label">✅ After — 3 controls + Actions trigger</div>
+      <div class="ba-panel">
+        <div class="ba-header">
+          <div class="ba-header-top">
+            <div class="ba-header-left">
+              <div class="ba-status-dot"></div>
+              <div>
+                <div class="ba-title">BX Finance AI Agent</div>
+                <div class="ba-subtitle">Curtis · 👤 Customer</div>
+              </div>
+            </div>
+            <div class="ba-header-tools">
+              <button class="ba-actions-trigger">Actions ▾</button>
+              <button class="ba-icon-btn" title="Expand">⊞</button>
+              <button class="ba-icon-btn" title="Collapse">▼</button>
+            </div>
+          </div>
+        </div>
+        <div class="ba-body">
+          <div class="ba-chat-col">
+            <div class="ba-messages">
+              <div class="ba-msg assistant">
+                <span class="ba-msg-avatar">🏦</span>
+                <div class="ba-msg-bubble">Hi Curtis! I can check your balances, move money, and explain OAuth flows. Use Actions to get started.</div>
+              </div>
+              <div class="ba-msg user">
+                <span class="ba-msg-avatar">👤</span>
+                <div class="ba-msg-bubble">Show me my accounts</div>
+              </div>
+              <div class="ba-msg assistant">
+                <span class="ba-msg-avatar">🏦</span>
+                <div class="ba-msg-bubble">You have 2 accounts:
+• Checking: $1,234.56
+• Savings:  $8,765.00</div>
+              </div>
+            </div>
+            <div class="ba-chips-footer">
+              <span class="ba-server-chip"><span class="ba-chip-dot"></span>BFF connected</span>
+              <span class="ba-server-chip"><span class="ba-chip-dot"></span>MCP server</span>
+            </div>
+            <div class="ba-input-row">
+              <input class="ba-input" placeholder="Ask me anything…">
+              <button class="ba-send">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:10px; color:#22c55e; margin-top:4px; font-weight:600;">↔ Chat area: ~348px (full width)</div>
+    </div>
+
+  </div><!-- /variant-a -->
+
+  <!-- ═══ VARIANT B: Interactive Prototype ═══ -->
+  <div class="variant" id="variant-b">
+    <div class="before-panel">
+      <div class="after-label">Interactive — click Actions to open/close, type to search, click chips</div>
+      <div class="ba-panel" id="proto-panel">
+        <div class="ba-header" id="proto-header">
+          <div class="ba-header-top">
+            <div class="ba-header-left">
+              <div class="ba-status-dot"></div>
+              <div>
+                <div class="ba-title">BX Finance AI Agent</div>
+                <div class="ba-subtitle" id="proto-subtitle">Curtis · 👤 Customer</div>
+              </div>
+            </div>
+            <div class="ba-header-tools">
+              <button class="ba-actions-trigger" id="proto-trigger" onclick="togglePopout()">Actions ▾</button>
+              <button class="ba-icon-btn" title="Expand" onclick="toggleExpand()">⊞</button>
+              <button class="ba-icon-btn" title="Collapse agent" onclick="alert('Would collapse to FAB')">▼</button>
+            </div>
+          </div>
+
+          <!-- POPOUT — anchored inside .ba-header (position:relative) -->
+          <div class="ba-actions-popout" id="proto-popout" style="display:none;">
+            <input class="ba-popout-search" id="proto-search" type="search" placeholder="🔍 Search actions…" oninput="filterPopout(this.value)" autocomplete="off">
+
+            <div class="ba-popout-body">
+              <!-- SUGGESTIONS -->
+              <div class="ba-popout-section" data-section="suggestions">
+                <span class="ba-popout-section-label">Suggestions</span>
+                <div class="ba-popout-chip-row" id="suggestions-chips">
+                  <button class="ba-suggestion-chip" onclick="sendChat(this, 'Show me my accounts')">Show me my accounts</button>
+                  <button class="ba-suggestion-chip" onclick="sendChat(this, 'Show my full account details')">Show my full account details</button>
+                  <button class="ba-suggestion-chip" onclick="sendChat(this, 'Transfer $100 from checking to savings')">Transfer $100 from checking…</button>
+                  <button class="ba-suggestion-chip" onclick="sendChat(this, 'Deposit $50 into checking')">Deposit $50 into checking</button>
+                </div>
+              </div>
+
+              <!-- ACCOUNT -->
+              <div class="ba-popout-section" data-section="account">
+                <span class="ba-popout-section-label">Account</span>
+                <div class="ba-popout-chip-row">
+                  <button class="ba-action-chip" onclick="sendAction(this, 'get-accounts')">🏦 My Accounts</button>
+                  <button class="ba-action-chip" onclick="sendAction(this, 'check-balance')">💰 Check Balance</button>
+                  <button class="ba-action-chip" onclick="sendAction(this, 'account-details')">View Sensitive Details</button>
+                </div>
+              </div>
+
+              <!-- TRANSACTIONS -->
+              <div class="ba-popout-section" data-section="transactions">
+                <span class="ba-popout-section-label">Transactions</span>
+                <div class="ba-popout-chip-row">
+                  <button class="ba-action-chip" onclick="sendAction(this, 'get-transactions')">📋 Recent Transactions</button>
+                  <button class="ba-action-chip" onclick="sendAction(this, 'deposit')">⬇ Deposit</button>
+                  <button class="ba-action-chip" onclick="sendAction(this, 'withdraw')">⬆ Withdraw</button>
+                  <button class="ba-action-chip" onclick="sendAction(this, 'transfer')">↔ Transfer</button>
+                </div>
+              </div>
+
+              <!-- ADMIN (hidden by default — uncomment to test admin role) -->
+              <!-- <div class="ba-popout-section" data-section="admin">
+                <span class="ba-popout-section-label">Admin</span>
+                <div class="ba-popout-chip-row">
+                  <button class="ba-action-chip">🔧 MCP Tools</button>
+                  <button class="ba-action-chip">🚪 Log Out User</button>
+                </div>
+              </div> -->
+
+              <!-- TESTING — collapsible -->
+              <div class="ba-popout-section" data-section="testing">
+                <button class="ba-popout-section-toggle" onclick="toggleTesting()">
+                  <span id="testing-chevron">▶</span> Testing
+                </button>
+                <div id="testing-content" style="display:none;">
+                  <div class="ba-popout-chip-row">
+                    <button class="ba-action-chip" onclick="sendAction(this, 'test-wrong-scope')">Test Wrong Scope</button>
+                    <button class="ba-action-chip" onclick="sendAction(this, 'test-step-up')">Test Step-Up</button>
+                    <button class="ba-action-chip" onclick="sendAction(this, 'test-ciba')">Test CIBA</button>
+                    <button class="ba-action-chip" onclick="sendAction(this, 'test-token-exchange')">Test Token Exchange</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SESSION -->
+              <div class="ba-popout-section" data-section="session">
+                <span class="ba-popout-section-label">Session</span>
+                <div class="ba-popout-chip-row">
+                  <button class="ba-action-chip" onclick="sendAction(this, 'refresh')">🔄 Refresh token</button>
+                  <button class="ba-action-chip" onclick="sendAction(this, 'signout')">🚪 Sign out</button>
+                </div>
+              </div>
+
+              <!-- VIEW -->
+              <div class="ba-popout-section" data-section="view">
+                <span class="ba-popout-section-label">View</span>
+                <div class="ba-popout-chip-row">
+                  <button class="ba-action-chip" id="token-chain-btn" onclick="toggleTokenChain()">🔗 Token chain</button>
+                  <button class="ba-action-chip" onclick="alert('window.open(\'/agent\', \'BankingAgent\', \'...\')'); closePopout();">⧉ New window</button>
+                </div>
+              </div>
+
+              <!-- SETTINGS -->
+              <div class="ba-popout-section ba-popout-settings" data-section="settings">
+                <span class="ba-popout-section-label">Settings</span>
+                <select class="ba-appearance-select">
+                  <option>Agent: Match page</option>
+                  <option>Agent: Light</option>
+                  <option>Agent: Dark</option>
+                </select>
+                <button class="ba-theme-btn" onclick="alert('Toggles page ☀️/🌙 theme')">☀️ Page light / dark</button>
+              </div>
+
+              <!-- EMPTY STATE (shown when search has no results) -->
+              <div class="ba-popout-empty" id="proto-empty" style="display:none;">
+                <div class="ba-popout-empty-heading">No matching actions</div>
+                <div>Try a different keyword, or type your question in the chat below.</div>
+              </div>
+
+              <!-- STATUS BAR -->
+              <div class="ba-popout-status-bar">
+                <span class="ba-server-chip"><span class="ba-chip-dot"></span>BFF</span>
+                <span class="ba-server-chip"><span class="ba-chip-dot"></span>MCP server · 12 actions</span>
+              </div>
+            </div><!-- /popout-body -->
+          </div><!-- /popout -->
+
+        </div><!-- /header -->
+
+        <!-- Backdrop (click to close) -->
+        <div id="proto-backdrop" style="display:none; position:absolute; inset:0; z-index:98;" onclick="closePopout()"></div>
+
+        <!-- Body -->
+        <div class="ba-body">
+          <div class="ba-chat-col">
+            <div class="ba-messages" id="proto-messages">
+              <div class="ba-msg assistant">
+                <span class="ba-msg-avatar">🏦</span>
+                <div class="ba-msg-bubble">Hi Curtis! I can check your balances, move money, and explain OAuth flows. Use <strong>Actions</strong> to explore everything I can do.</div>
+              </div>
+            </div>
+            <div class="ba-chips-footer">
+              <span class="ba-server-chip"><span class="ba-chip-dot"></span>BFF connected</span>
+              <span class="ba-server-chip"><span class="ba-chip-dot"></span>MCP server</span>
+            </div>
+            <div class="ba-input-row">
+              <input class="ba-input" id="proto-input" placeholder="Ask me anything…" onkeydown="if(event.key==='Enter') sendMessage()">
+              <button class="ba-send" onclick="sendMessage()">Send</button>
+            </div>
+          </div>
+        </div>
+      </div><!-- /panel -->
+
+      <div style="font-size:10px; color:#9db4e8; margin-top:8px; text-align:center; max-width:380px; line-height:1.6;">
+        Try: click <strong>Actions ▾</strong> → open popout · type in search to filter · click any chip · click TESTING ▶ to expand · click ⊞ to expand · ESC or click outside to close
+      </div>
+    </div>
+  </div><!-- /variant-b -->
+
+  <!-- ═══ VARIANT C: Three Open States ═══ -->
+  <div class="variant" id="variant-c" style="align-items:flex-start; padding-top:40px; gap:30px; justify-content:center;">
+
+    <!-- State 1: Default/closed -->
+    <div class="before-panel">
+      <div class="after-label" style="color:#9db4e8;">State 1: Popout closed</div>
+      <div class="ba-panel" style="height:340px;">
+        <div class="ba-header">
+          <div class="ba-header-top">
+            <div class="ba-header-left">
+              <div class="ba-status-dot"></div>
+              <div>
+                <div class="ba-title">BX Finance AI Agent</div>
+                <div class="ba-subtitle">Curtis · 👤 Customer</div>
+              </div>
+            </div>
+            <div class="ba-header-tools">
+              <button class="ba-actions-trigger">Actions ▾</button>
+              <button class="ba-icon-btn">⊞</button>
+              <button class="ba-icon-btn">▼</button>
+            </div>
+          </div>
+        </div>
+        <div class="ba-body">
+          <div class="ba-chat-col">
+            <div class="ba-messages">
+              <div class="ba-msg assistant">
+                <span class="ba-msg-avatar">🏦</span>
+                <div class="ba-msg-bubble">Hi Curtis! Use Actions to explore what I can do.</div>
+              </div>
+            </div>
+            <div class="ba-input-row">
+              <input class="ba-input" placeholder="Ask me anything…" style="opacity:0.6;">
+              <button class="ba-send" style="opacity:0.6;">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- State 2: Popout open, scrolled to top -->
+    <div class="before-panel">
+      <div class="after-label" style="color:#22c55e;">State 2: Popout open (top)</div>
+      <div class="ba-panel" style="height:480px;">
+        <div class="ba-header">
+          <div class="ba-header-top">
+            <div class="ba-header-left">
+              <div class="ba-status-dot"></div>
+              <div>
+                <div class="ba-title">BX Finance AI Agent</div>
+                <div class="ba-subtitle">Curtis · 👤 Customer</div>
+              </div>
+            </div>
+            <div class="ba-header-tools">
+              <button class="ba-actions-trigger active">Actions ▴</button>
+              <button class="ba-icon-btn">⊞</button>
+              <button class="ba-icon-btn">▼</button>
+            </div>
+          </div>
+          <!-- Popout static -->
+          <div class="ba-actions-popout" style="display:block; animation:none; max-height:350px;">
+            <input class="ba-popout-search" placeholder="🔍 Search actions…" value="">
+            <div class="ba-popout-body">
+              <div class="ba-popout-section">
+                <span class="ba-popout-section-label">Suggestions</span>
+                <div class="ba-popout-chip-row">
+                  <button class="ba-suggestion-chip">Show me my accounts</button>
+                  <button class="ba-suggestion-chip">Transfer $100 from checking…</button>
+                </div>
+              </div>
+              <div class="ba-popout-section">
+                <span class="ba-popout-section-label">Account</span>
+                <div class="ba-popout-chip-row">
+                  <button class="ba-action-chip">🏦 My Accounts</button>
+                  <button class="ba-action-chip">💰 Check Balance</button>
+                  <button class="ba-action-chip">View Sensitive Details</button>
+                </div>
+              </div>
+              <div class="ba-popout-section">
+                <span class="ba-popout-section-label">Transactions</span>
+                <div class="ba-popout-chip-row">
+                  <button class="ba-action-chip">📋 Recent Transactions</button>
+                  <button class="ba-action-chip">⬇ Deposit</button>
+                  <button class="ba-action-chip">⬆ Withdraw</button>
+                  <button class="ba-action-chip">↔ Transfer</button>
+                </div>
+              </div>
+              <div class="ba-popout-section">
+                <button class="ba-popout-section-toggle">▶ Testing</button>
+              </div>
+              <div class="ba-popout-section">
+                <span class="ba-popout-section-label">Session</span>
+                <div class="ba-popout-chip-row">
+                  <button class="ba-action-chip">🔄 Refresh token</button>
+                  <button class="ba-action-chip">🚪 Sign out</button>
+                </div>
+              </div>
+              <div class="ba-popout-section">
+                <span class="ba-popout-section-label">View</span>
+                <div class="ba-popout-chip-row">
+                  <button class="ba-action-chip">🔗 Token chain</button>
+                  <button class="ba-action-chip">⧉ New window</button>
+                </div>
+              </div>
+              <div class="ba-popout-status-bar">
+                <span class="ba-server-chip"><span class="ba-chip-dot"></span>BFF</span>
+                <span class="ba-server-chip"><span class="ba-chip-dot"></span>MCP server · 12 actions</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ba-body" style="position:relative; z-index:0;">
+          <div class="ba-chat-col">
+            <div class="ba-messages" style="opacity:0.4;">
+              <div class="ba-msg assistant"><span class="ba-msg-avatar">🏦</span><div class="ba-msg-bubble">Hi Curtis!</div></div>
+            </div>
+            <div class="ba-input-row" style="opacity:0.4;"><input class="ba-input" placeholder="Ask me anything…" disabled></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- State 3: Search active -->
+    <div class="before-panel">
+      <div class="after-label" style="color:#4169e1;">State 3: Search "trans"</div>
+      <div class="ba-panel" style="height:320px;">
+        <div class="ba-header">
+          <div class="ba-header-top">
+            <div class="ba-header-left">
+              <div class="ba-status-dot"></div>
+              <div>
+                <div class="ba-title">BX Finance AI Agent</div>
+                <div class="ba-subtitle">Curtis · 👤 Customer</div>
+              </div>
+            </div>
+            <div class="ba-header-tools">
+              <button class="ba-actions-trigger active">Actions ▴</button>
+              <button class="ba-icon-btn">⊞</button>
+              <button class="ba-icon-btn">▼</button>
+            </div>
+          </div>
+          <div class="ba-actions-popout" style="display:block; animation:none;">
+            <input class="ba-popout-search" value="trans" style="border-color: var(--ba-chip-bd);">
+            <div class="ba-popout-body">
+              <div class="ba-popout-section">
+                <span class="ba-popout-section-label">Transactions</span>
+                <div class="ba-popout-chip-row">
+                  <button class="ba-action-chip">📋 Recent Transactions</button>
+                  <button class="ba-action-chip">↔ Transfer</button>
+                </div>
+              </div>
+              <div class="ba-popout-section">
+                <span class="ba-popout-section-label">Suggestions</span>
+                <div class="ba-popout-chip-row">
+                  <button class="ba-suggestion-chip">Transfer $100 from checking…</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ba-body" style="position:relative; z-index:0;">
+          <div class="ba-chat-col">
+            <div class="ba-messages" style="opacity:0.3;"><div class="ba-welcome">...</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /variant-c -->
+
+</div><!-- /canvas -->
+
+<script>
+// ─── Tab switching ───────────────────────────────────────────────
+function showVariant(v) {
+  document.querySelectorAll('.variant').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('variant-' + v).classList.add('active');
+  document.querySelectorAll('.tab-btn')[{a:0,b:1,c:2}[v]].classList.add('active');
+}
+
+// ─── Interactive prototype (Variant B) ──────────────────────────
+let popoutOpen = false;
+let tokenChainOn = false;
+
+function togglePopout() {
+  popoutOpen ? closePopout() : openPopout();
+}
+
+function openPopout() {
+  popoutOpen = true;
+  document.getElementById('proto-popout').style.display = 'block';
+  document.getElementById('proto-backdrop').style.display = 'block';
+  document.getElementById('proto-trigger').textContent = 'Actions ▴';
+  document.getElementById('proto-trigger').classList.add('active');
+  setTimeout(() => document.getElementById('proto-search').focus(), 50);
+}
+
+function closePopout() {
+  popoutOpen = false;
+  document.getElementById('proto-popout').style.display = 'none';
+  document.getElementById('proto-backdrop').style.display = 'none';
+  document.getElementById('proto-trigger').textContent = 'Actions ▾';
+  document.getElementById('proto-trigger').classList.remove('active');
+  document.getElementById('proto-search').value = '';
+  filterPopout('');
+}
+
+// Escape key handling (two-step per UI-SPEC)
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && popoutOpen) {
+    const search = document.getElementById('proto-search');
+    if (search.value) {
+      search.value = '';
+      filterPopout('');
+    } else {
+      closePopout();
+    }
+  }
+});
+
+// Search filter
+function filterPopout(q) {
+  const qLow = q.trim().toLowerCase();
+  const sections = document.querySelectorAll('#proto-popout .ba-popout-section');
+  const statusBar = document.querySelector('#proto-popout .ba-popout-status-bar');
+  let anyVisible = false;
+
+  sections.forEach(section => {
+    if (!qLow) {
+      section.style.display = '';
+      section.querySelectorAll('.ba-action-chip, .ba-suggestion-chip').forEach(c => c.style.display = '');
+      anyVisible = true;
+      return;
+    }
+    const chips = section.querySelectorAll('.ba-action-chip, .ba-suggestion-chip');
+    let visCount = 0;
+    chips.forEach(c => {
+      const match = c.textContent.toLowerCase().includes(qLow);
+      c.style.display = match ? '' : 'none';
+      if (match) visCount++;
+    });
+    // For toggle sections, check differently
+    const toggle = section.querySelector('.ba-popout-section-toggle');
+    if (toggle && !chips.length) { section.style.display = qLow ? 'none' : ''; return; }
+    if (chips.length > 0) {
+      section.style.display = visCount > 0 ? '' : 'none';
+      if (visCount > 0) anyVisible = true;
+    }
+  });
+
+  document.getElementById('proto-empty').style.display = (!anyVisible && qLow) ? 'block' : 'none';
+  if (statusBar) statusBar.style.display = qLow ? 'none' : '';
+}
+
+// Testing section toggle
+function toggleTesting() {
+  const content = document.getElementById('testing-content');
+  const chevron = document.getElementById('testing-chevron');
+  const open = content.style.display === 'none';
+  content.style.display = open ? 'block' : 'none';
+  chevron.textContent = open ? '▼' : '▶';
+}
+
+// Token chain toggle
+function toggleTokenChain() {
+  tokenChainOn = !tokenChainOn;
+  const btn = document.getElementById('token-chain-btn');
+  btn.classList.toggle('active', tokenChainOn);
+  addMessage('assistant', tokenChainOn ? '🔗 Token chain panel is now visible (in full app, the middle column would appear).' : '⛓ Token chain hidden.');
+  closePopout();
+}
+
+// Expand toggle
+function toggleExpand() {
+  const panel = document.getElementById('proto-panel');
+  const btn = event.target;
+  const expanded = panel.style.width === '540px';
+  panel.style.width = expanded ? '' : '540px';
+  panel.style.height = expanded ? '' : '600px';
+  btn.textContent = expanded ? '⊞' : '⊟';
+  btn.title = expanded ? 'Expand' : 'Restore size';
+}
+
+// Send message helper
+function addMessage(role, text) {
+  const msgs = document.getElementById('proto-messages');
+  const div = document.createElement('div');
+  div.className = 'ba-msg ' + role;
+  div.innerHTML = `<span class="ba-msg-avatar">${role === 'assistant' ? '🏦' : '👤'}</span><div class="ba-msg-bubble">${text}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function sendMessage() {
+  const input = document.getElementById('proto-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  addMessage('user', text);
+  setTimeout(() => {
+    addMessage('assistant', '(Simulated) Got it — "' + text + '". In the live app, this would call the BFF and LangChain agent.');
+  }, 600);
+}
+
+function sendChat(btn, text) {
+  closePopout();
+  addMessage('user', '"' + text + '"');
+  setTimeout(() => {
+    const responses = {
+      'Show me my accounts': 'You have 2 accounts:\n• Checking: $1,234.56\n• Savings: $8,765.00',
+      'Show my full account details': 'Checking ****1234\nRouting: 021000021\nBalance: $1,234.56\nStatus: Active',
+      'Transfer $100 from checking to savings': '✅ Transfer initiated — $100 from Checking to Savings.',
+      'Deposit $50 into checking': '✅ Deposit of $50 to Checking confirmed.',
+    };
+    addMessage('assistant', responses[text] || '(Simulated) Processing "' + text + '"…');
+  }, 500);
+}
+
+function sendAction(btn, actionId) {
+  closePopout();
+  const labels = {
+    'get-accounts': 'Fetching your accounts…',
+    'check-balance': 'Checking your balance…',
+    'get-transactions': 'Loading recent transactions…',
+    'deposit': 'Opening deposit form…',
+    'withdraw': 'Opening withdrawal form…',
+    'transfer': 'Opening transfer form…',
+    'refresh': 'Refreshing your token via PingOne refresh_token grant…',
+    'signout': 'Signing you out…',
+    'test-wrong-scope': 'Testing wrong scope error path…',
+    'test-step-up': 'Triggering step-up MFA (CIBA or redirect)…',
+    'test-ciba': 'Initiating CIBA backchannel auth…',
+    'test-token-exchange': 'Testing RFC 8693 token exchange…',
+    'account-details': 'Fetching sensitive account details (requires step-up)…',
+  };
+  addMessage('assistant', '⚙ ' + (labels[actionId] || actionId));
+}
+</script>
+
+</body>
+</html>

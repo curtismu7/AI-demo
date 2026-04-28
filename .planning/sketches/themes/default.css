@@ -1,0 +1,31 @@
+/* BX Finance banking agent — design tokens matching BankingAgent.css exactly */
+:root {
+  --ba-bg: #152a52;
+  --ba-surface: #1a3a6e;
+  --ba-border: rgba(65, 105, 225, 0.35);
+  --ba-text: #e8eefc;
+  --ba-muted: #9db4e8;
+  --ba-float-btn: #4169e1;
+  --ba-accent: #b91c1c;
+  --ba-chip-bg: rgba(65, 105, 225, 0.18);
+  --ba-chip-bd: #5b7ef0;
+  --ba-chip-txt: #c7d7ff;
+  --ba-input-bg: #152a52;
+  --ba-input-bd: rgba(65, 105, 225, 0.45);
+  --ba-shadow: 0 24px 60px rgba(10, 20, 50, 0.55);
+
+  /* spacing */
+  --xs: 4px;
+  --sm: 8px;
+  --md: 16px;
+  --lg: 24px;
+
+  /* typography */
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  --text-body: 14px;
+  --text-label: 12px;
+  --text-section: 10px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: #0d1b35; color: var(--ba-text); }
