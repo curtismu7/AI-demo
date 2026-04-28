@@ -101,6 +101,7 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) �
 ---
 
 ## Roadmap Evolution
+- Phase 247 added: PingOne MCP Server integration — feature-flagged option to use pingidentity/pingone-mcp-server (stdio binary) alongside existing custom MCP gateway, with adapter layer, admin UI toggle, and status chip reflecting active mode
 
 - Phase 245 added: 403 scope trap and token introspection — 403 insufficient scope errors are trapped by the agent, trigger automatic scope upgrade via token exchange, and all tokens are validated via PingOne introspection endpoint
 - Phase 244 added: Interactive architecture diagram walkthrough — highlight components on Ping Identity Digital Assistants diagram and detailed token-flow diagram as each step is processed

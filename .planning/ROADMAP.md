@@ -1884,6 +1884,16 @@ Plans:
 - [ ] 246-03-PLAN.md — Build verification + human visual check
 
 
+### Phase 247: PingOne MCP Server integration — feature-flagged option to use pingidentity/pingone-mcp-server (stdio binary) alongside existing custom MCP gateway, with adapter layer, admin UI toggle, and status chip reflecting active mode
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 246
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 247 to break down)
+
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
