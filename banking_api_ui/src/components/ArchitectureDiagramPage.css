@@ -168,3 +168,225 @@
 .diagram-region-text--active-permit {
   fill: #166534;
 }
+
+/* ── Layout: diagram + side card ─────────────────────── */
+
+.arch-diagram-body {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.arch-diagram-body--with-card .arch-diagram-scroll-wrapper {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.arch-token-side {
+  flex: 0 0 300px;
+  min-width: 280px;
+  max-width: 320px;
+  align-self: flex-start;
+  position: sticky;
+  top: 8px;
+}
+
+/* ── Aud trail ────────────────────────────────────────── */
+
+.arch-aud-trail {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+}
+
+.arch-aud-trail__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.arch-aud-trail__arrow {
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.arch-aud-trail__arrow--past { color: #2563eb; }
+
+.arch-aud-trail__hop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 3px 8px;
+  transition: background 0.3s, border-color 0.3s;
+  min-width: 88px;
+}
+.arch-aud-trail__hop--on {
+  background: #004687;
+  border-color: #004687;
+}
+.arch-aud-trail__hop--past {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.arch-aud-trail__icon { font-size: 0.7rem; }
+
+.arch-aud-trail__name {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #94a3b8;
+  line-height: 1.2;
+}
+.arch-aud-trail__hop--on  .arch-aud-trail__name { color: #fff; }
+.arch-aud-trail__hop--past .arch-aud-trail__name { color: #1d4ed8; }
+
+.arch-aud-trail__aud {
+  font-size: 0.57rem;
+  font-family: monospace;
+  color: #cbd5e1;
+  line-height: 1.2;
+}
+.arch-aud-trail__hop--on  .arch-aud-trail__aud { color: #bfdbfe; }
+.arch-aud-trail__hop--past .arch-aud-trail__aud { color: #3b82f6; }
+
+.arch-aud-trail__act,
+.arch-aud-trail__mayact {
+  font-size: 0.54rem;
+  font-family: monospace;
+  color: #94a3b8;
+  line-height: 1.2;
+}
+.arch-aud-trail__hop--on .arch-aud-trail__act    { color: #86efac; }
+.arch-aud-trail__hop--on .arch-aud-trail__mayact { color: #fde68a; }
+
+/* ── Step controls ────────────────────────────────────── */
+
+.arch-step-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.arch-step-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #004687;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 5px;
+  padding: 0.25rem 0.6rem;
+}
+.arch-step-label--paused {
+  color: #92400e;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.arch-ctrl-btn {
+  padding: 0.25rem 0.7rem;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.arch-ctrl-btn--pause  { background: #f59e0b; color: #fff; }
+.arch-ctrl-btn--pause:hover  { background: #d97706; }
+.arch-ctrl-btn--resume { background: #22c55e; color: #fff; }
+.arch-ctrl-btn--resume:hover { background: #16a34a; }
+.arch-ctrl-btn--next   { background: #004687; color: #fff; }
+.arch-ctrl-btn--next:hover   { background: #003366; }
+.arch-ctrl-btn--stop   { background: #e2e8f0; color: #475569; }
+.arch-ctrl-btn--stop:hover   { background: #cbd5e1; }
+
+/* ── Token card ───────────────────────────────────────── */
+
+.arch-token-card {
+  background: linear-gradient(140deg, #1e3a5f, #1d4ed8);
+  color: #fff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-family: monospace;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.arch-token-card--exchange { background: linear-gradient(140deg,#4c1d95,#6d28d9); }
+.arch-token-card--permit   { background: linear-gradient(140deg,#14532d,#166534); }
+.arch-token-card--hitl     { background: linear-gradient(140deg,#78350f,#92400e); }
+
+.arch-token-card__header {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 8px;
+}
+
+.arch-token-card__split {
+  display: flex;
+  gap: 10px;
+}
+.arch-token-card__col { flex: 1; min-width: 0; }
+.arch-token-card__divider {
+  width: 1px;
+  background: rgba(255,255,255,0.15);
+  flex-shrink: 0;
+}
+.arch-token-card__col-label {
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 5px;
+}
+.arch-token-card__col-label--issued { color: #a5f3fc; }
+
+.arch-token-card__note {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.5);
+  font-style: italic;
+  line-height: 1.4;
+  font-family: system-ui, sans-serif;
+}
+
+/* ── Claim rows ───────────────────────────────────────── */
+
+.arch-claim-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+  align-items: flex-start;
+}
+.arch-claim-key {
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.45);
+  min-width: 88px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+.arch-claim-val {
+  font-size: 0.72rem;
+  font-family: monospace;
+  line-height: 1.4;
+  word-break: break-all;
+  color: rgba(255,255,255,0.88);
+}
+.arch-claim-val--hi     { color: #93c5fd; font-weight: 700; }
+.arch-claim-val--accent { color: #86efac; font-weight: 700; }
+.arch-claim-val--muted  { color: rgba(255,255,255,0.4); }
