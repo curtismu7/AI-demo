@@ -386,6 +386,54 @@ export default function PingOneTestPage() {
 		}
 	};
 
+	// Resets all token result state to a clean baseline.
+	// Preserves workerConfig (credentials/config) and PingOne config.
+	const handleClearAllTokenState = useCallback(() => {
+		setWorkerToken(null);
+		setWorkerTokenExpiry(null);
+		setWorkerTokenError(null);
+		setWorkerDecoded(null);
+		setAuthzTokenStatus("pending");
+		setAgentTokenStatus("pending");
+		setAuthzTokenError(null);
+		setAgentTokenError(null);
+		setAuthzDecoded(null);
+		setAgentDecoded(null);
+		setExchange1Status("pending");
+		setExchange2Status("pending");
+		setExchange401Status("pending");
+		setExchange1Error(null);
+		setExchange2Error(null);
+		setExchange401Error(null);
+		setExchange401Decoded(null);
+		setExchange401Steps([]);
+		setExchange401AgentDecoded(null);
+		setExchange2Decoded(null);
+		setExchange2SubjectDecoded(null);
+		setExchange2ActorDecoded(null);
+		setExchange186Status("pending");
+		setExchange186Error(null);
+		setExchange186Decoded(null);
+		setExchange186ActorDecoded(null);
+		setExchangeIdTokenError(null);
+		setExchangeIdTokenDecoded(null);
+		setMcpExchangeDiag(null);
+		setMcpExchangeFixResult(null);
+		setScopeFixResult(null);
+		setTestResults({});
+	}, [
+		setWorkerToken, setWorkerTokenExpiry, setWorkerTokenError, setWorkerDecoded,
+		setAuthzTokenStatus, setAgentTokenStatus, setAuthzTokenError, setAgentTokenError,
+		setAuthzDecoded, setAgentDecoded,
+		setExchange1Status, setExchange2Status, setExchange401Status,
+		setExchange1Error, setExchange2Error, setExchange401Error,
+		setExchange401Decoded, setExchange401Steps, setExchange401AgentDecoded,
+		setExchange2Decoded, setExchange2SubjectDecoded, setExchange2ActorDecoded,
+		setExchange186Status, setExchange186Error, setExchange186Decoded, setExchange186ActorDecoded,
+		setExchangeIdTokenError, setExchangeIdTokenDecoded,
+		setMcpExchangeDiag, setMcpExchangeFixResult, setScopeFixResult, setTestResults,
+	]);
+
 	const loadWorkerToken = useCallback(async () => {
 		try {
 			notifyInfo("Fetching worker token...", {
@@ -1166,19 +1214,13 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 								>
 									{loading ? "Loading..." : "Fetch Worker Token"}
 								</button>
-								{workerToken === "valid" && (
-									<button
-										type="button"
-										className="pingone-test-button pingone-test-button--fix"
-										onClick={() => {
-											setWorkerToken(null);
-											setWorkerTokenExpiry(null);
-											setWorkerTokenError(null);
-										}}
-									>
-										Clear Token
-									</button>
-								)}
+								<button
+									type="button"
+									className="pingone-test-button pingone-test-button--fix"
+									onClick={handleClearAllTokenState}
+								>
+									Reset All Token State
+								</button>
 							</div>
 							<form
 								onSubmit={(e) => {
