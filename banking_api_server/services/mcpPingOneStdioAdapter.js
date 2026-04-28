@@ -24,14 +24,14 @@ let _initPromise = null;
 const TIMEOUT_MS = 30_000;
 
 function _getCmd() {
-    return process.env.PINGONE_MCP_SERVER_CMD || 'npx';
+    return process.env.PINGONE_MCP_SERVER_CMD || 'pingone-mcp-server';
 }
 
 function _getArgs() {
     if (process.env.PINGONE_MCP_SERVER_ARGS) {
         return process.env.PINGONE_MCP_SERVER_ARGS.split(' ').filter(Boolean);
     }
-    return ['--yes', '@pingidentity/mcp-server'];
+    return ['run'];
 }
 
 function _ensureProcess() {
