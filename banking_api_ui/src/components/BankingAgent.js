@@ -4507,55 +4507,10 @@ export default function BankingAgent({
 										type="button"
 										className="ba-icon-btn"
 										onClick={() => {
-											// Calculate optimal window size based on content and screen
-											const calculateOptimalSize = () => {
-												const screenWidth = window.screen.width;
-												const screenHeight = window.screen.height;
-												const minWidth = 420;
-												const minHeight = 500;
-												const maxWidth = Math.min(800, screenWidth * 0.8);
-												const maxHeight = Math.min(900, screenHeight * 0.8);
-
-												// Base size on current panel size but ensure it fits screen
-												const width = Math.max(
-													minWidth,
-													Math.min(maxWidth, panelSize.width || 420),
-												);
-												let height = Math.max(
-													minHeight,
-													Math.min(maxHeight, panelSize.height || 500),
-												);
-
-												// Adjust height based on content length
-												const messageCount = messages.length;
-												if (messageCount > 10) {
-													height = Math.min(
-														maxHeight,
-														height + (messageCount - 10) * 30,
-													);
-												}
-
-												// Ensure window fits on screen with some margin
-												const left = Math.max(
-													50,
-													Math.min(
-														screenWidth - width - 50,
-														window.screenX + 100,
-													),
-												);
-												const top = Math.max(
-													50,
-													Math.min(
-														screenHeight - height - 50,
-														window.screenY + 100,
-													),
-												);
-
-												return { width, height, left, top };
-											};
-
-											const { width, height, left, top } =
-												calculateOptimalSize();
+											const width = 520;
+											const height = 660;
+											const left = Math.max(50, window.screenX + 100);
+											const top = Math.max(50, window.screenY + 60);
 
 											window.open(
 												"/agent",
@@ -4591,7 +4546,7 @@ export default function BankingAgent({
 											: "Page: switch to dark mode"
 									}
 								>
-									{appTheme === "dark" ? "☀️" : "🌙"}
+									{appTheme === "dark" ? "Light" : "Dark"}
 								</button>
 								{splitChrome && isLoggedIn && (
 									<button
@@ -4624,7 +4579,7 @@ export default function BankingAgent({
 											showTokenChain ? "Hide token chain" : "Show token chain"
 										}
 									>
-										{showTokenChain ? "🔗" : "⛓"}
+										{showTokenChain ? "Chain" : "Chain"}
 									</button>
 								)}
 								{!isInline && (
