@@ -296,11 +296,19 @@ async function listMfaDevices(userId) {
 	try {
 		const workerToken = await _getWorkerToken();
 		const url = `${_apiBaseUrl()}/users/${userId}/devices?filter=(status eq "ACTIVE")`;
+		const debugRequest = {
+			method: "GET",
+			endpoint: url,
+			headers: _debugHeaders(workerToken, "application/json"),
+		};
 		const { data } = await axios.get(url, {
 			headers: { Authorization: `Bearer ${workerToken}` },
 			timeout: 10000,
+		}).catch((err) => {
+			err._debug = { request: debugRequest, response: err.response?.data || null };
+			throw err;
 		});
-		return data._embedded?.devices || [];
+		return { devices: data._embedded?.devices || [], _debug: { request: debugRequest, response: data } };
 	} catch (err) {
 		throw _wrapError("listMfaDevices", err);
 	}

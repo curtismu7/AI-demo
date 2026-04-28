@@ -66,6 +66,8 @@ export default function MFATestPage() {
 	// Device management state
 	const [devices, setDevices] = useState([]);
 	const [devicesStatus, setDevicesStatus] = useState("pending");
+	const [devicesPingoneReq, setDevicesPingoneReq] = useState(null);
+	const [devicesPingoneRes, setDevicesPingoneRes] = useState(null);
 	const [devicesError, setDevicesError] = useState(null);
 
 	// Enrollment state
@@ -171,6 +173,8 @@ export default function MFATestPage() {
 			const params = testUserId ? `?userId=${encodeURIComponent(testUserId)}` : "";
 			const { data } = await apiClient.get(`/api/mfa/test/integration/devices${params}`);
 			setRawDevices(data);
+			if (data.pingoneRequest) setDevicesPingoneReq(data.pingoneRequest);
+			if (data.pingoneResponse) setDevicesPingoneRes(data.pingoneResponse);
 			if (data.success) {
 				setDevices(data.devices || []);
 				setDevicesStatus("passed");
@@ -1631,6 +1635,10 @@ export default function MFATestPage() {
 						error={devicesError}
 						onTest={loadDevices}
 						rawResult={rawDevices}
+						pingoneRequest={devicesPingoneReq}
+						pingoneResponse={devicesPingoneRes}
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#get-read-all-mfa-user-devices"
+						docsSectionTitle="Device Management — List MFA Devices"
 					/>
 					{devices.length > 0 && (
 						<div className="devices-list">

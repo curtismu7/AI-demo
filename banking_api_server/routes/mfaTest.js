@@ -86,8 +86,8 @@ router.get('/methods', (req, res) => {
 router.get('/devices', async (req, res) => {
   try {
     const userId = req.session?.user?.oauthId || req.session?.user?.id || MFA_TEST_USER_ID;
-    const devices = await mfaService.listMfaDevices(userId);
-    res.json({ devices });
+    const result = await mfaService.listMfaDevices(userId);
+    res.json({ devices: result.devices });
   } catch (err) {
     console.error('[MFA Test] GET /devices failed:', err.message);
     res.status(err.status || 500).json({ error: err.message });
@@ -577,7 +577,7 @@ router.post('/integration/enroll-fido2-init', async (req, res) => {
     // If one exists, surface it clearly so the user can delete it before re-enrolling.
     let existingFido2Device = null;
     try {
-      const existingDevices = await mfaService.listMfaDevices(userId);
+      const { devices: existingDevices } = await mfaService.listMfaDevices(userId);
       existingFido2Device = existingDevices.find(
         (d) => String(d.type || '').toUpperCase().includes('FIDO2') && d.status === 'ACTIVE'
       ) || null;
@@ -664,13 +664,23 @@ router.get('/integration/devices', async (req, res) => {
     const { userId } = await _resolveCredentials(req);
 
     const _t6 = Date.now();
-    const devices = await mfaService.listMfaDevices(userId);
-    const resBody = { success: true, devices };
+    const result = await mfaService.listMfaDevices(userId);
+    const resBody = {
+      success: true,
+      devices: result.devices,
+      pingoneRequest: normalizePingoneRequest(result._debug && result._debug.request),
+      pingoneResponse: result._debug && result._debug.response,
+    };
     res.json(resBody);
     trackMfaApiCall(req, res, _t6, resBody, 'List enrolled MFA devices');
   } catch (err) {
     console.error('[MFA Test Integration] GET /devices failed:', err.message);
-    res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
+    const errBody = { success: false, error: err.message, pingError: err.pingError };
+    if (err._debug) {
+      errBody.pingoneRequest = normalizePingoneRequest(err._debug.request);
+      errBody.pingoneResponse = err._debug.response;
+    }
+    res.status(err.status || 500).json(errBody);
   }
 });
 
