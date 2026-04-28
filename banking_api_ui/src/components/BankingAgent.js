@@ -1176,6 +1176,8 @@ export default function BankingAgent({
 	const isBottomDock = isInline && embeddedDockBottom;
 	const isConfigEmbeddedFocus = embeddedFocus === "config";
 	const splitChrome = Boolean(splitColumnChrome && isInline);
+	// Phase 246: also show Actions popout for dashboard inline agents that use distinctFloatingChrome
+	const useActionsPopout = !isInline || Boolean(distinctFloatingChrome && isInline);
 	const { preset: industryPreset } = useIndustryBranding();
 	const brandShortName = industryPreset.shortName;
 	const edu = useEducationUIOptional();
@@ -4413,7 +4415,7 @@ export default function BankingAgent({
 			{/* Panel */}
 			{effectiveIsOpen && (
 				<div
-					className={`banking-agent-panel${isDark ? "" : " ba-mode-light"}${isExpanded && !isInline ? " ba-expanded" : ""}${isInline ? " ba-mode-inline" : ""}${isBottomDock ? " ba-embedded-bottom-dock" : ""}${splitChrome ? " ba-split-column" : ""}`}
+					className={`banking-agent-panel${isDark ? "" : " ba-mode-light"}${isExpanded && !isInline ? " ba-expanded" : ""}${isInline ? " ba-mode-inline" : ""}${isBottomDock ? " ba-embedded-bottom-dock" : ""}${splitChrome ? " ba-split-column" : ""}${distinctFloatingChrome && isInline ? " ba-popout-mode" : ""}`}
 					role="dialog"
 					aria-label={
 						isConfigEmbeddedFocus
@@ -4485,8 +4487,8 @@ export default function BankingAgent({
 									</div>
 								)}
 							<div className="ba-header-tools">
-								{/* Actions trigger — float mode only (D-01, D-02) */}
-								{!isInline && (
+								{/* Actions trigger — float + dashboard inline agents (D-01, D-02) */}
+								{useActionsPopout && (
 									<button
 										ref={discoveryTriggerRef}
 										type="button"
@@ -4540,7 +4542,7 @@ export default function BankingAgent({
 							</div>
 						</div>
 						{/* Phase 246: Actions popout — anchored to ba-header (position:relative in CSS) */}
-						{showDiscovery && !isInline && (
+						{showDiscovery && useActionsPopout && (
 							<div
 								className="ba-actions-popout"
 								role="dialog"
@@ -4810,7 +4812,7 @@ export default function BankingAgent({
 						)}
 					</div>
 					{/* Phase 246: click-dismiss backdrop — covers panel, z-index below popout (D-01) */}
-					{showDiscovery && !isInline && (
+					{showDiscovery && useActionsPopout && (
 						<div
 							className="ba-popout-backdrop"
 							onClick={() => setShowDiscovery(false)}

@@ -25,6 +25,12 @@ const runtimeSettings = require('../config/runtimeSettings');
 router.post('/sensitive-consent', async (req, res) => {
   try {
     const result = await sensitiveDataService.grantSensitiveConsent(req);
+    // Force session flush before responding — ensures the sensitiveReadConsent flag
+    // is written to the SQLite store BEFORE the subsequent /api/banking-agent/message
+    // request reads the session (fixes race condition on async session save).
+    await new Promise((resolve, reject) =>
+      req.session.save((err) => (err ? reject(err) : resolve()))
+    );
     return res.json(result);
   } catch (err) {
     console.error('[sensitiveBanking] grantSensitiveConsent error:', err.message);

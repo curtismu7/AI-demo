@@ -195,6 +195,10 @@ body > .banking-agent-float-root .banking-agent-panel {
 .banking-agent-panel:not(.ba-mode-inline) .ba-left-col {
 	display: none;
 }
+/* Phase 246: hide left rail in dashboard inline agents that use the Actions popout (ba-popout-mode) */
+.banking-agent-panel.ba-popout-mode .ba-left-col {
+	display: none;
+}
 .banking-agent-panel:not(.ba-mode-inline) .ba-left-col::-webkit-scrollbar {
 	display: none;
 }
