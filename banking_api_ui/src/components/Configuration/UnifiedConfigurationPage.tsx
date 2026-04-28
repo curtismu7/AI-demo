@@ -15,7 +15,7 @@ const CONFIGURATION_TABS = [
   {
     id: 'quick-start',
     label: 'Quick Start',
-    icon: 'rocket',
+    icon: '🚀',
     description: 'Minimum setup to run the demo — PingOne region, environment ID, and branding',
     requiresAuth: false,
     sections: ['pingone-basics', 'demo-data-setup', 'industry-branding']
@@ -23,7 +23,7 @@ const CONFIGURATION_TABS = [
   {
     id: 'pingone-config',
     label: 'PingOne Setup',
-    icon: 'shield',
+    icon: '🛡️',
     description: 'OAuth clients, MFA policies, and token exchange — the full PingOne wiring',
     requiresAuth: true,
     requiredRole: 'admin',
@@ -32,7 +32,7 @@ const CONFIGURATION_TABS = [
   {
     id: 'demo-management',
     label: 'Demo Data',
-    icon: 'database',
+    icon: '🗄️',
     description: 'Sample accounts, transactions, and demo presets — no PingOne credentials needed',
     requiresAuth: false,
     sections: ['demo-scenarios', 'account-setup', 'transaction-data', 'agent-modes']
@@ -40,7 +40,7 @@ const CONFIGURATION_TABS = [
   {
     id: 'agent-configuration',
     label: 'Agent Settings',
-    icon: 'robot',
+    icon: '🤖',
     description: 'AI agent chat mode, MCP tool scopes, education panels, and token chain display',
     requiresAuth: true,
     sections: ['agent-ui-mode', 'mcp-scopes', 'mcp-tools', 'education-settings', 'token-chain']
@@ -48,7 +48,7 @@ const CONFIGURATION_TABS = [
   {
     id: 'advanced',
     label: 'Advanced',
-    icon: 'settings',
+    icon: '⚙️',
     description: 'Vercel deploy URL, worker app secrets, debug logging, and RSA keypair generation',
     requiresAuth: true,
     requiredRole: 'admin',
@@ -356,10 +356,7 @@ const ConfigurationTabs: FC<{
           aria-controls={`tabpanel-${tab.id}`}
         >
           <span className="tab-icon">{tab.icon}</span>
-          <div className="tab-content">
-            <span className="tab-label">{tab.label}</span>
-            <span className="tab-description">{tab.description}</span>
-          </div>
+          <span className="tab-label">{tab.label}</span>
         </button>
       ))}
     </nav>
@@ -680,7 +677,7 @@ const UnifiedConfigurationPage: FC<{
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ [flagId]: newValue }),
+        body: JSON.stringify({ updates: { [flagId]: newValue } }),
       });
       if (!res.ok) throw new Error('PATCH failed');
       notifySuccess(`Flag ${newValue ? 'enabled' : 'disabled'}`);
@@ -1322,6 +1319,12 @@ const UnifiedConfigurationPage: FC<{
         activeTab={activeTab}
         onTabChange={handleTabChange}
       />
+
+      {currentTab && (
+        <div className="configuration-tab-desc-bar">
+          <span className="configuration-tab-desc-bar__text">{currentTab.description}</span>
+        </div>
+      )}
 
       {currentTab && (
         <div className="configuration-content">
