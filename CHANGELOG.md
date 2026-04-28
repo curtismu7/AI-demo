@@ -17,10 +17,14 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Fixed
+
+- **Architecture pages — floating agent FAB now starts collapsed** — `isBankingAgentFloatingDefaultOpen` returns false for `/architecture/*` so the FAB button is visible on page load instead of the panel auto-opening and hiding the FAB.
 - **MCP Gateway auth tests** — added missing `devBypass: false` to `GatewayConfig` stubs in `gateway-auth.test.ts` and `gateway-server.test.ts` so all 35 tests pass after `devBypass` was added to `GatewayConfig` in a later fix.
 - **Monitoring pages — agent FAB visible on all monitoring routes** — `isEmbeddedAgentDockRoute` now returns true for all `isMonitoringRoute` paths so the floating agent icon appears on Token Chain, Token Diff, Flow Inspector, MCP Traffic, API Explorer, API Traffic, and Dev Tools pages for both admin and customer users.
 
 ### Added
+
+- **Interactive Flow diagram** — React Flow page at `/architecture/flow` with live node highlighting from app events, animated edges during simulation, 9-step Simulate Flow walkthrough, drag-to-rearrange nodes, MiniMap, and Controls; uses @xyflow/react.
 - **Phase 244 — Interactive architecture diagrams** — Overview and Token Flow diagram pages at `/architecture/overview` and `/architecture/token-flow` with SVG region overlays, live event-driven highlighting (per-region timers, admin-only polling), and Architecture nav group in AdminSideNav; agent FAB enabled on all `/architecture/*` routes.
 - **Phase 241 — Monitoring sidebar pages** — 5 new `/monitoring/*` routes (Token Chain, Token Diff, Flow Inspector, MCP Traffic, API Explorer) visible to both admin and customer users; legacy Monitoring items (Activity Logs, Audit Trail, API Traffic, MCP Traffic, Dev Tools) remain admin-only.
 - **Phase 231 — Agent chip panel redesign** — Removed inline "Learn & Explore" chip section; replaced with collapsible `ACTION_GROUPS` sections with per-group count badges and a collapse-all toolbar button. Added "⊞ All actions" discovery popout showing all chips organised by group with live search and Escape-to-close. Extended `nlIntentParser.js` heuristics with 9 new intent mappings (CIBA, token-chain, agent-tokens, client-credentials, PKCE, consent, step-up, MFA, revocation) so no chip falls through to the LLM.

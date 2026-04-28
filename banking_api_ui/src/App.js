@@ -27,6 +27,7 @@ import AdminTokenComplianceAudit from "./components/AdminTokenComplianceAudit";
 import AgentFlowDiagramPanel from "./components/AgentFlowDiagramPanel";
 import { AgenticTrustEducation } from "./components/AgenticTrustEducation";
 import ApiExplorerPanel from "./components/ApiExplorerPanel";
+import ArchitectureFlowPage from "./components/ArchitectureFlowPage";
 import ArchitectureOverviewPage from "./components/ArchitectureOverviewPage";
 import ArchitectureTokenFlowPage from "./components/ArchitectureTokenFlowPage";
 import ApiTrafficPage from "./components/ApiTrafficPage";
@@ -820,6 +821,7 @@ function AppWithAuth() {
 											<Routes>
 												<Route path="overview" element={<ArchitectureOverviewPage user={user} />} />
 												<Route path="token-flow" element={<ArchitectureTokenFlowPage user={user} />} />
+												<Route path="flow" element={<ArchitectureFlowPage user={user} />} />
 											</Routes>
 										</main>
 									</>

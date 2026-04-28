@@ -190,6 +190,7 @@ git checkout <last-version-tag> -- <key-file>
 | PingOne Authorize Test Page — PERMIT/STEP UP/DENY live policy evaluation | active | `banking_api_ui/src/components/AuthzTestPage.jsx`, `banking_api_ui/src/components/AuthzTestPage.css`, `banking_api_server/routes/authorize.js` (`test-status`, `test-evaluate`) | — |
 | Monitoring pages — Token Chain, Token Diff, Flow Inspector, MCP Traffic, API Explorer (visible to admin + customer) | active | `banking_api_ui/src/App.js`, `banking_api_ui/src/components/AdminSideNav.jsx` | — |
 | Architecture diagrams — Overview and Token Flow with live SVG region highlighting driven by app events (admin-only polling) | active | `banking_api_ui/src/components/ArchitectureOverviewPage.js`, `banking_api_ui/src/components/ArchitectureTokenFlowPage.js`, `banking_api_ui/src/components/ArchitectureDiagramPage.js` | — |
+| Interactive Flow diagram — React Flow graph at `/architecture/flow` with draggable nodes, animated edges, live event-driven node highlighting, and 9-step Simulate Flow walkthrough | active | `banking_api_ui/src/components/ArchitectureFlowPage.js` | — |
 
 ---
 

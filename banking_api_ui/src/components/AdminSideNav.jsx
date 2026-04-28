@@ -139,6 +139,7 @@ export default function AdminSideNav({ user }) {
 			children: [
 				{ label: "Overview Diagram", path: "/architecture/overview", icon: "🏗️" },
 				{ label: "Token Flow Diagram", path: "/architecture/token-flow", icon: "🔗" },
+				{ label: "Interactive Flow", path: "/architecture/flow", icon: "⚡" },
 			],
 		},
 		{
