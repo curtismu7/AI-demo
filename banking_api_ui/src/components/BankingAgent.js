@@ -4551,9 +4551,39 @@ export default function BankingAgent({
 								<input
 									className="ba-popout-search"
 									type="search"
-									placeholder="Search actions…"
+									placeholder="Search actions or type a question…"
 									value={discoverySearch}
 									onChange={(e) => setDiscoverySearch(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key !== "Enter") return;
+										const text = discoverySearch.trim();
+										if (!text) return;
+										setShowDiscovery(false);
+										setDiscoverySearch("");
+										if (isAgentBlockedByConsentDecline()) {
+											addMessage("assistant", AGENT_CONSENT_BLOCK_USER_MESSAGE);
+											return;
+										}
+										if (!(isLoggedIn || marketingGuestChatEnabled)) return;
+										try { sessionStorage.setItem(BX_AGENT_PENDING_NL_KEY, text); } catch (_) {}
+										setNlInput("");
+										addMessage("user", text);
+										setNlLoading(true);
+										sendAgentMessage(text)
+											.then((res) => {
+												if (res.error || !res.success) reportNlFailure(res);
+												else {
+													try { sessionStorage.removeItem(BX_AGENT_PENDING_NL_KEY); } catch (_) {}
+													if (res.tokenEvents?.length) {
+														appendTokenEvents(res.tokenEvents);
+														if (tokenChain) tokenChain.setTokenEvents("agent", res.tokenEvents);
+													}
+													addMessage("assistant", res.reply || "Done.");
+												}
+											})
+											.catch((err) => reportNlFailure(err))
+											.finally(() => setNlLoading(false));
+									}}
 									autoFocus
 								/>
 								<div className="ba-popout-body">
