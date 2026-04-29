@@ -57,13 +57,11 @@ const McpInspector = ({ user, onLogout }) => {
   const [lastInvoke, setLastInvoke] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  // Derive the LangChain inspector URL from the current host so it works on
-  // any machine (local dev, api.pingdemo.com, etc.) — not just localhost.
+  // Proxy through the BFF so the browser can use HTTPS.
+  // The BFF fetches from http://localhost:8081 server-side where TLS is not needed.
   const langchainInspector =
     process.env.REACT_APP_LANGCHAIN_INSPECTOR_URL ||
-    (typeof window !== 'undefined'
-      ? `${window.location.protocol}//${window.location.hostname}:8081/inspector/mcp-host`
-      : 'http://localhost:8081/inspector/mcp-host');
+    '/api/mcp/inspector/langchain-host';
 
   const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
 

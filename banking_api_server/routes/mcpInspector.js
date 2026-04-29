@@ -292,4 +292,30 @@ router.post('/invoke', express.json(), async (req, res) => {
   }
 });
 
+// GET /api/mcp/inspector/langchain-host — proxy to the LangChain agent health server
+// so the browser can reach it over HTTPS (BFF has TLS; port 8081 is plain HTTP).
+router.get('/langchain-host', async (req, res) => {
+  const port = process.env.HEALTH_HTTP_PORT || '8081';
+  const url = `http://localhost:${port}/inspector/mcp-host`;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000);
+    const upstream = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!upstream.ok) {
+      return res.status(502).json({ error: 'langchain_agent_error', message: `Agent returned HTTP ${upstream.status}` });
+    }
+    const data = await upstream.json();
+    res.json(data);
+  } catch (err) {
+    const isDown = err.name === 'AbortError' || err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET';
+    res.status(isDown ? 503 : 502).json({
+      error: isDown ? 'langchain_agent_down' : 'langchain_agent_error',
+      message: isDown
+        ? `LangChain agent not running. Start with: cd langchain_agent && python -m src.main`
+        : err.message,
+    });
+  }
+});
+
 module.exports = router;
