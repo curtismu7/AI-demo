@@ -92,6 +92,7 @@ interface ConfigurationState {
   // OAuth clients
   adminClientId: string;
   adminClientSecret: string;
+  adminAuthMethod: string;
   adminRedirectUri: string;
   userClientId: string;
   userClientSecret: string;
@@ -144,6 +145,7 @@ const getDefaultState = (): ConfigurationState => ({
   pingoneEnvironmentId: '',
   adminClientId: '',
   adminClientSecret: '',
+  adminAuthMethod: 'client_secret_basic',
   adminRedirectUri: '',
   userClientId: '',
   userClientSecret: '',
@@ -448,6 +450,7 @@ const UnifiedConfigurationPage: FC<{
           pingoneEnvironmentId: (cfg.pingone_environment_id as string) || '',
           adminClientId: (cfg.admin_client_id as string) || '',
           adminClientSecret: (cfg.admin_client_secret as string) || '',
+          adminAuthMethod: (cfg.admin_token_endpoint_auth_method as string) || 'client_secret_basic',
           adminRedirectUri: (cfg.admin_redirect_uri as string) || '',
           userClientId: (cfg.user_client_id as string) || '',
           userClientSecret: (cfg.user_client_secret as string) || '',
@@ -593,6 +596,7 @@ const UnifiedConfigurationPage: FC<{
         pingone_environment_id: state.pingoneEnvironmentId,
         admin_client_id: state.adminClientId,
         admin_client_secret: state.adminClientSecret,
+        admin_token_endpoint_auth_method: state.adminAuthMethod,
         admin_redirect_uri: state.adminRedirectUri,
         user_client_id: state.userClientId,
         user_client_secret: state.userClientSecret,
@@ -763,6 +767,25 @@ const UnifiedConfigurationPage: FC<{
           onChange={field('adminClientId')}
           placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
           help="Client ID of a PingOne Worker application with Management API roles (e.g. Environment Admin or Identity Data Admin). The BFF uses this to call PingOne Management APIs for user lookup, MFA enrollment, and configuration queries. Create one in PingOne → Applications → + Application → Worker."
+        />
+        <CfgSecretField
+          label="Admin Client Secret"
+          fieldKey="adminClientSecret"
+          value={state.adminClientSecret}
+          showSecrets={state.showSecrets}
+          onToggle={toggleSecret}
+          onChange={field('adminClientSecret')}
+          help="The client secret for the Worker app. Found in PingOne → Applications → your Worker app → Overview → Client Secret."
+        />
+        <CfgSelect
+          label="Token Endpoint Auth Method"
+          value={state.adminAuthMethod}
+          onChange={v => setState(prev => ({ ...prev, adminAuthMethod: v, saveStatus: 'idle' }))}
+          options={[
+            { value: 'client_secret_basic', label: 'client_secret_basic (HTTP Basic — recommended)' },
+            { value: 'client_secret_post', label: 'client_secret_post (POST body)' },
+          ]}
+          help="How the BFF authenticates when requesting tokens from PingOne. Must match the Token Endpoint Authentication Method on the Worker app in PingOne → Applications → Configuration."
         />
         <div className="cfg-test-connection">
           <button
