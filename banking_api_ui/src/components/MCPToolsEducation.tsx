@@ -406,6 +406,103 @@ export const MCPToolsEducation: React.FC = () => {
         })}
       </div>
 
+      {/* ------------------------------------------------------------------ */}
+      {/* Tool Coverage Tables */}
+      {/* ------------------------------------------------------------------ */}
+      <div style={{ marginTop: '32px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1a3a52', marginBottom: '8px' }}>
+          Action Chips — Tool Mapping
+        </h3>
+        <p style={{ fontSize: '13px', color: '#555', marginBottom: '12px' }}>
+          Each MCP tool has a corresponding quick-action chip in the Banking Agent UI. Clicking a chip sends
+          a pre-built natural-language intent — no typing required.
+        </p>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ background: '#f1f5f9' }}>
+                <th style={{ padding: '9px 14px', textAlign: 'left', borderBottom: '2px solid #e2e8f0', fontWeight: 700, color: '#1a3a52' }}>Tool</th>
+                <th style={{ padding: '9px 14px', textAlign: 'left', borderBottom: '2px solid #e2e8f0', fontWeight: 700, color: '#1a3a52' }}>Chip Label</th>
+                <th style={{ padding: '9px 14px', textAlign: 'left', borderBottom: '2px solid #e2e8f0', fontWeight: 700, color: '#1a3a52' }}>Group</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { tool: 'get_my_accounts',              chip: '🏦 My Accounts',                   group: 'Account',     isNew: false },
+                { tool: 'get_account_balance',          chip: '💰 Check Balance',                 group: 'Account',     isNew: false },
+                { tool: 'get_my_transactions',          chip: '📋 Recent Transactions',           group: 'Transaction', isNew: false },
+                { tool: 'get_sensitive_account_details',chip: 'View Sensitive Account Details',   group: 'Account',     isNew: false },
+                { tool: 'create_deposit',               chip: '⬇ Deposit',                       group: 'Transaction', isNew: false },
+                { tool: 'create_withdrawal',            chip: '⬆ Withdraw',                      group: 'Transaction', isNew: false },
+                { tool: 'create_transfer',              chip: '↔ Transfer',                      group: 'Transaction', isNew: false },
+                { tool: 'query_user_by_email',          chip: '🔎 Query User by Email',           group: 'Admin',       isNew: true  },
+                { tool: 'sequential_think',             chip: '🧠 Think Through a Question',      group: 'Account',     isNew: true  },
+              ].map((row, i) => (
+                <tr key={row.tool} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                  <td style={{ padding: '8px 14px', borderBottom: '1px solid #f1f5f9', fontFamily: 'monospace', fontSize: '12px', color: '#374151' }}>{row.tool}</td>
+                  <td style={{ padding: '8px 14px', borderBottom: '1px solid #f1f5f9', color: '#111827' }}>
+                    {row.chip}
+                    {row.isNew && <span style={{ marginLeft: 6, fontSize: '10px', fontWeight: 700, background: '#dbeafe', color: '#1d4ed8', borderRadius: 8, padding: '1px 7px' }}>new</span>}
+                  </td>
+                  <td style={{ padding: '8px 14px', borderBottom: '1px solid #f1f5f9' }}>
+                    <span style={{
+                      fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+                      background: row.group === 'Account' ? '#eff6ff' : row.group === 'Transaction' ? '#f0fdf4' : '#fef3c7',
+                      color:      row.group === 'Account' ? '#1d4ed8' : row.group === 'Transaction' ? '#166534'  : '#92400e',
+                    }}>
+                      {row.group}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1a3a52', marginTop: '28px', marginBottom: '8px' }}>
+          Coverage Matrix
+        </h3>
+        <p style={{ fontSize: '13px', color: '#555', marginBottom: '12px' }}>
+          Every tool is registered in three places so the demo works even without a live MCP server connection.
+          <strong> MCP Server</strong> = live tool call via WebSocket; <strong>Static Fallback</strong> = heuristic
+          response from the BFF when the MCP server is unreachable; <strong>Education Panel</strong> = documented
+          here on this page.
+        </p>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ background: '#f1f5f9' }}>
+                <th style={{ padding: '9px 14px', textAlign: 'left', borderBottom: '2px solid #e2e8f0', fontWeight: 700, color: '#1a3a52' }}>Tool</th>
+                <th style={{ padding: '9px 14px', textAlign: 'center', borderBottom: '2px solid #e2e8f0', fontWeight: 700, color: '#1a3a52' }}>MCP Server</th>
+                <th style={{ padding: '9px 14px', textAlign: 'center', borderBottom: '2px solid #e2e8f0', fontWeight: 700, color: '#1a3a52' }}>Static Fallback</th>
+                <th style={{ padding: '9px 14px', textAlign: 'center', borderBottom: '2px solid #e2e8f0', fontWeight: 700, color: '#1a3a52' }}>Education Panel</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                'get_my_accounts',
+                'get_account_balance',
+                'get_my_transactions',
+                'get_sensitive_account_details',
+                'create_deposit',
+                'create_withdrawal',
+                'create_transfer',
+                'query_user_by_email',
+                'sequential_think',
+              ].map((tool, i) => (
+                <tr key={tool} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                  <td style={{ padding: '8px 14px', borderBottom: '1px solid #f1f5f9', fontFamily: 'monospace', fontSize: '12px', color: '#374151' }}>{tool}</td>
+                  <td style={{ padding: '8px 14px', borderBottom: '1px solid #f1f5f9', textAlign: 'center', color: '#16a34a', fontWeight: 700, fontSize: '16px' }}>✓</td>
+                  <td style={{ padding: '8px 14px', borderBottom: '1px solid #f1f5f9', textAlign: 'center', color: '#16a34a', fontWeight: 700, fontSize: '16px' }}>✓</td>
+                  <td style={{ padding: '8px 14px', borderBottom: '1px solid #f1f5f9', textAlign: 'center', color: '#16a34a', fontWeight: 700, fontSize: '16px' }}>✓</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
       <div className={styles.category} style={{ marginTop: '24px' }}>
         <button
           className={styles.categoryHeader}
