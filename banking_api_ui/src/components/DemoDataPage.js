@@ -1710,12 +1710,11 @@ export default function DemoDataPage({ user, onLogout }) {
                       <ol style={{ margin: '0.3rem 0 0 1.1rem', padding: 0 }}>
                         <li>
                           <strong>Enable the feature flag</strong> — go to{' '}
-                          <a href="/configure#feature-flags" style={{ color: '#92400e' }}>Configuration → Feature Flags</a>{' '}
-                          and turn on <em>"Token Exchange — 2-Exchange Delegated Chain"</em>.
+                          <a href="/configure?tab=feature-flags&flag=ff_two_exchange_delegation" style={{ color: '#92400e' }}>Configuration → Feature Flags → "2-Exchange Delegated Chain"</a>.
                         </li>
                         <li>
                           <strong>Set the env vars</strong> — go to{' '}
-                          <a href="/configure" style={{ color: '#92400e' }}>Configuration → PingOne Setup → Agent Settings</a>{' '}
+                          <a href="/configure?tab=pingone-setup&section=agent-settings" style={{ color: '#92400e' }}>Configuration → PingOne Setup → Agent Settings</a>{' '}
                           and save <code>AI_AGENT_CLIENT_ID</code> + <code>AI_AGENT_CLIENT_SECRET</code>
                           {' '}(or add them to your <code>.env</code> file and restart the server).
                         </li>

@@ -838,6 +838,19 @@ const UnifiedConfigurationPage: FC<{
     return () => { cancelled = true; };
   }, [activeTab]);
 
+  // Deep-link: scroll to specific flag when ?flag=<id> is in the URL
+  useEffect(() => {
+    if (flagsLoading || featureFlags.length === 0) return;
+    const flagParam = searchParams.get('flag');
+    if (!flagParam) return;
+    const el = document.getElementById(flagParam);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ff-flag-card--highlight');
+      setTimeout(() => el.classList.remove('ff-flag-card--highlight'), 2500);
+    }
+  }, [flagsLoading, featureFlags, searchParams]);
+
   const toggleFlag = useCallback(async (flagId: string, newValue: boolean) => {
     setFeatureFlags(prev => prev.map(f => f.id === flagId ? { ...f, value: newValue } : f));
     try {
@@ -1573,7 +1586,7 @@ const UnifiedConfigurationPage: FC<{
             <div key={cat} className="ff-category-group">
               <h3 className="ff-category-title">{cat}</h3>
               {featureFlags.filter(f => f.category === cat).map(flag => (
-                <div key={flag.id} className="ff-flag-card">
+                <div key={flag.id} id={flag.id} className="ff-flag-card">
                   <div className="ff-flag-header">
                     <span className="ff-flag-name">{flag.name}</span>
                     <button

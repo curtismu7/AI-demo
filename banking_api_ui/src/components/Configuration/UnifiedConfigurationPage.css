@@ -1089,3 +1089,11 @@
   font-style: italic;
 }
 .cfg-section-save-btn--saved + .cfg-section-save-hint { color: #15803d; font-style: normal; font-weight: 600; }
+
+/* Deep-link highlight for a specific feature flag */
+.ff-flag-card--highlight {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+  background: #eef2ff;
+  transition: background 0.4s, outline 0.4s;
+}
