@@ -4620,57 +4620,6 @@ export default function BankingAgent({
 									autoFocus
 								/>
 								<div className="ba-popout-body">
-								{(() => {
-									const q = discoverySearch.trim().toLowerCase();
-									const visible = q
-										? suggestionList.filter((s) => s.toLowerCase().includes(q))
-										: suggestionList;
-									if (visible.length === 0) return null;
-									return (
-										<div className="ba-popout-section">
-											<span className="ba-popout-section-label">Suggestions</span>
-											<div className="ba-popout-chip-row">
-												{visible.map((s) => (
-													<button
-														key={s}
-														type="button"
-														className="ba-suggestion"
-														disabled={consentBlocked}
-														onClick={() => {
-															setShowDiscovery(false);
-															if (isAgentBlockedByConsentDecline()) {
-																addMessage("assistant", AGENT_CONSENT_BLOCK_USER_MESSAGE);
-																return;
-															}
-															if (isLoggedIn || marketingGuestChatEnabled) {
-																try { sessionStorage.setItem(BX_AGENT_PENDING_NL_KEY, s.trim()); } catch (_) {}
-																setNlInput("");
-																addMessage("user", s);
-																setNlLoading(true);
-																sendAgentMessage(s)
-																	.then((res) => {
-																		if (res.error || !res.success) reportNlFailure(res);
-																		else {
-																			try { sessionStorage.removeItem(BX_AGENT_PENDING_NL_KEY); } catch (_) {}
-																			if (res.tokenEvents?.length) {
-																				appendTokenEvents(res.tokenEvents);
-																				if (tokenChain) tokenChain.setTokenEvents("agent", res.tokenEvents);
-																			}
-																			addMessage("assistant", res.reply || "Done.");
-																		}
-																	})
-																	.catch((err) => reportNlFailure(err))
-																	.finally(() => setNlLoading(false));
-															}
-														}}
-													>
-														"{s}"
-													</button>
-												))}
-											</div>
-										</div>
-									);
-								})()}
 								{filteredDiscoveryGroups.map((group) => {
 									if (group.key === "learn") return null;
 									if (group.key === "admin" && effectiveUser?.role !== "admin") return null;
