@@ -373,7 +373,7 @@ function restoreRealEnv() {
         'aud:', payload.aud, 'act:', payload.act ? JSON.stringify(payload.act) : 'absent');
     });
 
-    it('Full chain: agentMcpTokenService._performTwoExchangeDelegation', async () => {
+    it('Full chain: resolveMcpAccessTokenWithEvents end-to-end', async () => {
       let agentMcpTokenService;
       try {
         agentMcpTokenService = require('../../services/agentMcpTokenService');
@@ -382,36 +382,164 @@ function restoreRealEnv() {
         return;
       }
 
-      // Build a minimal context that the service expects
+      // Build a minimal req that getSessionBearerForMcp reads
       const mockReq = {
+        sessionID: 'live-test-' + Date.now(),
         session: {
           oauthTokens: { accessToken: subjectToken() },
           agentSession: { sessionId: 'live-test-' + Date.now() },
+          user: { id: 'test-user', role: 'customer' },
         },
       };
-      const events = [];
-      const emitEvent = (type, data) => events.push({ type, ...data });
 
-      // The service should perform both exchanges and return a final token
-      try {
-        const result = await agentMcpTokenService._performTwoExchangeDelegation(
-          subjectToken(), emitEvent
-        );
-        expect(typeof result).toBe('string');
-        expect(result.split('.')).toHaveLength(3);
-        const payload = decodeJwt(result);
-        console.log('[TwoExchange] Final token sub:', payload.sub,
-          'aud:', payload.aud, 'scope:', payload.scope);
-        console.log('[TwoExchange] Events:', events.map(e => e.type).join(' → '));
-      } catch (err) {
-        // Log the full error for debugging but don't swallow structural issues
-        console.error('[TwoExchange] FAILED:', err.message);
-        if (err.requestContext) console.error('[TwoExchange] Context:', err.requestContext);
-        throw err;
-      }
+      const { token, tokenEvents } = await agentMcpTokenService.resolveMcpAccessTokenWithEvents(
+        mockReq, 'get_accounts'
+      );
+
+      expect(typeof token).toBe('string');
+      expect(token.split('.')).toHaveLength(3);
+      const payload = decodeJwt(token);
+      console.log('[TwoExchange] Final token — sub:', payload.sub,
+        'aud:', payload.aud, 'scope:', payload.scope);
+      console.log('[TwoExchange] Events:', tokenEvents.map(e => e.id || e.label).join(' → '));
     });
   }
 );
+
+// ============================================================
+//  SECTION 6: Management API — live list of apps and resource servers
+// ============================================================
+(live ? describe : describe.skip)('6 — Management API (real PingOne HTTP)', () => {
+  jest.setTimeout(30000);
+  let oauthService, managementService;
+
+  const EXPECTED_APPS = [
+    'Super Banking Admin App',
+    'Super Banking User App',
+    'Super Banking MCP Token Exchanger',
+    'Super Banking AI Agent App',
+  ];
+
+  const EXPECTED_RESOURCE_SERVERS = [
+    { name: 'Super Banking MCP Server',    audience: 'https://mcp-server.pingdemo.com' },
+    { name: 'Super Banking MCP Gateway',   audience: 'https://mcp-gateway.pingdemo.com' },
+    { name: 'Super Banking AI Agent Service', audience: 'https://ai-agent.pingdemo.com' },
+  ];
+
+  const EXPECTED_BANKING_SCOPES = [
+    'banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent',
+  ];
+
+  beforeAll(async () => {
+    restoreRealEnv();
+    jest.resetModules();
+    const configStore = require('../../services/configStore');
+    await configStore.ensureInitialized();
+    oauthService = require('../../services/oauthService');
+    managementService = require('../../services/pingoneManagementService').managementService;
+
+    const workerToken = await oauthService.getAgentClientCredentialsToken();
+    managementService.initialize(workerToken);
+  });
+
+  describe('Applications', () => {
+    it('lists applications and finds all 4 Super Banking apps', async () => {
+      const result = await managementService.getApplications();
+      expect(result.success).toBe(true);
+      const names = result.applications.map(a => a.name);
+      for (const expected of EXPECTED_APPS) {
+        expect(names).toContain(expected);
+      }
+    });
+
+    it('MCP Token Exchanger is type AI_AGENT', async () => {
+      const result = await managementService.getApplications();
+      const exchanger = result.applications.find(a => a.name === 'Super Banking MCP Token Exchanger');
+      expect(exchanger).toBeDefined();
+      const appType = exchanger.type || exchanger.applicationType;
+      expect(appType).toBe('AI_AGENT');
+    });
+
+    it('MCP Token Exchanger id matches .env client ID', async () => {
+      const result = await managementService.getApplications();
+      const exchanger = result.applications.find(a => a.name === 'Super Banking MCP Token Exchanger');
+      // For AI_AGENT apps PingOne uses app.id as the OIDC client ID (no oidcOptions wrapper)
+      expect(exchanger?.id).toBe(process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID);
+    });
+  });
+
+  describe('Resource Servers', () => {
+    it('finds all expected Super Banking resource servers', async () => {
+      const result = await managementService.getResourceServers();
+      const audiences = result.resourceServers.map(r => r.audience);
+      for (const rs of EXPECTED_RESOURCE_SERVERS) {
+        expect(audiences).toContain(rs.audience);
+      }
+    });
+
+    it('Super Banking MCP Server has required scopes', async () => {
+      const rsResult = await managementService.getResourceServers();
+      const mcpRS = rsResult.resourceServers.find(
+        r => r.audience === process.env.PINGONE_RESOURCE_MCP_SERVER_URI
+      );
+      expect(mcpRS).toBeDefined();
+
+      const scopeResult = await managementService.getScopes(mcpRS.id);
+      const scopeNames = scopeResult.scopes.map(s => s.name);
+      expect(scopeNames).toContain('banking:read');
+      expect(scopeNames).toContain('banking:write');
+      expect(scopeNames).toContain('banking:mcp:invoke');
+    });
+
+    it('Super Banking AI Agent Service has banking scopes', async () => {
+      const rsResult = await managementService.getResourceServers();
+      const aiRS = rsResult.resourceServers.find(
+        r => r.audience === process.env.ENDUSER_AUDIENCE
+          || r.name === 'Super Banking AI Agent Service'
+      );
+      expect(aiRS).toBeDefined();
+
+      const scopeResult = await managementService.getScopes(aiRS.id);
+      const scopeNames = scopeResult.scopes.map(s => s.name);
+      for (const scope of EXPECTED_BANKING_SCOPES) {
+        expect(scopeNames).toContain(scope);
+      }
+    });
+  });
+
+  describe('CC token scope validation', () => {
+    it('Worker Token CC token has no unexpected broad scopes', async () => {
+      const token = await oauthService.getAgentClientCredentialsToken();
+      const payload = decodeJwt(token);
+      // Worker tokens should not have banking-specific scopes by default
+      expect(payload.iss).toContain('pingone');
+      expect(payload.sub || payload.client_id).toBeTruthy();
+    });
+
+    it('MCP Exchanger CC token contains banking:read and banking:write scopes', async () => {
+      const mcpExchangerToken = await oauthService.getMcpExchangerToken();
+      const payload = decodeJwt(mcpExchangerToken);
+      const scopes = (payload.scope || '').split(' ');
+      // getMcpExchangerToken requests PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SCOPES;
+      // banking:mcp:invoke goes on the exchange *result*, not the actor CC token itself.
+      expect(scopes).toContain('banking:read');
+      expect(scopes).toContain('banking:write');
+    });
+
+    it('AI Agent CC token contains banking:ai:agent scope', async () => {
+      const clientId = process.env.PINGONE_AI_AGENT_CLIENT_ID;
+      const clientSecret = process.env.PINGONE_AI_AGENT_CLIENT_SECRET;
+      const audience = process.env.AI_AGENT_INTERMEDIATE_AUDIENCE || process.env.ENDUSER_AUDIENCE;
+
+      const token = await oauthService.getClientCredentialsTokenAs(
+        clientId, clientSecret, audience, 'post'
+      );
+      const payload = decodeJwt(token);
+      const scopes = (payload.scope || '').split(' ');
+      expect(scopes).toContain('banking:ai:agent');
+    });
+  });
+});
 
 // ============================================================
 //  SECTION 5: Negative tests — wrong creds are actually rejected

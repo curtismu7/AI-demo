@@ -1097,3 +1097,72 @@
   background: #eef2ff;
   transition: background 0.4s, outline 0.4s;
 }
+
+/* ── Feature flag search ──────────────────────────────────────────────────── */
+.ff-search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.ff-search-input {
+  flex: 1;
+  padding: 0.55rem 0.85rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.ff-search-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+.ff-search-count {
+  font-size: 0.78rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.ff-search-empty {
+  font-size: 0.875rem;
+  color: #6b7280;
+  padding: 0.75rem 0;
+}
+
+/* Flag ID badge shown below flag name */
+.ff-flag-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.ff-flag-id {
+  font-size: 0.7rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  border-radius: 4px;
+  padding: 0.05rem 0.35rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  width: fit-content;
+}
+
+/* Warning text on flag cards */
+.ff-flag-warn {
+  font-size: 0.78rem;
+  color: #b45309;
+  margin: 0.3rem 0 0;
+  padding: 0.3rem 0.55rem;
+  background: #fffbeb;
+  border-left: 3px solid #fcd34d;
+  border-radius: 0 4px 4px 0;
+}
+
+/* Full-width cfg-section for panels that don't use the section sidebar layout */
+.cfg-section--full-width {
+  max-width: none;
+  padding: 0;
+}
+
+/* DemoSetupPanel inside cfg-section */
+.demo-setup-panel {
+  width: 100%;
+}
+.demo-setup-panel { width: 100%; }

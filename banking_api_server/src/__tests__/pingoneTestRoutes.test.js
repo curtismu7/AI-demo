@@ -56,7 +56,7 @@ jest.mock('../../services/oauthService', () => ({
 }));
 
 jest.mock('../../services/apiCallTrackerService', () => ({
-  trackApiCall: jest.fn(),
+  trackApiCall: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Mock auth middleware so test requests are not blocked

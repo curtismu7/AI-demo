@@ -16,6 +16,7 @@ const configStore = require('../services/configStore');
 const { managementService } = require('../services/pingoneManagementService');
 const pingOneUserService = require('../services/pingOneUserService');
 const apiCallTrackerService = require('../services/apiCallTrackerService');
+const sseHub = require('../services/pingoneTestSseHub');
 const http = require('http');
 const https = require('https');
 const { URL } = require('url');
@@ -96,6 +97,15 @@ function buildExchangeTokenEvent(id, label, status, decoded, explanation) {
 function _p1ReqDebug(method, url, contentType, body) {
   return { method, url, contentType: contentType || null, body: body || null };
 }
+
+/**
+ * GET /api/pingone-test/events
+ * SSE stream — pushes token, exchange, and api_call events to the test page in real time.
+ * Auth is checked via session (no extra token needed — same session as the test page).
+ */
+router.get('/events', (req, res) => {
+  sseHub.attach(req, res);
+});
 
 /**
  * POST /api/pingone-test/worker-config
@@ -502,6 +512,7 @@ router.get('/authz-token', async (req, res) => {
       expiresAt: oauthTokens.expiresAt,
       loginType,
     };
+    sseHub.publishToken(req.sessionID || sessionId, { id: 'authz-token', label: 'User Access Token', status: 'success', decoded, expiresAt: oauthTokens.expiresAt });
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Authorization Code token from user session');
     res.json(responseData);
   } catch (error) {
@@ -510,6 +521,7 @@ router.get('/authz-token', async (req, res) => {
       success: false,
       error: error.message
     };
+    sseHub.publishToken(req.sessionID || sessionId, { id: 'authz-token', label: 'User Access Token', status: 'error', error: error.message });
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Authorization Code token from user session');
     res.json(responseData);
   }
@@ -546,6 +558,7 @@ router.get('/agent-token', async (req, res) => {
         scope: tokenData.token ? decodeJwtForDisplay(tokenData.token)?.payload?.scope : undefined,
       } : undefined,
     };
+    sseHub.publishToken(req.sessionID || sessionId, { id: 'agent-token', label: 'Agent CC Token', status: 'success', decoded: responseData.decoded });
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Agent token (client credentials)');
     res.json(responseData);
   } catch (error) {
@@ -554,6 +567,7 @@ router.get('/agent-token', async (req, res) => {
       success: false,
       error: error.message
     };
+    sseHub.publishToken(req.sessionID || sessionId, { id: 'agent-token', label: 'Agent CC Token', status: 'error', error: error.message });
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Agent token (client credentials)');
     res.json(responseData);
   }
@@ -625,6 +639,7 @@ router.get('/exchange-user-to-mcp', async (req, res) => {
       }) : undefined,
       pingoneResponse: mcpDecoded1 ? { token_type: 'Bearer', scope: mcpDecoded1.payload?.scope } : undefined,
     };
+    sseHub.publishExchange(req.sessionID || sessionId, { id: 'exchange-user-to-mcp', label: 'User → MCP Token', status: 'success', decoded: mcpDecoded1, subjectDecoded: subjectDecoded1 });
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) for MCP token');
     res.json(responseData);
   } catch (error) {
@@ -633,6 +648,7 @@ router.get('/exchange-user-to-mcp', async (req, res) => {
       success: false,
       error: error.message
     };
+    sseHub.publishExchange(req.sessionID || sessionId, { id: 'exchange-user-to-mcp', label: 'User → MCP Token', status: 'error', error: error.message });
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) for MCP token');
     res.json(responseData);
   }
@@ -852,6 +868,7 @@ router.get('/exchange-user-agent-to-mcp', async (req, res) => {
       requestedScopes: mcpScopes2,
       tokenEvents: tokenEvents2,
     };
+    sseHub.publishExchange(req.sessionID || sessionId, { id: 'exchange-user-agent-to-mcp', label: 'User + Agent → MCP Gateway', status: 'success', decoded: mcpDecoded2, subjectDecoded: subjectDecoded2, actorDecoded: actorDecoded2 });
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) and Agent Token (client creds) for MCP token');
     res.json(responseData);
   } catch (error) {
@@ -860,6 +877,7 @@ router.get('/exchange-user-agent-to-mcp', async (req, res) => {
       success: false,
       error: error.message
     };
+    sseHub.publishExchange(req.sessionID || sessionId, { id: 'exchange-user-agent-to-mcp', label: 'User + Agent → MCP Gateway', status: 'error', error: error.message });
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) and Agent Token (client creds) for MCP token');
     res.json(responseData);
   }
@@ -959,6 +977,7 @@ router.get('/worker-token', async (req, res) => {
       decoded: workerTokenData.token ? decodeJwtForDisplay(workerTokenData.token) : null,
       expiresAt: workerTokenData.expiresAt
     };
+    sseHub.publishToken(req.sessionID || sessionId, { id: 'worker-token', label: 'Worker Token', status: 'success', decoded: responseData.decoded, expiresAt: responseData.expiresAt });
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get worker token for PingOne Management API calls');
     res.json(responseData);
   } catch (error) {
@@ -967,6 +986,7 @@ router.get('/worker-token', async (req, res) => {
       success: false,
       error: error.message
     };
+    sseHub.publishToken(req.sessionID || sessionId, { id: 'worker-token', label: 'Worker Token', status: 'error', error: error.message });
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get worker token for PingOne Management API calls');
     res.json(responseData);
   }

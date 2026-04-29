@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useTokenChainOptional } from "../context/TokenChainContext";
 import apiClient from "../services/apiClient";
+import { resolveApiBaseUrl } from "../utils/resolveApiBaseUrl";
 import { notifyError, notifyInfo, notifySuccess } from "../utils/appToast";
 import ApiCallDisplay from "./ApiCallDisplay";
 import DecodedTokenPanel from "./DecodedTokenPanel";
@@ -301,6 +302,50 @@ export default function PingOneTestPage() {
 
 		return () => clearInterval(interval);
 	}, []);
+
+	// SSE — receive live token/exchange events as tests run
+	useEffect(() => {
+		const base = resolveApiBaseUrl();
+		const es = new EventSource(`${base}/api/pingone-test/events`, { withCredentials: true });
+
+		es.onmessage = (e) => {
+			let evt;
+			try { evt = JSON.parse(e.data); } catch { return; }
+
+			const toStatus = (s) => s === 'success' ? 'passed' : s === 'error' ? 'failed' : s;
+
+			if (evt.type === 'token') {
+				if (evt.id === 'authz-token') {
+					setAuthzTokenStatus(toStatus(evt.status));
+					if (evt.decoded) setAuthzDecoded(evt.decoded);
+					if (evt.error) setAuthzTokenError(evt.error);
+				} else if (evt.id === 'agent-token') {
+					setAgentTokenStatus(toStatus(evt.status));
+					if (evt.decoded) setAgentDecoded(evt.decoded);
+					if (evt.error) setAgentTokenError(evt.error);
+				} else if (evt.id === 'worker-token') {
+					if (evt.decoded) setWorkerDecoded(evt.decoded);
+					if (evt.expiresAt) setWorkerTokenExpiry({ expiresAt: evt.expiresAt });
+					if (evt.error) setWorkerTokenError(evt.error);
+				}
+			} else if (evt.type === 'exchange') {
+				if (evt.id === 'exchange-user-to-mcp') {
+					setExchange1Status(toStatus(evt.status));
+					if (evt.decoded) setExchange1Decoded(evt.decoded);
+					if (evt.subjectDecoded) setExchange1SubjectDecoded(evt.subjectDecoded);
+					if (evt.error) setExchange1Error(evt.error);
+				} else if (evt.id === 'exchange-user-agent-to-mcp') {
+					setExchange2Status(toStatus(evt.status));
+					if (evt.decoded) setExchange2Decoded(evt.decoded);
+					if (evt.subjectDecoded) setExchange2SubjectDecoded(evt.subjectDecoded);
+					if (evt.actorDecoded) setExchange2ActorDecoded(evt.actorDecoded);
+					if (evt.error) setExchange2Error(evt.error);
+				}
+			}
+		};
+
+		return () => es.close();
+	}, []); // eslint-disable-line react-hooks/exhaustive-deps -- state setters are stable refs
 
 	// Load test results from localStorage on mount
 	useEffect(() => {
@@ -1141,8 +1186,7 @@ export default function PingOneTestPage() {
 							<div className="worker-token-info">
 								<h3>PingOne Token Endpoint</h3>
 								<code className="code-block">
-									POST https://auth.pingone.com/{config?.region || "com"}/
-									{config?.environmentId}/as/token
+									{`POST https://auth.pingone.${config?.region || "com"}/${config?.environmentId}/as/token`}
 								</code>
 								<div className="token-params">
 									<strong>
@@ -1682,7 +1726,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 						)}
 					<ApiCallPreviewCard
 						method="POST"
-						endpoint="https://auth.pingone.com/{environmentId}/as/token"
+						endpoint={`https://auth.pingone.${config?.region || "com"}/${config?.environmentId}/as/token`}
 						requestBody={{
 							grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
 							subject_token: "<user_access_token>",

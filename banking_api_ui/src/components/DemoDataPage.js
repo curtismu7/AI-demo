@@ -1601,8 +1601,8 @@ export default function DemoDataPage({ user, onLogout }) {
               {(() => {
                 const injectFlag = p1azFlags.find((f) => f.id === 'ff_inject_may_act');
                 const audFlag    = p1azFlags.find((f) => f.id === 'ff_inject_audience');
-                const injectOn   = injectFlag?.currentValue === true;
-                const audOn      = audFlag?.currentValue === true;
+                const injectOn   = injectFlag?.value === true;
+                const audOn      = audFlag?.value === true;
 
                 return (
                   <>

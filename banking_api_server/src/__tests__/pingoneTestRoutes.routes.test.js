@@ -114,6 +114,47 @@ describe('POST /agent-token — pingoneRequest shape', () => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /events — SSE endpoint
+// ---------------------------------------------------------------------------
+describe('GET /events — SSE stream', () => {
+  it('responds with text/event-stream content-type and 200', (done) => {
+    // Use raw http.get so we can abort before the stream is closed by the server
+    const http = require('http');
+    const server = require('http').createServer(app);
+    server.listen(0, () => {
+      const port = server.address().port;
+      const req = http.get(`http://localhost:${port}/events`, (res) => {
+        expect(res.statusCode).toBe(200);
+        expect(res.headers['content-type']).toMatch(/text\/event-stream/);
+        req.destroy();
+        server.close(done);
+      });
+      req.on('error', () => server.close(done));
+    });
+  });
+
+  it('sends the initial ": sse connected" comment', (done) => {
+    const http = require('http');
+    const server = require('http').createServer(app);
+    server.listen(0, () => {
+      const port = server.address().port;
+      const req = http.get(`http://localhost:${port}/events`, (res) => {
+        let buf = '';
+        res.on('data', (chunk) => {
+          buf += chunk.toString();
+          if (buf.includes('sse connected')) {
+            expect(buf).toContain(': sse connected');
+            req.destroy();
+            server.close(done);
+          }
+        });
+      });
+      req.on('error', () => server.close(done));
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Guard: scope restriction verified — only test-route files modified
 // ---------------------------------------------------------------------------
 describe('scope guard', () => {

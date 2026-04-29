@@ -7,6 +7,7 @@
  */
 
 const crypto = require('crypto');
+const sseHub = require('./pingoneTestSseHub');
 
 // In-memory storage for API calls (production should use database)
 const apiCalls = new Map();
@@ -68,6 +69,16 @@ async function trackApiCall(callData) {
   }
 
   console.log('[apiCallTracker] Tracked call:', { id: call.id, method: call.method, url: call.url, status: call.response.status });
+
+  // Push to any open SSE streams for this session
+  sseHub.publishApiCall(sessionId, {
+    method: call.method,
+    url: call.url,
+    status: call.response.status,
+    duration: call.duration,
+    category: call.category,
+    description: call.description,
+  });
 
   return call;
 }

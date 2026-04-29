@@ -9,6 +9,7 @@ import { useIndustryBranding } from '../../context/IndustryBrandingContext';
 import { useTheme } from '../../context/ThemeContext';
 import './UnifiedConfigurationPage.css';
 import { MCPToolsEducation } from '../MCPToolsEducation';
+import DemoSetupPanel from '../DemoSetupPanel';
 
 // Configuration tab definitions
 const CONFIGURATION_TABS = [
@@ -35,7 +36,7 @@ const CONFIGURATION_TABS = [
     icon: '🗄️',
     description: 'Sample accounts, transactions, and demo presets — no PingOne credentials needed',
     requiresAuth: false,
-    sections: ['demo-scenarios', 'account-setup', 'transaction-data', 'agent-modes']
+    sections: ['demo-setup']
   },
   {
     id: 'agent-configuration',
@@ -574,6 +575,7 @@ const UnifiedConfigurationPage: FC<{
   const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([]);
   const [flagsLoading, setFlagsLoading] = useState(false);
   const [flagsError, setFlagsError] = useState<string | null>(null);
+  const [flagSearch, setFlagSearch] = useState("");
 
   const { placement: ctxAgentUiMode } = useAgentUiMode();
   useEducationUI();
@@ -1572,23 +1574,58 @@ const UnifiedConfigurationPage: FC<{
       );
     }
 
-    // Feature Flags tab
+    // Feature Flags tab — searchable documentation + toggles
     if (s === 'feature-flags') {
       if (flagsLoading) return <div className="cfg-section"><p className="cfg-section-desc">Loading flags…</p></div>;
       if (flagsError) return <div className="cfg-section"><p className="cfg-section-desc cfg-error-text">⚠ {flagsError}</p></div>;
       if (featureFlags.length === 0) return <div className="cfg-section"><p className="cfg-section-desc">No feature flags configured.</p></div>;
 
-      const categories = Array.from(new Set(featureFlags.map(f => f.category)));
+      const q = flagSearch.toLowerCase().trim();
+      const visibleFlags = q
+        ? featureFlags.filter(f =>
+            f.name.toLowerCase().includes(q) ||
+            f.id.toLowerCase().includes(q) ||
+            f.category.toLowerCase().includes(q) ||
+            (f.description || '').toLowerCase().includes(q) ||
+            (f.impact || '').toLowerCase().includes(q)
+          )
+        : featureFlags;
+      const categories = Array.from(new Set(visibleFlags.map(f => f.category)));
       return (
         <div className="cfg-section">
-          <p className="cfg-section-desc">Toggle in-development features. Changes apply immediately and are persisted to the server — they survive restarts.</p>
+          <p className="cfg-section-desc">
+            Toggle features on or off — changes apply immediately and persist across restarts.
+            Each flag shows its <strong>description</strong> (what it does) and <strong>impact</strong> (what changes when enabled vs disabled).
+            Search by name, flag ID, category, or keyword.
+          </p>
+          <div className="ff-search-row">
+            <input
+              type="search"
+              className="ff-search-input"
+              placeholder="Search flags — e.g. &quot;authorize&quot;, &quot;token exchange&quot;, &quot;may_act&quot;…"
+              value={flagSearch}
+              onChange={e => setFlagSearch(e.target.value)}
+              aria-label="Search feature flags"
+            />
+            {q && (
+              <span className="ff-search-count">
+                {visibleFlags.length} of {featureFlags.length} flag{featureFlags.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          {q && visibleFlags.length === 0 && (
+            <p className="ff-search-empty">No flags match "{flagSearch}" — try a different keyword.</p>
+          )}
           {categories.map(cat => (
             <div key={cat} className="ff-category-group">
               <h3 className="ff-category-title">{cat}</h3>
-              {featureFlags.filter(f => f.category === cat).map(flag => (
+              {visibleFlags.filter(f => f.category === cat).map(flag => (
                 <div key={flag.id} id={flag.id} className="ff-flag-card">
                   <div className="ff-flag-header">
-                    <span className="ff-flag-name">{flag.name}</span>
+                    <div className="ff-flag-title-group">
+                      <span className="ff-flag-name">{flag.name}</span>
+                      <code className="ff-flag-id">{flag.id}</code>
+                    </div>
                     <button
                       type="button"
                       className={`ff-toggle-btn${flag.value ? ' ff-toggle-btn--on' : ''}`}
@@ -1603,10 +1640,25 @@ const UnifiedConfigurationPage: FC<{
                   </div>
                   {flag.description && <p className="ff-flag-desc">{flag.description}</p>}
                   {flag.impact && <p className="ff-flag-impact"><strong>Impact:</strong> {flag.impact}</p>}
+                  {(flag as FeatureFlag & { warnIfEnabled?: boolean }).warnIfEnabled && flag.value && (
+                    <p className="ff-flag-warn">⚠️ Demo-only — reduces security, do not enable in production.</p>
+                  )}
+                  {(flag as FeatureFlag & { warnIfDisabled?: boolean }).warnIfDisabled && !flag.value && (
+                    <p className="ff-flag-warn">⚠️ Disabling may block transactions or reduce safety.</p>
+                  )}
                 </div>
               ))}
             </div>
           ))}
+        </div>
+      );
+    }
+
+    // Demo Data tab (demo-management) — consolidated from /demo-data
+    if (s === 'demo-setup') {
+      return (
+        <div className="cfg-section cfg-section--full-width">
+          <DemoSetupPanel />
         </div>
       );
     }

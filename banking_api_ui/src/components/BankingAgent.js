@@ -1718,9 +1718,9 @@ export default function BankingAgent({
 							}
 							return [welcome];
 						});
-						// Notify App.js once so it can navigate to dashboard routes
-						if (i === 0)
-							window.dispatchEvent(new CustomEvent("userAuthenticated"));
+						// Dispatch on every successful retry so pendingAuthChallengeActionRef replay fires
+						// even when the 0ms check races against Redis on cold-start
+						window.dispatchEvent(new CustomEvent("userAuthenticated"));
 						// Cancel remaining retries
 						timers.forEach(clearTimeout);
 					}
@@ -2433,12 +2433,21 @@ export default function BankingAgent({
 			addMessage("assistant", AGENT_CONSENT_BLOCK_USER_MESSAGE);
 			return;
 		}
-		// Layer-zero auth gate: require a logged-in session before any banking action
+		// Layer-zero auth gate: save pending action and auto-redirect to PingOne so the
+		// request replays automatically after login (via onAuthChallengeLogin)
 		if (!isLoggedIn) {
+			pendingAuthChallengeActionRef.current = { actionId, form };
+			try {
+				sessionStorage.setItem(
+					"_agent_pending_auth_action",
+					JSON.stringify({ actionId, form }),
+				);
+			} catch { /* best-effort */ }
 			addMessage(
 				"assistant",
-				"🔐 You need to sign in first to perform banking operations. Tap **Customer Sign In** in the left panel to get started.",
+				"🔐 Signing you in — your request will run automatically after you sign in.",
 			);
+			handleLoginAction("login_user");
 			return;
 		}
 		const { skipUserLabel = false } = opts;
@@ -3305,8 +3314,16 @@ export default function BankingAgent({
 			markToolProgressOutcome(false);
 			toast.dismiss(toastId);
 
-			// Phase 187 D-05: BFF signaled need_auth — redirect to PingOne customer login
+			// Phase 187 D-05: BFF signaled need_auth — save pending action then redirect so
+			// onAuthChallengeLogin can auto-replay after OAuth callback
 			if (err?.need_auth) {
+				pendingAuthChallengeActionRef.current = { actionId, form };
+				try {
+					sessionStorage.setItem(
+						"_agent_pending_auth_action",
+						JSON.stringify({ actionId, form }),
+					);
+				} catch { /* best-effort */ }
 				addMessage(
 					"assistant",
 					"🔐 MCP requires your authorization — logging you in…",
@@ -4022,13 +4039,13 @@ export default function BankingAgent({
 					});
 					return;
 				}
-				// Marketing guest: 401 / need_auth means "log in via PingOne", not session-hydration issue
+				// Save pending NL and redirect to PingOne when need_auth is explicitly signaled
+				// (any path/login state), or for the marketing-guest 401 case.
 				const pathNorm401 = (location.pathname || "").replace(/\/$/, "") || "/";
-				if (
-					(response.need_auth || response._status === 401) &&
-					isPublicMarketingAgentPath(pathNorm401) &&
-					!isLoggedIn
-				) {
+				const needsLogin =
+					response.need_auth ||
+					(response._status === 401 && isPublicMarketingAgentPath(pathNorm401) && !isLoggedIn);
+				if (needsLogin) {
 					try {
 						sessionStorage.setItem(BX_AGENT_PENDING_NL_KEY, text);
 					} catch (_) {}

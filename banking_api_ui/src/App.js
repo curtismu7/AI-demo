@@ -42,7 +42,6 @@ import UnifiedConfigurationPage from "./components/Configuration/UnifiedConfigur
 import Dashboard from "./components/Dashboard";
 import DelegatedAccessPage from "./components/DelegatedAccessPage";
 import DelegationPage from "./components/DelegationPage";
-import DemoDataPage from "./components/DemoDataPage";
 import DemoServerCheckModal from "./components/DemoServerCheckModal";
 import DevToolsDashboard from "./components/DevToolsDashboard";
 import EmbeddedAgentDock from "./components/EmbeddedAgentDock";
@@ -716,16 +715,7 @@ function AppWithAuth() {
 							/>
 							<Route
 								path="/demo-data"
-								element={
-									<>
-										<AdminSideNav user={user} />
-
-										<TopNav user={user} onLogout={logout} />
-										<main className="main-content">
-											<DemoDataPage user={user} onLogout={logout} />
-										</main>
-									</>
-								}
+								element={<Navigate to="/configure?tab=demo-management" replace />}
 							/>
 							{/* Self-service user provisioning — accessible without login */}
 							<Route
@@ -1362,7 +1352,7 @@ function AppWithAuth() {
 								<button
 									type="button"
 									className="demo-config-fab"
-									onClick={() => navigate("/demo-data")}
+									onClick={() => navigate("/configure?tab=demo-management")}
 									title="Open Demo config (sandbox accounts, balances, MFA)"
 								>
 									Demo config
