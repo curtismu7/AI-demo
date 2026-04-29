@@ -115,6 +115,11 @@ const ACTION_GROUPS = {
 			label: "View Sensitive Account Details",
 			desc: "View full account number and routing number (requires consent)",
 		},
+		{
+			id: "sequential_think",
+			label: "🧠 Think Through a Question",
+			desc: "Reason step-by-step through a banking question or decision",
+		},
 	],
 	transaction: [
 		{
@@ -131,6 +136,11 @@ const ACTION_GROUPS = {
 			id: "mcp_tools",
 			label: "🔧 MCP Tools",
 			desc: "List all available MCP banking tools",
+		},
+		{
+			id: "query_user",
+			label: "🔍 Query User by Email",
+			desc: "Check if a user exists by email address",
 		},
 		{ id: "logout", label: "🚪 Log Out", desc: "Sign out of your account" },
 	],
@@ -3591,6 +3601,10 @@ export default function BankingAgent({
 		} else if (actionId === "transfer") {
 			// Pre-fill prompt with a ready-to-use example so the user can send immediately
 			setNlInput("Transfer $100 from checking to savings");
+		} else if (actionId === "query_user") {
+			setNlInput("Query user by email: ");
+		} else if (actionId === "sequential_think") {
+			setNlInput("Think: Should I transfer money from checking to savings?");
 		} else {
 			setActiveAction(actionId);
 		}
