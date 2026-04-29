@@ -45,6 +45,13 @@
   opacity: 0.9;
 }
 
+.banking-header__logo--btn {
+  background: none;
+  border: none;
+  padding: 0;
+  text-decoration: none;
+}
+
 .banking-header__logo-icon {
   font-size: 1.75rem;
   display: flex;

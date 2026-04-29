@@ -117,10 +117,10 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
       <header className="banking-header">
         <div className="banking-header__inner">
           <div className="banking-header__left">
-            <div className="banking-header__logo">
+            <button type="button" className="banking-header__logo banking-header__logo--btn" onClick={() => navigate('/dashboard')} aria-label="Go to dashboard">
               <span className="banking-header__logo-icon">🏦</span>
               <span className="banking-header__logo-text">Super Bank</span>
-            </div>
+            </button>
           </div>
           <div className="banking-header__right" />
         </div>
@@ -138,10 +138,10 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
     <header className="banking-header">
       <div className="banking-header__inner">
         <div className="banking-header__left">
-          <div className="banking-header__logo">
+          <button type="button" className="banking-header__logo banking-header__logo--btn" onClick={() => navigate(userRole === 'admin' ? '/admin' : '/dashboard')} aria-label="Go to dashboard">
             <span className="banking-header__logo-icon">🏦</span>
             <span className="banking-header__logo-text">Super Bank</span>
-          </div>
+          </button>
           {userInfo && (
             <div className="banking-header__user-context">
               <span className="banking-header__user-context-label">{userRole === 'admin' ? 'Admin Dashboard' : 'Customer Portal'}</span>
