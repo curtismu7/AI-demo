@@ -1085,19 +1085,110 @@ const UnifiedConfigurationPage: FC<{
     // Agent Configuration tab
     if (s === 'agent-ui-mode') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Control how the AI agent UI appears in the banking app. <em>Standard</em> shows the floating action button (FAB) in the corner and a chat panel that slides in. <em>Minimal</em> shows just the FAB with no animations. <em>Advanced</em> adds developer overlays showing internal state and tool calls. <em>Disabled</em> removes the agent completely.</p>
-        <CfgSelect
-          label="Agent UI Mode"
-          value={state.agentUiMode}
-          onChange={field('agentUiMode')}
-          options={[
-            { value: 'standard',  label: 'Standard (FAB + chat panel)' },
-            { value: 'minimal',   label: 'Minimal (FAB only, no panel animations)' },
-            { value: 'advanced',  label: 'Advanced (dev controls visible)' },
-            { value: 'disabled',  label: 'Disabled (no agent UI shown)' },
-          ]}
-          help="Standard: best for customer-facing demos. Minimal: reduced visual footprint. Advanced: shows token details and tool execution in realtime — great for developer audiences. Disabled: hides all agent UI elements."
-        />
+        <p className="cfg-section-desc">Control how the AI agent UI appears in the banking app. Click a mode to select it.</p>
+        <div className="form-label" style={{ marginBottom: '0.75rem' }}>Agent UI Mode</div>
+        <div className="scenario-card-grid">
+          {([
+            {
+              value: 'standard',
+              label: 'Standard',
+              tag: 'Recommended for demos',
+              desc: 'Shows the floating action button (FAB) in the bottom-right corner. Clicking it slides in a full chat panel where users interact with the AI agent. Includes animated transitions and the education panel.',
+              preview: (
+                <div className="uimode-preview uimode-preview--standard">
+                  <div className="uimode-screen">
+                    <div className="uimode-topbar" />
+                    <div className="uimode-content">
+                      <div className="uimode-row" /><div className="uimode-row uimode-row--short" />
+                    </div>
+                    <div className="uimode-panel">
+                      <div className="uimode-bubble uimode-bubble--agent" />
+                      <div className="uimode-bubble uimode-bubble--user" />
+                      <div className="uimode-bubble uimode-bubble--agent uimode-bubble--short" />
+                    </div>
+                    <div className="uimode-fab">✦</div>
+                  </div>
+                </div>
+              ),
+            },
+            {
+              value: 'minimal',
+              label: 'Minimal',
+              tag: 'Reduced footprint',
+              desc: 'Shows only the FAB button — no slide-in panel, no animations. The agent is available but unobtrusive. Useful when banking UI should be the focus and agent is secondary.',
+              preview: (
+                <div className="uimode-preview uimode-preview--minimal">
+                  <div className="uimode-screen">
+                    <div className="uimode-topbar" />
+                    <div className="uimode-content">
+                      <div className="uimode-row" /><div className="uimode-row uimode-row--short" />
+                    </div>
+                    <div className="uimode-fab uimode-fab--minimal">✦</div>
+                  </div>
+                </div>
+              ),
+            },
+            {
+              value: 'advanced',
+              label: 'Advanced',
+              tag: 'For developer audiences',
+              desc: 'Everything in Standard plus live developer overlays: raw token chain, tool call log, RFC 8693 exchange details, and internal agent state. Use when presenting to engineers or security teams.',
+              preview: (
+                <div className="uimode-preview uimode-preview--advanced">
+                  <div className="uimode-screen">
+                    <div className="uimode-topbar" />
+                    <div className="uimode-content">
+                      <div className="uimode-row" /><div className="uimode-row uimode-row--short" />
+                    </div>
+                    <div className="uimode-panel">
+                      <div className="uimode-bubble uimode-bubble--agent" />
+                      <div className="uimode-bubble uimode-bubble--user" />
+                    </div>
+                    <div className="uimode-devbar">
+                      <div className="uimode-devrow" /><div className="uimode-devrow uimode-devrow--dim" />
+                      <div className="uimode-devrow" /><div className="uimode-devrow uimode-devrow--dim" />
+                    </div>
+                    <div className="uimode-fab uimode-fab--advanced">✦</div>
+                  </div>
+                </div>
+              ),
+            },
+            {
+              value: 'disabled',
+              label: 'Disabled',
+              tag: 'Agent hidden',
+              desc: 'Removes all agent UI elements — no FAB, no chat panel, no overlays. The banking dashboard runs in stand-alone mode. Use for pure banking UI demos without AI.',
+              preview: (
+                <div className="uimode-preview uimode-preview--disabled">
+                  <div className="uimode-screen">
+                    <div className="uimode-topbar" />
+                    <div className="uimode-content">
+                      <div className="uimode-row" /><div className="uimode-row uimode-row--short" />
+                      <div className="uimode-row uimode-row--short" />
+                    </div>
+                    <div className="uimode-disabled-label">No agent</div>
+                  </div>
+                </div>
+              ),
+            },
+          ] as { value: string; label: string; tag: string; desc: string; preview: React.ReactNode }[]).map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              className={'scenario-card' + (state.agentUiMode === opt.value ? ' scenario-card--active' : '')}
+              onClick={() => setState(prev => ({ ...prev, agentUiMode: opt.value, saveStatus: 'idle' }))}
+            >
+              {opt.preview}
+              <div className="scenario-card__header" style={{ marginTop: '0.625rem' }}>
+                <span className="scenario-card__label">{opt.label}</span>
+                {state.agentUiMode === opt.value && <span className="scenario-card__badge">Active</span>}
+              </div>
+              <div className="scenario-card__thresholds">{opt.tag}</div>
+              <p className="scenario-card__desc">{opt.desc}</p>
+            </button>
+          ))}
+        </div>
+        <p className="cfg-field-help" style={{ marginTop: '0.75rem' }}>Changes take effect on next page refresh.</p>
       </div>
     );
 
