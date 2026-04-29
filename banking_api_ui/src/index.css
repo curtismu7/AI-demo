@@ -28,21 +28,21 @@
   --brand-app-shell-hero-end: var(--brand-navy);
   
   /* Chase.com Brand Colors (Phase 85: Dashboard Styling) */
-  --brand-navy: #004687;
-  --brand-navy-dark: #003DA5;
-  --brand-navy-light: #005FA3;
-  --brand-blue: #0066CC;
-  --brand-blue-light: #0052A3;
+  --brand-navy: #1D4ED8;
+  --brand-navy-dark: #1E40AF;
+  --brand-navy-light: #3B82F6;
+  --brand-blue: #2563EB;
+  --brand-blue-light: #60A5FA;
   
   /* Phase 120-02: Softer Sidebar Colors */
-  --sidebar-bg: #1a3a52;
-  --sidebar-bg-active: #2c5a7a;
-  --sidebar-bg-hover: #244a63;
+  --sidebar-bg: #1E3A8A;
+  --sidebar-bg-active: #1D4ED8;
+  --sidebar-bg-hover: #2563EB;
   
   /* Chase Neutrals */
   --brand-white: #FFFFFF;
-  --brand-light-gray: #F5F5F5;
-  --brand-medium-gray: #E0E0E0;
+  --brand-light-gray: #EFF6FF;
+  --brand-medium-gray: #BFDBFE;
   --brand-dark-gray: #333333;
   
   /* Chase Status Colors */
@@ -53,14 +53,14 @@
   /* Button Styles (derived from Chase colors) */
   --btn-primary-bg: var(--brand-navy);
   --btn-primary-text: var(--brand-white);
-  --btn-primary-bg-hover: #003770;
+  --btn-primary-bg-hover: #1E40AF;
   --btn-primary-border-radius: 4px;
   --btn-primary-padding: 10px 16px;
   
   /* Card Styles */
   --card-padding: 20px;
-  --card-border-radius: 8px;
-  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --card-border-radius: 12px;
+  --card-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
   
   /* Typography */
   --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;

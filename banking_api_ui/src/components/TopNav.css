@@ -1,8 +1,8 @@
 /* ─── Top Navigation Bar (Phase 120-03) ───────────────────────────────────── */
 
 .topnav {
-  background: linear-gradient(180deg, #0a2540 0%, #0d2f50 100%);
-  border-bottom: 2px solid #c5a44e;
+  background: linear-gradient(135deg, #1D4ED8 0%, #6D28D9 100%);
+  border-bottom: 2px solid rgba(139, 92, 246, 0.4);
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -63,7 +63,7 @@
 }
 
 .topnav-brand-icon {
-  color: #c5a44e;
+  color: #BFDBFE;
   font-size: 26px;
 }
 
@@ -110,8 +110,8 @@
   position: absolute;
   top: 100%;
   left: 0;
-  background: #0a2540;
-  border: 1px solid rgba(197,164,78,0.2);
+  background: linear-gradient(180deg, #1E3A8A 0%, #4C1D95 100%);
+  border: 1px solid rgba(139,92,246,0.25);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   min-width: 180px;
@@ -294,8 +294,8 @@
 
 /* "Switch to Admin" – subtle warning tint */
 .topnav-view-switch--admin {
-  border-color: rgba(197, 164, 78, 0.5);
-  color: #e8d9a0;
+  border-color: rgba(139, 92, 246, 0.5);
+  color: #C4B5FD;
 }
 
 .topnav-view-switch--admin:hover {

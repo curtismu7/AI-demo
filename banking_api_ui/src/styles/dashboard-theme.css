@@ -4,19 +4,19 @@
 
 :root {
   /* Slightly warm neutral — calmer, more “system” / Apple-adjacent than pure gray-blue */
-  --dash-bg: #f5f5f7;
+  --dash-bg: #EFF6FF;
   --dash-surface: #ffffff;
   --dash-surface-2: #ececf1;
   --dash-text: #0f172a;
   --dash-muted: #999999;
-  --dash-accent: var(--brand-navy);
+  --dash-accent: #1D4ED8;
   --dash-accent-red: #dc2626;
-  --dash-accent-soft: rgba(37, 99, 235, 0.1);
+  --dash-accent-soft: rgba(37, 99, 235, 0.12);
   --dash-border: rgb(15 23 42 / 0.08);
-  --dash-radius: 14px;
+  --dash-radius: 16px;
   --dash-radius-sm: 10px;
-  --dash-shadow: 0 1px 3px rgb(15 23 42 / 8%);
-  --dash-header-grad: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy) 50%, #b91c1c 100%);
+  --dash-shadow: 0 4px 16px rgba(37, 99, 235, 0.1);
+  --dash-header-grad: linear-gradient(135deg, #1D4ED8 0%, #6D28D9 60%, #9333EA 100%);
   /* Space above fixed embedded BankingAgent dock */
   --dash-embed-pad-bottom: clamp(160px, 22vh, 240px);
 }

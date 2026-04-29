@@ -18,7 +18,7 @@ html[data-theme='dark'] .loading {
 
 html[data-theme='dark'] .loading::after {
   border-color: var(--brand-dark-gray);
-  border-top-color: #4169e1;
+  border-top-color: #3B82F6;
 }
 
 html[data-theme='dark'] .footer {
@@ -42,7 +42,7 @@ html[data-theme='dark'] .footer-demo-config {
 
 html[data-theme='dark'] .footer-demo-config:hover {
   background: #1e3a5f;
-  border-color: #4169e1;
+  border-color: #3B82F6;
   color: #bfdbfe;
 }
 
@@ -54,7 +54,7 @@ html[data-theme='dark'] .footer-theme-toggle {
 
 html[data-theme='dark'] .footer-theme-toggle:hover {
   background: #1e3a5f;
-  border-color: #4169e1;
+  border-color: #3B82F6;
 }
 
 /* App shell pages (Config, Demo data, admin tables, etc.) */
@@ -337,7 +337,7 @@ html[data-theme='dark'] .card-title {
 
 html[data-theme='dark'] .stat-card {
   background: var(--brand-dark-gray);
-  border-left-color: #4169e1;
+  border-left-color: #3B82F6;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
@@ -450,7 +450,7 @@ html[data-theme='dark'] .mcp-inspector__tool-chip {
 }
 
 html[data-theme='dark'] .mcp-inspector__tool-chip.is-selected {
-  border-color: #4169e1;
+  border-color: #3B82F6;
   background: rgba(65, 105, 225, 0.2);
 }
 
