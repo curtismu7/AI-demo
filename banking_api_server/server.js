@@ -697,7 +697,13 @@ app.use('/api/setup', setupRoutes);
 app.use('/api/mcp', mcpToolScopesRouter);
 app.use('/api/mcp/inspector', mcpInspectorRoutes);
 // MCP Gateway Config — status + generated PingGateway mcp.json (admin-accessible)
-app.use('/api/admin/mcp-gateway', authenticateToken, mcpGatewayConfigRouter);
+app.use('/api/admin/mcp-gateway', (req, res, next) => {
+    // MCP Gateway Config is an admin UI page — use session cookie auth, not Bearer token.
+    if (!req.session?.user || req.session.user.role !== 'admin') {
+        return res.status(401).json({ error: 'admin_required', message: 'Admin session required.' });
+    }
+    next();
+}, mcpGatewayConfigRouter);
 app.use('/api/mcp/traffic', requireSession, mcpTrafficRoutes);
 // MCP Audit: admin-only route — proxies to MCP server /audit internal endpoint (D-11)
 app.use('/api/mcp/audit', (req, res, next) => {
