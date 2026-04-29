@@ -55,7 +55,7 @@ router.get('/context', async (req, res) => {
     await configStore.ensureInitialized();
     const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
     const langchainInspectorUrl =
-      process.env.REACT_APP_LANGCHAIN_INSPECTOR_URL || 'http://localhost:8081/inspector/mcp-host';
+      process.env.REACT_APP_LANGCHAIN_INSPECTOR_URL || '/api/mcp/inspector/langchain-host';
     const langchainWsPort = process.env.LANGCHAIN_WEBSOCKET_PORT || '8080';
 
     res.json({

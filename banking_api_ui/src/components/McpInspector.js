@@ -302,8 +302,7 @@ const McpInspector = ({ user, onLogout }) => {
                     This URL is served only by the Python <strong>langchain_agent</strong> process (health HTTP server), not the
                     Banking UI or Backend-for-Frontend (BFF). From repo root: <code>cd langchain_agent && python -m src.main</code> — then wait until
                     startup finishes so the inspector snapshot is populated. If the port differs, set{' '}
-                    <code>REACT_APP_LANGCHAIN_INSPECTOR_URL</code> (e.g. <code>http://localhost:8081/inspector/mcp-host</code>).
-                    Optional: <code>HEALTH_HTTP_PORT</code> in <code>langchain_agent/.env</code> must match that host/port.
+                    <code>HEALTH_HTTP_PORT</code> in <code>langchain_agent/.env</code> to override the upstream port the BFF uses. The BFF proxies over HTTPS — the browser never connects directly to port 8081.
                   </p>
                 </article>
               </div>
