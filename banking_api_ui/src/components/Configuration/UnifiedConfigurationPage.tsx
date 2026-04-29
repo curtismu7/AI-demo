@@ -1,5 +1,5 @@
 // banking_api_ui/src/components/Configuration/UnifiedConfigurationPage.tsx
-import { type FC, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { type FC, useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { notifySuccess, notifyError } from '../../utils/appToast';
 import { savePublicConfig, loadPublicConfig } from '../../services/configService';
@@ -414,6 +414,149 @@ const SectionNavigation: FC<{
         ))}
       </ul>
     </nav>
+  );
+};
+
+// ── ScopeTable component ─────────────────────────────────────────────────────
+const KNOWN_SCOPES: { scope: string; description: string; category: string }[] = [
+  // OIDC
+  { scope: 'openid',        description: 'Required for OIDC — enables id_token issuance',    category: 'OIDC' },
+  { scope: 'profile',       description: 'User display name, locale, and picture',            category: 'OIDC' },
+  { scope: 'email',         description: 'Email address and verification status',             category: 'OIDC' },
+  { scope: 'address',       description: 'Physical address claim',                            category: 'OIDC' },
+  { scope: 'phone',         description: 'Phone number claim',                                category: 'OIDC' },
+  // PingOne
+  { scope: 'p1:read:user',          description: 'Read PingOne user profile and attributes',  category: 'PingOne' },
+  { scope: 'p1:update:user',        description: 'Update PingOne user attributes',            category: 'PingOne' },
+  { scope: 'p1:read:userPassword',  description: 'Read password policy constraints',          category: 'PingOne' },
+  { scope: 'p1:read:sessions',      description: 'Read active user sessions',                 category: 'PingOne' },
+  // Banking API
+  { scope: 'bankingapi',                   description: 'Master banking API access scope',             category: 'Banking' },
+  { scope: 'banking:read',                 description: 'Read account and balance information',         category: 'Banking' },
+  { scope: 'banking:write',               description: 'Submit transactions and updates',               category: 'Banking' },
+  { scope: 'banking:accounts:read',        description: 'List and read individual accounts',            category: 'Banking' },
+  { scope: 'banking:transactions:read',    description: 'Read transaction history',                     category: 'Banking' },
+  { scope: 'banking:transactions:write',   description: 'Submit transfers and payments',                category: 'Banking' },
+  { scope: 'banking:sensitive:read',       description: 'Access sensitive data (account numbers, PII)', category: 'Banking' },
+  // Agent / MCP
+  { scope: 'ai_agent',             description: 'Marks token as issued to an AI agent actor',  category: 'Agent' },
+  { scope: 'mcp:tools:call',       description: 'Allows agent to invoke MCP tools',           category: 'Agent' },
+  { scope: 'mcp:tools:list',       description: 'Allows agent to list available MCP tools',   category: 'Agent' },
+];
+
+const ScopeTable: FC<{ value: string; onChange: (v: string) => void }> = ({ value, onChange }) => {
+  const [newScope, setNewScope] = useState('');
+  const activeSet = useMemo(
+    () => new Set(value.split(/\s+/).map(s => s.trim()).filter(Boolean)),
+    [value]
+  );
+
+
+  const toggle = (scope: string) => {
+    const next = new Set(activeSet);
+    if (next.has(scope)) next.delete(scope);
+    else next.add(scope);
+    onChange(Array.from(next).join('\n'));
+  };
+
+  const addCustom = () => {
+    const trimmed = newScope.trim();
+    if (!trimmed) return;
+    const next = new Set(activeSet);
+    next.add(trimmed);
+    onChange(Array.from(next).join('\n'));
+    setNewScope('');
+  };
+
+  const removeCustom = (scope: string) => {
+    const next = new Set(activeSet);
+    next.delete(scope);
+    onChange(Array.from(next).join('\n'));
+  };
+
+  const categories = Array.from(new Set(KNOWN_SCOPES.map(s => s.category)));
+  const knownScopeNames = new Set(KNOWN_SCOPES.map(s => s.scope));
+  const customScopes = Array.from(activeSet).filter(s => !knownScopeNames.has(s));
+
+  return (
+    <div className="scope-table-wrap">
+      <p className="cfg-field-help" style={{ marginBottom: '0.75rem' }}>
+        Check scopes to include in the RFC 8693 token exchange request. PingOne only grants scopes that are also configured on the MCP Token Exchanger application — unchecked or unrecognised scopes are silently ignored.
+      </p>
+      {categories.map(cat => (
+        <div key={cat} className="scope-cat-group">
+          <div className="scope-cat-title">{cat}</div>
+          <table className="scope-table">
+            <thead>
+              <tr>
+                <th className="scope-th-check">Enabled</th>
+                <th className="scope-th-name">Scope</th>
+                <th className="scope-th-desc">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {KNOWN_SCOPES.filter(s => s.category === cat).map(s => (
+                <tr key={s.scope} className={activeSet.has(s.scope) ? 'scope-row scope-row--on' : 'scope-row'}>
+                  <td className="scope-td-check">
+                    <input
+                      type="checkbox"
+                      checked={activeSet.has(s.scope)}
+                      onChange={() => toggle(s.scope)}
+                      className="scope-checkbox"
+                    />
+                  </td>
+                  <td className="scope-td-name"><code className="scope-code">{s.scope}</code></td>
+                  <td className="scope-td-desc">{s.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+
+      {customScopes.length > 0 && (
+        <div className="scope-cat-group">
+          <div className="scope-cat-title">Custom</div>
+          <table className="scope-table">
+            <thead>
+              <tr>
+                <th className="scope-th-check">Enabled</th>
+                <th className="scope-th-name">Scope</th>
+                <th className="scope-th-desc">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {customScopes.map(s => (
+                <tr key={s} className="scope-row scope-row--on scope-row--custom">
+                  <td className="scope-td-check">
+                    <input type="checkbox" checked readOnly className="scope-checkbox" />
+                  </td>
+                  <td className="scope-td-name"><code className="scope-code">{s}</code></td>
+                  <td className="scope-td-desc">
+                    <button type="button" className="scope-remove-btn" onClick={() => removeCustom(s)}>Remove</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="scope-add-row">
+        <input
+          type="text"
+          className="form-input scope-add-input"
+          value={newScope}
+          onChange={e => setNewScope(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }}
+          placeholder="custom:scope"
+          spellCheck={false}
+        />
+        <button type="button" className="btn btn-secondary scope-add-btn" onClick={addCustom} disabled={!newScope.trim()}>
+          + Add Scope
+        </button>
+      </div>
+    </div>
   );
 };
 
@@ -1195,20 +1338,12 @@ const UnifiedConfigurationPage: FC<{
     if (s === 'mcp-scopes') return (
       <div className="cfg-section">
         <p className="cfg-section-desc">
-          Define which OAuth scopes the AI agent is allowed to request when performing an RFC 8693 token exchange. These scopes determine what the agent can do with the resulting MCP token. Enter one scope per line. Common scopes: <code>openid</code> (identity), <code>profile</code> (name/email), <code>p1:read:user</code> (PingOne user data), <code>bankingapi</code> (banking operations).
+          Select the OAuth scopes the AI agent is allowed to request during an RFC 8693 token exchange. Only scopes also granted to the MCP Token Exchanger app in PingOne will be issued — unrecognised scopes are silently ignored by PingOne.
         </p>
-        <div className="form-group">
-          <label className="form-label">Allowed MCP Scopes (one per line)</label>
-          <textarea
-            className="form-input cfg-scopes-textarea"
-            value={state.mcpScopes}
-            onChange={e => setState(prev => ({ ...prev, mcpScopes: e.target.value, saveStatus: 'idle' }))}
-            rows={8}
-            placeholder={'openid\nprofile\nemail\np1:read:user\nbankingapi'}
-            spellCheck={false}
-          />
-          <p className="cfg-field-help">One scope per line. These are passed as the <code>scope</code> parameter during RFC 8693 token exchange. The PingOne token endpoint will only grant scopes that are also configured on the MCP Token Exchanger application in PingOne. If a scope is listed here but not granted to the app, PingOne silently ignores it.</p>
-        </div>
+        <ScopeTable
+          value={state.mcpScopes}
+          onChange={v => setState(prev => ({ ...prev, mcpScopes: v, saveStatus: 'idle' }))}
+        />
       </div>
     );
 

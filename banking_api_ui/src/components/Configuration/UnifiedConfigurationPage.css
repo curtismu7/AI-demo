@@ -1022,3 +1022,28 @@
 .uimode-fab--advanced { background:#7c3aed; }
 .uimode-preview--disabled .uimode-screen { filter:grayscale(0.6); opacity:0.7; }
 .uimode-disabled-label { position:absolute; bottom:8px; right:8px; font-size:0.65rem; font-weight:700; background:#dc2626; color:#fff; border-radius:4px; padding:1px 5px; letter-spacing:0.04em; }
+
+/* -- Scope selection table */
+.scope-table-wrap { display:flex; flex-direction:column; gap:1.25rem; }
+.scope-cat-group { }
+.scope-cat-title { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:#6366f1; margin-bottom:0.4rem; }
+.scope-table { width:100%; border-collapse:collapse; font-size:0.88rem; }
+.scope-table thead tr { background:#f3f4f6; }
+.scope-th-check { width:64px; padding:0.45rem 0.75rem; text-align:center; font-weight:600; color:#374151; border-bottom:2px solid #e5e7eb; }
+.scope-th-name  { width:220px; padding:0.45rem 0.75rem; text-align:left; font-weight:600; color:#374151; border-bottom:2px solid #e5e7eb; }
+.scope-th-desc  { padding:0.45rem 0.75rem; text-align:left; font-weight:600; color:#374151; border-bottom:2px solid #e5e7eb; }
+.scope-row { border-bottom:1px solid #f3f4f6; transition:background 0.1s; }
+.scope-row:hover { background:#f9fafb; }
+.scope-row--on { background:#f5f3ff; }
+.scope-row--on:hover { background:#ede9fe; }
+.scope-row--custom .scope-code { color:#7c3aed; }
+.scope-td-check { text-align:center; padding:0.5rem 0.75rem; }
+.scope-td-name  { padding:0.5rem 0.75rem; white-space:nowrap; }
+.scope-td-desc  { padding:0.5rem 0.75rem; color:#374151; }
+.scope-checkbox { width:16px; height:16px; accent-color:#4f46e5; cursor:pointer; }
+.scope-code { font-family:monospace; font-size:0.82rem; background:#ede9fe; color:#4338ca; border-radius:3px; padding:1px 5px; }
+.scope-remove-btn { font-size:0.78rem; color:#dc2626; background:none; border:1px solid #fca5a5; border-radius:4px; padding:2px 8px; cursor:pointer; }
+.scope-remove-btn:hover { background:#fee2e2; }
+.scope-add-row { display:flex; gap:0.625rem; align-items:center; margin-top:0.5rem; }
+.scope-add-input { flex:1; max-width:280px; font-family:monospace; font-size:0.88rem; }
+.scope-add-btn { white-space:nowrap; }
