@@ -158,6 +158,49 @@ export default function LlmConfigPanel() {
     }
   };
 
+  // Save Ollama base URL
+  const handleSaveOllamaUrl = async () => {
+    try {
+      setSaving(true);
+      const response = await fetch('/api/langchain/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ollama_base_url: ollamaUrl }),
+      });
+      if (!response.ok) throw new Error('Failed to save Ollama URL');
+      setMessage('✓ Ollama URL saved');
+      setTimeout(() => setMessage(''), 3000);
+      await loadProviderStatuses();
+    } catch (error) {
+      console.error('[LlmConfigPanel] Failed to save Ollama URL:', error);
+      setMessage('Error saving Ollama URL');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Save all current settings (provider + model + ollamaUrl + fallback chain)
+  const handleSaveAll = async () => {
+    try {
+      setSaving(true);
+      const body = { provider: currentProvider, model: currentModel, fallback_order: fallbackChain };
+      if (currentProvider === 'ollama') body.ollama_base_url = ollamaUrl;
+      const response = await fetch('/api/langchain/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error('Failed to save configuration');
+      setMessage('✓ Configuration saved');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      console.error('[LlmConfigPanel] Failed to save all:', error);
+      setMessage('Error saving configuration');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Save model selection
   const handleModelChange = async (model) => {
     setCurrentModel(model);
@@ -313,13 +356,22 @@ export default function LlmConfigPanel() {
             // Ollama config: base URL
             <div className="config-field">
               <label>Ollama Base URL</label>
-              <input
-                type="text"
-                className="config-input"
-                value={ollamaUrl}
-                onChange={e => setOllamaUrl(e.target.value)}
-                placeholder="http://localhost:11434"
-              />
+              <div className="key-input-row">
+                <input
+                  type="text"
+                  className="config-input"
+                  value={ollamaUrl}
+                  onChange={e => setOllamaUrl(e.target.value)}
+                  placeholder="http://localhost:11434"
+                />
+                <button
+                  className="btn-small btn-primary"
+                  onClick={handleSaveOllamaUrl}
+                  disabled={saving}
+                >
+                  Save
+                </button>
+              </div>
               <small>Default: http://localhost:11434</small>
             </div>
           ) : (
@@ -393,10 +445,23 @@ export default function LlmConfigPanel() {
         <h3>About</h3>
         <ul>
           <li>API keys are stored server-side only — never sent to browser</li>
-          <li>Provider status checks run every 3 seconds or on page load</li>
+          <li>Provider status checks run on page load</li>
           <li>Fallback chain is config-scoped across all agent requests</li>
-          <li>Changes save automatically</li>
         </ul>
+      </div>
+
+      {/* Sticky save bar */}
+      <div className="llm-save-bar">
+        <button
+          className="llm-save-btn"
+          onClick={handleSaveAll}
+          disabled={saving}
+        >
+          {saving ? 'Saving…' : 'Save Configuration'}
+        </button>
+        <span className="llm-save-hint">
+          Saves provider, model, and fallback chain to your session.
+        </span>
       </div>
     </div>
   );
