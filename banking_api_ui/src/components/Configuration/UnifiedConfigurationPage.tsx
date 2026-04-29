@@ -1645,6 +1645,24 @@ const UnifiedConfigurationPage: FC<{
                 {renderSectionContent()}
               </div>
             </div>
+            {activeTab !== 'feature-flags' && (
+              <div className="cfg-section-save-bar">
+                <button
+                  type="button"
+                  className={`btn cfg-section-save-btn${state.saveStatus === 'saving' ? ' cfg-section-save-btn--saving' : state.saveStatus === 'saved' ? ' cfg-section-save-btn--saved' : state.saveStatus === 'error' ? ' cfg-section-save-btn--error' : ''}`}
+                  onClick={saveConfiguration}
+                  disabled={state.saveStatus === 'saving'}
+                >
+                  {state.saveStatus === 'saving' ? 'Saving…' : state.saveStatus === 'saved' ? '✓ Saved' : state.saveStatus === 'error' ? 'Error — Retry' : 'Save Changes'}
+                </button>
+                {state.saveStatus === 'saved' && (
+                  <span className="cfg-section-save-hint">Settings saved successfully.</span>
+                )}
+                {state.saveStatus === 'idle' && (
+                  <span className="cfg-section-save-hint">Changes are not saved until you click Save Changes.</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
