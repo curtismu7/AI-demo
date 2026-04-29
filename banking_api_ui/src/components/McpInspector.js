@@ -57,8 +57,13 @@ const McpInspector = ({ user, onLogout }) => {
   const [lastInvoke, setLastInvoke] = useState(null);
   const [busy, setBusy] = useState(false);
 
+  // Derive the LangChain inspector URL from the current host so it works on
+  // any machine (local dev, api.pingdemo.com, etc.) — not just localhost.
   const langchainInspector =
-    process.env.REACT_APP_LANGCHAIN_INSPECTOR_URL || 'http://localhost:8081/inspector/mcp-host';
+    process.env.REACT_APP_LANGCHAIN_INSPECTOR_URL ||
+    (typeof window !== 'undefined'
+      ? `${window.location.protocol}//${window.location.hostname}:8081/inspector/mcp-host`
+      : 'http://localhost:8081/inspector/mcp-host');
 
   const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
 
