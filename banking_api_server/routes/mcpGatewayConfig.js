@@ -174,7 +174,8 @@ function buildAdminJsonSnippet() {
 // GET /api/admin/mcp-gateway/config
 // ---------------------------------------------------------------------------
 router.get('/config', async (req, res) => {
-    const defaultGatewayUrl = `http://${req.hostname}:3005`;
+  try {
+    const defaultGatewayUrl = `http://localhost:3005`;
     const gatewayUrl     = process.env.MCP_GATEWAY_HTTP_URL || defaultGatewayUrl;
     const gatewayEnabled = !!process.env.MCP_GATEWAY_HTTP_URL;
     const devBypass      = process.env.MCP_GW_DEV_BYPASS === 'true';
@@ -236,6 +237,10 @@ router.get('/config', async (req, res) => {
         // Merge into PingGateway admin.json (streamingEnabled required for SSE)
         pingGatewayAdminJson: buildAdminJsonSnippet(),
     });
+  } catch (err) {
+    console.error('[mcpGatewayConfig] GET /config error:', err.message);
+    res.status(500).json({ error: 'gateway_config_error', message: err.message });
+  }
 });
 
 

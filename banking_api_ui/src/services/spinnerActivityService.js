@@ -41,7 +41,7 @@ const SILENT_ROUTES = new Set([
   '/api/admin/config',
   '/api/config/vertical',
   '/api/app-events',
-  '/api/admin/app-events',
+  '/api/app-events',
 ]);
 
 /** Friendly labels for client-side API calls (longest-prefix match wins) */

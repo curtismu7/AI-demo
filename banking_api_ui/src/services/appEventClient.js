@@ -19,7 +19,7 @@
  */
 async function postAppEvent(category, severity, message, options = {}) {
   try {
-    await fetch('/api/admin/app-events', {
+    await fetch('/api/app-events', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

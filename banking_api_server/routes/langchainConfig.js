@@ -13,13 +13,21 @@ const express = require('express');
 
 const router = express.Router();
 
-// Models available — Ollama only
+// Models available per provider
 const PROVIDER_MODELS = {
-  ollama: ['llama3.2', 'llama3.1', 'gemma4:e4b', 'mistral', 'phi3', 'qwen2.5'],
+  ollama:    ['llama3.2', 'llama3.1', 'gemma4:e4b', 'mistral', 'phi3', 'qwen2.5'],
+  openai:    ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+  anthropic: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-3-5-haiku-20241022'],
+  groq:      ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
+  google:    ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
 };
 
 const DEFAULT_MODELS = {
-  ollama: 'llama3.2',
+  ollama:    'llama3.2',
+  openai:    'gpt-4o-mini',
+  anthropic: 'claude-3-5-haiku-20241022',
+  groq:      'llama-3.1-8b-instant',
+  google:    'gemini-2.0-flash',
 };
 
 const KEY_SESSION_FIELDS = {};

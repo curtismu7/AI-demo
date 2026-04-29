@@ -131,7 +131,7 @@ const ActivityLogs = ({ user, onLogout }) => {
       if (eventFilter.category) params.append('category', eventFilter.category);
       if (eventFilter.severity) params.append('severity', eventFilter.severity);
       params.append('limit', '200');
-      const response = await apiClient.get(`/api/admin/app-events?${params}`);
+      const response = await apiClient.get(`/api/app-events?${params}`);
       setAppEvents(response.data.events || []);
       setEventCategories(response.data.categories || {});
     } catch (error) {

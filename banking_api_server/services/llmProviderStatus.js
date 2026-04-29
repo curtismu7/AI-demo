@@ -16,8 +16,21 @@
 async function getProviderStatus(provider, config = {}) {
   const HEALTH_CHECK_TIMEOUT = 3000; // 3 seconds
 
+  // Cloud providers — available when the API key is set in the session config
+  const CLOUD_PROVIDERS = { openai: 'OPENAI_API_KEY', anthropic: 'ANTHROPIC_API_KEY', groq: 'GROQ_API_KEY', google: 'GOOGLE_API_KEY' };
+  if (CLOUD_PROVIDERS[provider]) {
+    const keyField = provider + '_api_key';
+    const hasKey = !!(config[keyField]);
+    return {
+      status: hasKey ? 'available' : 'unconfigured',
+      reason: hasKey ? `${provider} API key is set` : `Set a ${CLOUD_PROVIDERS[provider]} in the LangChain config to enable ${provider}`,
+      hasKey,
+      isReachable: hasKey,
+    };
+  }
+
   if (provider !== 'ollama') {
-    return { status: 'unconfigured', reason: `Provider "${provider}" not supported — only Ollama is available`, hasKey: false, isReachable: false };
+    return { status: 'unconfigured', reason: `Provider "${provider}" not supported`, hasKey: false, isReachable: false };
   }
 
   const ollamaBase = config.ollama_base_url || 'http://localhost:11434';

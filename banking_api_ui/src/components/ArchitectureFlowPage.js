@@ -905,7 +905,7 @@ export default function ArchitectureFlowPage({ user }) {
     try {
       const since = lastFetchedAt.current || new Date(Date.now() - 5 * 60 * 1000).toISOString();
       const historical = !lastFetchedAt.current;
-      const res = await apiClient.get(`/api/admin/app-events?limit=50&since=${since}`);
+      const res = await apiClient.get(`/api/app-events?limit=50&since=${since}`);
       const events = res.data?.events || [];
       if (events.length > 0) processEvents(events, historical);
       lastFetchedAt.current = new Date().toISOString();
