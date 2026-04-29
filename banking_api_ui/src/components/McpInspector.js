@@ -29,6 +29,19 @@ function formatAxiosError(err, fallback) {
   return err.message || fallback;
 }
 
+// Static fallback — shown when BFF is unreachable (server down, cold start, etc.)
+const STATIC_LOCAL_TOOLS = [
+  { name: 'get_my_accounts',            description: 'List all bank accounts with balances and status.',            inputSchema: { type:'object', properties:{}, required:[] } },
+  { name: 'get_account_balance',         description: 'Get current balance for a specific account by ID.',          inputSchema: { type:'object', properties:{ account_id:{type:'string'} }, required:['account_id'] } },
+  { name: 'get_my_transactions',         description: 'Retrieve transaction history for the authenticated user.',   inputSchema: { type:'object', properties:{}, required:[] } },
+  { name: 'get_sensitive_account_details', description: 'Retrieve full account number and routing number (requires banking:sensitive:read + consent).', inputSchema: { type:'object', properties:{}, required:[] } },
+  { name: 'create_deposit',              description: 'Deposit funds into an account. Amounts over $500 require HITL consent.', inputSchema: { type:'object', properties:{ to_account_id:{type:'string'}, amount:{type:'number'}, description:{type:'string'} }, required:['to_account_id','amount'] } },
+  { name: 'create_withdrawal',           description: 'Withdraw funds from an account. Amounts over $500 require HITL consent.', inputSchema: { type:'object', properties:{ from_account_id:{type:'string'}, amount:{type:'number'}, description:{type:'string'} }, required:['from_account_id','amount'] } },
+  { name: 'create_transfer',             description: 'Transfer money between accounts. Amounts over $500 require HITL consent.', inputSchema: { type:'object', properties:{ from_account_id:{type:'string'}, to_account_id:{type:'string'}, amount:{type:'number'}, description:{type:'string'} }, required:['from_account_id','to_account_id','amount'] } },
+  { name: 'query_user_by_email',         description: 'Check if a user exists by email address (public, no auth required).', inputSchema: { type:'object', properties:{ email:{type:'string'} }, required:['email'] } },
+  { name: 'sequential_think',            description: 'Reason step-by-step through a complex banking question or decision.', inputSchema: { type:'object', properties:{ query:{type:'string'}, context:{type:'string'} }, required:['query'] } },
+];
+
 /**
  * Demo MCP Inspector: live tools/list + tools/call via the Backend-for-Frontend (BFF) MCP Host proxy.
  * Complements LangChain MCP Host JSON at REACT_APP_LANGCHAIN_INSPECTOR_URL (default :8081/inspector/mcp-host).
@@ -80,9 +93,9 @@ const McpInspector = ({ user, onLogout }) => {
             : null
       );
     } catch (e) {
-      notifyError(formatAxiosError(e, 'tools/list failed'));
-      setTools([]);
-      setToolsSourceInfo(null);
+      notifyError(formatAxiosError(e, 'BFF unreachable — showing static tool catalog'));
+      setTools(STATIC_LOCAL_TOOLS);
+      setToolsSourceInfo({ local: true, reason: 'bff_unreachable' });
     } finally {
       setLoadingTools(false);
     }
@@ -311,10 +324,7 @@ const McpInspector = ({ user, onLogout }) => {
             <div className="mcp-inspector__tools">
               {toolsSourceInfo?.local && (
                 <p className="mcp-inspector__muted mcp-inspector__muted--block">
-                  Showing the <strong>local</strong> tool catalog (same tools as the in-process fallback when MCP WebSocket is
-                  unavailable or your session has no OAuth bearer for MCP). Invoke uses the local handler too. For a live{' '}
-                  <code>tools/list</code> from <code>banking_mcp_server</code>, use Redis-backed sessions and sign in again so the
-                  Backend-for-Frontend (BFF) holds a real access token.
+                  Showing the <strong>static</strong> tool catalog — the API server or MCP server is not reachable right now. Start the server with <code>./run-bank.sh</code> and click Refresh. Invoke uses the local in-process handler. For a live <code>tools/list</code> from <code>banking_mcp_server</code>, sign in so the BFF holds a real OAuth token.
                   {toolsSourceInfo.reason ? (
                     <>
                       {' '}
