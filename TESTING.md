@@ -13,6 +13,7 @@ Comprehensive reference for every test in this monorepo: what exists, how to run
 | UI E2E (mock server) | Playwright | `cd banking_api_ui && npm run test:e2e` | 10 spec files |
 | UI E2E (real server) | Playwright | `cd banking_api_ui && npm run test:e2e:real` | real-only specs |
 | Live PingOne integration | Jest | `cd banking_api_server && npm run test:live` | ~35 tests (needs `.env`) |
+| Live token exchange (browser token) | Jest | `cd banking_api_server && npm run token:extract && npm run test:live:token` | token exchange suites |
 
 ---
 
@@ -210,6 +211,8 @@ Every test suite that doesn't carry the word "live" or "integration" mocks all e
 
 The suites below are gated behind `RUN_LIVE_TESTS=true` and hit actual PingOne endpoints. They require a valid `.env` in `banking_api_server/`.
 
+> **Tip:** If you have logged in via the browser, run `npm run token:extract` to auto-populate `INTEGRATION_SUBJECT_ACCESS_TOKEN` without copy-paste. See §1.4a.
+
 ```bash
 # All live tests
 npm run test:live
@@ -245,6 +248,58 @@ AI_AGENT_AUDIENCE=
 AGENT_GATEWAY_AUDIENCE=
 PINGONE_RESOURCE_MCP_SERVER_URI=
 ```
+
+### 1.4a Using your browser login token (no copy-paste required)
+
+Instead of pasting tokens manually, you can extract the live access token from your most recent browser
+login and have Jest pick it up automatically. The BFF stores real PingOne tokens in `sessions.db` after
+every successful login — the script below reads the latest one.
+
+**One-time setup:**
+1. Start the server and log in via the browser (`npm start` then visit `/dashboard`)
+2. Run the extraction script:
+
+```bash
+cd banking_api_server
+npm run token:extract
+```
+
+That writes `banking_api_server/.env.test-tokens` (gitignored — never committed):
+
+```
+INTEGRATION_SUBJECT_ACCESS_TOKEN=eyJraWQi...  # real PingOne JWT from your session
+RUN_LIVE_TESTS=true
+RUN_PINGONE_TOKEN_INTEGRATION=true
+```
+
+**Run live token tests:**
+
+```bash
+# Token exchange suites (uses .env.test-tokens automatically)
+npm run test:live:token
+
+# Or any gated suite — token is injected by Jest globalSetup
+RUN_LIVE_TESTS=true npm test -- --testPathPattern=dual-token-exchange-live --forceExit
+
+# All live tests (requires full .env + token)
+npm run test:live
+```
+
+**How it works:**
+
+`jest.config.js` has a `globalSetup` pointing at `src/__tests__/setup/loadBrowserToken.js`.
+This runs once before any suite loads and reads `.env.test-tokens` into `process.env`.
+Existing environment variables (CI, shell export) always win — the file is a fallback only.
+
+**Token lifetime:** PingOne access tokens are short-lived (~60 min by default). Re-run
+`npm run token:extract` after each browser login to refresh. The script prints the expiry
+time so you know how long the token is valid.
+
+**Why not always use real tokens?**
+
+Most suites mock everything intentionally — they test business logic without network calls
+and run in < 1 s. Real-token suites test the actual PingOne exchange chain and require
+live credentials. Keep them separate so CI stays fast and offline.
 
 ### 1.5 Known pre-existing failures (not introduced by SSE work)
 

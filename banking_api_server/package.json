@@ -25,6 +25,8 @@
     "verify:scopes:fix": "node scripts/verify-scope-configuration.js --fix",
     "test:pingone-token-integration": "jest --testPathPattern=token-exchange-pingone --forceExit",
     "test:live": "RUN_LIVE_TESTS=true jest --testPathPattern=live-pingone-integration --forceExit --no-coverage",
+    "test:live:token": "RUN_LIVE_TESTS=true RUN_PINGONE_TOKEN_INTEGRATION=true jest --testPathPattern=\"token-exchange-pingone|dual-token-exchange-live\" --forceExit --no-coverage --verbose",
+    "token:extract": "node scripts/extract-browser-token.js",
     "test:pingone": "jest --testPathPattern='pingoneTestRoutes' --forceExit --no-coverage && RUN_LIVE_TESTS=true jest --testPathPattern=live-pingone-integration --forceExit --no-coverage",
     "test:scope-assignments": "node test-scope-assignments.js",
     "test:oauth-provider-scopes": "node test-oauth-provider-scopes.js",
