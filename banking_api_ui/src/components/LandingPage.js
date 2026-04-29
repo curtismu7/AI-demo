@@ -29,51 +29,6 @@ export default function LandingPage({ user, onLogout }) {
 							<h1>Super Banking</h1>
 							<p>AI-Powered Financial Services</p>
 						</div>
-						<nav
-							className="landing-nav"
-							role="navigation"
-							aria-label="Main navigation"
-						>
-							<button
-								onClick={() => navigate("/demo-data")}
-								className="nav-link"
-								style={{
-									background: "none",
-									border: "none",
-									cursor: "pointer",
-									color: "inherit",
-									font: "inherit",
-								}}
-							>
-								Demo Config
-							</button>
-							<button
-								onClick={() => navigate("/pingone-test")}
-								className="nav-link"
-								style={{
-									background: "none",
-									border: "none",
-									cursor: "pointer",
-									color: "inherit",
-									font: "inherit",
-								}}
-							>
-								PingOne Test
-							</button>
-							<button
-								onClick={() => navigate("/mfa-test")}
-								className="nav-link"
-								style={{
-									background: "none",
-									border: "none",
-									cursor: "pointer",
-									color: "inherit",
-									font: "inherit",
-								}}
-							>
-								MFA Test
-							</button>
-						</nav>
 						<div className="landing-header-actions">
 							<button
 								onClick={handleAdminDashboard}
