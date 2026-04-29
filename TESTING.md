@@ -9,7 +9,7 @@ Comprehensive reference for every test in this monorepo: what exists, how to run
 | Layer | Runner | Command | Count |
 |-------|--------|---------|-------|
 | API server unit + integration | Jest | `cd banking_api_server && npm test` | ~2 038 tests / 105 suites |
-| UI unit | Jest (CRA) | `cd banking_api_ui && npm run test:unit` | 337 tests / 24 suites |
+| UI unit | Jest (CRA) | `cd banking_api_ui && npm run test:unit` | 343 tests / 25 suites |
 | UI E2E (mock server) | Playwright | `cd banking_api_ui && npm run test:e2e` | 10 spec files |
 | UI E2E (real server) | Playwright | `cd banking_api_ui && npm run test:e2e:real` | real-only specs |
 | Live PingOne integration | Jest | `cd banking_api_server && npm run test:live` | ~35 tests (needs `.env`) |
@@ -353,6 +353,7 @@ npm run test:unit
 | `src/services/__tests__/spinnerService.test.js` | Global spinner increment/decrement |
 | `src/services/__tests__/apiClient.session.test.js` | `apiClient` 401 retry and session cookie path |
 | `src/services/__tests__/oauth-ui-integration.test.js` | OAuth status polling, token expiry display |
+| `src/services/__tests__/logger.test.js` | Named logger factory: prefix formatting, debug/info/warn/error output, multi-arg passthrough (6 tests) |
 | `src/components/__tests__/SideNav.snapshot.test.js` | SideNav snapshot (admin vs user) |
 | `src/components/__tests__/Header.snapshot.test.js` | Header snapshot |
 | `src/components/__tests__/Footer.snapshot.test.js` | Footer snapshot |
@@ -377,6 +378,7 @@ npm run test:unit
 | React Router | `MemoryRouter` wraps components under test |
 | OAuth status API | Inline `jest.fn()` returning fixture data |
 | `EventSource` (SSE) | `window.EventSource` replaced with `MockEventSource` class in `PingOneTestPage.sse.test.jsx`; fires synthetic `onmessage` events to drive routing tests |
+| `console.*` (logger) | `jest.spyOn(console, 'log/info/warn/error')` in `logger.test.js`; logger tests run in dev mode so `debug`/`info` pass through — set `NODE_ENV=production` and `window.__BANKING_DEBUG__=false` to test production silencing |
 
 ---
 
