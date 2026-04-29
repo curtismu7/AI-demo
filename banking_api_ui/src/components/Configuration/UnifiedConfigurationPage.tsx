@@ -841,6 +841,11 @@ const UnifiedConfigurationPage: FC<{
         credentials: 'include',
         body: JSON.stringify({ updates: { [flagId]: newValue } }),
       });
+      if (res.status === 403) {
+        setFeatureFlags(prev => prev.map(f => f.id === flagId ? { ...f, value: !newValue } : f));
+        notifyError('Admin session required to change feature flags — sign in at /admin first.');
+        return;
+      }
       if (!res.ok) throw new Error('PATCH failed');
       notifySuccess(`Flag ${newValue ? 'enabled' : 'disabled'}`);
     } catch {

@@ -655,7 +655,8 @@ app.use('/api/admin/config', adminConfigRoutes);
 
 // Feature flags — admin-authenticated; registered before the broader /api/admin/* guard
 // so the route path is unambiguous.
-app.use('/api/admin/feature-flags', authenticateToken, featureFlagsRoutes);
+// Feature flags: GET is public (read-only). PATCH enforces admin check inside route handler.
+app.use('/api/admin/feature-flags', featureFlagsRoutes);
 app.use('/api/admin/scope-audit', authenticateToken, require('./routes/scopeAudit'));
 app.use('/api/admin/token-compliance', authenticateToken, require('./routes/tokenCompliance'));
 
