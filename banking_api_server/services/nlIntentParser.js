@@ -196,6 +196,10 @@ function parseBanking(t) {
   if (/\b(list|show|get|what).*(mcp.*tools?|tools?.*available|available.*tools?)\b|\btools?\s*(list|available)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'mcp_tools' } };
   }
+  // Sensitive details first — must precede general accounts check
+  if (/\b(sensitive account details|full account|routing number|account number|account details)\b/.test(t)) {
+    return { kind: 'banking', banking: { action: 'sensitive_account_details' } };
+  }
   if (/\b(show|list|get|see|view|pull|display).*(accounts?|balances?)\b|\bmy accounts?\b(?!\s+balance)|\ball\b.*\baccounts?\b|\bcustomer accounts?\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'accounts' } };
   }
@@ -249,9 +253,7 @@ function parseBanking(t) {
   if (/\b(logout|log out|sign out|signout)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'logout' } };
   }
-  if (/\b(sensitive account details|full account|routing number|account number|account details)\b/.test(t)) {
-    return { kind: 'banking', banking: { action: 'sensitive_account_details' } };
-  }
+
   // Web search: general queries not related to banking or OAuth education
   if (
     /\b(search|find info|look up|look up|what is|tell me about|who is)\b/i.test(t) &&
