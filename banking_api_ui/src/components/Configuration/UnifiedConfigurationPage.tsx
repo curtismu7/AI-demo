@@ -665,16 +665,20 @@ const UnifiedConfigurationPage: FC<{
     setFlagsLoading(true);
     setFlagsError(null);
     fetch('/api/admin/feature-flags', { credentials: 'include' })
-      .then(r => r.json())
-      .then((data: { flags?: FeatureFlag[] }) => {
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<{ flags?: FeatureFlag[] }>;
+      })
+      .then((data) => {
         if (!cancelled) {
-          setFeatureFlags(data.flags || []);
+          setFeatureFlags(data.flags ?? []);
           setFlagsLoading(false);
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (!cancelled) {
-          setFlagsError('Failed to load feature flags — is the API server running?');
+          const msg = err instanceof Error ? err.message : String(err);
+          setFlagsError(`Failed to load feature flags (${msg}) — is the API server running?`);
           setFlagsLoading(false);
         }
       });
