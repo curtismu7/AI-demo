@@ -1705,8 +1705,21 @@ export default function DemoDataPage({ user, onLogout }) {
                     <span style={{ color: '#6b7280' }}>— AI Agent Client ID (exchange #1: user → agent token, exchange #2: agent → MCP token with nested <code>act</code>)</span>
                   </label>
                   {delegationMode === '2exchange' && (
-                    <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: '#92400e', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 4, padding: '0.35rem 0.6rem' }}>
-                      ⚠️ Also enable the <strong>"2-Token Exchange Delegated Chain"</strong> feature flag and set <code>AI_AGENT_CLIENT_ID</code> + <code>AI_AGENT_CLIENT_SECRET</code> in <strong>Vercel → Settings → Environment Variables</strong> (or your <code>.env</code> file for local dev).
+                    <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: '#92400e', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 4, padding: '0.35rem 0.6rem', lineHeight: 1.6 }}>
+                      ⚠️ Two more steps to activate:
+                      <ol style={{ margin: '0.3rem 0 0 1.1rem', padding: 0 }}>
+                        <li>
+                          <strong>Enable the feature flag</strong> — go to{' '}
+                          <a href="/configure#feature-flags" style={{ color: '#92400e' }}>Configuration → Feature Flags</a>{' '}
+                          and turn on <em>"Token Exchange — 2-Exchange Delegated Chain"</em>.
+                        </li>
+                        <li>
+                          <strong>Set the env vars</strong> — go to{' '}
+                          <a href="/configure" style={{ color: '#92400e' }}>Configuration → PingOne Setup → Agent Settings</a>{' '}
+                          and save <code>AI_AGENT_CLIENT_ID</code> + <code>AI_AGENT_CLIENT_SECRET</code>
+                          {' '}(or add them to your <code>.env</code> file and restart the server).
+                        </li>
+                      </ol>
                     </div>
                   )}
                 </div>
