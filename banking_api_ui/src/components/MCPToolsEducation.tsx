@@ -544,7 +544,7 @@ export const MCPToolsEducation: React.FC = () => {
                 </div>
               </div>
               <div style={{ marginTop: '10px', background: '#f8f9fa', borderRadius: '6px', padding: '12px', fontFamily: 'monospace', fontSize: '12px', overflowX: 'auto' }}>
-                <div style={{ color: '#888', marginBottom: '4px' }}>// Server → Client</div>
+                <div style={{ color: '#888', marginBottom: '4px' }}>{/* Server → Client */}</div>
                 {`{
   "method": "elicitation/create",
   "params": {
@@ -584,7 +584,7 @@ export const MCPToolsEducation: React.FC = () => {
                 </div>
               </div>
               <div style={{ marginTop: '10px', background: '#f8f9fa', borderRadius: '6px', padding: '12px', fontFamily: 'monospace', fontSize: '12px', overflowX: 'auto' }}>
-                <div style={{ color: '#888', marginBottom: '4px' }}>// Server → Client</div>
+                <div style={{ color: '#888', marginBottom: '4px' }}>{/* Server → Client */}</div>
                 {`{
   "method": "elicitation/create",
   "params": {
