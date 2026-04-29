@@ -222,12 +222,15 @@ function LiveTokenChainPanel() {
   const [chain, setChain] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [needsLogin, setNeedsLogin] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
+    setNeedsLogin(false);
     try {
       const res = await fetch('/api/token-chain');
+      if (res.status === 401) { setNeedsLogin(true); return; }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setChain(data);
@@ -263,6 +266,21 @@ function LiveTokenChainPanel() {
         <span style={S.infoPill}>act</span> claims, and MCP tool calls that used delegated authority.
       </p>
 
+      {needsLogin && (
+        <div style={{
+          padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe',
+          borderRadius: 8, fontSize: 13, color: '#1e40af', display: 'flex',
+          alignItems: 'center', gap: 10,
+        }}>
+          <span style={{ fontSize: 18 }}>🔒</span>
+          <span>
+            <strong>Sign in required</strong> — the token chain is only available for
+            authenticated sessions.{' '}
+            <a href='/api/auth/login' style={{ color: '#1d4ed8', fontWeight: 600 }}>Log in</a>{' '}
+            to see live delegation events here.
+          </span>
+        </div>
+      )}
       {error && <div style={S.errorBanner}>{error}</div>}
 
       {!loading && chain && (
