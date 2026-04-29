@@ -35,7 +35,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
       {
         name: 'get_my_accounts',
         displayName: 'Get My Accounts',
-        description: 'List all bank accounts for the authenticated user. Returns account type, name, masked account number, current balance, currency, and status. Use get_account_details for IBAN, SWIFT, and branch information.',
+        description: 'List all bank accounts for the authenticated user. Returns account type, name, masked account number, current balance, currency, and status. Use get_sensitive_account_details to retrieve full account numbers, IBAN, SWIFT, and routing information.',
         requiresUserAuth: true,
         requiredScopes: ['banking:accounts:read'],
         readOnly: true,
