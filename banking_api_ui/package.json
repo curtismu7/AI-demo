@@ -23,8 +23,8 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
-    "test:unit": "react-scripts test --watchAll=false",
+    "test": "react-scripts test --reporters=default --reporters=./src/reporters/markdownReporter.js",
+    "test:unit": "react-scripts test --watchAll=false --reporters=default --reporters=./src/reporters/markdownReporter.js",
     "eject": "react-scripts eject",
     "test:e2e": "playwright test",
     "test:e2e:ci": "CI=true playwright test",

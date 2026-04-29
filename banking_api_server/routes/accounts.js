@@ -256,7 +256,16 @@ router.get('/:id', authenticateToken, requireScopes(['banking:read']), async (re
 // Get account balance (admin or account owner)
 router.get('/:id/balance', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
   try {
-    const account = dataStore.getAccountById(req.params.id);
+    let account = dataStore.getAccountById(req.params.id);
+    // Fallback: resolve type-name IDs like "checking"/"savings" (UI uses these before liveAccounts loads)
+    if (!account && req.user) {
+      const userAccounts = dataStore.getAccountsByUserId(req.user.id);
+      const typeName = req.params.id.toLowerCase().replace(/^(my|the|primary|main)\s+/, '');
+      account = userAccounts.find(a =>
+        String(a.accountType || '').toLowerCase() === typeName ||
+        String(a.name || '').toLowerCase().includes(typeName)
+      );
+    }
     if (!account) {
       return res.status(404).json({ error: 'Account not found' });
     }
@@ -266,7 +275,7 @@ router.get('/:id/balance', authenticateToken, requireScopes(['banking:read']), a
       return res.status(403).json({ error: 'Access denied. You can only check your own account balance.' });
     }
     
-    const balance = dataStore.getAccountBalance(req.params.id);
+    const balance = dataStore.getAccountBalance(account.id);
     res.json({ balance });
   } catch (error) {
     console.error('Error getting account balance:', error);

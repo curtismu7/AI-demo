@@ -8,11 +8,20 @@ Comprehensive reference for every test in this monorepo: what exists, how to run
 
 | Layer | Runner | Command | Count |
 |-------|--------|---------|-------|
-| API server unit + integration | Jest | `cd banking_api_server && npm test` | ~2 029 tests / 104 suites |
-| UI unit | Jest (CRA) | `cd banking_api_ui && npm test:unit` | 301 tests / 22 suites |
+| API server unit + integration | Jest | `cd banking_api_server && npm test` | ~2 038 tests / 105 suites |
+| UI unit | Jest (CRA) | `cd banking_api_ui && npm run test:unit` | 337 tests / 24 suites |
 | UI E2E (mock server) | Playwright | `cd banking_api_ui && npm run test:e2e` | 10 spec files |
 | UI E2E (real server) | Playwright | `cd banking_api_ui && npm run test:e2e:real` | real-only specs |
 | Live PingOne integration | Jest | `cd banking_api_server && npm run test:live` | ~35 tests (needs `.env`) |
+
+### Test results files
+
+Both `npm test` commands automatically write a datetime-named markdown report:
+
+- **API server:** `banking_api_server/test-results/YYYY-MM-DD-HH-MM-SS-test-results.md`
+- **UI:** `banking_api_ui/test-results/YYYY-MM-DD-HH-MM-SS-test-results.md`
+
+Each report lists pass/fail per suite and per test, with failure excerpts. Reporter source: `banking_api_server/src/__tests__/setup/markdownReporter.js` and `banking_api_ui/src/reporters/markdownReporter.js`.
 | Live token exchange (browser token) | Jest | `cd banking_api_server && npm run token:extract && npm run test:live:token` | token exchange suites |
 
 ---
@@ -57,6 +66,7 @@ npm run test:pingone      # runs unit tests, then live tests if RUN_LIVE_TESTS=t
 |------|--------------|-----------|
 | `pingoneTestRoutes.test.js` | `GET /ai-agent-apps`, `POST /update-resources`, `POST /update-scopes`, `POST /update-apps`, `POST /update-user-spel`, `GET /diagnose-mcp-exchange`, `POST /fix-mcp-exchange` | All mocked (axios, managementService, oauthService) |
 | `pingoneTestRoutes.routes.test.js` | `pingoneRequest` shape contract for `/authz-token` + `/agent-token`; `GET /events` SSE headers and initial comment | All mocked |
+| `pingoneTestRoutes.ssePublish.test.js` | SSE side-effects for `/authz-token`, `/agent-token`, `/worker-token`: `publishToken` called with correct `id`/`status`/`decoded` on success and error paths (9 tests) | All mocked |
 
 #### OAuth / authentication
 | File | What it tests |
@@ -350,7 +360,9 @@ npm run test:unit
 | `src/components/__tests__/DemoDataPage.test.js` | Demo data page render and filter |
 | `src/components/__tests__/LogViewer.test.js` | Log viewer pagination and filter |
 | `src/components/__tests__/DelegatedAccessPage.test.js` | Delegated access page render |
-| `src/components/__tests__/BankingAgent.chips.test.js` | Agent tool-chip rendering |
+| `src/components/__tests__/BankingAgent.chips.test.js` | Agent chip rendering, action dispatch, suggestion prompts, consent-block, config-focus mode, dashboard button placement (60 tests) |
+| `src/components/__tests__/PingOneTestPage.sse.test.jsx` | `EventSource` lifecycle (open, close, unmount), SSE message routing for `token`/`exchange`/`api_call` events, malformed JSON handling (10 tests) |
+| `src/components/__tests__/WebMcpPanel.test.jsx` | Feature-flag gate, tool listing, tool selection, parameter inputs, SSE stream events, tool result display, error handling (18 tests) |
 | `src/components/__tests__/buttonRouting.test.js` | Button navigation routing |
 | `src/components/__tests__/PingOneAudit.test.jsx` | PingOne audit panel result display |
 | `src/components/shared/__tests__/EducationDrawer.test.js` | Education drawer open/close |
@@ -364,7 +376,7 @@ npm run test:unit
 | `localStorage` / `sessionStorage` | CRA test environment provides in-memory stubs |
 | React Router | `MemoryRouter` wraps components under test |
 | OAuth status API | Inline `jest.fn()` returning fixture data |
-| `EventSource` (SSE) | Not yet mocked — `PingOneTestPage` SSE logic is not unit-tested (see §4) |
+| `EventSource` (SSE) | `window.EventSource` replaced with `MockEventSource` class in `PingOneTestPage.sse.test.jsx`; fires synthetic `onmessage` events to drive routing tests |
 
 ---
 
@@ -423,10 +435,8 @@ To run against real PingOne:
 
 ## 4. What is NOT covered
 
-### SSE client (UI)
-`PingOneTestPage.jsx` now opens an `EventSource` to `/api/pingone-test/events` and routes `token`/`exchange` events into React state. This logic has **no unit test**. The browser `EventSource` API is not available in jsdom, and no mock is set up. Options to add coverage:
-- Mock `window.EventSource` in a Jest test for `PingOneTestPage`
-- Add a Playwright E2E test that opens the PingOne test page, triggers a token fetch, and asserts the status chip updates without a full page reload
+### ~~SSE client (UI)~~ ✅ Covered
+`PingOneTestPage.sse.test.jsx` now covers `EventSource` lifecycle, `token`/`exchange`/`api_call` event routing, and malformed-JSON resilience using a `MockEventSource` class. `pingoneTestRoutes.ssePublish.test.js` covers the server-side `publishToken`/`publishExchange` SSE side-effects.
 
 ### `ApiCallDisplay` polling → SSE migration
 `ApiCallDisplay` still polls `/api/api-calls` every 10 s. The SSE hub already publishes `api_call` events, but the component doesn't consume them. No test covers whether live `api_call` events reach the UI.
@@ -437,8 +447,8 @@ The `formatTimeRemaining` / `isTokenValid` helpers in `PingOneTestPage` are unte
 ### Worker token SSE update
 `publishToken` with `id: 'worker-token'` updates `workerDecoded` and `workerTokenExpiry` via SSE, but `setWorkerToken` (the status string) is NOT updated via SSE — it continues to be set only by the `loadWorkerToken()` API call. This asymmetry is untested.
 
-### `pingoneTestRoutes.js` token endpoints (GET /authz-token, GET /agent-token, GET /exchange-*)
-The happy paths for these endpoints — which call `sseHub.publishToken` / `publishExchange` — are only lightly tested via `pingoneTestRoutes.routes.test.js` (pingoneRequest shape only). The full response bodies, SSE side-effects, and error branches are not asserted in unit tests. The live integration test covers these end-to-end against real PingOne.
+### ~~`pingoneTestRoutes.js` token endpoints~~ ✅ Covered
+SSE side-effects (`publishToken`/`publishExchange`) for `/authz-token`, `/agent-token`, and `/worker-token` are fully covered by `pingoneTestRoutes.ssePublish.test.js` (success, error, and decoded-payload paths).
 
 ### Vercel production session store
 `redisWireUrl.test.js` tests URL parsing. The full Upstash Redis session round-trip under Vercel serverless constraints (cold start, multiple instances) has no automated test.

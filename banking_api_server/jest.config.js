@@ -18,6 +18,10 @@ module.exports = {
     '**/src/__tests__/**/*.test.js',
     '**/tests/**/*.test.js',
   ],
+  reporters: [
+    'default',
+    '<rootDir>/src/__tests__/setup/markdownReporter.js',
+  ],
   verbose: true,
   silent: true // Suppress console output during tests
 };

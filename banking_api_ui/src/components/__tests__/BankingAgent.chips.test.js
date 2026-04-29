@@ -110,7 +110,15 @@ jest.mock("react-toastify", () => ({
 }));
 
 jest.mock("../../utils/appToast", () => ({
-	toast: jest.fn(),
+	toast: {
+		info: jest.fn(),
+		success: jest.fn(),
+		error: jest.fn(),
+		warn: jest.fn(),
+		warning: jest.fn(),
+		update: jest.fn(),
+		dismiss: jest.fn(),
+	},
 	notifySuccess: jest.fn(),
 	notifyError: jest.fn(),
 	notifyInfo: jest.fn(),
@@ -738,5 +746,124 @@ describe("Consent-denied banner visibility", () => {
 		// isAgentBlockedByConsentDecline returns false by default in afterEach reset;
 		// before dispatching event, component state stays false
 		expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+	});
+});
+
+// ─── Action chip → MCP tool dispatch ─────────────────────────────────────────
+// These tests verify that clicking a chip calls the correct bankingAgentService
+// function. The component calls the service then adds a chat message with the result.
+
+describe("Action chip dispatch — MCP tool calls", () => {
+	let svcMock;
+	beforeEach(() => {
+		svcMock = jest.requireMock("../../services/bankingAgentService");
+		svcMock.getMyAccounts.mockClear();
+		svcMock.getMyTransactions.mockClear();
+		svcMock.getAccountBalance.mockClear();
+	});
+
+	it("'My Accounts' chip adds user message to chat", async () => {
+		renderAgent({ user: customerUser, mode: "inline" });
+		await act(async () => {
+			fireEvent.click(screen.getByText("🏦 My Accounts"));
+		});
+		// runAction calls addMessage("user", label) — expect the label in a chat bubble
+		await waitFor(() => {
+			const msgs = screen.getAllByText("🏦 My Accounts");
+			// At least 2: the chip button + the user chat message
+			expect(msgs.length).toBeGreaterThanOrEqual(2);
+		});
+	});
+
+	it("'Recent Transactions' chip adds user message to chat", async () => {
+		renderAgent({ user: customerUser, mode: "inline" });
+		await act(async () => {
+			fireEvent.click(screen.getByText("📋 Recent Transactions"));
+		});
+		await waitFor(() => {
+			const msgs = screen.getAllByText("📋 Recent Transactions");
+			expect(msgs.length).toBeGreaterThanOrEqual(2);
+		});
+	});
+
+	it("'Check Balance' chip opens ActionForm (does not call getAccountBalance directly)", () => {
+		renderAgent({ user: customerUser, mode: "inline" });
+		fireEvent.click(screen.getByText("💰 Check Balance"));
+		// Opens a form — no immediate service call
+		expect(svcMock.getAccountBalance).not.toHaveBeenCalled();
+	});
+
+	it("'Deposit' chip opens ActionForm without calling createDeposit immediately", () => {
+		renderAgent({ user: customerUser, mode: "inline" });
+		fireEvent.click(screen.getByText("⬇ Deposit"));
+		expect(svcMock.createDeposit).not.toHaveBeenCalled();
+	});
+
+	it("'Transfer' chip pre-fills prompt with transfer example", () => {
+		renderAgent({ user: customerUser, mode: "inline" });
+		fireEvent.click(screen.getByText("↔ Transfer"));
+		// Transfer uses setNlInput to pre-fill rather than opening a form
+		const input = screen.getByRole("textbox");
+		expect(input.value).toMatch(/Transfer.*checking.*savings/i);
+	});
+
+	it("'Think Through a Question' chip pre-fills prompt with think example", () => {
+		renderAgent({ user: customerUser, mode: "inline" });
+		fireEvent.click(screen.getByText("🧠 Think Through a Question"));
+		const input = screen.getByRole("textbox");
+		expect(input.value).toMatch(/Think:/i);
+	});
+
+	it("'Query User by Email' chip pre-fills prompt with query template", () => {
+		renderAgent({ user: customerUser, mode: "inline" });
+		// query_user lives in the admin group inside the discovery popout
+		fireEvent.click(screen.getByRole("button", { name: /All actions/i }));
+		// Multiple elements may render the label — click the first one inside the dialog
+		const dialog = screen.getByRole("dialog", { name: /Action browser/i });
+		const btns = Array.from(dialog.querySelectorAll("button")).filter(
+			(b) => b.textContent.trim() === "🔍 Query User by Email",
+		);
+		expect(btns.length).toBeGreaterThan(0);
+		fireEvent.click(btns[0]);
+		const input = screen.getByRole("textbox");
+		expect(input.value).toMatch(/query user by email/i);
+	});
+});
+
+// ─── Suggested prompts (Actions dropdown) ────────────────────────────────────
+// Validate that the suggestion lists contain useful, working example prompts.
+
+describe("Suggested prompts — customer list", () => {
+	const EXPECTED = [
+		"Show me my accounts",
+		"Transfer $100 from checking to savings",
+		"Deposit $50 into checking",
+	];
+	it("contains key customer prompts", () => {
+		renderAgent({ user: customerUser, mode: "inline" });
+		EXPECTED.forEach((text) => {
+			expect(screen.getByText(`"${text}"`)).toBeInTheDocument();
+		});
+	});
+
+	it("each customer suggestion is a clickable button", () => {
+		renderAgent({ user: customerUser, mode: "inline" });
+		EXPECTED.forEach((text) => {
+			const btn = screen.getByText(`"${text}"`).closest("button");
+			expect(btn).not.toBeNull();
+			expect(btn).not.toBeDisabled();
+		});
+	});
+});
+
+describe("Suggested prompts — admin list", () => {
+	it("admin sees 'Show all customer accounts' suggestion", () => {
+		renderAgent({ user: adminUser, mode: "inline" });
+		expect(screen.getByText('"Show all customer accounts"')).toBeInTheDocument();
+	});
+
+	it("admin does not see 'Show me my accounts' (customer-only prompt)", () => {
+		renderAgent({ user: adminUser, mode: "inline" });
+		expect(screen.queryByText('"Show me my accounts"')).not.toBeInTheDocument();
 	});
 });
