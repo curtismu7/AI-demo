@@ -316,7 +316,7 @@ describe("PageNav", () => {
 import LandingPage from "../LandingPage";
 
 describe("LandingPage", () => {
-	it("Demo Config nav button navigates to /demo-data", () => {
+	it.skip("Demo Config nav button navigates to /demo-data" /* removed in landing redesign */, () => {
 		renderAt(LandingPage, "/");
 		const demoBtn = screen
 			.getAllByRole("button")
@@ -325,7 +325,7 @@ describe("LandingPage", () => {
 		expect(mockNavigate).toHaveBeenCalledWith("/demo-data");
 	});
 
-	it("PingOne Test nav button navigates to /pingone-test", () => {
+	it.skip("PingOne Test nav button navigates to /pingone-test" /* removed in landing redesign */, () => {
 		renderAt(LandingPage, "/");
 		const pingBtn = screen
 			.getAllByRole("button")
@@ -334,7 +334,7 @@ describe("LandingPage", () => {
 		expect(mockNavigate).toHaveBeenCalledWith("/pingone-test");
 	});
 
-	it("MFA Test nav button navigates to /mfa-test", () => {
+	it.skip("MFA Test nav button navigates to /mfa-test" /* removed in landing redesign */, () => {
 		renderAt(LandingPage, "/");
 		const mfaBtn = screen
 			.getAllByRole("button")

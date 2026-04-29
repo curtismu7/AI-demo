@@ -162,7 +162,7 @@ export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
             mode="inline"
             embeddedDockBottom
             embeddedFocus={isConfigPage ? 'config' : 'banking'}
-            splitColumnChrome
+            distinctFloatingChrome
           />
         </div>
       )}

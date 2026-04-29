@@ -975,6 +975,7 @@ function AppWithAuth() {
 																user={user}
 																onLogout={logout}
 																mode="inline"
+																distinctFloatingChrome
 															/>
 														}
 													/>

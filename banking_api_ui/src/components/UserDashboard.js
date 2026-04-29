@@ -2450,7 +2450,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 								mode="inline"
 								embeddedFocus="banking"
 								distinctFloatingChrome
-								splitColumnChrome
 								showPopOut
 							/>
 						</div>
@@ -2477,7 +2476,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 								mode="inline"
 								embeddedFocus="banking"
 								distinctFloatingChrome
-								splitColumnChrome
 								showPopOut
 							/>
 						</div>

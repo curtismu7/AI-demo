@@ -5620,7 +5620,8 @@ export default function BankingAgent({
 						)}
 
 						{/* ── Left column: suggestions + actions/auth ── */}
-						<div className="ba-left-col">
+      {!useActionsPopout && (
+      <div className="ba-left-col">
 							{isLoggedIn && (
 								<div className="ba-session-row">
 									<button
@@ -5913,7 +5914,8 @@ export default function BankingAgent({
 									</div>
 								</>
 							)}
-						</div>
+      </div>
+      )}
 
 						{/* ── Middle column: token chain (collapsible + resizable) ── */}
 						{showTokenChain && isLoggedIn && tokenChain && (

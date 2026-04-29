@@ -156,7 +156,7 @@ export default function SideAgentDock({ user, onLogout, side }) {
             mode="inline"
             user={user}
             onLogout={onLogout}
-            splitColumnChrome={false}
+            distinctFloatingChrome
           />
         </div>
       )}

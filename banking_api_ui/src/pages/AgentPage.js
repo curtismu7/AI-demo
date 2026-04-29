@@ -10,7 +10,7 @@ import BankingAgent from '../components/BankingAgent';
 export default function AgentPage({ user, onLogout }) {
   return (
     <div className="agent-page">
-      <BankingAgent user={user} onLogout={onLogout} mode="inline" />
+      <BankingAgent user={user} onLogout={onLogout} mode="inline" distinctFloatingChrome />
     </div>
   );
 }

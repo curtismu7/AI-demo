@@ -230,15 +230,16 @@ describe("Suggestion chips — admin role", () => {
 describe("Suggestion chips — all 3 modes render correctly", () => {
 	const FIRST_CUSTOMER_SUGGESTION = '"Show me my accounts"';
 
-	it("float mode: renders suggestion chips after opening panel", async () => {
+	it("float mode: shows Actions trigger button (no left-column chips) after opening panel", async () => {
 		renderAgent({ user: customerUser, mode: "float" });
 		const fab = screen.getByRole("button", { name: /Open.*AI Agent/i });
 		await act(async () => {
 			fireEvent.click(fab);
 		});
-		await waitFor(() => {
-			expect(screen.getByText(FIRST_CUSTOMER_SUGGESTION)).toBeInTheDocument();
-		});
+		// Float mode uses Actions popout — find the trigger by its CSS class
+		await waitFor(() => screen.getByTitle(/PingOne Identity/i));
+		const actionsBtn = document.querySelector(".ba-actions-trigger");
+		expect(actionsBtn).toBeInTheDocument();
 	});
 
 	it("inline (middle) mode: renders suggestion chips", () => {
@@ -327,16 +328,23 @@ describe("Action chips — not logged in", () => {
 });
 
 describe("Action chips — all 3 modes", () => {
-	it("float mode: renders action items after opening panel", async () => {
+	it("float mode: renders action items in Actions popout after opening panel", async () => {
 		renderAgent({ user: customerUser, mode: "float" });
 		const fab = screen.getByRole("button", { name: /Open.*AI Agent/i });
 		await act(async () => {
 			fireEvent.click(fab);
 		});
-		await waitFor(() => {
-			expect(screen.getByText("🏦 My Accounts")).toBeInTheDocument();
+		// Float mode: open Actions dropdown via class-based selector
+		await waitFor(() => screen.getByTitle(/PingOne Identity/i));
+		const actionsBtn = document.querySelector(".ba-actions-trigger");
+		await act(async () => {
+			fireEvent.click(actionsBtn);
 		});
-		expect(screen.getByText("⬇ Deposit")).toBeInTheDocument();
+		// Both header popout and full overlay may render items — use getAllByText
+		await waitFor(() => {
+			expect(screen.getAllByText("🏦 My Accounts").length).toBeGreaterThanOrEqual(1);
+		});
+		expect(screen.getAllByText("⬇ Deposit").length).toBeGreaterThanOrEqual(1);
 	});
 
 	it("inline (middle) mode: renders action items", () => {
@@ -435,13 +443,13 @@ describe("Education chips — all 3 modes (via discovery popout)", () => {
 		await act(async () => {
 			fireEvent.click(fab);
 		});
+		// Float mode: open Actions dropdown via class-based selector
+		await waitFor(() => screen.getByTitle(/PingOne Identity/i));
+		const actionsBtn = document.querySelector(".ba-actions-trigger");
+		fireEvent.click(actionsBtn);
 		await waitFor(() =>
-			screen.getByRole("button", { name: /All actions/i }),
+			expect(screen.getByText("OAuth: Authorization Code + PKCE")).toBeInTheDocument()
 		);
-		fireEvent.click(screen.getByRole("button", { name: /All actions/i }));
-		expect(
-			screen.getByText("OAuth: Authorization Code + PKCE"),
-		).toBeInTheDocument();
 	});
 
 	it("inline (middle) mode: shows education items via discovery popout", () => {
@@ -493,30 +501,30 @@ describe("Education chips — clicking opens panel", () => {
 // ─── Education chips (⚡ popup) ───────────────────────────────────────────────
 
 describe("Discovery popout — '⊞ All actions' button", () => {
-	it("'All actions' button is rendered when logged in (float mode, panel open)", async () => {
+	it("'Actions' trigger button is rendered in float mode (replaces left-column All actions)", async () => {
 		renderAgent({ user: customerUser, mode: "float" });
 		const fab = screen.getByRole("button", { name: /Open.*AI Agent/i });
 		await act(async () => {
 			fireEvent.click(fab);
 		});
-		await waitFor(() => {
-			expect(
-				screen.getByRole("button", { name: /All actions/i }),
-			).toBeInTheDocument();
-		});
+		// Float mode: ".ba-actions-trigger" header button replaces the left-column "⊞ All actions"
+		await waitFor(() => screen.getByTitle(/PingOne Identity/i));
+		expect(document.querySelector(".ba-actions-trigger")).toBeInTheDocument();
 	});
 
-	it("clicking 'All actions' opens the discovery popout with chips (float)", async () => {
+	it("clicking 'Actions' trigger button opens the discovery popout in float mode", async () => {
 		renderAgent({ user: customerUser, mode: "float" });
 		const fab = screen.getByRole("button", { name: /Open.*AI Agent/i });
 		await act(async () => {
 			fireEvent.click(fab);
 		});
+		// Float mode: ".ba-actions-trigger" header button opens the discovery popout
+		await waitFor(() => screen.getByTitle(/PingOne Identity/i));
+		const actionsBtn = document.querySelector(".ba-actions-trigger");
+		fireEvent.click(actionsBtn);
 		await waitFor(() =>
-			screen.getByRole("button", { name: /All actions/i }),
+			expect(screen.getByRole("dialog", { name: /Action browser/i })).toBeInTheDocument()
 		);
-		fireEvent.click(screen.getByRole("button", { name: /All actions/i }));
-		expect(screen.getByRole("dialog", { name: /Action browser/i })).toBeInTheDocument();
 	});
 
 	it("inline mode: 'All actions' button is rendered", () => {
