@@ -35,7 +35,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
       {
         name: 'get_my_accounts',
         displayName: 'Get My Accounts',
-        description: 'Retrieve the user\'s bank accounts with full account details including account type, name, masked account number, balance, currency, holder name, SWIFT/BIC code, IBAN, branch, and opening date.',
+        description: 'List all bank accounts for the authenticated user. Returns account type, name, masked account number, current balance, currency, and status. Use get_account_details for IBAN, SWIFT, and branch information.',
         requiresUserAuth: true,
         requiredScopes: ['banking:accounts:read'],
         readOnly: true,
@@ -51,12 +51,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
       "accountNumber": "****4321",
       "balance": 4823.50,
       "currency": "USD",
-      "status": "active",
-      "accountHolderName": "Alex Morgan",
-      "swiftCode": "BXFIUS33",
-      "iban": "US12BXFI0001234567890",
-      "branchName": "Main Street Branch",
-      "openedDate": "2021-03-15T00:00:00.000Z"
+      "status": "active"
     },
     {
       "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
@@ -65,12 +60,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
       "accountNumber": "****7654",
       "balance": 12450.00,
       "currency": "USD",
-      "status": "active",
-      "accountHolderName": "Alex Morgan",
-      "swiftCode": "BXFIUS33",
-      "iban": "US12BXFI0001234567891",
-      "branchName": "Main Street Branch",
-      "openedDate": "2021-03-15T00:00:00.000Z"
+      "status": "active"
     }
   ]
 }`
