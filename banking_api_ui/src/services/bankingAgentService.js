@@ -15,6 +15,21 @@ import { appendMcpCall } from './mcpCallStore';
 import { agentFlowDiagram } from './agentFlowDiagramService';
 import { openMcpFlowSse } from './mcpFlowSseClient';
 import { addMilestone, updateMilestoneStatus } from './milestonesStore';
+import { createLogger } from './logger';
+
+const log = createLogger('callMcpTool');
+const streamLog = createLogger('parseStreamingResponse');
+
+function throwIfNetworkError(err, context) {
+  if (err.name === 'AbortError' || err.message === 'Failed to fetch' || err.message.includes('ERR_CONNECTION')) {
+    log.error(`Connection timeout or network error in ${context}:`, { errorName: err.name, errorMessage: err.message });
+    throw Object.assign(new Error('Connection timeout - server may be restarting'), {
+      statusCode: 504,
+      code: 'connection_timeout',
+      isNetworkError: true,
+    });
+  }
+}
 
 // ─── Session refresh (RFC 6749 §6) — same endpoints as Backend-for-Frontend (BFF) auto-refresh ───────
 
@@ -50,18 +65,18 @@ export async function refreshOAuthSession() {
  * @returns {Promise<{ result: any, tokenEvents: Array }>}
  */
 export async function callMcpTool(tool, params = {}) {
-  console.log('[callMcpTool] === MCP TOOL CALL START ===');
-  console.log('[callMcpTool] tool:', tool);
-  console.log('[callMcpTool] params:', JSON.stringify(params));
-  console.log('[callMcpTool] tool type:', typeof tool);
+  log.debug('=== MCP TOOL CALL START ===');
+  log.debug('tool:', tool);
+  log.debug('params:', JSON.stringify(params));
+  log.debug('tool type:', typeof tool);
 
   // Client-side validation to prevent 400 errors and improve debugging
   if (!tool || typeof tool !== 'string') {
-    console.error('[callMcpTool] ERROR: Invalid tool parameter:', { tool, toolType: typeof tool, params });
+    log.error('ERROR: Invalid tool parameter:', { tool, toolType: typeof tool, params });
     throw new Error(`Invalid tool name: ${tool} (type: ${typeof tool}). Expected non-empty string.`);
   }
 
-  console.log('[callMcpTool] Tool validation passed');
+  log.debug('Tool validation passed');
   
   // ── Phase 194: OIDC flow timeline milestones ───────────────────────────────
   const _oidcId = addMilestone('OIDC Authentication', 'oidc_login', {});
@@ -71,27 +86,17 @@ export async function callMcpTool(tool, params = {}) {
   // ────────────────────────────────────────────────────────────────────────────
   try {
     agentFlowDiagram.startMcpToolCall(tool);
-    console.log('[callMcpTool] Flow diagram started');
+    log.debug('Flow diagram started');
   } catch (err) {
-    // Timeout or connection error
-    if (err.name === 'AbortError' || err.message === 'Failed to fetch' || err.message.includes('ERR_CONNECTION')) {
-      console.error('[callMcpTool] ERROR: Connection timeout or network error:', { tool, errorName: err.name, errorMessage: err.message });
-      throw Object.assign(new Error('Connection timeout - server may be restarting'), {
-        statusCode: 504,
-        code: 'connection_timeout',
-        isNetworkError: true
-      });
-    }
-    
-    // Re-throw other errors
-    console.warn('[callMcpTool] Flow diagram initialization failed:', err);
+    throwIfNetworkError(err, 'agentFlowDiagram.startMcpToolCall');
+    log.warn('Flow diagram initialization failed:', err);
   }
 
   const flowTraceId =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-  console.log('[callMcpTool] flowTraceId:', flowTraceId);
+  log.debug('flowTraceId:', flowTraceId);
 
   // ── Phase 194: exchange done, tool call begins ──────────────────────────────
   updateMilestoneStatus(_exchangeId, 'done');
@@ -102,18 +107,8 @@ export async function callMcpTool(tool, params = {}) {
     try {
       agentFlowDiagram.applyServerEvent(data);
     } catch (err) {
-    // Timeout or connection error
-    if (err.name === 'AbortError' || err.message === 'Failed to fetch' || err.message.includes('ERR_CONNECTION')) {
-      console.error('[callMcpTool] ERROR: Connection timeout or network error in SSE:', { tool, errorName: err.name, errorMessage: err.message });
-      throw Object.assign(new Error('Connection timeout - server may be restarting'), {
-        statusCode: 504,
-        code: 'connection_timeout',
-        isNetworkError: true
-      });
-    }
-    
-    // Re-throw other errors
-      console.warn('[callMcpTool] Failed to apply server event:', err);
+      throwIfNetworkError(err, 'applyServerEvent (SSE)');
+      log.warn('Failed to apply server event:', err);
     }
   });
 
@@ -128,18 +123,8 @@ export async function callMcpTool(tool, params = {}) {
       throw new Error('Failed to serialize request body');
     }
   } catch (err) {
-    // Timeout or connection error
-    if (err.name === 'AbortError' || err.message === 'Failed to fetch' || err.message.includes('ERR_CONNECTION')) {
-      console.warn('[callMcpTool] Connection timeout or network error:', { tool, errorName: err.name, errorMessage: err.message });
-      throw Object.assign(new Error('Connection timeout - server may be restarting'), {
-        statusCode: 504,
-        code: 'connection_timeout',
-        isNetworkError: true
-      });
-    }
-    
-    // Re-throw other errors
-    console.error('[callMcpTool] Failed to construct request body:', { tool, params, err });
+    throwIfNetworkError(err, 'JSON.stringify');
+    log.error('Failed to construct request body:', { tool, params, err });
     throw new Error(`Request body construction failed: ${err.message}`);
   }
 
@@ -156,7 +141,7 @@ export async function callMcpTool(tool, params = {}) {
     
     // 504 Server Unavailable — server is restarting
     if (response.status === 504) {
-      console.warn('[callMcpTool] 504 Server Unavailable - server may be restarting');
+      log.warn('504 Server Unavailable - server may be restarting');
       appendMcpCall(tool, 504, Date.now() - t0, null, 'Server Unavailable (504)');
       throw Object.assign(new Error('Server is restarting (504)'), {
         statusCode: 504,
@@ -173,10 +158,10 @@ export async function callMcpTool(tool, params = {}) {
         debug: { status: 400, body: body ? body.substring(0, 200) : 'undefined' }
       }));
       
-      console.error('[callMcpTool] 400 error from server:', {
+      log.error('400 error from server:', {
         error: err400,
         requestBody: { tool, params, flowTraceId },
-        bodyLength: body?.length || 0
+        bodyLength: body?.length || 0,
       });
       
       const tokenEvents = err400.tokenEvents || [];
@@ -191,7 +176,7 @@ export async function callMcpTool(tool, params = {}) {
           errorMessage: `400 Error: ${err400.message}`,
         });
       } catch (flowErr) {
-        console.warn('[callMcpTool] Failed to complete flow diagram:', flowErr);
+        log.warn('Failed to complete flow diagram:', flowErr);
       }
       
       throw Object.assign(new Error(`MCP 400 Error: ${err400.message}`), {
@@ -359,7 +344,7 @@ async function parseStreamingResponse(readableStream, tool) {
           // stream_close handled by loop termination
         } catch (parseErr) {
           if (parseErr.statusCode) throw parseErr; // Re-throw structured errors
-          console.warn("[parseStreamingResponse] Skipping malformed chunk:", trimmed.slice(0, 100));
+          streamLog.warn("Skipping malformed chunk:", trimmed.slice(0, 100));
         }
       }
     }
@@ -368,7 +353,7 @@ async function parseStreamingResponse(readableStream, tool) {
   }
 
   if (!finalResult) {
-    console.warn("[parseStreamingResponse] No result object received for", tool);
+    streamLog.warn("No result object received for", tool);
   }
 
   return { result: finalResult, tokenEvents };
