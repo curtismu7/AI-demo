@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 const VALID_SCOPES = [
-  { key: 'view_accounts',    label: 'View Accounts',    description: 'See account list and details' },
-  { key: 'view_balances',    label: 'View Balances',    description: 'See account balances' },
-  { key: 'create_deposit',   label: 'Make Deposits',    description: 'Deposit funds into accounts' },
+  { key: 'view_accounts',     label: 'View Accounts',    description: 'See account list and details' },
+  { key: 'view_balances',     label: 'View Balances',    description: 'See account balances' },
+  { key: 'create_deposit',    label: 'Make Deposits',    description: 'Deposit funds into accounts' },
   { key: 'create_withdrawal', label: 'Make Withdrawals', description: 'Withdraw funds from accounts' },
-  { key: 'create_transfer',  label: 'Transfer Funds',   description: 'Transfer between accounts' },
+  { key: 'create_transfer',   label: 'Transfer Funds',   description: 'Transfer between accounts' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -13,10 +13,7 @@ const VALID_SCOPES = [
 // ---------------------------------------------------------------------------
 const S = {
   page: { background: '#f9fafb', padding: '0 16px 32px 16px' },
-  inner: { maxWidth: 860, margin: '0 auto' },
-  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  h1: { fontSize: 22, fontWeight: 700, color: '#1e3a5f', margin: 0 },
-  backLink: { fontSize: 13, color: 'var(--brand-navy)', textDecoration: 'none' },
+  inner: { maxWidth: 900, margin: '0 auto' },
   card: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 24, marginBottom: 24 },
   sectionHeading: { fontSize: 16, fontWeight: 700, color: 'var(--brand-navy)', marginTop: 0, marginBottom: 8 },
   muted: { color: '#6b7280', fontSize: 13, margin: '0 0 16px 0' },
@@ -52,9 +49,7 @@ const S = {
     marginTop: 12, padding: '10px 14px', borderRadius: 6,
     background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b', fontSize: 13,
   },
-  tabBar: {
-    display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: 16,
-  },
+  tabBar: { display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: 16 },
   tabBtn: (active) => ({
     padding: '9px 20px', background: 'none', border: 'none',
     cursor: 'pointer', fontSize: 14,
@@ -83,10 +78,386 @@ const S = {
     background: status === 'active' ? '#dcfce7' : '#f3f4f6',
     color: status === 'active' ? '#15803d' : '#6b7280',
   }),
+  codeBlock: {
+    background: '#0f172a', color: '#e2e8f0', borderRadius: 8,
+    padding: '16px 20px', fontSize: 12, fontFamily: 'monospace',
+    whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.7,
+    overflowX: 'auto',
+  },
+  flowRow: {
+    display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '16px 0',
+  },
+  flowBox: (color) => ({
+    background: color, borderRadius: 8, padding: '8px 14px',
+    fontSize: 12, fontWeight: 600, color: '#fff', textAlign: 'center',
+    minWidth: 100,
+  }),
+  flowArrow: { color: '#9ca3af', fontSize: 18, fontWeight: 700 },
+  talkStep: {
+    display: 'flex', gap: 12, marginBottom: 14, alignItems: 'flex-start',
+  },
+  talkNum: {
+    background: 'var(--brand-navy)', color: '#fff', borderRadius: '50%',
+    width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 12, fontWeight: 700, flexShrink: 0, marginTop: 2,
+  },
+  talkText: { fontSize: 13, color: '#374151', lineHeight: 1.6 },
+  talkQuote: { fontStyle: 'italic', color: '#1e40af', fontWeight: 500 },
+  infoPill: {
+    display: 'inline-block', background: '#eff6ff', color: '#1d4ed8',
+    fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
+    fontFamily: 'monospace', marginRight: 4,
+  },
+  claimKey: { color: '#7dd3fc', fontWeight: 700 },
+  claimVal: { color: '#86efac' },
+  claimOp:  { color: '#fbbf24' },
 };
 
 // ---------------------------------------------------------------------------
-// Component
+// How-It-Works panel
+// ---------------------------------------------------------------------------
+function HowItWorksPanel() {
+  const [open, setOpen] = useState(true);
+  return (
+    <div style={S.card}>
+      <div
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+        onClick={() => setOpen(o => !o)}
+      >
+        <h2 style={{ ...S.sectionHeading, marginBottom: 0 }}>🔍 How It Works — Under the Hood</h2>
+        <span style={{ fontSize: 20, color: '#6b7280' }}>{open ? '▲' : '▼'}</span>
+      </div>
+      {open && (
+        <>
+          <p style={{ ...S.muted, marginTop: 12 }}>
+            Family Delegation is a live implementation of <strong>OAuth 2.0 delegated authorization</strong> using
+            PingOne as the identity provider. When you grant access to a family member three real things happen:
+          </p>
+
+          {/* Flow diagram */}
+          <div style={S.flowRow}>
+            <div style={S.flowBox('#1e40af')}>1. Look up / provision<br/>delegate in PingOne</div>
+            <span style={S.flowArrow}>→</span>
+            <div style={S.flowBox('#7c3aed')}>2. Store delegation<br/>+ scopes in SQLite</div>
+            <span style={S.flowArrow}>→</span>
+            <div style={S.flowBox('#0891b2')}>3. Send email via<br/>PingOne Messages API</div>
+            <span style={S.flowArrow}>→</span>
+            <div style={S.flowBox('#059669')}>4. Delegate logs in →<br/>BFF injects may_act token</div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 8 }}>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 8 }}>
+                What happens when access is granted:
+              </p>
+              <ul style={{ fontSize: 13, color: '#374151', lineHeight: 1.8, margin: 0, paddingLeft: 20 }}>
+                <li>BFF calls PingOne Management API to find the delegate user</li>
+                <li>If they don't exist yet, a new PingOne user is provisioned</li>
+                <li>The delegation record is persisted in SQLite (locally) or in-memory (Vercel)</li>
+                <li>PingOne Messages API sends a branded email notification to the delegate</li>
+              </ul>
+            </div>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 8 }}>
+                What happens when the delegate logs in:
+              </p>
+              <ul style={{ fontSize: 13, color: '#374151', lineHeight: 1.8, margin: 0, paddingLeft: 20 }}>
+                <li>BFF checks the delegations table for active records</li>
+                <li>If found, performs <strong>RFC 8693 Token Exchange</strong> to mint a scoped token</li>
+                <li>The resulting token carries an <span style={S.infoPill}>act</span> claim with the delegator's <span style={S.infoPill}>sub</span></li>
+                <li>The agent uses this chained token when calling MCP tools</li>
+              </ul>
+            </div>
+          </div>
+
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginTop: 16, marginBottom: 6 }}>
+            What the delegated token looks like (RFC 8693 <code>act</code> claim):
+          </p>
+          <div style={S.codeBlock}>
+            <span style={S.claimOp}>{'{'}</span>{'\n'}
+            {'  '}<span style={S.claimKey}>"sub"</span>: <span style={S.claimVal}>"delegate-user-id"</span>,{'\n'}
+            {'  '}<span style={S.claimKey}>"scope"</span>: <span style={S.claimVal}>"view_accounts view_balances"</span>,{'\n'}
+            {'  '}<span style={S.claimKey}>"act"</span>: <span style={S.claimOp}>{'{'}</span>{'\n'}
+            {'    '}<span style={S.claimKey}>"sub"</span>: <span style={S.claimVal}>"delegator-user-id"</span>,{'\n'}
+            {'    '}<span style={S.claimKey}>"email"</span>: <span style={S.claimVal}>"owner@example.com"</span>{'\n'}
+            {'  '}<span style={S.claimOp}>{'}'}</span>,{'\n'}
+            {'  '}<span style={S.claimKey}>"may_act"</span>: <span style={S.claimOp}>{'{'}</span>{'\n'}
+            {'    '}<span style={S.claimKey}>"sub"</span>: <span style={S.claimVal}>"agent-client-id"</span>{'\n'}
+            {'  '}<span style={S.claimOp}>{'}'}</span>{'\n'}
+            <span style={S.claimOp}>{'}'}</span>
+          </div>
+          <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 8 }}>
+            The <span style={S.infoPill}>act</span> claim proves <em>on whose behalf</em> the request runs.
+            The <span style={S.infoPill}>may_act</span> claim controls which agents are permitted to perform the next step of exchange.
+            Both are verified cryptographically by PingOne on every request.
+          </p>
+
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginTop: 16, marginBottom: 6 }}>
+            Standards implemented:
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[
+              ['RFC 8693', 'Token Exchange'],
+              ['RFC 7519', 'JSON Web Tokens'],
+              ['OIDC Core', 'act / may_act claims'],
+              ['PingOne Management API', 'User provisioning'],
+              ['PingOne Messages API', 'Email notifications'],
+            ].map(([rfc, label]) => (
+              <div key={rfc} style={{ background: '#f1f5f9', borderRadius: 6, padding: '6px 12px', fontSize: 12 }}>
+                <span style={{ fontWeight: 700, color: '#1e40af' }}>{rfc}</span>
+                <span style={{ color: '#6b7280' }}> — {label}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Live Token Chain panel
+// ---------------------------------------------------------------------------
+function LiveTokenChainPanel() {
+  const [chain, setChain] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/token-chain');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setChain(data);
+    } catch (err) {
+      setError('Could not load token chain: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const delegationEvents = chain?.tokenChain?.filter(
+    e => e.type === 'token_exchange' || e.actClaim || e.mayActClaim || (e.claims?.act)
+  ) || [];
+
+  const mcpCalls = chain?.mcpToolCallsChain || [];
+
+  return (
+    <div style={S.card}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h2 style={{ ...S.sectionHeading, marginBottom: 0 }}>📡 Live Token Chain</h2>
+        <button
+          onClick={load}
+          disabled={loading}
+          style={{ ...S.primaryBtn, padding: '6px 14px', fontSize: 13 }}
+        >
+          {loading ? 'Loading…' : '↻ Refresh'}
+        </button>
+      </div>
+      <p style={S.muted}>
+        Live view of the OAuth token chain for the current session. Shows token exchange events,{' '}
+        <span style={S.infoPill}>act</span> claims, and MCP tool calls that used delegated authority.
+      </p>
+
+      {error && <div style={S.errorBanner}>{error}</div>}
+
+      {!loading && chain && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {/* Summary stats */}
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 10 }}>Session Summary</p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              {[
+                ['Token Events', chain.metadata?.totalEvents ?? '—', '#eff6ff', '#1d4ed8'],
+                ['MCP Tool Calls', chain.metadata?.totalMCPToolCalls ?? '—', '#f0fdf4', '#166534'],
+                ['Delegation Events', delegationEvents.length, '#fef3c7', '#b45309'],
+              ].map(([label, val, bg, color]) => (
+                <div key={label} style={{ background: bg, borderRadius: 8, padding: '10px 16px', minWidth: 80 }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color }}>{val}</div>
+                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Validation mode */}
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 10 }}>Validation Mode</p>
+            <div style={{
+              background: '#f8fafc', borderRadius: 8, padding: '10px 14px',
+              fontSize: 13, color: '#374151',
+            }}>
+              <span style={S.infoPill}>{chain.validationMode || 'standard'}</span>
+              {chain.validationMode === 'strict'
+                ? ' RFC 8693 act/may_act claims verified on every request'
+                : ' Token exchange logged; act claims not strictly enforced'}
+            </div>
+            <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 8 }}>
+              Last updated: {chain.metadata?.lastUpdated ? new Date(chain.metadata.lastUpdated).toLocaleTimeString() : '—'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Delegation events */}
+      {!loading && delegationEvents.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Delegation Token Events</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {delegationEvents.map((evt, i) => (
+              <div key={i} style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontWeight: 600, fontSize: 13, color: '#92400e' }}>{evt.type || 'exchange'}</span>
+                  <span style={{ fontSize: 11, color: '#9ca3af' }}>{evt.timestamp ? new Date(evt.timestamp).toLocaleTimeString() : ''}</span>
+                </div>
+                {evt.claims?.act && (
+                  <div style={{ fontSize: 12, color: '#374151', fontFamily: 'monospace' }}>
+                    <span style={S.infoPill}>act.sub</span> {evt.claims.act.sub || '—'}
+                  </div>
+                )}
+                {evt.claims?.scope && (
+                  <div style={{ fontSize: 12, color: '#374151', marginTop: 4 }}>
+                    <span style={S.infoPill}>scope</span> {evt.claims.scope}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* MCP tool calls using delegation */}
+      {!loading && mcpCalls.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 8 }}>
+            MCP Tool Calls via Delegated Token
+          </p>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={S.table}>
+              <thead>
+                <tr>
+                  <th style={S.th}>Tool</th>
+                  <th style={S.th}>Acting As</th>
+                  <th style={S.th}>Scopes Used</th>
+                  <th style={S.th}>Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mcpCalls.slice(0, 10).map((call, i) => (
+                  <tr key={i}>
+                    <td style={S.td}><code style={{ fontSize: 12 }}>{call.tool || call.toolName || '—'}</code></td>
+                    <td style={S.td}>{call.actingSub || call.sub || '—'}</td>
+                    <td style={S.td}>{call.scope || '—'}</td>
+                    <td style={S.td}>{call.timestamp ? new Date(call.timestamp).toLocaleTimeString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {!loading && chain && delegationEvents.length === 0 && mcpCalls.length === 0 && (
+        <div style={{ marginTop: 16, padding: '14px 16px', background: '#f8fafc', borderRadius: 8, fontSize: 13, color: '#6b7280' }}>
+          No delegation token events in the current session. Grant access to a family member above and ask the banking agent
+          to perform an action <em>on behalf of</em> the delegate to see the token chain populate here.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Demo Talk Track
+// ---------------------------------------------------------------------------
+function DemoTalkTrackPanel() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={S.card}>
+      <div
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+        onClick={() => setOpen(o => !o)}
+      >
+        <h2 style={{ ...S.sectionHeading, marginBottom: 0 }}>🎤 Demo Talk Track</h2>
+        <span style={{ fontSize: 20, color: '#6b7280' }}>{open ? '▲' : '▼'}</span>
+      </div>
+      {open && (
+        <div style={{ marginTop: 16 }}>
+          <p style={{ ...S.muted, marginBottom: 16 }}>
+            Use this script when showing the delegation page to prospects. The goal is to connect the
+            everyday concept of "adding someone to your bank account" to the technical reality of
+            OAuth scopes, token exchange, and PingOne's identity capabilities.
+          </p>
+
+          {[
+            {
+              num: 1,
+              heading: 'Set the scene',
+              text: 'Open the page and point at the "Grant Account Access" form.',
+              quote: '"Super Banking lets customers delegate access to family members — maybe a spouse, a college student, or an accountant. This is a common real-world need."',
+            },
+            {
+              num: 2,
+              heading: 'Grant access live',
+              text: 'Type a family member email and check 2-3 scopes. Click "Grant Access".',
+              quote: '"When I click Grant, three things happen at once: PingOne checks if this user exists, creates them if not, stores the delegation with exactly the scopes I selected, and sends a branded email — all via PingOne APIs."',
+            },
+            {
+              num: 3,
+              heading: 'Point at the "How It Works" section',
+              text: 'Expand the section and walk through the flow diagram left to right.',
+              quote: '"Under the hood this is OAuth 2.0 delegated authorization. The key innovation is what happens at login — instead of a plain access token, PingOne mints an RFC 8693 token with an act claim that proves: this token is for the delegate, acting on behalf of the delegator."',
+            },
+            {
+              num: 4,
+              heading: 'Show the token structure',
+              text: 'Point at the code block showing the act and may_act claims.',
+              quote: '"This is not custom code — it\'s a standard anyone can verify. The act.sub claim is cryptographically bound to the delegator\'s identity. A resource server or AI agent can read this claim and know exactly whose data it\'s touching and on whose behalf."',
+            },
+            {
+              num: 5,
+              heading: 'Connect to the AI agent',
+              text: 'Navigate to the Banking Agent, ask it to "check account balance for delegate@example.com".',
+              quote: '"Now watch the Live Token Chain section — the agent performed an RFC 8693 token exchange, got a scoped token with the act claim, and called the banking MCP tool. The bank\'s API saw the exact scopes that were granted — nothing more."',
+            },
+            {
+              num: 6,
+              heading: 'Revoke and show the audit trail',
+              text: 'Click Revoke on the delegate you just added. Switch to the History tab.',
+              quote: '"I can revoke access at any time. The delegation history is a full audit trail — when it was granted, what scopes, when it was revoked. Regulators love this. Zero ambiguity."',
+            },
+          ].map(step => (
+            <div key={step.num} style={S.talkStep}>
+              <div style={S.talkNum}>{step.num}</div>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 13, color: '#111827', margin: '0 0 4px 0' }}>{step.heading}</p>
+                <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 6px 0' }}>{step.text}</p>
+                <p style={{ ...S.talkText, ...S.talkQuote, margin: 0 }}>"{step.quote.replace(/^"|"$/g, '')}"</p>
+              </div>
+            </div>
+          ))}
+
+          <div style={{ marginTop: 20, background: '#eff6ff', borderRadius: 8, padding: '14px 16px' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#1e40af', margin: '0 0 8px 0' }}>Key objection: "Can't we just do this with role-based access?"</p>
+            <p style={{ fontSize: 13, color: '#374151', margin: 0 }}>
+              RBAC assigns roles to users — those roles are static and defined by the app developer.
+              Delegated authorization lets the <em>account owner</em> define exactly which sub-set of their own
+              permissions they share, for how long, and to whom. The AI agent enforces those boundaries
+              at the token level — no custom authorization code required.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
 // ---------------------------------------------------------------------------
 
 export default function DelegationPage({ user }) {
@@ -179,31 +550,37 @@ export default function DelegationPage({ user }) {
 
   return (
     <div style={S.page}>
-      {/* Branded gradient page header — matches other customer sub-pages */}
+      {/* Branded gradient page header */}
       <div style={{
         background: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)',
         padding: '28px 24px 20px',
         marginBottom: 24,
         borderRadius: '0 0 12px 12px',
       }}>
-        <div style={{ maxWidth: 860, margin: '0 auto' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
             Account Management
           </p>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#fff', margin: 0 }}>👥 Family Delegation</h1>
           <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 14, margin: '6px 0 0' }}>
-            Grant family members scoped access to your accounts
+            Grant family members scoped access to your accounts — powered by RFC 8693 token exchange and PingOne
           </p>
         </div>
       </div>
-      <div style={S.inner}>
 
+      <div style={S.inner}>
         {pageError && <div style={S.errorBanner}>{pageError}</div>}
+
+        {/* How it works — top explainer */}
+        <HowItWorksPanel />
 
         {/* Grant access card */}
         <div style={S.card}>
           <h2 style={S.sectionHeading}>Grant Account Access</h2>
-          <p style={S.muted}>Enter a family member's email to grant them scoped access to your accounts.</p>
+          <p style={S.muted}>
+            Enter a family member's email to grant them scoped access to your accounts.
+            They will receive an email notification and can log in immediately.
+          </p>
 
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
@@ -220,7 +597,11 @@ export default function DelegationPage({ user }) {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Allow them to:</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>
+              Allow them to: <span style={{ fontSize: 12, fontWeight: 400, color: '#9ca3af' }}>
+                (these become OAuth scopes on their token)
+              </span>
+            </p>
             {VALID_SCOPES.map(scope => (
               <label key={scope.key} style={S.scopeRow}>
                 <input
@@ -232,6 +613,7 @@ export default function DelegationPage({ user }) {
                 <span>
                   <span style={S.scopeLabel}>{scope.label}</span>
                   <span style={S.scopeDesc}> — {scope.description}</span>
+                  <span style={{ ...S.infoPill, marginLeft: 8 }}>{scope.key}</span>
                 </span>
               </label>
             ))}
@@ -269,7 +651,12 @@ export default function DelegationPage({ user }) {
             loading
               ? <p style={S.muted}>Loading…</p>
               : delegations.length === 0
-                ? <p style={S.muted}>No active delegates. Grant access above.</p>
+                ? (
+                  <div style={{ padding: '16px 0', color: '#6b7280', fontSize: 13 }}>
+                    <p style={{ margin: '0 0 8px' }}>No active delegates.</p>
+                    <p style={{ margin: 0 }}>Use the Grant Access form above to add a family member. They will appear here once access is granted.</p>
+                  </div>
+                )
                 : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {delegations.map(d => (
@@ -334,6 +721,12 @@ export default function DelegationPage({ user }) {
                 )
           )}
         </div>
+
+        {/* Live token chain */}
+        <LiveTokenChainPanel />
+
+        {/* Demo talk track */}
+        <DemoTalkTrackPanel />
       </div>
     </div>
   );
