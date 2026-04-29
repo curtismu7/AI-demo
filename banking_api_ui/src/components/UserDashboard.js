@@ -128,10 +128,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 	const [middleAgentOpen, setMiddleAgentOpen] = useState(
 		() => agentPlacement === "middle",
 	);
-	/** Right layout: auto-opens when placement is 'right-dock'; mirrors middle on the right column. */
-	const [rightAgentOpen, setRightAgentOpen] = useState(
-		() => agentPlacement === "right-dock",
-	);
 	const [dashboardLayout, setDashboardLayoutState] = useState(() =>
 		getDashboardLayout(),
 	);
@@ -380,10 +376,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 	useEffect(() => {
 		if (agentPlacement === "middle") {
 			setMiddleAgentOpen(true);
-			setDashboardLayoutState("split3");
-			setDashboardLayout("split3");
-		} else if (agentPlacement === "right-dock") {
-			setRightAgentOpen(true);
 			setDashboardLayoutState("split3");
 			setDashboardLayout("split3");
 		} else if (agentPlacement === "bottom") {
@@ -2378,13 +2370,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 					? " user-dashboard--embed-agent"
 					: ""
 			}${
-				(agentPlacement === "middle" && middleAgentOpen) ||
-				(agentPlacement === "right-dock" && rightAgentOpen)
+				agentPlacement === "middle" && middleAgentOpen
 					? " user-dashboard--split3"
-					: ""
-			}${
-				agentPlacement === "right-dock"
-					? " user-dashboard--right-dock-active"
 					: ""
 			}${agentPlacement === "none" ? " user-dashboard--float-fab-left" : ""}`}
 		>
@@ -2421,41 +2408,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 			</div>
 
 			{/* ── Token | (split: agent + banking columns) | classic: banking + float reserve ── */}
-			{agentPlacement === "right-dock" && rightAgentOpen ? (
-				<div className="dashboard-content ud-body ud-body--2026 ud-body--dashboard-split3 ud-body--dashboard-split3-right">
-					<aside className="ud-token-rail" aria-label="Token chain">
-						<div className="section ud-token-rail__inner">
-							<ExchangeModeToggle />
-							<TokenChainDisplay />
-						</div>
-					</aside>
-
-					<main
-						className="ud-center ud-banking-column"
-						id="main-dashboard-content"
-						tabIndex={-1}
-					>
-						{renderBankingMain()}
-					</main>
-
-					<section
-						className="ud-agent-column"
-						ref={agentColumnRef}
-						aria-label="AI banking assistant"
-					>
-						<div className="embedded-banking-agent ud-dashboard-inline-agent">
-							<BankingAgent
-								user={user}
-								onLogout={onLogout}
-								mode="inline"
-								embeddedFocus="banking"
-								distinctFloatingChrome
-								showPopOut
-							/>
-						</div>
-					</section>
-				</div>
-			) : agentPlacement === "middle" && middleAgentOpen ? (
+			{agentPlacement === "middle" && middleAgentOpen ? (
 				<div className="dashboard-content ud-body ud-body--2026 ud-body--dashboard-split3">
 					<aside className="ud-token-rail" aria-label="Token chain">
 						<div className="section ud-token-rail__inner">
@@ -2542,18 +2495,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
 			{/* Middle-layout open FAB — shown when middle placement hasn't been expanded yet.
           App.js global float is suppressed for middle so there is exactly one FAB. */}
-			{agentPlacement === "right-dock" && !rightAgentOpen && (
-				<button
-					type="button"
-					className="banking-agent-fab"
-					onClick={() => setRightAgentOpen(true)}
-					aria-label="Open AI banking assistant in right column"
-					title="Open AI Agent"
-				>
-					<span className="banking-agent-fab-icon">🏦</span>
-					<span className="banking-agent-fab-label">AI Agent</span>
-				</button>
-			)}
 			{agentPlacement === "middle" && !middleAgentOpen && (
 				<button
 					type="button"

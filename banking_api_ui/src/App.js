@@ -636,8 +636,8 @@ function AppWithAuth() {
 			(Boolean(user) &&
 				agentPlacement !== "none" &&
 				onDashboardAgentRoute &&
-				!(agentPlacement === "middle" && onUserDashboardRoute) &&
-				!(agentPlacement === "right-dock" && !agentFab)));
+				!(agentPlacement === "middle" && onUserDashboardRoute)
+				));
 
 	/** Slower default dismiss on public landing so OAuth/agent messages are readable (signed-in routes stay 4s). */
 	const toastContainerAutoCloseMs =
@@ -1359,10 +1359,6 @@ function AppWithAuth() {
 									Demo config
 								</button>
 							)}
-						{/* Side dock — right-dock only on non-dashboard routes; UserDashboard handles inline column */}
-						{agentPlacement === "right-dock" && !onUserDashboardRoute && (
-							<SideAgentDock user={user} onLogout={logout} side="right" />
-						)}
 						{/* UserDashboard renders EmbeddedAgentDock inside its layout. App-level dock sits in document
               order directly above the footer on non-dashboard routes.
               Guest landing (/) always uses float agent — no bottom dock. */}

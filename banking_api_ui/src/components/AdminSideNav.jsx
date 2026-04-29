@@ -66,11 +66,7 @@ export default function AdminSideNav({ user }) {
 				needsReload = false; // live context update — no flash
 			} else if (p === "bottom") {
 				setDashboardLayout("classic");
-				next = { placement: "bottom", fab };
-			} else if (p === "right-dock") {
-				setDashboardLayout("split3");
-				next = { placement: "right-dock", fab };
-			} else {
+				next = { placement: "bottom", fab }; } else {
 				next = { placement: "none", fab: true };
 			}
 			if (needsReload) {
@@ -286,7 +282,6 @@ export default function AdminSideNav({ user }) {
 	// Agent UI placement options for the expandable dropdown
 	const agentPlacementOptions = [
 		{ key: "middle", label: "Middle column", icon: "┃" },
-		{ key: "right-dock", label: "Right dock", icon: "◥" },
 		{ key: "bottom", label: "Bottom dock", icon: "▁" },
 		{ key: "none", label: "Float only", icon: "💬" },
 	];
