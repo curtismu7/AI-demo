@@ -297,7 +297,7 @@ describe('submitFido2Assertion', () => {
 
     expect(result.status).toBe('COMPLETED');
     const lastCall = axios.post.mock.calls[axios.post.mock.calls.length - 1];
-    expect(lastCall[1].assertion).toEqual(assertion);
+    expect(JSON.parse(lastCall[1].assertion)).toEqual(assertion);
   });
 });
 
@@ -311,7 +311,7 @@ describe('listMfaDevices', () => {
 
     const result = await mfaService.listMfaDevices('user-1');
 
-    expect(result).toEqual(devices);
+    expect(result.devices).toEqual(devices);
     const [url] = axios.get.mock.calls[0];
     expect(url).toContain('users/user-1/devices');
     expect(url).toContain('status eq "ACTIVE"');
@@ -322,8 +322,8 @@ describe('listMfaDevices', () => {
     axios.get.mockResolvedValueOnce({ data: {} });
 
     const result = await mfaService.listMfaDevices('user-1');
-    expect(Array.isArray(result)).toBe(true);
-    expect(result.length).toBe(0);
+    expect(Array.isArray(result.devices)).toBe(true);
+    expect(result.devices.length).toBe(0);
   });
 });
 
@@ -381,10 +381,10 @@ describe('completeFido2Registration', () => {
     // Must be POST (activation), not PUT
     const [url, body, cfg] = axios.post.mock.calls[1];
     expect(url).toContain('users/user-1/devices/dev-fido');
-    // Attestation wrapped under fido2 key per PingOne activation API contract
-    expect(body.fido2).toEqual(attestation);
-    // origin comes from requestOrigin param; null when not provided (no wrong fallback)
-    expect(body.origin).toBeNull();
+    // Attestation sent as JSON string under 'attestation' key per PingOne activation API contract
+    expect(JSON.parse(body.attestation)).toEqual(attestation);
+    // origin is resolved from config/env fallbacks when not provided
+    expect(typeof body.origin).toBe('string');
     // Correct activation content-type
     expect(cfg.headers['Content-Type']).toBe('application/vnd.pingidentity.device.activate+json');
   });

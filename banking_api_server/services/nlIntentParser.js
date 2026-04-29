@@ -196,7 +196,7 @@ function parseBanking(t) {
   if (/\b(list|show|get|what).*(mcp.*tools?|tools?.*available|available.*tools?)\b|\btools?\s*(list|available)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'mcp_tools' } };
   }
-  if (/\b(show|list|get|see|view|pull|display).*(accounts?|balances?)\b|\bmy accounts?\b|\ball\b.*\baccounts?\b|\bcustomer accounts?\b/.test(t)) {
+  if (/\b(show|list|get|see|view|pull|display).*(accounts?|balances?)\b|\bmy accounts?\b(?!\s+balance)|\ball\b.*\baccounts?\b|\bcustomer accounts?\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'accounts' } };
   }
   if (/\b(transaction|history|activity|recent)\b/.test(t)) {

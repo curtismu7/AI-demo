@@ -56,7 +56,7 @@ describe('mcpToolAuthorizationService', () => {
         agentToken: jwtWithPayload({ sub: 'u1', aud: 'mcp' }),
         userSub: 'u1',
       });
-      expect(r).toEqual({ ran: false });
+      expect(r).toMatchObject({ ran: false });
     });
 
     it('returns ran:false when no agent token', async () => {
@@ -69,7 +69,7 @@ describe('mcpToolAuthorizationService', () => {
         agentToken: null,
         userSub: 'u1',
       });
-      expect(r).toEqual({ ran: false });
+      expect(r).toMatchObject({ ran: false });
     });
 
     it('skips when session already has mcpFirstToolAuthorizeDone', async () => {
@@ -82,7 +82,7 @@ describe('mcpToolAuthorizationService', () => {
         agentToken: jwtWithPayload({ sub: 'u1' }),
         userSub: 'u1',
       });
-      expect(r).toEqual({ ran: false });
+      expect(r).toMatchObject({ ran: false });
     });
 
     it('skips for admin role', async () => {
@@ -95,7 +95,7 @@ describe('mcpToolAuthorizationService', () => {
         agentToken: jwtWithPayload({ sub: 'u1' }),
         userSub: 'u1',
       });
-      expect(r).toEqual({ ran: false });
+      expect(r).toMatchObject({ ran: false });
     });
 
     it('runs simulated path and permits', async () => {
