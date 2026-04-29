@@ -654,13 +654,16 @@
 }
 
 .cfg-test-result {
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
-.cfg-test-result--success { color: #16a34a; }
+.cfg-test-result--success { color: #15803d; }
 .cfg-test-result--error   { color: #dc2626; }
-.cfg-test-result--testing { color: var(--brand-medium-gray, #6b7280); }
+.cfg-test-result--testing { color: var(--brand-medium-gray, #6b7280); font-weight: 400; }
 
 /* ── Quick-start tab styles ───────────────────────────────────── */
 .cfg-next-step-hint {

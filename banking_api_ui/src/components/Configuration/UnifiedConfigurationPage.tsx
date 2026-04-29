@@ -556,13 +556,17 @@ const UnifiedConfigurationPage: FC<{
         }),
       });
       const data = await res.json() as { success: boolean; message: string };
+      const msg = data.message || (data.success ? 'PingOne environment reached successfully.' : 'Connection failed');
       setState(prev => ({
         ...prev,
         connectionTestStatus: data.success ? 'success' : 'error',
-        connectionTestMessage: data.message || (data.success ? 'Connected!' : 'Connection failed'),
+        connectionTestMessage: msg,
       }));
+      if (data.success) notifySuccess(msg);
+      else notifyError(msg);
     } catch (_e) {
       setState(prev => ({ ...prev, connectionTestStatus: 'error', connectionTestMessage: 'Network error' }));
+      notifyError('Connection test failed — network error');
     }
   }, [state.pingoneEnvironmentId, state.pingoneRegion, state.adminClientId]);
 
