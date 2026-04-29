@@ -982,19 +982,56 @@ const UnifiedConfigurationPage: FC<{
     // Demo Management tab
     if (s === 'demo-scenarios') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Choose the starting scenario for new demo sessions. Each preset configures the combination of accounts, transaction amounts, alert triggers, and agent prompt suggestions that appear when a user logs in. Switch scenarios between demos to showcase different capabilities.</p>
-        <CfgSelect
-          label="Active Demo Scenario"
-          value={state.demoScenario}
-          onChange={v => setState(prev => ({ ...prev, demoScenario: v, saveStatus: 'idle' }))}
-          options={[
-            { value: 'default',       label: 'Default Banking Demo' },
-            { value: 'high-value',    label: 'High-Value Transactions' },
-            { value: 'agent-focused', label: 'AI Agent Showcase' },
-            { value: 'mfa-heavy',     label: 'MFA & Step-Up Auth Focus' },
-          ]}
-          help="Changing the scenario takes effect on the next session or page refresh. It does not affect currently active sessions."
-        />
+        <p className="cfg-section-desc">Choose the starting scenario for new demo sessions. Each preset configures the combination of accounts, transaction amounts, alert triggers, and agent prompt suggestions that appear when a user logs in. Save, then refresh to apply.</p>
+        <div className="form-label" style={{ marginBottom: '0.75rem' }}>Active Demo Scenario</div>
+        <div className="scenario-card-grid">
+          {([
+            {
+              value: 'default',
+              label: 'Default Banking Demo',
+              icon: '🏦',
+              thresholds: 'MFA step-up: $500 · Max transfers: $2,000',
+              behavior: 'Balanced mix of checking, savings, and investment accounts. Transaction amounts stay below the MFA threshold so the agent can complete transfers without triggering step-up. Good for showing the core AI + banking flow.',
+            },
+            {
+              value: 'high-value',
+              label: 'High-Value Transactions',
+              icon: '💸',
+              thresholds: 'MFA step-up: $500 · Transactions: $500–$5,000',
+              behavior: 'Pre-loads transfers well above the MFA step-up threshold. Every significant transfer will trigger a PingOne MFA challenge (push / TOTP). Ideal for demonstrating step-up authentication in a live demo.',
+            },
+            {
+              value: 'agent-focused',
+              label: 'AI Agent Showcase',
+              icon: '🤖',
+              thresholds: 'MFA step-up: $500 · HITL consent gate: ON',
+              behavior: 'Optimised account and transaction set for demonstrating AI agent delegation, RFC 8693 token exchange, and human-in-the-loop (HITL) consent. The agent will request approval before executing transfers.',
+            },
+            {
+              value: 'mfa-heavy',
+              label: 'MFA & Step-Up Auth Focus',
+              icon: '🛡️',
+              thresholds: 'MFA step-up: $1 · Every action requires MFA',
+              behavior: 'Step-up threshold is set to $1 so virtually every transfer triggers a PingOne MFA challenge. Use this to walk through the full MFA enrollment and challenge flow during a security-focused demo.',
+            },
+          ] as { value: string; label: string; icon: string; thresholds: string; behavior: string }[]).map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              className={`scenario-card${state.demoScenario === opt.value ? ' scenario-card--active' : ''}`}
+              onClick={() => setState(prev => ({ ...prev, demoScenario: opt.value, saveStatus: 'idle' }))}
+            >
+              <div className="scenario-card__header">
+                <span className="scenario-card__icon">{opt.icon}</span>
+                <span className="scenario-card__label">{opt.label}</span>
+                {state.demoScenario === opt.value && <span className="scenario-card__badge">Active</span>}
+              </div>
+              <div className="scenario-card__thresholds">{opt.thresholds}</div>
+              <p className="scenario-card__desc">{opt.behavior}</p>
+            </button>
+          ))}
+        </div>
+        <p className="cfg-field-help" style={{ marginTop: '0.75rem' }}>Changes take effect on next session or page refresh — active sessions are not affected.</p>
       </div>
     );
 
