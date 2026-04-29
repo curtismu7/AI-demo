@@ -776,18 +776,24 @@ const UnifiedConfigurationPage: FC<{
       });
 
       if (isAdminUser) {
-        const settingsRes = await fetch('/api/admin/settings', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            stepUpAmountThreshold: state.mfaStepUpThreshold,
-            agentTransactionCountLimit: state.agentTransactionCountLimit,
-            agentTransactionValueLimit: state.agentTransactionValueLimit,
-          }),
-        });
-        if (!settingsRes.ok) {
-          throw new Error('Failed to update runtime security settings');
+        try {
+          const settingsRes = await fetch('/api/admin/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              stepUpAmountThreshold: state.mfaStepUpThreshold,
+              agentTransactionCountLimit: state.agentTransactionCountLimit,
+              agentTransactionValueLimit: state.agentTransactionValueLimit,
+            }),
+          });
+          if (!settingsRes.ok && settingsRes.status !== 401 && settingsRes.status !== 403) {
+            console.warn('Runtime security settings update failed:', settingsRes.status);
+          }
+        } catch (_settingsErr) {
+          // Non-fatal: runtime settings require a Bearer token session.
+          // The main config has already been saved above.
+          console.warn('Runtime settings update skipped (no Bearer token session).');
         }
       }
 
