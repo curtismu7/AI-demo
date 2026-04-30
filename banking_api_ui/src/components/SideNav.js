@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useEducationUIOptional } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { useTheme } from '../context/ThemeContext';
+import RedButton from './RedButton';
+import KillSwitchConfirmModal from './KillSwitchConfirmModal';
 import { 
   MdLock, MdSettings, MdSearch, MdDataUsage, 
   MdDeploy, MdBook, MdPerson, MdDescription, MdListAlt, 
@@ -96,6 +98,8 @@ export default function SideNav({ user, onLogout }) {
   const { preset } = useIndustryBranding();
   const { theme, toggleTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
+  const [showKillModal, setShowKillModal] = useState(false);
+  const [agentRevoked, setAgentRevoked] = useState(false);
   const navigate = useNavigate();
   const edu = useEducationUIOptional();
   const isAdmin = user?.role === 'admin';
@@ -116,6 +120,23 @@ export default function SideNav({ user, onLogout }) {
     }
     return <span className="sidenav-icon">{iconName}</span>;
   };
+
+  const handleKillSwitchConfirm = useCallback(async (agentId, reason) => {
+    try {
+      const response = await fetch(`/api/admin/agent/${agentId}/kill-switch`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      if (!response.ok) throw new Error(`Kill switch failed: ${response.status}`);
+      setAgentRevoked(true);
+      setShowKillModal(false);
+      console.log("[SideNav] Agent kill switch successful");
+    } catch (e) {
+      console.error("[SideNav] Kill switch error:", e.message);
+    }
+  }, []);
 
   const handleNavAction = (action) => {
     if (action === 'runScopeAudit') {
@@ -234,6 +255,32 @@ export default function SideNav({ user, onLogout }) {
         ))}
       </nav>
 
+      {/* Safety & Emergency Controls */}
+      <div className="sidenav-group sidenav-safety">
+        {!collapsed && (
+          <div className="sidenav-group-label">Safety</div>
+        )}
+        <button
+          type="button"
+          className="sidenav-link sidenav-safety-btn"
+          onClick={() => setShowKillModal(true)}
+          disabled={agentRevoked}
+          title="Stop agent (emergency control)"
+          style={{
+            background: agentRevoked ? "#999" : "#ef4444",
+            color: "white",
+            cursor: agentRevoked ? "not-allowed" : "pointer",
+          }}
+        >
+          <span style={{ fontSize: '18px' }}>🛑</span>
+          {!collapsed && (
+            <span className="sidenav-link-label">
+              {agentRevoked ? "🔒 REVOKED" : "STOP AGENT"}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Learn & Explore — mirrors the Education Bar buttons across the top */}
       <div className="sidenav-group sidenav-learn">
         {!collapsed && (
@@ -280,6 +327,13 @@ export default function SideNav({ user, onLogout }) {
           {!collapsed && <span>Sign out</span>}
         </button>
       </div>
+      {showKillModal && (
+        <KillSwitchConfirmModal
+          isOpen={showKillModal}
+          onClose={() => setShowKillModal(false)}
+          onConfirm={(agentId, reason) => handleKillSwitchConfirm(agentId || "default-agent", reason)}
+        />
+      )}
     </aside>
   );
 }
