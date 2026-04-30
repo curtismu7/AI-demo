@@ -5,6 +5,97 @@ import './ApiTrafficPanel.css';
 
 const FILTERS = ['All', 'MCP', 'Token', 'HTTP', 'Errors'];
 
+// ── RFC Claim Annotations ────────────────────────────────────────────────────
+
+/**
+ * Per-claim RFC footnotes. Used by ClaimsTable to annotate each JWT / introspection claim
+ * with its standard definition and RFC section.
+ */
+const RFC_NOTES = {
+  sub:       { ref: 'RFC 7519 §4.1.2', what: 'Subject — unique identifier for the authenticated user' },
+  iss:       { ref: 'RFC 7519 §4.1.1', what: 'Issuer — the PingOne token endpoint that signed this token' },
+  aud:       { ref: 'RFC 7519 §4.1.3', what: 'Audience — the intended recipient(s) of this token; must match the resource server' },
+  exp:       { ref: 'RFC 7519 §4.1.4', what: 'Expiration — Unix timestamp after which the token MUST be rejected' },
+  iat:       { ref: 'RFC 7519 §4.1.6', what: 'Issued At — when PingOne generated and signed this token' },
+  nbf:       { ref: 'RFC 7519 §4.1.5', what: 'Not Before — token is invalid before this Unix timestamp' },
+  jti:       { ref: 'RFC 7519 §4.1.7', what: 'JWT ID — unique identifier; use for replay-attack prevention' },
+  scope:     { ref: 'RFC 9068 §2.2 · RFC 8693 §4.2', what: 'Granted OAuth 2.0 scopes — space-separated permissions the client may exercise' },
+  client_id: { ref: 'RFC 9068 §2.2', what: 'Client ID — the OAuth 2.0 client that requested this token' },
+  act:       { ref: 'RFC 8693 §4.4',  what: 'Authorized Actor — identifies who is currently acting on behalf of the subject (delegation)' },
+  may_act:   { ref: 'RFC 8693 §4.4.3 (draft)', what: 'May Act — identifies who is authorized to obtain a token acting on behalf of this subject' },
+  azp:       { ref: 'OIDC Core §2',   what: 'Authorized Party — the client ID the token was issued to (when aud is multi-valued)' },
+  acr:       { ref: 'OIDC Core §2',   what: 'Authentication Context Class Reference — strength of the user\u2019s authentication' },
+  auth_time: { ref: 'OIDC Core §2',   what: 'Auth Time — Unix timestamp when the end-user\'s authentication took place' },
+  active:    { ref: 'RFC 7662 §2.2',  what: 'Active — Boolean; true means the token is currently valid at the introspection endpoint' },
+};
+
+/**
+ * RFC-annotated claims table. Collapsed by default; click a row to see the RFC footnote.
+ * @param {{ claims: object|null }} props
+ */
+function ClaimsTable({ claims }) {
+  const [expandedKey, setExpandedKey] = useState(null);
+
+  if (!claims || typeof claims !== 'object') {
+    return <p className="api-claims-empty">No claims available.</p>;
+  }
+
+  const entries = Object.entries(claims);
+  if (entries.length === 0) {
+    return <p className="api-claims-empty">No claims available.</p>;
+  }
+
+  return (
+    <table className="api-claims-table" aria-label="JWT / introspection claims">
+      <thead>
+        <tr>
+          <th className="api-claims-th api-claims-th--claim">Claim</th>
+          <th className="api-claims-th api-claims-th--value">Value</th>
+          <th className="api-claims-th api-claims-th--rfc">Standard</th>
+        </tr>
+      </thead>
+      <tbody>
+        {entries.map(([k, v]) => {
+          const note = RFC_NOTES[k];
+          const isExpanded = expandedKey === k;
+          const displayVal = typeof v === 'object'
+            ? JSON.stringify(v)
+            : String(v);
+          return (
+            <React.Fragment key={k}>
+              <tr
+                className={`api-claims-row${note ? ' api-claims-row--annotated' : ''}`}
+                onClick={() => note && setExpandedKey(isExpanded ? null : k)}
+                aria-expanded={note ? isExpanded : undefined}
+                tabIndex={note ? 0 : undefined}
+                onKeyDown={note ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedKey(isExpanded ? null : k); } } : undefined}
+              >
+                <td className="api-claims-td api-claims-td--claim">
+                  <code>{k}</code>
+                  {note && <span className="api-claims-expand-icon" aria-hidden="true">{isExpanded ? ' ▲' : ' ▼'}</span>}
+                </td>
+                <td className="api-claims-td api-claims-td--value">
+                  <span className="api-claims-val">{displayVal}</span>
+                </td>
+                <td className="api-claims-td api-claims-td--rfc">
+                  {note ? <span className="api-claims-rfc-ref">{note.ref}</span> : null}
+                </td>
+              </tr>
+              {note && isExpanded && (
+                <tr className="api-claims-row api-claims-row--note">
+                  <td colSpan={3} className="api-claims-td api-claims-td--note">
+                    <span className="api-claims-note-icon">📋</span> {note.what}
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Syntax-highlight a JSON object as HTML spans. */
@@ -88,10 +179,12 @@ function MethodBadge({ entry }) {
   if (entry.kind === 'token-event') {
     const icons = {
       'user-token':               { label: 'User token', cls: 'TOKEN-USER' },
+      'user-token-introspection': { label: 'Introspect', cls: 'TOKEN-INTRO' },
       'agent-actor-token':        { label: 'Agent token', cls: 'TOKEN-AGENT' },
       'exchange-in-progress':     { label: 'Exchange', cls: 'TOKEN-XCHG' },
       'on-behalf-of-warning':     { label: 'Agent?', cls: 'TOKEN-SKIP' },
       'exchanged-token':          { label: 'MCP token', cls: 'TOKEN-MCP' },
+      'exchanged-token-verified': { label: 'JWKS ✓', cls: 'TOKEN-VERIFY' },
       'exchange':                 { label: 'Pending', cls: 'TOKEN-XCHG' },
       'exchange-required':        { label: 'RFC 8693', cls: 'TOKEN-FAIL' },
       'user-scopes-insufficient': { label: 'Scopes', cls: 'TOKEN-FAIL' },
@@ -180,7 +273,7 @@ function TokenEventDetail({ entry }) {
         {tab === 'summary' && (
           <p className="api-token-event-explanation">{entry.explanation || 'No explanation available.'}</p>
         )}
-        {tab === 'claims'    && <JsonView value={entry.claims} />}
+        {tab === 'claims'    && <ClaimsTable claims={entry.claims} />}
         {tab === 'header'    && <JsonView value={entry.jwtHeader} />}
         {tab === 'exchange'  && <JsonView value={entry.exchangeDetails} />}
       </div>

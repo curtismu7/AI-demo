@@ -49,6 +49,8 @@ const { trackToken } = require('./apiCallTrackerService');
 const { logEvent: logAppEvent } = require('./appEventService');
 const { decodeJwt, sanitizePingOneResponse } = require('../utils/tokenUtils');
 const tokenExchangeConfig = require('../config/tokenExchangeConfig');
+const tokenIntrospectionService = require('./tokenIntrospectionService');
+const tokenVerificationService = require('./tokenVerificationService');
 
 /** Minimum distinct scopes on the User access token before RFC 8693 to MCP (so PingOne can narrow audience + scope). */
 const MIN_USER_SCOPES_FOR_MCP = Math.max(
@@ -573,6 +575,51 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // ─────────────────────────────────────────────────────────────────────────
 
   const { userSub, userAccessTokenClaims: _rawUserClaims } = appendUserTokenEvent(tokenEvents, userToken, req);
+
+  // ── RFC 7662 — PingOne Active-Token Introspection ─────────────────────────
+  // Verify the user's session token is still active before attempting exchange.
+  try {
+    const intro = await tokenIntrospectionService.validateToken(userToken);
+    const introStatus = intro.valid ? 'active' : 'failed';
+    tokenEvents.push(buildTokenEvent(
+      'user-token-introspection',
+      'User Token — PingOne Active-Token Introspection (RFC 7662)',
+      introStatus,
+      null,
+      intro.valid
+        ? `PingOne confirmed the user token is active. sub=${intro.sub} scope="${intro.scopes || ''}".`
+        : `PingOne returned active=false — the user session token is no longer valid. The tool call cannot proceed safely with an inactive token.`,
+      {
+        rfc: 'RFC 7662',
+        introspectionResult: {
+          active: intro.valid,
+          sub: intro.sub,
+          exp: intro.exp,
+          aud: intro.aud,
+          scope: intro.scopes,
+          client_id: intro.client_id,
+        },
+      }
+    ));
+    if (!intro.valid) {
+      throw Object.assign(
+        new Error('User token is no longer active (RFC 7662 introspection returned active=false)'),
+        { code: 'TOKEN_INACTIVE' }
+      );
+    }
+  } catch (err) {
+    if (err.code === 'TOKEN_INACTIVE') throw err;
+    // Introspection endpoint not configured or network error — add skipped event, continue
+    tokenEvents.push(buildTokenEvent(
+      'user-token-introspection',
+      'User Token — PingOne Introspection (RFC 7662)',
+      'skipped',
+      null,
+      `Introspection skipped: ${err.message}. Configure PINGONE_INTROSPECTION_ENDPOINT to enable active-token validation at every tool call.`,
+      { rfc: 'RFC 7662' }
+    ));
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   // ── RFC 8693 may_act Support Configuration ───────────────────────────────
   // DEPRECATED: Synthetic may_act injection via ff_inject_may_act (kept for backwards compatibility).
@@ -1127,6 +1174,42 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       actPresent: !!mcpAccessTokenClaims?.act,
       audMatches,
     });
+
+    // ── RFC 7515/7517/7518 — JWKS Signature Verification ─────────────────────
+    // Verify the exchanged token's RS256 signature using PingOne's published JWKS.
+    try {
+      const verif = await tokenVerificationService.verifyExchangedToken(exchangedToken);
+      tokenEvents.push(buildTokenEvent(
+        'exchanged-token-verified',
+        'MCP Token — JWKS Cryptographic Signature Verification (RFC 7515)',
+        verif.verified ? 'active' : (verif.warning ? 'warning' : 'failed'),
+        verif.verified ? verif.claims : null,
+        verif.verified
+          ? `Signature verified ✅ — PingOne's public key (kid=${verif.kid}, alg=${verif.alg}) confirms the token has not been tampered with since issuance. RFC 7515 §4.`
+          : verif.warning
+            ? `Signature check produced a warning (fail-open): ${verif.warning}. Set JWKS_VERIFY_FAIL_OPEN=false to hard-fail on JWKS errors.`
+            : `Signature verification FAILED ❌ — ${verif.error}. The MCP token may have been tampered with or have expired.`,
+        {
+          rfc: 'RFC 7515 · RFC 7517 · RFC 7518',
+          verified: verif.verified,
+          alg: verif.alg,
+          kid: verif.kid,
+          warning: verif.warning,
+          error: verif.error,
+        }
+      ));
+    } catch (verifErr) {
+      // Never let JWKS verification block the tool call (fail-open by design)
+      tokenEvents.push(buildTokenEvent(
+        'exchanged-token-verified',
+        'MCP Token — JWKS Signature Verification (RFC 7515)',
+        'skipped',
+        null,
+        `JWKS verification skipped: ${verifErr.message}`,
+        { rfc: 'RFC 7515 · RFC 7517' }
+      ));
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Record exchanged token into tokenChainService so /api/token-chain/current returns live data
     if (exchangedToken && userSub) {
