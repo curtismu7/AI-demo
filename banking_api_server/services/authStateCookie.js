@@ -104,6 +104,9 @@ function setAuthCookie(res, data, isProduction) {
     r:   data.role,
     t:   data.oauthType || 'user',
     exp: data.expiresAt || (Date.now() + 24 * 60 * 60 * 1000),
+    // id_token stored for RP-Initiated Logout (id_token_hint) when server session is lost.
+    // id_tokens are not bearer credentials — they cannot be used to call APIs.
+    it:  data.idToken || null,
   });
   const signed = _sign(payload);
 
@@ -141,6 +144,7 @@ function readAuthCookie(req) {
       lastName:  obj.ln || obj.lastName || null,
       role:      obj.r || obj.role || 'user',
       oauthType: obj.t || obj.oauthType || 'user',
+      idToken:   obj.it || null,
       expiresAt,
     };
   } catch {
@@ -203,6 +207,9 @@ function restoreSessionFromCookie(req, _res, next) {
         accessToken: '_cookie_session',
         tokenType:   'Bearer',
         expiresAt:   auth.expiresAt || (Date.now() + 24 * 60 * 60 * 1000),
+        // Restore id_token from cookie so RP-Initiated Logout can send id_token_hint
+        // to PingOne's /as/signoff even when the server session has been lost.
+        idToken:     auth.idToken || null,
       };
       console.log('[auth-cookie] Session restored from _auth cookie for:', hydratedUser.email || hydratedUser.username || hydratedUser.id || 'unknown', '(no Redis session found)');
     }

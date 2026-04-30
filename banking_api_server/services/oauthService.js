@@ -563,16 +563,37 @@ class OAuthService {
     if (method === 'post') body.set('client_id', clientId);
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
     applyTokenEndpointAuth(clientId, clientSecret, method, body, headers);
+    console.log('[McpExchangerToken] Attempting client credentials:', {
+      clientId: clientId.substring(0, 12) + '...',
+      method,
+      hasSecret: !!clientSecret,
+      scopes: scopeStr,
+      endpoint: this.config.tokenEndpoint
+    });
     try {
       const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
       const at = response.data.access_token;
       if (!at) throw new Error('MCP Exchanger client credentials response missing access_token');
-      console.log('[McpExchangerToken] Token obtained for client:', clientId.substring(0, 8) + '...');
+      console.log('[McpExchangerToken] ✅ Token obtained for client:', clientId.substring(0, 8) + '...');
       return at;
     } catch (error) {
       const pingoneData = error.response?.data || {};
       const httpStatus  = error.response?.status;
-      console.error('[McpExchangerToken] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      const headers = error.response?.headers || {};
+      
+      console.error('[McpExchangerToken] ❌ FAILED!');
+      console.error({
+        httpStatus,
+        pingoneError: pingoneData,
+        errorMessage: error.message,
+        errorCode: error.code,
+        requestConfig: error.config ? {
+          url: error.config.url,
+          method: error.config.method,
+          headers: error.config.headers
+        } : null,
+        responseHeaders: headers
+      });
       const richErr = new Error(
         `MCP Exchanger token failed: ${pingoneData.error_description || pingoneData.error || error.message}`
       );
@@ -712,6 +733,9 @@ class OAuthService {
       client_id: clientId,
     });
     // Only include actor_token when provided (Exchange 1 is delegation-only, no actor)
+    // NOTE: Even if actor_token is sent, PingOne may not include an `act` claim in the response
+    // if the MCP resource's token policy isn't configured for delegation. This is expected behavior
+    // when the PingOne resource policy doesn't enforce delegation claims.
     if (actorToken) {
       body.set('actor_token', actorToken);
       body.set('actor_token_type', 'urn:ietf:params:oauth:token-type:access_token');

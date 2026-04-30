@@ -114,7 +114,8 @@ const {
 } = require('./services/oauthRedirectUris');
 const {
     restoreSessionFromCookie,
-    clearAuthCookie
+    clearAuthCookie,
+    readAuthCookie
 } = require('./services/authStateCookie');
 const {
     migrateAccounts
@@ -506,7 +507,11 @@ app.post('/api/auth/clear-session', (req, res) => {
 // browser → PingOne RP-Initiated Logout → post_logout_redirect_uri (/logout).
 // Called as a full page navigation (window.location.href), NOT via axios.
 app.get('/api/auth/logout', async (req, res) => {
-    const idToken = req.session.oauthTokens ?.idToken || null;
+    const idToken = req.session.oauthTokens?.idToken
+        // Fallback: auth-state cookie carries the id_token for RP-Initiated Logout
+        // when the server session has expired or been lost.
+        || readAuthCookie(req)?.idToken
+        || null;
     const accessToken = req.session.oauthTokens ?.accessToken || null;
     const refreshToken = req.session.oauthTokens ?.refreshToken || null;
     const postLogoutUri = `${getFrontendOrigin(req)}/logout`;
@@ -522,6 +527,9 @@ app.get('/api/auth/logout', async (req, res) => {
             .catch(err => console.warn('[logout] refresh token revoke error:', err.message));
     }
 
+    // Capture oauthType before destroy so we can pick the right client_id below.
+    const oauthType = req.session.oauthType || 'user';
+
     req.session.destroy((err) => {
         if (err) {
             console.error('Session destruction error during unified logout:', err);
@@ -535,13 +543,27 @@ app.get('/api/auth/logout', async (req, res) => {
         const region = configStore.getEffective('pingone_region') || 'com';
         const pingoneSignoff = `https://auth.pingone.${region}/${envId}/as/signoff`;
 
+        // Pick the right OAuth client_id so PingOne ends the correct SSO session.
+        // client_id is required by PingOne to locate and terminate the SSO session.
+        const userClientId  = configStore.getEffective('pingone_user_client_id')  || process.env.PINGONE_USER_CLIENT_ID;
+        const adminClientId = configStore.getEffective('pingone_admin_client_id') || process.env.PINGONE_ADMIN_CLIENT_ID || process.env.PINGONE_CLIENT_ID;
+        const clientId = (oauthType === 'admin' ? adminClientId : userClientId) || userClientId;
+
         const params = new URLSearchParams({
             post_logout_redirect_uri: postLogoutUri
         });
         if (idToken) {
             params.set('id_token_hint', idToken);
+        } else {
+            console.warn('[logout] id_token not found in session — PingOne SSO session may not be cleared. oauthType:', oauthType);
+        }
+        if (clientId) {
+            params.set('client_id', clientId);
+        } else {
+            console.warn('[logout] No client_id resolved — PingOne may not identify the RP for signoff.');
         }
 
+        console.info(`[logout] Redirecting to PingOne signoff (id_token_hint: ${idToken ? 'yes' : 'NO'}, client_id: ${clientId || 'none'})`);
         res.redirect(`${pingoneSignoff}?${params.toString()}`);
     });
 });
@@ -1557,6 +1579,19 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             result = await mcpCallTool(tool, params || {}, mcpAccessToken, userSub, req.correlationId);
         }
         appEventService.logEvent('mcp', 'info', `MCP tool done ← ${tool} (${Date.now() - startTime}ms)`, { tag: 'mcp/tool', metadata: { tool, durationMs: Date.now() - startTime } });
+        
+        // Log the actual MCP result so it's queryable via /api/app-events
+        if (result) {
+          const resultMeta = {
+            tool,
+            durationMs: Date.now() - startTime,
+            hasContent: !!result.content,
+            contentLength: result.content ? JSON.stringify(result.content).length : 0,
+            contentType: result.isError ? 'error' : 'success'
+          };
+          appEventService.logEvent('mcp', 'info', `MCP result: ${tool} → ${result.isError ? 'error' : 'success'} (${resultMeta.contentLength} bytes)`, { tag: 'mcp/result', metadata: resultMeta });
+        }
+        
         emit({
             phase: 'mcp_remote_done'
         });

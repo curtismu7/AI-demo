@@ -116,17 +116,7 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
             Middle
           </button>
         )}
-        {!isLandingNav && (
-          <button
-            type="button"
-            className={`agent-ui-mode-toggle__btn${placement === 'right-dock' ? ' agent-ui-mode-toggle__btn--active' : ''}`}
-            onClick={() => void handlePlacement('right-dock')}
-            aria-pressed={placement === 'right-dock'}
-            title="Assistant in a collapsible right sidebar (all pages)"
-          >
-            Right
-          </button>
-        )}
+
         <button
           type="button"
           className={`agent-ui-mode-toggle__btn${placement === 'bottom' ? ' agent-ui-mode-toggle__btn--active' : ''}`}

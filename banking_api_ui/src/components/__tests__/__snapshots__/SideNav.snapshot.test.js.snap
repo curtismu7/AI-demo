@@ -735,6 +735,32 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
       </div>
     </nav>
     <div
+      class="sidenav-group sidenav-safety"
+    >
+      <div
+        class="sidenav-group-label"
+      >
+        Safety
+      </div>
+      <button
+        class="sidenav-link sidenav-safety-btn"
+        style="background: rgb(239, 68, 68); color: white; cursor: pointer;"
+        title="Stop agent (emergency control)"
+        type="button"
+      >
+        <span
+          style="font-size: 18px;"
+        >
+          🛑
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          STOP AGENT
+        </span>
+      </button>
+    </div>
+    <div
       class="sidenav-group sidenav-learn"
     >
       <div
@@ -1394,6 +1420,32 @@ exports[`SideNav snapshot renders user nav without change 1`] = `
         </a>
       </div>
     </nav>
+    <div
+      class="sidenav-group sidenav-safety"
+    >
+      <div
+        class="sidenav-group-label"
+      >
+        Safety
+      </div>
+      <button
+        class="sidenav-link sidenav-safety-btn"
+        style="background: rgb(239, 68, 68); color: white; cursor: pointer;"
+        title="Stop agent (emergency control)"
+        type="button"
+      >
+        <span
+          style="font-size: 18px;"
+        >
+          🛑
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          STOP AGENT
+        </span>
+      </button>
+    </div>
     <div
       class="sidenav-group sidenav-learn"
     >

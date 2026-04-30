@@ -75,6 +75,7 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
     if (status === 403) {
         // Attach the gateway's response body so the BFF can surface the policy reason to the UI.
         const body403 = response.data || {};
+        console.error('[mcpGatewayClient] 403 full response body:', JSON.stringify(body403));
         throw Object.assign(
             new Error(body403.message || 'Gateway policy denied the tool call'),
             {

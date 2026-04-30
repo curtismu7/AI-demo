@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import TokenSecurityTester from '../components/TokenSecurityTester';
+import RedButton from '../components/RedButton';
+import KillSwitchConfirmModal from '../components/KillSwitchConfirmModal';
+import ForensicAuditDashboard from '../components/ForensicAuditDashboard';
 import apiClient from '../services/apiClient';
 import './Admin.css';
 
@@ -14,6 +17,8 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [showKillModal, setShowKillModal] = useState(false);
+  const [agentRevoked, setAgentRevoked] = useState(false);
 
   useEffect(() => {
     loadAdminStats();
@@ -58,6 +63,12 @@ export default function Admin() {
           className={`admin-tab ${activeTab === 'security' ? 'active' : ''}`}
           onClick={() => setActiveTab('security')}
         >
+        <button
+          className={`admin-tab ${activeTab === 'safety' ? 'active' : ''}`}
+          onClick={() => setActiveTab('safety')}
+        >
+          🛑 Agent Safety
+        </button>
           🔐 Security Testing
         </button>
       </div>
@@ -126,6 +137,58 @@ export default function Admin() {
             Test how the MCP server validates tokens and rejects requests that violate
             security controls. Each scenario demonstrates a different security validation.
           </p>
+
+      {/* Agent Safety Tab */}
+      {activeTab === 'safety' && (
+        <div className="admin-section">
+          <h2>🛑 Agent Safety Control Center</h2>
+          <p className="admin-section-description">
+            Immediate agent revocation and forensic audit trail. Click the red button to stop an agent.
+            All kill events are logged immutably for compliance and analysis.
+          </p>
+          
+          <div style={{ display: 'flex', gap: '32px', marginTop: '24px', flexWrap: 'wrap' }}>
+            <div style={{
+              padding: '24px',
+              backgroundColor: '#fef2f2',
+              border: '2px solid #ef4444',
+              borderRadius: '8px',
+              textAlign: 'center',
+              flex: '0 0 200px'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '14px' }}>Emergency Kill Switch</h3>
+              <RedButton 
+                agentId="demo-agent"
+                isRevoked={agentRevoked}
+                onKillClick={() => setShowKillModal(true)}
+              />
+              <p style={{ margin: '12px 0 0 0', fontSize: '12px', color: '#666' }}>
+                {agentRevoked ? 'Agent revoked' : 'Click to revoke'}
+              </p>
+            </div>
+
+            <div style={{ flex: '1', minWidth: '300px' }}>
+              <ForensicAuditDashboard agentId="demo-agent" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kill Switch Confirmation Modal */}
+      <KillSwitchConfirmModal
+        isOpen={showKillModal}
+        agentId="demo-agent"
+        onConfirm={async (agentId, reason) => {
+          try {
+            await apiClient.post(`/api/admin/agent/${agentId}/kill-switch`, { reason });
+            setAgentRevoked(true);
+            setShowKillModal(false);
+          } catch (err) {
+            console.error('Kill switch failed:', err);
+          }
+        }}
+        onCancel={() => setShowKillModal(false)}
+      />
           
           <div className="admin-token-tester-wrapper">
             <TokenSecurityTester />

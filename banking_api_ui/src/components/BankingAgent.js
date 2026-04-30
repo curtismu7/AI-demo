@@ -1339,6 +1339,18 @@ export default function BankingAgent({
 		}
 	}, [chipGroupsState]);
 
+	/** Reset chipGroupsState when layout mode changes (floating ↔ inline ↔ bottom-dock).
+	 *  Prevents stale expanded groups persisting in the DOM after switching layouts.
+	 */
+	useEffect(() => {
+		setChipGroupsState((prev) => ({
+			account: true,
+			transaction: false,
+			admin: false,
+			testing: false,
+		}));
+	}, [useActionsPopout, isBottomDock]);
+
 	/** Toggle expanded/collapsed state for a group. */
 	const toggleGroupExpanded = (groupName) => {
 		setChipGroupsState((prev) => ({

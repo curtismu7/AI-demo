@@ -101,6 +101,54 @@ These four rules apply to every task — trivial or complex, planning or executi
 
 ---
 
+## PingOne OAuth Configuration
+
+### Automatic Endpoint Resolution
+OAuth endpoints are **automatically computed** from `PINGONE_ENVIRONMENT_ID` + `PINGONE_REGION`:
+- **Token endpoint:** `https://auth.pingone.${region}/${envId}/as/token`
+- **Authorization endpoint:** `https://auth.pingone.${region}/${envId}/as/authorize`
+- **JWKS URI:** `https://auth.pingone.${region}/${envId}/as/jwks`
+- **OIDC Discovery:** `https://auth.pingone.${region}/${envId}/as/.well-known/openid-configuration`
+
+**No need to set `PINGONE_TOKEN_ENDPOINT` manually** — it's derived at runtime via `oauthEndpointResolver.js`. Optional: set `OAUTH_TOKEN_ENDPOINT` explicitly to override (useful for non-PingOne IDPs).
+
+### RFC 8693 Token Exchange (MCP Agent)
+The BFF performs RFC 8693 token exchange for MCP tools using:
+- **User token** (subject): `urn:ietf:params:oauth:token-type:access_token` (PingOne-issued)
+- **Actor token** (optional): Client-credentials token for `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID`
+- **Resource indicator** (`aud`): `PINGONE_RESOURCE_MCP_SERVER_URI` (narrowed scope)
+
+**Key environment variables** (all required for delegated agent):
+```
+PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID=<uuid>
+PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET="<secret>"  # Quote secrets with special chars (~, -, .)
+PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD=post       # PingOne AI_AGENT apps use 'post'
+PINGONE_RESOURCE_MCP_SERVER_URI=https://mcp-server.pingdemo.com
+MCP_TOKEN_EXCHANGE_SCOPES=banking:read banking:write banking:mcp:invoke
+```
+
+**Why `act` claim might be absent:**
+Even when all code and configuration above is correct, the returned MCP token may not include an `act` claim if:
+- PingOne resource token policy doesn't emit `act` claims
+- MCP resource delegation policy isn't configured in PingOne
+- Token policy doesn't include delegation-aware claim mappings
+- **SPEL expression syntax limitations** — PingOne token policy SPEL may not support complex token property access for RFC 8693 exchanges
+
+**To configure `act` claim emission:**
+1. Check PingOne Console → Environments → Resources → [MCP Server Resource] → Token Policy
+2. Try adding an Attribute Mapping for `act` claim with SPEL that matches `may_act.sub` to actor `client_id`
+3. **Note:** If SPEL doesn't support token property access, you may need to:
+   - Use a **DaVinci flow** instead of inline SPEL
+   - OR verify if PingOne automatically emits `act` when `may_act.sub` matches the requesting client's `client_id`
+
+**Debugging token exchange failures:**
+- Check `/tmp/bank-api-server.log` for `[McpExchangerToken]` log entries
+- If `act absent` appears in Token Chain UI → PingOne policy may not emit `act` claims (expected behavior)
+- Verify PingOne app is type `AI_AGENT` and has correct scopes + authentication method
+- Verify actor token is obtained: log should show `[McpExchangerToken] ✅ Token obtained`
+
+---
+
 ## When to read which skill
 
 | Topic | Skill (under `.claude/skills/`) |
@@ -113,12 +161,36 @@ These four rules apply to every task — trivial or complex, planning or executi
 
 ---
 
+## Environment Variable Best Practices
+
+1. **Quote all secrets** in `.env` to prevent shell parsing of special characters:
+   ```
+   ❌ PINGONE_ADMIN_CLIENT_SECRET=x6Ee...8u0_w8F9a.qA9-j47z  # ~ and . may break parsing
+   ✅ PINGONE_ADMIN_CLIENT_SECRET="x6Ee...8u0_w8F9a.qA9-j47z"
+   ```
+
+2. **Credentials priority** (highest to lowest):
+   - Runtime configStore (set via `/config` UI, persisted in runtimeData.json)
+   - `PINGONE_*` explicit env vars (e.g. `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID`)
+   - Fallback env vars (e.g. `AGENT_OAUTH_CLIENT_ID` → `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID`)
+
+3. **Never** commit real secrets; use `.env.example` + team vault
+
+---
+
 ## Quick verification checklist (UI + API)
 
 - `cd banking_api_ui && npm run build` → **0**
 - No new unhandled rejections / noisy `console.error` in flows you changed
 - If OAuth touched: admin login → `/admin`; user login → `/dashboard`; callbacks use real host not localhost
-- If agent touched: FAB visibility, MCP tool path, consent/HITL behavior per `REGRESSION_PLAN.md`
+- If agent/MCP touched:
+  - FAB visibility and agent sidebar in `/dashboard`
+  - Click a banking tool (e.g., "🏦 My Accounts") → Token Chain panel shows token exchange events
+  - Verify `act` claim is present: Token Chain shows `✅ act valid` (not `⚠️ act absent`)
+  - Check `/tmp/bank-api-server.log` for `[McpExchangerToken] ✅ Token obtained` (not ❌ Failed)
+  - **MCP results tracking:** Query `/api/app-events?category=mcp` to see tool calls, completions, AND results logged
+  - If token is expired in Token Chain: MCP call fails before reaching server (fix: logout/login to get fresh token)
+  - If HITL enabled: consent dialog appears before tool execution per `REGRESSION_PLAN.md`
 
 ---
 

@@ -866,6 +866,14 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   const scopeValidation = configStore.validateScopeAudience(finalScopes, mcpResourceUri);
   finalScopes = scopeValidation.scopes;
 
+  // Ensure banking:mcp:invoke is included in MCP tokens (required by MCP Gateway policy)
+  if (!finalScopes.includes('banking:mcp:invoke')) {
+    console.log('[TokenExchange:DEBUG] Adding banking:mcp:invoke to finalScopes. Before:', finalScopes.join(','), ' → After:', [...finalScopes, 'banking:mcp:invoke'].join(','));
+    finalScopes.push('banking:mcp:invoke');
+  } else {
+    console.log('[TokenExchange:DEBUG] banking:mcp:invoke already in finalScopes:', finalScopes.join(','));
+  }
+
   void writeExchangeEvent({
     type: 'scope-resolution',
     level: 'info',

@@ -1896,6 +1896,26 @@ Plans:
 - [x] 247-02-PLAN.md — PingOne stdio adapter service + server.js routing branch
 - [x] 247-03-PLAN.md — React McpModeChip component + CSS + build verification
 
+### Phase 248: Add token chain overview panel with explanatory text above each token and exchange step
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 247
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 248 to break down)
+
+### Phase 249: Audit and fix PingOne applications, resources, scopes, and per-hop audience validation across BFF, MCP Gateway, and MCP Server
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 248
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 249 to break down)
+
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 

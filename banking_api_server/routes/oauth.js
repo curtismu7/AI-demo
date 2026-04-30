@@ -352,6 +352,7 @@ router.get('/callback', async (req, res) => {
           ...authedUser,
           oauthType: 'admin',
           expiresAt: oauthTokens.expiresAt,
+          idToken:   oauthTokens.idToken || null,
         }, _isProd());
         // Clear role-switch cookie if this login was triggered by POST /api/auth/switch
         res.clearCookie('_switch_target', { path: '/', sameSite: _isProd() ? 'none' : 'lax', secure: _isProd() });
