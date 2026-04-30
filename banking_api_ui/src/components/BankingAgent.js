@@ -11,6 +11,7 @@ import { useEducationUIOptional } from "../context/EducationUIContext";
 import { useIndustryBranding } from "../context/IndustryBrandingContext";
 import { useTheme } from "../context/ThemeContext";
 import { useTokenChainOptional } from "../context/TokenChainContext";
+import { navigateToCustomerOAuthLogin } from "../utils/authUi";
 import {
 	AGENT_CONSENT_BLOCK_USER_MESSAGE,
 	isAgentBlockedByConsentDecline,
@@ -3558,6 +3559,16 @@ export default function BankingAgent({
 					"Server configuration: please sign out and sign in again to clear the consent state.",
 					{ autoClose: 10000 },
 				);
+			} else if (err?.code === "actor_token_invalid" || err?.requiresLogin) {
+				// Token exchange failed because the actor (CC) token is invalid —
+				// this means the session is stale. Redirect to PingOne to re-login.
+				addMessage(
+					"assistant",
+					"🔐 Your session token has expired or is no longer valid.\n\n"
+						+ "Redirecting you to **PingOne** to sign in again…",
+					actionId,
+				);
+				setTimeout(() => navigateToCustomerOAuthLogin(), 1500);
 			} else if (err?.code === "gateway_policy_denied") {
 				// MCP gateway rejected the token before it reached the MCP server.
 				// Show a structured educational breakdown: what happened, which policy

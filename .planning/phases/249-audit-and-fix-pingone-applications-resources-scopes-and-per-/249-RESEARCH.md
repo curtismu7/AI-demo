@@ -199,3 +199,54 @@ Priority order:
 2. Bug 4 — disable gateway dev bypass (Python, 1 line)
 3. Bug 5 — route BFF WebSocket through gateway (code change)
 4. Bug 3 — remove banking:mcp:invoke from mcp-server scopes (cleanup)
+
+
+---
+
+## Post-Fix State (2026-04-30) — After scripts/fix-pingone-grants-249.py
+
+Script replaced the broken JS v1. Python v2 uses DELETE+POST (PATCH returns 403 on grants endpoint).
+
+### PingOne Scope-Name Collision Constraint (Discovered)
+
+PingOne prohibits the same scope NAME appearing across multiple grants on the same application,
+even when the grants are for different resources with different scope IDs.
+
+This means:
+- If AI Agent App has banking:agent:invoke in its ai-agent grant, you cannot also
+  add banking:agent:invoke from agent-gateway to the same app.
+- If MCP Exchanger has banking:read, banking:write in its mcp-gateway grant, you cannot
+  add mcp-server grant with those same names (mcp-server and mcp-gateway have identical scope names).
+
+### Actual Grant State After Fix
+
+AI Agent App (2533a614):
+  ✓ openid: openid
+  ✓ https://ai-agent.pingdemo.com: banking:agent:invoke, banking:ai:agent, banking:read, banking:write
+  ✓ https://agent-gateway.pingdemo.com: ai_agent  (only non-colliding scope)
+
+MCP Token Exchanger (6380065f):
+  ✓ openid: openid
+  ✓ https://mcp-gateway.pingdemo.com: banking:mcp:invoke, banking:read, banking:write  (recreated, added banking:mcp:invoke)
+  ✓ https://mcp-server.pingdemo.com: banking:ai:agent  (only non-colliding scope)
+
+### Remaining Architectural Gap
+
+The mcp-server grant on MCP Exchanger can only hold banking:ai:agent because all other
+mcp-server scope names (banking:read, banking:write, banking:mcp:invoke) are already
+granted via the mcp-gateway grant.
+
+This means the gateway re-exchange (Step 6) CC token for mcp-server will only carry
+banking:ai:agent — insufficient if the MCP server validates for banking:read/write.
+
+OPTIONS to fix:
+A. Rename mcp-server resource scopes to banking:mcp:server:read, banking:mcp:server:write
+   (requires MCP server validation code update)
+B. Create a separate PingOne AI_AGENT app solely for gateway re-exchange (aud=mcp-server)
+C. Keep gateway bypass on and route BFF directly to MCP server (workaround, not recommended)
+
+### Other Fixes Applied This Session
+- Bug 4: MCP_GW_DEV_BYPASS=false  (banking_mcp_gateway/.env)
+- BFF: returns requiresLogin:true on actor_token_invalid errors
+- UI: redirects to PingOne after 1.5s when actor token invalid
+- Logout: includes id_token_hint and client_id for PingOne SSO logout
