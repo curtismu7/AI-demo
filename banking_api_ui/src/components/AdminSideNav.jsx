@@ -6,6 +6,8 @@ import { useEducationUI } from "../context/EducationUIContext";
 import { persistBankingAgentUi } from "../services/demoScenarioService";
 import { setDashboardLayout } from "../utils/dashboardLayout";
 import { EDU } from "./education/educationIds";
+import RedButton from "./RedButton";
+import KillSwitchConfirmModal from "./KillSwitchConfirmModal";
 import "./AdminSideNav.css";
 
 /**
@@ -49,6 +51,8 @@ export default function AdminSideNav({ user }) {
 		}
 		return initial;
 	});
+	const [showKillModal, setShowKillModal] = useState(false);
+	const [agentRevoked, setAgentRevoked] = useState(false);
 
 	const isAdmin = user?.role === "admin";
 	const { placement, fab, setAgentUi } = useAgentUiMode();
@@ -362,6 +366,24 @@ export default function AdminSideNav({ user }) {
 		}
 	};
 
+	const handleKillSwitchConfirm = useCallback(async (agentId, reason) => {
+		try {
+			const response = await fetch(`/api/admin/agent/${agentId}/kill-switch`, {
+				method: "POST",
+				credentials: "include",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ reason }),
+			});
+			if (!response.ok) throw new Error(`Kill switch failed: ${response.status}`);
+			setAgentRevoked(true);
+			setShowKillModal(false);
+			console.log("[AdminSideNav] Agent kill switch successful");
+		} catch (e) {
+			console.error("[AdminSideNav] Kill switch error:", e.message);
+		}
+	}, []);
+
+
 	const renderNavItem = (item, sectionKey, index) => {
 		const itemKey = `${sectionKey}-${index}`;
 		const isExpanded = expandedSections[itemKey];
@@ -498,6 +520,53 @@ export default function AdminSideNav({ user }) {
 					</div>
 				</div>
 
+				{/* Safety & Emergency Controls */}
+				{!collapsed && <div className="admin-side-nav__divider" />}
+				<div className="admin-side-nav__section">
+					<div>
+						<button
+							className="admin-side-nav__item admin-side-nav__item--parent"
+							onClick={() => toggleSection("safety")}
+							title={collapsed ? "Safety" : undefined}
+						>
+							<span className="admin-side-nav__icon">🛑</span>
+							{!collapsed && (
+								<>
+									<span className="admin-side-nav__label">Safety</span>
+									<span
+										className={`admin-side-nav__chevron ${expandedSections["safety"] ? "admin-side-nav__chevron--expanded" : ""}`}
+									>
+										▶
+									</span>
+								</>
+							)}
+						</button>
+						{expandedSections["safety"] && !collapsed && (
+							<div className="admin-side-nav__submenu admin-side-nav__safety-section">
+								<div style={{ padding: "12px 8px", textAlign: "center" }}>
+									<button
+										onClick={() => setShowKillModal(true)}
+										style={{
+											background: agentRevoked ? "#999" : "#ef4444",
+											color: "white",
+											border: "none",
+											borderRadius: "6px",
+											padding: "8px 12px",
+											fontSize: "12px",
+											fontWeight: "600",
+											cursor: agentRevoked ? "not-allowed" : "pointer",
+											width: "100%",
+										}}
+										disabled={agentRevoked}
+									>
+										{agentRevoked ? "🔒 AGENT REVOKED" : "🛑 STOP AGENT"}
+									</button>
+								</div>
+							</div>
+						)}
+					</div>
+				</div>
+
 				{/* Learn & Education */}
 				{!collapsed && <div className="admin-side-nav__divider" />}
 				<div className="admin-side-nav__section">
@@ -557,6 +626,13 @@ export default function AdminSideNav({ user }) {
 					))}
 				</div>
 			</nav>
+			{showKillModal && (
+				<KillSwitchConfirmModal
+					isOpen={showKillModal}
+					onClose={() => setShowKillModal(false)}
+					onConfirm={(agentId, reason) => handleKillSwitchConfirm(agentId || "default-agent", reason)}
+				/>
+			)}
 		</div>
 	);
 }
