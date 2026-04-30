@@ -3092,6 +3092,8 @@ export default function BankingAgent({
 				);
 				const failed = tokenEvents.find((e) => e.id === "exchange-failed");
 				const userTokEv = tokenEvents.find((e) => e.id === "user-token");
+				const jwksVerified = tokenEvents.find((e) => e.id === "exchanged-token-verified");
+				const jwksDegraded = jwksVerified?.extra?.fallbackMethod === "introspection";
 
 				// Build a detailed may_act status string from the user token event
 				const mayActLine = !userTokEv
@@ -3119,6 +3121,11 @@ export default function BankingAgent({
 						actLine,
 						audLine,
 						`   Scope narrowed: ${exchanged.scopeNarrowed || "—"}`,
+						jwksDegraded
+							? "   ⚠️ JWKS unavailable — signature verified via RFC 7662 introspection fallback (liveness confirmed, tamper-detection skipped)"
+							: jwksVerified?.extra?.verified
+								? `   🔏 JWKS signature verified (${jwksVerified.extra.alg || "RS256"}, kid: ${jwksVerified.extra.kid || "—"})`
+								: "",
 						"",
 						"Open Token Chain ↗ to inspect decoded claims.",
 						"aud (audience): which resource server accepts the token — narrowed on exchange.",

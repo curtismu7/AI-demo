@@ -329,6 +329,120 @@ function AudienceEduBox({ event }) {
 }
 
 /**
+ * Renders the RFC 7662 introspection result card.
+ * Shows for user-token-introspection events — active, failed, or skipped.
+ */
+function IntrospectionEduBox({ event }) {
+  if (event.id !== 'user-token-introspection') return null;
+  const result = event.extra?.introspectionResult || {};
+  const status = event.eventStatus || 'skipped';
+  const statusMeta = {
+    active:  { icon: '✅', cls: 'tcd-edu-box--ok',      label: 'Token Active' },
+    failed:  { icon: '❌', cls: 'tcd-edu-box--error',   label: 'Token Inactive' },
+    skipped: { icon: '⚠️', cls: 'tcd-edu-box--neutral', label: 'Skipped' },
+  };
+  const meta = statusMeta[status] || statusMeta.skipped;
+
+  return (
+    <div className={`tcd-edu-box ${meta.cls}`}>
+      <div className="tcd-edu-box-hd">
+        <span className="tcd-edu-icon">{meta.icon}</span>
+        <strong>RFC 7662 Active-Token Introspection — {meta.label}</strong>
+        <span className="tcd-edu-ref">RFC 7662 §2.2</span>
+      </div>
+      <div className="tcd-edu-body">
+        {status === 'active' && (
+          <>
+            <p>PingOne confirmed the user's session token is currently <strong>active</strong>. This zero-trust validation fires on every tool call — not just login.</p>
+            <ul>
+              {result.sub  && <li><code>sub</code>: <strong>{result.sub}</strong></li>}
+              {result.scope && <li><code>scope</code>: <code>{Array.isArray(result.scope) ? result.scope.join(' ') : result.scope}</code></li>}
+              {result.exp  && <li><code>exp</code>: {new Date(result.exp * 1000).toLocaleTimeString()} (UTC)</li>}
+              {result.aud  && <li><code>aud</code>: {String(result.aud)}</li>}
+            </ul>
+            <p className="tcd-edu-detail">RFC 7662 §2.2: <code>active: true</code> means the token has not expired, has not been revoked, and is valid for the expected audience.</p>
+          </>
+        )}
+        {status === 'failed' && (
+          <>
+            <p>PingOne returned <code>active: false</code> for the session token. The tool call was aborted to prevent forwarding a dead token.</p>
+            <p className="tcd-edu-detail">RFC 7662 §2.2: a resource server <strong>must</strong> treat inactive tokens as if no token was presented. The user needs to re-authenticate.</p>
+            <div className="tcd-edu-fix"><strong>Fix:</strong> Sign out and sign in again to get a fresh session token.</div>
+          </>
+        )}
+        {status === 'skipped' && (
+          <>
+            <p>Introspection was skipped — either <code>PINGONE_INTROSPECTION_ENDPOINT</code> is not set, or the endpoint returned an unexpected error.</p>
+            <p className="tcd-edu-detail">Without introspection, the BFF relies on local JWT decode only (no revocation check). Configure the endpoint for zero-trust validation on every tool call.</p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Renders the JWKS signature verification card.
+ * Shows for exchanged-token-verified events — verified, introspection fallback, warning, or skipped.
+ */
+function JwksVerifyEduBox({ event }) {
+  if (event.id !== 'exchanged-token-verified') return null;
+  const extra = event.extra || {};
+  const verified  = extra.verified;
+  const fallback  = extra.fallbackMethod;
+  const warning   = extra.warning;
+  const error     = extra.error;
+  const alg       = extra.alg;
+  const kid       = extra.kid;
+
+  let icon, cls, headline;
+  if (verified && fallback === 'jwks')          { icon = '✅'; cls = 'tcd-edu-box--ok';      headline = 'Signature Verified via JWKS'; }
+  else if (verified && fallback === 'introspection') { icon = '🔄'; cls = 'tcd-edu-box--neutral'; headline = 'Liveness Confirmed via RFC 7662 Introspection (JWKS unavailable)'; }
+  else if (warning)                              { icon = '⚠️'; cls = 'tcd-edu-box--neutral'; headline = 'Verification Warning (fail-open)'; }
+  else if (error)                                { icon = '❌'; cls = 'tcd-edu-box--error';   headline = 'Signature Verification Failed'; }
+  else                                           { icon = '⏭'; cls = 'tcd-edu-box--neutral'; headline = 'Verification Skipped'; }
+
+  return (
+    <div className={`tcd-edu-box ${cls}`}>
+      <div className="tcd-edu-box-hd">
+        <span className="tcd-edu-icon">{icon}</span>
+        <strong>{headline}</strong>
+        <span className="tcd-edu-ref">{fallback === 'introspection' ? 'RFC 7662 · RFC 7515' : 'RFC 7515 · RFC 7517 · RFC 7518'}</span>
+      </div>
+      <div className="tcd-edu-body">
+        {alg && <p><code>alg</code>: <strong>{alg}</strong>{kid ? <> · <code>kid</code>: <strong>{kid}</strong></> : ''}</p>}
+        {verified && fallback === 'jwks' && (
+          <>
+            <p>PingOne's public key confirmed that the MCP token's signature is intact — it has not been tampered with since PingOne signed it.</p>
+            <ul>
+              <li>The gateway fetched PingOne's JWKS (<code>/.well-known/jwks.json</code>) and matched the key by <code>kid</code></li>
+              <li>The <code>{alg}</code> signature was verified using the RSA public key</li>
+              <li>This proves the token was issued by PingOne, not forged</li>
+            </ul>
+            <p className="tcd-edu-detail">RFC 7515 §4: the <code>kid</code> header identifies which key signed the token. RFC 7517: the public JWK set is published at the IdP's JWKS URI.</p>
+          </>
+        )}
+        {verified && fallback === 'introspection' && (
+          <>
+            <p>JWKS was unavailable, so the gateway fell back to asking PingOne directly (<code>active: true</code>). Cryptographic tamper-detection was skipped.</p>
+            <p className="tcd-edu-detail">This is acceptable in a demo — the token was received directly from PingOne's token endpoint milliseconds ago. In production, JWKS verification is preferred because it is local (no network call) and provides tamper-evidence. Set <code>PINGONE_JWKS_ENDPOINT</code> for full JWKS verification.</p>
+          </>
+        )}
+        {!verified && warning && (
+          <p>{warning}</p>
+        )}
+        {!verified && error && (
+          <>
+            <p>{error}</p>
+            <div className="tcd-edu-fix"><strong>RFC 7515 §5.2:</strong> Failed signature validation means the token must be rejected. This indicates tampering or a key mismatch.</div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
  * Shows the validation checks PingOne performs during RFC 8693 exchange.
  * Renders on exchange-in-progress and exchange-failed events.
  */
@@ -401,6 +515,8 @@ function EventDetail({ event }) {
       <CollapsibleEdu title="✅ may_act — Delegation Permission" event={event} Component={MayActEduBox} />
       <CollapsibleEdu title="🔗 act — Actor Claim" event={event} Component={ActEduBox} />
       <CollapsibleEdu title="📋 Exchange Validation" event={event} Component={ExchangeCheckList} />
+      <CollapsibleEdu title="🔍 RFC 7662 Active-Token Introspection" event={event} Component={IntrospectionEduBox} />
+      <CollapsibleEdu title="🔐 JWKS Signature Verification" event={event} Component={JwksVerifyEduBox} />
       {event.explanation && (
         <p className="tcd-explanation">{event.explanation}</p>
       )}
@@ -634,7 +750,10 @@ const InspectIcon = () => (
 
 // ---------- Inline claims strip ------------------------------------------
 
-const CLAIMS_STRIP_IDS = new Set(['user-token', 'exchanged-token', 'agent-actor-token', 'exchanged-token-fallback']);
+const CLAIMS_STRIP_IDS = new Set([
+  'user-token', 'exchanged-token', 'agent-actor-token', 'exchanged-token-fallback',
+  'user-token-introspection', 'exchanged-token-verified',
+]);
 
 function fmtSub(sub, hints) {
   if (!sub) return null;
