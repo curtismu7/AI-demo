@@ -1313,9 +1313,10 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
 
         const status = err.httpStatus || 502;
         const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
-        const requiresLogin = err.code === 'actor_token_invalid';
+        const errCode = err.error || err.code;  // RFCCompliantError uses .error, not .code
+        const requiresLogin = errCode === 'actor_token_invalid';
         return res.status(status).json({
-            error: err.code || 'token_exchange_failed',
+            error: errCode || 'token_exchange_failed',
             message: err.message,
             tokenEvents: events,
             ...(requiresLogin && { requiresLogin: true }),

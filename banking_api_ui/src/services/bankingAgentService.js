@@ -254,6 +254,7 @@ export async function callMcpTool(tool, params = {}) {
         code: errCode,
         need_auth: !!err.need_auth,
         taskId: err.taskId || null,
+        requiresLogin: !!err.requiresLogin,
       });
       throw e;
     }
