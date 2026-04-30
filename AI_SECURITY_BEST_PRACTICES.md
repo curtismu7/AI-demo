@@ -5,6 +5,43 @@ This document captures recommendations to harden a banking-focused chatbot/agent
 - **A) AI Security Controls** (threat model + runtime policy enforcement)
 - **B) Coding Suggestions** (implementation patterns, schema validation, logging, testing)
 
+---
+
+## Implementation Status & Guidance
+
+> **Design constraint:** This is an educational demo. Every security control must preserve (and ideally enhance) user-visible observability — the MCP Traffic panel, API Traffic viewer, token chain display, and spinner activity feed all depend on structured event flow. "Remove logging" recommendations must be interpreted as "migrate to `appEventService.logEvent()` not delete."
+
+### Recommended implementation order
+
+| # | What | File(s) | Risk to education |
+|---|------|---------|-------------------|
+| 1 | ✅ Fix `postMessageOrigin: "*"` → config value | `AuthenticationIntegration.ts` | None |
+| 2 | ✅ Fix `statusEndpoint` localhost hardcode → env var | `AuthenticationIntegration.ts` | None |
+| 3 | ✅ Delete `toolCallValidator.js` (wired to nothing — security theater) | `tools/toolCallValidator.js` | None |
+| 4 | ✅ Migrate verbose `console.log` in `BankingToolProvider` to `Logger` | `BankingToolProvider.ts` | Low — panels unaffected |
+| 5 | ✅ Remove `originalRequest` echo from error payloads | `BankingToolProvider.ts` | None |
+| 6 | Stop unsigned JWT decode for `act` — use validated token info from handshake | `BankingToolProvider.ts` | Medium — token chain display needs update |
+| 7 | Request `audience/resource` in RFC 8693 token exchange | `BankingToolProvider.ts` | Low — adds one exchange field |
+| 8 | Add `aud/iss/exp` check before sensitive tool calls | `BankingToolProvider.ts` | Medium — adds latency, appears in API traffic as new call |
+
+### Explicitly out of scope (do not implement)
+
+| Section | Why skipped |
+|---------|-------------|
+| B§1 `PolicyEngine.canExecute()` with `intent` param | Requires a prior LLM intent-extraction step that doesn't exist in this codebase. Building it is a new feature, not a hardening fix. |
+| B§4 server-side pending intent receipts | Already implemented via the HITL `consent-challenge` flow (`TransactionConsentModal` → OTP → execute). Implementing a second gate would create two competing confirmation paths. |
+| B§7 circuit breakers / timeouts / retries | Production infrastructure concern. The demo uses `Promise.race` timeout in `MCPMessageHandler`. Not worth adding. |
+| "Remove all console.log" (A.1 item 1 literal read) | Naive removal breaks MCP Traffic panel, API Traffic viewer, and token chain display. Correct action: migrate to `appEventService.logEvent()` so events appear in the UI panels instead of disappearing. |
+
+### Accuracy corrections to the doc
+
+- **A.1 item 11 = duplicate of item 4** (both cover `postMessageOrigin: "*"` and localhost `statusEndpoint`). Treat as one finding.
+- **A.1 item 6 — `toolCallValidator.js` "security theater"** — confirmed correct. The class is never imported by `MCPMessageHandler` or `BankingToolProvider`. Safe to delete.
+- **A.1.1 §2 — "no aud/iss/exp per tool call"** — acceptable in demo context if tokens are short-lived and session-bound. Document as known gap, not critical blocker.
+- **B§8 "deterministic tool execution order"** — already enforced. `MCPMessageHandler.handleToolCall` runs one tool per request sequentially. No parallel tool dispatch exists.
+
+---
+
 ## A) AI Security Controls
 
 ### 1) Threat model (what you must assume)
@@ -19,7 +56,8 @@ Treat the agent as operating in an adversarial environment:
 - **Replay / session fixation**: tool calls not bound to the user session or authorization context.
 - **Integrity attacks**: tool-call parameters manipulated or coerced into unexpected shapes.
 
-### 2) Principle: “LLM is untrusted; tools and policy are trusted”- The LLM decides *what* to ask for, but **your policy engine decides what it’s allowed to do**.
+### 2) Principle: “LLM is untrusted; tools and policy are trusted”
+- The LLM decides *what* to ask for, but **your policy engine decides what it’s allowed to do**.
 - All tool execution must happen **server-side** (or in the MCP server) with **enforced authorization** before any banking action/data is returned.
 
 ### 3) Least-privilege tool access
@@ -465,3 +503,59 @@ If you want a quick, non-controversial baseline, implement all of these:
 - [ ] Rate limits for tool calls and CIBA polling
 - [ ] Security audit logs with redaction
 - [ ] Automated prompt injection + policy tests in CI
+
+## C) Recommended code-update plan for this education app
+
+This app should remain interactive and educational. Preserve user-visible SSE/debug output where it helps users understand the flow, but fix the real security issues before they reach the tool/execution layer.
+
+### 1) Token validation and claims
+- Keep the current observability, but validate tokens before use.
+- Enforce `aud` against `MCP_SERVER_RESOURCE_URI` in `TokenIntrospector.validateAgentToken()`.
+- Keep `may_act` enforcement when enabled.
+- For user tokens, validate `aud/iss/exp` before sensitive tool calls, not just scope strings.
+
+### 2) Token exchange
+- In `BankingToolProvider.executeSpecificTool()`, request constrained `audience` and/or `resource` in the RFC 8693 exchange.
+- After exchange, verify the returned token matches the expected audience/resource before caching or using it.
+- Update token cache keys to include audience/resource context.
+
+### 3) Delegation validation
+- Stop using unsigned JWT decoding as a security gate for `act`.
+- Replace it with validated delegated-token checks via `TokenExchangeService.validateDelegatedToken()` or signature-verified JWT claims.
+
+### 4) tools/list hardening
+- Stop deriving tool visibility from unsigned-decoded scopes.
+- Use validated token info from `validateAgentToken()` or cached validated scopes.
+
+### 5) Authorization challenge UX
+- Keep the existing UX, but make it production-safe.
+- Remove `postMessageOrigin: "*"` from challenge payloads.
+- Replace hardcoded localhost status endpoints with config/HTTPS.
+
+### 6) Authorization flow consistency
+- Consolidate allow/deny logic so `MCPMessageHandler` and `BankingToolProvider` do not drift.
+- Integrate `toolCallValidator.js` into the real tool path or remove it if redundant.
+- Ensure rate limiting and delegation checks actually execute.
+
+### 7) Output shaping
+- Return safe DTO allowlists per tool instead of raw upstream responses.
+- Keep enough data for the education UI to explain what happened.
+- Redact only fields that are unnecessary or dangerous.
+
+### 8) Scope mapping tests
+- Add a test that every tool’s narrowed scope map includes the registry’s required scopes.
+- This prevents exchange failures and keeps scope behavior consistent.
+
+### 9) Errors and debug data
+- Avoid echoing raw request params in errors unless the UI explicitly needs them for learning.
+- Prefer structured errors with a correlation id and clear explanation.
+
+### 10) Logging boundaries
+- Do not remove educational logging/SSE.
+- Separate user-visible debug/flow data from internal-only sensitive traces.
+- Preserve what the app shows, but avoid leaking extra internal secrets beyond what the demo needs.
+
+### 11) Educational security outcome
+- This code-update plan should make the app technically correct on AI security while keeping it educational.
+- Validate strictly in the backend, explain clearly in the UI/SSE, and never silently break the teaching flow.
+- Users should still see what tokens, scopes, audience, delegation, and tool decisions are happening, but the app must repair or reject invalid auth state before using protected banking actions.

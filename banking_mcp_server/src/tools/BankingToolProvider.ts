@@ -32,13 +32,14 @@ export interface BankingToolResult extends ToolResult {
   success?: boolean;
   error?: string;
   authChallenge?: AuthorizationRequest;
-  originalRequest?: Record<string, any>;  // Original tool params, included in errors for debugging
+  originalRequest?: Record<string, any>;  // DEPRECATED — no longer populated; use httpTrace for debugging
   httpTrace?: HttpTraceEntry[];           // Actual HTTP calls made to the banking API
 }
 
 export class BankingToolProvider {
   private authChallengeHandler: AuthorizationChallengeHandler;
   private auditLogger: AuditLogger;
+  private logger: Logger;
   private chainIndexBySession: Map<string, number> = new Map();  // Track call count per session
 
   constructor(
@@ -47,8 +48,9 @@ export class BankingToolProvider {
     private sessionManager: BankingSessionManager,
     private tokenExchangeService?: TokenExchangeService
   ) {
+    this.logger = Logger.getInstance(createDefaultLoggerConfig());
     this.authChallengeHandler = new AuthorizationChallengeHandler(authManager, sessionManager);
-    this.auditLogger = AuditLogger.getInstance(Logger.getInstance(createDefaultLoggerConfig()));
+    this.auditLogger = AuditLogger.getInstance(this.logger);
   }
 
   /**
@@ -73,42 +75,42 @@ export class BankingToolProvider {
     const startTime = Date.now();
     const sessionId = session.sessionId;
 
-    console.log(`[BankingToolProvider] Starting tool execution: ${toolName} (session: ${sessionId})`);
-    console.log(`[BankingToolProvider] Tool parameters:`, JSON.stringify(params, null, 2));
+    this.logger.info(`[BankingToolProvider] Starting tool execution: ${toolName} (session: ${sessionId})`);
+    this.logger.debug(`[BankingToolProvider] Tool parameters:`, { params: JSON.stringify(params, null, 2) });
 
     try {
       // Validate tool exists
       const tool = BankingToolRegistry.getTool(toolName);
       if (!tool) {
-        console.error(`[BankingToolProvider] Unknown tool requested: ${toolName}`);
+        this.logger.warn(`[BankingToolProvider] Unknown tool requested: ${toolName}`);
         return this.createErrorResult(`Unknown tool: ${toolName}`, params);
       }
 
-      console.log(`[BankingToolProvider] Tool found: ${tool.name}, required scopes: [${tool.requiredScopes.join(', ')}]`);
+      this.logger.info(`[BankingToolProvider] Tool found: ${tool.name}, required scopes: [${tool.requiredScopes.join(', ')}]`);
 
       // Validate parameters
       const paramValidation = BankingToolValidator.validateToolParams(toolName, params);
       if (!paramValidation.isValid) {
-        console.error(`[BankingToolProvider] Parameter validation failed for ${toolName}:`, paramValidation.errors);
+        this.logger.warn(`[BankingToolProvider] Parameter validation failed for ${toolName}:`, paramValidation.errors);
         return this.createErrorResult(`Invalid parameters: ${paramValidation.errors.join(', ')}`, params);
       }
 
-      console.log(`[BankingToolProvider] Parameters validated successfully for ${toolName}`);
+      this.logger.debug(`[BankingToolProvider] Parameters validated successfully for ${toolName}`);
 
       // Check user authorization using the challenge handler (only for tools that require user auth)
       if (tool.requiresUserAuth && tool.requiredScopes.length > 0) {
-        console.log(`[BankingToolProvider] Checking authorization for scopes: [${tool.requiredScopes.join(', ')}]`);
+        this.logger.debug(`[BankingToolProvider] Checking authorization for scopes: [${tool.requiredScopes.join(', ')}]`);
         const challengeResult = await this.authChallengeHandler.detectAuthorizationChallenge(
           session,
           tool.requiredScopes
         );
 
         if (challengeResult.challengeNeeded) {
-          console.log(`[BankingToolProvider] Authorization challenge required for ${toolName}`);
+          this.logger.info(`[BankingToolProvider] Authorization challenge required for ${toolName}`);
           return this.createAuthChallengeResult(challengeResult.challenge!);
         }
 
-        console.log(`[BankingToolProvider] Authorization check passed for ${toolName}`);
+        this.logger.debug(`[BankingToolProvider] Authorization check passed for ${toolName}`);
 
         // Re-fetch the session in case tokens were refreshed during the challenge check
         const refreshedSession = await this.sessionManager.getSession(session.sessionId);
@@ -116,7 +118,7 @@ export class BankingToolProvider {
           session = refreshedSession;
         }
       } else {
-        console.log(`[BankingToolProvider] Tool ${toolName} does not require user authorization, skipping auth check`);
+        this.logger.debug(`[BankingToolProvider] Tool ${toolName} does not require user authorization, skipping auth check`);
       }
 
       // Execute the specific tool
@@ -127,13 +129,13 @@ export class BankingToolProvider {
         params: sanitizedParams
       };
 
-      console.log(`[BankingToolProvider] Executing tool handler: ${tool.handler}`);
+      this.logger.debug(`[BankingToolProvider] Executing tool handler: ${tool.handler}`);
       this.apiClient.startTrace();
       const result = await this.executeSpecificTool(tool, context, agentToken);
       result.httpTrace = this.apiClient.stopTrace();
 
       const executionTime = Date.now() - startTime;
-      console.log(`[BankingToolProvider] Tool execution completed: ${toolName} (${executionTime}ms) - Success: ${result.success}`);
+      this.logger.info(`[BankingToolProvider] Tool execution completed: ${toolName} (${executionTime}ms) - Success: ${result.success}`);
 
       // Log token chain audit event (D-03, D-04)
       try {
@@ -224,7 +226,7 @@ export class BankingToolProvider {
         );
       } catch (auditError) {
         // Don't let audit failure block tool result
-        console.warn(`[BankingToolProvider] Failed to log token chain: ${auditError instanceof Error ? auditError.message : String(auditError)}`);
+        this.logger.warn(`[BankingToolProvider] Failed to log token chain: ${auditError instanceof Error ? auditError.message : String(auditError)}`);
       }
 
       return result;
@@ -233,7 +235,7 @@ export class BankingToolProvider {
       // Collect any HTTP trace entries captured before the exception
       const errorTrace = this.apiClient.stopTrace();
       const executionTime = Date.now() - startTime;
-      console.error(`[BankingToolProvider] Error executing tool ${toolName} (${executionTime}ms):`, error);
+      this.logger.error(`[BankingToolProvider] Error executing tool ${toolName} (${executionTime}ms):`, {}, error instanceof Error ? error : undefined);
 
       const attachTrace = (r: BankingToolResult): BankingToolResult => {
         if (errorTrace.length > 0) r.httpTrace = errorTrace;
@@ -241,7 +243,7 @@ export class BankingToolProvider {
       };
 
       if (error instanceof AuthenticationError) {
-        console.error(`[BankingToolProvider] Authentication error for ${toolName}: ${error.message}`);
+        this.logger.warn(`[BankingToolProvider] Authentication error for ${toolName}: ${error.message}`);
         if (error.code === AuthErrorCodes.USER_AUTHORIZATION_REQUIRED && error.authorizationUrl) {
           // Generate a proper authorization challenge
           const challenge = await this.authChallengeHandler.generateAuthorizationChallenge(
@@ -254,11 +256,11 @@ export class BankingToolProvider {
       }
 
       if (error instanceof BankingAPIError) {
-        console.error(`[BankingToolProvider] Banking API error for ${toolName}: ${error.message}`);
+        this.logger.warn(`[BankingToolProvider] Banking API error for ${toolName}: ${error.message}`);
         return attachTrace(this.createErrorResult(`Banking API error: ${error.message}`, params));
       }
 
-      console.error(`[BankingToolProvider] Unexpected error for ${toolName}:`, error);
+      this.logger.error(`[BankingToolProvider] Unexpected error for ${toolName}:`, {}, error instanceof Error ? error : undefined);
       return attachTrace(this.createErrorResult(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`, params));
     }
   }
@@ -295,7 +297,6 @@ export class BankingToolProvider {
       });
 
       if (result.success) {
-        // Get the most recent token's expiration time
         let expiresIn = 0;
         if (result.userTokens) {
           expiresIn = result.userTokens.expiresIn;
@@ -309,7 +310,7 @@ export class BankingToolProvider {
         return this.createErrorResult(`Authorization failed: ${result.error}`);
       }
     } catch (error) {
-      console.error('Error handling authorization code:', error);
+      this.logger.error('Error handling authorization code:', {}, error instanceof Error ? error : undefined);
       return this.createErrorResult(
         `Authorization processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -353,7 +354,7 @@ export class BankingToolProvider {
     let token: string;
     if (agentToken) {
       token = agentToken;
-      console.log(`[BankingToolProvider] Using BFF-exchanged delegated token for ${tool.name}`);
+      this.logger.debug(`[BankingToolProvider] Using BFF-exchanged delegated token for ${tool.name}`);
     } else {
       // Resolve user token from session
       const userToken = this.getUserTokenForScopes(context.session, tool.requiredScopes);
@@ -376,10 +377,10 @@ export class BankingToolProvider {
         const cachedToken = tokenCache.get(cacheKey, toolScopes);
         if (cachedToken) {
           token = cachedToken;
-          console.log(`[BankingToolProvider] Cache hit for ${tool.name} (scopes: ${toolScopes.join(',')})`);
+          this.logger.debug(`[BankingToolProvider] Cache hit for ${tool.name} (scopes: ${toolScopes.join(',')})`);
         } else {
           // Cache miss — perform RFC 8693 token exchange
-          console.log(`[BankingToolProvider] Token exchange initiated for tool: ${tool.name}, scopes: ${toolScopes.join(',')}`);
+          this.logger.info(`[BankingToolProvider] Token exchange initiated for tool: ${tool.name}, scopes: ${toolScopes.join(',')}`);
           try {
             const exchangeRequest: TokenExchangeRequest = {
               grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
@@ -408,10 +409,10 @@ export class BankingToolProvider {
             const expiresAt = Date.now() + (exchangeResponse.expires_in * 1000);
             tokenCache.set(cacheKey, toolScopes, token, expiresAt);
 
-            console.log(`[BankingToolProvider] Token exchange succeeded for ${tool.name} (expires_in: ${exchangeResponse.expires_in}s)`);
+            this.logger.info(`[BankingToolProvider] Token exchange succeeded for ${tool.name} (expires_in: ${exchangeResponse.expires_in}s)`);
           } catch (exchangeError) {
             // D-04: Hard fail on exchange error — no pass-through fallback
-            console.error(`[BankingToolProvider] Token exchange FAILED for ${tool.name}:`, exchangeError);
+            this.logger.error(`[BankingToolProvider] Token exchange FAILED for ${tool.name}:`, {}, exchangeError instanceof Error ? exchangeError : undefined);
             throw new Error(
               `Token exchange failed for tool '${tool.name}': ${exchangeError instanceof Error ? exchangeError.message : 'Unknown error'}`
             );
@@ -420,7 +421,7 @@ export class BankingToolProvider {
       } else {
         // No token exchange service — direct pass-through (backward compat / ff_skip_token_exchange)
         token = userToken.accessToken;
-        console.log(`[BankingToolProvider] Using session user token for ${tool.name} (no token exchange service)`);
+        this.logger.debug(`[BankingToolProvider] Using session user token for ${tool.name} (no token exchange service)`);
       }
     }
 
@@ -458,16 +459,11 @@ export class BankingToolProvider {
    * Execute get_my_accounts tool
    */
   private async executeGetMyAccounts(userToken: string): Promise<BankingToolResult> {
-    console.log(`[BankingToolProvider] Calling Banking API: getMyAccounts`);
+    this.logger.debug(`[BankingToolProvider] Calling Banking API: getMyAccounts`);
     const accounts = await this.apiClient.getMyAccounts(userToken);
-    console.log(`[BankingToolProvider] Banking API raw response:`, accounts);
-    console.log(`[BankingToolProvider] Response type:`, typeof accounts);
-    console.log(`[BankingToolProvider] Is array:`, Array.isArray(accounts));
 
     if (accounts && accounts.length !== undefined) {
-      console.log(`[BankingToolProvider] Banking API response: Found ${accounts.length} accounts`);
-    } else {
-      console.log(`[BankingToolProvider] Banking API response: accounts is not an array or is undefined`);
+      this.logger.debug(`[BankingToolProvider] Banking API response: Found ${accounts.length} accounts`);
     }
 
     const response = {
@@ -501,9 +497,9 @@ export class BankingToolProvider {
     userToken: string,
     params: { account_id: string }
   ): Promise<BankingToolResult> {
-    console.log(`[BankingToolProvider] Calling Banking API: getAccountBalance for account ${params.account_id}`);
+    this.logger.debug(`[BankingToolProvider] Calling Banking API: getAccountBalance for account ${params.account_id}`);
     const balanceResponse = await this.apiClient.getAccountBalance(userToken, params.account_id);
-    console.log(`[BankingToolProvider] Banking API response: Account balance ${balanceResponse.balance}`);
+    this.logger.debug(`[BankingToolProvider] Banking API response: Account balance retrieved`);
 
     const response = {
       success: true,
@@ -521,7 +517,7 @@ export class BankingToolProvider {
     const transactions = await this.apiClient.getMyTransactions(userToken);
 
     if (!Array.isArray(transactions)) {
-      console.error(`[BankingToolProvider] Expected transactions to be an array, got:`, typeof transactions, transactions);
+      this.logger.warn(`[BankingToolProvider] Expected transactions array, got: ${typeof transactions}`);
 
       const errorResponse = {
         success: false,
@@ -557,7 +553,7 @@ export class BankingToolProvider {
     userToken: string,
     params: { to_account_id: string; amount: number; description?: string }
   ): Promise<BankingToolResult> {
-    console.log(`[BankingToolProvider] Calling Banking API: createDeposit - Amount: ${params.amount}, Account: ${params.to_account_id}`);
+    this.logger.info(`[BankingToolProvider] Calling Banking API: createDeposit - Amount: ${params.amount}, Account: ${params.to_account_id}`);
     try {
       const response = await this.apiClient.createDeposit(
         userToken,
@@ -565,7 +561,7 @@ export class BankingToolProvider {
         params.amount,
         params.description
       );
-      console.log(`[BankingToolProvider] Banking API response: Deposit successful - ${response.message}`);
+      this.logger.info(`[BankingToolProvider] Banking API response: Deposit successful`);
 
       const result = {
         success: true,
@@ -820,9 +816,9 @@ export class BankingToolProvider {
     params: { email: string }
   ): Promise<BankingToolResult> {
     try {
-      console.log(`[BankingToolProvider] Calling Banking API: queryUserByEmail for ${params.email}`);
+      this.logger.debug(`[BankingToolProvider] Calling Banking API: queryUserByEmail`);
       const response = await this.apiClient.queryUserByEmail(userToken, params.email);
-      console.log(`[BankingToolProvider] Banking API response:`, response);
+      this.logger.debug(`[BankingToolProvider] Banking API response: queryUserByEmail completed`);
 
       // Return the complete API response as JSON
       return this.createSuccessResult(JSON.stringify(response, null, 2));
@@ -847,7 +843,7 @@ export class BankingToolProvider {
    * Returns consent_required:true in the result text if the BFF gate is not satisfied.
    */
   private async executeGetSensitiveAccountDetails(userToken: string): Promise<BankingToolResult> {
-    console.log(`[BankingToolProvider] Calling Banking API: getSensitiveAccountDetails`);
+    this.logger.debug(`[BankingToolProvider] Calling Banking API: getSensitiveAccountDetails`);
     try {
       const response = await this.apiClient.getSensitiveAccountDetails(userToken);
 
@@ -881,7 +877,7 @@ export class BankingToolProvider {
         accounts: (response as any).accounts || [],
       }, null, 2));
     } catch (error) {
-      console.error('[BankingToolProvider] getSensitiveAccountDetails error:', error);
+      this.logger.error('[BankingToolProvider] getSensitiveAccountDetails error:', {}, error instanceof Error ? error : undefined);
       return this.createErrorResult(
         `Failed to retrieve sensitive account details: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -922,7 +918,7 @@ export class BankingToolProvider {
 
     const conclusion = `Analysis complete for: "${query}". Proceeding with recommended approach.`;
     const result = { steps, conclusion };
-    console.log(`[BankingToolProvider] sequential_think completed: ${steps.length} steps for query: "${query.slice(0, 60)}"`);
+    this.logger.debug(`[BankingToolProvider] sequential_think completed: ${steps.length} steps for query: "${query.slice(0, 60)}"`);
 
     return this.createSuccessResult(JSON.stringify(result, null, 2));
   }
@@ -941,20 +937,16 @@ export class BankingToolProvider {
   /**
    * Create an error tool result
    */
-  private createErrorResult(error: string, originalRequest?: Record<string, any>): BankingToolResult {
-    const result: BankingToolResult = {
+  private createErrorResult(error: string, _originalRequest?: Record<string, any>): BankingToolResult {
+    // Note: originalRequest is intentionally not included in the error payload.
+    // Tool params may contain account IDs or amounts that should not be echoed
+    // back in error responses. Use httpTrace for debugging instead.
+    return {
       type: 'text',
       text: `Error: ${error}`,
       success: false,
       error
     };
-    
-    // Include original request in error for debugging (request params are not sensitive auth tokens)
-    if (originalRequest) {
-      result.originalRequest = originalRequest;
-    }
-    
-    return result;
   }
 
   /**

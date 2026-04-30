@@ -273,8 +273,8 @@ export class AuthenticationIntegration {
         scope: authChallenge.scope,
         sessionId: authChallenge.sessionId,
         expiresAt: authChallenge.expiresAt.toISOString(),
-        postMessageOrigin: "*", // Allow any origin for popup communication
-        statusEndpoint: `http://localhost:8080/auth/status?sessionId=${authChallenge.sessionId}`,
+        postMessageOrigin: process.env.MCP_ALLOWED_ORIGIN || process.env.OAUTH_REDIRECT_URI?.replace(/\/auth\/callback.*/, '') || 'http://localhost:3001',
+        statusEndpoint: `${process.env.MCP_SERVER_BASE_URL || 'http://localhost:8080'}/auth/status?sessionId=${authChallenge.sessionId}`,
         uiHints: {
           popupWidth: 500,
           popupHeight: 650,
