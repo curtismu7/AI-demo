@@ -1,4 +1,3 @@
-'use strict';
 /**
  * Custom Jest reporter that writes a datetime-named markdown results file
  * to banking_api_ui/test-results/ after each test run.
@@ -7,8 +6,6 @@ const fs = require('fs');
 const path = require('path');
 
 class MarkdownReporter {
-  constructor(_globalConfig, _options) {}
-
   onRunComplete(_contexts, results) {
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');

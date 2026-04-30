@@ -350,13 +350,14 @@ PINGONE_WORKER_CLIENT_SECRET=your-worker-client-secret`}</pre>
       {/* Informational links */}
       <div className={styles.infoFooter}>
         <span>📖 </span>
-        <a
-          href="#"
-          onClick={(e) => e.preventDefault()}
+        <button
+          type="button"
+          onClick={() => {}}
           title="See docs/INTROSPECTION_VALIDATION_GUIDE.md for full documentation"
+          style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}
         >
           Introspection vs JWT validation guide
-        </a>
+        </button>
         {' · '}
         <a href="/api/health" target="_blank" rel="noreferrer">
           Full health status

@@ -78,8 +78,8 @@ describe('MCPToolsEducation', () => {
 
   it('category headers have proper aria-expanded attributes', () => {
     render(<MCPToolsEducation />);
-    const writeHeader = screen.getByText('Write Operations').closest('button');
-    const readHeader = screen.getByText('Read-Only Data Access').closest('button');
+    const writeHeader = screen.getByRole('button', { name: /Write Operations/i });
+    const readHeader = screen.getByRole('button', { name: /Read-Only Data Access/i });
     expect(writeHeader).toHaveAttribute('aria-expanded', 'true');
     expect(readHeader).toHaveAttribute('aria-expanded', 'false');
   });

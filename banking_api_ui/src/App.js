@@ -80,7 +80,6 @@ import SessionExpiryTimer from "./components/SessionExpiryTimer";
 import SessionReauthBanner from "./components/SessionReauthBanner";
 import SetupPage from "./components/SetupPage";
 import SetupWizard from "./components/SetupWizard";
-import SideAgentDock from "./components/SideAgentDock";
 import SpinnerHost from "./components/shared/SpinnerHost";
 import TokenChainDisplay from "./components/TokenChainDisplay";
 import TokenDiffPanel from "./components/TokenDiffPanel";
@@ -282,7 +281,7 @@ function AppWithAuth() {
 	const pathNorm = pathname.replace(/\/$/, "") || "/";
 	const isApiTrafficOnlyPage =
 		pathNorm === "/api-traffic" || pathNorm === "/logs";
-	const { placement: agentPlacement, fab: agentFab } = useAgentUiMode();
+	const { placement: agentPlacement } = useAgentUiMode();
 	const demoMode = useDemoMode();
 	const navigate = useNavigate();
 	const [user, setUser] = useState(null);

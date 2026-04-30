@@ -198,7 +198,12 @@ function TokenInspector({ decodedToken, title = 'Token Inspector', className = '
 
       <div className="ti-footer">
         <p className="ti-reference">
-          See <a href="#" title="Learn about actor/agent token terminology">ACTOR_TOKEN_TERMINOLOGY.md</a> for detailed definitions.
+          See <button
+            type="button"
+            onClick={() => {}}
+            title="Learn about actor/agent token terminology"
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}
+          >ACTOR_TOKEN_TERMINOLOGY.md</button> for detailed definitions.
         </p>
       </div>
     </div>

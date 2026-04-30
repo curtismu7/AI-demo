@@ -22,7 +22,9 @@ describe('createLogger', () => {
 
   it('debug calls console.log in dev', () => {
     const log = createLogger('svc');
+    // eslint-disable-next-line testing-library/no-debugging-utils
     log.debug('msg', 1);
+    // eslint-disable-next-line no-console
     expect(spy.log).toHaveBeenCalledWith('[svc]', 'msg', 1);
   });
 

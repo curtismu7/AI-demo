@@ -15,7 +15,7 @@ function formatJson(val) {
 // Lightweight JSON syntax highlighter — no external deps
 function tokenizeJson(text) {
   const tokens = [];
-  const re = /("(?:[^"\\]|\\.)*"\s*:)|("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b|([{}\[\],:])/g;
+  const re = /("(?:[^"\\]|\\.)*"\s*:)|("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b|([{}[\],:])/g;
   let last = 0, m;
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) tokens.push({ type: 'plain', text: text.slice(last, m.index) });
