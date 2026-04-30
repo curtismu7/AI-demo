@@ -1577,6 +1577,21 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             });
         }
 
+        // Gateway policy denial — propagate structured error to the UI for educational display.
+        // Do NOT fall back to the local handler: the gateway denied for a policy reason
+        // (audience mismatch, expired token, origin restriction) that local execution cannot bypass.
+        if (err.code === 'gateway_policy_denied' || err.code === 'gateway_auth_failed') {
+            console.warn(`[/api/mcp/tool] Gateway denied tool '${tool}': ${err.gatewayErrorCode || err.code} — ${err.message}`);
+            emit({ phase: 'gateway_policy_denied', gatewayErrorCode: err.gatewayErrorCode });
+            return res.status(403).json({
+                error: 'gateway_policy_denied',
+                tool,
+                gatewayErrorCode: err.gatewayErrorCode || err.code,
+                message: err.message,
+                tokenEvents,
+            });
+        }
+
         const isConnErr =
             err.useLocal ||
             err.message.includes('ECONNREFUSED') ||

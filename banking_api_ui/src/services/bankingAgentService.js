@@ -234,6 +234,16 @@ export async function callMcpTool(tool, params = {}) {
           tokenEvents,
         });
       }
+      // Gateway policy denial — surface structured fields for the educational side panel card.
+      if (err.error === 'gateway_policy_denied') {
+        throw Object.assign(new Error(err.message || 'Gateway policy denied the tool call'), {
+          code: 'gateway_policy_denied',
+          statusCode: 403,
+          tool: err.tool || tool,
+          gatewayErrorCode: err.gatewayErrorCode || 'forbidden',
+          tokenEvents,
+        });
+      }
       // Normalize stub-token error codes so BankingAgent shows the session-fix bubble
       const errCode = ['session_restore_required', 'oauth_session_required'].includes(err.error)
         ? 'session_not_hydrated'

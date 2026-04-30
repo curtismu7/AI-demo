@@ -3539,6 +3539,86 @@ export default function BankingAgent({
 					"Server configuration: please sign out and sign in again to clear the consent state.",
 					{ autoClose: 10000 },
 				);
+			} else if (err?.code === "gateway_policy_denied") {
+				// MCP gateway rejected the token before it reached the MCP server.
+				// Show a structured educational breakdown: what happened, which policy
+				// rule fired, and how to fix it.
+				const gwCode = err.gatewayErrorCode || "forbidden";
+				const gwMsg  = err.message || "Gateway policy denied the tool call";
+
+				// Map gateway error codes to plain-English explanations + fix hints.
+				const GW_POLICY_EXPLAINERS = {
+					invalid_token: {
+						label: "Invalid or malformed token",
+						explain:
+							"The MCP access token could not be parsed as a valid JWT. " +
+							"This usually means the RFC 8693 token exchange produced a bad token, " +
+							"or the token was altered in transit.",
+						fix: "Retry the action. If this persists, sign out and sign in again to force a fresh token exchange.",
+						rfcs: "RFC 7519 §7.2 (JWT validation) · RFC 8693 §3 (token exchange)",
+					},
+					expired_token: {
+						label: "Token expired",
+						explain:
+							"The exchanged MCP token's `exp` claim is in the past. " +
+							"Tokens are short-lived by design (RFC 7519 §4.1.4); the BFF should " +
+							"exchange a fresh token on every tool call but something went wrong here.",
+						fix: "Use **Refresh access token** in the left panel, then retry.",
+						rfcs: "RFC 7519 §4.1.4 (exp claim) · RFC 6749 §5.1 (token lifetime)",
+					},
+					invalid_aud: {
+						label: "Audience mismatch (RFC 8707)",
+						explain:
+							"The token's `aud` claim does not include the gateway's resource URI. " +
+							"RFC 8707 (Resource Indicators) requires the token to be scoped to the " +
+							"exact resource that will consume it. " +
+							`Gateway received: "${(gwMsg.match(/got \[([^\]]+)\]/) || [])[1] || '(see logs)'}"`,
+						fix:
+							"Check that MCP_GW_RESOURCE_URI in the BFF config matches the " +
+							"`resource` parameter sent during token exchange (RFC 8693 §2.1).",
+						rfcs: "RFC 8707 (resource indicators) · RFC 8693 §2.1 · RFC 7519 §4.1.3 (aud)",
+					},
+					missing_token: {
+						label: "Bearer token missing",
+						explain:
+							"The gateway received the request with no `Authorization: Bearer …` header. " +
+							"The BFF should always attach the RFC 8693-issued MCP token before forwarding.",
+						fix: "This is a BFF configuration issue. Check that MCP_GATEWAY_HTTP_URL is set correctly and the token resolution step succeeded.",
+						rfcs: "RFC 6750 §2.1 (Bearer token usage)",
+					},
+					forbidden: {
+						label: "Request forbidden by gateway policy",
+						explain:
+							"The gateway's policy layer blocked the request. " +
+							"This could be a CORS origin restriction, a missing claim, " +
+							"or a PingOne Authorize policy evaluation returning DENY.",
+						fix: "Check the gateway logs for the specific policy that fired. Ensure the BFF origin is in the gateway's allowed list.",
+						rfcs: "RFC 6749 §3.1 (authorization) · RFC 8693 §2.2 (exchange constraints)",
+					},
+				};
+				const hint = GW_POLICY_EXPLAINERS[gwCode] || GW_POLICY_EXPLAINERS.forbidden;
+
+				addMessage(
+					"assistant",
+					`🚫 **Gateway Policy Denied — \`${err.tool || actionId}\`**\n\n` +
+					`**${hint.label}**: ${hint.explain}\n\n` +
+					`**Fix:** ${hint.fix}`,
+					actionId,
+				);
+				addMessage(
+					"token-event",
+					[
+						`📖 **MCP Gateway — Policy Denial: \`${gwCode}\`**`,
+						`   Tool: \`${err.tool || actionId}\``,
+						`   Gateway error code: \`${gwCode}\``,
+						`   Message: ${gwMsg}`,
+						"",
+						`   ${hint.explain}`,
+						"",
+						`**RFCs:** ${hint.rfcs}`,
+					].join("\n"),
+					actionId,
+				);
 			} else {
 				notifyError(`❌ ${err.message}`, { autoClose: 6000 });
 			}

@@ -73,9 +73,16 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
     }
 
     if (status === 403) {
+        // Attach the gateway's response body so the BFF can surface the policy reason to the UI.
+        const body403 = response.data || {};
         throw Object.assign(
-            new Error('Gateway policy denied the tool call'),
-            { code: 'gateway_policy_denied', httpStatus: 403 },
+            new Error(body403.message || 'Gateway policy denied the tool call'),
+            {
+                code: 'gateway_policy_denied',
+                httpStatus: 403,
+                gatewayErrorCode: body403.error || 'forbidden',
+                gatewayMessage: body403.message || '',
+            },
         );
     }
 
