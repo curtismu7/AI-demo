@@ -3559,9 +3559,9 @@ export default function BankingAgent({
 					"Server configuration: please sign out and sign in again to clear the consent state.",
 					{ autoClose: 10000 },
 				);
-			} else if (err?.code === "actor_token_invalid" || err?.requiresLogin) {
-				// Token exchange failed because the actor (CC) token is invalid —
-				// this means the session is stale. Redirect to PingOne to re-login.
+			} else if (err?.requiresLogin) {
+				// Genuine user session expiry (server sends requiresLogin: true).
+				// actor_token_invalid (server CC config issue) no longer sets this flag.
 				addMessage(
 					"assistant",
 					"🔐 Your session token has expired or is no longer valid.\n\n"
