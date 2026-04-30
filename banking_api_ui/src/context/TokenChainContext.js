@@ -102,7 +102,7 @@ export function TokenChainProvider({ children, activePath = "" }) {
       }
       try {
         postAppEvent('token_exchange', 'info', 'Token exchange in flight', { tag: 'token_exchange/frontend-exchange-start' });
-        const res = await fetch('/api/token-chain', { credentials: 'include' });
+        const res = await fetch('/api/token-chain', { credentials: 'include', _silent: true });
         if (!res.ok) return;
         const data = await res.json();
         postAppEvent('token_exchange', 'info', 'Token exchange complete', { tag: 'token_exchange/frontend-exchange-end' });

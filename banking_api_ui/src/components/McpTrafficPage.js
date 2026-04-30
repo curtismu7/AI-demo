@@ -442,7 +442,7 @@ export default function McpTrafficPage() {
   const fetchTraffic = useCallback(async () => {
     if (!liveRef.current) return;
     try {
-      const res = await fetch(`/api/mcp/traffic?limit=${DEFAULT_LIMIT}`, { credentials: 'include' });
+      const res = await fetch(`/api/mcp/traffic?limit=${DEFAULT_LIMIT}`, { credentials: 'include', _silent: true });
       if (res.status === 401) { setError('unauthenticated'); return; }
       if (!res.ok) { setError(`HTTP ${res.status}`); return; }
       const data = await res.json();

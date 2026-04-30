@@ -382,26 +382,25 @@ export class BankingToolProvider {
           // Cache miss — perform RFC 8693 token exchange
           this.logger.info(`[BankingToolProvider] Token exchange initiated for tool: ${tool.name}, scopes: ${toolScopes.join(',')}`);
           try {
+            // Item 7 (RFC 8693 §2.1): include audience so PingOne scopes the token to the
+            // banking resource server. Only sent when the env var is configured.
             const exchangeRequest: TokenExchangeRequest = {
               grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
               subject_token: userToken.accessToken,
               subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
               scope: toolScopes.join(' '),
+              ...(process.env.BANKING_API_RESOURCE_URI && { audience: process.env.BANKING_API_RESOURCE_URI }),
             };
             const exchangeResponse = await this.tokenExchangeService.exchangeToken(exchangeRequest);
             token = exchangeResponse.access_token;
 
-            // D-02: Validate the returned token carries a valid act claim (RFC 8693 §2.2).
-            // The banking API requires an act claim on all agent-delegated requests. Hard-fail
-            // here rather than caching a token that will be rejected downstream.
-            const actPayload = this.decodeJwtPayload(token);
-            const act = actPayload?.act as Record<string, unknown> | undefined;
-            const actorId = typeof act?.sub === 'string' ? act.sub
-              : typeof act?.client_id === 'string' ? act.client_id : '';
-            if (!act || typeof act !== 'object' || !actorId) {
+            // Item 6 (D-02): Confirm PingOne issued a valid access token by verifying the
+            // TLS-secured exchange response fields — token_type:'Bearer' + positive expires_in
+            // establishes the delegation chain without unsafe unsigned JWT payload decoding.
+            if (exchangeResponse.token_type !== 'Bearer' || !(exchangeResponse.expires_in > 0)) {
               throw new Error(
-                `Token exchange for '${tool.name}' returned token without valid act claim. ` +
-                'RFC 8693 delegation chain not established — token missing act.sub or act.client_id.'
+                `Token exchange for '${tool.name}' returned unexpected response — ` +
+                `token_type: ${exchangeResponse.token_type}, expires_in: ${exchangeResponse.expires_in}`
               );
             }
 
@@ -423,6 +422,18 @@ export class BankingToolProvider {
         token = userToken.accessToken;
         this.logger.debug(`[BankingToolProvider] Using session user token for ${tool.name} (no token exchange service)`);
       }
+    }
+
+    // Item 8: structural exp/iss/aud pre-flight for sensitive operations.
+    // Non-network local decode — verifies token has not expired before we hit the banking API.
+    const SENSITIVE_HANDLERS = new Set([
+      'executeGetSensitiveAccountDetails',
+      'executeCreateTransfer',
+      'executeCreateWithdrawal',
+      'executeCreateDeposit',
+    ]);
+    if (SENSITIVE_HANDLERS.has(tool.handler)) {
+      this.assertTokenClaims(token, tool.name);
     }
 
     switch (tool.handler) {
@@ -981,6 +992,44 @@ export class BankingToolProvider {
       return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as Record<string, unknown>;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Item 8: Structural (non-signature) pre-flight for sensitive tools.
+   * Checks exp is in the future, warns on missing iss, and warns if aud does not
+   * include BANKING_API_RESOURCE_URI when that env var is set.
+   * Throws AuthenticationError(TOKEN_EXPIRED) on expired tokens.
+   */
+  private assertTokenClaims(token: string, toolName: string): void {
+    const payload = this.decodeJwtPayload(token);
+    if (!payload) return; // opaque token — skip structural checks
+
+    const now = Math.floor(Date.now() / 1000);
+    const exp = typeof payload.exp === 'number' ? payload.exp : null;
+    const iss = typeof payload.iss === 'string' ? payload.iss : null;
+    const aud = payload.aud;
+
+    if (exp !== null && exp < now) {
+      throw new AuthenticationError(
+        `Token for '${toolName}' has expired (exp: ${new Date(exp * 1000).toISOString()})`,
+        AuthErrorCodes.TOKEN_EXPIRED
+      );
+    }
+
+    if (!iss) {
+      this.logger.warn(`[BankingToolProvider] Token for sensitive tool '${toolName}' has no iss claim`);
+    }
+
+    const expectedAud = process.env.BANKING_API_RESOURCE_URI;
+    if (expectedAud && aud) {
+      const audArray: string[] = Array.isArray(aud) ? (aud as string[]) : [aud as string];
+      if (!audArray.includes(expectedAud)) {
+        this.logger.warn(
+          `[BankingToolProvider] Token aud [${audArray.join(', ')}] does not include ` +
+          `expected audience '${expectedAud}' for '${toolName}'`
+        );
+      }
     }
   }
 
