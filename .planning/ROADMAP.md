@@ -86,10 +86,10 @@ Plans:
 **Plans:** Multiple context, research, UI spec, and validation docs in phase directory
 
 Plans:
-- [ ] 214-CONTEXT.md — Context and requirements
-- [ ] 214-UI-SPEC.md — UI specification for FIDO2 flows
-- [ ] 214-RESEARCH.md — Research and comparison with PingOne docs
-- [ ] 214-VALIDATION.md — Validation and test coverage
+- [x] 214-CONTEXT.md — Context and requirements
+- [x] 214-UI-SPEC.md — UI specification for FIDO2 flows
+- [x] 214-RESEARCH.md — Research and comparison with PingOne docs
+- [x] 214-VALIDATION.md — Validation and test coverage
 
 ### Phase 223: fido2-registration-authentication
 
@@ -100,7 +100,7 @@ Plans:
 **Plans:** Context file created; implementation plans pending
 
 Plans:
-- [ ] 223-00-CONTEXT.md — Context and requirements
+- [x] 223-00-CONTEXT.md — Context and requirements
 
 ### Phase 224: token-audit-trail-and-decoder
 
@@ -111,7 +111,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 224-01-PLAN.md — Add AuditTrailTab + TokenDecoderTab sub-components, CSS classes, and two new DevToolsDashboard tabs
+- [x] 224-01-PLAN.md — Add AuditTrailTab + TokenDecoderTab sub-components, CSS classes, and two new DevToolsDashboard tabs
 
 ### Phase 225: retail-theme-toggle
 
@@ -121,9 +121,9 @@ Plans:
 
 **Plans:** 3 plans
 
-- [ ] 225-01-PLAN.md — Register ff_retail_mode BFF flag, add retail industry preset + mock data, fix BrandLogo null guard
-- [ ] 225-02-PLAN.md — Create RetailModeBanner component and CSS (persistent mode toggle banner)
-- [ ] 225-03-PLAN.md — Wire retail mode into UserDashboard.js + UserDashboard.css + BankingAgent greeting copy
+- [x] 225-01-PLAN.md — Register ff_retail_mode BFF flag, add retail industry preset + mock data, fix BrandLogo null guard
+- [x] 225-02-PLAN.md — Create RetailModeBanner component and CSS (persistent mode toggle banner)
+- [x] 225-03-PLAN.md — Wire retail mode into UserDashboard.js + UserDashboard.css + BankingAgent greeting copy
 
 ### Phase 226: agent-popout-close-existing
 
@@ -134,7 +134,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 226-01-PLAN.md — Add onPopout callback prop to BankingAgent; wire at both UserDashboard inline render sites to close inline panel on pop-out
+- [x] 226-01-PLAN.md — Add onPopout callback prop to BankingAgent; wire at both UserDashboard inline render sites to close inline panel on pop-out
 
 ### Phase 227: remove-side-menu-admin-dashboard-button
 
@@ -145,7 +145,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 227-01-PLAN.md — Remove AdminSideNav from App.js/AdminLayout.jsx, Admin Dashboard buttons from LandingPage.js and BankingAgent.js, and isOnSidebarRoute FAB guard
+- [x] 227-01-PLAN.md — Remove AdminSideNav from App.js/AdminLayout.jsx, Admin Dashboard buttons from LandingPage.js and BankingAgent.js, and isOnSidebarRoute FAB guard
 
 ### Phase 1: auth-flows
 
@@ -156,9 +156,9 @@ Plans:
 **Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 01-01-PLAN.md — Landing page login polish (AUTH-03): credential hints + 3-flows intro card
-- [ ] 01-02-PLAN.md — MCP step_up_required structured passthrough (AUTH-01 layer 1)
-- [ ] 01-03-PLAN.md — Agent step-up auto-retry + auth challenge inline login (AUTH-01 + AUTH-02)
+- [x] 01-01-PLAN.md — Landing page login polish (AUTH-03): credential hints + 3-flows intro card
+- [x] 01-02-PLAN.md — MCP step_up_required structured passthrough (AUTH-01 layer 1)
+- [x] 01-03-PLAN.md — Agent step-up auto-retry + auth challenge inline login (AUTH-01 + AUTH-02)
 
 **Success criteria:**
 1. A user landing on the home page can log in as admin or customer with a single click and be routed to the correct dashboard
@@ -176,8 +176,8 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 02-01-PLAN.md — Exchange mode session toggle: BFF endpoint + ExchangeModeToggle UI (TOKEN-01)
-- [ ] 02-02-PLAN.md — TokenChainDisplay claims strip + exchange mode banner (TOKEN-02)
+- [x] 02-01-PLAN.md — Exchange mode session toggle: BFF endpoint + ExchangeModeToggle UI (TOKEN-01)
+- [x] 02-02-PLAN.md — TokenChainDisplay claims strip + exchange mode banner (TOKEN-02)
 
 **Success criteria:**
 1. A UI toggle switches between 1-exchange and 2-exchange mode and the next agent operation uses the selected path
@@ -195,12 +195,12 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Setup guide (docs/SETUP.md + README pointer) (DOC-01)
-- [ ] 05-02-PLAN.md — Three draw.io sequence diagrams for 3 auth flows (DOC-02)
-- [ ] 05-03-PLAN.md — Architecture walkthrough (docs/ARCHITECTURE_WALKTHROUGH.md) (DOC-02)
+- [x] 05-01-PLAN.md — Setup guide (docs/SETUP.md + README pointer) (DOC-01)
+- [x] 05-02-PLAN.md — Three draw.io sequence diagrams for 3 auth flows (DOC-02)
+- [x] 05-03-PLAN.md — Architecture walkthrough (docs/ARCHITECTURE_WALKTHROUGH.md) (DOC-02)
 
 Plans:
-- [ ] 03-01-PLAN.md — SSE Redis-list event bridge for Vercel (STAB-01)
+- [x] 03-01-PLAN.md — SSE Redis-list event bridge for Vercel (STAB-01)
 - [x] 03-02-PLAN.md — Cold-start restoration + production safety guard tests (STAB-02, STAB-03)
 
 **Success criteria:**
@@ -242,9 +242,9 @@ Plans:
 **Plans:** 0/3 plans complete
 
 Plans:
-- [ ] 05-01-PLAN.md — Setup guide (docs/SETUP.md + README pointer) (DOC-01)
-- [ ] 05-02-PLAN.md — Three draw.io sequence diagrams for 3 auth flows (DOC-02)
-- [ ] 05-03-PLAN.md — Architecture walkthrough (docs/ARCHITECTURE_WALKTHROUGH.md) (DOC-02)
+- [x] 05-01-PLAN.md — Setup guide (docs/SETUP.md + README pointer) (DOC-01)
+- [x] 05-02-PLAN.md — Three draw.io sequence diagrams for 3 auth flows (DOC-02)
+- [x] 05-03-PLAN.md — Architecture walkthrough (docs/ARCHITECTURE_WALKTHROUGH.md) (DOC-02)
 
 **Success criteria:**
 1. Following the setup guide produces a working local demo with all 3 auth flows operational
@@ -261,9 +261,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Setup guide (docs/SETUP.md + README pointer) (DOC-01)
-- [ ] 05-02-PLAN.md — Three draw.io sequence diagrams for 3 auth flows (DOC-02)
-- [ ] 05-03-PLAN.md — Architecture walkthrough (docs/ARCHITECTURE_WALKTHROUGH.md) (DOC-02)
+- [x] 05-01-PLAN.md — Setup guide (docs/SETUP.md + README pointer) (DOC-01)
+- [x] 05-02-PLAN.md — Three draw.io sequence diagrams for 3 auth flows (DOC-02)
+- [x] 05-03-PLAN.md — Architecture walkthrough (docs/ARCHITECTURE_WALKTHROUGH.md) (DOC-02)
 
 Plans:
 - [x] 06-01-PLAN.md — Fix 2-exchange auth methods + auth-method unit tests (TOKEN-FIX-01)
@@ -283,8 +283,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — BFF `/.well-known/oauth-protected-resource` endpoint + `/api/rfc9728` proxy
-- [ ] 07-02-PLAN.md — `rfc9728` tab in AgentGatewayPanel with RFC9728Content and live metadata demo
+- [x] 07-01-PLAN.md — BFF `/.well-known/oauth-protected-resource` endpoint + `/api/rfc9728` proxy
+- [x] 07-02-PLAN.md — `rfc9728` tab in AgentGatewayPanel with RFC9728Content and live metadata demo
 
 ### Phase 8: Banking transaction integrity — fix balance updates, validate all actions, and ensure enterprise-grade correctness
 
@@ -306,11 +306,11 @@ Plans:
 **Plans:** 6 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — UserDashboard: auto-initiate countown + cancel + stale toast fix (CIBA-01)
-- [ ] 09-02-PLAN.md — BankingAgent: method-specific messages + confirmation card + remove SensitiveConsentBanner (CIBA-02, CIBA-04)
-- [ ] 09-03-PLAN.md — Server defaults: change method to email, add threshold to Admin Config (CIBA-03)
-- [ ] 09-04-PLAN.md — BFF + local path: sensitive details 428 step-up, ACR gate (CIBA-02)
-- [ ] 09-05-PLAN.md — MCP TypeScript: handle step_up_required from BFF (CIBA-02)
+- [x] 09-01-PLAN.md — UserDashboard: auto-initiate countown + cancel + stale toast fix (CIBA-01)
+- [x] 09-02-PLAN.md — BankingAgent: method-specific messages + confirmation card + remove SensitiveConsentBanner (CIBA-02, CIBA-04)
+- [x] 09-03-PLAN.md — Server defaults: change method to email, add threshold to Admin Config (CIBA-03)
+- [x] 09-04-PLAN.md — BFF + local path: sensitive details 428 step-up, ACR gate (CIBA-02)
+- [x] 09-05-PLAN.md — MCP TypeScript: handle step_up_required from BFF (CIBA-02)
 
 ### Phase 10: Enterprise-grade HITL — high-value transaction warnings, CIBA or OTP step-up based on configuration, and polished approval UX
 
@@ -377,7 +377,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 14 to break down)
+- [x] TBD (run /gsd-plan-phase 14 to break down)
 
 ### Phase 15: Unified configuration + demo-data page — merge into single tabbed UI replacing separate Config and DemoData routes
 
@@ -387,7 +387,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 15 to break down)
+- [x] TBD (run /gsd-plan-phase 15 to break down)
 
 ### Phase 16: Education content refresh — RFCs, AI agent standards, industry guidance
 
@@ -397,7 +397,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 16 to break down)
+- [x] TBD (run /gsd-plan-phase 16 to break down)
 
 ### Phase 17: Ping Identity for AI principles — audit, agent flow badges, education panel
 
@@ -407,7 +407,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 17 to break down)
+- [x] TBD (run /gsd-plan-phase 17 to break down)
 
 ### Phase 18: Token Chain correctness — two-exchange support, robust event descriptions, agent request flow audit
 
@@ -417,7 +417,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 18 to break down)
+- [x] TBD (run /gsd-plan-phase 18 to break down)
 
 ### Phase 19: Demo Config page audit — verify all sections work and are necessary
 
@@ -447,7 +447,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 21-01-PLAN.md — Create BX-Finance-Token-Exchange-Customer.drawio + BX-Finance-Token-Anatomy.drawio
+- [x] 21-01-PLAN.md — Create BX-Finance-Token-Exchange-Customer.drawio + BX-Finance-Token-Anatomy.drawio
 
 ### Phase 22: Agent capability audit — enterprise-grade tools, full account data, Brave Search routing, Groq NLU, exhaustive chip coverage
 
@@ -457,8 +457,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 22-01-PLAN.md — Audit MCP tool chip coverage + add query_user chip + verify full account/transaction data
-- [ ] 22-02-PLAN.md — Wire Brave Search (braveSearchService + web_search intent + Groq NLU prompt)
+- [x] 22-01-PLAN.md — Audit MCP tool chip coverage + add query_user chip + verify full account/transaction data
+- [x] 22-02-PLAN.md — Wire Brave Search (braveSearchService + web_search intent + Groq NLU prompt)
 
 ### Phase 23: LangChain modernization — upgrade to 0.3.x LCEL, multi-provider model switching UI, user API key input, education page
 
@@ -468,10 +468,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 23-01-PLAN.md — Python upgrade: requirements.txt + LangChainConfig extension + llm_factory.py + LCEL migration
-- [ ] 23-02-PLAN.md — BFF /api/langchain/config routes + Config page LangChain Agent section
-- [ ] 23-03-PLAN.md — Widget provider badge + settings panel (depends 23-01, 23-02)
-- [ ] 23-04-PLAN.md — Education: LangChainPanel + /langchain page + BankingAgent NLU wiring (depends 23-02)
+- [x] 23-01-PLAN.md — Python upgrade: requirements.txt + LangChainConfig extension + llm_factory.py + LCEL migration
+- [x] 23-02-PLAN.md — BFF /api/langchain/config routes + Config page LangChain Agent section
+- [x] 23-03-PLAN.md — Widget provider badge + settings panel (depends 23-01, 23-02)
+- [x] 23-04-PLAN.md — Education: LangChainPanel + /langchain page + BankingAgent NLU wiring (depends 23-02)
 
 ### Phase 24: Agent builder landscape — LangChain, open-source and commercial frameworks, vendor comparison
 
@@ -481,7 +481,7 @@ Plans:
 **Plans:** 0/2 plans executed
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 24 to break down)
+- [x] TBD (run /gsd-plan-phase 24 to break down)
 
 ### Phase 25: LLM landscape — commercial and open-source models, capabilities overview, and comparison
 
@@ -491,7 +491,7 @@ Plans:
 **Plans:** 0/2 plans executed
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 25 to break down)
+- [x] TBD (run /gsd-plan-phase 25 to break down)
 
 ### Phase 26: AI platform landscape — AWS Bedrock, Microsoft Azure AI, Google Vertex AI, IBM watsonx, Anthropic, OpenAI tools overview and vendor comparison
 
@@ -501,7 +501,7 @@ Plans:
 **Plans:** 0/2 plans executed
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 26 to break down)
+- [x] TBD (run /gsd-plan-phase 26 to break down)
 
 ### Phase 27: PingOne Authorize PAZ setup — transaction limit policy, AUD validation, act chain introspection to match RFC 8693 token exchange implementation
 
@@ -511,8 +511,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 27-01-PLAN.md — Fix actClientId extraction (act.client_id || act.sub) + update JSDoc comments
-- [ ] 27-02-PLAN.md — Extend PINGONE_AUTHORIZE_PLAN.md with AUD validation, act.sub, and transaction limit sections
+- [x] 27-01-PLAN.md — Fix actClientId extraction (act.client_id || act.sub) + update JSDoc comments
+- [x] 27-02-PLAN.md — Extend PINGONE_AUTHORIZE_PLAN.md with AUD validation, act.sub, and transaction limit sections
 
 ### Phase 28: Vercel config tab — read environment variables via Vercel API, display editable fields in UI, write non-secret vars back to Vercel, secrets entered by user and stored server-side only
 
@@ -522,8 +522,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 28-01-PLAN.md — BFF route /api/admin/vercel-config (GET list + PATCH update via Vercel Projects API)
-- [ ] 28-02-PLAN.md — VercelConfigTab.js component + Config.js tab bar wiring + npm run build verify
+- [x] 28-01-PLAN.md — BFF route /api/admin/vercel-config (GET list + PATCH update via Vercel Projects API)
+- [x] 28-02-PLAN.md — VercelConfigTab.js component + Config.js tab bar wiring + npm run build verify
 
 ### Phase 29: use-case C sensitive data access - explicit authz least-data-necessary controls optional HITL for elevated actions
 
@@ -533,12 +533,12 @@ Plans:
 **Plans:** 6 plans
 
 Plans:
-- [ ] 29-01-PLAN.md — Account data model expansion (new fields, 12-digit format, GET /my masking)
-- [ ] 29-02-PLAN.md — BFF sensitive endpoint + sensitiveDataService.js (scope + PAZ + session consent)
-- [ ] 29-03-PLAN.md — MCP tool get_sensitive_account_details + scope catalog + local fallback
-- [ ] 29-04-PLAN.md — UI SensitiveConsentBanner + BankingAgent.js consent detection/retry
-- [ ] 29-05-PLAN.md — Demo Data page Account Profile Fields section
-- [ ] 29-06-PLAN.md — Education panel SensitiveDataPanel (2 tabs) + agent chip + build verify
+- [x] 29-01-PLAN.md — Account data model expansion (new fields, 12-digit format, GET /my masking)
+- [x] 29-02-PLAN.md — BFF sensitive endpoint + sensitiveDataService.js (scope + PAZ + session consent)
+- [x] 29-03-PLAN.md — MCP tool get_sensitive_account_details + scope catalog + local fallback
+- [x] 29-04-PLAN.md — UI SensitiveConsentBanner + BankingAgent.js consent detection/retry
+- [x] 29-05-PLAN.md — Demo Data page Account Profile Fields section
+- [x] 29-06-PLAN.md — Education panel SensitiveDataPanel (2 tabs) + agent chip + build verify
 ### Phase 30: agent layout modes - float, left-dock, right-dock, bottom-dock with resizable panels and responsive 3-column layout adjustment
 
 **Goal:** Extend AgentUiModeContext and toggle UI to support left-dock and right-dock placement modes with a width-resizable SideAgentDock component; update App.js to mount the side dock; fix the accounts regression when switching to middle layout.
@@ -547,9 +547,9 @@ Plans:
 **Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 30-01-PLAN.md — Extend AgentUiModeContext: add left-dock/right-dock placement types + unit tests
-- [ ] 30-02-PLAN.md — SideAgentDock component + CSS + App.js wiring
-- [ ] 30-03-PLAN.md — AgentUiModeToggle: Left/Right buttons + accounts regression fix (todo #11)
+- [x] 30-01-PLAN.md — Extend AgentUiModeContext: add left-dock/right-dock placement types + unit tests
+- [x] 30-02-PLAN.md — SideAgentDock component + CSS + App.js wiring
+- [x] 30-03-PLAN.md — AgentUiModeToggle: Left/Right buttons + accounts regression fix (todo #11)
 
 ### Phase 31: floating draggable resizable windows - agent request flow, agent panel, API viewer, log viewer and all drawers use unified drag-resize system with consistent UX across all windows
 
@@ -559,7 +559,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 31 to break down)
+- [x] TBD (run /gsd-plan-phase 31 to break down)
 
 ### Phase 32: MCP server advanced capabilities - sequential thinking tool, async long-running tasks primitive, well-known server discovery, audit trail observability, and MCP registry integration
 
@@ -569,11 +569,11 @@ Plans:
 **Plans:** 5/5 plans complete
 
 Plans:
-- [ ] 32-01-PLAN.md — Bug fix + GET /.well-known/mcp-server discovery endpoint
-- [ ] 32-02-PLAN.md — sequential_think MCP tool (server-side)
-- [ ] 32-03-PLAN.md — MCP registry manifest + audit BFF route
-- [ ] 32-04-PLAN.md — Sequential thinking UI + async UX mode config
-- [ ] 32-05-PLAN.md — Audit trail page (/audit admin route + AuditPage)
+- [x] 32-01-PLAN.md — Bug fix + GET /.well-known/mcp-server discovery endpoint
+- [x] 32-02-PLAN.md — sequential_think MCP tool (server-side)
+- [x] 32-03-PLAN.md — MCP registry manifest + audit BFF route
+- [x] 32-04-PLAN.md — Sequential thinking UI + async UX mode config
+- [x] 32-05-PLAN.md — Audit trail page (/audit admin route + AuditPage)
 
 ### Phase 33: token chain history persistence - record and restore token chain across page refreshes using sessionStorage or localStorage
 
@@ -583,7 +583,7 @@ Plans:
 **Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 33-01-PLAN.md — localStorage persistence + sub/act.sub display + clear on logout
+- [x] 33-01-PLAN.md — localStorage persistence + sub/act.sub display + clear on logout
 
 ### Phase 34: Agent action logging — log what agent, what action, rights used, and each step
 
@@ -594,7 +594,7 @@ Plans:
 
 Plans:
 - [x] 34-01-PLAN.md — MCP server: Upstash Redis persistence for AuditLogger (write + read + schema extension)
-- [ ] 34-02-PLAN.md — Admin UI + BFF: agent audit fields display (agentId, duration, scope, filters)
+- [x] 34-02-PLAN.md — Admin UI + BFF: agent audit fields display (agentId, duration, scope, filters)
 
 ### Phase 35: User-facing feature documentation — update docs for each feature explaining what it does and why it was added
 
@@ -614,9 +614,9 @@ Plans:
 **Plans:** 0/3 plans executed
 
 Plans:
-- [ ] 36-01-PLAN.md — File organization + shared environment (3 new vars, move strays to docs/)
-- [ ] 36-02-PLAN.md — Full audit of all existing collections + 2-exchange audience correction + Advanced-Utilities expansion
-- [ ] 36-03-PLAN.md — Create BX-Finance-MCP-Tools and BX-Finance-BFF-API collections
+- [x] 36-01-PLAN.md — File organization + shared environment (3 new vars, move strays to docs/)
+- [x] 36-02-PLAN.md — Full audit of all existing collections + 2-exchange audience correction + Advanced-Utilities expansion
+- [x] 36-03-PLAN.md — Create BX-Finance-MCP-Tools and BX-Finance-BFF-API collections
 
 ### Phase 37: Public-facing MCP server for external agents — read-only tool surface, scoped credentials, and access controls so external agents have limited safe access
 
@@ -626,8 +626,8 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 37-01-PLAN.md — `readOnly` metadata in BankingToolRegistry + `tools/list` filter + `/.well-known/mcp-server` manifest v2 (tool access tiers)
-- [ ] 37-02-PLAN.md — McpProtocolPanel discovery tab + TOOLS catalog `readOnly` column + README Server Discovery section
+- [x] 37-01-PLAN.md — `readOnly` metadata in BankingToolRegistry + `tools/list` filter + `/.well-known/mcp-server` manifest v2 (tool access tiers)
+- [x] 37-02-PLAN.md — McpProtocolPanel discovery tab + TOOLS catalog `readOnly` column + README Server Discovery section
 
 ### Phase 38: Family delegation — delegate account access to other family members with scoped permissions (view accounts, balances, deposits, withdrawals, transfers), delegation history, email notification, PingOne user provisioning, and worker app config tab
 
@@ -649,7 +649,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 39 to break down)
+- [x] TBD (run /gsd-plan-phase 39 to break down)
 
 ### Phase 40: PingGateway MCP security: education panel on securing MCP with PingGateway plus feasibility analysis of building a custom gateway vs installing PingGateway
 
@@ -679,7 +679,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 42 to break down)
+- [x] TBD (run /gsd-plan-phase 42 to break down)
 
 ### Phase 43: Multi-vertical demo mode — retail and workforce HR variants via config, reusing banking infrastructure
 
@@ -700,7 +700,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 44 to break down)
+- [x] TBD (run /gsd-plan-phase 44 to break down)
 
 ### Phase 45: need to support RFC 9728 (OAuth 2.0 Protected Resource Metadata)
 
@@ -710,7 +710,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 45 to break down)
+- [x] TBD (run /gsd-plan-phase 45 to break down)
 
 ### Phase 46: Standardize PingOne app, resource, and scope naming across all use cases
 
@@ -720,7 +720,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 46 to break down)
+- [x] TBD (run /gsd-plan-phase 46 to break down)
 
 ### Phase 47: Super Banking rename verification — confirm no regressions across UI, API, MCP, and docs
 
@@ -730,7 +730,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 47 to break down)
+- [x] TBD (run /gsd-plan-phase 47 to break down)
 
 ### Phase 48: Remove invalid SpEL act expression from Super Banking Banking API and enforce act chain at BFF PAZ layer instead update docs
 
@@ -810,8 +810,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 54-01-PLAN.md — pingOneUserService.js + selfServiceUsers.js REST API (PingOne Management API user CRUD, password set, mayAct attribute)
-- [ ] 54-02-PLAN.md — SelfServicePage.js React UI (create form, profile view, mayAct config, diagnostic panel, /self-service route)
+- [x] 54-01-PLAN.md — pingOneUserService.js + selfServiceUsers.js REST API (PingOne Management API user CRUD, password set, mayAct attribute)
+- [x] 54-02-PLAN.md — SelfServicePage.js React UI (create form, profile view, mayAct config, diagnostic panel, /self-service route)
 
 ---
 
@@ -824,7 +824,7 @@ Plans:
 **Plans:** 1/1 plan
 
 Plans:
-- [ ] 55-01-PLAN.md — Docker images and Kubernetes foundation (DOCKER-01, DOCKER-02)
+- [x] 55-01-PLAN.md — Docker images and Kubernetes foundation (DOCKER-01, DOCKER-02)
 
 **Success criteria:**
 1. All 4 components (UI, API Server, MCP Server, Agent) build successfully as Docker images
@@ -844,7 +844,7 @@ Plans:
 **Plans:** 1/1 plan
 
 Plans:
-- [ ] 56-01-PLAN.md — Token exchange audit and compliance implementation (AUDIT-01 through AUDIT-06)
+- [x] 56-01-PLAN.md — Token exchange audit and compliance implementation (AUDIT-01 through AUDIT-06)
 
 **Success criteria:**
 1. 100% RFC 8693 specification compliance verified through comprehensive audit
@@ -906,7 +906,7 @@ Phase 58 (rfc8693-delegation-claims-compliance) depends on Phase 57 (oauth-clien
 **Plans:** 1/1 plan
 
 Plans:
-- [ ] 57-01-PLAN.md — OAuth client credentials security hardening implementation (SECURE-01 through SECURE-06)
+- [x] 57-01-PLAN.md — OAuth client credentials security hardening implementation (SECURE-01 through SECURE-06)
 
 **Success criteria:**
 1. 80% reduction in credential blast radius through scoped, time-limited tokens
@@ -926,7 +926,7 @@ Plans:
 **Plans:** 1/1 plan
 
 Plans:
-- [ ] 58-01-PLAN.md — RFC 8693 delegation claims compliance implementation (DELEGATION-01 through DELEGATION-06)
+- [x] 58-01-PLAN.md — RFC 8693 delegation claims compliance implementation (DELEGATION-01 through DELEGATION-06)
 
 **Success criteria:**
 1. 100% of user tokens contain proper `may_act` claims with authorized agent identifiers
@@ -946,7 +946,7 @@ Plans:
 **Plans:** 1/1 plan
 
 Plans:
-- [ ] 59-01-PLAN.md — RFC 9728 compliance and education audit implementation (RFC9728-01 through RFC9728-06)
+- [x] 59-01-PLAN.md — RFC 9728 compliance and education audit implementation (RFC9728-01 through RFC9728-06)
 
 **Success criteria:**
 1. 100% RFC 9728 specification compliance with all mandatory and recommended requirements
@@ -966,7 +966,7 @@ Plans:
 **Plans:** 1/1 plan
 
 Plans:
-- [ ] 60-01-PLAN.md — Agent showcase and integration storytelling implementation (SHOWCASE-01 through SHOWCASE-06)
+- [x] 60-01-PLAN.md — Agent showcase and integration storytelling implementation (SHOWCASE-01 through SHOWCASE-06)
 
 **Success criteria:**
 1. Compelling integration narrative that resonates with technical and business audiences
@@ -986,7 +986,7 @@ Plans:
 **Plans:** 1/1 plan
 
 Plans:
-- [ ] 61-01-PLAN.md — MCP specification error code compliance audit implementation (MCPERR-01 through MCPERR-06)
+- [x] 61-01-PLAN.md — MCP specification error code compliance audit implementation (MCPERR-01 through MCPERR-06)
 
 **Success criteria:**
 1. 100% MCP specification error code compliance with all required mappings
@@ -1006,7 +1006,7 @@ Plans:
 **Plans:** 1/1 plan
 
 Plans:
-- [ ] 62-01-PLAN.md — Token exchange critical fixes and enhancements implementation (CRITICAL-01 through CRITICAL-05)
+- [x] 62-01-PLAN.md — Token exchange critical fixes and enhancements implementation (CRITICAL-01 through CRITICAL-05)
 
 **Success criteria:**
 1. 100% consistent may_act claim format using URI standard across all tokens
@@ -1026,7 +1026,7 @@ Plans:
 **Plans:** 1/1 plan
 
 Plans:
-- [ ] 63-01-PLAN.md — Documentation and integration critical fixes implementation (DOC-01 through DOC-04)
+- [x] 63-01-PLAN.md — Documentation and integration critical fixes implementation (DOC-01 through DOC-04)
 
 **Success criteria:**
 1. 100% production deployment and operations guide coverage with monitoring, troubleshooting, and security procedures
@@ -1046,7 +1046,7 @@ Plans:
 **Plans:** 1/1 plan
 
 Plans:
-- [ ] 64-01-PLAN.md — Unified configuration page implementation (UNIFIED-01 through UNIFIED-04)
+- [x] 64-01-PLAN.md — Unified configuration page implementation (UNIFIED-01 through UNIFIED-04)
 
 **Success criteria:**
 1. Complete audit of all configStore keys and UI coverage
@@ -1066,7 +1066,7 @@ Plans:
 **Plans:** 1/1 plan
 
 Plans:
-- [ ] 65-01-PLAN.md — API configuration and management enhancements implementation (API-01 through API-04)
+- [x] 65-01-PLAN.md — API configuration and management enhancements implementation (API-01 through API-04)
 
 **Success criteria:**
 1. Zero configuration-related 500 errors in production deployment
@@ -1087,7 +1087,7 @@ Plans:
 **Plans:** 1/1 plan
 
 Plans:
-- [ ] 66-01-PLAN.md — User interface enhancements and user experience improvements implementation (UI-01 through UI-05)
+- [x] 66-01-PLAN.md — User interface enhancements and user experience improvements implementation (UI-01 through UI-05)
 
 **Success criteria:**
 1. All 16 UI todos completed with enhanced agent interface, authentication flows, and educational content
@@ -1097,7 +1097,7 @@ Plans:
 5. Configuration interfaces are unified with proper Vercel validation and token authentication method selection
 6. Visual design is consistent, accessible, and performant across all devices and screen sizes
 
-- [ ] TBD (run /gsd-plan-phase 115 to break down)
+- [x] TBD (run /gsd-plan-phase 115 to break down)
 
 ---
 
@@ -1110,7 +1110,7 @@ Plans:
 **Plans:** 1/1 plan
 
 Plans:
-- [ ] 67-01-PLAN.md — Documentation enhancement and developer tools implementation (DOCS-01 through DOCS-05)
+- [x] 67-01-PLAN.md — Documentation enhancement and developer tools implementation (DOCS-01 through DOCS-05)
 
 **Success criteria:**
 1. All remaining documentation and planning todos completed with comprehensive technical guides and visual diagrams
@@ -1128,7 +1128,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 68 to break down)
+- [x] TBD (run /gsd-plan-phase 68 to break down)
 
 ### Phase 69: Standardize PingOne app, resource, and scope naming across all use cases
 
@@ -1138,7 +1138,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 69 to break down)
+- [x] TBD (run /gsd-plan-phase 69 to break down)
 
 ### Phase 70: Super Banking rename verification — confirm no regressions across UI, API, MCP, and docs
 
@@ -1148,7 +1148,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 70 to break down)
+- [x] TBD (run /gsd-plan-phase 70 to break down)
 
 ### Phase 71: 59.1 RFC 9728 compliance audit - Protected Resource Metadata implementation
 
@@ -1158,7 +1158,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 71 to break down)
+- [x] TBD (run /gsd-plan-phase 71 to break down)
 
 ### Phase 72: 60.1 Agent showcase and integration storytelling - banking platform AI narrative
 
@@ -1168,7 +1168,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 72 to break down)
+- [x] TBD (run /gsd-plan-phase 72 to break down)
 
 ### Phase 73: 61.1 MCP spec error code compliance audit - 403/401 per MCP spec
 
@@ -1178,7 +1178,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 73 to break down)
+- [x] TBD (run /gsd-plan-phase 73 to break down)
 
 ### Phase 74: 62.1 Token exchange critical fixes and enhancements - may_act, RFC 8707, scopes
 
@@ -1188,7 +1188,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 74 to break down)
+- [x] TBD (run /gsd-plan-phase 74 to break down)
 
 ### Phase 75: 63.1 Documentation and integration critical fixes - ops guides, API docs
 
@@ -1198,7 +1198,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 75 to break down)
+- [x] TBD (run /gsd-plan-phase 75 to break down)
 
 ### Phase 76: 64.1 Unified configuration page - consolidate /config and /demo-data
 
@@ -1208,7 +1208,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 76 to break down)
+- [x] TBD (run /gsd-plan-phase 76 to break down)
 
 ### Phase 77: 65.1 API configuration and management enhancements - auth methods, Vercel vars
 
@@ -1218,7 +1218,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 77 to break down)
+- [x] TBD (run /gsd-plan-phase 77 to break down)
 
 ### Phase 78: 66.1 UI enhancements and user experience improvements
 
@@ -1228,7 +1228,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 78 to break down)
+- [x] TBD (run /gsd-plan-phase 78 to break down)
 
 ### Phase 79: 67.1 Documentation enhancement and developer tools
 
@@ -1238,7 +1238,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 79 to break down)
+- [x] TBD (run /gsd-plan-phase 79 to break down)
 
 ### Phase 80: 68.1 RFC 9728 Support - Protected Resource Metadata implementation
 
@@ -1248,7 +1248,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 80 to break down)
+- [x] TBD (run /gsd-plan-phase 80 to break down)
 
 ### Phase 81: 69.1 Standardize PingOne app, resource, and scope naming across all use cases
 
@@ -1258,7 +1258,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 81 to break down)
+- [x] TBD (run /gsd-plan-phase 81 to break down)
 
 ### Phase 82: 70.1 Super Banking rename verification - confirm no regressions across all layers
 
@@ -1268,7 +1268,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 82 to break down)
+- [x] TBD (run /gsd-plan-phase 82 to break down)
 
 ### Phase 83: AI Tokens Education
 
@@ -1333,7 +1333,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 86 to break down)
+- [x] TBD (run /gsd-plan-phase 86 to break down)
 
 ### Phase 87: Comprehensive token validation at every step
 
@@ -1369,10 +1369,10 @@ Plans:
 - Architecture diagram showing token flow with validation points
 
 Plans:
-- [ ] 87-01-PLAN.md — Document and audit Agent token validation patterns (when to call /api/introspect)
-- [ ] 87-02-PLAN.md — Document and audit App Host token validation patterns (BFF/Express validation chain)
-- [ ] 87-03-PLAN.md — Document and audit MCP Server token validation patterns (WebSocket + tool calls)
-- [ ] 87-04-PLAN.md — Create architecture diagrams and decision trees; verify consistency across docs
+- [x] 87-01-PLAN.md — Document and audit Agent token validation patterns (when to call /api/introspect)
+- [x] 87-02-PLAN.md — Document and audit App Host token validation patterns (BFF/Express validation chain)
+- [x] 87-03-PLAN.md — Document and audit MCP Server token validation patterns (WebSocket + tool calls)
+- [x] 87-04-PLAN.md — Create architecture diagrams and decision trees; verify consistency across docs
 
 ### Phase 88: Audit and align all documentation and code to PingOne app names, rename apps where needed, update Vercel and localhost env vars, validate setup and creation code
 
@@ -1382,9 +1382,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 88-01-PLAN.md — Complete remaining env var renames + configStore updates + service code fixes
-- [ ] 88-02-PLAN.md — KV/SQLite migration script + Vercel env var documentation
-- [ ] 88-03-PLAN.md — Fix 2-exchange delegation test failures (Wave 2)
+- [x] 88-01-PLAN.md — Complete remaining env var renames + configStore updates + service code fixes
+- [x] 88-02-PLAN.md — KV/SQLite migration script + Vercel env var documentation
+- [x] 88-03-PLAN.md — Fix 2-exchange delegation test failures (Wave 2)
 
 ### Phase 89: Audit and update all documentation to match standardized PingOne app names
 
@@ -1394,8 +1394,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 89-01-PLAN.md — Update core docs: README, env.example, ENVIRONMENT_MAPPING.md, PINGONE_APP_CONFIG.md, PINGONE_ACTUAL_ENVIRONMENT.md
-- [ ] 89-02-PLAN.md — Update MAY_ACT docs, PINGONE_NAMING_STANDARDIZATION_AUDIT.md, SETUP.md
+- [x] 89-01-PLAN.md — Update core docs: README, env.example, ENVIRONMENT_MAPPING.md, PINGONE_APP_CONFIG.md, PINGONE_ACTUAL_ENVIRONMENT.md
+- [x] 89-02-PLAN.md — Update MAY_ACT docs, PINGONE_NAMING_STANDARDIZATION_AUDIT.md, SETUP.md
 
 ### Phase 90: Scope/resource check: OIDC app OIDC scope spelling validation, resource URL validation, and fix capability
 
@@ -1405,7 +1405,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 90 to break down)
+- [x] TBD (run /gsd-plan-phase 90 to break down)
 
 ### Phase 91: External MCP client access — public MCP server with PingOne-protected auth, restrict to @pingidentity.com Google login, per-client authorization, and Claude/ChatGPT integration planning
 
@@ -1415,7 +1415,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 91 to break down)
+- [x] TBD (run /gsd-plan-phase 91 to break down)
 
 ### Phase 92: User custom attribute validation — verify user has required PingOne custom attributes configured correctly, report and fix capability, integrate into existing scope/resource check tooling
 
@@ -1425,7 +1425,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 92 to break down)
+- [x] TBD (run /gsd-plan-phase 92 to break down)
 
 ### Phase 93: Surface agent-on-behalf-of-user actions in UI and education
 
@@ -1435,7 +1435,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 93 to break down)
+- [x] TBD (run /gsd-plan-phase 93 to break down)
 
 ### Phase 94: Explicit HITL for agent consent
 
@@ -1475,10 +1475,10 @@ Plans:
 - Support for "Allow Always" with rate limiting and scope constraints
 
 Plans:
-- [ ] 94-01-PLAN.md — Design HITL approval dialog and user consent flow
-- [ ] 94-02-PLAN.md — Implement interceptor middleware in BFF for agent actions
-- [ ] 94-03-PLAN.md — Add approval evidence to token exchange (RFC 8693 delegation context)
-- [ ] 94-04-PLAN.md — Admin configuration UI and audit logging for HITL decisions
+- [x] 94-01-PLAN.md — Design HITL approval dialog and user consent flow
+- [x] 94-02-PLAN.md — Implement interceptor middleware in BFF for agent actions
+- [x] 94-03-PLAN.md — Add approval evidence to token exchange (RFC 8693 delegation context)
+- [x] 94-04-PLAN.md — Admin configuration UI and audit logging for HITL decisions
 
 
 ### Phase 95: Actor token = Agent token education and terminology
@@ -1534,10 +1534,10 @@ Plans:
 - Terminology guide (ACTOR_TOKEN_TERMINOLOGY.md) comprehensive and linked from README
 
 Plans:
-- [ ] 95-01-PLAN.md — Terminology audit: scan docs and code, create ACTOR_TOKEN_TERMINOLOGY.md
-- [ ] 95-02-PLAN.md — Update all documentation: README, API docs, RFC guides, architecture
-- [ ] 95-03-PLAN.md — Add education panels and token inspector labels for actor/agent
-- [ ] 95-04-PLAN.md — Update code comments and variable naming for consistency; verify RFC 8693 references
+- [x] 95-01-PLAN.md — Terminology audit: scan docs and code, create ACTOR_TOKEN_TERMINOLOGY.md
+- [x] 95-02-PLAN.md — Update all documentation: README, API docs, RFC guides, architecture
+- [x] 95-03-PLAN.md — Add education panels and token inspector labels for actor/agent
+- [x] 95-04-PLAN.md — Update code comments and variable naming for consistency; verify RFC 8693 references
 
 
 ### Phase 96: Audience (aud) claim validation and configuration
@@ -1606,9 +1606,9 @@ Plans:
 
 Plans:
 - [x] 96-01-PLAN.md — Audit PingOne configuration: identify all aud values, standardize, document
-- [ ] 96-02-PLAN.md — Implement aud validation middleware in BFF and MCP gateway
-- [ ] 96-03-PLAN.md — Add aud claim audit logging and dashboard
-- [ ] 96-04-PLAN.md — Add education panel and update token inspector with aud labels
+- [x] 96-02-PLAN.md — Implement aud validation middleware in BFF and MCP gateway
+- [x] 96-03-PLAN.md — Add aud claim audit logging and dashboard
+- [x] 96-04-PLAN.md — Add education panel and update token inspector with aud labels
 
 ### Phase 97: Demo config with introspection and JWT validation options; verify APIs working to PingOne endpoint
 
@@ -1662,8 +1662,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 228-01-PLAN.md — BFF: add admin_accounts + admin_errors regex branches to parseBanking(); add execution handlers with role guard to executeHeuristicBanking()
-- [ ] 228-02-PLAN.md — UI: add parseLogPrompt guard at chip dispatch call site in BankingAgent.js; human-verify both chips
+- [x] 228-01-PLAN.md — BFF: add admin_accounts + admin_errors regex branches to parseBanking(); add execution handlers with role guard to executeHeuristicBanking()
+- [x] 228-02-PLAN.md — UI: add parseLogPrompt guard at chip dispatch call site in BankingAgent.js; human-verify both chips
 
 ### Phase 229: Token introspection configuration — show setup guide when introspection not configured, explain how to enable it
 
@@ -1683,7 +1683,7 @@ Plans:
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 230 to break down)
+- [x] TBD (run /gsd-plan-phase 230 to break down)
 
 ### Phase 231: Agent chip groups — remove Learn & Explore chips from inline groups, maintain full chip list in LangGraph regex (no LLM fallback), collapsible sections, popout panel showing all available chips with nice UI
 
@@ -1754,10 +1754,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 236-01-PLAN.md — Review high-priority recently-changed services (appEventService, tokenIntrospectionService, tokenIntrospection middleware, transactionAuthorizationService, mcpToolAuthorizationService)
-- [ ] 236-02-PLAN.md — Review server.js complexity hotspot and key routes (transactions.js, tokenChain.js, oauth.js)
-- [ ] 236-03-PLAN.md — Review auth/token services and core infrastructure (oauthService, cibaService, agentTokenService, agentMcpTokenService, delegationService, audValidationService, configStore, pingOneAuthorizeService, simulatedAuthorizeService, configHostnameService)
-- [ ] 236-04-PLAN.md — Assemble all findings into banking_api_server/REVIEW.md with executive summary and severity-sorted table
+- [x] 236-01-PLAN.md — Review high-priority recently-changed services (appEventService, tokenIntrospectionService, tokenIntrospection middleware, transactionAuthorizationService, mcpToolAuthorizationService)
+- [x] 236-02-PLAN.md — Review server.js complexity hotspot and key routes (transactions.js, tokenChain.js, oauth.js)
+- [x] 236-03-PLAN.md — Review auth/token services and core infrastructure (oauthService, cibaService, agentTokenService, agentMcpTokenService, delegationService, audValidationService, configStore, pingOneAuthorizeService, simulatedAuthorizeService, configHostnameService)
+- [x] 236-04-PLAN.md — Assemble all findings into banking_api_server/REVIEW.md with executive summary and severity-sorted table
 
 ### Phase 239: PingOne API docs audit, simulated Authorize parity, test suite, and doc links on all test pages
 
@@ -1767,10 +1767,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 239-01: PingOne API audit — compare BFF calls to docs, produce PINGONE_API_FINDINGS.md
-- [ ] 239-02: Simulated Authorize parity — fix response shape to match PingOne exactly
-- [ ] 239-03: ApiCallPreviewCard on all test pages — endpoint URL, request JSON, doc link
-- [ ] 239-04: Integration test suite — client_credentials, introspection, simulated Authorize parity
+- [x] 239-01: PingOne API audit — compare BFF calls to docs, produce PINGONE_API_FINDINGS.md
+- [x] 239-02: Simulated Authorize parity — fix response shape to match PingOne exactly
+- [x] 239-03: ApiCallPreviewCard on all test pages — endpoint URL, request JSON, doc link
+- [x] 239-04: Integration test suite — client_credentials, introspection, simulated Authorize parity
 
 ---
 
@@ -1782,11 +1782,11 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 238-01: TokenDiffPanel — horizontal JWT claim diff across exchange hops
-- [ ] 238-02: InteractiveArchDiagram — CSS architecture diagram matching Lucidchart (User→BFF→PingOne→agent→LLM→MCP GW→MCP OLB/Invest→APIs)
-- [ ] 238-03: MCP Inspector Enhancement — Pair View (request+response side-by-side) + MCP spec links
-- [ ] 238-04: ApiExplorerPanel — expandable accordion for all BFF API calls with RFC annotations
-- [ ] 238-05: Dashboard Learning Center — NarrativePanel + DevToolsOverlay open by default
+- [x] 238-01: TokenDiffPanel — horizontal JWT claim diff across exchange hops
+- [x] 238-02: InteractiveArchDiagram — CSS architecture diagram matching Lucidchart (User→BFF→PingOne→agent→LLM→MCP GW→MCP OLB/Invest→APIs)
+- [x] 238-03: MCP Inspector Enhancement — Pair View (request+response side-by-side) + MCP spec links
+- [x] 238-04: ApiExplorerPanel — expandable accordion for all BFF API calls with RFC annotations
+- [x] 238-05: Dashboard Learning Center — NarrativePanel + DevToolsOverlay open by default
 
 ### Phase 239: make sure all tests pages have, and look for other pages this makes sense and make a plan for those: 1) Actual PingOne API 2) Actual Request to pingOne for that call (JSON) 3) Actual Response from pingone Call (JSON) 4) LInk to actual PingOne api docs page, for that call https://developer.pingidentity.com/apis.html
 
@@ -1796,7 +1796,7 @@ Plans:
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 239 to break down)
+- [x] TBD (run /gsd-plan-phase 239 to break down)
 
 ### Phase 240: make sure all tests pages have, and look for other pages this makes sense and make a plan for those: 1) Actual PingOne API 2) Actual Request to pingOne for that call (JSON) 3) Actual Response from pingone Call (JSON) 4) LInk to actual PingOne api docs page, for that call https://developer.pingidentity.com/apis.html
 
@@ -1806,8 +1806,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 240-01-PLAN.md — Inline audit + PingOneApiPanel extension + per-section wiring (UI, Wave 1)
-- [ ] 240-02-PLAN.md — Test-route pingoneRequest normalization + regression tests (backend, Wave 1)
+- [x] 240-01-PLAN.md — Inline audit + PingOneApiPanel extension + per-section wiring (UI, Wave 1)
+- [x] 240-02-PLAN.md — Test-route pingoneRequest normalization + regression tests (backend, Wave 1)
 
 ### Phase 241: Monitoring pages — promote tracking panels to sidebar pages under Monitoring nav group
 
@@ -1828,9 +1828,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 242-01-PLAN.md — ApiCallPreviewCard shared component + PingOneApiPanel docs props
-- [ ] 242-02-PLAN.md — Wire ApiCallPreviewCard into PingOneTestPage (token + management API calls)
-- [ ] 242-03-PLAN.md — Wire ApiCallPreviewCard into MFATestPage and AuthzTestPage
+- [x] 242-01-PLAN.md — ApiCallPreviewCard shared component + PingOneApiPanel docs props
+- [x] 242-02-PLAN.md — Wire ApiCallPreviewCard into PingOneTestPage (token + management API calls)
+- [x] 242-03-PLAN.md — Wire ApiCallPreviewCard into MFATestPage and AuthzTestPage
 
 ### Phase 243: Build a real MCP Gateway in front of the MCP server with RFC 9728 protected resource metadata, PingOne Authorize-led policy evaluation, token passing and token exchange to the MCP server, no tokens ever exposed to the LLM, and strict audience-per-hop validation so each token aud maps only to the next hop in the flow
 
@@ -1853,9 +1853,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 244-01-PLAN.md — Foundation: image assets, region config files, DiagramHighlighter component + CSS
-- [ ] 244-02-PLAN.md — Event wiring: ArchitectureOverviewPage + ArchitectureTokenFlowPage with polling and keyword scan
-- [ ] 244-03-PLAN.md — Routes + nav + FAB: App.js route, AdminSideNav Architecture group, embeddedAgentFabVisibility
+- [x] 244-01-PLAN.md — Foundation: image assets, region config files, DiagramHighlighter component + CSS
+- [x] 244-02-PLAN.md — Event wiring: ArchitectureOverviewPage + ArchitectureTokenFlowPage with polling and keyword scan
+- [x] 244-03-PLAN.md — Routes + nav + FAB: App.js route, AdminSideNav Architecture group, embeddedAgentFabVisibility
 
 ---
 ### Phase 245: 403 scope trap and token introspection — 403 insufficient scope errors are trapped by the agent, trigger automatic scope upgrade via token exchange, and all tokens are validated via PingOne introspection endpoint
@@ -1881,7 +1881,7 @@ Plans:
 Plans:
 - [x] 246-01-PLAN.md — CSS: left-rail guard + all phase-246 CSS classes
 - [x] 246-02-PLAN.md — JS: header redesign + Actions popout inline JSX
-- [ ] 246-03-PLAN.md — Build verification + human visual check
+- [x] 246-03-PLAN.md — Build verification + human visual check
 
 
 ### Phase 247: PingOne MCP Server integration — feature-flagged option to use pingidentity/pingone-mcp-server (stdio binary) alongside existing custom MCP gateway, with adapter layer, admin UI toggle, and status chip reflecting active mode
@@ -1892,9 +1892,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 247-01-PLAN.md — Feature flag registration + mcpMode field in BFF config route
-- [ ] 247-02-PLAN.md — PingOne stdio adapter service + server.js routing branch
-- [ ] 247-03-PLAN.md — React McpModeChip component + CSS + build verification
+- [x] 247-01-PLAN.md — Feature flag registration + mcpMode field in BFF config route
+- [x] 247-02-PLAN.md — PingOne stdio adapter service + server.js routing branch
+- [x] 247-03-PLAN.md — React McpModeChip component + CSS + build verification
 
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
@@ -1915,8 +1915,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 99-01-PLAN.md — Automated checks: UI build, server unit tests, UI unit tests
-- [ ] 99-02-PLAN.md — Human verification: server startup, OAuth flows, Phase 95-98 features
+- [x] 99-01-PLAN.md — Automated checks: UI build, server unit tests, UI unit tests
+- [x] 99-02-PLAN.md — Human verification: server startup, OAuth flows, Phase 95-98 features
 
 ### Phase 100: configurable step-up MFA threshold and agent transaction stop limit
 
@@ -1939,7 +1939,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 102-01-PLAN.md — Agent token acquisition + two-exchange flow + single-exchange flow + MCP validation
+- [x] 102-01-PLAN.md — Agent token acquisition + two-exchange flow + single-exchange flow + MCP validation
 
 **Success criteria:**
 - Agent can obtain its own token via client credentials when needed
