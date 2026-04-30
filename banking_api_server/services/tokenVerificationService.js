@@ -1,6 +1,7 @@
 /**
  * Cryptographic verification of JWTs using PingOne JWKS (RFC 7517 / RFC 7518).
- * Pairs with jwksService.js to convert JWK → PEM and call jsonwebtoken.verify().
+ * When JWKS is unavailable, falls back to RFC 7662 active-token introspection
+ * (asking PingOne directly instead of verifying the signature locally).
  *
  * Fail-open behaviour: by default a JWKS outage produces a warning and allows
  * the token to continue (demo-friendly).  Set JWKS_VERIFY_FAIL_OPEN=false to
@@ -10,11 +11,13 @@
  * RFC 7517 — JWK (key format)
  * RFC 7518 — JWA (algorithms)
  * RFC 7519 — JWT (claim semantics)
+ * RFC 7662 — Token Introspection (fallback)
  */
 'use strict';
 
 const jwt = require('jsonwebtoken');
 const jwksService = require('./jwksService');
+const tokenIntrospectionService = require('./tokenIntrospectionService');
 const { logger, LOG_CATEGORIES } = require('../utils/logger');
 
 /**
@@ -25,6 +28,8 @@ const FAIL_OPEN = process.env.JWKS_VERIFY_FAIL_OPEN !== 'false';
 
 /**
  * Verify a JWT's RS256/RS384/RS512 signature using PingOne JWKS.
+ * Falls back to RFC 7662 introspection when JWKS is unavailable — PingOne is
+ * authoritative about tokens it just issued even without local sig verification.
  * Never throws — all outcomes returned as a result object.
  *
  * @param {string} token  Raw JWT string.
@@ -34,9 +39,51 @@ const FAIL_OPEN = process.env.JWKS_VERIFY_FAIL_OPEN !== 'false';
  *   alg: string|null,
  *   kid: string|null,
  *   warning: string|null,
- *   error: string|null
+ *   error: string|null,
+ *   fallbackMethod: 'jwks'|'introspection'|'none'
  * }>}
  */
+
+/**
+ * Attempt RFC 7662 introspection as a fallback when JWKS is unavailable.
+ * @param {string} token
+ * @param {string|null} alg
+ * @param {string|null} kid
+ * @param {string} jwksFailureReason
+ */
+async function _introspectAsFallback(token, alg, kid, jwksFailureReason) {
+  try {
+    const intro = await tokenIntrospectionService.validateToken(token);
+    if (intro.valid) {
+      logger(LOG_CATEGORIES.AUTH,
+        `tokenVerificationService: JWKS unavailable — introspection fallback succeeded (sub=${intro.sub})`);
+      return {
+        verified: true,
+        claims: { sub: intro.sub, exp: intro.exp, aud: intro.aud, scope: intro.scopes, client_id: intro.client_id },
+        alg,
+        kid,
+        warning: `JWKS unavailable (${jwksFailureReason}); token confirmed active via RFC 7662 introspection. ` +
+          'Cryptographic tamper-detection was skipped — PingOne confirmed liveness only.',
+        error: null,
+        fallbackMethod: 'introspection',
+      };
+    }
+    // Introspection returned active=false — token is not valid
+    const errorMsg = `JWKS unavailable and token inactive per RFC 7662 introspection`;
+    if (FAIL_OPEN) {
+      return { verified: false, claims: null, alg, kid, warning: errorMsg, error: null, fallbackMethod: 'introspection' };
+    }
+    return { verified: false, claims: null, alg, kid, error: errorMsg, warning: null, fallbackMethod: 'introspection' };
+  } catch (introErr) {
+    logger(LOG_CATEGORIES.AUTH,
+      `tokenVerificationService: introspection fallback also failed — ${introErr.message}`);
+    const warning = `JWKS unavailable (${jwksFailureReason}); introspection fallback failed: ${introErr.message}`;
+    if (FAIL_OPEN) {
+      return { verified: false, claims: null, alg, kid, warning, error: null, fallbackMethod: 'none' };
+    }
+    return { verified: false, claims: null, alg, kid, error: warning, warning: null, fallbackMethod: 'none' };
+  }
+}
 async function verifyExchangedToken(token) {
   if (!token || typeof token !== 'string') {
     return { verified: false, claims: null, alg: null, kid: null, error: 'no token provided', warning: null };
@@ -70,11 +117,7 @@ async function verifyExchangedToken(token) {
   }
 
   if (!keyEntry) {
-    const warning = 'JWKS unavailable or key not found — signature unverified (structural claims only)';
-    if (FAIL_OPEN) {
-      return { verified: false, claims: null, alg, kid, warning, error: null };
-    }
-    return { verified: false, claims: null, alg, kid, error: warning, warning: null };
+    return _introspectAsFallback(token, alg, kid, 'key not found in JWKS');
   }
 
   // --- Export crypto.KeyObject → PEM for jsonwebtoken ---
@@ -82,11 +125,7 @@ async function verifyExchangedToken(token) {
   try {
     pem = keyEntry.keyObject.export({ type: 'spki', format: 'pem' });
   } catch (err) {
-    const warning = `Key export failed: ${err.message}`;
-    if (FAIL_OPEN) {
-      return { verified: false, claims: null, alg, kid, warning, error: null };
-    }
-    return { verified: false, claims: null, alg, kid, error: warning, warning: null };
+    return _introspectAsFallback(token, alg, kid, `key export failed: ${err.message}`);
   }
 
   // --- Cryptographic verification ---
@@ -97,7 +136,7 @@ async function verifyExchangedToken(token) {
     });
 
     logger(LOG_CATEGORIES.AUTH, `tokenVerificationService: JWKS verified — kid=${kid || '(none)'} alg=${alg}`);
-    return { verified: true, claims, alg, kid, warning: null, error: null };
+    return { verified: true, claims, alg, kid, warning: null, error: null, fallbackMethod: 'jwks' };
   } catch (err) {
     let errorMsg;
     if (err.name === 'TokenExpiredError') {
@@ -110,10 +149,12 @@ async function verifyExchangedToken(token) {
 
     logger(LOG_CATEGORIES.AUTH, `tokenVerificationService: ${errorMsg}`);
 
+    // Signature verification failed — introspection won't help here (it can't
+    // confirm integrity), so honour FAIL_OPEN directly without fallback.
     if (FAIL_OPEN) {
-      return { verified: false, claims: null, alg, kid, warning: errorMsg, error: null };
+      return { verified: false, claims: null, alg, kid, warning: errorMsg, error: null, fallbackMethod: 'jwks' };
     }
-    return { verified: false, claims: null, alg, kid, error: errorMsg, warning: null };
+    return { verified: false, claims: null, alg, kid, error: errorMsg, warning: null, fallbackMethod: 'jwks' };
   }
 }
 

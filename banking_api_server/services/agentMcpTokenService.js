@@ -1179,19 +1179,32 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     // Verify the exchanged token's RS256 signature using PingOne's published JWKS.
     try {
       const verif = await tokenVerificationService.verifyExchangedToken(exchangedToken);
+      const isIntrospectionFallback = verif.fallbackMethod === 'introspection';
+      const eventLabel = isIntrospectionFallback
+        ? 'MCP Token — Introspection Fallback (RFC 7662) · JWKS Unavailable'
+        : 'MCP Token — JWKS Cryptographic Signature Verification (RFC 7515)';
+      let explanation;
+      if (verif.verified && !isIntrospectionFallback) {
+        explanation = `Signature verified ✅ — PingOne's public key (kid=${verif.kid}, alg=${verif.alg}) confirms the token has not been tampered with since issuance. RFC 7515 §4.`;
+      } else if (verif.verified && isIntrospectionFallback) {
+        explanation = `JWKS unavailable — fell back to RFC 7662 introspection ✅. PingOne confirmed the exchanged token is active (liveness check). Cryptographic tamper-detection was skipped; this is acceptable because the token was received directly from PingOne milliseconds ago.`;
+      } else if (verif.warning) {
+        explanation = isIntrospectionFallback
+          ? `Both JWKS and introspection fallback produced a warning: ${verif.warning}.`
+          : `Signature check produced a warning (fail-open): ${verif.warning}. Set JWKS_VERIFY_FAIL_OPEN=false to hard-fail.`;
+      } else {
+        explanation = `Verification FAILED ❌ — ${verif.error}. The MCP token may have been tampered with or have expired.`;
+      }
       tokenEvents.push(buildTokenEvent(
         'exchanged-token-verified',
-        'MCP Token — JWKS Cryptographic Signature Verification (RFC 7515)',
+        eventLabel,
         verif.verified ? 'active' : (verif.warning ? 'warning' : 'failed'),
         verif.verified ? verif.claims : null,
-        verif.verified
-          ? `Signature verified ✅ — PingOne's public key (kid=${verif.kid}, alg=${verif.alg}) confirms the token has not been tampered with since issuance. RFC 7515 §4.`
-          : verif.warning
-            ? `Signature check produced a warning (fail-open): ${verif.warning}. Set JWKS_VERIFY_FAIL_OPEN=false to hard-fail on JWKS errors.`
-            : `Signature verification FAILED ❌ — ${verif.error}. The MCP token may have been tampered with or have expired.`,
+        explanation,
         {
-          rfc: 'RFC 7515 · RFC 7517 · RFC 7518',
+          rfc: isIntrospectionFallback ? 'RFC 7662 (fallback) · RFC 7515 attempted' : 'RFC 7515 · RFC 7517 · RFC 7518',
           verified: verif.verified,
+          fallbackMethod: verif.fallbackMethod,
           alg: verif.alg,
           kid: verif.kid,
           warning: verif.warning,
