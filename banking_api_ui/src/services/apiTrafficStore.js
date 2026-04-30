@@ -7,15 +7,50 @@ import { spinner } from './spinnerService';
 
 const MAX_ENTRIES = 200;
 /** Max characters stored per raw string body (fetch); avoids runaway memory on huge downloads. */
-const MAX_CAPTURE_BODY_CHARS = 2_000_000;
+const MAX_CAPTURE_BODY_CHARS = 20_000;
+/** Max characters when serialising a parsed-JSON body for storage; keeps localStorage small. */
+const MAX_JSON_BODY_CHARS = 20_000;
 const LS_KEY = 'api-traffic-store';
 let entries = [];
 let paused = false;
 const listeners = new Set();
 let seq = 0;
 
+/** Debounced localStorage write — batches rapid appends into a single serialisation. */
+let _persistTimer = null;
 function persistToStorage() {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(entries)); } catch (_) {}
+  if (_persistTimer) return;
+  _persistTimer = setTimeout(() => {
+    _persistTimer = null;
+    try { localStorage.setItem(LS_KEY, JSON.stringify(entries)); } catch (_) {}
+  }, 1500);
+}
+
+/**
+ * Cap a parsed-JSON body so a single large response (e.g. ?limit=500) cannot
+ * fill the entire ring buffer with megabytes of data.
+ */
+function capJsonBody(body) {
+  if (body === null || body === undefined) return body;
+  if (typeof body !== 'object') return body;
+  try {
+    const s = JSON.stringify(body);
+    if (s.length <= MAX_JSON_BODY_CHARS) return body;
+    return s.slice(0, MAX_JSON_BODY_CHARS) + '… [truncated]';
+  } catch (_) {
+    return '[unserializable]';
+  }
+}
+
+/** Debounced notify — batches rapid appends into a single React render cycle. */
+let _notifyTimer = null;
+function notify() {
+  if (_notifyTimer) return;
+  _notifyTimer = setTimeout(() => {
+    _notifyTimer = null;
+    const snap = entries;
+    listeners.forEach(fn => { try { fn(snap); } catch (_) {} });
+  }, 50);
 }
 
 /** Seed the in-memory store from localStorage (used by the popup page). */
@@ -74,22 +109,27 @@ export function tryParseJson(text) {
   try { return JSON.parse(text); } catch { return null; }
 }
 
-function notify() {
-  listeners.forEach(fn => { try { fn(entries); } catch (_) {} });
-}
-
 /** Append one traffic entry to the ring buffer. No-op when paused. */
 export function appendTrafficEntry(entry) {
   if (paused) return;
-  entries = [{ ...entry, id: ++seq }, ...entries.slice(0, MAX_ENTRIES - 1)];
+  const cappedEntry = {
+    ...entry,
+    id: ++seq,
+    responseBody: capJsonBody(entry.responseBody),
+    requestBody: capJsonBody(entry.requestBody),
+  };
+  entries = [cappedEntry, ...entries.slice(0, MAX_ENTRIES - 1)];
   persistToStorage();
   notify();
 }
 
 export function clearTraffic() {
   entries = [];
-  persistToStorage();
-  notify();
+  if (_persistTimer) { clearTimeout(_persistTimer); _persistTimer = null; }
+  if (_notifyTimer) { clearTimeout(_notifyTimer); _notifyTimer = null; }
+  try { localStorage.setItem(LS_KEY, JSON.stringify(entries)); } catch (_) {}
+  const snap = entries;
+  listeners.forEach(fn => { try { fn(snap); } catch (_) {} });
 }
 
 export function setPaused(val) { paused = !!val; }
