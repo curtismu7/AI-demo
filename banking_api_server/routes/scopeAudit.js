@@ -60,8 +60,8 @@ function matchExpected(resourceName) {
 // ── GET /resources — list PingOne resources with scopes + expected comparison ─
 router.get('/resources', async (_req, res) => {
   try {
-    const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
-    const region = configStore.getEffective('PINGONE_REGION') || 'com';
+    const envId = configStore.getEffective('pingone_environment_id');
+    const region = configStore.getEffective('pingone_region') || 'com';
     if (!envId) {
       return res.status(400).json({ error: 'PINGONE_ENVIRONMENT_ID not configured' });
     }
@@ -140,8 +140,8 @@ router.post('/scopes', async (req, res) => {
       return res.status(400).json({ error: 'resourceId and scopeName are required' });
     }
 
-    const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
-    const region = configStore.getEffective('PINGONE_REGION') || 'com';
+    const envId = configStore.getEffective('pingone_environment_id');
+    const region = configStore.getEffective('pingone_region') || 'com';
     const token = await getManagementToken();
     const url = `https://api.pingone.${region}/v1/environments/${envId}/resources/${resourceId}/scopes`;
 

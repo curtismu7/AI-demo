@@ -347,6 +347,11 @@ export class GatewayServer {
   // ---------------------------------------------------------------------------
   // Upstream forwarding — sends the MCP request to the upstream HTTP transport
   // Propagates MCP-Protocol-Version and MCP-Session-Id headers (D-03)
+  //
+  // The upstream MCP server (HttpMCPTransport) requires an initialize handshake
+  // before any tool call. When the caller doesn't supply a MCP-Session-Id, this
+  // method performs the handshake automatically (initialize → notifications/initialized)
+  // to obtain a session ID, then forwards the actual request.
   // ---------------------------------------------------------------------------
 
   private async forwardToUpstream(
@@ -356,24 +361,70 @@ export class GatewayServer {
     body: Buffer,
   ): Promise<void> {
     const upstreamUrl = `${this.upstreamMcpUrl}/mcp`;
+    const timeoutMs = parseInt(process.env.GW_UPSTREAM_TIMEOUT_MS || '30000', 10);
 
-    const headers: Record<string, string> = {
-      'Content-Type': req.headers['content-type'] || 'application/json',
+    // Parse body to determine if we need the initialize handshake
+    let jsonRpc: { method?: string; id?: unknown } = {};
+    try { jsonRpc = JSON.parse(body.toString('utf-8')); } catch { /* malformed — forward as-is */ }
+
+    const isInitialize = jsonRpc.method === 'initialize';
+    const isNotification = !isInitialize && jsonRpc.id === undefined;
+
+    const baseHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
       Authorization: `Bearer ${upstreamToken}`,
+      [MCP_PROTO_HEADER]: '2025-11-25',
     };
 
-    // Propagate MCP session and protocol headers
-    const protoVersion = req.headers[MCP_PROTO_HEADER] as string | undefined;
-    if (protoVersion) headers[MCP_PROTO_HEADER] = protoVersion;
+    // For non-initialize requests without a caller-supplied session ID, do the
+    // MCP handshake (initialize → notifications/initialized) to get a session ID.
+    let sessionId = req.headers[MCP_SESSION_HEADER] as string | undefined;
+    if (!isInitialize && !isNotification && !sessionId) {
+      const initBody = JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'gw-init',
+        method: 'initialize',
+        params: {
+          protocolVersion: '2025-11-25',
+          capabilities: {},
+          clientInfo: { name: 'banking-mcp-gateway', version: '1.0.0' },
+        },
+      });
+      try {
+        const initResp = await axios.post(upstreamUrl, initBody, {
+          headers: baseHeaders,
+          timeout: 10_000,
+          validateStatus: () => true,
+        });
+        sessionId = initResp.headers[MCP_SESSION_HEADER] as string | undefined;
+        if (sessionId) {
+          // Send notifications/initialized — upstream expects this before any tool call
+          const notifHeaders = { ...baseHeaders, [MCP_SESSION_HEADER]: sessionId };
+          await axios.post(
+            upstreamUrl,
+            JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} }),
+            { headers: notifHeaders, timeout: 5_000, validateStatus: () => true },
+          );
+        }
+      } catch (err) {
+        const axErr = err as AxiosError;
+        if (axErr.code === 'ECONNREFUSED' || axErr.code === 'ETIMEDOUT' || axErr.code === 'ECONNRESET') {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'upstream_unavailable', message: 'Upstream MCP server is unreachable (handshake)' }));
+          return;
+        }
+        throw err;
+      }
+    }
 
-    const sessionId = req.headers[MCP_SESSION_HEADER] as string | undefined;
+    const headers: Record<string, string> = { ...baseHeaders };
     if (sessionId) headers[MCP_SESSION_HEADER] = sessionId;
 
     try {
       const upstream = await axios.post(upstreamUrl, body, {
         headers,
         responseType: 'arraybuffer',
-        timeout: parseInt(process.env.GW_UPSTREAM_TIMEOUT_MS || '30000', 10),
+        timeout: timeoutMs,
         validateStatus: () => true, // forward all status codes
       });
 

@@ -88,6 +88,7 @@ const Transactions = ({ user, onLogout }) => {
               <thead>
                 <tr>
                   <th>Date</th>
+                  <th>User</th>
                   <th>Type</th>
                   <th>Amount</th>
                   <th>Description</th>
@@ -101,6 +102,10 @@ const Transactions = ({ user, onLogout }) => {
                   return (
                     <tr key={transaction.id}>
                       <td>{format(new Date(transaction.createdAt), 'MMM dd, yyyy HH:mm')}</td>
+                      <td style={{ fontSize: '0.8rem' }}>
+                        <div style={{ fontWeight: '600' }}>{transaction.ownerUsername || transaction.userId || '—'}</div>
+                        {transaction.ownerEmail && <div style={{ color: '#64748b', fontSize: '0.7rem' }}>{transaction.ownerEmail}</div>}
+                      </td>
                       <td>
                         <span style={{
                           padding: '0.25rem 0.5rem',
@@ -121,19 +126,16 @@ const Transactions = ({ user, onLogout }) => {
                       </td>
                       <td>{transaction.description}</td>
                       <td>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem'
-                        }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span style={{ fontSize: '1.2rem' }}>{clientInfo.icon}</span>
-                          <span style={{
-                            fontSize: '0.75rem',
-                            color: clientInfo.color,
-                            fontWeight: '500'
-                          }}>
-                            {clientInfo.label}
-                          </span>
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: clientInfo.color, fontWeight: '500' }}>
+                              {clientInfo.label}
+                            </div>
+                            {transaction.performedBy && transaction.performedBy !== transaction.userId && (
+                              <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{transaction.performedBy}</div>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td>

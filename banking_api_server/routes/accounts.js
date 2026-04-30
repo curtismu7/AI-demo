@@ -39,7 +39,21 @@ router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, 
       return res.status(403).json({ error: 'Access denied. Admin role required.' });
     }
     const accounts = dataStore.getAllAccounts();
-    res.json({ accounts });
+    const allUsers = dataStore.getAllUsers();
+    const userMap = {};
+    for (const u of allUsers) {
+      userMap[u.id] = u;
+    }
+    const enriched = accounts.map((acct) => {
+      const owner = acct.userId ? userMap[acct.userId] : null;
+      return {
+        ...acct,
+        ownerUsername: owner?.username || acct.userId || 'unknown',
+        ownerEmail: owner?.email || null,
+        ownerName: owner ? `${owner.firstName || ''} ${owner.lastName || ''}`.trim() : null,
+      };
+    });
+    res.json({ accounts: enriched });
   } catch (error) {
     console.error('Error getting accounts:', error);
     res.status(500).json({ error: 'Failed to get accounts' });

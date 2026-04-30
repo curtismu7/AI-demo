@@ -12,6 +12,46 @@ function formatJson(val) {
   return JSON.stringify(val, null, 2);
 }
 
+// Lightweight JSON syntax highlighter — no external deps
+function tokenizeJson(text) {
+  const tokens = [];
+  const re = /("(?:[^"\\]|\\.)*"\s*:)|("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b|([{}\[\],:])/g;
+  let last = 0, m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) tokens.push({ type: 'plain', text: text.slice(last, m.index) });
+    if (m[1]) tokens.push({ type: 'key', text: m[1] });
+    else if (m[2]) tokens.push({ type: 'string', text: m[2] });
+    else if (m[3]) tokens.push({ type: 'number', text: m[3] });
+    else if (m[4]) tokens.push({ type: 'keyword', text: m[4] });
+    else if (m[5]) tokens.push({ type: 'punct', text: m[5] });
+    last = re.lastIndex;
+  }
+  if (last < text.length) tokens.push({ type: 'plain', text: text.slice(last) });
+  return tokens;
+}
+
+const JSON_COLORS = {
+  key:     '#7dd3fc', // sky-300
+  string:  '#86efac', // green-300
+  number:  '#fbbf24', // amber-400
+  keyword: '#f472b6', // pink-400
+  punct:   '#94a3b8', // slate-400
+  plain:   '#e2e8f0', // slate-200
+};
+
+function JsonHighlight({ value }) {
+  const text = formatJson(value);
+  if (!text) return <span style={{ color: '#64748b', fontStyle: 'italic' }}>—</span>;
+  const tokens = tokenizeJson(text);
+  return (
+    <>
+      {tokens.map((t, i) => (
+        <span key={i} style={{ color: JSON_COLORS[t.type] }}>{t.text}</span>
+      ))}
+    </>
+  );
+}
+
 function methodCls(method) {
   return `aep-method aep-method--${(method || 'GET').toUpperCase()}`;
 }
@@ -58,7 +98,7 @@ function DetailView({ call }) {
       <div className="aep-section">
         <div className="aep-section-label">Request Body</div>
         {call.request?.body ? (
-          <pre className="aep-json">{formatJson(call.request.body)}</pre>
+          <pre className="aep-json"><JsonHighlight value={call.request.body} /></pre>
         ) : (
           <pre className="aep-json aep-json--none">No request body</pre>
         )}
@@ -67,7 +107,7 @@ function DetailView({ call }) {
       <div className="aep-section">
         <div className="aep-section-label">Response Body</div>
         {call.response?.body ? (
-          <pre className="aep-json">{formatJson(call.response.body)}</pre>
+          <pre className="aep-json"><JsonHighlight value={call.response.body} /></pre>
         ) : (
           <pre className="aep-json aep-json--none">No response body</pre>
         )}
@@ -76,7 +116,7 @@ function DetailView({ call }) {
       <div className="aep-section">
         <div className="aep-section-label">Request Headers</div>
         {call.request?.headers && Object.keys(call.request.headers).length > 0 ? (
-          <pre className="aep-json">{formatJson(call.request.headers)}</pre>
+          <pre className="aep-json"><JsonHighlight value={call.request.headers} /></pre>
         ) : (
           <pre className="aep-json aep-json--none">—</pre>
         )}

@@ -2584,6 +2584,12 @@ export default function BankingAgent({
 						});
 						setLoading(false);
 						toolProgressIdRef.current = null;
+						// Store pending action so cibaStepUpApproved can retry tools/list
+						pendingStepUpActionRef.current = {
+							actionId,
+							form,
+							method: data.step_up_method || "email",
+						};
 						window.dispatchEvent(
 							new CustomEvent("agentStepUpRequested", {
 								detail: { step_up_method: data.step_up_method || "email" },

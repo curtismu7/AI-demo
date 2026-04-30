@@ -14,7 +14,7 @@ export default function ScopeReferencePage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/admin/scope-vocabulary', { credentials: 'include' });
+        const res = await fetch('/api/admin/config/scope-vocabulary', { credentials: 'include' });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         if (!cancelled) setMarkdown(data.markdown);

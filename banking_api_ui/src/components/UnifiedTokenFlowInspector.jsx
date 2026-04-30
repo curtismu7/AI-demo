@@ -119,6 +119,7 @@ function AgentFlowSection({ compact = false, onSelectToken, selectedTokenId: sel
   const [snap, setSnap] = useState(() => agentFlowDiagram.getState());
   const [tokenChain, setTokenChain] = useState([]);
   const [showTokenChain, setShowTokenChain] = useState(false);
+  const [tokenChainOpen, setTokenChainOpen] = useState(true);
   const [showFlowDiagram, setShowFlowDiagram] = useState(false);
   const { mode } = useExchangeMode();
   const tokenChainCtx = useTokenChainOptional();
@@ -254,17 +255,21 @@ function AgentFlowSection({ compact = false, onSelectToken, selectedTokenId: sel
         {/* Token chain */}
         {showTokenChain && tokenChain.length > 0 && (
           <div className="utfi-token-chain-section">
-            <div className="utfi-token-chain-header">
+            <div
+              className="utfi-token-chain-header"
+              onClick={() => setTokenChainOpen(!tokenChainOpen)}
+              style={{ cursor: 'pointer' }}
+            >
               <span>Current Token Chain (click to inspect)</span>
               <button
                 className="utfi-btn utfi-btn-sm"
-                onClick={() => setShowTokenChain(!showTokenChain)}
-                aria-pressed={showTokenChain}
+                onClick={(e) => { e.stopPropagation(); setTokenChainOpen(!tokenChainOpen); }}
+                aria-pressed={tokenChainOpen}
               >
-                {showTokenChain ? '▼' : '▶'}
+                {tokenChainOpen ? '▼' : '▶'}
               </button>
             </div>
-            {showTokenChain && (
+            {tokenChainOpen && (
               <div className="utfi-token-chain">
                 {tokenChain.map((token) => (
                   <div 

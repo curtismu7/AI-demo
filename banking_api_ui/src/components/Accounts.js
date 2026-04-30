@@ -96,6 +96,7 @@ const Accounts = ({ user, onLogout }) => {
             <table className="table">
               <thead>
                 <tr>
+                  <th>Owner</th>
                   <th>Account Number</th>
                   <th>Type</th>
                   <th>Balance</th>
@@ -110,6 +111,10 @@ const Accounts = ({ user, onLogout }) => {
                   const badgeColor = ACCOUNT_TYPE_BADGE_COLORS[typeKey] || '#64748b';
                   return (
                   <tr key={account.id}>
+                    <td style={{ fontSize: '0.8rem' }}>
+                      <div style={{ fontWeight: '600' }}>{account.ownerUsername || account.userId || '—'}</div>
+                      {account.ownerEmail && <div style={{ color: '#64748b', fontSize: '0.7rem' }}>{account.ownerEmail}</div>}
+                    </td>
                     <td style={{ fontFamily: 'monospace', fontWeight: '600' }}>
                       {account.accountNumber}
                     </td>

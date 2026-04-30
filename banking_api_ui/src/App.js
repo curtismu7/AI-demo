@@ -29,6 +29,7 @@ import { AgenticTrustEducation } from "./components/AgenticTrustEducation";
 import ApiExplorerPanel from "./components/ApiExplorerPanel";
 import ArchitectureFlowPage from "./components/ArchitectureFlowPage";
 import ArchitectureOverviewPage from "./components/ArchitectureOverviewPage";
+import ArchitectureTabsPanel from "./components/ArchitectureTabsPanel";
 import ArchitectureTokenFlowPage from "./components/ArchitectureTokenFlowPage";
 import ApiTrafficPage from "./components/ApiTrafficPage";
 import AuditPage from "./components/AuditPage";
@@ -809,6 +810,7 @@ function AppWithAuth() {
 										<TopNav user={user} onLogout={logout} />
 										<main className="main-content">
 											<Routes>
+												<Route path="system" element={<ArchitectureTabsPanel />} />
 												<Route path="overview" element={<ArchitectureOverviewPage user={user} />} />
 												<Route path="token-flow" element={<ArchitectureTokenFlowPage user={user} />} />
 												<Route path="flow" element={<ArchitectureFlowPage user={user} />} />

@@ -19,7 +19,7 @@
  */
 async function postAppEvent(category, severity, message, options = {}) {
   try {
-    await fetch('/api/app-events', {
+    await fetch('/api/admin/app-events', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -33,7 +33,7 @@ async function postAppEvent(category, severity, message, options = {}) {
     });
   } catch (e) {
     // Silently fail — logging infrastructure must never block UX
-    console.debug('[appEventClient] POST /app-events failed:', e.message);
+    console.debug('[appEventClient] POST /admin/app-events failed:', e.message);
   }
 }
 

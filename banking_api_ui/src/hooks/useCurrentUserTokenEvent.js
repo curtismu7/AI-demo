@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTokenChainOptional } from '../context/TokenChainContext';
 
 /**
@@ -11,9 +11,14 @@ import { useTokenChainOptional } from '../context/TokenChainContext';
  */
 export function useCurrentUserTokenEvent() {
   const tokenChain = useTokenChainOptional();
+  // Use a ref so the effect closure always has the latest context methods
+  // without adding them to the dependency array (which would cause an
+  // infinite loop: setSessionToken → new context value → effect re-runs).
+  const tokenChainRef = useRef(tokenChain);
+  useEffect(() => { tokenChainRef.current = tokenChain; });
 
   useEffect(() => {
-    if (!tokenChain) return;
+    if (!tokenChainRef.current) return;
 
     let isMounted = true;
 
@@ -26,7 +31,7 @@ export function useCurrentUserTokenEvent() {
         if (Array.isArray(data.tokenEvents) && data.tokenEvents.length > 0) {
           // Push the first event (user-token) as the session token so the
           // token chain panel shows the real decoded JWT.
-          tokenChain.setSessionToken(data.tokenEvents[0]);
+          tokenChainRef.current?.setSessionToken(data.tokenEvents[0]);
         }
       } catch (err) {
         console.debug('[useCurrentUserTokenEvent] Could not fetch session token:', err?.message);
@@ -38,5 +43,5 @@ export function useCurrentUserTokenEvent() {
     return () => {
       isMounted = false;
     };
-  }, [tokenChain]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }

@@ -359,9 +359,6 @@ export default function OtpStepUpModal({
                 Try another method
               </button>
             )}
-            <button type="button" className="otp-step-up-modal__btn-ghost" onClick={handleCancel}>
-              Cancel
-            </button>
           </div>
         </div>
       </div>
@@ -413,9 +410,6 @@ export default function OtpStepUpModal({
           )}
           <button type="button" className="otp-step-up-modal__btn-primary" onClick={handleSubmit}>
             Verify
-          </button>
-          <button type="button" className="otp-step-up-modal__btn-ghost" onClick={handleCancel}>
-            Cancel
           </button>
         </div>
 

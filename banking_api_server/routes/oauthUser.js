@@ -645,7 +645,7 @@ router.get('/status', (req, res) => {
   // updated in req.session before we get here, so this check is transparent for valid sessions.
   const expiresAt = req.session.oauthTokens?.expiresAt;
   const tokenNotExpired = !expiresAt || Date.now() < expiresAt;
-  const isAuthenticated = !!(req.session.user && hasOAuthToken && tokenNotExpired && req.session.oauthType === 'user');
+  const isAuthenticated = !!(req.session.user && hasOAuthToken && tokenNotExpired && (req.session.oauthType === 'user' || req.session.oauthType === 'admin'));
 
   // In-app consent flag — set by POST /api/auth/oauth/user/consent (no PingOne dependency)
   const consentGiven = isAuthenticated && req.session.agentConsentGiven === true;

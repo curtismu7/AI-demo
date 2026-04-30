@@ -14,9 +14,6 @@ import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import { toastAdminSessionError } from '../utils/dashboardToast';
 import '../styles/appShellPages.css';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
-// Phase 163: ChaseTopNav removed — sidebar provides all navigation
-import SplitPaneLayout from './SplitPaneLayout';
-import ArchitectureTabsPanel from './ArchitectureTabsPanel';
 import ApiCallsModal from './ApiCallsModal';
 import AgentUiModeToggle from './AgentUiModeToggle';
 import DashboardHeader from './DashboardHeader';
@@ -327,7 +324,7 @@ const Dashboard = ({ user, onLogout }) => {
         <div
           className={`ud-shell ${agentPlacement === 'bottom' ? 'ud-shell--embed-bottom' : 'ud-shell--floating-only'}`}
         >
-        <SplitPaneLayout archPanel={<ArchitectureTabsPanel />}>
+        <div className="split-pane-layout">
         {scopeInjectionEnabled && (
           <div className="dash-scope-injection-banner" role="alert">
             <span className="dash-scope-injection-banner__icon">⚠️</span>
@@ -774,7 +771,7 @@ const Dashboard = ({ user, onLogout }) => {
 
       </main>
 
-        </SplitPaneLayout>
+        </div>
 
 
         </div>

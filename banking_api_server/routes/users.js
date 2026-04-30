@@ -3,6 +3,25 @@ const router = express.Router();
 const dataStore = require('../data/store');
 const { requireAdmin, requireOwnershipOrAdmin, requireAIAgent, authenticateToken, requireScopes, hashPassword } = require('../middleware/auth');
 const { blockInDemoMode, isDemoMode } = require('../middleware/demoMode');
+const pingOneUserService = require('../services/pingOneUserService');
+
+/**
+ * Normalize a PingOne user object to the shape the UI expects.
+ */
+function normalizePingOneUser(u) {
+  return {
+    id: u.id,
+    firstName: u.name?.given || '',
+    lastName: u.name?.family || '',
+    username: u.username || u.email || '',
+    email: u.email || '',
+    role: u.population?.id ? 'user' : 'user',  // PingOne has no role field; default to 'user'
+    isActive: u.enabled !== false,
+    createdAt: u.createdAt || new Date().toISOString(),
+    updatedAt: u.updatedAt,
+    population: u.population,
+  };
+}
 
 // Query user by email (AI agents only)
 router.get('/query/by-email/:email', authenticateToken, requireAIAgent, (req, res) => {
@@ -49,22 +68,17 @@ router.get('/query/by-email/:email', authenticateToken, requireAIAgent, (req, re
   }
 });
 
-// Get all users (admin only)
-router.get('/', authenticateToken, requireScopes(['banking:read']), requireAdmin, (req, res) => {
+// Get all users (admin only) — fetches live from PingOne
+router.get('/', authenticateToken, requireScopes(['banking:read']), requireAdmin, async (req, res) => {
   try {
-    const users = dataStore.getAllUsers();
-    
-    // Remove passwords from response
-    const usersWithoutPasswords = users.map(user => {
-      const { password: _password, ...userWithoutPassword } = user;
-      return userWithoutPassword;
-    });
-
-    res.json({ users: usersWithoutPasswords });
-
+    pingOneUserService.initialize();
+    const { limit = 100 } = req.query;
+    const result = await pingOneUserService.listUsers({ limit: parseInt(limit) });
+    const raw = result._embedded?.users || [];
+    res.json({ users: raw.map(normalizePingOneUser), total: raw.length });
   } catch (error) {
     console.error('Get users error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', message: error.message });
   }
 });
 
@@ -235,23 +249,17 @@ router.delete('/:userId', blockInDemoMode('user deletion'), authenticateToken, r
   }
 });
 
-// Search users (admin only)
-router.get('/search/:query', authenticateToken, requireScopes(['banking:read']), requireAdmin, (req, res) => {
+// Search users (admin only) — fetches live from PingOne
+router.get('/search/:query', authenticateToken, requireScopes(['banking:read']), requireAdmin, async (req, res) => {
   try {
     const { query } = req.params;
-    const users = dataStore.searchUsers(query);
-    
-    // Remove passwords from response
-    const usersWithoutPasswords = users.map(user => {
-      const { password: _password, ...userWithoutPassword } = user;
-      return userWithoutPassword;
-    });
-
-    res.json({ users: usersWithoutPasswords });
-
+    pingOneUserService.initialize();
+    const result = await pingOneUserService.searchUsers(query);
+    const raw = result._embedded?.users || [];
+    res.json({ users: raw.map(normalizePingOneUser) });
   } catch (error) {
     console.error('Search users error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', message: error.message });
   }
 });
 

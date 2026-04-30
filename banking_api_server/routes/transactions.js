@@ -74,11 +74,16 @@ router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, 
     }
     
     const transactions = dataStore.getAllTransactions();
+    const allUsers = dataStore.getAllUsers();
+    const userMap = {};
+    for (const u of allUsers) { userMap[u.id] = u; }
     const transactionsWithNames = transactions.map(transaction => {
-      const user = dataStore.getUserById(transaction.userId);
+      const owner = transaction.userId ? userMap[transaction.userId] : null;
       return {
         ...transaction,
-        performedBy: user ? `${user.firstName} ${user.lastName}` : transaction.userId
+        performedBy: owner ? `${owner.firstName || ''} ${owner.lastName || ''}`.trim() : transaction.userId,
+        ownerUsername: owner?.username || transaction.userId || 'unknown',
+        ownerEmail: owner?.email || null,
       };
     });
     res.json({ transactions: transactionsWithNames });

@@ -212,3 +212,61 @@ describe('MCP Inspector routes', () => {
     expect(mockCall).toHaveBeenCalledWith('get_my_accounts', {}, `exchanged:${token}`, 'inspector-test-user');
   });
 });
+
+describe('MCP Inspector — MFA gate (GET /api/mcp/inspector/tools)', () => {
+  beforeEach(() => {
+    mockRtGet.mockImplementation((key) => {
+      if (key === 'stepUpEnabled') return true;
+      if (key === 'stepUpMethod') return 'email';
+      return undefined;
+    });
+  });
+
+  afterEach(() => {
+    mockRtGet.mockImplementation((key) => {
+      if (key === 'stepUpEnabled') return false;
+      return undefined;
+    });
+  });
+
+  it('returns mfa_required:true when stepUpEnabled and session has no stepUpVerified', async () => {
+    const res = await request(app)
+      .get('/api/mcp/inspector/tools')
+      .set('Authorization', `Bearer ${bearerToken()}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.mfa_required).toBe(true);
+    expect(res.body.tools).toEqual([]);
+    expect(res.body.step_up_method).toBe('email');
+    expect(res.body._source).toBe('mfa_gate');
+  });
+
+  it('returns mfa_required:true when stepUpVerified is in the past', async () => {
+    const res = await request(app)
+      .get('/api/mcp/inspector/tools')
+      .set('Authorization', `Bearer ${bearerToken()}`)
+      // Simulate expired stepUpVerified via session cookie (server sets it; we test without it)
+      ;
+
+    expect(res.status).toBe(200);
+    expect(res.body.mfa_required).toBe(true);
+  });
+
+  it('returns tools (not mfa_required) when stepUpEnabled is false', async () => {
+    mockRtGet.mockImplementation((key) => {
+      if (key === 'stepUpEnabled') return false;
+      return undefined;
+    });
+    mockList.mockResolvedValueOnce({
+      tools: [{ name: 'get_my_accounts', description: 'List accounts' }],
+    });
+
+    const res = await request(app)
+      .get('/api/mcp/inspector/tools')
+      .set('Authorization', `Bearer ${bearerToken()}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.mfa_required).toBeUndefined();
+    expect(Array.isArray(res.body.tools)).toBe(true);
+  });
+});

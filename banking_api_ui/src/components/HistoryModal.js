@@ -136,6 +136,15 @@ export default function HistoryModal({ history, onClear }) {
     prevLenRef.current = len;
   }, [history]);
 
+  // Listen for clear signal posted by the popout window
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.data === 'token-history-clear') onClear?.();
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [onClear]);
+
   const onDragDown = useCallback((e) => {
     if (e.button !== 0) return;
     e.preventDefault();
@@ -177,7 +186,12 @@ export default function HistoryModal({ history, onClear }) {
     html.innerHTML = `
       <head><title>Token History</title>
       <style>
-        body { font-family: system-ui,sans-serif; background:#f8fafc; margin:0; padding:12px; }
+        body { font-family: system-ui,sans-serif; background:#f8fafc; margin:0; padding:0; }
+        .toolbar { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#f1f5f9; border-bottom:1px solid #e2e8f0; position:sticky; top:0; z-index:10; }
+        .toolbar h3 { flex:1; margin:0; font-size:0.95rem; color:#1e293b; }
+        .toolbar button { padding:3px 10px; border:1px solid #cbd5e1; border-radius:4px; background:#fff; cursor:pointer; font-size:0.75rem; color:#475569; }
+        .toolbar button:hover { background:#f8fafc; }
+        .body { padding:12px; }
         .entry { border-bottom:1px solid #e2e8f0; margin-bottom:10px; padding-bottom:10px; }
         .chip  { background:#004687; color:#fff; font-size:0.6rem; font-weight:700; border-radius:20px; padding:2px 7px; }
         .label { font-size:0.72rem; font-weight:600; color:#475569; margin-left:6px; }
@@ -185,7 +199,13 @@ export default function HistoryModal({ history, onClear }) {
         .claim { display:flex; gap:8px; margin-bottom:3px; font-size:0.73rem; font-family:monospace; }
         .k     { color:#64748b; min-width:90px; }
       </style></head>
-      <body><h3 style="margin:0 0 12px;font-size:0.95rem;color:#1e293b">📋 Token History — ${history.length} entries</h3>
+      <body>
+        <div class="toolbar">
+          <h3>📋 Token History — ${history.length} entries</h3>
+          <button onclick="window.opener&&window.opener.postMessage('token-history-clear','*')">✕ Clear</button>
+          <button onclick="window.close()">✕ Close</button>
+        </div>
+        <div class="body">
       ${history.map(e => `
         <div class="entry">
           <span class="chip">${e.isLive ? '🔴 LIVE' : 'Step ' + e.stepNum}</span>
@@ -198,8 +218,11 @@ export default function HistoryModal({ history, onClear }) {
             ${t.note ? `<div style="font-size:0.68rem;color:#64748b;font-style:italic;margin-top:4px">ℹ ${t.note}</div>` : ''}
             </div>`).join('')}
         </div>`).join('')}
+        </div>
       </body>`;
     w.document.replaceChild(html, w.document.documentElement);
+    // Hide the in-browser panel while popout is open
+    setVisible(false);
   }, [history, size, pos]);
 
   if (!visible || !history || history.length === 0) return null;

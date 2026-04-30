@@ -129,7 +129,6 @@ export default function AdminSideNav({ user }) {
 				{ label: "Token Chain", path: "/monitoring/token-chain", icon: "🔗" },
 				{ label: "Token Diff", path: "/monitoring/token-diff", icon: "📊" },
 				{ label: "Flow Inspector", path: "/monitoring/flow-inspector", icon: "🔬" },
-				{ label: "MCP Traffic", path: "/monitoring/mcp-traffic", icon: "🔌" },
 				{ label: "API Explorer", path: "/monitoring/api-explorer", icon: "📡" },
 			],
 		},
@@ -137,6 +136,7 @@ export default function AdminSideNav({ user }) {
 			label: "Architecture",
 			icon: "🗺️",
 			children: [
+				{ label: "System Architecture", path: "/architecture/system", icon: "🗺️" },
 				{ label: "Overview Diagram", path: "/architecture/overview", icon: "🏗️" },
 				{ label: "Token Flow Diagram", path: "/architecture/token-flow", icon: "🔗" },
 				{ label: "Interactive Flow", path: "/architecture/flow", icon: "⚡" },
@@ -291,7 +291,7 @@ export default function AdminSideNav({ user }) {
 		...(user
 			? [
 					{
-						label: isAdmin ? "Admin View" : "Customer View",
+						label: isAdmin ? "Customer View" : "Admin View",
 						action: "switch-role",
 						icon: "⇄",
 					},
@@ -434,6 +434,13 @@ export default function AdminSideNav({ user }) {
 			>
 				{collapsed ? "→" : "←"}
 			</button>
+
+			{/* Role badge — always visible at top of sidebar */}
+			{!collapsed && (
+				<div className={`admin-side-nav__role-badge admin-side-nav__role-badge--${isAdmin ? 'admin' : 'customer'}`}>
+					{isAdmin ? '🛡 ADMIN' : '👤 CUSTOMER'}
+				</div>
+			)}
 
 			{/* Navigation Menu */}
 			<nav className="admin-side-nav__menu">
