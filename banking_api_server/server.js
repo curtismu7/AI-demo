@@ -993,6 +993,7 @@ const {
 const {
     resolveMcpAccessTokenWithEvents,
     buildSessionPreviewTokenEvents,
+    buildTokenEvent,
 } = require('./services/agentMcpTokenService');
 
 // Write tools that require a banking:write-scoped token obtained via scope upgrade.
@@ -1458,6 +1459,22 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
                 emit({
                     phase: 'introspection_inactive'
                 });
+                tokenEvents.push(buildTokenEvent(
+                    'session-token-introspection',
+                    'Session Token — PingOne Introspection (RFC 7662)',
+                    'failed',
+                    null,
+                    'PingOne returned active=false for the session token. The tool call cannot proceed with an inactive session.',
+                    {
+                        rfc: 'RFC 7662',
+                        introspectionResult: {
+                            active: false,
+                            sub: introspectionResult.sub,
+                            scope: introspectionResult.scope,
+                            exp: introspectionResult.exp,
+                        },
+                    }
+                ));
                 console.warn(`[MCP Proxy] Session token introspection failed: token inactive for tool ${tool}`);
                 return res.status(401).json({
                     error: 'token_inactive',
@@ -1468,10 +1485,34 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             emit({
                 phase: 'introspection_active_ok'
             });
+            tokenEvents.push(buildTokenEvent(
+                'session-token-introspection',
+                'Session Token — PingOne Introspection (RFC 7662)',
+                'active',
+                null,
+                `PingOne confirmed the session token is active. sub=${introspectionResult.sub || '—'} scope="${introspectionResult.scope || ''}"`,
+                {
+                    rfc: 'RFC 7662',
+                    introspectionResult: {
+                        active: true,
+                        sub: introspectionResult.sub,
+                        scope: introspectionResult.scope,
+                        exp: introspectionResult.exp,
+                    },
+                }
+            ));
         } catch (err) {
             emit({
                 phase: 'introspection_error_degraded'
             });
+            tokenEvents.push(buildTokenEvent(
+                'session-token-introspection',
+                'Session Token — PingOne Introspection (RFC 7662)',
+                'degraded',
+                null,
+                `Introspection endpoint error — continuing in degraded mode. ${err.message}`,
+                { rfc: 'RFC 7662' }
+            ));
             console.error(`[MCP Proxy] Session token introspection error for tool ${tool}:`, err.message);
             // Continue on introspection failure (graceful degradation) but log the error
         }
@@ -1479,6 +1520,14 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         emit({
             phase: 'introspection_not_configured'
         });
+        tokenEvents.push(buildTokenEvent(
+            'session-token-introspection',
+            'Session Token — PingOne Introspection (RFC 7662)',
+            'skipped',
+            null,
+            'PINGONE_INTROSPECTION_ENDPOINT is not configured. Session token liveness is not verified on this tool call.',
+            { rfc: 'RFC 7662' }
+        ));
     }
 
     // ── Try remote MCP server first; fall back to local handler if unreachable ──

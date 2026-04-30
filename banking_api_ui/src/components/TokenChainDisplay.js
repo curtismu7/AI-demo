@@ -382,6 +382,65 @@ function IntrospectionEduBox({ event }) {
 }
 
 /**
+ * Renders the session-token introspection card (server.js RFC 7662 gate).
+ * Shows for session-token-introspection events — active, failed, degraded, or skipped.
+ */
+function SessionIntrospectionEduBox({ event }) {
+  if (event.id !== 'session-token-introspection') return null;
+  const result = event.extra?.introspectionResult || {};
+  const status = event.eventStatus || 'skipped';
+  const statusMeta = {
+    active:   { icon: '✅', cls: 'tcd-edu-box--ok',      label: 'Session Active' },
+    failed:   { icon: '❌', cls: 'tcd-edu-box--error',   label: 'Session Inactive' },
+    degraded: { icon: '⚠️', cls: 'tcd-edu-box--neutral', label: 'Degraded (endpoint error)' },
+    skipped:  { icon: '⏭', cls: 'tcd-edu-box--neutral', label: 'Not Configured' },
+  };
+  const meta = statusMeta[status] || statusMeta.skipped;
+
+  return (
+    <div className={`tcd-edu-box ${meta.cls}`}>
+      <div className="tcd-edu-box-hd">
+        <span className="tcd-edu-icon">{meta.icon}</span>
+        <strong>RFC 7662 Session-Token Introspection — {meta.label}</strong>
+        <span className="tcd-edu-ref">RFC 7662 §2.2</span>
+      </div>
+      <div className="tcd-edu-body">
+        {status === 'active' && (
+          <>
+            <p>PingOne confirmed the <strong>session token</strong> (the user's browser session bearer) is currently <strong>active</strong> — before any token exchange was attempted. This is a second zero-trust gate on top of the per-call user-token introspection.</p>
+            <ul>
+              {result.sub   && <li><code>sub</code>: <strong>{result.sub}</strong></li>}
+              {result.scope && <li><code>scope</code>: <code>{result.scope}</code></li>}
+              {result.exp   && <li><code>exp</code>: {new Date(result.exp * 1000).toLocaleTimeString()}</li>}
+            </ul>
+            <p className="tcd-edu-detail">RFC 7662 §2.2: <code>active: true</code> means the session has not expired or been revoked at the IdP.</p>
+          </>
+        )}
+        {status === 'failed' && (
+          <>
+            <p>PingOne returned <code>active: false</code> for the session token. The BFF rejected the tool call immediately — no exchange was attempted.</p>
+            <p className="tcd-edu-detail">RFC 7662 §2.2: inactive tokens must be treated as if no token was presented. Sign out and sign back in to get a fresh session.</p>
+            <div className="tcd-edu-fix"><strong>Fix:</strong> Sign out and sign in again.</div>
+          </>
+        )}
+        {status === 'degraded' && (
+          <>
+            <p>The introspection endpoint returned an error. The BFF continued in <strong>degraded mode</strong> — the tool call was allowed to proceed without session liveness confirmation.</p>
+            <p className="tcd-edu-detail">This is acceptable for a demo. In production, consider failing closed on introspection errors.</p>
+          </>
+        )}
+        {status === 'skipped' && (
+          <>
+            <p><code>PINGONE_INTROSPECTION_ENDPOINT</code> is not set. Session token liveness is <strong>not</strong> verified on this tool call — the BFF relies on the session cookie expiry only.</p>
+            <p className="tcd-edu-detail">Configure the endpoint (found in your PingOne application settings) for zero-trust session validation on every tool call.</p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
  * Renders the JWKS signature verification card.
  * Shows for exchanged-token-verified events — verified, introspection fallback, warning, or skipped.
  */
@@ -516,7 +575,8 @@ function EventDetail({ event }) {
       <CollapsibleEdu title="🔗 act — Actor Claim" event={event} Component={ActEduBox} />
       <CollapsibleEdu title="📋 Exchange Validation" event={event} Component={ExchangeCheckList} />
       <CollapsibleEdu title="🔍 RFC 7662 Active-Token Introspection" event={event} Component={IntrospectionEduBox} />
-      <CollapsibleEdu title="🔐 JWKS Signature Verification" event={event} Component={JwksVerifyEduBox} />
+      <CollapsibleEdu title="�️ RFC 7662 Session-Token Introspection" event={event} Component={SessionIntrospectionEduBox} />
+      <CollapsibleEdu title="�🔐 JWKS Signature Verification" event={event} Component={JwksVerifyEduBox} />
       {event.explanation && (
         <p className="tcd-explanation">{event.explanation}</p>
       )}
@@ -752,7 +812,7 @@ const InspectIcon = () => (
 
 const CLAIMS_STRIP_IDS = new Set([
   'user-token', 'exchanged-token', 'agent-actor-token', 'exchanged-token-fallback',
-  'user-token-introspection', 'exchanged-token-verified',
+  'user-token-introspection', 'exchanged-token-verified', 'session-token-introspection',
 ]);
 
 function fmtSub(sub, hints) {
