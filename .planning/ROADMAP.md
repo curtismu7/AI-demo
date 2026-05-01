@@ -2035,6 +2035,21 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 260 to break down)
 
+### Phase 261: Phase 260 compliance: gateway denial metadata, agent recovery, BFF propagation, UI checklist, OLB resource token exchange, PingOne claim diagnostics
+
+**Goal:** Bring the agent/gateway/BFF/UI stack into full compliance with the Phase 260 architecture spec: structured gateway denial metadata, agent service recovery branches, BFF propagation with semantic HTTP status codes, UI compliance checklist with real-time status strip, OLB downstream resource token exchange, and PingOne claim/scope diagnostics.
+**Requirements**: COMPLIANCE-261-W1, COMPLIANCE-261-W2, COMPLIANCE-261-W3, COMPLIANCE-261-W4, COMPLIANCE-261-W5, COMPLIANCE-261-W6
+**Depends on:** Phase 260
+**Plans:** 6 plans
+
+Plans:
+- [ ] 261-01-PLAN.md — Wave 1: Gateway denial metadata + toolScopes.ts
+- [ ] 261-02-PLAN.md — Wave 2: Agent service error propagation + recovery branches
+- [ ] 261-03-PLAN.md — Wave 3: BFF structured response shapes + login resume (D-03)
+- [ ] 261-04-PLAN.md — Wave 4: UI compliance checklist, status strip, GatewayConsentModal
+- [ ] 261-05-PLAN.md — Wave 5: MCP OLB downstream resource token exchange (Step 9)
+- [ ] 261-06-PLAN.md — Wave 6: PingOne claim/scope compliance diagnostics
+
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
