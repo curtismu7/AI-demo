@@ -134,7 +134,7 @@ export default function AdminSideNav({ user }) {
 				{ label: "Token Chain", path: "/monitoring/token-chain", icon: "🔗" },
 				{ label: "Token Diff", path: "/monitoring/token-diff", icon: "📊" },
 				{ label: "Flow Inspector", path: "/monitoring/flow-inspector", icon: "🔬" },
-				{ label: "Agent Request Flow", path: "/monitoring/agent-flow", icon: "🔀" },
+				{ label: "Agent Request Flow", icon: "🔀", action: () => window.dispatchEvent(new CustomEvent('agent-flow-diagram-open')) },
 			],
 		},
 		{
@@ -382,17 +382,30 @@ export default function AdminSideNav({ user }) {
 					</button>
 					{isExpanded && !collapsed && (
 						<div className="admin-side-nav__submenu">
-							{item.children.filter((child) => !child.adminOnly || isAdmin).map((child, childIdx) => (
-								<Link
-									key={`${itemKey}-child-${childIdx}`}
-									to={child.path}
-									className={`admin-side-nav__item admin-side-nav__item--child ${isActive(child.path) ? "admin-side-nav__item--active" : ""}`}
-									title={child.label}
-								>
-									<span className="admin-side-nav__icon">{child.icon}</span>
-									<span className="admin-side-nav__label">{child.label}</span>
-								</Link>
-							))}
+							{item.children.filter((child) => !child.adminOnly || isAdmin).map((child, childIdx) =>
+								child.action ? (
+									<button
+										key={`${itemKey}-child-${childIdx}`}
+										type="button"
+										className="admin-side-nav__item admin-side-nav__item--child"
+										title={child.label}
+										onClick={child.action}
+									>
+										<span className="admin-side-nav__icon">{child.icon}</span>
+										<span className="admin-side-nav__label">{child.label}</span>
+									</button>
+								) : (
+									<Link
+										key={`${itemKey}-child-${childIdx}`}
+										to={child.path}
+										className={`admin-side-nav__item admin-side-nav__item--child ${isActive(child.path) ? "admin-side-nav__item--active" : ""}`}
+										title={child.label}
+									>
+										<span className="admin-side-nav__icon">{child.icon}</span>
+										<span className="admin-side-nav__label">{child.label}</span>
+									</Link>
+								)
+							)}
 						</div>
 					)}
 				</div>

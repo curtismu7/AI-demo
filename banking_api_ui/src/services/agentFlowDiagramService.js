@@ -232,7 +232,7 @@ export const agentFlowDiagram = {
    * @param {string} toolName MCP tool name e.g. get_my_accounts
    */
   startMcpToolCall(toolName) {
-    state.visible = true;
+    // Do not auto-open — panel only opens via explicit user action (agent-flow-diagram-open event)
     state.phase = 'running';
     state.toolName = toolName;
     state.hint = null;
@@ -286,7 +286,6 @@ export const agentFlowDiagram = {
 
   /** MCP inspector tools/list (different route — no token exchange on BFF for same shape). */
   startInspectorToolsList() {
-    state.visible = true;
     state.phase = 'running';
     state.toolName = 'tools/list';
     state.hint = null;
