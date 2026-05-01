@@ -1982,6 +1982,36 @@ Plans:
 - [x] 255-01-PLAN.md — BFF devTools route (POST /api/dev/run-servers, SSE, singleton guard, rate limit, production guard)
 - [x] 255-02-PLAN.md — Frontend RunServersModal + TopNav button
 
+### Phase 256: All modals should have pop out feature (and make sure you close the one on the page when opening popout). Make sure the pop out modal has all the same functionality and buttons that the original has
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 255
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 256 to break down)
+
+### Phase 257: HITL and P1MFA approval settings page — configure what triggers HITL simple approval vs P1MFA for transactions, add page to side menu
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 256
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 257 to break down)
+
+### Phase 258: Research BFF SSE migration — token chain push vs polling
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 257
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 258 to break down)
+
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 

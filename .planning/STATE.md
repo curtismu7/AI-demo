@@ -102,6 +102,8 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) �
 
 ## Roadmap Evolution
 
+- Phase 258 added: Research BFF SSE migration — token chain push vs polling
+
 - Phase 257 added: HITL and P1MFA approval settings page — configure what triggers HITL simple approval vs P1MFA for transactions, add page to side menu
 - Phase 256 added: All modals should have pop out feature — close on-page modal when opening popout; popout has all the same functionality and buttons
 - Phase 255 added: Top-menu Run Servers button — executes run-bank.sh via BFF endpoint and streams output to a modal so user can verify all services are up
