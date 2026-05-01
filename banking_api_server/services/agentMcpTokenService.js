@@ -585,7 +585,20 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       'user-token-introspection',
       'User Token — PingOne Active-Token Introspection (RFC 7662)',
       introStatus,
-      null,
+      // Pass introspection claims so the UI Claims tab shows real PingOne data
+      intro.valid
+        ? {
+            header: null,
+            claims: {
+              sub: intro.sub,
+              active: true,
+              scope: Array.isArray(intro.scopes) ? intro.scopes.join(' ') : (intro.scopes || null),
+              exp: intro.exp,
+              aud: intro.aud,
+              client_id: intro.client_id,
+            },
+          }
+        : null,
       intro.valid
         ? `PingOne confirmed the user token is active. sub=${intro.sub} scope="${intro.scopes || ''}".`
         : `PingOne returned active=false — the user session token is no longer valid. The tool call cannot proceed safely with an inactive token.`,

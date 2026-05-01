@@ -19,6 +19,25 @@ import { AuditLogger, UserTokenInfo, ExchangedTokenInfo, TokenChainExecutionResu
 import { Logger, createDefaultLoggerConfig } from '../utils/Logger';
 import { tokenCache } from '../services/tokenCacheService';
 import { getScopesForTool, filterToolsByScope } from './toolScopeMap';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
+// Module-level JWKS key set — cached for process lifetime (jose handles key rotation)
+let _jwksKeySet: ReturnType<typeof createRemoteJWKSet> | null = null;
+
+function getJwksKeySet(): ReturnType<typeof createRemoteJWKSet> | null {
+  if (_jwksKeySet) return _jwksKeySet;
+  const jwksUri =
+    process.env.PINGONE_JWKS_URI ||
+    (process.env.PINGONE_ISSUER ? `${process.env.PINGONE_ISSUER}/jwks` : null) ||
+    (process.env.PINGONE_BASE_URL ? `${process.env.PINGONE_BASE_URL}/jwks` : null);
+  if (!jwksUri) return null;
+  try {
+    _jwksKeySet = createRemoteJWKSet(new URL(jwksUri));
+    return _jwksKeySet;
+  } catch {
+    return null;
+  }
+}
 
 export interface ToolExecutionContext {
   session: Session;
@@ -433,7 +452,7 @@ export class BankingToolProvider {
       'executeCreateDeposit',
     ]);
     if (SENSITIVE_HANDLERS.has(tool.handler)) {
-      this.assertTokenClaims(token, tool.name);
+      await this.assertTokenClaims(token, tool.name);
     }
 
     switch (tool.handler) {
@@ -996,14 +1015,13 @@ export class BankingToolProvider {
   }
 
   /**
-   * Item 8: Structural (non-signature) pre-flight for sensitive tools.
-   * Checks exp is in the future, warns on missing iss, and warns if aud does not
-   * include BANKING_API_RESOURCE_URI when that env var is set.
-   * Throws AuthenticationError(TOKEN_EXPIRED) on expired tokens.
+   * Attempt JWKS signature verification first (RFC 7515); fall back to structural local check.
+   * Fail-open: JWKS failures are logged but never block the tool call.
    */
-  private assertTokenClaims(token: string, toolName: string): void {
+  private async assertTokenClaims(token: string, toolName: string): Promise<void> {
+    // ── Structural local check (exp/iss/aud) ───────────────────────────────────
     const payload = this.decodeJwtPayload(token);
-    if (!payload) return; // opaque token — skip structural checks
+    if (!payload) return; // opaque token — skip all checks
 
     const now = Math.floor(Date.now() / 1000);
     const exp = typeof payload.exp === 'number' ? payload.exp : null;
@@ -1030,6 +1048,29 @@ export class BankingToolProvider {
           `expected audience '${expectedAud}' for '${toolName}'`
         );
       }
+    }
+
+    // ── JWKS Cryptographic Signature Verification (RFC 7515) ──────────────────
+    // Verify the MCP token's RS256/ES256 signature using PingOne's published JWKS.
+    // Fail-open: JWKS failures are logged but never block the tool call — the BFF
+    // already performed JWKS verification before issuing this token to the MCP server.
+    const jwks = getJwksKeySet();
+    if (jwks) {
+      try {
+        const verifyOpts: Parameters<typeof jwtVerify>[2] = {};
+        if (expectedAud) verifyOpts.audience = expectedAud;
+        if (iss) verifyOpts.issuer = iss;
+        await jwtVerify(token, jwks, verifyOpts);
+        this.logger.info(`[BankingToolProvider] JWKS sig ✅ verified for sensitive tool '${toolName}'`);
+      } catch (jwksErr) {
+        const msg = jwksErr instanceof Error ? jwksErr.message : String(jwksErr);
+        // JWTExpired is already caught above — ignore it here to avoid double-log
+        if (!msg.includes('expired')) {
+          this.logger.warn(`[BankingToolProvider] JWKS sig ⚠ warning for '${toolName}': ${msg} (fail-open)`);
+        }
+      }
+    } else {
+      this.logger.debug(`[BankingToolProvider] JWKS not configured — skipping sig verification for '${toolName}'`);
     }
   }
 
