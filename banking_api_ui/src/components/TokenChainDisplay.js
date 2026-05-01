@@ -459,12 +459,22 @@ function SessionIntrospectionEduBox({ event }) {
   );
 }
 
+// All event IDs that carry JWKS signature verification results
+const JWKS_VERIFIED_IDS = new Set([
+  'exchanged-token-verified',
+  'agent-actor-token-verified',
+  'two-ex-agent-actor-verified',
+  'two-ex-exchange1-verified',
+  'two-ex-mcp-actor-verified',
+  'two-ex-final-token-verified',
+]);
+
 /**
  * Renders the JWKS signature verification card.
- * Shows for exchanged-token-verified events — verified, introspection fallback, warning, or skipped.
+ * Shows for any *-verified event (single exchange or 2-exchange path).
  */
 function JwksVerifyEduBox({ event }) {
-  if (event.id !== 'exchanged-token-verified') return <NotApplicableNote rfc="RFC 7515 · RFC 7517 · RFC 7518" rfcDesc="JSON Web Signature (JWS) and JSON Web Key (JWK) — define how tokens are cryptographically signed and how resource servers verify those signatures using the IdP's published public key set." />;
+  if (!JWKS_VERIFIED_IDS.has(event.id)) return <NotApplicableNote rfc="RFC 7515 · RFC 7517 · RFC 7518" rfcDesc="JSON Web Signature (JWS) and JSON Web Key (JWK) — define how tokens are cryptographically signed and how resource servers verify those signatures using the IdP's published public key set." />;
   const extra = event.extra || {};
   const verified  = extra.verified;
   const fallback  = extra.fallbackMethod;
@@ -832,6 +842,9 @@ const InspectIcon = () => (
 const CLAIMS_STRIP_IDS = new Set([
   'user-token', 'exchanged-token', 'agent-actor-token', 'exchanged-token-fallback',
   'user-token-introspection', 'exchanged-token-verified', 'session-token-introspection',
+  // 2-exchange path: all JWKS verify events
+  'agent-actor-token-verified', 'two-ex-agent-actor-verified',
+  'two-ex-exchange1-verified', 'two-ex-mcp-actor-verified', 'two-ex-final-token-verified',
 ]);
 
 function fmtSub(sub, hints) {
