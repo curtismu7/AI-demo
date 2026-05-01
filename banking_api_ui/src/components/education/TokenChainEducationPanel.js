@@ -25,17 +25,24 @@ function OverviewTab() {
       <h4>Token chain lifecycle</h4>
       <pre className="edu-code">{`1. User Login (Authorization Code + PKCE)
    → access_token (sub=user, scopes=banking:read,write,transfer)
-   → refresh_token
-   → id_token (nonce verified)
+   → refresh_token · id_token (nonce verified)
+   ✓ RFC 7662 introspection — BFF asks PingOne "is this session still active?"
+     Catches revoked tokens that are not yet expired.
 
-2. Token Exchange — RFC 8693
-   → exchanged_token (sub=user, act={client_id: bff}, audience=mcp_server)
+2. Agent Actor Token (client_credentials) — when 2-exchange is active
+   → actor_token (sub=agent-client-id, aud=agent-gateway)
+   ✓ RFC 7515 JWKS — cryptographic signature verified against PingOne public key
+
+3. Token Exchange — RFC 8693
+   subject_token=user_token + actor_token=agent_token
+   → exchanged_token (sub=user, act={client_id:bff}, aud=mcp_server)
    → Scopes narrowed to what MCP server needs
+   ✓ RFC 7515 JWKS — signature of every exchanged token verified on arrival
 
-3. MCP Tool Call
-   → MCP server introspects exchanged_token
-   → Validates scopes match requested tool
-   → Executes tool on behalf of user`}</pre>
+4. MCP Tool Call
+   → MCP server validates scopes for requested tool
+   → Executes tool on behalf of user
+   ✓ RFC 7515 JWKS — MCP server re-verifies the token it received`}</pre>
 
       <h4>Key components tracked</h4>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -278,8 +285,10 @@ Step 5: Transfer executed
       </p>
       <ul>
         <li><span style={{ color: 'var(--brand-navy)', fontWeight: 600 }}>●</span> <strong>user_token</strong> — initial login token</li>
+        <li><span style={{ color: '#0891b2', fontWeight: 600 }}>●</span> <strong>user_token_introspection</strong> — RFC 7662: PingOne confirms session is active</li>
         <li><span style={{ color: '#7c3aed', fontWeight: 600 }}>●</span> <strong>agent_token</strong> — agent's client_credentials token (2-exchange only)</li>
         <li><span style={{ color: '#059669', fontWeight: 600 }}>●</span> <strong>exchanged_token</strong> — delegated token after RFC 8693 exchange</li>
+        <li><span style={{ color: '#15803d', fontWeight: 600 }}>●</span> <strong>*_verified</strong> — RFC 7515 JWKS: cryptographic signature check on each token</li>
         <li><span style={{ color: '#dc2626', fontWeight: 600 }}>●</span> <strong>error</strong> — exchange failure (invalid scope, expired token, etc.)</li>
       </ul>
     </div>

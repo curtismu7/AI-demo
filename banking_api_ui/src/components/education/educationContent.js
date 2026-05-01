@@ -1067,7 +1067,11 @@ Works with opaque tokens YES                        NO (needs JWT structure)
 act / delegation claims  YES (AS adds them)         Only if in JWT body
 Latency                  ~50-200ms round trip       <1ms (local verify)
 Best for                 MCP / proxy validation,    High-throughput RS,
-                         opaque tokens, act claims  JWT access tokens`}</pre>
+                         opaque tokens, act claims  JWT access tokens
+
+In this demo:
+  Introspection — user access token at login + every MCP tool call
+  JWKS verify   — agent CC tokens + all exchanged/delegated tokens`}</pre>
 
       <h3>When to use introspection</h3>
       <ul>
@@ -1079,10 +1083,26 @@ Best for                 MCP / proxy validation,    High-throughput RS,
 
       <h3>Where introspection fits in this demo</h3>
       <p>
-        The <code>banking_mcp_server</code> can call PingOne's introspection endpoint with the
-        Bearer token presented on WebSocket connection. It checks <code>active</code>,{' '}
-        <code>aud</code>, <code>act</code> (delegation from Backend-for-Frontend (BFF)), and <code>scope</code> before
-        allowing tool calls. The Banking REST API uses JWKS local validation for performance.
+        Introspection is used in two places in the token chain:
+      </p>
+      <ul>
+        <li>
+          <strong>At login</strong> — the BFF calls PingOne's RFC 7662 endpoint immediately after the
+          OAuth callback to confirm the user's access token is active. The result appears as
+          {' '}<code>user-token-introspection</code> in the Token Chain panel and shows the live{' '}
+          <code>sub</code>, <code>scope</code>, <code>exp</code>, and <code>aud</code> from PingOne.
+        </li>
+        <li>
+          <strong>At every MCP tool call</strong> — the BFF re-introspects the user token before
+          attempting RFC 8693 exchange, ensuring a revoked or expired session is caught before
+          any delegation happens.
+        </li>
+      </ul>
+      <p>
+        All other tokens in the chain (agent CC token, exchanged MCP token, 2-exchange intermediates)
+        use <strong>RFC 7515 JWKS</strong> cryptographic signature verification instead — faster because
+        no network round-trip is needed, and appropriate because these tokens were just issued by
+        PingOne moments ago and cannot have been revoked in that window.
       </p>
     </>
   );
