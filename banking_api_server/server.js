@@ -1395,6 +1395,13 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             }
         }
 
+        // TOKEN_INACTIVE — user's PingOne session expired; signal UI to re-authenticate
+        if (err.code === 'TOKEN_INACTIVE') {
+            const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
+            publishTokenEventsToSse(flowTraceId, events);
+            return res.status(401).json({ error: 'Session expired', need_auth: true, agentInitRequired: true, tokenEvents: events });
+        }
+
         const status = err.httpStatus || 502;
         const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
         publishTokenEventsToSse(flowTraceId, events);
