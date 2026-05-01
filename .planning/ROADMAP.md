@@ -1961,6 +1961,16 @@ Plans:
 - [ ] 253-01-PLAN.md — Gateway health endpoint: expose devBypass + gatewayResourceUri
 - [ ] 253-02-PLAN.md — BFF: dynamic final audience resolution from gateway health probe
 
+### Phase 254: Family delegation — prompt for delegated user on next login, auto-provision user with MFA device and may_act attribute via worker token
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 253
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 254 to break down)
+
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 

@@ -102,6 +102,16 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) �
 
 ## Roadmap Evolution
 
+- Phase 254 added: Family delegation — prompt for delegated user on next login, auto-provision user with MFA device and may_act attribute via worker token
+
+- Phase 253 added: Gateway bypass fallback — fix scopes, AUD, and resource server so MCP tools work without the gateway and user never sees an error
+
+- Phase 252 added: Dedicated log file per server (API, MCP Gateway, MCP Server, Auth, Agent) with Admin UI log viewer tabs
+
+- Phase 251 added: Trace scopes, resource server, and AUD end-to-end — document correct flow and add health-check + auto-fix button to Admin UI
+
+- Phase 250 added: Audit error messages and fix 401/403 error handling across all flows — ensure every error is human-readable and actionable
+
 - Phase 248 added: Add token chain overview panel with explanatory text above each token and exchange step
 
 - Phase 247 added: PingOne MCP Server integration — feature-flagged option to use pingidentity/pingone-mcp-server (stdio binary) alongside existing custom MCP gateway, with adapter layer, admin UI toggle, and status chip reflecting active mode
