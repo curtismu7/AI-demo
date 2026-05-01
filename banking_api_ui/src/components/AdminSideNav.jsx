@@ -115,6 +115,7 @@ export default function AdminSideNav({ user }) {
 		{
 			label: "Users & Accounts",
 			icon: "📑",
+			adminOnly: true,
 			children: [
 				{ label: "Users", path: "/users", icon: "👥" },
 				{ label: "Accounts", path: "/accounts", icon: "🏦" },
@@ -127,13 +128,12 @@ export default function AdminSideNav({ user }) {
 			children: [
 				{ label: "Activity Logs", path: "/activity", icon: "📝", adminOnly: true },
 				{ label: "Audit Trail", path: "/audit", icon: "🔍", adminOnly: true },
-				{ label: "API Traffic", path: "/api-traffic", icon: "📡" },
 				{ label: "MCP Traffic", path: "/mcp-traffic", icon: "🔌" },
+				{ label: "API Explorer", path: "/monitoring/api-explorer", icon: "📡" },
 				{ label: "Dev Tools", path: "/dev-tools", icon: "🛠" },
 				{ label: "Token Chain", path: "/monitoring/token-chain", icon: "🔗" },
 				{ label: "Token Diff", path: "/monitoring/token-diff", icon: "📊" },
 				{ label: "Flow Inspector", path: "/monitoring/flow-inspector", icon: "🔬" },
-				{ label: "API Explorer", path: "/monitoring/api-explorer", icon: "📡" },
 			],
 		},
 		{
@@ -203,85 +203,56 @@ export default function AdminSideNav({ user }) {
 
 	// Learn & education expandable section
 	const learnItems = [
-		{ label: "Guided Demo Tour", icon: "🗺", action: () => tour.start() },
-		{
-			label: "Best Practices",
-			icon: "⭐",
-			action: () => openEdu(EDU.BEST_PRACTICES, "overview"),
-		},
-		{
-			label: "Auth Code + PKCE",
-			icon: "🔑",
-			action: () => openEdu(EDU.LOGIN_FLOW, "what"),
-		},
-		{
-			label: "CIBA (OOB)",
-			icon: "📲",
-			action: () => {
-				window.dispatchEvent(
-					new CustomEvent("education-open-ciba", { detail: { tab: "what" } }),
-				);
-			},
-		},
-		{
-			label: "Token Exchange",
-			icon: "🔄",
-			action: () => openEdu(EDU.TOKEN_EXCHANGE, "why"),
-		},
-		{
-			label: "MCP Protocol",
-			icon: "🔬",
-			action: () => openEdu(EDU.MCP_PROTOCOL, "what"),
-		},
-		{
-			label: "Computer Use Agent (CUA)",
-			icon: "🖱️",
-			action: () => openEdu(EDU.CUA, "what"),
-		},
-		{
-			label: "Human-in-the-loop",
-			icon: "🤝",
-			action: () => openEdu(EDU.HUMAN_IN_LOOP, "what"),
-		},
-		{
-			label: "Agent Gateway",
-			icon: "🌐",
-			action: () => openEdu(EDU.AGENT_GATEWAY, "overview"),
-		},
-		{
-			label: "Introspection",
-			icon: "🔍",
-			action: () => openEdu(EDU.INTROSPECTION, "why"),
-		},
-		{
-			label: "RFC Index",
-			icon: "📚",
-			action: () => openEdu(EDU.RFC_INDEX, "index"),
-		},
-		{
-			label: "Agent flow diagram",
-			icon: "📊",
-			action: () => {
-				window.dispatchEvent(new CustomEvent("agent-flow-diagram-open"));
-			},
-		},
-		{ label: "WebMCP (Google)", icon: "🌐", action: () => navigate("/webmcp") },
-		{
-			label: "Agentic Trust",
-			icon: "🛡️",
-			action: () => navigate("/agentic-trust"),
-		},
-		{
-			label: "Actor Token (Agent)",
-			icon: "🎭",
-			action: () => openEdu(EDU.TOKEN_FLOW, "diagram"),
-		},
-		{
-			label: "Glean + PingOne",
-			icon: "🔗",
-			action: () => openEdu(EDU.GLEAN, "overview"),
-		},
-	];
+		// ── Getting started ──────────────────────────────────
+		{ label: "Guided Demo Tour",             icon: "🗺",  action: () => tour.start() },
+		{ label: "⭐ Best Practices",              icon: "⭐",  action: () => openEdu(EDU.BEST_PRACTICES, "overview") },
+		{ label: "⭐ Agentic Maturity Model",      icon: "⭐",  action: () => openEdu(EDU.AGENTIC_MATURITY, "overview") },
+
+		// ── OAuth & Identity ──────────────────────────────────
+		{ label: "Auth Code + PKCE",              icon: "🔑",  action: () => openEdu(EDU.LOGIN_FLOW, "what") },
+		{ label: "PKCE deep dive",                icon: "🔑",  action: () => openEdu(EDU.LOGIN_FLOW, "pkce") },
+		{ label: "CIBA (OOB)",                    icon: "📲",  action: () => window.dispatchEvent(new CustomEvent("education-open-ciba", { detail: { tab: "what" } })) },
+		{ label: "Token Exchange (RFC 8693)",     icon: "🔄",  action: () => openEdu(EDU.TOKEN_EXCHANGE, "why") },
+		{ label: "may_act / act claims",          icon: "🎭",  action: () => openEdu(EDU.MAY_ACT, "what") },
+		{ label: "Actor Token (Agent)",           icon: "🎭",  action: () => openEdu(EDU.TOKEN_FLOW, "diagram") },
+		{ label: "Step-up MFA",                   icon: "🔒",  action: () => openEdu(EDU.STEP_UP, "what") },
+		{ label: "Introspection (RFC 7662)",      icon: "🔍",  action: () => openEdu(EDU.INTROSPECTION, "why") },
+		{ label: "PingOne Authorize",             icon: "⚖️",  action: () => openEdu(EDU.PINGONE_AUTHORIZE, "what") },
+		{ label: "PAR (RFC 9126)",                icon: "📋",  action: () => openEdu(EDU.PAR, "what") },
+		{ label: "RAR (RFC 9396)",                icon: "📋",  action: () => openEdu(EDU.RAR, "what") },
+		{ label: "JWT client auth (RFC 7523)",    icon: "🔐",  action: () => openEdu(EDU.JWT_CLIENT_AUTH, "what") },
+		{ label: "OAuth: CIMD",                   icon: "📄",  action: () => window.dispatchEvent(new CustomEvent("education-open-cimd", { detail: { tab: "what" } })) },
+
+		// ── MCP & Agents ──────────────────────────────────────
+		{ label: "MCP Protocol",                  icon: "🔬",  action: () => openEdu(EDU.MCP_PROTOCOL, "what") },
+		{ label: "MCP server discovery",          icon: "🔬",  action: () => openEdu(EDU.MCP_PROTOCOL, "discovery") },
+		{ label: "MCP: MFA gate on tools",        icon: "🔬",  action: () => openEdu(EDU.MCP_PROTOCOL, "mfa-gate") },
+		{ label: "Agent Gateway",                 icon: "🌐",  action: () => openEdu(EDU.AGENT_GATEWAY, "overview") },
+		{ label: "Computer Use Agent (CUA)",      icon: "🖱️", action: () => openEdu(EDU.CUA, "what") },
+		{ label: "Human-in-the-loop",             icon: "🤝",  action: () => openEdu(EDU.HUMAN_IN_LOOP, "what") },
+		{ label: "PingGateway MCP Security",      icon: "🛡️",  action: () => openEdu(EDU.PINGGATEWAY_MCP, "overview") },
+
+		// ── Standards & Architecture ──────────────────────────
+		{ label: "RFC & Spec Index",              icon: "📚",  action: () => openEdu(EDU.RFC_INDEX, "index") },
+		{ label: "⭐ IETF Standards: Agentic",    icon: "⭐",  action: () => openEdu(EDU.IETF_STANDARDS, "overview") },
+		{ label: "ID-JAG / Cross-App Access",     icon: "🔀",  action: () => openEdu(EDU.ID_JAG, "overview") },
+		{ label: "Agent flow diagram",            icon: "📊",  action: () => window.dispatchEvent(new CustomEvent("agent-flow-diagram-open")) },
+		{ label: "Architecture Diagram",          icon: "🏗️",  action: () => openEdu(EDU.ARCHITECTURE_DIAGRAM, "context") },
+		{ label: "Token Chain (edu)",             icon: "🔗",  action: () => openEdu(EDU.TOKEN_CHAIN, "overview") },
+		{ label: "Sensitive Data & Disclosure",   icon: "🔒",  action: () => openEdu(EDU.SENSITIVE_DATA, "least-data") },
+
+		// ── AI Ecosystem ──────────────────────────────────────
+		{ label: "LangChain (LCEL + Ollama)",     icon: "🔗",  action: () => openEdu(EDU.LANGCHAIN, "overview") },
+		{ label: "Agent Builder Landscape",       icon: "🤖",  action: () => openEdu(EDU.AGENT_BUILDER_LANDSCAPE, "langchain") },
+		{ label: "LLM Landscape",                 icon: "🧠",  action: () => openEdu(EDU.LLM_LANDSCAPE, "commercial") },
+		{ label: "AI Platform Landscape",         icon: "🌐",  action: () => openEdu(EDU.AI_PLATFORM_LANDSCAPE, "aws") },
+		{ label: "AI Primer",                     icon: "📘",  action: () => openEdu(EDU.AI_PRIMER, "terminology") },
+
+		// ── Special ───────────────────────────────────────────
+		{ label: "Glean + PingOne",               icon: "🔗",  action: () => openEdu(EDU.GLEAN, "overview") },
+		{ label: "WebMCP (Google)",               icon: "🌐",  action: () => navigate("/webmcp") },
+		{ label: "Agentic Trust",                 icon: "🛡️",  action: () => navigate("/agentic-trust") },
+	]
 
 	// Agent UI placement options for the expandable dropdown
 	const agentPlacementOptions = [

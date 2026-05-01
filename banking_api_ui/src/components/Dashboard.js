@@ -709,66 +709,6 @@ const Dashboard = ({ user, onLogout }) => {
           </div>
         )}
       </div>
-
-      {/* Quick Actions */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="card-title">Quick Actions</h2>
-        </div>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <Link to="/activity" className="btn btn-primary">
-            View All Activity Logs
-          </Link>
-          <Link to="/audit" state={{ backgroundLocation: location }} className="btn btn-secondary">
-            🔍 MCP Audit Trail
-          </Link>
-          <Link to="/users" className="btn btn-secondary">
-            Manage Users
-          </Link>
-          <Link
-            to="/admin/banking"
-            className="btn btn-secondary"
-            title="Look up accounts by fragment, seed demo charges, admin cleanup"
-          >
-            Banking admin
-          </Link>
-          <Link to="/accounts" className="btn btn-secondary">
-            Manage Accounts
-          </Link>
-          <Link to="/transactions" className="btn btn-secondary">
-            View Transactions
-          </Link>
-          <Link
-            to="/settings"
-            className="btn btn-secondary"
-            style={{ borderLeft: '3px solid #f59e0b' }}
-          >
-            🔒 Security Settings
-          </Link>
-          <Link to="/pingone-test" className="btn btn-secondary">
-            🔬 PingOne Test
-          </Link>
-          <Link to="/mfa-test" className="btn btn-secondary">
-            🔐 MFA Test
-          </Link>
-          <Link
-            to="/mcp-inspector"
-            className="btn btn-secondary"
-            title="MCP discovery &amp; tools/call via Backend-for-Frontend (BFF)"
-          >
-            🔌 MCP Inspector
-          </Link>
-          <Link
-            to="/mcp-traffic"
-            className="btn btn-secondary"
-            title="Live BFF↔MCP request/response traffic log"
-          >
-            📡 MCP Traffic
-          </Link>
-          <Link to='/dev-tools' className='btn btn-secondary' title='Dev Tools Dashboard'>🛠 Dev Tools</Link>
-        </div>
-      </div>
-
       </main>
 
         </div>
