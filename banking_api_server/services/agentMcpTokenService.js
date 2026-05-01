@@ -206,6 +206,62 @@ function describeMayAct(claims, bffClientId) {
  * Append the user access token row to tokenEvents (same shape as MCP tool-call flow).
  * @returns {{ userSub: string|null, userAccessTokenClaims: object|undefined, userAccessTokenDecoded: object|null }}
  */
+
+/**
+ * Run JWKS signature verification on `token` and push the result event.
+ * Shared by all token types that need RFC 7515 verification.
+ * Fail-open — never throws or blocks the token flow.
+ *
+ * @param {string}   token       Raw JWT to verify
+ * @param {Array}    tokenEvents Mutable event array to push into
+ * @param {string}   eventId     Token-event id for the verify row (e.g. 'agent-actor-token-verified')
+ * @param {string}   tokenLabel  Human label shown in the UI (e.g. 'Agent Actor Token')
+ */
+async function pushJwksVerifyEvent(token, tokenEvents, eventId, tokenLabel) {
+  try {
+    const verif = await tokenVerificationService.verifyExchangedToken(token);
+    const isIntrospectionFallback = verif.fallbackMethod === 'introspection';
+    const methodLabel = isIntrospectionFallback
+      ? `${tokenLabel} — Introspection Fallback (RFC 7662) · JWKS Unavailable`
+      : `${tokenLabel} — JWKS Cryptographic Signature Verification (RFC 7515)`;
+    let explanation;
+    if (verif.verified && !isIntrospectionFallback) {
+      explanation = `Signature verified ✅ — PingOne's public key (kid=${verif.kid}, alg=${verif.alg}) confirms this token is authentic and untampered since issuance. RFC 7515 §4.`;
+    } else if (verif.verified && isIntrospectionFallback) {
+      explanation = `JWKS unavailable — fell back to RFC 7662 introspection ✅. PingOne confirmed the token is active. Cryptographic tamper-detection was skipped; acceptable here because the token was received directly from PingOne.`;
+    } else if (verif.warning) {
+      explanation = `Signature check produced a warning (fail-open): ${verif.warning}.`;
+    } else {
+      explanation = `Verification FAILED ❌ — ${verif.error || 'Unknown error'}. Token may have been tampered with or have expired.`;
+    }
+    tokenEvents.push(buildTokenEvent(
+      eventId,
+      methodLabel,
+      verif.verified ? 'active' : (verif.warning ? 'warning' : 'failed'),
+      verif.verified ? verif.claims : null,
+      explanation,
+      {
+        rfc: isIntrospectionFallback ? 'RFC 7662 (fallback) · RFC 7515 attempted' : 'RFC 7515 · RFC 7517 · RFC 7518',
+        verified: verif.verified,
+        fallbackMethod: verif.fallbackMethod,
+        alg: verif.alg,
+        kid: verif.kid,
+        warning: verif.warning,
+        error: verif.error,
+      }
+    ));
+  } catch (verifErr) {
+    tokenEvents.push(buildTokenEvent(
+      eventId,
+      `${tokenLabel} — JWKS Verification (RFC 7515)`,
+      'skipped',
+      null,
+      `JWKS verification skipped: ${verifErr.message}`,
+      { rfc: 'RFC 7515 · RFC 7517' }
+    ));
+  }
+}
+
 function appendUserTokenEvent(tokenEvents, userToken, req = null) {
   const userAccessTokenDecoded = decodeJwtClaims(userToken);
   const userAccessTokenClaims = userAccessTokenDecoded?.claims;
@@ -1088,6 +1144,8 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
         'act: { client_id: exchanger-client } identifying the Agent as the current actor.',
         { rfc: 'RFC 8693 §2.1 (actor_token)' }
       ));
+      // JWKS verify the agent CC token — it's PingOne-signed, same as any other JWT
+      await pushJwksVerifyEvent(actorToken, tokenEvents, 'agent-actor-token-verified', 'Agent Actor Token (CC)');
     } catch (err) {
       tokenEvents.push(buildTokenEvent(
         'agent-actor-token',
@@ -1502,6 +1560,8 @@ async function _performTwoExchangeDelegation(
         `aud=${agentGatewayAud}. Used as actor_token in Exchange #1.`,
       { rfc: 'RFC 8693 §2.1', exchangeStep: '1-actor' }
     ));
+      // JWKS verify the AI Agent actor CC token
+      await pushJwksVerifyEvent(agentActorToken, tokenEvents, 'two-ex-agent-actor-verified', 'AI Agent Actor Token (CC)');
   } catch (err) {
     const actorIdx = tokenEvents.findIndex(e => e.id === 'two-ex-agent-actor-acquiring');
     if (actorIdx !== -1) tokenEvents.splice(actorIdx, 1);
@@ -1563,6 +1623,8 @@ async function _performTwoExchangeDelegation(
         actExpectedHere: false,
         actDetails: agentExchangedClaims?.act ? JSON.stringify(agentExchangedClaims.act) : null }
     ));
+    // JWKS verify the agent exchanged token (result of Exchange #1)
+    await pushJwksVerifyEvent(agentExchangedToken, tokenEvents, 'two-ex-exchange1-verified', 'Agent Exchanged Token (#1 result)');
   } catch (err) {
     const ex1Idx = tokenEvents.findIndex(e => e.id === 'two-ex-exchange1-in-progress');
     if (ex1Idx !== -1) tokenEvents.splice(ex1Idx, 1);
@@ -1619,6 +1681,8 @@ async function _performTwoExchangeDelegation(
         `aud=${mcpGatewayAud}. Used as actor_token in Exchange #2.`,
       { rfc: 'RFC 8693 §2.1', exchangeStep: '2-actor' }
     ));
+      // JWKS verify the MCP Service actor CC token
+      await pushJwksVerifyEvent(mcpActorToken, tokenEvents, 'two-ex-mcp-actor-verified', 'MCP Service Actor Token (CC)');
   } catch (err) {
     const mcpActorIdx = tokenEvents.findIndex(e => e.id === 'two-ex-mcp-actor-acquiring');
     if (mcpActorIdx !== -1) tokenEvents.splice(mcpActorIdx, 1);
@@ -1695,6 +1759,8 @@ async function _performTwoExchangeDelegation(
         audExpected: twoExFinalAud, audActual: mcpTokenAud,
         scopeNarrowed: effectiveToolScopes.join(' ') }
     ));
+    // JWKS verify the final MCP token (result of Exchange #2)
+    await pushJwksVerifyEvent(finalToken, tokenEvents, 'two-ex-final-token-verified', 'Final MCP Token (#2 result)');
 
     void writeExchangeEvent({
       type: 'exchange-success', level: 'info',
