@@ -190,6 +190,10 @@ router.post('/message', async (req, res) => {
     console.error('[banking-agent/message] Error code:', error.code);
     console.error('[banking-agent/message] Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     
+    // TOKEN_INACTIVE — user's PingOne session expired; signal UI to re-authenticate
+    if (error.code === 'TOKEN_INACTIVE') {
+      return res.status(401).json({ error: 'Session expired', need_auth: true, agentInitRequired: true });
+    }
     // Always return a meaningful error message to the user
     const errorMessage = error.message || 'An unexpected error occurred while processing your request. Please try again.';
     res.status(500).json({ error: errorMessage });
