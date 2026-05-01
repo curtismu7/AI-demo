@@ -235,9 +235,12 @@ async function getMCPToolCalls(userId) {
     const data = await response.json();
     const events = Array.isArray(data) ? data : (data.events || []);
 
-    // Filter to this user's events and extract lightweight view
+    // Filter to this user's events and extract lightweight view.
+    // Include events with no userId set — BankingToolProvider stores userId: undefined
+    // because the MCP session doesn't carry the sub claim. The MCP server is single-user
+    // per connection so unattributed events belong to the current authenticated user.
     return events
-      .filter(event => !userId || event.userId === userId || event.details?.userToken?.sub === userId)
+      .filter(event => !userId || !event.userId || event.userId === userId || event.details?.userToken?.sub === userId)
       .map(event => ({
         id: event.eventId,
         timestamp: event.timestamp,
