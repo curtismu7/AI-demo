@@ -4080,6 +4080,25 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 	margin-bottom: 4px;
 }
 
+/* Chips inside the actions popout should be compact pills, not full-width blocks.
+   Overrides the generic .ba-action-item (display:block; width:100%) behavior. */
+.ba-popout-chip-row .ba-action-item {
+	display: inline-flex;
+	align-items: center;
+	width: auto;
+	border-radius: 999px;
+	padding: 5px 12px;
+	white-space: nowrap;
+	background: var(--ba-chip-bg);
+	border-color: var(--ba-chip-bd);
+	color: var(--ba-chip-txt);
+}
+.ba-popout-chip-row .ba-action-item:hover:not(:disabled) {
+	background: var(--ba-accent);
+	border-color: var(--ba-accent);
+	color: #fff;
+}
+
 /* Empty search state */
 .ba-popout-empty {
 	padding: 20px 12px;
