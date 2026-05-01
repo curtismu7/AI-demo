@@ -1587,7 +1587,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         appEventService.logEvent('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, gatewayUrl: useGateway ? gatewayHttpUrl : mcpUrl, via: useGateway ? 'gateway' : 'direct' } });
         let result;
         if (useGateway) {
-            { result, gwAuditTrail } = await mcpGatewayClient.callToolViaGateway(gatewayHttpUrl, mcpAccessToken, tool, params || {}, { correlationId: req.correlationId });
+            const { result, gwAuditTrail } = await mcpGatewayClient.callToolViaGateway(gatewayHttpUrl, mcpAccessToken, tool, params || {}, { correlationId: req.correlationId });
         } else if (useHttp2) {
             const h2Session = http2McpBridge.createHttp2Session(mcpUrl, mcpAccessToken);
             result = await http2McpBridge.forwardToolCall(h2Session, tool, params || {}, mcpAccessToken, userSub, req.correlationId);
