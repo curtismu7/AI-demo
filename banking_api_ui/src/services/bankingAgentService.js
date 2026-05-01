@@ -103,7 +103,20 @@ export async function callMcpTool(tool, params = {}) {
   const _toolId = addMilestone('MCP Tool Call', 'mcp_tool_call', { toolName: tool });
   updateMilestoneStatus(_toolId, 'active');
   // ────────────────────────────────────────────────────────────────────────────
+  
+  // Collect token events from SSE stream for real-time Token Chain updates
+  const tokenEventsFromSse = [];
+  
   const closeSse = openMcpFlowSse(flowTraceId, (data) => {
+    // Collect token events from SSE for streaming token chain display
+    if (data && data.type === 'token-event') {
+      const tokenEvent = { ...data };
+      delete tokenEvent.type; // Remove our wrapper type field
+      tokenEventsFromSse.push(tokenEvent);
+      // Immediately append so Token Chain UI updates in real time
+      appendTokenEvents([tokenEvent]);
+    }
+    
     try {
       agentFlowDiagram.applyServerEvent(data);
     } catch (err) {
@@ -164,14 +177,15 @@ export async function callMcpTool(tool, params = {}) {
         bodyLength: body?.length || 0,
       });
       
-      const tokenEvents = err400.tokenEvents || [];
+      const responseTokenEvents = err400.tokenEvents || [];
+      const allTokenEvents = [...tokenEventsFromSse, ...responseTokenEvents];
       appendMcpCall(tool, 400, Date.now() - t0, null, err400.message);
-      appendTokenEvents(tool, tokenEvents);
+      appendTokenEvents(tool, allTokenEvents);
       
       try {
         agentFlowDiagram.completeMcpToolCall({
           toolName: tool,
-          tokenEvents,
+          tokenEvents: allTokenEvents,
           ok: false,
           errorMessage: `400 Error: ${err400.message}`,
         });
@@ -180,7 +194,7 @@ export async function callMcpTool(tool, params = {}) {
       }
       
       throw Object.assign(new Error(`MCP 400 Error: ${err400.message}`), {
-        tokenEvents,
+        tokenEvents: allTokenEvents,
         statusCode: 400,
         code: err400.error,
         isClientError: true
@@ -202,12 +216,16 @@ export async function callMcpTool(tool, params = {}) {
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({ message: response.statusText }));
-      const tokenEvents = err.tokenEvents || [];
+      const responseTokenEvents = err.tokenEvents || [];
+      
+      // Merge SSE-collected token events with response body events
+      const allTokenEvents = [...tokenEventsFromSse, ...responseTokenEvents];
+      
       appendMcpCall(tool, response.status, Date.now() - t0, null, err.message || `HTTP ${response.status}`);
-      appendTokenEvents(tool, tokenEvents);
+      appendTokenEvents(tool, allTokenEvents);
       agentFlowDiagram.completeMcpToolCall({
         toolName: tool,
-        tokenEvents,
+        tokenEvents: allTokenEvents,
         ok: false,
         errorMessage: err.message || `HTTP ${response.status}`,
       });
@@ -219,7 +237,7 @@ export async function callMcpTool(tool, params = {}) {
           missingScopes: err.missingScopes || [],
           userScopes: err.userScopes || '',
           requiredScopes: err.requiredScopes || '',
-          tokenEvents,
+          tokenEvents: allTokenEvents,
         });
       }
       // MCP scope denial: valid token but wrong scope — surface scope details for the UI modal
@@ -231,7 +249,7 @@ export async function callMcpTool(tool, params = {}) {
           requiredScopes: err.requiredScopes || [],
           missingScopes: err.missingScopes || [],
           availableScopes: err.availableScopes || [],
-          tokenEvents,
+          tokenEvents: allTokenEvents,
         });
       }
       // Gateway policy denial — surface structured fields for the educational side panel card.
@@ -241,7 +259,7 @@ export async function callMcpTool(tool, params = {}) {
           statusCode: 403,
           tool: err.tool || tool,
           gatewayErrorCode: err.gatewayErrorCode || 'forbidden',
-          tokenEvents,
+          tokenEvents: allTokenEvents,
         });
       }
       // Normalize stub-token error codes so BankingAgent shows the session-fix bubble
@@ -249,7 +267,7 @@ export async function callMcpTool(tool, params = {}) {
         ? 'session_not_hydrated'
         : err.error;
       const e = Object.assign(new Error(err.message || `MCP error: ${response.status}`), {
-        tokenEvents,
+        tokenEvents: allTokenEvents,
         statusCode: response.status,
         code: errCode,
         need_auth: !!err.need_auth,
@@ -269,19 +287,31 @@ export async function callMcpTool(tool, params = {}) {
       data = await response.json();
     }
     appendMcpCall(tool, response.status, Date.now() - t0, data.result);
-    appendTokenEvents(tool, data.tokenEvents || []);
+    const responseTokenEvents = data.tokenEvents || [];
+    
+    // Merge SSE-collected token events with response body events (backward compat)
+    // SSE events arrive first (streaming), response body is fallback
+    const allTokenEvents = [...tokenEventsFromSse];
+    for (const evt of responseTokenEvents) {
+      // Avoid duplicates by checking if event already collected from SSE
+      if (!allTokenEvents.some(e => e.id === evt.id && e.timestamp === evt.timestamp)) {
+        allTokenEvents.push(evt);
+      }
+    }
+    
+    appendTokenEvents(tool, allTokenEvents);
     // Phase 194: mark tool milestone done
     updateMilestoneStatus(_toolId, 'done');
     addMilestone('Flow Complete', 'flow_complete', {});
     agentFlowDiagram.completeMcpToolCall({
       toolName: tool,
-      tokenEvents: data.tokenEvents || [],
+      tokenEvents: allTokenEvents,
       ok: true,
       errorMessage: null,
     });
     return {
       result: data.result,
-      tokenEvents: data.tokenEvents || [],
+      tokenEvents: allTokenEvents,
     };
   } catch (e) {
     // Phase 194: mark milestone error
