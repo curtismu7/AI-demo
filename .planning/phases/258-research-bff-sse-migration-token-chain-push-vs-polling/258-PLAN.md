@@ -2,7 +2,7 @@
 phase: 258
 title: "Plan Phase 258 — SSE Token Chain Migration"
 type: plan
-status: active
+status: complete
 date: 2026-05-01
 ---
 
