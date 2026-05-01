@@ -31,6 +31,7 @@ import type { DecodedGatewayToken } from '../tokenValidator';
 import jwt from 'jsonwebtoken';
 import type { McpRequestMiddleware } from '../server/GatewayServer';
 import type { GatewayConfig } from '../config';
+import { getScopesForGatewayTool } from '../auth/toolScopes';
 
 // ---------------------------------------------------------------------------
 // Body parsing helper — extract method and tool name from JSON-RPC body
@@ -115,8 +116,10 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
         'WWW-Authenticate': 'Bearer error="invalid_token", error_description="Token is revoked or no longer active"',
       });
       res.end(JSON.stringify({
-        error: 'token_inactive',
+        error: 'login_required',
         message: 'Token is revoked or no longer active (RFC 7662)',
+        required_scopes: ['banking:read'],
+        login_required: true,
       }));
       return;
     }
@@ -137,7 +140,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
           'Content-Type': 'application/json',
           'WWW-Authenticate': `Bearer error="${err.code}", error_description="${err.message}"`,
         });
-        res.end(JSON.stringify({ error: err.code, message: err.message }));
+        res.end(JSON.stringify({ error: err.code, message: err.message, required_scopes: ['banking:read'], login_required: true }));
         return;
       }
       throw err;
@@ -162,11 +165,23 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       const statusCode = authzDecision.decision === 'INDETERMINATE' ? 403 : 403;
       res.writeHead(statusCode, { 'Content-Type': 'application/json' });
       res.end(
-        JSON.stringify({
-          error: authzDecision.decision === 'INDETERMINATE' ? 'hitl_required' : 'forbidden',
-          message: authzDecision.reason ?? 'Request denied by policy',
-          decision: authzDecision.decision,
-        }),
+        JSON.stringify(
+          authzDecision.decision === 'INDETERMINATE'
+            ? {
+                error: 'hitl_required',
+                message: authzDecision.reason ?? 'Request denied by policy',
+                decision: authzDecision.decision,
+                required_scopes: getScopesForGatewayTool(toolName ?? ''),
+                login_required: false,
+              }
+            : {
+                error: 'insufficient_scope',
+                message: authzDecision.reason ?? 'Request denied by policy',
+                decision: authzDecision.decision,
+                required_scopes: getScopesForGatewayTool(toolName ?? ''),
+                login_required: false,
+              },
+        ),
       );
       return;
     }

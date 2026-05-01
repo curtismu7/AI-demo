@@ -29,6 +29,7 @@ import { guardToolsList, guardToolCall } from './pingAuthorizeGuard';
 import { createHitlChallenge, getHitlChallengeStatus } from './hitlClient';
 import { GatewayServer } from './server/GatewayServer';
 import { buildAuthorizeMcpRequest } from './middleware/authorizeMcpRequest';
+import { getScopesForGatewayTool, getChallengeTypeForTool } from './auth/toolScopes';
 
 let config: GatewayConfig;
 try {
@@ -207,7 +208,11 @@ async function handleMessage(
 
     const authz = await guardToolsList(decoded, config);
     if (!authz.permitted) {
-      send(jsonRpcError(id, -32403, authz.reason || 'Forbidden'));
+      send(jsonRpcError(id, -32403, authz.reason || 'Forbidden', {
+        error: 'insufficient_scope',
+        required_scopes: getScopesForGatewayTool(''),
+        login_required: false,
+      }));
       return;
     }
 
@@ -236,7 +241,11 @@ async function handleMessage(
       decoded = validateInboundToken(token, config.gatewayResourceUri);
     } catch (err) {
       const ve = err as TokenValidationError;
-      send(jsonRpcError(id, -32001, ve.message));
+      send(jsonRpcError(id, -32001, ve.message, {
+        error: 'login_required',
+        required_scopes: ['banking:read'],
+        login_required: true,
+      }));
       return;
     }
 
@@ -280,17 +289,22 @@ async function handleMessage(
               tool: toolName,
               challengeId: challenge.challengeId,
               expiresAt: challenge.expiresAt,
+              challenge_type: getChallengeTypeForTool(toolName),
               instructions: 'Approve at dashboard, then retry with _hitl_challenge_id in arguments',
             }));
           } catch (hitlErr) {
             console.error('[GW] Failed to create HITL challenge:', hitlErr);
-            send(jsonRpcError(id, -32002, 'Human approval required — HITL service unavailable', { hitl: true, tool: toolName }));
+            send(jsonRpcError(id, -32002, 'Human approval required — HITL service unavailable', { hitl: true, tool: toolName, challenge_type: getChallengeTypeForTool(toolName) }));
           }
         } else {
-          send(jsonRpcError(id, -32002, 'Human approval required', { hitl: true, tool: toolName }));
+          send(jsonRpcError(id, -32002, 'Human approval required', { hitl: true, tool: toolName, challenge_type: getChallengeTypeForTool(toolName) }));
         }
       } else {
-        send(jsonRpcError(id, -32403, authz.reason || 'Forbidden'));
+        send(jsonRpcError(id, -32403, authz.reason || 'Forbidden', {
+          error: 'insufficient_scope',
+          required_scopes: getScopesForGatewayTool(toolName),
+          login_required: false,
+        }));
       }
       return;
     }
