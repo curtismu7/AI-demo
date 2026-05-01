@@ -110,7 +110,13 @@ export class GatewayServer {
 
     if (url === '/health' && method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', service: 'banking-mcp-gateway', ts: new Date().toISOString() }));
+      res.end(JSON.stringify({
+        status: 'ok',
+        service: 'banking-mcp-gateway',
+        ts: new Date().toISOString(),
+        devBypass: this.config.devBypass,
+        gatewayResourceUri: this.config.gatewayResourceUri,
+      }));
       return;
     }
 
