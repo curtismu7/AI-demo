@@ -1333,6 +1333,66 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
  *           exchanger = AGENT_OAUTH_CLIENT_ID, audience = mcpResourceUri
  *   Result: Final Token has act.sub = MCP_CLIENT_ID, act.act.sub = AI_AGENT_CLIENT_ID
  */
+// ─── Gateway bypass probe (Phase 253) ────────────────────────────────────────
+// Determines the correct final audience for Exchange #2 based on whether the
+// MCP Gateway is in bypass mode. Cached for 30 seconds to avoid per-request HTTP.
+
+let _bypassCache = null; // { devBypass: boolean, ts: number } | null
+const BYPASS_CACHE_TTL_MS = 30_000;
+
+/**
+ * Resolve the final audience for Exchange #2 of the two-exchange delegation flow.
+ * - Direct mode (no MCP_GATEWAY_HTTP_URL): always use mcp-server audience
+ * - Gateway bypass mode (devBypass=true in /health): use mcp-server audience
+ * - Gateway production mode (devBypass=false): use mcp-gateway audience (default)
+ * - Gateway unreachable: fall back to mcp-server audience (safe fallback)
+ *
+ * @param {string} gatewayAud  - Production audience (mcp-gateway URI)
+ * @param {string} mcpServerAud - Bypass/direct audience (mcp-server URI)
+ * @returns {Promise<string>}
+ */
+async function _resolveFinalMcpAudience(gatewayAud, mcpServerAud) {
+  // Direct mode: gateway not configured — always use mcp-server aud
+  const gatewayBaseUrl = process.env.MCP_GATEWAY_HTTP_URL;
+  if (!gatewayBaseUrl) {
+    return mcpServerAud;
+  }
+
+  // Cache check
+  const now = Date.now();
+  if (_bypassCache && (now - _bypassCache.ts) < BYPASS_CACHE_TTL_MS) {
+    return _bypassCache.devBypass ? mcpServerAud : gatewayAud;
+  }
+
+  // Probe /health
+  const baseUrl = gatewayBaseUrl.replace(/\/$/, '');
+  try {
+    const healthResult = await new Promise((resolve, reject) => {
+      const http = require('http');
+      const req = http.get(`${baseUrl}/health`, (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          try { resolve({ ok: res.statusCode === 200, body: JSON.parse(data) }); }
+          catch { resolve({ ok: false, body: {} }); }
+        });
+      });
+      req.setTimeout(500, () => { req.destroy(); reject(new Error('gateway health probe timeout')); });
+      req.on('error', reject);
+    });
+    const devBypass = !!(healthResult.ok && healthResult.body.devBypass);
+    _bypassCache = { devBypass, ts: now };
+    console.log(`[TwoExchange] Gateway health probe: devBypass=${devBypass} → finalAud=${devBypass ? mcpServerAud : gatewayAud}`);
+    return devBypass ? mcpServerAud : gatewayAud;
+  } catch (err) {
+    // Gateway unreachable — treat as bypass, fall back to mcp-server audience
+    console.warn(`[TwoExchange] Gateway health probe failed (${err.message}) — falling back to mcp-server audience`);
+    _bypassCache = { devBypass: true, ts: now };
+    return mcpServerAud;
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function _performTwoExchangeDelegation(
   tokenEvents, userToken, userAccessTokenClaims, effectiveToolScopes, userSub, toolTrigger, mcpResourceUri
 ) {
@@ -1356,7 +1416,8 @@ async function _performTwoExchangeDelegation(
   const agentGatewayAud       = configResult.audiences.agentGatewayAud;
   const intermediateAud       = configResult.audiences.intermediateAud;
   const mcpGatewayAud         = configResult.audiences.mcpGatewayAud;
-  const twoExFinalAud         = configResult.audiences.finalAud;
+  const mcpServerAudForFallback = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI || '';
+  const twoExFinalAud         = await _resolveFinalMcpAudience(configResult.audiences.finalAud, mcpServerAudForFallback);
   const aiAgentClientSecret   = process.env.PINGONE_AI_AGENT_CLIENT_SECRET || process.env.AI_AGENT_CLIENT_SECRET;
   const mcpExchangerSecret    = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
   const aiAgentAuthMethod     = (configStore.get('ai_agent_token_endpoint_auth_method') || process.env.AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
