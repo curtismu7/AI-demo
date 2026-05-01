@@ -67,13 +67,23 @@ async function validateToken(token) {
       configStore.getEffective('pingone_introspection_endpoint') ||
       (() => { const base = oauthEndpointResolver.getTokenEndpoint?.(); return base ? base.replace('/token', '/introspect') : ''; })();
     const clientId =
+      process.env.PINGONE_INTROSPECTION_CLIENT_ID ||
       process.env.PINGONE_WORKER_CLIENT_ID ||
+      process.env.PINGONE_WORKER_TOKEN_CLIENT_ID ||
       configStore.getEffective('admin_client_id') ||
       configStore.getEffective('worker_client_id');
     const clientSecret =
+      process.env.PINGONE_INTROSPECTION_CLIENT_SECRET ||
       process.env.PINGONE_WORKER_CLIENT_SECRET ||
+      process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET ||
       configStore.getEffective('admin_client_secret') ||
       configStore.getEffective('worker_client_secret');
+    // Auth method: 'basic' sends credentials in Authorization header;
+    // default 'post' sends them in the request body (matches admin app config)
+    const authMethod =
+      process.env.PINGONE_INTROSPECTION_AUTH_METHOD ||
+      process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD ||
+      'post';
 
     if (!introspectionUrl || !clientId || !clientSecret) {
       logger.warn('Token introspection credentials missing', {
@@ -85,16 +95,20 @@ async function validateToken(token) {
     }
 
     // Call PingOne introspection endpoint with worker app credentials
+    // Support both 'basic' (Authorization header) and 'post' (body) auth methods
+    const formBody = authMethod === 'basic'
+      ? new URLSearchParams({ token })
+      : new URLSearchParams({ token, client_id: clientId, client_secret: clientSecret });
+    const authHeaders = authMethod === 'basic'
+      ? { 'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64') }
+      : {};
     const response = await axios.post(
       introspectionUrl,
-      new URLSearchParams({
-        token,
-        client_id: clientId,
-        client_secret: clientSecret,
-      }),
+      formBody,
       {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
+          ...authHeaders,
         },
         timeout: 5000, // 5 second timeout
       }
@@ -133,7 +147,7 @@ async function validateToken(token) {
     });
 
     // Audit logging (never log the token itself)
-    logger(LOG_CATEGORIES.AUTH, 'Token introspection completed', {
+    logger.info(LOG_CATEGORIES.AUTH, 'Token introspection completed', {
       token_hash: tokenHash.substring(0, 16),
       valid: result.valid,
       scopes: scopes.length,
@@ -146,7 +160,7 @@ async function validateToken(token) {
 
     return result;
   } catch (error) {
-    logger(LOG_CATEGORIES.ERROR, 'Token introspection failed', {
+    logger.error(LOG_CATEGORIES.ERROR, 'Token introspection failed', {
       error: error.message,
       endpoint: process.env.PINGONE_INTROSPECTION_ENDPOINT,
       timeout: error.code === 'ECONNABORTED',
