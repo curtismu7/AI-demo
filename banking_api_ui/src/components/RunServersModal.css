@@ -86,3 +86,5 @@
 }
 
 .rsm-btn--secondary:hover { background: #334155; }
+
+.rsm-waiting { color: #94a3b8; font-style: italic; }
