@@ -100,6 +100,13 @@ jest.mock('../../services/mcpWebSocketClient', () => ({
   },
 }));
 
+// Mock tokenIntrospectionService so unit tests don't need real PingOne credentials.
+// validateToken returns valid: true by default (introspection "passes" for the fake JWTs).
+// Individual tests can override via jest.spyOn if they need to test the invalid path.
+jest.mock('../../services/tokenIntrospectionService', () => ({
+  validateToken: jest.fn().mockResolvedValue({ valid: true, sub: 'user-sub-abc123', scopes: 'banking:read banking:write' }),
+}));
+
 jest.mock('../../services/configStore', () => {
   const actual = jest.requireActual('../../services/configStore');
   return {
@@ -411,17 +418,17 @@ describe('buildSessionPreviewTokenEvents', () => {
     jest.clearAllMocks();
   });
 
-  it('returns empty tokenEvents when no session token', () => {
-    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(null));
+  it('returns empty tokenEvents when no session token', async () => {
+    const { tokenEvents } = await buildSessionPreviewTokenEvents(makeReq(null));
     expect(tokenEvents).toEqual([]);
   });
 
-  it('returns user-token plus exchange-required failed when MCP_RESOURCE_URI is unset', () => {
+  it('returns user-token plus exchange-required failed when MCP_RESOURCE_URI is unset', async () => {
     configStore.getEffective.mockImplementation((key) => {
       if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return '';
       return null;
     });
-    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(sampleJwtUserAccessToken));
+    const { tokenEvents } = await buildSessionPreviewTokenEvents(makeReq(sampleJwtUserAccessToken));
     expect(tokenEvents).toHaveLength(2);
     expect(tokenEvents[0].id).toBe('user-token');
     expect(tokenEvents[0].status).toBe('active');
@@ -431,21 +438,21 @@ describe('buildSessionPreviewTokenEvents', () => {
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 
-  it('returns user-scopes-insufficient when URI is set but JWT has no scopes', () => {
+  it('returns user-scopes-insufficient when URI is set but JWT has no scopes', async () => {
     configStore.getEffective.mockImplementation((key) => {
       if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       return null;
     });
-    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(sampleJwtUserAccessNoScopes));
+    const { tokenEvents } = await buildSessionPreviewTokenEvents(makeReq(sampleJwtUserAccessNoScopes));
     expect(tokenEvents.some(e => e.id === 'user-scopes-insufficient')).toBe(true);
   });
 
-  it('returns waiting exchange rows when MCP_RESOURCE_URI is set and scopes sufficient — does not call PingOne exchange', () => {
+  it('returns waiting exchange rows when MCP_RESOURCE_URI is set and scopes sufficient — does not call PingOne exchange', async () => {
     configStore.getEffective.mockImplementation((key) => {
       if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       return null;
     });
-    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(sampleJwtUserAccessToken));
+    const { tokenEvents } = await buildSessionPreviewTokenEvents(makeReq(sampleJwtUserAccessToken));
     expect(tokenEvents).toHaveLength(3);
     expect(tokenEvents[0].id).toBe('user-token');
     expect(tokenEvents[1].id).toBe('exchange');

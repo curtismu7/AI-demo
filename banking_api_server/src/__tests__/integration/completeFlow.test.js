@@ -24,6 +24,14 @@ jest.mock('../../../utils/logger', () => {
   return { logger: mockLogger, LOG_LEVELS: {}, LOG_CATEGORIES: {} };
 });
 
+// Mock tokenIntrospectionService so tests control active/inactive outcomes
+// without real PingOne credentials. Individual tests override this mock.
+const mockValidateToken = jest.fn().mockResolvedValue({ valid: true, sub: 'user123', scopes: 'banking:read' });
+jest.mock('../../../services/tokenIntrospectionService', () => ({
+  validateToken: (...args) => mockValidateToken(...args),
+  clearCache: jest.fn(),
+}));
+
 describe('Complete Flow Integration Tests', () => {
   let app;
 
@@ -157,18 +165,11 @@ describe('Complete Flow Integration Tests', () => {
 
     it('should perform introspection when enabled', async () => {
       process.env.ENABLE_TOKEN_INTROSPECTION = 'true';
+      mockValidateToken.mockResolvedValue({ valid: true, sub: 'user123', scopes: 'banking:read' });
 
       jwt.decode.mockReturnValue({
         sub: 'user123',
         scope: 'banking:read'
-      });
-
-      axios.post.mockResolvedValue({
-        data: {
-          active: true,
-          sub: 'user123',
-          scope: 'banking:read'
-        }
       });
 
       await request(app)
@@ -176,23 +177,16 @@ describe('Complete Flow Integration Tests', () => {
         .set('Authorization', 'Bearer mock.jwt.token')
         .expect(200);
 
-      expect(axios.post).toHaveBeenCalledWith(
-        'https://auth.pingone.com/introspect',
-        expect.any(URLSearchParams),
-        expect.any(Object)
-      );
+      expect(mockValidateToken).toHaveBeenCalledWith('mock.jwt.token');
     });
 
     it('should reject revoked tokens when introspection enabled', async () => {
       process.env.ENABLE_TOKEN_INTROSPECTION = 'true';
+      mockValidateToken.mockResolvedValue({ valid: false });
 
       jwt.decode.mockReturnValue({
         sub: 'user123',
         scope: 'banking:read'
-      });
-
-      axios.post.mockResolvedValue({
-        data: { active: false }
       });
 
       await request(app)
