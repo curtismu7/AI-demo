@@ -958,7 +958,7 @@ pre.tcd-jwt-dump {
   border-radius: 2px;
 }
 
-/* ─── Inline inspect icon button (right of token label) ─────────────────── */
+/* ─── Token card title row ───────────────────────────────────────────────── */
 .tcd-event-title-row {
   display: flex;
   align-items: flex-start;
@@ -969,39 +969,43 @@ pre.tcd-jwt-dump {
   flex: 1;
 }
 
-.tcd-inspect-btn {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  margin-top: 1px;
-  background: rgba(37, 99, 235, 0.1);
-  border: 1px solid rgba(37, 99, 235, 0.25);
-  border-radius: 5px;
-  color: var(--brand-navy);
-  cursor: pointer;
-  opacity: 0.7;
-  transform: scale(1);
-  transition: opacity 0.15s, transform 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
+/* ─── "Token Details" button row — below the claims strip ───────────────── */
+.tcd-inspect-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
 }
 
-.tcd-event:hover .tcd-inspect-btn,
-.tcd-event:focus-within .tcd-inspect-btn {
-  opacity: 1;
+.tcd-inspect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  border-radius: 6px;
+  color: var(--brand-navy);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.tcd-inspect-btn svg {
+  flex-shrink: 0;
 }
 
 .tcd-inspect-btn:hover {
   background: var(--brand-navy);
   border-color: var(--brand-navy);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
 }
 
 .tcd-inspect-btn:active {
-  background: var(--brand-navy);
+  background: #1e3a8a;
+  border-color: #1e3a8a;
 }
 
 /* ─── Token Inspector Panel (portal, fixed, draggable/resizable/collapsible) */

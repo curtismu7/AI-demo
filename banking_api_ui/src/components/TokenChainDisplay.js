@@ -970,18 +970,7 @@ function EventRow({ event, isLast, nextEvent, idTokenMode, onInspect, hints, val
           <div className="tcd-event-title-row">
             <TokenColorDot type={deriveTokenCategory(event.label, event.id, event.tokenType)} size={10} />
             <span className="tcd-event-label">{event.label}</span>
-            {hasDetail && (
-              <button
-                ref={inspectBtnRef}
-                type="button"
-                className="tcd-inspect-btn"
-                onClick={handleOpen}
-                aria-label={`Inspect ${event.label}`}
-                title="Open token inspector"
-              >
-                <InspectIcon />
-              </button>
-            )}
+
           </div>
           
           {/* Prominent User ID and Agent ID display with enhanced visual treatment */}
@@ -1059,6 +1048,20 @@ function EventRow({ event, isLast, nextEvent, idTokenMode, onInspect, hints, val
             </div>
           )}
           <ClaimsStrip event={event} hints={hints} />
+          {hasDetail && (
+            <div className="tcd-inspect-row">
+              <button
+                ref={inspectBtnRef}
+                type="button"
+                className="tcd-inspect-btn"
+                onClick={handleOpen}
+                aria-label={`Inspect ${event.label}`}
+              >
+                <InspectIcon />
+                Token Details
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
