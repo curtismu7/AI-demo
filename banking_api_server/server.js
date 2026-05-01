@@ -1082,6 +1082,23 @@ app.post('/api/mcp/scope-upgrade', express.json(), requireSession, async (req, r
         return res.status(500).json({ error: 'scope_upgrade_failed', message: err.message });
     }
 });
+/**
+ * Publish token events to SSE hub for real-time Token Chain updates.
+ * @param {string} flowTraceId - Trace ID for SSE subscription
+ * @param {Array} tokenEvents - Array of token events to publish
+ */
+function publishTokenEventsToSse(flowTraceId, tokenEvents) {
+  if (!flowTraceId || !Array.isArray(tokenEvents)) return;
+  for (const event of tokenEvents) {
+    if (event && typeof event === 'object') {
+      mcpFlowSseHub.publish(flowTraceId, {
+        type: 'token-event',
+        ...event
+      });
+    }
+  }
+}
+
 // POST /api/mcp/tool — call a banking MCP tool
 app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next) => {
   try {
@@ -1216,6 +1233,8 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             mcpAccessToken = resolved.token;
             tokenEvents = resolved.tokenEvents;
             userSub = resolved.userSub || null;
+            // Publish token events to SSE hub for real-time Token Chain display
+            publishTokenEventsToSse(flowTraceId, tokenEvents);
         }
         const evs = tokenEvents || [];
         emit({
@@ -1250,6 +1269,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         // Do NOT fall back to local tool execution — that would hide the misconfiguration.
         if (err.code === 'missing_exchange_scopes') {
             const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
+            publishTokenEventsToSse(flowTraceId, events);
             return res.status(403).json({
                 error: 'missing_exchange_scopes',
                 message: err.message,
@@ -1278,6 +1298,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         );
         if (sessionUser ?.id && isExchangeScopeError) {
             const fallbackEvents = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
+            publishTokenEventsToSse(flowTraceId, fallbackEvents);
             const effectiveUserId = sessionUser.oauthId || sessionUser.id;
             console.log(
                 '[MCP Local] %s — exchange failed (%s), falling back to local handler. effectiveUserId=%s',
@@ -1315,6 +1336,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
 
         const status = err.httpStatus || 502;
         const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
+        publishTokenEventsToSse(flowTraceId, events);
         const errCode = err.error || err.code;  // RFCCompliantError uses .error, not .code
         const requiresLogin = false; // actor_token_invalid is a server config issue; user session expiry is caught by middleware before this
         return res.status(status).json({
@@ -1347,6 +1369,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
                     phase: 'local_tool_done',
                     path: 'no_bearer'
                 });
+                publishTokenEventsToSse(flowTraceId, tokenEvents);
                 return res.json({
                     result,
                     tokenEvents,
@@ -1358,6 +1381,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
                     phase: 'local_tool_error',
                     path: 'no_bearer'
                 });
+                publishTokenEventsToSse(flowTraceId, tokenEvents);
                 return res.status(502).json({
                     error: 'mcp_error',
                     message: localErr.message,
@@ -1369,6 +1393,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             phase: 'no_bearer_no_user'
         });
         const r = mcpNoBearerResponse(req, tokenEvents);
+        publishTokenEventsToSse(flowTraceId, tokenEvents);
         return res.status(r.status).json(r.body);
     }
 
