@@ -9,6 +9,8 @@ export interface GatewayConfig {
   // Gateway's own OAuth client (for acquiring actor token in re-exchange)
   clientId: string;
   clientSecret: string;
+  // Token endpoint auth method: 'basic' (client_secret_basic) or 'post' (client_secret_post)
+  tokenEndpointAuthMethod: 'basic' | 'post';
   // PingOne token endpoint
   tokenEndpoint: string;
   // Inbound aud — tokens sent to the GW must carry this audience
@@ -24,8 +26,11 @@ export interface GatewayConfig {
   pingAuthorizeWorkerId: string;
   // Optional HITL service URL — when set, INDETERMINATE decisions trigger a challenge
   hitlServiceUrl: string;
+  // Optional RFC 7662 introspection endpoint
+  // Set GW_INTROSPECTION_ENDPOINT to enable active-token validation at the gateway.
+  // Falls back to PINGONE_INTROSPECTION_ENDPOINT if unset.
+  introspectionEndpoint: string;
   // Dev/mock bypass — when true, skip required-var guards and make auth pipeline passthrough.
-  // Set MCP_GW_DEV_BYPASS=true in .env.development to run without real PingOne credentials.
   devBypass: boolean;
 }
 
@@ -48,11 +53,13 @@ function optional(name: string, fallback: string): string {
 }
 
 export function loadConfig(): GatewayConfig {
+  const authMethod = (process.env.MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
   return {
     port: parseInt(process.env.PORT || '3005', 10),
     host: process.env.HOST || '0.0.0.0',
     clientId: required('MCP_GW_CLIENT_ID'),
     clientSecret: required('MCP_GW_CLIENT_SECRET'),
+    tokenEndpointAuthMethod: authMethod === 'post' ? 'post' : 'basic',
     tokenEndpoint: required('PINGONE_TOKEN_ENDPOINT'),
     gatewayResourceUri: required('MCP_GW_RESOURCE_URI'),
     mcpOlbWsUrl: optional('MCP_OLB_WS_URL', 'ws://localhost:8080'),
@@ -62,6 +69,8 @@ export function loadConfig(): GatewayConfig {
     pingAuthorizeEndpoint: optional('PINGAUTHORIZE_ENDPOINT', ''),
     pingAuthorizeWorkerId: optional('PINGAUTHORIZE_WORKER_ID', ''),
     hitlServiceUrl: optional('HITL_SERVICE_URL', ''),
+    introspectionEndpoint: optional('GW_INTROSPECTION_ENDPOINT',
+      optional('PINGONE_INTROSPECTION_ENDPOINT', '')),
     devBypass: DEV_BYPASS,
   };
 }
