@@ -102,6 +102,8 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) �
 
 ## Roadmap Evolution
 
+- Phase 259 added: Gateway auth pipeline — introspection, amount-aware step-up, SSE decision reporting
+
 - Phase 258 added: Research BFF SSE migration — token chain push vs polling
 
 - Phase 257 added: HITL and P1MFA approval settings page — configure what triggers HITL simple approval vs P1MFA for transactions, add page to side menu

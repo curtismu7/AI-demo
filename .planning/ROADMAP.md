@@ -2012,6 +2012,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 258 to break down)
 
+### Phase 259: Gateway auth pipeline — introspection, amount-aware step-up, SSE decision reporting
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 258
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 259 to break down)
+
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
