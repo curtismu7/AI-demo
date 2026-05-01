@@ -27,6 +27,13 @@ export interface AuthzDecision {
   reason?: string;
 }
 
+export interface ToolArgs {
+  amount?: number;
+  transaction_type?: string;
+  to_account_id?: string;
+  [key: string]: unknown;
+}
+
 export class PingOneAuthorizeClient {
   constructor(private readonly config: GatewayConfig) {}
 
@@ -41,6 +48,7 @@ export class PingOneAuthorizeClient {
     decoded: DecodedGatewayToken,
     method: string,
     toolName?: string,
+    toolArgs?: ToolArgs,
   ): Promise<AuthzDecision> {
     // No PingAuthorize configured — permit all (dev/no-authz mode)
     if (!this.config.pingAuthorizeEndpoint || !this.config.pingAuthorizeWorkerId) {
@@ -59,6 +67,9 @@ export class PingOneAuthorizeClient {
         ActClientId: decoded.act?.sub ?? '',
         TokenScopes: tokenScopes.join(' '),
         TokenAudience: this.config.gatewayResourceUri,
+        TransactionAmount: toolArgs?.amount !== undefined ? String(toolArgs.amount) : '',
+        TransactionType: toolArgs?.transaction_type ?? toolName ?? '',
+        ToAccountId: toolArgs?.to_account_id ?? '',
       },
     };
 

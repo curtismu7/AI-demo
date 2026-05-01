@@ -26,6 +26,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { GatewayTokenPolicy, GatewayTokenPolicyError } from '../auth/GatewayTokenPolicy';
 import { PingOneAuthorizeClient } from '../auth/PingOneAuthorizeClient';
 import { McpTokenExchangeClient } from '../auth/McpTokenExchangeClient';
+import { GatewayIntrospectionClient, type IntrospectionResult } from '../auth/GatewayIntrospectionClient';
 import type { DecodedGatewayToken } from '../tokenValidator';
 import jwt from 'jsonwebtoken';
 import type { McpRequestMiddleware } from '../server/GatewayServer';
@@ -37,7 +38,16 @@ import type { GatewayConfig } from '../config';
 
 interface JsonRpcBody {
   method?: string;
-  params?: { name?: string };
+    params?: {
+      name?: string;
+      arguments?: Record<string, unknown>;
+    };
+}
+
+interface GwAuditTrail {
+  introspection: { active: boolean; skipped?: boolean; sub?: string; exp?: number; error?: string } | null;
+  authorize: { decision: string; reason?: string } | null;
+  exchange: { targetAud: string } | null;
 }
 
 function parseJsonRpcBody(body: Buffer): JsonRpcBody {
@@ -53,6 +63,7 @@ function parseJsonRpcBody(body: Buffer): JsonRpcBody {
 // ---------------------------------------------------------------------------
 
 export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddleware {
+  const introspectionClient = new GatewayIntrospectionClient(config);
   const authorizeClient = new PingOneAuthorizeClient(config);
   const exchangeClient = new McpTokenExchangeClient(config);
 
@@ -73,7 +84,44 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       return;
     }
 
-    // ── 1. Decode claims + apply gateway token policy ─────────────────────
+    const auditTrail: GwAuditTrail = {
+      introspection: null,
+      authorize: null,
+      exchange: null,
+    };
+
+    // Helper: set the audit trail header on any response path
+    const setAuditHeader = (r: ServerResponse) => {
+      try {
+        r.setHeader('X-Gw-Audit-Trail', JSON.stringify(auditTrail));
+      } catch {
+        // headers already sent — ignore
+      }
+    };
+
+    // ── Step 0: RFC 7662 active-token introspection ───────────────────────────────
+    const introspResult = await introspectionClient.introspect(bearerToken);
+    auditTrail.introspection = {
+      active: introspResult.active,
+      skipped: introspResult.skipped,
+      sub: introspResult.sub,
+      exp: introspResult.exp,
+      error: introspResult.error,
+    };
+    if (!introspResult.active && !introspResult.skipped) {
+      setAuditHeader(res);
+      res.writeHead(401, {
+        'Content-Type': 'application/json',
+        'WWW-Authenticate': 'Bearer error="invalid_token", error_description="Token is revoked or no longer active"',
+      });
+      res.end(JSON.stringify({
+        error: 'token_inactive',
+        message: 'Token is revoked or no longer active (RFC 7662)',
+      }));
+      return;
+    }
+
+    // ── Step 1: Decode claims + apply gateway token policy ─────────────────────
     // Note: GatewayServer already validated aud/exp before invoking middleware.
     // Here we jwt.decode (no re-throw on aud/exp) to extract sub/act for Authorize.
     let decoded: DecodedGatewayToken;
@@ -84,6 +132,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       GatewayTokenPolicy.validate(decoded, config);
     } catch (err) {
       if (err instanceof GatewayTokenPolicyError) {
+        setAuditHeader(res);
         res.writeHead(401, {
           'Content-Type': 'application/json',
           'WWW-Authenticate': `Bearer error="${err.code}", error_description="${err.message}"`,
@@ -94,19 +143,22 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       throw err;
     }
 
-    // ── 2. Parse JSON-RPC to get method + tool ─────────────────────────────
+    // ── Step 2: Parse JSON-RPC to get method, tool name, and transaction args ──────
     const { method = 'unknown', params } = parseJsonRpcBody(body);
     const toolName = params?.name;
+    const toolArgs = params?.arguments as Record<string, unknown> | undefined;
 
-    // ── 3. PingOne Authorize evaluation (D-06) ─────────────────────────────
+    // ── Step 3: PingOne Authorize evaluation (D-06) ───────────────────────────────
     let authzDecision;
     try {
-      authzDecision = await authorizeClient.evaluate(decoded, method, toolName);
+      authzDecision = await authorizeClient.evaluate(decoded, method, toolName, toolArgs as any);
     } catch {
       authzDecision = { decision: 'DENY' as const, reason: 'Authorization service unavailable' };
     }
+    auditTrail.authorize = { decision: authzDecision.decision, reason: authzDecision.reason };
 
     if (authzDecision.decision !== 'PERMIT') {
+      setAuditHeader(res);
       const statusCode = authzDecision.decision === 'INDETERMINATE' ? 403 : 403;
       res.writeHead(statusCode, { 'Content-Type': 'application/json' });
       res.end(
@@ -119,13 +171,14 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       return;
     }
 
-    // ── 4. RFC 8693 token exchange for next-hop audience (D-03, D-05) ──────
+    // ── Step 4: RFC 8693 token exchange for next-hop audience (D-03, D-05) ─────────
     let exchangeResult;
     try {
       exchangeResult = await exchangeClient.exchange(bearerToken, toolName);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[authorizeMcpRequest] Token exchange failed:', msg);
+      setAuditHeader(res);
       res.writeHead(502, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({
@@ -135,8 +188,10 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       );
       return;
     }
+    auditTrail.exchange = { targetAud: exchangeResult.targetAud };
 
-    // ── 5. Forward with exchanged token (D-04: original bearer stays at gateway) ──
+    // ── Step 5: Forward with exchanged token (D-04: original bearer stays at gateway) ──
+    setAuditHeader(res);
     await forward(exchangeResult.token, body);
   };
 }
