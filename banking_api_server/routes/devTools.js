@@ -9,8 +9,7 @@ const router = express.Router();
 
 const REPO_ROOT = path.resolve(__dirname, '../../');
 
-// Singleton guard — cleared when process exits
-let activeProcess = null;
+let activeLaunch = false;
 
 const runServersLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -26,24 +25,28 @@ router.post('/run-servers', requireSession, runServersLimiter, (req, res) => {
     return res.status(403).json({ error: 'forbidden', message: 'Run Servers is not available in production.' });
   }
 
-  if (activeProcess !== null) {
+  if (activeLaunch) {
     return res.status(409).json({ error: 'already_running', message: 'Already starting, please wait.' });
   }
 
-  // Spawn detached — returns immediately, run-bank.sh runs independently
-  const proc = spawn('./run-bank.sh', ['restart'], {
-    cwd: REPO_ROOT,
-    shell: true,
+  activeLaunch = true;
+  setTimeout(() => { activeLaunch = false; }, 60_000);
+
+  // Use osascript to open a real Terminal window with a full GUI session.
+  // This gives run-bank.sh a TTY so CRA's npm start can open the browser,
+  // identical to running ./run-bank.sh restart in a terminal manually.
+  const osa = `tell application "Terminal"
+    activate
+    do script "cd ${REPO_ROOT} && ./run-bank.sh restart"
+  end tell`;
+
+  const proc = spawn('osascript', ['-e', osa], {
     detached: true,
     stdio: 'ignore',
   });
-  activeProcess = proc;
-  proc.unref(); // don't block the Node process
+  proc.unref();
 
-  proc.on('close', () => { activeProcess = null; });
-  proc.on('error', () => { activeProcess = null; });
-
-  res.status(202).json({ message: 'Servers restarting — a new tab will open when ready.' });
+  res.status(202).json({ message: 'Opening Terminal to restart servers.' });
 });
 
 module.exports = router;
