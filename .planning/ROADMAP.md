@@ -1973,13 +1973,14 @@ Plans:
 
 ### Phase 255: Top-menu Run Servers button — executes run-bank.sh via BFF endpoint and streams output to a modal so user can verify all services are up
 
-**Goal:** [To be planned]
+**Goal:** Add a "Run Servers" button to TopNav that spawns `run-bank.sh restart` via BFF SSE endpoint and streams output to a modal (status cards + live log)
 **Requirements**: TBD
 **Depends on:** Phase 254
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 255 to break down)
+- [ ] 255-01-PLAN.md — BFF devTools route (POST /api/dev/run-servers, SSE, singleton guard, rate limit, production guard)
+- [ ] 255-02-PLAN.md — Frontend RunServersModal + TopNav button
 
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
