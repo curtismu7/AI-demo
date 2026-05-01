@@ -813,15 +813,21 @@ router.post(
         });
       }
 
-      // Execute kill switch
-      const result = await killSwitchService.killAgent(agentId, reason);
+      // Execute kill switch — pass userId so killAgent can disable the user at PingOne
+      const userId = req.session?.user?.oauthId || req.session?.user?.id || null;
+      const result = await killSwitchService.killAgent(agentId, reason, userId);
 
-      return res.status(200).json({
-        success: true,
+      // Destroy admin session — token is revoked, session is now invalid
+      req.session.destroy(() => {});
+
+      // Return 401: the session/token is gone, UI must redirect to PingOne login
+      return res.status(401).json({
+        error: 'agent_killed',
+        need_auth: true,
         revoked_at: result.revoked_at,
         state_snapshot_id: result.state_snapshot_id,
         time_to_revoke_ms: result.time_to_revoke_ms,
-        message: `Agent ${agentId} has been revoked. Token invalid within ${result.time_to_revoke_ms}ms.`,
+        message: `Agent stopped. Session revoked. Please sign in again.`,
       });
 
     } catch (error) {

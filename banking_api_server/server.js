@@ -1598,6 +1598,8 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
                 console.warn(`[MCP Proxy] Session token introspection failed: token inactive for tool ${tool}`);
                 return res.status(401).json({
                     error: 'token_inactive',
+                    need_auth: true,
+                    agentInitRequired: true,
                     message: 'Session token is no longer active. Please sign in again.',
                     tokenEvents,
                 });

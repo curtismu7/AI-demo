@@ -345,7 +345,16 @@ export default function AdminSideNav({ user }) {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ reason }),
 			});
+			// 401 is the expected success response: session revoked, user disabled at PingOne
+			if (response.status === 401) {
+				setAgentRevoked(true);
+				setShowKillModal(false);
+				console.log("[AdminSideNav] Agent killed — redirecting to PingOne login");
+				setTimeout(() => { window.location.href = "/api/auth/logout"; }, 800);
+				return;
+			}
 			if (!response.ok) throw new Error(`Kill switch failed: ${response.status}`);
+			// Fallback for any 2xx (should not happen after server fix)
 			setAgentRevoked(true);
 			setShowKillModal(false);
 			console.log("[AdminSideNav] Agent kill switch successful");

@@ -13,6 +13,7 @@ const crypto = require('crypto');
 const oauthConfig = require('../config/oauth');
 const configStore = require('./configStore');
 const auditLogService = require('./auditLogService');
+const pingOneUserService = require('./pingOneUserService');
 
 /**
  * Revoke agent's OAuth token at PingOne authorization server
@@ -59,6 +60,29 @@ async function revokeTokenAtPingOne(agentId) {
   } catch (error) {
     console.error('[killSwitch] Token revocation failed:', error.message);
     throw new Error(`Token revocation failed: ${error.message}`);
+  }
+}
+
+/**
+ * Disable a PingOne user account via Management API.
+ * Called by kill switch to immediately prevent re-authentication.
+ * @param {string} userId - PingOne user ID (sub claim from session)
+ * @returns {Promise<{disabled: boolean}>}
+ */
+async function disableUserAtPingOne(userId) {
+  if (!userId) {
+    console.warn('[killSwitch] disableUserAtPingOne: no userId provided — skipping');
+    return { disabled: false, reason: 'no_user_id' };
+  }
+  try {
+    pingOneUserService.initialize();
+    await pingOneUserService.makeRequest('PATCH', `/users/${userId}`, { enabled: false });
+    console.log(`[killSwitch] PingOne user ${userId} disabled via Management API`);
+    return { disabled: true };
+  } catch (err) {
+    // Non-fatal: token is already revoked; disabling the user is belt-and-suspenders
+    console.error(`[killSwitch] Failed to disable PingOne user ${userId}:`, err.message);
+    return { disabled: false, reason: err.message };
   }
 }
 
@@ -243,11 +267,12 @@ async function getAgentRefreshToken(agentId) {
  * @param {string} reason - Reason for kill switch activation
  * @returns {Promise<{success: boolean, revoked_at: string, state_snapshot_id: string, time_to_revoke_ms: number}>}
  */
-async function killAgent(agentId, reason = 'manual_red_button') {
+async function killAgent(agentId, reason = 'manual_red_button', userId = null) {
   const startTime = Date.now();
   
   try {
     console.log(`[killSwitch] Executing kill switch for agent ${agentId}. Reason: ${reason}`);
+    killAgent._userId = userId || null;
 
     // 1. Revoke token at PingOne
     const revokeResult = await revokeTokenAtPingOne(agentId);
@@ -262,7 +287,14 @@ async function killAgent(agentId, reason = 'manual_red_button') {
       }
     }
 
-    // 2. Capture state BEFORE invalidating sessions
+    // 2. Disable the user at PingOne (belt-and-suspenders — token is revoked but user could re-login)
+    //    userId must be passed in for this to work; agentId alone is not enough.
+    if (killAgent._userId) {
+      await disableUserAtPingOne(killAgent._userId);
+      killAgent._userId = null;
+    }
+
+    // 3. Capture state BEFORE invalidating sessions
     const stateSnapshot = await captureAgentState(agentId);
     const stateSnapshotId = crypto.randomBytes(8).toString('hex');
 

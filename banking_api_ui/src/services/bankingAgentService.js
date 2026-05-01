@@ -208,8 +208,10 @@ export async function callMcpTool(tool, params = {}) {
     
     if (response.status === 401) {
       const err401 = await response.clone().json().catch(() => ({}));
-      // Cookie-only / empty Redis session: refresh cannot add tokens — avoid spamming refresh endpoints.
-      // agentSessionMiddleware returns session_restore_required or oauth_session_required for stub tokens.
+      // token_inactive / need_auth: token is dead at PingOne — refresh cannot help, signal re-auth immediately
+      if (err401.need_auth || err401.error === 'token_inactive') {
+        throw Object.assign(new Error(err401.message || 'Session expired'), { statusCode: 401, need_auth: true, code: 'TOKEN_INACTIVE' });
+      }
       const isStubToken = ['session_not_hydrated', 'session_restore_required', 'oauth_session_required'].includes(err401.error);
       if (!isStubToken) {
         const refreshed = await refreshOAuthSession();
