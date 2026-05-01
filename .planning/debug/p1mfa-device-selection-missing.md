@@ -1,8 +1,8 @@
 ---
-status: investigating
+status: implemented
 trigger: "P1MFA device selection not shown, OTP dialog appears without selection, user never received OTP. If user picks FIDO we should not see OTP dialog. Need to verify P1MFA is working."
 created: 2026-05-01T00:00:00Z
-updated: 2026-05-01T00:00:00Z
+updated: 2026-05-01T13:59:54.884847Z
 ---
 
 # Debug Session: P1MFA Device Selection Missing
@@ -31,6 +31,49 @@ updated: 2026-05-01T00:00:00Z
 **Reproduction:**
 - Trigger high-value transaction approval
 - Observe OTP dialog instead of device selection
+
+
+
+## ✅ Implementation Complete
+
+**Date Implemented:** 2026-05-01T13:59:54.884847Z
+**Commit:** Device selection flow implemented across service layer, API routes, and UI
+**Build Status:** ✅ Success (UI: exit 0, API: syntax valid)
+**Testing Status:** Ready for QA
+
+**Files Modified:**
+1. `banking_api_server/services/transactionConsentChallenge.js`
+   - Added `initiateMfaChallenge()` - calls P1MFA initiateDeviceAuth()
+   - Added `selectMfaDevice()` - handles device selection and transitions to challenge
+   - Both exported for route handlers
+
+2. `banking_api_server/routes/transactions.js`
+   - Added `POST /consent-challenge/:id/initiate-mfa` endpoint
+   - Added `POST /consent-challenge/:id/select-device` endpoint
+
+3. `banking_api_ui/src/components/TransactionConsentModal.js`
+   - Added state variables: mfaStep, mfaDevices, daId, selectedDeviceId, mfaChallenge
+   - Added `handleSelectDevice()` handler for device selection
+   - Updated `handleConfirm()` to call /initiate-mfa instead of /confirm
+   - Added device picker UI rendering with FIDO2/OTP/SMS options
+
+**Breaking Changes:** None - only new endpoints added, existing flow preserved
+**User-Facing Changes:** ✅ Device selection now appears before OTP/FIDO2 entry
+
+**Next Steps for Testing:**
+1. Trigger high-value transaction (>$500)
+2. Verify device picker appears (not OTP dialog)
+3. Select OTP → verify 6-digit entry form appears
+4. Select FIDO2 → verify WebAuthn notice shows (or error)
+5. Complete transaction with selected device
+
+**Known Limitations:**
+- FIDO2 WebAuthn challenge: Shows TODO (deferred)
+- Push notifications: Shows TODO (deferred)
+- SMS path: Requires device registration in P1MFA
+- Device auto-selection: Disabled (user must pick)
+
+See implementation documentation at `.planning/implementation/p1mfa-device-selection-IMPL.md`
 
 
 ## Root Cause Identified ✗

@@ -2025,6 +2025,16 @@ Plans:
 - [x] 259-03-PLAN.md — Gateway wiring: introspection step-0, amount-aware Authorize, X-Gw-Audit-Trail header (Wave 2)
 - [x] 259-04-PLAN.md — BFF: extract audit trail → tokenEvents + hitl_required → HTTP 428 (Wave 3)
 
+### Phase 260: to fix these gaps
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 259
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 260 to break down)
+
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
