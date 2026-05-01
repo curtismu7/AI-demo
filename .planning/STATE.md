@@ -102,6 +102,8 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) �
 
 ## Roadmap Evolution
 
+- Phase 255 added: Top-menu Run Servers button — executes run-bank.sh via BFF endpoint and streams output to a modal so user can verify all services are up
+
 - Phase 254 added: Family delegation — prompt for delegated user on next login, auto-provision user with MFA device and may_act attribute via worker token
 
 - Phase 253 added: Gateway bypass fallback — fix scopes, AUD, and resource server so MCP tools work without the gateway and user never sees an error

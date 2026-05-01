@@ -1971,6 +1971,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 254 to break down)
 
+### Phase 255: Top-menu Run Servers button — executes run-bank.sh via BFF endpoint and streams output to a modal so user can verify all services are up
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 254
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 255 to break down)
+
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
