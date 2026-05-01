@@ -23,6 +23,9 @@
  */
 
 import http, { IncomingMessage, ServerResponse } from 'http';
+import https from 'https';
+import { readFileSync, existsSync } from 'fs';
+import { resolve } from 'path';
 import axios, { AxiosError } from 'axios';
 import { GatewayConfig } from '../config';
 import { extractBearerToken, validateInboundToken, TokenValidationError } from '../tokenValidator';
@@ -63,7 +66,7 @@ export interface GatewayServerOptions {
 }
 
 export class GatewayServer {
-  private readonly server: http.Server;
+  private readonly server: http.Server | https.Server;
   private readonly config: GatewayConfig;
   private readonly upstreamMcpUrl: string;
   private readonly middleware: McpRequestMiddleware;
@@ -79,7 +82,14 @@ export class GatewayServer {
     this.middleware = requestMiddleware ?? defaultMiddleware;
     // McpValidationFilter equivalent: accepted origins for CORS (default: allow all)
     this.acceptedOriginsRe = new RegExp(process.env.MCP_ACCEPTED_ORIGINS ?? '.*');
-    this.server = http.createServer((req, res) => {
+    // TLS: use https if cert/key are provided via env or certs/ directory
+    const certEnv = process.env.GW_TLS_CERT;
+    const keyEnv = process.env.GW_TLS_KEY;
+    const defaultCert = resolve(__dirname, '../../../certs/api.pingdemo.com+2.pem');
+    const defaultKey  = resolve(__dirname, '../../../certs/api.pingdemo.com+2-key.pem');
+    const certPath = certEnv || (existsSync(defaultCert) ? defaultCert : null);
+    const keyPath  = keyEnv  || (existsSync(defaultKey)  ? defaultKey  : null);
+    const reqHandler = (req: IncomingMessage, res: ServerResponse) => {
       this.handleRequest(req, res).catch((err) => {
         console.error('[GatewayServer] Unhandled error:', err);
         if (!res.headersSent) {
@@ -87,7 +97,16 @@ export class GatewayServer {
           res.end(JSON.stringify({ error: 'internal_server_error' }));
         }
       });
-    });
+    };
+    if (certPath && keyPath) {
+      console.log('[GatewayServer] TLS enabled — cert:', certPath);
+      this.server = https.createServer(
+        { cert: readFileSync(certPath), key: readFileSync(keyPath) },
+        reqHandler,
+      );
+    } else {
+      this.server = http.createServer(reqHandler);
+    }
   }
 
   /** Expose the underlying http.Server for WebSocket upgrade attachment or testing. */
