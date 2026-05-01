@@ -14,6 +14,13 @@
  */
 
 const axios = require('axios');
+const https = require('https');
+
+// For local dev the gateway runs with a self-signed cert (api.pingdemo.com:3005).
+// Bypass cert verification only when MCP_GATEWAY_REJECT_UNAUTHORIZED is not
+// explicitly set to '1' and the URL is not a public HTTPS origin.
+const _gatewayRejectUnauthorized = process.env.MCP_GATEWAY_REJECT_UNAUTHORIZED === '1';
+const _devHttpsAgent = new https.Agent({ rejectUnauthorized: _gatewayRejectUnauthorized });
 
 const DEFAULT_GATEWAY_URL = 'https://api.pingdemo.com:3005';
 const DEFAULT_TIMEOUT_MS  = 30_000;
@@ -61,6 +68,8 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
         timeout: timeoutMs,
         // Handle error status codes ourselves so we can emit structured errors
         validateStatus: () => true,
+        // Allow self-signed certs in local dev (api.pingdemo.com:3005)
+        httpsAgent: _devHttpsAgent,
     });
 
     const status = response.status;
