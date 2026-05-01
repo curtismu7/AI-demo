@@ -26,7 +26,9 @@
   display: flex;
   flex-direction: column;
   flex: 1;         /* fill the flex main-content column */
-  min-height: 0;
+  min-height: unset;
+  height: 100vh;   /* constrain to viewport so dock stays visible — mirrors split3 pattern */
+  overflow: hidden; /* prevent outer scroll; inner content area scrolls within the flex chain */
   padding-bottom: 0;
 }
 
@@ -47,6 +49,12 @@
   flex: 1;
   min-height: 200px;
   overflow-y: auto;
+}
+
+/* Higher specificity: override the generic embed-agent overflow:visible when the bottom dock is active */
+.user-dashboard--embed-agent .ud-body-outer--with-bottom-agent .dashboard-content.ud-body {
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Agent dock rendered inside the dashboard: flush with 3-col grid, full content width */

@@ -2290,7 +2290,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 					<div className="transactions-list">
 						{transactions
 							.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-							.slice(0, 20)
+							.slice(0, agentPlacement === "bottom" ? 8 : 20)
 							.map((transaction) => {
 								const clientInfo = getClientTypeIcon(transaction.clientType);
 								return (
