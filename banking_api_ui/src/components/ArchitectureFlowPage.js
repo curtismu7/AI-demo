@@ -23,6 +23,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import apiClient from '../services/apiClient';
+import { agentFlowDiagram } from '../services/agentFlowDiagramService';
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -738,6 +739,49 @@ function eventToHistoryEntry(evt) {
 
 // ─── Page component ───────────────────────────────────────────────────────────
 
+
+// ─── Live agent phase → diagram node mapping ────────────────────────────────
+// Maps agentFlowDiagramService phase values to the node(s) that should light up.
+const PHASE_TO_NODES = {
+  // Token resolution
+  resolving_access_token:               [{ id: 'idp-oauth-as', colorClass: 'active' }],
+  access_token_ready:                   [{ id: 'idp-oauth-as', colorClass: 'active' }],
+  access_token_error:                   [{ id: 'idp-oauth-as', colorClass: 'active-error' }],
+  // Authorize gate
+  authorize_gate_begin:                 [{ id: 'mcp-gw', colorClass: 'active' }, { id: 'pingauthorize', colorClass: 'active' }],
+  authorize_permitted:                  [{ id: 'pingauthorize', colorClass: 'active-permit' }],
+  authorize_denied:                     [{ id: 'pingauthorize', colorClass: 'active-error' }],
+  authorize_simulated_error:            [{ id: 'pingauthorize', colorClass: 'active-error' }],
+  authorize_unavailable:                [{ id: 'pingauthorize', colorClass: 'active-error' }],
+  authorize_gate_skipped:               [{ id: 'pingauthorize', colorClass: 'active-prev' }],
+  authorize_internal_error:             [{ id: 'pingauthorize', colorClass: 'active-error' }],
+  // MCP
+  mcp_remote_begin:                     [{ id: 'agent', colorClass: 'active' }, { id: 'mcp-gw', colorClass: 'active' }],
+  mcp_remote_done:                      [{ id: 'mcp-gw', colorClass: 'active-permit' }, { id: 'mcp-server', colorClass: 'active-permit' }],
+  mcp_remote_tool_error:                [{ id: 'mcp-gw', colorClass: 'active-error' }, { id: 'mcp-server', colorClass: 'active-error' }],
+  mcp_remote_unreachable:               [{ id: 'mcp-gw', colorClass: 'active-error' }],
+  mcp_remote_skipped_vercel:            [{ id: 'mcp-gw', colorClass: 'active-prev' }],
+  // Introspection
+  introspection_begin:                  [{ id: 'idp-oauth-as', colorClass: 'active' }],
+  introspection_active_ok:              [{ id: 'idp-oauth-as', colorClass: 'active-permit' }],
+  introspection_inactive:               [{ id: 'idp-oauth-as', colorClass: 'active-error' }],
+  introspection_error_degraded:         [{ id: 'idp-oauth-as', colorClass: 'active-prev' }],
+  // Local fallback
+  local_tool_start:                     [{ id: 'mcp-server', colorClass: 'active' }],
+  local_tool_done:                      [{ id: 'mcp-server', colorClass: 'active-permit' }],
+  local_tool_error:                     [{ id: 'mcp-server', colorClass: 'active-error' }],
+  local_fallback_blocked_no_user:       [{ id: 'mcp-server', colorClass: 'active-error' }],
+  // HITL
+  mfa_challenge_initiated:              [{ id: 'hitl', colorClass: 'active-hitl' }, { id: 'agent', colorClass: 'active-hitl' }],
+  mfa_challenge_completed:              [{ id: 'hitl', colorClass: 'active-permit' }],
+  mfa_challenge_failed:                 [{ id: 'hitl', colorClass: 'active-error' }],
+  mfa_challenge_skipped:                [{ id: 'hitl', colorClass: 'active-prev' }],
+  // General
+  request_accepted:                     [{ id: 'agent', colorClass: 'active' }],
+  no_bearer_token_branch:               [{ id: 'mcp-gw', colorClass: 'active' }],
+  no_bearer_no_user:                    [{ id: 'mcp-gw', colorClass: 'active-error' }],
+};
+
 const HIGHLIGHT_MS  = 4000;
 const HISTORICAL_MS = 15000;
 const STEP_MS       = 2500;
@@ -749,6 +793,7 @@ export default function ArchitectureFlowPage({ user }) {
   const [isPaused,         setIsPaused]         = useState(false);
   const [currentStep,      setCurrentStep]      = useState(-1);
   const [history,          setHistory]          = useState([]);
+  const [agentSnap,        setAgentSnap]        = useState(null);
   const [selectedScenario, setSelectedScenario] = useState('full-flow');
   const pausedStep    = useRef(-1);
   const clearTimers   = useRef({});
@@ -923,6 +968,32 @@ export default function ArchitectureFlowPage({ user }) {
     };
   }, [fetchEvents]);
 
+  // Subscribe to live agent flow service — lights up diagram nodes as agent steps through MCP chain
+  useEffect(() => {
+    const unsub = agentFlowDiagram.subscribe((snap) => {
+      // Always update status banner
+      setAgentSnap(snap.phase !== 'idle' ? snap : null);
+      // Only drive diagram when not in manual simulation mode
+      if (isSimulating) return;
+
+      const phase = snap.phase;
+      const nodes = PHASE_TO_NODES[phase];
+      if (!nodes || nodes.length === 0) return;
+
+      nodes.forEach(({ id, colorClass }) => activateNode(id, colorClass, HIGHLIGHT_MS));
+
+      // If the agent just started a tool call, also light up the agent node
+      if (phase === 'request_accepted' && snap.toolName) {
+        activateNode('agent', 'active', HIGHLIGHT_MS);
+      }
+      // When MCP remote done, also show banking-api briefly
+      if (phase === 'mcp_remote_done') {
+        setTimeout(() => activateNode('banking-api', 'active-permit', HIGHLIGHT_MS - 500), 400);
+      }
+    });
+    return unsub;
+  }, [isSimulating, activateNode]);
+
   const activeStep = currentStep >= 0 ? stepsRef.current[currentStep] : null;
 
   return (
@@ -996,6 +1067,41 @@ export default function ArchitectureFlowPage({ user }) {
 
       {/* Aud trail */}
       <AudTrail stepIndex={currentStep} />
+
+      {/* Live agent banner — shown when agent is actively running a tool */}
+      {agentSnap && !isSimulating && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '10px',
+          background: agentSnap.phase === 'mfa_challenge_initiated' ? '#fef9c3'
+            : agentSnap.phase?.includes('error') || agentSnap.phase?.includes('denied') ? '#fee2e2'
+            : '#f0fdf4',
+          border: `1px solid ${agentSnap.phase?.includes('error') || agentSnap.phase?.includes('denied') ? '#fca5a5' : agentSnap.phase === 'mfa_challenge_initiated' ? '#fde68a' : '#bbf7d0'}`,
+          borderRadius: 6, padding: '6px 12px', marginBottom: 6, fontSize: '0.8rem', flexWrap: 'wrap',
+        }}>
+          <span style={{ fontSize: '1rem' }}>
+            {agentSnap.phase?.includes('error') || agentSnap.phase?.includes('denied') ? '❌'
+              : agentSnap.phase === 'mfa_challenge_initiated' ? '⏳'
+              : agentSnap.phase?.includes('permit') || agentSnap.phase?.includes('done') ? '✅'
+              : '⚡'}
+          </span>
+          <span style={{ fontWeight: 700, color: '#1e293b' }}>
+            Live agent:
+          </span>
+          {agentSnap.toolName && (
+            <span style={{ fontFamily: 'monospace', background: '#f1f5f9', borderRadius: 4, padding: '1px 6px', fontSize: '0.77rem', color: '#1d4ed8', fontWeight: 700 }}>
+              {agentSnap.toolName}
+            </span>
+          )}
+          {agentSnap.serverEvents?.length > 0 && (
+            <span style={{ color: '#475569' }}>
+              {agentSnap.serverEvents[agentSnap.serverEvents.length - 1].label}
+            </span>
+          )}
+          <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'monospace' }}>
+            {agentSnap.phase}
+          </span>
+        </div>
+      )}
 
       {/* Diagram */}
       <div style={{ height: '70vh', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', background: '#f8fafc' }}>

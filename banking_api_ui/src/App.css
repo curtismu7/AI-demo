@@ -811,6 +811,20 @@
   line-height: 1.3;
 }
 
+.otp-step-up-modal__contact {
+  display: inline-block;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0369a1;
+  letter-spacing: 0.04em;
+  margin-bottom: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .otp-step-up-modal__close {
   width: 28px;
   height: 28px;
@@ -914,6 +928,41 @@
 .otp-step-up-modal__btn-primary:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+.otp-step-up-modal__close {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.otp-step-up-modal__close:hover {
+  color: #111827;
+  background: #f3f4f6;
+}
+
+.otp-step-up-modal__btn-cancel {
+  flex: 1;
+  padding: 0.625rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.otp-step-up-modal__btn-cancel:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
 }
 
 .otp-step-up-modal__btn-ghost {

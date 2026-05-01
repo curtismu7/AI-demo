@@ -62,6 +62,13 @@ export default function TransactionConsentModal({
   const [otpEmail, setOtpEmail] = useState(null); // email address OTP was sent to
   const otpInputRef = useRef(null);
 
+  // Device selection for P1MFA
+  const [mfaStep, setMfaStep] = useState(false);   // true = show device picker
+  const [mfaDevices, setMfaDevices] = useState([]); // list of available devices
+  const [daId, setDaId] = useState(null);          // P1MFA device auth ID
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null); // selected device
+  const [mfaChallenge, setMfaChallenge] = useState(null); // challenge response (OTP/FIDO2/etc)
+
   const autoConfirmFiredRef = useRef(null);
 
   useEffect(() => {
@@ -80,6 +87,11 @@ export default function TransactionConsentModal({
       setOtpVerifying(false);
       setOtpExpiresAt(null);
       setOtpEmail(null);
+      setMfaStep(false);
+      setMfaDevices([]);
+      setDaId(null);
+      setSelectedDeviceId(null);
+      setMfaChallenge(null);
     }
   }, [open]);
 
@@ -244,23 +256,61 @@ export default function TransactionConsentModal({
    * Step 1 — user agrees and clicks "Agree & send code".
    * Calls /confirm which generates OTP and sends email.
    */
+  /**
+   * Step 1 — user agrees and clicks "Agree & send code".
+   * Calls /initiate-mfa to start P1MFA device selection.
+   */
   const handleConfirm = async () => {
     if (!agreed || submitting || !snapshot || !challengeId || !user?.id) return;
     setSubmitting(true);
     try {
       const { data } = await bffAxios.post(
-        `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/confirm`
+        `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/initiate-mfa`
       );
-      setOtpSent(data.otpSent !== false);
-      setOtpExpiresAt(data.otpExpiresAt);
-      setOtpEmail(data.otpEmail || user.email || null);
-      if (data.otpSent === false && data.otpCodeFallback) {
-        setOtpFallbackCode(data.otpCodeFallback);
-      }
-      setOtpStep(true);
+      // Device selection step
+      setDaId(data.daId);
+      setMfaDevices(data.devices || []);
+      setMfaStep(true); // Show device picker
     } catch (e) {
       const d = e.response?.data;
-      notifyError(d?.message || d?.error_description || d?.error || e.message || 'Could not send verification code.');
+      notifyError(d?.message || d?.error_description || d?.error || e.message || 'Could not initiate device selection.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /**
+   * Step 1b — user selected a device from the picker.
+   * Calls /select-device to complete device selection and get challenge.
+   */
+  const handleSelectDevice = async (deviceId) => {
+    if (!selectedDeviceId && selectedDeviceId !== deviceId) {
+      setSelectedDeviceId(deviceId);
+    }
+    setSubmitting(true);
+    try {
+      const { data } = await bffAxios.post(
+        `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/select-device`,
+        { deviceId }
+      );
+      setMfaChallenge(data);
+      // Show appropriate challenge based on method
+      if (data.method === 'otp') {
+        setOtpStep(true);
+        setMfaStep(false);
+      } else if (data.method === 'fido2') {
+        // TODO: Implement FIDO2 WebAuthn challenge
+        notifyWarning('FIDO2 challenge not yet implemented in this UI.');
+        setMfaStep(true);
+      } else if (data.method === 'push') {
+        // TODO: Implement push notification polling
+        notifyWarning('Push notification method not yet implemented in this UI.');
+        setMfaStep(true);
+      }
+    } catch (e) {
+      const d = e.response?.data;
+      notifyError(d?.message || d?.error_description || d?.error || e.message || 'Could not select device.');
+      setSelectedDeviceId(null);
     } finally {
       setSubmitting(false);
     }
@@ -367,7 +417,7 @@ export default function TransactionConsentModal({
           }}
         >
           <h2 id="transaction-consent-popup-title" className="transaction-consent-popup__title" style={{ margin: 0 }}>
-            {otpStep ? '🔒 Enter verification code' : 'Approve high-value transaction'}
+            {otpStep ? '🔒 Enter verification code' : mfaStep ? '📱 Select verification method' : 'Approve high-value transaction'}
           </h2>
         </div>
 
@@ -386,8 +436,53 @@ export default function TransactionConsentModal({
           <div className="drp-resize-handle drp-resize-handle--w" onMouseDown={createResizeHandler('w')} aria-hidden title="Resize from left" />
         </div>
 
-        {/* ── OTP step ──────────────────────────────────────────────────── */}
-        {otpStep ? (
+        {/* ── Device selection step ──────────────────────────────────────────── */}
+        {mfaStep && !otpStep ? (
+          <div className="mfa-device-panel" style={{ padding: '2rem', textAlign: 'center' }}>
+            <p style={{ marginBottom: '1.5rem', color: '#475569' }}>
+              Select how you'd like to verify this transaction:
+            </p>
+            <div className="mfa-device-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {mfaDevices.map((device) => (
+                <button
+                  key={device.id}
+                  type="button"
+                  className={`mfa-device-btn${selectedDeviceId === device.id ? ' mfa-device-btn--selected' : ''}`}
+                  onClick={() => handleSelectDevice(device.id)}
+                  disabled={submitting}
+                  style={{
+                    padding: '1rem',
+                    border: selectedDeviceId === device.id ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+                    borderRadius: '0.5rem',
+                    backgroundColor: selectedDeviceId === device.id ? '#eff6ff' : '#fff',
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    textAlign: 'left',
+                    fontWeight: selectedDeviceId === device.id ? 600 : 400,
+                    color: selectedDeviceId === device.id ? '#1e40af' : '#334155',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <span style={{ marginRight: '0.5rem' }}>
+                    {device.type === 'FIDO2' ? '🔐' : device.type === 'OTP' ? '🔢' : device.type === 'SMS' ? '📱' : '✓'}
+                  </span>
+                  {device.type === 'FIDO2' && 'Security Key (FIDO2)'}
+                  {device.type === 'OTP' && 'One-Time Code'}
+                  {device.type === 'SMS' && 'SMS Text Message'}
+                  {!['FIDO2', 'OTP', 'SMS'].includes(device.type) && `${device.type} (${device.id.slice(0, 8)})`}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="tx-otp-panel__back-btn"
+              onClick={() => { setMfaStep(false); setSelectedDeviceId(null); setMfaDevices([]); }}
+              disabled={submitting}
+              style={{ marginTop: '1.5rem' }}
+            >
+              ← Back
+            </button>
+          </div>
+        ) : otpStep ? (
           <div className="tx-otp-panel">
             {otpSent ? (
               <>

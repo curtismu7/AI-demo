@@ -12,10 +12,9 @@ function formatJson(val) {
   return JSON.stringify(val, null, 2);
 }
 
-// Lightweight JSON syntax highlighter — no external deps
 function tokenizeJson(text) {
   const tokens = [];
-  const re = /("(?:[^"\\]|\\.)*"\s*:)|("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b|([{}[\],:])/g;
+  const re = /("(?:[^"\\]|\\.)*"\s*:)|("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|(\b(?:true|false|null)\b)|([{}[\],:])/g;
   let last = 0, m;
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) tokens.push({ type: 'plain', text: text.slice(last, m.index) });
@@ -31,34 +30,18 @@ function tokenizeJson(text) {
 }
 
 const JSON_COLORS = {
-  key:     '#7dd3fc', // sky-300
-  string:  '#86efac', // green-300
-  number:  '#fbbf24', // amber-400
-  keyword: '#f472b6', // pink-400
-  punct:   '#94a3b8', // slate-400
-  plain:   '#e2e8f0', // slate-200
+  key: '#7dd3fc', string: '#86efac', number: '#fbbf24',
+  keyword: '#f472b6', punct: '#94a3b8', plain: '#e2e8f0',
 };
 
 function JsonHighlight({ value }) {
   const text = formatJson(value);
   if (!text) return <span style={{ color: '#64748b', fontStyle: 'italic' }}>—</span>;
-  const tokens = tokenizeJson(text);
-  return (
-    <>
-      {tokens.map((t, i) => (
-        <span key={i} style={{ color: JSON_COLORS[t.type] }}>{t.text}</span>
-      ))}
-    </>
-  );
+  return <>{tokenizeJson(text).map((t, i) => <span key={i} style={{ color: JSON_COLORS[t.type] }}>{t.text}</span>)}</>;
 }
 
-function methodCls(method) {
-  return `aep-method aep-method--${(method || 'GET').toUpperCase()}`;
-}
-
-function statusCls(status) {
-  return `aep-status ${status >= 200 && status < 300 ? 'aep-status--ok' : 'aep-status--err'}`;
-}
+function methodCls(m) { return `aep-method aep-method--${(m || 'GET').toUpperCase()}`; }
+function statusCls(s) { return `aep-status ${s >= 200 && s < 300 ? 'aep-status--ok' : 'aep-status--err'}`; }
 
 function CallRow({ call, isSelected, onClick }) {
   const status = call.response?.status;
@@ -66,59 +49,71 @@ function CallRow({ call, isSelected, onClick }) {
   return (
     <div
       className={`aep-call-row${isSelected ? ' aep-call-row--selected' : ''}${isErr ? ' aep-call-row--err' : ''}`}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
+      onClick={onClick} role="button" tabIndex={0}
       onKeyDown={e => e.key === 'Enter' && onClick()}
     >
       <div className="aep-call-meta">
         <span className={methodCls(call.method)}>{call.method}</span>
         {status != null && <span className={statusCls(status)}>{status}</span>}
         {call.durationMs != null && <span className="aep-dur">{call.durationMs}ms</span>}
+        <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: '#94a3b8' }}>{isSelected ? '◀' : '▶'}</span>
       </div>
       <div className="aep-url" title={call.url}>{call.url}</div>
     </div>
   );
 }
 
-function DetailView({ call }) {
-  if (!call) {
-    return <div className="aep-detail-empty">Select a call to inspect request &amp; response</div>;
-  }
+function DetailPanel({ call, onClose }) {
+  const [tab, setTab] = useState('response');
+
+  if (!call) return (
+    <div className="aep-detail aep-detail--empty">
+      <div style={{ fontSize: '2rem', marginBottom: '10px' }}>👆</div>
+      <div>Click any call on the left to inspect its response &amp; request</div>
+    </div>
+  );
+
   const status = call.response?.status;
+  const tabs = [
+    { id: 'response', label: 'Response Body' },
+    { id: 'request',  label: 'Request Body' },
+    { id: 'headers',  label: 'Headers' },
+  ];
+
   return (
     <div className="aep-detail">
-      <div className="aep-detail-title">
+      <div className="aep-detail-header">
         <span className={methodCls(call.method)}>{call.method}</span>
         {status != null && <span className={statusCls(status)}>{status}</span>}
-        {call.durationMs != null && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{call.durationMs}ms</span>}
+        {call.durationMs != null && <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{call.durationMs}ms</span>}
+        <button type="button" className="aep-close-btn" onClick={onClose} title="Close">✕</button>
       </div>
-      <div className="aep-url-full">{call.url}</div>
+      <div className="aep-url-full" title={call.url}>{call.url}</div>
 
-      <div className="aep-section">
-        <div className="aep-section-label">Request Body</div>
-        {call.request?.body ? (
-          <pre className="aep-json"><JsonHighlight value={call.request.body} /></pre>
-        ) : (
-          <pre className="aep-json aep-json--none">No request body</pre>
+      <div className="aep-detail-tabs">
+        {tabs.map(t => (
+          <button key={t.id} type="button"
+            className={`aep-detail-tab${tab === t.id ? ' aep-detail-tab--active' : ''}`}
+            onClick={() => setTab(t.id)}
+          >{t.label}</button>
+        ))}
+      </div>
+
+      <div className="aep-detail-body">
+        {tab === 'response' && (
+          call.response?.body
+            ? <pre className="aep-json"><JsonHighlight value={call.response.body} /></pre>
+            : <pre className="aep-json aep-json--none">No response body captured</pre>
         )}
-      </div>
-
-      <div className="aep-section">
-        <div className="aep-section-label">Response Body</div>
-        {call.response?.body ? (
-          <pre className="aep-json"><JsonHighlight value={call.response.body} /></pre>
-        ) : (
-          <pre className="aep-json aep-json--none">No response body</pre>
+        {tab === 'request' && (
+          call.request?.body
+            ? <pre className="aep-json"><JsonHighlight value={call.request.body} /></pre>
+            : <pre className="aep-json aep-json--none">No request body</pre>
         )}
-      </div>
-
-      <div className="aep-section">
-        <div className="aep-section-label">Request Headers</div>
-        {call.request?.headers && Object.keys(call.request.headers).length > 0 ? (
-          <pre className="aep-json"><JsonHighlight value={call.request.headers} /></pre>
-        ) : (
-          <pre className="aep-json aep-json--none">—</pre>
+        {tab === 'headers' && (
+          call.request?.headers && Object.keys(call.request.headers).length > 0
+            ? <pre className="aep-json"><JsonHighlight value={call.request.headers} /></pre>
+            : <pre className="aep-json aep-json--none">No headers captured</pre>
         )}
       </div>
     </div>
@@ -163,9 +158,7 @@ export default function ApiExplorerPanel() {
         <span className="aep-count">{calls.length} calls</span>
         {error && <span style={{ fontSize: '0.78rem', color: '#991b1b' }}>⚠ {error}</span>}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-          <button className="aep-btn" onClick={() => { setLive(v => !v); }}>
-            {live ? '⏸ Pause' : '▶ Live'}
-          </button>
+          <button className="aep-btn" onClick={() => setLive(v => !v)}>{live ? '⏸ Pause' : '▶ Live'}</button>
           <button className="aep-btn" onClick={() => {
             fetch('/api/api-calls', { method: 'DELETE', credentials: 'include' })
               .then(() => { setCalls([]); setSelected(null); });
@@ -187,21 +180,17 @@ export default function ApiExplorerPanel() {
       <div className="aep-body">
         <div className="aep-list">
           {reversed.length === 0 ? (
-            <div className="aep-list-empty">
-              No API calls yet.<br />Use the AI agent or test pages to generate calls.
-            </div>
-          ) : (
-            reversed.map(call => (
-              <CallRow
-                key={call.id}
-                call={call}
-                isSelected={selected?.id === call.id}
-                onClick={() => setSelected(prev => prev?.id === call.id ? null : call)}
-              />
-            ))
-          )}
+            <div className="aep-list-empty">No API calls yet.<br />Use the AI agent or test pages to generate calls.</div>
+          ) : reversed.map(call => (
+            <CallRow
+              key={call.id}
+              call={call}
+              isSelected={selected?.id === call.id}
+              onClick={() => setSelected(prev => prev?.id === call.id ? null : call)}
+            />
+          ))}
         </div>
-        <DetailView call={selected} />
+        <DetailPanel call={selected} onClose={() => setSelected(null)} />
       </div>
     </div>
   );

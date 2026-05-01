@@ -191,3 +191,20 @@
 .user-menu-item-danger:hover .user-menu-item-icon {
   color: #d32f2f;
 }
+
+.user-menu-item-primary {
+  color: #1565c0;
+}
+
+.user-menu-item-primary:hover {
+  background: #e3f2fd;
+  color: #0d47a1;
+}
+
+.user-menu-item-primary .user-menu-item-icon {
+  color: #1565c0;
+}
+
+.user-menu-item-primary:hover .user-menu-item-icon {
+  color: #0d47a1;
+}

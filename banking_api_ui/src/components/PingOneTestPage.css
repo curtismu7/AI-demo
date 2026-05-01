@@ -1287,7 +1287,7 @@ a.pingone-test-button--primary:visited {
   margin-top: 4px;
 }
 .scope-fix-result--ok { background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
-.scope-fix-result--err { background: rgba(239, 68, 68, 0.1); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+.scope-fix-result--err { background: rgba(239, 68, 68, 0.15); color: #fff; border: 1px solid rgba(239, 68, 68, 0.5); }
 
 /* ── Phase 149: Asset RS banner ─────────────────────────────────── */
 .asset-rs-banner {

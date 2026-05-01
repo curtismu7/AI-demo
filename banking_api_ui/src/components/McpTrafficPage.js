@@ -7,6 +7,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import McpPairView from './McpPairView';
 import OtpStepUpModal from './OtpStepUpModal';
+import { navigateToCustomerOAuthLogin } from '../utils/authUi';
 
 const API_POLL_MS = 3000;
 const DEFAULT_LIMIT = 200;
@@ -261,6 +262,10 @@ function McpToolsPanel() {
   const [stepUpDaId, setStepUpDaId] = useState(null);
   const [stepUpDevices, setStepUpDevices] = useState([]);
   const [otpDeliveryMethod, setOtpDeliveryMethod] = useState(null);
+  const [devCode, setDevCode] = useState(null);
+  const [maskedContact, setMaskedContact] = useState(null);
+  const [p1Devices, setP1Devices] = useState([]);
+  const [devicesLoading, setDevicesLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setErr(null);
@@ -287,7 +292,14 @@ function McpToolsPanel() {
           setShowStepUp(true);
         } else {
           setOtpDeliveryMethod(null);
+          setP1Devices([]);
+          setDevicesLoading(true);
           setShowMethodPicker(true);
+          fetch('/api/auth/mfa/devices', { credentials: 'include' })
+            .then(r => r.json())
+            .then(d => setP1Devices(d.devices || []))
+            .catch(() => {})
+            .finally(() => setDevicesLoading(false));
         }
       } else {
         setTools(data.tools || []);
@@ -303,14 +315,40 @@ function McpToolsPanel() {
   const handleDeliveryMethodChosen = useCallback(async (method) => {
     setShowMethodPicker(false);
     setOtpDeliveryMethod(method);
+    setDevCode(null);
+    setMaskedContact(null);
     try {
-      await fetch('/api/auth/oauth/user/initiate-otp', {
+      const resp = await fetch('/api/auth/oauth/user/initiate-otp', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ method }),
       });
+      const data = await resp.json().catch(() => ({}));
+      if (data.devCode) setDevCode(data.devCode);
+      if (data.maskedContact) setMaskedContact(data.maskedContact);
     } catch (_) { /* non-fatal — modal still opens */ }
     setShowStepUp(true);
+  }, []);
+
+  // For FIDO2, TOTP, push devices — use p1mfa modal which handles WebAuthn / TOTP / push properly
+  const handleP1MfaDevice = useCallback(async (device) => {
+    setShowMethodPicker(false);
+    setErr(null);
+    try {
+      const mfaRes = await fetch('/api/auth/mfa/challenge', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!mfaRes.ok) throw new Error('Failed to create MFA challenge');
+      const mfaData = await mfaRes.json();
+      setStepUpDaId(mfaData.daId || null);
+      // Pass all enrolled devices so the user can switch if needed
+      setStepUpDevices(mfaData.devices && mfaData.devices.length > 0 ? mfaData.devices : [device]);
+      setStepUpMethod('p1mfa');
+      setShowStepUp(true);
+    } catch (e) {
+      setErr('Could not start MFA challenge: ' + e.message);
+    }
   }, []);
 
   const handleStepUpComplete = useCallback(() => {
@@ -340,7 +378,7 @@ function McpToolsPanel() {
   }, [load]);
 
   return (
-    <div style={{ padding: '0 24px 20px', borderBottom: '2px solid var(--border-light,#e2e8f0)' }}>
+    <div style={{ padding: '0 24px 12px', borderBottom: '2px solid var(--border-light,#e2e8f0)', maxHeight: '280px', overflowY: 'auto', flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
         <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary,#1e293b)' }}>
           🛠 MCP Tools
@@ -386,21 +424,52 @@ function McpToolsPanel() {
             <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1e293b', marginBottom: '6px' }}>
               Verify Your Identity
             </div>
-            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 20px' }}>
-              Step-up MFA is required to view MCP tools. How would you like to receive your verification code?
+            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 16px' }}>
+              Step-up MFA is required to view MCP tools. Select a verification method:
             </p>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button type="button" onClick={() => handleDeliveryMethodChosen('email')} style={{
-                flex: 1, padding: '10px', borderRadius: '8px',
-                border: '1px solid #3b82f6', background: '#eff6ff',
-                color: '#1d4ed8', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer',
-              }}>📧 Email</button>
-              <button type="button" onClick={() => handleDeliveryMethodChosen('sms')} style={{
-                flex: 1, padding: '10px', borderRadius: '8px',
-                border: '1px solid #10b981', background: '#ecfdf5',
-                color: '#065f46', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer',
-              }}>📱 SMS</button>
-            </div>
+            {devicesLoading && (
+              <p style={{ fontSize: '0.83rem', color: '#94a3b8', textAlign: 'center', margin: '0 0 12px' }}>Loading your devices…</p>
+            )}
+            {!devicesLoading && p1Devices.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '4px' }}>
+                {p1Devices.map((device) => {
+                  const icon = device.type === 'EMAIL' ? '📧' : device.type === 'SMS' || device.type === 'PHONE' || device.type === 'MOBILE_PHONE' ? '📱' : device.type === 'TOTP' ? '🔢' : device.type === 'FIDO2' ? '🔑' : '📲';
+                  const isOtpDevice = device.type === 'EMAIL' || device.type === 'SMS' || device.type === 'PHONE' || device.type === 'MOBILE_PHONE';
+                  const otpMethod = device.type === 'EMAIL' ? 'email' : 'sms';
+                  return (
+                    <button key={device.id} type="button"
+                      onClick={() => isOtpDevice ? handleDeliveryMethodChosen(otpMethod) : handleP1MfaDevice(device)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '12px',
+                        padding: '10px 14px', borderRadius: '8px', textAlign: 'left',
+                        border: '1px solid #e2e8f0', background: '#f8fafc',
+                        cursor: 'pointer', width: '100%',
+                      }}
+                    >
+                      <span style={{ fontSize: '1.25rem' }}>{icon}</span>
+                      <span style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.88rem', color: '#1e293b' }}>{device.type.charAt(0) + device.type.slice(1).toLowerCase()}</span>
+                        {device.maskedContact && <span style={{ fontSize: '0.82rem', color: '#0369a1', fontWeight: 700 }}>{device.maskedContact}</span>}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {!devicesLoading && p1Devices.length === 0 && (
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '4px' }}>
+                <button type="button" onClick={() => handleDeliveryMethodChosen('email')} style={{
+                  flex: 1, padding: '10px', borderRadius: '8px',
+                  border: '1px solid #3b82f6', background: '#eff6ff',
+                  color: '#1d4ed8', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer',
+                }}>📧 Email</button>
+                <button type="button" onClick={() => handleDeliveryMethodChosen('sms')} style={{
+                  flex: 1, padding: '10px', borderRadius: '8px',
+                  border: '1px solid #10b981', background: '#ecfdf5',
+                  color: '#065f46', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer',
+                }}>📱 SMS</button>
+              </div>
+            )}
             <button type="button" onClick={() => setShowMethodPicker(false)} style={{
               marginTop: '12px', width: '100%', padding: '8px',
               background: 'none', border: 'none', color: '#94a3b8',
@@ -415,10 +484,13 @@ function McpToolsPanel() {
         daId={stepUpDaId}
         devices={stepUpDevices}
         contextLine={
-          otpDeliveryMethod === 'sms'
-            ? 'Check your phone — a verification code was sent via SMS.'
-            : 'Check your email — a verification code was sent. If not received, check server logs.'
+          devCode
+            ? `⚠️ Dev mode: email/SMS not configured. Your code: ${devCode}`
+            : otpDeliveryMethod === 'sms'
+              ? 'Check your phone — a verification code was sent via SMS.'
+              : 'Check your email — a verification code was sent. If not received, check server logs.'
         }
+        maskedContact={maskedContact}
         onSubmit={handleOtpSubmit}
         onCancel={() => setShowStepUp(false)}
         onP1MfaComplete={handleStepUpComplete}
@@ -470,7 +542,7 @@ export default function McpTrafficPage() {
   const reversed = [...entries].reverse();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '400px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '400px', height: '100%', overflowY: 'auto' }}>
       <div style={{ padding: '16px 24px 10px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', marginBottom: '8px' }}>
           <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary,#1e293b)' }}>
@@ -512,13 +584,13 @@ export default function McpTrafficPage() {
           <div style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
             <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>🔒</div>
             <div style={{ fontWeight: 600, marginBottom: '4px' }}>Session expired</div>
-            <div style={{ fontSize: '0.82rem', marginBottom: '12px' }}>Your session has expired. Please refresh the page to sign in again.</div>
+            <div style={{ fontSize: '0.82rem', marginBottom: '12px' }}>Your session has expired. Please sign in again.</div>
             <button
               type="button"
-              onClick={() => window.location.reload()}
-              style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid #3b82f6', background: '#eff6ff', color: '#1d4ed8', fontSize: '0.82rem', cursor: 'pointer', fontWeight: 600 }}
+              onClick={() => navigateToCustomerOAuthLogin()}
+              style={{ padding: '6px 16px', borderRadius: '6px', border: 'none', background: '#1d4ed8', color: '#fff', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600 }}
             >
-              Refresh Page
+              🔐 Sign In
             </button>
           </div>
         ) : error ? (
@@ -530,7 +602,7 @@ export default function McpTrafficPage() {
 
       <McpToolsPanel />
 
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', borderTop: '1px solid var(--border-light,#e2e8f0)' }}>
+      <div style={{ display: 'flex', flex: '1 1 200px', minHeight: '200px', overflow: 'hidden', borderTop: '1px solid var(--border-light,#e2e8f0)' }}>
         {viewMode === 'pairs' ? (
           <div style={{ flex: 1, overflowY: 'auto' }}>
             <McpPairView entries={entries} />

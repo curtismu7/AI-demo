@@ -385,11 +385,22 @@ router.get('/verify-assets', async (req, res) => {
     );
     const missingResourcesByApp = {};
     const missingScopesByApp = {};
+    // Per-app required scopes — must match the actual grants configured in PingOne.
+    // AI Agent App only needs read/write/ai:agent (CC token with limited scope).
+    // MCP Token Exchanger needs full banking scopes including mcp:invoke for RFC 8693.
+    // Admin App and User App need their specific subsets.
+    const REQUIRED_SCOPES_PER_APP = {
+      'Super Banking Admin App':           ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
+      'Super Banking User App':            ['banking:read', 'banking:write', 'banking:ai:agent'],
+      'Super Banking MCP Token Exchanger': ['banking:read', 'banking:write', 'banking:mcp:invoke'],
+      'Super Banking AI Agent App':        ['banking:read', 'banking:write', 'banking:ai:agent'],
+    };
     // Only check expected Super Banking apps — not every app in the environment
     apps.filter(app => EXPECTED_APP_NAMES.includes(app.name)).forEach(app => {
       const grantedResources = appGrantsMap[app.id] || appResourcesMap[app.id] || [];
       const allGrantedScopes = grantedResources.flatMap(r => r.scopes || []);
-      const missingScopes = EXPECTED_BANKING_SCOPES.filter(s => !allGrantedScopes.includes(s));
+      const requiredForApp = REQUIRED_SCOPES_PER_APP[app.name] || EXPECTED_BANKING_SCOPES;
+      const missingScopes = requiredForApp.filter(s => !allGrantedScopes.includes(s));
       if (missingScopes.length > 0) {
         missingScopesByApp[app.id] = missingScopes;
       }
@@ -2210,14 +2221,14 @@ router.get('/exchange-1token-401-flow', async (req, res) => {
           });
         });
 
-        // S-05 Fix: Add 10-second timeout to prevent indefinite hangs
+        // Allow up to 35s — MCP server introspects the token with PingOne (30s timeout).
         const timeoutHandle = setTimeout(() => {
           if (!resolved) {
             resolved = true;
             request.destroy();
-            resolve({ status: 0, body: 'MCP probe timeout (10s) — server did not respond' });
+            resolve({ status: 0, body: 'MCP probe timeout (35s) — server did not respond' });
           }
-        }, 10000);
+        }, 35000);
 
         request.on('error', (err) => {
           if (!resolved) {

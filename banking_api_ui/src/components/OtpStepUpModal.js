@@ -9,6 +9,7 @@ import React, { useState, useRef, useEffect } from 'react';
  */
 export default function OtpStepUpModal({
   show, onSubmit, onCancel, contextLine = '',
+  maskedContact,
   allowFido, onSwitchToFido,
   mode = 'stub',
   daId, devices = [], onP1MfaComplete, onP1MfaError,
@@ -276,7 +277,14 @@ export default function OtpStepUpModal({
         <div className="otp-step-up-modal">
           <div className="otp-step-up-modal__header">
             <h2 className="otp-step-up-modal__title">{'\u{1F510}'} Verify Your Identity</h2>
+            <button type="button" className="otp-step-up-modal__close" onClick={handleCancel} aria-label="Close">&#x2715;</button>
           </div>
+
+          {maskedContact && (
+            <div className="otp-step-up-modal__contact">
+              {maskedContact}
+            </div>
+          )}
 
           <p className="otp-step-up-modal__lead">
             {contextLine || 'Step-up authentication required to complete this action'}
@@ -359,6 +367,9 @@ export default function OtpStepUpModal({
                 Try another method
               </button>
             )}
+            <button type="button" className="otp-step-up-modal__btn-cancel" onClick={handleCancel}>
+              Cancel
+            </button>
           </div>
         </div>
       </div>
@@ -372,7 +383,14 @@ export default function OtpStepUpModal({
       <div className="otp-step-up-modal">
         <div className="otp-step-up-modal__header">
           <h2 className="otp-step-up-modal__title">{'\u{1F510}'} Verify Your Identity</h2>
+          <button type="button" className="otp-step-up-modal__close" onClick={handleCancel} aria-label="Close">&#x2715;</button>
         </div>
+
+        {maskedContact && (
+          <div className="otp-step-up-modal__contact">
+            {maskedContact}
+          </div>
+        )}
 
         <p className="otp-step-up-modal__lead">
           {contextLine || 'Step-up authentication required to complete this action'}
@@ -410,6 +428,9 @@ export default function OtpStepUpModal({
           )}
           <button type="button" className="otp-step-up-modal__btn-primary" onClick={handleSubmit}>
             Verify
+          </button>
+          <button type="button" className="otp-step-up-modal__btn-cancel" onClick={handleCancel}>
+            Cancel
           </button>
         </div>
 

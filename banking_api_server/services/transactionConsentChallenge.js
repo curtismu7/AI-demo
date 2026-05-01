@@ -13,6 +13,7 @@
 
 const crypto = require('crypto');
 const dataStore = require('../data/store');
+const mfaService = require('./mfaService');
 
 const HIGH_VALUE_CONSENT_USD = 500;
 const CHALLENGE_TTL_MS = 10 * 60 * 1000;
@@ -406,6 +407,145 @@ function verifyAndConsumeChallenge(req, challengeId, postBody) {
   return { ok: true };
 }
 
+
+/**
+ * initiateMfaChallenge — Step 1: Call P1MFA to start device authentication.
+ * Returns device list for user to select from (FIDO2, OTP, SMS, etc.)
+ * 
+ * @param {import('express').Request} req
+ * @param {string} challengeId
+ * @returns {Promise<{ ok: true, daId: string, status: string, devices: array[] }
+ *                 | { ok: false, status: number, json: object }>}
+ */
+async function initiateMfaChallenge(req, challengeId) {
+  if (!challengeId || typeof challengeId !== 'string') {
+    return { ok: false, status: 400, json: { error: 'invalid_challenge', message: 'challengeId is required.' } };
+  }
+  const st = store(req.session);
+  pruneExpired(st);
+  const ch = st[challengeId];
+  if (!ch || ch.userId !== req.user.id) {
+    return { ok: false, status: 404, json: { error: 'challenge_not_found', message: 'Unknown or expired consent challenge.' } };
+  }
+  if (ch.status !== 'pending') {
+    return { ok: false, status: 409, json: { error: 'challenge_not_pending', message: 'Challenge already initiated or consumed.' } };
+  }
+
+  try {
+    // Get user's access token (must be available in session for P1MFA API calls)
+    const userAccessToken = req.session?.oauthTokens?.accessToken;
+    if (!userAccessToken) {
+      return { ok: false, status: 401, json: { error: 'no_access_token', message: 'User session token not available for MFA.' } };
+    }
+
+    // Call P1MFA to initiate device authentication
+    const result = await mfaService.initiateDeviceAuth(req.user.id, userAccessToken);
+    const devices = result._embedded?.devices || [];
+
+    // Store the daId (device authentication ID) in the challenge for step 2
+    ch.daId = result.id;
+    ch.mfaStatus = result.status;
+    ch.devices = devices;
+    ch.status = 'mfa_device_selection';
+
+    console.log(`[ConsentChallenge] MFA initiated challenge=${challengeId.slice(0, 8)}… daId=${result.id.slice(0, 8)}… devices=${devices.length}`);
+
+    return {
+      ok: true,
+      daId: result.id,
+      status: result.status,
+      devices: devices.map(d => ({ id: d.id, type: d.type })), // Return only safe fields
+    };
+  } catch (err) {
+    console.error('[ConsentChallenge] initiateMfaChallenge failed:', err.message);
+    return {
+      ok: false,
+      status: err.status || 500,
+      json: { error: 'mfa_initiation_failed', message: err.message },
+    };
+  }
+}
+
+/**
+ * selectMfaDevice — Step 2: User picked a device (FIDO2, OTP, SMS, etc.)
+ * Call P1MFA selectDevice() to transition to the appropriate challenge.
+ * Returns challenge metadata (OTP field, FIDO2 options, etc.)
+ *
+ * @param {import('express').Request} req
+ * @param {string} challengeId
+ * @param {string} deviceId
+ * @returns {Promise<{ ok: true, status: string, challenge: object }
+ *                 | { ok: false, status: number, json: object }>}
+ */
+async function selectMfaDevice(req, challengeId, deviceId) {
+  if (!challengeId || !deviceId) {
+    return { ok: false, status: 400, json: { error: 'invalid_params', message: 'challengeId and deviceId required.' } };
+  }
+  const st = store(req.session);
+  pruneExpired(st);
+  const ch = st[challengeId];
+  if (!ch || ch.userId !== req.user.id) {
+    return { ok: false, status: 404, json: { error: 'challenge_not_found', message: 'Unknown or expired consent challenge.' } };
+  }
+  if (ch.status !== 'mfa_device_selection') {
+    return { ok: false, status: 409, json: { error: 'challenge_not_in_device_selection', message: 'Challenge not waiting for device selection.' } };
+  }
+  if (!ch.daId) {
+    return { ok: false, status: 500, json: { error: 'missing_da_id', message: 'Device authentication ID not found in challenge.' } };
+  }
+
+  try {
+    const userAccessToken = req.session?.oauthTokens?.accessToken;
+    if (!userAccessToken) {
+      return { ok: false, status: 401, json: { error: 'no_access_token', message: 'User session token not available for MFA.' } };
+    }
+
+    // Call P1MFA to select the device
+    const selected = await mfaService.selectDevice(ch.daId, deviceId, userAccessToken);
+
+    // Store selected device and new status
+    ch.selectedDeviceId = deviceId;
+    ch.mfaStatus = selected.status;
+    ch.status = 'mfa_awaiting_verification';
+
+    // Prepare challenge response based on device type
+    const challenge = {
+      daId: ch.daId,
+      deviceId: deviceId,
+      status: selected.status,
+    };
+
+    // For OTP_REQUIRED, tell UI to show OTP entry
+    if (selected.status === 'OTP_REQUIRED') {
+      challenge.method = 'otp';
+    }
+    // For ASSERTION_REQUIRED (FIDO2), include WebAuthn options
+    else if (selected.status === 'ASSERTION_REQUIRED') {
+      challenge.method = 'fido2';
+      if (selected.publicKeyCredentialRequestOptions) {
+        let options = selected.publicKeyCredentialRequestOptions;
+        if (typeof options === 'string') options = JSON.parse(options);
+        challenge.publicKeyCredentialRequestOptions = options;
+      }
+    }
+    // For PUSH_CONFIRMATION_REQUIRED, tell UI to poll for approval
+    else if (selected.status === 'PUSH_CONFIRMATION_REQUIRED') {
+      challenge.method = 'push';
+    }
+
+    console.log(`[ConsentChallenge] Device selected challenge=${challengeId.slice(0, 8)}… device=${deviceId.slice(0, 8)}… status=${selected.status}`);
+
+    return { ok: true, status: selected.status, challenge };
+  } catch (err) {
+    console.error('[ConsentChallenge] selectMfaDevice failed:', err.message);
+    return {
+      ok: false,
+      status: err.status || 500,
+      json: { error: 'device_selection_failed', message: err.message },
+    };
+  }
+}
+
 module.exports = {
   HIGH_VALUE_CONSENT_USD,
   CHALLENGE_TTL_MS,
@@ -417,6 +557,8 @@ module.exports = {
   createChallenge,
   getChallenge,
   confirmChallenge,
+  initiateMfaChallenge,
+  selectMfaDevice,
   verifyOtp,
   verifyAndConsumeChallenge,
 };

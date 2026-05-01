@@ -59,18 +59,24 @@ export class McpTokenExchangeClient {
       audience: targetAud,
     });
 
-    const credentials = Buffer.from(
-      `${this.config.clientId}:${this.config.clientSecret}`,
-    ).toString('base64');
+    let exchangeHeaders: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+    if (this.config.tokenEndpointAuthMethod === 'post') {
+      params.set('client_id', this.config.clientId);
+      params.set('client_secret', this.config.clientSecret);
+    } else {
+      const credentials = Buffer.from(
+        `${this.config.clientId}:${this.config.clientSecret}`,
+      ).toString('base64');
+      exchangeHeaders['Authorization'] = `Basic ${credentials}`;
+    }
 
     const response = await axios.post(
       this.config.tokenEndpoint,
       params.toString(),
       {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: `Basic ${credentials}`,
-        },
+        headers: exchangeHeaders,
         timeout: 10000,
       },
     );

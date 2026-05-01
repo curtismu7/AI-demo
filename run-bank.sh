@@ -505,7 +505,7 @@ echo "🚀 Starting Banking API Server on ${API_HOST}:${API_PORT}..."
   REACT_APP_CLIENT_URL=${CLIENT_URL} \
   FRONTEND_ADMIN_URL=${CLIENT_URL}/admin \
   FRONTEND_DASHBOARD_URL=${CLIENT_URL}/dashboard \
-  MCP_GATEWAY_HTTP_URL="${MCP_GATEWAY_HTTP_URL:-http://localhost:3005}" \
+  MCP_GATEWAY_HTTP_URL="${MCP_GATEWAY_HTTP_URL:-https://api.pingdemo.com:3005}" \
   npm start > /tmp/bank-api-server.log 2>&1
 ) &
 echo $! > "$PID_API"

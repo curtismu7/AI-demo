@@ -268,11 +268,14 @@ export default function AuthzTestPage() {
 	}, [engineMode, endpointId, workerClientId, workerClientSecret, loadStatus]);
 
 	const callEvaluate = useCallback(async (amount, type, acr) => {
-		const { data } = await apiClient.post("/api/authorize/test-evaluate", {
-			amount: parseFloat(amount),
-			type,
-			acr: acr || undefined,
-		});
+		const reqBody = { amount: parseFloat(amount), type, ...(acr ? { acr } : {}) };
+		const { data } = await apiClient.post("/api/authorize/test-evaluate", reqBody);
+		data._reqMeta = {
+			method: "POST",
+			url: "/api/authorize/test-evaluate",
+			headers: { "Content-Type": "application/json" },
+			body: reqBody,
+		};
 		return data;
 	}, []);
 
@@ -304,6 +307,31 @@ export default function AuthzTestPage() {
 		async (scenario) => {
 			setScenarioRunning((r) => ({ ...r, [scenario.id]: true }));
 			try {
+				// If engine is off, attempt to auto-enable simulated mode and wait
+				if (!status?.authorizeEnabled) {
+					try {
+						const res = await apiClient.patch("/api/admin/feature-flags", {
+							updates: { authorize_enabled: "true", ff_authorize_simulated: "true" },
+						});
+						if (!res.data?.updated) throw new Error("not updated");
+						notifySuccess("Simulated mode enabled — running scenario…");
+						await loadStatus();
+					} catch (enableErr) {
+						const httpStatus = enableErr.response?.status;
+						if (httpStatus === 401 || httpStatus === 403) {
+							notifyError("Admin login required to enable authorization engine");
+							setScenarioResults((r) => ({
+								...r,
+								[scenario.id]: {
+									ok: false,
+									error: "Authorization engine is OFF. Sign in as admin and click Enable Simulated.",
+								},
+							}));
+							return;
+						}
+						// Other errors: fall through and run anyway (will show bypass result)
+					}
+				}
 				const result = await callEvaluate(
 					scenario.amount,
 					scenario.type,
@@ -321,7 +349,7 @@ export default function AuthzTestPage() {
 				setScenarioRunning((r) => ({ ...r, [scenario.id]: false }));
 			}
 		},
-		[callEvaluate, pushHistory],
+		[callEvaluate, pushHistory, status, loadStatus],
 	);
 
 	const runCustom = useCallback(async () => {
@@ -381,60 +409,74 @@ export default function AuthzTestPage() {
 				</div>
 			);
 		}
-		const displayData = result.raw ?? {
+		const responseBody = {
 			decision: result.decision,
+			...(result.stepUpRequired ? { stepUpRequired: true } : {}),
 			engine: result.engine,
 			path: result.path,
 			...(result.decisionId ? { decisionId: result.decisionId } : {}),
-			parameters: result.parameters,
+			...(result.parameters ? { parameters: result.parameters } : {}),
 			...(result.note ? { note: result.note } : {}),
 		};
-		const rawLabel =
-			result.engine === "pingone"
-				? "Show PingOne Authorize response"
-				: "Show full response";
+		const req = result._reqMeta;
 		return (
 			<div className="authz-scenario-result">
-				<DecisionBadge
-					decision={result.decision}
-					stepUpRequired={result.stepUpRequired}
-				/>
+				<DecisionBadge decision={result.decision} stepUpRequired={result.stepUpRequired} />
 				<span className="authz-result-meta">
 					via {result.engine}
-					{result.path && result.path !== result.engine
-						? ` · ${result.path}`
-						: ""}
+					{result.path && result.path !== result.engine ? ` · ${result.path}` : ""}
 				</span>
-				<PingOneApiPanel request={result.pingoneRequest} response={result.engine === "pingone" ? (result.raw ?? displayData) : null} docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-evaluate-decision" />
-				{result.engine === "pingone" && result.pingoneRequest && (
-					<ApiCallPreviewCard
-						endpoint={result.pingoneRequest.url || "POST https://api.pingone.{region}/v1/environments/{envId}/decisionEndpoints/{endpointId}"}
-						method={result.pingoneRequest.method || "POST"}
-						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-evaluate-decision"
-						docsSectionTitle="PingOne Authorize — Evaluate Decision"
-						requestBody={result.pingoneRequest.body}
-						responseBody={result.raw ?? null}
-						responseStatus={result.raw?.status ?? (result.decision ? 200 : null)}
-						label="PingOne Authorize Decision Endpoint"
-					/>
-				)}
-				{result.engine !== "pingone" && (
-					<ApiCallPreviewCard
-						endpoint="POST https://api.pingone.{region}/v1/environments/{envId}/decisionEndpoints/{endpointId}"
-						method="POST"
-						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-evaluate-decision"
-						docsSectionTitle="PingOne Authorize — Evaluate Decision"
-						requestBody={null}
-						responseBody={null}
-						label="Simulated mode — switch to PingOne engine to see live API calls"
-					/>
-				)}
-				{result.engine !== "pingone" && <RawJson data={displayData} label={rawLabel} />}
+
+				<div className="authz-api-panel">
+					<div className="authz-api-section">
+						<div className="authz-api-row">
+							<span className="authz-api-method">POST</span>
+							<code className="authz-api-url">{req?.url || "/api/authorize/test-evaluate"}</code>
+						</div>
+						<div className="authz-api-cols">
+							<div className="authz-api-col">
+								<div className="authz-api-col-title">Headers</div>
+								<pre className="authz-api-pre">{JSON.stringify(req?.headers || { "Content-Type": "application/json" }, null, 2)}</pre>
+							</div>
+							<div className="authz-api-col">
+								<div className="authz-api-col-title">Request body</div>
+								<pre className="authz-api-pre">{JSON.stringify(req?.body, null, 2)}</pre>
+							</div>
+							<div className="authz-api-col">
+								<div className="authz-api-col-title">Response <span className="authz-api-status">200 OK</span></div>
+								<pre className="authz-api-pre">{JSON.stringify(responseBody, null, 2)}</pre>
+							</div>
+						</div>
+					</div>
+
+					{result.engine === "pingone" && result.pingoneRequest && (
+						<div className="authz-api-section authz-api-section--downstream">
+							<div className="authz-api-downstream-label">
+								↳ PingOne Authorize Decision Endpoint{" "}
+								<a href="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-evaluate-decision" target="_blank" rel="noopener noreferrer" className="authz-api-docs-link">Docs ↗</a>
+							</div>
+							<div className="authz-api-row">
+								<span className="authz-api-method">{result.pingoneRequest.method || "POST"}</span>
+								<code className="authz-api-url">{result.pingoneRequest.url || "https://api.pingone.{region}/v1/environments/{envId}/decisionEndpoints/{endpointId}"}</code>
+							</div>
+							<div className="authz-api-cols">
+								<div className="authz-api-col">
+									<div className="authz-api-col-title">Request body</div>
+									<pre className="authz-api-pre">{JSON.stringify(result.pingoneRequest.body, null, 2)}</pre>
+								</div>
+								<div className="authz-api-col">
+									<div className="authz-api-col-title">Response</div>
+									<pre className="authz-api-pre">{JSON.stringify(result.raw, null, 2)}</pre>
+								</div>
+							</div>
+						</div>
+					)}
+				</div>
 			</div>
 		);
 	}
 
-	// ---------------------------------------------------------------------------
+		// ---------------------------------------------------------------------------
 	// Render
 	// ---------------------------------------------------------------------------
 

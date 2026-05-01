@@ -581,6 +581,7 @@ const authenticateToken = async (req, res, next) => {
             // Set minimal user info from session for downstream routes
             req.user = {
               id: req.session.user.id,
+              sub: req.session.user.oauthId || req.session.user.id,
               username: req.session.user.username || req.session.user.email,
               email: req.session.user.email,
               role: req.session.user.role || 'customer',
@@ -641,6 +642,7 @@ const authenticateToken = async (req, res, next) => {
           const derivedRole = (isAdminClient || sessionRole === 'admin') ? 'admin' : 'user';
           req.user = {
             id: decoded.sub,
+            sub: decoded.sub,
             username: decoded.preferred_username || decoded.sub,
             email: decoded.email,
             firstName: decoded.given_name || null,
@@ -749,6 +751,7 @@ const authenticateToken = async (req, res, next) => {
       const derivedRole = (isAdminClient || sessionRole === 'admin') ? 'admin' : 'user';
       req.user = {
         id: decoded.sub,
+        sub: decoded.sub,
         username: decoded.preferred_username || decoded.sub,
         email: decoded.email,
         firstName: decoded.given_name || null,

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MdPerson, MdSettings, MdNotifications, MdLogout, MdArrowDropDown } from 'react-icons/md';
+import { MdPerson, MdSettings, MdNotifications, MdLogout, MdLogin, MdArrowDropDown } from 'react-icons/md';
 import './UserMenu.css';
+import { navigateToCustomerOAuthLogin } from '../utils/authUi';
 
 export default function UserMenu({ user, onLogout }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,6 +21,11 @@ export default function UserMenu({ user, onLogout }) {
   const handleLogout = () => {
     setIsOpen(false);
     onLogout();
+  };
+
+  const handleLogin = () => {
+    setIsOpen(false);
+    navigateToCustomerOAuthLogin();
   };
 
   return (
@@ -83,6 +89,10 @@ export default function UserMenu({ user, onLogout }) {
 
           <div className="user-menu-divider"></div>
 
+          <button className="user-menu-item user-menu-item-primary" onClick={handleLogin} type="button">
+            <MdLogin className="user-menu-item-icon" />
+            <span>Login</span>
+          </button>
           <button className="user-menu-item user-menu-item-danger" onClick={handleLogout} type="button">
             <MdLogout className="user-menu-item-icon" />
             <span>Logout</span>

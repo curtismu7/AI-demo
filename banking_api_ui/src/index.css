@@ -8,6 +8,14 @@
 .Toastify__toast-container {
   z-index: 10100 !important;
 }
+.Toastify__toast-container--top-center {
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  max-width: 480px;
+  min-width: 320px;
+}
 
 /* App-wide primary actions: red fill, white label (floating FABs use their own classes). */
 :root {

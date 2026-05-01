@@ -176,6 +176,46 @@ router.get('/challenge/:daId/status', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/auth/mfa/devices
+// List active MFA devices for the logged-in user.
+// Returns devices with masked contact (email masked, phone last-4 only).
+router.get('/devices', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.session.user?.oauthId || req.session.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
+    }
+    const { devices } = await mfaService.listMfaDevices(userId);
+
+    const masked = devices.map((d) => {
+      let maskedContact = null;
+      const type = (d.type || '').toUpperCase();
+      if (type === 'EMAIL' && d.email) {
+        const [local, domain] = d.email.split('@');
+        const vis = local.length > 2
+          ? local[0] + '*'.repeat(local.length - 2) + local[local.length - 1]
+          : local[0] + '*';
+        maskedContact = vis + '@' + domain;
+      } else if ((type === 'SMS' || type === 'PHONE' || type === 'MOBILE_PHONE') && d.phone?.number) {
+        const digits = d.phone.number.replace(/\D/g, '');
+        maskedContact = digits.length >= 4 ? '***-***-' + digits.slice(-4) : d.phone.number;
+      } else if (type === 'TOTP') {
+        maskedContact = d.nickname || d.applicationName || 'Authenticator app';
+      } else if (type === 'FIDO2') {
+        maskedContact = d.nickname || 'Security key / passkey';
+      } else if (type === 'MOBILE') {
+        maskedContact = d.name || 'PingOne mobile app';
+      }
+      return { id: d.id, type, maskedContact, name: d.name || d.nickname || null };
+    });
+
+    res.json({ devices: masked });
+  } catch (err) {
+    console.error('[MFA route] GET /devices failed:', err.message);
+    res.status(err.status || 500).json({ error: 'list_devices_failed', message: err.message });
+  }
+});
+
 // POST /api/auth/mfa/enroll/sms-init
 // Enroll an SMS OTP device. Body: { phone } (E.164 format).
 // PingOne sends an OTP to the phone — complete with /enroll/sms-complete.
