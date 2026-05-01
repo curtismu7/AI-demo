@@ -1219,11 +1219,16 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 			});
 			return;
 		}
+		// When the embedded agent isn't in the layout, open the floating FAB panel instead of scrolling.
+		if (agentPlacement === "none") {
+			window.dispatchEvent(new CustomEvent("banking-agent-open"));
+			return;
+		}
 		window.scrollTo({
 			top: document.documentElement.scrollHeight,
 			behavior: "smooth",
 		});
-	}, [dashboardLayout]);
+	}, [dashboardLayout, agentPlacement]);
 
 	/**
 	 * High-value HITL: POST /transactions without consent returns 400; create a session challenge and open the consent popup.
