@@ -2014,13 +2014,16 @@ Plans:
 
 ### Phase 259: Gateway auth pipeline — introspection, amount-aware step-up, SSE decision reporting
 
-**Goal:** [To be planned]
+**Goal:** Add RFC 7662 active-token introspection at the MCP gateway, forward transaction amounts to PingOne Authorize for threshold-based step-up, and surface per-request gateway decisions (introspect/authorize/exchange) in the Token Chain UI.
 **Requirements**: TBD
 **Depends on:** Phase 258
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 259 to break down)
+- [ ] 259-01-PLAN.md — GatewayIntrospectionClient.ts + config introspectionEndpoint (Wave 1)
+- [ ] 259-02-PLAN.md — UI: gw-introspection/gw-authorize/gw-exchange badges + edu cards (Wave 1)
+- [ ] 259-03-PLAN.md — Gateway wiring: introspection step-0, amount-aware Authorize, X-Gw-Audit-Trail header (Wave 2)
+- [ ] 259-04-PLAN.md — BFF: extract audit trail → tokenEvents + hitl_required → HTTP 428 (Wave 3)
 
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
