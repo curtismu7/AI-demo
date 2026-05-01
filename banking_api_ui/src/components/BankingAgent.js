@@ -3763,11 +3763,6 @@ export default function BankingAgent({
 			addMessage("assistant", AGENT_CONSENT_BLOCK_USER_MESSAGE);
 			return;
 		}
-		if (cmd.flowDiagram) {
-			window.dispatchEvent(new CustomEvent("agent-flow-diagram-open"));
-			setIsOpen(false);
-			return;
-		}
 		if (cmd.ciba && typeof window !== "undefined") {
 			window.dispatchEvent(
 				new CustomEvent("education-open-ciba", {

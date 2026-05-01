@@ -173,6 +173,19 @@ const setupBrowserExtensionHandling = () => {
  * For non-admin logged-in users: shows a modal explaining why + fires a toast, then
  * renders a blank placeholder so the URL stays valid (no silent redirect to /).
  */
+/** Page wrapper for /monitoring/agent-flow — opens the Agent Request Flow panel on mount. */
+function AgentFlowPage() {
+        useEffect(() => {
+                window.dispatchEvent(new CustomEvent('agent-flow-diagram-open'));
+        }, []);
+        return (
+                <div style={{ padding: '2rem', color: 'var(--text-muted, #888)', fontSize: '14px' }}>
+                        <h2 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>🔀 Agent Request Flow</h2>
+                        <p>Use the Banking Agent to trigger a tool call — the request flow panel will appear automatically.</p>
+                </div>
+        );
+}
+
 function AdminRoute({ user, children }) {
 	const toastedRef = useRef(false);
 	const isAdmin = user?.role === "admin";
@@ -714,6 +727,7 @@ function AppWithAuth() {
 												<Route path="flow-inspector" element={<UnifiedTokenFlowInspector floatingByDefault={false} showToggle={false} />} />
 												<Route path="mcp-traffic" element={<McpTrafficPage />} />
 												<Route path="api-explorer" element={<ApiExplorerPanel />} />
+								<Route path="agent-flow" element={user ? <AgentFlowPage /> : <Navigate to="/" replace />} />
 											</Routes>
 										</main>
 									</>

@@ -134,6 +134,7 @@ export default function AdminSideNav({ user }) {
 				{ label: "Token Chain", path: "/monitoring/token-chain", icon: "🔗" },
 				{ label: "Token Diff", path: "/monitoring/token-diff", icon: "📊" },
 				{ label: "Flow Inspector", path: "/monitoring/flow-inspector", icon: "🔬" },
+				{ label: "Agent Request Flow", path: "/monitoring/agent-flow", icon: "🔀" },
 			],
 		},
 		{
@@ -236,7 +237,6 @@ export default function AdminSideNav({ user }) {
 		{ label: "RFC & Spec Index",              icon: "📚",  action: () => openEdu(EDU.RFC_INDEX, "index") },
 		{ label: "⭐ IETF Standards: Agentic",    icon: "⭐",  action: () => openEdu(EDU.IETF_STANDARDS, "overview") },
 		{ label: "ID-JAG / Cross-App Access",     icon: "🔀",  action: () => openEdu(EDU.ID_JAG, "overview") },
-		{ label: "Agent flow diagram",            icon: "📊",  action: () => window.dispatchEvent(new CustomEvent("agent-flow-diagram-open")) },
 		{ label: "Architecture Diagram",          icon: "🏗️",  action: () => openEdu(EDU.ARCHITECTURE_DIAGRAM, "context") },
 		{ label: "Token Chain (edu)",             icon: "🔗",  action: () => openEdu(EDU.TOKEN_CHAIN, "overview") },
 		{ label: "Sensitive Data & Disclosure",   icon: "🔒",  action: () => openEdu(EDU.SENSITIVE_DATA, "least-data") },
