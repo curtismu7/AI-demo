@@ -24,6 +24,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import apiClient from '../services/apiClient';
 import { agentFlowDiagram } from '../services/agentFlowDiagramService';
+import { useAppEventsSSE } from '../hooks/useAppEventsSSE';
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -959,7 +960,6 @@ export default function ArchitectureFlowPage({ user }) {
 
   useEffect(() => {
     fetchEvents();
-    pollRef.current = setInterval(fetchEvents, 10000);
     return () => {
       clearInterval(pollRef.current);
       Object.values(clearTimers.current).forEach(clearTimeout);
@@ -967,6 +967,12 @@ export default function ArchitectureFlowPage({ user }) {
       clearTimers.current = {};
     };
   }, [fetchEvents]);
+
+  // SSE: process new app events in real-time instead of polling every 10s
+  useAppEventsSSE((event) => {
+    processEvents([event], false);
+    lastFetchedAt.current = new Date().toISOString();
+  }, { enabled: !!user });
 
   // Subscribe to live agent flow service — lights up diagram nodes as agent steps through MCP chain
   useEffect(() => {

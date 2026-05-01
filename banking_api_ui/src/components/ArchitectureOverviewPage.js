@@ -14,6 +14,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import apiClient from '../services/apiClient';
 import ArchitectureDiagramPage from './ArchitectureDiagramPage';
 import { OVERVIEW_REGIONS } from '../config/diagram-overview-regions';
+import { useAppEventsSSE } from '../hooks/useAppEventsSSE';
 
 const OVERVIEW_EVENT_MAP = [
   { category: 'agent_prompt',  tags: ['agent_prompt/llm_invoke', 'agent_prompt/heuristic_tool'], regionIds: ['agent'],                   colorClass: 'active' },
@@ -699,7 +700,6 @@ export default function ArchitectureOverviewPage({ user }) {
 
   useEffect(() => {
     fetchEvents();
-    pollRef.current = setInterval(fetchEvents, 10000);
     return () => {
       clearInterval(pollRef.current);
       Object.values(clearTimers.current).forEach(clearTimeout);
@@ -707,6 +707,12 @@ export default function ArchitectureOverviewPage({ user }) {
       clearTimers.current = {};
     };
   }, [fetchEvents]);
+
+  // SSE: process new app events in real-time instead of polling every 10s
+  useAppEventsSSE((event) => {
+    processEvents([event], false);
+    lastFetchedAt.current = new Date().toISOString();
+  }, { enabled: !!user });
 
   const scenarioSelector = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

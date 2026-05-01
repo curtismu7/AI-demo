@@ -46,6 +46,20 @@ try {
 const MAX_EVENTS = 200;
 let events = [];
 
+// Live-push subscribers (SSE connections)
+const _subscribers = new Set();
+
+function subscribe(fn) {
+  _subscribers.add(fn);
+  return () => _subscribers.delete(fn);
+}
+
+function _notify(event) {
+  for (const fn of _subscribers) {
+    try { fn(event); } catch (_) {}
+  }
+}
+
 /**
  * Generate a unique flow ID for grouping related events
  * @returns {string} Short random flow ID
@@ -79,6 +93,7 @@ function logEvent(category, severity, message, options = {}) {
   };
 
   events.push(event);
+  _notify(event);
 
   // Persist to NDJSON file — D-01
   try {
@@ -156,6 +171,7 @@ module.exports = {
   getEventsByCategory,
   clearEvents,
   generateFlowId,
+  subscribe,
   EVENT_CATEGORIES,
   EVENT_SEVERITIES,
 };

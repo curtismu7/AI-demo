@@ -778,6 +778,39 @@ app.get('/api/app-events', (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+// GET /api/app-events/stream — SSE push for live app events (replaces 10s polling)
+// Streams one event per `data:` line whenever appEventService.logEvent() fires.
+// Filters (category, severity) accepted as query params, same as the GET endpoint.
+app.get('/api/app-events/stream', (req, res) => {
+    const VALID_CATEGORIES = new Set(['oauth','token_exchange','session','jwks','mcp','auth_lifecycle','agent','authorize','agent_prompt','delegation','introspection']);
+    const VALID_SEVERITIES = new Set(['info','warning','error','warn']);
+    const { category, severity } = req.query;
+    const filterCategory = VALID_CATEGORIES.has(category) ? category : null;
+    const filterSeverity = VALID_SEVERITIES.has(severity) ? severity : null;
+
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    // Send a keepalive comment every 25s to prevent proxy timeouts
+    const keepalive = setInterval(() => { try { res.write(': keepalive\n\n'); } catch (_) {} }, 25000);
+
+    const send = (event) => {
+        if (filterCategory && event.category !== filterCategory) return;
+        if (filterSeverity && event.severity !== filterSeverity) return;
+        try { res.write(`data: ${JSON.stringify(event)}\n\n`); } catch (_) {}
+    };
+
+    const unsub = appEventService.subscribe(send);
+
+    req.on('close', () => {
+        clearInterval(keepalive);
+        unsub();
+    });
+});
+
 // agent-cc-preview fetches the agent's own CC token — no user OAuth token needed.
 // Register before the authenticateToken block so customers with a valid session can access it.
 app.get('/api/tokens/agent-cc-preview', requireSession, tokenRoutes.agentCcPreviewHandler);

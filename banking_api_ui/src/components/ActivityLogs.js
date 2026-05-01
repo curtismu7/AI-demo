@@ -10,6 +10,7 @@ import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 import { useTheme } from '../context/ThemeContext';
 import ApiCallDisplay from './ApiCallDisplay';
+import { useAppEventsSSE } from '../hooks/useAppEventsSSE';
 
 /* Category icons */
 const CATEGORY_ICONS = {
@@ -142,10 +143,21 @@ const ActivityLogs = ({ user, onLogout }) => {
   useEffect(() => {
     if (activeTab === 'appEvents') {
       fetchAppEvents();
-      pollRef.current = setInterval(fetchAppEvents, 10000);
     }
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [activeTab, fetchAppEvents]);
+
+  // SSE: prepend new events in real-time while on the appEvents tab
+  useAppEventsSSE(
+    (event) => {
+      const cat = eventFilter.category;
+      const sev = eventFilter.severity;
+      if (cat && event.category !== cat) return;
+      if (sev && event.severity !== sev) return;
+      setAppEvents(prev => [event, ...prev].slice(0, 200));
+    },
+    { enabled: activeTab === 'appEvents' },
+  );
 
   const toggleFlow = (flowId) => {
     setExpandedFlowIds(prev => { const n = new Set(prev); n.has(flowId) ? n.delete(flowId) : n.add(flowId); return n; });
