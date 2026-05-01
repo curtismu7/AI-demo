@@ -79,6 +79,7 @@ const mfaTestRoutes = require('./routes/mfaTest');
 const authorizeRoutes = require('./routes/authorize');
 const setupRoutes = require('./routes/setup');
 const setupWizardRoutes = require('./routes/setupWizard');
+const devToolsRoutes = require('./routes/devTools');
 const selfServiceUsersRoutes = require('./routes/selfServiceUsers');
 const {
     router: featureFlagsRoutes
@@ -805,6 +806,7 @@ app.use('/api/demo-scenario', authenticateToken, demoScenarioRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/admin/management', adminManagementRoutes);
 app.use('/api/admin/setup', setupWizardRoutes);
+app.use('/api/dev', devToolsRoutes);
 app.use('/api/clients', authenticateToken, clientRegistrationRoutes);
 app.use('/api/oauth/clients', authenticateToken, oauthClientsRoutes);
 app.use('/api/oauth/token', oauthTokenRoutes);
