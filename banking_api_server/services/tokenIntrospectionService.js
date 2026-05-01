@@ -12,6 +12,7 @@
 const crypto = require('crypto');
 const axios = require('axios');
 const configStore = require('./configStore');
+const oauthEndpointResolver = require('./oauthEndpointResolver');
 const { logger, LOG_CATEGORIES } = require('../utils/logger');
 const { logEvent: logAppEvent, EVENT_CATEGORIES } = require('./appEventService');
 
@@ -60,15 +61,25 @@ async function validateToken(token) {
   }
 
   try {
-    const introspectionUrl = process.env.PINGONE_INTROSPECTION_ENDPOINT;
-    const clientId = process.env.PINGONE_WORKER_CLIENT_ID;
-    const clientSecret = process.env.PINGONE_WORKER_CLIENT_SECRET;
+    // Prefer explicit env var; fall back to auto-derived PingOne endpoint ({base}/introspect)
+    const introspectionUrl =
+      process.env.PINGONE_INTROSPECTION_ENDPOINT ||
+      configStore.getEffective('pingone_introspection_endpoint') ||
+      (() => { const base = oauthEndpointResolver.getTokenEndpoint?.(); return base ? base.replace('/token', '/introspect') : ''; })();
+    const clientId =
+      process.env.PINGONE_WORKER_CLIENT_ID ||
+      configStore.getEffective('admin_client_id') ||
+      configStore.getEffective('worker_client_id');
+    const clientSecret =
+      process.env.PINGONE_WORKER_CLIENT_SECRET ||
+      configStore.getEffective('admin_client_secret') ||
+      configStore.getEffective('worker_client_secret');
 
     if (!introspectionUrl || !clientId || !clientSecret) {
-      logger(LOG_CATEGORIES.AUTH, 'Token introspection credentials missing', {
-        endpoint: !!introspectionUrl,
-        clientId: !!clientId,
-        clientSecret: !!clientSecret,
+      logger.warn('Token introspection credentials missing', {
+        hasEndpoint: !!introspectionUrl,
+        hasClientId: !!clientId,
+        hasClientSecret: !!clientSecret,
       });
       return { valid: false };
     }
