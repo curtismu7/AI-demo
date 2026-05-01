@@ -103,7 +103,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
     // Validate inputs
     if (!userId || !userToken) {
       console.error('[agentBuilder] ERROR: Missing required inputs - userId:', !!userId, 'userToken:', !!userToken);
-      throw new Error('Agent requires userId and userToken');
+      throw Object.assign(new Error('[agentBuilder] Agent requires userId and userToken'), { source: 'agentBuilder' });
     }
 
     // Perform token exchange to get MCP access token and generate token events
@@ -127,7 +127,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       console.error('[agentBuilder] Exchange error stack:', exchangeError.stack);
       // Preserve TOKEN_INACTIVE so processAgentMessage can re-throw it and the route returns 401
       if (exchangeError.code === 'TOKEN_INACTIVE') throw exchangeError;
-      throw new Error(`Token exchange failed: ${exchangeError.message}`);
+      throw Object.assign(new Error(`[agentBuilder] Token exchange failed: ${exchangeError.message}`), { source: 'agentBuilder', cause: exchangeError });
     }
 
     // Add exchange events to the token events array
@@ -154,7 +154,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       console.log(`[agentBuilder] LLM initialized: ollama/${ollamaModel} at ${ollamaBase}`);
     } catch (ollamaErr) {
       console.error('[agentBuilder] ERROR: Ollama initialization failed:', ollamaErr.message);
-      throw new Error('Ollama LLM not available. Make sure Ollama is running at ' + ollamaBase);
+      throw Object.assign(new Error('[agentBuilder] Ollama LLM not available. Make sure Ollama is running at ' + ollamaBase), { source: 'agentBuilder' });
     }
 
     // Define the agent node with tools

@@ -78,8 +78,9 @@ function countJwtScopes(claims) {
  * @param {number} [httpStatus]
  */
 function throwTokenResolutionError(tokenEvents, code, message, httpStatus = 502) {
-  const err = new Error(message);
+  const err = new Error(`[agentMcpTokenService] ${message}`);
   err.code = code;
+  err.source = 'agentMcpTokenService';
   err.tokenEvents = tokenEvents;
   err.httpStatus = httpStatus;
   throw err;

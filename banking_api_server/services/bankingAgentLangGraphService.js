@@ -305,6 +305,9 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
   } catch (error) {
     // TOKEN_INACTIVE must propagate so the route can return 401 + need_auth
     if (error.code === 'TOKEN_INACTIVE') throw error;
+    // Tag with source module if not already tagged — makes stack traces immediately actionable
+    if (!error.source) error.source = 'bankingAgentLangGraphService';
+    if (!error.message.startsWith('[')) error.message = `[bankingAgentLangGraphService] ${error.message}`;
     console.error('[processAgentMessage] ERROR: Agent processing error');
     appEventService.logEvent('agent', 'error', `Agent error: ${error.message}`, { tag: 'agent/error' });
     console.error('[processAgentMessage] Error name:', error.name);

@@ -540,6 +540,16 @@ app.get('/api/auth/logout', async (req, res) => {
         // keep the user signed in on the next request.
         clearAuthCookie(res, isProduction);
 
+        // Explicitly expire the session cookie — session.destroy() removes the
+        // server-side data but the browser retains the connect.sid value until
+        // the cookie is overwritten with Max-Age=0.
+        res.clearCookie('connect.sid', {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'none' : 'lax',
+            path: '/',
+        });
+
         const envId = configStore.getEffective('pingone_environment_id');
         const region = configStore.getEffective('pingone_region') || 'com';
         const pingoneSignoff = `https://auth.pingone.${region}/${envId}/as/signoff`;

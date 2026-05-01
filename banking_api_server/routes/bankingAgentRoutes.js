@@ -30,8 +30,8 @@ router.post('/init', async (req, res) => {
       agentReady: true 
     });
   } catch (error) {
-    console.error('Agent init error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('[bankingAgentRoutes/init] error source=%s code=%s: %s', error.source||'unknown', error.code||'none', error.message);
+    res.status(500).json({ error: error.message, source: error.source || 'bankingAgentRoutes' });
   }
 });
 
@@ -196,7 +196,9 @@ router.post('/message', async (req, res) => {
     }
     // Always return a meaningful error message to the user
     const errorMessage = error.message || 'An unexpected error occurred while processing your request. Please try again.';
-    res.status(500).json({ error: errorMessage });
+    const source = error.source || 'bankingAgentRoutes';
+    console.error(`[bankingAgentRoutes] 500 — source=${source} code=${error.code || 'none'}: ${error.message}`);
+    res.status(500).json({ error: errorMessage, source });
   }
 });
 
