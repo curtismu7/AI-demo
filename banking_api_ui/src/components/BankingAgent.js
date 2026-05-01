@@ -4170,6 +4170,9 @@ export default function BankingAgent({
 				const pathNorm401 = (location.pathname || "").replace(/\/$/, "") || "/";
 				const needsLogin =
 					response.need_auth ||
+					response.need_auth ||
+					response.error === "Session expired" ||
+					response.error === "TOKEN_INACTIVE" ||
 					(response._status === 401 && isPublicMarketingAgentPath(pathNorm401) && !isLoggedIn);
 				if (needsLogin) {
 					try {

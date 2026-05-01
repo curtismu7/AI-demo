@@ -125,6 +125,8 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
     } catch (exchangeError) {
       console.error('[agentBuilder] ERROR: Token exchange failed:', exchangeError.message);
       console.error('[agentBuilder] Exchange error stack:', exchangeError.stack);
+      // Preserve TOKEN_INACTIVE so processAgentMessage can re-throw it and the route returns 401
+      if (exchangeError.code === 'TOKEN_INACTIVE') throw exchangeError;
       throw new Error(`Token exchange failed: ${exchangeError.message}`);
     }
 
