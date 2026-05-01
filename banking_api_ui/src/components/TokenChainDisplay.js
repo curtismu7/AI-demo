@@ -96,12 +96,31 @@ function ClaimsPanel({ claims, alg }) {
 // ─── Educational boxes ─────────────────────────────────────────────────────
 
 /**
+ * Shown when an educational section does not apply to the current token event.
+ * If the section is RFC-defined, shows a brief RFC description below the note.
+ */
+function NotApplicableNote({ rfc, rfcDesc }) {
+  return (
+    <div className="tcd-edu-na">
+      <span className="tcd-edu-na-msg">Not applicable to this token</span>
+      {rfc && rfcDesc && (
+        <span className="tcd-edu-na-rfc">
+          <span className="tcd-edu-na-rfc-tag">{rfc}</span>
+          {rfcDesc}
+        </span>
+      )}
+    </div>
+  );
+}
+
+
+/**
  * Rich educational callout for the may_act claim (RFC 8693 §4.1).
  * Shows valid / mismatch / absent states with fix steps. Renders on user-token events.
  */
 function MayActEduBox({ event }) {
   const { mayActPresent, mayActValid, mayActDetails } = event;
-  if (mayActPresent === undefined) return null;
+  if (mayActPresent === undefined) return <NotApplicableNote rfc="RFC 8693 §4.1" rfcDesc="Token Exchange delegation permission. Pre-authorises a specific OAuth client to exchange this token on the resource owner's behalf, enabling delegated agent access." />;
   const mayActValue = event.claims?.may_act;
 
   if (mayActPresent && mayActValid) {
@@ -175,7 +194,7 @@ function MayActEduBox({ event }) {
  * Shows delegation proven / absent states. Renders on MCP token events.
  */
 function ActEduBox({ event }) {
-  if (event.actPresent === undefined) return null;
+  if (event.actPresent === undefined) return <NotApplicableNote rfc="RFC 8693 §4.4" rfcDesc="Actor claim — the current delegation fact. Identifies which client is actively acting on behalf of the subject, providing a cryptographically-bound audit trail in the exchanged token." />;
   const actValue = event.claims?.act;
 
   if (event.actPresent) {
@@ -227,7 +246,7 @@ function AudienceEduBox({ event }) {
 
   // ── User token: informational aud explanation ─────────────────────────────
   if (event.id === 'user-token') {
-    if (!audValue) return null;
+    if (!audValue) return <NotApplicableNote rfc="RFC 7519 §4.1.3" rfcDesc="The aud (audience) claim identifies the intended recipients of a token. A resource server must reject any token whose aud does not include its own identifier." />;
     const audDisplay = Array.isArray(audValue) ? audValue.join(', ') : String(audValue);
     return (
       <div className="tcd-edu-box tcd-edu-box--neutral">
@@ -280,7 +299,7 @@ function AudienceEduBox({ event }) {
 
   // ── Exchanged MCP token: validate aud was narrowed correctly ──────────────
   if (event.id === 'exchanged-token' || event.id === 'exchanged-token-fallback') {
-    if (audValue === undefined && event.audExpected === undefined) return null;
+    if (audValue === undefined && event.audExpected === undefined) return <NotApplicableNote rfc="RFC 8707 · RFC 7519 §4.1.3" rfcDesc="RFC 8707 Resource Indicators allow requesting a token scoped to a specific resource server. The aud claim is narrowed to that server's identifier, enforcing least-privilege access." />;
     const audDisplay = Array.isArray(audValue) ? audValue.join(', ') : (audValue ? String(audValue) : 'not present');
 
     if (event.audMatches) {
@@ -325,7 +344,7 @@ function AudienceEduBox({ event }) {
     );
   }
 
-  return null;
+  return <NotApplicableNote rfc="RFC 7519 §4.1.3 · RFC 8707" rfcDesc="Audience claim and Resource Indicators define the intended recipients of a token. RFC 8693 exchange narrows the audience to the MCP server, enforcing least-privilege access." />;
 }
 
 /**
@@ -333,7 +352,7 @@ function AudienceEduBox({ event }) {
  * Shows for user-token-introspection events — active, failed, or skipped.
  */
 function IntrospectionEduBox({ event }) {
-  if (event.id !== 'user-token-introspection') return null;
+  if (event.id !== 'user-token-introspection') return <NotApplicableNote rfc="RFC 7662 §2.2" rfcDesc="Active-token introspection — the resource server queries the authorization server in real time to confirm whether a token is currently active, not expired, and not revoked." />;
   const result = event.extra?.introspectionResult || {};
   const status = event.eventStatus || 'skipped';
   const statusMeta = {
@@ -386,7 +405,7 @@ function IntrospectionEduBox({ event }) {
  * Shows for session-token-introspection events — active, failed, degraded, or skipped.
  */
 function SessionIntrospectionEduBox({ event }) {
-  if (event.id !== 'session-token-introspection') return null;
+  if (event.id !== 'session-token-introspection') return <NotApplicableNote rfc="RFC 7662 §2.2" rfcDesc="Active-token introspection — the resource server queries the authorization server in real time to confirm whether a token is currently active, not expired, and not revoked." />;
   const result = event.extra?.introspectionResult || {};
   const status = event.eventStatus || 'skipped';
   const statusMeta = {
@@ -445,7 +464,7 @@ function SessionIntrospectionEduBox({ event }) {
  * Shows for exchanged-token-verified events — verified, introspection fallback, warning, or skipped.
  */
 function JwksVerifyEduBox({ event }) {
-  if (event.id !== 'exchanged-token-verified') return null;
+  if (event.id !== 'exchanged-token-verified') return <NotApplicableNote rfc="RFC 7515 · RFC 7517 · RFC 7518" rfcDesc="JSON Web Signature (JWS) and JSON Web Key (JWK) — define how tokens are cryptographically signed and how resource servers verify those signatures using the IdP's published public key set." />;
   const extra = event.extra || {};
   const verified  = extra.verified;
   const fallback  = extra.fallbackMethod;
@@ -506,7 +525,7 @@ function JwksVerifyEduBox({ event }) {
  * Renders on exchange-in-progress and exchange-failed events.
  */
 function ExchangeCheckList({ event }) {
-  if (event.id !== 'exchange-in-progress' && event.id !== 'exchange-failed') return null;
+  if (event.id !== 'exchange-in-progress' && event.id !== 'exchange-failed') return <NotApplicableNote rfc="RFC 8693 §2.1" rfcDesc="Token Exchange — defines how a client requests a new token by presenting an existing subject token. The authorization server validates delegation permissions before issuing a narrowed-scope token." />;
   const failed = event.id === 'exchange-failed';
   const hasActorToken = event.exchangeRequest?.has_actor_token;
 
