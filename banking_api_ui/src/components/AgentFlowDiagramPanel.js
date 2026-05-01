@@ -15,82 +15,96 @@ function statusBadge(status) {
   return <span className={cls}>{labels[status] || status}</span>;
 }
 
-// Token chain display component
-function TokenChainDisplay({ tokenChain, resolvedIdentity, compact = false }) {
-  if (!tokenChain || tokenChain.length === 0) return null;
-  
-  const currentTokens = tokenChain.filter(t => t.eventType === 'auth' || t.eventType === 'exchange');
+// Token chain card with expandable API call detail
+function TokenEventCard({ event, resolvedIdentity }) {
+  const [open, setOpen] = React.useState(false);
 
-  // Derive friendly user label from resolvedIdentity when available
-  function fmtTokenSub(sub) {
+  function fmtSub(sub) {
     if (!sub) return null;
     const s = String(sub);
     if (resolvedIdentity?.currentUser?.sub && s === resolvedIdentity.currentUser.sub && resolvedIdentity.currentUser.name) {
       return `${resolvedIdentity.currentUser.name} (${s.slice(0, 8)}…)`;
     }
-    return `${s.slice(0, 8)}…`;
+    return s.length > 16 ? s.slice(0, 14) + '…' : s;
   }
 
-  // Derive friendly actor label from resolvedIdentity when available
-  function fmtTokenAct(act) {
+  function fmtAct(act) {
     if (!act) return null;
     const clientId = typeof act === 'object' ? act.client_id : String(act);
     if (!clientId) return null;
     const known = resolvedIdentity?.knownClients?.[clientId];
-    return known ? `${known} (${String(clientId).slice(0, 8)}…)` : String(clientId).slice(0, 12) + '…';
+    return known ? `${known} (${String(clientId).slice(0, 8)}…)` : String(clientId).slice(0, 14) + '…';
   }
-  
-  if (compact) {
-    return (
-      <div className="afd-token-chain-compact">
-        {currentTokens.slice(0, 2).map((token, i) => (
-          <div key={token.id} className="afd-token-mini">
-            <span className={`afd-token-type afd-token-type--${token.tokenType}`}>
-              {token.tokenType?.replace('_', ' ').toUpperCase() || 'TOKEN'}
-            </span>
-            {token.tokenSub && (
-              <span className="afd-token-user">👤 {fmtTokenSub(token.tokenSub)}</span>
-            )}
-          </div>
-        ))}
-        {currentTokens.length > 2 && (
-          <span className="afd-token-more">+{currentTokens.length - 2}</span>
+
+  const hasDetail = event.exchangeRequest || event.jwtFullDecode || event.claims || event.explanation;
+  const tokenTypeLabel = (event.tokenType || event.id || 'token').replace(/_/g, ' ').toUpperCase();
+
+  return (
+    <div className={`afd-tc-card${open ? ' afd-tc-card--open' : ''}`}>
+      <button
+        type="button"
+        className="afd-tc-card-header"
+        onClick={() => hasDetail && setOpen(v => !v)}
+        aria-expanded={open}
+        disabled={!hasDetail}
+        title={hasDetail ? 'Click to see API call details' : ''}
+      >
+        <span className={`afd-tc-type afd-tc-type--${event.tokenType || 'default'}`}>{tokenTypeLabel}</span>
+        <span className="afd-tc-label">{event.label || event.description || tokenTypeLabel}</span>
+        <span className="afd-tc-time">{new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+        {hasDetail && <span className="afd-tc-chevron">{open ? '▲' : '▼'}</span>}
+      </button>
+
+      {/* Quick claims row always visible */}
+      <div className="afd-tc-summary">
+        {(event.tokenSub || event.claims?.sub) && (
+          <span className="afd-tc-pill afd-tc-pill--sub">👤 {fmtSub(event.tokenSub || event.claims?.sub)}</span>
+        )}
+        {(event.tokenAct || event.claims?.act) && (
+          <span className="afd-tc-pill afd-tc-pill--act">⚙ {fmtAct(event.tokenAct || event.claims?.act)}</span>
+        )}
+        {event.status && (
+          <span className={`afd-tc-pill afd-tc-pill--status afd-tc-pill--${event.status}`}>{event.status}</span>
         )}
       </div>
-    );
-  }
-  
-  return (
-    <div className="afd-token-chain">
-      <div className="afd-token-chain-header">
-        <h4>Current Token Chain</h4>
-      </div>
-      {currentTokens.map((token) => (
-        <div key={token.id} className="afd-token-event">
-          <div className="afd-token-meta">
-            <span className={`afd-token-type afd-token-type--${token.tokenType}`}>
-              {token.tokenType?.replace('_', ' ').toUpperCase() || 'TOKEN'}
-            </span>
-            <span className="afd-token-time">
-              {new Date(token.timestamp).toLocaleTimeString()}
-            </span>
-          </div>
-          {token.tokenSub && (
-            <div className="afd-token-claim">
-              User: <code>{fmtTokenSub(token.tokenSub)}</code>
-            </div>
+
+      {/* Expanded API call detail */}
+      {open && hasDetail && (
+        <div className="afd-tc-detail">
+          {event.explanation && (
+            <p className="afd-tc-explanation">{event.explanation}</p>
           )}
-          {token.tokenAct && (
-            <div className="afd-token-claim">
-              Actor: <code>{fmtTokenAct(token.tokenAct)}</code>
-            </div>
+          {event.exchangeRequest && (
+            <section className="afd-tc-section">
+              <h4 className="afd-tc-section-title">API Request</h4>
+              <pre className="afd-tc-pre">{JSON.stringify(event.exchangeRequest, null, 2)}</pre>
+            </section>
           )}
-          {token.scopes && token.scopes.length > 0 && (
-            <div className="afd-token-scopes">
-              Scopes: {token.scopes.join(', ')}
-            </div>
+          {(event.claims || event.jwtFullDecode) && (
+            <section className="afd-tc-section">
+              <h4 className="afd-tc-section-title">Token Claims (Response)</h4>
+              <pre className="afd-tc-pre">{JSON.stringify(event.jwtFullDecode?.claims || event.claims, null, 2)}</pre>
+            </section>
+          )}
+          {event.jwtFullDecode?.header && (
+            <section className="afd-tc-section">
+              <h4 className="afd-tc-section-title">JWT Header</h4>
+              <pre className="afd-tc-pre">{JSON.stringify(event.jwtFullDecode.header, null, 2)}</pre>
+            </section>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Token chain display — uses live events from TokenChainContext
+function TokenChainDisplay({ events, resolvedIdentity }) {
+  if (!events || events.length === 0) return <p className="afd-tc-empty">No token events yet.</p>;
+  return (
+    <div className="afd-tc-list">
+      {events.map((ev, i) => (
+        <TokenEventCard key={ev.id || i} event={ev} resolvedIdentity={resolvedIdentity} />
       ))}
     </div>
   );
@@ -102,7 +116,6 @@ function TokenChainDisplay({ tokenChain, resolvedIdentity, compact = false }) {
  */
 export default function AgentFlowDiagramPanel() {
   const [snap, setSnap] = useState(() => agentFlowDiagram.getState());
-  const [tokenChain, setTokenChain] = useState([]);
   const [showTokenChain, setShowTokenChain] = useState(false);
   const [showFlowDiagram, setShowFlowDiagram] = useState(false);
   const { mode } = useExchangeMode();
@@ -118,52 +131,15 @@ export default function AgentFlowDiagramPanel() {
     { w: 380, h: 440 }
   );
 
-  // Load token chain data
-  const loadTokenChain = useCallback(async () => {
-    try {
-      const res = await fetch('/api/token-chain/current', {
-        credentials: 'include',
-        _silent: true,
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setTokenChain(data.currentTokens || []);
-      }
-    } catch (err) {
-      console.error('Failed to load token chain:', err);
-    }
-  }, []);
-
   useEffect(() => {
     const unsub = agentFlowDiagram.subscribe(setSnap);
     return unsub;
   }, []);
 
-  // Load token chain when agent flow becomes visible
+  // Show token chain when panel opens
   useEffect(() => {
-    if (snap.visible) {
-      loadTokenChain();
-      setShowTokenChain(true);
-    }
-  }, [snap.visible, loadTokenChain]);
-
-  // Refresh token chain whenever a tool call completes
-  useEffect(() => {
-    const onAgentResult = () => {
-      if (agentFlowDiagram.getState().visible) {
-        loadTokenChain();
-      }
-    };
-    window.addEventListener('banking-agent-result', onAgentResult);
-    return () => window.removeEventListener('banking-agent-result', onAgentResult);
-  }, [loadTokenChain]);
-
-  // Also poll every 3s while panel is visible so step transitions update the chain
-  useEffect(() => {
-    if (!snap.visible) return undefined;
-    const id = setInterval(loadTokenChain, 10000); // 10s poll — chain only changes during active agent ops
-    return () => clearInterval(id);
-  }, [snap.visible, loadTokenChain]);
+    if (snap.visible) setShowTokenChain(true);
+  }, [snap.visible]);
 
   useEffect(() => {
     const onOpen = () => {
@@ -265,22 +241,25 @@ export default function AgentFlowDiagramPanel() {
           )}
         </div>
         
-        {/* Token chain display */}
-        {showTokenChain && (
-          <div className="afd-token-section">
-            <div className="afd-token-header">
-              <span>Token Chain ({tokenChain.length})</span>
-              <button
-                type="button"
-                className="afd-token-toggle"
-                onClick={() => setShowTokenChain(!showTokenChain)}
-              >
-                {showTokenChain ? 'Hide' : 'Show'}
-              </button>
+        {/* Token chain — live events from TokenChainContext, clickable for API call detail */}
+        {showTokenChain && (() => {
+          const liveEvents = tokenChainCtx?.events ?? [];
+          return (
+            <div className="afd-token-section">
+              <div className="afd-token-header">
+                <span>Token Chain ({liveEvents.length})</span>
+                <button
+                  type="button"
+                  className="afd-token-toggle"
+                  onClick={() => setShowTokenChain(v => !v)}
+                >
+                  Hide
+                </button>
+              </div>
+              <TokenChainDisplay events={liveEvents} resolvedIdentity={resolvedIdentity} />
             </div>
-            <TokenChainDisplay tokenChain={tokenChain} resolvedIdentity={resolvedIdentity} compact={true} />
-          </div>
-        )}
+          );
+        })()}
         
         {steps.length > 0 && (
           <div className="afd-flow" aria-live="polite">
