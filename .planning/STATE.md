@@ -267,7 +267,7 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) â
 
 ### Pending Todos
 
-- 7 pending todos
+- 8 pending todos
 - Latest: Update token-chain only on token-chain UI pages
 - Other: Remove icons from agent panel; fix pop-out agent taking too much space
 - Other: Fix PingOne token policy explorer
