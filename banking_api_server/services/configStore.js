@@ -419,11 +419,12 @@ class ConfigStore {
    * - Without persistence: env vars only (no runtime persistence).
    * This is what config/oauth.js getters call.
    *
-   * IMPORTANT: keys passed to getEffective() must be lowercase (e.g. 'pingone_environment_id').
-   * The env-var fallback map uses lowercase keys — passing UPPERCASE will silently miss the fallback.
-   * Use configStore.get() for FIELD_DEFS keys (which are UPPERCASE).
+   * Keys are normalized to lowercase internally, so callers may pass either
+   * 'pingone_environment_id' or 'PINGONE_ENVIRONMENT_ID' — both work.
    */
   getEffective(key) {
+    // Normalize to lowercase so callers don't need to worry about case
+    key = String(key).toLowerCase();
     // Env-var fallback map (PINGONE_CORE_* / PINGONE_AI_CORE_* / PINGONE_ADMIN_* all refer to the same PingOne apps)
     // NOTE: env vars always take priority — over SQLite and committed defaults.
     // This ensures env vars override anything saved in the Config UI.

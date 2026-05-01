@@ -55,9 +55,7 @@ describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', ()
     const oauthService = require('../../services/oauthService');
     const configStore = require('../../services/configStore');
     const subject = process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN;
-    // configStore uses lowercase keys; fall back to direct env var lookup
-    const mcpUri = process.env.PINGONE_RESOURCE_MCP_SERVER_URI ||
-      configStore.getEffective('pingone_resource_mcp_server_uri');
+    const mcpUri = configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI');
     expect(mcpUri).toBeTruthy();
     const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write')
       .trim()
