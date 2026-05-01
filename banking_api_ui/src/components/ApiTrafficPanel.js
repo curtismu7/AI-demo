@@ -184,7 +184,6 @@ function MethodBadge({ entry }) {
       'exchange-in-progress':     { label: 'Exchange', cls: 'TOKEN-XCHG' },
       'on-behalf-of-warning':     { label: 'Agent?', cls: 'TOKEN-SKIP' },
       'exchanged-token':          { label: 'MCP token', cls: 'TOKEN-MCP' },
-      'user-token-jwks-verified':  { label: 'JWKS ✓', cls: 'TOKEN-VERIFY' },
       'exchanged-token-verified':  { label: 'JWKS ✓', cls: 'TOKEN-VERIFY' },
       'exchange':                 { label: 'Pending', cls: 'TOKEN-XCHG' },
       'exchange-required':        { label: 'RFC 8693', cls: 'TOKEN-FAIL' },
