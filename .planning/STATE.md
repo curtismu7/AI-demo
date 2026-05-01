@@ -102,6 +102,8 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) �
 
 ## Roadmap Evolution
 
+- Phase 261 added: Phase 260 compliance — gateway denial metadata, agent recovery and retry, BFF propagation, UI flow checklist, OLB resource token exchange, PingOne claim diagnostics
+
 - Phase 259 added: Gateway auth pipeline — introspection, amount-aware step-up, SSE decision reporting
 
 - Phase 258 added: Research BFF SSE migration — token chain push vs polling
