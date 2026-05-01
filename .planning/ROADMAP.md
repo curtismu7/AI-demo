@@ -1979,8 +1979,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 255-01-PLAN.md — BFF devTools route (POST /api/dev/run-servers, SSE, singleton guard, rate limit, production guard)
-- [ ] 255-02-PLAN.md — Frontend RunServersModal + TopNav button
+- [x] 255-01-PLAN.md — BFF devTools route (POST /api/dev/run-servers, SSE, singleton guard, rate limit, production guard)
+- [x] 255-02-PLAN.md — Frontend RunServersModal + TopNav button
 
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
