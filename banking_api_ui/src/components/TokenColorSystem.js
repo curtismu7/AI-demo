@@ -72,18 +72,20 @@ export function TokenColorLegend() {
   return (
     <div className="token-color-legend" style={{
       display: 'flex',
-      gap: '1rem',
+      flexWrap: 'wrap',
+      gap: '0.5rem 1rem',
       alignItems: 'center',
       padding: '0.4rem 0.75rem',
       fontSize: '0.76rem',
       color: '#94a3b8',
       borderBottom: '1px solid #1e293b',
     }}>
-      <span style={{ fontWeight: 600, marginRight: 4 }}>Token Types:</span>
+      <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>Token Types:</span>
       {Object.entries(TOKEN_COLORS).map(([type, color]) => (
-        <span key={type} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span key={type} style={{ display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
           <span style={{
             display: 'inline-block',
+            flexShrink: 0,
             width: 8,
             height: 8,
             borderRadius: '50%',
