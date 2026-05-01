@@ -852,28 +852,41 @@ function ReasoningSteps({ steps, conclusion }) {
 
 /** Renders MCP-style tool step chips (read/update account, transactions) between user ask and reply. */
 function ToolProgressChips({ steps }) {
+	const [expandedIdx, setExpandedIdx] = React.useState(null);
 	if (!steps?.length) return null;
 	return (
 		<ul className="ba-tool-progress" aria-label="Tool calls">
-			{steps.map((s, i) => (
-				<li key={`${s.name}-${i}`} className="ba-tool-chip">
-					<span className="ba-tool-chip-ico" aria-hidden />
-					<span className="ba-tool-chip-name">{s.name}</span>
-					<span className="ba-tool-chip-sep">·</span>
-					<span
-						className={`ba-tool-chip-status ba-tool-chip-status--${s.status}`}
-					>
-						{s.status === "running"
-							? "Running…"
-							: s.status === "success"
-								? "Success"
-								: "Failed"}
-					</span>
-					<span className="ba-tool-chip-chev" aria-hidden>
-						›
-					</span>
-				</li>
-			))}
+			{steps.map((s, i) => {
+				const isExpanded = expandedIdx === i;
+				const hasError = s.status === "error" && s.error;
+				return (
+					<li key={`${s.name}-${i}`} className={`ba-tool-chip${hasError ? " ba-tool-chip--error" : ""}`}>
+						<div
+							className="ba-tool-chip-row"
+							onClick={() => hasError && setExpandedIdx(isExpanded ? null : i)}
+							style={{ cursor: hasError ? "pointer" : "default" }}
+						>
+							<span className="ba-tool-chip-ico" aria-hidden />
+							<span className="ba-tool-chip-name">{s.name}</span>
+							<span className="ba-tool-chip-sep">·</span>
+							<span className={`ba-tool-chip-status ba-tool-chip-status--${s.status}`}>
+								{s.status === "running" ? "Running…" : s.status === "success" ? "Success" : "Failed"}
+							</span>
+							<span className="ba-tool-chip-chev" aria-hidden>
+								{hasError ? (isExpanded ? "▾" : "▸") : "›"}
+							</span>
+						</div>
+						{hasError && isExpanded && (
+							<div className="ba-tool-chip-detail">
+								<div className="ba-tool-chip-detail-row"><span className="ba-tool-chip-detail-label">Tool</span><code>{s.error.tool || s.name}</code></div>
+								{s.error.code && <div className="ba-tool-chip-detail-row"><span className="ba-tool-chip-detail-label">Code</span><code>{s.error.code}</code></div>}
+								{s.error.message && <div className="ba-tool-chip-detail-row"><span className="ba-tool-chip-detail-label">Message</span><span>{s.error.message}</span></div>}
+								<div className="ba-tool-chip-detail-hint">💡 See the chat response below for full policy explanation and fix hints.</div>
+							</div>
+						)}
+					</li>
+				);
+			})}
 		</ul>
 	);
 }
@@ -2356,7 +2369,7 @@ export default function BankingAgent({
 		]);
 	}
 
-	function markToolProgressOutcome(success) {
+   function markToolProgressOutcome(success, errorDetail = null) {
 		const tid = toolProgressIdRef.current;
 		if (!tid) return;
 		toolProgressIdRef.current = null;
@@ -2367,7 +2380,8 @@ export default function BankingAgent({
 							...m,
 							steps: (m.steps || []).map((s) => ({
 								...s,
-								status: success ? "success" : "error",
+                                                           status: success ? "success" : "error",
+                                                           ...(!success && errorDetail ? { error: errorDetail } : {}),
 							})),
 						}
 					: m,
@@ -3338,7 +3352,7 @@ export default function BankingAgent({
 				autoClose: agentToastMs.successAction,
 			});
 		} catch (err) {
-			markToolProgressOutcome(false);
+			markToolProgressOutcome(false, err ? { code: err.gatewayErrorCode || err.code, message: err.message, tool: err.tool || actionId } : null);
 			toast.dismiss(toastId);
 
 			// Phase 187 D-05: BFF signaled need_auth — save pending action then redirect so
@@ -6066,6 +6080,15 @@ export default function BankingAgent({
 										>
 											↗
 										</button>
+                                                                               <button
+                                                                               type="button"
+                                                                               className="ba-middle-col-hdr-btn"
+                                                                               title="Clear token chain events"
+                                                                               aria-label="Clear token chain"
+                                                                               onClick={() => tokenChain?.clearEvents?.()}
+                                                                               >
+                                                                               🗑
+                                                                               </button>
 										<button
 											type="button"
 											className="ba-middle-col-hdr-btn ba-middle-col-hdr-btn--close"

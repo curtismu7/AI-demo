@@ -2134,6 +2134,86 @@ body > .banking-agent-float-root .banking-agent-panel {
 	color: #b91c1c;
 }
 
+/* Tool chip expandable error detail */
+.ba-tool-chip--error {
+	border-radius: 8px;
+	display: block;
+	padding: 0;
+}
+
+.ba-tool-chip-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px 6px 10px;
+	cursor: pointer;
+	border-radius: 8px;
+}
+
+.ba-tool-chip--error .ba-tool-chip-row:hover {
+	background: rgba(252, 165, 165, 0.08);
+}
+
+.ba-tool-chip-detail {
+	margin: 4px 10px 8px 10px;
+	padding: 8px 10px;
+	border-radius: 6px;
+	border: 1px solid rgba(252, 165, 165, 0.25);
+	background: rgba(252, 165, 165, 0.05);
+	font-size: 11px;
+	line-height: 1.5;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.ba-tool-chip-detail-row {
+	display: flex;
+	gap: 8px;
+	align-items: baseline;
+}
+
+.ba-tool-chip-detail-label {
+	color: var(--ba-muted);
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	flex-shrink: 0;
+	min-width: 56px;
+}
+
+.ba-tool-chip-detail-row code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 10px;
+	color: #fca5a5;
+	background: rgba(252, 165, 165, 0.12);
+	padding: 1px 4px;
+	border-radius: 3px;
+}
+
+.ba-tool-chip-detail-hint {
+	color: var(--ba-muted);
+	font-size: 10px;
+	font-style: italic;
+	margin-top: 2px;
+}
+
+.ba-mode-light .ba-tool-chip--error .ba-tool-chip-row:hover {
+	background: rgba(185, 28, 28, 0.05);
+}
+
+.ba-mode-light .ba-tool-chip-detail {
+	border-color: rgba(185, 28, 28, 0.2);
+	background: rgba(185, 28, 28, 0.04);
+}
+
+.ba-mode-light .ba-tool-chip-detail-row code {
+	color: #b91c1c;
+	background: rgba(185, 28, 28, 0.1);
+}
+
+
 .embedded-banking-agent:not(.embedded-banking-agent--bottom) {
 	margin-top: 1rem;
 	min-height: 260px;
