@@ -1587,7 +1587,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         appEventService.logEvent('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, gatewayUrl: useGateway ? gatewayHttpUrl : mcpUrl, via: useGateway ? 'gateway' : 'direct' } });
         let result;
         if (useGateway) {
-            result = await mcpGatewayClient.callToolViaGateway(gatewayHttpUrl, mcpAccessToken, tool, params || {}, { correlationId: req.correlationId });
+            { result, gwAuditTrail } = await mcpGatewayClient.callToolViaGateway(gatewayHttpUrl, mcpAccessToken, tool, params || {}, { correlationId: req.correlationId });
         } else if (useHttp2) {
             const h2Session = http2McpBridge.createHttp2Session(mcpUrl, mcpAccessToken);
             result = await http2McpBridge.forwardToolCall(h2Session, tool, params || {}, mcpAccessToken, userSub, req.correlationId);
@@ -1595,6 +1595,50 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             result = await mcpCallTool(tool, params || {}, mcpAccessToken, userSub, req.correlationId);
         }
         appEventService.logEvent('mcp', 'info', `MCP tool done ← ${tool} (${Date.now() - startTime}ms)`, { tag: 'mcp/tool', metadata: { tool, durationMs: Date.now() - startTime } });
+        
+        // Build token events from gateway audit trail if present (Phase 259)
+        if (gwAuditTrail) {
+            if (gwAuditTrail.introspection) {
+                const introspRes = gwAuditTrail.introspection;
+                const status = introspRes.skipped ? 'skipped' : (introspRes.active ? 'valid' : 'revoked');
+                const desc = introspRes.skipped 
+                    ? 'Gateway introspection skipped (endpoint not configured)'
+                    : (introspRes.active ? 'Token verified active at gateway' : 'Token is revoked or no longer active');
+                tokenEvents.push(buildTokenEvent(
+                    'gw-introspection',
+                    'Gateway — RFC 7662 Introspection',
+                    status,
+                    null,
+                    desc,
+                    { rfc: 'RFC 7662', sub: introspRes.sub, exp: introspRes.exp }
+                ));
+            }
+            if (gwAuditTrail.authorize) {
+                const authzRes = gwAuditTrail.authorize;
+                const decision = authzRes.decision; // PERMIT, DENY, INDETERMINATE
+                const status = decision === 'PERMIT' ? 'permit' : (decision === 'INDETERMINATE' ? 'indeterminate' : 'deny');
+                const desc = `PingOne Authorize policy evaluation: ${decision}${authzRes.reason ? ` (${authzRes.reason})` : ''}`;
+                tokenEvents.push(buildTokenEvent(
+                    'gw-authorize',
+                    'Gateway — PingOne Authorize Decision',
+                    status,
+                    null,
+                    desc,
+                    { decision }
+                ));
+            }
+            if (gwAuditTrail.exchange) {
+                const exchangeRes = gwAuditTrail.exchange;
+                tokenEvents.push(buildTokenEvent(
+                    'gw-exchange',
+                    'Gateway — RFC 8693 Token Exchange',
+                    'exchanged',
+                    null,
+                    `Token exchanged to MCP resource audience: ${exchangeRes.targetAud}`,
+                    { targetAud: exchangeRes.targetAud }
+                ));
+            }
+        }
         
         // Log the actual MCP result so it's queryable via /api/app-events
         if (result) {
@@ -1683,6 +1727,18 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         if (err.code === 'gateway_policy_denied' || err.code === 'gateway_auth_failed') {
             console.warn(`[/api/mcp/tool] Gateway denied tool '${tool}': ${err.gatewayErrorCode || err.code} — ${err.message}`);
             emit({ phase: 'gateway_policy_denied', gatewayErrorCode: err.gatewayErrorCode });
+            
+            // HTTP 428 Precondition Required: step-up auth needed (INDETERMINATE decision)
+            if (err.gatewayErrorCode === 'hitl_required') {
+                emit({ phase: 'gateway_step_up_required' });
+                return res.status(428).json({
+                    error: 'step_up_required',
+                    tool,
+                    message: 'Transaction requires additional authentication (step-up MFA)',
+                    tokenEvents,
+                });
+            }
+            
             return res.status(403).json({
                 error: 'gateway_policy_denied',
                 tool,

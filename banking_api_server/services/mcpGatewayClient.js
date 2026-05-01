@@ -9,13 +9,13 @@
  * bearer here and must already be scoped to the gateway audience.
  *
  * Env vars:
- *   MCP_GATEWAY_HTTP_URL   — base URL of banking-mcp-gateway (default: http://localhost:3005)
+ *   MCP_GATEWAY_HTTP_URL   — base URL of banking-mcp-gateway (default: https://api.pingdemo.com:3005)
  *   MCP_GATEWAY_TIMEOUT_MS — per-request timeout in ms (default: 30000)
  */
 
 const axios = require('axios');
 
-const DEFAULT_GATEWAY_URL = 'http://localhost:3005';
+const DEFAULT_GATEWAY_URL = 'https://api.pingdemo.com:3005';
 const DEFAULT_TIMEOUT_MS  = 30_000;
 const MCP_PROTOCOL_VERSION = '2025-11-25';
 
@@ -101,9 +101,22 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
         );
     }
 
+    // Extract audit trail header if present (set by gateway on all responses)
+    let gwAuditTrail = null;
+    const auditHeader = response.headers['x-gw-audit-trail'];
+    if (auditHeader) {
+        try {
+            gwAuditTrail = JSON.parse(auditHeader);
+        } catch (err) {
+            console.warn('[mcpGatewayClient] Could not parse X-Gw-Audit-Trail header:', err.message);
+        }
+    }
+
     // JSON-RPC responses: prefer .result, fall through to full body for
     // non-standard / direct responses from the upstream MCP server.
-    return response.data?.result ?? response.data;
+    const result = response.data?.result ?? response.data;
+    
+    return { result, gwAuditTrail };
 }
 
 /**
