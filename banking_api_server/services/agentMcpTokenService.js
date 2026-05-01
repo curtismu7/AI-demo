@@ -1479,8 +1479,9 @@ async function _resolveFinalMcpAudience(gatewayAud, mcpServerAud) {
   const baseUrl = gatewayBaseUrl.replace(/\/$/, '');
   try {
     const healthResult = await new Promise((resolve, reject) => {
-      const http = require('http');
-      const req = http.get(`${baseUrl}/health`, (res) => {
+      const isHttps = baseUrl.startsWith('https://');
+      const httpModule = isHttps ? require('https') : require('http');
+      const req = httpModule.get(`${baseUrl}/health`, (res) => {
         let data = '';
         res.on('data', (chunk) => { data += chunk; });
         res.on('end', () => {
