@@ -1917,6 +1917,51 @@ Plans:
 - [ ] TBD (run /gsd-plan-phase 249 to break down)
 
 ---
+### Phase 250: Audit error messages and fix 401/403 error handling across all flows
+
+**Goal:** Audit all 401 and 403 error responses surfaced to the user across the BFF, MCP gateway, and UI. Ensure every error is human-readable, explains what went wrong, and tells the user exactly how to fix it — including expired tokens, missing scopes, wrong audience, policy denials, and session expiry.
+**Requirements**: ERR-01
+**Depends on:** Phase 249
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 250 to break down)
+
+---
+### Phase 251: Trace scopes, resource server, and AUD end-to-end — document the correct flow and add a health-check + auto-fix button
+
+**Goal:** Trace every scope, resource server URI, and token audience claim from user login through BFF two-exchange delegation through MCP gateway re-exchange to the upstream MCP server. Verify each hop is correct, produce a living reference document in the repo, and add a one-click health-check panel in the Admin UI that diagnoses mismatches and can restart any server that is not running — so the user always reaches the happy path without manual debugging.
+**Requirements**: SCP-01
+**Depends on:** Phase 250
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 251 to break down)
+
+---
+### Phase 252: Dedicated log file per server — API Server, MCP Gateway, MCP Server, Authorization, Agent
+
+**Goal:** Give every server process its own dedicated log file. API Server → /tmp/bank-api-server.log, MCP Gateway → /tmp/bank-mcp-gateway.log, MCP Server → /tmp/bank-mcp-server.log, Authorization service → /tmp/bank-auth.log, Agent service → /tmp/bank-agent.log. run-bank.sh routes each process to its own file. Admin UI log viewer panel shows all logs with per-server tabs so the user can diagnose issues without mixing log streams.
+**Requirements**: LOG-01
+**Depends on:** Phase 251
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 252 to break down)
+
+---
+### Phase 253: Gateway bypass fallback — fix scopes, AUD, and resource server so MCP tools work without the gateway
+
+**Goal:** When MCP_GW_DEV_BYPASS=true (or the gateway is not running), the BFF must still produce a token with the correct audience and scopes that the MCP server will accept directly. Detect bypass mode at startup and in the token exchange path, then route the final RFC 8693 exchange to MCP_SERVER_RESOURCE_URI instead of MCP_GW_RESOURCE_URI so the upstream MCP server receives a token it can validate. The user should never see a 401/403 in bypass mode — the system silently adapts the token audience to match whichever mode is active.
+**Requirements**: GW-BYPASS-01
+**Depends on:** Phase 252
+**Plans:** 2 plans
+
+Plans:
+- [ ] 253-01-PLAN.md — Gateway health endpoint: expose devBypass + gatewayResourceUri
+- [ ] 253-02-PLAN.md — BFF: dynamic final audience resolution from gateway health probe
+
+---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
