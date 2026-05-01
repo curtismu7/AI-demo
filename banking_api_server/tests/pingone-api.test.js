@@ -549,11 +549,11 @@ describe('Simulated Authorize response shape (no credentials needed)', () => {
 //   actor_token_type    = urn:ietf:params:oauth:token-type:access_token
 //
 // Exchanger credentials: PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID/SECRET
-// Audience:              PINGONE_RESOURCE_MCP_SERVER_URI
+// Audience:              PINGONE_RESOURCE_MCP_GATEWAY_URI (exchanger client is configured for the gateway)
 // ---------------------------------------------------------------------------
 const EXCHANGER_CLIENT_ID     = process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID;
 const EXCHANGER_CLIENT_SECRET = process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET;
-const MCP_RESOURCE_URI        = process.env.PINGONE_RESOURCE_MCP_SERVER_URI;
+const MCP_RESOURCE_URI        = process.env.PINGONE_RESOURCE_MCP_GATEWAY_URI || process.env.PINGONE_RESOURCE_MCP_SERVER_URI;
 const HAVE_EXCHANGE = !!(HAVE_CREDENTIALS && EXCHANGER_CLIENT_ID && EXCHANGER_CLIENT_SECRET && MCP_RESOURCE_URI);
 const it_ex = HAVE_EXCHANGE ? it : it.skip;
 

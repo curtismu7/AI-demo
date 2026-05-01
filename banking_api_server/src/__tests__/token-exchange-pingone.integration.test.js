@@ -14,6 +14,10 @@
  *   npm test -- --testPathPattern=token-exchange-pingone --forceExit
  */
 
+const path = require('path');
+// Load .env so PINGONE_* vars are available (mirrors live-pingone-integration.test.js)
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env'), override: true });
+
 const live =
   (process.env.RUN_PINGONE_TOKEN_EXCHANGE === 'true' || process.env.RUN_PINGONE_TOKEN_INTEGRATION === 'true') &&
   String(process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN || '').trim().length > 0;
@@ -51,7 +55,9 @@ describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', ()
     const oauthService = require('../../services/oauthService');
     const configStore = require('../../services/configStore');
     const subject = process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN;
-    const mcpUri = configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI');
+    // configStore uses lowercase keys; fall back to direct env var lookup
+    const mcpUri = process.env.PINGONE_RESOURCE_MCP_SERVER_URI ||
+      configStore.getEffective('pingone_resource_mcp_server_uri');
     expect(mcpUri).toBeTruthy();
     const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write')
       .trim()
