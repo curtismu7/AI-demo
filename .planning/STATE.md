@@ -102,6 +102,8 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) �
 
 ## Roadmap Evolution
 
+- Phase 257 added: HITL and P1MFA approval settings page — configure what triggers HITL simple approval vs P1MFA for transactions, add page to side menu
+- Phase 256 added: All modals should have pop out feature — close on-page modal when opening popout; popout has all the same functionality and buttons
 - Phase 255 added: Top-menu Run Servers button — executes run-bank.sh via BFF endpoint and streams output to a modal so user can verify all services are up
 
 - Phase 254 added: Family delegation — prompt for delegated user on next login, auto-provision user with MFA device and may_act attribute via worker token
@@ -265,11 +267,11 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) �
 
 ### Pending Todos
 
-- 6 pending todos
+- 7 pending todos
 - Latest: Update token-chain only on token-chain UI pages
 - Other: Remove icons from agent panel; fix pop-out agent taking too much space
 - Other: Fix PingOne token policy explorer
-- Other: Add clear token reset button
+- Other: Add clear button to token chain panel (clear on demand; keep until user clicks)
 - NEW: Simulated Authorize output must be byte-for-byte indistinguishable from real PingOne Authorize — same JSON shape, field names, HTTP status codes, error formats, and timing characteristics. API requests must also mimic PingOne Authorize request format exactly.
 - NEW: All test pages (PingOne Test, MFA Test, Authz Test, etc.) must show (1) the actual PingOne API endpoint being called and (2) the full JSON request body for that call, so users can learn what each API does.
 
