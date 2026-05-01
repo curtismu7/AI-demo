@@ -216,7 +216,7 @@ Plans:
 
 **Requirements:** EDU-01, EDU-02, EDU-03, EDU-04
 
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 04-01-PLAN.md — OIDC 2.1 education panel (EDU-01)
@@ -465,7 +465,7 @@ Plans:
 **Goal:** Modernize langchain_agent/ to 0.3.x LCEL, add 5-provider LLM factory, BFF session-stored API keys, widget settings panel, Config page section, and LangChain education sidebar + /langchain deep-dive page.
 **Requirements**: LCH-01, LCH-02, LCH-03, LCH-04
 **Depends on:** Phase 22
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 23-01-PLAN.md — Python upgrade: requirements.txt + LangChainConfig extension + llm_factory.py + LCEL migration
@@ -794,7 +794,7 @@ Plans:
 **Goal:** Fix five edge-case gaps from Phase 52 MFA step-up: TTL on stepUpVerified (D-01), challenge-expiry recovery (D-02), token-expiry mid-MFA with silent refresh (D-03), no-devices enrollment flow (D-04), and always-require-step-up for withdrawals toggle (D-05).
 **Requirements**: BUG-01, BUG-02, BUG-03, BUG-04, BUG-05
 **Depends on:** Phase 52
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 53-01-PLAN.md — BFF session TTL + error codes (D-01, D-02, D-03 server)
@@ -1702,7 +1702,7 @@ Plans:
 **Requirements**: D-01, D-03, D-04, D-05
 **Depends on:** Phase 231
 **Status:** ✅ COMPLETE (2026-04-26)
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 232-01-PLAN.md — File persistence + new categories + ActivityLogs icons
@@ -1751,7 +1751,7 @@ Plans:
 **Goal:** Produce a structured REVIEW.md with severity-classified findings (Critical/Major/Minor) for all backend services and routes, covering async patterns, memory leaks, security, and modern JS standards. No code is modified — output is the report only.
 **Requirements**: REVIEW-01
 **Depends on:** Phase 235
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 236-01-PLAN.md — Review high-priority recently-changed services (appEventService, tokenIntrospectionService, tokenIntrospection middleware, transactionAuthorizationService, mcpToolAuthorizationService)
@@ -1764,7 +1764,7 @@ Plans:
 **Goal:** Audit every PingOne API call the BFF makes against official docs; fix any shape mismatches; make simulated Authorize response byte-for-byte identical to real PingOne Authorize; add ApiCallPreviewCard to all test pages showing endpoint URL + request JSON + doc link; create integration test suite.
 **Requirements**: TBD
 **Depends on:** Phase 238
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 239-01: PingOne API audit — compare BFF calls to docs, produce PINGONE_API_FINDINGS.md
@@ -2017,13 +2017,13 @@ Plans:
 **Goal:** Add RFC 7662 active-token introspection at the MCP gateway, forward transaction amounts to PingOne Authorize for threshold-based step-up, and surface per-request gateway decisions (introspect/authorize/exchange) in the Token Chain UI.
 **Requirements**: TBD
 **Depends on:** Phase 258
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 259-01-PLAN.md — GatewayIntrospectionClient.ts + config introspectionEndpoint (Wave 1)
-- [ ] 259-02-PLAN.md — UI: gw-introspection/gw-authorize/gw-exchange badges + edu cards (Wave 1)
-- [ ] 259-03-PLAN.md — Gateway wiring: introspection step-0, amount-aware Authorize, X-Gw-Audit-Trail header (Wave 2)
-- [ ] 259-04-PLAN.md — BFF: extract audit trail → tokenEvents + hitl_required → HTTP 428 (Wave 3)
+- [x] 259-01-PLAN.md — GatewayIntrospectionClient.ts + config introspectionEndpoint (Wave 1)
+- [x] 259-02-PLAN.md — UI: gw-introspection/gw-authorize/gw-exchange badges + edu cards (Wave 1)
+- [x] 259-03-PLAN.md — Gateway wiring: introspection step-0, amount-aware Authorize, X-Gw-Audit-Trail header (Wave 2)
+- [x] 259-04-PLAN.md — BFF: extract audit trail → tokenEvents + hitl_required → HTTP 428 (Wave 3)
 
 ---
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
