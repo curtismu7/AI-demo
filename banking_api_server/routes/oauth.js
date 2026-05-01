@@ -19,6 +19,7 @@ const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAutho
 const { trackTokenEvent } = require('../services/tokenChainService');
 const { trackToken } = require('../services/apiCallTrackerService');
 const { logEvent: logAppEvent } = require('../services/appEventService');
+const tokenIntrospectionService = require('../services/tokenIntrospectionService');
 const { decodeJwt } = require('../utils/tokenUtils');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
@@ -320,6 +321,25 @@ router.get('/callback', async (req, res) => {
           tokenType: 'user_token',
           description: 'OAuth Access Token'
         });
+
+        // RFC 7662 — introspect at login so /api/tokens/session-preview can show
+        // "active-token introspection" in the Token Chain before any tool call.
+        // Fire-and-forget: non-fatal, result stored in session for display only.
+        tokenIntrospectionService.validateToken(oauthTokens.accessToken)
+          .then((intro) => {
+            req.session.loginIntrospection = {
+              active:    intro.valid,
+              sub:       intro.sub,
+              exp:       intro.exp,
+              aud:       intro.aud,
+              scopes:    intro.scopes,
+              client_id: intro.client_id,
+            };
+            req.session.save((e) => { if (e) console.warn('[oauth/callback] loginIntrospection session save:', e.message); });
+          })
+          .catch((err) => {
+            console.debug('[oauth/callback] loginIntrospection skipped:', err.message);
+          });
       }
 
       // Save session before redirect to prevent race condition where status

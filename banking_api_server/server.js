@@ -740,7 +740,7 @@ app.use('/api/mcp/audit', (req, res, next) => {
 }, mcpAuditRouter);
 // Session preview uses session data only — no full JWT validation.
 // Must be registered BEFORE the auth-gated /api/tokens block.
-app.get('/api/tokens/session-preview', (req, res) => {
+app.get('/api/tokens/session-preview', async (req, res) => {
     try {
         const {
             tokenEvents
@@ -1516,7 +1516,18 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
                 'session-token-introspection',
                 'Session Token — PingOne Introspection (RFC 7662)',
                 'active',
-                null,
+                // Pass claims so the UI Claims tab shows real PingOne data
+                {
+                    header: null,
+                    claims: {
+                        sub:    introspectionResult.sub   || null,
+                        active: true,
+                        scope:  introspectionResult.scope || null,
+                        exp:    introspectionResult.exp   || null,
+                        aud:    introspectionResult.aud   || null,
+                        client_id: introspectionResult.client_id || null,
+                    },
+                },
                 `PingOne confirmed the session token is active. sub=${introspectionResult.sub || '—'} scope="${introspectionResult.scope || ''}"`,
                 {
                     rfc: 'RFC 7662',

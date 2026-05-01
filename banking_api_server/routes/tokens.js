@@ -235,9 +235,9 @@ router.get('/chain', async (req, res) => {
  * Token Chain dashboard preview: User Token from session + waiting/skipped rows (no exchange call).
  * GET /api/tokens/session-preview
  */
-router.get('/session-preview', (req, res) => {
+router.get('/session-preview', async (req, res) => {
   try {
-    const { tokenEvents } = agentMcpTokenService.buildSessionPreviewTokenEvents(req);
+    const { tokenEvents } = await agentMcpTokenService.buildSessionPreviewTokenEvents(req);
     res.json({ tokenEvents });
   } catch (error) {
     console.error('Token session-preview error:', error);

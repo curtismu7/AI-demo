@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 const oauthService = require('../services/oauthUserService');
+const { fetchPingOneUserById } = require('../services/pingOneUserLookupService');
 const oauthUserConfig = require('../config/oauthUser');
 const configStore = require('../services/configStore');
 const dataStore = require('../data/store');
@@ -545,6 +546,25 @@ router.get('/callback', async (req, res) => {
         }
         console.log('[oauth/user/callback] Session saved OK sid=' + (req.session?.id || '').slice(0, 8) + '…');
 
+        // RFC 7662 — introspect at login so /api/tokens/session-preview shows
+        // "active-token introspection" in the Token Chain before any tool call.
+        // Fire-and-forget: non-fatal, result stored in session for display only.
+        tokenIntrospectionService.validateToken(oauthTokens.accessToken)
+          .then((intro) => {
+            req.session.loginIntrospection = {
+              active:    intro.valid,
+              sub:       intro.sub,
+              exp:       intro.exp,
+              aud:       intro.aud,
+              scopes:    intro.scopes,
+              client_id: intro.client_id,
+            };
+            req.session.save((e) => { if (e) console.warn('[oauth/user/callback] loginIntrospection session save:', e.message); });
+          })
+          .catch((err) => {
+            console.debug('[oauth/user/callback] loginIntrospection skipped:', err.message);
+          });
+
         // Set a signed auth-state cookie so the session-restore middleware can
         // answer /status and /nl requests even when the session hits a different
         // serverless instance on Vercel.
@@ -680,7 +700,8 @@ router.get('/status', (req, res) => {
  */
 router.post('/consent', (req, res) => {
   const token = req.session.oauthTokens?.accessToken;
-  const hasOAuthToken = !!(token && token !== '_cookie_session');
+  // Accept _cookie_session stub (demo/Vercel mode) — real gate is user+oauthType
+  const hasOAuthToken = !!(token);
   const isAuthenticated = !!(req.session.user && hasOAuthToken && req.session.oauthType === 'user');
 
   if (!isAuthenticated) {
@@ -831,7 +852,8 @@ router.get('/consent-url', (req, res) => {
  */
 router.post('/initiate-otp', async (req, res) => {
   const token = req.session.oauthTokens?.accessToken;
-  const hasOAuthToken = !!(token && token !== '_cookie_session');
+  // Accept _cookie_session stub (demo/Vercel mode) — real gate is user+oauthType
+  const hasOAuthToken = !!(token);
   const isAuthenticated = !!(req.session.user && hasOAuthToken && req.session.oauthType === 'user');
   if (!isAuthenticated) {
     return res.status(401).json({ error: 'not_authenticated', message: 'Must be logged in to initiate step-up.' });
@@ -877,7 +899,47 @@ router.post('/initiate-otp', async (req, res) => {
       console.error(`[OTP] ${method} send failed (non-fatal):`, sendErr.message);
     }
 
-    res.json({ otpSent: true, method, expiresIn: 300, email: user.email || '' });
+    const isProd = process.env.NODE_ENV === 'production';
+
+    // Look up masked contact from PingOne (best-effort, non-fatal)
+    let maskedContact = null;
+    try {
+      const pingoneUserId = user?.oauthId || user?.id;
+      if (pingoneUserId) {
+        const { user: p1User } = await fetchPingOneUserById(pingoneUserId);
+        if (method === 'sms' && p1User?.mobilePhone) {
+          const digits = p1User.mobilePhone.replace(/\D/g, '');
+          maskedContact = digits.length >= 4
+            ? '***-***-' + digits.slice(-4)
+            : p1User.mobilePhone;
+        } else if (method !== 'sms') {
+          const email = p1User?.email || user?.email || '';
+          if (email.includes('@')) {
+            const [local, domain] = email.split('@');
+            const visible = local.length > 2 ? local[0] + '*'.repeat(local.length - 2) + local[local.length - 1] : local[0] + '*';
+            maskedContact = visible + '@' + domain;
+          }
+        }
+      }
+    } catch (_) { /* non-fatal */ }
+
+    // Fallback: mask email from session if PingOne lookup failed
+    if (!maskedContact && method !== 'sms' && user?.email?.includes('@')) {
+      const [local, domain] = user.email.split('@');
+      const visible = local.length > 2 ? local[0] + '*'.repeat(local.length - 2) + local[local.length - 1] : local[0] + '*';
+      maskedContact = visible + '@' + domain;
+    }
+
+    res.json({
+      otpSent: true,
+      method,
+      expiresIn: 300,
+      email: user.email || '',
+      maskedContact,
+      // devCode: only included in non-production so demos can complete step-up
+      // without email/SMS delivery being configured.
+      ...(isProd ? {} : { devCode: code }),
+    });
   });
 });
 
@@ -890,7 +952,8 @@ router.post('/initiate-otp', async (req, res) => {
  */
 router.post('/verify-otp', (req, res) => {
   const token = req.session.oauthTokens?.accessToken;
-  const hasOAuthToken = !!(token && token !== '_cookie_session');
+  // Accept _cookie_session stub (demo/Vercel mode) — real gate is user+oauthType
+  const hasOAuthToken = !!(token);
   const isAuthenticated = !!(req.session.user && hasOAuthToken && req.session.oauthType === 'user');
   if (!isAuthenticated) {
     return res.status(401).json({ error: 'not_authenticated', message: 'Must be logged in to verify OTP.' });
@@ -933,3 +996,4 @@ module.exports = router;
 // This section provides the foundation for event capture.
 
 const appEventService = require('../services/appEventService');
+const tokenIntrospectionService = require('../services/tokenIntrospectionService');

@@ -270,7 +270,7 @@ function appendUserTokenEvent(tokenEvents, userToken, req = null) {
  * @param {import('express').Request} req
  * @returns {{ tokenEvents: Array }}
  */
-function buildSessionPreviewTokenEvents(req) {
+async function buildSessionPreviewTokenEvents(req) {
   const tokenEvents = [];
   const userToken = getSessionBearerForMcp(req);
   if (!userToken) {
@@ -278,6 +278,92 @@ function buildSessionPreviewTokenEvents(req) {
   }
 
   appendUserTokenEvent(tokenEvents, userToken, req);
+
+  // ── Step 1: JWKS Cryptographic Signature Verification (RFC 7515) ────────────
+  // Verify the user's own access token signature so we can show it in the chain
+  // before any tool call — gives learners a view of JWKS verification at login time.
+  try {
+    const verif = await tokenVerificationService.verifyExchangedToken(userToken);
+    const isIntrospectionFallback = verif.fallbackMethod === 'introspection';
+    const eventLabel = isIntrospectionFallback
+      ? 'User Token — Introspection Fallback (RFC 7662) · JWKS Unavailable'
+      : 'User Token — JWKS Cryptographic Signature Verification (RFC 7515)';
+    let explanation;
+    if (verif.verified && !isIntrospectionFallback) {
+      explanation = `Signature verified ✅ — PingOne's public key (kid=${verif.kid}, alg=${verif.alg}) confirms the user access token is authentic and untampered. RFC 7515 §4.`;
+    } else if (verif.verified && isIntrospectionFallback) {
+      explanation = `JWKS unavailable — fell back to RFC 7662 introspection ✅. PingOne confirmed the user access token is active. Cryptographic tamper-detection was skipped.`;
+    } else if (verif.warning) {
+      explanation = `Signature check produced a warning (fail-open): ${verif.warning}.`;
+    } else {
+      explanation = `Verification FAILED ❌ — ${verif.error || 'Unknown error'}. The user token may be invalid or tampered.`;
+    }
+    tokenEvents.push(buildTokenEvent(
+      'user-token-jwks-verified',
+      eventLabel,
+      verif.verified ? 'active' : (verif.warning ? 'warning' : 'failed'),
+      verif.verified ? verif.claims : null,
+      explanation,
+      {
+        rfc: isIntrospectionFallback ? 'RFC 7662 (fallback) · RFC 7515 attempted' : 'RFC 7515 · RFC 7517 · RFC 7518',
+        verified: verif.verified,
+        fallbackMethod: verif.fallbackMethod,
+        alg: verif.alg,
+        kid: verif.kid,
+        warning: verif.warning,
+        error: verif.error,
+      }
+    ));
+  } catch (verifErr) {
+    tokenEvents.push(buildTokenEvent(
+      'user-token-jwks-verified',
+      'User Token — JWKS Signature Verification (RFC 7515)',
+      'skipped',
+      null,
+      `JWKS verification skipped: ${verifErr.message}`,
+      { rfc: 'RFC 7515 · RFC 7517' }
+    ));
+  }
+
+  // ── Step 2: PingOne Introspection at Login (RFC 7662) ────────────────────────
+  // If introspection was run at login time, show those results in the chain.
+  // loginIntrospection is stored in the session by the OAuth callback handler.
+  const loginIntro = req.session && req.session.loginIntrospection;
+  if (loginIntro) {
+    const introStatus = loginIntro.active ? 'active' : 'failed';
+    tokenEvents.push(buildTokenEvent(
+      'user-token-introspection',
+      'User Token — PingOne Active-Token Introspection at Login (RFC 7662)',
+      introStatus,
+      loginIntro.active
+        ? {
+            header: null,
+            claims: {
+              sub:       loginIntro.sub,
+              active:    true,
+              scope:     Array.isArray(loginIntro.scopes) ? loginIntro.scopes.join(' ') : (loginIntro.scopes || null),
+              exp:       loginIntro.exp,
+              aud:       loginIntro.aud,
+              client_id: loginIntro.client_id,
+            },
+          }
+        : null,
+      loginIntro.active
+        ? `PingOne confirmed the user token is active at login. sub=${loginIntro.sub} scope="${loginIntro.scopes || ''}". Introspection is called once per login and cached in the session.`
+        : `PingOne returned active=false at login — the token was already inactive when the session was established.`,
+      {
+        rfc: 'RFC 7662',
+        introspectionResult: {
+          active:    loginIntro.active,
+          sub:       loginIntro.sub,
+          exp:       loginIntro.exp,
+          aud:       loginIntro.aud,
+          scope:     loginIntro.scopes,
+          client_id: loginIntro.client_id,
+        },
+      }
+    ));
+  }
 
   const mcpResourceUri = configStore.getEffective('pingone_resource_mcp_server_uri');
   if (!mcpResourceUri) {
