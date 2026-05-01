@@ -1390,9 +1390,9 @@ export default function BankingAgent({
 		try {
 			const saved = localStorage.getItem("ba_token_chain_width");
 			if (saved !== null)
-				return Math.max(50, Math.min(200, parseInt(saved, 10)));
+				return Math.max(50, Math.min(600, parseInt(saved, 10)));
 		} catch {}
-		return 80; // Default: 80px
+		return 280; // Default: 280px
 	});
 
 	/** Persist token chain visibility to localStorage. */
@@ -1422,7 +1422,7 @@ export default function BankingAgent({
 
 			const handleMouseMove = (moveEvent) => {
 				const deltaX = moveEvent.clientX - startX;
-				const newWidth = Math.max(50, Math.min(200, startWidth + deltaX));
+				const newWidth = Math.max(50, Math.min(600, startWidth + deltaX));
 				setTokenChainWidth(newWidth);
 			};
 
@@ -6040,6 +6040,41 @@ export default function BankingAgent({
 									className="ba-middle-col"
 									style={{ width: `${tokenChainWidth}px` }}
 								>
+									{/* Header bar: title + pop-out + close */}
+									<div className="ba-middle-col-header">
+										<span className="ba-middle-col-title">🔗 Token Chain</span>
+										<button
+											type="button"
+											className="ba-middle-col-hdr-btn"
+											title="Pop out to new window"
+											aria-label="Pop out token chain"
+											onClick={() => {
+												// Open the /monitoring/token-chain page in a popup window
+												const w = Math.min(820, Math.round(window.screen.width * 0.6));
+												const h = Math.min(940, Math.round(window.screen.height * 0.85));
+												const left = Math.round((window.screen.width - w) / 2);
+												const top = Math.round((window.screen.height - h) / 4);
+												window.open(
+													'/monitoring/token-chain',
+													'token-chain-popout',
+													`width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no`
+												);
+												// Close the inline panel so users aren't looking at two
+												setShowTokenChain(false);
+											}}
+										>
+											↗
+										</button>
+										<button
+											type="button"
+											className="ba-middle-col-hdr-btn ba-middle-col-hdr-btn--close"
+											title="Close token chain"
+											aria-label="Close token chain"
+											onClick={() => setShowTokenChain(false)}
+										>
+											×
+										</button>
+									</div>
 									<TokenChainDisplay />
 								</div>
 								<div

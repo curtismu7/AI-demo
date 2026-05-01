@@ -426,6 +426,59 @@ body > .banking-agent-float-root .banking-agent-panel {
 	background: rgba(65, 105, 225, 0.5);
 }
 
+
+/* ─── Token-chain column header (close + popout controls) ─────────────── */
+.ba-middle-col-header {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	padding: 4px 6px 4px 8px;
+	border-bottom: 1px solid var(--ba-border);
+	background: var(--ba-surface);
+	flex-shrink: 0;
+	position: sticky;
+	top: 0;
+	z-index: 1;
+}
+
+.ba-middle-col-title {
+	flex: 1 1 0%;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--ba-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.ba-middle-col-hdr-btn {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--ba-muted);
+	font-size: 14px;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0;
+	transition: background 0.12s, color 0.12s;
+}
+
+.ba-middle-col-hdr-btn:hover {
+	background: rgba(65, 105, 225, 0.18);
+	color: var(--ba-text);
+}
+
+.ba-middle-col-hdr-btn--close:hover {
+	background: rgba(185, 28, 28, 0.2);
+	color: #fca5a5;
+}
+
 /* Resize handle between middle and right columns */
 .ba-middle-col-resize-handle {
 	width: 4px;
