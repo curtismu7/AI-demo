@@ -116,6 +116,11 @@ export async function callMcpTool(tool, params = {}) {
       // Immediately append so Token Chain UI updates in real time
       appendTokenEvents([tokenEvent]);
     }
+
+    // MCP tool result arrived via SSE — update MCP Results tab immediately
+    if (data && data.type === 'mcp-result') {
+      window.dispatchEvent(new CustomEvent('mcp-tool-result-sse', { detail: data }));
+    }
     
     try {
       agentFlowDiagram.applyServerEvent(data);

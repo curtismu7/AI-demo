@@ -1048,6 +1048,7 @@ const mcpFlowSseHub = require('./services/mcpFlowSseHub');
 const http2McpBridge = require("./services/http2McpBridge");
 const mcpGatewayClient = require('./services/mcpGatewayClient');
 const mcpPingOneStdioAdapter = require('./services/mcpPingOneStdioAdapter');
+const { recordToolCall: recordMcpToolCall } = require('./services/mcpToolAuditStore');
 
 // Session-scoped exchange mode toggle (GET/POST /api/mcp/exchange-mode)
 const mcpExchangeMode = require('./routes/mcpExchangeMode');
@@ -1097,6 +1098,30 @@ function publishTokenEventsToSse(flowTraceId, tokenEvents) {
       });
     }
   }
+}
+
+/**
+ * Publish an MCP tool result to the SSE hub so the Token Chain MCP Results
+ * tab updates in real-time without waiting for the 15-second poll cycle.
+ * Shape matches the mcpToolCallsChain entries from getMCPToolCalls().
+ */
+function publishMcpResultToSse(flowTraceId, { tool, result, durationMs, isDelegated, userId }) {
+  if (!flowTraceId) return;
+  const success = result && !result.isError;
+  const toolResultJson = result?.content
+    ? result.content.slice(0, 10)          // cap size for SSE payload
+    : (result ? { text: String(result).slice(0, 500) } : null);
+  const toolResultSummary = success ? `${tool} completed` : `${tool} failed`;
+  mcpFlowSseHub.publish(flowTraceId, {
+    type: 'mcp-result',
+    toolName: tool,
+    status: success ? 'success' : 'failure',
+    duration: durationMs ?? 0,
+    isDelegated: !!isDelegated,
+    resultSummary: toolResultSummary,
+    resultJson: toolResultJson,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 // POST /api/mcp/tool — call a banking MCP tool
@@ -1319,6 +1344,9 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
                     result ? Object.keys(result).join(',') : '(null)',
                     result ?.error ?? '(none)'
                 );
+                const _efDuration = Date.now() - startTime;
+                publishMcpResultToSse(flowTraceId, { tool, result, durationMs: _efDuration, isDelegated: false, userId: effectiveUserId });
+                recordMcpToolCall({ userId: effectiveUserId, toolName: tool, success: !result?.error, duration: _efDuration, resultSummary: result?.error ? `${tool} failed` : `${tool} completed` });
                 return res.json({
                     result,
                     tokenEvents: fallbackEvents,
@@ -1676,7 +1704,13 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
           };
           appEventService.logEvent('mcp', 'info', `MCP result: ${tool} → ${result.isError ? 'error' : 'success'} (${resultMeta.contentLength} bytes)`, { tag: 'mcp/result', metadata: resultMeta });
         }
-        
+
+        // Publish MCP result via SSE so Token Chain MCP Results tab updates immediately
+        const _durationMs = Date.now() - startTime;
+        publishMcpResultToSse(flowTraceId, { tool, result, durationMs: _durationMs, isDelegated: !!mcpAccessToken, userId: userSub });
+        // Also record in local audit store (covers BFF-proxied calls)
+        recordMcpToolCall({ userId: userSub || 'unknown', toolName: tool, success: !result?.isError, duration: _durationMs, resultSummary: result?.isError ? `${tool} failed` : `${tool} completed`, isDelegated: !!mcpAccessToken });
+
         emit({
             phase: 'mcp_remote_done'
         });
@@ -1697,6 +1731,9 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
                     emit({ phase: 'local_tool_start', path: 'auth_challenge_fallback' });
                     const localResult = await callToolLocal(tool, params || {}, effectiveUserId, req);
                     emit({ phase: 'local_tool_done', path: 'auth_challenge_fallback' });
+                    const _acDuration = Date.now() - startTime;
+                    publishMcpResultToSse(flowTraceId, { tool, result: localResult, durationMs: _acDuration, isDelegated: false, userId: effectiveUserId });
+                    recordMcpToolCall({ userId: effectiveUserId, toolName: tool, success: !localResult?.error, duration: _acDuration, resultSummary: localResult?.error ? `${tool} failed` : `${tool} completed` });
                     return res.json({ result: localResult, tokenEvents, _localFallback: true });
                 } catch (localErr) {
                     console.error(`[MCP Local] ${tool} — auth-challenge fallback failed:`, localErr.message);
@@ -1819,6 +1856,9 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
                 phase: 'local_tool_done',
                 path: 'remote_fallback'
             });
+            const _rfDuration = Date.now() - startTime;
+            publishMcpResultToSse(flowTraceId, { tool, result, durationMs: _rfDuration, isDelegated: false, userId: effectiveUserId });
+            recordMcpToolCall({ userId: effectiveUserId, toolName: tool, success: !result?.error, duration: _rfDuration, resultSummary: result?.error ? `${tool} failed` : `${tool} completed` });
             return res.json({
                 result,
                 tokenEvents,

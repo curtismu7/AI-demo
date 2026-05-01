@@ -8,6 +8,7 @@ const { z } = require('zod/v4');
 const { explainTopic } = require('../services/educationTopics.js');
 const { mcpCallTool } = require('../services/mcpWebSocketClient');
 const { decodeJwtClaims, buildTokenEvent } = require('../services/agentMcpTokenService');
+const { recordToolCall: recordMcpToolCall } = require('../services/mcpToolAuditStore');
 
 
 const braveSearchService = require('../services/braveSearchService');
@@ -53,7 +54,22 @@ async function callMcpToolInternal(toolName, params, agentToken, userId, tokenEv
     console.log('[MCP_TOOL] result type:', typeof result);
     console.log('[MCP_TOOL] result keys:', result ? Object.keys(result) : 'none');
 
-    // Track tool call event
+    // Record in local audit store so /api/token-chain includes this agent-path call
+    const _callDone = Date.now();
+    try {
+      const decoded = agentToken ? decodeJwtClaims(agentToken) : null;
+      recordMcpToolCall({
+        userId: userId || 'agent',
+        toolName,
+        success: !result?.isError,
+        duration: 0,                   // duration not tracked here — measured in agentBuilder
+        resultSummary: result?.isError ? `${toolName} failed` : `${toolName} completed`,
+        isDelegated: !!agentToken,
+        userToken: decoded?.claims ? { sub: decoded.claims.sub || userId, scope: decoded.claims.scope || '' } : null,
+      });
+    } catch (_) { /* non-blocking */ }
+
+    // Track token event for Token Chain display
     if (tokenEvents) {
       tokenEvents.push(buildTokenEvent(
         'mcp-tool-result',

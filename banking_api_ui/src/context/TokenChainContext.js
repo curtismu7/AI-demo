@@ -147,6 +147,29 @@ export function TokenChainProvider({ children, activePath = "" }) {
     };
   }, [activePath]);
 
+  // Real-time MCP result updates via SSE — prepend new result immediately so the
+  // MCP Results tab updates without waiting for the 15-second poll cycle.
+  useEffect(() => {
+    const handler = (e) => {
+      const data = e.detail;
+      if (!data || !data.toolName) return;
+      setMCPToolCalls(prev => [{
+        id: `sse-${Date.now()}`,
+        timestamp: data.timestamp || new Date().toISOString(),
+        toolName: data.toolName,
+        status: data.status || 'success',
+        duration: data.duration || 0,
+        chainIndex: prev.length,
+        isDelegated: !!data.isDelegated,
+        scopes: [],
+        resultJson: data.resultJson || null,
+        resultSummary: data.resultSummary || null,
+      }, ...prev]);
+    };
+    window.addEventListener('mcp-tool-result-sse', handler);
+    return () => window.removeEventListener('mcp-tool-result-sse', handler);
+  }, []);
+
   /** Fetch resolved identity once on mount (and on re-auth). Shared across all token surfaces. */
   const loadResolvedIdentity = useCallback(async () => {
     try {
