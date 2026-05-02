@@ -4145,9 +4145,9 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 	align-items: center;
 	gap: 8px;
 	height: 28px;
-	padding: 0 8px;
+	padding: 6px 10px;
 	border-radius: 8px;
-	font-size: 11px;
+	font-size: 13px;
 	font-weight: 600;
 	color: var(--ba-text);
 	cursor: pointer;
@@ -4158,8 +4158,8 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 	color: var(--ba-text);
 }
 .ba-rfc-toggle-cb {
-	width: 13px;
-	height: 13px;
+	width: 15px;
+	height: 15px;
 	margin: 0;
 	cursor: pointer;
 	accent-color: var(--ba-chip-bd, #5b8dee);
