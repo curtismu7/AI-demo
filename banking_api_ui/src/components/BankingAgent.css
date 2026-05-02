@@ -4432,8 +4432,8 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 
 /* Compliance 12-step panel */
 .ba-compliance-panel {
-  background: rgba(21, 42, 82, 0.92);
-  border-bottom: 1px solid rgba(65, 105, 225, 0.3);
+  background: #ffffff;
+  border-bottom: 2px solid #e2e8f0;
   padding: 8px 14px 6px;
   overflow-y: auto;
   max-height: 240px;
@@ -4441,7 +4441,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 }
 .ba-compliance-panel__empty {
   font-size: 0.78rem;
-  color: #9db4e8;
+  color: #64748b;
   display: block;
   padding: 4px 0;
 }
@@ -4451,7 +4451,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 .ba-compliance-panel__item {
   display: flex;
@@ -4462,12 +4462,13 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   font-size: 0.78rem;
 }
 .ba-compliance-panel__item.active {
-  background: rgba(65, 105, 225, 0.2);
+  background: #eff6ff;
 }
-.ba-compliance-panel__item.done .ba-compliance-panel__label { opacity: 0.6; }
-.ba-compliance-panel__icon { font-size: 0.8rem; width: 16px; text-align: center; flex-shrink: 0; }
-.ba-compliance-panel__label { color: #c7d7ff; }
-.ba-compliance-panel__item.active .ba-compliance-panel__label { color: #fff; font-weight: 600; }
+.ba-compliance-panel__item.done .ba-compliance-panel__label { color: #15803d; }
+.ba-compliance-panel__item.error .ba-compliance-panel__label { color: #dc2626; }
+.ba-compliance-panel__icon { font-size: 0.85rem; width: 18px; text-align: center; flex-shrink: 0; }
+.ba-compliance-panel__label { color: #334155; }
+.ba-compliance-panel__item.active .ba-compliance-panel__label { color: #1d4ed8; font-weight: 600; }
 
 /* Compliance toggle button in header — highlight when active */
 .ba-compliance-toggle-btn.active {

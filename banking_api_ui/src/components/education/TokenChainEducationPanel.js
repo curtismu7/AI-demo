@@ -428,30 +428,27 @@ function ComplianceTab() {
   };
 
   const { complianceSteps, complianceStep } = flowState;
-  const allPending = complianceSteps.length === 0 || (
-    complianceStep === null && complianceSteps.every(s => s.status === 'pending')
-  );
 
-  const statusIcon  = { pending: '○', active: '⟳', done: '✓', error: '✗' };
-  const statusColor = { pending: '#9db4e8', active: '#7aa3f5', done: '#4CAF50', error: '#fca5a5' };
+  const statusIcon  = { pending: '○', active: '⟳', done: '✅', error: '❌' };
+  const statusColor = { pending: '#6b7280', active: '#2563eb', done: '#16a34a', error: '#dc2626' };
 
   return (
     <div>
-      <h3 style={{ marginTop: 0 }}>Phase 260 Compliance — 12-Step Flow</h3>
-      <p style={{ color: '#9db4e8', fontSize: '0.85rem', marginTop: 0 }}>
+      <h3 style={{ marginTop: 0, color: '#1e293b' }}>Phase 260 Compliance — 12-Step Flow</h3>
+      <p style={{ color: '#64748b', fontSize: '0.85rem', marginTop: 0 }}>
         Real-time status of the agent compliance flow
       </p>
-      {allPending ? (
-        <p style={{ color: '#9db4e8', fontStyle: 'italic', fontSize: '0.85rem' }}>
-          No active compliance flow — start an agent query to begin tracking.
+      {complianceSteps.length === 0 ? (
+        <p style={{ color: '#64748b', fontStyle: 'italic', fontSize: '0.85rem' }}>
+          Loading compliance steps…
         </p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', background: '#fff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
           <thead>
-            <tr style={{ borderBottom: '2px solid #3a5a9e', textAlign: 'left' }}>
-              <th scope="col" style={{ padding: '6px 8px', width: '2.5rem' }}>Status</th>
-              <th scope="col" style={{ padding: '6px 8px', width: '3rem' }}>#</th>
-              <th scope="col" style={{ padding: '6px 8px' }}>Step</th>
+            <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+              <th scope="col" style={{ padding: '7px 10px', width: '2.5rem', color: '#475569', fontWeight: 600 }}>Status</th>
+              <th scope="col" style={{ padding: '7px 10px', width: '3rem', color: '#475569', fontWeight: 600 }}>#</th>
+              <th scope="col" style={{ padding: '7px 10px', color: '#475569', fontWeight: 600 }}>Step</th>
             </tr>
           </thead>
           <tbody>
@@ -460,16 +457,16 @@ function ComplianceTab() {
               const isDiag = step.id === 'claim-diagnostics';
               return (
                 <tr key={step.id} style={{
-                  borderBottom: '1px solid rgba(65,105,225,0.15)',
-                  background: isActive ? 'rgba(65,105,225,0.12)' : (i % 2 ? 'rgba(255,255,255,0.02)' : 'transparent'),
+                  borderBottom: '1px solid #e2e8f0',
+                  background: isActive ? '#eff6ff' : (step.status === 'done' ? '#f0fdf4' : (i % 2 ? '#f8fafc' : '#fff')),
                 }}>
-                  <td style={{ padding: '5px 8px', textAlign: 'center' }}>
-                    <span style={{ color: statusColor[step.status] || '#9db4e8' }} aria-label={step.status}>
+                  <td style={{ padding: '6px 10px', textAlign: 'center' }}>
+                    <span style={{ color: statusColor[step.status] || '#6b7280', fontSize: '1rem' }} aria-label={step.status}>
                       {statusIcon[step.status] || '○'}
                     </span>
                   </td>
-                  <td style={{ padding: '5px 8px', color: '#9db4e8', fontSize: '0.78rem' }}>{i + 1}</td>
-                  <td style={{ padding: '5px 8px', color: '#c7d7ff' }}>
+                  <td style={{ padding: '6px 10px', color: '#94a3b8', fontSize: '0.78rem' }}>{i + 1}</td>
+                  <td style={{ padding: '6px 10px', color: isActive ? '#1d4ed8' : (step.status === 'done' ? '#15803d' : '#334155'), fontWeight: isActive ? 600 : 400 }}>
                     {step.label}
                     {isDiag && (
                       <>

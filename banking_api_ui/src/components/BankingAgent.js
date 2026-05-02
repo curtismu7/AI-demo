@@ -1342,7 +1342,7 @@ export default function BankingAgent({
 	const [p1mfaDaId, setP1mfaDaId] = useState(null);
 	const [p1mfaDevices, setP1mfaDevices] = useState([]);
 	const [consentBlocked, setConsentBlocked] = useState(false);
-	const [complianceStripState, setComplianceStripState] = useState({ complianceStep: null, complianceSteps: [] });
+	const [complianceStripState, setComplianceStripState] = useState(() => { try { const s = agentFlowDiagram.getState(); return { complianceStep: s.complianceStep || null, complianceSteps: s.complianceSteps || [] }; } catch { return { complianceStep: null, complianceSteps: [] }; } });
 	const [showCompliancePanel, setShowCompliancePanel] = useState(() => {
 		try { return localStorage.getItem("ba_show_compliance_panel") === "1"; } catch { return false; }
 	});
@@ -4654,16 +4654,6 @@ export default function BankingAgent({
 					ref={panelRef}
 					style={panelStyle}
 				>
-					{/* P1 — Reconnecting banner: shown while Upstash write is still propagating */}
-					{sessionReconnecting && (
-						<div className="ba-reconnecting" role="status" aria-live="polite">
-							<span className="ba-reconnecting__spinner" aria-hidden="true">
-								⟳
-							</span>
-							Reconnecting to your session…
-						</div>
-					)}
-
 					{/* Header — spans full width */}
 					{/* In inline mode: no drag handle. In float mode: drag to reposition */}
 					<div

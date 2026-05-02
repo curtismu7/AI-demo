@@ -53,15 +53,15 @@ const COMPLIANCE_STEPS = [
   { id: 'gw-denial-metadata',     label: 'Gateway denial metadata',         status: 'pending' },
   { id: 'gw-hitl-challenge-type', label: 'HITL challenge_type field',        status: 'pending' },
   { id: 'gw-scope-map',           label: 'Gateway tool-to-scope map',        status: 'pending' },
-  { id: 'agent-error-propagation',label: 'Agent propagates JSON-RPC error',  status: 'pending' },
-  { id: 'agent-recovery-branch',  label: 'Agent branches on error codes',    status: 'pending' },
+  { id: 'agent-error-propagation',label: 'Agent propagates JSON-RPC error',  status: 'done' },
+  { id: 'agent-recovery-branch',  label: 'Agent branches on error codes',    status: 'done' },
   { id: 'agent-scope-aware-cache',label: 'Agent scope-aware token cache',    status: 'pending' },
   { id: 'bff-login-resume',       label: 'BFF stores pending intent',        status: 'pending' },
-  { id: 'bff-response-shape',     label: 'BFF returns 401/403 structured',   status: 'pending' },
+  { id: 'bff-response-shape',     label: 'BFF returns 401/403 structured',   status: 'done' },
   { id: 'ui-auto-refire',         label: 'UI auto-re-fires pending message', status: 'pending' },
-  { id: 'ui-gateway-consent',     label: 'UI shows GatewayConsentModal',     status: 'pending' },
-  { id: 'olb-resource-token',     label: 'OLB path uses resource token',     status: 'pending' },
-  { id: 'claim-diagnostics',      label: 'Claim/scope diagnostics visible',  status: 'pending' },
+  { id: 'ui-gateway-consent',     label: 'UI shows GatewayConsentModal',     status: 'done' },
+  { id: 'olb-resource-token',     label: 'OLB path uses resource token',     status: 'done' },
+  { id: 'claim-diagnostics',      label: 'Claim/scope diagnostics visible',  status: 'done' },
 ];
 
 let state = {
