@@ -2823,6 +2823,7 @@ export default function BankingAgent({
 							method: "POST",
 							credentials: "include",
 							headers: { "Content-Type": "application/json" },
+							_silent: true,
 							body: JSON.stringify({
 								tool: "get_my_accounts",
 								params: {},

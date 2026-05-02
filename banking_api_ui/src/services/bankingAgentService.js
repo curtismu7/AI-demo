@@ -151,6 +151,7 @@ export async function callMcpTool(tool, params = {}) {
     headers: { 'Content-Type': 'application/json' },
     body,
     credentials: 'include',
+    _silent: true,  // suppress full-screen overlay — agent typing dots show progress instead
   };
 
   const t0 = Date.now();
