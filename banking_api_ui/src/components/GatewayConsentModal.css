@@ -1,0 +1,102 @@
+/* GatewayConsentModal — gcm- prefix */
+
+.gcm-card {
+  background: #152a52;
+  border: 1px solid rgba(65, 105, 225, 0.45);
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(10, 20, 50, 0.6);
+  width: 420px;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gcm-drag-handle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 20px 12px;
+  background: linear-gradient(135deg, #1a3a6e 0%, #152a52 100%);
+  cursor: move;
+  user-select: none;
+  border-bottom: 1px solid rgba(65, 105, 225, 0.3);
+}
+
+.gcm-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #e8eefc;
+}
+
+.gcm-hitl-badge {
+  display: inline-block;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #664d03;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 2px 8px;
+  width: fit-content;
+}
+
+.gcm-body {
+  padding: 20px 24px 8px;
+  font-size: 0.88rem;
+  color: #c7d7ff;
+  line-height: 1.5;
+}
+
+.gcm-body p {
+  margin: 0 0 8px;
+}
+
+.gcm-challenge-id {
+  font-size: 0.78rem;
+  color: #9db4e8;
+  font-family: inherit;
+}
+
+.gcm-expires {
+  font-size: 0.78rem;
+  color: #9db4e8;
+}
+
+.gcm-footer {
+  display: flex;
+  gap: 10px;
+  padding: 8px 24px 20px;
+  align-items: center;
+}
+
+.gcm-btn-approve {
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.gcm-btn-approve:hover {
+  background: #2563eb;
+}
+
+.gcm-btn-cancel {
+  background: transparent;
+  color: #c7d7ff;
+  border: 1px solid rgba(65, 105, 225, 0.4);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.gcm-btn-cancel:hover {
+  border-color: rgba(65, 105, 225, 0.8);
+}

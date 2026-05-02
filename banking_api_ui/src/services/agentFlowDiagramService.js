@@ -49,6 +49,21 @@ const PHASE_LABELS = {
 };
 
 /** @type {{ visible: boolean, phase: string, toolName: string|null, steps: Array<{id: string, title: string, detail: string, status: FlowStepStatus}>, serverEvents: Array<{ phase: string, label: string, detail: string, t?: number }>, hint: string|null, updatedAt: number }} */
+const COMPLIANCE_STEPS = [
+  { id: 'gw-denial-metadata',     label: 'Gateway denial metadata',         status: 'pending' },
+  { id: 'gw-hitl-challenge-type', label: 'HITL challenge_type field',        status: 'pending' },
+  { id: 'gw-scope-map',           label: 'Gateway tool-to-scope map',        status: 'pending' },
+  { id: 'agent-error-propagation',label: 'Agent propagates JSON-RPC error',  status: 'pending' },
+  { id: 'agent-recovery-branch',  label: 'Agent branches on error codes',    status: 'pending' },
+  { id: 'agent-scope-aware-cache',label: 'Agent scope-aware token cache',    status: 'pending' },
+  { id: 'bff-login-resume',       label: 'BFF stores pending intent',        status: 'pending' },
+  { id: 'bff-response-shape',     label: 'BFF returns 401/403 structured',   status: 'pending' },
+  { id: 'ui-auto-refire',         label: 'UI auto-re-fires pending message', status: 'pending' },
+  { id: 'ui-gateway-consent',     label: 'UI shows GatewayConsentModal',     status: 'pending' },
+  { id: 'olb-resource-token',     label: 'OLB path uses resource token',     status: 'pending' },
+  { id: 'claim-diagnostics',      label: 'Claim/scope diagnostics visible',  status: 'pending' },
+];
+
 let state = {
   visible: false,
   phase: 'idle',
@@ -57,6 +72,8 @@ let state = {
   serverEvents: [],
   hint: null,
   updatedAt: 0,
+  complianceSteps: COMPLIANCE_STEPS.map(s => ({ ...s })),
+  complianceStep: null,
 };
 
 function emit() {
@@ -374,6 +391,16 @@ export const agentFlowDiagram = {
         { id: 'mfa', title: 'HITL — MFA Step-up', detail: 'Verifying your identity — manual approval in progress…', status: 'active' },
       ];
     }
+    state.updatedAt = Date.now();
+    emit();
+  },
+
+  /**
+   * Generic state merge — used to update complianceStep / complianceSteps from outside.
+   * @param {Partial<typeof state>} patch
+   */
+  setState(patch) {
+    Object.assign(state, patch);
     state.updatedAt = Date.now();
     emit();
   },

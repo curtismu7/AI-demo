@@ -46,6 +46,7 @@ import { isBankingAgentFloatingDefaultOpen } from "../utils/bankingAgentFloating
 import { isPublicMarketingAgentPath } from "../utils/embeddedAgentFabVisibility";
 import AccountDetailsPanel from "./AccountDetailsPanel";
 import AgentConsentModal from "./AgentConsentModal";
+import GatewayConsentModal from "./GatewayConsentModal";
 import { EDUCATION_COMMANDS } from "./education/educationCommands";
 import { EDU } from "./education/educationIds";
 import FidoStepUpModal from "./FidoStepUpModal";
@@ -1341,6 +1342,7 @@ export default function BankingAgent({
 	const [p1mfaDaId, setP1mfaDaId] = useState(null);
 	const [p1mfaDevices, setP1mfaDevices] = useState([]);
 	const [consentBlocked, setConsentBlocked] = useState(false);
+	const [complianceStripState, setComplianceStripState] = useState({ complianceStep: null, complianceSteps: [] });
 	// Detect FIDO2/WebAuthn support on mount
 	useEffect(() => {
 		setSupportsFido(
@@ -1599,6 +1601,9 @@ export default function BankingAgent({
 	/** Pending action awaiting scope-upgrade consent — replayed automatically after exchange. */
 	const pendingScopeUpgradeRef = useRef(null);
 
+	/** Gateway HITL challenge — GatewayConsentModal on hitl_required from /api/banking-agent/message. */
+	const [gatewayHitlChallenge, setGatewayHitlChallenge] = useState(null);
+
 	/** Pending HITL intent — shows AgentConsentModal (transaction mode) before OTP. */
 	const [hitlPendingIntent, setHitlPendingIntent] = useState(null);
 
@@ -1652,6 +1657,15 @@ export default function BankingAgent({
 		window.addEventListener("bankingAgentConsentBlockChanged", sync);
 		return () =>
 			window.removeEventListener("bankingAgentConsentBlockChanged", sync);
+	}, []);
+
+	useEffect(() => {
+		return agentFlowDiagram.subscribe((state) => {
+			setComplianceStripState({
+				complianceStep: state.complianceStep || null,
+				complianceSteps: state.complianceSteps || [],
+			});
+		});
 	}, []);
 
 	// Clear parent's consent decline state on mount (React Rule: no setState in render initializers)
@@ -4208,6 +4222,15 @@ export default function BankingAgent({
 					});
 					return;
 				}
+				// D-04: Gateway HITL challenge — show GatewayConsentModal
+				if (response._status === 403 && response.error === 'hitl_required') {
+					setGatewayHitlChallenge({
+						challengeId: response.challengeId || '',
+						challengeType: response.challengeType || 'consent',
+						expiresAt: response.expiresAt || '',
+					});
+					return;
+				}
 				// Save pending NL and redirect to PingOne when need_auth is explicitly signaled
 				// (any path/login state), or for the marketing-guest 401 case.
 				const pathNorm401 = (location.pathname || "").replace(/\/$/, "") || "/";
@@ -5794,6 +5817,16 @@ export default function BankingAgent({
 							/>
 						)}
 
+						{/* Gateway HITL Consent Modal — hitl_required from /api/banking-agent/message */}
+						<GatewayConsentModal
+							show={!!gatewayHitlChallenge}
+							challengeId={gatewayHitlChallenge?.challengeId || ''}
+							challengeType={gatewayHitlChallenge?.challengeType || 'consent'}
+							expiresAt={gatewayHitlChallenge?.expiresAt || ''}
+							onApprove={() => setGatewayHitlChallenge(null)}
+							onDismiss={() => setGatewayHitlChallenge(null)}
+						/>
+
 						{/* MCP Tools List Modal */}
 						<MCPToolsListModal
 							show={showMcpToolsModal}
@@ -6171,7 +6204,20 @@ export default function BankingAgent({
 
 						{/* ── Right column: chat messages + input ── */}
 						<div className="ba-right-col">
-							{/* Messages */}
+							{/* Compliance status strip */}
+				{complianceStripState.complianceStep && (() => {
+					const activeStep = complianceStripState.complianceSteps.find(s => s.id === complianceStripState.complianceStep);
+					const stepIndex = complianceStripState.complianceSteps.findIndex(s => s.id === complianceStripState.complianceStep);
+					const icon = activeStep?.status === 'done' ? '✅' : activeStep?.status === 'error' ? '❌' : '⚙';
+					return (
+						<div className="ba-compliance-strip" aria-live="polite">
+							<span className="ba-compliance-strip__step">{icon} {activeStep?.label || complianceStripState.complianceStep}</span>
+							<span className="ba-compliance-strip__counter">Step {stepIndex + 1} / {complianceStripState.complianceSteps.length}</span>
+						</div>
+					);
+				})()}
+
+				{/* Messages */}
 							<div
 								className="banking-agent-messages"
 								ref={messagesContainerRef}

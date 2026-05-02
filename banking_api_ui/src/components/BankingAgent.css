@@ -4408,3 +4408,24 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 	scrollbar-width: thin;
 	scrollbar-color: rgba(65,105,225,0.4) transparent;
 }
+
+/* Compliance status strip */
+.ba-compliance-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 8px 14px;
+  background: rgba(21, 42, 82, 0.85);
+  border-bottom: 1px solid rgba(65, 105, 225, 0.3);
+  box-sizing: border-box;
+}
+.ba-compliance-strip__step {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #c7d7ff;
+}
+.ba-compliance-strip__counter {
+  font-size: 0.78rem;
+  color: #9db4e8;
+}

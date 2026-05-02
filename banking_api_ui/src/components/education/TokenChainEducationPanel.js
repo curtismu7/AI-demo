@@ -1,7 +1,8 @@
 // banking_api_ui/src/components/education/TokenChainEducationPanel.js
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 import { useTokenChainOptional } from '../../context/TokenChainContext';
+import { agentFlowDiagram } from '../../services/agentFlowDiagramService';
 
 function OverviewTab() {
   return (
@@ -390,6 +391,71 @@ function TransactionTokensTab() {
   );
 }
 
+
+function ComplianceTab() {
+  const [flowState, setFlowState] = React.useState({ complianceSteps: [], complianceStep: null });
+
+  React.useEffect(() => {
+    return agentFlowDiagram.subscribe(state => {
+      setFlowState({
+        complianceSteps: state.complianceSteps || [],
+        complianceStep: state.complianceStep || null,
+      });
+    });
+  }, []);
+
+  const { complianceSteps, complianceStep } = flowState;
+  const allPending = complianceSteps.length === 0 || (
+    complianceStep === null && complianceSteps.every(s => s.status === 'pending')
+  );
+
+  const statusIcon  = { pending: '○', active: '⟳', done: '✓', error: '✗' };
+  const statusColor = { pending: '#9db4e8', active: '#7aa3f5', done: '#4CAF50', error: '#fca5a5' };
+
+  return (
+    <div>
+      <h3 style={{ marginTop: 0 }}>Phase 260 Compliance — 12-Step Flow</h3>
+      <p style={{ color: '#9db4e8', fontSize: '0.85rem', marginTop: 0 }}>
+        Real-time status of the agent compliance flow
+      </p>
+      {allPending ? (
+        <p style={{ color: '#9db4e8', fontStyle: 'italic', fontSize: '0.85rem' }}>
+          No active compliance flow — start an agent query to begin tracking.
+        </p>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #3a5a9e', textAlign: 'left' }}>
+              <th scope="col" style={{ padding: '6px 8px', width: '2.5rem' }}>Status</th>
+              <th scope="col" style={{ padding: '6px 8px', width: '3rem' }}>#</th>
+              <th scope="col" style={{ padding: '6px 8px' }}>Step</th>
+            </tr>
+          </thead>
+          <tbody>
+            {complianceSteps.map((step, i) => {
+              const isActive = step.id === complianceStep;
+              return (
+                <tr key={step.id} style={{
+                  borderBottom: '1px solid rgba(65,105,225,0.15)',
+                  background: isActive ? 'rgba(65,105,225,0.12)' : (i % 2 ? 'rgba(255,255,255,0.02)' : 'transparent'),
+                }}>
+                  <td style={{ padding: '5px 8px', textAlign: 'center' }}>
+                    <span style={{ color: statusColor[step.status] || '#9db4e8' }} aria-label={step.status}>
+                      {statusIcon[step.status] || '○'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '5px 8px', color: '#9db4e8', fontSize: '0.78rem' }}>{i + 1}</td>
+                  <td style={{ padding: '5px 8px', color: '#c7d7ff' }}>{step.label}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 export default function TokenChainEducationPanel({ isOpen, onClose, initialTabId }) {
   const tokenChain = useTokenChainOptional();
   const liveIdentity = tokenChain?.resolvedIdentity ?? null;
@@ -400,6 +466,7 @@ export default function TokenChainEducationPanel({ isOpen, onClose, initialTabId
     { id: 'exchange-paths', label: 'Exchange Paths', content: <ExchangePathsTab /> },
     { id: 'examples', label: 'Examples', content: <ExamplesTab /> },
     { id: 'transaction-tokens', label: 'Transaction Tokens', content: <TransactionTokensTab /> },
+    { id: 'compliance', label: 'Compliance', content: <ComplianceTab /> },
   ];
 
   return (
