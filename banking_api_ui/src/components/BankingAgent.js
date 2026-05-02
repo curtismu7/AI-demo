@@ -1451,6 +1451,20 @@ export default function BankingAgent({
 		}
 	}, [tokenChainWidth]);
 
+	/** Show/hide RFC info token-event messages in chat. Persisted. */
+	const [showRfcInfo, setShowRfcInfo] = useState(() => {
+		try {
+			const saved = localStorage.getItem("ba_show_rfc_info");
+			if (saved !== null) return saved === "true";
+		} catch {}
+		return true; // Default: show RFC info
+	});
+	useEffect(() => {
+		try {
+			localStorage.setItem("ba_show_rfc_info", String(showRfcInfo));
+		} catch {}
+	}, [showRfcInfo]);
+
 	/** Handle resizing token chain middle column. */
 	const handleTokenChainResize = useCallback(
 		(e) => {
@@ -4856,6 +4870,15 @@ export default function BankingAgent({
 											>
 												🔗 Token chain
 											</button>
+											<button
+												type="button"
+												className={"ba-action-item" + (showRfcInfo ? " active" : "")}
+												onClick={() => setShowRfcInfo((v) => !v)}
+												aria-label={showRfcInfo ? "Hide RFC info" : "Show RFC info"}
+												title={showRfcInfo ? "Hide RFC info messages" : "Show RFC info messages"}
+											>
+												{showRfcInfo ? "📖 RFC info on" : "📖 RFC info off"}
+											</button>
 											{(!isInline || showPopOut) && (
 												<button
 													type="button"
@@ -6151,7 +6174,7 @@ export default function BankingAgent({
 										</p>
 									</div>
 								)}
-								{messages.map((msg) => {
+								{messages.filter((msg) => showRfcInfo || msg.role !== "token-event").map((msg) => {
 									if (msg.role === "reasoning") {
 										return (
 											<div key={msg.id} className="banking-agent-msg reasoning">
