@@ -82,6 +82,16 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-02 — get_my_accounts insufficient_scope (3 root-cause fixes)
+
+- **Root cause:** Three compounding bugs blocked the `get_my_accounts` tool end-to-end via the MCP gateway path:
+  1. `BankingToolProvider.detectAuthorizationChallenge()` fired before checking `agentToken` — `session.userTokens` is always empty in the gateway flow (user doesn't log in through the MCP server), so it returned an auth challenge even though the BFF had already exchanged a valid delegated token.
+  2. `BANKING_API_BASE_URL=https://api.pingdemo.com:3002` — wrong port (BFF runs at 3001; port 3002 was not listening).
+  3. `knownAudiences` in `banking_api_server/middleware/auth.js` did not include `PINGONE_RESOURCE_MCP_GATEWAY_URI` (aud=https://mcp-gateway.pingdemo.com), so the BFF would reject the MCP server's outbound call after fixes 1 and 2.
+- **Fix:** (1) Added `&& !agentToken` guard to the `detectAuthorizationChallenge` block in `BankingToolProvider.executeTool()`. (2) Changed `BANKING_API_BASE_URL` port to 3001 in `banking_mcp_server/.env.development`. (3) Added `MCP_GATEWAY_RESOURCE_URI` constant (from `PINGONE_RESOURCE_MCP_GATEWAY_URI` env) to `knownAudiences` array.
+- **Files changed:** `banking_mcp_server/src/tools/BankingToolProvider.ts`, `banking_mcp_server/.env.development`, `banking_api_server/middleware/auth.js`.
+- **Do not break:** The `agentToken` guard only skips session-based challenge detection; tools that do NOT receive an agentToken still go through the full challenge flow. `BANKING_API_BASE_URL` change only affects the MCP server's outbound banking API calls.
+
 ### 2025-05-23 — Feature flag toggles broken (configStore FIELD_DEFS bypass)
 
 - **Root cause:** `configStore.setConfig()` silently drops any key not in `FIELD_DEFS`. Feature flag IDs (lowercase, e.g. `use_authorize`, `mcp_voice_enabled`) were never in `FIELD_DEFS`, so every PATCH to `/api/admin/feature-flags` wrote nothing to cache or SQLite. The optimistic UI update flipped the toggle visually, but the confirmed server response reverted it to `defaultValue`.
