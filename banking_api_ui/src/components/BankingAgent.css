@@ -1146,10 +1146,10 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 .banking-agent-msg-bubble {
 	max-width: 82%;
-	padding: 8px 12px;
+	padding: 10px 14px;
 	border-radius: 14px;
-	font-size: 13px;
-	line-height: 1.5;
+	font-size: 15px;
+	line-height: 1.6;
 	word-break: break-word;
 }
 
@@ -1264,9 +1264,9 @@ body > .banking-agent-float-root .banking-agent-panel {
 	border: 1px solid var(--ba-chip-bd);
 	border-left: 3px solid var(--ba-accent);
 	border-radius: 8px;
-	font-size: 11px;
-	line-height: 1.55;
-	padding: 7px 11px;
+	font-size: 13px;
+	line-height: 1.6;
+	padding: 8px 12px;
 }
 
 /* Typing indicator */
