@@ -50,18 +50,19 @@ const PHASE_LABELS = {
 
 /** @type {{ visible: boolean, phase: string, toolName: string|null, steps: Array<{id: string, title: string, detail: string, status: FlowStepStatus}>, serverEvents: Array<{ phase: string, label: string, detail: string, t?: number }>, hint: string|null, updatedAt: number }} */
 const COMPLIANCE_STEPS = [
-  { id: 'gw-denial-metadata',     label: 'Gateway denial metadata',         status: 'pending' },
-  { id: 'gw-hitl-challenge-type', label: 'HITL challenge_type field',        status: 'pending' },
-  { id: 'gw-scope-map',           label: 'Gateway tool-to-scope map',        status: 'pending' },
-  { id: 'agent-error-propagation',label: 'Agent propagates JSON-RPC error',  status: 'done' },
-  { id: 'agent-recovery-branch',  label: 'Agent branches on error codes',    status: 'done' },
-  { id: 'agent-scope-aware-cache',label: 'Agent scope-aware token cache',    status: 'pending' },
-  { id: 'bff-login-resume',       label: 'BFF stores pending intent',        status: 'pending' },
-  { id: 'bff-response-shape',     label: 'BFF returns 401/403 structured',   status: 'done' },
-  { id: 'ui-auto-refire',         label: 'UI auto-re-fires pending message', status: 'pending' },
-  { id: 'ui-gateway-consent',     label: 'UI shows GatewayConsentModal',     status: 'done' },
-  { id: 'olb-resource-token',     label: 'OLB path uses resource token',     status: 'done' },
-  { id: 'claim-diagnostics',      label: 'Claim/scope diagnostics visible',  status: 'done' },
+  // Ordered by agent flow: step 2 → 4b → 4d → 5 → 5a → 6 → 9 → 12 → 12a
+  { id: 'gw-scope-map',           label: '2.     Agent gets tool list — gateway scope map',     status: 'pending' },
+  { id: 'gw-denial-metadata',     label: '4b-c.  Gateway denial — includes required_scopes',   status: 'pending' },
+  { id: 'bff-response-shape',     label: '4d.    BFF structured 401/403 JSON-RPC',             status: 'done'    },
+  { id: 'gw-hitl-challenge-type', label: '4d/11d. Denial includes challenge_type',             status: 'pending' },
+  { id: 'agent-error-propagation',label: '5.     Agent propagates JSON-RPC denial',            status: 'done'    },
+  { id: 'agent-recovery-branch',  label: '5/11.  Agent branches: login required vs HITL',      status: 'done'    },
+  { id: 'bff-login-resume',       label: '5a.    BFF stores pending intent for re-fire',       status: 'pending' },
+  { id: 'agent-scope-aware-cache',label: '6.     Agent token exchange (actor + subject)',      status: 'pending' },
+  { id: 'olb-resource-token',     label: '9.     MCP resource token exchange (OLB path)',      status: 'done'    },
+  { id: 'ui-gateway-consent',     label: '12.    UI shows GatewayConsentModal (HITL)',         status: 'done'    },
+  { id: 'ui-auto-refire',         label: '12a.   UI auto-re-fires after login / consent',      status: 'pending' },
+  { id: 'claim-diagnostics',      label: '(diag) Claim/scope diagnostics',                    status: 'done'    },
 ];
 
 let state = {
