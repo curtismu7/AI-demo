@@ -4429,3 +4429,48 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   font-size: 0.78rem;
   color: #9db4e8;
 }
+
+/* Compliance 12-step panel */
+.ba-compliance-panel {
+  background: rgba(21, 42, 82, 0.92);
+  border-bottom: 1px solid rgba(65, 105, 225, 0.3);
+  padding: 8px 14px 6px;
+  overflow-y: auto;
+  max-height: 240px;
+  flex-shrink: 0;
+}
+.ba-compliance-panel__empty {
+  font-size: 0.78rem;
+  color: #9db4e8;
+  display: block;
+  padding: 4px 0;
+}
+.ba-compliance-panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ba-compliance-panel__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 4px;
+  border-radius: 5px;
+  font-size: 0.78rem;
+}
+.ba-compliance-panel__item.active {
+  background: rgba(65, 105, 225, 0.2);
+}
+.ba-compliance-panel__item.done .ba-compliance-panel__label { opacity: 0.6; }
+.ba-compliance-panel__icon { font-size: 0.8rem; width: 16px; text-align: center; flex-shrink: 0; }
+.ba-compliance-panel__label { color: #c7d7ff; }
+.ba-compliance-panel__item.active .ba-compliance-panel__label { color: #fff; font-weight: 600; }
+
+/* Compliance toggle button in header — highlight when active */
+.ba-compliance-toggle-btn.active {
+  background: rgba(65, 105, 225, 0.25);
+  outline: 1px solid rgba(65, 105, 225, 0.5);
+}

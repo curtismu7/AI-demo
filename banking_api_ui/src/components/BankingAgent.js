@@ -1343,6 +1343,9 @@ export default function BankingAgent({
 	const [p1mfaDevices, setP1mfaDevices] = useState([]);
 	const [consentBlocked, setConsentBlocked] = useState(false);
 	const [complianceStripState, setComplianceStripState] = useState({ complianceStep: null, complianceSteps: [] });
+	const [showCompliancePanel, setShowCompliancePanel] = useState(() => {
+		try { return localStorage.getItem("ba_show_compliance_panel") === "1"; } catch { return false; }
+	});
 	// Detect FIDO2/WebAuthn support on mount
 	useEffect(() => {
 		setSupportsFido(
@@ -4723,6 +4726,18 @@ export default function BankingAgent({
 									/>
 									RFC info
 								</label>
+								{/* Compliance 12-step toggle */}
+								<button
+									type="button"
+									className={"ba-rfc-toggle-label ba-compliance-toggle-btn" + (showCompliancePanel ? " active" : "")}
+									title="Show or hide the 12-step compliance status"
+									onClick={() => setShowCompliancePanel(v => {
+										try { localStorage.setItem("ba_show_compliance_panel", v ? "0" : "1"); } catch {}
+										return !v;
+									})}
+								>
+									🛡 Compliance
+								</button>
 								{/* Actions trigger — float + dashboard inline agents (D-01, D-02) */}
 								{useActionsPopout && (
 									<button
@@ -6134,18 +6149,27 @@ export default function BankingAgent({
 
 						{/* ── Right column: chat messages + input ── */}
 						<div className="ba-right-col">
-							{/* Compliance status strip */}
-				{complianceStripState.complianceStep && (() => {
-					const activeStep = complianceStripState.complianceSteps.find(s => s.id === complianceStripState.complianceStep);
-					const stepIndex = complianceStripState.complianceSteps.findIndex(s => s.id === complianceStripState.complianceStep);
-					const icon = activeStep?.status === 'done' ? '✅' : activeStep?.status === 'error' ? '❌' : '⚙';
-					return (
-						<div className="ba-compliance-strip" aria-live="polite">
-							<span className="ba-compliance-strip__step">{icon} {activeStep?.label || complianceStripState.complianceStep}</span>
-							<span className="ba-compliance-strip__counter">Step {stepIndex + 1} / {complianceStripState.complianceSteps.length}</span>
-						</div>
-					);
-				})()}
+							{/* Compliance 12-step panel — toggled via header button */}
+				{showCompliancePanel && (
+					<div className="ba-compliance-panel" aria-live="polite">
+						{complianceStripState.complianceSteps.length === 0 ? (
+							<span className="ba-compliance-panel__empty">No compliance data yet — run an MCP tool call to start.</span>
+						) : (
+							<ol className="ba-compliance-panel__list">
+								{complianceStripState.complianceSteps.map((step) => {
+									const isActive = step.id === complianceStripState.complianceStep;
+									const icon = step.status === 'done' ? '✅' : step.status === 'error' ? '❌' : isActive ? '⚙' : '○';
+									return (
+										<li key={step.id} className={"ba-compliance-panel__item" + (isActive ? " active" : "") + (" " + step.status)}>
+											<span className="ba-compliance-panel__icon">{icon}</span>
+											<span className="ba-compliance-panel__label">{step.label}</span>
+										</li>
+									);
+								})}
+							</ol>
+						)}
+					</div>
+				)}
 
 				{/* Messages */}
 							<div
