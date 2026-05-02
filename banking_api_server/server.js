@@ -754,7 +754,7 @@ app.get('/api/tokens/session-preview', async (req, res) => {
     try {
         const {
             tokenEvents
-        } = buildSessionPreviewTokenEvents(req);
+        } = await buildSessionPreviewTokenEvents(req);
         res.json({
             tokenEvents
         });
@@ -1691,8 +1691,9 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         });
         appEventService.logEvent('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, gatewayUrl: useGateway ? gatewayHttpUrl : mcpUrl, via: useGateway ? 'gateway' : 'direct' } });
         let result;
+        let gwAuditTrail = null;
         if (useGateway) {
-            const { result, gwAuditTrail } = await mcpGatewayClient.callToolViaGateway(gatewayHttpUrl, mcpAccessToken, tool, params || {}, { correlationId: req.correlationId });
+            ({ result, gwAuditTrail } = await mcpGatewayClient.callToolViaGateway(gatewayHttpUrl, mcpAccessToken, tool, params || {}, { correlationId: req.correlationId }));
         } else if (useHttp2) {
             const h2Session = http2McpBridge.createHttp2Session(mcpUrl, mcpAccessToken);
             result = await http2McpBridge.forwardToolCall(h2Session, tool, params || {}, mcpAccessToken, userSub, req.correlationId);
