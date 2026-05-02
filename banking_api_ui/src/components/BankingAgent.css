@@ -4143,7 +4143,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 .ba-rfc-toggle-label {
 	display: inline-flex;
 	align-items: center;
-	gap: 5px;
+	gap: 8px;
 	height: 28px;
 	padding: 0 8px;
 	border-radius: 8px;
