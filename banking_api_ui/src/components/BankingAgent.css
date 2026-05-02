@@ -399,22 +399,25 @@ body > .banking-agent-float-root .banking-agent-panel {
 /* ─── Middle column (token chain) ─────────────────────────────────────── */
 .ba-middle-col {
 	flex-shrink: 0;
-	overflow-y: auto;
+	overflow-y: scroll;
 	overflow-x: hidden;
 	min-height: 0;
+	height: 0;
+	flex: 1 1 0;
 	align-self: stretch;
 	border-right: 1px solid var(--ba-border);
 	background: var(--ba-surface);
 	scrollbar-width: thin;
-	scrollbar-color: rgba(65, 105, 225, 0.3) transparent;
+	scrollbar-color: rgba(65, 105, 225, 0.5) rgba(65, 105, 225, 0.08);
 }
 
 .ba-middle-col::-webkit-scrollbar {
-	width: 6px;
+	width: 8px;
 }
 
 .ba-middle-col::-webkit-scrollbar-track {
-	background: transparent;
+	background: rgba(65, 105, 225, 0.08);
+	border-radius: 3px;
 }
 
 .ba-middle-col::-webkit-scrollbar-thumb {
