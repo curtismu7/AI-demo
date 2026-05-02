@@ -273,34 +273,23 @@ function McpToolsPanel() {
       const res = await fetch('/api/mcp/inspector/tools', { credentials: 'include' });
       const data = await res.json();
       if (data.mfa_required) {
-        const method = data.step_up_method || 'email';
-        setStepUpMethod(method);
+        // Always use PingOne MFA: initiate a device-authentication session,
+        // then let OtpStepUpModal (p1mfa mode) handle device selection and OTP/push/FIDO2.
         setTools([]);
-        if (method === 'p1mfa') {
-          try {
-            const mfaRes = await fetch('/api/auth/mfa/challenge', {
-              method: 'POST', credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
-            });
-            const mfaData = await mfaRes.json();
-            setStepUpDaId(mfaData.daId || null);
-            setStepUpDevices(mfaData.devices || []);
-          } catch (_) {
-            setStepUpDaId(null);
-            setStepUpDevices([]);
-          }
-          setShowStepUp(true);
-        } else {
-          setOtpDeliveryMethod(null);
-          setP1Devices([]);
-          setDevicesLoading(true);
-          setShowMethodPicker(true);
-          fetch('/api/auth/mfa/devices', { credentials: 'include' })
-            .then(r => r.json())
-            .then(d => setP1Devices(d.devices || []))
-            .catch(() => {})
-            .finally(() => setDevicesLoading(false));
+        try {
+          const mfaRes = await fetch('/api/auth/mfa/challenge', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          const mfaData = await mfaRes.json();
+          setStepUpDaId(mfaData.daId || null);
+          setStepUpDevices(mfaData.devices || []);
+        } catch (_) {
+          setStepUpDaId(null);
+          setStepUpDevices([]);
         }
+        setStepUpMethod('p1mfa');
+        setShowStepUp(true);
       } else {
         setTools(data.tools || []);
         setSource(data._source || null);

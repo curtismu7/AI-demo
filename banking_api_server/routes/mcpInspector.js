@@ -123,7 +123,7 @@ router.get('/context', async (req, res) => {
 router.get('/tools', async (req, res) => {
   // MFA gate: require step-up verification before listing tools.
   if (runtimeSettings.get('stepUpEnabled') && !(req.session?.stepUpVerified > Date.now())) {
-    return res.json({ tools: [], mfa_required: true, step_up_method: runtimeSettings.get('stepUpMethod') || 'email', _source: 'mfa_gate' });
+    return res.json({ tools: [], mfa_required: true, step_up_method: runtimeSettings.get('stepUpMethod') || 'p1mfa', _source: 'mfa_gate' });
   }
   const effectiveUserId = req.session?.user?.id || req.user?.id || null;
   const mcpUrl = getMcpServerUrl();
