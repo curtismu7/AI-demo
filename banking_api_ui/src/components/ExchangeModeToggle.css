@@ -15,7 +15,7 @@
 }
 
 .emt-label {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -23,7 +23,7 @@
 }
 
 .emt-rfc {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--brand-navy);
   font-family: monospace;
@@ -33,7 +33,8 @@
 }
 
 .emt-desc-main {
-  font-size: 0.78rem;
+  font-size: 0.9rem;
+  font-weight: 600;
   margin: 0 0 12px 0;
   color: var(--color-text-secondary, #666666);
 }
@@ -42,7 +43,7 @@
   background: rgba(0, 0, 0, 0.05);
   padding: 2px 4px;
   border-radius: 3px;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-family: monospace;
 }
 
@@ -53,7 +54,7 @@
   border-radius: 6px;
   overflow: hidden;
   margin-bottom: 12px;
-  font-size: 0.75rem;
+  font-size: 0.88rem;
 }
 
 .emt-tokens-header {
@@ -125,12 +126,13 @@
   background: rgba(0, 0, 0, 0.06);
   padding: 1px 3px;
   border-radius: 2px;
-  font-size: 0.7rem;
+  font-size: 0.82rem;
   font-family: monospace;
 }
 
 .emt-note {
-  font-size: 0.73rem;
+  font-size: 0.88rem;
+  font-weight: 600;
   margin: 0;
   padding: 8px 10px;
   background: rgba(59, 130, 246, 0.05);
@@ -165,7 +167,7 @@
 
 /* Truncate long transaction IDs */
 .emt-txn-id {
-  font-size: 0.65rem;
+  font-size: 0.78rem;
   word-break: break-all;
   max-width: 140px;
   display: inline-block;
