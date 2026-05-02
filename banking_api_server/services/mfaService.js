@@ -1,9 +1,13 @@
 const axios = require("axios");
 const configStore = require("./configStore");
-const { getTokenEndpoint, getIssuer } = require("./oauthEndpointResolver");
+const { getTokenEndpoint } = require("./oauthEndpointResolver");
 
 function _authBaseUrl() {
-	return getIssuer();
+	// PingOne Device Authentications API lives at https://auth.pingone.{region}/{envId}
+	// (NOT at the OIDC AS path /as).
+	const region = configStore.getEffective("pingone_region") || "com";
+	const envId = configStore.getEffective("pingone_environment_id");
+	return `https://auth.pingone.${region}/${envId}`;
 }
 
 function _apiBaseUrl() {
