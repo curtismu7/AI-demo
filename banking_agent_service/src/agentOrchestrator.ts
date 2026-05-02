@@ -235,7 +235,12 @@ async function _runOpenAI(
       for (const call of assistantMsg.tool_calls) {
         toolCallCount++;
         toolsUsed.push(call.function.name);
-        const args = JSON.parse(call.function.arguments || '{}');
+        let args: Record<string, unknown> = {};
+        try {
+          args = JSON.parse(call.function.arguments || '{}');
+        } catch {
+          console.warn(`[agentOrchestrator] Failed to parse tool arguments for '${call.function.name}' — using empty object`);
+        }
         let result;
         try {
           result = await mcpClient.callTool(call.function.name, args);
