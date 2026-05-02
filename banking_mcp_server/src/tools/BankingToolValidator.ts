@@ -9,7 +9,7 @@ import { BankingToolRegistry } from './BankingToolRegistry';
 export interface ValidationResult {
   isValid: boolean;
   errors: string[];
-  sanitizedParams?: Record<string, any>;
+  sanitizedParams?: Record<string, unknown>;
 }
 
 export class BankingToolValidator {
@@ -17,8 +17,8 @@ export class BankingToolValidator {
    * Validate tool parameters against the tool's schema
    */
   public static validateToolParams(
-    toolName: string, 
-    params: Record<string, any>
+    toolName: string,
+    params: Record<string, unknown>
   ): ValidationResult {
     const tool = BankingToolRegistry.getTool(toolName);
     
@@ -36,11 +36,11 @@ export class BankingToolValidator {
    * Validate parameters against a JSON schema
    */
   private static validateAgainstSchema(
-    params: Record<string, any>, 
+    params: Record<string, unknown>,
     schema: JSONSchema
   ): ValidationResult {
     const errors: string[] = [];
-    const sanitizedParams: Record<string, any> = {};
+    const sanitizedParams: Record<string, unknown> = {};
 
     // Check if params is an object
     if (schema.type === 'object') {
@@ -73,7 +73,7 @@ export class BankingToolValidator {
             continue;
           }
 
-          const propValidation = this.validateProperty(propName, value, propSchema as any);
+          const propValidation = this.validateProperty(propName, value, propSchema);
           if (!propValidation.isValid) {
             errors.push(...propValidation.errors);
           } else {
@@ -107,22 +107,22 @@ export class BankingToolValidator {
    * Validate a single property
    */
   private static validateProperty(
-    propName: string, 
-    value: any, 
-    schema: any
-  ): { isValid: boolean; errors: string[]; sanitizedValue?: any } {
+    propName: string,
+    value: unknown,
+    schema: JSONSchema
+  ): { isValid: boolean; errors: string[]; sanitizedValue?: unknown } {
     const errors: string[] = [];
-    let sanitizedValue = value;
+    let sanitizedValue: unknown = value;
 
     // Type validation
     if (schema.type) {
       switch (schema.type) {
-        case 'string':
+        case 'string': {
           if (typeof value !== 'string') {
             errors.push(`${propName} must be a string`);
             break;
           }
-          
+
           // String length validation
           if (schema.minLength && value.length < schema.minLength) {
             errors.push(`${propName} must be at least ${schema.minLength} characters long`);
@@ -130,20 +130,22 @@ export class BankingToolValidator {
           if (schema.maxLength && value.length > schema.maxLength) {
             errors.push(`${propName} must be at most ${schema.maxLength} characters long`);
           }
-          
+
           // Trim whitespace for string values
-          sanitizedValue = value.trim();
-          if (schema.minLength && sanitizedValue.length < schema.minLength) {
+          const trimmed = value.trim();
+          sanitizedValue = trimmed;
+          if (schema.minLength && trimmed.length < schema.minLength) {
             errors.push(`${propName} must be at least ${schema.minLength} characters long after trimming`);
           }
           break;
+        }
 
-        case 'number':
+        case 'number': {
           if (typeof value !== 'number' || isNaN(value) || !isFinite(value)) {
             errors.push(`${propName} must be a valid number`);
             break;
           }
-          
+
           // Number range validation
           if (schema.minimum !== undefined && value < schema.minimum) {
             errors.push(`${propName} must be at least ${schema.minimum}`);
@@ -151,15 +153,16 @@ export class BankingToolValidator {
           if (schema.maximum !== undefined && value > schema.maximum) {
             errors.push(`${propName} must be at most ${schema.maximum}`);
           }
-          
+
           // Round to appropriate decimal places for currency first
+          const rounded: number = schema.multipleOf === 0.01 ? Math.round(value * 100) / 100 : value;
           if (schema.multipleOf === 0.01) {
-            sanitizedValue = Math.round(value * 100) / 100;
+            sanitizedValue = rounded;
           }
-          
-          // Multiple validation (use sanitized value for currency)
+
+          // Multiple validation (use rounded value for currency)
           if (schema.multipleOf) {
-            const valueToCheck = schema.multipleOf === 0.01 ? sanitizedValue : value;
+            const valueToCheck: number = schema.multipleOf === 0.01 ? rounded : value;
             const remainder = Math.abs(valueToCheck % schema.multipleOf);
             const tolerance = schema.multipleOf / 1000; // Small tolerance for floating point
             if (remainder > tolerance && (schema.multipleOf - remainder) > tolerance) {
@@ -167,6 +170,7 @@ export class BankingToolValidator {
             }
           }
           break;
+        }
 
         case 'boolean':
           if (typeof value !== 'boolean') {

@@ -27,6 +27,7 @@ const ENDUSER_AUDIENCE  = process.env.ENDUSER_AUDIENCE  || null;
 const AI_AGENT_AUDIENCE = process.env.AI_AGENT_AUDIENCE || null;
 const MCP_RESOURCE_URI  = process.env.PINGONE_RESOURCE_MCP_SERVER_URI || process.env.MCP_RESOURCE_URI || null;
 const BANKING_API_RESOURCE_URI = process.env.BANKING_API_RESOURCE_URI || null;
+const MCP_GATEWAY_RESOURCE_URI = process.env.PINGONE_RESOURCE_MCP_GATEWAY_URI || null;
 const AI_AGENT_SCOPE = process.env.AI_AGENT_SCOPE || 'ai_agent';
 const DEFAULT_USER_TYPE = process.env.DEFAULT_USER_TYPE || 'customer';
 
@@ -505,7 +506,7 @@ const validatePingOneCoreToken = async (token, requestContext = {}) => {
     // Tokens from PingOne without a custom resource server have aud='https://api.pingone.com'
     // which is always accepted as a valid PingOne-issued token.
     const PINGONE_DEFAULT_AUD = 'https://api.pingone.com';
-    const knownAudiences = [ENDUSER_AUDIENCE, AI_AGENT_AUDIENCE, MCP_RESOURCE_URI, BANKING_API_RESOURCE_URI].filter(Boolean);
+    const knownAudiences = [ENDUSER_AUDIENCE, AI_AGENT_AUDIENCE, MCP_RESOURCE_URI, BANKING_API_RESOURCE_URI, MCP_GATEWAY_RESOURCE_URI].filter(Boolean);
     if (knownAudiences.length > 0 && payload.aud) {
       const tokenAuds = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
       // Accept tokens issued for a configured custom resource server OR for the

@@ -58,6 +58,9 @@ export interface BankingToolResult extends ToolResult {
 /** Maximum number of distinct sessions tracked in chainIndexBySession before FIFO eviction. */
 const MAX_SESSION_CHAIN_ENTRIES = 1_000;
 
+/** HITL consent-gate threshold in USD. Configurable via HITL_THRESHOLD_USD env var. */
+const HITL_THRESHOLD_USD = Number(process.env.HITL_THRESHOLD_USD ?? 500);
+
 export class BankingToolProvider {
   private authChallengeHandler: AuthorizationChallengeHandler;
   private auditLogger: AuditLogger;
@@ -135,8 +138,10 @@ export class BankingToolProvider {
 
       this.logger.debug(`[BankingToolProvider] Parameters validated successfully for ${toolName}`);
 
-      // Check user authorization using the challenge handler (only for tools that require user auth)
-      if (tool.requiresUserAuth && tool.requiredScopes.length > 0) {
+      // Check user authorization using the challenge handler (only for tools that require user auth).
+      // When agentToken is provided, the agent is already authorized via the BFF token exchange
+      // pipeline -- skip session-based challenge detection.
+      if (tool.requiresUserAuth && tool.requiredScopes.length > 0 && !agentToken) {
         this.logger.debug(`[BankingToolProvider] Checking authorization for scopes: [${tool.requiredScopes.join(', ')}]`);
         const challengeResult = await this.authChallengeHandler.detectAuthorizationChallenge(
           session,
@@ -184,17 +189,21 @@ export class BankingToolProvider {
         if (Array.isArray(userToken)) {
           userToken = userToken[0];
         }
-        
+
+        // Decode real sub from the token payload; fall back to 'unknown' for opaque tokens.
+        const userTokenClaims = userToken ? this.decodeJwtPayload(userToken.accessToken) : null;
+        const userSub = typeof userTokenClaims?.sub === 'string' ? userTokenClaims.sub : 'unknown';
+
         const userTokenInfo: UserTokenInfo = userToken
           ? {
-              sub: 'user',  // Placeholder - actual user ID would come from token claims
+              sub: userSub,
               scope: userToken.scope?.split(' ') || [],
               issuedAt: new Date(userToken.issuedAt).toISOString(),
               expiresAt: new Date(new Date(userToken.issuedAt).getTime() + (userToken.expiresIn || 3600) * 1000).toISOString(),
-              tokenId: 'user'
+              tokenId: userSub
             }
           : {
-              sub: 'user',
+              sub: 'unknown',
               scope: [],
               issuedAt: new Date().toISOString(),
               expiresAt: undefined,
@@ -207,7 +216,7 @@ export class BankingToolProvider {
               sub: 'mcp-agent',  // MCP server as delegated subject
               act: {
                 iss: 'pingone',
-                sub: 'user'  // Original actor
+                sub: userSub  // Original actor resolved from session token
               },
               scope: tool.requiredScopes || [],
               issuedAt: new Date().toISOString(),
@@ -216,27 +225,8 @@ export class BankingToolProvider {
             }
           : null;
 
-        // Construct tool result summary (non-sensitive)
-        let toolResultSummary = '';
-        if (result.success) {
-          if (toolName === 'get_my_accounts' && result.text.includes('accounts')) {
-            toolResultSummary = 'accounts retrieved';
-          } else if (toolName === 'get_account_balance') {
-            toolResultSummary = 'balance retrieved';
-          } else if (toolName === 'get_my_transactions') {
-            toolResultSummary = 'transactions retrieved';
-          } else if (toolName.startsWith('create_')) {
-            toolResultSummary = `${toolName} completed`;
-          } else if (toolName === 'query_user_by_email') {
-            toolResultSummary = 'user query completed';
-          } else if (toolName === 'get_sensitive_account_details') {
-            toolResultSummary = 'sensitive details retrieved';
-          } else {
-            toolResultSummary = `${toolName} executed`;
-          }
-        } else {
-          toolResultSummary = `${toolName} failed`;
-        }
+        // Construct tool result summary (non-sensitive, stable regardless of tool output shape)
+        const toolResultSummary = result.success ? `${toolName} completed` : `${toolName} failed`;
 
         // Log to AuditLogger
         await this.auditLogger.logTokenChain(
@@ -380,6 +370,18 @@ export class BankingToolProvider {
           return await this.executeSequentialThink(
             context.params as { query: string; context?: string }
           );
+
+        case 'executeQueryUserByEmail':
+          // Identity lookup performed by the agent on behalf of the platform.
+          // Uses the BFF-issued agent delegated token rather than a user's own token.
+          // agentToken is always present in the normal BFF → MCP Gateway → MCP Server flow.
+          if (!agentToken) {
+            return this.createErrorResult(
+              'query_user_by_email requires an agent-delegated token; no agentToken was provided in this request.'
+            );
+          }
+          return await this.executeQueryUserByEmail(agentToken, context.params as { email: string });
+
         default:
           return this.createErrorResult(`Unknown non-auth tool handler: ${tool.handler}`, context.params);
       }
@@ -568,14 +570,7 @@ export class BankingToolProvider {
     if (!Array.isArray(transactions)) {
       this.logger.warn(`[BankingToolProvider] Expected transactions array, got: ${typeof transactions}`);
 
-      const errorResponse = {
-        success: false,
-        error: 'Invalid response format from banking API',
-        receivedType: typeof transactions,
-        receivedData: transactions
-      };
-
-      return this.createSuccessResult(JSON.stringify(errorResponse, null, 2));
+      return this.createErrorResult(`Invalid response format from banking API (received: ${typeof transactions})`);
     }
 
     const response = {
@@ -628,55 +623,8 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
-      if (error instanceof BankingAPIError && error.errorCode === 'amount_exceeds_hard_limit') {
-        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
-        const limit = typeof axiosData['limit'] === 'number' ? axiosData['limit'] : 1000;
-        const amount = params.amount;
-        return this.createSuccessResult(
-          JSON.stringify(
-            {
-              error: 'amount_exceeds_hard_limit',
-              message: `I can help you with that, but the maximum transaction amount is $${limit}. You entered $${amount}. Would you like me to help you with a smaller deposit instead?`,
-              limit,
-              amount,
-            },
-            null,
-            2
-          )
-        );
-      }
-      if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
-        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
-        const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
-          ? (axiosData['step_up_method'] as string) : 'email';
-        return this.createSuccessResult(
-          JSON.stringify(
-            {
-              error: 'step_up_required',
-              step_up_required: true,
-              step_up_method: stepUpMethod,
-              message: `This transaction requires additional authentication (${stepUpMethod.toUpperCase()}). Please complete the step-up verification to proceed.`,
-              amount_threshold: typeof axiosData['amount_threshold'] === 'number' ? axiosData['amount_threshold'] : null,
-            },
-            null,
-            2
-          )
-        );
-      }
-      if (error instanceof BankingAPIError && error.errorCode === 'consent_challenge_required') {
-        return this.createSuccessResult(
-          JSON.stringify(
-            {
-              error: 'consent_challenge_required',
-              message: error.message,
-              consent_challenge_required: true,
-              hitl_threshold_usd: 500,
-            },
-            null,
-            2
-          )
-        );
-      }
+      const handled = this.handleTransactionBankingError(error, 'deposit', params.amount);
+      if (handled) return handled;
       throw error;
     }
   }
@@ -712,55 +660,8 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
-      if (error instanceof BankingAPIError && error.errorCode === 'amount_exceeds_hard_limit') {
-        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
-        const limit = typeof axiosData['limit'] === 'number' ? axiosData['limit'] : 1000;
-        const amount = params.amount;
-        return this.createSuccessResult(
-          JSON.stringify(
-            {
-              error: 'amount_exceeds_hard_limit',
-              message: `I can help you with that, but the maximum transaction amount is $${limit}. You entered $${amount}. Would you like me to help you with a smaller withdrawal instead?`,
-              limit,
-              amount,
-            },
-            null,
-            2
-          )
-        );
-      }
-      if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
-        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
-        const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
-          ? (axiosData['step_up_method'] as string) : 'email';
-        return this.createSuccessResult(
-          JSON.stringify(
-            {
-              error: 'step_up_required',
-              step_up_required: true,
-              step_up_method: stepUpMethod,
-              message: `This transaction requires additional authentication (${stepUpMethod.toUpperCase()}). Please complete the step-up verification to proceed.`,
-              amount_threshold: typeof axiosData['amount_threshold'] === 'number' ? axiosData['amount_threshold'] : null,
-            },
-            null,
-            2
-          )
-        );
-      }
-      if (error instanceof BankingAPIError && error.errorCode === 'consent_challenge_required') {
-        return this.createSuccessResult(
-          JSON.stringify(
-            {
-              error: 'consent_challenge_required',
-              message: error.message,
-              consent_challenge_required: true,
-              hitl_threshold_usd: 500,
-            },
-            null,
-            2
-          )
-        );
-      }
+      const handled = this.handleTransactionBankingError(error, 'withdrawal', params.amount);
+      if (handled) return handled;
       throw error;
     }
   }
@@ -803,56 +704,8 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
-      if (error instanceof BankingAPIError && error.errorCode === 'amount_exceeds_hard_limit') {
-        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
-        const limit = typeof axiosData['limit'] === 'number' ? axiosData['limit'] : 1000;
-        const amount = params.amount;
-        return this.createSuccessResult(
-          JSON.stringify(
-            {
-              error: 'amount_exceeds_hard_limit',
-              message: `I can help you with that, but the maximum transaction amount is $${limit}. You entered $${amount}. Would you like me to help you with a smaller transfer instead?`,
-              limit,
-              amount,
-            },
-            null,
-            2
-          )
-        );
-      }
-      
-      if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
-        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
-        const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
-          ? (axiosData['step_up_method'] as string) : 'email';
-        return this.createSuccessResult(
-          JSON.stringify(
-            {
-              error: 'step_up_required',
-              step_up_required: true,
-              step_up_method: stepUpMethod,
-              message: `This transaction requires additional authentication (${stepUpMethod.toUpperCase()}). Please complete the step-up verification to proceed.`,
-              amount_threshold: typeof axiosData['amount_threshold'] === 'number' ? axiosData['amount_threshold'] : null,
-            },
-            null,
-            2
-          )
-        );
-      }
-      if (error instanceof BankingAPIError && error.errorCode === 'consent_challenge_required') {
-        return this.createSuccessResult(
-          JSON.stringify(
-            {
-              error: 'consent_challenge_required',
-              message: error.message,
-              consent_challenge_required: true,
-              hitl_threshold_usd: 500,
-            },
-            null,
-            2
-          )
-        );
-      }
+      const handled = this.handleTransactionBankingError(error, 'transfer', params.amount);
+      if (handled) return handled;
       throw error;
     }
   }
@@ -931,6 +784,75 @@ export class BankingToolProvider {
         `Failed to retrieve sensitive account details: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
+  }
+
+  /**
+   * Central error handler for transactional banking operations (deposit / withdrawal / transfer).
+   * Returns a structured BankingToolResult for known recoverable error codes, or null when the
+   * error is not one of the recognised codes (caller should re-throw in that case).
+   *
+   * @param error         The caught error value
+   * @param operationLabel Human-readable operation name used in user-facing messages
+   * @param amount        The requested transaction amount
+   */
+  private handleTransactionBankingError(
+    error: unknown,
+    operationLabel: string,
+    amount: number,
+  ): BankingToolResult | null {
+    if (!(error instanceof BankingAPIError)) return null;
+    const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
+
+    if (error.errorCode === 'amount_exceeds_hard_limit') {
+      const limit = typeof axiosData['limit'] === 'number' ? axiosData['limit'] : 1000;
+      return this.createSuccessResult(
+        JSON.stringify(
+          {
+            error: 'amount_exceeds_hard_limit',
+            message: `I can help you with that, but the maximum transaction amount is $${limit}. You entered $${amount}. Would you like me to help you with a smaller ${operationLabel} instead?`,
+            limit,
+            amount,
+          },
+          null,
+          2
+        )
+      );
+    }
+
+    if (error.errorCode === 'step_up_required') {
+      const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
+        ? (axiosData['step_up_method'] as string) : 'email';
+      return this.createSuccessResult(
+        JSON.stringify(
+          {
+            error: 'step_up_required',
+            step_up_required: true,
+            step_up_method: stepUpMethod,
+            message: `This transaction requires additional authentication (${stepUpMethod.toUpperCase()}). Please complete the step-up verification to proceed.`,
+            amount_threshold: typeof axiosData['amount_threshold'] === 'number' ? axiosData['amount_threshold'] : null,
+          },
+          null,
+          2
+        )
+      );
+    }
+
+    if (error.errorCode === 'consent_challenge_required') {
+      return this.createSuccessResult(
+        JSON.stringify(
+          {
+            error: 'consent_challenge_required',
+            message: error.message,
+            consent_challenge_required: true,
+            hitl_threshold_usd: HITL_THRESHOLD_USD,
+          },
+          null,
+          2
+        )
+      );
+    }
+
+    return null;
   }
 
   /**
@@ -1085,6 +1007,11 @@ export class BankingToolProvider {
         const msg = jwksErr instanceof Error ? jwksErr.message : String(jwksErr);
         // JWTExpired is already caught above — ignore it here to avoid double-log
         if (!msg.includes('expired')) {
+          // STRICT_TOKEN_VERIFICATION=true promotes JWKS failures to hard errors.
+          // Leave unset (default fail-open) when the BFF already verified the signature upstream.
+          if (process.env.STRICT_TOKEN_VERIFICATION === 'true') {
+            throw new Error(`Token signature verification failed for '${toolName}': ${msg}`);
+          }
           this.logger.warn(`[BankingToolProvider] JWKS sig ⚠ warning for '${toolName}': ${msg} (fail-open)`);
         }
       }

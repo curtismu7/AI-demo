@@ -6,6 +6,7 @@
 import { BankingAuthenticationManager } from '../auth/BankingAuthenticationManager';
 import { BankingSessionManager } from '../storage/BankingSessionManager';
 import { AuthorizationRequest, Session, UserTokens, AuthenticationError } from '../interfaces/auth';
+import { Logger, createDefaultLoggerConfig } from '../utils/Logger';
 
 export interface AuthorizationChallenge {
   type: 'oauth_authorization_required';
@@ -31,10 +32,14 @@ export interface AuthorizationResult {
 }
 
 export class AuthorizationChallengeHandler {
+  private readonly logger: Logger;
+
   constructor(
     private authManager: BankingAuthenticationManager,
     private sessionManager: BankingSessionManager
-  ) {}
+  ) {
+    this.logger = Logger.getInstance(createDefaultLoggerConfig());
+  }
 
   /**
    * Detect if an authorization challenge is needed for a tool execution
@@ -79,7 +84,7 @@ export class AuthorizationChallengeHandler {
             }
           } catch (error) {
             // Refresh failed, continue to check other tokens or request new authorization
-            console.log(`[AuthorizationChallengeHandler] Token refresh failed for expired token`);
+            this.logger.warn(`[AuthorizationChallengeHandler] Token refresh failed for expired token: ${error instanceof Error ? error.message : String(error)}`);
           }
         }
       }
@@ -165,7 +170,7 @@ export class AuthorizationChallengeHandler {
       };
 
     } catch (error) {
-      console.error('Authorization code exchange failed:', error);
+      this.logger.error('[AuthorizationChallengeHandler] Authorization code exchange failed:', {}, error instanceof Error ? error : undefined);
       
       if (error instanceof AuthenticationError) {
         return {
@@ -290,7 +295,7 @@ export class AuthorizationChallengeHandler {
   /**
    * Handle authorization errors and generate appropriate responses
    */
-  handleAuthorizationError(error: any): {
+  handleAuthorizationError(error: unknown): {
     type: 'text';
     text: string;
     error: string;
@@ -304,6 +309,8 @@ export class AuthorizationChallengeHandler {
       errorCode = String(error.code);
     } else if (error instanceof Error) {
       errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
     }
 
     return {

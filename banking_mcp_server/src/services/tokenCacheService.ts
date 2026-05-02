@@ -40,7 +40,9 @@ export class TokenCacheService {
 
   private buildKey(userId: string, scopes: string[]): string {
     const sorted = [...scopes].sort();
-    return `${userId}:${sorted.join(' ')}`;
+    // Use '::' separator so a userId that itself contains ':' (e.g. "env:abc")
+    // never collides with the scope portion of the key.
+    return `${userId}::${sorted.join(' ')}`;
   }
 
   /** Remove all entries whose effective expiry (minus buffer) has passed. */
