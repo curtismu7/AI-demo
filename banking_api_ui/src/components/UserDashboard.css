@@ -2273,7 +2273,8 @@
 }
 
 .user-dashboard--2026 .ud-profile-meta {
-  color: var(--dash-muted, #999999);
+  color: var(--dash-text, #1f2937);
+  font-weight: 600;
 }
 
 .user-dashboard--2026 .ud-insight-strip {

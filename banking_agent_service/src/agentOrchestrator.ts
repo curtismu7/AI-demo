@@ -45,6 +45,30 @@ export class HitlRequiredError extends Error {
 
 const MAX_TOOL_ITERATIONS = 10;
 
+// ---------------------------------------------------------------------------
+// Shared error mapping — called by both Anthropic and OpenAI tool loops
+// ---------------------------------------------------------------------------
+
+/**
+ * Re-maps a recoverable `McpGatewayError` to a typed recovery error and throws it.
+ * If the error is not a recognized recoverable code, it is re-thrown unchanged.
+ * Always throws — the `never` return type lets callers omit an explicit `throw`.
+ */
+function mapMcpGatewayError(toolErr: McpGatewayError): never {
+  const d = toolErr.data as Record<string, unknown> | undefined;
+  if (toolErr.code === -32403) {
+    throw new LoginRequiredError((d?.required_scopes as string[]) ?? []);
+  }
+  if (toolErr.code === -32002) {
+    throw new HitlRequiredError(
+      (d?.challengeId as string) ?? '',
+      d?.challenge_type === 'step_up' ? 'step_up' : 'consent',
+      (d?.expiresAt as string) ?? '',
+    );
+  }
+  throw toolErr;
+}
+
 export interface AgentTaskRequest {
   userMessage: string;
   useCase?: string;
@@ -102,7 +126,7 @@ async function _runAnthropic(
     const response = await axios.post(
       'https://api.anthropic.com/v1/messages',
       {
-        model: config.llmModel || 'claude-sonnet-4-6',
+        model: config.llmModel || 'claude-sonnet-4.6',
         max_tokens: 4096,
         system: systemPrompt,
         tools: anthropicTools,
@@ -139,19 +163,7 @@ async function _runAnthropic(
         try {
           result = await mcpClient.callTool(block.name, block.input || {});
         } catch (toolErr) {
-          if (toolErr instanceof McpGatewayError) {
-            const d = toolErr.data as any;
-            if (toolErr.code === -32403) {
-              throw new LoginRequiredError(d?.required_scopes ?? []);
-            }
-            if (toolErr.code === -32002) {
-              throw new HitlRequiredError(
-                d?.challengeId ?? '',
-                d?.challenge_type === 'step_up' ? 'step_up' : 'consent',
-                d?.expiresAt ?? '',
-              );
-            }
-          }
+          if (toolErr instanceof McpGatewayError) mapMcpGatewayError(toolErr);
           throw toolErr;
         }
         toolResults.push({
@@ -228,19 +240,7 @@ async function _runOpenAI(
         try {
           result = await mcpClient.callTool(call.function.name, args);
         } catch (toolErr) {
-          if (toolErr instanceof McpGatewayError) {
-            const d = toolErr.data as any;
-            if (toolErr.code === -32403) {
-              throw new LoginRequiredError(d?.required_scopes ?? []);
-            }
-            if (toolErr.code === -32002) {
-              throw new HitlRequiredError(
-                d?.challengeId ?? '',
-                d?.challenge_type === 'step_up' ? 'step_up' : 'consent',
-                d?.expiresAt ?? '',
-              );
-            }
-          }
+          if (toolErr instanceof McpGatewayError) mapMcpGatewayError(toolErr);
           throw toolErr;
         }
         messages.push({

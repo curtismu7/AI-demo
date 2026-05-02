@@ -11,15 +11,18 @@
  * The MCP Gateway validates the aud, re-exchanges further to per-backend aud.
  */
 
+import { createHash } from 'crypto';
 import axios from 'axios';
 import { AgentConfig } from './config';
 import { getActorToken } from './agentIdentity';
 
-// Cache: userTokenHash → { gwToken, expiresAt }
+/** Maximum number of entries in the module-level token cache. Prevents unbounded growth. */
+const MAX_CACHE_SIZE = 200;
+
+// Cache: scopedTokenKey → { gwToken, expiresAt }
 const _cache = new Map<string, { token: string; expiresAt: number }>();
 
 function tokenHash(t: string): string {
-  const { createHash } = require('crypto');
   return createHash('sha256').update(t).digest('hex').slice(0, 16);
 }
 
@@ -57,6 +60,11 @@ export async function resolveGatewayToken(
   const { access_token, expires_in } = response.data;
   if (!access_token) throw new Error('Token exchange response missing access_token');
 
+  // Enforce max cache size: evict oldest entry (FIFO) when full.
+  if (_cache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = _cache.keys().next().value as string | undefined;
+    if (oldestKey !== undefined) _cache.delete(oldestKey);
+  }
   _cache.set(key, { token: access_token, expiresAt: Date.now() + (expires_in || 300) * 1000 });
   return access_token;
 }

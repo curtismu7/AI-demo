@@ -44,7 +44,7 @@ export function loadConfig(): AgentConfig {
     mcpGatewayResourceUri: required('MCP_GW_RESOURCE_URI'),
     llmProvider: (optional('LLM_PROVIDER', 'none') as AgentConfig['llmProvider']),
     llmApiKey: optional('LLM_API_KEY', ''),
-    llmModel: optional('LLM_MODEL', 'claude-sonnet-4-6'),
+    llmModel: optional('LLM_MODEL', 'claude-sonnet-4.6'),
     usePkiCreds: optional('USE_PKI_AGENT_CREDS', 'false') === 'true',
     agentCertPath: optional('AGENT_CERT_PATH', ''),
   };

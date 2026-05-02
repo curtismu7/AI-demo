@@ -55,6 +55,9 @@ export interface BankingToolResult extends ToolResult {
   httpTrace?: HttpTraceEntry[];           // Actual HTTP calls made to the banking API
 }
 
+/** Maximum number of distinct sessions tracked in chainIndexBySession before FIFO eviction. */
+const MAX_SESSION_CHAIN_ENTRIES = 1_000;
+
 export class BankingToolProvider {
   private authChallengeHandler: AuthorizationChallengeHandler;
   private auditLogger: AuditLogger;
@@ -73,13 +76,29 @@ export class BankingToolProvider {
   }
 
   /**
-   * Increment and return chain index for session (per-session call count)
+   * Increment and return chain index for session (per-session call count).
+   * Evicts the oldest session entry when the map reaches MAX_SESSION_CHAIN_ENTRIES
+   * to prevent unbounded growth in long-running processes.
    */
   private incrementChainIndex(sessionId: string): number {
     const current = this.chainIndexBySession.get(sessionId) || 0;
     const next = current + 1;
+
+    if (!this.chainIndexBySession.has(sessionId) && this.chainIndexBySession.size >= MAX_SESSION_CHAIN_ENTRIES) {
+      const oldestKey = this.chainIndexBySession.keys().next().value as string | undefined;
+      if (oldestKey !== undefined) this.chainIndexBySession.delete(oldestKey);
+    }
+
     this.chainIndexBySession.set(sessionId, next);
     return next;
+  }
+
+  /**
+   * Remove the chain-index entry for a session when it ends.
+   * Callers (e.g. BankingSessionManager) should invoke this on session teardown.
+   */
+  clearSessionChainIndex(sessionId: string): void {
+    this.chainIndexBySession.delete(sessionId);
   }
 
   /**
