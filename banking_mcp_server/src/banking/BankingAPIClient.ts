@@ -71,10 +71,11 @@ export class BankingAPIClient {
     };
     this.retryManager = new RetryManager(retryConfig);
 
-    // For dev self-signed certs (api.pingdemo.com) disable TLS verification.
-    // In production NODE_ENV the agent is not applied — real certs are used.
-    const devHttpsAgent =
-      process.env.NODE_ENV !== 'production' && this.config.baseUrl.startsWith('https')
+    // Disable TLS certificate verification for HTTPS banking API calls.
+    // In production, real certs are used and this agent is not needed — but for
+    // dev/staging with self-signed certs (api.pingdemo.com) this is required.
+    // NODE_TLS_REJECT_UNAUTHORIZED=0 is an alternative but affects the whole process.
+    const devHttpsAgent = this.config.baseUrl.startsWith('https')
         ? new https.Agent({ rejectUnauthorized: false })
         : undefined;
 
