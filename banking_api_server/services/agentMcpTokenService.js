@@ -1482,7 +1482,7 @@ async function _resolveFinalMcpAudience(gatewayAud, mcpServerAud) {
     const healthResult = await new Promise((resolve, reject) => {
       const isHttps = baseUrl.startsWith('https://');
       const httpModule = isHttps ? require('https') : require('http');
-      const req = httpModule.get(`${baseUrl}/health`, (res) => {
+      const req = httpModule.get(`${baseUrl}/health`, { rejectUnauthorized: false }, (res) => {
         let data = '';
         res.on('data', (chunk) => { data += chunk; });
         res.on('end', () => {
