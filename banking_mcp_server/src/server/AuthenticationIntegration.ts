@@ -427,6 +427,15 @@ export class AuthenticationIntegration {
       };
     }
 
+    // When an agentToken is present, the bearer token has already been JWKS-validated
+    // in HttpMCPTransport.handlePost() and the BFF token-exchange pipeline already
+    // scoped the token to the target resource. Skip session-level user-token checks
+    // (session.userTokens is always empty in the gateway / server-to-server flow).
+    if (agentToken) {
+      console.log(`[AuthenticationIntegration] agentToken present — skipping user-token check for scopes [${requiredScopes.join(', ')}]`);
+      return { success: true, session };
+    }
+
     // Then check user authorization for banking operations
     return await this.checkUserAuthorization(session, requiredScopes);
   }
