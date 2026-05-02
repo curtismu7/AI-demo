@@ -3181,13 +3181,13 @@ export default function BankingAgent({
 							? exchanged.audMatches
 								? `   ✅ aud: "${exchanged.audActual ?? exchanged.audienceNarrowed}" — MCP server audience matched (RFC 8707)`
 								: `   ❌ aud mismatch — got "${exchanged.audActual}" expected "${exchanged.audExpected}" — MCP server will reject`
-							: `   aud: ${exchanged.audienceNarrowed || "—"} (RFC 8707 resource indicator)`;
+							: `   aud: ${exchanged.audienceNarrowed || (Array.isArray(exchanged.claims?.aud) ? exchanged.claims.aud.join(", ") : exchanged.claims?.aud) || "—"} (RFC 8707 resource indicator)`;
 					tokenMsg = [
 						"🔐 RFC 8693 Token Exchange complete",
 						mayActLine,
 						actLine,
 						audLine,
-						`   Scope narrowed: ${exchanged.scopeNarrowed || "—"}`,
+						`   Scope narrowed: ${exchanged.scopeNarrowed || exchanged.claims?.scope || "—"}`,
 						jwksDegraded
 							? "   ⚠️ JWKS unavailable — signature verified via RFC 7662 introspection fallback (liveness confirmed, tamper-detection skipped)"
 							: jwksVerified?.extra?.verified
