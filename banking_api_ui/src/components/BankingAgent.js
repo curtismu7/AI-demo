@@ -3155,9 +3155,6 @@ export default function BankingAgent({
 								? `   🔏 JWKS signature verified (${jwksVerified.extra.alg || "RS256"}, kid: ${jwksVerified.extra.kid || "—"})`
 								: "",
 						"",
-						"Open Token Chain ↗ to inspect decoded claims.",
-						"aud (audience): which resource server accepts the token — narrowed on exchange.",
-						"may_act (user token) = prospective permission · act (MCP token) = current delegation fact.",
 						...(exchanged.actPresent
 							? [
 									"",
