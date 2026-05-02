@@ -4901,16 +4901,7 @@ export default function BankingAgent({
 									<div className="ba-popout-section">
 										<span className="ba-popout-section-label">View</span>
 										<div className="ba-popout-chip-row">
-											<button
-												type="button"
-												className={"ba-action-item" + (showTokenChain ? " active" : "")}
-												onClick={() => setShowTokenChain((v) => !v)}
-												aria-label={showTokenChain ? "Hide token chain" : "Show token chain"}
-												title={showTokenChain ? "Hide token chain" : "Show token chain"}
-											>
-												🔗 Token chain
-											</button>
-											<button
+												<button
 												type="button"
 												className={"ba-action-item" + (showRfcInfo ? " active" : "")}
 												onClick={() => setShowRfcInfo((v) => !v)}
@@ -6140,67 +6131,6 @@ export default function BankingAgent({
 							)}
       </div>
       )}
-
-						{/* ── Middle column: token chain (collapsible + resizable) ── */}
-						{showTokenChain && isLoggedIn && tokenChain && (
-							<>
-								<div
-									className="ba-middle-col"
-									style={{ width: `${tokenChainWidth}px` }}
-								>
-									{/* Header bar: title + pop-out + close */}
-									<div className="ba-middle-col-header">
-										<span className="ba-middle-col-title">🔗 Token Chain</span>
-										<button
-											type="button"
-											className="ba-middle-col-hdr-btn"
-											title="Pop out to new window"
-											aria-label="Pop out token chain"
-											onClick={() => {
-												// Open the /monitoring/token-chain page in a popup window
-												const w = Math.min(820, Math.round(window.screen.width * 0.6));
-												const h = Math.min(940, Math.round(window.screen.height * 0.85));
-												const left = Math.round((window.screen.width - w) / 2);
-												const top = Math.round((window.screen.height - h) / 4);
-												window.open(
-													'/monitoring/token-chain',
-													'token-chain-popout',
-													`width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no`
-												);
-												// Close the inline panel so users aren't looking at two
-												setShowTokenChain(false);
-											}}
-										>
-											↗
-										</button>
-                                                                               <button
-                                                                               type="button"
-                                                                               className="ba-middle-col-hdr-btn"
-                                                                               title="Clear token chain events"
-                                                                               aria-label="Clear token chain"
-                                                                               onClick={() => tokenChain?.clearEvents?.()}
-                                                                               >
-                                                                               🗑
-                                                                               </button>
-										<button
-											type="button"
-											className="ba-middle-col-hdr-btn ba-middle-col-hdr-btn--close"
-											title="Close token chain"
-											aria-label="Close token chain"
-											onClick={() => setShowTokenChain(false)}
-										>
-											×
-										</button>
-									</div>
-									<TokenChainDisplay />
-								</div>
-								<div
-									className="ba-middle-col-resize-handle"
-									onMouseDown={handleTokenChainResize}
-									title="Drag to resize token chain"
-								/>
-							</>
-						)}
 
 						{/* ── Right column: chat messages + input ── */}
 						<div className="ba-right-col">
