@@ -4,6 +4,11 @@
   box-sizing: border-box;
 }
 
+/* Global reset: strip browser-default monospace from pre/code elements */
+pre, code, kbd, samp, tt {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+
 /* Toast notifications must sit above all fixed/portal UI (hamburger menu is z-index 10055). */
 .Toastify__toast-container {
   z-index: 10100 !important;
