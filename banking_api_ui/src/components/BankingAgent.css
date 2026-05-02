@@ -397,48 +397,58 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 
 /* ─── Middle column (token chain) ─────────────────────────────────────── */
-/* Fix: .ba-body is a flex ROW, so height must come from align-self:stretch.
-   height:0 (the flex-column scroll trick) was collapsing the column to zero.
-   Now we make .ba-middle-col a flex column; TokenChainDisplay fills + scrolls. */
+/* ba-body is a flex ROW — height comes from align-self:stretch, not height:0.
+   .tcd-root has overflow:hidden and .tcd-events has max-height:600px — both
+   overridden here so the column scrolls to fill the available panel height. */
 .ba-middle-col {
-	flex: 0 0 auto;        /* width set via inline style; don't grow/shrink in row */
-	align-self: stretch;   /* fill .ba-body height */
+	flex: 0 0 auto;
+	align-self: stretch;
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	overflow: hidden;      /* clip edges; scroll is on inner .tcd-root */
+	overflow: hidden;
 	border-right: 1px solid var(--ba-border);
 	background: var(--ba-surface);
 }
 
-/* TokenChainDisplay root fills remaining column height and owns the scrollbar */
+/* 1. tcd-root must fill column height and allow overflow-y */
 .ba-middle-col > .tcd-root {
 	flex: 1 1 0;
 	min-height: 0;
-	overflow-y: auto;
-	overflow-x: hidden;
+	overflow: visible !important;   /* override tcd-root { overflow:hidden } */
 	border-radius: 0;
 	border: none;
 	box-shadow: none;
+	display: flex;
+	flex-direction: column;
+}
+
+/* 2. tcd-events owns the scroll — remove 600px cap, fill remaining height */
+.ba-middle-col .tcd-events {
+	flex: 1 1 0;
+	min-height: 0;
+	max-height: none !important;    /* override tcd-events { max-height:600px } */
+	overflow-y: auto;
+	overflow-x: hidden;
 	scrollbar-width: thin;
 	scrollbar-color: rgba(65, 105, 225, 0.5) rgba(65, 105, 225, 0.08);
 }
 
-.ba-middle-col > .tcd-root::-webkit-scrollbar {
+.ba-middle-col .tcd-events::-webkit-scrollbar {
 	width: 8px;
 }
 
-.ba-middle-col > .tcd-root::-webkit-scrollbar-track {
+.ba-middle-col .tcd-events::-webkit-scrollbar-track {
 	background: rgba(65, 105, 225, 0.08);
 	border-radius: 3px;
 }
 
-.ba-middle-col > .tcd-root::-webkit-scrollbar-thumb {
+.ba-middle-col .tcd-events::-webkit-scrollbar-thumb {
 	background: rgba(65, 105, 225, 0.3);
 	border-radius: 3px;
 }
 
-.ba-middle-col > .tcd-root::-webkit-scrollbar-thumb:hover {
+.ba-middle-col .tcd-events::-webkit-scrollbar-thumb:hover {
 	background: rgba(65, 105, 225, 0.5);
 }
 
