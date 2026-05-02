@@ -4094,6 +4094,33 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 /* ─── Phase 246: Actions trigger + popout ─────────────────────────────── */
 
 /* Pill button in header — opens the actions popout */
+
+/* RFC info toggle checkbox — in header tools strip */
+.ba-rfc-toggle-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	height: 28px;
+	padding: 0 8px;
+	border-radius: 8px;
+	font-size: 11px;
+	font-weight: 600;
+	color: rgba(255,255,255,0.85);
+	cursor: pointer;
+	white-space: nowrap;
+	user-select: none;
+}
+.ba-rfc-toggle-label:hover {
+	color: #fff;
+}
+.ba-rfc-toggle-cb {
+	width: 13px;
+	height: 13px;
+	margin: 0;
+	cursor: pointer;
+	accent-color: var(--ba-chip-bd, #5b8dee);
+}
+
 .ba-actions-trigger {
 	display: inline-flex;
 	align-items: center;

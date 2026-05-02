@@ -4685,6 +4685,16 @@ export default function BankingAgent({
 									</div>
 								)}
 							<div className="ba-header-tools">
+								{/* RFC info checkbox — always visible in header */}
+								<label className="ba-rfc-toggle-label" title="Show or hide RFC token-event messages in the chat">
+									<input
+										type="checkbox"
+										checked={showRfcInfo}
+										onChange={(e) => setShowRfcInfo(e.target.checked)}
+										className="ba-rfc-toggle-cb"
+									/>
+									RFC info
+								</label>
 								{/* Actions trigger — float + dashboard inline agents (D-01, D-02) */}
 								{useActionsPopout && (
 									<button
