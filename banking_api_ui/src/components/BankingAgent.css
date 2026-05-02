@@ -4149,13 +4149,13 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 	border-radius: 8px;
 	font-size: 11px;
 	font-weight: 600;
-	color: rgba(255,255,255,0.85);
+	color: var(--ba-text);
 	cursor: pointer;
 	white-space: nowrap;
 	user-select: none;
 }
 .ba-rfc-toggle-label:hover {
-	color: #fff;
+	color: var(--ba-text);
 }
 .ba-rfc-toggle-cb {
 	width: 13px;
