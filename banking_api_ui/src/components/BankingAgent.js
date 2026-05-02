@@ -429,7 +429,7 @@ function isAgentToolErrorResult(normalized) {
 /** Format HTTP trace entries (MCP server → banking API calls) for display in chat */
 function formatHttpTrace(trace) {
 	if (!trace || trace.length === 0) return "";
-	const lines = ["\n\n🌐 **Banking API calls:**"];
+	const lines = ["\n\n🌐 Banking API calls:"];
 	trace.forEach((entry, i) => {
 		const status = entry.status
 			? ` → ${entry.status} ${entry.ok ? "✅" : "❌"}`
@@ -437,15 +437,15 @@ function formatHttpTrace(trace) {
 				? " ✅"
 				: " ❌";
 		lines.push(
-			`\n**${i + 1}. ${entry.method} \`${entry.url}${status} _(${entry.durationMs}ms)_`,
+			`\n${i + 1}. ${entry.method} ${entry.url}${status} (${entry.durationMs}ms)`,
 		);
 		if (entry.requestBody) {
 			const body = JSON.stringify(entry.requestBody, null, 2).slice(0, 300);
-			lines.push(`\`\`\`json\n// Request body\n${body}\n\`\`\``);
+			lines.push(`\n// Request body\n${body}\n`);
 		}
 		if (entry.responseBody !== undefined) {
 			const resp = JSON.stringify(entry.responseBody, null, 2).slice(0, 400);
-			lines.push(`\`\`\`json\n// Response\n${resp}\n\`\`\``);
+			lines.push(`\n// Response\n${resp}\n`);
 		}
 		if (entry.error) {
 			lines.push(`_Error: ${entry.error}_`);
@@ -469,7 +469,7 @@ function formatResult(result) {
 		// Include original MCP request for debugging
 		if (r.originalRequest) {
 			const reqStr = JSON.stringify(r.originalRequest, null, 2).slice(0, 500); // Truncate for display
-			errorMsg += `\n\n📋 **Original request:**\n\`\`\`json\n${reqStr}${Object.keys(r.originalRequest).length > 5 ? "\n..." : ""}\n\`\`\``;
+			errorMsg += `\n\n📋 Original request:\n\n${reqStr}${Object.keys(r.originalRequest).length > 5 ? "\n..." : ""}\n`;
 		}
 		// Include HTTP trace (request → response to banking API)
 		if (r.httpTrace && r.httpTrace.length > 0) {
@@ -1044,13 +1044,13 @@ function welcomeMessage(
 ) {
 	if (focus === "config") {
 		if (!u) {
-			return `Ask about PingOne, redirect URIs, OAuth scopes, **Agent MCP scopes** (limit transfers vs read-only), environment variables, and **industry branding** (${brandShortName} vs other presets) for this demo.`;
+			return `Ask about PingOne, redirect URIs, OAuth scopes, Agent MCP scopes (limit transfers vs read-only), environment variables, and industry branding (${brandShortName} vs other presets) for this demo.`;
 		}
 		const name = u.firstName || u.name?.split(" ")[0] || "there";
 		if (u.role === "admin") {
-			return `Hi ${name} — you're on Application Configuration. Ask about environment IDs, worker apps, redirect URIs, OAuth, **Industry & branding** (\`ui_industry_preset\`), or **Agent MCP scopes** (\`agent_mcp_allowed_scopes\`) — turn off transfers for a read-only agent demo; the BFF runs RFC 8693 token exchange on each tool call with the selected scopes. Banking shortcuts are hidden here. Theme: **${brandShortName}**.`;
+			return `Hi ${name} — you're on Application Configuration. Ask about environment IDs, worker apps, redirect URIs, OAuth, Industry & branding (ui_industry_preset), or Agent MCP scopes (agent_mcp_allowed_scopes) — turn off transfers for a read-only agent demo; the BFF runs RFC 8693 token exchange on each tool call with the selected scopes. Banking shortcuts are hidden here. Theme: ${brandShortName}.`;
 		}
-		return `Hi ${name} — you're on Application Configuration. Ask how to connect PingOne, switch branding (e.g. FunnyBank), or limit the agent with **Agent MCP scopes** (e.g. disable transfers). Theme: **${brandShortName}**.`;
+		return `Hi ${name} — you're on Application Configuration. Ask how to connect PingOne, switch branding (e.g. FunnyBank), or limit the agent with Agent MCP scopes (e.g. disable transfers). Theme: ${brandShortName}.`;
 	}
 	if (!u) return "You're signed in! What would you like to do?";
 	const name = u.firstName || u.name?.split(" ")[0] || "there";
@@ -1678,7 +1678,7 @@ export default function BankingAgent({
 		} catch {}
 	}, [isOpen, isInline]);
 
-	// Floating mode: follow **route changes** only — default collapsed on dashboard homes, open on tool routes.
+	// Floating mode: follow route changes only — default collapsed on dashboard homes, open on tool routes.
 	// Do not tie this to user/session (see REGRESSION_LOG — auth sync was resetting isOpen and closing the panel).
 	useEffect(() => {
 		if (isInline) return;
@@ -2569,7 +2569,7 @@ export default function BankingAgent({
 					// Gate behind HITL — show consent card first, fetch data only after user confirms.
 					addMessage(
 						"assistant",
-						"🔒 **Sensitive Account Data Request**\n\nThis will reveal your **full account numbers, routing numbers, SWIFT, and IBAN**. Please confirm before proceeding.",
+						"🔒 Sensitive Account Data Request\n\nThis will reveal your full account numbers, routing numbers, SWIFT, and IBAN. Please confirm before proceeding.",
 						actionId,
 					);
 					toast.dismiss(toastId);
@@ -2701,12 +2701,12 @@ export default function BankingAgent({
 					const srResults = (srData.results || [])
 						.map(
 							(r, i) =>
-								`${i + 1}. **${r.title}**\n   ${r.url}\n   ${r.description || ""}`,
+								`${i + 1}. ${r.title}\n   ${r.url}\n   ${r.description || ""}`,
 						)
 						.join("\n\n");
 					addMessage(
 						"assistant",
-						`\u{1F50D} Web search results for **"${srData.query || form.query || ""}"**:\n\n${srResults || "No results found."}`,
+						`\u{1F50D} Web search results for "${srData.query || form.query || ""}":\n\n${srResults || "No results found."}`,
 						actionId,
 					);
 					toast.update(toastId, {
@@ -2747,16 +2747,16 @@ export default function BankingAgent({
 					addMessage(
 						"token-event",
 						[
-							"⚠️ Authorization Test: Insufficient Scope (RFC 6749 §3.3)**",
+							"⚠️ Authorization Test: Insufficient Scope (RFC 6749 §3.3)",
 							"",
 							scopeOutcome,
 							"",
 							"RFC 6749 §3.3 — The `scope` parameter limits what an access token can do.",
 							"   Resource servers MUST reject requests where the token does not carry the required scope.",
-							"**RFC 8693 §2.1** — The RFC 8693 exchange can only narrow (not expand) scopes from the subject token.",
+							"RFC 8693 §2.1 — The RFC 8693 exchange can only narrow (not expand) scopes from the subject token.",
 							"   An MCP token cannot gain scopes the user's login token did not include.",
 							"",
-							"Open **Token Chain** ↗ to inspect the `scope` claim on the user and MCP tokens.",
+							"Open Token Chain ↗ to inspect the `scope` claim on the user and MCP tokens.",
 						].join("\n"),
 						actionId,
 					);
@@ -2814,17 +2814,17 @@ export default function BankingAgent({
 					addMessage(
 						"token-event",
 						[
-							"⚠️ Authorization Test: Wrong Audience (RFC 8693 §2.1 · RFC 8707)**",
+							"⚠️ Authorization Test: Wrong Audience (RFC 8693 §2.1 · RFC 8707)",
 							"",
 							audOutcome,
 							"",
-							"**RFC 8693 §2.1** — The `audience` parameter in a token exchange request identifies which",
+							"RFC 8693 §2.1 — The `audience` parameter in a token exchange request identifies which",
 							"   resource server the resulting token is valid for. The AS verifies it against its policy.",
 							"RFC 8707 — Resource Indicators bind access tokens to specific resource URIs.",
 							"   A token issued for `banking-api.example.com` MUST be rejected by `mcp-server.example.com`.",
 							"   The `aud` claim in the MCP token must exactly match the MCP server's registered audience.",
 							"",
-							"Open **Token Chain** ↗ → MCP access token → `aud` claim to see the audience after exchange.",
+							"Open Token Chain ↗ → MCP access token → `aud` claim to see the audience after exchange.",
 						].join("\n"),
 						actionId,
 					);
@@ -2866,10 +2866,10 @@ export default function BankingAgent({
 						addMessage(
 							"assistant",
 							[
-								"⚠️ **HITL Test: accounts not loaded**",
+								"⚠️ HITL Test: accounts not loaded",
 								"",
 								"Need at least 2 accounts (checking + savings) to run this test.",
-								"Try clicking **My Accounts** first to load your account list.",
+								"Try clicking My Accounts first to load your account list.",
 							].join("\n"),
 							actionId,
 						);
@@ -2881,14 +2881,14 @@ export default function BankingAgent({
 					addMessage(
 						"token-event",
 						[
-							"🔐 **Human-in-the-Loop (HITL) Test**",
+							"🔐 Human-in-the-Loop (HITL) Test",
 							"",
-							`Attempting transfer of **$99,999.99** from ${hitlFrom.name || hitlFrom.type} → ${hitlTo.name || hitlTo.type}`,
+							`Attempting transfer of $99,999.99 from ${hitlFrom.name || hitlFrom.type} → ${hitlTo.name || hitlTo.type}`,
 							"This exceeds the HITL threshold — the agent will be paused pending your consent.",
 							"",
-							"**HITL Gate** — High-value agentic transactions require explicit human approval before",
+							"HITL Gate — High-value agentic transactions require explicit human approval before",
 							"   the AI agent can proceed. The agent is paused until you approve or deny in the modal.",
-							"**PingOne Authorize** — The consent decision can be enforced via a PingOne Authorize policy,",
+							"PingOne Authorize — The consent decision can be enforced via a PingOne Authorize policy,",
 							"   making the approval decision auditable and policy-driven (not just a frontend guard).",
 						].join("\n"),
 						actionId,
@@ -2916,14 +2916,14 @@ export default function BankingAgent({
 						addMessage(
 							"token-event",
 							[
-								"📱 **Step-Up Authentication Test (RFC 9470)**",
+								"📱 Step-Up Authentication Test (RFC 9470)",
 								"",
 								"✅ Step-up challenge correctly triggered.",
 								"",
-								"**RFC 9470** — OAuth 2.0 Step-Up Authentication Challenge Protocol.",
+								"RFC 9470 — OAuth 2.0 Step-Up Authentication Challenge Protocol.",
 								"   A resource server can require stronger authentication (higher `acr`) for sensitive operations.",
 								"   The server returns a challenge; the client must obtain a new token with the required `acr` value.",
-								"**acr claim** — Authentication Context Class Reference. `Multi_Factor` or `MFA` indicates",
+								"acr claim — Authentication Context Class Reference. `Multi_Factor` or `MFA` indicates",
 								"   the user authenticated with a second factor (OTP, FIDO2, push notification).",
 								"",
 								"Complete the OTP challenge below — the agent will resume after your identity is verified.",
@@ -2948,12 +2948,12 @@ export default function BankingAgent({
 					addMessage(
 						"token-event",
 						[
-							"📱 **Step-Up Authentication Test (RFC 9470)**",
+							"📱 Step-Up Authentication Test (RFC 9470)",
 							"",
 							stepUpRes.reply ||
 								"Step-up not triggered — MFA may already be satisfied for this session.",
 							"",
-							"**RFC 9470** — Step-up is only triggered when the session `acr` is below the required level.",
+							"RFC 9470 — Step-up is only triggered when the session `acr` is below the required level.",
 							"   If you already authenticated with MFA, the challenge is skipped (acr already satisfied).",
 						].join("\n"),
 						actionId,
@@ -2998,7 +2998,7 @@ export default function BankingAgent({
 					}
 					addMessage(
 						"assistant",
-						`👤 **Human-in-the-Loop (HITL) — your manual approval is required.**\n\nTransactions over $${normalized.hitl_threshold_usd ?? 500} require your consent before the agent can proceed. The agent is paused and cannot continue until you approve or cancel.\n\nReview the authorization popup, then enter the verification code sent to your email.`,
+						`👤 Human-in-the-Loop (HITL) — your manual approval is required.\n\nTransactions over $${normalized.hitl_threshold_usd ?? 500} require your consent before the agent can proceed. The agent is paused and cannot continue until you approve or cancel.\n\nReview the authorization popup, then enter the verification code sent to your email.`,
 						actionId,
 					);
 					toast.dismiss(toastId);
@@ -3097,7 +3097,7 @@ export default function BankingAgent({
 					}
 					addMessage(
 						"assistant",
-						`🔑 **Login required.**\n\nThis operation requires you to be signed in. Click the button below — your request will resume automatically after you authenticate.`,
+						`🔑 Login required.\n\nThis operation requires you to be signed in. Click the button below — your request will resume automatically after you authenticate.`,
 						actionId,
 					);
 					addMessage(
@@ -3183,7 +3183,7 @@ export default function BankingAgent({
 						...(exchanged.actPresent
 							? [
 									"",
-									"🔀 **Delegation chain (RFC 8693 §4 — act claim)**",
+									"🔀 Delegation chain (RFC 8693 §4 — act claim)",
 									`   act: ${exchanged.actDetails || '{ client_id: "bff" }'}`,
 									"   Subject-only exchange = no act claim (token cannot prove which client called it).",
 									"   Nested act = full chain: user → AI agent → MCP service, each hop tamper-evident in the token.",
@@ -3340,15 +3340,15 @@ export default function BankingAgent({
 					addMessage(
 						"token-event",
 						[
-							`✅ **${label} complete — what just happened:**`,
+							`✅ ${label} complete — what just happened:`,
 							"",
 							exchanged
-								? `🔐 **RFC 8693 Token Exchange** — MCP token scoped to \`${exchanged.audienceNarrowed || "mcp-server"}, scope ${exchanged.scopeNarrowed || "banking:write"}`
+								? `🔐 RFC 8693 Token Exchange — MCP token scoped to \`${exchanged.audienceNarrowed || "mcp-server"}, scope ${exchanged.scopeNarrowed || "banking:write"}`
 								: `🔐 Ran via local handler (RFC 8693 token exchange not configured or skipped)`,
-							`👤 **HITL gate** (RFC 8693 §2.1) — Transfers over the threshold require your explicit consent before the agent proceeds. The agent cannot self-approve: enforcement is server-side, before tool execution.`,
+							`👤 HITL gate (RFC 8693 §2.1) — Transfers over the threshold require your explicit consent before the agent proceeds. The agent cannot self-approve: enforcement is server-side, before tool execution.`,
 							"",
-							`**RFCs in play:** RFC 8693 (token exchange) · RFC 6749 §3.3 (scope) · RFC 8707 (audience binding)`,
-							`Open **Token Chain ↗** to inspect the MCP access token's \`act\`, \`aud\`, and \`scope\` claims.`,
+							`RFCs in play: RFC 8693 (token exchange) · RFC 6749 §3.3 (scope) · RFC 8707 (audience binding)`,
+							`Open Token Chain ↗ to inspect the MCP access token's act, aud, and scope claims.`,
 						].join("\n"),
 						actionId,
 					);
@@ -3356,8 +3356,8 @@ export default function BankingAgent({
 					addMessage(
 						"token-event",
 						[
-							`🔑 **Authorized by scope ${exchanged.scopeNarrowed || "banking:read"}\ · · audience ${exchanged.audienceNarrowed || "mcp-server"}`,
-							`   RFC 6749 §3.3 — every MCP call requires a scoped token; read operations use \`banking:read\`, writes require \`banking:write\`.`,
+							`🔑 Authorized by scope ${exchanged.scopeNarrowed || "banking:read"}\ · · audience ${exchanged.audienceNarrowed || "mcp-server"}`,
+							`   RFC 6749 §3.3 — every MCP call requires a scoped token; read operations use banking:read, writes require banking:write.`,
 							`   RFC 8707 — the resource indicator binds the token to this specific audience and prevents it being accepted elsewhere.`,
 						].join("\n"),
 						actionId,
@@ -3448,7 +3448,7 @@ export default function BankingAgent({
 				// Phase 122: Non-logged-in users attempting banking actions
 				addMessage(
 					"assistant",
-					"🔐 You need to sign in first to perform banking operations. Tap **Customer Sign In** in the left panel to get started.",
+					"🔐 You need to sign in first to perform banking operations. Tap Customer Sign In in the left panel to get started.",
 				);
 			} else if (
 				err?.statusCode === 401 ||
@@ -3463,12 +3463,12 @@ export default function BankingAgent({
 				addMessage(
 					"token-event",
 					[
-						"❌ **RFC 6749 §3.3 — Scope Error: missing required scopes**",
+						"❌ RFC 6749 §3.3 — Scope Error: missing required scopes",
 						`   Token lacks: \`${(err.missingScopes || []).join(", ") || "banking:write"}`,
 						"   RFC 6749 §3.3: access tokens carry a scope claim; resource servers MUST reject tokens missing required scopes.",
 						"   RFC 8693 §2.1: token exchange cannot expand scopes — the MCP token can only carry scopes already on the user token.",
 						"",
-						"**Fix:** Sign out → sign in with the PingOne app that requests the required banking scopes.",
+						"Fix: Sign out → sign in with the PingOne app that requests the required banking scopes.",
 					].join("\n"),
 					actionId,
 				);
@@ -3484,8 +3484,8 @@ export default function BankingAgent({
 				addMessage(
 					"token-event",
 					[
-						"⚠️ **OAuth 2.0 §3.3 — Scope Gate: banking:write required**",
-						`   Tool \`${err.tool || actionId} requires: \`${(err.requiredScopes || []).join(", ")}`,
+						"⚠️ OAuth 2.0 §3.3 — Scope Gate: banking:write required",
+						`   Tool ${err.tool || actionId} requires: ${(err.requiredScopes || []).join(", ")}`,
 						`   Your MCP token is missing: \`${(err.missingScopes || []).join(", ")}`,
 						"   The MCP server returned JSON-RPC -32005 (INSUFFICIENT_SCOPE).",
 						"   Approve the scope upgrade below to exchange for a write-capable token (RFC 8693).",
@@ -3531,18 +3531,18 @@ export default function BankingAgent({
 				setShowOtpModal(true);
 				addMessage(
 					"assistant",
-					`🔐 **Identity verification required**\n\n${contextLine}\n\nPlease complete the verification to continue.`,
+					`🔐 Identity verification required\n\n${contextLine}\n\nPlease complete the verification to continue.`,
 					actionId,
 				);
 				addMessage(
 					"token-event",
 					[
-						"📖 **RFC 9470 — OAuth 2.0 Step-Up Authentication Challenge Protocol**",
+						"📖 RFC 9470 — OAuth 2.0 Step-Up Authentication Challenge Protocol",
 						'   The resource server returned `WWW-Authenticate: Bearer error="insufficient_user_authentication"`.',
 						"   This means the current token was issued with a lower ACR (Authentication Context Reference) than the resource requires.",
 						"   After MFA, PingOne issues a new token with `acr: Multi_Factor` (or equivalent) — the agent then retries automatically.",
 						"",
-						"**RFCs:** RFC 9470 (step-up) · RFC 6750 §3.1 (WWW-Authenticate) · RFC 8693 (token exchange for new ACR token)",
+						"RFCs: RFC 9470 (step-up) · RFC 6750 §3.1 (WWW-Authenticate) · RFC 8693 (token exchange for new ACR token)",
 					].join("\n"),
 					actionId,
 				);
@@ -3552,18 +3552,18 @@ export default function BankingAgent({
 					err.message || "MCP tool access was denied by authorization policy";
 				addMessage(
 					"assistant",
-					`🚫 **Access Denied**\n\n${reason}\n\nYour current session does not have sufficient authorization for this tool. Contact your administrator if you believe this is an error.`,
+					`🚫 Access Denied\n\n${reason}\n\nYour current session does not have sufficient authorization for this tool. Contact your administrator if you believe this is an error.`,
 					actionId,
 				);
 				addMessage(
 					"token-event",
 					[
-						"📖 **RFC 6749 §3.1 / RFC 8693 — Authorization Policy Denied**",
+						"📖 RFC 6749 §3.1 / RFC 8693 — Authorization Policy Denied",
 						"   The PingOne Authorize policy evaluated the request context (user, agent, action) and returned DENY.",
 						"   This is a dynamic authorization decision — even a valid token can be rejected based on policy (time, location, risk score, ABAC attributes).",
 						"   RFC 8693: the exchanged token carries claims that PingOne Authorize uses for policy evaluation.",
 						"",
-						"**RFCs:** RFC 6749 §3.1 (authorization endpoint) · RFC 8693 §2.1 (exchange claims) · RFC 8707 (resource indicators)",
+						"RFCs: RFC 6749 §3.1 (authorization endpoint) · RFC 8693 §2.1 (exchange claims) · RFC 8707 (resource indicators)",
 					].join("\n"),
 					actionId,
 				);
@@ -3576,7 +3576,7 @@ export default function BankingAgent({
 				const taskId = err.taskId;
 				addMessage(
 					"assistant",
-					`👤 **Approval Required**\n\n${reason}\n\nPlease review and approve or deny this action.`,
+					`👤 Approval Required\n\n${reason}\n\nPlease review and approve or deny this action.`,
 					actionId,
 				);
 				// Reuse existing HITL consent intent: actionId + form for retry, plus taskId for polling
@@ -3602,7 +3602,7 @@ export default function BankingAgent({
 				addMessage(
 					"assistant",
 					"🔐 Your session token has expired or is no longer valid.\n\n"
-						+ "Redirecting you to **PingOne** to sign in again…",
+						+ "Redirecting you to PingOne to sign in again…",
 					actionId,
 				);
 				setTimeout(() => navigateToCustomerOAuthLogin(), 1500);
@@ -3630,7 +3630,7 @@ export default function BankingAgent({
 							"The exchanged MCP token's `exp` claim is in the past. " +
 							"Tokens are short-lived by design (RFC 7519 §4.1.4); the BFF should " +
 							"exchange a fresh token on every tool call but something went wrong here.",
-						fix: "Use **Refresh access token** in the left panel, then retry.",
+						fix: "Use Refresh access token in the left panel, then retry.",
 						rfcs: "RFC 7519 §4.1.4 (exp claim) · RFC 6749 §5.1 (token lifetime)",
 					},
 					invalid_aud: {
@@ -3667,22 +3667,22 @@ export default function BankingAgent({
 
 				addMessage(
 					"assistant",
-					`🚫 **Gateway Policy Denied — \`${err.tool || actionId}\n\n` +
-					`**${hint.label}**: ${hint.explain}\n\n` +
-					`**Fix:** ${hint.fix}`,
+					`🚫 Gateway Policy Denied — \`${err.tool || actionId}\n\n` +
+					`${hint.label}: ${hint.explain}\n\n` +
+					`Fix: ${hint.fix}`,
 					actionId,
 				);
 				addMessage(
 					"token-event",
 					[
-						`📖 **MCP Gateway — Policy Denial: \`${gwCode}`,
+						`📖 MCP Gateway — Policy Denial: \`${gwCode}`,
 						`   Tool: \`${err.tool || actionId}`,
 						`   Gateway error code: \`${gwCode}`,
 						`   Message: ${gwMsg}`,
 						"",
 						`   ${hint.explain}`,
 						"",
-						`**RFCs:** ${hint.rfcs}`,
+						`RFCs: ${hint.rfcs}`,
 					].join("\n"),
 					actionId,
 				);
@@ -3694,7 +3694,7 @@ export default function BankingAgent({
 				err?.code === "session_not_hydrated"
 					? ""
 					: err?.statusCode === 401 || err?.code === "authentication_required"
-						? "\n\nTip: use **Refresh access token** (left column), then retry. Sign in again only if refresh fails."
+						? "\n\nTip: use Refresh access token (left column), then retry. Sign in again only if refresh fails."
 						: "";
 
 			const showSessionFixBubble =
@@ -3718,7 +3718,7 @@ export default function BankingAgent({
 				// Legacy startup consent gate — no longer enforced in current server code.
 				addMessage(
 					"assistant",
-					"The server is requesting consent to use the agent, but this gate has been removed in the current version.\n\nPlease **sign out and sign in again** to clear the old session state.",
+					"The server is requesting consent to use the agent, but this gate has been removed in the current version.\n\nPlease sign out and sign in again to clear the old session state.",
 					actionId,
 				);
 			} else {
@@ -3876,7 +3876,7 @@ export default function BankingAgent({
 				} catch (_) {}
 				addMessage(
 					"assistant",
-					"**Taking you to PingOne** — after you sign in you’ll return here and we’ll continue with that banking request.",
+					"Taking you to PingOne — after you sign in you’ll return here and we’ll continue with that banking request.",
 				);
 				handleLoginAction("login_user");
 				return;
@@ -4141,7 +4141,7 @@ export default function BankingAgent({
 			if (response.consent_challenge_required) {
 				addMessage(
 					"assistant",
-					"🔒 **Sensitive Account Data Request**\n\nThis will reveal your **full account numbers, routing numbers, SWIFT, and IBAN**. Please confirm before proceeding.",
+					"🔒 Sensitive Account Data Request\n\nThis will reveal your full account numbers, routing numbers, SWIFT, and IBAN. Please confirm before proceeding.",
 					"sensitive-account-details",
 				);
 				setHitlPendingIntent({
@@ -4166,7 +4166,7 @@ export default function BankingAgent({
 					addMessage(
 						"token-event",
 						[
-							"⚠️ **OAuth 2.0 §3.3 — Scope Gate: banking:write required**",
+							"⚠️ OAuth 2.0 §3.3 — Scope Gate: banking:write required",
 							`   Tool \`${response.tool || "unknown"} requires write scope.`,
 							"   Approve the scope upgrade below to exchange for a write-capable token (RFC 8693).",
 						].join("\n"),
@@ -4524,7 +4524,7 @@ export default function BankingAgent({
 			addMessage(
 				"token-event",
 				[
-					"🔄 **RFC 8693 Token Exchange — Scope Upgrade**",
+					"🔄 RFC 8693 Token Exchange — Scope Upgrade",
 					"   Subject token: user access token (from BFF session)",
 					"   Requested scope: banking:write (added to MCP token)",
 					"   Result: write-scoped MCP access token stored in session",
@@ -5049,7 +5049,7 @@ export default function BankingAgent({
 												// Consent fetch may have failed silently — fall back to OTP modal
 												addMessage(
 													"assistant",
-													"\uD83D\uDD10 **Identity verification required**\n\nViewing full account details requires step-up authentication. Please complete the verification to continue.",
+													"\uD83D\uDD10 Identity verification required\n\nViewing full account details requires step-up authentication. Please complete the verification to continue.",
 													"sensitive-account-details",
 												);
 												pendingStepUpCallbackRef.current = async () => {
@@ -5082,13 +5082,13 @@ export default function BankingAgent({
 																	retryRes.accountData;
 																let fmt = "## \uD83D\uDCCB Account Details\n\n";
 																if (u) {
-																	fmt += `**Customer:** ${u.fullName || u.username}\n`;
+																	fmt += `Customer: ${u.fullName || u.username}\n`;
 																	if (u.email)
-																		fmt += `**Email:** ${u.email}\n\n`;
+																		fmt += `Email: ${u.email}\n\n`;
 																}
 																fmt += "### Your Accounts\n";
 																accs.forEach((acc) => {
-																	fmt += `\n**${acc.accountType.toUpperCase()}** (${acc.name || acc.accountType})\n`;
+																	fmt += `\n${acc.accountType.toUpperCase()} (${acc.name || acc.accountType})\n`;
 																	fmt += `\u2022 Balance: $${(acc.balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} ${acc.currency || "USD"}\n`;
 																	const num =
 																		acc.accountNumberFull || acc.accountNumber;
@@ -5174,13 +5174,13 @@ export default function BankingAgent({
 													let formattedDetails =
 														"## \uD83D\uDCCB Account Details\n\n";
 													if (user) {
-														formattedDetails += `**Customer:** ${user.fullName || user.username}\n`;
+														formattedDetails += `Customer: ${user.fullName || user.username}\n`;
 														if (user.email)
-															formattedDetails += `**Email:** ${user.email}\n\n`;
+															formattedDetails += `Email: ${user.email}\n\n`;
 													}
 													formattedDetails += "### Your Accounts\n";
 													accounts.forEach((acc) => {
-														formattedDetails += `\n**${acc.accountType.toUpperCase()}** (${acc.name || acc.accountType})\n`;
+														formattedDetails += `\n${acc.accountType.toUpperCase()} (${acc.name || acc.accountType})\n`;
 														formattedDetails += `\u2022 Balance: $${(acc.balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} ${acc.currency || "USD"}\n`;
 														const displayAcctNum =
 															acc.accountNumberFull || acc.accountNumber;
@@ -5722,7 +5722,7 @@ export default function BankingAgent({
 									setHitlChallengeId(null);
 									addMessage(
 										"assistant",
-										"❌ **Transaction declined.**\n\nThe transaction was not completed.",
+										"❌ Transaction declined.\n\nThe transaction was not completed.",
 										hitlChallengeId.actionId,
 									);
 								}}
