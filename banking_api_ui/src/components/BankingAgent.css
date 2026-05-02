@@ -4470,8 +4470,15 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 .ba-compliance-panel__label { color: #334155; }
 .ba-compliance-panel__item.active .ba-compliance-panel__label { color: #1d4ed8; font-weight: 600; }
 
-/* Compliance toggle button in header — highlight when active */
+/* Compliance toggle button — same shape as Actions, teal color */
+.ba-compliance-toggle-btn {
+	background: #0f766e;
+}
+.ba-compliance-toggle-btn:hover {
+	background: #0d6461;
+}
 .ba-compliance-toggle-btn.active {
-  background: rgba(65, 105, 225, 0.25);
-  outline: 1px solid rgba(65, 105, 225, 0.5);
+	background: #134e4a;
+	outline: 2px solid #2dd4bf;
+	outline-offset: 2px;
 }

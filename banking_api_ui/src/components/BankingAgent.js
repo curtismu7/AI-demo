@@ -4719,7 +4719,7 @@ export default function BankingAgent({
 								{/* Compliance 12-step toggle */}
 								<button
 									type="button"
-									className={"ba-rfc-toggle-label ba-compliance-toggle-btn" + (showCompliancePanel ? " active" : "")}
+									className={"ba-actions-trigger ba-compliance-toggle-btn" + (showCompliancePanel ? " active" : "")}
 									title="Show or hide the 12-step compliance status"
 									onClick={() => setShowCompliancePanel(v => {
 										try { localStorage.setItem("ba_show_compliance_panel", v ? "0" : "1"); } catch {}
