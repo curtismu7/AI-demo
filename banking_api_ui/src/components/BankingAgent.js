@@ -6221,7 +6221,7 @@ export default function BankingAgent({
 											{msg.role === "assistant" && (
 												<span className="banking-agent-msg-avatar">🏦</span>
 											)}
-											<div className="banking-agent-msg-bubble">
+											<div className={`banking-agent-msg-bubble${msg.tool ? " banking-agent-msg-bubble--tool-result" : ""}`}>
 												<pre className="banking-agent-msg-text">
 													{msg.content}
 												</pre>
