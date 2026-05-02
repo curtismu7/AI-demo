@@ -4,6 +4,7 @@
  */
 
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
+import https from 'https';
 import {
   Account,
   Transaction,
@@ -70,13 +71,21 @@ export class BankingAPIClient {
     };
     this.retryManager = new RetryManager(retryConfig);
 
+    // For dev self-signed certs (api.pingdemo.com) disable TLS verification.
+    // In production NODE_ENV the agent is not applied — real certs are used.
+    const devHttpsAgent =
+      process.env.NODE_ENV !== 'production' && this.config.baseUrl.startsWith('https')
+        ? new https.Agent({ rejectUnauthorized: false })
+        : undefined;
+
     this.client = axios.create({
       baseURL: this.config.baseUrl,
       timeout: this.config.timeout,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
-      }
+      },
+      ...(devHttpsAgent && { httpsAgent: devHttpsAgent }),
     });
 
     // Add request interceptor for logging
