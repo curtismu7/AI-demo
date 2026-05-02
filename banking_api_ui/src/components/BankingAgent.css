@@ -1260,7 +1260,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 .banking-agent-msg.token-event .banking-agent-msg-bubble {
 	max-width: 95%;
 	background: rgba(65, 105, 225, 0.12);
-	color: var(--ba-chip-txt);
+	color: var(--ba-agent-txt);
 	border: 1px solid var(--ba-chip-bd);
 	border-left: 3px solid var(--ba-accent);
 	border-radius: 8px;
@@ -1800,17 +1800,17 @@ body > .banking-agent-float-root .banking-agent-panel {
 .bar-rp-table {
 	width: 100%;
 	border-collapse: collapse;
-	font-size: 13px;
+	font-size: 15px;
 }
 
 .bar-rp-table th {
 	text-align: left;
-	font-size: 11px;
+	font-size: 13px;
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 	color: #525252;
-	padding: 6px 8px;
+	padding: 8px;
 	border-bottom: 2px solid #e0e0e0;
 	background: #f4f4f4;
 }
@@ -1819,6 +1819,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	padding: 8px;
 	border-bottom: 1px solid #f0f0f0;
 	color: #161616;
+	font-weight: 700;
 	vertical-align: middle;
 	max-width: 160px;
 	overflow: hidden;
@@ -1837,6 +1838,11 @@ body > .banking-agent-float-root .banking-agent-panel {
 	font-weight: 600;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
+}
+
+.bar-rp-account-name {
+	color: #e05a47;
+	font-weight: 700;
 }
 
 .bar-rp-type {

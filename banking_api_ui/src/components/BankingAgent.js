@@ -751,7 +751,7 @@ function AccountsTable({ accounts }) {
 					<tr key={a.account_number || a.id || i}>
 						<td>{a.account_type || a.type || "Account"}</td>
 						<td>
-							<code>{getFriendlyAccountName(a)}</code>
+							<span className="bar-rp-account-name">{getFriendlyAccountName(a)}</span>
 						</td>
 						<td className="bar-rp-amount">{formatCurrency(a.balance)}</td>
 					</tr>
