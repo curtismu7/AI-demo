@@ -891,6 +891,31 @@ function ToolProgressChips({ steps }) {
 	);
 }
 
+/** Renders message content as readable prose — paragraphs split on double newline,
+ *  single newlines become line breaks. Avoids monospace <pre> appearance. */
+function MessageContent({ text, isTokenEvent }) {
+	if (!text) return null;
+	const paragraphs = text.split(/\n{2,}/);
+	return (
+		<div className={isTokenEvent ? "ba-msg-body ba-msg-body--event" : "ba-msg-body"}>
+			{paragraphs.map((para, i) => {
+				const lines = para.split('\n');
+				return (
+					<p key={i} className="ba-msg-para">
+						{lines.map((line, j) => (
+							<React.Fragment key={j}>
+								{j > 0 && <br />}
+								{line}
+							</React.Fragment>
+						))}
+					</p>
+				);
+			})}
+		</div>
+	);
+}
+
+
 function ResultsPanel({ panel, onClose, style }) {
 	const [size, setSize] = useState({ width: 340, height: 420 });
 	const resizingRef = useRef(null);
@@ -6167,9 +6192,7 @@ export default function BankingAgent({
 										return (
 											<div key={msg.id} className="banking-agent-msg error">
 												<div className="banking-agent-msg-bubble banking-agent-msg-bubble--session-fix">
-													<pre className="banking-agent-msg-text">
-														{msg.content}
-													</pre>
+													<MessageContent text={msg.content} />
 													<div className="ba-session-fix-actions">
 														<button
 															type="button"
@@ -6219,9 +6242,7 @@ export default function BankingAgent({
 												<span className="banking-agent-msg-avatar">🏦</span>
 											)}
 											<div className={`banking-agent-msg-bubble${msg.tool ? " banking-agent-msg-bubble--tool-result" : ""}`}>
-												<pre className="banking-agent-msg-text">
-													{msg.content}
-												</pre>
+												<MessageContent text={msg.content} />
 												{msg.tool && (
 													<span className="banking-agent-tool-badge">
 														⚙ {msg.tool}

@@ -1148,12 +1148,13 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 
 .banking-agent-msg-bubble {
-	max-width: 82%;
-	padding: 10px 14px;
-	border-radius: 14px;
-	font-size: 15px;
-	line-height: 1.6;
+	max-width: 84%;
+	padding: 12px 16px;
+	border-radius: 16px;
+	font-size: 14px;
+	line-height: 1.65;
 	word-break: break-word;
+	letter-spacing: 0.01em;
 }
 
 .banking-agent-msg.assistant .banking-agent-msg-bubble {
@@ -1272,15 +1273,15 @@ body > .banking-agent-float-root .banking-agent-panel {
 	justify-content: center;
 }
 .banking-agent-msg.token-event .banking-agent-msg-bubble {
-	max-width: 95%;
-	background: rgba(65, 105, 225, 0.12);
+	max-width: 96%;
+	background: rgba(65, 105, 225, 0.07);
 	color: var(--ba-agent-txt);
-	border: 1px solid var(--ba-chip-bd);
+	border: 1px solid rgba(65, 105, 225, 0.2);
 	border-left: 3px solid var(--ba-accent);
-	border-radius: 8px;
+	border-radius: 10px;
 	font-size: 13px;
 	line-height: 1.6;
-	padding: 8px 12px;
+	padding: 10px 14px;
 }
 
 /* Typing indicator */
@@ -1323,6 +1324,25 @@ body > .banking-agent-float-root .banking-agent-panel {
 	font-family: inherit;
 	font-size: inherit;
 	white-space: pre-wrap;
+}
+
+/* Prose message body — replaces <pre> for readable chat output */
+.ba-msg-body {
+	font-family: inherit;
+	font-size: inherit;
+	line-height: inherit;
+}
+
+.ba-msg-para {
+	margin: 0 0 0.55em;
+}
+
+.ba-msg-para:last-child {
+	margin-bottom: 0;
+}
+
+.ba-msg-body--event .ba-msg-para {
+	margin-bottom: 0.4em;
 }
 
 .banking-agent-tool-badge {
