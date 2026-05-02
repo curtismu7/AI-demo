@@ -267,7 +267,7 @@ function appendUserTokenEvent(tokenEvents, userToken, req = null) {
   const userAccessTokenDecoded = decodeJwtClaims(userToken);
   const userAccessTokenClaims = userAccessTokenDecoded?.claims;
   const userSub = userAccessTokenClaims?.sub != null ? String(userAccessTokenClaims.sub) : null;
-  const bffClientId = oauthService.config?.clientId || process.env.PINGONE_CLIENT_ID || null;
+  const bffClientId = configStore.getEffective('user_client_id') || process.env.PINGONE_CLIENT_ID || null;
   const mayActInfo = describeMayAct(userAccessTokenClaims, bffClientId);
 
   // Scope: prefer JWT claim, fall back to scope stored in session (PingOne may omit it from JWT)
