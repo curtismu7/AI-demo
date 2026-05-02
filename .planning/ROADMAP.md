@@ -2103,3 +2103,18 @@ Plans:
 - Token chain display shows the correct exchange path used
 - Agent tool calls work without authentication errors in both modes
 - Session persists agent tokens correctly using SQLite (local) or Redis (Vercel)
+
+---
+
+### Phase 262: CSS Hygiene — dead code purge, :root consolidation, !important audit
+
+**Goal:** Remove 137 dead `--agent-*` CSS variable declarations (unimported design system), consolidate `:root` blocks to `index.css`, reduce `!important` count in BankingAgent.css and App.css, drop 13 redundant `-webkit-text-fill-color` lines.
+**Requirements**: CSS-01, CSS-02, CSS-03, CSS-04
+**Depends on:** none
+**Plans:** 4 plans
+
+Plans:
+- [ ] 262-01-PLAN.md — Delete dead agent/ directory (137 dead --agent-* vars)
+- [ ] 262-02-PLAN.md — Consolidate :root blocks into index.css (dashboard-theme + FloatingPanel)
+- [ ] 262-03-PLAN.md — BankingAgent.css !important audit (67 → ≤50)
+- [ ] 262-04-PLAN.md — App.css cleanup: drop webkit prefix dupes + !important audit (26 → ≤20)
