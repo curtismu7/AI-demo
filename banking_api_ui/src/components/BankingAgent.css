@@ -4436,8 +4436,9 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   border-bottom: 2px solid #e2e8f0;
   padding: 8px 14px 6px;
   overflow-y: auto;
-  max-height: 240px;
-  flex-shrink: 0;
+  max-height: 160px;   /* cap height so chat + input stay visible */
+  flex: 0 1 160px;     /* can shrink when panel is small */
+  min-height: 48px;    /* show at least 2 rows if very cramped */
 }
 .ba-compliance-panel__empty {
   font-size: 0.78rem;
