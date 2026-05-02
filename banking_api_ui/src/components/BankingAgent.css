@@ -2925,6 +2925,50 @@ body > .banking-agent-float-root .banking-agent-panel {
 	background: var(--ba-surface);
 }
 
+/* Split-column: middle col is a fixed-height row above the chat column */
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-middle-col {
+	/* In column flex, width:Npx from JS becomes the element width — override to full width */
+	width: 100% !important;
+	/* Fixed height so typing in the prompt can't collapse the token chain */
+	flex: 0 0 220px;
+	min-height: 0;
+	height: 220px;
+	border-right: none;
+	border-bottom: 1px solid var(--ba-border);
+	overflow: hidden;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-middle-col > .tcd-root {
+	flex: 1 1 0;
+	min-height: 0;
+	overflow: visible !important;
+	display: flex;
+	flex-direction: column;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-middle-col .tcd-events {
+	flex: 1 1 0;
+	min-height: 0;
+	max-height: none !important;
+	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(65, 105, 225, 0.5) rgba(65, 105, 225, 0.08);
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-middle-col-resize-handle {
+	/* Horizontal resize handle not useful in stacked layout — hide it */
+	display: none;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-right-col {
+	flex: 1 1 0%;
+	min-height: 0;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
 /* Split-column: stack chat on top, action strip below (not side-by-side) */
 .banking-agent-panel.ba-mode-inline.ba-split-column .ba-body {
 	flex-direction: column;
