@@ -437,7 +437,7 @@ function formatHttpTrace(trace) {
 				? " ✅"
 				: " ❌";
 		lines.push(
-			`\n**${i + 1}. ${entry.method} \`${entry.url}\`**${status} _(${entry.durationMs}ms)_`,
+			`\n**${i + 1}. ${entry.method} \`${entry.url}${status} _(${entry.durationMs}ms)_`,
 		);
 		if (entry.requestBody) {
 			const body = JSON.stringify(entry.requestBody, null, 2).slice(0, 300);
@@ -503,7 +503,7 @@ function formatResult(result) {
 										: "Account";
 
 				// Show only basic account info — IBAN/SWIFT/routing are revealed only via "View Sensitive Account Details"
-				return "\u{1f3e6} **" + name + "** (" + (num || "—") + ") — " + formatCurrency(a.balance) + " " + (a.currency || "USD");
+				return "\u{1f3e6} " + name + " (" + (num || "—") + ") — " + formatCurrency(a.balance) + " " + (a.currency || "USD");
 			})
 			.join("\n\n");
 	}
@@ -1633,7 +1633,7 @@ export default function BankingAgent({
 			const label = ACTIONS.find((a) => a.id === actionId)?.label || actionId;
 			addMessage(
 				"assistant",
-				`✅ **${label} approved and completed.**\n\n${successMsg || "The transaction went through after your consent."}`,
+				`✅ ${label} approved and completed.\n\n${successMsg || "The transaction went through after your consent."}`,
 				actionId,
 			);
 			notifySuccess(`✅ ${label} complete`);
@@ -2717,16 +2717,16 @@ export default function BankingAgent({
 						scopeTestRes?.error === "agent_mcp_scope_denied" ||
 						scopeTestRes?.error?.includes("scope");
 					const scopeOutcome = scopeRejected
-						? `✅ Server correctly rejected the request: \`${scopeTestRes.error}\`\n   Missing scopes: \`${(scopeTestRes.missingScopes || []).join(", ") || "agent policy check"}\``
+						? `✅ Server correctly rejected the request: \`${scopeTestRes.error}\n   Missing scopes: \`${(scopeTestRes.missingScopes || []).join(", ") || "agent policy check"}`
 						: `ℹ️ Server response: ${scopeTestRes?.error || JSON.stringify(scopeTestRes?.result || {}).slice(0, 120)}`;
 					addMessage(
 						"token-event",
 						[
-							"⚠️ **Authorization Test: Insufficient Scope (RFC 6749 §3.3)**",
+							"⚠️ Authorization Test: Insufficient Scope (RFC 6749 §3.3)**",
 							"",
 							scopeOutcome,
 							"",
-							"**RFC 6749 §3.3** — The `scope` parameter limits what an access token can do.",
+							"RFC 6749 §3.3 — The `scope` parameter limits what an access token can do.",
 							"   Resource servers MUST reject requests where the token does not carry the required scope.",
 							"**RFC 8693 §2.1** — The RFC 8693 exchange can only narrow (not expand) scopes from the subject token.",
 							"   An MCP token cannot gain scopes the user's login token did not include.",
@@ -2784,18 +2784,18 @@ export default function BankingAgent({
 						audTestRes?.error?.includes("audience") ||
 						audTestRes?.error?.includes("exchange");
 					const audOutcome = audFailed
-						? `✅ Exchange rejected for invalid audience (HTTP ${audTestRes._httpStatus}): \`${audTestRes.error || "exchange_failed"}\``
+						? `✅ Exchange rejected for invalid audience (HTTP ${audTestRes._httpStatus}): \`${audTestRes.error || "exchange_failed"}`
 						: `ℹ️ Server fell back to local handler (token exchange skipped or not configured) — HTTP ${audTestRes._httpStatus ?? 200}`;
 					addMessage(
 						"token-event",
 						[
-							"⚠️ **Authorization Test: Wrong Audience (RFC 8693 §2.1 · RFC 8707)**",
+							"⚠️ Authorization Test: Wrong Audience (RFC 8693 §2.1 · RFC 8707)**",
 							"",
 							audOutcome,
 							"",
 							"**RFC 8693 §2.1** — The `audience` parameter in a token exchange request identifies which",
 							"   resource server the resulting token is valid for. The AS verifies it against its policy.",
-							"**RFC 8707** — Resource Indicators bind access tokens to specific resource URIs.",
+							"RFC 8707 — Resource Indicators bind access tokens to specific resource URIs.",
 							"   A token issued for `banking-api.example.com` MUST be rejected by `mcp-server.example.com`.",
 							"   The `aud` claim in the MCP token must exactly match the MCP server's registered audience.",
 							"",
@@ -3318,7 +3318,7 @@ export default function BankingAgent({
 							`✅ **${label} complete — what just happened:**`,
 							"",
 							exchanged
-								? `🔐 **RFC 8693 Token Exchange** — MCP token scoped to \`${exchanged.audienceNarrowed || "mcp-server"}\`, scope \`${exchanged.scopeNarrowed || "banking:write"}\``
+								? `🔐 **RFC 8693 Token Exchange** — MCP token scoped to \`${exchanged.audienceNarrowed || "mcp-server"}, scope ${exchanged.scopeNarrowed || "banking:write"}`
 								: `🔐 Ran via local handler (RFC 8693 token exchange not configured or skipped)`,
 							`👤 **HITL gate** (RFC 8693 §2.1) — Transfers over the threshold require your explicit consent before the agent proceeds. The agent cannot self-approve: enforcement is server-side, before tool execution.`,
 							"",
@@ -3331,7 +3331,7 @@ export default function BankingAgent({
 					addMessage(
 						"token-event",
 						[
-							`🔑 **Authorized by scope \`${exchanged.scopeNarrowed || "banking:read"}\`** · audience \`${exchanged.audienceNarrowed || "mcp-server"}\``,
+							`🔑 **Authorized by scope ${exchanged.scopeNarrowed || "banking:read"}\ · · audience ${exchanged.audienceNarrowed || "mcp-server"}`,
 							`   RFC 6749 §3.3 — every MCP call requires a scoped token; read operations use \`banking:read\`, writes require \`banking:write\`.`,
 							`   RFC 8707 — the resource indicator binds the token to this specific audience and prevents it being accepted elsewhere.`,
 						].join("\n"),
@@ -3439,7 +3439,7 @@ export default function BankingAgent({
 					"token-event",
 					[
 						"❌ **RFC 6749 §3.3 — Scope Error: missing required scopes**",
-						`   Token lacks: \`${(err.missingScopes || []).join(", ") || "banking:write"}\``,
+						`   Token lacks: \`${(err.missingScopes || []).join(", ") || "banking:write"}`,
 						"   RFC 6749 §3.3: access tokens carry a scope claim; resource servers MUST reject tokens missing required scopes.",
 						"   RFC 8693 §2.1: token exchange cannot expand scopes — the MCP token can only carry scopes already on the user token.",
 						"",
@@ -3459,9 +3459,9 @@ export default function BankingAgent({
 				addMessage(
 					"token-event",
 					[
-						"⚠️ **OAuth 2.0 §3.3 — Scope Gate: `banking:write` required**",
-						`   Tool \`${err.tool || actionId}\` requires: \`${(err.requiredScopes || []).join(", ")}\``,
-						`   Your MCP token is missing: \`${(err.missingScopes || []).join(", ")}\``,
+						"⚠️ **OAuth 2.0 §3.3 — Scope Gate: banking:write required**",
+						`   Tool \`${err.tool || actionId} requires: \`${(err.requiredScopes || []).join(", ")}`,
+						`   Your MCP token is missing: \`${(err.missingScopes || []).join(", ")}`,
 						"   The MCP server returned JSON-RPC -32005 (INSUFFICIENT_SCOPE).",
 						"   Approve the scope upgrade below to exchange for a write-capable token (RFC 8693).",
 					].join("\n"),
@@ -3642,7 +3642,7 @@ export default function BankingAgent({
 
 				addMessage(
 					"assistant",
-					`🚫 **Gateway Policy Denied — \`${err.tool || actionId}\`**\n\n` +
+					`🚫 **Gateway Policy Denied — \`${err.tool || actionId}\n\n` +
 					`**${hint.label}**: ${hint.explain}\n\n` +
 					`**Fix:** ${hint.fix}`,
 					actionId,
@@ -3650,9 +3650,9 @@ export default function BankingAgent({
 				addMessage(
 					"token-event",
 					[
-						`📖 **MCP Gateway — Policy Denial: \`${gwCode}\`**`,
-						`   Tool: \`${err.tool || actionId}\``,
-						`   Gateway error code: \`${gwCode}\``,
+						`📖 **MCP Gateway — Policy Denial: \`${gwCode}`,
+						`   Tool: \`${err.tool || actionId}`,
+						`   Gateway error code: \`${gwCode}`,
 						`   Message: ${gwMsg}`,
 						"",
 						`   ${hint.explain}`,
@@ -4141,8 +4141,8 @@ export default function BankingAgent({
 					addMessage(
 						"token-event",
 						[
-							"⚠️ **OAuth 2.0 §3.3 — Scope Gate: `banking:write` required**",
-							`   Tool \`${response.tool || "unknown"}\` requires write scope.`,
+							"⚠️ **OAuth 2.0 §3.3 — Scope Gate: banking:write required**",
+							`   Tool \`${response.tool || "unknown"} requires write scope.`,
 							"   Approve the scope upgrade below to exchange for a write-capable token (RFC 8693).",
 						].join("\n"),
 						undefined,
@@ -4460,7 +4460,7 @@ export default function BankingAgent({
 		);
 		addMessage(
 			"token-event",
-			"🔐 Scope upgrade approved — exchanging token for `banking:write` access (RFC 8693)…",
+			"🔐 Scope upgrade approved — exchanging token for banking:write access (RFC 8693)…",
 			"scope_upgrade",
 		);
 		try {
@@ -4501,7 +4501,7 @@ export default function BankingAgent({
 				[
 					"🔄 **RFC 8693 Token Exchange — Scope Upgrade**",
 					"   Subject token: user access token (from BFF session)",
-					"   Requested scope: `banking:write` (added to MCP token)",
+					"   Requested scope: banking:write (added to MCP token)",
 					"   Result: write-scoped MCP access token stored in session",
 					"   RFC 8693 §2.1: token exchange cannot expand beyond subject token scopes.",
 					"   RFC 8693 §4.2: `act` claim on result identifies BFF as actor.",
@@ -5068,13 +5068,13 @@ export default function BankingAgent({
 																	const num =
 																		acc.accountNumberFull || acc.accountNumber;
 																	if (num)
-																		fmt += `\u2022 Account #: \`${num}\`\n`;
+																		fmt += `\u2022 Account #: \`${num}\n`;
 																	if (acc.routingNumber)
-																		fmt += `\u2022 Routing #: \`${acc.routingNumber}\`\n`;
+																		fmt += `\u2022 Routing #: \`${acc.routingNumber}\n`;
 																	if (acc.swiftCode)
-																		fmt += `\u2022 SWIFT: \`${acc.swiftCode}\`\n`;
+																		fmt += `\u2022 SWIFT: \`${acc.swiftCode}\n`;
 																	if (acc.iban)
-																		fmt += `\u2022 IBAN: \`${acc.iban}\`\n`;
+																		fmt += `\u2022 IBAN: \`${acc.iban}\n`;
 																	fmt += `\u2022 Status: ${acc.status}\n`;
 																});
 																fmt +=
@@ -5160,13 +5160,13 @@ export default function BankingAgent({
 														const displayAcctNum =
 															acc.accountNumberFull || acc.accountNumber;
 														if (displayAcctNum)
-															formattedDetails += `\u2022 Account #: \`${displayAcctNum}\`\n`;
+															formattedDetails += `\u2022 Account #: \`${displayAcctNum}\n`;
 														if (acc.routingNumber)
-															formattedDetails += `\u2022 Routing #: \`${acc.routingNumber}\`\n`;
+															formattedDetails += `\u2022 Routing #: \`${acc.routingNumber}\n`;
 														if (acc.swiftCode)
-															formattedDetails += `\u2022 SWIFT: \`${acc.swiftCode}\`\n`;
+															formattedDetails += `\u2022 SWIFT: \`${acc.swiftCode}\n`;
 														if (acc.iban)
-															formattedDetails += `\u2022 IBAN: \`${acc.iban}\`\n`;
+															formattedDetails += `\u2022 IBAN: \`${acc.iban}\n`;
 														formattedDetails += `\u2022 Status: ${acc.status}\n`;
 													});
 													formattedDetails +=
@@ -5682,7 +5682,7 @@ export default function BankingAgent({
 									setHitlChallengeId(null);
 									addMessage(
 										"assistant",
-										`✅ **Transaction approved and completed.**\n\n${msg}`,
+										`✅ Transaction approved and completed.\n\n${msg}`,
 										actionId,
 									);
 									notifySuccess(`✅ ${msg}`);
