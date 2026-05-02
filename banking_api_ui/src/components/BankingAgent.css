@@ -4244,3 +4244,53 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 	border-color: var(--ba-border);
 }
 /* ─────────────────────────────────────────────────────────────────────── */
+
+/* ─── Inline results panel (bottom/inline mode — transactions, accounts in right col) ─ */
+.ba-inline-result-panel {
+	flex-shrink: 0;
+	max-height: 260px;
+	display: flex;
+	flex-direction: column;
+	border-top: 2px solid var(--ba-accent, #4169e1);
+	background: var(--ba-surface);
+	overflow: hidden;
+}
+
+.ba-inline-result-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 12px;
+	background: #4169e1;
+	color: #fff;
+	flex-shrink: 0;
+}
+
+.ba-inline-result-title {
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.ba-inline-result-close {
+	background: rgba(255,255,255,0.15);
+	border: none;
+	color: #fff;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	cursor: pointer;
+	font-size: 12px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s;
+}
+.ba-inline-result-close:hover { background: rgba(255,255,255,0.3); }
+
+.ba-inline-result-body {
+	flex: 1 1 0;
+	overflow-y: auto;
+	padding: 8px 12px;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(65,105,225,0.4) transparent;
+}

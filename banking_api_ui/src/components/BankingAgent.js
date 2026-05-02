@@ -6340,6 +6340,41 @@ export default function BankingAgent({
 								</div>
 							)}
 
+							{/* Inline results panel — shown inside right col when agent is in bottom/inline mode */}
+							{isInline && resultPanel && (
+								<div className="ba-inline-result-panel">
+									<div className="ba-inline-result-header">
+										<span className="ba-inline-result-title">{resultPanel.title}</span>
+										<button
+											type="button"
+											className="ba-inline-result-close"
+											onClick={() => setResultPanel(null)}
+											aria-label="Close"
+										>✕</button>
+									</div>
+									<div className="ba-inline-result-body">
+										{resultPanel.type === "accounts" && <AccountsTable accounts={resultPanel.data} />}
+										{resultPanel.type === "transactions" && <TransactionsTable transactions={resultPanel.data} />}
+										{resultPanel.type === "balance" && (
+											<div className="bar-rp-balance">
+												<span className="bar-rp-balance-label">Balance</span>
+												<span className="bar-rp-balance-value">{resultPanel.data != null ? formatCurrency(resultPanel.data) : "—"}</span>
+											</div>
+										)}
+										{resultPanel.type === "confirm" && (
+											<div className="bar-rp-confirm">
+												<span className="bar-rp-confirm-icon">✅</span>
+												<div className="bar-rp-confirm-body">
+													<div className="bar-rp-confirm-label">{resultPanel.title}</div>
+													{resultPanel.data?.transaction_id && <div>Transaction ID: <code>{resultPanel.data.transaction_id}</code></div>}
+												</div>
+											</div>
+										)}
+										{resultPanel.type === "text" && <div className="bar-rp-text">{resultPanel.data}</div>}
+									</div>
+								</div>
+							)}
+
 							{/* Bottom input bar */}
 							<div className="ba-bottom">
 								{isLoggedIn || marketingGuestChatEnabled ? (
