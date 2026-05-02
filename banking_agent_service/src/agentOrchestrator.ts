@@ -15,8 +15,33 @@
 
 import axios from 'axios';
 import { AgentConfig } from './config';
-import { McpGatewayClient, ToolDefinition } from './mcpGatewayClient';
+import { McpGatewayClient, McpGatewayError, ToolDefinition } from './mcpGatewayClient';
 import { getPrompt } from './promptStore';
+
+// ---------------------------------------------------------------------------
+// Recovery error types — thrown by the tool loop, caught by the BFF (Wave 3)
+// ---------------------------------------------------------------------------
+
+export class LoginRequiredError extends Error {
+  readonly requiredScopes: string[];
+  readonly loginRequired = true as const;
+  constructor(requiredScopes: string[]) {
+    super('login_required');
+    this.name = 'LoginRequiredError';
+    this.requiredScopes = requiredScopes;
+  }
+}
+
+export class HitlRequiredError extends Error {
+  constructor(
+    public readonly challengeId: string,
+    public readonly challengeType: 'consent' | 'step_up',
+    public readonly expiresAt: string,
+  ) {
+    super('hitl_required');
+    this.name = 'HitlRequiredError';
+  }
+}
 
 const MAX_TOOL_ITERATIONS = 10;
 
@@ -110,7 +135,25 @@ async function _runAnthropic(
         if (block.type !== 'tool_use') continue;
         toolCallCount++;
         toolsUsed.push(block.name);
-        const result = await mcpClient.callTool(block.name, block.input || {});
+        let result;
+        try {
+          result = await mcpClient.callTool(block.name, block.input || {});
+        } catch (toolErr) {
+          if (toolErr instanceof McpGatewayError) {
+            const d = toolErr.data as any;
+            if (toolErr.code === -32403) {
+              throw new LoginRequiredError(d?.required_scopes ?? []);
+            }
+            if (toolErr.code === -32002) {
+              throw new HitlRequiredError(
+                d?.challengeId ?? '',
+                d?.challenge_type === 'step_up' ? 'step_up' : 'consent',
+                d?.expiresAt ?? '',
+              );
+            }
+          }
+          throw toolErr;
+        }
         toolResults.push({
           type: 'tool_result',
           tool_use_id: block.id,
@@ -181,7 +224,25 @@ async function _runOpenAI(
         toolCallCount++;
         toolsUsed.push(call.function.name);
         const args = JSON.parse(call.function.arguments || '{}');
-        const result = await mcpClient.callTool(call.function.name, args);
+        let result;
+        try {
+          result = await mcpClient.callTool(call.function.name, args);
+        } catch (toolErr) {
+          if (toolErr instanceof McpGatewayError) {
+            const d = toolErr.data as any;
+            if (toolErr.code === -32403) {
+              throw new LoginRequiredError(d?.required_scopes ?? []);
+            }
+            if (toolErr.code === -32002) {
+              throw new HitlRequiredError(
+                d?.challengeId ?? '',
+                d?.challenge_type === 'step_up' ? 'step_up' : 'consent',
+                d?.expiresAt ?? '',
+              );
+            }
+          }
+          throw toolErr;
+        }
         messages.push({
           role: 'tool',
           tool_call_id: call.id,

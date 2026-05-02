@@ -22,6 +22,22 @@ export interface ToolResult {
   isError?: boolean;
 }
 
+/**
+ * Typed error thrown when the MCP Gateway returns a JSON-RPC error response.
+ * Preserves code and data so callers can branch on -32403 (login_required)
+ * and -32002 (hitl_required) without string-matching error messages.
+ */
+export class McpGatewayError extends Error {
+  constructor(
+    public readonly code: number,
+    message: string,
+    public readonly data?: unknown,
+  ) {
+    super(message);
+    this.name = 'McpGatewayError';
+  }
+}
+
 export class McpGatewayClient {
   private ws: WebSocket | null = null;
   private initialized = false;
@@ -85,7 +101,11 @@ export class McpGatewayClient {
       params: { name, arguments: args },
     });
     if (response?.error) {
-      return { content: [{ type: 'text', text: response.error.message }], isError: true };
+      throw new McpGatewayError(
+        response.error.code,
+        response.error.message,
+        response.error.data,
+      );
     }
     return response?.result || { content: [], isError: true };
   }

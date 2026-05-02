@@ -26,8 +26,10 @@ function tokenHash(t: string): string {
 export async function resolveGatewayToken(
   userAccessToken: string,
   config: AgentConfig,
+  requestedScopes?: string[],
 ): Promise<string> {
-  const key = tokenHash(userAccessToken);
+  const scopeKey = requestedScopes ? [...requestedScopes].sort().join(',') : '';
+  const key = `${tokenHash(userAccessToken)}:${scopeKey}`;
   const cached = _cache.get(key);
   if (cached && cached.expiresAt > Date.now() + 5_000) return cached.token;
 
