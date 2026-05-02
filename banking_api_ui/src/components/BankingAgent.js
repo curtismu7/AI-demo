@@ -3386,6 +3386,8 @@ export default function BankingAgent({
 				type: "success",
 				isLoading: false,
 				autoClose: agentToastMs.successAction,
+				closeButton: true,
+				draggable: true,
 			});
 		} catch (err) {
 			markToolProgressOutcome(false, err ? { code: err.gatewayErrorCode || err.code, message: err.message, tool: err.tool || actionId } : null);
