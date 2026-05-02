@@ -478,7 +478,7 @@
 }
 
 .bank-name {
-  font-size: clamp(1.05rem, 1.8vw + 0.45rem, 1.5rem);
+  font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: -0.025em;
   color: white;
@@ -587,7 +587,7 @@
 }
 
 .user-greeting {
-  font-size: clamp(0.85rem, 0.9vw + 0.65rem, 1rem);
+  font-size: 0.95rem;
   font-weight: 500;
   color: white;
   margin: 0;
@@ -595,7 +595,7 @@
 }
 
 .user-email {
-  font-size: clamp(0.75rem, 0.65vw + 0.58rem, 0.875rem);
+  font-size: 0.82rem;
   opacity: 0.75;
   color: white;
   margin: 0;
@@ -609,7 +609,7 @@
   align-items: center;
   justify-content: center;
   padding: 8px 16px;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: #fff;
   background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
@@ -630,7 +630,7 @@
 
 .dashboard-edu-btn {
   padding: 8px 12px;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: #fff;
   background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
@@ -657,7 +657,7 @@
   background: #e0e7ff;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   padding: 2px 6px;
   line-height: 1;
 }
@@ -736,7 +736,7 @@
 .section h2 {
   margin: 0 0 clamp(16px, 2.5vw, 24px) 0;
   color: #111827;
-  font-size: clamp(1.05rem, 1vw + 0.75rem, 1.25rem);
+  font-size: 1.15rem;
   font-weight: 600;
   letter-spacing: -0.025em;
 }
@@ -774,14 +774,14 @@
 }
 
 .account-summary-cell {
-  font-size: clamp(0.8rem, 0.6vw + 0.68rem, 0.92rem);
+  font-size: 0.9rem;
   color: #111827;
 }
 
 .account-summary-header .account-summary-cell {
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  font-size: clamp(0.65rem, 0.45vw + 0.55rem, 0.74rem);
+  font-size: 0.82rem;
   font-weight: 700;
   color: #4b5563;
 }
@@ -845,7 +845,7 @@
 .account-type-badge {
   padding: 4px 12px;
   border-radius: 20px;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -896,7 +896,7 @@
 
 .account-number {
   color: #6b7280;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   margin: 8px 0;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 }
@@ -911,7 +911,7 @@
 
 .account-type {
   color: #34495e;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   margin: 5px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
