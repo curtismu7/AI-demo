@@ -157,7 +157,7 @@
 }
 
 .scope-resource-card__meta code {
-  font-family: 'SF Mono', Monaco, monospace;
+  font-family: inherit;
   font-size: 0.72rem;
   background: var(--surface-elevated, #f1f5f9);
   padding: 0.1rem 0.35rem;
@@ -194,7 +194,7 @@
 }
 
 .scope-table__name {
-  font-family: 'SF Mono', Monaco, monospace;
+  font-family: inherit;
   font-size: 0.78rem;
   font-weight: 500;
 }
@@ -283,7 +283,7 @@
 
 .scope-audit-page__error-detail {
   font-size: 0.78rem;
-  font-family: 'SF Mono', Monaco, monospace;
+  font-family: inherit;
   background: #fef2f2;
   padding: 0.75rem;
   border-radius: 6px;

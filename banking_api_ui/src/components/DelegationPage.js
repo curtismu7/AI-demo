@@ -80,7 +80,7 @@ const S = {
   }),
   codeBlock: {
     background: '#0f172a', color: '#e2e8f0', borderRadius: 8,
-    padding: '16px 20px', fontSize: 12, fontFamily: 'monospace',
+    padding: '16px 20px', fontSize: 12, fontFamily: 'inherit',
     whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.7,
     overflowX: 'auto',
   },
@@ -106,7 +106,7 @@ const S = {
   infoPill: {
     display: 'inline-block', background: '#eff6ff', color: '#1d4ed8',
     fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-    fontFamily: 'monospace', marginRight: 4,
+    fontFamily: 'inherit', marginRight: 4,
   },
   claimKey: { color: '#7dd3fc', fontWeight: 700 },
   claimVal: { color: '#86efac' },
@@ -333,7 +333,7 @@ function LiveTokenChainPanel() {
                   <span style={{ fontSize: 11, color: '#9ca3af' }}>{evt.timestamp ? new Date(evt.timestamp).toLocaleTimeString() : ''}</span>
                 </div>
                 {evt.claims?.act && (
-                  <div style={{ fontSize: 12, color: '#374151', fontFamily: 'monospace' }}>
+                  <div style={{ fontSize: 12, color: '#374151', fontFamily: 'inherit' }}>
                     <span style={S.infoPill}>act.sub</span> {evt.claims.act.sub || '—'}
                   </div>
                 )}

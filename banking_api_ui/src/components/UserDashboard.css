@@ -787,7 +787,7 @@
 }
 
 .account-summary-cell--mono {
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-family: inherit;
 }
 
 .account-summary-cell--balance {
@@ -898,7 +898,7 @@
   color: #6b7280;
   font-size: 0.9rem;
   margin: 8px 0;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-family: inherit;
 }
 
 .balance {
@@ -1390,7 +1390,7 @@
 .transaction-amount {
   font-weight: 600;
   font-size: 0.875rem;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-family: inherit;
 }
 
 .transaction-amount.negative {
@@ -1426,7 +1426,7 @@
 .interface-icon {
   font-size: 1rem;
   font-weight: 600;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-family: inherit;
 }
 
 .interface-label {
@@ -1811,7 +1811,7 @@
   border: 1px solid #e1e5e9;
   border-radius: 6px;
   padding: 15px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: inherit;
   font-size: 11px;
   line-height: 1.4;
   color: #2c3e50;
@@ -1886,7 +1886,7 @@
   border: 1px solid #e1e5e9;
   border-radius: 6px;
   padding: 15px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: inherit;
   font-size: 0.85rem;
   line-height: 1.4;
   color: #2c3e50;
@@ -1900,7 +1900,7 @@
   border: 1px solid #e1e5e9;
   border-radius: 6px;
   padding: 12px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: inherit;
   font-size: 0.8rem;
   color: #2c3e50;
   word-break: break-all;
@@ -1913,7 +1913,7 @@
   border: 1px solid #bee5eb;
   border-radius: 6px;
   padding: 10px 15px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: inherit;
   font-size: 0.9rem;
   color: #0c5460;
   font-weight: 500;
@@ -2667,7 +2667,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   padding: 1px 5px;
   border-radius: 4px;
   color: var(--brand-dark-gray);
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: inherit;
   word-break: break-all;
 }
 
@@ -2947,7 +2947,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
 .ud-txn-amount {
   font-size: 0.9rem;
   font-weight: 700;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: inherit;
   white-space: nowrap;
   text-align: right;
   min-width: 80px;

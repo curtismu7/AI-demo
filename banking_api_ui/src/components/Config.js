@@ -1717,7 +1717,7 @@ export default function Config() {
                 Compare these against your PingOne app settings to diagnose login failures.
               </span>
             </div>
-            <div style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.8rem', display: 'grid', gap: '0.6rem' }}>
+            <div style={{ padding: '1rem', fontFamily: 'inherit', fontSize: '0.8rem', display: 'grid', gap: '0.6rem' }}>
               {[
                 { label: 'Environment ID',     value: redirectInfo.environmentId },
                 { label: 'Admin Client ID',    value: redirectInfo.adminClientId },
@@ -1885,7 +1885,7 @@ export default function Config() {
                     background: '#f3f4f6',
                     border: '1px solid #d1d5db',
                     borderRadius: '0.375rem',
-                    fontFamily: 'monospace',
+                    fontFamily: 'inherit',
                     fontSize: '0.875rem',
                   }}>
                     {hostname || 'Loading...'}
@@ -1909,7 +1909,7 @@ export default function Config() {
                       border: '1px solid ' + (hostnameError ? '#ef4444' : '#d1d5db'),
                       borderRadius: '0.375rem',
                       fontSize: '0.9rem',
-                      fontFamily: 'monospace',
+                      fontFamily: 'inherit',
                       opacity: hostnameLoading ? 0.5 : 1,
                     }}
                   />

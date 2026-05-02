@@ -1,4 +1,4 @@
-.tdp-root { padding: 16px; overflow-x: auto; font-family: var(--font-mono, monospace); }
+.tdp-root { padding: 16px; overflow-x: auto; font-family: inherit; }
 .tdp-title { font-size: 1rem; font-weight: 700; color: var(--brand-navy, #1a365d); margin-bottom: 12px; }
 .tdp-subtitle { font-size: 0.78rem; color: #64748b; margin-bottom: 16px; }
 .tdp-table { border-collapse: collapse; min-width: 600px; width: 100%; }

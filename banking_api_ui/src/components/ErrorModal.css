@@ -134,7 +134,7 @@
   overflow-x: auto;
   margin-top: 8px;
   color: #374151;
-  font-family: 'Monaco', 'Courier New', monospace;
+  font-family: inherit;
   max-height: 300px;
   overflow-y: auto;
 }

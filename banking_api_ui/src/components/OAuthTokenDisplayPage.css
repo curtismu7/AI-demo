@@ -174,7 +174,7 @@
 .otdp-claim-value {
   color: #1e293b;
   word-break: break-all;
-  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  font-family: inherit;
   font-size: 0.75rem;
 }
 
@@ -193,7 +193,7 @@
   border-radius: 4px;
   font-size: 0.6875rem;
   font-weight: 500;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: inherit;
 }
 
 .otdp-muted {
@@ -383,7 +383,7 @@
   max-height: 400px;
   overflow-y: auto;
   color: #334155;
-  font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+  font-family: inherit;
 }
 
 /* ── Wider scrollbar for JSON section ── */

@@ -179,7 +179,7 @@ const Login = () => {
           </div>
 
           {oauthDebug && (
-            <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '0.75rem', fontFamily: 'monospace', color: '#374151' }}>
+            <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '0.75rem', fontFamily: 'inherit', color: '#374151' }}>
               <div><strong>env_id:</strong> {oauthDebug.environmentId || 'MISSING'}</div>
               <div><strong>admin_client_id:</strong> {oauthDebug.adminClientId || 'MISSING'}</div>
               <div><strong>user_client_id:</strong> {oauthDebug.userClientId || 'MISSING'}</div>

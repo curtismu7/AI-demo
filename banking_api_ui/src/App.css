@@ -1119,7 +1119,7 @@
   color: #0369a1;
 }
 .otp-step-up-modal__rfc-detail code {
-  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-family: inherit;
   background: #e0f2fe;
   padding: 1px 4px;
   border-radius: 3px;

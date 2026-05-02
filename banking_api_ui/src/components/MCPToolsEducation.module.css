@@ -176,7 +176,7 @@
   border-radius: 12px;
   padding: 2px 8px;
   font-size: 11px;
-  font-family: 'Monaco', 'Courier New', monospace;
+  font-family: inherit;
 }
 
 .noScopes {
@@ -205,7 +205,7 @@
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 11px;
-  font-family: 'Monaco', 'Courier New', monospace;
+  font-family: inherit;
 }
 
 .required {
@@ -271,6 +271,6 @@
   line-height: 1.6;
   overflow-x: auto;
   white-space: pre;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-family: inherit;
   border: 1px solid #2d4a5e;
 }

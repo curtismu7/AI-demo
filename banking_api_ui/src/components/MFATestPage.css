@@ -197,7 +197,7 @@
 }
 
 .config-value {
-	font-family: monospace;
+	font-family: inherit;
 	color: #333;
 }
 
@@ -301,7 +301,7 @@
 	border: 2.5px solid #6c757d;
 	border-radius: 6px;
 	font-size: 1.15rem;
-	font-family: monospace;
+	font-family: inherit;
 	letter-spacing: 0.35rem;
 	transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -344,7 +344,7 @@
 }
 
 .device-id {
-	font-family: monospace;
+	font-family: inherit;
 	font-size: 0.875rem;
 	color: #666;
 }
@@ -489,7 +489,7 @@
 }
 
 .da-value {
-	font-family: monospace;
+	font-family: inherit;
 	font-size: 0.78rem;
 	color: #1e293b;
 	word-break: break-all;
@@ -542,7 +542,7 @@
 
 .device-meta {
 	color: #94a3b8;
-	font-family: monospace;
+	font-family: inherit;
 	font-size: 0.72rem;
 }
 

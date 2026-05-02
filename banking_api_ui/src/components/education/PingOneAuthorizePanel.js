@@ -139,7 +139,7 @@ function RecentDecisionsViewer() {
         {evalStatus && (
           <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px' }}>
             <dt style={{ color: '#64748b' }}>activeEngine</dt>
-            <dd style={{ margin: 0, fontFamily: 'monospace' }}>{evalStatus.activeEngine}</dd>
+            <dd style={{ margin: 0, fontFamily: 'inherit' }}>{evalStatus.activeEngine}</dd>
             <dt style={{ color: '#64748b' }}>authorize enabled</dt>
             <dd style={{ margin: 0 }}>{String(evalStatus.authorizeEnabledConfig)}</dd>
             <dt style={{ color: '#64748b' }}>simulated mode</dt>
@@ -312,7 +312,7 @@ function AuthorizePolicyEducationDiagram() {
         <text x="210" y="34" textAnchor="middle" fill="#f8fafc" fontSize="13" fontFamily="system-ui, Segoe UI, sans-serif" fontWeight="600">
           Access token
         </text>
-        <text x="210" y="50" textAnchor="middle" fill="#94a3b8" fontSize="10" fontFamily="ui-monospace, SFMono-Regular, monospace">
+        <text x="210" y="50" textAnchor="middle" fill="#94a3b8" fontSize="10" fontFamily="inherit">
           validated (JWKS / introspection)
         </text>
 
@@ -462,19 +462,19 @@ export default function PingOneAuthorizePanel({ isOpen, onClose, initialTabId })
             <tbody>
               <tr>
                 <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb' }}>Phase 2</td>
-                <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', fontFamily: 'monospace', fontSize: '0.75rem' }}>/decisionEndpoints/{'{endpointId}'}</td>
+                <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', fontFamily: 'inherit', fontSize: '0.75rem' }}>/decisionEndpoints/{'{endpointId}'}</td>
                 <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb' }}><code>authorize_decision_endpoint_id</code></td>
                 <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', color: '#15803d', fontWeight: 700 }}>✅ Preferred</td>
               </tr>
               <tr>
                 <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb' }}>Phase 1</td>
-                <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', fontFamily: 'monospace', fontSize: '0.75rem' }}>/governance/policyDecisionPoints/{'{policyId}'}/evaluate</td>
+                <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', fontFamily: 'inherit', fontSize: '0.75rem' }}>/governance/policyDecisionPoints/{'{policyId}'}/evaluate</td>
                 <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb' }}><code>authorize_policy_id</code></td>
                 <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', color: '#b45309' }}>⚠️ Legacy fallback</td>
               </tr>
               <tr>
                 <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb' }}>Phase 2 — MCP</td>
-                <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', fontFamily: 'monospace', fontSize: '0.75rem' }}>/decisionEndpoints/{'{endpointId}'}</td>
+                <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', fontFamily: 'inherit', fontSize: '0.75rem' }}>/decisionEndpoints/{'{endpointId}'}</td>
                 <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb' }}><code>authorize_mcp_decision_endpoint_id</code></td>
                 <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', color: '#0369a1' }}>Optional — first MCP tool</td>
               </tr>
@@ -615,7 +615,7 @@ export default function PingOneAuthorizePanel({ isOpen, onClose, initialTabId })
                 ['Acr', 'End-user ACR when available (step-up)'],
               ].map(([param, role]) => (
                 <tr key={param}>
-                  <td style={{ padding: '6px 8px', border: '1px solid #e2e8f0', fontFamily: 'monospace', fontWeight: 600 }}>{param}</td>
+                  <td style={{ padding: '6px 8px', border: '1px solid #e2e8f0', fontFamily: 'inherit', fontWeight: 600 }}>{param}</td>
                   <td style={{ padding: '6px 8px', border: '1px solid #e2e8f0', color: '#334155' }}>{role}</td>
                 </tr>
               ))}
@@ -662,7 +662,7 @@ export default function PingOneAuthorizePanel({ isOpen, onClose, initialTabId })
                 ['BFF_CLIENT_ID + REQUIRE_MAY_ACT=true', 'Optional — require may_act.client_id to match BFF after exchange.'],
               ].map(([v, p]) => (
                 <tr key={v}>
-                  <td style={{ padding: '6px 8px', border: '1px solid #d1fae5', fontFamily: 'monospace', fontWeight: 600, verticalAlign: 'top' }}>{v}</td>
+                  <td style={{ padding: '6px 8px', border: '1px solid #d1fae5', fontFamily: 'inherit', fontWeight: 600, verticalAlign: 'top' }}>{v}</td>
                   <td style={{ padding: '6px 8px', border: '1px solid #d1fae5', color: '#334155', verticalAlign: 'top' }}>{p}</td>
                 </tr>
               ))}

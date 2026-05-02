@@ -167,7 +167,7 @@
 .audit-entry__timestamp {
   font-size: 12px;
   color: #6b7280;
-  font-family: 'Monaco', 'Courier New', monospace;
+  font-family: inherit;
 }
 
 .audit-entry__code {

@@ -63,7 +63,7 @@ function OverviewTab() {
             ['exp', 'Expiration timestamp'],
           ].map(([field, desc], i) => (
             <tr key={field} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 ? '#f9fafb' : 'white' }}>
-              <td style={{ padding: '6px', fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600 }}>{field}</td>
+              <td style={{ padding: '6px', fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 600 }}>{field}</td>
               <td style={{ padding: '6px' }}>{desc}</td>
             </tr>
           ))}

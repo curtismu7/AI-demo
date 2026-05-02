@@ -419,7 +419,7 @@
 
 .afd-token-user {
   color: #999999;
-  font-family: monospace;
+  font-family: inherit;
   font-size: 0.65rem;
 }
 
@@ -581,7 +581,7 @@
   color: #334155;
   overflow-x: auto;
   white-space: pre;
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-family: inherit;
   max-height: 200px;
   overflow-y: auto;
 }

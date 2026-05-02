@@ -697,7 +697,7 @@
   font-size: 0.76rem;
   color: #86efac;
   white-space: pre-wrap;
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-family: inherit;
 }
 
 .da-actpanel__pills {
@@ -1012,7 +1012,7 @@
   font-size: 0.75rem;
   font-weight: 700;
   padding: 3px 10px;
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: inherit;
   width: fit-content;
 }
 
@@ -1025,7 +1025,7 @@
   color: #86efac;
   white-space: pre-wrap;
   word-break: break-all;
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-family: inherit;
   line-height: 1.55;
   margin: 0;
   max-height: 260px;
@@ -1089,14 +1089,14 @@
 .da-sim-claim__key {
   color: #93c5fd;
   font-weight: 700;
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: inherit;
   white-space: nowrap;
   flex-shrink: 0;
 }
 .da-sim-claim__sep { color: #666666; flex-shrink: 0; }
 .da-sim-claim__val {
   color: #DDDDDD;
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: inherit;
   word-break: break-all;
 }
 

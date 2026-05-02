@@ -37,7 +37,7 @@ function DirBadge({ dir }) {
     <span style={{
       display: 'inline-block', padding: '2px 7px', borderRadius: '4px',
       fontSize: '0.7rem', fontWeight: 700, backgroundColor: s.bg, color: s.color,
-      fontFamily: 'monospace', whiteSpace: 'nowrap',
+      fontFamily: 'inherit', whiteSpace: 'nowrap',
     }}>
       {dir}
     </span>
@@ -52,7 +52,7 @@ function TypeBadge({ type, ok }) {
       fontSize: '0.68rem', fontWeight: 600,
       backgroundColor: isErr ? '#fee2e2' : '#f1f5f9',
       color: isErr ? '#991b1b' : '#475569',
-      fontFamily: 'monospace', whiteSpace: 'nowrap',
+      fontFamily: 'inherit', whiteSpace: 'nowrap',
     }}>
       {TYPE_LABEL[type] || type}
     </span>
@@ -72,11 +72,11 @@ function EntryRow({ entry, idx, isSelected, onClick }) {
       fontSize: '0.82rem', cursor: 'pointer',
       outline: isSelected ? '2px solid #3b82f6' : 'none', outlineOffset: '-2px',
     }}>
-      <td style={{ padding: '5px 8px', fontFamily: 'monospace', color: 'var(--text-muted,#64748b)', whiteSpace: 'nowrap' }}>{ts}</td>
+      <td style={{ padding: '5px 8px', fontFamily: 'inherit', color: 'var(--text-muted,#64748b)', whiteSpace: 'nowrap' }}>{ts}</td>
       <td style={{ padding: '5px 8px', whiteSpace: 'nowrap' }}><DirBadge dir={entry.dir} /></td>
       <td style={{ padding: '5px 8px', whiteSpace: 'nowrap' }}><TypeBadge type={entry.type} ok={entry.ok} /></td>
-      <td style={{ padding: '5px 8px', fontFamily: 'monospace', color: 'var(--text-secondary,#475569)', whiteSpace: 'nowrap' }}>{entry.method || '—'}</td>
-      <td style={{ padding: '5px 8px', fontFamily: 'monospace', color: 'var(--text-secondary,#475569)', whiteSpace: 'nowrap' }}>{entry.tool || '—'}</td>
+      <td style={{ padding: '5px 8px', fontFamily: 'inherit', color: 'var(--text-secondary,#475569)', whiteSpace: 'nowrap' }}>{entry.method || '—'}</td>
+      <td style={{ padding: '5px 8px', fontFamily: 'inherit', color: 'var(--text-secondary,#475569)', whiteSpace: 'nowrap' }}>{entry.tool || '—'}</td>
       <td style={{ padding: '5px 8px', color: 'var(--text-muted,#64748b)', whiteSpace: 'nowrap' }}>{entry.durationMs != null ? `${entry.durationMs}ms` : '—'}</td>
       <td style={{ padding: '5px 10px', color: isErr ? '#991b1b' : 'var(--text-primary,#1e293b)', maxWidth: '380px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={entry.summary}>
         {entry.summary || '—'}
@@ -105,7 +105,7 @@ function JsonBlock({ obj }) {
       <pre style={{
         margin: 0, padding: '10px', background: '#f8fafc', borderRadius: '6px',
         border: '1px solid #e2e8f0', fontSize: '0.75rem', lineHeight: 1.6,
-        color: '#1e293b', fontFamily: "'Courier New', monospace",
+        color: '#1e293b', fontFamily: "inherit",
         overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
         maxHeight: '480px', overflowY: 'auto',
       }}>{json}</pre>
@@ -120,7 +120,7 @@ function MetaTable({ data }) {
         {Object.entries(data).map(([k, v]) => (
           <tr key={k} style={{ borderBottom: '1px solid #f1f5f9' }}>
             <td style={{ padding: '4px 6px', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', verticalAlign: 'top', width: '38%' }}>{k}</td>
-            <td style={{ padding: '4px 6px', fontFamily: 'monospace', color: '#1e293b', wordBreak: 'break-all' }}>
+            <td style={{ padding: '4px 6px', fontFamily: 'inherit', color: '#1e293b', wordBreak: 'break-all' }}>
               {typeof v === 'boolean'
                 ? <span style={{ color: v ? '#15803d' : '#991b1b', fontWeight: 600 }}>{String(v)}</span>
                 : String(v)}
@@ -182,7 +182,7 @@ function DetailPanel({ entry, onClose }) {
         <DirBadge dir={entry.dir} />
         <TypeBadge type={entry.type} ok={entry.ok} />
         {entry.durationMs != null && (
-          <span style={{ fontSize: '0.74rem', color: '#64748b', fontFamily: 'monospace' }}>{entry.durationMs}ms</span>
+          <span style={{ fontSize: '0.74rem', color: '#64748b', fontFamily: 'inherit' }}>{entry.durationMs}ms</span>
         )}
         <button type="button" onClick={onClose} style={{
           marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
@@ -221,7 +221,7 @@ function ToolCard({ tool }) {
       }}>
         <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '3px' }}>{open ? '▾' : '▸'}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.88rem', color: '#1d4ed8' }}>{tool.name}</div>
+          <div style={{ fontFamily: 'inherit', fontWeight: 700, fontSize: '0.88rem', color: '#1d4ed8' }}>{tool.name}</div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary,#475569)', marginTop: '2px', lineHeight: 1.4 }}>{tool.description || '—'}</div>
         </div>
         <span style={{
@@ -236,10 +236,10 @@ function ToolCard({ tool }) {
             <tbody>
               {Object.entries(params).map(([name, schema]) => (
                 <tr key={name} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '4px 6px', fontFamily: 'monospace', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                  <td style={{ padding: '4px 6px', fontFamily: 'inherit', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
                     {name}{required.includes(name) && <span style={{ color: '#ef4444', marginLeft: '2px' }}>*</span>}
                   </td>
-                  <td style={{ padding: '4px 6px', color: '#7c3aed', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{schema.type || 'any'}</td>
+                  <td style={{ padding: '4px 6px', color: '#7c3aed', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>{schema.type || 'any'}</td>
                   <td style={{ padding: '4px 6px', color: '#64748b' }}>{schema.description || ''}</td>
                 </tr>
               ))}
@@ -283,7 +283,17 @@ function McpToolsPanel() {
           });
           const mfaData = await mfaRes.json();
           setStepUpDaId(mfaData.daId || null);
-          setStepUpDevices(mfaData.devices || []);
+          let challengeDevices = mfaData.devices || [];
+          // PingOne sometimes returns empty _embedded.devices in the challenge response.
+          // Fall back to the Management API device list so the picker always has options.
+          if (challengeDevices.length === 0) {
+            try {
+              const devRes = await fetch('/api/auth/mfa/devices', { credentials: 'include' });
+              const devData = await devRes.json();
+              challengeDevices = devData.devices || [];
+            } catch (_) { /* non-fatal */ }
+          }
+          setStepUpDevices(challengeDevices);
         } catch (_) {
           setStepUpDaId(null);
           setStepUpDevices([]);
@@ -472,13 +482,7 @@ function McpToolsPanel() {
         mode={stepUpMethod === 'p1mfa' ? 'p1mfa' : 'stub'}
         daId={stepUpDaId}
         devices={stepUpDevices}
-        contextLine={
-          devCode
-            ? `⚠️ Dev mode: email/SMS not configured. Your code: ${devCode}`
-            : otpDeliveryMethod === 'sms'
-              ? 'Check your phone — a verification code was sent via SMS.'
-              : 'Check your email — a verification code was sent. If not received, check server logs.'
-        }
+        contextLine="Select a verification method to view MCP tools."
         maskedContact={maskedContact}
         onSubmit={handleOtpSubmit}
         onCancel={() => setShowStepUp(false)}
@@ -537,7 +541,7 @@ export default function McpTrafficPage() {
           <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary,#1e293b)' }}>
             🔌 MCP Traffic
           </h1>
-          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted,#64748b)', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted,#64748b)', fontFamily: 'inherit' }}>
             {entries.length} entries{logFile ? ` · ${logFile}` : ''}
           </span>
           {!selected && entries.length > 0 && (

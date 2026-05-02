@@ -7,7 +7,7 @@ import { EduImplIntro, SNIP_PAR_MOCK } from './educationImplementationSnippets';
 const Code = ({ children }) => (
   <code style={{
     display: 'block', background: 'var(--code-bg, #f1f5f9)', borderRadius: 6,
-    padding: '0.75rem 1rem', fontFamily: 'monospace', fontSize: '0.78rem',
+    padding: '0.75rem 1rem', fontFamily: 'inherit', fontSize: '0.78rem',
     whiteSpace: 'pre', overflowX: 'auto', margin: '0.5rem 0',
   }}>{children}</code>
 );

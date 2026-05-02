@@ -257,7 +257,7 @@
   background: var(--brand-light-gray);
   border: 1px solid #DDDDDD;
   color: #666666;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family: inherit;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -581,7 +581,7 @@
   font-size: 11px;
   font-weight: 500;
   opacity: 0.85;
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: inherit;
   white-space: nowrap;
 }
 
@@ -599,7 +599,7 @@
   background: #0f172a;
   color: #DDDDDD;
   font-size: 12px;
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-family: inherit;
   padding: 8px 10px;
   margin: 0;
   white-space: pre-wrap;
@@ -612,7 +612,7 @@
 
 .tcd-edu-detail {
   font-size: 12px;
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: inherit;
   background: rgba(0,0,0,0.05);
   padding: 3px 6px;
   border-radius: 4px;
@@ -646,7 +646,7 @@
 }
 
 .tcd-edu-na-rfc-tag {
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: inherit;
   font-size: 11px;
   font-weight: 600;
   color: #4b5563;
@@ -721,7 +721,7 @@
   margin: 0;
   padding: 10px 14px;
   font-size: 14px;
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-family: inherit;
   color: #161616;
   white-space: pre-wrap;
   word-break: break-word;
@@ -733,7 +733,7 @@
 pre.tcd-jwt-dump {
   margin: 0;
   padding: 10px 14px;
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-family: inherit;
   font-size: 0.78rem;
   line-height: 1.5;
   white-space: pre-wrap;
@@ -814,7 +814,7 @@ pre.tcd-jwt-dump {
 
 .tcd-claim-val {
   font-size: 14px;
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-family: inherit;
   color: #e2e8f0;
   margin: 0;
   white-space: pre-wrap;
@@ -1343,7 +1343,7 @@ pre.tcd-jwt-dump {
   align-items: baseline;
   gap: 3px;
   font-size: 0.8rem;
-  font-family: monospace;
+  font-family: inherit;
 }
 .tcd-cs-key { color: #94a3b8; font-weight: 700; }
 .tcd-cs-key::after { content: ':'; }
@@ -1374,7 +1374,7 @@ pre.tcd-jwt-dump {
 .tcd-exc-banner--teal  .tcd-exc-badge { color: #5eead4; }
 .tcd-exc-banner--blue  .tcd-exc-badge { color: #93c5fd; }
 .tcd-exc-banner--slate .tcd-exc-badge { color: #94a3b8; }
-.tcd-exc-desc { font-size: 0.69rem; color: #999999; font-family: monospace; }
+.tcd-exc-desc { font-size: 0.69rem; color: #999999; font-family: inherit; }
 
 /* Empty state — shown when signed-in user has no token chain events yet */
 .tcd-empty-state {
@@ -1448,7 +1448,7 @@ pre.tcd-jwt-dump {
 }
 
 .tcd-mcp-result-tool {
-  font-family: 'Courier New', monospace;
+  font-family: inherit;
   color: var(--brand-navy);
   font-weight: 700;
   padding: 2px 8px;
@@ -1508,7 +1508,7 @@ pre.tcd-jwt-dump {
   border-radius: 6px;
   padding: 10px;
   font-size: 0.75rem;
-  font-family: 'Courier New', monospace;
+  font-family: inherit;
   overflow-x: auto;
   max-height: 400px;
   overflow-y: auto;
@@ -1532,7 +1532,7 @@ pre.tcd-jwt-dump {
   gap: 4px;
   justify-content: center;
   flex-wrap: wrap;
-  font-family: monospace;
+  font-family: inherit;
   font-size: 0.68rem;
   color: #64748b;
   margin-top: 3px;
@@ -1541,7 +1541,7 @@ pre.tcd-jwt-dump {
 .tcd-rfc-link {
   color: #1e3a5f;
   font-size: 0.68rem;
-  font-family: monospace;
+  font-family: inherit;
   text-decoration: none;
   font-weight: 600;
 }
@@ -1553,5 +1553,5 @@ pre.tcd-jwt-dump {
 .tcd-aud-label {
   color: #64748b;
   font-size: 0.68rem;
-  font-family: monospace;
+  font-family: inherit;
 }

@@ -682,7 +682,7 @@ const Dashboard = ({ user, onLogout }) => {
                         {log.action}
                       </span>
                     </td>
-                    <td style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                    <td style={{ fontFamily: 'inherit', fontSize: '0.875rem' }}>
                       {log.endpoint}
                     </td>
                     <td>
@@ -840,7 +840,7 @@ const Dashboard = ({ user, onLogout }) => {
                           border: '1px solid #e1e5e9',
                           borderRadius: '6px',
                           padding: '15px',
-                          fontFamily: "'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
+                          fontFamily: "inherit",
                           fontSize: '0.85rem',
                           lineHeight: '1.4',
                           color: '#2c3e50',
@@ -907,7 +907,7 @@ const Dashboard = ({ user, onLogout }) => {
                           border: '1px solid #e1e5e9',
                           borderRadius: '6px',
                           padding: '15px',
-                          fontFamily: "'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
+                          fontFamily: "inherit",
                           fontSize: '0.85rem',
                           lineHeight: '1.4',
                           color: '#2c3e50',
@@ -938,7 +938,7 @@ const Dashboard = ({ user, onLogout }) => {
                           border: '1px solid #e1e5e9',
                           borderRadius: '6px',
                           padding: '15px',
-                          fontFamily: "'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
+                          fontFamily: "inherit",
                           fontSize: '11px',
                           lineHeight: '1.4',
                           color: '#2c3e50',

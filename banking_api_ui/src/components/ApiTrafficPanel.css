@@ -372,11 +372,11 @@
   display: block;
   word-break: break-all;
   line-height: 1.45;
-  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', ui-monospace, monospace;
+  font-family: inherit;
 }
 
 .api-detail-summary-mono {
-  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', ui-monospace, monospace;
+  font-family: inherit;
   font-size: 14px;
   color: #999999;
 }
@@ -396,7 +396,7 @@
 pre.api-json {
   margin: 0;
   font-size: 15px;
-  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', ui-monospace, monospace;
+  font-family: inherit;
   color: var(--brand-dark-gray);
   white-space: pre-wrap;
   word-break: break-all;
@@ -414,7 +414,7 @@ pre.api-json {
   grid-template-columns: auto 1fr;
   gap: 4px 14px;
   font-size: 15px;
-  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', ui-monospace, monospace;
+  font-family: inherit;
 }
 .api-detail-kv-key   { color: var(--brand-navy); padding: 2px 0; white-space: nowrap; }
 .api-detail-kv-val   { color: var(--brand-dark-gray); padding: 2px 0; word-break: break-all; }
@@ -468,7 +468,7 @@ pre.api-json {
 .api-token-event-alg {
   font-size: 12px;
   color: #94a3b8;
-  font-family: monospace;
+  font-family: inherit;
   margin-left: auto;
 }
 .api-token-event-rfc {
@@ -530,11 +530,11 @@ pre.api-json {
 }
 .api-claims-td--claim code {
   color: #a5b4fc;
-  font-family: 'Fira Mono', 'Courier New', monospace;
+  font-family: inherit;
 }
 .api-claims-td--value .api-claims-val {
   color: #e5e7eb;
-  font-family: 'Fira Mono', 'Courier New', monospace;
+  font-family: inherit;
   word-break: break-all;
 }
 .api-claims-td--rfc .api-claims-rfc-ref {

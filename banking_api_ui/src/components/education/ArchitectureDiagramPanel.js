@@ -96,7 +96,7 @@ function ContainerTab() {
             ['PingOne', 'Cloud service', 'OAuth 2.0 AS, OIDC, Management API, MFA'],
           ].map(([name, tech, role], i) => (
             <tr key={name} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 ? '#f9fafb' : 'white' }}>
-              <td style={{ padding: '6px', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.8rem' }}>{name}</td>
+              <td style={{ padding: '6px', fontWeight: 600, fontFamily: 'inherit', fontSize: '0.8rem' }}>{name}</td>
               <td style={{ padding: '6px' }}>{tech}</td>
               <td style={{ padding: '6px' }}>{role}</td>
             </tr>
@@ -204,7 +204,7 @@ function CodeTab() {
             ['dataStore.js', 'In-memory demo data — accounts, transactions, users'],
           ].map(([svc, purpose], i) => (
             <tr key={svc} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 ? '#f9fafb' : 'white' }}>
-              <td style={{ padding: '6px', fontFamily: 'monospace', fontSize: '0.75rem', fontWeight: 600 }}>{svc}</td>
+              <td style={{ padding: '6px', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600 }}>{svc}</td>
               <td style={{ padding: '6px' }}>{purpose}</td>
             </tr>
           ))}

@@ -164,7 +164,7 @@
 .oidt-milestone-time {
   font-size: 11px;
   color: var(--app-text-secondary, #999999);
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-family: inherit;
   white-space: nowrap;
 }
 
@@ -197,7 +197,7 @@
   background: var(--app-bg-secondary, #f5f5f5);
   padding: 2px 4px;
   border-radius: 3px;
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-family: inherit;
   font-size: 12px;
   color: var(--app-text-primary, #1a1a1a);
 }
@@ -378,7 +378,7 @@
 .tsi-detail-header { align-items: center; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
 .tsi-detail-key { color: #888; min-width: 54px; font-weight: 500; }
 .tsi-detail-val { color: #222; word-break: break-all; }
-.tsi-detail-val code, code.tsi-detail-val { font-family: 'Monaco','Menlo',monospace; background: #f5f5f5; padding: 1px 3px; border-radius: 3px; }
+.tsi-detail-val code, code.tsi-detail-val { font-family: inherit; background: #f5f5f5; padding: 1px 3px; border-radius: 3px; }
 .tsi-expired { color: #dc2626; font-weight: 600; }
 .tsi-badge { padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; background: #e0e8ff; color: #1e3a8a; }
 .tsi-close { position: absolute; top: 6px; right: 8px; background: none; border: none; cursor: pointer; font-size: 16px; color: #999; }
@@ -394,8 +394,8 @@
 }
 .boi-compact-row:hover { background: #f0f4ff; }
 .boi-icon { flex-shrink: 0; }
-.boi-method { font-weight: 700; font-family: 'Monaco','Menlo',monospace; flex-shrink: 0; }
-.boi-endpoint { font-family: 'Monaco','Menlo',monospace; color: #374151; }
+.boi-method { font-weight: 700; font-family: inherit; flex-shrink: 0; }
+.boi-endpoint { font-family: inherit; color: #374151; }
 .boi-status-icon { font-weight: 700; }
 .boi-duration { color: #6b7280; margin-left: 4px; }
 .boi-spin { animation: oidt-spin 1s linear infinite; }
@@ -410,7 +410,7 @@
 .boi-detail-row { display: flex; gap: 8px; margin-bottom: 4px; align-items: flex-start; }
 .boi-detail-key { color: #6b7280; min-width: 80px; font-weight: 500; flex-shrink: 0; }
 .boi-detail-val { color: #111; word-break: break-all; }
-code.boi-detail-val { font-family: 'Monaco','Menlo',monospace; background: #f5f5f5; padding: 1px 4px; border-radius: 3px; }
+code.boi-detail-val { font-family: inherit; background: #f5f5f5; padding: 1px 4px; border-radius: 3px; }
 .boi-response-body { font-size: 11px; opacity: 0.85; }
 .boi-detail-error .boi-detail-val { color: #dc2626; font-weight: 600; }
 .boi-http-2xx { color: #16a34a; font-weight: 700; }

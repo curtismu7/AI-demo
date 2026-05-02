@@ -95,7 +95,7 @@ export default function TokenFlowPanel({ isOpen, onClose, initialTabId }) {
                 <tr key={n} style={{ background: n % 2 === 0 ? '#0f172a' : '#1e293b' }}>
                   <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>{n}</td>
                   <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#e2e8f0', fontWeight: 500 }}>{name}</td>
-                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'monospace', fontSize: 11 }}>{aud}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'inherit', fontSize: 11 }}>{aud}</td>
                   <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>{use}</td>
                 </tr>
               ))}
@@ -222,9 +222,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
                 ['https://resource-server.pingdemo.com', 'Final MCP Token audience', 'PINGONE_RESOURCE_SERVER_URI / MCP_RESOURCE_SERVER_URI'],
               ].map(([uri, use, env]) => (
                 <tr key={uri}>
-                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'monospace', fontSize: 11 }}>{uri}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'inherit', fontSize: 11 }}>{uri}</td>
                   <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>{use}</td>
-                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#a3e635', fontFamily: 'monospace', fontSize: 11 }}>{env}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#a3e635', fontFamily: 'inherit', fontSize: 11 }}>{env}</td>
                 </tr>
               ))}
             </tbody>
@@ -249,7 +249,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
                 ['admin:read admin:write users:read users:manage', 'admin tools', 'Worker app scopes — separate flow'],
               ].map(([scope, tools, notes]) => (
                 <tr key={scope}>
-                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#a3e635', fontFamily: 'monospace', fontSize: 11 }}>{scope}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#a3e635', fontFamily: 'inherit', fontSize: 11 }}>{scope}</td>
                   <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8', fontSize: 12 }}>{tools}</td>
                   <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#64748b', fontSize: 12 }}>{notes}</td>
                 </tr>
@@ -312,13 +312,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
             </thead>
             <tbody>
               <tr>
-                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'monospace' }}>may_act</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'inherit' }}>may_act</td>
                 <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>§ 4.3</td>
                 <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>Forward-looking</td>
                 <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>User pre-approves who may exchange this token</td>
               </tr>
               <tr>
-                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'monospace' }}>act</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'inherit' }}>act</td>
                 <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>§ 4.2</td>
                 <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>Retrospective</td>
                 <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>Records who actually exercised delegation (audit trail)</td>
@@ -455,7 +455,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
                           border: '1px solid #1e293b',
                           borderLeft: `4px solid ${color}`,
                           color: '#64748b',
-                          fontFamily: 'monospace',
+                          fontFamily: 'inherit',
                           whiteSpace: 'nowrap',
                           verticalAlign: 'top',
                         }}>
@@ -465,7 +465,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
                           padding: '6px 12px',
                           border: '1px solid #1e293b',
                           color: '#e2e8f0',
-                          fontFamily: value.startsWith('{') || value.includes('→') ? 'monospace' : 'inherit',
+                          fontFamily: value.startsWith('{') || value.includes('→') ? 'inherit' : 'inherit',
                           fontSize: value.startsWith('{') ? '0.72rem' : 'inherit',
                           lineHeight: 1.5,
                         }}>

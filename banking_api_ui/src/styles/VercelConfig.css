@@ -47,7 +47,7 @@
 }
 
 .vc-tab__key {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: inherit;
   font-size: 0.8rem;
   color: #374151;
   white-space: nowrap;
@@ -62,7 +62,7 @@
   width: 100%;
   max-width: 420px;
   min-width: 180px;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: inherit;
 }
 
 .vc-tab__input:focus {

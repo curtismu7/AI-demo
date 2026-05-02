@@ -10,11 +10,11 @@
 .iad-arrow-line { width: 100%; height: 2px; background: #94a3b8; }
 .iad-arrow-head { font-size: 1rem; color: #94a3b8; line-height: 1; margin-top: -2px; }
 .iad-arrow-label { font-size: 0.63rem; color: #374151; text-align: center; max-width: 110px; line-height: 1.3; margin-top: 4px; }
-.iad-arrow-claim { font-size: 0.6rem; font-family: monospace; color: #6b7280; display: block; }
+.iad-arrow-claim { font-size: 0.6rem; font-family: inherit; color: #6b7280; display: block; }
 .iad-arrow--active .iad-arrow-line { background: #2563eb; }
 .iad-arrow--active .iad-arrow-head { color: #2563eb; }
 
-.iad-claim-popup { display: none; position: absolute; z-index: 200; background: #1e293b; color: #e2e8f0; padding: 10px 12px; border-radius: 6px; font-size: 0.7rem; font-family: monospace; min-width: 200px; white-space: pre; line-height: 1.6; bottom: 110%; left: 50%; transform: translateX(-50%); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+.iad-claim-popup { display: none; position: absolute; z-index: 200; background: #1e293b; color: #e2e8f0; padding: 10px 12px; border-radius: 6px; font-size: 0.7rem; font-family: inherit; min-width: 200px; white-space: pre; line-height: 1.6; bottom: 110%; left: 50%; transform: translateX(-50%); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
 .iad-arrow-wrapper:hover .iad-claim-popup { display: block; }
 
 .iad-node { border: 2px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; min-width: 100px; max-width: 130px; text-align: center; background: #fff; cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; }

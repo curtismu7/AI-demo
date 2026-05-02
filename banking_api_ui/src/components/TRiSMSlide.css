@@ -87,7 +87,7 @@
 }
 
 .trism-feature-component {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: inherit;
   font-size: 12px;
   color: #6b7280;
   background: #f3f4f6;

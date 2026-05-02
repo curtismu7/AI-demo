@@ -553,7 +553,7 @@
   background: #f1f5f9;
   padding: 2px 6px;
   border-radius: 3px;
-  font-family: 'Monaco', 'Courier New', monospace;
+  font-family: inherit;
   color: #1d4ed8;
   font-size: 11px;
 }
@@ -595,7 +595,7 @@
 .utfi-claim-value {
   color: #1e293b;
   word-break: break-word;
-  font-family: 'Monaco', 'Courier New', monospace;
+  font-family: inherit;
   font-size: 12px;
 }
 
@@ -667,7 +667,7 @@
   background: #f8fafc;
   border-radius: 4px;
   border: 1px solid #e5e7eb;
-  font-family: 'Monaco', 'Courier New', monospace;
+  font-family: inherit;
   font-size: 12px;
   color: #1e293b;
   max-height: 300px;
@@ -877,7 +877,7 @@
 .utfi-event-time {
   font-size: 0.75rem;
   color: #374151;
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: inherit;
 }
 
 .utfi-event-status {
@@ -943,7 +943,7 @@
 
 .utfi-event-value {
   color: #333;
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: inherit;
   word-break: break-all;
   flex: 1;
 }
@@ -972,7 +972,7 @@
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 0.75rem;
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: inherit;
   white-space: nowrap;
 }
 
@@ -999,7 +999,7 @@
   padding: 1px 4px;
   border-radius: 3px;
   font-size: 0.7rem;
-  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-family: inherit;
 }
 
 /* RFC inline hints inside Authorization section */
@@ -1041,7 +1041,7 @@
 }
 .utfi-act-chain-value {
   display: block;
-  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-family: inherit;
   font-size: 0.68rem;
   background: #f0fdfa;
   border: 1px solid #99f6e4;
@@ -1073,7 +1073,7 @@
   padding: 1px 4px;
   border-radius: 3px;
   font-size: 0.68rem;
-  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-family: inherit;
 }
 
 /* Ready-state RFC hint (non-compact) */
@@ -1108,7 +1108,7 @@
   padding: 1px 4px;
   border-radius: 3px;
   font-size: 0.68rem;
-  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-family: inherit;
 }
 .utfi-primer-rfc {
   flex-shrink: 0;
@@ -1118,5 +1118,5 @@
   color: #1d4ed8;
   padding: 1px 5px;
   border-radius: 3px;
-  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-family: inherit;
 }

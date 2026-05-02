@@ -344,7 +344,7 @@
 .account-card__account-number {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  font-family: var(--font-family-mono);
+  font-family: inherit;
 }
 
 .account-card__actions {
@@ -397,7 +397,7 @@
 
 .account-card__detail-value {
   color: var(--color-text-primary);
-  font-family: var(--font-family-mono);
+  font-family: inherit;
 }
 
 /* Account List View */
@@ -454,7 +454,7 @@
 .account-list-item__number {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  font-family: var(--font-family-mono);
+  font-family: inherit;
 }
 
 .account-list-item__balance {
@@ -520,7 +520,7 @@
 
 .account-list-item__detail-item span:last-child {
   color: var(--color-text-primary);
-  font-family: var(--font-family-mono);
+  font-family: inherit;
 }
 
 /* Distribution Chart */

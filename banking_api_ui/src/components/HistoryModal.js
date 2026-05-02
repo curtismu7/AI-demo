@@ -31,9 +31,9 @@ function ClaimRow({ k, v }) {
   if (k === 'note' || k === '_type' || k === '_rfcs' || k === '_title') return null;
   return (
     <div style={{ display: 'flex', gap: 8, marginBottom: 3, alignItems: 'flex-start' }}>
-      <span style={{ fontSize: '0.71rem', color: '#64748b', minWidth: 90, flexShrink: 0, fontFamily: 'monospace', lineHeight: 1.5 }}>{k}</span>
+      <span style={{ fontSize: '0.71rem', color: '#64748b', minWidth: 90, flexShrink: 0, fontFamily: 'inherit', lineHeight: 1.5 }}>{k}</span>
       <span style={{
-        fontSize: '0.77rem', fontFamily: 'monospace', lineHeight: 1.5, wordBreak: 'break-word',
+        fontSize: '0.77rem', fontFamily: 'inherit', lineHeight: 1.5, wordBreak: 'break-word',
         color: isAud ? '#1d4ed8' : isAct ? '#15803d' : isDecide ? '#15803d' : '#0f172a',
         fontWeight: (isAud || isAct || isDecide) ? 700 : 500,
       }}>{fmtVal(v)}</span>
@@ -196,7 +196,7 @@ export default function HistoryModal({ history, onClear }) {
         .chip  { background:#004687; color:#fff; font-size:0.6rem; font-weight:700; border-radius:20px; padding:2px 7px; }
         .label { font-size:0.72rem; font-weight:600; color:#475569; margin-left:6px; }
         .card  { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; margin-top:4px; }
-        .claim { display:flex; gap:8px; margin-bottom:3px; font-size:0.73rem; font-family:monospace; }
+        .claim { display:flex; gap:8px; margin-bottom:3px; font-size:0.73rem; font-family:inherit; }
         .k     { color:#64748b; min-width:90px; }
       </style></head>
       <body>

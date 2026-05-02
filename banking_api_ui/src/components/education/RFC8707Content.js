@@ -32,7 +32,7 @@ export function RFC8707Content() {
       </p>
 
       <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'monospace' }}>
+        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
 {`Resource Servers (Audiences):
 - https://ai-agent.pingdemo.com     - AI Agent Service
 - https://mcp-server.pingdemo.com  - MCP Server  
@@ -68,7 +68,7 @@ export function RFC8707Content() {
 
       <h4>Resource Indicator Flow</h4>
       <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'monospace' }}>
+        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
 {`    User/Client
         |
         | 1. Authorization Request
@@ -149,7 +149,7 @@ const response = fetch('https://mcp-server.pingdemo.com/api', {
       <h5>1. Unique Audiences</h5>
       <p>Each resource server should have a unique audience URI:</p>
       <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'monospace' }}>
+        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
 {`Good:
 - https://ai-agent.pingdemo.com
 - https://mcp-server.pingdemo.com
@@ -164,7 +164,7 @@ Bad:
       <h5>2. Scope Separation</h5>
       <p>Different resource servers should have distinct scopes:</p>
       <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'monospace' }}>
+        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
 {`AI Agent Service: banking:agent:invoke
 MCP Server: banking:accounts:read, banking:transactions:read/write
 PingOne API: p1:read:user, p1:update:user`}
@@ -193,7 +193,7 @@ app.use((req, res, next) => {
       </p>
 
       <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'monospace' }}>
+        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
 {`Subject Token (aud: ai-agent.pingdemo.com)
     |
     | Token Exchange
@@ -214,7 +214,7 @@ API Token (aud: api.pingone.com)`}
       <p>Key resource servers in the Super Banking demo:</p>
 
       <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'monospace' }}>
+        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
 {`AI Agent Service:
 - Audience: https://ai-agent.pingdemo.com
 - Scopes: banking:agent:invoke
@@ -236,7 +236,7 @@ Agent Gateway:
       <p>Applications must be granted permission to request scopes from specific resources:</p>
 
       <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'monospace' }}>
+        <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
 {`Super Banking User App:
 - Allowed Resources: Super Banking AI Agent Service
 - Allowed Scopes: profile, email, banking:agent:invoke

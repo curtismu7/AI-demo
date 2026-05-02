@@ -268,7 +268,7 @@
 
 .arch-aud-trail__aud {
   font-size: 0.57rem;
-  font-family: monospace;
+  font-family: inherit;
   color: #cbd5e1;
   line-height: 1.2;
 }
@@ -278,7 +278,7 @@
 .arch-aud-trail__act,
 .arch-aud-trail__mayact {
   font-size: 0.54rem;
-  font-family: monospace;
+  font-family: inherit;
   color: #94a3b8;
   line-height: 1.2;
 }
@@ -411,7 +411,7 @@
 .arch-claim-key {
   font-size: 0.76rem;
   color: #64748b;
-  font-family: monospace;
+  font-family: inherit;
   min-width: 110px;
   flex-shrink: 0;
   line-height: 1.5;
@@ -419,7 +419,7 @@
 
 .arch-claim-val {
   font-size: 0.82rem;
-  font-family: monospace;
+  font-family: inherit;
   line-height: 1.5;
   word-break: break-word;
   color: #0f172a;

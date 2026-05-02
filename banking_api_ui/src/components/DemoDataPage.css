@@ -564,7 +564,7 @@
   border: 1px solid #d1d5db;
   border-radius: 4px;
   padding: 0.3rem 0.6rem;
-  font-family: monospace;
+  font-family: inherit;
   font-size: 0.8rem;
   margin: 0.25rem 0;
   display: block;

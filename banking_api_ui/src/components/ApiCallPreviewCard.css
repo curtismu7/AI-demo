@@ -36,14 +36,14 @@
   padding: 2px 6px;
   flex-shrink: 0;
   letter-spacing: 0.03em;
-  font-family: "Fira Code", "Cascadia Code", monospace;
+  font-family: inherit;
 }
 
 .api-preview-endpoint {
   font-size: 0.75rem;
   color: #374151;
   word-break: break-all;
-  font-family: "Fira Code", "Cascadia Code", monospace;
+  font-family: inherit;
 }
 
 .api-preview-card__meta {
@@ -58,7 +58,7 @@
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: "Fira Code", "Cascadia Code", monospace;
+  font-family: inherit;
 }
 
 .api-preview-status--ok   { background: #dcfce7; color: #15803d; }
@@ -128,7 +128,7 @@
   max-height: 320px;
   overflow-y: auto;
   white-space: pre;
-  font-family: "Fira Code", "Cascadia Code", monospace;
+  font-family: inherit;
 }
 
 .api-preview-body--response.api-preview-status--err {

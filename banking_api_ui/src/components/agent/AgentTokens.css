@@ -66,7 +66,7 @@
 /* ─── Typography Scale ───────────────────────────────────────────────────── */
 :root {
   --agent-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-  --agent-font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  --agent-font-mono: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
   
   /* Font sizes - fluid responsive */
   --agent-text-xs: clamp(0.75rem, 0.75rem + 0vw, 0.75rem);

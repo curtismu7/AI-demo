@@ -76,7 +76,7 @@ function ArchNode({ data }) {
         }}>
           {b.aud && (
             <div style={{
-              fontSize: '0.58rem', fontFamily: 'monospace', lineHeight: 1.4,
+              fontSize: '0.58rem', fontFamily: 'inherit', lineHeight: 1.4,
               color: b._changed?.includes('aud') ? '#1d4ed8' : '#475569',
               fontWeight: b._changed?.includes('aud') ? 800 : 400,
             }}>
@@ -84,13 +84,13 @@ function ArchNode({ data }) {
             </div>
           )}
           {b.may_act && (
-            <div style={{ fontSize: '0.56rem', fontFamily: 'monospace', lineHeight: 1.4, color: '#b45309', fontWeight: 700 }}>
+            <div style={{ fontSize: '0.56rem', fontFamily: 'inherit', lineHeight: 1.4, color: '#b45309', fontWeight: 700 }}>
               may_act: {b.may_act}
             </div>
           )}
           {b.act && (
             <div style={{
-              fontSize: '0.56rem', fontFamily: 'monospace', lineHeight: 1.4,
+              fontSize: '0.56rem', fontFamily: 'inherit', lineHeight: 1.4,
               color: b._changed?.includes('act') ? '#15803d' : '#475569',
               fontWeight: b._changed?.includes('act') ? 800 : 400,
             }}>
@@ -574,11 +574,11 @@ function AudTrail({ stepIndex }) {
               <span style={{ fontSize: '0.6rem', fontWeight: 700, color: on ? '#fff' : past ? '#1d4ed8' : '#94a3b8', lineHeight: 1.2 }}>
                 {hop.label}
               </span>
-              <span style={{ fontSize: '0.57rem', fontFamily: 'monospace', color: on ? '#bfdbfe' : past ? '#3b82f6' : '#cbd5e1', lineHeight: 1.2 }}>
+              <span style={{ fontSize: '0.57rem', fontFamily: 'inherit', color: on ? '#bfdbfe' : past ? '#3b82f6' : '#cbd5e1', lineHeight: 1.2 }}>
                 {hop.isExchange ? hop.aud : `aud: ${hop.aud}`}
               </span>
-              {hop.act      && <span style={{ fontSize: '0.54rem', fontFamily: 'monospace', color: on ? '#86efac' : '#94a3b8' }}>act: {hop.act}</span>}
-              {hop.may_act  && <span style={{ fontSize: '0.54rem', fontFamily: 'monospace', color: on ? '#fde68a' : '#94a3b8' }}>may_act: {hop.may_act}</span>}
+              {hop.act      && <span style={{ fontSize: '0.54rem', fontFamily: 'inherit', color: on ? '#86efac' : '#94a3b8' }}>act: {hop.act}</span>}
+              {hop.may_act  && <span style={{ fontSize: '0.54rem', fontFamily: 'inherit', color: on ? '#fde68a' : '#94a3b8' }}>may_act: {hop.may_act}</span>}
             </div>
           </React.Fragment>
         );
@@ -608,9 +608,9 @@ function FlowClaimRow({ k, v }) {
   const val = URN_SHORT[v] !== undefined ? URN_SHORT[v] : String(v);
   return (
     <div style={{ display: 'flex', gap: 8, marginBottom: 4, alignItems: 'flex-start' }}>
-      <span style={{ fontSize: '0.73rem', color: '#64748b', minWidth: 100, flexShrink: 0, lineHeight: 1.5, fontFamily: 'monospace' }}>{k}</span>
+      <span style={{ fontSize: '0.73rem', color: '#64748b', minWidth: 100, flexShrink: 0, lineHeight: 1.5, fontFamily: 'inherit' }}>{k}</span>
       <span style={{
-        fontSize: '0.8rem', fontFamily: 'monospace', lineHeight: 1.5, wordBreak: 'break-word',
+        fontSize: '0.8rem', fontFamily: 'inherit', lineHeight: 1.5, wordBreak: 'break-word',
         color: isAud ? '#1d4ed8' : isAct ? '#15803d' : isDecide ? '#15803d' : '#0f172a',
         fontWeight: (isAud || isAct || isDecide) ? 700 : 500,
       }}>
@@ -1094,7 +1094,7 @@ export default function ArchitectureFlowPage({ user }) {
             Live agent:
           </span>
           {agentSnap.toolName && (
-            <span style={{ fontFamily: 'monospace', background: '#f1f5f9', borderRadius: 4, padding: '1px 6px', fontSize: '0.77rem', color: '#1d4ed8', fontWeight: 700 }}>
+            <span style={{ fontFamily: 'inherit', background: '#f1f5f9', borderRadius: 4, padding: '1px 6px', fontSize: '0.77rem', color: '#1d4ed8', fontWeight: 700 }}>
               {agentSnap.toolName}
             </span>
           )}
@@ -1103,7 +1103,7 @@ export default function ArchitectureFlowPage({ user }) {
               {agentSnap.serverEvents[agentSnap.serverEvents.length - 1].label}
             </span>
           )}
-          <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'monospace' }}>
+          <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'inherit' }}>
             {agentSnap.phase}
           </span>
         </div>

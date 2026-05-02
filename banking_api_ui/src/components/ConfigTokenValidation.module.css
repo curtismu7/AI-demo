@@ -265,7 +265,7 @@
   background: rgba(0, 0, 0, 0.05);
   padding: 1px 5px;
   border-radius: 3px;
-  font-family: 'Menlo', 'Courier New', monospace;
+  font-family: inherit;
   font-size: 12px;
   word-break: break-all;
 }
@@ -358,7 +358,7 @@
 .setupCode {
   background: #1e293b;
   color: #e2e8f0;
-  font-family: 'Menlo', 'Courier New', monospace;
+  font-family: inherit;
   font-size: 0.78rem;
   padding: 0.7rem 1rem;
   border-radius: 6px;

@@ -335,7 +335,7 @@ const ActivityLogs = ({ user, onLogout }) => {
             {evt.metadata && Object.keys(evt.metadata).length > 0 && (
               <div style={{ marginTop: '0.35rem' }}>
                 <strong>Metadata:</strong>
-                <div style={{ marginTop: '0.25rem', padding: '0.5rem', backgroundColor: 'var(--code-bg, #f1f5f9)', borderRadius: '0.25rem', fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                <div style={{ marginTop: '0.25rem', padding: '0.5rem', backgroundColor: 'var(--code-bg, #f1f5f9)', borderRadius: '0.25rem', fontFamily: 'inherit', fontSize: '0.75rem' }}>
                   {Object.entries(evt.metadata).map(([k, v]) => {
                     const isObj = v !== null && typeof v === 'object';
                     const metaKey = evt.id + ':' + k;
@@ -492,7 +492,7 @@ const ActivityLogs = ({ user, onLogout }) => {
                         <td>{format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm:ss')}</td>
                         <td>{log.username || 'Unknown'}</td>
                         <td><span style={{ padding: '0.25rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: '500', backgroundColor: getActionColor(log.action), color: 'white' }}>{log.action}</span></td>
-                        <td style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>{log.endpoint}</td>
+                        <td style={{ fontFamily: 'inherit', fontSize: '0.875rem' }}>{log.endpoint}</td>
                         <td>{log.ipAddress || 'N/A'}</td>
                         <td><span style={{ padding: '0.25rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: '500', backgroundColor: log.responseStatus >= 400 ? '#ef4444' : '#10b981', color: 'white' }}>{log.responseStatus}</span></td>
                         <td>{log.duration}ms</td>
@@ -532,7 +532,7 @@ const ActivityLogs = ({ user, onLogout }) => {
                       <div className="detail-item"><label>Timestamp:</label><span>{format(new Date(selectedLog.timestamp), 'MMM dd, yyyy HH:mm:ss')}</span></div>
                       <div className="detail-item"><label>User:</label><span>{selectedLog.username || 'Unknown'}</span></div>
                       <div className="detail-item"><label>Action:</label><span style={{ padding: '0.25rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: '500', backgroundColor: getActionColor(selectedLog.action), color: 'white' }}>{selectedLog.action}</span></div>
-                      <div className="detail-item"><label>Endpoint:</label><span style={{ fontFamily: 'monospace' }}>{selectedLog.endpoint}</span></div>
+                      <div className="detail-item"><label>Endpoint:</label><span style={{ fontFamily: 'inherit' }}>{selectedLog.endpoint}</span></div>
                       <div className="detail-item"><label>IP Address:</label><span>{selectedLog.ipAddress || 'N/A'}</span></div>
                       <div className="detail-item"><label>Status:</label><span style={{ padding: '0.25rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: '500', backgroundColor: selectedLog.responseStatus >= 400 ? '#ef4444' : '#10b981', color: 'white' }}>{selectedLog.responseStatus}</span></div>
                       <div className="detail-item"><label>Duration:</label><span>{selectedLog.duration}ms</span></div>

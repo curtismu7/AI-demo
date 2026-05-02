@@ -198,7 +198,7 @@
 }
 
 .token-full-token {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: inherit;
   font-size: 0.6875rem;
 }
 
@@ -419,7 +419,7 @@
 }
 
 .decoded-val--mono {
-  font-family: ui-monospace, monospace;
+  font-family: inherit;
   font-size: 0.75rem;
 }
 
@@ -437,7 +437,7 @@
   border-radius: 4px;
   font-size: 0.7rem;
   font-weight: 500;
-  font-family: ui-monospace, monospace;
+  font-family: inherit;
 }
 
 .decoded-section--raw details {
@@ -457,7 +457,7 @@
   background: #f1f5f9;
   border-radius: 6px;
   font-size: 0.7rem;
-  font-family: ui-monospace, monospace;
+  font-family: inherit;
   overflow-x: auto;
   color: #334155;
   white-space: pre;

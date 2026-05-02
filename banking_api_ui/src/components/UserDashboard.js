@@ -1893,7 +1893,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 													<span style={{ color: "#6b7280", fontWeight: 500 }}>
 														Routing Number:
 													</span>
-													<span style={{ fontFamily: "monospace" }}>
+													<span style={{ fontFamily: 'inherit' }}>
 														{account.routingNumber}
 													</span>
 												</div>
@@ -1908,7 +1908,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 													<span style={{ color: "#6b7280", fontWeight: 500 }}>
 														SWIFT Code:
 													</span>
-													<span style={{ fontFamily: "monospace" }}>
+													<span style={{ fontFamily: 'inherit' }}>
 														{account.swiftCode}
 													</span>
 												</div>
@@ -1925,7 +1925,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 													</span>
 													<span
 														style={{
-															fontFamily: "monospace",
+															fontFamily: 'inherit',
 															fontSize: "0.75rem",
 														}}
 													>
@@ -3132,7 +3132,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 																			style={{
 																				padding: "3px 8px",
 																				color: "#94a3b8",
-																				fontFamily: "monospace",
+																				fontFamily: 'inherit',
 																				width: "5rem",
 																			}}
 																		>
@@ -3142,7 +3142,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 																			style={{
 																				padding: "3px 8px",
 																				color: "#e2e8f0",
-																				fontFamily: "monospace",
+																				fontFamily: 'inherit',
 																				wordBreak: "break-all",
 																			}}
 																		>

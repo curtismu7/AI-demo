@@ -4,7 +4,7 @@
 
 /* Monospace snippet block (CIBA tab "BFF code") */
 .ciba-code-pre {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: inherit;
   font-size: 0.72rem;
   line-height: 1.45;
   background: #0f172a;
@@ -289,7 +289,7 @@
 }
 
 .ciba-code code {
-  font-family: 'SF Mono', 'Fira Mono', 'Consolas', monospace;
+  font-family: inherit;
 }
 
 /* ---------- Info cards ---------- */
@@ -462,7 +462,7 @@
 }
 
 .ciba-poll-line {
-  font-family: 'SF Mono', 'Fira Mono', 'Consolas', monospace;
+  font-family: inherit;
   font-size: 0.72rem;
   color: #a3e635;
   line-height: 1.6;
@@ -489,7 +489,7 @@
 }
 
 .ciba-endpoint-row code {
-  font-family: 'SF Mono', 'Fira Mono', 'Consolas', monospace;
+  font-family: inherit;
   font-size: 0.75rem;
   color: #1e3a5f;
 }

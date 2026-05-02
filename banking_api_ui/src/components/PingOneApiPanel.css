@@ -26,7 +26,7 @@
   font-size: 0.8rem;
   color: #1e293b;
   word-break: break-all;
-  font-family: "Fira Code", "Cascadia Code", monospace;
+  font-family: inherit;
 }
 
 .p1-api-panel-docs-link {
@@ -88,7 +88,7 @@
   max-height: 300px;
   overflow-y: auto;
   white-space: pre;
-  font-family: "Fira Code", "Cascadia Code", monospace;
+  font-family: inherit;
 }
 
 /* Request headers table — light background */
@@ -119,7 +119,7 @@
 
 .p1-api-panel-header-val {
   color: #0f172a;
-  font-family: "Fira Code", "Cascadia Code", monospace;
+  font-family: inherit;
   font-size: 0.8rem;
   word-break: break-all;
   background: transparent;
@@ -152,7 +152,7 @@
 
 .p1-api-panel-ct-value {
   color: #1e293b;
-  font-family: "Fira Code", "Cascadia Code", monospace;
+  font-family: inherit;
   font-size: 0.8rem;
   background: transparent;
   word-break: break-all;

@@ -62,7 +62,7 @@ function Textarea({ value, onChange, placeholder, disabled, rows = 3 }) {
       style={{
         width: '100%', boxSizing: 'border-box', padding: '8px 12px',
         border: '1px solid var(--border, #e2e8f0)', borderRadius: '6px',
-        fontSize: '13px', fontFamily: 'monospace', resize: 'vertical',
+        fontSize: '13px', fontFamily: 'inherit', resize: 'vertical',
         background: disabled ? '#f8fafc' : 'white', color: '#1e293b',
       }}
     />

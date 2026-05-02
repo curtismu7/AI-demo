@@ -228,7 +228,7 @@
 }
 
 .audit-cell--user {
-  font-family: monospace;
+  font-family: inherit;
   font-size: 0.78rem;
   color: var(--color-text-secondary, #6b7280);
   max-width: 160px;
@@ -414,7 +414,7 @@ tr.token-chain-row:hover {
 }
 
 .token-chain-row .exchanged-token {
-  font-family: monospace;
+  font-family: inherit;
   font-size: 0.85em;
 }
 

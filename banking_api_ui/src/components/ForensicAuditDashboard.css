@@ -112,7 +112,7 @@
 }
 
 .audit-event-time {
-  font-family: 'Courier New', monospace;
+  font-family: inherit;
   font-size: 12px;
   color: #6b7280;
   min-width: 200px;
@@ -205,7 +205,7 @@
   padding: 12px 14px;
   background-color: #0f172a;
   color: #e2e8f0;
-  font-family: 'Courier New', monospace;
+  font-family: inherit;
   font-size: 12px;
   line-height: 1.5;
   overflow-x: auto;
@@ -227,7 +227,7 @@
 }
 
 .preview-content {
-  font-family: 'Courier New', monospace;
+  font-family: inherit;
   font-size: 12px;
   color: #082f49;
   background-color: #ffffff;
@@ -263,7 +263,7 @@
 
 .info-row .value {
   color: #451a03;
-  font-family: 'Courier New', monospace;
+  font-family: inherit;
 }
 
 .audit-footer {

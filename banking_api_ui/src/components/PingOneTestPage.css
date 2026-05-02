@@ -282,7 +282,7 @@
 }
 
 .detail-code {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: inherit;
   background: #e8eaf6;
   color: #3949ab;
   padding: 0.1rem 0.35rem;
@@ -1173,7 +1173,7 @@ a.pingone-test-button--primary:visited {
 
 .tld-claim-key {
   color: #4c1d95;
-  font-family: monospace;
+  font-family: inherit;
   font-size: 0.78rem;
   font-weight: 600;
   min-width: 110px;
@@ -1334,7 +1334,7 @@ a.pingone-test-button--primary:visited {
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
   border: 1px solid #334155;
   border-radius: 12px 12px 12px 2px;
-  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-family: inherit;
   font-size: 0.88rem;
   line-height: 1.5;
   animation: promptSlideIn 0.3s ease-out;

@@ -115,7 +115,7 @@ const Accounts = ({ user, onLogout }) => {
                       <div style={{ fontWeight: '600' }}>{account.ownerUsername || account.userId || '—'}</div>
                       {account.ownerEmail && <div style={{ color: '#64748b', fontSize: '0.7rem' }}>{account.ownerEmail}</div>}
                     </td>
-                    <td style={{ fontFamily: 'monospace', fontWeight: '600' }}>
+                    <td style={{ fontFamily: 'inherit', fontWeight: '600' }}>
                       {account.accountNumber}
                     </td>
                     <td>

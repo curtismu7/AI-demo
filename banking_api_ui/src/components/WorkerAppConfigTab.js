@@ -9,7 +9,7 @@ const WORKER_FIELDS = [
 const inputStyle = {
   width: '100%', maxWidth: 480, padding: '8px 12px',
   border: '1px solid #d1d5db', borderRadius: 6,
-  fontSize: 13, fontFamily: 'monospace', boxSizing: 'border-box',
+  fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box',
 };
 
 export default function WorkerAppConfigTab() {
@@ -164,7 +164,7 @@ export default function WorkerAppConfigTab() {
             placeholder={'-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----'}
             aria-label="Private Key PEM"
             rows={6}
-            style={{ ...inputStyle, maxWidth: 480, fontFamily: 'monospace', fontSize: 11, resize: 'vertical', lineHeight: 1.5 }}
+            style={{ ...inputStyle, maxWidth: 480, fontFamily: 'inherit', fontSize: 11, resize: 'vertical', lineHeight: 1.5 }}
           />
           <p style={{ fontSize: 12, color: '#6b7280', marginTop: 6, marginBottom: 10 }}>
             Paste an RSA 2048 or EC P-256 private key in PKCS#8 PEM format, or generate a new one below.

@@ -26,7 +26,7 @@
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--brand-navy);
-  font-family: monospace;
+  font-family: inherit;
   background: rgba(37, 99, 235, 0.08);
   padding: 2px 8px;
   border-radius: 4px;
@@ -44,7 +44,7 @@
   padding: 2px 4px;
   border-radius: 3px;
   font-size: 0.85rem;
-  font-family: monospace;
+  font-family: inherit;
 }
 
 /* Token Types Table */
@@ -127,7 +127,7 @@
   padding: 1px 3px;
   border-radius: 2px;
   font-size: 0.82rem;
-  font-family: monospace;
+  font-family: inherit;
 }
 
 .emt-note {
@@ -179,7 +179,7 @@
   padding: 1px 3px;
   border-radius: 2px;
   font-size: 0.7rem;
-  font-family: monospace;
+  font-family: inherit;
 }
 
 /* Responsive: stack table on small screens */

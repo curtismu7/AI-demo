@@ -54,7 +54,7 @@ function TokenFlowDiagram() {
   return (
     <div style={{ overflowX: 'auto', padding: '8px 0', WebkitOverflowScrolling: 'touch' }}>
       <div style={{
-        fontFamily: 'monospace',
+        fontFamily: 'inherit',
         fontSize: '0.78rem',
         lineHeight: '1.7',
         background: '#0f172a',

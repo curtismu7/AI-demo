@@ -233,7 +233,7 @@
   border: 1px solid var(--border, #d1d5db);
   border-radius: 6px;
   font-size: 0.85rem;
-  font-family: monospace;
+  font-family: inherit;
   background: var(--background, #fff);
   color: var(--text, #111827);
   width: 100%;

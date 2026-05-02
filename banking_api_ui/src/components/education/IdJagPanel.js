@@ -213,7 +213,7 @@ grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer
                 ['email / name', 'Optional', 'Identity hints for account matching at the target AS'],
               ].map(([c, r, d]) => (
                 <tr key={c} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '7px 10px', fontFamily: 'monospace', fontSize: '0.82rem', color: '#2563eb' }}>{c}</td>
+                  <td style={{ padding: '7px 10px', fontFamily: 'inherit', fontSize: '0.82rem', color: '#2563eb' }}>{c}</td>
                   <td style={{ padding: '7px 10px', color: r === 'Yes' ? '#15803d' : r === 'Recommended' ? '#ca8a04' : '#64748b', fontWeight: 600 }}>{r}</td>
                   <td style={{ padding: '7px 10px', color: '#475569', lineHeight: 1.5 }}>{d}</td>
                 </tr>
@@ -242,7 +242,7 @@ grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer
         <FlowStep num={6} label="AS-B issues a scoped access token for its own resources">
           App A can now call App B's APIs with a properly scoped access token. The user's identity is propagated — App B knows <em>who</em> the token is for — but the user was never redirected.
         </FlowStep>
-        <div style={{ marginTop: '0.5rem', fontFamily: 'monospace', fontSize: '0.77rem', background: '#0f172a', color: '#94a3b8', borderRadius: 8, padding: '12px 16px', lineHeight: 1.9 }}>
+        <div style={{ marginTop: '0.5rem', fontFamily: 'inherit', fontSize: '0.77rem', background: '#0f172a', color: '#94a3b8', borderRadius: 8, padding: '12px 16px', lineHeight: 1.9 }}>
           <span style={{ color: '#86efac' }}>User Browser</span>
           {'  '}(logged in once to App A)<br />
           {'      ↓'}<br />
@@ -332,7 +332,7 @@ function PingOneContent() {
               ].map(([s, l, p]) => (
                 <tr key={s} style={{ borderBottom: '1px solid #f1f5f9' }}>
                   <td style={{ padding: '7px 10px', fontWeight: 600, color: '#1e293b' }}>{s}</td>
-                  <td style={{ padding: '7px 10px', fontFamily: 'monospace', fontSize: '0.8rem', color: '#2563eb' }}>{l}</td>
+                  <td style={{ padding: '7px 10px', fontFamily: 'inherit', fontSize: '0.8rem', color: '#2563eb' }}>{l}</td>
                   <td style={{ padding: '7px 10px', color: '#475569', lineHeight: 1.5 }}>{p}</td>
                 </tr>
               ))}

@@ -60,7 +60,7 @@ export default function PingOneSetupGuidePage() {
     fontSize: '0.8125rem',
     overflow: 'auto',
     border: '1px solid #e2e8f0',
-    fontFamily: 'ui-monospace, monospace',
+    fontFamily: 'inherit',
   };
 
   return (
