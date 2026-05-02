@@ -394,6 +394,8 @@ function TransactionTokensTab() {
 
 function ComplianceTab() {
   const [flowState, setFlowState] = React.useState({ complianceSteps: [], complianceStep: null });
+  const [claimDiagResult, setClaimDiagResult] = React.useState(null);
+  const [claimDiagLoading, setClaimDiagLoading] = React.useState(false);
 
   React.useEffect(() => {
     return agentFlowDiagram.subscribe(state => {
@@ -403,6 +405,27 @@ function ComplianceTab() {
       });
     });
   }, []);
+
+  const fetchClaimDiagnostics = async () => {
+    setClaimDiagLoading(true);
+    try {
+      const res = await fetch('/api/demo/claim-diagnostics');
+      const data = await res.json();
+      setClaimDiagResult(data);
+      if (res.ok && data.overallPass) {
+        // Mark step 12 as done in the diagram service
+        const current = agentFlowDiagram.getState ? agentFlowDiagram.getState() : {};
+        const steps = (current.complianceSteps || []).map(s =>
+          s.id === 'claim-diagnostics' ? { ...s, status: 'done' } : s
+        );
+        if (steps.length) agentFlowDiagram.setState({ complianceSteps: steps });
+      }
+    } catch (err) {
+      setClaimDiagResult({ error: 'fetch_failed', message: err.message });
+    } finally {
+      setClaimDiagLoading(false);
+    }
+  };
 
   const { complianceSteps, complianceStep } = flowState;
   const allPending = complianceSteps.length === 0 || (
@@ -434,6 +457,7 @@ function ComplianceTab() {
           <tbody>
             {complianceSteps.map((step, i) => {
               const isActive = step.id === complianceStep;
+              const isDiag = step.id === 'claim-diagnostics';
               return (
                 <tr key={step.id} style={{
                   borderBottom: '1px solid rgba(65,105,225,0.15)',
@@ -445,7 +469,37 @@ function ComplianceTab() {
                     </span>
                   </td>
                   <td style={{ padding: '5px 8px', color: '#9db4e8', fontSize: '0.78rem' }}>{i + 1}</td>
-                  <td style={{ padding: '5px 8px', color: '#c7d7ff' }}>{step.label}</td>
+                  <td style={{ padding: '5px 8px', color: '#c7d7ff' }}>
+                    {step.label}
+                    {isDiag && (
+                      <>
+                        <button
+                          onClick={fetchClaimDiagnostics}
+                          disabled={claimDiagLoading}
+                          style={{ marginLeft: 8, fontSize: '0.72rem', padding: '1px 7px', cursor: 'pointer', borderRadius: 4, border: '1px solid rgba(65,105,225,0.5)', background: 'rgba(65,105,225,0.15)', color: '#c7d7ff' }}
+                        >
+                          {claimDiagLoading ? '⟳' : 'Run'}
+                        </button>
+                        {claimDiagResult && !claimDiagResult.error && (
+                          <div style={{ marginTop: 5, fontSize: '0.76rem', color: '#9db4e8', lineHeight: 1.5 }}>
+                            <div>may_act: {claimDiagResult.checks?.mayAct?.pass ? '✓' : '✗'} {claimDiagResult.checks?.mayAct?.detail || ''}</div>
+                            <div>app mapping: {claimDiagResult.checks?.appMapping?.pass ? '✓' : '✗'} {claimDiagResult.checks?.appMapping?.detail || ''}</div>
+                            <div>session token: {claimDiagResult.checks?.sessionToken?.present
+                              ? `✓ scopes: ${(claimDiagResult.checks.sessionToken.scopes || []).join(', ') || '(none)'}`
+                              : '✗ not found'}</div>
+                            <div style={{ marginTop: 3, color: claimDiagResult.overallPass ? '#4CAF50' : '#fca5a5' }}>
+                              {claimDiagResult.nextStep}
+                            </div>
+                          </div>
+                        )}
+                        {claimDiagResult?.error && (
+                          <div style={{ marginTop: 3, fontSize: '0.76rem', color: '#fca5a5' }}>
+                            {claimDiagResult.message || 'Diagnostic unavailable'}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </td>
                 </tr>
               );
             })}

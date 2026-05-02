@@ -832,3 +832,62 @@ router.patch('/token-endpoint-auth', async (req, res) => {
     res.status(500).json({ error: 'internal_error', message: err.message });
   }
 });
+
+// ── Claim & Scope Compliance Diagnostics (Phase 261, Wave 6) ─────────────────
+//
+// GET /api/demo/claim-diagnostics
+//
+// Aggregates the existing may_act diagnose logic with a session token
+// scope/audience check.  Diagnostic only — does NOT make auth decisions.
+//
+router.get('/claim-diagnostics', authenticateToken, async (req, res) => {
+  // ── May-act diagnose (reuse existing function via fake res wrapper) ─────────
+  let mayActResult;
+  try {
+    await new Promise((resolve) => {
+      const fakeRes = {
+        status: (code) => ({ json: (body) => { mayActResult = { _status: code, ...body }; resolve(); } }),
+        json: (body) => { mayActResult = body; resolve(); },
+      };
+      diagnoseMayAct(req, fakeRes).catch(err => {
+        mayActResult = { error: 'diagnostic_failed', message: err.message };
+        resolve();
+      });
+    });
+  } catch (err) {
+    return res.status(503).json({ error: 'diagnostic_unavailable', message: err.message });
+  }
+
+  // ── Session token scope/audience check (diagnostic only — NOT an auth decision) ──
+  const sessionToken = req.session?.userAccessToken || req.session?.accessToken || null;
+  let sessionTokenCheck = { present: false, scopes: [], audience: null };
+  if (sessionToken) {
+    try {
+      const parts = sessionToken.split('.');
+      const payload = parts[1] ? JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) : {};
+      const scopeStr = payload.scope || payload.scp || '';
+      sessionTokenCheck = {
+        present: true,
+        scopes: typeof scopeStr === 'string' ? scopeStr.split(' ').filter(Boolean)
+                : Array.isArray(scopeStr) ? scopeStr : [],
+        audience: payload.aud || null,
+      };
+    } catch { /* non-fatal — token may not be a JWT */ }
+  }
+
+  const mayActPass  = mayActResult?.checks?.userAttribute?.pass && mayActResult?.checks?.appMapping?.pass;
+  const overallPass = !!(mayActPass && sessionTokenCheck.present);
+
+  return res.json({
+    timestamp: new Date().toISOString(),
+    checks: {
+      mayAct:       mayActResult?.checks?.userAttribute  || { pass: false, detail: 'unavailable' },
+      appMapping:   mayActResult?.checks?.appMapping     || { pass: false, detail: 'unavailable' },
+      sessionToken: sessionTokenCheck,
+    },
+    diagnosis: mayActResult?.diagnosis || [],
+    nextStep:  mayActResult?.nextStep  || '',
+    overallPass,
+  });
+});
+
