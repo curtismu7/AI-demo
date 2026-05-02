@@ -393,8 +393,43 @@ export class BankingToolProvider {
     // no delegated token was provided (e.g. ff_skip_token_exchange=true or direct MCP call).
     let token: string;
     if (agentToken) {
-      token = agentToken;
-      this.logger.debug(`[BankingToolProvider] Using BFF-exchanged delegated token for ${tool.name}`);
+      // Step 9: Second RFC 8693 exchange — exchange gateway-scoped token for resource-scoped token.
+      // Gated on BANKING_API_RESOURCE_URI: when absent, fall back to using gateway token directly
+      // for backward compatibility (e.g. local dev without full resource server config).
+      if (this.tokenExchangeService && process.env.BANKING_API_RESOURCE_URI) {
+        const toolScopes = getScopesForTool(context.toolName);
+        const agentCacheKey = `agent:${context.session.sessionId}:${[...toolScopes].sort().join(',')}`;
+        const cachedResourceToken = tokenCache.get(agentCacheKey, toolScopes);
+        if (cachedResourceToken) {
+          token = cachedResourceToken;
+          this.logger.debug(`[BankingToolProvider] Step 9 resource cache hit for ${tool.name}`);
+        } else {
+          this.logger.info(`[BankingToolProvider] Step 9 resource exchange initiated for tool: ${tool.name}, scopes: ${toolScopes.join(',')}`);
+          try {
+            const exchangeRequest: TokenExchangeRequest = {
+              grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+              subject_token: agentToken,
+              subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+              scope: toolScopes.join(' '),
+              audience: process.env.BANKING_API_RESOURCE_URI,
+            };
+            const exchangeResponse = await this.tokenExchangeService.exchangeToken(exchangeRequest);
+            token = exchangeResponse.access_token;
+            const expiresAt = Date.now() + (exchangeResponse.expires_in * 1000);
+            tokenCache.set(agentCacheKey, toolScopes, token, expiresAt);
+            this.logger.info(`[BankingToolProvider] Step 9 resource exchange succeeded for ${tool.name} (expires_in: ${exchangeResponse.expires_in}s)`);
+          } catch (exchangeError) {
+            this.logger.error(`[BankingToolProvider] Step 9 resource exchange FAILED for ${tool.name}:`, {}, exchangeError instanceof Error ? exchangeError : undefined);
+            throw new Error(
+              `Step 9 token exchange failed for tool '${tool.name}': ${exchangeError instanceof Error ? exchangeError.message : 'Unknown error'}`
+            );
+          }
+        }
+      } else {
+        // Backward compat: no resource URI configured — use gateway token directly
+        token = agentToken;
+        this.logger.debug(`[BankingToolProvider] Using BFF-exchanged delegated token for ${tool.name} (no Step 9 resource exchange)`);
+      }
     } else {
       // Resolve user token from session
       const userToken = this.getUserTokenForScopes(context.session, tool.requiredScopes);

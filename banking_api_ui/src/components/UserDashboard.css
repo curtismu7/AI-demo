@@ -2162,7 +2162,7 @@
 
 /* Split-3 overrides ud-body--2026: all 3 columns equal, flex-fills the viewport */
 .ud-body.ud-body--2026.ud-body--dashboard-split3 {
-  height: auto;
+  height: 0;       /* flex:1 1 0% on the parent rule grows this to fill; 0 prevents content-overflow */
   grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr;
   overflow: hidden;
