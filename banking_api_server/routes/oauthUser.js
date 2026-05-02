@@ -208,6 +208,18 @@ router.get('/login', (req, res) => {
       delete req.session.postLoginReturnToPath;
     }
 
+    // Per D-01: store pending agent intent so server can validate client replay after OAuth callback.
+    // Primary replay mechanism is BX_AGENT_PENDING_NL_KEY in client sessionStorage.
+    // BFF session copy is secondary — used for server-side validation only.
+    if (req.query.pendingMessage) {
+      const _pendingMsg = typeof req.query.pendingMessage === 'string'
+        ? req.query.pendingMessage.slice(0, 2048)
+        : null;
+      if (_pendingMsg) {
+        req.session.pendingAgentIntent = { message: _pendingMsg, timestamp: Date.now() };
+      }
+    }
+
     const state = oauthService.generateState();
     const codeVerifier = oauthService.generateCodeVerifier();
     const redirectUri = getUserRedirectUri(req);
@@ -512,6 +524,8 @@ router.get('/callback', async (req, res) => {
       req.session.user = authedUser;
       req.session.clientType = clientType;
       req.session.oauthType = 'user';
+      // D-01: clear pending agent intent — client handles replay via sessionStorage (BX_AGENT_PENDING_NL_KEY)
+      delete req.session.pendingAgentIntent;
 
       // ── DEBUG: log raw tokens to server console (remove before production) ──
       console.log('[oauth/user/callback] === USER TOKENS ===');

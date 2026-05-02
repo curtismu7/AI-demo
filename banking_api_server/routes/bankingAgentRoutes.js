@@ -190,7 +190,28 @@ router.post('/message', async (req, res) => {
     console.error('[banking-agent/message] Error code:', error.code);
     console.error('[banking-agent/message] Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     
-    // TOKEN_INACTIVE — user's PingOne session expired; signal UI to re-authenticate
+    // D-03: Structured recovery responses — agent threw a typed recovery error
+    if (error.name === 'LoginRequiredError') {
+      const rawScopes = Array.isArray(error.requiredScopes) ? error.requiredScopes : [];
+      const validScope = /^[a-z][a-z0-9:_-]*$/;
+      const requiredScopes = rawScopes.filter(s => typeof s === 'string' && validScope.test(s));
+      return res.status(401).json({ error: 'login_required', requiredScopes });
+    }
+    if (error.name === 'HitlRequiredError') {
+      return res.status(403).json({
+        error: 'hitl_required',
+        challengeId: typeof error.challengeId === 'string' ? error.challengeId : '',
+        challengeType: error.challengeType === 'step_up' ? 'step_up' : 'consent',
+        expiresAt: typeof error.expiresAt === 'string' ? error.expiresAt : ''
+      });
+    }
+    if (error.name === 'ScopeRequiredError') {
+      const rawScopes = Array.isArray(error.requiredScopes) ? error.requiredScopes : [];
+      const validScope = /^[a-z][a-z0-9:_-]*$/;
+      const requiredScopes = rawScopes.filter(s => typeof s === 'string' && validScope.test(s));
+      return res.status(403).json({ error: 'scope_required', requiredScopes });
+    }
+        // TOKEN_INACTIVE — user's PingOne session expired; signal UI to re-authenticate
     if (error.code === 'TOKEN_INACTIVE') {
       return res.status(401).json({ error: 'Session expired', need_auth: true, agentInitRequired: true });
     }
