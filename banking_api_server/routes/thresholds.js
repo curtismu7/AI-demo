@@ -7,8 +7,8 @@ const router = express.Router();
 const configStore = require('../services/configStore');
 const runtimeSettings = require('../config/runtimeSettings');
 
-const DEFAULT_CONFIRM = 500;
-const DEFAULT_MFA = 500;
+const DEFAULT_CONFIRM = 250; // HITL (Human-In-Loop) consent threshold
+const DEFAULT_MFA = 500;     // MFA step-up threshold
 
 function readThresholds() {
   const confirmRaw = configStore.getEffective('confirm_threshold_usd');

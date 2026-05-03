@@ -46,8 +46,8 @@ export default function ThresholdControls() {
       const threshRes = await fetch('/api/config/thresholds', { credentials: 'include' });
       if (threshRes.ok) {
         const data = await threshRes.json();
-        setConfirm(String(data.confirm_threshold_usd ?? 500));
-        setMfa(String(data.mfa_threshold_usd ?? 500));
+        setConfirm(String(data.confirm_threshold_usd ?? 250)); // HITL threshold default $250
+        setMfa(String(data.mfa_threshold_usd ?? 500)); // MFA threshold default $500
       }
 
       // Load feature flags
@@ -61,7 +61,7 @@ export default function ThresholdControls() {
       const mayActRes = await fetch('/api/demo/may-act/diagnose', { credentials: 'include' });
       if (mayActRes.ok) {
         const data = await mayActRes.json();
-        setMayActEnabled(data.attributeSet ?? null);
+        setMayActEnabled(data.checks?.userAttribute?.pass ?? null);
       }
     } catch (_) {
       // silent
