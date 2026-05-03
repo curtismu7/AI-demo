@@ -26,7 +26,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Changed
 
-- **Banking Agent — compliance panel redesign** — moved compliance checklist from header to inline in agent (below messages); added "Side panel" checkbox to toggle between inline and pop-out modes; pop-out appears left of floating/embedded agents or below bottom dock; added close button (✕); displays last agent response above checklist; increased text size and weight for readability; repositioned pop-out closer to agent; darkened all UI text for accessibility.
+- **Banking Agent — compliance panel redesign** — moved compliance checklist from header to inline in agent (below messages); added "Side panel" checkbox to toggle between inline and pop-out modes. Pop-out is now a full floating modal (draggable, 8-direction resizable, pop-out to new window via FloatingPanel) positioned left of agent without covering side nav; displays last agent response above checklist; added skip-step footer explaining why non-applicable steps are pending (e.g., "N steps not triggered — gateway denial and HITL steps only fire on scope-upgrade or permission-required operations"); agent background changed from light blue (#f0f4ff) to pure white (#fff); darkened all UI text for accessibility.
 
 ### Added
 

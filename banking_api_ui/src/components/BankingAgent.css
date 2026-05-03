@@ -6,13 +6,13 @@
 }
 /* Absolute override for agent panel background */
 .banking-agent-panel {
-	background: #f0f4ff !important;
-	background-color: #f0f4ff !important;
+	background: #fff !important;
+	background-color: #fff !important;
 }
 /* Force light blue background for all agent pane elements */
 body > .banking-agent-float-root,
 body > .banking-agent-float-root * {
-	background: #f0f4ff !important;
+	background: #fff !important;
 }
 /* ─── BankingAgent — theme-aware chat widget ────────────────────────────── */
 /* Royal blue primary (#4169E1) — distinct from slate / navy. */
@@ -61,7 +61,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	height: 52px;
 	padding: 0 22px 0 18px;
 	border-radius: 26px;
-	background: #f0f4ff !important;
+	background: #fff !important;
 	color: #2563eb !important;
 	border: 1.5px solid #2563eb !important;
 	color: #fff;
@@ -160,7 +160,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	min-height: 220px;
 	display: flex;
 	flex-direction: column;
-	background: #f0f4ff !important;
+	background: #fff !important;
 	border: 1.5px solid var(--ba-border);
 	border-radius: 16px;
 	box-shadow: var(--ba-shadow);
@@ -249,7 +249,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
-	background: #f0f4ff !important;
+	background: #fff !important;
 }
 
 .ba-left-label {
@@ -549,7 +549,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 /* Light mode override */
 .banking-agent-panel.ba-mode-light {
 	--ba-bg: #ffffff;
-	--ba-surface: #f0f4ff;
+	--ba-surface: #fff;
 	--ba-border: #c7d2fe;
 	--ba-text: #0f172a;
 	--ba-muted: #666666;
@@ -800,8 +800,8 @@ body > .banking-agent-float-root .banking-agent-panel {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	background: #f0f4ff !important;
-	background-color: #f0f4ff !important;
+	background: #fff !important;
+	background-color: #fff !important;
 		color: #1a1a1a !important;
 }
 
@@ -1485,7 +1485,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	   white-space: nowrap;
 }
 .ba-chip:hover:not(:disabled) {
-	background: #f0f4ff;
+	background: #fff;
 	color: #1d4ed8;
 	border-color: #1d4ed8;
 }
@@ -4261,7 +4261,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 	white-space: nowrap;
 }
 .ba-actions-trigger:hover {
-	background: #f0f4ff;
+	background: #fff;
 	color: #1d4ed8;
 }
 .ba-actions-trigger.active {
@@ -4432,7 +4432,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 }
 .banking-agent-panel.ba-mode-light .ba-actions-trigger:hover,
 .banking-agent-panel.ba-mode-light .ba-actions-trigger.active {
-	background: #f0f4ff;
+	background: #fff;
 	color: #1d4ed8;
 }
 .banking-agent-panel.ba-mode-light .ba-actions-popout {
@@ -4585,7 +4585,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 	color: #111827;
 }
 .ba-compliance-toggle-btn.active {
-	background: #f0f4ff;
+	background: #fff;
 	color: #1e3a8a;
 	outline: none;
 	font-weight: 600;
@@ -4634,58 +4634,45 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 }
 
 /* Compliance panel — slide-out overlay mode (default: left side positioning) */
-.ba-compliance-panel--slideout {
-  position: fixed !important;
-  top: 0 !important;
-  left: -340px !important;
-  width: 280px !important;
-  height: 100vh !important;
-  overflow-y: auto !important;
-  background: #fff !important;
-  border-right: 1px solid #e5e7eb !important;
-  border-left: none !important;
-  box-shadow: 4px 0 16px rgba(0,0,0,0.12) !important;
-  z-index: 20 !important;
-  padding: 14px !important;
-  animation: compliance-slide-in-left 0.25s ease forwards !important;
+/* Modal variant: FloatingPanel handles positioning; inner div fills it */
+.ba-compliance-panel--modal {
+  height: 100%;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 0;
+  padding: 0;
+  border: none;
 }
 
-@keyframes compliance-slide-in-left {
-  from { transform: translateX(-100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+/* Skip-note footer explaining non-applicable steps */
+.ba-compliance-panel__skip-note {
+  font-size: 0.78rem;
+  color: #6b7280;
+  padding: 10px 10px 6px;
+  border-top: 1px solid #e5e7eb;
+  line-height: 1.4;
 }
 
-/* In floating mode: left side, attached to agent panel at bottom-right of screen */
-.banking-agent-panel:not(.ba-mode-inline) .ba-compliance-panel--slideout {
-  left: 24px !important;
-  top: 24px !important;
-  height: auto !important;
-  max-height: calc(100vh - 48px) !important;
+/* Last response block (inside modal) */
+.ba-compliance-panel__last-response {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
 }
 
-/* In embedded/inline mode (not bottom dock): left side pop-out, centered */
-.ba-mode-inline:not(.ba-embedded-bottom-dock) .ba-compliance-panel--slideout {
-  left: calc(50% - 450px) !important;
-  top: 0 !important;
-  height: 100vh !important;
+.ba-compliance-panel__last-response-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
 }
 
-/* In bottom dock mode: pop-out appears BELOW the dock */
-.ba-embedded-bottom-dock .ba-compliance-panel--slideout {
-  left: 0 !important;
-  right: 0 !important;
-  top: auto !important;
-  bottom: -360px !important;
-  width: auto !important;
-  height: 340px !important;
-  border-right: none !important;
-  border-top: 1px solid #e5e7eb !important;
-  animation: compliance-slide-in-bottom 0.25s ease forwards !important;
-}
-
-@keyframes compliance-slide-in-bottom {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+.ba-compliance-panel__last-response-body {
+  font-size: 0.85rem;
+  color: #111827;
+  line-height: 1.4;
 }
 
 /* Token-event text wrapping */
