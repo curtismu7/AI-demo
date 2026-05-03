@@ -17,6 +17,16 @@ const { Annotation } = require('@langchain/langgraph');
 const { createMcpToolRegistry } = require('../utils/mcpToolRegistry');
 const { resolveMcpAccessTokenWithEvents } = require('./agentMcpTokenService');
 
+// Default models per provider
+const DEFAULT_MODELS = {
+  ollama:    'llama3.2',
+  openai:    'gpt-4o-mini',
+  anthropic: 'claude-3-5-haiku-20241022',
+  groq:      'llama-3.1-8b-instant',
+  google:    'gemini-2.0-flash',
+  helix:     'gpt-4o-mini',
+};
+
 /**
  * LangGraph system prompt for banking agent
  */
@@ -137,24 +147,50 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       console.log('[agentBuilder] tokenEvents count after adding:', tokenEvents.length);
     }
 
-        // Initialize Ollama model (local, free, no API key needed)
+        // Initialize LLM provider (Helix, Ollama, or others)
     let model;
-    let provider = 'ollama';
-    
-    const ollamaBase = langchainConfig?.ollama_base_url || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-    const ollamaModel = langchainConfig?.model || 'llama3.2';
-    
-    console.log(`[agentBuilder] Initializing Ollama LLM: ${ollamaModel} at ${ollamaBase}`);
-    try {
-      model = new ChatOllama({
-        model: ollamaModel,
-        temperature: 0.7,
-        baseUrl: ollamaBase,
-      });
-      console.log(`[agentBuilder] LLM initialized: ollama/${ollamaModel} at ${ollamaBase}`);
-    } catch (ollamaErr) {
-      console.error('[agentBuilder] ERROR: Ollama initialization failed:', ollamaErr.message);
-      throw Object.assign(new Error('[agentBuilder] Ollama LLM not available. Make sure Ollama is running at ' + ollamaBase), { source: 'agentBuilder' });
+    const provider = langchainConfig?.provider || 'ollama';
+    const selectedModel = langchainConfig?.model || DEFAULT_MODELS[provider];
+
+    if (provider === 'helix') {
+      // Helix LLM provider (Ping's internal AI platform)
+      console.log(`[agentBuilder] Initializing Helix LLM: ${selectedModel}`);
+      try {
+        const { callHelixAgent } = require('./helixLlmService');
+        const { RunnableLambda } = require('@langchain/core/runnables');
+
+        const helixConfig = {
+          helix_base_url: langchainConfig.helix_base_url,
+          helix_api_key: langchainConfig.helix_api_key,
+          helix_environment_id: langchainConfig.helix_environment_id,
+          helix_agent_id: langchainConfig.helix_agent_id,
+        };
+
+        model = RunnableLambda.from(async (messages) => {
+          return await callHelixAgent(helixConfig, messages);
+        });
+        console.log(`[agentBuilder] LLM initialized: helix/${selectedModel}`);
+      } catch (helixErr) {
+        console.error('[agentBuilder] ERROR: Helix initialization failed:', helixErr.message);
+        throw Object.assign(new Error('[agentBuilder] Helix LLM not available: ' + helixErr.message), { source: 'agentBuilder' });
+      }
+    } else {
+      // Default to Ollama (local, free, no API key needed)
+      const ollamaBase = langchainConfig?.ollama_base_url || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+      const ollamaModel = selectedModel;
+
+      console.log(`[agentBuilder] Initializing Ollama LLM: ${ollamaModel} at ${ollamaBase}`);
+      try {
+        model = new ChatOllama({
+          model: ollamaModel,
+          temperature: 0.7,
+          baseUrl: ollamaBase,
+        });
+        console.log(`[agentBuilder] LLM initialized: ollama/${ollamaModel} at ${ollamaBase}`);
+      } catch (ollamaErr) {
+        console.error('[agentBuilder] ERROR: Ollama initialization failed:', ollamaErr.message);
+        throw Object.assign(new Error('[agentBuilder] Ollama LLM not available. Make sure Ollama is running at ' + ollamaBase), { source: 'agentBuilder' });
+      }
     }
 
     // Define the agent node with tools

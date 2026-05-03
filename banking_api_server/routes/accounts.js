@@ -165,11 +165,18 @@ router.get('/my', authenticateToken, async (req, res) => {
   res.set({ 'Cache-Control': 'private, no-store' });
   try {
     let userAccounts = dataStore.getAccountsByUserId(req.user.id);
-    if (userAccounts.length === 0 && req.user.id) {
-      // On cold-start the in-memory store is empty.  Try to restore from the persisted
-      // account snapshot (Redis/KV) before falling back to fresh 2-account provisioning.
-      userAccounts = await restoreAccountsFromSnapshot(req.user.id);
+    // Check completeness even when accounts exist — a runtimeData with only a loan (no checking/savings)
+    // skips provisioning under the old length===0 guard, leaving the user with no usable accounts.
+    const hasChecking = () => userAccounts.some(a => (a.accountType || a.type) === 'checking');
+    const hasSavings  = () => userAccounts.some(a => (a.accountType || a.type) === 'savings');
+    if (req.user.id && (userAccounts.length === 0 || !hasChecking() || !hasSavings())) {
       if (userAccounts.length === 0) {
+        // On cold-start the in-memory store is empty.  Try to restore from the persisted
+        // account snapshot (Redis/KV) before falling back to fresh provisioning.
+        userAccounts = await restoreAccountsFromSnapshot(req.user.id);
+      }
+      // Validate completeness — must include at least one checking AND one savings account.
+      if (!hasChecking() || !hasSavings()) {
         userAccounts = await provisionDemoAccounts(req.user.id);
         // Persist the freshly provisioned accounts so future cold-starts can restore them.
         const snapshot = userAccounts.map(a => ({

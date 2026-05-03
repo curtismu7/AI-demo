@@ -311,11 +311,18 @@ router.post('/', authenticateToken, async (req, res) => {
     // Block ALL transactions exceeding the absolute maximum (applies to all user types)
     const MAX_TRANSACTION_AMOUNT = parseFloat(configStore.getEffective('max_transaction_amount')) || 1000;
     if (parseFloat(amount) > MAX_TRANSACTION_AMOUNT) {
+      // Also check if the source account has insufficient funds, so the error message can surface both reasons.
+      let insufficientFundsAlso = false;
+      if (fromAccountId && (type === 'withdrawal' || type === 'transfer')) {
+        const srcAccount = dataStore.getAccountById(fromAccountId);
+        if (srcAccount && srcAccount.balance < parseFloat(amount)) insufficientFundsAlso = true;
+      }
       return res.status(400).json({
         error: 'amount_exceeds_hard_limit',
         message: `Transaction amount cannot exceed $${MAX_TRANSACTION_AMOUNT}.`,
         limit: MAX_TRANSACTION_AMOUNT,
         amount: parseFloat(amount),
+        insufficient_funds_also: insufficientFundsAlso,
       });
     }
     // ── End hard limit gate ──────────────────────────────────────────────
@@ -410,8 +417,11 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // ── Session check for conditional authentication (Phase 122) ───────────────
     // Non-logged-in users must sign in before any banking action.
-    // Logged-in users proceed to step-up MFA gate (if threshold exceeded).
-    if (!req.session?.user) {
+    // Skip this check when the request is authenticated via Bearer token (MCP server,
+    // agent gateway, or any direct API caller) — authenticateToken already validated
+    // the JWT and set req.user. Session is only required for browser-originated calls.
+    const hasBearerAuth = !!(req.headers.authorization && req.headers.authorization.startsWith('Bearer '));
+    if (!hasBearerAuth && !req.session?.user) {
       console.log('[SessionCheck] No active session - login required for banking action');
       return res.status(401).json({
         error: 'unauthenticated',

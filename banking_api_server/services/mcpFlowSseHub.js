@@ -199,6 +199,11 @@ function publish(traceId, payload) {
   }
 }
 
+// How long to keep the event buffer alive after the POST finishes.
+// This prevents a race where the EventSource GET arrives after the POST
+// response, finds the buffer deleted, and gets no compliance step events.
+const BUFFER_LINGER_MS = 10000;
+
 /**
  * Call when POST /api/mcp/tool finishes (success or error) for this trace.
  * @param {string|null|undefined} traceId
@@ -206,17 +211,22 @@ function publish(traceId, payload) {
 function endTrace(traceId) {
   if (!traceId) return;
   publish(traceId, { phase: 'stream_end' });
-  traceClaims.delete(traceId);
-  traceBuffers.delete(traceId);
+  // Close any already-connected SSE subscribers immediately.
   const set = traceSubscribers.get(traceId);
   if (set) {
     for (const r of set) {
-      try {
-        r.end();
-      } catch (_) {}
+      try { r.end(); } catch (_) {}
     }
     traceSubscribers.delete(traceId);
   }
+  // Keep the buffer alive for a short window so that an EventSource that
+  // connects just after the POST finishes can still replay all events.
+  // Without this, local-fallback tool calls (which return in <50ms) would
+  // delete the buffer before the browser's SSE GET is processed.
+  setTimeout(() => {
+    traceClaims.delete(traceId);
+    traceBuffers.delete(traceId);
+  }, BUFFER_LINGER_MS);
   if (process.env.VERCEL || _kvClientOverride) {
     const _kv = _getKvClient();
     if (_kv) _kv.expire(_kvKey(traceId), 30).catch(() => {});

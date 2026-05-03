@@ -50,7 +50,13 @@ class StructuredLogger {
 
   shouldLog(level) {
     const levels = ['ERROR', 'WARN', 'INFO', 'DEBUG'];
-    const currentLevelIndex = levels.indexOf(this.logLevel);
+    let effectiveLevel = this.logLevel;
+    try {
+      const cs = require('../services/configStore');
+      const cfgLevel = cs.getEffective('log_level');
+      if (cfgLevel) effectiveLevel = cfgLevel.toUpperCase();
+    } catch (_) {}
+    const currentLevelIndex = levels.indexOf(effectiveLevel);
     const messageLevelIndex = levels.indexOf(level);
     return messageLevelIndex <= currentLevelIndex;
   }

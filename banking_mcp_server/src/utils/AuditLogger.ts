@@ -136,6 +136,10 @@ export class AuditLogger {
     return AuditLogger.instance;
   }
 
+  static clearEvents(): void {
+    AuditLogger.eventStore.length = 0;
+  }
+
   /**
    * Generate unique event ID
    */

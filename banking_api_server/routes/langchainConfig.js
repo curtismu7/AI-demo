@@ -20,14 +20,16 @@ const PROVIDER_MODELS = {
   anthropic: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-3-5-haiku-20241022'],
   groq:      ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
   google:    ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+  helix:     ['gpt-4o', 'gpt-4o-mini', 'gemini-1.5-pro', 'claude-3-5-sonnet'],
 };
 
 const DEFAULT_MODELS = {
-  ollama:    'llama3.2',
+  ollama:    'mistral',
   openai:    'gpt-4o-mini',
   anthropic: 'claude-3-5-haiku-20241022',
   groq:      'llama-3.1-8b-instant',
   google:    'gemini-2.0-flash',
+  helix:     'gpt-4o-mini',
 };
 
 const KEY_SESSION_FIELDS = {};
@@ -56,22 +58,57 @@ router.get('/config/status', (req, res) => {
 });
 
 // POST /api/langchain/config
-// Body: { model }
+// Body: { provider, model, key_type, key, helix_base_url, helix_environment_id, helix_agent_id }
 router.post('/config', (req, res) => {
-  const { model } = req.body || {};
+  const { provider, model, key_type, key, helix_base_url, helix_environment_id, helix_agent_id } = req.body || {};
 
-  const updates = { provider: 'ollama' };
+  const updates = {};
+
+  if (provider) updates.provider = provider;
   if (model) updates.model = model;
+
+  // Handle Helix credentials (4-field configuration)
+  if (key_type === 'helix' || provider === 'helix') {
+    if (helix_base_url) updates.helix_base_url = helix_base_url;
+    if (helix_environment_id) updates.helix_environment_id = helix_environment_id;
+    if (helix_agent_id) updates.helix_agent_id = helix_agent_id;
+    if (key) updates.helix_api_key = key;
+    if (provider) updates.provider = provider;
+  }
+
+  // Handle cloud provider API keys (single-field configuration)
+  if (key_type && ['openai', 'anthropic', 'google', 'groq'].includes(key_type)) {
+    updates[key_type + '_api_key'] = key;
+    updates.provider = key_type;
+  }
 
   setLangchainConfig(req, updates);
 
   const cfg = getLangchainConfig(req);
-  res.json({ ok: true, provider: 'ollama', model: cfg.model || DEFAULT_MODELS.ollama, key_set: { ollama: true } });
+  const activeProvider = cfg.provider || 'ollama';
+  res.json({ ok: true, provider: activeProvider, model: cfg.model || DEFAULT_MODELS[activeProvider], key_set: { [activeProvider]: true } });
 });
 
 // DELETE /api/langchain/config/key/:keyType — no-op (Ollama has no keys)
 router.delete('/config/key/:keyType', (req, res) => {
   res.json({ ok: true, key_type: req.params.keyType, cleared: true });
+});
+
+// POST /api/langchain/ollama/pull
+// Body: { model } — pulls (or refreshes) an Ollama model; runs ollama pull <model>
+router.post('/ollama/pull', async (req, res) => {
+  const { execFile } = require('node:child_process');
+  const model = (req.body?.model || DEFAULT_MODELS.ollama).trim();
+  if (!model || model.length > 100 || (/\s/).test(model)) {
+    return res.status(400).json({ ok: false, error: 'Invalid model name' });
+  }
+  execFile('ollama', ['pull', model], { timeout: 300_000 }, (err, stdout, stderr) => {
+    if (err) {
+      console.error(`[ollama pull] failed for ${model}:`, err.message);
+      return res.status(500).json({ ok: false, error: err.message, stderr });
+    }
+    res.json({ ok: true, model, output: stdout || stderr });
+  });
 });
 
 module.exports = router;

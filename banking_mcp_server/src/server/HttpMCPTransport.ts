@@ -180,6 +180,14 @@ export class HttpMCPTransport {
       return;
     }
 
+    // Demo reset: clear in-memory audit log (BFF reset-demo route calls this)
+    if (pathname === '/audit' && req.method === 'DELETE') {
+      AuditLogger.clearEvents();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, message: 'Audit log cleared' }));
+      return;
+    }
+
     // MUST validate Origin header on all HTTP MCP requests to prevent DNS rebinding
     // (transport spec §2.0.1)
     if (!this.isOriginAllowed(req)) {

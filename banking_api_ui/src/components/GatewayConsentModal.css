@@ -1,10 +1,10 @@
 /* GatewayConsentModal — gcm- prefix */
 
 .gcm-card {
-  background: #152a52;
-  border: 1px solid rgba(65, 105, 225, 0.45);
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
   border-radius: 12px;
-  box-shadow: 0 24px 60px rgba(10, 20, 50, 0.6);
+  box-shadow: 0 24px 60px rgba(10, 20, 50, 0.18);
   width: 420px;
   min-height: 160px;
   display: flex;
@@ -17,16 +17,16 @@
   flex-direction: column;
   gap: 6px;
   padding: 16px 20px 12px;
-  background: linear-gradient(135deg, #1a3a6e 0%, #152a52 100%);
+  background: #f8fafc;
   cursor: move;
   user-select: none;
-  border-bottom: 1px solid rgba(65, 105, 225, 0.3);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .gcm-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #e8eefc;
+  color: #1e293b;
 }
 
 .gcm-hitl-badge {
@@ -44,7 +44,7 @@
 .gcm-body {
   padding: 20px 24px 8px;
   font-size: 0.88rem;
-  color: #c7d7ff;
+  color: #1e293b;
   line-height: 1.5;
 }
 
@@ -54,13 +54,13 @@
 
 .gcm-challenge-id {
   font-size: 0.78rem;
-  color: #9db4e8;
+  color: #1e293b;
   font-family: inherit;
 }
 
 .gcm-expires {
   font-size: 0.78rem;
-  color: #9db4e8;
+  color: #1e293b;
 }
 
 .gcm-footer {
@@ -88,8 +88,8 @@
 
 .gcm-btn-cancel {
   background: transparent;
-  color: #c7d7ff;
-  border: 1px solid rgba(65, 105, 225, 0.4);
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
   padding: 8px 16px;
   font-size: 0.88rem;
@@ -98,5 +98,5 @@
 }
 
 .gcm-btn-cancel:hover {
-  border-color: rgba(65, 105, 225, 0.8);
+  border-color: #94a3b8;
 }

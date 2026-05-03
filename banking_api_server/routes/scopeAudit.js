@@ -14,36 +14,36 @@ const configStore = require('../services/configStore');
 const axios = require('axios');
 
 // ── Expected scope configuration per resource name pattern ───────────────────
+// Flattened scope model: banking:read / banking:write replace granular scopes.
 const EXPECTED_SCOPES = {
   'banking api': {
     requiredScopes: ['banking:read', 'banking:write'],
-    optionalScopes: [
-      'banking:accounts:read', 'banking:transactions:read',
-      'banking:transactions:write', 'banking:read',
-      'banking:write',
-    ],
+    optionalScopes: [],
   },
   'agent gateway': {
-    requiredScopes: ['banking:agent:invoke', 'ai_agent'],
+    requiredScopes: ['banking:agent:invoke'],
     optionalScopes: [],
   },
   'ai agent': {
     requiredScopes: ['banking:read', 'banking:write', 'banking:agent:invoke'],
     optionalScopes: [
-      'banking:accounts:read', 'banking:transactions:read',
-      'banking:transactions:write',
+      'banking:mcp:invoke',
+      'banking:sensitive',
+      'banking:admin',
+      'transfer:execute',
     ],
   },
   'mcp gateway': {
-    requiredScopes: ['banking:mcp:invoke', 'mcp_resource_access'],
-    optionalScopes: ['banking:ai:agent:read', 'banking:ai:agent:write'],
+    requiredScopes: ['banking:mcp:invoke'],
+    optionalScopes: ['banking:read', 'banking:write'],
   },
   'mcp server': {
-    requiredScopes: ['get_accounts:read', 'transfer:execute', 'check:read'],
+    requiredScopes: ['banking:read', 'banking:write'],
     optionalScopes: [
-      'banking:accounts:read', 'banking:transactions:read',
-      'banking:transactions:write', 'banking:ai:agent:read',
-      'banking:ai:agent:write',
+      'banking:mcp:invoke',
+      'banking:sensitive',
+      'banking:admin',
+      'transfer:execute',
     ],
   },
 };

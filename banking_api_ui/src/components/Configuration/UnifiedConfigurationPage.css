@@ -226,7 +226,7 @@
 }
 .idp-setup-row {
   display: grid;
-  grid-template-columns: 220px 1fr auto;
+  grid-template-columns: 160px 1fr auto;
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
@@ -244,8 +244,7 @@
   font-family: inherit;
   font-size: 0.9rem;
   color: var(--color-text-primary, #212529);
-  overflow: auto;
-  word-break: break-all;
+  white-space: nowrap;
 }
 .idp-copy-btn {
   background: none;
@@ -725,11 +724,14 @@
 }
 
 .cfg-toggle-label {
-  display: flex;
-  align-items: center;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
   gap: 10px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #111827;
 }
 
 .cfg-toggle-input {
@@ -785,7 +787,12 @@
   outline: none !important;
 }
 .unified-configuration-page input[type=checkbox] { accent-color: #4f46e5; }
-.cfg-field-help { font-size: 0.875rem; color: #374151; margin: 0.25rem 0 0; line-height: 1.45; }
+.unified-configuration-page .form-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+.cfg-field-help { font-size: 0.9rem; color: #374151; margin: 0.25rem 0 0; line-height: 1.45; }
 .idp-setup-label { color: #374151; font-size: 0.9rem; font-weight: 600; white-space: nowrap; }
 .idp-setup-value { color: #111827; font-family: inherit; font-size: 0.9rem; }
 .cfg-info-box {
@@ -1159,6 +1166,16 @@
 .cfg-section--full-width {
   max-width: none;
   padding: 0;
+}
+
+/* IDP setup tab: let the table be as wide as the content area so URLs don't wrap */
+.cfg-section:has(.idp-setup-table) {
+  max-width: none;
+}
+
+/* Hide section sidebar on IDP setup tab so URL rows get the full content width */
+.configuration-content:has(.idp-setup-table) .configuration-sidebar {
+  display: none;
 }
 
 /* DemoSetupPanel inside cfg-section */

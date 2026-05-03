@@ -56,4 +56,6 @@ export const EDU = {
   ID_JAG: 'id-jag',
   /** Glean Integration — Enterprise AI assistant with PingFed, PingAuthorize, CIBA, and MCP Gateway */
   GLEAN: 'glean',
+  /** Intent-Bound, Constraint-Based Delegation — AP2, Verifiable Intent, consent verification, and how this demo implements the pattern */
+  INTENT_DELEGATION: 'intent-delegation',
 };

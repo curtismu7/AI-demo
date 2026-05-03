@@ -69,7 +69,36 @@
   margin: 0;
   line-height: var(--agent-leading-normal);
   word-wrap: break-word;
-  white-space: pre-wrap;
+}
+
+/* MarkdownContent block styles inside message bubbles */
+.agent-message-text .md-para {
+  margin: 0 0 0.5em;
+}
+.agent-message-text .md-para:last-child {
+  margin-bottom: 0;
+}
+.agent-message-text .md-list {
+  margin: 0 0 0.5em;
+  padding-left: 1.4em;
+}
+.agent-message-text .md-list:last-child {
+  margin-bottom: 0;
+}
+.agent-message-text .md-list-item {
+  margin-bottom: 0.2em;
+}
+.agent-message-text .md-h1,
+.agent-message-text .md-h2,
+.agent-message-text .md-h3 {
+  margin: 0.3em 0 0.2em;
+  font-weight: 600;
+}
+.agent-message-text .md-hr {
+  border: none;
+  border-top: 1px solid currentColor;
+  opacity: 0.3;
+  margin: 0.4em 0;
 }
 
 .agent-message-system-content {

@@ -50,10 +50,10 @@ const CONFIGURATION_TABS = [
     id: 'advanced',
     label: 'Advanced',
     icon: '⚙️',
-    description: 'Vercel deploy URL, worker app secrets, debug logging, and RSA keypair generation',
+    description: 'Debug logging, log category filters, and RSA keypair generation',
     requiresAuth: true,
     requiredRole: 'admin',
-    sections: ['worker-app', 'debug-settings', 'api-keys']
+    sections: ['debug-settings', 'api-keys']
   },
   {
     id: 'idp-setup',
@@ -62,7 +62,7 @@ const CONFIGURATION_TABS = [
     description: 'Read-only reference — PingOne endpoints and registered OAuth client IDs',
     requiresAuth: true,
     requiredRole: 'admin',
-    sections: ['idp-overview', 'idp-clients']
+    sections: ['idp-setup-guide', 'idp-overview', 'idp-clients']
   },
   {
     id: 'feature-flags',
@@ -128,6 +128,7 @@ interface ConfigurationState {
   logLevel: string;
   debugShowTokenDetails: boolean;
   debugShowApiCalls: boolean;
+  logFilterCategories: string;
   keypairStatus: 'idle' | 'generating' | 'success' | 'error';
   keypairMessage: string;
   generatedPublicKey: string;
@@ -153,8 +154,8 @@ const getDefaultState = (): ConfigurationState => ({
   userRedirectUri: '',
   mfaPolicyId: '',
   mfaStepUpThreshold: 500,
-  agentTransactionCountLimit: 0,
-  agentTransactionValueLimit: 0,
+  agentTransactionCountLimit: 3,
+  agentTransactionValueLimit: 5000,
   cibaEnabled: false,
   mcpServerUrl: '',
   mcpResourceUri: '',
@@ -175,6 +176,7 @@ const getDefaultState = (): ConfigurationState => ({
   logLevel: 'info',
   debugShowTokenDetails: false,
   debugShowApiCalls: false,
+  logFilterCategories: '',
   keypairStatus: 'idle',
   keypairMessage: '',
   generatedPublicKey: '',
@@ -393,6 +395,7 @@ const SectionNavigation: FC<{
     'worker-app': 'Worker Application',
     'debug-settings': 'Debug Settings',
     'api-keys': 'API Keys',
+    'idp-setup-guide': 'Setup Guide',
     'idp-overview': 'Environment & Endpoints',
     'idp-clients': 'OAuth Clients',
     'feature-flags': 'Feature Flags'
@@ -431,18 +434,14 @@ const KNOWN_SCOPES: { scope: string; description: string; category: string }[] =
   { scope: 'p1:update:user',        description: 'Update PingOne user attributes',            category: 'PingOne' },
   { scope: 'p1:read:userPassword',  description: 'Read password policy constraints',          category: 'PingOne' },
   { scope: 'p1:read:sessions',      description: 'Read active user sessions',                 category: 'PingOne' },
-  // Banking API
-  { scope: 'bankingapi',                   description: 'Master banking API access scope',             category: 'Banking' },
-  { scope: 'banking:read',                 description: 'Read account and balance information',         category: 'Banking' },
-  { scope: 'banking:write',               description: 'Submit transactions and updates',               category: 'Banking' },
-  { scope: 'banking:accounts:read',        description: 'List and read individual accounts',            category: 'Banking' },
-  { scope: 'banking:transactions:read',    description: 'Read transaction history',                     category: 'Banking' },
-  { scope: 'banking:transactions:write',   description: 'Submit transfers and payments',                category: 'Banking' },
-  { scope: 'banking:sensitive:read',       description: 'Access sensitive data (account numbers, PII)', category: 'Banking' },
-  // Agent / MCP
-  { scope: 'ai_agent',             description: 'Marks token as issued to an AI agent actor',  category: 'Agent' },
-  { scope: 'mcp:tools:call',       description: 'Allows agent to invoke MCP tools',           category: 'Agent' },
-  { scope: 'mcp:tools:list',       description: 'Allows agent to list available MCP tools',   category: 'Agent' },
+  // Banking API — flattened scope model
+  { scope: 'banking:read',                 description: 'Read accounts, balances, and transactions',    category: 'Banking' },
+  { scope: 'banking:write',               description: 'Submit transactions, transfers, and updates',   category: 'Banking' },
+  { scope: 'banking:sensitive',            description: 'Access sensitive data (account numbers, PII)', category: 'Banking' },
+  { scope: 'banking:admin',               description: 'Admin-level banking operations',                category: 'Banking' },
+  { scope: 'banking:agent:invoke',         description: 'Authorize AI agent to act on behalf of user',  category: 'Banking' },
+  { scope: 'banking:mcp:invoke',          description: 'Invoke MCP tools through the MCP gateway',      category: 'Banking' },
+  { scope: 'transfer:execute',            description: 'Execute fund transfers',                         category: 'Banking' },
 ];
 
 const ScopeTable: FC<{ value: string; onChange: (v: string) => void }> = ({ value, onChange }) => {
@@ -561,6 +560,267 @@ const ScopeTable: FC<{ value: string; onChange: (v: string) => void }> = ({ valu
   );
 };
 
+// ── IdpSetupGuide component ──────────────────────────────────────────────────
+
+const IdpSetupGuide: FC<{
+  pingoneRegion: string;
+  pingoneEnvironmentId: string;
+  adminRedirectUri: string;
+  userRedirectUri: string;
+  mcpResourceUri: string;
+  adminClientId: string;
+  userClientId: string;
+  workerClientId: string;
+  copyToClipboard: (value: string, label: string) => void;
+}> = ({ pingoneRegion, pingoneEnvironmentId, adminRedirectUri, userRedirectUri, mcpResourceUri, adminClientId, userClientId, workerClientId, copyToClipboard }) => {
+  const [activeTab, setActiveTab] = React.useState<string>('overview');
+
+  const base        = pingoneRegion ? `https://auth.pingone.${pingoneRegion}` : 'https://auth.pingone.com';
+  const envId       = pingoneEnvironmentId || '<your-environment-id>';
+  const adminRedir  = adminRedirectUri  || `${window.location.origin}/api/auth/oauth/admin/callback`;
+  const userRedir   = userRedirectUri   || `${window.location.origin}/api/auth/oauth/user/callback`;
+  const mcpAud      = mcpResourceUri    || '<mcp-server-public-url>';
+
+  const tabs = [
+    { id: 'overview',   label: '📋 Overview & Checklist' },
+    { id: 'apps',       label: '🔑 Applications' },
+    { id: 'redirects',  label: '↩ Redirect URIs' },
+    { id: 'resources',  label: '🗂 Resources & Scopes' },
+    { id: 'endpoints',  label: '🌐 OAuth Endpoints' },
+  ];
+
+  const ValueRow = ({ label, value, hint }: { label: string; value: string; hint?: string }) => (
+    <div className="idp-setup-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr auto', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
+        <span className="idp-setup-label">{label}</span>
+        <span className="idp-setup-value">{value}</span>
+        {value && !value.startsWith('<') && (
+          <button type="button" className="idp-copy-btn" onClick={() => copyToClipboard(value, label)}>⎘ Copy</button>
+        )}
+      </div>
+      {hint && <span style={{ fontSize: 11, color: '#6b7280', paddingLeft: 8 }}>{hint}</span>}
+    </div>
+  );
+
+  const ScopeChip = ({ scope }: { scope: string }) => (
+    <code style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: 3, padding: '2px 6px', fontSize: 12, marginRight: 4, display: 'inline-block', marginBottom: 3 }}>{scope}</code>
+  );
+
+  const AppCard = ({ num, title, type, grant, redirectUri, scopes, configKey, notes }: {
+    num: string; title: string; type: string; grant: string; redirectUri?: string;
+    scopes: string[]; configKey: string; notes: string;
+  }) => (
+    <div style={{ background: '#fff', border: '1px solid #dee2e6', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ fontWeight: 700, color: '#1a1a2e', fontSize: 14 }}>{num}. {title}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, background: '#ede9fe', color: '#4338ca', borderRadius: 4, padding: '2px 7px' }}>{type}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, background: '#dcfce7', color: '#15803d', borderRadius: 4, padding: '2px 7px' }}>{grant}</span>
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <tbody>
+          {redirectUri && (
+            <tr>
+              <td style={{ width: 140, fontWeight: 600, color: '#6b7280', paddingBottom: 6, verticalAlign: 'top' }}>Redirect URI</td>
+              <td style={{ paddingBottom: 6 }}><code style={{ background: '#f3f4f6', borderRadius: 3, padding: '2px 6px', fontSize: 12 }}>{redirectUri}</code></td>
+            </tr>
+          )}
+          <tr>
+            <td style={{ width: 140, fontWeight: 600, color: '#6b7280', paddingBottom: 6, verticalAlign: 'top' }}>Scopes</td>
+            <td style={{ paddingBottom: 6 }}>{scopes.map(s => <ScopeChip key={s} scope={s} />)}</td>
+          </tr>
+          <tr>
+            <td style={{ width: 140, fontWeight: 600, color: '#6b7280', paddingBottom: 6, verticalAlign: 'top' }}>Config field</td>
+            <td style={{ paddingBottom: 6 }}><code style={{ background: '#fef9c3', color: '#854d0e', borderRadius: 3, padding: '2px 6px', fontSize: 12 }}>{configKey}</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p style={{ margin: '6px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>{notes}</p>
+    </div>
+  );
+
+  return (
+    <div>
+      {/* Internal tab bar */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid #e5e7eb', marginBottom: 20, flexWrap: 'wrap' }}>
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setActiveTab(t.id)}
+            style={{
+              padding: '8px 14px', border: 'none', borderBottom: `2px solid ${activeTab === t.id ? '#4f46e5' : 'transparent'}`,
+              marginBottom: -2, background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: activeTab === t.id ? 700 : 500,
+              color: activeTab === t.id ? '#4f46e5' : '#6b7280', whiteSpace: 'nowrap',
+            }}
+          >{t.label}</button>
+        ))}
+      </div>
+
+      {/* Overview & Checklist */}
+      {activeTab === 'overview' && (
+        <div>
+          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '14px 16px', marginBottom: 20 }}>
+            <p style={{ margin: 0, fontSize: 14, color: '#1e3a5f', lineHeight: 1.7 }}>
+              <strong>What is this tab?</strong> The IDP Setup tab is a reference for configuring PingOne as the identity provider for this app.
+              It shows the OAuth endpoints computed from your Environment ID, the redirect URIs to register in PingOne, the scopes each application needs,
+              and which config fields map to which PingOne objects. Share this with whoever sets up the PingOne tenant — it has everything they need.
+            </p>
+          </div>
+          <h4 style={{ fontSize: 14, fontWeight: 700, color: '#374151', margin: '0 0 4px' }}>What you need to create in PingOne</h4>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 12px' }}>Four applications and one custom resource are required. Use the tabs above for the exact values.</p>
+          <div style={{ background: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: 8, padding: '12px 16px', fontSize: 13, lineHeight: 2.0 }}>
+            <div>☐ PingOne region + Environment ID entered in <strong>PingOne Config</strong> tab → <button type="button" style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0 }} onClick={() => setActiveTab('endpoints')}>view endpoints →</button></div>
+            <div>☐ <strong>Admin Web App</strong> created in PingOne → Client ID + Redirect URI saved → <button type="button" style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0 }} onClick={() => setActiveTab('apps')}>see details →</button></div>
+            <div>☐ <strong>Customer Web App</strong> created in PingOne → Client ID + Redirect URI saved</div>
+            <div>☐ <strong>Worker App</strong> created in PingOne → Client ID + Secret saved</div>
+            <div>☐ <strong>AI Agent App</strong> created in PingOne → Client ID + Secret set in <code style={{ fontSize: 12, background: '#f3f4f6', padding: '1px 5px', borderRadius: 3 }}>.env</code></div>
+            <div>☐ <strong>MCP Server Resource</strong> created with 3 scopes → URI saved → <button type="button" style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0 }} onClick={() => setActiveTab('resources')}>see details →</button></div>
+            <div>☐ Redirect URIs registered in each PingOne app → <button type="button" style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0 }} onClick={() => setActiveTab('redirects')}>copy URIs →</button></div>
+            <div>☐ <code style={{ fontSize: 12, background: '#f3f4f6', padding: '1px 5px', borderRadius: 3 }}>banking:*</code> scopes assigned to Customer App + AI Agent App</div>
+            <div>☐ Test Connection passes on PingOne Config tab</div>
+            <div>☐ Admin login works at <strong>/admin</strong> &nbsp;·&nbsp; User login works at <strong>/</strong></div>
+          </div>
+        </div>
+      )}
+
+      {/* Applications */}
+      {activeTab === 'apps' && (
+        <div>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 16px' }}>
+            Create these in PingOne Admin Console → <strong>Applications → Applications → + Add Application</strong>.
+            After creating each, copy the Client ID into the corresponding field in the <strong>PingOne Config</strong> tab.
+          </p>
+          <AppCard
+            num="1" title="Admin Web Application" type="Web Application" grant="Authorization Code"
+            redirectUri={adminRedir}
+            scopes={['openid', 'profile', 'email']}
+            configKey="Admin Client ID / Admin Redirect URI"
+            notes="Used for admin login at /admin. Token endpoint auth method: Client Secret Basic. Client Secret is required — save it in Admin Client Secret on the PingOne Config tab."
+          />
+          <AppCard
+            num="2" title="Customer Web Application" type="Web Application" grant="Authorization Code + PKCE"
+            redirectUri={userRedir}
+            scopes={['openid', 'profile', 'email', 'banking:read', 'banking:write', 'banking:mcp:invoke']}
+            configKey="User Client ID / User Redirect URI"
+            notes="Used for end-user banking login at /. No client secret needed — PKCE only. Assign the banking:* scopes after creating the MCP Server Resource (see Resources & Scopes tab)."
+          />
+          <AppCard
+            num="3" title="Worker Application" type="Worker" grant="Client Credentials"
+            scopes={['(none — uses Management API roles)']}
+            configKey="Worker Client ID + Secret"
+            notes="Needed for the BFF to call PingOne Management API: user provisioning, MFA enrollment, group lookup. In PingOne: Roles tab → assign Identity Data Admin + Environment Admin. Copy Client ID + Secret into the Worker App section on PingOne Config tab."
+          />
+          <AppCard
+            num="4" title="AI Agent App (Token Exchange)" type="Worker / AI Agent" grant="Client Credentials"
+            scopes={['banking:read', 'banking:write', 'banking:mcp:invoke']}
+            configKey="PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID + SECRET in .env"
+            notes="Used by the BFF to exchange user tokens for narrowly-scoped MCP tokens (RFC 8693 delegation). Token endpoint auth method must be Client Secret POST. Set PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID and PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET in your .env file. Use type AI_AGENT in PingOne if available."
+          />
+        </div>
+      )}
+
+      {/* Redirect URIs */}
+      {activeTab === 'redirects' && (
+        <div>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 16px' }}>
+            Copy these exact URLs into the <strong>Redirect URIs</strong> field of each PingOne application.
+            They must match character-for-character — PingOne rejects any URI not on the allowlist.
+          </p>
+          <h4 style={{ fontSize: 13, fontWeight: 700, color: '#374151', margin: '0 0 8px' }}>Admin Web Application</h4>
+          <div style={{ marginBottom: 16 }}>
+            <ValueRow label="Redirect URI" value={adminRedir} hint="PingOne → Admin App → Configuration → Redirect URIs → add this value" />
+          </div>
+          <h4 style={{ fontSize: 13, fontWeight: 700, color: '#374151', margin: '0 0 8px' }}>Customer Web Application</h4>
+          <div style={{ marginBottom: 16 }}>
+            <ValueRow label="Redirect URI" value={userRedir} hint="PingOne → Customer App → Configuration → Redirect URIs → add this value" />
+          </div>
+          <h4 style={{ fontSize: 13, fontWeight: 700, color: '#374151', margin: '0 0 8px' }}>Worker &amp; AI Agent Apps</h4>
+          <div style={{ background: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: 6, padding: '10px 14px', fontSize: 13, color: '#6b7280' }}>
+            No redirect URIs needed — these apps use Client Credentials (machine-to-machine) and never redirect a browser.
+          </div>
+          {adminClientId || userClientId || workerClientId ? (
+            <>
+              <h4 style={{ fontSize: 13, fontWeight: 700, color: '#374151', margin: '16px 0 8px' }}>Registered Client IDs (reference)</h4>
+              <div>
+                {adminClientId  && <ValueRow label="Admin Client ID"  value={adminClientId}  />}
+                {userClientId   && <ValueRow label="User Client ID"   value={userClientId}   />}
+                {workerClientId && <ValueRow label="Worker Client ID" value={workerClientId} />}
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
+
+      {/* Resources & Scopes */}
+      {activeTab === 'resources' && (
+        <div>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 16px' }}>
+            Create this custom resource in PingOne Admin Console → <strong>Applications → Resources → + Add Resource</strong>.
+            The audience URI becomes the token <code style={{ fontSize: 12, background: '#f3f4f6', padding: '1px 4px', borderRadius: 3 }}>aud</code> claim — it must match the public URL of your MCP server exactly.
+          </p>
+          <div style={{ background: '#fff', border: '1px solid #dee2e6', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <span style={{ fontWeight: 700, color: '#1a1a2e', fontSize: 14 }}>MCP Server Resource</span>
+              <span style={{ fontSize: 11, fontWeight: 600, background: '#fef9c3', color: '#854d0e', borderRadius: 4, padding: '2px 7px' }}>Custom Resource</span>
+            </div>
+            <ValueRow label="Audience (URI)" value={mcpAud} hint="This becomes the aud claim in MCP tokens. Must match PINGONE_RESOURCE_MCP_SERVER_URI in .env and the MCP Resource URI field." />
+            <div style={{ marginTop: 12 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#6b7280' }}>Scopes to create on this resource:</span>
+              <div style={{ marginTop: 6 }}>
+                {[
+                  { scope: 'banking:read',        desc: 'Read account balances and transaction history' },
+                  { scope: 'banking:write',        desc: 'Initiate transfers and payment actions' },
+                  { scope: 'banking:mcp:invoke',   desc: 'Invoke MCP tools via the AI agent (required for token exchange)' },
+                ].map(({ scope, desc }) => (
+                  <div key={scope} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                    <ScopeChip scope={scope} />
+                    <span style={{ fontSize: 12, color: '#6b7280' }}>{desc}</span>
+                    <button type="button" className="idp-copy-btn" onClick={() => copyToClipboard(scope, scope)}>⎘ Copy</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '12px 16px', fontSize: 13, color: '#78350f' }}>
+            <strong>After creating the resource:</strong> Go to each of these apps and assign all three scopes:
+            <ul style={{ margin: '6px 0 0 18px', lineHeight: 1.8 }}>
+              <li>Customer Web Application (so users can consent to banking:* access)</li>
+              <li>AI Agent App (so it can request banking:* during token exchange)</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* OAuth Endpoints */}
+      {activeTab === 'endpoints' && (
+        <div>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 16px' }}>
+            These are computed automatically from your PingOne region and environment ID.
+            You don't need to enter them manually — they're provided here for reference and troubleshooting.
+          </p>
+          {!pingoneEnvironmentId && (
+            <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '10px 14px', fontSize: 13, color: '#856404', marginBottom: 16 }}>
+              ⚠ Environment ID not set — endpoints shown with placeholder. Configure it in the <strong>PingOne Config</strong> tab first.
+            </div>
+          )}
+          <div>
+            {[
+              { label: 'Authorization Endpoint', value: `${base}/${envId}/as/authorize`,    hint: 'Starts the PKCE / auth-code login flow' },
+              { label: 'Token Endpoint',          value: `${base}/${envId}/as/token`,        hint: 'Exchanges auth codes and refresh tokens for access tokens' },
+              { label: 'Introspection Endpoint',  value: `${base}/${envId}/as/introspect`,   hint: 'Used by the MCP gateway to validate bearer tokens' },
+              { label: 'JWKS URI',                value: `${base}/${envId}/as/jwks`,         hint: 'Public keys for JWT signature verification' },
+              { label: 'Userinfo Endpoint',       value: `${base}/${envId}/as/userinfo`,     hint: 'Returns claims for the authenticated user' },
+              { label: 'OIDC Discovery',          value: `${base}/${envId}/as/.well-known/openid-configuration`, hint: 'Full OIDC metadata document' },
+            ].map(({ label, value, hint }) => (
+              <ValueRow key={label} label={label} value={value} hint={hint} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Main Component
 
 const UnifiedConfigurationPage: FC<{
@@ -577,9 +837,9 @@ const UnifiedConfigurationPage: FC<{
   const [flagsError, setFlagsError] = useState<string | null>(null);
   const [flagSearch, setFlagSearch] = useState("");
 
-  const { placement: ctxAgentUiMode } = useAgentUiMode();
+  const { placement: ctxAgentUiMode, setAgentUi } = useAgentUiMode();
   useEducationUI();
-  const { industryId: ctxIndustryId } = useIndustryBranding();
+  const { industryId: ctxIndustryId, applyIndustryId } = useIndustryBranding();
   const { theme, toggleTheme } = useTheme();
   const isAdminUser = (user as { role?: string } | null)?.role === 'admin';
 
@@ -602,8 +862,8 @@ const UnifiedConfigurationPage: FC<{
           userRedirectUri: (cfg.user_redirect_uri as string) || '',
           mfaPolicyId: (cfg.pingone_mfa_policy_id as string) || '',
           mfaStepUpThreshold: Number(cfg.step_up_amount_threshold ?? cfg.mfa_step_up_threshold) || 500,
-          agentTransactionCountLimit: Number(cfg.agent_transaction_count_limit) || 0,
-          agentTransactionValueLimit: Number(cfg.agent_transaction_value_limit) || 0,
+          agentTransactionCountLimit: Number(cfg.agent_transaction_count_limit) || 3,
+          agentTransactionValueLimit: Number(cfg.agent_transaction_value_limit) || 5000,
           cibaEnabled: !!cfg.ciba_enabled,
           mcpServerUrl: (cfg.mcp_server_url as string) || '',
           mcpResourceUri: (cfg.mcp_resource_uri as string) || '',
@@ -622,8 +882,9 @@ const UnifiedConfigurationPage: FC<{
           vercelDeployUrl: (cfg.vercel_deploy_url as string) || '',
           workerClientSecret: (cfg.authorize_worker_client_secret as string) || '',
           logLevel: (cfg.log_level as string) || 'info',
-          debugShowTokenDetails: !!cfg.debug_show_token_details,
-          debugShowApiCalls: !!cfg.debug_show_api_calls,
+          debugShowTokenDetails: cfg.debug_show_token_details === true || cfg.debug_show_token_details === 'true',
+          debugShowApiCalls: cfg.debug_show_api_calls === true || cfg.debug_show_api_calls === 'true',
+          logFilterCategories: (cfg.log_filter_categories as string) || '',
         }));
 
         if (isAdminUser) {
@@ -685,7 +946,8 @@ const UnifiedConfigurationPage: FC<{
 
   const setIndustry = useCallback((id: string) => {
     setState(prev => ({ ...prev, industryId: id, saveStatus: 'idle' }));
-  }, []);
+    (applyIndustryId as (id: string) => void)(id);
+  }, [applyIndustryId]);
 
   const testConnection = useCallback(async () => {
     setState(prev => ({ ...prev, connectionTestStatus: 'testing', connectionTestMessage: '' }));
@@ -775,6 +1037,7 @@ const UnifiedConfigurationPage: FC<{
         log_level: state.logLevel,
         debug_show_token_details: state.debugShowTokenDetails,
         debug_show_api_calls: state.debugShowApiCalls,
+        log_filter_categories: state.logFilterCategories,
       });
 
       if (isAdminUser) {
@@ -800,13 +1063,23 @@ const UnifiedConfigurationPage: FC<{
       }
 
       setState(prev => ({ ...prev, saveStatus: 'saved' }));
+
+      const agentUiModeMap: Record<string, { placement: string; fab: boolean }> = {
+        standard: { placement: 'middle', fab: true },
+        minimal:  { placement: 'none',   fab: true },
+        advanced: { placement: 'right-dock', fab: true },
+        disabled: { placement: 'none',   fab: true },
+      };
+      const mappedUiMode = agentUiModeMap[state.agentUiMode] ?? agentUiModeMap.standard;
+      (setAgentUi as (v: { placement: string; fab: boolean }) => void)(mappedUiMode);
+
       notifySuccess('Configuration saved successfully!');
     } catch (error) {
       console.error('Failed to save configuration:', error);
       setState(prev => ({ ...prev, saveStatus: 'error' }));
       notifyError('Failed to save configuration');
     }
-  }, [state, isAdminUser]);
+  }, [state, isAdminUser, setAgentUi]);
 
   const resetConfiguration = useCallback(() => {
     setState(getDefaultState());
@@ -939,20 +1212,20 @@ const UnifiedConfigurationPage: FC<{
           help="The UUID that uniquely identifies your PingOne environment. Find it in PingOne Admin → Environment → Properties → Environment ID. All OAuth and Management API calls include this in the URL path."
         />
         <CfgField
-          label="Admin Client ID"
+          label="PingOne Worker Client ID"
           value={state.adminClientId}
           onChange={field('adminClientId')}
           placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
           help="Client ID of a PingOne Worker application with Management API roles (e.g. Environment Admin or Identity Data Admin). The BFF uses this to call PingOne Management APIs for user lookup, MFA enrollment, and configuration queries. Create one in PingOne → Applications → + Application → Worker."
         />
         <CfgSecretField
-          label="Admin Client Secret"
+          label="PingOne Worker Client Secret"
           fieldKey="adminClientSecret"
           value={state.adminClientSecret}
           showSecrets={state.showSecrets}
           onToggle={toggleSecret}
           onChange={field('adminClientSecret')}
-          help="The client secret for the Worker app. Found in PingOne → Applications → your Worker app → Overview → Client Secret."
+          help="The client secret for the PingOne Worker app. Found in PingOne → Applications → your Worker app → Overview → Client Secret."
         />
         <CfgSelect
           label="Token Endpoint Auth Method"
@@ -984,15 +1257,16 @@ const UnifiedConfigurationPage: FC<{
 
     if (s === 'oauth-flows') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Two OAuth 2.0 clients are needed: one for <strong>admin</strong> access (manages PingOne config) and one for <strong>end-user</strong> banking login. Both use Authorization Code flow. The admin app is a confidential client (has a secret); the user app uses PKCE (public client). Create each in PingOne → Applications, then paste the client ID, secret, and redirect URI here.</p>
+        <p className="cfg-section-desc">Two OAuth 2.0 clients are needed: one for <strong>Admin</strong> login and one for <strong>Customer</strong> login. Both use Authorization Code flow. The Worker app credentials (for PingOne Management API) are configured on the PingOne Connection tab.</p>
+        <div className="cfg-info-box" style={{ marginBottom: '1rem' }}>
+          Client secrets are generated and stored by this app — you do <strong>not</strong> need to copy them from PingOne. Only enter the Client ID and Redirect URI for each app.
+        </div>
         <h3 className="cfg-subsection-title">Admin App (Authorization Code)</h3>
         <CfgField label="Admin Client ID" value={state.adminClientId} onChange={field('adminClientId')} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" help="Client ID of the PingOne web application used for admin login (/admin route). In PingOne: Applications → your admin app → Overview → Client ID." />
-        <CfgSecretField label="Admin Client Secret" fieldKey="adminClientSecret" value={state.adminClientSecret} showSecrets={state.showSecrets} onToggle={toggleSecret} onChange={field('adminClientSecret')} help="The client secret for the admin app. In PingOne: Applications → your admin app → Overview → Client Secret. This is sent server-side only — never exposed to the browser." />
-        <CfgField label="Admin Redirect URI" value={state.adminRedirectUri} onChange={field('adminRedirectUri')} placeholder="https://yourdomain.com/api/auth/oauth/admin/callback" help="The callback URL PingOne redirects to after admin login. Must exactly match what’s registered in PingOne → admin app → Configuration → Redirect URIs. Format: https://yourdomain.com/api/auth/oauth/admin/callback" />
+        <CfgField label="Admin Redirect URI" value={state.adminRedirectUri} onChange={field('adminRedirectUri')} placeholder="https://yourdomain.com/api/auth/oauth/admin/callback" help="The callback URL PingOne redirects to after admin login. Must exactly match what's registered in PingOne → admin app → Configuration → Redirect URIs." />
         <h3 className="cfg-subsection-title">User App (Authorization Code + PKCE)</h3>
-        <CfgField label="User Client ID" value={state.userClientId} onChange={field('userClientId')} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" help="Client ID of the PingOne SPA application used for end-user banking login. In PingOne: Applications → your user app → Overview → Client ID. This app should have PKCE enabled (no client secret required for the flow)." />
-        <CfgSecretField label="User Client Secret" fieldKey="userClientSecret" value={state.userClientSecret} showSecrets={state.showSecrets} onToggle={toggleSecret} onChange={field('userClientSecret')} help="Optional for PKCE flows. If your PingOne user app is configured as a confidential client, enter the secret here. For public SPA clients, leave blank." />
-        <CfgField label="User Redirect URI" value={state.userRedirectUri} onChange={field('userRedirectUri')} placeholder="https://yourdomain.com/api/auth/oauth/user/callback" help="The callback URL PingOne redirects to after user login. Must exactly match the redirect URI in PingOne → user app → Configuration. Format: https://yourdomain.com/api/auth/oauth/user/callback" />
+        <CfgField label="User Client ID" value={state.userClientId} onChange={field('userClientId')} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" help="Client ID of the PingOne SPA application used for end-user banking login. In PingOne: Applications → your user app → Overview → Client ID. PKCE is required — no client secret needed." />
+        <CfgField label="User Redirect URI" value={state.userRedirectUri} onChange={field('userRedirectUri')} placeholder="https://yourdomain.com/api/auth/oauth/user/callback" help="The callback URL PingOne redirects to after user login. Must exactly match the redirect URI in PingOne → user app → Configuration." />
       </div>
     );
 
@@ -1005,13 +1279,6 @@ const UnifiedConfigurationPage: FC<{
           onChange={field('mfaPolicyId')}
           placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
           help="UUID of the MFA policy to use for step-up challenges. Find it in PingOne Admin → Security → MFA → Policies → click your policy → copy the ID from the URL or Properties panel. The policy controls which MFA methods are available (push, TOTP, email, SMS)."
-        />
-        <CfgField
-          label="Step-Up Threshold (USD)"
-          value={String(state.mfaStepUpThreshold)}
-          onChange={v => setState(prev => ({ ...prev, mfaStepUpThreshold: Number(v) || 0, saveStatus: 'idle' }))}
-          type="number"
-          help="Dollar amount that triggers MFA step-up. Any single transfer at or above this value will require the user to complete an MFA challenge before the agent can proceed. Default: $500. Set to 0 to require MFA for every transfer."
         />
         <CfgField
           label="Agent Transaction Count Limit"
@@ -1028,43 +1295,48 @@ const UnifiedConfigurationPage: FC<{
           help="Maximum cumulative dollar value the AI agent can transfer within a single approval window. Once this limit is reached, the agent pauses and asks for fresh human consent. Set 0 for unlimited."
         />
         <div className="form-group">
-          <label className="form-label">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', color: '#111827' }}>
             <input
               type="checkbox"
               checked={state.cibaEnabled}
               onChange={e => setState(prev => ({ ...prev, cibaEnabled: e.target.checked, saveStatus: 'idle' }))}
-              style={{ marginRight: '8px' }}
             />
             Enable CIBA (Backchannel Authentication)
           </label>
-          <p className="cfg-field-help">CIBA (Client-Initiated Backchannel Authentication) sends out-of-band push notifications to the user’s registered device for MFA. When enabled, high-value transfers trigger a PingOne push instead of an inline challenge. Requires a PingOne MFA policy with push notifications configured.</p>
+          <p className="cfg-field-help">CIBA sends out-of-band push notifications to the user's registered device for MFA. When enabled, high-value transfers trigger a PingOne push instead of an inline challenge. Requires a PingOne MFA policy with push notifications configured.</p>
         </div>
       </div>
     );
 
     if (s === 'token-exchange') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">RFC 8693 Token Exchange lets the BFF swap a user’s access token (and optionally an agent client-credentials token) for a narrowly-scoped MCP Gateway token. This is how the AI agent gets permission to call banking tools on the user’s behalf — the resulting token carries an <code>act</code> claim showing who delegated and who is acting. Configure the MCP server connection and the PingOne app that performs the exchange.</p>
+        <p className="cfg-section-desc">RFC 8693 Token Exchange lets the BFF swap a user access token for a narrowly-scoped MCP Gateway token. The resulting token carries an <code>act</code> claim showing who delegated and who is acting.</p>
+        {state.pingoneEnvironmentId && (
+          <div className="cfg-info-box" style={{ marginBottom: '1rem' }}>
+            <strong>Token endpoint:</strong> https://auth.pingone.{state.pingoneRegion || 'com'}/{state.pingoneEnvironmentId}/as/token<br />
+            <strong>BFF origin:</strong> {window.location.origin}
+          </div>
+        )}
         <CfgField
           label="MCP Server URL"
           value={state.mcpServerUrl}
           onChange={field('mcpServerUrl')}
           placeholder="wss://your-mcp-server.railway.app"
-          help="WebSocket URL where the MCP tool server is running. The BFF connects here to execute banking tools (get_accounts, transfer_funds, etc.). Usually deployed to Railway, Render, or Fly.io. Format: wss://your-host.railway.app"
+          help="WebSocket URL where the MCP tool server is running. The BFF connects here to execute banking tools (get_accounts, transfer_funds, etc.)."
         />
         <CfgField
           label="MCP Resource URI"
           value={state.mcpResourceUri}
           onChange={field('mcpResourceUri')}
           placeholder="https://your-mcp-server.railway.app"
-          help="The audience (aud) claim value for exchanged MCP tokens. This must match the resource URI registered in PingOne for the MCP Token Exchanger app. PingOne uses this to scope the resulting token to only this resource server. Usually the HTTPS URL of your MCP server."
+          help="The audience (aud) claim value for exchanged MCP tokens. Must match the resource URI registered in PingOne for the MCP Token Exchanger app."
         />
         <CfgField
           label="Worker Client ID"
           value={state.workerClientId}
           onChange={field('workerClientId')}
           placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          help="Client ID of the PingOne MCP Token Exchanger application (type: Worker or AI Agent). This app has the \u2018Token Exchange\u2019 grant type enabled and performs the RFC 8693 exchange. In PingOne: Applications → MCP Token Exchanger → Overview → Client ID."
+          help="Client ID of the PingOne MCP Token Exchanger application (type: Worker or AI Agent). This app has the Token Exchange grant type enabled. In PingOne: Applications → MCP Token Exchanger → Overview → Client ID."
         />
       </div>
     );
@@ -1104,7 +1376,21 @@ const UnifiedConfigurationPage: FC<{
     if (s === 'demo-data-setup') return (
       <div className="cfg-section">
         <p className="cfg-section-desc">
-          <strong>Step 2:</strong> Pick a demo scenario. Each preset loads different sample bank accounts, transaction amounts, and agent prompts. For example, <em>High-Value Transactions</em> pre-loads transfers above the MFA threshold so step-up authentication triggers immediately during a demo.
+          <strong>Step 2:</strong> Pick a demo scenario. Each preset loads different sample bank accounts, transaction amounts, and agent prompts. The scenario you choose changes how MFA step-up, agent consent (HITL), and transaction flows behave.<br /><br />
+          <ul style={{ marginLeft: '1.5em' }}>
+            <li><strong>Default Banking Demo:</strong> Balanced mix of checking, savings, and investment accounts. <em>Most transfers do NOT trigger MFA or consent.</em> <br />
+              <span style={{ color: '#374151' }}>Example: Transfer $200 from Checking to Savings (no MFA, no consent required).</span>
+            </li>
+            <li><strong>High-Value Transactions (triggers MFA):</strong> Pre-loads large transfers above the MFA threshold. <em>Every significant transfer requires step-up MFA.</em> <br />
+              <span style={{ color: '#374151' }}>Example: Transfer $2,000 from Checking to Investment (MFA required, consent optional).</span>
+            </li>
+            <li><strong>AI Agent Showcase:</strong> Optimized for demonstrating AI agent delegation, token exchange, and human-in-the-loop (HITL) consent. <em>Agent requests consent before AND step-up MFA for high-value transfers.</em> <br />
+              <span style={{ color: '#374151' }}>Example: Agent proposes a transfer → user sees consent dialog → approves → MFA if over threshold.</span>
+            </li>
+            <li><strong>MFA & Step-Up Auth Focus:</strong> Step-up threshold is set to $1. <em>Every transfer requires both consent and MFA, even $5.</em> <br />
+              <span style={{ color: '#374151' }}>Example: Transfer $5 from Checking to Savings (consent dialog + MFA required).</span>
+            </li>
+          </ul>
         </p>
         <CfgSelect
           label="Demo Scenario"
@@ -1116,7 +1402,12 @@ const UnifiedConfigurationPage: FC<{
             { value: 'agent-focused', label: 'AI Agent Showcase' },
             { value: 'mfa-heavy',     label: 'MFA & Step-Up Auth Focus' },
           ]}
-          help="Default: balanced mix of accounts and transactions. High-Value: large transfers that trigger MFA step-up. Agent Showcase: optimised for demonstrating AI agent delegation and consent flows. MFA Heavy: every action requires multi-factor authentication."
+          help={
+            'Default: Most transfers do NOT trigger MFA. ' +
+            'High-Value: Large transfers always require MFA. ' +
+            'Agent Showcase: Agent requests consent before transfers. ' +
+            'MFA & Step-Up: Every transfer requires MFA.'
+          }
         />
       </div>
     );
@@ -1206,7 +1497,7 @@ const UnifiedConfigurationPage: FC<{
 
     if (s === 'account-setup') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">Set how many sample bank accounts each demo user gets. These are auto-generated with realistic names (Checking, Savings, Investment, etc.) and balances. More accounts give the AI agent more data to work with when answering questions like “What’s my total balance?”</p>
+        <p className="cfg-section-desc">Set how many sample bank accounts each demo user gets. These are auto-generated with realistic names (Checking, Savings, Investment, etc.) and balances. More accounts give the AI agent more data to work with when answering questions like "What's my total balance?"</p>
         <CfgField
           label="Number of Demo Accounts"
           value={String(state.accountCount)}
@@ -1382,7 +1673,7 @@ const UnifiedConfigurationPage: FC<{
     );
     if (s === 'education-settings') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">The education panel is a step-by-step overlay that explains what’s happening during OAuth flows (login, token exchange, MFA). It’s useful for demos and learning, but you may want to hide it for polished customer presentations.</p>
+        <p className="cfg-section-desc">The education panel is a step-by-step overlay that explains what's happening during OAuth flows (login, token exchange, MFA). It's useful for demos and learning, but you may want to hide it for polished customer presentations.</p>
         <CfgToggle
           label="Show Education Panel"
           checked={state.showEducationPanel}
@@ -1478,6 +1769,61 @@ const UnifiedConfigurationPage: FC<{
           onChange={v => setState(prev => ({ ...prev, debugShowApiCalls: v, saveStatus: 'idle' }))}
           help="Logs all BFF API calls to the browser console"
         />
+        <div className="form-group" style={{ marginTop: '1.5rem' }}>
+          <div className="form-label">Log Category Filter</div>
+          <p className="cfg-field-help" style={{ marginBottom: '0.75rem' }}>
+            Select categories to show in the in-app Log Viewer. Leave all unchecked to show every category.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.4rem 1rem' }}>
+            {[
+              'McpExchangerToken', 'TokenExchange', 'TokenRefresh', 'TokenService',
+              'AgentDelegation', 'AgentClientCredentials', 'OAuth', 'Authorize',
+              'SessionCheck', 'CIBA', 'MFA', 'StepUp', 'ConsentChallenge',
+              'PingOneAgentUser', 'PingOneUserLookup', 'ScopePolicy',
+              'Thresholds', 'ConfigStore', 'SecurityMonitoring', 'ErrorHandler',
+            ].map(cat => {
+              const active = state.logFilterCategories.split(',').map(s => s.trim()).filter(Boolean);
+              const checked = active.length === 0 || active.includes(cat);
+              return (
+                <label key={cat} className="cfg-toggle-label" style={{ fontSize: '0.875rem', fontWeight: 400 }}>
+                  <input
+                    type="checkbox"
+                    className="cfg-toggle-input"
+                    checked={checked}
+                    onChange={e => {
+                      const prev = state.logFilterCategories.split(',').map(s => s.trim()).filter(Boolean);
+                      let next: string[];
+                      if (prev.length === 0) {
+                        // All enabled — unchecking this one means "filter to all except this"
+                        next = [
+                          'McpExchangerToken', 'TokenExchange', 'TokenRefresh', 'TokenService',
+                          'AgentDelegation', 'AgentClientCredentials', 'OAuth', 'Authorize',
+                          'SessionCheck', 'CIBA', 'MFA', 'StepUp', 'ConsentChallenge',
+                          'PingOneAgentUser', 'PingOneUserLookup', 'ScopePolicy',
+                          'Thresholds', 'ConfigStore', 'SecurityMonitoring', 'ErrorHandler',
+                        ].filter(c => c !== cat);
+                      } else if (e.target.checked) {
+                        next = [...prev, cat];
+                      } else {
+                        next = prev.filter(c => c !== cat);
+                      }
+                      setState(p => ({ ...p, logFilterCategories: next.join(','), saveStatus: 'idle' }));
+                    }}
+                  />
+                  <span>{cat}</span>
+                </label>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ marginTop: '0.75rem', fontSize: '0.8rem', padding: '0.25rem 0.75rem' }}
+            onClick={() => setState(p => ({ ...p, logFilterCategories: '', saveStatus: 'idle' }))}
+          >
+            Show All Categories
+          </button>
+        </div>
       </div>
     );
 
@@ -1518,6 +1864,25 @@ const UnifiedConfigurationPage: FC<{
     );
 
     // IDP Setup tab
+    if (s === 'idp-setup-guide') {
+      return (
+        <div className="cfg-section" style={{ maxWidth: 'none' }}>
+          <IdpSetupGuide
+            pingoneRegion={state.pingoneRegion}
+            pingoneEnvironmentId={state.pingoneEnvironmentId}
+            adminRedirectUri={state.adminRedirectUri}
+            userRedirectUri={state.userRedirectUri}
+            mcpResourceUri={state.mcpResourceUri}
+            adminClientId={state.adminClientId}
+            userClientId={state.userClientId}
+            workerClientId={state.workerClientId}
+            copyToClipboard={copyToClipboard}
+          />
+        </div>
+      );
+    }
+
+
     if (s === 'idp-overview') {
       const base = `https://auth.pingone.${state.pingoneRegion}`;
       const envId = state.pingoneEnvironmentId || '(not configured)';
@@ -1528,6 +1893,7 @@ const UnifiedConfigurationPage: FC<{
         { label: 'Token Endpoint', value: state.pingoneEnvironmentId ? `${base}/${envId}/as/token` : '(not configured)' },
         { label: 'JWKS URI', value: state.pingoneEnvironmentId ? `${base}/${envId}/as/jwks` : '(not configured)' },
         { label: 'Userinfo Endpoint', value: state.pingoneEnvironmentId ? `${base}/${envId}/as/userinfo` : '(not configured)' },
+        { label: 'OIDC Discovery (.well-known)', value: state.pingoneEnvironmentId ? `${base}/${envId}/as/.well-known/openid-configuration` : '(not configured)' },
       ];
       return (
         <div className="cfg-section">

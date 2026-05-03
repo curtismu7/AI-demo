@@ -39,3 +39,11 @@ Fix Vercel Env tab requires VERCEL_TOKEN and VERCEL_PROJECT_ID (ui, 2d ago)
 Make config page tabs more visually obvious (ui, 2d ago)
 Support all 4 PingOne token auth methods for management worker including JWT generation (api, 2d ago)
 Worker App config tab credentials lost on browser refresh (api, 2d ago)- [ ] MCP Gateway Config UI: BFF `GET /api/gateway/config` + UI page with live config display and downloadable PingGateway `mcp.json` route export (generated from env vars). Add as follow-on to phase 243.
+- [ ] Get rid of all these icons, just text.
+- [x] New window button opens middle browser but it has side menu and it is not pop out.
+- [ ] Test all action buttons, transfer does not hit consent or mfa with $1000.00 transferred from checking to savings. Thresholds are unknown / might be incorrect.
+- [x] Checkbox text is unreadable; make the text white.
+- [x] "view sensitive account details" chip does not update 12 step. Make sure all chips and commands update the 12 step even if it goes to LLM.
+- [x] Why is banking_mcp_server not connected? "Sequential reasoning complete for: 'Should I transfer money from checking to savings?'. Connect the MCP server (banking_mcp_server) for full AI-powered analysis."
+- [ ] Dashboard toolbar missing dollar-sign icon that opens small panel for changing step-up thresholds on the fly.
+- [x] The "always float" checkbox does not show float icon in bottom right to open floating agent.

@@ -14,7 +14,7 @@ export default function ApiCallDisplay({ sessionId = 'default' }) {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await apiClient.get(`/api/api-calls?sessionId=${sessionId}&limit=50`);
+      const { data } = await apiClient.get(`/api/api-calls?limit=50`);
       if (data.success) {
         setApiCalls(data.calls || []);
         setStats(data.stats || null);
@@ -30,7 +30,7 @@ export default function ApiCallDisplay({ sessionId = 'default' }) {
 
   const clearApiCalls = async () => {
     try {
-      await apiClient.delete(`/api/api-calls?sessionId=${sessionId}`);
+      await apiClient.delete(`/api/api-calls`);
       setApiCalls([]);
       setStats(null);
       setSelectedCall(null);

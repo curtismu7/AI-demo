@@ -1,5 +1,6 @@
 // banking_api_ui/src/components/agent/MessageBubble.js
 import React from 'react';
+import { InlineMd, MarkdownContent } from '../shared/MarkdownText';
 
 /**
  * Modern message bubble component with accessibility and animations
@@ -117,10 +118,10 @@ export default function MessageBubble({
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
-              <span>{content}</span>
+              <span><InlineMd text={content} /></span>
             </div>
           ) : (
-            <p className="agent-message-text">{content}</p>
+            <MarkdownContent text={content} className="agent-message-text" />
           )}
         </div>
 

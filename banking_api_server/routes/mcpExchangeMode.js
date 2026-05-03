@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.get('/exchange-mode', (req, res) => {
   if (!req.session?.user) return res.status(401).json({ error: 'not_authenticated' });
-  const mode = req.session.mcpExchangeMode || 'single';
+  const mode = req.session.mcpExchangeMode || 'double';
   res.json({ mode });
 });
 

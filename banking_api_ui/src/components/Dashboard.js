@@ -18,6 +18,7 @@ import ApiCallsModal from './ApiCallsModal';
 import AgentUiModeToggle from './AgentUiModeToggle';
 import DashboardHeader from './DashboardHeader';
 import WebMcpPanel from './WebMcpPanel';
+import ConfirmModal from './ConfirmModal';
 
 const Dashboard = ({ user, onLogout }) => {
   // Fetch and display current user token in the token chain
@@ -32,6 +33,8 @@ const Dashboard = ({ user, onLogout }) => {
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [tokenData, setTokenData] = useState(null);
   const [resettingDemo, setResettingDemo] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmWriteSeed, setConfirmWriteSeed] = useState(false);
   const [txLookupUsername, setTxLookupUsername] = useState('bankuser');
   const [txLookupPhone4, setTxLookupPhone4] = useState('1586');
   const [txLookupTx, setTxLookupTx] = useState([]);
@@ -81,7 +84,11 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   const handleWriteBootstrap = async () => {
-    if (!window.confirm('Overwrite data/bootstrapData.json on the API server? (local dev only)')) return;
+    setConfirmWriteSeed(true);
+  };
+
+  const doWriteBootstrap = async () => {
+    setConfirmWriteSeed(false);
     try {
       const { data } = await bffAxios.post('/api/admin/bootstrap/export');
       notifySuccess(data.path ? `Wrote ${data.path}` : 'Seed file written.');
@@ -92,7 +99,11 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   const handleResetDemo = async () => {
-    if (!window.confirm('Reset all demo OAuth accounts to $5,000 starting balance?')) return;
+    setConfirmReset(true);
+  };
+
+  const doResetDemo = async () => {
+    setConfirmReset(false);
     setResettingDemo(true);
     try {
       await bffAxios.post('/api/accounts/reset-all-demo');
@@ -967,6 +978,26 @@ const Dashboard = ({ user, onLogout }) => {
 
       <ApiCallsModal open={apiCallsModalOpen} onClose={() => setApiCallsModalOpen(false)} />
       <DevToolsOverlay />
+
+      <ConfirmModal
+        isOpen={confirmReset}
+        title="Reset Demo Accounts?"
+        message="Reset all demo OAuth accounts to a $5,000 starting balance? This will overwrite any transfers or deposits made during the demo."
+        confirmLabel="Reset accounts"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={doResetDemo}
+        onCancel={() => setConfirmReset(false)}
+      />
+      <ConfirmModal
+        isOpen={confirmWriteSeed}
+        title="Overwrite seed file?"
+        message="This will overwrite data/bootstrapData.json on the API server with the current in-memory data. Local dev only."
+        confirmLabel="Write seed file"
+        cancelLabel="Cancel"
+        onConfirm={doWriteBootstrap}
+        onCancel={() => setConfirmWriteSeed(false)}
+      />
 
       </div>
     </div>

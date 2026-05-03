@@ -33,6 +33,17 @@ export const PUBLIC_FIELDS = [
   'marketing_customer_login_mode',
   'marketing_demo_username_hint',
   'marketing_demo_password_hint',
+  'show_education_panel',
+  'enable_token_chain_display',
+  'agent_ui_mode',
+  'demo_scenario',
+  'industry_id',
+  'agent_transaction_count_limit',
+  'agent_transaction_value_limit',
+  'log_level',
+  'debug_show_token_details',
+  'debug_show_api_calls',
+  'log_filter_categories',
 ];
 
 function openDB() {

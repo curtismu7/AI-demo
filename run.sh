@@ -58,12 +58,20 @@ PID_API="${PIDS_DIR}/api.pid"
 PID_UI="${PIDS_DIR}/ui.pid"
 PID_MCP="${PIDS_DIR}/mcp.pid"
 PID_AGENT="${PIDS_DIR}/agent.pid"
+PID_GW="${PIDS_DIR}/gw.pid"
+PID_HITL="${PIDS_DIR}/hitl.pid"
+PID_AGENT_SVC="${PIDS_DIR}/agent-svc.pid"
+PID_INVEST="${PIDS_DIR}/invest.pid"
 
 LOG_API="${LOGS_DIR}/banking-api.log"
 LOG_UI="${LOGS_DIR}/banking-ui.log"
 LOG_MCP="${LOGS_DIR}/banking-mcp.log"
 LOG_AGENT="${LOGS_DIR}/banking-agent.log"
 LOG_MCP_TRAFFIC="${LOGS_DIR}/mcp-traffic.log"
+LOG_GW="${LOGS_DIR}/banking-gw.log"
+LOG_HITL="${LOGS_DIR}/banking-hitl.log"
+LOG_AGENT_SVC="${LOGS_DIR}/banking-agent-svc.log"
+LOG_INVEST="${LOGS_DIR}/banking-invest.log"
 
 # ── Colours ──────────────────────────────────────────────────────────────────
 BOLD='\033[1m'
@@ -134,7 +142,7 @@ kill_process_tree() {
 # Stop anything still listening on our ports
 stop_listeners_on_ports() {
   local port pid pids
-  for port in "${API_PORT}" "${UI_PORT}" "${MCP_PORT}" "${AGENT_PORT}"; do
+  for port in "${API_PORT}" "${UI_PORT}" "${MCP_PORT}" "${AGENT_PORT}" 3005 3006 3009 8081; do
     pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
     for pid in $pids; do
       [[ -z "$pid" ]] && continue
@@ -146,7 +154,7 @@ stop_listeners_on_ports() {
 
 force_kill_listeners_on_ports() {
   local port pid pids
-  for port in "${API_PORT}" "${UI_PORT}" "${MCP_PORT}" "${AGENT_PORT}"; do
+  for port in "${API_PORT}" "${UI_PORT}" "${MCP_PORT}" "${AGENT_PORT}" 3005 3006 3009 8081; do
     pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
     for pid in $pids; do
       [[ -z "$pid" ]] && continue
@@ -182,6 +190,10 @@ print_status_table() {
   echo -e "${WHITE}${BOLD}  SERVICES${NC}"
   service_status_line "Banking API Server"  "${API_PORT}"   "${API_URL}"
   service_status_line "Banking MCP Server"  "${MCP_PORT}"   "ws://localhost:${MCP_PORT} (internal)"
+  service_status_line "MCP Gateway"          3005            "http://localhost:3005 (internal)"
+  service_status_line "MCP Invest Server"   8081            "ws://localhost:8081 (internal)"
+  service_status_line "Agent Service"       3006            "http://localhost:3006 (internal)"
+  service_status_line "HITL Service"        3009            "http://localhost:3009 (internal)"
   service_status_line "LangChain Agent"     "${AGENT_PORT}" "http://localhost:${AGENT_PORT} (internal)"
   if port_listening "${UI_PORT}"; then
     printf "  ${GREEN}${BOLD}  ✅  %-24s${NC}  ${MAGENTA}:%-6s${NC}  ${YELLOW}%s${NC}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
@@ -301,7 +313,7 @@ cmd_stop() {
   echo ""
   echo -e "${BOLD}🛑  Stopping Banking Digital Assistant...${NC}"
   set +e
-  for pid_file in "$PID_API" "$PID_MCP" "$PID_AGENT" "$PID_UI"; do
+  for pid_file in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_AGENT" "$PID_UI"; do
     if [[ -f "$pid_file" ]]; then
       local PID
       PID=$(cat "$pid_file" 2>/dev/null || true)
@@ -313,7 +325,7 @@ cmd_stop() {
     fi
   done
   sleep 1
-  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :${MCP_PORT}, Agent :${AGENT_PORT})…"
+  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :${MCP_PORT}, GW :3005, Agent :3006, HITL :3009, Invest :8081)…"
   stop_listeners_on_ports
   sleep 1
   force_kill_listeners_on_ports
@@ -340,7 +352,7 @@ cmd_start() {
   if [[ "$_any_running" == "true" ]]; then
     echo -e "${YELLOW}  ⟳  Stopping existing services…${NC}"
     set +e
-    for _pf in "$PID_API" "$PID_MCP" "$PID_AGENT" "$PID_UI"; do
+    for _pf in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_AGENT" "$PID_UI"; do
       if [[ -f "$_pf" ]]; then
         local _pid
         _pid=$(cat "$_pf" 2>/dev/null || true)
@@ -379,6 +391,51 @@ cmd_start() {
       MCP_SERVER_PORT=${MCP_PORT} npm start > "${LOG_MCP}" 2>&1
     ) &
     echo $! > "${PID_MCP}"
+  fi
+
+  # ── MCP Gateway ─────────────────────────────────────────────────────────
+  if [[ -d "${BASEDIR}/banking_mcp_gateway" ]]; then
+    info "Starting MCP Gateway on :3005..."
+    (
+      cd "${BASEDIR}/banking_mcp_gateway"
+      [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
+      npm run build > /dev/null 2>&1 || true
+      npm start > "${LOG_GW}" 2>&1
+    ) &
+    echo $! > "${PID_GW}"
+  fi
+
+  # ── HITL Service ─────────────────────────────────────────────────────────
+  if [[ -d "${BASEDIR}/banking_hitl_service" ]]; then
+    info "Starting HITL Service on :3009..."
+    (
+      cd "${BASEDIR}/banking_hitl_service"
+      [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
+      PORT=3009 npm start > "${LOG_HITL}" 2>&1
+    ) &
+    echo $! > "${PID_HITL}"
+  fi
+
+  # ── Agent Service ────────────────────────────────────────────────────────
+  if [[ -d "${BASEDIR}/banking_agent_service" ]] && [[ -f "${BASEDIR}/banking_agent_service/dist/index.js" ]]; then
+    info "Starting Agent Service on :3006..."
+    (
+      cd "${BASEDIR}/banking_agent_service"
+      [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
+      PORT=3006 npm start > "${LOG_AGENT_SVC}" 2>&1
+    ) &
+    echo $! > "${PID_AGENT_SVC}"
+  fi
+
+  # ── MCP Invest Server ─────────────────────────────────────────────────────
+  if [[ -d "${BASEDIR}/banking_mcp_invest" ]] && [[ -f "${BASEDIR}/banking_mcp_invest/dist/index.js" ]]; then
+    info "Starting MCP Invest Server on :8081..."
+    (
+      cd "${BASEDIR}/banking_mcp_invest"
+      [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
+      PORT=8081 npm start > "${LOG_INVEST}" 2>&1
+    ) &
+    echo $! > "${PID_INVEST}"
   fi
 
   # ── LangChain Agent ────────────────────────────────────────────────────

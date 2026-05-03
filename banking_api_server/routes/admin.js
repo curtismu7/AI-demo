@@ -952,6 +952,37 @@ module.exports = router;
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const appEventService = require('../services/appEventService');
+const { clearAllTokenChains } = require('../services/tokenChainService');
+const mcpToolAuditStore = require('../services/mcpToolAuditStore');
+const apiCallTracker = require('../services/apiCallTrackerService');
+
+/**
+ * POST /api/admin/reset-demo — Clear all in-memory demo state for a fresh start.
+ * Clears: app events, token chain, MCP audit, API call tracker, pending consents.
+ * Auth: authenticateToken only — any logged-in user can reset the demo.
+ */
+router.post('/reset-demo', authenticateToken, async (req, res) => {
+  try {
+    appEventService.clearEvents();
+    clearAllTokenChains();
+    mcpToolAuditStore.clearToolCalls();
+    apiCallTracker.clearApiCalls('default');
+    if (global.pendingConsents) global.pendingConsents = {};
+
+    // Clear MCP server's own in-memory audit log (fire-and-forget, non-fatal)
+    try {
+      const mcpWsUrl = process.env.MCP_SERVER_URL || 'ws://localhost:8080';
+      const mcpHttpBase = mcpWsUrl.replace(/^ws(s?):/, 'http$1:');
+      await fetch(`${mcpHttpBase}/audit`, { method: 'DELETE', signal: AbortSignal.timeout(2000) }).catch(() => {});
+    } catch (_) {}
+
+    console.log('[admin] Demo state reset by:', req.session?.user?.email || 'unknown');
+    res.json({ ok: true, message: 'Demo state cleared. Reload the browser to start fresh.' });
+  } catch (error) {
+    console.error('[admin] reset-demo error:', error);
+    res.status(500).json({ error: 'reset_failed', message: error.message });
+  }
+});
 
 /**
  * GET /api/admin/app-events — Get curated app events (OAuth, token exchange, session, JWKS)

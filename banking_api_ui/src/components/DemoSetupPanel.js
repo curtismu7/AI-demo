@@ -9,8 +9,6 @@ import axios from 'axios';
 import apiClient from '../services/apiClient';
 import { fetchDemoScenario, saveDemoScenario } from '../services/demoScenarioService';
 import { AGENT_MCP_SCOPE_CATALOG, DEFAULT_AGENT_MCP_ALLOWED_SCOPES } from '../config/agentMcpScopes';
-import { useEducationUI } from '../context/EducationUIContext';
-import { EDU } from './education/educationIds';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import VerticalSwitcher from './VerticalSwitcher';
 import PingOneAudit from './PingOneAudit';
@@ -67,7 +65,17 @@ function defaultAccountProfile(type, accountHolderName) {
 
 export default function DemoSetupPanel() {
   useIndustryBranding();
-  const { open } = useEducationUI();
+
+  const [demoResetting, setDemoResetting] = useState(false);
+  const handleResetDemo = async () => {
+    if (!window.confirm('Reset demo? This clears all agent history, token chain events, and MCP audit logs. You will stay logged in.')) return;
+    setDemoResetting(true);
+    try { await axios.post('/api/admin/reset-demo'); } catch (_) {}
+    try { localStorage.removeItem('tokenChainHistory'); } catch (_) {}
+    try { localStorage.removeItem('api-traffic-store'); } catch (_) {}
+    try { sessionStorage.removeItem('_agent_auto_loaded'); } catch (_) {}
+    window.location.reload();
+  };
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -103,6 +111,103 @@ export default function DemoSetupPanel() {
   const [marketingUserHint, setMarketingUserHint] = useState('');
   const [marketingPassHint, setMarketingPassHint] = useState('');
   const [marketingSaving, setMarketingSaving] = useState(false);
+
+  const [ollamaStatus, setOllamaStatus] = useState(null);
+  const [ollamaModel, setOllamaModel] = useState('mistral');
+  const [ollamaChecking, setOllamaChecking] = useState(false);
+  const [ollamaPulling, setOllamaPulling] = useState(false);
+  const [ollamaSaving, setOllamaSaving] = useState(false);
+  const OLLAMA_MODELS = ['mistral', 'llama3.2', 'llama3.1', 'gemma4:e4b', 'deepseek-coder:latest', 'phi3', 'qwen2.5'];
+
+  const handleOllamaCheck = async () => {
+    setOllamaChecking(true);
+    setOllamaStatus(null);
+    try {
+      const { data } = await axios.get('/api/langchain/provider/ollama/status');
+      setOllamaStatus(data);
+      const cfg = await axios.get('/api/langchain/config/status');
+      setOllamaModel(cfg.data.model || 'mistral');
+    } catch (e) {
+      setOllamaStatus({ status: 'unreachable', reason: e.message });
+    } finally {
+      setOllamaChecking(false);
+    }
+  };
+
+  const handleOllamaSaveModel = async () => {
+    setOllamaSaving(true);
+    try {
+      await axios.post('/api/langchain/config', { model: ollamaModel });
+      notifySuccess(`Model set to ${ollamaModel}`);
+    } catch (e) {
+      notifyError('Failed to save model');
+    } finally {
+      setOllamaSaving(false);
+    }
+  };
+
+  const handleOllamaPull = async () => {
+    setOllamaPulling(true);
+    notifyInfo(`Pulling ${ollamaModel}… this may take a few minutes`);
+    try {
+      await axios.post('/api/langchain/ollama/pull', { model: ollamaModel }, { timeout: 360000 });
+      notifySuccess(`${ollamaModel} is ready`);
+      handleOllamaCheck();
+    } catch (e) {
+      notifyError(`Pull failed: ${e.response?.data?.error || e.message}`);
+    } finally {
+      setOllamaPulling(false);
+    }
+  };
+
+  const [helixConfig, setHelixConfig] = useState({ base_url: '', api_key: '', environment_id: '', agent_id: '' });
+  const [helixStatus, setHelixStatus] = useState(null);
+  const [helixSaving, setHelixSaving] = useState(false);
+  const [helixChecking, setHelixChecking] = useState(false);
+
+  const fetchHelixStatus = async () => {
+    setHelixChecking(true);
+    setHelixStatus(null);
+    try {
+      const { data } = await axios.get('/api/langchain/provider/helix/status');
+      setHelixStatus(data.status);
+      const cfg = await axios.get('/api/langchain/config/status');
+      setHelixConfig({
+        base_url: cfg.data.helix_base_url || '',
+        api_key: cfg.data.helix_api_key || '',
+        environment_id: cfg.data.helix_environment_id || '',
+        agent_id: cfg.data.helix_agent_id || '',
+      });
+    } catch (e) {
+      setHelixStatus('unconfigured');
+    } finally {
+      setHelixChecking(false);
+    }
+  };
+
+  const handleHelixSave = async () => {
+    if (!helixConfig.base_url || !helixConfig.api_key || !helixConfig.environment_id || !helixConfig.agent_id) {
+      notifyWarning('Please fill in all four Helix fields');
+      return;
+    }
+    setHelixSaving(true);
+    try {
+      await axios.post('/api/langchain/config', {
+        provider: 'helix',
+        key_type: 'helix',
+        helix_base_url: helixConfig.base_url,
+        helix_api_key: helixConfig.api_key,
+        helix_environment_id: helixConfig.environment_id,
+        helix_agent_id: helixConfig.agent_id,
+      });
+      notifySuccess('Helix configuration saved and activated');
+      await fetchHelixStatus();
+    } catch (e) {
+      notifyError(`Failed to save Helix config: ${e.response?.data?.error || e.message}`);
+    } finally {
+      setHelixSaving(false);
+    }
+  };
 
   const loadScopes = useCallback(async () => {
     try {
@@ -560,8 +665,6 @@ export default function DemoSetupPanel() {
               <p className="demo-data-hint"><strong>Teaching:</strong> customer leaves briefly to sign in at PingOne and returns with a short-lived token the backend can use.</p>
               <div className="demo-data-actions demo-data-actions--wrap">
                 <a className="demo-data-btn primary" href="/api/auth/oauth/user/login">Go to PingOne customer sign-in</a>
-                <button type="button" className="demo-data-btn ghost" onClick={() => open(EDU.TOKEN_EXCHANGE, 'what')}>Open lesson: token exchange</button>
-                <button type="button" className="demo-data-btn ghost" onClick={() => open(EDU.BEST_PRACTICES, 'what')}>Open lesson: AI + OAuth basics</button>
               </div>
             </div>
           )}
@@ -952,6 +1055,210 @@ export default function DemoSetupPanel() {
             <p>The Enable / Clear buttons write to the user's <code>mayAct</code> custom attribute in PingOne, but because the token mapping is hardcoded they will not change what appears in the token. They are kept here for conceptual exploration only.</p>
             <p>To demo <code>may_act</code> absent: use the <Link to="/configure?tab=feature-flags&flag=ff_inject_may_act">Auto-inject may_act flag</Link> to <strong>disable</strong> injection, then re-login with a client that has no static <code>may_act</code> mapping.</p>
           </details>
+        </section>
+        <section className="section demo-data-section" aria-labelledby="dsp-ollama-heading">
+          <h2 id="dsp-ollama-heading">🤖 Local AI Setup (Ollama)</h2>
+          <p style={{ marginBottom: '0.75rem', color: 'var(--text-muted, #6b7280)', fontSize: '0.9rem' }}>
+            Ollama provides local LLM inference as a fallback when the keyword parser doesn't recognise a command typed into the banking agent.
+            The agent always tries keyword matching first (instant, no network), then falls back to Ollama for ambiguous requests.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+            <button type="button" className="demo-data-btn" onClick={handleOllamaCheck} disabled={ollamaChecking}>
+              {ollamaChecking ? 'Checking…' : '🔍 Check Status'}
+            </button>
+            {ollamaStatus && (
+              <span style={{ fontSize: '0.85rem', padding: '0.25rem 0.6rem', borderRadius: 4, background: ollamaStatus.status === 'available' ? '#dcfce7' : '#fee2e2', color: ollamaStatus.status === 'available' ? '#166534' : '#991b1b' }}>
+                {ollamaStatus.status === 'available' ? '✅ Running' : '❌ Not reachable'} — {ollamaStatus.reason}
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+            <label htmlFor="ollama-model-select" style={{ fontSize: '0.875rem', fontWeight: 600, minWidth: 80 }}>Model:</label>
+            <select id="ollama-model-select" value={ollamaModel} onChange={e => setOllamaModel(e.target.value)} style={{ fontSize: '0.875rem', padding: '0.3rem 0.5rem', borderRadius: 4, border: '1px solid #d1d5db' }}>
+              {OLLAMA_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <button type="button" className="demo-data-btn" onClick={handleOllamaSaveModel} disabled={ollamaSaving}>
+              {ollamaSaving ? 'Saving…' : 'Save'}
+            </button>
+            <button type="button" className="demo-data-btn" onClick={handleOllamaPull} disabled={ollamaPulling}>
+              {ollamaPulling ? 'Pulling…' : '⬇ Pull Model'}
+            </button>
+          </div>
+          <details style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#374151' }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 600 }}>How to change the model permanently</summary>
+            <ol style={{ margin: '0.5rem 0 0 1.2rem', lineHeight: 1.7 }}>
+              <li>Open <code>banking_api_server/.env</code></li>
+              <li>Set <code>OLLAMA_MODEL=&lt;model-name&gt;</code> (e.g. <code>mistral</code>, <code>gemma4:e4b</code>)</li>
+              <li>Restart the API server — the new model is picked up on startup</li>
+              <li>Use <strong>Pull Model</strong> above if the model isn't downloaded yet</li>
+            </ol>
+            <p style={{ marginTop: '0.5rem' }}>Ollama starts automatically at login via a macOS LaunchAgent (<code>~/Library/LaunchAgents/com.ollama.server.plist</code>). Logs: <code>/tmp/ollama.log</code>.</p>
+          </details>
+        </section>
+        <section className="section demo-data-section" aria-labelledby="dsp-helix-llm-heading">
+          <h2 id="dsp-helix-llm-heading">Helix LLM</h2>
+          <p style={{ marginBottom: '0.75rem', color: 'var(--text-muted, #6b7280)', fontSize: '0.9rem' }}>
+            Sign up at <strong>openam-helix.forgeblocks.com</strong>. Get your API Key from the Helix Admin section.
+            Configure all four fields to use Helix as the banking agent LLM.
+          </p>
+
+          {/* Status pill */}
+          <div style={{ marginBottom: '1rem' }}>
+            <span style={{
+              display: 'inline-block',
+              padding: '0.25rem 0.75rem',
+              borderRadius: 6,
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              backgroundColor: helixStatus === 'available' ? '#dcfce7' : helixStatus === 'unconfigured' ? '#fef3c7' : '#fecaca',
+              color: helixStatus === 'available' ? '#166534' : helixStatus === 'unconfigured' ? '#92400e' : '#991b1b',
+            }}>
+              {helixStatus === 'available' && '✅ Active'}
+              {helixStatus === 'unconfigured' && '⚠️ Unconfigured'}
+              {helixStatus === null && '…'}
+            </span>
+          </div>
+
+          {/* Form fields */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '1rem',
+            marginBottom: '1rem',
+          }}>
+            <div>
+              <label htmlFor="dsp-helix-base-url" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
+                Helix Base URL
+              </label>
+              <input
+                id="dsp-helix-base-url"
+                type="text"
+                placeholder="https://openam-helix.forgeblocks.com"
+                value={helixConfig.base_url}
+                onChange={(e) => setHelixConfig({ ...helixConfig, base_url: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  fontSize: '0.9rem',
+                  fontFamily: 'monospace',
+                }}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="dsp-helix-api-key" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
+                API Key
+              </label>
+              <input
+                id="dsp-helix-api-key"
+                type="password"
+                placeholder="Helix API Key"
+                value={helixConfig.api_key}
+                onChange={(e) => setHelixConfig({ ...helixConfig, api_key: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  fontSize: '0.9rem',
+                  fontFamily: 'monospace',
+                }}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="dsp-helix-env-id" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
+                Environment ID
+              </label>
+              <input
+                id="dsp-helix-env-id"
+                type="text"
+                placeholder="Helix environment/tenant ID"
+                value={helixConfig.environment_id}
+                onChange={(e) => setHelixConfig({ ...helixConfig, environment_id: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  fontSize: '0.9rem',
+                  fontFamily: 'monospace',
+                }}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="dsp-helix-agent-id" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
+                Agent ID
+              </label>
+              <input
+                id="dsp-helix-agent-id"
+                type="text"
+                placeholder="The specific Helix agent to invoke"
+                value={helixConfig.agent_id}
+                onChange={(e) => setHelixConfig({ ...helixConfig, agent_id: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  fontSize: '0.9rem',
+                  fontFamily: 'monospace',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="demo-data-btn"
+              onClick={fetchHelixStatus}
+              disabled={helixChecking}
+            >
+              {helixChecking ? 'Checking…' : '🔍 Check Status'}
+            </button>
+            <button
+              type="button"
+              className="demo-data-btn"
+              style={{ background: helixConfig.base_url && helixConfig.api_key && helixConfig.environment_id && helixConfig.agent_id ? '#3b82f6' : '#d1d5db' }}
+              onClick={handleHelixSave}
+              disabled={helixSaving || !helixConfig.base_url || !helixConfig.api_key || !helixConfig.environment_id || !helixConfig.agent_id}
+            >
+              {helixSaving ? 'Saving…' : '💾 Save & Activate'}
+            </button>
+          </div>
+
+          {helixStatus === 'unconfigured' && (
+            <div style={{
+              padding: '0.75rem 1rem',
+              backgroundColor: '#fef3c7',
+              border: '1px solid #fcd34d',
+              borderRadius: 6,
+              fontSize: '0.85rem',
+              color: '#92400e',
+            }}>
+              ⚠️ Please fill in all four fields and click Save & Activate to enable Helix.
+            </div>
+          )}
+        </section>
+        <section className="section demo-data-section" aria-labelledby="dsp-reset-heading">
+          <h2 id="dsp-reset-heading">Reset Demo State</h2>
+          <p style={{ marginBottom: '0.75rem', color: 'var(--text-muted, #6b7280)', fontSize: '0.9rem' }}>
+            Clears all agent conversation history, token chain events, and MCP audit logs on the server, then reloads the page. Your login session is preserved.
+          </p>
+          <button
+            type="button"
+            className="demo-data-btn"
+            style={{ background: '#dc2626', borderColor: '#dc2626', color: '#fff' }}
+            onClick={handleResetDemo}
+            disabled={demoResetting}
+          >
+            {demoResetting ? 'Resetting…' : '🔄 Reset Demo'}
+          </button>
         </section>
         </>
       )}

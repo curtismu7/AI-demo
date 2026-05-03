@@ -10,6 +10,7 @@ export interface MCPMessage {
 }
 
 export interface MCPResponse {
+  jsonrpc?: '2.0';
   id: string | number | null;
   result?: Record<string, any>;
   error?: MCPError;

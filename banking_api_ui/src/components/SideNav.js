@@ -24,6 +24,7 @@ const ADMIN_NAV = [
     items: [
       { to: '/admin',        label: 'Admin Dashboard', icon: 'MdManageAccounts' },
       { to: '/agent',        label: 'AI Agent',         icon: 'MdOutlineChat' },
+      { label: '🔄 Reset Demo', icon: 'MdSettings', action: 'resetDemo' },
     ],
   },
   {
@@ -78,6 +79,7 @@ const USER_NAV = [
       { to: '/dashboard', label: 'My Dashboard', icon: 'HiOutlineBarChart3' },
       { to: '/agent',     label: 'AI Agent',      icon: 'MdOutlineChat' },
       { to: '/demo-data', label: 'Demo config',   icon: 'MdSettings' },
+      { label: '🔄 Reset Demo', icon: 'MdSettings', action: 'resetDemo' },
       { to: '/pingone-test', label: 'Test Page',   icon: 'MdSettings' },
     ],
   },
@@ -129,30 +131,37 @@ export default function SideNav({ user, onLogout }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason }),
       });
-      // 401 is the expected success response: session revoked, user disabled at PingOne
-      if (response.status === 401) {
+      const body = await response.json().catch(() => ({}));
+      // 401 with agent_killed is the expected success response: session revoked at server
+      if (response.status === 401 && body.error === 'agent_killed') {
         setAgentRevoked(true);
         setShowKillModal(false);
-        console.log("[SideNav] Agent killed — redirecting to PingOne login");
-        setTimeout(() => { window.location.href = "/api/auth/logout"; }, 800);
+        console.log("[SideNav] Agent killed — navigating to logout page");
+        navigate('/logout');
         return;
       }
-      if (!response.ok) throw new Error(`Kill switch failed: ${response.status}`);
-      // Fallback for any 2xx (should not happen after server fix)
+      if (!response.ok) throw new Error(body.error_description || body.message || `Kill switch failed: ${response.status}`);
+      // Fallback for any 2xx
       setAgentRevoked(true);
       setShowKillModal(false);
-      console.log("[SideNav] Agent kill switch successful");
+      navigate('/logout');
     } catch (e) {
       console.error("[SideNav] Kill switch error:", e.message);
     }
-  }, []);
+  }, [navigate]);
 
-  const handleNavAction = (action) => {
+  const handleNavAction = async (action) => {
     if (action === 'runScopeAudit') {
       navigate('/scope-audit');
     } else if (action === 'openMcpTracking') {
-      // Dispatch event to open MCP tracking modal
       window.dispatchEvent(new CustomEvent('open-mcp-tracking-modal'));
+    } else if (action === 'resetDemo') {
+      if (!window.confirm('Reset demo? This clears all agent history, token chain events, and MCP audit logs. You will stay logged in.')) return;
+      try { await fetch('/api/admin/reset-demo', { method: 'POST', credentials: 'include' }); } catch (_) {}
+      try { localStorage.removeItem('tokenChainHistory'); } catch (_) {}
+      try { localStorage.removeItem('api-traffic-store'); } catch (_) {}
+      try { sessionStorage.removeItem('_agent_auto_loaded'); } catch (_) {}
+      navigate(isAdmin ? '/admin' : '/dashboard', { replace: true, state: { resetDemo: true } });
     }
   };
 

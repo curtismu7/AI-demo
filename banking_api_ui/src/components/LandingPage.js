@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import DevToolsDashboard from "./DevToolsDashboard";
 import "./LandingPage.css";
 
-export default function LandingPage({ user, onLogout }) {
+export default function LandingPage({ user, onLogout, hasTopNav }) {
 	const navigate = useNavigate();
 	const handleAdminDashboard = (e) => {
 		e.preventDefault();
@@ -22,7 +22,7 @@ export default function LandingPage({ user, onLogout }) {
 	return (
 		<div className="landing-page">
 			{/* Logged-out: white marketing header; logged-in: no top nav (sidebar + App.js TopNav handles it) */}
-			{!user && (
+			{!user && !hasTopNav && (
 				<header className="landing-header" role="banner">
 					<div className="landing-header-content">
 						<div className="landing-logo">

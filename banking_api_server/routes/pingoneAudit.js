@@ -22,9 +22,13 @@ router.get('/', async (req, res) => {
     const resourceValidation = await validateResources();
 
     if (resourceValidation.status !== 'success') {
-      return res.status(500).json({
-        error: 'Failed to validate PingOne resources',
-        details: resourceValidation.error,
+      // Return 200 with error payload — lets the UI render a helpful message instead of throwing
+      return res.status(200).json({
+        status: 'error',
+        error: resourceValidation.error || 'Failed to validate PingOne resources',
+        auditedAt: new Date().toISOString(),
+        resourceValidation: [],
+        scopeAudit: [],
       });
     }
 
@@ -33,9 +37,12 @@ router.get('/', async (req, res) => {
     const scopeAudit = await auditResourceScopes(validatedResources);
 
     if (scopeAudit.status !== 'success') {
-      return res.status(500).json({
-        error: 'Failed to audit PingOne resource scopes',
-        details: scopeAudit.error,
+      return res.status(200).json({
+        status: 'error',
+        error: scopeAudit.error || 'Failed to audit PingOne resource scopes',
+        auditedAt: new Date().toISOString(),
+        resourceValidation: resourceValidation.resourceValidation,
+        scopeAudit: [],
       });
     }
 

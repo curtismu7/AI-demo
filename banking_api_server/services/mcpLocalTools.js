@@ -17,20 +17,25 @@ const { writeMcpTrafficEntry } = require('./mcpTrafficLogger');
 const txConsent = require('./transactionConsentChallenge');
 
 /**
- * Mirrors POST /api/transactions: non-admin writes over HIGH_VALUE_CONSENT_USD require a browser consent challenge.
- * Local MCP tools cannot complete that flow (no session challenge), so we refuse instead of bypassing HITL.
+ * Mirrors POST /api/transactions HITL gate (Phase 170):
+ *   - Transfers ALWAYS require consent (regardless of amount).
+ *   - Withdrawals/deposits require consent when amount > confirm_threshold_usd.
+ * Local MCP tools cannot complete the browser consent flow, so we refuse instead of bypassing HITL.
  */
 function hitlBlocksLocalWrite(userId, amount, type) {
   const user = dataStore.getUserById(userId);
   if (user && user.role === 'admin') return false;
+  if (!['transfer', 'withdrawal', 'deposit'].includes(type)) return false;
+  // Phase 170: ALL transfers require consent, no amount check.
+  if (type === 'transfer') return true;
+  // Withdrawals/deposits: threshold-based.
   const rounded = Math.round(parseFloat(amount) * 100) / 100;
   if (!Number.isFinite(rounded)) return false;
-  if (!['transfer', 'withdrawal', 'deposit'].includes(type)) return false;
   return rounded > txConsent.HIGH_VALUE_CONSENT_USD;
 }
 
 const HITL_LOCAL_AGENT_MESSAGE =
-  'Transfers, deposits, and withdrawals over $500 require human approval in the browser. Use the main dashboard to start the transaction and complete the consent screen. The banking assistant cannot complete this amount without that flow.';
+  'Transfers require human approval in the browser — open the dashboard, initiate the transfer there, and complete the consent screen. The banking assistant cannot bypass the HITL consent flow.';
 
 /**
  * Mirrors the step-up MFA gate in routes/transactions.js for the local MCP tool path.
@@ -567,7 +572,7 @@ async function sequential_think({ query, context } = {}) {
     { title: 'Apply banking domain knowledge', description: 'Considering applicable accounts, balances, and transaction flows.' },
     { title: 'Formulate response', description: 'Drawing a structured conclusion based on the above steps.' },
   ];
-  const conclusion = `Sequential reasoning complete for: "${q}". Connect the MCP server (banking_mcp_server) for full AI-powered analysis.`;
+  const conclusion = `Sequential reasoning complete for: "${q}". (Running in local mode — MCP gateway unreachable or not configured.)`;
   return JSON.stringify({ steps, conclusion });
 }
 

@@ -2334,4 +2334,99 @@ router.get('/exchange-1token-401-flow', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/pingone-test/check-ai-agent-act
+ * Check whether the AI-Agent resource (banking enduser audience) has an "act" claim
+ * attribute mapping with the correct SPEL expression for RFC 8693 delegation.
+ */
+router.get('/check-ai-agent-act', async (req, res) => {
+  try {
+    await configStore.ensureInitialized();
+    const workerToken = await oauthService.getAgentClientCredentialsToken();
+    if (!workerToken) return res.status(503).json({ status: 'error', detail: 'Worker token unavailable' });
+
+    const axios = require('axios');
+    const region = configStore.getEffective('pingone_region') || 'com';
+    const envId  = configStore.getEffective('pingone_environment_id');
+    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || 'https://ai-agent.pingdemo.com';
+    const apiBase = `https://api.pingone.${region}/v1/environments/${envId}`;
+    const mgmtHeaders = { Authorization: `Bearer ${workerToken}`, 'Content-Type': 'application/json' };
+    const ACT_SPEL = '{"sub":"${tokenContext.actor.sub}"}';
+
+    // Find the AI-Agent resource by audience
+    const rsRes = await axios.get(`${apiBase}/resources`, { headers: mgmtHeaders, timeout: 10000 });
+    const allRS = rsRes.data?._embedded?.resources || [];
+    const aiAgentRS = allRS.find(r => r.audience === audienceEnduser);
+
+    if (!aiAgentRS) {
+      return res.json({ status: 'missing_resource', detail: `No resource found with audience ${audienceEnduser}` });
+    }
+
+    const attrsRes = await axios.get(`${apiBase}/resources/${aiAgentRS.id}/attributes`, { headers: mgmtHeaders, timeout: 10000 });
+    const attrs = attrsRes.data?._embedded?.attributes || [];
+    const existingAct = attrs.find(a => a.name === 'act');
+
+    if (!existingAct) {
+      return res.json({ status: 'missing', resourceId: aiAgentRS.id, resourceName: aiAgentRS.name, audience: audienceEnduser });
+    }
+    if (existingAct.value === ACT_SPEL) {
+      return res.json({ status: 'ok', attributeId: existingAct.id, value: existingAct.value, resourceId: aiAgentRS.id, audience: audienceEnduser });
+    }
+    return res.json({ status: 'wrong_value', attributeId: existingAct.id, currentValue: existingAct.value, expectedValue: ACT_SPEL, resourceId: aiAgentRS.id, audience: audienceEnduser });
+  } catch (err) {
+    console.error('[PingOneTest] check-ai-agent-act error:', err.message);
+    res.status(500).json({ status: 'error', detail: err.response?.data?.message || err.message });
+  }
+});
+
+/**
+ * POST /api/pingone-test/fix-ai-agent-act
+ * Create (or correct) the "act" attribute on the AI-Agent resource so that
+ * RFC 8693 exchanged tokens include the act claim with the actor subject.
+ */
+router.post('/fix-ai-agent-act', async (req, res) => {
+  try {
+    await configStore.ensureInitialized();
+    const workerToken = await oauthService.getAgentClientCredentialsToken();
+    if (!workerToken) return res.status(503).json({ success: false, error: 'Worker token unavailable' });
+
+    const axios = require('axios');
+    const region = configStore.getEffective('pingone_region') || 'com';
+    const envId  = configStore.getEffective('pingone_environment_id');
+    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || 'https://ai-agent.pingdemo.com';
+    const apiBase = `https://api.pingone.${region}/v1/environments/${envId}`;
+    const mgmtHeaders = { Authorization: `Bearer ${workerToken}`, 'Content-Type': 'application/json' };
+    const ACT_SPEL = '{"sub":"${tokenContext.actor.sub}"}';
+
+    // Find resource by audience
+    const rsRes = await axios.get(`${apiBase}/resources`, { headers: mgmtHeaders, timeout: 10000 });
+    const allRS = rsRes.data?._embedded?.resources || [];
+    const aiAgentRS = allRS.find(r => r.audience === audienceEnduser);
+    if (!aiAgentRS) {
+      return res.json({ success: false, error: `No resource found with audience ${audienceEnduser}` });
+    }
+
+    const attrsRes = await axios.get(`${apiBase}/resources/${aiAgentRS.id}/attributes`, { headers: mgmtHeaders, timeout: 10000 });
+    const attrs = attrsRes.data?._embedded?.attributes || [];
+    const existingAct = attrs.find(a => a.name === 'act');
+
+    let action;
+    if (!existingAct) {
+      await axios.post(`${apiBase}/resources/${aiAgentRS.id}/attributes`, { name: 'act', value: ACT_SPEL }, { headers: mgmtHeaders, timeout: 10000 });
+      action = 'created';
+    } else if (existingAct.value !== ACT_SPEL) {
+      await axios.put(`${apiBase}/resources/${aiAgentRS.id}/attributes/${existingAct.id}`, { name: 'act', value: ACT_SPEL }, { headers: mgmtHeaders, timeout: 10000 });
+      action = 'updated';
+    } else {
+      action = 'already_correct';
+    }
+
+    console.log(`[PingOneTest] fix-ai-agent-act: ${action} on resource ${aiAgentRS.id} (${audienceEnduser})`);
+    res.json({ success: true, action, audience: audienceEnduser, resourceId: aiAgentRS.id, value: ACT_SPEL });
+  } catch (err) {
+    console.error('[PingOneTest] fix-ai-agent-act error:', err.message);
+    res.status(500).json({ success: false, error: err.response?.data?.message || err.message });
+  }
+});
+
 module.exports = router;

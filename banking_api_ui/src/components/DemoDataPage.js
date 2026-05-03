@@ -92,7 +92,12 @@ export default function DemoDataPage({ user, onLogout }) {
   const [typeSlots, setTypeSlots] = useState(defaultTypeSlots);
   const [accountProfiles, setAccountProfiles] = useState({});
   const [accountProfileSaving, setAccountProfileSaving] = useState(false);
-  const [threshold, setThreshold] = useState('');
+  /** Global step-up thresholds — synced with the $ Thresholds dashboard widget via /api/config/thresholds */
+  const [confirmThreshUsd, setConfirmThreshUsd] = useState('500');
+  const [mfaThreshUsd, setMfaThreshUsd] = useState('500');
+  const [threshLoading, setThreshLoading] = useState(false);
+  const [threshSaving, setThreshSaving] = useState(false);
+  const [threshStatus, setThreshStatus] = useState(null); // 'saved' | 'error'
 
   /** Token endpoint auth method overrides (Phase 110) */
   const [agentTokenEndpointAuth, setAgentTokenEndpointAuth] = useState('');
@@ -121,6 +126,12 @@ export default function DemoDataPage({ user, onLogout }) {
     return new Set(raw.split(/\s+/).filter(Boolean));
   });
   const [scopeSaving, setScopeSaving] = useState(false);
+
+  // Helix LLM configuration
+  const [helixConfig, setHelixConfig] = useState({ base_url: '', api_key: '', environment_id: '', agent_id: '' });
+  const [helixStatus, setHelixStatus] = useState(null); // null | 'available' | 'unconfigured'
+  const [helixSaving, setHelixSaving] = useState(false);
+  const [helixChecking, setHelixChecking] = useState(false);
 
   /** Marketing home sign-in mode + demo hints (persisted in admin config). */
   const [marketingLoginMode, setMarketingLoginMode] = useState('redirect');
@@ -255,6 +266,56 @@ export default function DemoDataPage({ user, onLogout }) {
   const [p1azBootstrapEnableMcp, setP1azBootstrapEnableMcp] = useState(false);
   const [p1azBootstrapBusy, setP1azBootstrapBusy] = useState(false);
 
+  /** act claim check on AI-Agent resource (demo-data setup verification). */
+  const [actClaimStatus, setActClaimStatus] = useState(null); // null | { status, detail, ... }
+  const [actClaimChecking, setActClaimChecking] = useState(false);
+  const [actClaimFixing, setActClaimFixing] = useState(false);
+
+  /** Demo reset — clears all in-memory server state + browser localStorage history. */
+  const [demoResetting, setDemoResetting] = useState(false);
+  const handleResetDemo = useCallback(async () => {
+    if (!window.confirm('Reset demo? This clears all agent history, token chain events, and MCP audit logs from the server. You will stay logged in.')) return;
+    setDemoResetting(true);
+    try { await axios.post('/api/admin/reset-demo'); } catch (_) {}
+    try { localStorage.removeItem('tokenChainHistory'); } catch (_) {}
+    try { localStorage.removeItem('api-traffic-store'); } catch (_) {}
+    try { sessionStorage.removeItem('_agent_auto_loaded'); } catch (_) {}
+    window.location.reload();
+  }, []);
+
+  const handleCheckActClaim = useCallback(async () => {
+    setActClaimChecking(true);
+    setActClaimStatus(null);
+    try {
+      const { data } = await axios.get('/api/pingone-test/check-ai-agent-act');
+      setActClaimStatus(data);
+    } catch (err) {
+      setActClaimStatus({ status: 'error', detail: err?.response?.data?.detail || err.message });
+      notifyError('act claim check failed');
+    } finally {
+      setActClaimChecking(false);
+    }
+  }, []);
+
+  const handleFixActClaim = useCallback(async () => {
+    setActClaimFixing(true);
+    try {
+      const { data } = await axios.post('/api/pingone-test/fix-ai-agent-act');
+      if (data.success) {
+        notifySuccess(`act claim ${data.action} on ${data.audience}`);
+        setActClaimStatus({ status: 'ok', value: data.value, resourceId: data.resourceId, audience: data.audience });
+      } else {
+        notifyError(data.error || 'Fix failed');
+        setActClaimStatus({ status: 'error', detail: data.error });
+      }
+    } catch (err) {
+      notifyError(err?.response?.data?.error || err.message || 'Fix failed');
+      setActClaimStatus({ status: 'error', detail: err?.response?.data?.error || err.message });
+    } finally {
+      setActClaimFixing(false);
+    }
+  }, []);
+
   /** Which agent authentication story is highlighted for demos (saved in localStorage). */
   const [agentAuthDemoMode, setAgentAuthDemoMode] = useState(readStoredAgentAuthDemoMode);
   const [bearerPasteToken, setBearerPasteToken] = useState('');
@@ -322,6 +383,44 @@ export default function DemoDataPage({ user, onLogout }) {
   useEffect(() => {
     loadP1azFlags();
   }, [loadP1azFlags]);
+
+  /** Global thresholds — same endpoint as the $ Thresholds dashboard widget */
+  const loadGlobalThresholds = useCallback(async () => {
+    setThreshLoading(true);
+    try {
+      const { data } = await axios.get('/api/config/thresholds');
+      setConfirmThreshUsd(String(data.confirm_threshold_usd ?? 500));
+      setMfaThreshUsd(String(data.mfa_threshold_usd ?? 500));
+    } catch (_) {
+      // non-critical; fields keep their default
+    } finally {
+      setThreshLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadGlobalThresholds(); }, [loadGlobalThresholds]);
+
+  const handleSaveGlobalThresholds = async () => {
+    setThreshSaving(true);
+    setThreshStatus(null);
+    try {
+      const body = {};
+      const cn = Number(confirmThreshUsd);
+      const mn = Number(mfaThreshUsd);
+      if (confirmThreshUsd && cn > 0) body.confirm_threshold_usd = cn;
+      if (mfaThreshUsd && mn > 0) body.mfa_threshold_usd = mn;
+      if (!Object.keys(body).length) { setThreshStatus('error'); return; }
+      const { data } = await axios.post('/api/config/thresholds', body);
+      setConfirmThreshUsd(String(data.confirm_threshold_usd));
+      setMfaThreshUsd(String(data.mfa_threshold_usd));
+      setThreshStatus('saved');
+      setTimeout(() => setThreshStatus(null), 2500);
+    } catch (_) {
+      setThreshStatus('error');
+    } finally {
+      setThreshSaving(false);
+    }
+  };
 
   /** Token endpoint auth method save handler (Phase 110) */
   const handleTokenAuthSave = async () => {
@@ -427,7 +526,6 @@ export default function DemoDataPage({ user, onLogout }) {
         profilesInit[t] = { ...defaultAccountProfile(t, ''), ...storedProfs[t] };
       }
       setAccountProfiles(profilesInit);
-      setThreshold(String(data.settings?.stepUpAmountThreshold ?? ''));
       const u = data.userData || {};
       setProfile({
         firstName: u.firstName != null ? String(u.firstName) : '',
@@ -489,6 +587,7 @@ export default function DemoDataPage({ user, onLogout }) {
     { id: 'demo-marketing-login-heading',    label: 'Marketing login' },
     { id: 'demo-p1az-flags-heading',         label: 'PingOne Authorize' },
     { id: 'demo-mayact-heading',             label: 'may_act' },
+    { id: 'demo-helix-llm-heading',          label: 'Helix LLM' },
   ];
 
   useEffect(() => {
@@ -510,19 +609,7 @@ export default function DemoDataPage({ user, onLogout }) {
     e.preventDefault();
     setSaving(true);
     try {
-      const t = threshold.trim();
-      let stepUpAmountThreshold = null;
-      if (t !== '') {
-        const n = parseFloat(t);
-        if (!Number.isFinite(n)) {
-          notifyError('Enter a valid number for the threshold, or leave it blank for the server default.');
-          setSaving(false);
-          return;
-        }
-        stepUpAmountThreshold = n;
-      }
       const body = {
-        stepUpAmountThreshold,
         // Only include enabled type slots; each slot maps to one account row.
         accounts: ACCOUNT_TYPE_SLOTS
           .filter(s => typeSlots[s.type]?.enabled)
@@ -577,7 +664,6 @@ export default function DemoDataPage({ user, onLogout }) {
 
   const handleResetDefaults = () => {
     if (!defaults) return;
-    setThreshold(String(defaults.stepUpAmountThreshold ?? ''));
     if (defaults.profileForm) {
       const pf = defaults.profileForm;
       setProfile({
@@ -615,6 +701,55 @@ export default function DemoDataPage({ user, onLogout }) {
       return next;
     });
     notifyInfo('Form reset to defaults — click Save to apply');
+  };
+
+  // Helix LLM handlers
+  const fetchHelixStatus = async () => {
+    setHelixChecking(true);
+    try {
+      const statusRes = await axios.get('/api/langchain/provider/helix/status');
+      setHelixStatus(statusRes.data.status);
+
+      const configRes = await axios.get('/api/langchain/config/status');
+      const cfg = configRes.data;
+      setHelixConfig({
+        base_url: cfg.helix_base_url || '',
+        api_key: cfg.helix_api_key ? '••••••••' : '',
+        environment_id: cfg.helix_environment_id || '',
+        agent_id: cfg.helix_agent_id || '',
+      });
+    } catch (err) {
+      console.error('Helix status check failed:', err);
+      notifyError('Failed to check Helix status');
+    } finally {
+      setHelixChecking(false);
+    }
+  };
+
+  const handleHelixSave = async () => {
+    if (!helixConfig.base_url || !helixConfig.api_key || !helixConfig.environment_id || !helixConfig.agent_id) {
+      notifyError('All Helix fields are required');
+      return;
+    }
+
+    setHelixSaving(true);
+    try {
+      await axios.post('/api/langchain/config', {
+        provider: 'helix',
+        key_type: 'helix',
+        key: helixConfig.api_key,
+        helix_base_url: helixConfig.base_url,
+        helix_environment_id: helixConfig.environment_id,
+        helix_agent_id: helixConfig.agent_id,
+      });
+      notifySuccess('Helix LLM configuration saved');
+      await fetchHelixStatus();
+    } catch (err) {
+      console.error('Helix save failed:', err);
+      notifyError('Failed to save Helix configuration');
+    } finally {
+      setHelixSaving(false);
+    }
   };
 
   return (
@@ -1090,15 +1225,34 @@ export default function DemoDataPage({ user, onLogout }) {
               </section>
 
               <section className="section demo-data-section">
-                <h2>Step-up MFA threshold (USD)</h2>
+                <h2>Step-up thresholds (USD)</h2>
                 <p className="demo-data-hint">
-                  Transfers and withdrawals at or above this amount require step-up authentication (when enabled). Default
-                  from server: <strong>{defaults?.stepUpAmountThreshold ?? '—'}</strong>.
+                  Same values as the <strong>$ Thresholds</strong> button on the dashboard — changes here are reflected there immediately.
+                  <br />
+                  <strong>Confirm (consent)</strong> — all transfers always require consent; this threshold applies to withdrawals and deposits.
+                  <strong> MFA step-up</strong> — transfers and withdrawals at or above this amount require step-up authentication.
                 </p>
-                <label className="demo-data-field">
-                  <span>Threshold ($)</span>
-                  <input type="number" min="0" step="0.01" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
-                </label>
+                {threshLoading ? (
+                  <p className="demo-data-loading">Loading…</p>
+                ) : (
+                  <>
+                    <label className="demo-data-field">
+                      <span>Confirm (consent) $</span>
+                      <input type="number" min="1" step="50" className="demo-data-input" value={confirmThreshUsd} onChange={(e) => setConfirmThreshUsd(e.target.value)} />
+                    </label>
+                    <label className="demo-data-field" style={{ marginTop: '0.5rem' }}>
+                      <span>MFA step-up $</span>
+                      <input type="number" min="1" step="50" className="demo-data-input" value={mfaThreshUsd} onChange={(e) => setMfaThreshUsd(e.target.value)} />
+                    </label>
+                    <div className="demo-data-actions" style={{ marginTop: '0.75rem' }}>
+                      <button type="button" className="demo-data-btn primary" onClick={handleSaveGlobalThresholds} disabled={threshSaving}>
+                        {threshSaving ? 'Saving…' : 'Save thresholds'}
+                      </button>
+                      {threshStatus === 'saved' && <span style={{ color: '#15803d', fontSize: '0.85rem' }}>✓ Saved</span>}
+                      {threshStatus === 'error' && <span style={{ color: '#b91c1c', fontSize: '0.85rem' }}>Error saving</span>}
+                    </div>
+                  </>
+                )}
               </section>
 
               <section className="section demo-data-section">
@@ -1800,6 +1954,219 @@ export default function DemoDataPage({ user, onLogout }) {
                   <code>may_act</code> attribute mapping from the PingOne app and re-login.
                 </p>
               </details>
+            </section>
+
+            {/* ── act claim — AI-Agent resource attribute check ── */}
+            <section className="section demo-data-section" aria-labelledby="demo-act-claim-heading">
+              <h2 className="demo-data-section__heading" id="demo-act-claim-heading">PingOne Setup — <code>act</code> claim attribute</h2>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                The <code>act</code> claim in the exchanged token proves <em>which agent</em> performed the RFC&nbsp;8693 exchange
+                on behalf of the user. It must be mapped on the{' '}
+                <strong>AI-Agent resource</strong> (<code>https://ai-agent.pingdemo.com</code>) in PingOne using the SPEL expression{' '}
+                <code>{'{"sub":"$'}{'{tokenContext.actor.sub}'}{'"}'}</code>.
+                Use <strong>Check</strong> to verify the mapping exists, and <strong>Fix</strong> to create or correct it automatically.
+              </p>
+              <div className="demo-data-actions" style={{ flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="demo-data-btn ghost"
+                  onClick={handleCheckActClaim}
+                  disabled={actClaimChecking || actClaimFixing}
+                >
+                  {actClaimChecking ? 'Checking…' : '🔍 Check act claim'}
+                </button>
+                <button
+                  type="button"
+                  className="demo-data-btn primary"
+                  onClick={handleFixActClaim}
+                  disabled={actClaimFixing || actClaimChecking || actClaimStatus?.status === 'ok'}
+                >
+                  {actClaimFixing ? 'Fixing…' : '🔧 Fix act claim'}
+                </button>
+                {actClaimStatus && (
+                  <span style={{ fontSize: '0.85rem', marginLeft: '0.25rem' }}>
+                    {actClaimStatus.status === 'ok' && <span style={{ color: '#15803d' }}>✅ act attribute present and correct</span>}
+                    {actClaimStatus.status === 'missing' && <span style={{ color: '#b45309' }}>⚠️ act attribute missing — click Fix</span>}
+                    {actClaimStatus.status === 'wrong_value' && <span style={{ color: '#b45309' }}>⚠️ act has wrong SPEL — click Fix to correct</span>}
+                    {actClaimStatus.status === 'missing_resource' && <span style={{ color: '#b91c1c' }}>❌ AI-Agent resource not found: {actClaimStatus.detail}</span>}
+                    {actClaimStatus.status === 'error' && <span style={{ color: '#b91c1c' }}>❌ {actClaimStatus.detail}</span>}
+                  </span>
+                )}
+              </div>
+              {actClaimStatus && actClaimStatus.status !== 'ok' && actClaimStatus.status !== 'missing' && (
+                <details style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                  <summary style={{ cursor: 'pointer' }}>Details</summary>
+                  <pre style={{ marginTop: '0.35rem', overflowX: 'auto' }}>{JSON.stringify(actClaimStatus, null, 2)}</pre>
+                </details>
+              )}
+            </section>
+
+            {/* ── Helix LLM Configuration ── */}
+            <section className="section demo-data-section" aria-labelledby="demo-helix-llm-heading">
+              <h2 className="demo-data-section__heading" id="demo-helix-llm-heading">Helix LLM</h2>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                Sign up at <strong>openam-helix.forgeblocks.com</strong>. Get your API Key from the Helix Admin section.
+                Configure all four fields to use Helix as the banking agent LLM.
+              </p>
+
+              {/* Status pill */}
+              <div style={{ marginBottom: '1rem' }}>
+                <span className="demo-data-helix-status" style={{
+                  display: 'inline-block',
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: 6,
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                  backgroundColor: helixStatus === 'available' ? '#dcfce7' : helixStatus === 'unconfigured' ? '#fef3c7' : '#fecaca',
+                  color: helixStatus === 'available' ? '#166534' : helixStatus === 'unconfigured' ? '#92400e' : '#991b1b',
+                }}>
+                  {helixStatus === 'available' && '✅ Active'}
+                  {helixStatus === 'unconfigured' && '⚠️ Unconfigured'}
+                  {helixStatus === null && '…'}
+                </span>
+              </div>
+
+              {/* Form fields */}
+              <div className="demo-data-helix-fields" style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '1rem',
+                marginBottom: '1rem',
+              }}>
+                <div>
+                  <label htmlFor="helix-base-url" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
+                    Helix Base URL
+                  </label>
+                  <input
+                    id="helix-base-url"
+                    type="text"
+                    placeholder="https://openam-helix.forgeblocks.com"
+                    value={helixConfig.base_url}
+                    onChange={(e) => setHelixConfig({ ...helixConfig, base_url: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      fontSize: '0.9rem',
+                      fontFamily: 'monospace',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="helix-api-key" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
+                    API Key
+                  </label>
+                  <input
+                    id="helix-api-key"
+                    type="password"
+                    placeholder="Helix API Key"
+                    value={helixConfig.api_key}
+                    onChange={(e) => setHelixConfig({ ...helixConfig, api_key: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      fontSize: '0.9rem',
+                      fontFamily: 'monospace',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="helix-env-id" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
+                    Environment ID
+                  </label>
+                  <input
+                    id="helix-env-id"
+                    type="text"
+                    placeholder="Helix environment/tenant ID"
+                    value={helixConfig.environment_id}
+                    onChange={(e) => setHelixConfig({ ...helixConfig, environment_id: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      fontSize: '0.9rem',
+                      fontFamily: 'monospace',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="helix-agent-id" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
+                    Agent ID
+                  </label>
+                  <input
+                    id="helix-agent-id"
+                    type="text"
+                    placeholder="The specific Helix agent to invoke"
+                    value={helixConfig.agent_id}
+                    onChange={(e) => setHelixConfig({ ...helixConfig, agent_id: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      fontSize: '0.9rem',
+                      fontFamily: 'monospace',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="demo-data-actions" style={{ flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  className="demo-data-btn ghost"
+                  onClick={fetchHelixStatus}
+                  disabled={helixChecking}
+                >
+                  {helixChecking ? 'Checking…' : '🔍 Check Status'}
+                </button>
+                <button
+                  type="button"
+                  className="demo-data-btn primary"
+                  onClick={handleHelixSave}
+                  disabled={helixSaving || !helixConfig.base_url || !helixConfig.api_key || !helixConfig.environment_id || !helixConfig.agent_id}
+                >
+                  {helixSaving ? 'Saving…' : '💾 Save & Activate'}
+                </button>
+              </div>
+
+              {helixStatus === 'unconfigured' && (
+                <div style={{
+                  padding: '0.75rem 1rem',
+                  backgroundColor: '#fef3c7',
+                  border: '1px solid #fcd34d',
+                  borderRadius: 6,
+                  fontSize: '0.85rem',
+                  color: '#92400e',
+                }}>
+                  ⚠️ Please fill in all four fields and click Save & Activate to enable Helix.
+                </div>
+              )}
+            </section>
+
+            <section className="section demo-data-section" aria-labelledby="demo-reset-heading">
+              <h2 id="demo-reset-heading">Reset Demo State</h2>
+              <p style={{ marginBottom: '0.75rem', color: 'var(--text-muted, #6b7280)', fontSize: '0.9rem' }}>
+                Clears all agent conversation history, token chain events, and MCP audit logs on the server, then reloads the page.
+                Your login session is preserved.
+              </p>
+              <button
+                type="button"
+                className="demo-data-btn"
+                style={{ background: '#dc2626', borderColor: '#dc2626', color: '#fff' }}
+                onClick={handleResetDemo}
+                disabled={demoResetting}
+              >
+                {demoResetting ? 'Resetting…' : '🔄 Reset Demo'}
+              </button>
             </section>
             </>
           )}

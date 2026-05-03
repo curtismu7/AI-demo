@@ -179,6 +179,11 @@ async function clearTokenChain(userId) {
   tokenEvents.delete(userId);
 }
 
+// Clear ALL token chain data (for demo reset)
+function clearAllTokenChains() {
+  tokenEvents.clear();
+}
+
 /**
  * Synthesize a single auth event from a raw access token.
  * Fallback for cold-start / server restart when the in-memory Map has no events.
@@ -266,6 +271,7 @@ module.exports = {
   getTokenChain,
   getCurrentTokens,
   clearTokenChain,
+  clearAllTokenChains,
   classifyTokenType,
   generateTokenDescription,
   synthesizeFromSession,

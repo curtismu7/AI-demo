@@ -29,13 +29,13 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => {
         if (!response.config?._silent) {
-          try { spinner.decrement(false); } catch (_) {}
+          try { spinner.decrement(false, response.config?.url || ''); } catch (_) {}
         }
         return response;
       },
       (error) => {
         if (!error.config?._silent) {
-          try { spinner.decrement(true); } catch (_) {} // isError → skip min display so toasts show
+          try { spinner.decrement(true, error.config?.url || ''); } catch (_) {} // isError → skip min display so toasts show
         }
         return Promise.reject(error);
       }

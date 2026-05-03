@@ -1082,6 +1082,10 @@ function EventRow({ event, isLast, nextEvent, idTokenMode, onInspect, hints, val
       : event.id === 'user-token' && audHintRaw
         ? { text: `aud: ${audShort || audHintRaw}`, cls: 'info' }
         : null;
+  const constraintHint =
+    (event.id === 'exchanged-token' || event.id === 'exchanged-token-fallback') && event.status !== 'waiting'
+      ? { text: 'Constraint-enforced', cls: 'ok' }
+      : null;
 
   return (
     <div className="tcd-event-wrap">
@@ -1157,10 +1161,11 @@ function EventRow({ event, isLast, nextEvent, idTokenMode, onInspect, hints, val
             )}
             <StatusBadge status={event.status} />
           </div>
-          {(triggerHint || mayActHint || actHint || audHint || introspectionHint) && (
+          {(triggerHint || mayActHint || actHint || audHint || constraintHint || introspectionHint) && (
             <div className="tcd-event-hints">
               {triggerHint && <span className={`tcd-event-hint tcd-event-hint--${triggerHint.cls}`}>{triggerHint.text}</span>}
               {audHint    && <span className={`tcd-event-hint tcd-event-hint--${audHint.cls}`}>{audHint.text}</span>}
+              {constraintHint && <span className={`tcd-event-hint tcd-event-hint--${constraintHint.cls}`}>{constraintHint.text}</span>}
               {mayActHint && <span className={`tcd-event-hint tcd-event-hint--${mayActHint.cls}`}>{mayActHint.text}</span>}
               {actHint    && <span className={`tcd-event-hint tcd-event-hint--${actHint.cls}`}>{actHint.text}</span>}
               {scopeInjectedHint && <span className={`tcd-event-hint tcd-event-hint--${scopeInjectedHint.cls}`}>{scopeInjectedHint.text}</span>}
@@ -1518,6 +1523,17 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
                 />
               )}
             </div>
+            {isLive && ctx?.clearEvents && (
+              <button
+                type="button"
+                className="tcd-clear-btn"
+                onClick={() => ctx.clearEvents()}
+                title="Clear live token events and return to session preview"
+                aria-label="Clear token chain"
+              >
+                Clear
+              </button>
+            )}
             <button
               type="button"
               className={`tcd-copy-btn${copied ? ' tcd-copy-btn--ok' : ''}`}

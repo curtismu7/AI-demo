@@ -108,7 +108,7 @@ import { useDemoMode } from "./hooks/useDemoMode";
 import LangChainPage from "./pages/LangChainPage";
 import { monitorApiHealth } from "./services/bankingRestartNotificationService";
 import { getCachedJson } from "./services/cachedStatusService";
-import { savePublicConfig } from "./services/configService";
+import { loadPublicConfig, savePublicConfig } from "./services/configService";
 import { notifyInfo, notifyWarning } from "./utils/appToast";
 import { SESSION_REAUTH_EVENT } from "./utils/authUi";
 import {
@@ -211,8 +211,8 @@ function AppWithAuth() {
 	const [searchParams] = useSearchParams();
 	const pathNorm = pathname.replace(/\/$/, "") || "/";
 	const isApiTrafficOnlyPage =
-		pathNorm === "/api-traffic" || pathNorm === "/logs";
-	const { placement: agentPlacement } = useAgentUiMode();
+		pathNorm === "/api-traffic" || pathNorm === "/logs" || pathNorm === "/agent";
+	const { placement: agentPlacement, fab: agentFab } = useAgentUiMode();
 	const demoMode = useDemoMode();
 	const navigate = useNavigate();
 	const [user, setUser] = useState(null);
@@ -227,6 +227,27 @@ function AppWithAuth() {
 	const [downServers, setDownServers] = useState(null);
 	/** Avoid userAuthenticated ↔ checkOAuthSession dispatch loops; reset when user clears. */
 	const sessionEstablishedRef = useRef(null);
+	const [appFlags, setAppFlags] = useState({
+		showEducationPanel: true,
+		enableTokenChainDisplay: true,
+		agentUiMode: 'standard',
+		debugShowTokenDetails: false,
+		debugShowApiCalls: false,
+		logFilterCategories: '',
+	});
+
+	useEffect(() => {
+		loadPublicConfig().then(cfg => {
+			setAppFlags({
+				showEducationPanel: cfg.show_education_panel !== false && cfg.show_education_panel !== 'false',
+				enableTokenChainDisplay: cfg.enable_token_chain_display !== false && cfg.enable_token_chain_display !== 'false',
+				agentUiMode: cfg.agent_ui_mode || 'standard',
+				debugShowTokenDetails: cfg.debug_show_token_details === true || cfg.debug_show_token_details === 'true',
+				debugShowApiCalls: cfg.debug_show_api_calls === true || cfg.debug_show_api_calls === 'true',
+				logFilterCategories: cfg.log_filter_categories || '',
+			});
+		}).catch(() => {});
+	}, []);
 
 	// Setup browser extension interference handling
 	useEffect(() => {
@@ -558,9 +579,12 @@ function AppWithAuth() {
 
 	const onMonitoringRoute = isMonitoringRoute(pathname);
 
+	const agentDisabled = appFlags.agentUiMode === 'disabled';
+
 	const showFloatingAgent =
+		!agentDisabled &&
 		!isApiTrafficOnlyPage &&
-		(!hasEmbeddedDockLayout || onMonitoringRoute) &&
+		(!hasEmbeddedDockLayout || onMonitoringRoute || (Boolean(user) && agentFab && onDashboardAgentRoute)) &&
 		(marketingAgentSurface ||
 			(Boolean(user) && agentPlacement === "none") ||
 			(Boolean(user) && onMonitoringRoute) ||
@@ -607,7 +631,7 @@ function AppWithAuth() {
 						className={`App end-user-nano${isOnDashboard ? " App--on-dashboard" : ""}${hasEmbeddedDockLayout ? " App--has-embedded-dock" : ""}${sessionReauth ? " App--session-reauth" : ""}`}
 					>
 						<ToastContainer
-							position="top-center"
+							position="top-right"
 							autoClose={toastContainerAutoCloseMs}
 							hideProgressBar={false}
 							newestOnTop
@@ -818,6 +842,18 @@ function AppWithAuth() {
 							{/* /login is not a real route — redirect to home so stale links or misdirected post-logout URIs land cleanly */}
 							<Route path="/login" element={<Navigate to="/" replace />} />
 							<Route path="/logout" element={<LogoutPage />} />
+                                                        <Route
+                                                                path="/agent"
+                                                                element={
+                                                                        <BankingAgent
+                                                                                user={user}
+                                                                                onLogout={logout}
+                                                                                mode="inline"
+                                                                                distinctFloatingChrome
+                                                                        />
+                                                                }
+                                                        />
+
 
 							<Route
 								path="*"
@@ -825,12 +861,7 @@ function AppWithAuth() {
 									!user ? (
 										loading ? null : (
 											<>
-												<LandingPage />
-												{["/accounts", "/transactions", "/users"].includes(
-													fullLocation.pathname,
-												) && (
-													<QuickLoginModal pathname={fullLocation.pathname} />
-												)}
+											<TopNav user={null} onLogout={logout} />
 											</>
 										)
 									) : (
@@ -898,17 +929,6 @@ function AppWithAuth() {
 																defaultWidth={1200}
 																defaultHeight={700}
 																onClose={() => window.history.back()}
-															/>
-														}
-													/>
-													<Route
-														path="/agent"
-														element={
-															<BankingAgent
-																user={user}
-																onLogout={logout}
-																mode="inline"
-																distinctFloatingChrome
 															/>
 														}
 													/>
@@ -1164,7 +1184,7 @@ function AppWithAuth() {
 													<Route
 														path="/monitoring/token-chain"
 														element={
-															user ? (
+															user && appFlags.enableTokenChainDisplay ? (
 																<TokenChainDisplay />
 															) : (
 																<Navigate to="/" replace />
@@ -1271,13 +1291,14 @@ function AppWithAuth() {
 								distinctFloatingChrome
 							/>
 						)}
-						{!isApiTrafficOnlyPage && <EducationPanelsHost />}
+						{!isApiTrafficOnlyPage && appFlags.showEducationPanel && <EducationPanelsHost />}
 						{!isApiTrafficOnlyPage && <CIBAPanel />}
 						{!isApiTrafficOnlyPage && <CimdSimPanel />}
 						{!isApiTrafficOnlyPage && <AgentFlowDiagramPanel />}
 						<LogViewer
 							isOpen={logViewerOpen}
 							onClose={() => setLogViewerOpen(false)}
+							categoryFilter={appFlags.logFilterCategories}
 						/>
 						{user &&
 							demoMode !== true &&

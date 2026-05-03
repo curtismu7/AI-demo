@@ -3,15 +3,12 @@
 const axios = require('axios');
 const configStore = require('./configStore');
 
-/**
- * Scope reference: Expected scopes for each resource
- * Source: docs/PINGONE_MAY_ACT_SETUP.md
- */
+// Flattened scope model: banking:read / banking:write replace granular scopes.
 const SCOPE_REFERENCE_TABLE = {
   'Super Banking AI Agent': ['banking:agent:invoke'],
-  'Super Banking MCP Server': ['banking:accounts:read', 'banking:transactions:read', 'banking:transactions:write'],
-  'Super Banking Agent Gateway': [],
-  'Super Banking Banking API': ['banking:accounts:read', 'banking:transactions:read', 'banking:transactions:write'],
+  'Super Banking MCP Server': ['banking:read', 'banking:write'],
+  'Super Banking Agent Gateway': ['banking:agent:invoke'],
+  'Super Banking Banking API': ['banking:read', 'banking:write'],
   'PingOne API': ['p1:read:user', 'p1:update:user'],
 };
 

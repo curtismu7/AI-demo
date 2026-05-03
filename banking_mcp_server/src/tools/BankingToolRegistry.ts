@@ -145,7 +145,13 @@ export class BankingToolRegistry {
       },
       inputSchema: {
         type: 'object',
-        properties: {},
+        properties: {
+          limit: {
+            type: 'integer',
+            description: 'Maximum number of transactions to return (default: all)',
+            minimum: 1
+          }
+        },
         required: [],
         additionalProperties: false
       }

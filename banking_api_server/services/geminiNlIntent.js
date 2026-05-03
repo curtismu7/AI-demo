@@ -10,8 +10,10 @@ const { parseHeuristic, EDU } = require('./nlIntentParser');
 const { sanitizeNlResult } = require('./nlIntentSanitize');
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'mistral';
 const OLLAMA_TIMEOUT_MS = 10000;
+
+console.log(`[NL Intent] LLM config: model=${OLLAMA_MODEL} url=${OLLAMA_BASE_URL} timeout=${OLLAMA_TIMEOUT_MS}ms`);
 
 const SYSTEM = `You are a strict JSON router for a banking demo SPA.
 Return ONLY a JSON object (no markdown) with one of:

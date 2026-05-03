@@ -59,15 +59,20 @@ async function getManagementToken() {
   }
 
   const tokenUrl = getTokenEndpoint();
-  const response = await axios.post(
-    tokenUrl,
-    'grant_type=client_credentials',
-    {
-      auth: { username: clientId, password: clientSecret },
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      timeout: 10000,
-    }
-  );
+  // Respect configured auth method — admin clients in PingOne often require POST body auth
+  const authMethod = configStore.getEffective('admin_token_endpoint_auth_method')
+    || configStore.getEffective('pingone_mgmt_token_auth_method')
+    || 'basic';
+  const usePostBody = authMethod === 'post';
+  const body = usePostBody
+    ? `grant_type=client_credentials&client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}`
+    : 'grant_type=client_credentials';
+  const requestConfig = {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    timeout: 10000,
+    ...(usePostBody ? {} : { auth: { username: clientId, password: clientSecret } }),
+  };
+  const response = await axios.post(tokenUrl, body, requestConfig);
   return response.data.access_token;
 }
 

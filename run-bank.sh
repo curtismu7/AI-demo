@@ -76,6 +76,12 @@ LOG_AGENT=/tmp/bank-langchain-agent.log
 LOG_MCP_TRAFFIC=/tmp/bank-mcp-traffic.log
 PID_GW=/tmp/bank-mcp-gateway.pid
 LOG_GW=/tmp/bank-mcp-gateway.log
+PID_HITL=/tmp/bank-hitl-service.pid
+LOG_HITL=/tmp/bank-hitl-service.log
+PID_AGENT_SVC=/tmp/bank-agent-service.pid
+LOG_AGENT_SVC=/tmp/bank-agent-service.log
+PID_INVEST=/tmp/bank-mcp-invest.pid
+LOG_INVEST=/tmp/bank-mcp-invest.log
 
 # Terminal colors (global — used by banner, status, and tail_bank_logs)
 BOLD='\033[1m'
@@ -140,6 +146,29 @@ preflight_checks() {
       warn "Port ${port} is already in use (will be stopped before start)"
     fi
   done
+
+  # Ollama (local LLM for NL intent fallback) — optional but recommended
+  local ollama_model="${OLLAMA_MODEL:-llama3.2}"
+  if ! command -v ollama >/dev/null 2>&1; then
+    warn "ollama not found — NL fallback LLM disabled. Install: https://ollama.ai"
+  elif port_listening 11434; then
+    ok "Ollama running on :11434 — model: ${ollama_model}"
+  else
+    echo -e "  ${CYAN}⟳${RESET}  Starting Ollama (model: ${ollama_model})…"
+    ollama serve > /tmp/bank-ollama.log 2>&1 &
+    echo $! > /tmp/bank-ollama.pid
+    # Give it a moment to start
+    local i=0
+    while [[ $i -lt 8 ]]; do
+      port_listening 11434 && break
+      sleep 1; (( i++ )) || true
+    done
+    if port_listening 11434; then
+      ok "Ollama started on :11434 — model: ${ollama_model}"
+    else
+      warn "Ollama did not start on :11434 — check /tmp/bank-ollama.log"
+    fi
+  fi
 
   ok "Pre-flight checks passed"
   echo ""
@@ -224,7 +253,7 @@ kill_process_tree() {
 # Stop anything still listening on Banking ports (orphaned node/python after PID file lost).
 stop_listeners_on_banking_ports() {
   local port pid pids
-  for port in 3001 4000 8080 8888; do
+  for port in 3001 4000 8080 8888 3005 3006 3009 8081; do
     pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
     for pid in $pids; do
       [[ -z "$pid" ]] && continue
@@ -236,7 +265,7 @@ stop_listeners_on_banking_ports() {
 
 force_kill_listeners_on_banking_ports() {
   local port pid pids
-  for port in 3001 4000 8080 8888; do
+  for port in 3001 4000 8080 8888 3005 3006 3009 8081; do
     pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
     for pid in $pids; do
       [[ -z "$pid" ]] && continue
@@ -274,6 +303,9 @@ print_status_table() {
   service_status_line "Banking API Server"  ${API_PORT}  "${API_URL}"
   service_status_line "Banking MCP Server"  8080         "ws://localhost:8080 (internal)"
   service_status_line "MCP Gateway"          3005         "http://localhost:3005 (internal)"
+  service_status_line "MCP Invest Server"   8081         "ws://localhost:8081 (internal)"
+  service_status_line "Agent Service"       3006         "http://localhost:3006 (internal)"
+  service_status_line "HITL Service"        3009         "http://localhost:3009 (internal)"
   service_status_line "LangChain Agent"     8888         "http://localhost:8888 (internal)"
   if port_listening ${UI_PORT}; then
     printf "  ${GREEN}${BOLD}  ✅  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
@@ -286,7 +318,7 @@ print_status_table() {
 cmd_stop() {
   echo "🛑 Stopping Banking services (run-bank.sh)..."
   set +e
-  for pid_file in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_AGENT" "$PID_UI"; do
+  for pid_file in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_AGENT" "$PID_UI"; do
     if [[ -f "$pid_file" ]]; then
       PID=$(cat "$pid_file" 2>/dev/null || true)
       rm -f "$pid_file"
@@ -297,7 +329,7 @@ cmd_stop() {
     fi
   done
   sleep 1
-  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :8080, GW :3005, Agent :8888)…"
+  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :8080, GW :3005, Agent :3006, HITL :3009, Invest :8081)…"
   stop_listeners_on_banking_ports
   sleep 1
   force_kill_listeners_on_banking_ports
@@ -474,7 +506,7 @@ done
 if [[ "$_any_running" == "true" ]]; then
   echo -e "${YELLOW}  ⟳  Stopping existing Banking services…${RESET}"
   set +e
-  for _pf in "$PID_API" "$PID_MCP" "$PID_AGENT" "$PID_UI"; do
+  for _pf in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_AGENT" "$PID_UI"; do
     if [[ -f "$_pf" ]]; then
       _pid=$(cat "$_pf" 2>/dev/null || true)
       rm -f "$_pf"
@@ -535,6 +567,72 @@ if [[ -d "$BASEDIR/banking_mcp_gateway" ]]; then
   echo $! > "$PID_GW"
 fi
 
+# ── HITL Service on :3009 ───────────────────────────────────────────────────
+if [[ -d "$BASEDIR/banking_hitl_service" ]]; then
+  echo "🔔 Starting HITL Service on :3009..."
+  (
+    cd "$BASEDIR/banking_hitl_service"
+    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
+    PORT=3009 npm start > "${LOG_HITL}" 2>&1
+  ) &
+  echo $! > "$PID_HITL"
+fi
+
+# ── Agent Service on :3006 ──────────────────────────────────────────────────
+if [[ -d "$BASEDIR/banking_agent_service" ]] && [[ -f "$BASEDIR/banking_agent_service/dist/index.js" ]]; then
+  echo "🤝 Starting Agent Service on :3006..."
+  (
+    cd "$BASEDIR/banking_agent_service"
+    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
+    PORT=3006 npm start > "${LOG_AGENT_SVC}" 2>&1
+  ) &
+  echo $! > "$PID_AGENT_SVC"
+fi
+
+# ── MCP Invest Server on :8081 ──────────────────────────────────────────────
+if [[ -d "$BASEDIR/banking_mcp_invest" ]] && [[ -f "$BASEDIR/banking_mcp_invest/dist/index.js" ]]; then
+  echo "📈 Starting MCP Invest Server on :8081..."
+  (
+    cd "$BASEDIR/banking_mcp_invest"
+    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
+    PORT=8081 npm start > "${LOG_INVEST}" 2>&1
+  ) &
+  echo $! > "$PID_INVEST"
+fi
+
+# ── HITL Service on :3009 ───────────────────────────────────────────────────
+if [[ -d "$BASEDIR/banking_hitl_service" ]]; then
+  echo "🔔 Starting HITL Service on :3009..."
+  (
+    cd "$BASEDIR/banking_hitl_service"
+    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
+    PORT=3009 npm start > "${LOG_HITL}" 2>&1
+  ) &
+  echo $! > "$PID_HITL"
+fi
+
+# ── Agent Service on :3006 ──────────────────────────────────────────────────
+if [[ -d "$BASEDIR/banking_agent_service" ]] && [[ -f "$BASEDIR/banking_agent_service/dist/index.js" ]]; then
+  echo "🤝 Starting Agent Service on :3006..."
+  (
+    cd "$BASEDIR/banking_agent_service"
+    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
+    PORT=3006 npm start > "${LOG_AGENT_SVC}" 2>&1
+  ) &
+  echo $! > "$PID_AGENT_SVC"
+fi
+
+# ── MCP Invest Server on :8081 ──────────────────────────────────────────────
+if [[ -d "$BASEDIR/banking_mcp_invest" ]] && [[ -f "$BASEDIR/banking_mcp_invest/dist/index.js" ]]; then
+  echo "📈 Starting MCP Invest Server on :8081..."
+  (
+    cd "$BASEDIR/banking_mcp_invest"
+    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
+    PORT=8081 npm start > "${LOG_INVEST}" 2>&1
+  ) &
+  echo $! > "$PID_INVEST"
+fi
+
 # ── LangChain Agent on :8888 ─────────────────────────────────────────────────
 if [[ -f "$BASEDIR/langchain_agent/main.py" ]] || [[ -f "$BASEDIR/langchain_agent/server.py" ]]; then
   ENTRY="main"
@@ -588,6 +686,9 @@ echo -e "${DIM}  Waiting for Banking API and MCP Server to come up…${RESET}"
 wait_for_port "${API_PORT}" 25 >/dev/null
 wait_for_port 8080 25 >/dev/null
 sleep 1   # give LangChain agent a moment too
+
+echo -e "${GREEN}${BOLD}  🗑️  DEMO STATE CLEARED${RESET} — all in-memory state reset on startup:"
+echo -e "${DIM}      Token chain · App events · MCP audit · Pending consents${RESET}"
 
 echo ""
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"

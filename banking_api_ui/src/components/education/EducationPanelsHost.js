@@ -35,6 +35,7 @@ import TokenFlowPanel from './TokenFlowPanel';
 import AiPrimerPanel from './AiPrimerPanel';
 import IdJagPanel from './IdJagPanel';
 import GleanPanel from './GleanPanel';
+import IntentDelegationPanel from './IntentDelegationPanel';
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -77,6 +78,7 @@ export default function EducationPanelsHost() {
       <AiPrimerPanel isOpen={panel === EDU.AI_PRIMER} onClose={close} initialTabId={tab} />
       <IdJagPanel isOpen={panel === EDU.ID_JAG} onClose={close} initialTabId={tab} />
       <GleanPanel isOpen={panel === EDU.GLEAN} onClose={close} initialTabId={tab} />
+      <IntentDelegationPanel isOpen={panel === EDU.INTENT_DELEGATION} onClose={close} initialTabId={tab} />
     </>
   );
 }

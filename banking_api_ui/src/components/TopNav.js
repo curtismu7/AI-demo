@@ -90,7 +90,6 @@ export default function TopNav({ user, onLogout }) {
         {/* Center: Page label */}
         {pageLabel && (
           <div className="topnav-page-label">
-            <span className="topnav-page-label__icon">{pageLabel.icon}</span>
             <span className="topnav-page-label__text">{pageLabel.label}</span>
           </div>
         )}
@@ -122,7 +121,7 @@ export default function TopNav({ user, onLogout }) {
               onClick={handleSwitchView}
               title={isAdminView ? 'Switch to Customer View' : 'Switch to Admin View'}
             >
-              {isAdminView ? '👤 Customer View' : '🛡 Admin View'}
+              {isAdminView ? 'Customer View' : 'Admin View'}
             </button>
           )}
           {!user && (

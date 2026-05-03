@@ -16,6 +16,37 @@
 async function getProviderStatus(provider, config = {}) {
   const HEALTH_CHECK_TIMEOUT = 3000; // 3 seconds
 
+  // Helix — requires 4 fields: base_url, api_key, environment_id, agent_id
+  if (provider === 'helix') {
+    const helixRequired = {
+      helix_base_url: 'Base URL',
+      helix_api_key: 'API Key',
+      helix_environment_id: 'Environment ID',
+      helix_agent_id: 'Agent ID'
+    };
+    const helixMissing = [];
+    for (const field in helixRequired) {
+      if (!config[field]) {
+        helixMissing.push(field);
+      }
+    }
+    if (helixMissing.length === 0) {
+      return {
+        status: 'available',
+        reason: 'Helix credentials configured',
+        hasKey: true,
+        isReachable: true,
+      };
+    } else {
+      return {
+        status: 'unconfigured',
+        reason: 'Helix missing: ' + helixMissing.join(', '),
+        hasKey: false,
+        isReachable: false,
+      };
+    }
+  }
+
   // Cloud providers — available when the API key is set in the session config
   const CLOUD_PROVIDERS = { openai: 'OPENAI_API_KEY', anthropic: 'ANTHROPIC_API_KEY', groq: 'GROQ_API_KEY', google: 'GOOGLE_API_KEY' };
   if (CLOUD_PROVIDERS[provider]) {

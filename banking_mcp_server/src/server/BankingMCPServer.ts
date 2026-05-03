@@ -557,10 +557,11 @@ export class BankingMCPServer extends EventEmitter {
     }
 
     try {
-      const responseData = JSON.stringify(response);
+      const responseWithVersion = { jsonrpc: '2.0' as const, ...response };
+      const responseData = JSON.stringify(responseWithVersion);
       
       // Log the response being sent back to client
-      console.log(`[BankingMCPServer] Sending response to ${connectionId}:`, JSON.stringify(response, null, 2));
+      console.log(`[BankingMCPServer] Sending response to ${connectionId}:`, JSON.stringify(responseWithVersion, null, 2));
       
       connection.ws.send(responseData);
     } catch (error) {

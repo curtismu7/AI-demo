@@ -44,7 +44,7 @@ function mergeLogHistory(prev, incoming, maxRows = 2500) {
   return merged.slice(merged.length - maxRows);
 }
 
-const LogViewer = ({ isOpen, onClose, standalone = false }) => {
+const LogViewer = ({ isOpen, onClose, standalone = false, categoryFilter = '' }) => {
   const [logs, setLogs] = useState([]);
   const [toastLogs, setToastLogs] = useState(() => toastLogStore.getAll() || []);
   const [loading, setLoading] = useState(false);
@@ -436,16 +436,22 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
               </tr>
             </thead>
             <tbody>
-              {loading && logs.length === 0 && filter.category !== 'toast messages' ? (
+              {(() => {
+                const activeCats = categoryFilter ? categoryFilter.split(',').map(s => s.trim()).filter(Boolean) : [];
+                const displayedLogs = activeCats.length === 0 ? logs : logs.filter(log => {
+                  const msg = typeof log.message === 'string' ? log.message : JSON.stringify(log.message || '');
+                  return activeCats.some(cat => msg.startsWith(`[${cat}]`));
+                });
+                return loading && displayedLogs.length === 0 && filter.category !== 'toast messages' ? (
                 <tr>
                   <td colSpan="5" className="loading-cell">Loading logs...</td>
                 </tr>
-              ) : logs.length === 0 ? (
+              ) : displayedLogs.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="empty-cell">No logs found</td>
                 </tr>
               ) : (
-                logs.map((log) => (
+                displayedLogs.map((log) => (
                   <tr key={stableLogKey(log)} className={`log-row log-${log.level}`}>
                     <td className="log-time">{formatTimestamp(log.timestamp)}</td>
                     <td className="log-level">
@@ -481,7 +487,8 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
                     </td>
                   </tr>
                 ))
-              )}
+              );
+              })()}
             </tbody>
           </table>
         </div>

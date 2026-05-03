@@ -235,8 +235,9 @@ export class AuthenticationIntegration {
     const errorData: any = {
       type: 'authentication_error',
       message: error,
-      challenge_type: 'oauth_authorization_code', // Add the challenge type your client expects
-      authorization_url: 'https://openam-dna.forgeblocks.com:443/am/oauth2/realms/root/realms/alpha/authorize',
+      challenge_type: 'oauth_authorization_code',
+      authorization_url: process.env.PINGONE_AUTHORIZATION_ENDPOINT ||
+        `https://auth.pingone.${process.env.PINGONE_REGION || 'com'}/${process.env.PINGONE_ENVIRONMENT_ID || ''}/as/authorize`,
       scope: 'banking:accounts:read banking:transactions:read banking:transactions:write'
     };
 

@@ -42,7 +42,7 @@
   --agent-gray-900: #111827;
 
   /* Dark theme overrides */
-  --agent-bg-primary: #ffffff;
+  --agent-bg-primary: #eff6ff;
   --agent-bg-secondary: #f9fafb;
   --agent-bg-tertiary: #f3f4f6;
   --agent-text-primary: #111827;
@@ -175,7 +175,7 @@
   --agent-input-radius: var(--agent-radius-lg);
   
   /* Chat container */
-  --agent-chat-bg: var(--agent-bg-primary);
+  --agent-chat-bg: #eff6ff;
   --agent-chat-padding: var(--agent-space-4);
   --agent-chat-gap: var(--agent-space-4);
   

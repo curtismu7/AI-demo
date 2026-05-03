@@ -712,10 +712,49 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       }
     ));
     if (!intro.valid) {
-      throw Object.assign(
-        new Error('User token is no longer active (RFC 7662 introspection returned active=false)'),
-        { code: 'TOKEN_INACTIVE' }
-      );
+      // Attempt silent refresh before giving up — session may have a valid refresh token
+      // even when the access token has expired (common after server restart with SQLite sessions).
+      const refreshToken = req?.session?.oauthTokens?.refreshToken;
+      if (refreshToken && refreshToken !== '_cookie_session') {
+        try {
+          const refreshed = await oauthService.refreshAccessToken(refreshToken);
+          if (refreshed && refreshed.access_token) {
+            req.session.oauthTokens.accessToken = refreshed.access_token;
+            if (refreshed.refresh_token) req.session.oauthTokens.refreshToken = refreshed.refresh_token;
+            req.session.oauthTokens.expiresAt = Date.now() + (refreshed.expires_in || 3600) * 1000;
+            await new Promise((resolve, reject) =>
+              req.session.save(err => err ? reject(err) : resolve())
+            );
+            userToken = refreshed.access_token;
+            tokenEvents.push(buildTokenEvent(
+              'user-token-refreshed',
+              'User Token — Silently Refreshed (expired token replaced)',
+              'active',
+              null,
+              'Access token was expired. BFF used the stored refresh token to obtain a new access token from PingOne. Token exchange will proceed with the fresh token.',
+              { rfc: 'RFC 6749 §6' }
+            ));
+            console.log('[AGENT_MCP] Access token silently refreshed via refresh_token — continuing exchange');
+          } else {
+            throw Object.assign(
+              new Error('User token is no longer active (refresh returned no access_token)'),
+              { code: 'TOKEN_INACTIVE' }
+            );
+          }
+        } catch (refreshErr) {
+          if (refreshErr.code === 'TOKEN_INACTIVE') throw refreshErr;
+          console.warn('[AGENT_MCP] Silent token refresh failed:', refreshErr.message);
+          throw Object.assign(
+            new Error('User token is no longer active (RFC 7662 introspection returned active=false; refresh also failed)'),
+            { code: 'TOKEN_INACTIVE' }
+          );
+        }
+      } else {
+        throw Object.assign(
+          new Error('User token is no longer active (RFC 7662 introspection returned active=false)'),
+          { code: 'TOKEN_INACTIVE' }
+        );
+      }
     }
   } catch (err) {
     if (err.code === 'TOKEN_INACTIVE') throw err;
@@ -1010,15 +1049,10 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   );
 
   // ── 2-Exchange delegation path ──────────────────────────────────────────────────
-  // ff_two_exchange_delegation: Subject Token → (AI Agent) → Agent Exchanged Token → (MCP) → Final Token
-  // Produces nested act claim: act.sub=MCP_CLIENT_ID, act.act.sub=AI_AGENT_CLIENT_ID
+  // 12-step AI agent security mandate: two RFC 8693 exchanges are ALWAYS required.
+  // Session mode 'single' is a debug-only escape hatch; 'double' is the mandatory default.
   const sessionExchangeMode = req && req.session ? req.session.mcpExchangeMode : undefined;
-  const ffTwoExchange =
-    sessionExchangeMode === 'double' ||
-    (sessionExchangeMode == null && (
-      configStore.getEffective('ff_two_exchange_delegation') === true ||
-      configStore.getEffective('ff_two_exchange_delegation') === 'true'
-    ));
+  const ffTwoExchange = sessionExchangeMode !== 'single';
   if (ffTwoExchange) {
     return await _performTwoExchangeDelegation(
       tokenEvents, userToken, userAccessTokenClaims, finalScopes, userSub, toolTrigger, mcpResourceUri

@@ -145,6 +145,28 @@ const ACTION_GROUPS = {
     },
     { id: "logout", label: "Log Out", desc: "Sign out of your account" },
   ],
+  ai: [
+    {
+      id: "ai_ask",
+      label: "Ask AI Anything",
+      desc: "Free-form question routed to Ollama local LLM",
+    },
+    {
+      id: "ai_explain",
+      label: "Explain a Concept",
+      desc: "Ask the LLM to explain an OAuth or banking concept",
+    },
+    {
+      id: "ai_analyze",
+      label: "Summarize How MCP Works",
+      desc: "Ask the LLM to summarize the MCP tool flow in this demo",
+    },
+    {
+      id: "ai_advice",
+      label: "Financial Advice",
+      desc: "Ask the LLM for generic financial advice or tips",
+    },
+  ],
   testing: [
     {
       id: "test_wrong_scope",
@@ -317,6 +339,10 @@ const CHIP_APPLICABLE_STEPS = {
     "olb-resource-token",
     "claim-diagnostics",
   ],
+  ai_ask:     ["agent-llm-reasoning"],
+  ai_explain: ["agent-llm-reasoning"],
+  ai_analyze: ["agent-llm-reasoning"],
+  ai_advice:  ["agent-llm-reasoning"],
 };
 
 // Backwards compatibility: flat ACTIONS array from ACTION_GROUPS
@@ -1554,6 +1580,7 @@ export default function BankingAgent({
       account: true,
       transaction: false,
       admin: false,
+      ai: false,
       testing: false,
     };
   });
@@ -1578,6 +1605,7 @@ export default function BankingAgent({
       account: true,
       transaction: false,
       admin: false,
+      ai: false,
       testing: false,
     }));
   }, [useActionsPopout, isBottomDock]);
@@ -4272,6 +4300,14 @@ export default function BankingAgent({
       setNlInputFromTile("Think: Should I transfer money from checking to savings?");
     } else if (actionId === "demo_nl_routing") {
       setNlInputFromTile("What is my checking account balance?");
+    } else if (actionId === "ai_ask") {
+      setNlInputFromTile("");
+    } else if (actionId === "ai_explain") {
+      setNlInputFromTile("Explain: ");
+    } else if (actionId === "ai_analyze") {
+      setNlInputFromTile("Summarize how the MCP tool flow works in this banking demo");
+    } else if (actionId === "ai_advice") {
+      setNlInputFromTile("What are some good tips for managing checking and savings accounts?");
     } else {
       setActiveAction(actionId);
     }

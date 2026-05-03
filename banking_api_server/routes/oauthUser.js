@@ -788,11 +788,23 @@ router.get('/logout', (req, res) => {
   const idToken      = req.session.oauthTokens?.idToken      || null;
   const accessToken  = req.session.oauthTokens?.accessToken  || null;
   const refreshToken = req.session.oauthTokens?.refreshToken || null;
+  const userId       = req.session.user?.oauthId || req.session.user?.id || null;
   const postLogoutUri = `${getFrontendOrigin(req)}/logout`;
 
   // RFC 7009 — revoke tokens before destroying the session (best-effort, non-fatal)
   if (accessToken  && accessToken  !== '_cookie_session') oauthService.revokeToken(accessToken,  'access_token');
   if (refreshToken && refreshToken !== '_cookie_session') oauthService.revokeToken(refreshToken, 'refresh_token');
+
+  // Clear this user's in-memory demo state so the next login starts fresh
+  try {
+    const { clearTokenChain } = require('../services/tokenChainService');
+    const mcpAudit = require('../services/mcpToolAuditStore');
+    const appEvt = require('../services/appEventService');
+    if (userId) clearTokenChain(userId);
+    mcpAudit.clearToolCalls();
+    appEvt.clearEvents();
+    if (global.pendingConsents) global.pendingConsents = {};
+  } catch (_) { /* non-fatal */ }
 
   // Clear any stale PKCE cookie so re-login doesn't hit invalid_state
   clearPkceCookie(res, _isProd());

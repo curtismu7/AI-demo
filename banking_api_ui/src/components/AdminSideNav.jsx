@@ -7,6 +7,7 @@ import { persistBankingAgentUi } from "../services/demoScenarioService";
 import { setDashboardLayout } from "../utils/dashboardLayout";
 import { EDU } from "./education/educationIds";
 import RedButton from "./RedButton";
+import ConfirmModal from "./ConfirmModal";
 import KillSwitchConfirmModal from "./KillSwitchConfirmModal";
 import "./AdminSideNav.css";
 
@@ -53,6 +54,7 @@ export default function AdminSideNav({ user }) {
 	});
 	const [showKillModal, setShowKillModal] = useState(false);
 	const [agentRevoked, setAgentRevoked] = useState(false);
+	const [showResetModal, setShowResetModal] = useState(false);
 
 	const isAdmin = user?.role === "admin";
 	const { placement, fab, setAgentUi } = useAgentUiMode();
@@ -106,6 +108,7 @@ export default function AdminSideNav({ user }) {
 	const allNavItems = [
 		{ label: "Home", path: "/", icon: "🏠" },
 		{ label: "Dashboard", path: isAdmin ? "/admin" : "/dashboard", icon: "📊" },
+		{ label: "Demo Config", path: "/demo-data", icon: "🎛" },
 		{
 			label: "Family Delegation",
 			path: "/delegation",
@@ -179,7 +182,6 @@ export default function AdminSideNav({ user }) {
 				{ label: "MCP Gateway", path: "/mcp-gateway", icon: "🛡️" },
 				{ label: "MCP Tools", path: "/mcp-tools", icon: "🧰" },
 				{ label: "LLM Config", path: "/llm-config", icon: "🤖" },
-				{ label: "Demo Config", path: "/demo-data", icon: "🎛" },
 				{ label: "App Configuration", path: "/configure", icon: "🔧" },
 				{ label: "Postman Collections", path: "/postman", icon: "📬" },
 			],
@@ -273,6 +275,7 @@ export default function AdminSideNav({ user }) {
 				]
 			: []),
 		{ label: "Dark Mode", action: "dark-mode", icon: "🌙" },
+		{ label: "Reset Demo", action: "reset-demo", icon: "🔄" },
 		...(user
 			? [{ label: "Log Out", action: "logout", icon: "🚪" }]
 			: [{ label: "Sign In", action: "sign-in", icon: "🔑" }]),
@@ -324,9 +327,10 @@ export default function AdminSideNav({ user }) {
 				break;
 			}
 			case "logout":
-				if (window.confirm("Log out?")) {
-					window.location.href = "/api/auth/logout";
-				}
+				window.location.href = "/api/auth/logout";
+				break;
+			case "reset-demo":
+				setShowResetModal(true);
 				break;
 			case "sign-in":
 				window.location.href =
@@ -337,6 +341,15 @@ export default function AdminSideNav({ user }) {
 		}
 	};
 
+	const handleResetConfirm = async () => {
+		setShowResetModal(false);
+		try { await fetch('/api/admin/reset-demo', { method: 'POST', credentials: 'include' }); } catch (_) {}
+		try { localStorage.removeItem('tokenChainHistory'); } catch (_) {}
+		try { localStorage.removeItem('api-traffic-store'); } catch (_) {}
+		try { sessionStorage.removeItem('_agent_auto_loaded'); } catch (_) {}
+		window.location.reload();
+	};
+
 	const handleKillSwitchConfirm = useCallback(async (agentId, reason) => {
 		try {
 			const response = await fetch(`/api/admin/agent/${agentId}/kill-switch`, {
@@ -345,23 +358,24 @@ export default function AdminSideNav({ user }) {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ reason }),
 			});
-			// 401 is the expected success response: session revoked, user disabled at PingOne
-			if (response.status === 401) {
+			const body = await response.json().catch(() => ({}));
+			// 401 with agent_killed is the expected success response: session revoked at server
+			if (response.status === 401 && body.error === 'agent_killed') {
 				setAgentRevoked(true);
 				setShowKillModal(false);
-				console.log("[AdminSideNav] Agent killed — redirecting to PingOne login");
-				setTimeout(() => { window.location.href = "/api/auth/logout"; }, 800);
+				console.log("[AdminSideNav] Agent killed — navigating to logout page");
+				navigate('/logout');
 				return;
 			}
-			if (!response.ok) throw new Error(`Kill switch failed: ${response.status}`);
-			// Fallback for any 2xx (should not happen after server fix)
+			if (!response.ok) throw new Error(body.error_description || body.message || `Kill switch failed: ${response.status}`);
+			// Fallback for any 2xx
 			setAgentRevoked(true);
 			setShowKillModal(false);
-			console.log("[AdminSideNav] Agent kill switch successful");
+			navigate('/logout');
 		} catch (e) {
 			console.error("[AdminSideNav] Kill switch error:", e.message);
 		}
-	}, []);
+	}, [navigate]);
 
 
 	const renderNavItem = (item, sectionKey, index) => {
@@ -626,6 +640,15 @@ export default function AdminSideNav({ user }) {
 					onConfirm={(agentId, reason) => handleKillSwitchConfirm(agentId || "default-agent", reason)}
 				/>
 			)}
+			<ConfirmModal
+				isOpen={showResetModal}
+				title="Reset Demo"
+				message="Clear all agent history, token chain events, and MCP audit logs? You will stay logged in."
+				confirmLabel="Reset"
+				danger
+				onConfirm={handleResetConfirm}
+				onCancel={() => setShowResetModal(false)}
+			/>
 		</div>
 	);
 }

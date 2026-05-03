@@ -82,6 +82,13 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-03 — Step-up MFA threshold ignored by step-up gate (threshold disconnect)
+
+- **Root cause:** `ThresholdControls` UI saves `mfa_threshold_usd` to `configStore`, but the step-up gate in `routes/transactions.js` reads `runtimeSettings.stepUpAmountThreshold` (seeded from env `STEP_UP_AMOUNT_THRESHOLD || 0`). If env is not set, runtimeSettings defaults to 0, and `transactions.js` falls back to `configStore.getEffective('step_up_amount_threshold')` — a **different configStore key** from `mfa_threshold_usd`. These two stores were completely disconnected: UI threshold changes had no effect on the step-up gate.
+- **Fix:** `routes/thresholds.js` POST handler now: (1) also writes `step_up_amount_threshold` to configStore (matching key for the fallback), (2) calls `runtimeSettings.update({ stepUpAmountThreshold: n })` so the change takes immediate effect in the live gate. GET response now includes `step_up_amount_threshold` showing the effective live value.
+- **Files changed:** `banking_api_server/routes/thresholds.js`.
+- **Do not break:** HITL consent check (which was already correctly wired to `confirm_threshold_usd`) is unchanged. Step-up gate still reads runtimeSettings first; this fix only ensures runtimeSettings is properly updated when the admin uses the ThresholdControls panel.
+
 ### 2026-05-02 — get_my_accounts insufficient_scope (3 root-cause fixes)
 
 - **Root cause:** Three compounding bugs blocked the `get_my_accounts` tool end-to-end via the MCP gateway path:
@@ -1646,3 +1653,33 @@ cd ..
 - **BFF route:** `GET /api/tokens/userinfo` — calls PingOne userinfo endpoint with session access token. Token never exposed to frontend. Uses `oauthUserConfig.userInfoEndpoint` and `getSessionAccessToken(req)`.
 - **Regression check:** `cd banking_api_ui && npm run build` → exit 0. No changes to OAuth callback redirect logic, session management, or PKCE flows.
 - **Do not break:** OAuth callback redirect to `/dashboard` / `postLoginReturnToPath` (unchanged). Admin callback to `/admin` (unchanged). Session creation and `req.session.save()` before redirect (unchanged). PingOne userinfo is optional — page gracefully falls back to JWT-only if the endpoint fails.
+
+**Date:** May 2, 2026
+**Area:** UI / Agent
+- **Symptom:** Clicking "New window" in agent popout opens middle browser view but includes side menu and does not pop out cleanly.
+- **Root Cause:** 1) `window.open` lacked `popup=yes`, causing modern browsers to treat it as a new tab instead of a window. 2) `/agent` route was nested inside `path="*"` route which unconditionally wraps the content in `<AdminSideNav>`.
+- **Fix:** 
+  1. Updated `window.open` in `BankingAgent.js` to explicitly request `popup=yes,status=no`
+  2. Extracted `<Route path="/agent">` to the top-level route to bypass the sidebar layout structure
+  3. Added `/agent` to `isApiTrafficOnlyPage` variable logic in App.js to hide floating panels
+- **Files modified:** `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/App.js`
+- **Regression check:** `npm run build` → exit 0; verified no missing layouts for standard app routes.
+- **Do not break:** Popout layout should just contain the agent interface, clean and without navigation wraps.
+
+**Date:** May 2, 2026
+**Area:** UI / Agent
+- **Symptom:** Checkbox text for "Always float" was unreadable (dark text on dark background).
+- **Root Cause:** A dark red color `#7f1d1d` default was applied to `.agent-ui-mode-toggle__fab` without adjusting the specific span text to white when embedded on darker backgrounds.
+- **Fix:** Applied inline `color: '#fff'` specifically to the "Always float" `<span>` in `AgentUiModeToggle.js`.
+- **Files modified:** `banking_api_ui/src/components/AgentUiModeToggle.js`, `banking_api_ui/src/components/fix-toggle.js`
+- **Regression check:** `npm run build` → exit 0
+- **Do not break:** The "Always float" toggle readability alongside the layout segmented control in the top app navigation.
+
+**Date:** May 2, 2026
+**Area:** UI / Agent
+- **Symptom:** "View Sensitive Account Details" chip and natural language requests did not properly trigger or establish initial steps on the MCP Compliance Checklist (12-step panel), leaving the compliance UI seemingly inactive or unlinked.
+- **Root Cause:** The `sensitive-account-details` switch case manually queued HITL without hitting the backend infrastructure that traditionally triggers UI compliance steps. In addition, there was no logical node representing the LLM processing phase for manual commands that get routed out.
+- **Fix:** Added an `agent-llm-reasoning` node to `COMPLIANCE_STEPS` in `agentFlowDiagramService`. Explicitly added function flags `startLlmReasoning` and `markHitlPreConsent` to trigger the node updates before MCP/API handling starts. Bound these triggers in `BankingAgent.js`.
+- **Files modified:** `banking_api_ui/src/services/agentFlowDiagramService.js`, `banking_api_ui/src/components/BankingAgent.js`
+- **Regression check:** `npm run build` → exit 0
+- **Do not break:** The visual relationship between hitting an agent command and it indicating that the MCP / Gateway consent workflow is kicking in.

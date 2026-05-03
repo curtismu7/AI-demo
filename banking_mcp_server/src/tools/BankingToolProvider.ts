@@ -519,7 +519,7 @@ export class BankingToolProvider {
         return await this.executeGetAccountBalance(token, context.params as { account_id: string });
 
       case 'executeGetMyTransactions':
-        return await this.executeGetMyTransactions(token);
+        return await this.executeGetMyTransactions(token, context.params as { limit?: number });
 
       case 'executeCreateDeposit':
         return await this.executeCreateDeposit(token, context.params as { to_account_id: string; amount: number; description?: string });
@@ -599,8 +599,11 @@ export class BankingToolProvider {
   /**
    * Execute get_my_transactions tool
    */
-  private async executeGetMyTransactions(userToken: string): Promise<BankingToolResult> {
-    const transactions = await this.apiClient.getMyTransactions(userToken);
+  private async executeGetMyTransactions(userToken: string, params?: { limit?: number }): Promise<BankingToolResult> {
+    let transactions = await this.apiClient.getMyTransactions(userToken);
+    if (params?.limit && params.limit > 0) {
+      transactions = transactions.slice(0, params.limit);
+    }
 
     if (!Array.isArray(transactions)) {
       this.logger.warn(`[BankingToolProvider] Expected transactions array, got: ${typeof transactions}`);
@@ -840,11 +843,15 @@ export class BankingToolProvider {
 
     if (error.errorCode === 'amount_exceeds_hard_limit') {
       const limit = typeof axiosData['limit'] === 'number' ? axiosData['limit'] : 1000;
+      const insufficientFundsAlso = axiosData['insufficient_funds_also'] === true;
+      const reasonNote = insufficientFundsAlso
+        ? `Note: your account also has insufficient funds for this amount.`
+        : `This is a system limit set by the administrator (separate from your account balance).`;
       return this.createSuccessResult(
         JSON.stringify(
           {
             error: 'amount_exceeds_hard_limit',
-            message: `I can help you with that, but the maximum transaction amount is $${limit}. You entered $${amount}. Would you like me to help you with a smaller ${operationLabel} instead?`,
+            message: `The maximum ${operationLabel} amount is $${limit} per transaction. You requested $${amount}. ${reasonNote} Would you like me to try a smaller amount instead?`,
             limit,
             amount,
           },
