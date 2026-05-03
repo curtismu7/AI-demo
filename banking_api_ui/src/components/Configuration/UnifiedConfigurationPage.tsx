@@ -416,7 +416,10 @@ const SectionNavigation: FC<{
     'idp-setup-guide': 'Setup Guide',
     'idp-overview': 'Environment & Endpoints',
     'idp-clients': 'OAuth Clients',
-    'feature-flags': 'Feature Flags'
+    'feature-flags': 'Feature Flags',
+    'demo-setup': 'Demo Setup',
+    'ollama-setup': 'Ollama Configuration',
+    'helix-setup': 'Helix Configuration'
   };
 
   return (
