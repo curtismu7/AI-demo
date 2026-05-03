@@ -591,6 +591,8 @@ body > .banking-agent-float-root .banking-agent-panel {
 .banking-agent-panel:not(.ba-mode-inline):not(.ba-mode-light) {
 	--ba-user-bg: #3b82f6;
 	--ba-user-txt: #ffffff;
+	--ba-agent-bg: #ef4444;
+	--ba-agent-txt: #ffffff;
 	--ba-chip-bg: rgba(65, 105, 225, 0.22);
 	--ba-chip-bd: #7c9cf5;
 	--ba-chip-txt: #111827;
