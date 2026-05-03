@@ -1724,10 +1724,9 @@ export default function BankingAgent({
   });
   const [showCompliancePanel, setShowCompliancePanel] = useState(() => {
     try {
-      return localStorage.getItem("ba_show_compliance_panel") === "1";
-    } catch {
-      return false;
-    }
+      localStorage.removeItem("ba_show_compliance_panel");
+    } catch {}
+    return false;
   });
   const [complianceSlideout, setComplianceSlideout] = useState(() => {
     try {
@@ -2165,6 +2164,13 @@ export default function BankingAgent({
     window.addEventListener("banking-agent-open", handler);
     return () => window.removeEventListener("banking-agent-open", handler);
   }, [isInline]);
+
+  // Open demo guide when event dispatched from side menu
+  useEffect(() => {
+    const handler = () => setShowDemoGuide(true);
+    window.addEventListener("agent-demo-guide-open", handler);
+    return () => window.removeEventListener("agent-demo-guide-open", handler);
+  }, []);
 
   // Auto-open when redirected back from OAuth login (?oauth=success in URL)
   useEffect(() => {

@@ -50,7 +50,7 @@ const PHASE_LABELS = {
 
 /** @type {{ visible: boolean, phase: string, toolName: string|null, steps: Array<{id: string, title: string, detail: string, status: FlowStepStatus}>, serverEvents: Array<{ phase: string, label: string, detail: string, t?: number }>, hint: string|null, updatedAt: number }} */
 const COMPLIANCE_STEPS = [
-  // Ordered by agent flow: step 1 → 2 → 4b → 4d → 5 → 5a → 6 → 9 → 12 → 12a
+  // Ordered by agent flow: step 1 → 2 → 4b → 4d → 5 → 5a → 6 → 7 → 8 → 9 → 12 → 12a
   { id: 'agent-token-init',       label: '1.     Agent starts — gets client credentials token', explanation: 'BFF obtains a client-credentials token for the agent to use when calling MCP tools. This is the agent\'s identity, separate from the user\'s login token.', status: 'pending' },
   { id: 'agent-llm-reasoning',    label: '1a.    Agent consults LLM for routing',              explanation: 'LLM reasons about which MCP tool to call and what scope is required. This routing decision is logged and auditable.', status: 'pending' },
   { id: 'gw-scope-map',           label: '2.     Agent gets tool list — gateway scope map',     explanation: 'Agent queries MCP gateway to fetch the list of available tools and their required scopes (banking:read, banking:write, etc).', status: 'pending' },
@@ -61,6 +61,8 @@ const COMPLIANCE_STEPS = [
   { id: 'agent-recovery-branch',  label: '5/11.  Agent branches: login required vs HITL',      explanation: 'Agent reads challenge_type and branches: if scope_denied → user must login; if consent_required → show HITL consent modal instead.', status: 'pending'    },
   { id: 'bff-login-resume',       label: '5a.    BFF stores pending intent for re-fire',       status: 'pending', explanation: 'Before redirecting to login, BFF saves the pending MCP tool call so it auto-resumes after user authenticates (sessionStorage or server-side store).' },
   { id: 'agent-scope-aware-cache',label: '6.     Agent token exchange (actor + subject)',      explanation: 'After login/consent, BFF performs RFC 8693 token exchange: subject_token (user) + actor_token (agent) → narrowed MCP token with delegated scopes.', status: 'pending' },
+  { id: 'gw-token-validation',    label: '7.     Exchanged token passes gateway validation',    explanation: 'MCP gateway validates the exchanged token has required delegated scopes (banking:write, etc). Token is authenticated and authorized.', status: 'pending' },
+  { id: 'tool-execution',         label: '8.     Tool executes on MCP server',                 explanation: 'Gateway forwards request to MCP server. Tool executes with delegated scopes and returns result. Execution is scoped to user + agent identity (act claim).', status: 'pending' },
   { id: 'olb-resource-token',     label: '9.     MCP resource token exchange (OLB path)',      explanation: 'For intent-bound delegation (OLB), second exchange: exchanged_token + MCP actor → final token with nested act claim (act.act.sub = agent client).', status: 'pending'    },
   { id: 'ui-gateway-consent',     label: '12.    UI shows GatewayConsentModal (HITL)',         explanation: 'For consent-required denials, UI renders GatewayConsentModal showing the transaction details and verification challenge to get user approval.', status: 'pending'    },
   { id: 'ui-auto-refire',         label: '12a.   UI auto-re-fires after login / consent',      explanation: 'After user authenticates or approves consent, UI automatically re-fires the original MCP tool call with the refreshed/exchanged token.', status: 'pending' },

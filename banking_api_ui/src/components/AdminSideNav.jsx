@@ -208,6 +208,7 @@ export default function AdminSideNav({ user }) {
 	const learnItems = [
 		// ── Getting started ──────────────────────────────────
 		{ label: "Guided Demo Tour",             icon: "🗺",  action: () => tour.start() },
+		{ label: "Agent Demo Guide",             icon: "📚",  action: () => window.dispatchEvent(new CustomEvent("agent-demo-guide-open")) },
 		{ label: "⭐ Best Practices",              icon: "⭐",  action: () => openEdu(EDU.BEST_PRACTICES, "overview") },
 		{ label: "⭐ Agentic Maturity Model",      icon: "⭐",  action: () => openEdu(EDU.AGENTIC_MATURITY, "overview") },
 

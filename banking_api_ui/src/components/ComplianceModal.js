@@ -21,7 +21,7 @@ export default function ComplianceModal({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 420, height: 600, side: null });
+  const [resizeStart, setResizeStart] = useState({ mouseX: 0, mouseY: 0, posX: 0, posY: 0, width: 420, height: 600, side: null });
   const modalRef = useRef(null);
   const headerRef = useRef(null);
   const broadcastChannelRef = useRef(null);
@@ -55,7 +55,7 @@ export default function ComplianceModal({
   const handleMouseDownResize = (e, side) => {
     e.preventDefault();
     setIsResizing(true);
-    setResizeStart({ x: e.clientX, y: e.clientY, width: size.width, height: size.height, side });
+    setResizeStart({ mouseX: e.clientX, mouseY: e.clientY, posX: pos.x, posY: pos.y, width: size.width, height: size.height, side });
   };
 
   // Mouse move for drag/resize
@@ -67,19 +67,19 @@ export default function ComplianceModal({
         setPos({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
       }
       if (isResizing) {
-        const deltaX = e.clientX - resizeStart.x;
-        const deltaY = e.clientY - resizeStart.y;
+        const deltaX = e.clientX - resizeStart.mouseX;
+        const deltaY = e.clientY - resizeStart.mouseY;
         const side = resizeStart.side;
 
         let newWidth = resizeStart.width;
         let newHeight = resizeStart.height;
-        let newX = resizeStart.x;
-        let newY = resizeStart.y;
+        let newX = resizeStart.posX;
+        let newY = resizeStart.posY;
 
         // Handle horizontal resize
         if (side === 'left' || side === 'top-left' || side === 'bottom-left') {
           newWidth = Math.max(300, resizeStart.width - deltaX);
-          newX = resizeStart.x + resizeStart.width - newWidth;
+          newX = resizeStart.posX + resizeStart.width - newWidth;
         } else if (side === 'right' || side === 'top-right' || side === 'bottom-right') {
           newWidth = Math.max(300, resizeStart.width + deltaX);
         }
@@ -87,7 +87,7 @@ export default function ComplianceModal({
         // Handle vertical resize
         if (side === 'top' || side === 'top-left' || side === 'top-right') {
           newHeight = Math.max(250, resizeStart.height - deltaY);
-          newY = resizeStart.y + resizeStart.height - newHeight;
+          newY = resizeStart.posY + resizeStart.height - newHeight;
         } else if (side === 'bottom' || side === 'bottom-left' || side === 'bottom-right') {
           newHeight = Math.max(250, resizeStart.height + deltaY);
         }
