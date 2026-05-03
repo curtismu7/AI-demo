@@ -90,6 +90,33 @@
   color: #111827;
 }
 
+.compliance-modal__header-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.compliance-modal__popout-icon {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #1f2937;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.compliance-modal__popout-icon:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
 .compliance-modal__header {
   display: flex;
   justify-content: space-between;

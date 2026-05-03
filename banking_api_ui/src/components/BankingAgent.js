@@ -1848,7 +1848,7 @@ export default function BankingAgent({
       const saved = localStorage.getItem("ba_show_rfc_info");
       if (saved !== null) return saved === "true";
     } catch {}
-    return true; // Default: show RFC info
+    return false; // Default: hide RFC info for clean chat
   });
   useEffect(() => {
     try {
@@ -3363,13 +3363,10 @@ export default function BankingAgent({
           } catch (audErr) {
             audTestRes = { error: audErr.message };
           }
-          // The server may fall back to local handler (200) or reject (4xx); either is educational
-          const audFailed =
-            audTestRes._httpStatus >= 400 ||
-            audTestRes?.error?.includes("audience") ||
-            audTestRes?.error?.includes("exchange");
-          const audOutcome = audFailed
-            ? `✅ Exchange rejected for invalid audience (HTTP ${audTestRes._httpStatus}): \`${audTestRes.error || "exchange_failed"}`
+          // Gateway should reject with 403 if audience validation is enforced
+          const audRejected = audTestRes._httpStatus >= 400;
+          const audOutcome = audRejected
+            ? `✅ Gateway correctly rejected (${audTestRes._httpStatus}): ${audTestRes.error || "invalid audience"}`
             : `ℹ️ Server fell back to local handler (token exchange skipped or not configured) — HTTP ${audTestRes._httpStatus ?? 200}`;
           addMessage(
             "token-event",
@@ -3377,6 +3374,10 @@ export default function BankingAgent({
               "⚠️ Authorization Test: Wrong Audience (RFC 8693 §2.1 · RFC 8707)",
               "",
               audOutcome,
+              "",
+              "Step 5b-c: Gateway denial includes audience validation",
+              `Status: ${audTestRes._httpStatus ?? "?"}`,
+              `Error: ${audTestRes?.error || "none"}`,
               "",
               "RFC 8693 §2.1 — The `audience` parameter in a token exchange request identifies which",
               "   resource server the resulting token is valid for. The AS verifies it against its policy.",
@@ -3392,7 +3393,7 @@ export default function BankingAgent({
             tokenChain?.setTokenEvents(actionId, audTestRes.tokenEvents);
           }
           toast.update(toastId, {
-            render: audFailed
+            render: audRejected
               ? "✅ Audience rejection confirmed"
               : "ℹ️ Audience test sent",
             type: "info",

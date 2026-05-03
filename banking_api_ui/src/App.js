@@ -39,6 +39,7 @@ import CIBAPanel from "./components/CIBAPanel";
 import CimdSimPanel from "./components/CimdSimPanel";
 import ClientCredentialsResourcePage from "./components/ClientCredentialsResourcePage";
 import ClientRegistrationPage from "./components/ClientRegistrationPage";
+import ComplianceModalPopout from "./components/ComplianceModalPopout";
 import UnifiedConfigurationPage from "./components/Configuration/UnifiedConfigurationPage";
 import Dashboard from "./components/Dashboard";
 import DelegatedAccessPage from "./components/DelegatedAccessPage";
@@ -861,17 +862,21 @@ function AppWithAuth() {
 							{/* /login is not a real route — redirect to home so stale links or misdirected post-logout URIs land cleanly */}
 							<Route path="/login" element={<Navigate to="/" replace />} />
 							<Route path="/logout" element={<LogoutPage />} />
-                                                        <Route
-                                                                path="/agent"
-                                                                element={
-                                                                        <BankingAgent
-                                                                                user={user}
-                                                                                onLogout={logout}
-                                                                                mode="inline"
-                                                                                distinctFloatingChrome
-                                                                        />
-                                                                }
-                                                        />
+				<Route
+					path="/agent"
+					element={
+						<BankingAgent
+							user={user}
+							onLogout={logout}
+							mode="inline"
+							distinctFloatingChrome
+						/>
+					}
+				/>
+				<Route
+					path="/compliance-modal-popout"
+					element={<ComplianceModalPopout />}
+				/>
 
 
 							<Route

@@ -98,6 +98,25 @@
 - **Files changed:** `banking_api_server/services/transactionConsentChallenge.js`, `banking_api_server/routes/transactions.js`, `banking_api_server/services/mcpLocalTools.js`
 - **Do not break:** ALL transfers must require consent (preserved). Consent must gate BEFORE step-up in code flow (preserved). MFA gate only triggers for $500+, consent gate covers $250–$500 range.
 
+### 2026-05-03 — Test chips audit: verify compliance paths + fix test_wrong_audience handler
+
+- **Issue:** Test chip `test_wrong_audience` was not properly capturing gateway denial metadata like `test_wrong_scope` was. After fix to `test_wrong_scope`, needed to verify all test chips exercised correct compliance paths.
+- **Root cause:** Test chips map to compliance steps via `CHIP_APPLICABLE_STEPS` (lines 226–375 in BankingAgent.js), but handlers didn't consistently capture and display gateway denial metadata. Regression risk: if a chip handler is modified, the compliance path could break without tests to catch it.
+- **Fix:**
+  1. **test_wrong_audience** (lines 3337–3405): Changed to explicitly check `audTestRes._httpStatus >= 400` (gateway rejection), capture error message, display in message similar to test_wrong_scope
+  2. **Created test file** `BankingAgent.test.js` — validates CHIP_APPLICABLE_STEPS mappings and expected behavior for all 5 test chips
+  3. **Created integration test** `BankingAgent.integration.test.js` — documents handler implementations and compliance paths
+  4. **Created guide** `TEST_CHIPS_GUIDE.md` — comprehensive reference for test chip behavior, thresholds, gateway denial flows, and regression prevention
+- **Verification:**
+  - All test chips properly exercise their mapped compliance steps
+  - Gateway denial tests (test_wrong_scope, test_wrong_audience) capture HTTP status + error metadata
+  - HITL tests (test_hitl_required, demo_intent_delegation) trigger consent gate at $250 threshold
+  - Step-up test (test_otp_required) triggers MFA at $500 threshold
+  - Threshold inversion would be caught: MFA ($500) > HITL ($250) confirmed
+  - Build passes (`npm run build` exit 0)
+- **Files changed:** `banking_api_ui/src/components/BankingAgent.js` (test_wrong_audience handler), `banking_api_ui/src/__tests__/BankingAgent.test.js` (new), `banking_api_ui/src/__tests__/BankingAgent.integration.test.js` (new), `banking_api_ui/src/__tests__/TEST_CHIPS_GUIDE.md` (new), `banking_api_ui/src/App.js` (fixed indentation for /agent route)
+- **Do not break:** Each test chip MUST exercise all steps in its CHIP_APPLICABLE_STEPS mapping. Gateway denial chips must capture HTTP status and error metadata. HITL chips must show consent modal with threshold info. Step-up chip must show OTP/MFA modal. Thresholds must remain $250 (HITL) < $500 (MFA). If test chips are modified, update test files to prevent regression.
+
 ### 2026-05-03 — Step-up MFA threshold ignored by step-up gate (threshold disconnect)
 
 - **Root cause:** `ThresholdControls` UI saves `mfa_threshold_usd` to `configStore`, but the step-up gate in `routes/transactions.js` reads `runtimeSettings.stepUpAmountThreshold` (seeded from env `STEP_UP_AMOUNT_THRESHOLD || 0`). If env is not set, runtimeSettings defaults to 0, and `transactions.js` falls back to `configStore.getEffective('step_up_amount_threshold')` — a **different configStore key** from `mfa_threshold_usd`. These two stores were completely disconnected: UI threshold changes had no effect on the step-up gate.

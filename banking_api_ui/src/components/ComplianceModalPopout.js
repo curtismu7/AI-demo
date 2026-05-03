@@ -1,64 +1,60 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import './ComplianceModal.css';
+import React, { useEffect, useState, useRef } from 'react';
 import ComplianceModalContent from './ComplianceModalContent';
+import './ComplianceModal.css';
 
 /**
- * Resizable, draggable modal for MCP Compliance Checklist.
- * Used by floating, bottom, and middle agent layouts.
+ * Pop-out version of the compliance modal — displayed in a separate window.
  */
-export default function ComplianceModal({
-  open,
-  onClose,
-  complianceStripState,
-  messages,
-  onClearSteps,
-  CHIP_APPLICABLE_STEPS,
-  getStepSkipExplanation,
-}) {
+export default function ComplianceModalPopout() {
+  const [data, setData] = useState(null);
   const [size, setSize] = useState({ width: 420, height: 600 });
   const [pos, setPos] = useState({ x: 20, y: 80 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isResizing, setIsResizing] = useState(false);
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 420, height: 600, side: null });
-  const modalRef = useRef(null);
-  const headerRef = useRef(null);
   const broadcastChannelRef = useRef(null);
 
-  // Broadcast state to pop-out window when data changes
   useEffect(() => {
+    // Load initial data from sessionStorage
     try {
-      if (!broadcastChannelRef.current) {
-        broadcastChannelRef.current = new BroadcastChannel('compliance-modal');
+      const stored = sessionStorage.getItem('compliance_modal_popout');
+      if (stored) {
+        setData(JSON.parse(stored));
       }
-      broadcastChannelRef.current.postMessage({
-        type: 'state-update',
-        data: {
-          complianceStripState,
-          messages: messages.slice(-20),
+    } catch (_) {}
+
+    // Listen to BroadcastChannel for updates from original window
+    try {
+      broadcastChannelRef.current = new BroadcastChannel('compliance-modal');
+      broadcastChannelRef.current.onmessage = (event) => {
+        if (event.data.type === 'state-update' && event.data.data) {
+          setData(event.data.data);
         }
-      });
+      };
     } catch (e) {
       console.warn('BroadcastChannel not supported:', e.message);
     }
-  }, [complianceStripState, messages]);
 
-  // Drag handler
+    return () => {
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+      }
+    };
+  }, []);
+
   const handleMouseDownHeader = (e) => {
-    if (e.target.closest('button')) return; // Don't drag if clicking button
+    if (e.target.closest('button')) return;
     setIsDragging(true);
     setDragStart({ x: e.clientX - pos.x, y: e.clientY - pos.y });
   };
 
-  // Resize handler for all sides
   const handleMouseDownResize = (e, side) => {
     e.preventDefault();
     setIsResizing(true);
     setResizeStart({ x: e.clientX, y: e.clientY, width: size.width, height: size.height, side });
   };
 
-  // Mouse move for drag/resize
   useEffect(() => {
     if (!isDragging && !isResizing) return;
 
@@ -76,7 +72,6 @@ export default function ComplianceModal({
         let newX = resizeStart.x;
         let newY = resizeStart.y;
 
-        // Handle horizontal resize
         if (side === 'left' || side === 'top-left' || side === 'bottom-left') {
           newWidth = Math.max(300, resizeStart.width - deltaX);
           newX = resizeStart.x + resizeStart.width - newWidth;
@@ -84,7 +79,6 @@ export default function ComplianceModal({
           newWidth = Math.max(300, resizeStart.width + deltaX);
         }
 
-        // Handle vertical resize
         if (side === 'top' || side === 'top-left' || side === 'top-right') {
           newHeight = Math.max(250, resizeStart.height - deltaY);
           newY = resizeStart.y + resizeStart.height - newHeight;
@@ -110,27 +104,31 @@ export default function ComplianceModal({
     };
   }, [isDragging, isResizing, dragStart, resizeStart]);
 
-  if (!open) return null;
+  if (!data) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center', fontSize: '14px', color: '#666' }}>
+        Loading compliance modal…
+      </div>
+    );
+  }
 
-  return createPortal(
-    <div className="compliance-modal-overlay" onClick={onClose}>
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'transparent' }}>
       <div
-        ref={modalRef}
         className="compliance-modal"
         style={{
+          position: 'fixed',
           left: `${pos.x}px`,
           top: `${pos.y}px`,
           width: `${size.width}px`,
           height: `${size.height}px`,
         }}
-        onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="compliance-modal-title"
       >
         {/* Header — draggable */}
         <div
-          ref={headerRef}
           className="compliance-modal__drag-header"
           onMouseDown={handleMouseDownHeader}
           style={{ cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none' }}
@@ -141,27 +139,8 @@ export default function ComplianceModal({
           <div className="compliance-modal__header-buttons">
             <button
               type="button"
-              className="compliance-modal__popout-icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                try {
-                  sessionStorage.setItem('compliance_modal_popout', JSON.stringify({
-                    complianceStripState,
-                    messages: messages.slice(-20),
-                  }));
-                } catch (_) {}
-                window.open('/compliance-modal-popout', 'ComplianceModalPopout', 'width=520,height=750,resizable=yes,scrollbars=yes');
-                onClose();
-              }}
-              aria-label="Open in new window"
-              title="Open modal in new window"
-            >
-              ⧉
-            </button>
-            <button
-              type="button"
               className="compliance-modal__close-icon"
-              onClick={onClose}
+              onClick={() => window.close()}
               aria-label="Close modal"
             >
               ✕
@@ -171,14 +150,14 @@ export default function ComplianceModal({
 
         {/* Content */}
         <ComplianceModalContent
-          complianceStripState={complianceStripState}
-          messages={messages}
-          onClearSteps={onClearSteps}
-          CHIP_APPLICABLE_STEPS={CHIP_APPLICABLE_STEPS}
-          getStepSkipExplanation={getStepSkipExplanation}
+          complianceStripState={data.complianceStripState}
+          messages={data.messages}
+          onClearSteps={() => {}}
+          CHIP_APPLICABLE_STEPS={[]}
+          getStepSkipExplanation={() => ''}
         />
 
-        {/* Resize handles — all sides and corners */}
+        {/* Resize handles */}
         {['top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].map((side) => {
           const cursorMap = {
             'top': 'ns-resize',
@@ -202,7 +181,6 @@ export default function ComplianceModal({
           );
         })}
       </div>
-    </div>,
-    document.body
+    </div>
   );
 }

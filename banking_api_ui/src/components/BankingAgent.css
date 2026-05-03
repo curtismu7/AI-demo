@@ -834,7 +834,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	color: var(--brand-dark-gray);
 }
 .ba-header-tools {
-	display: flex;
+	display: none; /* Hidden by default for clean chat-only interface */
 	align-items: center;
 	gap: 4px;
 	flex-wrap: wrap;

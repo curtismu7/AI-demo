@@ -18,6 +18,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **Banking Agent test chips — fixed test_wrong_audience handler and added test coverage** — `test_wrong_audience` now properly captures gateway denial HTTP status code and error metadata; created comprehensive test suite (`BankingAgent.test.js`, `BankingAgent.integration.test.js`, `TEST_CHIPS_GUIDE.md`) to prevent regression of compliance paths; fixed App.js indentation bug that was breaking build.
 - **IDP Setup page — endpoint URLs now wrap properly** — removed `white-space: nowrap` from endpoint value display to allow long PingOne URLs to wrap across multiple lines; added monospace font for better readability.
 - **IDP Overview — endpoints now display actual PingOne config values** — added useEffect to fetch fresh config from `/api/admin/config` when IDP Setup tab is accessed; fixed OIDC Discovery label layout issue by removing inline `(.well-known)` text.
 - **Architecture pages — floating agent FAB now starts collapsed** — `isBankingAgentFloatingDefaultOpen` returns false for `/architecture/*` so the FAB button is visible on page load instead of the panel auto-opening and hiding the FAB.
