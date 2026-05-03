@@ -49,6 +49,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **Error monitoring system with comprehensive observability (Phase 3)** — Created `ErrorMonitor` singleton class tracking all API errors, retries, and failures. Methods: `logAttempt()`, `logRetrySuccess()`, `logRetryFailure()`, `logSessionRestore()` for event capture; `getRecentEvents()` for debugging; `getStats()` returning {total, byType, byEndpoint, byClassification, failureRate}; `subscribe(callback)` for real-time event notifications with graceful error handling; fire-and-forget analytics integration (POST to `/api/errors/log`). In-memory circular buffer limits to last 500 events. Comprehensive test suite (340+ lines) with 23 tests covering logging, statistics, subscriptions, configuration, and analytics. Works alongside Phase 2 appConfig and apiErrorHandler for complete error observability pipeline.
 - **MCP Gateway config — Docs & Setup tab + 5-step wizard** — 4th tab with 3 PingGateway doc cards; Real PingGateway tab replaced with guided wizard (credential verify, route config form with live JSON preview, route file download, admin.json, BFF env steps).
 - **Phase 246 — Floating agent redesign UI design contract** — UI-SPEC approved: chips moved to Actions popout, header reduced from 7 to 3 controls, left rail removed in float mode, chat area gains ~45% width.
 - **Phase 245 — UI design contract** — UI-SPEC created and approved for 403 scope trap and token introspection consolidation; scope upgrade chat messages, toast copy, and color contracts locked.
