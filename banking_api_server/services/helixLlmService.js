@@ -35,34 +35,36 @@ async function callHelixAgent(config, messages) {
     throw new Error('No messages provided to Helix agent');
   }
 
-  // TODO: Replace this stub with real Helix API call once endpoint format is confirmed.
-  //
-  // Expected call pattern (from Helix Postman collection):
-  //   POST {helix_base_url}/api/environments/{helix_environment_id}/agents/{helix_agent_id}/invoke
-  //   Headers: {
-  //     'Authorization': 'Bearer {helix_api_key}',
-  //     'Content-Type': 'application/json'
-  //   }
-  //   Body: {
-  //     messages: [
-  //       { role: 'user|system|assistant', content: '...' }
-  //     ]
-  //   }
-  //   Response: { response: 'agent output text', ... }
-  //
-  // Steps to implement:
-  // 1. Confirm endpoint URL format and path from Helix Postman collection
-  // 2. Confirm auth header format (Bearer vs X-API-Key vs custom)
-  // 3. Confirm request/response body shapes
-  // 4. Implement fetch call with proper error handling
-  // 5. Test with real Helix credentials
-  // 6. Remove this TODO
+  const url = `${helix_base_url}/api/environments/${helix_environment_id}/agents/${helix_agent_id}/invoke`;
 
-  throw new Error(
-    'Helix LLM integration stub — please configure the real endpoint URL in helixLlmService.js ' +
-    'once Helix API format is confirmed via the Postman collection. ' +
-    'Stub location: banking_api_server/services/helixLlmService.js'
-  );
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout for Helix
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${helix_api_key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messages }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      throw new Error(`Helix HTTP ${res.status}: ${res.statusText}`);
+    }
+
+    const data = await res.json();
+    const responseText = data?.response || data?.message || data?.content || '';
+    if (!responseText) {
+      throw new Error('Helix returned empty response');
+    }
+
+    return responseText;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 module.exports = { callHelixAgent };

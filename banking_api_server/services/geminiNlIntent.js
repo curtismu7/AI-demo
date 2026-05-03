@@ -8,6 +8,8 @@
 
 const { parseHeuristic, EDU } = require('./nlIntentParser');
 const { sanitizeNlResult } = require('./nlIntentSanitize');
+const { callHelixAgent } = require('./helixLlmService');
+const configStore = require('./configStore');
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'mistral';
@@ -51,6 +53,52 @@ Examples of mcp_tools (always banking, never education):
 Only route to education panel mcp-protocol when the user asks HOW MCP works or WHAT MCP is (no list/show/get verb).
 If the user asks to pay, transfer, or send money involving a "credit card", "credit account", or "investment account" → {"kind":"none","message":"This demo only supports Checking and Savings accounts. Credit cards and investment accounts are not available."}`;
 
+
+/**
+ * Answer a general knowledge question using Helix when banking intent parsing fails.
+ * @param {string} userMessage
+ * @param {{ role?: string, firstName?: string }} [context]
+ * @returns {Promise<object|null>} education result with markdown answer or null
+ */
+async function answerWithHelix(userMessage, context = {}) {
+  try {
+    const helixConfig = {
+      helix_base_url: configStore.get('helix_base_url'),
+      helix_api_key: configStore.get('helix_api_key'),
+      helix_environment_id: configStore.get('helix_environment_id'),
+      helix_agent_id: configStore.get('helix_agent_id'),
+    };
+
+    // Check if Helix is configured
+    if (!helixConfig.helix_base_url || !helixConfig.helix_api_key) {
+      console.warn('[nlIntent] Helix not configured');
+      return null;
+    }
+
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are a knowledgeable assistant for a banking demo platform. Answer the user\'s question concisely and accurately. Keep your answer to 1-2 paragraphs.',
+      },
+      {
+        role: 'user',
+        content: userMessage,
+      },
+    ];
+
+    const answer = await callHelixAgent(helixConfig, messages);
+    if (answer) {
+      return {
+        kind: 'education',
+        education: { panel: 'general-knowledge' },
+        message: answer,
+      };
+    }
+  } catch (err) {
+    console.warn('[nlIntent] Helix error:', err.message);
+  }
+  return null;
+}
 
 /**
  * @param {string} userMessage
@@ -144,8 +192,18 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
     return { source: rejected ? 'heuristic' : 'ollama', result };
   }
 
-  // 3. Final fallback: heuristic returns kind:'none' (unrecognized input)
-  // Helix LLM integration not yet implemented
+  // 3. Try Helix for general knowledge questions when banking intent fails
+  if (selectedProvider === 'helix' || (selectedProvider === 'auto' && langchainConfig?.provider === 'helix')) {
+    const helixAnswer = await answerWithHelix(message, context).catch((e) => {
+      console.warn('[nlIntent] Helix fallback failed:', e.message);
+      return null;
+    });
+    if (helixAnswer) {
+      return { source: 'helix_fallback', result: helixAnswer };
+    }
+  }
+
+  // 4. Final fallback: heuristic returns kind:'none' (unrecognized input)
   return { source: 'heuristic', result: heuristicResult };
 }
 
