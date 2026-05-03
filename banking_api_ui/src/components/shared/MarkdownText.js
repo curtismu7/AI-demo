@@ -17,7 +17,7 @@ export function InlineMd({ text }) {
         if (tok.startsWith('*') && tok.endsWith('*'))
           return <em key={i}>{tok.slice(1, -1)}</em>;
         if (tok.startsWith('`') && tok.endsWith('`'))
-          return <code key={i} style={{ fontFamily: 'monospace', background: 'rgba(0,0,0,0.08)', borderRadius: 3, padding: '0 3px' }}>{tok.slice(1, -1)}</code>;
+          return <code key={i} className="md-inline-code" style={{ background: 'rgba(0,0,0,0.08)', borderRadius: 3, padding: '0 3px' }}>{tok.slice(1, -1)}</code>;
         return tok;
       })}
     </>

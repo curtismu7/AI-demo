@@ -103,6 +103,7 @@ jest.mock("../context/AgentUiModeContext", () => ({
 	}),
 }));
 jest.mock("../services/configService", () => ({
+	loadPublicConfig: jest.fn().mockResolvedValue({}),
 	savePublicConfig: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock("../services/demoScenarioService", () => {

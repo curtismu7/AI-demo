@@ -24,6 +24,10 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - **MCP Gateway auth tests** — added missing `devBypass: false` to `GatewayConfig` stubs in `gateway-auth.test.ts` and `gateway-server.test.ts` so all 35 tests pass after `devBypass` was added to `GatewayConfig` in a later fix.
 - **Monitoring pages — agent FAB visible on all monitoring routes** — `isEmbeddedAgentDockRoute` now returns true for all `isMonitoringRoute` paths so the floating agent icon appears on Token Chain, Token Diff, Flow Inspector, MCP Traffic, API Explorer, API Traffic, and Dev Tools pages for both admin and customer users.
 
+### Changed
+
+- **Banking Agent — compliance panel redesign** — moved compliance checklist from header to inline in agent (below messages); added "Side panel" checkbox to toggle between inline and pop-out modes; pop-out appears left of floating/embedded agents or below bottom dock; added close button (✕); displays last agent response above checklist; increased text size and weight for readability; repositioned pop-out closer to agent; darkened all UI text for accessibility.
+
 ### Added
 
 - **MCP Gateway config — Docs & Setup tab + 5-step wizard** — 4th tab with 3 PingGateway doc cards; Real PingGateway tab replaced with guided wizard (credential verify, route config form with live JSON preview, route file download, admin.json, BFF env steps).

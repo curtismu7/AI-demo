@@ -4908,6 +4908,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   justify-content: center !important;
   transition: background 0.15s;
   padding: 0 !important;
+  opacity: 1 !important;
 }
 .ba-send-btn:hover {
   background: #2563eb !important;
@@ -4915,6 +4916,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 .ba-send-btn:disabled {
   background: #d1d5db !important;
   color: #9ca3af !important;
+  opacity: 0.5 !important;
 }
 
 /* 7. BOTTOM DOCK — Fix clipping */

@@ -18,7 +18,7 @@ describe('spinnerService', () => {
     const { spinner } = require('../spinnerService');
     spinner.increment('GET', '/api/accounts');
     expect(spinner.getState().visible).toBe(false);
-    jest.advanceTimersByTime(250);
+    jest.advanceTimersByTime(2500);
     expect(spinner.getState().visible).toBe(true);
     expect(spinner.getState().message).toMatch(/./);
   });
@@ -43,7 +43,7 @@ describe('spinnerService', () => {
   it('keeps spinner until the last outstanding increment is decremented', () => {
     const { spinner } = require('../spinnerService');
     spinner.increment('GET', '/api/a');
-    jest.advanceTimersByTime(250);
+    jest.advanceTimersByTime(2500);
     expect(spinner.getState().visible).toBe(true);
     spinner.increment('GET', '/api/b');
     spinner.decrement(false);

@@ -35,11 +35,11 @@ export default function ThresholdControls() {
         setFlags(data.flags || []);
       }
 
-      // Load may_act status
-      const mayActRes = await fetch('/api/demo/may-act', { credentials: 'include' });
+      // Load may_act status via diagnose endpoint
+      const mayActRes = await fetch('/api/demo/may-act/diagnose', { credentials: 'include' });
       if (mayActRes.ok) {
         const data = await mayActRes.json();
-        setMayActEnabled(data.enabled ?? null);
+        setMayActEnabled(data.attributeSet ?? null);
       }
     } catch (_) {
       // silent
@@ -126,7 +126,7 @@ export default function ThresholdControls() {
     setMayActSaving(true);
     try {
       const res = await fetch('/api/demo/may-act', {
-        method: 'POST',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ enabled: nextBool }),
