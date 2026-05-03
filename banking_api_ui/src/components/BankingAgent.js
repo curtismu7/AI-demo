@@ -4585,6 +4585,8 @@ export default function BankingAgent({
       setNlInputFromTile("What are some good tips for managing checking and savings accounts?");
     } else if (actionId === "ai_helix_advice") {
       setNlInputFromTile("(Using Helix LLM) Give me 5 tips for reducing transaction fees and managing money better");
+    } else if (actionId === "demo_guide") {
+      setShowDemoGuide(true);
     } else {
       setActiveAction(actionId);
     }
@@ -5734,15 +5736,6 @@ export default function BankingAgent({
               </div>
             )}
           </div>
-          {/* Phase 246: click-dismiss backdrop — covers panel, z-index below popout (D-01) */}
-          {showDiscovery && useActionsPopout && (
-            <div
-              className="ba-popout-backdrop"
-              onClick={() => setShowDiscovery(false)}
-              aria-hidden="true"
-            />
-          )}
-
           {/* Two-column body */}
           <div className="ba-body">
             {isLoggedIn && consentBlocked && (
@@ -7076,14 +7069,12 @@ export default function BankingAgent({
 
               {/* Discovery popout — "All actions" overlay */}
               {isLoggedIn && showDiscovery && (
-                <>
-                  <div className="ba-discovery-backdrop" onClick={() => setShowDiscovery(false)} />
-                  <div
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label="Action browser"
-                    className={"ba-discovery-popout ba-discovery-popout--open"}
-                  >
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Action browser"
+                  className={"ba-discovery-popout ba-discovery-popout--open"}
+                >
                   <div className="ba-discovery-header">
                     <span>⊞ All actions</span>
                     <button
@@ -7160,8 +7151,7 @@ export default function BankingAgent({
                       ))
                     )}
                   </div>
-                  </div>
-                </>
+                </div>
               )}
 
               {/* Action form (when user selects a transaction action) */}
