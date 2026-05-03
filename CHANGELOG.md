@@ -16,6 +16,10 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ## [Unreleased]
 
+### Added
+
+- **Agent Demo Guide — comprehensive HITL consent scenarios** — added 6 new demo scenarios (5-10) covering HITL gates: disabled state (ff_hitl_enabled flag), threshold variation, transfer always-gated behavior, HITL + step-up MFA interaction, consent declined path, and step-up MFA independent of HITL; all scenarios include feature flag controls, threshold configuration steps, and detailed watch-for items; Pro Tips now mention dynamic thresholds and feature flag independence.
+
 ### Fixed
 
 - **Demo Controls — wireup verification for may_act diagnose endpoint** — ThresholdControls.js now correctly parses `/api/demo/may-act/diagnose` response (checks.userAttribute.pass) instead of expecting non-existent `attributeSet` field; UI toggle button now shows correct may_act status on load.
