@@ -37,7 +37,7 @@ Declared values (all multiples of 4, inherited from `mcpGatewayConfig.css`):
 | Token | Value | Usage |
 |-------|-------|-------|
 | xs | 4px | Icon gaps, inline padding, badge padding (vertical) |
-| sm | 8px | Compact field spacing, margin-bottom in forms, card padding |
+| sm | 8px | Compact field spacing, margin-bottom in forms, card padding, required badge horizontal padding |
 | md | 16px | Default input padding, section gaps, table cell padding |
 | lg | 24px | Page padding, section margin-bottom, header gap |
 | xl | 32px | (reserved for layout; not used in this component) |
@@ -46,8 +46,6 @@ Declared values (all multiples of 4, inherited from `mcpGatewayConfig.css`):
 
 **Exceptions for Phase 264 new elements:**
 - Wizard step indicators: 4px gap between step circle + label
-- Form hint text: 2px margin-top (not on 4px scale; granular adjustment for visual hierarchy)
-- Required badge: 12px padding (horizontal, inherited from `.mgc-badge` pattern)
 
 ---
 
@@ -56,19 +54,20 @@ Declared values (all multiples of 4, inherited from `mcpGatewayConfig.css`):
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Page title | 22px | 700 (bold) | 1.4 |
-| Section heading | 15px | 600 (semibold) | 1.4 |
+| Heading | 16px | 600 (semibold) | 1.4 |
 | Body | 14px | 400 (regular) | 1.5 |
-| Label (form/table) | 13px | 600 (semibold) | 1.4 |
-| Small text (hints, captions) | 12px | 400 (regular) | 1.4 |
-| Monospace (code, env vars) | 12px | 400 (regular) | 1.5 |
+| Small text | 12px | 400 (regular) | 1.4 |
 
-**For Phase 264 new elements:**
-- Wizard step number: 13px, 600 weight
-- Wizard step label: 13px, 600 weight
-- Wizard status indicator: 13px, 400 weight
-- Required badge text: 13px, 600 weight
-- Doc link title: 14px, 600 weight
-- Doc link description: 13px, 400 weight
+**For Phase 264 new elements (using consolidated 4-size scale):**
+- Wizard step number: 12px, 600 weight (small → semibold)
+- Wizard step label: 16px, 600 weight (heading)
+- Wizard status indicator: 12px, 400 weight (small)
+- Required badge text: 12px, 600 weight (small → semibold)
+- Doc link title: 14px, 600 weight (body → semibold)
+- Doc link description: 12px, 400 weight (small)
+- Section heading (form/table): 16px, 600 weight (heading)
+- Label (form/table): 14px, 600 weight (body → semibold)
+- Monospace (code, env vars): 12px, 400 (regular) | 1.5 line-height
 
 ---
 
@@ -105,7 +104,7 @@ Declared values (all multiples of 4, inherited from `mcpGatewayConfig.css`):
 - Content area: `.mgc-panel` flex container
 - 3 doc cards stacked vertically, each with:
   - Title: 14px, 600 weight (doc name)
-  - Description: 13px, 400 weight (1-2 sentences, max 80 chars)
+  - Description: 12px, 400 weight (1-2 sentences, max 80 chars)
   - Link: blue (#0070f3), underlined on hover, `target="_blank" rel="noopener noreferrer"`
   - Icon: external link emoji (🔗)
 
@@ -134,10 +133,10 @@ Declared values (all multiples of 4, inherited from `mcpGatewayConfig.css`):
 **Wizard layout:**
 - Wrapper: stacked flex container (`.mgc-panel`)
 - Step list: ordered list (1–5), each step row with:
-  - Circle number: 24px × 24px, centered, font 13px bold
+  - Circle number: 24px × 24px, centered, font 12px bold
   - Status indicator: (✓ = complete, ⚠ = needs action, ○ = pending)
-  - Step label: 13px, 600 weight
-  - Step description: 13px, 400 weight (optional, shown on expand)
+  - Step label: 16px, 600 weight
+  - Step description: 12px, 400 weight (optional, shown on expand)
   - Expandable form/content area (only Step 2 has form fields)
 
 **Step colors (CSS classes to create):**
@@ -183,35 +182,35 @@ Declared values (all multiples of 4, inherited from `mcpGatewayConfig.css`):
 - Each field: `.mgc-field` with `.mgc-field-label`, `.mgc-input`, `.mgc-field-hint`
 
 **Field 1: pingOneEnvID (read-only)**
-- Label: "PingOne Environment ID"
+- Label: "PingOne Environment ID" (16px, 600 weight)
 - Value: auto-derived from configStore
 - Chip: "🔗 From PingOne config" (blue text, no background)
 - Not editable; gray text (#999)
 
 **Field 2: pingOneResourceID (required input)**
-- Label: "PingOne Resource ID" + red "Required" badge (if empty)
+- Label: "PingOne Resource ID" + red "Required" badge (if empty) (16px, 600 weight)
 - Placeholder: "e.g., a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-- Hint: "Used as `username` in OAuth2ResourceServerFilter for introspection"
-- Red badge: background #ffc107 (yellow), text #333, padding 4px 8px, font 11px, weight 600
+- Hint: "Used as `username` in OAuth2ResourceServerFilter for introspection" (12px, 400 weight)
+- Red badge: background #ffc107 (yellow), text #333, padding 4px 8px, font 12px, weight 600
 
 **Field 3: gatewayPublicUrl (required input)**
-- Label: "PingGateway Public URL" + red "Required" badge (if empty)
+- Label: "PingGateway Public URL" + red "Required" badge (if empty) (16px, 600 weight)
 - Placeholder: "https://ig.example.com:8443"
-- Hint: "The public HTTPS URL of your PingGateway instance (used as `gatewayUrl` in mcp.json)"
+- Hint: "The public HTTPS URL of your PingGateway instance (used as `gatewayUrl` in mcp.json)" (12px, 400 weight)
 
 **Field 4: mcpServerUrl (read-only)**
-- Label: "Upstream MCP Server URL"
+- Label: "Upstream MCP Server URL" (16px, 600 weight)
 - Value: auto-derived from configStore (`mcp_server_url`)
 - Chip: "🔗 From PingOne config"
 - Not editable
 
 **Field 5: mcpScope (input with default)**
-- Label: "MCP Scope"
+- Label: "MCP Scope" (16px, 600 weight)
 - Value: default "banking:mcp:invoke" (pre-filled, editable)
-- Hint: "OAuth 2.0 scope required for token exchange; matched against gateway scope requirement"
+- Hint: "OAuth 2.0 scope required for token exchange; matched against gateway scope requirement" (12px, 400 weight)
 
 **Field 6: introspectEndpoint (read-only derived)**
-- Label: "Token Introspection Endpoint"
+- Label: "Token Introspection Endpoint" (16px, 600 weight)
 - Value: auto-computed as `${pingOneEnvUrl}/as/introspect`
 - Chip: "🔗 From PingOne config"
 - Not editable
