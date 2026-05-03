@@ -113,21 +113,19 @@ export default function ComplianceModal({
   if (!open) return null;
 
   return createPortal(
-    <div className="compliance-modal-overlay" onClick={onClose}>
-      <div
-        ref={modalRef}
-        className="compliance-modal"
-        style={{
-          left: `${pos.x}px`,
-          top: `${pos.y}px`,
-          width: `${size.width}px`,
-          height: `${size.height}px`,
-        }}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="compliance-modal-title"
-      >
+    <div
+      ref={modalRef}
+      className="compliance-modal"
+      style={{
+        left: `${pos.x}px`,
+        top: `${pos.y}px`,
+        width: `${size.width}px`,
+        height: `${size.height}px`,
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="compliance-modal-title"
+    >
         {/* Header — draggable */}
         <div
           ref={headerRef}
@@ -201,8 +199,7 @@ export default function ComplianceModal({
             />
           );
         })}
-      </div>
-    </div>,
+      </div>,
     document.body
   );
 }

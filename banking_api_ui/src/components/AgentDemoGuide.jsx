@@ -2,182 +2,292 @@
  * @file AgentDemoGuide.jsx
  *
  * Interactive demo guide for Banking Agent compliance flows.
- * Walks users through scenarios that demonstrate:
- * - Scope requirements (RFC 6749 §3.3)
- * - Token exchange (RFC 8693)
- * - Authorization policies (PingOne Authorize)
- * - HITL consent gates
- * - Step-up MFA
+ * Maps real agent request scenarios to the 12 compliance verification steps:
  *
- * Usage: Click "📚 Demo Guide" chip to open this window.
+ * 1. agent-llm-reasoning — Natural language intent parsing
+ * 2. agent-token-init — User OAuth token acquisition
+ * 3. gw-scope-map — Gateway scope validation
+ * 4. agent-scope-aware-cache — Caching by scope + audience
+ * 5. olb-resource-token — RFC 8693 token exchange
+ * 6. gw-denial-metadata — Gateway rejection signals (scope/audience/policy)
+ * 7. gw-hitl-challenge-type — Gateway HITL/step-up signal
+ * 8. bff-response-shape — BFF response formatting
+ * 9. ui-gateway-consent — Consent modal in UI
+ * 10. ui-auto-refire — Operation re-fired after consent
+ * 11. agent-error-propagation — Error handling
+ * 12. claim-diagnostics — Token claim analysis
+ *
+ * Usage: Click "📚 Agent Demo Guide" to open this window.
+ * Reference: See /architecture/flow for live compliance flow diagram.
  */
 
 import React, { useState } from 'react';
 import './AgentDemoGuide.css';
 
+const ALL_12_STEPS = [
+  'agent-llm-reasoning',
+  'agent-token-init',
+  'gw-scope-map',
+  'agent-scope-aware-cache',
+  'olb-resource-token',
+  'gw-denial-metadata',
+  'gw-hitl-challenge-type',
+  'bff-response-shape',
+  'ui-gateway-consent',
+  'ui-auto-refire',
+  'agent-error-propagation',
+  'claim-diagnostics',
+];
+
+const STEP_LABELS = {
+  'agent-llm-reasoning': '1. LLM Intent Reasoning',
+  'agent-token-init': '2. Token Initialization',
+  'gw-scope-map': '3. Gateway Scope Mapping',
+  'agent-scope-aware-cache': '4. Scope-Aware Caching',
+  'olb-resource-token': '5. Resource Token Exchange',
+  'gw-denial-metadata': '6. Gateway Denial Metadata',
+  'gw-hitl-challenge-type': '7. HITL Challenge Type',
+  'bff-response-shape': '8. BFF Response Shape',
+  'ui-gateway-consent': '9. UI Consent Modal',
+  'ui-auto-refire': '10. Auto-Refire',
+  'agent-error-propagation': '11. Error Propagation',
+  'claim-diagnostics': '12. Claim Diagnostics',
+};
+
 const DEMO_SCENARIOS = [
   {
     id: 'read-only',
-    title: '1️⃣ Read-Only Scope (No Token Exchange)',
-    description: 'Start simple: read operations don\'t require token exchange.',
+    title: '1️⃣ Read-Only Scope (Simple Path)',
+    description: 'Basic read operation: "What accounts do I have?" — exercises only token init and caching.',
+    applicableSteps: [
+      'agent-llm-reasoning',
+      'agent-token-init',
+      'gw-scope-map',
+      'agent-scope-aware-cache',
+      'claim-diagnostics',
+    ],
     steps: [
       {
-        action: 'Try this prompt:',
+        action: 'Send this prompt:',
         prompt: '"What accounts do I have?"',
-        explanation: 'The agent calls get_my_accounts with your user token. This only needs banking:read scope, which you already have.',
-        watch: ['Token Chain → shows user token decoded', 'Compliance panel → agent-llm-reasoning through claim-diagnostics', 'No token exchange needed (scope already sufficient)'],
-      },
-      {
-        action: 'Then try:',
-        prompt: '"Show me my transactions"',
-        explanation: 'Same pattern: read operation, no token exchange. Your token already has banking:read scope.',
-        watch: ['Notice: no "exchange-required" event', 'No new MCP token created', 'User token used directly'],
+        explanation: 'Agent: (1) Parses NL → get_my_accounts intent. (2) Gets your user token (banking:read scope). (3) Calls BFF /api/accounts/my. (4) No token exchange needed—scope is sufficient. (5) Returns account list.',
+        watch: [
+          '✅ Compliance: Steps 1-4 complete (no exchange needed)',
+          'Token Chain: Shows 1 user token (banking:read)',
+          'Notice: No "exchange-required" event',
+          'Agent response displays accounts immediately',
+        ],
       },
     ],
   },
   {
     id: 'scope-denial',
-    title: '2️⃣ Scope Denial (403 — Missing Write Scope)',
-    description: 'Now request a write operation without write scope. Gateway will reject.',
+    title: '2️⃣ Scope Denial (403 + Denial Metadata)',
+    description: 'Write attempt without scope: "Transfer $50" → 403 rejection. Gateway returns required_scopes.',
+    applicableSteps: [
+      'agent-llm-reasoning',
+      'agent-token-init',
+      'agent-scope-aware-cache',
+      'gw-denial-metadata',
+      'agent-error-propagation',
+    ],
     steps: [
       {
-        action: 'Try this prompt:',
+        action: 'Send this prompt:',
         prompt: '"Transfer $50 from checking to savings"',
-        explanation: 'You only have banking:read scope, not banking:write. The BFF gateway will reject (403) because the operation requires write scope.',
+        explanation: 'Agent: (1) Parses → create_transfer intent. (2) Tries BFF /api/banking-agent/message with banking:read token. (3) Gateway rejects: 403 "missing_exchange_scopes". (4) Response includes required_scopes: ["banking:write"]. (5) Agent shows error with metadata.',
         watch: [
-          'Error appears: "missing_exchange_scopes" (403)',
-          'Token Chain shows gateway denial event',
-          'Required scopes displayed: banking:write',
-          'User scopes shown: banking:read',
+          '✅ Compliance: Steps 1-2, then denial via step 6',
+          'Error shows: required_scopes=[banking:write]',
+          'Token Chain: Denial event with metadata',
+          'Compliance panel: Shows steps 1-2 only (stops at denial)',
         ],
       },
       {
-        action: 'Alternatively, click:',
-        prompt: '"🧪 Test Wrong Scope" chip (Testing group)',
-        explanation: 'This deliberately tests scope denial by requesting banking:admin scope (which you don\'t have). Shows the exact 403 flow.',
+        action: 'OR click test chip:',
+        prompt: '"🧪 Test Wrong Scope" (Testing group)',
+        explanation: 'Deliberately tests scope denial path. Makes request with banking:admin scope (not authorized). Gateway returns 403 with required_scopes metadata.',
         watch: [
-          'Gateway rejection with required_scopes metadata',
-          'RFC 6749 §3.3 compliance information',
+          '✅ Demonstrates: scope denial + metadata capture',
+          'Shows RFC 6749 §3.3 scope enforcement',
         ],
       },
     ],
   },
   {
     id: 'token-exchange',
-    title: '3️⃣ Token Exchange (RFC 8693 — Get Write Scope)',
-    description: 'After the 403 denial, the agent negotiates a new token with write scope.',
+    title: '3️⃣ Token Exchange (RFC 8693 — Full 5-Step Exchange)',
+    description: 'After scope denial, agent negotiates new token with write scope. Exercises RFC 8693.',
+    applicableSteps: [
+      'agent-llm-reasoning',
+      'agent-token-init',
+      'agent-scope-aware-cache',
+      'gw-scope-map',
+      'olb-resource-token',
+      'gw-denial-metadata',
+      'bff-response-shape',
+      'agent-error-propagation',
+      'claim-diagnostics',
+    ],
     steps: [
       {
-        action: 'Prerequisite:',
-        prompt: 'Click "📚 Demo Data" (admin, bottom-right) → toggle "🔐 MCP Token Exchange" ON',
-        explanation: 'This enables RFC 8693 token exchange at the gateway. Without it, the agent can\'t get a delegated token with write scope.',
-        watch: ['After toggle, try the transfer prompt again'],
+        action: 'First, enable exchange:',
+        prompt: 'Admin → "🎛 Demo Config" → toggle "🔐 MCP Token Exchange" ON',
+        explanation: 'This enables the gateway to perform RFC 8693 token exchange. Without it, scope denial is fatal.',
+        watch: [],
       },
       {
-        action: 'Then try:',
+        action: 'Then send:',
         prompt: '"Transfer $50 from checking to savings"',
-        explanation: 'Now with token exchange enabled: (1) Agent requests transfer → Gateway denies (403, missing:write). (2) Agent sees denial, initiates token exchange. (3) New delegated token issued with banking:write. (4) Agent retries with new token → Success (or hits next gate).',
+        explanation: 'Agent: (1) Parses → create_transfer. (2) Sends with banking:read token. (3) Gateway rejects: 403. (4) Agent initiates RFC 8693 exchange (step 5). (5) New token issued with banking:write. (6) Agent retries with new token. (7) BFF processes transfer (success or next gate).',
         watch: [
-          'Token Chain → 2 token events (user + MCP delegated)',
-          'Shows "exchange-required" → "two-exchange-exchange1" → "two-ex-final-token"',
-          'MCP token aud claim matches resource server',
-          'Compliance panel now shows olb-resource-token step completed',
+          '✅ Compliance: All 9 steps exercised',
+          'Token Chain: 3 events (user token → exchange request → new MCP token)',
+          'Shows Hop 0→1→2: user → gateway delegated → backend',
+          'aud claim changes: user → MCP server audience',
+          'Compliance panel: Steps 1-5 complete, then continues',
         ],
       },
     ],
   },
   {
     id: 'authorize-denial',
-    title: '4️⃣ Authorize Policy Denial (PingOne Authorize Gate)',
-    description: 'Token exchange succeeds, but Authorize policy blocks the operation.',
+    title: '4️⃣ PingOne Authorize Denial (Policy Gate)',
+    description: 'Token exchange succeeds, but Authorize policy blocks it. Separate from scope.',
+    applicableSteps: [
+      'agent-llm-reasoning',
+      'agent-token-init',
+      'agent-scope-aware-cache',
+      'olb-resource-token',
+      'gw-scope-map',
+      'gw-denial-metadata',
+      'agent-error-propagation',
+      'claim-diagnostics',
+    ],
     steps: [
       {
-        action: 'Setup (admin only):',
-        prompt: 'Go to "🧪 Authz Test" (admin menu) → Create a rule: "banking:write" → "STEP UP" or "DENY"',
-        explanation: 'This creates a PingOne Authorize policy that blocks write operations. It\'s a separate gate from token exchange (even if you have the right scopes, policy can deny).',
+        action: 'Setup (admin):',
+        prompt: 'Go to "⚖️ Authz Test" → Create policy: banking:write → DENY',
+        explanation: 'Creates a PingOne Authorize policy that blocks write operations, even with correct scope/token.',
         watch: [],
       },
       {
-        action: 'Then try:',
+        action: 'Then send:',
         prompt: '"Transfer $50 from checking to savings"',
-        explanation: '(1) Agent requests transfer with write token. (2) Token exchange succeeds ✓. (3) BFF calls PingOne Authorize → Policy returns DENY or STEP UP. (4) Agent shows error or triggers MFA.',
+        explanation: 'Agent: (1-5) Token exchange succeeds (has write scope). (6) BFF calls PingOne Authorize. (7) Policy returns DENY (step 7). (8) BFF rejects with authorization_failed. (9) Agent shows error.',
         watch: [
-          'If DENY: error shows "authorization_failed"',
-          'If STEP UP: MFA modal appears',
-          'Compliance panel shows gw-denial-metadata (Authorize decision)',
-          'Notice: Token exchange worked fine, but Authorize blocked it',
+          '✅ Compliance: Token exchange succeeds, but policy gate blocks',
+          'Notice: Not a 403 scope error—token is valid',
+          'Token Chain: Shows full exchange + Authorize decision',
+          'Error message: authorization_failed (vs. missing_scopes)',
+          'Demonstrate: Scopes ≠ Policies (independent gates)',
         ],
       },
     ],
   },
   {
     id: 'hitl-gate',
-    title: '5️⃣ Human-in-the-Loop (HITL) — Consent Required for High-Value',
-    description: 'Large transfers require explicit user consent before executing.',
+    title: '5️⃣ HITL Consent Gate (> $250)',
+    description: 'High-value transfer requires explicit user consent. $99,999.99 triggers consent modal.',
+    applicableSteps: [
+      'agent-llm-reasoning',
+      'agent-token-init',
+      'agent-scope-aware-cache',
+      'olb-resource-token',
+      'gw-scope-map',
+      'gw-denial-metadata',
+      'gw-hitl-challenge-type',
+      'bff-response-shape',
+      'ui-gateway-consent',
+      'ui-auto-refire',
+      'claim-diagnostics',
+    ],
     steps: [
       {
-        action: 'Try this prompt:',
-        prompt: '"Transfer $500 from checking to savings"',
-        explanation: 'Amount $500 > $250 HITL threshold. Gateway detects this and returns consent_challenge_required (not a 403 error—it\'s a deliberate gate).',
+        action: 'Click test chip:',
+        prompt: '"🔐 Test HITL Transfer" (Testing group)',
+        explanation: 'Sends real $99,999.99 transfer. Amount > $250 threshold triggers HITL (Human-in-the-Loop) consent gate.',
         watch: [
-          'Consent modal appears: "Human-in-the-Loop"',
-          'Shows threshold: "$250+"',
-          'OTP code sent to your email (or fallback stub)',
-          'Compliance panel shows gw-hitl-challenge-type',
+          '✅ Compliance: All 11 steps (skips step 12 error propagation)',
+          'Step 7: Gateway signals consent_challenge_required',
+          'Step 9: UI shows AgentConsentModal',
+          'User approves consent + enters OTP',
+          'Step 10: Auto-refire with consentChallengeId',
+          'Transfer completes after consent verified',
         ],
       },
       {
-        action: 'OR click:',
-        prompt: '"🔐 Test HITL Required" chip (Testing group)',
-        explanation: 'This transfers $99,999.99 to guarantee HITL gate triggers. Skips the write-scope denial, goes straight to consent modal.',
+        action: 'OR try:',
+        prompt: '"Transfer $500 from checking to savings"',
+        explanation: 'Any amount > $250 triggers HITL. The consent modal appears with the threshold amount displayed.',
         watch: [
-          'Consent modal with detailed HITL explanation',
-          'After approval: transfer re-fires with consentChallengeId',
-          'Shows all 10 HITL compliance steps',
+          'Consent challenge: "Transactions over $250 require approval"',
+          'After approval: MFA may trigger (if amount > $500)',
         ],
       },
     ],
   },
   {
     id: 'step-up',
-    title: '6️⃣ Step-Up MFA (RFC 9470) — Identity Re-Verification',
-    description: 'Very sensitive operations require MFA even after successful token exchange.',
+    title: '6️⃣ Step-Up MFA (RFC 9470 — > $500)',
+    description: 'Sensitive operations require re-authentication. RFC 9470 step-up challenge.',
+    applicableSteps: [
+      'agent-llm-reasoning',
+      'agent-token-init',
+      'agent-scope-aware-cache',
+      'olb-resource-token',
+      'gw-scope-map',
+      'gw-denial-metadata',
+      'gw-hitl-challenge-type',
+      'bff-response-shape',
+      'ui-gateway-consent',
+      'agent-error-propagation',
+      'claim-diagnostics',
+    ],
     steps: [
       {
-        action: 'Try this prompt:',
-        prompt: '"Show me my full account details with routing numbers"',
-        explanation: 'This requests sensitive data (full account/routing numbers). Requires banking:sensitive:read scope AND step-up MFA (RFC 9470 challenge).',
+        action: 'Click test chip:',
+        prompt: '"📱 Test OTP Required" (Testing group)',
+        explanation: 'Requests sensitive account details (full routing numbers). Triggers step-up MFA (RFC 9470 acr challenge).',
         watch: [
-          'First: Token exchange for banking:sensitive:read scope',
-          'Then: MFA modal appears (not a consent modal—authentication challenge)',
-          'Compliance panel shows gw-hitl-challenge-type with step_up_required',
+          '✅ Compliance: Token exchange (step 5) + step-up gate (step 7)',
+          'Step 7: Gateway signals step_up_required (not consent)',
+          'UI: Shows OtpStepUpModal (not consent modal)',
+          'User: Enters OTP code from email',
+          'After MFA verified: Returns account details',
+          'Notice: Step-up is auth challenge (not approval)',
         ],
       },
       {
-        action: 'OR click:',
-        prompt: '"📱 Test OTP Required" chip (Testing group)',
-        explanation: 'Directly triggers the sensitive-account-details flow, which requires step-up.',
+        action: 'OR try:',
+        prompt: '"Show me my full account details with routing numbers"',
+        explanation: 'Requests banking:sensitive:read. Requires banking:sensitive:read scope + step-up MFA.',
         watch: [
-          'Notice: Step-up is different from HITL (it\'s re-auth, not approval)',
-          'RFC 9470 compliance information displayed',
+          'Token exchange: Gets banking:sensitive:read scope',
+          'Then: Step-up MFA challenge appears',
+          'After: Sensitive data displayed',
         ],
       },
     ],
   },
   {
     id: 'full-flow',
-    title: '🔥 Full Compliance Flow (All 12 Steps)',
-    description: 'See the entire flow: token exchange → Authorize → HITL → MFA.',
+    title: '🔥 Full Compliance (All 12 Steps)',
+    description: 'Ultimate demo: $99,999.99 transfer. Token exchange → Authorize → HITL → MFA.',
+    applicableSteps: ALL_12_STEPS,
     steps: [
       {
         action: 'Click:',
-        prompt: '"🔥 Full Compliance (12 Steps)" chip (Testing group)',
-        explanation: 'This is the ultimate demo. Transfers $99,999.99, which: (1) Requires token exchange for write scope. (2) Passes through Authorize gate (usually). (3) Triggers HITL consent (> $250). (4) After consent approval, triggers MFA (> $500). Shows all 12 compliance steps.',
+        prompt: '"🔥 Full Compliance (12 Steps)" (Testing group)',
+        explanation: 'Sends $99,999.99 transfer. Amount triggers HITL (step 7), then MFA (>$500). Exercises all 12 steps end-to-end.',
         watch: [
-          'Compliance panel lights up all 12 steps',
-          'Token Chain shows full chain (user → MCP token)',
-          'Consent modal appears → OTP modal appears',
-          'Transfer completes after both gates pass',
+          '✅ ALL 12 STEPS light up in compliance panel',
+          'Token Chain: Full exchange shown',
+          'Consent modal: Approve consent',
+          'MFA modal: Enter OTP code',
+          'Transfer: Completes after both gates pass',
+          'See: How each step flows into the next',
+          'Reference: /architecture/flow diagram matches live execution',
         ],
       },
     ],
@@ -203,7 +313,7 @@ export default function AgentDemoGuide({ onClose }) {
         {/* Header */}
         <div className="adg-header">
           <h1>📚 Banking Agent Demo Guide</h1>
-          <p className="adg-tagline">Learn compliance flows by doing. Follow the story.</p>
+          <p className="adg-tagline">Real request scenarios mapped to 12 compliance steps. See /architecture/flow for live diagram.</p>
           <button className="adg-close-btn" onClick={onClose}>✕</button>
         </div>
 
@@ -232,6 +342,18 @@ export default function AgentDemoGuide({ onClose }) {
                 <div className="adg-scenario-header">
                   <h2>{current.title}</h2>
                   <p className="adg-description">{current.description}</p>
+
+                  {/* Show applicable steps */}
+                  <div className="adg-applicable-steps">
+                    <div className="adg-steps-label">Exercises steps:</div>
+                    <div className="adg-steps-list">
+                      {current.applicableSteps.map((stepId) => (
+                        <span key={stepId} className="adg-step-badge">
+                          {STEP_LABELS[stepId]}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="adg-steps">
@@ -253,7 +375,7 @@ export default function AgentDemoGuide({ onClose }) {
                       {expandedSteps[idx] && (
                         <div className="adg-step-content">
                           <div className="adg-explanation">
-                            <strong>Why this works:</strong>
+                            <strong>What happens:</strong>
                             <p>{step.explanation}</p>
                           </div>
 
@@ -294,12 +416,12 @@ export default function AgentDemoGuide({ onClose }) {
                   <div className="adg-tips">
                     <strong>💡 Pro Tips:</strong>
                     <ul>
-                      <li>Keep Token Chain panel open (right side) to watch the exchange live</li>
-                      <li>Compliance panel shows which steps are active (below agent messages)</li>
-                      <li>Each scenario builds on the previous—follow the story top-to-bottom</li>
-                      <li>Admin users: check "🧪 Authz Test" page to see PingOne Authorize policies</li>
-                      <li>Use test chips (Testing group) to jump to specific scenarios</li>
-                      <li>Check "📚 Demo Data" to toggle token exchange, Authorize gates, thresholds</li>
+                      <li>Open Token Chain panel (right sidebar) to watch token events live</li>
+                      <li>Compliance panel (below messages) shows which steps are active</li>
+                      <li>Follow scenarios top-to-bottom to understand the story</li>
+                      <li>Reference: <a href="/architecture/flow" target="_blank" rel="noopener noreferrer">/architecture/flow</a> shows live compliance diagram</li>
+                      <li>Each step lights up as it executes in real-time</li>
+                      <li>Thresholds: HITL $250, MFA $500 (verify in Demo Config)</li>
                     </ul>
                   </div>
                 </div>

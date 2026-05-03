@@ -3080,15 +3080,7 @@ export default function BankingAgent({
     toast.info(`⚙️ ${label}…`, { toastId, autoClose: false, isLoading: true });
 
     try {
-      const stepDefs = getToolStepsForAction(actionId);
-      if (stepDefs.length > 0) {
-        const tid = `tp-${Date.now()}`;
-        toolProgressIdRef.current = tid;
-        addMessage("tool-progress", "", null, {
-          id: tid,
-          steps: stepDefs.map((s) => ({ ...s, status: "running" })),
-        });
-      }
+      // Chips/tool-progress messages removed per user request (show only user + assistant messages)
 
       let response;
       switch (actionId) {
@@ -5259,7 +5251,7 @@ export default function BankingAgent({
       {/* Panel */}
       {effectiveIsOpen && (
         <div
-          className={`banking-agent-panel${isDark ? "" : " ba-mode-light"}${isExpanded && !isInline ? " ba-expanded" : ""}${isInline ? " ba-mode-inline" : ""}${isBottomDock ? " ba-embedded-bottom-dock" : ""}${splitChrome ? " ba-split-column" : ""}${distinctFloatingChrome && isInline ? " ba-popout-mode" : ""}`}
+          className={`banking-agent-panel${isDark ? " dark-theme" : " ba-mode-light"}${isExpanded && !isInline ? " ba-expanded" : ""}${isInline ? " ba-mode-inline" : ""}${isBottomDock ? " ba-embedded-bottom-dock" : ""}${splitChrome ? " ba-split-column" : ""}${distinctFloatingChrome && isInline ? " ba-popout-mode" : ""}`}
           role="dialog"
           aria-label={
             isConfigEmbeddedFocus
@@ -7084,12 +7076,14 @@ export default function BankingAgent({
 
               {/* Discovery popout — "All actions" overlay */}
               {isLoggedIn && showDiscovery && (
-                <div
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label="Action browser"
-                  className={"ba-discovery-popout ba-discovery-popout--open"}
-                >
+                <>
+                  <div className="ba-discovery-backdrop" onClick={() => setShowDiscovery(false)} />
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Action browser"
+                    className={"ba-discovery-popout ba-discovery-popout--open"}
+                  >
                   <div className="ba-discovery-header">
                     <span>⊞ All actions</span>
                     <button
@@ -7166,7 +7160,8 @@ export default function BankingAgent({
                       ))
                     )}
                   </div>
-                </div>
+                  </div>
+                </>
               )}
 
               {/* Action form (when user selects a transaction action) */}
