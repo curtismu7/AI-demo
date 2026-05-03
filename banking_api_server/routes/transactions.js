@@ -394,8 +394,11 @@ router.post('/', authenticateToken, async (req, res) => {
     // ── HITL consent (session-bound) ────────────────────────────────────────
     // Phase 170: ALL transfers require HITL consent regardless of amount.
     // Withdrawals/deposits still use the high-value threshold ($500).
+    // Feature flag ff_hitl_enabled (default true) can disable HITL globally.
     const hitlAmount = parseFloat(req.body.amount);
+    const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
     const requiresHitl =
+      hitlEnabled &&
       req.user.role !== 'admin' &&
       ['deposit', 'withdrawal', 'transfer'].includes(type) &&
       (type === 'transfer' || hitlAmount > txConsent.HIGH_VALUE_CONSENT_USD);
