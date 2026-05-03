@@ -51,63 +51,6 @@ Examples of mcp_tools (always banking, never education):
 Only route to education panel mcp-protocol when the user asks HOW MCP works or WHAT MCP is (no list/show/get verb).
 If the user asks to pay, transfer, or send money involving a "credit card", "credit account", or "investment account" → {"kind":"none","message":"This demo only supports Checking and Savings accounts. Credit cards and investment accounts are not available."}`;
 
-/**
- * Answer a general knowledge question using Ollama when banking intent parsing fails.
- * Returns a simple text response wrapped as kind:'education' (education panel with markdown).
- * @param {string} userMessage
- * @param {{ role?: string, firstName?: string }} [context]
- * @returns {Promise<object|null>} education result with markdown answer or null
- */
-async function answerGeneralQuestion(userMessage, context = {}) {
-  const contextStr = context.role
-    ? `The user is signed in with role: ${context.role}. `
-    : '';
-  const system = `You are a knowledgeable assistant for a banking demo platform. Answer the user's general knowledge question concisely and accurately. If the question is about banking, OAuth, security, or related topics, provide a clear explanation. Keep your answer to 1-2 paragraphs.`;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
-
-  try {
-    const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: userMessage },
-        ],
-        stream: false,
-        options: { temperature: 0.3 },
-      }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      console.warn('[nlIntent] Ollama general question HTTP', res.status);
-      return null;
-    }
-
-    const data = await res.json();
-    const answer = data?.message?.content;
-    if (answer) {
-      return {
-        kind: 'education',
-        education: { panel: 'general-knowledge' },
-        message: answer,
-      };
-    }
-  } catch (e) {
-    if (e.name === 'AbortError') {
-      console.warn('[nlIntent] Ollama general question timeout');
-    } else {
-      console.warn('[nlIntent] Ollama general question error:', e.message);
-    }
-  } finally {
-    clearTimeout(timeout);
-  }
-  return null;
-}
 
 /**
  * @param {string} userMessage
@@ -201,16 +144,8 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
     return { source: rejected ? 'heuristic' : 'ollama', result };
   }
 
-  // 3. Try answering as a general knowledge question if banking intent parsing failed
-  const generalAnswer = await answerGeneralQuestion(message, context).catch((e) => {
-    console.warn('[nlIntent] General question answering failed:', e.message);
-    return null;
-  });
-  if (generalAnswer) {
-    return { source: 'ollama', result: generalAnswer };
-  }
-
-  // 4. Final fallback: heuristic returns kind:'none' (unrecognized input, LLM unavailable)
+  // 3. Final fallback: heuristic returns kind:'none' (unrecognized input)
+  // Helix LLM integration not yet implemented
   return { source: 'heuristic', result: heuristicResult };
 }
 
