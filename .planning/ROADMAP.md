@@ -2104,6 +2104,37 @@ Plans:
 - Agent tool calls work without authentication errors in both modes
 - Session persists agent tokens correctly using SQLite (local) or Redis (Vercel)
 
+### Phase 263: MCP server spec compliance fixes and gap closure
+
+**Goal:** Close remaining Phase 261 compliance gaps and polish: dynamic HITL/consent thresholds configurable at runtime via new UI widget and API endpoint; compliance checklist reset-to-pending so steps mark dynamically via SSE; demo state cleanup on logout (token chains, MCP audit, app events); dashboard threshold controls widget; spinner tuning for SSE and background routes; UI polish (agent UI toggle layout, transaction error modal CSS, helix avatar CSS).
+**Requirements**: PHASE-263-SERVER, PHASE-263-UI
+**Depends on:** Phase 261
+**Plans:** 2 plans
+
+Plans:
+- [ ] 263-01-PLAN.md — Server-side gap closure: dynamic thresholds, logout cleanup, Bearer bypass
+- [ ] 263-02-PLAN.md — UI gap closure: ThresholdControls widget, compliance step reset, spinner tuning, build and commit
+
+### Phase 264: Do we need a config page for MCP gateway, so show and configure routes? https://developer.pingidentity.com/identity-for-ai/identity/idai-securing-agents-pingone.html, here is pinggateway (mcp gateway) woriing with PingOne authorize: https://docs.pingidentity.com/pinggateway/2026/pingone/aam.html, here is another doc on setting up pingone with pinggateway (mcp gateway).  We need to link all these docs on config page, but make sure that our MCP gateway is configured and behaves like the real PingGateway but has a full UI for config, not just JSON files
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 263
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 264 to break down)
+
+### Phase 265: Demo data page: create demo user with may_act, P1MFA registration
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** none
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 265 to break down)
+
 ---
 
 ### Phase 262: CSS Hygiene — dead code purge, :root consolidation, !important audit
