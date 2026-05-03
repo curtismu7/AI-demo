@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../services/apiClient';
 
 export default function HelixPanel() {
   const [helixConfig, setHelixConfig] = useState({ base_url: '', api_key: '', environment_id: '', agent_id: '' });
@@ -10,10 +10,10 @@ export default function HelixPanel() {
   const fetchHelixStatus = useCallback(async () => {
     setHelixChecking(true);
     try {
-      const statusRes = await axios.get('/api/langchain/provider/helix/status');
+      const statusRes = await apiClient.get('/api/langchain/provider/helix/status');
       setHelixStatus(statusRes.data.status);
 
-      const configRes = await axios.get('/api/langchain/config/status');
+      const configRes = await apiClient.get('/api/langchain/config/status');
       const cfg = configRes.data;
 
       setHelixConfig((prev) => {
@@ -41,7 +41,7 @@ export default function HelixPanel() {
 
     setHelixSaving(true);
     try {
-      await axios.post('/api/langchain/config', {
+      await apiClient.post('/api/langchain/config', {
         provider: 'helix',
         key_type: 'helix',
         helix_api_key: helixConfig.api_key,
@@ -65,7 +65,7 @@ export default function HelixPanel() {
 
     setHelixSaving(true);
     try {
-      await axios.delete('/api/langchain/config/key/helix');
+      await apiClient.delete('/api/langchain/config/key/helix');
       setHelixConfig({ base_url: '', api_key: '', environment_id: '', agent_id: '' });
       setHelixStatus('unconfigured');
       localStorage.removeItem('helix_config');
