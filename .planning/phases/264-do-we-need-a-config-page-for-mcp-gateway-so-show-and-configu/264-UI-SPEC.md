@@ -113,7 +113,7 @@ Declared values (all multiples of 4, inherited from `mcpGatewayConfig.css`):
 - Border: 1px solid #e9ecef
 - Border-radius: 8px
 - Padding: 16px
-- Margin-bottom: 12px
+- Margin-bottom: 16px
 
 **Doc links to include:**
 1. Title: "Securing AI Agents with PingOne"
