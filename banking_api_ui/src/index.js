@@ -7,6 +7,7 @@ import './styles/chase-theme.css';
 import App from './App';
 import { ThemeProvider } from './context/ThemeContext';
 import { patchFetch } from './services/apiTrafficStore';
+import ErrorBoundary from './components/ErrorBoundary';
 
 try {
   const __bxTheme = localStorage.getItem('bx-dash-theme');
@@ -40,8 +41,10 @@ patchFetch();
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <ThemeProvider>
-      <App />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );
