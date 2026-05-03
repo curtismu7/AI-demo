@@ -814,6 +814,25 @@ function AppWithAuth() {
 									</>
 								}
 							/>
+							{/* Public landing page — available to all users */}
+							<Route
+								path="/"
+								element={
+									loading ? null : (
+										<>
+											<TopNav user={user} onLogout={logout} />
+											{user && <AdminSideNav user={user} />}
+											<main className="main-content">
+												{user?.role === "admin" ? (
+													<Dashboard user={user} onLogout={logout} />
+												) : (
+													<LandingPage user={user} onLogout={logout} />
+												)}
+											</main>
+										</>
+									)
+								}
+							/>
 							{/* Explicit /dashboard so guests see UserDashboard with demo data, not LandingPage */}
 							<Route
 								path="/dashboard"
