@@ -4617,19 +4617,35 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   overflow-y: auto;
 }
 
-/* Compliance panel pop-out for floating agent */
+/* Compliance panel slide-in for floating agent */
 .banking-agent-panel:not(.ba-mode-inline) .ba-compliance-panel {
-  position: absolute;
-  top: 16px;
-  right: calc(100% + 12px);
+  position: fixed;
+  top: 0;
+  right: -340px;
   width: 320px;
-  max-height: calc(100% - 32px);
+  height: 100vh;
+  max-height: none;
   overflow-y: auto;
-  background: var(--ba-bg, #ffffff);
-  border: 1px solid var(--ba-border, #cbd5e1);
-  border-radius: 12px;
-  box-shadow: var(--ba-shadow, 0 8px 32px rgba(0, 0, 0, 0.15));
+  background: #fff;
+  border-left: 1px solid #e5e7eb;
+  border-radius: 0;
+  box-shadow: -4px 0 12px rgba(0,0,0,0.1);
   z-index: 20;
+  animation: slide-in-from-right 0.3s ease forwards;
+  padding: 16px 14px !important;
+}
+@keyframes slide-in-from-right {
+  from { right: -340px; opacity: 0; }
+  to { right: 0; opacity: 1; }
+}
+.banking-agent-panel:not(.ba-mode-inline) .ba-compliance-panel__header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f3f4f6;
+}
+.banking-agent-panel:not(.ba-mode-inline) .ba-compliance-panel__title {
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 /* Token-event text wrapping */
@@ -4716,35 +4732,36 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   border: none !important;
 }
 
-/* 2. HEADER — Intercom-style Bold Navy Bar */
+/* 2. HEADER — Clean white with brand color accent line */
 .ba-header {
-  padding: 8px 14px !important;
-  background: var(--brand-dashboard-header-start, #1e3a8a) !important;
-  border-bottom: none !important;
+  padding: 10px 14px !important;
+  background: #fff !important;
+  border-bottom: 3px solid var(--app-primary-red, #b91c1c) !important;
   gap: 3px !important;
 }
 .ba-header-top {
   background: transparent !important;
-  color: #fff !important;
+  color: #111827 !important;
 }
 .ba-agent-name {
-  color: #fff !important;
+  color: #111827 !important;
   font-size: 0.9rem !important;
+  font-weight: 600 !important;
 }
 .ba-agent-subtitle {
-  color: rgba(255,255,255,0.65) !important;
+  color: #6b7280 !important;
   font-size: 0.72rem !important;
 }
 .ba-header .ba-tool-btn {
-  color: rgba(255,255,255,0.8) !important;
+  color: #6b7280 !important;
   transition: color 0.15s, background 0.15s;
 }
 .ba-header .ba-tool-btn:hover {
-  color: #fff !important;
-  background: rgba(255,255,255,0.12) !important;
+  color: #111827 !important;
+  background: #f3f4f6 !important;
 }
 .ba-header .ba-status-dot {
-  border-color: var(--brand-dashboard-header-start, #1e3a8a) !important;
+  border-color: var(--app-primary-red, #b91c1c) !important;
   background: currentColor !important;
 }
 
