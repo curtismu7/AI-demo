@@ -306,6 +306,12 @@ export default function AdminSideNav({ user }) {
 	};
 
 	const handleAction = (action) => {
+		// If action is a function, call it directly
+		if (typeof action === 'function') {
+			action();
+			return;
+		}
+
 		switch (action) {
 			case "switch-role": {
 				const targetRole = isAdmin ? "customer" : "admin";
