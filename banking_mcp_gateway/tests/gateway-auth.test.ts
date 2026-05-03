@@ -49,6 +49,7 @@ const stubConfig: GatewayConfig = {
   host: '127.0.0.1',
   clientId: 'gw-client',
   clientSecret: 'secret',
+  tokenEndpointAuthMethod: 'basic',
   tokenEndpoint: 'https://auth.example.com/token',
   gatewayResourceUri: GATEWAY_AUD,
   mcpOlbWsUrl: 'ws://localhost:8080',
@@ -58,6 +59,7 @@ const stubConfig: GatewayConfig = {
   pingAuthorizeEndpoint: 'https://pingauthorize.example.com',
   pingAuthorizeWorkerId: 'worker-01',
   hitlServiceUrl: '',
+  introspectionEndpoint: '',
   devBypass: false,
 };
 
@@ -366,5 +368,63 @@ describe('buildAuthorizeMcpRequest middleware', () => {
     expect(forward2).toHaveBeenCalledTimes(1);
     expect(forward2.mock.calls[0][0]).toBe('no-authz-exchanged-token');
     expect(forward2.mock.calls[0][0]).not.toBe(NO_AUTHZ_BEARER);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Section 5: RFC 9728 WWW-Authenticate header — Phase 264 (D-16)
+// ---------------------------------------------------------------------------
+
+describe('authorizeMcpRequest — RFC 9728 WWW-Authenticate header', () => {
+  let req: Partial<IncomingMessage>;
+  let res: Partial<ServerResponse>;
+  let forwardSpy: jest.Mock;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    McpTokenExchangeClient.clearCache();
+    forwardSpy = jest.fn().mockResolvedValue(undefined);
+    const mocks = mockReqRes();
+    req = mocks.req;
+    res = mocks.res;
+  });
+
+  it('401 on inactive token includes WWW-Authenticate with realm="PingOne" and resource_metadata', async () => {
+    // Use a config with introspectionEndpoint set so the inactive-token path is reachable.
+    // Without it, GatewayIntrospectionClient skips and returns { active: true, skipped: true }.
+    const configWithIntrospection = { ...stubConfig, introspectionEndpoint: 'https://auth.example.com/introspect' };
+    mockedAxios.post.mockResolvedValueOnce({ data: { active: false } });
+    const middleware = buildAuthorizeMcpRequest(configWithIntrospection);
+    const body = mcpBody('tools/list');
+    const BEARER = makeToken('user-123', GATEWAY_AUD);
+
+    await middleware(BEARER, body, req as IncomingMessage, res as ServerResponse, forwardSpy);
+
+    const writeHeadCalls = (res.writeHead as jest.Mock).mock.calls;
+    const call401 = writeHeadCalls.find((c: unknown[]) => c[0] === 401);
+    expect(call401).toBeDefined();
+    const wwwAuth: string = call401![1]['WWW-Authenticate'];
+    expect(wwwAuth).toMatch(/Bearer realm="PingOne"/);
+    expect(wwwAuth).toMatch(/resource_metadata=/);
+    expect(wwwAuth).toMatch(/\/\.well-known\/mcp-server/);
+  });
+
+  it('403 on Authorize DENY includes WWW-Authenticate with realm="PingOne" and resource_metadata', async () => {
+    mockedAxios.post.mockResolvedValueOnce({ data: { active: true, sub: 'user-123' } });
+    mockedAxios.post.mockResolvedValueOnce({ data: { decision: 'DENY' } });
+    const middleware = buildAuthorizeMcpRequest(stubConfig);
+    const body = mcpBody('tools/call', 'create_transfer');
+    const BEARER = makeToken('user-123', GATEWAY_AUD);
+
+    await middleware(BEARER, body, req as IncomingMessage, res as ServerResponse, forwardSpy);
+
+    const writeHeadCalls = (res.writeHead as jest.Mock).mock.calls;
+    const call403 = writeHeadCalls.find((c: unknown[]) => (c[0] as number) === 403);
+    expect(call403).toBeDefined();
+    const wwwAuth: string = call403![1]['WWW-Authenticate'];
+    expect(wwwAuth).toMatch(/Bearer realm="PingOne"/);
+    expect(wwwAuth).toMatch(/resource_metadata=/);
+    expect(wwwAuth).toMatch(/\/\.well-known\/mcp-server/);
+    expect(forwardSpy).not.toHaveBeenCalled();
   });
 });
