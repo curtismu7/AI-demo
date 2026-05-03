@@ -237,7 +237,7 @@ describe("Suggestion chips — all 3 modes render correctly", () => {
 			fireEvent.click(fab);
 		});
 		// Float mode uses Actions popout — find the trigger by its CSS class
-		await waitFor(() => screen.getByTitle(/PingOne Identity/i));
+		await waitFor(() => screen.getByRole("dialog", { name: /AI Agent/i }));
 		const actionsBtn = document.querySelector(".ba-actions-trigger");
 		expect(actionsBtn).toBeInTheDocument();
 	});
@@ -334,9 +334,9 @@ describe("Action chips — all 3 modes", () => {
 		await act(async () => {
 			fireEvent.click(fab);
 		});
-		// Float mode: open Actions dropdown via class-based selector
-		await waitFor(() => screen.getByTitle(/PingOne Identity/i));
-		const actionsBtn = document.querySelector(".ba-actions-trigger");
+		// Float mode: open Actions dropdown via role
+		await waitFor(() => screen.getByRole("dialog", { name: /AI Agent/i }));
+		const actionsBtn = document.querySelector(".ba-actions-trigger[aria-haspopup='dialog']");
 		await act(async () => {
 			fireEvent.click(actionsBtn);
 		});
@@ -443,10 +443,10 @@ describe("Education chips — all 3 modes (via discovery popout)", () => {
 		await act(async () => {
 			fireEvent.click(fab);
 		});
-		// Float mode: open Actions dropdown via class-based selector
-		await waitFor(() => screen.getByTitle(/PingOne Identity/i));
-		const actionsBtn = document.querySelector(".ba-actions-trigger");
-		fireEvent.click(actionsBtn);
+		// Float mode: open Actions dropdown via role
+		await waitFor(() => screen.getByRole("dialog", { name: /AI Agent/i }));
+		const actionsBtn = document.querySelector(".ba-actions-trigger[aria-haspopup='dialog']");
+		await act(async () => { fireEvent.click(actionsBtn); });
 		await waitFor(() =>
 			expect(screen.getByText("OAuth: Authorization Code + PKCE")).toBeInTheDocument()
 		);
@@ -508,7 +508,7 @@ describe("Discovery popout — '⊞ All actions' button", () => {
 			fireEvent.click(fab);
 		});
 		// Float mode: ".ba-actions-trigger" header button replaces the left-column "⊞ All actions"
-		await waitFor(() => screen.getByTitle(/PingOne Identity/i));
+		await waitFor(() => screen.getByRole("dialog", { name: /AI Agent/i }));
 		expect(document.querySelector(".ba-actions-trigger")).toBeInTheDocument();
 	});
 
@@ -518,10 +518,10 @@ describe("Discovery popout — '⊞ All actions' button", () => {
 		await act(async () => {
 			fireEvent.click(fab);
 		});
-		// Float mode: ".ba-actions-trigger" header button opens the discovery popout
-		await waitFor(() => screen.getByTitle(/PingOne Identity/i));
-		const actionsBtn = document.querySelector(".ba-actions-trigger");
-		fireEvent.click(actionsBtn);
+		// Float mode: "Actions" button opens the discovery popout
+		await waitFor(() => screen.getByRole("dialog", { name: /AI Agent/i }));
+		const actionsBtn = document.querySelector(".ba-actions-trigger[aria-haspopup='dialog']");
+		await act(async () => { fireEvent.click(actionsBtn); });
 		await waitFor(() =>
 			expect(screen.getByRole("dialog", { name: /Action browser/i })).toBeInTheDocument()
 		);
