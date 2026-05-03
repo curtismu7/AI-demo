@@ -27,6 +27,7 @@ const stubConfig: GatewayConfig = {
   host: '127.0.0.1',
   clientId: 'test-client-id',
   clientSecret: 'test-client-secret',
+  tokenEndpointAuthMethod: 'basic',
   tokenEndpoint: 'https://auth.example.com/token',
   gatewayResourceUri: GATEWAY_AUDIENCE,
   mcpOlbWsUrl: 'ws://localhost:8080',
@@ -36,6 +37,7 @@ const stubConfig: GatewayConfig = {
   pingAuthorizeEndpoint: '',
   pingAuthorizeWorkerId: '',
   hitlServiceUrl: '',
+  introspectionEndpoint: '',
   devBypass: false,
 };
 

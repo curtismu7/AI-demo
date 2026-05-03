@@ -113,7 +113,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       setAuditHeader(res);
       res.writeHead(401, {
         'Content-Type': 'application/json',
-        'WWW-Authenticate': 'Bearer error="invalid_token", error_description="Token is revoked or no longer active"',
+        'WWW-Authenticate': `Bearer realm="PingOne", resource_metadata="${config.gatewayResourceUri}/.well-known/mcp-server", error="invalid_token", error_description="Token is revoked or no longer active"`,
       });
       res.end(JSON.stringify({
         error: 'login_required',
@@ -138,7 +138,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
         setAuditHeader(res);
         res.writeHead(401, {
           'Content-Type': 'application/json',
-          'WWW-Authenticate': `Bearer error="${err.code}", error_description="${err.message}"`,
+          'WWW-Authenticate': `Bearer realm="PingOne", resource_metadata="${config.gatewayResourceUri}/.well-known/mcp-server", error="${err.code}", error_description="${err.message}"`,
         });
         res.end(JSON.stringify({ error: err.code, message: err.message, required_scopes: ['banking:read'], login_required: true }));
         return;
@@ -163,7 +163,10 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
     if (authzDecision.decision !== 'PERMIT') {
       setAuditHeader(res);
       const statusCode = authzDecision.decision === 'INDETERMINATE' ? 403 : 403;
-      res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+      res.writeHead(statusCode, {
+        'Content-Type': 'application/json',
+        'WWW-Authenticate': `Bearer realm="PingOne", resource_metadata="${config.gatewayResourceUri}/.well-known/mcp-server"`,
+      });
       res.end(
         JSON.stringify(
           authzDecision.decision === 'INDETERMINATE'
