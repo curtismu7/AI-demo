@@ -109,8 +109,9 @@ export default function DemoDataPage({ user, onLogout }) {
   const [typeSlots, setTypeSlots] = useState(() => defaultTypeSlots(ACCOUNT_TYPES));
   const [accountProfiles, setAccountProfiles] = useState({});
   const [accountProfileSaving, setAccountProfileSaving] = useState(false);
-  /** Global step-up thresholds — synced with the $ Thresholds dashboard widget via /api/config/thresholds */
-  const [confirmThreshUsd, setConfirmThreshUsd] = useState('500');
+  /** Global thresholds — synced with Demo Controls widget via /api/config/thresholds */
+  /** confirmThreshUsd: HITL consent gate (default $250); mfaThreshUsd: step-up MFA (default $500) */
+  const [confirmThreshUsd, setConfirmThreshUsd] = useState('250');
   const [mfaThreshUsd, setMfaThreshUsd] = useState('500');
   const [threshLoading, setThreshLoading] = useState(false);
   const [threshSaving, setThreshSaving] = useState(false);
@@ -395,12 +396,12 @@ export default function DemoDataPage({ user, onLogout }) {
     loadP1azFlags();
   }, [loadP1azFlags]);
 
-  /** Global thresholds — same endpoint as the $ Thresholds dashboard widget */
+  /** Global thresholds — same endpoint as Demo Controls widget */
   const loadGlobalThresholds = useCallback(async () => {
     setThreshLoading(true);
     try {
       const { data } = await axios.get('/api/config/thresholds');
-      setConfirmThreshUsd(String(data.confirm_threshold_usd ?? 500));
+      setConfirmThreshUsd(String(data.confirm_threshold_usd ?? 250));
       setMfaThreshUsd(String(data.mfa_threshold_usd ?? 500));
     } catch (_) {
       // non-critical; fields keep their default
