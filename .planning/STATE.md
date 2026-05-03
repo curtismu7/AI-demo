@@ -21,12 +21,17 @@ progress:
 
 ## Current Position
 
-Phase: 265 — PLANNED, ready for execution
-Next phase: 265 (demo-data-page-create-demo-user-with-may-act-p1mfa-registrat) — run `/gsd-execute-phase 265`
+Phase: 265 — COMPLETE ✓
+Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-...) — available for planning
 
 ## Recent Progress
 
-✅ **Phase 265 PLANNED** (2026-05-03) — 265-01-PLAN.md + 265-02-PLAN.md verified, 0 plan-checker blockers
+✅ **Phase 265 COMPLETE** (2026-05-03)
+
+- Plan 265-01: Created `banking_api_server/routes/demoProvisioning.js` with POST `/api/demo/create-user` endpoint; admin-authenticated route creates PingOne user with mayAct custom attribute (camelCase JSON object) + email OTP MFA enrollment; registered in server.js at /api/demo path
+- Plan 265-02: Added "Create Demo User" UI section to DemoDataPage.js at top above all sections; email input field + Provision button; inline step log with ✓/✗/⚠ status icons; credentials card on success; error inline for failures; dependent step skipping; appended 20 BEM CSS classes (demo-data-provision-*) with CSS variables for theme vars
+- Both plans: Full build pass (npm run build exit 0); no regressions; all 18 requirements (D-01–D-18) met; mayAct shape verified as camelCase with { sub: clientId } JSON object
+
 ✅ **Phase 264 COMPLETE** (2026-05-02)
 
 - Plan 264-01: Extended `mcpGatewayConfig.js` GET to include 6 pre-filled fields (`pingOneEnvUrl`, `pingOneResourceId`, `gatewayPublicUrl`, `upstreamMcpUrl`, `mcpScope`, `introspectEndpoint` derived as pingOneEnvUrl + `/as/introspect`); POST allowlist expanded with `mcp_gw_client_id`, `mcp_gw_public_url`, `mcp_scope`; persistence via `configStore.setRaw()`; 13 tests created and passing
