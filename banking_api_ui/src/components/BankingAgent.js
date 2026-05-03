@@ -46,7 +46,7 @@ import { isBankingAgentFloatingDefaultOpen } from "../utils/bankingAgentFloating
 import { isPublicMarketingAgentPath } from "../utils/embeddedAgentFabVisibility";
 import AccountDetailsPanel from "./AccountDetailsPanel";
 import AgentConsentModal from "./AgentConsentModal";
-import ComplianceModalContent from "./ComplianceModal";
+import ComplianceModal from "./ComplianceModal";
 import GatewayConsentModal from "./GatewayConsentModal";
 import { EDUCATION_COMMANDS } from "./education/educationCommands";
 import { EDU } from "./education/educationIds";
@@ -56,7 +56,6 @@ import OtpStepUpModal from "./OtpStepUpModal";
 import TokenChainDisplay from "./TokenChainDisplay";
 import { MarkdownContent } from "./shared/MarkdownText";
 import TransactionConsentModal from "./TransactionConsentModal";
-import FloatingPanel from "./FloatingPanel";
 import "./BankingAgent.css";
 import { postAppEvent } from "../services/appEventClient";
 
@@ -1616,6 +1615,8 @@ export default function BankingAgent({
   }, [showDiscovery, discoverySearch]);
 
   const [nlInput, setNlInput] = useState("");
+  const [inputHistory, setInputHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
   const [selectedLlmProvider, setSelectedLlmProvider] = useState('helix');
@@ -7214,31 +7215,20 @@ export default function BankingAgent({
                 </div>
               )}
 
-              {/* Compliance 12-step panel — floating modal (draggable, resizable, pop-out) */}
-              {showCompliancePanel && complianceSlideout && (
-                <FloatingPanel
-                  title="MCP Compliance Checklist"
-                  defaultWidth={380}
-                  defaultHeight={700}
-                  defaultX={252}
-                  defaultY={72}
-                  minWidth={300}
-                  minHeight={400}
-                  className="ba-compliance-floating"
-                >
-                  <ComplianceModalContent
-                    complianceStripState={complianceStripState}
-                    messages={messages}
-                    onClearSteps={() => {
-                      try {
-                        agentFlowDiagram.resetComplianceSteps();
-                      } catch (_) {}
-                    }}
-                    CHIP_APPLICABLE_STEPS={CHIP_APPLICABLE_STEPS}
-                    getStepSkipExplanation={getStepSkipExplanation}
-                  />
-                </FloatingPanel>
-              )}
+              {/* Compliance 12-step panel — draggable, resizable modal */}
+              <ComplianceModal
+                open={showCompliancePanel && complianceSlideout}
+                onClose={() => setComplianceSlideout(false)}
+                complianceStripState={complianceStripState}
+                messages={messages}
+                onClearSteps={() => {
+                  try {
+                    agentFlowDiagram.resetComplianceSteps();
+                  } catch (_) {}
+                }}
+                CHIP_APPLICABLE_STEPS={CHIP_APPLICABLE_STEPS}
+                getStepSkipExplanation={getStepSkipExplanation}
+              />
 
               {/* Bottom input bar */}
               <div className="ba-bottom">
@@ -7248,11 +7238,35 @@ export default function BankingAgent({
                       ref={nlInputRef}
                       className="ba-input"
                       value={nlInput}
-                      onChange={(e) => setNlInput(e.target.value)}
+                      onChange={(e) => {
+                        setNlInput(e.target.value);
+                        setHistoryIndex(-1);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
+                          if (nlInput.trim()) {
+                            const newHistory = [nlInput, ...inputHistory].slice(0, 10);
+                            setInputHistory(newHistory);
+                          }
                           handleNaturalLanguage();
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          const newIndex = Math.min(historyIndex + 1, inputHistory.length - 1);
+                          if (newIndex >= 0 && newIndex < inputHistory.length) {
+                            setHistoryIndex(newIndex);
+                            setNlInput(inputHistory[newIndex]);
+                          }
+                        } else if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          if (historyIndex > 0) {
+                            const newIndex = historyIndex - 1;
+                            setHistoryIndex(newIndex);
+                            setNlInput(inputHistory[newIndex]);
+                          } else if (historyIndex === 0) {
+                            setHistoryIndex(-1);
+                            setNlInput("");
+                          }
                         }
                       }}
                       placeholder={
