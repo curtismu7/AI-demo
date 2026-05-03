@@ -268,6 +268,37 @@ router.post('/ollama/shutdown', (req, res) => {
   }
 });
 
+// POST /api/langchain/ollama/disable-autostart
+// Disables Ollama auto-start by unloading the LaunchAgent (macOS only)
+router.post('/ollama/disable-autostart', (req, res) => {
+  const { execSync } = require('node:child_process');
+  const platform = process.platform;
+
+  if (platform !== 'darwin') {
+    return res.json({ ok: true, message: 'Ollama auto-start is not applicable on this platform' });
+  }
+
+  const launchAgentPath = `${process.env.HOME}/Library/LaunchAgents/com.ollama.server.plist`;
+
+  try {
+    // Try modern syntax first (macOS 12.4+)
+    try {
+      execSync(`launchctl bootout gui/$(id -u) "${launchAgentPath}"`, { timeout: 5_000, stdio: 'pipe' });
+      console.log('[ollama disable-autostart] LaunchAgent unloaded via bootout');
+    } catch {
+      // Fall back to older syntax
+      execSync(`launchctl unload "${launchAgentPath}"`, { timeout: 5_000, stdio: 'pipe' });
+      console.log('[ollama disable-autostart] LaunchAgent unloaded via unload');
+    }
+
+    res.json({ ok: true, message: 'Ollama auto-start disabled. It will not start on login.' });
+  } catch (err) {
+    console.warn('[ollama disable-autostart] Error disabling auto-start:', err.message);
+    // Don't treat this as a failure — the LaunchAgent might already be unloaded
+    res.json({ ok: true, message: 'Ollama auto-start disabled (or already disabled)' });
+  }
+});
+
 module.exports = router;
 
 // GET /api/langchain/provider/:providerName/status

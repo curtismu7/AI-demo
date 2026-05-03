@@ -13,7 +13,10 @@ export default function OllamaPanel() {
   const [ollamaSaving, setOllamaSaving] = useState(false);
   const [ollamaShuttingDown, setOllamaShuttingDown] = useState(false);
   const [showShutdownModal, setShowShutdownModal] = useState(false);
+  const [showPersonalMachineModal, setShowPersonalMachineModal] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [ollamaDisablingAutoStart, setOllamaDisablingAutoStart] = useState(false);
+  const [showDisableModal, setShowDisableModal] = useState(false);
 
   const handleOllamaCheck = async () => {
     setOllamaChecking(true);
@@ -42,7 +45,12 @@ export default function OllamaPanel() {
     }
   };
 
-  const handleOllamaPull = async () => {
+  const handleOllamaPull = () => {
+    setShowPersonalMachineModal(true);
+  };
+
+  const confirmPersonalMachine = async () => {
+    setShowPersonalMachineModal(false);
     setOllamaPulling(true);
     notifyInfo(`Pulling ${ollamaModel}… this may take a few minutes`);
     try {
@@ -72,6 +80,25 @@ export default function OllamaPanel() {
       notifyError(`Shutdown failed: ${e.response?.data?.error || e.message}`);
     } finally {
       setOllamaShuttingDown(false);
+    }
+  };
+
+  const handleDisableAutoStart = () => {
+    setShowDisableModal(true);
+  };
+
+  const confirmDisableAutoStart = async () => {
+    setShowDisableModal(false);
+    setOllamaDisablingAutoStart(true);
+    try {
+      await axios.post('/api/langchain/ollama/disable-autostart');
+      notifySuccess('Ollama auto-start disabled. It will not start on login.');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      handleOllamaCheck();
+    } catch (e) {
+      notifyError(`Failed to disable auto-start: ${e.response?.data?.error || e.message}`);
+    } finally {
+      setOllamaDisablingAutoStart(false);
     }
   };
 
@@ -111,8 +138,8 @@ export default function OllamaPanel() {
         </p>
       </div>
       <p className="cfg-section-desc">
-        Ollama provides local LLM inference as a fallback when the keyword parser doesn't recognise a command typed into the banking agent.
-        The agent always tries keyword matching first (instant, no network), then falls back to Ollama for ambiguous requests.
+        <strong>Helix is the default LLM provider</strong> for natural language understanding in the banking agent. Ollama is an optional local LLM alternative — useful if you want offline inference on your machine.
+        The banking agent always tries keyword matching first (instant, no network), then falls back to your selected LLM provider for ambiguous requests. You can switch between providers using the chips above the agent input.
       </p>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
         <button type="button" className="demo-data-btn" onClick={handleOllamaCheck} disabled={ollamaChecking}>
@@ -147,6 +174,9 @@ export default function OllamaPanel() {
         <button type="button" className="demo-data-btn" style={{ background: '#dc2626', color: '#fff' }} onClick={handleOllamaShutdown} disabled={ollamaShuttingDown}>
           {ollamaShuttingDown ? 'Shutting down…' : '🛑 Shut Down Ollama'}
         </button>
+        <button type="button" className="demo-data-btn" style={{ background: '#f97316', color: '#fff' }} onClick={handleDisableAutoStart} disabled={ollamaDisablingAutoStart}>
+          {ollamaDisablingAutoStart ? 'Disabling…' : '⛔ Disable Auto-Start'}
+        </button>
       </div>
       <details style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#374151' }}>
         <summary style={{ cursor: 'pointer', fontWeight: 600 }}>How to change the model permanently</summary>
@@ -157,6 +187,14 @@ export default function OllamaPanel() {
           <li>Use <strong>Pull Model</strong> above if the model isn't downloaded yet</li>
         </ol>
         <p style={{ marginTop: '0.5rem' }}>Ollama starts automatically at login via a macOS LaunchAgent (<code>~/Library/LaunchAgents/com.ollama.server.plist</code>). Logs: <code>/tmp/ollama.log</code>.</p>
+      </details>
+      <details style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#374151' }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Disable Ollama auto-start</summary>
+        <ol style={{ margin: '0.5rem 0 0 1.2rem', lineHeight: 1.7 }}>
+          <li>To prevent Ollama from starting at login, run:<br/><code style={{ display: 'block', marginTop: '0.25rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', borderRadius: 4 }}>launchctl unload ~/Library/LaunchAgents/com.ollama.server.plist</code></li>
+          <li>To re-enable auto-start later, run:<br/><code style={{ display: 'block', marginTop: '0.25rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', borderRadius: 4 }}>launchctl load ~/Library/LaunchAgents/com.ollama.server.plist</code></li>
+        </ol>
+        <p style={{ marginTop: '0.5rem' }}>Note: Helix is the default LLM provider. Ollama is optional and only needed if you want to use local inference.</p>
       </details>
 
       {showShutdownModal && (
@@ -176,6 +214,53 @@ export default function OllamaPanel() {
               </button>
               <button type="button" className="demo-data-btn" style={{ background: '#dc2626', color: '#fff' }} onClick={confirmShutdown} disabled={ollamaShuttingDown}>
                 {ollamaShuttingDown ? 'Shutting down…' : 'Shut Down'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPersonalMachineModal && (
+        <div className="modal-overlay" onClick={() => setShowPersonalMachineModal(false)} onKeyDown={(e) => e.key === 'Escape' && setShowPersonalMachineModal(false)} role="presentation">
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>⚠️ Confirm Personal Machine</h2>
+              <button type="button" className="modal-close" onClick={() => setShowPersonalMachineModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '1rem', fontWeight: 600, color: '#991b1b' }}>Is this your personal machine, not a Ping Identity workstation?</p>
+              <p style={{ marginBottom: '1rem', color: '#374151' }}>Ollama is <strong>NOT allowed on Ping Identity infrastructure</strong>. Running local software on corporate machines violates Ping Identity security policy.</p>
+              <p style={{ fontSize: '0.9rem', color: '#666' }}>Only proceed if you are running this on your personal computer.</p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button type="button" className="demo-data-btn" style={{ background: '#d1d5db', color: '#1f2937' }} onClick={() => setShowPersonalMachineModal(false)}>
+                Cancel
+              </button>
+              <button type="button" className="demo-data-btn" style={{ background: '#059669', color: '#fff' }} onClick={confirmPersonalMachine} disabled={ollamaPulling}>
+                {ollamaPulling ? 'Pulling…' : 'Yes, Pull Model'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDisableModal && (
+        <div className="modal-overlay" onClick={() => setShowDisableModal(false)} onKeyDown={(e) => e.key === 'Escape' && setShowDisableModal(false)} role="presentation">
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Disable Ollama Auto-Start?</h2>
+              <button type="button" className="modal-close" onClick={() => setShowDisableModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '1rem' }}>This will prevent Ollama from starting automatically at login.</p>
+              <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>To re-enable auto-start later, run:<br/><code style={{ display: 'block', marginTop: '0.25rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', borderRadius: 4 }}>launchctl load ~/Library/LaunchAgents/com.ollama.server.plist</code></p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button type="button" className="demo-data-btn" style={{ background: '#d1d5db', color: '#1f2937' }} onClick={() => setShowDisableModal(false)}>
+                Cancel
+              </button>
+              <button type="button" className="demo-data-btn" style={{ background: '#f97316', color: '#fff' }} onClick={confirmDisableAutoStart} disabled={ollamaDisablingAutoStart}>
+                {ollamaDisablingAutoStart ? 'Disabling…' : 'Disable Auto-Start'}
               </button>
             </div>
           </div>

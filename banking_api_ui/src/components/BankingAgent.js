@@ -1478,7 +1478,7 @@ export default function BankingAgent({
   const [nlInput, setNlInput] = useState("");
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
-  const [selectedLlmProvider, setSelectedLlmProvider] = useState('auto');
+  const [selectedLlmProvider, setSelectedLlmProvider] = useState('helix');
   const [availableLlmProviders, setAvailableLlmProviders] = useState([]);
   /** Set when returning from PingOne with a pending banking NL line to run after session exists. */
   const [nlResumeAfterAuth, setNlResumeAfterAuth] = useState(null);
