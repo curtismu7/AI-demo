@@ -200,13 +200,7 @@ function parseBanking(t) {
   if (/\b(sensitive account details|full account|routing number|account number|account details)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'sensitive_account_details' } };
   }
-  if (/\b(show|list|get|see|view|pull|display).*(accounts?|balances?)\b|\bmy accounts?\b(?!\s+balance)|\ball\b.*\baccounts?\b|\bcustomer accounts?\b/.test(t)) {
-    return { kind: 'banking', banking: { action: 'accounts' } };
-  }
-  if (/\b(transaction|history|activity|recent)\b/.test(t)) {
-    return { kind: 'banking', banking: { action: 'transactions' } };
-  }
-  // Balance: explicit account id, or phrases like "my balance", "current balance", "check balance"
+  // Balance: explicit account id, or phrases like "my balance", "current balance", "check balance" — MUST precede accounts check
   if (/\bbalance\b/.test(t)) {
     const m = t.match(/acc[_a-z0-9-]{6,}/i);
     if (m) return { kind: 'banking', banking: { action: 'balance', params: { accountId: m[0] } } };
@@ -217,6 +211,13 @@ function parseBanking(t) {
     ) {
       return { kind: 'banking', banking: { action: 'balance' } };
     }
+  }
+  // Accounts: show/list/get/what accounts
+  if (/\b(what|show|list|get|see|view|pull|display).*(accounts?)\b|\bmy accounts?\b(?!\s+balance)|\ball\b.*\baccounts?\b|\bcustomer accounts?\b/.test(t)) {
+    return { kind: 'banking', banking: { action: 'accounts' } };
+  }
+  if (/\b(transaction|history|activity|recent)\b/.test(t)) {
+    return { kind: 'banking', banking: { action: 'transactions' } };
   }
   if (/\btransfer\b/.test(t)) {
     const amountMatch = t.match(/\$?\s*(\d+(?:\.\d+)?)/);

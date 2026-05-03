@@ -5424,7 +5424,7 @@ export default function BankingAgent({
                     aria-label="Collapse agent"
                     title="Collapse agent"
                   >
-                    ▼
+                    ↑
                   </button>
                 )}
               </div>

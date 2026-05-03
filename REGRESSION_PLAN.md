@@ -82,6 +82,52 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-03 — GSD Phase 266: Demo Guide prompt alignment + agent NL parser robustness
+
+**Goal:** Ensure all prompts in AgentDemoGuide work with agent regex intent detection (unless LLM-based).  
+**Trigger:** User tested "What accounts do I have?" from demo guide → agent fell back to LLM instead of heuristic path.
+
+**Root cause:** `nlIntentParser.js` accounts pattern required verb like `(show|list|get)` but NOT `what`. Demo guide suggested "What accounts do I have?" which didn't match heuristic regex, fell back to fallback message.
+
+**Fixes:**
+1. **nlIntentParser.js** — Added `what` to accounts regex: `\b(what|show|list|get|see|view|pull|display).*(accounts?)\b`
+2. **Reordered checks:** Moved balance check BEFORE accounts check so "What is my current balance?" matches balance (not accounts).
+3. **AgentDemoGuide.jsx** — Verified all user-facing prompts work with heuristic patterns (already matched after NL parser fix).
+
+**Verification:**
+- `npm test -- --testPathPattern="nlIntentParser"` → 63/63 tests pass
+- Balance test "What is my current balance?" → matches balance action (not accounts)
+- Accounts test now passes with "what" pattern
+- `npm run build` (UI) → exit 0
+- Demo guide prompts all work via heuristic (no LLM fallback for basic banking queries)
+
+**Files changed:**
+- `banking_api_server/services/nlIntentParser.js` (reordered balance/accounts checks, added "what" to accounts pattern)
+
+**Do not break:**
+- Balance check must precede accounts check (balance is more specific; "what" is shared keyword)
+- Heuristic parser must handle "what" for accounts, balance, transactions
+- Transfer/deposit/withdraw remain unchanged
+- Test chips continue to work
+
+**Impact:** Users can now follow demo guide prompts → agent responds with heuristic path (instant, no LLM) instead of fallback. Reduces latency for common banking queries.
+
+### 2026-05-03 — UI: Agent message bubbles visibility (blue user / red assistant) — ALL MODES
+
+- **Symptom:** User requests in agent chat hard to read. Floating agent had different colors than main agent. Message bubbles lacked contrast across all agent layouts.
+- **Fix:** Unified message bubble colors across ALL agent modes:
+  1. **Default mode:** `--ba-user-bg: #e3eafe` → `#3b82f6`, `--ba-agent-bg: #f5f7fa` → `#ef4444`
+  2. **Light mode:** `--ba-user-bg: #4169e1` → `#3b82f6`, `--ba-agent-bg: #eef2ff` → `#ef4444`
+  3. **Floating light mode:** `--ba-user-bg: #4169e1` → `#3b82f6`, `--ba-agent-bg: #eef2ff` → `#ef4444`
+  4. **Floating dark mode:** `--ba-user-bg: #5b7ef0` → `#3b82f6` (kept red)
+  5. **All modes:** `--ba-user-txt` → `#ffffff`, `--ba-agent-txt` → `#ffffff` (white text)
+- **Files changed:** `banking_api_ui/src/components/BankingAgent.css`
+  - Lines 140–143 (default mode)
+  - Lines 556–559 (light mode)
+  - Lines 580–583 (floating light mode)
+  - Line 592 (floating dark mode user bg)
+- **Do not break:** ALL agent layouts (floating, embedded, light, dark) must use `#3b82f6` (user, blue) + `#ef4444` (assistant, red) with white text. Message bubble styling applies uniformly across all render modes.
+
 ### 2026-05-03 — Critical: Consent threshold was $500, should be $250; MFA was $250, should be $500
 
 - **Symptom:** User transferred $300 without consent required. Rules are: > $250 = HITL consent, > $500 = MFA. Transfer executed when it should have required consent + OTP.
@@ -1718,3 +1764,12 @@ cd ..
 - **Files modified:** `banking_api_ui/src/services/agentFlowDiagramService.js`, `banking_api_ui/src/components/BankingAgent.js`
 - **Regression check:** `npm run build` → exit 0
 - **Do not break:** The visual relationship between hitting an agent command and it indicating that the MCP / Gateway consent workflow is kicking in.
+
+**Date:** May 3, 2026
+**Area:** Agent / NL Intent Parser
+- **Symptom:** Banking transactions via agent (withdraw, transfer, deposit) returned "❌ From account not found" or "❌ To account not found" errors.
+- **Root Cause:** NL intent parser (`geminiNlIntent.js`) extracts account type strings (e.g., "checking", "savings") from user messages. Heuristic agent (`bankingAgentLangGraphService.js`) validated the account existed but returned the type string instead of the account UUID in params. MCP tool endpoint expected account ID, not type → `dataStore.getAccountById("checking")` failed.
+- **Fix:** After validating account exists via `accounts?.find()`, resolve the account type to actual account ID before returning params to frontend. Applied to three transaction types: (1) withdraw — resolve `fromId` to `fromAcct.id`; (2) deposit — resolve `toId` to `toAcct.id`; (3) transfer — resolve both `fromId` and `toId` to account UUIDs.
+- **Files modified:** `banking_api_server/services/bankingAgentLangGraphService.js` (lines 109-110, 143, 165)
+- **Regression check:** Agent: Click "💳 Withdraw $50" → transaction completes without "From account not found". NL: "transfer $100 from checking to savings" → transaction completes with real account IDs in logs. `cd banking_api_ui && npm run build` → exit 0.
+- **Do not break:** Form-based withdrawal/transfer/deposit (ActionForm route). Account validation logic for all transaction types. Token exchange and HITL consent flows.

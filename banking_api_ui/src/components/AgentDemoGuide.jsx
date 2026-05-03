@@ -21,7 +21,8 @@
  * Reference: See /architecture/flow for live compliance flow diagram.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './AgentDemoGuide.css';
 
 const ALL_12_STEPS = [
@@ -298,8 +299,116 @@ export default function AgentDemoGuide({ onClose }) {
   const [activeScenario, setActiveScenario] = useState('read-only');
   const [expandedSteps, setExpandedSteps] = useState({});
   const [copiedStepId, setCopiedStepId] = useState(null);
+  const [size, setSize] = useState({ width: 1000, height: 750 });
+  const [pos, setPos] = useState({ x: 20, y: 80 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStart, setResizeStart] = useState({ mouseX: 0, mouseY: 0, posX: 0, posY: 0, width: 1000, height: 750, side: null });
+  const modalRef = useRef(null);
+  const headerRef = useRef(null);
+  const broadcastChannelRef = useRef(null);
 
   const current = DEMO_SCENARIOS.find((s) => s.id === activeScenario);
+  const currentIndex = DEMO_SCENARIOS.findIndex((s) => s.id === activeScenario);
+
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      const prevScenario = DEMO_SCENARIOS[currentIndex - 1];
+      setActiveScenario(prevScenario.id);
+      setExpandedSteps({});
+    }
+  };
+
+  const handleNext = () => {
+    if (currentIndex < DEMO_SCENARIOS.length - 1) {
+      const nextScenario = DEMO_SCENARIOS[currentIndex + 1];
+      setActiveScenario(nextScenario.id);
+      setExpandedSteps({});
+    }
+  };
+
+  // Broadcast state to pop-out window when data changes
+  useEffect(() => {
+    try {
+      if (!broadcastChannelRef.current) {
+        broadcastChannelRef.current = new BroadcastChannel('demo-guide-modal');
+      }
+      broadcastChannelRef.current.postMessage({
+        type: 'state-update',
+        data: {
+          activeScenario,
+          expandedSteps,
+        }
+      });
+    } catch (e) {
+      console.warn('BroadcastChannel not supported:', e.message);
+    }
+  }, [activeScenario, expandedSteps]);
+
+  // Drag handler
+  const handleMouseDownHeader = (e) => {
+    if (e.target.closest('button')) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - pos.x, y: e.clientY - pos.y });
+  };
+
+  // Resize handler for all sides
+  const handleMouseDownResize = (e, side) => {
+    e.preventDefault();
+    setIsResizing(true);
+    setResizeStart({ mouseX: e.clientX, mouseY: e.clientY, posX: pos.x, posY: pos.y, width: size.width, height: size.height, side });
+  };
+
+  // Mouse move for drag/resize
+  useEffect(() => {
+    if (!isDragging && !isResizing) return;
+
+    const handleMouseMove = (e) => {
+      if (isDragging) {
+        setPos({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+      }
+      if (isResizing) {
+        const deltaX = e.clientX - resizeStart.mouseX;
+        const deltaY = e.clientY - resizeStart.mouseY;
+        const side = resizeStart.side;
+
+        let newWidth = resizeStart.width;
+        let newHeight = resizeStart.height;
+        let newX = resizeStart.posX;
+        let newY = resizeStart.posY;
+
+        if (side === 'left' || side === 'top-left' || side === 'bottom-left') {
+          newWidth = Math.max(600, resizeStart.width - deltaX);
+          newX = resizeStart.posX + resizeStart.width - newWidth;
+        } else if (side === 'right' || side === 'top-right' || side === 'bottom-right') {
+          newWidth = Math.max(600, resizeStart.width + deltaX);
+        }
+
+        if (side === 'top' || side === 'top-left' || side === 'top-right') {
+          newHeight = Math.max(500, resizeStart.height - deltaY);
+          newY = resizeStart.posY + resizeStart.height - newHeight;
+        } else if (side === 'bottom' || side === 'bottom-left' || side === 'bottom-right') {
+          newHeight = Math.max(500, resizeStart.height + deltaY);
+        }
+
+        setSize({ width: newWidth, height: newHeight });
+        setPos({ x: newX, y: newY });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, isResizing, dragStart, resizeStart]);
 
   const toggleStepExpanded = (stepIndex) => {
     setExpandedSteps((prev) => ({
@@ -314,14 +423,66 @@ export default function AgentDemoGuide({ onClose }) {
     setTimeout(() => setCopiedStepId(null), 2000);
   };
 
-  return (
-    <div className="agent-demo-guide-overlay">
-      <div className="agent-demo-guide-modal">
-        {/* Header */}
+  return createPortal(
+    <>
+      <div className="agent-demo-guide-overlay" />
+      <div
+        ref={modalRef}
+        className="agent-demo-guide-modal"
+        style={{
+          left: `${pos.x}px`,
+          top: `${pos.y}px`,
+          width: `${size.width}px`,
+          height: `${size.height}px`,
+        }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="adg-modal-title"
+      >
+        {/* Header — draggable */}
+        <div
+          ref={headerRef}
+          className="adg-drag-header"
+          onMouseDown={handleMouseDownHeader}
+          style={{ cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none' }}
+        >
+          <h2 id="adg-modal-title" className="adg-modal-title">
+            📚 Banking Agent Demo Guide
+          </h2>
+          <div className="compliance-modal__header-buttons">
+            <button
+              type="button"
+              className="adg-popout-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                try {
+                  sessionStorage.setItem('demo_guide_modal_popout', JSON.stringify({
+                    activeScenario,
+                    expandedSteps,
+                  }));
+                } catch (_) {}
+                window.open('/demo-guide-popout', 'DemoGuidePopout', 'width=1150,height=800,resizable=yes,scrollbars=yes');
+                onClose();
+              }}
+              aria-label="Open in new window"
+              title="Open modal in new window"
+            >
+              ⧉
+            </button>
+            <button
+              type="button"
+              className="adg-close-btn"
+              onClick={onClose}
+              aria-label="Close modal"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Header info */}
         <div className="adg-header">
-          <h1>📚 Banking Agent Demo Guide</h1>
           <p className="adg-tagline">Real request scenarios mapped to 12 compliance steps. See /architecture/flow for live diagram.</p>
-          <button type="button" className="adg-close-btn" onClick={onClose}>✕</button>
         </div>
 
         <div className="adg-container">
@@ -436,12 +597,70 @@ export default function AgentDemoGuide({ onClose }) {
                       <li>Thresholds: HITL $250, MFA $500 (verify in Demo Config)</li>
                     </ul>
                   </div>
+
+                  {/* Navigation buttons */}
+                  <div className="adg-nav-buttons">
+                    <button
+                      type="button"
+                      className="adg-nav-btn adg-nav-btn--prev"
+                      onClick={handlePrevious}
+                      disabled={currentIndex === 0}
+                      aria-label="Previous scenario"
+                    >
+                      ← Previous
+                    </button>
+                    <div className="adg-scenario-counter">
+                      {currentIndex + 1} / {DEMO_SCENARIOS.length}
+                    </div>
+                    <button
+                      type="button"
+                      className="adg-nav-btn adg-nav-btn--next"
+                      onClick={handleNext}
+                      disabled={currentIndex === DEMO_SCENARIOS.length - 1}
+                      aria-label="Next scenario"
+                    >
+                      Next →
+                    </button>
+                    <button
+                      type="button"
+                      className="adg-nav-btn adg-nav-btn--close"
+                      onClick={onClose}
+                      aria-label="Close guide"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               </>
             )}
           </div>
         </div>
+
+        {/* Resize handles — all sides and corners */}
+        {['top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].map((side) => {
+          const cursorMap = {
+            'top': 'ns-resize',
+            'bottom': 'ns-resize',
+            'left': 'ew-resize',
+            'right': 'ew-resize',
+            'top-left': 'nwse-resize',
+            'top-right': 'nesw-resize',
+            'bottom-left': 'nesw-resize',
+            'bottom-right': 'nwse-resize',
+          };
+          return (
+            <button
+              key={side}
+              type="button"
+              className={`adg-resize-handle adg-resize-handle--${side}`}
+              onMouseDown={(e) => handleMouseDownResize(e, side)}
+              style={{ cursor: isResizing ? cursorMap[side] : 'pointer' }}
+              aria-label={`Resize modal from ${side}`}
+            />
+          );
+        })}
       </div>
-    </div>
+    </>,
+    document.body
   );
 }
