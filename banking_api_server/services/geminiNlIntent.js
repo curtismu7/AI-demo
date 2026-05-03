@@ -115,39 +115,24 @@ async function parseWithOllama(userMessage, context = {}) {
  * @param {string} [provider='auto'] - 'auto' (heuristic→ollama), 'ollama' (skip heuristic), 'helix', etc.
  * @returns {Promise<{ source: 'ollama'|'heuristic'|'helix'|'helix_fallback', result: object }>}
  */
-async function parseNaturalLanguage(message, context = {}, provider = 'auto') {
-  // If provider is explicitly 'ollama', skip heuristic and go straight to LLM
-  if (provider === 'ollama') {
-    const ollama = await parseWithOllama(message, context).catch((e) => {
-      console.warn('[nlIntent] Ollama error (forced provider):', e.message);
-      return null;
-    });
-    if (ollama) {
-      const { result, rejected, reason } = sanitizeNlResult(ollama, message);
-      if (rejected) console.warn('[nlIntent] Ollama output rejected:', reason);
-      return { source: 'ollama', result: result || { kind: 'none', message: 'Ollama could not parse input' } };
-    }
-    // Ollama failed, fall back to heuristic
-    const heuristicResult = parseHeuristic(message);
-    return { source: 'heuristic', result: heuristicResult };
-  }
-
-  // If provider is explicitly 'helix' (or other non-auto), log it but fall back to auto for now
-  if (provider && provider !== 'auto') {
-    console.warn(`[nlIntent] Provider '${provider}' not yet implemented; using auto (heuristic→ollama)`);
-  }
-
-  // Auto mode (default): heuristic-first routing
-  // Heuristic handles all recognized commands instantly (zero cost, zero latency).
-  // Ollama is only attempted when heuristic returns kind:'none' (unrecognized input).
-
-  // 1. Heuristic first — instant, zero-cost, handles all known intents
+async function parseNaturalLanguage(message, context = {}, provider = 'auto', langchainConfig = {}) {
+  // 1. HEURISTIC FIRST — regex patterns for known banking actions (zero latency)
   const heuristicResult = parseHeuristic(message);
   if (heuristicResult && heuristicResult.kind !== 'none') {
     return { source: 'heuristic', result: heuristicResult };
   }
 
-  // 2. Try Ollama (local LLM) — only for unrecognized input
+  // 2. FALLBACK TO LLM — when heuristic doesn't recognize the input
+  // Use configured provider (Helix, Ollama, etc.) based on langchainConfig
+  const selectedProvider = provider === 'auto' ? (langchainConfig?.provider || 'ollama') : provider;
+
+  if (selectedProvider === 'helix') {
+    // TODO: Implement Helix LLM routing once real API call is added to helixLlmService
+    console.log('[nlIntent] Helix routing not yet implemented (stub only); falling back to heuristic');
+    return { source: 'heuristic', result: heuristicResult };
+  }
+
+  // Default to Ollama (local LLM)
   const ollama = await parseWithOllama(message, context).catch((e) => {
     console.warn('[nlIntent] Ollama error:', e.message);
     return null;
@@ -158,7 +143,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto') {
     return { source: rejected ? 'heuristic' : 'ollama', result };
   }
 
-  // 3. Final fallback: heuristic returns kind:'none' (unrecognized)
+  // 3. Final fallback: heuristic returns kind:'none' (unrecognized input, LLM unavailable)
   return { source: 'heuristic', result: heuristicResult };
 }
 

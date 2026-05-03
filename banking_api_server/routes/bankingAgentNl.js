@@ -25,7 +25,11 @@ router.post('/nl', async (req, res) => {
     const context = u
       ? { role: u.role, firstName: u.firstName }
       : { anonymous: true };
-    const { source, result } = await parseNaturalLanguage(message.trim(), context, provider);
+
+    // Pass langchain_config so NL routing can respect configured LLM provider (Helix, etc.)
+    const langchainConfig = req.session?.langchain_config || {};
+
+    const { source, result } = await parseNaturalLanguage(message.trim(), context, provider, langchainConfig);
     return res.json({ source, result });
   } catch (e) {
     console.error('[bankingAgentNl]', e);
