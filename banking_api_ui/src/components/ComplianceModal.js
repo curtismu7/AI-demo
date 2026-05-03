@@ -15,12 +15,12 @@ export default function ComplianceModal({
   CHIP_APPLICABLE_STEPS,
   getStepSkipExplanation,
 }) {
-  const [size, setSize] = useState({ width: 400, height: 550 });
-  const [pos, setPos] = useState({ x: window.innerWidth - 450, y: 80 });
+  const [size, setSize] = useState({ width: 420, height: 600 });
+  const [pos, setPos] = useState({ x: 20, y: 80 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0 });
+  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 420, height: 600, side: null });
   const modalRef = useRef(null);
   const headerRef = useRef(null);
 
@@ -31,11 +31,11 @@ export default function ComplianceModal({
     setDragStart({ x: e.clientX - pos.x, y: e.clientY - pos.y });
   };
 
-  // Resize handler
-  const handleMouseDownResize = (e) => {
+  // Resize handler for all sides
+  const handleMouseDownResize = (e, side) => {
     e.preventDefault();
     setIsResizing(true);
-    setResizeStart({ x: e.clientX, y: e.clientY, width: size.width, height: size.height });
+    setResizeStart({ x: e.clientX, y: e.clientY, width: size.width, height: size.height, side });
   };
 
   // Mouse move for drag/resize
@@ -49,10 +49,31 @@ export default function ComplianceModal({
       if (isResizing) {
         const deltaX = e.clientX - resizeStart.x;
         const deltaY = e.clientY - resizeStart.y;
-        setSize({
-          width: Math.max(300, resizeStart.width + deltaX),
-          height: Math.max(250, resizeStart.height + deltaY),
-        });
+        const side = resizeStart.side;
+
+        let newWidth = resizeStart.width;
+        let newHeight = resizeStart.height;
+        let newX = resizeStart.x;
+        let newY = resizeStart.y;
+
+        // Handle horizontal resize
+        if (side === 'left' || side === 'top-left' || side === 'bottom-left') {
+          newWidth = Math.max(300, resizeStart.width - deltaX);
+          newX = resizeStart.x + resizeStart.width - newWidth;
+        } else if (side === 'right' || side === 'top-right' || side === 'bottom-right') {
+          newWidth = Math.max(300, resizeStart.width + deltaX);
+        }
+
+        // Handle vertical resize
+        if (side === 'top' || side === 'top-left' || side === 'top-right') {
+          newHeight = Math.max(250, resizeStart.height - deltaY);
+          newY = resizeStart.y + resizeStart.height - newHeight;
+        } else if (side === 'bottom' || side === 'bottom-left' || side === 'bottom-right') {
+          newHeight = Math.max(250, resizeStart.height + deltaY);
+        }
+
+        setSize({ width: newWidth, height: newHeight });
+        setPos({ x: newX, y: newY });
       }
     };
 
@@ -116,20 +137,29 @@ export default function ComplianceModal({
           getStepSkipExplanation={getStepSkipExplanation}
         />
 
-        {/* Resize handle */}
-        <button
-          type="button"
-          className="compliance-modal__resize-handle"
-          onMouseDown={handleMouseDownResize}
-          onKeyDown={(e) => {
-            if (e.key === ' ' || e.key === 'Enter') {
-              e.preventDefault();
-              handleMouseDownResize(e);
-            }
-          }}
-          style={{ cursor: isResizing ? 'nwse-resize' : 'pointer' }}
-          aria-label="Resize modal"
-        />
+        {/* Resize handles — all sides and corners */}
+        {['top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].map((side) => {
+          const cursorMap = {
+            'top': 'ns-resize',
+            'bottom': 'ns-resize',
+            'left': 'ew-resize',
+            'right': 'ew-resize',
+            'top-left': 'nwse-resize',
+            'top-right': 'nesw-resize',
+            'bottom-left': 'nesw-resize',
+            'bottom-right': 'nwse-resize',
+          };
+          return (
+            <button
+              key={side}
+              type="button"
+              className={`compliance-modal__resize-handle compliance-modal__resize-handle--${side}`}
+              onMouseDown={(e) => handleMouseDownResize(e, side)}
+              style={{ cursor: isResizing ? cursorMap[side] : 'pointer' }}
+              aria-label={`Resize modal from ${side}`}
+            />
+          );
+        })}
       </div>
     </div>
   );

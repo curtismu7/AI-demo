@@ -4963,3 +4963,116 @@ button.ba-action-btn:hover {
 }
 
 /* End of Visual Refresh */
+
+/* ═════════════════════════════════════════════════════════════
+   MODERN DARK THEME — PHASE 1
+   ═════════════════════════════════════════════════════════════ */
+
+/* 1. Panel-level tokens — cascade to all children */
+.banking-agent-panel {
+  --ba-bg:        #0f172a;
+  --ba-surface:   rgba(30, 41, 59, 0.95);
+  --ba-border:    rgba(148, 163, 184, 0.15);
+  --ba-text:      #e2e8f0;
+  --ba-muted:     #94a3b8;
+  --ba-user-txt:  #ffffff;
+  --ba-agent-bg:  rgba(148, 163, 184, 0.08);
+  --ba-agent-txt: #e2e8f0;
+  --ba-accent:    #3b82f6;
+  --ba-accent-h:  #2563eb;
+  --ba-input-bg:  rgba(148, 163, 184, 0.05);
+  --ba-input-bd:  rgba(148, 163, 184, 0.2);
+  --ba-shadow:    0 8px 32px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(135deg, #0f172a 0%, #1a1f3a 100%);
+}
+
+/* 2. Header */
+.banking-agent-panel .ba-header {
+  background: rgba(15, 23, 42, 0.7);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  color: #f1f5f9;
+}
+.banking-agent-panel .ba-header-title,
+.banking-agent-panel .ba-header-name {
+  color: #f1f5f9;
+}
+
+/* 3. Messages area */
+.banking-agent-panel .ba-messages {
+  background: transparent;
+}
+
+/* 4. User bubble — gradient */
+.banking-agent-panel .banking-agent-msg.user .banking-agent-msg-bubble {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  border-bottom-right-radius: 4px;
+  border-bottom-left-radius: 16px;
+}
+
+/* 5. Assistant bubble — glass effect */
+.banking-agent-panel .banking-agent-msg.assistant .banking-agent-msg-bubble {
+  background: rgba(148, 163, 184, 0.1);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 16px;
+}
+
+/* 6. Input area */
+.banking-agent-panel .ba-bottom {
+  background: rgba(15, 23, 42, 0.7);
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+}
+.banking-agent-panel .ba-input {
+  background: rgba(148, 163, 184, 0.05);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #f1f5f9;
+  border-radius: 12px;
+}
+.banking-agent-panel .ba-input:focus {
+  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(59, 130, 246, 0.05);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+.banking-agent-panel .ba-input::placeholder {
+  color: #64748b;
+}
+
+/* 7. Send button — gradient */
+.banking-agent-panel .ba-send-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  border-radius: 10px;
+}
+.banking-agent-panel .ba-send-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+  transform: scale(1.03);
+}
+
+/* 8. Action chips */
+.banking-agent-panel .ba-action-chip {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+}
+.banking-agent-panel .ba-action-chip:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #bfdbfe;
+}
+
+/* 9. Scrollbar — dark variant */
+.banking-agent-panel ::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+}
+.banking-agent-panel ::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+}
+.banking-agent-panel ::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.35);
+}
