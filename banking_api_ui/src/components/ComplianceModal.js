@@ -2,46 +2,32 @@ import React from 'react';
 import './ComplianceModal.css';
 
 /**
- * Modal dialog for displaying MCP Compliance Checklist
- * Replaces FloatingPanel for the compliance view in agent
+ * Compliance checklist content for use in FloatingPanel or dialog.
+ * Renders the checklist, last response, and footer without modal wrapper.
  */
-export default function ComplianceModal({
-  open,
-  onClose,
+export default function ComplianceModalContent({
   complianceStripState,
   messages,
   onClearSteps,
   CHIP_APPLICABLE_STEPS,
   getStepSkipExplanation,
 }) {
-  if (!open) return null;
-
   return (
-    <div className="compliance-modal-overlay" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="compliance-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="compliance-modal__content" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
-        <div className="compliance-modal__header">
+        <div className="compliance-modal__header" style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: 8, marginBottom: 8 }}>
           <div className="compliance-modal__title-block">
-            <h2 className="compliance-modal__title">MCP Compliance Checklist</h2>
+            <h3 className="compliance-modal__title" style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0, marginBottom: complianceStripState?.complianceActionLabel ? 4 : 0 }}>MCP Compliance Checklist</h3>
             {complianceStripState?.complianceActionLabel && (
-              <span className="compliance-modal__action-label">
+              <span className="compliance-modal__action-label" style={{ fontSize: '0.75rem', color: '#1d4ed8' }}>
                 {complianceStripState.complianceActionLabel}
               </span>
             )}
           </div>
-          <button
-            type="button"
-            className="compliance-modal__close"
-            onClick={onClose}
-            aria-label="Close compliance modal"
-            title="Close modal (Esc)"
-          >
-            ✕
-          </button>
         </div>
 
         {/* Body */}
-        <div className="compliance-modal__body" aria-live="polite">
+        <div className="compliance-modal__body" aria-live="polite" style={{ flex: 1, overflowY: 'auto', paddingRight: 8 }}>
           {/* Last response */}
           {messages && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && (
             <div className="compliance-modal__last-response">
@@ -149,7 +135,7 @@ export default function ComplianceModal({
         </div>
 
         {/* Footer */}
-        <div className="compliance-modal__footer">
+        <div className="compliance-modal__footer" style={{ borderTop: '1px solid #e5e7eb', paddingTop: 8, marginTop: 8 }}>
           <button
             type="button"
             className="compliance-modal__clear-btn"
@@ -162,11 +148,7 @@ export default function ComplianceModal({
           >
             Clear
           </button>
-          <button type="button" className="compliance-modal__close-btn" onClick={onClose}>
-            Close
-          </button>
         </div>
-      </div>
     </div>
   );
 }

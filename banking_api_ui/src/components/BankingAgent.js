@@ -46,7 +46,7 @@ import { isBankingAgentFloatingDefaultOpen } from "../utils/bankingAgentFloating
 import { isPublicMarketingAgentPath } from "../utils/embeddedAgentFabVisibility";
 import AccountDetailsPanel from "./AccountDetailsPanel";
 import AgentConsentModal from "./AgentConsentModal";
-import ComplianceModal from "./ComplianceModal";
+import ComplianceModalContent from "./ComplianceModal";
 import GatewayConsentModal from "./GatewayConsentModal";
 import { EDUCATION_COMMANDS } from "./education/educationCommands";
 import { EDU } from "./education/educationIds";
@@ -7214,20 +7214,31 @@ export default function BankingAgent({
                 </div>
               )}
 
-              {/* Compliance 12-step panel — modal (when checked) */}
-              <ComplianceModal
-                open={showCompliancePanel && complianceSlideout}
-                onClose={() => setComplianceSlideout(false)}
-                complianceStripState={complianceStripState}
-                messages={messages}
-                onClearSteps={() => {
-                  try {
-                    agentFlowDiagram.resetComplianceSteps();
-                  } catch (_) {}
-                }}
-                CHIP_APPLICABLE_STEPS={CHIP_APPLICABLE_STEPS}
-                getStepSkipExplanation={getStepSkipExplanation}
-              />
+              {/* Compliance 12-step panel — floating modal (draggable, resizable, pop-out) */}
+              {showCompliancePanel && complianceSlideout && (
+                <FloatingPanel
+                  title="MCP Compliance Checklist"
+                  defaultWidth={380}
+                  defaultHeight={700}
+                  defaultX={252}
+                  defaultY={72}
+                  minWidth={300}
+                  minHeight={400}
+                  className="ba-compliance-floating"
+                >
+                  <ComplianceModalContent
+                    complianceStripState={complianceStripState}
+                    messages={messages}
+                    onClearSteps={() => {
+                      try {
+                        agentFlowDiagram.resetComplianceSteps();
+                      } catch (_) {}
+                    }}
+                    CHIP_APPLICABLE_STEPS={CHIP_APPLICABLE_STEPS}
+                    getStepSkipExplanation={getStepSkipExplanation}
+                  />
+                </FloatingPanel>
+              )}
 
               {/* Bottom input bar */}
               <div className="ba-bottom">
