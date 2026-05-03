@@ -125,8 +125,8 @@ const DEMO_SCENARIOS = [
     ],
     steps: [
       {
-        action: 'First, enable exchange:',
-        prompt: 'Go to /admin → Configuration → toggle "🔐 MCP Token Exchange" ON',
+        action: 'Setup (admin): Enable token exchange',
+        prompt: 'Go to "🎛 Demo Config" → toggle "🔐 MCP Token Exchange" ON',
         explanation: 'This enables the gateway to perform RFC 8693 token exchange. Without it, scope denial is fatal. After toggling, the gateway can exchange tokens for delegated scopes.',
         watch: [],
       },

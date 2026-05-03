@@ -82,6 +82,74 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-03 — Agent Demo Guide: Replace NL prompts with reliable action chips (commit 1edfe835)
+
+**Goal:** Make demo scenarios bulletproof — eliminate NL intent parsing ambiguity from demo guide. Guide now uses pre-wired action chips instead of user-typed prompts.
+
+**Changes:**
+- Replaced all user-typed NL prompts (e.g., "What accounts do I have?") with clickable action chips
+- Chips execute pre-defined backend calls (`CHIP_HANDLER_MAP`) instead of relying on NL intent parsing
+- Action chips guarantee correct compliance path every time (no LLM fallback, no regex mismatch)
+- Demo guide steps now say "Click test chip: '💰 My Accounts'" instead of "Try: 'what accounts do I have?'"
+- Updated scenario descriptions to reflect chip-based workflows
+
+**Regression guard:**
+- All demo guide steps must use action chips, NOT free-form text prompts
+- Chips must map to correct `CHIP_HANDLER` function in `BankingAgent.js` line ~3200
+- Each chip must exercise its full `CHIP_APPLICABLE_STEPS` compliance path
+- Chips must NOT fall back to LLM parsing or heuristic NL intent detection
+- Test chip results must display in agent chat (not in separate modal)
+- `npm run build` must exit 0
+
+**Files modified:**
+- `banking_api_ui/src/components/AgentDemoGuide.jsx` (scenario descriptions updated to reference chips)
+
+**Do not break:**
+- The 5 test chips (test_wrong_scope, test_wrong_audience, test_hitl_required, test_otp_required, demo_intent_delegation)
+- Chip handler logic in `BankingAgent.js` (lines 3200+)
+- CHIP_APPLICABLE_STEPS mappings for compliance path verification
+- Chip execution must NOT trigger NL intent parsing as fallback
+
+---
+
+### 2026-05-03 — Agent Demo Guide UX: Setup buttons + Floating agent visibility fixes
+
+**Goal:** Make Agent Demo Guide actionable without hunting for UI pages. Fix floating agent visual hierarchy.
+
+**Changes:**
+1. **Setup button feature (commit 64199a1d)** — Demo guide "Setup" steps now have "🔗 Go to Setup" button
+   - Button navigates to `/authz-test` for "Authz Test" setup
+   - Button navigates to `/admin` for "Demo Config" setup
+   - Files: `banking_api_ui/src/components/AgentDemoGuide.jsx` (add `useNavigate`, button rendering), `AgentDemoGuide.css` (`.adg-setup-btn` styling)
+   
+2. **Floating agent icon buttons visibility (commits 331feb45, ab1f0d12)**
+   - Changed icon buttons (expand ⊞, collapse ↑) from white on blue background to black with transparent background + black border
+   - Makes icon buttons always visible and readable
+   - Files: `banking_api_ui/src/components/BankingAgent.css` (`.ba-icon-btn` styling for floating mode)
+
+3. **Floating agent message bubble colors (commit 06f8c13c)**
+   - Added missing `--ba-agent-bg: #ef4444; --ba-agent-txt: #ffffff;` to floating dark mode
+   - Agent responses now display in red (not default blue) across ALL agent layouts
+   - Files: `banking_api_ui/src/components/BankingAgent.css` (`.banking-agent-panel:not(.ba-mode-inline):not(.ba-mode-light)` CSS variables)
+
+4. **Demo guide popout modal (commits 5a15810f, a7ed1df3, d39cca30)**
+   - Popout no longer full-window; now centered modal with backdrop
+   - Modal includes agent alongside guide content
+   - Files: `banking_api_ui/src/components/DemoGuidePopout.jsx` (styled modal layout), `AgentDemoGuide.css` (overlay styling)
+
+**Regression guard:**
+- Setup buttons only appear on steps where `action.includes('Setup')`
+- Icon buttons must have transparent background + black border (not colored background)
+- Floating agent message bubbles MUST use red (#ef4444) for responses
+- Popout must render centered with agent visible (not full-window overlay)
+- `npm run build` must exit 0
+
+**Files modified:**
+- `banking_api_ui/src/components/AgentDemoGuide.jsx`
+- `banking_api_ui/src/components/AgentDemoGuide.css`
+- `banking_api_ui/src/components/BankingAgent.css`
+- `banking_api_ui/src/components/DemoGuidePopout.jsx`
+
 ### 2026-05-03 — GSD Phase 266: Demo Guide prompt alignment + agent NL parser robustness
 
 **Goal:** Ensure all prompts in AgentDemoGuide work with agent regex intent detection (unless LLM-based).  
