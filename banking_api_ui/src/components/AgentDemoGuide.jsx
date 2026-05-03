@@ -321,7 +321,7 @@ export default function AgentDemoGuide({ onClose }) {
         <div className="adg-header">
           <h1>📚 Banking Agent Demo Guide</h1>
           <p className="adg-tagline">Real request scenarios mapped to 12 compliance steps. See /architecture/flow for live diagram.</p>
-          <button className="adg-close-btn" onClick={onClose}>✕</button>
+          <button type="button" className="adg-close-btn" onClick={onClose}>✕</button>
         </div>
 
         <div className="adg-container">
@@ -331,6 +331,7 @@ export default function AgentDemoGuide({ onClose }) {
             {DEMO_SCENARIOS.map((scenario) => (
               <button
                 key={scenario.id}
+                type="button"
                 className={`adg-scenario-btn ${activeScenario === scenario.id ? 'active' : ''}`}
                 onClick={() => {
                   setActiveScenario(scenario.id);
@@ -367,6 +368,7 @@ export default function AgentDemoGuide({ onClose }) {
                   {current.steps.map((step, idx) => (
                     <div key={idx} className="adg-step">
                       <button
+                        type="button"
                         className="adg-step-header"
                         onClick={() => toggleStepExpanded(idx)}
                       >
