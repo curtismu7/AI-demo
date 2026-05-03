@@ -716,16 +716,18 @@ body > .banking-agent-float-root .banking-agent-panel {
 /* Light mode: floating suggestions + actions use a solid light-blue pill */
 .banking-agent-panel:not(.ba-mode-inline).ba-mode-light .ba-suggestion,
 .banking-agent-panel:not(.ba-mode-inline).ba-mode-light .ba-action-item {
-	background: #dbeafe;
-	border-color: #93c5fd;
-	color: var(--brand-navy);
+	background: #f0f9ff;
+	border: 1.5px solid #0369a1;
+	color: #0c4a6e;
+	font-weight: 500;
 }
 .banking-agent-panel:not(.ba-mode-inline).ba-mode-light .ba-suggestion:hover,
 .banking-agent-panel:not(.ba-mode-inline).ba-mode-light
 	.ba-action-item:hover:not(:disabled) {
-	background: #bfdbfe;
-	border-color: var(--brand-navy-light);
-	color: var(--brand-navy);
+	background: #e0f2fe;
+	border-color: #0284c7;
+	color: #082f49;
+	font-weight: 600;
 }
 
 .banking-agent-panel:not(.ba-mode-inline).ba-mode-light
@@ -4564,19 +4566,22 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   margin-top: 2px;
 }
 
-/* Compliance toggle button — same shape as Actions, teal color */
+/* Compliance toggle button — darker text for readability on white header */
 .ba-compliance-toggle-btn {
 	background: transparent;
-	color: rgba(232, 238, 252, 0.9);
+	color: #374151;
+	font-size: 0.9rem;
+	font-weight: 500;
 }
 .ba-compliance-toggle-btn:hover {
-	background: rgba(255, 255, 255, 0.1);
-	color: #fff;
+	background: #f3f4f6;
+	color: #111827;
 }
 .ba-compliance-toggle-btn.active {
-	background: rgba(255, 255, 255, 0.12);
-	color: #fff;
+	background: #f0f4ff;
+	color: #1e3a8a;
 	outline: none;
+	font-weight: 600;
 }
 
 /* Compliance panel header and clear button */
@@ -4617,13 +4622,13 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   overflow-y: auto;
 }
 
-/* Compliance panel slide-in for floating agent */
+/* Compliance panel slide-in for floating agent — absolute positioning from right edge of panel */
 .banking-agent-panel:not(.ba-mode-inline) .ba-compliance-panel {
-  position: fixed;
+  position: absolute;
   top: 0;
   right: -340px;
   width: 320px;
-  height: 100vh;
+  height: 100%;
   max-height: none;
   overflow-y: auto;
   background: #fff;
@@ -4738,6 +4743,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   background: #fff !important;
   border-bottom: 3px solid var(--app-primary-red, #b91c1c) !important;
   gap: 3px !important;
+  position: relative !important;
 }
 .ba-header-top {
   background: transparent !important;
