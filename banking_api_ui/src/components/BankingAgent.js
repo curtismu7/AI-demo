@@ -46,6 +46,7 @@ import { isBankingAgentFloatingDefaultOpen } from "../utils/bankingAgentFloating
 import { isPublicMarketingAgentPath } from "../utils/embeddedAgentFabVisibility";
 import AccountDetailsPanel from "./AccountDetailsPanel";
 import AgentConsentModal from "./AgentConsentModal";
+import AgentDemoGuide from "./AgentDemoGuide";
 import ComplianceModal from "./ComplianceModal";
 import GatewayConsentModal from "./GatewayConsentModal";
 import { EDUCATION_COMMANDS } from "./education/educationCommands";
@@ -184,6 +185,11 @@ const ACTION_GROUPS = {
     },
   ],
   testing: [
+    {
+      id: "demo_guide",
+      label: "📚 Demo Guide",
+      desc: "Interactive guide: learn how to demo the agent, what prompts to use, what to watch for",
+    },
     {
       id: "test_full_compliance_flow",
       label: "🔥 Full Compliance (12 Steps)",
@@ -1689,6 +1695,8 @@ export default function BankingAgent({
   // MCP tools list modal state
   const [showMcpToolsModal, setShowMcpToolsModal] = useState(false);
   const [mcpToolsList, setMcpToolsList] = useState([]);
+  // Demo guide modal state
+  const [showDemoGuide, setShowDemoGuide] = useState(false);
   // Account details panel state
   const [accountDetailsPanel, setAccountDetailsPanel] = useState(null);
   const [accountDetailsPanelPos, setAccountDetailsPanelPos] = useState({
@@ -3078,6 +3086,13 @@ export default function BankingAgent({
 
       let response;
       switch (actionId) {
+        case "demo_guide":
+          // Show the interactive demo guide modal
+          toast.dismiss(toastId);
+          setShowDemoGuide(true);
+          setLoading(false);
+          toolProgressIdRef.current = null;
+          return;
         case "accounts":
           toast.update(toastId, { render: "🔍 Calling get_my_accounts…" });
           response = await getMyAccounts();
@@ -6577,6 +6592,11 @@ export default function BankingAgent({
               tools={mcpToolsList}
             />
 
+            {/* Demo Guide Modal */}
+            {showDemoGuide && (
+              <AgentDemoGuide onClose={() => setShowDemoGuide(false)} />
+            )}
+
             {/* Account Details Side Panel */}
             {accountDetailsPanel && (
               <AccountDetailsPanel
@@ -6936,7 +6956,7 @@ export default function BankingAgent({
                   </div>
                 )}
                 {messages
-                  .filter((msg) => showRfcInfo || msg.role !== "token-event")
+                  .filter((msg) => msg.role === "user" || msg.role === "assistant")
                   .map((msg) => {
                     if (msg.role === "reasoning") {
                       return (
