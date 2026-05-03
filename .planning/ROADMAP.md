@@ -2117,13 +2117,15 @@ Plans:
 
 ### Phase 264: Do we need a config page for MCP gateway, so show and configure routes? https://developer.pingidentity.com/identity-for-ai/identity/idai-securing-agents-pingone.html, here is pinggateway (mcp gateway) woriing with PingOne authorize: https://docs.pingidentity.com/pinggateway/2026/pingone/aam.html, here is another doc on setting up pingone with pinggateway (mcp gateway).  We need to link all these docs on config page, but make sure that our MCP gateway is configured and behaves like the real PingGateway but has a full UI for config, not just JSON files
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** MCP Gateway config page with guided PingGateway setup wizard, Docs & Setup tab linking official resources, RFC 9728-compliant mock gateway, and BFF persistence of route-level config
+**Requirements**: MCP-GW-01, MCP-GW-02, MCP-GW-03, MCP-GW-04, MCP-GW-05
 **Depends on:** Phase 263
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 264 to break down)
+- [ ] 264-01-PLAN.md — BFF route: extend GET (6 derived fields + introspectEndpoint), extend POST allowlist (3 new keys), persist via configStore.setRaw(), new test file
+- [ ] 264-02-PLAN.md — Mock gateway: add RFC 9728 WWW-Authenticate header to 401/403 responses in authorizeMcpRequest.ts, extend gateway-auth tests
+- [ ] 264-03-PLAN.md — UI: add 4th Docs & Setup tab (3 doc cards), replace Real PingGateway tab with 5-step wizard (route config form, live JSON preview, Download mcp.json, Save to Config)
 
 ### Phase 265: Demo data page: create demo user with may_act, P1MFA registration
 
