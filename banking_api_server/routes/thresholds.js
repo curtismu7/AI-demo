@@ -19,8 +19,8 @@ function readThresholds() {
   const rtStepUp = runtimeSettings.get('stepUpAmountThreshold');
   const effectiveStepUp = (rtStepUp > 0) ? rtStepUp : (mfaN > 0 ? mfaN : DEFAULT_MFA);
   return {
-    confirm_threshold_usd: (confirmRaw && !isNaN(confirmN) && confirmN > 0) ? confirmN : DEFAULT_CONFIRM,
-    mfa_threshold_usd:     (mfaRaw    && !isNaN(mfaN)    && mfaN > 0)    ? mfaN     : DEFAULT_MFA,
+    confirm_threshold_usd: String((confirmRaw && !isNaN(confirmN) && confirmN > 0) ? confirmN : DEFAULT_CONFIRM),
+    mfa_threshold_usd:     String((mfaRaw    && !isNaN(mfaN)    && mfaN > 0)    ? mfaN     : DEFAULT_MFA),
     step_up_amount_threshold: effectiveStepUp,
   };
 }

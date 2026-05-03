@@ -61,6 +61,12 @@ describe('Demo Controls Integration — Agent Honors Thresholds & Flags', () => 
   const app = require('../../server');
   const configStore = require('../../services/configStore');
 
+  beforeAll(() => {
+    delete process.env.CONFIRM_THRESHOLD_USD;
+    delete process.env.STEP_UP_AMOUNT_THRESHOLD;
+    delete process.env.MFA_THRESHOLD_USD;
+  });
+
   describe('Consent threshold enforcement', () => {
     it('HITL required when amount exceeds consent threshold', async () => {
       await request(app).post('/api/config/thresholds').send({

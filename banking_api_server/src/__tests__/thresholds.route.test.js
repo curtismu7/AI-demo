@@ -62,6 +62,13 @@ describe('Thresholds Route', () => {
   const runtimeSettings = require('../../config/runtimeSettings');
   const configStore = require('../../services/configStore');
 
+  // Remove threshold env vars so database values take precedence
+  beforeAll(() => {
+    delete process.env.CONFIRM_THRESHOLD_USD;
+    delete process.env.STEP_UP_AMOUNT_THRESHOLD;
+    delete process.env.MFA_THRESHOLD_USD;
+  });
+
   describe('GET /api/config/thresholds', () => {
     it('returns current thresholds', async () => {
       const res = await request(app).get('/api/config/thresholds');

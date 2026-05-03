@@ -60,6 +60,12 @@ describe('may_act Route', () => {
   const request = require('supertest');
   const app = require('../../server');
 
+  beforeAll(() => {
+    delete process.env.CONFIRM_THRESHOLD_USD;
+    delete process.env.STEP_UP_AMOUNT_THRESHOLD;
+    delete process.env.MFA_THRESHOLD_USD;
+  });
+
   describe('GET /api/demo/may-act/diagnose', () => {
     it('returns diagnostic info about may_act attribute', async () => {
       const res = await request(app).get('/api/demo/may-act/diagnose');
