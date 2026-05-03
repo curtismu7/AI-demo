@@ -123,6 +123,7 @@ const {
 } = require('./services/demoDataService');
 const appConfigRoutes = require('./routes/appConfig');
 const configCredentialsRoutes = require('./routes/configCredentials');
+const thresholdsRoutes = require('./routes/thresholds');
 const verticalConfigRoutes = require('./routes/verticalConfig');
 const pingoneAuditRoutes = require('./routes/pingoneAudit');
 const pingoneTestRoutes = require('./routes/pingoneTestRoutes');
@@ -531,6 +532,21 @@ app.get('/api/auth/logout', async (req, res) => {
     // Capture oauthType before destroy so we can pick the right client_id below.
     const oauthType = req.session.oauthType || 'user';
 
+    // Clear in-memory demo state so next login starts fresh (fire-and-forget)
+    try {
+        const { clearAllTokenChains } = require('./services/tokenChainService');
+        const mcpAudit = require('./services/mcpToolAuditStore');
+        const appEvtSvc = require('./services/appEventService');
+        clearAllTokenChains();
+        mcpAudit.clearToolCalls();
+        appEvtSvc.clearEvents();
+        if (global.pendingConsents) global.pendingConsents = {};
+        // Clear MCP server's own audit log
+        const mcpWsUrl = process.env.MCP_SERVER_URL || 'ws://localhost:8080';
+        const mcpHttpBase = mcpWsUrl.replace(/^ws(s?):/, 'http$1:');
+        fetch(`${mcpHttpBase}/audit`, { method: 'DELETE', signal: AbortSignal.timeout(1500) }).catch(() => {});
+    } catch (_) {}
+
     req.session.destroy((err) => {
         if (err) {
             console.error('Session destruction error during unified logout:', err);
@@ -831,7 +847,12 @@ app.use('/api/accounts', authenticateToken, accountRoutes);
 app.use('/api/accounts', authenticateToken, sensitiveBankingRoutes);
 app.use('/api/resource-server', authenticateToken, resourceServerRoutes);
 app.use('/api/resource-server-cc', authenticateToken, resourceServerCCRoutes);
-app.use('/api/transactions', requireSession, authenticateToken, transactionRoutes);
+app.use('/api/transactions', (req, res, next) => {
+    // Allow Bearer-token requests (MCP server, agent gateway, direct API calls) to bypass
+    // the session-cookie check — authenticateToken validates the JWT below.
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) return next();
+    return requireSession(req, res, next);
+}, authenticateToken, transactionRoutes);
 // GET /api/demo-scenario — return empty defaults when unauthenticated so the public
 // /demo-data page never triggers a 401 console error.  All mutating methods (PUT, PATCH)
 // still hit authenticateToken via the router below.
@@ -861,6 +882,7 @@ app.use('/api/admin/app-config', authenticateToken, appConfigRoutes);
 app.use('/api/config/vertical', verticalConfigRoutes);
 app.use('/api/config/verticals', verticalConfigRoutes);
 app.use('/api/config/credentials', configCredentialsRoutes);
+app.use('/api/config/thresholds', thresholdsRoutes);
 
 // Health check endpoints (unauthenticated — used by monitoring + demo config UI)
 const healthRoutes = require('./routes/health');
@@ -1063,9 +1085,6 @@ const {
     buildTokenEvent,
 } = require('./services/agentMcpTokenService');
 
-// Write tools that require a banking:write-scoped token obtained via scope upgrade.
-// Used by the mcpWriteToken session-cache fast-path (Phase 211).
-const WRITE_TOOLS_REQUIRING_CACHE = new Set(['create_transfer', 'create_deposit', 'create_withdrawal']);
 // PingOne management tools — routed to pingone-mcp-server when mcp_use_pingone_server flag is ON.
 // These tools bypass RFC 8693 token exchange (pingone-mcp-server handles its own auth via PKCE/keychain).
 const PINGONE_ADMIN_TOOLS = new Set([
@@ -1291,19 +1310,15 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         emit({
             phase: 'resolving_access_token'
         });
-        if (req.session && req.session.mcpWriteToken && WRITE_TOOLS_REQUIRING_CACHE.has(tool)) {
-            console.log('[/api/mcp/tool] %s \u2014 using cached write token (scope upgrade path)', tool);
-            mcpAccessToken = req.session.mcpWriteToken;
-            tokenEvents = [];
-            userSub = (req.session.user && (req.session.user.oauthId || req.session.user.id)) || null;
-        } else {
-            const resolved = await resolveMcpAccessTokenWithEvents(req, tool);
-            mcpAccessToken = resolved.token;
-            tokenEvents = resolved.tokenEvents;
-            userSub = resolved.userSub || null;
-            // Publish token events to SSE hub for real-time Token Chain display
-            publishTokenEventsToSse(flowTraceId, tokenEvents);
-        }
+        // Always run the full two-exchange delegation (12-step mandate).
+        // The mcpWriteToken session cache is bypassed so every tool call produces
+        // the complete token chain (user-token \u2192 Exchange #1 \u2192 Exchange #2).
+        const resolved = await resolveMcpAccessTokenWithEvents(req, tool);
+        mcpAccessToken = resolved.token;
+        tokenEvents = resolved.tokenEvents;
+        userSub = resolved.userSub || null;
+        // Publish token events to SSE hub for real-time Token Chain display
+        publishTokenEventsToSse(flowTraceId, tokenEvents);
         const evs = tokenEvents || [];
         emit({
             phase: 'access_token_ready',
@@ -1497,6 +1512,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             // HITL: create pending decision so the agent UI can poll and approve/deny
             let hitlTaskId = null;
             if (mcpAuthz.block.body.error === 'mcp_hitl_required') {
+                emit({ phase: 'authorize_denied_hitl', challenge_type: 'hitl' });
                 const { createPendingDecision } = require('./routes/mcpDecisionPolling');
                 const hitl = createPendingDecision(
                     userSub,

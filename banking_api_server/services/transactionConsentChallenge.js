@@ -14,8 +14,14 @@
 const crypto = require('crypto');
 const dataStore = require('../data/store');
 const mfaService = require('./mfaService');
+const configStore = require('./configStore');
 
-const HIGH_VALUE_CONSENT_USD = 500;
+const HIGH_VALUE_CONSENT_USD_DEFAULT = 500;
+function getConfirmThreshold() {
+  const v = configStore.getEffective('confirm_threshold_usd');
+  const n = Number(v);
+  return (v && !isNaN(n) && n > 0) ? n : HIGH_VALUE_CONSENT_USD_DEFAULT;
+}
 const CHALLENGE_TTL_MS = 10 * 60 * 1000;
 const CONFIRMED_TTL_MS = 5 * 60 * 1000;
 const MAX_PENDING_PER_SESSION = 8;
@@ -179,14 +185,14 @@ function createChallenge(req, rawBody) {
   if (v.normalized.type === 'transfer') {
     console.log(`[ConsentChallenge] TRANSFER requires HITL: user=${req.user.id} amount=${v.normalized.amount}`);
     // Skip amount check — proceed directly to challenge creation
-  } else if (v.normalized.amount <= HIGH_VALUE_CONSENT_USD) {
+  } else if (v.normalized.amount <= getConfirmThreshold()) {
     return {
       ok: false,
       status: 400,
       json: {
         error: 'consent_challenge_not_required',
-        message: `Consent challenges are only issued for amounts over $${HIGH_VALUE_CONSENT_USD}.`,
-        high_value_threshold_usd: HIGH_VALUE_CONSENT_USD,
+        message: `Consent challenges are only issued for amounts over $${getConfirmThreshold()}.`,
+        high_value_threshold_usd: getConfirmThreshold(),
       },
     };
   }
@@ -547,7 +553,7 @@ async function selectMfaDevice(req, challengeId, deviceId) {
 }
 
 module.exports = {
-  HIGH_VALUE_CONSENT_USD,
+  get HIGH_VALUE_CONSENT_USD() { return getConfirmThreshold(); },
   CHALLENGE_TTL_MS,
   CONFIRMED_TTL_MS,
   OTP_TTL_MS,

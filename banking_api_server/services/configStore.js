@@ -192,6 +192,31 @@ const FIELD_DEFS = {
   oauth_role_claim_value_admin:    { public: true,  default: '' },
   oauth_role_claim_value_customer: { public: true,  default: '' },
   oauth_role_claim_is_array:       { public: true,  default: 'false' },
+
+  // UI / Demo experience toggles — saved and loaded by the config page
+  show_education_panel:            { public: true, default: 'true' },
+  enable_token_chain_display:      { public: true, default: 'true' },
+  agent_ui_mode:                   { public: true, default: 'standard' },
+  demo_scenario:                   { public: true, default: '' },
+  industry_id:                     { public: true, default: 'bx_finance' },
+  demo_account_count:              { public: true, default: '3' },
+  transaction_preset:              { public: true, default: '' },
+  max_token_chain_history:         { public: true, default: '50' },
+  agent_transaction_count_limit:   { public: true, default: '3' },
+  agent_transaction_value_limit:   { public: true, default: '5000' },
+  agent_mode:                      { public: true, default: '' },
+  vercel_deploy_url:               { public: true, default: '' },
+
+  // Step-up / HITL thresholds (USD)
+  confirm_threshold_usd:           { public: true, default: '500' },
+  mfa_threshold_usd:               { public: true, default: '500' },
+  step_up_amount_threshold:        { public: true, default: '500' },
+
+  // Debug / server logging
+  log_level:                       { public: true, default: 'info' },
+  debug_show_token_details:        { public: true, default: 'false' },
+  debug_show_api_calls:            { public: true, default: 'false' },
+  log_filter_categories:           { public: true, default: '' },
 };
 
 // ---------------------------------------------------------------------------
@@ -469,10 +494,10 @@ class ConfigStore {
         'PINGONE_CORE_USER_REDIRECT_URI',
         'PINGONE_USER_REDIRECT_URI',
       ],
-      pingone_client_id:     ['PINGONE_MANAGEMENT_CLIENT_ID', 'PINGONE_CIMD_CLIENT_ID', 'PINGONE_WORKER_TOKEN_CLIENT_ID'],
-      pingone_client_secret: ['PINGONE_MANAGEMENT_CLIENT_SECRET', 'PINGONE_CIMD_CLIENT_SECRET', 'PINGONE_WORKER_TOKEN_CLIENT_SECRET'],
-      pingone_mgmt_client_id:          ['PINGONE_MGMT_CLIENT_ID', 'PINGONE_MANAGEMENT_CLIENT_ID', 'PINGONE_WORKER_TOKEN_CLIENT_ID'],
-      pingone_mgmt_client_secret:      ['PINGONE_MGMT_CLIENT_SECRET', 'PINGONE_MANAGEMENT_CLIENT_SECRET', 'PINGONE_WORKER_TOKEN_CLIENT_SECRET'],
+      pingone_client_id:     ['PINGONE_MANAGEMENT_CLIENT_ID', 'PINGONE_CIMD_CLIENT_ID', 'PINGONE_ADMIN_CLIENT_ID', 'PINGONE_WORKER_TOKEN_CLIENT_ID'],
+      pingone_client_secret: ['PINGONE_MANAGEMENT_CLIENT_SECRET', 'PINGONE_CIMD_CLIENT_SECRET', 'PINGONE_ADMIN_CLIENT_SECRET', 'PINGONE_WORKER_TOKEN_CLIENT_SECRET'],
+      pingone_mgmt_client_id:          ['PINGONE_MGMT_CLIENT_ID', 'PINGONE_MANAGEMENT_CLIENT_ID', 'PINGONE_ADMIN_CLIENT_ID', 'PINGONE_WORKER_TOKEN_CLIENT_ID'],
+      pingone_mgmt_client_secret:      ['PINGONE_MGMT_CLIENT_SECRET', 'PINGONE_MANAGEMENT_CLIENT_SECRET', 'PINGONE_ADMIN_CLIENT_SECRET', 'PINGONE_WORKER_TOKEN_CLIENT_SECRET'],
       pingone_mgmt_token_auth_method:  ['PINGONE_MGMT_TOKEN_AUTH_METHOD', 'PINGONE_WORKER_TOKEN_AUTH_METHOD'],
       admin_pingone_authorize_pi_flow: ['PINGONE_ADMIN_AUTHORIZE_PI_FLOW'],
       user_pingone_authorize_pi_flow:  ['PINGONE_USER_AUTHORIZE_PI_FLOW'],
@@ -491,6 +516,8 @@ class ConfigStore {
       ciba_enabled:           ['CIBA_ENABLED'],
       step_up_method:         ['STEP_UP_METHOD'],
       step_up_amount_threshold: ['STEP_UP_AMOUNT_THRESHOLD'],
+      confirm_threshold_usd:    ['CONFIRM_THRESHOLD_USD', 'STEP_UP_AMOUNT_THRESHOLD'],
+      mfa_threshold_usd:        ['MFA_THRESHOLD_USD'],
       pingone_mfa_policy_id:  ['PINGONE_MFA_POLICY_ID'],
       agent_mcp_allowed_scopes: ['AGENT_MCP_ALLOWED_SCOPES'],
       ff_two_exchange_delegation:      ['FF_TWO_EXCHANGE_DELEGATION'],

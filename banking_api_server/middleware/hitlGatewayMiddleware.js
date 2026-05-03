@@ -7,7 +7,14 @@
 const crypto = require('crypto');
 
 // Configuration
-const HITL_THRESHOLD = 500; // USD
+const configStore = require('../services/configStore');
+function getHitlThreshold() {
+  const v = configStore.getEffective('mfa_threshold_usd');
+  const n = Number(v);
+  return (v && !isNaN(n)) ? n : 500;
+}
+// Keep backward-compat alias used in evaluateToolCall below
+const getThreshold = getHitlThreshold;
 const HIGH_VALUE_TOOLS = ['create_transfer', 'create_withdrawal'];
 
 /**
@@ -34,7 +41,7 @@ async function evaluateToolCall(toolCall, userId) {
 
   // Check amount threshold
   const amount = params.amount || 0;
-  if (amount > HITL_THRESHOLD) {
+  if (amount > getThreshold()) {
     const consentId = generateConsentId(userId, tool, params);
     return {
       requiresConsent: true,
