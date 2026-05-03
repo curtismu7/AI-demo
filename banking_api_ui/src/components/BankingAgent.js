@@ -185,6 +185,11 @@ const ACTION_GROUPS = {
   ],
   testing: [
     {
+      id: "test_full_compliance_flow",
+      label: "🔥 Full Compliance (12 Steps)",
+      desc: "High-value sensitive account transfer with MFA + HITL — exercises ALL 12 compliance steps end-to-end",
+    },
+    {
       id: "test_wrong_scope",
       label: "Test Wrong Scope",
       desc: "Send request with unauthorized scope (auth rejection)",
@@ -301,6 +306,20 @@ const CHIP_APPLICABLE_STEPS = {
     "ui-gateway-consent",
     "agent-scope-aware-cache",
     "olb-resource-token",
+    "claim-diagnostics",
+  ],
+  test_full_compliance_flow: [
+    "agent-llm-reasoning",
+    "agent-token-init",
+    "gw-scope-map",
+    "agent-scope-aware-cache",
+    "olb-resource-token",
+    "gw-denial-metadata",
+    "gw-hitl-challenge-type",
+    "bff-response-shape",
+    "ui-gateway-consent",
+    "ui-auto-refire",
+    "agent-error-propagation",
     "claim-diagnostics",
   ],
   test_wrong_scope: [
@@ -3492,6 +3511,84 @@ export default function BankingAgent({
             "Intent-bound delegation demo",
           );
           // Falls through to normalizeAgentToolResult — HITL gate fires there and shows consent modal
+          break;
+        }
+        case "test_full_compliance_flow": {
+          // Comprehensive test exercising ALL 12 compliance steps:
+          // 1. agent-llm-reasoning — NL intent routing
+          // 2. agent-token-init — token acquisition
+          // 3. gw-scope-map — scope mapping at gateway
+          // 4. agent-scope-aware-cache — scoped caching
+          // 5. olb-resource-token — token exchange for resource
+          // 6. gw-denial-metadata — gateway denial signals
+          // 7. gw-hitl-challenge-type — HITL challenge type detection
+          // 8. bff-response-shape — BFF response formatting
+          // 9. ui-gateway-consent — consent modal in UI
+          // 10. ui-auto-refire — auto-refire after consent
+          // 11. agent-error-propagation — error propagation
+          // 12. claim-diagnostics — token claim analysis
+          toast.update(toastId, {
+            render:
+              "🔥 Full Compliance Flow: high-value sensitive transfer (HITL + MFA)…",
+          });
+          const compAccounts =
+            liveAccounts && liveAccounts.length >= 2 ? liveAccounts : null;
+          const compFrom =
+            compAccounts?.find(
+              (a) => a.type === "checking" || a.type === "chk",
+            ) || compAccounts?.[0];
+          const compTo =
+            compAccounts?.find(
+              (a) => a.type === "savings" || a.type === "sav",
+            ) || compAccounts?.[1];
+          if (!compFrom || !compTo) {
+            addMessage(
+              "assistant",
+              [
+                "⚠️ Full Compliance Test: accounts not loaded",
+                "",
+                "Need at least 2 accounts to run this test.",
+                "Try clicking My Accounts first to load your account list.",
+              ].join("\n"),
+              actionId,
+            );
+            toast.dismiss(toastId);
+            setLoading(false);
+            toolProgressIdRef.current = null;
+            return;
+          }
+          addMessage(
+            "token-event",
+            [
+              "🔥 FULL COMPLIANCE FLOW TEST (All 12 Steps)",
+              "",
+              `Attempting $99,999.99 transfer from ${compFrom.name || compFrom.type} → ${compTo.name || compTo.type}`,
+              "This scenario exercises all 12 compliance steps:",
+              "",
+              "✓ Step 1: LLM intent reasoning (NL → transfer intent)",
+              "✓ Step 2: Token initialization (get user token)",
+              "✓ Step 3: Gateway scope mapping (banking:write scope)",
+              "✓ Step 4: Scope-aware caching",
+              "✓ Step 5: Resource token exchange (RFC 8693)",
+              "✓ Step 6: Gateway denial metadata collection",
+              "✓ Step 7: HITL challenge type detection (>$250)",
+              "✓ Step 8: BFF response formatting with consent challenge",
+              "✓ Step 9: UI consent modal display",
+              "✓ Step 10: Auto-refire after user approves consent",
+              "✓ Step 11: Error propagation (if MFA needed)",
+              "✓ Step 12: Token claim diagnostics + MFA verification",
+              "",
+              "Approve the consent modal → MFA step-up will be required → transfer completes",
+            ].join("\n"),
+            actionId,
+          );
+          response = await createTransfer(
+            compFrom.id,
+            compTo.id,
+            99999.99,
+            "🔥 Full compliance scenario test",
+          );
+          // Falls through to normalizeAgentToolResult — consent + MFA gates fire here
           break;
         }
         case "test_otp_required": {
