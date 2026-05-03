@@ -299,6 +299,8 @@
   padding: 12px 20px;
   border-top: 1px solid #e5e7eb;
   background: #f9fafb;
+  position: relative;
+  z-index: 1;
 }
 
 .compliance-modal__clear-btn,
@@ -330,7 +332,7 @@
   background: transparent;
   border: none;
   padding: 0;
-  z-index: 20;
+  z-index: 30;
 }
 
 /* Side handles */
