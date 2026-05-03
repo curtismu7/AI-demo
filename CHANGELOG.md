@@ -18,6 +18,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **Withdraw/transfer/deposit actions — fixed 'From account not found' error** — NL parser extracts account type (e.g., "checking") but API endpoint expects account ID (UUID); heuristic agent now resolves account type to actual ID before returning params to frontend; prevents API errors when executing banking transactions via natural language.
 - **Agent Demo Guide — now opens from AdminSideNav** — fixed `renderNavItem` to handle top-level navigation items with `action` functions (not just children); previously only child items with actions were rendered as buttons, top-level items were incorrectly rendered as Links.
 - **Accounts panel — resizable on all sides with visual feedback** — added `max-height: 90vh` to ensure panel fits viewport by default; improved resize handle styling with subtle blue background on hover for better UX; removed unnecessary wrapper div for handles.
 - **Token chain monitoring — updates when agent runs** — fixed `/api/token-chain` endpoint not showing updates; root cause was token events were generated and sent to frontend but never persisted to tokenChainService; now `bankingAgentRoutes.js` calls `trackTokenEvent` for each resolved event after agent execution, ensuring monitoring dashboard reflects all token exchanges.

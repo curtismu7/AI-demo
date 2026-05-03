@@ -106,6 +106,9 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null) {
       if (!fromAcct || !toAcct) {
         return { reply: `❌ Could not find the specified accounts. Your accounts: ${(accounts || []).map(a => a.accountType).join(', ')}`, success: false, toolsCalled: ['transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
+      // Resolve account types to account IDs for frontend consumption (prevents "account not found" API errors)
+      params.fromId = fromAcct.id;
+      params.toId = toAcct.id;
       const amount = parseFloat(params.amount);
       if (isNaN(amount) || amount <= 0) {
         return { reply: '❌ Please specify a valid positive amount.', success: false, toolsCalled: ['transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
@@ -136,6 +139,8 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null) {
       if (!toAcct) {
         return { reply: `❌ Could not find account "${params.toId}". Your accounts: ${(accounts || []).map(a => a.accountType).join(', ')}`, success: false, toolsCalled: ['deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
+      // Resolve account type to account ID for frontend consumption (prevents "account not found" API error)
+      params.toId = toAcct.id;
       const amount = parseFloat(params.amount);
       if (isNaN(amount) || amount <= 0) {
         return { reply: '❌ Please specify a valid positive amount.', success: false, toolsCalled: ['deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
@@ -161,6 +166,8 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null) {
       if (!fromAcct) {
         return { reply: `❌ Could not find account "${params.fromId}". Your accounts: ${(accounts || []).map(a => a.accountType).join(', ')}`, success: false, toolsCalled: ['withdraw'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
+      // Resolve account type to account ID for frontend consumption (prevents "From account not found" API error)
+      params.fromId = fromAcct.id;
       const amount = parseFloat(params.amount);
       if (isNaN(amount) || amount <= 0) {
         return { reply: '❌ Please specify a valid positive amount.', success: false, toolsCalled: ['withdraw'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
