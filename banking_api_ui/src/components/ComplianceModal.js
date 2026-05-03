@@ -15,8 +15,8 @@ export default function ComplianceModal({
   CHIP_APPLICABLE_STEPS,
   getStepSkipExplanation,
 }) {
-  const [size, setSize] = useState({ width: 400, height: 600 });
-  const [pos, setPos] = useState({ x: 300, y: 100 });
+  const [size, setSize] = useState({ width: 400, height: 550 });
+  const [pos, setPos] = useState({ x: window.innerWidth - 450, y: 80 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isResizing, setIsResizing] = useState(false);
