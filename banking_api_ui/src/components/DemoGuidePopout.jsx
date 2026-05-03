@@ -47,40 +47,42 @@ export default function DemoGuidePopout() {
   }
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex' }}>
-      {/* Close button — top right corner */}
-      <button
-        type="button"
-        onClick={() => window.close()}
-        style={{
-          position: 'fixed',
-          top: '12px',
-          right: '12px',
-          background: 'none',
-          border: 'none',
-          fontSize: '24px',
-          cursor: 'pointer',
-          padding: '4px 8px',
-          zIndex: 1000,
-        }}
-        aria-label="Close window"
-      >
-        ✕
-      </button>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'relative', width: '90vw', height: '90vh', maxWidth: '1400px', maxHeight: '800px', background: '#fff', borderRadius: '8px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)', display: 'flex' }}>
+        {/* Close button — top right corner */}
+        <button
+          type="button"
+          onClick={() => window.close()}
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            background: 'none',
+            border: 'none',
+            fontSize: '24px',
+            cursor: 'pointer',
+            padding: '4px 8px',
+            zIndex: 1000,
+          }}
+          aria-label="Close window"
+        >
+          ✕
+        </button>
 
-      {/* Demo Guide — left side */}
-      <div style={{ flex: 1, overflowY: 'auto', borderRight: '1px solid #e0e0e0' }}>
-        <AgentDemoGuide
-          onClose={() => window.close()}
-          initialActiveScenario={data.activeScenario}
-          initialExpandedSteps={data.expandedSteps}
-          isPopout={true}
-        />
-      </div>
+        {/* Demo Guide — left side */}
+        <div style={{ flex: 1, overflowY: 'auto', borderRight: '1px solid #e0e0e0' }}>
+          <AgentDemoGuide
+            onClose={() => window.close()}
+            initialActiveScenario={data.activeScenario}
+            initialExpandedSteps={data.expandedSteps}
+            isPopout={true}
+          />
+        </div>
 
-      {/* Agent — right side */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fff' }}>
-        <BankingAgent user={null} placement="none" />
+        {/* Agent — right side */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fff', overflow: 'hidden' }}>
+          <BankingAgent user={null} placement="none" />
+        </div>
       </div>
     </div>
   );
