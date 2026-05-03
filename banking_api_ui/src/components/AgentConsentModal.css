@@ -1,11 +1,11 @@
 /* AgentConsentModal — draggable + resizable floating card */
 
 .acm-card {
-  background: #152a52;
-  border: 1px solid rgba(65, 105, 225, 0.45);
+  background: #fff;
+  border: 1px solid #cbd5e1;
   border-radius: 16px;
-  box-shadow: 0 24px 60px rgba(10, 20, 50, 0.65);
-  color: #e8eefc;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.10);
+  color: #111827;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -22,8 +22,8 @@
   cursor: grab;
   user-select: none;
   flex-shrink: 0;
-  background: linear-gradient(180deg, #1a3a6e 0%, #152a52 100%);
-  border-bottom: 1px solid rgba(65, 105, 225, 0.3);
+  background: #fff;
+  border-bottom: 1px solid #cbd5e1;
 }
 
 .acm-drag-handle:active { cursor: grabbing; }
@@ -39,11 +39,11 @@
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: #fff3cd;
-  border-top: 1px solid #ffc107;
-  border-bottom: 1px solid #ffc107;
+  background: #f9fafb;
+  border-top: 1px solid #cbd5e1;
+  border-bottom: 1px solid #cbd5e1;
   font-size: 0.82rem;
-  color: #664d03;
+  color: #1e293b;
 }
 .acm-hitl-badge__icon { font-size: 1rem; }
 .acm-hitl-badge__label { flex: 1; }
@@ -54,7 +54,7 @@
   font-size: 1.15rem;
   font-weight: 700;
   text-align: center;
-  color: #e8eefc;
+  color: #111827;
 }
 
 /* Scrollable body */
@@ -71,7 +71,7 @@
   margin: 0;
   font-size: 0.88rem;
   line-height: 1.55;
-  color: #c7d7ff;
+  color: #1e293b;
 }
 
 .acm-list {
@@ -82,7 +82,7 @@
   flex-direction: column;
   gap: 0.4rem;
   font-size: 0.9rem;
-  color: #9db4e8;
+  color: #374151;
 }
 
 .acm-list li {
@@ -92,21 +92,21 @@
 .acm-legal {
   margin: 0;
   font-size: 0.78rem;
-  color: #6b87c4;
+  color: #64748b;
   line-height: 1.5;
 }
 
 .acm-legal a {
-  color: #7aa3f5;
+  color: #2563eb;
   text-underline-offset: 2px;
 }
 
 .acm-error {
   margin: 0;
   font-size: 0.875rem;
-  color: #fca5a5;
-  background: rgba(185, 28, 28, 0.2);
-  border: 1px solid rgba(185, 28, 28, 0.4);
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
   border-radius: 8px;
   padding: 0.5rem 0.75rem;
 }
@@ -136,35 +136,36 @@
 }
 
 .acm-btn--primary {
-  background: #4169e1;
-  color: #fff;
+  background: #fff;
+  color: #2563eb;
+  border: 1px solid #2563eb;
 }
 
 .acm-btn--primary:hover:not(:disabled) {
-  background: #3155c5;
+  background: #f0f4ff;
 }
 
 .acm-btn--secondary {
-  background: rgba(65, 105, 225, 0.15);
-  color: #9db4e8;
-  border: 1px solid rgba(65, 105, 225, 0.35);
+  background: #fff;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
 }
 
 .acm-btn--secondary:hover:not(:disabled) {
-  background: rgba(65, 105, 225, 0.25);
+  background: #f3f4f6;
 }
 
 /* Transaction-mode list — bold key, lighter value */
 .acm-list--transaction {
-  background: rgba(65, 105, 225, 0.08);
-  border: 1px solid rgba(65, 105, 225, 0.2);
+  background: #f9fafb;
+  border: 1px solid #cbd5e1;
   border-radius: 10px;
   padding: 0.65rem 1rem;
   font-size: 0.88rem;
 }
 
 .acm-list--transaction li {
-  color: #c7d7ff;
+  color: #1e293b;
 }
 
 /* ─── High-value transaction warning ─────────────────────────────────────── */

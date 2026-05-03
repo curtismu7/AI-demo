@@ -1576,6 +1576,13 @@ export default function BankingAgent({
       return false;
     }
   });
+  const [complianceSlideout, setComplianceSlideout] = useState(() => {
+    try {
+      return localStorage.getItem("ba_compliance_slideout") === "1";
+    } catch {
+      return false;
+    }
+  });
   // Detect FIDO2/WebAuthn support on mount
   useEffect(() => {
     setSupportsFido(
@@ -5025,100 +5032,6 @@ export default function BankingAgent({
             className={`ba-header${isInline ? "" : " banking-agent-drag-handle"}`}
             onPointerDown={isInline ? undefined : handleDragStart}
           >
-            {/* Compliance 12-step panel — toggled via header button; now always rendered just after header */}
-            {showCompliancePanel && (
-              <div className="ba-compliance-panel" aria-live="polite">
-                <div className="ba-compliance-panel__header">
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      minWidth: 0,
-                    }}
-                  >
-                    <span className="ba-compliance-panel__title">
-                      MCP Compliance Checklist
-                    </span>
-                    {complianceStripState.complianceActionLabel && (
-                      <span className="ba-compliance-panel__action-label">
-                        {complianceStripState.complianceActionLabel}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    className="ba-compliance-panel__clear-btn"
-                    onClick={() => {
-                      try {
-                        agentFlowDiagram.resetComplianceSteps();
-                      } catch (_) {}
-                    }}
-                    title="Reset all steps to pending"
-                  >
-                    Clear
-                  </button>
-                </div>
-                {complianceStripState.complianceSteps.length === 0 ? (
-                  <span className="ba-compliance-panel__empty">
-                    No compliance data yet — run an MCP tool call to start.
-                  </span>
-                ) : (
-                  <ol className="ba-compliance-panel__list">
-                    {complianceStripState.complianceSteps.flatMap((step) => {
-                      const isActive =
-                        step.id === complianceStripState.complianceStep;
-                      const icon =
-                        step.status === "done"
-                          ? "✅"
-                          : step.status === "error"
-                            ? "❌"
-                            : isActive
-                              ? "⚙"
-                              : "○";
-                      const applicableSteps =
-                        complianceStripState.complianceActionId
-                          ? CHIP_APPLICABLE_STEPS[
-                              complianceStripState.complianceActionId
-                            ] || []
-                          : [];
-                      const isApplicable = applicableSteps.includes(step.id);
-                      const items = [];
-                      if (step.id === "olb-resource-token") {
-                        items.push(
-                          <li
-                            key="intent-delegation-badge"
-                            className="ba-compliance-panel__group-badge"
-                          >
-                            Intent-Bound Delegation
-                          </li>,
-                        );
-                      }
-                      items.push(
-                        <li
-                          key={step.id}
-                          className={
-                            "ba-compliance-panel__item" +
-                            (isActive ? " active" : "") +
-                            (" " + step.status) +
-                            (isApplicable && step.status === "pending"
-                              ? " applicable"
-                              : "")
-                          }
-                        >
-                          <span className="ba-compliance-panel__icon">
-                            {icon}
-                          </span>
-                          <span className="ba-compliance-panel__label">
-                            {step.label}
-                          </span>
-                        </li>,
-                      );
-                      return items;
-                    })}
-                  </ol>
-                )}
-              </div>
-            )}
             <div className="ba-header-top">
               <div className="ba-header-left">
                 <span className="ba-status-dot" />
@@ -5198,6 +5111,28 @@ export default function BankingAgent({
                 >
                   🛡 Compliance
                 </button>
+                {showCompliancePanel && (
+                  <label
+                    className="ba-rfc-toggle-label"
+                    title="Show compliance as side-panel overlay"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={complianceSlideout}
+                      onChange={(e) => {
+                        try {
+                          localStorage.setItem(
+                            "ba_compliance_slideout",
+                            e.target.checked ? "1" : "0",
+                          );
+                        } catch {}
+                        setComplianceSlideout(e.target.checked);
+                      }}
+                      className="ba-rfc-toggle-cb"
+                    />
+                    Side panel
+                  </label>
+                )}
                 {/* Actions trigger — float + dashboard inline agents (D-01, D-02) */}
                 {useActionsPopout && (
                   <button
@@ -7015,6 +6950,234 @@ export default function BankingAgent({
                       {p === 'auto' ? '⚡ Auto' : p}
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* Compliance 12-step panel — inline (default) or hidden when pop-out is active */}
+              {showCompliancePanel && !complianceSlideout && (
+                <div className="ba-compliance-panel" aria-live="polite">
+                  <div className="ba-compliance-panel__header">
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        minWidth: 0,
+                      }}
+                    >
+                      <span className="ba-compliance-panel__title">
+                        MCP Compliance Checklist
+                      </span>
+                      {complianceStripState.complianceActionLabel && (
+                        <span className="ba-compliance-panel__action-label">
+                          {complianceStripState.complianceActionLabel}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="ba-compliance-panel__clear-btn"
+                      onClick={() => {
+                        try {
+                          agentFlowDiagram.resetComplianceSteps();
+                        } catch (_) {}
+                      }}
+                      title="Reset all steps to pending"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {complianceStripState.complianceSteps.length === 0 ? (
+                    <span className="ba-compliance-panel__empty">
+                      No compliance data yet — run an MCP tool call to start.
+                    </span>
+                  ) : (
+                    <ol className="ba-compliance-panel__list">
+                      {complianceStripState.complianceSteps.flatMap((step) => {
+                        const isActive =
+                          step.id === complianceStripState.complianceStep;
+                        const icon =
+                          step.status === "done"
+                            ? "✅"
+                            : step.status === "error"
+                              ? "❌"
+                              : isActive
+                                ? "⚙"
+                                : "○";
+                        const applicableSteps =
+                          complianceStripState.complianceActionId
+                            ? CHIP_APPLICABLE_STEPS[
+                                complianceStripState.complianceActionId
+                              ] || []
+                            : [];
+                        const isApplicable = applicableSteps.includes(step.id);
+                        const items = [];
+                        if (step.id === "olb-resource-token") {
+                          items.push(
+                            <li
+                              key="intent-delegation-badge"
+                              className="ba-compliance-panel__group-badge"
+                            >
+                              Intent-Bound Delegation
+                            </li>,
+                          );
+                        }
+                        items.push(
+                          <li
+                            key={step.id}
+                            className={
+                              "ba-compliance-panel__item" +
+                              (isActive ? " active" : "") +
+                              (" " + step.status) +
+                              (isApplicable && step.status === "pending"
+                                ? " applicable"
+                                : "")
+                            }
+                          >
+                            <span className="ba-compliance-panel__icon">
+                              {icon}
+                            </span>
+                            <span className="ba-compliance-panel__label">
+                              {step.label}
+                            </span>
+                          </li>,
+                        );
+                        return items;
+                      })}
+                    </ol>
+                  )}
+                </div>
+              )}
+
+              {/* Compliance 12-step panel — slide-out overlay (only when pop-out is checked) */}
+              {showCompliancePanel && complianceSlideout && (
+                <div className="ba-compliance-panel ba-compliance-panel--slideout" aria-live="polite">
+                  {/* Show last agent response */}
+                  {messages.length > 0 && messages[messages.length - 1].role === "assistant" && (
+                    <div style={{
+                      padding: "12px 14px",
+                      borderBottom: "1px solid #e5e7eb",
+                      marginBottom: "12px"
+                    }}>
+                      <div style={{
+                        fontSize: "0.75rem",
+                        fontWeight: "600",
+                        color: "#6b7280",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        marginBottom: "8px"
+                      }}>
+                        Last Response
+                      </div>
+                      <div style={{
+                        fontSize: "0.88rem",
+                        color: "#111827",
+                        lineHeight: "1.4"
+                      }}>
+                        {messages[messages.length - 1].content}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="ba-compliance-panel__header">
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        minWidth: 0,
+                      }}
+                    >
+                      <span className="ba-compliance-panel__title">
+                        MCP Compliance Checklist
+                      </span>
+                      {complianceStripState.complianceActionLabel && (
+                        <span className="ba-compliance-panel__action-label">
+                          {complianceStripState.complianceActionLabel}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <button
+                        type="button"
+                        className="ba-compliance-panel__clear-btn"
+                        onClick={() => {
+                          try {
+                            agentFlowDiagram.resetComplianceSteps();
+                          } catch (_) {}
+                        }}
+                        title="Reset all steps to pending"
+                      >
+                        Clear
+                      </button>
+                      <button
+                        type="button"
+                        className="ba-compliance-panel__clear-btn"
+                        onClick={() => setComplianceSlideout(false)}
+                        title="Close compliance panel"
+                        aria-label="Close compliance panel"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                  {complianceStripState.complianceSteps.length === 0 ? (
+                    <span className="ba-compliance-panel__empty">
+                      No compliance data yet — run an MCP tool call to start.
+                    </span>
+                  ) : (
+                    <ol className="ba-compliance-panel__list">
+                      {complianceStripState.complianceSteps.flatMap((step) => {
+                        const isActive =
+                          step.id === complianceStripState.complianceStep;
+                        const icon =
+                          step.status === "done"
+                            ? "✅"
+                            : step.status === "error"
+                              ? "❌"
+                              : isActive
+                                ? "⚙"
+                                : "○";
+                        const applicableSteps =
+                          complianceStripState.complianceActionId
+                            ? CHIP_APPLICABLE_STEPS[
+                                complianceStripState.complianceActionId
+                              ] || []
+                            : [];
+                        const isApplicable = applicableSteps.includes(step.id);
+                        const items = [];
+                        if (step.id === "olb-resource-token") {
+                          items.push(
+                            <li
+                              key="intent-delegation-badge"
+                              className="ba-compliance-panel__group-badge"
+                            >
+                              Intent-Bound Delegation
+                            </li>,
+                          );
+                        }
+                        items.push(
+                          <li
+                            key={step.id}
+                            className={
+                              "ba-compliance-panel__item" +
+                              (isActive ? " active" : "") +
+                              (" " + step.status) +
+                              (isApplicable && step.status === "pending"
+                                ? " applicable"
+                                : "")
+                            }
+                          >
+                            <span className="ba-compliance-panel__icon">
+                              {icon}
+                            </span>
+                            <span className="ba-compliance-panel__label">
+                              {step.label}
+                            </span>
+                          </li>,
+                        );
+                        return items;
+                      })}
+                    </ol>
+                  )}
                 </div>
               )}
 

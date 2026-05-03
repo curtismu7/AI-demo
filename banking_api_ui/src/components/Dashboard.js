@@ -14,11 +14,13 @@ import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import { toastAdminSessionError } from '../utils/dashboardToast';
 import '../styles/appShellPages.css';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
+
 import ApiCallsModal from './ApiCallsModal';
 import AgentUiModeToggle from './AgentUiModeToggle';
 import DashboardHeader from './DashboardHeader';
 import WebMcpPanel from './WebMcpPanel';
 import ConfirmModal from './ConfirmModal';
+import ThresholdControls from './ThresholdControls';
 
 const Dashboard = ({ user, onLogout }) => {
   // Fetch and display current user token in the token chain
@@ -360,6 +362,7 @@ const Dashboard = ({ user, onLogout }) => {
           >
             📡 API Calls
           </button>
+          <ThresholdControls />
           <button
             type="button"
             onClick={openTokenModal}

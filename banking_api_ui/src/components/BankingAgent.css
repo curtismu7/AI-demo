@@ -285,15 +285,17 @@ body > .banking-agent-float-root .banking-agent-panel {
 	text-align: left;
 	padding: 7px 10px;
 	font-size: 12px;
-	color: var(--ba-chip-txt);
-	background: var(--ba-chip-bg);
-	border: 1px solid var(--ba-chip-bd);
-	border-radius: 8px;
-	cursor: pointer;
-	transition:
-		background 0.15s,
-		color 0.15s;
-	line-height: 1.35;
+	   color: #1a1a1a;
+	   background: #fff;
+	   border: 1.5px solid #2563eb;
+	   border-radius: 8px;
+	   font-weight: 600;
+	   cursor: pointer;
+	   transition:
+		   background 0.15s,
+		   color 0.15s,
+		   border-color 0.15s;
+	   line-height: 1.35;
 }
 .ba-suggestion:hover {
 	background: var(--ba-accent);
@@ -914,34 +916,34 @@ body > .banking-agent-float-root .banking-agent-panel {
 .ba-server-chip {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	font-size: 12px;
-	font-weight: 600;
+	gap: 8px;
+	font-size: 13px;
+	font-weight: 700;
 	letter-spacing: 0.01em;
-	padding: 5px 10px 5px 7px;
+	padding: 7px 16px 7px 10px;
 	border-radius: 20px;
-	border: 1px solid var(--ba-border);
-	color: var(--ba-muted);
-	background: var(--ba-bg);
+	border: 1.5px solid #2563eb;
+	color: #1a1a1a;
+	background: #fff;
 	white-space: nowrap;
 	line-height: 1.3;
 }
 /* Dark / high-contrast panels: mint on subtle green tint */
 .ba-server-chip--active {
-	border-color: rgba(16, 185, 129, 0.45);
-	color: #a7f3d0;
-	background: rgba(16, 185, 129, 0.12);
+	border-color: #2563eb;
+	color: #1a1a1a;
+	background: #fff;
 }
 /* Light agent panel: dark emerald on mint wash (readable on white/lavender surfaces) */
 .banking-agent-panel.ba-mode-light .ba-server-chip {
-	color: var(--brand-dark-gray);
-	border-color: #cccccc;
-	background: var(--brand-light-gray);
+	color: #1a1a1a;
+	border-color: #2563eb;
+	background: #fff;
 }
 .banking-agent-panel.ba-mode-light .ba-server-chip--active {
-	border-color: #059669;
-	color: #064e3b;
-	background: #d1fae5;
+	border-color: #2563eb;
+	color: #1a1a1a;
+	background: #fff;
 }
 .banking-agent-panel.ba-mode-light .ba-server-chip--active .ba-chip-count {
 	color: #047857;
@@ -1467,24 +1469,25 @@ body > .banking-agent-float-root .banking-agent-panel {
 	gap: 2px;
 }
 .ba-chip {
-	font-size: 12px;
-	padding: 5px 11px;
-	border-radius: 999px;
-	border: 1px solid var(--ba-chip-bd);
-	background: var(--ba-chip-bg);
-	color: var(--ba-chip-txt);
-	cursor: pointer;
-	transition:
-		background 0.15s,
-		color 0.15s,
-		border-color 0.15s;
-	line-height: 1.3;
-	white-space: nowrap;
+	   font-size: 13px;
+	   padding: 6px 14px;
+	   border-radius: 999px;
+	   border: 1.5px solid #2563eb;
+	   background: #fff;
+	   color: #1a1a1a;
+	   font-weight: 600;
+	   cursor: pointer;
+	   transition:
+		   background 0.15s,
+		   color 0.15s,
+		   border-color 0.15s;
+	   line-height: 1.3;
+	   white-space: nowrap;
 }
 .ba-chip:hover:not(:disabled) {
-	background: var(--ba-accent);
-	color: #fff;
-	border-color: var(--ba-accent);
+	background: #f0f4ff;
+	color: #1d4ed8;
+	border-color: #1d4ed8;
 }
 .ba-chip:disabled {
 	opacity: 0.45;
@@ -2056,11 +2059,13 @@ body > .banking-agent-float-root .banking-agent-panel {
 .bar-rp-resize-e {
 	top: 0;
 	right: 0;
-	width: 6px;
-	height: calc(100% - 12px);
-	cursor: ew-resize;
-}
-.bar-rp-resize-s {
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: #10b981;
+	border: 2px solid #fff;
+	box-shadow: 0 0 0 2px #2563eb;
+	flex-shrink: 0;
 	bottom: 0;
 	left: 0;
 	width: calc(100% - 12px);
@@ -4217,18 +4222,19 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 	height: 28px;
 	padding: 4px 10px;
 	border-radius: 6px;
-	border: 1.5px solid #2563eb;
+	border: 1.5px solid #d1d5db;
 	background: #fff;
 	font-size: 14px;
 	font-weight: 600;
-	color: #2563eb;
+	color: #111827;
 	cursor: pointer;
 	white-space: nowrap;
 	user-select: none;
 }
 .ba-rfc-toggle-label:hover {
-	background: #f0f4ff;
-	color: #1d4ed8;
+	background: #f3f4f6;
+	color: #111827;
+	border-color: #9ca3af;
 }
 .ba-rfc-toggle-cb {
 	width: 15px;
@@ -4533,19 +4539,20 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 4px;
+  padding: 8px 6px;
   border-radius: 5px;
-  font-size: 0.78rem;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 .ba-compliance-panel__item.active {
   background: #eff6ff;
 }
-.ba-compliance-panel__item.done .ba-compliance-panel__label { color: #15803d; }
-.ba-compliance-panel__item.error .ba-compliance-panel__label { color: #dc2626; }
-.ba-compliance-panel__icon { font-size: 0.85rem; width: 18px; text-align: center; flex-shrink: 0; }
-.ba-compliance-panel__label { color: #334155; }
-.ba-compliance-panel__item.active .ba-compliance-panel__label { color: #1d4ed8; font-weight: 600; }
-.ba-compliance-panel__item.applicable .ba-compliance-panel__label { color: #15803d; font-weight: 500; }
+.ba-compliance-panel__item.done .ba-compliance-panel__label { color: #15803d; font-weight: 600; }
+.ba-compliance-panel__item.error .ba-compliance-panel__label { color: #dc2626; font-weight: 600; }
+.ba-compliance-panel__icon { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
+.ba-compliance-panel__label { color: #1f2937; font-weight: 600; }
+.ba-compliance-panel__item.active .ba-compliance-panel__label { color: #1d4ed8; font-weight: 700; }
+.ba-compliance-panel__item.applicable .ba-compliance-panel__label { color: #15803d; font-weight: 700; }
 .ba-action-chip--active-test { outline: 2px solid #dc2626; outline-offset: 1px; }
 .ba-chip--active-test { outline: 2px solid #dc2626; outline-offset: 1px; }
 .ba-compliance-panel__action-label {
@@ -4616,41 +4623,69 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
         border-color: #94a3b8;
 }
 
-/* Compliance panel in inline/dock mode — cap height so input stays visible */
-.ba-mode-inline .ba-compliance-panel {
-  max-height: 180px;
-  overflow-y: auto;
+/* Compliance panel — inline (default, inside ba-right-col) */
+/* Removes max-height cap — shows all 12 steps; flex-shrink:0 keeps it at natural size */
+.ba-compliance-panel {
+  max-height: none !important;
+  flex-shrink: 0 !important;
+  border-top: 1px solid #e5e7eb !important;
+  background: #f8fafc !important;
+  padding: 10px 14px !important;
 }
 
-/* Compliance panel slide-in for floating agent — absolute positioning from right edge of panel */
-.banking-agent-panel:not(.ba-mode-inline) .ba-compliance-panel {
-  position: absolute;
-  top: 0;
-  right: -340px;
-  width: 320px;
-  height: 100%;
-  max-height: none;
-  overflow-y: auto;
-  background: #fff;
-  border-left: 1px solid #e5e7eb;
-  border-radius: 0;
-  box-shadow: -4px 0 12px rgba(0,0,0,0.1);
-  z-index: 20;
-  animation: slide-in-from-right 0.3s ease forwards;
-  padding: 16px 14px !important;
+/* Compliance panel — slide-out overlay mode (default: left side positioning) */
+.ba-compliance-panel--slideout {
+  position: fixed !important;
+  top: 0 !important;
+  left: -340px !important;
+  width: 280px !important;
+  height: 100vh !important;
+  overflow-y: auto !important;
+  background: #fff !important;
+  border-right: 1px solid #e5e7eb !important;
+  border-left: none !important;
+  box-shadow: 4px 0 16px rgba(0,0,0,0.12) !important;
+  z-index: 20 !important;
+  padding: 14px !important;
+  animation: compliance-slide-in-left 0.25s ease forwards !important;
 }
-@keyframes slide-in-from-right {
-  from { right: -340px; opacity: 0; }
-  to { right: 0; opacity: 1; }
+
+@keyframes compliance-slide-in-left {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
-.banking-agent-panel:not(.ba-mode-inline) .ba-compliance-panel__header {
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #f3f4f6;
+
+/* In floating mode: left side, attached to agent panel at bottom-right of screen */
+.banking-agent-panel:not(.ba-mode-inline) .ba-compliance-panel--slideout {
+  left: 24px !important;
+  top: 24px !important;
+  height: auto !important;
+  max-height: calc(100vh - 48px) !important;
 }
-.banking-agent-panel:not(.ba-mode-inline) .ba-compliance-panel__title {
-  font-size: 0.9rem;
-  font-weight: 700;
+
+/* In embedded/inline mode (not bottom dock): left side pop-out, centered */
+.ba-mode-inline:not(.ba-embedded-bottom-dock) .ba-compliance-panel--slideout {
+  left: calc(50% - 450px) !important;
+  top: 0 !important;
+  height: 100vh !important;
+}
+
+/* In bottom dock mode: pop-out appears BELOW the dock */
+.ba-embedded-bottom-dock .ba-compliance-panel--slideout {
+  left: 0 !important;
+  right: 0 !important;
+  top: auto !important;
+  bottom: -360px !important;
+  width: auto !important;
+  height: 340px !important;
+  border-right: none !important;
+  border-top: 1px solid #e5e7eb !important;
+  animation: compliance-slide-in-bottom 0.25s ease forwards !important;
+}
+
+@keyframes compliance-slide-in-bottom {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 /* Token-event text wrapping */
@@ -4731,7 +4766,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 /* 1. PANEL FLOATING MODE — Larger, deeper shadow */
 .banking-agent-panel:not(.ba-mode-inline) {
   width: 440px !important;
-  height: 580px !important;
+  height: 520px !important;
   border-radius: 12px !important;
   box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08) !important;
   border: none !important;
@@ -4755,11 +4790,11 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   font-weight: 600 !important;
 }
 .ba-agent-subtitle {
-  color: #6b7280 !important;
+  color: #4b5563 !important;
   font-size: 0.72rem !important;
 }
 .ba-header .ba-tool-btn {
-  color: #6b7280 !important;
+  color: #374151 !important;
   transition: color 0.15s, background 0.15s;
 }
 .ba-header .ba-tool-btn:hover {
@@ -4784,18 +4819,18 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   display: none;
 }
 .ba-server-chip {
-  background: rgba(255,255,255,0.12) !important;
-  border-color: rgba(255,255,255,0.22) !important;
-  color: rgba(255,255,255,0.9) !important;
+  background: #f3f4f6 !important;
+  border-color: #d1d5db !important;
+  color: #374151 !important;
   font-size: 0.72rem !important;
   white-space: nowrap !important;
   flex-shrink: 0 !important;
   border-radius: 16px !important;
 }
 .ba-server-chip--active {
-  background: rgba(255,255,255,0.28) !important;
-  border-color: rgba(255,255,255,0.6) !important;
-  color: #fff !important;
+  background: #e0e7ff !important;
+  border-color: #a5b4fc !important;
+  color: #1e3a8a !important;
 }
 
 /* 4. MESSAGE BUBBLES — Card style (user navy pill, agent white card) */
@@ -4857,7 +4892,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   box-shadow: 0 0 0 3px rgba(59,130,246,0.1) !important;
 }
 .ba-input::placeholder {
-  color: #9ca3af;
+  color: #6b7280 !important;
 }
 .ba-send-btn {
   width: 36px !important;
