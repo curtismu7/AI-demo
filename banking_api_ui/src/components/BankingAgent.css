@@ -1940,10 +1940,8 @@ body > .banking-agent-float-root .banking-agent-panel {
 	color: #161616;
 	font-weight: 700;
 	vertical-align: middle;
-	max-width: 160px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	overflow: visible;
+	white-space: normal;
 }
 .bar-rp-table td.bar-rp-desc {
 	max-width: 200px;
