@@ -450,6 +450,23 @@ export default function AdminSideNav({ user }) {
 			);
 		}
 
+		if (item.action) {
+			return (
+				<button
+					key={itemKey}
+					type="button"
+					className="admin-side-nav__item"
+					title={collapsed ? item.label : undefined}
+					onClick={() => handleAction(item.action)}
+				>
+					<span className="admin-side-nav__icon">{item.icon}</span>
+					{!collapsed && (
+						<span className="admin-side-nav__label">{item.label}</span>
+					)}
+				</button>
+			);
+		}
+
 		return (
 			<Link
 				key={itemKey}

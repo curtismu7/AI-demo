@@ -18,6 +18,9 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **Agent Demo Guide — now opens from AdminSideNav** — fixed `renderNavItem` to handle top-level navigation items with `action` functions (not just children); previously only child items with actions were rendered as buttons, top-level items were incorrectly rendered as Links.
+- **Accounts panel — resizable on all sides with visual feedback** — added `max-height: 90vh` to ensure panel fits viewport by default; improved resize handle styling with subtle blue background on hover for better UX; removed unnecessary wrapper div for handles.
+- **Token chain monitoring — updates when agent runs** — fixed `/api/token-chain` endpoint not showing updates; root cause was token events were generated and sent to frontend but never persisted to tokenChainService; now `bankingAgentRoutes.js` calls `trackTokenEvent` for each resolved event after agent execution, ensuring monitoring dashboard reflects all token exchanges.
 - **Banking Agent test chips — fixed test_wrong_audience handler and added test coverage** — `test_wrong_audience` now properly captures gateway denial HTTP status code and error metadata; created comprehensive test suite (`BankingAgent.test.js`, `BankingAgent.integration.test.js`, `TEST_CHIPS_GUIDE.md`) to prevent regression of compliance paths; fixed App.js indentation bug that was breaking build.
 - **IDP Setup page — endpoint URLs now wrap properly** — removed `white-space: nowrap` from endpoint value display to allow long PingOne URLs to wrap across multiple lines; added monospace font for better readability.
 - **IDP Overview — endpoints now display actual PingOne config values** — added useEffect to fetch fresh config from `/api/admin/config` when IDP Setup tab is accessed; fixed OIDC Discovery label layout issue by removing inline `(.well-known)` text.

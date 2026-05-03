@@ -14,6 +14,7 @@
   flex-direction: column;
   user-select: none;
   z-index: 1100;
+  max-height: 90vh;
 }
 
 .adp-panel--collapsed {
@@ -314,12 +315,7 @@
   font-size: 13px;
 }
 
-/* Resize handles (from draggablePanel pattern) */
-.drp-resize-handles {
-  position: relative;
-  /* Handles positioned absolutely by .drp-resize-handle */
-}
-
+/* Resize handles — positioned on panel edges */
 .drp-resize-handle {
   position: absolute;
   background: transparent;
@@ -397,6 +393,14 @@
 /* Show resize handles on panel hover */
 .adp-panel:hover .drp-resize-handle {
   opacity: 1;
+}
+
+/* Improve resize handle visibility with subtle background on hover */
+.adp-panel:hover .drp-resize-handle--n,
+.adp-panel:hover .drp-resize-handle--s,
+.adp-panel:hover .drp-resize-handle--e,
+.adp-panel:hover .drp-resize-handle--w {
+  background: rgba(37, 99, 235, 0.1);
 }
 
 /* Responsive adjustments for smaller screens */

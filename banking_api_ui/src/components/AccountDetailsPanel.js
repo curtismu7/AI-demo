@@ -196,9 +196,9 @@ function AccountDetailsPanel({ accountData, initialPos, onClose }) {
         </div>
       )}
 
-      {/* Resize grip — bottom-right corner */}
+      {/* Resize handles — all sides and corners */}
       {!collapsed && (
-        <div className="drp-resize-handles">
+        <>
           {/* Corner handles */}
           <div className="drp-resize-handle drp-resize-handle--nw" onMouseDown={createResizeHandler('nw')} aria-hidden title="Resize from top-left" />
           <div className="drp-resize-handle drp-resize-handle--ne" onMouseDown={createResizeHandler('ne')} aria-hidden title="Resize from top-right" />
@@ -210,7 +210,7 @@ function AccountDetailsPanel({ accountData, initialPos, onClose }) {
           <div className="drp-resize-handle drp-resize-handle--s" onMouseDown={createResizeHandler('s')} aria-hidden title="Resize from bottom" />
           <div className="drp-resize-handle drp-resize-handle--e" onMouseDown={createResizeHandler('e')} aria-hidden title="Resize from right" />
           <div className="drp-resize-handle drp-resize-handle--w" onMouseDown={createResizeHandler('w')} aria-hidden title="Resize from left" />
-        </div>
+        </>
       )}
     </div>
   );

@@ -35,7 +35,6 @@ import bffAxios from "../services/bffAxios";
 import { getCachedStatus } from "../services/cachedStatusService";
 import { loadPublicConfig } from "../services/configService";
 import { spinner } from "../services/spinnerService";
-import { getToolStepsForAction } from "../utils/agentToolSteps";
 import {
   notifyError,
   notifyInfo,
@@ -54,6 +53,7 @@ import { EDU } from "./education/educationIds";
 import FidoStepUpModal from "./FidoStepUpModal";
 import MCPToolsListModal from "./MCPToolsListModal";
 import OtpStepUpModal from "./OtpStepUpModal";
+import QuickLoginModal from "./QuickLoginModal";
 import TokenChainDisplay from "./TokenChainDisplay";
 import { MarkdownContent } from "./shared/MarkdownText";
 import TransactionConsentModal from "./TransactionConsentModal";
@@ -1735,6 +1735,7 @@ export default function BankingAgent({
       return false;
     }
   });
+  const [showLoginModal, setShowLoginModal] = useState(false);
   // Detect FIDO2/WebAuthn support on mount
   useEffect(() => {
     setSupportsFido(
@@ -4207,6 +4208,9 @@ export default function BankingAgent({
           "🔌 MCP server unreachable — check your server connection",
           { autoClose: 8000 },
         );
+      } else if (err?.statusCode === 428 || err?.response?.status === 428) {
+        // 428 Precondition Required — typically token expired during MFA
+        setShowLoginModal(true);
       } else if (hydrationAuthFailure && cookieOnlyBffSession) {
         // Inline session-fix banner already shown on load for cookie-only Backend-for-Frontend (BFF); avoid duplicate toasts.
       } else if (err?.code === "session_not_hydrated") {
@@ -4229,10 +4233,7 @@ export default function BankingAgent({
         err?.code === "authentication_required" ||
         /sign in to use the banking agent/i.test(String(err?.message || ""))
       ) {
-        notifyError(
-          "Session missing or expired on the server. Try Refresh access token, or Sign in again.",
-          { autoClose: 9000 },
-        );
+        setShowLoginModal(true);
       } else if (err?.code === "missing_exchange_scopes") {
         addMessage(
           "token-event",
@@ -7067,93 +7068,6 @@ export default function BankingAgent({
                 <div ref={bottomRef} />
               </div>
 
-              {/* Discovery popout — "All actions" overlay */}
-              {isLoggedIn && showDiscovery && (
-                <div
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label="Action browser"
-                  className={"ba-discovery-popout ba-discovery-popout--open"}
-                >
-                  <div className="ba-discovery-header">
-                    <span>⊞ All actions</span>
-                    <button
-                      type="button"
-                      className="ba-discovery-close"
-                      onClick={() => {
-                        setShowDiscovery(false);
-                        setDiscoverySearch("");
-                        discoveryTriggerRef.current?.focus();
-                      }}
-                      aria-label="Close action browser"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  <input
-                    className="ba-discovery-search"
-                    type="text"
-                    placeholder="Search actions…"
-                    value={discoverySearch}
-                    onChange={(e) => setDiscoverySearch(e.target.value)}
-                    aria-label="Search actions"
-                    data-role="popout-search"
-                  />
-
-                  <div className="ba-discovery-body">
-                    {filteredDiscoveryGroups.length === 0 ? (
-                      <div className="ba-discovery-empty">
-                        <div className="ba-discovery-empty-heading">
-                          No matching actions
-                        </div>
-                        <div>
-                          Try a different search term, or clear the search to
-                          see all actions.
-                        </div>
-                      </div>
-                    ) : (
-                      filteredDiscoveryGroups.map((group) => (
-                        <React.Fragment key={group.key}>
-                          <div className="ba-commands-section">
-                            {group.label}
-                          </div>
-                          <div className="ba-chips">
-                            {group.chips.map((chip) => (
-                              <button
-                                key={chip.id}
-                                type="button"
-                                className={
-                                  "ba-chip" +
-                                  (group.isEducation ? " ba-chip--learn" : "") +
-                                  (!group.isEducation &&
-                                  complianceStripState.complianceActionId ===
-                                    chip.id
-                                    ? " ba-chip--active-test"
-                                    : "")
-                                }
-                                onClick={() => {
-                                  if (group.isEducation) {
-                                    openEducationCommand(chip);
-                                  } else {
-                                    handleActionClick(chip.id);
-                                  }
-                                  setShowDiscovery(false);
-                                  setDiscoverySearch("");
-                                }}
-                                disabled={consentBlocked}
-                              >
-                                {chip.label}
-                              </button>
-                            ))}
-                          </div>
-                        </React.Fragment>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Action form (when user selects a transaction action) */}
               {activeAction && (
                 <div
@@ -7534,6 +7448,7 @@ export default function BankingAgent({
           )}
         </div>
       )}
+      {showLoginModal && <QuickLoginModal pathname={window.location.pathname} />}
     </div>
   );
 

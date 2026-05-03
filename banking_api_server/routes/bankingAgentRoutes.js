@@ -13,6 +13,7 @@ const {
 } = require('../middleware/hitlGatewayMiddleware');
 const { processAgentMessage } = require('../services/bankingAgentLangGraphService');
 const appEventService = require('../services/appEventService');
+const { trackTokenEvent } = require('../services/tokenChainService');
 
 const router = express.Router();
 router.use(agentSessionMiddleware);
@@ -153,6 +154,30 @@ router.post('/message', async (req, res) => {
       }
     }
     // ───────────────────────────────────────────────────────────────────────
+
+    // Persist token events to token chain service for /api/token-chain monitoring
+    if (resolvedTokenEvents && resolvedTokenEvents.length > 0 && userId) {
+      try {
+        for (const event of resolvedTokenEvents) {
+          await trackTokenEvent({
+            eventType: event.status || 'exchange',
+            token: '', // We don't have the raw token here, just the metadata
+            description: event.label + ': ' + (event.explanation || ''),
+            userId: userId,
+            additionalData: {
+              tokenLabel: event.label,
+              status: event.status,
+              claims: event.claims,
+              tokenType: event.claims?.aud ? 'mcp_token' : 'user_token'
+            }
+          });
+        }
+        console.log('[banking-agent/message] Persisted %d token events to chain service', resolvedTokenEvents.length);
+      } catch (trackErr) {
+        // Non-fatal: if tracking fails, still return the response
+        console.error('[banking-agent/message] Failed to track token events:', trackErr.message);
+      }
+    }
 
     console.log('[banking-agent/message] Returning agent response');
     appEventService.logEvent('agent', 'info', 'Agent response sent', { tag: 'agent/route' });

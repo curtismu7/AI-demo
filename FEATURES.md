@@ -155,8 +155,9 @@ git checkout <last-version-tag> -- <key-file>
 | Education bar (persistent guide launcher) | active | `banking_api_ui/src/components/EducationBar.js` | — |
 | Education drawer / modal shell | active | `banking_api_ui/src/components/shared/EducationDrawer.js`, `banking_api_ui/src/components/shared/EducationModal.js` | `u:components/shared/__tests__/EducationDrawer.test.js` |
 | Login flow guide | active | `banking_api_ui/src/components/education/LoginFlowPanel.js` | — |
-| Token chain display + guide | active | `banking_api_ui/src/components/TokenChainDisplay.js`, `banking_api_ui/src/components/education/TokenChainPanel.js` | — |
+| Token chain display + guide + monitoring persistence | active | `banking_api_ui/src/components/TokenChainDisplay.js`, `banking_api_ui/src/components/education/TokenChainPanel.js`, `banking_api_server/routes/bankingAgentRoutes.js`, `banking_api_server/services/tokenChainService.js` | `s:tokenChainService.test.js` |
 | Token Inspector panel — floating draggable/resizable/collapsible detail popup per token event | active | `banking_api_ui/src/components/TokenChainDisplay.js`, `banking_api_ui/src/components/TokenChainDisplay.css` | — |
+| Agent Demo Guide — interactive modal showing 12 compliance verification steps mapped to 6 real-world banking scenarios; expandable steps with copy-to-clipboard prompts; accessible from AdminSideNav | active | `banking_api_ui/src/components/AgentDemoGuide.jsx`, `banking_api_ui/src/components/AgentDemoGuide.css`, `banking_api_ui/src/components/AdminSideNav.jsx` | — |
 | Token introspection guide | active | `banking_api_ui/src/components/education/IntrospectionPanel.js` | — |
 | Token exchange guide | active | `banking_api_ui/src/components/education/TokenExchangePanel.js` | — |
 | Step-up auth guide | active | `banking_api_ui/src/components/education/StepUpPanel.js` | — |

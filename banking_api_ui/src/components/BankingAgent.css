@@ -4112,13 +4112,6 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 
 /* ─── Phase 231: discovery popout overlay ─────────────────────────────── */
 
-.ba-discovery-backdrop {
-	position: fixed;
-	inset: 0;
-	background: rgba(0, 0, 0, 0.4);
-	z-index: 9;
-}
-
 .ba-discovery-popout {
 	position: absolute;
 	bottom: 0;
