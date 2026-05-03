@@ -7,28 +7,30 @@ export default function HelixPanel() {
   const [helixStatus, setHelixStatus] = useState(null);
   const [helixSaving, setHelixSaving] = useState(false);
   const [helixChecking, setHelixChecking] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const fetchHelixStatus = useCallback(async () => {
     setHelixChecking(true);
     try {
       const statusRes = await apiClient.get('/api/langchain/provider/helix/status');
-      setHelixStatus(statusRes.data.status);
+      console.log('[HelixPanel] Status response:', statusRes);
+      setHelixStatus(statusRes.data?.status);
 
       const configRes = await apiClient.get('/api/langchain/config/status');
+      console.log('[HelixPanel] Config response:', configRes.data);
       const cfg = configRes.data;
 
-      setHelixConfig((prev) => {
-        const newConfig = {
-          base_url: cfg.helix_base_url || prev.base_url || '',
-          api_key: prev.api_key || '',
-          environment_id: cfg.helix_environment_id || prev.environment_id || '',
-          agent_id: cfg.helix_agent_id || prev.agent_id || '',
-        };
-        localStorage.setItem('helix_config', JSON.stringify(newConfig));
-        return newConfig;
+      setHelixConfig({
+        base_url: cfg?.helix_base_url || '',
+        api_key: '',
+        environment_id: cfg?.helix_environment_id || '',
+        agent_id: cfg?.helix_agent_id || '',
       });
+      console.log('[HelixPanel] Updated config:', { base_url: cfg?.helix_base_url, environment_id: cfg?.helix_environment_id, agent_id: cfg?.helix_agent_id });
+      notifySuccess('Helix configuration loaded');
     } catch (err) {
-      console.error('Helix status check failed:', err);
+      console.error('[HelixPanel] Status check failed:', err);
+      notifyError(`Failed to load Helix configuration: ${err.message}`);
     } finally {
       setHelixChecking(false);
     }
@@ -50,7 +52,7 @@ export default function HelixPanel() {
         helix_environment_id: helixConfig.environment_id,
         helix_agent_id: helixConfig.agent_id,
       });
-      localStorage.setItem('helix_config', JSON.stringify(helixConfig));
+      sessionStorage.setItem('helix_config', JSON.stringify(helixConfig));
       notifySuccess('Helix LLM configuration saved');
       await fetchHelixStatus();
     } catch (err) {
@@ -62,16 +64,20 @@ export default function HelixPanel() {
   };
 
   const handleHelixClear = async () => {
-    if (!window.confirm('Are you sure you want to clear Helix configuration? This cannot be undone.')) return;
+    setShowClearConfirm(true);
+  };
 
+  const confirmHelixClear = async () => {
+    setShowClearConfirm(false);
     setHelixSaving(true);
     try {
       await apiClient.delete('/api/langchain/config/key/helix');
       setHelixConfig({ base_url: '', api_key: '', environment_id: '', agent_id: '' });
       setHelixStatus('unconfigured');
-      localStorage.removeItem('helix_config');
+      sessionStorage.removeItem('helix_config');
       notifySuccess('Helix configuration cleared');
     } catch (err) {
+      console.error('[HelixPanel] Clear failed:', err);
       notifyError('Failed to clear Helix config');
     } finally {
       setHelixSaving(false);
@@ -79,16 +85,33 @@ export default function HelixPanel() {
   };
 
   useEffect(() => {
-    const savedHelix = localStorage.getItem('helix_config');
+    // Restore from sessionStorage on mount (persist across tab switches)
+    const savedHelix = sessionStorage.getItem('helix_config');
     if (savedHelix) {
       try {
         setHelixConfig(JSON.parse(savedHelix));
       } catch (err) {
-        console.warn('Failed to parse Helix config:', err);
+        console.warn('Failed to parse Helix config from session:', err);
       }
     }
-    fetchHelixStatus();
+
+    // Load status on mount
+    const loadStatus = async () => {
+      try {
+        const statusRes = await apiClient.get('/api/langchain/provider/helix/status');
+        console.log('[HelixPanel] Initial status:', statusRes.data?.status);
+        setHelixStatus(statusRes.data?.status);
+      } catch (err) {
+        console.error('[HelixPanel] Failed to load initial status:', err);
+      }
+    };
+    loadStatus();
   }, []);
+
+  // Persist form changes to sessionStorage in real-time
+  useEffect(() => {
+    sessionStorage.setItem('helix_config', JSON.stringify(helixConfig));
+  }, [helixConfig]);
 
   return (
     <div style={{ padding: '1.5rem' }}>
@@ -243,6 +266,68 @@ export default function HelixPanel() {
           ❌ Clear
         </button>
       </div>
+
+      {/* Clear confirmation modal */}
+      {showClearConfirm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}>
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: 8,
+            padding: '2rem',
+            maxWidth: '400px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Clear Helix Configuration?</h3>
+            <p style={{ color: '#666', marginBottom: '1.5rem' }}>
+              This will delete your Helix configuration and cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(false)}
+                disabled={helixSaving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  cursor: helixSaving ? 'not-allowed' : 'pointer',
+                  opacity: helixSaving ? 0.6 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmHelixClear}
+                disabled={helixSaving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#dc2626',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: helixSaving ? 'not-allowed' : 'pointer',
+                  opacity: helixSaving ? 0.6 : 1,
+                }}
+              >
+                {helixSaving ? 'Clearing…' : 'Clear'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
