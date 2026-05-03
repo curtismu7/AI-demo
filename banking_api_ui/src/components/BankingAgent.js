@@ -3274,29 +3274,32 @@ export default function BankingAgent({
         }
         // ── Testing scenarios ──────────────────────────────────────────────────
         case "test_wrong_scope": {
-          // Calls a real MCP tool that requires a scope the agent policy blocks, exercising the
-          // server-side scope gate. Uses `admin_get_all_users` which requires an admin-only scope
-          // not present in end-user tokens. Outcome is verified from the server response code.
-          // RFC 6749 §3.3 — access tokens carry a scope claim; resource servers MUST reject requests
-          // for scopes not granted at authorization time.
+          // Exercises the BFF gateway scope denial flow: calls an admin-only MCP tool
+          // (admin_get_all_users) with an end-user token lacking the required scope.
+          // The gateway should respond with 403 + required_scopes metadata.
+          // RFC 6749 §3.3 — Resource servers MUST reject tokens that don't carry required scopes.
           toast.update(toastId, {
-            render: "⚠️ Calling MCP tool with blocked scope…",
+            render: "⚠️ Calling admin tool with customer token (no admin scope)…",
           });
           let scopeTestRes;
           try {
+            // admin_get_all_users requires admin scope not in customer token
             scopeTestRes = await callMcpTool("admin_get_all_users", {});
           } catch (scopeErr) {
             scopeTestRes = {
               error: scopeErr.code || scopeErr.message,
+              status: scopeErr.status,
+              missingScopes: scopeErr.missingScopes,
               tokenEvents: scopeErr.tokenEvents || [],
             };
           }
           const scopeRejected =
+            scopeTestRes?.status === 403 ||
             scopeTestRes?.error === "agent_mcp_scope_denied" ||
             scopeTestRes?.error?.includes("scope");
           const scopeOutcome = scopeRejected
-            ? `✅ Server correctly rejected the request: \`${scopeTestRes.error}\n   Missing scopes: \`${(scopeTestRes.missingScopes || []).join(", ") || "agent policy check"}`
-            : `ℹ️ Server response: ${scopeTestRes?.error || JSON.stringify(scopeTestRes?.result || {}).slice(0, 120)}`;
+            ? `✅ Gateway correctly rejected (403): required_scopes=[${(scopeTestRes.missingScopes || []).join(", ") || "admin"}]`
+            : `❌ Expected 403 denial, got: ${scopeTestRes?.error || scopeTestRes?.status || "success"}`;
           addMessage(
             "token-event",
             [
@@ -3304,12 +3307,15 @@ export default function BankingAgent({
               "",
               scopeOutcome,
               "",
-              "RFC 6749 §3.3 — The `scope` parameter limits what an access token can do.",
-              "   Resource servers MUST reject requests where the token does not carry the required scope.",
-              "RFC 8693 §2.1 — The RFC 8693 exchange can only narrow (not expand) scopes from the subject token.",
-              "   An MCP token cannot gain scopes the user's login token did not include.",
+              "Step 4b-c: Gateway denial includes required_scopes metadata",
+              `Status: ${scopeTestRes?.status || "?"}`,
+              `Error: ${scopeTestRes?.error || "none"}`,
+              `Missing scopes: [${(scopeTestRes?.missingScopes || []).join(", ") || "admin"}]`,
               "",
-              "Open Token Chain ↗ to inspect the `scope` claim on the user and MCP tokens.",
+              "RFC 6749 §3.3 — The `scope` parameter limits what an access token can do.",
+              "   Resource servers MUST reject requests where the token lacks required scopes.",
+              "RFC 8693 §2.1 — Token exchange can only narrow (not expand) scopes.",
+              "   MCP token inherits user token's scopes; cannot gain new scopes.",
             ].join("\n"),
             actionId,
           );
@@ -3318,9 +3324,9 @@ export default function BankingAgent({
           }
           toast.update(toastId, {
             render: scopeRejected
-              ? "✅ Scope rejection confirmed"
-              : "ℹ️ Scope test sent",
-            type: "info",
+              ? "✅ Scope rejection + denial metadata confirmed"
+              : "❌ Expected 403 denial not received",
+            type: scopeRejected ? "info" : "error",
             isLoading: false,
             autoClose: agentToastMs.toolsLoaded,
           });
