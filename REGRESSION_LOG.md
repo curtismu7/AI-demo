@@ -5,6 +5,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-05-02 — BankingAgent.chips float-mode test selector fixed (Phase 264-03)
+
+**Symptoms**: 3 float-mode tests in `BankingAgent.chips.test.js` timed out at 1050ms each: "float mode: renders action items in Actions popout after opening panel", "float mode: shows education items in discovery popout after opening panel", "clicking 'Actions' trigger button opens the discovery popout in float mode".
+
+**Root cause**: Tests waited for `screen.getByTitle(/PingOne Identity/i)` to confirm the panel was open, but the element rendered later than the panel `role="dialog"`. Then `document.querySelector(".ba-actions-trigger")` returned the compliance toggle button (same class, wrong element) instead of the real Actions trigger.
+
+**Fix**: Replaced `getByTitle` wait with `getByRole("dialog", { name: /AI Agent/i })`. Replaced class-only `.ba-actions-trigger` selector with `.ba-actions-trigger[aria-haspopup='dialog']` to target the correct button.
+
+**Tests**: `BankingAgent.chips.test.js` 60/60 pass.
+
+---
+
 ## 2026-04-25 — Pre-existing test/code mismatches fixed (Phase 231 test-suite maintenance)
 
 **Symptoms**: `AgentUiModeContext.test.js` had 3 assertions expecting `placement: "none"` for empty/unrecognised localStorage; `PingOneAudit.test.jsx` had `getByText("Run Audit")` matching both a `<strong>` and `<button>` element (ambiguous query), and `getByText("banking:ai:agent")` matching duplicate scope-tag spans.
