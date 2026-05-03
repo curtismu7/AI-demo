@@ -18,6 +18,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **Demo Controls — wireup verification for may_act diagnose endpoint** — ThresholdControls.js now correctly parses `/api/demo/may-act/diagnose` response (checks.userAttribute.pass) instead of expecting non-existent `attributeSet` field; UI toggle button now shows correct may_act status on load.
+- **UI style — removed emojis from professional banking interfaces** — removed gear emoji from Controls button and checkmark/cross emojis from may_act toggle; real banking applications use professional typography, not decorative symbols.
 - **Critical: Secure sessionStorage operations with error logging** — replaced 5x silent try/catch blocks in BankingAgent.js with sessionStorageService that logs auth failures, quota errors, and private browsing issues; prevents auth failures from being hidden from developers.
 - **Critical: Safe API response validation** — added apiResponseValidator utilities to prevent crashes from malformed API responses; account refresh now validates HTTP status, response structure, and normalizes each account before updating state.
 - **Critical: Centralized pending action persistence** — created PendingActionManager to deduplicate sessionStorage calls scattered across auth challenge, consent, and login flows; validates action structure before storage to prevent malformed data.
