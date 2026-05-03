@@ -32,6 +32,25 @@ async function restoreAccountsFromSnapshot(userId) {
   }
 }
 
+/**
+ * Save current user accounts to demoScenarioStore (Redis/KV) for cold-start recovery.
+ * Called after any account creation, update, or deletion.
+ * Prevents "From account not found" errors when Vercel lambda is recycled.
+ */
+async function saveAccountSnapshot(userId) {
+  try {
+    const accounts = dataStore.getAccountsByUserId(userId);
+    const scenario = await demoScenarioStore.load(userId);
+    await demoScenarioStore.save(userId, {
+      ...scenario,
+      accountSnapshot: accounts || []
+    });
+    console.log(`[accounts] saved snapshot for userId=${userId} with ${(accounts || []).length} accounts`);
+  } catch (e) {
+    console.warn('[accounts] saveAccountSnapshot failed:', e.message);
+  }
+}
+
 // Get all accounts (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
   try {
@@ -141,6 +160,9 @@ async function provisionDemoAccounts(userId) {
     createdAt: new Date('2024-01-15'),
   });
 
+  // Save snapshot for cold-start recovery
+  await saveAccountSnapshot(userId);
+
   const sampleTxns = [
     { fromAccountId: null,        toAccountId: checkingId, amount: 3500.00, type: 'deposit',    description: 'Direct deposit – Payroll',    createdAt: new Date('2024-03-01T09:00:00Z') },
     { fromAccountId: checkingId,  toAccountId: savingsId,  amount:  500.00, type: 'transfer',   description: 'Monthly savings transfer',    createdAt: new Date('2024-03-03T11:15:00Z') },
@@ -247,6 +269,8 @@ router.post('/reset-all-demo', authenticateToken, requireScopes(['banking:write'
       for (const txn of txns) {
         await dataStore.deleteTransaction(txn.id);
       }
+      // Save empty snapshot for cold-start recovery
+      await saveAccountSnapshot(uid);
     }
     res.json({ message: `Reset ${demoUserIds.length} demo user(s). Fresh accounts will be provisioned on next login.` });
   } catch (error) {
@@ -311,8 +335,10 @@ router.post('/', blockInDemoMode('account creation'), authenticateToken, require
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied. Admin role required.' });
     }
-    
+
     const account = await dataStore.createAccount(req.body);
+    // Save snapshot for cold-start recovery
+    await saveAccountSnapshot(account.userId);
     res.status(201).json({ message: 'Account created successfully', account });
   } catch (error) {
     console.error('Error creating account:', error);
@@ -327,11 +353,13 @@ router.put('/:id', blockInDemoMode('account update'), authenticateToken, require
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied. Admin role required.' });
     }
-    
+
     const account = await dataStore.updateAccount(req.params.id, req.body);
     if (!account) {
       return res.status(404).json({ error: 'Account not found' });
     }
+    // Save snapshot for cold-start recovery
+    await saveAccountSnapshot(account.userId);
     res.json({ message: 'Account updated successfully', account });
   } catch (error) {
     console.error('Error updating account:', error);
@@ -346,10 +374,16 @@ router.delete('/:id', blockInDemoMode('account deletion'), authenticateToken, re
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied. Admin role required.' });
     }
-    
+
+    // Get account before deletion to know which user to update snapshot for
+    const account = dataStore.getAccountById(req.params.id);
     const deleted = await dataStore.deleteAccount(req.params.id);
     if (!deleted) {
       return res.status(404).json({ error: 'Account not found' });
+    }
+    // Save snapshot for cold-start recovery
+    if (account) {
+      await saveAccountSnapshot(account.userId);
     }
     res.json({ message: 'Account deleted successfully' });
   } catch (error) {
