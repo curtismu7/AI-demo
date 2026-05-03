@@ -4,6 +4,26 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import './ThresholdControls.css';
 
+const FLAG_EXPLANATIONS = {
+  authorize_enabled: 'Enable PingOne authorization in MCP flows',
+  ff_authorize_simulated: 'Use simulated authorization responses',
+  ff_authorize_fail_open: 'Allow operations when authorization fails',
+  ff_authorize_deposits: 'Require authorization for deposit operations',
+  ff_authorize_mcp_first_tool: 'Authorize before executing first MCP tool',
+  step_up_enabled: 'Enable MFA step-up for high-value transactions',
+  ff_hitl_enabled: 'Enable human-in-the-loop consent for sensitive operations',
+  mcp_use_legacy_protocol: 'Use legacy MCP protocol version',
+  mcp_use_pingone_server: 'Use PingOne as MCP server',
+  ff_inject_audience: 'Inject audience claim into tokens',
+  ff_inject_may_act: 'Inject may_act delegation claim into tokens',
+  ff_inject_scopes: 'Inject custom scopes into tokens',
+  ff_skip_token_exchange: 'Skip RFC 8693 token exchange',
+  ff_two_exchange_delegation: 'Use two-leg token exchange for delegation',
+  ff_oidc_only_authorize: 'Only authorize via OpenID Connect',
+  ff_jd_token_exchange: 'Enable JWT delegation token exchange',
+  ff_webmcp_enabled: 'Enable WebMCP tool server',
+};
+
 export default function ThresholdControls() {
   const [open, setOpen] = useState(false);
   const [panelPos, setPanelPos] = useState({ top: 0, right: 0 });
@@ -155,28 +175,34 @@ export default function ThresholdControls() {
       {/* Thresholds */}
       <div className="thresh-ctrl__section">
         <div className="thresh-ctrl__section-title">Step-up Thresholds</div>
-        <label className="thresh-ctrl__label">
-          Confirm (consent) $
-          <input
-            className="thresh-ctrl__input"
-            type="number"
-            min="1"
-            step="50"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-          />
-        </label>
-        <label className="thresh-ctrl__label">
-          MFA step-up $
-          <input
-            className="thresh-ctrl__input"
-            type="number"
-            min="1"
-            step="50"
-            value={mfa}
-            onChange={(e) => setMfa(e.target.value)}
-          />
-        </label>
+        <div className="thresh-ctrl__field">
+          <label className="thresh-ctrl__label">
+            Confirm (consent) $
+            <input
+              className="thresh-ctrl__input"
+              type="number"
+              min="1"
+              step="50"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+          </label>
+          <span className="thresh-ctrl__help">Amount that triggers consent challenge</span>
+        </div>
+        <div className="thresh-ctrl__field">
+          <label className="thresh-ctrl__label">
+            MFA step-up $
+            <input
+              className="thresh-ctrl__input"
+              type="number"
+              min="1"
+              step="50"
+              value={mfa}
+              onChange={(e) => setMfa(e.target.value)}
+            />
+          </label>
+          <span className="thresh-ctrl__help">Amount that triggers MFA step-up challenge</span>
+        </div>
         <button
           type="button"
           className="thresh-ctrl__save"
@@ -194,15 +220,18 @@ export default function ThresholdControls() {
         <div className="thresh-ctrl__section">
           <div className="thresh-ctrl__section-title">Feature Flags</div>
           {flags.map((flag) => (
-            <label key={flag.id} className="thresh-ctrl__checkbox">
-              <input
-                type="checkbox"
-                checked={flag.value === true}
-                onChange={(e) => toggleFlag(flag.id, e.target.checked)}
-                disabled={flagSaving === flag.id}
-              />
-              <span>{flag.label || flag.id}</span>
-            </label>
+            <div key={flag.id} className="thresh-ctrl__flag-item">
+              <label className="thresh-ctrl__checkbox">
+                <input
+                  type="checkbox"
+                  checked={flag.value === true}
+                  onChange={(e) => toggleFlag(flag.id, e.target.checked)}
+                  disabled={flagSaving === flag.id}
+                />
+                <span>{flag.label || flag.id}</span>
+              </label>
+              <span className="thresh-ctrl__help">{FLAG_EXPLANATIONS[flag.id] || 'Feature flag control'}</span>
+            </div>
           ))}
         </div>
       )}
