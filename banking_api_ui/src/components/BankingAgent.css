@@ -645,14 +645,14 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 
 .banking-agent-panel:not(.ba-mode-inline) .ba-icon-btn {
-	background: var(--ba-float-btn);
-	border-color: var(--ba-float-btn);
-	color: #fff;
+	background: transparent;
+	border-color: transparent;
+	color: #111827;
 }
 .banking-agent-panel:not(.ba-mode-inline) .ba-icon-btn:hover {
-	background: var(--ba-float-btn-h);
-	border-color: var(--ba-float-btn-h);
-	color: #fff;
+	background: transparent;
+	border-color: transparent;
+	color: #111827;
 }
 
 .banking-agent-panel:not(.ba-mode-inline) .ba-cmd-btn {
