@@ -593,7 +593,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 	--ba-user-txt: #ffffff;
 	--ba-chip-bg: rgba(65, 105, 225, 0.22);
 	--ba-chip-bd: #7c9cf5;
-	--ba-chip-txt: #e8eefc;
+	--ba-chip-txt: #111827;
 	--ba-accent: #4169e1;
 	--ba-accent-h: #3158d3;
 }
@@ -602,7 +602,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 .banking-agent-panel:not(.ba-mode-inline) .ba-action-item {
 	background: rgba(65, 105, 225, 0.18);
 	border-color: rgba(113, 155, 245, 0.55);
-	color: #c6ddff;
+	color: #111827;
 }
 .banking-agent-panel:not(.ba-mode-inline) .ba-suggestion:hover,
 .banking-agent-panel:not(.ba-mode-inline) .ba-action-item:hover:not(:disabled) {
