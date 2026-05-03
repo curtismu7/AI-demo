@@ -23,6 +23,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import './AgentDemoGuide.css';
 
 const ALL_12_STEPS = [
@@ -417,10 +418,20 @@ export default function AgentDemoGuide({ onClose, initialActiveScenario, initial
     }));
   };
 
+  const navigate = useNavigate();
+
   const handleCopyPrompt = (prompt, stepId) => {
     navigator.clipboard.writeText(prompt);
     setCopiedStepId(stepId);
     setTimeout(() => setCopiedStepId(null), 2000);
+  };
+
+  const handleSetupClick = (setupPrompt) => {
+    if (setupPrompt.includes('Authz Test')) {
+      navigate('/authz-test');
+    } else if (setupPrompt.includes('Demo Config')) {
+      navigate('/admin');
+    }
   };
 
   return createPortal(
@@ -565,6 +576,15 @@ export default function AgentDemoGuide({ onClose, initialActiveScenario, initial
                               >
                                 {copiedStepId === `${activeScenario}-${idx}` ? '✓' : '📋 Copy'}
                               </button>
+                              {step.action.includes('Setup') && (
+                                <button
+                                  type="button"
+                                  className="adg-setup-btn"
+                                  onClick={() => handleSetupClick(step.prompt)}
+                                >
+                                  🔗 Go to Setup
+                                </button>
+                              )}
                             </div>
                           )}
 

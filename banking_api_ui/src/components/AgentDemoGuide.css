@@ -333,6 +333,8 @@
   border: 1px solid #bbf7d0;
   border-radius: 8px;
   padding: 12px;
+  display: flex;
+  flex-direction: column;
 }
 
 .adg-prompt-code {
@@ -369,6 +371,31 @@
 }
 
 .adg-copy-btn:active {
+  transform: translateY(0);
+}
+
+.adg-setup-btn {
+  align-self: flex-start;
+  padding: 6px 12px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 4px;
+  margin-left: 8px;
+}
+
+.adg-setup-btn:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+}
+
+.adg-setup-btn:active {
   transform: translateY(0);
 }
 
