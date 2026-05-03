@@ -149,12 +149,22 @@ const ACTION_GROUPS = {
     {
       id: "ai_ask",
       label: "Ask AI Anything",
-      desc: "Free-form question routed to Ollama local LLM",
+      desc: "Free-form question routed to active LLM (Ollama or Helix)",
+    },
+    {
+      id: "ai_helix_demo",
+      label: "🧠 LLM Demo: Ask Helix",
+      desc: "Ask Helix LLM a financial question (if configured)",
     },
     {
       id: "ai_explain",
       label: "Explain a Concept",
       desc: "Ask the LLM to explain an OAuth or banking concept",
+    },
+    {
+      id: "ai_helix_explain",
+      label: "🧠 LLM Demo: Explain w/ Helix",
+      desc: "Explain an OAuth or banking concept using Helix LLM",
     },
     {
       id: "ai_analyze",
@@ -165,6 +175,11 @@ const ACTION_GROUPS = {
       id: "ai_advice",
       label: "Financial Advice",
       desc: "Ask the LLM for generic financial advice or tips",
+    },
+    {
+      id: "ai_helix_advice",
+      label: "🧠 LLM Demo: Helix Financial Advice",
+      desc: "Get financial tips from Helix LLM",
     },
   ],
   testing: [
@@ -4314,12 +4329,18 @@ export default function BankingAgent({
       setNlInputFromTile("What is my checking account balance?");
     } else if (actionId === "ai_ask") {
       setNlInputFromTile("");
+    } else if (actionId === "ai_helix_demo") {
+      setNlInputFromTile("(Using Helix LLM) What are best practices for account security?");
     } else if (actionId === "ai_explain") {
       setNlInputFromTile("Explain: ");
+    } else if (actionId === "ai_helix_explain") {
+      setNlInputFromTile("(Using Helix LLM) Explain the difference between OAuth and SAML");
     } else if (actionId === "ai_analyze") {
       setNlInputFromTile("Summarize how the MCP tool flow works in this banking demo");
     } else if (actionId === "ai_advice") {
       setNlInputFromTile("What are some good tips for managing checking and savings accounts?");
+    } else if (actionId === "ai_helix_advice") {
+      setNlInputFromTile("(Using Helix LLM) Give me 5 tips for reducing transaction fees and managing money better");
     } else {
       setActiveAction(actionId);
     }
