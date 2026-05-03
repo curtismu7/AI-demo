@@ -51,20 +51,20 @@ const PHASE_LABELS = {
 /** @type {{ visible: boolean, phase: string, toolName: string|null, steps: Array<{id: string, title: string, detail: string, status: FlowStepStatus}>, serverEvents: Array<{ phase: string, label: string, detail: string, t?: number }>, hint: string|null, updatedAt: number }} */
 const COMPLIANCE_STEPS = [
   // Ordered by agent flow: step 1 → 2 → 4b → 4d → 5 → 5a → 6 → 9 → 12 → 12a
-  { id: 'agent-token-init',       label: '1.     Agent starts — gets client credentials token', status: 'pending' },
-  { id: 'agent-llm-reasoning',    label: '1a.    Agent consults LLM for routing',              status: 'pending' },
-  { id: 'gw-scope-map',           label: '2.     Agent gets tool list — gateway scope map',     status: 'pending' },
-  { id: 'gw-denial-metadata',     label: '4b-c.  Gateway denial — includes required_scopes',   status: 'pending' },
-  { id: 'bff-response-shape',     label: '4d.    BFF structured 401/403 JSON-RPC',             status: 'pending'    },
-  { id: 'gw-hitl-challenge-type', label: '4d/11d. Denial includes challenge_type',             status: 'pending' },
-  { id: 'agent-error-propagation',label: '5.     Agent propagates JSON-RPC denial',            status: 'pending'    },
-  { id: 'agent-recovery-branch',  label: '5/11.  Agent branches: login required vs HITL',      status: 'pending'    },
-  { id: 'bff-login-resume',       label: '5a.    BFF stores pending intent for re-fire',       status: 'pending' },
-  { id: 'agent-scope-aware-cache',label: '6.     Agent token exchange (actor + subject)',      status: 'pending' },
-  { id: 'olb-resource-token',     label: '9.     MCP resource token exchange (OLB path)',      status: 'pending'    },
-  { id: 'ui-gateway-consent',     label: '12.    UI shows GatewayConsentModal (HITL)',         status: 'pending'    },
-  { id: 'ui-auto-refire',         label: '12a.   UI auto-re-fires after login / consent',      status: 'pending' },
-  { id: 'claim-diagnostics',      label: '(diag) Claim/scope diagnostics',                    status: 'pending'    },
+  { id: 'agent-token-init',       label: '1.     Agent starts — gets client credentials token', explanation: 'BFF obtains a client-credentials token for the agent to use when calling MCP tools. This is the agent\'s identity, separate from the user\'s login token.', status: 'pending' },
+  { id: 'agent-llm-reasoning',    label: '1a.    Agent consults LLM for routing',              explanation: 'LLM reasons about which MCP tool to call and what scope is required. This routing decision is logged and auditable.', status: 'pending' },
+  { id: 'gw-scope-map',           label: '2.     Agent gets tool list — gateway scope map',     explanation: 'Agent queries MCP gateway to fetch the list of available tools and their required scopes (banking:read, banking:write, etc).', status: 'pending' },
+  { id: 'gw-denial-metadata',     label: '4b-c.  Gateway denial — includes required_scopes',   explanation: 'When the agent token lacks required scopes, gateway returns 403 with required_scopes metadata so agent knows what\'s missing (RFC 6749 §3.3).', status: 'pending' },
+  { id: 'bff-response-shape',     label: '4d.    BFF structured 401/403 JSON-RPC',             explanation: 'BFF wraps gateway denial as JSON-RPC error with standard shape: {error: "agent_mcp_scope_denied", missingScopes: [...], challenge_type: "..."}', status: 'pending'    },
+  { id: 'gw-hitl-challenge-type', label: '4d/11d. Denial includes challenge_type',             explanation: 'challenge_type field indicates why access was denied: "scope_denied" (RFC 6749) or "consent_required" (HITL gate). Guides agent recovery strategy.', status: 'pending' },
+  { id: 'agent-error-propagation',label: '5.     Agent propagates JSON-RPC denial',            explanation: 'Agent receives the structured denial from BFF and forwards it to the UI as an error message that includes recovery instructions.', status: 'pending'    },
+  { id: 'agent-recovery-branch',  label: '5/11.  Agent branches: login required vs HITL',      explanation: 'Agent reads challenge_type and branches: if scope_denied → user must login; if consent_required → show HITL consent modal instead.', status: 'pending'    },
+  { id: 'bff-login-resume',       label: '5a.    BFF stores pending intent for re-fire',       status: 'pending', explanation: 'Before redirecting to login, BFF saves the pending MCP tool call so it auto-resumes after user authenticates (sessionStorage or server-side store).' },
+  { id: 'agent-scope-aware-cache',label: '6.     Agent token exchange (actor + subject)',      explanation: 'After login/consent, BFF performs RFC 8693 token exchange: subject_token (user) + actor_token (agent) → narrowed MCP token with delegated scopes.', status: 'pending' },
+  { id: 'olb-resource-token',     label: '9.     MCP resource token exchange (OLB path)',      explanation: 'For intent-bound delegation (OLB), second exchange: exchanged_token + MCP actor → final token with nested act claim (act.act.sub = agent client).', status: 'pending'    },
+  { id: 'ui-gateway-consent',     label: '12.    UI shows GatewayConsentModal (HITL)',         explanation: 'For consent-required denials, UI renders GatewayConsentModal showing the transaction details and verification challenge to get user approval.', status: 'pending'    },
+  { id: 'ui-auto-refire',         label: '12a.   UI auto-re-fires after login / consent',      explanation: 'After user authenticates or approves consent, UI automatically re-fires the original MCP tool call with the refreshed/exchanged token.', status: 'pending' },
+  { id: 'claim-diagnostics',      label: '(diag) Claim/scope diagnostics',                    explanation: 'Optional diagnostics: inspect act, aud, scope claims on the MCP token; verify RFC 8693 exchange succeeded; log for audit/debugging.', status: 'pending'    },
 ];
 
 let state = {
@@ -574,6 +574,17 @@ export const agentFlowDiagram = {
       });
     }
     state.phase = ok ? 'running' : 'error';
+    state.updatedAt = Date.now();
+    emit();
+  },
+
+  /** Force-complete all 12 compliance steps for demo/testing purposes. */
+  forceCompleteAllSteps() {
+    state.complianceSteps.forEach(step => {
+      step.status = 'done';
+    });
+    state.complianceStep = state.complianceSteps[state.complianceSteps.length - 1]?.id || null;
+    state.phase = 'done';
     state.updatedAt = Date.now();
     emit();
   },
