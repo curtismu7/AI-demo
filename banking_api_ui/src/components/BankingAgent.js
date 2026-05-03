@@ -68,6 +68,8 @@ import {
   validateHttpResponse,
   safeResponseJson,
 } from "../services/apiResponseValidator";
+import { getColdStartRetryDelays } from "../services/apiErrorHandler";
+import APP_CONFIG from "../services/appConfig";
 
 /** NL message to replay after customer OAuth redirect from marketing agent (sessionStorage). */
 const BX_AGENT_PENDING_NL_KEY = "bx_agent_pending_nl";
@@ -86,7 +88,7 @@ function SessionExpiryTimer({ sessionInfo, className = "" }) {
       const remaining = Math.max(0, expiresAt - now);
 
       setTimeRemaining(remaining);
-      setIsExpiringSoon(remaining > 0 && remaining < 5 * 60 * 1000); // Less than 5 minutes
+      setIsExpiringSoon(remaining > 0 && remaining < APP_CONFIG.SESSION_EXPIRY_WARNING_MS);
     };
 
     calculateTimeRemaining();
@@ -810,7 +812,7 @@ function formatResult(result) {
     r.consent_challenge_required ||
     r.error === "consent_challenge_required"
   ) {
-    const t = r.hitl_threshold_usd ?? 500;
+    const t = r.hitl_threshold_usd ?? APP_CONFIG.THRESHOLDS.HITL_DEFAULT;
     return `${r.message || "Human approval is required for this amount."}\n\nUse the main dashboard to complete the consent flow for amounts over $${t}. The assistant cannot supply a browser consent challenge.`;
   }
   if (isAgentToolErrorResult(r)) {
@@ -2200,7 +2202,7 @@ export default function BankingAgent({
       // Auth cookie is set on the callback response, but on Vercel the status
       // check may land on a cold instance before Redis propagates.  Retry with
       // increasing backoff (immediate, 600, 1400, 2500 ms).
-      const retryDelays = [0, 600, 1400, 2500];
+      const retryDelays = getColdStartRetryDelays();
       const timers = [];
       retryDelays.forEach((delay, i) => {
         const t = setTimeout(async () => {
@@ -3467,7 +3469,7 @@ export default function BankingAgent({
           response = await createTransfer(
             hitlFrom.id,
             hitlTo.id,
-            99999.99,
+            APP_CONFIG.THRESHOLDS.DEMO_LARGE_TRANSFER,
             "Test HITL threshold",
           );
           // Falls through to normalizeAgentToolResult — HITL gate fires there and shows consent modal
@@ -3524,7 +3526,7 @@ export default function BankingAgent({
           response = await createTransfer(
             intentFrom.id,
             intentTo.id,
-            99999.99,
+            APP_CONFIG.THRESHOLDS.DEMO_LARGE_TRANSFER,
             "Intent-bound delegation demo",
           );
           // Falls through to normalizeAgentToolResult — HITL gate fires there and shows consent modal
@@ -3602,7 +3604,7 @@ export default function BankingAgent({
           response = await createTransfer(
             compFrom.id,
             compTo.id,
-            99999.99,
+            APP_CONFIG.THRESHOLDS.DEMO_LARGE_TRANSFER,
             "🔥 Full compliance scenario test",
           );
           // Falls through to normalizeAgentToolResult — consent + MFA gates fire here
@@ -3617,8 +3619,8 @@ export default function BankingAgent({
           });
           // Fetch live thresholds so the message can quote exact values
           let _thresholds = {
-            confirm_threshold_usd: 500,
-            mfa_threshold_usd: 500,
+            confirm_threshold_usd: APP_CONFIG.THRESHOLDS.HITL_DEFAULT,
+            mfa_threshold_usd: APP_CONFIG.THRESHOLDS.MFA_DEFAULT,
           };
           try {
             const _tr = await fetch("/api/config/thresholds", {
@@ -3628,8 +3630,8 @@ export default function BankingAgent({
           } catch (_) {
             /* non-fatal */
           }
-          const _stepUpThreshold = _thresholds.mfa_threshold_usd ?? 500;
-          const _hitlThreshold = _thresholds.confirm_threshold_usd ?? 500;
+          const _stepUpThreshold = _thresholds.mfa_threshold_usd ?? APP_CONFIG.THRESHOLDS.MFA_DEFAULT;
+          const _hitlThreshold = _thresholds.confirm_threshold_usd ?? APP_CONFIG.THRESHOLDS.HITL_DEFAULT;
           // Fetch live thresholds so the message can quote exact values
           const stepUpRes = await sendAgentMessage(
             "Show me my full account details with routing numbers",
@@ -3732,7 +3734,7 @@ export default function BankingAgent({
           }
           addMessage(
             "assistant",
-            `👤 Human-in-the-Loop (HITL) — your manual approval is required.\n\nTransactions over $${normalized.hitl_threshold_usd ?? 500} require your consent before the agent can proceed. The agent is paused and cannot continue until you approve or cancel.\n\nReview the authorization popup, then enter the verification code sent to your email.`,
+            `👤 Human-in-the-Loop (HITL) — your manual approval is required.\n\nTransactions over $${normalized.hitl_threshold_usd ?? APP_CONFIG.THRESHOLDS.HITL_DEFAULT} require your consent before the agent can proceed. The agent is paused and cannot continue until you approve or cancel.\n\nReview the authorization popup, then enter the verification code sent to your email.`,
             actionId,
           );
           toast.dismiss(toastId);
@@ -3740,7 +3742,7 @@ export default function BankingAgent({
             actionId,
             form,
             intentPayload,
-            threshold: normalized.hitl_threshold_usd ?? 500,
+            threshold: normalized.hitl_threshold_usd ?? APP_CONFIG.THRESHOLDS.HITL_DEFAULT,
           });
         } else if (
           normalized.step_up_required === true ||
