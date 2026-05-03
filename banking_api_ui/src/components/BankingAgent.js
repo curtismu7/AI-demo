@@ -59,6 +59,15 @@ import { MarkdownContent } from "./shared/MarkdownText";
 import TransactionConsentModal from "./TransactionConsentModal";
 import "./BankingAgent.css";
 import { postAppEvent } from "../services/appEventClient";
+import sessionStorageService from "../services/sessionStorageService";
+import PendingActionManager from "../services/pendingActionManager";
+import { parseTransactionAmount } from "../services/transactionValidator";
+import {
+  extractAccounts,
+  normalizeAccount,
+  validateHttpResponse,
+  safeResponseJson,
+} from "../services/apiResponseValidator";
 
 /** NL message to replay after customer OAuth redirect from marketing agent (sessionStorage). */
 const BX_AGENT_PENDING_NL_KEY = "bx_agent_pending_nl";
@@ -2581,11 +2590,7 @@ export default function BankingAgent({
       if (!pendingAuthChallengeActionRef.current) return;
       const { actionId, form } = pendingAuthChallengeActionRef.current;
       pendingAuthChallengeActionRef.current = null;
-      try {
-        sessionStorage.removeItem("_agent_pending_auth_action");
-      } catch {
-        /* best-effort */
-      }
+      PendingActionManager.clear();
       addMessage(
         "assistant",
         "✅ Signed in — retrying your request…",
@@ -2972,12 +2977,10 @@ export default function BankingAgent({
     spinner.show(`Signing in as ${label}…`, "Redirecting to PingOne");
     // Save any pending prompt so it can be re-executed after OAuth return.
     // nlInput holds the current typed/pre-filled text; capture it before navigation.
-    try {
-      const pendingText = (nlInput || "").trim();
-      if (pendingText) {
-        sessionStorage.setItem(BX_AGENT_PENDING_NL_KEY, pendingText);
-      }
-    } catch (_) {}
+    const pendingText = (nlInput || "").trim();
+    if (pendingText) {
+      sessionStorageService.setItem(BX_AGENT_PENDING_NL_KEY, pendingText);
+    }
     const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
     if (actionId === "login_admin") {
       setTimeout(() => {
@@ -3041,14 +3044,7 @@ export default function BankingAgent({
     // request replays automatically after login (via onAuthChallengeLogin)
     if (!isLoggedIn) {
       pendingAuthChallengeActionRef.current = { actionId, form };
-      try {
-        sessionStorage.setItem(
-          "_agent_pending_auth_action",
-          JSON.stringify({ actionId, form }),
-        );
-      } catch {
-        /* best-effort */
-      }
+      PendingActionManager.save({ actionId, form });
       addMessage(
         "assistant",
         "🔐 Signing you in — your request will run automatically after you sign in.",
@@ -3825,14 +3821,7 @@ export default function BankingAgent({
             "/api/auth/oauth/user/login";
           pendingAuthChallengeActionRef.current = { actionId, form };
           // Persist to sessionStorage so it survives the PingOne full-page redirect
-          try {
-            sessionStorage.setItem(
-              "_agent_pending_auth_action",
-              JSON.stringify({ actionId, form }),
-            );
-          } catch {
-            /* best-effort */
-          }
+          PendingActionManager.save({ actionId, form });
           addMessage(
             "assistant",
             `🔑 Login required.\n\nThis operation requires you to be signed in. Click the button below — your request will resume automatically after you authenticate.`,
@@ -4026,24 +4015,25 @@ export default function BankingAgent({
         }
         // Refresh live account balances after write operations so form dropdowns are current
         fetch("/api/accounts/my", { credentials: "include", _silent: true })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((data) => {
-            if (!data?.accounts?.length) return;
-            setLiveAccounts(
-              data.accounts.map((a) => ({
-                id: a.id,
-                name:
-                  a.name ||
-                  (a.accountType === "savings"
-                    ? "Savings Account"
-                    : "Checking Account"),
-                type: a.accountType || a.account_type || "checking",
-                balance: a.balance || 0,
-                accountNumber: a.accountNumber || a.account_number || a.id,
-              })),
-            );
+          .then(async (r) => {
+            const validation = validateHttpResponse(r, "/api/accounts/my");
+            if (!validation.isValid) return null;
+            return safeResponseJson(r, "/api/accounts/my");
           })
-          .catch(() => {});
+          .then((data) => {
+            if (!data) return;
+            const validated = extractAccounts(data);
+            if (!validated || validated.length === 0) return;
+            const normalized = validated
+              .map(a => normalizeAccount(a))
+              .filter(a => a !== null);
+            if (normalized.length > 0) {
+              setLiveAccounts(normalized);
+            }
+          })
+          .catch((err) => {
+            console.warn("[Account Refresh] Failed:", err.message);
+          });
       }
 
       const { resultType, resultData } =
@@ -4154,14 +4144,7 @@ export default function BankingAgent({
       // onAuthChallengeLogin can auto-replay after OAuth callback
       if (err?.need_auth) {
         pendingAuthChallengeActionRef.current = { actionId, form };
-        try {
-          sessionStorage.setItem(
-            "_agent_pending_auth_action",
-            JSON.stringify({ actionId, form }),
-          );
-        } catch {
-          /* best-effort */
-        }
+        PendingActionManager.save({ actionId, form });
         addMessage(
           "assistant",
           "🔐 MCP requires your authorization — logging you in…",

@@ -200,6 +200,17 @@ git checkout <last-version-tag> -- <key-file>
 
 ---
 
+## Security & Data Validation
+
+| Feature | Status | Key files | Test file |
+|---|---|---|---|
+| Session storage security — error logging, quota detection, private browsing support | active | `banking_api_ui/src/services/sessionStorageService.js`, `banking_api_ui/src/components/BankingAgent.js` (5 call sites) | — |
+| Pending action persistence — validated storage with structure checks, deduplicates auth challenge + login + consent flows | active | `banking_api_ui/src/services/pendingActionManager.js`, `banking_api_ui/src/components/BankingAgent.js` (5 call sites) | — |
+| Safe API response validation — HTTP status checks, response structure validation, account normalization with safety limits | active | `banking_api_ui/src/services/apiResponseValidator.js`, `banking_api_ui/src/components/BankingAgent.js` (account refresh flow) | — |
+| Transaction amount validation — bounds checking, NaN prevention, overflow protection | active | `banking_api_ui/src/services/transactionValidator.js`, `banking_api_server/services/nlIntentParser.js` | — |
+
+---
+
 ## Infrastructure / Platform
 
 | Feature | Status | Key files | Test file |

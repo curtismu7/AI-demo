@@ -18,6 +18,10 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **Critical: Secure sessionStorage operations with error logging** — replaced 5x silent try/catch blocks in BankingAgent.js with sessionStorageService that logs auth failures, quota errors, and private browsing issues; prevents auth failures from being hidden from developers.
+- **Critical: Safe API response validation** — added apiResponseValidator utilities to prevent crashes from malformed API responses; account refresh now validates HTTP status, response structure, and normalizes each account before updating state.
+- **Critical: Centralized pending action persistence** — created PendingActionManager to deduplicate sessionStorage calls scattered across auth challenge, consent, and login flows; validates action structure before storage to prevent malformed data.
+- **Critical: Safe transaction amount parsing** — added transactionValidator with bounds checking and Number.isNaN() to prevent NaN transactions and overflow attacks from user input.
 - **Agent Demo Guide — replaced NL prompts with reliable action chips** — all 6 demo scenarios now reference working action chips instead of broken natural language prompts; each scenario maps directly to an existing chip (💰 My Accounts, 🧪 Test Wrong Scope, 🔐 Test HITL Transfer, 📱 Test OTP Challenge, 🔥 Full Compliance); removed authorize-denial scenario (no chip equivalent); maintains all applicable steps and watch instructions for compliance verification.
 - **Agent Demo Guide — setup navigation button** — token-exchange setup step now includes clickable "🔗 Go to Setup" button that navigates directly to /admin Demo Config instead of requiring users to manually find the page.
 - **Withdraw/transfer/deposit actions — fixed 'From account not found' error** — NL parser extracts account type (e.g., "checking") but API endpoint expects account ID (UUID); heuristic agent now resolves account type to actual ID before returning params to frontend; prevents API errors when executing banking transactions via natural language.
