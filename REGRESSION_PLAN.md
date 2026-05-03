@@ -36,6 +36,7 @@
 | **Bottom dock on dashboard routes** | **Bottom dock not showing — floating FAB shown instead** | `App.js` — skip App-level `<EmbeddedAgentDock>` on `onUserDashboardRoute` (UserDashboard mounts it internally). `EmbeddedAgentDock.js` — must NOT have `isBankingAgentDashboardRoute` guard (that returns null before the component can render). |
 | **Admin role detection** | **Admin users downgraded to customer on login** | `routes/oauthUser.js` 4-signal check: username allowlist → population ID → custom claim → existing record. Config fields: `admin_username`, `admin_population_id`, `admin_role_claim` in `configStore.js` + `Config.js`. |
 | Config UI / configStore | All PingOne settings lost | `services/configStore.js`, `routes/adminConfig.js` |
+| **Demo Controls — diagnose endpoint** | **may_act toggle button always shows "null" on load; cannot enable/disable may_act** | `banking_api_ui/src/components/ThresholdControls.js` line 64 — must parse `/api/demo/may-act/diagnose` response as `data.checks?.userAttribute?.pass` (boolean). The endpoint structure is: `{ checks: { userAttribute: { pass: boolean, value, detail }, appMapping: { pass, value, detail } }, diagnosis: [], nextStep }`. Do not revert to expecting `data.attributeSet`. |
 | **Demo Data — agent + sign-in lessons** | **Presenter lesson radios / Bearer probe regress; App tests break if `useSearchParams` mock dropped** | `DemoDataPage.js`, `DemoDataPage.css`, `App.session.test.js` (must mock `useSearchParams` when `App.js` uses it), `bankingAgentNl.test.js` (`parseNaturalLanguage.mockReset` per test) |
 | BankingAgent FAB | Agent disappears | `components/BankingAgent.js`, `App.js` |
 | Float panel resize | Panel capped at 560×720, won't grow larger | `BankingAgent.css` (`max-width`/`max-height` removed), `BankingAgent.js` (`handleResize` caps) |
@@ -248,6 +249,13 @@
 - **Fix:** `routes/thresholds.js` POST handler now: (1) also writes `step_up_amount_threshold` to configStore (matching key for the fallback), (2) calls `runtimeSettings.update({ stepUpAmountThreshold: n })` so the change takes immediate effect in the live gate. GET response now includes `step_up_amount_threshold` showing the effective live value.
 - **Files changed:** `banking_api_server/routes/thresholds.js`.
 - **Do not break:** HITL consent check (which was already correctly wired to `confirm_threshold_usd`) is unchanged. Step-up gate still reads runtimeSettings first; this fix only ensures runtimeSettings is properly updated when the admin uses the ThresholdControls panel.
+
+### 2026-05-03 — Demo Controls: may_act diagnose response parsing + emoji removal
+
+- **Root cause:** `ThresholdControls.js` loaded may_act status from `/api/demo/may-act/diagnose` endpoint but expected response field `attributeSet` which doesn't exist. The diagnose endpoint actually returns nested structure: `checks.userAttribute.pass` (boolean) and `checks.appMapping.pass` (boolean). UI toggle button was always showing null/"no status" on load.
+- **Fix:** Updated ThresholdControls.js line 64 to parse correct response path: `data.checks?.userAttribute?.pass` instead of `data.attributeSet`. Also removed emojis from UI per user request (gear emoji ⚙️ from Controls button, checkmarks/crosses from may_act toggle button).
+- **Files changed:** `banking_api_ui/src/components/ThresholdControls.js`.
+- **Do not break:** Controls button text is now "Controls" (no emoji); may_act toggle shows "Enable may_act" / "Disable may_act" (no emoji). The diagnose endpoint response structure must remain: `checks.userAttribute.pass` (true/false), `checks.appMapping.pass` (true/false). NPM build must continue to pass (`npm run build` exit 0).
 
 ### 2026-05-02 — get_my_accounts insufficient_scope (3 root-cause fixes)
 
