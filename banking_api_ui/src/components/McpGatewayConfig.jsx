@@ -84,6 +84,9 @@ export default function McpGatewayConfig() {
 	const [pushForm, setPushForm] = useState({});
 	const [pushResult, setPushResult] = useState(null);
 	const [pushing, setPushing] = useState(false);
+	const [routeForm, setRouteForm] = useState({});
+	const [routeSaveResult, setRouteSaveResult] = useState(null);
+	const [routeSaving, setRouteSaving] = useState(false);
 
 	const handlePush = useCallback(async () => {
 		setPushing(true);
@@ -122,12 +125,69 @@ export default function McpGatewayConfig() {
 				hitlServiceUrl: c.hitlServiceUrl || "",
 				devBypass: m.devBypass,
 			});
+			setRouteForm({
+				pingOneResourceId: c.pingOneResourceId || "",
+				gatewayUrl: c.gatewayPublicUrl || "",
+				mcpScope: c.mcpScope || "banking:mcp:invoke",
+			});
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [!!data]);
 
 	if (loading) return <div className="mgc-loading">Loading gateway config…</div>;
 	if (error) return <div className="mgc-error">Error: {error} <button onClick={fetchConfig}>Retry</button></div>;
+
+	function buildLiveMcpJson() {
+		if (!data) return {};
+		const c = data.config;
+		return {
+			name: 'mcp',
+			condition: "${find(request.uri.path, '^/mcp')}",
+			properties: {
+				pingOneEnvID: c.pingOneEnvUrl || '',
+				pingOneResourceID: routeForm.pingOneResourceId || '',
+				gatewayUrl: routeForm.gatewayUrl || '',
+				mcpServerUrl: c.upstreamMcpUrl || '',
+			},
+			baseURI: '&{mcpServerUrl}',
+		};
+	}
+	const liveMcpJsonStr = JSON.stringify(buildLiveMcpJson(), null, 2);
+
+	const handleRouteSave = async () => {
+		setRouteSaving(true);
+		setRouteSaveResult(null);
+		try {
+			const res = await fetch(`${API_BASE}/api/admin/mcp-gateway/config`, {
+				method: "POST",
+				credentials: "include",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					mcp_gw_client_id: routeForm.pingOneResourceId,
+					mcp_gw_public_url: routeForm.gatewayUrl,
+					mcp_scope: routeForm.mcpScope,
+				}),
+			});
+			const json = await res.json();
+			if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+			setRouteSaveResult({ ok: true, msg: "Config saved successfully" });
+			fetchConfig();
+		} catch (e) {
+			setRouteSaveResult({ ok: false, msg: e.message });
+		} finally {
+			setRouteSaving(false);
+		}
+	};
+
+	const handleDownloadMcpJson = () => {
+		const blob = new Blob([liveMcpJsonStr], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = 'mcp.json';
+		a.click();
+		URL.revokeObjectURL(url);
+	};
 
 	const { mock, config, envVars, pingGatewayJson, pingGatewayAdminJson } = data;
 	const pingGwJsonStr = JSON.stringify(pingGatewayJson, null, 2);
@@ -168,6 +228,12 @@ export default function McpGatewayConfig() {
 					onClick={() => setActiveTab("env")}
 				>
 					⚙️ Env Vars
+				</button>
+				<button
+					className={`mgc-tab ${activeTab === "docs" ? "mgc-tab--active" : ""}`}
+					onClick={() => setActiveTab("docs")}
+				>
+					📖 Docs & Setup
 				</button>
 			</div>
 
@@ -285,62 +351,194 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.bxf.com
 
 			{activeTab === "real" && (
 				<div className="mgc-panel">
-					<div className="mgc-section">
-						<h4>1 — Route file: <code>mcp.json</code></h4>
-						<p>
-							Drop into <code>$HOME/.openig/config/routes/mcp.json</code> (Linux) or{" "}
-							<code>%appdata%\OpenIG\config\routes\mcp.json</code> (Windows).
-							Values in <code>properties</code> are pre-filled from your environment.
-						</p>
-						<div className="mgc-code-block">
-							<CopyButton text={pingGwJsonStr} label="Copy mcp.json" />
-							<pre className="mgc-pre mgc-pre--code">{pingGwJsonStr}</pre>
+					<div className="mgc-compliance-note">
+						ℹ️ This config page generates files compatible with PingGateway (Identity Gateway) 2025.11.1 and 2026. Install PingGateway and drop in the generated files — no manual JSON editing needed.
+					</div>
+
+					<div className="mgc-wizard">
+
+						{/* Step 1 — Verify PingOne Credentials */}
+						<div className="mgc-wizard-step">
+							<div className="mgc-wizard-step-header">
+								<span className={`mgc-wizard-step-circle ${data.config.pingOneEnvUrl && !data.config.pingOneEnvUrl.includes('<PingOne') ? 'mgc-wizard-step-circle--complete' : 'mgc-wizard-step-circle--needs-input'}`}>
+									{data.config.pingOneEnvUrl && !data.config.pingOneEnvUrl.includes('<PingOne') ? '✓' : '⚠'}
+								</span>
+								<span className="mgc-wizard-step-label">Step 1 — Verify PingOne Credentials</span>
+								<span className="mgc-wizard-step-status">{data.config.pingOneEnvUrl && !data.config.pingOneEnvUrl.includes('<PingOne') ? 'complete' : 'needs input'}</span>
+							</div>
+							<div className="mgc-wizard-step-body">
+								{data.config.pingOneEnvUrl && data.config.pingOneEnvUrl.includes('<PingOne') ? (
+									<div className="mgc-alert mgc-alert--info">
+										⚠️ <strong>PingOne Environment ID not set.</strong>{" "}
+										<a href="/config">Set it in Configuration</a> first, then return here.
+									</div>
+								) : (
+									<table className="mgc-env-table">
+										<tbody>
+											<tr><td className="mgc-env-key"><code>PingOne Auth URL</code></td><td className="mgc-env-val">{data.config.pingOneEnvUrl}</td></tr>
+											<tr><td className="mgc-env-key"><code>Introspect Endpoint</code></td><td className="mgc-env-val">{data.config.introspectEndpoint}</td></tr>
+										</tbody>
+									</table>
+								)}
+							</div>
 						</div>
-					</div>
 
-					<div className="mgc-section">
-						<h4>2 — Merge into <code>admin.json</code></h4>
-						<p>
-							<strong>streamingEnabled: true</strong> is required for MCP SSE transport.
-							Merge the fields below into your existing PingGateway <code>admin.json</code>.
-						</p>
-						<div className="mgc-code-block">
-							<CopyButton text={pingGwAdminJsonStr} label="Copy admin.json snippet" />
-							<pre className="mgc-pre mgc-pre--code">{pingGwAdminJsonStr}</pre>
+						{/* Step 2 — Configure Gateway Routes */}
+						<div className="mgc-wizard-step">
+							<div className="mgc-wizard-step-header">
+								<span className={`mgc-wizard-step-circle ${routeForm.pingOneResourceId && routeForm.gatewayUrl ? 'mgc-wizard-step-circle--complete' : 'mgc-wizard-step-circle--needs-input'}`}>
+									{routeForm.pingOneResourceId && routeForm.gatewayUrl ? '✓' : '⚠'}
+								</span>
+								<span className="mgc-wizard-step-label">Step 2 — Configure Gateway Routes</span>
+								<span className="mgc-wizard-step-status">{routeForm.pingOneResourceId && routeForm.gatewayUrl ? 'complete' : 'needs input'}</span>
+							</div>
+							<div className="mgc-wizard-step-body">
+								<div className="mgc-push-form">
+									<label className="mgc-field">
+										<span className="mgc-field-label">
+											PingOne Environment URL
+											<span className="mgc-chip--derived">🔗 From PingOne config</span>
+										</span>
+										<input type="text" className="mgc-input mgc-input--readonly" value={data.config.pingOneEnvUrl || ""} readOnly />
+										<span className="mgc-field-hint">maps to <code>properties.pingOneEnvID</code> in mcp.json</span>
+									</label>
+
+									<label className="mgc-field">
+										<span className="mgc-field-label">
+											PingOne Resource ID
+											{!routeForm.pingOneResourceId && <span className="mgc-badge mgc-badge--required">Required</span>}
+										</span>
+										<input
+											type="text"
+											className="mgc-input"
+											placeholder="e.g., a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+											value={routeForm.pingOneResourceId ?? ""}
+											onChange={(e) => setRouteForm((f) => ({ ...f, pingOneResourceId: e.target.value }))}
+										/>
+										<span className="mgc-field-hint">Used as <code>username</code> in OAuth2ResourceServerFilter for introspection. Maps to <code>properties.pingOneResourceID</code>.</span>
+									</label>
+
+									<label className="mgc-field">
+										<span className="mgc-field-label">
+											PingGateway Public URL
+											{!routeForm.gatewayUrl && <span className="mgc-badge mgc-badge--required">Required</span>}
+										</span>
+										<input
+											type="text"
+											className="mgc-input"
+											placeholder="https://ig.example.com:8443"
+											value={routeForm.gatewayUrl ?? ""}
+											onChange={(e) => setRouteForm((f) => ({ ...f, gatewayUrl: e.target.value }))}
+										/>
+										<span className="mgc-field-hint">The public HTTPS URL of your PingGateway instance. Maps to <code>properties.gatewayUrl</code>.</span>
+									</label>
+
+									<label className="mgc-field">
+										<span className="mgc-field-label">
+											Upstream MCP Server URL
+											<span className="mgc-chip--derived">🔗 From PingOne config</span>
+										</span>
+										<input type="text" className="mgc-input mgc-input--readonly" value={data.config.upstreamMcpUrl || ""} readOnly />
+										<span className="mgc-field-hint">Maps to <code>properties.mcpServerUrl</code> and <code>baseURI</code>.</span>
+									</label>
+
+									<label className="mgc-field">
+										<span className="mgc-field-label">MCP Scope</span>
+										<input
+											type="text"
+											className="mgc-input"
+											placeholder="banking:mcp:invoke"
+											value={routeForm.mcpScope ?? "banking:mcp:invoke"}
+											onChange={(e) => setRouteForm((f) => ({ ...f, mcpScope: e.target.value }))}
+										/>
+										<span className="mgc-field-hint">OAuth 2.0 scope required for token exchange.</span>
+									</label>
+
+									<label className="mgc-field">
+										<span className="mgc-field-label">
+											Token Introspection Endpoint
+											<span className="mgc-chip--derived">🔗 From PingOne config</span>
+										</span>
+										<input type="text" className="mgc-input mgc-input--readonly" value={data.config.introspectEndpoint || ""} readOnly />
+										<span className="mgc-field-hint">Auto-computed: PingOne Auth URL + <code>/as/introspect</code></span>
+									</label>
+
+									<button type="button" className="mgc-push-btn" onClick={handleRouteSave} disabled={routeSaving}>
+										{routeSaving ? "Saving…" : "⬆ Save to Config"}
+									</button>
+									{routeSaveResult && (
+										<div className={`mgc-alert ${routeSaveResult.ok ? "mgc-alert--success" : "mgc-alert--error"}`}>
+											{routeSaveResult.ok ? "✅ " : "❌ "}{routeSaveResult.msg}
+										</div>
+									)}
+								</div>
+
+								<div style={{ marginTop: '20px' }}>
+									<h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: '#1a1a2e' }}>Live mcp.json Preview</h4>
+									<div className="mgc-code-block">
+										<button type="button" className="mgc-download-btn" onClick={handleDownloadMcpJson}>⬇ Download mcp.json</button>
+										<CopyButton text={liveMcpJsonStr} label="Copy mcp.json" />
+										<pre className="mgc-pre mgc-pre--code">{liveMcpJsonStr}</pre>
+									</div>
+								</div>
+							</div>
 						</div>
-					</div>
 
-					<div className="mgc-section">
-						<h4>3 — Set <code>RESOURCE_SECRET_ID</code> env var</h4>
-						<p>
-							PingGateway reads the PingOne resource client secret from an env var (no trailing newline):
-						</p>
-						<pre className="mgc-pre">{`printf '%s' "<resource_client_secret>" | base64\nexport RESOURCE_SECRET_ID=<result>`}</pre>
-					</div>
+						{/* Step 3 — Download Route File */}
+						<div className="mgc-wizard-step">
+							<div className="mgc-wizard-step-header">
+								<span className="mgc-wizard-step-circle mgc-wizard-step-circle--pending">3</span>
+								<span className="mgc-wizard-step-label">Step 3 — Download Route File</span>
+								<span className="mgc-wizard-step-status">○ pending</span>
+							</div>
+							<div className="mgc-wizard-step-body">
+								<p style={{ fontSize: '14px', color: '#444', margin: '0 0 10px' }}>
+									Drop into <code>$HOME/.openig/config/routes/mcp.json</code> (Linux) or <code>%appdata%\OpenIG\config\routes\mcp.json</code> (Windows).
+								</p>
+								<div className="mgc-code-block">
+									<button className="mgc-download-btn" onClick={handleDownloadMcpJson}>⬇ Download mcp.json</button>
+									<CopyButton text={pingGwJsonStr} label="Copy mcp.json" />
+									<pre className="mgc-pre mgc-pre--code">{pingGwJsonStr}</pre>
+								</div>
+							</div>
+						</div>
 
-					<div className="mgc-section">
-						<h4>4 — Switch BFF to real PingGateway</h4>
-						<ol className="mgc-steps">
-							<li>Set <code>MCP_GATEWAY_HTTP_URL=https://ig.example.com:8443</code> in BFF env</li>
-							<li>Remove <code>MCP_GW_DEV_BYPASS</code> (or set to <code>false</code>) in gateway env</li>
-							<li>Set real <code>MCP_GW_CLIENT_ID</code> / <code>MCP_GW_CLIENT_SECRET</code> (PingOne test resource)</li>
-							<li>Set <code>PINGONE_TOKEN_ENDPOINT</code> to <code>https://auth.pingone.com/&lt;envId&gt;/as/token</code></li>
-							<li>Restart both the BFF and PingGateway</li>
-						</ol>
-					</div>
+						{/* Step 4 — Configure admin.json */}
+						<div className="mgc-wizard-step">
+							<div className="mgc-wizard-step-header">
+								<span className="mgc-wizard-step-circle mgc-wizard-step-circle--pending">4</span>
+								<span className="mgc-wizard-step-label">Step 4 — Configure admin.json</span>
+								<span className="mgc-wizard-step-status">○ pending</span>
+							</div>
+							<div className="mgc-wizard-step-body">
+								<p style={{ fontSize: '14px', color: '#444', margin: '0 0 10px' }}>
+									<strong>streamingEnabled: true</strong> is required for MCP SSE transport. Merge the fields below into your existing PingGateway <code>admin.json</code>.
+								</p>
+								<div className="mgc-code-block">
+									<CopyButton text={pingGwAdminJsonStr} label="Copy admin.json snippet" />
+									<pre className="mgc-pre mgc-pre--code">{pingGwAdminJsonStr}</pre>
+								</div>
+							</div>
+						</div>
 
-					<div className="mgc-section">
-						<h4>Config values used to generate above</h4>
-						<table className="mgc-env-table">
-							<tbody>
-								{Object.entries(config).map(([k, v]) => (
-									<tr key={k}>
-										<td className="mgc-env-key"><code>{k}</code></td>
-										<td className="mgc-env-val">{String(v) || <em>(not set)</em>}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
+						{/* Step 5 — Point BFF to Real Gateway */}
+						<div className="mgc-wizard-step">
+							<div className="mgc-wizard-step-header">
+								<span className="mgc-wizard-step-circle mgc-wizard-step-circle--pending">5</span>
+								<span className="mgc-wizard-step-label">Step 5 — Point BFF to Real Gateway</span>
+								<span className="mgc-wizard-step-status">○ pending</span>
+							</div>
+							<div className="mgc-wizard-step-body">
+								<ol className="mgc-steps">
+									<li>Set <code>MCP_GATEWAY_HTTP_URL=https://ig.example.com:8443</code> in BFF <code>.env</code></li>
+									<li>Remove <code>MCP_GW_DEV_BYPASS</code> (or set to <code>false</code>) in gateway <code>.env</code></li>
+									<li>Set <code>MCP_GW_CLIENT_ID</code> / <code>MCP_GW_CLIENT_SECRET</code> to the PingOne resource credentials</li>
+									<li>Set <code>RESOURCE_SECRET_ID</code> env var: <code>printf '%s' "&lt;resource_secret&gt;" | base64</code></li>
+									<li>Restart both BFF and PingGateway</li>
+								</ol>
+							</div>
+						</div>
+
 					</div>
 				</div>
 			)}
@@ -353,6 +551,36 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.bxf.com
 						ℹ️ Secrets are masked. Set vars in{" "}
 						<code>banking_mcp_gateway/.env.development</code> for local dev,
 						or in your deployment environment for production.
+					</div>
+				</div>
+			)}
+
+			{activeTab === "docs" && (
+				<div className="mgc-panel">
+					<div className="mgc-section">
+						<h4>PingGateway & PingOne Resources</h4>
+						<p>Official documentation for connecting PingGateway (Identity Gateway) to PingOne as an MCP authorization layer.</p>
+					</div>
+					<div className="mgc-doc-card">
+						<p className="mgc-doc-card-title">Securing AI Agents with PingOne</p>
+						<p className="mgc-doc-card-desc">PingOne identity patterns for AI agents — authentication, scopes, delegation</p>
+						<a className="mgc-doc-card-link" href="https://developer.pingidentity.com/identity-for-ai/identity/idai-securing-agents-pingone.html" target="_blank" rel="noopener noreferrer">
+							🔗 developer.pingidentity.com — Securing AI Agents
+						</a>
+					</div>
+					<div className="mgc-doc-card">
+						<p className="mgc-doc-card-title">PingGateway + PingOne Authorize (AAM)</p>
+						<p className="mgc-doc-card-desc">How PingGateway integrates with PingOne Authorize for policy-driven agent authorization</p>
+						<a className="mgc-doc-card-link" href="https://docs.pingidentity.com/pinggateway/2026/pingone/aam.html" target="_blank" rel="noopener noreferrer">
+							🔗 docs.pingidentity.com — PingGateway AAM
+						</a>
+					</div>
+					<div className="mgc-doc-card">
+						<p className="mgc-doc-card-title">PingGateway Documentation</p>
+						<p className="mgc-doc-card-desc">Full installation, configuration, and deployment guide for Identity Gateway 2025.11 and 2026</p>
+						<a className="mgc-doc-card-link" href="https://docs.pingidentity.com/pinggateway/2026/" target="_blank" rel="noopener noreferrer">
+							🔗 docs.pingidentity.com — PingGateway Docs
+						</a>
 					</div>
 				</div>
 			)}

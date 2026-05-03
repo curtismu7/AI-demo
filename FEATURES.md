@@ -160,6 +160,7 @@ git checkout <last-version-tag> -- <key-file>
 | Step-up auth guide | active | `banking_api_ui/src/components/education/StepUpPanel.js` | — |
 | CIBA / CIMD guide | active | `banking_api_ui/src/components/education/CimdPanel.js` | — |
 | Agent gateway guide | active | `banking_api_ui/src/components/education/AgentGatewayPanel.js` | — |
+| MCP Gateway config page — 4-tab UI (Mock, Real PingGateway 5-step wizard, Env Vars, Docs & Setup) with route form, live JSON preview, save/download | active | `banking_api_ui/src/components/McpGatewayConfig.jsx`, `banking_api_ui/src/components/McpGatewayConfig.css` | — |
 | MCP protocol guide | active | `banking_api_ui/src/components/education/McpProtocolPanel.js` | — |
 | may_act / act claims guide | active | `banking_api_ui/src/components/education/MayActPanel.js` | — |
 | PingOne Authorize guide | active | `banking_api_ui/src/components/education/PingOneAuthorizePanel.js` | — |
