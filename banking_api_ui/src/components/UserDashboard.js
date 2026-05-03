@@ -1739,13 +1739,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 				>
 					MCP Traffic
 				</Link>
-				<Link
-					to="/dev-tools"
-					className="ud-super-pill"
-					aria-label="Dev Tools Dashboard"
-				>
-					🛠 Dev Tools
-				</Link>
 			</div>
 
 			{/* Customer Profile */}
