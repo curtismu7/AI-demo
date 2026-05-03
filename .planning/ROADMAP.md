@@ -2129,13 +2129,14 @@ Plans:
 
 ### Phase 265: Demo data page: create demo user with may_act, P1MFA registration
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Add a "Create Demo User" provisioning section to DemoDataPage — one click creates a PingOne user with mayAct set and email OTP MFA enrolled, then displays copyable credentials so presenters can log in as the demo delegate immediately.
+**Requirements**: D-01, D-02, D-03, D-04, D-05, D-06, D-07, D-08, D-09, D-10, D-11, D-12, D-13, D-14, D-15, D-16, D-17, D-18
 **Depends on:** none
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 265 to break down)
+- [ ] 265-01-PLAN.md — BFF route demoProvisioning.js (create user, set mayAct, enroll email OTP) + server.js wiring
+- [ ] 265-02-PLAN.md — DemoDataPage.js Create Demo User section (email input, step log, credential card) + DemoDataPage.css
 
 ---
 
