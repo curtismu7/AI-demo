@@ -469,7 +469,7 @@ const LOCAL_INSPECTOR_TOOLS = [
   {
     name: 'create_deposit',
     description:
-      'Create a deposit transaction to an account. Use account ID (not account number) from get_my_accounts response. Amounts over $500 require human consent on the web dashboard (not available via this tool).',
+      'Create a deposit transaction to an account. Use account ID (not account number) from get_my_accounts response. Amounts over $250 require HITL consent (not available via this tool); amounts over $500 also require MFA.',
     requiresUserAuth: true,
     requiredScopes: ['banking:transactions:write'],
     inputSchema: {

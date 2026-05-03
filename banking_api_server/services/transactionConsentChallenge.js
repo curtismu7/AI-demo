@@ -16,7 +16,7 @@ const dataStore = require('../data/store');
 const mfaService = require('./mfaService');
 const configStore = require('./configStore');
 
-const HIGH_VALUE_CONSENT_USD_DEFAULT = 500;
+const HIGH_VALUE_CONSENT_USD_DEFAULT = 250;
 function getConfirmThreshold() {
   const v = configStore.getEffective('confirm_threshold_usd');
   const n = Number(v);

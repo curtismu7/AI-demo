@@ -438,7 +438,7 @@ router.post('/', authenticateToken, async (req, res) => {
     const _rtThreshold = runtimeSettings.get('stepUpAmountThreshold');
     const STEP_UP_THRESHOLD = (_rtThreshold > 0)
       ? _rtThreshold
-      : (parseFloat(configStore.getEffective('step_up_amount_threshold')) || 250);
+      : (parseFloat(configStore.getEffective('step_up_amount_threshold')) || 500);
     const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue');
     const STEP_UP_TYPES = runtimeSettings.get('stepUpTransactionTypes');
     const STEP_UP_ENABLED = runtimeSettings.get('stepUpEnabled');
