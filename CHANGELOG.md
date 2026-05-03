@@ -18,6 +18,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **IDP Setup page — endpoint URLs now wrap properly** — removed `white-space: nowrap` from endpoint value display to allow long PingOne URLs to wrap across multiple lines; added monospace font for better readability.
 - **IDP Overview — endpoints now display actual PingOne config values** — added useEffect to fetch fresh config from `/api/admin/config` when IDP Setup tab is accessed; fixed OIDC Discovery label layout issue by removing inline `(.well-known)` text.
 - **Architecture pages — floating agent FAB now starts collapsed** — `isBankingAgentFloatingDefaultOpen` returns false for `/architecture/*` so the FAB button is visible on page load instead of the panel auto-opening and hiding the FAB.
 - **MCP Gateway auth tests** — added missing `devBypass: false` to `GatewayConfig` stubs in `gateway-auth.test.ts` and `gateway-server.test.ts` so all 35 tests pass after `devBypass` was added to `GatewayConfig` in a later fix.

@@ -241,10 +241,11 @@
   white-space: nowrap;
 }
 .idp-setup-value {
-  font-family: inherit;
-  font-size: 0.9rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
   color: var(--color-text-primary, #212529);
-  white-space: nowrap;
+  word-break: break-all;
+  overflow-wrap: break-word;
 }
 .idp-copy-btn {
   background: none;

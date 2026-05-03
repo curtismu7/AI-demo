@@ -47,38 +47,53 @@ function setLangchainConfig(req, updates) {
 
 // GET /api/langchain/config/status
 router.get('/config/status', (req, res) => {
-  const cfg = getLangchainConfig(req);
-  const provider = cfg.provider || 'ollama';
-  const model = cfg.model || DEFAULT_MODELS[provider] || DEFAULT_MODELS.ollama;
+  try {
+    const cfg = getLangchainConfig(req);
+    const provider = cfg.provider || 'ollama';
+    const model = cfg.model || DEFAULT_MODELS[provider] || DEFAULT_MODELS.ollama;
 
-  // Load Helix credentials from SQLite if not in session (e.g., after tab switch)
-  let helix_base_url = cfg.helix_base_url || configStore.get('helix_base_url') || '';
-  let helix_api_key = cfg.helix_api_key || configStore.get('helix_api_key') || '';
-  let helix_environment_id = cfg.helix_environment_id || configStore.get('helix_environment_id') || '';
-  let helix_agent_id = cfg.helix_agent_id || configStore.get('helix_agent_id') || '';
+    // Load Helix credentials from SQLite if not in session (e.g., after tab switch)
+    let helix_base_url = cfg.helix_base_url || '';
+    let helix_api_key = cfg.helix_api_key || '';
+    let helix_environment_id = cfg.helix_environment_id || '';
+    let helix_agent_id = cfg.helix_agent_id || '';
 
-  // If we loaded from SQLite, update the session so it's available for this session
-  if ((helix_base_url || helix_api_key || helix_environment_id || helix_agent_id) &&
-      (!cfg.helix_base_url && !cfg.helix_api_key && !cfg.helix_environment_id && !cfg.helix_agent_id)) {
-    setLangchainConfig(req, {
+    // Try to load from configStore but don't let it crash the response
+    try {
+      helix_base_url = helix_base_url || configStore.get('helix_base_url') || '';
+      helix_api_key = helix_api_key || configStore.get('helix_api_key') || '';
+      helix_environment_id = helix_environment_id || configStore.get('helix_environment_id') || '';
+      helix_agent_id = helix_agent_id || configStore.get('helix_agent_id') || '';
+    } catch (dbErr) {
+      console.warn('[langchainConfig GET] configStore error:', dbErr.message);
+    }
+
+    // If we loaded from SQLite, update the session so it's available for this session
+    if ((helix_base_url || helix_api_key || helix_environment_id || helix_agent_id) &&
+        (!cfg.helix_base_url && !cfg.helix_api_key && !cfg.helix_environment_id && !cfg.helix_agent_id)) {
+      setLangchainConfig(req, {
+        helix_base_url,
+        helix_api_key,
+        helix_environment_id,
+        helix_agent_id
+      });
+    }
+
+    res.json({
+      provider,
+      model,
       helix_base_url,
-      helix_api_key,
+      helix_api_key: helix_api_key ? '••••••••' : '',
       helix_environment_id,
-      helix_agent_id
+      helix_agent_id,
+      key_set: { ollama: true },
+      provider_models: PROVIDER_MODELS,
+      default_models: DEFAULT_MODELS,
     });
+  } catch (err) {
+    console.error('[langchainConfig GET] Error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-
-  res.json({
-    provider,
-    model,
-    helix_base_url,
-    helix_api_key: helix_api_key ? '••••••••' : '',
-    helix_environment_id,
-    helix_agent_id,
-    key_set: { ollama: true },
-    provider_models: PROVIDER_MODELS,
-    default_models: DEFAULT_MODELS,
-  });
 });
 
 // POST /api/langchain/config
@@ -307,7 +322,7 @@ module.exports = router;
 // NOTE: Async health check runs server-side; client sees result synchronously
 router.get('/provider/:providerName/status', async (req, res) => {
   const { providerName } = req.params;
-  
+
   // Validate provider
   if (!PROVIDER_MODELS[providerName]) {
     return res.status(400).json({ error: `Unknown provider: ${providerName}` });
@@ -316,7 +331,19 @@ router.get('/provider/:providerName/status', async (req, res) => {
   try {
     const { getProviderStatus } = require('../services/llmProviderStatus');
     const cfg = getLangchainConfig(req);
-    
+
+    // For Helix, try to load from SQLite if not in session
+    if (providerName === 'helix') {
+      try {
+        cfg.helix_base_url = cfg.helix_base_url || configStore.get('helix_base_url') || '';
+        cfg.helix_api_key = cfg.helix_api_key || configStore.get('helix_api_key') || '';
+        cfg.helix_environment_id = cfg.helix_environment_id || configStore.get('helix_environment_id') || '';
+        cfg.helix_agent_id = cfg.helix_agent_id || configStore.get('helix_agent_id') || '';
+      } catch (dbErr) {
+        console.warn('[langchainConfig provider status] configStore error:', dbErr.message);
+      }
+    }
+
     const statusData = await getProviderStatus(providerName, cfg);
     
     res.json({
