@@ -3958,16 +3958,10 @@ export default function BankingAgent({
         });
       }
 
-      // Side panel (accounts/transactions/balance) already renders the data — skip duplicate chat bubble.
-      // Only add the chat message for write confirmations and unstructured results.
-      const PANEL_RESULT_TYPES = new Set([
-        "accounts",
-        "transactions",
-        "balance",
-      ]);
-      if (!PANEL_RESULT_TYPES.has(resultType)) {
-        addMessage("assistant", formatResult(response.result), actionId);
-      }
+      // Always add the result to the chat, including accounts/transactions/balance
+      // that also display in the side panel. This ensures the response is visible
+      // in the main agent conversation flow.
+      addMessage("assistant", formatResult(response.result), actionId);
 
       // Append HTTP trace (banking API call detail) after success result if present
       const successTrace = response.result?.httpTrace;
