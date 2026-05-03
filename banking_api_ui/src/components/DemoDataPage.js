@@ -721,7 +721,7 @@ export default function DemoDataPage({ user, onLogout }) {
   };
 
   // Helix LLM handlers
-  const fetchHelixStatus = async () => {
+  const fetchHelixStatus = useCallback(async () => {
     setHelixChecking(true);
     try {
       const statusRes = await axios.get('/api/langchain/provider/helix/status');
@@ -729,19 +729,25 @@ export default function DemoDataPage({ user, onLogout }) {
 
       const configRes = await axios.get('/api/langchain/config/status');
       const cfg = configRes.data;
-      setHelixConfig((prev) => ({
-        base_url: cfg.helix_base_url || prev.base_url || '',
-        api_key: prev.api_key, // Keep user-entered value, don't overwrite with masked ••••••••
-        environment_id: cfg.helix_environment_id || prev.environment_id || '',
-        agent_id: cfg.helix_agent_id || prev.agent_id || '',
-      }));
+
+      setHelixConfig((prev) => {
+        const newConfig = {
+          base_url: cfg.helix_base_url || prev.base_url || '',
+          api_key: prev.api_key || '', // Keep user-entered value
+          environment_id: cfg.helix_environment_id || prev.environment_id || '',
+          agent_id: cfg.helix_agent_id || prev.agent_id || '',
+        };
+        // Save to localStorage for persistence
+        localStorage.setItem('helix_config', JSON.stringify(newConfig));
+        return newConfig;
+      });
     } catch (err) {
       console.error('Helix status check failed:', err);
       notifyError('Failed to check Helix status');
     } finally {
       setHelixChecking(false);
     }
-  };
+  }, []);
 
   const handleHelixSave = async () => {
     if (!helixConfig.base_url || !helixConfig.api_key || !helixConfig.environment_id || !helixConfig.agent_id) {
@@ -751,6 +757,7 @@ export default function DemoDataPage({ user, onLogout }) {
 
     setHelixSaving(true);
     try {
+      // Save to backend + SQLite
       await axios.post('/api/langchain/config', {
         provider: 'helix',
         key_type: 'helix',
@@ -759,6 +766,10 @@ export default function DemoDataPage({ user, onLogout }) {
         helix_environment_id: helixConfig.environment_id,
         helix_agent_id: helixConfig.agent_id,
       });
+
+      // Save to localStorage
+      localStorage.setItem('helix_config', JSON.stringify(helixConfig));
+
       notifySuccess('Helix LLM configuration saved');
       await fetchHelixStatus();
     } catch (err) {
@@ -775,8 +786,11 @@ export default function DemoDataPage({ user, onLogout }) {
     setHelixSaving(true);
     try {
       await axios.delete('/api/langchain/config/key/helix');
-      setHelixConfig({ base_url: '', api_key: '', environment_id: '', agent_id: '' });
+      const clearedConfig = { base_url: '', api_key: '', environment_id: '', agent_id: '' };
+      setHelixConfig(clearedConfig);
       setHelixStatus('unconfigured');
+      // Clear from localStorage
+      localStorage.removeItem('helix_config');
       notifySuccess('Helix configuration cleared');
     } catch (err) {
       notifyError('Failed to clear Helix config');
@@ -784,6 +798,20 @@ export default function DemoDataPage({ user, onLogout }) {
       setHelixSaving(false);
     }
   };
+
+  // Load Helix config from localStorage on component mount
+  React.useEffect(() => {
+    const savedHelix = localStorage.getItem('helix_config');
+    if (savedHelix) {
+      try {
+        const parsed = JSON.parse(savedHelix);
+        setHelixConfig(parsed);
+      } catch (err) {
+        console.warn('Failed to parse Helix config from localStorage:', err);
+      }
+    }
+    fetchHelixStatus();
+  }, []);
 
   return (
     <div className="user-dashboard user-dashboard--2026 demo-data-page">

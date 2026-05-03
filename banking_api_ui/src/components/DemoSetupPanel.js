@@ -194,7 +194,7 @@ export default function DemoSetupPanel() {
   const [helixSaving, setHelixSaving] = useState(false);
   const [helixChecking, setHelixChecking] = useState(false);
 
-  const fetchHelixStatus = async () => {
+  const fetchHelixStatus = useCallback(async () => {
     setHelixChecking(true);
     try {
       const statusRes = await axios.get('/api/langchain/provider/helix/status');
@@ -202,19 +202,24 @@ export default function DemoSetupPanel() {
 
       const configRes = await axios.get('/api/langchain/config/status');
       const cfg = configRes.data;
-      setHelixConfig((prev) => ({
-        base_url: cfg.helix_base_url || prev.base_url || '',
-        api_key: prev.api_key, // Keep user-entered value, don't overwrite with masked ••••••••
-        environment_id: cfg.helix_environment_id || prev.environment_id || '',
-        agent_id: cfg.helix_agent_id || prev.agent_id || '',
-      }));
+      setHelixConfig((prev) => {
+        const newConfig = {
+          base_url: cfg.helix_base_url || prev.base_url || '',
+          api_key: prev.api_key || '', // Keep user-entered value
+          environment_id: cfg.helix_environment_id || prev.environment_id || '',
+          agent_id: cfg.helix_agent_id || prev.agent_id || '',
+        };
+        // Save to localStorage for persistence
+        localStorage.setItem('helix_config', JSON.stringify(newConfig));
+        return newConfig;
+      });
     } catch (err) {
       console.error('Helix status check failed:', err);
       notifyError('Failed to check Helix status');
     } finally {
       setHelixChecking(false);
     }
-  };
+  }, []);
 
   const handleHelixSave = async () => {
     if (!helixConfig.base_url || !helixConfig.api_key || !helixConfig.environment_id || !helixConfig.agent_id) {
@@ -231,6 +236,8 @@ export default function DemoSetupPanel() {
         helix_environment_id: helixConfig.environment_id,
         helix_agent_id: helixConfig.agent_id,
       });
+      // Save to localStorage
+      localStorage.setItem('helix_config', JSON.stringify(helixConfig));
       notifySuccess('Helix configuration saved and activated');
       await fetchHelixStatus();
     } catch (e) {
@@ -252,6 +259,20 @@ export default function DemoSetupPanel() {
       })
       .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load Helix config from localStorage on component mount
+  useEffect(() => {
+    const savedHelix = localStorage.getItem('helix_config');
+    if (savedHelix) {
+      try {
+        const parsed = JSON.parse(savedHelix);
+        setHelixConfig(parsed);
+      } catch (err) {
+        console.warn('Failed to parse Helix config from localStorage:', err);
+      }
+    }
+    fetchHelixStatus();
+  }, [fetchHelixStatus]);
 
   const handleSetMayAct = async (enable) => {
     setMayActSaving(true);
