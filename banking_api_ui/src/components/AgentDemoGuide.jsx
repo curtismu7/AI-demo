@@ -17,7 +17,7 @@
  * 11. agent-error-propagation — Error handling
  * 12. claim-diagnostics — Token claim analysis
  *
- * Usage: Click "📚 Agent Demo Guide" to open this window.
+ * Usage: Click " Agent Demo Guide" to open this window.
  * Reference: See /architecture/flow for live compliance flow diagram.
  */
 
@@ -59,7 +59,7 @@ const STEP_LABELS = {
 const DEMO_SCENARIOS = [
   {
     id: 'read-only',
-    title: '1️⃣ Read-Only Scope (Simple Path)',
+    title: '1. Read-Only Scope (Simple Path)',
     description: 'Basic read operation: list your accounts. Exercises only token init and caching.',
     applicableSteps: [
       'agent-llm-reasoning',
@@ -71,10 +71,10 @@ const DEMO_SCENARIOS = [
     steps: [
       {
         action: 'Click test chip:',
-        prompt: '"💰 My Accounts" (Banking group)',
+        prompt: '" My Accounts" (Banking group)',
         explanation: 'Agent: (1) Recognizes banking:read intent. (2) Gets your user token (banking:read scope). (3) Calls BFF /api/accounts/my. (4) No token exchange needed—scope is sufficient. (5) Returns account list.',
         watch: [
-          '✅ Compliance: Steps 1-4 complete (no exchange needed)',
+          ' Compliance: Steps 1-4 complete (no exchange needed)',
           'Token Chain: Shows 1 user token (banking:read)',
           'Notice: No "exchange-required" event',
           'Agent response displays accounts immediately',
@@ -84,7 +84,7 @@ const DEMO_SCENARIOS = [
   },
   {
     id: 'scope-denial',
-    title: '2️⃣ Scope Denial (403 + Denial Metadata)',
+    title: '2. Scope Denial (403 + Denial Metadata)',
     description: 'Write attempt without scope triggers 403 rejection. Gateway returns required_scopes.',
     applicableSteps: [
       'agent-llm-reasoning',
@@ -96,10 +96,10 @@ const DEMO_SCENARIOS = [
     steps: [
       {
         action: 'Click test chip:',
-        prompt: '"🧪 Test Wrong Scope" (Testing group)',
+        prompt: '" Test Wrong Scope" (Testing group)',
         explanation: 'Deliberately tests scope denial path. Makes request with banking:admin scope (not authorized). Gateway returns 403 with required_scopes metadata.',
         watch: [
-          '✅ Compliance: Steps 1-2, then denial via step 6',
+          ' Compliance: Steps 1-2, then denial via step 6',
           'Error shows: required_scopes=[banking:write]',
           'Token Chain: Denial event with metadata',
           'Compliance panel: Shows steps 1-2 only (stops at denial)',
@@ -110,7 +110,7 @@ const DEMO_SCENARIOS = [
   },
   {
     id: 'token-exchange',
-    title: '3️⃣ Token Exchange (RFC 8693 — Full Exchange)',
+    title: '3. Token Exchange (RFC 8693 — Full Exchange)',
     description: 'After scope denial, agent negotiates new token with write scope using RFC 8693.',
     applicableSteps: [
       'agent-llm-reasoning',
@@ -126,16 +126,16 @@ const DEMO_SCENARIOS = [
     steps: [
       {
         action: 'Setup (admin): Enable token exchange',
-        prompt: 'Go to "🎛 Demo Config" → toggle "🔐 MCP Token Exchange" ON',
+        prompt: 'Go to " Demo Config" → toggle " MCP Token Exchange" ON',
         explanation: 'This enables the gateway to perform RFC 8693 token exchange. Without it, scope denial is fatal. After toggling, the gateway can exchange tokens for delegated scopes.',
         watch: [],
       },
       {
         action: 'Then click test chip:',
-        prompt: '"🧪 Test Wrong Scope" (Testing group)',
+        prompt: '" Test Wrong Scope" (Testing group)',
         explanation: 'Agent: (1) Makes request with banking:admin scope. (2) Gateway rejects: 403. (3) Agent initiates RFC 8693 exchange. (4) New token issued with banking:write scope. (5) Agent retries with new token. (6) Operation succeeds.',
         watch: [
-          '✅ Compliance: All 9 steps exercised',
+          ' Compliance: All 9 steps exercised',
           'Token Chain: 3 events (user token → exchange request → new MCP token)',
           'Shows Hop 0→1→2: user → gateway delegated → backend',
           'aud claim changes: user → MCP server audience',
@@ -146,7 +146,7 @@ const DEMO_SCENARIOS = [
   },
   {
     id: 'hitl-gate',
-    title: '4️⃣ HITL Consent Gate (> $250)',
+    title: '4. HITL Consent Gate (> $250)',
     description: 'High-value transfer requires explicit user consent. Tests HITL (Human-in-the-Loop) gate.',
     applicableSteps: [
       'agent-llm-reasoning',
@@ -164,10 +164,10 @@ const DEMO_SCENARIOS = [
     steps: [
       {
         action: 'Click test chip:',
-        prompt: '"🔐 Test HITL Transfer" (Testing group)',
+        prompt: '" Test HITL Transfer" (Testing group)',
         explanation: 'Sends $99,999.99 transfer. Amount > $250 threshold triggers HITL consent gate. User must approve the transaction.',
         watch: [
-          '✅ Compliance: All 11 steps (skips step 12 error propagation)',
+          ' Compliance: All 11 steps (skips step 12 error propagation)',
           'Step 7: Gateway signals consent_challenge_required',
           'Step 9: UI shows GatewayConsentModal',
           'User approves consent + enters verification code',
@@ -179,7 +179,7 @@ const DEMO_SCENARIOS = [
   },
   {
     id: 'step-up',
-    title: '5️⃣ Step-Up MFA (RFC 9470)',
+    title: '5. Step-Up MFA (RFC 9470)',
     description: 'Sensitive operations require re-authentication. Tests RFC 9470 step-up MFA challenge.',
     applicableSteps: [
       'agent-llm-reasoning',
@@ -197,10 +197,10 @@ const DEMO_SCENARIOS = [
     steps: [
       {
         action: 'Click test chip:',
-        prompt: '"📱 Test OTP Challenge" (Testing group)',
+        prompt: '" Test OTP Challenge" (Testing group)',
         explanation: 'Requests sensitive account details (full routing numbers). Triggers step-up MFA (RFC 9470 acr challenge). User must complete MFA to access sensitive data.',
         watch: [
-          '✅ Compliance: Token exchange (step 5) + step-up gate (step 7)',
+          ' Compliance: Token exchange (step 5) + step-up gate (step 7)',
           'Step 7: Gateway signals step_up_required (not consent)',
           'UI: Shows OtpStepUpModal (not consent modal)',
           'User: Enters OTP code from email',
@@ -212,16 +212,16 @@ const DEMO_SCENARIOS = [
   },
   {
     id: 'full-flow',
-    title: '🔥 Full Compliance (All 12 Steps)',
+    title: ' Full Compliance (All 12 Steps)',
     description: 'Ultimate demo: $99,999.99 transfer. Token exchange → HITL gate → MFA. All 12 steps.',
     applicableSteps: ALL_12_STEPS,
     steps: [
       {
         action: 'Click test chip:',
-        prompt: '"🔥 Full Compliance (12 Steps)" (Testing group)',
+        prompt: '" Full Compliance (12 Steps)" (Testing group)',
         explanation: 'Sends $99,999.99 transfer. Amount triggers HITL (step 7), then MFA (>$500). Exercises all 12 steps end-to-end.',
         watch: [
-          '✅ ALL 12 STEPS light up in compliance panel',
+          ' ALL 12 STEPS light up in compliance panel',
           'Token Chain: Full exchange shown',
           'Consent modal: Approve consent',
           'MFA modal: Enter OTP code',
@@ -396,7 +396,7 @@ export default function AgentDemoGuide({ onClose, initialActiveScenario, initial
           style={{ cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none' }}
         >
           <h2 id="adg-modal-title" className="adg-modal-title">
-            📚 Banking Agent Demo Guide
+             Banking Agent Demo Guide
           </h2>
           <div className="compliance-modal__header-buttons">
             <button
