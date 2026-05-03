@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banking Agent — Light Theme Design Mockup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── MAIN CHAT AREA ── */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+            border-left: 1px solid #e5e7eb;
+            border-right: 1px solid #e5e7eb;
+        }
+
+        /* ── HEADER ── */
+        .chat-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+        }
+
+        .chat-header-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .header-info h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 2px;
+        }
+
+        .header-info p {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .online-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: #10b981;
+        }
+
+        .online-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: #10b981;
+            border-radius: 50%;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+            color: #6b7280;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-size: 18px;
+        }
+
+        .btn-icon:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        /* ── MESSAGES AREA ── */
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .message-group.agent {
+            justify-content: flex-start;
+        }
+
+        .message-group.user {
+            justify-content: flex-end;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .message-group.user .avatar {
+            display: none;
+        }
+
+        .message-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-width: 55%;
+        }
+
+        .message-group.user .message-content {
+            align-items: flex-end;
+        }
+
+        .message-bubble {
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .message-group.agent .message-bubble {
+            background: #f3f4f6;
+            color: #111827;
+            border-radius: 4px 16px 16px 16px;
+        }
+
+        .message-group.user .message-bubble {
+            background: #3b82f6;
+            color: white;
+            border-radius: 16px 4px 16px 16px;
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .message-group.user .message-time {
+            text-align: right;
+        }
+
+        /* ── INPUT AREA ── */
+        .input-area {
+            padding: 16px 24px 20px;
+            border-top: 1px solid #e5e7eb;
+            background: #ffffff;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .input-field {
+            flex: 1;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 24px;
+            padding: 12px 16px;
+            color: #111827;
+            font-size: 14px;
+            resize: none;
+            max-height: 100px;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .input-field::placeholder {
+            color: #9ca3af;
+        }
+
+        .input-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-action {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: #f3f4f6;
+            color: #6b7280;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-size: 16px;
+        }
+
+        .btn-action:hover {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-send {
+            background: #3b82f6;
+            color: white;
+            font-size: 18px;
+        }
+
+        .btn-send:hover {
+            background: #2563eb;
+            transform: scale(1.05);
+        }
+
+        /* ── FOOTER ── */
+        .chat-footer {
+            padding: 12px 24px;
+            background: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+            font-size: 11px;
+            color: #6b7280;
+            text-align: center;
+        }
+
+        .chat-footer a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+
+        .chat-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        /* ── SIDEBARS (optional) ── */
+        .sidebar {
+            width: 260px;
+            background: #ffffff;
+            border-right: 1px solid #e5e7eb;
+            padding: 16px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .sidebar.visible {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            color: #6b7280;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-item:hover {
+            background: #f3f4f6;
+            color: #111827;
+        }
+
+        .sidebar-item.active {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- CHAT AREA -->
+        <div class="chat-container">
+            <!-- HEADER -->
+            <div class="chat-header">
+                <div class="chat-header-content">
+                    <div class="header-avatar">🏦</div>
+                    <div class="header-info">
+                        <h2>Banking Assistant</h2>
+                        <p class="online-badge">Online</p>
+                    </div>
+                </div>
+                <div class="header-controls">
+                    <button class="btn-icon">☀️</button>
+                    <button class="btn-icon">⋮</button>
+                </div>
+            </div>
+
+            <!-- MESSAGES -->
+            <div class="messages-area">
+                <div class="message-group agent">
+                    <div class="avatar">🏦</div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            Hi! I'm your banking assistant. How can I help you today?
+                        </div>
+                        <div class="message-time">09:15</div>
+                    </div>
+                </div>
+
+                <div class="message-group user">
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            What's my current balance?
+                        </div>
+                        <div class="message-time">09:16</div>
+                    </div>
+                </div>
+
+                <div class="message-group agent">
+                    <div class="avatar">🏦</div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            Your checking account balance is $2,450.32. Would you like to see your savings account or recent transactions?
+                        </div>
+                        <div class="message-time">09:16</div>
+                    </div>
+                </div>
+
+                <div class="message-group user">
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            Show recent transactions
+                        </div>
+                        <div class="message-time">09:17</div>
+                    </div>
+                </div>
+
+                <div class="message-group agent">
+                    <div class="avatar">🏦</div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            📋 Here are your last 5 transactions:<br><br>
+                            • $45.99 - Coffee Shop<br>
+                            • $120.00 - Gas Station<br>
+                            • $32.50 - Groceries<br>
+                            • $15.99 - Subscription<br>
+                            • $200.00 - Rent Payment
+                        </div>
+                        <div class="message-time">09:17</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INPUT -->
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <input type="text" class="input-field" placeholder="Type message">
+                    <div class="input-actions">
+                        <button class="btn-action">📎</button>
+                        <button class="btn-action">🎤</button>
+                        <button class="btn-action btn-send">→</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="chat-footer">
+                <span><a href="#">Terms</a> | Powered by Banking Agent</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

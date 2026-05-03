@@ -35,6 +35,8 @@ export default function ThresholdControls() {
   const [mayActSaving, setMayActSaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
+  const [flagError, setFlagError] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const btnRef = useRef(null);
   const panelRef = useRef(null);
 
@@ -123,6 +125,7 @@ export default function ThresholdControls() {
 
   const toggleFlag = async (flagId, nextValue) => {
     setFlagSaving(flagId);
+    setFlagError(null);
     try {
       const res = await fetch('/api/admin/feature-flags', {
         method: 'PATCH',
@@ -134,9 +137,15 @@ export default function ThresholdControls() {
         const data = await res.json();
         const flagMap = new Map((data.flags || []).map((f) => [f.id, f]));
         setFlags((prev) => prev.map((f) => flagMap.get(f.id) || f));
+      } else if (res.status === 403) {
+        setFlagError('Admin session required to modify flags');
+        setIsAdmin(false);
+      } else {
+        const errData = await res.json();
+        setFlagError(errData?.message || 'Failed to update flag');
       }
-    } catch (_) {
-      // error
+    } catch (err) {
+      setFlagError('Network error: ' + (err?.message || 'Unknown error'));
     } finally {
       setFlagSaving(null);
     }
