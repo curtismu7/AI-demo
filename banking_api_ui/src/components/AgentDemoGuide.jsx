@@ -297,6 +297,7 @@ const DEMO_SCENARIOS = [
 export default function AgentDemoGuide({ onClose }) {
   const [activeScenario, setActiveScenario] = useState('read-only');
   const [expandedSteps, setExpandedSteps] = useState({});
+  const [copiedStepId, setCopiedStepId] = useState(null);
 
   const current = DEMO_SCENARIOS.find((s) => s.id === activeScenario);
 
@@ -305,6 +306,12 @@ export default function AgentDemoGuide({ onClose }) {
       ...prev,
       [stepIndex]: !prev[stepIndex],
     }));
+  };
+
+  const handleCopyPrompt = (prompt, stepId) => {
+    navigator.clipboard.writeText(prompt);
+    setCopiedStepId(stepId);
+    setTimeout(() => setCopiedStepId(null), 2000);
   };
 
   return (
@@ -381,16 +388,19 @@ export default function AgentDemoGuide({ onClose }) {
 
                           {step.prompt && (
                             <div className="adg-prompt-box">
-                              <div className="adg-prompt-label">💬 Copy & paste:</div>
+                              <div className="adg-prompt-label">
+                                💬 Copy & paste:
+                                {copiedStepId === `${activeScenario}-${idx}` && (
+                                  <span className="adg-copy-checkmark">✓ Copied!</span>
+                                )}
+                              </div>
                               <code className="adg-prompt-code">{step.prompt}</code>
                               <button
+                                type="button"
                                 className="adg-copy-btn"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(step.prompt);
-                                  alert('Prompt copied to clipboard!');
-                                }}
+                                onClick={() => handleCopyPrompt(step.prompt, `${activeScenario}-${idx}`)}
                               >
-                                📋 Copy
+                                {copiedStepId === `${activeScenario}-${idx}` ? '✓' : '📋 Copy'}
                               </button>
                             </div>
                           )}
