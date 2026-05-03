@@ -26,8 +26,8 @@ This phase does NOT modify the existing `may_act` toggle (which operates on the 
 - **D-06:** Use the existing `mfa.js` enrollment pattern. Since the new user has no session, the BFF must use a worker token (not user access token) to call PingOne MFA enrollment on their behalf.
 
 ### may_act Attribute
-- **D-07:** `may_act` value is auto-detected at provision time: BFF reads `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` from `configStore.getEffective()` and constructs `{"client_id": "<id>"}`.
-- **D-08:** Stored as a stringified JSON object on the PingOne user attribute `may_act` — matches the shape the existing may_act toggle writes and the BFF token exchange flow reads.
+- **D-07:** `mayAct` value is auto-detected at provision time: BFF reads `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` from `configStore.getEffective()` and sends `{ sub: "<clientId>" }` as the attribute body. **Correction from discuss-phase:** attribute name is camelCase `mayAct` (PingOne attribute), body shape is `{ sub: clientId }` — verified against working `demoScenario.patchMayAct()` in the codebase. The `client_id` key mentioned during discussion does not match the live API.
+- **D-08:** Stored as a JSON object (not a stringified JSON string) on the PingOne user attribute `mayAct`. The PATCH body to PingOne is `{ mayAct: { sub: "<clientId>" } }`. This matches the shape the existing may_act toggle writes and the BFF token exchange flow reads.
 - **D-09:** If `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` is not configured, show a warning in the step log ("may_act not set — MCP token exchanger client ID not configured") but continue provisioning.
 
 ### Page Placement & UI

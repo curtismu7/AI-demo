@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-05-01T17:31:56.787Z"
+last_updated: "2026-05-03T09:45:59.841Z"
 progress:
-  total_phases: 151
-  completed_phases: 121
-  total_plans: 249
-  completed_plans: 251
-  percent: 100
+  total_phases: 156
+  completed_phases: 123
+  total_plans: 264
+  completed_plans: 258
+  percent: 98
 ---
 
 # State — Super Banking AI Banking Demo
@@ -21,11 +21,18 @@ progress:
 
 ## Current Position
 
-Phase: 247 (pingone-mcp-server-integration) — COMPLETE
-Plan: 1 of 3
-Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) — available for planning
+Phase: 265 — PLANNED, ready for execution
+Next phase: 265 (demo-data-page-create-demo-user-with-may-act-p1mfa-registrat) — run `/gsd-execute-phase 265`
 
 ## Recent Progress
+
+✅ **Phase 265 PLANNED** (2026-05-03) — 265-01-PLAN.md + 265-02-PLAN.md verified, 0 plan-checker blockers
+✅ **Phase 264 COMPLETE** (2026-05-02)
+
+- Plan 264-01: Extended `mcpGatewayConfig.js` GET to include 6 pre-filled fields (`pingOneEnvUrl`, `pingOneResourceId`, `gatewayPublicUrl`, `upstreamMcpUrl`, `mcpScope`, `introspectEndpoint` derived as pingOneEnvUrl + `/as/introspect`); POST allowlist expanded with `mcp_gw_client_id`, `mcp_gw_public_url`, `mcp_scope`; persistence via `configStore.setRaw()`; 13 tests created and passing
+- Plan 264-02: Added RFC 9728 WWW-Authenticate headers (`Bearer realm="PingOne", resource_metadata=".../.well-known/mcp-server"`) to all 3 error response paths in `authorizeMcpRequest.ts`; 2 new tests in gateway-auth.test.ts; all 37 gateway tests pass
+- Plan 264-03: Added "📖 Docs & Setup" 4th tab with 3 PingGateway doc cards; replaced Real PingGateway flat layout with 5-step wizard (Step 1: PingOne status, Step 2: 6-field route config form with live JSON preview + Save/Download, Steps 3-4: file download, Step 5: BFF .env instructions); compliance note; required badges; `npm run build` exits 0
+- Bonus: Fixed pre-existing BankingAgent.chips test (60/60 passing)
 
 ✅ **Phase 232 COMPLETE**
 
@@ -101,6 +108,8 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) �
 ---
 
 ## Roadmap Evolution
+
+- Phase 263 added: MCP server spec compliance fixes and gap closure
 
 - Phase 261 added: Phase 260 compliance — gateway denial metadata, agent recovery and retry, BFF propagation, UI flow checklist, OLB resource token exchange, PingOne claim diagnostics
 
@@ -273,6 +282,12 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) �
 
 ### Roadmap Evolution
 
+- Phase 265 added: Demo data page: create demo user with may_act, P1MFA registration
+
+- Phase 264 added: MCP Gateway config page — show and configure routes, link PingGateway docs, full UI for config (not just JSON files)
+
+- Phase 263 added: MCP server spec compliance fixes and gap closure
+
 - Phase 260 added: to fix these gaps
 
 ### Pending Todos
@@ -285,4 +300,4 @@ Next phase: 235 (surface-introspection-validation-results-in-token-chain-and-) �
 - NEW: Simulated Authorize output must be byte-for-byte indistinguishable from real PingOne Authorize — same JSON shape, field names, HTTP status codes, error formats, and timing characteristics. API requests must also mimic PingOne Authorize request format exactly.
 - NEW: All test pages (PingOne Test, MFA Test, Authz Test, etc.) must show (1) the actual PingOne API endpoint being called and (2) the full JSON request body for that call, so users can learn what each API does.
 
-**Planned Phase:** 244 (interactive-architecture-diagram-walkthrough-highlight-compo) — 3 plans — 2026-04-27T21:23:04.394Z
+**Planned Phase:** 264 (MCP Gateway Config Page) — 3 plans — 2026-05-03T01:57:16.614Z

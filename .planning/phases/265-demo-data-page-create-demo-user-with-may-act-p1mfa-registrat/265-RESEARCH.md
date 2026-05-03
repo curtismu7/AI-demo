@@ -17,8 +17,8 @@
 - **D-04:** Email OTP device — enroll using the user's email address (same as the login email). No extra phone number input needed.
 - **D-05:** MFA enrollment is automatic and part of the single provisioning flow. One button creates user + sets may_act + enrolls email OTP. The presenter never clicks twice.
 - **D-06:** Use the existing `mfa.js` enrollment pattern. Since the new user has no session, the BFF must use a worker token (not user access token) to call PingOne MFA enrollment on their behalf.
-- **D-07:** `may_act` value is auto-detected at provision time: BFF reads `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` from `configStore.getEffective()` and constructs `{"client_id": "<id>"}`.
-- **D-08:** Stored as a stringified JSON object on the PingOne user attribute `may_act` — matches the shape the existing may_act toggle writes and the BFF token exchange flow reads.
+- **D-07:** `mayAct` value is auto-detected at provision time: BFF reads `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` from `configStore.getEffective()` and sends `{ sub: "<clientId>" }` as the attribute body. Attribute name is camelCase `mayAct` (PingOne attribute), body shape is `{ sub: clientId }` — verified against working `demoScenario.patchMayAct()` in the codebase.
+- **D-08:** Stored as a JSON object (not a stringified JSON string) on the PingOne user attribute `mayAct`. The PATCH body to PingOne is `{ mayAct: { sub: "<clientId>" } }`. This matches the shape the existing may_act toggle writes and the BFF token exchange flow reads.
 - **D-09:** If `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` is not configured, show a warning in the step log ("may_act not set — MCP token exchanger client ID not configured") but continue provisioning.
 - **D-10:** New top section "Create Demo User" above all existing sections in DemoDataPage. The section heading is `demo-data-section__heading` style.
 - **D-11:** Input field for email + a "Provision" button. Disable the button while provisioning is in progress.
@@ -536,22 +536,25 @@ Follow `demo-data-*` naming convention. New classes needed:
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`name.given` / `name.family` vs `givenName` / `familyName` in POST /users body**
    - What we know: `pingOneUserService.js` sends `name: { given: firstName, family: lastName }` (line 192)
    - What's unclear: PingOne API docs may use `givenName`/`familyName` at top level
    - Recommendation: Use the `name: { given, family }` shape since it's already proven working in this codebase.
+   - **RESOLVED:** Use `name: { given, family }` — proven working pattern in this codebase.
 
 2. **Population for new demo users**
    - What we know: `pingOneUserService` optionally sets `population.id` for admin users (line 197-199)
    - What's unclear: Should demo provisioned users go into a specific population?
    - Recommendation: Omit `population` from the POST body to use the default population. CONTEXT.md does not specify a population requirement.
+   - **RESOLVED:** Omit `population` — use default population, no requirement in CONTEXT.md.
 
 3. **Does the DemoDataPage.js sticky nav need updating?**
    - What we know: There is a sticky `demo-data-page__nav` sidebar with jump links (Phase 110)
    - What's unclear: Whether the nav items are hardcoded or data-driven
    - Recommendation: If nav is hardcoded, add a "Create Demo User" link at the top. Check DemoDataPage.js nav rendering logic before planning the nav update.
+   - **RESOLVED:** Plan 02 Task 1 includes a sub-step to add the nav link — executor reads DemoDataPage.js nav section and adds the jump link.
 
 ---
 
