@@ -5,6 +5,17 @@
 
 ---
 
+## 0. UI Style Guidelines
+
+**Real banking applications use professional typography — no emojis in production UI.**
+
+- Remove emojis when touching code (labels, buttons, nav items, status messages)
+- Replace with: plain text labels, icons (CSS symbols), or semantic HTML
+- Exception: Test/demo-only pages and internal dev tools may retain emoji for quick visual scanning
+- **Current state:** Admin nav, demo guide, and test pages have extensive emoji use. Clean them as you refactor those areas.
+
+---
+
 ## 1. Critical Do-Not-Break Areas
 
 | Area | What breaks if touched | Files |
