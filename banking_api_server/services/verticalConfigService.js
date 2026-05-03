@@ -52,13 +52,17 @@ function getActiveVertical() {
 
 /**
  * Set the active vertical. Validates the ID exists.
+ * Also updates ui_industry_preset so IndustryBrandingContext picks up the styling.
  */
 async function setActiveVertical(verticalId) {
   const all = loadVerticals();
   if (!all[verticalId]) {
     throw new Error(`Unknown vertical: "${verticalId}". Available: ${Object.keys(all).join(', ')}`);
   }
-  await configStore.setConfig({ active_vertical: verticalId });
+  await configStore.setConfig({
+    active_vertical: verticalId,
+    ui_industry_preset: verticalId
+  });
   return all[verticalId];
 }
 
