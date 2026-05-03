@@ -857,6 +857,7 @@ const UnifiedConfigurationPage: FC<{
   const [flagsLoading, setFlagsLoading] = useState(false);
   const [flagsError, setFlagsError] = useState<string | null>(null);
   const [flagSearch, setFlagSearch] = useState("");
+  const [themeChangeModal, setThemeChangeModal] = useState<{ show: boolean; industryId: string } | null>(null);
 
   const { placement: ctxAgentUiMode, setAgentUi } = useAgentUiMode();
   useEducationUI();
@@ -997,6 +998,8 @@ const UnifiedConfigurationPage: FC<{
   const setIndustry = useCallback((id: string) => {
     setState(prev => ({ ...prev, industryId: id, saveStatus: 'idle' }));
     (applyIndustryId as (id: string) => void)(id);
+    setThemeChangeModal({ show: true, industryId: id });
+    setTimeout(() => setThemeChangeModal(null), 3000);
   }, [applyIndustryId]);
 
   const testConnection = useCallback(async () => {
@@ -1425,9 +1428,9 @@ const UnifiedConfigurationPage: FC<{
 
     if (s === 'demo-data-setup') return (
       <div className="cfg-section">
-        <p className="cfg-section-desc">
-          <strong>Step 2:</strong> Pick a demo scenario. Each preset loads different sample bank accounts, transaction amounts, and agent prompts. The scenario you choose changes how MFA step-up, agent consent (HITL), and transaction flows behave.<br /><br />
-          <ul style={{ marginLeft: '1.5em' }}>
+        <div className="cfg-section-desc">
+          <strong>Step 2:</strong> Pick a demo scenario. Each preset loads different sample bank accounts, transaction amounts, and agent prompts. The scenario you choose changes how MFA step-up, agent consent (HITL), and transaction flows behave.
+          <ul style={{ marginLeft: '1.5em', marginTop: '0.75rem' }}>
             <li><strong>Default Banking Demo:</strong> Balanced mix of checking, savings, and investment accounts. <em>Most transfers do NOT trigger MFA or consent.</em> <br />
               <span style={{ color: '#374151' }}>Example: Transfer $200 from Checking to Savings (no MFA, no consent required).</span>
             </li>
@@ -1441,7 +1444,7 @@ const UnifiedConfigurationPage: FC<{
               <span style={{ color: '#374151' }}>Example: Transfer $5 from Checking to Savings (consent dialog + MFA required).</span>
             </li>
           </ul>
-        </p>
+        </div>
         <CfgSelect
           label="Demo Scenario"
           value={state.demoScenario}
@@ -2166,6 +2169,66 @@ const UnifiedConfigurationPage: FC<{
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {themeChangeModal?.show && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+        }} onClick={() => setThemeChangeModal(null)} onKeyDown={(e) => e.key === 'Escape' && setThemeChangeModal(null)} role="presentation">
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '2rem',
+            maxWidth: '400px',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            textAlign: 'center',
+            border: `4px solid ${(() => {
+              const preset = (() => {
+                const { INDUSTRY_PRESETS } = require('../../config/industryPresets');
+                return INDUSTRY_PRESETS.find(p => p.id === themeChangeModal.industryId);
+              })();
+              return preset?.cssVars['--app-primary-red'] || '#007bff';
+            })()}`,
+          }} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.key === 'Escape' && setThemeChangeModal(null)} role="presentation">
+            <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>✨</div>
+            <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.3rem', color: '#111' }}>Theme Applied!</h2>
+            <p style={{ margin: '0.5rem 0 1.5rem', color: '#666', fontSize: '0.95rem' }}>
+              Your industry branding has been updated. Changes will be saved the next time you click "Save Changes".
+            </p>
+            <div style={{
+              display: 'inline-block',
+              padding: '0.5rem 1rem',
+              borderRadius: '6px',
+              backgroundColor: (() => {
+                const preset = (() => {
+                  const { INDUSTRY_PRESETS } = require('../../config/industryPresets');
+                  return INDUSTRY_PRESETS.find(p => p.id === themeChangeModal.industryId);
+                })();
+                return preset?.cssVars['--app-primary-red'] || '#007bff';
+              })(),
+              color: 'white',
+              fontSize: '0.9rem',
+              fontWeight: '600',
+            }}>
+              {(() => {
+                const preset = (() => {
+                  const { INDUSTRY_PRESETS } = require('../../config/industryPresets');
+                  return INDUSTRY_PRESETS.find(p => p.id === themeChangeModal.industryId);
+                })();
+                return preset?.label || 'Theme Updated';
+              })()}
+            </div>
           </div>
         </div>
       )}
