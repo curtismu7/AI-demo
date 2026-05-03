@@ -26,6 +26,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Changed
 
+- **Banking Agent — chat input message history** — pressing up/down arrow keys navigates through message history (last 10 messages); changes history index; pressing down when at the oldest message clears the input; typing new text resets history index so it re-enters live input mode.
 - **Banking Agent — compliance panel redesign** — moved compliance checklist from header to inline in agent (below messages); added "Side panel" checkbox to toggle between inline and floating modal modes. Floating modal is fully draggable (click title bar), 8-direction resizable (corner handles), and can pop-out to independent browser window (↗ button); positioned left of agent content without covering side nav; displays last agent response above checklist; added inline explanations under each skipped step showing exactly why that step doesn't apply to the current action (e.g., "Read-only operation, no gateway denial needed" for non-HITL actions), plus footer explaining skipped steps; agent background changed from light blue (#f0f4ff) to pure white (#fff); increased modal height to 700px and all compliance text font-weights (items 500→700, labels 600→700, headers 600→700) for bold readable formatting.
 
 ### Added
