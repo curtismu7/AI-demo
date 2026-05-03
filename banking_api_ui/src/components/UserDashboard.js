@@ -28,6 +28,7 @@ import {
 } from "../utils/dashboardLayout";
 import { toastCustomerError } from "../utils/dashboardToast";
 import AgentUiModeToggle from "./AgentUiModeToggle";
+import ThresholdControls from "./ThresholdControls";
 import BankingAgent from "./BankingAgent";
 import DevToolsOverlay from "./DevToolsOverlay";
 import EmbeddedAgentDock from "./EmbeddedAgentDock";
@@ -35,6 +36,7 @@ import ExchangeModeToggle from "./ExchangeModeToggle";
 import { EDU } from "./education/educationIds";
 import Fido2Challenge from "./Fido2Challenge";
 import TokenChainDisplay from "./TokenChainDisplay";
+import ConfirmModal from "./ConfirmModal";
 import TransactionConsentModal from "./TransactionConsentModal";
 import "./UserDashboard.css";
 import DashboardHeader from "./DashboardHeader";
@@ -52,6 +54,8 @@ const fmt = (n) =>
 
 /** Account types whose balances represent money owed (liabilities), not assets. */
 const DEBT_TYPES = new Set(["loan", "car_loan", "mortgage", "credit"]);
+/** Only these account types count toward the "Total Accounts" balance. */
+const ASSET_TYPES = new Set(["checking", "savings"]);
 
 const DEMO_ACCOUNTS = [
 	{
@@ -134,7 +138,10 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 	const [user, setUser] = useState(propUser);
 	const [accounts, setAccounts] = useState([]);
 	const [showTokenModal, setShowTokenModal] = useState(false);
+	const [showResetModal, setShowResetModal] = useState(false);
 	const [tokenData, setTokenData] = useState(null);
+	const [tokenExpiresAt, setTokenExpiresAt] = useState(null);
+	const [tokenSecondsLeft, setTokenSecondsLeft] = useState(null);
 	const [transactions, setTransactions] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [selectedAccount, setSelectedAccount] = useState(null);
@@ -237,6 +244,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 					const userRes = await getCachedJson("/api/auth/oauth/user/status");
 					if (userRes.data.authenticated) {
 						sessionUser = userRes.data.user;
+						if (userRes.data.expiresAt) setTokenExpiresAt(userRes.data.expiresAt);
 					} else {
 						const adminRes = await getCachedJson("/api/auth/oauth/status");
 						if (adminRes.data.authenticated) sessionUser = adminRes.data.user;
@@ -360,9 +368,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 	useEffect(() => {
 		const onAgentResult = ({ detail }) => {
 			const { type } = detail;
-			// 'confirm' covers deposit, withdraw, and transfer success responses.
-			// 'accounts' and 'transactions' are read-only — no balance change.
-			if (type === "confirm") {
+			// 'confirm' = write (deposit/withdraw/transfer) → full refresh
+			// 'accounts' / 'balance' = reads → silent refresh to keep dashboard cards in sync
+			if (type === "confirm" || type === "accounts" || type === "balance") {
 				fetchUserData(true);
 			}
 		};
@@ -460,6 +468,15 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 		fetchUserData();
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only load
 	}, []);
+
+	// Live token expiry countdown — ticks every second
+	useEffect(() => {
+		if (!tokenExpiresAt) { setTokenSecondsLeft(null); return; }
+		const tick = () => setTokenSecondsLeft(Math.max(0, Math.round((tokenExpiresAt - Date.now()) / 1000)));
+		tick();
+		const id = setInterval(tick, 1000);
+		return () => clearInterval(id);
+	}, [tokenExpiresAt]);
 
 	// Refresh accounts whenever the Demo config page saves (new/edited accounts, balances).
 	// UserDashboard stays mounted while the user navigates to /demo-data and back, so we
@@ -1187,8 +1204,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 	const totalBalance = useMemo(
 		() =>
 			accounts
-				// Real API accounts use accountType; demo snapshots use type — check both.
-				.filter((a) => !DEBT_TYPES.has(a.accountType || a.type))
+				// Only checking and savings count toward the displayed total.
+				.filter((a) => ASSET_TYPES.has(a.accountType || a.type))
 				.reduce((sum, a) => sum + (Number(a.balance) || 0), 0),
 		[accounts],
 	);
@@ -2394,21 +2411,54 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 					<button
 						type="button"
 						onClick={openTokenModal}
-						className="dashboard-toolbar-btn dashboard-toolbar-btn--icon"
+						className="dashboard-toolbar-btn"
 						title="View OAuth Token Info"
 					>
-						<svg
-							width="18"
-							height="18"
-							viewBox="0 0 24 24"
-							fill="currentColor"
-							aria-hidden="true"
-						>
-							<path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" />
-						</svg>
-						<span className="dashboard-toolbar-btn__sr">Token info</span>
+						Token Info
 					</button>
 					<AgentUiModeToggle variant="config" />
+						<ThresholdControls />
+						<button
+							type="button"
+							className="dashboard-toolbar-btn"
+							style={{ background: '#dc2626', borderColor: '#dc2626', color: '#fff' }}
+							title="Reset demo: clear agent history and token chain"
+							onClick={() => setShowResetModal(true)}
+						>
+							🔄 Reset Demo
+						</button>
+						{user ? (
+							<span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#1e293b', fontWeight: 500 }}>
+								<span style={{ background: '#dbeafe', color: '#1e40af', borderRadius: 4, padding: '2px 7px', fontWeight: 600, fontSize: 11 }}>
+									{user.role === 'admin' ? 'Admin' : 'Customer'}
+								</span>
+								{user.firstName || user.name?.split(' ')[0] || user.username}
+								{tokenSecondsLeft !== null && (
+									<span style={{
+										background: tokenSecondsLeft < 60 ? '#fef2f2' : tokenSecondsLeft < 300 ? '#fff7ed' : '#f0fdf4',
+										color: tokenSecondsLeft < 60 ? '#dc2626' : tokenSecondsLeft < 300 ? '#ea580c' : '#15803d',
+										border: `1px solid ${tokenSecondsLeft < 60 ? '#fca5a5' : tokenSecondsLeft < 300 ? '#fed7aa' : '#86efac'}`,
+										borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 600,
+									}}>
+										Token:{' '}
+										{tokenSecondsLeft >= 3600
+											? `${Math.floor(tokenSecondsLeft / 3600)}h ${Math.floor((tokenSecondsLeft % 3600) / 60)}m`
+											: tokenSecondsLeft >= 60
+											? `${Math.floor(tokenSecondsLeft / 60)}m ${tokenSecondsLeft % 60}s`
+											: `${tokenSecondsLeft}s`}
+									</span>
+								)}
+							</span>
+						) : (
+							<button
+								type="button"
+								className="dashboard-toolbar-btn"
+								style={{ marginLeft: 'auto', fontWeight: 700, background: '#2563eb', color: '#fff', border: 'none' }}
+								onClick={() => { window.location.href = '/api/auth/oauth/login'; }}
+							>
+								Sign In
+							</button>
+						)}
 				</div>
 			</div>
 
@@ -2433,6 +2483,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 								onLogout={onLogout}
 								mode="inline"
 								embeddedFocus="banking"
+										splitColumnChrome
 								distinctFloatingChrome
 								showPopOut
 							/>
@@ -2551,6 +2602,23 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 					}}
 				/>
 			)}
+
+			<ConfirmModal
+				isOpen={showResetModal}
+				title="Reset Demo"
+				message="Clear all agent history, token chain events, and MCP audit logs? You will stay logged in."
+				confirmLabel="Reset"
+				danger
+				onConfirm={async () => {
+					setShowResetModal(false);
+					try { await fetch('/api/admin/reset-demo', { method: 'POST', credentials: 'include' }); } catch (_) {}
+					try { localStorage.removeItem('tokenChainHistory'); } catch (_) {}
+					try { localStorage.removeItem('api-traffic-store'); } catch (_) {}
+					try { sessionStorage.removeItem('_agent_auto_loaded'); } catch (_) {}
+					navigate('/dashboard', { replace: true, state: { resetDemo: true } });
+				}}
+				onCancel={() => setShowResetModal(false)}
+			/>
 
 			{/* Email OTP Step-Up Modal */}
 			{otpModalOpen && (

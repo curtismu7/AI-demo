@@ -50,19 +50,21 @@ const PHASE_LABELS = {
 
 /** @type {{ visible: boolean, phase: string, toolName: string|null, steps: Array<{id: string, title: string, detail: string, status: FlowStepStatus}>, serverEvents: Array<{ phase: string, label: string, detail: string, t?: number }>, hint: string|null, updatedAt: number }} */
 const COMPLIANCE_STEPS = [
-  // Ordered by agent flow: step 2 → 4b → 4d → 5 → 5a → 6 → 9 → 12 → 12a
-  { id: 'gw-scope-map',           label: '2.     Agent gets tool list — gateway scope map',     status: 'done' },
-  { id: 'gw-denial-metadata',     label: '4b-c.  Gateway denial — includes required_scopes',   status: 'done' },
-  { id: 'bff-response-shape',     label: '4d.    BFF structured 401/403 JSON-RPC',             status: 'done'    },
+  // Ordered by agent flow: step 1 → 2 → 4b → 4d → 5 → 5a → 6 → 9 → 12 → 12a
+  { id: 'agent-token-init',       label: '1.     Agent starts — gets client credentials token', status: 'pending' },
+  { id: 'agent-llm-reasoning',    label: '1a.    Agent consults LLM for routing',              status: 'pending' },
+  { id: 'gw-scope-map',           label: '2.     Agent gets tool list — gateway scope map',     status: 'pending' },
+  { id: 'gw-denial-metadata',     label: '4b-c.  Gateway denial — includes required_scopes',   status: 'pending' },
+  { id: 'bff-response-shape',     label: '4d.    BFF structured 401/403 JSON-RPC',             status: 'pending'    },
   { id: 'gw-hitl-challenge-type', label: '4d/11d. Denial includes challenge_type',             status: 'pending' },
-  { id: 'agent-error-propagation',label: '5.     Agent propagates JSON-RPC denial',            status: 'done'    },
-  { id: 'agent-recovery-branch',  label: '5/11.  Agent branches: login required vs HITL',      status: 'done'    },
-  { id: 'bff-login-resume',       label: '5a.    BFF stores pending intent for re-fire',       status: 'done' },
-  { id: 'agent-scope-aware-cache',label: '6.     Agent token exchange (actor + subject)',      status: 'done' },
-  { id: 'olb-resource-token',     label: '9.     MCP resource token exchange (OLB path)',      status: 'done'    },
-  { id: 'ui-gateway-consent',     label: '12.    UI shows GatewayConsentModal (HITL)',         status: 'done'    },
-  { id: 'ui-auto-refire',         label: '12a.   UI auto-re-fires after login / consent',      status: 'done' },
-  { id: 'claim-diagnostics',      label: '(diag) Claim/scope diagnostics',                    status: 'done'    },
+  { id: 'agent-error-propagation',label: '5.     Agent propagates JSON-RPC denial',            status: 'pending'    },
+  { id: 'agent-recovery-branch',  label: '5/11.  Agent branches: login required vs HITL',      status: 'pending'    },
+  { id: 'bff-login-resume',       label: '5a.    BFF stores pending intent for re-fire',       status: 'pending' },
+  { id: 'agent-scope-aware-cache',label: '6.     Agent token exchange (actor + subject)',      status: 'pending' },
+  { id: 'olb-resource-token',     label: '9.     MCP resource token exchange (OLB path)',      status: 'pending'    },
+  { id: 'ui-gateway-consent',     label: '12.    UI shows GatewayConsentModal (HITL)',         status: 'pending'    },
+  { id: 'ui-auto-refire',         label: '12a.   UI auto-re-fires after login / consent',      status: 'pending' },
+  { id: 'claim-diagnostics',      label: '(diag) Claim/scope diagnostics',                    status: 'pending'    },
 ];
 
 let state = {
@@ -125,7 +127,7 @@ function buildCompletedSteps(toolName, tokenEvents, ok, errorMessage) {
         : ok
           ? `User access token in session — ${subHint}`
           : 'Sign-in flow should have stored an OAuth access token in the BFF session',
-      status: 'done',
+      status: 'pending',
     },
     {
       id: 'agent',
@@ -152,10 +154,26 @@ function buildCompletedSteps(toolName, tokenEvents, ok, errorMessage) {
       status: failed || badScopes ? 'error' : 'done',
     },
     {
+      id: 'mcp-gateway',
+      title: 'MCP Gateway',
+      detail: exchanged
+        ? `TX token received (aud: ${exchanged.audienceNarrowed || 'mcp-gw'}, act: agent1) — sidebanding to PingAuthorize`
+        : 'Routes tool call; sidebands to PingAuthorize for scope/AUD/HITL decision',
+      status: failed || badScopes ? 'error' : 'done',
+    },
+    {
+      id: 'pingauthorize',
+      title: 'PingAuthorize (policy engine)',
+      detail: ok
+        ? 'Checked: scopes ✓  aud ✓  HITL threshold ✓ → PERMIT'
+        : 'Evaluated scopes, AUD, and HITL/consent rules — see denial reason above',
+      status: ok ? 'done' : 'error',
+    },
+    {
       id: 'mcp',
       title: 'MCP Server',
       detail: ok
-        ? 'Introspected token, checked scopes, called Banking REST API with Bearer token'
+        ? 'Introspected narrowed token, checked scopes, called Banking REST API'
         : errorMessage || 'Upstream or policy error',
       status: ok ? 'done' : 'error',
     },
@@ -202,6 +220,69 @@ export const agentFlowDiagram = {
       emit();
       return;
     }
+
+    // Token-event payloads (type:'token-event') arrive via publishTokenEventsToSse and carry
+    // id fields matching the token chain entries.  Map them to compliance steps so that the
+    // RFC 8693 two-token exchange and the final exchanged MCP token are both tracked.
+    if (payload.type === 'token-event') {
+      const tokenComplianceMap = {
+        'agent-actor-token': ['agent-scope-aware-cache'], // Step 6: actor CC token obtained
+        'exchanged-token':   ['olb-resource-token'],       // Step 9: MCP resource token obtained via exchange
+      };
+      const ids = tokenComplianceMap[payload.id] || [];
+      ids.forEach(id => {
+        const step = state.complianceSteps.find(s => s.id === id);
+        if (step) { step.status = 'done'; state.complianceStep = id; }
+      });
+      if (ids.length) { state.updatedAt = Date.now(); emit(); }
+      return;
+    }
+
+    // Phase-based compliance map — keyed on ACTUAL server phase names from server.js
+    // Happy path:      request_accepted → resolving_access_token → access_token_ready → mcp_remote_begin → mcp_remote_done
+    // Auth gate path:  authorize_gate_begin → authorize_denied / authorize_permitted
+    // HITL path:       authorize_denied_hitl
+    // No-session path: no_bearer_no_user
+    // MFA / step-up:   gateway_step_up_required
+    // Auth challenge:  mcp_auth_challenge_intercepted
+    const complianceMap = {
+      // Step 1 — Agent starts, gets CC token (request received by BFF)
+      'request_accepted':               ['agent-token-init'],
+      // Step 2 — Agent gets tool list / gateway scope map
+      'authorize_gate_begin':           ['gw-scope-map'],
+      'authorize_permitted':            ['gw-scope-map'],
+      'authorize_gate_skipped':         ['gw-scope-map'],
+      // Step 4b-c — Gateway denial includes required_scopes
+      'authorize_denied':               ['gw-denial-metadata'],
+      // Step 4d — BFF structured 401/403 JSON-RPC
+      'no_bearer_no_user':              ['bff-response-shape'],
+      // Step 4d/11d — Denial includes challenge_type (HITL or step-up)
+      'authorize_denied_hitl':          ['gw-hitl-challenge-type', 'bff-response-shape'],
+      'gateway_step_up_required':       ['gw-hitl-challenge-type'],
+      // Step 5 — Agent propagates JSON-RPC denial
+      'mcp_auth_challenge_intercepted': ['agent-error-propagation'],
+      // Step 6 — RFC 8693 token exchange starts (actor + subject tokens resolved)
+      // NOTE: token-event 'agent-actor-token' also marks this step when actor CC token is obtained
+      'resolving_access_token':         ['agent-scope-aware-cache'],
+      'access_token_ready':             ['agent-scope-aware-cache'],
+      // Step 9 — MCP gateway/server is actually called (resource token in hand)
+      // NOTE: token-event 'exchanged-token' also marks this step when exchange produces MCP token
+      'mcp_remote_begin':               ['olb-resource-token'],
+      // Step 12 / 12a — fired by UI directly via completeMfaChallenge / markHitlPreConsent
+      // (diag) — Claim/scope diagnostics
+      'mcp_remote_done':                ['claim-diagnostics'],
+    };
+
+    if (complianceMap[payload.phase]) {
+      complianceMap[payload.phase].forEach(id => {
+        const step = state.complianceSteps.find(s => s.id === id);
+        if (step) {
+          step.status = 'done';
+          state.complianceStep = id;
+        }
+      });
+    }
+
     const label = PHASE_LABELS[payload.phase] || String(payload.phase);
     const bits = [];
     if (payload.tool && payload.tool !== state.toolName) bits.push(`tool · ${payload.tool}`);
@@ -250,6 +331,9 @@ export const agentFlowDiagram = {
    * @param {string} toolName MCP tool name e.g. get_my_accounts
    */
   startMcpToolCall(toolName) {
+    // Calling a tool implies the gateway tool list (step 2) was already fetched.
+    const gwStep = state.complianceSteps.find(s => s.id === 'gw-scope-map');
+    if (gwStep && gwStep.status !== 'done') { gwStep.status = 'done'; }
     // Do not auto-open — panel only opens via explicit user action (agent-flow-diagram-open event)
     state.phase = 'running';
     state.toolName = toolName;
@@ -260,7 +344,7 @@ export const agentFlowDiagram = {
         id: 'as',
         title: 'PingOne (Authorization Server)',
         detail: 'User token should already be in the BFF session from sign-in',
-        status: 'done',
+        status: 'pending',
       },
       {
         id: 'agent',
@@ -270,14 +354,26 @@ export const agentFlowDiagram = {
       },
       {
         id: 'bff',
-        title: 'BFF — POST /api/mcp/tool',
-        detail: 'Resolving OAuth token, optional RFC 8693 exchange, opening MCP WebSocket',
+        title: 'BFF — RFC 8693 Token Exchange',
+        detail: 'Actor CC token + user subject token → TX token (aud: mcp-gw, scope narrowed)',
+        status: 'pending',
+      },
+      {
+        id: 'mcp-gateway',
+        title: 'MCP Gateway',
+        detail: 'Receives TX token; sidebands to PingAuthorize for scope/AUD/HITL check',
+        status: 'pending',
+      },
+      {
+        id: 'pingauthorize',
+        title: 'PingAuthorize (policy engine)',
+        detail: 'Evaluates: required scopes, AUD, HITL threshold, consent rules',
         status: 'pending',
       },
       {
         id: 'mcp',
         title: 'MCP Server',
-        detail: 'tools/call → introspection → Banking API',
+        detail: 'tools/call → introspect narrowed token → Banking API',
         status: 'pending',
       },
       {
@@ -312,7 +408,7 @@ export const agentFlowDiagram = {
         id: 'as',
         title: 'PingOne (Authorization Server)',
         detail: 'Session token used for discovery',
-        status: 'done',
+        status: 'pending',
       },
       {
         id: 'agent',
@@ -349,13 +445,13 @@ export const agentFlowDiagram = {
         id: 'as',
         title: 'PingOne (Authorization Server)',
         detail: 'Bearer from session for MCP handshake',
-        status: 'done',
+        status: 'pending',
       },
       {
         id: 'agent',
         title: 'Banking Agent',
         detail: 'Requested live tool catalog',
-        status: 'done',
+        status: 'pending',
       },
       {
         id: 'bff',
@@ -397,11 +493,62 @@ export const agentFlowDiagram = {
   },
 
   /**
+   * Reset all compliance steps back to their default initial status.
+   * Called at the start of each new prompt/tool run.
+   */
+  resetComplianceSteps(actionLabel, actionId) {
+    state.complianceSteps = COMPLIANCE_STEPS.map(s => ({ ...s }));
+    state.complianceStep = null;
+    state.complianceActionLabel = actionLabel || null;
+    state.complianceActionId = actionId || null;
+    state.updatedAt = Date.now();
+    emit();
+  },
+
+  startLlmReasoning(text) {
+    const initStep = state.complianceSteps.find(s => s.id === 'agent-token-init');
+    if (initStep) initStep.status = 'done';
+    const llmStep = state.complianceSteps.find(s => s.id === 'agent-llm-reasoning');
+    if (llmStep) llmStep.status = 'done';
+    state.complianceStep = 'agent-llm-reasoning';
+    state.updatedAt = Date.now();
+    emit();
+  },
+
+  markHitlPreConsent() {
+    // All steps logically complete by the time a HITL/MFA challenge fires:
+    // 1 (CC token), 2 (tool list from gateway), 4b-c (gateway denial w/ required_scopes),
+    // 4d (BFF structured 401), 4d/11d (challenge_type in denial), 5 (agent propagates),
+    // 5/11 (agent branches to HITL), 5a (BFF stores pending intent),
+    // 6 (RFC 8693 actor+subject exchange), 9 (MCP resource token), 12 (consent modal shown)
+    const toMark = [
+      'agent-token-init', 'gw-scope-map', 'gw-denial-metadata', 'bff-response-shape',
+      'gw-hitl-challenge-type', 'agent-error-propagation', 'agent-recovery-branch',
+      'bff-login-resume', 'agent-scope-aware-cache', 'olb-resource-token', 'ui-gateway-consent',
+    ];
+    toMark.forEach(id => {
+      const step = state.complianceSteps.find(s => s.id === id);
+      if (step) step.status = 'done';
+    });
+    state.complianceStep = 'ui-gateway-consent';
+    state.updatedAt = Date.now();
+    emit();
+  },
+
+  /**
    * Generic state merge — used to update complianceStep / complianceSteps from outside.
    * @param {Partial<typeof state>} patch
    */
   setState(patch) {
     Object.assign(state, patch);
+    state.updatedAt = Date.now();
+    emit();
+  },
+
+  /** Mark step 5/11 (agent-recovery-branch) as done — call before redirecting to login. */
+  markRecoveryBranch() {
+    const step = state.complianceSteps.find(s => s.id === 'agent-recovery-branch');
+    if (step) { step.status = 'done'; state.complianceStep = 'agent-recovery-branch'; }
     state.updatedAt = Date.now();
     emit();
   },
@@ -412,6 +559,19 @@ export const agentFlowDiagram = {
     if (mfaStep) {
       mfaStep.status = ok ? 'done' : 'error';
       mfaStep.detail = ok ? 'HITL approved — identity verified, agent resuming' : 'HITL cancelled — MFA failed or user declined';
+    }
+    // Mark compliance steps 5/11 (agent branches) and 12 (UI shows consent modal)
+    const hitlStepIds = ['agent-recovery-branch', 'ui-gateway-consent'];
+    hitlStepIds.forEach(id => {
+      const step = state.complianceSteps.find(s => s.id === id);
+      if (step) { step.status = 'done'; state.complianceStep = id; }
+    });
+    // If approved: also mark step 12a (auto-refire) and step 5 (error propagation)
+    if (ok) {
+      ['ui-auto-refire', 'agent-error-propagation'].forEach(id => {
+        const step = state.complianceSteps.find(s => s.id === id);
+        if (step) { step.status = 'done'; state.complianceStep = id; }
+      });
     }
     state.phase = ok ? 'running' : 'error';
     state.updatedAt = Date.now();

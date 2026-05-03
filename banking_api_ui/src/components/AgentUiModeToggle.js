@@ -104,7 +104,8 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
       <span className="agent-ui-mode-toggle__label" id={`${idPrefix}-legend`}>
         {label}
       </span>
-      <div className="agent-ui-mode-toggle__segmented" role="toolbar" aria-labelledby={`${idPrefix}-legend`}>
+      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', maxWidth: variant === 'config' ? '560px' : 'none' }}>
+        <div className="agent-ui-mode-toggle__segmented" role="toolbar" aria-labelledby={`${idPrefix}-legend`}>
         {!isLandingNav && (
           <button
             type="button"
@@ -136,17 +137,18 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
           Float
         </button>
       </div>
-      {showFabCheckbox && (
-        <label className="agent-ui-mode-toggle__fab">
+      {placement !== 'none' && (
+        <label className="agent-ui-mode-toggle__fab" style={{ marginLeft: '12px', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
           <input
             type="checkbox"
             checked={fab}
             onChange={(e) => void handleFabToggle(e)}
-            aria-label="Also show floating FAB on dashboard routes"
+            aria-label="Always show float agent"
           />
-          <span>+ FAB</span>
+          <span style={{ marginLeft: '6px' }}>Always float</span>
         </label>
       )}
+      </div>
     </div>
   );
 }

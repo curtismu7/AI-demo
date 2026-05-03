@@ -1767,11 +1767,18 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-.modal-content {
+.token-modal .modal-content {
   padding: 20px 30px 30px 30px;
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+  position: static;
+  transform: none;
+  top: auto;
+  left: auto;
+  max-width: none;
+  width: auto;
+  border-radius: 0;
 }
 
 .token-info {
@@ -1939,7 +1946,7 @@
     font-size: 1.3rem;
   }
   
-  .modal-content {
+  .token-modal .modal-content {
     padding: 15px 20px 20px 20px;
   }
   

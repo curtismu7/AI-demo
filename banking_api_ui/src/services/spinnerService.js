@@ -64,9 +64,26 @@ const SPINNER_COLORS = [
   '#db2777', // pink
 ];
 
-const MIN_DISPLAY_MS = 1500; // readable; well inside 10 s Axios timeout
-const DEBOUNCE_MS    = 200;  // suppress spinner for instant responses
+const MIN_DISPLAY_MS = 300;    // clear quickly once request finishes
+const DEBOUNCE_MS    = 2500;   // only show spinner for requests that take > 2.5 s
 const STUCK_TIMEOUT_MS = 30000; // safety: force-hide if spinner stuck for 30s
+
+/** Routes that fire too frequently to ever show a spinner (polling, streaming, NL, MCP tools). */
+const SILENT_URL_PREFIXES = [
+  '/api/auth/session',
+  '/api/auth/oauth',
+  '/api/config/thresholds',
+  '/api/app-events',
+  '/api/mcp/flow-sse',
+  '/api/mcp/sse',
+  '/api/mcp/tool',
+  '/api/mcp/inspector',
+  '/api/nl',
+  '/api/logs',
+  '/api/activity',
+];
+
+const isSilentUrl = (url) => SILENT_URL_PREFIXES.some(p => url.startsWith(p));
 
 let _pending   = 0;
 let _visible   = false;
@@ -139,6 +156,9 @@ export const spinner = {
    * @param {string} [url]
    */
   increment(method = 'GET', url = '') {
+    // Skip spinner entirely for high-frequency / background routes
+    if (isSilentUrl(url)) return;
+
     _pending++;
     // Cancel any pending hide from a previous cycle
     if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
@@ -169,7 +189,8 @@ export const spinner = {
    * Called by interceptors on every response (success or error).
    * @param {boolean} [isError] - if true, skip min display time so error toasts appear immediately
    */
-  decrement(isError = false) {
+  decrement(isError = false, url = '') {
+    if (isSilentUrl(url)) return;
     _pending = Math.max(0, _pending - 1);
     if (_pending > 0) return;
 

@@ -150,7 +150,7 @@
 }
 
 .agent-ui-mode-toggle--config .agent-ui-mode-toggle__segmented {
-  width: 100%;
+  flex: 1;
   display: flex;
   border: 1px solid #d1d5db;
   border-radius: 10px;
