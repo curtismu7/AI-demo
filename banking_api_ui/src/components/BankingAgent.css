@@ -4970,20 +4970,24 @@ button.ba-action-btn:hover {
 
 /* 1. Panel-level tokens — cascade to all children */
 .banking-agent-panel {
-  --ba-bg:        #ffffff;
-  --ba-surface:   #f9fafb;
-  --ba-border:    #e5e7eb;
-  --ba-text:      #111827;
-  --ba-muted:     #6b7280;
-  --ba-user-txt:  #ffffff;
-  --ba-agent-bg:  #f3f4f6;
-  --ba-agent-txt: #111827;
-  --ba-accent:    #3b82f6;
-  --ba-accent-h:  #2563eb;
-  --ba-input-bg:  #f9fafb;
-  --ba-input-bd:  #e5e7eb;
-  --ba-shadow:    0 1px 3px rgba(0, 0, 0, 0.1);
-  background: #ffffff;
+  --ba-bg:        #ffffff !important;
+  --ba-surface:   #f9fafb !important;
+  --ba-border:    #e5e7eb !important;
+  --ba-text:      #111827 !important;
+  --ba-muted:     #6b7280 !important;
+  --ba-user-txt:  #ffffff !important;
+  --ba-user-bg:   #3b82f6 !important;
+  --ba-agent-bg:  #f3f4f6 !important;
+  --ba-agent-txt: #111827 !important;
+  --ba-accent:    #3b82f6 !important;
+  --ba-accent-h:  #2563eb !important;
+  --ba-input-bg:  #f9fafb !important;
+  --ba-input-bd:  #e5e7eb !important;
+  --ba-chip-bg:   #dbeafe !important;
+  --ba-chip-bd:   #93c5fd !important;
+  --ba-chip-txt:  #1e40af !important;
+  --ba-shadow:    0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  background: #ffffff !important;
 }
 
 /* 2. Header */
