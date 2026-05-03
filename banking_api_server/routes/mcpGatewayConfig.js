@@ -198,12 +198,13 @@ router.get('/config', async (req, res) => {
 
         // Real PingGateway 2025.11.1 mcp.json fields
         pingOneEnvUrl:    `https://auth.pingone.${region}/${envId}`,
-        pingOneResourceId: process.env.MCP_GW_CLIENT_ID             || '<PingOne test resource ID>',
+        pingOneResourceId: process.env.MCP_GW_CLIENT_ID             || configStore.getEffective('mcp_gw_client_id') || '<PingOne test resource ID>',
         gatewayPublicUrl:  process.env.MCP_GW_RESOURCE_URI
             ? process.env.MCP_GW_RESOURCE_URI.replace(/\/mcp$/, '')
-            : 'https://ig.example.com:8443',
-        mcpScope: 'test',
+            : configStore.getEffective('mcp_gw_public_url') || 'https://ig.example.com:8443',
+        mcpScope: configStore.getEffective('mcp_scope') || 'banking:mcp:invoke',
     };
+    cfg.introspectEndpoint = `${cfg.pingOneEnvUrl}/as/introspect`;
 
     res.json({
         mcpMode: configStore.get('mcp_use_pingone_server') === 'true' ? 'pingone' : 'custom',
@@ -255,6 +256,7 @@ router.post('/config', async (req, res) => {
         'mcpOlbResourceUri', 'mcpInvestResourceUri',
         'pingAuthorizeEndpoint', 'pingAuthorizeWorkerId',
         'hitlServiceUrl', 'devBypass',
+        'mcp_gw_client_id', 'mcp_gw_public_url', 'mcp_scope',
     ];
 
     const updates = {};
@@ -299,6 +301,18 @@ router.post('/config', async (req, res) => {
         if (response.status !== 200) {
             return res.status(502).json({ error: 'Gateway returned error', detail: response.body });
         }
+
+        const persistKeys = ['mcp_gw_client_id', 'mcp_gw_public_url', 'mcp_scope'];
+        const toStore = {};
+        for (const k of persistKeys) {
+            if (k in updates) toStore[k] = updates[k];
+        }
+        if (Object.keys(toStore).length > 0) {
+            try { await configStore.setRaw(toStore); } catch (e) {
+                console.warn('[mcpGatewayConfig] configStore persist failed:', e.message);
+            }
+        }
+
         res.json({ ok: true, pushed: updates, gatewayConfig: response.body.config });
     } catch (err) {
         res.status(502).json({ error: 'Could not reach mock gateway', detail: err.message });
