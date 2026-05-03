@@ -35,6 +35,7 @@
   min-height: 250px;
   animation: slideUp 0.3s ease-out;
   z-index: 10001;
+  font-weight: 600;
 }
 
 @keyframes slideUp {
