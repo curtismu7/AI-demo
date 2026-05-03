@@ -46,6 +46,7 @@ import { isBankingAgentFloatingDefaultOpen } from "../utils/bankingAgentFloating
 import { isPublicMarketingAgentPath } from "../utils/embeddedAgentFabVisibility";
 import AccountDetailsPanel from "./AccountDetailsPanel";
 import AgentConsentModal from "./AgentConsentModal";
+import ComplianceModal from "./ComplianceModal";
 import GatewayConsentModal from "./GatewayConsentModal";
 import { EDUCATION_COMMANDS } from "./education/educationCommands";
 import { EDU } from "./education/educationIds";
@@ -363,6 +364,129 @@ const CHIP_APPLICABLE_STEPS = {
 
 // Backwards compatibility: flat ACTIONS array from ACTION_GROUPS
 const ACTIONS = Object.values(ACTION_GROUPS).flat();
+
+/**
+ * Explains why a specific compliance step is skipped (not applicable) for a given action.
+ * Maps step ID → human-readable explanation for that action type.
+ */
+function getStepSkipExplanation(actionId, stepId) {
+  const explanations = {
+    // Test Wrong Audience: only auth init, no scope/gateway/consent flow
+    test_wrong_audience: {
+      "gw-scope-map": "Audience error caught at token init, no scope mapping needed",
+      "gw-denial-metadata": "Auth error returned directly, no gateway denial structure",
+      "bff-response-shape": "Audience mismatch returns error before denial formatting",
+      "gw-hitl-challenge-type": "No HITL flow for auth errors",
+      "agent-error-propagation": "Agent never receives tool list; init fails first",
+      "agent-recovery-branch": "No login/HITL branch for audience mismatch",
+      "agent-scope-aware-cache": "Already attempted at token init; fails there",
+      "olb-resource-token": "Token exchange not required for auth failures",
+      "ui-gateway-consent": "No consent dialog for authentication errors",
+      "ui-auto-refire": "No re-fire after login for wrong audience",
+      "claim-diagnostics": "Basic auth error, no claim inspection needed",
+    },
+    // Test Wrong Scope: auth succeeds but scope check fails at agent level
+    test_wrong_scope: {
+      "gw-scope-map": "Agent doesn't request tool list (tests scope rejection directly)",
+      "gw-denial-metadata": "No gateway denial for simple scope mismatch",
+      "bff-response-shape": "BFF error bypasses denial formatting",
+      "gw-hitl-challenge-type": "No HITL flow for scope errors",
+      "agent-error-propagation": "Agent detects scope missing before calling tools",
+      "agent-recovery-branch": "Scope error is terminal, no login/HITL recovery",
+      "olb-resource-token": "Token exchange fails at agent validation",
+      "ui-gateway-consent": "No consent dialog for scope errors",
+      "ui-auto-refire": "No re-fire after scope rejection",
+      "claim-diagnostics": "Scope error detected before claim inspection",
+    },
+    // Simple read operations: no HITL, no gateway denial, just MCP call
+    accounts: {
+      "gw-denial-metadata": "Read-only operation, no gateway denial needed",
+      "bff-response-shape": "No 401/403 JSON-RPC error response",
+      "gw-hitl-challenge-type": "No HITL (Human-In-The-Loop) required",
+      "agent-error-propagation": "No error branch for successful auth",
+      "agent-recovery-branch": "No error recovery needed",
+      "bff-login-resume": "No pending intent storage for simple reads",
+      "ui-gateway-consent": "No HITL consent dialog needed",
+      "ui-auto-refire": "No re-fire after successful auth",
+    },
+    transactions: {
+      "gw-denial-metadata": "Read-only operation, no gateway denial needed",
+      "bff-response-shape": "No 401/403 JSON-RPC error response",
+      "gw-hitl-challenge-type": "No HITL required",
+      "agent-error-propagation": "No error branch",
+      "agent-recovery-branch": "No error recovery",
+      "bff-login-resume": "No pending intent storage",
+      "ui-gateway-consent": "No HITL consent dialog",
+      "ui-auto-refire": "No re-fire needed",
+    },
+    balance: {
+      "gw-denial-metadata": "Read-only, no gateway denial",
+      "bff-response-shape": "No error response",
+      "gw-hitl-challenge-type": "No HITL required",
+      "agent-error-propagation": "No error branch",
+      "agent-recovery-branch": "No recovery needed",
+      "bff-login-resume": "No pending intent",
+      "ui-gateway-consent": "No HITL consent",
+      "ui-auto-refire": "No re-fire",
+    },
+    // Write operations (no HITL threshold) follow same pattern
+    deposit: {
+      "gw-denial-metadata": "Transaction below HITL threshold, no denial",
+      "bff-response-shape": "No 401/403 response",
+      "gw-hitl-challenge-type": "Amount below HITL minimum",
+      "agent-error-propagation": "No error for successful transaction",
+      "agent-recovery-branch": "No error recovery",
+      "bff-login-resume": "No pending intent for approved transaction",
+      "ui-gateway-consent": "No HITL consent (below threshold)",
+      "ui-auto-refire": "No re-fire after approval",
+    },
+    withdraw: {
+      "gw-denial-metadata": "Transaction below HITL threshold",
+      "bff-response-shape": "No error response",
+      "gw-hitl-challenge-type": "Amount below HITL minimum",
+      "agent-error-propagation": "No error branch",
+      "agent-recovery-branch": "No recovery needed",
+      "bff-login-resume": "No pending intent",
+      "ui-gateway-consent": "No HITL consent (below threshold)",
+      "ui-auto-refire": "No re-fire",
+    },
+    transfer: {
+      "gw-denial-metadata": "Transaction below HITL threshold",
+      "bff-response-shape": "No error response",
+      "gw-hitl-challenge-type": "Amount below HITL minimum",
+      "agent-error-propagation": "No error branch",
+      "agent-recovery-branch": "No recovery needed",
+      "bff-login-resume": "No pending intent",
+      "ui-gateway-consent": "No HITL consent (below threshold)",
+      "ui-auto-refire": "No re-fire",
+    },
+    // HITL: all steps apply or most apply
+    test_hitl_required: {
+      "agent-scope-aware-cache": "Omitted: HITL test doesn't use full token exchange",
+      "olb-resource-token": "Omitted: test uses simplified flow",
+      "claim-diagnostics": "Omitted: test skips claim diagnostics",
+    },
+    // AI-only actions: just LLM reasoning
+    ai_ask: {
+      "agent-token-init": "No token needed for LLM reasoning",
+      "gw-scope-map": "No tool list for pure reasoning",
+      "gw-denial-metadata": "No gateway interaction",
+      "bff-response-shape": "No BFF error handling",
+      "gw-hitl-challenge-type": "No HITL",
+      "agent-error-propagation": "No error branch",
+      "agent-recovery-branch": "No recovery",
+      "bff-login-resume": "No intent storage",
+      "agent-scope-aware-cache": "No token exchange",
+      "olb-resource-token": "No MCP exchange",
+      "ui-gateway-consent": "No consent dialog",
+      "ui-auto-refire": "No re-fire",
+      "claim-diagnostics": "No claims",
+    },
+  };
+
+  const actionExplanations = explanations[actionId] || {};
+  return actionExplanations[stepId] || "Not applicable to this action type";
+}
 
 // ─── Fake account data generator ────────────────────────────────────────────────
 
@@ -7043,6 +7167,24 @@ export default function BankingAgent({
                               </span>
                             </li>,
                           );
+                          // Add inline explanation for non-applicable pending steps
+                          if (
+                            step.status === "pending" &&
+                            !isApplicable &&
+                            complianceStripState.complianceActionId
+                          ) {
+                            items.push(
+                              <li
+                                key={`${step.id}-skip-reason`}
+                                className="ba-compliance-panel__skip-reason"
+                              >
+                                {getStepSkipExplanation(
+                                  complianceStripState.complianceActionId,
+                                  step.id,
+                                )}
+                              </li>,
+                            );
+                          }
                           return items;
                         })}
                       </ol>
@@ -7072,146 +7214,20 @@ export default function BankingAgent({
                 </div>
               )}
 
-              {/* Compliance 12-step panel — slide-out overlay (only when pop-out is checked) */}
-              {showCompliancePanel && complianceSlideout && (
-                <FloatingPanel
-                  title="MCP Compliance Checklist"
-                  defaultWidth={320}
-                  defaultHeight={520}
-                  defaultX={252}
-                  defaultY={72}
-                  minWidth={260}
-                  minHeight={300}
-                  className="ba-compliance-floating"
-                >
-                  <div className="ba-compliance-panel ba-compliance-panel--modal" aria-live="polite">
-                    {/* Show last agent response */}
-                    {messages.length > 0 && messages[messages.length - 1].role === "assistant" && (
-                      <div className="ba-compliance-panel__last-response">
-                        <div className="ba-compliance-panel__last-response-label">
-                          Last Response
-                        </div>
-                        <div className="ba-compliance-panel__last-response-body">
-                          {messages[messages.length - 1].content}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="ba-compliance-panel__header">
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          minWidth: 0,
-                        }}
-                      >
-                        <span className="ba-compliance-panel__title">
-                          MCP Compliance Checklist
-                        </span>
-                        {complianceStripState.complianceActionLabel && (
-                          <span className="ba-compliance-panel__action-label">
-                            {complianceStripState.complianceActionLabel}
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        className="ba-compliance-panel__clear-btn"
-                        onClick={() => {
-                          try {
-                            agentFlowDiagram.resetComplianceSteps();
-                          } catch (_) {}
-                        }}
-                        title="Reset all steps to pending"
-                      >
-                        Clear
-                      </button>
-                    </div>
-                    {complianceStripState.complianceSteps.length === 0 ? (
-                      <span className="ba-compliance-panel__empty">
-                        No compliance data yet — run an MCP tool call to start.
-                      </span>
-                    ) : (
-                      <>
-                        <ol className="ba-compliance-panel__list">
-                          {complianceStripState.complianceSteps.flatMap((step) => {
-                            const isActive =
-                              step.id === complianceStripState.complianceStep;
-                            const icon =
-                              step.status === "done"
-                                ? "✅"
-                                : step.status === "error"
-                                  ? "❌"
-                                  : isActive
-                                    ? "⚙"
-                                    : "○";
-                            const applicableSteps =
-                              complianceStripState.complianceActionId
-                                ? CHIP_APPLICABLE_STEPS[
-                                    complianceStripState.complianceActionId
-                                  ] || []
-                                : [];
-                            const isApplicable = applicableSteps.includes(step.id);
-                            const items = [];
-                            if (step.id === "olb-resource-token") {
-                              items.push(
-                                <li
-                                  key="intent-delegation-badge"
-                                  className="ba-compliance-panel__group-badge"
-                                >
-                                  Intent-Bound Delegation
-                                </li>,
-                              );
-                            }
-                            items.push(
-                              <li
-                                key={step.id}
-                                className={
-                                  "ba-compliance-panel__item" +
-                                  (isActive ? " active" : "") +
-                                  (" " + step.status) +
-                                  (isApplicable && step.status === "pending"
-                                    ? " applicable"
-                                    : "")
-                                }
-                              >
-                                <span className="ba-compliance-panel__icon">
-                                  {icon}
-                                </span>
-                                <span className="ba-compliance-panel__label">
-                                  {step.label}
-                                </span>
-                              </li>,
-                            );
-                            return items;
-                          })}
-                        </ol>
-                        {(() => {
-                          if (!complianceStripState.complianceActionId) return null;
-                          const applicable =
-                            CHIP_APPLICABLE_STEPS[
-                              complianceStripState.complianceActionId
-                            ] || [];
-                          const skipped = complianceStripState.complianceSteps.filter(
-                            (s) => s.status === "pending" && !applicable.includes(s.id),
-                          );
-                          if (skipped.length === 0) return null;
-                          return (
-                            <div className="ba-compliance-panel__skip-note">
-                              <strong>
-                                {skipped.length} step{skipped.length > 1 ? "s" : ""} not triggered
-                              </strong>
-                              {" "}— gateway denial and HITL steps only fire on
-                              scope-upgrade or permission-required operations (e.g.
-                              Sensitive Account Details).
-                            </div>
-                          );
-                        })()}
-                      </>
-                    )}
-                  </div>
-                </FloatingPanel>
-              )}
+              {/* Compliance 12-step panel — modal (when checked) */}
+              <ComplianceModal
+                open={showCompliancePanel && complianceSlideout}
+                onClose={() => setComplianceSlideout(false)}
+                complianceStripState={complianceStripState}
+                messages={messages}
+                onClearSteps={() => {
+                  try {
+                    agentFlowDiagram.resetComplianceSteps();
+                  } catch (_) {}
+                }}
+                CHIP_APPLICABLE_STEPS={CHIP_APPLICABLE_STEPS}
+                getStepSkipExplanation={getStepSkipExplanation}
+              />
 
               {/* Bottom input bar */}
               <div className="ba-bottom">

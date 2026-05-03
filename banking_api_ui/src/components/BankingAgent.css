@@ -4676,6 +4676,21 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   line-height: 1.4;
 }
 
+/* Skip reason explanation under each non-applicable pending step */
+.ba-compliance-panel__skip-reason {
+  margin-left: 28px;
+  margin-right: 6px;
+  margin-top: -4px;
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  border-left: 2px solid #d1d5db;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+
 /* Token-event text wrapping */
 .banking-agent-msg.token-event {
   flex-shrink: 0;
