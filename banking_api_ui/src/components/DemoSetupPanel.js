@@ -1,7 +1,7 @@
 // banking_api_ui/src/components/DemoSetupPanel.js
 // Inner content of the demo setup — used by /configure?tab=demo-management.
 // No page chrome (no header, breadcrumbs, or side nav).
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
@@ -68,8 +68,8 @@ export default function DemoSetupPanel() {
   useIndustryBranding();
   const { vertical } = useVertical();
 
-  // Build account type slots dynamically based on vertical
-  const getAccountTypeSlots = () => {
+  // Build account type slots dynamically based on vertical — memoized to prevent useEffect re-runs
+  const ACCOUNT_TYPES = useMemo(() => {
     if (vertical?.terminology?.accountTypes?.length) {
       return vertical.terminology.accountTypes.map((name, idx) => ({
         type: `type_${idx}`,
@@ -79,9 +79,7 @@ export default function DemoSetupPanel() {
       }));
     }
     return ACCOUNT_TYPE_SLOTS;
-  };
-
-  const ACCOUNT_TYPES = getAccountTypeSlots();
+  }, [vertical]);
 
   const [demoResetting, setDemoResetting] = useState(false);
   const handleResetDemo = async () => {
@@ -445,13 +443,20 @@ export default function DemoSetupPanel() {
     loadScopes();
     // Timeout: force loading to end after 10s if still pending
     const timeout = setTimeout(() => setLoading(false), 10000);
-    // Load token endpoint auth method overrides (Phase 110)
-    apiClient.get('/api/demo-scenario/token-endpoint-auth').then(({ data }) => {
-      if (data) {
-        setAgentTokenEndpointAuth(data.ai_agent_token_endpoint_auth_method || '');
-        setMcpTokenEndpointAuth(data.mcp_exchanger_token_endpoint_auth_method || '');
-      }
-    }).catch(() => {});
+    // Load token endpoint auth method overrides (Phase 110) — /configure doesn't require auth, so this may 401
+    apiClient.get('/api/demo-scenario/token-endpoint-auth')
+      .then(({ data }) => {
+        if (data) {
+          setAgentTokenEndpointAuth(data.ai_agent_token_endpoint_auth_method || '');
+          setMcpTokenEndpointAuth(data.mcp_exchanger_token_endpoint_auth_method || '');
+        }
+      })
+      .catch((err) => {
+        // Silently ignore 401 (expected when not authenticated) and other errors
+        if (err.response?.status !== 401) {
+          console.warn('[DemoSetupPanel] Failed to load token endpoint auth:', err.message);
+        }
+      });
     return () => clearTimeout(timeout);
   }, [load, loadScopes]);
 
