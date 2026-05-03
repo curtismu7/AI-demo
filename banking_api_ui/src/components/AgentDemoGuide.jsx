@@ -295,9 +295,9 @@ const DEMO_SCENARIOS = [
   },
 ];
 
-export default function AgentDemoGuide({ onClose }) {
-  const [activeScenario, setActiveScenario] = useState('read-only');
-  const [expandedSteps, setExpandedSteps] = useState({});
+export default function AgentDemoGuide({ onClose, initialActiveScenario, initialExpandedSteps, isPopout }) {
+  const [activeScenario, setActiveScenario] = useState(initialActiveScenario || 'read-only');
+  const [expandedSteps, setExpandedSteps] = useState(initialExpandedSteps || {});
   const [copiedStepId, setCopiedStepId] = useState(null);
   const [size, setSize] = useState({ width: 1000, height: 750 });
   const [pos, setPos] = useState({ x: 20, y: 80 });

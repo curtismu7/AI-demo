@@ -40,6 +40,7 @@ import CimdSimPanel from "./components/CimdSimPanel";
 import ClientCredentialsResourcePage from "./components/ClientCredentialsResourcePage";
 import ClientRegistrationPage from "./components/ClientRegistrationPage";
 import ComplianceModalPopout from "./components/ComplianceModalPopout";
+import DemoGuidePopout from "./components/DemoGuidePopout";
 import UnifiedConfigurationPage from "./components/Configuration/UnifiedConfigurationPage";
 import Dashboard from "./components/Dashboard";
 import DelegatedAccessPage from "./components/DelegatedAccessPage";
@@ -876,6 +877,10 @@ function AppWithAuth() {
 				<Route
 					path="/compliance-modal-popout"
 					element={<ComplianceModalPopout />}
+				/>
+				<Route
+					path="/demo-guide-popout"
+					element={<DemoGuidePopout />}
 				/>
 
 
