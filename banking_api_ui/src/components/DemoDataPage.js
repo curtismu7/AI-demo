@@ -10,6 +10,7 @@ import { AGENT_MCP_SCOPE_CATALOG, DEFAULT_AGENT_MCP_ALLOWED_SCOPES } from '../co
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
+import { useVertical } from '../context/VerticalContext';
 import VerticalSwitcher from './VerticalSwitcher';
 import PingOneAudit from './PingOneAudit';
 import './UserDashboard.css';
@@ -48,9 +49,9 @@ const ACCOUNT_TYPE_SLOTS = [
 ];
 
 /** Build an initial typeSlots map — all disabled, default names. */
-function defaultTypeSlots() {
+function defaultTypeSlots(accountTypes = ACCOUNT_TYPE_SLOTS) {
   const m = {};
-  for (const s of ACCOUNT_TYPE_SLOTS) {
+  for (const s of accountTypes) {
     m[s.type] = { enabled: false, name: s.defaultName, balance: '0', id: null, accountNumber: '' };
   }
   return m;
@@ -77,10 +78,26 @@ function defaultAccountProfile(type, accountHolderName) {
  */
 export default function DemoDataPage({ user, onLogout }) {
   const { preset: industryPreset } = useIndustryBranding();
+  const { vertical } = useVertical();
   const navigate = useNavigate();
   const { open } = useEducationUI();
   const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
   const dashboardCrumbLabel = user?.role === 'admin' ? 'Admin' : 'Dashboard';
+
+  // Build account type slots dynamically based on vertical
+  const getAccountTypeSlots = () => {
+    if (vertical?.terminology?.accountTypes?.length) {
+      return vertical.terminology.accountTypes.map((name, idx) => ({
+        type: `type_${idx}`,
+        label: name,
+        icon: '💳',
+        defaultName: name
+      }));
+    }
+    return ACCOUNT_TYPE_SLOTS;
+  };
+
+  const ACCOUNT_TYPES = getAccountTypeSlots();
 
 
 
@@ -89,7 +106,7 @@ export default function DemoDataPage({ user, onLogout }) {
   const [saving, setSaving] = useState(false);
   const [storageBackend, setStorageBackend] = useState(null);
   // One slot per account type — keyed by accountType string.
-  const [typeSlots, setTypeSlots] = useState(defaultTypeSlots);
+  const [typeSlots, setTypeSlots] = useState(() => defaultTypeSlots(ACCOUNT_TYPES));
   const [accountProfiles, setAccountProfiles] = useState({});
   const [accountProfileSaving, setAccountProfileSaving] = useState(false);
   /** Global step-up thresholds — synced with the $ Thresholds dashboard widget via /api/config/thresholds */
@@ -504,14 +521,14 @@ export default function DemoDataPage({ user, onLogout }) {
       const data = await fetchDemoScenario();
       if (data === null) { setLoading(false); return; } // unauthenticated — skip silently
       // Map server accounts into type slots (first account per type wins).
-      const fresh = defaultTypeSlots();
+      const fresh = defaultTypeSlots(ACCOUNT_TYPES);
       for (const a of (data.accounts || [])) {
         const t = (a.accountType || '').toLowerCase();
         if (fresh[t] && !fresh[t].enabled) {
           fresh[t] = {
             enabled: true,
             id: a.id || null,
-            name: a.name || ACCOUNT_TYPE_SLOTS.find(s => s.type === t)?.defaultName || t,
+            name: a.name || ACCOUNT_TYPES.find(s => s.type === t)?.defaultName || t,
             balance: String(a.balance ?? '0'),
             accountNumber: a.accountNumber || '',
           };
@@ -562,7 +579,7 @@ export default function DemoDataPage({ user, onLogout }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ACCOUNT_TYPES]);
 
   useEffect(() => {
     load();
@@ -611,7 +628,7 @@ export default function DemoDataPage({ user, onLogout }) {
     try {
       const body = {
         // Only include enabled type slots; each slot maps to one account row.
-        accounts: ACCOUNT_TYPE_SLOTS
+        accounts: ACCOUNT_TYPES
           .filter(s => typeSlots[s.type]?.enabled)
           .map(s => {
             const slot = typeSlots[s.type];
@@ -677,7 +694,7 @@ export default function DemoDataPage({ user, onLogout }) {
     setTypeSlots((prev) => {
       const next = { ...prev };
       // Reset every slot: only checking and savings are on by default.
-      for (const s of ACCOUNT_TYPE_SLOTS) {
+      for (const s of ACCOUNT_TYPES) {
         const t = s.type;
         if (!next[t]) continue;
         next[t] = { ...next[t], enabled: false, name: s.defaultName, balance: '0' };
@@ -712,12 +729,12 @@ export default function DemoDataPage({ user, onLogout }) {
 
       const configRes = await axios.get('/api/langchain/config/status');
       const cfg = configRes.data;
-      setHelixConfig({
-        base_url: cfg.helix_base_url || '',
-        api_key: cfg.helix_api_key ? '••••••••' : '',
-        environment_id: cfg.helix_environment_id || '',
-        agent_id: cfg.helix_agent_id || '',
-      });
+      setHelixConfig((prev) => ({
+        base_url: cfg.helix_base_url || prev.base_url || '',
+        api_key: prev.api_key, // Keep user-entered value, don't overwrite with masked ••••••••
+        environment_id: cfg.helix_environment_id || prev.environment_id || '',
+        agent_id: cfg.helix_agent_id || prev.agent_id || '',
+      }));
     } catch (err) {
       console.error('Helix status check failed:', err);
       notifyError('Failed to check Helix status');
@@ -737,7 +754,7 @@ export default function DemoDataPage({ user, onLogout }) {
       await axios.post('/api/langchain/config', {
         provider: 'helix',
         key_type: 'helix',
-        key: helixConfig.api_key,
+        helix_api_key: helixConfig.api_key,
         helix_base_url: helixConfig.base_url,
         helix_environment_id: helixConfig.environment_id,
         helix_agent_id: helixConfig.agent_id,
@@ -747,6 +764,22 @@ export default function DemoDataPage({ user, onLogout }) {
     } catch (err) {
       console.error('Helix save failed:', err);
       notifyError('Failed to save Helix configuration');
+    } finally {
+      setHelixSaving(false);
+    }
+  };
+
+  const handleHelixClear = async () => {
+    if (!window.confirm('Clear Helix configuration and disable?')) return;
+
+    setHelixSaving(true);
+    try {
+      await axios.delete('/api/langchain/config/key/helix');
+      setHelixConfig({ base_url: '', api_key: '', environment_id: '', agent_id: '' });
+      setHelixStatus('unconfigured');
+      notifySuccess('Helix configuration cleared');
+    } catch (err) {
+      notifyError('Failed to clear Helix config');
     } finally {
       setHelixSaving(false);
     }
@@ -1261,7 +1294,7 @@ export default function DemoDataPage({ user, onLogout }) {
                   <span className="demo-data-accounts-hint">Check a type to include it; uncheck to exclude. One account per type.</span>
                 </div>
                 <div className="demo-data-type-slots">
-                  {ACCOUNT_TYPE_SLOTS.map((s) => {
+                  {ACCOUNT_TYPES.map((s) => {
                     const slot = typeSlots[s.type] || {};
                     return (
                       <div
@@ -1356,12 +1389,12 @@ export default function DemoDataPage({ user, onLogout }) {
                 <code>get_sensitive_account_details</code> tool after consent. Toggle{' '}
                 <em>Include in response</em> to control which sensitive fields the demo exposes.
               </p>
-              {ACCOUNT_TYPE_SLOTS.filter((s) => typeSlots[s.type]?.enabled).length === 0 && (
+              {ACCOUNT_TYPES.filter((s) => typeSlots[s.type]?.enabled).length === 0 && (
                 <p className="demo-data-hint" style={{ fontStyle: 'italic' }}>
                   No accounts enabled. Enable accounts in the <strong>Accounts</strong> section above.
                 </p>
               )}
-              {ACCOUNT_TYPE_SLOTS.filter((s) => typeSlots[s.type]?.enabled).map((s) => {
+              {ACCOUNT_TYPES.filter((s) => typeSlots[s.type]?.enabled).map((s) => {
                 const slot = typeSlots[s.type];
                 const prof = accountProfiles[s.type] || defaultAccountProfile(s.type, '');
                 const setProf = (field, value) =>
@@ -2004,10 +2037,40 @@ export default function DemoDataPage({ user, onLogout }) {
             {/* ── Helix LLM Configuration ── */}
             <section className="section demo-data-section" aria-labelledby="demo-helix-llm-heading">
               <h2 className="demo-data-section__heading" id="demo-helix-llm-heading">Helix LLM</h2>
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                Sign up at <strong>openam-helix.forgeblocks.com</strong>. Get your API Key from the Helix Admin section.
-                Configure all four fields to use Helix as the banking agent LLM.
+              <p style={{ margin: '0 0 1rem', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                Configure Helix as the agent LLM. You'll need four values from your Helix tenant.
+                {' '}<a href="https://openam-helix.forgeblocks.com" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                  Open Helix Console ↗
+                </a>
               </p>
+
+              {/* Collapsible Getting Started Guide */}
+              <details style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', backgroundColor: '#f0f9ff', border: '1px solid #bfdbfe', borderRadius: 6 }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#1e40af', fontSize: '0.95rem' }}>
+                  📖 Getting Started: Find Your Helix Credentials
+                </summary>
+                <ol style={{ margin: '1rem 0 0 1.5rem', lineHeight: 1.8, fontSize: '0.9rem', color: '#1f2937' }}>
+                  <li><strong>Log into Helix</strong> at openam-helix.forgeblocks.com with your Ping account</li>
+                  <li><strong>Create an Agent</strong> (if you haven't already):
+                    <ul style={{ margin: '0.4rem 0 0 1.5rem' }}>
+                      <li>Go to <strong>Agents</strong> in the left sidebar</li>
+                      <li>Click <strong>"Create Agent"</strong> or <strong>"New Agent"</strong></li>
+                      <li>Fill in agent name, description, and configuration</li>
+                      <li>Save — your <strong>Agent ID</strong> will be shown on the agent details page</li>
+                    </ul>
+                  </li>
+                  <li><strong>Get Base URL</strong>: Use your Helix tenant URL (e.g., <code>https://openam-helix.forgeblocks.com</code>)</li>
+                  <li><strong>Create API Key</strong>:
+                    <ul style={{ margin: '0.4rem 0 0 1.5rem' }}>
+                      <li>Go to <strong>Admin</strong> → <strong>API Keys</strong></li>
+                      <li>Click <strong>"Create API Key"</strong></li>
+                      <li>Copy the key (you'll only see it once)</li>
+                    </ul>
+                  </li>
+                  <li><strong>Find Environment ID</strong>: In Helix Admin → <strong>Settings</strong>, look for your tenant/environment ID</li>
+                  <li>Paste all four values below and click <strong>"Save & Activate"</strong></li>
+                </ol>
+              </details>
 
               {/* Status pill */}
               <div style={{ marginBottom: '1rem' }}>
@@ -2035,7 +2098,7 @@ export default function DemoDataPage({ user, onLogout }) {
               }}>
                 <div>
                   <label htmlFor="helix-base-url" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
-                    Helix Base URL
+                    Helix Base URL {helixConfig.base_url && '✓'}
                   </label>
                   <input
                     id="helix-base-url"
@@ -2052,11 +2115,14 @@ export default function DemoDataPage({ user, onLogout }) {
                       fontFamily: 'monospace',
                     }}
                   />
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: '#6b7280' }}>
+                    Your Helix tenant URL. Usually: <code style={{ background: '#f3f4f6', padding: '0.2rem 0.4rem', borderRadius: 3 }}>https://openam-helix.forgeblocks.com</code>
+                  </p>
                 </div>
 
                 <div>
                   <label htmlFor="helix-api-key" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
-                    API Key
+                    API Key {helixConfig.api_key && '✓'}
                   </label>
                   <input
                     id="helix-api-key"
@@ -2073,11 +2139,14 @@ export default function DemoDataPage({ user, onLogout }) {
                       fontFamily: 'monospace',
                     }}
                   />
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: '#6b7280' }}>
+                    Create in Helix Admin → <strong>API Keys</strong>. Copy immediately — you won't see it again.
+                  </p>
                 </div>
 
                 <div>
                   <label htmlFor="helix-env-id" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
-                    Environment ID
+                    Environment ID {helixConfig.environment_id && '✓'}
                   </label>
                   <input
                     id="helix-env-id"
@@ -2094,11 +2163,14 @@ export default function DemoDataPage({ user, onLogout }) {
                       fontFamily: 'monospace',
                     }}
                   />
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: '#6b7280' }}>
+                    Find in Helix Admin → <strong>Settings</strong>. This is your Helix tenant/environment identifier.
+                  </p>
                 </div>
 
                 <div>
                   <label htmlFor="helix-agent-id" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
-                    Agent ID
+                    Agent ID {helixConfig.agent_id && '✓'}
                   </label>
                   <input
                     id="helix-agent-id"
@@ -2115,11 +2187,23 @@ export default function DemoDataPage({ user, onLogout }) {
                       fontFamily: 'monospace',
                     }}
                   />
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: '#6b7280' }}>
+                    Go to <strong>Agents</strong> section in Helix, click on your agent, and copy its ID from the details page.
+                  </p>
                 </div>
               </div>
 
               {/* Action buttons */}
               <div className="demo-data-actions" style={{ flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <a
+                  href="https://openam-helix.forgeblocks.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="demo-data-btn ghost"
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
+                  🌐 Open Helix Console
+                </a>
                 <button
                   type="button"
                   className="demo-data-btn ghost"
@@ -2133,8 +2217,18 @@ export default function DemoDataPage({ user, onLogout }) {
                   className="demo-data-btn primary"
                   onClick={handleHelixSave}
                   disabled={helixSaving || !helixConfig.base_url || !helixConfig.api_key || !helixConfig.environment_id || !helixConfig.agent_id}
+                  style={{ WebkitTextFillColor: '#fff', color: '#fff' }}
                 >
                   {helixSaving ? 'Saving…' : '💾 Save & Activate'}
+                </button>
+                <button
+                  type="button"
+                  className="demo-data-btn ghost"
+                  onClick={handleHelixClear}
+                  disabled={helixSaving}
+                  style={{ color: '#dc2626' }}
+                >
+                  ❌ Clear Config
                 </button>
               </div>
 

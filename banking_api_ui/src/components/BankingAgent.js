@@ -1478,6 +1478,8 @@ export default function BankingAgent({
   const [nlInput, setNlInput] = useState("");
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
+  const [selectedLlmProvider, setSelectedLlmProvider] = useState('auto');
+  const [availableLlmProviders, setAvailableLlmProviders] = useState([]);
   /** Set when returning from PingOne with a pending banking NL line to run after session exists. */
   const [nlResumeAfterAuth, setNlResumeAfterAuth] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
@@ -2459,6 +2461,16 @@ export default function BankingAgent({
     fetchNlStatus()
       .then(setNlMeta)
       .catch(() => setNlMeta({ geminiConfigured: false }));
+    // Fetch available LLM providers
+    fetch('/api/langchain/config/status', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.provider_models) {
+          const providers = Object.keys(data.provider_models);
+          setAvailableLlmProviders(providers);
+        }
+      })
+      .catch(() => {});
   }, [isOpen, isLoggedIn, marketingGuestChatEnabled]);
 
   // Keep MCP status lightweight here to avoid auth/noise calls while browsing dashboards.
@@ -4664,7 +4676,7 @@ export default function BankingAgent({
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, provider: selectedLlmProvider }),
         signal: AbortSignal.timeout(15000),
       });
       const { result: _nlResult } = await _nlRes.json().catch(() => ({
@@ -5261,7 +5273,7 @@ export default function BankingAgent({
                             method: "POST",
                             credentials: "include",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ message: text }),
+                            body: JSON.stringify({ message: text, provider: selectedLlmProvider }),
                             signal: AbortSignal.timeout(15000),
                           },
                         );
@@ -6527,7 +6539,7 @@ export default function BankingAgent({
                                   headers: {
                                     "Content-Type": "application/json",
                                   },
-                                  body: JSON.stringify({ message: s }),
+                                  body: JSON.stringify({ message: s, provider: selectedLlmProvider }),
                                   signal: AbortSignal.timeout(15000),
                                 },
                               );
@@ -6641,6 +6653,7 @@ export default function BankingAgent({
                                       },
                                       body: JSON.stringify({
                                         message: chip.label,
+                                        provider: selectedLlmProvider,
                                       }),
                                       signal: AbortSignal.timeout(15000),
                                     },
@@ -6964,6 +6977,23 @@ export default function BankingAgent({
                     effectiveUser={effectiveUser}
                     liveAccounts={liveAccounts}
                   />
+                </div>
+              )}
+
+              {/* LLM Provider chips */}
+              {isLoggedIn && availableLlmProviders.length > 0 && (
+                <div className="ba-provider-chips">
+                  {['auto', ...availableLlmProviders].map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      className={'ba-server-chip' + (selectedLlmProvider === p ? ' ba-server-chip--active' : '')}
+                      onClick={() => setSelectedLlmProvider(p)}
+                      title={p === 'auto' ? 'Auto: heuristic first, then LLM' : `Use ${p} directly`}
+                    >
+                      {p === 'auto' ? '⚡ Auto' : p}
+                    </button>
+                  ))}
                 </div>
               )}
 

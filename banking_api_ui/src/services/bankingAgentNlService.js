@@ -11,14 +11,15 @@ export async function fetchNlStatus() {
 
 /**
  * @param {string} message
+ * @param {string} [provider='auto'] - 'auto', 'ollama', 'helix', etc.
  * @returns {Promise<{ source: string, result: object }>}
  */
-export async function parseNaturalLanguage(message) {
+export async function parseNaturalLanguage(message, provider = 'auto') {
   const opts = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, provider }),
   };
   const res = await fetch('/api/banking-agent/nl', opts);
   const data = await res.json().catch(() => ({}));

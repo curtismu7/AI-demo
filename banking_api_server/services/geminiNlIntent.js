@@ -112,12 +112,35 @@ async function parseWithOllama(userMessage, context = {}) {
 /**
  * @param {string} message
  * @param {{ role?: string, firstName?: string }} [context] - user context for role-aware routing
- * @returns {Promise<{ source: 'ollama'|'heuristic', result: object }>}
+ * @param {string} [provider='auto'] - 'auto' (heuristic→ollama), 'ollama' (skip heuristic), 'helix', etc.
+ * @returns {Promise<{ source: 'ollama'|'heuristic'|'helix'|'helix_fallback', result: object }>}
  */
-async function parseNaturalLanguage(message, context = {}) {
-  // Heuristic-first routing: handles all recognized commands instantly (zero cost, zero latency).
+async function parseNaturalLanguage(message, context = {}, provider = 'auto') {
+  // If provider is explicitly 'ollama', skip heuristic and go straight to LLM
+  if (provider === 'ollama') {
+    const ollama = await parseWithOllama(message, context).catch((e) => {
+      console.warn('[nlIntent] Ollama error (forced provider):', e.message);
+      return null;
+    });
+    if (ollama) {
+      const { result, rejected, reason } = sanitizeNlResult(ollama, message);
+      if (rejected) console.warn('[nlIntent] Ollama output rejected:', reason);
+      return { source: 'ollama', result: result || { kind: 'none', message: 'Ollama could not parse input' } };
+    }
+    // Ollama failed, fall back to heuristic
+    const heuristicResult = parseHeuristic(message);
+    return { source: 'heuristic', result: heuristicResult };
+  }
+
+  // If provider is explicitly 'helix' (or other non-auto), log it but fall back to auto for now
+  if (provider && provider !== 'auto') {
+    console.warn(`[nlIntent] Provider '${provider}' not yet implemented; using auto (heuristic→ollama)`);
+  }
+
+  // Auto mode (default): heuristic-first routing
+  // Heuristic handles all recognized commands instantly (zero cost, zero latency).
   // Ollama is only attempted when heuristic returns kind:'none' (unrecognized input).
-  
+
   // 1. Heuristic first — instant, zero-cost, handles all known intents
   const heuristicResult = parseHeuristic(message);
   if (heuristicResult && heuristicResult.kind !== 'none') {

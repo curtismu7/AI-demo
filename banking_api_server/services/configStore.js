@@ -33,6 +33,7 @@ const SECRET_KEYS = new Set([
   'PINGONE_MANAGEMENT_CLIENT_SECRET',
   'PINGONE_AGENT_CLIENT_SECRET',
   'PINGONE_AI_AGENT_CLIENT_SECRET',
+  'helix_api_key',
 ]);
 
 // All known config keys with their defaults and whether they are public
@@ -146,6 +147,12 @@ const FIELD_DEFS = {
 
   // Vertical — active demo vertical (banking, retail, workforce)
   active_vertical:            { public: true,  default: 'banking' },
+
+  // Helix LLM Provider Configuration
+  helix_base_url:             { public: true,  default: '' },
+  helix_api_key:              { public: false, default: '' },
+  helix_environment_id:       { public: true,  default: '' },
+  helix_agent_id:             { public: true,  default: '' },
 
   // CIBA — Client-Initiated Backchannel Authentication
   CIBA_ENABLED:               { public: true,  default: 'false' },
@@ -549,6 +556,10 @@ class ConfigStore {
       oauth_role_claim_value_admin:    ['OAUTH_ROLE_CLAIM_VALUE_ADMIN'],
       oauth_role_claim_value_customer: ['OAUTH_ROLE_CLAIM_VALUE_CUSTOMER'],
       oauth_role_claim_is_array:       ['OAUTH_ROLE_CLAIM_IS_ARRAY'],
+      helix_base_url:                  ['HELIX_BASE_URL'],
+      helix_api_key:                   ['HELIX_API_KEY'],
+      helix_environment_id:            ['HELIX_ENVIRONMENT_ID'],
+      helix_agent_id:                  ['HELIX_AGENT_ID'],
     };
 
     const envVars = envFallbackMap[key] || [];

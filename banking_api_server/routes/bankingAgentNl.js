@@ -14,6 +14,8 @@ const router = express.Router();
 
 router.post('/nl', async (req, res) => {
   const message = typeof req.body?.message === 'string' ? req.body.message : '';
+  const provider = typeof req.body?.provider === 'string' ? req.body.provider : 'auto';
+
   if (!message.trim()) {
     return res.status(400).json({ error: 'invalid_body', message: 'message is required' });
   }
@@ -23,7 +25,7 @@ router.post('/nl', async (req, res) => {
     const context = u
       ? { role: u.role, firstName: u.firstName }
       : { anonymous: true };
-    const { source, result } = await parseNaturalLanguage(message.trim(), context);
+    const { source, result } = await parseNaturalLanguage(message.trim(), context, provider);
     return res.json({ source, result });
   } catch (e) {
     console.error('[bankingAgentNl]', e);

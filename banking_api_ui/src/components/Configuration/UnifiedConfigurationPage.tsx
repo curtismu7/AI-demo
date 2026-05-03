@@ -10,6 +10,8 @@ import { useTheme } from '../../context/ThemeContext';
 import './UnifiedConfigurationPage.css';
 import { MCPToolsEducation } from '../MCPToolsEducation';
 import DemoSetupPanel from '../DemoSetupPanel';
+import OllamaPanel from '../OllamaPanel';
+import HelixPanel from '../HelixPanel';
 
 // Configuration tab definitions
 const CONFIGURATION_TABS = [
@@ -37,6 +39,22 @@ const CONFIGURATION_TABS = [
     description: 'Sample accounts, transactions, and demo presets — no PingOne credentials needed',
     requiresAuth: false,
     sections: ['demo-setup']
+  },
+  {
+    id: 'llm-ollama',
+    label: 'Ollama Setup',
+    icon: '🤖',
+    description: 'Local LLM inference with Ollama — fallback for natural language intent parsing',
+    requiresAuth: false,
+    sections: ['ollama-setup']
+  },
+  {
+    id: 'llm-helix',
+    label: 'Helix Setup',
+    icon: '🧠',
+    description: 'Cloud-based LLM with Helix — alternative to local inference',
+    requiresAuth: false,
+    sections: ['helix-setup']
   },
   {
     id: 'agent-configuration',
@@ -2025,6 +2043,22 @@ const UnifiedConfigurationPage: FC<{
       return (
         <div className="cfg-section cfg-section--full-width">
           <DemoSetupPanel />
+        </div>
+      );
+    }
+
+    if (s === 'ollama-setup') {
+      return (
+        <div className="cfg-section cfg-section--full-width">
+          <OllamaPanel />
+        </div>
+      );
+    }
+
+    if (s === 'helix-setup') {
+      return (
+        <div className="cfg-section cfg-section--full-width">
+          <HelixPanel />
         </div>
       );
     }
