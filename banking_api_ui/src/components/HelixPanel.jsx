@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import apiClient from '../services/apiClient';
+import { notifySuccess, notifyError } from '../utils/appToast';
 
 export default function HelixPanel() {
   const [helixConfig, setHelixConfig] = useState({ base_url: '', api_key: '', environment_id: '', agent_id: '' });
@@ -35,7 +36,7 @@ export default function HelixPanel() {
 
   const handleHelixSave = async () => {
     if (!helixConfig.base_url || !helixConfig.api_key || !helixConfig.environment_id || !helixConfig.agent_id) {
-      alert('All Helix fields are required');
+      notifyError('All Helix fields are required');
       return;
     }
 
@@ -50,18 +51,18 @@ export default function HelixPanel() {
         helix_agent_id: helixConfig.agent_id,
       });
       localStorage.setItem('helix_config', JSON.stringify(helixConfig));
-      alert('Helix LLM configuration saved');
+      notifySuccess('Helix LLM configuration saved');
       await fetchHelixStatus();
     } catch (err) {
       console.error('Helix save failed:', err);
-      alert('Failed to save Helix configuration');
+      notifyError('Failed to save Helix configuration');
     } finally {
       setHelixSaving(false);
     }
   };
 
   const handleHelixClear = async () => {
-    if (!window.confirm('Clear Helix configuration?')) return;
+    if (!window.confirm('Are you sure you want to clear Helix configuration? This cannot be undone.')) return;
 
     setHelixSaving(true);
     try {
@@ -69,9 +70,9 @@ export default function HelixPanel() {
       setHelixConfig({ base_url: '', api_key: '', environment_id: '', agent_id: '' });
       setHelixStatus('unconfigured');
       localStorage.removeItem('helix_config');
-      alert('Helix configuration cleared');
+      notifySuccess('Helix configuration cleared');
     } catch (err) {
-      alert('Failed to clear Helix config');
+      notifyError('Failed to clear Helix config');
     } finally {
       setHelixSaving(false);
     }
