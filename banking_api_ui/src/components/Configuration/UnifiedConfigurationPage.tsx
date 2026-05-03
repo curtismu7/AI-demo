@@ -952,6 +952,35 @@ const UnifiedConfigurationPage: FC<{
     }
   }, [searchParams]);
 
+  // Load fresh PingOne config when IDP Setup tab is accessed
+  useEffect(() => {
+    if (activeTab === 'idp-setup' && isAdminUser) {
+      const loadIdpConfig = async () => {
+        try {
+          const res = await fetch('/api/admin/config', { credentials: 'include' });
+          if (res.ok) {
+            const data = await res.json() as { config?: Record<string, unknown> };
+            const cfg = data.config || {};
+            setState(prev => ({
+              ...prev,
+              pingoneRegion: (cfg.pingone_region as string) || 'com',
+              pingoneEnvironmentId: (cfg.pingone_environment_id as string) || '',
+              adminClientId: (cfg.admin_client_id as string) || '',
+              userClientId: (cfg.user_client_id as string) || '',
+              workerClientId: (cfg.authorize_worker_client_id as string) || '',
+              adminRedirectUri: (cfg.admin_redirect_uri as string) || '',
+              userRedirectUri: (cfg.user_redirect_uri as string) || '',
+              mcpResourceUri: (cfg.mcp_resource_uri as string) || '',
+            }));
+          }
+        } catch (err) {
+          console.error('Failed to load IDP config:', err);
+        }
+      };
+      loadIdpConfig();
+    }
+  }, [activeTab, isAdminUser]);
+
   // Callbacks
 
   const toggleSecret = useCallback((key: string) => {
@@ -1911,7 +1940,7 @@ const UnifiedConfigurationPage: FC<{
         { label: 'Token Endpoint', value: state.pingoneEnvironmentId ? `${base}/${envId}/as/token` : '(not configured)' },
         { label: 'JWKS URI', value: state.pingoneEnvironmentId ? `${base}/${envId}/as/jwks` : '(not configured)' },
         { label: 'Userinfo Endpoint', value: state.pingoneEnvironmentId ? `${base}/${envId}/as/userinfo` : '(not configured)' },
-        { label: 'OIDC Discovery (.well-known)', value: state.pingoneEnvironmentId ? `${base}/${envId}/as/.well-known/openid-configuration` : '(not configured)' },
+        { label: 'OIDC Discovery', value: state.pingoneEnvironmentId ? `${base}/${envId}/as/.well-known/openid-configuration` : '(not configured)' },
       ];
       return (
         <div className="cfg-section">
