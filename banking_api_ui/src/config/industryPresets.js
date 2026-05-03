@@ -136,6 +136,24 @@ export const INDUSTRY_PRESETS = [
       '--brand-app-shell-hero-end': '#7c3aed',
     },
   },
+  {
+    id: 'medical',
+    label: 'Medical & Healthcare',
+    shortName: 'Medical',
+    tagline: 'AI-Powered Healthcare Platform',
+    description: 'Medical branding with blue header and medical blue actions for patient portals and provider workflows.',
+    logoPath: '/logo.png',
+    cssVars: {
+      '--app-primary-red': '#0369a1',
+      '--app-primary-red-hover': '#0284c7',
+      '--app-primary-red-mid': '#06b6d4',
+      '--app-primary-red-border': '#0c4a6e',
+      '--brand-dashboard-header-start': '#0c4a6e',
+      '--brand-dashboard-header-end': '#0369a1',
+      '--brand-app-shell-hero-start': '#0c4a6e',
+      '--brand-app-shell-hero-end': '#0369a1',
+    },
+  },
 ];
 
 export const DEFAULT_INDUSTRY_ID = 'bx_finance';
