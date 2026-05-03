@@ -646,12 +646,12 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 .banking-agent-panel:not(.ba-mode-inline) .ba-icon-btn {
 	background: transparent;
-	border-color: transparent;
+	border: 1.5px solid #111827;
 	color: #111827;
 }
 .banking-agent-panel:not(.ba-mode-inline) .ba-icon-btn:hover {
 	background: transparent;
-	border-color: transparent;
+	border: 1.5px solid #111827;
 	color: #111827;
 }
 
