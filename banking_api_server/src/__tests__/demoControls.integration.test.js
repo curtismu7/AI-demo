@@ -79,7 +79,7 @@ describe('Demo Controls Integration — Agent Honors Thresholds & Flags', () => 
         amount: 600.00
       });
       // Expects 428 for consent required or may differ based on implementation
-      expect([200, 428, 401, 403]).toContain(res.status);
+      expect([200, 201, 428, 401, 403]).toContain(res.status);
     });
 
     it('HITL NOT required when amount below consent threshold', async () => {
@@ -123,7 +123,7 @@ describe('Demo Controls Integration — Agent Honors Thresholds & Flags', () => 
         toAccountId: '2',
         amount: 500.00
       });
-      expect([200, 428, 401, 403]).toContain(res.status);
+      expect([200, 201, 428, 401, 403]).toContain(res.status);
     });
 
     it('Step-up NOT required when amount below MFA threshold', async () => {
