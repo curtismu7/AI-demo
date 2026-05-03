@@ -443,12 +443,16 @@ export default function DemoSetupPanel() {
   useEffect(() => {
     load();
     loadScopes();
+    // Timeout: force loading to end after 10s if still pending
+    const timeout = setTimeout(() => setLoading(false), 10000);
+    // Load token endpoint auth method overrides (Phase 110)
     apiClient.get('/api/demo-scenario/token-endpoint-auth').then(({ data }) => {
       if (data) {
         setAgentTokenEndpointAuth(data.ai_agent_token_endpoint_auth_method || '');
         setMcpTokenEndpointAuth(data.mcp_exchanger_token_endpoint_auth_method || '');
       }
     }).catch(() => {});
+    return () => clearTimeout(timeout);
   }, [load, loadScopes]);
 
   const handleSubmit = async (e) => {
