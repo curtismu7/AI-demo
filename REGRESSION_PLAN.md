@@ -34,7 +34,7 @@
 | **MCP Inspector — no auth required** | **`GET /api/mcp/inspector/tools` must respond 200 + local tool catalog for unauthenticated requests** — re-adding `authenticateToken` to the inspector mount (or an `effectiveUserId` guard in `respondLocalCatalog`) breaks the unauthenticated dev inspector view. | `banking_api_server/server.js` — inspector mount has no `authenticateToken`. `banking_api_server/routes/mcpInspector.js` — `respondLocalCatalog` has no user guard. |
 | **MCP first-tool Authorize gate (optional)** | **`ff_authorize_mcp_first_tool = true` blocks `POST /api/mcp/tool` until policy permits; `req.session.mcpFirstToolAuthorizeDone` carries the per-session permit once it runs** — do not clear this session key during a request flow. With PingOne unavailable and `ff_authorize_fail_open = false`, the gate returns 503 and blocks all agent actions. | `banking_api_server/services/mcpToolAuthorizationService.js` — `evaluateMcpFirstToolGate()`; `banking_api_server/server.js` — gate block in `POST /api/mcp/tool`; `banking_api_server/services/configStore.js` — `authorize_mcp_decision_endpoint_id` (env: `PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID`); `banking_api_server/routes/featureFlags.js` — `ff_authorize_mcp_first_tool`. Status at `GET /api/authorize/evaluation-status` (admin). |
 | **MCP tool flow SSE (live phases)** | **Agent flow diagram loses streamed BFF milestones; orphaned SSE connections** | `banking_api_server/services/mcpFlowSseHub.js` — `publish`/`endTrace`/`handleSseGet`; `server.js` — `GET /api/mcp/tool/events`, optional `flowTraceId` on `POST /api/mcp/tool`, `res.on('finish')` must call `endTrace`. UI: `mcpFlowSseClient.js`, `bankingAgentService.callMcpTool`, `agentFlowDiagramService`, `AgentFlowDiagramPanel.js`. **Multi-instance:** SSE + POST must hit the same Node process unless events are backed by Redis pub/sub. |
-| **Agent startup consent gate** | **"Grant Agent permission" modal must NEVER appear on first open; only HITL modal for write > $500** | `BankingAgent.js` — `hitlPendingIntent` only set on `consent_challenge_required` from server (write tools); `buildConsentIntent` null guard prevents modal without valid payload; `setAgentBlockedByConsentDecline(false)` called on login. Server: no `AGENT_CONSENT_REQUIRED` throw anywhere. |
+| **Agent startup consent gate** | **"Grant Agent permission" modal must NEVER appear on first open; only HITL modal for write > $250** | `BankingAgent.js` — `hitlPendingIntent` only set on `consent_challenge_required` from server (write tools); `buildConsentIntent` null guard prevents modal without valid payload; `setAgentBlockedByConsentDecline(false)` called on login. Server: no `AGENT_CONSENT_REQUIRED` throw anywhere. |
 | **HITL OTP email flow** | **OTP never sent; `{ otpSent: false }` with no email; transaction blocked** | `emailService.js` — must use `admin_client_id` / `admin_client_secret` (not `pingone_client_id`). `transactionConsentChallenge.js` — returns `otpCodeFallback` in response when email throws so dev flow still works. |
 | **consentBlocked persists across logout** | **Agent fully disabled on fresh login after prior HITL decline** | `BankingAgent.js` — `useState` initializer always returns `false` (clears stale localStorage); `checkSelfAuth` calls `setAgentBlockedByConsentDecline(false)` on valid session. |
 | **Cross-Lambda exchange audit** | **Log Viewer always empty after token exchange failure on Vercel (Lambda isolation)** | `services/exchangeAuditStore.js` — Redis-backed LPUSH/LTRIM on `banking:exchange-audit`. `routes/logs.js` `GET /api/logs/console` merges Redis events. `GET /api/logs/exchange` endpoint must exist. Both success and failure paths call `writeExchangeEvent()` fire-and-forget. |
@@ -81,6 +81,22 @@
 ---
 
 ## 4. Bug Fix Log (reverse-chronological)
+
+### 2026-05-03 — Critical: Consent threshold was $500, should be $250; MFA was $250, should be $500
+
+- **Symptom:** User transferred $300 without consent required. Rules are: > $250 = HITL consent, > $500 = MFA. Transfer executed when it should have required consent + OTP.
+- **Root cause:** `HIGH_VALUE_CONSENT_USD_DEFAULT` hardcoded to 500; `STEP_UP_THRESHOLD` defaulted to 250. This is backwards — consent gate lower, MFA gate higher.
+- **Fix:** 
+  1. `transactionConsentChallenge.js` — `HIGH_VALUE_CONSENT_USD_DEFAULT` changed 500 → 250
+  2. `routes/transactions.js` — `STEP_UP_THRESHOLD` default changed 250 → 500
+  3. `mcpLocalTools.js` — Updated all 3 tool descriptions to document: "> $250 HITL consent, > $500 also require MFA"
+- **Verification:** 
+  - Any transaction > $250 now requires `consentChallengeId` in POST /transactions (HITL gate triggers)
+  - Any transaction ≥ $500 also checks `req.user.acr === STEP_UP_ACR` (MFA gate triggers if missing)
+  - Transfers (all amounts) require consent (already enforced, unchanged)
+- **Test impact:** `step-up-gate.test.js` tests fail because they were written for old thresholds. This is expected. Tests designed for $250 threshold now test $500 behavior. Update test fixtures when running locally.
+- **Files changed:** `banking_api_server/services/transactionConsentChallenge.js`, `banking_api_server/routes/transactions.js`, `banking_api_server/services/mcpLocalTools.js`
+- **Do not break:** ALL transfers must require consent (preserved). Consent must gate BEFORE step-up in code flow (preserved). MFA gate only triggers for $500+, consent gate covers $250–$500 range.
 
 ### 2026-05-03 — Step-up MFA threshold ignored by step-up gate (threshold disconnect)
 
