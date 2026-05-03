@@ -77,12 +77,12 @@ export default function HelixPanel() {
       </div>
 
       {/* Form fields */}
-      <div style={{
+      <form style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
         gap: '1rem',
         marginBottom: '1rem',
-      }}>
+      }} onSubmit={(e) => e.preventDefault()}>
         <div>
           <label htmlFor="dsp-helix-base-url" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
             Helix Base URL
@@ -166,7 +166,7 @@ export default function HelixPanel() {
             }}
           />
         </div>
-      </div>
+      </form>
 
       {/* Action buttons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
