@@ -385,7 +385,7 @@ async function buildSessionPreviewTokenEvents(req) {
       null,
       'mcp_resource_uri is not set — RFC 8693 token exchange is not active. ' +
         'Banking tools run via local fallback; the user access token is never forwarded to MCP. ' +
-        'Token exchange (and human-in-the-loop consent) only applies to deposit, withdrawal, and transfer transactions over $500.',
+        'Token exchange (and human-in-the-loop consent) applies to high-value and transfer transactions.',
       { rfc: 'RFC 8693 · RFC 8707' }
     ));
     return { tokenEvents };
@@ -414,7 +414,7 @@ async function buildSessionPreviewTokenEvents(req) {
     'waiting',
     null,
     'Your session has a user access token (above). The exchange runs when the AI Agent invokes a banking tool. ' +
-      'For deposit, withdrawal, and transfer over $500 the exchange is paired with human-in-the-loop consent (OTP).',
+      'For high-value and transfer transactions, the exchange is paired with human-in-the-loop consent (HITL).',
     { rfc: 'RFC 8693 · RFC 8707' }
   ));
 

@@ -469,7 +469,7 @@ const LOCAL_INSPECTOR_TOOLS = [
   {
     name: 'create_deposit',
     description:
-      'Create a deposit transaction to an account. Use account ID (not account number) from get_my_accounts response. Amounts over $250 require HITL consent (not available via this tool); amounts over $500 also require MFA.',
+      'Create a deposit transaction to an account. Use account ID (not account number) from get_my_accounts response. High-value amounts may require HITL consent (configurable threshold, not available via this tool); high-value amounts may also require MFA.',
     requiresUserAuth: true,
     requiredScopes: ['banking:transactions:write'],
     inputSchema: {
@@ -491,7 +491,7 @@ const LOCAL_INSPECTOR_TOOLS = [
   {
     name: 'create_withdrawal',
     description:
-      'Create a withdrawal transaction from an account. Use account ID (not account number) from get_my_accounts response. Amounts over $500 require human consent on the web dashboard (not available via this tool).',
+      'Create a withdrawal transaction from an account. Use account ID (not account number) from get_my_accounts response. High-value amounts require human consent (HITL) on the web dashboard (not available via this tool).',
     requiresUserAuth: true,
     requiredScopes: ['banking:transactions:write'],
     inputSchema: {
@@ -513,7 +513,7 @@ const LOCAL_INSPECTOR_TOOLS = [
   {
     name: 'create_transfer',
     description:
-      'Transfer money between accounts. Use account IDs (not account numbers) from get_my_accounts response. Amounts over $500 require human consent on the web dashboard (not available via this tool).',
+      'Transfer money between accounts. Use account IDs (not account numbers) from get_my_accounts response. All transfers require human consent (HITL) on the web dashboard (not available via this tool).',
     requiresUserAuth: true,
     requiredScopes: ['banking:transactions:write'],
     inputSchema: {
