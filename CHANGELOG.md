@@ -18,6 +18,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **Agent Demo Guide — replaced NL prompts with reliable action chips** — all 6 demo scenarios now reference working action chips instead of broken natural language prompts; each scenario maps directly to an existing chip (💰 My Accounts, 🧪 Test Wrong Scope, 🔐 Test HITL Transfer, 📱 Test OTP Challenge, 🔥 Full Compliance); removed authorize-denial scenario (no chip equivalent); maintains all applicable steps and watch instructions for compliance verification.
 - **Withdraw/transfer/deposit actions — fixed 'From account not found' error** — NL parser extracts account type (e.g., "checking") but API endpoint expects account ID (UUID); heuristic agent now resolves account type to actual ID before returning params to frontend; prevents API errors when executing banking transactions via natural language.
 - **Agent Demo Guide — now opens from AdminSideNav** — fixed `renderNavItem` to handle top-level navigation items with `action` functions (not just children); previously only child items with actions were rendered as buttons, top-level items were incorrectly rendered as Links.
 - **Accounts panel — resizable on all sides with visual feedback** — added `max-height: 90vh` to ensure panel fits viewport by default; improved resize handle styling with subtle blue background on hover for better UX; removed unnecessary wrapper div for handles.
