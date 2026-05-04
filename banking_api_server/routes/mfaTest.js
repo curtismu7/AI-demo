@@ -257,8 +257,15 @@ const MFA_TEST_USER_ID = process.env.MFA_TEST_USER_ID || '6689a774-46af-4198-a6f
 async function _resolveCredentials(req) {
   // oauthId is the PingOne UUID; id may be a legacy numeric key on bootstrap users
   const sessionUserId = req.session?.user?.oauthId || req.session?.user?.id;
+
+  // Prefer token from Authorization header (if present and valid), otherwise use session token
+  // This prevents token staleness issues when the session token is out of sync
+  const authHeader = req.headers['authorization'];
+  const headerToken = authHeader?.split(' ')[1] || null;
   const sessionToken = req.session?.oauthTokens?.accessToken;
-  if (!sessionUserId || !sessionToken) {
+  const accessToken = headerToken || sessionToken;
+
+  if (!sessionUserId || !accessToken) {
     throw new Error(
       'Device authentication requires an active session. ' +
       'Please login to PingOne first via /dashboard, then return to MFA test page.'
@@ -267,9 +274,9 @@ async function _resolveCredentials(req) {
 
   return {
     userId: sessionUserId,
-    accessToken: sessionToken,
+    accessToken: accessToken,
     email: req.session.user?.email,
-    source: 'session',
+    source: headerToken ? 'authorization-header' : 'session',
   };
 }
 
