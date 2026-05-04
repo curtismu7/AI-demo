@@ -344,7 +344,7 @@ router.post('/integration/initiate', async (req, res) => {
     // For FIDO2: auto-select the enrolled FIDO2 device to transition to ASSERTION_REQUIRED
     // and return publicKeyCredentialRequestOptions in the same response.
     if (method === 'fido2') {
-      const fidoDevice = devices.find(d => d.type === 'FIDO2');
+      const fidoDevice = devices.find(d => String(d.type || '').toUpperCase().includes('FIDO2'));
       if (fidoDevice) {
         try {
           const selected = await mfaService.selectDevice(result.id, fidoDevice.id, accessToken);
