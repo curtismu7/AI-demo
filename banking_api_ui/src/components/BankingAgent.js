@@ -747,7 +747,7 @@ function buildConsentIntent(actionId, form) {
       description: form.note || "Agent withdrawal",
     };
   }
-  if (actionId === "transfer") {
+  if (actionId === "transfer" || actionId === "transfer_600_test") {
     return {
       type: "transfer",
       fromAccountId: form.fromId,
