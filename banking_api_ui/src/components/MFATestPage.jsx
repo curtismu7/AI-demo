@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import apiClient from "../services/apiClient";
 import { notifyError, notifyInfo, notifySuccess } from "../utils/appToast";
 import "./MFATestPage.css";
@@ -132,6 +131,9 @@ export default function MFATestPage() {
 	const [rawFidoEnrollInit, setRawFidoEnrollInit] = useState(null);
 	const [rawFidoEnrollComplete, setRawFidoEnrollComplete] = useState(null);
 	const [rawDevices, setRawDevices] = useState(null);
+
+	// Logs modal state
+	const [logsModalOpen, setLogsModalOpen] = useState(false);
 
 	const loadConfig = useCallback(async () => {
 		try {
@@ -948,9 +950,13 @@ export default function MFATestPage() {
 						</span>
 					</div>
 					<div className="mfa-test-actions">
-						<Link to="/mfa-logs" className="mfa-test-button mfa-test-button--logs">
+						<button
+							type="button"
+							className="mfa-test-button mfa-test-button--logs"
+							onClick={() => setLogsModalOpen(true)}
+						>
 							View Logs
-						</Link>
+						</button>
 						<button
 							type="button"
 							className="mfa-test-button mfa-test-button--secondary"
@@ -1791,6 +1797,11 @@ function WhatIsHappening({ title, steps, apiFlow }) {
 						</div>
 					)}
 				</div>
+			)}
+
+			{/* Logs Modal */}
+			{logsModalOpen && (
+				<MFALogsModal onClose={() => setLogsModalOpen(false)} />
 			)}
 		</div>
 	);

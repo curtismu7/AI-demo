@@ -1752,10 +1752,9 @@ export default function BankingAgent({
   });
   const [complianceSlideout, setComplianceSlideout] = useState(() => {
     try {
-      return localStorage.getItem("ba_compliance_slideout") === "1";
-    } catch {
-      return false;
-    }
+      localStorage.removeItem("ba_compliance_slideout");
+    } catch {}
+    return false;
   });
   const [showLoginModal, setShowLoginModal] = useState(false);
   // Detect FIDO2/WebAuthn support on mount
