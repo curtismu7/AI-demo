@@ -154,36 +154,40 @@ async function initiateDeviceAuth(userId, userAccessToken) {
  * Status transitions: DEVICE_SELECTION_REQUIRED → OTP_REQUIRED | ASSERTION_REQUIRED | PUSH_CONFIRMATION_REQUIRED
  */
 async function selectDevice(daId, deviceId, userAccessToken) {
+	// Use worker token for device selection (matches PingOne MFA v1 API requirements)
+	const workerToken = await _getWorkerToken();
 	const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
-	const reqBody = { selectedDevice: { id: deviceId } };
 
-	// Debug
+	// PingOne device selection requires POST with custom content-type and specific body format
+	const reqBody = {
+		device: { id: deviceId },
+		compatibility: "FULL"
+	};
+	const contentType = "application/vnd.pingidentity.device.select+json";
+
 	console.log(`[selectDevice] Full URL: ${url}`);
+	console.log(`[selectDevice] Method: POST (corrected from PUT)`);
+	console.log(`[selectDevice] Content-Type: ${contentType}`);
 	console.log(`[selectDevice] Request body: ${JSON.stringify(reqBody)}`);
-
-	// Debug token
-	const tokenLen = userAccessToken?.length || 0;
-	const tokenStart = userAccessToken?.substring(0, 30) || 'MISSING';
-	const tokenEnd = userAccessToken?.substring(Math.max(0, userAccessToken.length - 20)) || '';
-	console.log(`[selectDevice] Token: len=${tokenLen}, start=${tokenStart}..., end=...${tokenEnd}`);
+	console.log(`[selectDevice] Using worker token (len=${workerToken?.length || 0})`);
 
 	const debugRequest = {
-		method: "PUT",
+		method: "POST",
 		url: url,
 		body: reqBody,
-		contentType: "application/json",
-		headers: _debugHeaders(userAccessToken, "application/json"),
+		contentType: contentType,
+		headers: _debugHeaders(workerToken, contentType),
 	};
 	try {
 		let data;
 		try {
-			const authHeader = `Bearer ${userAccessToken}`;
-			console.log(`[selectDevice] Authorization header length: ${authHeader.length}, contains dots: ${(authHeader.match(/\./g) || []).length}`);
+			const authHeader = `Bearer ${workerToken}`;
+			console.log(`[selectDevice] Authorization header ready (Bearer token present)`);
 
-			const resp = await axios.put(url, reqBody, {
+			const resp = await axios.post(url, reqBody, {
 				headers: {
 					Authorization: authHeader,
-					"Content-Type": "application/json",
+					"Content-Type": contentType,
 				},
 				timeout: 10000,
 			});
