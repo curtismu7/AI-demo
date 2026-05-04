@@ -23,8 +23,11 @@ import { fetchNlStatus } from "../services/bankingAgentNlService";
 import {
   callMcpTool,
   createDeposit,
+  createDepositWithConsent,
   createTransfer,
+  createTransferWithConsent,
   createWithdrawal,
+  createWithdrawalWithConsent,
   getAccountBalance,
   getMyAccounts,
   getMyTransactions,
@@ -86,7 +89,9 @@ function SessionExpiryTimer({ sessionInfo, className = "" }) {
       const remaining = Math.max(0, expiresAt - now);
 
       setTimeRemaining(remaining);
-      setIsExpiringSoon(remaining > 0 && remaining < APP_CONFIG.SESSION_EXPIRY_WARNING_MS);
+      setIsExpiringSoon(
+        remaining > 0 && remaining < APP_CONFIG.SESSION_EXPIRY_WARNING_MS,
+      );
     };
 
     calculateTimeRemaining();
@@ -406,10 +411,10 @@ const CHIP_APPLICABLE_STEPS = {
     "olb-resource-token",
     "claim-diagnostics",
   ],
-  ai_ask:     ["agent-llm-reasoning"],
+  ai_ask: ["agent-llm-reasoning"],
   ai_explain: ["agent-llm-reasoning"],
   ai_analyze: ["agent-llm-reasoning"],
-  ai_advice:  ["agent-llm-reasoning"],
+  ai_advice: ["agent-llm-reasoning"],
 };
 
 // Backwards compatibility: flat ACTIONS array from ACTION_GROUPS
@@ -423,11 +428,15 @@ function getStepSkipExplanation(actionId, stepId) {
   const explanations = {
     // Test Wrong Audience: only auth init, no scope/gateway/consent flow
     test_wrong_audience: {
-      "gw-scope-map": "Audience error caught at token init, no scope mapping needed",
-      "gw-denial-metadata": "Auth error returned directly, no gateway denial structure",
-      "bff-response-shape": "Audience mismatch returns error before denial formatting",
+      "gw-scope-map":
+        "Audience error caught at token init, no scope mapping needed",
+      "gw-denial-metadata":
+        "Auth error returned directly, no gateway denial structure",
+      "bff-response-shape":
+        "Audience mismatch returns error before denial formatting",
       "gw-hitl-challenge-type": "No HITL flow for auth errors",
-      "agent-error-propagation": "Agent never receives tool list; init fails first",
+      "agent-error-propagation":
+        "Agent never receives tool list; init fails first",
       "agent-recovery-branch": "No login/HITL branch for audience mismatch",
       "agent-scope-aware-cache": "Already attempted at token init; fails there",
       "olb-resource-token": "Token exchange not required for auth failures",
@@ -437,12 +446,15 @@ function getStepSkipExplanation(actionId, stepId) {
     },
     // Test Wrong Scope: auth succeeds but scope check fails at agent level
     test_wrong_scope: {
-      "gw-scope-map": "Agent doesn't request tool list (tests scope rejection directly)",
+      "gw-scope-map":
+        "Agent doesn't request tool list (tests scope rejection directly)",
       "gw-denial-metadata": "No gateway denial for simple scope mismatch",
       "bff-response-shape": "BFF error bypasses denial formatting",
       "gw-hitl-challenge-type": "No HITL flow for scope errors",
-      "agent-error-propagation": "Agent detects scope missing before calling tools",
-      "agent-recovery-branch": "Scope error is terminal, no login/HITL recovery",
+      "agent-error-propagation":
+        "Agent detects scope missing before calling tools",
+      "agent-recovery-branch":
+        "Scope error is terminal, no login/HITL recovery",
       "olb-resource-token": "Token exchange fails at agent validation",
       "ui-gateway-consent": "No consent dialog for scope errors",
       "ui-auto-refire": "No re-fire after scope rejection",
@@ -512,12 +524,14 @@ function getStepSkipExplanation(actionId, stepId) {
     },
     // HITL: all steps apply or most apply
     test_hitl_required: {
-      "agent-scope-aware-cache": "Omitted: HITL test doesn't use full token exchange",
+      "agent-scope-aware-cache":
+        "Omitted: HITL test doesn't use full token exchange",
       "olb-resource-token": "Omitted: test uses simplified flow",
       "claim-diagnostics": "Omitted: test skips claim diagnostics",
     },
     transfer_600_test: {
-      "agent-scope-aware-cache": "Omitted: HITL test doesn't use full token exchange",
+      "agent-scope-aware-cache":
+        "Omitted: HITL test doesn't use full token exchange",
       "olb-resource-token": "Omitted: test uses simplified flow",
       "claim-diagnostics": "Omitted: test skips claim diagnostics",
     },
@@ -1493,7 +1507,6 @@ function parseLogPrompt(text) {
   return null;
 }
 
-
 // ─── Education topic inline messages (module-level for performance) ───────────
 
 const TOPIC_MESSAGES = {
@@ -1666,7 +1679,7 @@ export default function BankingAgent({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
-  const [selectedLlmProvider, setSelectedLlmProvider] = useState('helix');
+  const [selectedLlmProvider, setSelectedLlmProvider] = useState("helix");
   const [availableLlmProviders, setAvailableLlmProviders] = useState([]);
   /** Set when returning from PingOne with a pending banking NL line to run after session exists. */
   const [nlResumeAfterAuth, setNlResumeAfterAuth] = useState(null);
@@ -2638,9 +2651,9 @@ export default function BankingAgent({
       .then(setNlMeta)
       .catch(() => setNlMeta({ geminiConfigured: false }));
     // Fetch available LLM providers
-    fetch('/api/langchain/config/status', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+    fetch("/api/langchain/config/status", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
         if (data?.provider_models) {
           const providers = Object.keys(data.provider_models);
           setAvailableLlmProviders(providers);
@@ -3278,7 +3291,8 @@ export default function BankingAgent({
           // The gateway should respond with 403 + required_scopes metadata.
           // RFC 6749 §3.3 — Resource servers MUST reject tokens that don't carry required scopes.
           toast.update(toastId, {
-            render: "⚠️ Calling admin tool with customer token (no admin scope)…",
+            render:
+              "⚠️ Calling admin tool with customer token (no admin scope)…",
           });
           let scopeTestRes;
           try {
@@ -3674,8 +3688,11 @@ export default function BankingAgent({
           } catch (_) {
             /* non-fatal */
           }
-          const _stepUpThreshold = _thresholds.mfa_threshold_usd ?? APP_CONFIG.THRESHOLDS.MFA_DEFAULT;
-          const _hitlThreshold = _thresholds.confirm_threshold_usd ?? APP_CONFIG.THRESHOLDS.HITL_DEFAULT;
+          const _stepUpThreshold =
+            _thresholds.mfa_threshold_usd ?? APP_CONFIG.THRESHOLDS.MFA_DEFAULT;
+          const _hitlThreshold =
+            _thresholds.confirm_threshold_usd ??
+            APP_CONFIG.THRESHOLDS.HITL_DEFAULT;
           // Fetch live thresholds so the message can quote exact values
           const stepUpRes = await sendAgentMessage(
             "Show me my full account details with routing numbers",
@@ -3792,14 +3809,18 @@ export default function BankingAgent({
   toAccountId: ${normalized.toAccountId}
   type: ${normalized.type}`);
             intentPayload = {
-              type: normalized.type || 'transfer',
-              fromAccountId: normalized.fromAccountId || normalized.from_account_id,
+              type: normalized.type || "transfer",
+              fromAccountId:
+                normalized.fromAccountId || normalized.from_account_id,
               toAccountId: normalized.toAccountId || normalized.to_account_id,
               amount: normalized.amount,
-              description: form.note || `Agent ${normalized.type || 'transfer'}`,
+              description:
+                form.note || `Agent ${normalized.type || "transfer"}`,
             };
           } else {
-            console.log(`[DEBUG-FRONTEND-INTENT] 📋 Building consent intent from form object`);
+            console.log(
+              `[DEBUG-FRONTEND-INTENT] 📋 Building consent intent from form object`,
+            );
             intentPayload = buildConsentIntent(actionId, form);
           }
           if (!intentPayload) {
@@ -3823,7 +3844,9 @@ export default function BankingAgent({
             actionId,
             form,
             intentPayload,
-            threshold: normalized.hitl_threshold_usd ?? APP_CONFIG.THRESHOLDS.HITL_DEFAULT,
+            threshold:
+              normalized.hitl_threshold_usd ??
+              APP_CONFIG.THRESHOLDS.HITL_DEFAULT,
           });
         } else if (
           normalized.step_up_required === true ||
@@ -3923,11 +3946,16 @@ export default function BankingAgent({
         } else {
           addMessage("assistant", formatResult(response.result), actionId);
           toast.dismiss(toastId);
-          const isTransactionAction = ["transfer", "deposit", "withdraw"].includes(actionId);
+          const isTransactionAction = [
+            "transfer",
+            "deposit",
+            "withdraw",
+          ].includes(actionId);
           if (isTransactionAction) {
             setTxErrorModal({
               title: "Transaction Failed",
-              message: normalized.message || normalized.error || "Request failed",
+              message:
+                normalized.message || normalized.error || "Request failed",
             });
           } else {
             notifyError(
@@ -4108,8 +4136,8 @@ export default function BankingAgent({
             const validated = extractAccounts(data);
             if (!validated || validated.length === 0) return;
             const normalized = validated
-              .map(a => normalizeAccount(a))
-              .filter(a => a !== null);
+              .map((a) => normalizeAccount(a))
+              .filter((a) => a !== null);
             if (normalized.length > 0) {
               setLiveAccounts(normalized);
             }
@@ -4217,7 +4245,7 @@ export default function BankingAgent({
         statusCode: err?.statusCode,
         message: err?.message,
         needsAuth: err?.need_auth,
-        fullErr: err
+        fullErr: err,
       });
 
       markToolProgressOutcome(
@@ -4289,8 +4317,14 @@ export default function BankingAgent({
 
         // For transfer_600_test, build payload from liveAccounts since form is empty
         if (actionId === "transfer_600_test" && liveAccounts?.length >= 2) {
-          const testFrom = liveAccounts.find((a) => a.type === "checking" || a.type === "chk") || liveAccounts[0];
-          const testTo = liveAccounts.find((a) => a.type === "savings" || a.type === "sav") || liveAccounts[1];
+          const testFrom =
+            liveAccounts.find(
+              (a) => a.type === "checking" || a.type === "chk",
+            ) || liveAccounts[0];
+          const testTo =
+            liveAccounts.find(
+              (a) => a.type === "savings" || a.type === "sav",
+            ) || liveAccounts[1];
           intentPayload = {
             type: "transfer",
             fromAccountId: testFrom?.id,
@@ -4303,7 +4337,9 @@ export default function BankingAgent({
         }
 
         if (!intentPayload) {
-          notifyError("Could not start consent flow — transaction details missing.");
+          notifyError(
+            "Could not start consent flow — transaction details missing.",
+          );
           setLoading(false);
           toast.dismiss(toastId);
           return;
@@ -4644,7 +4680,10 @@ export default function BankingAgent({
   function setNlInputFromTile(text) {
     setNlInput(text);
     requestAnimationFrame(() => {
-      nlInputRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      nlInputRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
       nlInputRef.current?.focus();
     });
   }
@@ -4683,23 +4722,35 @@ export default function BankingAgent({
     } else if (actionId === "query_user") {
       setNlInputFromTile("Query user by email: ");
     } else if (actionId === "sequential_think") {
-      setNlInputFromTile("Think: Should I transfer money from checking to savings?");
+      setNlInputFromTile(
+        "Think: Should I transfer money from checking to savings?",
+      );
     } else if (actionId === "demo_nl_routing") {
       setNlInputFromTile("What is my checking account balance?");
     } else if (actionId === "ai_ask") {
       setNlInputFromTile("");
     } else if (actionId === "ai_helix_demo") {
-      setNlInputFromTile("(Using Helix LLM) What are best practices for account security?");
+      setNlInputFromTile(
+        "(Using Helix LLM) What are best practices for account security?",
+      );
     } else if (actionId === "ai_explain") {
       setNlInputFromTile("Explain: ");
     } else if (actionId === "ai_helix_explain") {
-      setNlInputFromTile("(Using Helix LLM) Explain the difference between OAuth and SAML");
+      setNlInputFromTile(
+        "(Using Helix LLM) Explain the difference between OAuth and SAML",
+      );
     } else if (actionId === "ai_analyze") {
-      setNlInputFromTile("Summarize how the MCP tool flow works in this banking demo");
+      setNlInputFromTile(
+        "Summarize how the MCP tool flow works in this banking demo",
+      );
     } else if (actionId === "ai_advice") {
-      setNlInputFromTile("What are some good tips for managing checking and savings accounts?");
+      setNlInputFromTile(
+        "What are some good tips for managing checking and savings accounts?",
+      );
     } else if (actionId === "ai_helix_advice") {
-      setNlInputFromTile("(Using Helix LLM) Give me 5 tips for reducing transaction fees and managing money better");
+      setNlInputFromTile(
+        "(Using Helix LLM) Give me 5 tips for reducing transaction fees and managing money better",
+      );
     } else if (actionId === "demo_guide") {
       setShowDemoGuide(true);
     } else {
@@ -5583,7 +5634,10 @@ export default function BankingAgent({
                             method: "POST",
                             credentials: "include",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ message: text, provider: selectedLlmProvider }),
+                            body: JSON.stringify({
+                              message: text,
+                              provider: selectedLlmProvider,
+                            }),
                             signal: AbortSignal.timeout(15000),
                           },
                         );
@@ -5688,9 +5742,7 @@ export default function BankingAgent({
                           }
                           title="Refresh your access token using PingOne refresh token"
                         >
-                          {sessionRefreshing
-                            ? "Refreshing…"
-                            : "Refresh token"}
+                          {sessionRefreshing ? "Refreshing…" : "Refresh token"}
                         </button>
                         <button
                           type="button"
@@ -6611,14 +6663,115 @@ export default function BankingAgent({
                     actionId,
                   );
                   // Re-fire the original tool with consentChallengeId so API can check step-up
-                  // If step-up is required, the tool will return step_up_required error
-                  // Otherwise, the transaction will complete
-                  const formWithConsent = {
-                    ...form,
-                    consentChallengeId: challengeId,
-                  };
-                  setTimeout(() => {
-                    runActionRef.current(actionId, formWithConsent, { isRefire: true });
+                  // Use the *WithConsent versions to properly pass consentChallengeId through
+                  setTimeout(async () => {
+                    try {
+                      let response;
+                      if (actionId === "transfer") {
+                        response = await createTransferWithConsent(
+                          form.fromId,
+                          form.toId,
+                          parseFloat(form.amount),
+                          form.note,
+                          challengeId,
+                        );
+                      } else if (actionId === "deposit") {
+                        response = await createDepositWithConsent(
+                          form.toId || form.accountId,
+                          parseFloat(form.amount),
+                          form.note,
+                          challengeId,
+                        );
+                      } else if (actionId === "withdraw") {
+                        response = await createWithdrawalWithConsent(
+                          form.fromId || form.accountId,
+                          parseFloat(form.amount),
+                          form.note,
+                          challengeId,
+                        );
+                      }
+                      // Response should contain success
+                      if (response?.result?.transaction_id) {
+                        console.log(
+                          "[HITL Consent] Transaction successful:",
+                          response.result.transaction_id,
+                        );
+                        addMessage(
+                          "assistant",
+                          `✅ Transaction completed successfully. ID: ${response.result.transaction_id}`,
+                          actionId,
+                        );
+                      }
+                    } catch (err) {
+                      // callRestTransaction throws on non-2xx status codes, so we handle 428 (step_up_required) here
+                      if (
+                        err.statusCode === 428 &&
+                        err.code === "step_up_required"
+                      ) {
+                        console.log(
+                          "[HITL Consent] Step-up required, triggering MFA",
+                        );
+                        addMessage(
+                          "assistant",
+                          "🔐 Additional verification required.\n\nPlease verify your identity.",
+                          actionId,
+                        );
+                        // Extract step-up method from error response
+                        const stepUpMethod = err.data?.step_up_method || "otp"; // Default to OTP
+                        console.log(
+                          "[HITL Consent] Step-up method:",
+                          stepUpMethod,
+                          "full data:",
+                          err.data,
+                        );
+                        setStepUpMethod(stepUpMethod);
+
+                        // If P1MFA mode, fetch devices
+                        if (stepUpMethod === "p1mfa") {
+                          try {
+                            const apiBase = process.env.REACT_APP_API_URL || "";
+                            const mfaResp = await fetch(
+                              `${apiBase}/api/auth/mfa/challenge`,
+                              {
+                                method: "POST",
+                                credentials: "include",
+                                headers: { "Content-Type": "application/json" },
+                              },
+                            );
+                            if (!mfaResp.ok)
+                              throw new Error(
+                                `MFA initiation failed: ${mfaResp.status}`,
+                              );
+                            const { daId, devices } = await mfaResp.json();
+                            console.log("[HITL Consent] P1MFA initialized:", {
+                              daId,
+                              deviceCount: devices?.length || 0,
+                            });
+                            setP1mfaDaId(daId);
+                            setP1mfaDevices(devices || []);
+                            setP1mfaMode(true);
+                          } catch (mfaErr) {
+                            console.error(
+                              "[HITL Consent] P1MFA initiation failed, falling back to stub:",
+                              mfaErr,
+                            );
+                            setP1mfaMode(false);
+                          }
+                        } else {
+                          setP1mfaMode(false);
+                        }
+
+                        setShowOtpModal(true);
+                      } else {
+                        console.error(
+                          "[HITL Consent] Re-fire tool failed:",
+                          err,
+                        );
+                        notifyError(
+                          "Transaction processing failed. Please try again.",
+                        );
+                      }
+                    }
                   }, 500);
                 }}
                 onDeclinedConfirmed={() => {
@@ -6672,7 +6825,9 @@ export default function BankingAgent({
               <div
                 className="ba-tx-error-overlay"
                 onClick={() => setTxErrorModal(null)}
-                onKeyDown={(e) => { if (e.key === 'Escape') setTxErrorModal(null); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setTxErrorModal(null);
+                }}
                 role="dialog"
                 aria-modal="true"
                 aria-label="Transaction error"
@@ -6849,7 +7004,10 @@ export default function BankingAgent({
                                   headers: {
                                     "Content-Type": "application/json",
                                   },
-                                  body: JSON.stringify({ message: s, provider: selectedLlmProvider }),
+                                  body: JSON.stringify({
+                                    message: s,
+                                    provider: selectedLlmProvider,
+                                  }),
                                   signal: AbortSignal.timeout(15000),
                                 },
                               );
@@ -7066,7 +7224,9 @@ export default function BankingAgent({
                   </div>
                 )}
                 {messages
-                  .filter((msg) => msg.role === "user" || msg.role === "assistant")
+                  .filter(
+                    (msg) => msg.role === "user" || msg.role === "assistant",
+                  )
                   .map((msg) => {
                     if (msg.role === "reasoning") {
                       return (
@@ -7167,7 +7327,15 @@ export default function BankingAgent({
                         )}
                         {msg.role === "assistant" && (
                           <span className="banking-agent-msg-avatar banking-agent-msg-avatar--helix">
-                            <img src="/images/helix.png" alt="AI" style={{ width: 22, height: "auto", display: "block" }} />
+                            <img
+                              src="/images/helix.png"
+                              alt="AI"
+                              style={{
+                                width: 22,
+                                height: "auto",
+                                display: "block",
+                              }}
+                            />
                           </span>
                         )}
                         <div
@@ -7206,15 +7374,24 @@ export default function BankingAgent({
               {/* LLM Provider chips */}
               {isLoggedIn && availableLlmProviders.length > 0 && (
                 <div className="ba-provider-chips">
-                  {['auto', ...availableLlmProviders].map(p => (
+                  {["auto", ...availableLlmProviders].map((p) => (
                     <button
                       key={p}
                       type="button"
-                      className={'ba-server-chip' + (selectedLlmProvider === p ? ' ba-server-chip--active' : '')}
+                      className={
+                        "ba-server-chip" +
+                        (selectedLlmProvider === p
+                          ? " ba-server-chip--active"
+                          : "")
+                      }
                       onClick={() => setSelectedLlmProvider(p)}
-                      title={p === 'auto' ? 'Auto: heuristic first, then LLM' : `Use ${p} directly`}
+                      title={
+                        p === "auto"
+                          ? "Auto: heuristic first, then LLM"
+                          : `Use ${p} directly`
+                      }
                     >
-                      {p === 'auto' ? '⚡ Auto' : p}
+                      {p === "auto" ? "⚡ Auto" : p}
                     </button>
                   ))}
                 </div>
@@ -7260,94 +7437,103 @@ export default function BankingAgent({
                   ) : (
                     <>
                       <ol className="ba-compliance-panel__list">
-                        {complianceStripState.complianceSteps.flatMap((step) => {
-                          const isActive =
-                            step.id === complianceStripState.complianceStep;
-                          const icon =
-                            step.status === "done"
-                              ? "✅"
-                              : step.status === "error"
-                                ? "❌"
-                                : isActive
-                                  ? "⚙"
-                                  : "○";
-                          const applicableSteps =
-                            complianceStripState.complianceActionId
-                              ? CHIP_APPLICABLE_STEPS[
-                                  complianceStripState.complianceActionId
-                                ] || []
-                              : [];
-                          const isApplicable = applicableSteps.includes(step.id);
-                          const items = [];
-                          if (step.id === "olb-resource-token") {
+                        {complianceStripState.complianceSteps.flatMap(
+                          (step) => {
+                            const isActive =
+                              step.id === complianceStripState.complianceStep;
+                            const icon =
+                              step.status === "done"
+                                ? "✅"
+                                : step.status === "error"
+                                  ? "❌"
+                                  : isActive
+                                    ? "⚙"
+                                    : "○";
+                            const applicableSteps =
+                              complianceStripState.complianceActionId
+                                ? CHIP_APPLICABLE_STEPS[
+                                    complianceStripState.complianceActionId
+                                  ] || []
+                                : [];
+                            const isApplicable = applicableSteps.includes(
+                              step.id,
+                            );
+                            const items = [];
+                            if (step.id === "olb-resource-token") {
+                              items.push(
+                                <li
+                                  key="intent-delegation-badge"
+                                  className="ba-compliance-panel__group-badge"
+                                >
+                                  Intent-Bound Delegation
+                                </li>,
+                              );
+                            }
                             items.push(
                               <li
-                                key="intent-delegation-badge"
-                                className="ba-compliance-panel__group-badge"
+                                key={step.id}
+                                className={
+                                  "ba-compliance-panel__item" +
+                                  (isActive ? " active" : "") +
+                                  (" " + step.status) +
+                                  (isApplicable && step.status === "pending"
+                                    ? " applicable"
+                                    : "")
+                                }
                               >
-                                Intent-Bound Delegation
+                                <span className="ba-compliance-panel__icon">
+                                  {icon}
+                                </span>
+                                <span className="ba-compliance-panel__label">
+                                  {step.label}
+                                </span>
                               </li>,
                             );
-                          }
-                          items.push(
-                            <li
-                              key={step.id}
-                              className={
-                                "ba-compliance-panel__item" +
-                                (isActive ? " active" : "") +
-                                (" " + step.status) +
-                                (isApplicable && step.status === "pending"
-                                  ? " applicable"
-                                  : "")
-                              }
-                            >
-                              <span className="ba-compliance-panel__icon">
-                                {icon}
-                              </span>
-                              <span className="ba-compliance-panel__label">
-                                {step.label}
-                              </span>
-                            </li>,
-                          );
-                          // Add inline explanation for non-applicable pending steps
-                          if (
-                            step.status === "pending" &&
-                            !isApplicable &&
-                            complianceStripState.complianceActionId
-                          ) {
-                            items.push(
-                              <li
-                                key={`${step.id}-skip-reason`}
-                                className="ba-compliance-panel__skip-reason"
-                              >
-                                {getStepSkipExplanation(
-                                  complianceStripState.complianceActionId,
-                                  step.id,
-                                )}
-                              </li>,
-                            );
-                          }
-                          return items;
-                        })}
+                            // Add inline explanation for non-applicable pending steps
+                            if (
+                              step.status === "pending" &&
+                              !isApplicable &&
+                              complianceStripState.complianceActionId
+                            ) {
+                              items.push(
+                                <li
+                                  key={`${step.id}-skip-reason`}
+                                  className="ba-compliance-panel__skip-reason"
+                                >
+                                  {getStepSkipExplanation(
+                                    complianceStripState.complianceActionId,
+                                    step.id,
+                                  )}
+                                </li>,
+                              );
+                            }
+                            return items;
+                          },
+                        )}
                       </ol>
                       {(() => {
-                        if (!complianceStripState.complianceActionId) return null;
+                        if (!complianceStripState.complianceActionId)
+                          return null;
                         const applicable =
                           CHIP_APPLICABLE_STEPS[
                             complianceStripState.complianceActionId
                           ] || [];
-                        const skipped = complianceStripState.complianceSteps.filter(
-                          (s) => s.status === "pending" && !applicable.includes(s.id),
-                        );
+                        const skipped =
+                          complianceStripState.complianceSteps.filter(
+                            (s) =>
+                              s.status === "pending" &&
+                              !applicable.includes(s.id),
+                          );
                         if (skipped.length === 0) return null;
                         return (
                           <div className="ba-compliance-panel__skip-note">
                             <strong>
-                              {skipped.length} step{skipped.length > 1 ? "s" : ""} not triggered
-                            </strong>
-                            {" "}— gateway denial and HITL steps only fire on
-                            scope-upgrade or permission-required operations (e.g.
-                            Sensitive Account Details).
+                              {skipped.length} step
+                              {skipped.length > 1 ? "s" : ""} not triggered
+                            </strong>{" "}
+                            — gateway denial and HITL steps only fire on
+                            scope-upgrade or permission-required operations
+                            (e.g. Sensitive Account Details).
                           </div>
                         );
                       })()}
@@ -7387,13 +7573,19 @@ export default function BankingAgent({
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
                           if (nlInput.trim()) {
-                            const newHistory = [nlInput, ...inputHistory].slice(0, 10);
+                            const newHistory = [nlInput, ...inputHistory].slice(
+                              0,
+                              10,
+                            );
                             setInputHistory(newHistory);
                           }
                           handleNaturalLanguage();
                         } else if (e.key === "ArrowUp") {
                           e.preventDefault();
-                          const newIndex = Math.min(historyIndex + 1, inputHistory.length - 1);
+                          const newIndex = Math.min(
+                            historyIndex + 1,
+                            inputHistory.length - 1,
+                          );
                           if (newIndex >= 0 && newIndex < inputHistory.length) {
                             setHistoryIndex(newIndex);
                             setNlInput(inputHistory[newIndex]);
@@ -7566,7 +7758,9 @@ export default function BankingAgent({
           )}
         </div>
       )}
-      {showLoginModal && <QuickLoginModal pathname={window.location.pathname} />}
+      {showLoginModal && (
+        <QuickLoginModal pathname={window.location.pathname} />
+      )}
     </div>
   );
 

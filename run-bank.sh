@@ -39,7 +39,7 @@ KEY_FILE="${CERT_DIR}/api.pingdemo.com+2-key.pem"
 
 # ── /etc/hosts check ─────────────────────────────────────────────────────────────────
 if ! grep -q "${API_HOST}" /etc/hosts 2>/dev/null; then
-  echo "⚠️  ${API_HOST} is not in /etc/hosts."
+  echo "WARNING:  ${API_HOST} is not in /etc/hosts."
   echo "   Run this once to add it, then restart the script:"
   echo "   echo '127.0.0.1  ${API_HOST}' | sudo tee -a /etc/hosts"
   echo ""
@@ -51,12 +51,12 @@ fi
 # ── SSL cert check / auto-generate ───────────────────────────────────────────
 if [[ ! -f "${CERT_FILE}" ]] || [[ ! -f "${KEY_FILE}" ]]; then
   if command -v mkcert &>/dev/null; then
-    echo "🔐 Generating SSL certs for ${API_HOST}..."
+    echo "[SSL] Generating SSL certs for ${API_HOST}..."
     mkdir -p "${CERT_DIR}"
     (cd "${CERT_DIR}" && mkcert "${API_HOST}" localhost 127.0.0.1)
-    echo "✅ Certs created in ${CERT_DIR}"
+    echo "[OK] Certs created in ${CERT_DIR}"
   else
-    echo "⚠️  mkcert not found — install with: brew install mkcert && mkcert -install"
+    echo "WARNING:  mkcert not found — install with: brew install mkcert && mkcert -install"
     echo "   Falling back to HTTP..."
     API_URL="http://${API_HOST}:${API_PORT}"
     CLIENT_URL="http://${API_HOST}:${UI_PORT}"
@@ -99,7 +99,7 @@ NODE_MIN_VERSION=16
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 ok()   { echo -e "  ${GREEN}✓${RESET}  $1"; }
-warn() { echo -e "  ${YELLOW}⚠${RESET}  $1"; }
+warn() { echo -e "  ${YELLOW}!${RESET}  $1"; }
 err()  { echo -e "  ${RED}✗${RESET}  $1" >&2; }
 
 # Check if a TCP port is listening locally
@@ -154,7 +154,7 @@ preflight_checks() {
   elif port_listening 11434; then
     ok "Ollama running on :11434 — model: ${ollama_model}"
   else
-    echo -e "  ${CYAN}⟳${RESET}  Starting Ollama (model: ${ollama_model})…"
+    echo -e "  ${CYAN}[SPIN]${RESET}  Starting Ollama (model: ${ollama_model})…"
     ollama serve > /tmp/bank-ollama.log 2>&1 &
     echo $! > /tmp/bank-ollama.pid
     # Give it a moment to start
@@ -201,11 +201,11 @@ tail_bank_logs() {
       local idx=$((choice - 1))
       local f="${logs[$idx]}"
       if [[ ! -f "${f}" ]]; then
-        echo "⚠️  Log file does not exist yet: ${f}"
+        echo "WARNING:  Log file does not exist yet: ${f}"
         echo "   (Start services first, or pick another number.)"
         exit 1
       fi
-      echo "📜 Tailing ${names[$idx]} ..."
+      echo "[LOG] Tailing ${names[$idx]} ..."
       tail -f "${f}"
       ;;
     6|all)
@@ -215,14 +215,14 @@ tail_bank_logs() {
         if [[ -f "${f}" ]]; then
           existing+=("${f}")
         else
-          echo "⚠️  Skipping (not yet created): ${f}"
+          echo "WARNING:  Skipping (not yet created): ${f}"
         fi
       done
       if [[ ${#existing[@]} -eq 0 ]]; then
-        echo "⚠️  No log files found yet. Start services with ./run-bank.sh first."
+        echo "WARNING:  No log files found yet. Start services with ./run-bank.sh first."
         exit 1
       fi
-      echo "📜 Tailing ${#existing[@]} log file(s) together (interleaved). Ctrl+C stops."
+      echo "[LOG] Tailing ${#existing[@]} log file(s) together (interleaved). Ctrl+C stops."
       tail -f "${existing[@]}"
       ;;
     *)
@@ -291,9 +291,9 @@ wait_for_port() {
 service_status_line() {
   local label="$1" port="$2" url="${3:-}"
   if port_listening "$port"; then
-    printf "  ${GREEN}${BOLD}  ✅  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "$label" "$port" "$url"
+    printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "$label" "$port" "$url"
   else
-    printf "  ${RED}${BOLD}  ❌  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}not yet ready${RESET}\n" "$label" "$port"
+    printf "  ${RED}${BOLD}  [ERROR]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}not yet ready${RESET}\n" "$label" "$port"
   fi
 }
 
@@ -308,15 +308,15 @@ print_status_table() {
   service_status_line "HITL Service"        3009         "http://localhost:3009 (internal)"
   service_status_line "LangChain Agent"     8888         "http://localhost:8888 (internal)"
   if port_listening ${UI_PORT}; then
-    printf "  ${GREEN}${BOLD}  ✅  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
+    printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
   else
-    printf "  ${YELLOW}  ⏳  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}compiling… %s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
+    printf "  ${YELLOW}  [WAIT]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}compiling… %s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
   fi
 }
 
 # ── Subcommand: stop ─────────────────────────────────────────────────────────
 cmd_stop() {
-  echo "🛑 Stopping Banking services (run-bank.sh)..."
+  echo "[STOP] Stopping Banking services (run-bank.sh)..."
   set +e
   for pid_file in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_AGENT" "$PID_UI"; do
     if [[ -f "$pid_file" ]]; then
@@ -334,14 +334,14 @@ cmd_stop() {
   sleep 1
   force_kill_listeners_on_banking_ports
   set -euo pipefail
-  echo "✅ All Banking listeners stopped (or none were running)."
+  echo "[OK] All Banking listeners stopped (or none were running)."
 }
 
 # ── Subcommand: test ─────────────────────────────────────────────────────────
 cmd_test() {
   echo ""
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-  echo -e "${CYAN}${BOLD}   🏦  SUPER BANK — TEST SUITE                                   ${RESET}"
+  echo -e "${CYAN}${BOLD}   [BANK]  SUPER BANK — TEST SUITE                                   ${RESET}"
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
   echo ""
 
@@ -395,7 +395,7 @@ cmd_test() {
 cmd_help() {
   echo ""
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-  echo -e "${CYAN}${BOLD}   🏦  SUPER BANK BANKING DEMO — run-bank.sh                      ${RESET}"
+  echo -e "${CYAN}${BOLD}   [BANK]  SUPER BANK BANKING DEMO — run-bank.sh                      ${RESET}"
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
   echo ""
   echo -e "${WHITE}${BOLD}  Usage:${RESET} ./run-bank.sh <command>"
@@ -445,16 +445,16 @@ case "${COMMAND}" in
   status)
     echo ""
     echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-    echo -e "${CYAN}${BOLD}   🏦  SUPER BANK — SERVICE STATUS                                ${RESET}"
+    echo -e "${CYAN}${BOLD}   [BANK]  SUPER BANK — SERVICE STATUS                                ${RESET}"
     echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
     print_status_table
     echo ""
     echo -e "${GREEN}${BOLD}  ┌─ URLS ──────────────────────────────────────────────────────┐${RESET}"
-    echo -e "${GREEN}${BOLD}  │${RESET}  🌐  App           ${YELLOW}${BOLD}${CLIENT_URL}${RESET}"
-    echo -e "${GREEN}${BOLD}  │${RESET}  ⚙️   Admin Config  ${YELLOW}${BOLD}${CLIENT_URL}/config${RESET}"
-    echo -e "${GREEN}${BOLD}  │${RESET}  🔐  Admin Login   ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/login${RESET}"
-    echo -e "${GREEN}${BOLD}  │${RESET}  👤  User Login    ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/user/login${RESET}"
+    echo -e "${GREEN}${BOLD}  │${RESET}  [WEB]  App           ${YELLOW}${BOLD}${CLIENT_URL}${RESET}"
+    echo -e "${GREEN}${BOLD}  │${RESET}  [CONFIG]   Admin Config  ${YELLOW}${BOLD}${CLIENT_URL}/config${RESET}"
+    echo -e "${GREEN}${BOLD}  │${RESET}  [SSL]  Admin Login   ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/login${RESET}"
+    echo -e "${GREEN}${BOLD}  │${RESET}  [USER]  User Login    ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/user/login${RESET}"
     echo -e "${GREEN}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
     echo ""
     echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
@@ -463,7 +463,7 @@ case "${COMMAND}" in
     ;;
   mcp-traffic|mcp-watch)
     if [[ ! -f "${LOG_MCP_TRAFFIC}" ]]; then echo "No MCP traffic log yet. Start services first." >&2; exit 1; fi
-    echo "📡 MCP Traffic Log — Ctrl+C to stop"
+    echo "[TRAFFIC] MCP Traffic Log — Ctrl+C to stop"
     tail -f "${LOG_MCP_TRAFFIC}"
     exit 0
     ;;
@@ -504,7 +504,7 @@ for _chk_port in ${API_PORT} ${UI_PORT} 8080 8888; do
   fi
 done
 if [[ "$_any_running" == "true" ]]; then
-  echo -e "${YELLOW}  ⟳  Stopping existing Banking services…${RESET}"
+  echo -e "${YELLOW}  [SPIN]  Stopping existing Banking services…${RESET}"
   set +e
   for _pf in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_AGENT" "$PID_UI"; do
     if [[ -f "$_pf" ]]; then
@@ -517,20 +517,20 @@ if [[ "$_any_running" == "true" ]]; then
   sleep 1
   force_kill_listeners_on_banking_ports
   set -euo pipefail
-  echo -e "${GREEN}  ✅  Previous services stopped.${RESET}"
+  echo -e "${GREEN}  [OK]  Previous services stopped.${RESET}"
   echo ""
 fi
 
 # ── Dependency check ─────────────────────────────────────────────────────────
 for svc in banking_api_server banking_mcp_server banking_api_ui; do
   if [[ ! -d "$BASEDIR/$svc/node_modules" ]]; then
-    echo "📦 Installing dependencies for $svc..."
+    echo "[PKG] Installing dependencies for $svc..."
     (cd "$BASEDIR/$svc" && npm install)
   fi
 done
 
 # ── Banking API Server (Express) on :3001 ────────────────────────────────────
-echo "🚀 Starting Banking API Server on ${API_HOST}:${API_PORT}..."
+echo "[LAUNCH] Starting Banking API Server on ${API_HOST}:${API_PORT}..."
 (
   cd "$BASEDIR/banking_api_server"
   PORT=${API_PORT} \
@@ -546,7 +546,7 @@ sleep 1
 
 # ── Banking MCP Server on :8080 ──────────────────────────────────────────────
 if [[ -d "$BASEDIR/banking_mcp_server" ]]; then
-  echo "🤖 Starting Banking MCP Server on :8080..."
+  echo "[BOT] Starting Banking MCP Server on :8080..."
   (
     cd "$BASEDIR/banking_mcp_server"
     cp .env.development .env 2>/dev/null || true
@@ -557,7 +557,7 @@ fi
 
 # ── MCP Gateway on :3005 (Phase 243) ────────────────────────────────────────────
 if [[ -d "$BASEDIR/banking_mcp_gateway" ]]; then
-  echo "🛡️  Starting MCP Gateway on :3005..."
+  echo "[SHIELD]  Starting MCP Gateway on :3005..."
   (
     cd "$BASEDIR/banking_mcp_gateway"
     [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
@@ -569,7 +569,7 @@ fi
 
 # ── HITL Service on :3009 ───────────────────────────────────────────────────
 if [[ -d "$BASEDIR/banking_hitl_service" ]]; then
-  echo "🔔 Starting HITL Service on :3009..."
+  echo "[ALERT] Starting HITL Service on :3009..."
   (
     cd "$BASEDIR/banking_hitl_service"
     [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
@@ -580,7 +580,7 @@ fi
 
 # ── Agent Service on :3006 ──────────────────────────────────────────────────
 if [[ -d "$BASEDIR/banking_agent_service" ]] && [[ -f "$BASEDIR/banking_agent_service/dist/index.js" ]]; then
-  echo "🤝 Starting Agent Service on :3006..."
+  echo "[CONNECT] Starting Agent Service on :3006..."
   (
     cd "$BASEDIR/banking_agent_service"
     [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
@@ -591,7 +591,7 @@ fi
 
 # ── MCP Invest Server on :8081 ──────────────────────────────────────────────
 if [[ -d "$BASEDIR/banking_mcp_invest" ]] && [[ -f "$BASEDIR/banking_mcp_invest/dist/index.js" ]]; then
-  echo "📈 Starting MCP Invest Server on :8081..."
+  echo "[INVEST] Starting MCP Invest Server on :8081..."
   (
     cd "$BASEDIR/banking_mcp_invest"
     [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
@@ -602,7 +602,7 @@ fi
 
 # ── HITL Service on :3009 ───────────────────────────────────────────────────
 if [[ -d "$BASEDIR/banking_hitl_service" ]]; then
-  echo "🔔 Starting HITL Service on :3009..."
+  echo "[ALERT] Starting HITL Service on :3009..."
   (
     cd "$BASEDIR/banking_hitl_service"
     [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
@@ -613,7 +613,7 @@ fi
 
 # ── Agent Service on :3006 ──────────────────────────────────────────────────
 if [[ -d "$BASEDIR/banking_agent_service" ]] && [[ -f "$BASEDIR/banking_agent_service/dist/index.js" ]]; then
-  echo "🤝 Starting Agent Service on :3006..."
+  echo "[CONNECT] Starting Agent Service on :3006..."
   (
     cd "$BASEDIR/banking_agent_service"
     [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
@@ -624,7 +624,7 @@ fi
 
 # ── MCP Invest Server on :8081 ──────────────────────────────────────────────
 if [[ -d "$BASEDIR/banking_mcp_invest" ]] && [[ -f "$BASEDIR/banking_mcp_invest/dist/index.js" ]]; then
-  echo "📈 Starting MCP Invest Server on :8081..."
+  echo "[INVEST] Starting MCP Invest Server on :8081..."
   (
     cd "$BASEDIR/banking_mcp_invest"
     [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
@@ -637,7 +637,7 @@ fi
 if [[ -f "$BASEDIR/langchain_agent/main.py" ]] || [[ -f "$BASEDIR/langchain_agent/server.py" ]]; then
   ENTRY="main"
   [[ -f "$BASEDIR/langchain_agent/server.py" ]] && ENTRY="server"
-  echo "🔗 Starting LangChain Agent on :8888 (HTTPS if certs available)..."
+  echo "[CHAIN] Starting LangChain Agent on :8888 (HTTPS if certs available)..."
   (
     cd "$BASEDIR/langchain_agent"
     [[ -d venv ]] && source venv/bin/activate
@@ -657,7 +657,7 @@ fi
 # REACT_APP_API_URL   → used by apiClient.js for absolute axios calls
 # HOST                → binds CRA dev server to 0.0.0.0 so api.pingdemo.com resolves
 # DANGEROUSLY_DISABLE_HOST_CHECK → allows non-localhost hostnames in CRA dev
-echo "🌐 Starting Banking UI on ${CLIENT_URL}..."
+echo "[WEB] Starting Banking UI on ${CLIENT_URL}..."
 (
   cd "$BASEDIR/banking_api_ui"
   HOST=0.0.0.0 \
@@ -678,7 +678,7 @@ echo $! > "$PID_UI"
 # ── Banner + health check ────────────────────────────────────────────────────
 echo ""
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo -e "${CYAN}${BOLD}   🏦  SUPER BANK BANKING DEMO — STARTING                         ${RESET}"
+echo -e "${CYAN}${BOLD}   [BANK]  SUPER BANK BANKING DEMO — STARTING                         ${RESET}"
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
 echo -e "${DIM}  Waiting for Banking API and MCP Server to come up…${RESET}"
@@ -687,34 +687,34 @@ wait_for_port "${API_PORT}" 25 >/dev/null
 wait_for_port 8080 25 >/dev/null
 sleep 1   # give LangChain agent a moment too
 
-echo -e "${GREEN}${BOLD}  🗑️  DEMO STATE CLEARED${RESET} — all in-memory state reset on startup:"
+echo -e "${GREEN}${BOLD}  [CLEAR]  DEMO STATE CLEARED${RESET} — all in-memory state reset on startup:"
 echo -e "${DIM}      Token chain · App events · MCP audit · Pending consents${RESET}"
 
 echo ""
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo -e "${CYAN}${BOLD}   🏦  SUPER BANK BANKING DEMO — STATUS                           ${RESET}"
+echo -e "${CYAN}${BOLD}   [BANK]  SUPER BANK BANKING DEMO — STATUS                           ${RESET}"
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
 print_status_table
 echo ""
 echo -e "${MAGENTA}${BOLD}  ┌─ PORTS ─────────────────────────────────────────────────────┐${RESET}"
-echo -e "${MAGENTA}${BOLD}  │${RESET}  🔌  Banking API Server        :${API_PORT}  ${YELLOW}(HTTPS)${RESET}"
-echo -e "${MAGENTA}${BOLD}  │${RESET}  🌐  Banking UI (React)        :${UI_PORT}  ${YELLOW}(HTTPS)${RESET}"
-echo -e "${MAGENTA}${BOLD}  │${RESET}  🤖  Banking MCP Server        :8080  ${YELLOW}(WebSocket)${RESET}"
-echo -e "${MAGENTA}${BOLD}  │${RESET}  🔗  LangChain Agent           :8888  ${YELLOW}(HTTP/HTTPS)${RESET}"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  [PORT]  Banking API Server        :${API_PORT}  ${YELLOW}(HTTPS)${RESET}"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  [WEB]  Banking UI (React)        :${UI_PORT}  ${YELLOW}(HTTPS)${RESET}"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  [BOT]  Banking MCP Server        :8080  ${YELLOW}(WebSocket)${RESET}"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  [CHAIN]  LangChain Agent           :8888  ${YELLOW}(HTTP/HTTPS)${RESET}"
 echo -e "${MAGENTA}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
 echo ""
 echo -e "${GREEN}${BOLD}  ┌─ URLS ──────────────────────────────────────────────────────┐${RESET}"
-echo -e "${GREEN}${BOLD}  │${RESET}  🌐  App            ${YELLOW}${BOLD}${CLIENT_URL}${RESET}"
-echo -e "${GREEN}${BOLD}  │${RESET}  ⚙️   Admin Config   ${YELLOW}${BOLD}${CLIENT_URL}/config${RESET}"
-echo -e "${GREEN}${BOLD}  │${RESET}  🔐  Admin Login    ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/login${RESET}"
-echo -e "${GREEN}${BOLD}  │${RESET}  👤  User Login     ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/user/login${RESET}"
+echo -e "${GREEN}${BOLD}  │${RESET}  [WEB]  App            ${YELLOW}${BOLD}${CLIENT_URL}${RESET}"
+echo -e "${GREEN}${BOLD}  │${RESET}  [CONFIG]   Admin Config   ${YELLOW}${BOLD}${CLIENT_URL}/config${RESET}"
+echo -e "${GREEN}${BOLD}  │${RESET}  [SSL]  Admin Login    ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/login${RESET}"
+echo -e "${GREEN}${BOLD}  │${RESET}  [USER]  User Login     ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/user/login${RESET}"
 echo -e "${GREEN}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
 echo ""
 echo -e "${MAGENTA}${BOLD}  ┌─ QUICK START ───────────────────────────────────────────────┐${RESET}"
 echo -e "${MAGENTA}${BOLD}  │${RESET}  1. Open ${YELLOW}${CLIENT_URL}/config${RESET} → enter PingOne credentials"
 echo -e "${MAGENTA}${BOLD}  │${RESET}  2. Open ${YELLOW}${CLIENT_URL}${RESET} → click ${WHITE}${BOLD}Login${RESET} to start an OAuth flow"
-echo -e "${MAGENTA}${BOLD}  │${RESET}  3. After login: use the 🤖 FAB (bottom-right) for BankingAgent"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  3. After login: use the [BOT] FAB (bottom-right) for BankingAgent"
 echo -e "${MAGENTA}${BOLD}  │${RESET}     Ask: balance, accounts, transactions, transfer, withdraw"
 echo -e "${MAGENTA}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
 echo ""

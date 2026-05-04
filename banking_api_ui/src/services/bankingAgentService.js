@@ -545,7 +545,7 @@ async function callRestTransaction(body) {
       new Error(
         data.message || data.error || `Transaction failed: ${res.status}`,
       ),
-      { statusCode: res.status, code: data.error },
+      { statusCode: res.status, code: data.error, data },
     );
     throw e;
   }
