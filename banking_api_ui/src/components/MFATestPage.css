@@ -378,7 +378,7 @@
 .device-contact {
 	color: #64748b;
 	font-size: 0.85rem;
-	font-family: 'Courier New', monospace;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .device-type {
@@ -993,7 +993,7 @@
 
 .mfa-test-card__endpoint {
 	flex: 1;
-	font-family: 'Monaco', 'Menlo', monospace;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 	color: #333;
 	font-size: 0.8rem;
 	word-break: break-all;

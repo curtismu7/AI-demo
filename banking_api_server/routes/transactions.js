@@ -220,8 +220,19 @@ router.post(
   '/consent-challenge/:challengeId/initiate-mfa',
   authenticateToken,
   async (req, res) => {
+    console.log(`[DEBUG-INITIATE-MFA] POST /consent-challenge/:challengeId/initiate-mfa
+  challengeId: ${req.params.challengeId}
+  user.id: ${req.user?.id}
+  user.role: ${req.user?.role}
+  sessionId: ${req.sessionID}
+  hasSession: ${!!req.session}
+  hasOAuthTokens: ${!!req.session?.oauthTokens}
+  hasAccessToken: ${!!req.session?.oauthTokens?.accessToken}`);
     const result = await txConsent.initiateMfaChallenge(req, req.params.challengeId);
-    if (!result.ok) return res.status(result.status).json(result.json);
+    if (!result.ok) {
+      console.log(`[DEBUG-INITIATE-MFA] ERROR: ${result.status} ${result.json?.error}`);
+      return res.status(result.status).json(result.json);
+    }
     req.session.save((saveErr) => {
       if (saveErr) console.error('[ConsentChallenge] session save error (initiate-mfa):', saveErr);
       return res.status(200).json({
@@ -434,16 +445,34 @@ router.post('/', authenticateToken, async (req, res) => {
       ['deposit', 'withdrawal', 'transfer'].includes(type) &&
       (type === 'transfer' || hitlAmount > txConsent.HIGH_VALUE_CONSENT_USD);
 
-    console.log(`[HITL] Checking: type=${type}, amount=$${hitlAmount}, enabled=${hitlEnabled}, role=${req.user.role}, isTransfer=${type === 'transfer'}, requiresHitl=${requiresHitl}`);
+    console.log(`[DEBUG-HITL-CHECK] 🔍 HITL DECISION POINT:
+  type=${type}
+  amount=$${hitlAmount}
+  enabled=${hitlEnabled}
+  role=${req.user.role}
+  isTransfer=${type === 'transfer'}
+  requiresHitl=${requiresHitl}`);
 
     if (requiresHitl) {
       if (!req.body.consentChallengeId) {
-        console.log(`[HITL] Returning 428 - consentChallengeId required (error: consent_challenge_required)`);
+        console.log(`[DEBUG-HITL-ERROR] ❌ HITL REQUIRED - Returning error: consent_challenge_required
+  reason: No consentChallengeId provided
+  status: 428
+  type: ${type}
+  amount: $${hitlAmount}`);
         return res.status(428).json({
           error: 'consent_challenge_required',
           error_description: type === 'transfer'
             ? 'All transfers require explicit HITL approval. Create a consent challenge first.'
             : `Transactions over $${txConsent.HIGH_VALUE_CONSENT_USD} require explicit HITL approval. Create a consent challenge first.`,
+          debug_hitl_check: true,
+          debug_type: type,
+          debug_amount: hitlAmount,
+          // Include transaction details for consent challenge creation
+          fromAccountId: fromAccountId || null,
+          toAccountId: toAccountId || null,
+          amount: hitlAmount,
+          type: type,
         });
       }
       console.log(`[HITL] Verifying consentChallengeId: ${req.body.consentChallengeId}`);
@@ -505,11 +534,28 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
 
+    console.log(`[DEBUG-STEPUP-CHECK] 🔍 STEP-UP DECISION POINT:
+  enabled=${STEP_UP_ENABLED}
+  role=${req.user.role}
+  type=${type}
+  inStepUpTypes=${STEP_UP_TYPES.includes(type)}
+  amount=${amount}
+  threshold=${STEP_UP_THRESHOLD}
+  amountExceedsThreshold=${parseFloat(amount) >= STEP_UP_THRESHOLD}
+  userAcr=${req.user.acr}
+  requiredAcr=${STEP_UP_ACR}`);
+
     if (STEP_UP_ENABLED && req.user.role !== 'admin' && STEP_UP_TYPES.includes(type) && parseFloat(amount) >= STEP_UP_THRESHOLD) {
       const userAcr = req.user.acr;
       if (!userAcr || userAcr !== STEP_UP_ACR) {
         const stepUpMethod = configStore.getEffective('step_up_method') || runtimeSettings.get('stepUpMethod') || 'ciba';
-        console.log(`[StepUp] Amount ${amount} exceeds threshold ${STEP_UP_THRESHOLD}. User ACR: ${userAcr}. Requiring step-up. Method: ${stepUpMethod}`);
+        console.log(`[DEBUG-STEPUP-ERROR] ❌ STEP-UP REQUIRED - Returning error: step_up_required
+  reason: User ACR (${userAcr}) does not match required ACR (${STEP_UP_ACR})
+  status: 428
+  type: ${type}
+  amount: $${amount}
+  threshold: $${STEP_UP_THRESHOLD}
+  method: ${stepUpMethod}`);
         const hitlAmount = parseFloat(req.body.amount);
         const isHITL = hitlAmount > txConsent.HIGH_VALUE_CONSENT_USD;
         return res.status(428).json({
@@ -520,6 +566,9 @@ router.post('/', authenticateToken, async (req, res) => {
           step_up_url: '/api/auth/oauth/user/stepup',
           amount_threshold: STEP_UP_THRESHOLD,
           isHITL: isHITL,
+          debug_stepup_check: true,
+          debug_type: type,
+          debug_amount: hitlAmount,
         });
       }
     }

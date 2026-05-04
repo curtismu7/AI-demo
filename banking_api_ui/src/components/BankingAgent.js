@@ -3757,14 +3757,51 @@ export default function BankingAgent({
         if (tokenChain && tokenEventsErr.length > 0) {
           tokenChain.setTokenEvents(actionId, tokenEventsErr);
         }
+
+        console.log(`[DEBUG-FRONTEND-ERROR] 🔍 RECEIVED ERROR FROM MCP:
+  normalized.error: ${normalized.error}
+  normalized.consent_challenge_required: ${normalized.consent_challenge_required}
+  normalized.step_up_required: ${normalized.step_up_required}
+  normalized.hitl_threshold_usd: ${normalized.hitl_threshold_usd}
+  normalized.amount_threshold: ${normalized.amount_threshold}
+  normalized.debug_mcp_consent_handler: ${normalized.debug_mcp_consent_handler}
+  normalized.debug_mcp_stepup_handler: ${normalized.debug_mcp_stepup_handler}
+  full normalized: ${JSON.stringify(normalized)}`);
+
         const consent =
           normalized.consent_challenge_required === true ||
           normalized.error === "consent_challenge_required";
+
+        console.log(`[DEBUG-FRONTEND-DECISION] 📍 DECISION POINT:
+  consent=${consent}
+  will show consent modal: ${consent}
+  will show stepup modal: ${!consent && (normalized.step_up_required === true || normalized.error === "step_up_required")}`);
+
         if (consent) {
           try {
             agentFlowDiagram.markHitlPreConsent();
           } catch (_) {}
-          const intentPayload = buildConsentIntent(actionId, form);
+
+          // Build intent from MCP error response (which includes amount, accounts, type)
+          // Fall back to form object if MCP response doesn't have the details
+          let intentPayload;
+          if (normalized.amount !== undefined && normalized.fromAccountId) {
+            console.log(`[DEBUG-FRONTEND-INTENT] 📋 Building consent intent from MCP error response:
+  amount: $${normalized.amount}
+  fromAccountId: ${normalized.fromAccountId}
+  toAccountId: ${normalized.toAccountId}
+  type: ${normalized.type}`);
+            intentPayload = {
+              type: normalized.type || 'transfer',
+              fromAccountId: normalized.fromAccountId || normalized.from_account_id,
+              toAccountId: normalized.toAccountId || normalized.to_account_id,
+              amount: normalized.amount,
+              description: form.note || `Agent ${normalized.type || 'transfer'}`,
+            };
+          } else {
+            console.log(`[DEBUG-FRONTEND-INTENT] 📋 Building consent intent from form object`);
+            intentPayload = buildConsentIntent(actionId, form);
+          }
           if (!intentPayload) {
             // Unexpected: consent required but no intent builder for this action.
             addMessage(
@@ -6145,13 +6182,15 @@ export default function BankingAgent({
                       setHitlPendingIntent(null);
                       return;
                     }
-                    setHitlPendingIntent(null);
                     // Pass snapshot from POST response directly — avoids GET race on Vercel
+                    // Store the original form so we can re-fire the tool with consentChallengeId
                     setHitlChallengeId({
                       challengeId: cid,
                       actionId,
                       snapshot: data.snapshot || null,
+                      form: hitlPendingIntent.form || {},
                     });
+                    setHitlPendingIntent(null);
                   } catch (ex) {
                     const msg =
                       ex.response?.data?.message ||
@@ -6564,20 +6603,23 @@ export default function BankingAgent({
                 user={effectiveUser}
                 onClose={() => setHitlChallengeId(null)}
                 onTransactionSuccess={(msg) => {
-                  const { actionId } = hitlChallengeId;
+                  const { actionId, challengeId, form } = hitlChallengeId;
                   setHitlChallengeId(null);
                   addMessage(
                     "assistant",
-                    `✅ Transaction approved and completed.\n\n${msg}`,
+                    `👤 Consent verified.\n\nNow checking for additional verification requirements...`,
                     actionId,
                   );
-                  notifySuccess(`✅ ${msg}`);
-                  // Notify UserDashboard to refresh accounts if it happens to be mounted
-                  window.dispatchEvent(
-                    new CustomEvent("banking-agent-hitl-confirmed", {
-                      detail: { actionId, successMsg: msg },
-                    }),
-                  );
+                  // Re-fire the original tool with consentChallengeId so API can check step-up
+                  // If step-up is required, the tool will return step_up_required error
+                  // Otherwise, the transaction will complete
+                  const formWithConsent = {
+                    ...form,
+                    consentChallengeId: challengeId,
+                  };
+                  setTimeout(() => {
+                    runActionRef.current(actionId, formWithConsent, { isRefire: true });
+                  }, 500);
                 }}
                 onDeclinedConfirmed={() => {
                   setHitlChallengeId(null);

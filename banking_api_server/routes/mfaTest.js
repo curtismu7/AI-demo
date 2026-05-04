@@ -249,14 +249,40 @@ async function _tryRefresh(req) {
  * Test userId comes from: req.body.userId > MFA_TEST_USER_ID env > bankuser default.
  */
 const MFA_TEST_USER_ID = process.env.MFA_TEST_USER_ID || '6689a774-46af-4198-a6ff-38198dc341ac';
-const MFA_TEST_USER_EMAIL = process.env.MFA_TEST_USER_EMAIL || 'cmuir+bankuser@pingone.com';
 
+/**
+ * For DEVICE AUTHENTICATION (select-device, verify-otp).
+ * MUST use the user's own access token — worker tokens don't match user context.
+ */
 async function _resolveCredentials(req) {
-  // Explicit userId override from body or query (for testing other users)
+  // oauthId is the PingOne UUID; id may be a legacy numeric key on bootstrap users
+  const sessionUserId = req.session?.user?.oauthId || req.session?.user?.id;
+  const sessionToken = req.session?.oauthTokens?.accessToken;
+  if (!sessionUserId || !sessionToken) {
+    throw new Error(
+      'Device authentication requires an active session. ' +
+      'Please login to PingOne first via /dashboard, then return to MFA test page.'
+    );
+  }
+
+  return {
+    userId: sessionUserId,
+    accessToken: sessionToken,
+    email: req.session.user?.email,
+    source: 'session',
+  };
+}
+
+/**
+ * For DEVICE ENROLLMENT (enroll-sms, enroll-fido2).
+ * Can use worker token to register devices on behalf of users.
+ * Supports userId override to enroll devices for specific test users.
+ */
+async function _resolveCredentialsForEnrollment(req) {
   const overrideUserId = req.body?.userId || req.query?.userId;
 
   if (overrideUserId) {
-    // Override mode: use worker token for the specified user
+    // Enrollment mode: use worker token for the specified user
     const workerToken = await mfaService.getWorkerToken();
     return {
       userId: overrideUserId,
@@ -267,7 +293,6 @@ async function _resolveCredentials(req) {
   }
 
   // Prefer session credentials if available
-  // oauthId is the PingOne UUID; id may be a legacy numeric key on bootstrap users
   const sessionUserId = req.session?.user?.oauthId || req.session?.user?.id;
   const sessionToken = req.session?.oauthTokens?.accessToken;
   if (sessionUserId && sessionToken) {
@@ -278,11 +303,15 @@ async function _resolveCredentials(req) {
       source: 'session',
     };
   }
-  // Fall back to worker token + configurable test user
+
+  // Fall back to worker token + test user
   const workerToken = await mfaService.getWorkerToken();
-  const userId = MFA_TEST_USER_ID;
-  const email = MFA_TEST_USER_EMAIL;
-  return { userId, accessToken: workerToken, email, source: 'worker' };
+  return {
+    userId: MFA_TEST_USER_ID,
+    accessToken: workerToken,
+    email: null,
+    source: 'worker',
+  };
 }
 
 
@@ -679,7 +708,7 @@ router.get('/integration/challenge/:daId/status', async (req, res) => {
  */
 router.post('/integration/enroll-sms-init', async (req, res) => {
   try {
-    const { userId, accessToken } = await _resolveCredentials(req);
+    const { userId, accessToken } = await _resolveCredentialsForEnrollment(req);
     const { phone } = req.body;
     if (!phone) {
       return res.status(400).json({ success: false, error: 'missing_phone', message: 'Provide phone in E.164 format e.g. +15551234567.' });
@@ -781,7 +810,7 @@ router.post('/integration/enroll-sms-complete', async (req, res) => {
  */
 router.post('/integration/enroll-email', async (req, res) => {
   try {
-    const { userId, email: sessionEmail } = await _resolveCredentials(req);
+    const { userId, email: sessionEmail } = await _resolveCredentialsForEnrollment(req);
     const emailToUse = req.body?.email || sessionEmail;
     if (!userId || !emailToUse) {
       return res.status(400).json({ success: false, error: 'missing_user', message: 'No user or email available for enrollment.' });
@@ -836,7 +865,7 @@ router.post('/integration/enroll-email', async (req, res) => {
  */
 router.post('/integration/enroll-fido2-init', async (req, res) => {
   try {
-    const { userId } = await _resolveCredentials(req);
+    const { userId } = await _resolveCredentialsForEnrollment(req);
     const _t5 = Date.now();
     // Check for existing active FIDO2 devices — PingOne only allows one active device per RP.
     // If one exists, surface it clearly so the user can delete it before re-enrolling.
@@ -912,7 +941,7 @@ router.post('/integration/enroll-fido2-init', async (req, res) => {
  */
 router.post('/integration/enroll-fido2-complete', async (req, res) => {
   try {
-    const { userId } = await _resolveCredentials(req);
+    const { userId } = await _resolveCredentialsForEnrollment(req);
     const { deviceId, attestation, origin } = req.body;
     if (!deviceId || !attestation) {
       return res.status(400).json({ success: false, error: 'invalid_body', message: 'Provide deviceId and attestation.' });

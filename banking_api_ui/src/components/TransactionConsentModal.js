@@ -254,16 +254,16 @@ export default function TransactionConsentModal({
    */
   /**
    * Step 1 — user agrees and clicks "Agree & send code".
-   * Calls /initiate-mfa to start P1MFA device selection.
+   * Calls /confirm which generates OTP and sends email.
    */
   const handleConfirm = async () => {
     if (!agreed || submitting || !snapshot || !challengeId || !user?.id) return;
     setSubmitting(true);
     try {
       const { data } = await bffAxios.post(
-        `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/initiate-mfa`
+        `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/confirm`
       );
-      setMfaDevices(data.devices || []);
+      setOtpExpiresAt(data.otpExpiresAt || null);
       setMfaStep(true);
     } catch (e) {
       const d = e.response?.data;
@@ -328,25 +328,11 @@ export default function TransactionConsentModal({
         `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/verify-otp`,
         { otpCode }
       );
-      // Execute transaction
-      await bffAxios.post('/api/transactions', {
-        type: snapshot.type,
-        amount: snapshot.amount,
-        fromAccountId: snapshot.fromAccountId,
-        toAccountId: snapshot.toAccountId,
-        description: snapshot.description,
-        userId: user.id,
-        consentChallengeId: challengeId,
-      });
+      // OTP verified! Close modal and let the original tool be re-fired with consentChallengeId
+      // The tool call will now pass HITL check and proceed to step-up if needed
       setAgentBlockedByConsentDecline(false);
-      notifySuccess('✅ Transaction verified and completed.');
-      const successMsg =
-        snapshot.type === 'transfer'
-          ? 'Transfer completed successfully.'
-          : snapshot.type === 'deposit'
-            ? 'Deposit completed successfully.'
-            : 'Withdrawal completed successfully.';
-      onTransactionSuccess(successMsg);
+      notifySuccess('✅ Consent verified. Proceeding with transaction...');
+      onTransactionSuccess('Consent verified. Checking if additional verification is needed...');
     } catch (e) {
       const status = e.response?.status;
       const d = e.response?.data;

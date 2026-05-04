@@ -22,6 +22,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **MFA Test Page — fixed 403 auth errors on device selection** — device authentication (select-device, verify-otp) now uses the logged-in user's session token instead of worker tokens; worker tokens lack user context for device auth challenges, causing "Invalid Authorization header" errors from PingOne; device enrollment endpoints (enroll-sms, enroll-email, enroll-fido2) still use worker tokens for admin operations. Users can now test MFA with their logged-in session; to test as a different user, logout and login to PingOne as that user first.
 - **MFA Test Page — auto-select device in SMS/Email OTP tests** — SMS and Email OTP authentication now automatically selects the device after initiation, triggering the OTP send. Previously, users had to manually select a device; now both initiate and select-device API calls are shown with full request/response details, matching the actual PingOne MFA authentication flow.
 - **MFA Test Page — fixed duplicate 'Delete' text in FIDO2 button** — button label now correctly reads "Delete & Re-enroll" instead of "Delete Delete & Re-enroll".
 - **Demo Controls — wireup verification for may_act diagnose endpoint** — ThresholdControls.js now correctly parses `/api/demo/may-act/diagnose` response (checks.userAttribute.pass) instead of expecting non-existent `attributeSet` field; UI toggle button now shows correct may_act status on load.
