@@ -116,7 +116,7 @@ async function initiateDeviceAuth(userId, userAccessToken) {
 			throw e;
 		}
 	}
-	const url = `${_authBaseUrl()}/deviceAuthentications`;
+	const url = `${_authBaseUrl()}/deviceAuthentications?expand=embedded`;
 	const reqBody = { user: { id: userId }, policy: { id: policyId } };
 	const debugRequest = {
 		method: "POST",
@@ -140,7 +140,7 @@ async function initiateDeviceAuth(userId, userAccessToken) {
 			err._debug = { request: debugRequest, response: err.response?.data || null };
 			throw err;
 		}
-		console.log("[MFA] initiated deviceAuth daId=%s status=%s", data.id, data.status);
+		console.log("[MFA] initiated deviceAuth daId=%s status=%s devices=%d", data.id, data.status, data._embedded?.devices?.length || 0);
 		return { ...data, _debug: { request: debugRequest, response: data } };
 	} catch (err) {
 		throw _wrapError("initiateDeviceAuth", err);
