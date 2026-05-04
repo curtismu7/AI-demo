@@ -164,8 +164,7 @@ export default function MFATestPage() {
 		try {
 			setDevicesStatus("pending");
 			setDevicesError(null);
-			const params = testUserId ? `?userId=${encodeURIComponent(testUserId)}` : "";
-			const { data } = await apiClient.get(`/api/mfa/test/integration/devices${params}`);
+			const { data } = await apiClient.get(`/api/mfa/test/integration/devices`);
 			setRawDevices(data);
 			if (data.pingoneRequest) setDevicesPingoneReq(data.pingoneRequest);
 			if (data.pingoneResponse) setDevicesPingoneRes(data.pingoneResponse);
@@ -182,14 +181,13 @@ export default function MFATestPage() {
 			setDevicesStatus("failed");
 			setDevicesError(err.message);
 		}
-	}, [testUserId]);
+	}, []);
 
 	const deleteDevice = useCallback(async (deviceId) => {
 		if (!deviceId) return;
 		setDeletingDeviceId(deviceId);
 		try {
-			const params = testUserId ? `?userId=${encodeURIComponent(testUserId)}` : "";
-			await apiClient.delete(`/api/mfa/test/integration/devices/${deviceId}${params}`);
+			await apiClient.delete(`/api/mfa/test/integration/devices/${deviceId}`);
 			notifySuccess("Device deleted");
 			setExistingFido2Device(null);
 			setFidoEnrollData(null);
@@ -202,7 +200,7 @@ export default function MFATestPage() {
 		} finally {
 			setDeletingDeviceId(null);
 		}
-	}, [testUserId, loadDevices]);
+	}, [loadDevices]);
 
 	const loadWorkerToken = useCallback(async () => {
 		try {

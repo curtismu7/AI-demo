@@ -7,6 +7,7 @@ import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { useDraggablePanel } from '../hooks/useDraggablePanel';
+import DeviceSelector from './DeviceSelector';
 import '../styles/draggablePanel.css';
 import './TransactionConsentPage.css';
 
@@ -401,7 +402,7 @@ export default function TransactionConsentModal({
           }}
         >
           <h2 id="transaction-consent-popup-title" className="transaction-consent-popup__title" style={{ margin: 0 }}>
-            {otpStep ? '🔒 Enter verification code' : mfaStep ? '📱 Select verification method' : 'Approve high-value transaction'}
+            {otpStep ? 'Enter verification code' : mfaStep ? 'Select verification method' : 'Approve high-value transaction'}
           </h2>
         </div>
 
@@ -422,50 +423,13 @@ export default function TransactionConsentModal({
 
         {/* ── Device selection step ──────────────────────────────────────────── */}
         {mfaStep && !otpStep ? (
-          <div className="mfa-device-panel" style={{ padding: '2rem', textAlign: 'center' }}>
-            <p style={{ marginBottom: '1.5rem', color: '#475569' }}>
-              Select how you'd like to verify this transaction:
-            </p>
-            <div className="mfa-device-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {mfaDevices.map((device) => (
-                <button
-                  key={device.id}
-                  type="button"
-                  className={`mfa-device-btn${selectedDeviceId === device.id ? ' mfa-device-btn--selected' : ''}`}
-                  onClick={() => handleSelectDevice(device.id)}
-                  disabled={submitting}
-                  style={{
-                    padding: '1rem',
-                    border: selectedDeviceId === device.id ? '2px solid #3b82f6' : '1px solid #e2e8f0',
-                    borderRadius: '0.5rem',
-                    backgroundColor: selectedDeviceId === device.id ? '#eff6ff' : '#fff',
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    textAlign: 'left',
-                    fontWeight: selectedDeviceId === device.id ? 600 : 400,
-                    color: selectedDeviceId === device.id ? '#1e40af' : '#334155',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <span style={{ marginRight: '0.5rem' }}>
-                    {device.type === 'FIDO2' ? '🔐' : device.type === 'OTP' ? '🔢' : device.type === 'SMS' ? '📱' : '✓'}
-                  </span>
-                  {device.type === 'FIDO2' && 'Security Key (FIDO2)'}
-                  {device.type === 'OTP' && 'One-Time Code'}
-                  {device.type === 'SMS' && 'SMS Text Message'}
-                  {!['FIDO2', 'OTP', 'SMS'].includes(device.type) && `${device.type} (${device.id.slice(0, 8)})`}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="tx-otp-panel__back-btn"
-              onClick={() => { setMfaStep(false); setSelectedDeviceId(null); setMfaDevices([]); }}
-              disabled={submitting}
-              style={{ marginTop: '1.5rem' }}
-            >
-              ← Back
-            </button>
-          </div>
+          <DeviceSelector
+            devices={mfaDevices}
+            selectedDeviceId={selectedDeviceId}
+            onSelectDevice={handleSelectDevice}
+            onBack={() => { setMfaStep(false); setSelectedDeviceId(null); setMfaDevices([]); }}
+            disabled={submitting}
+          />
         ) : otpStep ? (
           <div className="tx-otp-panel">
             {otpSent ? (
@@ -481,7 +445,7 @@ export default function TransactionConsentModal({
               </>
             ) : otpFallbackCode ? (
               <div className="tx-otp-panel__lead tx-otp-panel__lead--warn">
-                <p style={{ margin: '0 0 0.5rem' }}>⚠️ Email delivery unavailable (PingOne Notifications not configured).</p>
+                <p style={{ margin: '0 0 0.5rem' }}>Email delivery unavailable (PingOne Notifications not configured).</p>
                 <p style={{ margin: '0 0 0.5rem' }}>Your verification code is:</p>
                 <div style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '0.25em', fontVariantNumeric: 'tabular-nums', color: '#0369a1', background: '#f0f9ff', border: '2px solid #0ea5e9', borderRadius: 8, padding: '0.5rem 1rem', display: 'inline-block', marginBottom: '0.5rem' }}>
                   {otpFallbackCode}
@@ -489,7 +453,7 @@ export default function TransactionConsentModal({
               </div>
             ) : (
               <p className="tx-otp-panel__lead tx-otp-panel__lead--warn">
-                ⚠️ Email delivery unavailable. Check server logs for the OTP code.
+                Email delivery unavailable. Check server logs for the OTP code.
               </p>
             )}
 
