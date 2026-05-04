@@ -154,8 +154,14 @@ async function initiateDeviceAuth(userId, userAccessToken) {
  * Status transitions: DEVICE_SELECTION_REQUIRED → OTP_REQUIRED | ASSERTION_REQUIRED | PUSH_CONFIRMATION_REQUIRED
  */
 async function selectDevice(daId, deviceId, userAccessToken) {
-	// Use worker token for device selection (matches PingOne MFA v1 API requirements)
-	const workerToken = await _getWorkerToken();
+	// Use provided token - can be user token or worker token depending on caller context
+	// Consent challenge flow: uses user's access token
+	// MFA test flow: can use worker token if available, falls back to user token
+	const token = userAccessToken || (await _getWorkerToken());
+	if (!token) {
+		throw new Error("selectDevice requires a token (user access token or worker token)");
+	}
+
 	const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
 
 	// PingOne device selection requires POST with custom content-type and specific body format
@@ -166,22 +172,22 @@ async function selectDevice(daId, deviceId, userAccessToken) {
 	const contentType = "application/vnd.pingidentity.device.select+json";
 
 	console.log(`[selectDevice] Full URL: ${url}`);
-	console.log(`[selectDevice] Method: POST (corrected from PUT)`);
+	console.log(`[selectDevice] Method: POST`);
 	console.log(`[selectDevice] Content-Type: ${contentType}`);
 	console.log(`[selectDevice] Request body: ${JSON.stringify(reqBody)}`);
-	console.log(`[selectDevice] Using worker token (len=${workerToken?.length || 0})`);
+	console.log(`[selectDevice] Using token (len=${token?.length || 0})`);
 
 	const debugRequest = {
 		method: "POST",
 		url: url,
 		body: reqBody,
 		contentType: contentType,
-		headers: _debugHeaders(workerToken, contentType),
+		headers: _debugHeaders(token, contentType),
 	};
 	try {
 		let data;
 		try {
-			const authHeader = `Bearer ${workerToken}`;
+			const authHeader = `Bearer ${token}`;
 			console.log(`[selectDevice] Authorization header ready (Bearer token present)`);
 
 			const resp = await axios.post(url, reqBody, {
