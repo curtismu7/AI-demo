@@ -22,6 +22,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **MFA Test Page — fixed duplicate 'Delete' text in FIDO2 button** — button label now correctly reads "Delete & Re-enroll" instead of "Delete Delete & Re-enroll".
 - **Demo Controls — wireup verification for may_act diagnose endpoint** — ThresholdControls.js now correctly parses `/api/demo/may-act/diagnose` response (checks.userAttribute.pass) instead of expecting non-existent `attributeSet` field; UI toggle button now shows correct may_act status on load.
 - **UI style — removed emojis from professional banking interfaces** — removed gear emoji from Controls button and checkmark/cross emojis from may_act toggle; real banking applications use professional typography, not decorative symbols.
 - **Critical: Secure sessionStorage operations with error logging** — replaced 5x silent try/catch blocks in BankingAgent.js with sessionStorageService that logs auth failures, quota errors, and private browsing issues; prevents auth failures from being hidden from developers.
