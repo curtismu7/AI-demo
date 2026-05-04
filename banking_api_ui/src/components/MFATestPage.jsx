@@ -92,6 +92,8 @@ export default function MFATestPage() {
 	const [fidoVerifyPingoneRes, setFidoVerifyPingoneRes] = useState(null);
 	const [fidoInitiatePingoneReq, setFidoInitiatePingoneReq] = useState(null);
 	const [fidoInitiatePingoneRes, setFidoInitiatePingoneRes] = useState(null);
+	const [fidoSelectDevicePingoneReq, setFidoSelectDevicePingoneReq] = useState(null);
+	const [fidoSelectDevicePingoneRes, setFidoSelectDevicePingoneRes] = useState(null);
 	const [smsInitiatePingoneReq, setSmsInitiatePingoneReq] = useState(null);
 	const [smsInitiatePingoneRes, setSmsInitiatePingoneRes] = useState(null);
 	const [smsVerifyPingoneReq, setSmsVerifyPingoneReq] = useState(null);
@@ -472,6 +474,8 @@ export default function MFATestPage() {
 			setRawFidoInitiate(data);
 			if (data.pingoneRequest) setFidoInitiatePingoneReq(data.pingoneRequest);
 			if (data.pingoneResponse) setFidoInitiatePingoneRes(data.pingoneResponse);
+			if (data.selectDeviceRequest) setFidoSelectDevicePingoneReq(data.selectDeviceRequest);
+			if (data.selectDeviceResponse) setFidoSelectDevicePingoneRes(data.selectDeviceResponse);
 			if (data.success) {
 				setFidoDaId(data.daId);
 				setFidoInitiateStatus("passed");
@@ -1407,7 +1411,7 @@ export default function MFATestPage() {
 								onClick={() => deleteDevice(existingFido2Device.id)}
 								style={{ marginLeft: "auto", whiteSpace: "nowrap" }}
 							>
-								{deletingDeviceId === existingFido2Device.id ? "Deleting…" : "Delete Delete & Re-enroll"}
+								{deletingDeviceId === existingFido2Device.id ? "Deleting…" : "Delete & Re-enroll"}
 							</button>
 						</div>
 					)}
