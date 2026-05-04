@@ -337,7 +337,7 @@ const Dashboard = ({ user, onLogout }) => {
         <div className="split-pane-layout">
         {scopeInjectionEnabled && (
           <div className="dash-scope-injection-banner" role="alert">
-            <span className="dash-scope-injection-banner__icon">⚠️</span>
+            <span className="dash-scope-injection-banner__icon"></span>
             <div className="dash-scope-injection-banner__text">
               <strong>SCOPE INJECTION ENABLED — Demo Mode</strong>
               <span>Banking scopes are being injected by the BFF (not from PingOne). Check Token Chain for ⚡ INJECTED badges.</span>
