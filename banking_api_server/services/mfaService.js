@@ -157,6 +157,10 @@ async function selectDevice(daId, deviceId, userAccessToken) {
 	const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
 	const reqBody = { selectedDevice: { id: deviceId } };
 
+	// Debug
+	console.log(`[selectDevice] Full URL: ${url}`);
+	console.log(`[selectDevice] Request body: ${JSON.stringify(reqBody)}`);
+
 	// Debug token
 	const tokenLen = userAccessToken?.length || 0;
 	const tokenStart = userAccessToken?.substring(0, 30) || 'MISSING';
