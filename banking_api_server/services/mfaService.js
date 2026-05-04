@@ -211,28 +211,46 @@ async function selectDevice(daId, deviceId, userAccessToken) {
  * Status transitions: OTP_REQUIRED → COMPLETED | FAILED
  */
 async function submitOtp(daId, deviceId, otp, userAccessToken) {
-	const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
-	const reqBody = { selectedDevice: { id: deviceId, otp: String(otp) } };
+	// Use worker token for OTP submission (matches PingOne MFA v1 API requirements)
+	const workerToken = await _getWorkerToken();
+	// OTP validation endpoint: POST to /otp path, not the deviceAuthentications root
+	const url = `${_authBaseUrl()}/deviceAuthentications/${daId}/otp`;
+	// OTP submission body is simple: just the OTP code
+	const reqBody = { otp: String(otp) };
+	const contentType = "application/json";
+
+	console.log(`[submitOtp] Full URL: ${url}`);
+	console.log(`[submitOtp] Method: POST (corrected from PUT)`);
+	console.log(`[submitOtp] Content-Type: ${contentType}`);
+	console.log(`[submitOtp] Request body: ${JSON.stringify(reqBody)}`);
+	console.log(`[submitOtp] Using worker token (len=${workerToken?.length || 0})`);
+
 	const debugRequest = {
-		method: "PUT",
+		method: "POST",
 		url: url,
 		body: reqBody,
-		contentType: "application/json",
-		headers: _debugHeaders(userAccessToken, "application/json"),
+		contentType: contentType,
+		headers: _debugHeaders(workerToken, contentType),
 	};
 	try {
 		let data;
 		try {
-			const resp = await axios.put(url, reqBody, {
+			const authHeader = `Bearer ${workerToken}`;
+			console.log(`[submitOtp] Authorization header ready (Bearer token present)`);
+
+			const resp = await axios.post(url, reqBody, {
 				headers: {
-					Authorization: `Bearer ${userAccessToken}`,
-					"Content-Type": "application/json",
+					Authorization: authHeader,
+					"Content-Type": contentType,
 				},
 				timeout: 10000,
 			});
 			data = resp.data;
 		} catch (err) {
-			err._debug = { request: debugRequest, response: err.response?.data || null };
+			const status = err.response?.status;
+			const respData = err.response?.data || null;
+			console.error(`[MFA submitOtp] PingOne returned ${status}:`, respData);
+			err._debug = { request: debugRequest, response: respData };
 			throw err;
 		}
 		return { ...data, _debug: { request: debugRequest, response: data } };
