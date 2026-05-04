@@ -4174,6 +4174,15 @@ export default function BankingAgent({
         draggable: true,
       });
     } catch (err) {
+      // Debug: log all error details for troubleshooting
+      console.log(`[BankingAgent] ${actionId} error:`, {
+        code: err?.code,
+        statusCode: err?.statusCode,
+        message: err?.message,
+        needsAuth: err?.need_auth,
+        fullErr: err
+      });
+
       markToolProgressOutcome(
         false,
         err
