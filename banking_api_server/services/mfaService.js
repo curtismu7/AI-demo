@@ -227,7 +227,7 @@ async function submitOtp(daId, deviceId, otp, userAccessToken) {
 	const url = `${_authBaseUrl()}/deviceAuthentications/${daId}/otp`;
 	// OTP submission body is simple: just the OTP code
 	const reqBody = { otp: String(otp) };
-	const contentType = "application/json";
+	const contentType = "application/vnd.pingidentity.otp.check+json";
 
 	console.log(`[submitOtp] Full URL: ${url}`);
 	console.log(`[submitOtp] Method: POST`);

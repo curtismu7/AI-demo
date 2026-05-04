@@ -102,6 +102,20 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-04 — PingOne MFA: Fix OTP verification content-type header
+
+- **Symptom:** OTP verification returns 403 Forbidden when submitting correct OTP code during device authentication
+- **Root cause:** `submitOtp()` in `mfaService.js` was using standard `application/json` content-type. PingOne MFA v1 API requires specific versioned content-type `application/vnd.pingidentity.otp.check+json` to distinguish OTP validation from other operations on the device authentication resource
+- **Fix:** Changed `submitOtp()` content-type from `application/json` → `application/vnd.pingidentity.otp.check+json`. Request body format `{ otp: String(otp) }` was already correct.
+- **Verification:** 
+  - OTP verification now succeeds with correct 403-to-success transition
+  - Device authentication flow can proceed past OTP validation step
+  - Consent challenges using MFA step-up now work correctly
+- **Files changed:** `banking_api_server/services/mfaService.js`
+- **Do not break:** OTP submission body must remain `{ otp: String(otp) }`. Content-type MUST be `application/vnd.pingidentity.otp.check+json` per PingOne MFA API specification. Device selection (POST to `/deviceAuthentications/{daId}/devices`) already uses correct `application/vnd.pingidentity.device.select+json` from prior fix.
+
+---
+
 ### 2026-05-03 — Agent Demo Guide: Replace NL prompts with reliable action chips (commit 1edfe835)
 
 **Goal:** Make demo scenarios bulletproof — eliminate NL intent parsing ambiguity from demo guide. Guide now uses pre-wired action chips instead of user-typed prompts.
