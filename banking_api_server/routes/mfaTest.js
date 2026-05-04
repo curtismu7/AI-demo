@@ -296,6 +296,11 @@ router.post('/integration/initiate', async (req, res) => {
   try {
     const { method } = req.body;
     const { userId, accessToken } = await _resolveCredentials(req);
+
+    if (!accessToken) {
+      return res.status(401).json({ success: false, error: 'No valid access token available' });
+    }
+
     const result = await mfaService.initiateDeviceAuth(userId, accessToken);
     const duration = Date.now() - _t1;
     const devices = result._embedded?.devices || [];
@@ -422,9 +427,13 @@ router.post('/integration/initiate', async (req, res) => {
 router.post('/integration/select-device', async (req, res) => {
   try {
     const { daId, deviceId } = req.body;
-    const { accessToken } = await _resolveCredentials(req);
     if (!daId || !deviceId) {
       return res.status(400).json({ success: false, error: 'invalid_body', message: 'Provide daId and deviceId.' });
+    }
+
+    const { accessToken } = await _resolveCredentials(req);
+    if (!accessToken) {
+      return res.status(401).json({ success: false, error: 'No valid access token available' });
     }
 
     const _t3 = Date.now();
