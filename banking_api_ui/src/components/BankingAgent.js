@@ -4239,8 +4239,23 @@ export default function BankingAgent({
         );
       } else if (err?.code === "consent_challenge_required") {
         // 428 Precondition Required — HITL consent required for transaction
-        // Reconstruct the error result to match normalizeAgentToolResult format
-        const intentPayload = buildConsentIntent(actionId, form);
+        let intentPayload;
+
+        // For transfer_600_test, build payload from liveAccounts since form is empty
+        if (actionId === "transfer_600_test" && liveAccounts?.length >= 2) {
+          const testFrom = liveAccounts.find((a) => a.type === "checking" || a.type === "chk") || liveAccounts[0];
+          const testTo = liveAccounts.find((a) => a.type === "savings" || a.type === "sav") || liveAccounts[1];
+          intentPayload = {
+            type: "transfer",
+            fromAccountId: testFrom?.id,
+            toAccountId: testTo?.id,
+            amount: APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER,
+            description: "HITL + MFA test",
+          };
+        } else {
+          intentPayload = buildConsentIntent(actionId, form);
+        }
+
         if (!intentPayload) {
           notifyError("Could not start consent flow — transaction details missing.");
           setLoading(false);
