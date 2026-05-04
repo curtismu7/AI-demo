@@ -22,6 +22,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **MFA OTP verification — corrected API call format for PingOne MFA v1** — OTP verification now uses POST to `/otp` endpoint with body `{ otp }` instead of PUT with `{ selectedDevice: { id, otp } }`; uses worker token instead of user access token; resolves 403 Forbidden errors on OTP verification endpoint.
 - **MFA device selection — corrected API call format for PingOne MFA v1** — device selection now uses POST (not PUT) with `application/vnd.pingidentity.device.select+json` content-type and correct body format `{ device: { id }, compatibility: "FULL" }`; uses worker token instead of user access token for required permissions; resolves persistent 403 Forbidden errors on device selection endpoint.
 - **MFA testing — auto-refresh expired tokens before device selection** — MFA test endpoint now automatically checks token expiration and refreshes using the refresh_token if the access token expires within 60 seconds; prevents 403 "Forbidden" errors from PingOne when token is stale; users can test OTP hours after login without getting token expiration errors.
 - **High-value transaction consent — fixed 403 error on device selection** — device selection endpoint now uses the fresh OAuth token validated by authenticateToken middleware instead of a potentially stale token from session storage; prevents token staleness issues that caused "Forbidden" errors when PingOne device authentication called selectDevice; users can now complete device selection for MFA challenges in consent modal.
