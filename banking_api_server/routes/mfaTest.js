@@ -1128,11 +1128,11 @@ router.get('/users', async (req, res) => {
     const rawQ = (req.query.q || '').trim();
     const q = rawQ.replace(/[^a-zA-Z0-9 .@_-]/g, '').trim();
 
-    const url = `https://api.pingone.${region}/v1/environments/${envId}/users?limit=100`;
+    let url = `https://api.pingone.${region}/v1/environments/${envId}/users?limit=100`;
 
     if (q) {
-      // PingOne SCIM filter: match username OR name.formatted containing the query
-      const filter = `(username sw "${q}") or (name.formatted co "${q}")`;
+      // PingOne SCIM filter: match username OR name OR email containing the query (more forgiving)
+      const filter = `(username co "${q}") or (name.formatted co "${q}") or (email co "${q}")`;
       url += `&filter=${encodeURIComponent(filter)}`;
     }
 
@@ -1148,8 +1148,9 @@ router.get('/users', async (req, res) => {
     }));
     res.json({ success: true, users, query: q || null });
   } catch (err) {
-    console.error('[MFA Test] GET /users failed:', err.message);
-    res.status(err.status || 500).json({ success: false, error: err.message });
+    console.error('[MFA Test] GET /users failed:', err.message, err.response?.data || '');
+    const pingError = err.response?.data || err.message;
+    res.status(err.response?.status || 500).json({ success: false, error: err.message, pingError });
   }
 });
 
