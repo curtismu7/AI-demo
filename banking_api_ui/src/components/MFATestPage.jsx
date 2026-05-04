@@ -226,6 +226,17 @@ export default function MFATestPage() {
 	useEffect(() => {
 		loadConfig();
 		loadWorkerToken();
+		// Default to logged-in user
+		(async () => {
+			try {
+				const { data } = await apiClient.get('/api/auth/oauth/user/status');
+				if (data?.authenticated && data?.user?.oauthId) {
+					setTestUserId(data.user.oauthId);
+				}
+			} catch (err) {
+				console.warn('[MFA] Could not load logged-in user:', err.message);
+			}
+		})();
 	}, [loadConfig, loadWorkerToken]);
 
 	// Load PingOne user list for the user picker dropdown (optional SCIM search query)
