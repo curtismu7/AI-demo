@@ -8,8 +8,10 @@ const express = require('express');
 const router = express.Router();
 const mfaService = require('../services/mfaService');
 const oauthService = require('../services/oauthService');
+const oauthUserService = require('../services/oauthUserService');
 const apiCallTrackerService = require('../services/apiCallTrackerService');
 const { mfaLogger } = require('../utils/mfaLogger');
+const jwt = require('jsonwebtoken');
 
 /**
  * Normalize a PingOne debug request object for UI trace display.
@@ -259,17 +261,46 @@ async function _resolveCredentials(req) {
   const sessionUserId = req.session?.user?.oauthId || req.session?.user?.id;
 
   // Prefer token from Authorization header (if present and valid), otherwise use session token
-  // This prevents token staleness issues when the session token is out of sync
   const authHeader = req.headers['authorization'];
   const headerToken = authHeader?.split(' ')[1] || null;
-  const sessionToken = req.session?.oauthTokens?.accessToken;
-  const accessToken = headerToken || sessionToken;
+  let accessToken = headerToken || req.session?.oauthTokens?.accessToken;
 
   if (!sessionUserId || !accessToken) {
     throw new Error(
       'Device authentication requires an active session. ' +
       'Please login to PingOne first via /dashboard, then return to MFA test page.'
     );
+  }
+
+  // Check if token is expired and refresh if needed
+  try {
+    const decoded = jwt.decode(accessToken);
+    const expiresIn = decoded?.exp ? decoded.exp - Math.floor(Date.now() / 1000) : null;
+
+    // If token expires within 60 seconds, try to refresh it
+    if (expiresIn && expiresIn < 60 && req.session?.oauthTokens?.refreshToken) {
+      console.log(`[MFA] Access token expiring in ${expiresIn}s, attempting refresh...`);
+      try {
+        const refreshedTokens = await oauthUserService.refreshAccessToken(
+          req.session.oauthTokens.refreshToken
+        );
+        accessToken = refreshedTokens.access_token;
+        // Update session with new tokens
+        if (req.session?.oauthTokens) {
+          req.session.oauthTokens.accessToken = refreshedTokens.access_token;
+          if (refreshedTokens.refresh_token) {
+            req.session.oauthTokens.refreshToken = refreshedTokens.refresh_token;
+          }
+        }
+        console.log('[MFA] Token refreshed successfully');
+      } catch (refreshErr) {
+        console.warn('[MFA] Token refresh failed, using expired token anyway:', refreshErr.message);
+        // Continue with expired token - PingOne will reject if truly expired
+      }
+    }
+  } catch (decodeErr) {
+    console.warn('[MFA] Could not decode token expiry, proceeding:', decodeErr.message);
+    // Continue with whatever token we have
   }
 
   return {
