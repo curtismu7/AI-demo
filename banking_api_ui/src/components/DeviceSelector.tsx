@@ -1,32 +1,45 @@
-import React from 'react';
-import './DeviceSelector.css';
+import React, { FC } from "react";
+import "./DeviceSelector.css";
 
-/**
- * Reusable device selection component for MFA verification flows.
- * Used by TransactionConsentModal, MFATestPage, and other components.
- */
-export default function DeviceSelector({
+interface Device {
+  id: string;
+  type: string;
+  phone?: string;
+  email?: string;
+  nickname?: string;
+}
+
+interface DeviceSelectorProps {
+  devices?: Device[];
+  selectedDeviceId?: string | null;
+  onSelectDevice?: (deviceId: string) => void;
+  onBack?: (() => void) | null;
+  disabled?: boolean;
+  title?: string;
+}
+
+const DeviceSelector: FC<DeviceSelectorProps> = ({
   devices = [],
   selectedDeviceId = null,
   onSelectDevice = () => {},
-  onBack = () => {},
+  onBack = null,
   disabled = false,
-  title = 'Select how you\'d like to verify this transaction:',
-}) {
-  const getDeviceLabel = (device) => {
+  title = "Select how you'd like to verify this transaction:",
+}) => {
+  const getDeviceLabel = (device: Device): string => {
     switch (device.type) {
-      case 'FIDO2':
-        return 'Security Key (FIDO2)';
-      case 'OTP':
-        return 'One-Time Code';
-      case 'SMS':
-        return 'SMS Text Message';
-      case 'EMAIL':
-        return 'Email Code';
-      case 'TOTP':
-        return 'Authenticator App';
-      case 'BROWSER':
-        return 'Remember This Browser';
+      case "FIDO2":
+        return "Security Key (FIDO2)";
+      case "OTP":
+        return "One-Time Code";
+      case "SMS":
+        return "SMS Text Message";
+      case "EMAIL":
+        return "Email Code";
+      case "TOTP":
+        return "Authenticator App";
+      case "BROWSER":
+        return "Remember This Browser";
       default:
         return `${device.type} (${device.id.slice(0, 8)})`;
     }
@@ -40,7 +53,7 @@ export default function DeviceSelector({
           <button
             key={device.id}
             type="button"
-            className={`device-selector__btn device-selector__btn--${device.type.toLowerCase()}${selectedDeviceId === device.id ? ' device-selector__btn--selected' : ''}`}
+            className={`device-selector__btn device-selector__btn--${device.type.toLowerCase()}${selectedDeviceId === device.id ? " device-selector__btn--selected" : ""}`}
             onClick={() => onSelectDevice(device.id)}
             disabled={disabled}
           >
@@ -71,4 +84,6 @@ export default function DeviceSelector({
       )}
     </div>
   );
-}
+};
+
+export default DeviceSelector;

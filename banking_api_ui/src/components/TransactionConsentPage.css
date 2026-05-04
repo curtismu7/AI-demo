@@ -20,7 +20,7 @@
   border-radius: 12px;
   padding: 1.5rem 1.75rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  border: 1px solid #DDDDDD;
+  border: 1px solid #dddddd;
 }
 
 .transaction-consent-popup__title {
@@ -55,7 +55,7 @@
   max-width: none;
   margin: 0;
   box-shadow: none;
-  border: 1px solid #DDDDDD;
+  border: 1px solid #dddddd;
   padding: 1.25rem 1.35rem;
 }
 
@@ -173,7 +173,7 @@
   border-radius: 12px;
   padding: 1.5rem 1.75rem;
   box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
-  border: 1px solid #DDDDDD;
+  border: 1px solid #dddddd;
 }
 
 .transaction-consent-card__h2 {
@@ -202,7 +202,7 @@
   padding: 0.75rem 1rem;
   background: var(--brand-light-gray);
   border-radius: 8px;
-  border: 1px solid #DDDDDD;
+  border: 1px solid #dddddd;
 }
 
 .transaction-consent-card__legal p {
@@ -211,7 +211,7 @@
 
 .transaction-consent-card__check {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.75rem;
   cursor: pointer;
   font-size: 0.95rem;
@@ -221,9 +221,8 @@
 }
 
 .transaction-consent-card__check input {
-  margin-top: 0.25rem;
   flex-shrink: 0;
-  margin-right: 0.1rem;
+  margin-top: -0.15rem;
 }
 
 .transaction-consent-card__error {
@@ -259,7 +258,7 @@
 
 .transaction-consent-btn--ghost {
   background: #fff;
-  border-color: #CCCCCC;
+  border-color: #cccccc;
   color: var(--brand-dark-gray);
 }
 
@@ -303,7 +302,7 @@
   border-radius: 12px;
   padding: 1.5rem 1.5rem 1.25rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  border: 1px solid #DDDDDD;
+  border: 1px solid #dddddd;
 }
 
 .transaction-consent-modal__title {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, FC } from "react";
 import apiClient from "../services/apiClient";
 import { notifyError, notifyInfo, notifySuccess } from "../utils/appToast";
 import "./MFATestPage.css";
@@ -7,128 +7,186 @@ import MFATestCard from "./MFATestCard";
 import PingOneApiPanel from "./PingOneApiPanel";
 import MFALogsModal from "./MFALogsModal";
 
-/**
- * MFATestPage — comprehensive test page for PingOne MFA functionality
- * Tests: SMS OTP, Email OTP, FIDO2/passkey, Device enrollment, Device management
- * Chase.com-style UI with test cards and fix buttons
- */
-export default function MFATestPage() {
-  const [config, setConfig] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+interface PingOneUser {
+  id: string;
+  username: string;
+  email?: string;
+  name?: string;
+}
 
-  // User override — allows testing MFA for any PingOne user (userId or username)
+interface MFADevice {
+  id: string;
+  type: string;
+  phone?: string;
+  email?: string;
+  nickname?: string;
+  status?: string;
+  createdAt?: string;
+  [key: string]: any;
+}
+
+interface MFAConfig {
+  success?: boolean;
+  error?: string;
+  [key: string]: any;
+}
+
+interface PingOneRequest {
+  [key: string]: any;
+}
+
+interface PingOneResponse {
+  [key: string]: any;
+}
+
+const MFATestPage: FC = () => {
+  const [config, setConfig] = useState<MFAConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [testUserId, setTestUserId] = useState("");
-  const [pingoneUsers, setPingoneUsers] = useState([]); // populated from /api/mfa/test/users
+  const [pingoneUsers, setPingoneUsers] = useState<PingOneUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
-  const [userSearch, setUserSearch] = useState(""); // combobox filter
+  const [userSearch, setUserSearch] = useState("");
   const [userPickerOpen, setUserPickerOpen] = useState(false);
 
-  // SMS OTP test state
   const [smsInitiateStatus, setSmsInitiateStatus] = useState("pending");
-  const [smsInitiateError, setSmsInitiateError] = useState(null);
-  const [smsDaId, setSmsDaId] = useState(null);
-  const [smsDevices, setSmsDevices] = useState([]);
+  const [smsInitiateError, setSmsInitiateError] = useState<string | null>(null);
+  const [smsDaId, setSmsDaId] = useState<string | null>(null);
+  const [smsDevices, setSmsDevices] = useState<MFADevice[]>([]);
   const [smsOtp, setSmsOtp] = useState("");
   const [smsVerifyStatus, setSmsVerifyStatus] = useState("pending");
-  const [smsVerifyError, setSmsVerifyError] = useState(null);
+  const [smsVerifyError, setSmsVerifyError] = useState<string | null>(null);
 
-  // Email OTP test state
   const [emailInitiateStatus, setEmailInitiateStatus] = useState("pending");
-  const [emailInitiateError, setEmailInitiateError] = useState(null);
-  const [emailDaId, setEmailDaId] = useState(null);
-  const [emailDevices, setEmailDevices] = useState([]);
+  const [emailInitiateError, setEmailInitiateError] = useState<string | null>(
+    null,
+  );
+  const [emailDaId, setEmailDaId] = useState<string | null>(null);
+  const [emailDevices, setEmailDevices] = useState<MFADevice[]>([]);
   const [emailOtp, setEmailOtp] = useState("");
   const [emailVerifyStatus, setEmailVerifyStatus] = useState("pending");
-  const [emailVerifyError, setEmailVerifyError] = useState(null);
+  const [emailVerifyError, setEmailVerifyError] = useState<string | null>(null);
 
-  // FIDO2 test state (Task 5 - WebAuthn API integration placeholder)
   const [fidoInitiateStatus, setFidoInitiateStatus] = useState("pending");
-  const [fidoInitiateError, setFidoInitiateError] = useState(null);
-  const [fidoDaId, setFidoDaId] = useState(null);
+  const [fidoInitiateError, setFidoInitiateError] = useState<string | null>(
+    null,
+  );
+  const [fidoDaId, setFidoDaId] = useState<string | null>(null);
 
-  // Device management state
-  const [devices, setDevices] = useState([]);
+  const [devices, setDevices] = useState<MFADevice[]>([]);
   const [devicesStatus, setDevicesStatus] = useState("pending");
-  const [devicesPingoneReq, setDevicesPingoneReq] = useState(null);
-  const [devicesPingoneRes, setDevicesPingoneRes] = useState(null);
-  const [devicesError, setDevicesError] = useState(null);
+  const [devicesPingoneReq, setDevicesPingoneReq] =
+    useState<PingOneRequest | null>(null);
+  const [devicesPingoneRes, setDevicesPingoneRes] =
+    useState<PingOneResponse | null>(null);
+  const [devicesError, setDevicesError] = useState<string | null>(null);
 
-  // Enrollment state
   const [enrollSmsPhone, setEnrollSmsPhone] = useState("");
   const [enrollSmsCountryCode, setEnrollSmsCountryCode] = useState("+1");
   const [enrollSmsInitStatus, setEnrollSmsInitStatus] = useState("pending");
-  const [enrollSmsInitError, setEnrollSmsInitError] = useState(null);
-  const [enrollSmsDeviceId, setEnrollSmsDeviceId] = useState(null);
+  const [enrollSmsInitError, setEnrollSmsInitError] = useState<string | null>(
+    null,
+  );
+  const [enrollSmsDeviceId, setEnrollSmsDeviceId] = useState<string | null>(
+    null,
+  );
   const [enrollSmsAlreadyActive, setEnrollSmsAlreadyActive] = useState(false);
   const [enrollSmsOtp, setEnrollSmsOtp] = useState("");
   const [enrollSmsCompleteStatus, setEnrollSmsCompleteStatus] =
     useState("pending");
-  const [enrollSmsCompleteError, setEnrollSmsCompleteError] = useState(null);
+  const [enrollSmsCompleteError, setEnrollSmsCompleteError] = useState<
+    string | null
+  >(null);
   const [enrollEmailStatus, setEnrollEmailStatus] = useState("pending");
-  const [enrollEmailError, setEnrollEmailError] = useState(null);
+  const [enrollEmailError, setEnrollEmailError] = useState<string | null>(null);
   const [enrollEmailInput, setEnrollEmailInput] = useState("");
-  const [existingFido2Device, setExistingFido2Device] = useState(null);
-  const [deletingDeviceId, setDeletingDeviceId] = useState(null);
+  const [existingFido2Device, setExistingFido2Device] =
+    useState<MFADevice | null>(null);
+  const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
   const [fidoEnrollInitStatus, setFidoEnrollInitStatus] = useState("pending");
-  const [fidoEnrollInitError, setFidoEnrollInitError] = useState(null);
+  const [fidoEnrollInitError, setFidoEnrollInitError] = useState<string | null>(
+    null,
+  );
 
-  // FIDO2 challenge + verify state
-  const [fidoChallengeOptions, setFidoChallengeOptions] = useState(null);
+  const [fidoChallengeOptions, setFidoChallengeOptions] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [fidoVerifyStatus, setFidoVerifyStatus] = useState("pending");
-  const [fidoVerifyError, setFidoVerifyError] = useState(null);
+  const [fidoVerifyError, setFidoVerifyError] = useState<string | null>(null);
 
-  // FIDO2 enrollment complete state
-  const [fidoEnrollData, setFidoEnrollData] = useState(null);
+  const [fidoEnrollData, setFidoEnrollData] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [fidoEnrollCompleteStatus, setFidoEnrollCompleteStatus] =
     useState("pending");
-  const [fidoEnrollCompleteError, setFidoEnrollCompleteError] = useState(null);
+  const [fidoEnrollCompleteError, setFidoEnrollCompleteError] = useState<
+    string | null
+  >(null);
 
-  // FIDO2 PingOne request/response debug state
   const [fidoEnrollInitPingoneReq, setFidoEnrollInitPingoneReq] =
-    useState(null);
+    useState<PingOneRequest | null>(null);
   const [fidoEnrollInitPingoneRes, setFidoEnrollInitPingoneRes] =
-    useState(null);
+    useState<PingOneResponse | null>(null);
   const [fidoEnrollCompletePingoneReq, setFidoEnrollCompletePingoneReq] =
-    useState(null);
+    useState<PingOneRequest | null>(null);
   const [fidoEnrollCompletePingoneRes, setFidoEnrollCompletePingoneRes] =
-    useState(null);
-  const [fidoVerifyPingoneReq, setFidoVerifyPingoneReq] = useState(null);
-  const [fidoVerifyPingoneRes, setFidoVerifyPingoneRes] = useState(null);
-  const [fidoInitiatePingoneReq, setFidoInitiatePingoneReq] = useState(null);
-  const [fidoInitiatePingoneRes, setFidoInitiatePingoneRes] = useState(null);
+    useState<PingOneResponse | null>(null);
+  const [fidoVerifyPingoneReq, setFidoVerifyPingoneReq] =
+    useState<PingOneRequest | null>(null);
+  const [fidoVerifyPingoneRes, setFidoVerifyPingoneRes] =
+    useState<PingOneResponse | null>(null);
+  const [fidoInitiatePingoneReq, setFidoInitiatePingoneReq] =
+    useState<PingOneRequest | null>(null);
+  const [fidoInitiatePingoneRes, setFidoInitiatePingoneRes] =
+    useState<PingOneResponse | null>(null);
   const [fidoSelectDevicePingoneReq, setFidoSelectDevicePingoneReq] =
-    useState(null);
+    useState<PingOneRequest | null>(null);
   const [fidoSelectDevicePingoneRes, setFidoSelectDevicePingoneRes] =
-    useState(null);
-  const [smsInitiatePingoneReq, setSmsInitiatePingoneReq] = useState(null);
-  const [smsInitiatePingoneRes, setSmsInitiatePingoneRes] = useState(null);
+    useState<PingOneResponse | null>(null);
+  const [smsInitiatePingoneReq, setSmsInitiatePingoneReq] =
+    useState<PingOneRequest | null>(null);
+  const [smsInitiatePingoneRes, setSmsInitiatePingoneRes] =
+    useState<PingOneResponse | null>(null);
   const [smsSelectDevicePingoneReq, setSmsSelectDevicePingoneReq] =
-    useState(null);
+    useState<PingOneRequest | null>(null);
   const [smsSelectDevicePingoneRes, setSmsSelectDevicePingoneRes] =
-    useState(null);
-  const [smsVerifyPingoneReq, setSmsVerifyPingoneReq] = useState(null);
-  const [smsVerifyPingoneRes, setSmsVerifyPingoneRes] = useState(null);
-  const [emailInitiatePingoneReq, setEmailInitiatePingoneReq] = useState(null);
-  const [emailInitiatePingoneRes, setEmailInitiatePingoneRes] = useState(null);
+    useState<PingOneResponse | null>(null);
+  const [smsVerifyPingoneReq, setSmsVerifyPingoneReq] =
+    useState<PingOneRequest | null>(null);
+  const [smsVerifyPingoneRes, setSmsVerifyPingoneRes] =
+    useState<PingOneResponse | null>(null);
+  const [emailInitiatePingoneReq, setEmailInitiatePingoneReq] =
+    useState<PingOneRequest | null>(null);
+  const [emailInitiatePingoneRes, setEmailInitiatePingoneRes] =
+    useState<PingOneResponse | null>(null);
   const [emailSelectDevicePingoneReq, setEmailSelectDevicePingoneReq] =
-    useState(null);
+    useState<PingOneRequest | null>(null);
   const [emailSelectDevicePingoneRes, setEmailSelectDevicePingoneRes] =
-    useState(null);
-  const [emailVerifyPingoneReq, setEmailVerifyPingoneReq] = useState(null);
-  const [emailVerifyPingoneRes, setEmailVerifyPingoneRes] = useState(null);
-  const [enrollSmsInitPingoneReq, setEnrollSmsInitPingoneReq] = useState(null);
-  const [enrollSmsInitPingoneRes, setEnrollSmsInitPingoneRes] = useState(null);
+    useState<PingOneResponse | null>(null);
+  const [emailVerifyPingoneReq, setEmailVerifyPingoneReq] =
+    useState<PingOneRequest | null>(null);
+  const [emailVerifyPingoneRes, setEmailVerifyPingoneRes] =
+    useState<PingOneResponse | null>(null);
+  const [enrollSmsInitPingoneReq, setEnrollSmsInitPingoneReq] =
+    useState<PingOneRequest | null>(null);
+  const [enrollSmsInitPingoneRes, setEnrollSmsInitPingoneRes] =
+    useState<PingOneResponse | null>(null);
   const [enrollSmsCompletePingoneReq, setEnrollSmsCompletePingoneReq] =
-    useState(null);
+    useState<PingOneRequest | null>(null);
   const [enrollSmsCompletePingoneRes, setEnrollSmsCompletePingoneRes] =
-    useState(null);
-  const [enrollEmailPingoneReq, setEnrollEmailPingoneReq] = useState(null);
-  const [enrollEmailPingoneRes, setEnrollEmailPingoneRes] = useState(null);
+    useState<PingOneResponse | null>(null);
+  const [enrollEmailPingoneReq, setEnrollEmailPingoneReq] =
+    useState<PingOneRequest | null>(null);
+  const [enrollEmailPingoneRes, setEnrollEmailPingoneRes] =
+    useState<PingOneResponse | null>(null);
 
-  // Worker token state (shared with PingOne test page)
-  const [workerTokenStatus, setWorkerTokenStatus] = useState(null);
-  const [workerTokenError, setWorkerTokenError] = useState(null);
+  const [workerTokenStatus, setWorkerTokenStatus] = useState<string | null>(
+    null,
+  );
+  const [workerTokenError, setWorkerTokenError] = useState<string | null>(null);
 
   // Auto-enrollment state: when challenge initiated but no device enrolled
   const [autoEnrollFido, setAutoEnrollFido] = useState(false);
@@ -138,24 +196,39 @@ export default function MFATestPage() {
   const [autoEnrollEmail, setAutoEnrollEmail] = useState(false);
   const [noEmailDeviceDetected, setNoEmailDeviceDetected] = useState(false);
 
-  // Raw P1 response state — one per action
-  const [rawSmsInitiate, setRawSmsInitiate] = useState(null);
-  const [rawSmsVerify, setRawSmsVerify] = useState(null);
-  const [rawEmailInitiate, setRawEmailInitiate] = useState(null);
-  const [rawEmailVerify, setRawEmailVerify] = useState(null);
-  const [rawFidoInitiate, setRawFidoInitiate] = useState(null);
-  const [rawFidoVerify, setRawFidoVerify] = useState(null);
-  const [rawEnrollSmsInit, setRawEnrollSmsInit] = useState(null);
-  const [rawEnrollSmsComplete, setRawEnrollSmsComplete] = useState(null);
-  const [rawEnrollEmail, setRawEnrollEmail] = useState(null);
-  const [rawFidoEnrollInit, setRawFidoEnrollInit] = useState(null);
-  const [rawFidoEnrollComplete, setRawFidoEnrollComplete] = useState(null);
-  const [rawDevices, setRawDevices] = useState(null);
+  const [rawSmsInitiate, setRawSmsInitiate] = useState<PingOneResponse | null>(
+    null,
+  );
+  const [rawSmsVerify, setRawSmsVerify] = useState<PingOneResponse | null>(
+    null,
+  );
+  const [rawEmailInitiate, setRawEmailInitiate] =
+    useState<PingOneResponse | null>(null);
+  const [rawEmailVerify, setRawEmailVerify] = useState<PingOneResponse | null>(
+    null,
+  );
+  const [rawFidoInitiate, setRawFidoInitiate] =
+    useState<PingOneResponse | null>(null);
+  const [rawFidoVerify, setRawFidoVerify] = useState<PingOneResponse | null>(
+    null,
+  );
+  const [rawEnrollSmsInit, setRawEnrollSmsInit] =
+    useState<PingOneResponse | null>(null);
+  const [rawEnrollSmsComplete, setRawEnrollSmsComplete] =
+    useState<PingOneResponse | null>(null);
+  const [rawEnrollEmail, setRawEnrollEmail] = useState<PingOneResponse | null>(
+    null,
+  );
+  const [rawFidoEnrollInit, setRawFidoEnrollInit] =
+    useState<PingOneResponse | null>(null);
+  const [rawFidoEnrollComplete, setRawFidoEnrollComplete] =
+    useState<PingOneResponse | null>(null);
+  const [rawDevices, setRawDevices] = useState<PingOneResponse | null>(null);
 
   // Logs modal state
   const [logsModalOpen, setLogsModalOpen] = useState(false);
 
-  const loadConfig = useCallback(async () => {
+  const loadConfig = useCallback(async (): Promise<void> => {
     try {
       const { data } = await apiClient.get("/api/mfa/test/config");
       if (data.success !== false) {
@@ -165,14 +238,15 @@ export default function MFATestPage() {
         setError(`Failed to load config: ${data.error}`);
         setLoading(false);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Config error:", err);
-      setError(`Failed to load config: ${err.message}`);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      setError(`Failed to load config: ${errorMsg}`);
       setLoading(false);
     }
   }, []);
 
-  const loadDevices = useCallback(async () => {
+  const loadDevices = useCallback(async (): Promise<void> => {
     try {
       setDevicesStatus("pending");
       setDevicesError(null);
@@ -255,19 +329,21 @@ export default function MFATestPage() {
     })();
   }, [loadConfig, loadWorkerToken]);
 
-  // Load PingOne user list for the user picker dropdown (optional SCIM search query)
-  const loadPingoneUsers = useCallback(async (searchQuery) => {
-    setUsersLoading(true);
-    try {
-      const qs = searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : "";
-      const { data } = await apiClient.get(`/api/mfa/test/users${qs}`);
-      if (data.success) setPingoneUsers(data.users || []);
-      else console.warn("[MFA] Users load failed:", data.error);
-    } catch (e) {
-      console.warn("[MFA] Users load error:", e.message);
-    }
-    setUsersLoading(false);
-  }, []);
+  const loadPingoneUsers = useCallback(
+    async (searchQuery?: string): Promise<void> => {
+      setUsersLoading(true);
+      try {
+        const qs = searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : "";
+        const { data } = await apiClient.get(`/api/mfa/test/users${qs}`);
+        if (data.success) setPingoneUsers(data.users || []);
+        else console.warn("[MFA] Users load failed:", data.error);
+      } catch (e) {
+        console.warn("[MFA] Users load error:", e.message);
+      }
+      setUsersLoading(false);
+    },
+    [],
+  );
 
   // Load all users on mount; debounce server search while typing
   useEffect(() => {
@@ -689,8 +765,11 @@ export default function MFATestPage() {
         ...fidoChallengeOptions,
         challenge: safeBase64ToBytes(fidoChallengeOptions.challenge),
       };
-      const assertion = await navigator.credentials.get({ publicKey: opts });
-      const toB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+      const assertion = (await navigator.credentials.get({
+        publicKey: opts,
+      })) as any;
+      const toB64 = (buf: any) =>
+        btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(buf))));
       const assertionPayload = {
         id: assertion.id,
         rawId: toB64(assertion.rawId),
@@ -1046,12 +1125,10 @@ export default function MFATestPage() {
           2,
         ),
       );
-      const credential = await navigator.credentials.create({ publicKey });
-      // PingOne device activate API requires standard base64 (with = padding) for binary
-      // credential fields (rawId, clientDataJSON, attestationObject).
-      // credential.id is left as base64url (browser returns it that way per WebAuthn spec).
-      // Ref: https://developer.pingidentity.com/pingone-api/mfa/users/mfa-devices/fido2-biometrics-devices/activate-mfa-user-device-fido2.html
-      const toB64 = (buf) => {
+      const credential = (await navigator.credentials.create({
+        publicKey,
+      })) as any;
+      const toB64 = (buf: any) => {
         const bytes = new Uint8Array(buf);
         let binary = "";
         for (let i = 0; i < bytes.length; i++)
@@ -1312,7 +1389,7 @@ export default function MFATestPage() {
               <button
                 type="button"
                 className="mfa-user-picker__refresh"
-                onClick={loadPingoneUsers}
+                onClick={() => loadPingoneUsers()}
                 title="Reload user list from PingOne"
               >
                 ↻
@@ -1625,6 +1702,7 @@ export default function MFATestPage() {
             status={enrollSmsInitStatus}
             error={enrollSmsInitError}
             onTest={testEnrollSmsInit}
+            endpoint="/v1/environments/{envId}/users/{userId}/devices"
             rawResult={rawEnrollSmsInit}
             pingoneRequest={enrollSmsInitPingoneReq}
             pingoneResponse={enrollSmsInitPingoneRes}
@@ -1663,6 +1741,8 @@ export default function MFATestPage() {
                 title="Activate SMS Device (Step 2)"
                 status={enrollSmsCompleteStatus}
                 error={enrollSmsCompleteError}
+                onTest={testEnrollSmsComplete}
+                endpoint="/v1/environments/{envId}/users/{userId}/devices/{deviceId}"
                 rawResult={rawEnrollSmsComplete}
                 pingoneRequest={enrollSmsCompletePingoneReq}
                 pingoneResponse={enrollSmsCompletePingoneRes}
@@ -1715,6 +1795,7 @@ export default function MFATestPage() {
             status={enrollEmailStatus}
             error={enrollEmailError}
             onTest={testEnrollEmail}
+            endpoint="/v1/environments/{envId}/users/{userId}/devices"
             rawResult={rawEnrollEmail}
             pingoneRequest={enrollEmailPingoneReq}
             pingoneResponse={enrollEmailPingoneRes}
@@ -1779,6 +1860,7 @@ export default function MFATestPage() {
             status={fidoEnrollInitStatus}
             error={fidoEnrollInitError}
             onTest={testFidoEnrollInit}
+            endpoint="/v1/environments/{envId}/users/{userId}/devices"
             rawResult={rawFidoEnrollInit}
             pingoneRequest={fidoEnrollInitPingoneReq}
             pingoneResponse={fidoEnrollInitPingoneRes}
@@ -1873,6 +1955,7 @@ export default function MFATestPage() {
               status={fidoEnrollCompleteStatus}
               error={fidoEnrollCompleteError}
               onTest={testFidoEnrollComplete}
+              endpoint="/v1/environments/{envId}/users/{userId}/devices/{deviceId}"
               rawResult={rawFidoEnrollComplete}
               pingoneRequest={fidoEnrollCompletePingoneReq}
               pingoneResponse={fidoEnrollCompletePingoneRes}
@@ -1920,6 +2003,7 @@ export default function MFATestPage() {
             status={smsInitiateStatus}
             error={smsInitiateError}
             onTest={testSmsInitiate}
+            endpoint="/v1/environments/{envId}/as/deviceAuthentications"
             rawResult={rawSmsInitiate}
             pingoneRequest={smsInitiatePingoneReq}
             pingoneResponse={smsInitiatePingoneRes}
@@ -2001,6 +2085,7 @@ export default function MFATestPage() {
                 title="Verify SMS OTP"
                 status={smsVerifyStatus}
                 error={smsVerifyError}
+                onTest={testSmsVerify}
                 rawResult={rawSmsVerify}
                 pingoneRequest={smsVerifyPingoneReq}
                 pingoneResponse={smsVerifyPingoneRes}
@@ -2041,6 +2126,7 @@ export default function MFATestPage() {
             status={emailInitiateStatus}
             error={emailInitiateError}
             onTest={testEmailInitiate}
+            endpoint="/v1/environments/{envId}/as/deviceAuthentications"
             rawResult={rawEmailInitiate}
             pingoneRequest={emailInitiatePingoneReq}
             pingoneResponse={emailInitiatePingoneRes}
@@ -2123,6 +2209,7 @@ export default function MFATestPage() {
                 title="Verify Email OTP"
                 status={emailVerifyStatus}
                 error={emailVerifyError}
+                onTest={testEmailVerify}
                 rawResult={rawEmailVerify}
                 pingoneRequest={emailVerifyPingoneReq}
                 pingoneResponse={emailVerifyPingoneRes}
@@ -2234,7 +2321,9 @@ export default function MFATestPage() {
       </div>
     </div>
   );
-}
+};
+
+export default MFATestPage;
 
 function WhatIsHappening({ title, steps, apiFlow }) {
   const [open, setOpen] = useState(false);
