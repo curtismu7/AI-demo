@@ -1598,7 +1598,7 @@ export default function MFATestPage() {
 								request={smsSelectDevicePingoneReq}
 								response={smsSelectDevicePingoneRes}
 								endpoint={{ method: "PUT", url: "/v1/environments/{envId}/deviceAuthentications/{daId}" }}
-								docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/update-device-authentication.html"
+								docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/select-device-authentication.html"
 								docsSectionTitle="MFA Device Selection"
 							/>
 						</div>
@@ -1699,7 +1699,7 @@ export default function MFATestPage() {
 								request={emailSelectDevicePingoneReq}
 								response={emailSelectDevicePingoneRes}
 								endpoint={{ method: "PUT", url: "/v1/environments/{envId}/deviceAuthentications/{daId}" }}
-								docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/update-device-authentication.html"
+								docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/select-device-authentication.html"
 								docsSectionTitle="MFA Device Selection"
 							/>
 						</div>
