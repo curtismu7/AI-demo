@@ -47,6 +47,9 @@
     "@resvg/resvg-js": "^2.6.2",
     "browserslist": "^4.28.2",
     "dotenv": "^16.6.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
     "wait-on": "^9.0.4"
   },
   "eslintConfig": {
@@ -78,5 +81,14 @@
     "moduleNameMapper": {
       "\\.(css|less|scss|sass)$": "<rootDir>/src/__mocks__/fileMock.js"
     }
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "src/**/*.{css,scss}": [
+      "prettier --write"
+    ]
   }
 }

@@ -60,6 +60,16 @@ if [ "$WARN_TRIGGERED" -eq 1 ]; then
   echo ""
 fi
 
+# ── LINT STAGED FILES (auto-fix eslint and format issues) ────────────────────
+if echo "$STAGED" | grep -q 'banking_api_ui/src'; then
+  echo "Running lint-staged on UI files..."
+  (cd banking_api_ui && npx lint-staged)
+  if [ $? -ne 0 ]; then
+    error "Lint-staged failed — commit blocked. Fix linting issues before committing."
+    exit 1
+  fi
+fi
+
 # ── UI UNIT TESTS (only when banking_api_ui/src files changed) ─────────────
 if echo "$STAGED" | grep -q 'banking_api_ui/src'; then
   echo "UI files changed — running unit tests..."
