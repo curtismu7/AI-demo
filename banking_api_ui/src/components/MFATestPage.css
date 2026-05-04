@@ -157,6 +157,20 @@
 	cursor: not-allowed;
 }
 
+.mfa-test-button--logs {
+	background-color: #17a2b8;
+	color: white;
+	text-decoration: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.mfa-test-button--logs:hover {
+	background-color: #138496;
+	text-decoration: none;
+}
+
 .mfa-test-content {
 	display: flex;
 	flex-direction: column;

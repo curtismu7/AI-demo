@@ -9,6 +9,7 @@ const router = express.Router();
 const mfaService = require('../services/mfaService');
 const oauthService = require('../services/oauthService');
 const apiCallTrackerService = require('../services/apiCallTrackerService');
+const { mfaLogger } = require('../utils/mfaLogger');
 
 /**
  * Normalize a PingOne debug request object for UI trace display.
@@ -291,13 +292,25 @@ async function _resolveCredentials(req) {
  * Body: { method: 'sms' | 'email' | 'fido2' }
  */
 router.post('/integration/initiate', async (req, res) => {
+  const _t1 = Date.now();
   try {
     const { method } = req.body;
     const { userId, accessToken } = await _resolveCredentials(req);
-
-    const _t1 = Date.now();
     const result = await mfaService.initiateDeviceAuth(userId, accessToken);
+    const duration = Date.now() - _t1;
     const devices = result._embedded?.devices || [];
+
+    // Log the API call
+    mfaLogger.logOperation('Initiate Device Authentication', {
+      userId,
+      method,
+      status: result.status,
+      daId: result.id,
+      deviceCount: devices.length,
+      duration_ms: duration,
+      message: `Device authentication initiated for method: ${method}`
+    });
+
     const resBody = {
       success: true,
       daId: result.id,
@@ -305,9 +318,27 @@ router.post('/integration/initiate', async (req, res) => {
       devices,
       method,
     };
+
+    // Always include debug info if available
     if (result._debug) {
-      resBody.pingoneRequest = normalizePingoneRequest(result._debug && result._debug.request);
+      resBody.pingoneRequest = normalizePingoneRequest(result._debug.request);
       resBody.pingoneResponse = result._debug.response;
+      console.log('[MFA API] Initiate SMS - debug captured, request URL:', result._debug.request?.url);
+
+      // Log the PingOne API call details
+      mfaLogger.logApiCall({
+        operation: 'Initiate Device Authentication',
+        method: result._debug.request?.method,
+        url: result._debug.request?.url,
+        headers: result._debug.request?.headers,
+        request: result._debug.request?.body,
+        response: result._debug.response,
+        status: 200,
+        duration: duration,
+        userId
+      });
+    } else {
+      console.warn('[MFA API] Initiate SMS - NO debug info captured');
     }
 
     // For FIDO2: auto-select the enrolled FIDO2 device to transition to ASSERTION_REQUIRED
@@ -334,6 +365,20 @@ router.post('/integration/initiate', async (req, res) => {
     res.json(resBody);
     trackMfaApiCall(req, res, _t1, resBody, 'Initiate MFA device authentication');
   } catch (err) {
+    const userId = req.body?.userId || req.session?.user?.oauthId || req.session?.user?.id;
+    const duration = Date.now() - _t1;
+
+    // Log the error
+    mfaLogger.logError({
+      operation: 'Initiate Device Authentication',
+      userId,
+      message: err.message,
+      code: err.code,
+      status: err.status,
+      details: err.pingError || err.details,
+      stackTrace: err.stack
+    });
+
     console.error('[MFA Test Integration] POST /initiate failed:', err.message);
     if (err.code === 'token_expired') {
       try {
@@ -438,17 +483,36 @@ router.post('/integration/verify-otp', async (req, res) => {
       status: result.status,
       completed: result.status === 'COMPLETED',
     };
+
+    // Always include debug info if available
     if (result._debug) {
-      resBody.pingoneRequest = normalizePingoneRequest(result._debug && result._debug.request);
+      resBody.pingoneRequest = normalizePingoneRequest(result._debug.request);
       resBody.pingoneResponse = result._debug.response;
+      console.log('[MFA API] Verify OTP - debug captured, status:', result.status);
+
+      // Log the PingOne API call details
+      mfaLogger.logApiCall({
+        operation: 'Verify OTP',
+        method: result._debug.request?.method,
+        url: result._debug.request?.url,
+        headers: result._debug.request?.headers,
+        request: result._debug.request?.body,
+        response: result._debug.response,
+        status: 200,
+        duration: Date.now() - _t3,
+        userId: req.session?.user?.id
+      });
+    } else {
+      console.warn('[MFA API] Verify OTP - NO debug info captured');
     }
+
     res.json(resBody);
     trackMfaApiCall(req, res, _t3, resBody, 'Verify OTP code via PingOne MFA');
   } catch (err) {
     console.error('[MFA Test Integration] POST /verify-otp failed:', err.message);
     const errBody = { success: false, error: err.message, pingError: err.pingError };
     if (err._debug) {
-      errBody.pingoneRequest = normalizePingoneRequest(err._debug && err._debug.request);
+      errBody.pingoneRequest = normalizePingoneRequest(err._debug.request);
       errBody.pingoneResponse = err._debug.response;
     }
     res.status(err.status || 500).json(errBody);
@@ -468,6 +532,7 @@ router.post('/integration/verify-fido2', async (req, res) => {
       return res.status(400).json({ success: false, error: 'invalid_body', message: 'Provide daId and assertion.' });
     }
 
+    const _t4 = Date.now();
     const result = await mfaService.submitFido2Assertion(daId, assertion, accessToken, origin || req.headers.origin);
     const resBody = {
       success: true,
@@ -475,16 +540,35 @@ router.post('/integration/verify-fido2', async (req, res) => {
       status: result.status,
       completed: result.status === 'COMPLETED',
     };
+
+    // Always include debug info if available
     if (result._debug) {
-      resBody.pingoneRequest = normalizePingoneRequest(result._debug && result._debug.request);
+      resBody.pingoneRequest = normalizePingoneRequest(result._debug.request);
       resBody.pingoneResponse = result._debug.response;
+      console.log('[MFA API] Verify FIDO2 - debug captured, status:', result.status);
+
+      // Log the PingOne API call details
+      mfaLogger.logApiCall({
+        operation: 'Verify FIDO2 Assertion',
+        method: result._debug.request?.method,
+        url: result._debug.request?.url,
+        headers: result._debug.request?.headers,
+        request: result._debug.request?.body,
+        response: result._debug.response,
+        status: 200,
+        duration: Date.now() - _t4,
+        userId: req.session?.user?.id
+      });
+    } else {
+      console.warn('[MFA API] Verify FIDO2 - NO debug info captured');
     }
+
     res.json(resBody);
   } catch (err) {
     console.error('[MFA Test Integration] POST /verify-fido2 failed:', err.message);
     const errBody = { success: false, error: err.message, pingError: err.pingError };
     if (err._debug) {
-      errBody.pingoneRequest = normalizePingoneRequest(err._debug && err._debug.request);
+      errBody.pingoneRequest = normalizePingoneRequest(err._debug.request);
       errBody.pingoneResponse = err._debug.response;
     }
     res.status(err.status || 500).json(errBody);
@@ -862,6 +946,43 @@ router.get('/users', async (req, res) => {
   } catch (err) {
     console.error('[MFA Test] GET /users failed:', err.message);
     res.status(err.status || 500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/mfa/test/logs
+ * Retrieve recent MFA test logs
+ * Query param: ?count=100 (default: 100)
+ */
+router.get('/logs', (req, res) => {
+  try {
+    const count = parseInt(req.query.count, 10) || 100;
+    const logs = mfaLogger.getRecentLogs(count);
+    const logFile = mfaLogger.getLogFilePath();
+
+    res.json({
+      success: true,
+      count: logs.length,
+      logFile,
+      logs
+    });
+  } catch (err) {
+    console.error('[MFA Test] GET /logs failed:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * DELETE /api/mfa/test/logs
+ * Clear MFA test logs
+ */
+router.delete('/logs', (_req, res) => {
+  try {
+    mfaLogger.clearLogs();
+    res.json({ success: true, message: 'MFA logs cleared' });
+  } catch (err) {
+    console.error('[MFA Test] DELETE /logs failed:', err.message);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

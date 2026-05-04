@@ -1,28 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import apiClient from "../services/apiClient";
 import { notifyError, notifyInfo, notifySuccess } from "../utils/appToast";
 import "./MFATestPage.css";
 import ApiCallPreviewCard from "./shared/ApiCallPreviewCard";
 import MFATestCard from "./MFATestCard";
 
-/**
- * Collapsible per-section API call display toggle (Phase 135)
- */
-function SectionApiCalls() {
-	const [open, setOpen] = useState(false);
-	return (
-		<div className="section-api-calls">
-			<button
-				type="button"
-				className="section-api-toggle"
-				onClick={() => setOpen((o) => !o)}
-			>
-				{open ? "▾ Hide API Calls" : "▸ Show API Calls"}
-			</button>
-			{open && <ApiCallDisplay sessionId="mfa-test" />}
-		</div>
-	);
-}
 
 /**
  * MFATestPage — comprehensive test page for PingOne MFA functionality
@@ -965,6 +948,9 @@ export default function MFATestPage() {
 						</span>
 					</div>
 					<div className="mfa-test-actions">
+						<Link to="/mfa-logs" className="mfa-test-button mfa-test-button--logs">
+							View Logs
+						</Link>
 						<button
 							type="button"
 							className="mfa-test-button mfa-test-button--secondary"
@@ -985,8 +971,14 @@ export default function MFATestPage() {
 				{/* User picker combobox — searchable PingOne user list */}
 				{(() => {
 					const selectedUser = pingoneUsers.find((u) => u.id === testUserId);
-					// pingoneUsers is already server-filtered when searching; show all
-					const displayUsers = pingoneUsers;
+					// Filter users by search term (client-side fallback for server filtering)
+					const displayUsers = userSearch
+						? pingoneUsers.filter((u) =>
+							u.username.toLowerCase().includes(userSearch.toLowerCase()) ||
+							(u.name && u.name.toLowerCase().includes(userSearch.toLowerCase())) ||
+							(u.email && u.email.toLowerCase().includes(userSearch.toLowerCase()))
+						)
+						: pingoneUsers;
 					return (
 						<div className="mfa-user-picker">
 							<label className="mfa-user-picker__label">Test as User:</label>
@@ -1063,7 +1055,7 @@ export default function MFATestPage() {
 									>
 										Clear
 									</button>
-									<span className="mfa-user-picker__active">⚠ Override active</span>
+									<span className="mfa-user-picker__active">Override active</span>
 								</>
 							)}
 						</div>
@@ -1084,7 +1076,7 @@ export default function MFATestPage() {
 				{/* Info banner when using auto-resolved default policy */}
 				{config?.policySource === "auto" && (
 					<div className="mfa-test-info-banner">
-						<strong>ℹ️ Using default MFA policy</strong>
+						<strong>Using default MFA policy</strong>
 						<p>
 							<code>PINGONE_MFA_POLICY_ID</code> is not set — the server will
 							automatically resolve the default MFA policy from your PingOne
@@ -1134,12 +1126,88 @@ export default function MFATestPage() {
 							</span>
 						</div>
 					</div>
-					<SectionApiCalls />
 				</section>
+				{/* Device Management Section */}
+				<section className="mfa-test-section">
+					<h2 className="mfa-test-section-title">Devices</h2>
+					<WhatIsHappening
+						title="Device Management — Listing Enrolled MFA Devices"
+						steps={[
+							"GET /api/mfa/test/devices → BFF calls PingOne Management API to list all MFA devices for the authenticated user",
+							"Each device has: type (SMS, EMAIL, FIDO2_BIOMETRICS), nickname/email, status (ACTIVE, INACTIVE), and enrolledAt date",
+							"Devices are the registered MFA factors — each one can be used to satisfy an MFA challenge",
+							"Admins can disable or delete devices via PingOne console or Management API",
+						]}
+						apiFlow={[
+							{
+								method: "GET",
+								endpoint: "/api/mfa/test/devices",
+								note: "List enrolled MFA devices",
+							},
+							{
+								method: "GET",
+								endpoint: "/v1/environments/{envId}/users/{userId}/devices",
+								note: "PingOne Management API",
+							},
+						]}
+					/>
+					<MFATestCard
+						title="List Devices"
+						status={devicesStatus}
+						error={devicesError}
+						onTest={loadDevices}
+						rawResult={rawDevices}
+						pingoneRequest={devicesPingoneReq}
+						pingoneResponse={devicesPingoneRes}
+						docsUrl="https://developer.pingidentity.com/pingone-api/mfa/users/mfa-devices/read-all-mfa-user-devices.html"
+						docsSectionTitle="Device Management — List MFA Devices"
+				endpoint="/v1/environments/{envId}/users/{userId}/devices"
+				method="GET"
+					/>
+					{devices.length > 0 && (
+						<div className="devices-list">
+							<h3 className="devices-list-title">Enrolled Devices</h3>
+							<ul className="devices-items">
+								{devices.map((device) => (
+									<li key={device.id} className="device-item">
+										<span className="device-type">{device.type}</span>
+										<span className="device-nickname">
+											{device.nickname || device.email || "—"}
+										</span>
+										<span
+											className={`device-status device-status--${(device.status || "unknown").toLowerCase()}`}
+										>
+											{device.status || "UNKNOWN"}
+										</span>
+										<span className="device-meta">
+											ID: {device.id?.substring(0, 12)}…
+										</span>
+										{device.createdAt && (
+											<span className="device-meta">
+												Enrolled:{" "}
+												{new Date(device.createdAt).toLocaleDateString()}
+											</span>
+										)}
+										<button
+											type="button"
+											className="mfa-test-button mfa-test-button--danger"
+											disabled={deletingDeviceId === device.id}
+											onClick={() => deleteDevice(device.id)}
+											style={{ marginLeft: "auto", padding: "2px 10px", fontSize: "0.8rem" }}
+										>
+											{deletingDeviceId === device.id ? "Deleting…" : "Delete"}
+										</button>
+									</li>
+								))}
+							</ul>
+						</div>
+					)}
+				</section>
+
 
 				{/* Device Enrollment Section */}
 				<section className="mfa-test-section">
-					<h2 className="mfa-test-section-title">Device Enrollment</h2>
+					<h2 className="mfa-test-section-title">Device Registration</h2>
 					<WhatIsHappening
 						title="Device Enrollment — Registering a New MFA Device"
 						steps={[
@@ -1185,31 +1253,31 @@ export default function MFATestPage() {
 								<option value="+1-CA"> +1 CA</option>
 								<option value="+44"> +44 UK</option>
 								<option value="+61"> +61 AU</option>
-								<option value="+64">🇳🇿 +64 NZ</option>
+								<option value="+64">+64 NZ</option>
 								<option value="+49"> +49 DE</option>
 								<option value="+33"> +33 FR</option>
 								<option value="+34"> +34 ES</option>
 								<option value="+39"> +39 IT</option>
-								<option value="+31">🇳🇱 +31 NL</option>
-								<option value="+46">🇸🇪 +46 SE</option>
-								<option value="+47">🇳🇴 +47 NO</option>
-								<option value="+45">🇩🇰 +45 DK</option>
-								<option value="+358">🇫🇮 +358 FI</option>
-								<option value="+41">🇨🇭 +41 CH</option>
-								<option value="+43">🇦🇹 +43 AT</option>
-								<option value="+32">🇧🇪 +32 BE</option>
-								<option value="+353">🇮🇪 +353 IE</option>
-								<option value="+351">🇵🇹 +351 PT</option>
+								<option value="+31">+31 NL</option>
+								<option value="+46">+46 SE</option>
+								<option value="+47">+47 NO</option>
+								<option value="+45">+45 DK</option>
+								<option value="+358">+358 FI</option>
+								<option value="+41">+41 CH</option>
+								<option value="+43">+43 AT</option>
+								<option value="+32">+32 BE</option>
+								<option value="+353">+353 IE</option>
+								<option value="+351">+351 PT</option>
 								<option value="+81"> +81 JP</option>
 								<option value="+82"> +82 KR</option>
-								<option value="+86">🇨🇳 +86 CN</option>
+								<option value="+86">+86 CN</option>
 								<option value="+91"> +91 IN</option>
-								<option value="+65">🇸🇬 +65 SG</option>
-								<option value="+60">🇲🇾 +60 MY</option>
+								<option value="+65">+65 SG</option>
+								<option value="+60">+60 MY</option>
 								<option value="+52"> +52 MX</option>
 								<option value="+55"> +55 BR</option>
 								<option value="+27"> +27 ZA</option>
-								<option value="+971">🇦🇪 +971 AE</option>
+								<option value="+971">+971 AE</option>
 								<option value="+966"> +966 SA</option>
 								<option value="+972"> +972 IL</option>
 							</select>
@@ -1400,6 +1468,9 @@ export default function MFATestPage() {
 					)}
 				</section>
 
+				{/* Authentication Test Sections Header */}
+				<h2 className="mfa-test-section-title" style={{ margin: "2rem 0 1rem" }}>Authentication</h2>
+
 				{/* SMS OTP Test Section */}
 				<section className="mfa-test-section">
 					<h2 className="mfa-test-section-title">SMS OTP Testing</h2>
@@ -1489,7 +1560,6 @@ export default function MFATestPage() {
 							/>
 						</div>
 					)}
-					<SectionApiCalls />
 				</section>
 
 				{/* Email OTP Test Section */}
@@ -1580,7 +1650,6 @@ export default function MFATestPage() {
 							/>
 						</div>
 					)}
-					<SectionApiCalls />
 				</section>
 
 				{/* FIDO2/Passkey Test Section */}
@@ -1673,86 +1742,8 @@ export default function MFATestPage() {
 							)}
 						</div>
 					)}
-					<SectionApiCalls />
 				</section>
 
-				{/* Device Management Section */}
-				<section className="mfa-test-section">
-					<h2 className="mfa-test-section-title">Device Management</h2>
-					<WhatIsHappening
-						title="Device Management — Listing Enrolled MFA Devices"
-						steps={[
-							"GET /api/mfa/test/devices → BFF calls PingOne Management API to list all MFA devices for the authenticated user",
-							"Each device has: type (SMS, EMAIL, FIDO2_BIOMETRICS), nickname/email, status (ACTIVE, INACTIVE), and enrolledAt date",
-							"Devices are the registered MFA factors — each one can be used to satisfy an MFA challenge",
-							"Admins can disable or delete devices via PingOne console or Management API",
-						]}
-						apiFlow={[
-							{
-								method: "GET",
-								endpoint: "/api/mfa/test/devices",
-								note: "List enrolled MFA devices",
-							},
-							{
-								method: "GET",
-								endpoint: "/v1/environments/{envId}/users/{userId}/devices",
-								note: "PingOne Management API",
-							},
-						]}
-					/>
-					<MFATestCard
-						title="List Devices"
-						status={devicesStatus}
-						error={devicesError}
-						onTest={loadDevices}
-						rawResult={rawDevices}
-						pingoneRequest={devicesPingoneReq}
-						pingoneResponse={devicesPingoneRes}
-						docsUrl="https://developer.pingidentity.com/pingone-api/mfa/users/mfa-devices/read-all-mfa-user-devices.html"
-						docsSectionTitle="Device Management — List MFA Devices"
-				endpoint="/v1/environments/{envId}/users/{userId}/devices"
-				method="GET"
-					/>
-					{devices.length > 0 && (
-						<div className="devices-list">
-							<h3 className="devices-list-title">Enrolled Devices</h3>
-							<ul className="devices-items">
-								{devices.map((device) => (
-									<li key={device.id} className="device-item">
-										<span className="device-type">{device.type}</span>
-										<span className="device-nickname">
-											{device.nickname || device.email || "—"}
-										</span>
-										<span
-											className={`device-status device-status--${(device.status || "unknown").toLowerCase()}`}
-										>
-											{device.status || "UNKNOWN"}
-										</span>
-										<span className="device-meta">
-											ID: {device.id?.substring(0, 12)}…
-										</span>
-										{device.createdAt && (
-											<span className="device-meta">
-												Enrolled:{" "}
-												{new Date(device.createdAt).toLocaleDateString()}
-											</span>
-										)}
-										<button
-											type="button"
-											className="mfa-test-button mfa-test-button--danger"
-											disabled={deletingDeviceId === device.id}
-											onClick={() => deleteDevice(device.id)}
-											style={{ marginLeft: "auto", padding: "2px 10px", fontSize: "0.8rem" }}
-										>
-											{deletingDeviceId === device.id ? "Deleting…" : "Delete Delete"}
-										</button>
-									</li>
-								))}
-							</ul>
-						</div>
-					)}
-					<SectionApiCalls />
-				</section>
 			</div>
 		</div>
 	);
@@ -1769,7 +1760,7 @@ function WhatIsHappening({ title, steps, apiFlow }) {
 			>
 				<span className="wih-icon">{open ? "▼" : "▶"}</span>
 				<span className="wih-label">
-					ℹ️ {title || "What is happening here?"}
+					{title || "What is happening here?"}
 				</span>
 			</button>
 			{open && (
@@ -1842,47 +1833,3 @@ function DaResponseCard({ daId, method }) {
 	);
 }
 
-function TestCard({ title, status, error, onTest, rawResult, pingoneRequest, pingoneResponse, docsUrl, docsSectionTitle }) {
-	const [rawOpen, setRawOpen] = useState(false);
-	return (
-		<div className={`test-card test-card--${status}`}>
-			<div className="test-card-header">
-				<h4 className="test-card-title">{title}</h4>
-				<span className={`status-badge status-badge--${status}`}>
-					{status === "passed" && " Pass"}
-					{status === "failed" && " Fail"}
-					{status === "pending" && "○ Pending"}
-					{status === "running" && " Running"}
-				</span>
-			</div>
-			{error && <p className="test-card-error">{error}</p>}
-			{onTest && (
-				<button
-					type="button"
-					className="mfa-test-button mfa-test-button--test"
-					onClick={onTest}
-					disabled={status === "running"}
-				>
-					{status === "running" ? "Running..." : "Test"}
-				</button>
-			)}
-				<PingOneApiPanel request={pingoneRequest} response={pingoneResponse} docsUrl={docsUrl} docsSectionTitle={docsSectionTitle} />
-			{!pingoneResponse && rawResult !== undefined && rawResult !== null && (
-				<div className="test-card-raw">
-					<button
-						type="button"
-						className="test-card-raw-toggle"
-						onClick={() => setRawOpen((o) => !o)}
-					>
-						{rawOpen ? "▾ Hide P1 Response" : "▸ Show P1 Response"}
-					</button>
-					{rawOpen && (
-						<pre className="test-card-raw-json">
-							{JSON.stringify(rawResult, null, 2)}
-						</pre>
-					)}
-				</div>
-			)}
-		</div>
-	);
-}

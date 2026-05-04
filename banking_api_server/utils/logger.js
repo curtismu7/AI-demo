@@ -23,7 +23,8 @@ const LOG_CATEGORIES = {
   PROVIDER_HEALTH: 'provider_health',
   AUTHENTICATION: 'authentication',
   AUTHORIZATION: 'authorization',
-  ERROR_HANDLING: 'error_handling'
+  ERROR_HANDLING: 'error_handling',
+  MFA_TEST: 'mfa_test'
 };
 
 class StructuredLogger {
@@ -172,6 +173,17 @@ class StructuredLogger {
 
   logErrorHandling(errorType, metadata = {}) {
     return this.log(LOG_LEVELS.ERROR, LOG_CATEGORIES.ERROR_HANDLING, `Error handled: ${errorType}`, metadata);
+  }
+
+  // MFA-specific logging with full API details
+  logMfaApiCall(method, endpoint, success, metadata = {}) {
+    const level = success ? LOG_LEVELS.INFO : LOG_LEVELS.ERROR;
+    const message = success ? `MFA API call successful` : `MFA API call failed`;
+    return this.log(level, LOG_CATEGORIES.MFA_TEST, message, {
+      method,
+      endpoint,
+      ...metadata
+    });
   }
 
   // Audit logging for delegation chains and sensitive operations

@@ -433,8 +433,12 @@ router.post('/', authenticateToken, async (req, res) => {
       req.user.role !== 'admin' &&
       ['deposit', 'withdrawal', 'transfer'].includes(type) &&
       (type === 'transfer' || hitlAmount > txConsent.HIGH_VALUE_CONSENT_USD);
+
+    console.log(`[HITL] Checking: type=${type}, amount=$${hitlAmount}, enabled=${hitlEnabled}, role=${req.user.role}, isTransfer=${type === 'transfer'}, requiresHitl=${requiresHitl}`);
+
     if (requiresHitl) {
       if (!req.body.consentChallengeId) {
+        console.log(`[HITL] Returning 428 - consentChallengeId required (error: consent_challenge_required)`);
         return res.status(428).json({
           error: 'consent_challenge_required',
           error_description: type === 'transfer'
@@ -442,11 +446,15 @@ router.post('/', authenticateToken, async (req, res) => {
             : `Transactions over $${txConsent.HIGH_VALUE_CONSENT_USD} require explicit HITL approval. Create a consent challenge first.`,
         });
       }
+      console.log(`[HITL] Verifying consentChallengeId: ${req.body.consentChallengeId}`);
       const consumed = txConsent.verifyAndConsumeChallenge(req, req.body.consentChallengeId, req.body);
       if (!consumed.ok) {
+        console.log(`[HITL] Consent verification failed: ${consumed.status} ${consumed.json.error}`);
         return res.status(consumed.status).json(consumed.json);
       }
-      console.log(`[Transactions] ${type} ${req.body.fromAccountId || ''}→${req.body.toAccountId || ''} $${hitlAmount} consent verified`);
+      console.log(`[HITL] ✅ ${type} $${hitlAmount} consent verified - proceeding with transaction`);
+    } else {
+      console.log(`[HITL] ✅ HITL not required for this transaction`);
     }
 
     // ── Session check for conditional authentication (Phase 122) ───────────────
