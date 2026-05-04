@@ -211,8 +211,12 @@ async function selectDevice(daId, deviceId, userAccessToken) {
  * Status transitions: OTP_REQUIRED → COMPLETED | FAILED
  */
 async function submitOtp(daId, deviceId, otp, userAccessToken) {
-	// Use worker token for OTP submission (matches PingOne MFA v1 API requirements)
-	const workerToken = await _getWorkerToken();
+	// OTP verification requires the user's access token (not worker token)
+	// The /otp endpoint validates user context in the token
+	if (!userAccessToken) {
+		throw new Error("submitOtp requires userAccessToken (user context required for OTP verification)");
+	}
+
 	// OTP validation endpoint: POST to /otp path, not the deviceAuthentications root
 	const url = `${_authBaseUrl()}/deviceAuthentications/${daId}/otp`;
 	// OTP submission body is simple: just the OTP code
@@ -220,22 +224,22 @@ async function submitOtp(daId, deviceId, otp, userAccessToken) {
 	const contentType = "application/json";
 
 	console.log(`[submitOtp] Full URL: ${url}`);
-	console.log(`[submitOtp] Method: POST (corrected from PUT)`);
+	console.log(`[submitOtp] Method: POST`);
 	console.log(`[submitOtp] Content-Type: ${contentType}`);
 	console.log(`[submitOtp] Request body: ${JSON.stringify(reqBody)}`);
-	console.log(`[submitOtp] Using worker token (len=${workerToken?.length || 0})`);
+	console.log(`[submitOtp] Using user access token (len=${userAccessToken?.length || 0})`);
 
 	const debugRequest = {
 		method: "POST",
 		url: url,
 		body: reqBody,
 		contentType: contentType,
-		headers: _debugHeaders(workerToken, contentType),
+		headers: _debugHeaders(userAccessToken, contentType),
 	};
 	try {
 		let data;
 		try {
-			const authHeader = `Bearer ${workerToken}`;
+			const authHeader = `Bearer ${userAccessToken}`;
 			console.log(`[submitOtp] Authorization header ready (Bearer token present)`);
 
 			const resp = await axios.post(url, reqBody, {
