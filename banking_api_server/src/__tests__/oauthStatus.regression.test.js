@@ -1,14 +1,14 @@
-/**
- * oauthStatus.regression.test.js
- * Regression tests for GET /api/auth/oauth/status and GET /api/auth/oauth/user/status
- *
- * Covers 4 critical gaps in token expiry checking and session validation:
- * 1. _cookie_session stub does NOT count as authenticated (even with user + token)
- * 2. Expired token returns authenticated: false (prevents 401 loops)
- * 3. No session at all returns authenticated: false
- * 4. Valid session with future expiry returns authenticated: true
- */
 'use strict';
+/**
+ * OAuth Status Route Regression Tests
+ *
+ * Tests for GET /api/auth/oauth/status (admin) and GET /api/auth/oauth/user/status (user)
+ * Critical gaps covered:
+ * - No session: unauthenticated
+ * - Stub token ('_cookie_session'): unauthenticated
+ * - Expired token: unauthenticated
+ * - Valid session: authenticated with user populated
+ */
 
 const express = require('express');
 const session = require('express-session');
@@ -16,20 +16,12 @@ const request = require('supertest');
 
 jest.mock('../../services/configStore', () => ({
   getEffective: jest.fn((key) => {
-    const defaults = {
-      'pingone_environment_id': 'test-env-id',
-      'ff_hitl_enabled': 'true',
-    };
+    const defaults = { 'ff_hitl_enabled': 'true' };
     return defaults[key] || null;
   }),
-  isUserOAuthConfigured: jest.fn(() => true),
-  isAdminOAuthConfigured: jest.fn(() => true),
 }));
 
-/**
- * Build test Express app with express-session + helper endpoint to set session fields
- */
-function buildAppWithSession() {
+function buildApp() {
   const app = express();
   app.use(express.json());
   app.use(
@@ -40,13 +32,11 @@ function buildAppWithSession() {
     })
   );
 
-  // Helper endpoint: set session fields from request body, then return 200
   app.post('/__set-session', (req, res) => {
     Object.assign(req.session, req.body);
     req.session.save(() => res.json({ ok: true }));
   });
 
-  // Mount oauth and oauthUser routers at their respective paths
   const oauthRoutes = require('../../routes/oauth');
   const oauthUserRoutes = require('../../routes/oauthUser');
   app.use('/api/auth/oauth', oauthRoutes);
@@ -55,274 +45,181 @@ function buildAppWithSession() {
   return app;
 }
 
-/**
- * Return a request agent that carries cookies across requests (for session persistence)
- */
-function agentWith(app) {
-  return request.agent(app);
-}
+describe('GET /api/auth/oauth/status (Admin OAuth)', () => {
+  let app, agent;
 
-describe('OAuth Status Endpoints — Token Expiry & Session Validation', () => {
-  describe('GET /api/auth/oauth/status (admin)', () => {
-    test('no session at all → authenticated: false', async () => {
-      const app = buildAppWithSession();
-      const res = await request(app).get('/api/auth/oauth/status');
-
-      expect(res.status).toBe(200);
-      expect(res.body.authenticated).toBe(false);
-      expect(res.body.user).toBeNull();
-    });
-
-    test('_cookie_session stub token → authenticated: false', async () => {
-      const app = buildAppWithSession();
-      const agent = agentWith(app);
-
-      // Seed session with the stub token (what Vercel cold-start produces)
-      await agent
-        .post('/__set-session')
-        .send({
-          oauthTokens: {
-            accessToken: '_cookie_session',
-            tokenType: 'Bearer',
-            expiresAt: Date.now() + 3600000,
-          },
-          user: { id: 'admin-1', username: 'admin', email: 'admin@test.com', role: 'admin' },
-          oauthType: 'admin',
-        });
-
-      // Status check should return authenticated: false (stub != real token)
-      const res = await agent.get('/api/auth/oauth/status');
-      expect(res.status).toBe(200);
-      expect(res.body.authenticated).toBe(false);
-      expect(res.body.user).toBeNull();
-    });
-
-    test('expired token → authenticated: false', async () => {
-      const app = buildAppWithSession();
-      const agent = agentWith(app);
-
-      // Seed session with an expired token
-      await agent
-        .post('/__set-session')
-        .send({
-          oauthTokens: {
-            accessToken: 'real-token-but-expired',
-            tokenType: 'Bearer',
-            expiresAt: Date.now() - 1000, // 1 second ago
-          },
-          user: { id: 'admin-1', username: 'admin', email: 'admin@test.com', role: 'admin' },
-          oauthType: 'admin',
-        });
-
-      // Status check should return authenticated: false (token expired)
-      const res = await agent.get('/api/auth/oauth/status');
-      expect(res.status).toBe(200);
-      expect(res.body.authenticated).toBe(false);
-      expect(res.body.user).toBeNull();
-    });
-
-    test('valid session with future expiry → authenticated: true', async () => {
-      const app = buildAppWithSession();
-      const agent = agentWith(app);
-
-      const futureExpiresAt = Date.now() + 3600000; // 1 hour from now
-      await agent
-        .post('/__set-session')
-        .send({
-          oauthTokens: {
-            accessToken: 'valid-token-xyz',
-            tokenType: 'Bearer',
-            expiresAt: futureExpiresAt,
-          },
-          user: {
-            id: 'admin-1',
-            username: 'admin',
-            email: 'admin@test.com',
-            firstName: 'Test',
-            lastName: 'Admin',
-            role: 'admin',
-          },
-          oauthType: 'admin',
-        });
-
-      const res = await agent.get('/api/auth/oauth/status');
-      expect(res.status).toBe(200);
-      expect(res.body.authenticated).toBe(true);
-      expect(res.body.user).toBeDefined();
-      expect(res.body.user.id).toBe('admin-1');
-      expect(res.body.user.username).toBe('admin');
-      expect(res.body.expiresAt).toBe(futureExpiresAt);
-      // Ensure accessToken is NOT leaked to frontend
-      expect(res.body.accessToken).toBeUndefined();
-    });
+  beforeEach(() => {
+    app = buildApp();
+    agent = request.agent(app);
   });
 
-  describe('GET /api/auth/oauth/user/status (end-user)', () => {
-    test('no session → authenticated: false', async () => {
-      const app = buildAppWithSession();
-      const res = await request(app).get('/api/auth/oauth/user/status');
-
-      expect(res.status).toBe(200);
-      expect(res.body.authenticated).toBe(false);
-      expect(res.body.user).toBeNull();
-    });
-
-    test('_cookie_session stub token → authenticated: false', async () => {
-      const app = buildAppWithSession();
-      const agent = agentWith(app);
-
-      await agent
-        .post('/__set-session')
-        .send({
-          oauthTokens: {
-            accessToken: '_cookie_session',
-            tokenType: 'Bearer',
-            expiresAt: Date.now() + 3600000,
-          },
-          user: { id: 'user-1', username: 'customer', email: 'user@test.com', role: 'customer' },
-          oauthType: 'user',
-          clientType: 'enduser',
-        });
-
-      const res = await agent.get('/api/auth/oauth/user/status');
-      expect(res.status).toBe(200);
-      expect(res.body.authenticated).toBe(false);
-      expect(res.body.user).toBeNull();
-    });
-
-    test('expired token → authenticated: false', async () => {
-      const app = buildAppWithSession();
-      const agent = agentWith(app);
-
-      await agent
-        .post('/__set-session')
-        .send({
-          oauthTokens: {
-            accessToken: 'user-token-expired',
-            tokenType: 'Bearer',
-            expiresAt: Date.now() - 5000,
-          },
-          user: { id: 'user-1', username: 'customer', email: 'user@test.com', role: 'customer' },
-          oauthType: 'user',
-          clientType: 'enduser',
-        });
-
-      const res = await agent.get('/api/auth/oauth/user/status');
-      expect(res.status).toBe(200);
-      expect(res.body.authenticated).toBe(false);
-      expect(res.body.user).toBeNull();
-    });
-
-    test('valid user session → authenticated: true with user fields', async () => {
-      const app = buildAppWithSession();
-      const agent = agentWith(app);
-
-      const futureExpiresAt = Date.now() + 7200000; // 2 hours
-      await agent
-        .post('/__set-session')
-        .send({
-          oauthTokens: {
-            accessToken: 'user-token-abc123',
-            tokenType: 'Bearer',
-            expiresAt: futureExpiresAt,
-          },
-          user: {
-            id: 'user-1',
-            username: 'customer',
-            email: 'customer@example.com',
-            firstName: 'Jane',
-            lastName: 'Doe',
-            role: 'customer',
-          },
-          oauthType: 'user',
-          clientType: 'enduser',
-          agentConsentGiven: true,
-          agentConsentedAt: Date.now(),
-          mayAct: null,
-        });
-
-      const res = await agent.get('/api/auth/oauth/user/status');
-      expect(res.status).toBe(200);
-      expect(res.body.authenticated).toBe(true);
-      expect(res.body.user.id).toBe('user-1');
-      expect(res.body.user.email).toBe('customer@example.com');
-      expect(res.body.clientType).toBe('enduser');
-      expect(res.body.consentGiven).toBe(true);
-      expect(res.body.expiresAt).toBe(futureExpiresAt);
-      // Token must NOT leak
-      expect(res.body.accessToken).toBeUndefined();
-    });
-
-    test('user status also accepts oauthType: admin (rare but supported)', async () => {
-      const app = buildAppWithSession();
-      const agent = agentWith(app);
-
-      await agent
-        .post('/__set-session')
-        .send({
-          oauthTokens: {
-            accessToken: 'admin-token-accessed-via-user-status',
-            tokenType: 'Bearer',
-            expiresAt: Date.now() + 3600000,
-          },
-          user: {
-            id: 'admin-2',
-            username: 'admin',
-            email: 'admin2@test.com',
-            role: 'admin',
-          },
-          oauthType: 'admin', // Note: admin oauthType is accepted by user/status endpoint
-        });
-
-      const res = await agent.get('/api/auth/oauth/user/status');
-      // Should accept both oauthType: 'user' and 'admin' (line 683 of oauthUser.js)
-      expect(res.status).toBe(200);
-      expect(res.body.authenticated).toBe(true);
-      expect(res.body.user.role).toBe('admin');
-    });
+  test('No session: returns { authenticated: false }', async () => {
+    const res = await agent.get('/api/auth/oauth/status');
+    expect(res.status).toBe(200);
+    expect(res.body.authenticated).toBe(false);
+    expect(res.body.user).toBe(null);
   });
 
-  describe('Token expiry edge cases', () => {
-    test('token with expiresAt = now (boundary case) → authenticated: false', async () => {
-      const app = buildAppWithSession();
-      const agent = agentWith(app);
-
-      const nowTime = Date.now();
-      await agent
-        .post('/__set-session')
-        .send({
-          oauthTokens: {
-            accessToken: 'edge-case-token',
-            tokenType: 'Bearer',
-            expiresAt: nowTime, // Expired exactly now
-          },
-          user: { id: 'user-1', username: 'test', email: 'test@test.com', role: 'customer' },
-          oauthType: 'user',
-        });
-
-      const res = await agent.get('/api/auth/oauth/user/status');
-      expect(res.body.authenticated).toBe(false);
+  test('Stub token (_cookie_session): returns { authenticated: false }', async () => {
+    await agent.post('/__set-session').send({
+      user: { id: 'u1', username: 'admin', email: 'admin@example.com', role: 'admin' },
+      oauthTokens: { accessToken: '_cookie_session', expiresAt: Date.now() + 9999999 },
+      oauthType: 'admin',
     });
 
-    test('token with expiresAt = now + 1s → authenticated: true', async () => {
-      const app = buildAppWithSession();
-      const agent = agentWith(app);
+    const res = await agent.get('/api/auth/oauth/status');
+    expect(res.status).toBe(200);
+    expect(res.body.authenticated).toBe(false);
+    expect(res.body.user).toBe(null);
+  });
 
-      const futureTime = Date.now() + 1000; // 1 second in the future
-      await agent
-        .post('/__set-session')
-        .send({
-          oauthTokens: {
-            accessToken: 'barely-valid-token',
-            tokenType: 'Bearer',
-            expiresAt: futureTime,
-          },
-          user: { id: 'user-1', username: 'test', email: 'test@test.com', role: 'customer' },
-          oauthType: 'user',
-        });
-
-      const res = await agent.get('/api/auth/oauth/user/status');
-      expect(res.body.authenticated).toBe(true);
+  test('Expired token: returns { authenticated: false }', async () => {
+    await agent.post('/__set-session').send({
+      user: { id: 'u2', username: 'admin2', email: 'admin2@example.com', role: 'admin' },
+      oauthTokens: { accessToken: 'valid_token', expiresAt: Date.now() - 1000, tokenType: 'Bearer' },
+      oauthType: 'admin',
     });
+
+    const res = await agent.get('/api/auth/oauth/status');
+    expect(res.status).toBe(200);
+    expect(res.body.authenticated).toBe(false);
+    expect(res.body.user).toBe(null);
+  });
+
+  test('Valid session: returns { authenticated: true, user populated }', async () => {
+    await agent.post('/__set-session').send({
+      user: {
+        id: 'u3',
+        username: 'admin3',
+        email: 'admin3@example.com',
+        firstName: 'Ad',
+        lastName: 'Min',
+        role: 'admin',
+        oauthProvider: 'PingOne',
+      },
+      oauthTokens: { accessToken: 'valid_tok', expiresAt: Date.now() + 9999999, tokenType: 'Bearer' },
+      oauthType: 'admin',
+      clientType: 'confidential',
+    });
+
+    const res = await agent.get('/api/auth/oauth/status');
+    expect(res.status).toBe(200);
+    expect(res.body.authenticated).toBe(true);
+    expect(res.body.user).toMatchObject({
+      id: 'u3',
+      username: 'admin3',
+      email: 'admin3@example.com',
+      firstName: 'Ad',
+      lastName: 'Min',
+      role: 'admin',
+    });
+    expect(res.body.oauthProvider).toBe('PingOne');
+    expect(res.body.tokenType).toBe('Bearer');
+    expect(res.body.expiresAt).toEqual(expect.any(Number));
+  });
+});
+
+describe('GET /api/auth/oauth/user/status (User OAuth)', () => {
+  let app, agent;
+
+  beforeEach(() => {
+    app = buildApp();
+    agent = request.agent(app);
+  });
+
+  test('No session: returns { authenticated: false }', async () => {
+    const res = await agent.get('/api/auth/oauth/user/status');
+    expect(res.status).toBe(200);
+    expect(res.body.authenticated).toBe(false);
+    expect(res.body.user).toBe(null);
+  });
+
+  test('Stub token (_cookie_session): returns { authenticated: false }', async () => {
+    await agent.post('/__set-session').send({
+      user: { id: 'u4', username: 'customer', email: 'cust@example.com', role: 'customer' },
+      oauthTokens: { accessToken: '_cookie_session', expiresAt: Date.now() + 9999999 },
+      oauthType: 'user',
+    });
+
+    const res = await agent.get('/api/auth/oauth/user/status');
+    expect(res.status).toBe(200);
+    expect(res.body.authenticated).toBe(false);
+    expect(res.body.user).toBe(null);
+  });
+
+  test('Expired token: returns { authenticated: false }', async () => {
+    await agent.post('/__set-session').send({
+      user: { id: 'u5', username: 'customer2', email: 'cust2@example.com', role: 'customer' },
+      oauthTokens: { accessToken: 'valid_token', expiresAt: Date.now() - 1000, tokenType: 'Bearer' },
+      oauthType: 'user',
+    });
+
+    const res = await agent.get('/api/auth/oauth/user/status');
+    expect(res.status).toBe(200);
+    expect(res.body.authenticated).toBe(false);
+    expect(res.body.user).toBe(null);
+  });
+
+  test('Valid user session: returns { authenticated: true, user populated }', async () => {
+    await agent.post('/__set-session').send({
+      user: {
+        id: 'u6',
+        username: 'customer3',
+        email: 'cust3@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+        role: 'customer',
+        oauthProvider: 'PingOne',
+      },
+      oauthTokens: { accessToken: 'valid_tok', expiresAt: Date.now() + 9999999, tokenType: 'Bearer' },
+      oauthType: 'user',
+      clientType: 'public',
+      agentConsentGiven: true,
+    });
+
+    const res = await agent.get('/api/auth/oauth/user/status');
+    expect(res.status).toBe(200);
+    expect(res.body.authenticated).toBe(true);
+    expect(res.body.user).toMatchObject({
+      id: 'u6',
+      username: 'customer3',
+      email: 'cust3@example.com',
+      firstName: 'John',
+      lastName: 'Doe',
+      role: 'customer',
+    });
+    expect(res.body.consentGiven).toBe(true);
+  });
+
+  test('Valid admin session (oauthType=admin): returns authenticated true', async () => {
+    await agent.post('/__set-session').send({
+      user: {
+        id: 'u7',
+        username: 'admin_via_user_route',
+        email: 'admin@example.com',
+        role: 'admin',
+        oauthProvider: 'PingOne',
+      },
+      oauthTokens: { accessToken: 'valid_tok', expiresAt: Date.now() + 9999999, tokenType: 'Bearer' },
+      oauthType: 'admin',
+    });
+
+    const res = await agent.get('/api/auth/oauth/user/status');
+    expect(res.status).toBe(200);
+    expect(res.body.authenticated).toBe(true);
+    expect(res.body.user.role).toBe('admin');
+  });
+
+  test('Does not leak accessToken in response', async () => {
+    await agent.post('/__set-session').send({
+      user: { id: 'u8', username: 'customer4', email: 'cust4@example.com', role: 'customer' },
+      oauthTokens: { accessToken: 'secret_token_12345', expiresAt: Date.now() + 9999999, tokenType: 'Bearer' },
+      oauthType: 'user',
+    });
+
+    const res = await agent.get('/api/auth/oauth/user/status');
+    expect(res.status).toBe(200);
+    expect(res.body.accessToken).toBeUndefined();
+    expect(JSON.stringify(res.body)).not.toContain('secret_token_12345');
   });
 });

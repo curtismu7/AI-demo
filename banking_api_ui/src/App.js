@@ -62,7 +62,6 @@ import McpGatewayConfig from "./components/McpGatewayConfig";
 import McpTrafficPage from "./components/McpTrafficPage";
 import AuthzTestPage from "./components/AuthzTestPage";
 import MFATestPage from "./components/MFATestPage";
-import MFALogsViewer from "./components/MFALogsViewer";
 import MissingCredentialsModal from "./components/MissingCredentialsModal";
 import OAuthDebugLogViewer from "./components/OAuthDebugLogViewer";
 import OAuthTokenDisplayPage from "./components/OAuthTokenDisplayPage";
@@ -713,12 +712,6 @@ function AppWithAuth() {
 											<MFATestPage />
 										</main>
 									</>
-								}
-							/>
-							<Route
-								path="/mfa-logs"
-								element={
-									<MFALogsViewer />
 								}
 							/>
 							<Route

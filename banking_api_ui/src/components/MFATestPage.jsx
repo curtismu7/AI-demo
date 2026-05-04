@@ -4,6 +4,7 @@ import { notifyError, notifyInfo, notifySuccess } from "../utils/appToast";
 import "./MFATestPage.css";
 import ApiCallPreviewCard from "./shared/ApiCallPreviewCard";
 import MFATestCard from "./MFATestCard";
+import MFALogsModal from "./MFALogsModal";
 
 
 /**
@@ -1750,7 +1751,11 @@ export default function MFATestPage() {
 					)}
 				</section>
 
-			</div>
+			{/* Logs Modal */}
+			{logsModalOpen && (
+				<MFALogsModal onClose={() => setLogsModalOpen(false)} />
+			)}
+		</div>
 		</div>
 	);
 }
@@ -1799,10 +1804,6 @@ function WhatIsHappening({ title, steps, apiFlow }) {
 				</div>
 			)}
 
-			{/* Logs Modal */}
-			{logsModalOpen && (
-				<MFALogsModal onClose={() => setLogsModalOpen(false)} />
-			)}
 		</div>
 	);
 }

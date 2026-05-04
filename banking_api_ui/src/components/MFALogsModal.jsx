@@ -1,0 +1,160 @@
+import { useEffect, useState } from "react";
+import apiClient from "../services/apiClient";
+import "./MFALogsModal.css";
+
+export default function MFALogsModal({ onClose }) {
+	const [logs, setLogs] = useState([]);
+	const [selectedIndex, setSelectedIndex] = useState(null);
+	const [autoRefresh, setAutoRefresh] = useState(true);
+	const [logCount, setLogCount] = useState(50);
+	const [loading, setLoading] = useState(false);
+
+	const fetchLogs = async () => {
+		setLoading(true);
+		try {
+			const { data } = await apiClient.get(`/api/mfa/test/logs?count=${logCount}`);
+			if (data.success) {
+				setLogs(data.logs || []);
+			}
+		} catch (err) {
+			console.error("Failed to fetch logs:", err);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	useEffect(() => {
+		fetchLogs();
+	}, [logCount]);
+
+	useEffect(() => {
+		if (!autoRefresh) return;
+		const interval = setInterval(fetchLogs, 2000);
+		return () => clearInterval(interval);
+	}, [autoRefresh, logCount]);
+
+	const clearLogs = async () => {
+		try {
+			await apiClient.delete("/api/mfa/test/logs");
+			setLogs([]);
+			setSelectedIndex(null);
+		} catch (err) {
+			console.error("Failed to clear logs:", err);
+		}
+	};
+
+	const selectedLog = selectedIndex !== null ? logs[selectedIndex] : null;
+
+	return (
+		<div className="logs-modal-overlay" onClick={onClose}>
+			<div className="logs-modal" onClick={(e) => e.stopPropagation()}>
+				<div className="logs-modal-header">
+					<h2>MFA Test Logs</h2>
+					<button className="logs-modal-close" onClick={onClose}>
+						×
+					</button>
+				</div>
+
+				<div className="logs-modal-controls">
+					<label className="logs-checkbox">
+						<input
+							type="checkbox"
+							checked={autoRefresh}
+							onChange={(e) => setAutoRefresh(e.target.checked)}
+						/>
+						Auto-refresh (2s)
+					</label>
+					<select
+						className="logs-select"
+						value={logCount}
+						onChange={(e) => setLogCount(parseInt(e.target.value))}
+					>
+						<option value={10}>Last 10</option>
+						<option value={20}>Last 20</option>
+						<option value={50}>Last 50</option>
+						<option value={100}>Last 100</option>
+					</select>
+					<button
+						className="logs-btn logs-btn--refresh"
+						onClick={fetchLogs}
+						disabled={loading}
+					>
+						{loading ? "Loading…" : "Refresh"}
+					</button>
+					<button
+						className="logs-btn logs-btn--clear"
+						onClick={clearLogs}
+					>
+						Clear
+					</button>
+				</div>
+
+				<div className="logs-modal-content">
+					<div className="logs-list">
+						{logs.length === 0 ? (
+							<div className="logs-empty">No logs yet</div>
+						) : (
+							logs.map((log, idx) => (
+								<div
+									key={idx}
+									className={`logs-item ${selectedIndex === idx ? "logs-item--selected" : ""}`}
+									onClick={() => setSelectedIndex(selectedIndex === idx ? null : idx)}
+								>
+									<div className="logs-item-header">
+										<span className={`logs-type logs-type--${log.type || "debug"}`}>
+											{log.type || "DEBUG"}
+										</span>
+										<span className="logs-operation">{log.operation || log.message}</span>
+										<span className="logs-status">
+											{log.status === "error" ? "ERROR" : "OK"}
+										</span>
+										<span className="logs-time">
+											{new Date(log.timestamp).toLocaleTimeString()}
+										</span>
+									</div>
+									{selectedIndex === idx && log.details && (
+										<div className="logs-detail">
+											<pre>{JSON.stringify(log.details, null, 2)}</pre>
+										</div>
+									)}
+								</div>
+							))
+						)}
+					</div>
+
+					{selectedLog && (
+						<div className="logs-modal-detail">
+							<h3>Log Details</h3>
+							<div className="logs-detail-content">
+								<div className="logs-detail-field">
+									<label>Type:</label>
+									<span>{selectedLog.type || "DEBUG"}</span>
+								</div>
+								<div className="logs-detail-field">
+									<label>Operation:</label>
+									<span>{selectedLog.operation || selectedLog.message}</span>
+								</div>
+								<div className="logs-detail-field">
+									<label>Timestamp:</label>
+									<span>{new Date(selectedLog.timestamp).toLocaleString()}</span>
+								</div>
+								{selectedLog.details && (
+									<div className="logs-detail-field">
+										<label>Details:</label>
+										<pre className="logs-detail-json">
+											{JSON.stringify(selectedLog.details, null, 2)}
+										</pre>
+									</div>
+								)}
+							</div>
+						</div>
+					)}
+				</div>
+
+				<div className="logs-modal-footer">
+					<span className="logs-count">{logs.length} logs</span>
+				</div>
+			</div>
+		</div>
+	);
+}
