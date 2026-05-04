@@ -4237,8 +4237,31 @@ export default function BankingAgent({
           "🔌 MCP server unreachable — check your server connection",
           { autoClose: 8000 },
         );
+      } else if (err?.code === "consent_challenge_required") {
+        // 428 Precondition Required — HITL consent required for transaction
+        // Reconstruct the error result to match normalizeAgentToolResult format
+        const intentPayload = buildConsentIntent(actionId, form);
+        if (!intentPayload) {
+          notifyError("Could not start consent flow — transaction details missing.");
+          setLoading(false);
+          toast.dismiss(toastId);
+          return;
+        }
+        addMessage(
+          "assistant",
+          `👤 Human-in-the-Loop (HITL) — your manual approval is required.\n\nTransactions over $${APP_CONFIG.THRESHOLDS.HITL_DEFAULT} require your consent before the agent can proceed. The agent is paused and cannot continue until you approve or cancel.\n\nReview the authorization popup, then enter the verification code sent to your email.`,
+          actionId,
+        );
+        toast.dismiss(toastId);
+        setHitlPendingIntent({
+          actionId,
+          form,
+          intentPayload,
+          threshold: APP_CONFIG.THRESHOLDS.HITL_DEFAULT,
+        });
+        setLoading(false);
       } else if (err?.statusCode === 428 || err?.response?.status === 428) {
-        // 428 Precondition Required — typically token expired during MFA
+        // 428 Precondition Required — token expired during MFA
         setShowLoginModal(true);
       } else if (hydrationAuthFailure && cookieOnlyBffSession) {
         // Inline session-fix banner already shown on load for cookie-only Backend-for-Frontend (BFF); avoid duplicate toasts.
