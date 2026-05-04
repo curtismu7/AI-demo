@@ -6,7 +6,7 @@ const AVAILABLE_MODELS = ['mistral', 'llama3.2', 'llama3.1', 'gemma4:e4b', 'deep
 
 export default function OllamaPanel() {
   const [ollamaStatus, setOllamaStatus] = useState(null);
-  const [installedModels, setInstalledModels] = useState([]);
+  const [, setInstalledModels] = useState([]);
   const [ollamaModel, setOllamaModel] = useState('mistral');
   const [ollamaChecking, setOllamaChecking] = useState(false);
   const [ollamaPulling, setOllamaPulling] = useState(false);
@@ -14,7 +14,7 @@ export default function OllamaPanel() {
   const [ollamaShuttingDown, setOllamaShuttingDown] = useState(false);
   const [showShutdownModal, setShowShutdownModal] = useState(false);
   const [showPersonalMachineModal, setShowPersonalMachineModal] = useState(false);
-  const [loadingModels, setLoadingModels] = useState(false);
+  const [, setLoadingModels] = useState(false);
   const [ollamaDisablingAutoStart, setOllamaDisablingAutoStart] = useState(false);
   const [showDisableModal, setShowDisableModal] = useState(false);
 

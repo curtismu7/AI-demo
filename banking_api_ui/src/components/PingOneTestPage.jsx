@@ -1138,7 +1138,7 @@ export default function PingOneTestPage() {
 		return (
 			<div className="pingone-test-page">
 				<div className="pingone-test-error">
-					<p className="error-message">⚠️ {error}</p>
+					<p className="error-message">{error}</p>
 					<button
 						type="button"
 						className="pingone-test-button pingone-test-button--primary"
@@ -1506,7 +1506,6 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 											assetVerification.scopes?.isBankingRS === false) && (
 											<div className="scope-fix-panel">
 												<div className="scope-fix-panel__header">
-													<span className="scope-fix-panel__icon">⚠️</span>
 													<strong>Scope Alignment Issues Detected</strong>
 												</div>
 												{assetVerification.scopes?.isBankingRS === false && (
@@ -1713,7 +1712,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 						authzTokenError.toLowerCase().includes("log in") && (
 							<div className="pingone-test-login-banner">
 								<span className="pingone-test-login-banner__text">
-									⚠️ Token exchange requires a user access token. Log in to
+									Token exchange requires a user access token. Log in to
 									PingOne first using the Authorization Code + PKCE flow.
 								</span>
 								<a
@@ -1848,7 +1847,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 													className="scope-fix-result--ok"
 													style={{ color: "#e65100" }}
 												>
-													⚠️ Config OK but token claims have issues
+													Config OK but token claims have issues
 												</div>
 											)}
 										{mcpExchangeDiag.claimValidation && (
@@ -1864,14 +1863,13 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 												{mcpExchangeDiag.claimValidation.tested ? (
 													mcpExchangeDiag.claimValidation.allClaimsValid ? (
 														<div style={{ color: "#2e7d32", marginTop: "4px" }}>
-															✅ All token claims validated correctly
+															All token claims validated correctly
 														</div>
 													) : (
 														<div style={{ marginTop: "4px" }}>
 															<div
 																style={{ color: "#e65100", fontWeight: 600 }}
 															>
-																⚠️{" "}
 																{mcpExchangeDiag.claimValidation.issues.length}{" "}
 																claim issue(s) found:
 															</div>
@@ -2101,7 +2099,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 										fontSize: "0.85rem",
 									}}
 								>
-									⚠️ <strong>ff_id_token_exchange</strong> is OFF — enable in
+									<strong>ff_id_token_exchange</strong> is OFF — enable in
 									Feature Flags to run this test.
 								</div>
 							)}

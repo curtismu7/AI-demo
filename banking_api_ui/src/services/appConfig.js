@@ -61,6 +61,9 @@ export const APP_CONFIG = {
     // Demo scenario large transfer amount
     DEMO_LARGE_TRANSFER: 99999.99,
 
+    // Demo HITL consent test ($600 for testing consent + MFA flow)
+    DEMO_HITL_TRANSFER: 600,
+
     // Minimum transaction amount (1 cent)
     MIN_TRANSACTION: 0.01,
 

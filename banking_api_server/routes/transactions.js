@@ -65,6 +65,26 @@ async function saveTransactionSnapshot(userId) {
   }
 }
 
+/**
+ * Resolve account type names (like "checking", "savings") to actual account IDs.
+ * If accountId is already a UUID, returns it unchanged.
+ * If accountId is a type name, finds the matching account in userAccounts and returns its ID.
+ * Returns the resolved account ID or the original input if no match found.
+ */
+function resolveAccountId(accountId, userAccounts) {
+  if (!accountId || !userAccounts) return accountId;
+
+  const typeName = String(accountId).toLowerCase().trim();
+  const matchingAccount = userAccounts.find(a =>
+    String(a.accountType || '').toLowerCase() === typeName ||
+    String(a.name || '').toLowerCase() === typeName
+  );
+
+  const resolved = matchingAccount ? matchingAccount.id : accountId;
+  console.log(`[resolveAccountId] input="${accountId}" typeName="${typeName}" found=${!!matchingAccount} resolved="${resolved}"`);
+  return resolved;
+}
+
 // Get all transactions (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
   try {
@@ -290,12 +310,23 @@ router.get('/:id', authenticateToken, requireScopes(['banking:read']), async (re
 // Ownership is enforced below (non-admin users can only act on their own accounts).
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { fromAccountId, toAccountId, amount, type, description, userId } = req.body;
+    let { fromAccountId, toAccountId, amount, type, description, userId } = req.body;
 
     // Re-hydrate accounts from Redis snapshot in case this Lambda was cold-started.
     // Must run before any getAccountById lookup below.
     if (req.user.role !== 'admin') {
       await restoreAccountsFromSnapshot(req.user.id);
+    }
+
+    // Resolve account type names (e.g., "checking") to account IDs before lookups
+    const userAccounts = dataStore.getAccountsByUserId(req.user.id);
+    if (fromAccountId) {
+      fromAccountId = resolveAccountId(fromAccountId, userAccounts);
+      req.body.fromAccountId = fromAccountId;
+    }
+    if (toAccountId) {
+      toAccountId = resolveAccountId(toAccountId, userAccounts);
+      req.body.toAccountId = toAccountId;
     }
 
     // Validate amount

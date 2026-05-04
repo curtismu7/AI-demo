@@ -275,7 +275,7 @@ async function submitFido2Assertion(daId, assertion, userAccessToken, origin) {
 					Authorization: `Bearer ${userAccessToken}`,
 					"Content-Type": "application/vnd.pingidentity.assertion.check+json",
 				},
-				timeout: 15000,
+				timeout: 45000,
 			});
 			data = resp.data;
 		} catch (err) {

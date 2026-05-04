@@ -85,10 +85,6 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
         : 'Choose layout';
 
   const isLandingNav = variant === 'landing';
-  const showFabCheckbox =
-    isLandingNav
-      ? placement === 'bottom'
-      : placement === 'middle' || placement === 'bottom' || placement === 'right-dock';
 
   return (
     <div

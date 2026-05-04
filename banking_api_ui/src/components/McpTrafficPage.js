@@ -261,11 +261,11 @@ function McpToolsPanel() {
   const [stepUpMethod, setStepUpMethod] = useState('email');
   const [stepUpDaId, setStepUpDaId] = useState(null);
   const [stepUpDevices, setStepUpDevices] = useState([]);
-  const [otpDeliveryMethod, setOtpDeliveryMethod] = useState(null);
-  const [devCode, setDevCode] = useState(null);
+  const [, setOtpDeliveryMethod] = useState(null);
+  const [, setDevCode] = useState(null);
   const [maskedContact, setMaskedContact] = useState(null);
-  const [p1Devices, setP1Devices] = useState([]);
-  const [devicesLoading, setDevicesLoading] = useState(false);
+  const [p1Devices] = useState([]);
+  const [devicesLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setErr(null);

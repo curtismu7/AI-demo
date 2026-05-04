@@ -30,7 +30,6 @@ import { toastCustomerError } from "../utils/dashboardToast";
 import AgentUiModeToggle from "./AgentUiModeToggle";
 import ThresholdControls from "./ThresholdControls";
 import BankingAgent from "./BankingAgent";
-import DevToolsOverlay from "./DevToolsOverlay";
 import EmbeddedAgentDock from "./EmbeddedAgentDock";
 import ExchangeModeToggle from "./ExchangeModeToggle";
 import { EDU } from "./education/educationIds";
@@ -3288,8 +3287,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 					</div>
 				</div>
 			)}
-
-			<DevToolsOverlay />
 		</div>
 	);
 };

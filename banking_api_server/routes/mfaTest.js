@@ -361,6 +361,47 @@ router.post('/integration/initiate', async (req, res) => {
 });
 
 /**
+ * POST /api/mfa/test/integration/select-device
+ * Select which MFA device to use for authentication.
+ * This is a separate API call that must happen before submitting OTP/FIDO2.
+ * Body: { daId, deviceId, userId? }
+ */
+router.post('/integration/select-device', async (req, res) => {
+  try {
+    const { daId, deviceId } = req.body;
+    const { accessToken } = await _resolveCredentials(req);
+    if (!daId || !deviceId) {
+      return res.status(400).json({ success: false, error: 'invalid_body', message: 'Provide daId and deviceId.' });
+    }
+
+    const _t3 = Date.now();
+
+    const result = await mfaService.selectDevice(daId, deviceId, accessToken);
+    const resBody = {
+      success: true,
+      daId,
+      deviceId,
+      status: result.status,
+      selectedDevice: deviceId,
+    };
+    if (result._debug) {
+      resBody.pingoneRequest = normalizePingoneRequest(result._debug && result._debug.request);
+      resBody.pingoneResponse = result._debug.response;
+    }
+    res.json(resBody);
+    trackMfaApiCall(req, res, _t3, resBody, 'Select MFA device');
+  } catch (err) {
+    console.error('[MFA Test Integration] POST /select-device failed:', err.message);
+    const errBody = { success: false, error: err.message, pingError: err.pingError };
+    if (err._debug) {
+      errBody.pingoneRequest = normalizePingoneRequest(err._debug && err._debug.request);
+      errBody.pingoneResponse = err._debug.response;
+    }
+    res.status(err.status || 500).json(errBody);
+  }
+});
+
+/**
  * POST /api/mfa/test/integration/verify-otp
  * Verify OTP code (SMS or Email) using PingOne MFA
  * Body: { daId, deviceId, otp }
@@ -374,6 +415,22 @@ router.post('/integration/verify-otp', async (req, res) => {
     }
 
     const _t3 = Date.now();
+
+    // Test code bypass: accept 123123 for testing both SMS and Email OTP
+    if (otp.trim() === '123123') {
+      const resBody = {
+        success: true,
+        daId,
+        status: 'COMPLETED',
+        completed: true,
+        _testCodeUsed: true,
+        message: 'Test code 123123 accepted (bypass for testing)',
+      };
+      res.json(resBody);
+      trackMfaApiCall(req, res, _t3, resBody, 'Verify OTP code via test bypass (123123)');
+      return;
+    }
+
     const result = await mfaService.submitOtp(daId, deviceId, otp, accessToken);
     const resBody = {
       success: true,

@@ -6,7 +6,6 @@ import { useEducationUI } from "../context/EducationUIContext";
 import { persistBankingAgentUi } from "../services/demoScenarioService";
 import { setDashboardLayout } from "../utils/dashboardLayout";
 import { EDU } from "./education/educationIds";
-import RedButton from "./RedButton";
 import ConfirmModal from "./ConfirmModal";
 import KillSwitchConfirmModal from "./KillSwitchConfirmModal";
 import "./AdminSideNav.css";
@@ -216,8 +215,8 @@ export default function AdminSideNav({ user }) {
 	const learnItems = [
 		// ── Getting started ──────────────────────────────────
 		{ label: "Guided Demo Tour",             icon: "🗺",  action: () => tour.start() },
-		{ label: "⭐ Best Practices",              icon: "⭐",  action: () => openEdu(EDU.BEST_PRACTICES, "overview") },
-		{ label: "⭐ Agentic Maturity Model",      icon: "⭐",  action: () => openEdu(EDU.AGENTIC_MATURITY, "overview") },
+		{ label: "Best Practices",              icon: "⭐",  action: () => openEdu(EDU.BEST_PRACTICES, "overview") },
+		{ label: "Agentic Maturity Model",      icon: "⭐",  action: () => openEdu(EDU.AGENTIC_MATURITY, "overview") },
 
 		// ── OAuth & Identity ──────────────────────────────────
 		{ label: "Auth Code + PKCE",              icon: "🔑",  action: () => openEdu(EDU.LOGIN_FLOW, "what") },
@@ -245,7 +244,7 @@ export default function AdminSideNav({ user }) {
 
 		// ── Standards & Architecture ──────────────────────────
 		{ label: "RFC & Spec Index",              icon: "📚",  action: () => openEdu(EDU.RFC_INDEX, "index") },
-		{ label: "⭐ IETF Standards: Agentic",    icon: "⭐",  action: () => openEdu(EDU.IETF_STANDARDS, "overview") },
+		{ label: "IETF Standards: Agentic",    icon: "⭐",  action: () => openEdu(EDU.IETF_STANDARDS, "overview") },
 		{ label: "ID-JAG / Cross-App Access",     icon: "🔀",  action: () => openEdu(EDU.ID_JAG, "overview") },
 		{ label: "Architecture Diagram",          icon: "🏗️",  action: () => openEdu(EDU.ARCHITECTURE_DIAGRAM, "context") },
 		{ label: "Token Chain (edu)",             icon: "🔗",  action: () => openEdu(EDU.TOKEN_CHAIN, "overview") },

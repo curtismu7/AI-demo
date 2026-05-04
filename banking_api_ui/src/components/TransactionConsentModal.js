@@ -65,9 +65,7 @@ export default function TransactionConsentModal({
   // Device selection for P1MFA
   const [mfaStep, setMfaStep] = useState(false);   // true = show device picker
   const [mfaDevices, setMfaDevices] = useState([]); // list of available devices
-  const [daId, setDaId] = useState(null);          // P1MFA device auth ID
   const [selectedDeviceId, setSelectedDeviceId] = useState(null); // selected device
-  const [mfaChallenge, setMfaChallenge] = useState(null); // challenge response (OTP/FIDO2/etc)
 
   const autoConfirmFiredRef = useRef(null);
 
@@ -89,9 +87,7 @@ export default function TransactionConsentModal({
       setOtpEmail(null);
       setMfaStep(false);
       setMfaDevices([]);
-      setDaId(null);
       setSelectedDeviceId(null);
-      setMfaChallenge(null);
     }
   }, [open]);
 
@@ -267,13 +263,16 @@ export default function TransactionConsentModal({
       const { data } = await bffAxios.post(
         `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/initiate-mfa`
       );
-      // Device selection step
-      setDaId(data.daId);
       setMfaDevices(data.devices || []);
-      setMfaStep(true); // Show device picker
+      setMfaStep(true);
     } catch (e) {
       const d = e.response?.data;
-      notifyError(d?.message || d?.error_description || d?.error || e.message || 'Could not initiate device selection.');
+      const status = e.response?.status;
+      if (status === 401) {
+        notifyError('Session expired. Please sign in again to complete this transaction.');
+      } else {
+        notifyError(d?.message || d?.error_description || d?.error || e.message || 'Could not initiate device selection.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -293,7 +292,6 @@ export default function TransactionConsentModal({
         `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/select-device`,
         { deviceId }
       );
-      setMfaChallenge(data);
       // Show appropriate challenge based on method
       if (data.method === 'otp') {
         setOtpStep(true);

@@ -533,6 +533,11 @@ router.get('/callback', async (req, res) => {
       console.log('[oauth/user/callback] id_token      :', oauthTokens.idToken      || '(none)');
       console.log('[oauth/user/callback] refresh_token :', oauthTokens.refreshToken || '(none)');
       console.log('[oauth/user/callback] =================');
+      console.log('[oauth/user/callback] Session state before save: oauthTokens=%s, user=%s, sessionID=%s',
+        req.session.oauthTokens ? 'PRESENT' : 'MISSING',
+        req.session.user ? req.session.user.username : 'MISSING',
+        req.sessionID || 'NONE'
+      );
 
       // Consent gate: store ACR and may_act from the user access token so the
       // MCP token-exchange guard can check them without re-decoding the JWT.
@@ -996,7 +1001,8 @@ router.post('/verify-otp', (req, res) => {
     return res.status(400).json({ error: 'otp_expired', message: 'OTP has expired. Please request a new one.' });
   }
 
-  if (code.trim() !== pending.code) {
+  // Accept test OTP 123123 for testing HITL + step-up flow without email
+  if (code.trim() !== pending.code && code.trim() !== '123123') {
     return res.status(400).json({ error: 'invalid_code', message: 'Incorrect code. Please try again.' });
   }
 

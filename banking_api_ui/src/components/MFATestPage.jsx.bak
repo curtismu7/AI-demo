@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import apiClient from "../services/apiClient";
 import { notifyError, notifyInfo, notifySuccess } from "../utils/appToast";
 import "./MFATestPage.css";
+import ApiCallDisplay from "./ApiCallDisplay";
+import PingOneApiPanel from "./PingOneApiPanel";
 import ApiCallPreviewCard from "./shared/ApiCallPreviewCard";
-import MFATestCard from "./MFATestCard";
 
 /**
  * Collapsible per-section API call display toggle (Phase 135)
@@ -46,6 +47,9 @@ export default function MFATestPage() {
 	const [smsInitiateError, setSmsInitiateError] = useState(null);
 	const [smsDaId, setSmsDaId] = useState(null);
 	const [smsDevices, setSmsDevices] = useState([]);
+	const [smsSelectedDeviceId, setSmsSelectedDeviceId] = useState(null);
+	const [smsDeviceSelectStatus, setSmsDeviceSelectStatus] = useState("pending");
+	const [smsDeviceSelectError, setSmsDeviceSelectError] = useState(null);
 	const [smsOtp, setSmsOtp] = useState("");
 	const [smsVerifyStatus, setSmsVerifyStatus] = useState("pending");
 	const [smsVerifyError, setSmsVerifyError] = useState(null);
@@ -55,6 +59,9 @@ export default function MFATestPage() {
 	const [emailInitiateError, setEmailInitiateError] = useState(null);
 	const [emailDaId, setEmailDaId] = useState(null);
 	const [emailDevices, setEmailDevices] = useState([]);
+	const [emailSelectedDeviceId, setEmailSelectedDeviceId] = useState(null);
+	const [emailDeviceSelectStatus, setEmailDeviceSelectStatus] = useState("pending");
+	const [emailDeviceSelectError, setEmailDeviceSelectError] = useState(null);
 	const [emailOtp, setEmailOtp] = useState("");
 	const [emailVerifyStatus, setEmailVerifyStatus] = useState("pending");
 	const [emailVerifyError, setEmailVerifyError] = useState(null);
@@ -63,6 +70,10 @@ export default function MFATestPage() {
 	const [fidoInitiateStatus, setFidoInitiateStatus] = useState("pending");
 	const [fidoInitiateError, setFidoInitiateError] = useState(null);
 	const [fidoDaId, setFidoDaId] = useState(null);
+	const [fidoDevices, setFidoDevices] = useState([]);
+	const [fidoSelectedDeviceId, setFidoSelectedDeviceId] = useState(null);
+	const [fidoDeviceSelectStatus, setFidoDeviceSelectStatus] = useState("pending");
+	const [fidoDeviceSelectError, setFidoDeviceSelectError] = useState(null);
 
 	// Device management state
 	const [devices, setDevices] = useState([]);
@@ -354,9 +365,105 @@ export default function MFATestPage() {
 		}
 	}, [testUserId]);
 
+	const testSelectSmsDevice = useCallback(async (deviceId) => {
+		if (!smsDaId) {
+			notifyError("Please initiate SMS challenge first");
+			return;
+		}
+		setSmsDeviceSelectStatus("pending");
+		setSmsDeviceSelectError(null);
+		try {
+			const { data } = await apiClient.post(
+				"/api/mfa/test/integration/select-device",
+				{
+					daId: smsDaId,
+					deviceId: deviceId,
+					...(testUserId && { userId: testUserId }),
+				},
+			);
+			if (data.success) {
+				setSmsSelectedDeviceId(deviceId);
+				setSmsDeviceSelectStatus("passed");
+				notifySuccess(`SMS device selected: ${smsDevices.find(d => d.id === deviceId)?.displayName || deviceId}`);
+			} else {
+				setSmsDeviceSelectStatus("failed");
+				setSmsDeviceSelectError(data.error);
+				notifyError(`Failed to select SMS device: ${data.error}`);
+			}
+		} catch (err) {
+			setSmsDeviceSelectStatus("failed");
+			setSmsDeviceSelectError(err.message);
+			notifyError(`Failed to select SMS device: ${err.message}`);
+		}
+	}, [smsDaId, smsDevices, testUserId]);
+
+	const testSelectEmailDevice = useCallback(async (deviceId) => {
+		if (!emailDaId) {
+			notifyError("Please initiate Email challenge first");
+			return;
+		}
+		setEmailDeviceSelectStatus("pending");
+		setEmailDeviceSelectError(null);
+		try {
+			const { data } = await apiClient.post(
+				"/api/mfa/test/integration/select-device",
+				{
+					daId: emailDaId,
+					deviceId: deviceId,
+					...(testUserId && { userId: testUserId }),
+				},
+			);
+			if (data.success) {
+				setEmailSelectedDeviceId(deviceId);
+				setEmailDeviceSelectStatus("passed");
+				notifySuccess(`Email device selected: ${emailDevices.find(d => d.id === deviceId)?.displayName || deviceId}`);
+			} else {
+				setEmailDeviceSelectStatus("failed");
+				setEmailDeviceSelectError(data.error);
+				notifyError(`Failed to select Email device: ${data.error}`);
+			}
+		} catch (err) {
+			setEmailDeviceSelectStatus("failed");
+			setEmailDeviceSelectError(err.message);
+			notifyError(`Failed to select Email device: ${err.message}`);
+		}
+	}, [emailDaId, emailDevices, testUserId]);
+
+	const testSelectFidoDevice = useCallback(async (deviceId) => {
+		if (!fidoDaId) {
+			notifyError("Please initiate FIDO2 challenge first");
+			return;
+		}
+		setFidoDeviceSelectStatus("pending");
+		setFidoDeviceSelectError(null);
+		try {
+			const { data } = await apiClient.post(
+				"/api/mfa/test/integration/select-device",
+				{
+					daId: fidoDaId,
+					deviceId: deviceId,
+					...(testUserId && { userId: testUserId }),
+				},
+			);
+			if (data.success) {
+				setFidoSelectedDeviceId(deviceId);
+				setFidoDeviceSelectStatus("passed");
+				notifySuccess(`FIDO2 device selected: ${fidoDevices.find(d => d.id === deviceId)?.displayName || deviceId}`);
+			} else {
+				setFidoDeviceSelectStatus("failed");
+				setFidoDeviceSelectError(data.error);
+				notifyError(`Failed to select FIDO2 device: ${data.error}`);
+			}
+		} catch (err) {
+			setFidoDeviceSelectStatus("failed");
+			setFidoDeviceSelectError(err.message);
+			notifyError(`Failed to select FIDO2 device: ${err.message}`);
+		}
+	}, [fidoDaId, fidoDevices, testUserId]);
+
 	const testSmsVerify = useCallback(async () => {
-		if (!smsDaId || !smsOtp || smsDevices.length === 0) {
-			notifyError("Please initiate SMS challenge and enter OTP code");
+		if (!smsDaId || !smsOtp || !smsSelectedDeviceId) {
+			notifyError("Please initiate SMS challenge, select a device, and enter OTP code");
 			return;
 		}
 		setSmsVerifyStatus("pending");
@@ -366,7 +473,7 @@ export default function MFATestPage() {
 				"/api/mfa/test/integration/verify-otp",
 				{
 					daId: smsDaId,
-					deviceId: smsDevices[0].id,
+					deviceId: smsSelectedDeviceId,
 					otp: smsOtp,
 					...(testUserId && { userId: testUserId }),
 				},
@@ -395,7 +502,7 @@ export default function MFATestPage() {
 			setSmsVerifyError(err.message);
 			notifyError(`SMS OTP verification failed: ${err.message}`);
 		}
-	}, [smsDaId, smsDevices, smsOtp, testUserId]);
+	}, [smsDaId, smsSelectedDeviceId, smsOtp, testUserId]);
 
 	// Email OTP test functions
 	const testEmailInitiate = useCallback(async () => {
@@ -431,8 +538,8 @@ export default function MFATestPage() {
 	}, [testUserId]);
 
 	const testEmailVerify = useCallback(async () => {
-		if (!emailDaId || !emailOtp || emailDevices.length === 0) {
-			notifyError("Please initiate Email challenge and enter OTP code");
+		if (!emailDaId || !emailOtp || !emailSelectedDeviceId) {
+			notifyError("Please initiate Email challenge, select a device, and enter OTP code");
 			return;
 		}
 		setEmailVerifyStatus("pending");
@@ -442,7 +549,7 @@ export default function MFATestPage() {
 				"/api/mfa/test/integration/verify-otp",
 				{
 					daId: emailDaId,
-					deviceId: emailDevices[0].id,
+					deviceId: emailSelectedDeviceId,
 					otp: emailOtp,
 					...(testUserId && { userId: testUserId }),
 				},
@@ -471,7 +578,7 @@ export default function MFATestPage() {
 			setEmailVerifyError(err.message);
 			notifyError(`Email OTP verification failed: ${err.message}`);
 		}
-	}, [emailDaId, emailDevices, emailOtp, testUserId]);
+	}, [emailDaId, emailSelectedDeviceId, emailOtp, testUserId]);
 
 	// FIDO2 test functions
 	const testFidoInitiate = useCallback(async () => {
@@ -488,6 +595,7 @@ export default function MFATestPage() {
 			if (data.pingoneResponse) setFidoInitiatePingoneRes(data.pingoneResponse);
 			if (data.success) {
 				setFidoDaId(data.daId);
+				setFidoDevices(data.devices || []);
 				setFidoInitiateStatus("passed");
 				notifySuccess(
 					"FIDO2 challenge initiated — polling for WebAuthn options…",
@@ -583,7 +691,7 @@ export default function MFATestPage() {
 				if (data.pingoneResponse) setFidoVerifyPingoneRes(data.pingoneResponse);
 				notifySuccess(
 					data.completed
-						? "FIDO2 verified "
+						? "FIDO2 verified ✓"
 						: "FIDO2 verification in progress",
 				);
 			} else {
@@ -899,7 +1007,7 @@ export default function MFATestPage() {
 				setFidoEnrollCompleteStatus("passed");
 				if (data.pingoneRequest) setFidoEnrollCompletePingoneReq(data.pingoneRequest);
 				if (data.pingoneResponse) setFidoEnrollCompletePingoneRes(data.pingoneResponse);
-				notifySuccess("FIDO2 device registered ");
+				notifySuccess("FIDO2 device registered ✓");
 				loadDevices();
 			} else {
 				setFidoEnrollCompleteStatus("failed");
@@ -935,7 +1043,7 @@ export default function MFATestPage() {
 		return (
 			<div className="mfa-test-page">
 				<div className="mfa-test-error">
-					<p className="error-message">{error}</p>
+					<p className="error-message">⚠️ {error}</p>
 					<button
 						type="button"
 						className="mfa-test-button mfa-test-button--primary"
@@ -958,10 +1066,10 @@ export default function MFATestPage() {
 							className={`mfa-status-pill ${config?.mfaEnabled && workerTokenStatus === "valid" ? "mfa-status-pill--success" : "mfa-status-pill--error"}`}
 						>
 							{config?.mfaEnabled && workerTokenStatus === "valid"
-								? " Ready"
+								? "✓ Ready"
 								: !config?.mfaEnabled
-									? " MFA Disabled"
-									: " Worker Token Missing"}
+									? "✗ MFA Disabled"
+									: "✗ Worker Token Missing"}
 						</span>
 					</div>
 					<div className="mfa-test-actions">
@@ -1075,7 +1183,7 @@ export default function MFATestPage() {
 						className="mfa-test-info-banner mfa-test-info-banner--error"
 						role="alert"
 					>
-						<strong>Worker Token Error:</strong> {workerTokenError}
+						<strong>⚠️ Worker Token Error:</strong> {workerTokenError}
 					</div>
 				)}
 			</div>
@@ -1097,6 +1205,100 @@ export default function MFATestPage() {
 						</p>
 					</div>
 				)}
+
+			{/* Devices Section Header */}
+			<h2 className="mfa-test-section-title" style={{ marginTop: "0", marginBottom: "1rem", fontSize: "1.5rem", fontWeight: 700 }}>Devices</h2>
+
+			{/* Device Management Section */}
+			<section className="mfa-test-section">
+				<h2 className="mfa-test-section-title">Device Management</h2>
+				<WhatIsHappening
+					title="Device Management — Listing Enrolled MFA Devices"
+					steps={[
+						"GET /api/mfa/test/devices → BFF calls PingOne Management API to list all MFA devices for the authenticated user",
+						"Each device has: type (SMS, EMAIL, FIDO2_BIOMETRICS), nickname/email, status (ACTIVE, INACTIVE), and enrolledAt date",
+						"Devices are the registered MFA factors — each one can be used to satisfy an MFA challenge",
+						"Admins can disable or delete devices via PingOne console or Management API",
+					]}
+					apiFlow={[
+						{
+							method: "GET",
+							endpoint: "/api/mfa/test/devices",
+							note: "List enrolled MFA devices",
+						},
+						{
+							method: "GET",
+							endpoint: "/v1/environments/{envId}/users/{userId}/devices",
+							note: "PingOne Management API",
+						},
+					]}
+				/>
+				<TestCard
+					title="List Devices"
+					status={devicesStatus}
+					error={devicesError}
+					onTest={loadDevices}
+					rawResult={rawDevices}
+					pingoneRequest={devicesPingoneReq}
+					pingoneResponse={devicesPingoneRes}
+					docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#get-read-all-mfa-user-devices"
+					docsSectionTitle="Device Management — List MFA Devices"
+				/>
+				{devices.length > 0 && (
+					<div className="devices-list">
+						<h3 className="devices-list-title">Enrolled Devices</h3>
+						<ul className="devices-items">
+							{devices.map((device) => {
+								const getContactInfo = () => {
+									if (device.phoneNumber || device.phone) {
+										return `📱 ${device.phoneNumber || device.phone}`;
+									}
+									if (device.email) {
+										return `📧 ${device.email}`;
+									}
+									return device.displayName || "Device";
+								};
+								return (
+									<li key={device.id} className="device-item">
+										<div className="device-main-info">
+											<span className="device-type">{device.type}</span>
+											<div className="device-details">
+												{device.nickname && (
+													<span className="device-nickname-label">{device.nickname}</span>
+												)}
+												<span className="device-contact">{getContactInfo()}</span>
+											</div>
+										</div>
+									<span
+										className={`device-status device-status--${(device.status || "unknown").toLowerCase()}`}
+									>
+										{device.status || "UNKNOWN"}
+									</span>
+									<span className="device-meta">
+										ID: {device.id?.substring(0, 12)}…
+									</span>
+									{device.createdAt && (
+										<span className="device-meta">
+											Enrolled:{" "}
+											{new Date(device.createdAt).toLocaleDateString()}
+										</span>
+									)}
+									<button
+										type="button"
+										className="mfa-test-button mfa-test-button--danger"
+										disabled={deletingDeviceId === device.id}
+										onClick={() => deleteDevice(device.id)}
+										style={{ marginLeft: "auto", padding: "2px 10px", fontSize: "0.8rem" }}
+									>
+										{deletingDeviceId === device.id ? "Deleting…" : "🗑 Delete"}
+									</button>
+								</li>
+							))}
+						</ul>
+					</div>
+				)}
+				<SectionApiCalls />
+			</section>
 
 			<ApiCallPreviewCard
 					method="POST"
@@ -1136,6 +1338,9 @@ export default function MFATestPage() {
 					</div>
 					<SectionApiCalls />
 				</section>
+
+				{/* Device Registration Section Header */}
+				<h2 className="mfa-test-section-title" style={{ marginTop: "2rem", marginBottom: "1rem", fontSize: "1.5rem", fontWeight: 700 }}>Device Registration</h2>
 
 				{/* Device Enrollment Section */}
 				<section className="mfa-test-section">
@@ -1181,15 +1386,15 @@ export default function MFATestPage() {
 									fontSize: "0.875rem",
 								}}
 							>
-								<option value="+1"> +1 US</option>
-								<option value="+1-CA"> +1 CA</option>
-								<option value="+44"> +44 UK</option>
-								<option value="+61"> +61 AU</option>
+								<option value="+1">🇺🇸 +1 US</option>
+								<option value="+1-CA">🇨🇦 +1 CA</option>
+								<option value="+44">🇬🇧 +44 UK</option>
+								<option value="+61">🇦🇺 +61 AU</option>
 								<option value="+64">🇳🇿 +64 NZ</option>
-								<option value="+49"> +49 DE</option>
-								<option value="+33"> +33 FR</option>
-								<option value="+34"> +34 ES</option>
-								<option value="+39"> +39 IT</option>
+								<option value="+49">🇩🇪 +49 DE</option>
+								<option value="+33">🇫🇷 +33 FR</option>
+								<option value="+34">🇪🇸 +34 ES</option>
+								<option value="+39">🇮🇹 +39 IT</option>
 								<option value="+31">🇳🇱 +31 NL</option>
 								<option value="+46">🇸🇪 +46 SE</option>
 								<option value="+47">🇳🇴 +47 NO</option>
@@ -1200,18 +1405,18 @@ export default function MFATestPage() {
 								<option value="+32">🇧🇪 +32 BE</option>
 								<option value="+353">🇮🇪 +353 IE</option>
 								<option value="+351">🇵🇹 +351 PT</option>
-								<option value="+81"> +81 JP</option>
-								<option value="+82"> +82 KR</option>
+								<option value="+81">🇯🇵 +81 JP</option>
+								<option value="+82">🇰🇷 +82 KR</option>
 								<option value="+86">🇨🇳 +86 CN</option>
-								<option value="+91"> +91 IN</option>
+								<option value="+91">🇮🇳 +91 IN</option>
 								<option value="+65">🇸🇬 +65 SG</option>
 								<option value="+60">🇲🇾 +60 MY</option>
-								<option value="+52"> +52 MX</option>
-								<option value="+55"> +55 BR</option>
-								<option value="+27"> +27 ZA</option>
+								<option value="+52">🇲🇽 +52 MX</option>
+								<option value="+55">🇧🇷 +55 BR</option>
+								<option value="+27">🇿🇦 +27 ZA</option>
 								<option value="+971">🇦🇪 +971 AE</option>
-								<option value="+966"> +966 SA</option>
-								<option value="+972"> +972 IL</option>
+								<option value="+966">🇸🇦 +966 SA</option>
+								<option value="+972">🇮🇱 +972 IL</option>
 							</select>
 							<input
 								id="enroll-sms-phone"
@@ -1228,7 +1433,7 @@ export default function MFATestPage() {
 							Digits only, no leading zero — e.g. 415 555 0100
 						</p>
 					</div>
-					<MFATestCard
+					<TestCard
 						title="Enroll SMS Device"
 						status={enrollSmsInitStatus}
 						error={enrollSmsInitError}
@@ -1263,7 +1468,7 @@ export default function MFATestPage() {
 									Activate SMS Device
 								</button>
 							</div>
-							<MFATestCard
+							<TestCard
 								title="Activate SMS Device (Step 2)"
 								status={enrollSmsCompleteStatus}
 								error={enrollSmsCompleteError}
@@ -1300,7 +1505,7 @@ export default function MFATestPage() {
 							style={{ width: "100%", marginBottom: "0.75rem", fontFamily: "system-ui, sans-serif", letterSpacing: "normal", fontSize: "0.95rem" }}
 						/>
 					</div>
-					<MFATestCard
+					<TestCard
 						title="Enroll Email Device"
 						status={enrollEmailStatus}
 						error={enrollEmailError}
@@ -1321,7 +1526,7 @@ export default function MFATestPage() {
 							borderRadius: 8, display: "flex", alignItems: "center",
 							gap: 12, fontSize: "0.88rem",
 						}}>
-							<span><strong>Existing FIDO2 device detected.</strong> PingOne only allows one active passkey per RP. Delete the existing device first, then re-enroll.</span>
+							<span>⚠️ <strong>Existing FIDO2 device detected.</strong> PingOne only allows one active passkey per RP. Delete the existing device first, then re-enroll.</span>
 							<span style={{ fontFamily: "monospace", fontSize: "0.8rem", color: "#92400e" }}>
 								{existingFido2Device.nickname || existingFido2Device.type} · {existingFido2Device.id?.slice(0, 12)}…
 							</span>
@@ -1332,11 +1537,11 @@ export default function MFATestPage() {
 								onClick={() => deleteDevice(existingFido2Device.id)}
 								style={{ marginLeft: "auto", whiteSpace: "nowrap" }}
 							>
-								{deletingDeviceId === existingFido2Device.id ? "Deleting…" : "Delete Delete & Re-enroll"}
+								{deletingDeviceId === existingFido2Device.id ? "Deleting…" : "🗑 Delete & Re-enroll"}
 							</button>
 						</div>
 					)}
-					<MFATestCard
+					<TestCard
 						title="Initiate FIDO2 Enrollment"
 						status={fidoEnrollInitStatus}
 						error={fidoEnrollInitError}
@@ -1368,15 +1573,15 @@ export default function MFATestPage() {
 								fontFamily: "monospace",
 							}}>
 								<div style={{ fontWeight: 700, marginBottom: 4, color: match ? "#166534" : "#991b1b" }}>
-									{match ? "" : ""} FIDO2 RP ID Debug
+									{match ? "✓" : "✗"} FIDO2 RP ID Debug
 								</div>
 								<div><strong>PingOne rp.id:</strong> {rpId}</div>
 								<div><strong>PingOne rp.name:</strong> {rpName}</div>
 								<div><strong>Browser origin:</strong> {currentOrigin}</div>
 								<div><strong>Browser hostname:</strong> {currentHostname}</div>
 								<div><strong>RP ID match:</strong> {match
-									? <span style={{ color: "#166534" }}> Hostname matches RP ID</span>
-									: <span style={{ color: "#991b1b" }}> MISMATCH — browser will reject or PingOne will fail attestation validation</span>
+									? <span style={{ color: "#166534" }}>✓ Hostname matches RP ID</span>
+									: <span style={{ color: "#991b1b" }}>✗ MISMATCH — browser will reject or PingOne will fail attestation validation</span>
 								}</div>
 								<div><strong>excludeCredentials:</strong> {excludeCount} device(s){excludeCount > 0 && <span style={{ color: "#991b1b" }}> — existing passkey may block re-enrollment</span>}</div>
 								{authSel && (
@@ -1386,7 +1591,7 @@ export default function MFATestPage() {
 						);
 					})()}
 					{fidoEnrollData?.publicKeyCredentialCreationOptions && (
-						<MFATestCard
+						<TestCard
 							title="Complete FIDO2 Registration"
 							status={fidoEnrollCompleteStatus}
 							error={fidoEnrollCompleteError}
@@ -1399,6 +1604,9 @@ export default function MFATestPage() {
 						/>
 					)}
 				</section>
+
+				{/* Authentication Section Header */}
+				<h2 className="mfa-test-section-title" style={{ marginTop: "2rem", marginBottom: "1rem", fontSize: "1.5rem", fontWeight: 700 }}>Authentication</h2>
 
 				{/* SMS OTP Test Section */}
 				<section className="mfa-test-section">
@@ -1425,7 +1633,7 @@ export default function MFATestPage() {
 							},
 						]}
 					/>
-					<MFATestCard
+					<TestCard
 						title="Initiate SMS OTP Challenge"
 						status={smsInitiateStatus}
 						error={smsInitiateError}
@@ -1433,17 +1641,50 @@ export default function MFATestPage() {
 						rawResult={rawSmsInitiate}
 						pingoneRequest={smsInitiatePingoneReq}
 						pingoneResponse={smsInitiatePingoneRes}
-						docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/initialize-device-authentication.html"
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-send-otp-sms-email"
 						docsSectionTitle="MFA Challenge — Initiate (SMS)"
 					/>
 					{smsDaId && (
 						<div className="otp-verify-section">
 							<DaResponseCard daId={smsDaId} method="sms" />
+							<h3 className="otp-verify-title">Select SMS Device</h3>
+							{smsDevices.length > 0 ? (
+								<div className="device-picker">
+									<p className="device-picker-label">Available SMS Devices:</p>
+									<div className="device-buttons">
+										{smsDevices.map((device) => {
+											const maskPhone = (phone) => {
+												if (!phone) return "***";
+												const last4 = phone.slice(-4);
+												return `***-****-${last4}`;
+											};
+											return (
+												<button
+													key={device.id}
+													type="button"
+													className={`device-button ${smsSelectedDeviceId === device.id ? "device-button--selected" : ""}`}
+													onClick={() => testSelectSmsDevice(device.id)}
+													disabled={smsDeviceSelectStatus === "pending"}
+												>
+													<div className="device-button-content">
+														{device.nickname && <span className="device-button-nickname">{device.nickname}</span>}
+														<span className="device-button-info">{maskPhone(device.phoneNumber || device.phone)}</span>
+													</div>
+													{smsSelectedDeviceId === device.id && <span className="device-button-check">✓</span>}
+												</button>
+											);
+										})}
+									</div>
+									{smsDeviceSelectError && (
+										<div className="device-select-error">{smsDeviceSelectError}</div>
+									)}
+								</div>
+							) : null}
 							<h3 className="otp-verify-title">Verify SMS OTP</h3>
 							{noSmsDeviceDetected ? (
 								<div className="otp-no-device-banner">
 									<p className="info-text">
-										 <strong>No SMS device found</strong> — this user needs an
+										📱 <strong>No SMS device found</strong> — this user needs an
 										SMS-enabled phone number registered in PingOne.
 									</p>
 									<p
@@ -1475,17 +1716,15 @@ export default function MFATestPage() {
 									</button>
 								</div>
 							)}
-							<MFATestCard
+							<TestCard
 								title="Verify SMS OTP"
 								status={smsVerifyStatus}
 								error={smsVerifyError}
 								rawResult={rawSmsVerify}
 								pingoneRequest={smsVerifyPingoneReq}
 								pingoneResponse={smsVerifyPingoneRes}
-								docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/validate-otp-device-authentication.html"
+								docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-check-otp"
 								docsSectionTitle="MFA Verify OTP (SMS)"
-				endpoint="/v1/environments/{envId}/deviceAuthentications/{daId}"
-				method="PUT"
 							/>
 						</div>
 					)}
@@ -1515,7 +1754,7 @@ export default function MFATestPage() {
 							},
 						]}
 					/>
-					<MFATestCard
+					<TestCard
 						title="Initiate Email OTP Challenge"
 						status={emailInitiateStatus}
 						error={emailInitiateError}
@@ -1523,17 +1762,52 @@ export default function MFATestPage() {
 						rawResult={rawEmailInitiate}
 						pingoneRequest={emailInitiatePingoneReq}
 						pingoneResponse={emailInitiatePingoneRes}
-						docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/initialize-device-authentication.html"
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-send-otp-sms-email"
 						docsSectionTitle="MFA Challenge — Initiate (Email OTP)"
 					/>
 					{emailDaId && (
 						<div className="otp-verify-section">
 							<DaResponseCard daId={emailDaId} method="email" />
+							<h3 className="otp-verify-title">Select Email Device</h3>
+							{emailDevices.length > 0 ? (
+								<div className="device-picker">
+									<p className="device-picker-label">Available Email Devices:</p>
+									<div className="device-buttons">
+										{emailDevices.map((device) => {
+											const maskEmail = (email) => {
+												if (!email) return "***";
+												const [local, domain] = email.split("@");
+												const visibleChars = Math.max(1, Math.floor(local.length / 3));
+												const masked = local.substring(0, visibleChars) + "*".repeat(local.length - visibleChars);
+												return `${masked}@${domain}`;
+											};
+											return (
+												<button
+													key={device.id}
+													type="button"
+													className={`device-button ${emailSelectedDeviceId === device.id ? "device-button--selected" : ""}`}
+													onClick={() => testSelectEmailDevice(device.id)}
+													disabled={emailDeviceSelectStatus === "pending"}
+												>
+													<div className="device-button-content">
+														{device.nickname && <span className="device-button-nickname">{device.nickname}</span>}
+														<span className="device-button-info">{maskEmail(device.email || device.displayName)}</span>
+													</div>
+													{emailSelectedDeviceId === device.id && <span className="device-button-check">✓</span>}
+												</button>
+											);
+										})}
+									</div>
+									{emailDeviceSelectError && (
+										<div className="device-select-error">{emailDeviceSelectError}</div>
+									)}
+								</div>
+							) : null}
 							<h3 className="otp-verify-title">Verify Email OTP</h3>
 							{noEmailDeviceDetected ? (
 								<div className="otp-no-device-banner">
 									<p className="info-text">
-										 <strong>No Email device found</strong> — automatic
+										📧 <strong>No Email device found</strong> — automatic
 										enrollment started above.
 									</p>
 									<p
@@ -1566,17 +1840,15 @@ export default function MFATestPage() {
 									</button>
 								</div>
 							)}
-							<MFATestCard
+							<TestCard
 								title="Verify Email OTP"
 								status={emailVerifyStatus}
 								error={emailVerifyError}
 								rawResult={rawEmailVerify}
 								pingoneRequest={emailVerifyPingoneReq}
 								pingoneResponse={emailVerifyPingoneRes}
-								docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/validate-otp-device-authentication.html"
+								docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-check-otp"
 								docsSectionTitle="MFA Verify OTP (Email)"
-				endpoint="/v1/environments/{envId}/deviceAuthentications/{daId}"
-				method="PUT"
 							/>
 						</div>
 					)}
@@ -1614,7 +1886,7 @@ export default function MFATestPage() {
 							},
 						]}
 					/>
-					<MFATestCard
+					<TestCard
 						title="Initiate FIDO2 Challenge"
 						status={fidoInitiateStatus}
 						error={fidoInitiateError}
@@ -1622,14 +1894,38 @@ export default function MFATestPage() {
 						rawResult={rawFidoInitiate}
 						pingoneRequest={fidoInitiatePingoneReq}
 						pingoneResponse={fidoInitiatePingoneRes}
-						docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/initialize-device-authentication.html"
+						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-authenticate-with-fido2"
 						docsSectionTitle="MFA Challenge — Initiate (FIDO2)"
-				endpoint="/v1/environments/{envId}/deviceAuthentications"
-				method="POST"
 					/>
 					{fidoDaId && (
 						<div className="fido-verify-section">
 							<DaResponseCard daId={fidoDaId} method="fido2" />
+							<h3 className="fido-verify-title">Select FIDO2 Device</h3>
+							{fidoDevices.length > 0 ? (
+								<div className="device-picker">
+									<p className="device-picker-label">Available FIDO2 Devices:</p>
+									<div className="device-buttons">
+										{fidoDevices.map((device) => (
+											<button
+												key={device.id}
+												type="button"
+												className={`device-button ${fidoSelectedDeviceId === device.id ? "device-button--selected" : ""}`}
+												onClick={() => testSelectFidoDevice(device.id)}
+												disabled={fidoDeviceSelectStatus === "pending"}
+											>
+												<div className="device-button-content">
+													{device.nickname && <span className="device-button-nickname">{device.nickname}</span>}
+													<span className="device-button-info">{device.displayName || "FIDO2 Device"}</span>
+												</div>
+												{fidoSelectedDeviceId === device.id && <span className="device-button-check">✓</span>}
+											</button>
+										))}
+									</div>
+									{fidoDeviceSelectError && (
+										<div className="device-select-error">{fidoDeviceSelectError}</div>
+									)}
+								</div>
+							) : null}
 							<h3 className="fido-verify-title">Verify FIDO2 Passkey</h3>
 							{fidoChallengeOptions ? (
 								<>
@@ -1637,7 +1933,7 @@ export default function MFATestPage() {
 										WebAuthn options ready. Click below to authenticate with
 										your passkey.
 									</p>
-									<MFATestCard
+									<TestCard
 										title="Verify FIDO2 with Passkey"
 										status={fidoVerifyStatus}
 										error={fidoVerifyError}
@@ -1645,16 +1941,14 @@ export default function MFATestPage() {
 										rawResult={rawFidoVerify}
 										pingoneRequest={fidoVerifyPingoneReq}
 										pingoneResponse={fidoVerifyPingoneRes}
-										docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/check-assertion-device-authentication.html"
+										docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-authenticate-with-fido2"
 										docsSectionTitle="MFA Verify Assertion (FIDO2)"
-				endpoint="/v1/environments/{envId}/deviceAuthentications/{daId}"
-				method="PUT"
 									/>
 								</>
 							) : noFidoDeviceDetected ? (
 								<div className="fido-no-device-banner">
 									<p className="info-text">
-										<strong>No FIDO2 device found</strong> — automatic
+										🔐 <strong>No FIDO2 device found</strong> — automatic
 										enrollment started above.
 									</p>
 									<p
@@ -1676,83 +1970,6 @@ export default function MFATestPage() {
 					<SectionApiCalls />
 				</section>
 
-				{/* Device Management Section */}
-				<section className="mfa-test-section">
-					<h2 className="mfa-test-section-title">Device Management</h2>
-					<WhatIsHappening
-						title="Device Management — Listing Enrolled MFA Devices"
-						steps={[
-							"GET /api/mfa/test/devices → BFF calls PingOne Management API to list all MFA devices for the authenticated user",
-							"Each device has: type (SMS, EMAIL, FIDO2_BIOMETRICS), nickname/email, status (ACTIVE, INACTIVE), and enrolledAt date",
-							"Devices are the registered MFA factors — each one can be used to satisfy an MFA challenge",
-							"Admins can disable or delete devices via PingOne console or Management API",
-						]}
-						apiFlow={[
-							{
-								method: "GET",
-								endpoint: "/api/mfa/test/devices",
-								note: "List enrolled MFA devices",
-							},
-							{
-								method: "GET",
-								endpoint: "/v1/environments/{envId}/users/{userId}/devices",
-								note: "PingOne Management API",
-							},
-						]}
-					/>
-					<MFATestCard
-						title="List Devices"
-						status={devicesStatus}
-						error={devicesError}
-						onTest={loadDevices}
-						rawResult={rawDevices}
-						pingoneRequest={devicesPingoneReq}
-						pingoneResponse={devicesPingoneRes}
-						docsUrl="https://developer.pingidentity.com/pingone-api/mfa/users/mfa-devices/read-all-mfa-user-devices.html"
-						docsSectionTitle="Device Management — List MFA Devices"
-				endpoint="/v1/environments/{envId}/users/{userId}/devices"
-				method="GET"
-					/>
-					{devices.length > 0 && (
-						<div className="devices-list">
-							<h3 className="devices-list-title">Enrolled Devices</h3>
-							<ul className="devices-items">
-								{devices.map((device) => (
-									<li key={device.id} className="device-item">
-										<span className="device-type">{device.type}</span>
-										<span className="device-nickname">
-											{device.nickname || device.email || "—"}
-										</span>
-										<span
-											className={`device-status device-status--${(device.status || "unknown").toLowerCase()}`}
-										>
-											{device.status || "UNKNOWN"}
-										</span>
-										<span className="device-meta">
-											ID: {device.id?.substring(0, 12)}…
-										</span>
-										{device.createdAt && (
-											<span className="device-meta">
-												Enrolled:{" "}
-												{new Date(device.createdAt).toLocaleDateString()}
-											</span>
-										)}
-										<button
-											type="button"
-											className="mfa-test-button mfa-test-button--danger"
-											disabled={deletingDeviceId === device.id}
-											onClick={() => deleteDevice(device.id)}
-											style={{ marginLeft: "auto", padding: "2px 10px", fontSize: "0.8rem" }}
-										>
-											{deletingDeviceId === device.id ? "Deleting…" : "Delete Delete"}
-										</button>
-									</li>
-								))}
-							</ul>
-						</div>
-					)}
-					<SectionApiCalls />
-				</section>
 			</div>
 		</div>
 	);
@@ -1849,10 +2066,10 @@ function TestCard({ title, status, error, onTest, rawResult, pingoneRequest, pin
 			<div className="test-card-header">
 				<h4 className="test-card-title">{title}</h4>
 				<span className={`status-badge status-badge--${status}`}>
-					{status === "passed" && " Pass"}
-					{status === "failed" && " Fail"}
+					{status === "passed" && "✓ Pass"}
+					{status === "failed" && "✗ Fail"}
 					{status === "pending" && "○ Pending"}
-					{status === "running" && " Running"}
+					{status === "running" && "⟳ Running"}
 				</span>
 			</div>
 			{error && <p className="test-card-error">{error}</p>}

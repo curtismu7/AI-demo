@@ -39,13 +39,13 @@ function readStoredAgentAuthDemoMode() {
 
 /** Account types — each type gets exactly one slot; accountType is the stable key. */
 const ACCOUNT_TYPE_SLOTS = [
-  { type: 'checking',     label: 'Checking',            icon: '🏦', defaultName: 'Checking Account' },
-  { type: 'savings',     label: 'Savings',             icon: '💰', defaultName: 'Savings Account' },
-  { type: 'investment',  label: 'Investment',          icon: '📈', defaultName: 'Investment Account' },
-  { type: 'money_market',label: 'Money market',        icon: '💵', defaultName: 'Money Market Account' },
-  { type: 'credit',      label: 'Credit card',         icon: '💳', defaultName: 'Credit Card' },
-  { type: 'car_loan',    label: 'Car loan',            icon: '🚗', defaultName: 'Car Loan' },
-  { type: 'mortgage',    label: 'Mortgage (home loan)',icon: '🏠', defaultName: 'Mortgage (Home Loan)' },
+  { type: 'checking',     label: 'Checking',            icon: '', defaultName: 'Checking Account' },
+  { type: 'savings',     label: 'Savings',             icon: '', defaultName: 'Savings Account' },
+  { type: 'investment',  label: 'Investment',          icon: '', defaultName: 'Investment Account' },
+  { type: 'money_market',label: 'Money market',        icon: '', defaultName: 'Money Market Account' },
+  { type: 'credit',      label: 'Credit card',         icon: '', defaultName: 'Credit Card' },
+  { type: 'car_loan',    label: 'Car loan',            icon: '', defaultName: 'Car Loan' },
+  { type: 'mortgage',    label: 'Mortgage (home loan)',icon: '', defaultName: 'Mortgage (Home Loan)' },
 ];
 
 /** Build an initial typeSlots map — all disabled, default names. */
@@ -90,7 +90,7 @@ export default function DemoDataPage({ user, onLogout }) {
       return vertical.terminology.accountTypes.map((name, idx) => ({
         type: `type_${idx}`,
         label: name,
-        icon: '💳',
+        icon: '',
         defaultName: name
       }));
     }
@@ -701,7 +701,7 @@ export default function DemoDataPage({ user, onLogout }) {
           ...next.checking,
           enabled: true,
           name: defaults.checkingName ?? 'Checking Account',
-          balance: String(defaults.checkingBalance ?? 3000),
+          balance: String(defaults.checkingBalance ?? 5000),
         };
       }
       if (next.savings) {
@@ -709,7 +709,7 @@ export default function DemoDataPage({ user, onLogout }) {
           ...next.savings,
           enabled: true,
           name: defaults.savingsName ?? 'Savings Account',
-          balance: String(defaults.savingsBalance ?? 2000),
+          balance: String(defaults.savingsBalance ?? 5000),
         };
       }
       return next;
@@ -819,7 +819,7 @@ export default function DemoDataPage({ user, onLogout }) {
           <div className="demo-data-mayact-quick">
             <span className="demo-data-mayact-quick__label">may_act demo</span>
             <span className={`demo-data-mayact-quick__status${mayActEnabled === true ? ' demo-data-mayact-quick__status--on' : mayActEnabled === false ? ' demo-data-mayact-quick__status--off' : ''}`}>
-              {mayActEnabled === null ? '…' : mayActEnabled ? '✅ present in token' : '❌ absent from token'}
+              {mayActEnabled === null ? '…' : mayActEnabled ? 'present in token' : 'absent from token'}
             </span>
             <button
               type="button"
@@ -827,7 +827,7 @@ export default function DemoDataPage({ user, onLogout }) {
               disabled={mayActSaving || mayActEnabled === true}
               onClick={() => handleSetMayAct(true)}
             >
-              {mayActSaving && mayActEnabled !== true ? 'Saving…' : '✅ Enable'}
+              {mayActSaving && mayActEnabled !== true ? 'Saving…' : 'Enable'}
             </button>
             <button
               type="button"
@@ -835,7 +835,7 @@ export default function DemoDataPage({ user, onLogout }) {
               disabled={mayActSaving || mayActEnabled === false}
               onClick={() => handleSetMayAct(false)}
             >
-              {mayActSaving && mayActEnabled !== false ? 'Saving…' : '❌ Clear'}
+              {mayActSaving && mayActEnabled !== false ? 'Saving…' : 'Clear'}
             </button>
             <button
               type="button"
@@ -1309,7 +1309,7 @@ export default function DemoDataPage({ user, onLogout }) {
                   </span>
                   Account Profile Fields{' '}
                   <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', fontWeight: 400, color: '#92400e', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 4, padding: '0.1rem 0.4rem' }}>
-                    🔒 Sensitive fields require banking:sensitive:read
+                    Sensitive fields require banking:sensitive:read
                   </span>
                 </h2>
               </button>
@@ -1317,7 +1317,7 @@ export default function DemoDataPage({ user, onLogout }) {
               <>
               <p className="demo-data-hint">
                 Configure extended account details returned by the AI agent after the user grants explicit consent.
-                Fields marked <strong>🔒 Sensitive</strong> are only returned via the{' '}
+                Fields marked <strong>Sensitive</strong> are only returned via the{' '}
                 <code>get_sensitive_account_details</code> tool after consent. Toggle{' '}
                 <em>Include in response</em> to control which sensitive fields the demo exposes.
               </p>
@@ -1363,10 +1363,10 @@ export default function DemoDataPage({ user, onLogout }) {
                       ))}
                       <div style={{ border: '1px solid #fcd34d', borderRadius: 6, padding: '0.5rem 0.75rem', background: '#fffbeb', marginTop: '0.5rem' }}>
                         <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#92400e', marginBottom: '0.4rem' }}>
-                          🔒 Sensitive — requires banking:sensitive:read
+                          Sensitive — requires banking:sensitive:read
                         </div>
                         <label className="demo-data-field demo-data-field--inline">
-                          <span>Routing Number 🔒</span>
+                          <span>Routing Number</span>
                           <input
                             type="text"
                             value={prof.routingNumber || ''}
@@ -1383,7 +1383,7 @@ export default function DemoDataPage({ user, onLogout }) {
                           <span>Include routing number in response</span>
                         </label>
                         <label className="demo-data-field demo-data-field--inline" style={{ marginTop: '0.5rem' }}>
-                          <span>Full Account Number 🔒</span>
+                          <span>Full Account Number</span>
                           <input
                             type="text"
                             value={prof.accountNumberFull || ''}
@@ -1539,7 +1539,7 @@ export default function DemoDataPage({ user, onLogout }) {
                   className="demo-data-static-notice"
                   style={{ marginTop: '0.75rem', marginBottom: '0.75rem', borderColor: '#93c5fd', background: '#eff6ff' }}
                 >
-                  <span className="demo-data-static-notice__icon">⚙️</span>
+                  <span className="demo-data-static-notice__icon"></span>
                   <div style={{ flex: 1 }}>
                     <strong>Configure PingOne Authorize (worker + Management API)</strong>
                     <p className="demo-data-hint" style={{ margin: '0.35rem 0 0.5rem' }}>
@@ -1642,7 +1642,7 @@ export default function DemoDataPage({ user, onLogout }) {
                               <span className="demo-data-scope-desc">{flag.description}</span>
                               {showWarn && (
                                 <span className="demo-data-scope-desc" style={{ color: '#b45309' }}>
-                                  ⚠️ {warnMsg}
+                                  {warnMsg}
                                 </span>
                               )}
                             </span>
@@ -1727,7 +1727,7 @@ export default function DemoDataPage({ user, onLogout }) {
                   <>
                     {/* ff_inject_may_act */}
                     <div className="demo-data-static-notice" style={{ marginBottom: '0.75rem', borderColor: injectOn ? '#f59e0b' : '#c7d2fe', background: injectOn ? '#fffbeb' : '#eef2ff' }}>
-                      <span className="demo-data-static-notice__icon">{injectOn ? '🔧' : '💡'}</span>
+                      <span className="demo-data-static-notice__icon"></span>
                       <div style={{ flex: 1 }}>
                         <strong>Auto-inject may_act (BFF synthetic)</strong>
                         {' — '}
@@ -1738,12 +1738,12 @@ export default function DemoDataPage({ user, onLogout }) {
                           <button type="button" className={`demo-data-btn${!injectOn ? ' primary' : ' ghost'}`}
                             disabled={p1azFlagSaving === 'ff_inject_may_act' || !injectOn || !injectFlag}
                             onClick={() => handleP1azFlagToggle('ff_inject_may_act', false)}>
-                            {p1azFlagSaving === 'ff_inject_may_act' && injectOn ? 'Saving…' : '❌ Disable'}
+                            {p1azFlagSaving === 'ff_inject_may_act' && injectOn ? 'Saving…' : 'Disable'}
                           </button>
                           <button type="button" className={`demo-data-btn${injectOn ? ' primary' : ' ghost'}`}
                             disabled={p1azFlagSaving === 'ff_inject_may_act' || injectOn || !injectFlag}
                             onClick={() => handleP1azFlagToggle('ff_inject_may_act', true)}>
-                            {p1azFlagSaving === 'ff_inject_may_act' && !injectOn ? 'Saving…' : '🔧 Enable'}
+                            {p1azFlagSaving === 'ff_inject_may_act' && !injectOn ? 'Saving…' : 'Enable'}
                           </button>
                           {!injectFlag && <span style={{ fontSize: '0.78rem', color: '#9ca3af', alignSelf: 'center' }}>Flag not loaded — scroll up to reload Authorize flags</span>}
                         </div>
@@ -1751,7 +1751,7 @@ export default function DemoDataPage({ user, onLogout }) {
                     </div>
                     {/* ff_inject_audience */}
                     <div className="demo-data-static-notice" style={{ marginBottom: '1rem', borderColor: audOn ? '#f59e0b' : '#c7d2fe', background: audOn ? '#fffbeb' : '#eef2ff' }}>
-                      <span className="demo-data-static-notice__icon">{audOn ? '🔧' : '💡'}</span>
+                      <span className="demo-data-static-notice__icon"></span>
                       <div style={{ flex: 1 }}>
                         <strong>Auto-inject audience (BFF synthetic)</strong>
                         {' — '}
@@ -1762,12 +1762,12 @@ export default function DemoDataPage({ user, onLogout }) {
                           <button type="button" className={`demo-data-btn${!audOn ? ' primary' : ' ghost'}`}
                             disabled={p1azFlagSaving === 'ff_inject_audience' || !audOn || !audFlag}
                             onClick={() => handleP1azFlagToggle('ff_inject_audience', false)}>
-                            {p1azFlagSaving === 'ff_inject_audience' && audOn ? 'Saving…' : '❌ Disable'}
+                            {p1azFlagSaving === 'ff_inject_audience' && audOn ? 'Saving…' : 'Disable'}
                           </button>
                           <button type="button" className={`demo-data-btn${audOn ? ' primary' : ' ghost'}`}
                             disabled={p1azFlagSaving === 'ff_inject_audience' || audOn || !audFlag}
                             onClick={() => handleP1azFlagToggle('ff_inject_audience', true)}>
-                            {p1azFlagSaving === 'ff_inject_audience' && !audOn ? 'Saving…' : '🔧 Enable'}
+                            {p1azFlagSaving === 'ff_inject_audience' && !audOn ? 'Saving…' : 'Enable'}
                           </button>
                           {!audFlag && <span style={{ fontSize: '0.78rem', color: '#9ca3af', alignSelf: 'center' }}>Flag not loaded — scroll up to reload Authorize flags</span>}
                         </div>
@@ -1825,7 +1825,7 @@ export default function DemoDataPage({ user, onLogout }) {
                   </label>
                   {delegationMode === '2exchange' && (
                     <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: '#92400e', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 4, padding: '0.35rem 0.6rem', lineHeight: 1.6 }}>
-                      ⚠️ Two more steps to activate:
+                      Two more steps to activate:
                       <ol style={{ margin: '0.3rem 0 0 1.1rem', padding: 0 }}>
                         <li>
                           <strong>Enable the feature flag</strong> — go to{' '}
@@ -1847,7 +1847,7 @@ export default function DemoDataPage({ user, onLogout }) {
                   disabled={mayActSaving || mayActEnabled === true}
                   onClick={() => handleSetMayAct(true)}
                 >
-                  {mayActSaving && mayActEnabled !== true ? 'Saving…' : '✅ Enable may_act'}
+                  {mayActSaving && mayActEnabled !== true ? 'Saving…' : 'Enable may_act'}
                 </button>
                 <button
                   type="button"
@@ -1855,7 +1855,7 @@ export default function DemoDataPage({ user, onLogout }) {
                   disabled={mayActSaving || mayActEnabled === false}
                   onClick={() => handleSetMayAct(false)}
                 >
-                  {mayActSaving && mayActEnabled !== false ? 'Saving…' : '❌ Clear may_act'}
+                  {mayActSaving && mayActEnabled !== false ? 'Saving…' : 'Clear may_act'}
                 </button>
                 <button
                   type="button"
@@ -1864,20 +1864,20 @@ export default function DemoDataPage({ user, onLogout }) {
                   onClick={handleDiagnoseMayAct}
                   title="Check your PingOne user attribute and app mapping configuration"
                 >
-                  {mayActDiagnosing ? 'Checking…' : '🔍 Diagnose'}
+                  {mayActDiagnosing ? 'Checking…' : 'Diagnose'}
                 </button>
                 <span className={`demo-data-mayact-status${mayActEnabled === true ? ' demo-data-mayact-status--on' : mayActEnabled === false ? ' demo-data-mayact-status--off' : ''}`}>
                   {mayActEnabled === true
-                    ? '✅ may_act present in token'
+                    ? 'may_act present in token'
                     : mayActEnabled === false
-                      ? '❌ may_act absent from token'
+                      ? 'may_act absent from token'
                       : 'Checking…'}
                 </span>
               </div>
 
               {mayActDiagnosis && (
                 <div style={{ margin: '0.75rem 0', padding: '0.75rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#f9fafb', fontSize: '0.85rem' }}>
-                  <div style={{ fontWeight: 600, marginBottom: '0.4rem' }}>🔍 PingOne config diagnosis</div>
+                  <div style={{ fontWeight: 600, marginBottom: '0.4rem' }}>PingOne config diagnosis</div>
                   {mayActDiagnosis.diagnosis?.map((line, i) => (
                     <div key={i} style={{ marginBottom: '0.2rem' }}>{line}</div>
                   ))}
@@ -1938,7 +1938,7 @@ export default function DemoDataPage({ user, onLogout }) {
                   onClick={handleCheckActClaim}
                   disabled={actClaimChecking || actClaimFixing}
                 >
-                  {actClaimChecking ? 'Checking…' : '🔍 Check act claim'}
+                  {actClaimChecking ? 'Checking…' : 'Check act claim'}
                 </button>
                 <button
                   type="button"
@@ -1946,15 +1946,15 @@ export default function DemoDataPage({ user, onLogout }) {
                   onClick={handleFixActClaim}
                   disabled={actClaimFixing || actClaimChecking || actClaimStatus?.status === 'ok'}
                 >
-                  {actClaimFixing ? 'Fixing…' : '🔧 Fix act claim'}
+                  {actClaimFixing ? 'Fixing…' : 'Fix act claim'}
                 </button>
                 {actClaimStatus && (
                   <span style={{ fontSize: '0.85rem', marginLeft: '0.25rem' }}>
-                    {actClaimStatus.status === 'ok' && <span style={{ color: '#15803d' }}>✅ act attribute present and correct</span>}
-                    {actClaimStatus.status === 'missing' && <span style={{ color: '#b45309' }}>⚠️ act attribute missing — click Fix</span>}
-                    {actClaimStatus.status === 'wrong_value' && <span style={{ color: '#b45309' }}>⚠️ act has wrong SPEL — click Fix to correct</span>}
-                    {actClaimStatus.status === 'missing_resource' && <span style={{ color: '#b91c1c' }}>❌ AI-Agent resource not found: {actClaimStatus.detail}</span>}
-                    {actClaimStatus.status === 'error' && <span style={{ color: '#b91c1c' }}>❌ {actClaimStatus.detail}</span>}
+                    {actClaimStatus.status === 'ok' && <span style={{ color: '#15803d' }}>act attribute present and correct</span>}
+                    {actClaimStatus.status === 'missing' && <span style={{ color: '#b45309' }}>act attribute missing — click Fix</span>}
+                    {actClaimStatus.status === 'wrong_value' && <span style={{ color: '#b45309' }}>act has wrong SPEL — click Fix to correct</span>}
+                    {actClaimStatus.status === 'missing_resource' && <span style={{ color: '#b91c1c' }}>AI-Agent resource not found: {actClaimStatus.detail}</span>}
+                    {actClaimStatus.status === 'error' && <span style={{ color: '#b91c1c' }}>{actClaimStatus.detail}</span>}
                   </span>
                 )}
               </div>
@@ -1979,7 +1979,7 @@ export default function DemoDataPage({ user, onLogout }) {
                 onClick={handleResetDemo}
                 disabled={demoResetting}
               >
-                {demoResetting ? 'Resetting…' : '🔄 Reset Demo'}
+                {demoResetting ? 'Resetting…' : 'Reset Demo'}
               </button>
             </section>
             </>

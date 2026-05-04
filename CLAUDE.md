@@ -24,11 +24,12 @@ Instructions for Claude Code, Cursor agents, and other AI assistants working in 
 
 ## Non-negotiables (every change)
 
-1. **Read** [REGRESSION_PLAN.md](REGRESSION_PLAN.md) §1 before editing listed files. State what you will **not** break.
+1. **Read** [REGRESSION_PLAN.md](REGRESSION_PLAN.md) §0–1 before editing listed files. State what you will **not** break.
 2. **Minimal diff** — name the component/element; do not refactor unrelated code.
 3. **After any `banking_api_ui` UI edit:** run `npm run build` in `banking_api_ui/`; exit code must be **0**.
-4. **Bug fixes:** add an entry to `REGRESSION_PLAN.md` §4 (Bug Fix Log) per the template in the regression-guard rule.
-5. **Do not** edit marketing-only pages unless the task explicitly says so (user preference: `/marketing` stability).
+4. **No emojis in UI text.** Banking apps are professional. Remove emojis from button labels, status text, headers, and descriptions whenever you encounter them. See [REGRESSION_PLAN.md §0](REGRESSION_PLAN.md#0-ui-style-guidelines).
+5. **Bug fixes:** add an entry to `REGRESSION_PLAN.md` §4 (Bug Fix Log) per the template in the regression-guard rule.
+6. **Do not** edit marketing-only pages unless the task explicitly says so (user preference: `/marketing` stability).
 
 ---
 
@@ -191,6 +192,61 @@ Even when all code and configuration above is correct, the returned MCP token ma
   - **MCP results tracking:** Query `/api/app-events?category=mcp` to see tool calls, completions, AND results logged
   - If token is expired in Token Chain: MCP call fails before reaching server (fix: logout/login to get fresh token)
   - If HITL enabled: consent dialog appears before tool execution per `REGRESSION_PLAN.md`
+
+---
+
+## Test patterns: Regression vs. Integration
+
+Critical HTTP routes (OAuth, HITL, transactions) use a **two-tier test pattern** to balance isolation and realism:
+
+### Regression tests (unit-style)
+**File pattern:** `*.regression.test.js`
+- Mock everything including `configStore` (use `TEST_CONFIG` constants)
+- Focus: logic correctness in isolation
+- Speed: fast execution, no external dependencies
+- Example: `oauthStatus.regression.test.js`, `hitlRoute.regression.test.js`
+
+**Setup pattern:**
+```javascript
+jest.mock('../../services/configStore', () => ({
+  getEffective: jest.fn((key) => {
+    const defaults = {
+      'ff_hitl_enabled': 'true',
+      'confirm_threshold_usd': '500',
+    };
+    return defaults[key] || null;
+  }),
+}));
+```
+
+### Integration tests (real config)
+**File pattern:** `*.integration.test.js`
+- Use **real `configStore`** from `.env` (calls actual `getEffective`)
+- Mock only data dependencies (store, external services) to avoid side effects
+- Focus: route + service interaction with real environment config
+- Speed: slightly slower, but verifies with .env values
+- Example: `oauthStatus.integration.test.js`, `hitlRoute.integration.test.js`
+
+**Setup pattern:**
+```javascript
+// configStore NOT mocked — uses real .env
+jest.mock('../../middleware/auth', () => ({ /* ... */ }));
+jest.mock('../../data/store', () => ({ /* ... */ }));
+jest.mock('../../services/transactionConsentChallenge', () => ({ /* ... */ }));
+// No mock on configStore — it reads real .env values
+```
+
+### When to add a new test pair
+1. **Critical security/session/HITL flows** that touch `REGRESSION_PLAN.md` §1 files
+2. Routes that depend on feature flags from `.env` (e.g., `ff_hitl_enabled`, `ff_authorize_fail_open`)
+3. Session validation or token expiry logic
+4. Phase 170+ critical rules (e.g., transfer consent requirements)
+
+### Running the critical test suite
+```bash
+npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration
+# Output: 43 tests, all passing
+```
 
 ---
 

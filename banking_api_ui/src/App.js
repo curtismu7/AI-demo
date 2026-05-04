@@ -70,7 +70,6 @@ import PingOneSetupGuidePage from "./components/PingOneSetupGuidePage";
 import PingOneTestPage from "./components/PingOneTestPage";
 import PostmanCollectionsPage from "./components/PostmanCollectionsPage";
 import Profile from "./components/Profile";
-import QuickLoginModal from "./components/QuickLoginModal";
 import ResourceServerPage from "./components/ResourceServerPage";
 import ScopeAuditPage from "./components/ScopeAuditPage";
 import ScopeReferencePage from "./components/ScopeReferencePage";

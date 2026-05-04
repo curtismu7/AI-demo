@@ -7,12 +7,20 @@
 
 ## 0. UI Style Guidelines
 
-**Real banking applications use professional typography — no emojis in production UI.**
+**HARD RULE: No emojis in any user-facing UI text, labels, buttons, or status messages.**
 
-- Remove emojis when touching code (labels, buttons, nav items, status messages)
-- Replace with: plain text labels, icons (CSS symbols), or semantic HTML
-- Exception: Test/demo-only pages and internal dev tools may retain emoji for quick visual scanning
-- **Current state:** Admin nav, demo guide, and test pages have extensive emoji use. Clean them as you refactor those areas.
+Real banking applications use professional typography. Emojis break the enterprise appearance and make the app look unprofessional.
+
+**What this means:**
+- ❌ Do NOT add emojis to button labels ("🔄 Refresh" → "Refresh")
+- ❌ Do NOT add emojis to status text ("✅ Present" → "Present")
+- ❌ Do NOT add emojis to section headers or descriptions
+- ✅ DO remove ALL emojis when you encounter them during refactoring
+- ✅ DO use plain text, CSS icons (symbols like ☀ ☾), or semantic HTML only
+
+**Files cleaned (Phase completed):** `BankingAgent.js`, `MFATestPage.jsx`, `PingOneTestPage.jsx`, `DemoDataPage.js`, and test pages.
+
+**CI/Lint rule:** Add pre-commit hook to catch emoji additions in JS/JSX files before they land.
 
 ---
 

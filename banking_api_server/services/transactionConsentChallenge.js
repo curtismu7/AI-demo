@@ -101,11 +101,33 @@ function safeEqual(a, b) {
 }
 
 /**
+ * Resolve account type names (like "checking", "savings") to actual account IDs.
+ */
+function resolveAccountId(accountId, userAccounts) {
+  if (!accountId || !userAccounts) return accountId;
+  const typeName = String(accountId).toLowerCase().trim();
+  const matchingAccount = userAccounts.find(a =>
+    String(a.accountType || '').toLowerCase() === typeName ||
+    String(a.name || '').toLowerCase() === typeName
+  );
+  return matchingAccount ? matchingAccount.id : accountId;
+}
+
+/**
  * Validates the same business rules as POST /api/transactions (without executing).
  * @returns {{ ok: true, normalized: object } | { ok: false, status: number, json: object }}
  */
 function validateIntent(req, rawBody) {
-  const { fromAccountId, toAccountId, amount, type, description } = rawBody;
+  let { fromAccountId, toAccountId, amount, type, description } = rawBody;
+
+  // Resolve account type names to IDs before validation
+  const userAccounts = dataStore.getAccountsByUserId(req.user.id);
+  if (fromAccountId) {
+    fromAccountId = resolveAccountId(fromAccountId, userAccounts);
+  }
+  if (toAccountId) {
+    toAccountId = resolveAccountId(toAccountId, userAccounts);
+  }
 
   const parsedAmount = parseFloat(amount);
   if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
@@ -438,8 +460,28 @@ async function initiateMfaChallenge(req, challengeId) {
   }
 
   try {
-    // Get user's access token (must be available in session for P1MFA API calls)
-    const userAccessToken = req.session?.oauthTokens?.accessToken;
+    // Get user's access token — prefer BFF-provided token from authenticateToken middleware (req.user),
+    // fall back to session storage in case called directly without Bearer token.
+    // authenticateToken middleware already validated the token, so we can use it directly.
+    let userAccessToken = null;
+
+    // Diagnostic logging
+    const sessionId = req.sessionID || 'NONE';
+    const sessionExists = !!req.session;
+    const oauthTokensExists = !!req.session?.oauthTokens;
+    const accessTokenExists = !!req.session?.oauthTokens?.accessToken;
+
+    // First try: get token that was already validated by authenticateToken middleware
+    // This works when called from a route with session-based auth (no Authorization header)
+    if (req.session?.oauthTokens?.accessToken) {
+      userAccessToken = req.session.oauthTokens.accessToken;
+      console.log(`[initiateMfaChallenge] Session token found for user=${req.user.id} sessionID=${sessionId}`);
+    } else {
+      // Log diagnostic info to help debug session store issues
+      console.warn(`[initiateMfaChallenge] Session token missing for user=${req.user.id} sessionID=${sessionId} ` +
+        `[session=${sessionExists} oauthTokens=${oauthTokensExists} accessToken=${accessTokenExists}]`);
+    }
+
     if (!userAccessToken) {
       return { ok: false, status: 401, json: { error: 'no_access_token', message: 'User session token not available for MFA.' } };
     }

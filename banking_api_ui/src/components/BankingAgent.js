@@ -54,14 +54,12 @@ import FidoStepUpModal from "./FidoStepUpModal";
 import MCPToolsListModal from "./MCPToolsListModal";
 import OtpStepUpModal from "./OtpStepUpModal";
 import QuickLoginModal from "./QuickLoginModal";
-import TokenChainDisplay from "./TokenChainDisplay";
 import { MarkdownContent } from "./shared/MarkdownText";
 import TransactionConsentModal from "./TransactionConsentModal";
 import "./BankingAgent.css";
 import { postAppEvent } from "../services/appEventClient";
 import sessionStorageService from "../services/sessionStorageService";
 import PendingActionManager from "../services/pendingActionManager";
-import { parseTransactionAmount } from "../services/transactionValidator";
 import {
   extractAccounts,
   normalizeAccount,
@@ -203,7 +201,7 @@ const ACTION_GROUPS = {
     },
     {
       id: "test_full_compliance_flow",
-      label: "🔥 Full Compliance (12 Steps)",
+      label: "Full Compliance (12 Steps)",
       desc: "High-value sensitive account transfer with MFA + HITL — exercises ALL 12 compliance steps end-to-end",
     },
     {
@@ -220,6 +218,11 @@ const ACTION_GROUPS = {
       id: "test_hitl_required",
       label: "Test HITL Transfer",
       desc: "Attempt high-value transfer (requires consent)",
+    },
+    {
+      id: "transfer_600_test",
+      label: "Transfer $600",
+      desc: "Test HITL consent + MFA flow with $600 transfer",
     },
     {
       id: "test_otp_required",
@@ -351,6 +354,18 @@ const CHIP_APPLICABLE_STEPS = {
     "bff-login-resume",
   ],
   test_hitl_required: [
+    "agent-llm-reasoning",
+    "agent-token-init",
+    "agent-scope-aware-cache",
+    "olb-resource-token",
+    "gw-scope-map",
+    "gw-denial-metadata",
+    "bff-response-shape",
+    "gw-hitl-challenge-type",
+    "ui-gateway-consent",
+    "ui-auto-refire",
+  ],
+  transfer_600_test: [
     "agent-llm-reasoning",
     "agent-token-init",
     "agent-scope-aware-cache",
@@ -497,6 +512,11 @@ function getStepSkipExplanation(actionId, stepId) {
     },
     // HITL: all steps apply or most apply
     test_hitl_required: {
+      "agent-scope-aware-cache": "Omitted: HITL test doesn't use full token exchange",
+      "olb-resource-token": "Omitted: test uses simplified flow",
+      "claim-diagnostics": "Omitted: test skips claim diagnostics",
+    },
+    transfer_600_test: {
       "agent-scope-aware-cache": "Omitted: HITL test doesn't use full token exchange",
       "olb-resource-token": "Omitted: test uses simplified flow",
       "claim-diagnostics": "Omitted: test skips claim diagnostics",
@@ -1473,15 +1493,6 @@ function parseLogPrompt(text) {
   return null;
 }
 
-// ─── Token event formatter for chat display ───────────────────────
-function formatTokenEvent(evt) {
-  if (!evt?.type) return null;
-  if (evt.type === "token_exchange")
-    return `🔄 Token exchanged (RFC 8693) — agent=${evt.actor || "agent"}, user=${evt.onBehalfOf || "user"}`;
-  if (evt.type === "tool_call")
-    return `🔧 Tool: ${evt.tool} → ${evt.status || "called"}`;
-  return null;
-}
 
 // ─── Education topic inline messages (module-level for performance) ───────────
 
@@ -1688,10 +1699,10 @@ export default function BankingAgent({
   const sessionUserRef = useRef(null);
   sessionUserRef.current = sessionUser;
   const [sessionRefreshing, setSessionRefreshing] = useState(false);
+  /** True while the 2s reconnect poll is actively running (shows "Reconnecting…" banner). */
+  const [, setSessionReconnecting] = useState(false);
   /** True when identity came from _auth cookie / stub token — MCP and NL need a Redis-backed session. */
   const [cookieOnlyBffSession, setCookieOnlyBffSession] = useState(false);
-  /** True while the 2s reconnect poll is actively running (shows "Reconnecting…" banner). */
-  const [sessionReconnecting, setSessionReconnecting] = useState(false);
   /** Avoid repeating the session-fix error bubble after we showed it on load or after a failed action. */
   const sessionFixBubbleShownRef = useRef(false);
   /** User declined high-value consent — tools/chat disabled until sign-out (agentAccessConsent). */
@@ -1824,7 +1835,7 @@ export default function BankingAgent({
   };
 
   /** Token chain visibility and width — persisted to localStorage. */
-  const [showTokenChain, setShowTokenChain] = useState(() => {
+  const [showTokenChain] = useState(() => {
     // Always start hidden in popup windows so the token chain doesn't appear as a side menu
     if (typeof window !== "undefined" && window.opener) return false;
     try {
@@ -1834,7 +1845,7 @@ export default function BankingAgent({
     return false; // Default: hidden
   });
 
-  const [tokenChainWidth, setTokenChainWidth] = useState(() => {
+  const [tokenChainWidth] = useState(() => {
     try {
       const saved = localStorage.getItem("ba_token_chain_width");
       if (saved !== null)
@@ -1874,30 +1885,6 @@ export default function BankingAgent({
       localStorage.setItem("ba_show_rfc_info", String(showRfcInfo));
     } catch {}
   }, [showRfcInfo]);
-
-  /** Handle resizing token chain middle column. */
-  const handleTokenChainResize = useCallback(
-    (e) => {
-      if (e.button !== 0) return; // Only left mouse button
-      const startX = e.clientX;
-      const startWidth = tokenChainWidth;
-
-      const handleMouseMove = (moveEvent) => {
-        const deltaX = moveEvent.clientX - startX;
-        const newWidth = Math.max(50, Math.min(600, startWidth + deltaX));
-        setTokenChainWidth(newWidth);
-      };
-
-      const handleMouseUp = () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
-      };
-
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-    },
-    [tokenChainWidth],
-  );
 
   /** Render a single action button with optional emoji-only styling. */
   const renderChip = (action, groupName) => {
@@ -3475,6 +3462,63 @@ export default function BankingAgent({
           // Falls through to normalizeAgentToolResult — HITL gate fires there and shows consent modal
           break;
         }
+        case "transfer_600_test": {
+          // Test HITL consent + MFA flow with a realistic $600 transfer
+          toast.update(toastId, {
+            render: "Initiating $600 transfer to test HITL consent + MFA flow…",
+          });
+          const testAccounts =
+            liveAccounts && liveAccounts.length >= 2 ? liveAccounts : null;
+          const testFrom =
+            testAccounts?.find(
+              (a) => a.type === "checking" || a.type === "chk",
+            ) || testAccounts?.[0];
+          const testTo =
+            testAccounts?.find(
+              (a) => a.type === "savings" || a.type === "sav",
+            ) || testAccounts?.[1];
+          if (!testFrom || !testTo) {
+            addMessage(
+              "assistant",
+              [
+                "⚠️ Transfer Test: accounts not loaded",
+                "",
+                "Need at least 2 accounts (checking + savings) to run this test.",
+                "Try clicking My Accounts first to load your account list.",
+              ].join("\n"),
+              actionId,
+            );
+            toast.dismiss(toastId);
+            setLoading(false);
+            toolProgressIdRef.current = null;
+            return;
+          }
+          addMessage(
+            "token-event",
+            [
+              "Testing HITL Consent + MFA Flow",
+              "",
+              `Attempting transfer of $${APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER} from ${testFrom.name || testFrom.type} → ${testTo.name || testTo.type}`,
+              "",
+              "Expected flow:",
+              "  1. Consent modal appears (HITL gate triggers at $500+)",
+              "  2. Review transaction details and check 'I agree'",
+              "  3. Click 'Agree & send code'",
+              "  4. Device selection modal appears (select OTP or FIDO2)",
+              "  5. Complete MFA challenge (OTP: enter 123456 or code from email)",
+              "  6. Transaction completes",
+            ].join("\n"),
+            actionId,
+          );
+          response = await createTransfer(
+            testFrom.id,
+            testTo.id,
+            APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER,
+            "HITL + MFA test",
+          );
+          // Falls through to normalizeAgentToolResult — HITL gate fires there and shows consent modal
+          break;
+        }
         case "demo_intent_delegation": {
           // Demonstrates intent-bound, constraint-based delegation:
           // RFC 8693 token exchange narrows scope+audience (constraint enforcement),
@@ -4056,10 +4100,10 @@ export default function BankingAgent({
 
       if (resultType) {
         const titleMap = {
-          accounts: "🏦 Accounts",
+          accounts: "Accounts",
           transactions: "Recent Transactions",
-          balance: "💰 Balance",
-          confirm: `✅ ${label} confirmed`,
+          balance: "Balance",
+          confirm: `${label} confirmed`,
         };
         setResultPanel({
           type: resultType,
@@ -4539,6 +4583,7 @@ export default function BankingAgent({
       actionId === "test_wrong_scope" ||
       actionId === "test_wrong_audience" ||
       actionId === "test_hitl_required" ||
+      actionId === "transfer_600_test" ||
       actionId === "test_otp_required" ||
       actionId === "demo_intent_delegation"
     ) {
@@ -5334,7 +5379,7 @@ export default function BankingAgent({
                     })
                   }
                 >
-                  🛡 Compliance
+                  Compliance
                 </button>
                 {showCompliancePanel && (
                   <label
@@ -5561,7 +5606,7 @@ export default function BankingAgent({
                         >
                           {sessionRefreshing
                             ? "Refreshing…"
-                            : "🔄 Refresh token"}
+                            : "Refresh token"}
                         </button>
                         <button
                           type="button"
@@ -5573,7 +5618,7 @@ export default function BankingAgent({
                           disabled={loading}
                           title="Sign out of your session"
                         >
-                          🚪 Sign out
+                          Sign out
                         </button>
                       </div>
                     </div>
@@ -5690,7 +5735,7 @@ export default function BankingAgent({
                           : "Page: switch to dark mode"
                       }
                     >
-                      {appTheme === "dark" ? "☀️" : "🌙"}
+                      {appTheme === "dark" ? "☀" : "☾"}
                     </button>
                   </div>
                   <div className="ba-popout-status-bar">
@@ -6411,7 +6456,6 @@ export default function BankingAgent({
                           marginBottom: "16px",
                         }}
                       >
-                        <span style={{ fontSize: "22px" }}>🔄</span>
                         <h3
                           style={{
                             margin: 0,
@@ -6595,7 +6639,7 @@ export default function BankingAgent({
                       disabled={sessionRefreshing || loading || consentBlocked}
                       title="Refresh your access token using PingOne refresh token (no logout)"
                     >
-                      {sessionRefreshing ? "Refreshing…" : "🔄 Refresh"}
+                      {sessionRefreshing ? "Refreshing…" : "Refresh"}
                     </button>
                     <button
                       type="button"
@@ -6604,7 +6648,7 @@ export default function BankingAgent({
                       disabled={loading}
                       title="Sign out of your session"
                     >
-                      🚪 Sign out
+                      Sign out
                     </button>
                   </div>
                 )}
@@ -7337,8 +7381,8 @@ export default function BankingAgent({
                     }}
                   >
                     {effectiveUser?.role === "admin"
-                      ? "👑 Admin Dashboard"
-                      : "📊 My Dashboard"}
+                      ? "Admin Dashboard"
+                      : "My Dashboard"}
                   </button>
                 )}
 

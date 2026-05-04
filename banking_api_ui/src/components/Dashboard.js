@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
 import { getCachedJson } from '../services/cachedStatusService';
 import { toast, notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
@@ -8,7 +7,6 @@ import { resolveSessionUser } from '../services/sessionResolver';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
-import DevToolsOverlay from './DevToolsOverlay';
 import { useCurrentUserTokenEvent } from '../hooks/useCurrentUserTokenEvent';
 import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import { toastAdminSessionError } from '../utils/dashboardToast';
@@ -25,7 +23,6 @@ import ThresholdControls from './ThresholdControls';
 const Dashboard = ({ user, onLogout }) => {
   // Fetch and display current user token in the token chain
   useCurrentUserTokenEvent();
-  const location = useLocation();
   const { placement: agentPlacement } = useAgentUiMode();
   const { open } = useEducationUI();
   const [stats, setStats] = useState(null);
@@ -980,7 +977,6 @@ const Dashboard = ({ user, onLogout }) => {
       <WebMcpPanel />
 
       <ApiCallsModal open={apiCallsModalOpen} onClose={() => setApiCallsModalOpen(false)} />
-      <DevToolsOverlay />
 
       <ConfirmModal
         isOpen={confirmReset}

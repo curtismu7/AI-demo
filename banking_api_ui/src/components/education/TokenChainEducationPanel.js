@@ -1,5 +1,5 @@
 // banking_api_ui/src/components/education/TokenChainEducationPanel.js
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 import { useTokenChainOptional } from '../../context/TokenChainContext';
 import { agentFlowDiagram } from '../../services/agentFlowDiagramService';
