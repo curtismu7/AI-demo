@@ -826,14 +826,7 @@ function TokenInspectorPanel({ event, initialPos, onClose }) {
 // ─── Inspect icon SVG ────────────────────────────────────────────────────────
 
 /** Magnifying-glass + arrow-out icon to indicate "inspect / pop out". */
-const InspectIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <circle cx="6.5" cy="6.5" r="4" stroke="currentColor" strokeWidth="1.5" />
-    <line x1="9.7" y1="9.7" x2="14" y2="14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    <path d="M10 3h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-    <line x1="10" y1="6" x2="13" y2="3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-  </svg>
-);
+// Inline inspect icon SVG to avoid React child rendering warnings
 
 // ─── Single event row ─────────────────────────────────────────────────────────
 
@@ -1096,7 +1089,12 @@ function EventRow({ event, isLast, nextEvent, idTokenMode, onInspect, hints, val
                 onClick={handleOpen}
                 aria-label={`Inspect ${event.label}`}
               >
-                <InspectIcon />
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <circle cx="6.5" cy="6.5" r="4" stroke="currentColor" strokeWidth="1.5" />
+                  <line x1="9.7" y1="9.7" x2="14" y2="14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M10 3h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  <line x1="10" y1="6" x2="13" y2="3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                </svg>
                 Token Details
               </button>
             </div>
