@@ -503,6 +503,11 @@ router.post('/integration/select-device', async (req, res) => {
       return res.status(401).json({ success: false, error: 'No valid access token available' });
     }
 
+    // Debug: log token details
+    const tokenPreview = accessToken ? accessToken.substring(0, 50) + '...' : 'MISSING';
+    const tokenType = accessToken?.includes('.') ? 'JWT' : 'UNKNOWN';
+    console.log(`[MFA select-device] Using token: type=${tokenType}, preview=${tokenPreview}`);
+
     const _t3 = Date.now();
 
     const result = await mfaService.selectDevice(daId, deviceId, accessToken);
