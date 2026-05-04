@@ -342,7 +342,7 @@ export default function MFATestPage() {
 					try {
 						const selectResp = await apiClient.post(
 							"/api/mfa/test/integration/select-device",
-							{ daId: data.daId, deviceId: smsDevice.id },
+							{ daId: data.daId, deviceId: smsDevice.id, ...(testUserId && { userId: testUserId }) },
 						);
 						if (selectResp.data?.pingoneRequest) setSmsSelectDevicePingoneReq(selectResp.data.pingoneRequest);
 						if (selectResp.data?.pingoneResponse) setSmsSelectDevicePingoneRes(selectResp.data.pingoneResponse);
@@ -452,7 +452,7 @@ export default function MFATestPage() {
 					try {
 						const selectResp = await apiClient.post(
 							"/api/mfa/test/integration/select-device",
-							{ daId: data.daId, deviceId: emailDevice.id },
+							{ daId: data.daId, deviceId: emailDevice.id, ...(testUserId && { userId: testUserId }) },
 						);
 						if (selectResp.data?.pingoneRequest) setEmailSelectDevicePingoneReq(selectResp.data.pingoneRequest);
 						if (selectResp.data?.pingoneResponse) setEmailSelectDevicePingoneRes(selectResp.data.pingoneResponse);
