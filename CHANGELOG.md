@@ -22,6 +22,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **MFA Test Page — auto-select device in SMS/Email OTP tests** — SMS and Email OTP authentication now automatically selects the device after initiation, triggering the OTP send. Previously, users had to manually select a device; now both initiate and select-device API calls are shown with full request/response details, matching the actual PingOne MFA authentication flow.
 - **MFA Test Page — fixed duplicate 'Delete' text in FIDO2 button** — button label now correctly reads "Delete & Re-enroll" instead of "Delete Delete & Re-enroll".
 - **Demo Controls — wireup verification for may_act diagnose endpoint** — ThresholdControls.js now correctly parses `/api/demo/may-act/diagnose` response (checks.userAttribute.pass) instead of expecting non-existent `attributeSet` field; UI toggle button now shows correct may_act status on load.
 - **UI style — removed emojis from professional banking interfaces** — removed gear emoji from Controls button and checkmark/cross emojis from may_act toggle; real banking applications use professional typography, not decorative symbols.

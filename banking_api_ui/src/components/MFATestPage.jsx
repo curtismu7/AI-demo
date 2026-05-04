@@ -4,6 +4,7 @@ import { notifyError, notifyInfo, notifySuccess } from "../utils/appToast";
 import "./MFATestPage.css";
 import ApiCallPreviewCard from "./shared/ApiCallPreviewCard";
 import MFATestCard from "./MFATestCard";
+import PingOneApiPanel from "./PingOneApiPanel";
 import MFALogsModal from "./MFALogsModal";
 
 
@@ -96,10 +97,14 @@ export default function MFATestPage() {
 	const [fidoSelectDevicePingoneRes, setFidoSelectDevicePingoneRes] = useState(null);
 	const [smsInitiatePingoneReq, setSmsInitiatePingoneReq] = useState(null);
 	const [smsInitiatePingoneRes, setSmsInitiatePingoneRes] = useState(null);
+	const [smsSelectDevicePingoneReq, setSmsSelectDevicePingoneReq] = useState(null);
+	const [smsSelectDevicePingoneRes, setSmsSelectDevicePingoneRes] = useState(null);
 	const [smsVerifyPingoneReq, setSmsVerifyPingoneReq] = useState(null);
 	const [smsVerifyPingoneRes, setSmsVerifyPingoneRes] = useState(null);
 	const [emailInitiatePingoneReq, setEmailInitiatePingoneReq] = useState(null);
 	const [emailInitiatePingoneRes, setEmailInitiatePingoneRes] = useState(null);
+	const [emailSelectDevicePingoneReq, setEmailSelectDevicePingoneReq] = useState(null);
+	const [emailSelectDevicePingoneRes, setEmailSelectDevicePingoneRes] = useState(null);
 	const [emailVerifyPingoneReq, setEmailVerifyPingoneReq] = useState(null);
 	const [emailVerifyPingoneRes, setEmailVerifyPingoneRes] = useState(null);
 	const [enrollSmsInitPingoneReq, setEnrollSmsInitPingoneReq] = useState(null);
@@ -314,6 +319,7 @@ export default function MFATestPage() {
 		setSmsInitiateStatus("pending");
 		setSmsInitiateError(null);
 		try {
+			// Step 1: Initiate device authentication
 			const { data } = await apiClient.post(
 				"/api/mfa/test/integration/initiate",
 				{ method: "sms", ...(testUserId && { userId: testUserId }) },
@@ -321,15 +327,48 @@ export default function MFATestPage() {
 			setRawSmsInitiate(data);
 			if (data.pingoneRequest) setSmsInitiatePingoneReq(data.pingoneRequest);
 			if (data.pingoneResponse) setSmsInitiatePingoneRes(data.pingoneResponse);
-			if (data.success) {
+
+			if (data.success && data.daId && data.devices?.length > 0) {
 				setSmsDaId(data.daId);
 				setSmsDevices(data.devices || []);
-				setSmsInitiateStatus("passed");
-				notifySuccess("SMS OTP challenge initiated successfully");
+
+				// Step 2: Automatically select first SMS-capable device to trigger OTP send
+				const smsDevice = data.devices.find(d =>
+					String(d.type || '').toUpperCase().includes('SMS') ||
+					String(d.type || '').toUpperCase().includes('PHONE')
+				);
+
+				if (smsDevice) {
+					try {
+						const selectResp = await apiClient.post(
+							"/api/mfa/test/integration/select-device",
+							{ daId: data.daId, deviceId: smsDevice.id, ...(testUserId && { userId: testUserId }) },
+						);
+						if (selectResp.data?.pingoneRequest) setSmsSelectDevicePingoneReq(selectResp.data.pingoneRequest);
+						if (selectResp.data?.pingoneResponse) setSmsSelectDevicePingoneRes(selectResp.data.pingoneResponse);
+
+						if (selectResp.data?.success) {
+							setSmsInitiateStatus("passed");
+							notifySuccess(`SMS OTP sent to ${smsDevice.nickname || smsDevice.email || "registered device"}`);
+						} else {
+							setSmsInitiateStatus("failed");
+							setSmsInitiateError(selectResp.data?.error || "Failed to select SMS device");
+							notifyError(`SMS device selection failed: ${selectResp.data?.error}`);
+						}
+					} catch (selectErr) {
+						setSmsInitiateStatus("failed");
+						setSmsInitiateError(selectErr.message);
+						notifyError(`SMS device selection failed: ${selectErr.message}`);
+					}
+				} else {
+					setSmsInitiateStatus("failed");
+					setSmsInitiateError("No SMS device found");
+					notifyError("No SMS device available for authentication");
+				}
 			} else {
 				setSmsInitiateStatus("failed");
-				setSmsInitiateError(data.error);
-				notifyError(`SMS OTP initiation failed: ${data.error}`);
+				setSmsInitiateError(data.error || "No devices available");
+				notifyError(`SMS OTP initiation failed: ${data.error || "No devices available"}`);
 			}
 		} catch (err) {
 			const errData = err?.response?.data;
@@ -390,6 +429,7 @@ export default function MFATestPage() {
 		setEmailInitiateStatus("pending");
 		setEmailInitiateError(null);
 		try {
+			// Step 1: Initiate device authentication
 			const { data } = await apiClient.post(
 				"/api/mfa/test/integration/initiate",
 				{ method: "email", ...(testUserId && { userId: testUserId }) },
@@ -397,15 +437,48 @@ export default function MFATestPage() {
 			setRawEmailInitiate(data);
 			if (data.pingoneRequest) setEmailInitiatePingoneReq(data.pingoneRequest);
 			if (data.pingoneResponse) setEmailInitiatePingoneRes(data.pingoneResponse);
-			if (data.success) {
+
+			if (data.success && data.daId && data.devices?.length > 0) {
 				setEmailDaId(data.daId);
 				setEmailDevices(data.devices || []);
-				setEmailInitiateStatus("passed");
-				notifySuccess("Email OTP challenge initiated successfully");
+
+				// Step 2: Automatically select first EMAIL-capable device to trigger OTP send
+				const emailDevice = data.devices.find(d =>
+					String(d.type || '').toUpperCase().includes('EMAIL') ||
+					String(d.type || '').toUpperCase().includes('MAIL')
+				);
+
+				if (emailDevice) {
+					try {
+						const selectResp = await apiClient.post(
+							"/api/mfa/test/integration/select-device",
+							{ daId: data.daId, deviceId: emailDevice.id, ...(testUserId && { userId: testUserId }) },
+						);
+						if (selectResp.data?.pingoneRequest) setEmailSelectDevicePingoneReq(selectResp.data.pingoneRequest);
+						if (selectResp.data?.pingoneResponse) setEmailSelectDevicePingoneRes(selectResp.data.pingoneResponse);
+
+						if (selectResp.data?.success) {
+							setEmailInitiateStatus("passed");
+							notifySuccess(`Email OTP sent to ${emailDevice.email || "registered email"}`);
+						} else {
+							setEmailInitiateStatus("failed");
+							setEmailInitiateError(selectResp.data?.error || "Failed to select Email device");
+							notifyError(`Email device selection failed: ${selectResp.data?.error}`);
+						}
+					} catch (selectErr) {
+						setEmailInitiateStatus("failed");
+						setEmailInitiateError(selectErr.message);
+						notifyError(`Email device selection failed: ${selectErr.message}`);
+					}
+				} else {
+					setEmailInitiateStatus("failed");
+					setEmailInitiateError("No Email device found");
+					notifyError("No Email device available for authentication");
+				}
 			} else {
 				setEmailInitiateStatus("failed");
-				setEmailInitiateError(data.error);
-				notifyError(`Email OTP initiation failed: ${data.error}`);
+				setEmailInitiateError(data.error || "No devices available");
+				notifyError(`Email OTP initiation failed: ${data.error || "No devices available"}`);
 			}
 		} catch (err) {
 			const errData = err?.response?.data;
@@ -1518,6 +1591,18 @@ export default function MFATestPage() {
 						docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/initialize-device-authentication.html"
 						docsSectionTitle="MFA Challenge — Initiate (SMS)"
 					/>
+					{(smsSelectDevicePingoneReq || smsSelectDevicePingoneRes) && (
+						<div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "0.375rem" }}>
+							<h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: 600, color: "#166534" }}>Select Device (automatic)</h4>
+							<PingOneApiPanel
+								request={smsSelectDevicePingoneReq}
+								response={smsSelectDevicePingoneRes}
+								endpoint={{ method: "PUT", url: "/v1/environments/{envId}/deviceAuthentications/{daId}" }}
+								docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/update-device-authentication.html"
+								docsSectionTitle="MFA Device Selection"
+							/>
+						</div>
+					)}
 					{smsDaId && (
 						<div className="otp-verify-section">
 							<DaResponseCard daId={smsDaId} method="sms" />
@@ -1607,6 +1692,18 @@ export default function MFATestPage() {
 						docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/initialize-device-authentication.html"
 						docsSectionTitle="MFA Challenge — Initiate (Email OTP)"
 					/>
+					{(emailSelectDevicePingoneReq || emailSelectDevicePingoneRes) && (
+						<div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "0.375rem" }}>
+							<h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: 600, color: "#166534" }}>Select Device (automatic)</h4>
+							<PingOneApiPanel
+								request={emailSelectDevicePingoneReq}
+								response={emailSelectDevicePingoneRes}
+								endpoint={{ method: "PUT", url: "/v1/environments/{envId}/deviceAuthentications/{daId}" }}
+								docsUrl="https://developer.pingidentity.com/pingone-api/mfa/mfa-authentication/mfa-device-authentications/update-device-authentication.html"
+								docsSectionTitle="MFA Device Selection"
+							/>
+						</div>
+					)}
 					{emailDaId && (
 						<div className="otp-verify-section">
 							<DaResponseCard daId={emailDaId} method="email" />

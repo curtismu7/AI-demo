@@ -184,7 +184,7 @@ git checkout <last-version-tag> -- <key-file>
 | PingOne Test Page — token policies (SPEL) + per-app grant matrix in verify-assets | active | `banking_api_server/services/pingoneManagementService.js` (`getTokenPolicies`, `getApplicationGrants`), `banking_api_server/routes/pingoneTestRoutes.js` | — |
 | PingOne Test Page — WhatIsHappening edu panels (Token Acquisition, Token Exchange) | active | `banking_api_ui/src/components/PingOneTestPage.jsx` (`WhatIsHappening`), `banking_api_ui/src/components/PingOneTestPage.css` | — |
 | PingOne Test Page — RFC 8693 Token Exchange tests (1-hop, 2-hop act-as, 3-hop chain) | active | `banking_api_server/routes/pingoneTestRoutes.js`, `banking_api_ui/src/components/PingOneTestPage.jsx` | — |
-| MFA Test Page — SMS OTP + Email OTP challenge/verify flows | active | `banking_api_server/routes/mfaTest.js`, `banking_api_ui/src/components/MFATestPage.jsx` | — |
+| MFA Test Page — SMS OTP + Email OTP challenge/verify flows | active | `banking_api_server/routes/mfaTest.js`, `banking_api_ui/src/components/MFATestPage.jsx` (auto-selects device after initiate, shows both initiate + select-device API calls with full request/response) | — |
 | MFA Test Page — FIDO2 WebAuthn verify (navigator.credentials.get + assertion POST) | active | `banking_api_server/routes/mfaTest.js`, `banking_api_ui/src/components/MFATestPage.jsx` (`testFidoVerify`) | — |
 | MFA Test Page — FIDO2 WebAuthn enrollment complete (navigator.credentials.create + attestation POST) | active | `banking_api_server/routes/mfaTest.js`, `banking_api_ui/src/components/MFATestPage.jsx` (`testFidoEnrollComplete`) | — |
 | MFA Test Page — DaResponseCard (DA ID + status + method display) | active | `banking_api_ui/src/components/MFATestPage.jsx` (`DaResponseCard`) | — |
