@@ -353,6 +353,14 @@ router.post('/integration/initiate', async (req, res) => {
           let pkcro = selected.publicKeyCredentialRequestOptions || null;
           if (pkcro && typeof pkcro === 'string') pkcro = JSON.parse(pkcro);
           resBody.publicKeyCredentialRequestOptions = pkcro;
+
+          // Capture selectDevice API call details
+          if (selected._debug) {
+            resBody.selectDeviceRequest = normalizePingoneRequest(selected._debug.request);
+            resBody.selectDeviceResponse = selected._debug.response;
+            console.log('[MFA API] Select Device - debug captured during initiate');
+          }
+
           console.log('[MFA Test] FIDO2 auto-selected device=%s status=%s', fidoDevice.id, selected.status);
         } catch (selErr) {
           console.warn('[MFA Test] FIDO2 device selection failed:', selErr.message);
