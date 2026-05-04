@@ -522,10 +522,11 @@ async function initiateMfaChallenge(req, challengeId) {
  * @param {import('express').Request} req
  * @param {string} challengeId
  * @param {string} deviceId
+ * @param {string} [validatedToken] - Optional token from authenticateToken middleware (preferred if available)
  * @returns {Promise<{ ok: true, status: string, challenge: object }
  *                 | { ok: false, status: number, json: object }>}
  */
-async function selectMfaDevice(req, challengeId, deviceId) {
+async function selectMfaDevice(req, challengeId, deviceId, validatedToken) {
   if (!challengeId || !deviceId) {
     return { ok: false, status: 400, json: { error: 'invalid_params', message: 'challengeId and deviceId required.' } };
   }
@@ -543,12 +544,15 @@ async function selectMfaDevice(req, challengeId, deviceId) {
   }
 
   try {
-    const userAccessToken = req.session?.oauthTokens?.accessToken;
+    // Use the validated token from authenticateToken middleware if available (freshly validated),
+    // otherwise fall back to the session token
+    const userAccessToken = validatedToken || req.session?.oauthTokens?.accessToken;
     if (!userAccessToken) {
       return { ok: false, status: 401, json: { error: 'no_access_token', message: 'User session token not available for MFA.' } };
     }
 
     // Call P1MFA to select the device
+    console.log(`[ConsentChallenge] selectMfaDevice: calling PingOne for daId=${ch.daId.slice(0, 8)}… deviceId=${deviceId.slice(0, 8)}…`);
     const selected = await mfaService.selectDevice(ch.daId, deviceId, userAccessToken);
 
     // Store selected device and new status
@@ -585,11 +589,13 @@ async function selectMfaDevice(req, challengeId, deviceId) {
 
     return { ok: true, status: selected.status, challenge };
   } catch (err) {
-    console.error('[ConsentChallenge] selectMfaDevice failed:', err.message);
+    const errStatus = err.status || err.response?.status || 500;
+    const errDetail = err.pingError || err.response?.data || { message: err.message };
+    console.error(`[ConsentChallenge] selectMfaDevice failed: status=${errStatus} detail=`, errDetail);
     return {
       ok: false,
-      status: err.status || 500,
-      json: { error: 'device_selection_failed', message: err.message },
+      status: errStatus,
+      json: { error: 'device_selection_failed', message: err.message, details: errDetail },
     };
   }
 }

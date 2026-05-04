@@ -252,7 +252,11 @@ router.post(
     if (!deviceId) {
       return res.status(400).json({ error: 'device_id_required', message: 'deviceId is required.' });
     }
-    const result = await txConsent.selectMfaDevice(req, req.params.challengeId, deviceId);
+    // Extract token from the Authorization header that was just validated by authenticateToken middleware
+    // This ensures we use a fresh/validated token rather than a potentially stale session token
+    const authHeader = req.headers['authorization'];
+    const validatedToken = authHeader?.split(' ')[1] || null;
+    const result = await txConsent.selectMfaDevice(req, req.params.challengeId, deviceId, validatedToken);
     if (!result.ok) return res.status(result.status).json(result.json);
     req.session.save((saveErr) => {
       if (saveErr) console.error('[ConsentChallenge] session save error (select-device):', saveErr);

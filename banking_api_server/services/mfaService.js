@@ -175,7 +175,10 @@ async function selectDevice(daId, deviceId, userAccessToken) {
 			});
 			data = resp.data;
 		} catch (err) {
-			err._debug = { request: debugRequest, response: err.response?.data || null };
+			const status = err.response?.status;
+			const respData = err.response?.data || null;
+			console.error(`[MFA selectDevice] PingOne returned ${status}:`, respData);
+			err._debug = { request: debugRequest, response: respData };
 			throw err;
 		}
 		return { ...data, _debug: { request: debugRequest, response: data } };
