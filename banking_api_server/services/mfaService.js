@@ -156,6 +156,13 @@ async function initiateDeviceAuth(userId, userAccessToken) {
 async function selectDevice(daId, deviceId, userAccessToken) {
 	const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
 	const reqBody = { selectedDevice: { id: deviceId } };
+
+	// Debug token
+	const tokenLen = userAccessToken?.length || 0;
+	const tokenStart = userAccessToken?.substring(0, 30) || 'MISSING';
+	const tokenEnd = userAccessToken?.substring(Math.max(0, userAccessToken.length - 20)) || '';
+	console.log(`[selectDevice] Token: len=${tokenLen}, start=${tokenStart}..., end=...${tokenEnd}`);
+
 	const debugRequest = {
 		method: "PUT",
 		url: url,
@@ -166,9 +173,12 @@ async function selectDevice(daId, deviceId, userAccessToken) {
 	try {
 		let data;
 		try {
+			const authHeader = `Bearer ${userAccessToken}`;
+			console.log(`[selectDevice] Authorization header length: ${authHeader.length}, contains dots: ${(authHeader.match(/\./g) || []).length}`);
+
 			const resp = await axios.put(url, reqBody, {
 				headers: {
-					Authorization: `Bearer ${userAccessToken}`,
+					Authorization: authHeader,
 					"Content-Type": "application/json",
 				},
 				timeout: 10000,
