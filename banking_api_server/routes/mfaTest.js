@@ -264,9 +264,11 @@ async function _resolveCredentials(req) {
   const headerToken = authHeader?.split(' ')[1] || null;
   let accessToken = headerToken || req.session?.oauthTokens?.accessToken;
 
-  // If access token is missing but refresh token exists, attempt refresh
+  // Check if token is expired and attempt refresh if needed
   if (!accessToken && req.session?.oauthTokens?.refreshToken) {
+    // Token is missing entirely, try to refresh
     try {
+      console.log('[MFA] Access token missing, attempting refresh...');
       const oauthUserService = require('../services/oauthUserService');
       const refreshToken = req.session.oauthTokens.refreshToken;
       const tokenData = await oauthUserService.refreshAccessToken(refreshToken);
@@ -276,9 +278,10 @@ async function _resolveCredentials(req) {
       req.session.save((err) => {
         if (err) console.warn('[MFA] Failed to save refreshed token to session:', err.message);
       });
-      console.log('[MFA] Token refreshed successfully for device authentication');
+      console.log('[MFA] Token refreshed successfully (was missing)');
     } catch (err) {
-      console.warn('[MFA] Token refresh failed, will ask user to login:', err.message);
+      console.error('[MFA] Token refresh failed:', err.message);
+      // Continue — accessToken will still be undefined and error will be thrown below
     }
   }
 
@@ -316,7 +319,7 @@ async function _resolveCredentialsForEnrollment(req) {
     };
   }
 
-  // Prefer session credentials if available
+  // Require session credentials (no worker token fallback for enrollment)
   const sessionUserId = req.session?.user?.oauthId || req.session?.user?.id;
   const sessionToken = req.session?.oauthTokens?.accessToken;
   if (sessionUserId && sessionToken) {
@@ -328,14 +331,11 @@ async function _resolveCredentialsForEnrollment(req) {
     };
   }
 
-  // Fall back to worker token + test user
-  const workerToken = await mfaService.getWorkerToken();
-  return {
-    userId: MFA_TEST_USER_ID,
-    accessToken: workerToken,
-    email: null,
-    source: 'worker',
-  };
+  // No fallback: require user to be logged in
+  throw new Error(
+    'Device enrollment requires a logged-in user session. ' +
+    'Please login to PingOne via /dashboard, then return to the MFA test page.'
+  );
 }
 
 
