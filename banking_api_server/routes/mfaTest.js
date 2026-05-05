@@ -253,6 +253,7 @@ const MFA_TEST_USER_ID = process.env.MFA_TEST_USER_ID || '6689a774-46af-4198-a6f
 /**
  * For DEVICE AUTHENTICATION (select-device, verify-otp).
  * MUST use the user's own access token — worker tokens don't match user context.
+ * Attempts to refresh token if expired before failing.
  */
 async function _resolveCredentials(req) {
   // oauthId is the PingOne UUID; id may be a legacy numeric key on bootstrap users
@@ -261,12 +262,30 @@ async function _resolveCredentials(req) {
   // Prefer token from Authorization header (if present), otherwise use session token
   const authHeader = req.headers['authorization'];
   const headerToken = authHeader?.split(' ')[1] || null;
-  const accessToken = headerToken || req.session?.oauthTokens?.accessToken;
+  let accessToken = headerToken || req.session?.oauthTokens?.accessToken;
+
+  // If access token is missing but refresh token exists, attempt refresh
+  if (!accessToken && req.session?.oauthTokens?.refreshToken) {
+    try {
+      const oauthUserService = require('../services/oauthUser');
+      const refreshToken = req.session.oauthTokens.refreshToken;
+      const tokenData = await oauthUserService.refreshAccessToken(refreshToken);
+      accessToken = tokenData.access_token;
+      req.session.oauthTokens.accessToken = accessToken;
+      req.session.oauthTokens.refreshToken = tokenData.refresh_token || refreshToken;
+      req.session.save((err) => {
+        if (err) console.warn('[MFA] Failed to save refreshed token to session:', err.message);
+      });
+      console.log('[MFA] Token refreshed successfully for device authentication');
+    } catch (err) {
+      console.warn('[MFA] Token refresh failed, will ask user to login:', err.message);
+    }
+  }
 
   if (!sessionUserId || !accessToken) {
     throw new Error(
       'Device authentication requires an active session. ' +
-      'Please login to PingOne first via /dashboard, then return to MFA test page.'
+      'Your session has expired. Please login to PingOne again via /dashboard, then return to MFA test page.'
     );
   }
 
