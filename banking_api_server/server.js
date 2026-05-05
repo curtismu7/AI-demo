@@ -399,6 +399,7 @@ app.use(
         '/api/tokens',
         '/api/demo-scenario',
         '/api/auth/oauth',
+        '/api/mfa/test',
     ],
     refreshIfExpiring,
 );

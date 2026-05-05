@@ -102,6 +102,20 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-04 — MFA Token Refresh: Fix 401 on MFA test endpoints with expiring tokens
+
+- **Symptom:** MFA device selection returns 401 Unauthorized even though user is freshly logged in. Browser Network tab shows a token refresh request returning 200, but the subsequent `/api/mfa/test/integration/select-device` call still fails with 401.
+- **Root cause:** The `refreshIfExpiring` middleware (which automatically refreshes tokens within 5 minutes of expiry) was not applied to `/api/mfa/test/*` routes in server.js. When a user's token was expiring, the MFA request would fail with 401. The server-side fallback in `mfaTest.js _resolveCredentials` (line 268-286) only attempts to refresh if the token is completely MISSING from the session, not if it's EXPIRED. This caused a 401 for expiring (but not missing) tokens.
+- **Fix:** Added `/api/mfa/test` to the `refreshIfExpiring` middleware path list in `server.js` (line 402). This ensures automatic token refresh happens before any MFA test endpoint executes, preventing 401 errors from expiring tokens.
+- **Verification:**
+  - MFA device selection succeeds even with expiring tokens
+  - OTP initiation, device selection, and verification flows all work correctly
+  - No 401 errors on MFA test endpoints for freshly authenticated users whose tokens are within 5 minutes of expiry
+- **Files changed:** `banking_api_server/server.js` (line 402: added `/api/mfa/test` to refreshIfExpiring middleware array)
+- **Do not break:** The `/api/mfa/test` route MUST remain in the `refreshIfExpiring` middleware list. Do not remove it or the 401 bug will return. The `refreshIfExpiring` middleware MUST run before the route handler (it does — middleware order is correct). Token refresh logic in `tokenRefresh.js` must continue to check `expiresAt` against the 5-minute margin.
+
+---
+
 ### 2026-05-04 — PingOne MFA: Fix OTP verification content-type header
 
 - **Symptom:** OTP verification returns 403 Forbidden when submitting correct OTP code during device authentication
