@@ -1897,13 +1897,17 @@ cd ..
 - **Regression check:** Agent: Click "💳 Withdraw $50" → transaction completes without "From account not found". NL: "transfer $100 from checking to savings" → transaction completes with real account IDs in logs. `cd banking_api_ui && npm run build` → exit 0.
 - **Do not break:** Form-based withdrawal/transfer/deposit (ActionForm route). Account validation logic for all transaction types. Token exchange and HITL consent flows.
 
-### 2026-05-05 — Phase 2: Authorize owns HITL decisions; unified hitl_required error shape
+### 2026-05-05 — Phase 2: Authorize owns all transaction decisions (three-tier thresholds)
 
-- **Change:** Replaced three sequential auth gates in `routes/transactions.js` (HITL consent, step-up MFA, Authorize) with a single Authorize call that owns all decisions. The runtimeSettings-based step-up gate (Gate 2) is removed; step-up is now decided by Authorize policy. All 428 responses now carry `hitl: { type: 'consent' | 'step_up' }` for UI consistency.
-- **New error shape:** `{ error: 'hitl_required', hitl: { type: 'consent' } }` replaces `{ error: 'consent_challenge_required' }`. Step-up responses gain `hitl: { type: 'step_up' }` alongside existing fields.
-- **Simulated Authorize:** All transfers return `consentRequired: true`; high-value withdrawals (>= $15k) still return `stepUpRequired`. Deny threshold ($50k) unchanged.
-- **Files modified:** `banking_api_server/services/simulatedAuthorizeService.js`, `banking_api_server/services/transactionAuthorizationService.js`, `banking_api_server/routes/transactions.js`, `banking_mcp_server/src/banking/BankingAPIClient.ts`, `banking_mcp_server/src/tools/BankingToolProvider.ts`, `banking_api_ui/src/components/UserDashboard.js`, `banking_api_ui/src/components/BankingAgent.js`
-- **Also fixed:** `UserDashboard.js` consent checks were incorrectly checking HTTP status 400 for consent_challenge_required — the BFF always returned 428. Fixed to check 428 with the new error shape.
-- **ff_hitl_enabled=false:** Still respected — skips consent enforcement even when Authorize returns `hitl_required{consent}`. Deny and step-up from Authorize are not affected by this flag.
-- **Regression check:** `cd banking_api_ui && npm run build` → exit 0. Transfer via dashboard triggers consent modal. High-value withdrawal triggers step-up modal. Admin users bypass HITL.
-- **Do not break:** Transfer HITL enforcement (now via Authorize, not hardcoded gate). OTP demo bypass `123123`. Gateway HITL path (Path B) unchanged. MCP tool consent flow via BankingAgent still triggers TransactionConsentModal.
+- **Change:** Consolidated transaction authorization into PingOne Authorize service (or simulated Authorize when enabled). Removed three sequential hardcoded BFF gates; now single Authorize decision owns DENY, CONFIRM (consent-only), and STEP_UP (consent+MFA) decisions.
+- **Simulated Authorize thresholds (defaults, configurable via UI):**
+  - **$0–$249:** PERMIT (no user action required)
+  - **$250–$499:** CONFIRM (consentRequired: true, stepUpRequired: false — consent only, no MFA)
+  - **$500–$1,999:** CONSENT + MFA (consentRequired: true, stepUpRequired: true — both required)
+  - **$2,000+:** DENY (hard ceiling)
+- **New error shape:** `{ error: 'hitl_required', hitl: { type: 'consent' | 'step_up' } }` replaces `consent_challenge_required`. Unified 428 response for all HITL gates.
+- **Files modified:** `banking_api_server/services/simulatedAuthorizeService.js` (three-tier logic), `banking_api_server/routes/authorizeConfig.js` (confirm amount API), `banking_api_ui/src/components/AuthorizeConfigPage.jsx` (confirm threshold UI field), `banking_api_server/services/transactionAuthorizationService.js`, `banking_api_server/routes/transactions.js`, MCP server error handling, UI consent/step-up modal logic.
+- **Admin UI:** Mock Authorize config panel exposes confirm/step-up/deny thresholds + rules documentation.
+- **ff_hitl_enabled=false:** Skips consent enforcement; deny and step-up still enforced via Authorize.
+- **Regression check:** `cd banking_api_ui && npm run build` → exit 0. Test $250 (confirm only), $500 (consent+MFA), $2000 (deny).
+- **Do not break:** Transfer/withdrawal/deposit HITL enforcement (now Authorize-driven). OTP bypass `123123`. MCP gateway HITL path. Existing consent modal + step-up MFA flows still trigger correctly.
