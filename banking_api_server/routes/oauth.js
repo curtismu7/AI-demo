@@ -21,6 +21,7 @@ const { trackToken } = require('../services/apiCallTrackerService');
 const { logEvent: logAppEvent } = require('../services/appEventService');
 const tokenIntrospectionService = require('../services/tokenIntrospectionService');
 const { decodeJwt } = require('../utils/tokenUtils');
+const posthog = require('../services/posthog');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -374,6 +375,17 @@ router.get('/callback', async (req, res) => {
           expiresAt: oauthTokens.expiresAt,
           idToken:   oauthTokens.idToken || null,
         }, _isProd());
+        posthog.identify({
+          distinctId: authedUser.id,
+          properties: {
+            $set: { email: authedUser.email, username: authedUser.username, role: authedUser.role },
+          },
+        });
+        posthog.capture({
+          distinctId: authedUser.id,
+          event: 'oauth_login_completed',
+          properties: { auth_method: 'pingone_oauth', role: authedUser.role, client_type: clientType },
+        });
         // Clear role-switch cookie if this login was triggered by POST /api/auth/switch
         res.clearCookie('_switch_target', { path: '/', sameSite: _isProd() ? 'none' : 'lax', secure: _isProd() });
         res.redirect(`${redirectOrigin}/admin?oauth=success`);
@@ -398,6 +410,7 @@ router.get('/logout', (req, res) => {
   const accessToken  = req.session.oauthTokens?.accessToken  || null;
   const refreshToken = req.session.oauthTokens?.refreshToken || null;
   const postLogoutUri = `${getFrontendOrigin(req)}/logout`;
+  const logoutUserId = req.session.user?.id;
 
   // RFC 7009 — revoke tokens before destroying the session (best-effort, non-fatal)
   if (accessToken  && accessToken  !== '_cookie_session') oauthService.revokeToken(accessToken,  'access_token');
@@ -409,6 +422,9 @@ router.get('/logout', (req, res) => {
   req.session.destroy((err) => {
     if (err) {
       console.error('Session destruction error:', err);
+    }
+    if (logoutUserId) {
+      posthog.capture({ distinctId: logoutUserId, event: 'user_logged_out' });
     }
     logAppEvent('auth_lifecycle', 'info', 'Session snapshot: admin logout', {
       tag: 'auth_lifecycle/session-snapshot',

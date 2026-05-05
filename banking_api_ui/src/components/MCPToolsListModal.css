@@ -63,7 +63,9 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1f2937;
+  border-bottom: 1px solid #93c5fd;
   flex-shrink: 0;
 }
 
@@ -71,7 +73,7 @@
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #111827;
+  color: #1e3a8a;
   line-height: 1.4;
 }
 
@@ -88,7 +90,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  transition: background-color 0.2s, color 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
 }
 
 .mcp-tools-close-btn:hover {
@@ -111,7 +115,9 @@
   border-radius: 6px;
   font-size: 14px;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .mcp-tools-search-input:focus {
@@ -133,7 +139,9 @@
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   background-color: #fafbfc;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 }
 
 .mcp-tool-item:hover {

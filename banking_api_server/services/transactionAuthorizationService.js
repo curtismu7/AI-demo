@@ -22,6 +22,7 @@ function buildStepUpBody({ useSimulated, policyId, runtimeSettings }) {
   const stepUpMethod = configStore.getEffective('step_up_method') || runtimeSettings.get('stepUpMethod') || 'ciba';
   return {
     error: 'step_up_required',
+    hitl: { type: 'step_up' },
     error_description: useSimulated
       ? 'This transaction requires additional authentication (MFA) as required by the simulated authorization policy (education mode).'
       : 'This transaction requires additional authentication (MFA) as required by the authorization policy.',
@@ -30,6 +31,14 @@ function buildStepUpBody({ useSimulated, policyId, runtimeSettings }) {
     step_up_url: '/api/auth/oauth/user/stepup',
     authorize_policy_id: policyId || undefined,
     authorize_engine: useSimulated ? 'simulated' : 'pingone',
+  };
+}
+
+function buildConsentBody() {
+  return {
+    error: 'hitl_required',
+    hitl: { type: 'consent' },
+    error_description: 'This transaction requires explicit human approval. Create a consent challenge first.',
   };
 }
 
@@ -106,6 +115,10 @@ async function evaluateTransactionPolicy({
         acr,
       });
 
+      if (r.consentRequired) {
+        return { ran: true, block: { status: 428, body: buildConsentBody() } };
+      }
+
       if (r.stepUpRequired) {
         return {
           ran: true,
@@ -148,6 +161,10 @@ async function evaluateTransactionPolicy({
       type,
       acr,
     });
+
+    if (r.hitlRequired) {
+      return { ran: true, block: { status: 428, body: buildConsentBody() } };
+    }
 
     if (r.stepUpRequired) {
       return {

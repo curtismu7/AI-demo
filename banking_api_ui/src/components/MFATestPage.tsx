@@ -702,18 +702,32 @@ const MFATestPage: FC = () => {
         notifySuccess(
           "FIDO2 challenge initiated — polling for WebAuthn options…",
         );
-        // Poll for publicKeyCredentialRequestOptions from challenge status
-        try {
-          const statusResp = await apiClient.get(
-            `/api/mfa/test/integration/challenge/${data.daId}/status`,
-          );
-          if (statusResp.data.publicKeyCredentialRequestOptions) {
-            setFidoChallengeOptions(
-              statusResp.data.publicKeyCredentialRequestOptions,
+        // Poll for publicKeyCredentialRequestOptions from challenge status (retry up to 10 times)
+        let optionsFound = false;
+        for (let attempt = 0; attempt < 10; attempt++) {
+          try {
+            const statusResp = await apiClient.get(
+              `/api/mfa/test/integration/challenge/${data.daId}/status`,
             );
+            if (statusResp.data.publicKeyCredentialRequestOptions) {
+              setFidoChallengeOptions(
+                statusResp.data.publicKeyCredentialRequestOptions,
+              );
+              optionsFound = true;
+              break;
+            }
+          } catch (_e) {
+            /* non-fatal — keep retrying */
           }
-        } catch (_e) {
-          /* non-fatal — options may not be ready yet */
+          // Wait 300ms before next attempt
+          if (attempt < 9) {
+            await new Promise((resolve) => setTimeout(resolve, 300));
+          }
+        }
+        if (!optionsFound) {
+          console.warn(
+            "[FIDO2] Challenge options not available after 10 polling attempts",
+          );
         }
       } else {
         setFidoInitiateStatus("failed");

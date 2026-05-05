@@ -26,9 +26,9 @@
   flex-direction: column;
   animation: slideUp 0.3s ease-out;
   z-index: 10001;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
 }
 
 @keyframes slideUp {
@@ -48,8 +48,9 @@
   justify-content: space-between;
   align-items: center;
   padding: 14px 18px;
-  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1f2937;
+  border-bottom: 1px solid #93c5fd;
   gap: 12px;
   user-select: none;
   border-radius: 12px 12px 0 0;
@@ -285,7 +286,9 @@
   border: 1px solid #e5e7eb;
   padding: 4px 8px;
   border-radius: 4px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
   font-size: 0.75rem;
   color: #059669;
   flex: 1;
@@ -342,7 +345,9 @@
   border: 1px solid #bbf7d0;
   border-radius: 6px;
   padding: 8px 12px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
   font-size: 0.85rem;
   color: #059669;
   display: block;
@@ -589,7 +594,7 @@
 }
 
 .adg-resize-handle--top-left::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 2px;
   left: 2px;
@@ -613,7 +618,7 @@
 }
 
 .adg-resize-handle--top-right::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 2px;
   right: 2px;
@@ -637,7 +642,7 @@
 }
 
 .adg-resize-handle--bottom-left::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 2px;
   left: 2px;
@@ -661,7 +666,7 @@
 }
 
 .adg-resize-handle--bottom-right::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 2px;
   right: 2px;

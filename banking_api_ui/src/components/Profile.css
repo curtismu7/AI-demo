@@ -1,28 +1,30 @@
 /* Profile.css — Chase-branded profile page styles */
 
 .profile-container {
-  background: var(--brand-light-gray, #F5F5F5);
+  background: var(--brand-light-gray, #f5f5f5);
   min-height: 100vh;
   padding: 1.5rem;
 }
 
 .profile-header {
-  background: var(--brand-navy, #004687);
-  color: var(--brand-white, #FFFFFF);
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1f2937;
+  color: #1e3a8a;
   padding: 1rem 1.5rem;
   border-radius: 8px 8px 0 0;
   margin-bottom: 0;
+  border-bottom: 1px solid #93c5fd;
 }
 
 .profile-header h2 {
-  color: var(--brand-white, #FFFFFF);
+  color: #1e3a8a;
   margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
 }
 
 .profile-card {
-  background: var(--brand-white, #FFFFFF);
+  background: var(--brand-white, #ffffff);
   border-radius: 0 0 8px 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   padding: 1.5rem;
@@ -31,7 +33,7 @@
 
 /* Section pattern for multi-section profiles */
 .profile-section {
-  background: var(--brand-white, #FFFFFF);
+  background: var(--brand-white, #ffffff);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin-bottom: 1.5rem;
@@ -40,7 +42,7 @@
 
 .profile-section__header {
   background: var(--brand-navy, #004687);
-  color: var(--brand-white, #FFFFFF);
+  color: var(--brand-white, #ffffff);
   padding: 0.875rem 1.5rem;
   font-size: 0.95rem;
   font-weight: 600;
@@ -67,7 +69,7 @@
   gap: 1rem;
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--brand-medium-gray, #E0E0E0);
+  border-bottom: 1px solid var(--brand-medium-gray, #e0e0e0);
 }
 
 .avatar-circle {
@@ -75,7 +77,7 @@
   height: 56px;
   border-radius: 50%;
   background: var(--brand-navy, #004687);
-  color: var(--brand-white, #FFFFFF);
+  color: var(--brand-white, #ffffff);
   display: flex;
   align-items: center;
   justify-content: center;

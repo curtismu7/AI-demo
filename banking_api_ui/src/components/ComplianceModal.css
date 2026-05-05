@@ -55,8 +55,9 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1f2937;
+  border-bottom: 1px solid #93c5fd;
   border-radius: 8px 8px 0 0;
   gap: 12px;
   user-select: none;
@@ -66,7 +67,7 @@
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: #1e3a8a;
   flex: 1;
 }
 
@@ -402,7 +403,7 @@
 }
 
 .compliance-modal__resize-handle--bottom-right::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 2px;
   right: 2px;

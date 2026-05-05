@@ -77,6 +77,7 @@ const cibaRoutes = require('./routes/ciba');
 const mfaRoutes = require('./routes/mfa');
 const mfaTestRoutes = require('./routes/mfaTest');
 const authorizeRoutes = require('./routes/authorize');
+const authorizeConfigRoutes = require('./routes/authorizeConfig');
 const setupRoutes = require('./routes/setup');
 const setupWizardRoutes = require('./routes/setupWizard');
 const devToolsRoutes = require('./routes/devTools');
@@ -740,6 +741,7 @@ app.use('/api/banking-agent', bankingAgentNlRoutes);
 app.use('/api/banking-agent', bankingAgentRoutes);
 app.use('/api/langchain', langchainConfigRoutes);
 app.use('/api/authorize', authorizeRoutes);
+app.use('/api/admin/authorize', authorizeConfigRoutes);
 app.use('/api/introspect', introspectRoutes);
 app.use('/api/setup', setupRoutes);
 // MCP Inspector: no auth gate at the router level — tools/list returns local catalog for

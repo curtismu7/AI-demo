@@ -45,7 +45,6 @@ interface TransactionConsentModalProps {
   onClose: () => void;
   onTransactionSuccess: (message: string) => void;
   onDeclinedConfirmed: () => void;
-  autoConfirm?: boolean;
   preloadedSnapshot?: ConsentSnapshot | null;
 }
 
@@ -67,7 +66,6 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
   onClose,
   onTransactionSuccess,
   onDeclinedConfirmed,
-  autoConfirm = false,
   preloadedSnapshot = null,
 }) => {
   const { preset } = useIndustryBranding() as any;
@@ -83,7 +81,6 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
   const [otpStep, setOtpStep] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [otpFallbackCode, setOtpFallbackCode] = useState<string | null>(null);
   const [otpError, setOtpError] = useState("");
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(null);
@@ -94,11 +91,8 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
   const [mfaDevices, setMfaDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
-  const autoConfirmFiredRef = useRef<boolean | null>(null);
-
   useEffect(() => {
     if (!open) {
-      autoConfirmFiredRef.current = null;
       setAgreed(false);
       setDenialOpen(false);
       setLoadFailed(false);
@@ -183,60 +177,6 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
     };
   }, [open, user, challengeId, preloadedSnapshot]);
 
-  useEffect(() => {
-    if (
-      !autoConfirm ||
-      loading ||
-      loadFailed ||
-      !snapshot ||
-      otpStep ||
-      submitting ||
-      !challengeId ||
-      !user?.id ||
-      autoConfirmFiredRef.current
-    )
-      return;
-    autoConfirmFiredRef.current = true;
-    (async () => {
-      setSubmitting(true);
-      try {
-        const { data } = await bffAxios.post(
-          `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/confirm`,
-        );
-        setOtpSent(data.otpSent !== false);
-        setOtpExpiresAt(data.otpExpiresAt);
-        setOtpEmail(data.otpEmail || user.email || null);
-        if (data.otpSent === false && data.otpCodeFallback) {
-          setOtpFallbackCode(data.otpCodeFallback);
-        }
-        setOtpStep(true);
-      } catch (e: any) {
-        const d = e.response?.data;
-        notifyError(
-          d?.message ||
-            d?.error_description ||
-            d?.error ||
-            e.message ||
-            "Could not send verification code.",
-        );
-        onClose();
-      } finally {
-        setSubmitting(false);
-      }
-    })();
-  }, [
-    autoConfirm,
-    loading,
-    loadFailed,
-    snapshot,
-    otpStep,
-    submitting,
-    challengeId,
-    user?.id,
-    user?.email,
-    onClose,
-  ]);
-
   const summaryLines = useMemo(() => {
     if (!snapshot) return [];
     const amt = Number(snapshot.amount);
@@ -308,17 +248,8 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
         `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/confirm`,
       );
       setOtpExpiresAt(data.otpExpiresAt || null);
-
-      // Fetch available devices for selection
-      try {
-        const devicesRes = await bffAxios.get("/api/mfa/devices");
-        setMfaDevices(devicesRes.data.devices || []);
-      } catch (err) {
-        console.warn("Failed to fetch devices:", err);
-        setMfaDevices([]);
-      }
-
-      setMfaStep(true);
+      setOtpSent(data.otpSent || false);
+      setOtpStep(true);
     } catch (e: any) {
       const d = e.response?.data;
       const status = e.response?.status;
@@ -332,7 +263,7 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
             d?.error_description ||
             d?.error ||
             e.message ||
-            "Could not initiate device selection.",
+            "Could not confirm consent.",
         );
       }
     } finally {
@@ -463,14 +394,15 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
             padding: "1rem",
             cursor: "move",
             borderBottom: "1px solid #e2e8f0",
-            backgroundColor: "#f8fafc",
+            background: "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
+            color: "#1f2937",
             borderRadius: "0.5rem 0.5rem 0 0",
           }}
         >
           <h2
             id="transaction-consent-popup-title"
             className="transaction-consent-popup__title"
-            style={{ margin: 0 }}
+            style={{ margin: 0, color: "#1f2937" }}
           >
             {otpStep
               ? "Enter verification code"
@@ -549,8 +481,8 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
             {otpSent ? (
               <>
                 <p className="tx-otp-panel__lead">
-                  A 6-digit verification code was sent to your email address via
-                  PingOne. Enter it below to authorise this transaction.
+                  Enter your 6-digit verification code to authorise this
+                  transaction.
                 </p>
                 {otpEmail && (
                   <p
@@ -565,33 +497,6 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
                   </p>
                 )}
               </>
-            ) : otpFallbackCode ? (
-              <div className="tx-otp-panel__lead tx-otp-panel__lead--warn">
-                <p style={{ margin: "0 0 0.5rem" }}>
-                  Email delivery unavailable (PingOne Notifications not
-                  configured).
-                </p>
-                <p style={{ margin: "0 0 0.5rem" }}>
-                  Your verification code is:
-                </p>
-                <div
-                  style={{
-                    fontSize: "2rem",
-                    fontWeight: 800,
-                    letterSpacing: "0.25em",
-                    fontVariantNumeric: "tabular-nums",
-                    color: "#0369a1",
-                    background: "#f0f9ff",
-                    border: "2px solid #0ea5e9",
-                    borderRadius: 8,
-                    padding: "0.5rem 1rem",
-                    display: "inline-block",
-                    marginBottom: "0.5rem",
-                  }}
-                >
-                  {otpFallbackCode}
-                </div>
-              </div>
             ) : (
               <p className="tx-otp-panel__lead tx-otp-panel__lead--warn">
                 Email delivery unavailable. Check server logs for the OTP code.
@@ -750,7 +655,7 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
                     onClick={handleConfirm}
                     disabled={!agreed || submitting}
                   >
-                    {submitting ? "Sending code…" : "Agree & send code"}
+                    {submitting ? "Initiating…" : "Agree & continue"}
                   </button>
                 </div>
               </div>

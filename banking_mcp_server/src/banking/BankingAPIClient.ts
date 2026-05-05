@@ -511,7 +511,7 @@ export class BankingAPIClient {
         'INVALID_ACCOUNT_ID',
         'SAME_ACCOUNT_TRANSFER',
         'INVALID_AMOUNT_PRECISION',
-        'consent_challenge_required',
+        'hitl_required',
       ];
       if (nonRetryableCodes.includes(error.errorCode || '')) {
         return false;

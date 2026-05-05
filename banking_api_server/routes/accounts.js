@@ -4,6 +4,7 @@ const dataStore = require('../data/store');
 const { authenticateToken, requireScopes } = require('../middleware/auth');
 const { blockInDemoMode } = require('../middleware/demoMode');
 const demoScenarioStore = require('../services/demoScenarioStore');
+const posthog = require('../services/posthog');
 
 /**
  * Rebuild a user's accounts from a snapshot saved in demoScenarioStore (Redis/KV).
@@ -243,6 +244,7 @@ router.post('/reset-demo', authenticateToken, async (req, res) => {
       name: a.name || '', balance: a.balance, currency: a.currency || 'USD', isActive: true,
     }));
     await demoScenarioStore.save(req.user.id, { accountSnapshot: snapshot });
+    posthog.capture({ distinctId: req.user.id, event: 'demo_reset' });
     res.json({ message: 'Demo reset successfully', accounts });
   } catch (error) {
     console.error('Error resetting demo:', error);

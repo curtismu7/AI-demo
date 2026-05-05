@@ -9,7 +9,9 @@ const configStore = require('../services/configStore');
 const { sendTransactionConfirmation } = require('../services/emailService');
 const txConsent = require('../services/transactionConsentChallenge');
 const demoScenarioStore = require('../services/demoScenarioStore');
+const { resolveAccountId } = require('../utils/accountUtils');
 const { logEvent: logAppEvent } = require('../services/appEventService');
+const posthog = require('../services/posthog');
 
 /**
  * Re-hydrate a user's accounts from the Redis snapshot on cold-start.
@@ -63,26 +65,6 @@ async function saveTransactionSnapshot(userId) {
   } catch (e) {
     console.warn('[transactions] saveTransactionSnapshot failed:', e.message);
   }
-}
-
-/**
- * Resolve account type names (like "checking", "savings") to actual account IDs.
- * If accountId is already a UUID, returns it unchanged.
- * If accountId is a type name, finds the matching account in userAccounts and returns its ID.
- * Returns the resolved account ID or the original input if no match found.
- */
-function resolveAccountId(accountId, userAccounts) {
-  if (!accountId || !userAccounts) return accountId;
-
-  const typeName = String(accountId).toLowerCase().trim();
-  const matchingAccount = userAccounts.find(a =>
-    String(a.accountType || '').toLowerCase() === typeName ||
-    String(a.name || '').toLowerCase() === typeName
-  );
-
-  const resolved = matchingAccount ? matchingAccount.id : accountId;
-  console.log(`[resolveAccountId] input="${accountId}" typeName="${typeName}" found=${!!matchingAccount} resolved="${resolved}"`);
-  return resolved;
 }
 
 // Get all transactions (admin only)
@@ -189,6 +171,15 @@ router.post(
     // the challenge already persisted (auto-save races with the next request).
     req.session.save((saveErr) => {
       if (saveErr) console.error('[ConsentChallenge] session save error:', saveErr);
+      posthog.capture({
+        distinctId: req.user.id,
+        event: 'consent_challenge_created',
+        properties: {
+          challenge_id: result.challengeId,
+          transaction_type: req.body.type,
+          amount: req.body.amount,
+        },
+      });
       return res.status(201).json({
         challengeId: result.challengeId,
         expiresAt: result.expiresAt,
@@ -206,6 +197,11 @@ router.post(
     if (!result.ok) return res.status(result.status).json(result.json);
     req.session.save((saveErr) => {
       if (saveErr) console.error('[ConsentChallenge] session save error (confirm):', saveErr);
+      posthog.capture({
+        distinctId: req.user.id,
+        event: 'consent_challenge_confirmed',
+        properties: { challenge_id: result.challengeId, otp_sent: result.otpSent },
+      });
       return res.status(200).json({
         challengeId: result.challengeId,
         otpSent: result.otpSent,
@@ -274,6 +270,23 @@ router.post(
     if (!result.ok) return res.status(result.status).json(result.json);
     req.session.save((saveErr) => {
       if (saveErr) console.error('[ConsentChallenge] session save error (verify-otp):', saveErr);
+      return res.status(200).json({
+        challengeId: result.challengeId,
+        confirmExpiresAt: result.confirmExpiresAt,
+      });
+    });
+  },
+);
+
+router.post(
+  '/consent-challenge/:challengeId/verify-mfa-otp',
+  authenticateToken,
+  async (req, res) => {
+    const { otpCode } = req.body || {};
+    const result = await txConsent.verifyMfaOtp(req, req.params.challengeId, otpCode);
+    if (!result.ok) return res.status(result.status).json(result.json);
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('[ConsentChallenge] session save error (verify-mfa-otp):', saveErr);
       return res.status(200).json({
         challengeId: result.challengeId,
         confirmExpiresAt: result.confirmExpiresAt,
@@ -437,59 +450,6 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
 
-    // ── HITL consent (session-bound) ────────────────────────────────────────
-    // Phase 170: ALL transfers require HITL consent regardless of amount.
-    // Withdrawals/deposits still use the high-value threshold ($500).
-    // Feature flag ff_hitl_enabled (default true) can disable HITL globally.
-    const hitlAmount = parseFloat(req.body.amount);
-    const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
-    const requiresHitl =
-      hitlEnabled &&
-      req.user.role !== 'admin' &&
-      ['deposit', 'withdrawal', 'transfer'].includes(type) &&
-      (type === 'transfer' || hitlAmount > txConsent.HIGH_VALUE_CONSENT_USD);
-
-    console.log(`[DEBUG-HITL-CHECK] 🔍 HITL DECISION POINT:
-  type=${type}
-  amount=$${hitlAmount}
-  enabled=${hitlEnabled}
-  role=${req.user.role}
-  isTransfer=${type === 'transfer'}
-  requiresHitl=${requiresHitl}`);
-
-    if (requiresHitl) {
-      if (!req.body.consentChallengeId) {
-        console.log(`[DEBUG-HITL-ERROR] ❌ HITL REQUIRED - Returning error: consent_challenge_required
-  reason: No consentChallengeId provided
-  status: 428
-  type: ${type}
-  amount: $${hitlAmount}`);
-        return res.status(428).json({
-          error: 'consent_challenge_required',
-          error_description: type === 'transfer'
-            ? 'All transfers require explicit HITL approval. Create a consent challenge first.'
-            : `Transactions over $${txConsent.HIGH_VALUE_CONSENT_USD} require explicit HITL approval. Create a consent challenge first.`,
-          debug_hitl_check: true,
-          debug_type: type,
-          debug_amount: hitlAmount,
-          // Include transaction details for consent challenge creation
-          fromAccountId: fromAccountId || null,
-          toAccountId: toAccountId || null,
-          amount: hitlAmount,
-          type: type,
-        });
-      }
-      console.log(`[HITL] Verifying consentChallengeId: ${req.body.consentChallengeId}`);
-      const consumed = txConsent.verifyAndConsumeChallenge(req, req.body.consentChallengeId, req.body);
-      if (!consumed.ok) {
-        console.log(`[HITL] Consent verification failed: ${consumed.status} ${consumed.json.error}`);
-        return res.status(consumed.status).json(consumed.json);
-      }
-      console.log(`[HITL] ✅ ${type} $${hitlAmount} consent verified - proceeding with transaction`);
-    } else {
-      console.log(`[HITL] ✅ HITL not required for this transaction`);
-    }
-
     // ── Session check for conditional authentication (Phase 122) ───────────────
     // Non-logged-in users must sign in before any banking action.
     // Skip this check when the request is authenticated via Bearer token (MCP server,
@@ -505,82 +465,12 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // ── Step-up MFA gate ─────────────────────────────────────────────────────
-    // Transfers and withdrawals above the threshold require a fresh MFA token.
-    // All values are read from runtimeSettings (configurable via admin UI at /settings).
-    // runtimeSettings is the live admin-controllable value; configStore is the deployment default.
-    // Prefer runtimeSettings when it has been set to a positive value, fall back to configStore, then hardcoded default.
-    const _rtThreshold = runtimeSettings.get('stepUpAmountThreshold');
-    const STEP_UP_THRESHOLD = (_rtThreshold > 0)
-      ? _rtThreshold
-      : (parseFloat(configStore.getEffective('step_up_amount_threshold')) || 500);
-    const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue');
-    const STEP_UP_TYPES = runtimeSettings.get('stepUpTransactionTypes');
-    const STEP_UP_ENABLED = runtimeSettings.get('stepUpEnabled');
-
-    const STEP_UP_WITHDRAWALS_ALWAYS = runtimeSettings.get('stepUpWithdrawalsAlways');
-    if (STEP_UP_ENABLED && req.user.role !== 'admin' && type === 'withdrawal' && STEP_UP_WITHDRAWALS_ALWAYS) {
-      // Withdrawal always requires step-up — bypass threshold check
-      const userAcr = req.user.acr;
-      if (!userAcr || userAcr !== STEP_UP_ACR) {
-        const stepUpMethod = configStore.getEffective('step_up_method') || runtimeSettings.get('stepUpMethod') || 'ciba';
-        const hitlAmount = parseFloat(req.body.amount);
-        const isHITL = hitlAmount > txConsent.HIGH_VALUE_CONSENT_USD;
-        return res.status(428).json({
-          error: 'step_up_required',
-          error_description: 'All withdrawals require additional MFA authentication.',
-          step_up_acr: STEP_UP_ACR,
-          step_up_method: stepUpMethod,
-          step_up_url: '/api/auth/oauth/user/stepup',
-          amount_threshold: 0,
-          isHITL: isHITL,
-        });
-      }
-    }
-
-    console.log(`[DEBUG-STEPUP-CHECK] 🔍 STEP-UP DECISION POINT:
-  enabled=${STEP_UP_ENABLED}
-  role=${req.user.role}
-  type=${type}
-  inStepUpTypes=${STEP_UP_TYPES.includes(type)}
-  amount=${amount}
-  threshold=${STEP_UP_THRESHOLD}
-  amountExceedsThreshold=${parseFloat(amount) >= STEP_UP_THRESHOLD}
-  userAcr=${req.user.acr}
-  requiredAcr=${STEP_UP_ACR}`);
-
-    if (STEP_UP_ENABLED && req.user.role !== 'admin' && STEP_UP_TYPES.includes(type) && parseFloat(amount) >= STEP_UP_THRESHOLD) {
-      const userAcr = req.user.acr;
-      if (!userAcr || userAcr !== STEP_UP_ACR) {
-        const stepUpMethod = configStore.getEffective('step_up_method') || runtimeSettings.get('stepUpMethod') || 'ciba';
-        console.log(`[DEBUG-STEPUP-ERROR] ❌ STEP-UP REQUIRED - Returning error: step_up_required
-  reason: User ACR (${userAcr}) does not match required ACR (${STEP_UP_ACR})
-  status: 428
-  type: ${type}
-  amount: $${amount}
-  threshold: $${STEP_UP_THRESHOLD}
-  method: ${stepUpMethod}`);
-        const hitlAmount = parseFloat(req.body.amount);
-        const isHITL = hitlAmount > txConsent.HIGH_VALUE_CONSENT_USD;
-        return res.status(428).json({
-          error: 'step_up_required',
-          error_description: `Transfers and withdrawals of $${STEP_UP_THRESHOLD} or more require additional authentication (MFA). Update this threshold in Admin → Security Settings.`,
-          step_up_acr: STEP_UP_ACR,
-          step_up_method: stepUpMethod,
-          step_up_url: '/api/auth/oauth/user/stepup',
-          amount_threshold: STEP_UP_THRESHOLD,
-          isHITL: isHITL,
-          debug_stepup_check: true,
-          debug_type: type,
-          debug_amount: hitlAmount,
-        });
-      }
-    }
-    // ── End step-up gate ──────────────────────────────────────────────────────
-
-    // ── Transaction authorization (PingOne Authorize or simulated) ──────────
-    // Unified in transactionAuthorizationService — see docs/PINGONE_AUTHORIZE_PLAN.md
+    // ── Authorization (PingOne Authorize or simulated) — runs first, owns all decisions ──
+    // Authorize decides: allow | deny | hitl_required{type} | step_up_required.
+    // ff_hitl_enabled=false skips consent enforcement but not deny/step-up.
     const AUTHORIZE_FAIL_OPEN = configStore.get('ff_authorize_fail_open') !== 'false'; // default true
+    const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
+    const hitlAmount = parseFloat(req.body.amount);
     /** @type {object|null} */
     let authorizeEvaluation = null;
 
@@ -595,7 +485,31 @@ router.post('/', authenticateToken, async (req, res) => {
 
     if (authz.ran) {
       if (authz.block) {
-        return res.status(authz.block.status).json(authz.block.body);
+        const { body } = authz.block;
+        if (body.error === 'hitl_required' && body.hitl && body.hitl.type === 'consent') {
+          if (!hitlEnabled) {
+            console.log('[HITL] ff_hitl_enabled=false — consent enforcement skipped by feature flag');
+          } else if (!req.body.consentChallengeId) {
+            console.log(`[HITL] Consent required for ${type} $${hitlAmount} — no challengeId provided`);
+            return res.status(428).json({
+              ...body,
+              fromAccountId: fromAccountId || null,
+              toAccountId: toAccountId || null,
+              amount: hitlAmount,
+              type,
+            });
+          } else {
+            console.log(`[HITL] Verifying consentChallengeId: ${req.body.consentChallengeId}`);
+            const consumed = txConsent.verifyAndConsumeChallenge(req, req.body.consentChallengeId, req.body);
+            if (!consumed.ok) {
+              console.log(`[HITL] Consent verification failed: ${consumed.status} ${consumed.json.error}`);
+              return res.status(consumed.status).json(consumed.json);
+            }
+            console.log(`[HITL] ${type} $${hitlAmount} consent verified — proceeding`);
+          }
+        } else {
+          return res.status(authz.block.status).json(body);
+        }
       }
       if (authz.simulatedError) {
         console.error(`[Authorize][Simulated] unexpected error: ${authz.simulatedError.message}`);
@@ -677,6 +591,17 @@ router.post('/', authenticateToken, async (req, res) => {
       // Log transaction creation with client type
       console.log(`💰 [Transaction] Transfer created by ${req.user.username} (${req.user.clientType || 'unknown'} via ${req.user.tokenType || 'unknown'}) - Amount: $${amount}`);
 
+      posthog.capture({
+        distinctId: req.user.id,
+        event: 'transfer_completed',
+        properties: {
+          amount: parseFloat(amount),
+          from_account_id: fromAccountId,
+          to_account_id: toAccountId,
+          client_type: req.user.clientType || 'unknown',
+        },
+      });
+
       // Send confirmation email via PingOne Notifications (fire-and-forget)
       {
         const fromAcc  = dataStore.getAccountById(fromAccountId);
@@ -723,6 +648,16 @@ router.post('/', authenticateToken, async (req, res) => {
       
       // Log transaction creation with client type
       console.log(`💰 [Transaction] ${type} created by ${req.user.username} (${req.user.clientType || 'unknown'} via ${req.user.tokenType || 'unknown'}) - Amount: $${amount}`);
+
+      posthog.capture({
+        distinctId: req.user.id,
+        event: 'transaction_created',
+        properties: {
+          transaction_type: type,
+          amount: parseFloat(amount),
+          client_type: req.user.clientType || 'unknown',
+        },
+      });
 
       // Send confirmation email via PingOne Notifications (fire-and-forget)
       {

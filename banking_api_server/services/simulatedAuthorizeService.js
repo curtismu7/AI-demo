@@ -8,15 +8,18 @@
  *   { decision, stepUpRequired, path, decisionId, raw }
  *
  * Rules (document for instructors — adjust thresholds here if needed):
- *   - DENY: amount > SIMULATED_DENY_AMOUNT_USD (default 50_000)
- *   - Step-up obligation: amount >= SIMULATED_POLICY_STEPUP_USD (default 15_000) for
- *     transfer or withdrawal — mirrors a policy that requests MFA even after a lower runtime gate
+ *   - DENY: amount > SIMULATED_DENY_AMOUNT_USD (default 2_000)
+ *   - Step-up obligation: amount >= SIMULATED_POLICY_STEPUP_USD (default 500) for
+ *     withdrawal — mirrors a policy that requests MFA even after a lower runtime gate
+ *   - Transfer: all transfers require human consent (HITL_CONSENT obligation)
  *   - Otherwise PERMIT
  *
  * @module services/simulatedAuthorizeService
  */
 
 'use strict';
+
+const configStore = require('./configStore');
 
 // Guard: prevent accidental use in production without an explicit opt-in.
 // The feature-flag check (ff_authorize_simulated) at the caller layer is the primary gate,
@@ -28,13 +31,32 @@ if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SIMULATED_AUTHORI
   );
 }
 
-/** Hard deny above this amount (USD). */
-const SIMULATED_DENY_AMOUNT_USD = parseFloat(process.env.SIMULATED_AUTHORIZE_DENY_AMOUNT || '50000');
+/** Hard deny above this amount (USD) — lazy read from configStore, falls back to env, then default. */
+function getDenyAmountUsd() {
+  return parseFloat(
+    configStore.get('SIMULATED_AUTHORIZE_DENY_AMOUNT') ||
+    process.env.SIMULATED_AUTHORIZE_DENY_AMOUNT ||
+    '2000'
+  );
+}
 
-/** Policy-style step-up signal (USD) — same transaction types as real Authorize gate. */
-const SIMULATED_POLICY_STEPUP_USD = parseFloat(
-  process.env.SIMULATED_AUTHORIZE_POLICY_STEPUP_AMOUNT || '15000'
-);
+/** Confirm threshold (USD) — requires explicit consent only (no MFA). */
+function getConfirmAmountUsd() {
+  return parseFloat(
+    configStore.get('SIMULATED_AUTHORIZE_CONFIRM_AMOUNT') ||
+    process.env.SIMULATED_AUTHORIZE_CONFIRM_AMOUNT ||
+    '250'
+  );
+}
+
+/** Step-up threshold (USD) — requires consent + MFA. */
+function getStepUpAmountUsd() {
+  return parseFloat(
+    configStore.get('SIMULATED_AUTHORIZE_STEPUP_AMOUNT') ||
+    process.env.SIMULATED_AUTHORIZE_POLICY_STEPUP_AMOUNT ||
+    '500'
+  );
+}
 
 let _seq = 0;
 
@@ -236,57 +258,81 @@ async function evaluateTransaction({ userId, amount, type, acr }) {
 
   let out;
 
-  if (amt > SIMULATED_DENY_AMOUNT_USD) {
+  const denyAmount = getDenyAmountUsd();
+  const stepUpAmount = getStepUpAmountUsd();
+  const confirmAmount = getConfirmAmountUsd();
+
+  // DENY: amounts exceeding deny threshold ($2000+)
+  if (amt > denyAmount) {
     out = {
       decision: 'DENY',
       stepUpRequired: false,
+      consentRequired: false,
       path: 'simulated',
       decisionId,
       raw: {
         ...rawBase,
         decision: 'DENY',
-        reason: `Simulated policy DENY: amount exceeds $${SIMULATED_DENY_AMOUNT_USD.toLocaleString()} demo ceiling.`,
+        reason: `Simulated policy DENY: amount exceeds $${denyAmount.toLocaleString()} limit.`,
       },
     };
-  } else {
-    const stepUpTypes = ['transfer', 'withdrawal'];
-    if (
-      stepUpTypes.includes(type) &&
-      amt >= SIMULATED_POLICY_STEPUP_USD &&
-      amt <= SIMULATED_DENY_AMOUNT_USD &&
-      !acrLooksStrong(acr)
-    ) {
-      out = {
+  }
+  // CONSENT + MFA: amounts >= $500 (requires both consent AND step-up)
+  else if (amt >= stepUpAmount && !acrLooksStrong(acr)) {
+    out = {
+      decision: 'INDETERMINATE',
+      stepUpRequired: true,
+      consentRequired: true,
+      path: 'simulated',
+      decisionId,
+      raw: {
+        ...rawBase,
         decision: 'INDETERMINATE',
-        stepUpRequired: true,
-        path: 'simulated',
-        decisionId,
-        raw: {
-          ...rawBase,
-          decision: 'INDETERMINATE',
-          obligations: [{ type: 'STEP_UP', detail: 'Simulated Authorize obligation — strengthen authentication (acr).' }],
-          reason: `Simulated policy: transactions ≥ $${SIMULATED_POLICY_STEPUP_USD.toLocaleString()} require elevated ACR.`,
-        },
-      };
-    } else {
-      out = {
+        obligations: [
+          { type: 'HITL_CONSENT', detail: 'Human consent required.' },
+          { type: 'STEP_UP', detail: 'Elevated authentication (MFA) required.' },
+        ],
+        reason: `Simulated policy: transactions ≥ $${stepUpAmount.toLocaleString()} require consent + MFA.`,
+      },
+    };
+  }
+  // CONFIRM: amounts $250-$499 (consent only, no MFA)
+  else if (amt >= confirmAmount && amt < stepUpAmount) {
+    out = {
+      decision: 'INDETERMINATE',
+      stepUpRequired: false,
+      consentRequired: true,
+      path: 'simulated',
+      decisionId,
+      raw: {
+        ...rawBase,
+        decision: 'INDETERMINATE',
+        obligations: [{ type: 'HITL_CONSENT', detail: 'Human confirmation required.' }],
+        reason: `Simulated policy: transactions $${confirmAmount.toLocaleString()}-$${stepUpAmount.toLocaleString()} require confirmation.`,
+      },
+    };
+  }
+  // PERMIT: amounts < $250
+  else {
+    out = {
+      decision: 'PERMIT',
+      stepUpRequired: false,
+      consentRequired: false,
+      path: 'simulated',
+      decisionId,
+      raw: {
+        ...rawBase,
         decision: 'PERMIT',
-        stepUpRequired: false,
-        path: 'simulated',
-        decisionId,
-        raw: {
-          ...rawBase,
-          decision: 'PERMIT',
-          obligations: [],
-        },
-      };
-    }
+        obligations: [],
+      },
+    };
   }
 
   recordSimulatedDecision({
     decisionId: out.decisionId,
     decision: out.decision,
     stepUpRequired: out.stepUpRequired,
+    consentRequired: out.consentRequired,
     parameters,
     path: out.path,
   });
@@ -367,6 +413,7 @@ module.exports = {
   isSimulatedModeEnabled,
   getSimulatedRecentDecisions,
   buildTrustFrameworkParameters,
-  SIMULATED_DENY_AMOUNT_USD,
-  SIMULATED_POLICY_STEPUP_USD,
+  getDenyAmountUsd,
+  getStepUpAmountUsd,
+  getConfirmAmountUsd,
 };

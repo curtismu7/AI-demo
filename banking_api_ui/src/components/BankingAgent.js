@@ -842,10 +842,7 @@ function formatHttpTrace(trace) {
 function formatResult(result) {
   const r = normalizeAgentToolResult(result);
   if (!r) return "No data returned.";
-  if (
-    r.consent_challenge_required ||
-    r.error === "consent_challenge_required"
-  ) {
+  if (r.error === "hitl_required") {
     const t = r.hitl_threshold_usd ?? APP_CONFIG.THRESHOLDS.HITL_DEFAULT;
     return `${r.message || "Human approval is required for this amount."}\n\nUse the main dashboard to complete the consent flow for amounts over $${t}. The assistant cannot supply a browser consent challenge.`;
   }
@@ -3785,9 +3782,7 @@ export default function BankingAgent({
   normalized.debug_mcp_stepup_handler: ${normalized.debug_mcp_stepup_handler}
   full normalized: ${JSON.stringify(normalized)}`);
 
-        const consent =
-          normalized.consent_challenge_required === true ||
-          normalized.error === "consent_challenge_required";
+        const consent = normalized.error === "hitl_required";
 
         console.log(`[DEBUG-FRONTEND-DECISION] 📍 DECISION POINT:
   consent=${consent}
@@ -4216,7 +4211,7 @@ export default function BankingAgent({
           addMessage(
             "token-event",
             [
-              `🔑 Authorized by scope ${exchanged.scopeNarrowed || "banking:read"}\ · · audience ${exchanged.audienceNarrowed || "mcp-server"}`,
+              `🔑 Authorized by scope ${exchanged.scopeNarrowed || "banking:read"} · · audience ${exchanged.audienceNarrowed || "mcp-server"}`,
               `   RFC 6749 §3.3 — every MCP call requires a scoped token; read operations use banking:read, writes require banking:write.`,
               `   RFC 8707 — the resource indicator binds the token to this specific audience and prevents it being accepted elsewhere.`,
             ].join("\n"),
@@ -4311,7 +4306,7 @@ export default function BankingAgent({
           "🔌 MCP server unreachable — check your server connection",
           { autoClose: 8000 },
         );
-      } else if (err?.code === "consent_challenge_required") {
+      } else if (err?.code === "hitl_required") {
         // 428 Precondition Required — HITL consent required for transaction
         let intentPayload;
 

@@ -5,8 +5,13 @@
 }
 
 /* Global reset: strip browser-default monospace from pre/code elements */
-pre, code, kbd, samp, tt {
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Arial, sans-serif;
+pre,
+code,
+kbd,
+samp,
+tt {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Arial, sans-serif;
 }
 
 /* Toast notifications must sit above all fixed/portal UI (hamburger menu is z-index 10055). */
@@ -39,45 +44,48 @@ pre, code, kbd, samp, tt {
   --brand-dashboard-header-end: var(--brand-navy);
   --brand-app-shell-hero-start: var(--brand-navy);
   --brand-app-shell-hero-end: var(--brand-navy);
-  
+
   /* Chase.com Brand Colors (Phase 85: Dashboard Styling) */
-  --brand-navy: #1D4ED8;
-  --brand-navy-dark: #1E40AF;
-  --brand-navy-light: #3B82F6;
-  --brand-blue: #2563EB;
-  --brand-blue-light: #60A5FA;
-  
+  --brand-navy: #1d4ed8;
+  --brand-navy-dark: #1e40af;
+  --brand-navy-light: #3b82f6;
+  --brand-blue: #2563eb;
+  --brand-blue-light: #60a5fa;
+
   /* Phase 120-02: Softer Sidebar Colors */
-  --sidebar-bg: #1E3A8A;
-  --sidebar-bg-active: #1D4ED8;
-  --sidebar-bg-hover: #2563EB;
-  
+  --sidebar-bg: #1e3a8a;
+  --sidebar-bg-active: #1d4ed8;
+  --sidebar-bg-hover: #2563eb;
+
   /* Chase Neutrals */
-  --brand-white: #FFFFFF;
-  --brand-light-gray: #EFF6FF;
-  --brand-medium-gray: #BFDBFE;
+  --brand-white: #ffffff;
+  --brand-light-gray: #eff6ff;
+  --brand-medium-gray: #bfdbfe;
   --brand-dark-gray: #333333;
-  
+
   /* Chase Status Colors */
-  --brand-success: #4CAF50;
-  --brand-warning: #FF9800;
-  --brand-error: #F44336;
-  
+  --brand-success: #4caf50;
+  --brand-warning: #ff9800;
+  --brand-error: #f44336;
+
   /* Button Styles (derived from Chase colors) */
   --btn-primary-bg: var(--brand-navy);
   --btn-primary-text: var(--brand-white);
-  --btn-primary-bg-hover: #1E40AF;
+  --btn-primary-bg-hover: #1e40af;
   --btn-primary-border-radius: 4px;
   --btn-primary-padding: 10px 16px;
-  
+
   /* Card Styles */
   --card-padding: 20px;
   --card-border-radius: 12px;
   --card-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
-  
+
   /* Typography */
-  --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  --font-family-mono: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  --font-primary:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  --font-family-mono:
+    -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
   --font-size-h1: 28px;
   --font-size-h2: 22px;
   --font-size-h3: 18px;
@@ -85,20 +93,20 @@ pre, code, kbd, samp, tt {
   --line-height-body: 1.6;
 
   /* Design-token scale (used by dashboard components) */
-  --font-size-xs:   11px;
-  --font-size-sm:   13px;
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
   --font-size-base: 15px;
-  --font-size-lg:   17px;
-  --font-size-xl:   20px;
-  --font-size-2xl:  24px;
-  --font-size-3xl:  30px;
-  --font-size-4xl:  36px;
+  --font-size-lg: 17px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
+  --font-size-4xl: 36px;
   --font-weight-normal: 400;
   --font-weight-medium: 600;
-  --font-weight-bold:   700;
+  --font-weight-bold: 700;
   --font-weight-semibold: 600;
-  --line-height-tight:   1.2;
-  --line-height-normal:  1.5;
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
   --line-height-relaxed: 1.7;
 }
 
@@ -106,7 +114,7 @@ body {
   font-family: var(--font-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--brand-light-gray);
+  background-color: #ffffff;
   color: var(--brand-dark-gray);
 }
 
@@ -117,12 +125,12 @@ body {
 }
 
 .header {
-  background: var(--brand-navy);
-  background: linear-gradient(to bottom, var(--brand-navy) 0%, var(--brand-navy) 100%);
-  color: white;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1f2937;
+  color: #1e3a8a;
   padding: 1rem 0;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border-bottom: 1px solid var(--brand-navy);
+  border-bottom: 1px solid #93c5fd;
 }
 
 .header-content {
@@ -251,7 +259,9 @@ body {
 .modal-content {
   background: white;
   border-radius: 0.5rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   max-width: 800px;
   width: 100%;
   max-height: 90vh;
@@ -263,7 +273,9 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 1px solid #DDDDDD;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1f2937;
+  border-bottom: 1px solid #93c5fd;
 }
 
 .modal-header h2 {
@@ -313,7 +325,7 @@ body {
   color: var(--brand-dark-gray);
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #DDDDDD;
+  border-bottom: 1px solid #dddddd;
 }
 
 .detail-grid {
@@ -343,7 +355,7 @@ body {
 
 .code-block {
   background-color: var(--brand-light-gray);
-  border: 1px solid #DDDDDD;
+  border: 1px solid #dddddd;
   border-radius: 0.375rem;
   padding: 1rem;
   overflow-x: auto;
@@ -394,14 +406,22 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   color: #fff;
   border: 1px solid var(--app-primary-red-border);
   box-shadow: 0 1px 3px rgba(127, 29, 29, 0.28);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
   border-color: var(--app-primary-red-hover);
   color: #fff;
 }
@@ -415,13 +435,21 @@ body {
 }
 
 .btn-secondary {
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   color: #fff;
   border: 1px solid var(--app-primary-red-border);
 }
 
 .btn-secondary:hover {
-  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
   border-color: var(--app-primary-red-hover);
   color: #fff;
 }
@@ -429,46 +457,78 @@ body {
 /* Outline primary — same red treatment as solid (used by EducationBar, end-user-nano). */
 .btn-outline-primary {
   color: #fff;
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   border: 1px solid var(--app-primary-red-border);
 }
 
 .btn-outline-primary:hover {
   color: #fff;
-  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
   border-color: var(--app-primary-red-hover);
 }
 
 .btn-danger {
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   color: #fff;
   border: 1px solid var(--app-primary-red-border);
 }
 
 .btn-danger:hover {
-  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
   color: #fff;
 }
 
 .btn-success {
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   color: #fff;
   border: 1px solid var(--app-primary-red-border);
 }
 
 .btn-success:hover {
-  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
   color: #fff;
 }
 
 .btn-blue {
-  background: linear-gradient(180deg, var(--app-primary-blue-mid) 0%, var(--app-primary-blue) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-blue-mid) 0%,
+    var(--app-primary-blue) 100%
+  );
   color: #fff;
   border: 1px solid var(--app-primary-blue-border);
 }
 
 .btn-blue:hover {
-  background: linear-gradient(180deg, var(--app-primary-blue) 0%, var(--app-primary-blue-hover) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-blue) 0%,
+    var(--app-primary-blue-hover) 100%
+  );
   border-color: var(--app-primary-blue-hover);
   color: #fff;
 }
@@ -484,7 +544,6 @@ body {
   opacity: 0.45;
   cursor: not-allowed;
 }
-
 
 .form-group {
   margin-bottom: 1rem;
@@ -552,7 +611,11 @@ body {
 }
 
 .pagination-btn.active {
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   color: #fff;
   border-color: var(--app-primary-red-border);
 }
@@ -643,7 +706,7 @@ body {
   justify-content: flex-end;
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #DDDDDD;
+  border-top: 1px solid #dddddd;
 }
 
 /* Login Styles */
@@ -659,7 +722,9 @@ body {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 0.75rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.15),
+    0 10px 10px -5px rgba(0, 0, 0, 0.08);
   padding: 2rem;
   max-width: 500px;
   width: 100%;
@@ -669,6 +734,11 @@ body {
 .login-header {
   text-align: center;
   margin-bottom: 2rem;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1f2937;
+  padding: 2rem;
+  border-radius: 8px;
+  border: 1px solid #93c5fd;
 }
 
 .login-branding {
@@ -824,7 +894,9 @@ body {
   font-weight: 500;
   border-radius: 0.5rem;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .oauth-btn:hover {
@@ -835,7 +907,7 @@ body {
 .login-footer {
   text-align: center;
   padding-top: 1.5rem;
-  border-top: 1px solid #DDDDDD;
+  border-top: 1px solid #dddddd;
   color: #999999;
   font-size: 0.875rem;
 }
@@ -853,24 +925,24 @@ body {
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .nav {
     flex-wrap: wrap;
     justify-content: center;
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .filters {
     flex-direction: column;
   }
-  
+
   .table-container {
     font-size: 0.75rem;
   }
-  
+
   .table th,
   .table td {
     padding: 0.5rem 0.5rem;
@@ -932,7 +1004,7 @@ body {
 }
 
 .oauth-divider::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 0;
@@ -973,6 +1045,10 @@ body {
 
 .end-user-nano .pagination-btn:hover:not(:disabled) {
   color: #ffffff;
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   border-color: var(--app-primary-red-border);
 }

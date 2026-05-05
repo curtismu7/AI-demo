@@ -871,24 +871,21 @@ export class BankingToolProvider {
       );
     }
 
-    if (error.errorCode === 'consent_challenge_required') {
-      console.log(`[DEBUG-MCP-CONSENT] ✅ RETURNING CONSENT ERROR to frontend:
-  errorCode: consent_challenge_required
-  message: ${error.message}
-  operationLabel: ${operationLabel}
-  amount: $${amount}`);
+    if (error.errorCode === 'hitl_required') {
+      const hitlType: string = typeof (axiosData['hitl'] as any)?.type === 'string'
+        ? (axiosData['hitl'] as any).type : 'consent';
+      console.log(`[MCP-CONSENT] hitl_required (type=${hitlType}) for ${operationLabel} $${amount}`);
       return this.createSuccessResult(
         JSON.stringify(
           {
-            error: 'consent_challenge_required',
+            error: 'hitl_required',
+            hitl: { type: hitlType },
             message: error.message,
-            consent_challenge_required: true,
             hitl_threshold_usd: HITL_THRESHOLD_USD,
             amount: amount,
             type: operationLabel,
             fromAccountId: typeof axiosData['fromAccountId'] === 'string' ? axiosData['fromAccountId'] : null,
             toAccountId: typeof axiosData['toAccountId'] === 'string' ? axiosData['toAccountId'] : null,
-            debug_mcp_consent_handler: true,
           },
           null,
           2
@@ -899,21 +896,16 @@ export class BankingToolProvider {
     if (error.errorCode === 'step_up_required') {
       const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
         ? (axiosData['step_up_method'] as string) : 'email';
-      console.log(`[DEBUG-MCP-STEPUP] ✅ RETURNING STEP-UP ERROR to frontend:
-  errorCode: step_up_required
-  stepUpMethod: ${stepUpMethod}
-  operationLabel: ${operationLabel}
-  amount: $${amount}
-  amountThreshold: ${axiosData['amount_threshold']}`);
+      console.log(`[MCP-STEPUP] step_up_required method=${stepUpMethod} for ${operationLabel} $${amount}`);
       return this.createSuccessResult(
         JSON.stringify(
           {
             error: 'step_up_required',
+            hitl: { type: 'step_up' },
             step_up_required: true,
             step_up_method: stepUpMethod,
             message: `This transaction requires additional authentication (${stepUpMethod.toUpperCase()}). Please complete the step-up verification to proceed.`,
             amount_threshold: typeof axiosData['amount_threshold'] === 'number' ? axiosData['amount_threshold'] : null,
-            debug_mcp_stepup_handler: true,
           },
           null,
           2

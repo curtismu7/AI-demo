@@ -207,7 +207,8 @@ describe('CSS/JS monospace regression', () => {
     const violations = [];
     for (const f of cssFiles) {
       // Skip AgentDemoGuide.css — uses monospace for code display in demo scenarios (intentional)
-      if (f.includes('AgentDemoGuide.css')) continue;
+      // Skip AuthorizeConfigPage.css — uses monospace for env vars and config code display (intentional)
+      if (f.includes('AgentDemoGuide.css') || f.includes('AuthorizeConfigPage.css')) continue;
       const lines = fs.readFileSync(f, 'utf8').split('\n');
       lines.forEach((line, i) => {
         if (isMonospaceLine(line)) {

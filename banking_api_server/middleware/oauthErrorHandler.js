@@ -1,6 +1,7 @@
 const axios = require('axios');
 const { logger, LOG_CATEGORIES } = require('../utils/logger');
 const { oauthMonitor } = require('../utils/oauthMonitor');
+const posthog = require('../services/posthog');
 
 // OAuth-specific error types
 const OAUTH_ERROR_TYPES = {
@@ -584,6 +585,10 @@ const oauthErrorHandler = (error, req, res, _next) => {
       ...requestContext,
       error_name: error.name,
       error_message: error.message
+    });
+    posthog.captureException(error, requestContext.userId !== 'anonymous' ? requestContext.userId : undefined, {
+      path: requestContext.path,
+      method: requestContext.method,
     });
   }
 

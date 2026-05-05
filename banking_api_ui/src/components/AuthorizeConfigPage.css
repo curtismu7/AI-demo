@@ -1,0 +1,368 @@
+/* AuthorizeConfigPage — Authorize rules configuration UI */
+
+.azc-root {
+  padding: 24px;
+  background: #f8f9fa;
+  min-height: calc(100vh - 120px);
+}
+
+.azc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+
+.azc-header > div:first-child {
+  flex: 1;
+}
+
+.azc-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin: 0 0 8px;
+}
+
+.azc-subtitle {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
+.azc-header-badge {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.azc-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.azc-badge--off {
+  background: #e8e8e8;
+  color: #666;
+}
+
+.azc-badge--simulated {
+  background: #fff3cd;
+  color: #664d00;
+}
+
+.azc-badge--pingone {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.azc-badge--pending_config {
+  background: #f8d7da;
+  color: #842029;
+}
+
+.azc-refresh-btn {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.azc-refresh-btn:hover {
+  background: #f5f5f5;
+}
+
+.azc-loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 14px;
+}
+
+.azc-error {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #842029;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.azc-error button {
+  margin-left: 12px;
+  padding: 4px 8px;
+  background: #842029;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.azc-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #ddd;
+}
+
+.azc-tab {
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.2s;
+}
+
+.azc-tab:hover {
+  color: #333;
+}
+
+.azc-tab--active {
+  color: #0066cc;
+  border-bottom-color: #0066cc;
+}
+
+.azc-panel {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 24px;
+}
+
+.azc-section {
+  margin-bottom: 32px;
+}
+
+.azc-section:last-child {
+  margin-bottom: 0;
+}
+
+.azc-section > h3,
+.azc-section > h4 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.azc-description {
+  font-size: 13px;
+  color: #555;
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.azc-description code {
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.azc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.azc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.azc-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.azc-input,
+.azc-textarea {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+  color: #333;
+}
+
+.azc-input:focus,
+.azc-textarea:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.azc-textarea {
+  resize: vertical;
+  font-family: monospace;
+}
+
+.azc-field-hint {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.azc-save-btn {
+  align-self: flex-start;
+  padding: 10px 20px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.azc-save-btn:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+.azc-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.azc-alert {
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.azc-alert--success {
+  background: #d1e7dd;
+  border: 1px solid #badbcc;
+  color: #0f5132;
+}
+
+.azc-alert--error {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #842029;
+}
+
+.azc-alert--info {
+  background: #d1ecf1;
+  border: 1px solid #bee5eb;
+  color: #0c5460;
+}
+
+.azc-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.azc-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.azc-info-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.azc-info-item code {
+  font-size: 13px;
+  color: #333;
+  word-break: break-all;
+  font-family: monospace;
+}
+
+.azc-env-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.azc-env-table tbody tr {
+  border-bottom: 1px solid #eee;
+}
+
+.azc-env-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.azc-env-table td {
+  padding: 10px 12px;
+}
+
+.azc-env-key {
+  font-weight: 600;
+  color: #333;
+  width: 40%;
+}
+
+.azc-env-key code {
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.azc-env-val {
+  color: #666;
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.azc-env-note {
+  font-size: 12px;
+  color: #666;
+  margin: 0;
+}
+
+.azc-env-note code {
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.azc-rules-list {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.azc-rules-list li {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #333;
+  line-height: 1.5;
+}
+
+.azc-rules-list strong {
+  color: #1a1a2e;
+}

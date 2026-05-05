@@ -1,13 +1,16 @@
 /* banking_api_ui/src/components/SessionExpiryTimer.css - Global Banking Header */
 
 .banking-header {
-  background: linear-gradient(90deg, #003d7a 0%, #1a5c9e 50%, #0d3b6b 100%);
-  border-bottom: 4px solid #ff6b35;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1f2937;
+  border-bottom: 1px solid #93c5fd;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   position: sticky;
   top: 0;
   z-index: 1000;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
 }
 
 .banking-header__inner {
@@ -222,7 +225,8 @@
 
 /* Animations */
 @keyframes pulse-warning {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {

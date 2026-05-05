@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const dataStore = require('../data/store');
 const { verifyPassword, hashPassword, authenticateToken } = require('../middleware/auth');
+const posthog = require('../services/posthog');
 
 // Login
 router.post('/login', (req, res) => {
@@ -35,6 +36,18 @@ router.post('/login', (req, res) => {
       req.session.user = user;
       req.session.clientType = 'enduser';
       req.session.tokenType = 'local_session';
+
+      posthog.identify({
+        distinctId: user.id,
+        properties: {
+          $set: { email: user.email, username: user.username, role: user.role },
+        },
+      });
+      posthog.capture({
+        distinctId: user.id,
+        event: 'user_logged_in',
+        properties: { auth_method: 'local', role: user.role },
+      });
 
       const { password: _, ...userWithoutPassword } = user;
       res.json({
@@ -97,6 +110,19 @@ router.post('/register', async (req, res) => {
       req.session.user = newUser;
       req.session.clientType = 'enduser';
       req.session.tokenType = 'local_session';
+
+      posthog.identify({
+        distinctId: newUser.id,
+        properties: {
+          $set: { email: newUser.email, username: newUser.username, role: newUser.role },
+          $set_once: { first_login: new Date().toISOString() },
+        },
+      });
+      posthog.capture({
+        distinctId: newUser.id,
+        event: 'user_registered',
+        properties: { auth_method: 'local', role: newUser.role },
+      });
 
       const { password: _, ...userWithoutPassword } = newUser;
       res.status(201).json({
@@ -182,6 +208,11 @@ router.put('/change-password', authenticateToken, async (req, res) => {
 
     const hashedNewPassword = hashPassword(newPassword);
     await dataStore.updateUser(req.user.id, { password: hashedNewPassword });
+
+    posthog.capture({
+      distinctId: req.user.id,
+      event: 'password_changed',
+    });
 
     res.json({ message: 'Password changed successfully' });
 

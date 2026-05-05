@@ -1357,19 +1357,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       notifySuccess("Transfer completed successfully!");
     } catch (error) {
       const d = error.response?.data;
-      if (
-        error.response?.status === 400 &&
-        d?.error === "consent_challenge_required"
-      ) {
-        await openConsentFlowForPayload({
-          fromAccountId: selectedAccount.id,
-          toAccountId: transferForm.toAccountId,
-          amount: parseFloat(transferForm.amount),
-          type: "transfer",
-          description: transferForm.description || "Transfer between accounts",
-        });
-        return;
-      }
       console.error("Transfer error:", error);
       if (error.response?.data?.error === "amount_exceeds_hard_limit") {
         notifyError(
@@ -1379,6 +1366,17 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         return;
       }
       if (error.response?.status === 428) {
+        if (d?.error === "hitl_required" && d?.hitl?.type === "consent") {
+          await openConsentFlowForPayload({
+            fromAccountId: selectedAccount.id,
+            toAccountId: transferForm.toAccountId,
+            amount: parseFloat(transferForm.amount),
+            type: "transfer",
+            description:
+              transferForm.description || "Transfer between accounts",
+          });
+          return;
+        }
         setStepUpMethod(error.response.data?.step_up_method || "email");
         setCibaStatus("idle");
         setStepUpRequired(true);
@@ -1441,19 +1439,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       notifySuccess("Deposit completed successfully!");
     } catch (error) {
       const d = error.response?.data;
-      if (
-        error.response?.status === 400 &&
-        d?.error === "consent_challenge_required"
-      ) {
-        await openConsentFlowForPayload({
-          fromAccountId: null,
-          toAccountId: depositAccount.id,
-          amount: parseFloat(depositForm.amount),
-          type: "deposit",
-          description: depositForm.description || "Deposit to account",
-        });
-        return;
-      }
       console.error("Deposit error:", error);
       if (error.response?.data?.error === "amount_exceeds_hard_limit") {
         notifyError(
@@ -1463,6 +1448,16 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         return;
       }
       if (error.response?.status === 428) {
+        if (d?.error === "hitl_required" && d?.hitl?.type === "consent") {
+          await openConsentFlowForPayload({
+            fromAccountId: null,
+            toAccountId: depositAccount.id,
+            amount: parseFloat(depositForm.amount),
+            type: "deposit",
+            description: depositForm.description || "Deposit to account",
+          });
+          return;
+        }
         setStepUpMethod(error.response.data?.step_up_method || "email");
         setCibaStatus("idle");
         setStepUpRequired(true);
@@ -1530,19 +1525,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       notifySuccess("Withdrawal completed successfully!");
     } catch (error) {
       const d = error.response?.data;
-      if (
-        error.response?.status === 400 &&
-        d?.error === "consent_challenge_required"
-      ) {
-        await openConsentFlowForPayload({
-          fromAccountId: withdrawAccount.id,
-          toAccountId: null,
-          amount: parseFloat(withdrawForm.amount),
-          type: "withdrawal",
-          description: withdrawForm.description || "Withdrawal from account",
-        });
-        return;
-      }
       console.error("Withdrawal error:", error);
       if (error.response?.data?.error === "amount_exceeds_hard_limit") {
         notifyError(
@@ -1552,6 +1534,16 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         return;
       }
       if (error.response?.status === 428) {
+        if (d?.error === "hitl_required" && d?.hitl?.type === "consent") {
+          await openConsentFlowForPayload({
+            fromAccountId: withdrawAccount.id,
+            toAccountId: null,
+            amount: parseFloat(withdrawForm.amount),
+            type: "withdrawal",
+            description: withdrawForm.description || "Withdrawal from account",
+          });
+          return;
+        }
         setStepUpMethod(error.response.data?.step_up_method || "email");
         setCibaStatus("idle");
         setStepUpRequired(true);
@@ -3151,14 +3143,24 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                             </span>
                           </div>
                           <div className="session-row">
-                            <span className="session-label">Role:</span>
-                            <span className="session-value">{user?.role}</span>
-                            <span className="session-label">Type:</span>
-                            <span className="session-value">
-                              {tokenType || "Bearer"}
-                            </span>
+                            <div style={{ display: "flex", gap: "2rem" }}>
+                              <div>
+                                <span className="session-label">Role:</span>
+                                <span className="session-value">
+                                  {user?.role}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="session-label">Type:</span>
+                                <span className="session-value">
+                                  {tokenType || "Bearer"}
+                                </span>
+                              </div>
+                            </div>
                             {hasRefreshToken && (
-                              <div style={{ width: "100%" }}>
+                              <div
+                                style={{ width: "100%", marginTop: "0.5rem" }}
+                              >
                                 <span
                                   className="session-value"
                                   style={{
@@ -3199,32 +3201,27 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                                     const isExpired = msUntilExpiry <= 0;
 
                                     return (
-                                      <div>
-                                        <div>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "1rem",
+                                        }}
+                                      >
+                                        <span>
                                           {new Date(expiresAt).toLocaleString()}
-                                        </div>
-                                        {isExpired ? (
-                                          <div
-                                            style={{
-                                              fontSize: "0.85em",
-                                              color: "#ef4444",
-                                            }}
-                                          >
-                                            Expired
-                                          </div>
-                                        ) : (
-                                          <div
-                                            style={{
-                                              fontSize: "0.85em",
-                                              color: "#22c55e",
-                                            }}
-                                          >
-                                            {hoursUntilExpiry > 0
-                                              ? `${hoursUntilExpiry}h `
-                                              : ""}
-                                            {minutesUntilExpiry}m remaining
-                                          </div>
-                                        )}
+                                        </span>
+                                        <span
+                                          style={{
+                                            color: isExpired
+                                              ? "#ef4444"
+                                              : "#22c55e",
+                                          }}
+                                        >
+                                          {isExpired
+                                            ? "Expired"
+                                            : `${hoursUntilExpiry > 0 ? `${hoursUntilExpiry}h ` : ""}${minutesUntilExpiry}m remaining`}
+                                        </span>
                                       </div>
                                     );
                                   })()

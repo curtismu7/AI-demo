@@ -4,6 +4,7 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const mfaService = require('../services/mfaService');
 const oauthService = require('../services/oauthService');
+const posthog = require('../services/posthog');
 
 const STEP_UP_TTL_MS = 5 * 60 * 1000; // 5 min step-up validity
 
@@ -38,6 +39,11 @@ router.post('/challenge', authenticateToken, async (req, res) => {
       return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
     }
     const result = await mfaService.initiateDeviceAuth(userId, userAccessToken);
+    posthog.capture({
+      distinctId: userId,
+      event: 'mfa_challenge_initiated',
+      properties: { da_id: result.id, device_count: result._embedded?.devices?.length || 0 },
+    });
     res.json({
       daId: result.id,
       status: result.status,
@@ -96,6 +102,14 @@ router.put('/challenge/:daId', authenticateToken, async (req, res) => {
       await new Promise((resolve, reject) =>
         req.session.save((err) => (err ? reject(err) : resolve()))
       );
+      const completedUserId = req.session.user?.id || req.user?.id;
+      if (completedUserId) {
+        posthog.capture({
+          distinctId: completedUserId,
+          event: 'mfa_challenge_completed',
+          properties: { da_id: daId, method: assertion ? 'fido2' : otp ? 'otp' : 'push' },
+        });
+      }
     }
 
     res.json({ daId, status: result.status, completed });
@@ -176,6 +190,53 @@ router.get('/challenge/:daId/status', authenticateToken, async (req, res) => {
   }
 });
 
+// POST /api/auth/mfa/test/otp-verify
+// TEST MODE ONLY: Accept 123123 as valid OTP for testing purposes
+// Logs OTP verification without hitting PingOne
+router.post('/test/otp-verify', authenticateToken, async (req, res) => {
+  try {
+    const { daId, deviceId, otp } = req.body;
+    if (!daId || !deviceId || !otp) {
+      return res.status(400).json({ error: 'invalid_body', message: 'Provide daId, deviceId, and otp.' });
+    }
+
+    const timestamp = new Date().toISOString();
+    const isTestOtp = String(otp) === '123123';
+
+    console.log(`[MFA TEST MODE] ${timestamp}`);
+    console.log(`[MFA TEST MODE] Received OTP verification request`);
+    console.log(`[MFA TEST MODE]   daId: ${daId}`);
+    console.log(`[MFA TEST MODE]   deviceId: ${deviceId}`);
+    console.log(`[MFA TEST MODE]   otp: ${String(otp).slice(0, 1)}${'*'.repeat(Math.max(0, String(otp).length - 2))}${String(otp).slice(-1)}`);
+    console.log(`[MFA TEST MODE]   Test OTP (123123)? ${isTestOtp ? 'YES' : 'NO'}`);
+
+    if (isTestOtp) {
+      console.log(`[MFA TEST MODE] ✓ OTP accepted (123123 test mode)`);
+      req.session.stepUpVerified = Date.now() + STEP_UP_TTL_MS;
+      await new Promise((resolve, reject) =>
+        req.session.save((err) => (err ? reject(err) : resolve()))
+      );
+      res.json({
+        daId,
+        status: 'COMPLETED',
+        completed: true,
+        testMode: true,
+        message: 'Test OTP (123123) accepted'
+      });
+    } else {
+      console.log(`[MFA TEST MODE] ✗ OTP rejected (expected 123123, got ${otp})`);
+      res.status(400).json({
+        error: 'invalid_otp',
+        message: 'Invalid OTP. For testing, use 123123',
+        testMode: true
+      });
+    }
+  } catch (err) {
+    console.error('[MFA TEST MODE] POST /test/otp-verify failed:', err.message);
+    res.status(err.status || 500).json({ error: 'otp_verify_failed', message: err.message });
+  }
+});
+
 // GET /api/auth/mfa/devices
 // List active MFA devices for the logged-in user.
 // Returns devices with masked contact (email masked, phone last-4 only).
@@ -252,6 +313,7 @@ router.post('/enroll/sms-complete', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'invalid_body', message: 'Provide deviceId and otp.' });
     }
     const result = await mfaService.completeSmsEnrollment(userId, deviceId, otp);
+    posthog.capture({ distinctId: userId, event: 'mfa_device_enrolled', properties: { device_type: 'sms' } });
     res.json({ deviceId: result.id, status: result.status });
   } catch (err) {
     console.error('[MFA route] POST /enroll/sms-complete failed:', err.message);
@@ -271,6 +333,7 @@ router.post('/enroll/email', authenticateToken, async (req, res) => {
       return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
     }
     const device = await mfaService.enrollEmailDevice(userId, email);
+    posthog.capture({ distinctId: userId, event: 'mfa_device_enrolled', properties: { device_type: 'email' } });
     res.json({ deviceId: device.id, type: device.type, email: device.email });
   } catch (err) {
     console.error('[MFA route] POST /enroll/email failed:', err.message);
@@ -312,6 +375,7 @@ router.post('/enroll/fido2-complete', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'invalid_body', message: 'Provide deviceId and attestation.' });
     }
     const result = await mfaService.completeFido2Registration(userId, deviceId, attestation);
+    posthog.capture({ distinctId: userId, event: 'mfa_device_enrolled', properties: { device_type: 'fido2' } });
     res.json({ deviceId: result.id, status: result.status });
   } catch (err) {
     console.error('[MFA route] POST /enroll/fido2-complete failed:', err.message);

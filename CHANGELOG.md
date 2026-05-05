@@ -18,6 +18,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **Phase 2: Transaction Authorize consolidation** — moved all transaction authorization decisions (consent, step-up, deny) from sequential BFF gates into PingOne Authorize service (or simulated Authorize when enabled); eliminates gate duplication and simplifies flow from 3 sequential checks to single Authorize decision; simulated Authorize now owns: all transfers require consent, high-value withdrawals (≥$15k) require step-up MFA, amounts >$50k trigger deny; configurable via Mock Authorize admin panel with threshold customization and rule documentation.
 - **Agent Demo Guide — comprehensive HITL consent scenarios** — added 6 new demo scenarios (5-10) covering HITL gates: disabled state (ff_hitl_enabled flag), threshold variation, transfer always-gated behavior, HITL + step-up MFA interaction, consent declined path, and step-up MFA independent of HITL; all scenarios include feature flag controls, threshold configuration steps, and detailed watch-for items; Pro Tips now mention dynamic thresholds and feature flag independence.
 
 ### Fixed

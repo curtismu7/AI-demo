@@ -71,13 +71,15 @@
 
 .server-restart-content .modal-header {
   padding: 20px;
-  border-bottom: 1px solid var(--app-gray-200, #e5e7eb);
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1f2937;
+  border-bottom: 1px solid #93c5fd;
 }
 
 .server-restart-content .modal-header h2 {
   font-size: 18px;
   font-weight: 600;
-  color: var(--app-gray-900, #111827);
+  color: #1e3a8a;
   margin: 0;
   line-height: 1.4;
 }

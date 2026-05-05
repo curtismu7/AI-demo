@@ -12,14 +12,17 @@
 
 .admin-header {
   margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #e0e0e0;
+  padding: 20px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1f2937;
+  border-bottom: 1px solid #93c5fd;
+  border-radius: 8px;
 }
 
 .admin-header h1 {
   margin: 0;
   font-size: 28px;
-  color: #333;
+  color: #1e3a8a;
   font-weight: 600;
 }
 
@@ -149,7 +152,9 @@
   padding: 20px;
   color: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .stat-card:hover {

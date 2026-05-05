@@ -224,6 +224,13 @@ const FIELD_DEFS = {
   debug_show_token_details:        { public: true, default: 'false' },
   debug_show_api_calls:            { public: true, default: 'false' },
   log_filter_categories:           { public: true, default: '' },
+
+  // Simulated (mock) Authorize rules — override env vars at runtime
+  SIMULATED_AUTHORIZE_CONFIRM_AMOUNT:    { public: true, default: '250' },
+  SIMULATED_AUTHORIZE_DENY_AMOUNT:       { public: true, default: '2000' },
+  SIMULATED_AUTHORIZE_STEPUP_AMOUNT:     { public: true, default: '500' },
+  SIMULATED_MCP_DENY_TOOLS:              { public: true, default: '' },
+  SIMULATED_MCP_HITL_TOOLS:              { public: true, default: '' },
 };
 
 // ---------------------------------------------------------------------------

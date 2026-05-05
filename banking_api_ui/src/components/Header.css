@@ -2,8 +2,9 @@
    Light top bar for admin shell — fluid type and wrapping so it does not mash on narrow viewports. */
 
 .app-top-header {
-  border-bottom: 1px solid #e0e0e0;
-  background: #fff;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1f2937;
+  border-bottom: 1px solid #93c5fd;
   padding: clamp(8px, 1.2vw, 12px) 0;
 }
 
@@ -112,6 +113,11 @@
 }
 
 @keyframes header-timer-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }

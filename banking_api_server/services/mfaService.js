@@ -1,6 +1,7 @@
 const axios = require("axios");
 const configStore = require("./configStore");
 const { getTokenEndpoint } = require("./oauthEndpointResolver");
+const oauthService = require("./oauthService");
 
 function _authBaseUrl() {
 	// PingOne Device Authentications API lives at https://auth.pingone.{region}/{envId}
@@ -93,6 +94,50 @@ function _debugHeaders(token, contentType) {
 }
 
 /**
+ * Exchange user access token for a Device Authentication scoped token via RFC 8693.
+ * 
+ * Device Authentications API requires a token with audience scoped to the Device
+ * Authentication resource. This function exchanges the user's general access token
+ * for a narrowly-scoped token with the correct audience.
+ * 
+ * Pattern reference: RFC 8693 token exchange used in agentMcpTokenService.js
+ * 
+ * @param {string} userAccessToken - User's access token from session
+ * @returns {Promise<string|null>} - Scoped token for Device Auth API, or null if exchange fails
+ */
+async function _exchangeTokenForDeviceAuth(userAccessToken) {
+	try {
+		const deviceAuthResourceUri = 
+			configStore.getEffective("pingone_resource_device_auth_uri") ||
+			process.env.PINGONE_RESOURCE_DEVICE_AUTH_URI;
+		
+		if (!deviceAuthResourceUri) {
+			console.warn("[MFA] PINGONE_RESOURCE_DEVICE_AUTH_URI not configured — using user token directly");
+			return userAccessToken; // Fallback: use original token if resource URI not configured
+		}
+		
+		const deviceAuthToken = await oauthService.performTokenExchange(
+			userAccessToken,
+			deviceAuthResourceUri,
+			["device-authentication"]
+		);
+		
+		if (!deviceAuthToken) {
+			console.warn("[MFA] Token exchange for Device Auth failed — returning null");
+			return null;
+		}
+		
+		console.log("[MFA] ✓ Token exchange successful for Device Authentication resource");
+		return deviceAuthToken;
+	} catch (err) {
+		console.error("[MFA] Token exchange error:", err.message);
+		return null; // Return null to signal exchange failure
+	}
+}
+
+
+
+/**
  * Initiate PingOne deviceAuthentications for a user.
  * Uses the user's own access token (not worker token).
  * Returns { id (daId), status, _embedded: { devices[] } }
@@ -140,7 +185,22 @@ async function initiateDeviceAuth(userId, userAccessToken) {
 			err._debug = { request: debugRequest, response: err.response?.data || null };
 			throw err;
 		}
-		console.log("[MFA] initiated deviceAuth daId=%s status=%s devices=%d", data.id, data.status, data._embedded?.devices?.length || 0);
+		console.log("[MFA] ═══════════════════════════════════════════════════════════════");
+		console.log("[MFA] INITIATED DEVICE AUTHENTICATION");
+		console.log("[MFA] ═══════════════════════════════════════════════════════════════");
+		console.log("[MFA] daId: %s", data.id);
+		console.log("[MFA] status: %s (transitions to OTP_REQUIRED or ASSERTION_REQUIRED)", data.status);
+		console.log("[MFA] devices available: %d", data._embedded?.devices?.length || 0);
+		if (data._embedded?.devices) {
+			data._embedded.devices.forEach((d, i) => {
+				console.log("[MFA]   Device %d: type=%s id=%s", i + 1, d.type, d.id);
+				if (d.type === "EMAIL") console.log("[MFA]        → Email OTP will be sent to registered email");
+				if (d.type === "SMS" || d.type === "MOBILE_PHONE") console.log("[MFA]        → SMS OTP will be sent to registered phone");
+				if (d.type === "FIDO2") console.log("[MFA]        → Security key/passkey authentication");
+				if (d.type === "TOTP") console.log("[MFA]        → Time-based OTP (authenticator app)");
+			});
+		}
+		console.log("[MFA] ═══════════════════════════════════════════════════════════════");
 		return { ...data, _debug: { request: debugRequest, response: data } };
 	} catch (err) {
 		throw _wrapError("initiateDeviceAuth", err);
@@ -153,13 +213,12 @@ async function initiateDeviceAuth(userId, userAccessToken) {
  * Returns updated device authentication status.
  * Status transitions: DEVICE_SELECTION_REQUIRED → OTP_REQUIRED | ASSERTION_REQUIRED | PUSH_CONFIRMATION_REQUIRED
  */
-async function selectDevice(daId, deviceId, userAccessToken) {
-	// Use provided token - can be user token or worker token depending on caller context
-	// Consent challenge flow: uses user's access token
-	// MFA test flow: can use worker token if available, falls back to user token
-	const token = userAccessToken || (await _getWorkerToken());
+async function selectDevice(daId, deviceId, _userAccessToken) {
+	// PingOne MFA v1 API requires a worker (client_credentials) token for device selection.
+	// User access tokens are rejected with INVALID_TOKEN by /deviceAuthentications/{daId}.
+	const token = await _getWorkerToken();
 	if (!token) {
-		throw new Error("selectDevice requires a token (user access token or worker token)");
+		throw new Error("selectDevice requires a worker token — PingOne worker credentials not configured");
 	}
 
 	const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
@@ -205,6 +264,23 @@ async function selectDevice(daId, deviceId, userAccessToken) {
 			err._debug = { request: debugRequest, response: respData };
 			throw err;
 		}
+		console.log("[MFA] ═══════════════════════════════════════════════════════════════");
+		console.log("[MFA] DEVICE SELECTED FOR AUTHENTICATION");
+		console.log("[MFA] ═══════════════════════════════════════════════════════════════");
+		console.log("[MFA] daId: %s", daId);
+		console.log("[MFA] deviceId: %s", deviceId);
+		console.log("[MFA] new status: %s", data.status);
+		if (data.status === "OTP_REQUIRED") {
+			console.log("[MFA] → Waiting for OTP (check email or SMS for code)");
+			console.log("[MFA] → OTP should arrive within 30 seconds");
+		} else if (data.status === "ASSERTION_REQUIRED") {
+			console.log("[MFA] → Waiting for FIDO2/WebAuthn assertion");
+			console.log("[MFA] → User should be prompted to use security key or passkey");
+		} else if (data.status === "PUSH_CONFIRMATION_REQUIRED") {
+			console.log("[MFA] → Waiting for push confirmation");
+			console.log("[MFA] → User should receive push notification on registered device");
+		}
+		console.log("[MFA] ═══════════════════════════════════════════════════════════════");
 		return { ...data, _debug: { request: debugRequest, response: data } };
 	} catch (err) {
 		throw _wrapError("selectDevice", err);
@@ -229,10 +305,14 @@ async function submitOtp(daId, deviceId, otp, userAccessToken) {
 	const reqBody = { otp: String(otp) };
 	const contentType = "application/vnd.pingidentity.otp.check+json";
 
+	console.log("[MFA] ═══════════════════════════════════════════════════════════════");
+	console.log("[MFA] OTP SUBMISSION");
+	console.log("[MFA] ═══════════════════════════════════════════════════════════════");
+	console.log(`[submitOtp] daId: ${daId}`);
+	console.log(`[submitOtp] deviceId: ${deviceId}`);
+	console.log(`[submitOtp] OTP: ${String(otp).charAt(0)}${'*'.repeat(Math.max(0, String(otp).length - 2))}${String(otp).charAt(String(otp).length - 1)} (masked for security)`);
 	console.log(`[submitOtp] Full URL: ${url}`);
 	console.log(`[submitOtp] Method: POST`);
-	console.log(`[submitOtp] Content-Type: ${contentType}`);
-	console.log(`[submitOtp] Request body: ${JSON.stringify(reqBody)}`);
 	console.log(`[submitOtp] Using user access token (len=${userAccessToken?.length || 0})`);
 
 	const debugRequest = {
@@ -275,11 +355,17 @@ async function submitOtp(daId, deviceId, otp, userAccessToken) {
  *   - Push: poll until COMPLETED or PUSH_CONFIRMATION_TIMED_OUT
  *   - FIDO2: retrieve publicKeyCredentialRequestOptions (status: ASSERTION_REQUIRED)
  */
-async function getDeviceAuthStatus(daId, userAccessToken) {
+async function getDeviceAuthStatus(daId, _userAccessToken) {
 	try {
+		// PingOne MFA v1 API requires a worker token for device authentication status reads.
+		const token = await _getWorkerToken();
+		if (!token) {
+			throw new Error("getDeviceAuthStatus requires a worker token — PingOne worker credentials not configured");
+		}
+
 		const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
 		const { data } = await axios.get(url, {
-			headers: { Authorization: `Bearer ${userAccessToken}` },
+			headers: { Authorization: `Bearer ${token}` },
 			timeout: 10000,
 		});
 		return data;
@@ -312,11 +398,15 @@ async function submitFido2Assertion(daId, assertion, userAccessToken, origin) {
 			contentType: "application/vnd.pingidentity.assertion.check+json",
 			headers: _debugHeaders(userAccessToken, "application/vnd.pingidentity.assertion.check+json"),
 		};
-		console.log(
-			"[MFA] submitFido2Assertion: POST %s origin=%s",
-			url,
-			body.origin || "(none)",
-		);
+		console.log("[MFA] ═══════════════════════════════════════════════════════════════");
+		console.log("[MFA] FIDO2/SECURITY KEY ASSERTION SUBMISSION");
+		console.log("[MFA] ═══════════════════════════════════════════════════════════════");
+		console.log("[MFA] daId: %s", daId);
+		console.log("[MFA] origin: %s", body.origin || "(none)");
+		console.log("[MFA] POST %s", url);
+		console.log("[MFA] → User touched security key or used biometric");
+		console.log("[MFA] → Assertion received and being verified by PingOne");
+		console.log("[MFA] ═══════════════════════════════════════════════════════════════");
 		let data;
 		try {
 			const resp = await axios.post(url, body, {
