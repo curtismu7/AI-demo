@@ -346,9 +346,9 @@ describe("Action chips — all 3 modes", () => {
     });
     // Both header popout and full overlay may render items — use getAllByText
     await waitFor(() => {
-      expect(
-        screen.getAllByText("My Accounts").length,
-      ).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("My Accounts").length).toBeGreaterThanOrEqual(
+        1,
+      );
     });
     expect(screen.getAllByText("Deposit").length).toBeGreaterThanOrEqual(1);
   });
@@ -559,9 +559,7 @@ describe("Discovery popout — '⊞ All actions' button", () => {
       screen.getByRole("dialog", { name: /Action browser/i }),
     ).toBeInTheDocument();
     // Discovery popout includes chips from all groups — check for one from each
-    expect(screen.getAllByText("My Accounts").length).toBeGreaterThanOrEqual(
-      1,
-    );
+    expect(screen.getAllByText("My Accounts").length).toBeGreaterThanOrEqual(1);
   });
 });
 

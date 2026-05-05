@@ -17,17 +17,17 @@
 /* eslint-disable import/first -- jest.mock must precede imports */
 
 // Polyfill window.scrollTo for jsdom
-if (typeof window !== 'undefined' && !window.scrollTo) {
-	window.scrollTo = jest.fn();
+if (typeof window !== "undefined" && !window.scrollTo) {
+  window.scrollTo = jest.fn();
 }
 
 // Mock indexedDB since it's not available in jsdom
 global.indexedDB = {
-	open: jest.fn(() => ({
-		onupgradeneeded: null,
-		onsuccess: null,
-		onerror: null,
-	})),
+  open: jest.fn(() => ({
+    onupgradeneeded: null,
+    onsuccess: null,
+    onerror: null,
+  })),
 };
 
 jest.mock("../services/bffAxios", () => ({
