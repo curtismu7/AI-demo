@@ -12,6 +12,7 @@ const demoScenarioStore = require('../services/demoScenarioStore');
 const { resolveAccountId } = require('../utils/accountUtils');
 const { logEvent: logAppEvent } = require('../services/appEventService');
 const posthog = require('../services/posthog');
+const { BANKING_SCOPES } = require('../config/scopes');
 
 /**
  * Re-hydrate a user's accounts from the Redis snapshot on cold-start.
@@ -449,6 +450,25 @@ router.post('/', authenticateToken, async (req, res) => {
         return res.status(400).json({ error: 'Insufficient balance' });
       }
     }
+
+    // ── Scope validation ──────────────────────────────────────────────────────
+    // Write operations (transfer, deposit, withdrawal) require banking:write scope.
+    // Read operations (GET) require banking:read scope, enforced via requireScopes middleware.
+    const userScopes = req.user.scopes || [];
+    const writeOperations = ['transfer', 'deposit', 'withdrawal'];
+    if (writeOperations.includes(type)) {
+      const hasWriteScope = userScopes.includes(BANKING_SCOPES.BANKING_WRITE);
+      if (!hasWriteScope) {
+        console.log(`[Scopes] User ${req.user.id} missing ${BANKING_SCOPES.BANKING_WRITE} for ${type}`);
+        return res.status(403).json({
+          error: 'insufficient_scope',
+          error_description: `Operation requires '${BANKING_SCOPES.BANKING_WRITE}' scope. User scopes: ${userScopes.join(', ') || '(none)'}`,
+          required_scope: BANKING_SCOPES.BANKING_WRITE,
+          user_scopes: userScopes
+        });
+      }
+    }
+    // ── End scope validation ──────────────────────────────────────────────────
 
     // ── Session check for conditional authentication (Phase 122) ───────────────
     // Non-logged-in users must sign in before any banking action.

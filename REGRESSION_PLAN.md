@@ -102,6 +102,30 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-05 — Scope validation enforcement on write transactions (Phase 2 refinement)
+
+- **Goal:** Ensure write operations (transfer, deposit, withdrawal) require `banking:write` scope per OAuth scope definitions.
+- **Implementation:** Added scope validation gate in `routes/transactions.js` POST endpoint (lines 454–471) that checks for `banking:write` scope before authorizing write operations.
+- **Behavior:**
+  - Transfer, deposit, withdrawal operations require `req.user.scopes` to include `banking:BANKING_SCOPES.BANKING_WRITE`
+  - If scope is missing, returns **403 Forbidden** with error: `insufficient_scope`
+  - Response includes: `required_scope`, `user_scopes[]`, and human-readable error message
+  - Read operations (GET /transactions) enforce `banking:read` scope via existing `requireScopes()` middleware
+  - Scope extraction: `req.user.scopes` populated by `authenticateToken` middleware via `parseTokenScopes()`
+- **Verification:**
+  - `npm run build` (UI) → exit 0
+  - Scope definitions already in `/api/admin/authorize/config` UI (via prior commits)
+  - `ROUTE_SCOPE_MAP` in `config/scopes.js` (line 143) documents: `POST /api/transactions` requires `banking:write`
+- **Files changed:** `banking_api_server/routes/transactions.js` (import BANKING_SCOPES, add scope validation block)
+- **Do not break:** 
+  - Write operations MUST return 403 if `banking:write` scope is absent
+  - Error response format: `{ error: 'insufficient_scope', error_description, required_scope, user_scopes }`
+  - Scope validation runs AFTER account validation but BEFORE session/authorization checks
+  - Delegated token path (RFC 8693 agent) must include scopes in exchanged token
+  - Admin users with role=admin bypass scope checks via existing requireScopes middleware logic (line 291 in auth.js)
+
+---
+
 ### 2026-05-04 — MFA Token Refresh: Fix 401 on MFA test endpoints with expiring tokens
 
 - **Symptom:** MFA device selection returns 401 Unauthorized even though user is freshly logged in. Browser Network tab shows a token refresh request returning 200, but the subsequent `/api/mfa/test/integration/select-device` call still fails with 401.
