@@ -137,6 +137,12 @@ export default function AuthorizeConfigPage() {
           MCP Tool Gate
         </button>
         <button
+          className={`azc-tab ${activeTab === "scopes" ? "azc-tab--active" : ""}`}
+          onClick={() => setActiveTab("scopes")}
+        >
+          Scopes & Audience
+        </button>
+        <button
           className={`azc-tab ${activeTab === "env" ? "azc-tab--active" : ""}`}
           onClick={() => setActiveTab("env")}
         >
@@ -353,6 +359,54 @@ export default function AuthorizeConfigPage() {
             To control MCP tool access with PingOne Authorize, define
             tool-specific rules in your PingOne Authorize policy.
           </p>
+        </div>
+      )}
+
+      {activeTab === "scopes" && data && (
+        <div className="azc-panel">
+          <div className="azc-section">
+            <h3>OAuth Scopes</h3>
+            <p className="azc-description">
+              Scopes define what permissions an OAuth token grants for banking
+              operations. Each scope maps to specific banking capabilities.
+            </p>
+
+            {data.scopeDefinitions && (
+              <div className="azc-scopes-grid">
+                {Object.entries(data.scopeDefinitions).map(([scope, def]) => (
+                  <div key={scope} className="azc-scope-card">
+                    <strong className="azc-scope-name">{scope}</strong>
+                    <span className="azc-scope-label">{def.label}</span>
+                    <p className="azc-scope-description">{def.description}</p>
+                    <span className="azc-scope-hint">
+                      Permissions: {def.permissions.join(", ")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="azc-section">
+            <h3>Audience (Resource Indicator)</h3>
+            <p className="azc-description">
+              The resource indicator (aud claim) restricts tokens to a specific
+              service. Tokens requested for MCP operations include the MCP server
+              URI.
+            </p>
+
+            <div className="azc-info-grid">
+              <div className="azc-info-item">
+                <span className="azc-info-label">MCP Resource URI</span>
+                <code>{data.audience || "(not configured)"}</code>
+              </div>
+            </div>
+
+            <p className="azc-description">
+              Set <code>PINGONE_RESOURCE_MCP_SERVER_URI</code> in app configuration to enable MCP token
+              exchange with resource indicator.
+            </p>
+          </div>
         </div>
       )}
 

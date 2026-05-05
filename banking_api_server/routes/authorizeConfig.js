@@ -65,11 +65,33 @@ router.get('/config', authenticateToken, requireScopes(['openid']), async (req, 
       ff_authorize_mcp_first_tool: configStore.get('ff_authorize_mcp_first_tool') === 'true',
     };
 
+    const mcpResourceUri = configStore.get('PINGONE_RESOURCE_MCP_SERVER_URI') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI || '';
+
+    const scopeDefinitions = {
+      'banking:read': {
+        label: 'Read Banking Data',
+        description: 'List accounts and check balances',
+        permissions: ['list_accounts', 'get_balance'],
+      },
+      'banking:write': {
+        label: 'Write Banking Data',
+        description: 'Initiate transfers, deposits, and withdrawals',
+        permissions: ['transfer', 'deposit', 'withdraw'],
+      },
+      'banking:mcp:invoke': {
+        label: 'Invoke MCP Tools',
+        description: 'Call MCP banking tools via agent',
+        permissions: ['invoke_mcp_tools'],
+      },
+    };
+
     const envVars = {
-      SIMULATED_AUTHORIZE_DENY_AMOUNT: configStore.get('SIMULATED_AUTHORIZE_DENY_AMOUNT') || process.env.SIMULATED_AUTHORIZE_DENY_AMOUNT || '(default 50000)',
-      SIMULATED_AUTHORIZE_POLICY_STEPUP_AMOUNT: configStore.get('SIMULATED_AUTHORIZE_STEPUP_AMOUNT') || process.env.SIMULATED_AUTHORIZE_POLICY_STEPUP_AMOUNT || '(default 15000)',
+      SIMULATED_AUTHORIZE_DENY_AMOUNT: configStore.get('SIMULATED_AUTHORIZE_DENY_AMOUNT') || process.env.SIMULATED_AUTHORIZE_DENY_AMOUNT || '(default 2000)',
+      SIMULATED_AUTHORIZE_CONFIRM_AMOUNT: configStore.get('SIMULATED_AUTHORIZE_CONFIRM_AMOUNT') || process.env.SIMULATED_AUTHORIZE_CONFIRM_AMOUNT || '(default 250)',
+      SIMULATED_AUTHORIZE_POLICY_STEPUP_AMOUNT: configStore.get('SIMULATED_AUTHORIZE_STEPUP_AMOUNT') || process.env.SIMULATED_AUTHORIZE_POLICY_STEPUP_AMOUNT || '(default 500)',
       SIMULATED_MCP_DENY_TOOLS: configStore.get('SIMULATED_MCP_DENY_TOOLS') || process.env.SIMULATED_MCP_DENY_TOOLS || '(none)',
       SIMULATED_MCP_HITL_TOOLS: configStore.get('SIMULATED_MCP_HITL_TOOLS') || process.env.SIMULATED_MCP_HITL_TOOLS || '(none)',
+      PINGONE_RESOURCE_MCP_SERVER_URI: mcpResourceUri || '(not set)',
     };
 
     return res.json({
@@ -77,6 +99,8 @@ router.get('/config', authenticateToken, requireScopes(['openid']), async (req, 
       mcp: mcpStatus,
       simulated,
       pingone,
+      audience: mcpResourceUri,
+      scopeDefinitions,
       flags,
       envVars,
     });
