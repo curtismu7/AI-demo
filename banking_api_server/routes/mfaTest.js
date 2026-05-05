@@ -267,7 +267,7 @@ async function _resolveCredentials(req) {
   // If access token is missing but refresh token exists, attempt refresh
   if (!accessToken && req.session?.oauthTokens?.refreshToken) {
     try {
-      const oauthUserService = require('../services/oauthUser');
+      const oauthUserService = require('../services/oauthUserService');
       const refreshToken = req.session.oauthTokens.refreshToken;
       const tokenData = await oauthUserService.refreshAccessToken(refreshToken);
       accessToken = tokenData.access_token;
