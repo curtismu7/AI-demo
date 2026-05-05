@@ -309,8 +309,9 @@ Next phase: Available for execution or verification workflow
 
 ### Pending Todos
 
-- 7 pending todos
-- Latest: Update token-chain only on token-chain UI pages
+- 8 pending todos
+- Latest: Full MFA testing with SMS, email, FIDO2 — test all auth methods with valid user token, verify OTP sending and FIDO2 prompts
+- Other: Update token-chain only on token-chain UI pages
 - Other: Remove icons from agent panel; fix pop-out agent taking too much space
 - Other: Fix PingOne token policy explorer
 - Other: Add clear button to token chain panel (clear on demand; keep until user clicks)
