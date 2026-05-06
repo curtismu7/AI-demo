@@ -7652,7 +7652,7 @@ export default function BankingAgent({
                         }
                         aria-label="Send"
                       >
-                        {nlLoading ? "…" : splitChrome ? "Send" : "↑"}
+                        {nlLoading ? "…" : "Send"}
                       </button>
                     </div>
                   </>
