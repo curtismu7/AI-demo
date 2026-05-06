@@ -16,6 +16,10 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ## [Unreleased]
 
+### Removed
+
+- **Demo Config nav item and FAB button** — removed "Demo Config" from AdminSideNav and the floating `demo-config-fab` button from App.js; also removed the admin role badge from the sidebar.
+
 ### Added
 
 - `EDUCATION_REFRESH_PROMPT.md` — agent prompt for keeping education panels current (RFCs, LLM models, frameworks); Setup page now surfaces it with usage instructions.

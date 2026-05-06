@@ -122,7 +122,6 @@ export default function AdminSideNav({ user }) {
   const allNavItems = [
     { label: "Home", path: "/", icon: "🏠" },
     { label: "Dashboard", path: isAdmin ? "/admin" : "/dashboard", icon: "📊" },
-    { label: "Demo Config", path: "/demo-data", icon: "🎛" },
     {
       label: "Agent Demo Guide",
       icon: "📚",

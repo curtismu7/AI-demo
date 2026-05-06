@@ -12,7 +12,6 @@ import {
   BrowserRouter as Router,
   Routes,
   useLocation,
-  useNavigate,
   useSearchParams,
 } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
@@ -107,7 +106,6 @@ import { IndustryBrandingProvider } from "./context/IndustryBrandingContext";
 import { SpinnerProvider } from "./context/SpinnerContext";
 import { TokenChainProvider } from "./context/TokenChainContext";
 import { VerticalProvider } from "./context/VerticalContext";
-import { useDemoMode } from "./hooks/useDemoMode";
 import LangChainPage from "./pages/LangChainPage";
 import { monitorApiHealth } from "./services/bankingRestartNotificationService";
 import { getCachedJson } from "./services/cachedStatusService";
@@ -229,8 +227,6 @@ function AppWithAuth() {
     pathNorm === "/logs" ||
     pathNorm === "/agent";
   const { placement: agentPlacement, fab: agentFab } = useAgentUiMode();
-  const demoMode = useDemoMode();
-  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
@@ -562,39 +558,6 @@ function AppWithAuth() {
   // Admin uses Dashboard.js on /admin — those routes need the global float/dock from App.
   // / now renders LandingPage for non-admin logged-in users; UserDashboard lives at /dashboard.
   const onUserDashboardRoute = Boolean(user) && pathname === "/dashboard";
-
-  // Check if we're on a sidebar-visible route (AdminSideNav is visible for all logged-in users)
-  const sidebarRoutePatterns = [
-    "/admin",
-    "/activity",
-    "/audit",
-    "/users",
-    "/accounts",
-    "/transactions",
-    "/settings",
-    "/oauth-debug",
-    "/client-registration",
-    "/scope-audit",
-    "/scope-reference",
-    "/feature-flags",
-    "/mcp-inspector",
-    "/mcp-tools",
-    "/webmcp",
-    "/agentic-trust",
-    "/actor-token-education",
-    "/error-audit",
-    "/security-settings",
-    "/dashboard",
-    "/pingone-test",
-    "/mfa-test",
-    "/authz-test",
-    "/monitoring",
-    "/architecture",
-    "/sequence-diagram",
-  ];
-  const isOnSidebarRoute =
-    sidebarRoutePatterns.some((pattern) => pathname.startsWith(pattern)) ||
-    (Boolean(user) && pathname === "/");
 
   // Landing home (/): show floating agent even when signed out.
   // Suppress float on signed-in / only when UserDashboard owns middle placement.
@@ -1420,19 +1383,6 @@ function AppWithAuth() {
               onClose={() => setLogViewerOpen(false)}
               categoryFilter={appFlags.logFilterCategories}
             />
-            {user &&
-              demoMode !== true &&
-              !isApiTrafficOnlyPage &&
-              !isOnSidebarRoute && (
-                <button
-                  type="button"
-                  className="demo-config-fab"
-                  onClick={() => navigate("/configure?tab=demo-management")}
-                  title="Open Demo config (sandbox accounts, balances, MFA)"
-                >
-                  Demo config
-                </button>
-              )}
             {/* UserDashboard renders EmbeddedAgentDock inside its layout. App-level dock sits in document
               order directly above the footer on non-dashboard routes.
               Guest landing (/) always uses float agent — no bottom dock. */}
