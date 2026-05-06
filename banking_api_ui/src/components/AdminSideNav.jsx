@@ -389,7 +389,7 @@ export default function AdminSideNav({ user }) {
       action: () => openEdu(EDU.HUMAN_IN_LOOP, "what"),
     },
     {
-      label: "PingGateway MCP Security",
+      label: "MCP Gateway Security",
       icon: "🛡️",
       action: () => openEdu(EDU.PINGGATEWAY_MCP, "overview"),
     },
@@ -500,6 +500,13 @@ export default function AdminSideNav({ user }) {
     );
   };
 
+  const isParentActive = (item) => {
+    if (!item.children) return false;
+    return item.children
+      .filter((child) => !child.adminOnly || isAdmin)
+      .some((child) => child.path && isActive(child.path));
+  };
+
   const toggleSection = (sectionKey) => {
     setExpandedSections((prev) => ({
       ...prev,
@@ -575,7 +582,11 @@ export default function AdminSideNav({ user }) {
     try {
       sessionStorage.removeItem("_agent_auto_loaded");
     } catch (_) {}
-    window.location.reload();
+    window.dispatchEvent(new CustomEvent("demo-reset-complete"));
+    navigate(location.pathname, {
+      replace: true,
+      state: { resetDemoSuccess: true },
+    });
   };
 
   const handleKillSwitchConfirm = useCallback(
@@ -627,7 +638,7 @@ export default function AdminSideNav({ user }) {
       return (
         <div key={itemKey}>
           <button
-            className="admin-side-nav__item admin-side-nav__item--parent"
+            className={`admin-side-nav__item admin-side-nav__item--parent${isParentActive(item) ? " admin-side-nav__item--parent-active" : ""}`}
             onClick={() => toggleSection(itemKey)}
             title={collapsed ? item.label : undefined}
           >
@@ -738,6 +749,69 @@ export default function AdminSideNav({ user }) {
 
       {/* Navigation Menu */}
       <nav className="admin-side-nav__menu">
+        {/* Quick-access shortcuts */}
+        <div className="admin-side-nav__quick-links">
+          <button
+            type="button"
+            className={`admin-side-nav__quick-link${location.pathname === "/dashboard" ? " admin-side-nav__quick-link--active" : ""}`}
+            title="Customer View"
+            onClick={() => {
+              if (!isAdmin) {
+                navigate("/dashboard");
+                return;
+              }
+              fetch("/api/auth/switch", {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ targetRole: "customer" }),
+              })
+                .then((r) => r.json())
+                .then(({ redirectUrl }) => {
+                  window.location.href = redirectUrl;
+                })
+                .catch((e) =>
+                  console.error("[QuickNav] switch failed:", e.message),
+                );
+            }}
+          >
+            {collapsed ? "C" : "Customer"}
+          </button>
+          <button
+            type="button"
+            className={`admin-side-nav__quick-link${location.pathname === "/admin" ? " admin-side-nav__quick-link--active" : ""}`}
+            title="Admin View"
+            onClick={() => {
+              if (isAdmin) {
+                navigate("/admin");
+                return;
+              }
+              fetch("/api/auth/switch", {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ targetRole: "admin" }),
+              })
+                .then((r) => r.json())
+                .then(({ redirectUrl }) => {
+                  window.location.href = redirectUrl;
+                })
+                .catch((e) =>
+                  console.error("[QuickNav] switch failed:", e.message),
+                );
+            }}
+          >
+            {collapsed ? "A" : "Admin"}
+          </button>
+          <Link
+            to="/configure"
+            className={`admin-side-nav__quick-link${location.pathname.startsWith("/configure") ? " admin-side-nav__quick-link--active" : ""}`}
+            title="Setup"
+          >
+            {collapsed ? "S" : "Setup"}
+          </Link>
+        </div>
+
         {/* Main Navigation Section */}
         <div className="admin-side-nav__section">
           {navItems.map((item, idx) => renderNavItem(item, "nav", idx))}
@@ -901,7 +975,7 @@ export default function AdminSideNav({ user }) {
       {showKillModal && (
         <KillSwitchConfirmModal
           isOpen={showKillModal}
-          onClose={() => setShowKillModal(false)}
+          onCancel={() => setShowKillModal(false)}
           onConfirm={(agentId, reason) =>
             handleKillSwitchConfirm(agentId || "default-agent", reason)
           }

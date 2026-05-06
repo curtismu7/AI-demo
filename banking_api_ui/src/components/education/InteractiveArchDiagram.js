@@ -1,38 +1,56 @@
 // banking_api_ui/src/components/education/InteractiveArchDiagram.js
-import React, { useState } from 'react';
-import { useTokenChainOptional } from '../../context/TokenChainContext';
-import RfcLink from '../shared/RfcLink';
-import './InteractiveArchDiagram.css';
+import React, { useState } from "react";
+import { useTokenChainOptional } from "../../context/TokenChainContext";
+import RfcLink from "../shared/RfcLink";
+import "./InteractiveArchDiagram.css";
 
+// Real architecture nodes — three parties: Identity, BFF+Agent, and downstream services
 const NODES = {
-  user:      { icon: '🧑', label: 'User / Browser', sub: 'End user', type: 'user' },
-  bff:       { icon: '🖥️', label: 'OLB Application', sub: 'BFF (Express :3001)', type: 'bff' },
-  idp:       { icon: '🔐', label: 'PingOne / PF', sub: 'Authorization Server', type: 'idp' },
-  agent:     { icon: '🤖', label: 'agent1', sub: 'LangChain / AI Agent', type: 'agent' },
-  llm:       { icon: '🧠', label: 'LLM', sub: 'OpenAI / Bedrock', type: 'llm' },
-  mcpgw:     { icon: '🔀', label: 'MCP Gateway', sub: 'mcp-gw.bxf.com :3005', type: 'mcp' },
-  mcpolb:    { icon: '🏦', label: 'MCP OLB', sub: 'mcp-olb.bxf.com :8080', type: 'mcp' },
-  mcpinvest: { icon: '📈', label: 'MCP Invest', sub: 'mcp-invest.bxf.com :8081', type: 'mcp' },
-  olbapi:    { icon: '📡', label: 'Banking API', sub: 'OAuth RS / OLB', type: 'api' },
-  investapi: { icon: '📡', label: 'Invest API', sub: 'OAuth RS / Invest', type: 'api' },
+  user: { icon: "USR", label: "User / Browser", sub: "End user", type: "user" },
+  bff: {
+    icon: "BFF",
+    label: "BFF / AI Agent",
+    sub: "Express + LangGraph :3001",
+    type: "bff",
+  },
+  idp: {
+    icon: "IDP",
+    label: "PingOne",
+    sub: "OAuth 2.0 AS / OIDC",
+    type: "idp",
+  },
+  llm: {
+    icon: "LLM",
+    label: "LLM Provider",
+    sub: "OpenAI, Anthropic, Groq, Gemini, Helix",
+    type: "llm",
+  },
+  mcp: {
+    icon: "MCP",
+    label: "banking_mcp_server",
+    sub: "TypeScript MCP ws://:8080",
+    type: "mcp",
+  },
 };
 
 const ARROWS = [
   {
-    id: 'login', label: 'PKCE Login',
-    claims: { note: 'PKCE code_challenge (RFC 7636)' }, rfc: 'RFC_7636',
+    id: "login",
+    label: "PKCE Login + RFC 8693",
+    claims: {
+      grant: "authorization_code + PKCE",
+      exchange: "RFC 8693 token exchange",
+    },
+    rfc: "RFC_7636",
   },
   {
-    id: 'agent_trigger', label: 'Agent request',
-    claims: { note: 'User token forwarded' }, rfc: 'RFC_8693',
-  },
-  {
-    id: 'tools_list', label: 'tools/list (MCP)',
-    claims: { Authorization: 'Bearer gw_token', protocol: 'JSON-RPC 2.0' }, rfc: 'MCP_SPEC',
-  },
-  {
-    id: 'tools_call', label: 'tools/call → API',
-    claims: { Authorization: 'Bearer backend_token', scope: 'banking' }, rfc: 'MCP_SPEC',
+    id: "agent_calls",
+    label: "LLM inference + MCP tools",
+    claims: {
+      llm: "Tool selection / inference",
+      mcp: "tools/call (WebSocket)",
+    },
+    rfc: "MCP_SPEC",
   },
 ];
 
@@ -45,9 +63,13 @@ function Node({ nodeKey, isActive, onClick }) {
       onClick={() => onClick(nodeKey)}
       role="button"
       tabIndex={0}
-      onKeyDown={e => e.key === 'Enter' && onClick(nodeKey)}
+      onKeyDown={(e) => e.key === "Enter" && onClick(nodeKey)}
       title={`${n.label} — ${n.sub}`}
-      style={isActive ? { boxShadow: '0 0 0 3px #2563eb44', borderColor: '#2563eb' } : undefined}
+      style={
+        isActive
+          ? { boxShadow: "0 0 0 3px #2563eb44", borderColor: "#2563eb" }
+          : undefined
+      }
     >
       <div className="iad-node-icon">{n.icon}</div>
       <div className="iad-node-label">{n.label}</div>
@@ -58,21 +80,27 @@ function Node({ nodeKey, isActive, onClick }) {
 
 function Arrow({ arrow, isActive }) {
   const claimLines = arrow.claims
-    ? Object.entries(arrow.claims).map(([k, v]) => `${k}: ${v}`).join('\n')
+    ? Object.entries(arrow.claims)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join("\n")
     : null;
 
   return (
     <div className="iad-arrow-wrapper">
-      <div className={`iad-arrow${isActive ? ' iad-arrow--active' : ''}`}>
+      <div className={`iad-arrow${isActive ? " iad-arrow--active" : ""}`}>
         <div className="iad-arrow-line" />
         <div className="iad-arrow-head">→</div>
         <div className="iad-arrow-label">
           <span>{arrow.label}</span>
-          {arrow.claims && Object.entries(arrow.claims).slice(0, 2).map(([k, v]) => (
-            <span key={k} className="iad-arrow-claim">
-              <strong>{k}:</strong> {String(v).slice(0, 28)}{String(v).length > 28 ? '…' : ''}
-            </span>
-          ))}
+          {arrow.claims &&
+            Object.entries(arrow.claims)
+              .slice(0, 2)
+              .map(([k, v]) => (
+                <span key={k} className="iad-arrow-claim">
+                  <strong>{k}:</strong> {String(v).slice(0, 28)}
+                  {String(v).length > 28 ? "…" : ""}
+                </span>
+              ))}
         </div>
       </div>
       {claimLines && <div className="iad-claim-popup">{claimLines}</div>}
@@ -86,92 +114,82 @@ export default function InteractiveArchDiagram() {
   const [, setSelectedNode] = useState(null);
 
   const activeNodes = new Set();
-  if (events.some(ev => ev.status === 'active' || ev.status === 'acquired')) {
-    activeNodes.add('user');
-    activeNodes.add('bff');
+  if (events.some((ev) => ev.status === "active" || ev.status === "acquired")) {
+    activeNodes.add("user");
+    activeNodes.add("bff");
   }
-  if (events.some(ev => ev.id?.includes('agent') || ev.id?.includes('cc'))) {
-    activeNodes.add('agent');
-    activeNodes.add('idp');
+  if (events.some((ev) => ev.id?.includes("agent") || ev.id?.includes("cc"))) {
+    activeNodes.add("idp");
   }
-  if (events.some(ev => ev.id?.includes('mcp') && ev.status === 'acquired')) {
-    activeNodes.add('mcpgw');
-    activeNodes.add('mcpolb');
+  if (events.some((ev) => ev.id?.includes("mcp") && ev.status === "acquired")) {
+    activeNodes.add("mcp");
   }
 
-  const hasExchange = activeNodes.has('agent');
+  const hasExchange = activeNodes.has("idp");
 
   return (
     <div className="iad-root">
-      <div className="iad-title">2-Token Exchange Architecture</div>
+      <div className="iad-title">RFC 8693 Token Exchange Architecture</div>
       <div className="iad-subtitle">
-        Hover arrows for token claim details · Live token state reflected from Token Chain ·{' '}
-        <RfcLink rfc="RFC_8693" />
+        Hover arrows for token claim details · Live token state reflected from
+        Token Chain · <RfcLink rfc="RFC_8693" />
       </div>
 
       <div className="iad-canvas">
-        {/* Col 1: User + IDP */}
+        {/* Col 1: User + PingOne */}
         <div className="iad-col">
-          <Node nodeKey="user" isActive={activeNodes.has('user')} onClick={setSelectedNode} />
-          <Node nodeKey="idp" isActive={activeNodes.has('idp')} onClick={setSelectedNode} />
+          <Node
+            nodeKey="user"
+            isActive={activeNodes.has("user")}
+            onClick={setSelectedNode}
+          />
+          <Node
+            nodeKey="idp"
+            isActive={activeNodes.has("idp")}
+            onClick={setSelectedNode}
+          />
         </div>
 
-        <Arrow arrow={ARROWS[0]} isActive={activeNodes.has('bff')} />
+        <Arrow arrow={ARROWS[0]} isActive={activeNodes.has("bff")} />
 
-        {/* Col 2: BFF */}
+        {/* Col 2: BFF (Express :3001) — also hosts the LangGraph AI agent */}
         <div className="iad-col">
-          <Node nodeKey="bff" isActive={activeNodes.has('bff')} onClick={setSelectedNode} />
+          <Node
+            nodeKey="bff"
+            isActive={activeNodes.has("bff")}
+            onClick={setSelectedNode}
+          />
         </div>
 
-        <Arrow arrow={ARROWS[1]} isActive={activeNodes.has('agent')} />
+        <Arrow arrow={ARROWS[1]} isActive={activeNodes.has("mcp")} />
 
-        {/* Col 3: Agent + LLM */}
+        {/* Col 3: LLM Provider + MCP Server */}
         <div className="iad-col">
-          <Node nodeKey="agent" isActive={activeNodes.has('agent')} onClick={setSelectedNode} />
           <Node nodeKey="llm" isActive={false} onClick={setSelectedNode} />
-        </div>
-
-        <Arrow arrow={ARROWS[2]} isActive={activeNodes.has('mcpgw')} />
-
-        {/* Col 4: MCP Gateway */}
-        <div className="iad-col">
-          <Node nodeKey="mcpgw" isActive={activeNodes.has('mcpgw')} onClick={setSelectedNode} />
-        </div>
-
-        <Arrow arrow={ARROWS[3]} isActive={activeNodes.has('mcpolb')} />
-
-        {/* Col 5: MCP OLB + Invest */}
-        <div className="iad-col">
-          <Node nodeKey="mcpolb" isActive={activeNodes.has('mcpolb')} onClick={setSelectedNode} />
-          <Node nodeKey="mcpinvest" isActive={false} onClick={setSelectedNode} />
-        </div>
-
-        {/* Col 6: APIs */}
-        <div className="iad-col" style={{ marginLeft: 14 }}>
-          <Node nodeKey="olbapi" isActive={false} onClick={setSelectedNode} />
-          <Node nodeKey="investapi" isActive={false} onClick={setSelectedNode} />
+          <Node
+            nodeKey="mcp"
+            isActive={activeNodes.has("mcp")}
+            onClick={setSelectedNode}
+          />
         </div>
       </div>
 
       {hasExchange && (
         <div className="iad-exchange-banner">
-          <strong>RFC 8693 Exchange Flow:</strong>{' '}
-          agent1 sends user_token + agent CC token → PingOne issues GW token
-          (aud: mcp-gw.bxf.com, act: agent1) → MCP Gateway re-exchanges →
-          backend token (aud: mcp-olb.bxf.com). Subject preserved throughout.{' '}
-          <RfcLink rfc="RFC_8693" section="§4" />
+          <strong>RFC 8693 Exchange Flow:</strong> BFF sends user token + agent
+          CC token to PingOne, which issues an MCP-scoped token (aud:
+          banking_mcp_server, act: bff-client-id). Subject identity is preserved
+          throughout. <RfcLink rfc="RFC_8693" section="§4" />
         </div>
       )}
 
       <div className="iad-legend">
         {[
-          ['#60a5fa', 'User/Browser'],
-          ['#34d399', 'BFF (OLB App)'],
-          ['#f59e0b', 'Identity Provider'],
-          ['#a78bfa', 'AI Agent'],
-          ['#f472b6', 'LLM'],
-          ['#2dd4bf', 'MCP Server'],
-          ['#94a3b8', 'API / Resource Server'],
+          ["#60a5fa", "User/Browser"],
+          ["#34d399", "BFF / AI Agent"],
+          ["#f59e0b", "Identity Provider (PingOne)"],
+          ["#f472b6", "LLM Provider"],
+          ["#2dd4bf", "MCP Server"],
         ].map(([color, label]) => (
           <div key={label} className="iad-legend-item">
             <div className="iad-legend-dot" style={{ background: color }} />
@@ -182,10 +200,8 @@ export default function InteractiveArchDiagram() {
 
       <div className="iad-rfc-row">
         <span>Standards:</span>
-        <RfcLink rfc="RFC_8693" /> ·{' '}
-        <RfcLink rfc="RFC_7636" /> ·{' '}
-        <RfcLink rfc="MCP_SPEC" /> ·{' '}
-        <RfcLink rfc="RFC_9728" />
+        <RfcLink rfc="RFC_8693" /> · <RfcLink rfc="RFC_7636" /> ·{" "}
+        <RfcLink rfc="MCP_SPEC" /> · <RfcLink rfc="RFC_9728" />
       </div>
     </div>
   );

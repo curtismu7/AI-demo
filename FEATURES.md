@@ -201,6 +201,8 @@ git checkout <last-version-tag> -- <key-file>
 | Interactive Flow diagram — React Flow graph at `/architecture/flow` with draggable nodes, animated edges, live event-driven node highlighting, and 9-step Simulate Flow walkthrough | active | `banking_api_ui/src/components/ArchitectureFlowPage.js` | — |
 | Architecture diagrams — live real-agent token history — real RFC 8693, PingAuthorize, MCP tool, and OAuth events appear as 🔴 LIVE cards in the floating HistoryModal | active | `banking_api_ui/src/components/ArchitectureOverviewPage.js`, `banking_api_ui/src/components/ArchitectureTokenFlowPage.js`, `banking_api_ui/src/components/HistoryModal.js` | — |
 | Admin sidebar — Tests group — PingOne Test, MFA Test, Authz Test, and Resource Server pages grouped under a collapsible Tests section | active | `banking_api_ui/src/components/AdminSideNav.jsx` | — |
+| Admin sidebar — active route highlighting — parent section headers show blue left-border accent when a child route is current; leaf links highlight as before | active | `banking_api_ui/src/components/AdminSideNav.jsx`, `banking_api_ui/src/components/AdminSideNav.css` | — |
+| Admin sidebar — Customer/Admin/Setup quick-nav buttons — horizontal shortcut row at top; Admin/Customer trigger PingOne role-switch auth when role differs | active | `banking_api_ui/src/components/AdminSideNav.jsx`, `banking_api_ui/src/components/AdminSideNav.css` | — |
 
 ---
 
