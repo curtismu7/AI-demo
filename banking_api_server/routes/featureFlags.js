@@ -26,21 +26,8 @@ const configStore = require('../services/configStore');
  *   envVar?: string, warnIfEnabled?: boolean
  * }>} */
 const FLAG_REGISTRY = [
-  // ── PingOne Authorize ──────────────────────────────────────────────────────
-  {
-    id:           'authorize_enabled',
-    name:         'Transaction authorization (master)',
-    category:     'PingOne Authorize',
-    description:
-      'Turn on policy-style evaluation before certain transactions (transfers/withdrawals; deposits optional). ' +
-      'Use **Simulated Authorize** for education (no PingOne credentials), or turn simulation off and set a decision endpoint / policy ID for live PingOne Authorize.',
-    impact:
-      'ON + Simulated → in-process PERMIT/DENY/428 identical HTTP shape to PingOne. ' +
-      'ON + not simulated → calls PingOne (requires worker app + endpoint or policy ID). OFF → no Authorize gate.',
-    type:         'boolean',
-    defaultValue: true,
-    docsUrl:      'https://docs.PingOneentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html',
-  },
+  // ── PingOne Authorize (ALWAYS ON — no toggle) ──────────────────────────────
+  // Authorization is mandatory for security. See transactionAuthorizationService.js for details.
   {
     id:           'ff_authorize_simulated',
     name:         'Simulated Authorize (education)',

@@ -175,10 +175,48 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
   // Use configured provider (Helix, Ollama, etc.) based on langchainConfig
   const selectedProvider = provider === 'auto' ? (langchainConfig?.provider || 'helix') : provider;
 
+  // Try selected provider first for NL intent routing
   if (selectedProvider === 'helix') {
-    // TODO: Implement Helix LLM routing once real API call is added to helixLlmService
-    console.log('[nlIntent] Helix routing not yet implemented (stub only); falling back to heuristic');
-    return { source: 'heuristic', result: heuristicResult };
+    const systemWithCtx = context.role
+      ? `${SYSTEM}\n\nSigned-in user: role=${context.role}${context.firstName ? ', name=' + context.firstName : ''}. ${
+          context.role === 'admin'
+            ? 'Admin users can query ALL accounts and transactions system-wide, not just their own.'
+            : 'This is a regular customer — banking actions apply to their own accounts only.'
+        }`
+      : SYSTEM;
+
+    try {
+      const helixConfig = {
+        helix_base_url: langchainConfig.helix_base_url,
+        helix_api_key: langchainConfig.helix_api_key,
+        helix_environment_id: langchainConfig.helix_environment_id,
+        helix_agent_id: langchainConfig.helix_agent_id,
+      };
+
+      // Check if Helix is configured
+      if (!helixConfig.helix_base_url || !helixConfig.helix_api_key) {
+        console.warn('[nlIntent] Helix not configured; falling back to Ollama');
+      } else {
+        const helixResult = await callHelixAgent(helixConfig, [
+          { role: 'system', content: systemWithCtx },
+          { role: 'user', content: message },
+        ]);
+
+        if (helixResult) {
+          try {
+            const cleaned = helixResult.replace(/^```json\s*/i, '').replace(/```\s*$/m, '').trim();
+            const parsed = JSON.parse(cleaned);
+            if (parsed && typeof parsed === 'object' && parsed.kind) {
+              return { source: 'helix', result: parsed };
+            }
+          } catch (e) {
+            console.warn('[nlIntent] Helix JSON parse failed:', e.message);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[nlIntent] Helix error:', err.message);
+    }
   }
 
   // Default to Ollama (local LLM)
@@ -192,7 +230,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
     return { source: rejected ? 'heuristic' : 'ollama', result };
   }
 
-  // 3. Try Helix for general knowledge questions when banking intent fails
+  // 3. Try Helix for general knowledge questions when banking intent fails (fallback only)
   if (selectedProvider === 'helix' || (selectedProvider === 'auto' && langchainConfig?.provider === 'helix')) {
     const helixAnswer = await answerWithHelix(message, context).catch((e) => {
       console.warn('[nlIntent] Helix fallback failed:', e.message);

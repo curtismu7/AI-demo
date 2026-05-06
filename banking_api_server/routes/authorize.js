@@ -163,7 +163,7 @@ router.post('/bootstrap-demo-endpoints', authenticateToken, async (req, res) => 
         authorize_mcp_decision_endpoint_id: result.mcpEndpointId,
       };
       if (enableLiveAuthorize) {
-        patch.authorize_enabled = 'true';
+        // Authorization is always enabled; just switch from simulated to live PingOne
         patch.ff_authorize_simulated = 'false';
       }
       if (enableMcpFirstTool) {

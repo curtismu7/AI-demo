@@ -79,11 +79,11 @@ async function evaluateTransactionPolicy({
   type,
   acr,
 }) {
-  const AUTHORIZE_ENABLED =
-    (configStore.get('authorize_enabled') === 'true' || configStore.get('authorize_enabled') === true) ||
-    runtimeSettings.get('authorizeEnabled');
-  const AUTHORIZE_DEPOSITS = configStore.get('ff_authorize_deposits') === 'true';
+  // Authorization is ALWAYS ENABLED for security — no ff to disable it.
+  // Either use simulated Authorize (education) or live PingOne (when configured).
   const USE_SIMULATED = simulatedAuthorizeService.isSimulatedModeEnabled(configStore);
+  const AUTHORIZE_ENABLED = true;
+  const AUTHORIZE_DEPOSITS = configStore.get('ff_authorize_deposits') === 'true';
   const AUTHORIZE_DECISION_ENDPOINT_ID = configStore.get('authorize_decision_endpoint_id');
   const AUTHORIZE_POLICY_ID =
     configStore.get('authorize_policy_id') || runtimeSettings.get('authorizePolicyId');

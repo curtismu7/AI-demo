@@ -2,11 +2,22 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+let Database;
+try {
+  Database = require('better-sqlite3');
+} catch (e) {
+  try {
+    Database = require('sqlite'); // Fallback to built-in sqlite
+  } catch (e2) {
+    console.warn('[DataStore] SQLite not available, transaction persistence disabled');
+  }
+}
 const { sampleUsers, sampleAccounts, sampleTransactions, sampleActivityLogs } = require('./sampleData');
 
 const DEFAULT_BOOTSTRAP_PATH = path.join(__dirname, 'bootstrapData.json');
 const RUNTIME_DATA_PATH = path.join(__dirname, 'runtimeData.json');
 const BACKUP_DIR = path.join(__dirname, 'backups');
+const BANKING_DB_PATH = path.join(__dirname, 'persistent', 'banking.db');
 const MAX_BACKUPS = 3;
 const MAX_ACTIVITY_LOGS = 1000;
 const BACKUP_INTERVAL_MS = 15 * 60 * 1000;
@@ -19,7 +30,75 @@ class DataStore {
     this.activityLogs = new Map();
     this._persistPending = false;
     this.initializeData();
+    this._initializeSQLiteTransactions();
     this._startAutoBackup();
+  }
+
+  _initializeSQLiteTransactions() {
+    if (!Database) {
+      console.warn('[DataStore] SQLite not available, skipping transaction persistence');
+      return;
+    }
+
+    try {
+      const dbDir = path.dirname(BANKING_DB_PATH);
+      if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
+
+      const db = new Database(BANKING_DB_PATH);
+
+      // Create transactions table if not exists
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS transactions (
+          id TEXT PRIMARY KEY,
+          userId TEXT NOT NULL,
+          fromAccountId TEXT,
+          toAccountId TEXT,
+          amount REAL NOT NULL,
+          type TEXT NOT NULL,
+          description TEXT,
+          merchant TEXT,
+          category TEXT,
+          status TEXT,
+          createdAt TEXT,
+          updatedAt TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_transactions_userId ON transactions(userId);
+        CREATE INDEX IF NOT EXISTS idx_transactions_createdAt ON transactions(createdAt);
+      `);
+
+      // Check if transactions table is empty, seed if needed
+      const countStmt = db.prepare('SELECT COUNT(*) as cnt FROM transactions');
+      const count = countStmt.get().cnt;
+      if (count === 0) {
+        console.log('[DataStore] Seeding transactions table with sample data...');
+        const stmt = db.prepare(`
+          INSERT INTO transactions (id, userId, fromAccountId, toAccountId, amount, type, description, merchant, category, status, createdAt, updatedAt)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        for (const txn of sampleTransactions) {
+          stmt.run(
+            txn.id,
+            txn.userId,
+            txn.fromAccountId || null,
+            txn.toAccountId || null,
+            txn.amount,
+            txn.type,
+            txn.description || null,
+            txn.merchant || null,
+            txn.category || null,
+            txn.status,
+            txn.createdAt?.toISOString() || null,
+            new Date().toISOString()
+          );
+        }
+        console.log(`[DataStore] Seeded ${sampleTransactions.length} transactions to SQLite`);
+      }
+
+      db.close();
+    } catch (err) {
+      console.warn('[DataStore] SQLite transaction initialization failed:', err.message);
+    }
   }
 
   initializeData() {

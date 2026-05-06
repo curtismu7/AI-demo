@@ -102,74 +102,59 @@ const sampleAccounts = [
   }
 ];
 
-// Sample transactions
-const sampleTransactions = [
-  {
-    id: '1',
-    fromAccountId: '1',
-    toAccountId: '3',
-    amount: 500.00,
-    type: 'transfer',
-    description: 'Payment for services',
-    status: 'completed',
-    createdAt: new Date('2024-03-01T10:30:00Z'),
-    userId: '1'
-  },
-  {
-    id: '2',
-    fromAccountId: '2',
-    toAccountId: null,
-    amount: 1000.00,
-    type: 'withdrawal',
-    description: 'ATM withdrawal',
-    status: 'completed',
-    createdAt: new Date('2024-03-02T14:15:00Z'),
-    userId: '1'
-  },
-  {
-    id: '3',
-    fromAccountId: null,
-    toAccountId: '3',
-    amount: 750.00,
-    type: 'deposit',
-    description: 'Salary deposit',
-    status: 'completed',
-    createdAt: new Date('2024-03-03T09:00:00Z'),
-    userId: '2'
-  },
-  {
-    id: '4',
-    fromAccountId: '3',
-    toAccountId: '5',
-    amount: 200.00,
-    type: 'transfer',
-    description: 'Rent payment',
-    status: 'completed',
-    createdAt: new Date('2024-03-04T16:45:00Z'),
-    userId: '2'
-  },
-  {
-    id: '5',
-    fromAccountId: '5',
-    toAccountId: null,
-    amount: 150.00,
-    type: 'withdrawal',
-    description: 'Grocery shopping',
-    status: 'completed',
-    createdAt: new Date('2024-03-05T11:20:00Z'),
-    userId: '3'
-  },
-  {
-    id: '6',
-    fromAccountId: null,
-    toAccountId: '1',
-    amount: 300.00,
-    type: 'deposit',
-    description: 'Refund',
-    status: 'completed',
-    createdAt: new Date('2024-03-06T13:30:00Z'),
-    userId: '1'
+// Sample transactions with merchant categories for LLM queries
+const transactionMerchants = [
+  // Groceries
+  { name: 'Whole Foods', category: 'groceries', amounts: [45, 67, 89, 120] },
+  { name: 'Trader Joe\'s', category: 'groceries', amounts: [35, 52, 78] },
+  { name: 'Safeway', category: 'groceries', amounts: [40, 65, 95, 110] },
+  // Gas
+  { name: 'Shell Gas', category: 'gas', amounts: [45, 55, 60] },
+  { name: 'Chevron', category: 'gas', amounts: [50, 58, 62] },
+  { name: 'Exxon Mobil', category: 'gas', amounts: [48, 56, 65] },
+  // Dining
+  { name: 'Olive Garden', category: 'dining', amounts: [35, 55, 75] },
+  { name: 'Chipotle', category: 'dining', amounts: [12, 15, 18] },
+  { name: 'Starbucks', category: 'dining', amounts: [5, 7, 9] },
+  { name: 'McDonald\'s', category: 'dining', amounts: [8, 12, 16] },
+  // Retail
+  { name: 'Target', category: 'retail', amounts: [25, 45, 80, 120] },
+  { name: 'Walmart', category: 'retail', amounts: [30, 50, 75, 95] },
+  { name: 'Best Buy', category: 'retail', amounts: [60, 120, 250, 400] },
+];
+
+function generateUserTransactions(userId, startDate = new Date('2026-04-01')) {
+  const txns = [];
+  let id = 1;
+
+  // Generate ~50 transactions for last 30 days
+  for (let i = 0; i < 50; i++) {
+    const merchant = transactionMerchants[Math.floor(Math.random() * transactionMerchants.length)];
+    const days = Math.floor(Math.random() * 30);
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + days);
+
+    txns.push({
+      id: String(id++),
+      fromAccountId: userId === '3' ? '5' : '1',
+      toAccountId: null,
+      amount: merchant.amounts[Math.floor(Math.random() * merchant.amounts.length)],
+      type: 'purchase',
+      description: merchant.name,
+      merchant: merchant.name,
+      category: merchant.category,
+      status: 'completed',
+      createdAt: date,
+      userId
+    });
   }
+  return txns;
+}
+
+const sampleTransactions = [
+  ...generateUserTransactions('1'),
+  ...generateUserTransactions('2'),
+  ...generateUserTransactions('3')
 ];
 
 // Activity logs

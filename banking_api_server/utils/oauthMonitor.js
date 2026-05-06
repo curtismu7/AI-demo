@@ -202,9 +202,17 @@ class OAuthProviderMonitor {
 
   // Periodic health check and logging
   startPeriodicHealthCheck(intervalMs = 300000) { // 5 minutes default
-    setInterval(() => {
+    this.healthCheckInterval = setInterval(() => {
       this.logHealthSummary();
     }, intervalMs);
+  }
+
+  // Stop the periodic health check
+  stop() {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+    }
   }
 }
 
