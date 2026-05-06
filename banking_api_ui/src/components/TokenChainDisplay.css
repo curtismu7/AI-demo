@@ -613,16 +613,16 @@
 .tcd-edu-body li { margin-bottom: 3px; }
 
 .tcd-edu-code {
-  background: #0f172a;
-  color: #DDDDDD;
+  background: #ffffff;
+  color: #1f2937;
   font-size: 12px;
   font-family: inherit;
   padding: 8px 10px;
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  border-top: 1px solid rgba(255,255,255,0.08);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid rgba(0,0,0,0.08);
+  border-bottom: 1px solid rgba(0,0,0,0.08);
   max-height: 100px;
   overflow-y: auto;
 }
@@ -765,7 +765,7 @@ pre.tcd-jwt-dump {
 
 /* ─── Claims panel ───────────────────────────────────────────────────────── */
 .tcd-claims {
-  background: #0f172a;
+  background: #ffffff;
   border: 1px solid rgba(148, 163, 184, 0.25);
   border-radius: 6px;
   overflow: hidden;
@@ -776,9 +776,9 @@ pre.tcd-jwt-dump {
 .tcd-claims-alg {
   font-size: 13px;
   font-weight: 600;
-  color: #94a3b8;
+  color: #1f2937;
   padding: 6px 12px;
-  background: #1e293b;
+  background: #f3f4f6;
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
   letter-spacing: 0.03em;
 }
@@ -1519,9 +1519,9 @@ pre.tcd-jwt-dump {
 }
 
 .tcd-mcp-result-json {
-  background: #0f172a;
-  color: #e2e8f0;
-  border: 1px solid #1e293b;
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid #d1d5db;
   border-radius: 6px;
   padding: 10px;
   font-size: 0.75rem;

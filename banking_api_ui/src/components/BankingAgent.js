@@ -1645,7 +1645,7 @@ export default function BankingAgent({
       const saved = localStorage.getItem("banking-agent-open");
       if (saved !== null) return saved === "true";
     } catch {}
-    return true;
+    return false;
   });
   /** Panel light/dark: default follows page (`auto`); can override in header. */
   const isDark = effectiveAgentTheme === "dark";
@@ -5108,14 +5108,15 @@ export default function BankingAgent({
         body: JSON.stringify({ message: text, provider: selectedLlmProvider }),
         signal: AbortSignal.timeout(15000),
       });
-      const { result: _nlResult } = await _nlRes.json().catch(() => ({
+      const { result: _nlResult, source: _nlSource } = await _nlRes.json().catch(() => ({
         result: {
           kind: "none",
           message:
             'Could not parse request. Try: "show my accounts" or "transfer $100 to savings".',
         },
+        source: "heuristic",
       }));
-      await dispatchNlResult(_nlResult, "nl", text);
+      await dispatchNlResult(_nlResult, _nlSource || "heuristic", text);
     } catch (err) {
       reportNlFailure(err);
     } finally {
@@ -7327,6 +7328,7 @@ export default function BankingAgent({
                       <div
                         key={msg.id}
                         className={`banking-agent-msg ${msg.role}`}
+                        data-source={msg.source}
                       >
                         {msg.role === "user" && (
                           <span
@@ -7349,15 +7351,22 @@ export default function BankingAgent({
                             />
                           </span>
                         )}
-                        <div
-                          className={`banking-agent-msg-bubble${msg.tool ? " banking-agent-msg-bubble--tool-result" : ""}`}
-                        >
-                          <MessageContent text={msg.content} />
-                          {msg.tool && (
-                            <span className="banking-agent-tool-badge">
-                              ⚙ {msg.tool}
-                            </span>
+                        <div>
+                          {msg.source && msg.source !== 'heuristic' && (
+                            <div className="banking-agent-msg-label">
+                              Using {msg.source === 'helix' ? 'Helix' : msg.source === 'ollama' ? 'Ollama' : msg.source}
+                            </div>
                           )}
+                          <div
+                            className={`banking-agent-msg-bubble${msg.tool ? " banking-agent-msg-bubble--tool-result" : ""}`}
+                          >
+                            <MessageContent text={msg.content} />
+                            {msg.tool && (
+                              <span className="banking-agent-tool-badge">
+                                ⚙ {msg.tool}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
