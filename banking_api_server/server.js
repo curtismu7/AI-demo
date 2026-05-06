@@ -2038,11 +2038,25 @@ if (require.main === module) {
             cert: fs.readFileSync(certFile),
         }, app).listen(PORT, () => {
             console.log(`Banking API server (HTTPS) running on https://api.pingdemo.com:${PORT}`);
+            // Check HITL status
+            const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
+            if (!hitlEnabled) {
+              console.warn('\n⚠️  [SECURITY WARNING] HITL (Human-in-the-Loop) consent enforcement is DISABLED.');
+              console.warn('   → High-value transactions will NOT require human approval.');
+              console.warn('   → Enable it at /admin/config (ff_hitl_enabled: true) or set FF_HITL_ENABLED=true.\n');
+            }
         });
     } else {
         server = app.listen(PORT, () => {
             console.log(`Banking API server running on https://api.pingdemo.com:3001 (local port ${PORT})`);
             console.log('Tip: run mkcert in Banking/certs/ to enable HTTPS (see run-bank.sh)');
+            // Check HITL status
+            const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
+            if (!hitlEnabled) {
+              console.warn('\n⚠️  [SECURITY WARNING] HITL (Human-in-the-Loop) consent enforcement is DISABLED.');
+              console.warn('   → High-value transactions will NOT require human approval.');
+              console.warn('   → Enable it at /admin/config (ff_hitl_enabled: true) or set FF_HITL_ENABLED=true.\n');
+            }
         });
     }
 

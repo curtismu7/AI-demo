@@ -426,6 +426,9 @@ router.post('/', authenticateToken, async (req, res) => {
       acr: req.user.acr,
     });
 
+    console.log(`[DEBUG-TXN] authz result: ran=${authz.ran}, block=${!!authz.block}, permit=${authz.permit}, reason=${authz.reason}`);
+    if (authz.block) console.log(`[DEBUG-TXN] authz.block: status=${authz.block.status}, error=${authz.block.body?.error}`);
+
     if (authz.ran) {
       if (authz.block) {
         const { body } = authz.block;
