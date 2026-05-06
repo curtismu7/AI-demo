@@ -18,6 +18,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- `EDUCATION_REFRESH_PROMPT.md` — agent prompt for keeping education panels current (RFCs, LLM models, frameworks); Setup page now surfaces it with usage instructions.
+
 - **Sidebar active highlighting and quick-nav shortcuts** — parent section headers show a blue left-border accent when any child route is active; Customer/Admin/Setup shortcut buttons added at top of sidebar (horizontal, white/dark); Admin and Customer buttons trigger PingOne role-switch auth when role differs; architecture diagrams corrected (LangGraph not LangChain, accurate LLM providers, real MCP server details).
 - **Education panels refresh** — updated LLM Landscape (Claude 4 family, Gemini 2.5 Pro/2.0 Flash, Llama 4, Qwen 3, Gemma 3, MoE and extended thinking sections); added n8n to Agent Builder Landscape; added "← All Standards" back-nav on IETF Standards RFC tabs; widened agentic-trust page to 1280px; converted da-sim modal to light theme; EducationDrawer now supports render-function tab content for programmatic navigation.
 - **Actions Popout Redesign — Modern list-item layout with RFC badges** — redesigned Actions popout from pill-chip rows to modern vertical list-item layout with action name, description, and RFC number badges; each action shows which OAuth/security RFCs it triggers (e.g., RFC 8693, RFC 7515, RFC 9470); improved visual hierarchy and clarity for users to understand security protocols before executing actions.
