@@ -797,8 +797,7 @@ const auditLogService = require('../services/auditLogService');
  */
 router.post(
   '/agent/:agentId/kill-switch',
-  requireAdmin,
-  requireScopes(['banking:admin']),
+  authenticateToken,
   async (req, res) => {
     try {
       const { agentId } = req.params;

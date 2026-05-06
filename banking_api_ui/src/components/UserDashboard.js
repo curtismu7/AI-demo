@@ -517,6 +517,14 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         { pathname: location.pathname, search: location.search },
         { replace: true, state: {} },
       );
+      return;
+    }
+    if (st.resetDemo) {
+      notifySuccess("Demo reset. All agent history and audit logs cleared.");
+      navigate(
+        { pathname: location.pathname, search: location.search },
+        { replace: true, state: {} },
+      );
     }
   }, [location.state, location.pathname, location.search, navigate]);
 
@@ -1353,7 +1361,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       setTransferForm({ toAccountId: "", amount: "", description: "" });
       setSelectedAccount(null);
       await fetchUserData();
-      window.dispatchEvent(new CustomEvent("banking-transaction-completed", { detail: { type: "transfer" } }));
+      window.dispatchEvent(
+        new CustomEvent("banking-transaction-completed", {
+          detail: { type: "transfer" },
+        }),
+      );
 
       notifySuccess("Transfer completed successfully!");
     } catch (error) {
@@ -1382,11 +1394,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         setCibaStatus("idle");
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        const scopeError = d?.error === 'insufficient_scope';
+        const scopeError = d?.error === "insufficient_scope";
         if (scopeError) {
-          const requiredScope = d?.required_scope || 'banking:write';
+          const requiredScope = d?.required_scope || "banking:write";
           const userScopes = d?.user_scopes || [];
-          const userScopesStr = userScopes.length > 0 ? userScopes.join(', ') : '(none)';
+          const userScopesStr =
+            userScopes.length > 0 ? userScopes.join(", ") : "(none)";
           notifyError(
             `Insufficient scope: This action requires '${requiredScope}' scope.\nYour token has: ${userScopesStr}\nRe-authenticate to request additional scopes.`,
             5000,
@@ -1447,7 +1460,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       setDepositForm({ amount: "", description: "" });
       setDepositAccount(null);
       await fetchUserData();
-      window.dispatchEvent(new CustomEvent("banking-transaction-completed", { detail: { type: "deposit" } }));
+      window.dispatchEvent(
+        new CustomEvent("banking-transaction-completed", {
+          detail: { type: "deposit" },
+        }),
+      );
 
       notifySuccess("Deposit completed successfully!");
     } catch (error) {
@@ -1475,11 +1492,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         setCibaStatus("idle");
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        const scopeError = d?.error === 'insufficient_scope';
+        const scopeError = d?.error === "insufficient_scope";
         if (scopeError) {
-          const requiredScope = d?.required_scope || 'banking:write';
+          const requiredScope = d?.required_scope || "banking:write";
           const userScopes = d?.user_scopes || [];
-          const userScopesStr = userScopes.length > 0 ? userScopes.join(', ') : '(none)';
+          const userScopesStr =
+            userScopes.length > 0 ? userScopes.join(", ") : "(none)";
           notifyError(
             `Insufficient scope: This action requires '${requiredScope}' scope.\nYour token has: ${userScopesStr}\nRe-authenticate to request additional scopes.`,
             5000,
@@ -1545,7 +1563,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       setWithdrawForm({ amount: "", description: "" });
       setWithdrawAccount(null);
       await fetchUserData();
-      window.dispatchEvent(new CustomEvent("banking-transaction-completed", { detail: { type: "withdrawal" } }));
+      window.dispatchEvent(
+        new CustomEvent("banking-transaction-completed", {
+          detail: { type: "withdrawal" },
+        }),
+      );
 
       notifySuccess("Withdrawal completed successfully!");
     } catch (error) {
@@ -1573,11 +1595,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         setCibaStatus("idle");
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        const scopeError = d?.error === 'insufficient_scope';
+        const scopeError = d?.error === "insufficient_scope";
         if (scopeError) {
-          const requiredScope = d?.required_scope || 'banking:write';
+          const requiredScope = d?.required_scope || "banking:write";
           const userScopes = d?.user_scopes || [];
-          const userScopesStr = userScopes.length > 0 ? userScopes.join(', ') : '(none)';
+          const userScopesStr =
+            userScopes.length > 0 ? userScopes.join(", ") : "(none)";
           notifyError(
             `Insufficient scope: This action requires '${requiredScope}' scope.\nYour token has: ${userScopesStr}\nRe-authenticate to request additional scopes.`,
             5000,

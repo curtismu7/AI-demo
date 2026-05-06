@@ -738,15 +738,6 @@ export default function AdminSideNav({ user }) {
         {collapsed ? "→" : "←"}
       </button>
 
-      {/* Role badge — always visible at top of sidebar */}
-      {!collapsed && (
-        <div
-          className={`admin-side-nav__role-badge admin-side-nav__role-badge--${isAdmin ? "admin" : "customer"}`}
-        >
-          {isAdmin ? "🛡 ADMIN" : "👤 CUSTOMER"}
-        </div>
-      )}
-
       {/* Navigation Menu */}
       <nav className="admin-side-nav__menu">
         {/* Quick-access shortcuts */}

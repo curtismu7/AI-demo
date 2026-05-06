@@ -209,8 +209,8 @@ export default function AuthorizeConfigPage() {
                   placeholder="500"
                 />
                 <span className="azc-field-hint">
-                  Transactions at/above this amount require elevated authentication (MFA)
-                  plus consent. Default: 500
+                  Transactions at/above this amount require elevated
+                  authentication (MFA) plus consent. Default: 500
                 </span>
               </label>
 
@@ -276,7 +276,8 @@ export default function AuthorizeConfigPage() {
             <ol className="azc-rules-list">
               <li>
                 <strong>Hard Deny:</strong> Transactions exceeding the deny
-                threshold (default $2000) are immediately rejected (DENY decision)
+                threshold (default $2000) are immediately rejected (DENY
+                decision)
               </li>
               <li>
                 <strong>Consent + MFA (Step-Up):</strong> Transactions at/above
@@ -285,8 +286,8 @@ export default function AuthorizeConfigPage() {
               </li>
               <li>
                 <strong>Confirmation (Consent Only):</strong> Transactions
-                between the confirm threshold (default $250) and step-up threshold
-                require user confirmation/consent only (no MFA)
+                between the confirm threshold (default $250) and step-up
+                threshold require user confirmation/consent only (no MFA)
               </li>
               <li>
                 <strong>Default Permit:</strong> Transactions below $250 are
@@ -345,6 +346,33 @@ export default function AuthorizeConfigPage() {
               <li>Return here to verify the configuration is recognized</li>
             </ol>
           </div>
+
+          <div className="azc-section">
+            <h4>PingOne Authorize Export</h4>
+            <p className="azc-description">
+              Download this pre-built PingOne Authorize export and import it
+              into your PingOne environment to provision the Super Banking
+              policies, rules, conditions, and attributes. Includes the{" "}
+              <strong>Super Banking Transaction Authorization</strong> and{" "}
+              <strong>Super Banking MCP Delegation Authorization</strong>{" "}
+              policies, wired to the correct Trust Framework parameters (
+              <code>UserId</code>, <code>Amount</code>,{" "}
+              <code>TransactionType</code>, <code>Acr</code>,{" "}
+              <code>Timestamp</code>).
+            </p>
+            <a
+              className="azc-download-btn"
+              href="/downloads/Super_Banking_Authorize_Dashboard.json"
+              download="Super_Banking_Authorize_Dashboard.json"
+            >
+              Download PingOne Authorize Export (JSON)
+            </a>
+            <p className="azc-field-hint" style={{ marginTop: "0.5rem" }}>
+              Import into PingOne Console → Authorize → Policies → Import. After
+              import, create decision endpoints linked to each policy and add
+              the endpoint IDs to your environment variables.
+            </p>
+          </div>
         </div>
       )}
 
@@ -391,8 +419,8 @@ export default function AuthorizeConfigPage() {
             <h3>Audience (Resource Indicator)</h3>
             <p className="azc-description">
               The resource indicator (aud claim) restricts tokens to a specific
-              service. Tokens requested for MCP operations include the MCP server
-              URI.
+              service. Tokens requested for MCP operations include the MCP
+              server URI.
             </p>
 
             <div className="azc-info-grid">
@@ -403,8 +431,9 @@ export default function AuthorizeConfigPage() {
             </div>
 
             <p className="azc-description">
-              Set <code>PINGONE_RESOURCE_MCP_SERVER_URI</code> in app configuration to enable MCP token
-              exchange with resource indicator.
+              Set <code>PINGONE_RESOURCE_MCP_SERVER_URI</code> in app
+              configuration to enable MCP token exchange with resource
+              indicator.
             </p>
           </div>
         </div>

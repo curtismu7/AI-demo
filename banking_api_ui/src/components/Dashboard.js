@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { getCachedJson } from "../services/cachedStatusService";
 import {
@@ -29,6 +30,8 @@ import ThresholdControls from "./ThresholdControls";
 const Dashboard = ({ user, onLogout }) => {
   // Fetch and display current user token in the token chain
   useCurrentUserTokenEvent();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { placement: agentPlacement } = useAgentUiMode();
   const { open } = useEducationUI();
   const [stats, setStats] = useState(null);
@@ -322,6 +325,13 @@ const Dashboard = ({ user, onLogout }) => {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  useEffect(() => {
+    if (!location.state?.resetDemoSuccess) return;
+    notifySuccess("Demo reset. All agent history and audit logs cleared.");
+    navigate(location.pathname, { replace: true, state: {} });
+    fetchDashboardData();
+  }, [location.state, location.pathname, navigate, fetchDashboardData]);
 
   const handleLookupUserTransactions = useCallback(
     async (e) => {
