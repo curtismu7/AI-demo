@@ -373,17 +373,6 @@ router.post('/', authenticateToken, async (req, res) => {
       // Use the authenticated user's ID
       req.body.userId = req.user.id;
     }
-    
-    // Check if from account has sufficient balance (only for withdrawals and transfers)
-    if (fromAccountId && (type === 'withdrawal' || type === 'transfer')) {
-      const fromAccount = dataStore.getAccountById(fromAccountId);
-      if (!fromAccount) {
-        return res.status(404).json({ error: 'From account not found' });
-      }
-      if (fromAccount.balance < amount) {
-        return res.status(400).json({ error: 'Insufficient balance' });
-      }
-    }
 
     // ── Scope validation ──────────────────────────────────────────────────────
     // Write operations (transfer, deposit, withdrawal) require banking:write scope.
@@ -503,6 +492,18 @@ router.post('/', authenticateToken, async (req, res) => {
         { tag: 'authorize/gate-skipped', metadata: { reason: authz.reason, type, userId: req.user?.id } });
     }
     // ── End Authorize gate ────────────────────────────────────────────────────
+
+    // Check if from account has sufficient balance (AFTER authorization)
+    // This allows HITL/deny/step-up gates to run first, regardless of balance
+    if (fromAccountId && (type === 'withdrawal' || type === 'transfer')) {
+      const fromAccount = dataStore.getAccountById(fromAccountId);
+      if (!fromAccount) {
+        return res.status(404).json({ error: 'From account not found' });
+      }
+      if (fromAccount.balance < amount) {
+        return res.status(400).json({ error: 'Insufficient balance' });
+      }
+    }
 
     // For transfers, create two separate transactions
     if (type === 'transfer') {

@@ -97,17 +97,21 @@ async function evaluateTransactionPolicy({
     return { ran: false, reason: 'authorize_disabled' };
   }
   if (userRole === 'admin') {
+    console.log('[AuthZ] Skipping admin user');
     return { ran: false, reason: 'admin_role_exempt' };
   }
   if (!AUTHORIZE_TYPES.includes(type)) {
+    console.log(`[AuthZ] Type ${type} not in scope`);
     return { ran: false, reason: 'type_not_in_scope' };
   }
   if (!USE_SIMULATED && !PINGONE_READY) {
+    console.log(`[AuthZ] Not configured: USE_SIMULATED=${USE_SIMULATED}, PINGONE_READY=${PINGONE_READY}`);
     return { ran: false, reason: 'not_configured' };
   }
 
   try {
     if (USE_SIMULATED) {
+      console.log(`[AuthZ] Running simulated for ${type} $${amount}`);
       const r = await simulatedAuthorizeService.evaluateTransaction({
         userId,
         amount,
@@ -115,7 +119,10 @@ async function evaluateTransactionPolicy({
         acr,
       });
 
+      console.log(`[AuthZ] Result: decision=${r.decision}, consentRequired=${r.consentRequired}, stepUpRequired=${r.stepUpRequired}`);
+
       if (r.consentRequired) {
+        console.log(`[AuthZ] Blocking with HITL_CONSENT`);
         return { ran: true, block: { status: 428, body: buildConsentBody() } };
       }
 

@@ -308,7 +308,7 @@ router.post('/test-evaluate', async (req, res) => {
         ok: true,
         decision: result.decision,
         stepUpRequired: result.stepUpRequired,
-        hitlRequired: result.hitlRequired || false,
+        consentRequired: result.consentRequired || false,
         engine: 'simulated',
         path: result.path,
         decisionId: result.decisionId,

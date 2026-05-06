@@ -1415,7 +1415,11 @@ function MessageContent({ text, isTokenEvent }) {
       if (match) {
         const [, type, content] = match;
         const nextLine = lines[i + 1]?.trim();
-        const isDateLike = nextLine && /^\d{4}-\d{2}-\d{2}|^\d{1,2}\/\d{1,2}\/\d{4}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/.test(nextLine);
+        const isDateLike =
+          nextLine &&
+          /^\d{4}-\d{2}-\d{2}|^\d{1,2}\/\d{1,2}\/\d{4}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/.test(
+            nextLine,
+          );
         const date = isDateLike ? nextLine : "--";
         rows.push({ type, content, date });
         i += 2;
@@ -3652,7 +3656,7 @@ export default function BankingAgent({
               `Attempting transfer of $${APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER} from ${testFrom.name || testFrom.type} → ${testTo.name || testTo.type}`,
               "",
               "Expected flow:",
-              "  1. Consent modal appears (HITL gate triggers at $500+)",
+              "  1. Consent modal appears (HITL gate triggers at $250+)",
               "  2. Review transaction details and check 'I agree'",
               "  3. Click 'Agree & send code'",
               "  4. Device selection modal appears (select OTP or FIDO2)",
@@ -3661,12 +3665,43 @@ export default function BankingAgent({
             ].join("\n"),
             actionId,
           );
-          response = await createTransfer(
-            testFrom.id,
-            testTo.id,
-            APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER,
-            "HITL + MFA test",
-          );
+          try {
+            // Call HTTP endpoint directly (not MCP) to trigger authorization + HITL
+            const httpRes = await fetch("/api/transactions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                fromAccountId: testFrom.id,
+                toAccountId: testTo.id,
+                amount: APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER,
+                type: "transfer",
+                description: "HITL + MFA test",
+              }),
+            });
+            const httpBody = await httpRes.json();
+            console.log(
+              "[Transfer600Test] HTTP Transfer status:",
+              httpRes.status,
+            );
+            console.log("[Transfer600Test] HTTP Transfer body:", httpBody);
+            response = { result: httpBody, status: httpRes.status };
+
+            // If 428 (HITL) or 403 (deny), format as error result for normalizeAgentToolResult
+            if (httpRes.status === 428 || httpRes.status === 403) {
+              response.result = {
+                ok: false,
+                error: httpBody.error,
+                ...httpBody,
+              };
+            }
+          } catch (err) {
+            console.error("[Transfer600Test] Transfer failed:", err);
+            addMessage("assistant", `Error: ${err.message}`);
+            toast.dismiss(toastId);
+            setLoading(false);
+            return;
+          }
           // Falls through to normalizeAgentToolResult — HITL gate fires there and shows consent modal
           break;
         }
@@ -3798,22 +3833,39 @@ export default function BankingAgent({
           );
           try {
             // Call HTTP endpoint directly (not MCP) to trigger authorization + HITL
-            const httpRes = await fetch('/api/transactions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
+            const httpRes = await fetch("/api/transactions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
               body: JSON.stringify({
                 fromAccountId: compFrom.id,
                 toAccountId: compTo.id,
                 amount: APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER,
-                type: 'transfer',
-                description: ' Full compliance scenario test',
+                type: "transfer",
+                description: " Full compliance scenario test",
               }),
             });
-            response = { result: await httpRes.json(), status: httpRes.status };
-            console.log('[FullCompliance] HTTP Transfer response:', response);
+            const httpBody = await httpRes.json();
+            console.log(
+              "[FullCompliance] HTTP Transfer status:",
+              httpRes.status,
+            );
+            console.log("[FullCompliance] HTTP Transfer body:", httpBody);
+            response = { result: httpBody, status: httpRes.status };
+
+            // If 428 (HITL) or 403 (deny), need to format as error result for normalizeAgentToolResult
+            if (httpRes.status === 428 || httpRes.status === 403) {
+              response.result = {
+                ok: false,
+                error: httpBody.error,
+                ...httpBody,
+              };
+              console.log(
+                "[FullCompliance] Formatted as error response for HITL/deny",
+              );
+            }
           } catch (err) {
-            console.error('[FullCompliance] Transfer failed:', err);
+            console.error("[FullCompliance] Transfer failed:", err);
             addMessage("assistant", `Error: ${err.message}`);
             toast.dismiss(toastId);
             setLoading(false);
@@ -5952,38 +6004,40 @@ export default function BankingAgent({
                         {chipGroupsState["session"] ? "▼" : "▶"} Session
                       </button>
                       {chipGroupsState["session"] && (
-                      <div className="ba-popout-list">
-                        <button
-                          type="button"
-                          className="ba-popout-list-item"
-                          onClick={() => {
-                            setShowDiscovery(false);
-                            void handleSessionRefresh();
-                          }}
-                          disabled={
-                            sessionRefreshing || loading || consentBlocked
-                          }
-                          title="Refresh your access token using PingOne refresh token"
-                        >
-                          <span className="ba-popout-item-name">
-                            {sessionRefreshing
-                              ? "Refreshing…"
-                              : "Refresh token"}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          className="ba-popout-list-item"
-                          onClick={() => {
-                            setShowDiscovery(false);
-                            onLogout?.();
-                          }}
-                          disabled={loading}
-                          title="Sign out of your session"
-                        >
-                          <span className="ba-popout-item-name">Sign out</span>
-                        </button>
-                      </div>
+                        <div className="ba-popout-list">
+                          <button
+                            type="button"
+                            className="ba-popout-list-item"
+                            onClick={() => {
+                              setShowDiscovery(false);
+                              void handleSessionRefresh();
+                            }}
+                            disabled={
+                              sessionRefreshing || loading || consentBlocked
+                            }
+                            title="Refresh your access token using PingOne refresh token"
+                          >
+                            <span className="ba-popout-item-name">
+                              {sessionRefreshing
+                                ? "Refreshing…"
+                                : "Refresh token"}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            className="ba-popout-list-item"
+                            onClick={() => {
+                              setShowDiscovery(false);
+                              onLogout?.();
+                            }}
+                            disabled={loading}
+                            title="Sign out of your session"
+                          >
+                            <span className="ba-popout-item-name">
+                              Sign out
+                            </span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -5997,92 +6051,95 @@ export default function BankingAgent({
                         {chipGroupsState["view"] ? "▼" : "▶"} View
                       </button>
                       {chipGroupsState["view"] && (
-                      <div className="ba-popout-list">
-                        <button
-                          type="button"
-                          className={`ba-popout-list-item${showRfcInfo ? " active" : ""}`}
-                          onClick={() => setShowRfcInfo((v) => !v)}
-                          aria-label={
-                            showRfcInfo ? "Hide RFC info" : "Show RFC info"
-                          }
-                          title={
-                            showRfcInfo
-                              ? "Hide RFC info messages"
-                              : "Show RFC info messages"
-                          }
-                        >
-                          <span className="ba-popout-item-name">
-                            {showRfcInfo ? "RFC info on" : "RFC info off"}
-                          </span>
-                        </button>
-                        {(!isInline || showPopOut) && (
+                        <div className="ba-popout-list">
                           <button
                             type="button"
-                            className="ba-popout-list-item"
-                            onClick={() => {
-                              setShowDiscovery(false);
-                              const calculateOptimalSize = () => {
-                                const screenWidth = window.screen.width;
-                                const screenHeight = window.screen.height;
-                                const minWidth = 420;
-                                const minHeight = 500;
-                                const maxWidth = Math.min(
-                                  800,
-                                  screenWidth * 0.8,
-                                );
-                                const maxHeight = Math.min(
-                                  900,
-                                  screenHeight * 0.8,
-                                );
-                                const width = Math.max(
-                                  minWidth,
-                                  Math.min(maxWidth, panelSize.width || 420),
-                                );
-                                let height = Math.max(
-                                  minHeight,
-                                  Math.min(maxHeight, panelSize.height || 500),
-                                );
-                                const messageCount = messages.length;
-                                if (messageCount > 10) {
-                                  height = Math.min(
-                                    maxHeight,
-                                    height + (messageCount - 10) * 30,
-                                  );
-                                }
-                                const left = Math.max(
-                                  50,
-                                  Math.min(
-                                    screenWidth - width - 50,
-                                    window.screenX + 100,
-                                  ),
-                                );
-                                const top = Math.max(
-                                  50,
-                                  Math.min(
-                                    screenHeight - height - 50,
-                                    window.screenY + 100,
-                                  ),
-                                );
-                                return { width, height, left, top };
-                              };
-                              const { width, height, left, top } =
-                                calculateOptimalSize();
-                              window.open(
-                                "/agent",
-                                "BankingAgent",
-                                `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,popup=yes,status=no`,
-                              );
-                              onPopout?.();
-                            }}
-                            title="Open agent in new window"
-                            aria-label="Open agent in new window"
+                            className={`ba-popout-list-item${showRfcInfo ? " active" : ""}`}
+                            onClick={() => setShowRfcInfo((v) => !v)}
+                            aria-label={
+                              showRfcInfo ? "Hide RFC info" : "Show RFC info"
+                            }
+                            title={
+                              showRfcInfo
+                                ? "Hide RFC info messages"
+                                : "Show RFC info messages"
+                            }
                           >
                             <span className="ba-popout-item-name">
-                              ⧉ New window
+                              {showRfcInfo ? "RFC info on" : "RFC info off"}
                             </span>
                           </button>
-                        )}
-                      </div>
+                          {(!isInline || showPopOut) && (
+                            <button
+                              type="button"
+                              className="ba-popout-list-item"
+                              onClick={() => {
+                                setShowDiscovery(false);
+                                const calculateOptimalSize = () => {
+                                  const screenWidth = window.screen.width;
+                                  const screenHeight = window.screen.height;
+                                  const minWidth = 420;
+                                  const minHeight = 500;
+                                  const maxWidth = Math.min(
+                                    800,
+                                    screenWidth * 0.8,
+                                  );
+                                  const maxHeight = Math.min(
+                                    900,
+                                    screenHeight * 0.8,
+                                  );
+                                  const width = Math.max(
+                                    minWidth,
+                                    Math.min(maxWidth, panelSize.width || 420),
+                                  );
+                                  let height = Math.max(
+                                    minHeight,
+                                    Math.min(
+                                      maxHeight,
+                                      panelSize.height || 500,
+                                    ),
+                                  );
+                                  const messageCount = messages.length;
+                                  if (messageCount > 10) {
+                                    height = Math.min(
+                                      maxHeight,
+                                      height + (messageCount - 10) * 30,
+                                    );
+                                  }
+                                  const left = Math.max(
+                                    50,
+                                    Math.min(
+                                      screenWidth - width - 50,
+                                      window.screenX + 100,
+                                    ),
+                                  );
+                                  const top = Math.max(
+                                    50,
+                                    Math.min(
+                                      screenHeight - height - 50,
+                                      window.screenY + 100,
+                                    ),
+                                  );
+                                  return { width, height, left, top };
+                                };
+                                const { width, height, left, top } =
+                                  calculateOptimalSize();
+                                window.open(
+                                  "/agent",
+                                  "BankingAgent",
+                                  `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,popup=yes,status=no`,
+                                );
+                                onPopout?.();
+                              }}
+                              title="Open agent in new window"
+                              aria-label="Open agent in new window"
+                            >
+                              <span className="ba-popout-item-name">
+                                ⧉ New window
+                              </span>
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
