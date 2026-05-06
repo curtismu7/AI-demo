@@ -29,6 +29,7 @@ export default function AuthorizeConfigPage() {
       const res = await fetch(`${API_BASE}/api/admin/authorize/config`, {
         credentials: "include",
       });
+      if (res.status === 403) throw new Error("admin_required");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
     } catch (e) {
@@ -93,7 +94,14 @@ export default function AuthorizeConfigPage() {
   if (error)
     return (
       <div className="azc-error">
-        Error: {error} <button onClick={fetchConfig}>Retry</button>
+        {error === "admin_required"
+          ? "This section requires an admin session. Log in as an admin user to access Authorize configuration."
+          : `Error: ${error}`}
+        {error !== "admin_required" && (
+          <button type="button" onClick={fetchConfig}>
+            Retry
+          </button>
+        )}
       </div>
     );
 
