@@ -3624,13 +3624,21 @@ export default function BankingAgent({
           });
           const testAccounts =
             liveAccounts && liveAccounts.length >= 2 ? liveAccounts : null;
+          // Find account with sufficient balance for $600 transfer (prioritize savings over checking)
           const testFrom =
             testAccounts?.find(
-              (a) => a.type === "checking" || a.type === "chk",
-            ) || testAccounts?.[0];
+              (a) => (a.type === "savings" || a.type === "sav") && a.balance >= 600,
+            ) ||
+            testAccounts?.find(
+              (a) => (a.type === "checking" || a.type === "chk") && a.balance >= 600,
+            ) ||
+            testAccounts?.find((a) => a.balance >= 600) ||
+            testAccounts?.[0];
           const testTo =
             testAccounts?.find(
               (a) => a.type === "savings" || a.type === "sav",
+            ) || testAccounts?.find(
+              (a) => a.type === "checking" || a.type === "chk",
             ) || testAccounts?.[1];
           if (!testFrom || !testTo) {
             addMessage(
@@ -3782,13 +3790,21 @@ export default function BankingAgent({
           });
           const compAccounts =
             liveAccounts && liveAccounts.length >= 2 ? liveAccounts : null;
+          // Find account with sufficient balance for $600 transfer (prioritize savings over checking)
           const compFrom =
             compAccounts?.find(
-              (a) => a.type === "checking" || a.type === "chk",
-            ) || compAccounts?.[0];
+              (a) => (a.type === "savings" || a.type === "sav") && a.balance >= 600,
+            ) ||
+            compAccounts?.find(
+              (a) => (a.type === "checking" || a.type === "chk") && a.balance >= 600,
+            ) ||
+            compAccounts?.find((a) => a.balance >= 600) ||
+            compAccounts?.[0];
           const compTo =
             compAccounts?.find(
               (a) => a.type === "savings" || a.type === "sav",
+            ) || compAccounts?.find(
+              (a) => a.type === "checking" || a.type === "chk",
             ) || compAccounts?.[1];
           if (!compFrom || !compTo) {
             addMessage(
