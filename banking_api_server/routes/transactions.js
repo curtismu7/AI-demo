@@ -411,7 +411,9 @@ router.post('/', authenticateToken, async (req, res) => {
     // ── Authorization (PingOne Authorize or simulated) — runs first, owns all decisions ──
     // Authorize decides: allow | deny | hitl_required{type} | step_up_required.
     // ff_hitl_enabled=false skips consent enforcement but not deny/step-up.
-    const AUTHORIZE_FAIL_OPEN = configStore.get('ff_authorize_fail_open') !== 'false'; // default true
+    // Authorization is ALWAYS ENFORCED — errors are fail-closed by default.
+    // Only set ff_authorize_fail_open=true to bypass on error (security risk).
+    const AUTHORIZE_FAIL_OPEN = configStore.get('ff_authorize_fail_open') === 'true'; // default false (fail-closed)
     const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
     const hitlAmount = parseFloat(req.body.amount);
     /** @type {object|null} */

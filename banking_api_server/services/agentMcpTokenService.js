@@ -1532,8 +1532,15 @@ async function _resolveFinalMcpAudience(gatewayAud, mcpServerAud) {
     console.log(`[TwoExchange] Gateway health probe: devBypass=${devBypass} → finalAud=${devBypass ? mcpServerAud : gatewayAud}`);
     return devBypass ? mcpServerAud : gatewayAud;
   } catch (err) {
-    // Gateway unreachable — treat as bypass, fall back to mcp-server audience
-    console.warn(`[TwoExchange] Gateway health probe failed (${err.message}) — falling back to mcp-server audience`);
+    // Gateway unreachable — check if bypass is explicitly allowed
+    const allowBypass = configStore.get('ff_mcp_gateway_required') === 'false';
+    if (!allowBypass) {
+      // Gateway is required and health probe failed — fail closed
+      console.error(`[TwoExchange] Gateway health probe failed (${err.message}) and MCP Gateway is required (ff_mcp_gateway_required defaults true).`);
+      throw new Error(`MCP Gateway unavailable and bypass not permitted. ${err.message}`);
+    }
+    // Explicitly allowed to bypass gateway on error
+    console.warn(`[TwoExchange] Gateway health probe failed (${err.message}) — bypassing gateway (ff_mcp_gateway_required=false)`);
     _bypassCache = { devBypass: true, ts: now };
     return mcpServerAud;
   }

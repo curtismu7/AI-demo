@@ -329,19 +329,20 @@ export class BankingAPIClient {
       );
       return response.data;
     } catch (error: any) {
-      // 428 step_up_required — extract body so BankingToolProvider can handle it gracefully
+      // 428 HITL/step-up required — extract body so BankingToolProvider can handle it gracefully
       const status = error?.statusCode ?? error?.response?.status;
       if (status === 428) {
         const body = error?.originalError?.response?.data;
-        if (body && body.step_up_required) {
+        // If body is accessible, return it (contains error, hitl_required, step_up_required, etc.)
+        if (body) {
           return body as Record<string, unknown>;
         }
         // Fallback if body not accessible via originalError
         return {
           ok: false,
-          step_up_required: true,
-          error: 'step_up_required',
-          step_up_method: 'email',
+          error: 'hitl_required',
+          consentRequired: true,
+          message: 'Human approval required for this transaction',
         };
       }
       throw error; // Re-throw all other errors

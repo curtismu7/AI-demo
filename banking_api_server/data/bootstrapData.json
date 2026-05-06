@@ -63,7 +63,7 @@
       "userId": "1",
       "accountNumber": "1001-2345-6789",
       "accountType": "checking",
-      "balance": 2500,
+      "balance": 10000,
       "currency": "USD",
       "createdAt": "2024-01-15T00:00:00.000Z",
       "isActive": true
@@ -83,7 +83,7 @@
       "userId": "2",
       "accountNumber": "1002-3456-7890",
       "accountType": "checking",
-      "balance": 3200.5,
+      "balance": 10000,
       "currency": "USD",
       "createdAt": "2024-01-20T00:00:00.000Z",
       "isActive": true

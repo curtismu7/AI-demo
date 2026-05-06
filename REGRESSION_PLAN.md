@@ -102,6 +102,33 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-06 — Security: close agent authorization bypass and fail-closed defaults
+
+- **Root cause (critical):** `executeHeuristicBanking()` in `bankingAgentLangGraphService.js` matched NL transfer/deposit/withdrawal intents and executed them directly against `dataStore`, bypassing scope validation, PingOne Authorize policy, and HITL consent gate.
+- **Root cause (MCP gateway):** Gateway health probe failure silently set `devBypass: true`; an unreachable gateway could route all MCP tool calls through the direct path without gateway-level authorization.
+- **Root cause (Authorize):** `ff_authorize_fail_open` defaulted to `true`, so any Authorize service error silently permitted transactions.
+- **Fix:**
+  - `bankingAgentLangGraphService.js`: Added `_callTransactionsApi()` loopback helper; replaced all direct `dataStore.createTransaction` / `updateAccountBalance` calls in transfer/deposit/withdrawal handlers with internal `POST /api/transactions` calls using the user's Bearer token. All authorization gates now enforced on the heuristic path.
+  - `agentMcpTokenService.js`: Gateway probe failure now throws (fail-closed) unless `ff_mcp_gateway_required === 'false'` is explicitly set.
+  - `transactions.js`: `ff_authorize_fail_open` default changed from `true` to `false` (fail-closed). Set to `'true'` only to allow bypass on Authorize unavailability.
+  - `BankingAPIClient.ts`: 428 handler now passes through full body for both `hitl_required` and `step_up_required` responses.
+  - `bootstrapData.json`: Checking account balances seeded to $10,000 for demo stability.
+- **Files:** `banking_api_server/services/bankingAgentLangGraphService.js`, `banking_api_server/services/agentMcpTokenService.js`, `banking_api_server/routes/transactions.js`, `banking_mcp_server/src/banking/BankingAPIClient.ts`, `banking_api_server/data/bootstrapData.json`
+- **Verify:** In agent chat, type "Transfer $700 from checking to savings" — consent modal must appear (HITL fires at $250+ threshold). Before fix: transfer executed immediately with no consent.
+- **Do not break:**
+  - Heuristic path MUST go through `/api/transactions` — no direct `dataStore` writes for transfer/deposit/withdrawal
+  - `ff_authorize_fail_open` must default `false`; `ff_mcp_gateway_required` must default enforced
+  - 428 HITL responses from heuristic path must include `error: 'hitl_required'` to trigger frontend consent modal
+
+### 2026-05-06 — Profile save now persists to PingOne (was UI-only stub)
+
+- **Root cause:** `Profile.js` `handleSubmit` was a stub — showed fake success toast, never called any API.
+- **Fix:**
+  - Added `PATCH /api/self-service/users/me` route to `banking_api_server/routes/selfServiceUsers.js` that calls `pingOneUserService.updatePingOneUser()` with PingOne-formatted fields (`name.given`, `name.family`, `email`, `phone`).
+  - Updated `Profile.js` to `fetch('/api/self-service/users/me', { method: 'PATCH', ... })` with loading state and error handling.
+- **Files:** `banking_api_server/routes/selfServiceUsers.js`, `banking_api_ui/src/components/Profile.js`
+- **Verify:** Login as user → `/profile` → Edit → change a field → Save Changes → confirm change persists in PingOne console.
+
 ### 2026-05-05 — Scope validation enforcement on write transactions (Phase 2 refinement)
 
 - **Goal:** Ensure write operations (transfer, deposit, withdrawal) require `banking:write` scope per OAuth scope definitions.
