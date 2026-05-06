@@ -1010,6 +1010,7 @@ body > .banking-agent-float-root .banking-agent-panel {
   flex: 1;
   /* Allow shrinking in short embedded dock so form + Run stay above overflow: hidden */
   min-height: 0;
+  max-height: 40vh;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;

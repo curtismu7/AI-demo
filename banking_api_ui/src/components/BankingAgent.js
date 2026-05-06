@@ -7233,7 +7233,10 @@ export default function BankingAgent({
                 )}
                 {messages
                   .filter(
-                    (msg) => msg.role === "user" || msg.role === "assistant",
+                    (msg) =>
+                      msg.role === "user" ||
+                      msg.role === "assistant" ||
+                      (showRfcInfo && msg.role === "token-event"),
                   )
                   .map((msg) => {
                     if (msg.role === "reasoning") {
@@ -7570,70 +7573,75 @@ export default function BankingAgent({
                 {isLoggedIn || marketingGuestChatEnabled ? (
                   <>
                     <div className="ba-input-row">
-                    <input
-                      ref={nlInputRef}
-                      className="ba-input"
-                      value={nlInput}
-                      onChange={(e) => {
-                        setNlInput(e.target.value);
-                        setHistoryIndex(-1);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          if (nlInput.trim()) {
-                            const newHistory = [nlInput, ...inputHistory].slice(
-                              0,
-                              10,
+                      <input
+                        ref={nlInputRef}
+                        className="ba-input"
+                        value={nlInput}
+                        onChange={(e) => {
+                          setNlInput(e.target.value);
+                          setHistoryIndex(-1);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            if (nlInput.trim()) {
+                              const newHistory = [
+                                nlInput,
+                                ...inputHistory,
+                              ].slice(0, 10);
+                              setInputHistory(newHistory);
+                            }
+                            handleNaturalLanguage();
+                          } else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            const newIndex = Math.min(
+                              historyIndex + 1,
+                              inputHistory.length - 1,
                             );
-                            setInputHistory(newHistory);
+                            if (
+                              newIndex >= 0 &&
+                              newIndex < inputHistory.length
+                            ) {
+                              setHistoryIndex(newIndex);
+                              setNlInput(inputHistory[newIndex]);
+                            }
+                          } else if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            if (historyIndex > 0) {
+                              const newIndex = historyIndex - 1;
+                              setHistoryIndex(newIndex);
+                              setNlInput(inputHistory[newIndex]);
+                            } else if (historyIndex === 0) {
+                              setHistoryIndex(-1);
+                              setNlInput("");
+                            }
                           }
-                          handleNaturalLanguage();
-                        } else if (e.key === "ArrowUp") {
-                          e.preventDefault();
-                          const newIndex = Math.min(
-                            historyIndex + 1,
-                            inputHistory.length - 1,
-                          );
-                          if (newIndex >= 0 && newIndex < inputHistory.length) {
-                            setHistoryIndex(newIndex);
-                            setNlInput(inputHistory[newIndex]);
-                          }
-                        } else if (e.key === "ArrowDown") {
-                          e.preventDefault();
-                          if (historyIndex > 0) {
-                            const newIndex = historyIndex - 1;
-                            setHistoryIndex(newIndex);
-                            setNlInput(inputHistory[newIndex]);
-                          } else if (historyIndex === 0) {
-                            setHistoryIndex(-1);
-                            setNlInput("");
-                          }
+                        }}
+                        placeholder={
+                          marketingGuestChatEnabled && !isLoggedIn
+                            ? `Ask about OAuth or type a banking request…`
+                            : splitChrome && !nlMeta?.groqConfigured
+                              ? "Ask about your accounts…"
+                              : nlMeta?.groqConfigured
+                                ? `Message ${brandShortName} AI… (Groq AI)`
+                                : `Message ${brandShortName} AI…`
                         }
-                      }}
-                      placeholder={
-                        marketingGuestChatEnabled && !isLoggedIn
-                          ? `Ask about OAuth or type a banking request…`
-                          : splitChrome && !nlMeta?.groqConfigured
-                            ? "Ask about your accounts…"
-                            : nlMeta?.groqConfigured
-                              ? `Message ${brandShortName} AI… (Groq AI)`
-                              : `Message ${brandShortName} AI…`
-                      }
-                      disabled={nlLoading || consentBlocked}
-                    />
-                    <button
-                      type="button"
-                      className="ba-send-btn"
-                      onClick={() => {
-                        handleNaturalLanguage();
-                      }}
-                      disabled={nlLoading || !nlInput.trim() || consentBlocked}
-                      aria-label="Send"
-                    >
-                      {nlLoading ? "…" : splitChrome ? "Send" : "↑"}
-                    </button>
-                  </div>
+                        disabled={nlLoading || consentBlocked}
+                      />
+                      <button
+                        type="button"
+                        className="ba-send-btn"
+                        onClick={() => {
+                          handleNaturalLanguage();
+                        }}
+                        disabled={
+                          nlLoading || !nlInput.trim() || consentBlocked
+                        }
+                        aria-label="Send"
+                      >
+                        {nlLoading ? "…" : splitChrome ? "Send" : "↑"}
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <div
