@@ -6,6 +6,7 @@ const HEURISTIC_CHIPS = [
   { id: "accounts", label: "My Accounts", message: "accounts" },
   { id: "transactions", label: "Transactions", message: "transactions" },
   { id: "transfer", label: "Transfer Funds", message: "transfer" },
+  { id: "transfer_600", label: "Transfer $600 from Savings", message: "transfer $600 from my savings account" },
 ];
 
 const LLM_CHIPS = {
