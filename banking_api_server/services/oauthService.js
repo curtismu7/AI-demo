@@ -574,14 +574,14 @@ class OAuthService {
       const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
       const at = response.data.access_token;
       if (!at) throw new Error('MCP Exchanger client credentials response missing access_token');
-      console.log('[McpExchangerToken] ✅ Token obtained for client:', clientId.substring(0, 8) + '...');
+      console.log('[McpExchangerToken] Token obtained for client:', clientId.substring(0, 8) + '...');
       return at;
     } catch (error) {
       const pingoneData = error.response?.data || {};
       const httpStatus  = error.response?.status;
       const headers = error.response?.headers || {};
       
-      console.error('[McpExchangerToken] ❌ FAILED!');
+      console.error('[McpExchangerToken] FAILED!');
       console.error({
         httpStatus,
         pingoneError: pingoneData,

@@ -35,7 +35,7 @@ const DEFAULT_USER_TYPE = process.env.DEFAULT_USER_TYPE || 'customer';
 const envConfig = getCurrentEnvironmentConfig();
 
 if (SKIP_TOKEN_SIGNATURE_VALIDATION) {
-  console.warn('⚠️  WARNING: Token signature validation is disabled. This should only be used in development! ⚠️');
+  console.warn('WARNING: Token signature validation is disabled. This should only be used in development!');
 }
 
 // Utility function to determine client type from OAuth token scopes
@@ -363,7 +363,7 @@ const logTokenInfo = (token, context = '') => {
     // Parse JWT without verification (just for reading claims)
     const parts = token.split('.');
     if (parts.length !== 3) {
-      console.debug(`🔐 [${context}] Invalid token format`);
+      console.debug(`[${context}] Invalid token format`);
       return;
     }
     
@@ -371,7 +371,7 @@ const logTokenInfo = (token, context = '') => {
     const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
     
     if (!header || !payload) {
-      console.debug(`🔐 [${context}] Failed to decode token`);
+      console.debug(`[${context}] Failed to decode token`);
       return;
     }
     
@@ -401,7 +401,7 @@ const logTokenInfo = (token, context = '') => {
       }
     }
     
-    console.debug(`🔐 [${context}] ${tokenType} Token Information:`);
+    console.debug(`[${context}] ${tokenType} Token Information:`);
     console.debug(`   Algorithm: ${header.alg}`);
     console.debug(`   Type: ${header.typ}`);
     if (header.kid) console.debug(`   Key ID: ${header.kid}`);
@@ -452,7 +452,7 @@ const logTokenInfo = (token, context = '') => {
     }
     
   } catch (error) {
-    console.debug(`🔐 [${context}] Error decoding token: ${error.message}`);
+    console.debug(`[${context}] Error decoding token: ${error.message}`);
   }
 };
 

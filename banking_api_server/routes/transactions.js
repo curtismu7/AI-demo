@@ -547,7 +547,7 @@ router.post('/', authenticateToken, async (req, res) => {
       await dataStore.updateAccountBalance(toAccountId, amount);
       
       // Log transaction creation with client type
-      console.log(`💰 [Transaction] Transfer created by ${req.user.username} (${req.user.clientType || 'unknown'} via ${req.user.tokenType || 'unknown'}) - Amount: $${amount}`);
+      console.log(`[Transaction] Transfer created by ${req.user.username} (${req.user.clientType || 'unknown'} via ${req.user.tokenType || 'unknown'}) - Amount: $${amount}`);
 
       posthog.capture({
         distinctId: req.user.id,
