@@ -167,14 +167,10 @@ export default function BankingChips({ onChipClick, isLoading }) {
                     onClick={() => handleCategoryToggle(category)}
                     disabled={isLoading}
                   >
-                    <span className="banking-chips-dropdown__category-name">{category}</span>
-                    <span
-                      className={`banking-chips-dropdown__category-toggle ${
-                        expandedCategory === category ? "expanded" : ""
-                      }`}
-                    >
-                      ▼
+                    <span className="banking-chips-dropdown__category-toggle">
+                      {expandedCategory === category ? "▼" : "▶"}
                     </span>
+                    <span className="banking-chips-dropdown__category-name">{category}</span>
                   </button>
                   {expandedCategory === category && (
                     <div className="banking-chips-dropdown__grid banking-chips-dropdown__grid--llm">
