@@ -1,8 +1,9 @@
 .page {
-  max-width: 960px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 32px 24px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #1f2937;
 }
 
@@ -120,7 +121,7 @@
 }
 
 .flowLine::after {
-  content: '▶';
+  content: "▶";
   position: absolute;
   right: -4px;
   top: -8px;
@@ -152,7 +153,9 @@
   border-radius: 8px;
   padding: 0;
   cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   overflow: hidden;
 }
 
@@ -238,8 +241,14 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .pillarSection {

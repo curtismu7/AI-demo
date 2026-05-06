@@ -173,6 +173,9 @@ git checkout <last-version-tag> -- <key-file>
 | AI Agent Best Practices guide (PingOne 5 practices) | active | `banking_api_ui/src/components/education/BestPracticesPanel.js` | — |
 | SPIFFE implementation plan | plan | `docs/SPIFFE_PLAN.md` | — |
 | Sensitive data access guide — explains `banking:sensitive:read` scope, why explicit consent is required, and the PingOne Authorize + scope enforcement model | active | `banking_api_ui/src/components/education/SensitiveDataPanel.js` | — |
+| LLM Landscape panel — Claude 4 / Gemini 2.5 / Llama 4 / Qwen 3 / Gemma 3 / DeepSeek; MoE and extended thinking sections; 2025-current comparison tables | active | `banking_api_ui/src/components/education/LlmLandscapePanel.js` | — |
+| Agent Builder Landscape panel — LangChain, open-source frameworks, commercial platforms (incl. n8n), comparison table | active | `banking_api_ui/src/components/education/AgentBuilderLandscapePanel.js` | — |
+| IETF Standards: Agentic Identity panel — RFC7523bis, Identity Chaining, JAG-IR, AIMS, WIMSE, SD-JWT VC, PQ/T JOSE, AuthZen; back-nav from each RFC tab to overview | active | `banking_api_ui/src/components/education/IETFStandardsPanel.js` | — |
 
 ---
 

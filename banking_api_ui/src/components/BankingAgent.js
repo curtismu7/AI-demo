@@ -1936,6 +1936,7 @@ export default function BankingAgent({
       admin: false,
       ai: false,
       testing: false,
+      learn: true,
     };
   });
 
@@ -1961,6 +1962,7 @@ export default function BankingAgent({
       admin: false,
       ai: false,
       testing: false,
+      learn: true,
     }));
   }, [useActionsPopout, isBottomDock]);
 
@@ -2325,6 +2327,33 @@ export default function BankingAgent({
     window.addEventListener("agent-demo-guide-open", handler);
     return () => window.removeEventListener("agent-demo-guide-open", handler);
   }, []);
+
+  // Reset conversation when demo is cleared (no full page reload needed)
+  useEffect(() => {
+    const currentUser = user || sessionUser;
+    const handler = () => {
+      const freshWelcome = currentUser
+        ? [
+            {
+              id: `${Date.now()}-w`,
+              role: "assistant",
+              content: welcomeMessage(
+                currentUser,
+                embeddedFocus,
+                brandShortName,
+                industryPreset.id,
+              ),
+            },
+          ]
+        : [];
+      setMessages(freshWelcome);
+      setNlInput("");
+      setInputHistory([]);
+      setHistoryIndex(-1);
+    };
+    window.addEventListener("demo-reset-complete", handler);
+    return () => window.removeEventListener("demo-reset-complete", handler);
+  }, [user, sessionUser, embeddedFocus, brandShortName, industryPreset.id]);
 
   // Auto-open when redirected back from OAuth login (?oauth=success in URL)
   useEffect(() => {
@@ -6055,7 +6084,6 @@ export default function BankingAgent({
                 )}
                 <div className="ba-popout-body">
                   {filteredDiscoveryGroups.map((group) => {
-                    if (group.key === "learn") return null;
                     if (
                       group.key === "admin" &&
                       effectiveUser?.role !== "admin"
