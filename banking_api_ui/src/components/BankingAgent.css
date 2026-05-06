@@ -137,9 +137,9 @@ body > .banking-agent-float-root .banking-agent-panel {
   --ba-border: #d1d5db;
   --ba-text: #222;
   --ba-muted: #666;
-  --ba-user-bg: #3b82f6;
+  --ba-user-bg: #ef4444;
   --ba-user-txt: #ffffff;
-  --ba-agent-bg: #ef4444;
+  --ba-agent-bg: #3b82f6;
   --ba-agent-txt: #ffffff;
   --ba-accent: #2563eb;
   --ba-accent-h: #1d4ed8;
@@ -554,9 +554,9 @@ body > .banking-agent-float-root .banking-agent-panel {
   --ba-border: #c7d2fe;
   --ba-text: #0f172a;
   --ba-muted: #666666;
-  --ba-user-bg: #3b82f6;
+  --ba-user-bg: #ef4444;
   --ba-user-txt: #ffffff;
-  --ba-agent-bg: #ef4444;
+  --ba-agent-bg: #3b82f6;
   --ba-agent-txt: #ffffff;
   --ba-accent: #4169e1;
   --ba-accent-h: #3158d3;
@@ -578,9 +578,9 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 
 .banking-agent-panel:not(.ba-mode-inline).ba-mode-light {
-  --ba-user-bg: #3b82f6;
+  --ba-user-bg: #ef4444;
   --ba-user-txt: #ffffff;
-  --ba-agent-bg: #ef4444;
+  --ba-agent-bg: #3b82f6;
   --ba-agent-txt: #ffffff;
   --ba-chip-bg: #e0e7ff;
   --ba-chip-bd: #4169e1;
@@ -590,9 +590,9 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 
 .banking-agent-panel:not(.ba-mode-inline):not(.ba-mode-light) {
-  --ba-user-bg: #3b82f6;
+  --ba-user-bg: #ef4444;
   --ba-user-txt: #ffffff;
-  --ba-agent-bg: #ef4444;
+  --ba-agent-bg: #3b82f6;
   --ba-agent-txt: #ffffff;
   --ba-chip-bg: rgba(65, 105, 225, 0.22);
   --ba-chip-bd: #7c9cf5;
@@ -1220,6 +1220,23 @@ body > .banking-agent-float-root .banking-agent-panel {
   background: var(--ba-user-bg);
   color: var(--ba-user-txt);
   border-bottom-right-radius: 4px;
+}
+
+.banking-agent-msg.assistant[data-source="helix"] .banking-agent-msg-bubble,
+.banking-agent-msg.assistant[data-source="ollama"] .banking-agent-msg-bubble {
+  background: #fee2e2 !important;
+  color: #7f1d1d !important;
+  border-left: 3px solid #dc2626 !important;
+}
+
+.banking-agent-msg.assistant[data-source="helix"] .banking-agent-msg-label,
+.banking-agent-msg.assistant[data-source="ollama"] .banking-agent-msg-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #dc2626;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Error bubbles — high contrast; end-user-nano can otherwise wash out <pre> text */
