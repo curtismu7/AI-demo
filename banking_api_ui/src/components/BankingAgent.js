@@ -4137,47 +4137,48 @@ export default function BankingAgent({
         const jwksDegraded =
           jwksVerified?.extra?.fallbackMethod === "introspection";
 
-        // Build a detailed may_act status string from the user token event
-        const mayActLine = !userTokEv
-          ? "   ⚠️ user token not decoded"
-          : userTokEv.mayActPresent && userTokEv.mayActValid
-            ? `   ✅ may_act valid — ${userTokEv.mayActDetails || "delegation authorised"}`
-            : userTokEv.mayActPresent && !userTokEv.mayActValid
-              ? `   ❌ may_act mismatch — ${userTokEv.mayActDetails || "client_id does not match BFF"}`
-              : "   ⚠️ may_act absent from user token";
-
         let tokenMsg = null;
         if (exchanged) {
-          const actLine = exchanged.actPresent
-            ? `   ✅ act: ${exchanged.actDetails} — BFF confirmed as current actor`
-            : "   ⚠️ act absent — subject-only exchange (no delegation proof in MCP token; set AGENT_OAUTH_CLIENT_ID)";
+          const introspectionLine =
+            "✅ RFC 7662  Introspection         user token validated";
+          const exchangeLine =
+            "✅ RFC 8693  Token Exchange        user token → MCP-scoped token";
+          const jwksLine = jwksDegraded
+            ? "⚠️ RFC 7515  JWKS unavailable    verified via RFC 7662 introspection fallback"
+            : jwksVerified?.extra?.verified
+              ? `✅ RFC 7515  JWKS Signature        verified (${jwksVerified.extra.alg || "RS256"}, kid: ${jwksVerified.extra.kid || "—"})`
+              : "   RFC 7515  JWKS Signature        (not verified)";
           const audLine =
-            exchanged.audExpected !== undefined
-              ? exchanged.audMatches
-                ? `   ✅ aud: "${exchanged.audActual ?? exchanged.audienceNarrowed}" — MCP server audience matched (RFC 8707)`
-                : `   ❌ aud mismatch — got "${exchanged.audActual}" expected "${exchanged.audExpected}" — MCP server will reject`
-              : `   aud: ${exchanged.audienceNarrowed || (Array.isArray(exchanged.claims?.aud) ? exchanged.claims.aud.join(", ") : exchanged.claims?.aud) || "—"} (RFC 8707 resource indicator)`;
+            exchanged.audExpected !== undefined && exchanged.audMatches
+              ? `✅ RFC 8707  Resource Indicator    aud bound to "${exchanged.audActual ?? exchanged.audienceNarrowed}"`
+              : exchanged.audExpected !== undefined
+                ? `❌ RFC 8707  Resource Indicator    aud mismatch — got "${exchanged.audActual}" expected "${exchanged.audExpected}"`
+                : `✅ RFC 8707  Resource Indicator    aud: ${exchanged.audienceNarrowed || (Array.isArray(exchanged.claims?.aud) ? exchanged.claims.aud.join(", ") : exchanged.claims?.aud) || "—"}`;
+
+          const mayActStatus = !userTokEv
+            ? "⚠️ not available"
+            : userTokEv.mayActPresent && userTokEv.mayActValid
+              ? `✅ valid — ${userTokEv.mayActDetails || "delegation authorised"}`
+              : userTokEv.mayActPresent && !userTokEv.mayActValid
+                ? `❌ mismatch — ${userTokEv.mayActDetails || "client_id does not match BFF"}`
+                : "⚠️ absent from user token";
+
+          const actStatus = exchanged.actPresent
+            ? `✅ BFF confirmed — ${exchanged.actDetails || "delegation proof present"}`
+            : "⚠️ subject-only exchange (no delegation proof)";
+
           tokenMsg = [
-            "RFC 8693 Token Exchange complete",
-            mayActLine,
-            actLine,
-            audLine,
-            `   Scope narrowed: ${exchanged.scopeNarrowed || exchanged.claims?.scope || "—"}`,
-            jwksDegraded
-              ? "   ⚠️ JWKS unavailable — signature verified via RFC 7662 introspection fallback (liveness confirmed, tamper-detection skipped)"
-              : jwksVerified?.extra?.verified
-                ? `   ✅ JWKS signature verified (${jwksVerified.extra.alg || "RS256"}, kid: ${jwksVerified.extra.kid || "—"})`
-                : "",
+            "Security Verification — RFC 8693 Token Exchange",
             "",
-            ...(exchanged.actPresent
-              ? [
-                  "",
-                  "Delegation chain (RFC 8693 §4 — act claim)",
-                  `   act: ${exchanged.actDetails || '{ client_id: "bff" }'}`,
-                  "   Subject-only exchange = no act claim (token cannot prove which client called it).",
-                  "   Nested act = full chain: user → AI agent → MCP service, each hop tamper-evident in the token.",
-                ]
-              : []),
+            introspectionLine,
+            exchangeLine,
+            jwksLine,
+            audLine,
+            "",
+            `may_act:  ${mayActStatus}`,
+            `act:      ${actStatus}`,
+            `aud:      ${exchanged.audienceNarrowed || exchanged.claims?.aud || "—"}`,
+            `scope:    ${exchanged.scopeNarrowed || exchanged.claims?.scope || "—"} (narrowed)`,
           ].join("\n");
           notifyInfo(
             `Token Exchange complete — MCP token issued (aud: ${exchanged.audienceNarrowed || "set"}, scope: ${exchanged.scopeNarrowed || "narrowed"})`,
@@ -5882,19 +5883,35 @@ export default function BankingAgent({
                           </span>
                         )}
                         {groupExpanded && (
-                          <div className="ba-popout-chip-row">
+                          <div className="ba-popout-list">
                             {group.chips.map((action) => (
                               <button
                                 key={action.id}
                                 type="button"
-                                className="ba-action-item"
+                                className="ba-popout-list-item"
                                 disabled={consentBlocked}
                                 onClick={() => {
                                   setShowDiscovery(false);
                                   handleActionClick(action.id);
                                 }}
                               >
-                                {action.label}
+                                <span className="ba-popout-item-name">
+                                  {action.label}
+                                </span>
+                                {action.desc && (
+                                  <span className="ba-popout-item-desc">
+                                    {action.desc}
+                                  </span>
+                                )}
+                                {action.rfcs?.length > 0 && (
+                                  <span className="ba-popout-item-rfcs">
+                                    {action.rfcs.map((r) => (
+                                      <span key={r} className="ba-rfc-badge">
+                                        {r}
+                                      </span>
+                                    ))}
+                                  </span>
+                                )}
                               </button>
                             ))}
                           </div>
@@ -5919,10 +5936,10 @@ export default function BankingAgent({
                   {isLoggedIn && (
                     <div className="ba-popout-section">
                       <span className="ba-popout-section-label">Session</span>
-                      <div className="ba-popout-chip-row">
+                      <div className="ba-popout-list">
                         <button
                           type="button"
-                          className="ba-action-item"
+                          className="ba-popout-list-item"
                           onClick={() => {
                             setShowDiscovery(false);
                             void handleSessionRefresh();
@@ -5932,11 +5949,15 @@ export default function BankingAgent({
                           }
                           title="Refresh your access token using PingOne refresh token"
                         >
-                          {sessionRefreshing ? "Refreshing…" : "Refresh token"}
+                          <span className="ba-popout-item-name">
+                            {sessionRefreshing
+                              ? "Refreshing…"
+                              : "Refresh token"}
+                          </span>
                         </button>
                         <button
                           type="button"
-                          className="ba-action-item"
+                          className="ba-popout-list-item"
                           onClick={() => {
                             setShowDiscovery(false);
                             onLogout?.();
@@ -5944,7 +5965,7 @@ export default function BankingAgent({
                           disabled={loading}
                           title="Sign out of your session"
                         >
-                          Sign out
+                          <span className="ba-popout-item-name">Sign out</span>
                         </button>
                       </div>
                     </div>
@@ -5952,12 +5973,10 @@ export default function BankingAgent({
                   {isLoggedIn && (
                     <div className="ba-popout-section">
                       <span className="ba-popout-section-label">View</span>
-                      <div className="ba-popout-chip-row">
+                      <div className="ba-popout-list">
                         <button
                           type="button"
-                          className={
-                            "ba-action-item" + (showRfcInfo ? " active" : "")
-                          }
+                          className={`ba-popout-list-item${showRfcInfo ? " active" : ""}`}
                           onClick={() => setShowRfcInfo((v) => !v)}
                           aria-label={
                             showRfcInfo ? "Hide RFC info" : "Show RFC info"
@@ -5968,12 +5987,14 @@ export default function BankingAgent({
                               : "Show RFC info messages"
                           }
                         >
-                          {showRfcInfo ? " RFC info on" : " RFC info off"}
+                          <span className="ba-popout-item-name">
+                            {showRfcInfo ? "RFC info on" : "RFC info off"}
+                          </span>
                         </button>
                         {(!isInline || showPopOut) && (
                           <button
                             type="button"
-                            className="ba-action-item"
+                            className="ba-popout-list-item"
                             onClick={() => {
                               setShowDiscovery(false);
                               const calculateOptimalSize = () => {
@@ -6032,7 +6053,9 @@ export default function BankingAgent({
                             title="Open agent in new window"
                             aria-label="Open agent in new window"
                           >
-                            ⧉ New window
+                            <span className="ba-popout-item-name">
+                              ⧉ New window
+                            </span>
                           </button>
                         )}
                       </div>

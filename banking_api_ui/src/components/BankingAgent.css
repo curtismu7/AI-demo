@@ -1412,21 +1412,21 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 /* ─── Token event inline messages ────────────────────────────────────────── */
 .banking-agent-msg.token-event {
-  justify-content: center;
+  justify-content: flex-start;
+  padding-left: 8px;
 }
 .banking-agent-msg.token-event .banking-agent-msg-bubble {
-  max-width: 96%;
-  background: rgba(65, 105, 225, 0.25);
-  color: #000000;
-  border: 1px solid rgba(65, 105, 225, 0.4);
-  border-left: 3px solid var(--ba-accent);
-  border-radius: 10px;
-  font-size: 16px;
-  line-height: 1.8;
-  padding: 16px 18px !important;
+  background: #f0f7ff;
+  color: #0f172a;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #1d4ed8;
+  border-radius: 8px;
   font-size: 13px;
-  line-height: 1.6;
-  padding: 10px 14px;
+  font-family: ui-monospace, "SF Mono", "Fira Mono", Consolas, monospace;
+  line-height: 1.75;
+  padding: 14px 16px 12px;
+  white-space: pre-wrap;
+  max-width: 98%;
 }
 
 /* Typing indicator */
