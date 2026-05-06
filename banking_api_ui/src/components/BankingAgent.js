@@ -1414,7 +1414,9 @@ function MessageContent({ text, isTokenEvent }) {
       );
       if (match) {
         const [, type, content] = match;
-        const date = lines[i + 1]?.trim() || "N/A";
+        const nextLine = lines[i + 1]?.trim();
+        const isDateLike = nextLine && /^\d{4}-\d{2}-\d{2}|^\d{1,2}\/\d{1,2}\/\d{4}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/.test(nextLine);
+        const date = isDateLike ? nextLine : "--";
         rows.push({ type, content, date });
         i += 2;
       } else {
@@ -3794,12 +3796,29 @@ export default function BankingAgent({
             ].join("\n"),
             actionId,
           );
-          response = await createTransfer(
-            compFrom.id,
-            compTo.id,
-            APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER,
-            " Full compliance scenario test",
-          );
+          try {
+            // Call HTTP endpoint directly (not MCP) to trigger authorization + HITL
+            const httpRes = await fetch('/api/transactions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                fromAccountId: compFrom.id,
+                toAccountId: compTo.id,
+                amount: APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER,
+                type: 'transfer',
+                description: ' Full compliance scenario test',
+              }),
+            });
+            response = { result: await httpRes.json(), status: httpRes.status };
+            console.log('[FullCompliance] HTTP Transfer response:', response);
+          } catch (err) {
+            console.error('[FullCompliance] Transfer failed:', err);
+            addMessage("assistant", `Error: ${err.message}`);
+            toast.dismiss(toastId);
+            setLoading(false);
+            return;
+          }
           // Falls through to normalizeAgentToolResult — consent + MFA gates fire here
           break;
         }
@@ -5862,26 +5881,16 @@ export default function BankingAgent({
                     )
                       return null;
                     if (group.chips.length === 0) return null;
-                    const isTestingGroup = group.key === "testing";
-                    const groupExpanded = isTestingGroup
-                      ? !!chipGroupsState["testing"]
-                      : true;
+                    const groupExpanded = !!chipGroupsState[group.key];
                     return (
                       <div key={group.key} className="ba-popout-section">
-                        {isTestingGroup ? (
-                          <button
-                            type="button"
-                            className="ba-popout-section-label ba-popout-section-toggle"
-                            onClick={() => toggleGroupExpanded("testing")}
-                          >
-                            {chipGroupsState["testing"] ? "▼" : "▶"}{" "}
-                            {group.label}
-                          </button>
-                        ) : (
-                          <span className="ba-popout-section-label">
-                            {group.label}
-                          </span>
-                        )}
+                        <button
+                          type="button"
+                          className="ba-popout-section-label ba-popout-section-toggle"
+                          onClick={() => toggleGroupExpanded(group.key)}
+                        >
+                          {groupExpanded ? "▼" : "▶"} {group.label}
+                        </button>
                         {groupExpanded && (
                           <div className="ba-popout-list">
                             {group.chips.map((action) => (
@@ -5935,7 +5944,14 @@ export default function BankingAgent({
                     )}
                   {isLoggedIn && (
                     <div className="ba-popout-section">
-                      <span className="ba-popout-section-label">Session</span>
+                      <button
+                        type="button"
+                        className="ba-popout-section-label ba-popout-section-toggle"
+                        onClick={() => toggleGroupExpanded("session")}
+                      >
+                        {chipGroupsState["session"] ? "▼" : "▶"} Session
+                      </button>
+                      {chipGroupsState["session"] && (
                       <div className="ba-popout-list">
                         <button
                           type="button"
@@ -5968,11 +5984,19 @@ export default function BankingAgent({
                           <span className="ba-popout-item-name">Sign out</span>
                         </button>
                       </div>
+                      )}
                     </div>
                   )}
                   {isLoggedIn && (
                     <div className="ba-popout-section">
-                      <span className="ba-popout-section-label">View</span>
+                      <button
+                        type="button"
+                        className="ba-popout-section-label ba-popout-section-toggle"
+                        onClick={() => toggleGroupExpanded("view")}
+                      >
+                        {chipGroupsState["view"] ? "▼" : "▶"} View
+                      </button>
+                      {chipGroupsState["view"] && (
                       <div className="ba-popout-list">
                         <button
                           type="button"
@@ -6059,6 +6083,7 @@ export default function BankingAgent({
                           </button>
                         )}
                       </div>
+                      )}
                     </div>
                   )}
                   <div className="ba-popout-section">
