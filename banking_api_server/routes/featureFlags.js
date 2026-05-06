@@ -252,6 +252,22 @@ const FLAG_REGISTRY = [
     defaultValue: false,
     warnIfEnabled: false,
   },
+
+  // ── LLM Chips ──────────────────────────────────────────────────────────────
+  {
+    id:           'ff_heuristic_enabled',
+    name:         'LLM Chips — Use Heuristic Fast-Path',
+    category:     'LLM Chips',
+    description:
+      'When **ON** (default), the agent uses fast heuristic queries for balance, accounts, and transactions (~200-300ms). ' +
+      'When **OFF**, all queries go through the LLM for advanced analysis (~1-3s). Both modes show chips, but heuristics take a fast dedicated code path.',
+    impact:
+      'ON (default) = quick responses for balance/accounts/transactions via heuristic NL parser; LLM for analysis/insights. ' +
+      'OFF = all queries routed through LLM (slower but more conversational/analytical).',
+    type:         'boolean',
+    defaultValue: true,
+  },
+
   // ── WebMCP ────────────────────────────────────────────────────────────────
   {
     id:           'ff_webmcp_enabled',
