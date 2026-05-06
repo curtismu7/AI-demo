@@ -5499,17 +5499,21 @@ export default function BankingAgent({
                     (showCompliancePanel ? " active" : "")
                   }
                   title="Show or hide the 12-step compliance status"
-                  onClick={() =>
+                  onClick={() => {
                     setShowCompliancePanel((v) => {
+                      const newVal = !v;
                       try {
                         localStorage.setItem(
                           "ba_show_compliance_panel",
-                          v ? "0" : "1",
+                          newVal ? "1" : "0",
                         );
                       } catch {}
-                      return !v;
-                    })
-                  }
+                      if (newVal) {
+                        setComplianceSlideout(true);
+                      }
+                      return newVal;
+                    });
+                  }}
                 >
                   Compliance
                 </button>
@@ -7411,7 +7415,7 @@ export default function BankingAgent({
                           : `Use ${p} directly`
                       }
                     >
-                      {p === "auto" ? "⚡ Auto" : p}
+                      {p === "auto" ? "Auto" : p}
                     </button>
                   ))}
                 </div>
