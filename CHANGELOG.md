@@ -27,6 +27,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **Event-driven balance and transaction refresh in agent** — replaced 15s polling and unreliable MCP-based refresh with direct REST calls triggered by `banking-transaction-completed` events; accounts panel and balance panel now update immediately after any deposit/transfer/withdraw from either the agent or the dashboard; added REST fallback when MCP `getMyTransactions` fails after a write action.
 - **All monospace fonts removed from UI** — replaced Courier New, Monaco, Menlo, Ubuntu Mono, Consolas fonts with standard system font stack across MFALogsViewer, MFALogsModal, AgentDemoGuide, and PingOneTestPage components; provides consistent typography with professional banking appearance.
 - **MFA OTP input field — improved font rendering** — removed excessive letter-spacing from OTP input to display digits with standard font spacing; improves visual appearance and readability of OTP code entry.
 - **MFA OTP verification — corrected authentication to use user token** — OTP verification now requires user's access token (not worker token) since the `/otp` endpoint validates user context; resolves "Invalid Authorization header" errors.

@@ -1422,7 +1422,7 @@ body > .banking-agent-float-root .banking-agent-panel {
   border-left: 4px solid #1d4ed8;
   border-radius: 8px;
   font-size: 13px;
-  font-family: ui-monospace, "SF Mono", "Fira Mono", Consolas, monospace;
+
   line-height: 1.75;
   padding: 14px 16px 12px;
   white-space: pre-wrap;

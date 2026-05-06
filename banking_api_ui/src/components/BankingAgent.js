@@ -1835,6 +1835,7 @@ export default function BankingAgent({
   const [panelSize, setPanelSize] = useState({ width: 540, height: 540 });
   /** Side panel showing rich results next to the agent */
   const [resultPanel, setResultPanel] = useState(null);
+  const resultPanelRef = useRef(null);
   /** Live bounding rect of the agent panel — used to anchor the results pop-out */
   const [agentBounds, setAgentBounds] = useState(null);
   /** MCP server connection status for header display */
@@ -3627,19 +3628,23 @@ export default function BankingAgent({
           // Find account with sufficient balance for $600 transfer (prioritize savings over checking)
           const testFrom =
             testAccounts?.find(
-              (a) => (a.type === "savings" || a.type === "sav") && a.balance >= 600,
+              (a) =>
+                (a.type === "savings" || a.type === "sav") && a.balance >= 600,
             ) ||
             testAccounts?.find(
-              (a) => (a.type === "checking" || a.type === "chk") && a.balance >= 600,
+              (a) =>
+                (a.type === "checking" || a.type === "chk") && a.balance >= 600,
             ) ||
             testAccounts?.find((a) => a.balance >= 600) ||
             testAccounts?.[0];
           const testTo =
             testAccounts?.find(
               (a) => a.type === "savings" || a.type === "sav",
-            ) || testAccounts?.find(
+            ) ||
+            testAccounts?.find(
               (a) => a.type === "checking" || a.type === "chk",
-            ) || testAccounts?.[1];
+            ) ||
+            testAccounts?.[1];
           if (!testFrom || !testTo) {
             addMessage(
               "assistant",
@@ -3815,19 +3820,23 @@ export default function BankingAgent({
           // Find account with sufficient balance for $600 transfer (prioritize savings over checking)
           const compFrom =
             compAccounts?.find(
-              (a) => (a.type === "savings" || a.type === "sav") && a.balance >= 600,
+              (a) =>
+                (a.type === "savings" || a.type === "sav") && a.balance >= 600,
             ) ||
             compAccounts?.find(
-              (a) => (a.type === "checking" || a.type === "chk") && a.balance >= 600,
+              (a) =>
+                (a.type === "checking" || a.type === "chk") && a.balance >= 600,
             ) ||
             compAccounts?.find((a) => a.balance >= 600) ||
             compAccounts?.[0];
           const compTo =
             compAccounts?.find(
               (a) => a.type === "savings" || a.type === "sav",
-            ) || compAccounts?.find(
+            ) ||
+            compAccounts?.find(
               (a) => a.type === "checking" || a.type === "chk",
-            ) || compAccounts?.[1];
+            ) ||
+            compAccounts?.[1];
           if (!compFrom || !compTo) {
             addMessage(
               "assistant",
@@ -3893,7 +3902,9 @@ export default function BankingAgent({
 
             // If 428 (HITL), show consent modal
             if (httpRes.status === 428) {
-              console.log("[FullCompliance] Detected HITL, showing consent modal");
+              console.log(
+                "[FullCompliance] Detected HITL, showing consent modal",
+              );
               toast.dismiss(toastId);
               setLoading(false);
               setHitlPendingIntent({
@@ -4386,7 +4397,19 @@ export default function BankingAgent({
             displayNormalized = txNorm;
           }
         } catch {
-          // keep write payload for inferAgentResultTypeAndData
+          // MCP getMyTransactions failed — fall back to direct REST so the panel still shows fresh data
+          try {
+            const r = await fetch("/api/transactions/my?limit=30", {
+              credentials: "include",
+            });
+            if (r.ok) {
+              const d = await r.json();
+              if (d?.transactions?.length)
+                displayNormalized = { transactions: d.transactions };
+            }
+          } catch {
+            // keep write payload for inferAgentResultTypeAndData
+          }
         }
         // Refresh live account balances after write operations so form dropdowns are current
         fetch("/api/accounts/my", { credentials: "include", _silent: true })
@@ -5433,44 +5456,79 @@ export default function BankingAgent({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot replay when nlResumeAfterAuth is set after OAuth
   }, [nlResumeAfterAuth, isLoggedIn]);
 
-  // Real-time transaction updates: refresh the open transactions panel when:
-  //   1. Agent completes a write (transfer/deposit/withdraw)
-  //   2. UserDashboard dispatches "banking-transaction-completed"
-  //   3. Periodic polling (every 15s) while panel is open
+  // Keep resultPanelRef current so the refresh handler below can read it without stale closure.
   useEffect(() => {
-    const refreshTransactions = () => {
-      setResultPanel((prev) => {
-        if (!prev || prev.type !== "transactions") return prev;
-        getMyTransactions(30)
-          .then((txRes) => {
-            const txNorm = normalizeAgentToolResult(txRes.result);
-            if (Array.isArray(txNorm?.transactions)) {
-              setResultPanel({
-                type: "transactions",
-                title: "\uD83D\uDCCB Recent Transactions",
-                data: txNorm.transactions,
-              });
-            }
+    resultPanelRef.current = resultPanel;
+  }, [resultPanel]);
+
+  // After a dashboard transaction (banking-transaction-completed), refresh liveAccounts and
+  // whatever result panel is currently open. Agent-initiated writes are handled inline in
+  // runAction (lines above) so this effect only needs to handle dashboard-sourced events.
+  useEffect(() => {
+    const normalizeAccountRow = (a) => ({
+      id: a.id,
+      name:
+        a.name ||
+        (a.accountType === "savings" ? "Savings Account" : "Checking Account"),
+      type: a.accountType || a.account_type || "checking",
+      balance: a.balance || 0,
+      accountNumber: a.accountNumber || a.account_number || a.id,
+    });
+
+    const refreshAfterTransaction = () => {
+      const currentPanel = resultPanelRef.current;
+
+      // Always refresh liveAccounts (drives form dropdowns + accounts/balance result panels)
+      fetch("/api/accounts/my", { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (!data?.accounts?.length) return;
+          const fresh = data.accounts.map(normalizeAccountRow);
+          setLiveAccounts(fresh);
+          if (currentPanel?.type === "accounts") {
+            setResultPanel({
+              type: "accounts",
+              title: "Accounts",
+              data: fresh,
+            });
+          } else if (currentPanel?.type === "balance") {
+            // Switch to full accounts view so all updated balances are visible
+            setResultPanel({
+              type: "accounts",
+              title: "Accounts",
+              data: fresh,
+            });
+          }
+        })
+        .catch(() => {});
+
+      // Refresh transactions panel if it's currently open
+      if (currentPanel?.type === "transactions") {
+        fetch("/api/transactions/my?limit=30", { credentials: "include" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (!data?.transactions) return;
+            setResultPanel({
+              type: "transactions",
+              title: "Recent Transactions",
+              data: data.transactions,
+            });
           })
           .catch(() => {});
-        return prev;
-      });
+      }
     };
 
-    window.addEventListener("banking-agent-result", refreshTransactions);
-    window.addEventListener("banking-transaction-completed", refreshTransactions);
-
-    const pollInterval = setInterval(() => {
-      if (resultPanel?.type === "transactions") refreshTransactions();
-    }, 15000);
-
+    window.addEventListener(
+      "banking-transaction-completed",
+      refreshAfterTransaction,
+    );
     return () => {
-      window.removeEventListener("banking-agent-result", refreshTransactions);
-      window.removeEventListener("banking-transaction-completed", refreshTransactions);
-      clearInterval(pollInterval);
+      window.removeEventListener(
+        "banking-transaction-completed",
+        refreshAfterTransaction,
+      );
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resultPanel?.type]);
+  }, []); // stable \u2014 reads state via resultPanelRef
 
   // Float mode should return nothing when the dedicated /agent page is active
   if (!isInline && isAgentPage) return null;
