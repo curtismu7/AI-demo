@@ -226,9 +226,133 @@ const sampleActivityLogs = [
   }
 ];
 
+// Generate realistic banking data for demo
+function generateRealisticBankingData() {
+  const firstNames = ['John', 'Jane', 'Mike', 'Sarah', 'David', 'Emma', 'Robert', 'Lisa', 'James', 'Maria', 'William', 'Patricia', 'Richard', 'Jennifer', 'Thomas', 'Mary', 'Charles', 'Karen', 'Christopher', 'Nancy'];
+  const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'];
+  const accountTypes = ['checking', 'savings', 'money_market', 'credit_card'];
+  const transactions = ['salary_deposit', 'groceries', 'utilities', 'rent', 'entertainment', 'gas', 'restaurant', 'online_purchase', 'transfer', 'withdrawal', 'atm_withdrawal'];
+
+  const users = [];
+  const accounts = [];
+  const txns = [];
+
+  // Generate 250 realistic users
+  for (let i = 1; i <= 250; i++) {
+    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    users.push({
+      id: String(i + 4),
+      username: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${Math.random() > 0.5 ? i : ''}`,
+      email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@example.com`,
+      firstName,
+      lastName,
+      password: bcrypt.hashSync('password123', 10),
+      role: 'customer',
+      createdAt: new Date(2024, 0, Math.floor(Math.random() * 60) + 1),
+      isActive: Math.random() > 0.1
+    });
+  }
+
+  // Generate 600+ accounts with realistic balances
+  let accountId = 6;
+  for (let i = 1; i <= 250; i++) {
+    const numAccounts = Math.floor(Math.random() * 4) + 1;
+    for (let j = 0; j < numAccounts; j++) {
+      const accountType = accountTypes[Math.floor(Math.random() * accountTypes.length)];
+      let balance;
+
+      // Realistic balance distribution
+      if (accountType === 'checking') {
+        balance = Math.random() * 15000 + 500; // $500-$15,500
+      } else if (accountType === 'savings') {
+        balance = Math.random() * 100000 + 5000; // $5,000-$105,000
+      } else if (accountType === 'money_market') {
+        balance = Math.random() * 150000 + 10000; // $10,000-$160,000
+      } else {
+        balance = Math.random() * 10000 + 1000; // Credit card: $1,000-$11,000
+      }
+
+      accounts.push({
+        id: String(accountId),
+        userId: String(i + 4),
+        accountNumber: `${1000 + i}-${Math.floor(Math.random() * 10000)}-${Math.floor(Math.random() * 10000)}`,
+        accountType,
+        balance: Math.round(balance * 100) / 100,
+        currency: 'USD',
+        createdAt: new Date(2024, Math.floor(Math.random() * 2), Math.floor(Math.random() * 28) + 1),
+        isActive: Math.random() > 0.05
+      });
+      accountId++;
+    }
+  }
+
+  // Generate 2000+ realistic transactions
+  let txnId = 7;
+  const activityLogs = [];
+  const actions = ['LOGIN', 'CHECK_BALANCE', 'TRANSFER_MONEY', 'GET_TRANSACTIONS', 'CREATE_DEPOSIT', 'CREATE_WITHDRAWAL', 'VIEW_ACCOUNT', 'UPDATE_PROFILE'];
+
+  for (let i = 0; i < 2000; i++) {
+    const fromAccountIdx = Math.floor(Math.random() * (accounts.length - 1));
+    const toAccountIdx = Math.floor(Math.random() * (accounts.length - 1));
+
+    const txnType = transactions[Math.floor(Math.random() * transactions.length)];
+    let amount;
+
+    if (['salary_deposit'].includes(txnType)) {
+      amount = Math.random() * 3000 + 2000; // $2000-$5000
+    } else if (['rent'].includes(txnType)) {
+      amount = Math.random() * 1500 + 800; // $800-$2300
+    } else if (['utilities'].includes(txnType)) {
+      amount = Math.random() * 300 + 50; // $50-$350
+    } else if (['groceries'].includes(txnType)) {
+      amount = Math.random() * 200 + 20; // $20-$220
+    } else {
+      amount = Math.random() * 500 + 10; // $10-$510
+    }
+
+    txns.push({
+      id: String(txnId),
+      fromAccountId: Math.random() > 0.3 ? String(accounts[fromAccountIdx].id) : null,
+      toAccountId: Math.random() > 0.3 ? String(accounts[toAccountIdx].id) : null,
+      amount: Math.round(amount * 100) / 100,
+      type: Math.random() > 0.6 ? 'transfer' : (Math.random() > 0.5 ? 'deposit' : 'withdrawal'),
+      description: txnType.replace(/_/g, ' '),
+      status: Math.random() > 0.05 ? 'completed' : 'pending',
+      createdAt: new Date(2024, Math.floor(Math.random() * 2), Math.floor(Math.random() * 28) + 1, Math.floor(Math.random() * 24), Math.floor(Math.random() * 60)),
+      userId: String(accounts[Math.floor(Math.random() * accounts.length)].userId)
+    });
+    txnId++;
+  }
+
+  // Generate 500+ realistic activity logs
+  let logId = 6;
+  for (let i = 0; i < 500; i++) {
+    const randomUser = users[Math.floor(Math.random() * users.length)];
+    const action = actions[Math.floor(Math.random() * actions.length)];
+
+    activityLogs.push({
+      id: String(logId),
+      userId: randomUser.id,
+      username: randomUser.username,
+      action,
+      endpoint: `/api/${Math.random() > 0.5 ? 'accounts' : 'transactions'}${Math.random() > 0.7 ? '/my' : ''}`,
+      timestamp: new Date(2024, Math.floor(Math.random() * 2), Math.floor(Math.random() * 28) + 1, Math.floor(Math.random() * 24), Math.floor(Math.random() * 60)),
+      ipAddress: `192.168.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`,
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    });
+    logId++;
+  }
+
+  return { users, accounts, txns, activityLogs };
+}
+
+// Generate realistic data
+const realisticData = generateRealisticBankingData();
+
 module.exports = {
-  sampleUsers,
-  sampleAccounts,
-  sampleTransactions,
-  sampleActivityLogs
+  sampleUsers: [...sampleUsers, ...realisticData.users],
+  sampleAccounts: [...sampleAccounts, ...realisticData.accounts],
+  sampleTransactions: [...sampleTransactions, ...realisticData.txns],
+  sampleActivityLogs: [...sampleActivityLogs, ...realisticData.activityLogs]
 };
