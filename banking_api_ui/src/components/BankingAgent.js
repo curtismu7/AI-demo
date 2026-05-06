@@ -3695,8 +3695,30 @@ export default function BankingAgent({
             console.log("[Transfer600Test] HTTP Transfer body:", httpBody);
             response = { result: httpBody, status: httpRes.status };
 
-            // If 428 (HITL) or 403 (deny), format as error result for normalizeAgentToolResult
-            if (httpRes.status === 428 || httpRes.status === 403) {
+            // If 428 (HITL), show consent modal
+            if (httpRes.status === 428) {
+              toast.dismiss(toastId);
+              setLoading(false);
+              setHitlPendingIntent({
+                actionId: "transfer_600_test",
+                form: {
+                  fromId: testFrom.id,
+                  toId: testTo.id,
+                  amount: String(APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER),
+                  note: "HITL + MFA test",
+                },
+                intentPayload: {
+                  type: "transfer",
+                  description: `Transfer $${APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER}`,
+                  amount: APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER,
+                },
+                threshold: 250,
+              });
+              return;
+            }
+
+            // If 403 (deny), format as error result
+            if (httpRes.status === 403) {
               response.result = {
                 ok: false,
                 error: httpBody.error,
@@ -3710,7 +3732,7 @@ export default function BankingAgent({
             setLoading(false);
             return;
           }
-          // Falls through to normalizeAgentToolResult — HITL gate fires there and shows consent modal
+          // Falls through to normalizeAgentToolResult for 200/other responses
           break;
         }
         case "demo_intent_delegation": {
@@ -3869,16 +3891,37 @@ export default function BankingAgent({
             console.log("[FullCompliance] HTTP Transfer body:", httpBody);
             response = { result: httpBody, status: httpRes.status };
 
-            // If 428 (HITL) or 403 (deny), need to format as error result for normalizeAgentToolResult
-            if (httpRes.status === 428 || httpRes.status === 403) {
+            // If 428 (HITL), show consent modal
+            if (httpRes.status === 428) {
+              console.log("[FullCompliance] Detected HITL, showing consent modal");
+              toast.dismiss(toastId);
+              setLoading(false);
+              setHitlPendingIntent({
+                actionId: "full_compliance_test",
+                form: {
+                  fromId: compFrom.id,
+                  toId: compTo.id,
+                  amount: String(APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER),
+                  note: "Full compliance scenario test",
+                },
+                intentPayload: {
+                  type: "transfer",
+                  description: `Transfer $${APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER}`,
+                  amount: APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER,
+                },
+                threshold: 250,
+              });
+              return;
+            }
+
+            // If 403 (deny), format as error result
+            if (httpRes.status === 403) {
               response.result = {
                 ok: false,
                 error: httpBody.error,
                 ...httpBody,
               };
-              console.log(
-                "[FullCompliance] Formatted as error response for HITL/deny",
-              );
+              console.log("[FullCompliance] Formatted as deny response");
             }
           } catch (err) {
             console.error("[FullCompliance] Transfer failed:", err);
@@ -5390,12 +5433,14 @@ export default function BankingAgent({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot replay when nlResumeAfterAuth is set after OAuth
   }, [nlResumeAfterAuth, isLoggedIn]);
 
-  // When any agent write (confirm event) fires, refresh an open transactions result panel.
+  // Real-time transaction updates: refresh the open transactions panel when:
+  //   1. Agent completes a write (transfer/deposit/withdraw)
+  //   2. UserDashboard dispatches "banking-transaction-completed"
+  //   3. Periodic polling (every 15s) while panel is open
   useEffect(() => {
-    const onAgentWrite = () => {
+    const refreshTransactions = () => {
       setResultPanel((prev) => {
         if (!prev || prev.type !== "transactions") return prev;
-        // Fetch fresh transactions and update in-place
         getMyTransactions(30)
           .then((txRes) => {
             const txNorm = normalizeAgentToolResult(txRes.result);
@@ -5408,14 +5453,24 @@ export default function BankingAgent({
             }
           })
           .catch(() => {});
-        return prev; // keep current while fetching
+        return prev;
       });
     };
-    window.addEventListener("banking-agent-result", onAgentWrite);
-    return () =>
-      window.removeEventListener("banking-agent-result", onAgentWrite);
+
+    window.addEventListener("banking-agent-result", refreshTransactions);
+    window.addEventListener("banking-transaction-completed", refreshTransactions);
+
+    const pollInterval = setInterval(() => {
+      if (resultPanel?.type === "transactions") refreshTransactions();
+    }, 15000);
+
+    return () => {
+      window.removeEventListener("banking-agent-result", refreshTransactions);
+      window.removeEventListener("banking-transaction-completed", refreshTransactions);
+      clearInterval(pollInterval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [resultPanel?.type]);
 
   // Float mode should return nothing when the dedicated /agent page is active
   if (!isInline && isAgentPage) return null;

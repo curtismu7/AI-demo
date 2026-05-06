@@ -1353,6 +1353,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       setTransferForm({ toAccountId: "", amount: "", description: "" });
       setSelectedAccount(null);
       await fetchUserData();
+      window.dispatchEvent(new CustomEvent("banking-transaction-completed", { detail: { type: "transfer" } }));
 
       notifySuccess("Transfer completed successfully!");
     } catch (error) {
@@ -1446,6 +1447,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       setDepositForm({ amount: "", description: "" });
       setDepositAccount(null);
       await fetchUserData();
+      window.dispatchEvent(new CustomEvent("banking-transaction-completed", { detail: { type: "deposit" } }));
 
       notifySuccess("Deposit completed successfully!");
     } catch (error) {
@@ -1543,6 +1545,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       setWithdrawForm({ amount: "", description: "" });
       setWithdrawAccount(null);
       await fetchUserData();
+      window.dispatchEvent(new CustomEvent("banking-transaction-completed", { detail: { type: "withdrawal" } }));
 
       notifySuccess("Withdrawal completed successfully!");
     } catch (error) {
