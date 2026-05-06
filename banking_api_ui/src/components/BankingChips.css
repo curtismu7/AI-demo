@@ -1,21 +1,23 @@
-.banking-chips {
+.banking-chips-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-  background-color: var(--ba-bg-secondary, #f9fafb);
-  border-top: 1px solid var(--ba-border, #e5e7eb);
-  border-bottom: 1px solid var(--ba-border, #e5e7eb);
+  gap: 2px;
 }
 
-.banking-chips__section {
+.banking-chips-dropdown__section {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--ba-border, #e5e7eb);
 }
 
-.banking-chips__label {
-  font-size: 12px;
+.banking-chips-dropdown__section:last-child {
+  border-bottom: none;
+}
+
+.banking-chips-dropdown__label {
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -23,24 +25,24 @@
   padding: 0 4px;
 }
 
-.banking-chips__grid {
+.banking-chips-dropdown__grid {
   display: grid;
   gap: 6px;
 }
 
-.banking-chips__grid--heuristic {
+.banking-chips-dropdown__grid--heuristic {
   grid-template-columns: repeat(2, 1fr);
 }
 
-.banking-chips__grid--llm {
+.banking-chips-dropdown__grid--llm {
   grid-template-columns: repeat(2, 1fr);
-  padding-left: 12px;
+  padding-left: 8px;
 }
 
-.banking-chips__button {
+.banking-chips-dropdown__button {
   padding: 8px 12px;
   border: 1px solid var(--ba-border, #e5e7eb);
-  border-radius: 6px;
+  border-radius: 4px;
   background-color: var(--ba-bg, #ffffff);
   color: var(--ba-text, #1f2937);
   font-size: 12px;
@@ -48,49 +50,48 @@
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
 }
 
-.banking-chips__button:hover:not(:disabled) {
+.banking-chips-dropdown__button:hover:not(:disabled) {
   background-color: var(--ba-bg-hover, #f3f4f6);
   border-color: var(--ba-border-hover, #d1d5db);
 }
 
-.banking-chips__button:active:not(:disabled) {
+.banking-chips-dropdown__button:active:not(:disabled) {
   background-color: var(--ba-bg-active, #e5e7eb);
 }
 
-.banking-chips__button:disabled {
+.banking-chips-dropdown__button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.banking-chips__button--heuristic {
+.banking-chips-dropdown__button--heuristic {
   background-color: var(--ba-bg, #ffffff);
   border-color: var(--ba-border, #e5e7eb);
 }
 
-.banking-chips__button--llm {
+.banking-chips-dropdown__button--llm {
   background-color: var(--ba-bg, #ffffff);
   border-color: var(--ba-border, #e5e7eb);
   font-size: 11px;
 }
 
-.banking-chips__categories {
+.banking-chips-dropdown__categories {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.banking-chips__category {
+.banking-chips-dropdown__category {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.banking-chips__category-header {
+.banking-chips-dropdown__category-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -105,22 +106,22 @@
   transition: all 0.2s ease;
 }
 
-.banking-chips__category-header:hover:not(:disabled) {
+.banking-chips-dropdown__category-header:hover:not(:disabled) {
   background-color: var(--ba-bg, #ffffff);
   border-color: var(--ba-border-hover, #d1d5db);
 }
 
-.banking-chips__category-header:disabled {
+.banking-chips-dropdown__category-header:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.banking-chips__category-name {
+.banking-chips-dropdown__category-name {
   flex: 1;
   text-align: left;
 }
 
-.banking-chips__category-toggle {
+.banking-chips-dropdown__category-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -131,18 +132,6 @@
   color: var(--ba-text-secondary, #6b7280);
 }
 
-.banking-chips__category-toggle.expanded {
+.banking-chips-dropdown__category-toggle.expanded {
   transform: rotate(180deg);
-}
-
-/* Responsive: Stack in single column on narrow screens */
-@media (max-width: 480px) {
-  .banking-chips__grid--heuristic,
-  .banking-chips__grid--llm {
-    grid-template-columns: 1fr;
-  }
-
-  .banking-chips__grid--llm {
-    padding-left: 8px;
-  }
 }

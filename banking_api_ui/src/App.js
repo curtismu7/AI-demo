@@ -29,6 +29,7 @@ import { AgenticTrustEducation } from "./components/AgenticTrustEducation";
 import ApiExplorerPanel from "./components/ApiExplorerPanel";
 import ArchitectureFlowPage from "./components/ArchitectureFlowPage";
 import ArchitectureOverviewPage from "./components/ArchitectureOverviewPage";
+import SequenceDiagramPage from "./components/SequenceDiagramPage";
 import ArchitectureTabsPanel from "./components/ArchitectureTabsPanel";
 import ArchitectureTokenFlowPage from "./components/ArchitectureTokenFlowPage";
 import ApiTrafficPage from "./components/ApiTrafficPage";
@@ -589,6 +590,7 @@ function AppWithAuth() {
     "/authz-test",
     "/monitoring",
     "/architecture",
+    "/sequence-diagram",
   ];
   const isOnSidebarRoute =
     sidebarRoutePatterns.some((pattern) => pathname.startsWith(pattern)) ||
@@ -878,6 +880,22 @@ function AppWithAuth() {
                       />
                     </main>
                   </>
+                }
+              />
+              <Route
+                path="/sequence-diagram"
+                element={
+                  user ? (
+                    <>
+                      <AdminSideNav user={user} />
+                      <TopNav user={user} onLogout={logout} />
+                      <main className="main-content">
+                        <SequenceDiagramPage user={user} />
+                      </main>
+                    </>
+                  ) : (
+                    <Navigate to="/" replace />
+                  )
                 }
               />
               {/* Public landing page — available to all users */}

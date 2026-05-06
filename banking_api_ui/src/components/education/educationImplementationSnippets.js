@@ -120,13 +120,13 @@ router.post('/initiate', authenticateToken, async (req, res) => {
 });
 // Browser polls GET /api/auth/ciba/poll/:authReqId until approved → session tokens updated`;
 
-export const SNIP_HITL_CONSENT = `// mcpLocalTools.js — high-value write without consentChallengeId
+export const SNIP_HITL_CONSENT = `// Phase 2: Unified HITL response shape
 return {
-  error: 'consent_challenge_required',
-  consent_challenge_required: true,
-  consentChallenge: { amount, fromAccount, toAccount, ... },
+  error: 'hitl_required',
+  hitl: { type: 'consent' },
+  hitl_threshold_usd: 250,
 };
-// After user confirms modal, BankingAgent retries with consentChallengeId on REST or MCP path.`;
+// After user approves consent modal, BankingAgent retries with consentChallengeId on REST or MCP path.`;
 
 export const SNIP_CIMD_WELL_KNOWN = `// routes/clientRegistration.js — hosted CIMD document
 function wellKnownHandler(req, res) {

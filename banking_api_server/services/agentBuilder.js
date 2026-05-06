@@ -101,7 +101,7 @@ function normalizeToolCallArgs(args) {
   return {};
 }
 
-async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = [], langchainConfig = {} }) {
+async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = [], langchainConfig = {}, subjectToken = null, req = null }) {
   console.log('[agentBuilder] === CREATE BANKING AGENT START ===');
   console.log('[agentBuilder] userId:', userId);
   console.log('[agentBuilder] userToken present:', !!userToken);
@@ -149,7 +149,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
 
         // Initialize LLM provider (Helix, Ollama, or others)
     let model;
-    const provider = langchainConfig?.provider || 'ollama';
+    const provider = langchainConfig?.provider || 'helix';
     const selectedModel = langchainConfig?.model || DEFAULT_MODELS[provider];
 
     if (provider === 'helix') {
@@ -206,7 +206,10 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
           agentContext: {
             agentToken,
             userId,
+            userToken,
+            subjectToken,
             tokenEvents,
+            req, // For token event recording
           },
         },
       };

@@ -192,9 +192,37 @@ async function get_account_balance(params, userId) {
 }
 
 async function get_my_transactions(params, userId) {
-  const limit = parseInt(params.limit, 10) || 10;
-  const allTxns = dataStore.getTransactionsByUserId(userId);
-  const limited = allTxns.slice(-limit).reverse(); // most recent first
+  const limit = parseInt(params.limit, 10) || 50;
+  const startDate = params.startDate ? new Date(params.startDate) : null;
+  const endDate = params.endDate ? new Date(params.endDate) : null;
+  const minAmount = params.minAmount ? parseFloat(params.minAmount) : null;
+  const maxAmount = params.maxAmount ? parseFloat(params.maxAmount) : null;
+
+  let allTxns = dataStore.getTransactionsByUserId(userId);
+
+  // Filter by date range if provided
+  if (startDate || endDate) {
+    allTxns = allTxns.filter(txn => {
+      const txnDate = new Date(txn.date);
+      if (startDate && txnDate < startDate) return false;
+      if (endDate && txnDate > endDate) return false;
+      return true;
+    });
+  }
+
+  // Filter by amount range if provided
+  if (minAmount !== null || maxAmount !== null) {
+    allTxns = allTxns.filter(txn => {
+      const amount = Math.abs(parseFloat(txn.amount) || 0);
+      if (minAmount !== null && amount < minAmount) return false;
+      if (maxAmount !== null && amount > maxAmount) return false;
+      return true;
+    });
+  }
+
+  // Sort by date (most recent first) and limit
+  const sorted = allTxns.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const limited = sorted.slice(0, limit);
 
   const enriched = limited.map(txn => {
     const accountId = txn.fromAccountId || txn.toAccountId;
@@ -233,9 +261,9 @@ async function create_deposit(params, userId) {
   const rounded = Math.round(parsedAmount * 100) / 100;
   if (hitlBlocksLocalWrite(userId, rounded, 'deposit')) {
     return {
-      error: 'consent_challenge_required',
+      error: 'hitl_required',
+      hitl: { type: 'consent' },
       message: HITL_LOCAL_AGENT_MESSAGE,
-      consent_challenge_required: true,
       hitl_threshold_usd: txConsent.HIGH_VALUE_CONSENT_USD,
     };
   }
@@ -292,9 +320,9 @@ async function create_withdrawal(params, userId, req) {
 
   if (hitlBlocksLocalWrite(userId, rounded, 'withdrawal')) {
     return {
-      error: 'consent_challenge_required',
+      error: 'hitl_required',
+      hitl: { type: 'consent' },
       message: HITL_LOCAL_AGENT_MESSAGE,
-      consent_challenge_required: true,
       hitl_threshold_usd: txConsent.HIGH_VALUE_CONSENT_USD,
     };
   }
@@ -353,9 +381,9 @@ async function create_transfer(params, userId, req) {
 
   if (hitlBlocksLocalWrite(userId, rounded, 'transfer')) {
     return {
-      error: 'consent_challenge_required',
+      error: 'hitl_required',
+      hitl: { type: 'consent' },
       message: HITL_LOCAL_AGENT_MESSAGE,
-      consent_challenge_required: true,
       hitl_threshold_usd: txConsent.HIGH_VALUE_CONSENT_USD,
     };
   }
@@ -422,10 +450,38 @@ const LOCAL_INSPECTOR_TOOLS = [
   },
   {
     name: 'get_my_transactions',
-    description: "Retrieve user's transaction history",
+    description: "Retrieve user's transaction history with optional filtering by date range and amount",
     requiresUserAuth: true,
     requiredScopes: ['banking:transactions:read'],
-    inputSchema: { type: 'object', properties: {}, required: [], additionalProperties: false },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        startDate: {
+          type: 'string',
+          description: 'ISO 8601 start date (YYYY-MM-DD). Returns transactions on or after this date.',
+        },
+        endDate: {
+          type: 'string',
+          description: 'ISO 8601 end date (YYYY-MM-DD). Returns transactions on or before this date.',
+        },
+        minAmount: {
+          type: 'number',
+          description: 'Minimum transaction amount (absolute value). Returns transactions >= this amount.',
+        },
+        maxAmount: {
+          type: 'number',
+          description: 'Maximum transaction amount (absolute value). Returns transactions <= this amount.',
+        },
+        limit: {
+          type: 'integer',
+          description: 'Maximum number of results to return. Default: 50. Max: 100.',
+          minimum: 1,
+          maximum: 100,
+        },
+      },
+      required: [],
+      additionalProperties: false,
+    },
   },
   {
     name: 'create_deposit',
@@ -626,8 +682,8 @@ async function get_sensitive_account_details(params, userId, req) {
       // This mirrors the HITL rule for high-value transactions: human approval IS the authorization.
       return {
         ok: false,
-        consent_challenge_required: true,
-        error: 'consent_challenge_required',
+        error: 'hitl_required',
+        hitl: { type: 'consent' },
         hitl_threshold_usd: 0,
       };
     }

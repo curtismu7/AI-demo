@@ -53,6 +53,21 @@ See **[docs/SETUP.md](docs/SETUP.md)** (§ 2 — PingOne Application Configurati
               Environment: b9817c16-...
 ```
 
+## Reference Architecture (i4ai Token Exchange Flow)
+
+The diagram in **[i4ai-ref-arch.mmd](i4ai-ref-arch.mmd)** illustrates the complete token exchange flow for delegated AI agent access in this banking demo:
+
+1. **Agent context (no user subject)** — Agent requests tool list with its own credentials; authorization server returns tools matching agent's scopes
+2. **User context required** — User authenticates via web app and requests access to banking data through the chatbot
+3. **Subject token (user → agent)** — Chatbot requests a scoped token for the agent with `may_act` claim indicating agent can act on behalf of user
+4. **RFC 8693 Token Exchange** — Agent exchanges user token + agent token for a delegated token scoped to MCP gateway, carrying both `sub: user` and `act: agent1`
+5. **Downstream delegation** — Gateway exchanges for MCP-scoped token, MCP exchanges for resource-server-scoped token; each hop re-issues with same delegation chain
+6. **Authorization decisions** — Ping Authorize validates token claims, scope, and tool policy at each hop; Resource Server validates final token before returning data
+
+See **[README (mermaid).md](README%20(mermaid).md)** for detailed token operations, introspection patterns, delegation chain semantics, and standards references.
+
+---
+
 ## Key Changes from Original (ForgeRock/PingOne AI IAM Core → PingOne)
 
 | Component | Before | After |

@@ -170,12 +170,12 @@ const TOOL_CATEGORIES: ToolCategory[] = [
   "accountId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }
 
-// If amount > $500 and no HITL consent:
+// If amount > $250 and no HITL consent (Phase 2):
 {
-  "error": "consent_challenge_required",
+  "error": "hitl_required",
+  "hitl": { "type": "consent" },
   "message": "High-value transaction requires human approval. Please approve in the dashboard.",
-  "consent_challenge_required": true,
-  "hitl_threshold_usd": 500
+  "hitl_threshold_usd": 250
 }`
       },
       {

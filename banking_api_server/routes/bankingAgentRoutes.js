@@ -19,20 +19,97 @@ const router = express.Router();
 router.use(agentSessionMiddleware);
 
 // POST /init - Initialize agent session
+// i4ai-ref-arch.mmd steps 1–10: Chatbot → Agent → CC token + tools/list
 router.post('/init', async (req, res) => {
   try {
     const { userId, accessToken } = req.agentContext || {};
     if (!userId || !accessToken) {
       return res.status(401).json({ error: 'Session expired', agentInitRequired: true, need_auth: true });
     }
-    res.json({ 
-      sessionId: req.session.id, 
+
+    console.log('[banking-agent/init] User authenticated, requesting agent CC token');
+
+    // Step 3–4: Obtain agent CC token from PingOne
+    const agentCCTokenService = require('../services/agentCCTokenService');
+    let ccTokenResult;
+    try {
+      ccTokenResult = await agentCCTokenService.getAgentCCToken(req);
+    } catch (ccError) {
+      console.error('[banking-agent/init] CC token failed:', ccError.code, ccError.message);
+      const httpStatus = ccError.httpStatus || 503;
+      return res.status(httpStatus).json({
+        error: ccError.code || 'agent_cc_token_failed',
+        message: ccError.message,
+        initialized: false,
+        agentConfigured: false,
+        agentReady: false,
+      });
+    }
+
+    console.log('[banking-agent/init] Agent CC token obtained, requesting tools/list from gateway');
+
+    // Step 5–10: Request available tools from Agent Gateway
+    // Gateway will call Ping Authorize for policy evaluation
+    const agentGatewayClient = require('../services/agentGatewayClient');
+    let toolsResult;
+    try {
+      toolsResult = await agentGatewayClient.getAvailableTools(req, ccTokenResult.access_token);
+    } catch (toolsError) {
+      console.error('[banking-agent/init] Tools list failed:', toolsError.code, toolsError.message);
+
+      // If gateway is unreachable and not configured, fallback to local catalog
+      if (toolsError.code === 'tools_list_failed' && toolsError.message.includes('ECONNREFUSED')) {
+        console.log('[banking-agent/init] Agent Gateway unreachable, using local tools catalog');
+        toolsResult = {
+          tools: agentGatewayClient.getLocalToolsCatalog(),
+          tokenEvents: [],
+        };
+        if (req?.recordTokenEvent) {
+          req.recordTokenEvent('tools_list_fallback', {
+            reason: 'gateway_unreachable',
+            toolCount: toolsResult.tools.length,
+          });
+        }
+      } else {
+        // Authorization failure (403) or other fatal errors
+        const httpStatus = toolsError.httpStatus || 502;
+        return res.status(httpStatus).json({
+          error: toolsError.code || 'tools_list_failed',
+          message: toolsError.message,
+          initialized: true, // User session is valid
+          agentConfigured: false, // But agent can't fetch tools
+          agentReady: false,
+          tokenEvents: toolsError.tokenEvents || (req.tokenEvents || []),
+        });
+      }
+    }
+
+    console.log('[banking-agent/init] Agent init complete, returning tools');
+
+    // Merge all token events from CC token + tools/list requests
+    const allTokenEvents = [
+      ...(req.tokenEvents || []),
+      ...(toolsResult.tokenEvents || []),
+    ];
+
+    // Success: Return initialized agent with available tools
+    res.json({
+      sessionId: req.session.id,
       initialized: true,
-      agentReady: true 
+      agentReady: true,
+      agentConfigured: true,
+      availableTools: toolsResult.tools || [],
+      tokenEvents: allTokenEvents,
     });
   } catch (error) {
-    console.error('[bankingAgentRoutes/init] error source=%s code=%s: %s', error.source||'unknown', error.code||'none', error.message);
-    res.status(500).json({ error: error.message, source: error.source || 'bankingAgentRoutes' });
+    console.error('[banking-agent/init] Unexpected error:', error.code || 'unknown', error.message);
+    res.status(500).json({
+      error: error.code || 'agent_init_error',
+      message: error.message,
+      initialized: false,
+      agentConfigured: false,
+      agentReady: false,
+    });
   }
 });
 
@@ -77,7 +154,10 @@ router.post('/message', async (req, res) => {
       return res.status(403).json({ error: 'User denied consent', consentDenied: true });
     }
 
-    // Process message with agent
+    // Chatbot is dumb: just forward prompt to agent
+    // Agent (with LLM) decides which tools to use, handles authorization, token exchange
+
+    // Process message with agent (normal flow)
     console.log('[banking-agent/message] Calling processAgentMessage...');
     const langchainConfig = req.session?.langchain_config || {};
     const response = await processAgentMessage({
@@ -162,7 +242,7 @@ router.post('/message', async (req, res) => {
           await trackTokenEvent({
             eventType: event.status || 'exchange',
             token: '', // We don't have the raw token here, just the metadata
-            description: event.label + ': ' + (event.explanation || ''),
+            description: `${event.label}: ${event.explanation || ''}`,
             userId: userId,
             additionalData: {
               tokenLabel: event.label,
@@ -191,14 +271,15 @@ router.post('/message', async (req, res) => {
       error: response.error,
       tokenEvents: resolvedTokenEvents
     };
-    
+
     // Include account data if present (for account details panel display)
     if (response.accountData) {
       responseBody.accountData = response.accountData;
     }
-    // Forward HITL consent challenge signal so the frontend can show the consent modal
-    if (response.consent_challenge_required) {
-      responseBody.consent_challenge_required = true;
+    // Forward HITL signal so the frontend can show the consent modal (Phase 2 shape)
+    if (response.error === 'hitl_required' || response.hitl_required) {
+      responseBody.error = 'hitl_required';
+      responseBody.hitl = { type: response.hitl?.type ?? 'consent' };
       responseBody.hitl_threshold_usd = response.hitl_threshold_usd ?? 0;
     }
     // Include structured list data so client NL handler can infer panel type
@@ -214,7 +295,7 @@ router.post('/message', async (req, res) => {
     console.error('[banking-agent/message] Error stack:', error.stack);
     console.error('[banking-agent/message] Error code:', error.code);
     console.error('[banking-agent/message] Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-    
+
     // D-03: Structured recovery responses — agent threw a typed recovery error
     if (error.name === 'LoginRequiredError') {
       const rawScopes = Array.isArray(error.requiredScopes) ? error.requiredScopes : [];

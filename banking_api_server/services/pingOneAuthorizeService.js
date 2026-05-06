@@ -176,6 +176,7 @@ async function _postDecisionEndpoint(endpointId, parameters) {
   const decision = raw.decision || raw.status || 'INDETERMINATE';
   const stepUpRequired = _extractStepUpRequired(raw);
   const hitlRequired = _extractHitlRequired(raw);
+  const consentRequired = _extractConsentRequired(raw);
 
   const decisionId = raw.id || raw.decisionId || null;
 
@@ -183,7 +184,7 @@ async function _postDecisionEndpoint(endpointId, parameters) {
     request: { method: 'POST', url, contentType: 'application/json', body: { parameters } },
     response: raw,
   };
-  return { decision, stepUpRequired, hitlRequired, raw, decisionId, path: 'decision-endpoint', _debug };
+  return { decision, stepUpRequired, hitlRequired, consentRequired, raw, decisionId, path: 'decision-endpoint', _debug };
 }
 
 /**
@@ -656,6 +657,22 @@ function _extractHitlRequired(raw) {
   }
   const advice = raw.advice || raw.details?.advice || [];
   if (advice.some((a) => /(HITL|HUMAN_APPROVAL)/i.test(a.type || a.id || ''))) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Detect consent (explicit approval) requirement from PA obligations.
+ * PA policies signal consent via HITL_CONSENT obligation type.
+ */
+function _extractConsentRequired(raw) {
+  const obligations = raw.obligations || raw.details?.obligations || [];
+  if (obligations.some((o) => /HITL_CONSENT/i.test(o.type || o.id || ''))) {
+    return true;
+  }
+  const advice = raw.advice || raw.details?.advice || [];
+  if (advice.some((a) => /HITL_CONSENT/i.test(a.type || a.id || ''))) {
     return true;
   }
   return false;

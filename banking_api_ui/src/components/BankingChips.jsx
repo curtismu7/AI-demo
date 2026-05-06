@@ -135,64 +135,67 @@ export default function BankingChips({ onChipClick, isLoading }) {
   };
 
   return (
-    <div className="banking-chips">
-      {/* Heuristic Chips Section */}
-      <div className="banking-chips__section">
-        <div className="banking-chips__label">Quick Actions</div>
-        <div className="banking-chips__grid banking-chips__grid--heuristic">
-          {HEURISTIC_CHIPS.map((chip) => (
-            <button
-              key={chip.id}
-              className="banking-chips__button banking-chips__button--heuristic"
-              onClick={() => handleChipClick(chip)}
-              disabled={isLoading}
-              title={chip.message}
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* LLM Chips Section */}
-      <div className="banking-chips__section">
-        <div className="banking-chips__label">Advanced Analysis</div>
-        <div className="banking-chips__categories">
-          {Object.entries(LLM_CHIPS).map(([category, chips]) => (
-            <div key={category} className="banking-chips__category">
-              <button
-                className="banking-chips__category-header"
-                onClick={() => handleCategoryToggle(category)}
-                disabled={isLoading}
-              >
-                <span className="banking-chips__category-name">{category}</span>
-                <span
-                  className={`banking-chips__category-toggle ${
-                    expandedCategory === category ? "expanded" : ""
-                  }`}
+    <div className="banking-chips-content">
+          {/* Heuristic Chips Section */}
+          <div className="banking-chips-dropdown__section">
+            <div className="banking-chips-dropdown__label">Quick Actions</div>
+            <div className="banking-chips-dropdown__grid banking-chips-dropdown__grid--heuristic">
+              {HEURISTIC_CHIPS.map((chip) => (
+                <button
+                  type="button"
+                  key={chip.id}
+                  className="banking-chips-dropdown__button banking-chips-dropdown__button--heuristic"
+                  onClick={() => handleChipClick(chip)}
+                  disabled={isLoading}
+                  title={chip.message}
                 >
-                  ▼
-                </span>
-              </button>
-              {expandedCategory === category && (
-                <div className="banking-chips__grid banking-chips__grid--llm">
-                  {chips.map((chip) => (
-                    <button
-                      key={chip.id}
-                      className="banking-chips__button banking-chips__button--llm"
-                      onClick={() => handleChipClick(chip)}
-                      disabled={isLoading}
-                      title={chip.message}
-                    >
-                      {chip.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+                  {chip.label}
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+
+          {/* LLM Chips Section */}
+          <div className="banking-chips-dropdown__section">
+            <div className="banking-chips-dropdown__label">Advanced Analysis</div>
+            <div className="banking-chips-dropdown__categories">
+              {Object.entries(LLM_CHIPS).map(([category, chips]) => (
+                <div key={category} className="banking-chips-dropdown__category">
+                  <button
+                    type="button"
+                    className="banking-chips-dropdown__category-header"
+                    onClick={() => handleCategoryToggle(category)}
+                    disabled={isLoading}
+                  >
+                    <span className="banking-chips-dropdown__category-name">{category}</span>
+                    <span
+                      className={`banking-chips-dropdown__category-toggle ${
+                        expandedCategory === category ? "expanded" : ""
+                      }`}
+                    >
+                      ▼
+                    </span>
+                  </button>
+                  {expandedCategory === category && (
+                    <div className="banking-chips-dropdown__grid banking-chips-dropdown__grid--llm">
+                      {chips.map((chip) => (
+                        <button
+                          type="button"
+                          key={chip.id}
+                          className="banking-chips-dropdown__button banking-chips-dropdown__button--llm"
+                          onClick={() => handleChipClick(chip)}
+                          disabled={isLoading}
+                          title={chip.message}
+                        >
+                          {chip.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
     </div>
   );
 }

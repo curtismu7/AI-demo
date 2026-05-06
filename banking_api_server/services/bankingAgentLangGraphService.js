@@ -11,9 +11,10 @@ const dataStore = require('../data/store');
 
 /**
  * Execute a banking action identified by the heuristic parser, returning a chat-style reply.
+ * Handles Phase 2-3 token exchange if needed.
  * @returns {{ reply: string, success: boolean, toolsCalled: string[], tokensUsed: number, requiresConsent: boolean, agentConfigured: boolean, tokenEvents: any[] } | null}
  */
-async function executeHeuristicBanking(parsed, userId, userToken, req = null) {
+async function executeHeuristicBanking(parsed, userId, userToken, req = null, subjectToken = null) {
   const action = parsed?.banking?.action;
   const params = parsed?.banking?.params || {};
   if (!action) return null;
@@ -198,8 +199,8 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null) {
         } catch (e) { /* token decode failed — step-up will be required */ }
       }
       const result = await get_sensitive_account_details({}, userId, effectiveReq);
-      if (result.consent_challenge_required) {
-        return { reply: '🔒 Viewing sensitive account details requires your approval. Please confirm in the consent modal to continue.', success: false, toolsCalled: ['get_sensitive_account_details'], tokensUsed: 0, requiresConsent: true, agentConfigured: true, tokenEvents: [], consent_challenge_required: true, hitl_threshold_usd: 0 };
+      if (result.error === 'hitl_required' || result.hitl_required) {
+        return { reply: '🔒 Viewing sensitive account details requires your approval. Please confirm in the consent modal to continue.', success: false, toolsCalled: ['get_sensitive_account_details'], tokensUsed: 0, requiresConsent: true, agentConfigured: true, tokenEvents: [], error: 'hitl_required', hitl: { type: 'consent' }, hitl_threshold_usd: 0 };
       }
       if (!result.ok) {
         return { reply: `❌ ${result.error || 'Could not retrieve sensitive account details.'}`, success: false, toolsCalled: ['get_sensitive_account_details'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
@@ -246,19 +247,39 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     console.log('[processAgentMessage] tokenEvents count:', tokenEvents?.length || 0);
     console.log('[processAgentMessage] message length:', message?.length || 0);
 
-    // ── Heuristic first: handle known banking intents without LLM ──
-    // Falls through to LangGraph/LLM only if heuristic doesn't match.
-    const heuristic = parseHeuristic(message);
-    if (heuristic && heuristic.kind === 'banking') {
-      const heuristicResult = await executeHeuristicBanking(heuristic, userId, userToken, req);
-      if (heuristicResult) {
-        console.log('[processAgentMessage] Heuristic matched:', heuristic.banking?.action, '— skipping LLM');
-        appEventService.logEvent('agent', 'info', `Heuristic: ${heuristic.banking?.action}`, { tag: 'agent/heuristic' });
-        appEventService.logEvent('agent_prompt', 'info', `Heuristic tool dispatch: ${heuristic.banking?.action}`,
-          { tag: 'agent_prompt/heuristic_tool', metadata: { action: heuristic.banking?.action, userId } });
-        return heuristicResult;
+    // Extract subject token from request (Phase 3: user has authorized)
+    const subjectToken = req?.body?.subjectToken;
+    if (subjectToken) {
+      console.log('[processAgentMessage] Subject token provided, Phase 3 token exchange available');
+      if (req?.recordTokenEvent) {
+        req.recordTokenEvent('subject_token_provided', {
+          source: 'agent_request',
+        });
       }
-      // Heuristic matched but couldn't execute (transfer/deposit/etc.) — fall through to LLM
+    }
+
+    // ── Heuristic first: handle known banking intents without LLM ──
+    // Falls through to LangGraph/LLM only if heuristic doesn't match or if disabled.
+    const heuristicEnabled = require('../services/configStore').getEffective('ff_heuristic_enabled') !== 'false';
+
+    if (heuristicEnabled) {
+      const heuristic = parseHeuristic(message);
+      if (heuristic && heuristic.kind === 'banking') {
+        const heuristicResult = await executeHeuristicBanking(heuristic, userId, userToken, req, subjectToken);
+        if (heuristicResult) {
+          console.log('[processAgentMessage] Heuristic matched:', heuristic.banking?.action, '— skipping LLM');
+          appEventService.logEvent('agent', 'info', `Heuristic: ${heuristic.banking?.action}`, { tag: 'agent/heuristic' });
+          appEventService.logEvent('agent_prompt', 'info', `Heuristic tool dispatch: ${heuristic.banking?.action}`,
+            { tag: 'agent_prompt/heuristic_tool', metadata: { action: heuristic.banking?.action, userId } });
+          return heuristicResult;
+        }
+        // Heuristic matched but couldn't execute (transfer/deposit/etc.) — fall through to LLM
+      }
+    } else {
+      console.log('[processAgentMessage] Heuristic disabled via ff_heuristic_enabled flag — using LLM for all queries');
+      if (req?.recordTokenEvent) {
+        req.recordTokenEvent('heuristic_disabled', { reason: 'ff_heuristic_enabled=false' });
+      }
     }
 
     // Note: Ollama (default) needs no API key. Cloud LLMs need keys added via /llm-config.
@@ -270,7 +291,9 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       userToken,
       sessionId,
       tokenEvents,
-      langchainConfig
+      langchainConfig,
+      subjectToken,
+      req,
     });
     console.log('[processAgentMessage] Agent created successfully');
 

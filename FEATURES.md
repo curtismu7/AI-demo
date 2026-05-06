@@ -83,7 +83,7 @@ git checkout <last-version-tag> -- <key-file>
 
 | Feature | Status | Key files | Test file |
 |---|---|---|---|
-| Admin dashboard / stats | active | `banking_api_server/routes/admin.js`, `banking_api_ui/src/components/Dashboard.js` | — |
+| Admin dashboard / stats — 3-column layout with token chain, agent, and operations; clickable metric cards display detailed breakdowns (user status, account distribution, balance by type) | active | `banking_api_server/routes/admin.js`, `banking_api_ui/src/components/Dashboard.js`, `banking_api_ui/src/components/BankingAdminOps.js`, `banking_api_ui/src/components/BankingAdminOps.css` | — |
 | Banking admin — account lookup, seed fake charges, delete account/tx | active | `banking_api_server/routes/admin.js` (`/banking/lookup`, `/banking/accounts/:id/seed-charges`), `banking_api_ui/src/components/BankingAdminOps.js` | — |
 | PingOne scope configuration — auto-create/update scopes, grant to applications, remove deprecated scopes | active | `banking_api_server/routes/admin.js` (`POST /api/admin/pingone/update-scopes`), `banking_api_server/services/pingoneScopeUpdateService.js`, `banking_api_ui/src/components/BankingAdminOps.js` | — |
 | User management (list, create, update, delete) | active | `banking_api_server/routes/users.js`, `banking_api_ui/src/components/Users.js` | `s:auth.test.js` |

@@ -1381,9 +1381,20 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         setCibaStatus("idle");
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        notifyError(
-          "You do not have permission to perform transfers. Please contact your administrator.",
-        );
+        const scopeError = d?.error === 'insufficient_scope';
+        if (scopeError) {
+          const requiredScope = d?.required_scope || 'banking:write';
+          const userScopes = d?.user_scopes || [];
+          const userScopesStr = userScopes.length > 0 ? userScopes.join(', ') : '(none)';
+          notifyError(
+            `Insufficient scope: This action requires '${requiredScope}' scope.\nYour token has: ${userScopesStr}\nRe-authenticate to request additional scopes.`,
+            5000,
+          );
+        } else {
+          notifyError(
+            "You do not have permission to perform transfers. Please contact your administrator.",
+          );
+        }
       } else {
         notifyError(error.response?.data?.error || "Transfer failed");
       }
@@ -1462,9 +1473,20 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         setCibaStatus("idle");
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        notifyError(
-          "You do not have permission to make deposits. Please contact your administrator.",
-        );
+        const scopeError = d?.error === 'insufficient_scope';
+        if (scopeError) {
+          const requiredScope = d?.required_scope || 'banking:write';
+          const userScopes = d?.user_scopes || [];
+          const userScopesStr = userScopes.length > 0 ? userScopes.join(', ') : '(none)';
+          notifyError(
+            `Insufficient scope: This action requires '${requiredScope}' scope.\nYour token has: ${userScopesStr}\nRe-authenticate to request additional scopes.`,
+            5000,
+          );
+        } else {
+          notifyError(
+            "You do not have permission to make deposits. Please contact your administrator.",
+          );
+        }
       } else {
         notifyError(error.response?.data?.error || "Deposit failed");
       }
@@ -1548,9 +1570,20 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         setCibaStatus("idle");
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        notifyError(
-          "You do not have permission to make withdrawals. Please contact your administrator.",
-        );
+        const scopeError = d?.error === 'insufficient_scope';
+        if (scopeError) {
+          const requiredScope = d?.required_scope || 'banking:write';
+          const userScopes = d?.user_scopes || [];
+          const userScopesStr = userScopes.length > 0 ? userScopes.join(', ') : '(none)';
+          notifyError(
+            `Insufficient scope: This action requires '${requiredScope}' scope.\nYour token has: ${userScopesStr}\nRe-authenticate to request additional scopes.`,
+            5000,
+          );
+        } else {
+          notifyError(
+            "You do not have permission to make withdrawals. Please contact your administrator.",
+          );
+        }
       } else {
         notifyError(error.response?.data?.error || "Withdrawal failed");
       }

@@ -103,7 +103,11 @@ async function agentSessionMiddleware(req, res, next) {
       accessToken: req.session.oauthTokens.accessToken,
       refreshToken: req.session.oauthTokens.refreshToken || null,
       sessionId: req.sessionID,
-      // These will be populated after token exchange in Plan 02
+      // Phase 3: RFC 8693 token exchange fields
+      subjectToken: null, // Subject token with may_act (user context)
+      txToken: null, // Delegated transaction token (act claim)
+      txTokenExpiresAt: null, // When txToken expires
+      agentCCToken: null, // Agent client credentials token (from Phase 1)
       mcpAccessToken: null, // RFC 8693 §3.2: populated after token exchange
       tokenExchangedAt: null,
       tokenEvents: [],
@@ -165,6 +169,10 @@ function getAuthContextOrDefault(req) {
       accessToken: null,
       refreshToken: null,
       sessionId: null,
+      subjectToken: null,
+      txToken: null,
+      txTokenExpiresAt: null,
+      agentCCToken: null,
       mcpAccessToken: null, // RFC 8693 §3.2: populated after token exchange
       tokenExchangedAt: null,
     }

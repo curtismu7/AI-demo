@@ -160,7 +160,7 @@ export class BankingToolRegistry {
     create_deposit: {
       name: 'create_deposit',
       title: 'Create Deposit',
-      description: 'Create a deposit transaction to an account. Use account ID (not account number) from get_my_accounts response. Amounts over $500 require human consent on the web dashboard first (returns consent_challenge_required if attempted without it).',
+      description: 'Create a deposit transaction to an account. Use account ID (not account number) from get_my_accounts response. Amounts over $250 require human consent on the web dashboard first (returns hitl_required if attempted without it).',
       requiresUserAuth: true,
       requiredScopes: ['banking:write'],
       handler: 'executeCreateDeposit',
@@ -208,7 +208,7 @@ export class BankingToolRegistry {
     create_withdrawal: {
       name: 'create_withdrawal',
       title: 'Create Withdrawal',
-      description: 'Create a withdrawal transaction from an account. Use account ID (not account number) from get_my_accounts response. Amounts over $500 require human consent on the web dashboard first (returns consent_challenge_required if attempted without it).',
+      description: 'Create a withdrawal transaction from an account. Use account ID (not account number) from get_my_accounts response. Amounts over $250 require human consent on the web dashboard first (returns hitl_required if attempted without it).',
       requiresUserAuth: true,
       requiredScopes: ['banking:write'],
       handler: 'executeCreateWithdrawal',
@@ -256,7 +256,7 @@ export class BankingToolRegistry {
     create_transfer: {
       name: 'create_transfer',
       title: 'Transfer Money',
-      description: 'Transfer money between accounts. Use account IDs (not account numbers) from get_my_accounts response. Amounts over $500 require human consent on the web dashboard first (returns consent_challenge_required if attempted without it).',
+      description: 'Transfer money between accounts. Use account IDs (not account numbers) from get_my_accounts response. Amounts over $250 require human consent on the web dashboard first (returns hitl_required if attempted without it).',
       requiresUserAuth: true,
       requiredScopes: ['banking:write'],
       handler: 'executeCreateTransfer',

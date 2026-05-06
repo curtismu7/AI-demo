@@ -123,6 +123,7 @@ const FIELD_DEFS = {
   ff_two_exchange_delegation: { public: true, default: 'true' }, // 2-Exchange pattern: Subject→(AI Agent exchange)→Agent Token→(MCP exchange)→Final Token with nested act.act claim (default ON — canonical agent path)
   mcp_use_legacy_protocol: { public: true, default: 'false' }, // When 'true', BFF uses protocolVersion 2024-11-05 in MCP initialize; default (false) = 2025-11-25
   ff_webmcp_enabled:         { public: true, default: 'false' }, // Show WebMCP browser panel on dashboard (tool-listing + streaming call UI via BFF proxy)
+  ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic fast path for chips; when false, all queries go through LLM
 
   // Token endpoint auth method overrides (configurable at runtime from Demo Data page)
   // Fallback: env vars AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD / MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD

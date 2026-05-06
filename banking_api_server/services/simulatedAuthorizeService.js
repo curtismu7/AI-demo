@@ -58,6 +58,32 @@ function getStepUpAmountUsd() {
   );
 }
 
+/** Transaction types that always require consent (comma-separated, e.g., "transfer,withdrawal"). */
+function getConsentTypes() {
+  const raw = configStore.get('SIMULATED_AUTHORIZE_CONSENT_TYPES') ||
+              process.env.SIMULATED_AUTHORIZE_CONSENT_TYPES ||
+              'transfer';
+  return new Set(
+    raw
+      .split(',')
+      .map(function(s) { return s.trim().toLowerCase(); })
+      .filter(Boolean)
+  );
+}
+
+/** Transaction types that always require step-up (comma-separated, e.g., "withdrawal"). */
+function getStepUpTypes() {
+  const raw = configStore.get('SIMULATED_AUTHORIZE_STEPUP_TYPES') ||
+              process.env.SIMULATED_AUTHORIZE_STEPUP_TYPES ||
+              '';
+  return new Set(
+    raw
+      .split(',')
+      .map(function(s) { return s.trim().toLowerCase(); })
+      .filter(Boolean)
+  );
+}
+
 let _seq = 0;
 
 /** Ring buffer of recent simulated decisions (education / parity with PingOne recent decisions). */
@@ -261,8 +287,20 @@ async function evaluateTransaction({ userId, amount, type, acr }) {
   const denyAmount = getDenyAmountUsd();
   const stepUpAmount = getStepUpAmountUsd();
   const confirmAmount = getConfirmAmountUsd();
+  const consentTypes = getConsentTypes();
+  const stepUpTypes = getStepUpTypes();
 
-  // DENY: amounts exceeding deny threshold ($2000+)
+  var obligations;
+  var reasonParts;
+  var reason;
+  var typeRequiresConsent;
+  var typeRequiresStepUp;
+  var amountRequiresStepUp;
+  var amountRequiresConsent;
+  var consentRequired;
+  var stepUpRequired;
+
+  // DENY: amounts exceeding deny threshold (always checked first)
   if (amt > denyAmount) {
     out = {
       decision: 'DENY',
@@ -271,61 +309,70 @@ async function evaluateTransaction({ userId, amount, type, acr }) {
       path: 'simulated',
       decisionId,
       raw: {
-        ...rawBase,
+        engine: 'simulated',
         decision: 'DENY',
-        reason: `Simulated policy DENY: amount exceeds $${denyAmount.toLocaleString()} limit.`,
+        reason: 'Simulated policy DENY: amount exceeds $' + denyAmount.toLocaleString() + ' limit.',
       },
     };
-  }
-  // CONSENT + MFA: amounts >= $500 (requires both consent AND step-up)
-  else if (amt >= stepUpAmount && !acrLooksStrong(acr)) {
-    out = {
-      decision: 'INDETERMINATE',
-      stepUpRequired: true,
-      consentRequired: true,
-      path: 'simulated',
-      decisionId,
-      raw: {
-        ...rawBase,
+  } else {
+    // Type-based rules: check if transaction type requires consent or step-up
+    typeRequiresConsent = consentTypes.has(type.toLowerCase());
+    typeRequiresStepUp = stepUpTypes.has(type.toLowerCase()) && !acrLooksStrong(acr);
+
+    // Amount-based rules: check thresholds
+    amountRequiresStepUp = amt >= stepUpAmount && !acrLooksStrong(acr);
+    amountRequiresConsent = amt >= confirmAmount;
+
+    // Combine type-based and amount-based requirements
+    consentRequired = typeRequiresConsent || amountRequiresConsent;
+    stepUpRequired = typeRequiresStepUp || amountRequiresStepUp;
+
+    if (consentRequired || stepUpRequired) {
+      // Build obligations list
+      obligations = [];
+      if (consentRequired) {
+        obligations.push({ type: 'HITL_CONSENT', detail: 'Human approval required.' });
+      }
+      if (stepUpRequired) {
+        obligations.push({ type: 'STEP_UP', detail: 'Elevated authentication (MFA) required.' });
+      }
+
+      // Build reason message
+      reasonParts = [];
+      if (typeRequiresConsent) reasonParts.push('transaction type requires consent');
+      if (typeRequiresStepUp) reasonParts.push('transaction type requires step-up');
+      if (amountRequiresConsent && !typeRequiresConsent) reasonParts.push('amount exceeds $' + confirmAmount.toLocaleString());
+      if (amountRequiresStepUp && !typeRequiresStepUp) reasonParts.push('amount exceeds $' + stepUpAmount.toLocaleString());
+      reason = 'Simulated policy: ' + reasonParts.join('; ') + '.';
+
+      out = {
         decision: 'INDETERMINATE',
-        obligations: [
-          { type: 'HITL_CONSENT', detail: 'Human consent required.' },
-          { type: 'STEP_UP', detail: 'Elevated authentication (MFA) required.' },
-        ],
-        reason: `Simulated policy: transactions ≥ $${stepUpAmount.toLocaleString()} require consent + MFA.`,
-      },
-    };
-  }
-  // CONFIRM: amounts $250-$499 (consent only, no MFA)
-  else if (amt >= confirmAmount && amt < stepUpAmount) {
-    out = {
-      decision: 'INDETERMINATE',
-      stepUpRequired: false,
-      consentRequired: true,
-      path: 'simulated',
-      decisionId,
-      raw: {
-        ...rawBase,
-        decision: 'INDETERMINATE',
-        obligations: [{ type: 'HITL_CONSENT', detail: 'Human confirmation required.' }],
-        reason: `Simulated policy: transactions $${confirmAmount.toLocaleString()}-$${stepUpAmount.toLocaleString()} require confirmation.`,
-      },
-    };
-  }
-  // PERMIT: amounts < $250
-  else {
-    out = {
-      decision: 'PERMIT',
-      stepUpRequired: false,
-      consentRequired: false,
-      path: 'simulated',
-      decisionId,
-      raw: {
-        ...rawBase,
+        stepUpRequired: stepUpRequired,
+        consentRequired: consentRequired,
+        path: 'simulated',
+        decisionId,
+        raw: {
+          engine: 'simulated',
+          decision: 'INDETERMINATE',
+          obligations: obligations,
+          reason: reason,
+        },
+      };
+    } else {
+      // PERMIT: no type or amount requirements
+      out = {
         decision: 'PERMIT',
-        obligations: [],
-      },
-    };
+        stepUpRequired: false,
+        consentRequired: false,
+        path: 'simulated',
+        decisionId,
+        raw: {
+          engine: 'simulated',
+          decision: 'PERMIT',
+          obligations: [],
+        },
+      };
+    }
   }
 
   recordSimulatedDecision({
@@ -416,4 +463,6 @@ module.exports = {
   getDenyAmountUsd,
   getStepUpAmountUsd,
   getConfirmAmountUsd,
+  getConsentTypes,
+  getStepUpTypes,
 };

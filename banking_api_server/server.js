@@ -1816,8 +1816,8 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
 
         // Get active LLM model for logging and client display
         const langchainConfig = req.session?.langchain_config || {};
-        const activeProvider = langchainConfig.provider || 'ollama';
-        const activeModel = langchainConfig.model || 'llama3.2';
+        const activeProvider = langchainConfig.provider || 'helix';
+        const activeModel = langchainConfig.model || 'gpt-4o-mini';
         console.log(`[/api/mcp/tool] ${tool} — using LLM: ${activeProvider}/${activeModel}`);
 
         const out = {

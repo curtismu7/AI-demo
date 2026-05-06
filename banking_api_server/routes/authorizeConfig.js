@@ -4,7 +4,7 @@
 'use strict';
 
 const express = require('express');
-const { authenticateToken, requireScopes } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const configStore = require('../services/configStore');
 const {
   getAuthorizationStatusSummary,
@@ -16,6 +16,8 @@ const {
   getDenyAmountUsd,
   getStepUpAmountUsd,
   getConfirmAmountUsd,
+  getConsentTypes,
+  getStepUpTypes,
 } = require('../services/simulatedAuthorizeService');
 
 const router = express.Router();
@@ -28,7 +30,7 @@ const router = express.Router();
  * - PingOne credentials (masked)
  * - Env vars (for reference)
  */
-router.get('/config', authenticateToken, requireScopes(['openid']), async (req, res) => {
+router.get('/config', authenticateToken, async (req, res) => {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ error: 'admin_only', message: 'This endpoint requires admin role.' });
   }
@@ -37,10 +39,14 @@ router.get('/config', authenticateToken, requireScopes(['openid']), async (req, 
     const status = getAuthorizationStatusSummary();
     const mcpStatus = getMcpFirstToolGateStatus();
 
+    const consentTypesSet = getConsentTypes();
+    const stepUpTypesSet = getStepUpTypes();
     const simulated = {
       confirmAmount: getConfirmAmountUsd(),
       denyAmount: getDenyAmountUsd(),
       stepUpAmount: getStepUpAmountUsd(),
+      consentTypes: Array.from(consentTypesSet).join(','),
+      stepUpTypes: Array.from(stepUpTypesSet).join(','),
       mcpDenyTools: (configStore.get('SIMULATED_MCP_DENY_TOOLS') || '').split(',').filter(Boolean),
       mcpHitlTools: (configStore.get('SIMULATED_MCP_HITL_TOOLS') || '').split(',').filter(Boolean),
     };
@@ -89,6 +95,8 @@ router.get('/config', authenticateToken, requireScopes(['openid']), async (req, 
       SIMULATED_AUTHORIZE_DENY_AMOUNT: configStore.get('SIMULATED_AUTHORIZE_DENY_AMOUNT') || process.env.SIMULATED_AUTHORIZE_DENY_AMOUNT || '(default 2000)',
       SIMULATED_AUTHORIZE_CONFIRM_AMOUNT: configStore.get('SIMULATED_AUTHORIZE_CONFIRM_AMOUNT') || process.env.SIMULATED_AUTHORIZE_CONFIRM_AMOUNT || '(default 250)',
       SIMULATED_AUTHORIZE_POLICY_STEPUP_AMOUNT: configStore.get('SIMULATED_AUTHORIZE_STEPUP_AMOUNT') || process.env.SIMULATED_AUTHORIZE_POLICY_STEPUP_AMOUNT || '(default 500)',
+      SIMULATED_AUTHORIZE_CONSENT_TYPES: configStore.get('SIMULATED_AUTHORIZE_CONSENT_TYPES') || process.env.SIMULATED_AUTHORIZE_CONSENT_TYPES || '(default transfer)',
+      SIMULATED_AUTHORIZE_STEPUP_TYPES: configStore.get('SIMULATED_AUTHORIZE_STEPUP_TYPES') || process.env.SIMULATED_AUTHORIZE_STEPUP_TYPES || '(default none)',
       SIMULATED_MCP_DENY_TOOLS: configStore.get('SIMULATED_MCP_DENY_TOOLS') || process.env.SIMULATED_MCP_DENY_TOOLS || '(none)',
       SIMULATED_MCP_HITL_TOOLS: configStore.get('SIMULATED_MCP_HITL_TOOLS') || process.env.SIMULATED_MCP_HITL_TOOLS || '(none)',
       PINGONE_RESOURCE_MCP_SERVER_URI: mcpResourceUri || '(not set)',
@@ -120,12 +128,12 @@ router.get('/config', authenticateToken, requireScopes(['openid']), async (req, 
  *   simulated_mcp_hitl_tools?: string (comma-separated)
  * }
  */
-router.post('/config', authenticateToken, requireScopes(['openid']), async (req, res) => {
+router.post('/config', authenticateToken, async (req, res) => {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ error: 'admin_only', message: 'This endpoint requires admin role.' });
   }
 
-  const { simulated_confirm_amount, simulated_deny_amount, simulated_stepup_amount, simulated_mcp_deny_tools, simulated_mcp_hitl_tools } = req.body || {};
+  const { simulated_confirm_amount, simulated_deny_amount, simulated_stepup_amount, simulated_consent_types, simulated_stepup_types, simulated_mcp_deny_tools, simulated_mcp_hitl_tools } = req.body || {};
 
   const updates = {};
 
@@ -150,6 +158,14 @@ router.post('/config', authenticateToken, requireScopes(['openid']), async (req,
     }
   }
 
+  if (simulated_consent_types !== undefined && simulated_consent_types !== null) {
+    updates.SIMULATED_AUTHORIZE_CONSENT_TYPES = String(simulated_consent_types).trim();
+  }
+
+  if (simulated_stepup_types !== undefined && simulated_stepup_types !== null) {
+    updates.SIMULATED_AUTHORIZE_STEPUP_TYPES = String(simulated_stepup_types).trim();
+  }
+
   if (simulated_mcp_deny_tools !== undefined && simulated_mcp_deny_tools !== null) {
     updates.SIMULATED_MCP_DENY_TOOLS = String(simulated_mcp_deny_tools).trim();
   }
@@ -165,10 +181,14 @@ router.post('/config', authenticateToken, requireScopes(['openid']), async (req,
   try {
     await configStore.setConfig(updates);
     // Return updated values
+    const consentTypesSet = getConsentTypes();
+    const stepUpTypesSet = getStepUpTypes();
     const simulated = {
       confirmAmount: getConfirmAmountUsd(),
       denyAmount: getDenyAmountUsd(),
       stepUpAmount: getStepUpAmountUsd(),
+      consentTypes: Array.from(consentTypesSet).join(','),
+      stepUpTypes: Array.from(stepUpTypesSet).join(','),
       mcpDenyTools: (configStore.get('SIMULATED_MCP_DENY_TOOLS') || '').split(',').filter(Boolean),
       mcpHitlTools: (configStore.get('SIMULATED_MCP_HITL_TOOLS') || '').split(',').filter(Boolean),
     };

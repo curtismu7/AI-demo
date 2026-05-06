@@ -7,7 +7,7 @@
 'use strict';
 
 const express = require('express');
-const { authenticateToken, requireScopes } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const configStore = require('../services/configStore');
 const {
   getRecentDecisions,
@@ -32,7 +32,7 @@ const router = express.Router();
  * List all PingOne Authorize decision endpoints in the configured environment.
  * Admin-only; used by the Config UI and education panel.
  */
-router.get('/decision-endpoints', authenticateToken, requireScopes(['openid']), async (req, res) => {
+router.get('/decision-endpoints', authenticateToken, async (req, res) => {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ error: 'admin_only', message: 'This endpoint requires admin role.' });
   }
@@ -59,7 +59,7 @@ router.get('/decision-endpoints', authenticateToken, requireScopes(['openid']), 
  * Requires recordRecentRequests: true on the endpoint in PingOne Authorize.
  * Admin-only; used by the education panel and debugging UI.
  */
-router.get('/recent-decisions', authenticateToken, requireScopes(['openid']), async (req, res) => {
+router.get('/recent-decisions', authenticateToken, async (req, res) => {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ error: 'admin_only', message: 'This endpoint requires admin role.' });
   }
@@ -87,7 +87,7 @@ router.get('/recent-decisions', authenticateToken, requireScopes(['openid']), as
  * GET /api/authorize/simulated-recent-decisions?limit=
  * In-memory decisions from Simulated Authorize (education). Parity with PingOne recent decisions UI.
  */
-router.get('/simulated-recent-decisions', authenticateToken, requireScopes(['openid']), async (req, res) => {
+router.get('/simulated-recent-decisions', authenticateToken, async (req, res) => {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ error: 'admin_only', message: 'This endpoint requires admin role.' });
   }
@@ -106,7 +106,7 @@ router.get('/simulated-recent-decisions', authenticateToken, requireScopes(['ope
  * GET /api/authorize/evaluation-status
  * Which engine would run for transaction auth (no secrets).
  */
-router.get('/evaluation-status', authenticateToken, requireScopes(['openid']), async (req, res) => {
+router.get('/evaluation-status', authenticateToken, async (req, res) => {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ error: 'admin_only', message: 'This endpoint requires admin role.' });
   }
@@ -129,7 +129,7 @@ router.get('/evaluation-status', authenticateToken, requireScopes(['openid']), a
  *
  * Body (optional): { policyId?, authorizationVersionId?, enableLiveAuthorize?, enableMcpFirstTool? }
  */
-router.post('/bootstrap-demo-endpoints', authenticateToken, requireScopes(['openid']), async (req, res) => {
+router.post('/bootstrap-demo-endpoints', authenticateToken, async (req, res) => {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ error: 'admin_only', message: 'This endpoint requires admin role.' });
   }

@@ -173,7 +173,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
 
   // 2. FALLBACK TO LLM — when heuristic doesn't recognize the input
   // Use configured provider (Helix, Ollama, etc.) based on langchainConfig
-  const selectedProvider = provider === 'auto' ? (langchainConfig?.provider || 'ollama') : provider;
+  const selectedProvider = provider === 'auto' ? (langchainConfig?.provider || 'helix') : provider;
 
   if (selectedProvider === 'helix') {
     // TODO: Implement Helix LLM routing once real API call is added to helixLlmService

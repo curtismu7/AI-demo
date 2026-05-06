@@ -162,7 +162,7 @@ async function evaluateTransactionPolicy({
       acr,
     });
 
-    if (r.hitlRequired) {
+    if (r.consentRequired) {
       return { ran: true, block: { status: 428, body: buildConsentBody() } };
     }
 

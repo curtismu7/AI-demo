@@ -45,18 +45,18 @@ function ArchNode({ data }) {
   const b = data.badge;
   return (
     <div style={{
-      background: c.bg, border: `2px solid ${c.border}`, borderRadius: 10,
-      padding: '8px 12px', minWidth: 118, maxWidth: 165, textAlign: 'center',
+      background: c.bg, border: `2px solid ${c.border}`, borderRadius: 8,
+      padding: '6px 10px', minWidth: 85, maxWidth: 135, textAlign: 'center',
       boxShadow: pulse ? `0 0 14px ${c.border}55` : '0 2px 6px rgba(0,0,0,0.07)',
       transition: 'background 0.3s, border-color 0.3s',
       animation: pulse ? 'arch-node-pulse 1.2s ease-in-out infinite' : 'none',
     }}>
-      <div style={{ fontSize: '1.25rem', marginBottom: 2 }}>{data.icon}</div>
-      <div style={{ fontWeight: 700, fontSize: '0.75rem', color: c.text, lineHeight: 1.3, marginBottom: data.label2 ? 1 : 0 }}>
+      <div style={{ fontSize: '1.1rem', marginBottom: 2 }}>{data.icon}</div>
+      <div style={{ fontWeight: 700, fontSize: '0.68rem', color: c.text, lineHeight: 1.2, marginBottom: data.label2 ? 0.5 : 0 }}>
         {data.label}
       </div>
       {data.label2 && (
-        <div style={{ fontSize: '0.64rem', color: c.text, opacity: 0.7, lineHeight: 1.2 }}>
+        <div style={{ fontSize: '0.58rem', color: c.text, opacity: 0.7, lineHeight: 1.1 }}>
           {data.label2}
         </div>
       )}
@@ -112,15 +112,16 @@ const NODE_TYPES = { arch: ArchNode };
 // ─── Nodes ────────────────────────────────────────────────────────────────────
 
 const INITIAL_NODES = [
-  { id: 'user',         type: 'arch', position: { x: 30,  y: 200 }, data: { label: 'User',          icon: '👤',  colorClass: '' } },
-  { id: 'hitl',         type: 'arch', position: { x: 200, y: 340 }, data: { label: 'HITL',           label2: 'Human Approval',    icon: '🧑‍⚖️', colorClass: '' } },
-  { id: 'idp-oauth-as', type: 'arch', position: { x: 330, y: 30  }, data: { label: 'Your IdP',       label2: 'OAuth AS / SSO',    icon: '🏛️',  colorClass: '' } },
-  { id: 'pingauthorize',type: 'arch', position: { x: 590, y: 30  }, data: { label: 'PingAuthorize',  label2: 'Fine-grained AZ',   icon: '⚖️',  colorClass: '' } },
-  { id: 'agent',        type: 'arch', position: { x: 450, y: 185 }, data: { label: 'AI Agent',       label2: 'LangGraph',         icon: '🤖',  colorClass: '' } },
-  { id: 'llm',          type: 'arch', position: { x: 450, y: 365 }, data: { label: 'LLM',            label2: 'Claude',            icon: '🧠',  colorClass: '' } },
-  { id: 'mcp-gw',       type: 'arch', position: { x: 700, y: 100 }, data: { label: 'MCP Gateway',    label2: 'Auth + Routing',    icon: '🔀',  colorClass: '' } },
-  { id: 'mcp-server',   type: 'arch', position: { x: 700, y: 280 }, data: { label: 'MCP Server',     label2: 'banking_mcp_server',icon: '🛠️',  colorClass: '' } },
-  { id: 'banking-api',  type: 'arch', position: { x: 910, y: 185 }, data: { label: 'Banking API',    label2: 'banking_api_server',icon: '🏦',  colorClass: '' } },
+  { id: 'user',         type: 'arch', position: { x: 20,  y: 180 }, data: { label: 'User',          icon: '👤',  colorClass: '' } },
+  { id: 'chatbot',      type: 'arch', position: { x: 140, y: 180 }, data: { label: 'Chatbot',       label2: 'UI',                icon: '💬', colorClass: '' } },
+  { id: 'agent',        type: 'arch', position: { x: 270, y: 180 }, data: { label: 'Agent',        label2: 'Digital Asst',     icon: '🤖',  colorClass: '' } },
+  { id: 'llm',          type: 'arch', position: { x: 270, y: 310 }, data: { label: 'LLM',          label2: 'Claude',           icon: '🧠',  colorClass: '' } },
+  { id: 'idp-oauth-as', type: 'arch', position: { x: 460, y: 30  }, data: { label: 'Your IdP',     label2: 'OAuth AS / SSO',   icon: '🏛️',  colorClass: '' } },
+  { id: 'pingauthorize',type: 'arch', position: { x: 650, y: 30  }, data: { label: 'PingAuthorize',label2: 'Fine-grained AZ',  icon: '⚖️',  colorClass: '' } },
+  { id: 'mcp-gw',       type: 'arch', position: { x: 650, y: 180 }, data: { label: 'Agent Gw',     label2: 'Auth + Route',     icon: '🔀',  colorClass: '' } },
+  { id: 'mcp-server',   type: 'arch', position: { x: 650, y: 310 }, data: { label: 'MCP Server',   label2: 'banking_mcp',     icon: '🛠️',  colorClass: '' } },
+  { id: 'banking-api',  type: 'arch', position: { x: 840, y: 180 }, data: { label: 'Banking API',  label2: 'banking_api',     icon: '🏦',  colorClass: '' } },
+  { id: 'hitl',         type: 'arch', position: { x: 140, y: 310 }, data: { label: 'HITL',         label2: 'Manual Approval',  icon: '🧑‍⚖️', colorClass: '' } },
 ];
 
 const B = { stroke: '#cbd5e1', strokeWidth: 1 };
@@ -129,201 +130,276 @@ const H = { stroke: '#ca8a04', strokeWidth: 2.5 };
 const P = { stroke: '#4CAF50', strokeWidth: 2.5 };
 
 const INITIAL_EDGES = [
-  { id: 'user-agent',    source: 'user',        target: 'agent',        style: B, label: 'Chat' },
-  { id: 'user-idp',      source: 'user',        target: 'idp-oauth-as', style: B, label: 'PKCE login' },
+  { id: 'user-chatbot',  source: 'user',        target: 'chatbot',      style: B, label: 'Chat' },
+  { id: 'chatbot-agent', source: 'chatbot',     target: 'agent',        style: B },
+  { id: 'chatbot-idp',   source: 'chatbot',     target: 'idp-oauth-as', style: B, label: 'PKCE login' },
   { id: 'idp-agent',     source: 'idp-oauth-as',target: 'agent',        style: B, label: 'Token' },
   { id: 'agent-idp',     source: 'agent',       target: 'idp-oauth-as', style: B, label: 'RFC 8693' },
   { id: 'agent-llm',     source: 'agent',       target: 'llm',          style: B },
   { id: 'agent-mcp',     source: 'agent',       target: 'mcp-gw',       style: B, label: 'MCP call' },
   { id: 'mcp-authz',     source: 'mcp-gw',      target: 'pingauthorize',style: B, label: 'Authz check' },
-  { id: 'mcp-gw-idp',   source: 'mcp-gw',      target: 'idp-oauth-as', style: B, label: 'RFC 8693' },
+  { id: 'authz-idp',     source: 'pingauthorize',target: 'idp-oauth-as', style: B, label: 'Introspect' },
+  { id: 'mcp-gw-idp',    source: 'mcp-gw',      target: 'idp-oauth-as', style: B, label: 'RFC 8693' },
   { id: 'mcp-gw-server', source: 'mcp-gw',      target: 'mcp-server',   style: B, label: 'Proxy' },
   { id: 'mcp-server-api',source: 'mcp-server',  target: 'banking-api',  style: B, label: 'REST call' },
-  { id: 'agent-hitl',    source: 'agent',        target: 'hitl',         style: B, label: 'Request consent' },
-  { id: 'hitl-user',     source: 'hitl',         target: 'user',         style: B, label: 'Notify' },
-  { id: 'hitl-agent',    source: 'hitl',         target: 'agent',        style: B, label: 'Approved ✓' },
+  { id: 'rs-idp',        source: 'banking-api', target: 'idp-oauth-as', style: B, label: 'Introspect' },
+  { id: 'agent-hitl',    source: 'agent',       target: 'hitl',         style: B, label: 'Request consent' },
+  { id: 'hitl-chatbot',  source: 'hitl',        target: 'chatbot',       style: B, label: 'Notify' },
+  { id: 'hitl-agent',    source: 'hitl',        target: 'agent',        style: B, label: 'Approved ✓' },
 ];
 
 // ─── Simulation steps (real code flow) ───────────────────────────────────────
+// i4ai reference architecture: Agent CC token → tools/list (denied) → user context → RFC 8693 ① (agent+subject) → tools/call → RFC 8693 ② (gateway) → RFC 8693 ③ (mcp) → RS
 
 const SIMULATE_STEPS = [
-  {
-    nodeIds: ['user'], colorClass: 'active', stepLabel: 'User sends chat message',
+  { // 1
+    nodeIds: ['agent', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'Agent starts — requests client credentials token',
+    description: 'The AI agent initializes and requests a client credentials (CC) token from PingOne to authenticate itself. This CC token is issued to the agent as a service principal with its own identity (sub=agent1).',
+    activeEdgeIds: ['agent-idp'], edgeStyle: A,
+    nodeBadges: {},
+    token: { type: 'CC Token Request', grant_type: 'client_credentials', client_id: 'agent1', note: 'Agent obtains its own identity token (not user login)' },
+  },
+  { // 2
+    nodeIds: ['idp-oauth-as'], colorClass: 'active', stepLabel: 'PingOne issues CC token to agent',
+    description: 'PingOne issues the client credentials token with aud=agent1 and scope=banking:mcp:invoke. This allows the agent to discover and list available banking tools.',
     activeEdgeIds: [], edgeStyle: A,
+    nodeBadges: { agent: { aud: 'agent1', _changed: ['aud'] } },
+    token: { type: 'CC Token (issued)', aud: 'agent1', scope: 'banking:mcp:invoke', note: 'Agent now has its own identity to call tools' },
+  },
+  { // 3
+    nodeIds: ['agent', 'mcp-gw'], colorClass: 'active', stepLabel: 'Agent → Agent Gateway: tools/list (agent context only — no user)',
+    description: 'The agent calls the MCP Gateway with tools/list to discover which banking tools are available. At this stage, there is NO user context yet—only the agent\'s own identity.',
+    activeEdgeIds: ['agent-mcp'], edgeStyle: A,
+    nodeBadges: { 'mcp-gw': { aud: 'agent1', _changed: ['aud'] } },
+    token: { type: 'Agent Token (tools/list)', aud: 'agent1', scope: 'banking:mcp:invoke', note: 'Tool discovery with ONLY agent context — no user subject token yet' },
+  },
+  { // 4
+    nodeIds: ['mcp-gw', 'pingauthorize'], colorClass: 'active', stepLabel: 'Agent Gateway → PingAuthorize: authorization check',
+    description: 'The MCP Gateway forwards the tools/list request to PingAuthorize (Ping\'s fine-grained policy engine) to check if the agent is authorized to discover tools.',
+    activeEdgeIds: ['mcp-authz'], edgeStyle: A,
+    nodeBadges: {},
+    token: { type: 'Authorization Check', DecisionContext: 'McpToolsList', ClientId: 'agent1', note: 'Gateway asks: can this agent discover tools?' },
+  },
+  { // 5
+    nodeIds: ['pingauthorize', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'PingAuthorize → PingOne: introspect agent token (RFC 7662)',
+    description: 'PingAuthorize introspects the agent\'s CC token with PingOne to verify it is active and has the required scope (banking:mcp:invoke) to proceed.',
+    activeEdgeIds: ['authz-idp'], edgeStyle: A,
+    nodeBadges: {},
+    token: { type: 'Introspection Request', token: 'agent-cc-token', note: 'Verify token claims: active ✓  aud ✓  scope ✓' },
+  },
+  { // 6
+    nodeIds: ['pingauthorize'], colorClass: 'active-permit', stepLabel: 'PingAuthorize: PERMIT — tools list granted for agent',
+    description: 'PingAuthorize validates the agent\'s token and issues a PERMIT decision. The agent is authorized to discover all available banking tools (get_my_accounts, create_transfer, etc.).',
+    activeEdgeIds: [], edgeStyle: P,
+    nodeBadges: {},
+    token: { type: 'Authorization Decision', decision: '✅ PERMIT', DecisionContext: 'McpToolsList', ToolListAvailable: 'get_my_accounts, create_transfer, ...', note: 'Agent may discover available tools' },
+  },
+  { // 7
+    nodeIds: ['user', 'agent'], colorClass: 'active', stepLabel: 'User (via chatbot): "Check my balance"',
+    description: 'The user types a natural language request into the chatbot: "Check my balance". The chatbot forwards this to the agent.',
+    activeEdgeIds: ['user-agent'], edgeStyle: A,
     nodeBadges: {},
     token: null,
   },
-  {
-    nodeIds: ['user', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'OAuth 2.0 PKCE login',
-    activeEdgeIds: ['user-idp'], edgeStyle: A,
-    nodeBadges: {},
-    token: { type: 'PKCE / Auth Code', aud: '(your-idp)', scope: 'openid profile banking:read banking:write', note: 'code_verifier + code_challenge exchange' },
-  },
-  {
-    nodeIds: ['idp-oauth-as', 'agent'], colorClass: 'active', stepLabel: 'User access token issued (with may_act)',
-    activeEdgeIds: ['idp-agent'], edgeStyle: A,
-    nodeBadges: {
-      agent: { aud: 'banking-app-client', may_act: '{"client_id":"bff-client-id"}', _changed: ['aud', 'may_act'] },
-    },
-    token: {
-      type: 'User Access Token',
-      aud: 'banking-app-client',
-      scope: 'openid profile banking:read banking:write',
-      sub: 'alice@bank.com',
-      may_act: '{ "client_id": "bff-client-id" }',
-      note: 'may_act pre-authorizes BFF/gateway to exchange on behalf of user (RFC 8693 §4.2)',
-    },
-  },
-  {
-    nodeIds: ['agent', 'llm'], colorClass: 'active', stepLabel: 'LLM decides to call get_my_accounts',
+  { // 8
+    nodeIds: ['agent', 'llm'], colorClass: 'active', stepLabel: 'LLM selects tool: get_my_accounts',
+    description: 'The LLM processes the user\'s request and selects the appropriate tool to fulfill it: get_my_accounts. The agent now prepares to call this tool.',
     activeEdgeIds: ['agent-llm'], edgeStyle: A,
     nodeBadges: {},
     token: null,
   },
-  {
-    nodeIds: ['agent', 'mcp-gw'], colorClass: 'active', stepLabel: 'Agent: tools/list to MCP Gateway',
-    activeEdgeIds: ['agent-mcp'], edgeStyle: A,
-    nodeBadges: {
-      'mcp-gw': { aud: 'mcp-gateway', act: '{"sub":"agent-client-id"}', _changed: ['aud', 'act'] },
-    },
-    token: {
-      type: 'Delegated Token  (inbound)',
-      aud: 'mcp-gateway',
-      scope: 'banking:read banking:write',
-      sub: 'alice@bank.com',
-      act: '{ "sub": "agent-client-id" }',
-      note: 'Gateway checks: aud=mcp-gateway ✓  sub≠∅ ✓  act.sub≠∅ ✓  anti-bypass ✓',
-    },
-  },
-  {
-    nodeIds: ['mcp-gw', 'pingauthorize'], colorClass: 'active', stepLabel: 'PingAuthorize: McpToolsList',
-    activeEdgeIds: ['mcp-authz'], edgeStyle: A,
-    nodeBadges: {},
-    token: {
-      type: 'PingAuthorize Request',
-      DecisionContext: 'McpToolsList',
-      ClientId: 'alice@bank.com',
-      ActClientId: 'agent-client-id',
-      TokenScopes: 'banking:read banking:write',
-      TokenAudience: 'mcp-gateway',
-    },
-  },
-  {
-    nodeIds: ['pingauthorize'], colorClass: 'active-permit', stepLabel: 'PERMIT — agent may discover tools',
-    activeEdgeIds: [], edgeStyle: P,
-    nodeBadges: {},
-    token: { type: 'Authorization Decision', decision: '✅ PERMIT', DecisionContext: 'McpToolsList', policy: 'mcp-tools-access-v2' },
-  },
-  {
-    nodeIds: ['mcp-gw', 'mcp-server'], colorClass: 'active', stepLabel: 'MCP Gateway proxies tools/list',
-    activeEdgeIds: ['mcp-gw-server'], edgeStyle: A,
-    nodeBadges: {
-      'mcp-server': { aud: 'mcp-olb-server', act: '{"sub":"agent-client-id"}', may_act: '{"client_id":"bff-client-id"}', _changed: ['aud'] },
-    },
-    token: {
-      type: 'Exchanged Token  (gateway→server)',
-      aud: 'mcp-olb-server',
-      scope: 'banking:read',
-      sub: 'alice@bank.com',
-      act: '{ "sub": "agent-client-id" }',
-      note: 'D-04: original token never leaves gateway — RFC 8693 issues new aud-scoped token',
-    },
-  },
-  {
-    nodeIds: ['agent', 'mcp-gw'], colorClass: 'active', stepLabel: 'Agent: tools/call get_my_accounts',
+  { // 9
+    nodeIds: ['agent', 'mcp-gw'], colorClass: 'active', stepLabel: 'Agent → Gateway: tools/call get_my_accounts (agent context only)',
+    description: 'The agent calls the MCP Gateway with tools/call to invoke get_my_accounts. However, the call still uses ONLY the agent\'s CC token (aud=agent1)—there is no user context yet.',
     activeEdgeIds: ['agent-mcp'], edgeStyle: A,
     nodeBadges: {},
-    token: {
-      type: 'Delegated Token  (tools/call)',
-      aud: 'mcp-gateway',
-      scope: 'banking:read banking:write',
-      sub: 'alice@bank.com',
-      act: '{ "sub": "agent-client-id" }',
-      method: 'tools/call',
-      tool_name: 'get_my_accounts',
-    },
+    token: { type: 'Tool Call (agent-only)', aud: 'agent1', tool: 'get_my_accounts', note: 'Tool invocation — STILL agent context only (no user subject token)' },
   },
-  {
-    nodeIds: ['mcp-gw', 'pingauthorize'], colorClass: 'active', stepLabel: 'PingAuthorize: McpToolCall',
+  { // 10
+    nodeIds: ['mcp-gw', 'pingauthorize'], colorClass: 'active', stepLabel: 'Agent Gateway → PingAuthorize: McpToolCall authorization',
+    description: 'The MCP Gateway sends the tool call request to PingAuthorize to check if the agent is authorized to invoke get_my_accounts.',
     activeEdgeIds: ['mcp-authz'], edgeStyle: A,
     nodeBadges: {},
-    token: {
-      type: 'PingAuthorize Request',
-      DecisionContext: 'McpToolCall',
-      ClientId: 'alice@bank.com',
-      ActClientId: 'agent-client-id',
-      ToolName: 'get_my_accounts',
-      TokenScopes: 'banking:read',
-      TokenAudience: 'mcp-gateway',
-    },
+    token: { type: 'Authorization Check', DecisionContext: 'McpToolCall', ToolName: 'get_my_accounts', ClientId: 'agent1', note: 'Gateway: can agent call this tool?' },
   },
-  {
-    nodeIds: ['pingauthorize'], colorClass: 'active-permit', stepLabel: 'PERMIT — tool call allowed',
-    activeEdgeIds: [], edgeStyle: P,
+  { // 11
+    nodeIds: ['pingauthorize'], colorClass: 'active-error', stepLabel: 'PingAuthorize: DENY — no subject token, insufficient_scope',
+    description: 'PingAuthorize rejects the tool call. The reason: get_my_accounts requires a user subject token (sub claim) with the "balance" scope. An agent-only token is insufficient—we need proof that the user authorized this action.',
+    activeEdgeIds: [], edgeStyle: { stroke: '#ef4444', strokeWidth: 2.5 },
     nodeBadges: {},
-    token: { type: 'Authorization Decision', decision: '✅ PERMIT', DecisionContext: 'McpToolCall', ToolName: 'get_my_accounts', policy: 'mcp-tool-call-v2' },
+    token: { type: 'Authorization Decision', decision: '❌ DENY', reason: 'insufficient_scope: balance, no subject token', note: 'get_my_accounts requires user subject token (sub claim) — agent-only context is not enough' },
   },
-  {
-    nodeIds: ['mcp-gw', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'RFC 8693: scope-narrowed token exchange',
+  { // 12
+    nodeIds: ['mcp-gw', 'agent'], colorClass: 'active-error', stepLabel: 'Agent Gateway → Agent: 403 Forbidden',
+    description: 'The MCP Gateway returns HTTP 403 Forbidden to the agent with the error: "insufficient_scope: balance, no subject token". The agent must now get user consent before proceeding.',
+    activeEdgeIds: ['agent-mcp'], edgeStyle: { stroke: '#ef4444', strokeWidth: 2.5 },
+    nodeBadges: {},
+    token: { type: 'HTTP 403 Forbidden', error: 'insufficient_scope: balance, no subject token', challenge_type: 'scope_denied' },
+  },
+  { // 13
+    nodeIds: ['agent', 'user'], colorClass: 'active', stepLabel: 'Agent → User (via chatbot): user context required',
+    description: 'The agent informs the user via the chatbot that access to the balance information requires the user\'s consent. The user will need to authenticate or grant the required scope.',
+    activeEdgeIds: ['user-agent'], edgeStyle: A,
+    nodeBadges: {},
+    token: { type: 'User Context Required', resource: 'agent1', required_scope: 'balance', note: 'Agent informs chatbot: get user to grant scope for the tool' },
+  },
+  { // 14
+    nodeIds: ['user', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'Web App → PingOne: request subject token (resource + scope)',
+    description: 'The web application requests a subject token from PingOne for the user (alice@bank.com) scoped to the agent (resource=agent1) with the "balance" scope. This is an RFC 8707 resource-scoped token request.',
+    activeEdgeIds: ['user-idp'], edgeStyle: A,
+    nodeBadges: {},
+    token: { type: 'Token Request', grant_type: 'authorization_code', resource: 'agent1', scope: 'balance', note: 'RFC 8707: request token scoped to agent resource with specific scope' },
+  },
+  { // 15
+    nodeIds: ['idp-oauth-as'], colorClass: 'active', stepLabel: 'PingOne issues subject token with may_act',
+    description: 'PingOne issues a subject token with sub=alice@bank.com, aud=agent1 (the agent is the audience), and may_act={sub: agent1}. The may_act claim pre-authorizes the agent to act on behalf of the user for this token.',
+    activeEdgeIds: [], edgeStyle: A,
+    nodeBadges: { user: { aud: 'agent1', may_act: '{sub: agent1}', _changed: ['aud', 'may_act'] } },
+    token: { type: 'Subject Token (issued)', sub: 'alice@bank.com', aud: 'agent1', may_act: '{sub: agent1}', scope: 'balance', note: 'may_act pre-authorizes agent to act on behalf of user for this token' },
+  },
+  { // 16
+    nodeIds: ['user', 'agent'], colorClass: 'active', stepLabel: 'Chatbot → Agent: subject token delivered',
+    description: 'The subject token is delivered from the web application to the agent via the chatbot. The agent now has both the subject (user) token and can pair it with its own CC token to create a delegated context.',
+    activeEdgeIds: ['user-agent'], edgeStyle: A,
+    nodeBadges: { agent: { aud: 'agent1', may_act: '{sub: agent1}', _changed: [] } },
+    token: { type: 'Subject Token (delivered)', sub: 'alice@bank.com', aud: 'agent1', may_act: '{sub: agent1}', scope: 'balance' },
+  },
+  { // 17
+    nodeIds: ['agent', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'Agent → PingOne: RFC 8693 token exchange (actor + subject)',
+    description: 'The agent performs an RFC 8693 token exchange with PingOne. It exchanges the subject token (user) + actor token (agent CC) to obtain a single delegated token (TX token) for the MCP Gateway. The TX token has sub=alice (user), act=agent1 (agent), and aud=mcp-gw (audience).',
+    activeEdgeIds: ['agent-idp'], edgeStyle: A,
+    nodeBadges: {},
     isTokenExchange: true,
-    activeEdgeIds: ['mcp-gw-idp'], edgeStyle: A,
-    nodeBadges: {},
     token: {
-      type: 'Delegated Token (subject)',
-      _type: 'exchange', _rfcs: ['RFC 8693', 'RFC 8707'],
-      aud: 'mcp-gateway',
-      sub: 'alice@bank.com',
-      scope: 'banking:read banking:write',
-      act: '{ "sub": "agent-client-id" }',
-      note: 'D-04: gateway exchanges this — original never forwarded → requested_aud: mcp-olb-server, scope: banking:read',
+      type: 'Token Exchange Request',
+      _type: 'exchange', _rfcs: ['RFC 8693'],
+      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+      subject_token: 'subject-token',
+      subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      actor_token: 'agent-cc-token',
+      actor_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      resource: 'agent1',
+      note: 'Agent exchanges subject (user) + actor (agent CC) → TX token for mcp-gw',
     },
     tokenOut: {
-      type: 'Tool-Scoped Token (issued)',
+      type: 'TX Token (issued)',
       _type: 'oauth', _rfcs: ['RFC 8693'],
-      aud: 'mcp-olb-server',
-      scope: 'banking:read',
       sub: 'alice@bank.com',
-      act: '{ "sub": "agent-client-id" }',
-      note: 'Minimal scope — act chain preserved, MCP Server cannot use for write operations',
+      act: '{sub: agent1}',
+      aud: 'mcp-gw',
+      scope: 'balance',
+      note: 'Delegated token: sub=user, act=agent, narrowed to mcp-gw audience',
     },
   },
-  {
-    nodeIds: ['agent', 'hitl'], colorClass: 'active-hitl', stepLabel: 'HITL — INDETERMINATE → human consent',
-    isHitl: true,
-    activeEdgeIds: ['agent-hitl'], edgeStyle: H,
+  { // 18
+    nodeIds: ['agent', 'mcp-gw'], colorClass: 'active', stepLabel: 'Agent → Gateway: tools/call with TX token',
+    description: 'The agent retries the tools/call request, but this time with the TX token. The TX token proves both user identity (sub=alice) and agent delegation (act=agent1), scoped to the MCP Gateway (aud=mcp-gw).',
+    activeEdgeIds: ['agent-mcp'], edgeStyle: A,
+    nodeBadges: { 'mcp-gw': { sub: 'alice@bank.com', act: '{sub: agent1}', aud: 'mcp-gw', _changed: ['sub', 'act', 'aud'] } },
+    token: { type: 'TX Token (inbound)', sub: 'alice@bank.com', act: '{sub: agent1}', aud: 'mcp-gw', scope: 'balance', tool: 'get_my_accounts' },
+  },
+  { // 19
+    nodeIds: ['mcp-gw', 'pingauthorize'], colorClass: 'active', stepLabel: 'Gateway → PingAuthorize: McpToolCall (with TX token)',
+    description: 'The MCP Gateway sends the second authorization request to PingAuthorize, this time with the TX token. The decision context now includes: sub=alice (the user), act=agent1 (delegated authority), and the tool name (get_my_accounts).',
+    activeEdgeIds: ['mcp-authz'], edgeStyle: A,
     nodeBadges: {},
+    token: { type: 'Authorization Check', DecisionContext: 'McpToolCall', ClientId: 'alice@bank.com', ActClientId: 'agent1', ToolName: 'get_my_accounts', TokenAudience: 'mcp-gw', TokenScopes: 'balance' },
+  },
+  { // 20
+    nodeIds: ['pingauthorize', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'PingAuthorize → PingOne: introspect TX token',
+    description: 'PingAuthorize introspects the TX token with PingOne to verify all critical claims: sub (user identity), act (agent delegation), aud (correct audience), and scope (balance).',
+    activeEdgeIds: ['authz-idp'], edgeStyle: A,
+    nodeBadges: {},
+    token: { type: 'Introspection Request', token: 'tx-token', note: 'Verify: sub ✓  act ✓  aud=mcp-gw ✓  scope=balance ✓  anti-bypass ✓' },
+  },
+  { // 21
+    nodeIds: ['pingauthorize'], colorClass: 'active-permit', stepLabel: 'PingAuthorize validates TX token → PERMIT',
+    description: 'This time, PingAuthorize approves the request. All conditions are met: the user (alice) has authorized the scope (balance), the agent (agent1) is a trusted delegated caller, and the scope matches the tool requirements. The PERMIT is issued.',
+    activeEdgeIds: [], edgeStyle: P,
+    nodeBadges: {},
+    token: { type: 'Authorization Decision', decision: '✅ PERMIT', DecisionContext: 'McpToolCall', ToolName: 'get_my_accounts', policy: 'tool-scope-balance-v2', note: 'Token valid: sub=user ✓  act=agent ✓  aud=mcp-gw ✓  scope=balance ✓' },
+  },
+  { // 22
+    nodeIds: ['mcp-gw', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'Gateway → PingOne: RFC 8693 exchange (TX → MCP token)',
+    description: 'The MCP Gateway performs a second RFC 8693 token exchange, this time exchanging the TX token (aud=mcp-gw) for an MCP token (aud=mcp). The delegation chain is preserved: sub=alice, act=agent1, but the audience is narrowed to the MCP Server.',
+    activeEdgeIds: ['mcp-gw-idp'], edgeStyle: A,
+    nodeBadges: {},
+    isTokenExchange: true,
     token: {
-      type: 'HITL Approval Request',
-      trigger: 'PingAuthorize returned INDETERMINATE',
-      action: 'create_transfer $5,000',
-      risk_score: 'HIGH',
-      status: '⏳ Awaiting user approval…',
+      type: 'TX Token (subject)',
+      _type: 'exchange', _rfcs: ['RFC 8693'],
+      sub: 'alice@bank.com',
+      act: '{sub: agent1}',
+      aud: 'mcp-gw',
+      scope: 'balance',
+      note: 'Gateway exchanges TX token → MCP-scoped token (aud narrowed to mcp)',
+    },
+    tokenOut: {
+      type: 'MCP Token (issued)',
+      _type: 'oauth', _rfcs: ['RFC 8693'],
+      sub: 'alice@bank.com',
+      act: '{sub: agent1}',
+      aud: 'mcp',
+      scope: 'balance',
+      note: 'Original TX token never leaves gateway — RFC 8693 issues new mcp-scoped token',
     },
   },
-  {
-    nodeIds: ['hitl', 'agent'], colorClass: 'active-permit', stepLabel: 'User approved ✓ — agent continues',
-    isHitl: true,
-    activeEdgeIds: ['hitl-agent'], edgeStyle: P,
-    nodeBadges: {},
-    token: { type: 'HITL Response', decision: '✅ APPROVED', approved_by: 'alice@bank.com', action: 'create_transfer $5,000' },
+  { // 23
+    nodeIds: ['mcp-gw', 'mcp-server'], colorClass: 'active', stepLabel: 'Gateway → MCP Server: tools/call with MCP token',
+    description: 'The MCP Gateway forwards the tool call to the MCP Server with the MCP token. The token maintains the delegation chain (sub=alice, act=agent1) but is now scoped to the MCP Server (aud=mcp).',
+    activeEdgeIds: ['mcp-gw-server'], edgeStyle: A,
+    nodeBadges: { 'mcp-server': { sub: 'alice@bank.com', act: '{sub: agent1}', aud: 'mcp', _changed: ['aud'] } },
+    token: { type: 'MCP Token (delivered)', sub: 'alice@bank.com', act: '{sub: agent1}', aud: 'mcp', scope: 'balance' },
   },
-  {
-    nodeIds: ['mcp-server', 'banking-api'], colorClass: 'active', stepLabel: 'MCP Server calls Banking API',
+  { // 24
+    nodeIds: ['mcp-server', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'MCP Server → PingOne: RFC 8693 exchange (MCP → RS token)',
+    description: 'The MCP Server performs a third RFC 8693 token exchange to obtain a resource-server-scoped token. It exchanges the MCP token (aud=mcp) for an RS token (aud=resource-server). The delegation chain remains intact throughout.',
+    activeEdgeIds: [], edgeStyle: A,
+    nodeBadges: {},
+    isTokenExchange: true,
+    token: {
+      type: 'MCP Token (subject)',
+      _type: 'exchange', _rfcs: ['RFC 8693'],
+      sub: 'alice@bank.com',
+      act: '{sub: agent1}',
+      aud: 'mcp',
+      scope: 'balance',
+      note: 'MCP exchanges token → resource-server-scoped (third exchange hop)',
+    },
+    tokenOut: {
+      type: 'RS Token (issued)',
+      _type: 'oauth', _rfcs: ['RFC 8693'],
+      sub: 'alice@bank.com',
+      act: '{sub: agent1}',
+      aud: 'resource-server',
+      scope: 'balance',
+      note: 'Delegation chain preserved: sub=user, act=agent, aud narrowed to resource-server',
+    },
+  },
+  { // 25
+    nodeIds: ['mcp-server', 'banking-api'], colorClass: 'active', stepLabel: 'MCP Server → Banking API: GET /balance',
+    description: 'The MCP Server makes the actual API call to the Banking API with the RS token. The token proves: user identity (alice), agent delegation (agent1), correct audience (resource-server), and required scope (balance).',
     activeEdgeIds: ['mcp-server-api'], edgeStyle: A,
-    nodeBadges: {
-      'banking-api': { aud: 'banking-api', _changed: ['aud'] },
-    },
-    token: {
-      type: 'Resource Token  (Banking API)',
-      aud: 'banking-api',
-      scope: 'banking:read',
-      sub: 'alice@bank.com',
-      endpoint: 'GET /accounts',
-      note: 'MCP Server validates: aud=mcp-olb-server ✓  may_act ✓  act.sub ✓',
-    },
+    nodeBadges: { 'banking-api': { sub: 'alice@bank.com', act: '{sub: agent1}', aud: 'resource-server', _changed: ['aud'] } },
+    token: { type: 'RS Token (API call)', sub: 'alice@bank.com', act: '{sub: agent1}', aud: 'resource-server', scope: 'balance', endpoint: 'GET /balance' },
   },
-  {
-    nodeIds: ['banking-api', 'mcp-server', 'agent'], colorClass: 'active', stepLabel: 'Results flow back to agent',
+  { // 26
+    nodeIds: ['banking-api', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'Banking API → PingOne: introspect RS token',
+    description: 'The Banking API introspects the RS token with PingOne to verify all claims before returning sensitive balance data. It checks: sub (user), act (agent delegation), aud (resource-server), and scope (balance).',
+    activeEdgeIds: ['rs-idp'], edgeStyle: A,
+    nodeBadges: {},
+    token: { type: 'Introspection Request', token: 'rs-token', note: 'Verify: sub ✓  act ✓  aud=resource-server ✓  scope=balance ✓' },
+  },
+  { // 27
+    nodeIds: ['banking-api'], colorClass: 'active-permit', stepLabel: 'Banking API validates token, returns balance data',
+    description: 'The Banking API approves the token and returns the balance data (CHK-001: $12,450.00). The entire delegation chain has been verified: the user (alice) authorized the access, the agent (agent1) is a trusted delegated caller, and all token audiences are correct.',
+    activeEdgeIds: [], edgeStyle: P,
+    nodeBadges: {},
+    token: { type: 'API Response', status: '200 OK', data: '{ accountId: "CHK-001", balance: 12450.00 }', note: 'RS token valid: user identity (sub) ✓  agent delegation (act) ✓  correct audience (aud) ✓' },
+  },
+  { // 28
+    nodeIds: ['banking-api', 'mcp-server', 'agent', 'user'], colorClass: 'active', stepLabel: 'Results flow back: MCP → Gateway → Agent → Chatbot → User',
+    description: 'The balance data flows back through the chain: Banking API → MCP Server → Agent Gateway → Agent → Chatbot, and finally to the user. The chatbot displays the results in natural language: "Your checking account balance is $12,450.00."',
     activeEdgeIds: [], edgeStyle: A,
     nodeBadges: {},
     token: null,
@@ -333,11 +409,14 @@ const SIMULATE_STEPS = [
 // ─── Aud trail ────────────────────────────────────────────────────────────────
 
 const AUD_HOPS = [
-  { icon: '👤', label: 'User Token',     aud: 'banking-app-client', may_act: 'bff-client-id',       activeFrom: 2,  activeTo: 3  },
-  { icon: '🔀', label: 'Gateway Token',  aud: 'mcp-gateway',        act: 'agent-client-id',          activeFrom: 4,  activeTo: 10 },
-  { icon: '🔄', label: 'RFC 8693 ↕',    aud: '(exchange)',          isExchange: true,                activeFrom: 11, activeTo: 11 },
-  { icon: '🛠️', label: 'Tool Token',    aud: 'mcp-olb-server',     act: 'agent-client-id',          activeFrom: 12, activeTo: 14 },
-  { icon: '🏦', label: 'Resource Token', aud: 'banking-api',                                         activeFrom: 15, activeTo: 15 },
+  { icon: '🤖', label: 'CC Token',        aud: 'agent1',           activeFrom: 0,  activeTo: 5  },
+  { icon: '🪪', label: 'Subject Token',   aud: 'agent1',  may_act: 'agent1', activeFrom: 13, activeTo: 15 },
+  { icon: '🔄', label: 'RFC 8693 ①',     aud: '(exchange)',       isExchange: true, activeFrom: 16, activeTo: 16 },
+  { icon: '🔀', label: 'TX Token',        aud: 'mcp-gw',  act: 'agent1',      activeFrom: 17, activeTo: 20 },
+  { icon: '🔄', label: 'RFC 8693 ②',     aud: '(exchange)',       isExchange: true, activeFrom: 21, activeTo: 21 },
+  { icon: '🛠️', label: 'MCP Token',      aud: 'mcp',     act: 'agent1',      activeFrom: 22, activeTo: 22 },
+  { icon: '🔄', label: 'RFC 8693 ③',     aud: '(exchange)',       isExchange: true, activeFrom: 23, activeTo: 23 },
+  { icon: '🏦', label: 'RS Token',        aud: 'resource-server', act: 'agent1',   activeFrom: 24, activeTo: 26 },
 ];
 
 const SCENARIO_STEPS_FLOW = {
@@ -548,37 +627,81 @@ const SCENARIO_STEPS_FLOW = {
         note: 'Graceful degradation: surface clear message, request scope upgrade, never silent-fail' },
     },
   ],
+  'no-subject-token': [
+    {
+      nodeIds: ['agent', 'mcp-gw'], colorClass: 'active', stepLabel: 'Agent attempts tools/call (agent context only — no subject token)',
+      activeEdgeIds: ['agent-mcp'], edgeStyle: A,
+      nodeBadges: { 'mcp-gw': { aud: 'agent1', _changed: ['aud'] } },
+      token: { type: 'Tool Call (agent-only)', aud: 'agent1', tool: 'get_my_accounts', note: 'Agent context only — subject token not yet available' },
+    },
+    {
+      nodeIds: ['mcp-gw', 'pingauthorize'], colorClass: 'active', stepLabel: 'Gateway → PingAuthorize: authorization check',
+      activeEdgeIds: ['mcp-authz'], edgeStyle: A,
+      nodeBadges: {},
+      token: { type: 'Authorization Check', DecisionContext: 'McpToolCall', ToolName: 'get_my_accounts', ClientId: 'agent1', note: 'Can agent call this tool?' },
+    },
+    {
+      nodeIds: ['pingauthorize'], colorClass: 'active-error', stepLabel: 'PingAuthorize: DENY — no subject token required',
+      activeEdgeIds: [], edgeStyle: { stroke: '#ef4444', strokeWidth: 2.5 },
+      nodeBadges: {},
+      token: { type: 'Authorization Decision', decision: '❌ DENY', reason: 'insufficient_scope: balance, no subject token', challenge_type: 'scope_denied', note: 'Tool requires user identity (sub) — agent-only not permitted' },
+    },
+    {
+      nodeIds: ['mcp-gw', 'agent'], colorClass: 'active-error', stepLabel: 'Agent Gateway → Agent: 403 Forbidden',
+      activeEdgeIds: ['agent-mcp'], edgeStyle: { stroke: '#ef4444', strokeWidth: 2.5 },
+      nodeBadges: {},
+      token: { type: 'HTTP 403 Forbidden', error: 'insufficient_scope: balance, no subject token', challenge_type: 'scope_denied' },
+    },
+    {
+      nodeIds: ['agent', 'user'], colorClass: 'active', stepLabel: 'Agent → User: user context required (scope: balance)',
+      activeEdgeIds: ['user-agent'], edgeStyle: A,
+      nodeBadges: {},
+      token: { type: 'User Context Required', resource: 'agent1', required_scope: 'balance', note: 'Agent tells UI: request user to grant scope for tool' },
+    },
+    {
+      nodeIds: ['user', 'idp-oauth-as'], colorClass: 'active', stepLabel: 'Web App → PingOne: request subject token (resource + scope)',
+      activeEdgeIds: ['user-idp'], edgeStyle: A,
+      nodeBadges: {},
+      token: { type: 'Token Request', grant_type: 'authorization_code', resource: 'agent1', scope: 'balance', note: 'RFC 8707: narrow token to agent resource + balance scope' },
+    },
+    {
+      nodeIds: ['idp-oauth-as'], colorClass: 'active', stepLabel: 'PingOne issues subject token with may_act',
+      activeEdgeIds: [], edgeStyle: A,
+      nodeBadges: { user: { aud: 'agent1', may_act: '{sub: agent1}', _changed: ['aud', 'may_act'] } },
+      token: { type: 'Subject Token (issued)', sub: 'alice@bank.com', aud: 'agent1', may_act: '{sub: agent1}', scope: 'balance', note: 'may_act pre-authorizes agent to act on behalf of user' },
+    },
+  ],
 };
 
 function AudTrail({ stepIndex }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap',
-      background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 8,
-      padding: '6px 10px', marginBottom: 6,
+      display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+      background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: 10,
+      padding: '12px 16px', marginBottom: 10,
     }}>
-      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', marginRight: 4, flexShrink: 0 }}>aud trail:</span>
+      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', marginRight: 8, flexShrink: 0 }}>aud trail:</span>
       {AUD_HOPS.map((hop, i) => {
         const on   = stepIndex >= hop.activeFrom && stepIndex <= hop.activeTo;
         const past = stepIndex > hop.activeTo;
         return (
           <React.Fragment key={i}>
-            {i > 0 && <span style={{ color: past ? '#2563eb' : '#cbd5e1', fontSize: '0.8rem', fontWeight: 700 }}>→</span>}
+            {i > 0 && <span style={{ color: past ? '#2563eb' : '#cbd5e1', fontSize: '0.95rem', fontWeight: 700 }}>→</span>}
             <div style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               background: on ? '#004687' : past ? '#dbeafe' : '#fff',
-              border: `1px solid ${on ? '#004687' : past ? '#93c5fd' : '#e2e8f0'}`,
-              borderRadius: 6, padding: '3px 8px', transition: 'all 0.3s', minWidth: 90,
+              border: `1.5px solid ${on ? '#004687' : past ? '#93c5fd' : '#cbd5e1'}`,
+              borderRadius: 8, padding: '6px 12px', transition: 'all 0.3s', minWidth: 110,
             }}>
-              <span style={{ fontSize: '0.7rem' }}>{hop.icon}</span>
-              <span style={{ fontSize: '0.6rem', fontWeight: 700, color: on ? '#fff' : past ? '#1d4ed8' : '#94a3b8', lineHeight: 1.2 }}>
+              <span style={{ fontSize: '0.9rem' }}>{hop.icon}</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: on ? '#fff' : past ? '#1d4ed8' : '#475569', lineHeight: 1.3 }}>
                 {hop.label}
               </span>
-              <span style={{ fontSize: '0.57rem', fontFamily: 'inherit', color: on ? '#bfdbfe' : past ? '#3b82f6' : '#cbd5e1', lineHeight: 1.2 }}>
+              <span style={{ fontSize: '0.7rem', fontFamily: 'inherit', color: on ? '#bfdbfe' : past ? '#3b82f6' : '#64748b', lineHeight: 1.3 }}>
                 {hop.isExchange ? hop.aud : `aud: ${hop.aud}`}
               </span>
-              {hop.act      && <span style={{ fontSize: '0.54rem', fontFamily: 'inherit', color: on ? '#86efac' : '#94a3b8' }}>act: {hop.act}</span>}
-              {hop.may_act  && <span style={{ fontSize: '0.54rem', fontFamily: 'inherit', color: on ? '#fde68a' : '#94a3b8' }}>may_act: {hop.may_act}</span>}
+              {hop.act      && <span style={{ fontSize: '0.68rem', fontFamily: 'inherit', color: on ? '#86efac' : '#64748b' }}>act: {hop.act}</span>}
+              {hop.may_act  && <span style={{ fontSize: '0.68rem', fontFamily: 'inherit', color: on ? '#fde68a' : '#64748b' }}>may_act: {hop.may_act}</span>}
             </div>
           </React.Fragment>
         );
@@ -1026,6 +1149,7 @@ export default function ArchitectureFlowPage({ user }) {
             style={{ fontSize: '0.78rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#1e293b', cursor: isSimulating ? 'not-allowed' : 'pointer' }}
           >
             <option value="full-flow">Full Flow</option>
+            <option value="no-subject-token">No Subject Token (DENY + Context)</option>
             <option value="id-token">ID Token Exchange</option>
             <option value="user-token">Token Exchange (Both Hops)</option>
             <option value="get-accounts">Get Accounts (Read Scope)</option>
@@ -1073,6 +1197,23 @@ export default function ArchitectureFlowPage({ user }) {
 
       {/* Aud trail */}
       <AudTrail stepIndex={currentStep} />
+
+      {/* Step description — explains what's happening in the current step */}
+      {activeStep && activeStep.description && (
+        <div style={{
+          background: '#f0f9ff',
+          border: '1px solid #0284c7',
+          borderRadius: 8,
+          padding: '12px 14px',
+          marginBottom: '12px',
+          fontSize: '0.85rem',
+          lineHeight: '1.5',
+          color: '#0c4a6e',
+          fontWeight: 500,
+        }}>
+          <strong style={{ color: '#0369a1' }}>Step {currentStep + 1}:</strong> {activeStep.description}
+        </div>
+      )}
 
       {/* Live agent banner — shown when agent is actively running a tool */}
       {agentSnap && !isSimulating && (

@@ -44,6 +44,7 @@ export default function AdminSideNav({ user }) {
       "/api-traffic",
       "/mcp-traffic",
       "/architecture",
+      "/sequence-diagram",
     ];
     const usersPaths = ["/users", "/accounts", "/transactions"];
     const testsPaths = [
@@ -198,6 +199,7 @@ export default function AdminSideNav({ user }) {
           icon: "🔗",
         },
         { label: "Interactive Flow", path: "/architecture/flow", icon: "⚡" },
+        { label: "Sequence Diagram", path: "/sequence-diagram", icon: "📋" },
       ],
     },
     {

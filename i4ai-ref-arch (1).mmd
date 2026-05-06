@@ -1,0 +1,83 @@
+
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant WA as Web Application
+    participant CB as Chatbot
+    participant A as Agent (Digital Assistant)
+    participant LLM as LLM
+    participant PID as Ping Identity IDM/IAM
+    participant AG as Agent Gateway
+    participant PA as Ping Authorize
+    participant MCP as MCP
+    participant RS as Resource Server (OAuth 2.1)
+
+    Note over A: Agent starts
+    A->>PID: Token request (client_credentials, resource: agent-gateway)
+    PID-->>A: Access token (sub: banking_agent, aud: agent-gateway)
+
+    Note over A: Request tool list
+    A->>AG: tools/list (JSON-RPC) with agent token
+    AG->>PA: Authorization check (agent token)
+    PA->>PID: Introspect agent token
+    PID-->>PA: Token claims (sub, aud, scope)
+    PA->>MCP: Get available tools list
+    MCP-->>PA: Available tools list
+    Note over PA: Fine-grained policy evaluation:<br/>return allowed tools for this agent
+    PA-->>AG: Permitted tool list for agent
+    AG-->>A: List of available tools
+
+    Note over U: User makes request "Check my balance"
+    U->>CB: "Check my balance"
+    CB->>A: Invoke check_balance tool
+    A->>LLM: Tool list + chatbot prompt
+    LLM-->>A: Determine tool to use (check_balance)
+
+    Note over A: Tool call — agent context only <br/> (no user subject token)
+    A->>AG: tools/call check_balance (JSON-RPC)
+    AG->>PA: Authorization check
+    PA-->>AG: Deny (insufficient_scope: balance, no subject token)
+    AG-->>A: JSON-RPC error (insufficient_scope: balance, no subject token)
+
+    A-->>CB: User context required (resource: banking_agent, scope: balance)
+
+    Note over CB,WA: User already authenticated <br/>Obtain scoped subject token
+    Note over CB,WA: If user is not authenticated,<br/>an authn event is triggered first
+    CB->>WA: Request token (resource: banking_agent, scope: balance)
+    WA->>PID: Token request (resource: banking_agent, scope: balance)
+    PID-->>WA: Subject token (sub: user, aud: banking_agent, may_act: {sub: banking_agent}, scope: balance)
+    WA-->>CB: Subject token (sub: user, aud: banking_agent, may_act: {sub: banking_agent}, scope: balance)
+    CB->>A: Subject token (sub: user, aud: banking_agent, may_act: {sub: banking_agent})
+
+    Note over A,PID: Exchange token for Agent Gateway (RFC 8693)
+    A->>PID: Token exchange (actor_token: agent token, subject_token: user token, resource: agent-gateway)
+    PID-->>A: TX token (sub: user, act: {sub: banking_agent}, aud: agent-gateway, scope: balance)
+    Note over A: sub=user, act=banking_agent — Agent acts on behalf of user
+    Note over A: Option: aud: mcp-olb<br/>(requires assurance only path to MCP is via gateway)
+
+    A->>AG: tools/call check_balance (JSON-RPC) with TX token
+
+    Note over AG,PA: Gateway authorizes TX token + tool call
+    AG->>PA: Authorization check (TX token, tool: check_balance)
+    PA->>PID: Introspect TX token
+    PID-->>PA: Token claims (sub, act, aud, scope)
+    Note over PA: Validate: aud, scope: balance,<br/>tool call details vs. policy
+    Note over PA,PID: Exchange token for MCP
+    PA->>PID: Token exchange (TX token → resource: mcp)
+    PID-->>PA: MCP token (sub: user, act: {sub: banking_agent}, aud: mcp, scope: balance)
+    PA-->>AG: Permit + MCP token
+    AG->>MCP: tools/call check_balance (JSON-RPC) with MCP token
+    Note over MCP,PID: Exchange token for Resource Server
+    MCP->>PID: Token exchange (MCP token → resource: resource-server)
+    PID-->>MCP: RS token (sub: user, act: {sub: banking_agent}, aud: resource-server, scope: balance)
+    MCP->>RS: GET /balance (RS token)
+    RS->>PID: Introspect RS token
+    PID-->>RS: Token claims (sub, act, aud, scope)
+    Note over RS: Validate: aud=resource-server,<br/>scope: balance, act: banking_agent
+    RS-->>MCP: Balance data
+    MCP-->>AG: Tool result
+    AG-->>A: Tool result
+    A->>LLM: Tool result + context
+    LLM-->>A: Natural language response
+    A-->>CB: Response
+    CB-->>U: "Your balance is..."

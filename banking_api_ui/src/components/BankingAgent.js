@@ -49,6 +49,7 @@ import { isPublicMarketingAgentPath } from "../utils/embeddedAgentFabVisibility"
 import AccountDetailsPanel from "./AccountDetailsPanel";
 import AgentConsentModal from "./AgentConsentModal";
 import AgentDemoGuide from "./AgentDemoGuide";
+import BankingChips from "./BankingChips";
 import ComplianceModal from "./ComplianceModal";
 import GatewayConsentModal from "./GatewayConsentModal";
 import { EDUCATION_COMMANDS } from "./education/educationCommands";
@@ -5657,6 +5658,18 @@ export default function BankingAgent({
                   }}
                   autoFocus
                 />
+                {isLoggedIn && (
+                  <BankingChips
+                    onChipClick={(message) => {
+                      setShowDiscovery(false);
+                      setNlInput(message);
+                      setTimeout(() => {
+                        nlInputRef.current?.focus();
+                      }, 0);
+                    }}
+                    isLoading={nlLoading}
+                  />
+                )}
                 <div className="ba-popout-body">
                   {filteredDiscoveryGroups.map((group) => {
                     if (group.key === "learn") return null;
@@ -7555,7 +7568,8 @@ export default function BankingAgent({
               {/* Bottom input bar */}
               <div className="ba-bottom">
                 {isLoggedIn || marketingGuestChatEnabled ? (
-                  <div className="ba-input-row">
+                  <>
+                    <div className="ba-input-row">
                     <input
                       ref={nlInputRef}
                       className="ba-input"
@@ -7620,6 +7634,7 @@ export default function BankingAgent({
                       {nlLoading ? "…" : splitChrome ? "Send" : "↑"}
                     </button>
                   </div>
+                  </>
                 ) : (
                   <div
                     style={{
@@ -7633,6 +7648,36 @@ export default function BankingAgent({
                   </div>
                 )}
               </div>
+
+              {/* Start Over button — clear conversation */}
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  className="ba-start-over-btn"
+                  onClick={() => {
+                    setMessages([]);
+                    setNlInput("");
+                    setInputHistory([]);
+                    setHistoryIndex(-1);
+                  }}
+                  title="Clear conversation and start fresh"
+                  style={{
+                    margin: "6px 12px 0",
+                    width: "calc(100% - 24px)",
+                    padding: "8px 12px",
+                    backgroundColor: "var(--ba-bg-secondary)",
+                    border: "1px solid var(--ba-border)",
+                    borderRadius: "6px",
+                    color: "var(--ba-text-secondary)",
+                    fontSize: "13px",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  Start Over
+                </button>
+              )}
 
               {/* Dashboard navigation button — pinned below prompt (hidden on marketing pages) */}
               {isLoggedIn &&

@@ -214,55 +214,6 @@ router.post(
 );
 
 router.post(
-  '/consent-challenge/:challengeId/initiate-mfa',
-  authenticateToken,
-  async (req, res) => {
-    console.log(`[DEBUG-INITIATE-MFA] POST /consent-challenge/:challengeId/initiate-mfa
-  challengeId: ${req.params.challengeId}
-  user.id: ${req.user?.id}
-  user.role: ${req.user?.role}
-  sessionId: ${req.sessionID}
-  hasSession: ${!!req.session}
-  hasOAuthTokens: ${!!req.session?.oauthTokens}
-  hasAccessToken: ${!!req.session?.oauthTokens?.accessToken}`);
-    const result = await txConsent.initiateMfaChallenge(req, req.params.challengeId);
-    if (!result.ok) {
-      console.log(`[DEBUG-INITIATE-MFA] ERROR: ${result.status} ${result.json?.error}`);
-      return res.status(result.status).json(result.json);
-    }
-    req.session.save((saveErr) => {
-      if (saveErr) console.error('[ConsentChallenge] session save error (initiate-mfa):', saveErr);
-      return res.status(200).json({
-        daId: result.daId,
-        status: result.status,
-        devices: result.devices,
-      });
-    });
-  },
-);
-
-router.post(
-  '/consent-challenge/:challengeId/select-device',
-  authenticateToken,
-  async (req, res) => {
-    const { deviceId } = req.body || {};
-    if (!deviceId) {
-      return res.status(400).json({ error: 'device_id_required', message: 'deviceId is required.' });
-    }
-    // Extract token from the Authorization header that was just validated by authenticateToken middleware
-    // This ensures we use a fresh/validated token rather than a potentially stale session token
-    const authHeader = req.headers['authorization'];
-    const validatedToken = authHeader?.split(' ')[1] || null;
-    const result = await txConsent.selectMfaDevice(req, req.params.challengeId, deviceId, validatedToken);
-    if (!result.ok) return res.status(result.status).json(result.json);
-    req.session.save((saveErr) => {
-      if (saveErr) console.error('[ConsentChallenge] session save error (select-device):', saveErr);
-      return res.status(200).json(result.challenge);
-    });
-  },
-);
-
-router.post(
   '/consent-challenge/:challengeId/verify-otp',
   authenticateToken,
   (req, res) => {
@@ -271,23 +222,6 @@ router.post(
     if (!result.ok) return res.status(result.status).json(result.json);
     req.session.save((saveErr) => {
       if (saveErr) console.error('[ConsentChallenge] session save error (verify-otp):', saveErr);
-      return res.status(200).json({
-        challengeId: result.challengeId,
-        confirmExpiresAt: result.confirmExpiresAt,
-      });
-    });
-  },
-);
-
-router.post(
-  '/consent-challenge/:challengeId/verify-mfa-otp',
-  authenticateToken,
-  async (req, res) => {
-    const { otpCode } = req.body || {};
-    const result = await txConsent.verifyMfaOtp(req, req.params.challengeId, otpCode);
-    if (!result.ok) return res.status(result.status).json(result.json);
-    req.session.save((saveErr) => {
-      if (saveErr) console.error('[ConsentChallenge] session save error (verify-mfa-otp):', saveErr);
       return res.status(200).json({
         challengeId: result.challengeId,
         confirmExpiresAt: result.confirmExpiresAt,

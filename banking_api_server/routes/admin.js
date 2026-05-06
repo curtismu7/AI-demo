@@ -35,6 +35,20 @@ router.get('/stats', requireAdmin, requireScopes(['banking:admin']), (req, res) 
     const transactions = dataStore.getAllTransactions();
     const activityLogs = dataStore.getAllActivityLogs();
 
+    const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
+    const averageBalance = accounts.length > 0 ? totalBalance / accounts.length : 0;
+
+    // Group accounts by type and calculate balances
+    const accountsByType = {};
+    accounts.forEach(account => {
+      const type = account.accountType || 'unknown';
+      if (!accountsByType[type]) {
+        accountsByType[type] = { count: 0, balance: 0 };
+      }
+      accountsByType[type].count += 1;
+      accountsByType[type].balance += account.balance;
+    });
+
     const stats = {
       totalUsers: users.length,
       activeUsers: users.filter(user => user.isActive).length,
@@ -42,8 +56,9 @@ router.get('/stats', requireAdmin, requireScopes(['banking:admin']), (req, res) 
       activeAccounts: accounts.filter(account => account.isActive).length,
       totalTransactions: transactions.length,
       totalActivityLogs: activityLogs.length,
-      totalBalance: accounts.reduce((sum, account) => sum + account.balance, 0),
-      averageBalance: accounts.length > 0 ? accounts.reduce((sum, account) => sum + account.balance, 0) / accounts.length : 0
+      totalBalance,
+      averageBalance,
+      balanceByType: accountsByType
     };
 
     res.json({ stats });
