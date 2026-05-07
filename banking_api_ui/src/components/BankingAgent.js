@@ -1777,19 +1777,8 @@ export default function BankingAgent({
     setAgentAppearance,
     effectiveAgentTheme,
   } = useTheme();
-  const [isOpen, setIsOpen] = useState(() => {
-    if (typeof window === "undefined") return false;
-    if (isInline) return false;
-    const path = window.location.pathname;
-    // Routes that force-collapse (isBankingAgentFloatingDefaultOpen returns false) must
-    // override localStorage so a hard-refresh on those pages shows the FAB, not the panel.
-    if (!isBankingAgentFloatingDefaultOpen(path)) return false;
-    try {
-      const saved = localStorage.getItem("banking-agent-open");
-      if (saved !== null) return saved === "true";
-    } catch {}
-    return false;
-  });
+  // Always start collapsed on page load — never restore open state from localStorage.
+  const [isOpen, setIsOpen] = useState(false);
   /** Panel light/dark: default follows page (`auto`); can override in header. */
   const isDark = effectiveAgentTheme === "dark";
   const [isExpanded, setIsExpanded] = useState(false);
