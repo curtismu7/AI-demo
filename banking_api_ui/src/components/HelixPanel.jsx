@@ -49,6 +49,27 @@ export default function HelixPanel() {
     }
   }, []);
 
+  const handleImportJson = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.keyValue) {
+          notifyError("JSON file has no keyValue field");
+          return;
+        }
+        setHelixConfig((prev) => ({ ...prev, api_key: data.keyValue }));
+        notifySuccess(`API key imported from ${file.name}`);
+      } catch {
+        notifyError("Failed to parse JSON file");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
   const handleHelixSave = async () => {
     if (
       !helixConfig.base_url ||
@@ -341,6 +362,24 @@ export default function HelixPanel() {
 
       {/* Action buttons */}
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <label
+          style={{
+            padding: "0.5rem 1rem",
+            background: "#f3f4f6",
+            border: "1px solid #d1d5db",
+            borderRadius: 4,
+            cursor: "pointer",
+            fontSize: "0.9rem",
+          }}
+        >
+          Import API Key JSON
+          <input
+            type="file"
+            accept=".json"
+            onChange={handleImportJson}
+            style={{ display: "none" }}
+          />
+        </label>
         <button
           onClick={fetchHelixStatus}
           disabled={helixChecking}
