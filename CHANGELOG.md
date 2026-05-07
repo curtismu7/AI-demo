@@ -29,6 +29,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **MCP Gateway Config title** — section heading now shows "MCP Gateway Config" instead of "Mcp Gateway Config" (auto-title fallback used wrong casing for the acronym).
 - **MCP Authorize gate always-on** — removed `ff_authorize_mcp_first_tool` feature flag; gate now runs unconditionally on every MCP tool call. Fixed `needsConfirm` in simulated policy to respect `acrLooksStrong(acr)` so a session that already completed MFA step-up does not then re-require a confirm dialog.
 - **MCP Authorize gate runs on every tool call** — removed per-session skip; gate now evaluates aud/scope and amount-based HITL/step-up rules on every `POST /api/mcp/tool`. Write tools pass `toolParams.amount` so transfers ≥ threshold correctly trigger HITL consent.
 - **Transfer/deposit/withdrawal response formatting** — agent chat now shows a human-readable summary (amount, accounts, transaction IDs) instead of raw JSON.

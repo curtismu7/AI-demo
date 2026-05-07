@@ -23,6 +23,7 @@ import OllamaPanel from "../OllamaPanel";
 import HelixPanel from "../HelixPanel";
 import AuthorizeConfigPage from "../AuthorizeConfigPage";
 import McpGatewayConfig from "../McpGatewayConfig";
+import CustomChipsTab from "../CustomChipsTab";
 
 // Configuration tab definitions
 const CONFIGURATION_TABS = [
@@ -99,7 +100,7 @@ const CONFIGURATION_TABS = [
       "Debug logging, log category filters, and RSA keypair generation",
     requiresAuth: true,
     requiredRole: "admin",
-    sections: ["debug-settings", "api-keys"],
+    sections: ["debug-settings", "api-keys", "custom-chips"],
   },
   {
     id: "idp-setup",
@@ -515,6 +516,8 @@ const SectionNavigation: FC<{
     "demo-setup": "Demo Setup",
     "ollama-setup": "Ollama Configuration",
     "helix-setup": "Helix Configuration",
+    "custom-chips": "Custom Action Chips",
+    "mcp-gateway-config": "MCP Gateway Config",
   };
 
   return (
@@ -3234,6 +3237,13 @@ const UnifiedConfigurationPage: FC<{
               </p>
             </div>
           )}
+        </div>
+      );
+
+    if (s === "custom-chips")
+      return (
+        <div className="cfg-section">
+          <CustomChipsTab />
         </div>
       );
 
