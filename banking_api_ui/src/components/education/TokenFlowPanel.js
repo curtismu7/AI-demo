@@ -11,7 +11,7 @@ export default function TokenFlowPanel({ isOpen, onClose, initialTabId }) {
       content: (
         <>
           <h3 style={{ marginTop: 0 }}>2-Token Exchange Flow — Visual</h3>
-          <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: 12 }}>
+          <p style={{ color: '#374151', fontSize: '0.85rem', marginBottom: 12 }}>
             End-to-end token journey from user login through two RFC 8693 exchanges to the final MCP tool call.
           </p>
           <TokenExchangeDiagram />
@@ -57,7 +57,7 @@ export default function TokenFlowPanel({ isOpen, onClose, initialTabId }) {
           </ul>
 
           <div style={{ background: '#1e293b', borderRadius: 8, padding: '16px 20px', marginTop: 16 }}>
-            <code style={{ color: '#94a3b8', fontSize: 12 }}>
+            <code style={{ color: '#374151', fontSize: 12 }}>
               User AT → [Exchange #1: AI Agent actor] → Intermediate Token<br />
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [Exchange #2: MCP Exchanger actor] → Final MCP Token → MCP Server
             </code>
@@ -93,10 +93,10 @@ export default function TokenFlowPanel({ isOpen, onClose, initialTabId }) {
                 ['7', 'Final MCP Token', 'resource-server.pingdemo.com', 'Bearer sent to MCP Server'],
               ].map(([n, name, aud, use]) => (
                 <tr key={n} style={{ background: n % 2 === 0 ? '#0f172a' : '#1e293b' }}>
-                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>{n}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#374151' }}>{n}</td>
                   <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#e2e8f0', fontWeight: 500 }}>{name}</td>
                   <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'inherit', fontSize: 11 }}>{aud}</td>
-                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>{use}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#374151' }}>{use}</td>
                 </tr>
               ))}
             </tbody>
@@ -223,7 +223,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
               ].map(([uri, use, env]) => (
                 <tr key={uri}>
                   <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'inherit', fontSize: 11 }}>{uri}</td>
-                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>{use}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#374151' }}>{use}</td>
                   <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#a3e635', fontFamily: 'inherit', fontSize: 11 }}>{env}</td>
                 </tr>
               ))}
@@ -250,8 +250,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
               ].map(([scope, tools, notes]) => (
                 <tr key={scope}>
                   <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#a3e635', fontFamily: 'inherit', fontSize: 11 }}>{scope}</td>
-                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8', fontSize: 12 }}>{tools}</td>
-                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#64748b', fontSize: 12 }}>{notes}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#374151', fontSize: 12 }}>{tools}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#374151', fontSize: 12 }}>{notes}</td>
                 </tr>
               ))}
             </tbody>
@@ -313,15 +313,15 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
             <tbody>
               <tr>
                 <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'inherit' }}>may_act</td>
-                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>§ 4.3</td>
-                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>Forward-looking</td>
-                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>User pre-approves who may exchange this token</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#374151' }}>§ 4.3</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#374151' }}>Forward-looking</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#374151' }}>User pre-approves who may exchange this token</td>
               </tr>
               <tr>
                 <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'inherit' }}>act</td>
-                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>§ 4.2</td>
-                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>Retrospective</td>
-                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>Records who actually exercised delegation (audit trail)</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#374151' }}>§ 4.2</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#374151' }}>Retrospective</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#374151' }}>Records who actually exercised delegation (audit trail)</td>
               </tr>
             </tbody>
           </table>
@@ -341,7 +341,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       content: (
         <>
           <h3 style={{ marginTop: 0 }}>Token-by-Token: What Changed at Each Step</h3>
-          <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: 16 }}>
+          <p style={{ color: '#374151', fontSize: '0.85rem', marginBottom: 16 }}>
             Each row is one token or exchange. The right column shows what was added, removed, or narrowed versus the previous token.
           </p>
           <div style={{ overflowX: 'auto' }}>
@@ -444,7 +444,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
                           fontSize: '0.76rem',
                         }}
                       >
-                        {step} — <span style={{ fontWeight: 400, color: '#94a3b8' }}>{token}</span>
+                        {step} — <span style={{ fontWeight: 400, color: '#374151' }}>{token}</span>
                       </td>
                     </tr>
                     {/* Detail rows */}
@@ -454,7 +454,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
                           padding: '6px 12px 6px 24px',
                           border: '1px solid #1e293b',
                           borderLeft: `4px solid ${color}`,
-                          color: '#64748b',
+                          color: '#374151',
                           fontFamily: 'inherit',
                           whiteSpace: 'nowrap',
                           verticalAlign: 'top',
@@ -506,7 +506,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
               ['#60a5fa', 'CHANGED'],
               ['#f87171', 'REMOVED / NEVER'],
             ].map(([color, label]) => (
-              <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#64748b' }}>
+              <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#374151' }}>
                 <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: color }} />
                 {label}
               </span>

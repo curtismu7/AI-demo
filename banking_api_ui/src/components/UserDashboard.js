@@ -37,6 +37,7 @@ import Fido2Challenge from "./Fido2Challenge";
 import TokenChainDisplay from "./TokenChainDisplay";
 import ConfirmModal from "./ConfirmModal";
 import TransactionConsentModal from "./TransactionConsentModal";
+import FloatingPanel from "./FloatingPanel";
 import "./UserDashboard.css";
 import DashboardHeader from "./DashboardHeader";
 
@@ -121,6 +122,20 @@ const DEMO_TRANSACTIONS = [
   },
 ];
 
+const MIDDLE_HEIGHT_KEY = 'middle_agent_height_px';
+const MIDDLE_DEFAULT_HEIGHT = 580;
+const MIDDLE_MIN_HEIGHT = 280;
+
+function readStoredMiddleHeight() {
+  try {
+    const n = parseInt(localStorage.getItem(MIDDLE_HEIGHT_KEY) || '', 10);
+    if (Number.isFinite(n) && n >= MIDDLE_MIN_HEIGHT) {
+      return Math.min(n, Math.round(window.innerHeight * 0.9));
+    }
+  } catch { /* ignore */ }
+  return MIDDLE_DEFAULT_HEIGHT;
+}
+
 const UserDashboard = ({ user: propUser, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -130,6 +145,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   /** Middle layout: auto-opens when placement is 'middle'; collapses via FAB click. */
   const [middleAgentOpen, setMiddleAgentOpen] = useState(
     () => agentPlacement === "middle",
+  );
+  const [middleHeight, setMiddleHeight] = useState(() =>
+    typeof window !== 'undefined' ? readStoredMiddleHeight() : MIDDLE_DEFAULT_HEIGHT
   );
   const [dashboardLayout, setDashboardLayoutState] = useState(() =>
     getDashboardLayout(),
@@ -402,6 +420,45 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       fetchUserData(true);
     }
   }, [agentPlacement, user, fetchUserData]);
+
+  /** Persist middle agent height to localStorage */
+  useEffect(() => {
+    if (agentPlacement !== 'middle') return;
+    try { localStorage.setItem(MIDDLE_HEIGHT_KEY, String(Math.round(middleHeight))); } catch { /* ignore */ }
+  }, [middleHeight, agentPlacement]);
+
+  /** Cap middle height when viewport shrinks */
+  useEffect(() => {
+    if (agentPlacement !== 'middle') return;
+    const onResize = () => {
+      const maxH = Math.round(window.innerHeight * 0.9);
+      setMiddleHeight((h) => Math.min(h, maxH));
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [agentPlacement]);
+
+  const onMiddleResizeMouseDown = useCallback((e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = middleHeight;
+    const maxH = Math.round(window.innerHeight * 0.9);
+    const onMove = (ev) => {
+      const delta = ev.clientY - startY;
+      setMiddleHeight(Math.min(maxH, Math.max(MIDDLE_MIN_HEIGHT, startH + delta)));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [middleHeight]);
 
   /** Toggle expanded state for account profile details */
   const toggleAccountProfile = useCallback((accountId) => {
@@ -1275,7 +1332,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         notifyError("Could not start consent — no challenge id from server.");
         return;
       }
-      setConsentChallengeId({ id: cid, snapshot: data.snapshot || null });
+      setConsentChallengeId({ id: cid, snapshot: data.snapshot || null, payload: intentBody });
     } catch (e) {
       const msg =
         e.response?.data?.message ||
@@ -1346,7 +1403,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       return;
     }
 
-    handleScrollToAssistant();
     try {
       await apiClient.post("/api/transactions", {
         fromAccountId: selectedAccount.id,
@@ -1445,7 +1501,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       return;
     }
 
-    handleScrollToAssistant();
     try {
       await apiClient.post("/api/transactions", {
         fromAccountId: null,
@@ -1548,7 +1603,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       return;
     }
 
-    handleScrollToAssistant();
     try {
       await apiClient.post("/api/transactions", {
         fromAccountId: withdrawAccount.id,
@@ -1642,16 +1696,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     return false;
   };
 
-  const getClientTypeIcon = (clientType) => {
-    if (clientType === "enduser") {
-      return { icon: "◉", label: "End User", color: "#4b5563" };
-    } else if (clientType === "ai_agent") {
-      return { icon: "🤖", label: "🤖 Agent", color: "#3b69c2" };
-    } else {
-      return { icon: "○", label: "Unknown", color: "#9ca3af" };
-    }
-  };
-
   const renderBankingMain = () => (
     <>
       {/* Hero: balance, AI insight, lightweight viz (2026 “financial butler” pattern) */}
@@ -1724,120 +1768,105 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           >
             Ask assistant
           </button>
-          {user ? (
-            <Link to="/delegation" className="ud-qa-btn ud-qa-btn--delegate">
-              👥 Manage Delegates
-            </Link>
-          ) : (
-            <button
-              type="button"
-              className="ud-qa-btn ud-qa-btn--delegate"
-              onClick={navigateToCustomerOAuthLogin}
-            >
-              👥 Manage Delegates
-            </button>
-          )}
+          <button
+            type="button"
+            className="ud-qa-btn ud-qa-btn--delegate"
+            onClick={() => window.open('https://api.pingdemo.com:4000/delegated-access', '_blank', 'noopener,noreferrer')}
+          >
+            Manage Delegates
+          </button>
         </div>
-      </div>
 
-      {/* Trust + omnichannel / super-app cues (copy only in this demo) */}
-      <div className="ud-trust-strip" role="status">
-        <span className="ud-trust-strip__item">Session secured (OAuth)</span>
-        <span className="ud-trust-strip__dot" aria-hidden="true" />
-        <span className="ud-trust-strip__item">Step-up when risk warrants</span>
-        <span className="ud-trust-strip__dot" aria-hidden="true" />
-        <span className="ud-trust-strip__item">
-          Biometrics on supported devices
-        </span>
-        <span className="ud-trust-strip__dot" aria-hidden="true" />
-        <a
-          href="/api/auth/debug?deep=1"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ud-trust-strip__item ud-trust-strip__item--debug"
-          title="Inspect session and Upstash store health"
-        >
-          Session debug
-        </a>
-      </div>
-      <div className="ud-super-pills" aria-label="Quick links">
-        <Link
-          to="/security"
-          className="ud-super-pill"
-          aria-label="Security and Insights"
-        >
-          Insights
-        </Link>
-        <Link
-          to="/transactions"
-          className="ud-super-pill"
-          aria-label="Payments and Transfers"
-        >
-          Payments hub
-        </Link>
-        <Link
-          to="/pingone-test"
-          className="ud-super-pill"
-          aria-label="PingOne integration test page"
-        >
-          PingOne Test
-        </Link>
-        <Link
-          to="/mfa-test"
-          className="ud-super-pill"
-          aria-label="MFA test page"
-        >
-          MFA Test
-        </Link>
-        <Link
-          to="/mcp-traffic"
-          className="ud-super-pill"
-          aria-label="MCP traffic viewer"
-        >
-          MCP Traffic
-        </Link>
+        {/* Trust + omnichannel / super-app cues (copy only in this demo) */}
+        <div className="ud-trust-strip" aria-live="polite">
+          <span className="ud-trust-strip__item">Session secured (OAuth)</span>
+          <span className="ud-trust-strip__dot" aria-hidden="true" />
+          <span className="ud-trust-strip__item">Step-up when risk warrants</span>
+          <span className="ud-trust-strip__dot" aria-hidden="true" />
+          <span className="ud-trust-strip__item">
+            Biometrics on supported devices
+          </span>
+          <span className="ud-trust-strip__dot" aria-hidden="true" />
+          <a
+            href="/api/auth/debug?deep=1"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ud-trust-strip__item ud-trust-strip__item--debug"
+            title="Inspect session and Upstash store health"
+          >
+            Session debug
+          </a>
+        </div>
+        <nav className="ud-super-pills" aria-label="Quick links">
+          <Link
+            to="/security"
+            className="ud-super-pill"
+            aria-label="Security and Insights"
+          >
+            Insights
+          </Link>
+          <Link
+            to="/transactions"
+            className="ud-super-pill"
+            aria-label="Payments and Transfers"
+          >
+            Payments hub
+          </Link>
+          <Link
+            to="/pingone-test"
+            className="ud-super-pill"
+            aria-label="PingOne integration test page"
+          >
+            PingOne Test
+          </Link>
+          <Link
+            to="/mfa-test"
+            className="ud-super-pill"
+            aria-label="MFA test page"
+          >
+            MFA Test
+          </Link>
+          <Link
+            to="/mcp-traffic"
+            className="ud-super-pill"
+            aria-label="MCP traffic viewer"
+          >
+            MCP Traffic
+          </Link>
+        </nav>
       </div>
 
       {/* Customer Profile */}
-      <div className="section">
-        <h2>Account Holder</h2>
+      <div className="section ud-profile-card">
+        <div className="ud-profile-header">
+          <h2>Account Holder</h2>
+          {isDemoMode && <span className="account-demo-badge">Demo mode</span>}
+        </div>
         <div className="ud-profile-meta">
-          <div>
-            <strong>Name:&nbsp;</strong>
-            {user?.firstName || user?.lastName
-              ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
-              : user?.name || user?.username || "—"}
+          <div className="account-detail-row">
+            <span className="detail-label">Name</span>
+            <span className="detail-value">
+              {user?.firstName || user?.lastName
+                ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
+                : user?.name || user?.username || "—"}
+            </span>
           </div>
-          <div>
-            <strong>Email:&nbsp;</strong>
-            {user?.email || user?.username || "—"}
+          <div className="account-detail-row">
+            <span className="detail-label">Email</span>
+            <span className="detail-value">{user?.email || user?.username || "—"}</span>
           </div>
-          <div>
-            <strong>Role:&nbsp;</strong>
-            <span style={{ textTransform: "capitalize" }}>
+          <div className="account-detail-row">
+            <span className="detail-label">Role</span>
+            <span className="detail-value" style={{ textTransform: "capitalize" }}>
               {user?.role || (isDemoMode ? "demo" : "customer")}
             </span>
           </div>
-          {isDemoMode && (
-            <span
-              style={{
-                background: "#e5e7eb",
-                color: "#6b7280",
-                borderRadius: 4,
-                padding: "1px 8px",
-                fontSize: "0.75rem",
-                alignSelf: "center",
-              }}
-            >
-              🏦 Demo mode
-            </span>
-          )}
         </div>
       </div>
 
       {/* Account Summary */}
       <div ref={accountsAnchorRef} className="section">
-        <h2>Your Accounts</h2>
+        <h2 className="ud-accounts-heading">Your Accounts</h2>
         {isDemoMode && (
           <p
             className="demo-notice"
@@ -1870,228 +1899,150 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         <div className="accounts-grid">
           {accounts.map((account) => {
             const isExpanded = expandedAccounts.has(account.id);
-            const hasRichProfile =
-              account.routingNumber ||
-              account.swiftCode ||
-              account.iban ||
-              account.branchName;
+            const acctType = (account.accountType || account.type || "unknown").toLowerCase();
+            const isNegative = (account.balance ?? 0) < 0;
+            const maskedNum = account.accountNumber
+              ? `${acctType.toUpperCase().slice(0, 3)} •••• ${String(account.accountNumber).slice(-4)}`
+              : "—";
+            const typeLabelMap = {
+              checking: "Checking", savings: "Savings", loan: "Loan",
+              car_loan: "Auto Loan", mortgage: "Mortgage", credit: "Credit",
+              investment: "Investment", money_market: "Money Market",
+            };
+            const typeLabel = typeLabelMap[acctType] ||
+              (acctType.charAt(0).toUpperCase() + acctType.slice(1));
 
             return (
               <div
                 key={account.id}
-                className="account-card"
+                className={`account-card account-card--${acctType}`}
                 style={account._demo ? { opacity: 0.65 } : {}}
               >
-                <div className="account-header">
-                  <h3>{account.name}</h3>
-                  <span
-                    className={`account-type-badge ${(account.accountType || account.type || "unknown").toLowerCase()}`}
-                  >
-                    {account.accountType || account.type
-                      ? (account.accountType || account.type)
-                          .charAt(0)
-                          .toUpperCase() +
-                        (account.accountType || account.type).slice(1)
-                      : "Unknown"}
-                  </span>
-                  {account._demo && (
-                    <span
-                      style={{
-                        marginLeft: 6,
-                        fontSize: "0.7rem",
-                        background: "#e5e7eb",
-                        color: "#6b7280",
-                        borderRadius: 4,
-                        padding: "1px 5px",
-                      }}
-                    >
-                      demo
-                    </span>
-                  )}
-                </div>
-                <p className="account-number">
-                  Account: {account.accountNumber}
-                </p>
-                <p className="balance">Balance: {fmt(account.balance)}</p>
+                <div className="account-card__body">
+                  <div className="account-header">
+                    <div>
+                      <h3>{account.name}</h3>
+                      <p className="account-number">{maskedNum}</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span className={`account-type-badge ${acctType}`}>
+                        {typeLabel}
+                      </span>
+                      {account._demo && (
+                        <span className="account-demo-badge">demo</span>
+                      )}
+                    </div>
+                  </div>
 
-                {/* Rich profile details toggle */}
-                {hasRichProfile && (
+                  <div className="account-balance-row">
+                    <p className={`balance${isNegative ? " balance--negative" : ""}`}>
+                      {fmt(account.balance)}
+                    </p>
+                    <span className="balance-label">
+                      {isNegative ? "Outstanding" : "Available"}
+                    </span>
+                  </div>
+
+                  <div className="account-actions">
+                    <button
+                      type="button"
+                      className="select-account-btn"
+                      onClick={() =>
+                        user
+                          ? setSelectedAccount(account)
+                          : navigateToCustomerOAuthLogin()
+                      }
+                    >
+                      Transfer
+                    </button>
+                    <button
+                      type="button"
+                      className="deposit-btn"
+                      onClick={() =>
+                        user
+                          ? setDepositAccount(account)
+                          : navigateToCustomerOAuthLogin()
+                      }
+                    >
+                      Deposit
+                    </button>
+                    <button
+                      type="button"
+                      className="withdraw-btn"
+                      onClick={() =>
+                        user
+                          ? setWithdrawAccount(account)
+                          : navigateToCustomerOAuthLogin()
+                      }
+                    >
+                      Withdraw
+                    </button>
+                  </div>
+                </div>
+
+                {/* Account Details accordion — always visible */}
+                <div className="account-details-section">
                   <button
                     type="button"
-                    className="account-profile-toggle"
+                    className={`account-profile-toggle${isExpanded ? " open" : ""}`}
                     onClick={() => toggleAccountProfile(account.id)}
-                    style={{
-                      background: "none",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "4px",
-                      padding: "4px 8px",
-                      fontSize: "0.75rem",
-                      color: "#6b7280",
-                      cursor: "pointer",
-                      marginTop: "8px",
-                      width: "100%",
-                    }}
                   >
-                    {isExpanded ? "▼" : "▶"} Account Details
+                    Account Details
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="4 6 8 10 12 6" />
+                    </svg>
                   </button>
-                )}
 
-                {/* Rich profile details */}
-                {isExpanded && hasRichProfile && (
-                  <div
-                    className="account-profile-details"
-                    style={{
-                      marginTop: "12px",
-                      padding: "12px",
-                      background: "#f9fafb",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "6px",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    <div style={{ display: "grid", gap: "8px" }}>
+                  {isExpanded && (
+                    <div className="account-profile-details">
+                      <div className="account-detail-row">
+                        <span className="detail-label">Account Number</span>
+                        <span className="detail-value">{account.accountNumber}</span>
+                      </div>
+                      <div className="account-detail-row">
+                        <span className="detail-label">Account Type</span>
+                        <span className="detail-value">{typeLabel}</span>
+                      </div>
                       {account.routingNumber && (
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <span style={{ color: "#6b7280", fontWeight: 500 }}>
-                            Routing Number:
-                          </span>
-                          <span style={{ fontFamily: "inherit" }}>
-                            {account.routingNumber}
-                          </span>
+                        <div className="account-detail-row">
+                          <span className="detail-label">Routing Number</span>
+                          <span className="detail-value">{account.routingNumber}</span>
                         </div>
                       )}
                       {account.swiftCode && (
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <span style={{ color: "#6b7280", fontWeight: 500 }}>
-                            SWIFT Code:
-                          </span>
-                          <span style={{ fontFamily: "inherit" }}>
-                            {account.swiftCode}
-                          </span>
+                        <div className="account-detail-row">
+                          <span className="detail-label">SWIFT</span>
+                          <span className="detail-value">{account.swiftCode}</span>
                         </div>
                       )}
                       {account.iban && (
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <span style={{ color: "#6b7280", fontWeight: 500 }}>
-                            IBAN:
-                          </span>
-                          <span
-                            style={{
-                              fontFamily: "inherit",
-                              fontSize: "0.75rem",
-                            }}
-                          >
-                            {account.iban}
-                          </span>
+                        <div className="account-detail-row">
+                          <span className="detail-label">IBAN</span>
+                          <span className="detail-value">{account.iban}</span>
                         </div>
                       )}
                       {account.branchName && (
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <span style={{ color: "#6b7280", fontWeight: 500 }}>
-                            Branch:
-                          </span>
-                          <span>{account.branchName}</span>
-                        </div>
-                      )}
-                      {account.branchCode && (
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <span style={{ color: "#6b7280", fontWeight: 500 }}>
-                            Branch Code:
-                          </span>
-                          <span>{account.branchCode}</span>
+                        <div className="account-detail-row">
+                          <span className="detail-label">Branch</span>
+                          <span className="detail-value">{account.branchName}</span>
                         </div>
                       )}
                       {account.openedDate && (
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <span style={{ color: "#6b7280", fontWeight: 500 }}>
-                            Opened:
-                          </span>
-                          <span>
+                        <div className="account-detail-row">
+                          <span className="detail-label">Opened</span>
+                          <span className="detail-value">
                             {new Date(account.openedDate).toLocaleDateString()}
                           </span>
                         </div>
                       )}
                       {account.accountHolderName && (
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <span style={{ color: "#6b7280", fontWeight: 500 }}>
-                            Account Holder:
-                          </span>
-                          <span>{account.accountHolderName}</span>
+                        <div className="account-detail-row">
+                          <span className="detail-label">Account Holder</span>
+                          <span className="detail-value">{account.accountHolderName}</span>
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
-
-                <div className="account-actions">
-                  <button
-                    type="button"
-                    className="select-account-btn"
-                    onClick={() =>
-                      user
-                        ? setSelectedAccount(account)
-                        : navigateToCustomerOAuthLogin()
-                    }
-                  >
-                    Select for Transfer
-                  </button>
-                  <button
-                    type="button"
-                    className="deposit-btn"
-                    onClick={() =>
-                      user
-                        ? setDepositAccount(account)
-                        : navigateToCustomerOAuthLogin()
-                    }
-                  >
-                    Deposit
-                  </button>
-                  <button
-                    type="button"
-                    className="withdraw-btn"
-                    onClick={() =>
-                      user
-                        ? setWithdrawAccount(account)
-                        : navigateToCustomerOAuthLogin()
-                    }
-                  >
-                    Withdraw
-                  </button>
+                  )}
                 </div>
               </div>
             );
@@ -2318,25 +2269,17 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         {isDemoMode && (
           <p
             className="demo-notice"
-            style={{
-              color: "#6b7280",
-              fontSize: "0.85rem",
-              marginBottom: "0.75rem",
-            }}
+            style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: "0.75rem" }}
           >
             Demo mode —{" "}
             <button
               type="button"
               onClick={navigateToCustomerOAuthLogin}
               style={{
-                background: "none",
-                border: "none",
-                color: "var(--brand-navy)",
-                fontWeight: 600,
-                cursor: "pointer",
-                padding: 0,
-                fontSize: "inherit",
-                textDecoration: "underline",
+                background: "none", border: "none",
+                color: "var(--brand-navy)", fontWeight: 600,
+                cursor: "pointer", padding: 0,
+                fontSize: "inherit", textDecoration: "underline",
               }}
             >
               sign in
@@ -2344,85 +2287,105 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             to see your real transactions
           </p>
         )}
-        <div className="transactions-table">
-          <div className="transaction-header">
-            <div className="header-cell">Date</div>
-            <div className="header-cell">Type</div>
-            <div className="header-cell">Amount</div>
-            <div className="header-cell">Description</div>
-            <div className="header-cell">Account</div>
-            <div className="header-cell">Interface</div>
-            <div className="header-cell">User</div>
-          </div>
-          <div className="transactions-list">
-            {transactions
-              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-              .slice(0, agentPlacement === "bottom" ? 8 : 20)
-              .map((transaction) => {
-                const clientInfo = getClientTypeIcon(transaction.clientType);
-                return (
-                  <div
-                    key={transaction.id}
-                    className="transaction-row"
-                    style={transaction._demo ? { opacity: 0.55 } : {}}
-                  >
-                    <div className="transaction-cell">
-                      <span className="transaction-date">
-                        {format(
-                          new Date(transaction.createdAt),
-                          "MMM dd, yyyy HH:mm",
-                        )}
-                      </span>
-                    </div>
-                    <div className="transaction-cell">
-                      <span className="transaction-type">
-                        {transaction.type}
-                      </span>
-                    </div>
-                    <div className="transaction-cell">
-                      <span
-                        className={`transaction-amount ${isTransactionNegative(transaction) ? "negative" : "positive"}`}
-                      >
-                        {isTransactionNegative(transaction) ? "-" : "+"}
-                        {fmt(transaction.amount)}
-                      </span>
-                    </div>
-                    <div className="transaction-cell">
-                      <span className="transaction-description">
-                        {transaction.description}
-                      </span>
-                    </div>
-                    <div className="transaction-cell">
-                      <span className="transaction-account">
-                        {transaction.accountInfo || "Unknown"}
-                      </span>
-                    </div>
-                    <div className="transaction-cell">
-                      <div className="interface-indicator">
-                        <span
-                          className="interface-icon"
-                          style={{ color: clientInfo.color }}
-                        >
-                          {clientInfo.icon}
-                        </span>
-                        <span
-                          className="interface-label"
-                          style={{ color: clientInfo.color }}
-                        >
-                          {clientInfo.label}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="transaction-cell">
-                      <span className="transaction-user">
-                        {transaction.performedBy || "Unknown"}
-                      </span>
-                    </div>
+        {(() => {
+          const sorted = [...transactions]
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, agentPlacement === "bottom" ? 8 : 20);
+
+          if (sorted.length === 0) {
+            return (
+              <p style={{ color: "#9ca3af", fontSize: "0.875rem", padding: "20px 0" }}>
+                No transactions yet.
+              </p>
+            );
+          }
+
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0);
+          const yesterdayStart = new Date(todayStart);
+          yesterdayStart.setDate(todayStart.getDate() - 1);
+
+          const txGroups = [];
+          for (const tx of sorted) {
+            const dStart = new Date(tx.createdAt);
+            dStart.setHours(0, 0, 0, 0);
+            const label =
+              dStart >= todayStart ? "Today"
+              : dStart >= yesterdayStart ? "Yesterday"
+              : format(dStart, "EEE, MMM d");
+            const last = txGroups[txGroups.length - 1];
+            if (!last || last.label !== label) txGroups.push({ label, items: [tx] });
+            else last.items.push(tx);
+          }
+
+          const txTypeStyle = (type) => {
+            if (type === "withdrawal") return { bg: "#fff1f2", color: "#be123c", symbol: "↑" };
+            if (type === "deposit")    return { bg: "#f0fdf4", color: "#15803d", symbol: "↓" };
+            if (type === "transfer")   return { bg: "#eff6ff", color: "#1d4ed8", symbol: "⇆" };
+            return { bg: "#f9fafb", color: "#6b7280", symbol: "·" };
+          };
+
+          return (
+            <div className="tx-feed">
+              {txGroups.map((group) => (
+                <div key={group.label} className="tx-feed__group">
+                  <div className="tx-feed__date-row">
+                    <span className="tx-feed__date-label">{group.label}</span>
+                    <span className="tx-feed__date-line" />
                   </div>
-                );
-              })}
-          </div>
-        </div>
+                  {group.items.map((tx) => {
+                    const neg = isTransactionNegative(tx);
+                    const ts = txTypeStyle(tx.type);
+                    const isAgent = tx.clientType === "ai_agent";
+                    return (
+                      <div
+                        key={tx.id}
+                        className="tx-row"
+                        style={tx._demo ? { opacity: 0.5 } : {}}
+                      >
+                        <div
+                          className="tx-row__icon"
+                          style={{ background: ts.bg, color: ts.color }}
+                        >
+                          {ts.symbol}
+                        </div>
+                        <div className="tx-row__body">
+                          <div className="tx-row__desc">
+                            {tx.description || tx.type}
+                          </div>
+                          <div className="tx-row__meta">
+                            <span className="tx-row__account">{tx.accountInfo || "Unknown"}</span>
+                            <span className="tx-row__sep">·</span>
+                            <span className="tx-row__time">
+                              {format(new Date(tx.createdAt), "HH:mm")}
+                            </span>
+                            {tx.performedBy && tx.performedBy !== "Unknown" && (
+                              <>
+                                <span className="tx-row__sep">·</span>
+                                <span className="tx-row__time">{tx.performedBy}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="tx-row__right">
+                          <div className={`tx-row__amount ${neg ? "tx-row__amount--neg" : "tx-row__amount--pos"}`}>
+                            {neg ? "−" : "+"}
+                            {fmt(tx.amount)}
+                          </div>
+                          {isAgent && (
+                            <div className="tx-row__badges">
+                              <span className="tx-badge tx-badge--agent">AI</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
     </>
   );
@@ -2572,6 +2535,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             className="ud-agent-column"
             ref={agentColumnRef}
             aria-label="AI banking assistant"
+            style={{ height: middleHeight, maxHeight: middleHeight }}
           >
             <div className="embedded-banking-agent ud-dashboard-inline-agent">
               <BankingAgent
@@ -2584,6 +2548,17 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                 showPopOut
               />
             </div>
+            <button
+              type="button"
+              className="ud-middle-resize-handle"
+              onMouseDown={onMiddleResizeMouseDown}
+              aria-label="Drag to resize assistant height"
+            >
+              <span className="ud-middle-resize-handle__grip" aria-hidden="true">
+                <span className="ud-middle-resize-handle__bar" />
+              </span>
+              <span className="ud-middle-resize-handle__label">Resize height</span>
+            </button>
           </section>
 
           <main
@@ -2672,21 +2647,62 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             setAgentHitlAutoConfirm(false);
             agentHitlDetailRef.current = null;
           }}
-          onTransactionSuccess={(msg) => {
+          onTransactionSuccess={async (msg) => {
             const agentDetail = agentHitlDetailRef.current;
+            const challenge = consentChallengeId;
             setConsentChallengeId(null);
             setAgentHitlAutoConfirm(false);
             agentHitlDetailRef.current = null;
-            notifySuccess(msg);
-            void fetchUserData(true);
-            // If the consent was triggered from the floating agent, notify it so it
-            // can show a success message in the chat panel.
+
             if (agentDetail) {
+              // Agent-triggered: agent handles re-fire via banking-agent-hitl-confirmed event
+              notifySuccess(msg);
+              void fetchUserData(true);
               window.dispatchEvent(
                 new CustomEvent("banking-agent-hitl-confirmed", {
                   detail: { actionId: agentDetail.actionId, successMsg: msg },
                 }),
               );
+            } else if (challenge?.payload) {
+              // Dashboard-triggered: re-fire the transaction with the approved challenge
+              try {
+                await apiClient.post("/api/transactions", {
+                  ...challenge.payload,
+                  consentChallengeId: challenge.id,
+                });
+                if (challenge.payload.type === "transfer") {
+                  setTransferForm({ toAccountId: "", amount: "", description: "" });
+                  setSelectedAccount(null);
+                } else if (challenge.payload.type === "deposit") {
+                  setDepositForm({ amount: "", description: "" });
+                  setDepositAccount(null);
+                } else if (challenge.payload.type === "withdrawal") {
+                  setWithdrawForm({ amount: "", description: "" });
+                  setWithdrawAccount(null);
+                }
+                notifySuccess("Transaction completed successfully!");
+                void fetchUserData(true);
+                window.dispatchEvent(
+                  new CustomEvent("banking-transaction-completed", {
+                    detail: { type: challenge.payload.type },
+                  }),
+                );
+              } catch (err) {
+                if (err.response?.status === 428) {
+                  setStepUpMethod(err.response.data?.step_up_method || "email");
+                  setCibaStatus("idle");
+                  setStepUpRequired(true);
+                } else {
+                  notifyError(
+                    err.response?.data?.error_description ||
+                      err.response?.data?.error ||
+                      "Transaction failed after consent.",
+                  );
+                }
+              }
+            } else {
+              notifySuccess(msg);
+              void fetchUserData(true);
             }
           }}
           onDeclinedConfirmed={() => {
@@ -3164,19 +3180,17 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
       {/* OAuth Token Info Modal */}
       {showTokenModal && (
-        <div className="modal-overlay" onClick={() => setShowTokenModal(false)}>
-          <div className="token-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Your Token Chain</h3>
-              <button
-                className="close-btn"
-                onClick={() => setShowTokenModal(false)}
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="modal-content">
+        <FloatingPanel
+          title="Your Token Chain"
+          onClose={() => setShowTokenModal(false)}
+          defaultWidth={780}
+          defaultHeight={Math.min(window.innerHeight - 80, 900)}
+          defaultX={Math.max(0, Math.round((window.innerWidth - 780) / 2))}
+          defaultY={60}
+          minWidth={340}
+          minHeight={200}
+        >
+            <div style={{ overflowY: 'auto', height: '100%', padding: '20px 30px' }}>
               {tokenData ? (
                 (() => {
                   const {
@@ -3460,9 +3474,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                   </p>
                 </div>
               )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 0 4px' }}>
+                <button type="button" className="btn-secondary" onClick={() => setShowTokenModal(false)}>Close</button>
+              </div>
             </div>
-          </div>
-        </div>
+        </FloatingPanel>
       )}
     </div>
   );

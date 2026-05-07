@@ -118,13 +118,13 @@ function CodeBlock({ children }) {
 
 function StatusBadge({ status }) {
   const map = {
-    idle:     { color: '#6b7280', label: 'Idle' },
+    idle:     { color: '#374151', label: 'Idle' },
     loading:  { color: 'var(--brand-navy)', label: 'Initiating…' },
     pending:  { color: '#d97706', label: '⏳ Waiting for approval' },
     approved: { color: '#16a34a', label: '✅ Approved' },
     denied:   { color: '#dc2626', label: '❌ Denied' },
     error:    { color: '#dc2626', label: '⚠ Error' },
-    expired:  { color: '#9ca3af', label: 'Expired' },
+    expired:  { color: '#374151', label: 'Expired' },
   };
   const s = map[status] || map.idle;
   return (
@@ -246,7 +246,7 @@ function TryItTab({ cibaStatus }) {
           <strong>CIBA is not enabled.</strong> Set <code>CIBA_ENABLED=true</code> and
           configure PingOne (see the Setup tab) to try a live demo.
         </div>
-        <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '1rem' }}>
+        <p style={{ fontSize: '0.85rem', color: '#374151', marginTop: '1rem' }}>
           Once enabled, this tab lets you initiate a live CIBA request (approval is by email or push
           depending on your PingOne / DaVinci setup) and watch the polling loop in real time.
         </p>
@@ -558,7 +558,7 @@ export default function CIBAPanel() {
                 <li><strong>Admin</strong> (<code>role === &apos;admin&apos;</code>): Activity logs, manage users, view <em>all</em> accounts and transactions, Security Settings (thresholds / PingOne Authorize integration), Application Configuration link, full MCP Inspector. Routed to <code>/admin</code> and admin-only routes.</li>
                 <li><strong>Customer</strong> (<code>role === &apos;customer&apos;</code>): Personal dashboard only — own accounts, deposits, transfers, withdrawals within normal policy; MCP Inspector in read-oriented use; no tenant-wide admin screens.</li>
               </ul>
-              <p className="ciba-section-desc" style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+              <p className="ciba-section-desc" style={{ fontSize: '0.85rem', color: '#374151' }}>
                 The UI loads the signed-in user from <code>GET /api/auth/oauth/status</code> (admin PingOne app), <code>GET /api/auth/oauth/user/status</code> (end-user app), and <code>GET /api/auth/session</code> (basic auth). The post-login redirect depends on the user's <strong>stored role</strong> — a user whose record has <code>role: admin</code> is routed to <code>/admin</code> regardless of which OAuth app was used for sign-in.
               </p>
 

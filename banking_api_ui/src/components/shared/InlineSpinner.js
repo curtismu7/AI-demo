@@ -30,7 +30,7 @@ export default function InlineSpinner({ label, color = 'var(--brand-navy)', size
         }}
       />
       {label && (
-        <span style={{ fontSize: '0.875rem', color: '#64748b' }}>{label}</span>
+        <span style={{ fontSize: '0.875rem', color: '#374151' }}>{label}</span>
       )}
     </span>
   );

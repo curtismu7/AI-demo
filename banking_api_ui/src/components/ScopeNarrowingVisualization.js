@@ -63,7 +63,7 @@ const titleStyle = {
 
 const subtitleStyle = {
   fontSize: '14px',
-  color: '#6b7280',
+  color: '#374151',
   margin: '0 0 20px',
   lineHeight: '1.5',
 };
@@ -127,14 +127,14 @@ const arrowStyle = {
 
 const arrowLineStyle = {
   fontSize: '20px',
-  color: '#9ca3af',
+  color: '#374151',
   lineHeight: '1',
 };
 
 const arrowLabelStyle = {
   fontSize: '9px',
   fontWeight: 600,
-  color: '#6b7280',
+  color: '#374151',
   textAlign: 'center',
   marginTop: '4px',
   lineHeight: '1.2',

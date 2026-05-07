@@ -81,6 +81,9 @@ const SILENT_URL_PREFIXES = [
   '/api/nl',
   '/api/logs',
   '/api/activity',
+  '/api/banking-agent',
+  '/api/langchain',
+  '/api/transactions/consent-challenge',
 ];
 
 const isSilentUrl = (url) => SILENT_URL_PREFIXES.some(p => url.startsWith(p));

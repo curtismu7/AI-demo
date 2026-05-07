@@ -170,6 +170,23 @@ export function TokenChainProvider({ children, activePath = "" }) {
     return () => window.removeEventListener('mcp-tool-result-sse', handler);
   }, []);
 
+  // Inject synthetic token events from external sources (e.g. kill switch, introspection denied).
+  // Bypasses the isTokenChainRoute check so events appear immediately in any open Token Chain modal.
+  useEffect(() => {
+    const handler = (e) => {
+      const { tool, events: injectedEvents } = e.detail || {};
+      if (!tool || !Array.isArray(injectedEvents) || injectedEvents.length === 0) return;
+      setHistory(prev => [
+        { tool, timestamp: new Date().toISOString(), events: injectedEvents },
+        ...prev.slice(0, 19),
+      ]);
+      setEvents(injectedEvents);
+      setSessionTokenEvent(null);
+    };
+    window.addEventListener('token-chain-inject', handler);
+    return () => window.removeEventListener('token-chain-inject', handler);
+  }, []);
+
   /** Fetch resolved identity once on mount (and on re-auth). Shared across all token surfaces. */
   const loadResolvedIdentity = useCallback(async () => {
     try {

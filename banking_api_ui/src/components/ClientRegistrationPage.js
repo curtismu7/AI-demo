@@ -377,7 +377,7 @@ export default function ClientRegistrationPage({ user, onLogout }) {
 
           {/* ── Submit ──────────────────────────────────────────────── */}
           <div style={{ padding: '20px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '14px' }}>
+            <div style={{ fontSize: '13px', color: '#374151', marginBottom: '14px' }}>
               Submitting will call the PingOne Management API to create this application
               and host the CIMD document at <code>/.well-known/oauth-client/&#123;id&#125;</code>.
             </div>

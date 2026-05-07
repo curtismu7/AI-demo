@@ -274,6 +274,30 @@ export async function callMcpTool(tool, params = {}) {
       // Merge SSE-collected token events with response body events
       const allTokenEvents = [...tokenEventsFromSse, ...responseTokenEvents];
 
+      // Special case: 428 Precondition Required with HITL consent required
+      // This is not an error condition — it's a valid response that needs HITL handling
+      if (response.status === 428 && err.error === "hitl_required") {
+        appendMcpCall(
+          tool,
+          response.status,
+          Date.now() - t0,
+          err,
+          "HITL consent required",
+        );
+        appendTokenEvents(tool, allTokenEvents);
+        agentFlowDiagram.completeMcpToolCall({
+          toolName: tool,
+          tokenEvents: allTokenEvents,
+          ok: true,
+          errorMessage: null,
+        });
+        // Return the HITL response as a result, not an error
+        return {
+          result: err,
+          tokenEvents: allTokenEvents,
+        };
+      }
+
       appendMcpCall(
         tool,
         response.status,
@@ -378,6 +402,27 @@ export async function callMcpTool(tool, params = {}) {
       ) {
         allTokenEvents.push(evt);
       }
+    }
+
+    // Synthesize authorize-decision event from MCP-level PingOne Authorize evaluation
+    if (data.mcpAuthorizeEvaluation) {
+      const ae = data.mcpAuthorizeEvaluation;
+      const decision = ae.decision || 'PERMIT';
+      const engine = ae.engine || 'simulated';
+      const decisionStatus = decision === 'PERMIT' ? 'active' : decision === 'DENY' ? 'failed' : 'waiting';
+      allTokenEvents.push({
+        id: 'authorize-decision',
+        label: 'PingOne Authorize — Policy Decision',
+        status: decisionStatus,
+        timestamp: Date.now(),
+        rfc: 'RFC 8705',
+        authorizeDecision: decision,
+        authorizeEngine: engine,
+        authorizePath: ae.path || null,
+        authorizeDecisionId: ae.decisionId || null,
+        authorizeRef: ae.authorizeRef || ae.decisionEndpointId || null,
+        explanation: `${engine === 'pingone' ? 'PingOne Authorize' : 'Simulated policy engine'} evaluated the agent tool call and returned ${decision}.`,
+      });
     }
 
     appendTokenEvents(tool, allTokenEvents);

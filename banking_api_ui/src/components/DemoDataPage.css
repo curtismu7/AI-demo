@@ -43,7 +43,7 @@
   padding: 0.28rem 0.6rem;
   font-size: 0.73rem;
   font-weight: 500;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, #374151);
   text-decoration: none;
   border-radius: 4px 0 0 4px;
   white-space: nowrap;
@@ -80,7 +80,7 @@
   font-weight: 600;
   font-family: inherit;
   line-height: 1.25;
-  color: var(--dash-muted, #999999);
+  color: var(--dash-muted, #374151);
   border: 1px dashed var(--dash-border, rgba(15, 23, 42, 0.18));
   border-radius: 8px;
   background: var(--dash-surface-2, var(--brand-light-gray));
@@ -106,7 +106,7 @@
 }
 
 .demo-data-loading {
-  color: var(--dash-muted, #999999);
+  color: var(--dash-muted, #374151);
   margin: 0;
 }
 
@@ -210,7 +210,7 @@
 
 .demo-data-accounts-hint {
   font-size: 0.8rem;
-  color: #999999;
+  color: #374151;
 }
 
 /* ── Fixed type-slot grid ── */
@@ -260,7 +260,7 @@
 
 .demo-data-type-slot__num {
   font-size: 0.7rem;
-  color: #999999;
+  color: #374151;
   background: #DDDDDD;
   border-radius: 4px;
   padding: 1px 5px;
@@ -396,7 +396,7 @@
 
 .demo-data-agent-option-desc {
   font-size: 0.78rem;
-  color: #6b7280;
+  color: #374151;
   line-height: 1.45;
 }
 
@@ -496,7 +496,7 @@
 
 .demo-data-scope-desc {
   font-size: 0.8rem;
-  color: var(--app-text-muted, #6b7280);
+  color: var(--app-text-muted, #374151);
 }
 
 .demo-data-section__heading {
@@ -590,13 +590,13 @@
 .demo-data-mayact-quick__label {
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, #374151);
   white-space: nowrap;
 }
 .demo-data-mayact-quick__status {
   font-size: 0.78rem;
   font-weight: 500;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, #374151);
 }
 .demo-data-mayact-quick__status--on  { color: #16a34a; }
 .demo-data-mayact-quick__status--off { color: #dc2626; }
@@ -704,7 +704,7 @@
 .demo-data-agent-auth-card__desc {
   font-size: 0.82rem;
   line-height: 1.45;
-  color: var(--dash-muted, #999999);
+  color: var(--dash-muted, #374151);
 }
 
 .demo-data-agent-auth-detail {
@@ -720,7 +720,7 @@
   padding-left: 1.2rem;
   font-size: 0.85rem;
   line-height: 1.55;
-  color: var(--dash-muted, #666666);
+  color: var(--dash-muted, #374151);
 }
 
 .demo-data-agent-auth-steps li {
@@ -762,5 +762,5 @@
 
 .demo-data-helix-hint {
   font-size: 0.85rem;
-  color: var(--dash-muted, #6b7280);
+  color: var(--dash-muted, #374151);
 }

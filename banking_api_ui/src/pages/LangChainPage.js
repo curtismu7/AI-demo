@@ -70,7 +70,7 @@ export default function LangChainPage() {
               }
             </span>
           ) : (
-            <span style={{ color: '#888' }}>Loading…</span>
+            <span style={{ color: '#374151' }}>Loading…</span>
           )}
         </div>
         <div style={{ marginLeft: 'auto', fontSize: 12 }}>

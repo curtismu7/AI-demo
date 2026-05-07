@@ -1,321 +1,469 @@
-// banking_api_ui/src/components/SecurityCenter.js
-import React, { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import './SecurityCenter.css';
 
-export default function SecurityCenter({ user }) {
+function deviceTypeLabel(type) {
+  const map = {
+    EMAIL: 'Email OTP',
+    SMS: 'SMS OTP',
+    MOBILE_PHONE: 'SMS OTP',
+    TOTP: 'Authenticator App',
+    FIDO2: 'Security Key / Passkey',
+    MOBILE: 'PingOne Mobile',
+  };
+  return map[type] || type;
+}
+
+export default function SecurityCenter() {
   const [activeTab, setActiveTab] = useState('overview');
 
-  const handleAction = (action) => {
-    toast.info(`${action} - This would open the appropriate flow in a production implementation`);
-  };
+  // MFA device list
+  const [devices, setDevices] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
+
+  // Delete
+  const [deletingId, setDeletingId] = useState(null);
+
+  // Rename
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameBusy, setRenameBusy] = useState(false);
+
+  // Enrollment
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollType, setEnrollType] = useState(null);
+  const [enrollPhone, setEnrollPhone] = useState('');
+  const [enrollSmsStep, setEnrollSmsStep] = useState('phone');
+  const [enrollSmsDeviceId, setEnrollSmsDeviceId] = useState(null);
+  const [enrollOtp, setEnrollOtp] = useState('');
+  const [enrollError, setEnrollError] = useState(null);
+  const [enrollBusy, setEnrollBusy] = useState(false);
+
+  const fetchDevices = useCallback(async () => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const res = await fetch('/api/auth/mfa/devices', { credentials: 'include' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Server error ${res.status}`);
+      }
+      const data = await res.json();
+      setDevices(data.devices || []);
+    } catch (err) {
+      setFetchError(err.message || 'Failed to load devices.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'mfa') return;
+    fetchDevices();
+  }, [activeTab, fetchDevices]);
+
+  async function handleDelete(deviceId) {
+    setDeletingId(deviceId);
+    try {
+      const res = await fetch(`/api/auth/mfa/devices/${deviceId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Server error ${res.status}`);
+      }
+      setDevices(prev => prev.filter(d => d.id !== deviceId));
+      toast.success('Device removed.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to remove device.');
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  function startRename(device) {
+    setRenamingId(device.id);
+    setRenameValue(device.name || '');
+  }
+
+  async function handleRename(deviceId) {
+    if (!renameValue.trim()) return;
+    setRenameBusy(true);
+    try {
+      const res = await fetch(`/api/auth/mfa/devices/${deviceId}/nickname`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname: renameValue.trim() }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Server error ${res.status}`);
+      }
+      const updated = await res.json();
+      setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, name: updated.nickname } : d));
+      setRenamingId(null);
+      toast.success('Device renamed.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to rename device.');
+    } finally {
+      setRenameBusy(false);
+    }
+  }
+
+  function cancelRename() {
+    setRenamingId(null);
+    setRenameValue('');
+  }
+
+  function openEnrollPicker() {
+    setEnrolling(true);
+    setEnrollType(null);
+    setEnrollPhone('');
+    setEnrollSmsStep('phone');
+    setEnrollSmsDeviceId(null);
+    setEnrollOtp('');
+    setEnrollError(null);
+  }
+
+  function closeEnrollPicker() {
+    setEnrolling(false);
+    setEnrollType(null);
+    setEnrollPhone('');
+    setEnrollSmsStep('phone');
+    setEnrollSmsDeviceId(null);
+    setEnrollOtp('');
+    setEnrollError(null);
+    setEnrollBusy(false);
+  }
+
+  async function handleEnrollEmail() {
+    setEnrollBusy(true);
+    setEnrollError(null);
+    try {
+      const res = await fetch('/api/auth/mfa/enroll/email', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Server error ${res.status}`);
+      }
+      toast.success('Email OTP device enrolled.');
+      closeEnrollPicker();
+      fetchDevices();
+    } catch (err) {
+      setEnrollError(err.message || 'Failed to enroll email device.');
+    } finally {
+      setEnrollBusy(false);
+    }
+  }
+
+  async function handleEnrollSmsInit() {
+    if (!enrollPhone.trim()) return;
+    setEnrollBusy(true);
+    setEnrollError(null);
+    try {
+      const res = await fetch('/api/auth/mfa/enroll/sms-init', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: enrollPhone.trim() }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Server error ${res.status}`);
+      }
+      const data = await res.json();
+      setEnrollSmsDeviceId(data.deviceId);
+      setEnrollSmsStep('otp');
+    } catch (err) {
+      setEnrollError(err.message || 'Failed to initiate SMS enrollment.');
+    } finally {
+      setEnrollBusy(false);
+    }
+  }
+
+  async function handleEnrollSmsComplete() {
+    if (!enrollOtp.trim()) return;
+    setEnrollBusy(true);
+    setEnrollError(null);
+    try {
+      const res = await fetch('/api/auth/mfa/enroll/sms-complete', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: enrollSmsDeviceId, otp: enrollOtp.trim() }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Server error ${res.status}`);
+      }
+      toast.success('SMS OTP device enrolled.');
+      closeEnrollPicker();
+      fetchDevices();
+    } catch (err) {
+      setEnrollError(err.message || 'Failed to complete SMS enrollment.');
+    } finally {
+      setEnrollBusy(false);
+    }
+  }
+
+  function renderEnrollPicker() {
+    if (!enrollType) {
+      return (
+        <div className="enroll-picker">
+          <p style={{ margin: '0 0 0.5rem', fontWeight: 600, color: '#333' }}>Select device type to add:</p>
+          {[
+            { key: 'email', label: 'Email OTP' },
+            { key: 'sms', label: 'SMS OTP' },
+            { key: 'totp', label: 'Authenticator App (TOTP)' },
+            { key: 'fido2', label: 'Security Key (FIDO2)' },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              className="enroll-option-btn"
+              onClick={() => setEnrollType(key)}
+            >
+              {label}
+            </button>
+          ))}
+          <button type="button" className="btn btn-outline btn-sm" onClick={closeEnrollPicker}>
+            Cancel
+          </button>
+        </div>
+      );
+    }
+
+    if (enrollType === 'email') {
+      return (
+        <div className="enroll-picker">
+          <p style={{ margin: '0 0 0.5rem', fontWeight: 600 }}>Enroll Email OTP</p>
+          <p style={{ margin: '0 0 0.75rem', color: '#666', fontSize: '0.875rem' }}>
+            A verification code will be sent to your account email.
+          </p>
+          {enrollError && (
+            <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.5rem' }}>{enrollError}</p>
+          )}
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={handleEnrollEmail}
+              disabled={enrollBusy}
+            >
+              {enrollBusy ? 'Enrolling...' : 'Enroll'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={closeEnrollPicker}
+              disabled={enrollBusy}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (enrollType === 'sms') {
+      return (
+        <div className="enroll-picker">
+          <p style={{ margin: '0 0 0.5rem', fontWeight: 600 }}>Enroll SMS OTP</p>
+          {enrollError && (
+            <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.5rem' }}>{enrollError}</p>
+          )}
+          {enrollSmsStep === 'phone' ? (
+            <>
+              <input
+                type="tel"
+                className="rename-input"
+                style={{ width: '100%', maxWidth: 240, boxSizing: 'border-box' }}
+                placeholder="+1 555 000 0000"
+                value={enrollPhone}
+                onChange={e => setEnrollPhone(e.target.value)}
+                disabled={enrollBusy}
+              />
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={handleEnrollSmsInit}
+                  disabled={enrollBusy || !enrollPhone.trim()}
+                >
+                  {enrollBusy ? 'Sending...' : 'Send code'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={closeEnrollPicker}
+                  disabled={enrollBusy}
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p style={{ color: '#666', fontSize: '0.875rem', margin: '0 0 0.5rem' }}>
+                Enter the code sent to {enrollPhone}.
+              </p>
+              <input
+                type="text"
+                className="rename-input"
+                style={{ width: '100%', maxWidth: 180, boxSizing: 'border-box', letterSpacing: '0.15em' }}
+                placeholder="000000"
+                value={enrollOtp}
+                onChange={e => setEnrollOtp(e.target.value)}
+                disabled={enrollBusy}
+                maxLength={8}
+              />
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={handleEnrollSmsComplete}
+                  disabled={enrollBusy || !enrollOtp.trim()}
+                >
+                  {enrollBusy ? 'Verifying...' : 'Verify'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={closeEnrollPicker}
+                  disabled={enrollBusy}
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    // TOTP or FIDO2 — requires native browser APIs or mobile app
+    return (
+      <div className="enroll-picker">
+        <p style={{ color: '#666', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
+          Use the PingOne mobile app or admin portal to enroll this device type.
+        </p>
+        <button type="button" className="btn btn-outline btn-sm" onClick={closeEnrollPicker}>
+          Close
+        </button>
+      </div>
+    );
+  }
+
+  function renderMfaTab() {
+    return (
+      <div>
+        <h3 style={{ marginTop: 0 }}>MFA Devices</h3>
+        {loading && <p className="demo-unavailable">Loading devices...</p>}
+        {fetchError && <p style={{ color: '#dc2626' }}>{fetchError}</p>}
+        {!loading && !fetchError && devices !== null && (
+          <>
+            {devices.length === 0 ? (
+              <p className="demo-unavailable">No MFA devices registered.</p>
+            ) : (
+              <div>
+                {devices.map(device => (
+                  <div key={device.id} className="device-row">
+                    <span className="device-type">{deviceTypeLabel(device.type)}</span>
+                    <span className="device-contact">
+                      {renamingId === device.id ? (
+                        <input
+                          type="text"
+                          className="rename-input"
+                          value={renameValue}
+                          onChange={e => setRenameValue(e.target.value)}
+                          disabled={renameBusy}
+                        />
+                      ) : (
+                        device.name || device.maskedContact || '—'
+                      )}
+                    </span>
+                    <div className="device-actions">
+                      {renamingId === device.id ? (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            onClick={() => handleRename(device.id)}
+                            disabled={renameBusy || !renameValue.trim()}
+                          >
+                            {renameBusy ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm"
+                            onClick={cancelRename}
+                            disabled={renameBusy}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="btn-danger"
+                            onClick={() => handleDelete(device.id)}
+                            disabled={deletingId === device.id}
+                          >
+                            {deletingId === device.id ? 'Removing...' : 'Delete'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm"
+                            onClick={() => startRename(device)}
+                            disabled={deletingId !== null}
+                          >
+                            Rename
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ marginTop: '1rem' }}>
+              {enrolling ? renderEnrollPicker() : (
+                <button type="button" className="btn btn-primary btn-sm" onClick={openEnrollPicker}>
+                  Add device
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
   const renderContent = () => {
-    switch (activeTab) {
-      case 'overview':
-        return (
-          <div className="security-overview">
-            <div className="security-status">
-              <h3>Security Status</h3>
-              <div className="status-grid">
-                <div className="status-item">
-                  <div className="status-icon good">✅</div>
-                  <div className="status-text">
-                    <div className="status-title">Password Protection</div>
-                    <div className="status-desc">Strong password configured</div>
-                  </div>
-                </div>
-                <div className="status-item">
-                  <div className="status-icon good">✅</div>
-                  <div className="status-text">
-                    <div className="status-title">Multi-Factor Authentication</div>
-                    <div className="status-desc">MFA enabled and active</div>
-                  </div>
-                </div>
-                <div className="status-item">
-                  <div className="status-icon warning">⚠️</div>
-                  <div className="status-text">
-                    <div className="status-title">Session Management</div>
-                    <div className="status-desc">Review active sessions</div>
-                  </div>
-                </div>
-                <div className="status-item">
-                  <div className="status-icon good">✅</div>
-                  <div className="status-text">
-                    <div className="status-title">Login Monitoring</div>
-                    <div className="status-desc">Suspicious activity detection</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="security-actions">
-              <h3>Quick Actions</h3>
-              <div className="action-grid">
-                <button 
-                  type="button"
-                  onClick={() => handleAction('Change Password')}
-                  className="action-btn"
-                >
-                  <span className="action-icon">🔑</span>
-                  <span className="action-title">Change Password</span>
-                  <span className="action-desc">Update your account password</span>
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => handleAction('Manage MFA')}
-                  className="action-btn"
-                >
-                  <span className="action-icon">📱</span>
-                  <span className="action-title">Manage MFA</span>
-                  <span className="action-desc">Configure multi-factor authentication</span>
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => handleAction('Active Sessions')}
-                  className="action-btn"
-                >
-                  <span className="action-icon">💻</span>
-                  <span className="action-title">Active Sessions</span>
-                  <span className="action-desc">View and manage logged-in devices</span>
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => handleAction('Security Alerts')}
-                  className="action-btn"
-                >
-                  <span className="action-icon">🔔</span>
-                  <span className="action-title">Security Alerts</span>
-                  <span className="action-desc">Configure security notifications</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'password':
-        return (
-          <div className="password-section">
-            <h3>Password Management</h3>
-            <div className="password-info">
-              <div className="info-card">
-                <h4>Current Password Status</h4>
-                <div className="password-strength">
-                  <div className="strength-bar">
-                    <div className="strength-fill strong"></div>
-                  </div>
-                  <span className="strength-text">Strong</span>
-                </div>
-                <p className="last-changed">Last changed: 30 days ago</p>
-              </div>
-
-              <div className="password-requirements">
-                <h4>Password Requirements</h4>
-                <ul>
-                  <li>✅ At least 12 characters long</li>
-                  <li>✅ Contains uppercase and lowercase letters</li>
-                  <li>✅ Contains numbers</li>
-                  <li>✅ Contains special characters</li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="password-actions">
-              <button 
-                type="button"
-                onClick={() => handleAction('Change Password')}
-                className="btn btn-primary"
-              >
-                Change Password
-              </button>
-              <button 
-                type="button"
-                onClick={() => handleAction('Forgot Password')}
-                className="btn btn-outline"
-              >
-                Forgot Password
-              </button>
-            </div>
-          </div>
-        );
-
-      case 'mfa':
-        return (
-          <div className="mfa-section">
-            <h3>Multi-Factor Authentication</h3>
-            <div className="mfa-status">
-              <div className="status-card enabled">
-                <div className="status-header">
-                  <span className="status-icon">✅</span>
-                  <div>
-                    <h4>MFA Enabled</h4>
-                    <p>Your account is protected with multi-factor authentication</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mfa-methods">
-                <h4>Configured Methods</h4>
-                <div className="method-list">
-                  <div className="method-item active">
-                    <span className="method-icon">📱</span>
-                    <div className="method-info">
-                      <div className="method-name">Authenticator App</div>
-                      <div className="method-desc">Google Authenticator</div>
-                    </div>
-                    <span className="method-status">Active</span>
-                  </div>
-                  <div className="method-item">
-                    <span className="method-icon">📧</span>
-                    <div className="method-info">
-                      <div className="method-name">Email Verification</div>
-                      <div className="method-desc">Backup email method</div>
-                    </div>
-                    <span className="method-status">Setup</span>
-                  </div>
-                  <div className="method-item">
-                    <span className="method-icon">📞</span>
-                    <div className="method-info">
-                      <div className="method-name">SMS Verification</div>
-                      <div className="method-desc">Not configured</div>
-                    </div>
-                    <button 
-                      type="button"
-                      onClick={() => handleAction('Setup SMS')}
-                      className="btn btn-sm btn-outline"
-                    >
-                      Setup
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mfa-actions">
-                <button 
-                  type="button"
-                  onClick={() => handleAction('Manage MFA')}
-                  className="btn btn-primary"
-                >
-                  Manage MFA Settings
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => handleAction('Generate Backup Codes')}
-                  className="btn btn-outline"
-                >
-                  Generate Backup Codes
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'sessions':
-        return (
-          <div className="sessions-section">
-            <h3>Active Sessions</h3>
-            <div className="sessions-list">
-              <div className="session-item current">
-                <div className="session-info">
-                  <div className="session-device">
-                    <span className="device-icon">💻</span>
-                    <div>
-                      <div className="device-name">Chrome on macOS</div>
-                      <div className="device-details">192.168.1.100 • Current session</div>
-                    </div>
-                  </div>
-                  <div className="session-time">
-                    <div className="time-label">Started</div>
-                    <div className="time-value">2 hours ago</div>
-                  </div>
-                </div>
-                <div className="session-actions">
-                  <span className="current-badge">Current</span>
-                </div>
-              </div>
-
-              <div className="session-item">
-                <div className="session-info">
-                  <div className="session-device">
-                    <span className="device-icon">📱</span>
-                    <div>
-                      <div className="device-name">Safari on iPhone</div>
-                      <div className="device-details">192.168.1.101</div>
-                    </div>
-                  </div>
-                  <div className="session-time">
-                    <div className="time-label">Last active</div>
-                    <div className="time-value">1 day ago</div>
-                  </div>
-                </div>
-                <div className="session-actions">
-                  <button 
-                    type="button"
-                    onClick={() => handleAction('Revoke Session')}
-                    className="btn btn-sm btn-outline"
-                  >
-                    Revoke
-                  </button>
-                </div>
-              </div>
-
-              <div className="session-item">
-                <div className="session-info">
-                  <div className="session-device">
-                    <span className="device-icon">🌐</span>
-                    <div>
-                      <div className="device-name">Firefox on Windows</div>
-                      <div className="device-details">192.168.1.102</div>
-                    </div>
-                  </div>
-                  <div className="session-time">
-                    <div className="time-label">Last active</div>
-                    <div className="time-value">3 days ago</div>
-                  </div>
-                </div>
-                <div className="session-actions">
-                  <button 
-                    type="button"
-                    onClick={() => handleAction('Revoke Session')}
-                    className="btn btn-sm btn-outline"
-                  >
-                    Revoke
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="sessions-actions">
-              <button 
-                type="button"
-                onClick={() => handleAction('Revoke All Sessions')}
-                className="btn btn-outline"
-              >
-                Revoke All Other Sessions
-              </button>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
+    if (activeTab === 'mfa') return renderMfaTab();
+    return <p className="demo-unavailable">This feature is not available in this demo.</p>;
   };
 
   return (
     <div className="security-center">
       <div className="security-header">
         <h2>Security Center</h2>
-        <p>Manage your account security and privacy settings</p>
+        <p>Manage your account security settings</p>
       </div>
 
       <div className="security-tabs">
         <div className="tab-nav">
           {[
-            { id: 'overview', label: 'Overview', icon: '🛡️' },
-            { id: 'password', label: 'Password', icon: '🔑' },
-            { id: 'mfa', label: 'MFA', icon: '📱' },
-            { id: 'sessions', label: 'Sessions', icon: '💻' },
+            { id: 'overview', label: 'Overview' },
+            { id: 'password', label: 'Password' },
+            { id: 'mfa', label: 'MFA' },
+            { id: 'sessions', label: 'Sessions' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -323,8 +471,7 @@ export default function SecurityCenter({ user }) {
               onClick={() => setActiveTab(tab.id)}
               className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
             >
-              <span className="tab-icon">{tab.icon}</span>
-              <span className="tab-label">{tab.label}</span>
+              {tab.label}
             </button>
           ))}
         </div>
@@ -373,12 +520,12 @@ export default function SecurityCenter({ user }) {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 0.5rem;
           padding: 1rem;
           border: none;
           background: transparent;
           cursor: pointer;
           transition: all 0.2s;
+          font-size: 0.9rem;
         }
 
         .tab-btn:hover {
@@ -389,303 +536,91 @@ export default function SecurityCenter({ user }) {
           background: white;
           border-bottom: 2px solid #4f46e5;
           color: #4f46e5;
-        }
-
-        .tab-icon {
-          font-size: 1.2rem;
+          font-weight: 600;
         }
 
         .tab-content {
           padding: 2rem;
         }
 
-        .security-overview {
-          display: flex;
-          flex-direction: column;
-          gap: 2rem;
-        }
-
-        .security-status h3,
-        .security-actions h3 {
-          margin: 0 0 1rem 0;
-          color: #333;
-        }
-
-        .status-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 1rem;
-        }
-
-        .status-item {
+        .device-row {
           display: flex;
           align-items: center;
           gap: 1rem;
-          padding: 1rem;
+          padding: 0.75rem;
           border: 1px solid #e5e7eb;
           border-radius: 6px;
+          margin-bottom: 0.5rem;
         }
 
-        .status-icon {
-          font-size: 1.5rem;
-        }
-
-        .status-icon.good {
-          color: #10b981;
-        }
-
-        .status-icon.warning {
-          color: #f59e0b;
-        }
-
-        .status-title {
+        .device-type {
           font-weight: 600;
+          flex: 0 0 160px;
           color: #333;
-        }
-
-        .status-desc {
           font-size: 0.875rem;
+        }
+
+        .device-contact {
+          flex: 1;
           color: #666;
+          font-size: 0.875rem;
         }
 
-        .action-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1rem;
+        .device-actions {
+          display: flex;
+          gap: 0.5rem;
+          margin-left: auto;
         }
 
-        .action-btn {
+        .rename-input {
+          padding: 0.375rem 0.625rem;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          font-size: 0.875rem;
+        }
+
+        .enroll-picker {
           display: flex;
           flex-direction: column;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 1.5rem;
-          border: 1px solid #e5e7eb;
+          gap: 0.75rem;
+          max-width: 400px;
+          margin-top: 1rem;
+        }
+
+        .enroll-option-btn {
+          padding: 0.75rem 1rem;
+          border: 1px solid #d1d5db;
           border-radius: 6px;
           background: white;
           cursor: pointer;
-          transition: all 0.2s;
+          text-align: left;
+          font-size: 0.9rem;
         }
 
-        .action-btn:hover {
-          border-color: #4f46e5;
-          box-shadow: 0 2px 8px rgba(79, 70, 229, 0.1);
+        .enroll-option-btn:hover {
+          border-color: var(--dash-accent, #1D4ED8);
         }
 
-        .action-icon {
-          font-size: 2rem;
-        }
-
-        .action-title {
-          font-weight: 600;
-          color: #333;
-        }
-
-        .action-desc {
-          font-size: 0.875rem;
-          color: #666;
-          text-align: center;
-        }
-
-        .password-section,
-        .mfa-section,
-        .sessions-section {
-          display: flex;
-          flex-direction: column;
-          gap: 2rem;
-        }
-
-        .password-info,
-        .mfa-status {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .info-card {
-          padding: 1.5rem;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
-        }
-
-        .password-strength {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .strength-bar {
-          flex: 1;
-          height: 8px;
-          background: #e5e7eb;
-          border-radius: 4px;
-          overflow: hidden;
-        }
-
-        .strength-fill {
-          height: 100%;
-          border-radius: 4px;
-        }
-
-        .strength-fill.strong {
-          background: #10b981;
-          width: 80%;
-        }
-
-        .strength-text {
-          font-weight: 600;
-          color: #10b981;
-        }
-
-        .password-requirements ul {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-
-        .password-requirements li {
-          padding: 0.25rem 0;
-          color: #666;
-        }
-
-        .password-actions,
-        .mfa-actions,
-        .sessions-actions {
-          display: flex;
-          gap: 1rem;
-        }
-
-        .status-card {
-          padding: 1.5rem;
-          border-radius: 6px;
-          border: 1px solid #e5e7eb;
-        }
-
-        .status-card.enabled {
-          background: #f0fdf4;
-          border-color: #10b981;
-        }
-
-        .status-header {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .status-header h4 {
-          margin: 0;
-          color: #333;
-        }
-
-        .status-header p {
-          margin: 0;
-          color: #666;
-        }
-
-        .method-list {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .method-item {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 1rem;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
-        }
-
-        .method-item.active {
-          border-color: #10b981;
-          background: #f0fdf4;
-        }
-
-        .method-icon {
-          font-size: 1.5rem;
-        }
-
-        .method-name {
-          font-weight: 600;
-          color: #333;
-        }
-
-        .method-desc {
-          font-size: 0.875rem;
-          color: #666;
-        }
-
-        .method-status {
-          margin-left: auto;
-          padding: 0.25rem 0.75rem;
-          border-radius: 12px;
-          font-size: 0.875rem;
-          font-weight: 500;
-        }
-
-        .method-status.active {
-          background: #10b981;
+        .btn-danger {
+          background: var(--dash-accent-red, #dc2626);
           color: white;
-        }
-
-        .sessions-list {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .session-item {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 1.5rem;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
-        }
-
-        .session-item.current {
-          background: #f0fdf4;
-          border-color: #10b981;
-        }
-
-        .session-info {
-          display: flex;
-          align-items: center;
-          gap: 2rem;
-        }
-
-        .device-icon {
-          font-size: 1.5rem;
-        }
-
-        .device-name {
-          font-weight: 600;
-          color: #333;
-        }
-
-        .device-details {
+          border: none;
+          padding: 0.375rem 0.75rem;
+          border-radius: 4px;
+          cursor: pointer;
           font-size: 0.875rem;
-          color: #666;
         }
 
-        .time-label {
-          font-size: 0.875rem;
-          color: #666;
+        .btn-danger:disabled {
+          opacity: 0.6;
+          cursor: default;
         }
 
-        .time-value {
-          font-weight: 500;
-          color: #333;
-        }
-
-        .current-badge {
-          padding: 0.25rem 0.75rem;
-          background: #10b981;
-          color: white;
-          border-radius: 12px;
-          font-size: 0.875rem;
-          font-weight: 500;
+        .demo-unavailable {
+          color: #6b7280;
+          font-style: italic;
+          padding: 2rem 0;
+          margin: 0;
         }
 
         .btn {
@@ -694,7 +629,6 @@ export default function SecurityCenter({ user }) {
           border-radius: 4px;
           font-size: 1rem;
           cursor: pointer;
-          text-decoration: none;
           display: inline-block;
           text-align: center;
           transition: all 0.2s;
@@ -709,10 +643,15 @@ export default function SecurityCenter({ user }) {
           background: #4338ca;
         }
 
+        .btn-primary:disabled {
+          opacity: 0.6;
+          cursor: default;
+        }
+
         .btn-outline {
           background: transparent;
           color: #4f46e5;
-          border: 1px solid #4f46e5;
+          border: 1px solid #4f46e5 !important;
         }
 
         .btn-outline:hover {
@@ -720,8 +659,13 @@ export default function SecurityCenter({ user }) {
           color: white;
         }
 
+        .btn-outline:disabled {
+          opacity: 0.6;
+          cursor: default;
+        }
+
         .btn-sm {
-          padding: 0.5rem 1rem;
+          padding: 0.375rem 0.875rem;
           font-size: 0.875rem;
         }
 
@@ -736,30 +680,20 @@ export default function SecurityCenter({ user }) {
 
           .tab-btn {
             flex: 1 1 50%;
-            min-width: 120px;
+            min-width: 100px;
           }
 
-          .status-grid,
-          .action-grid {
-            grid-template-columns: 1fr;
+          .device-row {
+            flex-wrap: wrap;
           }
 
-          .session-info {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
+          .device-type {
+            flex: 0 0 auto;
           }
 
-          .session-item {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
-          }
-
-          .session-actions {
-            align-self: stretch;
-            display: flex;
-            justify-content: flex-end;
+          .device-actions {
+            width: 100%;
+            margin-left: 0;
           }
         }
       `}</style>

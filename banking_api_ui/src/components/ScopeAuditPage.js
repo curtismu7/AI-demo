@@ -265,7 +265,7 @@ function ResourceCard({ resource, expanded, onToggle, onAddScope, onFixAll, addi
             {badgeText}
           </span>
           {scopes.length > 0 && (
-            <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+            <span style={{ fontSize: '0.72rem', color: '#374151' }}>
               {scopes.length} scope{scopes.length !== 1 ? 's' : ''}
             </span>
           )}
@@ -339,7 +339,7 @@ function ResourceCard({ resource, expanded, onToggle, onAddScope, onFixAll, addi
               ))}
               {scopeRows.length === 0 && (
                 <tr>
-                  <td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8', padding: '1rem' }}>
+                  <td colSpan="4" style={{ textAlign: 'center', color: '#374151', padding: '1rem' }}>
                     No scopes configured
                   </td>
                 </tr>

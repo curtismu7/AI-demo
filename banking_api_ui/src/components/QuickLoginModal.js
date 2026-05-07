@@ -43,7 +43,7 @@ const TITLE_STYLE = {
 
 const SUBTITLE_STYLE = {
   fontSize: '0.9rem',
-  color: '#64748b',
+  color: '#374151',
   margin: '0 0 28px',
   lineHeight: 1.5,
 };
@@ -67,7 +67,7 @@ const BTN_GHOST_STYLE = {
   width: '100%',
   padding: '10px 20px',
   background: 'transparent',
-  color: '#64748b',
+  color: '#374151',
   border: '1px solid #e2e8f0',
   borderRadius: '8px',
   fontSize: '0.9rem',
@@ -82,7 +82,7 @@ const CLOSE_STYLE = {
   background: 'none',
   border: 'none',
   fontSize: '1.4rem',
-  color: '#94a3b8',
+  color: '#374151',
   cursor: 'pointer',
   lineHeight: 1,
 };

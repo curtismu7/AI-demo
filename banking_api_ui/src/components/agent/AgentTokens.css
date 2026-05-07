@@ -46,8 +46,8 @@
   --agent-bg-secondary: #f9fafb;
   --agent-bg-tertiary: #f3f4f6;
   --agent-text-primary: #111827;
-  --agent-text-secondary: #6b7280;
-  --agent-text-tertiary: #9ca3af;
+  --agent-text-secondary: #374151;
+  --agent-text-tertiary: #374151;
   --agent-border-primary: #e5e7eb;
   --agent-border-secondary: #d1d5db;
 }
@@ -58,7 +58,7 @@
   --agent-bg-tertiary: #374151;
   --agent-text-primary: #f9fafb;
   --agent-text-secondary: #d1d5db;
-  --agent-text-tertiary: #9ca3af;
+  --agent-text-tertiary: #cbd5e1;
   --agent-border-primary: #374151;
   --agent-border-secondary: #4b5563;
 }

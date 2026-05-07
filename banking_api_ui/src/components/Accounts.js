@@ -86,7 +86,7 @@ const Accounts = ({ user, onLogout }) => {
       <div className="app-page-card">
         <div className="card-header">
           <h2 className="card-title">Account Management</h2>
-          <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
+          <span style={{ color: '#374151', fontSize: '0.875rem' }}>
             {accounts.length} accounts found
           </span>
         </div>
@@ -113,7 +113,7 @@ const Accounts = ({ user, onLogout }) => {
                   <tr key={account.id}>
                     <td style={{ fontSize: '0.8rem' }}>
                       <div style={{ fontWeight: '600' }}>{account.ownerUsername || account.userId || '—'}</div>
-                      {account.ownerEmail && <div style={{ color: '#64748b', fontSize: '0.7rem' }}>{account.ownerEmail}</div>}
+                      {account.ownerEmail && <div style={{ color: '#374151', fontSize: '0.7rem' }}>{account.ownerEmail}</div>}
                     </td>
                     <td style={{ fontFamily: 'inherit', fontWeight: '600' }}>
                       {account.accountNumber}

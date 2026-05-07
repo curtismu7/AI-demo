@@ -11,6 +11,7 @@ import { useEducationUIOptional } from "../context/EducationUIContext";
 import { useIndustryBranding } from "../context/IndustryBrandingContext";
 import { useTheme } from "../context/ThemeContext";
 import { useTokenChainOptional } from "../context/TokenChainContext";
+import TokenChainModal from "./TokenChainModal";
 import { navigateToCustomerOAuthLogin } from "../utils/authUi";
 import {
   AGENT_CONSENT_BLOCK_USER_MESSAGE,
@@ -605,31 +606,6 @@ function getStepSkipExplanation(actionId, stepId) {
   return actionExplanations[stepId] || "Not applicable to this action type";
 }
 
-// ─── Fake account data generator ────────────────────────────────────────────────
-
-function generateFakeAccounts(_user) {
-  // Use plain type names ('checking', 'savings') as IDs — NOT chk-/sav-prefixed fake IDs.
-  // The server's resolveAccountId resolves 'checking' → real checking account by type,
-  // so submissions while liveAccounts are still loading will succeed instead of returning
-  // '❌ Account chk-5 not found' (stale fake IDs bypass type-resolution on the server).
-  return [
-    {
-      id: "checking",
-      name: "Checking Account",
-      type: "checking",
-      balance: 0,
-      accountNumber: "CHECKING",
-    },
-    {
-      id: "savings",
-      name: "Savings Account",
-      type: "savings",
-      balance: 0,
-      accountNumber: "SAVINGS",
-    },
-  ];
-}
-
 // ─── Suggested prompts — role-aware ──────────────────────────────────────────
 
 const SUGGESTIONS_CUSTOMER = [
@@ -965,174 +941,6 @@ function formatResult(result) {
     return `✅ Success\nTransaction ID: ${r.transaction_id || r.transactionId || r.id}\nAmount: ${formatCurrency(r.amount)}`;
   }
   return JSON.stringify(r, null, 2);
-}
-
-// ─── Input form for actions that need parameters ──────────────────────────────
-
-function ActionForm({
-  action,
-  onSubmit,
-  onCancel,
-  loading,
-  effectiveUser,
-  liveAccounts,
-}) {
-  const fakeAccounts = generateFakeAccounts(effectiveUser);
-  // Prefer real accounts fetched from the server; fall back to generated placeholders only if
-  // the live list hasn't arrived yet (avoids the chk-{uid} vs server-ID mismatch that caused
-  // '❌ Account chk-5 not found')
-  const accounts =
-    liveAccounts && liveAccounts.length > 0 ? liveAccounts : fakeAccounts;
-
-  // Transfer: toAccounts is state-driven so it excludes whichever fromId is selected.
-  // We keep it as a separate state to re-derive when fromId changes.
-  const [selectedFromId, setSelectedFromId] = React.useState(
-    () => accounts[0]?.id,
-  );
-  const toAccounts = accounts.filter(
-    (a) => a.id !== (selectedFromId || accounts[0]?.id),
-  );
-  // Ensure toId stays valid when fromId changes
-  const defaultToId = toAccounts[0]?.id;
-
-  const fields = {
-    balance: [
-      { key: "accountId", label: "Account", type: "select", options: accounts },
-    ],
-    deposit: [
-      { key: "accountId", label: "Account", type: "select", options: accounts },
-      {
-        key: "amount",
-        label: "Amount ($)",
-        placeholder: "0.00",
-        type: "number",
-      },
-      { key: "note", label: "Note", placeholder: "optional" },
-    ],
-    withdraw: [
-      { key: "accountId", label: "Account", type: "select", options: accounts },
-      {
-        key: "amount",
-        label: "Amount ($)",
-        placeholder: "0.00",
-        type: "number",
-      },
-      { key: "note", label: "Note", placeholder: "optional" },
-    ],
-    transfer: [
-      {
-        key: "fromId",
-        label: "From Account",
-        type: "select",
-        options: accounts,
-        onChange: (v) => {
-          setSelectedFromId(v);
-          set("toId", toAccounts.find((a) => a.id !== v)?.id || defaultToId);
-        },
-      },
-      { key: "toId", label: "To Account", type: "select", options: toAccounts },
-      {
-        key: "amount",
-        label: "Amount ($)",
-        placeholder: "0.00",
-        type: "number",
-      },
-      { key: "note", label: "Note", placeholder: "optional" },
-    ],
-  };
-
-  // Pre-populate selects with their visible default so submitting without touching dropdowns works
-  const defaultForm =
-    {
-      balance: { accountId: accounts[0]?.id },
-      deposit: { accountId: accounts[0]?.id },
-      withdraw: { accountId: accounts[0]?.id },
-      transfer: { fromId: accounts[0]?.id, toId: toAccounts[0]?.id },
-    }[action] || {};
-
-  const [form, setForm] = useState(defaultForm);
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-
-  // Keep select defaults in sync when effectiveUser resolves or live accounts arrive
-  React.useEffect(() => {
-    setForm((f) => {
-      const updated = { ...f };
-      for (const field of fields[action] || []) {
-        if (field.type === "select" && field.options.length > 0) {
-          const isValid = field.options.some((o) => o.id === f[field.key]);
-          if (!f[field.key] || !isValid)
-            updated[field.key] = field.options[0].id;
-        }
-      }
-      return updated;
-    });
-  }, [effectiveUser?.id, liveAccounts]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  /** Build a normalized submit payload — resolve any missing select values to the displayed default. */
-  const handleSubmit = () => {
-    const payload = { ...form };
-    for (const field of fields[action] || []) {
-      if (field.type === "select") {
-        const hasValid = field.options.some((o) => o.id === payload[field.key]);
-        if (!payload[field.key] || !hasValid)
-          payload[field.key] = field.options[0]?.id;
-      }
-    }
-    onSubmit(payload);
-  };
-
-  return (
-    <div className="banking-agent-form">
-      {(fields[action] || []).map((f) => (
-        <div key={f.key} className="banking-agent-field">
-          <label htmlFor={`field-${f.key}`}>{f.label}</label>
-          {f.type === "select" ? (
-            <select
-              id={`field-${f.key}`}
-              value={form[f.key] || f.options[0]?.id || ""}
-              onChange={(e) => {
-                set(f.key, e.target.value);
-                f.onChange?.(e.target.value);
-              }}
-              className="banking-agent-select"
-            >
-              {f.options.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name} ({option.accountNumber}) -{" "}
-                  {formatCurrency(option.balance)}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              id={`field-${f.key}`}
-              type={f.type || "text"}
-              placeholder={f.placeholder}
-              value={form[f.key] || ""}
-              onChange={(e) => set(f.key, e.target.value)}
-            />
-          )}
-        </div>
-      ))}
-      <div className="banking-agent-form-actions">
-        <button
-          type="button"
-          className="banking-agent-btn-primary"
-          disabled={loading}
-          onClick={handleSubmit}
-        >
-          {loading ? "…" : "Run"}
-        </button>
-        <button
-          type="button"
-          className="banking-agent-btn-ghost"
-          onClick={onCancel}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
 }
 
 // ─── Results Panel (side panel showing rich formatted data next to the agent) ──
@@ -1667,80 +1475,6 @@ const TOPIC_MESSAGES = {
 // ─── Inline HITL consent card (middle / dock surfaces) ─────────────────
 
 /**
- * HitlInlineCard — Rendered inside the chat panel for middle/dock surfaces.
- * Replicates the consent-challenge flow without a portal overlay.
- */
-function HitlInlineCard({ transaction, threshold, onConfirm, onCancel }) {
-  const [submitting, setSubmitting] = useState(false);
-  const isHighValue =
-    transaction && Number(transaction.amount || 0) >= threshold;
-
-  return (
-    <div
-      className={`ba-inline-consent-card${isHighValue ? " ba-inline-consent-card--high-value" : ""}`}
-    >
-      <div className="ba-inline-consent-head"> Confirm Action</div>
-      {transaction && (
-        <ul className="ba-inline-consent-details">
-          <li>
-            <strong>Amount:</strong> $
-            {Number(transaction.amount || 0).toFixed(2)}
-          </li>
-          {transaction.type && (
-            <li>
-              <strong>Type:</strong> {transaction.type}
-            </li>
-          )}
-          {transaction.fromAccountId && (
-            <li>
-              <strong>From:</strong> {transaction.fromAccountId}
-            </li>
-          )}
-          {transaction.toAccountId && (
-            <li>
-              <strong>To:</strong> {transaction.toAccountId}
-            </li>
-          )}
-          {transaction.description && (
-            <li>
-              <strong>Note:</strong> {transaction.description}
-            </li>
-          )}
-        </ul>
-      )}
-      {isHighValue && (
-        <div className="ba-inline-consent-warning">
-          ⚠ This transaction exceeds ${Number(threshold).toLocaleString()}.
-          Please verify before confirming.
-        </div>
-      )}
-      <div className="ba-inline-consent-actions">
-        <button
-          type="button"
-          className="ba-inline-consent-cancel"
-          onClick={onCancel}
-          disabled={submitting}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="ba-inline-consent-confirm"
-          disabled={submitting}
-          onClick={async () => {
-            setSubmitting(true);
-            await onConfirm();
-            setSubmitting(false);
-          }}
-        >
-          {submitting ? "Processing…" : "Confirm ✓"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/**
  * @param {object} props
  * @param {'float' | 'inline'} [props.mode]
  * @param {boolean} [props.embeddedDockBottom] When inline, stack chat on top and suggestions below (dashboard bottom bar)
@@ -1813,7 +1547,6 @@ export default function BankingAgent({
   const [availableLlmProviders, setAvailableLlmProviders] = useState([]);
   /** Set when returning from PingOne with a pending banking NL line to run after session exists. */
   const [nlResumeAfterAuth, setNlResumeAfterAuth] = useState(null);
-  const [activeAction, setActiveAction] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   /** null = loading; which OAuth flows have client IDs + environment */
@@ -1981,7 +1714,7 @@ export default function BankingAgent({
   };
 
   /** Token chain visibility and width — persisted to localStorage. */
-  const [showTokenChain] = useState(() => {
+  const [showTokenChain, setShowTokenChain] = useState(() => {
     // Always start hidden in popup windows so the token chain doesn't appear as a side menu
     if (typeof window !== "undefined" && window.opener) return false;
     try {
@@ -2204,8 +1937,6 @@ export default function BankingAgent({
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const nlInputRef = useRef(null);
-  /** Bottom-dock: scroll transfer/deposit form into view (messages flex used to clip Run). */
-  const actionFormAnchorRef = useRef(null);
   const toolProgressIdRef = useRef(null);
   const panelRef = useRef(null);
   const isDraggingRef = useRef(false);
@@ -2249,10 +1980,6 @@ export default function BankingAgent({
     setAgentBlockedByConsentDecline(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (consentBlocked) setActiveAction(null);
-  }, [consentBlocked]);
 
   // Listen for UserDashboard confirming a HITL consent challenge.
   // The modal already executes the transaction — we just surface the success message in the agent.
@@ -2309,6 +2036,18 @@ export default function BankingAgent({
     window.addEventListener("banking-agent-open", handler);
     return () => window.removeEventListener("banking-agent-open", handler);
   }, [isInline]);
+
+  // Pre-fill NL input from external event (e.g. "Test Revocation" button after kill switch)
+  useEffect(() => {
+    const handler = (e) => {
+      const msg = e.detail?.message;
+      if (!msg) return;
+      setNlInput(msg);
+      setTimeout(() => nlInputRef.current?.focus(), 50);
+    };
+    window.addEventListener("banking-agent-prefill", handler);
+    return () => window.removeEventListener("banking-agent-prefill", handler);
+  }, []);
 
   // Open demo guide when event dispatched from side menu
   useEffect(() => {
@@ -2460,8 +2199,6 @@ export default function BankingAgent({
   const isConfigured = oauthConfig && (oauthConfig.admin || oauthConfig.user);
 
   // Fetch real account IDs from the server whenever the user is known.
-  // Stored in liveAccounts and passed to ActionForm so the balance/deposit/withdraw/transfer
-  // dropdowns always send the ID the server actually has (prevents '❌ Account chk-5 not found').
   useEffect(() => {
     if (!isLoggedIn) return;
     let cancelled = false;
@@ -2483,9 +2220,7 @@ export default function BankingAgent({
           })),
         );
       })
-      .catch(() => {
-        /* silent — ActionForm falls back to generateFakeAccounts */
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -2800,9 +2535,14 @@ export default function BankingAgent({
 
   useEffect(() => {
     if (!isOpen) return;
-    const el = messagesContainerRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, isOpen]);
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ block: 'end' });
+    } else {
+      const el = messagesContainerRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, isOpen, loading, nlLoading]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -3215,7 +2955,6 @@ export default function BankingAgent({
       return;
     }
     const { skipUserLabel = false, isRefire = false } = opts;
-    setActiveAction(null);
     const label = ACTIONS.find((a) => a.id === actionId)?.label || actionId;
     if (!skipUserLabel) {
       addMessage("user", label);
@@ -4611,6 +4350,10 @@ export default function BankingAgent({
               String(err?.message || ""),
             )));
 
+      const killSwitchActivated = (() => {
+        try { return !!localStorage.getItem('kill_switch_activated'); } catch (_) { return false; }
+      })();
+
       if (isConnErr) {
         notifyError(" MCP server unreachable — check your server connection", {
           autoClose: 8000,
@@ -4670,6 +4413,28 @@ export default function BankingAgent({
         notifyError(
           "Sign in again: server session has no tokens (Vercel needs Redis/Upstash + redeploy, then sign out & sign in).",
           { autoClose: 12000 },
+        );
+      } else if (err?.statusCode === 401 && killSwitchActivated) {
+        // Kill switch was activated — token revoked at PingOne → introspection returns active: false
+        const ksData = (() => { try { return JSON.parse(localStorage.getItem('kill_switch_activated')); } catch (_) { return null; } })();
+        window.dispatchEvent(new CustomEvent('token-chain-inject', {
+          detail: {
+            tool: 'Test Revocation',
+            events: [{
+              id: 'introspection-denied',
+              label: 'RFC 7662 Introspection: { "active": false } — Token Revoked',
+              status: 'failed',
+              tokenType: 'introspection',
+              rfc: 'RFC 7662',
+              explanation: 'PingOne introspection returned { "active": false }. The access token was revoked by the STOP AGENT kill switch and is no longer valid. This confirms end-to-end token revocation: the authorization server rejected the token.',
+              ...(ksData ? { killSwitchReason: ksData.reason, revokedAt: ksData.revokedAt } : {}),
+            }],
+          },
+        }));
+        addMessage(
+          "assistant",
+          'Introspection Denied — Token Revoked\n\nPingOne returned { "active": false }. The access token was revoked by the STOP AGENT kill switch.\n\nOpen the Token Chain to see the RFC 7662 introspection result. Sign out and sign back in to get a fresh token.',
+          actionId,
         );
       } else if (
         err?.statusCode === 401 &&
@@ -5012,7 +4777,8 @@ export default function BankingAgent({
       actionId === "test_hitl_required" ||
       actionId === "transfer_600_test" ||
       actionId === "test_otp_required" ||
-      actionId === "demo_intent_delegation"
+      actionId === "demo_intent_delegation" ||
+      actionId === "test_full_compliance_flow"
     ) {
       runAction(actionId, {});
     } else if (actionId === "transfer") {
@@ -5058,7 +4824,7 @@ export default function BankingAgent({
     } else if (actionId === "demo_guide") {
       setShowDemoGuide(true);
     } else {
-      setActiveAction(actionId);
+      runAction(actionId, {});
     }
   }
 
@@ -5186,12 +4952,13 @@ export default function BankingAgent({
       } else if (
         ["balance", "transfer", "deposit", "withdraw"].includes(action)
       ) {
-        // Missing params — open the form (pre-populate what we have)
-        setActiveAction(action);
-        addMessage(
-          "assistant",
-          `I'll help you ${action}. Fill in the details below.`,
-        );
+        const questions = {
+          balance: "Which account would you like to check the balance for?",
+          deposit: "How much would you like to deposit, and to which account?",
+          withdraw: "How much would you like to withdraw, and from which account?",
+          transfer: "Which accounts would you like to transfer between, and how much? (e.g. 'Transfer $200 from checking to savings')",
+        };
+        addMessage("assistant", questions[action]);
       } else {
         await runAction(action, p, { skipUserLabel: true });
       }
@@ -5898,6 +5665,15 @@ export default function BankingAgent({
                     Side panel
                   </label>
                 )}
+                {/* Token Chain modal toggle */}
+                <button
+                  type="button"
+                  className={"ba-actions-trigger" + (showTokenChain ? " active" : "")}
+                  title="View Token Chain — RFC 8693 token exchange and authorization decisions"
+                  onClick={() => setShowTokenChain((v) => !v)}
+                >
+                  Token Chain
+                </button>
                 {/* Actions trigger — float + dashboard inline agents (D-01, D-02) */}
                 {useActionsPopout && (
                   <button
@@ -5955,12 +5731,13 @@ export default function BankingAgent({
               </div>
             </div>
             {/* Phase 246: Actions popout — anchored to ba-header (position:relative in CSS) */}
-            {showDiscovery && useActionsPopout && (
+            {showDiscovery && (
               <div
                 className="ba-actions-popout"
                 role="dialog"
-                aria-label="Actions"
+                aria-label="Action browser"
                 aria-modal="false"
+                ref={(el) => { if (el) el.scrollTop = 0; }}
               >
                 {/* Search */}
                 <input
@@ -6001,6 +5778,7 @@ export default function BankingAgent({
                             signal: AbortSignal.timeout(15000),
                           },
                         );
+
                         const { result: _discNlResult } = await _discNlRes
                           .json()
                           .catch(() => ({
@@ -6020,7 +5798,6 @@ export default function BankingAgent({
                       }
                     })();
                   }}
-                  autoFocus
                 />
                 {isLoggedIn && (
                   <BankingChips
@@ -6079,7 +5856,7 @@ export default function BankingAgent({
                     )
                       return null;
                     if (group.chips.length === 0) return null;
-                    const groupExpanded = !!chipGroupsState[group.key];
+                    const groupExpanded = group.key === "learn" ? true : !!chipGroupsState[group.key];
                     return (
                       <div key={group.key} className="ba-popout-section">
                         <button
@@ -6717,14 +6494,7 @@ export default function BankingAgent({
                   }
                   setHitlPendingIntent(null);
                 };
-                return isInline || isBottomDock ? (
-                  <HitlInlineCard
-                    transaction={hitlPendingIntent.intentPayload}
-                    threshold={hitlPendingIntent.threshold ?? 500}
-                    onConfirm={handleHitlConfirm}
-                    onCancel={handleHitlCancel}
-                  />
-                ) : (
+                return (
                   <AgentConsentModal
                     transaction={hitlPendingIntent.intentPayload}
                     hitlThreshold={hitlPendingIntent.threshold ?? 500}
@@ -7813,23 +7583,6 @@ export default function BankingAgent({
                 <div ref={bottomRef} />
               </div>
 
-              {/* Action form (when user selects a transaction action) */}
-              {activeAction && (
-                <div
-                  ref={actionFormAnchorRef}
-                  className="ba-action-form-anchor"
-                >
-                  <ActionForm
-                    action={activeAction}
-                    loading={loading}
-                    onSubmit={(form) => runAction(activeAction, form)}
-                    onCancel={() => setActiveAction(null)}
-                    effectiveUser={effectiveUser}
-                    liveAccounts={liveAccounts}
-                  />
-                </div>
-              )}
-
               {/* LLM Provider chips */}
               {isLoggedIn && availableLlmProviders.length > 0 && (
                 <div className="ba-provider-chips">
@@ -8188,6 +7941,18 @@ export default function BankingAgent({
                   <span className="ba-chip-dot" />
                   PingOne Identity
                 </span>
+                <span className="ba-server-chip ba-server-chip--active" title="MCP Gateway">
+                  <span className="ba-chip-dot" />
+                  MCP Gateway
+                </span>
+                <span className="ba-server-chip ba-server-chip--active" title="PingOne Authorize">
+                  <span className="ba-chip-dot" />
+                  Authorize
+                </span>
+                <span className="ba-server-chip ba-server-chip--active" title="MCP Server">
+                  <span className="ba-chip-dot" />
+                  MCP Server
+                </span>
               </div>
             </div>
           </div>
@@ -8254,6 +8019,10 @@ export default function BankingAgent({
           )}
         </div>
       )}
+      <TokenChainModal
+        isOpen={showTokenChain}
+        onClose={() => setShowTokenChain(false)}
+      />
       {showLoginModal && (
         <QuickLoginModal pathname={window.location.pathname} />
       )}

@@ -923,7 +923,7 @@ export default function DemoSetupPanel() {
               The buttons below write to your PingOne user record for conceptual exploration, but will not change what appears in your token.
             </div>
           </div>
-          <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#6b7280', fontStyle: 'italic' }}>Conceptual only — does not affect your token while static mapping is active.</p>
+          <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#374151', fontStyle: 'italic' }}>Conceptual only — does not affect your token while static mapping is active.</p>
           <div className="demo-data-mayact-row">
             <div style={{ width: '100%', marginBottom: '0.6rem', padding: '0.6rem 0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6 }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Delegation mode — which client ID becomes <code>mayAct.sub</code>:</div>
@@ -935,7 +935,7 @@ export default function DemoSetupPanel() {
                   <input type="radio" name="delegationMode" value={value}
                     checked={delegationMode === value} onChange={() => setDelegationMode(value)} />
                   <strong>{label}</strong>
-                  <span style={{ color: '#6b7280' }}>{desc}</span>
+                  <span style={{ color: '#374151' }}>{desc}</span>
                 </label>
               ))}
               {delegationMode === '2exchange' && (
@@ -973,10 +973,10 @@ export default function DemoSetupPanel() {
                 </div>
               )}
               <details style={{ marginTop: '0.5rem' }}>
-                <summary style={{ cursor: 'pointer', color: '#6b7280' }}>Raw check results</summary>
+                <summary style={{ cursor: 'pointer', color: '#374151' }}>Raw check results</summary>
                 <pre style={{ fontSize: '0.75rem', marginTop: '0.35rem', overflowX: 'auto' }}>{JSON.stringify(mayActDiagnosis.checks, null, 2)}</pre>
               </details>
-              <button type="button" style={{ marginTop: '0.5rem', fontSize: '0.75rem', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', padding: 0 }} onClick={() => setMayActDiagnosis(null)}>✕ dismiss</button>
+              <button type="button" style={{ marginTop: '0.5rem', fontSize: '0.75rem', background: 'none', border: 'none', color: '#374151', cursor: 'pointer', padding: 0 }} onClick={() => setMayActDiagnosis(null)}>✕ dismiss</button>
             </div>
           )}
           <details className="demo-data-dynamic-explainer">

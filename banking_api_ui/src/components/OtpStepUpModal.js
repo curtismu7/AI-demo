@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import DraggableModal from './DraggableModal';
 
 /**
  * OtpStepUpModal — MFA OTP collection modal for HITL step-up challenges
@@ -96,7 +97,7 @@ export default function OtpStepUpModal({
       });
       if (resp.status === 410) {
         setP1Step('error');
-        setP1Error('MFA session expired \u2014 please try again');
+        setP1Error('MFA session expired — please try again');
         return;
       }
       if (!resp.ok) throw new Error(`Device selection failed: ${resp.status}`);
@@ -149,7 +150,7 @@ export default function OtpStepUpModal({
       });
       if (resp.status === 410) {
         setP1Step('error');
-        setP1Error('MFA session expired \u2014 please try again');
+        setP1Error('MFA session expired — please try again');
         return;
       }
       if (!resp.ok) {
@@ -257,33 +258,51 @@ export default function OtpStepUpModal({
     if (pollRef.current) clearInterval(pollRef.current);
   };
 
-  const deviceIcon = (type) => {
+  const deviceLabel = (type) => {
     switch (type?.toLowerCase()) {
-      case 'email': return '\u{1F4E7}';
-      case 'totp': return '\u{1F522}';
-      case 'fido2': return '\u{1F511}';
-      case 'push': return '\u{1F4F1}';
-      default: return '\u{1F510}';
+      case 'email': return 'Email';
+      case 'totp': return 'Authenticator App';
+      case 'fido2': return 'Passkey';
+      case 'push': return 'Mobile Push';
+      default: return 'Device';
     }
   };
 
-  if (!show) return null;
-
-  // P1MFA mode rendering
+  // P1MFA mode
 
   if (mode === 'p1mfa') {
-    return (
-      <div className="otp-step-up-overlay">
-        <div className="otp-step-up-modal">
-          <div className="otp-step-up-modal__header">
-            <h2 className="otp-step-up-modal__title">{'\u{1F510}'} Verify Your Identity</h2>
-            <button type="button" className="otp-step-up-modal__close" onClick={handleCancel} aria-label="Close">&#x2715;</button>
-          </div>
+    const p1Footer = (
+      <>
+        {p1Step === 'otp' && (
+          <button type="button" className="otp-step-up-modal__btn-primary" onClick={handleP1OtpSubmit}>
+            Verify
+          </button>
+        )}
+        {(p1Step === 'error' || p1Step === 'push') && (
+          <button type="button" className="otp-step-up-modal__btn-primary" onClick={handleBackToDevicePicker}>
+            Try another method
+          </button>
+        )}
+        <button type="button" className="otp-step-up-modal__btn-cancel" onClick={handleCancel}>
+          Cancel
+        </button>
+      </>
+    );
 
+    return (
+      <DraggableModal
+        isOpen={!!show}
+        onClose={handleCancel}
+        title="Verify Your Identity"
+        footer={p1Footer}
+        defaultWidth={440}
+        defaultHeight={420}
+        storageKey="otp-step-up-modal-p1mfa"
+        zIndex={100080}
+      >
+        <div className="dm-scroll">
           {maskedContact && (
-            <div className="otp-step-up-modal__contact">
-              {maskedContact}
-            </div>
+            <div className="otp-step-up-modal__contact">{maskedContact}</div>
           )}
 
           <p className="otp-step-up-modal__lead">
@@ -301,7 +320,7 @@ export default function OtpStepUpModal({
                   className="otp-step-up-modal__device-item"
                   onClick={() => handleSelectDevice(device)}
                 >
-                  <span className="otp-step-up-modal__device-icon">{deviceIcon(device.type)}</span>
+                  <span className="otp-step-up-modal__device-icon">{deviceLabel(device.type)}</span>
                   <span>{device.name || device.type || 'Unknown device'}</span>
                 </button>
               ))}
@@ -326,7 +345,6 @@ export default function OtpStepUpModal({
                 maxLength="6"
                 inputMode="numeric"
                 aria-label="Verification code"
-                autoFocus
               />
               {error && <div className="otp-step-up-modal__error">{error}</div>}
               <p className="otp-step-up-modal__hint">Enter the code from your device</p>
@@ -345,8 +363,7 @@ export default function OtpStepUpModal({
           {/* FIDO Waiting */}
           {p1Step === 'fido' && (
             <>
-              <p style={{ textAlign: 'center', fontSize: '2rem', margin: '16px 0 8px' }}>{'\u{1F511}'}</p>
-              <p style={{ textAlign: 'center', fontWeight: 500 }}>Waiting for passkey verification{'\u2026'}</p>
+              <p style={{ textAlign: 'center', fontWeight: 500, marginTop: 16 }}>Waiting for passkey verification…</p>
               <p className="otp-step-up-modal__hint">Use your device biometric or PIN</p>
             </>
           )}
@@ -355,41 +372,47 @@ export default function OtpStepUpModal({
           {p1Step === 'error' && (
             <div className="otp-step-up-modal__error">{p1Error}</div>
           )}
-
-          <div className="otp-step-up-modal__actions">
-            {p1Step === 'otp' && (
-              <button type="button" className="otp-step-up-modal__btn-primary" onClick={handleP1OtpSubmit}>
-                Verify
-              </button>
-            )}
-            {(p1Step === 'error' || p1Step === 'push') && (
-              <button type="button" className="otp-step-up-modal__btn-primary" onClick={handleBackToDevicePicker}>
-                Try another method
-              </button>
-            )}
-            <button type="button" className="otp-step-up-modal__btn-cancel" onClick={handleCancel}>
-              Cancel
-            </button>
-          </div>
         </div>
-      </div>
+      </DraggableModal>
     );
   }
 
   // Stub mode rendering (original behavior)
 
-  return (
-    <div className="otp-step-up-overlay">
-      <div className="otp-step-up-modal">
-        <div className="otp-step-up-modal__header">
-          <h2 className="otp-step-up-modal__title">{'\u{1F510}'} Verify Your Identity</h2>
-          <button type="button" className="otp-step-up-modal__close" onClick={handleCancel} aria-label="Close">&#x2715;</button>
-        </div>
+  const stubFooter = (
+    <>
+      {allowFido && (
+        <button
+          type="button"
+          className="otp-step-up-modal__method-toggle"
+          onClick={() => onSwitchToFido?.()}
+        >
+          Use Passkey instead
+        </button>
+      )}
+      <button type="button" className="otp-step-up-modal__btn-primary" onClick={handleSubmit}>
+        Verify
+      </button>
+      <button type="button" className="otp-step-up-modal__btn-cancel" onClick={handleCancel}>
+        Cancel
+      </button>
+    </>
+  );
 
+  return (
+    <DraggableModal
+      isOpen={!!show}
+      onClose={handleCancel}
+      title="Verify Your Identity"
+      footer={stubFooter}
+      defaultWidth={440}
+      defaultHeight={460}
+      storageKey="otp-step-up-modal-stub"
+      zIndex={100080}
+    >
+      <div className="dm-scroll">
         {maskedContact && (
-          <div className="otp-step-up-modal__contact">
-            {maskedContact}
-          </div>
+          <div className="otp-step-up-modal__contact">{maskedContact}</div>
         )}
 
         <p className="otp-step-up-modal__lead">
@@ -416,27 +439,9 @@ export default function OtpStepUpModal({
         {error && <div className="otp-step-up-modal__error">{error}</div>}
         <p className="otp-step-up-modal__hint">Check your email for the verification code</p>
 
-        <div className="otp-step-up-modal__actions">
-          {allowFido && (
-            <button
-              type="button"
-              className="otp-step-up-modal__method-toggle"
-              onClick={() => onSwitchToFido?.()}
-            >
-              Use Passkey instead {'\u2192'}
-            </button>
-          )}
-          <button type="button" className="otp-step-up-modal__btn-primary" onClick={handleSubmit}>
-            Verify
-          </button>
-          <button type="button" className="otp-step-up-modal__btn-cancel" onClick={handleCancel}>
-            Cancel
-          </button>
-        </div>
-
         <div className="otp-step-up-modal__rfc-footer">
           <span className="otp-step-up-modal__rfc-label">
-            🔐 <strong>RFC 9470</strong> — OAuth 2.0 Step-Up Authentication Challenge Protocol
+            <strong>RFC 9470</strong> — OAuth 2.0 Step-Up Authentication Challenge Protocol
           </span>
           <span className="otp-step-up-modal__rfc-detail">
             This resource requires a higher ACR than your current token provides.
@@ -447,6 +452,6 @@ export default function OtpStepUpModal({
           </span>
         </div>
       </div>
-    </div>
+    </DraggableModal>
   );
 }

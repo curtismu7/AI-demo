@@ -2,12 +2,59 @@
 import React, { useState, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useTokenChainOptional } from '../context/TokenChainContext';
+import { useEducationUIOptional } from '../context/EducationUIContext';
 import { useDraggablePanel } from '../hooks/useDraggablePanel';
 import './TokenChainDisplay.css';
 import { deriveTokenCategory, TokenColorDot, TokenColorLegend, getTokenColor } from './TokenColorSystem';
 
 
 const FETCH_COOLDOWN_MS = 5000; // Don't fetch more than once per 5 seconds
+
+// ─── RFC link helper ──────────────────────────────────────────────────────────
+
+const RFC_URLS = {
+  '6749': 'https://www.rfc-editor.org/rfc/rfc6749',
+  '7009': 'https://www.rfc-editor.org/rfc/rfc7009',
+  '7515': 'https://www.rfc-editor.org/rfc/rfc7515',
+  '7517': 'https://www.rfc-editor.org/rfc/rfc7517',
+  '7518': 'https://www.rfc-editor.org/rfc/rfc7518',
+  '7519': 'https://www.rfc-editor.org/rfc/rfc7519',
+  '7636': 'https://www.rfc-editor.org/rfc/rfc7636',
+  '7662': 'https://www.rfc-editor.org/rfc/rfc7662',
+  '8693': 'https://www.rfc-editor.org/rfc/rfc8693',
+  '8705': 'https://www.rfc-editor.org/rfc/rfc8705',
+  '8707': 'https://www.rfc-editor.org/rfc/rfc8707',
+  '9068': 'https://www.rfc-editor.org/rfc/rfc9068',
+  '9396': 'https://www.rfc-editor.org/rfc/rfc9396',
+  '9449': 'https://www.rfc-editor.org/rfc/rfc9449',
+  '9470': 'https://www.rfc-editor.org/rfc/rfc9470',
+};
+
+/**
+ * Renders an RFC reference string (e.g. "RFC 8693 §4.1 · RFC 8707") as
+ * clickable links to rfc-editor.org, preserving section numbers and separators.
+ */
+function RfcRef({ rfc, className = 'tcd-edu-ref' }) {
+  const parts = rfc.split(' · ');
+  const nodes = [];
+  parts.forEach((part) => {
+    const match = part.match(/^(RFC\s+(\d+))(.*)/);
+    if (match) {
+      const [, rfcPrefix, num, rest] = match;
+      const url = RFC_URLS[num];
+      const label = `${rfcPrefix}${rest}`;
+      nodes.push(
+        url
+          ? <a key={part} href={url} target="_blank" rel="noopener noreferrer" className="tcd-rfc-ref-link">{label}</a>
+          : <span key={part}>{label}</span>
+      );
+    } else {
+      nodes.push(<span key={part}>{part}</span>);
+    }
+    if (nodes.length < parts.length * 2 - 1) nodes.push(<span key={`sep-${part}`}> · </span>);
+  });
+  return <span className={className}>{nodes}</span>;
+}
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -105,7 +152,7 @@ function NotApplicableNote({ rfc, rfcDesc }) {
       <span className="tcd-edu-na-msg">Not applicable to this token</span>
       {rfc && rfcDesc && (
         <span className="tcd-edu-na-rfc">
-          <span className="tcd-edu-na-rfc-tag">{rfc}</span>
+          <RfcRef rfc={rfc} className="tcd-edu-na-rfc-tag" />
           {rfcDesc}
         </span>
       )}
@@ -129,7 +176,7 @@ function MayActEduBox({ event }) {
         <div className="tcd-edu-box-hd">
           <span className="tcd-edu-icon">✅</span>
           <strong>may_act — delegation permission granted</strong>
-          <span className="tcd-edu-ref">RFC 8693 §4.1</span>
+          <RfcRef rfc="RFC 8693 §4.1" />
         </div>
         {mayActValue && <pre className="tcd-edu-code">{JSON.stringify({ may_act: mayActValue }, null, 2)}</pre>}
         <div className="tcd-edu-body">
@@ -151,7 +198,7 @@ function MayActEduBox({ event }) {
         <div className="tcd-edu-box-hd">
           <span className="tcd-edu-icon">❌</span>
           <strong>may_act — client_id mismatch</strong>
-          <span className="tcd-edu-ref">RFC 8693 §4.1</span>
+          <RfcRef rfc="RFC 8693 §4.1" />
         </div>
         {mayActValue && <pre className="tcd-edu-code">{JSON.stringify({ may_act: mayActValue }, null, 2)}</pre>}
         <div className="tcd-edu-body">
@@ -171,7 +218,7 @@ function MayActEduBox({ event }) {
       <div className="tcd-edu-box-hd">
         <span className="tcd-edu-icon">⚠️</span>
         <strong>may_act absent — exchange may fail</strong>
-        <span className="tcd-edu-ref">RFC 8693 §4.1</span>
+        <RfcRef rfc="RFC 8693 §4.1" />
       </div>
       <div className="tcd-edu-body">
         <p>The user token has no <code>may_act</code> claim. The RFC 8693 Token Exchange will be attempted — whether PingOne accepts it depends on your token policy. Without <code>may_act</code>, PingOne may reject the exchange.</p>
@@ -203,7 +250,7 @@ function ActEduBox({ event }) {
         <div className="tcd-edu-box-hd">
           <span className="tcd-edu-icon">✅</span>
           <strong>act — delegation chain proven (current actor)</strong>
-          <span className="tcd-edu-ref">RFC 8693 §4.4</span>
+          <RfcRef rfc="RFC 8693 §4.4" />
         </div>
         {actValue && <pre className="tcd-edu-code">{JSON.stringify({ act: actValue }, null, 2)}</pre>}
         <div className="tcd-edu-body">
@@ -224,7 +271,7 @@ function ActEduBox({ event }) {
       <div className="tcd-edu-box-hd">
         <span className="tcd-edu-icon">⚠️</span>
         <strong>act absent — delegation not proven in MCP token</strong>
-        <span className="tcd-edu-ref">RFC 8693 §4.4</span>
+        <RfcRef rfc="RFC 8693 §4.4" />
       </div>
       <div className="tcd-edu-body">
         <p>The MCP token has no <code>act</code> claim. The exchange ran, but PingOne did not include delegation evidence. The MCP server and audit logs cannot confirm which client acted.</p>
@@ -253,7 +300,7 @@ function AudienceEduBox({ event }) {
         <div className="tcd-edu-box-hd">
           <span className="tcd-edu-icon">🎯</span>
           <strong>aud — audience (which resource server accepts this token)</strong>
-          <span className="tcd-edu-ref">RFC 7519 §4.1.3</span>
+          <RfcRef rfc="RFC 7519 §4.1.3" />
         </div>
         <pre className="tcd-edu-code">{JSON.stringify({ aud: audValue }, null, 2)}</pre>
         <div className="tcd-edu-body">
@@ -277,7 +324,7 @@ function AudienceEduBox({ event }) {
         <div className="tcd-edu-box-hd">
           <span className="tcd-edu-icon">{failed ? '❌' : '🎯'}</span>
           <strong>audience= parameter — RFC 8707 Resource Indicator</strong>
-          <span className="tcd-edu-ref">RFC 8707</span>
+          <RfcRef rfc="RFC 8707" />
         </div>
         {requestedAud && <pre className="tcd-edu-code">{JSON.stringify({ audience: requestedAud }, null, 2)}</pre>}
         <div className="tcd-edu-body">
@@ -308,7 +355,7 @@ function AudienceEduBox({ event }) {
           <div className="tcd-edu-box-hd">
             <span className="tcd-edu-icon">✅</span>
             <strong>aud — audience narrowed correctly to MCP server</strong>
-            <span className="tcd-edu-ref">RFC 8707 · RFC 7519 §4.1.3</span>
+            <RfcRef rfc="RFC 8707 · RFC 7519 §4.1.3" />
           </div>
           <pre className="tcd-edu-code">{JSON.stringify({ aud: audValue }, null, 2)}</pre>
           <div className="tcd-edu-body">
@@ -330,7 +377,7 @@ function AudienceEduBox({ event }) {
         <div className="tcd-edu-box-hd">
           <span className="tcd-edu-icon">❌</span>
           <strong>aud mismatch — MCP server will reject this token</strong>
-          <span className="tcd-edu-ref">RFC 8707 · RFC 7519 §4.1.3</span>
+          <RfcRef rfc="RFC 8707 · RFC 7519 §4.1.3" />
         </div>
         {audValue && <pre className="tcd-edu-code">{JSON.stringify({ aud: audValue }, null, 2)}</pre>}
         <div className="tcd-edu-body">
@@ -367,7 +414,7 @@ function IntrospectionEduBox({ event }) {
       <div className="tcd-edu-box-hd">
         <span className="tcd-edu-icon">{meta.icon}</span>
         <strong>RFC 7662 Active-Token Introspection — {meta.label}</strong>
-        <span className="tcd-edu-ref">RFC 7662 §2.2</span>
+        <RfcRef rfc="RFC 7662 §2.2" />
       </div>
       <div className="tcd-edu-body">
         {status === 'active' && (
@@ -421,7 +468,7 @@ function SessionIntrospectionEduBox({ event }) {
       <div className="tcd-edu-box-hd">
         <span className="tcd-edu-icon">{meta.icon}</span>
         <strong>RFC 7662 Session-Token Introspection — {meta.label}</strong>
-        <span className="tcd-edu-ref">RFC 7662 §2.2</span>
+        <RfcRef rfc="RFC 7662 §2.2" />
       </div>
       <div className="tcd-edu-body">
         {status === 'active' && (
@@ -454,6 +501,52 @@ function SessionIntrospectionEduBox({ event }) {
             <p className="tcd-edu-detail">Configure the endpoint (found in your PingOne application settings) for zero-trust session validation on every tool call.</p>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function KillSwitchEduBox({ event }) {
+  if (event.id !== 'kill-switch-activated') return null;
+  return (
+    <div className="tcd-edu-box tcd-edu-box--error">
+      <div className="tcd-edu-box-hd">
+        <span className="tcd-edu-icon">🛑</span>
+        <strong>RFC 7009 Token Revocation — Emergency Stop Activated</strong>
+        <RfcRef rfc="RFC 7009" />
+      </div>
+      <div className="tcd-edu-body">
+        <p>Both the <strong>access token</strong> and <strong>ID token</strong> were immediately revoked at PingOne using the RFC 7009 Token Revocation endpoint. They are now permanently invalid.</p>
+        <ul className="tcd-edu-checklist">
+          <li><span className="tcd-edu-check-lbl">Endpoint:</span><span><code>/as/revoke</code> (RFC 7009 §2) — <code>application/x-www-form-urlencoded</code> with <code>token=&lt;value&gt;</code></span></li>
+          <li><span className="tcd-edu-check-lbl">Effect:</span><span>Any subsequent introspection returns <code>active: false</code> — the token is permanently blocked</span></li>
+          {event.timeToRevokeMs != null && <li><span className="tcd-edu-check-lbl">Time:</span><span>{event.timeToRevokeMs}ms to revoke at PingOne</span></li>}
+          {event.reason && <li><span className="tcd-edu-check-lbl">Reason:</span><span>{event.reason}</span></li>}
+        </ul>
+        <div className="tcd-edu-fix"><strong>Next step:</strong> Run <strong>Test Revocation</strong> in the chat to confirm the token is rejected by PingOne introspection end-to-end.</div>
+      </div>
+    </div>
+  );
+}
+
+function IntrospectionDeniedEduBox({ event }) {
+  if (event.id !== 'introspection-denied') return null;
+  return (
+    <div className="tcd-edu-box tcd-edu-box--error">
+      <div className="tcd-edu-box-hd">
+        <span className="tcd-edu-icon">❌</span>
+        <strong>RFC 7662 Introspection: active: false — Token Revoked</strong>
+        <RfcRef rfc="RFC 7662 §2.2" />
+      </div>
+      <div className="tcd-edu-body">
+        <p>PingOne confirmed the token is <strong>no longer active</strong>. The authorization server rejected the request — this is the expected end-to-end result of STOP AGENT.</p>
+        <ul className="tcd-edu-checklist">
+          <li><span className="tcd-edu-check-lbl">Response:</span><span><code>{'{ "active": false }'}</code> (RFC 7662 §2.2)</span></li>
+          <li><span className="tcd-edu-check-lbl">Cause:</span><span>STOP AGENT activated RFC 7009 token revocation — the token was permanently invalidated at PingOne</span></li>
+          <li><span className="tcd-edu-check-lbl">RFC rule:</span><span>A resource server <strong>must</strong> treat <code>active: false</code> as if no token was presented (RFC 7662 §2.2)</span></li>
+          {event.killSwitchReason && <li><span className="tcd-edu-check-lbl">Reason:</span><span>{event.killSwitchReason}</span></li>}
+        </ul>
+        <div className="tcd-edu-fix"><strong>Recovery:</strong> Sign out and sign back in to obtain a fresh, valid token from PingOne.</div>
       </div>
     </div>
   );
@@ -495,7 +588,7 @@ function JwksVerifyEduBox({ event }) {
       <div className="tcd-edu-box-hd">
         <span className="tcd-edu-icon">{icon}</span>
         <strong>{headline}</strong>
-        <span className="tcd-edu-ref">{fallback === 'introspection' ? 'RFC 7662 · RFC 7515' : 'RFC 7515 · RFC 7517 · RFC 7518'}</span>
+        <RfcRef rfc={fallback === 'introspection' ? 'RFC 7662 · RFC 7515' : 'RFC 7515 · RFC 7517 · RFC 7518'} />
       </div>
       <div className="tcd-edu-body">
         {alg && <p><code>alg</code>: <strong>{alg}</strong>{kid ? <> · <code>kid</code>: <strong>{kid}</strong></> : ''}</p>}
@@ -544,7 +637,7 @@ function ExchangeCheckList({ event }) {
       <div className="tcd-edu-box-hd">
         <span className="tcd-edu-icon">{failed ? '❌' : '🔍'}</span>
         <strong>{failed ? 'Exchange failed — PingOne validation' : 'What PingOne validates during exchange'}</strong>
-        <span className="tcd-edu-ref">RFC 8693 §2.1</span>
+        <RfcRef rfc="RFC 8693 §2.1" />
       </div>
       <div className="tcd-edu-body">
         {failed && event.error && (
@@ -561,6 +654,41 @@ function ExchangeCheckList({ event }) {
             <li><span className="tcd-edu-check-lbl">4.</span><span><code>actor_token</code> (client credentials) included → <code>act</code> claim added to the MCP token</span></li>
           )}
         </ul>
+      </div>
+    </div>
+  );
+}
+
+// ─── Authorize Decision educational box ───────────────────────────────────────
+
+function AuthorizeDecisionEduBox({ event }) {
+  if (event.id !== 'authorize-decision' && event.id !== 'gw-authorize') return null;
+  const decision = event.authorizeDecision || event.decision || 'PERMIT';
+  const engine = event.authorizeEngine || (event.id === 'gw-authorize' ? 'pingone' : 'simulated');
+  const path = event.authorizePath || null;
+  const decisionId = event.authorizeDecisionId || null;
+  const authorizeRef = event.authorizeRef || null;
+  const isPermit = decision === 'PERMIT';
+  const isDeny = decision === 'DENY';
+  return (
+    <div className={`tcd-edu-box ${isPermit ? 'tcd-edu-box--ok' : isDeny ? 'tcd-edu-box--error' : 'tcd-edu-box--neutral'}`}>
+      <div className="tcd-edu-box-hd">
+        <span className="tcd-edu-icon">{isPermit ? '✅' : isDeny ? '❌' : '⚠️'}</span>
+        <strong>PingOne Authorize — Continuous Authorization</strong>
+        <RfcRef rfc="RFC 8705" />
+      </div>
+      <div className="tcd-edu-body">
+        <p>Before the agent can execute a tool, PingOne Authorize evaluates a <strong>policy</strong> against the request context — user identity, risk signals, transaction attributes, and time of day. This enforces Zero Trust: every action is explicitly authorized, not just the initial login.</p>
+        <ul className="tcd-edu-checklist">
+          <li><span className="tcd-edu-check-lbl">Engine:</span><span>{engine === 'pingone' ? 'PingOne Authorize (live policy)' : 'Simulated policy engine (demo mode)'}</span></li>
+          <li><span className="tcd-edu-check-lbl">Decision:</span><span className={isPermit ? 'tcd-ok-text' : isDeny ? 'tcd-error-text' : ''}><strong>{decision}</strong>{isPermit ? ' — tool call allowed to proceed' : isDeny ? ' — tool call blocked' : ' — step-up or consent required'}</span></li>
+          {path && <li><span className="tcd-edu-check-lbl">Path:</span><span>{path}</span></li>}
+          {decisionId && <li><span className="tcd-edu-check-lbl">Decision ID:</span><span><code>{decisionId}</code></span></li>}
+          {authorizeRef && <li><span className="tcd-edu-check-lbl">Policy ref:</span><span><code>{authorizeRef}</code></span></li>}
+        </ul>
+        {engine !== 'pingone' && (
+          <p className="tcd-edu-detail">Configure <code>authorize_decision_endpoint_id</code> via Setup to route decisions through a live PingOne Authorize policy instead of the simulated engine.</p>
+        )}
       </div>
     </div>
   );
@@ -599,13 +727,20 @@ function EventDetail({ event }) {
         </details>
       )}
       {/* Educational sections — each in a collapsible, open by default */}
-      <CollapsibleEdu title="🎯 Audience (aud)" event={event} Component={AudienceEduBox} />
-      <CollapsibleEdu title="✅ may_act — Delegation Permission" event={event} Component={MayActEduBox} />
-      <CollapsibleEdu title="🔗 act — Actor Claim" event={event} Component={ActEduBox} />
-      <CollapsibleEdu title="📋 Exchange Validation" event={event} Component={ExchangeCheckList} />
-      <CollapsibleEdu title="🔍 RFC 7662 Active-Token Introspection" event={event} Component={IntrospectionEduBox} />
-      <CollapsibleEdu title="�️ RFC 7662 Session-Token Introspection" event={event} Component={SessionIntrospectionEduBox} />
-      <CollapsibleEdu title="�🔐 JWKS Signature Verification" event={event} Component={JwksVerifyEduBox} />
+      <CollapsibleEdu title="PingOne Authorize Decision" event={event} Component={AuthorizeDecisionEduBox} />
+      <CollapsibleEdu title="Audience (aud)" event={event} Component={AudienceEduBox} />
+      <CollapsibleEdu title="may_act — Delegation Permission" event={event} Component={MayActEduBox} />
+      <CollapsibleEdu title="act — Actor Claim" event={event} Component={ActEduBox} />
+      <CollapsibleEdu title="Exchange Validation" event={event} Component={ExchangeCheckList} />
+      <CollapsibleEdu title="RFC 7662 Active-Token Introspection" event={event} Component={IntrospectionEduBox} />
+      <CollapsibleEdu title="RFC 7662 Session-Token Introspection" event={event} Component={SessionIntrospectionEduBox} />
+      <CollapsibleEdu title="JWKS Signature Verification" event={event} Component={JwksVerifyEduBox} />
+      {event.id === 'kill-switch-activated' && (
+        <CollapsibleEdu title="Kill Switch — RFC 7009 Token Revocation" event={event} Component={KillSwitchEduBox} />
+      )}
+      {event.id === 'introspection-denied' && (
+        <CollapsibleEdu title="Introspection Denied — active: false" event={event} Component={IntrospectionDeniedEduBox} />
+      )}
       {event.explanation && (
         <p className="tcd-explanation">{event.explanation}</p>
       )}
@@ -935,6 +1070,42 @@ function ClaimsStrip({ event, hints }) {
   );
 }
 
+const STEP_SUB_LABELS = {
+  'user-token': 'User Token',
+  'agent-actor-token': 'Actor Token',
+  'exchanged-token': 'MCP Token',
+  'exchanged-token-fallback': 'MCP Token',
+  'exchange': 'Token Exchange',
+  'exchange-in-progress': 'Exchanging',
+  'exchange-failed': 'Exchange Failed',
+};
+
+function getStepSubLabel(eventId) {
+  if (!eventId) return 'Subject';
+  if (Object.hasOwn(STEP_SUB_LABELS, eventId)) return STEP_SUB_LABELS[eventId];
+  if (eventId.startsWith('synthetic-session')) return 'Session';
+  return 'Subject';
+}
+
+/** Shows scope additions/removals between two consecutive token events. */
+function ScopeDelta({ fromEvent, toEvent }) {
+  const fromScope = fromEvent?.claims?.scope;
+  const toScope = toEvent?.claims?.scope;
+  if (!fromScope || !toScope) return null;
+  const fromSet = new Set(String(fromScope).split(/\s+/).filter(Boolean));
+  const toSet = new Set(String(toScope).split(/\s+/).filter(Boolean));
+  const removed = [...fromSet].filter(s => !toSet.has(s));
+  const added = [...toSet].filter(s => !fromSet.has(s));
+  if (removed.length === 0 && added.length === 0) return null;
+  return (
+    <div className="tcd-scope-delta">
+      <span className="tcd-scope-delta-label">Scope narrowed:</span>
+      {removed.map(s => <span key={s} className="tcd-scope-delta--removed">- {s}</span>)}
+      {added.map(s => <span key={s} className="tcd-scope-delta--added">+ {s}</span>)}
+    </div>
+  );
+}
+
 /** Renders one step in the token chain. The inspect icon (right side) opens the floating inspector panel. */
 function EventRow({ event, isLast, nextEvent, idTokenMode, onInspect, hints, validationMode }) {
   const inspectBtnRef = useRef(null);
@@ -993,6 +1164,16 @@ function EventRow({ event, isLast, nextEvent, idTokenMode, onInspect, hints, val
     (event.id === 'exchanged-token' || event.id === 'exchanged-token-fallback') && event.status !== 'waiting'
       ? { text: 'Constraint-enforced', cls: 'ok' }
       : null;
+  const authorizeDecisionHint =
+    (event.id === 'authorize-decision' || event.id === 'gw-authorize') && (event.authorizeDecision || event.decision)
+      ? (() => {
+          const d = event.authorizeDecision || event.decision;
+          const eng = event.authorizeEngine || (event.id === 'gw-authorize' ? 'pingone' : 'simulated');
+          if (d === 'PERMIT') return { text: `PERMIT — ${eng}`, cls: 'ok' };
+          if (d === 'DENY') return { text: `DENY — ${eng}`, cls: 'error' };
+          return { text: `${d} — ${eng}`, cls: 'warn' };
+        })()
+      : null;
 
   return (
     <div className="tcd-event-wrap">
@@ -1020,12 +1201,12 @@ function EventRow({ event, isLast, nextEvent, idTokenMode, onInspect, hints, val
                   }}
                   type="button"
                 >
-                  👤 User: {fmtSub(userId, hints)}
+                  {getStepSubLabel(event.id)}: {fmtSub(userId, hints)}
                 </button>
               )}
               {agentId && (
-                <button 
-                  className="tcd-event-id tcd-event-id--agent" 
+                <button
+                  className="tcd-event-id tcd-event-id--agent"
                   title={`Agent ID (act claim): ${agentId}`}
                   onClick={() => navigator.clipboard?.writeText(agentId)}
                   onKeyDown={(e) => {
@@ -1036,13 +1217,13 @@ function EventRow({ event, isLast, nextEvent, idTokenMode, onInspect, hints, val
                   }}
                   type="button"
                 >
-                  🤖 Agent: {agentId.length > 16 ? agentId.slice(0, 14) + '…' : agentId}
+                  Agent: {agentId.length > 16 ? agentId.slice(0, 14) + '…' : agentId}
                 </button>
               )}
               {/* Show nested MCP server ID for 2-exchange tokens */}
               {event.claims?.act?.act?.sub && (
-                <button 
-                  className="tcd-event-id tcd-event-id--mcp" 
+                <button
+                  className="tcd-event-id tcd-event-id--mcp"
                   title={`MCP Server ID (act.act.sub claim): ${event.claims.act.act.sub}`}
                   onClick={() => navigator.clipboard?.writeText(event.claims.act.act.sub)}
                   onKeyDown={(e) => {
@@ -1053,14 +1234,14 @@ function EventRow({ event, isLast, nextEvent, idTokenMode, onInspect, hints, val
                   }}
                   type="button"
                 >
-                  🔗 MCP: {event.claims.act.act.sub.length > 16 ? event.claims.act.act.sub.slice(0, 14) + '…' : event.claims.act.act.sub}
+                  MCP: {event.claims.act.act.sub.length > 16 ? event.claims.act.act.sub.slice(0, 14) + '…' : event.claims.act.act.sub}
                 </button>
               )}
             </div>
           )}
           
           <div className={`tcd-event-meta-row${event.rfc ? '' : ' tcd-event-meta-row--no-rfc'}`}>
-            {event.rfc ? <span className="tcd-event-rfc">{event.rfc}</span> : null}
+            {event.rfc ? <RfcRef rfc={event.rfc} className="tcd-event-rfc" /> : null}
             {event.tokenType && (
               <span className={`tcd-token-type tcd-token-type--${event.tokenType}`}>
                 {event.tokenType.replace('_', ' ').toUpperCase()}
@@ -1068,9 +1249,10 @@ function EventRow({ event, isLast, nextEvent, idTokenMode, onInspect, hints, val
             )}
             <StatusBadge status={event.status} />
           </div>
-          {(triggerHint || mayActHint || actHint || audHint || constraintHint || introspectionHint) && (
+          {(triggerHint || mayActHint || actHint || audHint || constraintHint || introspectionHint || authorizeDecisionHint) && (
             <div className="tcd-event-hints">
               {triggerHint && <span className={`tcd-event-hint tcd-event-hint--${triggerHint.cls}`}>{triggerHint.text}</span>}
+              {authorizeDecisionHint && <span className={`tcd-event-hint tcd-event-hint--${authorizeDecisionHint.cls}`}>{authorizeDecisionHint.text}</span>}
               {audHint    && <span className={`tcd-event-hint tcd-event-hint--${audHint.cls}`}>{audHint.text}</span>}
               {constraintHint && <span className={`tcd-event-hint tcd-event-hint--${constraintHint.cls}`}>{constraintHint.text}</span>}
               {mayActHint && <span className={`tcd-event-hint tcd-event-hint--${mayActHint.cls}`}>{mayActHint.text}</span>}
@@ -1106,6 +1288,7 @@ function EventRow({ event, isLast, nextEvent, idTokenMode, onInspect, hints, val
         <div className="tcd-connector">
           <div className="tcd-connector-line" />
           <span className="tcd-connector-arrow">↓</span>
+          <ScopeDelta fromEvent={event} toEvent={nextEvent} />
           <div className="tcd-rfc-annotation">
             <a className="tcd-rfc-link" href="https://www.rfc-editor.org/rfc/rfc8693" target="_blank" rel="noopener noreferrer">RFC 8693</a>
             {' · '}
@@ -1135,7 +1318,7 @@ function HistoryEntry({ entry }) {
   return (
     <div className="tcd-hist-entry" style={{ cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
       <div className="tcd-hist-head tcd-hist-head--static" style={{ userSelect: 'none' }}>
-        <span style={{ marginRight: 6, fontSize: '0.75rem', color: '#64748b' }}>{expanded ? '▼' : '▶'}</span>
+        <span style={{ marginRight: 6, fontSize: '0.75rem', color: '#374151' }}>{expanded ? '▼' : '▶'}</span>
         <span className="tcd-hist-tool">{entry.tool}</span>
         <span className="tcd-hist-meta">
           <span className={`tcd-hist-status tcd-hist-status--${statusClass}`}>{statusIcon}</span>
@@ -1146,7 +1329,7 @@ function HistoryEntry({ entry }) {
       {expanded && (
         <div style={{ padding: '6px 12px 10px 28px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
           {entry.events.length === 0 ? (
-            <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>No step detail available.</span>
+            <span style={{ fontSize: '0.78rem', color: '#374151' }}>No step detail available.</span>
           ) : entry.events.map((ev, i) => {
             const evStatus = ev.status === 'error' ? '✗' : ev.status === 'success' ? '✓' : '~';
             const evColor = ev.status === 'error' ? '#dc2626' : ev.status === 'success' ? '#16a34a' : '#64748b';
@@ -1164,7 +1347,7 @@ function HistoryEntry({ entry }) {
                     <div style={{ fontSize: '0.72rem', color: '#2563eb', marginTop: 1 }}>🔑 {scopeSummary}</div>
                   )}
                   {ev.rfc && (
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: 1 }}>{ev.rfc}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#374151', marginTop: 1 }}>{ev.rfc}</div>
                   )}
                 </div>
               </div>
@@ -1240,6 +1423,7 @@ function ExchangeModeBanner({ events }) {
 
 const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
   const ctx = useTokenChainOptional();
+  const edu = useEducationUIOptional();
   const [tab, setTab] = useState('current');
   const [sessionPreviewEvents, setSessionPreviewEvents] = useState(null);
   const [agentCcEvents, setAgentCcEvents] = useState(null);
@@ -1444,6 +1628,17 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
                 aria-label="Clear token chain"
               >
                 Clear
+              </button>
+            )}
+            {edu && (
+              <button
+                type="button"
+                className="tcd-copy-btn"
+                onClick={() => edu.open('ietf-standards', 'overview')}
+                title="Open IETF Agentic Identity Standards reference"
+                aria-label="View all RFC standards"
+              >
+                Standards
               </button>
             )}
             <button

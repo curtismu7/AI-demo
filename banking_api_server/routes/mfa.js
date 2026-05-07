@@ -277,6 +277,50 @@ router.get('/devices', authenticateToken, async (req, res) => {
   }
 });
 
+// DELETE /api/auth/mfa/devices/:deviceId
+// Remove a registered MFA device from PingOne.
+router.delete('/devices/:deviceId', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.session.user?.oauthId || req.session.user?.id;
+    const { deviceId } = req.params;
+    if (!userId) {
+      return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
+    }
+    if (!deviceId) {
+      return res.status(400).json({ error: 'missing_device_id', message: 'deviceId is required.' });
+    }
+    await mfaService.deleteDevice(userId, deviceId);
+    res.status(204).end();
+  } catch (err) {
+    console.error('[MFA route] DELETE /devices/:deviceId failed:', err.message);
+    res.status(err.status || 500).json({ error: 'delete_device_failed', message: err.message, pingError: err.pingError });
+  }
+});
+
+// PATCH /api/auth/mfa/devices/:deviceId/nickname
+// Update the nickname for a registered MFA device.
+router.patch('/devices/:deviceId/nickname', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.session.user?.oauthId || req.session.user?.id;
+    const { deviceId } = req.params;
+    const { nickname } = req.body;
+    if (!userId) {
+      return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
+    }
+    if (!deviceId) {
+      return res.status(400).json({ error: 'missing_device_id', message: 'deviceId is required.' });
+    }
+    if (!nickname || typeof nickname !== 'string' || !nickname.trim()) {
+      return res.status(400).json({ error: 'missing_nickname', message: 'nickname is required.' });
+    }
+    const updated = await mfaService.updateDeviceNickname(userId, deviceId, nickname.trim());
+    res.json({ id: updated.id, nickname: updated.nickname });
+  } catch (err) {
+    console.error('[MFA route] PATCH /devices/:deviceId/nickname failed:', err.message);
+    res.status(err.status || 500).json({ error: 'update_nickname_failed', message: err.message, pingError: err.pingError });
+  }
+});
+
 // POST /api/auth/mfa/enroll/sms-init
 // Enroll an SMS OTP device. Body: { phone } (E.164 format).
 // PingOne sends an OTP to the phone — complete with /enroll/sms-complete.

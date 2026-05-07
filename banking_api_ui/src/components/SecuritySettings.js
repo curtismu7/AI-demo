@@ -222,7 +222,7 @@ const SecuritySettings = ({ user, onLogout }) => {
   if (loading) {
     return (
       <AdminSubPageShell title="Security Settings" lead="Live configuration — changes take effect immediately, no restart required.">
-        <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+        <div style={{ padding: '40px', textAlign: 'center', color: '#374151' }}>
           Loading settings…
         </div>
       </AdminSubPageShell>
@@ -292,9 +292,9 @@ const SecuritySettings = ({ user, onLogout }) => {
                     <div>
                       <div style={{ display: 'block', fontWeight: '600', color: '#374151', fontSize: '0.9rem', marginBottom: '4px' }}>
                         {meta.label}
-                        {meta.disabled && <span style={{ marginLeft: '8px', fontSize: '0.75rem', background: '#f3f4f6', color: '#9ca3af', padding: '2px 6px', borderRadius: '4px' }}>Coming soon</span>}
+                        {meta.disabled && <span style={{ marginLeft: '8px', fontSize: '0.75rem', background: '#f3f4f6', color: '#374151', padding: '2px 6px', borderRadius: '4px' }}>Coming soon</span>}
                       </div>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>{meta.description}</p>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#374151' }}>{meta.description}</p>
                     </div>
                   </div>
 
@@ -304,7 +304,7 @@ const SecuritySettings = ({ user, onLogout }) => {
 
                   {meta.type === 'number' && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: '#6b7280', fontWeight: '600' }}>$</span>
+                      <span style={{ color: '#374151', fontWeight: '600' }}>$</span>
                       <input
                         type="number"
                         min={meta.min}
@@ -378,22 +378,22 @@ const SecuritySettings = ({ user, onLogout }) => {
         <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
             <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: '#111827' }}>Change History</h2>
-            <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#9ca3af' }}>Last 50 changes · in-memory</p>
+            <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#374151' }}>Last 50 changes · in-memory</p>
           </div>
           <div style={{ maxHeight: '520px', overflowY: 'auto', padding: '8px 0' }}>
             {history.length === 0 ? (
-              <p style={{ padding: '16px 20px', color: '#9ca3af', fontSize: '0.85rem', margin: 0 }}>No changes yet.</p>
+              <p style={{ padding: '16px 20px', color: '#374151', fontSize: '0.85rem', margin: 0 }}>No changes yet.</p>
             ) : (
               history.map((entry, i) => (
                 <div key={`${entry.timestamp || 'unknown'}-${entry.changedBy || 'unknown'}-${i}`} style={{ padding: '12px 20px', borderBottom: '1px solid #f9fafb' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span style={{ fontWeight: '600', fontSize: '0.8rem', color: '#374151' }}>{entry.changedBy}</span>
-                    <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#374151' }}>
                       {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                   {Object.entries(entry.changes).map(([k, v]) => (
-                    <div key={k} style={{ fontSize: '0.78rem', color: '#6b7280', marginBottom: '2px' }}>
+                    <div key={k} style={{ fontSize: '0.78rem', color: '#374151', marginBottom: '2px' }}>
                       <span style={{ color: '#374151', fontWeight: '500' }}>{k}:</span>{' '}
                       <span style={{ textDecoration: 'line-through', color: '#d1d5db' }}>
                         {JSON.stringify(entry.previous[k])}
@@ -411,7 +411,7 @@ const SecuritySettings = ({ user, onLogout }) => {
         <div style={{ marginTop: '32px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6' }}>
             <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '600', color: '#111827' }}>Auth Gate Summary</h3>
-            <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#6b7280' }}>
+            <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#374151' }}>
               Current enforcement rules — live values from runtime settings above.
             </p>
           </div>

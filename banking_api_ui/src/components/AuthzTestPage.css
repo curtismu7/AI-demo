@@ -31,7 +31,7 @@
 
 .authz-engine-settings-chevron {
   font-size: 1rem;
-  color: #64748b;
+  color: #374151;
 }
 
 .authz-engine-settings-body {
@@ -44,7 +44,7 @@
 
 .authz-engine-settings-note {
   font-size: 0.85rem;
-  color: var(--color-text-muted, #555);
+  color: var(--color-text-muted, #374151);
   margin: 0;
   line-height: 1.5;
 }
@@ -99,7 +99,7 @@
 
 .authz-engine-radio-desc {
   font-size: 0.8rem;
-  color: var(--color-text-muted, #555);
+  color: var(--color-text-muted, #374151);
   line-height: 1.4;
 }
 
@@ -132,7 +132,7 @@
 
 .authz-engine-creds-hint {
   font-size: 0.75rem;
-  color: var(--color-text-muted, #777);
+  color: var(--color-text-muted, #374151);
   font-style: italic;
   margin-top: 2px;
 }
@@ -225,7 +225,7 @@
   justify-content: center;
   gap: 16px;
   min-height: 260px;
-  color: var(--color-text-muted, #666);
+  color: var(--color-text-muted, #374151);
 }
 
 .authz-spinner {
@@ -263,7 +263,7 @@
 
 .authz-subtitle {
   font-size: 0.95rem;
-  color: var(--color-text-muted, #555);
+  color: var(--color-text-muted, #374151);
   margin: 0;
   line-height: 1.5;
 }
@@ -310,7 +310,7 @@
 
 .authz-banner-note {
   font-size: 0.85rem;
-  color: var(--color-text-muted, #555);
+  color: var(--color-text-muted, #374151);
   line-height: 1.5;
   max-width: 540px;
 }
@@ -382,7 +382,7 @@
 
 .authz-threshold-note {
   font-size: 0.75rem;
-  color: var(--color-text-muted, #777);
+  color: var(--color-text-muted, #374151);
   font-style: italic;
 }
 
@@ -407,7 +407,7 @@
 
 .authz-section-desc {
   font-size: 0.88rem;
-  color: var(--color-text-muted, #555);
+  color: var(--color-text-muted, #374151);
   margin: 0 0 16px;
   line-height: 1.5;
 }
@@ -455,7 +455,7 @@
 
 .authz-scenario-desc {
   font-size: 0.84rem;
-  color: var(--color-text-muted, #555);
+  color: var(--color-text-muted, #374151);
   line-height: 1.45;
   margin: 0;
 }
@@ -509,7 +509,7 @@
 
 .authz-badge--indeterminate {
   background: #f1f5f9;
-  color: #64748b;
+  color: #374151;
 }
 
 /* ─── Hint badges ────────────────────────────────────────────────────────── */
@@ -557,7 +557,7 @@
 
 .authz-result-meta {
   font-size: 0.78rem;
-  color: var(--color-text-muted, #666);
+  color: var(--color-text-muted, #374151);
 }
 
 /* ─── Buttons ────────────────────────────────────────────────────────────── */
@@ -715,7 +715,7 @@
 
 .authz-result-key {
   font-weight: 600;
-  color: var(--color-text-muted, #555);
+  color: var(--color-text-muted, #374151);
   min-width: 140px;
   flex-shrink: 0;
 }
@@ -743,7 +743,7 @@
 
 .authz-history-table th {
   background: #f8fafc;
-  color: var(--color-text-muted, #555);
+  color: var(--color-text-muted, #374151);
   font-weight: 600;
   font-size: 0.8rem;
   text-align: left;
@@ -793,7 +793,7 @@
 }
 
 .authz-api-downstream-label {
-  color: #94a3b8;
+  color: #cbd5e1;
   font-size: 0.75rem;
   margin-bottom: 6px;
   display: flex;
@@ -849,7 +849,7 @@
 .authz-api-col {}
 
 .authz-api-col-title {
-  color: #94a3b8;
+  color: #cbd5e1;
   font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;

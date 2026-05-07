@@ -102,6 +102,55 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-06 — Unified HITL across all three agent UI modes
+
+**Files changed:**
+- `banking_api_ui/src/components/BankingAgent.js` — removed `HitlInlineCard` component; always render `AgentConsentModal` (portal-based modal) for HITL consent regardless of `mode` prop.
+
+**What was broken:** Inline/dock modes (`mode="inline"`, `embeddedDockBottom`) used a plain inline card (`HitlInlineCard`) for HITL, while float mode used the full `AgentConsentModal` draggable modal. Three agent UI placements (floating FAB, middle column, bottom dock) had inconsistent HITL UX and features.
+
+**What was fixed:** All three agent layouts now use `AgentConsentModal` for transaction consent. `AgentConsentModal` renders via `DraggableModal` → `createPortal` so it works correctly in all layout contexts. `HitlInlineCard` removed (was only used internally). Helix LLM default (`"helix"`) and provider chips were already uniform across all modes — no change needed there.
+
+**Verify:** Trigger a HITL-required transfer from the middle column agent and from the floating FAB — both should show the same `AgentConsentModal` draggable modal.
+
+---
+
+### 2026-05-06 — Real PingOne MFA device management on /security
+
+**Files changed:**
+- `banking_api_server/routes/mfa.js` — added `DELETE /devices/:deviceId` and `PATCH /devices/:deviceId/nickname` production routes
+- `banking_api_server/services/mfaService.js` — added `updateDeviceNickname(userId, deviceId, nickname)`
+- `banking_api_ui/src/components/SecurityCenter.js` — full rewrite; replaced stub with real API calls
+
+**What was broken:** `/security` page had 4 tabs of hardcoded fake data. No real PingOne API calls. Full of emojis (violates §0). `mfaService.deleteDevice` existed but had no production BFF route.
+
+**What was fixed:**
+- MFA tab fetches real devices from `GET /api/auth/mfa/devices`
+- Delete calls `DELETE /api/auth/mfa/devices/:deviceId` (204 on success)
+- Rename calls `PATCH /api/auth/mfa/devices/:deviceId/nickname`
+- Enrollment picker calls existing enroll routes for Email OTP and SMS OTP; TOTP and FIDO2 show "use admin portal" message
+- Overview/Password/Sessions tabs replaced with honest "not available in this demo"
+- All emojis removed from the component
+
+**Security note:** userId is always derived from `req.session.user?.oauthId || req.session.user?.id` in the BFF. Device operations cannot be directed at another user's devices (no IDOR).
+
+**Do not break:**
+- `DELETE /api/auth/mfa/devices/:deviceId` must return 401 with no session, 204 on success
+- `PATCH /api/auth/mfa/devices/:deviceId/nickname` must return 401 with no session, 400 if nickname missing/empty
+- `SecurityCenter.js` must fetch real devices and not render any fake/stub data in the MFA tab
+
+### 2026-05-06 — HITL consent modal now triggers on 428 response from transfer actions
+
+- **Root cause:** `callMcpTool()` in `bankingAgentService.js` treated HTTP 428 Precondition Required (HITL consent gate) as a fatal error and threw an exception instead of returning the response body to the UI.
+- **Symptom:** Transfer actions over HITL threshold ($250+) returned error message "Banking API error: hitl_required" instead of showing consent modal.
+- **Fix:** Added special handling in `callMcpTool()` (lines 278–298) to detect 428 status with `error === "hitl_required"` and return the response as a successful result rather than throwing. The response includes `fromAccountId`, `toAccountId`, `amount`, and `type` so BankingAgent can build the consent intent.
+- **Files:** `banking_api_ui/src/services/bankingAgentService.js` (callMcpTool function, line 278–298)
+- **Verify:** Click "Transfer $600 from Savings to Checking" chip → consent modal appears (not error message). User approves → transaction proceeds with consent ID.
+- **Do not break:**
+  - 428 Precondition Required with `error: "hitl_required"` MUST be returned as a result, not thrown
+  - Response body MUST include `fromAccountId`, `toAccountId`, `amount`, `type` fields for consent intent building
+  - BankingAgent MUST detect `normalized.error === "hitl_required"` and show TransactionConsentModal (line ~4071)
+
 ### 2026-05-06 — Security: close agent authorization bypass and fail-closed defaults
 
 - **Root cause (critical):** `executeHeuristicBanking()` in `bankingAgentLangGraphService.js` matched NL transfer/deposit/withdrawal intents and executed them directly against `dataStore`, bypassing scope validation, PingOne Authorize policy, and HITL consent gate.

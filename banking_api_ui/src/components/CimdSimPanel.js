@@ -660,7 +660,7 @@ function SimulateTab() {
             <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 600, color: '#334155' }}>
               Optional: use a real client you registered
             </p>
-            <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#64748b' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#374151' }}>
               Created a client via <strong>Admin → Client Registration</strong>?
               Enter its PingOne app ID to use your actual CIMD document in the simulation.
               Leave blank to use the built-in demo document.
@@ -942,7 +942,7 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
                       In document:{' '}
                       <code>{cimdDoc.redirect_uris?.[0] || redirectUri}</code>
                     </span>
-                    <span className="cimd-check-detail" style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                    <span className="cimd-check-detail" style={{ color: '#374151', fontStyle: 'italic' }}>
                       Prevents token theft — attacker cannot redirect the code to their own server
                     </span>
                   </div>
@@ -955,7 +955,7 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
                       <code>authorization_code</code> ∈{' '}
                       {JSON.stringify(grantTypes)}
                     </span>
-                    <span className="cimd-check-detail" style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                    <span className="cimd-check-detail" style={{ color: '#374151', fontStyle: 'italic' }}>
                       Prevents downgrade to implicit flow or other weaker grant types
                     </span>
                   </div>
@@ -970,7 +970,7 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
                     <span className="cimd-check-detail">
                       Document max scope: <code>{cimdDoc.scope || docScope}</code>
                     </span>
-                    <span className="cimd-check-detail" style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                    <span className="cimd-check-detail" style={{ color: '#374151', fontStyle: 'italic' }}>
                       Prevents scope escalation — client cannot request more than it declared
                     </span>
                   </div>
@@ -982,7 +982,7 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
                     <span className="cimd-check-detail">
                       <code>{authMethod}</code>
                     </span>
-                    <span className="cimd-check-detail" style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                    <span className="cimd-check-detail" style={{ color: '#374151', fontStyle: 'italic' }}>
                       AS knows how to authenticate this client at the token endpoint
                     </span>
                   </div>
@@ -995,7 +995,7 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
                       <code>code</code> ∈{' '}
                       {JSON.stringify(cimdDoc.response_types || ['code'])}
                     </span>
-                    <span className="cimd-check-detail" style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                    <span className="cimd-check-detail" style={{ color: '#374151', fontStyle: 'italic' }}>
                       Confirms the client declared it supports Authorization Code flow
                     </span>
                   </div>

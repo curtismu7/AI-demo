@@ -13,7 +13,7 @@ html[data-theme='dark'] body {
 }
 
 html[data-theme='dark'] .loading {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 html[data-theme='dark'] .loading::after {
@@ -31,7 +31,7 @@ html[data-theme='dark'] .footer-brand-text {
 }
 
 html[data-theme='dark'] .footer-copyright {
-  color: #94a3b8 !important;
+  color: #cbd5e1 !important;
 }
 
 html[data-theme='dark'] .footer-demo-config {
@@ -69,7 +69,7 @@ html[data-theme='dark'] .app-page-toolbar {
 }
 
 html[data-theme='dark'] .page-nav__trail {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 html[data-theme='dark'] .app-page-card {
@@ -84,7 +84,7 @@ html[data-theme='dark'] .app-page-card h2 {
 }
 
 html[data-theme='dark'] .admin-dashboard__reset-msg {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 /* Customer / admin dashboard (UserDashboard + shared .section) */
@@ -127,7 +127,7 @@ html[data-theme='dark'] .account-summary-cell {
 }
 
 html[data-theme='dark'] .account-summary-header .account-summary-cell {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 html[data-theme='dark'] .ud-left,
@@ -185,7 +185,7 @@ html[data-theme='dark'] .ud-txn-desc {
 }
 
 html[data-theme='dark'] .ud-txn-date {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 html[data-theme='dark'] .embedded-banking-agent {
@@ -210,11 +210,11 @@ html[data-theme='dark'] .embedded-agent-dock {
 }
 
 html[data-theme='dark'] .embedded-agent-dock__title {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 html[data-theme='dark'] .embedded-agent-dock__lead {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 html[data-theme='dark'] .embedded-banking-agent-title {
@@ -222,7 +222,7 @@ html[data-theme='dark'] .embedded-banking-agent-title {
 }
 
 html[data-theme='dark'] .embedded-banking-agent-lead {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 html[data-theme='dark'] .edu-bar-panel {
@@ -236,7 +236,7 @@ html[data-theme='dark'] .edu-bar-panel__title {
 }
 
 html[data-theme='dark'] .edu-bar-panel__heading {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 html[data-theme='dark'] .embedded-dock-resize-handle {
@@ -273,7 +273,7 @@ html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] .embedded
 }
 
 html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] .embedded-agent-dock__lead {
-  color: #999999;
+  color: #374151;
 }
 
 html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] .embedded-banking-agent {
@@ -298,7 +298,7 @@ html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] .embedded
 }
 
 html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] .embedded-dock-resize-handle__label {
-  color: #999999;
+  color: #374151;
 }
 
 html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] .embedded-dock-resize-handle:hover {
@@ -346,7 +346,7 @@ html[data-theme='dark'] .stat-value {
 }
 
 html[data-theme='dark'] .stat-label {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 html[data-theme='dark'] .table {
@@ -379,7 +379,7 @@ html[data-theme='dark'] .config-page {
   --p1-surface-accent: #1e3a5f;
   --p1-border: rgba(148, 163, 184, 0.28);
   --p1-text: var(--brand-light-gray);
-  --p1-text-secondary: #94a3b8;
+  --p1-text-secondary: #cbd5e1;
   --p1-primary-soft: rgba(65, 105, 225, 0.15);
 }
 
@@ -416,7 +416,7 @@ html[data-theme='dark'] .mcp-inspector__header {
 }
 
 html[data-theme='dark'] .mcp-inspector__subtitle {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 html[data-theme='dark'] .mcp-inspector__panel {
@@ -436,7 +436,7 @@ html[data-theme='dark'] .mcp-inspector__note,
 html[data-theme='dark'] .mcp-inspector__meta,
 html[data-theme='dark'] .mcp-inspector__desc,
 html[data-theme='dark'] .mcp-inspector__label {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 html[data-theme='dark'] .mcp-inspector__link {
@@ -502,7 +502,7 @@ html[data-theme='dark'] .landing-page.landing-page--light .hero-subtitle,
 html[data-theme='dark'] .landing-page.landing-page--light .section-header p,
 html[data-theme='dark'] .landing-page.landing-page--light .feature-card p,
 html[data-theme='dark'] .landing-page.landing-page--light .step p {
-  color: #999999 !important;
+  color: #374151 !important;
 }
 
 html[data-theme='dark'] .landing-page.landing-page--light .feature-card h3,
@@ -550,7 +550,7 @@ html[data-theme='dark'] .App--marketing-page > footer.footer .footer-brand-text 
 }
 
 html[data-theme='dark'] .App--marketing-page > footer.footer .footer-copyright {
-  color: #999999 !important;
+  color: #374151 !important;
 }
 
 html[data-theme='dark'] .App--marketing-page > footer.footer .footer-theme-toggle {

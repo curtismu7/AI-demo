@@ -20,11 +20,29 @@ export default function Profile({ user, onLogout }) {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // In a real implementation, this would call an API to update the user profile
-    toast.success('Profile updated successfully!');
-    setIsEditing(false);
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/self-service/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(formData),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error_description || data.error || 'Failed to update profile');
+      }
+      toast.success('Profile updated successfully');
+      setIsEditing(false);
+    } catch (err) {
+      toast.error(err.message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -107,8 +125,8 @@ export default function Profile({ user, onLogout }) {
                 <button type="button" onClick={handleCancel} className="btn btn-secondary">
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Save Changes
+                <button type="submit" className="btn btn-primary" disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

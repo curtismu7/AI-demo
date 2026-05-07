@@ -45,9 +45,9 @@ function ServiceCard({ serviceKey, data }) {
         style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f8fafc', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '0.82rem', fontWeight: 600 }}
       >
         <span style={{ flex: 1 }}>{svc.label}</span>
-        <code style={{ fontSize: '0.72rem', color: '#64748b' }}>:{svc.port}</code>
+        <code style={{ fontSize: '0.72rem', color: '#374151' }}>:{svc.port}</code>
         <StatusBadge status={status} />
-        <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: 4 }}>{open ? '▲' : '▼'}</span>
+        <span style={{ fontSize: '0.75rem', color: '#374151', marginLeft: 4 }}>{open ? '▲' : '▼'}</span>
       </button>
       {open && (
         <div style={{ padding: '10px 14px', fontSize: '0.8rem' }}>
@@ -75,7 +75,7 @@ function ServiceCard({ serviceKey, data }) {
                         <td><code>{k}</code></td>
                         <td style={{ maxWidth: 180, wordBreak: 'break-all', fontSize: '0.72rem' }}>{Array.isArray(v) ? v.join(', ') : String(v)}</td>
                         <td><span style={{ fontSize: '0.68rem', fontWeight: 600, color: ann.required === 'REQUIRED' ? '#166534' : ann.required === 'RECOMMENDED' ? '#1e40af' : '#64748b' }}>{ann.required || 'OPTIONAL'}</span></td>
-                        <td style={{ fontSize: '0.72rem', color: '#64748b' }}>{ann.note || ''}</td>
+                        <td style={{ fontSize: '0.72rem', color: '#374151' }}>{ann.note || ''}</td>
                       </tr>
                     );
                   })}
@@ -142,7 +142,7 @@ Host: api.bank.com
 }`}</pre>
 
       <h4>Live Metadata — All Services</h4>
-      <p style={{ fontSize: '0.82rem', color: '#64748b' }}>
+      <p style={{ fontSize: '0.82rem', color: '#374151' }}>
         Fetches <code>/.well-known/oauth-protected-resource</code> from the BFF and all downstream MCP services (server-side proxy, no CORS).
       </p>
       <button
@@ -158,7 +158,7 @@ Host: api.bank.com
         <ServiceCard key={key} serviceKey={key} data={data} />
       ))}
       {!allData && !fetchErr && (
-        <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Click the button to fetch live metadata from all running services.</p>
+        <p style={{ fontSize: '0.78rem', color: '#374151' }}>Click the button to fetch live metadata from all running services.</p>
       )}
     </>
   );

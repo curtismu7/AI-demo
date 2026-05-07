@@ -6,7 +6,7 @@ import { isEmbeddedAgentDockRoute } from '../utils/embeddedAgentFabVisibility';
 
 const HEIGHT_KEY = 'embedded_agent_dock_height_px';
 const COLLAPSE_KEY = 'embedded_agent_dock_collapsed';
-const DEFAULT_HEIGHT = 420;
+const DEFAULT_HEIGHT = 520;
 const MIN_HEIGHT = 200;
 const MAX_HEIGHT_RATIO = 0.85;
 

@@ -73,7 +73,7 @@ export default function MayActPanel({ isOpen, onClose, initialTabId }) {
               creating an audit trail showing exactly who did what on whose behalf.
             </li>
           </ol>
-          <p style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 8 }}>
+          <p style={{ fontSize: '0.82rem', color: '#374151', marginTop: 8 }}>
             The <code>act.sub</code> value is the application&apos;s subject (client ID or user ID returned by PingOne),
             not a human-readable label. Actual values come from your PingOne environment config.
           </p>
@@ -125,7 +125,7 @@ export default function MayActPanel({ isOpen, onClose, initialTabId }) {
             <strong>actor_token</strong> — identifies who is performing the action (the AI assistant app).<br />
             <strong>act claim</strong> — embedded in the resulting pass; preserved in the audit log.
           </p>
-          <p style={{ fontSize: '0.82rem', color: '#6b7280' }}>
+          <p style={{ fontSize: '0.82rem', color: '#374151' }}>
             Many large identity providers (including PingOne) implement RFC 8693. Banks and financial
             institutions use it to let AI agents and automation tools act on behalf of customers without
             compromising security.

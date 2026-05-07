@@ -224,7 +224,7 @@ export default function TokenChainPanel() {
         {mcpTrailOpen && (
           <div style={{ padding: '12px 16px' }}>
             {mcpToolCalls.length === 0 ? (
-              <p style={{ color: '#999', fontStyle: 'italic', margin: 0 }}>No MCP tool calls in this session</p>
+              <p style={{ color: '#374151', fontStyle: 'italic', margin: 0 }}>No MCP tool calls in this session</p>
             ) : (
               <ul className="token-chain-list" style={{ gap: '8px' }}>
                 {mcpToolCalls.map((tc) => {
@@ -252,7 +252,7 @@ export default function TokenChainPanel() {
                           <span title="Called with delegated token" style={{ fontSize: '1.1em' }}>🔀</span>
                         )}
                       </div>
-                      <div style={{ fontSize: '0.8em', color: '#999', marginTop: 2, paddingLeft: 28 }}>
+                      <div style={{ fontSize: '0.8em', color: '#374151', marginTop: 2, paddingLeft: 28 }}>
                         {new Date(tc.timestamp).toLocaleTimeString()}
                       </div>
                       {isExpanded && (

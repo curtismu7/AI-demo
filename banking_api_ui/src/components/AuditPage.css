@@ -47,7 +47,7 @@
   background: none;
   border: 1px solid transparent;
   border-radius: 5px;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-text-secondary, #374151);
   font-size: 1rem;
   cursor: pointer;
   padding: 2px 7px;
@@ -66,7 +66,7 @@
   background: none;
   border: 1px solid transparent;
   border-radius: 5px;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-text-secondary, #374151);
   font-size: 1.3rem;
   cursor: pointer;
   line-height: 1;
@@ -132,7 +132,7 @@
 .audit-stat__label {
   display: block;
   font-size: 0.7rem;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-text-secondary, #374151);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-top: 2px;
@@ -197,7 +197,7 @@
   text-align: left;
   padding: 9px 12px;
   font-weight: 600;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-text-secondary, #374151);
   text-transform: uppercase;
   font-size: 0.72rem;
   letter-spacing: 0.05em;
@@ -212,7 +212,7 @@
 
 .audit-table__empty {
   text-align: center;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-text-secondary, #374151);
   padding: 28px !important;
 }
 
@@ -223,14 +223,14 @@
 
 .audit-cell--time {
   white-space: nowrap;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-text-secondary, #374151);
   font-size: 0.78rem;
 }
 
 .audit-cell--user {
   font-family: inherit;
   font-size: 0.78rem;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-text-secondary, #374151);
   max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -296,7 +296,7 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-size: 0.85em;
-  color: var(--text-muted, #888);
+  color: var(--text-muted, #374151);
 }
 
 /* ─── Dark Mode ──────────────────────────────────────────────────────────── */
@@ -333,7 +333,7 @@ html[data-theme='dark'] .audit-stat__value {
 }
 
 html[data-theme='dark'] .audit-stat__label {
-  color: var(--dash-muted, #94a3b8);
+  color: var(--dash-muted, #cbd5e1);
 }
 
 html[data-theme='dark'] .audit-page__filters {
@@ -358,7 +358,7 @@ html[data-theme='dark'] .audit-table thead {
 }
 
 html[data-theme='dark'] .audit-table th {
-  color: var(--dash-muted, #94a3b8);
+  color: var(--dash-muted, #cbd5e1);
   border-bottom-color: var(--dash-border, rgb(148 163 184 / 0.18));
 }
 
@@ -419,7 +419,7 @@ tr.token-chain-row:hover {
 }
 
 .token-chain-row .no-exchange {
-  color: #999;
+  color: #374151;
   font-style: italic;
 }
 

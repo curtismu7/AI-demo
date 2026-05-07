@@ -102,7 +102,7 @@ export default function WorkerAppConfigTab() {
       <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--brand-navy)', marginBottom: 4 }}>
         PingOne Management API — Worker App
       </h3>
-      <p style={{ color: '#6b7280', fontSize: 13, marginBottom: readOnly ? 8 : 20 }}>
+      <p style={{ color: '#374151', fontSize: 13, marginBottom: readOnly ? 8 : 20 }}>
         Credentials for the PingOne worker app used for user provisioning, CIMD registration, and bootstrap operations.
       </p>
       {readOnly && (
@@ -147,7 +147,7 @@ export default function WorkerAppConfigTab() {
           <option value="client_secret_jwt">client_secret_jwt (signed JWT, HS256)</option>
           <option value="private_key_jwt">private_key_jwt (signed JWT, RS256/ES256)</option>
         </select>
-        <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
+        <p style={{ fontSize: 12, color: '#374151', marginTop: 4 }}>
           Match the Token Endpoint Authentication setting in your PingOne worker app.
         </p>
       </div>
@@ -166,7 +166,7 @@ export default function WorkerAppConfigTab() {
             rows={6}
             style={{ ...inputStyle, maxWidth: 480, fontFamily: 'inherit', fontSize: 11, resize: 'vertical', lineHeight: 1.5 }}
           />
-          <p style={{ fontSize: 12, color: '#6b7280', marginTop: 6, marginBottom: 10 }}>
+          <p style={{ fontSize: 12, color: '#374151', marginTop: 6, marginBottom: 10 }}>
             Paste an RSA 2048 or EC P-256 private key in PKCS#8 PEM format, or generate a new one below.
             The public key / JWK must be registered in PingOne (App → Keys tab).
           </p>
@@ -193,13 +193,13 @@ export default function WorkerAppConfigTab() {
                 Application → Keys tab → Add Key → paste this JWK or PEM.
               </p>
               <div style={{ marginBottom: 10 }}>
-                <strong style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>JWK (paste into PingOne)</strong>
+                <strong style={{ fontSize: 11, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>JWK (paste into PingOne)</strong>
                 <pre style={{ fontSize: 11, background: '#f1f5f9', borderRadius: 4, padding: '8px 10px', overflowX: 'auto', marginTop: 4, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                   {JSON.stringify(generatedPublicKey.jwk, null, 2)}
                 </pre>
               </div>
               <div>
-                <strong style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Public Key PEM (alternative)</strong>
+                <strong style={{ fontSize: 11, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Public Key PEM (alternative)</strong>
                 <pre style={{ fontSize: 11, background: '#f1f5f9', borderRadius: 4, padding: '8px 10px', overflowX: 'auto', marginTop: 4, whiteSpace: 'pre-wrap' }}>
                   {generatedPublicKey.publicKeyPem}
                 </pre>

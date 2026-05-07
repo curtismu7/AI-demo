@@ -142,9 +142,11 @@ const MFATestPage: FC = () => {
     useState<PingOneRequest | null>(null);
   const [fidoInitiatePingoneRes, setFidoInitiatePingoneRes] =
     useState<PingOneResponse | null>(null);
-  const [fidoSelectDevicePingoneReq, setFidoSelectDevicePingoneReq] =
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_fidoSelectDevicePingoneReq, setFidoSelectDevicePingoneReq] =
     useState<PingOneRequest | null>(null);
-  const [fidoSelectDevicePingoneRes, setFidoSelectDevicePingoneRes] =
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_fidoSelectDevicePingoneRes, setFidoSelectDevicePingoneRes] =
     useState<PingOneResponse | null>(null);
   const [smsInitiatePingoneReq, setSmsInitiatePingoneReq] =
     useState<PingOneRequest | null>(null);

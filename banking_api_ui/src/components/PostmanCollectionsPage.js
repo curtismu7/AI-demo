@@ -6,6 +6,14 @@ import './PostmanCollectionsPage.css';
 // Collection metadata with descriptions and audience
 const POSTMAN_COLLECTIONS = [
   {
+    filename: 'Super-Banking-First-Token-Exchange.postman_collection.json',
+    title: 'Super Banking - First Token Exchange (App Flow)',
+    description: 'Happy-path collection matching the app exactly. Step 1: user token via PKCE pi.flow. Step 2: agent CC token. Step 3: RFC 8693 exchange → delegated MCP token with act claim.',
+    audience: 'Demo Runner',
+    features: ['PKCE pi.flow (headless)', 'RFC 8693 subject + actor', 'MCP delegated token', 'JWT decode + act validation'],
+    difficulty: 'Intermediate'
+  },
+  {
     filename: 'Super-Banking-1-Exchange-Step-by-Step.postman_collection.json',
     title: 'Super Banking - 1-Exchange Step-by-Step',
     description: 'Learn OAuth 2.0 token exchange with detailed, individual steps. Perfect for understanding each RFC 8693 operation.',
@@ -78,6 +86,14 @@ const POSTMAN_COLLECTIONS = [
     difficulty: 'Advanced'
   },
   {
+    filename: 'PingOne MFA APIs.postman_collection.json',
+    title: 'PingOne MFA APIs',
+    description: 'PingOne Management API endpoints for MFA configuration. Covers MFA devices, authentication policies, FIDO2 policies, OATH tokens, and MFA settings management.',
+    audience: 'Engineer',
+    features: ['MFA device management', 'FIDO2 / OATH policies', 'Device authentication policies'],
+    difficulty: 'Advanced'
+  },
+  {
     filename: 'AI-IAM-CORE Webinar.postman_collection.json',
     title: 'AI IAM CORE Webinar',
     description: 'Collection from the AI IAM CORE webinar presentation. Demonstrates key concepts.',
@@ -101,6 +117,13 @@ const ENVIRONMENT_FILES = [
     description: 'Environment for Vercel-deployed instances. Points to production banking API and MCP server URLs.',
     required: false,
     variant: 'Vercel'
+  },
+  {
+    filename: 'Super-Banking-First-Token-Exchange.postman_environment.json',
+    title: 'Super Banking - First Token Exchange (Local)',
+    description: 'Pre-filled environment for the First Token Exchange collection. All client IDs, secrets, audiences, and test credentials are populated from the local .env file.',
+    required: false,
+    variant: 'Local'
   }
 ];
 

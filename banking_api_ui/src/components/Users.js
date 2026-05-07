@@ -155,7 +155,7 @@ const Users = ({ user, onLogout }) => {
       <div className="app-page-card">
         <div className="card-header">
           <h2 className="card-title">User Management</h2>
-          <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
+          <span style={{ color: '#374151', fontSize: '0.875rem' }}>
             {users.length} users found
           </span>
         </div>

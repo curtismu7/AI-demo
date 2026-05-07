@@ -87,7 +87,7 @@ export default function OAuthDebugLogViewer({ user, onLogout }) {
         {hint ? <> {hint}</> : null}
       </div>
       {loading ? (
-        <p style={{ color: '#64748b' }}>Loading…</p>
+        <p style={{ color: '#374151' }}>Loading…</p>
       ) : (
         <pre
           style={{

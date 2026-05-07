@@ -173,6 +173,7 @@ function StepInfoPanel({
   steps,
   isPaused,
   onStepClick,
+  panelWidth = 280,
 }) {
   const arrowSteps = steps.filter((s) => s.step);
   const totalSteps = arrowSteps.length;
@@ -196,7 +197,7 @@ function StepInfoPanel({
     return (
       <div
         style={{
-          width: "220px",
+          width: `${panelWidth}px`,
           flexShrink: 0,
           padding: "1.5rem 1rem",
           background: "#f8fafc",
@@ -235,7 +236,7 @@ function StepInfoPanel({
   return (
     <div
       style={{
-        width: "220px",
+        width: `${panelWidth}px`,
         flexShrink: 0,
         padding: "1.5rem 1rem",
         background: "#f8fafc",
@@ -257,8 +258,9 @@ function StepInfoPanel({
       >
         <div
           style={{
-            fontSize: "0.75rem",
-            color: "#94a3b8",
+            fontSize: "1.1rem",
+            fontWeight: 700,
+            color: "#0f172a",
             marginBottom: "0.25rem",
           }}
         >
@@ -266,9 +268,9 @@ function StepInfoPanel({
         </div>
         <div
           style={{
-            fontSize: "0.9rem",
+            fontSize: "1.25rem",
             fontWeight: 700,
-            color: "#004687",
+            color: "#0f172a",
             marginBottom: "0.5rem",
           }}
         >
@@ -277,12 +279,14 @@ function StepInfoPanel({
         {fromParticipant && toParticipant && (
           <div
             style={{
-              fontSize: "0.75rem",
-              color: "#475569",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              color: "#0f172a",
               marginBottom: "0.4rem",
+              lineHeight: 1.4,
             }}
           >
-            {fromParticipant.label} → {toParticipant.label}
+            {fromParticipant.label} calls {toParticipant.label}
           </div>
         )}
         <div
@@ -1120,9 +1124,13 @@ const SCENARIOS = {
 export default function SequenceDiagramPage() {
   const [selectedScenario, setSelectedScenario] = useState("full-flow");
   const [authScenario, setAuthScenario] = useState("authenticated"); // 'authenticated' or 'not-authenticated'
+  const [simulateMode, setSimulateMode] = useState("auto"); // 'auto' or 'step'
   const [isSimulating, setIsSimulating] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [currentStepIdx, setCurrentStepIdx] = useState(-1);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(280); // resizable panel width
+  const [zoomLevel, setZoomLevel] = useState(100); // zoom percentage
+  const diagramRef = useRef(null);
   const pausedStepIdx = useRef(-1);
   const simTimeouts = useRef([]);
 
@@ -1230,6 +1238,34 @@ export default function SequenceDiagramPage() {
   }, [resetDiagram]);
 
   const participantIndex = (id) => PARTICIPANTS.findIndex((p) => p.id === id);
+
+  const handleZoom = (delta) => {
+    setZoomLevel((prev) => Math.max(50, Math.min(200, prev + delta)));
+  };
+
+  const handleResetZoom = () => {
+    setZoomLevel(100);
+  };
+
+  const handleMouseDownResize = (e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = leftPanelWidth;
+
+    const handleMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = Math.max(240, Math.min(500, startWidth + deltaX));
+      setLeftPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
 
   return (
     <div style={{ padding: "1rem", background: "#fff" }}>
@@ -1355,22 +1391,68 @@ export default function SequenceDiagramPage() {
           </button>
         </div>
         {!isSimulating && (
-          <button
-            type="button"
-            onClick={runSimulation}
-            style={{
-              padding: "0.4rem 0.8rem",
-              border: "none",
-              borderRadius: 6,
-              background: "#004687",
-              color: "#fff",
-              fontSize: "0.82rem",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            ▶ Simulate
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <div
+              style={{
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                color: "#475569",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Mode:
+            </div>
+            <button
+              type="button"
+              onClick={() => setSimulateMode("auto")}
+              style={{
+                padding: "0.4rem 0.8rem",
+                borderRadius: 6,
+                fontSize: "0.78rem",
+                fontWeight: 600,
+                border:
+                  simulateMode === "auto" ? "2px solid #004687" : "1px solid #cbd5e1",
+                background: simulateMode === "auto" ? "#dbeafe" : "#fff",
+                color: simulateMode === "auto" ? "#004687" : "#475569",
+                cursor: "pointer",
+              }}
+            >
+              Auto
+            </button>
+            <button
+              type="button"
+              onClick={() => setSimulateMode("step")}
+              style={{
+                padding: "0.4rem 0.8rem",
+                borderRadius: 6,
+                fontSize: "0.78rem",
+                fontWeight: 600,
+                border:
+                  simulateMode === "step" ? "2px solid #004687" : "1px solid #cbd5e1",
+                background: simulateMode === "step" ? "#dbeafe" : "#fff",
+                color: simulateMode === "step" ? "#004687" : "#475569",
+                cursor: "pointer",
+              }}
+            >
+              Step
+            </button>
+            <button
+              type="button"
+              onClick={runSimulation}
+              style={{
+                padding: "0.4rem 0.8rem",
+                border: "none",
+                borderRadius: 6,
+                background: "#004687",
+                color: "#fff",
+                fontSize: "0.82rem",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              ▶ Simulate
+            </button>
+          </div>
         )}
         {isSimulating && !isPaused && (
           <>
@@ -1514,13 +1596,40 @@ export default function SequenceDiagramPage() {
         }}
       >
         {/* Left Step Panel */}
-        <StepInfoPanel
-          activeStep={activeStep}
-          currentStepIdx={currentStepIdx}
-          steps={steps}
-          isPaused={isPaused}
-          onStepClick={handleStepClick}
-        />
+        <div style={{ position: "relative" }}>
+          <StepInfoPanel
+            activeStep={activeStep}
+            currentStepIdx={currentStepIdx}
+            steps={steps}
+            isPaused={isPaused}
+            onStepClick={handleStepClick}
+            panelWidth={leftPanelWidth}
+          />
+          {/* Resize Handle */}
+          <button
+            type="button"
+            onMouseDown={handleMouseDownResize}
+            style={{
+              position: "absolute",
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: "6px",
+              background: "#cbd5e1",
+              cursor: "col-resize",
+              border: "none",
+              padding: 0,
+              transition: "background 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#94a3b8";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "#cbd5e1";
+            }}
+            aria-label="Resize panel"
+          />
+        </div>
 
         {/* Right Diagram Area */}
         <div
@@ -1533,15 +1642,104 @@ export default function SequenceDiagramPage() {
             flexDirection: "column",
           }}
         >
-          <svg
-            width="100%"
+          {/* Zoom Controls */}
+          <div
             style={{
-              display: "block",
-              minHeight: `${120 + steps.length * 20 + 100}px`,
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              marginBottom: "1rem",
+              padding: "0.5rem",
+              background: "#f1f5f9",
+              borderRadius: 6,
+              width: "fit-content",
             }}
-            aria-label="Sequence diagram flow"
-            role="img"
           >
+            <button
+              type="button"
+              onClick={() => handleZoom(-10)}
+              style={{
+                padding: "0.35rem 0.7rem",
+                fontSize: "0.8rem",
+                border: "1px solid #cbd5e1",
+                borderRadius: 4,
+                background: "#fff",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              −
+            </button>
+            <span
+              style={{
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                color: "#475569",
+                minWidth: "50px",
+                textAlign: "center",
+              }}
+            >
+              {zoomLevel}%
+            </span>
+            <button
+              type="button"
+              onClick={() => handleZoom(10)}
+              style={{
+                padding: "0.35rem 0.7rem",
+                fontSize: "0.8rem",
+                border: "1px solid #cbd5e1",
+                borderRadius: 4,
+                background: "#fff",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              +
+            </button>
+            <div
+              style={{
+                width: "1px",
+                height: "20px",
+                background: "#cbd5e1",
+                margin: "0 0.25rem",
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleResetZoom}
+              style={{
+                padding: "0.35rem 0.7rem",
+                fontSize: "0.75rem",
+                border: "1px solid #cbd5e1",
+                borderRadius: 4,
+                background: "#fff",
+                cursor: "pointer",
+                fontWeight: 600,
+                color: zoomLevel === 100 ? "#cbd5e1" : "#475569",
+              }}
+            >
+              Reset
+            </button>
+          </div>
+
+          {/* SVG Diagram with Zoom */}
+          <div
+            style={{
+              transform: `scale(${zoomLevel / 100})`,
+              transformOrigin: "top left",
+              transition: "transform 0.15s ease-out",
+            }}
+          >
+            <svg
+              ref={diagramRef}
+              width="100%"
+              style={{
+                display: "block",
+                minHeight: `${120 + steps.length * 20 + 100}px`,
+              }}
+              aria-label="Sequence diagram flow"
+              role="img"
+            >
             <title>Sequence diagram flow</title>
             {/* Participant boxes and lifelines */}
             {PARTICIPANTS.map((p, i) => {
@@ -1711,7 +1909,8 @@ export default function SequenceDiagramPage() {
                 <path d="M0,0 L0,6 L9,3 z" fill="#cbd5e1" />
               </marker>
             </defs>
-          </svg>
+            </svg>
+          </div>
         </div>
       </div>
 

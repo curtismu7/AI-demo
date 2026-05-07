@@ -151,7 +151,7 @@ function SecretField({ label, fieldKey, value, isSet, showValue, onToggleShow, o
           {showValue ? '🙈' : '👁️'}
         </button>
       </div>
-      {help && <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>{help}</p>}
+      {help && <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.25rem' }}>{help}</p>}
     </div>
   );
 }
@@ -170,7 +170,7 @@ function TextField({ label, fieldKey, value, onChange, help, placeholder, type =
         disabled={disabled}
         readOnly={disabled}
       />
-      {help && <p className="form-help" style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', wordWrap: 'break-word', overflowWrap: 'break-word', whiteSpace: 'pre-wrap', maxWidth: '100%' }}>{help}</p>}
+      {help && <p className="form-help" style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.25rem', wordWrap: 'break-word', overflowWrap: 'break-word', whiteSpace: 'pre-wrap', maxWidth: '100%' }}>{help}</p>}
     </div>
   );
 }
@@ -195,7 +195,7 @@ function DisplayPreferences() {
       defaultOpen={true}
       className="config-page__display-prefs"
     >
-      <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+      <p style={{ fontSize: '0.85rem', color: '#374151', marginBottom: '1rem' }}>
         Controls where banking results (accounts, transactions, balances) appear after an Agent action.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -210,7 +210,7 @@ function DisplayPreferences() {
           />
           <div>
             <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Side Panel (default)</div>
-            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+            <div style={{ fontSize: '0.78rem', color: '#374151' }}>
               Results appear in the Agent chat panel alongside your conversation.
               Good for quick lookups without leaving the current view.
             </div>
@@ -227,7 +227,7 @@ function DisplayPreferences() {
           />
           <div>
             <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Full Page</div>
-            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+            <div style={{ fontSize: '0.78rem', color: '#374151' }}>
               Results update the main dashboard in the background — same account cards and
               transaction tables as the full page, just triggered by the Agent.
             </div>
@@ -261,7 +261,7 @@ function AsyncUxPreferences() {
       defaultOpen={false}
       className="config-page__async-prefs"
     >
-      <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+      <p style={{ fontSize: '0.85rem', color: '#374151', marginBottom: '1rem' }}>
         Controls how the banking agent communicates progress when a tool call
         takes time to complete (e.g., a simulated background job).
       </p>
@@ -277,7 +277,7 @@ function AsyncUxPreferences() {
           />
           <div>
             <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Job ID (default)</div>
-            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+            <div style={{ fontSize: '0.78rem', color: '#374151' }}>
               Agent immediately returns a job ID and polls visibly: &quot;Job created: #abc123,
               checking status…&quot; — shows the async pattern explicitly.
             </div>
@@ -294,7 +294,7 @@ function AsyncUxPreferences() {
           />
           <div>
             <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Progress Spinner</div>
-            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+            <div style={{ fontSize: '0.78rem', color: '#374151' }}>
               Agent shows a spinner / progress indicator while the tool runs,
               then displays the result when done.
             </div>
@@ -311,7 +311,7 @@ function AsyncUxPreferences() {
           />
           <div>
             <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Transparent</div>
-            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+            <div style={{ fontSize: '0.78rem', color: '#374151' }}>
               Agent polls silently in the background and shows only the final result.
               Simulates a &quot;fire and forget&quot; experience without visible async state.
             </div>
@@ -337,13 +337,13 @@ function AgentLayoutPreferences() {
       defaultOpen={true}
       className="config-page__agent-layout"
     >
-      <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+      <p style={{ fontSize: '0.85rem', color: '#374151', marginBottom: '1rem' }}>
         <strong>Middle</strong> uses the split dashboard (token | assistant | banking). <strong>Bottom</strong> uses the
         full-width dock on home and config (Classic layout). <strong>Float</strong> is the corner FAB only.{' '}
         <strong>+ FAB</strong> adds the floating panel on top of Middle or Bottom (never Middle and Bottom together).
         When signed in, your choice syncs to your demo profile.
       </p>
-      <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '1rem', lineHeight: 1.5 }}>
+      <p style={{ fontSize: '0.8rem', color: '#374151', marginTop: '1rem', lineHeight: 1.5 }}>
         <strong>Bottom</strong> sends you to <strong>Home</strong> after apply so the dock mounts. <strong>Middle</strong>{' '}
         reloads with split view.
       </p>
@@ -440,7 +440,7 @@ function LangChainAgentConfig() {
     } catch {}
   };
 
-  if (!status) return <p style={{ padding: '8px', color: '#888' }}>Loading LangChain config…</p>;
+  if (!status) return <p style={{ padding: '8px', color: '#374151' }}>Loading LangChain config…</p>;
 
   const activeProvider = status.provider || 'ollama';
 
@@ -513,7 +513,7 @@ function LangChainAgentConfig() {
         </p>
       )}
 
-      <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>
+      <p style={{ margin: '4px 0 0', fontSize: 12, color: '#374151' }}>
         Keys are stored in your server session only and are never included in API responses.
         Refresh or logout to clear all keys.
       </p>
@@ -862,10 +862,10 @@ export default function Config() {
               <h3 className="card-title">PingOne Scope Management</h3>
             </div>
             <div className="card-body">
-              <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+              <p style={{ marginBottom: '1rem', color: '#374151' }}>
                 Manage OAuth scopes in your PingOne environment. Create, update, or remove scopes and grant them to applications.
               </p>
-              <p style={{ marginBottom: '1.5rem', color: '#6b7280' }}>
+              <p style={{ marginBottom: '1.5rem', color: '#374151' }}>
                 <strong>Scope Update Tool:</strong> Go to the <Link to="/admin" style={{ color: 'var(--brand-navy)', textDecoration: 'underline' }}>Admin Dashboard</Link> → Banking Admin page to use the automated <strong>Fix PingOne Scopes</strong> button.
               </p>
               <div style={{ backgroundColor: '#f0f7fb', border: '1px solid #93c5fd', borderRadius: '8px', padding: '1rem' }}>
@@ -964,7 +964,7 @@ export default function Config() {
                     {row.hint && <p style={{ margin: '0 0 0.35rem', fontSize: '0.78rem', color: '#475569' }}>{row.hint}</p>}
                     <div style={{ display: 'grid', gap: '0.35rem', fontSize: '0.78rem' }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
-                        <span style={{ minWidth: '7rem', color: '#64748b' }}>Admin</span>
+                        <span style={{ minWidth: '7rem', color: '#374151' }}>Admin</span>
                         <code className="config-page__code-block" style={{ flex: '1 1 200px' }}>{row.adminRedirectUri}</code>
                         <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem' }}
                           onClick={() => { navigator.clipboard.writeText(row.adminRedirectUri); notifySuccess('Copied'); }}>
@@ -972,7 +972,7 @@ export default function Config() {
                         </button>
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
-                        <span style={{ minWidth: '7rem', color: '#64748b' }}>Customer</span>
+                        <span style={{ minWidth: '7rem', color: '#374151' }}>Customer</span>
                         <code className="config-page__code-block" style={{ flex: '1 1 200px' }}>{row.userRedirectUri}</code>
                         <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem' }}
                           onClick={() => { navigator.clipboard.writeText(row.userRedirectUri); notifySuccess('Copied'); }}>
@@ -981,7 +981,7 @@ export default function Config() {
                       </div>
                       {row.postLogoutExample && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
-                          <span style={{ minWidth: '7rem', color: '#64748b' }}>Sign off</span>
+                          <span style={{ minWidth: '7rem', color: '#374151' }}>Sign off</span>
                           <code className="config-page__code-block" style={{ flex: '1 1 200px' }}>{row.postLogoutExample}</code>
                           <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem' }}
                             onClick={() => { navigator.clipboard.writeText(row.postLogoutExample); notifySuccess('Copied'); }}>
@@ -1066,7 +1066,7 @@ export default function Config() {
             subtitle="White-label colors and logo — stored with configuration (public field)"
             className="config-page__card--industry"
           >
-            <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '0.85rem', color: '#374151', marginBottom: '1rem', lineHeight: 1.5 }}>
               Choose a preset to change primary button colors, dashboard header gradient, and the logo shown across the app.
               The setup assistant on this page can explain these options. Save configuration to apply everywhere.
             </p>
@@ -1103,7 +1103,7 @@ export default function Config() {
             className="config-page__card--agent-scopes"
             defaultOpen={false}
           >
-            <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '0.85rem', color: '#374151', marginBottom: '1rem', lineHeight: 1.5 }}>
               Each scope maps to PingOne OAuth scopes on the delegated MCP token. Unchecking <strong>Transfers &amp; movement</strong>{' '}
               removes <code>banking:transactions:write</code> (the transfer scope) so the agent cannot move money — read-only demos.
               Save configuration to apply; the next tool call runs a new token exchange with the selected scopes.
@@ -1282,7 +1282,7 @@ export default function Config() {
                       <option value="false">Standard (response_type=code, redirect with ?code=)</option>
                       <option value="true">pi.flow — response_type=pi.flow + response_mode=pi.flow</option>
                     </select>
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                    <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.25rem' }}>
                       Enable only when this PingOne app supports non-redirect / DaVinci flow authorize (see{' '}
                       <a href="https://developer.pingidentity.com/pingone-api/auth/auth-config-options/browserless-authentication-flow-options.html" target="_blank" rel="noopener noreferrer">PingOne: redirect and non-redirect flows</a>
                       ). Default stays authorization code + PKCE.
@@ -1339,7 +1339,7 @@ export default function Config() {
                       <option value="false">Standard (response_type=code)</option>
                       <option value="true">pi.flow — response_type=pi.flow + response_mode=pi.flow</option>
                     </select>
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                    <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.25rem' }}>
                       Applies to <strong>all</strong> customer logins when enabled. For marketing-only pi.flow, use{' '}
                       <strong>Marketing customer sign-in</strong> below instead.
                     </p>
@@ -1363,7 +1363,7 @@ export default function Config() {
                       <option value="redirect">Redirect — standard authorize (code + PKCE)</option>
                       <option value="slide_pi_flow">Slide panel — hints + Continue with pi.flow (?use_pi_flow=1)</option>
                     </select>
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                    <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.25rem' }}>
                       <strong>Redirect</strong> is the safe default. <strong>pi.flow</strong> requires a PingOne OIDC app
                       that supports it — otherwise use <strong>Redirect</strong> (same choice as Demo config).
                     </p>
@@ -1478,7 +1478,7 @@ export default function Config() {
                   <option value="ciba">CIBA — back-channel challenge (inline, no page redirect)</option>
                   <option value="email">Email / OTP — OIDC re-authentication redirect</option>
                 </select>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.25rem' }}>
                   <strong>CIBA:</strong> the dashboard shows a "Verify via CIBA" button that sends a
                   back-channel auth request; the user approves on their registered device.{' '}
                   <strong>Email / OTP:</strong> the browser redirects to PingOne for a fresh MFA
@@ -1497,7 +1497,7 @@ export default function Config() {
                   disabled={readOnly}
                   placeholder="250"
                 />
-                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.25rem' }}>
                   Minimum transaction amount (USD) that triggers step-up authentication. Default: $250.
                 </p>
               </div>
@@ -1512,7 +1512,7 @@ export default function Config() {
                   <option value="false">Disabled</option>
                   <option value="true">Enabled</option>
                 </select>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.25rem' }}>
                   Required when step-up method is CIBA. Also controls the CIBA panel on the
                   demo pages.
                 </p>
@@ -1538,7 +1538,7 @@ export default function Config() {
                   <option value="false">Disabled</option>
                   <option value="true">Enabled — enforce on transfers &amp; withdrawals</option>
                 </select>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.25rem' }}>
                   When enabled, every transfer and withdrawal is evaluated against the policy below.
                 </p>
               </div>
@@ -1690,7 +1690,7 @@ export default function Config() {
                     data-bwignore="true"
                     data-form-type="other"
                   />
-                  <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.25rem' }}>
                     Required to overwrite config when the API uses this gate. Not stored — enter each session.
                   </p>
                 </div>

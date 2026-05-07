@@ -326,4 +326,75 @@ async function getDelegationHistory(delegatorUserId) {
   return result.sort((a, b) => b.granted_at.localeCompare(a.granted_at));
 }
 
-module.exports = { grantDelegation, revokeDelegation, listDelegations, getDelegationHistory };
+// ---------------------------------------------------------------------------
+// listAllDelegations (admin)
+// ---------------------------------------------------------------------------
+
+async function listAllDelegations({ status } = {}) {
+  const storage = getStorage();
+  if (storage.type === 'sqlite') {
+    let sql = 'SELECT * FROM delegations';
+    const params = [];
+    if (status && status !== 'all') {
+      sql += ' WHERE status = ?';
+      params.push(status);
+    }
+    sql += ' ORDER BY granted_at DESC';
+    const rows = storage.db.prepare(sql).all(...params);
+    return rows.map(toRecord);
+  }
+  const result = [];
+  for (const rec of storage.map.values()) {
+    if (!status || status === 'all' || rec.status === status) {
+      result.push(toRecord(rec));
+    }
+  }
+  return result.sort((a, b) => b.granted_at.localeCompare(a.granted_at));
+}
+
+// ---------------------------------------------------------------------------
+// adminRevokeDelegation — revoke any delegation without ownership check
+// ---------------------------------------------------------------------------
+
+async function adminRevokeDelegation(id) {
+  const storage = getStorage();
+  const now = new Date().toISOString();
+
+  if (storage.type === 'sqlite') {
+    const row = storage.db.prepare('SELECT * FROM delegations WHERE id = ?').get(id);
+    if (!row || row.status === 'revoked') {
+      return { ok: false, error: 'not_found' };
+    }
+    storage.db.prepare('UPDATE delegations SET status = ?, revoked_at = ? WHERE id = ?').run('revoked', now, id);
+    setImmediate(() => _sendDelegationEmail(row.delegate_user_id, 'revoke', row.delegator_email).catch(() => {}));
+  } else {
+    const rec = storage.map.get(id);
+    if (!rec || rec.status === 'revoked') {
+      return { ok: false, error: 'not_found' };
+    }
+    rec.status = 'revoked';
+    rec.revoked_at = now;
+    storage.map.set(id, rec);
+    setImmediate(() => _sendDelegationEmail(rec.delegate_user_id, 'revoke', rec.delegator_email).catch(() => {}));
+  }
+
+  logAppEvent('auth_lifecycle', 'info', `Admin delegation revoke: id=${id}`,
+    { tag: 'delegation/admin-revoke', metadata: { delegationId: id } }
+  );
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// adminGrantDelegation — grant on behalf of a delegator by email
+// ---------------------------------------------------------------------------
+
+async function adminGrantDelegation({ delegatorEmail, delegateEmail, scopes }) {
+  if (!delegatorEmail) {
+    return { ok: false, error: 'validation_error', message: 'delegatorEmail is required.' };
+  }
+  const { user: delegatorUser } = await fetchPingOneUserByUsername(delegatorEmail).catch(() => ({ user: null }));
+  const delegatorUserId = delegatorUser?.id || `admin-${delegatorEmail}`;
+  return grantDelegation({ delegatorUserId, delegatorEmail, delegateEmail, scopes });
+}
+
+module.exports = { grantDelegation, revokeDelegation, listDelegations, getDelegationHistory, listAllDelegations, adminRevokeDelegation, adminGrantDelegation };

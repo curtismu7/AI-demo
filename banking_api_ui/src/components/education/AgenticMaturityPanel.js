@@ -66,7 +66,7 @@ function LevelCard({ level, emoji, title, subtitle, color, children }) {
         <Badge color={color}>Level {level}</Badge>
         {title}
       </p>
-      {subtitle && <p style={{ margin: '0 0 10px', fontSize: '0.8rem', color: '#6b7280' }}>{subtitle}</p>}
+      {subtitle && <p style={{ margin: '0 0 10px', fontSize: '0.8rem', color: '#374151' }}>{subtitle}</p>}
       <div style={{ fontSize: '0.83rem', color: '#374151', lineHeight: 1.65 }}>{children}</div>
     </div>
   );
@@ -200,7 +200,7 @@ function MaturityDiagram() {
         </div>
       </div>
 
-      <p style={{ color: '#9ca3af', fontSize: '0.7rem', textAlign: 'right', margin: 0 }}>
+      <p style={{ color: '#374151', fontSize: '0.7rem', textAlign: 'right', margin: 0 }}>
         Based on: PingOne — Agentic Maturity Model
       </p>
     </div>

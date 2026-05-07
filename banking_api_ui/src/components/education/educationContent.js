@@ -300,7 +300,7 @@ Phase 3 — Resource access
       <h3>Key API endpoints (this deployment)</h3>
       <pre className="edu-code">{OAUTH_API_CHEATSHEET}</pre>
 
-      <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+      <p style={{ fontSize: '0.85rem', color: '#374151' }}>
         <strong>Chat widget / LangChain:</strong> the embedded chat uses a WebSocket to an agent
         host; that agent uses its own MCP client to the same MCP server. The flow is parallel to{' '}
         <code>/api/mcp/tool</code> but runs in a different process — both ultimately hit the same
@@ -602,7 +602,7 @@ Content-Type: application/json
         <li>User invokes MCP tool → Backend-for-Frontend (BFF) may exchange subject token for MCP-audience token (RFC 8693).</li>
         <li>Only after step 2 does the MCP layer see a Bearer suited to the tool/RS chain.</li>
       </ol>
-      <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+      <p style={{ fontSize: '0.85rem', color: '#374151' }}>
         Open the Config page → "MCP Inspector setup" for env snippets that match your URL.
       </p>
 
@@ -636,7 +636,7 @@ HTTP/1.1 200 OK
   permits this client + grant combination. If not configured:
   HTTP/1.1 400 { "error": "invalid_grant", "error_description": "..." }`}</pre>
 
-      <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+      <p style={{ fontSize: '0.85rem', color: '#374151' }}>
         <strong>Related:</strong> the <strong>Sign-in &amp; roles</strong> tab in the CIBA Guide
         explains "on behalf of" and <code>/api/agent/identity/bootstrap</code>.{' '}
         <strong>Application Configuration</strong> includes an MCP Inspector setup wizard that
@@ -1247,7 +1247,7 @@ MCP spec reference:
         <li><strong>RFC 9449 DPoP</strong> (best practice) — sender-constrained tokens; stolen Bearer unusable.</li>
       </ul>
 
-      <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+      <p style={{ fontSize: '0.85rem', color: '#374151' }}>
         See the <strong>Full stack</strong> tab in the CIBA Guide for how this demo maps
         these RFCs to PingOne, the Banking Backend-for-Frontend (BFF), and <code>banking_mcp_server</code>.
       </p>
@@ -1328,7 +1328,7 @@ export function RFC9728Content() {
           Could not load live metadata: {fetchError}. Is the BFF running?
         </p>
       ) : (
-        <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading live metadata\u2026</p>
+        <p style={{ fontSize: '0.875rem', color: '#374151' }}>Loading live metadata\u2026</p>
       )}
     </>
   );

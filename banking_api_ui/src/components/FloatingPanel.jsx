@@ -31,6 +31,7 @@ export default function FloatingPanel({
   className = '',
   minWidth = 280,
   minHeight = 200,
+  onClose = null,
 }) {
   const [pos, setPos] = useState({ x: defaultX, y: defaultY });
   const [size, setSize] = useState({ w: defaultWidth, h: defaultHeight });
@@ -236,6 +237,9 @@ export default function FloatingPanel({
             {isCollapsed ? '▼' : '▲'}
           </button>
           <button className="fp-btn" onClick={handlePopOut} title="Pop out to new window">↗</button>
+          {onClose && (
+            <button type="button" className="fp-btn" onClick={onClose} title="Close">✕</button>
+          )}
         </div>
       </div>
 

@@ -295,7 +295,7 @@ html[data-theme='dark'] .sidenav {
 }
 
 html[data-theme='dark'] .sidenav-group-label {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 html[data-theme='dark'] .sidenav-user-name {
@@ -303,5 +303,5 @@ html[data-theme='dark'] .sidenav-user-name {
 }
 
 html[data-theme='dark'] .sidenav-user-role {
-  color: #94a3b8;
+  color: #cbd5e1;
 }

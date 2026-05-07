@@ -4,24 +4,32 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import './ThresholdControls.css';
 
-const FLAG_EXPLANATIONS = {
-  authorize_enabled: 'Enable PingOne authorization in MCP flows',
-  ff_authorize_simulated: 'Use simulated authorization responses',
-  ff_authorize_fail_open: 'Allow operations when authorization fails',
-  ff_authorize_deposits: 'Require authorization for deposit operations',
-  ff_authorize_mcp_first_tool: 'Authorize before executing first MCP tool',
-  step_up_enabled: 'Enable MFA step-up for high-value transactions',
-  ff_hitl_enabled: 'Enable human-in-the-loop consent for sensitive operations',
-  mcp_use_legacy_protocol: 'Use legacy MCP protocol version',
-  mcp_use_pingone_server: 'Use PingOne as MCP server',
-  ff_inject_audience: 'Inject audience claim into tokens',
-  ff_inject_may_act: 'Inject may_act delegation claim into tokens',
-  ff_inject_scopes: 'Inject custom scopes into tokens',
-  ff_skip_token_exchange: 'Skip RFC 8693 token exchange',
-  ff_two_exchange_delegation: 'Use two-leg token exchange for delegation',
-  ff_oidc_only_authorize: 'Only authorize via OpenID Connect',
-  ff_jd_token_exchange: 'Enable JWT delegation token exchange',
-  ff_webmcp_enabled: 'Enable WebMCP tool server',
+const FLAG_LABELS = {
+  ff_authorize_simulated: 'Simulated Authorization',
+  ff_authorize_fail_open: 'Allow Transactions if Auth Unavailable',
+  step_up_enabled: 'MFA Step-up',
+  ff_hitl_enabled: 'Human-in-the-Loop Consent',
+  ff_inject_may_act: 'may_act Delegation Claim',
+  ff_skip_token_exchange: 'Skip Token Exchange (RFC 8693)',
+  ff_inject_scopes: 'Inject Banking Scopes',
+};
+
+const FLAG_DESCRIPTIONS = {
+  ff_authorize_simulated: 'Use simulated (offline) auth responses instead of live PingOne',
+  ff_authorize_fail_open: 'Allow operations to proceed when authorization service is unavailable',
+  step_up_enabled: 'Prompt for MFA on transactions above the step-up threshold',
+  ff_hitl_enabled: 'Show a consent challenge before executing sensitive operations',
+  ff_inject_may_act: 'Inject may_act claim into tokens to enable delegated agent access',
+  ff_skip_token_exchange: 'Bypass RFC 8693 token exchange — also enables Inject Banking Scopes so MCP calls still work',
+  ff_inject_scopes: 'Add banking:read / banking:write scopes to the token (required when skipping token exchange)',
+};
+
+const IMPORTANT_FLAG_IDS = Object.keys(FLAG_LABELS);
+
+// Flags that must be toggled together to keep the demo working
+const FLAG_PAIRS = {
+  ff_skip_token_exchange: 'ff_inject_scopes',
+  ff_inject_scopes: 'ff_skip_token_exchange',
 };
 
 export default function ThresholdControls() {
@@ -37,8 +45,11 @@ export default function ThresholdControls() {
   const [status, setStatus] = useState(null);
   const [, setFlagError] = useState(null);
   const [, setIsAdmin] = useState(false);
+  const [openSections, setOpenSections] = useState({ thresholds: true, flags: true, tokenExchange: false });
   const btnRef = useRef(null);
   const panelRef = useRef(null);
+
+  const toggleSection = (key) => setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const loadAll = useCallback(async () => {
     try {
@@ -131,7 +142,7 @@ export default function ThresholdControls() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ updates: { [flagId]: nextValue } }),
+        body: JSON.stringify({ updates: { [flagId]: nextValue, ...(FLAG_PAIRS[flagId] ? { [FLAG_PAIRS[flagId]]: nextValue } : {}) } }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -183,80 +194,97 @@ export default function ThresholdControls() {
 
       {/* Thresholds */}
       <div className="thresh-ctrl__section">
-        <div className="thresh-ctrl__section-title">Step-up Thresholds</div>
-        <div className="thresh-ctrl__field">
-          <label className="thresh-ctrl__label">
-            Confirm (consent) $
-            <input
-              className="thresh-ctrl__input"
-              type="number"
-              min="1"
-              step="50"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-            />
-          </label>
-          <span className="thresh-ctrl__help">Amount that triggers consent challenge</span>
-        </div>
-        <div className="thresh-ctrl__field">
-          <label className="thresh-ctrl__label">
-            MFA step-up $
-            <input
-              className="thresh-ctrl__input"
-              type="number"
-              min="1"
-              step="50"
-              value={mfa}
-              onChange={(e) => setMfa(e.target.value)}
-            />
-          </label>
-          <span className="thresh-ctrl__help">Amount that triggers MFA step-up challenge</span>
-        </div>
-        <button
-          type="button"
-          className="thresh-ctrl__save"
-          onClick={saveThresholds}
-          disabled={saving}
-        >
-          {saving ? 'Saving…' : 'Save Thresholds'}
+        <button type="button" className="thresh-ctrl__section-toggle" onClick={() => toggleSection('thresholds')}>
+          <span className="thresh-ctrl__section-title">Step-up Thresholds</span>
+          <span className="thresh-ctrl__chevron">{openSections.thresholds ? '▲' : '▼'}</span>
         </button>
-        {status === 'saved' && <span className="thresh-ctrl__ok">✓ Saved</span>}
-        {status === 'error' && <span className="thresh-ctrl__err">Error</span>}
+        {openSections.thresholds && (
+          <>
+            <div className="thresh-ctrl__field">
+              <label className="thresh-ctrl__label">
+                Confirm (consent) $
+                <input
+                  className="thresh-ctrl__input"
+                  type="number"
+                  min="1"
+                  step="50"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                />
+              </label>
+              <span className="thresh-ctrl__help">Amount that triggers consent challenge</span>
+            </div>
+            <div className="thresh-ctrl__field">
+              <label className="thresh-ctrl__label">
+                MFA step-up $
+                <input
+                  className="thresh-ctrl__input"
+                  type="number"
+                  min="1"
+                  step="50"
+                  value={mfa}
+                  onChange={(e) => setMfa(e.target.value)}
+                />
+              </label>
+              <span className="thresh-ctrl__help">Amount that triggers MFA step-up challenge</span>
+            </div>
+            <button
+              type="button"
+              className="thresh-ctrl__save"
+              onClick={saveThresholds}
+              disabled={saving}
+            >
+              {saving ? 'Saving…' : 'Save Thresholds'}
+            </button>
+            {status === 'saved' && <span className="thresh-ctrl__ok">✓ Saved</span>}
+            {status === 'error' && <span className="thresh-ctrl__err">Error</span>}
+          </>
+        )}
       </div>
 
-      {/* Feature Flags */}
-      {flags.length > 0 && (
+      {/* Feature Flags — important flags only */}
+      {flags.filter((f) => IMPORTANT_FLAG_IDS.includes(f.id)).length > 0 && (
         <div className="thresh-ctrl__section">
-          <div className="thresh-ctrl__section-title">Feature Flags</div>
-          {flags.map((flag) => (
-            <div key={flag.id} className="thresh-ctrl__flag-item">
-              <label className="thresh-ctrl__checkbox">
-                <input
-                  type="checkbox"
-                  checked={flag.value === true}
-                  onChange={(e) => toggleFlag(flag.id, e.target.checked)}
-                  disabled={flagSaving === flag.id}
-                />
-                <span>{flag.label || flag.id}</span>
-              </label>
-              <span className="thresh-ctrl__help">{FLAG_EXPLANATIONS[flag.id] || 'Feature flag control'}</span>
-            </div>
-          ))}
+          <button type="button" className="thresh-ctrl__section-toggle" onClick={() => toggleSection('flags')}>
+            <span className="thresh-ctrl__section-title">Feature Flags</span>
+            <span className="thresh-ctrl__chevron">{openSections.flags ? '▲' : '▼'}</span>
+          </button>
+          {openSections.flags && flags
+            .filter((f) => IMPORTANT_FLAG_IDS.includes(f.id))
+            .map((flag) => (
+              <div key={flag.id} className="thresh-ctrl__flag-item">
+                <label className="thresh-ctrl__checkbox">
+                  <input
+                    type="checkbox"
+                    checked={flag.value === true}
+                    onChange={(e) => toggleFlag(flag.id, e.target.checked)}
+                    disabled={flagSaving === flag.id}
+                  />
+                  <span>{FLAG_LABELS[flag.id]}</span>
+                </label>
+                <span className="thresh-ctrl__help">{FLAG_DESCRIPTIONS[flag.id]}</span>
+              </div>
+            ))}
         </div>
       )}
 
       {/* may_act Control */}
       {mayActEnabled !== null && (
         <div className="thresh-ctrl__section">
-          <div className="thresh-ctrl__section-title">Token Exchange</div>
-          <button
-            type="button"
-            className="thresh-ctrl__btn-toggle"
-            onClick={() => toggleMayAct(!mayActEnabled)}
-            disabled={mayActSaving}
-          >
-            {mayActSaving ? 'Saving…' : mayActEnabled ? '✅ Disable may_act' : '❌ Enable may_act'}
+          <button type="button" className="thresh-ctrl__section-toggle" onClick={() => toggleSection('tokenExchange')}>
+            <span className="thresh-ctrl__section-title">Token Exchange</span>
+            <span className="thresh-ctrl__chevron">{openSections.tokenExchange ? '▲' : '▼'}</span>
           </button>
+          {openSections.tokenExchange && (
+            <button
+              type="button"
+              className="thresh-ctrl__btn-toggle"
+              onClick={() => toggleMayAct(!mayActEnabled)}
+              disabled={mayActSaving}
+            >
+              {mayActSaving ? 'Saving…' : mayActEnabled ? 'Disable may_act' : 'Enable may_act'}
+            </button>
+          )}
         </div>
       )}
     </div>,
@@ -273,7 +301,7 @@ export default function ThresholdControls() {
         aria-expanded={open}
         onClick={handleToggle}
       >
-        ⚙️ Controls
+        Controls
       </button>
       {panel}
     </div>

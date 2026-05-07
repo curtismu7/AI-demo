@@ -60,7 +60,7 @@ function StepList({ steps }) {
 function TerminologyContent() {
   return (
     <div>
-      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         Precise vocabulary for communicating AI concepts with customers. Conflating these terms erodes trust and leads to misaligned expectations.
       </p>
 
@@ -134,7 +134,7 @@ function TerminologyContent() {
 function FoundationsContent() {
   return (
     <div>
-      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         Conceptual explanations of how these technologies work together. Designed to be accurate enough to inform technical conversations without requiring an academic background.
       </p>
 
@@ -189,7 +189,7 @@ function FoundationsContent() {
 function PromptsContent() {
   return (
     <div>
-      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         The quality of an LLM or agent response is directly proportional to the quality of the instructions provided. This tab covers prompt construction principles and what goes wrong when prompts are underspecified.
       </p>
 
@@ -263,7 +263,7 @@ Constraints:
 function WorkflowContent() {
   return (
     <div>
-      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         How these technologies work together in a professional environment, from user input to final action.
       </p>
 
@@ -307,7 +307,7 @@ function WorkflowContent() {
 function AboutContent() {
   return (
     <div>
-      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         The prompts and iteration process used to develop this guide. Included here as a practical example of structured prompt construction.
       </p>
 

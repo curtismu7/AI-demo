@@ -380,7 +380,7 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
           left: `${pos.x}px`,
           top: `${pos.y}px`,
           width: `${size.w}px`,
-          height: `${size.h}px`,
+          height: "auto",
         }}
         role="dialog"
         aria-modal="true"
@@ -519,7 +519,7 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 maxLength={6}
-                placeholder="000000"
+                placeholder="123123"
                 value={otpCode}
                 onChange={(e) => {
                   setOtpError("");
@@ -561,14 +561,10 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
             <button
               type="button"
               className="tx-otp-panel__back-btn"
-              onClick={() => {
-                setOtpStep(false);
-                setOtpCode("");
-                setOtpError("");
-              }}
+              onClick={onClose}
               disabled={otpVerifying}
             >
-              ← Back
+              Cancel
             </button>
           </div>
         ) : (
@@ -643,21 +639,42 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
                 <div className="transaction-consent-card__actions">
                   <button
                     type="button"
-                    className="transaction-consent-btn transaction-consent-btn--ghost"
-                    onClick={handleCancelClick}
-                    disabled={submitting}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
                     className="transaction-consent-btn transaction-consent-btn--primary"
                     onClick={handleConfirm}
                     disabled={!agreed || submitting}
                   >
                     {submitting ? "Initiating…" : "Agree & continue"}
                   </button>
+                  <button
+                    type="button"
+                    className="transaction-consent-btn transaction-consent-btn--ghost"
+                    onClick={handleCancelClick}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </button>
                 </div>
+
+                <p className="transaction-consent-rfc-note">
+                  This consent checkpoint implements{" "}
+                  <a
+                    href="https://www.rfc-editor.org/rfc/rfc9396"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    RFC 9396 (Rich Authorization Requests)
+                  </a>{" "}
+                  — your approval is cryptographically bound to the specific
+                  transaction parameters above. Agent delegation uses{" "}
+                  <a
+                    href="https://www.rfc-editor.org/rfc/rfc8693"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    RFC 8693 (Token Exchange)
+                  </a>
+                  .
+                </p>
               </div>
             )}
           </>

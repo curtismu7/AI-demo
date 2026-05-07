@@ -1648,7 +1648,7 @@ export default function DemoDataPage({ user, onLogout }) {
                             </span>
                           </label>
                           {p1azFlagSaving === flag.id && (
-                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Saving…</span>
+                            <span style={{ fontSize: '0.75rem', color: '#374151' }}>Saving…</span>
                           )}
                         </div>
                       );
@@ -1745,7 +1745,7 @@ export default function DemoDataPage({ user, onLogout }) {
                             onClick={() => handleP1azFlagToggle('ff_inject_may_act', true)}>
                             {p1azFlagSaving === 'ff_inject_may_act' && !injectOn ? 'Saving…' : 'Enable'}
                           </button>
-                          {!injectFlag && <span style={{ fontSize: '0.78rem', color: '#9ca3af', alignSelf: 'center' }}>Flag not loaded — scroll up to reload Authorize flags</span>}
+                          {!injectFlag && <span style={{ fontSize: '0.78rem', color: '#374151', alignSelf: 'center' }}>Flag not loaded — scroll up to reload Authorize flags</span>}
                         </div>
                       </div>
                     </div>
@@ -1769,7 +1769,7 @@ export default function DemoDataPage({ user, onLogout }) {
                             onClick={() => handleP1azFlagToggle('ff_inject_audience', true)}>
                             {p1azFlagSaving === 'ff_inject_audience' && !audOn ? 'Saving…' : 'Enable'}
                           </button>
-                          {!audFlag && <span style={{ fontSize: '0.78rem', color: '#9ca3af', alignSelf: 'center' }}>Flag not loaded — scroll up to reload Authorize flags</span>}
+                          {!audFlag && <span style={{ fontSize: '0.78rem', color: '#374151', alignSelf: 'center' }}>Flag not loaded — scroll up to reload Authorize flags</span>}
                         </div>
                       </div>
                     </div>
@@ -1796,7 +1796,7 @@ export default function DemoDataPage({ user, onLogout }) {
                 <strong>failed / degraded</strong> path.
               </p>
 
-              <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#6b7280', fontStyle: 'italic' }}>Conceptual only — writes to PingOne user attribute; does not affect your token while static mapping is active.</p>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#374151', fontStyle: 'italic' }}>Conceptual only — writes to PingOne user attribute; does not affect your token while static mapping is active.</p>
               <div className="demo-data-mayact-row">
                 {/* Delegation mode selector */}
                 <div style={{ width: '100%', marginBottom: '0.6rem', padding: '0.6rem 0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6 }}>
@@ -1810,7 +1810,7 @@ export default function DemoDataPage({ user, onLogout }) {
                       onChange={() => setDelegationMode('1exchange')}
                     />
                     <strong>1-Exchange</strong>
-                    <span style={{ color: '#6b7280' }}>— Banking App Client ID (exchange: user → MCP token)</span>
+                    <span style={{ color: '#374151' }}>— Banking App Client ID (exchange: user → MCP token)</span>
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer', fontSize: '0.85rem' }}>
                     <input
@@ -1821,7 +1821,7 @@ export default function DemoDataPage({ user, onLogout }) {
                       onChange={() => setDelegationMode('2exchange')}
                     />
                     <strong>2-Token Exchange</strong>
-                    <span style={{ color: '#6b7280' }}>— AI Agent Client ID (exchange #1: user → agent token, exchange #2: agent → MCP token with nested <code>act</code>)</span>
+                    <span style={{ color: '#374151' }}>— AI Agent Client ID (exchange #1: user → agent token, exchange #2: agent → MCP token with nested <code>act</code>)</span>
                   </label>
                   {delegationMode === '2exchange' && (
                     <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: '#92400e', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 4, padding: '0.35rem 0.6rem', lineHeight: 1.6 }}>
@@ -1887,10 +1887,10 @@ export default function DemoDataPage({ user, onLogout }) {
                     </div>
                   )}
                   <details style={{ marginTop: '0.5rem' }}>
-                    <summary style={{ cursor: 'pointer', color: '#6b7280' }}>Raw check results</summary>
+                    <summary style={{ cursor: 'pointer', color: '#374151' }}>Raw check results</summary>
                     <pre style={{ fontSize: '0.75rem', marginTop: '0.35rem', overflowX: 'auto' }}>{JSON.stringify(mayActDiagnosis.checks, null, 2)}</pre>
                   </details>
-                  <button type="button" style={{ marginTop: '0.5rem', fontSize: '0.75rem', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', padding: 0 }} onClick={() => setMayActDiagnosis(null)}>✕ dismiss</button>
+                  <button type="button" style={{ marginTop: '0.5rem', fontSize: '0.75rem', background: 'none', border: 'none', color: '#374151', cursor: 'pointer', padding: 0 }} onClick={() => setMayActDiagnosis(null)}>✕ dismiss</button>
                 </div>
               )}
 
@@ -1959,7 +1959,7 @@ export default function DemoDataPage({ user, onLogout }) {
                 )}
               </div>
               {actClaimStatus && actClaimStatus.status !== 'ok' && actClaimStatus.status !== 'missing' && (
-                <details style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                <details style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#374151' }}>
                   <summary style={{ cursor: 'pointer' }}>Details</summary>
                   <pre style={{ marginTop: '0.35rem', overflowX: 'auto' }}>{JSON.stringify(actClaimStatus, null, 2)}</pre>
                 </details>

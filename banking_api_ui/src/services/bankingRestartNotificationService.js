@@ -64,6 +64,11 @@ export function hideRestartModal() {
     globalRestartState.isVisible = false;
     globalRestartState.attemptCount = 0;
     globalRestartState.currentDelay = globalRestartState.baseDelay;
+    globalRestartState.isRetrying = false;
+    if (globalRestartState.retryTimeoutId) {
+      clearTimeout(globalRestartState.retryTimeoutId);
+      globalRestartState.retryTimeoutId = null;
+    }
     notifySubscribers();
   }
 }
@@ -189,6 +194,9 @@ window.fetch = function (...args) {
       if (response.status === 504) {
         console.warn('[RestartNotification] 504 Server Unavailable');
         handle504Error(new Error('504 Server Unavailable'));
+      } else if (globalRestartState.isVisible) {
+        // Any non-504 response means the server is reachable — dismiss immediately
+        hideRestartModal();
       }
 
       return response;

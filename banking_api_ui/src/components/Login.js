@@ -154,7 +154,7 @@ const Login = () => {
             >
               What is CIBA?
             </button>
-            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+            <span style={{ fontSize: '0.8rem', color: '#374151' }}>
               <Link to="/onboarding">Setup checklist</Link>
               {' · '}
               <Link to="/setup">Vercel setup</Link>

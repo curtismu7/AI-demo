@@ -462,7 +462,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false, categoryFilter = '' })
                         {log.level?.toUpperCase() || 'INFO'}
                       </span>
                     </td>
-                    <td className="log-source" style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{log._src || '—'}</td>
+                    <td className="log-source" style={{ fontSize: '0.7rem', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{log._src || '—'}</td>
                     <td className="log-message">
                       {isToastMessageLog(log) && log.toastType && (
                         <span className="log-toast-type" title="react-toastify type">

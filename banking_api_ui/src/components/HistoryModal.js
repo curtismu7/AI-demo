@@ -31,7 +31,7 @@ function ClaimRow({ k, v }) {
   if (k === 'note' || k === '_type' || k === '_rfcs' || k === '_title') return null;
   return (
     <div style={{ display: 'flex', gap: 8, marginBottom: 3, alignItems: 'flex-start' }}>
-      <span style={{ fontSize: '0.71rem', color: '#64748b', minWidth: 90, flexShrink: 0, fontFamily: 'inherit', lineHeight: 1.5 }}>{k}</span>
+      <span style={{ fontSize: '0.71rem', color: '#374151', minWidth: 90, flexShrink: 0, fontFamily: 'inherit', lineHeight: 1.5 }}>{k}</span>
       <span style={{
         fontSize: '0.77rem', fontFamily: 'inherit', lineHeight: 1.5, wordBreak: 'break-word',
         color: isAud ? '#1d4ed8' : isAct ? '#15803d' : isDecide ? '#15803d' : '#0f172a',
@@ -66,7 +66,7 @@ function MiniCard({ token, isHitl }) {
       </div>
       {claims.map(([k, v]) => <ClaimRow key={k} k={k} v={String(v)} />)}
       {note && (
-        <div style={{ marginTop: 5, paddingTop: 4, borderTop: '1px solid #f1f5f9', fontSize: '0.68rem', color: '#64748b', fontStyle: 'italic', lineHeight: 1.4 }}>
+        <div style={{ marginTop: 5, paddingTop: 4, borderTop: '1px solid #f1f5f9', fontSize: '0.68rem', color: '#374151', fontStyle: 'italic', lineHeight: 1.4 }}>
           ℹ {note}
         </div>
       )}
@@ -90,7 +90,7 @@ function HistoryEntry({ entry }) {
           {isLive ? '🔴 LIVE' : `Step ${entry.stepNum}`}
         </span>
         <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', flex: 1, lineHeight: 1.3 }}>{entry.label}</span>
-        <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>{collapsed ? '▸' : '▾'}</span>
+        <span style={{ color: '#374151', fontSize: '0.75rem' }}>{collapsed ? '▸' : '▾'}</span>
       </div>
       {!collapsed && (
         <>
@@ -258,27 +258,40 @@ export default function HistoryModal({ history, onClear }) {
           onMouseDown={e => e.stopPropagation()}
           onClick={popOut}
           title="Pop out to new window"
-          style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: 4, cursor: 'pointer', fontSize: '0.68rem', color: '#64748b', padding: '2px 6px' }}
+          style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: 4, cursor: 'pointer', fontSize: '0.68rem', color: '#374151', padding: '2px 6px' }}
         >↗ Pop out</button>
         <button
           onMouseDown={e => e.stopPropagation()}
           onClick={onClear}
-          style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: 4, cursor: 'pointer', fontSize: '0.68rem', color: '#64748b', padding: '2px 6px' }}
+          style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: 4, cursor: 'pointer', fontSize: '0.68rem', color: '#374151', padding: '2px 6px' }}
         >✕ Clear</button>
         <button
           onMouseDown={e => e.stopPropagation()}
           onClick={() => setVisible(false)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: '#94a3b8', padding: 0, lineHeight: 1 }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: '#374151', padding: 0, lineHeight: 1 }}
         >✕</button>
       </div>
 
       {/* Log — vertical scroll, newest at bottom */}
       {open && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 12px' }}>
-          {history.map((entry, idx) => (
-            <HistoryEntry key={idx} entry={entry} />
-          ))}
-        </div>
+        <>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '10px 12px' }}>
+            {history.map((entry, idx) => (
+              <HistoryEntry key={idx} entry={entry} />
+            ))}
+          </div>
+          {/* Footer close button */}
+          <div style={{ flexShrink: 0, padding: '6px 10px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', background: '#f8fafc' }}>
+            <button
+              type="button"
+              onMouseDown={e => e.stopPropagation()}
+              onClick={() => setVisible(false)}
+              style={{ padding: '3px 10px', border: '1px solid #cbd5e1', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', color: '#374151', background: '#fff' }}
+            >
+              Close
+            </button>
+          </div>
+        </>
       )}
     </div>,
     document.body

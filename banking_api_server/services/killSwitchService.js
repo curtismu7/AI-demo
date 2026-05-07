@@ -16,51 +16,53 @@ const auditLogService = require('./auditLogService');
 const pingOneUserService = require('./pingOneUserService');
 
 /**
- * Revoke agent's OAuth token at PingOne authorization server
- * @param {string} agentId - Agent client_id
- * @returns {Promise<{revoked: boolean, timestamp: string}>}
+ * Revoke a single token at PingOne using the RFC 7009 revocation endpoint.
+ * Uses application/x-www-form-urlencoded with token= only (PingOne requirement).
+ * @param {string} token - access_token or id_token value
+ * @returns {Promise<{revoked: boolean}>}
  */
-async function revokeTokenAtPingOne(agentId) {
-  try {
-    const startTime = Date.now();
-    
-    // Get agent's refresh token from session/config store
-    const refreshToken = await getAgentRefreshToken(agentId);
-    if (!refreshToken) {
-      console.warn(`[killSwitch] No refresh token found for agent ${agentId}`);
-      return { revoked: false, timestamp: new Date().toISOString(), error: 'no_refresh_token' };
-    }
+async function revokeTokenAtPingOne(token) {
+  if (!token) return { revoked: false, error: 'no_token' };
+  const revokeUrl = `${oauthConfig._base}/revoke`;
+  const body = new URLSearchParams({ token }).toString();
+  const response = await axios.post(revokeUrl, body, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    timeout: 5000,
+  });
+  // PingOne returns 200 on success
+  return { revoked: response.status === 200 };
+}
 
-    // Build PingOne revocation request
-    const revokeUrl = `${oauthConfig._base}/revoke`;
-    const clientId = process.env.ADMIN_CLIENT_ID || configStore.get('admin_client_id');
-    const clientSecret = process.env.ADMIN_CLIENT_SECRET || configStore.get('admin_client_secret');
+/**
+ * Revoke both the access token and ID token from the session.
+ * Runs both revocations in parallel; logs results individually.
+ * @param {{ accessToken?: string, idToken?: string }} oauthTokens
+ * @returns {Promise<{ revoked: boolean, timestamp: string, time_ms: number }>}
+ */
+async function revokeAllTokens(oauthTokens) {
+  const startTime = Date.now();
+  const tokensToRevoke = [
+    { type: 'access_token', value: oauthTokens?.accessToken },
+    { type: 'id_token',     value: oauthTokens?.idToken },
+  ].filter(t => t.value);
 
-    const response = await axios.post(revokeUrl, {
-      token: refreshToken,
-      token_type_hint: 'refresh_token',
-      client_id: clientId,
-      client_secret: clientSecret,
-    }, {
-      timeout: 5000, // 5 second timeout
-    });
-
-    const revokeTime = Date.now() - startTime;
-
-    if (response.status === 200) {
-      console.log(`[killSwitch] Token revoked for agent ${agentId} in ${revokeTime}ms`);
-      return {
-        revoked: true,
-        timestamp: new Date().toISOString(),
-        time_ms: revokeTime,
-      };
-    }
-
-    throw new Error(`PingOne revoke returned ${response.status}`);
-  } catch (error) {
-    console.error('[killSwitch] Token revocation failed:', error.message);
-    throw new Error(`Token revocation failed: ${error.message}`);
+  if (tokensToRevoke.length === 0) {
+    console.warn('[killSwitch] No access_token or id_token found in session to revoke');
+    return { revoked: false, timestamp: new Date().toISOString(), time_ms: 0, error: 'no_tokens' };
   }
+
+  const results = await Promise.allSettled(
+    tokensToRevoke.map(t =>
+      revokeTokenAtPingOne(t.value)
+        .then(r => { console.log(`[killSwitch] ${t.type} revoked: ${r.revoked}`); return r; })
+        .catch(e => { console.error(`[killSwitch] ${t.type} revocation failed: ${e.message}`); return { revoked: false }; })
+    )
+  );
+
+  const anyRevoked = results.some(r => r.status === 'fulfilled' && r.value?.revoked);
+  const timeMs = Date.now() - startTime;
+  console.log(`[killSwitch] Token revocation complete in ${timeMs}ms (${tokensToRevoke.length} tokens)`);
+  return { revoked: anyRevoked, timestamp: new Date().toISOString(), time_ms: timeMs };
 }
 
 /**
@@ -267,24 +269,19 @@ async function getAgentRefreshToken(agentId) {
  * @param {string} reason - Reason for kill switch activation
  * @returns {Promise<{success: boolean, revoked_at: string, state_snapshot_id: string, time_to_revoke_ms: number}>}
  */
-async function killAgent(agentId, reason = 'manual_red_button', userId = null) {
+async function killAgent(agentId, reason = 'manual_red_button', userId = null, oauthTokens = null) {
   const startTime = Date.now();
-  
+
   try {
     console.log(`[killSwitch] Executing kill switch for agent ${agentId}. Reason: ${reason}`);
     killAgent._userId = userId || null;
 
-    // 1. Revoke token at PingOne
-    const revokeResult = await revokeTokenAtPingOne(agentId);
+    // 1. Revoke access_token + id_token at PingOne (form-encoded, RFC 7009)
+    const revokeResult = await revokeAllTokens(oauthTokens);
     const timeToRevoke = Date.now() - startTime;
 
     if (!revokeResult.revoked) {
-      // Retry once if failed
-      console.warn(`[killSwitch] First revocation attempt failed, retrying...`);
-      const retryResult = await revokeTokenAtPingOne(agentId);
-      if (!retryResult.revoked) {
-        throw new Error('Token revocation failed after 2 attempts');
-      }
+      console.warn(`[killSwitch] Token revocation returned revoked=false — proceeding with session invalidation`);
     }
 
     // 2. Disable the user at PingOne (belt-and-suspenders — token is revoked but user could re-login)

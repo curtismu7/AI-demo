@@ -67,7 +67,7 @@ function WhatChangedContent() {
           ].map(([feature, v1, v21], i) => (
             <tr key={feature} style={{ background: i % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
               <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f1f5f9', fontWeight: 500 }}>{feature}</td>
-              <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f1f5f9', color: '#6b7280' }}>{v1}</td>
+              <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f1f5f9', color: '#374151' }}>{v1}</td>
               <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f1f5f9', color: '#b91c1c', fontWeight: 500 }}>{v21}</td>
             </tr>
           ))}

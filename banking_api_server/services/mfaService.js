@@ -806,6 +806,32 @@ async function deleteDevice(userId, deviceId) {
 }
 
 
+/**
+ * Update the nickname for a registered MFA device via Management API.
+ * @param {string} userId
+ * @param {string} deviceId
+ * @param {string} nickname
+ * @returns {Promise<{id: string, nickname: string}>}
+ */
+async function updateDeviceNickname(userId, deviceId, nickname) {
+	try {
+		const workerToken = await _getWorkerToken();
+		const url = `${_apiBaseUrl()}/users/${userId}/devices/${deviceId}`;
+		const { data } = await axios.patch(url, { nickname }, {
+			headers: {
+				Authorization: `Bearer ${workerToken}`,
+				'Content-Type': 'application/json',
+			},
+			timeout: 10000,
+		});
+		console.log('[MFA] updated nickname userId=%s deviceId=%s nickname=%s', userId, deviceId, nickname);
+		return { id: data.id, nickname: data.nickname };
+	} catch (err) {
+		throw _wrapError('updateDeviceNickname', err);
+	}
+}
+
+
 module.exports = {
 	initiateDeviceAuth,
 	selectDevice,
@@ -819,6 +845,7 @@ module.exports = {
 	initFido2Registration,
 	completeFido2Registration,
 	deleteDevice,
+	updateDeviceNickname,
 	getWorkerToken: _getWorkerToken,
 	// Test helper — resets the cached default policy ID (used in unit tests)
 	_resetDefaultPolicyCache() {

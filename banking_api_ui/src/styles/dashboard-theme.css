@@ -8,7 +8,7 @@
   --dash-surface: #ffffff;
   --dash-surface-2: #ececf1;
   --dash-text: #0f172a;
-  --dash-muted: #999999;
+  --dash-muted: #374151;
   --dash-accent: #1D4ED8;
   --dash-accent-red: #dc2626;
   --dash-accent-soft: rgba(37, 99, 235, 0.12);
@@ -26,7 +26,7 @@ html[data-theme='dark'] {
   --dash-surface: #141a24;
   --dash-surface-2: #1a2230;
   --dash-text: #e8edf5;
-  --dash-muted: #94a3b8;
+  --dash-muted: #cbd5e1;
   --dash-accent: var(--brand-navy-light);
   --dash-accent-red: #f87171;
   --dash-accent-soft: rgba(96, 165, 250, 0.12);

@@ -96,7 +96,7 @@ function CompareRow({ feature, rfc8693, idjag }) {
 function OverviewContent() {
   return (
     <div>
-      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         <strong style={{ color: '#1e293b' }}>ID-JAG</strong> is the technical acronym for the{' '}
         <strong>Identity Assertion JWT Authorization Grant</strong>, an emerging IETF standard.
         While the IETF draft carries the technical name, the marketing term most often used is{' '}
@@ -171,7 +171,7 @@ function OverviewContent() {
 function HowItWorksContent() {
   return (
     <div>
-      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         ID-JAG uses the existing OAuth 2.0 token endpoint with a special grant type. The assertion JWT is presented directly — no browser involvement.
       </p>
 
@@ -242,7 +242,7 @@ grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer
         <FlowStep num={6} label="AS-B issues a scoped access token for its own resources">
           App A can now call App B's APIs with a properly scoped access token. The user's identity is propagated — App B knows <em>who</em> the token is for — but the user was never redirected.
         </FlowStep>
-        <div style={{ marginTop: '0.5rem', fontFamily: 'inherit', fontSize: '0.77rem', background: '#0f172a', color: '#94a3b8', borderRadius: 8, padding: '12px 16px', lineHeight: 1.9 }}>
+        <div style={{ marginTop: '0.5rem', fontFamily: 'inherit', fontSize: '0.77rem', background: '#0f172a', color: '#374151', borderRadius: 8, padding: '12px 16px', lineHeight: 1.9 }}>
           <span style={{ color: '#86efac' }}>User Browser</span>
           {'  '}(logged in once to App A)<br />
           {'      ↓'}<br />
@@ -268,7 +268,7 @@ grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer
 function PingOneContent() {
   return (
     <div>
-      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         PingOne's SSO capabilities map partially to the ID-JAG/XAA model. Some building blocks are present; native end-to-end ID-JAG is not yet a shipped product feature.
       </p>
 
@@ -349,7 +349,7 @@ function PingOneContent() {
 function LimitationsContent() {
   return (
     <div>
-      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         ID-JAG is an <strong>active IETF draft</strong> — not yet an RFC. These limitations fall into three buckets: standard gaps, PingOne product gaps, and this demo's gaps.
       </p>
 
@@ -409,7 +409,7 @@ function LimitationsContent() {
 function ComparisonContent() {
   return (
     <div>
-      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+      <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         ID-JAG and RFC 8693 Token Exchange are complementary but distinct. Understanding the difference is critical for recommending the right solution.
       </p>
 

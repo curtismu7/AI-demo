@@ -435,11 +435,11 @@ function ComplianceTab() {
   return (
     <div>
       <h3 style={{ marginTop: 0, color: '#1e293b' }}>Phase 260 Compliance — 12-Step Flow</h3>
-      <p style={{ color: '#64748b', fontSize: '0.85rem', marginTop: 0 }}>
+      <p style={{ color: '#374151', fontSize: '0.85rem', marginTop: 0 }}>
         Real-time status of the agent compliance flow
       </p>
       {complianceSteps.length === 0 ? (
-        <p style={{ color: '#64748b', fontStyle: 'italic', fontSize: '0.85rem' }}>
+        <p style={{ color: '#374151', fontStyle: 'italic', fontSize: '0.85rem' }}>
           Loading compliance steps…
         </p>
       ) : (
@@ -465,7 +465,7 @@ function ComplianceTab() {
                       {statusIcon[step.status] || '○'}
                     </span>
                   </td>
-                  <td style={{ padding: '6px 10px', color: '#94a3b8', fontSize: '0.78rem' }}>{i + 1}</td>
+                  <td style={{ padding: '6px 10px', color: '#374151', fontSize: '0.78rem' }}>{i + 1}</td>
                   <td style={{ padding: '6px 10px', color: isActive ? '#1d4ed8' : (step.status === 'done' ? '#15803d' : '#334155'), fontWeight: isActive ? 600 : 400 }}>
                     {step.label}
                     {isDiag && (

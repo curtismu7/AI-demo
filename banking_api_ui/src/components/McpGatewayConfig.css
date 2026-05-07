@@ -108,7 +108,7 @@
 	font-size: 11px;
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
-	color: #888;
+	color: #374151;
 	margin-bottom: 4px;
 }
 .mgc-on  { color: #28a745; font-weight: 500; }
@@ -202,7 +202,7 @@
 .mgc-alert--info { background: #e7f3ff; color: #0c5460; border: 1px solid #bee5eb; }
 
 /* Loading / error */
-.mgc-loading { padding: 40px; text-align: center; color: #888; }
+.mgc-loading { padding: 40px; text-align: center; color: #374151; }
 .mgc-error   { padding: 20px; color: #dc3545; }
 
 /* Push Config form */
@@ -224,7 +224,7 @@
 .mgc-field-label {
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--text-secondary, #6b7280);
+  color: var(--text-secondary, #374151);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -246,7 +246,7 @@
 }
 .mgc-field-hint {
   font-size: 0.75rem;
-  color: var(--text-secondary, #6b7280);
+  color: var(--text-secondary, #374151);
   line-height: 1.4;
   margin-top: 2px;
 }

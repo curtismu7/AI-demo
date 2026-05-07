@@ -1,8 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { useDraggablePanel } from '../hooks/useDraggablePanel';
-import '../styles/draggablePanel.css';
-import './AgentConsentModal.css';
+import { useState, useCallback } from "react";
+import DraggableModal from "./DraggableModal";
+import "./AgentConsentModal.css";
 
 /**
  * AgentConsentModal
@@ -13,30 +11,20 @@ import './AgentConsentModal.css';
  *   2. Agent access consent (legacy) — no `transaction` prop.
  *      POSTs to /api/auth/oauth/user/consent before calling onAccept().
  *
- * Draggable from the header, resizable from the bottom-right grip.
- *
  * Props:
  *   transaction — optional { type, amount, fromAccountId, toAccountId, description }
  *   onAccept    — callback; called after consent is confirmed.
  *   onDismiss   — callback; user closed the modal without accepting.
  */
-export default function AgentConsentModal({ transaction, onAccept, onDismiss, hitlThreshold = 500 }) {
+export default function AgentConsentModal({
+  transaction,
+  onAccept,
+  onDismiss,
+  hitlThreshold = 500,
+}) {
   const [accepting, setAccepting] = useState(false);
-  const [error, setError]         = useState(null);
-
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onDismiss?.(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onDismiss]);
-
-  const { pos, size, handleDragStart, createResizeHandler } = useDraggablePanel(
-    () => ({
-      x: Math.max(20, (window.innerWidth  - 460) / 2),
-      y: Math.max(20, (window.innerHeight - 580) / 2),
-    }),
-    { w: 460, h: 520 }
-  );
+  const [agreed, setAgreed] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleAccept = useCallback(async () => {
     setAccepting(true);
@@ -47,10 +35,10 @@ export default function AgentConsentModal({ transaction, onAccept, onDismiss, hi
       return;
     }
     try {
-      const res = await fetch('/api/auth/oauth/user/consent', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/auth/oauth/user/consent", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -59,157 +47,149 @@ export default function AgentConsentModal({ transaction, onAccept, onDismiss, hi
       const data = await res.json();
       onAccept?.(data);
     } catch (err) {
-      setError(err.message || 'Failed to record consent. Please try again.');
+      setError(err.message || "Failed to record consent. Please try again.");
       setAccepting(false);
     }
   }, [onAccept, transaction]);
 
-  return createPortal(
+  const txType = transaction?.type || "transaction";
+  const txTypeLabel = txType.charAt(0).toUpperCase() + txType.slice(1);
+  const title = transaction
+    ? `Authorize ${txTypeLabel}`
+    : "Allow AI Agent Access";
+
+  const footer = (
     <>
-      {/* Dim backdrop — does NOT close on click (consent is an intentional gate) */}
-      <div className="drp-backdrop" />
-
-      {/* Draggable + resizable card */}
-      <div
-        className="acm-card"
-        style={{
-          position: 'fixed',
-          left:     pos.x,
-          top:      pos.y,
-          width:    size.w,
-          height:   size.h,
-          zIndex:   100070,
-        }}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="acm-title"
+      <button
+        type="button"
+        className="acm-btn acm-btn--primary"
+        onClick={handleAccept}
+        disabled={accepting || (transaction && !agreed)}
       >
-        {/* Drag handle — header area */}
-        <div
-          className="acm-drag-handle"
-          onPointerDown={handleDragStart}
-          title="Drag to move"
-        >
-          <span className="acm-icon" aria-hidden="true">{transaction ? '💸' : '🤖'}</span>
-          <h2 id="acm-title" className="acm-title">
-            {transaction
-              ? `Authorize ${(transaction.type || 'Transaction').charAt(0).toUpperCase() + (transaction.type || 'transaction').slice(1)}`
-              : 'Allow AI Agent Access'}
-          </h2>
-        </div>
-        {/* HITL badge — always visible while modal is open */}
-        <div className="acm-hitl-badge" aria-live="polite">
-          <span className="acm-hitl-badge__icon" aria-hidden="true">👤</span>
-          <span className="acm-hitl-badge__label">Human-in-the-Loop — <strong>manual approval required</strong></span>
-        </div>
+        {accepting ? "Processing…" : transaction ? "Agree & Continue" : "Allow"}
+      </button>
+      <button
+        type="button"
+        className="acm-btn acm-btn--secondary"
+        onClick={onDismiss}
+        disabled={accepting}
+      >
+        Cancel
+      </button>
+    </>
+  );
 
-        {/* Scrollable body */}
-        <div className="acm-body-wrap">
-          {transaction ? (
-            <>
-              <p className="acm-body">
-                The AI banking assistant is requesting your authorization to complete a
-                {' '}<strong>high-value {transaction.type || 'transaction'}</strong>.
-                <strong> This is a Human-in-the-Loop (HITL) checkpoint — the action cannot proceed without your manual approval.</strong>
-                {' '}Review the details below and click <em>Authorize</em> to proceed.
-              </p>
-              <ul className="acm-list acm-list--transaction">
-                <li>💰 <strong>Amount:</strong> ${Number(transaction.amount || 0).toFixed(2)}</li>
-                {transaction.type === 'transfer' && transaction.fromAccountId && (
-                  <li>📤 <strong>From account:</strong> {transaction.fromAccountId}</li>
-                )}
-                {(transaction.type === 'transfer' || transaction.type === 'deposit') && transaction.toAccountId && (
-                  <li>📥 <strong>To account:</strong> {transaction.toAccountId}</li>
-                )}
-                {(transaction.type === 'withdrawal') && transaction.fromAccountId && (
-                  <li>📤 <strong>From account:</strong> {transaction.fromAccountId}</li>
-                )}
-                {transaction.description && (
-                  <li>📝 <strong>Note:</strong> {transaction.description}</li>
-                )}
-              </ul>
-              {Number(transaction.amount || 0) >= hitlThreshold && (
-                <div className="acm-high-value-warning">
-                  ⚠ This transaction exceeds ${hitlThreshold.toLocaleString()}. Please verify before confirming.
-                </div>
-              )}
-              <ul className="acm-list">
-                <li>✅ A one-time verification code will be sent to your email</li>
-                <li>✅ The code expires in 10 minutes</li>
-                <li>✅ This transaction is logged in the Token Chain display</li>
-                <li>⛔ The agent cannot alter amounts or accounts after you authorize</li>
-              </ul>
-              <p className="acm-legal">
-                By clicking <em>Authorize</em> you confirm you have reviewed the transaction
-                details and consent to proceed. A verification code will be sent to your
-                registered email address.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="acm-body">
-                The <strong>Super Banking AI Assistant</strong> is requesting permission to act
-                on your behalf — for example, checking balances, viewing transactions, and
-                initiating transfers.
-              </p>
-              <ul className="acm-list">
-                <li>✅ The agent can only use your account within this session</li>
-                <li>✅ All actions are logged and visible in the Token Chain display</li>
-                <li>✅ You can revoke access at any time by logging out</li>
-                <li>⛔ The agent cannot change your credentials or contact details</li>
-              </ul>
-              <p className="acm-legal">
-                By clicking <em>Allow</em> you consent to allow the Super Banking AI agent to act
-                on your behalf for the duration of this session, under the{' '}
-                <a
-                  href="https://www.rfc-editor.org/rfc/rfc8693"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  RFC 8693 Token Exchange
-                </a>{' '}
-                delegation model.
-              </p>
-            </>
-          )}
-          {error && <p className="acm-error" role="alert">{error}</p>}
-        </div>
-
-        <div className="acm-actions">
-          <button
-            type="button"
-            className="acm-btn acm-btn--secondary"
-            onClick={onDismiss}
-            disabled={accepting}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="acm-btn acm-btn--primary"
-            onClick={handleAccept}
-            disabled={accepting}
-          >
-            {accepting ? 'Confirming…' : transaction ? 'Confirm' : 'Allow'}
-          </button>
-        </div>
-
-        {/* 8-direction resize handles */}
-        <div className="drp-resize-handles">
-          {/* Corner handles */}
-          <div className="drp-resize-handle drp-resize-handle--nw" onMouseDown={createResizeHandler('nw')} aria-hidden title="Resize from top-left" />
-          <div className="drp-resize-handle drp-resize-handle--ne" onMouseDown={createResizeHandler('ne')} aria-hidden title="Resize from top-right" />
-          <div className="drp-resize-handle drp-resize-handle--sw" onMouseDown={createResizeHandler('sw')} aria-hidden title="Resize from bottom-left" />
-          <div className="drp-resize-handle drp-resize-handle--se" onMouseDown={createResizeHandler('se')} aria-hidden title="Resize from bottom-right" />
-          
-          {/* Edge handles */}
-          <div className="drp-resize-handle drp-resize-handle--n" onMouseDown={createResizeHandler('n')} aria-hidden title="Resize from top" />
-          <div className="drp-resize-handle drp-resize-handle--s" onMouseDown={createResizeHandler('s')} aria-hidden title="Resize from bottom" />
-          <div className="drp-resize-handle drp-resize-handle--e" onMouseDown={createResizeHandler('e')} aria-hidden title="Resize from right" />
-          <div className="drp-resize-handle drp-resize-handle--w" onMouseDown={createResizeHandler('w')} aria-hidden title="Resize from left" />
-        </div>
+  return (
+    <DraggableModal
+      isOpen
+      onClose={onDismiss}
+      title={title}
+      footer={footer}
+      defaultWidth={480}
+      defaultHeight={580}
+      storageKey="agent-consent-modal-v2"
+      zIndex={100070}
+      backdropClose={false}
+    >
+      {/* HITL persistent badge */}
+      <div className="acm-hitl-badge" aria-live="polite">
+        <span className="acm-hitl-badge__label">
+          Human-in-the-Loop — <strong>manual approval required</strong>
+        </span>
       </div>
-    </>,
-    document.body
+
+      <div className="acm-body-wrap">
+        {transaction ? (
+          <>
+            <p className="acm-body">
+              Review the details below before authorizing this action. The agent
+              cannot proceed without your explicit approval.
+            </p>
+
+            <ul className="acm-list acm-list--transaction">
+              <li>
+                <strong>Amount:</strong> $
+                {Number(transaction.amount || 0).toFixed(2)}
+              </li>
+              {transaction.type === "transfer" && transaction.fromAccountId && (
+                <li>
+                  <strong>From:</strong> {transaction.fromAccountId}
+                </li>
+              )}
+              {(transaction.type === "transfer" ||
+                transaction.type === "deposit") &&
+                transaction.toAccountId && (
+                  <li>
+                    <strong>To:</strong> {transaction.toAccountId}
+                  </li>
+                )}
+              {transaction.type === "withdrawal" &&
+                transaction.fromAccountId && (
+                  <li>
+                    <strong>From:</strong> {transaction.fromAccountId}
+                  </li>
+                )}
+              {transaction.description && (
+                <li>
+                  <strong>Note:</strong> {transaction.description}
+                </li>
+              )}
+            </ul>
+
+            {Number(transaction.amount || 0) >= hitlThreshold && (
+              <div className="acm-high-value-warning">
+                This transaction exceeds ${hitlThreshold.toLocaleString()}.
+                Please verify before confirming.
+              </div>
+            )}
+
+            <ul className="acm-list">
+              <li>
+                A one-time verification code will be sent to your registered
+                email
+              </li>
+              <li>This action is recorded in the audit trail</li>
+            </ul>
+
+            <label className="acm-agree-label">
+              <input
+                type="checkbox"
+                className="acm-agree-cb"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+              />
+              <span>
+                I have reviewed the transaction details above and authorize this
+                action
+              </span>
+            </label>
+          </>
+        ) : (
+          <>
+            <p className="acm-body">
+              The <strong>AI Banking Assistant</strong> is requesting permission
+              to act on your behalf — checking balances, viewing transactions,
+              and initiating transfers.
+            </p>
+            <ul className="acm-list">
+              <li>The agent can only act within this session</li>
+              <li>
+                All actions are logged and visible in the Token Chain display
+              </li>
+              <li>You can revoke access at any time by logging out</li>
+              <li>
+                The agent cannot change your credentials or contact details
+              </li>
+            </ul>
+          </>
+        )}
+
+        {error && (
+          <p className="acm-error" role="alert">
+            {error}
+          </p>
+        )}
+      </div>
+    </DraggableModal>
   );
 }

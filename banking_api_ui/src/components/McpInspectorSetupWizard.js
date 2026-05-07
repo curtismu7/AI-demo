@@ -119,7 +119,7 @@ npx ${INSPECTOR_NPM}@latest
 
       {expanded && (
         <div style={{ padding: '0 1rem 1rem 1rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#64748b' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#374151' }}>
             <span>Step {step} of 4</span>
             <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }} onClick={handleReset}>
               Reset answers
@@ -134,7 +134,7 @@ npx ${INSPECTOR_NPM}@latest
                 <option value="vercel">Hosted on Vercel (browser only — MCP agent runs locally)</option>
                 <option value="replit">Hosted on Replit (browser only — MCP agent runs locally)</option>
               </select>
-              <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>
+              <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.5rem' }}>
                 Cloud deployments often use deployment-managed OAuth; LangChain/MCP agent URLs are still local-only.
               </p>
               <div style={{ marginTop: '1rem' }}>
@@ -152,7 +152,7 @@ npx ${INSPECTOR_NPM}@latest
                 onChange={(e) => setBaseUrl(e.target.value)}
                 placeholder="https://api.pingdemo.com:4000"
               />
-              <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>
+              <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.35rem' }}>
                 Same origin as <code>GET /api/auth/oauth/*</code> — used for the built-in inspector link below.
               </p>
               <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
@@ -171,7 +171,7 @@ npx ${INSPECTOR_NPM}@latest
                 onChange={(e) => setMcpWsUrl(e.target.value)}
                 placeholder="ws://localhost:8080"
               />
-              <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>
+              <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.35rem' }}>
                 Default for <code>banking_mcp_server</code>. LangChain uses this MCP server; not the same as the agent chat WebSocket URL.
               </p>
               <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
@@ -267,7 +267,7 @@ npx ${INSPECTOR_NPM}@latest
                 {envSnippet}
               </pre>
 
-              <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.75rem' }}>
+              <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.75rem' }}>
                 <strong>Education:</strong> open the floating <strong>CIBA guide</strong> → <strong>Token exchange</strong> tab for RFC 8693 /token flow, HTTP status, and responses.
               </p>
             </div>

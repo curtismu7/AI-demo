@@ -731,7 +731,7 @@ function FlowClaimRow({ k, v }) {
   const val = URN_SHORT[v] !== undefined ? URN_SHORT[v] : String(v);
   return (
     <div style={{ display: 'flex', gap: 8, marginBottom: 4, alignItems: 'flex-start' }}>
-      <span style={{ fontSize: '0.73rem', color: '#64748b', minWidth: 100, flexShrink: 0, lineHeight: 1.5, fontFamily: 'inherit' }}>{k}</span>
+      <span style={{ fontSize: '0.73rem', color: '#374151', minWidth: 100, flexShrink: 0, lineHeight: 1.5, fontFamily: 'inherit' }}>{k}</span>
       <span style={{
         fontSize: '0.8rem', fontFamily: 'inherit', lineHeight: 1.5, wordBreak: 'break-word',
         color: isAud ? '#1d4ed8' : isAct ? '#15803d' : isDecide ? '#15803d' : '#0f172a',
@@ -773,7 +773,7 @@ function OneFlowCard({ token, isHitl }) {
       </div>
       {claimEntries.map(([k, v]) => <FlowClaimRow key={k} k={k} v={v} />)}
       {note && (
-        <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid #f1f5f9', fontSize: '0.73rem', color: '#64748b', fontStyle: 'italic', lineHeight: 1.4, fontFamily: 'system-ui,sans-serif' }}>
+        <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid #f1f5f9', fontSize: '0.73rem', color: '#374151', fontStyle: 'italic', lineHeight: 1.4, fontFamily: 'system-ui,sans-serif' }}>
           ℹ {note}
         </div>
       )}
@@ -1083,8 +1083,9 @@ export default function ArchitectureFlowPage({ user }) {
 
   useEffect(() => {
     fetchEvents();
+    const poll = pollRef.current;
     return () => {
-      clearInterval(pollRef.current);
+      clearInterval(poll);
       Object.values(clearTimers.current).forEach(clearTimeout);
       simTimeouts.current.forEach(clearTimeout);
       clearTimers.current = {};
@@ -1184,9 +1185,14 @@ export default function ArchitectureFlowPage({ user }) {
           </>
         )}
         {isSimulating && (
-          <button onClick={stopSim} style={{ padding: '0.4rem 0.8rem', border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', fontSize: '0.82rem', cursor: 'pointer', color: '#94a3b8' }}>
-            ✕ Stop
-          </button>
+          <>
+            <button type="button" onClick={stopSim} style={{ padding: '0.4rem 0.8rem', border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', fontSize: '0.82rem', cursor: 'pointer', color: '#94a3b8' }}>
+              ✕ Stop
+            </button>
+            <button type="button" onClick={stopSim} style={{ padding: '0.4rem 0.8rem', border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', fontSize: '0.82rem', cursor: 'pointer', fontWeight: 600, color: '#475569' }} title="Reset and start over">
+              ↻ Restart
+            </button>
+          </>
         )}
         {activeStep && (
           <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569', background: isPaused ? '#fef9c3' : '#f1f5f9', borderRadius: 6, padding: '4px 10px', border: isPaused ? '1px solid #ca8a04' : 'none' }}>
@@ -1244,7 +1250,7 @@ export default function ArchitectureFlowPage({ user }) {
               {agentSnap.serverEvents[agentSnap.serverEvents.length - 1].label}
             </span>
           )}
-          <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'inherit' }}>
+          <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#374151', fontFamily: 'inherit' }}>
             {agentSnap.phase}
           </span>
         </div>
@@ -1278,7 +1284,7 @@ export default function ArchitectureFlowPage({ user }) {
             ) : !isSimulating ? (
               <div style={{
                 background: 'rgba(255,255,255,0.9)', border: '1px dashed #cbd5e1',
-                borderRadius: 8, padding: '10px 14px', fontSize: '0.75rem', color: '#94a3b8',
+                borderRadius: 8, padding: '10px 14px', fontSize: '0.75rem', color: '#374151',
                 maxWidth: 200, textAlign: 'center', lineHeight: 1.5,
               }}>
                 🎫 Token details appear here<br/>during simulation
@@ -1288,7 +1294,7 @@ export default function ArchitectureFlowPage({ user }) {
         </ReactFlow>
       </div>
 
-      <p style={{ marginTop: '0.4rem', fontSize: '0.7rem', color: '#94a3b8' }}>
+      <p style={{ marginTop: '0.4rem', fontSize: '0.7rem', color: '#374151' }}>
         Hit <strong>▶ Simulate Flow</strong> then <strong>⏸ Pause</strong> at any step to read the token card.
         Node badges show <span style={{ color: '#1d4ed8', fontWeight: 600 }}>aud</span>,{' '}
         <span style={{ color: '#15803d', fontWeight: 600 }}>act</span>,{' '}
@@ -1312,7 +1318,7 @@ function FlowHistory({ history, onClear }) {
         <span style={{ flex: 1, fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
           📋 Token History — {history.length} token{history.length !== 1 ? 's' : ''} captured
         </span>
-        <button onClick={onClear} style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: 4, cursor: 'pointer', fontSize: '0.72rem', color: '#64748b', padding: '2px 8px' }}>✕ Clear</button>
+        <button onClick={onClear} style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: 4, cursor: 'pointer', fontSize: '0.72rem', color: '#374151', padding: '2px 8px' }}>✕ Clear</button>
       </div>
       {open && (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: 12, scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>

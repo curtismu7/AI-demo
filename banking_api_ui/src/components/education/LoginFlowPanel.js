@@ -88,7 +88,7 @@ export default function LoginFlowPanel({ isOpen, onClose, initialTabId }) {
             <li><strong>may_act</strong> — an optional note saying which AI apps are pre-approved to act on your behalf.</li>
             <li><strong>exp</strong> — the expiry time. After this, the token stops working automatically.</li>
           </ul>
-          <p style={{ fontSize: '0.82rem', color: '#6b7280' }}>
+          <p style={{ fontSize: '0.82rem', color: '#374151' }}>
             Your browser <strong>never sees this token</strong>. It lives on the server; your browser only has a
             session cookie.
           </p>

@@ -36,7 +36,7 @@ const JSON_COLORS = {
 
 function JsonHighlight({ value }) {
   const text = formatJson(value);
-  if (!text) return <span style={{ color: '#64748b', fontStyle: 'italic' }}>—</span>;
+  if (!text) return <span style={{ color: '#374151', fontStyle: 'italic' }}>—</span>;
   return <>{tokenizeJson(text).map((t, i) => <span key={i} style={{ color: JSON_COLORS[t.type] }}>{t.text}</span>)}</>;
 }
 
@@ -56,7 +56,7 @@ function CallRow({ call, isSelected, onClick }) {
         <span className={methodCls(call.method)}>{call.method}</span>
         {status != null && <span className={statusCls(status)}>{status}</span>}
         {call.durationMs != null && <span className="aep-dur">{call.durationMs}ms</span>}
-        <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: '#94a3b8' }}>{isSelected ? '◀' : '▶'}</span>
+        <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: '#374151' }}>{isSelected ? '◀' : '▶'}</span>
       </div>
       <div className="aep-url" title={call.url}>{call.url}</div>
     </div>
@@ -85,7 +85,7 @@ function DetailPanel({ call, onClose }) {
       <div className="aep-detail-header">
         <span className={methodCls(call.method)}>{call.method}</span>
         {status != null && <span className={statusCls(status)}>{status}</span>}
-        {call.durationMs != null && <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{call.durationMs}ms</span>}
+        {call.durationMs != null && <span style={{ fontSize: '0.72rem', color: '#374151' }}>{call.durationMs}ms</span>}
         <button type="button" className="aep-close-btn" onClick={onClose} title="Close">✕</button>
       </div>
       <div className="aep-url-full" title={call.url}>{call.url}</div>

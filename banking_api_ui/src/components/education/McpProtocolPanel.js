@@ -72,10 +72,10 @@ export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
               ))}
             </tbody>
           </table>
-          <p style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 8 }}>
+          <p style={{ fontSize: '0.82rem', color: '#374151', marginTop: 8 }}>
             Every tool call is checked against your permissions. The AI can only use tools that your access allows.
           </p>
-          <p style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 4 }}>
+          <p style={{ fontSize: '0.82rem', color: '#374151', marginTop: 4 }}>
             <strong>Read-only tools</strong> (✓) are safe for external agents to call without write permissions.
             Non-read-only tools require explicit write scopes or handle sensitive PII.
           </p>
@@ -133,7 +133,7 @@ export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
             The <code>publicAccess.readOnlyTools</code> list is what model-context–aware AI clients use to offer
             a preview of capabilities before asking the user to authenticate.
           </p>
-          <p style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 4 }}>
+          <p style={{ fontSize: '0.82rem', color: '#374151', marginTop: 4 }}>
             Reference:{' '}
             <a href="https://modelcontextprotocol.io/specification" target="_blank" rel="noopener noreferrer">
               Model Context Protocol specification
@@ -164,7 +164,7 @@ export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
             and can request approval from you out-of-band — for example, via an email or push notification — before
             performing high-value actions.
           </p>
-          <p style={{ fontSize: '0.82rem', color: '#6b7280' }}>
+          <p style={{ fontSize: '0.82rem', color: '#374151' }}>
             Both paths ultimately hit the same Banking Service and are subject to the same security checks.
             The difference is how they prove identity and get authorized.
           </p>
@@ -224,7 +224,7 @@ Tool executes; result returned to agent`
             best practices and the FAPI 2.0 security profile for high-value transactions.
           </p>
 
-          <p style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: '1rem' }}>
+          <p style={{ fontSize: '0.82rem', color: '#374151', marginTop: '1rem' }}>
             Note: &ldquo;All token exchange happens inside the BFF (server-side). The browser only holds a session cookie.&rdquo;
           </p>
         </>

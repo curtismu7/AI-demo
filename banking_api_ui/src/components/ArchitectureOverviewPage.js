@@ -700,8 +700,9 @@ export default function ArchitectureOverviewPage({ user }) {
 
   useEffect(() => {
     fetchEvents();
+    const poll = pollRef.current;
     return () => {
-      clearInterval(pollRef.current);
+      clearInterval(poll);
       Object.values(clearTimers.current).forEach(clearTimeout);
       simTimeouts.current.forEach(clearTimeout);
       clearTimers.current = {};

@@ -32,7 +32,7 @@ function ImplRow({ status, label, detail }) {
   return (
     <li style={{ marginBottom: 8, color: colour }}>
       {icon} <strong>{label}</strong>
-      {detail && <span style={{ color: '#6b7280', fontWeight: 400 }}> — {detail}</span>}
+      {detail && <span style={{ color: '#374151', fontWeight: 400 }}> — {detail}</span>}
     </li>
   );
 }
@@ -126,7 +126,7 @@ function OverviewGrid() {
           <p style={{ margin: '0 0 8px', fontSize: '0.75rem', fontWeight: 600, color: '#374151' }}>{p.tagline}</p>
           <ul style={{ margin: 0, paddingLeft: 14 }}>
             {p.bullets.map(b => (
-              <li key={b} style={{ fontSize: '0.72rem', color: '#6b7280', lineHeight: 1.45, marginBottom: 2 }}>{b}</li>
+              <li key={b} style={{ fontSize: '0.72rem', color: '#374151', lineHeight: 1.45, marginBottom: 2 }}>{b}</li>
             ))}
           </ul>
         </div>
@@ -159,7 +159,7 @@ export default function BestPracticesPanel({ isOpen, onClose, initialTabId }) {
             tokens, and UX in Super Banking.
           </p>
           <OverviewGrid />
-          <p style={{ fontSize: '0.82rem', color: '#6b7280', borderTop: '1px solid #e5e7eb', paddingTop: 10 }}>
+          <p style={{ fontSize: '0.82rem', color: '#374151', borderTop: '1px solid #e5e7eb', paddingTop: 10 }}>
             Source: <em>Securing Digital Assistants with PingOne and PingGateway</em> — PingOne 2025.
             Each practice links to a deeper guide in the Learn menu.
           </p>
@@ -478,7 +478,7 @@ POST /token { grant_type: urn:openid:params:grant-type:ciba, auth_req_id }
       content: (
         <>
           <h3 style={{ marginTop: 0 }}>Cross-cutting implementation hooks</h3>
-          <p style={{ fontSize: '0.84rem', color: '#64748b' }}>
+          <p style={{ fontSize: '0.84rem', color: '#374151' }}>
             These are the same patterns the individual Learn drawers explain — collected here for a quick scan.
           </p>
           <EduImplIntro repoPath="agentMcpTokenService.js">Delegated MCP token</EduImplIntro>

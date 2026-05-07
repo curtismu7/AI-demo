@@ -142,6 +142,7 @@ export default function McpGatewayConfig() {
 		const c = data.config;
 		return {
 			name: 'mcp',
+			// eslint-disable-next-line no-template-curly-in-string
 			condition: "${find(request.uri.path, '^/mcp')}",
 			properties: {
 				pingOneEnvID: c.pingOneEnvUrl || '',

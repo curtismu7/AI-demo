@@ -31,14 +31,14 @@
 }
 
 .transaction-consent-popup__lead {
-  margin: 0 0 0.75rem;
-  font-size: 0.92rem;
-  line-height: 1.5;
-  color: #666666;
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #64748b;
 }
 
 .transaction-consent-popup__learn {
-  margin: 0 0 1rem;
+  margin: 0 0 0.6rem;
 }
 
 .transaction-consent-learn-btn--dark {
@@ -56,7 +56,7 @@
   margin: 0;
   box-shadow: none;
   border: 1px solid #dddddd;
-  padding: 1.25rem 1.35rem;
+  padding: 0.85rem 1rem;
 }
 
 .hitl-consent-banner {
@@ -177,29 +177,30 @@
 }
 
 .transaction-consent-card__h2 {
-  margin: 0 0 1rem;
-  font-size: 1.125rem;
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #0f172a;
 }
 
 .transaction-consent-card__summary {
-  margin: 0 0 1.25rem;
+  margin: 0 0 0.75rem;
   padding-left: 1.25rem;
   color: var(--brand-dark-gray);
   line-height: 1.55;
+  font-size: 1rem;
 }
 
 .transaction-consent-card__summary li {
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.25rem;
 }
 
 .transaction-consent-card__legal {
-  font-size: 0.875rem;
-  color: #999999;
-  line-height: 1.55;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.45;
   margin-bottom: 1.25rem;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   background: var(--brand-light-gray);
   border-radius: 8px;
   border: 1px solid #dddddd;
@@ -211,18 +212,26 @@
 
 .transaction-consent-card__check {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  align-items: flex-start;
+  gap: 1.25rem;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--brand-dark-gray);
   line-height: 1.45;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
 }
 
 .transaction-consent-card__check input {
   flex-shrink: 0;
-  margin-top: -0.15rem;
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #dc2626;
 }
 
 .transaction-consent-card__error {
@@ -240,6 +249,7 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   justify-content: flex-end;
+  margin-bottom: 1.5rem;
 }
 
 .transaction-consent-btn {
@@ -257,22 +267,39 @@
 }
 
 .transaction-consent-btn--ghost {
-  background: #fff;
-  border-color: #cccccc;
-  color: var(--brand-dark-gray);
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  border-color: transparent;
+  color: #fff;
+}
+
+.transaction-consent-rfc-note {
+  margin-top: 1.75rem;
+  padding: 0.4rem 0.65rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: #1e40af;
+  line-height: 1.45;
+}
+
+.transaction-consent-rfc-note a {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-underline-offset: 2px;
 }
 
 .transaction-consent-btn--ghost:hover:not(:disabled) {
-  background: var(--brand-light-gray);
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
 }
 
 .transaction-consent-btn--primary {
-  background: var(--brand-navy);
+  background: linear-gradient(135deg, #dc2626, #991b1b);
   color: #fff;
 }
 
 .transaction-consent-btn--primary:hover:not(:disabled) {
-  background: var(--brand-navy);
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
 }
 
 .transaction-consent-btn--danger {
@@ -338,11 +365,13 @@
 
 /* ── OTP verification panel ──────────────────────────────────────────────── */
 .tx-otp-panel {
-  padding: 0.25rem 0 0.5rem;
+  padding: 1.25rem 1.75rem 1.5rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .tx-otp-panel__lead {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: #374151;
   margin: 0 0 1rem;
   line-height: 1.55;
@@ -360,14 +389,15 @@
 .tx-otp-panel__summary {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  gap: 0.25rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
   border-radius: 8px;
-  padding: 0.65rem 0.85rem;
-  margin-bottom: 1.1rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
   font-size: 0.82rem;
-  color: #0369a1;
+  color: #1e40af;
+  line-height: 1.5;
 }
 
 .tx-otp-panel__summary-line {
@@ -376,31 +406,31 @@
 
 .tx-otp-panel__input-row {
   display: flex;
+  flex-direction: column;
   gap: 0.65rem;
-  align-items: center;
   margin-bottom: 0.5rem;
 }
 
 .tx-otp-panel__input {
-  flex: 1;
-  max-width: 180px;
+  width: 100%;
   text-align: center;
-  font-size: 1.6rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.35em;
   font-variant-numeric: tabular-nums;
-  border: 2px solid #0ea5e9;
+  border: 2px solid #d1d5db;
   border-radius: 10px;
-  padding: 0.55rem 0.5rem;
+  padding: 0.65rem 0.5rem;
   outline: none;
-  background: #f0f9ff;
-  color: #0369a1;
+  background: #fff;
+  color: #111827;
   transition: border-color 0.15s;
+  box-sizing: border-box;
 }
 
 .tx-otp-panel__input:focus {
-  border-color: #0284c7;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.18);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 .tx-otp-panel__input--error {
@@ -415,36 +445,40 @@
 }
 
 .tx-otp-panel__verify-btn {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   white-space: nowrap;
-  flex-shrink: 0;
 }
 
 .tx-otp-panel__error {
   font-size: 0.82rem;
   color: #dc2626;
-  margin: 0.2rem 0 0.6rem;
+  margin: 0.2rem 0 0.65rem;
   font-weight: 500;
 }
 
 .tx-otp-panel__expiry {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: #6b7280;
-  margin: 0.25rem 0 0.85rem;
+  text-align: center;
+  margin: 0.25rem 0 1rem;
 }
 
 .tx-otp-panel__back-btn {
   background: none;
   border: none;
-  color: #999999;
+  color: #6b7280;
   font-size: 0.82rem;
   cursor: pointer;
   padding: 0;
-  text-decoration: underline;
-  margin-top: 0.25rem;
+  text-decoration: none;
+  font-weight: 500;
 }
 
 .tx-otp-panel__back-btn:hover:not(:disabled) {
-  color: #0369a1;
+  color: #374151;
 }
 
 .tx-otp-panel__back-btn:disabled {

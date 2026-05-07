@@ -1,8 +1,5 @@
-import React, { useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { useDraggablePanel } from '../hooks/useDraggablePanel';
+import DraggableModal from './DraggableModal';
 import FidoStepUpModal from './FidoStepUpModal';
-import '../styles/draggablePanel.css';
 import './GatewayConsentModal.css';
 
 /**
@@ -26,92 +23,63 @@ export default function GatewayConsentModal({
   onApprove,
   onDismiss,
 }) {
-  useEffect(() => {
-    if (!show) return;
-    const onKey = (e) => { if (e.key === 'Escape') onDismiss?.(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [show, onDismiss]);
-
-  const { pos, handleDragStart } = useDraggablePanel(
-    () => ({
-      x: Math.max(20, (window.innerWidth  - 420) / 2),
-      y: Math.max(20, (window.innerHeight - 320) / 2),
-    }),
-    { w: 420, h: 'auto' }
-  );
-
-  if (!show) return null;
-
   const isStepUp = challengeType === 'step_up';
 
-  const card = (
+  // step_up delegates entirely to FidoStepUpModal
+  if (isStepUp) {
+    return (
+      <FidoStepUpModal
+        show={!!show}
+        contextLine="The agent requires identity verification to continue."
+        onSubmit={() => onApprove?.()}
+        onCancel={() => onDismiss?.()}
+      />
+    );
+  }
+
+  const footer = (
     <>
-      <div className="drp-backdrop" />
-      <div
-        className="gcm-card"
-        role="dialog"
-        aria-label={isStepUp ? 'Identity Verification Required' : 'Action Requires Your Approval'}
-        style={{ position: 'fixed', left: pos.x, top: pos.y, zIndex: 9995 }}
+      <button
+        type="button"
+        className="gcm-btn-approve"
+        onClick={() => onApprove?.()}
       >
-        {/* Drag handle / title */}
-        <div
-          className="gcm-drag-handle"
-          onMouseDown={handleDragStart}
-        >
-          <span className="gcm-title">
-            {isStepUp ? '🔐 Identity Verification Required' : '🛡️ Action Requires Your Approval'}
-          </span>
-          <span className="gcm-hitl-badge">🔒 HITL Challenge — awaiting approval</span>
-        </div>
-
-        {/* Body */}
-        <div className="gcm-body">
-          <p>
-            {isStepUp
-              ? 'The agent is requesting elevated access. Verify your identity to continue.'
-              : 'The agent is requesting permission to proceed. Review the details before approving.'}
-          </p>
-          {challengeId && (
-            <p className="gcm-challenge-id">Challenge ID: {challengeId}</p>
-          )}
-          {expiresAt && (
-            <p className="gcm-expires">Expires: {new Date(expiresAt).toLocaleTimeString()}</p>
-          )}
-        </div>
-
-        {/* Footer — consent only; step_up delegates to FidoStepUpModal */}
-        {!isStepUp && (
-          <div className="gcm-footer">
-            <button
-              type="button"
-              className="gcm-btn-approve"
-              onClick={() => onApprove?.()}
-            >
-              Approve
-            </button>
-            <button
-              type="button"
-              className="gcm-btn-cancel"
-              onClick={() => onDismiss?.()}
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Step-up delegates MFA to FidoStepUpModal */}
-      {isStepUp && (
-        <FidoStepUpModal
-          show={true}
-          contextLine="The agent requires identity verification to continue."
-          onSubmit={() => onApprove?.()}
-          onCancel={() => onDismiss?.()}
-        />
-      )}
+        Approve
+      </button>
+      <button
+        type="button"
+        className="gcm-btn-cancel"
+        onClick={() => onDismiss?.()}
+      >
+        Cancel
+      </button>
     </>
   );
 
-  return createPortal(card, document.body);
+  return (
+    <DraggableModal
+      isOpen={!!show}
+      onClose={onDismiss}
+      title="Action Requires Your Approval"
+      footer={footer}
+      defaultWidth={420}
+      defaultHeight={320}
+      storageKey="gateway-consent-modal"
+      zIndex={9995}
+      backdropClose={false}
+    >
+      <div className="dm-scroll">
+        <span className="gcm-hitl-badge">HITL Challenge — awaiting approval</span>
+        <p style={{ marginTop: 12, fontSize: '0.88rem', color: '#1e293b', lineHeight: 1.5 }}>
+          The agent is requesting permission to proceed. Review the details before approving.
+        </p>
+        {challengeId && (
+          <p className="gcm-challenge-id">Challenge ID: {challengeId}</p>
+        )}
+        {expiresAt && (
+          <p className="gcm-expires">Expires: {new Date(expiresAt).toLocaleTimeString()}</p>
+        )}
+      </div>
+    </DraggableModal>
+  );
 }

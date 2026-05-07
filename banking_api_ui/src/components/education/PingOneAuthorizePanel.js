@@ -138,25 +138,25 @@ function RecentDecisionsViewer() {
         )}
         {evalStatus && (
           <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px' }}>
-            <dt style={{ color: '#64748b' }}>activeEngine</dt>
+            <dt style={{ color: '#374151' }}>activeEngine</dt>
             <dd style={{ margin: 0, fontFamily: 'inherit' }}>{evalStatus.activeEngine}</dd>
-            <dt style={{ color: '#64748b' }}>authorize enabled</dt>
+            <dt style={{ color: '#374151' }}>authorize enabled</dt>
             <dd style={{ margin: 0 }}>{String(evalStatus.authorizeEnabledConfig)}</dd>
-            <dt style={{ color: '#64748b' }}>simulated mode</dt>
+            <dt style={{ color: '#374151' }}>simulated mode</dt>
             <dd style={{ margin: 0 }}>{String(evalStatus.simulatedMode)}</dd>
-            <dt style={{ color: '#64748b' }}>PingOne configured</dt>
+            <dt style={{ color: '#374151' }}>PingOne configured</dt>
             <dd style={{ margin: 0 }}>{String(evalStatus.pingoneConfigured)}</dd>
             {evalStatus.mcpFirstToolGateEnabled !== undefined && (
               <>
-                <dt style={{ color: '#64748b' }}>MCP first-tool gate</dt>
+                <dt style={{ color: '#374151' }}>MCP first-tool gate</dt>
                 <dd style={{ margin: 0 }}>{String(evalStatus.mcpFirstToolGateEnabled)}</dd>
-                <dt style={{ color: '#64748b' }}>MCP decision endpoint set</dt>
+                <dt style={{ color: '#374151' }}>MCP decision endpoint set</dt>
                 <dd style={{ margin: 0 }}>{String(evalStatus.mcpFirstToolDecisionEndpointConfigured)}</dd>
-                <dt style={{ color: '#64748b' }}>MCP gate live ready</dt>
+                <dt style={{ color: '#374151' }}>MCP gate live ready</dt>
                 <dd style={{ margin: 0 }}>{String(evalStatus.mcpFirstToolPingOneReady)}</dd>
-                <dt style={{ color: '#64748b' }}>MCP gate would run (simulated)</dt>
+                <dt style={{ color: '#374151' }}>MCP gate would run (simulated)</dt>
                 <dd style={{ margin: 0 }}>{String(evalStatus.mcpFirstToolWouldRunSimulated)}</dd>
-                <dt style={{ color: '#64748b' }}>MCP gate would run (live)</dt>
+                <dt style={{ color: '#374151' }}>MCP gate would run (live)</dt>
                 <dd style={{ margin: 0 }}>{String(evalStatus.mcpFirstToolWouldRunLive)}</dd>
               </>
             )}
@@ -221,7 +221,7 @@ function RecentDecisionsViewer() {
       )}
 
       {decisions && decisions.length === 0 && (
-        <p style={{ color: '#6b7280', marginTop: 12, fontSize: '0.85rem' }}>
+        <p style={{ color: '#374151', marginTop: 12, fontSize: '0.85rem' }}>
           No recent decisions found. Make a transfer or withdrawal with PingOne Authorize enabled,
           then come back here.
         </p>
@@ -254,8 +254,8 @@ function RecentDecisionsViewer() {
                   {row.type}
                   {row.amount != null && ` — $${row.amount}`}
                 </span>
-                <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{fmtTime(row.time)}</span>
-                <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>{expanded === i ? '▲' : '▼'}</span>
+                <span style={{ fontSize: '0.75rem', color: '#374151' }}>{fmtTime(row.time)}</span>
+                <span style={{ color: '#374151', fontSize: '0.8rem' }}>{expanded === i ? '▲' : '▼'}</span>
               </div>
               {expanded === i && (
                 <pre style={{
@@ -356,7 +356,7 @@ function AuthorizePolicyEducationDiagram() {
           (e.g. step-up MFA, audit record)
         </text>
       </svg>
-      <figcaption style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 10, lineHeight: 1.5 }}>
+      <figcaption style={{ fontSize: '0.78rem', color: '#374151', marginTop: 10, lineHeight: 1.5 }}>
         Super Banking maps these ideas to <strong>Trust Framework parameters</strong> for PingOne Authorize (transactions and optional MCP first-tool
         gate) and to <strong>token validation</strong> on the Banking API and MCP server. The diagram is a mental model — configure attribute names
         in PingOne to match what the BFF sends.
@@ -480,7 +480,7 @@ export default function PingOneAuthorizePanel({ isOpen, onClose, initialTabId })
               </tr>
             </tbody>
           </table>
-          <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 8 }}>
+          <p style={{ fontSize: '0.8rem', color: '#374151', marginTop: 8 }}>
             The BFF picks Phase 2 if <code>authorize_decision_endpoint_id</code> is set; falls back
             to Phase 1 otherwise. Both paths return <code>{'{ decision, stepUpRequired, raw }'}</code>
             so no other code changes.
@@ -564,7 +564,7 @@ export default function PingOneAuthorizePanel({ isOpen, onClose, initialTabId })
               security — keep <code>ff_authorize_fail_open</code> aligned with your risk appetite in production. Worker credentials for Authorize
               belong on the <strong>BFF</strong>, not in the browser.
             </p>
-            <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#374151' }}>
               Reference: PingOne Authorize overview —{' '}
               <a href="https://docs.pingidentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html" target="_blank" rel="noopener noreferrer">
                 docs
@@ -621,7 +621,7 @@ export default function PingOneAuthorizePanel({ isOpen, onClose, initialTabId })
               ))}
             </tbody>
           </table>
-          <p style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 8 }}>
+          <p style={{ fontSize: '0.78rem', color: '#374151', marginTop: 8 }}>
             Worker app credentials for calling the decision API are the same pattern as transaction Authorize (see <strong>PingOne setup</strong> tab).
           </p>
 
@@ -686,7 +686,7 @@ export default function PingOneAuthorizePanel({ isOpen, onClose, initialTabId })
             <code>MCP_EXPECTED_ACT_CLIENT_ID</code> (match the exchanger’s client id), or <strong>both</strong> when your tokens include both claims.
           </div>
 
-          <p style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 12, marginBottom: 0 }}>
+          <p style={{ fontSize: '0.78rem', color: '#374151', marginTop: 12, marginBottom: 0 }}>
             Long-form reference: <code>docs/PINGONE_AUTHORIZE_PLAN.md</code> (Policy checklist + operational summary).
           </p>
         </>
@@ -750,7 +750,7 @@ export default function PingOneAuthorizePanel({ isOpen, onClose, initialTabId })
             </tbody>
           </table>
 
-          <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 10 }}>
+          <p style={{ fontSize: '0.8rem', color: '#374151', marginTop: 10 }}>
             Or set <code>PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID</code>,{' '}
             <code>PINGONE_AUTHORIZE_WORKER_CLIENT_ID</code>, and{' '}
             <code>PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET</code> as environment variables.

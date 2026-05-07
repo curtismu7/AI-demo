@@ -14,7 +14,7 @@ const NODE_STYLE = {
 
 const CLAIM_STYLE = {
   fontSize: '0.68rem',
-  color: '#94a3b8',
+  color: '#374151',
   marginTop: 4,
   fontFamily: 'inherit',
 };
@@ -25,7 +25,7 @@ const ARROW_STYLE = {
   alignItems: 'center',
   gap: 2,
   padding: '0 8px',
-  color: '#64748b',
+  color: '#374151',
   fontSize: '0.68rem',
   fontFamily: 'inherit',
   flexShrink: 0,
@@ -81,7 +81,7 @@ export default function TokenAudienceChain({ compact = false }) {
 
       </div>
 
-      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 6, fontFamily: 'inherit' }}>
+      <div style={{ fontSize: '0.72rem', color: '#374151', marginTop: 6, fontFamily: 'inherit' }}>
         sub preserved throughout &nbsp;·&nbsp; act added at Exchange #1, preserved at #2 &nbsp;·&nbsp; aud narrows each hop
       </div>
     </div>

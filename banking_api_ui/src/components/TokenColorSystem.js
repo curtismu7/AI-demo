@@ -77,7 +77,7 @@ export function TokenColorLegend() {
       alignItems: 'center',
       padding: '0.4rem 0.75rem',
       fontSize: '0.76rem',
-      color: '#94a3b8',
+      color: '#374151',
       borderBottom: '1px solid #1e293b',
     }}>
       <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>Token Types:</span>

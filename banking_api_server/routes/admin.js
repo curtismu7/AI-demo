@@ -827,9 +827,10 @@ router.post(
         });
       }
 
-      // Execute kill switch — pass userId so killAgent can disable the user at PingOne
+      // Execute kill switch — pass userId and session tokens for revocation at PingOne
       const userId = req.session?.user?.oauthId || req.session?.user?.id || null;
-      const result = await killSwitchService.killAgent(agentId, reason, userId);
+      const oauthTokens = req.session?.oauthTokens || null;
+      const result = await killSwitchService.killAgent(agentId, reason, userId, oauthTokens);
 
       // Destroy admin session — token is revoked, session is now invalid
       req.session.destroy(() => {});

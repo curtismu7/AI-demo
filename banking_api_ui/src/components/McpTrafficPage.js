@@ -119,7 +119,7 @@ function MetaTable({ data }) {
       <tbody>
         {Object.entries(data).map(([k, v]) => (
           <tr key={k} style={{ borderBottom: '1px solid #f1f5f9' }}>
-            <td style={{ padding: '4px 6px', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', verticalAlign: 'top', width: '38%' }}>{k}</td>
+            <td style={{ padding: '4px 6px', color: '#374151', fontWeight: 600, whiteSpace: 'nowrap', verticalAlign: 'top', width: '38%' }}>{k}</td>
             <td style={{ padding: '4px 6px', fontFamily: 'inherit', color: '#1e293b', wordBreak: 'break-all' }}>
               {typeof v === 'boolean'
                 ? <span style={{ color: v ? '#15803d' : '#991b1b', fontWeight: 600 }}>{String(v)}</span>
@@ -139,7 +139,7 @@ function Section({ title, data, raw }) {
       <button type="button" onClick={() => setOpen(o => !o)} style={{
         display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '8px 14px',
         background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.73rem', fontWeight: 700,
-        textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', textAlign: 'left',
+        textTransform: 'uppercase', letterSpacing: '0.05em', color: '#374151', textAlign: 'left',
       }}>
         <span>{open ? '▾' : '▸'}</span>{title}
       </button>
@@ -182,11 +182,11 @@ function DetailPanel({ entry, onClose }) {
         <DirBadge dir={entry.dir} />
         <TypeBadge type={entry.type} ok={entry.ok} />
         {entry.durationMs != null && (
-          <span style={{ fontSize: '0.74rem', color: '#64748b', fontFamily: 'inherit' }}>{entry.durationMs}ms</span>
+          <span style={{ fontSize: '0.74rem', color: '#374151', fontFamily: 'inherit' }}>{entry.durationMs}ms</span>
         )}
         <button type="button" onClick={onClose} style={{
           marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
-          fontSize: '1.2rem', color: '#94a3b8', lineHeight: 1,
+          fontSize: '1.2rem', color: '#374151', lineHeight: 1,
         }} title="Close">×</button>
       </div>
       <div style={{
@@ -219,7 +219,7 @@ function ToolCard({ tool }) {
         display: 'flex', alignItems: 'flex-start', gap: '10px', width: '100%',
         padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
       }}>
-        <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '3px' }}>{open ? '▾' : '▸'}</span>
+        <span style={{ fontSize: '0.72rem', color: '#374151', marginTop: '3px' }}>{open ? '▾' : '▸'}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'inherit', fontWeight: 700, fontSize: '0.88rem', color: '#1d4ed8' }}>{tool.name}</div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary,#475569)', marginTop: '2px', lineHeight: 1.4 }}>{tool.description || '—'}</div>
@@ -231,7 +231,7 @@ function ToolCard({ tool }) {
       </button>
       {open && Object.keys(params).length > 0 && (
         <div style={{ padding: '0 14px 12px', borderTop: '1px solid var(--border-light,#e2e8f0)' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '6px', marginTop: '8px' }}>Parameters</div>
+          <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#374151', marginBottom: '6px', marginTop: '8px' }}>Parameters</div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
             <tbody>
               {Object.entries(params).map(([name, schema]) => (
@@ -240,7 +240,7 @@ function ToolCard({ tool }) {
                     {name}{required.includes(name) && <span style={{ color: '#ef4444', marginLeft: '2px' }}>*</span>}
                   </td>
                   <td style={{ padding: '4px 6px', color: '#7c3aed', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>{schema.type || 'any'}</td>
-                  <td style={{ padding: '4px 6px', color: '#64748b' }}>{schema.description || ''}</td>
+                  <td style={{ padding: '4px 6px', color: '#374151' }}>{schema.description || ''}</td>
                 </tr>
               ))}
             </tbody>
@@ -383,7 +383,7 @@ function McpToolsPanel() {
           🛠 MCP Tools
         </h2>
         {tools !== null && tools.length > 0 && (
-          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+          <span style={{ fontSize: '0.8rem', color: '#374151' }}>
             {tools.length} tool{tools.length !== 1 ? 's' : ''}{source ? ` · ${source}` : ''}
           </span>
         )}
@@ -423,11 +423,11 @@ function McpToolsPanel() {
             <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1e293b', marginBottom: '6px' }}>
               Verify Your Identity
             </div>
-            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 16px' }}>
+            <p style={{ fontSize: '0.85rem', color: '#374151', margin: '0 0 16px' }}>
               Step-up MFA is required to view MCP tools. Select a verification method:
             </p>
             {devicesLoading && (
-              <p style={{ fontSize: '0.83rem', color: '#94a3b8', textAlign: 'center', margin: '0 0 12px' }}>Loading your devices…</p>
+              <p style={{ fontSize: '0.83rem', color: '#374151', textAlign: 'center', margin: '0 0 12px' }}>Loading your devices…</p>
             )}
             {!devicesLoading && p1Devices.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '4px' }}>
@@ -471,7 +471,7 @@ function McpToolsPanel() {
             )}
             <button type="button" onClick={() => setShowMethodPicker(false)} style={{
               marginTop: '12px', width: '100%', padding: '8px',
-              background: 'none', border: 'none', color: '#94a3b8',
+              background: 'none', border: 'none', color: '#374151',
               fontSize: '0.82rem', cursor: 'pointer',
             }}>Cancel</button>
           </div>
@@ -545,7 +545,7 @@ export default function McpTrafficPage() {
             {entries.length} entries{logFile ? ` · ${logFile}` : ''}
           </span>
           {!selected && entries.length > 0 && (
-            <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>— click a row to inspect</span>
+            <span style={{ fontSize: '0.78rem', color: '#374151' }}>— click a row to inspect</span>
           )}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
             <button type="button" onClick={() => setViewMode(v => v === 'pairs' ? 'list' : 'pairs')} style={{
@@ -574,7 +574,7 @@ export default function McpTrafficPage() {
           </div>
         )}
         {error === 'unauthenticated' ? (
-          <div style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+          <div style={{ padding: '24px', textAlign: 'center', color: '#374151' }}>
             <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>🔒</div>
             <div style={{ fontWeight: 600, marginBottom: '4px' }}>Session expired</div>
             <div style={{ fontSize: '0.82rem', marginBottom: '12px' }}>Your session has expired. Please sign in again.</div>

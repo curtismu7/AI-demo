@@ -10,7 +10,7 @@ function VendorHeader({ emoji, name, tagline, color }) {
       borderRadius: '0 8px 8px 0', padding: '0.85rem 1rem', marginBottom: '1rem',
     }}>
       <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b' }}>{emoji} {name}</div>
-      <div style={{ fontSize: '0.84rem', color: '#64748b', marginTop: '0.15rem', fontStyle: 'italic' }}>{tagline}</div>
+      <div style={{ fontSize: '0.84rem', color: '#374151', marginTop: '0.15rem', fontStyle: 'italic' }}>{tagline}</div>
     </div>
   );
 }
@@ -246,7 +246,7 @@ function ComparisonContent() {
         </div>
       ))}
 
-      <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '1.2rem', fontStyle: 'italic' }}>
+      <p style={{ fontSize: '0.78rem', color: '#374151', marginTop: '1.2rem', fontStyle: 'italic' }}>
         ⭐ = significant differentiator. Table reflects public information as of early 2026. Check each vendor's docs for current pricing and feature availability.
       </p>
     </div>

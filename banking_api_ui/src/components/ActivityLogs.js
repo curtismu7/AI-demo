@@ -144,7 +144,8 @@ const ActivityLogs = ({ user, onLogout }) => {
     if (activeTab === 'appEvents') {
       fetchAppEvents();
     }
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    const poll = pollRef.current;
+    return () => { if (poll) clearInterval(poll); };
   }, [activeTab, fetchAppEvents]);
 
   // SSE: prepend new events in real-time while on the appEvents tab
@@ -247,7 +248,7 @@ const ActivityLogs = ({ user, onLogout }) => {
                 <option value="warning">Warning</option>
                 <option value="error">Error</option>
               </select>
-              <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+              <span style={{ color: '#374151', fontSize: '0.8rem' }}>
                 {appEvents.length} shown / {totalEvents} total
                 {appEventsLoading && ' \u00b7 refreshing\u2026'}
               </span>
@@ -258,7 +259,7 @@ const ActivityLogs = ({ user, onLogout }) => {
           <div className="card">
             <div className="empty-state" style={{ padding: '2rem', textAlign: 'center' }}>
               <h3 style={{ marginBottom: '0.5rem' }}>No app events yet</h3>
-              <p style={{ color: '#64748b' }}>Events appear when OAuth, token exchange, session, or JWKS activity occurs. Try logging in as a user.</p>
+              <p style={{ color: '#374151' }}>Events appear when OAuth, token exchange, session, or JWKS activity occurs. Try logging in as a user.</p>
             </div>
           </div>
         ) : (
@@ -286,7 +287,7 @@ const ActivityLogs = ({ user, onLogout }) => {
           <span style={{ transition: 'transform 0.15s', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0)' }}>{'\u25B6'}</span>
           <span>{icons}</span>
           <strong style={{ fontSize: '0.85rem' }}>{label}</strong>
-          <span style={{ color: '#64748b', fontSize: '0.8rem', marginLeft: 'auto' }}>
+          <span style={{ color: '#374151', fontSize: '0.8rem', marginLeft: 'auto' }}>
             {group.events.length} events \u00b7 {relativeTime(first.timestamp)}
             {first.timestamp !== last.timestamp && (' \u2192 ' + relativeTime(last.timestamp))}
           </span>
@@ -310,13 +311,13 @@ const ActivityLogs = ({ user, onLogout }) => {
           <span style={{ flexShrink: 0 }}>{icon}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <span style={{ fontSize: '0.85rem' }}>{evt.message}</span>
-            {evt.username && <span style={{ marginLeft: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>({evt.username})</span>}
+            {evt.username && <span style={{ marginLeft: '0.5rem', color: '#374151', fontSize: '0.75rem' }}>({evt.username})</span>}
           </div>
-          <span title={evt.timestamp} style={{ flexShrink: 0, color: '#94a3b8', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{relativeTime(evt.timestamp)}</span>
-          <span style={{ transition: 'transform 0.15s', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0)', fontSize: '0.7rem', color: '#94a3b8' }}>{'\u25B6'}</span>
+          <span title={evt.timestamp} style={{ flexShrink: 0, color: '#374151', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{relativeTime(evt.timestamp)}</span>
+          <span style={{ transition: 'transform 0.15s', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0)', fontSize: '0.7rem', color: '#374151' }}>{'\u25B6'}</span>
         </div>
         {isExpanded && (
-          <div style={{ marginTop: '0.5rem', paddingLeft: '1.5rem', fontSize: '0.8rem', color: '#64748b' }}>
+          <div style={{ marginTop: '0.5rem', paddingLeft: '1.5rem', fontSize: '0.8rem', color: '#374151' }}>
             <div style={{ marginBottom: '0.25rem' }}><strong>Time:</strong> {evt.timestamp}</div>
             <div style={{ marginBottom: '0.25rem' }}>
               <strong>Category:</strong> {CATEGORY_LABELS[evt.category] || evt.category}{' \u00b7 '}<strong>Severity:</strong>{' '}
@@ -347,11 +348,11 @@ const ActivityLogs = ({ user, onLogout }) => {
                           style={{ cursor: isObj ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                         >
                           {isObj && (
-                            <span style={{ fontSize: '0.65rem', transition: 'transform 0.1s', transform: isMetaExpanded ? 'rotate(90deg)' : 'rotate(0)', color: '#94a3b8' }}>{'▶'}</span>
+                            <span style={{ fontSize: '0.65rem', transition: 'transform 0.1s', transform: isMetaExpanded ? 'rotate(90deg)' : 'rotate(0)', color: '#374151' }}>{'▶'}</span>
                           )}
                           <span style={{ color: '#6366f1' }}>{k}:</span>{' '}
                           {isObj
-                            ? <span style={{ color: '#94a3b8' }}>{isMetaExpanded ? '(expanded below)' : '{' + Object.keys(v).join(', ') + '}'}</span>
+                            ? <span style={{ color: '#374151' }}>{isMetaExpanded ? '(expanded below)' : '{' + Object.keys(v).join(', ') + '}'}</span>
                             : <span>{String(v)}</span>
                           }
                         </div>
@@ -480,7 +481,7 @@ const ActivityLogs = ({ user, onLogout }) => {
           <div className="card">
             <div className="card-header">
               <h2 className="card-title">Activity Logs</h2>
-              <span style={{ color: '#64748b', fontSize: '0.875rem' }}>Showing {logs.length} of {pagination.totalLogs} logs</span>
+              <span style={{ color: '#374151', fontSize: '0.875rem' }}>Showing {logs.length} of {pagination.totalLogs} logs</span>
             </div>
             {logs.length > 0 ? (
               <div className="table-container">

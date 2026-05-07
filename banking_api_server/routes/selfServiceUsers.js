@@ -250,6 +250,59 @@ router.get('/me', async (req, res) => {
 });
 
 /**
+ * PATCH /api/self-service/users/me
+ * Update the current user's profile in PingOne
+ */
+router.patch('/me',
+  [
+    body('firstName').optional().isLength({ min: 1, max: 50 }).trim().withMessage('First name max 50 characters'),
+    body('lastName').optional().isLength({ min: 1, max: 50 }).trim().withMessage('Last name max 50 characters'),
+    body('email').optional().isEmail().normalizeEmail().withMessage('Valid email required'),
+    body('phone').optional().isLength({ max: 30 }).trim(),
+  ],
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({ error: 'authentication_required', error_description: 'Authentication required' });
+      }
+
+      const { firstName, lastName, email, phone } = req.body;
+      const patch = {};
+      if (firstName !== undefined || lastName !== undefined) {
+        patch.name = {};
+        if (firstName !== undefined) patch.name.given = firstName;
+        if (lastName !== undefined) patch.name.family = lastName;
+      }
+      if (email !== undefined) patch.email = email;
+      if (phone !== undefined) patch.phone = phone;
+
+      if (Object.keys(patch).length === 0) {
+        return res.status(400).json({ error: 'invalid_request', error_description: 'No updatable fields provided' });
+      }
+
+      pingOneUserService.initialize();
+      const updated = await pingOneUserService.updatePingOneUser(req.user.id, patch);
+
+      logger.info(LOG_CATEGORIES.USER_MANAGEMENT, 'User profile updated', { userId: req.user.id });
+
+      res.json({
+        message: 'Profile updated successfully',
+        user: {
+          id: updated.id,
+          email: updated.email,
+          name: updated.name,
+          phone: updated.phone,
+        }
+      });
+    } catch (error) {
+      logger.error(LOG_CATEGORIES.USER_MANAGEMENT, 'Failed to update profile', { userId: req.user?.id, error: error.message });
+      res.status(500).json({ error: 'update_failed', error_description: error.message || 'Failed to update profile' });
+    }
+  }
+);
+
+/**
  * PUT /api/self-service/users/mayact
  * Configure mayAct attribute on current user
  */

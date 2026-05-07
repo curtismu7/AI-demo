@@ -417,7 +417,7 @@ export default function SetupWizard() {
           </ul>
         )}
         {relevantLogs.length === 0 && !running && (
-          <p style={{ color: '#6b7280', fontSize: 14 }}>Waiting to run...</p>
+          <p style={{ color: '#374151', fontSize: 14 }}>Waiting to run...</p>
         )}
         {status === 'error' && (
           <button className="wizard-btn-secondary" onClick={() => retryStep(step.stepKey)} style={{ marginTop: 8 }}>
@@ -445,7 +445,7 @@ export default function SetupWizard() {
           Run All →
         </button>
       )}
-      {running && <p style={{ color: '#6b7280', fontSize: 14 }}>Provisioning in progress...</p>}
+      {running && <p style={{ color: '#374151', fontSize: 14 }}>Provisioning in progress...</p>}
     </div>
   );
 

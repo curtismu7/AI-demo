@@ -8,7 +8,7 @@ const S = {
     position: 'fixed', top: 0, right: 0, width: 480, maxWidth: '100vw', height: '100vh', background: '#fff', boxShadow: '-2px 0 16px rgba(0,0,0,0.10)', zIndex: 1001, padding: 32, overflowY: 'auto',
   },
   closeBtn: {
-    position: 'absolute', top: 18, right: 24, background: 'none', border: 'none', fontSize: 22, color: '#64748b', cursor: 'pointer',
+    position: 'absolute', top: 18, right: 24, background: 'none', border: 'none', fontSize: 22, color: '#374151', cursor: 'pointer',
   },
   heading: { fontSize: 22, fontWeight: 700, color: '#1e293b', marginBottom: 18 },
   section: { marginBottom: 24 },

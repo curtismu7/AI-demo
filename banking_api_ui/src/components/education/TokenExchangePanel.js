@@ -179,7 +179,7 @@ function Box({ label, icon, color, border, note }) {
     }}>
       <div style={{ fontSize: '1.1rem', marginBottom: '2px' }}>{icon}</div>
       <div style={{ fontWeight: 700, color: '#f1f5f9' }}>{label}</div>
-      {note && <div style={{ color: '#94a3b8', fontSize: '0.68rem', marginTop: '3px' }}>{note}</div>}
+      {note && <div style={{ color: '#374151', fontSize: '0.68rem', marginTop: '3px' }}>{note}</div>}
     </div>
   );
 }
@@ -192,7 +192,7 @@ function FlowRow({ left, arrow, arrowColor, arrowRight = true, right, note }) {
         <div style={{ color: arrowColor, fontWeight: 600, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
           {arrow}
         </div>
-        {note && <div style={{ color: '#64748b', fontSize: '0.68rem' }}>{note}</div>}
+        {note && <div style={{ color: '#374151', fontSize: '0.68rem' }}>{note}</div>}
       </div>
       {right}
     </div>
@@ -219,10 +219,10 @@ function TokenCompareCard({ title, emoji, color, border, claims }) {
       <div style={{ fontWeight: 700, marginBottom: '8px', color: '#f1f5f9' }}>{emoji} {title}</div>
       {claims.map(({ key, val, note }) => (
         <div key={key} style={{ display: 'flex', gap: '6px', marginBottom: '4px', alignItems: 'flex-start' }}>
-          <span style={{ color: '#94a3b8', minWidth: '70px', flexShrink: 0 }}>{key}:</span>
+          <span style={{ color: '#374151', minWidth: '70px', flexShrink: 0 }}>{key}:</span>
           <span style={{ color: '#e2e8f0', wordBreak: 'break-all' }}>
             {val}
-            {note && <span style={{ color: '#64748b', marginLeft: '4px' }}>({note})</span>}
+            {note && <span style={{ color: '#374151', marginLeft: '4px' }}>({note})</span>}
           </span>
         </div>
       ))}

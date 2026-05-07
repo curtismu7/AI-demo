@@ -176,6 +176,13 @@ export default function ComplianceModal({
           getStepSkipExplanation={getStepSkipExplanation}
         />
 
+        {/* Footer */}
+        <div className="compliance-modal__footer">
+          <button type="button" className="compliance-modal__close-btn" onClick={onClose}>
+            Close
+          </button>
+        </div>
+
         {/* Resize handles — all sides and corners */}
         {['top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].map((side) => {
           const cursorMap = {

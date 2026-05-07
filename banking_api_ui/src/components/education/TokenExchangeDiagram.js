@@ -22,7 +22,7 @@ function Actor({ icon, label, sublabel, color = '#1e3a5f', border = '#3b82f6', w
     }}>
       <div style={{ fontSize: '1.4rem', lineHeight: 1 }}>{icon}</div>
       <div style={{ color: '#f1f5f9', fontWeight: 700, fontSize: '0.72rem', marginTop: 4, lineHeight: 1.3 }}>{label}</div>
-      {sublabel && <div style={{ color: '#94a3b8', fontSize: '0.62rem', marginTop: 3, lineHeight: 1.3 }}>{sublabel}</div>}
+      {sublabel && <div style={{ color: '#374151', fontSize: '0.62rem', marginTop: 3, lineHeight: 1.3 }}>{sublabel}</div>}
     </div>
   );
 }
@@ -97,7 +97,7 @@ function TokenBadge({ label, claims, color = '#1e293b', border = '#475569', acce
       <div style={{ color: accent, fontWeight: 700, marginBottom: 4, fontSize: '0.72rem' }}>{label}</div>
       {claims.map(([k, v]) => (
         <div key={k} style={{ display: 'flex', gap: 6 }}>
-          <span style={{ color: '#64748b', minWidth: 56, flexShrink: 0 }}>{k}:</span>
+          <span style={{ color: '#374151', minWidth: 56, flexShrink: 0 }}>{k}:</span>
           <span style={{ color: '#e2e8f0', wordBreak: 'break-all' }}>{v}</span>
         </div>
       ))}
@@ -299,7 +299,7 @@ export default function TokenExchangeDiagram() {
         {/* ── legend ── */}
         <div style={{
           marginTop: 24, borderTop: '1px solid #1e293b', paddingTop: 12,
-          display: 'flex', flexWrap: 'wrap', gap: '6px 20px', fontSize: '0.65rem', color: '#64748b',
+          display: 'flex', flexWrap: 'wrap', gap: '6px 20px', fontSize: '0.65rem', color: '#374151',
         }}>
           {[
             [C.tok1.border,  'User Access Token'],

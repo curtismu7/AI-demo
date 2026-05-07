@@ -56,7 +56,7 @@ const Transactions = ({ user, onLogout }) => {
     } else if (clientType === 'ai_agent') {
       return { icon: '🤖', label: 'AI Agent', color: '#8b5cf6' };
     } else {
-      return { icon: '❓', label: 'Unknown', color: '#6b7280' };
+      return { icon: '❓', label: 'Unknown', color: '#374151' };
     }
   };
 
@@ -77,7 +77,7 @@ const Transactions = ({ user, onLogout }) => {
       <div className="app-page-card">
         <div className="card-header">
           <h2 className="card-title">Transaction History</h2>
-          <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
+          <span style={{ color: '#374151', fontSize: '0.875rem' }}>
             {transactions.length} transactions found
           </span>
         </div>
@@ -104,7 +104,7 @@ const Transactions = ({ user, onLogout }) => {
                       <td>{format(new Date(transaction.createdAt), 'MMM dd, yyyy HH:mm')}</td>
                       <td style={{ fontSize: '0.8rem' }}>
                         <div style={{ fontWeight: '600' }}>{transaction.ownerUsername || transaction.userId || '—'}</div>
-                        {transaction.ownerEmail && <div style={{ color: '#64748b', fontSize: '0.7rem' }}>{transaction.ownerEmail}</div>}
+                        {transaction.ownerEmail && <div style={{ color: '#374151', fontSize: '0.7rem' }}>{transaction.ownerEmail}</div>}
                       </td>
                       <td>
                         <span style={{
@@ -133,7 +133,7 @@ const Transactions = ({ user, onLogout }) => {
                               {clientInfo.label}
                             </div>
                             {transaction.performedBy && transaction.performedBy !== transaction.userId && (
-                              <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{transaction.performedBy}</div>
+                              <div style={{ fontSize: '0.7rem', color: '#374151' }}>{transaction.performedBy}</div>
                             )}
                           </div>
                         </div>

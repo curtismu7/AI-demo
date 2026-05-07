@@ -281,6 +281,14 @@ router.post('/', authenticateToken, async (req, res) => {
       await restoreAccountsFromSnapshot(req.user.id);
     }
 
+    // Customer-only gate: admin sessions must not initiate customer transactions
+    if (req.user.role === 'admin') {
+      return res.status(403).json({
+        error: 'forbidden',
+        error_description: 'Transactions must be initiated with a customer account. Sign in as a bank customer to proceed.',
+      });
+    }
+
     // Resolve account type names (e.g., "checking") to account IDs before lookups
     const userAccounts = dataStore.getAccountsByUserId(req.user.id);
     if (fromAccountId) {

@@ -31,7 +31,7 @@ function PairRow({ req, resp }) {
         <span className="mpv-pair-ts">{ts}</span>
         <span className={`mpv-pair-status ${statusCls}`}>{statusLabel}</span>
         {durationMs != null && <span className="mpv-pair-dur">{durationMs}ms</span>}
-        {req?.summary && <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>{req.summary}</span>}
+        {req?.summary && <span style={{ fontSize: '0.75rem', color: '#374151', marginLeft: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>{req.summary}</span>}
       </div>
       {open && (
         <div className="mpv-pair-body">

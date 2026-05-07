@@ -12,7 +12,7 @@ const TOKEN_TYPE_CONFIG = {
   user_token:  { abbr: 'U', label: 'User Token',       category: 'subject', color: '#dc2626' },
   agent_token: { abbr: 'A', label: 'Agent Token',      category: 'actor',   color: '#2563eb' },
   mcp_token:   { abbr: 'M', label: 'MCP Token',        category: 'mcp',     color: '#16a34a' },
-  unknown:     { abbr: '?', label: 'Unknown Token',     category: null,      color: '#9ca3af' },
+  unknown:     { abbr: '?', label: 'Unknown Token',     category: null,      color: '#374151' },
 };
 
 // Token lifecycle states

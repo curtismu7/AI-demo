@@ -16,7 +16,7 @@ const S = {
   inner: { maxWidth: 900, margin: '0 auto' },
   card: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 24, marginBottom: 24 },
   sectionHeading: { fontSize: 16, fontWeight: 700, color: 'var(--brand-navy)', marginTop: 0, marginBottom: 8 },
-  muted: { color: '#6b7280', fontSize: 13, margin: '0 0 16px 0' },
+  muted: { color: '#374151', fontSize: 13, margin: '0 0 16px 0' },
   input: {
     width: '100%', maxWidth: 400, padding: '9px 12px',
     border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14,
@@ -24,7 +24,7 @@ const S = {
   },
   scopeRow: { display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8, cursor: 'pointer' },
   scopeLabel: { fontWeight: 600, fontSize: 13, color: '#374151' },
-  scopeDesc: { fontSize: 12, color: '#9ca3af', marginLeft: 4 },
+  scopeDesc: { fontSize: 12, color: '#374151', marginLeft: 4 },
   primaryBtn: {
     padding: '9px 22px', background: 'var(--brand-navy)', color: '#fff',
     border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer',
@@ -64,7 +64,7 @@ const S = {
   },
   delegCardLeft: { flex: 1 },
   delegEmail: { fontWeight: 600, fontSize: 14, color: '#111827', marginBottom: 4 },
-  delegMeta: { fontSize: 12, color: '#9ca3af', marginBottom: 6 },
+  delegMeta: { fontSize: 12, color: '#374151', marginBottom: 6 },
   pillsRow: { display: 'flex', flexWrap: 'wrap', gap: 4 },
   pill: {
     background: '#eff6ff', color: 'var(--brand-navy)', fontSize: 11, fontWeight: 600,
@@ -92,7 +92,7 @@ const S = {
     fontSize: 12, fontWeight: 600, color: '#fff', textAlign: 'center',
     minWidth: 100,
   }),
-  flowArrow: { color: '#9ca3af', fontSize: 18, fontWeight: 700 },
+  flowArrow: { color: '#374151', fontSize: 18, fontWeight: 700 },
   talkStep: {
     display: 'flex', gap: 12, marginBottom: 14, alignItems: 'flex-start',
   },
@@ -125,7 +125,7 @@ function HowItWorksPanel() {
         onClick={() => setOpen(o => !o)}
       >
         <h2 style={{ ...S.sectionHeading, marginBottom: 0 }}>🔍 How It Works — Under the Hood</h2>
-        <span style={{ fontSize: 20, color: '#6b7280' }}>{open ? '▲' : '▼'}</span>
+        <span style={{ fontSize: 20, color: '#374151' }}>{open ? '▲' : '▼'}</span>
       </div>
       {open && (
         <>
@@ -186,7 +186,7 @@ function HowItWorksPanel() {
             {'  '}<span style={S.claimOp}>{'}'}</span>{'\n'}
             <span style={S.claimOp}>{'}'}</span>
           </div>
-          <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 8 }}>
+          <p style={{ fontSize: 12, color: '#374151', marginTop: 8 }}>
             The <span style={S.infoPill}>act</span> claim proves <em>on whose behalf</em> the request runs.
             The <span style={S.infoPill}>may_act</span> claim controls which agents are permitted to perform the next step of exchange.
             Both are verified cryptographically by PingOne on every request.
@@ -205,7 +205,7 @@ function HowItWorksPanel() {
             ].map(([rfc, label]) => (
               <div key={rfc} style={{ background: '#f1f5f9', borderRadius: 6, padding: '6px 12px', fontSize: 12 }}>
                 <span style={{ fontWeight: 700, color: '#1e40af' }}>{rfc}</span>
-                <span style={{ color: '#6b7280' }}> — {label}</span>
+                <span style={{ color: '#374151' }}> — {label}</span>
               </div>
             ))}
           </div>
@@ -296,7 +296,7 @@ function LiveTokenChainPanel() {
               ].map(([label, val, bg, color]) => (
                 <div key={label} style={{ background: bg, borderRadius: 8, padding: '10px 16px', minWidth: 80 }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color }}>{val}</div>
-                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{label}</div>
+                  <div style={{ fontSize: 11, color: '#374151', marginTop: 2 }}>{label}</div>
                 </div>
               ))}
             </div>
@@ -314,7 +314,7 @@ function LiveTokenChainPanel() {
                 ? ' RFC 8693 act/may_act claims verified on every request'
                 : ' Token exchange logged; act claims not strictly enforced'}
             </div>
-            <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 8 }}>
+            <p style={{ fontSize: 12, color: '#374151', marginTop: 8 }}>
               Last updated: {chain.metadata?.lastUpdated ? new Date(chain.metadata.lastUpdated).toLocaleTimeString() : '—'}
             </p>
           </div>
@@ -330,7 +330,7 @@ function LiveTokenChainPanel() {
               <div key={i} style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span style={{ fontWeight: 600, fontSize: 13, color: '#92400e' }}>{evt.type || 'exchange'}</span>
-                  <span style={{ fontSize: 11, color: '#9ca3af' }}>{evt.timestamp ? new Date(evt.timestamp).toLocaleTimeString() : ''}</span>
+                  <span style={{ fontSize: 11, color: '#374151' }}>{evt.timestamp ? new Date(evt.timestamp).toLocaleTimeString() : ''}</span>
                 </div>
                 {evt.claims?.act && (
                   <div style={{ fontSize: 12, color: '#374151', fontFamily: 'inherit' }}>
@@ -380,7 +380,7 @@ function LiveTokenChainPanel() {
       )}
 
       {!loading && chain && delegationEvents.length === 0 && mcpCalls.length === 0 && (
-        <div style={{ marginTop: 16, padding: '14px 16px', background: '#f8fafc', borderRadius: 8, fontSize: 13, color: '#6b7280' }}>
+        <div style={{ marginTop: 16, padding: '14px 16px', background: '#f8fafc', borderRadius: 8, fontSize: 13, color: '#374151' }}>
           No delegation token events in the current session. Grant access to a family member above and ask the banking agent
           to perform an action <em>on behalf of</em> the delegate to see the token chain populate here.
         </div>
@@ -401,7 +401,7 @@ function DemoTalkTrackPanel() {
         onClick={() => setOpen(o => !o)}
       >
         <h2 style={{ ...S.sectionHeading, marginBottom: 0 }}>🎤 Demo Talk Track</h2>
-        <span style={{ fontSize: 20, color: '#6b7280' }}>{open ? '▲' : '▼'}</span>
+        <span style={{ fontSize: 20, color: '#374151' }}>{open ? '▲' : '▼'}</span>
       </div>
       {open && (
         <div style={{ marginTop: 16 }}>
@@ -453,7 +453,7 @@ function DemoTalkTrackPanel() {
               <div style={S.talkNum}>{step.num}</div>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 13, color: '#111827', margin: '0 0 4px 0' }}>{step.heading}</p>
-                <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 6px 0' }}>{step.text}</p>
+                <p style={{ fontSize: 12, color: '#374151', margin: '0 0 6px 0' }}>{step.text}</p>
                 <p style={{ ...S.talkText, ...S.talkQuote, margin: 0 }}>"{step.quote.replace(/^"|"$/g, '')}"</p>
               </div>
             </div>
@@ -616,7 +616,7 @@ export default function DelegationPage({ user }) {
 
           <div style={{ marginBottom: 16 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>
-              Allow them to: <span style={{ fontSize: 12, fontWeight: 400, color: '#9ca3af' }}>
+              Allow them to: <span style={{ fontSize: 12, fontWeight: 400, color: '#374151' }}>
                 (these become OAuth scopes on their token)
               </span>
             </p>
@@ -670,7 +670,7 @@ export default function DelegationPage({ user }) {
               ? <p style={S.muted}>Loading…</p>
               : delegations.length === 0
                 ? (
-                  <div style={{ padding: '16px 0', color: '#6b7280', fontSize: 13 }}>
+                  <div style={{ padding: '16px 0', color: '#374151', fontSize: 13 }}>
                     <p style={{ margin: '0 0 8px' }}>No active delegates.</p>
                     <p style={{ margin: 0 }}>Use the Grant Access form above to add a family member. They will appear here once access is granted.</p>
                   </div>
