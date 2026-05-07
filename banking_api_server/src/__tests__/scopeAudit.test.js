@@ -140,7 +140,7 @@ describe('Scope Audit Service', () => {
       expect(result.scopeAudit[0].name).toBe('Super Banking AI Agent');
     });
 
-    it('should handle empty scope lists', async () => {
+    it('should handle empty scope lists (mismatch when expected scopes absent from API)', async () => {
       axios.post.mockResolvedValueOnce({
         data: { access_token: mockToken }
       });
@@ -154,17 +154,15 @@ describe('Scope Audit Service', () => {
         }
       ];
 
-      // Agent Gateway has no expected scopes
+      // API returns no scopes, but SCOPE_REFERENCE_TABLE expects banking:agent:invoke → MISMATCH
       axios.get.mockResolvedValueOnce({
-        data: {
-          scopes: []
-        }
+        data: { scopes: [] }
       });
 
       const result = await auditResourceScopes(mockValidatedResources);
 
       expect(result.status).toBe('success');
-      expect(result.scopeAudit[0].status).toBe('CORRECT');
+      expect(result.scopeAudit[0].status).toBe('MISMATCH');
       expect(result.scopeAudit[0].currentScopes).toEqual([]);
     });
 
@@ -214,22 +212,22 @@ describe('Scope Audit Service', () => {
     });
 
     it('should have correct scopes for MCP Server', () => {
+      // Consolidated scope model: fine-grained scopes replaced by banking:read/write
       const mcpScopes = SCOPE_REFERENCE_TABLE['Super Banking MCP Server'];
-      expect(mcpScopes).toContain('banking:accounts:read');
-      expect(mcpScopes).toContain('banking:transactions:read');
-      expect(mcpScopes).toContain('banking:transactions:write');
+      expect(mcpScopes).toContain('banking:read');
+      expect(mcpScopes).toContain('banking:write');
     });
 
     it('should have correct scopes for Banking API', () => {
+      // Consolidated scope model: fine-grained scopes replaced by banking:read/write
       const bankingApiScopes = SCOPE_REFERENCE_TABLE['Super Banking Banking API'];
-      expect(bankingApiScopes).toContain('banking:accounts:read');
-      expect(bankingApiScopes).toContain('banking:transactions:read');
-      expect(bankingApiScopes).toContain('banking:transactions:write');
+      expect(bankingApiScopes).toContain('banking:read');
+      expect(bankingApiScopes).toContain('banking:write');
     });
 
-    it('should have empty scopes for Agent Gateway', () => {
+    it('should have correct scopes for Agent Gateway', () => {
       const gatewayScopes = SCOPE_REFERENCE_TABLE['Super Banking Agent Gateway'];
-      expect(gatewayScopes).toEqual([]);
+      expect(gatewayScopes).toContain('banking:agent:invoke');
     });
 
     it('should have correct scopes for PingOne API', () => {

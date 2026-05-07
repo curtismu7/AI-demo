@@ -18,6 +18,14 @@ jest.mock('../../data/store', () => ({
     };
     return accounts[id] || null;
   }),
+  getAccountsByUserId: jest.fn((userId) =>
+    userId === '5'
+      ? [
+          { id: 'chk-5', userId: '5', type: 'checking', balance: 10000 },
+          { id: 'sav-5', userId: '5', type: 'savings', balance: 5000 },
+        ]
+      : []
+  ),
   getUserById: jest.fn(() => null),
 }));
 

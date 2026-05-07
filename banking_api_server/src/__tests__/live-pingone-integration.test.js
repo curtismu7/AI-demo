@@ -47,7 +47,15 @@ preserveEnv(
 );
 
 const live = process.env.RUN_LIVE_TESTS === 'true';
-const hasUserToken = !!process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN?.trim();
+const hasUserToken = (() => {
+  const token = process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN?.trim();
+  if (!token) return false;
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+    if (payload.exp && payload.exp <= Math.floor(Date.now() / 1000)) return false;
+    return true;
+  } catch { return false; }
+})();
 
 // ---------- helpers ----------
 

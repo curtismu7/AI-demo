@@ -80,6 +80,8 @@ describe('POST /api/banking-agent/nl — anonymous allowed', () => {
     expect(parseNaturalLanguage).toHaveBeenCalledWith(
       'how does oauth login work',
       expect.objectContaining({ anonymous: true }),
+      expect.any(String),
+      expect.any(Object),
     );
   });
 
@@ -144,7 +146,9 @@ describe('POST /api/banking-agent/nl — role context forwarding', () => {
 
     expect(parseNaturalLanguage).toHaveBeenCalledWith(
       'list all accounts',
-      expect.objectContaining({ role: 'admin', firstName: 'Alice' })
+      expect.objectContaining({ role: 'admin', firstName: 'Alice' }),
+      expect.any(String),
+      expect.any(Object),
     );
   });
 
@@ -156,7 +160,9 @@ describe('POST /api/banking-agent/nl — role context forwarding', () => {
 
     expect(parseNaturalLanguage).toHaveBeenCalledWith(
       'check my balance',
-      expect.objectContaining({ role: 'customer', firstName: 'Bob' })
+      expect.objectContaining({ role: 'customer', firstName: 'Bob' }),
+      expect.any(String),
+      expect.any(Object),
     );
   });
 
@@ -168,7 +174,9 @@ describe('POST /api/banking-agent/nl — role context forwarding', () => {
 
     expect(parseNaturalLanguage).toHaveBeenCalledWith(
       'show accounts',
-      expect.any(Object)
+      expect.any(Object),
+      expect.any(String),
+      expect.any(Object),
     );
   });
 });

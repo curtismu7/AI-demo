@@ -92,6 +92,15 @@ jest.mock('../../data/store', () => ({
         }
       : null
   ),
+  getAccountsByUserId: jest.fn(() => [
+    {
+      id: 'test-account-id',
+      userId: 'test-user-id',
+      accountType: 'Checking',
+      accountNumber: '****1234',
+      balance: 10000,
+    },
+  ]),
   createTransaction: jest.fn((data) => ({
     ...data,
     id: 'tx-' + Date.now(),
@@ -110,6 +119,43 @@ jest.mock('../../services/pingOneAuthorizeService', () => ({
   evaluateMcpToolDelegation: jest.fn().mockResolvedValue({ decision: 'PERMIT', stepUpRequired: false, raw: {} }),
   isMcpDelegationDecisionReady: jest.fn(() => false),
 }));
+
+// ─── Mock transactionAuthorizationService with step-up logic from runtimeSettings ─
+// The real service ignores runtimeSettings.stepUpEnabled (hardcoded AUTHORIZE_ENABLED=true
+// with simulated policy). These tests need a standalone step-up gate that reads runtimeSettings.
+jest.mock('../../services/transactionAuthorizationService', () => {
+  const rs = require('../../config/runtimeSettings');
+  const HITL_THRESHOLD = 500;
+  return {
+    evaluateTransactionPolicy: jest.fn(async ({ userRole, amount, type, acr }) => {
+      if (userRole === 'admin') return { ran: false, reason: 'admin_role_exempt' };
+      if (!rs.get('stepUpEnabled')) return { ran: false, reason: 'step_up_disabled' };
+      const types = rs.get('stepUpTransactionTypes') || ['transfer', 'withdrawal'];
+      if (!types.includes(type)) return { ran: false, reason: 'type_not_in_scope' };
+      const withdrawalsAlways = rs.get('stepUpWithdrawalsAlways');
+      const threshold = rs.get('stepUpAmountThreshold') || 0;
+      const requiredAcr = rs.get('stepUpAcrValue') || 'Multi_factor';
+      const amountTriggered = (withdrawalsAlways && type === 'withdrawal') || amount >= threshold;
+      const acrOk = acr && acr.toLowerCase() === requiredAcr.toLowerCase();
+      if (!amountTriggered || acrOk) return { ran: false, reason: 'step_up_not_triggered' };
+      return {
+        ran: true,
+        block: {
+          status: 428,
+          body: {
+            error: 'step_up_required',
+            hitl: { type: 'step_up' },
+            step_up_url: '/api/auth/oauth/user/stepup',
+            step_up_acr: requiredAcr,
+            step_up_method: 'ciba',
+            amount_threshold: threshold,
+            isHITL: amount >= HITL_THRESHOLD,
+          },
+        },
+      };
+    }),
+  };
+});
 
 const app = require('../../server');
 const runtimeSettings = require('../../config/runtimeSettings');

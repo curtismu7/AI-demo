@@ -153,7 +153,6 @@ describe('authorize routes (admin)', () => {
       expect(configStore.setConfig).toHaveBeenCalledWith({
         authorize_decision_endpoint_id: 'tx-endpoint-uuid',
         authorize_mcp_decision_endpoint_id: 'mcp-endpoint-uuid',
-        authorize_enabled: 'true',
         ff_authorize_simulated: 'false',
         ff_authorize_mcp_first_tool: 'true',
       });

@@ -22,6 +22,13 @@ module.exports = {
     '**/src/__tests__/**/*.test.js',
     '**/tests/**/*.test.js',
   ],
+  // Exclude git worktrees created by Claude Code and Kilo agents — they mirror
+  // the repo structure and would otherwise double-run (or fail to load) every suite.
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/\\.claude/worktrees/',
+    '/\\.kilo/worktrees/',
+  ],
   reporters: [
     'default',
     '<rootDir>/src/__tests__/setup/markdownReporter.js',

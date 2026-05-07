@@ -146,8 +146,9 @@ describe('GET /api/pingone/audit', () => {
     const response = await request(app)
       .get('/api/pingone/audit')
       .set('x-test-user', authenticatedUser)
-      .expect(500);
+      .expect(200);
 
+    expect(response.body.status).toBe('error');
     expect(response.body).toHaveProperty('error');
   });
 

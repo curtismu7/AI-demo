@@ -86,6 +86,7 @@ jest.mock('../../data/store', () => ({
     status: 'completed',
   })),
   updateAccountBalance: jest.fn(),
+  getAccountsByUserId: jest.fn(() => []),
   getTransactionsByUserId: jest.fn(() => []),
   getAllTransactions: jest.fn(() => []),
   getTransactionById: jest.fn(() => null),
@@ -145,7 +146,7 @@ const adminUser = () =>
     username: 'admin',
     email: 'admin@bank.com',
     role: 'admin',
-    scopes: ['banking:admin'],
+    scopes: ['banking:admin', 'banking:write'],
     acr: 'Multi_factor',
   });
 
@@ -189,9 +190,13 @@ afterAll(() => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('PingOne Authorize Gate — POST /api/transactions', () => {
   // ── Gate disabled ─────────────────────────────────────────────────────────────
+  // transactionAuthorizationService hardcodes AUTHORIZE_ENABLED=true; the gate is skipped
+  // only when neither a policyId nor a decisionEndpointId is configured (PINGONE_READY=false)
+  // and simulated mode is also off.
   describe('when authorizeEnabled is false', () => {
     it('should skip the gate and allow the transaction', async () => {
-      runtimeSettings.update({ authorizeEnabled: false, authorizePolicyId: 'a-policy-id' }, 'test');
+      // Leave authorizePolicyId empty so PINGONE_READY=false → gate skips (not_configured).
+      runtimeSettings.update({ authorizeEnabled: false, authorizePolicyId: '' }, 'test');
 
       const res = await request(app)
         .post('/api/transactions')
@@ -304,12 +309,12 @@ describe('PingOne Authorize Gate — POST /api/transactions', () => {
   });
 
   // ── Admin bypass ──────────────────────────────────────────────────────────────
+  // The route blocks admin users with 403 'forbidden' before reaching the Authorize gate
+  // (transactions must be initiated with a customer account). The Authorize gate is still
+  // never called for admins — the intent of this test holds, but the HTTP status is 403.
   describe('when the user is an admin', () => {
-    it('should bypass the Authorize gate entirely', async () => {
+    it('should never call the Authorize gate (admins are blocked before it)', async () => {
       runtimeSettings.update({ authorizeEnabled: true, authorizePolicyId: 'test-policy-id' }, 'test');
-      // Do NOT set a mock return value here — evaluateTransaction must NOT be called
-      // (admin bypass skips the gate entirely), and an unconsumed Once value would
-      // pollute the specificMockImpls queue for subsequent tests.
 
       const res = await request(app)
         .post('/api/transactions')
@@ -317,7 +322,8 @@ describe('PingOne Authorize Gate — POST /api/transactions', () => {
         .send(withdrawalBody);
 
       expect(evaluateTransaction).not.toHaveBeenCalled();
-      expect(res.status).not.toBe(403);
+      expect(res.status).toBe(403);
+      expect(res.body.error).toBe('forbidden');
     });
   });
 

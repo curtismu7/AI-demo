@@ -18,9 +18,16 @@ const path = require('path');
 // Load .env so PINGONE_* vars are available (mirrors live-pingone-integration.test.js)
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env'), override: true });
 
-const live =
-  (process.env.RUN_PINGONE_TOKEN_EXCHANGE === 'true' || process.env.RUN_PINGONE_TOKEN_INTEGRATION === 'true') &&
-  String(process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN || '').trim().length > 0;
+const live = (() => {
+  if (!(process.env.RUN_PINGONE_TOKEN_EXCHANGE === 'true' || process.env.RUN_PINGONE_TOKEN_INTEGRATION === 'true')) return false;
+  const token = String(process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN || '').trim();
+  if (!token) return false;
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+    if (payload.exp && payload.exp <= Math.floor(Date.now() / 1000)) return false;
+    return true;
+  } catch { return false; }
+})();
 
 describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', () => {
   /**

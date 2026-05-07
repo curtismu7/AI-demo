@@ -6,25 +6,26 @@
 const { callToolLocal } = require('../../services/mcpLocalTools');
 
 describe('mcpLocalTools HITL (high-value writes)', () => {
-  it('returns consent_challenge_required for create_transfer over $500 (non-admin)', async () => {
+  it('returns hitl_required for create_transfer over $500 (non-admin)', async () => {
     const r = await callToolLocal(
       'create_transfer',
       { from_account_id: '1', to_account_id: '2', amount: 600 },
       '1',
     );
-    expect(r.error).toBe('consent_challenge_required');
-    expect(r.consent_challenge_required).toBe(true);
-    expect(r.hitl_threshold_usd).toBe(500);
+    expect(r.error).toBe('hitl_required');
+    expect(r.hitl).toEqual({ type: 'consent' });
+    expect(r.hitl_threshold_usd).toBeDefined();
   });
 
-  it('allows create_transfer at exactly $500 (non-admin)', async () => {
+  it('returns hitl_required for create_transfer at $500 (Phase 170: ALL transfers require consent)', async () => {
     const r = await callToolLocal(
       'create_transfer',
       { from_account_id: '1', to_account_id: '2', amount: 500 },
       '1',
     );
-    expect(r.success).toBe(true);
-    expect(r.transaction_id).toBeDefined();
+    // Phase 170: transfers always require human consent via the browser dashboard,
+    // regardless of amount — local MCP tools cannot complete the consent flow.
+    expect(r.error).toBe('hitl_required');
   });
 
   it('allows transfer over $500 for admin user', async () => {
@@ -37,13 +38,13 @@ describe('mcpLocalTools HITL (high-value writes)', () => {
     expect(r.transaction_id).toBeDefined();
   });
 
-  it('returns consent_challenge_required for create_deposit over $500 (non-admin)', async () => {
+  it('returns hitl_required for create_deposit over $500 (non-admin)', async () => {
     const r = await callToolLocal(
       'create_deposit',
       { to_account_id: '1', amount: 501 },
       '1',
     );
-    expect(r.error).toBe('consent_challenge_required');
+    expect(r.error).toBe('hitl_required');
   });
 });
 

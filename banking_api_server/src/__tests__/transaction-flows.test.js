@@ -67,6 +67,11 @@ jest.mock('../../services/pingOneAuthorizeService', () => ({
   isMcpDelegationDecisionReady: jest.fn(() => false),
 }));
 
+// ─── Mock transactionAuthorizationService — disable HITL/deny gate for these flow tests ──
+jest.mock('../../services/transactionAuthorizationService', () => ({
+  evaluateTransactionPolicy: jest.fn().mockResolvedValue({ ran: false, reason: 'authorize_disabled' }),
+}));
+
 // ─── Mock HITL consent gate so transfer tests can bypass it ───────────────────
 jest.mock('../../services/transactionConsentChallenge', () => ({
   ...jest.requireActual('../../services/transactionConsentChallenge'),
@@ -115,10 +120,14 @@ const createdTxs = [];
 // ─── Mock data store ──────────────────────────────────────────────────────────
 jest.mock('../../data/store', () => ({
   getUserById: jest.fn((id) => mockUsers[id] || null),
+  getAllUsers: jest.fn(() => Object.values(mockUsers)),
   getAccountById: jest.fn((id) => {
     const acct = mockAccounts[id];
     return acct ? { ...acct } : null; // return copy to avoid mutation issues
   }),
+  getAccountsByUserId: jest.fn((userId) =>
+    Object.values(mockAccounts).filter((a) => a.userId === userId)
+  ),
   createTransaction: jest.fn((data) => {
     const tx = {
       ...data,
@@ -326,18 +335,20 @@ describe('Transaction Flows — POST /api/transactions', () => {
       expect(res.status).toBe(403);
     });
 
-    it('should allow admin to use any account', async () => {
+    it('should block admin from creating transactions (must use customer account)', async () => {
       const res = await request(app)
         .post('/api/transactions')
         .set('x-test-user', adminUser())
         .send({
-          fromAccountId: OTHER_USER_ACCOUNT, // user B account
+          fromAccountId: OTHER_USER_ACCOUNT,
           amount: 50,
           type: 'withdrawal',
         });
 
-      // Admin should not get 403 for ownership
-      expect(res.status).not.toBe(403);
+      // Route intentionally blocks admins with 403 'forbidden' — transactions must be
+      // initiated from a customer session, not an admin session.
+      expect(res.status).toBe(403);
+      expect(res.body.error).toBe('forbidden');
     });
   });
 

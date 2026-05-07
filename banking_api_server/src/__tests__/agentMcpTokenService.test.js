@@ -142,7 +142,14 @@ const { resolveMcpAccessTokenWithEvents, buildSessionPreviewTokenEvents } = requ
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
+// Single-exchange path: mcpExchangeMode='single' bypasses the two-exchange delegation path
+// added in Phase 44+. All legacy single-exchange tests use this.
 function makeReq(token) {
+  return { _mockToken: token, session: { agentConsentGiven: true, mcpExchangeMode: 'single' } };
+}
+
+// Two-exchange path: no mcpExchangeMode set (defaults to 'double' behavior per service logic)
+function makeReq2ex(token) {
   return { _mockToken: token, session: { agentConsentGiven: true } };
 }
 
@@ -955,7 +962,7 @@ describe('resolveMcpAccessTokenWithEvents — 2-exchange delegation (ff_two_exch
 
   it('happy path: returns finalMcpJwt (not userToken or agentExchangedJwt)', async () => {
     const { token } = await resolveMcpAccessTokenWithEvents(
-      makeReq(sampleJwtUserAccessToken), 'get_my_accounts'
+      makeReq2ex(sampleJwtUserAccessToken), 'get_my_accounts'
     );
     expect(token).toBe(finalMcpJwt);
     expect(token).not.toBe(sampleJwtUserAccessToken);
@@ -963,14 +970,14 @@ describe('resolveMcpAccessTokenWithEvents — 2-exchange delegation (ff_two_exch
   });
 
   it('happy path: calls getClientCredentialsTokenAs twice and performTokenExchangeAs twice', async () => {
-    await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    await resolveMcpAccessTokenWithEvents(makeReq2ex(sampleJwtUserAccessToken), 'get_my_accounts');
     expect(mockGetClientCredentialsTokenAs).toHaveBeenCalledTimes(2);
     expect(mockPerformTokenExchangeAs).toHaveBeenCalledTimes(2);
   });
 
   it('happy path: tokenEvents include two-ex-agent-actor, two-ex-exchange1, two-ex-mcp-actor, two-ex-final-token', async () => {
     const { tokenEvents } = await resolveMcpAccessTokenWithEvents(
-      makeReq(sampleJwtUserAccessToken), 'get_my_accounts'
+      makeReq2ex(sampleJwtUserAccessToken), 'get_my_accounts'
     );
     const ids = tokenEvents.map((e) => e.id);
     expect(ids).toContain('two-ex-agent-actor');
@@ -996,7 +1003,7 @@ describe('resolveMcpAccessTokenWithEvents — 2-exchange delegation (ff_two_exch
 
     let err;
     try {
-      await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+      await resolveMcpAccessTokenWithEvents(makeReq2ex(sampleJwtUserAccessToken), 'get_my_accounts');
     } catch (e) { err = e; }
 
     expect(err).toBeDefined();
@@ -1017,7 +1024,7 @@ describe('resolveMcpAccessTokenWithEvents — 2-exchange delegation (ff_two_exch
     });
     let err;
     try {
-      await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+      await resolveMcpAccessTokenWithEvents(makeReq2ex(sampleJwtUserAccessToken), 'get_my_accounts');
     } catch (e) { err = e; }
     expect(err?.httpStatus).toBe(503);
   });
@@ -1032,7 +1039,7 @@ describe('resolveMcpAccessTokenWithEvents — 2-exchange delegation (ff_two_exch
 
     let err;
     try {
-      await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+      await resolveMcpAccessTokenWithEvents(makeReq2ex(sampleJwtUserAccessToken), 'get_my_accounts');
     } catch (e) { err = e; }
 
     expect(err).toBeDefined();

@@ -62,6 +62,11 @@ jest.mock('../../data/store', () => ({
     status: 'completed',
   })),
   updateAccountBalance: jest.fn(),
+  getAccountsByUserId: jest.fn((userId) =>
+    userId === 'test-user-id'
+      ? [{ id: 'test-account-id', userId: 'test-user-id', accountType: 'Checking', balance: 10000 }]
+      : [],
+  ),
   getTransactionsByUserId: jest.fn(() => []),
   getAllTransactions: jest.fn(() => []),
   getTransactionById: jest.fn(() => null),
@@ -71,6 +76,49 @@ jest.mock('../../services/pingOneAuthorizeService', () => ({
   evaluateTransaction: jest.fn().mockResolvedValue({ decision: 'PERMIT', raw: {} }),
   evaluateMcpToolDelegation: jest.fn().mockResolvedValue({ decision: 'PERMIT', stepUpRequired: false, raw: {} }),
   isMcpDelegationDecisionReady: jest.fn(() => false),
+}));
+
+// Mock configStore so the local SQLite config (which may have ff_hitl_enabled=false)
+// doesn't disable consent enforcement. HITL must be on for these tests to be meaningful.
+jest.mock('../../services/configStore', () => ({
+  get: jest.fn((key) => null),
+  getEffective: jest.fn((key) => {
+    if (key === 'ff_hitl_enabled') return 'true';
+    if (key === 'max_transaction_amount') return '10000';
+    return null;
+  }),
+  setConfig: jest.fn().mockResolvedValue(undefined),
+  isReadOnly: jest.fn(() => false),
+  ensureInitialized: jest.fn().mockResolvedValue(undefined),
+  isConfigured: jest.fn(() => false),
+  FIELD_DEFS: {},
+  SECRET_KEYS: [],
+  validateTwoExchangeConfig: jest.fn(() => ({ valid: false, missing: [] })),
+  buildAllowedScopesByAudience: jest.fn(() => ({})),
+}));
+
+// Mock transactionAuthorizationService to enforce HITL consent for amounts > $500.
+// The real service is not configured in test (no simulated mode, no PingOne endpoint),
+// so it returns { ran: false } and the consent gate never fires without this mock.
+jest.mock('../../services/transactionAuthorizationService', () => ({
+  evaluateTransactionPolicy: jest.fn(async ({ amount, type }) => {
+    const CONSENT_THRESHOLD = 500;
+    const CONSENT_TYPES = ['withdrawal', 'transfer'];
+    if (CONSENT_TYPES.includes(type) && amount > CONSENT_THRESHOLD) {
+      return {
+        ran: true,
+        block: {
+          status: 428,
+          body: {
+            error: 'hitl_required',
+            hitl: { type: 'consent' },
+            error_description: 'This transaction requires explicit human approval.',
+          },
+        },
+      };
+    }
+    return { ran: false, reason: 'below_threshold' };
+  }),
 }));
 
 // Mock emailService so no real PingOne calls are made.
@@ -153,7 +201,7 @@ describe('Transaction consent challenge', () => {
         description: 'x',
       });
     expect(res.status).toBe(428);
-    expect(res.body.error).toBe('consent_challenge_required');
+    expect(res.body.error).toBe('hitl_required');
   });
 
   it('POST /confirm returns otpSent flag and OTP email is sent', async () => {

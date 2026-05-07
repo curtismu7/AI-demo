@@ -64,6 +64,7 @@ jest.mock('../../data/store', () => ({
   }),
   getUserById: jest.fn(() => null),
   createTransaction: jest.fn((transaction) => ({ ...transaction, id: 'txn-123' })),
+  updateAccountBalance: jest.fn(() => Promise.resolve()),
   getTransactionsByUserId: jest.fn(() => []),
 }));
 
@@ -82,7 +83,24 @@ jest.mock('../../services/appEventService', () => ({
 }));
 
 jest.mock('../../services/transactionAuthorizationService', () => ({
-  isAuthorizedTransaction: jest.fn(() => true),
+  evaluateTransactionPolicy: jest.fn(async ({ userRole, type, amount }) => {
+    if (userRole === 'admin') return { ran: false, reason: 'admin_role_exempt' };
+    const THRESHOLD = 500;
+    if (type === 'transfer' || amount > THRESHOLD) {
+      return {
+        ran: true,
+        block: {
+          status: 428,
+          body: {
+            error: 'hitl_required',
+            hitl: { type: 'consent' },
+            error_description: 'This transaction requires explicit human approval. Create a consent challenge first.',
+          },
+        },
+      };
+    }
+    return { ran: true, permit: true, evaluation: { decision: 'PERMIT', engine: 'simulated', path: 'simulated' } };
+  }),
 }));
 
 jest.mock('../../config/runtimeSettings', () => ({
@@ -126,7 +144,7 @@ function buildApp() {
 
 describe('POST /api/transactions — HITL Enforcement (Integration, Real .env Values)', () => {
   describe('Transfer type — ALWAYS requires consent (regardless of amount)', () => {
-    test('transfer $0.01 without consentChallengeId → 428 consent_challenge_required', async () => {
+    test('transfer $0.01 without consentChallengeId → 428 hitl_required', async () => {
       const app = buildApp();
 
       const res = await request(app)
@@ -147,8 +165,8 @@ describe('POST /api/transactions — HITL Enforcement (Integration, Real .env Va
         });
 
       expect(res.status).toBe(428);
-      expect(res.body.error).toBe('consent_challenge_required');
-      expect(res.body.error_description).toContain('All transfers require explicit HITL approval');
+      expect(res.body.error).toBe('hitl_required');
+      expect(res.body.error_description).toContain('explicit human approval');
     });
 
     test('transfer $1000 (above threshold) without consentChallengeId → 428', async () => {
@@ -168,7 +186,7 @@ describe('POST /api/transactions — HITL Enforcement (Integration, Real .env Va
         });
 
       expect(res.status).toBe(428);
-      expect(res.body.error).toBe('consent_challenge_required');
+      expect(res.body.error).toBe('hitl_required');
     });
 
     test('transfer $800 (above threshold, below max) without consent → 428', async () => {
@@ -214,7 +232,7 @@ describe('POST /api/transactions — HITL Enforcement (Integration, Real .env Va
       // Should NOT return 428 because admin role bypasses HITL
       expect(res.status).not.toBe(428);
       // May fail for other reasons (insufficient balance, etc.) but not HITL
-      expect(res.body.error).not.toBe('consent_challenge_required');
+      expect(res.body.error).not.toBe('hitl_required');
     });
   });
 
@@ -237,7 +255,7 @@ describe('POST /api/transactions — HITL Enforcement (Integration, Real .env Va
 
       // Should NOT return 428 (under threshold)
       expect(res.status).not.toBe(428);
-      expect(res.body.error).not.toBe('consent_challenge_required');
+      expect(res.body.error).not.toBe('hitl_required');
     });
 
     test('deposit $600 (above .env threshold) without consent → 428', async () => {
@@ -259,7 +277,7 @@ describe('POST /api/transactions — HITL Enforcement (Integration, Real .env Va
         });
 
       expect(res.status).toBe(428);
-      expect(res.body.error).toBe('consent_challenge_required');
+      expect(res.body.error).toBe('hitl_required');
     });
 
     test('deposit $500.00 exactly (at threshold boundary) → allowed', async () => {
@@ -318,7 +336,7 @@ describe('POST /api/transactions — HITL Enforcement (Integration, Real .env Va
         });
 
       expect(res.status).toBe(428);
-      expect(res.body.error).toBe('consent_challenge_required');
+      expect(res.body.error).toBe('hitl_required');
     });
   });
 

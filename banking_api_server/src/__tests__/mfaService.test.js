@@ -231,50 +231,62 @@ describe('initiateDeviceAuth', () => {
 });
 
 // ─── selectDevice ─────────────────────────────────────────────────────────────
+// selectDevice uses a worker token (axios.post for token) then axios.post for the actual call.
 
 describe('selectDevice', () => {
-  it('sends PUT to deviceAuthentications/:daId with selectedDevice', async () => {
-    axios.put.mockResolvedValueOnce({ data: { id: 'da-1', status: 'OTP_REQUIRED' } });
+  it('sends POST to deviceAuthentications/:daId with selectedDevice', async () => {
+    setupEnv();
+    mockWorkerTokenSuccess();
+    axios.post.mockResolvedValueOnce({ data: { id: 'da-1', status: 'OTP_REQUIRED' } });
 
     const result = await mfaService.selectDevice('da-1', 'dev-1', 'user-token');
 
     expect(result.status).toBe('OTP_REQUIRED');
-    const [url, body] = axios.put.mock.calls[0];
+    // Second post call is the actual selectDevice request
+    const [url, body] = axios.post.mock.calls[1];
     expect(url).toContain('deviceAuthentications/da-1');
-    expect(body.selectedDevice.id).toBe('dev-1');
+    expect(body.device.id).toBe('dev-1'); // service uses { device: { id } } not selectedDevice
   });
 
   it('wraps 410 as challenge_expired', async () => {
-    axios.put.mockRejectedValueOnce(pingoneError(410, 'GONE'));
+    setupEnv();
+    mockWorkerTokenSuccess();
+    axios.post.mockRejectedValueOnce(pingoneError(410, 'GONE'));
     const err = await mfaService.selectDevice('da-1', 'dev-1', 'user-token').catch(e => e);
     expect(err.code).toBe('challenge_expired');
   });
 });
 
 // ─── submitOtp ────────────────────────────────────────────────────────────────
+// submitOtp uses the user access token directly (no worker token) and axios.post.
 
 describe('submitOtp', () => {
-  it('sends PUT with selectedDevice.otp coerced to string', async () => {
-    axios.put.mockResolvedValueOnce({ data: { id: 'da-1', status: 'COMPLETED' } });
+  it('sends POST with otp coerced to string', async () => {
+    setupEnv();
+    axios.post.mockResolvedValueOnce({ data: { id: 'da-1', status: 'COMPLETED' } });
 
     const result = await mfaService.submitOtp('da-1', 'dev-1', 123456, 'user-token');
 
     expect(result.status).toBe('COMPLETED');
-    const [, body] = axios.put.mock.calls[0];
-    expect(body.selectedDevice.otp).toBe('123456');
+    const [, body] = axios.post.mock.calls[0];
+    expect(body.otp).toBe('123456');
   });
 
   it('wraps 401 as token_expired', async () => {
-    axios.put.mockRejectedValueOnce(pingoneError(401, 'TOKEN_EXPIRED'));
+    setupEnv();
+    axios.post.mockRejectedValueOnce(pingoneError(401, 'TOKEN_EXPIRED'));
     const err = await mfaService.submitOtp('da-1', 'dev-1', '000000', 'bad-token').catch(e => e);
     expect(err.code).toBe('token_expired');
   });
 });
 
 // ─── getDeviceAuthStatus ──────────────────────────────────────────────────────
+// getDeviceAuthStatus uses a worker token (axios.post) then axios.get.
 
 describe('getDeviceAuthStatus', () => {
-  it('sends GET to deviceAuthentications/:daId', async () => {
+  it('sends GET to deviceAuthentications/:daId using worker token', async () => {
+    setupEnv();
+    mockWorkerTokenSuccess('worker-tok');
     axios.get.mockResolvedValueOnce({ data: { id: 'da-1', status: 'PUSH_CONFIRMATION_PENDING' } });
 
     const result = await mfaService.getDeviceAuthStatus('da-1', 'user-token');
@@ -282,7 +294,7 @@ describe('getDeviceAuthStatus', () => {
     expect(result.status).toBe('PUSH_CONFIRMATION_PENDING');
     const [url, cfg] = axios.get.mock.calls[0];
     expect(url).toContain('deviceAuthentications/da-1');
-    expect(cfg.headers.Authorization).toBe('Bearer user-token');
+    expect(cfg.headers.Authorization).toBe('Bearer worker-tok');
   });
 });
 
