@@ -558,7 +558,7 @@ describe("Discovery popout — '⊞ All actions' button", () => {
     });
     await waitFor(() =>
       expect(
-        screen.getByRole("dialog", { name: /Actions/i }),
+        screen.getByRole("dialog", { name: /Action browser/i }),
       ).toBeInTheDocument(),
     );
   });
@@ -578,7 +578,7 @@ describe("Discovery popout — '⊞ All actions' button", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /^Actions/i }));
     expect(
-      screen.getByRole("dialog", { name: /Actions/i }),
+      screen.getByRole("dialog", { name: /Action browser/i }),
     ).toBeInTheDocument();
     // Discovery popout includes chips from all groups — check for one from each
     expect(screen.getAllByText("My Accounts").length).toBeGreaterThanOrEqual(1);
@@ -878,7 +878,7 @@ describe("Action chip dispatch — MCP tool calls", () => {
     });
     // query_user lives in the admin group inside the discovery popout
     fireEvent.click(screen.getByRole("button", { name: /^Actions/i }));
-    const dialog = screen.getByRole("dialog", { name: /Actions/i });
+    const dialog = screen.getByRole("dialog", { name: /Action browser/i });
     // Admin group starts collapsed — expand it first
     const adminToggle = Array.from(dialog.querySelectorAll("button")).find(
       (b) => b.textContent.includes("Admin"),

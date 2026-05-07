@@ -48,7 +48,7 @@ const FLAG_REGISTRY = [
     description:  'When the Authorize API call fails (network timeout, misconfiguration), allow the transaction to proceed.',
     impact:       'ON = fail open (warn + allow). OFF = fail closed (deny transaction on any Authorize error). Recommended: ON during initial testing.',
     type:         'boolean',
-    defaultValue: true,
+    defaultValue: false,
     warnIfDisabled: true, // warn in UI that OFF = hard fail
   },
   {
@@ -268,17 +268,6 @@ const FLAG_REGISTRY = [
     defaultValue: true,
   },
 
-  // ── WebMCP ────────────────────────────────────────────────────────────────
-  {
-    id:           'ff_webmcp_enabled',
-    name:         'WebMCP — Browser MCP Panel',
-    category:     'WebMCP',
-    description:  'Show the WebMCP interaction panel on the dashboard. Lets users browse MCP tools, call them directly, and see streaming results — all through the BFF proxy (tokens stay server-side).',
-    impact:       'OFF (default) = panel hidden. ON = panel visible on dashboard for logged-in users.',
-    type:         'boolean',
-    defaultValue: false,
-    warnIfEnabled: false,
-  },
 ];
 
 // ---------------------------------------------------------------------------

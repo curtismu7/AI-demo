@@ -1,61 +1,65 @@
 // banking_api_ui/src/components/education/educationIds.js
 export const EDU = {
-  LOGIN_FLOW: 'login-flow',
-  TOKEN_EXCHANGE: 'token-exchange',
-  MAY_ACT: 'may-act',
-  MCP_PROTOCOL: 'mcp-protocol',
-  INTROSPECTION: 'introspection',
-  AGENT_GATEWAY: 'agent-gateway',
-  RFC_INDEX: 'rfc-index',
-  STEP_UP: 'step-up',
-  PINGONE_AUTHORIZE: 'pingone-authorize',
-  CIMD: 'cimd',
+  LOGIN_FLOW: "login-flow",
+  TOKEN_EXCHANGE: "token-exchange",
+  MAY_ACT: "may-act",
+  MCP_PROTOCOL: "mcp-protocol",
+  INTROSPECTION: "introspection",
+  AGENT_GATEWAY: "agent-gateway",
+  RFC_INDEX: "rfc-index",
+  STEP_UP: "step-up",
+  PINGONE_AUTHORIZE: "pingone-authorize",
+  CIMD: "cimd",
   /** Computer Use Agent — screen-observing agent loop vs structured tool-use */
-  CUA: 'cua',
+  CUA: "cua",
   /** Human-in-the-loop: mandatory human approval before high-impact agent-related actions */
-  HUMAN_IN_LOOP: 'human-in-loop',
+  HUMAN_IN_LOOP: "human-in-loop",
   /** PingOne five best practices for AI agent security */
-  BEST_PRACTICES: 'best-practices',
+  BEST_PRACTICES: "best-practices",
   /** Pushed Authorization Requests — RFC 9126 */
-  PAR: 'par',
+  PAR: "par",
   /** Rich Authorization Requests — RFC 9396 */
-  RAR: 'rar',
+  RAR: "rar",
   /** JWT-based client authentication — RFC 7523 / private_key_jwt */
-  JWT_CLIENT_AUTH: 'jwt-client-auth',
+  JWT_CLIENT_AUTH: "jwt-client-auth",
   /** PingOne Agentic Maturity Model — 3 levels of agent identity controls */
-  AGENTIC_MATURITY: 'agentic-maturity',
+  AGENTIC_MATURITY: "agentic-maturity",
   /** OpenID Connect 2.1 — what changed from Core 1.0, why it matters for AI agents */
-  OIDC_21: 'oidc-21',
+  OIDC_21: "oidc-21",
   /** LangChain 0.3.x — LCEL, multi-provider LLM switching, agent architecture */
-  LANGCHAIN: 'langchain',
+  LANGCHAIN: "langchain",
   /** Agent builder landscape — LangChain, open-source frameworks, commercial platforms, and comparison */
-  AGENT_BUILDER_LANDSCAPE: 'agent-builder-landscape',
+  AGENT_BUILDER_LANDSCAPE: "agent-builder-landscape",
   /** LLM landscape — commercial and open-source models, capabilities overview, and comparison */
-  LLM_LANDSCAPE: 'llm-landscape',
+  LLM_LANDSCAPE: "llm-landscape",
   /** Sensitive Data & Selective Disclosure — field-level scopes, least-data principle, RAR */
-  SENSITIVE_DATA: 'sensitive-data',
+  SENSITIVE_DATA: "sensitive-data",
   /** AI platform landscape — AWS, Microsoft, Google, IBM, Anthropic, OpenAI tools overview and vendor comparison */
-  AI_PLATFORM_LANDSCAPE: 'ai-platform-landscape',
+  AI_PLATFORM_LANDSCAPE: "ai-platform-landscape",
   /** PingGateway MCP security — securing MCP servers with PingGateway, custom vs PingGateway comparison */
-  PINGGATEWAY_MCP: 'pinggateway-mcp',
+  PINGGATEWAY_MCP: "pinggateway-mcp",
   /** C4 architecture diagram — top-down architecture of the banking demo at 4 levels */
-  ARCHITECTURE_DIAGRAM: 'architecture-diagram',
+  ARCHITECTURE_DIAGRAM: "architecture-diagram",
   /** Token chain — delegation tracking through OAuth token exchanges */
-  TOKEN_CHAIN: 'token-chain',
+  TOKEN_CHAIN: "token-chain",
   /** RFC 8693 Token Exchange — OAuth 2.0 Token Exchange standard */
-  RFC_8693: 'rfc-8693',
+  RFC_8693: "rfc-8693",
   /** Flow Diagrams — Technical architecture diagrams with RFC annotations */
-  FLOW_DIAGRAMS: 'flow-diagrams',
+  FLOW_DIAGRAMS: "flow-diagrams",
   /** IETF Standards for Agentic Identity — RFC7523bis, Identity Chaining, JAG-IR, AIMS, WIMSE, SD-JWT VC, PQ/T JOSE */
-  IETF_STANDARDS: 'ietf-standards',
+  IETF_STANDARDS: "ietf-standards",
   /** Token Flow — end-to-end 2-exchange RFC 8693 delegation: tokens, audiences, scopes, act chain */
-  TOKEN_FLOW: 'token-flow',
+  TOKEN_FLOW: "token-flow",
   /** AI Primer — Terminology, Foundations, Prompts, Workflow, and authoring background for the Technical Enablement Guide */
-  AI_PRIMER: 'ai-primer',
+  AI_PRIMER: "ai-primer",
   /** ID-JAG / Cross-App Access (XAA) — Identity Assertion JWT Authorization Grant — IETF draft, PingOne SSO, limitations */
-  ID_JAG: 'id-jag',
+  ID_JAG: "id-jag",
   /** Glean Integration — Enterprise AI assistant with PingFed, PingAuthorize, CIBA, and MCP Gateway */
-  GLEAN: 'glean',
+  GLEAN: "glean",
   /** Intent-Bound, Constraint-Based Delegation — AP2, Verifiable Intent, consent verification, and how this demo implements the pattern */
-  INTENT_DELEGATION: 'intent-delegation',
+  INTENT_DELEGATION: "intent-delegation",
+  /** AuthZEN — OpenID Foundation working group standardizing PEP/PDP authorization API */
+  AUTHZEN: "authzen",
+  /** WebMCP — Browser-native MCP tool access via BFF proxy; tokens stay server-side */
+  WEB_MCP: "web-mcp",
 };

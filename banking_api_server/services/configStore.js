@@ -106,7 +106,7 @@ const FIELD_DEFS = {
 
   // Feature flags — granular toggles for in-development features
   // Each maps to a runtime behaviour controlled via /api/admin/feature-flags.
-  ff_authorize_fail_open:  { public: true, default: 'true'  }, // fail open (allow) on Authorize errors
+  ff_authorize_fail_open:  { public: true, default: 'false' }, // fail closed by default; enable to allow transactions when auth service is unavailable
   ff_authorize_deposits:   { public: true, default: 'false' }, // apply Authorize to deposits too
   // When true with authorize_enabled: run in-process simulated Authorize (education); no PingOne call
   ff_authorize_simulated:  { public: true, default: 'true' },
@@ -122,8 +122,7 @@ const FIELD_DEFS = {
   ff_oidc_only_authorize:  { public: true, default: 'false' }, // Strip banking:* from user /authorize — fixes multi-resource error when scopes are on a PingOne Resource Server
   ff_two_exchange_delegation: { public: true, default: 'true' }, // 2-Exchange pattern: Subject→(AI Agent exchange)→Agent Token→(MCP exchange)→Final Token with nested act.act claim (default ON — canonical agent path)
   mcp_use_legacy_protocol: { public: true, default: 'false' }, // When 'true', BFF uses protocolVersion 2024-11-05 in MCP initialize; default (false) = 2025-11-25
-  ff_webmcp_enabled:         { public: true, default: 'false' }, // Show WebMCP browser panel on dashboard (tool-listing + streaming call UI via BFF proxy)
-  ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic fast path for chips; when false, all queries go through LLM
+ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic fast path for chips; when false, all queries go through LLM
 
   // Token endpoint auth method overrides (configurable at runtime from Demo Data page)
   // Fallback: env vars AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD / MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD
@@ -216,7 +215,7 @@ const FIELD_DEFS = {
   vercel_deploy_url:               { public: true, default: '' },
 
   // Step-up / HITL thresholds (USD)
-  confirm_threshold_usd:           { public: true, default: '500' },
+  confirm_threshold_usd:           { public: true, default: '250' },
   mfa_threshold_usd:               { public: true, default: '500' },
   step_up_amount_threshold:        { public: true, default: '500' },
 

@@ -1,41 +1,43 @@
 // banking_api_ui/src/components/education/EducationPanelsHost.js
-import React from 'react';
-import { useEducationUI } from '../../context/EducationUIContext';
-import { EDU } from './educationIds';
-import LoginFlowPanel from './LoginFlowPanel';
-import TokenExchangePanel from './TokenExchangePanel';
-import MayActPanel from './MayActPanel';
-import McpProtocolPanel from './McpProtocolPanel';
-import IntrospectionPanel from './IntrospectionPanel';
-import AgentGatewayPanel from './AgentGatewayPanel';
-import RFCIndexPanel from './RFCIndexPanel';
-import StepUpPanel from './StepUpPanel';
-import PingOneAuthorizePanel from './PingOneAuthorizePanel';
-import CimdPanel from './CimdPanel';
-import ComputerUseAgentPanel from './ComputerUseAgentPanel';
-import HumanInLoopPanel from './HumanInLoopPanel';
-import BestPracticesPanel from './BestPracticesPanel';
-import PARPanel from './PARPanel';
-import RARPanel from './RARPanel';
-import JwtClientAuthPanel from './JwtClientAuthPanel';
-import AgenticMaturityPanel from './AgenticMaturityPanel';
-import Oidc21Panel from './Oidc21Panel';
-import LangChainPanel from './LangChainPanel';
-import AgentBuilderLandscapePanel from './AgentBuilderLandscapePanel';
-import LlmLandscapePanel from './LlmLandscapePanel';
-import AiPlatformLandscapePanel from './AiPlatformLandscapePanel';
-import SensitiveDataPanel from './SensitiveDataPanel';
-import PingGatewayMcpPanel from './PingGatewayMcpPanel';
-import ArchitectureDiagramPanel from './ArchitectureDiagramPanel';
-import TokenChainEducationPanel from './TokenChainEducationPanel';
-import RFC8693Panel from './RFC8693Panel';
-import FlowDiagramsPanel from './FlowDiagramsPanel';
-import IETFStandardsPanel from './IETFStandardsPanel';
-import TokenFlowPanel from './TokenFlowPanel';
-import AiPrimerPanel from './AiPrimerPanel';
-import IdJagPanel from './IdJagPanel';
-import GleanPanel from './GleanPanel';
-import IntentDelegationPanel from './IntentDelegationPanel';
+import React from "react";
+import { useEducationUI } from "../../context/EducationUIContext";
+import { EDU } from "./educationIds";
+import LoginFlowPanel from "./LoginFlowPanel";
+import TokenExchangePanel from "./TokenExchangePanel";
+import MayActPanel from "./MayActPanel";
+import McpProtocolPanel from "./McpProtocolPanel";
+import IntrospectionPanel from "./IntrospectionPanel";
+import AgentGatewayPanel from "./AgentGatewayPanel";
+import RFCIndexPanel from "./RFCIndexPanel";
+import StepUpPanel from "./StepUpPanel";
+import PingOneAuthorizePanel from "./PingOneAuthorizePanel";
+import CimdPanel from "./CimdPanel";
+import ComputerUseAgentPanel from "./ComputerUseAgentPanel";
+import HumanInLoopPanel from "./HumanInLoopPanel";
+import BestPracticesPanel from "./BestPracticesPanel";
+import PARPanel from "./PARPanel";
+import RARPanel from "./RARPanel";
+import JwtClientAuthPanel from "./JwtClientAuthPanel";
+import AgenticMaturityPanel from "./AgenticMaturityPanel";
+import Oidc21Panel from "./Oidc21Panel";
+import LangChainPanel from "./LangChainPanel";
+import AgentBuilderLandscapePanel from "./AgentBuilderLandscapePanel";
+import LlmLandscapePanel from "./LlmLandscapePanel";
+import AiPlatformLandscapePanel from "./AiPlatformLandscapePanel";
+import SensitiveDataPanel from "./SensitiveDataPanel";
+import PingGatewayMcpPanel from "./PingGatewayMcpPanel";
+import ArchitectureDiagramPanel from "./ArchitectureDiagramPanel";
+import TokenChainEducationPanel from "./TokenChainEducationPanel";
+import RFC8693Panel from "./RFC8693Panel";
+import FlowDiagramsPanel from "./FlowDiagramsPanel";
+import IETFStandardsPanel from "./IETFStandardsPanel";
+import TokenFlowPanel from "./TokenFlowPanel";
+import AiPrimerPanel from "./AiPrimerPanel";
+import IdJagPanel from "./IdJagPanel";
+import GleanPanel from "./GleanPanel";
+import IntentDelegationPanel from "./IntentDelegationPanel";
+import AuthZenPanel from "./AuthZenPanel";
+import WebMcpEduPanel from "./WebMcpEduPanel";
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -45,40 +47,178 @@ export default function EducationPanelsHost() {
 
   return (
     <>
-      <LoginFlowPanel isOpen={panel === EDU.LOGIN_FLOW} onClose={close} initialTabId={tab} />
-      <TokenExchangePanel isOpen={panel === EDU.TOKEN_EXCHANGE} onClose={close} initialTabId={tab} />
-      <MayActPanel isOpen={panel === EDU.MAY_ACT} onClose={close} initialTabId={tab} />
-      <McpProtocolPanel isOpen={panel === EDU.MCP_PROTOCOL} onClose={close} initialTabId={tab} />
-      <IntrospectionPanel isOpen={panel === EDU.INTROSPECTION} onClose={close} initialTabId={tab} />
-      <AgentGatewayPanel isOpen={panel === EDU.AGENT_GATEWAY} onClose={close} initialTabId={tab} />
-      <RFCIndexPanel isOpen={panel === EDU.RFC_INDEX} onClose={close} initialTabId={tab} />
-      <StepUpPanel isOpen={panel === EDU.STEP_UP} onClose={close} initialTabId={tab} />
-      <PingOneAuthorizePanel isOpen={panel === EDU.PINGONE_AUTHORIZE} onClose={close} initialTabId={tab} />
-      <CimdPanel isOpen={panel === EDU.CIMD} onClose={close} initialTabId={tab} />
-      <ComputerUseAgentPanel isOpen={panel === EDU.CUA} onClose={close} initialTabId={tab} />
-      <HumanInLoopPanel isOpen={panel === EDU.HUMAN_IN_LOOP} onClose={close} initialTabId={tab} />
-      <BestPracticesPanel isOpen={panel === EDU.BEST_PRACTICES} onClose={close} initialTabId={tab} />
+      <LoginFlowPanel
+        isOpen={panel === EDU.LOGIN_FLOW}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <TokenExchangePanel
+        isOpen={panel === EDU.TOKEN_EXCHANGE}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <MayActPanel
+        isOpen={panel === EDU.MAY_ACT}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <McpProtocolPanel
+        isOpen={panel === EDU.MCP_PROTOCOL}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <IntrospectionPanel
+        isOpen={panel === EDU.INTROSPECTION}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <AgentGatewayPanel
+        isOpen={panel === EDU.AGENT_GATEWAY}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <RFCIndexPanel
+        isOpen={panel === EDU.RFC_INDEX}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <StepUpPanel
+        isOpen={panel === EDU.STEP_UP}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <PingOneAuthorizePanel
+        isOpen={panel === EDU.PINGONE_AUTHORIZE}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <CimdPanel
+        isOpen={panel === EDU.CIMD}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <ComputerUseAgentPanel
+        isOpen={panel === EDU.CUA}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <HumanInLoopPanel
+        isOpen={panel === EDU.HUMAN_IN_LOOP}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <BestPracticesPanel
+        isOpen={panel === EDU.BEST_PRACTICES}
+        onClose={close}
+        initialTabId={tab}
+      />
       <PARPanel isOpen={panel === EDU.PAR} onClose={close} initialTabId={tab} />
       <RARPanel isOpen={panel === EDU.RAR} onClose={close} initialTabId={tab} />
-      <JwtClientAuthPanel isOpen={panel === EDU.JWT_CLIENT_AUTH} onClose={close} initialTabId={tab} />
-      <AgenticMaturityPanel isOpen={panel === EDU.AGENTIC_MATURITY} onClose={close} initialTabId={tab} />
-      <Oidc21Panel isOpen={panel === EDU.OIDC_21} onClose={close} initialTabId={tab} />
-      <LangChainPanel isOpen={panel === EDU.LANGCHAIN} onClose={close} initialTabId={tab} />
-      <AgentBuilderLandscapePanel isOpen={panel === EDU.AGENT_BUILDER_LANDSCAPE} onClose={close} initialTabId={tab} />
-      <LlmLandscapePanel isOpen={panel === EDU.LLM_LANDSCAPE} onClose={close} initialTabId={tab} />
-      <AiPlatformLandscapePanel isOpen={panel === EDU.AI_PLATFORM_LANDSCAPE} onClose={close} initialTabId={tab} />
-      <SensitiveDataPanel isOpen={panel === EDU.SENSITIVE_DATA} onClose={close} initialTabId={tab} />
-      <PingGatewayMcpPanel isOpen={panel === EDU.PINGGATEWAY_MCP} onClose={close} initialTabId={tab} />
-      <ArchitectureDiagramPanel isOpen={panel === EDU.ARCHITECTURE_DIAGRAM} onClose={close} initialTabId={tab} />
-      <TokenChainEducationPanel isOpen={panel === EDU.TOKEN_CHAIN} onClose={close} initialTabId={tab} />
-      <RFC8693Panel isOpen={panel === EDU.RFC_8693} onClose={close} initialTabId={tab} />
-      <FlowDiagramsPanel isOpen={panel === EDU.FLOW_DIAGRAMS} onClose={close} initialTabId={tab} />
-      <IETFStandardsPanel isOpen={panel === EDU.IETF_STANDARDS} onClose={close} initialTabId={tab} />
-      <TokenFlowPanel isOpen={panel === EDU.TOKEN_FLOW} onClose={close} initialTabId={tab} />
-      <AiPrimerPanel isOpen={panel === EDU.AI_PRIMER} onClose={close} initialTabId={tab} />
-      <IdJagPanel isOpen={panel === EDU.ID_JAG} onClose={close} initialTabId={tab} />
-      <GleanPanel isOpen={panel === EDU.GLEAN} onClose={close} initialTabId={tab} />
-      <IntentDelegationPanel isOpen={panel === EDU.INTENT_DELEGATION} onClose={close} initialTabId={tab} />
+      <JwtClientAuthPanel
+        isOpen={panel === EDU.JWT_CLIENT_AUTH}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <AgenticMaturityPanel
+        isOpen={panel === EDU.AGENTIC_MATURITY}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <Oidc21Panel
+        isOpen={panel === EDU.OIDC_21}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <LangChainPanel
+        isOpen={panel === EDU.LANGCHAIN}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <AgentBuilderLandscapePanel
+        isOpen={panel === EDU.AGENT_BUILDER_LANDSCAPE}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <LlmLandscapePanel
+        isOpen={panel === EDU.LLM_LANDSCAPE}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <AiPlatformLandscapePanel
+        isOpen={panel === EDU.AI_PLATFORM_LANDSCAPE}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <SensitiveDataPanel
+        isOpen={panel === EDU.SENSITIVE_DATA}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <PingGatewayMcpPanel
+        isOpen={panel === EDU.PINGGATEWAY_MCP}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <ArchitectureDiagramPanel
+        isOpen={panel === EDU.ARCHITECTURE_DIAGRAM}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <TokenChainEducationPanel
+        isOpen={panel === EDU.TOKEN_CHAIN}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <RFC8693Panel
+        isOpen={panel === EDU.RFC_8693}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <FlowDiagramsPanel
+        isOpen={panel === EDU.FLOW_DIAGRAMS}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <IETFStandardsPanel
+        isOpen={panel === EDU.IETF_STANDARDS}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <TokenFlowPanel
+        isOpen={panel === EDU.TOKEN_FLOW}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <AiPrimerPanel
+        isOpen={panel === EDU.AI_PRIMER}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <IdJagPanel
+        isOpen={panel === EDU.ID_JAG}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <GleanPanel
+        isOpen={panel === EDU.GLEAN}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <IntentDelegationPanel
+        isOpen={panel === EDU.INTENT_DELEGATION}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <AuthZenPanel
+        isOpen={panel === EDU.AUTHZEN}
+        onClose={close}
+        initialTabId={tab}
+      />
+      <WebMcpEduPanel
+        isOpen={panel === EDU.WEB_MCP}
+        onClose={close}
+        initialTabId={tab}
+      />
     </>
   );
 }

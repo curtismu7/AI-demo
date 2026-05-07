@@ -1,14 +1,21 @@
 // banking_api_ui/src/components/WebMcpPanel.js
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { listMcpTools, callMcpTool, openMcpToolStream } from '../services/webMcpClient';
-import { loadPublicConfig } from '../services/configService';
-import { useAgentUiMode } from '../context/AgentUiModeContext';
-import './WebMcpPanel.css';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  listMcpTools,
+  callMcpTool,
+  openMcpToolStream,
+} from "../services/webMcpClient";
+import { useAgentUiMode } from "../context/AgentUiModeContext";
+import { useEducationUI } from "../context/EducationUIContext";
+import { EDU } from "./education/educationIds";
+import PageNav from "./PageNav";
+import "../styles/appShellPages.css";
+import "./WebMcpPanel.css";
 
 function uuid() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
-    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
   });
 }
 
@@ -20,21 +27,13 @@ export default function WebMcpPanel() {
   const [result, setResult] = useState(null);
   const [streamEvents, setStreamEvents] = useState([]);
   const [error, setError] = useState(null);
-  const [flagEnabled, setFlagEnabled] = useState(false);
   const streamLogRef = useRef(null);
   const disconnectRef = useRef(null);
   const { setWebMcpLastResult } = useAgentUiMode();
+  const { open } = useEducationUI();
 
-  // Check feature flag on mount
+  // Load tools on mount
   useEffect(() => {
-    loadPublicConfig().then((cfg) => {
-      setFlagEnabled(cfg.ff_webmcp_enabled === 'true' || cfg.ff_webmcp_enabled === true);
-    }).catch(() => {});
-  }, []);
-
-  // Load tools when flag is enabled
-  useEffect(() => {
-    if (!flagEnabled) return;
     setLoading(true);
     listMcpTools()
       .then((data) => {
@@ -43,12 +42,13 @@ export default function WebMcpPanel() {
       })
       .catch((err) => {
         setError({
-          message: 'Could not load MCP tools — check that the MCP server is running.',
-          details: `${err.message}${err.body ? '\n' + err.body : ''}`,
+          message:
+            "Could not load MCP tools — check that the MCP server is running.",
+          details: `${err.message}${err.body ? "\n" + err.body : ""}`,
         });
       })
       .finally(() => setLoading(false));
-  }, [flagEnabled]);
+  }, []);
 
   // Auto-scroll stream log
   useEffect(() => {
@@ -85,10 +85,12 @@ export default function WebMcpPanel() {
 
     const flowTraceId = uuid();
 
-    // Open SSE stream first
     if (disconnectRef.current) disconnectRef.current();
     disconnectRef.current = openMcpToolStream(flowTraceId, (data) => {
-      setStreamEvents((prev) => [...prev, data]);
+      setStreamEvents((prev) => [
+        ...prev,
+        { key: `${flowTraceId}-${prev.length}`, data },
+      ]);
     });
 
     try {
@@ -97,122 +99,162 @@ export default function WebMcpPanel() {
       if (setWebMcpLastResult) setWebMcpLastResult(res);
     } catch (err) {
       setError({
-        message: 'Tool call failed — check connection or permissions.',
-        details: `${err.message}${err.body ? '\n' + err.body : ''}`,
+        message: "Tool call failed — check connection or permissions.",
+        details: `${err.message}${err.body ? "\n" + err.body : ""}`,
       });
     } finally {
       setLoading(false);
     }
   }, [selectedTool, params, setWebMcpLastResult]);
 
-  if (!flagEnabled) return null;
-
   const schemaProps = selectedTool?.inputSchema?.properties || {};
   const requiredFields = selectedTool?.inputSchema?.required || [];
 
   return (
-    <div className="webmcp-panel">
-      <h3 className="webmcp-panel-title">WebMCP — Tool Inspector</h3>
+    <div className="app-page-shell">
+      <div className="app-page-shell__body">
+        <PageNav title="WebMCP — Tool Inspector" />
 
-      {loading && !selectedTool && <div className="webmcp-loading">Loading tools…</div>}
-
-      {error && !selectedTool && (
-        <div className="webmcp-error">
-          <p>{error.message}</p>
-          <details>
-            <summary>Technical details</summary>
-            <pre>{error.details}</pre>
-          </details>
+        <div className="app-page-toolbar app-page-toolbar--start">
+          <button
+            type="button"
+            className="app-page-toolbar-btn"
+            onClick={() => open(EDU.WEB_MCP, "overview")}
+          >
+            What is WebMCP?
+          </button>
+          <button
+            type="button"
+            className="app-page-toolbar-btn"
+            onClick={() => open(EDU.WEB_MCP, "architecture")}
+          >
+            Architecture
+          </button>
+          <button
+            type="button"
+            className="app-page-toolbar-btn"
+            onClick={() => open(EDU.MCP_PROTOCOL, "what")}
+          >
+            MCP Protocol
+          </button>
+          <button
+            type="button"
+            className="app-page-toolbar-btn"
+            onClick={() => open(EDU.TOKEN_EXCHANGE, "why")}
+          >
+            Token Exchange
+          </button>
         </div>
-      )}
 
-      <div className="webmcp-body">
-        {/* Tool list */}
-        <div className="webmcp-tool-list">
-          <h4>Available Tools ({tools.length})</h4>
-          {tools.map((tool) => (
-            <button
-              key={tool.name}
-              className={`webmcp-tool-item${selectedTool?.name === tool.name ? ' active' : ''}`}
-              onClick={() => selectTool(tool)}
-            >
-              <span className="webmcp-tool-name">{tool.name}</span>
-              <span className="webmcp-tool-desc">{tool.description}</span>
-            </button>
-          ))}
-        </div>
+        <div className="webmcp-panel">
+          {loading && !selectedTool && (
+            <div className="webmcp-loading">Loading tools…</div>
+          )}
 
-        {/* Tool detail / call area */}
-        {selectedTool && (
-          <div className="webmcp-tool-detail">
-            <h4>{selectedTool.name}</h4>
-            <p className="webmcp-tool-detail-desc">{selectedTool.description}</p>
+          {error && !selectedTool && (
+            <div className="webmcp-error">
+              <p>{error.message}</p>
+              <details>
+                <summary>Technical details</summary>
+                <pre>{error.details}</pre>
+              </details>
+            </div>
+          )}
 
-            {/* Parameter form */}
-            {Object.keys(schemaProps).length > 0 && (
-              <div className="webmcp-params">
-                <h5>Parameters</h5>
-                {Object.entries(schemaProps).map(([key, schema]) => (
-                  <label key={key} className="webmcp-param-label">
-                    <span>
-                      {key}
-                      {requiredFields.includes(key) && <span className="webmcp-required">*</span>}
-                      {schema.description && (
-                        <span className="webmcp-param-hint"> — {schema.description}</span>
-                      )}
-                    </span>
-                    <input
-                      type="text"
-                      className="webmcp-param-input"
-                      value={params[key] || ''}
-                      onChange={(e) => handleParamChange(key, e.target.value)}
-                      placeholder={schema.type || ''}
-                    />
-                  </label>
-                ))}
-              </div>
-            )}
+          <div className="webmcp-body">
+            <div className="webmcp-tool-list">
+              <h4>Available Tools ({tools.length})</h4>
+              {tools.map((tool) => (
+                <button
+                  key={tool.name}
+                  type="button"
+                  className={`webmcp-tool-item${selectedTool?.name === tool.name ? " active" : ""}`}
+                  onClick={() => selectTool(tool)}
+                >
+                  <span className="webmcp-tool-name">{tool.name}</span>
+                  <span className="webmcp-tool-desc">{tool.description}</span>
+                </button>
+              ))}
+            </div>
 
-            <button
-              className="webmcp-call-btn"
-              onClick={callSelectedTool}
-              disabled={loading}
-            >
-              {loading ? 'Calling…' : 'Call Tool'}
-            </button>
+            {selectedTool && (
+              <div className="webmcp-tool-detail">
+                <h4>{selectedTool.name}</h4>
+                <p className="webmcp-tool-detail-desc">
+                  {selectedTool.description}
+                </p>
 
-            {/* Stream events */}
-            {streamEvents.length > 0 && (
-              <div className="webmcp-stream-log" ref={streamLogRef}>
-                <h5>Stream Events</h5>
-                {streamEvents.map((evt, i) => (
-                  <div key={i} className="webmcp-stream-event">
-                    {JSON.stringify(evt, null, 2)}
+                {Object.keys(schemaProps).length > 0 && (
+                  <div className="webmcp-params">
+                    <h5>Parameters</h5>
+                    {Object.entries(schemaProps).map(([key, schema]) => (
+                      <label key={key} className="webmcp-param-label">
+                        <span>
+                          {key}
+                          {requiredFields.includes(key) && (
+                            <span className="webmcp-required">*</span>
+                          )}
+                          {schema.description && (
+                            <span className="webmcp-param-hint">
+                              {" "}
+                              — {schema.description}
+                            </span>
+                          )}
+                        </span>
+                        <input
+                          type="text"
+                          className="webmcp-param-input"
+                          value={params[key] || ""}
+                          onChange={(e) =>
+                            handleParamChange(key, e.target.value)
+                          }
+                          placeholder={schema.type || ""}
+                        />
+                      </label>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-            {/* Result */}
-            {result && (
-              <div className="webmcp-result">
-                <h5>Result</h5>
-                <pre>{JSON.stringify(result, null, 2)}</pre>
-              </div>
-            )}
+                <button
+                  type="button"
+                  className="webmcp-call-btn"
+                  onClick={callSelectedTool}
+                  disabled={loading}
+                >
+                  {loading ? "Calling…" : "Call Tool"}
+                </button>
 
-            {/* Error */}
-            {error && (
-              <div className="webmcp-error">
-                <p>{error.message}</p>
-                <details>
-                  <summary>Technical details</summary>
-                  <pre>{error.details}</pre>
-                </details>
+                {streamEvents.length > 0 && (
+                  <div className="webmcp-stream-log" ref={streamLogRef}>
+                    <h5>Stream Events</h5>
+                    {streamEvents.map((item) => (
+                      <div key={item.key} className="webmcp-stream-event">
+                        {JSON.stringify(item.data, null, 2)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {result && (
+                  <div className="webmcp-result">
+                    <h5>Result</h5>
+                    <pre>{JSON.stringify(result, null, 2)}</pre>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="webmcp-error">
+                    <p>{error.message}</p>
+                    <details>
+                      <summary>Technical details</summary>
+                      <pre>{error.details}</pre>
+                    </details>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

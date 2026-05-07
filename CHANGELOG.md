@@ -18,10 +18,13 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Removed
 
+- **ff_webmcp_enabled feature flag** — WebMCP Tool Inspector page now always renders; removed flag from featureFlags.js and configStore.js.
 - **Demo Config nav item and FAB button** — removed "Demo Config" from AdminSideNav and the floating `demo-config-fab` button from App.js; also removed the admin role badge from the sidebar.
 
 ### Added
 
+- **WebMCP learning page** — `/webmcp` converted from hidden feature-flagged panel to always-visible learning page with PageNav, education toolbar (What is WebMCP?, Architecture, MCP Protocol, Token Exchange), and new `WebMcpEduPanel` education drawer (Overview / Architecture / In this repo tabs).
+- **AuthZEN education entry** — added AuthZEN to Admin sidebar Learning section.
 - `EDUCATION_REFRESH_PROMPT.md` — agent prompt for keeping education panels current (RFCs, LLM models, frameworks); Setup page now surfaces it with usage instructions.
 - **AuthorizeConfigPage styling** — redesigned Authorize Config page with 3-column threshold form layout, colored severity tier bar (permit/confirm/step-up/deny), left-border color coding per field, and polished panel/tab/badge styles.
 

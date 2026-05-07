@@ -145,6 +145,7 @@ git checkout <last-version-tag> -- <key-file>
 | MCP audit trail — `GET /audit` on MCP server returns recent tool-call audit events; supports `agentId`, `operation`, `outcome`, `eventType` filters | active | `banking_mcp_server/src/server/HttpMCPTransport.ts`, `banking_mcp_server/src/utils/AuditLogger.ts` | — |
 | MCP AuditLogger — Redis-backed (Upstash) persistence for every MCP tool-call audit event; LPUSH + LTRIM (500 max); 7-day TTL; records `agentId`, `scope`, `tokenType`, `requestSummary`, `responseSummary`; fire-and-forget (non-fatal on Redis failure) | active | `banking_mcp_server/src/utils/AuditLogger.ts` | — |
 | BFF audit proxy `GET /api/mcp/audit` — proxies to MCP server `/audit`; passes `agentId`, `operation`, `eventType`, `outcome`, `limit` filters; returns empty fallback when MCP unreachable | active | `banking_api_server/routes/mcpAudit.js` | — |
+| WebMCP Tool Inspector — always-visible browser-native MCP tool inspector at `/webmcp`; PageNav + edu toolbar (What is WebMCP?, Architecture, MCP Protocol, Token Exchange); live tools/list from MCP server, parameter forms, SSE stream events display; `WebMcpEduPanel` slideout with Overview/Architecture/In-this-repo tabs; tokens stay server-side via BFF | active | `banking_api_ui/src/components/WebMcpPanel.js`, `banking_api_ui/src/components/education/WebMcpEduPanel.js` | — |
 
 ---
 

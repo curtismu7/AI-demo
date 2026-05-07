@@ -460,6 +460,11 @@ export default function AdminSideNav({ user }) {
     },
     { label: "WebMCP (Google)", icon: "🌐", action: () => navigate("/webmcp") },
     {
+      label: "AuthZEN",
+      icon: "⚖️",
+      action: () => openEdu(EDU.AUTHZEN, "overview"),
+    },
+    {
       label: "Agentic Trust",
       icon: "🛡️",
       action: () => navigate("/agentic-trust"),
