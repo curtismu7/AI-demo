@@ -130,6 +130,7 @@ git checkout <last-version-tag> -- <key-file>
 | Sensitive data consent banner — in-UI prompt before `get_sensitive_account_details` releases full account/routing numbers; user must approve before agent receives the data | active | `banking_api_ui/src/components/SensitiveConsentBanner.js`, `banking_api_ui/src/components/BankingAgent.js` | — |
 | Token chain history persistence — `localStorage` write-through (debounced 300ms); hydrated on mount; cleared on logout; survives page refresh | active | `banking_api_ui/src/context/TokenChainContext.js` | — |
 | Test chips — Compliance verification (5 chips: `test_wrong_scope`, `test_wrong_audience`, `test_hitl_required`, `test_otp_required`, `demo_intent_delegation`) exercising RFC 6749/8693/8707/9470 compliance steps; gateway denial metadata capture; HITL/MFA threshold validation ($250/$500) | active | `banking_api_ui/src/components/BankingAgent.js` (handlers lines ~3267–3689), `banking_api_ui/src/__tests__/TEST_CHIPS_GUIDE.md`, `CHIP_APPLICABLE_STEPS` mapping lines ~226–375 | `u:__tests__/BankingAgent.test.js`, `u:__tests__/BankingAgent.integration.test.js`, `u:__tests__/TEST_CHIPS_GUIDE.md` |
+| Custom Actions — user-defined quick-action chips; persisted via `useCustomChips` hook; shown in BankingChips heuristic/LLM sections and agent discovery popout; managed via Config > Custom Actions tab | active | `banking_api_ui/src/hooks/useCustomChips.js`, `banking_api_ui/src/components/CustomChipsTab.js`, `banking_api_ui/src/components/BankingChips.jsx`, `banking_api_ui/src/components/BankingAgent.js` | — |
 
 ---
 

@@ -73,6 +73,7 @@ import {
 } from "../services/apiResponseValidator";
 import { getColdStartRetryDelays } from "../services/apiErrorHandler";
 import APP_CONFIG from "../services/appConfig";
+import { useCustomChips } from "../hooks/useCustomChips";
 
 /** NL message to replay after customer OAuth redirect from marketing agent (sessionStorage). */
 const BX_AGENT_PENDING_NL_KEY = "bx_agent_pending_nl";
@@ -1617,6 +1618,7 @@ export default function BankingAgent({
   const brandShortName = industryPreset.shortName;
   const edu = useEducationUIOptional();
   const tokenChain = useTokenChainOptional();
+  const { chips: customChips, groups: customGroups } = useCustomChips();
   const {
     theme: appTheme,
     toggleTheme,
@@ -1907,8 +1909,27 @@ export default function BankingAgent({
   };
 
   /** Ordered group list for the discovery popout. */
-  const allDiscoveryGroups = useMemo(
-    () => [
+  const allDiscoveryGroups = useMemo(() => {
+    const allGroups = [
+      { id: "custom", label: "Custom Actions" },
+      ...customGroups,
+    ];
+    const customEntries = allGroups
+      .map((g) => ({
+        key: g.id,
+        label: g.label,
+        chips: customChips
+          .filter((c) => (c.groupId || "custom") === g.id)
+          .map((c) => ({
+            id: c.id,
+            label: c.label,
+            desc: c.desc || "",
+            rfcs: [],
+          })),
+        isEducation: false,
+      }))
+      .filter((g) => g.chips.length > 0);
+    return [
       {
         key: "account",
         label: "Account",
@@ -1933,15 +1954,15 @@ export default function BankingAgent({
         chips: ACTION_GROUPS.testing,
         isEducation: false,
       },
+      ...customEntries,
       {
         key: "learn",
         label: "Learn & Explore",
         chips: EDUCATION_COMMANDS,
         isEducation: true,
       },
-    ],
-    [],
-  );
+    ];
+  }, [customChips, customGroups]);
 
   /** Live filtered view of allDiscoveryGroups based on discoverySearch. */
   const filteredDiscoveryGroups = useMemo(() => {
@@ -1957,7 +1978,26 @@ export default function BankingAgent({
 
   /** Render ACTION_GROUPS with collapsible headers, count badges, and collapse-all toolbar. */
   const renderActionGroups = () => {
-    let groupsToRender = { ...ACTION_GROUPS };
+    const allCustomGroups = [
+      { id: "custom", label: "Custom Actions" },
+      ...customGroups,
+    ];
+    const customGroupMap = Object.fromEntries(
+      allCustomGroups
+        .map((g) => [
+          g.id,
+          customChips
+            .filter((c) => (c.groupId || "custom") === g.id)
+            .map((c) => ({
+              id: c.id,
+              label: c.label,
+              desc: c.desc || "",
+              rfcs: [],
+            })),
+        ])
+        .filter(([, chips]) => chips.length > 0),
+    );
+    let groupsToRender = { ...ACTION_GROUPS, ...customGroupMap };
     if (isConfigEmbeddedFocus) {
       groupsToRender = { admin: ACTION_GROUPS.admin || [] };
     }
@@ -3964,8 +4004,17 @@ export default function BankingAgent({
               "Give me 5 tips for reducing transaction fees and managing money better",
           });
           break;
-        default:
+        default: {
+          const customChip = customChips.find((c) => c.id === actionId);
+          if (customChip) {
+            toast.update(toastId, { render: "Reasoning…" });
+            response = await callMcpTool("sequential_think", {
+              query: customChip.prompt,
+            });
+            break;
+          }
           throw new Error(`Unknown action: ${actionId}`);
+        }
       }
 
       const normalized = normalizeAgentToolResult(response.result);
@@ -6023,6 +6072,7 @@ export default function BankingAgent({
                 />
                 {isLoggedIn && (
                   <BankingChips
+                    customChips={customChips}
                     onChipClick={(message) => {
                       setShowDiscovery(false);
                       if (isAgentBlockedByConsentDecline()) {
