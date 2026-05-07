@@ -16,6 +16,11 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Helix LLM service** — rewritten to read the answer directly from the `POST /messages` response (`message_class=complete`) instead of always polling; `helix_prompt_field_id` is now required (no safe default); polling kept as fallback for non-immediately-complete responses.
+- **Agent header buttons** — added `flex-wrap: wrap` to `.ba-header-top` so toolbar buttons wrap to a second line instead of being clipped when the panel is narrow.
+
 ### Added
 
 - **Subscriptions data** — `sampleSubscriptions` seed data + `DataStore.subscriptions` map wired up in store.js.

@@ -140,9 +140,9 @@ describe("apiErrorHandler", () => {
 
     it("should use custom base and max delays", () => {
       const delay = getExponentialBackoffDelay(0, 500, 5000);
-      // ±5% jitter on 500 = [475, 525], but allow slight tolerance for edge cases
-      expect(delay).toBeGreaterThanOrEqual(470);
-      expect(delay).toBeLessThanOrEqual(535);
+      // jitter is Math.random() * 0.1 multiplicative: delay = 500 * (1 + [0..0.1]) = [500, 550]
+      expect(delay).toBeGreaterThanOrEqual(500);
+      expect(delay).toBeLessThanOrEqual(550);
     });
   });
 

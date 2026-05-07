@@ -1,15 +1,17 @@
 /**
  * @file helixLlmService.test.js
  *
- * Unit tests for the real Helix conversation API integration.
- * Covers the 3-step flow: createConversation → sendMessage → poll-to-complete.
+ * Unit tests for the Helix conversation API integration.
+ * Covers the 2-step flow: createConversation → sendMessage (returns answer directly).
+ * Falls back to polling if sendMessage response is not immediately complete.
  *
  * Key correctness checks:
  *   - Auth uses x-api-key header (NOT Authorization: Bearer)
  *   - URL path is /dpc/jas/helix/v1/environments/... (not /api/environments/...)
  *   - Base URL normalisation: tenant root gets /dpc/jas/helix/v1 appended
- *   - Poll resolves on first complete message from agent
- *   - Poll retries when no complete message present
+ *   - sendMessage response with message_class:"complete" resolves immediately (no poll)
+ *   - Fallback poll resolves on complete envelope from agent
+ *   - helix_prompt_field_id config drives the input field key
  *   - Timeout throws after deadline
  */
 
@@ -38,6 +40,7 @@ const CFG = {
   helix_api_key: 'test-key-abc',
   helix_environment_id: 'env-123',
   helix_agent_id: 'my-banking-agent',
+  helix_prompt_field_id: 'textInputa7c39a0e8292',
 };
 
 const MSGS = [{ role: 'user', content: 'Hello, who are you?' }];
@@ -52,34 +55,36 @@ function errResponse(status, body = 'Bad Request') {
 
 const CONV = { id: 'conv-1', home_channel: 'ch-1' };
 
-function pollMessages(msgs) {
-  return okJson(msgs);
-}
+// Complete response — message_class:"complete" with content array (real Helix API shape)
+const COMPLETE_RESPONSE = {
+  message_class: 'complete',
+  conversation_id: 'conv-1',
+  channel_id: 'ch-1',
+  content: [{ class: 'complete', field_id: 'endNode', value: 'I am Helix.' }],
+};
 
-const COMPLETE_MSG = [{ class: 'complete', sender_role: 'agent', value: 'I am Helix.' }];
-const PENDING_MSGS = [{ class: 'start', sender_role: 'user' }];
+// Non-complete send response — triggers fallback poll path
+const PENDING_RESPONSE = { message_class: 'pending' };
 
 // ── happy path ────────────────────────────────────────────────────────────────
 
 describe('callHelixAgent — happy path', () => {
   it('returns the agent response value on success', async () => {
     _fetchMock
-      .mockResolvedValueOnce(okJson(CONV))           // createConversation
-      .mockResolvedValueOnce(okJson({}))             // sendMessage
-      .mockResolvedValueOnce(pollMessages(COMPLETE_MSG)); // poll
+      .mockResolvedValueOnce(okJson(CONV))              // createConversation
+      .mockResolvedValueOnce(okJson(COMPLETE_RESPONSE)); // sendMessage → answer immediately
 
     const result = await callHelixAgent(CFG, MSGS);
     expect(result).toBe('I am Helix.');
   });
 
-  it('makes exactly 3 fetch calls for a single-poll success', async () => {
+  it('makes exactly 2 fetch calls when sendMessage returns a complete response', async () => {
     _fetchMock
       .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
-      .mockResolvedValueOnce(pollMessages(COMPLETE_MSG));
+      .mockResolvedValueOnce(okJson(COMPLETE_RESPONSE));
 
     await callHelixAgent(CFG, MSGS);
-    expect(_fetchMock).toHaveBeenCalledTimes(3);
+    expect(_fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -89,8 +94,7 @@ describe('callHelixAgent — authentication', () => {
   it('uses x-api-key header, not Authorization Bearer', async () => {
     _fetchMock
       .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
-      .mockResolvedValueOnce(pollMessages(COMPLETE_MSG));
+      .mockResolvedValueOnce(okJson(COMPLETE_RESPONSE));
 
     await callHelixAgent(CFG, MSGS);
 
@@ -99,11 +103,11 @@ describe('callHelixAgent — authentication', () => {
     expect(createOpts.headers['Authorization']).toBeUndefined();
   });
 
-  it('poll request also uses x-api-key header', async () => {
+  it('poll request also uses x-api-key header (fallback poll path)', async () => {
     _fetchMock
       .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
-      .mockResolvedValueOnce(pollMessages(COMPLETE_MSG));
+      .mockResolvedValueOnce(okJson(PENDING_RESPONSE))  // sendMessage not complete → poll
+      .mockResolvedValueOnce(okJson(COMPLETE_RESPONSE)); // poll returns complete
 
     await callHelixAgent(CFG, MSGS);
 
@@ -118,8 +122,7 @@ describe('callHelixAgent — URL structure', () => {
   it('createConversation hits /dpc/jas/helix/v1/environments/{env}/agents/{agent}/conversations', async () => {
     _fetchMock
       .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
-      .mockResolvedValueOnce(pollMessages(COMPLETE_MSG));
+      .mockResolvedValueOnce(okJson(COMPLETE_RESPONSE));
 
     await callHelixAgent(CFG, MSGS);
 
@@ -132,8 +135,7 @@ describe('callHelixAgent — URL structure', () => {
   it('sendMessage hits /conversations/{conv}/channels/{ch}/messages', async () => {
     _fetchMock
       .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
-      .mockResolvedValueOnce(pollMessages(COMPLETE_MSG));
+      .mockResolvedValueOnce(okJson(COMPLETE_RESPONSE));
 
     await callHelixAgent(CFG, MSGS);
 
@@ -145,8 +147,7 @@ describe('callHelixAgent — URL structure', () => {
     const cfgTenantRoot = { ...CFG, helix_base_url: 'https://openam-helix.forgeblocks.com' };
     _fetchMock
       .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
-      .mockResolvedValueOnce(pollMessages(COMPLETE_MSG));
+      .mockResolvedValueOnce(okJson(COMPLETE_RESPONSE));
 
     await callHelixAgent(cfgTenantRoot, MSGS);
 
@@ -157,8 +158,7 @@ describe('callHelixAgent — URL structure', () => {
   it('does not double-append /dpc/jas/helix/v1 when already present', async () => {
     _fetchMock
       .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
-      .mockResolvedValueOnce(pollMessages(COMPLETE_MSG));
+      .mockResolvedValueOnce(okJson(COMPLETE_RESPONSE));
 
     await callHelixAgent(CFG, MSGS);
 
@@ -170,25 +170,39 @@ describe('callHelixAgent — URL structure', () => {
 // ── request body ──────────────────────────────────────────────────────────────
 
 describe('callHelixAgent — request body', () => {
-  it('sendMessage body has class=start and textInputUserQuery=prompt', async () => {
+  it('sendMessage body has class=start and uses helix_prompt_field_id as the content key', async () => {
     _fetchMock
       .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
-      .mockResolvedValueOnce(pollMessages(COMPLETE_MSG));
+      .mockResolvedValueOnce(okJson(COMPLETE_RESPONSE));
 
     await callHelixAgent(CFG, [{ role: 'user', content: 'Test prompt' }]);
 
     const [, sendOpts] = _fetchMock.mock.calls[1];
     const body = JSON.parse(sendOpts.body);
     expect(body.class).toBe('start');
-    expect(body.content.textInputUserQuery).toBe('Test prompt');
+    expect(body.content[CFG.helix_prompt_field_id]).toBe('Test prompt');
+  });
+
+  it('uses helix_prompt_field_id as the content key when configured', async () => {
+    _fetchMock
+      .mockResolvedValueOnce(okJson(CONV))
+      .mockResolvedValueOnce(okJson(COMPLETE_RESPONSE));
+
+    await callHelixAgent(
+      { ...CFG, helix_prompt_field_id: 'textInputa7c39a0e8292' },
+      [{ role: 'user', content: 'My balance?' }],
+    );
+
+    const [, sendOpts] = _fetchMock.mock.calls[1];
+    const body = JSON.parse(sendOpts.body);
+    expect(body.content.textInputa7c39a0e8292).toBe('My balance?');
+    expect(body.content.textInputUserQuery).toBeUndefined();
   });
 
   it('picks last user message when messages array has system + user entries', async () => {
     _fetchMock
       .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
-      .mockResolvedValueOnce(pollMessages(COMPLETE_MSG));
+      .mockResolvedValueOnce(okJson(COMPLETE_RESPONSE));
 
     await callHelixAgent(CFG, [
       { role: 'system', content: 'You are a banking assistant.' },
@@ -197,19 +211,19 @@ describe('callHelixAgent — request body', () => {
 
     const [, sendOpts] = _fetchMock.mock.calls[1];
     const body = JSON.parse(sendOpts.body);
-    expect(body.content.textInputUserQuery).toBe('What is my balance?');
+    expect(body.content[CFG.helix_prompt_field_id]).toBe('What is my balance?');
   });
 });
 
-// ── polling ───────────────────────────────────────────────────────────────────
+// ── polling fallback ──────────────────────────────────────────────────────────
 
-describe('callHelixAgent — polling', () => {
-  it('retries poll when first response has no complete message', async () => {
+describe('callHelixAgent — polling fallback', () => {
+  it('retries poll when sendMessage response is not complete', async () => {
     _fetchMock
       .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
-      .mockResolvedValueOnce(pollMessages(PENDING_MSGS))  // first poll — not done
-      .mockResolvedValueOnce(pollMessages(COMPLETE_MSG)); // second poll — done
+      .mockResolvedValueOnce(okJson(PENDING_RESPONSE))   // sendMessage not complete
+      .mockResolvedValueOnce(okJson(PENDING_RESPONSE))   // first poll — not done
+      .mockResolvedValueOnce(okJson(COMPLETE_RESPONSE)); // second poll — done
 
     const result = await callHelixAgent(CFG, MSGS);
 
@@ -217,36 +231,17 @@ describe('callHelixAgent — polling', () => {
     expect(_fetchMock).toHaveBeenCalledTimes(4);
   });
 
-  it('accepts complete message matched by sender_id when sender_role is absent', async () => {
-    const completeBySenderId = [{ class: 'complete', sender_id: 'my-banking-agent', value: 'Hello!' }];
-    _fetchMock
-      .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
-      .mockResolvedValueOnce(pollMessages(completeBySenderId));
-
-    const result = await callHelixAgent(CFG, MSGS);
-    expect(result).toBe('Hello!');
-  });
-
   it('unwraps JSON-string value when agent returns {response: "..."}', async () => {
-    const jsonValue = [{ class: 'complete', sender_role: 'agent', value: JSON.stringify({ response: 'Unwrapped answer' }) }];
+    const jsonValueResponse = {
+      message_class: 'complete',
+      content: [{ class: 'complete', value: JSON.stringify({ response: 'Unwrapped answer' }) }],
+    };
     _fetchMock
       .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
-      .mockResolvedValueOnce(pollMessages(jsonValue));
+      .mockResolvedValueOnce(okJson(jsonValueResponse));
 
     const result = await callHelixAgent(CFG, MSGS);
     expect(result).toBe('Unwrapped answer');
-  });
-
-  it('handles poll response as {messages: [...]} envelope', async () => {
-    _fetchMock
-      .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
-      .mockResolvedValueOnce(okJson({ messages: COMPLETE_MSG }));
-
-    const result = await callHelixAgent(CFG, MSGS);
-    expect(result).toBe('I am Helix.');
   });
 });
 
@@ -256,6 +251,12 @@ describe('callHelixAgent — error handling', () => {
   it('throws when config fields are missing', async () => {
     await expect(callHelixAgent({ helix_base_url: 'https://x.com' }, MSGS))
       .rejects.toThrow('Helix config incomplete');
+  });
+
+  it('throws when helix_prompt_field_id is missing', async () => {
+    const { helix_prompt_field_id: _, ...cfgNoField } = CFG;
+    await expect(callHelixAgent(cfgNoField, MSGS))
+      .rejects.toThrow('helix_prompt_field_id');
   });
 
   it('throws when no messages provided', async () => {
@@ -278,7 +279,7 @@ describe('callHelixAgent — error handling', () => {
   it('throws on poll HTTP error', async () => {
     _fetchMock
       .mockResolvedValueOnce(okJson(CONV))
-      .mockResolvedValueOnce(okJson({}))
+      .mockResolvedValueOnce(okJson(PENDING_RESPONSE))  // sendMessage not complete → triggers poll
       .mockResolvedValueOnce(errResponse(500, 'Internal Server Error'));
     await expect(callHelixAgent(CFG, MSGS)).rejects.toThrow('poll failed: 500');
   });

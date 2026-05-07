@@ -809,6 +809,8 @@ body > .banking-agent-float-root .banking-agent-panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px;
   background: #fff !important;
   background-color: #fff !important;
   color: #1a1a1a !important;

@@ -5,6 +5,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-05-07 — Helix LLM service: answer read from POST response, not poll
+
+**Symptoms**: Helix responses never returned — service polled a GET endpoint indefinitely. The real Helix API returns the completed answer synchronously in the `POST /messages` response body (`message_class=complete`).
+
+**Root cause**: Original implementation always polled. Real API shape returns `{ message_class: "complete", content: [{ class: "complete", value: "..." }] }` directly in the POST response.
+
+**Fix**: Read answer from `sendMessage` POST response when `message_class === "complete"`; polling retained as fallback. Made `helix_prompt_field_id` required (no safe default). Added `extractHelixResponse()` helper that also unwraps JSON-string `{response: "..."}` values.
+
+**Tests**: `s:helixLlmService.test.js` — 19 tests; happy path asserts exactly 2 fetch calls (no poll) when POST returns complete.
+
+---
+
 ## 2026-05-07 — Helix LLM stub replaced with real conversation API
 
 **Symptoms**: Helix LLM calls always failed. Three root causes: (1) auth used `Authorization: Bearer` — Helix requires `x-api-key` header. (2) endpoint was a guessed `/api/environments/.../invoke` — real API is a 3-step conversation flow. (3) `helix_agent_id` was treated as a UUID but is actually an agent name string.
