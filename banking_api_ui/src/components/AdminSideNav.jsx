@@ -861,51 +861,27 @@ export default function AdminSideNav({ user }) {
           </div>
         </div>
 
-        {/* Safety & Emergency Controls */}
+        {/* Stop Agent */}
         {!collapsed && <div className="admin-side-nav__divider" />}
         <div className="admin-side-nav__section">
-          <div>
-            <button
-              className="admin-side-nav__item admin-side-nav__item--parent"
-              onClick={() => toggleSection("safety")}
-              title={collapsed ? "Safety" : undefined}
-            >
-              <span className="admin-side-nav__icon">🛑</span>
-              {!collapsed && (
-                <>
-                  <span className="admin-side-nav__label">Safety</span>
-                  <span
-                    className={`admin-side-nav__chevron ${expandedSections["safety"] ? "admin-side-nav__chevron--expanded" : ""}`}
-                  >
-                    ▶
-                  </span>
-                </>
-              )}
-            </button>
-            {expandedSections["safety"] && !collapsed && (
-              <div className="admin-side-nav__submenu admin-side-nav__safety-section">
-                <div style={{ padding: "12px 8px", textAlign: "center" }}>
-                  <button
-                    onClick={() => setShowKillModal(true)}
-                    style={{
-                      background: agentRevoked ? "#999" : "#ef4444",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "6px",
-                      padding: "8px 12px",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      cursor: agentRevoked ? "not-allowed" : "pointer",
-                      width: "100%",
-                    }}
-                    disabled={agentRevoked}
-                  >
-                    {agentRevoked ? "🔒 AGENT REVOKED" : "🛑 STOP AGENT"}
-                  </button>
-                </div>
-              </div>
+          <button
+            type="button"
+            className="admin-side-nav__item admin-side-nav__stop-agent"
+            onClick={() => !agentRevoked && setShowKillModal(true)}
+            disabled={agentRevoked}
+            title={
+              agentRevoked
+                ? "Agent already revoked"
+                : "Stop agent (emergency control)"
+            }
+          >
+            <span className="admin-side-nav__icon">🛑</span>
+            {!collapsed && (
+              <span className="admin-side-nav__label">
+                {agentRevoked ? "AGENT REVOKED" : "STOP AGENT"}
+              </span>
             )}
-          </div>
+          </button>
         </div>
 
         {/* Learn & Education */}
