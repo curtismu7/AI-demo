@@ -29,6 +29,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **Helix base URL normalisation** — `apiBase()` now extracts just the origin (`new URL(u).origin`) before appending `/dpc/jas/helix/v1`, so any URL the user copies from the Helix console (e.g. `.../ai-agents/LLM/draft/initial`) is handled correctly without producing double-path URLs.
 - **Helix LLM integration** — replaced stub with real conversation API: `x-api-key` header (not Bearer), 3-step flow (createConversation → sendMessage → poll for `class=complete`), correct `/dpc/jas/helix/v1` path. Config field `helix_agent_id` holds the agent name string; HelixPanel label and placeholder updated accordingly.
 - **MCP Gateway Config title** — section heading now shows "MCP Gateway Config" instead of "Mcp Gateway Config" (auto-title fallback used wrong casing for the acronym).
 - **MCP Authorize gate always-on** — removed `ff_authorize_mcp_first_tool` feature flag; gate now runs unconditionally on every MCP tool call. Fixed `needsConfirm` in simulated policy to respect `acrLooksStrong(acr)` so a session that already completed MFA step-up does not then re-require a confirm dialog.

@@ -932,3 +932,15 @@ New config fields added: `admin_username`, `admin_population_id`, `admin_role_cl
 **Files**: `banking_api_server/routes/oauthUser.js`, `banking_api_server/services/configStore.js`, `banking_api_ui/src/components/Config.js`
 
 **Regression check**: Log in as a user not in the allowlist → gets `customer`. Add their username to `admin_username` → next login grants `admin`. Existing admin users are not downgraded.
+
+---
+
+## 2026-05-07 — Helix `apiBase()` broke when user stored a console URL
+
+**Symptoms**: Helix LLM calls failed when `helix_base_url` was set to a console/UI path (e.g. `https://openam-helix.forgeblocks.com/dpc/{env-id}/ai-agents/LLM/draft/initial`). The old implementation only checked if `/dpc/jas/helix` was present and appended the path suffix verbatim, producing a broken double-path URL.
+
+**Root cause**: `apiBase()` used a substring check (`s.includes('/dpc/jas/helix')`) instead of normalising to the origin. A browser console URL that contains `/dpc/{env-id}/...` (not `/dpc/jas/...`) bypassed the guard and got the full helix path appended at the wrong point.
+
+**Fix**: Rewrote `apiBase()` to extract `new URL(baseUrl).origin` and always append `/dpc/jas/helix/v1`, so any URL the user copies from the Helix console is handled correctly.
+
+**Tests**: `helixLlmService.test.js` — "does not double-append" and "normalises tenant-root base URL" tests cover both cases.

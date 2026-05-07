@@ -13,9 +13,13 @@
 
 const HELIX_PATH = '/dpc/jas/helix/v1';
 
+// Always use just the origin — strip any console/UI path the user may have copied.
 function apiBase(baseUrl) {
-  const s = baseUrl.replace(/\/$/, '');
-  return s.includes('/dpc/jas/helix') ? s : s + HELIX_PATH;
+  try {
+    return new URL(baseUrl).origin + HELIX_PATH;
+  } catch {
+    return baseUrl.replace(/\/$/, '').replace(/\/dpc\/.*$/, '') + HELIX_PATH;
+  }
 }
 
 /**
