@@ -1580,6 +1580,14 @@ const IdpSetupGuide: FC<{
   );
 };
 
+// Agent UI mode → placement/fab mapping (used on card click for instant apply and on save)
+const AGENT_UI_MODE_MAP: Record<string, { placement: string; fab: boolean }> = {
+  standard: { placement: "middle", fab: true },
+  minimal: { placement: "none", fab: true },
+  advanced: { placement: "middle", fab: true },
+  disabled: { placement: "none", fab: false },
+};
+
 // Main Component
 
 const UnifiedConfigurationPage: FC<{
@@ -1931,22 +1939,17 @@ const UnifiedConfigurationPage: FC<{
 
       setState((prev) => ({ ...prev, saveStatus: "saved" }));
 
-      const agentUiModeMap: Record<
-        string,
-        { placement: string; fab: boolean }
-      > = {
-        standard: { placement: "middle", fab: true },
-        minimal: { placement: "none", fab: true },
-        advanced: { placement: "right-dock", fab: true },
-        disabled: { placement: "none", fab: true },
-      };
       const mappedUiMode =
-        agentUiModeMap[state.agentUiMode] ?? agentUiModeMap.standard;
+        AGENT_UI_MODE_MAP[state.agentUiMode] ?? AGENT_UI_MODE_MAP.standard;
       (setAgentUi as (v: { placement: string; fab: boolean }) => void)(
         mappedUiMode,
       );
 
       notifySuccess("Configuration saved successfully!");
+
+      if (state.agentUiMode === "disabled") {
+        setTimeout(() => window.location.reload(), 800);
+      }
     } catch (error) {
       console.error("Failed to save configuration:", error);
       setState((prev) => ({ ...prev, saveStatus: "error" }));
@@ -2815,13 +2818,24 @@ const UnifiedConfigurationPage: FC<{
                     ? " scenario-card--active"
                     : "")
                 }
-                onClick={() =>
+                onClick={() => {
                   setState((prev) => ({
                     ...prev,
                     agentUiMode: opt.value,
                     saveStatus: "idle",
-                  }))
-                }
+                  }));
+                  if (opt.value !== "disabled") {
+                    (
+                      setAgentUi as (v: {
+                        placement: string;
+                        fab: boolean;
+                      }) => void
+                    )(
+                      AGENT_UI_MODE_MAP[opt.value] ??
+                        AGENT_UI_MODE_MAP.standard,
+                    );
+                  }
+                }}
               >
                 {opt.preview}
                 <div
@@ -2839,7 +2853,8 @@ const UnifiedConfigurationPage: FC<{
             ))}
           </div>
           <p className="cfg-field-help" style={{ marginTop: "0.75rem" }}>
-            Changes take effect on next page refresh.
+            Standard, Minimal, and Advanced apply instantly. Disabled takes
+            effect after saving.
           </p>
         </div>
       );
