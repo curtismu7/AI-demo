@@ -60,7 +60,11 @@ export default function HelixPanel() {
           notifyError("JSON file has no keyValue field");
           return;
         }
-        setHelixConfig((prev) => ({ ...prev, api_key: data.keyValue }));
+        setHelixConfig((prev) => ({
+          ...prev,
+          api_key: data.keyValue,
+          ...(data.keyName ? { agent_id: data.keyName } : {}),
+        }));
         notifySuccess(`API key imported from ${file.name}`);
       } catch {
         notifyError("Failed to parse JSON file");
