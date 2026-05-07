@@ -407,21 +407,26 @@ export async function callMcpTool(tool, params = {}) {
     // Synthesize authorize-decision event from MCP-level PingOne Authorize evaluation
     if (data.mcpAuthorizeEvaluation) {
       const ae = data.mcpAuthorizeEvaluation;
-      const decision = ae.decision || 'PERMIT';
-      const engine = ae.engine || 'simulated';
-      const decisionStatus = decision === 'PERMIT' ? 'active' : decision === 'DENY' ? 'failed' : 'waiting';
+      const decision = ae.decision || "PERMIT";
+      const engine = ae.engine || "simulated";
+      const decisionStatus =
+        decision === "PERMIT"
+          ? "active"
+          : decision === "DENY"
+            ? "failed"
+            : "waiting";
       allTokenEvents.push({
-        id: 'authorize-decision',
-        label: 'PingOne Authorize — Policy Decision',
+        id: "authorize-decision",
+        label: "PingOne Authorize — Policy Decision",
         status: decisionStatus,
         timestamp: Date.now(),
-        rfc: 'RFC 8705',
+        rfc: "RFC 8705",
         authorizeDecision: decision,
         authorizeEngine: engine,
         authorizePath: ae.path || null,
         authorizeDecisionId: ae.decisionId || null,
         authorizeRef: ae.authorizeRef || ae.decisionEndpointId || null,
-        explanation: `${engine === 'pingone' ? 'PingOne Authorize' : 'Simulated policy engine'} evaluated the agent tool call and returned ${decision}.`,
+        explanation: `${engine === "pingone" ? "PingOne Authorize" : "Simulated policy engine"} evaluated the agent tool call and returned ${decision}.${ae.cached ? " (decision cached from earlier in this session)" : ""}`,
       });
     }
 

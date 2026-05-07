@@ -1566,6 +1566,8 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             });
             req.session.mcpFirstToolAuthorizeDone = true;
             mcpAuthorizeEvaluationThisRequest = mcpAuthz.evaluation;
+            // Persist so subsequent tool calls in this session can re-emit the decision
+            req.session.mcpAuthorizeEvaluation = mcpAuthz.evaluation;
         }
         if (!mcpAuthz.ran) {
             emit({
@@ -1575,6 +1577,13 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             appEventService.logEvent('authorize', 'info',
                 `Authorize gate skipped — ${mcpAuthz.reason || 'unknown'}`,
                 { tag: 'authorize/gate-skipped', metadata: { reason: mcpAuthz.reason } });
+            // Re-emit the stored evaluation so Token Chain shows the decision on every tool call
+            if (mcpAuthz.reason === 'already_evaluated' && req.session?.mcpAuthorizeEvaluation) {
+                mcpAuthorizeEvaluationThisRequest = {
+                    ...req.session.mcpAuthorizeEvaluation,
+                    cached: true,
+                };
+            }
         }
     } catch (mcpAuthzErr) {
         emit({

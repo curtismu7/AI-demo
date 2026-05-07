@@ -24,6 +24,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **MCP authorize decision re-emitted on cached tool calls** — Token Chain now shows the PingOne Authorize decision on every tool call in a session, not just the first one.
+
 - **PostHog crash in tests** — `posthog.js` now exports a no-op stub when `POSTHOG_API_KEY` is absent, preventing module-load crashes that blocked 43 test suites.
 - **uuid ESM in Jest** — added `moduleNameMapper` in `banking_api_server` and `banking_mcp_server` Jest configs pointing `uuid` to a CJS shim, fixing `SyntaxError: Unexpected token 'export'` in all test suites.
 - **HITL regression test** — updated `hitlRoute.regression.test.js` to mock `evaluateTransactionPolicy` (replaced stale `isAuthorizedTransaction`), add `banking:write` scope to injected user, expose `configStore.get`, and align error field assertion (`hitl_required`).
