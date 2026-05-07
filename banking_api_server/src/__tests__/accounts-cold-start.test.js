@@ -62,9 +62,11 @@ const demoScenarioStore = require('../../services/demoScenarioStore');
 const accountsRouter = require('../../routes/accounts');
 
 const SNAPSHOT_3 = [
-  { id: 'chk-001', accountType: 'checking',   accountNumber: '001', name: 'Checking',  balance: 5000, currency: 'USD', isActive: true },
-  { id: 'sav-001', accountType: 'savings',    accountNumber: '002', name: 'Savings',   balance: 3000, currency: 'USD', isActive: true },
-  { id: 'inv-001', accountType: 'investment', accountNumber: '003', name: 'Investments', balance: 10000, currency: 'USD', isActive: true },
+  { id: 'chk-001', accountType: 'checking',   accountNumber: '001', name: 'Checking',    balance: 5000,   currency: 'USD', isActive: true },
+  { id: 'sav-001', accountType: 'savings',    accountNumber: '002', name: 'Savings',     balance: 3000,   currency: 'USD', isActive: true },
+  { id: 'inv-001', accountType: 'investment', accountNumber: '003', name: 'Investments', balance: 10000,  currency: 'USD', isActive: true },
+  // loan account included so addMissingLoanAccount() is a no-op and counts stay predictable
+  { id: 'loan-u1',  accountType: 'loan',       accountNumber: '004', name: 'Car Loan',    balance: -12000, currency: 'USD', isActive: true },
 ];
 
 function makeApp(userId = 'u1') {
@@ -88,24 +90,24 @@ beforeEach(() => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('GET /accounts/my — cold-start account restoration (STAB-02)', () => {
 
-  it('Test A: restores 3 accounts from snapshot when dataStore is empty', async () => {
+  it('Test A: restores 4 accounts from snapshot when dataStore is empty', async () => {
     _state.snapshot = [...SNAPSHOT_3];
-    // dataStore starts empty (cold-start)
+    // dataStore starts empty (cold-start); SNAPSHOT_3 includes loan so no extras created
 
     const res = await request(makeApp()).get('/accounts/my');
 
     expect(res.status).toBe(200);
-    expect(res.body.accounts).toHaveLength(3);
+    expect(res.body.accounts).toHaveLength(4);
   });
 
   it('Test B: each snapshot account not in dataStore triggers createAccount (cold-start path)', async () => {
     _state.snapshot = [...SNAPSHOT_3];
-    // getAccountById returns null for all (not yet in memory)
+    // getAccountById returns null for all (not yet in memory); SNAPSHOT_3 has 4 accounts
 
     await request(makeApp()).get('/accounts/my');
 
-    // Should have called createAccount once per snapshot account
-    expect(dataStore.createAccount).toHaveBeenCalledTimes(3);
+    // Should have called createAccount once per snapshot account (4 accounts in SNAPSHOT_3)
+    expect(dataStore.createAccount).toHaveBeenCalledTimes(4);
   });
 
   it('Test C: no snapshot → provisionDemoAccounts called and snapshot is saved', async () => {
@@ -125,17 +127,54 @@ describe('GET /accounts/my — cold-start account restoration (STAB-02)', () => 
   });
 
   it('Test D: warm instance (non-empty dataStore) does NOT call demoScenarioStore.load', async () => {
-    // Pre-populate in-memory store — simulates warm Lambda
+    // Pre-populate in-memory store — simulates warm Lambda.
+    // Loan account included so addMissingLoanAccount() is a no-op (no saveAccountSnapshot call).
     _state.accounts = [
-      { id: 'chk-w1', userId: 'u1', accountType: 'checking', name: 'Checking', balance: 5000, currency: 'USD' },
-      { id: 'sav-w1', userId: 'u1', accountType: 'savings',  name: 'Savings',  balance: 2000, currency: 'USD' },
+      { id: 'chk-w1',  userId: 'u1', accountType: 'checking', name: 'Checking', balance: 5000,   currency: 'USD' },
+      { id: 'sav-w1',  userId: 'u1', accountType: 'savings',  name: 'Savings',  balance: 2000,   currency: 'USD' },
+      { id: 'loan-u1', userId: 'u1', accountType: 'loan',     name: 'Car Loan', balance: -12000, currency: 'USD' },
     ];
 
     const res = await request(makeApp()).get('/accounts/my');
 
     // Warm path: dataStore already has accounts, snapshot load skipped
     expect(demoScenarioStore.load).not.toHaveBeenCalled();
-    expect(res.body.accounts).toHaveLength(2);
+    expect(res.body.accounts).toHaveLength(3);
+  });
+
+  it('Test E-loan: car loan added when user has checking+savings but no loan account', async () => {
+    // 340ffed2: addMissingLoanAccount() called from GET /my when user has
+    // checking+savings but no loan — must add the loan without wiping other accounts.
+    _state.accounts = [
+      { id: 'chk-u1', userId: 'u1', accountType: 'checking', name: 'Checking', balance: 5000, currency: 'USD' },
+      { id: 'sav-u1', userId: 'u1', accountType: 'savings',  name: 'Savings',  balance: 2000, currency: 'USD' },
+    ];
+
+    const res = await request(makeApp()).get('/accounts/my');
+
+    expect(res.status).toBe(200);
+    const types = res.body.accounts.map((a) => a.accountType);
+    expect(types).toContain('loan');
+    // Original accounts must still be present
+    expect(types).toContain('checking');
+    expect(types).toContain('savings');
+  });
+
+  it('Test E-loan-no-dupe: car loan NOT added when user already has one', async () => {
+    const loanId = `loan-${('u1').replace(/-/g, '').slice(0, 10)}`;
+    _state.accounts = [
+      { id: 'chk-u1', userId: 'u1', accountType: 'checking', name: 'Checking', balance: 5000, currency: 'USD' },
+      { id: 'sav-u1', userId: 'u1', accountType: 'savings',  name: 'Savings',  balance: 2000, currency: 'USD' },
+      { id: loanId,   userId: 'u1', accountType: 'loan',     name: 'Car Loan', balance: -12000, currency: 'USD' },
+    ];
+
+    const callsBefore = dataStore.createAccount.mock.calls.length;
+    await request(makeApp()).get('/accounts/my');
+    // createAccount must not be called for the loan (already exists)
+    const loanCreates = dataStore.createAccount.mock.calls
+      .slice(callsBefore)
+      .filter(([d]) => d.accountType === 'loan');
+    expect(loanCreates).toHaveLength(0);
   });
 
   it('Test E: snapshot with investment account re-creates it with accountType=investment', async () => {
