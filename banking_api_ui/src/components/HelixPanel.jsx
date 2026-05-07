@@ -8,6 +8,7 @@ export default function HelixPanel() {
     api_key: "",
     environment_id: "",
     agent_id: "",
+    prompt_field_id: "",
   });
   const [helixStatus, setHelixStatus] = useState(null);
   const [helixSaving, setHelixSaving] = useState(false);
@@ -32,6 +33,7 @@ export default function HelixPanel() {
         api_key: "",
         environment_id: cfg?.helix_environment_id || "",
         agent_id: cfg?.helix_agent_id || "",
+        prompt_field_id: cfg?.helix_prompt_field_id || "",
       });
       console.log("[HelixPanel] Updated config:", {
         base_url: cfg?.helix_base_url,
@@ -52,7 +54,8 @@ export default function HelixPanel() {
       !helixConfig.base_url ||
       !helixConfig.api_key ||
       !helixConfig.environment_id ||
-      !helixConfig.agent_id
+      !helixConfig.agent_id ||
+      !helixConfig.prompt_field_id
     ) {
       notifyError("All Helix fields are required");
       return;
@@ -67,6 +70,7 @@ export default function HelixPanel() {
         helix_base_url: helixConfig.base_url,
         helix_environment_id: helixConfig.environment_id,
         helix_agent_id: helixConfig.agent_id,
+        helix_prompt_field_id: helixConfig.prompt_field_id,
       });
       sessionStorage.setItem("helix_config", JSON.stringify(helixConfig));
       notifySuccess("Helix LLM configuration saved");
@@ -93,6 +97,7 @@ export default function HelixPanel() {
         api_key: "",
         environment_id: "",
         agent_id: "",
+        prompt_field_id: "",
       });
       setHelixStatus("unconfigured");
       sessionStorage.removeItem("helix_config");
@@ -301,6 +306,37 @@ export default function HelixPanel() {
             }}
           />
         </div>
+
+        <div>
+          <label
+            style={{
+              display: "block",
+              fontSize: "0.85rem",
+              fontWeight: 500,
+              marginBottom: "0.35rem",
+            }}
+          >
+            Prompt Field ID
+          </label>
+          <input
+            type="text"
+            placeholder="e.g. textInputa7c39a0e8292"
+            value={helixConfig.prompt_field_id}
+            onChange={(e) =>
+              setHelixConfig({
+                ...helixConfig,
+                prompt_field_id: e.target.value,
+              })
+            }
+            style={{
+              width: "100%",
+              padding: "0.5rem 0.75rem",
+              border: "1px solid #d1d5db",
+              borderRadius: 4,
+              fontSize: "0.9rem",
+            }}
+          />
+        </div>
       </div>
 
       {/* Action buttons */}
@@ -326,7 +362,8 @@ export default function HelixPanel() {
             !helixConfig.base_url ||
             !helixConfig.api_key ||
             !helixConfig.environment_id ||
-            !helixConfig.agent_id
+            !helixConfig.agent_id ||
+            !helixConfig.prompt_field_id
           }
           style={{
             padding: "0.5rem 1rem",

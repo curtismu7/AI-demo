@@ -151,6 +151,7 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   helix_api_key:              { public: false, default: '' },
   helix_environment_id:       { public: true,  default: '' },
   helix_agent_id:             { public: true,  default: '' },
+  helix_prompt_field_id:      { public: true,  default: '' },
 
   // CIBA — Client-Initiated Backchannel Authentication
   CIBA_ENABLED:               { public: true,  default: 'false' },
@@ -565,6 +566,7 @@ class ConfigStore {
       helix_api_key:                   ['HELIX_API_KEY'],
       helix_environment_id:            ['HELIX_ENVIRONMENT_ID'],
       helix_agent_id:                  ['HELIX_AGENT_ID'],
+      helix_prompt_field_id:           ['HELIX_PROMPT_FIELD_ID'],
     };
 
     const envVars = envFallbackMap[key] || [];

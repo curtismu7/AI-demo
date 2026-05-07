@@ -164,6 +164,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
           helix_api_key: langchainConfig.helix_api_key,
           helix_environment_id: langchainConfig.helix_environment_id,
           helix_agent_id: langchainConfig.helix_agent_id,
+          helix_prompt_field_id: langchainConfig.helix_prompt_field_id,
         };
 
         model = RunnableLambda.from(async (messages) => {

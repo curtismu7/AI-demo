@@ -57,6 +57,7 @@ router.get('/config/status', (req, res) => {
     let helix_api_key = cfg.helix_api_key || '';
     let helix_environment_id = cfg.helix_environment_id || '';
     let helix_agent_id = cfg.helix_agent_id || '';
+    let helix_prompt_field_id = cfg.helix_prompt_field_id || '';
 
     // Try to load from configStore but don't let it crash the response
     try {
@@ -64,18 +65,20 @@ router.get('/config/status', (req, res) => {
       helix_api_key = helix_api_key || configStore.get('helix_api_key') || '';
       helix_environment_id = helix_environment_id || configStore.get('helix_environment_id') || '';
       helix_agent_id = helix_agent_id || configStore.get('helix_agent_id') || '';
+      helix_prompt_field_id = helix_prompt_field_id || configStore.get('helix_prompt_field_id') || '';
     } catch (dbErr) {
       console.warn('[langchainConfig GET] configStore error:', dbErr.message);
     }
 
     // If we loaded from SQLite, update the session so it's available for this session
-    if ((helix_base_url || helix_api_key || helix_environment_id || helix_agent_id) &&
-        (!cfg.helix_base_url && !cfg.helix_api_key && !cfg.helix_environment_id && !cfg.helix_agent_id)) {
+    if ((helix_base_url || helix_api_key || helix_environment_id || helix_agent_id || helix_prompt_field_id) &&
+        (!cfg.helix_base_url && !cfg.helix_api_key && !cfg.helix_environment_id && !cfg.helix_agent_id && !cfg.helix_prompt_field_id)) {
       setLangchainConfig(req, {
         helix_base_url,
         helix_api_key,
         helix_environment_id,
-        helix_agent_id
+        helix_agent_id,
+        helix_prompt_field_id,
       });
     }
 
@@ -86,6 +89,7 @@ router.get('/config/status', (req, res) => {
       helix_api_key: helix_api_key ? '••••••••' : '',
       helix_environment_id,
       helix_agent_id,
+      helix_prompt_field_id,
       key_set: { ollama: true },
       provider_models: PROVIDER_MODELS,
       default_models: DEFAULT_MODELS,
@@ -97,9 +101,9 @@ router.get('/config/status', (req, res) => {
 });
 
 // POST /api/langchain/config
-// Body: { provider, model, key_type, key, helix_api_key, helix_base_url, helix_environment_id, helix_agent_id }
+// Body: { provider, model, key_type, key, helix_api_key, helix_base_url, helix_environment_id, helix_agent_id, helix_prompt_field_id }
 router.post('/config', async (req, res) => {
-  const { provider, model, key_type, key, helix_api_key, helix_base_url, helix_environment_id, helix_agent_id } = req.body || {};
+  const { provider, model, key_type, key, helix_api_key, helix_base_url, helix_environment_id, helix_agent_id, helix_prompt_field_id } = req.body || {};
 
   const updates = {};
   const dbUpdates = {}; // updates for SQLite persistence
@@ -120,6 +124,10 @@ router.post('/config', async (req, res) => {
     if (helix_agent_id) {
       updates.helix_agent_id = helix_agent_id;
       dbUpdates.helix_agent_id = helix_agent_id;
+    }
+    if (helix_prompt_field_id) {
+      updates.helix_prompt_field_id = helix_prompt_field_id;
+      dbUpdates.helix_prompt_field_id = helix_prompt_field_id;
     }
     if (helix_api_key) {
       updates.helix_api_key = helix_api_key;

@@ -67,6 +67,7 @@ async function answerWithHelix(userMessage, context = {}) {
       helix_api_key: configStore.get('helix_api_key'),
       helix_environment_id: configStore.get('helix_environment_id'),
       helix_agent_id: configStore.get('helix_agent_id'),
+      helix_prompt_field_id: configStore.get('helix_prompt_field_id'),
     };
 
     // Check if Helix is configured
@@ -193,6 +194,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
         helix_api_key: langchainConfig.helix_api_key,
         helix_environment_id: langchainConfig.helix_environment_id,
         helix_agent_id: langchainConfig.helix_agent_id,
+        helix_prompt_field_id: langchainConfig.helix_prompt_field_id,
       };
 
       // Check if Helix is configured
