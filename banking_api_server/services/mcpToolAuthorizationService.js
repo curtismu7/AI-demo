@@ -29,21 +29,18 @@ function nestedActIdFromClaim(act) {
  * Status for admin /api/authorize/evaluation-status (no secrets).
  */
 function getMcpFirstToolGateStatus() {
-  const flag =
-    configStore.get('ff_authorize_mcp_first_tool') === true ||
-    configStore.get('ff_authorize_mcp_first_tool') === 'true';
   const mcpEp = configStore.get('authorize_mcp_decision_endpoint_id');
   const hasMcpEndpoint = !!(mcpEp && String(mcpEp).trim());
   const pingoneReady = pingOneAuthorizeService.isMcpDelegationDecisionReady();
   const sim = simulatedAuthorizeService.isSimulatedModeEnabled(configStore);
 
   return {
-    mcpFirstToolGateEnabled: flag,
+    mcpFirstToolGateEnabled: true,
     mcpFirstToolDecisionEndpointConfigured: hasMcpEndpoint,
     mcpFirstToolPingOneReady: pingoneReady,
-    mcpFirstToolWouldRunSimulated: flag && sim,
-    mcpFirstToolWouldRunLive: flag && !sim && pingoneReady,
-    mcpFirstToolLivePendingConfig: flag && !sim && !pingoneReady,
+    mcpFirstToolWouldRunSimulated: sim,
+    mcpFirstToolWouldRunLive: !sim && pingoneReady,
+    mcpFirstToolLivePendingConfig: !sim && !pingoneReady,
   };
 }
 
@@ -74,14 +71,6 @@ const WRITE_TOOL_TYPE_MAP = {
  * >}
  */
 async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAcr, toolParams }) {
-  const flag =
-    configStore.get('ff_authorize_mcp_first_tool') === true ||
-    configStore.get('ff_authorize_mcp_first_tool') === 'true';
-
-  if (!flag) {
-    return { ran: false, reason: 'feature_flag_disabled' };
-  }
-
   if (!agentToken || typeof agentToken !== 'string') {
     return { ran: false, reason: 'no_agent_token' };
   }

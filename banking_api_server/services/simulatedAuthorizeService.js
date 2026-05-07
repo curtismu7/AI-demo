@@ -242,7 +242,7 @@ async function evaluateMcpFirstTool({
     } else {
       // Highest applicable gate only
       const needsStepUp = amount >= stepUpAmount && !acrLooksStrong(acr);
-      const needsConfirm = !needsStepUp && amount >= confirmAmount;
+      const needsConfirm = !needsStepUp && amount >= confirmAmount && !acrLooksStrong(acr);
 
       if (needsStepUp) {
         out = {

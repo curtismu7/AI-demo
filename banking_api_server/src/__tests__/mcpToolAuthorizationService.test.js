@@ -48,8 +48,10 @@ describe('mcpToolAuthorizationService', () => {
   });
 
   describe('evaluateMcpFirstToolGate', () => {
-    it('returns ran:false when ff_authorize_mcp_first_tool is off', async () => {
+    it('returns ran:false when no backend is configured (simulated off, PingOne not ready)', async () => {
       configStore.get.mockReturnValue(null);
+      // simulatedAuthorizeService.isSimulatedModeEnabled returns false (beforeEach)
+      // pingOneAuthorizeService.isMcpDelegationDecisionReady returns false (beforeEach)
       const r = await evaluateMcpFirstToolGate({
         req: { session: {} },
         tool: 'get_my_accounts',

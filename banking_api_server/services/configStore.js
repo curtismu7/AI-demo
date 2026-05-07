@@ -110,8 +110,6 @@ const FIELD_DEFS = {
   ff_authorize_deposits:   { public: true, default: 'false' }, // apply Authorize to deposits too
   // When true with authorize_enabled: run in-process simulated Authorize (education); no PingOne call
   ff_authorize_simulated:  { public: true, default: 'true' },
-  // PingOne Authorize (or simulated) once per session on first BankingAgent MCP tool call — see docs/PINGONE_AUTHORIZE_PLAN.md §7
-  ff_authorize_mcp_first_tool: { public: true, default: 'false' },
   ff_hitl_enabled:         { public: true, default: 'true'  }, // require human approval for agent-initiated high-value transactions
   ff_inject_may_act:       { public: true, default: 'false' }, // BFF-synthesise may_act when absent from user token (demo/dev — no PingOne change needed)
   // DEPRECATED: ff_inject_may_act. Use enableMayActSupport instead (RFC 8693 configuration-based approach).
