@@ -848,7 +848,7 @@ function AppWithAuth() {
               <Route
                 path="/sequence-diagram"
                 element={
-                  user ? (
+                  loading ? null : user ? (
                     <>
                       <AdminSideNav user={user} />
                       <TopNav user={user} onLogout={logout} />
