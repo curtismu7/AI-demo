@@ -84,6 +84,10 @@ PID_INVEST=/tmp/bank-mcp-invest.pid
 LOG_INVEST=/tmp/bank-mcp-invest.log
 LOG_AUTH=/tmp/bank-authorize-server.log
 
+# Pre-create all log files so tail/log viewers work before services start
+touch "${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" \
+      "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_AUTH}" 2>/dev/null || true
+
 # Terminal colors (global — used by banner, status, and tail_bank_logs)
 BOLD='\033[1m'
 CYAN='\033[1;36m'
