@@ -18,7 +18,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
-- **Custom Actions** — user-defined quick-action chips; created and managed in Config > Custom Actions tab; chips appear in BankingChips heuristic/LLM sections and agent discovery popout; persisted via `useCustomChips` hook (localStorage).
+- **Custom Actions** — user-defined quick-action chips; created and managed in Config > Custom Actions tab (Advanced); chips appear in BankingChips heuristic/LLM sections and agent discovery popout; persisted via `useCustomChips` hook (localStorage).
 - **Token Chain step 0 — NL intent routing card** — every prompt now shows a "Step 0" card in the Token Chain panel with the prompt text, routing source (heuristic fast-path or LLM), and resolved intent before token events arrive. Typing indicator dots appear in the chat while NL routing is in progress.
 - **Phase 6 modal polish** — `prefers-reduced-motion` guard on `dm-enter` (DraggableModal) and `dsm-fade-in/dsm-slide-up` (DemoServerCheckModal); DemoServerCheckModal and ServerRestartModal headers aligned to dark-navy `--modal-header-bg` token; AgentConsentModal warning card adopts `--inner-card-accent` token.
 - **Phase 5 unified inner-card design** — 5 CSS custom properties (`--inner-card-radius`, `--inner-card-border`, `--inner-card-shadow`, `--inner-card-bg`, `--inner-card-accent`) as single source of truth; applied across TokenInspector, TokenChainDisplay, MCPToolsListModal, MFALogsModal, AccountDetailsPanel. Standardised collapsible chevron (▶ rotating 90°) on all claim rows.
