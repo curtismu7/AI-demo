@@ -1912,3 +1912,104 @@ pre.tcd-jwt-dump {
   font-size: 0.68rem;
   font-family: inherit;
 }
+
+/* ── NL Routing Card (Step 0) ─────────────────────────────────────────────── */
+.tcd-nl-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #6366f1;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  font-family: inherit;
+}
+
+.tcd-nl-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tcd-nl-card__step {
+  background: #6366f1;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.tcd-nl-card__title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #1e293b;
+  flex: 1;
+}
+
+.tcd-nl-card__time {
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
+.tcd-nl-card__row {
+  display: flex;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: #374151;
+  margin-bottom: 4px;
+  align-items: flex-start;
+}
+
+.tcd-nl-card__row:last-child {
+  margin-bottom: 0;
+}
+
+.tcd-nl-card__key {
+  font-weight: 600;
+  color: #64748b;
+  min-width: 52px;
+  flex-shrink: 0;
+}
+
+.tcd-nl-card__val {
+  color: #1e293b;
+}
+
+.tcd-nl-card__prompt {
+  font-style: italic;
+  word-break: break-word;
+}
+
+.tcd-nl-card__intent {
+  font-family: var(--font-family-mono);
+  font-size: 0.72rem;
+  background: #f1f5f9;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.tcd-nl-source {
+  font-weight: 600;
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.tcd-nl-source--heuristic {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.tcd-nl-source--llm {
+  background: #ede9fe;
+  color: #4c1d95;
+}
+
+.tcd-nl-source__detail {
+  font-weight: 400;
+  color: #64748b;
+  margin-left: 4px;
+}

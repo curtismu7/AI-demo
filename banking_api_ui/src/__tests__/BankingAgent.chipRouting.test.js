@@ -5,10 +5,13 @@
  *
  * Covers three guarantees:
  *   1. Chip catalog — all expected chips exist in the correct ACTION_GROUP
- *   2. Heuristic vs LLM routing — AI chips stay in the NL-input path
- *      (conversational Send button); banking chips execute directly
- *   3. LLM compliance contract — AI chips only exercise agent-llm-reasoning,
- *      never banking infrastructure steps (olb-resource-token etc.)
+ *   2. Direct routing — all chips (including AI/LLM chips) call runAction()
+ *      directly on click; the NL-input path is only for chips that need
+ *      user-typed text before execution (transfer, balance, sequential_think, etc.)
+ *   3. Full compliance contract — all chips exercise the complete step set,
+ *      including olb-resource-token (RFC 8693 token exchange to reach the
+ *      banking backend). AI chips are not special: they go through the same
+ *      MCP gateway pipeline as banking chips.
  *
  * These are pure-logic tests (no DOM mount). They mirror the constants in
  * BankingAgent.js and assert the routing invariants that the product requires.
@@ -23,28 +26,38 @@
 // ── ACTION_GROUPS catalog (mirrored from BankingAgent.js) ────────────────────
 // Update this whenever chips are added, removed, or renamed.
 
-const ACCOUNT_CHIP_IDS = ['accounts', 'balance', 'sensitive-account-details', 'sequential_think'];
-const TRANSACTION_CHIP_IDS = ['transactions', 'deposit', 'withdraw', 'transfer'];
-const ADMIN_CHIP_IDS = ['mcp_tools', 'query_user', 'logout'];
+const ACCOUNT_CHIP_IDS = [
+  "accounts",
+  "balance",
+  "sensitive-account-details",
+  "sequential_think",
+];
+const TRANSACTION_CHIP_IDS = [
+  "transactions",
+  "deposit",
+  "withdraw",
+  "transfer",
+];
+const ADMIN_CHIP_IDS = ["mcp_tools", "query_user", "logout"];
 const AI_CHIP_IDS = [
-  'ai_ask',
-  'ai_helix_demo',
-  'ai_explain',
-  'ai_helix_explain',
-  'ai_analyze',
-  'ai_advice',
-  'ai_helix_advice',
+  "ai_ask",
+  "ai_helix_demo",
+  "ai_explain",
+  "ai_helix_explain",
+  "ai_analyze",
+  "ai_advice",
+  "ai_helix_advice",
 ];
 const TESTING_CHIP_IDS = [
-  'demo_guide',
-  'test_full_compliance_flow',
-  'test_wrong_scope',
-  'test_wrong_audience',
-  'test_hitl_required',
-  'transfer_600_test',
-  'test_otp_required',
-  'demo_intent_delegation',
-  'demo_nl_routing',
+  "demo_guide",
+  "test_full_compliance_flow",
+  "test_wrong_scope",
+  "test_wrong_audience",
+  "test_hitl_required",
+  "transfer_600_test",
+  "test_otp_required",
+  "demo_intent_delegation",
+  "demo_nl_routing",
 ];
 
 const ALL_CHIP_IDS = [
@@ -58,56 +71,68 @@ const ALL_CHIP_IDS = [
 // ── Routing contract ──────────────────────────────────────────────────────────
 // NL_ROUTED chips: handleActionClick calls setNlInputFromTile() — user sees the
 // conversational input field and must press the Send button to execute.
-// They NEVER call runAction() directly.
+// These are chips where the user needs to supply text before execution.
 const NL_ROUTED_IDS = new Set([
-  // All AI group chips — pre-fill the chat input
-  'ai_ask',
-  'ai_helix_demo',
-  'ai_explain',
-  'ai_helix_explain',
-  'ai_analyze',
-  'ai_advice',
-  'ai_helix_advice',
+  // Banking chips that need user-supplied parameters before execution
+  "transfer", // "Transfer $100 from checking to savings"
+  "deposit", // "Deposit $100 to my checking account"
+  "withdraw", // "Withdraw $100 from my checking account"
+  "balance", // "Check balance for my checking account"
+  "sequential_think", // "Think: Should I transfer money..."
   // NL-routing testing chips
-  'transfer_600_test',  // "Transfer $600 from checking to savings"
-  'demo_nl_routing',    // "What is my checking account balance?"
+  "transfer_600_test", // "Transfer $600 from checking to savings"
+  "demo_nl_routing", // "What is my checking account balance?"
   // Admin chip that prompts for completion
-  'query_user',         // "Query user by email: "
+  "query_user", // "Query user by email: "
 ]);
 
-// DIRECT chips: handleActionClick calls runAction() immediately — heuristic execution.
+// DIRECT chips: handleActionClick calls runAction() immediately — no input needed.
+// AI/LLM chips belong here: they route through callMcpTool("sequential_think")
+// and go through the full RFC 8693 token exchange pipeline.
 const DIRECT_IDS = new Set([
-  ...ACCOUNT_CHIP_IDS,
-  ...TRANSACTION_CHIP_IDS,
-  'mcp_tools', // admin: runs MCP tool list directly
-  'logout',    // admin: signs out directly
+  "accounts",
+  "transactions",
+  "sensitive-account-details",
+  "mcp_tools",
+  "logout",
+  ...AI_CHIP_IDS,
 ]);
-
-// Keep alias for the banking-specific checks below
-const DIRECT_BANKING_IDS = new Set([...ACCOUNT_CHIP_IDS, ...TRANSACTION_CHIP_IDS]);
 
 // ── CHIP_APPLICABLE_STEPS (mirrored from BankingAgent.js) ───────────────────
-// AI chips: only agent-llm-reasoning — they never touch banking infra
-const AI_STEPS_ONLY_LLM = {
-  ai_ask: ['agent-llm-reasoning'],
-  ai_explain: ['agent-llm-reasoning'],
-  ai_analyze: ['agent-llm-reasoning'],
-  ai_advice: ['agent-llm-reasoning'],
+// All chips that reach the banking backend exercise this full step set.
+const FULL_STEP_SET = [
+  "agent-llm-reasoning",
+  "agent-token-init",
+  "gw-scope-map",
+  "agent-scope-aware-cache",
+  "olb-resource-token",
+  "claim-diagnostics",
+];
+
+// AI chips: same full step set as banking chips — they route through
+// callMcpTool("sequential_think") which triggers RFC 8693 token exchange.
+const AI_CHIP_STEPS = {
+  ai_ask: FULL_STEP_SET,
+  ai_helix_demo: FULL_STEP_SET,
+  ai_explain: FULL_STEP_SET,
+  ai_helix_explain: FULL_STEP_SET,
+  ai_analyze: FULL_STEP_SET,
+  ai_advice: FULL_STEP_SET,
+  ai_helix_advice: FULL_STEP_SET,
 };
 
-// Banking chips: multi-step including olb-resource-token (reaches banking backend)
-const BANKING_STEP_INCLUDES = 'olb-resource-token';
+// Banking chips: same full step set
 const BANKING_CHIP_STEPS_SAMPLE = {
-  accounts: ['agent-llm-reasoning', 'agent-token-init', 'gw-scope-map', 'agent-scope-aware-cache', 'olb-resource-token', 'claim-diagnostics'],
-  balance: ['agent-llm-reasoning', 'agent-token-init', 'gw-scope-map', 'agent-scope-aware-cache', 'olb-resource-token', 'claim-diagnostics'],
-  deposit: ['agent-llm-reasoning', 'agent-token-init', 'gw-scope-map', 'agent-scope-aware-cache', 'olb-resource-token', 'claim-diagnostics'],
-  transfer: ['agent-llm-reasoning', 'agent-token-init', 'gw-scope-map', 'agent-scope-aware-cache', 'olb-resource-token', 'claim-diagnostics'],
+  accounts: FULL_STEP_SET,
+  balance: FULL_STEP_SET,
+  deposit: FULL_STEP_SET,
+  transfer: FULL_STEP_SET,
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe('BankingAgent chip catalog', () => {
-  it('has no duplicate chip IDs across all groups', () => {
+describe("BankingAgent chip catalog", () => {
+  it("has no duplicate chip IDs across all groups", () => {
     const seen = new Set();
     const dupes = [];
     for (const id of ALL_CHIP_IDS) {
@@ -117,156 +142,122 @@ describe('BankingAgent chip catalog', () => {
     expect(dupes).toEqual([]);
   });
 
-  it('account group contains all expected chips', () => {
-    expect(ACCOUNT_CHIP_IDS).toContain('accounts');
-    expect(ACCOUNT_CHIP_IDS).toContain('balance');
-    expect(ACCOUNT_CHIP_IDS).toContain('sensitive-account-details');
-    expect(ACCOUNT_CHIP_IDS).toContain('sequential_think');
+  it("account group contains all expected chips", () => {
+    expect(ACCOUNT_CHIP_IDS).toContain("accounts");
+    expect(ACCOUNT_CHIP_IDS).toContain("balance");
+    expect(ACCOUNT_CHIP_IDS).toContain("sensitive-account-details");
+    expect(ACCOUNT_CHIP_IDS).toContain("sequential_think");
   });
 
-  it('transaction group contains all expected chips', () => {
-    expect(TRANSACTION_CHIP_IDS).toContain('deposit');
-    expect(TRANSACTION_CHIP_IDS).toContain('withdraw');
-    expect(TRANSACTION_CHIP_IDS).toContain('transfer');
-    expect(TRANSACTION_CHIP_IDS).toContain('transactions');
+  it("transaction group contains all expected chips", () => {
+    expect(TRANSACTION_CHIP_IDS).toContain("deposit");
+    expect(TRANSACTION_CHIP_IDS).toContain("withdraw");
+    expect(TRANSACTION_CHIP_IDS).toContain("transfer");
+    expect(TRANSACTION_CHIP_IDS).toContain("transactions");
   });
 
-  it('AI group contains all 7 LLM chips', () => {
+  it("AI group contains all 7 LLM chips", () => {
     expect(AI_CHIP_IDS).toHaveLength(7);
-    expect(AI_CHIP_IDS).toContain('ai_ask');
-    expect(AI_CHIP_IDS).toContain('ai_helix_demo');
-    expect(AI_CHIP_IDS).toContain('ai_explain');
-    expect(AI_CHIP_IDS).toContain('ai_helix_explain');
-    expect(AI_CHIP_IDS).toContain('ai_analyze');
-    expect(AI_CHIP_IDS).toContain('ai_advice');
-    expect(AI_CHIP_IDS).toContain('ai_helix_advice');
+    expect(AI_CHIP_IDS).toContain("ai_ask");
+    expect(AI_CHIP_IDS).toContain("ai_helix_demo");
+    expect(AI_CHIP_IDS).toContain("ai_explain");
+    expect(AI_CHIP_IDS).toContain("ai_helix_explain");
+    expect(AI_CHIP_IDS).toContain("ai_analyze");
+    expect(AI_CHIP_IDS).toContain("ai_advice");
+    expect(AI_CHIP_IDS).toContain("ai_helix_advice");
   });
 
-  it('testing group contains compliance and NL routing chips', () => {
-    expect(TESTING_CHIP_IDS).toContain('test_wrong_scope');
-    expect(TESTING_CHIP_IDS).toContain('test_wrong_audience');
-    expect(TESTING_CHIP_IDS).toContain('test_hitl_required');
-    expect(TESTING_CHIP_IDS).toContain('transfer_600_test');
-    expect(TESTING_CHIP_IDS).toContain('test_otp_required');
-    expect(TESTING_CHIP_IDS).toContain('demo_intent_delegation');
-    expect(TESTING_CHIP_IDS).toContain('demo_nl_routing');
+  it("testing group contains compliance and NL routing chips", () => {
+    expect(TESTING_CHIP_IDS).toContain("test_wrong_scope");
+    expect(TESTING_CHIP_IDS).toContain("test_wrong_audience");
+    expect(TESTING_CHIP_IDS).toContain("test_hitl_required");
+    expect(TESTING_CHIP_IDS).toContain("transfer_600_test");
+    expect(TESTING_CHIP_IDS).toContain("test_otp_required");
+    expect(TESTING_CHIP_IDS).toContain("demo_intent_delegation");
+    expect(TESTING_CHIP_IDS).toContain("demo_nl_routing");
   });
 });
 
-describe('Heuristic vs LLM routing contract', () => {
-  it('NL_ROUTED and DIRECT sets are non-overlapping', () => {
-    const overlap = [...DIRECT_BANKING_IDS].filter((id) => NL_ROUTED_IDS.has(id));
+describe("Chip routing contract", () => {
+  it("NL_ROUTED and DIRECT sets are non-overlapping", () => {
+    const overlap = [...DIRECT_IDS].filter((id) => NL_ROUTED_IDS.has(id));
     expect(overlap).toEqual([]);
   });
 
-  it('all AI group chips are NL-routed (conversational Send button, not direct execution)', () => {
+  it("all AI group chips are direct-execution (call runAction() on click, not setNlInputFromTile)", () => {
     for (const id of AI_CHIP_IDS) {
-      expect(NL_ROUTED_IDS.has(id)).toBe(true);
-    }
-  });
-
-  it('no AI chip is in the direct-execution set', () => {
-    for (const id of AI_CHIP_IDS) {
-      expect(DIRECT_BANKING_IDS.has(id)).toBe(false);
-    }
-  });
-
-  it('core banking chips (accounts, balance, deposit, withdraw, transfer) are direct-execution', () => {
-    const coreBanking = ['accounts', 'balance', 'deposit', 'withdraw', 'transfer'];
-    for (const id of coreBanking) {
-      expect(DIRECT_BANKING_IDS.has(id)).toBe(true);
+      expect(DIRECT_IDS.has(id)).toBe(true);
       expect(NL_ROUTED_IDS.has(id)).toBe(false);
     }
   });
 
-  it('NL routing chips pre-fill the chat input with non-empty prompts', () => {
-    // These IDs call setNlInputFromTile with actual content — the user sees
-    // pre-filled text in the chat input and presses Send (conversational).
-    const withPrompt = ['ai_helix_demo', 'ai_explain', 'ai_helix_explain', 'ai_analyze', 'ai_advice', 'ai_helix_advice', 'transfer_600_test', 'demo_nl_routing'];
-    for (const id of withPrompt) {
+  it("core banking chips that need parameters are NL-routed", () => {
+    const paramChips = ["transfer", "deposit", "withdraw", "balance"];
+    for (const id of paramChips) {
       expect(NL_ROUTED_IDS.has(id)).toBe(true);
+      expect(DIRECT_IDS.has(id)).toBe(false);
     }
   });
 
-  it('ai_ask pre-fills empty input — opens chat ready for user to type', () => {
-    // ai_ask: setNlInputFromTile("") — cursor in empty box, Send button visible
-    expect(NL_ROUTED_IDS.has('ai_ask')).toBe(true);
-    expect(DIRECT_BANKING_IDS.has('ai_ask')).toBe(false);
-  });
-});
-
-describe('LLM compliance steps — AI chips never reach banking infrastructure', () => {
-  it('ai_ask steps contain only agent-llm-reasoning', () => {
-    expect(AI_STEPS_ONLY_LLM.ai_ask).toEqual(['agent-llm-reasoning']);
-  });
-
-  it('ai_explain steps contain only agent-llm-reasoning', () => {
-    expect(AI_STEPS_ONLY_LLM.ai_explain).toEqual(['agent-llm-reasoning']);
-  });
-
-  it('ai_analyze steps contain only agent-llm-reasoning', () => {
-    expect(AI_STEPS_ONLY_LLM.ai_analyze).toEqual(['agent-llm-reasoning']);
-  });
-
-  it('ai_advice steps contain only agent-llm-reasoning', () => {
-    expect(AI_STEPS_ONLY_LLM.ai_advice).toEqual(['agent-llm-reasoning']);
-  });
-
-  it('AI chips do not include olb-resource-token (they never call banking backend directly)', () => {
-    for (const steps of Object.values(AI_STEPS_ONLY_LLM)) {
-      expect(steps).not.toContain('olb-resource-token');
-      expect(steps).not.toContain('gw-scope-map');
-      expect(steps).not.toContain('gw-denial-metadata');
-      expect(steps.length).toBe(1); // exactly one step: LLM reasoning
-    }
-  });
-
-  it('banking chips include olb-resource-token (they reach banking backend)', () => {
-    for (const steps of Object.values(BANKING_CHIP_STEPS_SAMPLE)) {
-      expect(steps).toContain(BANKING_STEP_INCLUDES);
-    }
-  });
-
-  it('banking chips exercise more compliance steps than AI chips', () => {
-    const aiMaxSteps = Math.max(...Object.values(AI_STEPS_ONLY_LLM).map((s) => s.length));
-    const bankingMinSteps = Math.min(...Object.values(BANKING_CHIP_STEPS_SAMPLE).map((s) => s.length));
-    expect(bankingMinSteps).toBeGreaterThan(aiMaxSteps);
-  });
-});
-
-describe('LLM conversational mode — no Run button', () => {
-  // The "no Run button" guarantee is architectural:
-  //   AI chips call setNlInputFromTile() → text pre-fills the chat input
-  //   The only action button in the chat input row has aria-label="Send"
-  //   There is no separate "Run" button for AI actions
-  //
-  // These tests verify the contract through routing — if AI chips are NL-routed
-  // (not direct-executed), the only way to submit is the Send button.
-
-  it('all AI chips are NL-routed so the chat Send button is the only submission path', () => {
-    for (const id of AI_CHIP_IDS) {
-      expect(NL_ROUTED_IDS.has(id)).toBe(true);
-      // If this fails, the chip would call runAction() directly — bypassing the
-      // chat input entirely and creating an implicit "Run" behaviour on click.
-      expect(DIRECT_BANKING_IDS.has(id)).toBe(false);
-    }
-  });
-
-  it('banking chips that should NOT be conversational are in the direct set', () => {
-    // These chips execute on click — no text input, no Send button needed.
-    const mustBeDirect = ['accounts', 'balance', 'transactions', 'deposit', 'withdraw', 'transfer'];
-    for (const id of mustBeDirect) {
-      expect(DIRECT_BANKING_IDS.has(id)).toBe(true);
+  it("banking chips with no required parameters are direct-execution", () => {
+    const noParamBankingChips = ["accounts", "transactions"];
+    for (const id of noParamBankingChips) {
+      expect(DIRECT_IDS.has(id)).toBe(true);
       expect(NL_ROUTED_IDS.has(id)).toBe(false);
     }
   });
 
-  it('the NL-routed set and direct set together cover all registered chip IDs (no unrouted chips)', () => {
+  it("the NL-routed set and direct set together cover all registered chip IDs (no unrouted chips)", () => {
     // demo_guide opens a modal; test_full_compliance_flow runs via runAction in testing group.
-    const knownSpecial = new Set(['demo_guide', 'test_full_compliance_flow']);
-    const unrouted = ALL_CHIP_IDS
-      .filter((id) => !knownSpecial.has(id))
-      .filter((id) => !NL_ROUTED_IDS.has(id) && !DIRECT_IDS.has(id) && !TESTING_CHIP_IDS.includes(id));
+    const knownSpecial = new Set(["demo_guide", "test_full_compliance_flow"]);
+    const unrouted = ALL_CHIP_IDS.filter((id) => !knownSpecial.has(id)).filter(
+      (id) =>
+        !NL_ROUTED_IDS.has(id) &&
+        !DIRECT_IDS.has(id) &&
+        !TESTING_CHIP_IDS.includes(id),
+    );
     expect(unrouted).toEqual([]);
+  });
+});
+
+describe("Full compliance pipeline — AI chips go through olb-resource-token", () => {
+  // The whole point of the demo is that every chip — including AI/LLM chips —
+  // exercises the full RFC 8693 token exchange pipeline. AI chips route through
+  // callMcpTool("sequential_think") which triggers the MCP gateway (olb-resource-token)
+  // just like balance checks, transfers, and deposits do.
+
+  it("every AI chip step set includes olb-resource-token", () => {
+    for (const steps of Object.values(AI_CHIP_STEPS)) {
+      expect(steps).toContain("olb-resource-token");
+    }
+  });
+
+  it("every AI chip step set includes agent-token-init and gw-scope-map", () => {
+    for (const steps of Object.values(AI_CHIP_STEPS)) {
+      expect(steps).toContain("agent-token-init");
+      expect(steps).toContain("gw-scope-map");
+    }
+  });
+
+  it("AI chip step sets match the banking chip step set exactly", () => {
+    for (const aiSteps of Object.values(AI_CHIP_STEPS)) {
+      expect(aiSteps).toEqual(FULL_STEP_SET);
+    }
+    for (const bankingSteps of Object.values(BANKING_CHIP_STEPS_SAMPLE)) {
+      expect(bankingSteps).toEqual(FULL_STEP_SET);
+    }
+  });
+
+  it("banking chips also include olb-resource-token", () => {
+    for (const steps of Object.values(BANKING_CHIP_STEPS_SAMPLE)) {
+      expect(steps).toContain("olb-resource-token");
+    }
+  });
+
+  it("AI chips and banking chips exercise the same number of compliance steps", () => {
+    const aiStepCount = Object.values(AI_CHIP_STEPS)[0].length;
+    for (const steps of Object.values(BANKING_CHIP_STEPS_SAMPLE)) {
+      expect(steps.length).toBe(aiStepCount);
+    }
   });
 });

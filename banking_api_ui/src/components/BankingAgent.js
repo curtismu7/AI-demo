@@ -5374,6 +5374,13 @@ export default function BankingAgent({
           },
           source: "heuristic",
         }));
+      // Record NL routing as step 0 in Token Chain before token events arrive
+      tokenChain?.setNlRoutingEvent({
+        prompt: text,
+        source: _nlSource || "heuristic",
+        intent: _nlResult,
+        timestamp: new Date().toISOString(),
+      });
       await dispatchNlResult(_nlResult, _nlSource || "heuristic", text);
     } catch (err) {
       reportNlFailure(err);
@@ -7798,6 +7805,23 @@ export default function BankingAgent({
                       </div>
                     );
                   })}
+                {nlLoading && (
+                  <div className="banking-agent-msg user">
+                    <span
+                      className="banking-agent-msg-avatar banking-agent-msg-avatar--user"
+                      aria-hidden
+                    >
+                      You
+                    </span>
+                    <div>
+                      <div className="banking-agent-msg-bubble ba-typing-indicator">
+                        <span className="ba-typing-dot" />
+                        <span className="ba-typing-dot" />
+                        <span className="ba-typing-dot" />
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div ref={bottomRef} />
               </div>
 

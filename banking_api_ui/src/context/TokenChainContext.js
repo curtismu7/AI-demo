@@ -5,17 +5,26 @@
 // TokenChainPanel and BankingAgent (inline chat messages).
 // Also provides resolvedIdentity — friendly user/actor labels derived from the
 // current BFF session, cached here so all token surfaces share one fetch.
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import { isTokenChainRoute } from '../utils/embeddedAgentFabVisibility';
-import { postAppEvent } from '../services/appEventClient';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
+import { isTokenChainRoute } from "../utils/embeddedAgentFabVisibility";
+import { postAppEvent } from "../services/appEventClient";
 
 const TokenChainContext = createContext(null);
 
-const TOKEN_CHAIN_HISTORY_KEY = 'tokenChainHistory';
+const TOKEN_CHAIN_HISTORY_KEY = "tokenChainHistory";
 
 export function TokenChainProvider({ children, activePath = "" }) {
   // Array of token event objects — latest tool call only (replaced on each call)
   const [events, setEvents] = useState([]);
+  // NL routing info for the current request — set before token events arrive (step 0)
+  const [nlRoutingEvent, setNlRoutingEventState] = useState(null);
   // Current session token event — shown when no tool events (e.g., on dashboard load)
   const [sessionTokenEvent, setSessionTokenEvent] = useState(null);
   // MCP tool call delegation trail (fetched from /api/token-chain)
@@ -41,7 +50,7 @@ export function TokenChainProvider({ children, activePath = "" }) {
       try {
         localStorage.setItem(TOKEN_CHAIN_HISTORY_KEY, JSON.stringify(history));
       } catch (e) {
-        console.warn('[TokenChain] localStorage write failed:', e.message);
+        console.warn("[TokenChain] localStorage write failed:", e.message);
       }
     }, 300);
     return () => clearTimeout(timer);
@@ -51,21 +60,34 @@ export function TokenChainProvider({ children, activePath = "" }) {
    * Called by bankingAgentService after each MCP tool call.
    * Replaces current events and prepends to history.
    */
-  const setTokenEvents = useCallback((tool, newEvents) => {
-    if (!Array.isArray(newEvents) || newEvents.length === 0) { return; }
-    // Always persist to history so it's available when the user navigates to a token-chain page.
-    setHistory(prev => [
-      { tool, timestamp: new Date().toISOString(), events: newEvents },
-      ...prev.slice(0, 19),
-    ]);
-    // Only update the live events display on token-chain pages to avoid unnecessary re-renders.
-    if (!isTokenChainRoute(activePath)) { return; }
-    setEvents(newEvents);
-    setSessionTokenEvent(null);
-  }, [activePath]);
+  const setTokenEvents = useCallback(
+    (tool, newEvents) => {
+      if (!Array.isArray(newEvents) || newEvents.length === 0) {
+        return;
+      }
+      // Always persist to history so it's available when the user navigates to a token-chain page.
+      setHistory((prev) => [
+        { tool, timestamp: new Date().toISOString(), events: newEvents },
+        ...prev.slice(0, 19),
+      ]);
+      // Only update the live events display on token-chain pages to avoid unnecessary re-renders.
+      if (!isTokenChainRoute(activePath)) {
+        return;
+      }
+      setEvents(newEvents);
+      setSessionTokenEvent(null);
+    },
+    [activePath],
+  );
 
   const clearEvents = useCallback(() => {
     setEvents([]);
+    setNlRoutingEventState(null);
+  }, []);
+
+  /** Record the NL routing step (prompt + source + intent) for display as step 0 in the chain. */
+  const setNlRoutingEvent = useCallback((event) => {
+    setNlRoutingEventState(event);
   }, []);
 
   /** Set the current user session token event (shown on dashboard before any tool calls). */
@@ -77,9 +99,12 @@ export function TokenChainProvider({ children, activePath = "" }) {
   const clearHistory = useCallback(() => {
     setHistory([]);
     setEvents([]);
+    setNlRoutingEventState(null);
     setSessionTokenEvent(null);
     setMCPToolCalls([]);
-    try { localStorage.removeItem(TOKEN_CHAIN_HISTORY_KEY); } catch {}
+    try {
+      localStorage.removeItem(TOKEN_CHAIN_HISTORY_KEY);
+    } catch {}
   }, []);
 
   // Fetch MCP tool calls from /api/token-chain — only after authentication and
@@ -101,11 +126,18 @@ export function TokenChainProvider({ children, activePath = "" }) {
         return;
       }
       try {
-        postAppEvent('token_exchange', 'info', 'Token exchange in flight', { tag: 'token_exchange/frontend-exchange-start' });
-        const res = await fetch('/api/token-chain', { credentials: 'include', _silent: true });
+        postAppEvent("token_exchange", "info", "Token exchange in flight", {
+          tag: "token_exchange/frontend-exchange-start",
+        });
+        const res = await fetch("/api/token-chain", {
+          credentials: "include",
+          _silent: true,
+        });
         if (!res.ok) return;
         const data = await res.json();
-        postAppEvent('token_exchange', 'info', 'Token exchange complete', { tag: 'token_exchange/frontend-exchange-end' });
+        postAppEvent("token_exchange", "info", "Token exchange complete", {
+          tag: "token_exchange/frontend-exchange-end",
+        });
         if (!cancelled) {
           setMCPToolCalls(data.mcpToolCallsChain || []);
           if (data.validationMode) setValidationMode(data.validationMode);
@@ -133,17 +165,19 @@ export function TokenChainProvider({ children, activePath = "" }) {
     };
 
     // Only start polling after confirming authentication to avoid 401 noise.
-    fetch('/api/auth/session', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d && d.authenticated && !cancelled) syncPollingForRoute(); })
+    fetch("/api/auth/session", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && d.authenticated && !cancelled) syncPollingForRoute();
+      })
       .catch(() => {});
 
-    window.addEventListener('userAuthenticated', startPolling);
+    window.addEventListener("userAuthenticated", startPolling);
 
     return () => {
       cancelled = true;
       stopPolling();
-      window.removeEventListener('userAuthenticated', startPolling);
+      window.removeEventListener("userAuthenticated", startPolling);
     };
   }, [activePath]);
 
@@ -153,21 +187,24 @@ export function TokenChainProvider({ children, activePath = "" }) {
     const handler = (e) => {
       const data = e.detail;
       if (!data || !data.toolName) return;
-      setMCPToolCalls(prev => [{
-        id: `sse-${Date.now()}`,
-        timestamp: data.timestamp || new Date().toISOString(),
-        toolName: data.toolName,
-        status: data.status || 'success',
-        duration: data.duration || 0,
-        chainIndex: prev.length,
-        isDelegated: !!data.isDelegated,
-        scopes: [],
-        resultJson: data.resultJson || null,
-        resultSummary: data.resultSummary || null,
-      }, ...prev]);
+      setMCPToolCalls((prev) => [
+        {
+          id: `sse-${Date.now()}`,
+          timestamp: data.timestamp || new Date().toISOString(),
+          toolName: data.toolName,
+          status: data.status || "success",
+          duration: data.duration || 0,
+          chainIndex: prev.length,
+          isDelegated: !!data.isDelegated,
+          scopes: [],
+          resultJson: data.resultJson || null,
+          resultSummary: data.resultSummary || null,
+        },
+        ...prev,
+      ]);
     };
-    window.addEventListener('mcp-tool-result-sse', handler);
-    return () => window.removeEventListener('mcp-tool-result-sse', handler);
+    window.addEventListener("mcp-tool-result-sse", handler);
+    return () => window.removeEventListener("mcp-tool-result-sse", handler);
   }, []);
 
   // Inject synthetic token events from external sources (e.g. kill switch, introspection denied).
@@ -175,43 +212,56 @@ export function TokenChainProvider({ children, activePath = "" }) {
   useEffect(() => {
     const handler = (e) => {
       const { tool, events: injectedEvents } = e.detail || {};
-      if (!tool || !Array.isArray(injectedEvents) || injectedEvents.length === 0) return;
-      setHistory(prev => [
+      if (
+        !tool ||
+        !Array.isArray(injectedEvents) ||
+        injectedEvents.length === 0
+      )
+        return;
+      setHistory((prev) => [
         { tool, timestamp: new Date().toISOString(), events: injectedEvents },
         ...prev.slice(0, 19),
       ]);
       setEvents(injectedEvents);
       setSessionTokenEvent(null);
     };
-    window.addEventListener('token-chain-inject', handler);
-    return () => window.removeEventListener('token-chain-inject', handler);
+    window.addEventListener("token-chain-inject", handler);
+    return () => window.removeEventListener("token-chain-inject", handler);
   }, []);
 
   /** Fetch resolved identity once on mount (and on re-auth). Shared across all token surfaces. */
   const loadResolvedIdentity = useCallback(async () => {
     try {
       // Check session first; only load config if authenticated to avoid 401 loop
-      const sessionRes = await fetch('/api/auth/session', { credentials: 'include' });
+      const sessionRes = await fetch("/api/auth/session", {
+        credentials: "include",
+      });
       if (!sessionRes.ok) {
         // Not authenticated — skip config to avoid 401 loop
         setResolvedIdentity({ currentUser: null, knownClients: {} });
         return;
       }
-      const configRes = await fetch('/api/pingone-test/config', { credentials: 'include' });
+      const configRes = await fetch("/api/pingone-test/config", {
+        credentials: "include",
+      });
       const sessionData = await sessionRes.json();
-      const configData  = configRes.ok  ? await configRes.json()  : null;
+      const configData = configRes.ok ? await configRes.json() : null;
       const identity = { currentUser: null, knownClients: {} };
       if (sessionData?.authenticated && sessionData.user) {
         const u = sessionData.user;
-        const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || u.username || '';
+        const name =
+          [u.firstName, u.lastName].filter(Boolean).join(" ") ||
+          u.email ||
+          u.username ||
+          "";
         identity.currentUser = { sub: u.id, name, email: u.email };
       }
       if (configData) {
         const clientLabels = {
-          adminClientId:             'Super Banking BFF (Admin)',
-          userClientId:              'Super Banking BFF (User)',
-          mcpTokenExchangerClientId: 'MCP Token Exchanger',
-          aiAgentClientId:           'AI Agent',
+          adminClientId: "Super Banking BFF (Admin)",
+          userClientId: "Super Banking BFF (User)",
+          mcpTokenExchangerClientId: "MCP Token Exchanger",
+          aiAgentClientId: "AI Agent",
         };
         for (const [key, label] of Object.entries(clientLabels)) {
           const id = configData[key];
@@ -219,7 +269,9 @@ export function TokenChainProvider({ children, activePath = "" }) {
         }
       }
       setResolvedIdentity(identity);
-    } catch { /* non-fatal — falls back to raw UUIDs */ }
+    } catch {
+      /* non-fatal — falls back to raw UUIDs */
+    }
   }, []);
 
   useEffect(() => {
@@ -229,18 +281,41 @@ export function TokenChainProvider({ children, activePath = "" }) {
   // Re-fetch identity after login (e.g., session expiry re-auth)
   useEffect(() => {
     const onAuth = () => void loadResolvedIdentity();
-    window.addEventListener('userAuthenticated', onAuth);
-    return () => window.removeEventListener('userAuthenticated', onAuth);
+    window.addEventListener("userAuthenticated", onAuth);
+    return () => window.removeEventListener("userAuthenticated", onAuth);
   }, [loadResolvedIdentity]);
 
-  const value = useMemo(
-    () => {
-      // Use tool events if available, otherwise show session token
-      const displayEvents = events.length > 0 ? events : (sessionTokenEvent ? [sessionTokenEvent] : []);
-      return { events: displayEvents, history, mcpToolCalls, validationMode, resolvedIdentity, setTokenEvents, clearEvents, setSessionToken, clearHistory };
-    },
-    [events, sessionTokenEvent, history, mcpToolCalls, validationMode, resolvedIdentity, setTokenEvents, clearEvents, setSessionToken, clearHistory]
-  );
+  const value = useMemo(() => {
+    // Use tool events if available, otherwise show session token
+    const displayEvents =
+      events.length > 0 ? events : sessionTokenEvent ? [sessionTokenEvent] : [];
+    return {
+      events: displayEvents,
+      nlRoutingEvent,
+      history,
+      mcpToolCalls,
+      validationMode,
+      resolvedIdentity,
+      setTokenEvents,
+      clearEvents,
+      setNlRoutingEvent,
+      setSessionToken,
+      clearHistory,
+    };
+  }, [
+    events,
+    nlRoutingEvent,
+    sessionTokenEvent,
+    history,
+    mcpToolCalls,
+    validationMode,
+    resolvedIdentity,
+    setTokenEvents,
+    clearEvents,
+    setNlRoutingEvent,
+    setSessionToken,
+    clearHistory,
+  ]);
 
   return (
     <TokenChainContext.Provider value={value}>
@@ -252,7 +327,7 @@ export function TokenChainProvider({ children, activePath = "" }) {
 export function useTokenChain() {
   const ctx = useContext(TokenChainContext);
   if (!ctx) {
-    throw new Error('useTokenChain must be used within TokenChainProvider');
+    throw new Error("useTokenChain must be used within TokenChainProvider");
   }
   return ctx;
 }

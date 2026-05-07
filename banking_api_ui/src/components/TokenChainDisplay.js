@@ -1867,6 +1867,104 @@ function ScopeDelta({ fromEvent, toEvent }) {
   );
 }
 
+// ─── NL Routing Card (step 0) ────────────────────────────────────────────────
+
+const SOURCE_LABELS = {
+  heuristic: {
+    label: "Heuristic fast-path",
+    cls: "tcd-nl-source--heuristic",
+    detail: "regex pattern matched — no LLM call",
+  },
+  ollama: {
+    label: "LLM — Ollama",
+    cls: "tcd-nl-source--llm",
+    detail: "local model",
+  },
+  helix: {
+    label: "LLM — Helix",
+    cls: "tcd-nl-source--llm",
+    detail: "Helix AI",
+  },
+  helix_fallback: {
+    label: "LLM — Helix (fallback)",
+    cls: "tcd-nl-source--llm",
+    detail: "general knowledge fallback",
+  },
+  nl: { label: "LLM", cls: "tcd-nl-source--llm", detail: "language model" },
+};
+
+function intentLabel(intent) {
+  if (!intent) return null;
+  if (intent.kind === "banking" && intent.banking?.action) {
+    const a = intent.banking.action;
+    const p = intent.banking.params || {};
+    if (a === "transfer")
+      return `banking:transfer  $${p.amount ?? "?"} ${p.fromId ?? "?"} → ${p.toId ?? "?"}`;
+    if (a === "deposit")
+      return `banking:deposit  $${p.amount ?? "?"} → ${p.toId ?? "?"}`;
+    if (a === "withdraw")
+      return `banking:withdraw  $${p.amount ?? "?"} from ${p.fromId ?? "?"}`;
+    if (a === "balance")
+      return `banking:balance${p.accountId ? `  (${p.accountId})` : ""}`;
+    if (a === "accounts") return "banking:accounts";
+    if (a === "transactions") return "banking:transactions";
+    return `banking:${a}`;
+  }
+  if (intent.kind === "education") {
+    const panel = intent.education?.panel ?? (intent.ciba ? "ciba" : null);
+    return panel ? `education:${panel}` : "education";
+  }
+  if (intent.kind === "none") return "no match";
+  return intent.kind ?? null;
+}
+
+function NlRoutingCard({ event }) {
+  if (!event) return null;
+  const src = SOURCE_LABELS[event.source] || {
+    label: event.source,
+    cls: "tcd-nl-source--llm",
+    detail: "",
+  };
+  const intent = intentLabel(event.intent);
+  const time = event.timestamp
+    ? new Date(event.timestamp).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    : null;
+  return (
+    <div className="tcd-nl-card">
+      <div className="tcd-nl-card__header">
+        <span className="tcd-nl-card__step">Step 0</span>
+        <span className="tcd-nl-card__title">NL Intent Routing</span>
+        {time && <span className="tcd-nl-card__time">{time}</span>}
+      </div>
+      <div className="tcd-nl-card__row">
+        <span className="tcd-nl-card__key">Prompt</span>
+        <span className="tcd-nl-card__val tcd-nl-card__prompt">
+          {event.prompt}
+        </span>
+      </div>
+      <div className="tcd-nl-card__row">
+        <span className="tcd-nl-card__key">Routing</span>
+        <span className={`tcd-nl-card__val tcd-nl-source ${src.cls}`}>
+          {src.label}
+          {src.detail && (
+            <span className="tcd-nl-source__detail"> — {src.detail}</span>
+          )}
+        </span>
+      </div>
+      {intent && (
+        <div className="tcd-nl-card__row">
+          <span className="tcd-nl-card__key">Intent</span>
+          <span className="tcd-nl-card__val tcd-nl-card__intent">{intent}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Renders one step in the token chain. The inspect icon (right side) opens the floating inspector panel. */
 function EventRow({
   event,
@@ -2814,6 +2912,9 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
                     </p>
                   </div>
                 )}
+              {isLive && ctx?.nlRoutingEvent && (
+                <NlRoutingCard event={ctx.nlRoutingEvent} />
+              )}
               {(!isPlaceholder ||
                 !identityHints?.currentUser ||
                 sessionPreviewFetched) &&

@@ -5,6 +5,14 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-05-07 — BankingAgent.chipRouting test contract updated (not a bug fix)
+
+**Note**: `BankingAgent.chipRouting.test.js` updated to reflect that all chips (including AI chips) route through `runAction()` directly. The NL-input path is only for chips that need user-typed text before execution. No production regression — test contract aligned to existing runtime behaviour.
+
+**Tests**: `BankingAgent.chipRouting.test.js` — contract assertions updated.
+
+---
+
 ## 2026-05-02 — BankingAgent.chips float-mode test selector fixed (Phase 264-03)
 
 **Symptoms**: 3 float-mode tests in `BankingAgent.chips.test.js` timed out at 1050ms each: "float mode: renders action items in Actions popout after opening panel", "float mode: shows education items in discovery popout after opening panel", "clicking 'Actions' trigger button opens the discovery popout in float mode".
