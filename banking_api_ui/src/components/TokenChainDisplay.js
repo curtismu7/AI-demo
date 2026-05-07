@@ -1525,14 +1525,7 @@ function openInNewWindow(event) {
  * Rendered via createPortal into document.body so it can go off-screen.
  */
 function TokenInspectorPanel({ event, initialPos, onClose }) {
-  // eslint-disable-next-line no-unused-vars
-  const {
-    pos,
-    size,
-    handleDragStart,
-    handleResizeStart: _handleResizeStart,
-    createResizeHandler,
-  } = useDraggablePanel(
+  const { pos, size, handleDragStart, createResizeHandler } = useDraggablePanel(
     initialPos,
     { w: 800, h: 960 },
     { minW: 400, minH: 320, storageKey: "tci-inspector-panel" },

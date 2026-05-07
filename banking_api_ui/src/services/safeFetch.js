@@ -7,6 +7,8 @@
  * const { data, error, loading } = useSafeFetch('/api/accounts');
  */
 
+import React from "react";
+
 /**
  * Wrapper for fetch with comprehensive error handling
  * @param {string} url - API endpoint
@@ -24,7 +26,7 @@ export async function safeFetch(url, options = {}) {
 
     if (!response.ok) {
       const error = new Error(
-        `HTTP ${response.status}: ${response.statusText}`
+        `HTTP ${response.status}: ${response.statusText}`,
       );
       error.status = response.status;
       error.response = response;
@@ -34,12 +36,12 @@ export async function safeFetch(url, options = {}) {
     return response;
   } catch (error) {
     // Re-throw abort errors without modification
-    if (error.name === 'AbortError') {
+    if (error.name === "AbortError") {
       throw error;
     }
 
     // Log errors in development
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === "development") {
       console.error(`[safeFetch] Error fetching ${url}:`, error);
     }
 
@@ -97,7 +99,7 @@ export function useSafeFetch(url, options = {}) {
           setState({ data, error: null, loading: false });
         }
       } catch (error) {
-        if (error.name !== 'AbortError' && isMounted) {
+        if (error.name !== "AbortError" && isMounted) {
           setState({
             data: null,
             error,
@@ -111,12 +113,10 @@ export function useSafeFetch(url, options = {}) {
       isMounted = false;
       controller.abort();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, options.skip, options.method, ...(options.deps || [])]);
 
   return { ...state, refetch };
 }
-
-// Import React for hook usage
-import React from 'react';
 
 export default safeFetch;

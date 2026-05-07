@@ -29,14 +29,16 @@ let Sentry = null;
  */
 export function initErrorTracking(options = {}) {
   if (!options.dsn) {
-    console.warn('[ErrorTracking] Sentry DSN not configured, error tracking disabled');
+    console.warn(
+      "[ErrorTracking] Sentry DSN not configured, error tracking disabled",
+    );
     return;
   }
 
   try {
     // Lazy load Sentry only if configured
     // This prevents import errors if Sentry package is not installed
-    import('@sentry/react').then((sentryModule) => {
+    import("@sentry/react").then((sentryModule) => {
       Sentry = sentryModule;
       Sentry.init({
         dsn: options.dsn,
@@ -53,7 +55,7 @@ export function initErrorTracking(options = {}) {
       });
     });
   } catch (error) {
-    console.error('[ErrorTracking] Failed to initialize Sentry:', error);
+    console.error("[ErrorTracking] Failed to initialize Sentry:", error);
   }
 }
 
@@ -75,7 +77,7 @@ export function captureException(error, context = {}) {
       },
     });
   } catch (err) {
-    console.error('[ErrorTracking] Failed to capture exception:', err);
+    console.error("[ErrorTracking] Failed to capture exception:", err);
   }
 }
 
@@ -85,7 +87,7 @@ export function captureException(error, context = {}) {
  * @param {string} level - Severity level (info, warning, error)
  * @param {Object} context - Additional context data
  */
-export function captureMessage(message, level = 'info', context = {}) {
+export function captureMessage(message, level = "info", context = {}) {
   if (!Sentry) return;
 
   try {
@@ -93,7 +95,7 @@ export function captureMessage(message, level = 'info', context = {}) {
       contexts: context,
     });
   } catch (err) {
-    console.error('[ErrorTracking] Failed to capture message:', err);
+    console.error("[ErrorTracking] Failed to capture message:", err);
   }
 }
 
@@ -111,7 +113,7 @@ export function setUserContext(user) {
       username: user?.name,
     });
   } catch (err) {
-    console.error('[ErrorTracking] Failed to set user context:', err);
+    console.error("[ErrorTracking] Failed to set user context:", err);
   }
 }
 
@@ -123,7 +125,7 @@ export function clearUserContext() {
   try {
     Sentry.setUser(null);
   } catch (err) {
-    console.error('[ErrorTracking] Failed to clear user context:', err);
+    console.error("[ErrorTracking] Failed to clear user context:", err);
   }
 }
 
@@ -139,11 +141,11 @@ export function addBreadcrumb(breadcrumb) {
   if (!Sentry) return;
 
   try {
-    Sentry.captureMessage(breadcrumb.message, 'debug', {
+    Sentry.captureMessage(breadcrumb.message, "debug", {
       tags: { category: breadcrumb.category },
     });
   } catch (err) {
-    console.error('[ErrorTracking] Failed to add breadcrumb:', err);
+    console.error("[ErrorTracking] Failed to add breadcrumb:", err);
   }
 }
 
@@ -159,11 +161,11 @@ export function startTransaction(options = {}) {
 
   try {
     return Sentry.startTransaction({
-      name: options.name || 'transaction',
-      op: options.op || 'unknown',
+      name: options.name || "transaction",
+      op: options.op || "unknown",
     });
   } catch (err) {
-    console.error('[ErrorTracking] Failed to start transaction:', err);
+    console.error("[ErrorTracking] Failed to start transaction:", err);
     return null;
   }
 }
@@ -175,7 +177,7 @@ export function startTransaction(options = {}) {
 function getUserId() {
   try {
     // Try to get from sessionStorage
-    const session = sessionStorage.getItem('user_session');
+    const session = sessionStorage.getItem("user_session");
     if (session) {
       const parsed = JSON.parse(session);
       return parsed.id || null;
@@ -186,7 +188,7 @@ function getUserId() {
   return null;
 }
 
-export default {
+const errorTrackingService = {
   initErrorTracking,
   captureException,
   captureMessage,
@@ -195,3 +197,4 @@ export default {
   addBreadcrumb,
   startTransaction,
 };
+export default errorTrackingService;

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import './MFALogsViewer.css';
+import React, { useState, useEffect, useCallback } from "react";
+import "./MFALogsViewer.css";
 
 export default function MFALogsViewer() {
   const [logs, setLogs] = useState([]);
@@ -9,7 +9,7 @@ export default function MFALogsViewer() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [selectedLog, setSelectedLog] = useState(null);
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -22,16 +22,16 @@ export default function MFALogsViewer() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [logCount]);
 
   const clearLogs = async () => {
-    if (!window.confirm('Clear all MFA logs?')) return;
+    if (!window.confirm("Clear all MFA logs?")) return;
     try {
-      const response = await fetch('/api/mfa/test/logs', { method: 'DELETE' });
+      const response = await fetch("/api/mfa/test/logs", { method: "DELETE" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       setLogs([]);
       setSelectedLog(null);
-      alert('Logs cleared');
+      alert("Logs cleared");
     } catch (err) {
       setError(err.message);
     }
@@ -42,7 +42,7 @@ export default function MFALogsViewer() {
     if (!autoRefresh) return;
     const interval = setInterval(loadLogs, 2000);
     return () => clearInterval(interval);
-  }, [autoRefresh, logCount]);
+  }, [autoRefresh, loadLogs]);
 
   return (
     <div className="mfa-logs-viewer">
@@ -54,7 +54,7 @@ export default function MFALogsViewer() {
             onClick={loadLogs}
             disabled={loading}
           >
-            {loading ? 'Loading...' : 'Refresh'}
+            {loading ? "Loading..." : "Refresh"}
           </button>
           <label className="logs-checkbox">
             <input
@@ -89,21 +89,25 @@ export default function MFALogsViewer() {
       <div className="logs-container">
         <div className="logs-list">
           {logs.length === 0 ? (
-            <div className="logs-empty">No logs yet. Run an MFA test to see logs here.</div>
+            <div className="logs-empty">
+              No logs yet. Run an MFA test to see logs here.
+            </div>
           ) : (
             logs.map((log, idx) => (
               <div
                 key={idx}
-                className={`logs-item ${selectedLog === idx ? 'logs-item--selected' : ''}`}
+                className={`logs-item ${selectedLog === idx ? "logs-item--selected" : ""}`}
                 onClick={() => setSelectedLog(selectedLog === idx ? null : idx)}
               >
                 <div className="logs-item-header">
-                  <span className={`logs-type logs-type--${log.type.toLowerCase()}`}>
+                  <span
+                    className={`logs-type logs-type--${log.type.toLowerCase()}`}
+                  >
                     {log.type}
                   </span>
                   <span className="logs-operation">{log.operation}</span>
                   <span className="logs-status">
-                    {log.status ? `${log.status}` : log.error ? 'ERROR' : 'OK'}
+                    {log.status ? `${log.status}` : log.error ? "ERROR" : "OK"}
                   </span>
                   <span className="logs-time">
                     {new Date(log.timestamp).toLocaleTimeString()}

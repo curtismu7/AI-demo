@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
 /**
  * Hook to safely manage mounted state and prevent memory leaks
@@ -53,7 +53,7 @@ export function useIsMounted() {
  * }
  */
 export function useAsync(asyncFn, deps = []) {
-  const [state, setState] = require('react').useState({
+  const [state, setState] = require("react").useState({
     data: null,
     loading: true,
     error: null,
@@ -80,7 +80,8 @@ export function useAsync(asyncFn, deps = []) {
     return () => {
       cancelled = true;
     };
-  }, deps);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asyncFn, ...deps]);
 
   return state;
 }
@@ -101,7 +102,12 @@ export function useAsync(asyncFn, deps = []) {
  *   });
  * }
  */
-export function useEventListener(eventName, handler, target = window, options = {}) {
+export function useEventListener(
+  eventName,
+  handler,
+  target = window,
+  options = {},
+) {
   useEffect(() => {
     if (!target) return;
 
@@ -179,10 +185,11 @@ export function useSubscription(subscribe, deps = []) {
   useEffect(() => {
     const unsubscribe = subscribe();
     return unsubscribe;
-  }, deps);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscribe, ...deps]);
 }
 
-export default {
+const effectCleanupUtils = {
   useIsMounted,
   useAsync,
   useEventListener,
@@ -190,3 +197,4 @@ export default {
   useInterval,
   useSubscription,
 };
+export default effectCleanupUtils;

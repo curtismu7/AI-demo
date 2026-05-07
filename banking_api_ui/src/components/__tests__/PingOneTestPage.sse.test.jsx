@@ -9,10 +9,11 @@
  * dependencies mocked, then simulate SSE message events and assert the
  * corresponding React state (reflected in the DOM).
  */
-import React from 'react';
-import { render, act, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
-import { MemoryRouter } from 'react-router-dom';
+import React from "react";
+import { render, act } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { MemoryRouter } from "react-router-dom";
+import apiClient from "../../services/apiClient";
 
 // ─── window.EventSource mock ─────────────────────────────────────────────────
 
@@ -26,28 +27,37 @@ class MockEventSource {
   }
   /** Fire a synthetic message event on the most-recently created instance. */
   static fireMessage(data) {
-    const inst = MockEventSource.instances[MockEventSource.instances.length - 1];
+    const inst =
+      MockEventSource.instances[MockEventSource.instances.length - 1];
     if (inst?.onmessage) inst.onmessage({ data: JSON.stringify(data) });
   }
   static instances = [];
-  static reset() { MockEventSource.instances = []; }
+  static reset() {
+    MockEventSource.instances = [];
+  }
 }
 
-beforeAll(() => { window.EventSource = MockEventSource; });
-beforeEach(() => { MockEventSource.reset(); });
+beforeAll(() => {
+  window.EventSource = MockEventSource;
+});
+beforeEach(() => {
+  MockEventSource.reset();
+});
 
 // ─── Heavy dependency mocks ───────────────────────────────────────────────────
 
-jest.mock('../../context/TokenChainContext', () => ({
+jest.mock("../../context/TokenChainContext", () => ({
   useTokenChainOptional: () => null,
 }));
 
 // jest.mock is hoisted — factory must be self-contained (no outer variable refs).
 // Use explicit () => Promise.resolve(...) rather than mockResolvedValue so that
 // implementations survive across tests even if clearMocks runs between them.
-jest.mock('../../services/apiClient', () => {
+jest.mock("../../services/apiClient", () => {
   const instance = {
-    get: jest.fn(() => Promise.resolve({ data: { success: false, error: 'no session' } })),
+    get: jest.fn(() =>
+      Promise.resolve({ data: { success: false, error: "no session" } }),
+    ),
     post: jest.fn(() => Promise.resolve({ data: {} })),
     put: jest.fn(() => Promise.resolve({ data: {} })),
     patch: jest.fn(() => Promise.resolve({ data: {} })),
@@ -56,36 +66,32 @@ jest.mock('../../services/apiClient', () => {
   return { __esModule: true, default: instance, ...instance };
 });
 
-jest.mock('../../utils/resolveApiBaseUrl', () => ({
-  resolveApiBaseUrl: () => '',
+jest.mock("../../utils/resolveApiBaseUrl", () => ({
+  resolveApiBaseUrl: () => "",
 }));
 
-jest.mock('../../utils/appToast', () => ({
+jest.mock("../../utils/appToast", () => ({
   notifyError: jest.fn(),
   notifyInfo: jest.fn(),
   notifySuccess: jest.fn(),
 }));
 
 // Child components that make their own API calls — stub to null
-jest.mock('../ApiCallDisplay', () => () => null);
-jest.mock('../DecodedTokenPanel', () => () => null);
-jest.mock('../ScopeNarrowingVisualization', () => () => null);
-jest.mock('../TokenColorSystem', () => ({ TokenColorLegend: () => null }));
-jest.mock('../PingOneApiPanel', () => () => null);
-jest.mock('../ApiCallPreviewCard', () => () => null);
-jest.mock('../PingOneTestPage.css', () => ({}), { virtual: true });
-
-// ─── Module references (re-apply implementations each test) ──────────────────
-
-import apiClient from '../../services/apiClient';
+jest.mock("../ApiCallDisplay", () => () => null);
+jest.mock("../DecodedTokenPanel", () => () => null);
+jest.mock("../ScopeNarrowingVisualization", () => () => null);
+jest.mock("../TokenColorSystem", () => ({ TokenColorLegend: () => null }));
+jest.mock("../PingOneApiPanel", () => () => null);
+jest.mock("../ApiCallPreviewCard", () => () => null);
+jest.mock("../PingOneTestPage.css", () => ({}), { virtual: true });
 
 beforeEach(() => {
-  if (apiClient && typeof apiClient.get === 'function') {
+  if (apiClient && typeof apiClient.get === "function") {
     apiClient.get.mockImplementation(() =>
-      Promise.resolve({ data: { success: false, error: 'no session' } }),
+      Promise.resolve({ data: { success: false, error: "no session" } }),
     );
   }
-  if (apiClient && typeof apiClient.post === 'function') {
+  if (apiClient && typeof apiClient.post === "function") {
     apiClient.post.mockImplementation(() => Promise.resolve({ data: {} }));
   }
 });
@@ -93,72 +99,74 @@ beforeEach(() => {
 // ─── Render helper ────────────────────────────────────────────────────────────
 
 async function renderPage() {
-  const { default: PingOneTestPage } = await import('../PingOneTestPage');
-  let result;
-  await act(async () => {
-    result = render(
-      <MemoryRouter>
-        <PingOneTestPage />
-      </MemoryRouter>,
-    );
-  });
-  return result;
+  const { default: PingOneTestPage } = await import("../PingOneTestPage");
+  return render(
+    <MemoryRouter>
+      <PingOneTestPage />
+    </MemoryRouter>,
+  );
 }
 
 // ─── EventSource connection ───────────────────────────────────────────────────
 
-describe('PingOneTestPage — EventSource connection', () => {
-  it('opens EventSource to /api/pingone-test/events on mount', async () => {
+describe("PingOneTestPage — EventSource connection", () => {
+  it("opens EventSource to /api/pingone-test/events on mount", async () => {
     await renderPage();
     expect(MockEventSource.instances).toHaveLength(1);
-    expect(MockEventSource.instances[0].url).toBe('/api/pingone-test/events');
+    expect(MockEventSource.instances[0].url).toBe("/api/pingone-test/events");
   });
 
-  it('opens EventSource with withCredentials: true', async () => {
+  it("opens EventSource with withCredentials: true", async () => {
     await renderPage();
     expect(MockEventSource.instances[0].opts).toEqual(
       expect.objectContaining({ withCredentials: true }),
     );
   });
 
-  it('closes EventSource on unmount', async () => {
+  it("closes EventSource on unmount", async () => {
     const { unmount } = await renderPage();
     const inst = MockEventSource.instances[0];
-    act(() => { unmount(); });
+    act(() => {
+      unmount();
+    });
     expect(inst.close).toHaveBeenCalled();
   });
 });
 
 // ─── Token event routing ──────────────────────────────────────────────────────
 
-describe('PingOneTestPage — SSE token event routing', () => {
-  it('ignores malformed JSON in data events without throwing', async () => {
+describe("PingOneTestPage — SSE token event routing", () => {
+  it("ignores malformed JSON in data events without throwing", async () => {
     await renderPage();
     const inst = MockEventSource.instances[0];
     expect(() => {
       act(() => {
-        inst.onmessage?.({ data: 'not-json{{' });
+        inst.onmessage?.({ data: "not-json{{" });
       });
     }).not.toThrow();
   });
 
-  it('ignores unknown event types without throwing', async () => {
+  it("ignores unknown event types without throwing", async () => {
     await renderPage();
     expect(() => {
       act(() => {
-        MockEventSource.fireMessage({ type: 'unknown_type', id: 'x', t: Date.now() });
+        MockEventSource.fireMessage({
+          type: "unknown_type",
+          id: "x",
+          t: Date.now(),
+        });
       });
     }).not.toThrow();
   });
 
-  it('routes token event with id=authz-token and status=success to authz state', async () => {
+  it("routes token event with id=authz-token and status=success to authz state", async () => {
     await renderPage();
     await act(async () => {
       MockEventSource.fireMessage({
-        type: 'token',
-        id: 'authz-token',
-        status: 'success',
-        decoded: { payload: { sub: 'u1' } },
+        type: "token",
+        id: "authz-token",
+        status: "success",
+        decoded: { payload: { sub: "u1" } },
         t: Date.now(),
       });
     });
@@ -169,60 +177,60 @@ describe('PingOneTestPage — SSE token event routing', () => {
     expect(MockEventSource.instances[0].close).not.toHaveBeenCalled();
   });
 
-  it('routes token event with id=agent-token and status=error without throwing', async () => {
+  it("routes token event with id=agent-token and status=error without throwing", async () => {
     await renderPage();
     expect(() => {
       act(() => {
         MockEventSource.fireMessage({
-          type: 'token',
-          id: 'agent-token',
-          status: 'error',
-          error: 'invalid_client',
+          type: "token",
+          id: "agent-token",
+          status: "error",
+          error: "invalid_client",
           t: Date.now(),
         });
       });
     }).not.toThrow();
   });
 
-  it('routes exchange event with id=exchange-user-to-mcp without throwing', async () => {
+  it("routes exchange event with id=exchange-user-to-mcp without throwing", async () => {
     await renderPage();
     expect(() => {
       act(() => {
         MockEventSource.fireMessage({
-          type: 'exchange',
-          id: 'exchange-user-to-mcp',
-          status: 'success',
-          decoded: { payload: { aud: 'mcp' } },
-          subjectDecoded: { payload: { sub: 'u1' } },
+          type: "exchange",
+          id: "exchange-user-to-mcp",
+          status: "success",
+          decoded: { payload: { aud: "mcp" } },
+          subjectDecoded: { payload: { sub: "u1" } },
           t: Date.now(),
         });
       });
     }).not.toThrow();
   });
 
-  it('routes exchange event with id=exchange-user-agent-to-mcp without throwing', async () => {
+  it("routes exchange event with id=exchange-user-agent-to-mcp without throwing", async () => {
     await renderPage();
     expect(() => {
       act(() => {
         MockEventSource.fireMessage({
-          type: 'exchange',
-          id: 'exchange-user-agent-to-mcp',
-          status: 'error',
-          error: 'invalid_grant',
+          type: "exchange",
+          id: "exchange-user-agent-to-mcp",
+          status: "error",
+          error: "invalid_grant",
           t: Date.now(),
         });
       });
     }).not.toThrow();
   });
 
-  it('ignores api_call events silently', async () => {
+  it("ignores api_call events silently", async () => {
     await renderPage();
     expect(() => {
       act(() => {
         MockEventSource.fireMessage({
-          type: 'api_call',
-          method: 'GET',
-          url: '/api/test',
+          type: "api_call",
+          method: "GET",
+          url: "/api/test",
           status: 200,
           t: Date.now(),
         });

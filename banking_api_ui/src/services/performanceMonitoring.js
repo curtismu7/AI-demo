@@ -26,44 +26,46 @@
  * });
  */
 export function initWebVitals(onMetric) {
-  if ('web-vitals' in window) {
+  if ("web-vitals" in window) {
     return; // Already initialized
   }
 
   // Lazy load web-vitals package
-  import('web-vitals').then((module) => {
-    const { getCLS, getFID, getFCP, getLCP, getTTFB } = module;
+  import("web-vitals")
+    .then((module) => {
+      const { getCLS, getFID, getFCP, getLCP, getTTFB } = module;
 
-    // Cumulative Layout Shift
-    getCLS((metric) => {
-      reportMetric('CLS', metric, onMetric);
+      // Cumulative Layout Shift
+      getCLS((metric) => {
+        reportMetric("CLS", metric, onMetric);
+      });
+
+      // First Input Delay
+      getFID((metric) => {
+        reportMetric("FID", metric, onMetric);
+      });
+
+      // First Contentful Paint
+      getFCP((metric) => {
+        reportMetric("FCP", metric, onMetric);
+      });
+
+      // Largest Contentful Paint
+      getLCP((metric) => {
+        reportMetric("LCP", metric, onMetric);
+      });
+
+      // Time to First Byte
+      getTTFB((metric) => {
+        reportMetric("TTFB", metric, onMetric);
+      });
+
+      // Custom navigation timing
+      reportNavigationTiming(onMetric);
+    })
+    .catch((err) => {
+      console.warn("[PerformanceMonitoring] Failed to load web-vitals:", err);
     });
-
-    // First Input Delay
-    getFID((metric) => {
-      reportMetric('FID', metric, onMetric);
-    });
-
-    // First Contentful Paint
-    getFCP((metric) => {
-      reportMetric('FCP', metric, onMetric);
-    });
-
-    // Largest Contentful Paint
-    getLCP((metric) => {
-      reportMetric('LCP', metric, onMetric);
-    });
-
-    // Time to First Byte
-    getTTFB((metric) => {
-      reportMetric('TTFB', metric, onMetric);
-    });
-
-    // Custom navigation timing
-    reportNavigationTiming(onMetric);
-  }).catch((err) => {
-    console.warn('[PerformanceMonitoring] Failed to load web-vitals:', err);
-  });
 }
 
 /**
@@ -84,12 +86,12 @@ function reportMetric(name, metric, onMetric) {
     try {
       onMetric(data);
     } catch (err) {
-      console.error('[PerformanceMonitoring] Error in metric callback:', err);
+      console.error("[PerformanceMonitoring] Error in metric callback:", err);
     }
   }
 
   // Log in development
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === "development") {
     console.debug(`[Metrics] ${name}:`, {
       value: data.value.toFixed(2),
       rating: data.rating,
@@ -110,14 +112,17 @@ function reportNavigationTiming(onMetric) {
   const navigation = window.performance.navigation;
 
   // Wait for page load
-  window.addEventListener('load', () => {
+  window.addEventListener("load", () => {
     setTimeout(() => {
       const metrics = {
-        'DOM Content Loaded': timing.domContentLoadedEventEnd - timing.domContentLoadedEventStart,
-        'Page Load Time': timing.loadEventEnd - timing.navigationStart,
-        'Time to First Interactive': timing.domInteractive - timing.navigationStart,
-        'Time to DOM Content Loaded': timing.domContentLoadedEventEnd - timing.navigationStart,
-        'Navigation Type': navigation.type === 0 ? 'navigate' : 'reload',
+        "DOM Content Loaded":
+          timing.domContentLoadedEventEnd - timing.domContentLoadedEventStart,
+        "Page Load Time": timing.loadEventEnd - timing.navigationStart,
+        "Time to First Interactive":
+          timing.domInteractive - timing.navigationStart,
+        "Time to DOM Content Loaded":
+          timing.domContentLoadedEventEnd - timing.navigationStart,
+        "Navigation Type": navigation.type === 0 ? "navigate" : "reload",
       };
 
       Object.entries(metrics).forEach(([name, value]) => {
@@ -139,18 +144,18 @@ function reportNavigationTiming(onMetric) {
  */
 function getPerformanceRating(name, value) {
   const thresholds = {
-    'DOM Content Loaded': { good: 1000, poor: 3000 },
-    'Page Load Time': { good: 2500, poor: 4000 },
-    'Time to First Interactive': { good: 3000, poor: 5000 },
-    'Time to DOM Content Loaded': { good: 1500, poor: 3500 },
+    "DOM Content Loaded": { good: 1000, poor: 3000 },
+    "Page Load Time": { good: 2500, poor: 4000 },
+    "Time to First Interactive": { good: 3000, poor: 5000 },
+    "Time to DOM Content Loaded": { good: 1500, poor: 3500 },
   };
 
   const threshold = thresholds[name];
-  if (!threshold) return 'unknown';
+  if (!threshold) return "unknown";
 
-  if (value <= threshold.good) return 'good';
-  if (value <= threshold.poor) return 'needs-improvement';
-  return 'poor';
+  if (value <= threshold.good) return "good";
+  if (value <= threshold.poor) return "needs-improvement";
+  return "poor";
 }
 
 /**
@@ -174,7 +179,10 @@ export function getPerformanceMetrics() {
       usedJSHeapSize: performance.memory.usedJSHeapSize,
       totalJSHeapSize: performance.memory.totalJSHeapSize,
       jsHeapSizeLimit: performance.memory.jsHeapSizeLimit,
-      heapUsagePercent: (performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit) * 100,
+      heapUsagePercent:
+        (performance.memory.usedJSHeapSize /
+          performance.memory.jsHeapSizeLimit) *
+        100,
     };
   }
 
@@ -193,11 +201,11 @@ export function getPerformanceMetrics() {
   // Resource timing (top 10 slowest)
   if (performance.getEntriesByType) {
     metrics.resourceTiming = performance
-      .getEntriesByType('resource')
+      .getEntriesByType("resource")
       .sort((a, b) => b.duration - a.duration)
       .slice(0, 10)
       .map((entry) => ({
-        name: entry.name.split('/').pop(),
+        name: entry.name.split("/").pop(),
         duration: Math.round(entry.duration),
         size: entry.transferSize || 0,
       }));
@@ -211,11 +219,11 @@ export function getPerformanceMetrics() {
  * @param {Function} sendMetric - Analytics send function
  * @param {string} serviceName - Name of analytics service (for logging)
  */
-export function connectToAnalytics(sendMetric, serviceName = 'Analytics') {
+export function connectToAnalytics(sendMetric, serviceName = "Analytics") {
   initWebVitals((metric) => {
     try {
       sendMetric({
-        event: 'performance_metric',
+        event: "performance_metric",
         metric_name: metric.name,
         metric_value: metric.value,
         metric_rating: metric.rating,
@@ -227,8 +235,9 @@ export function connectToAnalytics(sendMetric, serviceName = 'Analytics') {
   });
 }
 
-export default {
+const performanceMonitoringService = {
   initWebVitals,
   getPerformanceMetrics,
   connectToAnalytics,
 };
+export default performanceMonitoringService;

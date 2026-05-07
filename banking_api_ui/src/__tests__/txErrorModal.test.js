@@ -6,15 +6,15 @@
  * 2. React render: TxErrorModal shows/hides and close button works.
  */
 
-import '@testing-library/jest-dom';
-import React, { useState } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import "@testing-library/jest-dom";
+import React, { useState } from "react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 // ── Pure logic under test ────────────────────────────────────────────────────
 // Mirrors the inline check in BankingAgent.js line ~3548:
 //   const isTransactionAction = ["transfer", "deposit", "withdraw"].includes(actionId);
 
-const WRITE_ACTIONS = new Set(['transfer', 'deposit', 'withdraw']);
+const WRITE_ACTIONS = new Set(["transfer", "deposit", "withdraw"]);
 function isTransactionAction(actionId) {
   return WRITE_ACTIONS.has(actionId);
 }
@@ -26,7 +26,9 @@ function TxErrorModal({ modal, onClose }) {
     <div
       className="ba-tx-error-overlay"
       onClick={onClose}
-      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Transaction error"
@@ -53,64 +55,64 @@ function TxErrorModalHarness({ initialModal }) {
 }
 
 // ── isTransactionAction tests ────────────────────────────────────────────────
-describe('isTransactionAction — write action classification', () => {
-  it('transfer is a transaction action', () => {
-    expect(isTransactionAction('transfer')).toBe(true);
+describe("isTransactionAction — write action classification", () => {
+  it("transfer is a transaction action", () => {
+    expect(isTransactionAction("transfer")).toBe(true);
   });
 
-  it('deposit is a transaction action', () => {
-    expect(isTransactionAction('deposit')).toBe(true);
+  it("deposit is a transaction action", () => {
+    expect(isTransactionAction("deposit")).toBe(true);
   });
 
-  it('withdraw is a transaction action', () => {
-    expect(isTransactionAction('withdraw')).toBe(true);
+  it("withdraw is a transaction action", () => {
+    expect(isTransactionAction("withdraw")).toBe(true);
   });
 
-  it('accounts is not a transaction action', () => {
-    expect(isTransactionAction('accounts')).toBe(false);
+  it("accounts is not a transaction action", () => {
+    expect(isTransactionAction("accounts")).toBe(false);
   });
 
-  it('balance is not a transaction action', () => {
-    expect(isTransactionAction('balance')).toBe(false);
+  it("balance is not a transaction action", () => {
+    expect(isTransactionAction("balance")).toBe(false);
   });
 
-  it('mcp_tools is not a transaction action', () => {
-    expect(isTransactionAction('mcp_tools')).toBe(false);
+  it("mcp_tools is not a transaction action", () => {
+    expect(isTransactionAction("mcp_tools")).toBe(false);
   });
 });
 
 // ── TxErrorModal render tests ────────────────────────────────────────────────
-describe('TxErrorModal — render and interaction', () => {
-  it('modal shows title and message when txErrorModal is set', () => {
+describe("TxErrorModal — render and interaction", () => {
+  it("modal shows title and message when txErrorModal is set", () => {
     render(
       <TxErrorModal
-        modal={{ title: 'Transaction Failed', message: 'Insufficient funds' }}
+        modal={{ title: "Transaction Failed", message: "Insufficient funds" }}
         onClose={jest.fn()}
-      />
+      />,
     );
     expect(screen.getByText(/Transaction Failed/)).toBeInTheDocument();
-    expect(screen.getByText('Insufficient funds')).toBeInTheDocument();
+    expect(screen.getByText("Insufficient funds")).toBeInTheDocument();
   });
 
-  it('modal is not rendered when txErrorModal is null', () => {
+  it("modal is not rendered when txErrorModal is null", () => {
     const { container } = render(
-      <TxErrorModal modal={null} onClose={jest.fn()} />
+      <TxErrorModal modal={null} onClose={jest.fn()} />,
     );
-    expect(container.firstChild).toBeNull();
+    expect(container).toBeEmptyDOMElement();
   });
 
-  it('close button removes the modal', () => {
+  it("close button removes the modal", () => {
     render(
       <TxErrorModalHarness
-        initialModal={{ title: 'Transaction Failed', message: 'Declined' }}
-      />
+        initialModal={{ title: "Transaction Failed", message: "Declined" }}
+      />,
     );
 
     // Modal is visible initially
     expect(screen.getByText(/Transaction Failed/)).toBeInTheDocument();
 
     // Click the Close button
-    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
 
     // Modal should be gone
     expect(screen.queryByText(/Transaction Failed/)).toBeNull();
