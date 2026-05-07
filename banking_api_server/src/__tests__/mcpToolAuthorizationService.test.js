@@ -297,6 +297,55 @@ describe('mcpToolAuthorizationService', () => {
     });
   });
 
+  describe('write-tool amount extraction (93626945: WRITE_TOOL_TYPE_MAP)', () => {
+    beforeEach(() => {
+      simulatedAuthorizeService.isSimulatedModeEnabled.mockReturnValue(true);
+      simulatedAuthorizeService.evaluateMcpFirstTool.mockResolvedValue({
+        decision: 'PERMIT', stepUpRequired: false, hitlRequired: false,
+        path: 'simulated', decisionId: 'sim-x', raw: {},
+      });
+    });
+
+    it('passes amount and transactionType=transfer for create_transfer with toolParams', async () => {
+      await evaluateMcpFirstToolGate({
+        req: { session: {} },
+        tool: 'create_transfer',
+        agentToken: jwtWithPayload({ sub: 'u1' }),
+        userSub: 'u1',
+        toolParams: { amount: 600, fromAccountId: 'a1', toAccountId: 'a2' },
+      });
+      expect(simulatedAuthorizeService.evaluateMcpFirstTool).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 600, transactionType: 'transfer' }),
+      );
+    });
+
+    it('passes amount and transactionType=deposit for create_deposit', async () => {
+      await evaluateMcpFirstToolGate({
+        req: { session: {} },
+        tool: 'create_deposit',
+        agentToken: jwtWithPayload({ sub: 'u1' }),
+        userSub: 'u1',
+        toolParams: { amount: 200, accountId: 'a1' },
+      });
+      expect(simulatedAuthorizeService.evaluateMcpFirstTool).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 200, transactionType: 'deposit' }),
+      );
+    });
+
+    it('passes amount=null and transactionType=null for read-only tools', async () => {
+      await evaluateMcpFirstToolGate({
+        req: { session: {} },
+        tool: 'get_my_accounts',
+        agentToken: jwtWithPayload({ sub: 'u1' }),
+        userSub: 'u1',
+        toolParams: {},
+      });
+      expect(simulatedAuthorizeService.evaluateMcpFirstTool).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: null, transactionType: null }),
+      );
+    });
+  });
+
   describe('getMcpFirstToolGateStatus', () => {
     it('reports enabled flag and live readiness', () => {
       configStore.get.mockImplementation((k) => {

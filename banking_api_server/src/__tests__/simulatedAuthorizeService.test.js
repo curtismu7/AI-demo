@@ -161,6 +161,21 @@ describe('simulatedAuthorizeService', () => {
       expect(r.raw.parameters.Amount).toBe(300);
       expect(r.raw.parameters.TransactionType).toBe('deposit');
     });
+
+    it('strong ACR bypasses confirm gate (54ffcdbe: needsConfirm respects acrLooksStrong)', async () => {
+      // Before 54ffcdbe: needsConfirm = !needsStepUp && amount >= confirmAmount
+      // After:           needsConfirm = !needsStepUp && amount >= confirmAmount && !acrLooksStrong(acr)
+      // A session that completed MFA step-up should not then also require HITL confirm.
+      const r = await evaluateMcpFirstTool({
+        ...BASE,
+        amount: SIMULATED_CONFIRM_AMOUNT_USD,     // exactly at confirm threshold
+        transactionType: 'transfer',
+        acr: 'http://schemas.openid.net/pam/mfa', // strong ACR
+      });
+      expect(r.decision).toBe('PERMIT');
+      expect(r.hitlRequired).toBe(false);
+      expect(r.stepUpRequired).toBe(false);
+    });
   });
 
   describe('isSimulatedModeEnabled', () => {

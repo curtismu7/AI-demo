@@ -292,6 +292,32 @@ describe('GET /api/admin/setup/config-template', () => {
   });
 });
 
+// ── POST /run-tests — admin gate removed (49b1776b) ──────────────────────────
+
+describe('POST /api/admin/setup/run-tests — no admin gate (49b1776b)', () => {
+  it('returns non-403 even when requireAdmin is set to block — gate was removed', async () => {
+    // Set requireAdmin to reject so any route that still carries it would return 403.
+    // /run-tests must NOT carry requireAdmin after 49b1776b.
+    requireAdmin.mockImplementation((_req, res) => res.status(403).json({ error: 'forbidden' }));
+
+    const res = await request(buildApp())
+      .post('/api/admin/setup/run-tests')
+      .send({ suite: 'not:a:real:suite' }); // unknown suite → 400
+
+    // 403 would mean requireAdmin is still on the route — the fix removed it
+    expect(res.status).not.toBe(403);
+    expect(res.status).toBe(400); // route is reached; unknown suite → 400
+  });
+
+  it('requireAdmin still blocks /config-template (gate not removed from other routes)', async () => {
+    requireAdmin.mockImplementation((_req, res) => res.status(403).json({ error: 'forbidden' }));
+
+    const res = await request(buildApp()).get('/api/admin/setup/config-template');
+
+    expect(res.status).toBe(403);
+  });
+});
+
 // ── POST /run-tests — validation (supertest) ──────────────────────────────────
 
 describe('POST /api/admin/setup/run-tests — validation', () => {
