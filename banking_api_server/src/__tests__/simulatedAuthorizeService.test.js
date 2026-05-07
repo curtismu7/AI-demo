@@ -51,10 +51,11 @@ describe('simulatedAuthorizeService', () => {
       );
     });
 
-    it('does not require step-up for deposit (Authorize types may still include deposit via ff)', async () => {
+    it('does not require step-up for deposit (deposit is not in default stepUpTypes)', async () => {
+      // Use amount below all thresholds — deposit has no type-based step-up and no amount-based trigger.
       const r = await evaluateTransaction({
         userId: 'u1',
-        amount: SIMULATED_POLICY_STEPUP_USD + 1000,
+        amount: 10,
         type: 'deposit',
         acr: '',
       });

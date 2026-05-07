@@ -32,12 +32,13 @@ jest.mock('express-rate-limit', () => jest.fn(() => (req, res, next) => next()))
 
 jest.mock('../../data/store', () => ({
   getAccountById: jest.fn((id) => {
-    return { id, userId: 'test-user-1', type: 'checking', balance: 5000 };
+    return { id, userId: 'test-user-1', type: 'checking', accountType: 'checking', accountNumber: '0001', balance: 5000 };
   }),
   getUserById: jest.fn(() => ({ id: 'test-user-1', username: 'test_user' })),
   createTransaction: jest.fn((tx) => ({ ...tx, id: 'tx-456' })),
   getTransactionsByUserId: jest.fn(() => []),
   getAccountsByUserId: jest.fn(() => []),
+  updateAccountBalance: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('../../services/transactionConsentChallenge', () => ({
@@ -54,8 +55,27 @@ jest.mock('../../services/appEventService', () => ({
   logEvent: jest.fn(() => Promise.resolve()),
 }));
 
+// evaluateTransactionPolicy returns a HITL consent block for transfers (always) and large deposits.
+// Small deposits (≤ confirm_threshold_usd) get a permit.
 jest.mock('../../services/transactionAuthorizationService', () => ({
-  isAuthorizedTransaction: jest.fn(() => true),
+  evaluateTransactionPolicy: jest.fn(({ type, amount }) => {
+    const HITL_THRESHOLD = 500;
+    const needsConsent = type === 'transfer' || (type !== 'deposit' ? false : amount > HITL_THRESHOLD);
+    if (needsConsent) {
+      return Promise.resolve({
+        ran: true,
+        block: {
+          status: 428,
+          body: {
+            error: 'hitl_required',
+            hitl: { type: 'consent' },
+            error_description: 'This transaction requires explicit human approval.',
+          },
+        },
+      });
+    }
+    return Promise.resolve({ ran: true, permit: true, evaluation: { decision: 'PERMIT', engine: 'simulated', path: 'simulated' } });
+  }),
 }));
 
 jest.mock('../../config/runtimeSettings', () => ({
@@ -73,8 +93,10 @@ jest.mock('../../services/emailService', () => ({
   sendTransactionConfirmation: jest.fn(() => Promise.resolve()),
 }));
 
-// Mock configStore to control ff_hitl_enabled per test
+// Mock configStore to control ff_hitl_enabled per test.
+// Must expose both get() and getEffective() — the transactions route calls both.
 const mockConfigStore = {
+  get: jest.fn(() => null),
   getEffective: jest.fn((key) => {
     const defaults = {
       'ff_hitl_enabled': 'true',
@@ -97,6 +119,8 @@ function buildApp() {
       username: 'test_user',
       email: 'test@example.com',
       role: userRole,
+      // Required for inline scope check in transactions route (banking:write for write ops)
+      scopes: ['banking:read', 'banking:write'],
     };
     req.session = req.session || {};
     req.session.user = req.user;
@@ -137,7 +161,7 @@ describe('POST /api/transactions HITL Gate', () => {
       });
 
     expect(res.status).toBe(428);
-    expect(res.body.error).toBe('consent_challenge_required');
+    expect(res.body.error).toBe('hitl_required');
   });
 
   test('Transfer with admin role: HITL bypassed', async () => {
@@ -200,7 +224,7 @@ describe('POST /api/transactions HITL Gate', () => {
       });
 
     expect(res.status).toBe(428);
-    expect(res.body.error).toBe('consent_challenge_required');
+    expect(res.body.error).toBe('hitl_required');
   });
 
   test('Transfer of $0.01 ALWAYS requires consent (Phase 170 invariant)', async () => {
@@ -215,7 +239,7 @@ describe('POST /api/transactions HITL Gate', () => {
       });
 
     expect(res.status).toBe(428);
-    expect(res.body.error).toBe('consent_challenge_required');
+    expect(res.body.error).toBe('hitl_required');
   });
 
   test('Transfer with valid consentChallengeId: proceeds', async () => {

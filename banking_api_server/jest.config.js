@@ -1,5 +1,9 @@
 module.exports = {
   testEnvironment: 'node',
+  // uuid v9+ is ESM-only; Jest runs CJS — redirect to a minimal CJS shim.
+  moduleNameMapper: {
+    '^uuid$': '<rootDir>/src/__tests__/__mocks__/uuid-cjs.js',
+  },
   // CI runs many suites in parallel across packages; cap workers to reduce flaky supertest/socket errors.
   ...(process.env.CI === 'true' ? { maxWorkers: 2 } : {}),
   // Runs setup.js before each test file so env vars (SKIP_TOKEN_SIGNATURE_VALIDATION,

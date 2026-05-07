@@ -16,6 +16,14 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ## [Unreleased]
 
+### Fixed
+
+- **PostHog crash in tests** — `posthog.js` now exports a no-op stub when `POSTHOG_API_KEY` is absent, preventing module-load crashes that blocked 43 test suites.
+- **uuid ESM in Jest** — added `moduleNameMapper` in `banking_api_server` and `banking_mcp_server` Jest configs pointing `uuid` to a CJS shim, fixing `SyntaxError: Unexpected token 'export'` in all test suites.
+- **HITL regression test** — updated `hitlRoute.regression.test.js` to mock `evaluateTransactionPolicy` (replaced stale `isAuthorizedTransaction`), add `banking:write` scope to injected user, expose `configStore.get`, and align error field assertion (`hitl_required`).
+- **simulatedAuthorizeService exports** — added getter aliases `SIMULATED_DENY_AMOUNT_USD`, `SIMULATED_POLICY_STEPUP_USD`, `SIMULATED_CONFIRM_AMOUNT_USD` so tests can reference live defaults without hardcoding.
+- **simulatedAuthorizeService PERMIT raw** — PERMIT path now spreads `rawBase` (includes `requestShape: 'decision-endpoint'` and `parameters`) into the `raw` output field.
+
 ### Removed
 
 - **LLM provider chips** — removed anthropic/groq/google/ollama/openai selector buttons from agent chat input; provider defaults to "helix".

@@ -367,7 +367,7 @@ async function evaluateTransaction({ userId, amount, type, acr }) {
         path: 'simulated',
         decisionId,
         raw: {
-          engine: 'simulated',
+          ...rawBase,
           decision: 'PERMIT',
           obligations: [],
         },
@@ -465,4 +465,8 @@ module.exports = {
   getConfirmAmountUsd,
   getConsentTypes,
   getStepUpTypes,
+  // Constant aliases for tests — read defaults so test assertions use the same values as the service.
+  get SIMULATED_DENY_AMOUNT_USD() { return getDenyAmountUsd(); },
+  get SIMULATED_POLICY_STEPUP_USD() { return getStepUpAmountUsd(); },
+  get SIMULATED_CONFIRM_AMOUNT_USD() { return getConfirmAmountUsd(); },
 };
