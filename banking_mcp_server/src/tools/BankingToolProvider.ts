@@ -13,6 +13,7 @@ import { AuthorizationChallengeHandler, AuthorizationChallenge } from './Authori
 import { ToolResult, AuthorizationRequest } from '../interfaces/mcp';
 import { Session, AuthErrorCodes, AuthenticationError } from '../interfaces/auth';
 import { BankingAPIError } from '../interfaces/banking';
+import type { Account } from '../interfaces/banking';
 import { TokenExchangeService } from '../auth/TokenExchangeService';
 import { TokenExchangeRequest } from '../interfaces/tokenExchange';
 import { AuditLogger, UserTokenInfo, ExchangedTokenInfo, TokenChainExecutionResult } from '../utils/AuditLogger';
@@ -513,7 +514,7 @@ export class BankingToolProvider {
 
     switch (tool.handler) {
       case 'executeGetMyAccounts':
-        return await this.executeGetMyAccounts(token);
+        return await this.executeGetMyAccounts(token, context.params as { account_type?: string });
 
       case 'executeGetAccountBalance':
         return await this.executeGetAccountBalance(token, context.params as { account_id: string });
@@ -544,18 +545,22 @@ export class BankingToolProvider {
   /**
    * Execute get_my_accounts tool
    */
-  private async executeGetMyAccounts(userToken: string): Promise<BankingToolResult> {
+  private async executeGetMyAccounts(userToken: string, params: { account_type?: string } = {}): Promise<BankingToolResult> {
     this.logger.debug(`[BankingToolProvider] Calling Banking API: getMyAccounts`);
-    const accounts = await this.apiClient.getMyAccounts(userToken);
+    let accounts = await this.apiClient.getMyAccounts(userToken);
 
     if (accounts && accounts.length !== undefined) {
       this.logger.debug(`[BankingToolProvider] Banking API response: Found ${accounts.length} accounts`);
     }
 
+    if (params.account_type) {
+      accounts = accounts.filter((a: Account) => a.accountType === params.account_type);
+    }
+
     const response = {
       success: true,
       count: accounts.length,
-      accounts: accounts.map(account => ({
+      accounts: accounts.map((account: Account) => ({
         id: account.id,
         accountType: account.accountType,
         name: account.name || null,

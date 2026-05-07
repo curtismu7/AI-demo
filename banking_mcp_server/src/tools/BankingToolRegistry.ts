@@ -23,7 +23,7 @@ export class BankingToolRegistry {
     get_my_accounts: {
       name: 'get_my_accounts',
       title: 'My Bank Accounts',
-      description: 'Retrieve the user\'s bank accounts with full account details including account type, name, masked account number, balance, currency, holder name, SWIFT/BIC code, IBAN, branch, and opening date. Use this for any request about account information, account details, or account overview.',
+      description: 'Retrieve the user\'s bank accounts with full account details including account type, name, masked account number, balance, currency, holder name, SWIFT/BIC code, IBAN, branch, and opening date. Use this for any request about account information, account details, or account overview. When the user asks about a specific account type (e.g. "my checking", "savings account", "car loan"), pass account_type to filter the results.',
       requiresUserAuth: true,
       requiredScopes: ['banking:read'],
       handler: 'executeGetMyAccounts',
@@ -45,7 +45,13 @@ export class BankingToolRegistry {
       },
       inputSchema: {
         type: 'object',
-        properties: {},
+        properties: {
+          account_type: {
+            type: 'string',
+            enum: ['checking', 'savings', 'loan', 'credit', 'investment'],
+            description: 'Optional filter — only return accounts of this type. Omit to return all accounts.'
+          }
+        },
         required: [],
         additionalProperties: false
       }

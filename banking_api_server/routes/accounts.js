@@ -52,6 +52,42 @@ async function saveAccountSnapshot(userId) {
   }
 }
 
+/**
+ * Add a Car Loan account if the user has checking+savings but no loan.
+ * Creates with the same deterministic ID provisionDemoAccounts would use,
+ * so a subsequent full reprovision stays idempotent.
+ */
+async function addMissingLoanAccount(userId, existingAccounts) {
+  const uid = userId.replace(/-/g, '').slice(0, 10);
+  const loanId = `loan-${uid}`;
+  const already = dataStore.getAccountById(loanId);
+  if (already) return [...existingAccounts, already];
+
+  const _acctDigits = uid.replace(/[^0-9a-f]/gi, '').slice(0, 10) || '0';
+  const _acctN = parseInt(_acctDigits, 16) % 9999999999;
+  const loanFull = '03' + String(_acctN).padStart(10, '0');
+  const _ibanBase = parseInt(uid.replace(/[^0-9a-f]/gi, '').slice(0, 8) || '0', 16);
+  const _ibanSfx3 = String((_ibanBase + 2) % 100000000).padStart(8, '0');
+
+  const carLoan = await dataStore.createAccount({
+    id: loanId, userId,
+    accountNumberFull: loanFull,
+    accountNumber: `****${loanFull.slice(-4)}`,
+    accountType: 'loan',
+    balance: -12000.00, currency: 'USD', name: 'Car Loan',
+    routingNumber: '026073150',
+    swiftCode: 'CHASUS33',
+    iban: `US12CHAS${_ibanSfx3}`,
+    branchName: 'Super Banking Main Branch',
+    branchCode: '001',
+    openedDate: '2023-06-01',
+    accountHolderName: '',
+    createdAt: new Date('2024-01-15'),
+  });
+  await saveAccountSnapshot(userId);
+  return [...existingAccounts, carLoan];
+}
+
 // Get all accounts (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
   try {
@@ -192,6 +228,7 @@ router.get('/my', authenticateToken, async (req, res) => {
     // skips provisioning under the old length===0 guard, leaving the user with no usable accounts.
     const hasChecking = () => userAccounts.some(a => (a.accountType || a.type) === 'checking');
     const hasSavings  = () => userAccounts.some(a => (a.accountType || a.type) === 'savings');
+    const hasLoan     = () => userAccounts.some(a => (a.accountType || a.type) === 'loan');
     if (req.user.id && (userAccounts.length === 0 || !hasChecking() || !hasSavings())) {
       if (userAccounts.length === 0) {
         // On cold-start the in-memory store is empty.  Try to restore from the persisted
@@ -208,6 +245,10 @@ router.get('/my', authenticateToken, async (req, res) => {
         }));
         await demoScenarioStore.save(req.user.id, { accountSnapshot: snapshot });
       }
+    }
+    // Add car loan if missing without wiping existing accounts/balances.
+    if (req.user.id && hasChecking() && hasSavings() && !hasLoan()) {
+      userAccounts = await addMissingLoanAccount(req.user.id, userAccounts);
     }
     res.json({
       accounts: userAccounts.map(account => ({
