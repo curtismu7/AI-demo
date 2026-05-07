@@ -94,9 +94,25 @@ export default function AuthorizeConfigPage() {
   if (error)
     return (
       <div className="azc-error">
-        {error === "admin_required"
-          ? "This section requires an admin session. Log in as an admin user to access Authorize configuration."
-          : `Error: ${error}`}
+        {error === "admin_required" ? (
+          <>
+            This section requires an admin session.{" "}
+            <button
+              type="button"
+              onClick={() => {
+                sessionStorage.setItem(
+                  "post_admin_login_return",
+                  "/configure?tab=authorize",
+                );
+                window.location.href = "/admin";
+              }}
+            >
+              Log in as admin
+            </button>
+          </>
+        ) : (
+          `Error: ${error}`
+        )}
         {error !== "admin_required" && (
           <button type="button" onClick={fetchConfig}>
             Retry
