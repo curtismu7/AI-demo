@@ -18,6 +18,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **Phase 5 unified inner-card design** — 5 CSS custom properties (`--inner-card-radius`, `--inner-card-border`, `--inner-card-shadow`, `--inner-card-bg`, `--inner-card-accent`) as single source of truth; applied across TokenInspector, TokenChainDisplay, MCPToolsListModal, MFALogsModal, AccountDetailsPanel. Standardised collapsible chevron (▶ rotating 90°) on all claim rows.
 - **LLM-only mode toggle** — "LLM only" checkbox in the agent header syncs `ff_heuristic_enabled` flag; when on, all NL queries bypass the heuristic fast-path and go straight to the LLM. Appears in all 3 agent UI contexts (floating, `/agent` inline, embedded dock).
 - **Test coverage expansion** — 8 new test files: accounts route, sensitiveBanking route, transactions CRUD, ChaseTopNav, AuthorizeConfigPage, chip-routing contract, and two real-PingOne-token suites (JWKS validation + agentDelegation base64url decode).
 - **Setup page run-tests endpoint** — `POST /api/admin/setup/run-tests` streams Jest output via SSE; supports `bff:unit`, `bff:auth`, `bff:all`, `ui:unit` suites.
