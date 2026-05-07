@@ -204,7 +204,7 @@
     max-width: 85%;
     min-width: 100px;
   }
-  
+
   .agent-message-wrapper.agent-message-system .agent-message-bubble {
     max-width: 95%;
   }
@@ -215,7 +215,7 @@
     max-width: 90%;
     padding: var(--agent-space-3);
   }
-  
+
   .agent-message-wrapper {
     margin-bottom: var(--agent-space-3);
   }
@@ -241,7 +241,9 @@
 }
 
 /* ─── Dark Theme Support ───────────────────────────────────────────────────── */
-[data-theme="dark"] .agent-message-wrapper.agent-message-system .agent-message-bubble {
+[data-theme="dark"]
+  .agent-message-wrapper.agent-message-system
+  .agent-message-bubble {
   background-color: var(--agent-gray-800);
   color: var(--agent-gray-300);
   border-color: var(--agent-gray-700);
@@ -260,7 +262,7 @@
   .agent-message-bubble {
     border-width: 2px;
   }
-  
+
   .agent-status-dot {
     border: 1px solid currentColor;
   }
@@ -384,6 +386,16 @@
   background-color: var(--agent-gray-300);
 }
 
+.agent-input-send,
+.agent-input-send:disabled {
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
+.agent-input-send:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
 /* ─── Loading Spinner ───────────────────────────────────────────────────── */
 .agent-input-spinner {
   display: flex;
@@ -457,17 +469,17 @@
   .agent-input-container {
     padding: var(--agent-space-2);
   }
-  
+
   .agent-input-field {
     min-height: 40px;
     padding: var(--agent-space-2) var(--agent-space-3);
   }
-  
+
   .agent-input-button {
     min-width: 40px;
     height: 40px;
   }
-  
+
   .agent-suggestions {
     max-height: 150px;
   }
@@ -478,7 +490,7 @@
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .agent-input-actions {
     justify-content: flex-end;
   }
@@ -497,7 +509,9 @@
 
 /* ─── Animation Keyframes ───────────────────────────────────────────────────── */
 @keyframes agent-spinner-bounce {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0);
   }
   40% {
@@ -548,31 +562,31 @@
   .agent-message-wrapper {
     animation: none;
   }
-  
+
   .agent-message-bubble {
     transition: none;
   }
-  
+
   .agent-typing-dot {
     animation: none;
   }
-  
+
   .agent-status-sending {
     animation: none;
   }
-  
+
   .agent-input-field {
     transition: none;
   }
-  
+
   .agent-input-button {
     transition: none;
   }
-  
+
   .agent-suggestion-item {
     transition: none;
   }
-  
+
   .agent-spinner-dot {
     animation: none;
   }
