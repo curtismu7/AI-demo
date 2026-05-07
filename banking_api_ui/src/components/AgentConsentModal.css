@@ -13,7 +13,9 @@
   flex-shrink: 0;
 }
 
-.acm-hitl-badge__label { flex: 1; }
+.acm-hitl-badge__label {
+  flex: 1;
+}
 
 /* Scrollable body */
 .acm-body-wrap {
@@ -63,7 +65,7 @@
 
 /* High-value warning */
 .acm-high-value-warning {
-  border-left: 4px solid #f59e0b;
+  border-left: var(--inner-card-accent, 4px) solid #f59e0b;
   background: #fffbeb;
   color: #92400e;
   padding: 10px 14px;
@@ -115,7 +117,9 @@
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
+  transition:
+    background 0.15s,
+    opacity 0.15s;
 }
 
 .acm-btn:disabled {

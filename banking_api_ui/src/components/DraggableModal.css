@@ -36,6 +36,12 @@
   animation: dm-enter 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .dm-panel {
+    animation: none;
+  }
+}
+
 /* ── Title bar ─────────────────────────────────────────────────────────── */
 
 .dm-titlebar {
