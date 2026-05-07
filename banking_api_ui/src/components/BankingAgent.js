@@ -59,7 +59,7 @@ import FidoStepUpModal from "./FidoStepUpModal";
 import MCPToolsListModal from "./MCPToolsListModal";
 import OtpStepUpModal from "./OtpStepUpModal";
 import QuickLoginModal from "./QuickLoginModal";
-import { MarkdownContent } from "./shared/MarkdownText";
+import { InlineMd, MarkdownContent } from "./shared/MarkdownText";
 import TransactionConsentModal from "./TransactionConsentModal";
 import "./BankingAgent.css";
 import { postAppEvent } from "../services/appEventClient";
@@ -936,9 +936,33 @@ function formatResult(result) {
   if (r.balance !== undefined) {
     return `Balance: ${formatCurrency(r.balance)}`;
   }
-  // Transaction confirmation
+  // Transaction confirmation (single transaction)
   if (r.transaction_id || r.transactionId || r.id) {
-    return `✅ Success\nTransaction ID: ${r.transaction_id || r.transactionId || r.id}\nAmount: ${formatCurrency(r.amount)}`;
+    return `Transaction confirmed\nTransaction ID: ${r.transaction_id || r.transactionId || r.id}\nAmount: ${formatCurrency(r.amount)}`;
+  }
+  // Transfer / deposit / withdrawal confirmation (MCP server shape: success + operation)
+  if (r.success === true && r.operation) {
+    const op = r.operation;
+    const lines = [
+      r.message || `${op.charAt(0).toUpperCase() + op.slice(1)} confirmed`,
+    ];
+    if (op === "transfer") {
+      lines.push(`Amount: ${formatCurrency(r.amount)}`);
+      lines.push(`From: ${r.fromAccountId}  →  To: ${r.toAccountId}`);
+    } else if (op === "deposit") {
+      lines.push(`Amount: ${formatCurrency(r.amount)}`);
+      lines.push(`To: ${r.toAccountId}`);
+    } else if (op === "withdrawal") {
+      lines.push(`Amount: ${formatCurrency(r.amount)}`);
+      lines.push(`From: ${r.fromAccountId}`);
+    }
+    if (r.withdrawalTransaction?.id)
+      lines.push(`Debit ID: ${r.withdrawalTransaction.id}`);
+    if (r.depositTransaction?.id)
+      lines.push(`Credit ID: ${r.depositTransaction.id}`);
+    if (r.transactionId || r.transaction?.id)
+      lines.push(`Transaction ID: ${r.transactionId || r.transaction?.id}`);
+    return lines.join("\n");
   }
   return JSON.stringify(r, null, 2);
 }
@@ -1260,6 +1284,59 @@ function MessageContent({ text, isTokenEvent }) {
         </table>
       );
     }
+  }
+
+  // Structured RFC annotation card ("Transfer complete — what just happened:")
+  if (text.includes("what just happened:")) {
+    const lines = text.split("\n");
+    const title = lines[0];
+    const entries = [];
+    const footer = [];
+    let pastFirstBlank = false;
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.trim()) {
+        if (entries.length > 0) pastFirstBlank = true;
+        continue;
+      }
+      if (pastFirstBlank) footer.push(line);
+      else entries.push(line);
+    }
+    return (
+      <div className="ba-rfc-card">
+        <div className="ba-rfc-card__title">
+          <InlineMd text={title} />
+        </div>
+        {entries.length > 0 && (
+          <div className="ba-rfc-card__entries">
+            {entries.map((entry, i) => {
+              const dash = entry.indexOf(" — ");
+              const key = dash >= 0 ? entry.slice(0, dash) : null;
+              const val = dash >= 0 ? entry.slice(dash + 3) : entry;
+              return (
+                <div
+                  key={entry}
+                  className={`ba-rfc-card__entry${i % 2 ? " ba-rfc-card__entry--alt" : ""}`}
+                >
+                  {key && <strong className="ba-rfc-card__key">{key}</strong>}
+                  {key && <span className="ba-rfc-card__sep"> — </span>}
+                  <InlineMd text={val} />
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {footer.length > 0 && (
+          <div className="ba-rfc-card__footer">
+            {footer.map((line) => (
+              <div key={line} className="ba-rfc-card__footer-row">
+                <InlineMd text={line} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -4246,12 +4323,12 @@ export default function BankingAgent({
               `✅ ${label} complete — what just happened:`,
               "",
               exchanged
-                ? `RFC 8693 Token Exchange — MCP token scoped to \`${exchanged.audienceNarrowed || "mcp-server"}, scope ${exchanged.scopeNarrowed || "banking:write"}`
-                : `Ran via local handler (RFC 8693 token exchange not configured or skipped)`,
-              ` HITL gate (RFC 8693 §2.1) — Transfers over the threshold require your explicit consent before the agent proceeds. The agent cannot self-approve: enforcement is server-side, before tool execution.`,
+                ? `RFC 8693 Token Exchange — MCP token scoped to \`${exchanged.audienceNarrowed || "mcp-server"}\`, scope \`${exchanged.scopeNarrowed || "banking:write"}\``
+                : `Local handler — RFC 8693 token exchange not configured or skipped`,
+              `HITL gate (RFC 8693 §2.1) — Transfers over the threshold require your explicit consent before the agent proceeds. The agent cannot self-approve: enforcement is server-side, before tool execution.`,
               "",
-              `RFCs in play: RFC 8693 (token exchange) · RFC 6749 §3.3 (scope) · RFC 8707 (audience binding)`,
-              `Open Token Chain ↗ to inspect the MCP access token's act, aud, and scope claims.`,
+              `RFCs in play — \`RFC 8693\` (token exchange) · \`RFC 6749 §3.3\` (scope) · \`RFC 8707\` (audience binding)`,
+              `Open Token Chain ↗ to inspect the MCP access token's \`act\`, \`aud\`, and \`scope\` claims.`,
             ].join("\n"),
             actionId,
           );
