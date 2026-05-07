@@ -1,5 +1,5 @@
 // banking_api_ui/src/components/TokenChainDisplay.js
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import ReactDOM from "react-dom";
 import { useTokenChainOptional } from "../context/TokenChainContext";
 import { useEducationUIOptional } from "../context/EducationUIContext";
@@ -2450,6 +2450,8 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
   const [inspectedEvent, setInspectedEvent] = useState(null);
   const [inspectorPos, setInspectorPos] = useState({ x: 120, y: 100 });
   const [copied, setCopied] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [updateStatus, setUpdateStatus] = useState(null); // 'updated' | 'completed' | null
   // Identity hints sourced from TokenChainContext (fetched once, shared across surfaces)
   const identityHints = ctx?.resolvedIdentity ?? null;
 
@@ -2664,6 +2666,15 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
       });
   }, [currentEventsWithCc, ctx, isLive, isSessionPreview]);
 
+  // Track when live events arrive; show 'Updated' badge for 30s then 'Completed'.
+  useEffect(() => {
+    if (!isLive || currentEventsWithCc.length === 0) return;
+    setLastUpdated(new Date());
+    setUpdateStatus("updated");
+    const t = setTimeout(() => setUpdateStatus("completed"), 30000);
+    return () => clearTimeout(t);
+  }, [currentEventsWithCc, isLive]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
       <div className="tcd-root">
@@ -2721,6 +2732,26 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
                 {copied ? "✅ Copied" : "📋 Copy"}
               </button>
             </div>
+            {updateStatus && lastUpdated && (
+              <div className="tcd-status-row">
+                <span
+                  className={`tcd-status-badge tcd-status-badge--${updateStatus}`}
+                >
+                  {updateStatus === "updated" ? "Updated" : "Completed"}
+                </span>
+                <span className="tcd-last-updated">
+                  {lastUpdated.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  {" · "}
+                  {lastUpdated.toLocaleDateString([], {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+              </div>
+            )}
             <p className="tcd-header-sub">
               {idTokenMode
                 ? "ID Token 2-Token Exchange Flow — ID token → RFC 8693 exchange → MCP access token → MCP server → Banking API"

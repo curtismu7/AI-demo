@@ -5113,6 +5113,7 @@ export default function BankingAgent({
     setNlLoading(true);
     addMessage("user", text);
     setNlInput("");
+    tokenChain?.clearEvents();
     try {
       const logQuery = parseLogPrompt(text);
       if (logQuery) {

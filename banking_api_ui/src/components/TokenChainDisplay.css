@@ -106,6 +106,38 @@
   overflow-wrap: anywhere;
 }
 
+/* Status row: Updated / Completed badge + timestamp */
+.tcd-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 2px;
+}
+
+.tcd-status-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.tcd-status-badge--updated {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.tcd-status-badge--completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.tcd-last-updated {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
 /* Live dot pulses when receiving live data */
 .tcd-live-dot {
   display: inline-block;
