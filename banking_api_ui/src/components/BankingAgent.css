@@ -4426,6 +4426,25 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   accent-color: #2563eb;
 }
 
+.ba-llm-mode-label {
+  border-color: #d97706;
+  color: #92400e;
+}
+.ba-llm-mode-label:hover {
+  background: #fffbeb;
+  border-color: #b45309;
+  color: #78350f;
+}
+.ba-llm-mode-label--active {
+  background: #fef3c7;
+  border-color: #d97706;
+  color: #92400e;
+  font-weight: 700;
+}
+.ba-llm-mode-cb {
+  accent-color: #d97706;
+}
+
 .ba-actions-trigger {
   display: inline-flex;
   align-items: center;

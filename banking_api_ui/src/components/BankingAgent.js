@@ -460,10 +460,62 @@ const CHIP_APPLICABLE_STEPS = {
     "olb-resource-token",
     "claim-diagnostics",
   ],
-  ai_ask: ["agent-llm-reasoning"],
-  ai_explain: ["agent-llm-reasoning"],
-  ai_analyze: ["agent-llm-reasoning"],
-  ai_advice: ["agent-llm-reasoning"],
+  ai_ask: [
+    "agent-llm-reasoning",
+    "agent-token-init",
+    "gw-scope-map",
+    "agent-scope-aware-cache",
+    "olb-resource-token",
+    "claim-diagnostics",
+  ],
+  ai_helix_demo: [
+    "agent-llm-reasoning",
+    "agent-token-init",
+    "gw-scope-map",
+    "agent-scope-aware-cache",
+    "olb-resource-token",
+    "claim-diagnostics",
+  ],
+  ai_explain: [
+    "agent-llm-reasoning",
+    "agent-token-init",
+    "gw-scope-map",
+    "agent-scope-aware-cache",
+    "olb-resource-token",
+    "claim-diagnostics",
+  ],
+  ai_helix_explain: [
+    "agent-llm-reasoning",
+    "agent-token-init",
+    "gw-scope-map",
+    "agent-scope-aware-cache",
+    "olb-resource-token",
+    "claim-diagnostics",
+  ],
+  ai_analyze: [
+    "agent-llm-reasoning",
+    "agent-token-init",
+    "gw-scope-map",
+    "agent-scope-aware-cache",
+    "olb-resource-token",
+    "claim-diagnostics",
+  ],
+  ai_advice: [
+    "agent-llm-reasoning",
+    "agent-token-init",
+    "gw-scope-map",
+    "agent-scope-aware-cache",
+    "olb-resource-token",
+    "claim-diagnostics",
+  ],
+  ai_helix_advice: [
+    "agent-llm-reasoning",
+    "agent-token-init",
+    "gw-scope-map",
+    "agent-scope-aware-cache",
+    "olb-resource-token",
+    "claim-diagnostics",
+  ],
 };
 
 // Backwards compatibility: flat ACTIONS array from ACTION_GROUPS
@@ -583,22 +635,6 @@ function getStepSkipExplanation(actionId, stepId) {
         "Omitted: HITL test doesn't use full token exchange",
       "olb-resource-token": "Omitted: test uses simplified flow",
       "claim-diagnostics": "Omitted: test skips claim diagnostics",
-    },
-    // AI-only actions: just LLM reasoning
-    ai_ask: {
-      "agent-token-init": "No token needed for LLM reasoning",
-      "gw-scope-map": "No tool list for pure reasoning",
-      "gw-denial-metadata": "No gateway interaction",
-      "bff-response-shape": "No BFF error handling",
-      "gw-hitl-challenge-type": "No HITL",
-      "agent-error-propagation": "No error branch",
-      "agent-recovery-branch": "No recovery",
-      "bff-login-resume": "No intent storage",
-      "agent-scope-aware-cache": "No token exchange",
-      "olb-resource-token": "No MCP exchange",
-      "ui-gateway-consent": "No consent dialog",
-      "ui-auto-refire": "No re-fire",
-      "claim-diagnostics": "No claims",
     },
   };
 
@@ -1841,6 +1877,10 @@ export default function BankingAgent({
     } catch {}
   }, [showRfcInfo]);
 
+  /** Whether the heuristic fast-path is enabled (ff_heuristic_enabled). false = LLM-only mode. */
+  const [heuristicEnabled, setHeuristicEnabled] = useState(true);
+  const [llmFlagSaving, setLlmFlagSaving] = useState(false);
+
   /** Render a single action button with optional emoji-only styling. */
   const renderChip = (action, groupName) => {
     return (
@@ -2626,6 +2666,14 @@ export default function BankingAgent({
     fetchNlStatus()
       .then(setNlMeta)
       .catch(() => setNlMeta({ geminiConfigured: false }));
+    // Load ff_heuristic_enabled flag to sync the LLM-only toggle
+    fetch("/api/admin/feature-flags", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const flag = data?.flags?.find((f) => f.id === "ff_heuristic_enabled");
+        if (flag != null) setHeuristicEnabled(Boolean(flag.value));
+      })
+      .catch(() => {});
   }, [isOpen, isLoggedIn, marketingGuestChatEnabled]);
 
   // Keep MCP status lightweight here to avoid auth/noise calls while browsing dashboards.
@@ -3871,6 +3919,51 @@ export default function BankingAgent({
           toolProgressIdRef.current = null;
           return;
         }
+        case "ai_ask":
+          toast.update(toastId, { render: "Reasoning…" });
+          response = await callMcpTool("sequential_think", {
+            query: "What banking services can I help you with today?",
+          });
+          break;
+        case "ai_helix_demo":
+          toast.update(toastId, { render: "Reasoning…" });
+          response = await callMcpTool("sequential_think", {
+            query: "What are best practices for account security?",
+          });
+          break;
+        case "ai_explain":
+          toast.update(toastId, { render: "Reasoning…" });
+          response = await callMcpTool("sequential_think", {
+            query:
+              "Explain how OAuth 2.0 and RFC 8693 token exchange work in banking APIs",
+          });
+          break;
+        case "ai_helix_explain":
+          toast.update(toastId, { render: "Reasoning…" });
+          response = await callMcpTool("sequential_think", {
+            query: "Explain the difference between OAuth and SAML",
+          });
+          break;
+        case "ai_analyze":
+          toast.update(toastId, { render: "Reasoning…" });
+          response = await callMcpTool("sequential_think", {
+            query: "Summarize how the MCP tool flow works in this banking demo",
+          });
+          break;
+        case "ai_advice":
+          toast.update(toastId, { render: "Reasoning…" });
+          response = await callMcpTool("sequential_think", {
+            query:
+              "What are some good tips for managing checking and savings accounts?",
+          });
+          break;
+        case "ai_helix_advice":
+          toast.update(toastId, { render: "Reasoning…" });
+          response = await callMcpTool("sequential_think", {
+            query:
+              "Give me 5 tips for reducing transaction fees and managing money better",
+          });
+          break;
         default:
           throw new Error(`Unknown action: ${actionId}`);
       }
@@ -4894,30 +4987,16 @@ export default function BankingAgent({
       );
     } else if (actionId === "demo_nl_routing") {
       setNlInputFromTile("What is my checking account balance?");
-    } else if (actionId === "ai_ask") {
-      setNlInputFromTile("");
-    } else if (actionId === "ai_helix_demo") {
-      setNlInputFromTile(
-        "(Using Helix LLM) What are best practices for account security?",
-      );
-    } else if (actionId === "ai_explain") {
-      setNlInputFromTile("Explain: ");
-    } else if (actionId === "ai_helix_explain") {
-      setNlInputFromTile(
-        "(Using Helix LLM) Explain the difference between OAuth and SAML",
-      );
-    } else if (actionId === "ai_analyze") {
-      setNlInputFromTile(
-        "Summarize how the MCP tool flow works in this banking demo",
-      );
-    } else if (actionId === "ai_advice") {
-      setNlInputFromTile(
-        "What are some good tips for managing checking and savings accounts?",
-      );
-    } else if (actionId === "ai_helix_advice") {
-      setNlInputFromTile(
-        "(Using Helix LLM) Give me 5 tips for reducing transaction fees and managing money better",
-      );
+    } else if (
+      actionId === "ai_ask" ||
+      actionId === "ai_helix_demo" ||
+      actionId === "ai_explain" ||
+      actionId === "ai_helix_explain" ||
+      actionId === "ai_analyze" ||
+      actionId === "ai_advice" ||
+      actionId === "ai_helix_advice"
+    ) {
+      runAction(actionId, {});
     } else if (actionId === "demo_guide") {
       setShowDemoGuide(true);
     } else {
@@ -5611,6 +5690,24 @@ export default function BankingAgent({
     }
   }
 
+  async function toggleHeuristicMode(wantHeuristic) {
+    setLlmFlagSaving(true);
+    try {
+      const res = await fetch("/api/admin/feature-flags", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          updates: { ff_heuristic_enabled: wantHeuristic },
+        }),
+      });
+      if (res.ok) setHeuristicEnabled(wantHeuristic);
+    } catch (_) {
+    } finally {
+      setLlmFlagSaving(false);
+    }
+  }
+
   const floatShell = (
     <div
       className={`banking-agent-float-root${distinctFloatingChrome && !isInline ? " banking-agent-float-root--distinct" : ""}`}
@@ -5716,6 +5813,20 @@ export default function BankingAgent({
                     className="ba-rfc-toggle-cb"
                   />
                   RFC info
+                </label>
+                {/* LLM-only mode toggle — when checked, skips heuristic fast-path */}
+                <label
+                  className={`ba-rfc-toggle-label ba-llm-mode-label${!heuristicEnabled ? " ba-llm-mode-label--active" : ""}`}
+                  title="LLM only: when on, all queries go through the LLM. When off, fast heuristic matching runs first with LLM as fallback."
+                >
+                  <input
+                    type="checkbox"
+                    checked={!heuristicEnabled}
+                    disabled={llmFlagSaving}
+                    onChange={(e) => toggleHeuristicMode(!e.target.checked)}
+                    className="ba-rfc-toggle-cb ba-llm-mode-cb"
+                  />
+                  LLM only
                 </label>
                 {/* Compliance 12-step toggle */}
                 <button

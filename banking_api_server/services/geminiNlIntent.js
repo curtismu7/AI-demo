@@ -166,8 +166,10 @@ async function parseWithOllama(userMessage, context = {}) {
  */
 async function parseNaturalLanguage(message, context = {}, provider = 'auto', langchainConfig = {}) {
   // 1. HEURISTIC FIRST — regex patterns for known banking actions (zero latency)
-  const heuristicResult = parseHeuristic(message);
-  if (heuristicResult && heuristicResult.kind !== 'none') {
+  // Skip when ff_heuristic_enabled=false (user selected LLM-only mode via agent UI toggle)
+  const heuristicEnabled = configStore.getEffective('ff_heuristic_enabled') !== 'false';
+  const heuristicResult = heuristicEnabled ? parseHeuristic(message) : { kind: 'none', message: '' };
+  if (heuristicEnabled && heuristicResult && heuristicResult.kind !== 'none') {
     return { source: 'heuristic', result: heuristicResult };
   }
 
