@@ -1,5 +1,9 @@
 'use strict';
 
+// Dev TLS certs exist on disk, so GatewayServer creates an HTTPS server.
+// Disable certificate verification so supertest can connect to the self-signed cert.
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 /**
  * gateway-server.test.ts — Plan 243-01 foundational tests.
  *

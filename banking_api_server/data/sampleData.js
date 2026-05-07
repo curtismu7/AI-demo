@@ -335,9 +335,50 @@ function generateRealisticBankingData() {
 // Generate realistic data
 const realisticData = generateRealisticBankingData();
 
+// Sample subscription records — one per demo user
+const sampleSubscriptions = [
+  {
+    id: 'sub-1',
+    userId: '1',
+    name: 'Netflix',
+    amount: 15.99,
+    currency: 'USD',
+    billingCycle: 'monthly',
+    status: 'active',
+    accountId: null,
+    createdAt: new Date('2024-01-15'),
+    nextBillingDate: new Date('2024-04-15'),
+  },
+  {
+    id: 'sub-2',
+    userId: '1',
+    name: 'Spotify',
+    amount: 9.99,
+    currency: 'USD',
+    billingCycle: 'monthly',
+    status: 'active',
+    accountId: null,
+    createdAt: new Date('2024-02-01'),
+    nextBillingDate: new Date('2024-04-01'),
+  },
+  {
+    id: 'sub-3',
+    userId: '2',
+    name: 'Adobe Creative Cloud',
+    amount: 54.99,
+    currency: 'USD',
+    billingCycle: 'monthly',
+    status: 'active',
+    accountId: null,
+    createdAt: new Date('2024-01-20'),
+    nextBillingDate: new Date('2024-04-20'),
+  },
+];
+
 module.exports = {
   sampleUsers: [...sampleUsers, ...realisticData.users],
   sampleAccounts: [...sampleAccounts, ...realisticData.accounts],
   sampleTransactions: [...sampleTransactions, ...realisticData.txns],
-  sampleActivityLogs: [...sampleActivityLogs, ...realisticData.activityLogs]
+  sampleActivityLogs: [...sampleActivityLogs, ...realisticData.activityLogs],
+  sampleSubscriptions,
 };

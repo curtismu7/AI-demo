@@ -12,7 +12,7 @@ try {
     console.warn('[DataStore] SQLite not available, transaction persistence disabled');
   }
 }
-const { sampleUsers, sampleAccounts, sampleTransactions, sampleActivityLogs } = require('./sampleData');
+const { sampleUsers, sampleAccounts, sampleTransactions, sampleActivityLogs, sampleSubscriptions } = require('./sampleData');
 
 const DEFAULT_BOOTSTRAP_PATH = path.join(__dirname, 'bootstrapData.json');
 const RUNTIME_DATA_PATH = path.join(__dirname, 'runtimeData.json');
@@ -28,6 +28,7 @@ class DataStore {
     this.accounts = new Map();
     this.transactions = new Map();
     this.activityLogs = new Map();
+    this.subscriptions = new Map();
     this._persistPending = false;
     this.initializeData();
     this._initializeSQLiteTransactions();
@@ -208,16 +209,19 @@ class DataStore {
     const accounts = Array.isArray(snapshot.accounts) ? snapshot.accounts : [];
     const transactions = Array.isArray(snapshot.transactions) ? snapshot.transactions : [];
     const activityLogs = Array.isArray(snapshot.activityLogs) ? snapshot.activityLogs : [];
+    const subscriptions = Array.isArray(snapshot.subscriptions) ? snapshot.subscriptions : [];
 
     this.users.clear();
     this.accounts.clear();
     this.transactions.clear();
     this.activityLogs.clear();
+    this.subscriptions.clear();
 
     users.forEach((user) => this.users.set(user.id, { ...user, createdAt: user.createdAt ? new Date(user.createdAt) : user.createdAt }));
     accounts.forEach((account) => this.accounts.set(account.id, { ...account, createdAt: account.createdAt ? new Date(account.createdAt) : account.createdAt }));
     transactions.forEach((transaction) => this.transactions.set(transaction.id, { ...transaction, createdAt: transaction.createdAt ? new Date(transaction.createdAt) : transaction.createdAt }));
     activityLogs.forEach((log) => this.activityLogs.set(log.id, { ...log, timestamp: log.timestamp ? new Date(log.timestamp) : log.timestamp }));
+    subscriptions.forEach((sub) => this.subscriptions.set(sub.id, { ...sub, createdAt: sub.createdAt ? new Date(sub.createdAt) : sub.createdAt, nextBillingDate: sub.nextBillingDate ? new Date(sub.nextBillingDate) : sub.nextBillingDate }));
   }
 
   _atomicWrite(filePath, data) {
@@ -281,6 +285,7 @@ class DataStore {
       accounts: Array.from(this.accounts.values()),
       transactions: Array.from(this.transactions.values()),
       activityLogs: cappedLogs,
+      subscriptions: Array.from(this.subscriptions.values()),
     };
   }
 
@@ -289,6 +294,7 @@ class DataStore {
     sampleAccounts.forEach((account) => this.accounts.set(account.id, { ...account }));
     sampleTransactions.forEach((transaction) => this.transactions.set(transaction.id, { ...transaction }));
     sampleActivityLogs.forEach((log) => this.activityLogs.set(log.id, { ...log }));
+    sampleSubscriptions.forEach((sub) => this.subscriptions.set(sub.id, { ...sub }));
   }
 
   getAllUsers() {
@@ -506,6 +512,49 @@ class DataStore {
         transaction.description.toLowerCase().includes(q) ||
         transaction.type.toLowerCase().includes(q)
     );
+  }
+
+  // ── Subscription CRUD ────────────────────────────────────────────────────────
+
+  getAllSubscriptions() {
+    return Array.from(this.subscriptions.values());
+  }
+
+  getSubscriptionById(id) {
+    return this.subscriptions.get(id);
+  }
+
+  getSubscriptionsByUserId(userId) {
+    return Array.from(this.subscriptions.values()).filter((s) => s.userId === userId);
+  }
+
+  async createSubscription(data) {
+    const id = uuidv4();
+    const subscription = {
+      id,
+      ...data,
+      status: data.status || 'active',
+      createdAt: new Date(),
+      nextBillingDate: data.nextBillingDate || null,
+    };
+    this.subscriptions.set(id, subscription);
+    await this.persistAllData();
+    return subscription;
+  }
+
+  async updateSubscription(id, updates) {
+    const subscription = this.subscriptions.get(id);
+    if (!subscription) return null;
+    const updated = { ...subscription, ...updates };
+    this.subscriptions.set(id, updated);
+    await this.persistAllData();
+    return updated;
+  }
+
+  async deleteSubscription(id) {
+    const deleted = this.subscriptions.delete(id);
+    if (deleted) await this.persistAllData();
+    return deleted;
   }
 }
 

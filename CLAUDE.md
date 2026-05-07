@@ -1,8 +1,50 @@
-# CLAUDE.md — Agent guide (Super Banking Banking Demo)
+# CLAUDE.md
 
-**Canonical** agent instructions for this repo. [`AGENTS.md`](AGENTS.md) points here for tools that expect that filename.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Instructions for Claude Code, Cursor agents, and other AI assistants working in this repository.
+> **Canonical** agent instructions for this repo. [`AGENTS.md`](AGENTS.md) points here for tools that expect that filename.
+
+---
+
+## Commands
+
+### Start all services
+```bash
+./run-bank.sh               # start API (3001), UI (4000), MCP (8080), LangChain agent (8888)
+./run-bank.sh stop          # stop all
+./run-bank.sh status        # health check
+./run-bank.sh tail all      # tail all logs interleaved
+```
+
+**One-time setup** (needed for HTTPS on `api.pingdemo.com`):
+```bash
+echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts
+brew install mkcert && mkcert -install
+```
+
+### Build
+```bash
+cd banking_api_ui && npm run build        # required after any UI change — exit must be 0
+cd banking_mcp_server && npm run build    # tsc compile; required after any MCP server change
+```
+
+### Tests
+```bash
+# From repo root:
+npm test                                   # all suites
+npm run test:api-server                    # BFF tests only
+npm run test:mcp-server                    # MCP unit tests
+npm run test:ui                            # React component tests (CI mode)
+
+# Inside banking_api_server/ — useful for targeted runs:
+npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration
+npx jest --testPathPattern='step-up-gate|authorize-gate'
+npm run test:session
+
+# E2E (from banking_api_ui/):
+npm run test:e2e:ui:smoke     # fast smoke — customer dashboard + landing
+npm run test:e2e:admin
+```
 
 ---
 
@@ -19,6 +61,45 @@ Instructions for Claude Code, Cursor agents, and other AI assistants working in 
 | `.claude/skills/` | Domain skills (OAuth, MCP, Vercel, PingOne API, TypeScript) |
 
 **Ports:** See `REGRESSION_PLAN.md` §3. Default UI/API: 3000/3001; `run-bank.sh` uses 4000/3002 — keep `banking_api_ui/.env` (`REACT_APP_API_PORT`) in sync.
+
+---
+
+## Architecture
+
+### Token custody rule
+Tokens are **never exposed to the browser**. The BFF (`banking_api_server`) is the sole token custodian. The React SPA holds only an httpOnly session cookie (`connect.sid`). Every BFF call uses `bffAxios` (cookie-based, no `Authorization` header from the browser).
+
+### Request flow: MCP tool call
+```text
+Browser → (cookie) → BFF (agentMcpTokenService.js)
+  → RFC 8693 Token Exchange with PingOne
+  → WebSocket ws:// → banking_mcp_server
+      → BankingToolProvider.executeTool()
+      → BankingAPIClient → banking_api_server /api/...
+```
+
+### Key service files
+| File | Role |
+|------|------|
+| `banking_api_server/services/configStore.js` | Singleton runtime config — `getEffective(key)` resolves env → KV/SQLite. Never read env vars directly in route handlers. |
+| `banking_api_server/middleware/auth.js` | JWT/session token validation; sets `req.user`. |
+| `banking_api_server/services/agentMcpTokenService.js` | Resolves MCP access token via RFC 8693 exchange; attaches `tokenEvents` for UI Token Chain. |
+| `banking_api_server/services/mcpWebSocketClient.js` | BFF ↔ MCP WebSocket connection. |
+| `banking_mcp_server/src/tools/BankingToolRegistry.ts` | Static map of all tool names → definitions (schema, scopes, handler). Add tools here. |
+| `banking_mcp_server/src/tools/BankingToolProvider.ts` | Executes tools: validates params, checks scopes, calls `BankingAPIClient`. |
+| `banking_api_ui/src/services/bffAxios.js` | Axios instance for BFF calls — import this instead of plain `axios`. |
+| `banking_api_server/data/store.js` | In-memory banking data store (users, accounts, transactions). |
+
+### Module system by package
+- `banking_api_server/`: CommonJS (`require`/`module.exports`)
+- `banking_api_ui/src/`: ES modules + JSX in `.js` files (CRA)
+- `banking_mcp_server/src/`: TypeScript 5 strict, compiled to `dist/`
+
+### Vercel deployment
+- `api/handler.js` — one-liner that re-exports `banking_api_server/server.js`; all `/api/*` routes rewrite here via `vercel.json`
+- React build served from `banking_api_ui/build/` as static; SPA fallback to `index.html`
+- `banking_mcp_server` is **not** on Vercel — runs separately (Docker/Railway)
+- Session store: Upstash REST KV on Vercel; TCP Redis locally; SQLite fallback
 
 ---
 
