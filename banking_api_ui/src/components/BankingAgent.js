@@ -1543,8 +1543,7 @@ export default function BankingAgent({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
-  const [selectedLlmProvider, setSelectedLlmProvider] = useState("helix");
-  const [availableLlmProviders, setAvailableLlmProviders] = useState([]);
+  const [selectedLlmProvider] = useState("helix");
   /** Set when returning from PingOne with a pending banking NL line to run after session exists. */
   const [nlResumeAfterAuth, setNlResumeAfterAuth] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -2550,16 +2549,6 @@ export default function BankingAgent({
     fetchNlStatus()
       .then(setNlMeta)
       .catch(() => setNlMeta({ geminiConfigured: false }));
-    // Fetch available LLM providers
-    fetch("/api/langchain/config/status", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.provider_models) {
-          const providers = Object.keys(data.provider_models);
-          setAvailableLlmProviders(providers);
-        }
-      })
-      .catch(() => {});
   }, [isOpen, isLoggedIn, marketingGuestChatEnabled]);
 
   // Keep MCP status lightweight here to avoid auth/noise calls while browsing dashboards.
@@ -7622,32 +7611,6 @@ export default function BankingAgent({
                   })}
                 <div ref={bottomRef} />
               </div>
-
-              {/* LLM Provider chips */}
-              {isLoggedIn && availableLlmProviders.length > 0 && (
-                <div className="ba-provider-chips">
-                  {["auto", ...availableLlmProviders].map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      className={
-                        "ba-server-chip" +
-                        (selectedLlmProvider === p
-                          ? " ba-server-chip--active"
-                          : "")
-                      }
-                      onClick={() => setSelectedLlmProvider(p)}
-                      title={
-                        p === "auto"
-                          ? "Auto: heuristic first, then LLM"
-                          : `Use ${p} directly`
-                      }
-                    >
-                      {p === "auto" ? "Auto" : p}
-                    </button>
-                  ))}
-                </div>
-              )}
 
               {/* Compliance 12-step panel — inline (default) or hidden when pop-out is active */}
               {showCompliancePanel && !complianceSlideout && (

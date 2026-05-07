@@ -18,6 +18,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Removed
 
+- **LLM provider chips** — removed anthropic/groq/google/ollama/openai selector buttons from agent chat input; provider defaults to "helix".
+
 - **ff_webmcp_enabled feature flag** — WebMCP Tool Inspector page now always renders; removed flag from featureFlags.js and configStore.js.
 - **Demo Config nav item and FAB button** — removed "Demo Config" from AdminSideNav and the floating `demo-config-fab` button from App.js; also removed the admin role badge from the sidebar.
 

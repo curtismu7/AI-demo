@@ -5148,7 +5148,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   height: 36px !important;
   min-width: 36px !important;
   border-radius: 50% !important;
-  background: #1e3a8a !important;
+  background: #dc2626 !important;
   color: #fff !important;
   border: none !important;
   flex-shrink: 0 !important;
@@ -5160,12 +5160,12 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   opacity: 1 !important;
 }
 .ba-send-btn:hover {
-  background: #2563eb !important;
+  background: #b91c1c !important;
 }
 .ba-send-btn:disabled {
-  background: #d1d5db !important;
-  color: #9ca3af !important;
-  opacity: 0.5 !important;
+  background: #dc2626 !important;
+  color: #fff !important;
+  opacity: 0.6 !important;
 }
 
 /* 7. BOTTOM DOCK — Fix clipping */
@@ -5294,15 +5294,15 @@ button.ba-action-btn:hover {
   color: #374151;
 }
 
-/* 7. Send button — solid blue */
+/* 7. Send button — red */
 .banking-agent-panel .ba-send-btn {
-  background: #3b82f6;
+  background: #dc2626;
   border: none;
   box-shadow: none;
   border-radius: 50%;
 }
 .banking-agent-panel .ba-send-btn:hover:not(:disabled) {
-  background: #2563eb;
+  background: #b91c1c;
   box-shadow: none;
   transform: scale(1.05);
 }
@@ -5412,16 +5412,16 @@ button.ba-action-btn:hover {
   color: #cbd5e1;
 }
 
-/* 7. Send button — gradient */
+/* 7. Send button — red */
 .banking-agent-panel.dark-theme .ba-send-btn {
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  background: #dc2626;
   border: none;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: none;
   border-radius: 10px;
 }
 .banking-agent-panel.dark-theme .ba-send-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+  background: #b91c1c;
+  box-shadow: none;
   transform: scale(1.03);
 }
 
