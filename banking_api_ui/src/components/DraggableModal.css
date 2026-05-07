@@ -1,11 +1,23 @@
 /* ── DraggableModal.css ─────────────────────────────────────────────────── */
 
+/* ── Enter animation ───────────────────────────────────────────────────── */
+@keyframes dm-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 /* Backdrop */
 .dm-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(1px);
+  background: var(--modal-overlay-bg, rgba(10, 15, 30, 0.5));
+  backdrop-filter: var(--modal-overlay-blur, blur(2px));
 }
 
 /* Panel */
@@ -13,10 +25,15 @@
   position: fixed;
   display: flex;
   flex-direction: column;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.22);
+  border-radius: var(--modal-radius, 12px);
+  background: var(--modal-body-bg, #ffffff);
+  box-shadow: var(
+    --modal-shadow,
+    0 20px 48px rgba(0, 0, 0, 0.22),
+    0 4px 12px rgba(0, 0, 0, 0.1)
+  );
   overflow: hidden;
+  animation: dm-enter 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* ── Title bar ─────────────────────────────────────────────────────────── */
@@ -25,22 +42,31 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px 6px 14px;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  color: #fff;
+  padding: 0 10px 0 14px;
+  background: var(
+    --modal-header-bg,
+    linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)
+  );
+  color: var(--modal-header-text, #ffffff);
   cursor: grab;
   flex-shrink: 0;
-  min-height: 38px;
+  min-height: var(--modal-header-height, 48px);
   position: relative;
   z-index: 1;
   user-select: none;
 }
 
-.dm-titlebar:active { cursor: grabbing; }
+.dm-titlebar:active {
+  cursor: grabbing;
+}
 
 /* Static variant used inside the pop-out window (no drag) */
-.dm-titlebar--static { cursor: default; }
-.dm-titlebar--static:active { cursor: default; }
+.dm-titlebar--static {
+  cursor: default;
+}
+.dm-titlebar--static:active {
+  cursor: default;
+}
 
 .dm-title {
   font-size: 13px;
@@ -58,14 +84,14 @@
 }
 
 .dm-btn {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--modal-btn-bg, rgba(255, 255, 255, 0.12));
   border: none;
-  color: #fff;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  color: var(--modal-header-text, #ffffff);
+  width: var(--modal-btn-size, 28px);
+  height: var(--modal-btn-size, 28px);
+  border-radius: var(--modal-btn-radius, 6px);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -73,7 +99,9 @@
   flex-shrink: 0;
 }
 
-.dm-btn:hover { background: rgba(255, 255, 255, 0.3); }
+.dm-btn:hover {
+  background: var(--modal-btn-bg-hover, rgba(255, 255, 255, 0.28));
+}
 
 /* ── Body — flex column; children manage their own scroll ──────────────── */
 
@@ -95,6 +123,20 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 16px 20px;
+}
+
+.dm-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.dm-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dm-scroll::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.35);
+  border-radius: 2px;
+}
+.dm-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.6);
 }
 
 /* ── Footer ────────────────────────────────────────────────────────────── */
@@ -124,12 +166,14 @@
   transition: background 0.15s;
 }
 
-.dm-close-btn:hover { background: #e5e7eb; }
+.dm-close-btn:hover {
+  background: #e5e7eb;
+}
 
 /* ── 8-direction resize handles ────────────────────────────────────────── */
 
 :root {
-  --dm-edge:   5px;
+  --dm-edge: 5px;
   --dm-corner: 12px;
 }
 
@@ -138,28 +182,83 @@
   z-index: 2;
 }
 
-.dm-handle:hover { background: rgba(65, 105, 225, 0.1); border-radius: 2px; }
+.dm-handle:hover {
+  background: rgba(65, 105, 225, 0.1);
+  border-radius: 2px;
+}
 
-.dm-handle-n  { top: 0; left: var(--dm-corner); right: var(--dm-corner); height: var(--dm-edge); cursor: n-resize; }
-.dm-handle-s  { bottom: 0; left: var(--dm-corner); right: var(--dm-corner); height: var(--dm-edge); cursor: s-resize; }
-.dm-handle-e  { top: var(--dm-corner); bottom: var(--dm-corner); right: 0; width: var(--dm-edge); cursor: e-resize; }
-.dm-handle-w  { top: var(--dm-corner); bottom: var(--dm-corner); left: 0; width: var(--dm-edge); cursor: w-resize; }
-.dm-handle-nw { top: 0; left: 0; width: var(--dm-corner); height: var(--dm-corner); cursor: nw-resize; }
-.dm-handle-ne { top: 0; right: 0; width: var(--dm-corner); height: var(--dm-corner); cursor: ne-resize; }
-.dm-handle-sw { bottom: 0; left: 0; width: var(--dm-corner); height: var(--dm-corner); cursor: sw-resize; }
+.dm-handle-n {
+  top: 0;
+  left: var(--dm-corner);
+  right: var(--dm-corner);
+  height: var(--dm-edge);
+  cursor: n-resize;
+}
+.dm-handle-s {
+  bottom: 0;
+  left: var(--dm-corner);
+  right: var(--dm-corner);
+  height: var(--dm-edge);
+  cursor: s-resize;
+}
+.dm-handle-e {
+  top: var(--dm-corner);
+  bottom: var(--dm-corner);
+  right: 0;
+  width: var(--dm-edge);
+  cursor: e-resize;
+}
+.dm-handle-w {
+  top: var(--dm-corner);
+  bottom: var(--dm-corner);
+  left: 0;
+  width: var(--dm-edge);
+  cursor: w-resize;
+}
+.dm-handle-nw {
+  top: 0;
+  left: 0;
+  width: var(--dm-corner);
+  height: var(--dm-corner);
+  cursor: nw-resize;
+}
+.dm-handle-ne {
+  top: 0;
+  right: 0;
+  width: var(--dm-corner);
+  height: var(--dm-corner);
+  cursor: ne-resize;
+}
+.dm-handle-sw {
+  bottom: 0;
+  left: 0;
+  width: var(--dm-corner);
+  height: var(--dm-corner);
+  cursor: sw-resize;
+}
 .dm-handle-se {
-  bottom: 0; right: 0; width: var(--dm-corner); height: var(--dm-corner); cursor: nwse-resize;
+  bottom: 0;
+  right: 0;
+  width: var(--dm-corner);
+  height: var(--dm-corner);
+  cursor: nwse-resize;
   background-image:
     radial-gradient(circle, #9ca3af 1px, transparent 1px),
     radial-gradient(circle, #9ca3af 1px, transparent 1px),
     radial-gradient(circle, #9ca3af 1px, transparent 1px);
   background-size: 4px 4px;
-  background-position: 3px 3px, 7px 7px, 3px 7px;
+  background-position:
+    3px 3px,
+    7px 7px,
+    3px 7px;
   background-repeat: no-repeat;
   opacity: 0.6;
   transition: opacity 0.15s;
 }
-.dm-handle-se:hover { opacity: 1; background-color: transparent; }
+.dm-handle-se:hover {
+  opacity: 1;
+  background-color: transparent;
+}
 
 /* ── Pop-out placeholder (shown in original window while content is in popup) */
 
@@ -188,7 +287,9 @@
   font-size: 12px;
   cursor: pointer;
 }
-.dm-placeholder-btn:hover { background: #d1d5db; }
+.dm-placeholder-btn:hover {
+  background: #d1d5db;
+}
 
 /* ── TokenChainDisplay inside modal — fill body, remove outer chrome ─────── */
 

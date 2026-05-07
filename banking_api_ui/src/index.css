@@ -80,6 +80,27 @@ tt {
   --card-border-radius: 12px;
   --card-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
 
+  /* ── Modal / Panel design system ─────────────────────────────────────── */
+  --modal-radius: 12px;
+  --modal-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.22), 0 4px 12px rgba(0, 0, 0, 0.1);
+  --modal-border: 1px solid rgba(0, 0, 0, 0.08);
+  --modal-header-bg: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  --modal-header-text: #ffffff;
+  --modal-header-sub: rgba(255, 255, 255, 0.65);
+  --modal-header-height: 48px;
+  --modal-body-bg: #ffffff;
+  --modal-body-text: #111827;
+  --modal-body-text-secondary: #374151;
+  --modal-btn-size: 28px;
+  --modal-btn-bg: rgba(255, 255, 255, 0.12);
+  --modal-btn-bg-hover: rgba(255, 255, 255, 0.28);
+  --modal-btn-radius: 6px;
+  --modal-overlay-bg: rgba(10, 15, 30, 0.5);
+  --modal-overlay-blur: blur(2px);
+  --modal-footer-bg: #f9fafb;
+  --modal-footer-border: #e5e7eb;
+
   /* Typography */
   --font-primary:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
