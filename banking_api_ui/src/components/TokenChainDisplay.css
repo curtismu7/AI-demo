@@ -278,27 +278,27 @@
 
 .tcd-event.active,
 .tcd-event.acquired {
-  border-left: 3px solid #24a148;
+  border-left: var(--inner-card-accent, 4px) solid #24a148;
 }
 
 .tcd-event.exchanged {
-  border-left: 3px solid #8a3ffc;
+  border-left: var(--inner-card-accent, 4px) solid #8a3ffc;
 }
 
 .tcd-event.acquiring {
-  border-left: 3px solid #f1c21b;
+  border-left: var(--inner-card-accent, 4px) solid #f1c21b;
 }
 
 .tcd-event.skipped {
-  border-left: 3px solid #8d8d8d;
+  border-left: var(--inner-card-accent, 4px) solid #8d8d8d;
 }
 
 .tcd-event.failed {
-  border-left: 3px solid #da1e28;
+  border-left: var(--inner-card-accent, 4px) solid #da1e28;
 }
 
 .tcd-event.waiting {
-  border-left: 3px solid #c6c6c6;
+  border-left: var(--inner-card-accent, 4px) solid #c6c6c6;
 }
 
 .tcd-event-content {

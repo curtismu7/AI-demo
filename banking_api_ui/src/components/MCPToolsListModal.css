@@ -136,17 +136,20 @@
 .mcp-tool-item {
   padding: 12px;
   margin-bottom: 8px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background-color: #fafbfc;
+  border: var(--inner-card-border, 1px solid #e5e7eb);
+  border-left: var(--inner-card-accent, 4px) solid #d1d5db;
+  border-radius: var(--inner-card-radius, 8px);
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
   transition:
-    background-color 0.2s,
-    border-color 0.2s;
+    background 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .mcp-tool-item:hover {
-  background-color: #f0f4f8;
   border-color: #bfdbfe;
+  border-left-color: #93c5fd;
+  box-shadow: var(--inner-card-shadow, 0 2px 6px rgba(15, 23, 42, 0.05));
 }
 
 .mcp-tool-name {

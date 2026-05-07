@@ -80,6 +80,13 @@ tt {
   --card-border-radius: 12px;
   --card-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
 
+  /* ── Inner card design system (claim rows, event items, list cards) ──── */
+  --inner-card-radius: 8px;
+  --inner-card-border: 1px solid #e5e7eb;
+  --inner-card-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+  --inner-card-bg: #ffffff;
+  --inner-card-accent: 4px;
+
   /* ── Modal / Panel design system ─────────────────────────────────────── */
   --modal-radius: 12px;
   --modal-shadow:

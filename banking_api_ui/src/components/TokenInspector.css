@@ -5,7 +5,8 @@
   border: 1px solid #d0dce8;
   border-radius: 8px;
   padding: 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
   line-height: 1.6;
   color: #1a1a1a;
@@ -16,7 +17,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-    color: #1a1a1a;
+  color: #1a1a1a;
   padding-bottom: 12px;
   border-bottom: 2px solid #e0e8f0;
 }
@@ -44,7 +45,7 @@
 
 .ti-actor-notice {
   background-color: #fffbf0;
-    color: #1a1a1a;
+  color: #1a1a1a;
   padding: 12px 16px;
   border-radius: 4px;
   margin-bottom: 20px;
@@ -55,7 +56,7 @@
 
 .ti-actor-notice code {
   background-color: #f5f5f5;
-    color: #1a1a1a;
+  color: #1a1a1a;
   border-radius: 3px;
   font-family: inherit;
   color: #1a1a1a;
@@ -70,43 +71,47 @@
 }
 
 .ti-claim-row {
-  background: white;
-  border: 1px solid #e3eaf2;
-  border-radius: 6px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  border: var(--inner-card-border, 1px solid #e5e7eb);
+  border-left: var(--inner-card-accent, 4px) solid #d1d5db;
+  border-radius: var(--inner-card-radius, 8px);
   overflow: hidden;
   transition: all 0.2s ease;
 }
 
 .ti-claim-row:hover {
-  border-color: #c0d0e0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border-color: #bfdbfe;
+  border-left-color: #93c5fd;
+  box-shadow: var(--inner-card-shadow, 0 2px 6px rgba(15, 23, 42, 0.05));
 }
 
 /* Styling for actor-related claims */
 .ti-claim-row--actor {
-  background: linear-gradient(90deg, #ffffff 0%, #f0f8ff 100%);
-  border-color: #0066cc;
+  background: linear-gradient(180deg, #ffffff 0%, #f0f8ff 100%);
+  border-color: #bfdbfe;
+  border-left-color: #0066cc;
 }
 
 .ti-claim-row--actor:hover {
-  border-color: #003d99;
+  border-color: #93c5fd;
+  border-left-color: #003d99;
   box-shadow: 0 2px 8px rgba(0, 102, 204, 0.15);
 }
 
 .ti-claim-row--act {
-  border-left: 4px solid #0066cc;
+  border-left: var(--inner-card-accent, 4px) solid #0066cc;
 }
 
 .ti-claim-row--may-act {
-  border-left: 4px solid #00a86b;
+  border-left: var(--inner-card-accent, 4px) solid #00a86b;
 }
 
 .ti-claim-row--aud {
-  border-left: 4px solid #ff9800;
+  border-left: var(--inner-card-accent, 4px) solid #ff9800;
 }
 
 .ti-claim-row--scope {
-  border-left: 4px solid #9c27b0;
+  border-left: var(--inner-card-accent, 4px) solid #9c27b0;
 }
 
 .ti-claim-header {
@@ -141,15 +146,31 @@
   color: #1a1a1a;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ti-claim-label::before {
+  content: "▶";
+  font-size: 8px;
+  color: #9ca3af;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.ti-claim-label.expanded::before {
+  transform: rotate(90deg);
+  color: #6b7280;
 }
 
 .ti-claim-label:hover {
   color: #1a1a1a;
-  text-decoration: underline;
 }
 
-.ti-claim-label.expanded {
-  color: #1a1a1a;
+.ti-claim-label:hover::before {
+  color: #374151;
 }
 
 .ti-tooltip-icon {
