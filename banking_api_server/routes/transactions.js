@@ -590,6 +590,8 @@ router.post('/', authenticateToken, async (req, res) => {
         });
       }
 
+      await saveTransactionSnapshot(req.user.id);
+
       res.status(201).json({
         message: 'Transfer completed successfully',
         withdrawalTransaction,
@@ -646,6 +648,8 @@ router.post('/', authenticateToken, async (req, res) => {
           userName,
         });
       }
+
+      await saveTransactionSnapshot(req.user.id);
 
       res.status(201).json({
         message: 'Transaction created successfully',

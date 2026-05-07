@@ -121,11 +121,9 @@ async function evaluateTransactionPolicy({
 
       console.log(`[AuthZ] Result: decision=${r.decision}, consentRequired=${r.consentRequired}, stepUpRequired=${r.stepUpRequired}`);
 
-      if (r.consentRequired) {
-        console.log(`[AuthZ] Blocking with HITL_CONSENT`);
-        return { ran: true, block: { status: 428, body: buildConsentBody() } };
-      }
-
+      // Check stepUpRequired before consentRequired: step-up is the stronger gate
+      // and must not be bypassed by the ff_hitl_enabled=false consent-skip path.
+      // A $600 transfer satisfies both thresholds; step-up takes priority.
       if (r.stepUpRequired) {
         return {
           ran: true,
@@ -138,6 +136,11 @@ async function evaluateTransactionPolicy({
             }),
           },
         };
+      }
+
+      if (r.consentRequired) {
+        console.log(`[AuthZ] Blocking with HITL_CONSENT`);
+        return { ran: true, block: { status: 428, body: buildConsentBody() } };
       }
 
       if (r.decision === 'DENY') {
