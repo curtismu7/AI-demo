@@ -5144,11 +5144,11 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   color: #374151 !important;
 }
 .ba-send-btn {
-  width: 36px !important;
+  width: auto !important;
   height: 36px !important;
-  min-width: 36px !important;
-  border-radius: 50% !important;
-  background: #dc2626 !important;
+  min-width: 64px !important;
+  border-radius: 8px !important;
+  background: #991b1b !important;
   color: #fff !important;
   border: none !important;
   flex-shrink: 0 !important;
@@ -5156,14 +5156,16 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   align-items: center !important;
   justify-content: center !important;
   transition: background 0.15s;
-  padding: 0 !important;
+  padding: 0 14px !important;
   opacity: 1 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
 }
 .ba-send-btn:hover {
-  background: #b91c1c !important;
+  background: #7f1d1d !important;
 }
 .ba-send-btn:disabled {
-  background: #dc2626 !important;
+  background: #991b1b !important;
   color: #fff !important;
   opacity: 0.6 !important;
 }
