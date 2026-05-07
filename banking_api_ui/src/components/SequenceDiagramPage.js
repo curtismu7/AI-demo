@@ -1411,7 +1411,9 @@ export default function SequenceDiagramPage() {
                 fontSize: "0.78rem",
                 fontWeight: 600,
                 border:
-                  simulateMode === "auto" ? "2px solid #004687" : "1px solid #cbd5e1",
+                  simulateMode === "auto"
+                    ? "2px solid #004687"
+                    : "1px solid #cbd5e1",
                 background: simulateMode === "auto" ? "#dbeafe" : "#fff",
                 color: simulateMode === "auto" ? "#004687" : "#475569",
                 cursor: "pointer",
@@ -1428,7 +1430,9 @@ export default function SequenceDiagramPage() {
                 fontSize: "0.78rem",
                 fontWeight: 600,
                 border:
-                  simulateMode === "step" ? "2px solid #004687" : "1px solid #cbd5e1",
+                  simulateMode === "step"
+                    ? "2px solid #004687"
+                    : "1px solid #cbd5e1",
                 background: simulateMode === "step" ? "#dbeafe" : "#fff",
                 color: simulateMode === "step" ? "#004687" : "#475569",
                 cursor: "pointer",
@@ -1740,175 +1744,177 @@ export default function SequenceDiagramPage() {
               aria-label="Sequence diagram flow"
               role="img"
             >
-            <title>Sequence diagram flow</title>
-            {/* Participant boxes and lifelines */}
-            {PARTICIPANTS.map((p, i) => {
-              const x = 100 + i * 120;
-              // Split long labels into multiple lines (max 12 chars per line for wrap)
-              const words = p.label.split(" ");
-              const lines = [];
-              let currentLine = "";
-              words.forEach((word) => {
-                if ((currentLine + word).length > 12) {
-                  if (currentLine) lines.push(currentLine.trim());
-                  currentLine = word;
-                } else {
-                  currentLine += (currentLine ? " " : "") + word;
-                }
-              });
-              if (currentLine) lines.push(currentLine.trim());
+              <title>Sequence diagram flow</title>
+              {/* Participant boxes and lifelines */}
+              {PARTICIPANTS.map((p, i) => {
+                const x = 100 + i * 120;
+                // Split long labels into multiple lines (max 12 chars per line for wrap)
+                const words = p.label.split(" ");
+                const lines = [];
+                let currentLine = "";
+                words.forEach((word) => {
+                  if ((currentLine + word).length > 12) {
+                    if (currentLine) lines.push(currentLine.trim());
+                    currentLine = word;
+                  } else {
+                    currentLine += (currentLine ? " " : "") + word;
+                  }
+                });
+                if (currentLine) lines.push(currentLine.trim());
 
-              return (
-                <g key={p.id}>
-                  {/* Participant box — size adjusts for text height */}
-                  <rect
-                    x={x - 50}
-                    y="20"
-                    width="100"
-                    height={20 + lines.length * 16}
-                    fill="#f1f5f9"
-                    stroke="#cbd5e1"
-                    strokeWidth="1"
-                    rx="4"
-                  />
-                  {/* Wrapped text */}
-                  {lines.map((line, idx) => (
-                    <text
-                      key={`${p.id}-line-${idx}`}
-                      x={x}
-                      y={40 + idx * 16}
-                      textAnchor="middle"
-                      fontSize="11"
-                      fontWeight="600"
-                      fill="#334155"
-                    >
-                      {line}
-                    </text>
-                  ))}
-                  {/* Lifeline */}
-                  <line
-                    x1={x}
-                    y1={20 + lines.length * 16 + 10}
-                    x2={x}
-                    y2={120 + steps.length * 20 + 50}
-                    stroke="#cbd5e1"
-                    strokeDasharray="4"
-                    strokeWidth="1"
-                  />
-                </g>
-              );
-            })}
-
-            {/* Steps */}
-            {steps.map((step, idx) => {
-              const isActive = idx === currentStepIdx;
-              const isPast = idx < currentStepIdx;
-              const y = 120 + idx * 20;
-              if (step.type === "note") {
-                // Render note as amber callout band spanning participant columns
-                const partIndexes = step.participants
-                  .map(participantIndex)
-                  .filter((i) => i >= 0);
-                if (partIndexes.length === 0) return null;
-                const minX = 100 + Math.min(...partIndexes) * 120 - 40;
-                const maxX = 100 + Math.max(...partIndexes) * 120 + 40;
-                // Use a stable key for notes: text + participants
-                const noteKey = `note-${step.text.replace(/\W+/g, "-")}-${step.participants.join("-")}`;
                 return (
-                  <g key={noteKey}>
+                  <g key={p.id}>
+                    {/* Participant box — size adjusts for text height */}
                     <rect
-                      x={minX}
-                      y={y - 12}
-                      width={maxX - minX}
-                      height={24}
-                      rx={7}
-                      fill="#fef3c7"
-                      stroke="#fbbf24"
-                      strokeWidth="1.5"
+                      x={x - 50}
+                      y="20"
+                      width="100"
+                      height={20 + lines.length * 16}
+                      fill="#f1f5f9"
+                      stroke="#cbd5e1"
+                      strokeWidth="1"
+                      rx="4"
                     />
+                    {/* Wrapped text */}
+                    {lines.map((line, idx) => (
+                      <text
+                        key={`${p.id}-line-${idx}`}
+                        x={x}
+                        y={40 + idx * 16}
+                        textAnchor="middle"
+                        fontSize="11"
+                        fontWeight="600"
+                        fill="#0f172a"
+                      >
+                        {line}
+                      </text>
+                    ))}
+                    {/* Lifeline */}
+                    <line
+                      x1={x}
+                      y1={20 + lines.length * 16 + 10}
+                      x2={x}
+                      y2={120 + steps.length * 20 + 50}
+                      stroke="#cbd5e1"
+                      strokeDasharray="4"
+                      strokeWidth="1"
+                    />
+                  </g>
+                );
+              })}
+
+              {/* Steps */}
+              {steps.map((step, idx) => {
+                const isActive = idx === currentStepIdx;
+                const isPast = idx < currentStepIdx;
+                const y = 120 + idx * 20;
+                if (step.type === "note") {
+                  // Render note as amber callout band spanning participant columns
+                  const partIndexes = step.participants
+                    .map(participantIndex)
+                    .filter((i) => i >= 0);
+                  if (partIndexes.length === 0) return null;
+                  const minX = 100 + Math.min(...partIndexes) * 120 - 40;
+                  const maxX = 100 + Math.max(...partIndexes) * 120 + 40;
+                  // Use a stable key for notes: text + participants
+                  const noteKey = `note-${step.text.replace(/\W+/g, "-")}-${step.participants.join("-")}`;
+                  return (
+                    <g key={noteKey}>
+                      <rect
+                        x={minX}
+                        y={y - 12}
+                        width={maxX - minX}
+                        height={24}
+                        rx={7}
+                        fill="#fef3c7"
+                        stroke="#fbbf24"
+                        strokeWidth="1.5"
+                      />
+                      <text
+                        x={(minX + maxX) / 2}
+                        y={y + 3}
+                        textAnchor="middle"
+                        fontSize="11"
+                        fontStyle="italic"
+                        fill="#b45309"
+                        fontWeight="600"
+                      >
+                        {step.text}
+                      </text>
+                    </g>
+                  );
+                }
+                // Arrow step
+                const fromX = 100 + participantIndex(step.from) * 120;
+                const toX = 100 + participantIndex(step.to) * 120;
+                const minX = Math.min(fromX, toX);
+                const maxX = Math.max(fromX, toX);
+                // Use a stable key for arrows: step number + from + to
+                const arrowKey = step.step
+                  ? `arrow-${step.step}-${step.from}-${step.to}`
+                  : `arrow-${idx}`;
+                return (
+                  <g key={arrowKey}>
+                    {/* Arrow */}
+                    <line
+                      x1={fromX}
+                      y1={y}
+                      x2={toX}
+                      y2={y}
+                      stroke={
+                        isActive ? "#004687" : isPast ? "#dbeafe" : "#cbd5e1"
+                      }
+                      strokeWidth={isActive ? 3 : 1.5}
+                      markerEnd={
+                        step.type === "response"
+                          ? "url(#markerDashed)"
+                          : "url(#markerSolid)"
+                      }
+                      opacity={isPast ? 0.5 : 1}
+                    />
+                    {/* Label */}
                     <text
                       x={(minX + maxX) / 2}
-                      y={y + 3}
+                      y={y - 3}
                       textAnchor="middle"
-                      fontSize="11"
-                      fontStyle="italic"
-                      fill="#b45309"
-                      fontWeight="600"
+                      fontSize="10"
+                      fill={
+                        isActive ? "#004687" : isPast ? "#94a3b8" : "#0f172a"
+                      }
+                      fontWeight={isActive ? 700 : 400}
                     >
-                      {step.text}
+                      {step.step ? `${step.step}. ` : ""}
+                      {step.label}
                     </text>
                   </g>
                 );
-              }
-              // Arrow step
-              const fromX = 100 + participantIndex(step.from) * 120;
-              const toX = 100 + participantIndex(step.to) * 120;
-              const minX = Math.min(fromX, toX);
-              const maxX = Math.max(fromX, toX);
-              // Use a stable key for arrows: step number + from + to
-              const arrowKey = step.step
-                ? `arrow-${step.step}-${step.from}-${step.to}`
-                : `arrow-${idx}`;
-              return (
-                <g key={arrowKey}>
-                  {/* Arrow */}
-                  <line
-                    x1={fromX}
-                    y1={y}
-                    x2={toX}
-                    y2={y}
-                    stroke={
-                      isActive ? "#004687" : isPast ? "#dbeafe" : "#cbd5e1"
-                    }
-                    strokeWidth={isActive ? 3 : 1.5}
-                    markerEnd={
-                      step.type === "response"
-                        ? "url(#markerDashed)"
-                        : "url(#markerSolid)"
-                    }
-                    opacity={isPast ? 0.5 : 1}
-                  />
-                  {/* Label */}
-                  <text
-                    x={(minX + maxX) / 2}
-                    y={y - 3}
-                    textAnchor="middle"
-                    fontSize="10"
-                    fill={isActive ? "#004687" : isPast ? "#94a3b8" : "#475569"}
-                    fontWeight={isActive ? 700 : 400}
-                  >
-                    {step.step ? `${step.step}. ` : ""}
-                    {step.label}
-                  </text>
-                </g>
-              );
-            })}
+              })}
 
-            {/* Arrow markers */}
-            <defs>
-              <marker
-                id="markerSolid"
-                markerWidth="10"
-                markerHeight="10"
-                refX="9"
-                refY="3"
-                orient="auto"
-                markerUnits="strokeWidth"
-              >
-                <path d="M0,0 L0,6 L9,3 z" fill="#cbd5e1" />
-              </marker>
-              <marker
-                id="markerDashed"
-                markerWidth="10"
-                markerHeight="10"
-                refX="9"
-                refY="3"
-                orient="auto"
-                markerUnits="strokeWidth"
-              >
-                <path d="M0,0 L0,6 L9,3 z" fill="#cbd5e1" />
-              </marker>
-            </defs>
+              {/* Arrow markers */}
+              <defs>
+                <marker
+                  id="markerSolid"
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="9"
+                  refY="3"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <path d="M0,0 L0,6 L9,3 z" fill="#cbd5e1" />
+                </marker>
+                <marker
+                  id="markerDashed"
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="9"
+                  refY="3"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <path d="M0,0 L0,6 L9,3 z" fill="#cbd5e1" />
+                </marker>
+              </defs>
             </svg>
           </div>
         </div>
