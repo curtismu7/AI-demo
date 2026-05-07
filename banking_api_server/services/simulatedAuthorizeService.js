@@ -220,12 +220,15 @@ async function evaluateMcpFirstTool({
       },
     };
   } else if (transactionType && amount != null) {
-    // Amount-based policy for write tools — same thresholds as evaluateTransaction
+    // Amount-based policy for MCP write tools — highest gate wins, no stacking.
+    // Type-based rules (consentTypes/stepUpTypes) do NOT apply on the MCP path.
+    //   < confirmAmount   → PERMIT
+    //   confirmAmount–stepUpAmount-1 → confirm only (HITL, no MFA)
+    //   ≥ stepUpAmount    → step-up (MFA = consent+auth), skips confirm
+    //   > denyAmount      → DENY
     const denyAmount = getDenyAmountUsd();
     const stepUpAmount = getStepUpAmountUsd();
     const confirmAmount = getConfirmAmountUsd();
-    const consentTypes = getConsentTypes();
-    const stepUpTypes = getStepUpTypes();
 
     if (amount > denyAmount) {
       out = {
@@ -237,28 +240,27 @@ async function evaluateMcpFirstTool({
         raw: { ...rawBase, decision: 'DENY', reason: `Amount $${amount} exceeds deny limit $${denyAmount}.` },
       };
     } else {
-      const typeHitl = consentTypes.has(transactionType.toLowerCase());
-      const typeStepUp = stepUpTypes.has(transactionType.toLowerCase()) && !acrLooksStrong(acr);
-      const amtStepUp = amount >= stepUpAmount && !acrLooksStrong(acr);
-      const amtHitl = amount >= confirmAmount;
-      const needsHitl = typeHitl || amtHitl;
-      const needsStepUp = typeStepUp || amtStepUp;
+      // Highest applicable gate only
+      const needsStepUp = amount >= stepUpAmount && !acrLooksStrong(acr);
+      const needsConfirm = !needsStepUp && amount >= confirmAmount;
 
-      if (needsHitl || needsStepUp) {
-        const obligations = [];
-        if (needsHitl) obligations.push({ type: 'HITL_CONSENT', detail: 'Human approval required.' });
-        if (needsStepUp) obligations.push({ type: 'STEP_UP', detail: 'MFA required.' });
-        const reasons = [];
-        if (typeHitl) reasons.push(`${transactionType} requires consent`);
-        if (amtHitl && !typeHitl) reasons.push(`amount $${amount} >= $${confirmAmount}`);
-        if (amtStepUp && !typeStepUp) reasons.push(`amount $${amount} >= step-up threshold $${stepUpAmount}`);
+      if (needsStepUp) {
         out = {
           decision: 'INDETERMINATE',
-          stepUpRequired: needsStepUp,
-          hitlRequired: needsHitl,
+          stepUpRequired: true,
+          hitlRequired: false,
           path: 'simulated',
           decisionId,
-          raw: { ...rawBase, decision: 'INDETERMINATE', obligations, reason: `Simulated policy: ${reasons.join('; ')}.` },
+          raw: { ...rawBase, decision: 'INDETERMINATE', obligations: [{ type: 'STEP_UP', detail: 'MFA required — amount exceeds step-up threshold.' }], reason: `Amount $${amount} >= step-up threshold $${stepUpAmount}.` },
+        };
+      } else if (needsConfirm) {
+        out = {
+          decision: 'INDETERMINATE',
+          stepUpRequired: false,
+          hitlRequired: true,
+          path: 'simulated',
+          decisionId,
+          raw: { ...rawBase, decision: 'INDETERMINATE', obligations: [{ type: 'HITL_CONSENT', detail: 'Confirmation required.' }], reason: `Amount $${amount} >= confirm threshold $${confirmAmount}.` },
         };
       } else {
         out = {

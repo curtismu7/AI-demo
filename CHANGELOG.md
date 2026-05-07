@@ -24,7 +24,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
-- **MCP authorize decision re-emitted on cached tool calls** — Token Chain now shows the PingOne Authorize decision on every tool call in a session, not just the first one.
+- **MCP Authorize gate runs on every tool call** — removed per-session skip; gate now evaluates aud/scope and amount-based HITL/step-up rules on every `POST /api/mcp/tool`. Write tools pass `toolParams.amount` so transfers ≥ threshold correctly trigger HITL consent.
+- **Transfer/deposit/withdrawal response formatting** — agent chat now shows a human-readable summary (amount, accounts, transaction IDs) instead of raw JSON.
 
 - **PostHog crash in tests** — `posthog.js` now exports a no-op stub when `POSTHOG_API_KEY` is absent, preventing module-load crashes that blocked 43 test suites.
 - **uuid ESM in Jest** — added `moduleNameMapper` in `banking_api_server` and `banking_mcp_server` Jest configs pointing `uuid` to a CJS shim, fixing `SyntaxError: Unexpected token 'export'` in all test suites.
