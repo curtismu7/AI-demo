@@ -17,7 +17,7 @@
 #   ./run-bank.sh stop         # stop all services (process trees + listeners)
 #   ./run-bank.sh restart      # stop then start
 #   ./run-bank.sh status       # live service health check
-#   ./run-bank.sh tail         # pick 1–4 (one log) or 5 / all (all logs at once)
+#   ./run-bank.sh tail         # pick a log by number or 'all' (all logs at once)
 #   ./run-bank.sh tail 2       # tail UI log directly (no prompt)
 #   ./run-bank.sh tail all     # tail -f all log files together (interleaved)
 #   ./run-bank.sh test         # run full test suite
@@ -82,6 +82,7 @@ PID_AGENT_SVC=/tmp/bank-agent-service.pid
 LOG_AGENT_SVC=/tmp/bank-agent-service.log
 PID_INVEST=/tmp/bank-mcp-invest.pid
 LOG_INVEST=/tmp/bank-mcp-invest.log
+LOG_AUTH=/tmp/bank-authorize-server.log
 
 # Terminal colors (global — used by banner, status, and tail_bank_logs)
 BOLD='\033[1m'
@@ -174,62 +175,60 @@ preflight_checks() {
   echo ""
 }
 
-# ── Tail logs (one log 1–4, or all at once: 5 / all) ─────────────────────────
+# ── Tail logs (pick one by number, or all at once) ────────────────────────────
 tail_bank_logs() {
   local pre="${1:-}"
   [[ "${pre}" == "ALL" || "${pre}" == "All" ]] && pre="all"
-  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent" "MCP Traffic")
-  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}")
+  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent" "MCP Traffic" "MCP Gateway" "HITL Service" "Agent Service" "MCP Invest" "Authorize Server")
+  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_AUTH}")
+  local count=${#names[@]}
+  local all_opt=$((count + 1))
   local choice=""
 
   echo ""
   echo -e "${CYAN}Pick a log to follow (tail -f). Ctrl+C stops tail only.${RESET}"
-  for i in 0 1 2 3 4; do
+  for i in $(seq 0 $((count - 1))); do
     echo "  $((i + 1))) ${names[i]}"
     echo "      ${logs[i]}"
   done
-  echo "  6) All of the above (same terminal, interleaved with file headers)"
+  echo "  ${all_opt}) All of the above (same terminal, interleaved with file headers)"
   if [[ -n "${pre}" ]]; then
     choice="${pre}"
   else
-    read -r -p "Number [1-6] or 'all': " choice
+    read -r -p "Number [1-${all_opt}] or 'all': " choice
   fi
   [[ "${choice}" == "ALL" || "${choice}" == "All" ]] && choice="all"
 
-  case "${choice}" in
-    1|2|3|4|5)
-      local idx=$((choice - 1))
-      local f="${logs[$idx]}"
-      if [[ ! -f "${f}" ]]; then
-        echo "WARNING:  Log file does not exist yet: ${f}"
-        echo "   (Start services first, or pick another number.)"
-        exit 1
+  if [[ "${choice}" == "all" || "${choice}" == "${all_opt}" ]]; then
+    local existing=()
+    local f
+    for f in "${logs[@]}"; do
+      if [[ -f "${f}" ]]; then
+        existing+=("${f}")
+      else
+        echo "WARNING:  Skipping (not yet created): ${f}"
       fi
-      echo "[LOG] Tailing ${names[$idx]} ..."
-      tail -f "${f}"
-      ;;
-    6|all)
-      local existing=()
-      local f
-      for f in "${logs[@]}"; do
-        if [[ -f "${f}" ]]; then
-          existing+=("${f}")
-        else
-          echo "WARNING:  Skipping (not yet created): ${f}"
-        fi
-      done
-      if [[ ${#existing[@]} -eq 0 ]]; then
-        echo "WARNING:  No log files found yet. Start services with ./run-bank.sh first."
-        exit 1
-      fi
-      echo "[LOG] Tailing ${#existing[@]} log file(s) together (interleaved). Ctrl+C stops."
-      tail -f "${existing[@]}"
-      ;;
-    *)
-      echo "Invalid choice (use 1–6, or 'all')."
+    done
+    if [[ ${#existing[@]} -eq 0 ]]; then
+      echo "WARNING:  No log files found yet. Start services with ./run-bank.sh first."
       exit 1
-      ;;
-  esac
+    fi
+    echo "[LOG] Tailing ${#existing[@]} log file(s) together (interleaved). Ctrl+C stops."
+    tail -f "${existing[@]}"
+  elif [[ "${choice}" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= count )); then
+    local idx=$((choice - 1))
+    local f="${logs[$idx]}"
+    if [[ ! -f "${f}" ]]; then
+      echo "WARNING:  Log file does not exist yet: ${f}"
+      echo "   (Start services first, or pick another number.)"
+      exit 1
+    fi
+    echo "[LOG] Tailing ${names[$idx]} ..."
+    tail -f "${f}"
+  else
+    echo "Invalid choice (use 1–${all_opt}, or 'all')."
+    exit 1
+  fi
 }
 
 # Kill a PID and every descendant (npm/node/uvicorn survive a plain kill on the subshell).
@@ -405,8 +404,8 @@ cmd_help() {
   echo "    stop       Stop all services gracefully (process tree + port sweep)"
   echo "    restart    Stop then start all services"
   echo "    status     Show running/stopped status with ports and URLs"
-  echo "    tail       Pick a log to follow (1–4 for individual, 5/all for all)"
-  echo "    tail N     Tail a specific log directly (1=API, 2=UI, 3=MCP, 4=Agent)"
+  echo "    tail       Pick a log to follow (number) or 'all' for all logs at once"
+  echo "    tail N     Tail a specific log directly (1=API, 2=UI, 3=MCP, …)"
   echo "    test       Run full test suite (API, UI, MCP)"
   echo "    help       Show this message"
   echo ""
@@ -421,8 +420,13 @@ cmd_help() {
   echo "    ${LOG_API}"
   echo "    ${LOG_UI}"
   echo "    ${LOG_MCP}"
-  echo "    ${LOG_AGENT}
-    ${LOG_GW}"
+  echo "    ${LOG_AGENT}"
+  echo "    ${LOG_MCP_TRAFFIC}"
+  echo "    ${LOG_GW}"
+  echo "    ${LOG_HITL}"
+  echo "    ${LOG_AGENT_SVC}"
+  echo "    ${LOG_INVEST}"
+  echo "    ${LOG_AUTH}"
   echo ""
   echo -e "${WHITE}${BOLD}  One-time Setup:${RESET}"
   echo "    echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts"

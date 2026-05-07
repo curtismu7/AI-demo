@@ -72,6 +72,7 @@ LOG_GW="${LOGS_DIR}/banking-gw.log"
 LOG_HITL="${LOGS_DIR}/banking-hitl.log"
 LOG_AGENT_SVC="${LOGS_DIR}/banking-agent-svc.log"
 LOG_INVEST="${LOGS_DIR}/banking-invest.log"
+LOG_AUTH="${LOGS_DIR}/banking-authorize.log"
 
 # ── Colours ──────────────────────────────────────────────────────────────────
 BOLD='\033[1m'
@@ -258,54 +259,50 @@ preflight_checks() {
 cmd_logs() {
   local pre="${1:-}"
   [[ "${pre}" == "ALL" || "${pre}" == "All" ]] && pre="all"
-  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent" "MCP Traffic")
-  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}")
+  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent" "MCP Traffic" "MCP Gateway" "HITL Service" "Agent Service" "MCP Invest" "Authorize Server")
+  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_AUTH}")
+  local count=${#names[@]}
+  local all_opt=$((count + 1))
   local choice=""
 
-  # If a specific log number was passed, use it directly
-  if [[ -n "${pre}" && "${pre}" != "all" ]]; then
-    choice="${pre}"
-  elif [[ -n "${pre}" ]]; then
+  if [[ -n "${pre}" ]]; then
     choice="${pre}"
   else
     echo ""
     echo -e "${CYAN}Pick a log to follow (tail -f). Ctrl+C stops tail only.${NC}"
-    for i in 0 1 2 3 4; do
+    for i in $(seq 0 $((count - 1))); do
       echo "  $((i + 1))) ${names[i]}  (${logs[i]})"
     done
-    echo "  6) All of the above (interleaved)"
-    read -r -p "Number [1-6] or 'all': " choice
+    echo "  ${all_opt}) All of the above (interleaved)"
+    read -r -p "Number [1-${all_opt}] or 'all': " choice
   fi
   [[ "${choice}" == "ALL" || "${choice}" == "All" ]] && choice="all"
 
-  case "${choice}" in
-    1|2|3|4|5)
-      local idx=$((choice - 1))
-      local f="${logs[$idx]}"
-      if [[ ! -f "${f}" ]]; then
-        warn "Log file does not exist yet: ${f}"
-        exit 1
-      fi
-      echo "📜 Tailing ${names[$idx]} ..."
-      tail -f "${f}"
-      ;;
-    6|all)
-      local existing=()
-      for f in "${logs[@]}"; do
-        [[ -f "${f}" ]] && existing+=("${f}")
-      done
-      if [[ ${#existing[@]} -eq 0 ]]; then
-        warn "No log files found yet. Start services first."
-        exit 1
-      fi
-      echo "📜 Tailing ${#existing[@]} log file(s). Ctrl+C stops."
-      tail -f "${existing[@]}"
-      ;;
-    *)
-      echo "Invalid choice (use 1–6, or 'all')."
+  if [[ "${choice}" == "all" || "${choice}" == "${all_opt}" ]]; then
+    local existing=()
+    local f
+    for f in "${logs[@]}"; do
+      [[ -f "${f}" ]] && existing+=("${f}")
+    done
+    if [[ ${#existing[@]} -eq 0 ]]; then
+      warn "No log files found yet. Start services first."
       exit 1
-      ;;
-  esac
+    fi
+    echo "[LOG] Tailing ${#existing[@]} log file(s). Ctrl+C stops."
+    tail -f "${existing[@]}"
+  elif [[ "${choice}" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= count )); then
+    local idx=$((choice - 1))
+    local f="${logs[$idx]}"
+    if [[ ! -f "${f}" ]]; then
+      warn "Log file does not exist yet: ${f}"
+      exit 1
+    fi
+    echo "[LOG] Tailing ${names[$idx]} ..."
+    tail -f "${f}"
+  else
+    echo "Invalid choice (use 1–${all_opt}, or 'all')."
+    exit 1
+  fi
 }
 
 # ── Stop ─────────────────────────────────────────────────────────────────────
@@ -603,7 +600,7 @@ cmd_help() {
   echo "    stop       Stop all services gracefully (process tree + port sweep)"
   echo "    restart    Stop then start all services"
   echo "    status     Show running/stopped status with ports and URLs"
-  echo "    logs       Pick a log to follow (1=API, 2=UI, 3=MCP, 4=Agent, 5=all)"
+  echo "    logs       Pick a log to follow (number) or 'all' for all logs at once"
   echo "    logs N     Tail a specific log directly (no prompt)"
   echo "    test       Run full test suite (API, UI, MCP)"
   echo "    help       Show this message"
