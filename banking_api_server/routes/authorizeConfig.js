@@ -30,11 +30,7 @@ const router = express.Router();
  * - PingOne credentials (masked)
  * - Env vars (for reference)
  */
-router.get('/config', authenticateToken, async (req, res) => {
-  if (req.user?.role !== 'admin') {
-    return res.status(403).json({ error: 'admin_only', message: 'This endpoint requires admin role.' });
-  }
-
+router.get('/config', authenticateToken, async (_req, res) => {
   try {
     const status = getAuthorizationStatusSummary();
     const mcpStatus = getMcpFirstToolGateStatus();

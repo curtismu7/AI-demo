@@ -333,13 +333,6 @@ const Dashboard = ({ user, onLogout }) => {
     fetchDashboardData();
   }, [location.state, location.pathname, navigate, fetchDashboardData]);
 
-  useEffect(() => {
-    const returnPath = sessionStorage.getItem("post_admin_login_return");
-    if (!returnPath) return;
-    sessionStorage.removeItem("post_admin_login_return");
-    navigate(returnPath, { replace: true });
-  }, [navigate]);
-
   const handleLookupUserTransactions = useCallback(
     async (e) => {
       e.preventDefault();
