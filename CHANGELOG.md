@@ -18,6 +18,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **LLM-only mode toggle** — "LLM only" checkbox in the agent header syncs `ff_heuristic_enabled` flag; when on, all NL queries bypass the heuristic fast-path and go straight to the LLM. Appears in all 3 agent UI contexts (floating, `/agent` inline, embedded dock).
 - **Test coverage expansion** — 8 new test files: accounts route, sensitiveBanking route, transactions CRUD, ChaseTopNav, AuthorizeConfigPage, chip-routing contract, and two real-PingOne-token suites (JWKS validation + agentDelegation base64url decode).
 - **Setup page run-tests endpoint** — `POST /api/admin/setup/run-tests` streams Jest output via SSE; supports `bff:unit`, `bff:auth`, `bff:all`, `ui:unit` suites.
 - **RFC annotation card** — transfer-complete token-event messages now render as a structured card with alternating-row entries, bold blue RFC names, code-span RFC numbers, and a styled footer.
