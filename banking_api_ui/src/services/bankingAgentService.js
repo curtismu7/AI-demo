@@ -426,7 +426,7 @@ export async function callMcpTool(tool, params = {}) {
         authorizePath: ae.path || null,
         authorizeDecisionId: ae.decisionId || null,
         authorizeRef: ae.authorizeRef || ae.decisionEndpointId || null,
-        explanation: `${engine === "pingone" ? "PingOne Authorize" : "Simulated policy engine"} evaluated the agent tool call and returned ${decision}.${ae.cached ? " (decision cached from earlier in this session)" : ""}`,
+        explanation: `${engine === "pingone" ? "PingOne Authorize" : "Simulated policy engine"} evaluated the agent tool call and returned ${decision}.`,
       });
     }
 

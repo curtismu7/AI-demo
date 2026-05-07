@@ -1493,7 +1493,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         return res.status(r.status).json(r.body);
     }
 
-    // PingOne Authorize (or simulated) on first MCP tool use per session — docs/PINGONE_AUTHORIZE_PLAN.md §7
+    // PingOne Authorize (or simulated) on every MCP tool call — docs/PINGONE_AUTHORIZE_PLAN.md §7
     /** @type {object|undefined} */
     let mcpAuthorizeEvaluationThisRequest;
     try {
@@ -1506,6 +1506,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             agentToken: mcpAccessToken, // RFC 8693: pass as agentToken for backward compat
             userSub,
             userAcr: req.session ?.user ?.acr,
+            toolParams: params,
         });
         if (mcpAuthz.ran && mcpAuthz.block) {
             emit({
@@ -1564,10 +1565,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             emit({
                 phase: 'authorize_permitted'
             });
-            req.session.mcpFirstToolAuthorizeDone = true;
             mcpAuthorizeEvaluationThisRequest = mcpAuthz.evaluation;
-            // Persist so subsequent tool calls in this session can re-emit the decision
-            req.session.mcpAuthorizeEvaluation = mcpAuthz.evaluation;
         }
         if (!mcpAuthz.ran) {
             emit({
@@ -1577,13 +1575,6 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             appEventService.logEvent('authorize', 'info',
                 `Authorize gate skipped — ${mcpAuthz.reason || 'unknown'}`,
                 { tag: 'authorize/gate-skipped', metadata: { reason: mcpAuthz.reason } });
-            // Re-emit the stored evaluation so Token Chain shows the decision on every tool call
-            if (mcpAuthz.reason === 'already_evaluated' && req.session?.mcpAuthorizeEvaluation) {
-                mcpAuthorizeEvaluationThisRequest = {
-                    ...req.session.mcpAuthorizeEvaluation,
-                    cached: true,
-                };
-            }
         }
     } catch (mcpAuthzErr) {
         emit({

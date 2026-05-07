@@ -47,8 +47,16 @@ function getMcpFirstToolGateStatus() {
   };
 }
 
+/** Map MCP write tool names to transaction types for amount-based policy evaluation. */
+const WRITE_TOOL_TYPE_MAP = {
+  create_transfer: 'transfer',
+  create_deposit: 'deposit',
+  create_withdrawal: 'withdrawal',
+};
+
 /**
- * Run MCP first-tool Authorize gate when enabled; skip if already satisfied this session or no token.
+ * Run MCP Authorize gate on every tool call when enabled. Evaluates aud/scope
+ * from the token and business rules (e.g. HITL for transfers over threshold).
  *
  * @param {object} opts
  * @param {import('express').Request} opts.req
@@ -56,6 +64,7 @@ function getMcpFirstToolGateStatus() {
  * @param {string|null|undefined} opts.agentToken - MCP access JWT
  * @param {string|null|undefined} opts.userSub - PingOne user id from resolver
  * @param {string} [opts.userAcr] - from session user
+ * @param {object} [opts.toolParams] - raw tool params (used for amount on write tools)
  * @returns {Promise<
  *   | { ran: false }
  *   | { ran: true, permit: true, evaluation: object }
@@ -64,7 +73,7 @@ function getMcpFirstToolGateStatus() {
  *   | { ran: true, pingoneError: Error }
  * >}
  */
-async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAcr }) {
+async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAcr, toolParams }) {
   const flag =
     configStore.get('ff_authorize_mcp_first_tool') === true ||
     configStore.get('ff_authorize_mcp_first_tool') === 'true';
@@ -77,13 +86,15 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
     return { ran: false, reason: 'no_agent_token' };
   }
 
-  if (req.session?.mcpFirstToolAuthorizeDone) {
-    return { ran: false, reason: 'already_evaluated' };
-  }
-
   if (req.session?.user?.role === 'admin') {
     return { ran: false, reason: 'admin_role_exempt' };
   }
+
+  // Extract amount and transaction type from params for write-tool policy evaluation
+  const transactionType = WRITE_TOOL_TYPE_MAP[tool] || null;
+  const toolAmount = transactionType && toolParams
+    ? parseFloat(toolParams.amount || 0)
+    : null;
 
   const USE_SIMULATED = simulatedAuthorizeService.isSimulatedModeEnabled(configStore);
   const FAIL_OPEN = configStore.get('ff_authorize_fail_open') !== 'false';
@@ -115,6 +126,8 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
         nestedActClientId,
         mcpResourceUri,
         acr: userAcr,
+        amount: toolAmount,
+        transactionType,
       });
 
       if (r.stepUpRequired) {
@@ -198,6 +211,8 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
       nestedActClientId,
       mcpResourceUri,
       acr: userAcr,
+      amount: toolAmount,
+      transactionType,
     });
 
     if (r.stepUpRequired) {

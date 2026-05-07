@@ -134,8 +134,10 @@ function _simulatedMcpHitlToolSet() {
 }
 
 /**
- * Simulated PingOne Authorize for MCP first tool use (DecisionContext=McpFirstTool).
- * Default PERMIT; optional DENY when tool name is listed in SIMULATED_MCP_DENY_TOOLS.
+ * Simulated PingOne Authorize for MCP tool calls (DecisionContext=McpToolCall).
+ * Runs on every tool call. Evaluates:
+ *   1. Tool-name DENY/HITL overrides (SIMULATED_MCP_DENY_TOOLS / SIMULATED_MCP_HITL_TOOLS)
+ *   2. Amount-based rules for write tools (same thresholds as evaluateTransaction)
  *
  * @param {object} params
  * @param {string} params.userId
@@ -145,6 +147,8 @@ function _simulatedMcpHitlToolSet() {
  * @param {string} [params.nestedActClientId]
  * @param {string} [params.mcpResourceUri]
  * @param {string} [params.acr]
+ * @param {number|null} [params.amount] - populated for write tools (create_transfer, etc.)
+ * @param {string|null} [params.transactionType] - 'transfer' | 'deposit' | 'withdrawal' | null
  */
 async function evaluateMcpFirstTool({
   userId,
@@ -154,10 +158,12 @@ async function evaluateMcpFirstTool({
   nestedActClientId,
   mcpResourceUri,
   acr,
+  amount = null,
+  transactionType = null,
 }) {
   const decisionId = `sim-mcp-${Date.now()}-${++_seq}`;
   const parameters = {
-    DecisionContext: 'McpFirstTool',
+    DecisionContext: 'McpToolCall',
     UserId: userId,
     ToolName: toolName || '',
     TokenAudience: tokenAudience != null ? String(tokenAudience) : '',
@@ -165,6 +171,8 @@ async function evaluateMcpFirstTool({
     NestedActClientId: nestedActClientId || '',
     McpResourceUri: mcpResourceUri || '',
     ...(acr ? { Acr: acr } : {}),
+    ...(transactionType ? { TransactionType: transactionType } : {}),
+    ...(amount != null ? { Amount: amount } : {}),
     Timestamp: new Date().toISOString(),
   };
 
@@ -176,10 +184,11 @@ async function evaluateMcpFirstTool({
   const rawBase = {
     engine: 'simulated',
     requestShape: 'decision-endpoint',
-    kind: 'mcp_first_tool',
+    kind: 'mcp_tool_call',
     parameters,
     educationNote:
-      'Simulated MCP first-tool policy. Set SIMULATED_MCP_DENY_TOOLS=comma,separated,tool_names to force DENY for demos. Set SIMULATED_MCP_HITL_TOOLS for HITL approval.',
+      'Simulated MCP tool-call policy — runs on every tool call. ' +
+      'Set SIMULATED_MCP_DENY_TOOLS to force DENY; SIMULATED_MCP_HITL_TOOLS for HITL.',
   };
 
   let out;
@@ -210,6 +219,58 @@ async function evaluateMcpFirstTool({
         reason: `Simulated policy HITL: tool "${toolName}" is in SIMULATED_MCP_HITL_TOOLS.`,
       },
     };
+  } else if (transactionType && amount != null) {
+    // Amount-based policy for write tools — same thresholds as evaluateTransaction
+    const denyAmount = getDenyAmountUsd();
+    const stepUpAmount = getStepUpAmountUsd();
+    const confirmAmount = getConfirmAmountUsd();
+    const consentTypes = getConsentTypes();
+    const stepUpTypes = getStepUpTypes();
+
+    if (amount > denyAmount) {
+      out = {
+        decision: 'DENY',
+        stepUpRequired: false,
+        hitlRequired: false,
+        path: 'simulated',
+        decisionId,
+        raw: { ...rawBase, decision: 'DENY', reason: `Amount $${amount} exceeds deny limit $${denyAmount}.` },
+      };
+    } else {
+      const typeHitl = consentTypes.has(transactionType.toLowerCase());
+      const typeStepUp = stepUpTypes.has(transactionType.toLowerCase()) && !acrLooksStrong(acr);
+      const amtStepUp = amount >= stepUpAmount && !acrLooksStrong(acr);
+      const amtHitl = amount >= confirmAmount;
+      const needsHitl = typeHitl || amtHitl;
+      const needsStepUp = typeStepUp || amtStepUp;
+
+      if (needsHitl || needsStepUp) {
+        const obligations = [];
+        if (needsHitl) obligations.push({ type: 'HITL_CONSENT', detail: 'Human approval required.' });
+        if (needsStepUp) obligations.push({ type: 'STEP_UP', detail: 'MFA required.' });
+        const reasons = [];
+        if (typeHitl) reasons.push(`${transactionType} requires consent`);
+        if (amtHitl && !typeHitl) reasons.push(`amount $${amount} >= $${confirmAmount}`);
+        if (amtStepUp && !typeStepUp) reasons.push(`amount $${amount} >= step-up threshold $${stepUpAmount}`);
+        out = {
+          decision: 'INDETERMINATE',
+          stepUpRequired: needsStepUp,
+          hitlRequired: needsHitl,
+          path: 'simulated',
+          decisionId,
+          raw: { ...rawBase, decision: 'INDETERMINATE', obligations, reason: `Simulated policy: ${reasons.join('; ')}.` },
+        };
+      } else {
+        out = {
+          decision: 'PERMIT',
+          stepUpRequired: false,
+          hitlRequired: false,
+          path: 'simulated',
+          decisionId,
+          raw: { ...rawBase, decision: 'PERMIT', obligations: [] },
+        };
+      }
+    }
   } else {
     out = {
       decision: 'PERMIT',

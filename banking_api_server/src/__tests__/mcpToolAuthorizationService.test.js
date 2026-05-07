@@ -72,17 +72,28 @@ describe('mcpToolAuthorizationService', () => {
       expect(r).toMatchObject({ ran: false });
     });
 
-    it('skips when session already has mcpFirstToolAuthorizeDone', async () => {
+    it('does NOT skip when session previously had mcpFirstToolAuthorizeDone (runs every call)', async () => {
       configStore.get.mockImplementation((k) =>
         k === 'ff_authorize_mcp_first_tool' ? 'true' : null,
       );
+      configStore.getEffective = jest.fn(() => null);
+      simulatedAuthorizeService.isSimulatedModeEnabled.mockReturnValue(true);
+      simulatedAuthorizeService.evaluateMcpFirstTool.mockResolvedValue({
+        decision: 'PERMIT',
+        stepUpRequired: false,
+        hitlRequired: false,
+        path: 'simulated',
+        decisionId: 'sim-1',
+        raw: {},
+      });
       const r = await evaluateMcpFirstToolGate({
         req: { session: { mcpFirstToolAuthorizeDone: true } },
         tool: 'get_my_accounts',
         agentToken: jwtWithPayload({ sub: 'u1' }),
         userSub: 'u1',
       });
-      expect(r).toMatchObject({ ran: false });
+      // Gate now runs on every call — no longer skipped after first permit
+      expect(r).toMatchObject({ ran: true, permit: true });
     });
 
     it('skips for admin role', async () => {
