@@ -5264,6 +5264,7 @@ button.ba-action-btn:hover {
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
   border-radius: 20px;
   padding: 14px 18px !important;
+  min-width: min-content;
 }
 
 /* 5. Assistant bubble — solid blue, rounded pill */
