@@ -6,7 +6,9 @@
 .error-audit-log {
   padding: 24px;
   background: white;
-  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .audit-header {
@@ -55,7 +57,7 @@
 
 .btn {
   padding: 8px 16px;
-  border-radius: 4px;
+  border-radius: 6px;
   border: 1px solid #d1d5db;
   background: white;
   font-size: 13px;

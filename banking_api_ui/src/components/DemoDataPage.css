@@ -49,7 +49,9 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: color 0.12s, background 0.12s;
+  transition:
+    color 0.12s,
+    background 0.12s;
 }
 .demo-data-page__nav-link:hover {
   color: var(--text-primary, #0f172a);
@@ -61,8 +63,13 @@
   background: rgba(220, 38, 38, 0.06);
 }
 @media (max-width: 768px) {
-  .demo-data-page__nav { display: none; }
-  .demo-data-page__body { display: block; max-width: min(960px, 100%); }
+  .demo-data-page__nav {
+    display: none;
+  }
+  .demo-data-page__body {
+    display: block;
+    max-width: min(960px, 100%);
+  }
 }
 
 /* Hero matches dashboard “2026” card; eyebrow + insight only */
@@ -141,8 +148,8 @@
 .demo-data-field input,
 .demo-data-field select {
   padding: 0.55rem 0.65rem;
-  border: 1px solid #CCCCCC;
-  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
   font-size: 0.95rem;
   max-width: 100%;
   width: 100%;
@@ -185,7 +192,7 @@
   margin-bottom: 0;
 }
 
-.demo-data-field--checkbox input[type='checkbox'] {
+.demo-data-field--checkbox input[type="checkbox"] {
   width: auto;
   margin: 0;
 }
@@ -221,11 +228,13 @@
 }
 
 .demo-data-type-slot {
-  border: 1px solid var(--dash-border, #DDDDDD);
+  border: 1px solid var(--dash-border, #e5e7eb);
   border-radius: 8px;
   padding: 0.75rem 1rem;
   background: var(--dash-surface-2, var(--brand-light-gray));
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 
 .demo-data-type-slot--on {
@@ -261,7 +270,7 @@
 .demo-data-type-slot__num {
   font-size: 0.7rem;
   color: #374151;
-  background: #DDDDDD;
+  background: #dddddd;
   border-radius: 4px;
   padding: 1px 5px;
 }
@@ -315,18 +324,29 @@
   cursor: pointer;
   border: 1px solid transparent;
   font-family: inherit;
-  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .demo-data-btn.primary {
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   color: #fff;
   border-color: var(--app-primary-red-border);
   box-shadow: 0 1px 3px rgba(127, 29, 29, 0.22);
 }
 
 .demo-data-btn.primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
 }
 
 .demo-data-btn.primary:disabled {
@@ -335,13 +355,21 @@
 }
 
 .demo-data-btn.ghost {
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   border-color: var(--app-primary-red-border);
   color: #fff;
 }
 
 .demo-data-btn.ghost:hover:not(:disabled) {
-  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
   color: #fff;
 }
 
@@ -423,11 +451,17 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   color: #fff;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
   text-decoration: none;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .demo-data-agent-open-icon:hover {
@@ -456,7 +490,9 @@
   border: 1px solid var(--app-border-light, #e5e7eb);
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .demo-data-scope-row:hover {
@@ -598,8 +634,12 @@
   font-weight: 500;
   color: var(--text-muted, #374151);
 }
-.demo-data-mayact-quick__status--on  { color: #16a34a; }
-.demo-data-mayact-quick__status--off { color: #dc2626; }
+.demo-data-mayact-quick__status--on {
+  color: #16a34a;
+}
+.demo-data-mayact-quick__status--off {
+  color: #dc2626;
+}
 .demo-data-mayact-quick__link {
   font-size: 0.76rem;
   color: var(--app-primary-red, #dc2626);
@@ -671,7 +711,9 @@
   border-radius: 10px;
   background: var(--dash-surface, #fff);
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .demo-data-agent-auth-card:hover {
@@ -740,7 +782,7 @@
   overflow-x: auto;
   border-radius: 8px;
   background: var(--brand-dark-gray);
-  color: #DDDDDD;
+  color: #dddddd;
   border: none;
   max-height: 14rem;
 }

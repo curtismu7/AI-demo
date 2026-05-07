@@ -21,9 +21,9 @@
  * Reference: See /architecture/flow for live compliance flow diagram.
  */
 
-import React, { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import DraggableModal from "./DraggableModal";
 import "./AgentDemoGuide.css";
 
 const ALL_12_STEPS = [
@@ -173,7 +173,7 @@ const DEMO_SCENARIOS = [
       {
         action: "Verify setup:",
         prompt:
-          'Go to ⚙️ Controls → confirm "Confirm (consent)" threshold is $250 (default)',
+          'Go to Controls → confirm "Confirm (consent)" threshold is $250 (default)',
         explanation:
           "HITL consent threshold is configurable via Demo Controls. Default is $250 for HITL, $500 for MFA step-up. Both flags are separate gates.",
         watch: [],
@@ -212,11 +212,11 @@ const DEMO_SCENARIOS = [
       {
         action: "Setup: Disable HITL",
         prompt:
-          'Go to ⚙️ Controls → Feature Flags section → toggle "ff_hitl_enabled" OFF',
+          'Go to Controls → Feature Flags section → toggle "ff_hitl_enabled" OFF',
         explanation:
           "When HITL is disabled via the feature flag, consent challenges are skipped entirely for all transactions. This is useful for testing the agent behavior without compliance gates.",
         watch: [
-          'Flag toggle shows: "✓ ff_hitl_enabled" (checked = enabled; unchecked = disabled)',
+          'Flag toggle shows: "ff_hitl_enabled" (checked = enabled; unchecked = disabled)',
           "Notice: Separate from step_up_enabled (MFA is still active if enabled)",
         ],
       },
@@ -263,7 +263,7 @@ const DEMO_SCENARIOS = [
       {
         action: "Setup: Set threshold to $9999",
         prompt:
-          'Go to ⚙️ Controls → "Confirm (consent)" field → change value to 9999 → click "Save Thresholds"',
+          'Go to Controls → "Confirm (consent)" field → change value to 9999 → click "Save Thresholds"',
         explanation:
           "The HITL threshold is stored server-side and used for all subsequent requests. Changes take effect immediately.",
         watch: [
@@ -286,7 +286,7 @@ const DEMO_SCENARIOS = [
       {
         action: "Then set threshold to $50",
         prompt:
-          'Go to ⚙️ Controls → "Confirm (consent)" field → change value to 50 → click "Save Thresholds"',
+          'Go to Controls → "Confirm (consent)" field → change value to 50 → click "Save Thresholds"',
         explanation: "Lower the threshold to test the boundary condition.",
         watch: [],
       },
@@ -330,7 +330,7 @@ const DEMO_SCENARIOS = [
       {
         action: "Setup: Raise threshold very high",
         prompt:
-          'Go to ⚙️ Controls → "Confirm (consent)" field → change value to 999999 → click "Save Thresholds"',
+          'Go to Controls → "Confirm (consent)" field → change value to 999999 → click "Save Thresholds"',
         explanation:
           "Set threshold extremely high so that regular withdrawals/deposits won't trigger consent. But transfers should still require it.",
         watch: [],
@@ -377,7 +377,7 @@ const DEMO_SCENARIOS = [
       {
         action: "Verify settings:",
         prompt:
-          'Go to ⚙️ Controls → confirm "Confirm (consent)" = $250 and "MFA step-up" = $500',
+          'Go to Controls → confirm "Confirm (consent)" = $250 and "MFA step-up" = $500',
         explanation:
           "HITL and step-up are independent gates with different thresholds. HITL is consent (user approval), step-up is MFA (re-authentication).",
         watch: [],
@@ -471,7 +471,7 @@ const DEMO_SCENARIOS = [
   },
   {
     id: "full-flow",
-    title: " Full Compliance (All 12 Steps)",
+    title: "Full Compliance (All 12 Steps)",
     description:
       "Ultimate demo: $99,999.99 transfer with HITL enabled. Token exchange → HITL gate → MFA. All steps.",
     applicableSteps: ALL_12_STEPS,
@@ -479,7 +479,7 @@ const DEMO_SCENARIOS = [
       {
         action: "Verify setup:",
         prompt:
-          "Go to ⚙️ Controls → ff_hitl_enabled ON, Confirm threshold $250, MFA threshold $500",
+          "Go to Controls → ff_hitl_enabled ON, Confirm threshold $250, MFA threshold $500",
         explanation: "All gates enabled with default thresholds.",
         watch: [],
       },
@@ -508,7 +508,6 @@ export default function AgentDemoGuide({
   onClose,
   initialActiveScenario,
   initialExpandedSteps,
-  isPopout,
 }) {
   const [activeScenario, setActiveScenario] = useState(
     initialActiveScenario || "read-only",
@@ -517,22 +516,6 @@ export default function AgentDemoGuide({
     initialExpandedSteps || {},
   );
   const [copiedStepId, setCopiedStepId] = useState(null);
-  const [size, setSize] = useState({ width: 1000, height: 750 });
-  const [pos, setPos] = useState({ x: 20, y: 80 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeStart, setResizeStart] = useState({
-    mouseX: 0,
-    mouseY: 0,
-    posX: 0,
-    posY: 0,
-    width: 1000,
-    height: 750,
-    side: null,
-  });
-  const modalRef = useRef(null);
-  const headerRef = useRef(null);
   const broadcastChannelRef = useRef(null);
 
   const current = DEMO_SCENARIOS.find((s) => s.id === activeScenario);
@@ -572,86 +555,6 @@ export default function AgentDemoGuide({
     }
   }, [activeScenario, expandedSteps]);
 
-  // Drag handler
-  const handleMouseDownHeader = (e) => {
-    if (e.target.closest("button")) return;
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - pos.x, y: e.clientY - pos.y });
-  };
-
-  // Resize handler for all sides
-  const handleMouseDownResize = (e, side) => {
-    e.preventDefault();
-    setIsResizing(true);
-    setResizeStart({
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      posX: pos.x,
-      posY: pos.y,
-      width: size.width,
-      height: size.height,
-      side,
-    });
-  };
-
-  // Mouse move for drag/resize
-  useEffect(() => {
-    if (!isDragging && !isResizing) return;
-
-    const handleMouseMove = (e) => {
-      if (isDragging) {
-        setPos({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
-      }
-      if (isResizing) {
-        const deltaX = e.clientX - resizeStart.mouseX;
-        const deltaY = e.clientY - resizeStart.mouseY;
-        const side = resizeStart.side;
-
-        let newWidth = resizeStart.width;
-        let newHeight = resizeStart.height;
-        let newX = resizeStart.posX;
-        let newY = resizeStart.posY;
-
-        if (side === "left" || side === "top-left" || side === "bottom-left") {
-          newWidth = Math.max(600, resizeStart.width - deltaX);
-          newX = resizeStart.posX + resizeStart.width - newWidth;
-        } else if (
-          side === "right" ||
-          side === "top-right" ||
-          side === "bottom-right"
-        ) {
-          newWidth = Math.max(600, resizeStart.width + deltaX);
-        }
-
-        if (side === "top" || side === "top-left" || side === "top-right") {
-          newHeight = Math.max(500, resizeStart.height - deltaY);
-          newY = resizeStart.posY + resizeStart.height - newHeight;
-        } else if (
-          side === "bottom" ||
-          side === "bottom-left" ||
-          side === "bottom-right"
-        ) {
-          newHeight = Math.max(500, resizeStart.height + deltaY);
-        }
-
-        setSize({ width: newWidth, height: newHeight });
-        setPos({ x: newX, y: newY });
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      setIsResizing(false);
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isDragging, isResizing, dragStart, resizeStart]);
-
   const toggleStepExpanded = (stepIndex) => {
     setExpandedSteps((prev) => ({
       ...prev,
@@ -678,320 +581,227 @@ export default function AgentDemoGuide({
     }
   };
 
-  return createPortal(
-    <>
-      <div className="agent-demo-guide-overlay" />
-      <div
-        ref={modalRef}
-        className="agent-demo-guide-modal"
-        style={{
-          left: `${pos.x}px`,
-          top: `${pos.y}px`,
-          width: `${size.width}px`,
-          height: `${size.height}px`,
-        }}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="adg-modal-title"
-      >
-        {/* Header — draggable */}
-        <div
-          ref={headerRef}
-          className="adg-drag-header"
-          onMouseDown={handleMouseDownHeader}
-          style={{
-            cursor: isDragging ? "grabbing" : "grab",
-            userSelect: "none",
-          }}
-        >
-          <h2 id="adg-modal-title" className="adg-modal-title">
-            Banking Agent Demo Guide
-          </h2>
-          <div className="compliance-modal__header-buttons">
+  return (
+    <DraggableModal
+      isOpen={true}
+      onClose={onClose}
+      title="Banking Agent Demo Guide"
+      footer={null}
+      defaultWidth={1000}
+      defaultHeight={750}
+      storageKey="agent-demo-guide"
+      minWidth={600}
+      minHeight={500}
+    >
+      {/* Header info */}
+      <div className="adg-header">
+        <p className="adg-tagline">
+          Real request scenarios mapped to 12 compliance steps. See
+          /architecture/flow for live diagram.
+        </p>
+      </div>
+
+      <div className="adg-container">
+        {/* Sidebar: Scenario list */}
+        <div className="adg-sidebar">
+          <div className="adg-sidebar-title">Scenarios</div>
+          {DEMO_SCENARIOS.map((scenario) => (
             <button
+              key={scenario.id}
               type="button"
-              className="adg-popout-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                try {
-                  sessionStorage.setItem(
-                    "demo_guide_modal_popout",
-                    JSON.stringify({
-                      activeScenario,
-                      expandedSteps,
-                    }),
-                  );
-                } catch (_) {}
-                window.open(
-                  "/demo-guide-popout",
-                  "DemoGuidePopout",
-                  "width=1150,height=800,resizable=yes,scrollbars=yes",
-                );
-                onClose();
+              className={`adg-scenario-btn ${activeScenario === scenario.id ? "active" : ""}`}
+              onClick={() => {
+                setActiveScenario(scenario.id);
+                setExpandedSteps({});
               }}
-              aria-label="Open in new window"
-              title="Open modal in new window"
             >
-              ⧉
+              {scenario.title}
             </button>
-            <button
-              type="button"
-              className="adg-close-btn"
-              onClick={onClose}
-              aria-label="Close modal"
-            >
-              ✕
-            </button>
-          </div>
+          ))}
         </div>
 
-        {/* Header info */}
-        <div className="adg-header">
-          <p className="adg-tagline">
-            Real request scenarios mapped to 12 compliance steps. See
-            /architecture/flow for live diagram.
-          </p>
-        </div>
+        {/* Main: Scenario detail */}
+        <div className="adg-main">
+          {current && (
+            <>
+              <div className="adg-scenario-header">
+                <h2>{current.title}</h2>
+                <p className="adg-description">{current.description}</p>
 
-        <div className="adg-container">
-          {/* Sidebar: Scenario list */}
-          <div className="adg-sidebar">
-            <div className="adg-sidebar-title">Scenarios</div>
-            {DEMO_SCENARIOS.map((scenario) => (
-              <button
-                key={scenario.id}
-                type="button"
-                className={`adg-scenario-btn ${activeScenario === scenario.id ? "active" : ""}`}
-                onClick={() => {
-                  setActiveScenario(scenario.id);
-                  setExpandedSteps({});
-                }}
-              >
-                {scenario.title}
-              </button>
-            ))}
-          </div>
-
-          {/* Main: Scenario detail */}
-          <div className="adg-main">
-            {current && (
-              <>
-                <div className="adg-scenario-header">
-                  <h2>{current.title}</h2>
-                  <p className="adg-description">{current.description}</p>
-
-                  {/* Show applicable steps */}
-                  <div className="adg-applicable-steps">
-                    <div className="adg-steps-label">Exercises steps:</div>
-                    <div className="adg-steps-list">
-                      {current.applicableSteps.map((stepId) => (
-                        <span key={stepId} className="adg-step-badge">
-                          {STEP_LABELS[stepId]}
-                        </span>
-                      ))}
-                    </div>
+                {/* Show applicable steps */}
+                <div className="adg-applicable-steps">
+                  <div className="adg-steps-label">Exercises steps:</div>
+                  <div className="adg-steps-list">
+                    {current.applicableSteps.map((stepId) => (
+                      <span key={stepId} className="adg-step-badge">
+                        {STEP_LABELS[stepId]}
+                      </span>
+                    ))}
                   </div>
                 </div>
+              </div>
 
-                <div className="adg-steps">
-                  {current.steps.map((step, idx) => (
-                    <div key={idx} className="adg-step">
-                      <button
-                        type="button"
-                        className="adg-step-header"
-                        onClick={() => toggleStepExpanded(idx)}
-                      >
-                        <span className="adg-step-toggle">
-                          {expandedSteps[idx] ? "▼" : "▶"}
-                        </span>
-                        <span className="adg-step-action">{step.action}</span>
+              <div className="adg-steps">
+                {current.steps.map((step, idx) => (
+                  <div key={step.action} className="adg-step">
+                    <button
+                      type="button"
+                      className="adg-step-header"
+                      onClick={() => toggleStepExpanded(idx)}
+                    >
+                      <span className="adg-step-toggle">
+                        {expandedSteps[idx] ? "▼" : "▶"}
+                      </span>
+                      <span className="adg-step-action">{step.action}</span>
+                      {step.prompt && (
+                        <code className="adg-prompt-preview">
+                          {step.prompt}
+                        </code>
+                      )}
+                    </button>
+
+                    {expandedSteps[idx] && (
+                      <div className="adg-step-content">
+                        <div className="adg-explanation">
+                          <strong>What happens:</strong>
+                          <p>{step.explanation}</p>
+                        </div>
+
                         {step.prompt && (
-                          <code className="adg-prompt-preview">
-                            {step.prompt}
-                          </code>
-                        )}
-                      </button>
-
-                      {expandedSteps[idx] && (
-                        <div className="adg-step-content">
-                          <div className="adg-explanation">
-                            <strong>What happens:</strong>
-                            <p>{step.explanation}</p>
-                          </div>
-
-                          {step.prompt && (
-                            <div className="adg-prompt-box">
-                              <div className="adg-prompt-label">
-                                💬 Copy & paste:
-                                {copiedStepId ===
-                                  `${activeScenario}-${idx}` && (
-                                  <span className="adg-copy-checkmark">
-                                    ✓ Copied!
-                                  </span>
-                                )}
-                              </div>
-                              <code className="adg-prompt-code">
-                                {step.prompt}
-                              </code>
-                              <button
-                                type="button"
-                                className="adg-copy-btn"
-                                onClick={() =>
-                                  handleCopyPrompt(
-                                    step.prompt,
-                                    `${activeScenario}-${idx}`,
-                                  )
-                                }
-                              >
-                                {copiedStepId === `${activeScenario}-${idx}`
-                                  ? "✓"
-                                  : "📋 Copy"}
-                              </button>
-                              {step.action.includes("Setup") && (
-                                <button
-                                  type="button"
-                                  className="adg-setup-btn"
-                                  onClick={() => handleSetupClick(step.prompt)}
-                                >
-                                  🔗 Go to Setup
-                                </button>
+                          <div className="adg-prompt-box">
+                            <div className="adg-prompt-label">
+                              Copy &amp; paste:
+                              {copiedStepId === `${activeScenario}-${idx}` && (
+                                <span className="adg-copy-checkmark">
+                                  Copied!
+                                </span>
                               )}
                             </div>
-                          )}
+                            <code className="adg-prompt-code">
+                              {step.prompt}
+                            </code>
+                            <button
+                              type="button"
+                              className="adg-copy-btn"
+                              onClick={() =>
+                                handleCopyPrompt(
+                                  step.prompt,
+                                  `${activeScenario}-${idx}`,
+                                )
+                              }
+                            >
+                              {copiedStepId === `${activeScenario}-${idx}`
+                                ? "Copied"
+                                : "Copy"}
+                            </button>
+                            {step.action.includes("Setup") && (
+                              <button
+                                type="button"
+                                className="adg-setup-btn"
+                                onClick={() => handleSetupClick(step.prompt)}
+                              >
+                                Go to Setup
+                              </button>
+                            )}
+                          </div>
+                        )}
 
-                          {step.watch.length > 0 && (
-                            <div className="adg-watch-box">
-                              <div className="adg-watch-label">
-                                👀 Watch for:
-                              </div>
-                              <ul className="adg-watch-list">
-                                {step.watch.map((item, i) => (
-                                  <li key={i}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        {step.watch.length > 0 && (
+                          <div className="adg-watch-box">
+                            <div className="adg-watch-label">Watch for:</div>
+                            <ul className="adg-watch-list">
+                              {step.watch.map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer: Tips */}
+              <div className="adg-footer">
+                <div className="adg-tips">
+                  <strong>Pro Tips:</strong>
+                  <ul>
+                    <li>
+                      Open Token Chain panel (right sidebar) to watch token
+                      events live
+                    </li>
+                    <li>
+                      Compliance panel (below messages) shows which steps are
+                      active
+                    </li>
+                    <li>
+                      Follow scenarios top-to-bottom to understand the story
+                    </li>
+                    <li>
+                      Reference:{" "}
+                      <a
+                        href="/architecture/flow"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        /architecture/flow
+                      </a>{" "}
+                      shows live compliance diagram
+                    </li>
+                    <li>Each step lights up as it executes in real-time</li>
+                    <li>
+                      Thresholds: HITL $250, MFA $500 (configurable via
+                      Controls)
+                    </li>
+                    <li>
+                      Feature Flags: HITL, step-up, authorize, and token
+                      exchange are all independently toggleable
+                    </li>
+                    <li>
+                      Scenarios 4-9 focus on HITL consent gates with different
+                      configurations; scenario 10 covers separate MFA step-up
+                    </li>
+                  </ul>
                 </div>
 
-                {/* Footer: Tips */}
-                <div className="adg-footer">
-                  <div className="adg-tips">
-                    <strong>💡 Pro Tips:</strong>
-                    <ul>
-                      <li>
-                        Open Token Chain panel (right sidebar) to watch token
-                        events live
-                      </li>
-                      <li>
-                        Compliance panel (below messages) shows which steps are
-                        active
-                      </li>
-                      <li>
-                        Follow scenarios top-to-bottom to understand the story
-                      </li>
-                      <li>
-                        Reference:{" "}
-                        <a
-                          href="/architecture/flow"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          /architecture/flow
-                        </a>{" "}
-                        shows live compliance diagram
-                      </li>
-                      <li>Each step lights up as it executes in real-time</li>
-                      <li>
-                        Thresholds: HITL $250, MFA $500 (configurable via ⚙️
-                        Controls)
-                      </li>
-                      <li>
-                        Feature Flags: HITL, step-up, authorize, and token
-                        exchange are all independently toggleable
-                      </li>
-                      <li>
-                        Scenarios 4-9 focus on HITL consent gates with different
-                        configurations; scenario 10 covers separate MFA step-up
-                      </li>
-                    </ul>
+                {/* Navigation buttons */}
+                <div className="adg-nav-buttons">
+                  <button
+                    type="button"
+                    className="adg-nav-btn adg-nav-btn--prev"
+                    onClick={handlePrevious}
+                    disabled={currentIndex === 0}
+                    aria-label="Previous scenario"
+                  >
+                    Previous
+                  </button>
+                  <div className="adg-scenario-counter">
+                    {currentIndex + 1} / {DEMO_SCENARIOS.length}
                   </div>
-
-                  {/* Navigation buttons */}
-                  <div className="adg-nav-buttons">
-                    <button
-                      type="button"
-                      className="adg-nav-btn adg-nav-btn--prev"
-                      onClick={handlePrevious}
-                      disabled={currentIndex === 0}
-                      aria-label="Previous scenario"
-                    >
-                      ← Previous
-                    </button>
-                    <div className="adg-scenario-counter">
-                      {currentIndex + 1} / {DEMO_SCENARIOS.length}
-                    </div>
-                    <button
-                      type="button"
-                      className="adg-nav-btn adg-nav-btn--next"
-                      onClick={handleNext}
-                      disabled={currentIndex === DEMO_SCENARIOS.length - 1}
-                      aria-label="Next scenario"
-                    >
-                      Next →
-                    </button>
-                    <button
-                      type="button"
-                      className="adg-nav-btn adg-nav-btn--close"
-                      onClick={onClose}
-                      aria-label="Close guide"
-                    >
-                      Close
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="adg-nav-btn adg-nav-btn--next"
+                    onClick={handleNext}
+                    disabled={currentIndex === DEMO_SCENARIOS.length - 1}
+                    aria-label="Next scenario"
+                  >
+                    Next
+                  </button>
+                  <button
+                    type="button"
+                    className="adg-nav-btn adg-nav-btn--close"
+                    onClick={onClose}
+                    aria-label="Close guide"
+                  >
+                    Close
+                  </button>
                 </div>
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </div>
-
-        {/* Resize handles — all sides and corners */}
-        {[
-          "top",
-          "bottom",
-          "left",
-          "right",
-          "top-left",
-          "top-right",
-          "bottom-left",
-          "bottom-right",
-        ].map((side) => {
-          const cursorMap = {
-            top: "ns-resize",
-            bottom: "ns-resize",
-            left: "ew-resize",
-            right: "ew-resize",
-            "top-left": "nwse-resize",
-            "top-right": "nesw-resize",
-            "bottom-left": "nesw-resize",
-            "bottom-right": "nwse-resize",
-          };
-          return (
-            <button
-              key={side}
-              type="button"
-              className={`adg-resize-handle adg-resize-handle--${side}`}
-              onMouseDown={(e) => handleMouseDownResize(e, side)}
-              style={{ cursor: isResizing ? cursorMap[side] : "pointer" }}
-              aria-label={`Resize modal from ${side}`}
-            />
-          );
-        })}
       </div>
-    </>,
-    document.body,
+    </DraggableModal>
   );
 }
