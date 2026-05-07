@@ -9,11 +9,6 @@
   background: #fff !important;
   background-color: #fff !important;
 }
-/* Force light blue background for all agent pane elements */
-body > .banking-agent-float-root,
-body > .banking-agent-float-root * {
-  background: #fff !important;
-}
 /* ─── BankingAgent — theme-aware chat widget ────────────────────────────── */
 /* Royal blue primary (#4169E1) — distinct from slate / navy. */
 
