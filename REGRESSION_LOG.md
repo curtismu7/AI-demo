@@ -5,6 +5,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-05-07 — Helix LLM stub replaced with real conversation API
+
+**Symptoms**: Helix LLM calls always failed. Three root causes: (1) auth used `Authorization: Bearer` — Helix requires `x-api-key` header. (2) endpoint was a guessed `/api/environments/.../invoke` — real API is a 3-step conversation flow. (3) `helix_agent_id` was treated as a UUID but is actually an agent name string.
+
+**Root cause**: `helixLlmService.js` was a stub pending confirmation of the real API shape.
+
+**Fix**: Rewrote service with correct conversation API (createConversation → sendMessage → poll for `class=complete`), `x-api-key` header, and `/dpc/jas/helix/v1` path normalisation. Updated HelixPanel label/placeholder and `llmProviderStatus` display label to "Agent Name".
+
+**Tests**: `s:helixLlmService.test.js` — 19 tests covering auth header, URL shape, poll retry, JSON unwrap, and error paths.
+
+---
+
 ## 2026-05-07 — BankingAgent.chipRouting test contract updated (not a bug fix)
 
 **Note**: `BankingAgent.chipRouting.test.js` updated to reflect that all chips (including AI chips) route through `runAction()` directly. The NL-input path is only for chips that need user-typed text before execution. No production regression — test contract aligned to existing runtime behaviour.

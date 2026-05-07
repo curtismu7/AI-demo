@@ -22,7 +22,7 @@ async function getProviderStatus(provider, config = {}) {
       helix_base_url: 'Base URL',
       helix_api_key: 'API Key',
       helix_environment_id: 'Environment ID',
-      helix_agent_id: 'Agent ID'
+      helix_agent_id: 'Agent Name'
     };
     const helixMissing = [];
     for (const field in helixRequired) {
