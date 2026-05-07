@@ -1130,6 +1130,7 @@ export default function Config() {
                 : []),
               { key: "worker", label: "🔑 Worker App" },
               { key: "token-validation", label: "🔍 Token Validation" },
+              { key: "custom-chips", label: "Custom Actions" },
             ].map(({ key, label }) => {
               const isActive = activeTab === key;
               return (
@@ -1198,6 +1199,9 @@ export default function Config() {
 
           {/* Token Validation tab — toggle between introspection and JWT, test PingOne connectivity */}
           {activeTab === "token-validation" && <ConfigTokenValidation />}
+
+          {/* Custom Actions tab — user-defined quick-action chips */}
+          {activeTab === "custom-chips" && <CustomChipsTab />}
 
           {/* Scope Management tab — PingOne scope configuration and updates */}
           {activeTab === "scope-mgmt" && (
@@ -2576,15 +2580,6 @@ export default function Config() {
                       </div>
                     </div>
                   )}
-                </CollapsibleCard>
-
-                {/* ── Section 8: Custom Action Chips ── */}
-                <CollapsibleCard
-                  title="Custom Action Chips"
-                  subtitle="Add your own chips to the agent sidebar and Quick Actions"
-                  defaultOpen={false}
-                >
-                  <CustomChipsTab />
                 </CollapsibleCard>
               </form>
 
