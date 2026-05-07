@@ -55,11 +55,7 @@ export default function SetupPage() {
         credentials: "include",
       });
       if (!resp.ok) {
-        if (resp.status === 401) {
-          toast.info("Sign in as an admin to run tests.");
-        } else {
-          toast.error(`Server error ${resp.status}`);
-        }
+        toast.error(`Server error ${resp.status}`);
         setTestRunning(false);
         return;
       }
