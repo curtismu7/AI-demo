@@ -2,9 +2,11 @@
 
 .azc-root {
   padding: 24px;
-  background: #f8f9fa;
+  background: #f1f5f9;
   min-height: calc(100vh - 120px);
 }
+
+/* ── Header ──────────────────────────────────────────────────────────── */
 
 .azc-header {
   display: flex;
@@ -18,128 +20,154 @@
 }
 
 .azc-title {
-  font-size: 28px;
-  font-weight: 600;
-  color: #1a1a2e;
-  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px;
+  letter-spacing: -0.01em;
 }
 
 .azc-subtitle {
-  font-size: 14px;
-  color: #666;
+  font-size: 13px;
+  color: #64748b;
   margin: 0;
+  line-height: 1.5;
 }
 
 .azc-header-badge {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
 }
 
+/* ── Status Badge ─────────────────────────────────────────────────────── */
+
 .azc-badge {
   display: inline-block;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .azc-badge--off {
-  background: #e8e8e8;
-  color: #666;
+  background: #e2e8f0;
+  color: #64748b;
 }
 
 .azc-badge--simulated {
-  background: #fff3cd;
-  color: #664d00;
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .azc-badge--pingone {
-  background: #d1e7dd;
-  color: #0f5132;
+  background: #d1fae5;
+  color: #065f46;
 }
 
 .azc-badge--pending_config {
-  background: #f8d7da;
-  color: #842029;
+  background: #fee2e2;
+  color: #991b1b;
 }
 
+/* ── Refresh Button ───────────────────────────────────────────────────── */
+
 .azc-refresh-btn {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
+  padding: 6px 12px;
+  border: 1px solid #cbd5e1;
   background: white;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #475569;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .azc-refresh-btn:hover {
-  background: #f5f5f5;
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
+
+/* ── Loading / Error ─────────────────────────────────────────────────── */
 
 .azc-loading {
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: #64748b;
   font-size: 14px;
 }
 
 .azc-error {
-  background: #f8d7da;
-  border: 1px solid #f5c6cb;
-  color: #842029;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
   padding: 12px 16px;
-  border-radius: 4px;
+  border-radius: 6px;
   margin-bottom: 20px;
-  font-size: 14px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .azc-error button {
-  margin-left: 12px;
-  padding: 4px 8px;
-  background: #842029;
+  padding: 4px 10px;
+  background: #991b1b;
   color: white;
   border: none;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }
+
+/* ── Tabs ─────────────────────────────────────────────────────────────── */
 
 .azc-tabs {
   display: flex;
   gap: 0;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #ddd;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e2e8f0;
 }
 
 .azc-tab {
-  padding: 12px 16px;
+  padding: 10px 18px;
   border: none;
   background: none;
-  color: #666;
-  font-size: 14px;
+  color: #64748b;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: all 0.2s;
+  margin-bottom: -2px;
+  transition: color 0.15s;
+  white-space: nowrap;
 }
 
 .azc-tab:hover {
-  color: #333;
+  color: #1e293b;
 }
 
 .azc-tab--active {
-  color: #0066cc;
-  border-bottom-color: #0066cc;
+  color: #1d4ed8;
+  border-bottom-color: #1d4ed8;
+  font-weight: 600;
 }
+
+/* ── Panel ────────────────────────────────────────────────────────────── */
 
 .azc-panel {
   background: white;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 28px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .azc-section {
@@ -150,126 +178,257 @@
   margin-bottom: 0;
 }
 
-.azc-section > h3,
-.azc-section > h4 {
-  margin: 0 0 12px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #1a1a2e;
+.azc-section > h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
 }
+
+.azc-section > h4 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Description / hints ─────────────────────────────────────────────── */
 
 .azc-description {
   font-size: 13px;
-  color: #555;
-  margin: 0 0 16px;
-  line-height: 1.5;
+  color: #64748b;
+  margin: 0 0 20px;
+  line-height: 1.6;
 }
 
-.azc-description code {
-  background: #f0f0f0;
-  padding: 2px 6px;
-  border-radius: 3px;
+.azc-description code,
+.azc-field-hint code {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 1px 6px;
+  border-radius: 4px;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 11.5px;
+  color: #7c3aed;
+  font-weight: 600;
 }
+
+/* ── Tier visual bar ──────────────────────────────────────────────────── */
+
+.azc-tier-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.azc-tier-bar__permit {
+  background: #22c55e;
+  flex: 2.5;
+}
+.azc-tier-bar__confirm {
+  background: #f59e0b;
+  flex: 2.5;
+}
+.azc-tier-bar__stepup {
+  background: #f97316;
+  flex: 15;
+}
+.azc-tier-bar__deny {
+  background: #ef4444;
+  flex: 10;
+}
+
+/* ── Form layout ─────────────────────────────────────────────────────── */
 
 .azc-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 4px;
 }
 
+/* Row-style layout for number inputs */
 .azc-field {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 210px 150px 1fr;
+  grid-template-areas: "label input hint";
+  align-items: center;
+  column-gap: 16px;
+  padding: 10px 14px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  transition: background 0.1s;
+}
+
+.azc-field:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+/* Textarea fields: single-column vertical */
+.azc-field:has(textarea) {
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "label"
+    "input"
+    "hint";
   gap: 6px;
+  margin-top: 8px;
 }
 
 .azc-field-label {
+  grid-area: label;
   font-size: 13px;
   font-weight: 600;
-  color: #333;
+  color: #1e293b;
 }
 
-.azc-input,
+.azc-input {
+  grid-area: input;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  background: #f8fafc;
+  text-align: right;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.azc-input:focus {
+  outline: none;
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+  background: white;
+}
+
 .azc-textarea {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  grid-area: input;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
   font-family: inherit;
   font-size: 13px;
-  color: #333;
+  color: #1e293b;
+  background: #f8fafc;
+  resize: vertical;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+  min-height: 72px;
 }
 
-.azc-input:focus,
 .azc-textarea:focus {
   outline: none;
-  border-color: #0066cc;
-  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
-}
-
-.azc-textarea {
-  resize: vertical;
-  font-family: inherit;
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+  background: white;
 }
 
 .azc-field-hint {
+  grid-area: hint;
   font-size: 12px;
-  color: #666;
+  color: #94a3b8;
   line-height: 1.4;
 }
 
+/* Severity tinting on the first three threshold rows */
+.azc-field--deny {
+  border-left: 3px solid #ef4444;
+}
+.azc-field--stepup {
+  border-left: 3px solid #f97316;
+}
+.azc-field--confirm {
+  border-left: 3px solid #f59e0b;
+}
+
+.azc-field--deny:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  border-left-color: #ef4444;
+}
+.azc-field--stepup:hover {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  border-left-color: #f97316;
+}
+.azc-field--confirm:hover {
+  background: #fffbeb;
+  border-color: #fde68a;
+  border-left-color: #f59e0b;
+}
+
+/* ── Save button ─────────────────────────────────────────────────────── */
+
 .azc-save-btn {
   align-self: flex-start;
-  padding: 10px 20px;
-  background: #0066cc;
+  margin-top: 8px;
+  padding: 9px 22px;
+  background: #1d4ed8;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.15s;
 }
 
 .azc-save-btn:hover:not(:disabled) {
-  background: #0052a3;
+  background: #1e40af;
 }
 
 .azc-save-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
+/* ── Alerts ──────────────────────────────────────────────────────────── */
+
 .azc-alert {
   padding: 12px 16px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 13px;
   line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.azc-alert:last-child {
+  margin-bottom: 0;
 }
 
 .azc-alert--success {
-  background: #d1e7dd;
-  border: 1px solid #badbcc;
-  color: #0f5132;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
 }
 
 .azc-alert--error {
-  background: #f8d7da;
-  border: 1px solid #f5c6cb;
-  color: #842029;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
 }
 
 .azc-alert--info {
-  background: #d1ecf1;
-  border: 1px solid #bee5eb;
-  color: #0c5460;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
 }
+
+/* ── Info grid (PingOne tab) ─────────────────────────────────────────── */
 
 .azc-info-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
   margin-bottom: 24px;
 }
 
@@ -277,25 +436,29 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 12px;
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
 }
 
 .azc-info-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #666;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .azc-info-item code {
   font-size: 13px;
-  color: #333;
+  color: #1e293b;
+  font-weight: 500;
   word-break: break-all;
   font-family: inherit;
 }
+
+/* ── Env vars table ──────────────────────────────────────────────────── */
 
 .azc-env-table {
   width: 100%;
@@ -305,71 +468,84 @@
 }
 
 .azc-env-table tbody tr {
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .azc-env-table tbody tr:last-child {
   border-bottom: none;
 }
 
+.azc-env-table tbody tr:hover {
+  background: #f8fafc;
+}
+
 .azc-env-table td {
-  padding: 10px 12px;
+  padding: 9px 12px;
 }
 
 .azc-env-key {
   font-weight: 600;
-  color: #333;
-  width: 40%;
+  color: #1e293b;
+  width: 42%;
 }
 
 .azc-env-key code {
-  background: #f0f0f0;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: 4px;
   font-family: inherit;
   font-size: 12px;
+  color: #7c3aed;
 }
 
 .azc-env-val {
-  color: #666;
-  font-family: inherit;
+  color: #475569;
   font-size: 12px;
   word-break: break-all;
 }
 
 .azc-env-note {
   font-size: 12px;
-  color: #666;
+  color: #94a3b8;
   margin: 0;
 }
 
 .azc-env-note code {
-  background: #f0f0f0;
-  padding: 2px 6px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 1px 5px;
   border-radius: 3px;
   font-family: inherit;
   font-size: 11px;
+  color: #7c3aed;
 }
+
+/* ── Rules list ──────────────────────────────────────────────────────── */
 
 .azc-rules-list {
   margin: 8px 0;
-  padding-left: 24px;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .azc-rules-list li {
-  margin-bottom: 8px;
   font-size: 13px;
-  color: #333;
+  color: #475569;
   line-height: 1.5;
 }
 
 .azc-rules-list strong {
-  color: #1a1a2e;
+  color: #1e293b;
 }
+
+/* ── Scopes grid ─────────────────────────────────────────────────────── */
 
 .azc-scopes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
   margin-top: 16px;
 }
@@ -377,54 +553,79 @@
 .azc-scope-card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px;
-  background: #f8f9fa;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  gap: 5px;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  transition: border-color 0.15s;
+}
+
+.azc-scope-card:hover {
+  border-color: #93c5fd;
 }
 
 .azc-scope-name {
-  font-size: 13px;
-  color: #0066cc;
-  font-weight: 600;
+  font-size: 12px;
+  color: #1d4ed8;
+  font-weight: 700;
+  font-family: inherit;
 }
 
 .azc-scope-label {
   font-size: 12px;
   font-weight: 600;
-  color: #333;
+  color: #1e293b;
 }
 
 .azc-scope-description {
   font-size: 12px;
-  color: #555;
+  color: #64748b;
   margin: 0;
   line-height: 1.4;
 }
 
 .azc-scope-hint {
   font-size: 11px;
-  color: #666;
-  font-style: italic;
+  color: #94a3b8;
 }
+
+/* ── Download button ─────────────────────────────────────────────────── */
 
 .azc-download-btn {
   display: inline-block;
-  padding: 10px 20px;
-  background: #143861;
+  padding: 9px 20px;
+  background: #1e3a5f;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
-  transition: background 0.2s;
+  transition: background 0.15s;
 }
 
 .azc-download-btn:hover {
-  background: #0f2d4e;
+  background: #172e4c;
   color: white;
   text-decoration: none;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .azc-field {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "label"
+      "input"
+      "hint";
+    gap: 5px;
+  }
+
+  .azc-input {
+    text-align: left;
+    max-width: 180px;
+  }
 }

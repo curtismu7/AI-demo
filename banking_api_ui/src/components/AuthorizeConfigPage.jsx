@@ -164,8 +164,27 @@ export default function AuthorizeConfigPage() {
               immediately without server restart.
             </p>
 
+            <div className="azc-tier-bar">
+              <div
+                className="azc-tier-bar__permit"
+                title="Permit (below confirm threshold)"
+              />
+              <div
+                className="azc-tier-bar__confirm"
+                title="Confirm (consent only)"
+              />
+              <div
+                className="azc-tier-bar__stepup"
+                title="Step-Up (MFA + consent)"
+              />
+              <div
+                className="azc-tier-bar__deny"
+                title="Deny (above hard deny threshold)"
+              />
+            </div>
+
             <div className="azc-form">
-              <label className="azc-field">
+              <label className="azc-field azc-field--deny">
                 <span className="azc-field-label">
                   Hard Deny Threshold (USD)
                 </span>
@@ -183,24 +202,7 @@ export default function AuthorizeConfigPage() {
                 </span>
               </label>
 
-              <label className="azc-field">
-                <span className="azc-field-label">Confirm Threshold (USD)</span>
-                <input
-                  type="number"
-                  className="azc-input"
-                  value={mockForm.confirmAmount || ""}
-                  onChange={(e) =>
-                    setMockForm({ ...mockForm, confirmAmount: e.target.value })
-                  }
-                  placeholder="250"
-                />
-                <span className="azc-field-hint">
-                  Transactions at/above this amount require user confirmation
-                  (consent only, no MFA). Default: 250
-                </span>
-              </label>
-
-              <label className="azc-field">
+              <label className="azc-field azc-field--stepup">
                 <span className="azc-field-label">Step-Up Threshold (USD)</span>
                 <input
                   type="number"
@@ -214,6 +216,23 @@ export default function AuthorizeConfigPage() {
                 <span className="azc-field-hint">
                   Transactions at/above this amount require elevated
                   authentication (MFA) plus consent. Default: 500
+                </span>
+              </label>
+
+              <label className="azc-field azc-field--confirm">
+                <span className="azc-field-label">Confirm Threshold (USD)</span>
+                <input
+                  type="number"
+                  className="azc-input"
+                  value={mockForm.confirmAmount || ""}
+                  onChange={(e) =>
+                    setMockForm({ ...mockForm, confirmAmount: e.target.value })
+                  }
+                  placeholder="250"
+                />
+                <span className="azc-field-hint">
+                  Transactions at/above this amount require user confirmation
+                  (consent only, no MFA). Default: 250
                 </span>
               </label>
 
