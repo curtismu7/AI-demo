@@ -131,7 +131,7 @@ body > .banking-agent-float-root .banking-agent-panel {
   --ba-surface: #fff;
   --ba-border: #d1d5db;
   --ba-text: #222;
-  --ba-muted: #666;
+  --ba-muted: #374151;
   --ba-user-bg: #ef4444;
   --ba-user-txt: #ffffff;
   --ba-agent-bg: #3b82f6;
@@ -548,7 +548,7 @@ body > .banking-agent-float-root .banking-agent-panel {
   --ba-surface: #fff;
   --ba-border: #c7d2fe;
   --ba-text: #0f172a;
-  --ba-muted: #666666;
+  --ba-muted: #374151;
   --ba-user-bg: #ef4444;
   --ba-user-txt: #ffffff;
   --ba-agent-bg: #3b82f6;
@@ -607,6 +607,17 @@ body > .banking-agent-float-root .banking-agent-panel {
   background: rgba(65, 105, 225, 0.42);
   border-color: #7c9cf5;
   color: #fff;
+}
+
+/* Floating panel: right col and messages fill remaining height so input bar always anchors to bottom */
+.banking-agent-panel:not(.ba-mode-inline) .ba-right-col {
+  height: 100%;
+}
+
+.banking-agent-panel:not(.ba-mode-inline) .banking-agent-messages {
+  max-height: none;
+  flex: 1 1 0%;
+  min-height: 0;
 }
 
 .banking-agent-panel:not(.ba-mode-inline) .ba-left-auth-btn {
@@ -963,7 +974,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 .banking-agent-panel.ba-mode-light
   .ba-server-chip:not(.ba-server-chip--active)
   .ba-chip-count {
-  color: #999999;
+  color: #374151;
 }
 .ba-chip-count::before {
   content: "· ";
@@ -1201,7 +1212,8 @@ body > .banking-agent-float-root .banking-agent-panel {
   border-radius: 16px;
   font-size: 14px;
   line-height: 1.65;
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
   letter-spacing: 0.01em;
   overflow-x: auto;
 }
@@ -2500,11 +2512,11 @@ body > .banking-agent-float-root .banking-agent-panel {
 .embedded-agent-dock__lead {
   margin: 0;
   font-size: 0.75rem;
-  color: #999999;
+  color: #374151;
   line-height: 1.35;
 }
 
-\.embedded-banking-agent\.embedded-banking-agent--bottom {
+.embedded-banking-agent.embedded-banking-agent--bottom {
   margin-top: 0;
   width: 100%;
   flex-shrink: 0;
@@ -2533,7 +2545,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 
 /* Bottom-dock agent: column layout — header, then body row */
-\.banking-agent-panel\.ba-mode-inline\.ba-embedded-bottom-dock {
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock {
   display: flex;
   flex-direction: column;
   flex: 1 1 0%;
@@ -2612,7 +2624,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock
   .ba-input::placeholder {
-  color: #999999;
+  color: #374151;
 }
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-input:focus {
   border-color: #4169e1;
@@ -2702,7 +2714,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 .ba-resize-handle {
   position: absolute;
   background: transparent;
-  z-index: 10061;
+  z-index: 100062;
 }
 
 .ba-resize-handle--se {
@@ -2960,7 +2972,7 @@ body > .banking-agent-float-root .banking-agent-panel {
   --ba-bg: var(--brand-light-gray);
   --ba-surface: var(--brand-light-gray);
   --ba-text: #0f172a;
-  --ba-muted: #999999;
+  --ba-muted: #374151;
   --ba-border: #cccccc;
   --ba-agent-bg: var(--ba-split-navy);
   --ba-agent-txt: #ffffff;
@@ -3311,7 +3323,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 .ba-left-label {
   font-size: 11px;
   font-weight: 600;
-  color: var(--ba-text-secondary, #999999);
+  color: var(--ba-text-secondary, #374151);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
@@ -3320,7 +3332,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 .ba-left-label-secondary {
   font-size: 10px;
   font-weight: 500;
-  color: var(--ba-text-tertiary, #94a3b8);
+  color: var(--ba-text-tertiary, #374151);
   text-transform: uppercase;
   letter-spacing: 0.3px;
   margin: 8px 0 4px 0;
@@ -3681,7 +3693,7 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 
 .App--marketing-page .embedded-dock-resize-handle__label {
-  color: #999999 !important;
+  color: #374151 !important;
 }
 
 .App--marketing-page .embedded-banking-agent.embedded-banking-agent--bottom {
@@ -3755,7 +3767,7 @@ html[data-theme="dark"]
   gap: 6px;
   padding: 6px 8px;
   font-size: 0.8rem;
-  color: #6b7280;
+  color: #374151;
   list-style: none;
 }
 .ba-reasoning__summary::-webkit-details-marker {
@@ -3777,7 +3789,7 @@ html[data-theme="dark"]
   color: #374151;
 }
 .ba-reasoning__step-desc {
-  color: #6b7280;
+  color: #374151;
   margin: 2px 0 0;
 }
 .ba-reasoning__conclusion {
@@ -3841,7 +3853,7 @@ html[data-theme="dark"]
 .ba-inline-consent-cancel {
   background: none;
   border: none;
-  color: #6b7280;
+  color: #374151;
   cursor: pointer;
   font-size: 14px;
   padding: 6px 12px;
@@ -4323,7 +4335,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 .ba-rfc-toggle-label {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   height: 28px;
   padding: 4px 10px;
   border-radius: 6px;
@@ -4344,7 +4356,8 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 .ba-rfc-toggle-cb {
   width: 15px;
   height: 15px;
-  margin: 0 6px 0 0;
+  margin: 0;
+  vertical-align: middle;
   cursor: pointer;
   accent-color: #2563eb;
 }
@@ -4551,7 +4564,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 .ba-popout-item-desc {
   grid-area: desc;
   font-size: 11px;
-  color: #64748b;
+  color: #374151;
   line-height: 1.3;
 }
 .ba-popout-item-rfcs {
@@ -4724,7 +4737,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 }
 .ba-compliance-panel__empty {
   font-size: 0.78rem;
-  color: #64748b;
+  color: #374151;
   display: block;
   padding: 4px 0;
 }
@@ -4837,7 +4850,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 .ba-compliance-panel__clear-btn {
   background: transparent;
   border: 1px solid #cbd5e1;
-  color: #64748b;
+  color: #374151;
   font-size: 0.72rem;
   border-radius: 4px;
   padding: 2px 8px;
@@ -4874,7 +4887,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 /* Skip-note footer explaining non-applicable steps */
 .ba-compliance-panel__skip-note {
   font-size: 0.78rem;
-  color: #6b7280;
+  color: #374151;
   padding: 10px 10px 6px;
   border-top: 1px solid #e5e7eb;
   line-height: 1.4;
@@ -4891,7 +4904,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 .ba-compliance-panel__last-response-label {
   font-size: 0.7rem;
   font-weight: 700;
-  color: #6b7280;
+  color: #374151;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 6px;
@@ -4911,7 +4924,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   margin-bottom: 6px;
   padding: 6px 8px;
   font-size: 0.8rem;
-  color: #6b7280;
+  color: #374151;
   background: #f3f4f6;
   border-left: 2px solid #d1d5db;
   border-radius: 3px;
@@ -5128,7 +5141,7 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
 }
 .ba-input::placeholder {
-  color: #6b7280 !important;
+  color: #374151 !important;
 }
 .ba-send-btn {
   width: 36px !important;
@@ -5278,7 +5291,7 @@ button.ba-action-btn:hover {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 .banking-agent-panel .ba-input::placeholder {
-  color: #9ca3af;
+  color: #374151;
 }
 
 /* 7. Send button — solid blue */
@@ -5396,7 +5409,7 @@ button.ba-action-btn:hover {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 .banking-agent-panel.dark-theme .ba-input::placeholder {
-  color: #64748b;
+  color: #cbd5e1;
 }
 
 /* 7. Send button — gradient */
