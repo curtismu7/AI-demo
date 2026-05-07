@@ -9,7 +9,19 @@
 
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const { spawn } = require('child_process');
+const path = require('path');
 const router = express.Router();
+
+const SERVER_ROOT = path.resolve(__dirname, '..');
+const UI_ROOT = path.resolve(__dirname, '../../banking_api_ui');
+
+const TEST_SUITES = {
+  'bff:unit':  { cwd: SERVER_ROOT, cmd: 'npm', args: ['run', 'test:unit'],  label: 'BFF unit tests' },
+  'bff:auth':  { cwd: SERVER_ROOT, cmd: 'npm', args: ['run', 'test:auth'],  label: 'BFF auth tests' },
+  'bff:all':   { cwd: SERVER_ROOT, cmd: 'npm', args: ['test'],               label: 'BFF all tests' },
+  'ui:unit':   { cwd: UI_ROOT,     cmd: 'npm', args: ['run', 'test:unit'],  label: 'UI unit tests' },
+};
 const {
     provisionEnvironment,
     recreateResource,
@@ -361,6 +373,58 @@ router.get('/config-template', requireAdmin, async (req, res) => {
     };
 
     res.json(template);
+});
+
+/**
+ * POST /api/admin/setup/run-tests
+ *
+ * Streams Jest test output via SSE. Requires admin session.
+ * suite: 'bff:unit' | 'bff:auth' | 'bff:all' | 'ui:unit'
+ */
+router.post('/run-tests', requireAdmin, (req, res) => {
+    const { suite = 'bff:unit' } = req.body;
+    const suiteConfig = TEST_SUITES[suite];
+    if (!suiteConfig) {
+        return res.status(400).json({
+            ok: false,
+            error: 'unknown_suite',
+            known: Object.keys(TEST_SUITES),
+        });
+    }
+
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+    });
+
+    const send = (data) => {
+        try { res.write(`data: ${JSON.stringify(data)}\n\n`); } catch (_) {}
+    };
+
+    send({ type: 'start', suite, label: suiteConfig.label });
+
+    const child = spawn(suiteConfig.cmd, suiteConfig.args, {
+        cwd: suiteConfig.cwd,
+        env: { ...process.env, CI: 'true', FORCE_COLOR: '0' },
+        shell: true,
+    });
+
+    child.stdout.on('data', (chunk) => send({ type: 'stdout', text: chunk.toString() }));
+    child.stderr.on('data', (chunk) => send({ type: 'stderr', text: chunk.toString() }));
+
+    child.on('close', (code) => {
+        send({ type: 'done', exitCode: code });
+        try { res.write('data: [DONE]\n\n'); res.end(); } catch (_) {}
+    });
+
+    child.on('error', (err) => {
+        send({ type: 'error', message: err.message });
+        try { res.write('data: [DONE]\n\n'); res.end(); } catch (_) {}
+    });
+
+    req.on('close', () => child.kill());
 });
 
 /**

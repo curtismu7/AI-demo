@@ -185,6 +185,7 @@ git checkout <last-version-tag> -- <key-file>
 
 | Feature | Status | Key files | Test file |
 |---|---|---|---|
+| Setup page — run-tests SSE endpoint streams Jest output for bff:unit/bff:auth/bff:all/ui:unit suites | active | `banking_api_server/routes/setupWizard.js` (`POST /run-tests`), `banking_api_ui/src/components/SetupPage.js` | — |
 | PingOne Test Page — worker token acquire + verify assets | active | `banking_api_server/routes/pingoneTestRoutes.js`, `banking_api_ui/src/components/PingOneTestPage.jsx` | — |
 | PingOne Test Page — AssetTable 6-tab entity explorer (Apps/Resources/Scopes/Users/SPEL/Grants) | active | `banking_api_ui/src/components/PingOneTestPage.jsx` (`AssetTable`), `banking_api_server/routes/pingoneTestRoutes.js` (`verify-assets`) | — |
 | PingOne Test Page — token policies (SPEL) + per-app grant matrix in verify-assets | active | `banking_api_server/services/pingoneManagementService.js` (`getTokenPolicies`, `getApplicationGrants`), `banking_api_server/routes/pingoneTestRoutes.js` | — |

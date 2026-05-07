@@ -16,6 +16,10 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ## [Unreleased]
 
+### Added
+
+- **Setup page run-tests endpoint** — `POST /api/admin/setup/run-tests` streams Jest output via SSE; supports `bff:unit`, `bff:auth`, `bff:all`, `ui:unit` suites.
+
 ### Fixed
 
 - **PostHog crash in tests** — `posthog.js` now exports a no-op stub when `POSTHOG_API_KEY` is absent, preventing module-load crashes that blocked 43 test suites.
