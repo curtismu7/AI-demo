@@ -5008,8 +5008,8 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
 
 /* 1. PANEL FLOATING MODE — Larger, deeper shadow */
 .banking-agent-panel:not(.ba-mode-inline) {
-  width: 440px !important;
-  height: 520px !important;
+  width: 440px;
+  height: 520px;
   border-radius: 12px !important;
   box-shadow:
     0 8px 40px rgba(0, 0, 0, 0.18),
