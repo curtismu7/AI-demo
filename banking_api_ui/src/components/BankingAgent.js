@@ -2536,12 +2536,12 @@ export default function BankingAgent({
   useEffect(() => {
     if (!isOpen) return;
     if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ block: 'end' });
+      bottomRef.current.scrollIntoView({ block: "end" });
     } else {
       const el = messagesContainerRef.current;
       if (el) el.scrollTop = el.scrollHeight;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, isOpen, loading, nlLoading]);
 
   useEffect(() => {
@@ -2626,6 +2626,13 @@ export default function BankingAgent({
     (e, direction) => {
       e.preventDefault();
       e.stopPropagation();
+      const target = e.currentTarget;
+      // Pointer capture keeps events firing even when the cursor leaves the handle
+      try {
+        target.setPointerCapture(e.pointerId);
+      } catch (_) {}
+      document.body.style.userSelect = "none";
+
       const startX = e.clientX;
       const startY = e.clientY;
       const startWidth = panelSize.width;
@@ -2687,12 +2694,15 @@ export default function BankingAgent({
       }
 
       function onUp() {
-        document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup", onUp);
+        document.body.style.userSelect = "";
+        target.removeEventListener("pointermove", onMove);
+        target.removeEventListener("pointerup", onUp);
+        target.removeEventListener("pointercancel", onUp);
       }
 
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup", onUp);
+      target.addEventListener("pointermove", onMove);
+      target.addEventListener("pointerup", onUp);
+      target.addEventListener("pointercancel", onUp);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [panelSize, dragPos],
@@ -4351,7 +4361,11 @@ export default function BankingAgent({
             )));
 
       const killSwitchActivated = (() => {
-        try { return !!localStorage.getItem('kill_switch_activated'); } catch (_) { return false; }
+        try {
+          return !!localStorage.getItem("kill_switch_activated");
+        } catch (_) {
+          return false;
+        }
       })();
 
       if (isConnErr) {
@@ -4416,21 +4430,38 @@ export default function BankingAgent({
         );
       } else if (err?.statusCode === 401 && killSwitchActivated) {
         // Kill switch was activated — token revoked at PingOne → introspection returns active: false
-        const ksData = (() => { try { return JSON.parse(localStorage.getItem('kill_switch_activated')); } catch (_) { return null; } })();
-        window.dispatchEvent(new CustomEvent('token-chain-inject', {
-          detail: {
-            tool: 'Test Revocation',
-            events: [{
-              id: 'introspection-denied',
-              label: 'RFC 7662 Introspection: { "active": false } — Token Revoked',
-              status: 'failed',
-              tokenType: 'introspection',
-              rfc: 'RFC 7662',
-              explanation: 'PingOne introspection returned { "active": false }. The access token was revoked by the STOP AGENT kill switch and is no longer valid. This confirms end-to-end token revocation: the authorization server rejected the token.',
-              ...(ksData ? { killSwitchReason: ksData.reason, revokedAt: ksData.revokedAt } : {}),
-            }],
-          },
-        }));
+        const ksData = (() => {
+          try {
+            return JSON.parse(localStorage.getItem("kill_switch_activated"));
+          } catch (_) {
+            return null;
+          }
+        })();
+        window.dispatchEvent(
+          new CustomEvent("token-chain-inject", {
+            detail: {
+              tool: "Test Revocation",
+              events: [
+                {
+                  id: "introspection-denied",
+                  label:
+                    'RFC 7662 Introspection: { "active": false } — Token Revoked',
+                  status: "failed",
+                  tokenType: "introspection",
+                  rfc: "RFC 7662",
+                  explanation:
+                    'PingOne introspection returned { "active": false }. The access token was revoked by the STOP AGENT kill switch and is no longer valid. This confirms end-to-end token revocation: the authorization server rejected the token.',
+                  ...(ksData
+                    ? {
+                        killSwitchReason: ksData.reason,
+                        revokedAt: ksData.revokedAt,
+                      }
+                    : {}),
+                },
+              ],
+            },
+          }),
+        );
         addMessage(
           "assistant",
           'Introspection Denied — Token Revoked\n\nPingOne returned { "active": false }. The access token was revoked by the STOP AGENT kill switch.\n\nOpen the Token Chain to see the RFC 7662 introspection result. Sign out and sign back in to get a fresh token.',
@@ -4955,8 +4986,10 @@ export default function BankingAgent({
         const questions = {
           balance: "Which account would you like to check the balance for?",
           deposit: "How much would you like to deposit, and to which account?",
-          withdraw: "How much would you like to withdraw, and from which account?",
-          transfer: "Which accounts would you like to transfer between, and how much? (e.g. 'Transfer $200 from checking to savings')",
+          withdraw:
+            "How much would you like to withdraw, and from which account?",
+          transfer:
+            "Which accounts would you like to transfer between, and how much? (e.g. 'Transfer $200 from checking to savings')",
         };
         addMessage("assistant", questions[action]);
       } else {
@@ -5668,7 +5701,9 @@ export default function BankingAgent({
                 {/* Token Chain modal toggle */}
                 <button
                   type="button"
-                  className={"ba-actions-trigger" + (showTokenChain ? " active" : "")}
+                  className={
+                    "ba-actions-trigger" + (showTokenChain ? " active" : "")
+                  }
                   title="View Token Chain — RFC 8693 token exchange and authorization decisions"
                   onClick={() => setShowTokenChain((v) => !v)}
                 >
@@ -5737,7 +5772,9 @@ export default function BankingAgent({
                 role="dialog"
                 aria-label="Action browser"
                 aria-modal="false"
-                ref={(el) => { if (el) el.scrollTop = 0; }}
+                ref={(el) => {
+                  if (el) el.scrollTop = 0;
+                }}
               >
                 {/* Search */}
                 <input
@@ -5856,7 +5893,10 @@ export default function BankingAgent({
                     )
                       return null;
                     if (group.chips.length === 0) return null;
-                    const groupExpanded = group.key === "learn" ? true : !!chipGroupsState[group.key];
+                    const groupExpanded =
+                      group.key === "learn"
+                        ? true
+                        : !!chipGroupsState[group.key];
                     return (
                       <div key={group.key} className="ba-popout-section">
                         <button
@@ -7941,15 +7981,24 @@ export default function BankingAgent({
                   <span className="ba-chip-dot" />
                   PingOne Identity
                 </span>
-                <span className="ba-server-chip ba-server-chip--active" title="MCP Gateway">
+                <span
+                  className="ba-server-chip ba-server-chip--active"
+                  title="MCP Gateway"
+                >
                   <span className="ba-chip-dot" />
                   MCP Gateway
                 </span>
-                <span className="ba-server-chip ba-server-chip--active" title="PingOne Authorize">
+                <span
+                  className="ba-server-chip ba-server-chip--active"
+                  title="PingOne Authorize"
+                >
                   <span className="ba-chip-dot" />
                   Authorize
                 </span>
-                <span className="ba-server-chip ba-server-chip--active" title="MCP Server">
+                <span
+                  className="ba-server-chip ba-server-chip--active"
+                  title="MCP Server"
+                >
                   <span className="ba-chip-dot" />
                   MCP Server
                 </span>
@@ -7963,56 +8012,56 @@ export default function BankingAgent({
                 role="button"
                 tabIndex="0"
                 className="ba-resize-handle ba-resize-handle--se"
-                onMouseDown={(e) => handleResize(e, "se")}
+                onPointerDown={(e) => handleResize(e, "se")}
                 aria-label="Resize southeast"
               />
               <div
                 role="button"
                 tabIndex="0"
                 className="ba-resize-handle ba-resize-handle--e"
-                onMouseDown={(e) => handleResize(e, "e")}
+                onPointerDown={(e) => handleResize(e, "e")}
                 aria-label="Resize east"
               />
               <div
                 role="button"
                 tabIndex="0"
                 className="ba-resize-handle ba-resize-handle--s"
-                onMouseDown={(e) => handleResize(e, "s")}
+                onPointerDown={(e) => handleResize(e, "s")}
                 aria-label="Resize south"
               />
               <div
                 role="button"
                 tabIndex="0"
                 className="ba-resize-handle ba-resize-handle--n"
-                onMouseDown={(e) => handleResize(e, "n")}
+                onPointerDown={(e) => handleResize(e, "n")}
                 aria-label="Resize north"
               />
               <div
                 role="button"
                 tabIndex="0"
                 className="ba-resize-handle ba-resize-handle--ne"
-                onMouseDown={(e) => handleResize(e, "ne")}
+                onPointerDown={(e) => handleResize(e, "ne")}
                 aria-label="Resize northeast"
               />
               <div
                 role="button"
                 tabIndex="0"
                 className="ba-resize-handle ba-resize-handle--nw"
-                onMouseDown={(e) => handleResize(e, "nw")}
+                onPointerDown={(e) => handleResize(e, "nw")}
                 aria-label="Resize northwest"
               />
               <div
                 role="button"
                 tabIndex="0"
                 className="ba-resize-handle ba-resize-handle--w"
-                onMouseDown={(e) => handleResize(e, "w")}
+                onPointerDown={(e) => handleResize(e, "w")}
                 aria-label="Resize west"
               />
               <div
                 role="button"
                 tabIndex="0"
                 className="ba-resize-handle ba-resize-handle--sw"
-                onMouseDown={(e) => handleResize(e, "sw")}
+                onPointerDown={(e) => handleResize(e, "sw")}
                 aria-label="Resize southwest"
               />
             </>
