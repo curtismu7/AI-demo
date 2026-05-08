@@ -11,10 +11,21 @@
  * Auth: x-api-key header (NOT Authorization: Bearer).
  */
 
+const fs = require('fs');
+
 const HELIX_PATH = '/dpc/jas/helix/v1';
+const HELIX_LOG = process.env.HELIX_LOG_FILE || '/tmp/bank-helix.log';
 
 let _appEvents;
 function logHelix(severity, message, metadata) {
+  const ts = new Date().toISOString();
+  const meta = metadata ? ' ' + JSON.stringify(metadata) : '';
+  const line = `${ts} [helix/${severity}] ${message}${meta}\n`;
+
+  // Write to dedicated log file for tail -f
+  try { fs.appendFileSync(HELIX_LOG, line); } catch (writeErr) { console.warn('[helixLlmService] log write failed:', writeErr.message); }
+
+  // Publish to structured event ring buffer
   if (!_appEvents) {
     try { _appEvents = require('./appEventService'); } catch (_) { return; }
   }

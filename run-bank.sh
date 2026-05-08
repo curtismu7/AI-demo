@@ -83,10 +83,12 @@ LOG_AGENT_SVC=/tmp/bank-agent-service.log
 PID_INVEST=/tmp/bank-mcp-invest.pid
 LOG_INVEST=/tmp/bank-mcp-invest.log
 LOG_AUTH=/tmp/bank-authorize-server.log
+LOG_HELIX=/tmp/bank-helix.log
 
 # Pre-create all log files so tail/log viewers work before services start
 touch "${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" \
-      "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_AUTH}" 2>/dev/null || true
+      "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_AUTH}" \
+      "${LOG_HELIX}" 2>/dev/null || true
 
 # Terminal colors (global — used by banner, status, and tail_bank_logs)
 BOLD='\033[1m'
@@ -183,8 +185,8 @@ preflight_checks() {
 tail_bank_logs() {
   local pre="${1:-}"
   [[ "${pre}" == "ALL" || "${pre}" == "All" ]] && pre="all"
-  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent" "MCP Traffic" "MCP Gateway" "HITL Service" "Agent Service" "MCP Invest" "Authorize Server")
-  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_AUTH}")
+  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent" "MCP Traffic" "MCP Gateway" "HITL Service" "Agent Service" "MCP Invest" "Authorize Server" "Helix LLM")
+  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_AUTH}" "${LOG_HELIX}")
   local count=${#names[@]}
   local all_opt=$((count + 1))
   local choice=""
