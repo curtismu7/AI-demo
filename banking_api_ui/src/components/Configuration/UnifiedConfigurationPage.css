@@ -10,12 +10,13 @@
 
 /* Header Styles */
 .configuration-header {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  border-bottom: 1px solid #93c5fd;
-  padding: 1.5rem 2rem;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 1rem 2rem;
   position: sticky;
   top: 0;
   z-index: 100;
+  box-shadow: 0 1px 3px rgba(2, 6, 23, 0.06);
 }
 
 .configuration-header__content {
@@ -31,15 +32,16 @@
 }
 
 .configuration-header__title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #1e3a8a;
-  margin: 0 0 0.25rem 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.2rem 0;
+  letter-spacing: -0.02em;
 }
 
 .configuration-header__subtitle {
   font-size: 0.875rem;
-  color: var(--color-text-secondary, #374151);
+  color: #64748b;
   margin: 0;
 }
 
@@ -60,14 +62,14 @@
 }
 
 .configuration-header__btn--primary {
-  background: var(--color-primary, #007bff);
+  background: #0369a1;
   color: white;
-  border-color: var(--color-primary, #007bff);
+  border-color: #0369a1;
 }
 
 .configuration-header__btn--primary:hover:not(:disabled) {
-  background: var(--color-primary-hover, #0056b3);
-  border-color: var(--color-primary-hover, #0056b3);
+  background: #0284c7;
+  border-color: #0284c7;
 }
 
 .configuration-header__btn--secondary {
@@ -152,8 +154,8 @@
 
 .configuration-tab.active {
   background: white;
-  border-bottom-color: var(--color-primary, #007bff);
-  color: var(--color-primary, #007bff);
+  border-bottom-color: #0369a1;
+  color: #0369a1;
 }
 
 /* Per-tab color coding */
@@ -192,17 +194,17 @@
   outline-color: color-mix(in srgb, var(--tab-accent) 20%, transparent);
 }
 .configuration-tab[class*="configuration-tab--"].active {
-  border-bottom-color: var(--tab-accent);
-  border-left-color: var(--tab-accent);
-  background: color-mix(in srgb, var(--tab-accent) 8%, white);
-  outline: 1px solid color-mix(in srgb, var(--tab-accent) 40%, transparent);
+  border-bottom-color: #0369a1;
+  border-left-color: #0369a1;
+  background: #eff6ff;
+  outline: 1px solid rgba(3, 105, 161, 0.3);
 }
 .configuration-tab[class*="configuration-tab--"]:hover:not(.active) {
-  background: color-mix(in srgb, var(--tab-accent) 5%, white);
-  border-left-color: color-mix(in srgb, var(--tab-accent) 50%, transparent);
+  background: #f8fafc;
+  border-left-color: rgba(3, 105, 161, 0.25);
 }
 .configuration-tab[class*="configuration-tab--"].active .tab-label {
-  color: var(--tab-accent);
+  color: #0369a1;
 }
 
 .tab-icon {
@@ -430,8 +432,8 @@
 
 .section-nav-item.active {
   background: #eff6ff;
-  color: var(--brand-navy, #1d4ed8);
-  border-left-color: var(--brand-navy, #1d4ed8);
+  color: #0369a1;
+  border-left-color: #0369a1;
   font-weight: 600;
 }
 
@@ -835,12 +837,12 @@
 .unified-configuration-page .form-input:focus,
 .unified-configuration-page select.form-input:focus,
 .unified-configuration-page textarea.form-input:focus {
-  border-color: #4f46e5 !important;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+  border-color: #0369a1 !important;
+  box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.12) !important;
   outline: none !important;
 }
 .unified-configuration-page input[type="checkbox"] {
-  accent-color: #4f46e5;
+  accent-color: #0369a1;
 }
 .unified-configuration-page .form-label {
   font-size: 1rem;

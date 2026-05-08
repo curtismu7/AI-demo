@@ -1,7 +1,4 @@
-/**
- * Admin.css
- * Styles for admin dashboard page
- */
+/* Admin Dashboard — B2B identity platform theme */
 
 .admin-container {
   max-width: 1000px;
@@ -12,65 +9,69 @@
 
 .admin-header {
   margin-bottom: 30px;
-  padding: 20px;
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1f2937;
-  border-bottom: 1px solid #93c5fd;
+  padding: 20px 24px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(2, 6, 23, 0.06);
 }
 
 .admin-header h1 {
   margin: 0;
   font-size: 28px;
-  color: #1e3a8a;
-  font-weight: 600;
+  color: #0f172a;
+  font-weight: 700;
 }
 
 .admin-subtitle {
-  margin: 8px 0 0 0;
-  color: #666;
+  margin: 6px 0 0 0;
+  color: #64748b;
   font-size: 14px;
 }
 
 /* Tabs */
 .admin-tabs {
   display: flex;
-  gap: 8px;
+  gap: 0;
   margin-bottom: 20px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .admin-tab {
   padding: 12px 16px;
   background: transparent;
   border: none;
-  border-bottom: 3px solid transparent;
-  color: #666;
+  border-bottom: 2px solid transparent;
+  color: #64748b;
   font-weight: 500;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    color 0.15s,
+    border-bottom-color 0.15s;
+  margin-bottom: -1px;
 }
 
 .admin-tab:hover {
-  color: #333;
-  border-bottom-color: #ccc;
+  color: #0f172a;
+  border-bottom-color: #cbd5e1;
 }
 
 .admin-tab.active {
-  color: #007bff;
-  border-bottom-color: #007bff;
+  color: #0369a1;
+  border-bottom-color: #0369a1;
+  font-weight: 600;
 }
 
 /* Sections */
 .admin-section {
-  animation: fadeIn 0.3s ease-in;
+  animation: fadeIn 0.2s ease-in;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(5px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -81,34 +82,34 @@
 .admin-section h2 {
   margin: 0 0 8px 0;
   font-size: 20px;
-  color: #333;
+  color: #0f172a;
   font-weight: 600;
 }
 
 .admin-section-description {
   margin: 0 0 20px 0;
-  color: #666;
+  color: #64748b;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 /* Loading & Error States */
 .admin-loading {
-  background: #f5f5f5;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   padding: 40px;
   text-align: center;
-  color: #666;
+  color: #64748b;
   font-size: 14px;
 }
 
 .admin-error {
-  background: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 4px;
+  background: #f5ecee;
+  border: 1px solid #d4a0ab;
+  border-radius: 6px;
   padding: 16px;
-  color: #721c24;
+  color: #7c2d3e;
   font-size: 14px;
   display: flex;
   justify-content: space-between;
@@ -116,26 +117,21 @@
   gap: 12px;
 }
 
-.admin-error strong {
-  display: block;
-  margin-bottom: 4px;
-}
-
 .admin-retry-button {
-  padding: 6px 12px;
-  background: #721c24;
+  padding: 6px 14px;
+  background: #7c2d3e;
   color: white;
   border: none;
-  border-radius: 3px;
+  border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.2s;
+  transition: background 0.15s;
 }
 
 .admin-retry-button:hover {
-  background: #5a1520;
+  background: #5e2030;
 }
 
 /* Stats Grid */
@@ -147,49 +143,38 @@
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 20px;
-  color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(2, 6, 23, 0.06);
   transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+    box-shadow 0.2s,
+    border-color 0.2s;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.stat-card:nth-child(2) {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-.stat-card:nth-child(3) {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-}
-
-.stat-card:nth-child(4) {
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.08);
+  border-color: #cbd5e1;
 }
 
 .stat-value {
   font-size: 32px;
-  font-weight: bold;
-  margin-bottom: 8px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #0369a1;
 }
 
 .stat-label {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 4px;
-  opacity: 0.9;
+  color: #0f172a;
 }
 
 .stat-subtext {
   font-size: 12px;
-  opacity: 0.8;
+  color: #64748b;
 }
 
 /* Token Tester Section */
@@ -236,10 +221,6 @@
   .admin-tab {
     padding: 10px 12px;
     font-size: 12px;
-  }
-
-  .stat-card {
-    padding: 12px;
   }
 
   .stat-value {

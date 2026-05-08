@@ -176,7 +176,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
 
   // 2. FALLBACK TO LLM — when heuristic doesn't recognize the input
   // Use configured provider (Helix, Ollama, etc.) based on langchainConfig
-  const selectedProvider = provider === 'auto' ? (langchainConfig?.provider || 'helix') : provider;
+  const selectedProvider = provider === 'auto' ? (langchainConfig?.provider || configStore.get('provider') || 'helix') : provider;
 
   // Try selected provider first for NL intent routing
   if (selectedProvider === 'helix') {
@@ -190,11 +190,11 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
 
     try {
       const helixConfig = {
-        helix_base_url: langchainConfig.helix_base_url,
-        helix_api_key: langchainConfig.helix_api_key,
-        helix_environment_id: langchainConfig.helix_environment_id,
-        helix_agent_id: langchainConfig.helix_agent_id,
-        helix_prompt_field_id: langchainConfig.helix_prompt_field_id,
+        helix_base_url: langchainConfig.helix_base_url || configStore.get('helix_base_url'),
+        helix_api_key: langchainConfig.helix_api_key || configStore.get('helix_api_key'),
+        helix_environment_id: langchainConfig.helix_environment_id || configStore.get('helix_environment_id'),
+        helix_agent_id: langchainConfig.helix_agent_id || configStore.get('helix_agent_id'),
+        helix_prompt_field_id: langchainConfig.helix_prompt_field_id || configStore.get('helix_prompt_field_id'),
       };
 
       // Check if Helix is configured

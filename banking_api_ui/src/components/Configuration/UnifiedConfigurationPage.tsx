@@ -1,6 +1,7 @@
 // banking_api_ui/src/components/Configuration/UnifiedConfigurationPage.tsx
 import React, {
   type FC,
+  type ReactNode,
   useState,
   useEffect,
   useMemo,
@@ -25,12 +26,204 @@ import AuthorizeConfigPage from "../AuthorizeConfigPage";
 import McpGatewayConfig from "../McpGatewayConfig";
 import CustomChipsTab from "../CustomChipsTab";
 
+// ── Tab SVG icons (1.75px stroke, consistent with LandingPage icon set) ──────
+const TabIcons = {
+  quickStart: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  ),
+  pingoneConfig: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  ),
+  demoData: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+    </svg>
+  ),
+  ollama: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <line x1="8" y1="21" x2="16" y2="21" />
+      <line x1="12" y1="17" x2="12" y2="21" />
+    </svg>
+  ),
+  helix: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+    </svg>
+  ),
+  agentSettings: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="4" y="8" width="16" height="12" rx="2" />
+      <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+      <circle cx="9" cy="14" r="1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="14" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  ),
+  advanced: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+    </svg>
+  ),
+  idpSetup: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  ),
+  featureFlags: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+      <line x1="4" y1="22" x2="4" y2="15" />
+    </svg>
+  ),
+  authorize: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  ),
+  mcpGateway: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+    </svg>
+  ),
+};
+
 // Configuration tab definitions
-const CONFIGURATION_TABS = [
+const CONFIGURATION_TABS: Array<{
+  id: string;
+  label: string;
+  icon: ReactNode;
+  description: string;
+  requiresAuth: boolean;
+  requiredRole?: string;
+  sections: string[];
+}> = [
   {
     id: "quick-start",
     label: "Quick Start",
-    icon: "🚀",
+    icon: TabIcons.quickStart,
     description:
       "Minimum setup to run the demo — PingOne region, environment ID, and branding",
     requiresAuth: false,
@@ -39,7 +232,7 @@ const CONFIGURATION_TABS = [
   {
     id: "pingone-config",
     label: "PingOne Setup",
-    icon: "🛡️",
+    icon: TabIcons.pingoneConfig,
     description:
       "OAuth clients, MFA policies, and token exchange — the full PingOne wiring",
     requiresAuth: true,
@@ -54,7 +247,7 @@ const CONFIGURATION_TABS = [
   {
     id: "demo-management",
     label: "Demo Data",
-    icon: "🗄️",
+    icon: TabIcons.demoData,
     description:
       "Sample accounts, transactions, and demo presets — no PingOne credentials needed",
     requiresAuth: false,
@@ -63,7 +256,7 @@ const CONFIGURATION_TABS = [
   {
     id: "llm-ollama",
     label: "Ollama Setup",
-    icon: "🤖",
+    icon: TabIcons.ollama,
     description:
       "Local LLM inference with Ollama — fallback for natural language intent parsing",
     requiresAuth: false,
@@ -72,7 +265,7 @@ const CONFIGURATION_TABS = [
   {
     id: "llm-helix",
     label: "Helix Setup",
-    icon: "🧠",
+    icon: TabIcons.helix,
     description: "Cloud-based LLM with Helix — alternative to local inference",
     requiresAuth: false,
     sections: ["helix-setup"],
@@ -80,7 +273,7 @@ const CONFIGURATION_TABS = [
   {
     id: "agent-configuration",
     label: "Agent Settings",
-    icon: "🤖",
+    icon: TabIcons.agentSettings,
     description:
       "AI agent chat mode, MCP tool scopes, education panels, and token chain display",
     requiresAuth: true,
@@ -95,7 +288,7 @@ const CONFIGURATION_TABS = [
   {
     id: "advanced",
     label: "Advanced",
-    icon: "⚙️",
+    icon: TabIcons.advanced,
     description:
       "Debug logging, log category filters, and RSA keypair generation",
     requiresAuth: true,
@@ -105,7 +298,7 @@ const CONFIGURATION_TABS = [
   {
     id: "idp-setup",
     label: "IDP Setup",
-    icon: "🏛",
+    icon: TabIcons.idpSetup,
     description:
       "Read-only reference — PingOne endpoints and registered OAuth client IDs",
     requiresAuth: true,
@@ -115,7 +308,7 @@ const CONFIGURATION_TABS = [
   {
     id: "feature-flags",
     label: "Feature Flags",
-    icon: "🚩",
+    icon: TabIcons.featureFlags,
     description:
       "Enable or disable experimental features — changes take effect immediately",
     requiresAuth: true,
@@ -125,7 +318,7 @@ const CONFIGURATION_TABS = [
   {
     id: "authorize",
     label: "Authorize",
-    icon: "⚖️",
+    icon: TabIcons.authorize,
     description:
       "PingOne Authorize policy settings, simulated rule thresholds, MCP tool gates, and policy export",
     requiresAuth: true,
@@ -135,7 +328,7 @@ const CONFIGURATION_TABS = [
   {
     id: "mcp-gateway",
     label: "MCP Gateway",
-    icon: "🔗",
+    icon: TabIcons.mcpGateway,
     description:
       "MCP gateway configuration — server connection, tool routing, and dev bypass settings",
     requiresAuth: true,

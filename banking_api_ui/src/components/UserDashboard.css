@@ -321,9 +321,8 @@
 }
 
 .dashboard-header {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1f2937;
-  color: #1e3a8a;
+  background: #ffffff;
+  color: #0f172a;
   padding: 28px 32px;
   margin-bottom: 0;
   border-radius: 0;
@@ -333,7 +332,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 1rem;
-  border-bottom: 1px solid #93c5fd;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .dashboard-toolbar {
@@ -943,7 +942,7 @@
 
 /* Left rail accent per account type */
 .account-card--checking {
-  border-left-color: #3b82f6;
+  border-left-color: #2c5282;
 }
 .account-card--savings {
   border-left-color: #10b981;
@@ -954,7 +953,7 @@
   border-left-color: #f59e0b;
 }
 .account-card--credit {
-  border-left-color: #ef4444;
+  border-left-color: #8b3252;
 }
 .account-card--investment,
 .account-card--money_market {
@@ -994,8 +993,8 @@
 }
 
 .account-type-badge.checking {
-  background: #eff6ff;
-  color: #2563eb;
+  background: #edf0f7;
+  color: #2c5282;
 }
 .account-type-badge.savings {
   background: #f0fdf4;
@@ -1008,8 +1007,8 @@
   color: #b45309;
 }
 .account-type-badge.credit {
-  background: #fef2f2;
-  color: #b91c1c;
+  background: #f5ecf0;
+  color: #8b3252;
 }
 .account-type-badge.investment,
 .account-type-badge.money_market {
@@ -1055,7 +1054,7 @@
 }
 
 .balance--negative {
-  color: #dc2626;
+  color: #8b3252;
 }
 
 .balance-label {
@@ -1099,13 +1098,13 @@
 }
 
 .select-account-btn {
-  background: #1e3a8a;
-  border: 1.5px solid #1e3a8a;
+  background: #2c5282;
+  border: 1.5px solid #2c5282;
   color: #fff;
 }
 .select-account-btn:hover {
-  background: #1e40af;
-  border-color: #1e40af;
+  background: #1e3a5f;
+  border-color: #1e3a5f;
   color: #fff;
 }
 
@@ -1537,7 +1536,7 @@
 
 .tx-tab--active {
   background: #fff;
-  color: #1e40af;
+  color: #2c5282;
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -1677,7 +1676,7 @@
 }
 
 .transaction-amount:has(+ .transaction-amount[data-direction="out"]) {
-  color: #e74c3c;
+  color: #8b3252;
 }
 
 .transaction-amount:has(+ .transaction-amount[data-direction="in"]) {
@@ -1724,8 +1723,8 @@
 }
 
 .status.failed {
-  background: #fadbd8;
-  color: #e74c3c;
+  background: #f5ecee;
+  color: #7c2d3e;
 }
 
 /* Loading and Error States */
@@ -1737,14 +1736,14 @@
 }
 
 .loading {
-  color: #3498db;
+  color: #64748b;
 }
 
 .error {
-  color: #e74c3c;
-  background: #fadbd8;
+  color: #7c2d3e;
+  background: #f5ecee;
   border-radius: 8px;
-  border: 1px solid #f1948a;
+  border: 1px solid #d4a0ab;
 }
 
 /* Inline toast-style messages (replaces browser alert/confirm modals) */
@@ -1794,9 +1793,9 @@
 }
 
 .inline-message--error {
-  background: #fadbd8;
-  color: #922b21;
-  border: 1px solid #f1948a;
+  background: #f5ecee;
+  color: #7c2d3e;
+  border: 1px solid #d4a0ab;
   flex-wrap: wrap;
   max-width: min(960px, calc(100vw - 32px));
 }
@@ -1957,22 +1956,21 @@
 }
 
 .token-modal .modal-header {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1f2937;
-  color: #1e3a8a;
+  background: #ffffff;
+  color: #0f172a;
   padding: 20px 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
-  border-bottom: 1px solid #93c5fd;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .token-modal .modal-header h3 {
   margin: 0;
   font-size: 2rem;
   font-weight: 600;
-  color: #1e3a8a;
+  color: #2c5282;
 }
 
 .close-btn {
@@ -2365,9 +2363,9 @@
 }
 
 .ud-alert--error {
-  background: #fef2f2;
-  color: #991b1b;
-  border-color: #fecaca;
+  background: #f5ecee;
+  color: #7c2d3e;
+  border-color: #d4a0ab;
 }
 .ud-alert--success {
   background: #f0fdf4;
@@ -2597,7 +2595,7 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
 }
 
 .dashboard-header--surface .logo-square {
-  background: linear-gradient(135deg, var(--brand-navy), #dc2626);
+  background: linear-gradient(135deg, var(--brand-navy), #2c5282);
   opacity: 1;
 }
 
@@ -2645,7 +2643,7 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
   border-radius: 14px;
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-left: 4px solid #3b82f6;
+  border-left: 4px solid #2c5282;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
@@ -2696,7 +2694,7 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
   margin: 6px 0 0;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  color: #dc2626;
+  color: #8b3252;
   display: flex;
   align-items: baseline;
   gap: 6px;
@@ -2707,7 +2705,7 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: #ef4444;
+  color: #8b3252;
 }
 
 .user-dashboard--2026 .ud-hero__spark {
@@ -2724,7 +2722,7 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
   flex: 1;
   min-height: 6px;
   border-radius: 4px 4px 0 0;
-  background: linear-gradient(180deg, #3b82f6, rgba(59, 130, 246, 0.15));
+  background: linear-gradient(180deg, #2c5282, rgba(44, 82, 130, 0.15));
   opacity: 0.7;
 }
 
@@ -2736,7 +2734,7 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
   letter-spacing: 0.07em;
   color: #94a3b8;
   text-transform: uppercase;
-  border-left: 3px solid #4169e1;
+  border-left: 3px solid #2c5282;
   padding-left: 6px;
 }
 
@@ -2774,28 +2772,28 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
 }
 
 .user-dashboard--2026 .ud-qa-btn--accent {
-  background: #1e3a8a;
-  border-color: #1e3a8a;
+  background: #2c5282;
+  border-color: #2c5282;
   color: #fff;
 }
 
 .user-dashboard--2026 .ud-qa-btn--accent:hover {
-  background: #1e40af;
-  border-color: #1e40af;
+  background: #1e3a5f;
+  border-color: #1e3a5f;
   color: #fff;
 }
 
 .user-dashboard--2026 .ud-qa-btn--delegate {
   text-decoration: none;
-  border-color: #bfdbfe;
-  background: #eff6ff;
-  color: #2563eb;
+  border-color: #c5d3e8;
+  background: #edf0f7;
+  color: #2c5282;
 }
 
 .user-dashboard--2026 .ud-qa-btn--delegate:hover {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  color: #1d4ed8;
+  background: #dce3f0;
+  border-color: #a3b8d8;
+  color: #1e3a5f;
 }
 
 /* Trust strip */
@@ -2817,7 +2815,7 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
 }
 
 .user-dashboard--2026 .ud-trust-strip__item--debug {
-  color: #2563eb;
+  color: #2c5282;
   text-decoration: none;
   opacity: 0.8;
   transition: opacity 0.15s;
@@ -2841,10 +2839,10 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
   padding: 5px 11px;
   font-size: 11px;
   font-weight: 600;
-  color: #2563eb;
-  background: #eff6ff;
+  color: #2c5282;
+  background: #edf0f7;
   border-radius: 20px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid #c5d3e8;
   text-decoration: none;
   cursor: pointer;
   transition:
@@ -2852,9 +2850,9 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
     border-color 0.12s;
 }
 .user-dashboard--2026 .ud-super-pill:hover {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  color: #1d4ed8;
+  background: #dce3f0;
+  border-color: #a3b8d8;
+  color: #1e3a5f;
   text-decoration: none;
 }
 
@@ -2876,7 +2874,7 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
   background: #fff;
   border-radius: 14px;
   border: 1px solid #e2e8f0;
-  border-left: 4px solid #3b82f6;
+  border-left: 4px solid #2c5282;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
   padding: 16px 18px 14px;
   backdrop-filter: none;
@@ -3351,7 +3349,7 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
 }
 
 .ud-txn-out {
-  color: #dc2626;
+  color: #8b3252;
 }
 .ud-txn-in {
   color: #16a34a;
@@ -3760,7 +3758,7 @@ html[data-theme="dark"] .token-modal {
 }
 
 .tx-row__amount--neg {
-  color: #be123c;
+  color: #8b3252;
 }
 
 .tx-row__amount--pos {
@@ -3785,6 +3783,81 @@ html[data-theme="dark"] .token-modal {
 }
 
 .tx-badge--agent {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #e4eaf4;
+  color: #2c5282;
+}
+
+/* ── B2B theme overrides — white welcome header & blue buttons ─────────── */
+
+/* 1. Header text: was white-on-blue, now dark-on-white */
+.dashboard-header .bank-name,
+.dashboard-header .user-greeting {
+  color: #0f172a;
+}
+.dashboard-header .user-email {
+  color: #64748b;
+  opacity: 1;
+}
+
+/* 2. Token-info and logout glass buttons: restyle for light background */
+.dashboard-header .token-info-btn {
+  background: #f1f5f9;
+  border: 1.5px solid #e2e8f0;
+  color: #334155;
+  backdrop-filter: none;
+}
+.dashboard-header .token-info-btn:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+.dashboard-header .logout-btn {
+  background: #f1f5f9;
+  border: 1.5px solid #e2e8f0;
+  color: #334155;
+  backdrop-filter: none;
+}
+.dashboard-header .logout-btn:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  transform: none;
+}
+
+/* 3. Token modal close button: dark on white header */
+.token-modal .modal-header .close-btn {
+  color: #64748b;
+}
+.token-modal .modal-header .close-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.token-modal .modal-header h3 {
+  color: #0f172a;
+}
+
+/* 4. Action buttons: muted slate-blue (dashboard-scoped) */
+.user-dashboard {
+  --app-primary-red: #2c5282;
+  --app-primary-red-hover: #1e3a5f;
+  --app-primary-red-mid: #3a6298;
+  --app-primary-red-border: #1e3a5f;
+}
+/* Fix box-shadows to match muted slate-blue */
+.user-dashboard .dashboard-toolbar-btn,
+.user-dashboard .dashboard-toolbar-btn--accent,
+.user-dashboard .dashboard-toolbar-btn--signin,
+.user-dashboard .dashboard-header-mcp-btn {
+  box-shadow: 0 1px 2px rgba(30, 58, 95, 0.15);
+}
+.user-dashboard .dashboard-toolbar-btn:hover,
+.user-dashboard .dashboard-toolbar-btn--accent:hover,
+.user-dashboard .dashboard-toolbar-btn--signin:hover,
+.user-dashboard .dashboard-header-mcp-btn:hover {
+  box-shadow: 0 2px 6px rgba(30, 58, 95, 0.22);
+}
+.user-dashboard .transfer-btn,
+.user-dashboard .deposit-submit-btn,
+.user-dashboard .withdraw-submit-btn,
+.user-dashboard .ud-submit-btn,
+.user-dashboard .ud-cancel-btn {
+  box-shadow: none;
 }
