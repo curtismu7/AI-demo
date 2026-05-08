@@ -274,6 +274,24 @@ describe('nlIntentParser — agent chip / suggestion commands', () => {
     expect(bank('What is my current balance?').banking.action).toBe('balance');
   });
 
+  it('"check balance on checking" → balance with accountType=checking', () => {
+    const r = bank('check balance on checking');
+    expect(r.banking.action).toBe('balance');
+    expect(r.banking.params && r.banking.params.accountType).toBe('checking');
+  });
+
+  it('"savings balance" → balance with accountType=savings', () => {
+    const r = bank('savings balance');
+    expect(r.banking.action).toBe('balance');
+    expect(r.banking.params && r.banking.params.accountType).toBe('savings');
+  });
+
+  it('"chk balance" → balance with accountType=checking (alias)', () => {
+    const r = bank('chk balance');
+    expect(r.banking.action).toBe('balance');
+    expect(r.banking.params && r.banking.params.accountType).toBe('checking');
+  });
+
   it('"deposit" chip → deposit', () => {
     expect(bank('Deposit').banking.action).toBe('deposit');
   });

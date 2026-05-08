@@ -204,8 +204,14 @@ function parseBanking(t) {
   if (/\bbalance\b/.test(t)) {
     const m = t.match(/acc[_a-z0-9-]{6,}/i);
     if (m) return { kind: 'banking', banking: { action: 'balance', params: { accountId: m[0] } } };
+    const accountTypeMatch = t.match(/\b(checking|savings|chk|sav)\b/i);
+    if (accountTypeMatch) {
+      const raw = accountTypeMatch[1].toLowerCase();
+      const accountType = raw === 'chk' ? 'checking' : raw === 'sav' ? 'savings' : raw;
+      return { kind: 'banking', banking: { action: 'balance', params: { accountType } } };
+    }
     if (
-      /\b(account|acc|checking|savings)\b/.test(t) ||
+      /\b(account|acc)\b/.test(t) ||
       /\b(my|the|current|check|what|show|get)\b.*\bbalance\b/.test(t) ||
       /\bbalance\b.*\b(my|current)\b/.test(t)
     ) {

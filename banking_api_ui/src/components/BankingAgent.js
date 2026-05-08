@@ -5328,12 +5328,26 @@ export default function BankingAgent({
       }
       if (action === "accounts" || action === "transactions") {
         await runAction(action, {}, { skipUserLabel: true });
-      } else if (action === "balance" && p.accountId) {
-        await runAction(
-          "balance",
-          { accountId: p.accountId },
-          { skipUserLabel: true },
-        );
+      } else if (action === "balance" && (p.accountId || p.accountType)) {
+        let resolvedId = p.accountId;
+        if (!resolvedId && p.accountType) {
+          const match = liveAccounts.find(
+            (a) => a.type?.toLowerCase() === p.accountType.toLowerCase(),
+          );
+          resolvedId = match?.id;
+        }
+        if (resolvedId) {
+          await runAction(
+            "balance",
+            { accountId: resolvedId },
+            { skipUserLabel: true },
+          );
+        } else {
+          addMessage(
+            "assistant",
+            `I couldn't find a ${p.accountType || "matching"} account. Which account would you like to check?`,
+          );
+        }
       } else if (action === "transfer" && p.fromId && p.toId && p.amount) {
         // All params extracted by NL — execute directly
         await runAction("transfer", p, { skipUserLabel: true });
