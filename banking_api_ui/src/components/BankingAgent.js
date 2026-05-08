@@ -965,7 +965,7 @@ function formatResult(result) {
       .slice(0, 10)
       .map(
         (t) =>
-          `${t.type}: ${formatCurrency(t.amount)} — ${t.description || ""}\n  ${new Date(t.created_at || t.createdAt).toLocaleDateString()}`,
+          `${t.type}: ${formatCurrency(t.amount)} — ${t.description || ""}\n  ${new Date(t.date || t.created_at || t.createdAt).toLocaleDateString()}`,
       )
       .join("\n\n");
   }
@@ -1100,7 +1100,7 @@ function TransactionsTable({ transactions }) {
             </td>
             <td className="bar-rp-date">
               {new Date(
-                t.created_at || t.createdAt || Date.now(),
+                t.date || t.created_at || t.createdAt || Date.now(),
               ).toLocaleDateString()}
             </td>
           </tr>
@@ -1676,7 +1676,7 @@ export default function BankingAgent({
   /** {x,y} when panel has been dragged; null = CSS-anchored default position */
   const [dragPos, setDragPos] = useState(null);
   /** Panel dimensions for resizing — floating default is large enough for header, chips, and two-column body */
-  const [panelSize, setPanelSize] = useState({ width: 540, height: 540 });
+  const [panelSize, setPanelSize] = useState({ width: 620, height: 540 });
   /** Side panel showing rich results next to the agent */
   const [resultPanel, setResultPanel] = useState(null);
   const resultPanelRef = useRef(null);
