@@ -824,7 +824,7 @@ const ScopeTable: FC<{ value: string; onChange: (v: string) => void }> = ({
   const [newScope, setNewScope] = useState("");
   const activeSet = useMemo(
     () =>
-      new Set(
+      new Set<string>(
         value
           .split(/\s+/)
           .map((s) => s.trim())
@@ -857,8 +857,8 @@ const ScopeTable: FC<{ value: string; onChange: (v: string) => void }> = ({
 
   const categories = Array.from(new Set(KNOWN_SCOPES.map((s) => s.category)));
   const knownScopeNames = new Set(KNOWN_SCOPES.map((s) => s.scope));
-  const customScopes = Array.from(activeSet).filter(
-    (s) => !knownScopeNames.has(s),
+  const customScopes: string[] = (Array.from(activeSet) as string[]).filter(
+    (s: string) => !knownScopeNames.has(s),
   );
 
   return (
@@ -1024,15 +1024,11 @@ const IdpSetupGuide: FC<{
     { id: "endpoints", label: "🌐 OAuth Endpoints" },
   ];
 
-  const ValueRow = ({
-    label,
-    value,
-    hint,
-  }: {
+  const ValueRow: React.FC<{
     label: string;
     value: string;
     hint?: string;
-  }) => (
+  }> = ({ label, value, hint }) => (
     <div
       className="idp-setup-row"
       style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}
@@ -1066,7 +1062,7 @@ const IdpSetupGuide: FC<{
     </div>
   );
 
-  const ScopeChip = ({ scope }: { scope: string }) => (
+  const ScopeChip: React.FC<{ scope: string }> = ({ scope }) => (
     <code
       style={{
         background: "#eff6ff",

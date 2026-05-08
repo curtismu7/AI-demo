@@ -21,7 +21,7 @@ interface DeviceSelectorProps {
 const DeviceSelector: FC<DeviceSelectorProps> = ({
   devices = [],
   selectedDeviceId = null,
-  onSelectDevice = () => {},
+  onSelectDevice = (_deviceId: string) => {},
   onBack = null,
   disabled = false,
   title = "Select how you'd like to verify this transaction:",

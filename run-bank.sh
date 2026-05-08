@@ -610,17 +610,6 @@ if [[ -d "$BASEDIR/banking_mcp_invest" ]] && [[ -f "$BASEDIR/banking_mcp_invest/
   echo $! > "$PID_INVEST"
 fi
 
-# ── HITL Service on :3009 ───────────────────────────────────────────────────
-if [[ -d "$BASEDIR/banking_hitl_service" ]]; then
-  echo "[ALERT] Starting HITL Service on :3009..."
-  (
-    cd "$BASEDIR/banking_hitl_service"
-    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
-    PORT=3009 npm start > "${LOG_HITL}" 2>&1
-  ) &
-  echo $! > "$PID_HITL"
-fi
-
 # ── Agent Service on :3006 ──────────────────────────────────────────────────
 if [[ -d "$BASEDIR/banking_agent_service" ]] && [[ -f "$BASEDIR/banking_agent_service/dist/index.js" ]]; then
   echo "[CONNECT] Starting Agent Service on :3006..."

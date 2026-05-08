@@ -20,6 +20,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 - **Helix LLM service** — rewritten to read the answer directly from the `POST /messages` response (`message_class=complete`) instead of always polling; `helix_prompt_field_id` is now required (no safe default); polling kept as fallback for non-immediately-complete responses.
 - **Agent header buttons** — added `flex-wrap: wrap` to `.ba-header-top` so toolbar buttons wrap to a second line instead of being clipped when the panel is narrow.
+- **TypeScript compilation** — resolved type errors in UI components, added CSS module declarations, fixed Jest global types, and updated dependencies for compatibility.
 
 ### Added
 
