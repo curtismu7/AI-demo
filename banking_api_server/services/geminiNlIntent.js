@@ -25,15 +25,21 @@ Return ONLY a JSON object (no markdown) with one of:
 {"kind":"banking","banking":{"action":"balance","params":{}}}
 {"kind":"banking","banking":{"action":"balance","params":{"accountId":"chk-xxxxxxxx"}}}
 {"kind":"banking","banking":{"action":"deposit","params":{"toId":"checking","amount":100}}}
+{"kind":"banking","banking":{"action":"biggest_purchase","params":{}}}
+{"kind":"banking","banking":{"action":"spending_summary","params":{}}}
 {"kind":"none","message":"short hint"}
 
 Pipes in examples (accounts|balance) mean "pick one action" — never output pipe characters or the word "optional" as a field value.
 For "check my balance" / "my account balance" use {"action":"balance","params":{}} with empty params — omit accountId unless the user gave a real account id (e.g. chk-…).
 For transfer/deposit/withdraw: always extract amount as a number and account types as "checking" or "savings" (never use account IDs or numbers).
+Use biggest_purchase for: "biggest purchase", "largest transaction", "most expensive", "highest spend", "what did I spend the most on".
+Use spending_summary for: "spending summary", "how much did I spend", "total spending", "breakdown of spending", "where is my money going".
 Examples:
   "transfer 400 from checking to savings" → {"kind":"banking","banking":{"action":"transfer","params":{"fromId":"checking","toId":"savings","amount":400}}}
   "deposit 100 into savings" → {"kind":"banking","banking":{"action":"deposit","params":{"toId":"savings","amount":100}}}
   "withdraw 50 from checking" → {"kind":"banking","banking":{"action":"withdraw","params":{"fromId":"checking","amount":50}}}
+  "what's my biggest purchase" → {"kind":"banking","banking":{"action":"biggest_purchase","params":{}}}
+  "show me a spending summary" → {"kind":"banking","banking":{"action":"spending_summary","params":{}}}
   "search for PingOne token exchange" → {"kind":"banking","banking":{"action":"web_search","query":"PingOne token exchange"}}
   "find information about RFC 8693" → {"kind":"banking","banking":{"action":"web_search","query":"RFC 8693"}}
 
@@ -210,9 +216,10 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
           try {
             const cleaned = helixResult.replace(/^```json\s*/i, '').replace(/```\s*$/m, '').trim();
             const parsed = JSON.parse(cleaned);
-            if (parsed && typeof parsed === 'object' && parsed.kind) {
+            if (parsed && typeof parsed === 'object' && parsed.kind && parsed.kind !== 'none') {
               return { source: 'helix', result: parsed };
             }
+            // kind:'none' — in LLM-only mode fall through to conversational Helix answer
           } catch (e) {
             console.warn('[nlIntent] Helix JSON parse failed:', e.message);
           }
@@ -223,7 +230,19 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
     }
   }
 
-  // Default to Ollama (local LLM)
+  // In LLM-only mode skip Ollama entirely — go straight to conversational Helix answer.
+  if (!heuristicEnabled) {
+    const helixAnswer = await answerWithHelix(message, context).catch((e) => {
+      console.warn('[nlIntent] Helix conversational failed:', e.message);
+      return null;
+    });
+    if (helixAnswer) {
+      return { source: 'helix_fallback', result: helixAnswer };
+    }
+    return { source: 'heuristic', result: heuristicResult };
+  }
+
+  // Heuristic mode: try Ollama for unrecognized input
   const ollama = await parseWithOllama(message, context).catch((e) => {
     console.warn('[nlIntent] Ollama error:', e.message);
     return null;
