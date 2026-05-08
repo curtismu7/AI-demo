@@ -123,20 +123,50 @@ const transactionMerchants = [
   { name: 'Best Buy', category: 'retail', amounts: [60, 120, 250, 400] },
 ];
 
-function generateUserTransactions(userId, startDate = new Date('2026-04-01')) {
+function generateUserTransactions(userId, count = 80, nextId = null) {
   const txns = [];
-  let id = 1;
+  let localId = 1;
+  const id = nextId ? nextId : () => String(localId++);
+  const now = new Date();
+  const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
-  // Generate ~50 transactions for last 30 days
-  for (let i = 0; i < 50; i++) {
+  const accountId = userId === '3' ? '5' : userId === '2' ? '3' : '1';
+
+  // Salary deposits — monthly on roughly the 1st and 15th
+  for (let m = 0; m < 12; m++) {
+    const base = new Date(yearAgo);
+    base.setMonth(base.getMonth() + m);
+    [1, 15].forEach((day) => {
+      const d = new Date(base);
+      d.setDate(day);
+      if (d <= now) {
+        txns.push({
+          id: id(),
+          fromAccountId: null,
+          toAccountId: accountId,
+          amount: userId === '1' ? 2800 : userId === '2' ? 3200 : 2200,
+          type: 'deposit',
+          description: 'Payroll Deposit',
+          merchant: null,
+          category: 'income',
+          status: 'completed',
+          createdAt: new Date(d.setHours(9, 0, 0, 0)),
+          userId,
+        });
+      }
+    });
+  }
+
+  // Recurring spending spread over the year
+  for (let i = 0; i < count; i++) {
     const merchant = transactionMerchants[Math.floor(Math.random() * transactionMerchants.length)];
-    const days = Math.floor(Math.random() * 30);
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + days);
+    const msOffset = Math.floor(Math.random() * (now.getTime() - yearAgo.getTime()));
+    const date = new Date(yearAgo.getTime() + msOffset);
+    date.setSeconds(0, 0);
 
     txns.push({
-      id: String(id++),
-      fromAccountId: userId === '3' ? '5' : '1',
+      id: id(),
+      fromAccountId: accountId,
       toAccountId: null,
       amount: merchant.amounts[Math.floor(Math.random() * merchant.amounts.length)],
       type: 'purchase',
@@ -145,16 +175,44 @@ function generateUserTransactions(userId, startDate = new Date('2026-04-01')) {
       category: merchant.category,
       status: 'completed',
       createdAt: date,
-      userId
+      userId,
     });
   }
-  return txns;
+
+  // A few transfers between accounts (user 1 only — has checking + savings)
+  if (userId === '1') {
+    for (let m = 0; m < 6; m++) {
+      const d = new Date(yearAgo);
+      d.setMonth(d.getMonth() + m * 2);
+      d.setDate(20);
+      if (d <= now) {
+        txns.push({
+          id: id(),
+          fromAccountId: '1',
+          toAccountId: '2',
+          amount: 500,
+          type: 'transfer',
+          description: 'Transfer to Savings',
+          merchant: null,
+          category: 'transfer',
+          status: 'completed',
+          createdAt: new Date(d.setHours(18, 0, 0, 0)),
+          userId,
+        });
+      }
+    }
+  }
+
+  return txns.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 }
 
+let _txnIdCounter = 1;
+function nextTxnId() { return String(_txnIdCounter++); }
+
 const sampleTransactions = [
-  ...generateUserTransactions('1'),
-  ...generateUserTransactions('2'),
-  ...generateUserTransactions('3')
+  ...generateUserTransactions('1', 80, nextTxnId),
+  ...generateUserTransactions('2', 80, nextTxnId),
+  ...generateUserTransactions('3', 80, nextTxnId),
 ];
 
 // Activity logs
