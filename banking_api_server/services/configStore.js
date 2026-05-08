@@ -34,6 +34,9 @@ const SECRET_KEYS = new Set([
   'PINGONE_AGENT_CLIENT_SECRET',
   'PINGONE_AI_AGENT_CLIENT_SECRET',
   'helix_api_key',
+  'pingone_introspection_client_secret',
+  'posthog_api_key',
+  'demo_password',
 ]);
 
 // All known config keys with their defaults and whether they are public
@@ -230,6 +233,64 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   SIMULATED_AUTHORIZE_STEPUP_AMOUNT:     { public: true, default: '500' },
   SIMULATED_MCP_DENY_TOOLS:              { public: true, default: '' },
   SIMULATED_MCP_HITL_TOOLS:              { public: true, default: '' },
+
+  // Token audiences — resource URIs used in token requests and exchange
+  enduser_audience:                      { public: true,  default: '' },
+  ai_agent_audience:                     { public: true,  default: '' },
+  ai_agent_scope:                        { public: true,  default: 'ai_agent' },
+  banking_api_resource_uri:              { public: true,  default: '' },
+  mcp_token_exchange_scopes:             { public: true,  default: 'banking:read banking:write banking:mcp:invoke' },
+
+  // Token exchange auth methods
+  pingone_token_exchange_auth_method:    { public: true,  default: 'post' },
+  pingone_mcp_token_exchanger_cc_auth_method: { public: true, default: 'post' },
+
+  // Introspection (RFC 7662)
+  pingone_introspection_endpoint:        { public: true,  default: '' },
+  pingone_introspection_client_id:       { public: true,  default: '' },
+  pingone_introspection_client_secret:   { public: false, default: '' },
+  pingone_introspection_auth_method:     { public: true,  default: 'post' },
+
+  // Agent / MCP runtime flags
+  use_agent_actor_for_mcp:               { public: true,  default: 'true' },
+  token_exchange_auto_fallback:          { public: true,  default: 'true' },
+  token_exchange_log_mode_switches:      { public: true,  default: 'true' },
+
+  // Token validation / JWKS
+  skip_token_signature_validation:       { public: true,  default: 'false' },
+  strict_scope_validation:               { public: true,  default: 'false' },
+  scope_validation_timeout:              { public: true,  default: '10000' },
+  cache_token_validation:                { public: true,  default: 'true' },
+  token_cache_ttl:                       { public: true,  default: '600' },
+  jwks_requests_per_minute:              { public: true,  default: '30' },
+  jwks_cache_max_age:                    { public: true,  default: '600000' },
+
+  // Debug flags
+  debug_scopes:                          { public: true,  default: 'false' },
+  debug_tokens:                          { public: true,  default: 'false' },
+
+  // Step-up
+  step_up_acr_value:                     { public: true,  default: '' },
+
+  // Frontend URLs
+  frontend_dashboard_url:                { public: true,  default: '' },
+
+  // Observability
+  posthog_api_key:                       { public: false, default: '' },
+  posthog_host:                          { public: true,  default: 'https://us.i.posthog.com' },
+
+  // PingOne MCP stdio adapter
+  pingone_mcp_environment_id:            { public: true,  default: '' },
+  pingone_authorization_code_client_id:  { public: true,  default: '' },
+  pingone_root_domain:                   { public: true,  default: 'pingone.com' },
+
+  // Server
+  port:                                  { public: true,  default: '3001' },
+  default_user_type:                     { public: true,  default: 'customer' },
+
+  // Demo credentials (local only)
+  demo_username:                         { public: true,  default: '' },
+  demo_password:                         { public: false, default: '' },
 };
 
 // ---------------------------------------------------------------------------
@@ -284,11 +345,20 @@ let _sqliteDB = null;
 
 function _getSQLite() {
   if (_sqliteDB) return _sqliteDB;
-  const Database = require('better-sqlite3');
   const dbDir  = path.join(__dirname, '..', 'data', 'persistent');
   const dbPath = path.join(dbDir, 'config.db');
   fs.mkdirSync(dbDir, { recursive: true });
-  const db = new Database(dbPath);
+
+  let db;
+  try {
+    const Database = require('better-sqlite3');
+    db = new Database(dbPath);
+  } catch {
+    // better-sqlite3 unavailable (e.g. Node 25) — fall back to built-in node:sqlite
+    const { DatabaseSync } = require('node:sqlite');
+    db = new DatabaseSync(dbPath);
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS config (
       key        TEXT PRIMARY KEY,
@@ -490,6 +560,7 @@ class ConfigStore {
         'PINGONE_ADMIN_TOKEN_ENDPOINT_AUTH',
         'ADMIN_TOKEN_ENDPOINT_AUTH',
       ],
+      pingone_admin_token_endpoint_auth: ['PINGONE_ADMIN_TOKEN_ENDPOINT_AUTH', 'ADMIN_TOKEN_ENDPOINT_AUTH'],
       user_client_id:         [
         'PINGONE_AI_CORE_USER_CLIENT_ID',
         'PINGONE_CORE_USER_CLIENT_ID',
@@ -521,6 +592,9 @@ class ConfigStore {
       admin_role_claim:       ['ADMIN_ROLE_CLAIM'],
       session_secret:         ['SESSION_SECRET'],
       frontend_url:           ['REACT_APP_CLIENT_URL', 'FRONTEND_ADMIN_URL'],
+      frontend_admin_url:     ['FRONTEND_ADMIN_URL', 'REACT_APP_CLIENT_URL'],
+      react_app_client_url:   ['REACT_APP_CLIENT_URL', 'FRONTEND_ADMIN_URL'],
+      public_app_url:         ['PUBLIC_APP_URL'],
       mcp_server_url:                   ['MCP_SERVER_URL'],
       pingone_resource_mcp_server_uri:  ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI'],
       authorize_decision_endpoint_id:   ['PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID'],
@@ -541,6 +615,7 @@ class ConfigStore {
       pingone_mcp_token_exchanger_client_secret: ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET', 'AGENT_OAUTH_CLIENT_SECRET'],
       pingone_mcp_token_exchanger_client_scopes: ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SCOPES', 'AGENT_OAUTH_CLIENT_SCOPES'],
       pingone_resource_agent_gateway_uri: ['PINGONE_RESOURCE_AGENT_GATEWAY_URI', 'AGENT_GATEWAY_AUDIENCE'],
+      agent_gateway_audience:             ['AGENT_GATEWAY_AUDIENCE', 'PINGONE_RESOURCE_AGENT_GATEWAY_URI'],
       ai_agent_intermediate_audience:  ['AI_AGENT_INTERMEDIATE_AUDIENCE'],
       pingone_resource_mcp_gateway_uri: ['PINGONE_RESOURCE_MCP_GATEWAY_URI', 'MCP_GATEWAY_AUDIENCE'],
       pingone_resource_two_exchange_uri: ['PINGONE_RESOURCE_TWO_EXCHANGE_URI', 'MCP_RESOURCE_URI_TWO_EXCHANGE'],
@@ -567,6 +642,86 @@ class ConfigStore {
       helix_environment_id:            ['HELIX_ENVIRONMENT_ID'],
       helix_agent_id:                  ['HELIX_AGENT_ID'],
       helix_prompt_field_id:           ['HELIX_PROMPT_FIELD_ID'],
+
+      // Token audiences
+      enduser_audience:                     ['ENDUSER_AUDIENCE'],
+      ai_agent_audience:                    ['AI_AGENT_AUDIENCE'],
+      ai_agent_scope:                       ['AI_AGENT_SCOPE'],
+      banking_api_resource_uri:             ['BANKING_API_RESOURCE_URI'],
+      mcp_token_exchange_scopes:            ['MCP_TOKEN_EXCHANGE_SCOPES'],
+
+      // Token exchange auth methods
+      pingone_token_exchange_auth_method:   ['PINGONE_TOKEN_EXCHANGE_AUTH_METHOD'],
+      pingone_mcp_token_exchanger_cc_auth_method: ['PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD'],
+
+      // Introspection
+      pingone_introspection_endpoint:       ['PINGONE_INTROSPECTION_ENDPOINT'],
+      pingone_introspection_client_id:      ['PINGONE_INTROSPECTION_CLIENT_ID'],
+      pingone_introspection_client_secret:  ['PINGONE_INTROSPECTION_CLIENT_SECRET'],
+      pingone_introspection_auth_method:    ['PINGONE_INTROSPECTION_AUTH_METHOD'],
+
+      // Agent / MCP runtime flags
+      use_agent_actor_for_mcp:              ['USE_AGENT_ACTOR_FOR_MCP'],
+      token_exchange_auto_fallback:         ['TOKEN_EXCHANGE_AUTO_FALLBACK'],
+      token_exchange_log_mode_switches:     ['TOKEN_EXCHANGE_LOG_MODE_SWITCHES'],
+
+      // Token validation / JWKS
+      skip_token_signature_validation:      ['SKIP_TOKEN_SIGNATURE_VALIDATION'],
+      strict_scope_validation:              ['STRICT_SCOPE_VALIDATION'],
+      scope_validation_timeout:             ['SCOPE_VALIDATION_TIMEOUT'],
+      cache_token_validation:               ['CACHE_TOKEN_VALIDATION'],
+      token_cache_ttl:                      ['TOKEN_CACHE_TTL'],
+      jwks_requests_per_minute:             ['JWKS_REQUESTS_PER_MINUTE'],
+      jwks_cache_max_age:                   ['JWKS_CACHE_MAX_AGE'],
+
+      // Debug flags
+      debug_scopes:                         ['DEBUG_SCOPES'],
+      debug_tokens:                         ['DEBUG_TOKENS'],
+
+      // Step-up
+      step_up_acr_value:                    ['STEP_UP_ACR_VALUE'],
+
+      // Frontend URLs
+      frontend_dashboard_url:               ['FRONTEND_DASHBOARD_URL'],
+
+      // Observability
+      posthog_api_key:                      ['POSTHOG_API_KEY'],
+      posthog_host:                         ['POSTHOG_HOST'],
+
+      // PingOne MCP stdio adapter
+      pingone_mcp_environment_id:           ['PINGONE_MCP_ENVIRONMENT_ID'],
+      pingone_authorization_code_client_id: ['PINGONE_AUTHORIZATION_CODE_CLIENT_ID'],
+      pingone_root_domain:                  ['PINGONE_ROOT_DOMAIN'],
+
+      // Server
+      port:                                 ['PORT'],
+      default_user_type:                    ['DEFAULT_USER_TYPE'],
+
+      // Demo credentials
+      demo_username:                        ['USERNAME'],
+      demo_password:                        ['PASSWORD'],
+
+      // MCP gateway HTTP URL
+      mcp_gateway_http_url:                 ['MCP_GATEWAY_HTTP_URL'],
+
+      // CIBA additional config fields
+      ciba_token_delivery_mode:             ['CIBA_TOKEN_DELIVERY_MODE'],
+      ciba_binding_message:                 ['CIBA_BINDING_MESSAGE'],
+      ciba_poll_interval_ms:                ['CIBA_POLL_INTERVAL_MS'],
+      ciba_auth_request_expiry:             ['CIBA_AUTH_REQUEST_EXPIRY'],
+
+      // Authorize worker (direct var name aliases)
+      pingone_authorize_worker_client_id:   ['PINGONE_AUTHORIZE_WORKER_CLIENT_ID'],
+      pingone_authorize_worker_client_secret: ['PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET'],
+
+      // Worker token client (management API)
+      pingone_worker_token_client_id:       ['PINGONE_WORKER_TOKEN_CLIENT_ID'],
+      pingone_worker_token_client_secret:   ['PINGONE_WORKER_TOKEN_CLIENT_SECRET'],
+      pingone_worker_token_auth_method:     ['PINGONE_WORKER_TOKEN_AUTH_METHOD'],
+
+      // Ollama
+      ollama_base_url:                      ['OLLAMA_BASE_URL'],
+      ollama_model:                         ['OLLAMA_MODEL'],
     };
 
     const envVars = envFallbackMap[key] || [];

@@ -1,14 +1,23 @@
 /**
  * Startup environment variable validator.
  *
- * Prints a grouped configuration report at server start:
- *   - REQUIRED vars: exits in production if any are missing
- *   - FEATURE GROUPS: warns on partial / unconfigured optional groups
+ * Prints a grouped configuration report at server start.
+ * Output goes to the API log file (/tmp/bank-api-server.log by default,
+ * overridden by LOG_FILE_PATH env var) and also to stdout so the terminal
+ * shows it when running directly.
  *
+ * REQUIRED vars: exits in production if any are missing.
+ * FEATURE GROUPS: shows configured / partial / not configured per group.
  * Skipped entirely in test environments.
+ *
  * Usage: require('./scripts/check-env') near top of server.js.
  */
 
+const fs = require('fs');
+
+const LOG_FILE = process.env.LOG_FILE_PATH || '/tmp/bank-api-server.log';
+
+// ANSI codes — used in stdout output only; stripped for file output
 const RESET  = '\x1b[0m';
 const BOLD   = '\x1b[1m';
 const RED    = '\x1b[31m';
@@ -29,8 +38,6 @@ const REQUIRED = [
 ];
 
 // ── Feature groups — printed as a status table ───────────────────────────────
-// Each group: { label, tag, vars: [{name, desc}] }
-// A group is CONFIGURED if all vars are set, PARTIAL if some are set, OFF if none are set.
 const FEATURE_GROUPS = [
   {
     tag: 'MCP / AGENT',
@@ -87,6 +94,21 @@ const FEATURE_GROUPS = [
   },
 ];
 
+// Strip ANSI escape codes for plain-text log file output
+const ESC = '\x1b';
+const ANSI_RE = new RegExp(`${ESC}\\[[0-9;]*m`, 'g');
+function stripAnsi(str) {
+  return str.replace(ANSI_RE, '');
+}
+
+// Write one line to both stdout and the log file
+function emit(ansiLine) {
+  process.stdout.write(ansiLine + '\n');
+  try {
+    fs.appendFileSync(LOG_FILE, stripAnsi(ansiLine) + '\n');
+  } catch (_) { /* best-effort */ }
+}
+
 function isSet(name) {
   const v = process.env[name];
   return typeof v === 'string' && v.trim() !== '';
@@ -103,61 +125,64 @@ function checkEnv() {
   if (process.env.NODE_ENV === 'test') return { ok: true, missing: [] };
 
   const isProduction = process.env.NODE_ENV === 'production';
-
   const missing = REQUIRED.filter(v => !isSet(v.name));
 
   // ── Banner header ────────────────────────────────────────────────────────
   const line = '═'.repeat(66);
-  console.log(`\n${CYAN}${BOLD}╔${line}╗${RESET}`);
-  console.log(`${CYAN}${BOLD}║${RESET}${BOLD}          BANKING APP — STARTUP CONFIGURATION REPORT            ${RESET}${CYAN}${BOLD}║${RESET}`);
-  console.log(`${CYAN}${BOLD}╚${line}╝${RESET}\n`);
+  emit('');
+  emit(`${CYAN}${BOLD}╔${line}╗${RESET}`);
+  emit(`${CYAN}${BOLD}║${RESET}${BOLD}          BANKING APP — STARTUP CONFIGURATION REPORT            ${RESET}${CYAN}${BOLD}║${RESET}`);
+  emit(`${CYAN}${BOLD}╚${line}╝${RESET}`);
+  emit('');
 
   // ── Required vars ────────────────────────────────────────────────────────
   if (missing.length > 0) {
-    console.log(`  ${RED}${BOLD}REQUIRED — missing (app will not work correctly):${RESET}`);
+    emit(`  ${RED}${BOLD}REQUIRED — missing (app will not work correctly):${RESET}`);
     missing.forEach(v => {
-      console.log(`    ${RED}✗${RESET}  ${BOLD}${v.name.padEnd(38)}${RESET}${DIM}${v.desc}${RESET}`);
+      emit(`    ${RED}✗${RESET}  ${BOLD}${v.name.padEnd(38)}${RESET}${DIM}${v.desc}${RESET}`);
     });
-    console.log('');
+    emit('');
     if (isProduction) {
-      console.log(`  ${RED}${BOLD}FATAL: Required env vars missing in production — exiting.${RESET}\n`);
+      emit(`  ${RED}${BOLD}FATAL: Required env vars missing in production — exiting.${RESET}`);
+      emit('');
       process.exit(1);
     } else {
-      console.log(`  ${YELLOW}WARNING: Starting in development mode with missing required vars.${RESET}`);
-      console.log(`  ${YELLOW}Some features will not work. See docs/setup-guide.md${RESET}\n`);
+      emit(`  ${YELLOW}WARNING: Starting in development mode with missing required vars.${RESET}`);
+      emit(`  ${YELLOW}Some features will not work. See docs/SETUP.md${RESET}`);
+      emit('');
     }
   } else {
     const pub = process.env.PUBLIC_APP_URL;
-    console.log(`  ${GREEN}✓${RESET}  ${BOLD}Core OAuth / PingOne${RESET}${' '.repeat(18)}${GREEN}configured${RESET}`);
-    console.log(`      ${DIM}Admin redirect : ${pub}/api/auth/oauth/callback${RESET}`);
-    console.log(`      ${DIM}User  redirect : ${pub}/api/auth/oauth/user/callback${RESET}`);
+    emit(`  ${GREEN}✓${RESET}  ${BOLD}Core OAuth / PingOne${RESET}${' '.repeat(18)}${GREEN}configured${RESET}`);
+    emit(`      ${DIM}Admin redirect : ${pub}/api/auth/oauth/callback${RESET}`);
+    emit(`      ${DIM}User  redirect : ${pub}/api/auth/oauth/user/callback${RESET}`);
   }
 
   // ── Feature group table ───────────────────────────────────────────────────
-  console.log('');
+  emit('');
   FEATURE_GROUPS.forEach(group => {
     const status = groupStatus(group.vars);
     const tagPad = group.tag.padEnd(14);
     const labelPad = group.label.padEnd(34);
 
     if (status === 'ok') {
-      console.log(`  ${GREEN}✓${RESET}  ${DIM}[${tagPad}]${RESET}  ${labelPad}${GREEN}configured${RESET}`);
+      emit(`  ${GREEN}✓${RESET}  ${DIM}[${tagPad}]${RESET}  ${labelPad}${GREEN}configured${RESET}`);
     } else if (status === 'partial') {
       const unset = group.vars.filter(v => !isSet(v.name)).map(v => v.name);
-      console.log(`  ${YELLOW}!${RESET}  ${DIM}[${tagPad}]${RESET}  ${labelPad}${YELLOW}partial${RESET}`);
+      emit(`  ${YELLOW}!${RESET}  ${DIM}[${tagPad}]${RESET}  ${labelPad}${YELLOW}partial${RESET}`);
       unset.forEach(name => {
-        console.log(`      ${YELLOW}missing:${RESET} ${name}`);
+        emit(`      ${YELLOW}missing:${RESET} ${name}`);
       });
     } else {
-      console.log(`  ${DIM}○  [${tagPad}]  ${labelPad}not configured${RESET}`);
+      emit(`  ${DIM}○  [${tagPad}]  ${labelPad}not configured${RESET}`);
     }
   });
 
   // ── Footer ────────────────────────────────────────────────────────────────
-  console.log('');
-  console.log(`  ${DIM}Setup guide : docs/SETUP.md${RESET}`);
-  console.log(`  ${DIM}.env file   : banking_api_server/.env${RESET}`);
-  console.log('');
+  emit('');
+  emit(`  ${DIM}Setup guide : docs/SETUP.md${RESET}`);
+  emit(`  ${DIM}.env file   : banking_api_server/.env${RESET}`);
+  emit('');
 
   return { ok: missing.length === 0, missing };
 }
