@@ -348,3 +348,51 @@ describe('nlIntentParser — fallback', () => {
   });
 });
 
+// ── biggest_purchase heuristic ────────────────────────────────────────────────
+
+describe('nlIntentParser — biggest_purchase', () => {
+  const cases = [
+    "what's my biggest purchase",
+    "what was my largest transaction",
+    "show my largest spend",
+    "most expensive purchase",
+    "what have i spent the most on",
+    "biggest spend this month",
+    "highest transaction",
+  ];
+
+  cases.forEach((phrase) => {
+    it(`routes "${phrase}" → biggest_purchase`, () => {
+      const r = parseHeuristic(phrase);
+      expect(r.kind).toBe('banking');
+      expect(r.banking.action).toBe('biggest_purchase');
+    });
+  });
+
+  it('does NOT route plain "transaction history" → biggest_purchase', () => {
+    const r = parseHeuristic('show my transaction history');
+    expect(r.banking.action).toBe('transactions');
+  });
+});
+
+// ── spending_summary heuristic ────────────────────────────────────────────────
+
+describe('nlIntentParser — spending_summary', () => {
+  const cases = [
+    'show me a spending summary',
+    'give me a total spend breakdown',
+    'how much did i spend this month',
+    'where is my money going',
+    'breakdown of my spending',
+    'spending breakdown',
+  ];
+
+  cases.forEach((phrase) => {
+    it(`routes "${phrase}" → spending_summary`, () => {
+      const r = parseHeuristic(phrase);
+      expect(r.kind).toBe('banking');
+      expect(r.banking.action).toBe('spending_summary');
+    });
+  });
+});
+

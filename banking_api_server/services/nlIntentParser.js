@@ -219,7 +219,7 @@ function parseBanking(t) {
   if (/\b(biggest|largest|highest|top)\b.*(purchase|spend|transaction|payment)\b|\b(purchase|spend|transaction|payment).*(biggest|largest|highest)\b|\bmost expensive\b|\bspent the most\b|\bbiggest spend\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'biggest_purchase' } };
   }
-  if (/\b(spending summary|total spend|how much.*(spend|spent)|where.*money|breakdown.*spend|spend.*breakdown)\b/.test(t)) {
+  if (/\b(spending summary|total spend|how much.*(spend|spent)|where.*money|breakdown.*spend\w*|spend\w*.*breakdown)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'spending_summary' } };
   }
   if (/\b(transaction|history|activity|recent)\b/.test(t)) {
