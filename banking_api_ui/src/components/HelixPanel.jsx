@@ -205,8 +205,8 @@ export default function HelixPanel() {
                   : "#991b1b",
           }}
         >
-          {helixStatus === "available" && "✅ Active"}
-          {helixStatus === "unconfigured" && "⚠️ Unconfigured"}
+          {helixStatus === "available" && "Active"}
+          {helixStatus === "unconfigured" && "Unconfigured"}
           {helixStatus === null && "…"}
         </span>
       </div>
@@ -396,7 +396,7 @@ export default function HelixPanel() {
             opacity: helixChecking ? 0.6 : 1,
           }}
         >
-          {helixChecking ? "Loading…" : "📥 Load from Database"}
+          {helixChecking ? "Loading…" : "Load from Database"}
         </button>
         <button
           onClick={handleHelixSave}
@@ -418,7 +418,7 @@ export default function HelixPanel() {
             opacity: helixSaving || !helixConfig.base_url ? 0.6 : 1,
           }}
         >
-          {helixSaving ? "Saving…" : "💾 Save & Activate"}
+          {helixSaving ? "Saving…" : "Save & Activate"}
         </button>
         <button
           onClick={handleHelixClear}
@@ -432,7 +432,7 @@ export default function HelixPanel() {
             cursor: helixSaving ? "not-allowed" : "pointer",
           }}
         >
-          ❌ Clear
+          Clear
         </button>
       </div>
 

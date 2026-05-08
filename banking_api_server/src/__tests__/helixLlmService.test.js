@@ -199,7 +199,7 @@ describe('callHelixAgent — request body', () => {
     expect(body.content.textInputUserQuery).toBeUndefined();
   });
 
-  it('picks last user message when messages array has system + user entries', async () => {
+  it('prepends system message before user text when both are present', async () => {
     _fetchMock
       .mockResolvedValueOnce(okJson(CONV))
       .mockResolvedValueOnce(okJson(COMPLETE_RESPONSE));
@@ -211,7 +211,10 @@ describe('callHelixAgent — request body', () => {
 
     const [, sendOpts] = _fetchMock.mock.calls[1];
     const body = JSON.parse(sendOpts.body);
-    expect(body.content[CFG.helix_prompt_field_id]).toBe('What is my balance?');
+    // System message is prepended to user text (Helix directive field is not always active)
+    expect(body.content[CFG.helix_prompt_field_id]).toBe(
+      'You are a banking assistant.\n\nWhat is my balance?'
+    );
   });
 });
 
