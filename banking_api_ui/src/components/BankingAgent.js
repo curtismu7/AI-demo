@@ -1635,6 +1635,7 @@ export default function BankingAgent({
   const [showDiscovery, setShowDiscovery] = useState(false);
   const [discoverySearch, setDiscoverySearch] = useState("");
   const discoveryTriggerRef = useRef(null);
+  const actionsPopoutRef = useRef(null);
 
   /** Close discovery popout on Escape. First Escape clears search; second closes popout. */
   useEffect(() => {
@@ -1652,6 +1653,13 @@ export default function BankingAgent({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [showDiscovery, discoverySearch]);
+
+  // Reset scroll to top only when the dropdown first opens
+  useEffect(() => {
+    if (showDiscovery && actionsPopoutRef.current) {
+      actionsPopoutRef.current.scrollTop = 0;
+    }
+  }, [showDiscovery]);
 
   const [nlInput, setNlInput] = useState("");
   const [inputHistory, setInputHistory] = useState([]);
@@ -6165,9 +6173,7 @@ export default function BankingAgent({
                 role="dialog"
                 aria-label="Action browser"
                 aria-modal="false"
-                ref={(el) => {
-                  if (el) el.scrollTop = 0;
-                }}
+                ref={actionsPopoutRef}
               >
                 {/* Search */}
                 <input
