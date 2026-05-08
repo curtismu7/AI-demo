@@ -5349,12 +5349,40 @@ export default function BankingAgent({
           );
         }
       } else if (action === "transfer" && p.fromId && p.toId && p.amount) {
-        // All params extracted by NL — execute directly
-        await runAction("transfer", p, { skipUserLabel: true });
+        // NL returns account type names ("checking"/"savings") — resolve to real IDs
+        const resolveAcct = (val) => {
+          if (!val) return val;
+          const byId = liveAccounts.find((a) => a.id === val);
+          if (byId) return byId.id;
+          const byType = liveAccounts.find(
+            (a) => a.type?.toLowerCase() === val.toLowerCase(),
+          );
+          return byType ? byType.id : val;
+        };
+        await runAction(
+          "transfer",
+          { ...p, fromId: resolveAcct(p.fromId), toId: resolveAcct(p.toId) },
+          { skipUserLabel: true },
+        );
       } else if (action === "deposit" && p.amount) {
-        await runAction("deposit", p, { skipUserLabel: true });
+        const depAcct = liveAccounts.find(
+          (a) => a.type?.toLowerCase() === (p.toId || "checking").toLowerCase(),
+        );
+        await runAction(
+          "deposit",
+          { ...p, accountId: p.accountId || (depAcct ? depAcct.id : p.toId) },
+          { skipUserLabel: true },
+        );
       } else if (action === "withdraw" && p.amount) {
-        await runAction("withdraw", p, { skipUserLabel: true });
+        const wdAcct = liveAccounts.find(
+          (a) =>
+            a.type?.toLowerCase() === (p.fromId || "checking").toLowerCase(),
+        );
+        await runAction(
+          "withdraw",
+          { ...p, accountId: p.accountId || (wdAcct ? wdAcct.id : p.fromId) },
+          { skipUserLabel: true },
+        );
       } else if (
         ["balance", "transfer", "deposit", "withdraw"].includes(action)
       ) {
