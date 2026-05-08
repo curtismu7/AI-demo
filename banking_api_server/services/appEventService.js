@@ -23,6 +23,7 @@ const EVENT_CATEGORIES = {
   AGENT_PROMPT: 'agent_prompt',
   DELEGATION: 'delegation',
   INTROSPECTION: 'introspection',
+  HELIX: 'helix',
 };
 
 // Event severity levels

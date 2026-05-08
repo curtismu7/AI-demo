@@ -2,19 +2,24 @@
  * Helix LLM Service
  *
  * Calls a published Helix agent via the conversation API:
- *   1. POST /environments/{env_id}/agents/{agent_name}/conversations  → {id, home_channel}
+ *   1. POST /environments/{env_id}/agents/{agent_name}/conversations
+ *      Body must include { agent: { version: 'published' } } — required by Helix, omitting it returns null.
  *   2. POST /environments/{env_id}/conversations/{id}/channels/{home_channel}/messages
- *      → response contains message_class:"complete" with content[] array directly
+ *      Content-Type must be "application/json; async=false"
+ *   3. Poll GET same messages URL; response is an array — find message whose id differs from posted message id.
  *
- * Auth: x-api-key header — NOT Authorization: Bearer.
- * Base URL: helix_base_url may be the tenant root (https://openam-helix.forgeblocks.com)
- * or the full API base (…/dpc/jas/helix/v1) — both are normalised internally.
- *
- * helix_prompt_field_id: the agent-specific input field ID (e.g. "textInput5caa33a55f06").
- * Find it in the Helix agent designer — it's the ID of the text input node connected to the prompt.
+ * Auth: x-api-key header (NOT Authorization: Bearer).
  */
 
 const HELIX_PATH = '/dpc/jas/helix/v1';
+
+let _appEvents;
+function logHelix(severity, message, metadata) {
+  if (!_appEvents) {
+    try { _appEvents = require('./appEventService'); } catch (_) { return; }
+  }
+  _appEvents.logEvent('helix', severity, message, { tag: 'helix/llm', metadata: metadata });
+}
 
 // Always use just the origin — strip any console/UI path the user may have copied.
 function apiBase(baseUrl) {
@@ -26,30 +31,29 @@ function apiBase(baseUrl) {
 }
 
 /**
- * Extract the text response from a Helix messages response body.
- * The response has a top-level content[] array; the completed item has class:"complete" and a value field.
+ * Extract text value from a Helix response message.
+ * Messages can be a plain object or an array; look for class:"complete" or just grab .value.
  */
-function extractHelixResponse(data) {
-  // Top-level message_class:"complete" with content array
-  const items = Array.isArray(data.content) ? data.content : [];
-  const done = items.find((m) => m.class === 'complete' && m.value != null);
-  if (done?.value) {
-    try {
-      const parsed = JSON.parse(done.value);
-      if (typeof parsed?.response === 'string') return parsed.response;
-    } catch { /* not JSON — use raw string */ }
-    return done.value;
-  }
-  return null;
+function extractValue(data) {
+  // Array of messages — find the agent's completed message
+  const items = Array.isArray(data) ? data : (Array.isArray(data?.content) ? data.content : [data]);
+  const done = items.find((m) => m && (m.class === 'complete' || m.message_class === 'complete') && m.value != null);
+  const raw = done?.value ?? null;
+  if (raw == null) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.response === 'string') return parsed.response;
+  } catch { /* not JSON — use raw */ }
+  return raw;
 }
 
 /**
  * @param {object} config
- * @param {string} config.helix_base_url        - Tenant root or full API base URL
- * @param {string} config.helix_api_key         - Goes in x-api-key header
- * @param {string} config.helix_environment_id  - Helix environment/tenant ID
- * @param {string} config.helix_agent_id        - Agent name (string identifier, not a UUID)
- * @param {string} [config.helix_prompt_field_id] - Input field ID from the agent designer (e.g. "textInput5caa33a55f06")
+ * @param {string} config.helix_base_url
+ * @param {string} config.helix_api_key
+ * @param {string} config.helix_environment_id
+ * @param {string} config.helix_agent_id
+ * @param {string} config.helix_prompt_field_id
  * @param {Array}  messages  - [{role:'user'|'system'|'assistant', content:'...'}]
  * @returns {Promise<string>}
  */
@@ -66,64 +70,109 @@ async function callHelixAgent(config, messages) {
   if (!messages || messages.length === 0) throw new Error('No messages provided to Helix agent');
 
   const base = apiBase(helix_base_url);
-  const hdrs = { 'Content-Type': 'application/json', 'x-api-key': helix_api_key };
+  const apiKey = helix_api_key;
 
-  // Extract the last user/human message as the prompt
   const lastUser = [...messages].reverse().find((m) => m.role === 'user' || m.role === 'human')
     || messages[messages.length - 1];
-  const prompt = typeof lastUser.content === 'string' ? lastUser.content : String(lastUser.content ?? '');
+  const userText = typeof lastUser.content === 'string' ? lastUser.content : String(lastUser.content ?? '');
 
-  // Step 1 — create conversation → returns { id, home_channel }
+  // Helix directive field is not always active in published agents.
+  // Prepend any system message so the LLM receives the full instruction context.
+  const systemMsg = messages.find((m) => m.role === 'system');
+  const systemText = systemMsg ? (typeof systemMsg.content === 'string' ? systemMsg.content : String(systemMsg.content ?? '')) : '';
+  const prompt = systemText ? `${systemText}\n\n${userText}` : userText;
+
+  logHelix('info', 'Helix call started', { agent: helix_agent_id, environment: helix_environment_id });
+
+  // Step 1 — create conversation
+  // IMPORTANT: body must include agent.version or Helix returns null
   const convRes = await fetch(
     `${base}/environments/${helix_environment_id}/agents/${helix_agent_id}/conversations`,
-    { method: 'POST', headers: hdrs, body: JSON.stringify({ name: `bx-${Date.now()}` }) },
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+      body: JSON.stringify({ agent: { version: 'published' } }),
+    },
   );
   if (!convRes.ok) {
-    throw new Error(`Helix createConversation failed: ${convRes.status} ${await convRes.text()}`);
+    const errText = await convRes.text();
+    logHelix('error', `createConversation failed: ${convRes.status}`, { status: convRes.status, body: errText });
+    throw new Error(`Helix createConversation failed: ${convRes.status} ${errText}`);
   }
   const conv = await convRes.json();
+  if (!conv || !conv.id) {
+    logHelix('error', 'createConversation returned null — check agent name, key scope, and published version', { agent: helix_agent_id });
+    throw new Error(`Helix createConversation returned null — check agent name, key scope, and agent version`);
+  }
   const { id: conversationId, home_channel: channelId } = conv;
+  logHelix('info', 'Conversation created', { conversationId: conversationId, channelId: channelId });
 
-  const promptFieldId = helix_prompt_field_id;
-
-  // Step 2 — send prompt; response includes the completed answer directly
+  // Step 2 — post message
+  // Content-Type must include async=false per Helix API spec
   const msgRes = await fetch(
     `${base}/environments/${helix_environment_id}/conversations/${conversationId}/channels/${channelId}/messages`,
     {
       method: 'POST',
-      headers: hdrs,
-      body: JSON.stringify({ class: 'start', content: { [promptFieldId]: prompt } }),
+      headers: { 'Content-Type': 'application/json; async=false', 'x-api-key': apiKey },
+      body: JSON.stringify({ class: 'start', content: { [helix_prompt_field_id]: prompt } }),
     },
   );
   if (!msgRes.ok) {
-    throw new Error(`Helix sendMessage failed: ${msgRes.status} ${await msgRes.text()}`);
+    const errText = await msgRes.text();
+    logHelix('error', `sendMessage failed: ${msgRes.status}`, { status: msgRes.status, body: errText });
+    throw new Error(`Helix sendMessage failed: ${msgRes.status} ${errText}`);
   }
   const msgData = await msgRes.json();
+  const queryMessageId = msgData?.message_id || msgData?.id;
 
-  // The POST response contains the answer when message_class === "complete"
-  if (msgData.message_class === 'complete') {
-    const result = extractHelixResponse(msgData);
-    if (result != null) return result;
+  // Check if POST response already contains the answer
+  const immediate = extractValue(msgData);
+  if (immediate != null) {
+    logHelix('info', 'Response received (immediate)', { conversationId: conversationId });
+    return immediate;
   }
+  logHelix('info', 'Polling for response', { conversationId: conversationId });
 
-  // Fallback: poll if the response wasn't immediately complete
+  // Step 3 — poll for agent response
   const pollUrl = `${base}/environments/${helix_environment_id}/conversations/${conversationId}/channels/${channelId}/messages`;
   const deadline = Date.now() + 30_000;
-  const interval = 1_500;
+  const interval = 1_000;
 
   while (Date.now() < deadline) {
-    const pollRes = await fetch(pollUrl, { headers: { 'x-api-key': helix_api_key } });
+    await new Promise((r) => setTimeout(r, interval));
+    const pollRes = await fetch(pollUrl, { headers: { 'x-api-key': apiKey } });
     if (!pollRes.ok) {
-      throw new Error(`Helix poll failed: ${pollRes.status} ${await pollRes.text()}`);
+      const errText = await pollRes.text();
+      logHelix('error', `poll failed: ${pollRes.status}`, { status: pollRes.status, body: errText });
+      throw new Error(`Helix poll failed: ${pollRes.status} ${errText}`);
     }
     const data = await pollRes.json();
-    if (data.message_class === 'complete') {
-      const result = extractHelixResponse(data);
-      if (result != null) return result;
+
+    // Filter out the message we posted — look for the agent's reply
+    // Poll response uses message_id (not id); agent messages have sender_role:"agent"
+    const messages_ = Array.isArray(data) ? data : [];
+    const agentMsg = messages_.find((m) =>
+      m.sender_role === 'agent' &&
+      m.message_id !== queryMessageId &&
+      m.value != null
+    );
+    if (agentMsg) {
+      const result = extractValue(agentMsg);
+      if (result != null) {
+        logHelix('info', 'Response received (poll)', { conversationId: conversationId });
+        return result;
+      }
     }
-    await new Promise((r) => setTimeout(r, interval));
+
+    // Also check top-level if response isn't an array
+    const result = extractValue(data);
+    if (result != null) {
+      logHelix('info', 'Response received (poll/top-level)', { conversationId: conversationId });
+      return result;
+    }
   }
 
+  logHelix('error', 'Timed out waiting for Helix response', { conversationId: conversationId, agent: helix_agent_id });
   throw new Error('Timed out waiting for Helix response');
 }
 
