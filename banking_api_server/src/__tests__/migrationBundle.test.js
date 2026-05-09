@@ -185,6 +185,20 @@ describe('exportMigrationBundle.js', () => {
     expect(fs.existsSync(path.join(ed, 'sessions.db'))).toBe(false);
   });
 
+  test('certs/ directory is not present in the archive', () => {
+    const { result, extractDir: ed } = exportAndExtract();
+    expect(result.status).toBe(0);
+    const manifest = JSON.parse(fs.readFileSync(path.join(ed, 'manifest.json'), 'utf8'));
+    // No cert files in the files list
+    const certEntries = manifest.files.filter(f => f.startsWith('certs/'));
+    expect(certEntries).toHaveLength(0);
+    // No certs/ directory extracted
+    expect(fs.existsSync(path.join(ed, 'certs'))).toBe(false);
+    // Skipped list mentions certs
+    const skippedStr = manifest.skipped.join(' ');
+    expect(skippedStr).toMatch(/certs/);
+  });
+
   test('manifest.hasEnv is true and .env is in archive when .env exists', () => {
     const { result, extractDir: ed } = exportAndExtract();
     expect(result.status).toBe(0);

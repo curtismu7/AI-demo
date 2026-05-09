@@ -491,6 +491,16 @@ router.get('/packages', (_req, res) => {
     } catch { checks.sqlite_native_ok = false; }
   }
 
+  // TLS certs (machine-bound — not in migration archive)
+  const REPO_ROOT = nodePath.resolve(SERVER_ROOT, '..');
+  const certFile = nodePath.join(REPO_ROOT, 'certs', 'api.pingdemo.com+2.pem');
+  checks.tls_certs = require('node:fs').existsSync(certFile);
+
+  // mkcert available (needed to generate certs on a new machine)
+  const { spawnSync: certSpawn } = require('node:child_process');
+  const mkcertCheck = certSpawn('mkcert', ['--version'], { encoding: 'utf8' });
+  checks.mkcert = mkcertCheck.status === 0;
+
   const ready =
     checks.node_modules &&
     checks.tar &&
@@ -504,6 +514,8 @@ router.get('/packages', (_req, res) => {
       node_modules: 'cd banking_api_server && npm install',
       tar: 'cd banking_api_server && npm install',
       sqlite_native_ok: 'cd banking_api_server && npm rebuild better-sqlite3',
+      tls_certs: 'mkdir -p certs && cd certs && mkcert api.pingdemo.com localhost 127.0.0.1',
+      mkcert: 'brew install mkcert && mkcert -install',
     },
   });
 });

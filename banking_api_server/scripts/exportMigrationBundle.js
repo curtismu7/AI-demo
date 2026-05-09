@@ -219,6 +219,7 @@ async function main() {
     skipped: [
       'sessions.db — machine-bound Express sessions',
       'runtimeData.json — ephemeral in-memory snapshot',
+      'certs/ — machine-bound TLS certificates (regenerate with mkcert on destination)',
       ...skippedDb,
     ],
   };
@@ -308,6 +309,7 @@ async function main() {
   console.log('Skipped:');
   console.log('  sessions.db       (machine-bound Express sessions)');
   console.log('  runtimeData.json  (ephemeral in-memory snapshot)');
+  console.log('  certs/            (machine-bound TLS certs — regenerate on destination)');
   if (skippedDb.length > 0) {
     for (const s of skippedDb) {
       console.log(`  ${s}`);

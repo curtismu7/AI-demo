@@ -163,6 +163,13 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// ── mkcert availability ───────────────────────────────────────────────────────
+
+function hasMkcert() {
+  const which = spawnSync('mkcert', ['--version'], { encoding: 'utf8' });
+  return which.status === 0;
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -381,9 +388,25 @@ async function main() {
   console.log('');
   console.log(`Backup saved to: ${backupDir}`);
   console.log('');
+  // Check if TLS certs exist on this machine
+  const REPO_ROOT = path.resolve(SERVER_ROOT, '..');
+  const certFile = path.join(REPO_ROOT, 'certs', 'api.pingdemo.com+2.pem');
+  const certsMissing = !fs.existsSync(certFile);
+
   console.log('Next steps:');
-  console.log('  1. Start the server:  ./run-bank.sh');
-  console.log('  2. Visit /configure   — page will show "Import verified" if config is OK');
+  let stepNum = 1;
+  if (certsMissing) {
+    console.log(`  ${stepNum++}. Generate TLS certs (machine-bound — not in archive):`);
+    if (hasMkcert()) {
+      console.log('       mkdir -p certs && cd certs && mkcert api.pingdemo.com localhost 127.0.0.1');
+    } else {
+      console.log('       brew install mkcert && mkcert -install');
+      console.log('       mkdir -p certs && cd certs && mkcert api.pingdemo.com localhost 127.0.0.1');
+    }
+    console.log('');
+  }
+  console.log(`  ${stepNum++}. Start the server:  ./run-bank.sh`);
+  console.log(`  ${stepNum++}. Visit /configure   — page will show "Import verified" if config is OK`);
   console.log('');
   console.log('To rollback:');
   console.log(`  cp ${backupDir}/* ${DATA_PERSISTENT}/`);
