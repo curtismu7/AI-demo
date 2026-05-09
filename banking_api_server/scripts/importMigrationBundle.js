@@ -393,8 +393,24 @@ async function main() {
   const certFile = path.join(REPO_ROOT, 'certs', 'api.pingdemo.com+2.pem');
   const certsMissing = !fs.existsSync(certFile);
 
+  // Check sibling packages — running app needs all three. CRA peerOptional quirk on UI.
+  const SIBLINGS = [
+    { dir: 'banking_api_ui', flags: ' --legacy-peer-deps' },
+    { dir: 'banking_mcp_server', flags: '' },
+  ];
+  const siblingsMissingDeps = SIBLINGS.filter(({ dir }) =>
+    !fs.existsSync(path.join(REPO_ROOT, dir, 'node_modules'))
+  );
+
   console.log('Next steps:');
   let stepNum = 1;
+  if (siblingsMissingDeps.length > 0) {
+    console.log(`  ${stepNum++}. Install sibling package dependencies:`);
+    for (const { dir, flags } of siblingsMissingDeps) {
+      console.log(`       cd ${dir} && npm install${flags} && cd ..`);
+    }
+    console.log('');
+  }
   if (certsMissing) {
     console.log(`  ${stepNum++}. Generate TLS certs (machine-bound — not in archive):`);
     if (hasMkcert()) {

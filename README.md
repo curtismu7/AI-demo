@@ -42,8 +42,10 @@ git clone https://github.com/curtismu7/banking-demo.git
 cd banking-demo
 cd banking_api_server && npm install && cd ..
 cd banking_mcp_server  && npm install && cd ..
-cd banking_api_ui      && npm install && cd ..
+cd banking_api_ui      && npm install --legacy-peer-deps && cd ..
 ```
+
+> `banking_api_ui` ships an `.npmrc` with `legacy-peer-deps=true` so plain `npm install` also works there — the explicit flag above is belt-and-suspenders if `.npmrc` is ever lost. CRA/`react-scripts` has an unresolvable `peerOptional` for TypeScript that npm 7+ rejects by default.
 
 #### 3. Start all services
 
@@ -96,7 +98,7 @@ git clone https://github.com/curtismu7/banking-demo.git
 cd banking-demo
 cd banking_api_server && npm install && cd ..
 cd banking_mcp_server  && npm install && cd ..
-cd banking_api_ui      && npm install && cd ..
+cd banking_api_ui      && npm install --legacy-peer-deps && cd ..
 
 # 3. Copy the archive from Machine A, then import
 cd banking_api_server
@@ -131,6 +133,7 @@ Open **[https://api.pingdemo.com:4000/configure](https://api.pingdemo.com:4000/c
 | `/configure` shows all fields blank after import | `.env` encryption key mismatch | Re-import with the original archive; ensure `.env` from the source machine was included |
 | `better-sqlite3` binary error on start | Node version mismatch | `cd banking_api_server && npm rebuild better-sqlite3` |
 | Import fails with "server is running" | Server must be stopped before import | `./run-bank.sh stop` then retry import |
+| `npm install` in `banking_api_ui` fails with `ERESOLVE` (typescript / react-scripts) | CRA's `peerOptional` typescript range trips npm 7+ resolver | `npm install --legacy-peer-deps` (or restore `banking_api_ui/.npmrc` containing `legacy-peer-deps=true`) |
 
 ---
 

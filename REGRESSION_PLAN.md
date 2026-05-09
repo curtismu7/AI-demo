@@ -102,6 +102,27 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-09 — Clean-install: `banking_api_ui` `npm install` fails ERESOLVE on fresh machine
+
+**Files changed:**
+- `banking_api_ui/.npmrc` (new) — `legacy-peer-deps=true`. Pins resolver behaviour so plain `npm install` works in this package without flags.
+- `README.md` — Path A and Path B install commands updated to `npm install --legacy-peer-deps` for `banking_api_ui` (belt-and-suspenders if `.npmrc` is ever deleted). Added troubleshooting row covering the ERESOLVE symptom.
+- `banking_api_server/scripts/importMigrationBundle.js` — extended "Next steps" output to detect missing sibling `node_modules` (`banking_api_ui`, `banking_mcp_server`) and print the correct install commands (with `--legacy-peer-deps` for the UI). Surfaces the requirement before the user starts the server.
+- `banking_api_server/scripts/exportMigrationBundle.js` — fixed the post-export "NEXT STEPS" output. Was telling the destination operator to run only `cd banking_api_server && npm install`; now lists all three package installs (with `--legacy-peer-deps` for the UI) plus the cert-generation step before `./run-bank.sh`. Also restructured to a 5-step list (clone+install → import → certs → start).
+
+**What was broken:** Two related issues from the same clean-install test on 2026-05-09:
+1. `cd banking_api_ui && npm install` failed with `ERESOLVE — peerOptional typescript@"^3.2.1 || ^4" from react-scripts@5.0.1` vs the project's direct `typescript@4.9.5` dependency. CRA + npm 7+ peer-dep resolver quirk; the README only said `npm install`, so a new-machine setup hit a hard stop with no documented fix path.
+2. The export script's stdout NEXT STEPS gave incomplete instructions to the destination operator — only `banking_api_server` install, no UI/MCP, no cert step. Anyone following only the export script's printout would land on a half-installed app.
+
+**What was fixed:** Plain `npm install` now works in `banking_api_ui` (via `.npmrc`). The README, import-script "Next steps", and export-script "NEXT STEPS" all reference the explicit `--legacy-peer-deps` flag for redundancy. Import script now warns up-front if sibling deps are missing. Export-script printout now matches the README's full Path B install sequence.
+
+**Verify:**
+- `cd banking_api_ui && rm -rf node_modules && npm install` → exit 0, `node_modules/.bin/react-scripts` present.
+- Run `npm run data:import -- <archive>` from `banking_api_server/` with a sibling `node_modules` removed → "Next steps" lists the correct install command for the missing package.
+- Run `npm run data:export` → printed NEXT STEPS includes 3 install commands (with `--legacy-peer-deps` on UI), an import step, a cert step, and `./run-bank.sh`.
+
+---
+
 ### 2026-05-07 — MCP Authorize gate always-on; fix confirm-after-MFA loop
 
 **Files changed:**
