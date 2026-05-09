@@ -313,8 +313,23 @@ async function main() {
       console.log(`  ${s}`);
     }
   }
+  const archiveName = path.basename(outputPath);
   console.log('');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('NEXT STEPS — copy to another machine and import:');
+  console.log('');
+  console.log('  1. Copy the archive to the target machine:');
+  console.log(`       scp ${outputPath} user@target-machine:~/`);
+  console.log('');
+  console.log('  2. On the target machine, clone the repo and run:');
+  console.log('       cd banking_api_server');
+  console.log('       npm install');
+  console.log(`       npm run data:import -- ~/${archiveName}`);
+  console.log('');
+  console.log('  3. Start the server:');
+  console.log('       ./run-bank.sh');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('');
   console.log('SECURITY: This archive contains your .env and all');
   console.log('database secrets. Treat it like your .env file:');
   console.log('  - Do NOT commit to git');
