@@ -25,6 +25,7 @@ export default function ComplianceModal({
       defaultX={20}
       defaultY={80}
       storageKey="compliance-modal"
+      noBackdrop
       minWidth={300}
       minHeight={250}
       footer={null}
