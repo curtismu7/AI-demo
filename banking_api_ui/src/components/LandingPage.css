@@ -195,14 +195,14 @@
   line-height: 1.4;
 }
 .hero-cta-primary {
-  background: var(--lp-accent);
+  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
   color: #ffffff;
-  border-color: var(--lp-accent);
+  border-color: #7f1d1d;
   box-shadow: var(--lp-shadow-sm);
 }
 .hero-cta-primary:hover {
-  background: var(--lp-accent-hover);
-  border-color: var(--lp-accent-hover);
+  background: linear-gradient(180deg, #b91c1c 0%, #991b1b 100%);
+  border-color: #7f1d1d;
   box-shadow: var(--lp-shadow-md);
 }
 .hero-cta-secondary {

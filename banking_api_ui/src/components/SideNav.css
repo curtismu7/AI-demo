@@ -1,15 +1,15 @@
 /* ─── Side Navigation ─────────────────────────────────────────────────────── */
 
 .sidenav {
-  --sn-bg:          var(--brand-navy, #004687);
-  --sn-bg-hover:    var(--brand-navy-light, #005FA3);
-  --sn-bg-active:   var(--brand-blue, #0066CC);
-  --sn-accent:      var(--brand-blue, #0066CC);
-  --sn-text:        #FFFFFF;
-  --sn-muted:       #FFFFFF;
-  --sn-border:      rgba(255,255,255,0.15);
-  --sn-width:       220px;
-  --sn-width-col:   60px;
+  --sn-bg: var(--brand-navy, #004687);
+  --sn-bg-hover: var(--brand-navy-light, #005fa3);
+  --sn-bg-active: var(--brand-blue, #0066cc);
+  --sn-accent: var(--brand-blue, #0066cc);
+  --sn-text: #ffffff;
+  --sn-muted: #ffffff;
+  --sn-border: rgba(255, 255, 255, 0.15);
+  --sn-width: 220px;
+  --sn-width-col: 60px;
 
   width: var(--sn-width);
   min-height: 100vh;
@@ -53,7 +53,7 @@
   width: 26px;
   height: 26px;
   padding: 3px;
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 5px;
 }
 
@@ -85,7 +85,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
   padding: 0;
 }
 
@@ -108,7 +110,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--sn-accent), #8b5cf6);
+  background: linear-gradient(135deg, var(--sn-accent), #64748b);
   color: #fff;
   font-size: 13px;
   font-weight: 700;
@@ -145,14 +147,14 @@
   overflow-x: hidden;
   padding: 8px 0;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.08) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
 }
 
 .sidenav-nav::-webkit-scrollbar {
   width: 4px;
 }
 .sidenav-nav::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 2px;
 }
 
@@ -167,7 +169,7 @@
   text-transform: uppercase;
   color: var(--sn-muted);
   padding: 12px 14px 6px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 4px;
 }
 
@@ -177,12 +179,15 @@
   gap: 8px;
   padding: 12px 14px;
   text-decoration: none;
-  color: #E0E0E0;
+  color: #e0e0e0;
   font-size: 13px;
   font-weight: 500;
   border-radius: 6px;
   margin: 1px 6px;
-  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -197,7 +202,9 @@
   color: #fff;
   border-left: 3px solid var(--sn-accent);
   padding-left: 11px;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .sidenav-link-icon {
@@ -229,7 +236,7 @@
   cursor: pointer;
   font-family: inherit;
   font-size: inherit;
-  color: #E0E0E0;
+  color: #e0e0e0;
   text-align: left;
   width: 100%;
 }
@@ -254,14 +261,16 @@
   font-weight: 500;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
 }
 
 .sidenav-logout-btn:hover {
-  background: rgba(239,68,68,0.12);
+  background: rgba(239, 68, 68, 0.12);
   color: #f87171;
 }
 
@@ -285,23 +294,23 @@
 /* SideNav already has a dark color scheme. In html[data-theme='dark'] mode,
    deepen the background to align with --dash-bg (#0c1018). */
 
-html[data-theme='dark'] .sidenav {
-  --sn-bg:        #0c1018;
-  --sn-bg-hover:  #141a24;
+html[data-theme="dark"] .sidenav {
+  --sn-bg: #0c1018;
+  --sn-bg-hover: #141a24;
   --sn-bg-active: #1a2230;
-  --sn-text:      #e8edf5;
-  --sn-muted:     #E0E8F0;
-  --sn-border:    rgb(148 163 184 / 0.14);
+  --sn-text: #e8edf5;
+  --sn-muted: #e0e8f0;
+  --sn-border: rgb(148 163 184 / 0.14);
 }
 
-html[data-theme='dark'] .sidenav-group-label {
+html[data-theme="dark"] .sidenav-group-label {
   color: #cbd5e1;
 }
 
-html[data-theme='dark'] .sidenav-user-name {
+html[data-theme="dark"] .sidenav-user-name {
   color: #e8edf5;
 }
 
-html[data-theme='dark'] .sidenav-user-role {
+html[data-theme="dark"] .sidenav-user-role {
   color: #cbd5e1;
 }

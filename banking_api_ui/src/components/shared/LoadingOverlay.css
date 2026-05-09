@@ -8,14 +8,17 @@
   align-items: center;
   justify-content: center;
   background: rgba(15, 23, 42, 0.92);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* backdrop-filter removed to prevent background blur */
   animation: lo-fade-in 0.15s ease;
 }
 
 @keyframes lo-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .lo-card {
@@ -34,22 +37,30 @@
 }
 
 @keyframes lo-slide-up {
-  from { transform: translateY(12px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .lo-spinner {
   display: block;
   width: 40px;
   height: 40px;
-  border: 3px solid #DDDDDD;
+  border: 3px solid #dddddd;
   border-top-color: var(--brand-navy);
   border-radius: 50%;
   animation: lo-spin 0.8s linear infinite;
 }
 
 @keyframes lo-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .lo-message {
@@ -92,10 +103,20 @@
     background: var(--brand-dark-gray);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
   }
-  .lo-message  { color: var(--brand-light-gray); }
-  .lo-sub      { color: #94a3b8; }
-  .lo-spinner  { border-color: var(--brand-dark-gray); border-top-color: var(--brand-navy-light); }
-  .lo-endpoint { background: #1e3a5f; color: #93c5fd; }
+  .lo-message {
+    color: var(--brand-light-gray);
+  }
+  .lo-sub {
+    color: #94a3b8;
+  }
+  .lo-spinner {
+    border-color: var(--brand-dark-gray);
+    border-top-color: var(--brand-navy-light);
+  }
+  .lo-endpoint {
+    background: #1e3a5f;
+    color: #93c5fd;
+  }
 }
 
 /* ── Activity feed (Phase 162) ─────────────────────────────────────────── */
@@ -126,8 +147,14 @@
 }
 
 @keyframes lo-feed-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .lo-activity-icon {

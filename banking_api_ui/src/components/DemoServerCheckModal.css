@@ -9,7 +9,7 @@
   align-items: center;
   justify-content: center;
   padding: 16px;
-  backdrop-filter: blur(3px);
+  /* backdrop-filter removed for modal/overlay compliance */
   animation: dsm-fade-in 0.25s ease;
 }
 

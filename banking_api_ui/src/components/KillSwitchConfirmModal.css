@@ -4,7 +4,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(2px);
+  /* backdrop-filter removed for modal/overlay compliance */
   z-index: 1200;
   animation: ksm-fade-in 0.2s ease-out;
 }

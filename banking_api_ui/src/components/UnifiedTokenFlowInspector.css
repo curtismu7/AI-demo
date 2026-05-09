@@ -8,7 +8,9 @@
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
   color: #1e293b;
 }
 
@@ -449,8 +451,8 @@
 }
 
 .utfi-badge--provider {
-  background: #ede9fe;
-  color: #5b21b6;
+  background: #f1f5f9;
+  color: #334155;
   margin-left: 8px;
 }
 
@@ -533,8 +535,8 @@
 }
 
 .utfi-token-type--mcp-token {
-  background: #ede9fe;
-  color: #5b21b6;
+  background: #f1f5f9;
+  color: #334155;
 }
 
 .utfi-token-time {
@@ -990,12 +992,24 @@
   font-size: 0.73rem;
   line-height: 1.45;
 }
-.utfi-no-scopes-icon { font-size: 1rem; flex-shrink: 0; }
-.utfi-no-scopes-body { display: flex; flex-direction: column; gap: 3px; }
-.utfi-no-scopes-title { font-weight: 600; color: #c2410c; }
-.utfi-no-scopes-detail { color: #7c3aed; }
+.utfi-no-scopes-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.utfi-no-scopes-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.utfi-no-scopes-title {
+  font-weight: 600;
+  color: #c2410c;
+}
+.utfi-no-scopes-detail {
+  color: #334155;
+}
 .utfi-no-scopes-detail code {
-  background: #ede9fe;
+  background: #f1f5f9;
   padding: 1px 4px;
   border-radius: 3px;
   font-size: 0.7rem;
@@ -1061,7 +1075,11 @@
   border-radius: 6px;
   font-size: 0.72rem;
 }
-.utfi-primer-title { font-weight: 600; color: #0c4a6e; margin-bottom: 6px; }
+.utfi-primer-title {
+  font-weight: 600;
+  color: #0c4a6e;
+  margin-bottom: 6px;
+}
 .utfi-primer-steps {
   margin: 0;
   padding-left: 18px;
@@ -1077,7 +1095,11 @@
 }
 
 /* Ready-state RFC hint (non-compact) */
-.utfi-ready-state { display: flex; flex-direction: column; gap: 6px; }
+.utfi-ready-state {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 .utfi-ready-rfc-hint {
   font-size: 0.7rem;
   color: #0369a1;

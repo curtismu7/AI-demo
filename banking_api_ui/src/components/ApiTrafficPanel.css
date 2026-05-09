@@ -12,7 +12,7 @@
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  border: 1px solid #DDDDDD;
+  border: 1px solid #dddddd;
   border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   z-index: 9998;
@@ -23,8 +23,14 @@
 }
 
 @keyframes apiPanelIn {
-  from { transform: translateY(20px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* Full-page mode — when opened in its own browser window via /api-traffic */
@@ -56,13 +62,15 @@
   gap: 12px;
   padding: 10px 14px;
   background: var(--brand-light-gray);
-  border-bottom: 1px solid #DDDDDD;
+  border-bottom: 1px solid #dddddd;
   border-radius: 10px 10px 0 0;
   cursor: grab;
   user-select: none;
   flex-shrink: 0;
 }
-.api-traffic-header:active { cursor: grabbing; }
+.api-traffic-header:active {
+  cursor: grabbing;
+}
 
 /* Full-page route: no drag handle — read-only inspector only */
 .api-traffic-header--page {
@@ -89,7 +97,7 @@
   font-size: 14px;
   font-weight: 500;
   color: #999999;
-  background: #DDDDDD;
+  background: #dddddd;
   border-radius: 10px;
   padding: 1px 8px;
 }
@@ -115,7 +123,7 @@
 
 .api-traffic-search {
   background: #ffffff;
-  border: 1px solid #CCCCCC;
+  border: 1px solid #cccccc;
   border-radius: 5px;
   color: #0f172a;
   font-size: 15px;
@@ -123,8 +131,13 @@
   width: min(280px, 42vw);
   outline: none;
 }
-.api-traffic-search::placeholder { color: #94a3b8; }
-.api-traffic-search:focus { border-color: var(--brand-navy); box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+.api-traffic-search::placeholder {
+  color: #94a3b8;
+}
+.api-traffic-search:focus {
+  border-color: var(--brand-navy);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
 
 .api-traffic-filter-label {
   position: relative;
@@ -146,7 +159,7 @@
 
 .api-traffic-filter-select {
   background: #ffffff;
-  border: 1px solid #CCCCCC;
+  border: 1px solid #cccccc;
   border-radius: 5px;
   color: #0f172a;
   font-size: 15px;
@@ -162,7 +175,7 @@
 
 .api-traffic-btn {
   background: #ffffff;
-  border: 1px solid #CCCCCC;
+  border: 1px solid #cccccc;
   border-radius: 5px;
   color: #666666;
   font-size: 15px;
@@ -170,7 +183,10 @@
   padding: 5px 11px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
   line-height: 1.4;
 }
 .api-traffic-btn:hover {
@@ -190,8 +206,16 @@
   border-color: #d97706;
   color: #78350f;
 }
-.api-traffic-btn--close { color: #dc2626; border-color: #fca5a5; padding: 3px 8px; }
-.api-traffic-btn--close:hover { background: #fee2e2; color: #b91c1c; border-color: #f87171; }
+.api-traffic-btn--close {
+  color: #dc2626;
+  border-color: #fca5a5;
+  padding: 3px 8px;
+}
+.api-traffic-btn--close:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #f87171;
+}
 
 /* ── Split layout ─────────────────────────────────────────────────────────── */
 .api-traffic-body {
@@ -205,7 +229,7 @@
 .api-traffic-list {
   width: 42%;
   min-width: 220px;
-  border-right: 1px solid #DDDDDD;
+  border-right: 1px solid #dddddd;
   overflow-y: auto;
   flex-shrink: 0;
   background: var(--brand-light-gray);
@@ -229,9 +253,15 @@
   transition: background 0.12s;
   background: #ffffff;
 }
-.api-traffic-entry:hover { background: #f0f9ff; }
-.api-traffic-entry--selected { background: #dbeafe !important; }
-.api-traffic-entry--error { border-left: 3px solid #ef4444; }
+.api-traffic-entry:hover {
+  background: #f0f9ff;
+}
+.api-traffic-entry--selected {
+  background: #dbeafe !important;
+}
+.api-traffic-entry--error {
+  border-left: 3px solid #ef4444;
+}
 
 .api-method-badge {
   font-size: 12px;
@@ -243,22 +273,79 @@
   min-width: 42px;
   text-align: center;
 }
-.api-method-badge--GET    { background: #14532d; color: #86efac; }
-.api-method-badge--POST   { background: #1e3a5f; color: #93c5fd; }
-.api-method-badge--PUT    { background: #713f12; color: #fde68a; }
-.api-method-badge--PATCH  { background: #4c1d95; color: #c4b5fd; }
-.api-method-badge--DELETE { background: #7f1d1d; color: #fca5a5; }
+.api-method-badge--GET {
+  background: #14532d;
+  color: #86efac;
+}
+.api-method-badge--POST {
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+.api-method-badge--PUT {
+  background: #713f12;
+  color: #fde68a;
+}
+.api-method-badge--PATCH {
+  background: #334155;
+  color: #94a3b8;
+}
+.api-method-badge--DELETE {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
 /* MCP calls */
-.api-method-badge--MCP    { background: #0c4a6e; color: #7dd3fc; letter-spacing: 0.06em; }
+.api-method-badge--MCP {
+  background: #0c4a6e;
+  color: #7dd3fc;
+  letter-spacing: 0.06em;
+}
 /* Token event badges — labels: user access token, agent access token, MCP access token */
-.api-method-badge--TOKEN-USER { background: #064e3b; color: #6ee7b7; min-width: 72px; font-size: 11px; }
-.api-method-badge--TOKEN-AGENT { background: #7c2d12; color: #fed7aa; min-width: 76px; font-size: 11px; }
-.api-method-badge--TOKEN-XCHG { background: #3b0764; color: #d8b4fe; min-width: 56px; font-size: 11px; }
-.api-method-badge--TOKEN-SKIP { background: #451a03; color: #fde68a; min-width: 32px; }
-.api-method-badge--TOKEN-FAIL { background: #450a0a; color: #fca5a5; min-width: 32px; }
-.api-method-badge--TOKEN-MCP    { background: #0c4a6e; color: #93c5fd; min-width: 68px; font-size: 11px; }
-.api-method-badge--TOKEN-INTRO  { background: #312e81; color: #c7d2fe; min-width: 68px; font-size: 11px; }
-.api-method-badge--TOKEN-VERIFY { background: #14532d; color: #bbf7d0; min-width: 56px; font-size: 11px; }
+.api-method-badge--TOKEN-USER {
+  background: #064e3b;
+  color: #6ee7b7;
+  min-width: 72px;
+  font-size: 11px;
+}
+.api-method-badge--TOKEN-AGENT {
+  background: #7c2d12;
+  color: #fed7aa;
+  min-width: 76px;
+  font-size: 11px;
+}
+.api-method-badge--TOKEN-XCHG {
+  background: #3b0764;
+  color: #d8b4fe;
+  min-width: 56px;
+  font-size: 11px;
+}
+.api-method-badge--TOKEN-SKIP {
+  background: #451a03;
+  color: #fde68a;
+  min-width: 32px;
+}
+.api-method-badge--TOKEN-FAIL {
+  background: #450a0a;
+  color: #fca5a5;
+  min-width: 32px;
+}
+.api-method-badge--TOKEN-MCP {
+  background: #0c4a6e;
+  color: #93c5fd;
+  min-width: 68px;
+  font-size: 11px;
+}
+.api-method-badge--TOKEN-INTRO {
+  background: #312e81;
+  color: #c7d2fe;
+  min-width: 68px;
+  font-size: 11px;
+}
+.api-method-badge--TOKEN-VERIFY {
+  background: #14532d;
+  color: #bbf7d0;
+  min-width: 56px;
+  font-size: 11px;
+}
 
 .api-status-badge {
   font-size: 13px;
@@ -267,11 +354,26 @@
   border-radius: 4px;
   flex-shrink: 0;
 }
-.api-status-badge--ok   { background: #14532d; color: #86efac; }
-.api-status-badge--err  { background: #7f1d1d; color: #fca5a5; }
-.api-status-badge--net  { background: #374151; color: #d1d5db; }
-.api-status-badge--tok  { background: #1e1b4b; color: #a5b4fc; }
-.api-status-badge--skip { background: #451a03; color: #fde68a; }
+.api-status-badge--ok {
+  background: #14532d;
+  color: #86efac;
+}
+.api-status-badge--err {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+.api-status-badge--net {
+  background: #374151;
+  color: #d1d5db;
+}
+.api-status-badge--tok {
+  background: #1e1b4b;
+  color: #a5b4fc;
+}
+.api-status-badge--skip {
+  background: #451a03;
+  color: #fde68a;
+}
 
 .api-entry-url {
   font-size: 15px;
@@ -309,7 +411,7 @@
 .api-detail-tabs {
   display: flex;
   gap: 0;
-  border-bottom: 1px solid #DDDDDD;
+  border-bottom: 1px solid #dddddd;
   flex-shrink: 0;
   background: var(--brand-light-gray);
 }
@@ -323,10 +425,17 @@
   border-bottom: 2px solid transparent;
   color: #999999;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
-.api-detail-tab:hover { color: var(--brand-dark-gray); }
-.api-detail-tab--active { color: var(--brand-navy); border-bottom-color: var(--brand-navy); }
+.api-detail-tab:hover {
+  color: var(--brand-dark-gray);
+}
+.api-detail-tab--active {
+  color: var(--brand-navy);
+  border-bottom-color: var(--brand-navy);
+}
 
 .api-detail-content {
   flex: 1;
@@ -338,7 +447,7 @@
 .api-detail-summary {
   margin-bottom: 14px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #DDDDDD;
+  border-bottom: 1px solid #dddddd;
 }
 
 .api-detail-summary-row {
@@ -403,11 +512,21 @@ pre.api-json {
   line-height: 1.55;
 }
 
-.api-json-key   { color: var(--brand-navy); }
-.api-json-str   { color: #15803d; }
-.api-json-num   { color: #b45309; }
-.api-json-bool  { color: #dc2626; }
-.api-json-null  { color: #94a3b8; }
+.api-json-key {
+  color: var(--brand-navy);
+}
+.api-json-str {
+  color: #15803d;
+}
+.api-json-num {
+  color: #b45309;
+}
+.api-json-bool {
+  color: #dc2626;
+}
+.api-json-null {
+  color: #94a3b8;
+}
 
 .api-detail-kv {
   display: grid;
@@ -416,8 +535,16 @@ pre.api-json {
   font-size: 15px;
   font-family: inherit;
 }
-.api-detail-kv-key   { color: var(--brand-navy); padding: 2px 0; white-space: nowrap; }
-.api-detail-kv-val   { color: var(--brand-dark-gray); padding: 2px 0; word-break: break-all; }
+.api-detail-kv-key {
+  color: var(--brand-navy);
+  padding: 2px 0;
+  white-space: nowrap;
+}
+.api-detail-kv-val {
+  color: var(--brand-dark-gray);
+  padding: 2px 0;
+  word-break: break-all;
+}
 
 .api-detail-err {
   font-size: 15px;
@@ -431,11 +558,15 @@ pre.api-json {
 
 /* ── Token event rows ─────────────────────────────────────────────────────── */
 .api-traffic-entry--token {
-  background: #f5f3ff;
-  border-left: 2px solid #6d28d9;
+  background: #f8fafc;
+  border-left: 2px solid #334155;
 }
-.api-traffic-entry--token:hover { background: #ede9fe; }
-.api-traffic-entry--token.api-traffic-entry--selected { background: #ddd6fe !important; }
+.api-traffic-entry--token:hover {
+  background: #f1f5f9;
+}
+.api-traffic-entry--token.api-traffic-entry--selected {
+  background: #e2e8f0 !important;
+}
 
 /* ── Token event detail ───────────────────────────────────────────────────── */
 .api-token-event-header {
@@ -448,7 +579,7 @@ pre.api-json {
 .api-token-event-label {
   font-size: 17px;
   font-weight: 600;
-  color: #4c1d95;
+  color: #334155;
 }
 .api-token-event-status {
   font-size: 12px;
@@ -458,12 +589,30 @@ pre.api-json {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-.api-token-event-status--active    { background: #dcfce7; color: #166534; }
-.api-token-event-status--exchanged { background: #ede9fe; color: #4c1d95; }
-.api-token-event-status--skipped   { background: #fef9c3; color: #713f12; }
-.api-token-event-status--failed    { background: #fee2e2; color: #b91c1c; }
-.api-token-event-status--reused    { background: #e0f2fe; color: #0369a1; }
-.api-token-event-status--acquiring { background: var(--brand-light-gray); color: #999999; }
+.api-token-event-status--active {
+  background: #dcfce7;
+  color: #166534;
+}
+.api-token-event-status--exchanged {
+  background: #f1f5f9;
+  color: #334155;
+}
+.api-token-event-status--skipped {
+  background: #fef9c3;
+  color: #713f12;
+}
+.api-token-event-status--failed {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.api-token-event-status--reused {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.api-token-event-status--acquiring {
+  background: var(--brand-light-gray);
+  color: #999999;
+}
 
 .api-token-event-alg {
   font-size: 12px;
@@ -506,9 +655,15 @@ pre.api-json {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.api-claims-th--claim { width: 28%; }
-.api-claims-th--value { width: 44%; }
-.api-claims-th--rfc   { width: 28%; }
+.api-claims-th--claim {
+  width: 28%;
+}
+.api-claims-th--value {
+  width: 44%;
+}
+.api-claims-th--rfc {
+  width: 28%;
+}
 .api-claims-row {
   border-bottom: 1px solid #222;
 }
@@ -564,8 +719,16 @@ pre.api-json {
 
 /* Scrollbar */
 .api-traffic-list::-webkit-scrollbar,
-.api-detail-content::-webkit-scrollbar { width: 6px; height: 6px; }
+.api-detail-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
 .api-traffic-list::-webkit-scrollbar-track,
-.api-detail-content::-webkit-scrollbar-track { background: var(--brand-light-gray); }
+.api-detail-content::-webkit-scrollbar-track {
+  background: var(--brand-light-gray);
+}
 .api-traffic-list::-webkit-scrollbar-thumb,
-.api-detail-content::-webkit-scrollbar-thumb { background: #CCCCCC; border-radius: 3px; }
+.api-detail-content::-webkit-scrollbar-thumb {
+  background: #cccccc;
+  border-radius: 3px;
+}

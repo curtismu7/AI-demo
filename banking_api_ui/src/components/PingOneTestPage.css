@@ -4,7 +4,9 @@
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   padding: 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", sans-serif;
 }
 
 /* Loading State */
@@ -26,8 +28,12 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Error State */
@@ -84,7 +90,9 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.08);
   transition: all 0.2s ease;
   letter-spacing: 0.015em;
 }
@@ -96,7 +104,7 @@
 }
 
 .status-indicator--success::before {
-  content: '✓';
+  content: "✓";
   font-weight: 700;
   font-size: 1rem;
 }
@@ -108,7 +116,7 @@
 }
 
 .status-indicator--error::before {
-  content: '✗';
+  content: "✗";
   font-weight: 700;
   font-size: 1rem;
 }
@@ -227,8 +235,13 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .test-card-content {
@@ -288,7 +301,9 @@
   padding: 1rem;
   border-radius: 6px;
   border: 1px solid #e0e0e0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
   font-size: 0.85rem;
   line-height: 1.5;
   overflow-x: auto;
@@ -926,7 +941,9 @@ a.pingone-test-button--primary:visited {
   font-size: 0.78rem;
   font-weight: 500;
   padding: 0.35rem 0.8rem;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .asset-tab:hover {
@@ -1083,10 +1100,22 @@ a.pingone-test-button--primary:visited {
   text-transform: uppercase;
 }
 
-.wih-method--get { background: #dbeafe; color: #1d4ed8; }
-.wih-method--post { background: #dcfce7; color: #15803d; }
-.wih-method--put { background: #fef9c3; color: #a16207; }
-.wih-method--delete { background: #fee2e2; color: #b91c1c; }
+.wih-method--get {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.wih-method--post {
+  background: #dcfce7;
+  color: #15803d;
+}
+.wih-method--put {
+  background: #fef9c3;
+  color: #a16207;
+}
+.wih-method--delete {
+  background: #fee2e2;
+  color: #b91c1c;
+}
 
 .wih-endpoint {
   background: #f0fdf4;
@@ -1168,8 +1197,12 @@ a.pingone-test-button--primary:visited {
   text-transform: uppercase;
 }
 
-.tld-col--from { color: #b45309; }
-.tld-col--to   { color: #0369a1; }
+.tld-col--from {
+  color: #b45309;
+}
+.tld-col--to {
+  color: #0369a1;
+}
 
 .tld-row {
   align-items: flex-start;
@@ -1182,13 +1215,21 @@ a.pingone-test-button--primary:visited {
   padding: 0.25rem 0.4rem;
 }
 
-.tld-row--changed { background: #fef3c7; }
-.tld-row--added   { background: #dcfce7; }
-.tld-row--removed { background: #fee2e2; }
-.tld-row--same    { background: transparent; }
+.tld-row--changed {
+  background: #fef3c7;
+}
+.tld-row--added {
+  background: #dcfce7;
+}
+.tld-row--removed {
+  background: #fee2e2;
+}
+.tld-row--same {
+  background: transparent;
+}
 
 .tld-claim-key {
-  color: #4c1d95;
+  color: #334155;
   font-family: inherit;
   font-size: 0.78rem;
   font-weight: 600;
@@ -1203,10 +1244,22 @@ a.pingone-test-button--primary:visited {
   text-transform: uppercase;
 }
 
-.tld-kind--changed { background: #fbbf24; color: #78350f; }
-.tld-kind--added   { background: #4ade80; color: #14532d; }
-.tld-kind--removed { background: #f87171; color: #7f1d1d; }
-.tld-kind--same    { background: #e2e8f0; color: #64748b; }
+.tld-kind--changed {
+  background: #fbbf24;
+  color: #78350f;
+}
+.tld-kind--added {
+  background: #4ade80;
+  color: #14532d;
+}
+.tld-kind--removed {
+  background: #f87171;
+  color: #7f1d1d;
+}
+.tld-kind--same {
+  background: #e2e8f0;
+  color: #64748b;
+}
 
 .tld-values {
   align-items: baseline;
@@ -1225,9 +1278,18 @@ a.pingone-test-button--primary:visited {
   white-space: nowrap;
 }
 
-.tld-val--from { background: #fef3c7; color: #78350f; }
-.tld-val--to   { background: #dbeafe; color: #1e40af; }
-.tld-val--same { background: #f1f5f9; color: #475569; }
+.tld-val--from {
+  background: #fef3c7;
+  color: #78350f;
+}
+.tld-val--to {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.tld-val--same {
+  background: #f1f5f9;
+  color: #475569;
+}
 
 .tld-arrow {
   color: #9333ea;
@@ -1302,8 +1364,16 @@ a.pingone-test-button--primary:visited {
   border-radius: 4px;
   margin-top: 4px;
 }
-.scope-fix-result--ok { background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
-.scope-fix-result--err { background: rgba(239, 68, 68, 0.15); color: #fff; border: 1px solid rgba(239, 68, 68, 0.5); }
+.scope-fix-result--ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.scope-fix-result--err {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fff;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+}
 
 /* ── Phase 149: Asset RS banner ─────────────────────────────────── */
 .asset-rs-banner {
@@ -1328,9 +1398,18 @@ a.pingone-test-button--primary:visited {
   text-overflow: unset;
   font-size: 0.82rem;
 }
-.tld-badge--unexpected { background: #fbbf24; color: #78350f; }
-.tld-badge--expected { background: #a7f3d0; color: #065f46; margin-left: 4px; }
-.tld-expected { opacity: 0.75; }
+.tld-badge--unexpected {
+  background: #fbbf24;
+  color: #78350f;
+}
+.tld-badge--expected {
+  background: #a7f3d0;
+  color: #065f46;
+  margin-left: 4px;
+}
+.tld-expected {
+  opacity: 0.75;
+}
 .tld-row--expected .tld-kind-badge.tld-expected {
   background: #a7f3d0;
   color: #065f46;
@@ -1338,7 +1417,9 @@ a.pingone-test-button--primary:visited {
 .tld-row--expected {
   opacity: 0.8;
 }
-.tld-unexpected { font-weight: 600; }
+.tld-unexpected {
+  font-weight: 600;
+}
 
 /* ── Agent Prompt Preview Bubble ─────────────────────────────────── */
 .test-card-prompt-bubble {
@@ -1373,10 +1454,21 @@ a.pingone-test-button--primary:visited {
   margin-left: 1px;
 }
 @keyframes promptBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 @keyframes promptSlideIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

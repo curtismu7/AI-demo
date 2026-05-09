@@ -973,23 +973,35 @@
 
 .otp-step-up-modal__btn-primary {
   flex: 1;
-  padding: 0.625rem 1rem;
-  border-radius: 8px;
-  border: none;
-  background: var(--brand-navy);
-  color: #fff;
-  font-size: 0.95rem;
-  font-weight: 600;
+  padding: var(--btn-padding);
+  min-height: var(--btn-height);
+  border-radius: var(--btn-radius);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-weight);
+  font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: var(--btn-transition);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
+  box-shadow: 0 1px 3px rgba(127, 29, 29, 0.28);
 }
 
 .otp-step-up-modal__btn-primary:hover:not(:disabled) {
-  background: var(--brand-navy);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
+  border-color: var(--app-primary-red-hover);
 }
 
 .otp-step-up-modal__btn-primary:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 .otp-step-up-modal__close {
@@ -1014,45 +1026,47 @@
 
 .otp-step-up-modal__btn-cancel {
   flex: 1;
-  padding: 0.625rem 1rem;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: #374151;
-  font-size: 0.95rem;
-  font-weight: 500;
+  padding: var(--btn-padding);
+  min-height: var(--btn-height);
+  border-radius: var(--btn-radius);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-weight);
+  font-family: inherit;
   cursor: pointer;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
+  transition: var(--btn-transition);
+  background: #ffffff;
+  color: var(--app-primary-red);
+  border: 1px solid var(--app-primary-red-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .otp-step-up-modal__btn-cancel:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
+  background: #fef2f2;
+  border-color: var(--app-primary-red);
 }
 
 .otp-step-up-modal__btn-ghost {
-  padding: 0.625rem 1rem;
-  border-radius: 8px;
-  border: 1px solid #cccccc;
-  background: #fff;
-  color: #6b7280;
-  font-size: 0.95rem;
-  font-weight: 500;
+  padding: var(--btn-padding);
+  min-height: var(--btn-height);
+  border-radius: var(--btn-radius);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-weight);
+  font-family: inherit;
   cursor: pointer;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
+  transition: var(--btn-transition);
+  background: #ffffff;
+  color: var(--app-primary-red);
+  border: 1px solid var(--app-primary-red-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .otp-step-up-modal__btn-ghost:hover:not(:disabled) {
-  background: var(--brand-light-gray);
-  border-color: #94a3b8;
+  background: #fef2f2;
+  border-color: var(--app-primary-red);
 }
 
 .otp-step-up-modal__btn-ghost:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -1167,42 +1181,55 @@
 }
 .otp-step-up-modal__btn-primary {
   flex: 1;
-  padding: 0.625rem 1rem;
-  border-radius: 8px;
-  border: none;
-  background: var(--brand-navy);
-  color: #fff;
-  font-size: 0.95rem;
-  font-weight: 600;
+  padding: var(--btn-padding);
+  min-height: var(--btn-height);
+  border-radius: var(--btn-radius);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-weight);
+  font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: var(--btn-transition);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
+  box-shadow: 0 1px 3px rgba(127, 29, 29, 0.28);
 }
 .otp-step-up-modal__btn-primary:hover:not(:disabled) {
-  background: var(--brand-navy);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
+  border-color: var(--app-primary-red-hover);
 }
 .otp-step-up-modal__btn-primary:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 .otp-step-up-modal__btn-ghost {
-  padding: 0.625rem 1rem;
-  border-radius: 8px;
-  border: 1px solid #cccccc;
-  background: #fff;
-  color: #6b7280;
-  font-size: 0.95rem;
-  font-weight: 500;
+  padding: var(--btn-padding);
+  min-height: var(--btn-height);
+  border-radius: var(--btn-radius);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-weight);
+  font-family: inherit;
   cursor: pointer;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
+  transition: var(--btn-transition);
+  background: #ffffff;
+  color: var(--app-primary-red);
+  border: 1px solid var(--app-primary-red-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 .otp-step-up-modal__btn-ghost:hover:not(:disabled) {
-  background: var(--brand-light-gray);
-  border-color: #94a3b8;
+  background: #fef2f2;
+  border-color: var(--app-primary-red);
 }
 .otp-step-up-modal__btn-ghost:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 

@@ -1,8 +1,8 @@
 // banking_api_ui/src/components/SessionExpiryTimer.jsx - Global Banking Header
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import bffAxios from '../services/bffAxios';
-import './SessionExpiryTimer.css';
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import bffAxios from "../services/bffAxios";
+import "./SessionExpiryTimer.css";
 
 /**
  * BankingHeader — Professional banking header that appears on all logged-in pages.
@@ -19,14 +19,15 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
   const [loading, setLoading] = useState(true);
 
   // Don't show on landing page, setup, or logout pages
-  const shouldHide = hideOnPaths.some(p => pathname.startsWith(p)) || 
-                    pathname === '/' || 
-                    pathname === '/' ||
-                    pathname === '/onboarding' ||
-                    pathname === '/setup' ||
-                    pathname === '/setup/wizard' ||
-                    pathname === '/setup/pingone' ||
-                    pathname === '/logout';
+  const shouldHide =
+    hideOnPaths.some((p) => pathname.startsWith(p)) ||
+    pathname === "/" ||
+    pathname === "/" ||
+    pathname === "/onboarding" ||
+    pathname === "/setup" ||
+    pathname === "/setup/wizard" ||
+    pathname === "/setup/pingone" ||
+    pathname === "/logout";
 
   // Fetch session token and user info
   useEffect(() => {
@@ -35,15 +36,21 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
     async function fetchSessionData() {
       try {
         const [previewRes, statusRes] = await Promise.all([
-          bffAxios.get('/api/tokens/session-preview').catch(() => ({ data: {} })),
-          bffAxios.get('/api/auth/oauth/user/status').catch(() => ({ data: {} })),
+          bffAxios
+            .get("/api/tokens/session-preview")
+            .catch(() => ({ data: {} })),
+          bffAxios
+            .get("/api/auth/oauth/user/status")
+            .catch(() => ({ data: {} })),
         ]);
 
         if (cancelled) return;
 
         const events = previewRes.data?.tokenEvents || [];
         const userTokenEvent = events.find(
-          (e) => e.decoded && (e.id === 'user-token' || e.label?.toLowerCase().includes('user'))
+          (e) =>
+            e.decoded &&
+            (e.id === "user-token" || e.label?.toLowerCase().includes("user")),
         );
 
         if (userTokenEvent?.decoded?.payload?.exp) {
@@ -56,13 +63,15 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
 
         setLoading(false);
       } catch (err) {
-        console.warn('[BankingHeader] fetch error:', err.message);
+        console.warn("[BankingHeader] fetch error:", err.message);
         if (!cancelled) setLoading(false);
       }
     }
 
     fetchSessionData();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Calculate and update time remaining every 30 seconds
@@ -74,7 +83,7 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
     setIsExpired(expired);
 
     if (expired) {
-      setTimeRemaining('Expired');
+      setTimeRemaining("Expired");
     } else {
       const hours = Math.floor(diffMs / 3600000);
       const minutes = Math.floor((diffMs % 3600000) / 60000);
@@ -92,7 +101,7 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
 
   useEffect(() => {
     if (!expiresAt) return;
-    
+
     updateTimeRemaining();
     const interval = setInterval(updateTimeRemaining, 30000);
     return () => clearInterval(interval);
@@ -100,11 +109,11 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
 
   const handleLogout = async () => {
     try {
-      await bffAxios.post('/api/auth/logout');
-      navigate('/');
+      await bffAxios.post("/api/auth/logout");
+      navigate("/");
     } catch (err) {
-      console.error('Logout error:', err.message);
-      navigate('/');
+      console.error("Logout error:", err.message);
+      navigate("/");
     }
   };
 
@@ -117,8 +126,23 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
       <header className="banking-header">
         <div className="banking-header__inner">
           <div className="banking-header__left">
-            <button type="button" className="banking-header__logo banking-header__logo--btn" onClick={() => navigate('/')} aria-label="Go to home">
-              <span className="banking-header__logo-icon">🏦</span>
+            <button
+              type="button"
+              className="banking-header__logo banking-header__logo--btn"
+              onClick={() => navigate("/")}
+              aria-label="Go to home"
+            >
+              <span className="banking-header__logo-icon">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M4 10h3v7H4zM10.5 10h3v7h-3zM2 19h20v3H2zM17 10h3v7h-3zM12 1 2 6v2h20V6z" />
+                </svg>
+              </span>
               <span className="banking-header__logo-text">Super Bank</span>
             </button>
           </div>
@@ -128,32 +152,45 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
     );
   }
 
-  const userName = userInfo ? `${userInfo.firstName || ''} ${userInfo.lastName || ''}`.trim() : 'User';
+  const userName = userInfo
+    ? `${userInfo.firstName || ""} ${userInfo.lastName || ""}`.trim()
+    : "User";
   const userInitials = userInfo
-    ? `${userInfo.firstName?.[0] || ''}${userInfo.lastName?.[0] || ''}`.toUpperCase()
-    : 'U';
-  const userRole = userInfo?.role || 'user';
+    ? `${userInfo.firstName?.[0] || ""}${userInfo.lastName?.[0] || ""}`.toUpperCase()
+    : "U";
+  const userRole = userInfo?.role || "user";
 
   return (
     <header className="banking-header">
       <div className="banking-header__inner">
         <div className="banking-header__left">
-          <button type="button" className="banking-header__logo banking-header__logo--btn" onClick={() => navigate('/')} aria-label="Go to home">
+          <button
+            type="button"
+            className="banking-header__logo banking-header__logo--btn"
+            onClick={() => navigate("/")}
+            aria-label="Go to home"
+          >
             <span className="banking-header__logo-icon">🏦</span>
             <span className="banking-header__logo-text">Super Bank</span>
           </button>
           {userInfo && (
             <div className="banking-header__user-context">
-              <span className="banking-header__user-context-label">{userRole === 'admin' ? 'Admin Dashboard' : 'Customer Portal'}</span>
+              <span className="banking-header__user-context-label">
+                {userRole === "admin" ? "Admin Dashboard" : "Customer Portal"}
+              </span>
             </div>
           )}
         </div>
 
         <div className="banking-header__right">
           {expiresAt && (
-            <div className={`banking-header__session ${isExpired ? 'expired' : ''}`}>
+            <div
+              className={`banking-header__session ${isExpired ? "expired" : ""}`}
+            >
               <span className="banking-header__session-label">Session</span>
-              <span className="banking-header__session-time">{timeRemaining}</span>
+              <span className="banking-header__session-time">
+                {timeRemaining}
+              </span>
             </div>
           )}
 

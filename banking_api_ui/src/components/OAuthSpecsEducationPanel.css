@@ -4,9 +4,15 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.05), rgba(51, 65, 85, 0.05));
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.05),
+    rgba(51, 65, 85, 0.05)
+  );
   border-radius: 12px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
 }
 
 .oauthspec-header {
@@ -167,13 +173,17 @@
 
 /* Feature Flag Alert */
 .oauthspec-feature-flag-alert {
-  background: linear-gradient(135deg, rgba(243, 232, 255, 0.5), rgba(229, 231, 235, 0.5));
+  background: linear-gradient(
+    135deg,
+    rgba(243, 232, 255, 0.5),
+    rgba(229, 231, 235, 0.5)
+  );
   border-left: 4px solid #9333ea;
   border-radius: 6px;
   padding: 1rem;
   margin: 1.5rem 0;
   font-size: 0.95rem;
-  color: #4c1d95;
+  color: #334155;
 }
 
 .oauthspec-feature-flag-alert code {
@@ -239,7 +249,7 @@
 }
 
 .oauthspec-code::before {
-  content: '';
+  content: "";
 }
 
 /* Comparison Table */

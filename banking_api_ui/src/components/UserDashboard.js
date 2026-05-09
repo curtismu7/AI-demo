@@ -122,17 +122,19 @@ const DEMO_TRANSACTIONS = [
   },
 ];
 
-const MIDDLE_HEIGHT_KEY = 'middle_agent_height_px';
+const MIDDLE_HEIGHT_KEY = "middle_agent_height_px";
 const MIDDLE_DEFAULT_HEIGHT = 580;
 const MIDDLE_MIN_HEIGHT = 280;
 
 function readStoredMiddleHeight() {
   try {
-    const n = parseInt(localStorage.getItem(MIDDLE_HEIGHT_KEY) || '', 10);
+    const n = parseInt(localStorage.getItem(MIDDLE_HEIGHT_KEY) || "", 10);
     if (Number.isFinite(n) && n >= MIDDLE_MIN_HEIGHT) {
       return Math.min(n, Math.round(window.innerHeight * 0.9));
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return MIDDLE_DEFAULT_HEIGHT;
 }
 
@@ -147,7 +149,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     () => agentPlacement === "middle",
   );
   const [middleHeight, setMiddleHeight] = useState(() =>
-    typeof window !== 'undefined' ? readStoredMiddleHeight() : MIDDLE_DEFAULT_HEIGHT
+    typeof window !== "undefined"
+      ? readStoredMiddleHeight()
+      : MIDDLE_DEFAULT_HEIGHT,
   );
   const [dashboardLayout, setDashboardLayoutState] = useState(() =>
     getDashboardLayout(),
@@ -423,42 +427,51 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
   /** Persist middle agent height to localStorage */
   useEffect(() => {
-    if (agentPlacement !== 'middle') return;
-    try { localStorage.setItem(MIDDLE_HEIGHT_KEY, String(Math.round(middleHeight))); } catch { /* ignore */ }
+    if (agentPlacement !== "middle") return;
+    try {
+      localStorage.setItem(MIDDLE_HEIGHT_KEY, String(Math.round(middleHeight)));
+    } catch {
+      /* ignore */
+    }
   }, [middleHeight, agentPlacement]);
 
   /** Cap middle height when viewport shrinks */
   useEffect(() => {
-    if (agentPlacement !== 'middle') return;
+    if (agentPlacement !== "middle") return;
     const onResize = () => {
       const maxH = Math.round(window.innerHeight * 0.9);
       setMiddleHeight((h) => Math.min(h, maxH));
     };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, [agentPlacement]);
 
-  const onMiddleResizeMouseDown = useCallback((e) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const startY = e.clientY;
-    const startH = middleHeight;
-    const maxH = Math.round(window.innerHeight * 0.9);
-    const onMove = (ev) => {
-      const delta = ev.clientY - startY;
-      setMiddleHeight(Math.min(maxH, Math.max(MIDDLE_MIN_HEIGHT, startH + delta)));
-    };
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-    document.body.style.cursor = 'ns-resize';
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }, [middleHeight]);
+  const onMiddleResizeMouseDown = useCallback(
+    (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const startY = e.clientY;
+      const startH = middleHeight;
+      const maxH = Math.round(window.innerHeight * 0.9);
+      const onMove = (ev) => {
+        const delta = ev.clientY - startY;
+        setMiddleHeight(
+          Math.min(maxH, Math.max(MIDDLE_MIN_HEIGHT, startH + delta)),
+        );
+      };
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+      document.body.style.cursor = "ns-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    [middleHeight],
+  );
 
   /** Toggle expanded state for account profile details */
   const toggleAccountProfile = useCallback((accountId) => {
@@ -1332,7 +1345,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         notifyError("Could not start consent — no challenge id from server.");
         return;
       }
-      setConsentChallengeId({ id: cid, snapshot: data.snapshot || null, payload: intentBody });
+      setConsentChallengeId({
+        id: cid,
+        snapshot: data.snapshot || null,
+        payload: intentBody,
+      });
     } catch (e) {
       const msg =
         e.response?.data?.message ||
@@ -1771,7 +1788,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <button
             type="button"
             className="ud-qa-btn ud-qa-btn--delegate"
-            onClick={() => window.open('https://api.pingdemo.com:4000/delegated-access', '_blank', 'noopener,noreferrer')}
+            onClick={() =>
+              window.open(
+                "https://api.pingdemo.com:4000/delegated-access",
+                "_blank",
+                "noopener,noreferrer",
+              )
+            }
           >
             Manage Delegates
           </button>
@@ -1781,7 +1804,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         <div className="ud-trust-strip" aria-live="polite">
           <span className="ud-trust-strip__item">Session secured (OAuth)</span>
           <span className="ud-trust-strip__dot" aria-hidden="true" />
-          <span className="ud-trust-strip__item">Step-up when risk warrants</span>
+          <span className="ud-trust-strip__item">
+            Step-up when risk warrants
+          </span>
           <span className="ud-trust-strip__dot" aria-hidden="true" />
           <span className="ud-trust-strip__item">
             Biometrics on supported devices
@@ -1853,11 +1878,16 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           </div>
           <div className="account-detail-row">
             <span className="detail-label">Email</span>
-            <span className="detail-value">{user?.email || user?.username || "—"}</span>
+            <span className="detail-value">
+              {user?.email || user?.username || "—"}
+            </span>
           </div>
           <div className="account-detail-row">
             <span className="detail-label">Role</span>
-            <span className="detail-value" style={{ textTransform: "capitalize" }}>
+            <span
+              className="detail-value"
+              style={{ textTransform: "capitalize" }}
+            >
               {user?.role || (isDemoMode ? "demo" : "customer")}
             </span>
           </div>
@@ -1899,18 +1929,28 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         <div className="accounts-grid">
           {accounts.map((account) => {
             const isExpanded = expandedAccounts.has(account.id);
-            const acctType = (account.accountType || account.type || "unknown").toLowerCase();
+            const acctType = (
+              account.accountType ||
+              account.type ||
+              "unknown"
+            ).toLowerCase();
             const isNegative = (account.balance ?? 0) < 0;
             const maskedNum = account.accountNumber
               ? `${acctType.toUpperCase().slice(0, 3)} •••• ${String(account.accountNumber).slice(-4)}`
               : "—";
             const typeLabelMap = {
-              checking: "Checking", savings: "Savings", loan: "Loan",
-              car_loan: "Auto Loan", mortgage: "Mortgage", credit: "Credit",
-              investment: "Investment", money_market: "Money Market",
+              checking: "Checking",
+              savings: "Savings",
+              loan: "Loan",
+              car_loan: "Auto Loan",
+              mortgage: "Mortgage",
+              credit: "Credit",
+              investment: "Investment",
+              money_market: "Money Market",
             };
-            const typeLabel = typeLabelMap[acctType] ||
-              (acctType.charAt(0).toUpperCase() + acctType.slice(1));
+            const typeLabel =
+              typeLabelMap[acctType] ||
+              acctType.charAt(0).toUpperCase() + acctType.slice(1);
 
             return (
               <div
@@ -1924,7 +1964,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                       <h3>{account.name}</h3>
                       <p className="account-number">{maskedNum}</p>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 6 }}
+                    >
                       <span className={`account-type-badge ${acctType}`}>
                         {typeLabel}
                       </span>
@@ -1935,7 +1977,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                   </div>
 
                   <div className="account-balance-row">
-                    <p className={`balance${isNegative ? " balance--negative" : ""}`}>
+                    <p
+                      className={`balance${isNegative ? " balance--negative" : ""}`}
+                    >
                       {fmt(account.balance)}
                     </p>
                     <span className="balance-label">
@@ -1988,7 +2032,15 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                     onClick={() => toggleAccountProfile(account.id)}
                   >
                     Account Details
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
                       <polyline points="4 6 8 10 12 6" />
                     </svg>
                   </button>
@@ -1997,7 +2049,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                     <div className="account-profile-details">
                       <div className="account-detail-row">
                         <span className="detail-label">Account Number</span>
-                        <span className="detail-value">{account.accountNumber}</span>
+                        <span className="detail-value">
+                          {account.accountNumber}
+                        </span>
                       </div>
                       <div className="account-detail-row">
                         <span className="detail-label">Account Type</span>
@@ -2006,13 +2060,17 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                       {account.routingNumber && (
                         <div className="account-detail-row">
                           <span className="detail-label">Routing Number</span>
-                          <span className="detail-value">{account.routingNumber}</span>
+                          <span className="detail-value">
+                            {account.routingNumber}
+                          </span>
                         </div>
                       )}
                       {account.swiftCode && (
                         <div className="account-detail-row">
                           <span className="detail-label">SWIFT</span>
-                          <span className="detail-value">{account.swiftCode}</span>
+                          <span className="detail-value">
+                            {account.swiftCode}
+                          </span>
                         </div>
                       )}
                       {account.iban && (
@@ -2024,7 +2082,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                       {account.branchName && (
                         <div className="account-detail-row">
                           <span className="detail-label">Branch</span>
-                          <span className="detail-value">{account.branchName}</span>
+                          <span className="detail-value">
+                            {account.branchName}
+                          </span>
                         </div>
                       )}
                       {account.openedDate && (
@@ -2038,7 +2098,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                       {account.accountHolderName && (
                         <div className="account-detail-row">
                           <span className="detail-label">Account Holder</span>
-                          <span className="detail-value">{account.accountHolderName}</span>
+                          <span className="detail-value">
+                            {account.accountHolderName}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -2269,17 +2331,25 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         {isDemoMode && (
           <p
             className="demo-notice"
-            style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: "0.75rem" }}
+            style={{
+              color: "#6b7280",
+              fontSize: "0.85rem",
+              marginBottom: "0.75rem",
+            }}
           >
             Demo mode —{" "}
             <button
               type="button"
               onClick={navigateToCustomerOAuthLogin}
               style={{
-                background: "none", border: "none",
-                color: "var(--brand-navy)", fontWeight: 600,
-                cursor: "pointer", padding: 0,
-                fontSize: "inherit", textDecoration: "underline",
+                background: "none",
+                border: "none",
+                color: "var(--brand-navy)",
+                fontWeight: 600,
+                cursor: "pointer",
+                padding: 0,
+                fontSize: "inherit",
+                textDecoration: "underline",
               }}
             >
               sign in
@@ -2294,7 +2364,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
           if (sorted.length === 0) {
             return (
-              <p style={{ color: "#9ca3af", fontSize: "0.875rem", padding: "20px 0" }}>
+              <p
+                style={{
+                  color: "#9ca3af",
+                  fontSize: "0.875rem",
+                  padding: "20px 0",
+                }}
+              >
                 No transactions yet.
               </p>
             );
@@ -2310,18 +2386,24 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             const dStart = new Date(tx.createdAt);
             dStart.setHours(0, 0, 0, 0);
             const label =
-              dStart >= todayStart ? "Today"
-              : dStart >= yesterdayStart ? "Yesterday"
-              : format(dStart, "EEE, MMM d");
+              dStart >= todayStart
+                ? "Today"
+                : dStart >= yesterdayStart
+                  ? "Yesterday"
+                  : format(dStart, "EEE, MMM d");
             const last = txGroups[txGroups.length - 1];
-            if (!last || last.label !== label) txGroups.push({ label, items: [tx] });
+            if (!last || last.label !== label)
+              txGroups.push({ label, items: [tx] });
             else last.items.push(tx);
           }
 
           const txTypeStyle = (type) => {
-            if (type === "withdrawal") return { bg: "#fff1f2", color: "#be123c", symbol: "↑" };
-            if (type === "deposit")    return { bg: "#f0fdf4", color: "#15803d", symbol: "↓" };
-            if (type === "transfer")   return { bg: "#eff6ff", color: "#1d4ed8", symbol: "⇆" };
+            if (type === "withdrawal")
+              return { bg: "#fff1f2", color: "#be123c", symbol: "↑" };
+            if (type === "deposit")
+              return { bg: "#f0fdf4", color: "#15803d", symbol: "↓" };
+            if (type === "transfer")
+              return { bg: "#eff6ff", color: "#1d4ed8", symbol: "⇆" };
             return { bg: "#f9fafb", color: "#6b7280", symbol: "·" };
           };
 
@@ -2354,7 +2436,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                             {tx.description || tx.type}
                           </div>
                           <div className="tx-row__meta">
-                            <span className="tx-row__account">{tx.accountInfo || "Unknown"}</span>
+                            <span className="tx-row__account">
+                              {tx.accountInfo || "Unknown"}
+                            </span>
                             <span className="tx-row__sep">·</span>
                             <span className="tx-row__time">
                               {format(new Date(tx.createdAt), "HH:mm")}
@@ -2362,19 +2446,25 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                             {tx.performedBy && tx.performedBy !== "Unknown" && (
                               <>
                                 <span className="tx-row__sep">·</span>
-                                <span className="tx-row__time">{tx.performedBy}</span>
+                                <span className="tx-row__time">
+                                  {tx.performedBy}
+                                </span>
                               </>
                             )}
                           </div>
                         </div>
                         <div className="tx-row__right">
-                          <div className={`tx-row__amount ${neg ? "tx-row__amount--neg" : "tx-row__amount--pos"}`}>
+                          <div
+                            className={`tx-row__amount ${neg ? "tx-row__amount--neg" : "tx-row__amount--pos"}`}
+                          >
                             {neg ? "−" : "+"}
                             {fmt(tx.amount)}
                           </div>
                           {isAgent && (
                             <div className="tx-row__badges">
-                              <span className="tx-badge tx-badge--agent">AI</span>
+                              <span className="tx-badge tx-badge--agent">
+                                AI
+                              </span>
                             </div>
                           )}
                         </div>
@@ -2554,10 +2644,15 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               onMouseDown={onMiddleResizeMouseDown}
               aria-label="Drag to resize assistant height"
             >
-              <span className="ud-middle-resize-handle__grip" aria-hidden="true">
+              <span
+                className="ud-middle-resize-handle__grip"
+                aria-hidden="true"
+              >
                 <span className="ud-middle-resize-handle__bar" />
               </span>
-              <span className="ud-middle-resize-handle__label">Resize height</span>
+              <span className="ud-middle-resize-handle__label">
+                Resize height
+              </span>
             </button>
           </section>
 
@@ -2630,7 +2725,17 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           aria-label="Open AI banking assistant in middle column"
           title="Open AI Agent"
         >
-          <span className="banking-agent-fab-icon">🏦</span>
+          <span className="banking-agent-fab-icon">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M4 10h3v7H4zM10.5 10h3v7h-3zM2 19h20v3H2zM17 10h3v7h-3zM12 1 2 6v2h20V6z" />
+            </svg>
+          </span>
           <span className="banking-agent-fab-label">AI Agent</span>
         </button>
       )}
@@ -2671,7 +2776,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                   consentChallengeId: challenge.id,
                 });
                 if (challenge.payload.type === "transfer") {
-                  setTransferForm({ toAccountId: "", amount: "", description: "" });
+                  setTransferForm({
+                    toAccountId: "",
+                    amount: "",
+                    description: "",
+                  });
                   setSelectedAccount(null);
                 } else if (challenge.payload.type === "deposit") {
                   setDepositForm({ amount: "", description: "" });
@@ -3190,294 +3299,301 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           minWidth={340}
           minHeight={200}
         >
-            <div style={{ overflowY: 'auto', height: '100%', padding: '20px 30px' }}>
-              {tokenData ? (
-                (() => {
-                  const {
-                    decoded,
-                    user,
-                    tokenType,
-                    expiresAt,
-                    hasRefreshToken,
-                  } = tokenData;
-                  const payload = decoded?.payload || {};
-                  const header = decoded?.header || {};
-                  const mayAct = payload.may_act;
-                  return (
-                    <div className="token-info">
-                      {/* Session summary */}
-                      <div className="token-section">
-                        <h4>Session</h4>
-                        <div className="session-info-grid">
-                          <div className="session-row">
-                            <span className="session-label">User:</span>
-                            <span className="session-value">
-                              {user?.firstName} {user?.lastName} ({user?.email})
-                            </span>
+          <div
+            style={{ overflowY: "auto", height: "100%", padding: "20px 30px" }}
+          >
+            {tokenData ? (
+              (() => {
+                const { decoded, user, tokenType, expiresAt, hasRefreshToken } =
+                  tokenData;
+                const payload = decoded?.payload || {};
+                const header = decoded?.header || {};
+                const mayAct = payload.may_act;
+                return (
+                  <div className="token-info">
+                    {/* Session summary */}
+                    <div className="token-section">
+                      <h4>Session</h4>
+                      <div className="session-info-grid">
+                        <div className="session-row">
+                          <span className="session-label">User:</span>
+                          <span className="session-value">
+                            {user?.firstName} {user?.lastName} ({user?.email})
+                          </span>
+                        </div>
+                        <div className="session-row">
+                          <div style={{ display: "flex", gap: "2rem" }}>
+                            <div>
+                              <span className="session-label">Role:</span>
+                              <span className="session-value">
+                                {user?.role}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="session-label">Type:</span>
+                              <span className="session-value">
+                                {tokenType || "Bearer"}
+                              </span>
+                            </div>
                           </div>
-                          <div className="session-row">
-                            <div style={{ display: "flex", gap: "2rem" }}>
-                              <div>
-                                <span className="session-label">Role:</span>
-                                <span className="session-value">
-                                  {user?.role}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="session-label">Type:</span>
-                                <span className="session-value">
-                                  {tokenType || "Bearer"}
-                                </span>
+                          {hasRefreshToken && (
+                            <div style={{ width: "100%", marginTop: "0.5rem" }}>
+                              <span
+                                className="session-value"
+                                style={{
+                                  color: "#22c55e",
+                                  display: "inline-block",
+                                }}
+                              >
+                                ✓ refresh token
+                              </span>
+                              <div
+                                style={{
+                                  fontSize: "0.85em",
+                                  color: "#94a3b8",
+                                  marginTop: "4px",
+                                }}
+                              >
+                                Refresh token available — can extend session
+                                without re-login (renews for another 24 hours)
                               </div>
                             </div>
-                            {hasRefreshToken && (
-                              <div
-                                style={{ width: "100%", marginTop: "0.5rem" }}
-                              >
-                                <span
-                                  className="session-value"
-                                  style={{
-                                    color: "#22c55e",
-                                    display: "inline-block",
-                                  }}
-                                >
-                                  ✓ refresh token
-                                </span>
-                                <div
-                                  style={{
-                                    fontSize: "0.85em",
-                                    color: "#94a3b8",
-                                    marginTop: "4px",
-                                  }}
-                                >
-                                  Refresh token available — can extend session
-                                  without re-login (renews for another 24 hours)
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          <div className="session-row">
-                            <span className="session-label">Expires:</span>
-                            <span className="session-value">
-                              {expiresAt
-                                ? (() => {
-                                    const now = Date.now();
-                                    const exp = new Date(expiresAt).getTime();
-                                    const msUntilExpiry = exp - now;
-                                    const hoursUntilExpiry = Math.floor(
-                                      msUntilExpiry / (1000 * 60 * 60),
-                                    );
-                                    const minutesUntilExpiry = Math.floor(
-                                      (msUntilExpiry % (1000 * 60 * 60)) /
-                                        (1000 * 60),
-                                    );
-                                    const isExpired = msUntilExpiry <= 0;
+                          )}
+                        </div>
+                        <div className="session-row">
+                          <span className="session-label">Expires:</span>
+                          <span className="session-value">
+                            {expiresAt
+                              ? (() => {
+                                  const now = Date.now();
+                                  const exp = new Date(expiresAt).getTime();
+                                  const msUntilExpiry = exp - now;
+                                  const hoursUntilExpiry = Math.floor(
+                                    msUntilExpiry / (1000 * 60 * 60),
+                                  );
+                                  const minutesUntilExpiry = Math.floor(
+                                    (msUntilExpiry % (1000 * 60 * 60)) /
+                                      (1000 * 60),
+                                  );
+                                  const isExpired = msUntilExpiry <= 0;
 
-                                    return (
-                                      <div
+                                  return (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "1rem",
+                                      }}
+                                    >
+                                      <span>
+                                        {new Date(expiresAt).toLocaleString()}
+                                      </span>
+                                      <span
                                         style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "1rem",
+                                          color: isExpired
+                                            ? "#ef4444"
+                                            : "#22c55e",
                                         }}
                                       >
-                                        <span>
-                                          {new Date(expiresAt).toLocaleString()}
-                                        </span>
-                                        <span
-                                          style={{
-                                            color: isExpired
-                                              ? "#ef4444"
-                                              : "#22c55e",
-                                          }}
-                                        >
-                                          {isExpired
-                                            ? "Expired"
-                                            : `${hoursUntilExpiry > 0 ? `${hoursUntilExpiry}h ` : ""}${minutesUntilExpiry}m remaining`}
-                                        </span>
-                                      </div>
-                                    );
-                                  })()
-                                : "N/A"}
-                            </span>
-                          </div>
+                                        {isExpired
+                                          ? "Expired"
+                                          : `${hoursUntilExpiry > 0 ? `${hoursUntilExpiry}h ` : ""}${minutesUntilExpiry}m remaining`}
+                                      </span>
+                                    </div>
+                                  );
+                                })()
+                              : "N/A"}
+                          </span>
                         </div>
                       </div>
+                    </div>
 
-                      {/* Key claims */}
-                      <div className="token-section">
-                        <h4
+                    {/* Key claims */}
+                    <div className="token-section">
+                      <h4
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <span
                           style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
+                            background: "#1e3a5f",
+                            border: "1px solid var(--brand-navy)",
+                            borderRadius: "4px",
+                            padding: "2px 8px",
+                            fontSize: "0.75rem",
+                            color: "#93c5fd",
                           }}
                         >
-                          <span
-                            style={{
-                              background: "#1e3a5f",
-                              border: "1px solid var(--brand-navy)",
-                              borderRadius: "4px",
-                              padding: "2px 8px",
-                              fontSize: "0.75rem",
-                              color: "#93c5fd",
-                            }}
-                          >
-                            👤 Access Token Claims
-                          </span>
-                          <button
-                            type="button"
-                            className="token-payload-hint"
-                            title="Learn about tokens"
-                            onClick={() => open(EDU.LOGIN_FLOW, "tokens")}
-                          >
-                            ⓘ
-                          </button>
-                        </h4>
+                          Access Token Claims
+                        </span>
+                        <button
+                          type="button"
+                          className="token-payload-hint"
+                          title="Learn about tokens"
+                          onClick={() => open(EDU.LOGIN_FLOW, "tokens")}
+                        >
+                          ⓘ
+                        </button>
+                      </h4>
+                      <div
+                        style={{
+                          background: "#0f172a",
+                          border: "1px solid #1e3a5f",
+                          borderRadius: "6px",
+                          padding: "10px 14px",
+                          fontSize: "0.8rem",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        <table
+                          style={{
+                            width: "100%",
+                            borderCollapse: "collapse",
+                          }}
+                        >
+                          <tbody>
+                            {[
+                              ["alg", header.alg],
+                              ["sub", payload.sub],
+                              [
+                                "aud",
+                                Array.isArray(payload.aud)
+                                  ? payload.aud.join(", ")
+                                  : payload.aud,
+                              ],
+                              ["scope", payload.scope],
+                              ["iss", payload.iss],
+                              [
+                                "exp",
+                                payload.exp
+                                  ? new Date(
+                                      payload.exp * 1000,
+                                    ).toLocaleString()
+                                  : null,
+                              ],
+                            ]
+                              .filter(([, v]) => v)
+                              .map(([k, v]) => (
+                                <tr
+                                  key={k}
+                                  style={{
+                                    borderBottom: "1px solid #1e2d3d",
+                                  }}
+                                >
+                                  <td
+                                    style={{
+                                      padding: "3px 8px",
+                                      color: "#94a3b8",
+                                      fontFamily: "inherit",
+                                      width: "5rem",
+                                    }}
+                                  >
+                                    {k}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "3px 8px",
+                                      color: "#e2e8f0",
+                                      fontFamily: "inherit",
+                                      wordBreak: "break-all",
+                                    }}
+                                  >
+                                    {String(v)}
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {mayAct ? (
                         <div
                           style={{
-                            background: "#0f172a",
-                            border: "1px solid #1e3a5f",
+                            background: "#1e3a5f",
                             borderRadius: "6px",
-                            padding: "10px 14px",
+                            padding: "8px 12px",
                             fontSize: "0.8rem",
+                            color: "#93c5fd",
                             marginBottom: "8px",
                           }}
                         >
-                          <table
+                          ✅ <strong>may_act present</strong> — BFF can exchange
+                          this token (RFC 8693)
+                          <pre
                             style={{
-                              width: "100%",
-                              borderCollapse: "collapse",
+                              margin: "4px 0 0",
+                              background: "none",
+                              fontSize: "0.75rem",
                             }}
                           >
-                            <tbody>
-                              {[
-                                ["alg", header.alg],
-                                ["sub", payload.sub],
-                                [
-                                  "aud",
-                                  Array.isArray(payload.aud)
-                                    ? payload.aud.join(", ")
-                                    : payload.aud,
-                                ],
-                                ["scope", payload.scope],
-                                ["iss", payload.iss],
-                                [
-                                  "exp",
-                                  payload.exp
-                                    ? new Date(
-                                        payload.exp * 1000,
-                                      ).toLocaleString()
-                                    : null,
-                                ],
-                              ]
-                                .filter(([, v]) => v)
-                                .map(([k, v]) => (
-                                  <tr
-                                    key={k}
-                                    style={{
-                                      borderBottom: "1px solid #1e2d3d",
-                                    }}
-                                  >
-                                    <td
-                                      style={{
-                                        padding: "3px 8px",
-                                        color: "#94a3b8",
-                                        fontFamily: "inherit",
-                                        width: "5rem",
-                                      }}
-                                    >
-                                      {k}
-                                    </td>
-                                    <td
-                                      style={{
-                                        padding: "3px 8px",
-                                        color: "#e2e8f0",
-                                        fontFamily: "inherit",
-                                        wordBreak: "break-all",
-                                      }}
-                                    >
-                                      {String(v)}
-                                    </td>
-                                  </tr>
-                                ))}
-                            </tbody>
-                          </table>
+                            {JSON.stringify(mayAct, null, 2)}
+                          </pre>
                         </div>
-
-                        {mayAct ? (
-                          <div
-                            style={{
-                              background: "#1e3a5f",
-                              borderRadius: "6px",
-                              padding: "8px 12px",
-                              fontSize: "0.8rem",
-                              color: "#93c5fd",
-                              marginBottom: "8px",
-                            }}
-                          >
-                            ✅ <strong>may_act present</strong> — BFF can
-                            exchange this token (RFC 8693)
-                            <pre
-                              style={{
-                                margin: "4px 0 0",
-                                background: "none",
-                                fontSize: "0.75rem",
-                              }}
-                            >
-                              {JSON.stringify(mayAct, null, 2)}
-                            </pre>
-                          </div>
-                        ) : (
-                          <div
-                            style={{
-                              background: "#7f1d1d",
-                              borderRadius: "6px",
-                              padding: "8px 12px",
-                              fontSize: "0.8rem",
-                              color: "#fca5a5",
-                              marginBottom: "8px",
-                            }}
-                          >
-                            ⚠️ <strong>may_act absent</strong> — add the may_act
-                            claim in your PingOne token policy to enable token
-                            exchange
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Full payload */}
-                      <div className="token-section">
-                        <h4>Full JWT Payload</h4>
-                        <pre
-                          className="token-json"
+                      ) : (
+                        <div
                           style={{
-                            background: "#0f172a",
-                            color: "#e2e8f0",
+                            background: "#7f1d1d",
                             borderRadius: "6px",
-                            padding: "10px",
-                            fontSize: "0.73rem",
-                            overflowX: "auto",
-                            border: "1px solid #1e3a5f",
+                            padding: "8px 12px",
+                            fontSize: "0.8rem",
+                            color: "#fca5a5",
+                            marginBottom: "8px",
                           }}
                         >
-                          {JSON.stringify(payload, null, 2)}
-                        </pre>
-                      </div>
+                          ⚠️ <strong>may_act absent</strong> — add the may_act
+                          claim in your PingOne token policy to enable token
+                          exchange
+                        </div>
+                      )}
                     </div>
-                  );
-                })()
-              ) : (
-                <div className="no-token">
-                  <p>
-                    No OAuth token data available — make sure you are signed in.
-                  </p>
-                </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 0 4px' }}>
-                <button type="button" className="btn-secondary" onClick={() => setShowTokenModal(false)}>Close</button>
+
+                    {/* Full payload */}
+                    <div className="token-section">
+                      <h4>Full JWT Payload</h4>
+                      <pre
+                        className="token-json"
+                        style={{
+                          background: "#0f172a",
+                          color: "#e2e8f0",
+                          borderRadius: "6px",
+                          padding: "10px",
+                          fontSize: "0.73rem",
+                          overflowX: "auto",
+                          border: "1px solid #1e3a5f",
+                        }}
+                      >
+                        {JSON.stringify(payload, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                );
+              })()
+            ) : (
+              <div className="no-token">
+                <p>
+                  No OAuth token data available — make sure you are signed in.
+                </p>
               </div>
+            )}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                padding: "12px 0 4px",
+              }}
+            >
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setShowTokenModal(false)}
+              >
+                Close
+              </button>
             </div>
+          </div>
         </FloatingPanel>
       )}
     </div>

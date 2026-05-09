@@ -4,17 +4,17 @@
 
 :root {
   /* Slightly warm neutral — calmer, more “system” / Apple-adjacent than pure gray-blue */
-  --dash-bg: #eff6ff;
+  --dash-bg: #f8fafc;
   --dash-surface: #ffffff;
   --dash-surface-2: #ececf1;
-  --dash-text: #0f172a;
+  --dash-text: #1e293b;
   --dash-muted: #374151;
   --dash-accent: #2c5282;
   --dash-accent-red: #9b2335;
   --dash-accent-soft: rgba(44, 82, 130, 0.1);
   --dash-border: rgb(15 23 42 / 0.08);
   --dash-radius: 16px;
-  --dash-radius-sm: 10px;
+  --dash-radius-sm: 12px;
   --dash-shadow: 0 4px 16px rgba(28, 50, 100, 0.08);
   --dash-header-grad: linear-gradient(
     135deg,
@@ -87,6 +87,7 @@ html[data-theme="dark"] {
   box-shadow: var(--dash-shadow);
   padding: 1.1rem 1.25rem 1.25rem;
   margin-bottom: 1rem;
+  border-left: 4px solid var(--brand-navy, #1d4ed8);
 }
 
 .dash-shell-card--token {

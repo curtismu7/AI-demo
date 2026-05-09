@@ -317,17 +317,21 @@
 }
 
 .demo-data-btn {
-  padding: 0.55rem 1.15rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--btn-padding);
+  min-height: var(--btn-height);
+  border-radius: var(--btn-radius);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-weight);
   font-family: inherit;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  line-height: 1.25;
+  cursor: pointer;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  transition: var(--btn-transition);
 }
 
 .demo-data-btn.primary {
@@ -338,7 +342,7 @@
   );
   color: #fff;
   border-color: var(--app-primary-red-border);
-  box-shadow: 0 1px 3px rgba(127, 29, 29, 0.22);
+  box-shadow: 0 1px 3px rgba(127, 29, 29, 0.28);
 }
 
 .demo-data-btn.primary:hover:not(:disabled) {
@@ -347,30 +351,24 @@
     var(--app-primary-red) 0%,
     var(--app-primary-red-hover) 100%
   );
+  border-color: var(--app-primary-red-hover);
 }
 
 .demo-data-btn.primary:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .demo-data-btn.ghost {
-  background: linear-gradient(
-    180deg,
-    var(--app-primary-red-mid) 0%,
-    var(--app-primary-red) 100%
-  );
+  background: #ffffff;
+  color: var(--app-primary-red);
   border-color: var(--app-primary-red-border);
-  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .demo-data-btn.ghost:hover:not(:disabled) {
-  background: linear-gradient(
-    180deg,
-    var(--app-primary-red) 0%,
-    var(--app-primary-red-hover) 100%
-  );
-  color: #fff;
+  background: #fef2f2;
+  border-color: var(--app-primary-red);
 }
 
 /* AI agent layout (floating vs embedded) */

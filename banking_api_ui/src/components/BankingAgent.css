@@ -342,36 +342,53 @@ body > .banking-agent-float-root .banking-agent-panel {
 .ba-left-auth-btn {
   display: block;
   width: 100%;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 8px;
+  padding: var(--btn-padding);
+  min-height: var(--btn-height);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-weight);
+  font-family: inherit;
+  line-height: 1.25;
+  border-radius: var(--btn-radius);
   cursor: pointer;
-  border: 1px solid var(--ba-accent);
-  background: var(--ba-accent);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   color: #fff;
-  transition:
-    background 0.15s,
-    border-color 0.15s,
-    color 0.15s;
+  border: 1px solid var(--app-primary-red-border);
+  box-shadow: 0 1px 3px rgba(127, 29, 29, 0.28);
+  transition: var(--btn-transition);
 }
 .ba-left-auth-btn:hover:not(:disabled) {
-  background: var(--ba-accent-h);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
+  border-color: var(--app-primary-red-hover);
   color: #fff;
-  border-color: var(--ba-accent-h);
 }
 .ba-left-auth-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 .ba-left-auth-btn.primary {
-  background: var(--ba-accent);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   color: #fff;
-  border-color: var(--ba-accent);
+  border-color: var(--app-primary-red-border);
 }
 .ba-left-auth-btn.primary:hover {
-  background: var(--ba-accent-h);
-  border-color: var(--ba-accent-h);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
+  border-color: var(--app-primary-red-hover);
   color: #fff;
 }
 
@@ -621,24 +638,40 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 
 .banking-agent-panel:not(.ba-mode-inline) .ba-left-auth-btn {
-  background: var(--ba-float-btn);
-  border-color: var(--ba-float-btn);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
+  border-color: var(--app-primary-red-border);
   color: #fff;
 }
 .banking-agent-panel:not(.ba-mode-inline)
   .ba-left-auth-btn:hover:not(:disabled) {
-  background: var(--ba-float-btn-h);
-  border-color: var(--ba-float-btn-h);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
+  border-color: var(--app-primary-red-hover);
   color: #fff;
 }
 .banking-agent-panel:not(.ba-mode-inline) .ba-left-auth-btn.primary {
-  background: var(--ba-float-btn);
-  border-color: var(--ba-float-btn);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
+  border-color: var(--app-primary-red-border);
   color: #fff;
 }
 .banking-agent-panel:not(.ba-mode-inline) .ba-left-auth-btn.primary:hover {
-  background: var(--ba-float-btn-h);
-  border-color: var(--ba-float-btn-h);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
+  border-color: var(--app-primary-red-hover);
   color: #fff;
 }
 
@@ -1383,18 +1416,31 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 .ba-session-fix-btn {
   align-self: flex-start;
-  padding: 8px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  border-radius: 8px;
-  border: 1px solid #b91c1c;
-  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
+  padding: var(--btn-padding);
+  min-height: var(--btn-height);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-weight);
+  font-family: inherit;
+  line-height: 1.25;
+  border-radius: var(--btn-radius);
+  border: 1px solid var(--app-primary-red-border);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   color: #fff;
   cursor: pointer;
+  transition: var(--btn-transition);
 }
 
 .ba-session-fix-btn:hover {
-  filter: brightness(1.06);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
+  border-color: var(--app-primary-red-hover);
 }
 
 .banking-agent-panel:not(.ba-mode-light) .ba-session-fix-btn {
@@ -1404,19 +1450,21 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 
 .ba-session-fix-btn--secondary {
-  border-color: #999999;
-  background: var(--brand-light-gray);
-  color: #0f172a;
+  border-color: var(--app-primary-red-border);
+  background: #ffffff;
+  color: var(--app-primary-red);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .ba-session-fix-btn--secondary:hover {
-  filter: brightness(0.97);
+  background: #fef2f2;
+  border-color: var(--app-primary-red);
 }
 
 .ba-mode-light .ba-session-fix-btn--secondary {
-  border-color: #94a3b8;
-  background: #fff;
-  color: #0f172a;
+  border-color: var(--app-primary-red-border);
+  background: #ffffff;
+  color: var(--app-primary-red);
 }
 
 /* ─── Token event inline messages ────────────────────────────────────────── */
@@ -2986,18 +3034,30 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 .ba-consent-denied-banner__btn {
   flex-shrink: 0;
-  padding: 0.35rem 0.75rem;
-  border-radius: 6px;
-  border: 1px solid #b91c1c;
-  background: #b91c1c;
+  padding: var(--btn-padding-sm);
+  min-height: var(--btn-height-sm);
+  border-radius: var(--btn-radius);
+  border: 1px solid var(--app-primary-red-border);
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red-mid) 0%,
+    var(--app-primary-red) 100%
+  );
   color: #fff;
-  font-weight: 600;
-  font-size: 12px;
+  font-weight: var(--btn-weight);
+  font-size: var(--btn-font-size-sm);
+  font-family: inherit;
   cursor: pointer;
+  transition: var(--btn-transition);
 }
 
 .ba-consent-denied-banner__btn:hover {
-  background: #991b1b;
+  background: linear-gradient(
+    180deg,
+    var(--app-primary-red) 0%,
+    var(--app-primary-red-hover) 100%
+  );
+  border-color: var(--app-primary-red-hover);
 }
 
 .ba-consent-denied-banner__actions {
@@ -3008,13 +3068,14 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 
 .ba-consent-denied-banner__btn--secondary {
-  border-color: #999999;
-  background: #fff;
-  color: var(--brand-dark-gray);
+  border-color: var(--app-primary-red-border);
+  background: #ffffff;
+  color: var(--app-primary-red);
 }
 
 .ba-consent-denied-banner__btn--secondary:hover {
-  background: var(--brand-light-gray);
+  background: #fef2f2;
+  border-color: var(--app-primary-red);
 }
 
 /* Floating agent — visually “separate product” vs page-integrated embedded dock */

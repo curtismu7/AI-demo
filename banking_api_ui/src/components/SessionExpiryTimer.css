@@ -1,9 +1,9 @@
 /* banking_api_ui/src/components/SessionExpiryTimer.css - Global Banking Header */
 
 .banking-header {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   color: #1f2937;
-  border-bottom: 1px solid #93c5fd;
+  border-bottom: 1px solid #cbd5e1;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   position: sticky;
   top: 0;
@@ -102,7 +102,7 @@
   background-color: rgba(255, 255, 255, 0.1);
   border: 1.5px solid rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
-  backdrop-filter: blur(4px);
+  /* backdrop-filter removed for modal/overlay compliance */
 }
 
 .banking-header__session:hover {
@@ -145,7 +145,7 @@
   border-radius: 6px;
   background-color: rgba(255, 255, 255, 0.08);
   border: 1.5px solid rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(4px);
+  /* backdrop-filter removed for modal/overlay compliance */
   transition: all 0.2s ease;
 }
 

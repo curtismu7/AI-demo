@@ -65,9 +65,12 @@
 
 /* ─── Typography Scale ───────────────────────────────────────────────────── */
 :root {
-  --agent-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-  --agent-font-mono: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-  
+  --agent-font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", sans-serif;
+  --agent-font-mono:
+    -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+
   /* Font sizes - fluid responsive */
   --agent-text-xs: clamp(0.75rem, 0.75rem + 0vw, 0.75rem);
   --agent-text-sm: clamp(0.875rem, 0.875rem + 0vw, 0.875rem);
@@ -75,12 +78,12 @@
   --agent-text-lg: clamp(1.125rem, 1.125rem + 0vw, 1.125rem);
   --agent-text-xl: clamp(1.25rem, 1.25rem + 0vw, 1.25rem);
   --agent-text-2xl: clamp(1.5rem, 1.5rem + 0vw, 1.5rem);
-  
+
   /* Line heights */
   --agent-leading-tight: 1.25;
   --agent-leading-normal: 1.5;
   --agent-leading-relaxed: 1.75;
-  
+
   /* Font weights */
   --agent-font-light: 300;
   --agent-font-normal: 400;
@@ -91,17 +94,17 @@
 
 /* ─── Spacing Scale ───────────────────────────────────────────────────── */
 :root {
-  --agent-space-1: 0.25rem;   /* 4px */
-  --agent-space-2: 0.5rem;    /* 8px */
-  --agent-space-3: 0.75rem;   /* 12px */
-  --agent-space-4: 1rem;      /* 16px */
-  --agent-space-5: 1.25rem;   /* 20px */
-  --agent-space-6: 1.5rem;    /* 24px */
-  --agent-space-8: 2rem;      /* 32px */
-  --agent-space-10: 2.5rem;   /* 40px */
-  --agent-space-12: 3rem;     /* 48px */
-  --agent-space-16: 4rem;     /* 64px */
-  --agent-space-20: 5rem;     /* 80px */
+  --agent-space-1: 0.25rem; /* 4px */
+  --agent-space-2: 0.5rem; /* 8px */
+  --agent-space-3: 0.75rem; /* 12px */
+  --agent-space-4: 1rem; /* 16px */
+  --agent-space-5: 1.25rem; /* 20px */
+  --agent-space-6: 1.5rem; /* 24px */
+  --agent-space-8: 2rem; /* 32px */
+  --agent-space-10: 2.5rem; /* 40px */
+  --agent-space-12: 3rem; /* 48px */
+  --agent-space-16: 4rem; /* 64px */
+  --agent-space-20: 5rem; /* 80px */
 }
 
 /* ─── Border Radius ───────────────────────────────────────────────────── */
@@ -118,9 +121,12 @@
 :root {
   --agent-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --agent-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --agent-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --agent-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --agent-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --agent-shadow-md:
+    0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --agent-shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --agent-shadow-xl:
+    0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --agent-shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
 }
 
@@ -129,7 +135,7 @@
   --agent-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --agent-transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   --agent-transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
-  
+
   --agent-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --agent-ease-out: cubic-bezier(0, 0, 0.2, 1);
   --agent-ease-in: cubic-bezier(0.4, 0, 1, 1);
@@ -166,19 +172,19 @@
   --agent-message-border-radius: var(--agent-radius-lg);
   --agent-message-padding: var(--agent-space-4);
   --agent-message-gap: var(--agent-space-3);
-  
+
   /* Input area */
   --agent-input-bg: var(--agent-bg-primary);
   --agent-input-border: var(--agent-border-primary);
   --agent-input-border-focus: var(--agent-primary-500);
   --agent-input-padding: var(--agent-space-3) var(--agent-space-4);
   --agent-input-radius: var(--agent-radius-lg);
-  
+
   /* Chat container */
   --agent-chat-bg: #eff6ff;
   --agent-chat-padding: var(--agent-space-4);
   --agent-chat-gap: var(--agent-space-4);
-  
+
   /* Typing indicator */
   --agent-typing-dot-size: 0.5rem;
   --agent-typing-dot-color: var(--agent-gray-400);
@@ -192,8 +198,8 @@
 }
 
 [data-vertical="hr-workforce"] {
-  --agent-primary-500: #8b5cf6;
-  --agent-primary-600: #7c3aed;
+  --agent-primary-500: #64748b;
+  --agent-primary-600: #475569;
 }
 
 [data-vertical="retail-commerce"] {
@@ -203,7 +209,9 @@
 
 /* ─── Animation Keyframes ───────────────────────────────────────────────── */
 @keyframes typing {
-  0%, 60%, 100% {
+  0%,
+  60%,
+  100% {
     transform: translateY(0);
     opacity: 0.5;
   }
@@ -236,7 +244,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -257,7 +266,7 @@
     --agent-text-primary: #000000;
     --agent-bg-primary: #ffffff;
   }
-  
+
   [data-theme="dark"] {
     --agent-border-primary: #ffffff;
     --agent-text-primary: #ffffff;
@@ -272,7 +281,7 @@
     --agent-transition-normal: 0ms;
     --agent-transition-slow: 0ms;
   }
-  
+
   * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

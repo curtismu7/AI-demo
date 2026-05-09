@@ -2,181 +2,491 @@
 
 ## Overview
 
-This banking app supports **Ping AI / Helix** as a drop-in LLM provider for the agent chat interface. When configured, every agent conversation is routed through a published Helix agent instead of a direct LLM API.
+**Ping AI / Helix** is a hosted AI agent platform. This guide explains how to
+create a published Helix agent, obtain the correct API credentials, and wire
+them into any application that calls the Helix conversation API.
 
-The integration follows Helix's 3-step conversation API:
-1. `POST /agents/{name}/conversations` — create a conversation session
-2. `POST /conversations/{id}/channels/{home_channel}/messages` — send the user prompt
-3. The response is either returned immediately in the POST body, or polled from the same messages endpoint
+The integration follows a three-step conversation pattern:
+
+```
+1. POST /agents/{name}/conversations          → returns conversation ID + home channel
+2. POST /conversations/{id}/channels/{ch}/messages  → send prompt, receive (or wait for) reply
+3. GET  /conversations/{id}/channels/{ch}/messages  → poll if reply was not immediate
+```
+
+Authentication uses an `x-api-key` header — **not** `Authorization: Bearer`.
 
 ---
 
 ## Prerequisites
 
-- Access to a Helix tenant (e.g. `https://openam-helix.forgeblocks.com`)
-- At least one **published** agent in that tenant
-- An **agent-scoped** API key for that agent (see [Creating an API Key](#creating-an-api-key) below)
+| Requirement | Notes |
+|---|---|
+| Helix tenant | e.g. `https://openam-helix.forgeblocks.com` |
+| Published agent | Must be published, not just saved — the API only serves the published version |
+| Agent-scoped API key | See [Step 2 — API Keys](#step-2--api-keys) — key type matters |
+| LLM provider credentials | Environment-level (Anthropic/Google) or per-agent (Vertex AI) |
 
 ---
 
-## Creating a Published Agent
+## Step 1 — Create and Configure an Agent
+
+### 1.1 Create the agent
 
 1. Log in to the Helix console
-2. Go to **Agents** and create a new agent (or open an existing one)
-3. In the agent designer, add an **AI Task** node and configure:
-   - **Provider:** Use a provider with environment-level credentials (e.g. `anthropic` or `google`) — these do not require a per-agent API key
-   - **Model:** Select a model from the provider's available list
-   - **Input field:** Note the field ID shown in the node (e.g. `textInput502c5045a61c`) — this is your **Prompt Field ID**
-4. Connect the AI Task node between the start and end nodes
-5. Publish the agent — look for a **Publish** or **Deploy** button
+2. Go to **Agents** → **New Agent**
+3. Give it a short, lowercase name — this becomes the URL path segment (e.g. `my-agent`)
 
-> **Provider note:** `google-vertexai` requires a per-agent API key. If you use it, leave the key field blank in the node and the agent will fail to respond. Use `google` instead, which inherits environment-level credentials.
+### 1.2 Add an AI Task node
+
+In the agent designer:
+
+1. Drag an **AI Task** node onto the canvas
+2. Connect it between the **Start** and **End** nodes
+3. Open the node and configure:
+
+| Field | Guidance |
+|---|---|
+| **Provider** | `anthropic` or `google` — these use environment-level credentials and require no per-agent API key |
+| **Model** | Any model available for your chosen provider (e.g. `claude-sonnet-4-5`, `gemini-2.5-flash`) |
+| **API Key** | Leave blank when using environment-level credentials |
+
+> **Avoid `google-vertexai`** unless you have a dedicated per-agent Vertex AI
+> key. If the API Key field is empty and you use `google-vertexai`, the agent
+> initialises but returns `null` for every conversation — a silent failure with
+> no error message. Use `google` instead, which inherits shared environment
+> credentials.
+
+### 1.3 Note the Prompt Field ID
+
+Every input field in the designer has a unique ID (e.g. `textInput502c5045a61c`).
+You need this to send messages to the agent.
+
+Find it by:
+
+- Hovering over the input field in the node configuration panel, or
+- Checking the field's properties row in the designer sidebar
+
+Copy it exactly — it is **case-sensitive** and agent-version-specific.
+
+### 1.4 Publish the agent
+
+**Saving is not the same as publishing.** The conversation API only serves the
+*published* version of an agent.
+
+1. Click **Publish** (or **Deploy** — the label varies by console version)
+2. Confirm the publish dialog
+3. Wait for the status badge to show **Published** or **Live**
+
+> **If API behaviour doesn't change after saving:** Look for a separate
+> "Publish" or "Deploy to Published" option in the top-right toolbar or the
+> agent overflow menu. Changes to provider, model, or API Key only take effect
+> after a successful publish.
 
 ---
 
-## Creating an API Key
+## Step 2 — API Keys
 
-API keys come in two types. You need an **agent invocation key**, not an environment admin key.
+There are two distinct key types. **Only one can invoke agents.**
 
-**Agent invocation key** (required):
-- In the Helix console, open your published agent
-- Click the **three-dot menu** on the agent card
-- Select **Create API Key** (or similar)
-- The resulting JSON will have `target` set to the agent name and `branch` set to `published`
+### Agent invocation key (required)
 
-**Environment admin key** (wrong type — will not invoke agents):
-- Created from the top-level environment settings
-- Has `scope: env_admin` and empty `target` / `branch`
-- Can list/create agents but cannot start conversations
+Created from the **agent's overflow menu** in the console:
 
-The key JSON file looks like:
+1. Go to **Agents** and locate your published agent
+2. Click the **⋮** (three-dot) menu on the agent card
+3. Select **Create API Key** (or **Generate Key**)
+4. Download the resulting JSON file
+
+A valid agent invocation key looks like:
 
 ```json
 {
-  "keyValue": "abc123...",
-  "keyName": "my-banking-agent",
-  "target": "my-banking-agent",
-  "branch": "published"
+  "keyName": "my-agent-key",
+  "keyValue": "Base64EncodedKeyValueHere...",
+  "target": "my-agent",
+  "branch": "published",
+  "scope": "agent",
+  "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "createdBy": "user@example.com"
 }
 ```
 
+The `target` field must equal the agent name and `branch` must be `published`.
+If either is empty, the key is the wrong type.
+
+### Environment admin key (wrong type for agent invocation)
+
+Created from **Environment Settings**. Looks similar but has empty `target` and
+`branch`:
+
+```json
+{
+  "scope": "env_admin",
+  "target": "",
+  "branch": ""
+}
+```
+
+This key can call management APIs (list agents, create agents, read
+configuration) but **cannot start conversations**. Using it for agent invocation
+returns HTTP 200 with body `null` — which appears successful but is not.
+
+### Quick check
+
+```bash
+cat your-key.json | python3 -c \
+  "import json,sys; k=json.load(sys.stdin); \
+   print('OK — agent invocation key' if k.get('target') else 'WRONG TYPE — env admin key, target is empty')"
+```
+
 ---
 
-## Finding Your Configuration Values
+## Step 3 — Configuration Values
+
+Collect these five values before configuring your application:
 
 | Value | Where to find it |
 |---|---|
-| **Base URL** | Your tenant URL, e.g. `https://openam-helix.forgeblocks.com` — the app appends `/dpc/jas/helix/v1` automatically |
-| **Environment ID** | Helix console → Settings or URL, e.g. `fe213c3c-9c1d-4bdb-954a-a22879dad26d` |
-| **Agent Name** | The agent's name as shown in the console (used in API URLs), e.g. `LLM` or `my-banking-agent` |
-| **Prompt Field ID** | The input field ID in the AI Task node, e.g. `textInput502c5045a61c` |
-| **API Key** | `keyValue` from the agent-scoped key JSON |
+| **Base URL** | Your tenant origin only — e.g. `https://openam-helix.forgeblocks.com`. Do not include any path; the API path (`/dpc/jas/helix/v1`) is appended automatically |
+| **Environment ID** | Helix console → Settings, or read from the URL when browsing your environment (a UUID, e.g. `fe213c3c-9c1d-4bdb-954a-a22879dad26d`) |
+| **Agent Name** | The agent's name as shown in the console — **not** the UUID. Case-sensitive (e.g. `my-agent`) |
+| **Prompt Field ID** | The input field ID inside the AI Task node (e.g. `textInput502c5045a61c`) |
+| **API Key** | The `keyValue` string from the agent-scoped key JSON |
 
 ---
 
-## Configuring the Banking App
+## Step 4 — Environment Variables
 
-### Option A — Admin UI (recommended)
-
-1. Start the app and log in as admin
-2. Navigate to **Configuration → LLM Provider → Helix**
-3. Fill in all five fields:
-   - Base URL
-   - API Key
-   - Environment ID
-   - Agent Name
-   - Prompt Field ID
-4. Optionally, click **Import API Key JSON** to load the key file — this populates the API Key and Agent Name fields automatically from the JSON
-5. Click **Save & Activate**
-6. The status pill changes to **Active** when the configuration is accepted
-
-### Option B — Environment variables
-
-Set these in your `.env` before starting the server:
+Set these in your application's environment before starting the server:
 
 ```
-HELIX_BASE_URL=https://openam-helix.forgeblocks.com
-HELIX_API_KEY=<your-agent-invocation-key>
-HELIX_ENVIRONMENT_ID=<your-environment-id>
+HELIX_BASE_URL=https://your-tenant.forgeblocks.com
+HELIX_API_KEY=<keyValue from agent-scoped key JSON>
+HELIX_ENVIRONMENT_ID=<your-environment-uuid>
 HELIX_AGENT_ID=<your-agent-name>
 HELIX_PROMPT_FIELD_ID=<your-prompt-field-id>
 ```
 
-The configStore resolves these automatically — no code changes needed.
+For this application, add them to `banking_api_server/.env` and restart the
+server. The configuration store picks them up automatically — no code changes
+are needed.
+
+Alternatively, use the admin UI: **Configuration → LLM Provider → Helix**.
+Click **Import API Key JSON** to auto-populate the API Key and Agent Name from
+the downloaded key file, then fill in the remaining fields and save.
 
 ---
 
-## Verification
+## Step 5 — Verify
 
-After saving, test the integration:
+### Startup check
 
-1. Open the user dashboard and start an agent chat
-2. Ask a simple question — the response should come from your Helix agent
-3. Check server logs at `/tmp/bank-api-server.log` — look for:
-   ```
-   [agentBuilder] LLM initialized: helix/...
-   ```
-   If you see an error, the most common causes are listed below
+When the server starts it prints a configuration report. A fully configured
+Helix integration shows:
+
+```
+✓  [HELIX LLM     ]  Helix AI Agent                    configured
+```
+
+`partial` means one or more of the five vars is missing. The banner lists which
+ones.
+
+### Live log
+
+```bash
+tail -f /tmp/bank-helix.log
+```
+
+A successful call sequence looks like:
+
+```
+2026-05-08T10:02:36Z [helix/info] Helix call started {"agent":"my-agent","environment":"fe213c3c-..."}
+2026-05-08T10:02:37Z [helix/info] Conversation created {"conversationId":"e863355a-...","channelId":"e8d9d20b-..."}
+2026-05-08T10:02:39Z [helix/info] Response received (immediate) {"conversationId":"e863355a-..."}
+```
+
+If you see `createConversation failed` or `returned null`, go to
+[Troubleshooting](#troubleshooting).
+
+### Manual curl test
+
+Replace the placeholders with your real values:
+
+```bash
+BASE=https://your-tenant.forgeblocks.com/dpc/jas/helix/v1
+ENV=your-environment-id
+AGENT=your-agent-name
+KEY=your-api-key
+
+# Step 1 — create conversation
+curl -s -X POST "$BASE/environments/$ENV/agents/$AGENT/conversations" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $KEY" \
+  -d '{"agent":{"version":"published"}}' | python3 -m json.tool
+```
+
+A successful response returns `{ "id": "...", "home_channel": "..." }`.
+A `null` body means something is wrong — see the troubleshooting checklist below.
+
+---
+
+## API Reference
+
+All requests use `x-api-key: <your-key>`. Bearer tokens are not used.
+
+The base path for all endpoints is:
+
+```
+https://{your-tenant}/dpc/jas/helix/v1
+```
+
+### 1. Create conversation
+
+```
+POST /environments/{env_id}/agents/{agent_name}/conversations
+Content-Type: application/json
+x-api-key: <key>
+
+{
+  "agent": { "version": "published" }
+}
+```
+
+**Success response:**
+
+```json
+{
+  "id": "e863355a-abd6-497f-83f5-e6bde77ec206",
+  "home_channel": "e8d9d20b-e734-4628-9c17-3a39e489db3f"
+}
+```
+
+**Failure:** HTTP 200 with body `null`. See [Troubleshooting](#troubleshooting).
+
+> The request body `{ "agent": { "version": "published" } }` is required.
+> Omitting it causes Helix to return `null` even when the key and agent name are
+> correct.
+
+### 2. Send message
+
+```
+POST /environments/{env_id}/conversations/{conv_id}/channels/{channel_id}/messages
+Content-Type: application/json; async=false
+x-api-key: <key>
+
+{
+  "class": "start",
+  "content": {
+    "<prompt_field_id>": "The user's message goes here"
+  }
+}
+```
+
+`Content-Type` must include `; async=false`. Omitting it can cause responses to
+arrive asynchronously with no usable signal.
+
+**Immediate response** (agent answered in the POST body):
+
+```json
+{
+  "message_id": "abc123",
+  "class": "complete",
+  "value": "The agent's answer"
+}
+```
+
+**Deferred response** (poll required):
+
+```json
+{
+  "message_id": "abc123"
+}
+```
+
+### 3. Poll for response
+
+```
+GET /environments/{env_id}/conversations/{conv_id}/channels/{channel_id}/messages
+x-api-key: <key>
+```
+
+**Response:** An array of all messages in the conversation.
+
+```json
+[
+  { "message_id": "abc123", "sender_role": "user", "class": "start", ... },
+  { "message_id": "xyz789", "sender_role": "agent", "class": "complete", "value": "The answer" }
+]
+```
+
+Look for an entry with `"sender_role": "agent"`, `"class": "complete"`, and a
+non-null `value`. Poll on a 1-second interval; set a timeout of 30 seconds to
+avoid indefinite blocking.
 
 ---
 
 ## Troubleshooting
 
-### `createConversation returned null`
+### Conversation returns `null` (no error, but no ID)
 
-The most common cause. Check all of the following:
-- The agent is **published** (not just saved/drafted)
-- You are using an **agent-scoped key** (has `target` and `branch` in the JSON), not an env admin key
-- The **Agent Name** matches exactly what's in the console (case-sensitive)
-- The request body includes `{ agent: { version: "published" } }` — our service sends this automatically
+The most common problem. Work through this checklist:
 
-### `createConversation failed: 401`
+1. **Is the agent published?** Saving ≠ publishing. Click the Publish button and
+   confirm the status badge changes.
+2. **Is the key agent-scoped?** Run the quick check from
+   [Step 2](#step-2--api-keys). If `target` is empty it is an env admin key —
+   create a new key from the agent's ⋮ menu.
+3. **Does the agent name match exactly?** `HELIX_AGENT_ID` must be the name
+   string as shown in the console, not the UUID. Case matters.
+4. **Does the request body include `{ "agent": { "version": "published" } }`?**
+   This field is required — omitting it produces `null` even with valid
+   credentials.
+5. **Is the AI Task node provider configured correctly?** `google-vertexai` with
+   an empty API Key field silently returns null. Switch to `google` and republish.
 
-The API key is invalid or expired. Re-export a fresh key from the agent's three-dot menu.
+### HTTP 401
 
-### `Helix config incomplete: missing ...`
+The API key is invalid or expired.
 
-One or more of the five required config fields is empty. Use **Load from Database** in the UI to check what's currently stored, then fill any missing fields and save again.
+- Create a fresh agent-scoped key from the agent's ⋮ menu
+- Use the `keyValue` field — not `id`
+- Update the config and restart
 
-### Agent responds but answer is empty / null
+### HTTP 404
 
-The Prompt Field ID is wrong. The ID is case-sensitive and unique per agent version. Open the agent in the designer, click the AI Task node, and copy the exact field ID shown.
+The agent name or environment ID is wrong.
 
-### `google-vertexai` agent returns null body
+- Confirm `HELIX_AGENT_ID` matches the console name exactly (case-sensitive)
+- Confirm `HELIX_ENVIRONMENT_ID` is the environment UUID, not the environment name
+- Confirm `HELIX_BASE_URL` is the origin only — no trailing slash, no `/dpc/...` path
 
-The agent's AI Task node has an empty API key for `google-vertexai`. Switch the provider to `google` in the designer (which uses environment-level credentials) and republish.
+### Config error: missing fields
 
----
-
-## Architecture Reference
-
+```text
+Helix config incomplete: missing helix_base_url, helix_api_key, ...
 ```
-Browser (cookie) → BFF (agentBuilder.js)
-  → if provider === 'helix': callHelixAgent(helixLlmService.js)
-    → POST /environments/{env_id}/agents/{agent_name}/conversations
-    → POST /conversations/{id}/channels/{home_channel}/messages
-    → (poll GET same URL if needed)
-    → returns string response to agentBuilder
-  → agentBuilder returns response to BFF route
-→ BFF returns response to browser
-```
 
-Key files:
-
-| File | Role |
-|---|---|
-| `banking_api_server/services/helixLlmService.js` | Helix API client — conversation create, send, poll |
-| `banking_api_server/services/agentBuilder.js` | LLM provider dispatch — routes to Helix when `provider === 'helix'` |
-| `banking_api_server/routes/langchainConfig.js` | REST endpoints for saving/reading Helix config |
-| `banking_api_server/services/configStore.js` | Runtime config — env vars `HELIX_*` map to `helix_*` keys |
-| `banking_api_ui/src/components/HelixPanel.jsx` | Admin UI panel for Helix configuration |
-| `banking_api_server/src/__tests__/helixLlmService.test.js` | 19-test unit suite for the service |
-
----
-
-## Running Tests
+One or more of the five required values is not set. Check your environment:
 
 ```bash
-npx jest --testPathPatterns='helixLlmService' --no-coverage
-# Expected: 19 passed, 0 failed
+grep ^HELIX .env
+```
+
+All five must be non-empty. Fill any gaps and restart.
+
+### Agent responds but the answer is empty
+
+The `HELIX_PROMPT_FIELD_ID` is wrong.
+
+- Open the agent in the designer and click the AI Task node
+- Copy the input field ID exactly as shown (e.g. `textInput502c5045a61c`)
+- Field IDs are case-sensitive and specific to each published version
+
+### Timeout after 30 seconds
+
+The agent is taking too long to respond, or the poll response structure is not
+being matched.
+
+- Check the live log for what the poll endpoint is returning
+- Confirm the AI Task node is connected between Start and End (not floating)
+- Test the agent directly in the Helix console to rule out a platform issue
+
+### Edits to the agent have no effect via the API
+
+Changes saved in the designer are not live until published.
+
+- Look for a **Publish** or **Deploy to Published** option (top toolbar or
+  overflow menu — exact label varies by console version)
+- Wait for the status badge to update before testing
+- Provider, model, and field ID changes all require a republish
+
+### `google-vertexai` always returns null
+
+The AI Task node requires a per-agent Vertex AI API key. If the key field is
+blank, every conversation returns null.
+
+Fix: change the provider from `google-vertexai` to `google` in the designer
+(which uses shared environment credentials) and republish.
+
+---
+
+## Integration Pattern
+
+The following pattern is framework-agnostic and works in any server-side
+language.
+
+```text
+function callHelixAgent(config, userMessage, systemPrompt):
+
+  # Step 1 — create conversation
+  conv = POST /environments/{env_id}/agents/{agent_name}/conversations
+           body: { "agent": { "version": "published" } }
+  if conv is null → raise ConfigurationError (key type, agent name, publish status)
+
+  # Step 2 — send message
+  # Prepend system prompt to user message if the agent doesn't have a directive field
+  prompt = systemPrompt + "\n\n" + userMessage  (if systemPrompt exists)
+
+  response = POST /conversations/{conv.id}/channels/{conv.home_channel}/messages
+               Content-Type: application/json; async=false
+               body: { "class": "start", "content": { promptFieldId: prompt } }
+
+  # Step 3 — check for immediate answer
+  if response contains class="complete" and value → return value
+
+  # Step 4 — poll
+  deadline = now + 30s
+  while now < deadline:
+    messages = GET /conversations/{conv.id}/channels/{conv.home_channel}/messages
+    agentMsg = messages.find(sender_role="agent", class="complete", value≠null)
+    if agentMsg → return agentMsg.value
+    sleep 1s
+
+  raise TimeoutError
+```
+
+Key implementation notes:
+
+- Always send `{ "agent": { "version": "published" } }` in the create-conversation body
+- Use `x-api-key` header, not `Authorization: Bearer`
+- `Content-Type: application/json; async=false` on the send-message request
+- The `value` field in the response may be a plain string or JSON — try `JSON.parse` and fall back to raw string
+- Filter poll results by `sender_role: "agent"` to avoid matching the message you sent
+
+---
+
+## This Application's Configuration
+
+For reference, the env var names used in this project and example values:
+
+```bash
+# banking_api_server/.env
+
+HELIX_BASE_URL=https://openam-helix.forgeblocks.com
+HELIX_API_KEY=<keyValue from agent-scoped key JSON>
+HELIX_ENVIRONMENT_ID=fe213c3c-9c1d-4bdb-954a-a22879dad26d
+HELIX_AGENT_ID=LLM
+HELIX_PROMPT_FIELD_ID=textInput502c5045a61c
+```
+
+Relevant source files:
+
+| File | Role |
+| --- | --- |
+| `banking_api_server/services/helixLlmService.js` | Helix API client — conversation create, send, poll |
+| `banking_api_server/services/geminiNlIntent.js` | NL routing — routes to Helix JSON router or conversational fallback |
+| `banking_api_server/services/configStore.js` | Runtime config — `HELIX_*` env vars resolve via `getEffective('helix_*')` |
+| `banking_api_ui/src/components/HelixPanel.jsx` | Admin UI for Helix configuration |
+
+Running tests:
+
+```bash
+cd banking_api_server
+
+# Helix service unit tests
+npx jest --testPathPattern='helixLlmService' --no-coverage
+
+# LLM-only routing tests
+npx jest --testPathPattern='geminiNlIntent.llmOnly' --no-coverage
 ```

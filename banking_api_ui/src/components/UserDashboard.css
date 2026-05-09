@@ -13,12 +13,12 @@
 
 /* ── Split3: one-page viewport layout — no scroll, no magic-number heights ── */
 .user-dashboard.user-dashboard--split3 {
-  height: 100vh;
+  height: calc(100vh - var(--topnav-height, 60px));
   min-height: unset;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding-bottom: 0;
+  padding: 0;
 }
 
 /* Embedded agent lives in App <main> below this page — single scroll via .main-content__primary */
@@ -27,9 +27,11 @@
   flex-direction: column;
   flex: 1; /* fill the flex main-content column */
   min-height: unset;
-  height: 100vh; /* constrain to viewport so dock stays visible — mirrors split3 pattern */
+  height: calc(
+    100vh - var(--topnav-height, 60px)
+  ); /* constrain to viewport below sticky nav */
   overflow: hidden; /* prevent outer scroll; inner content area scrolls within the flex chain */
-  padding-bottom: 0;
+  padding: 0;
 }
 
 /* Outer wrapper that holds the 3-col grid + the full-width agent row */
@@ -550,7 +552,7 @@
   padding: 4px;
   background: rgba(255, 255, 255, 0.2);
   border-radius: 6px;
-  backdrop-filter: blur(10px);
+  /* backdrop-filter removed for modal/overlay compliance */
 }
 
 .logo-square {
@@ -639,7 +641,7 @@
   border: 2px solid rgba(255, 255, 255, 0.4);
   transition: all 0.3s ease;
   border-radius: 24px;
-  backdrop-filter: blur(10px);
+  /* backdrop-filter removed for modal/overlay compliance */
 }
 
 .toggle-slider:before {
@@ -789,7 +791,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
+  /* backdrop-filter removed for modal/overlay compliance */
   min-width: 40px;
   height: 40px;
 }
@@ -821,7 +823,7 @@
   font-size: 0.875rem;
   font-weight: 500;
   transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
+  /* backdrop-filter removed for modal/overlay compliance */
 }
 
 .logout-btn:hover {
@@ -837,16 +839,17 @@
 
 .section {
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 8px;
+  /* backdrop-filter removed for modal/overlay compliance */
+  border-radius: 12px;
   padding: clamp(18px, 3vw, 32px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(229, 231, 235, 0.8);
+  border-left: 4px solid var(--brand-navy, #1d4ed8);
 }
 
 .section h2 {
   margin: 0 0 clamp(16px, 2.5vw, 24px) 0;
-  color: #111827;
+  color: #1e293b;
   font-size: 1.15rem;
   font-weight: 600;
   letter-spacing: -0.025em;
@@ -957,7 +960,7 @@
 }
 .account-card--investment,
 .account-card--money_market {
-  border-left-color: #8b5cf6;
+  border-left-color: #64748b;
 }
 
 .account-card__body {
@@ -1012,8 +1015,8 @@
 }
 .account-type-badge.investment,
 .account-type-badge.money_market {
-  background: #f5f3ff;
-  color: #6d28d9;
+  background: #f1f5f9;
+  color: #334155;
 }
 .account-type-badge.unknown {
   background: #f1f5f9;
@@ -1544,7 +1547,7 @@
 /* Transactions Table */
 .transactions-table {
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  /* backdrop-filter removed for modal/overlay compliance */
   border: 1px solid rgba(229, 231, 235, 0.8);
   border-radius: 8px;
   overflow: hidden;
@@ -3494,14 +3497,14 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
 /* ── Agent full-page result highlight ── */
 .section--agent-updated {
   animation: agent-flash 0.4s ease-out;
-  outline: 2px solid #6366f1;
+  outline: 2px solid #2563eb;
   outline-offset: 2px;
   border-radius: 8px;
 }
 
 @keyframes agent-flash {
   0% {
-    background-color: rgba(99, 102, 241, 0.15);
+    background-color: rgba(37, 99, 235, 0.15);
   }
   100% {
     background-color: transparent;
@@ -3513,9 +3516,9 @@ html[data-theme="dark"] .user-dashboard--2026 .ud-insight-strip {
   margin-left: 10px;
   font-size: 0.72rem;
   font-weight: 600;
-  color: #6366f1;
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #475569;
+  background: rgba(71, 85, 105, 0.1);
+  border: 1px solid rgba(71, 85, 105, 0.3);
   border-radius: 12px;
   padding: 2px 8px;
   vertical-align: middle;
