@@ -17,9 +17,122 @@ This is a **completely standalone** project — it can be handed to anyone and r
 | `banking_mcp_server` | 8080 | MCP tool server for the AI agent |
 | `langchain_agent` | 8000 | LangChain + OpenAI AI banking agent |
 
-## Quick Start
+## New Machine Setup
 
-See **[docs/SETUP.md](docs/SETUP.md)** for the complete setup guide — prerequisites, PingOne app configuration, environment variables, local run commands, and verification steps for all three auth flows.
+Two paths depending on whether you are starting fresh or moving an existing configuration.
+
+---
+
+### Path A — Fresh install (first time on this machine)
+
+**Prerequisites:** Node 20+, npm 9+, Git, [mkcert](https://github.com/FiloSottile/mkcert)
+
+#### 1. One-time machine prep (run once per machine, not per repo)
+
+```bash
+brew install mkcert      # macOS — skip if already installed
+mkcert -install          # installs the local CA into the system trust store
+echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts
+```
+
+#### 2. Clone and install
+
+```bash
+git clone https://github.com/curtismu7/banking-demo.git
+cd banking-demo
+cd banking_api_server && npm install && cd ..
+cd banking_mcp_server  && npm install && cd ..
+cd banking_api_ui      && npm install && cd ..
+```
+
+#### 3. Start all services
+
+```bash
+./run-bank.sh
+```
+
+`run-bank.sh` will:
+
+- Generate TLS certs automatically if mkcert is installed
+- Create a `.env` with a generated `SESSION_SECRET` on first start
+- Launch API (3001), UI (4000), MCP (8080), and LangChain agent (8888)
+
+#### 4. Configure PingOne credentials
+
+Open **[https://api.pingdemo.com:4000/configure](https://api.pingdemo.com:4000/configure)** in your browser.  
+Enter your PingOne Environment ID, admin client credentials, and user client credentials.  
+The app saves them to `config.db` — no restart needed.
+
+See **[docs/SETUP.md](docs/SETUP.md)** for the full PingOne app configuration (grant types, redirect URIs, scopes).
+
+---
+
+### Path B — Migrate from another machine
+
+If you already have a working setup on Machine A and want to bring it to Machine B with all your PingOne config, data, and environment intact.
+
+#### On Machine A — export
+
+```bash
+cd banking_api_server
+npm run data:export
+# Creates banking-export-<timestamp>.tar.gz in banking_api_server/
+```
+
+The archive includes `config.db`, `banking.db`, all data files, and `.env`.  
+It excludes `sessions.db` (machine-bound) and `certs/` (must be regenerated).
+
+> **Security:** The archive contains your `.env` and database secrets. Transfer it via `scp` or encrypted USB — do not commit to git or upload to public storage.
+
+#### On Machine B — set up the machine, then import
+
+```bash
+# 1. One-time machine prep (same as Path A step 1)
+brew install mkcert && mkcert -install
+echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts
+
+# 2. Clone and install
+git clone https://github.com/curtismu7/banking-demo.git
+cd banking-demo
+cd banking_api_server && npm install && cd ..
+cd banking_mcp_server  && npm install && cd ..
+cd banking_api_ui      && npm install && cd ..
+
+# 3. Copy the archive from Machine A, then import
+cd banking_api_server
+npm run data:import -- /path/to/banking-export-<timestamp>.tar.gz
+
+# 4. Generate TLS certs (machine-bound — not in the archive)
+cd ../certs && mkcert api.pingdemo.com localhost 127.0.0.1 && cd ..
+
+# 5. Start
+./run-bank.sh
+```
+
+The import script:
+
+- Backs up existing `data/persistent/` before writing anything
+- Restores all data files and `.env`
+- Runs a config health check and shows a rollback command if anything fails
+- Prints next steps including cert generation if certs are missing
+
+#### Verify the import worked
+
+Open **[https://api.pingdemo.com:4000/configure](https://api.pingdemo.com:4000/configure)** — it should show "Import verified" with your PingOne credentials loaded.
+
+---
+
+### Troubleshooting new machine setup
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Browser shows cert error | Certs not generated or CA not trusted | Run `mkcert -install` then `cd certs && mkcert api.pingdemo.com localhost 127.0.0.1` |
+| `api.pingdemo.com` doesn't resolve | `/etc/hosts` entry missing | `echo '127.0.0.1 api.pingdemo.com' \| sudo tee -a /etc/hosts` |
+| `/configure` shows all fields blank after import | `.env` encryption key mismatch | Re-import with the original archive; ensure `.env` from the source machine was included |
+| `better-sqlite3` binary error on start | Node version mismatch | `cd banking_api_server && npm rebuild better-sqlite3` |
+| Import fails with "server is running" | Server must be stopped before import | `./run-bank.sh stop` then retry import |
+
+---
 
 ## What This Demo Does
 
@@ -86,59 +199,34 @@ See **[README (mermaid).md](README%20(mermaid).md)** for detailed token operatio
 | `banking_mcp_server` | 8080 | TypeScript MCP server — exposes banking tools to AI agents |
 | `langchain_agent` | 8888 | LangChain agent + WebSocket frontend |
 
-## Quick Start
-
-1. **Install dependencies** (first time only):
-   ```bash
-   cd banking_api_server && npm install
-   cd ../banking_mcp_server && npm install
-   cd ../banking_api_ui && npm install
-   ```
-
-2. **Start the banking API server** (primary service):
-   ```bash
-   cd banking_api_server && npm start
-   ```
-
-3. **Start the MCP server** (for AI agent tool calls):
-   ```bash
-   cd banking_mcp_server
-   cp .env.development .env
-   npm start
-   ```
-
-4. **Start the UI**:
-   ```bash
-   cd banking_api_ui && npm start
-   ```
-
 ## Token Exchange Flow (RFC 8693)
 
 The **Backend-for-Frontend (BFF)** — the `banking_api_server` — performs RFC 8693 Token Exchange on the **server side** — the browser never sees raw OAuth tokens. On every `POST /api/mcp/tool` call, `agentMcpTokenService.js` runs:
 
-```
-1. Retrieve the user access token (end-user OAuth access token from PingOne, stored in server-side session)
+```text
+1. Retrieve the user access token (stored in server-side session)
 2. POST {issuer}/as/token
      grant_type = urn:ietf:params:oauth:grant-type:token-exchange
      subject_token = <user access token>
      subject_token_type = urn:ietf:params:oauth:token-type:access_token
-     audience = <MCP_RESOURCE_URI>          ← binds audience to MCP server
-     scope = <tool-specific scopes>         ← e.g. banking:accounts:read
-3. PingOne validates may_act on the user access token, issues the MCP access token (delegated, MCP audience)
-4. Backend-for-Frontend (BFF) opens WebSocket to banking_mcp_server with the MCP access token as Bearer
+     audience = <MCP_RESOURCE_URI>          -- binds audience to MCP server
+     scope = <tool-scopes>                  -- e.g. banking:accounts:read
+3. PingOne validates may_act, issues the MCP access token (delegated, MCP audience)
+4. BFF opens WebSocket to banking_mcp_server with the MCP access token as Bearer
 ```
 
 Optional delegation path (`USE_AGENT_ACTOR_FOR_MCP=true`):
-```
-     actor_token = <agent access token>   ← client-credentials token; agent acts on behalf of user
+
+```text
+     actor_token = <agent access token>   -- client-credentials token
      actor_token_type = urn:ietf:params:oauth:token-type:access_token
-     → MCP access token carries act: { sub: "<agent-client-id>" }  per RFC 8693 §4.1
+     -- MCP access token carries act: { sub: "<agent-client-id>" }  per RFC 8693 s4.1
 ```
 
 The exchange is **dormant until configured** — if `MCP_RESOURCE_URI` is not set, the BFF does not send a token to MCP for that path (local tool fallback; user access token stays on the BFF). To activate:
 
 | Env var | Purpose |
-|---|---|
+| --- | --- |
 | `MCP_RESOURCE_URI` | Audience URI for the MCP server (activates the exchange) |
 | `USE_AGENT_ACTOR_FOR_MCP` | `true` to add `actor_token` (adds `act` claim to the MCP access token) |
 | `AGENT_OAUTH_CLIENT_ID` | Agent OAuth client ID (required when actor path is on) |
@@ -162,8 +250,8 @@ In your PingOne environment (`b9817c16-9910-4415-b67e-4ac687da74d9`), you need:
 
 ## MCP Security Gateway — Potential Architecture
 
-> **Note:** This is not how the app is currently set up. It illustrates how an **MCP Security Gateway** 
-> (as defined by PingOne) could be introduced to centralize identity enforcement between the 
+> **Note:** This is not how the app is currently set up. It illustrates how an **MCP Security Gateway**
+> (as defined by PingOne) could be introduced to centralize identity enforcement between the
 > Banking Agent and the Banking MCP Server — without changing either endpoint's code.
 
 ```mermaid
