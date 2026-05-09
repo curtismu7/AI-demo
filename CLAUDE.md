@@ -22,6 +22,37 @@ echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts
 brew install mkcert && mkcert -install
 ```
 
+### Environment quirks AI assistants must know
+
+**Node 20.x is required** (root [`package.json#engines.node`](package.json) = `"20.x"`).
+The repo standardizes on **nvm** for managing Node, which causes two predictable
+failure modes in fresh shells:
+
+1. **`nvm` is a shell function, not a binary on `$PATH`** — running `nvm use 20` in
+   a shell whose `~/.zshrc`/`~/.bashrc` doesn't source `nvm.sh` produces
+   `zsh: command not found: nvm`. Before invoking `nvm` from any non-interactive
+   shell or fresh terminal, source it explicitly:
+   ```bash
+   export NVM_DIR="$HOME/.nvm"
+   [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+   ```
+   `run-bank.sh` does this itself (see `ensure_node_runtime()`) and so will
+   self-recover. The migration scripts at
+   [`banking_api_server/scripts/{export,import}MigrationBundle.js`](banking_api_server/scripts/)
+   pre-flight `process.versions.node` and exit with the recovery snippet baked
+   into their error.
+
+2. **`./run-bank.sh` is repo-local** — it must be invoked from the repo root.
+   When walking a user through setup, always include `cd /path/to/banking-demo`
+   before suggesting `./run-bank.sh`. The script itself uses `BASEDIR=$(cd "$(dirname "$0")" && pwd)`
+   to find its own files, so a different cwd doesn't matter once the script is
+   running — but the *invocation* still needs the relative path or absolute path.
+
+When installing Node 20 for the user yourself, prefer `nvm install 20 && nvm use 20`
+(matches the rest of the toolchain). Don't fall back to a Homebrew `node@20` install
+unless the user explicitly asks — it conflicts with nvm's `node` and creates the
+same `wrong major in this shell` confusion later.
+
 ### Build
 ```bash
 cd banking_api_ui && npm run build        # required after any UI change — exit must be 0

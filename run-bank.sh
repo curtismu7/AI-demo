@@ -102,12 +102,62 @@ RED='\033[1;31m'
 DIM='\033[2m'
 RESET='\033[0m'
 
-NODE_MIN_VERSION=16
+# Must match root package.json#engines.node (currently "20.x").
+NODE_MIN_VERSION=20
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 ok()   { echo -e "  ${GREEN}✓${RESET}  $1"; }
 warn() { echo -e "  ${YELLOW}!${RESET}  $1"; }
 err()  { echo -e "  ${RED}✗${RESET}  $1" >&2; }
+
+# Return the running Node major (empty string if node missing).
+_node_major() {
+  command -v node >/dev/null 2>&1 || { echo ''; return; }
+  node -e "process.stdout.write(process.version.replace('v','').split('.')[0])" 2>/dev/null
+}
+
+# If `node` is missing or on the wrong major, try to source nvm into THIS shell
+# and `nvm use` the required major. This rescues users whose ~/.zshrc doesn't
+# auto-load nvm — they'd otherwise see "command not found: nvm" before they ever
+# get a chance to run our preflight.
+ensure_node_runtime() {
+  local current
+  current="$(_node_major)"
+  if [[ "${current}" == "${NODE_MIN_VERSION}" ]]; then
+    return 0
+  fi
+
+  local nvm_dir="${NVM_DIR:-$HOME/.nvm}"
+  if [[ -s "${nvm_dir}/nvm.sh" ]]; then
+    # shellcheck disable=SC1091
+    \. "${nvm_dir}/nvm.sh"
+    if command -v nvm >/dev/null 2>&1; then
+      if nvm use "${NODE_MIN_VERSION}" >/dev/null 2>&1; then
+        ok "Loaded Node $(node --version) via nvm (was ${current:-missing})"
+        return 0
+      fi
+    fi
+  fi
+
+  if [[ -z "${current}" ]]; then
+    err "Node.js is not on PATH in this shell."
+  else
+    err "Node major ${NODE_MIN_VERSION} required, but this shell is using Node v${current}."
+  fi
+  echo ""
+  echo "  Fix (zsh/bash) — load nvm into this shell, then install/select Node ${NODE_MIN_VERSION}:"
+  echo "    export NVM_DIR=\"\$HOME/.nvm\""
+  echo "    [ -s \"\$NVM_DIR/nvm.sh\" ] && \\. \"\$NVM_DIR/nvm.sh\""
+  echo "    nvm install ${NODE_MIN_VERSION} && nvm use ${NODE_MIN_VERSION}"
+  echo ""
+  echo "  Persist for future shells: append the two export/source lines above to"
+  echo "    ~/.zshrc (zsh)   or   ~/.bashrc (bash)"
+  echo ""
+  echo "  No nvm yet? Install: https://github.com/nvm-sh/nvm#installing-and-updating"
+  echo ""
+  echo "  Then re-run from the banking-demo repo:  ./run-bank.sh"
+  exit 1
+}
 
 # Check if a TCP port is listening locally
 port_listening() {
@@ -120,17 +170,9 @@ preflight_checks() {
   echo ""
   echo -e "${WHITE}${BOLD}  PRE-FLIGHT CHECKS${RESET}"
 
-  # Node.js
-  if ! command -v node >/dev/null 2>&1; then
-    err "Node.js is not installed. Install from https://nodejs.org"
-    exit 1
-  fi
-  local node_version
-  node_version=$(node -e "process.stdout.write(process.version.replace('v','').split('.')[0])")
-  if [[ "${node_version}" -lt "${NODE_MIN_VERSION}" ]]; then
-    err "Node.js v${NODE_MIN_VERSION}+ required (found v${node_version})"
-    exit 1
-  fi
+  # Node.js — ensure_node_runtime will source nvm and switch majors if needed,
+  # exiting with detailed guidance if it can't recover.
+  ensure_node_runtime
   ok "Node.js $(node --version)"
 
   # npm

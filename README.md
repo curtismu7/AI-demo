@@ -77,9 +77,12 @@ cd /path/to/banking-demo   # if you're not already there
 
 `run-bank.sh` will:
 
+- Source `~/.nvm/nvm.sh` and `nvm use 20` itself if nvm isn't yet loaded in the current shell (so it works from a fresh terminal that doesn't auto-load nvm)
 - Generate TLS certs automatically if mkcert is installed
 - Create a `.env` with a generated `SESSION_SECRET` on first start
 - Launch API (3001), UI (4000), MCP (8080), and LangChain agent (8888)
+
+> If nvm isn't installed at all, the script falls back to the same guidance as § 0 and exits with instructions.
 
 #### 4. Configure PingOne credentials
 
