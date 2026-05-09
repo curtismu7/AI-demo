@@ -24,6 +24,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **Export / Import tab** — new "Export / Import" tab in `/config` (second after Quick Start, no auth required) with step-by-step export and import instructions and copy buttons. `exportMigrationBundle.js` script produces a portable `.tar.gz` of all persistent data and `.env`.
 - **Subscriptions data** — `sampleSubscriptions` seed data + `DataStore.subscriptions` map wired up in store.js.
 - **Custom Actions** — user-defined quick-action chips; created and managed in Config > Custom Actions tab (Advanced); chips appear in BankingChips heuristic/LLM sections and agent discovery popout; persisted via `useCustomChips` hook (localStorage).
 - **Token Chain step 0 — NL intent routing card** — every prompt now shows a "Step 0" card in the Token Chain panel with the prompt text, routing source (heuristic fast-path or LLM), and resolved intent before token events arrive. Typing indicator dots appear in the chat while NL routing is in progress.

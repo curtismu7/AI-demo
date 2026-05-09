@@ -24,6 +24,7 @@ import OllamaPanel from "../OllamaPanel";
 import HelixPanel from "../HelixPanel";
 import AuthorizeConfigPage from "../AuthorizeConfigPage";
 import McpGatewayConfig from "../McpGatewayConfig";
+import MigrationPanel from "../MigrationPanel";
 import CustomChipsTab from "../CustomChipsTab";
 
 // ── Tab SVG icons (1.75px stroke, consistent with LandingPage icon set) ──────
@@ -208,6 +209,23 @@ const TabIcons = {
       <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
     </svg>
   ),
+  migration: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="8 17 12 21 16 17" />
+      <line x1="12" y1="12" x2="12" y2="21" />
+      <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29" />
+    </svg>
+  ),
 };
 
 // Configuration tab definitions
@@ -228,6 +246,15 @@ const CONFIGURATION_TABS: Array<{
       "Minimum setup to run the demo — PingOne region, environment ID, and branding",
     requiresAuth: false,
     sections: ["pingone-basics", "demo-data-setup", "industry-branding"],
+  },
+  {
+    id: "migration",
+    label: "Export / Import",
+    icon: TabIcons.migration,
+    description:
+      "Export your full configuration to a portable archive, or import one from another machine",
+    requiresAuth: false,
+    sections: ["migration"],
   },
   {
     id: "pingone-config",
@@ -711,6 +738,7 @@ const SectionNavigation: FC<{
     "helix-setup": "Helix Configuration",
     "custom-chips": "Custom Action Chips",
     "mcp-gateway-config": "MCP Gateway Config",
+    migration: "Export / Import",
   };
 
   return (
@@ -3724,6 +3752,14 @@ const UnifiedConfigurationPage: FC<{
       );
     }
 
+    if (s === "migration") {
+      return (
+        <div className="cfg-section cfg-section--full-width">
+          <MigrationPanel />
+        </div>
+      );
+    }
+
     // Fallback for any unknown/future section
     if (s)
       return (
@@ -3786,7 +3822,8 @@ const UnifiedConfigurationPage: FC<{
             </div>
             {activeTab !== "feature-flags" &&
               activeTab !== "authorize" &&
-              activeTab !== "mcp-gateway" && (
+              activeTab !== "mcp-gateway" &&
+              activeTab !== "migration" && (
                 <div className="cfg-section-save-bar">
                   <button
                     type="button"

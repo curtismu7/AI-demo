@@ -432,5 +432,81 @@ router.get('/demo-status', async (_req, res) => {
   });
 });
 
+/**
+ * GET /readiness
+ * Credential-level readiness: are the PingOne credentials configured?
+ * Used by the import script health check and the UI import-verified banner.
+ * No auth required.
+ */
+router.get('/readiness', async (_req, res) => {
+  try {
+    const configStore = require('../services/configStore');
+    await configStore.ensureInitialized();
+    res.json({
+      configured: configStore.isConfigured(),
+      userOAuthConfigured: configStore.isUserOAuthConfigured(),
+    });
+  } catch (err) {
+    res.status(500).json({
+      configured: false,
+      userOAuthConfigured: false,
+      error: err.message,
+    });
+  }
+});
+
+/**
+ * GET /packages
+ * Package pre-flight status: are the packages needed for import/export available?
+ * Used by the import mode UI panel to show machine readiness.
+ * No auth required.
+ */
+router.get('/packages', (_req, res) => {
+  const nodePath = require('node:path');
+  const SERVER_ROOT = nodePath.resolve(__dirname, '..');
+
+  const checks = {};
+
+  // node_modules present
+  checks.node_modules = require('node:fs').existsSync(nodePath.join(SERVER_ROOT, 'node_modules'));
+
+  // tar loadable
+  try { require('tar'); checks.tar = true; } catch { checks.tar = false; }
+
+  // sqlite driver
+  let sqliteDriver = null;
+  try { require('better-sqlite3'); sqliteDriver = 'better-sqlite3'; } catch {
+    try { require('node:sqlite'); sqliteDriver = 'node:sqlite'; } catch { sqliteDriver = null; }
+  }
+  checks.sqlite_driver = sqliteDriver;
+
+  // better-sqlite3 native binary (in-memory open)
+  checks.sqlite_native_ok = null;
+  if (sqliteDriver === 'better-sqlite3') {
+    try {
+      const Database = require('better-sqlite3');
+      const db = new Database(':memory:');
+      db.close();
+      checks.sqlite_native_ok = true;
+    } catch { checks.sqlite_native_ok = false; }
+  }
+
+  const ready =
+    checks.node_modules &&
+    checks.tar &&
+    checks.sqlite_driver !== null &&
+    checks.sqlite_native_ok !== false;
+
+  res.json({
+    ready,
+    checks,
+    remediation: {
+      node_modules: 'cd banking_api_server && npm install',
+      tar: 'cd banking_api_server && npm install',
+      sqlite_native_ok: 'cd banking_api_server && npm rebuild better-sqlite3',
+    },
+  });
+});
+
 module.exports = router;
 
