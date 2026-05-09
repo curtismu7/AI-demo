@@ -85,10 +85,21 @@ LOG_INVEST=/tmp/bank-mcp-invest.log
 LOG_AUTH=/tmp/bank-authorize-server.log
 LOG_HELIX=/tmp/bank-helix.log
 
-# Pre-create all log files so tail/log viewers work before services start
-touch "${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" \
-      "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_AUTH}" \
-      "${LOG_HELIX}" 2>/dev/null || true
+# Pre-create all log files so tail/log viewers work before services start.
+# We TRUNCATE here (not just touch) — services that get skipped or fail to relaunch
+# would otherwise leave stale errors from a prior run, which is misleading when
+# debugging the current startup. Only run on `start` to keep `status`/`tail` safe.
+if [[ "${1:-start}" == "start" || "${1:-start}" == "restart" || -z "${1:-}" ]]; then
+  for _logf in "${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" \
+               "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_AUTH}" \
+               "${LOG_HELIX}"; do
+    : > "${_logf}" 2>/dev/null || true
+  done
+else
+  touch "${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" \
+        "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_AUTH}" \
+        "${LOG_HELIX}" 2>/dev/null || true
+fi
 
 # Terminal colors (global — used by banner, status, and tail_bank_logs)
 BOLD='\033[1m'
@@ -573,11 +584,36 @@ if [[ "$_any_running" == "true" ]]; then
   echo ""
 fi
 
-# ── Dependency check ─────────────────────────────────────────────────────────
-for svc in banking_api_server banking_mcp_server banking_api_ui; do
+# ── Dependency check (all Node services, not just the obvious three) ─────────
+# Parallel arrays — keep indices aligned. SVC_BUILD="ts" means run `npm run build`
+# (tsc) when dist/index.js is missing. SVC_INSTALL_FLAGS handles services that
+# need extra `npm install` flags (banking_api_ui needs --legacy-peer-deps for
+# CRA/typescript peerOptional). Loud failure on any error — silent skips here
+# are exactly how we got cryptic MODULE_NOT_FOUND in service logs.
+SVC_LIST=(banking_api_server banking_mcp_server banking_api_ui      banking_mcp_gateway banking_hitl_service banking_agent_service banking_mcp_invest)
+SVC_BUILD=(""                "ts"               ""                  "ts"                ""                   "ts"                  "ts")
+SVC_INSTALL_FLAGS=(""        ""                 "--legacy-peer-deps" ""                  ""                   ""                    "")
+
+for i in "${!SVC_LIST[@]}"; do
+  svc="${SVC_LIST[$i]}"
+  [[ -d "$BASEDIR/$svc" ]] || continue
+
   if [[ ! -d "$BASEDIR/$svc/node_modules" ]]; then
     echo "[PKG] Installing dependencies for $svc..."
-    (cd "$BASEDIR/$svc" && npm install)
+    if ! (cd "$BASEDIR/$svc" && npm install ${SVC_INSTALL_FLAGS[$i]}); then
+      err "npm install failed for $svc — aborting startup."
+      err "  Fix the error above (often a network or registry issue), then re-run ./run-bank.sh"
+      exit 1
+    fi
+  fi
+
+  if [[ "${SVC_BUILD[$i]}" == "ts" ]] && [[ ! -f "$BASEDIR/$svc/dist/index.js" ]]; then
+    echo "[BUILD] Compiling TypeScript for $svc..."
+    if ! (cd "$BASEDIR/$svc" && npm run build); then
+      err "Build failed for $svc — aborting startup."
+      err "  Fix the TypeScript errors above, then re-run ./run-bank.sh"
+      exit 1
+    fi
   fi
 done
 
@@ -608,12 +644,13 @@ if [[ -d "$BASEDIR/banking_mcp_server" ]]; then
 fi
 
 # ── MCP Gateway on :3005 (Phase 243) ────────────────────────────────────────────
+# Build is handled by the dependency check loop above — don't re-run it here,
+# and don't swallow its errors silently (that's how MODULE_NOT_FOUND happens).
 if [[ -d "$BASEDIR/banking_mcp_gateway" ]]; then
   echo "[SHIELD]  Starting MCP Gateway on :3005..."
   (
     cd "$BASEDIR/banking_mcp_gateway"
     [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
-    npm run build > /dev/null 2>&1 || true
     npm start > "${LOG_GW}" 2>&1
   ) &
   echo $! > "$PID_GW"
@@ -631,7 +668,8 @@ if [[ -d "$BASEDIR/banking_hitl_service" ]]; then
 fi
 
 # ── Agent Service on :3006 ──────────────────────────────────────────────────
-if [[ -d "$BASEDIR/banking_agent_service" ]] && [[ -f "$BASEDIR/banking_agent_service/dist/index.js" ]]; then
+# dist/ is guaranteed by the dependency check loop above (it builds or aborts).
+if [[ -d "$BASEDIR/banking_agent_service" ]]; then
   echo "[CONNECT] Starting Agent Service on :3006..."
   (
     cd "$BASEDIR/banking_agent_service"
@@ -642,29 +680,7 @@ if [[ -d "$BASEDIR/banking_agent_service" ]] && [[ -f "$BASEDIR/banking_agent_se
 fi
 
 # ── MCP Invest Server on :8081 ──────────────────────────────────────────────
-if [[ -d "$BASEDIR/banking_mcp_invest" ]] && [[ -f "$BASEDIR/banking_mcp_invest/dist/index.js" ]]; then
-  echo "[INVEST] Starting MCP Invest Server on :8081..."
-  (
-    cd "$BASEDIR/banking_mcp_invest"
-    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
-    PORT=8081 npm start > "${LOG_INVEST}" 2>&1
-  ) &
-  echo $! > "$PID_INVEST"
-fi
-
-# ── Agent Service on :3006 ──────────────────────────────────────────────────
-if [[ -d "$BASEDIR/banking_agent_service" ]] && [[ -f "$BASEDIR/banking_agent_service/dist/index.js" ]]; then
-  echo "[CONNECT] Starting Agent Service on :3006..."
-  (
-    cd "$BASEDIR/banking_agent_service"
-    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
-    PORT=3006 npm start > "${LOG_AGENT_SVC}" 2>&1
-  ) &
-  echo $! > "$PID_AGENT_SVC"
-fi
-
-# ── MCP Invest Server on :8081 ──────────────────────────────────────────────
-if [[ -d "$BASEDIR/banking_mcp_invest" ]] && [[ -f "$BASEDIR/banking_mcp_invest/dist/index.js" ]]; then
+if [[ -d "$BASEDIR/banking_mcp_invest" ]]; then
   echo "[INVEST] Starting MCP Invest Server on :8081..."
   (
     cd "$BASEDIR/banking_mcp_invest"

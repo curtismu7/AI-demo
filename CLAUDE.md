@@ -53,6 +53,36 @@ When installing Node 20 for the user yourself, prefer `nvm install 20 && nvm use
 unless the user explicitly asks — it conflicts with nvm's `node` and creates the
 same `wrong major in this shell` confusion later.
 
+### Node services and what each needs to start
+
+There are **seven** Node services. The naive "run `npm install` in three of them"
+approach (which the README used to recommend) leaves four services with missing
+`node_modules` or missing `dist/`, producing cryptic `MODULE_NOT_FOUND` and
+`Cannot find module '.../dist/index.js'` errors at startup. `run-bank.sh` now
+auto-installs and auto-builds all seven via the `SVC_LIST` / `SVC_BUILD` /
+`SVC_INSTALL_FLAGS` parallel arrays in its dependency-check loop — keep that
+table in sync when adding a service.
+
+| Service | Port | Type | Install needs | Build needs (`tsc`) |
+|---|---|---|---|---|
+| `banking_api_server`   | 3001 | Plain JS    | `npm install` | — |
+| `banking_mcp_server`   | 8080 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
+| `banking_api_ui`       | 4000 | React (CRA) | `npm install --legacy-peer-deps` | — (CRA dev server) |
+| `banking_mcp_gateway`  | 3005 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
+| `banking_hitl_service` | 3009 | Plain JS    | `npm install` | — |
+| `banking_agent_service`| 3006 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
+| `banking_mcp_invest`   | 8081 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
+| `langchain_agent`      | 8888 | Python      | `pip install -r requirements.txt` (separate concern) | — |
+
+Two recurring failure modes to watch for when adding or modifying service launches in `run-bank.sh`:
+
+- **Don't guard launches with `[[ -f dist/index.js ]]`** — if dist is missing the
+  service silently never starts and the user has no idea why. Let the dependency
+  loop build it (or fail loudly), then launch unconditionally.
+- **Don't `|| true` away build errors** in the launch block. The dep loop already
+  builds; if a launch block re-runs build with errors swallowed, MODULE_NOT_FOUND
+  is the result and the failure is invisible until the user opens the log.
+
 ### Build
 ```bash
 cd banking_api_ui && npm run build        # required after any UI change — exit must be 0

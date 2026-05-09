@@ -54,14 +54,35 @@ mkcert -install          # installs the local CA into the system trust store
 echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts
 ```
 
-#### 2. Clone and install
+#### 2. Clone — let `./run-bank.sh` do the rest
 
 ```bash
 git clone https://github.com/curtismu7/banking-demo.git
 cd banking-demo
-cd banking_api_server && npm install && cd ..
-cd banking_mcp_server  && npm install && cd ..
-cd banking_api_ui      && npm install --legacy-peer-deps && cd ..
+./run-bank.sh
+```
+
+That's it. The script's dependency loop installs `node_modules` and runs the
+TypeScript build (`tsc`) for every Node service before launching anything, and
+aborts with a clear error if any install or build fails.
+
+If you'd rather pre-install the deps yourself (e.g. before running on a
+disconnected network), here's the full set — all seven Node services need
+`npm install`, and the four TypeScript ones additionally need `npm run build`:
+
+```bash
+# Plain JS — install only
+cd banking_api_server   && npm install                       && cd ..
+cd banking_hitl_service && npm install                       && cd ..
+
+# React app (CRA) — install with --legacy-peer-deps; build is handled at runtime
+cd banking_api_ui       && npm install --legacy-peer-deps    && cd ..
+
+# TypeScript services — install + tsc compile to dist/
+cd banking_mcp_server   && npm install && npm run build      && cd ..
+cd banking_mcp_gateway  && npm install && npm run build      && cd ..
+cd banking_agent_service && npm install && npm run build     && cd ..
+cd banking_mcp_invest   && npm install && npm run build      && cd ..
 ```
 
 > `banking_api_ui` ships an `.npmrc` with `legacy-peer-deps=true` so plain `npm install` also works there — the explicit flag above is belt-and-suspenders if `.npmrc` is ever lost. CRA/`react-scripts` has an unresolvable `peerOptional` for TypeScript that npm 7+ rejects by default.
