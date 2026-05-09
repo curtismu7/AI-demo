@@ -25,7 +25,26 @@ Two paths depending on whether you are starting fresh or moving an existing conf
 
 ### Path A — Fresh install (first time on this machine)
 
-**Prerequisites:** Node 20+, npm 9+, Git, [mkcert](https://github.com/FiloSottile/mkcert)
+**Prerequisites:** Node **20.x** (verify with `node --version`), npm 9+, Git, [mkcert](https://github.com/FiloSottile/mkcert)
+
+> **Heads up — Node 20 must be active in the shell you run commands in.** If you installed Node via nvm (recommended), nvm is a shell function — opening a new terminal that doesn't auto-load it gives `zsh: command not found: nvm`. Make sure your `~/.zshrc` (or `~/.bashrc`) sources nvm; see [§ 0 below](#0-node-version-setup-skip-if-node---version-shows-v20).
+
+#### 0. Node version setup (skip if `node --version` shows `v20.…`)
+
+```bash
+# Install nvm if you don't have it yet:
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+
+# Make nvm load in EVERY new terminal — append to ~/.zshrc (zsh) or ~/.bashrc (bash):
+cat >> ~/.zshrc <<'EOF'
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+EOF
+
+# Apply to the current shell, then install + select Node 20:
+source ~/.zshrc
+nvm install 20 && nvm use 20
+```
 
 #### 1. One-time machine prep (run once per machine, not per repo)
 
@@ -49,7 +68,10 @@ cd banking_api_ui      && npm install --legacy-peer-deps && cd ..
 
 #### 3. Start all services
 
+> Run from the `banking-demo` repo root. `./run-bank.sh` is repo-local — `cd banking-demo` first if you opened a new terminal.
+
 ```bash
+cd /path/to/banking-demo   # if you're not already there
 ./run-bank.sh
 ```
 
@@ -89,27 +111,33 @@ It excludes `sessions.db` (machine-bound) and `certs/` (must be regenerated).
 #### On Machine B — set up the machine, then import
 
 ```bash
-# 1. One-time machine prep (same as Path A step 1)
+# 1. Node 20 in this shell (see Path A § 0 if nvm isn't loaded yet)
+nvm use 20   # or: source ~/.zshrc && nvm use 20
+
+# 2. One-time machine prep (same as Path A step 1)
 brew install mkcert && mkcert -install
 echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts
 
-# 2. Clone and install
+# 3. Clone and install
 git clone https://github.com/curtismu7/banking-demo.git
 cd banking-demo
 cd banking_api_server && npm install && cd ..
 cd banking_mcp_server  && npm install && cd ..
 cd banking_api_ui      && npm install --legacy-peer-deps && cd ..
 
-# 3. Copy the archive from Machine A, then import
+# 4. Copy the archive from Machine A, then import
 cd banking_api_server
 npm run data:import -- /path/to/banking-export-<timestamp>.tar.gz
+cd ..
 
-# 4. Generate TLS certs (machine-bound — not in the archive)
-cd ../certs && mkcert api.pingdemo.com localhost 127.0.0.1 && cd ..
+# 5. Generate TLS certs (machine-bound — not in the archive)
+mkdir -p certs && cd certs && mkcert api.pingdemo.com localhost 127.0.0.1 && cd ..
 
-# 5. Start
+# 6. Start (must be in the banking-demo repo root)
 ./run-bank.sh
 ```
+
+> The export and import scripts pre-flight your Node version against the repo's `engines.node` and bail with a clear message if you're on the wrong major — so if step 4 dies with "Node major 20 required," that's the cue to fix step 1 before retrying.
 
 The import script:
 
@@ -128,10 +156,13 @@ Open **[https://api.pingdemo.com:4000/configure](https://api.pingdemo.com:4000/c
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
+| `zsh: command not found: nvm` | nvm isn't loaded in this shell — it's a shell function, not a binary on PATH | `export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"` (one-shot), then add those two lines to `~/.zshrc` (or `~/.bashrc`) so new terminals pick it up automatically. See Path A § 0. |
+| `zsh: no such file or directory: ./run-bank.sh` | You're not in the repo root — `./run-bank.sh` is repo-local | `cd /path/to/banking-demo` first, then `./run-bank.sh` |
+| Export/import fails with `Node major 20 required, but this shell is using Node vX` | Wrong Node version active in this shell | `nvm use 20` (run nvm-load snippet above first if needed); see Path A § 0 |
 | Browser shows cert error | Certs not generated or CA not trusted | Run `mkcert -install` then `cd certs && mkcert api.pingdemo.com localhost 127.0.0.1` |
 | `api.pingdemo.com` doesn't resolve | `/etc/hosts` entry missing | `echo '127.0.0.1 api.pingdemo.com' \| sudo tee -a /etc/hosts` |
 | `/configure` shows all fields blank after import | `.env` encryption key mismatch | Re-import with the original archive; ensure `.env` from the source machine was included |
-| `better-sqlite3` binary error on start | Node version mismatch | `cd banking_api_server && npm rebuild better-sqlite3` |
+| `better-sqlite3` binary error on start | Node version mismatch (binary built against a different Node major) | `nvm use 20 && cd banking_api_server && npm rebuild better-sqlite3` |
 | Import fails with "server is running" | Server must be stopped before import | `./run-bank.sh stop` then retry import |
 | `npm install` in `banking_api_ui` fails with `ERESOLVE` (typescript / react-scripts) | CRA's `peerOptional` typescript range trips npm 7+ resolver | `npm install --legacy-peer-deps` (or restore `banking_api_ui/.npmrc` containing `legacy-peer-deps=true`) |
 

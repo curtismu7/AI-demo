@@ -4,7 +4,39 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-// Step 0 — package pre-flight
+// Step 0a — Node version pre-flight
+// Catch the common "ran in a shell where nvm isn't loaded" case before sqlite/tar
+// errors mask the root cause. Reads required major from root package.json#engines.node.
+function checkNodeVersion() {
+  const ROOT_PKG = path.resolve(__dirname, '..', '..', 'package.json');
+  let required = '20';
+  try {
+    const engines = JSON.parse(fs.readFileSync(ROOT_PKG, 'utf8')).engines;
+    const m = engines && engines.node && String(engines.node).match(/(\d+)/);
+    if (m) required = m[1];
+  } catch (_e) { /* fall back to default */ }
+
+  const actual = String(process.versions.node || '').split('.')[0];
+  if (!actual || actual === required) return;
+
+  console.error(`Node major ${required} required, but this shell is using Node ${process.version}.`);
+  console.error('');
+  console.error('Fix (zsh/bash) — load nvm into THIS shell, then switch:');
+  console.error('  export NVM_DIR="$HOME/.nvm"');
+  console.error('  [ -s "$NVM_DIR/nvm.sh" ] && \\. "$NVM_DIR/nvm.sh"');
+  console.error(`  nvm install ${required} && nvm use ${required}`);
+  console.error('');
+  console.error('Persist for future shells: add the two export/source lines above to');
+  console.error('  ~/.zshrc (zsh)   or   ~/.bashrc (bash)');
+  console.error('');
+  console.error('No nvm yet? Install: https://github.com/nvm-sh/nvm#installing-and-updating');
+  console.error('');
+  console.error('Then re-run this command from the banking-demo repo.');
+  process.exit(1);
+}
+checkNodeVersion();
+
+// Step 0b — package pre-flight
 let tar;
 try {
   tar = require('tar');
