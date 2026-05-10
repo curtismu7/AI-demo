@@ -995,15 +995,20 @@ class PingOneProvisionService {
     if (preserved.CONFIG_ENCRYPTION_KEY) lines.push(`CONFIG_ENCRYPTION_KEY=${preserved.CONFIG_ENCRYPTION_KEY}`);
     lines.push('');
     lines.push(...[
-      '# Admin Application',
+      '# Admin Application (staff/admin OAuth client)',
       `PINGONE_ADMIN_CLIENT_ID=${provisioned.adminApp.clientId}`,
       `PINGONE_ADMIN_CLIENT_SECRET=${provisioned.adminApp.clientSecret || '<set-in-pingone-console>'}`,
       `PINGONE_ADMIN_REDIRECT_URI=${config.publicAppUrl}/api/auth/oauth/callback`,
       '',
-      '# User Application',
-      `PINGONE_CORE_CLIENT_ID=${provisioned.userApp.clientId}`,
-      `PINGONE_CORE_CLIENT_SECRET=${provisioned.userApp.clientSecret || '<set-in-pingone-console>'}`,
-      `PINGONE_CORE_REDIRECT_URI=${config.publicAppUrl}/api/auth/oauth/callback`,
+      '# User Application (end-user/customer OAuth client)',
+      // Use PINGONE_USER_* — the canonical name. The legacy PINGONE_CORE_*
+      // names exist in configStore's fallback map but they collide with the
+      // admin fallback chain (PINGONE_CORE_CLIENT_ID is listed as an admin
+      // alias), so writing user IDs under that name made the BFF treat the
+      // user app as the admin app and left userClientId null.
+      `PINGONE_USER_CLIENT_ID=${provisioned.userApp.clientId}`,
+      `PINGONE_USER_CLIENT_SECRET=${provisioned.userApp.clientSecret || '<set-in-pingone-console>'}`,
+      `PINGONE_USER_REDIRECT_URI=${config.publicAppUrl}/api/auth/oauth/user/callback`,
       '',
       '# Resource Server',
       `ENDUSER_AUDIENCE=${provisioned.resourceServer.audience[0]}`,
@@ -1254,26 +1259,30 @@ class PingOneProvisionService {
       provisioned.userApp.clientSecret = await this.getApplicationSecret(userAppResult.application.id);
 
       // Step 9: Configure User Application
+      // The end-user OAuth callback uses /api/auth/oauth/USER/callback so the
+      // BFF can distinguish admin vs user sign-ins. (The admin app uses the
+      // un-suffixed /api/auth/oauth/callback). Mismatching this caused PingOne
+      // to reject the callback and the SPA to redirect to /config?error.
+      const userRedirectUri = `${config.publicAppUrl}/api/auth/oauth/user/callback`;
       if (!userAppResult.exists) {
         steps.push({ step: 'user-config', icon: '⚙️', message: 'Configuring user application...' });
         onStep(steps[steps.length - 1]);
-        
+
         await this.updateApplication(userAppResult.application.id, {
-          redirectUris: [`${config.publicAppUrl}/api/auth/oauth/callback`],
+          redirectUris: [userRedirectUri],
           pkceMethod: 'S256',
           tokenEndpointAuthMethod: 'client_secret_post'
         });
-        
+
         steps.push({ step: 'user-config', icon: '✅', message: 'User application configured' });
         onStep(steps[steps.length - 1]);
       } else {
         // Existing user app — refresh redirect URI only (see admin branch above).
-        const targetUri = `${config.publicAppUrl}/api/auth/oauth/callback`;
         const currentUris = userAppResult.application.redirectUris || [];
-        if (!currentUris.includes(targetUri)) {
-          steps.push({ step: 'user-config', icon: '🔁', message: `Refreshing user redirect URI → ${targetUri}` });
+        if (!currentUris.includes(userRedirectUri)) {
+          steps.push({ step: 'user-config', icon: '🔁', message: `Refreshing user redirect URI → ${userRedirectUri}` });
           onStep(steps[steps.length - 1]);
-          await this.updateApplication(userAppResult.application.id, { redirectUris: [targetUri] });
+          await this.updateApplication(userAppResult.application.id, { redirectUris: [userRedirectUri] });
           steps.push({ step: 'user-config', icon: '✅', message: 'User redirect URI refreshed' });
           onStep(steps[steps.length - 1]);
         }
