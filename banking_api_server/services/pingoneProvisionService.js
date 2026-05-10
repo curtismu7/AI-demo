@@ -25,8 +25,13 @@ class PingOneProvisionService {
    * Get worker token using client credentials flow
    */
   async getWorkerToken(envId, clientId, clientSecret, region = 'com') {
+    // Always derive the token URL from the user's submitted envId+region.
+    // We deliberately ignore getTokenEndpoint() here because it can leak a
+    // stale value from configStore / a prior install / dev .env, sending the
+    // call to the wrong environment and producing a misleading invalid_client
+    // response (the credentials are right, the env URL is wrong).
+    const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;
     try {
-      const tokenUrl = getTokenEndpoint() || `https://auth.pingone.${region}/${envId}/as/token`;
       const response = await axios.post(
         tokenUrl,
         'grant_type=client_credentials',
@@ -38,7 +43,59 @@ class PingOneProvisionService {
       );
       return response.data.access_token;
     } catch (error) {
-      throw new Error(`Failed to get worker token: ${error.response?.data?.error_description || error.message}`);
+      // Surface PingOne's full error envelope so the user can act on it without
+      // chasing a correlation ID. PingOne returns:
+      //   { error: "access_denied",
+      //     error_description: "Request denied: Application does not have any role assignments (Correlation ID: ...)",
+      //     details: [{ code: "...", message: "..." }] }
+      const lines = [];
+      const status = error.response?.status;
+      const data   = error.response?.data;
+
+      lines.push(`Failed to get worker token from PingOne.`);
+      lines.push(`  Endpoint:     ${tokenUrl}`);
+      lines.push(`  Region:       ${region}`);
+      lines.push(`  Environment:  ${envId}`);
+      lines.push(`  Client ID:    ${clientId}`);
+      if (status) lines.push(`  HTTP status:  ${status}`);
+      if (data?.error) lines.push(`  PingOne code: ${data.error}`);
+      if (data?.error_description) lines.push(`  Description:  ${data.error_description}`);
+      if (Array.isArray(data?.details) && data.details.length > 0) {
+        lines.push(`  Details:`);
+        for (const d of data.details) {
+          if (d.code || d.message) lines.push(`    - ${d.code || ''}${d.code && d.message ? ': ' : ''}${d.message || ''}`);
+          if (d.target) lines.push(`      target: ${d.target}`);
+          if (Array.isArray(d.innerError)) {
+            for (const inner of d.innerError) {
+              lines.push(`      inner: ${inner.code || ''} ${inner.message || ''}`.trim());
+            }
+          }
+        }
+      }
+      if (!data && error.message) lines.push(`  Network error: ${error.message}`);
+
+      // Friendly hint based on the most common error codes we see.
+      const code = data?.error;
+      const desc = data?.error_description || '';
+      if (code === 'access_denied' && /role assignment/i.test(desc)) {
+        lines.push('');
+        lines.push('  Likely fix: PingOne Admin Console → Applications → your worker app →');
+        lines.push('  Roles tab → Grant Roles → "Identity Data Admin" scoped to the environment');
+        lines.push(`  (${envId}). Wait ~30s after granting and retry.`);
+      } else if (code === 'invalid_client') {
+        lines.push('');
+        lines.push('  Likely fix: verify the secret was pasted without trailing whitespace, the');
+        lines.push('  worker app is enabled, and the region (' + region + ') matches the environment.');
+        lines.push('  If you regenerated the client secret recently, paste the new one.');
+      } else if (code === 'invalid_grant' || /grant.*type/i.test(desc)) {
+        lines.push('');
+        lines.push('  Likely fix: PingOne Admin Console → Applications → your worker app →');
+        lines.push('  Configuration tab → Grant Type → enable "Client Credentials".');
+      }
+
+      const err = new Error(lines.join('\n'));
+      err.pingone = { status, code, desc, details: data?.details };
+      throw err;
     }
   }
 
