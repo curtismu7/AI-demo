@@ -52,6 +52,20 @@ function optional(name: string, fallback: string): string {
   return process.env[name] || fallback;
 }
 
+// Derive the PingOne token endpoint from envId + region when an explicit
+// PINGONE_TOKEN_ENDPOINT isn't set. This matches the BFF's
+// oauthEndpointResolver — every install has PINGONE_ENVIRONMENT_ID +
+// PINGONE_REGION in .env after setup:fresh, so we should never actually
+// require the user to set PINGONE_TOKEN_ENDPOINT by hand.
+function resolveTokenEndpoint(): string {
+  const explicit = process.env.PINGONE_TOKEN_ENDPOINT;
+  if (explicit) return explicit;
+  const envId = process.env.PINGONE_ENVIRONMENT_ID;
+  const region = process.env.PINGONE_REGION || 'com';
+  if (envId) return `https://auth.pingone.${region}/${envId}/as/token`;
+  return required('PINGONE_TOKEN_ENDPOINT'); // surfaces a clear error
+}
+
 export function loadConfig(): GatewayConfig {
   const authMethod = (process.env.MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
   return {
@@ -60,12 +74,17 @@ export function loadConfig(): GatewayConfig {
     clientId: required('MCP_GW_CLIENT_ID'),
     clientSecret: required('MCP_GW_CLIENT_SECRET'),
     tokenEndpointAuthMethod: authMethod === 'post' ? 'post' : 'basic',
-    tokenEndpoint: required('PINGONE_TOKEN_ENDPOINT'),
+    tokenEndpoint: resolveTokenEndpoint(),
     gatewayResourceUri: required('MCP_GW_RESOURCE_URI'),
     mcpOlbWsUrl: optional('MCP_OLB_WS_URL', 'ws://localhost:8080'),
     mcpInvestWsUrl: optional('MCP_INVEST_WS_URL', 'ws://localhost:8081'),
-    mcpOlbResourceUri: required('MCP_OLB_RESOURCE_URI'),
-    mcpInvestResourceUri: required('MCP_INVEST_RESOURCE_URI'),
+    // Resource URIs default to the audiences bootstrap provisions. Setup
+    // writes ENDUSER_AUDIENCE and MCP_RESOURCE_URI; we accept either the
+    // service-specific var or those fallbacks.
+    mcpOlbResourceUri: optional('MCP_OLB_RESOURCE_URI',
+      optional('MCP_RESOURCE_URI', 'mcp-server.bxf.com')),
+    mcpInvestResourceUri: optional('MCP_INVEST_RESOURCE_URI',
+      optional('MCP_INVEST_AUDIENCE', 'mcp-invest.bxf.com')),
     pingAuthorizeEndpoint: optional('PINGAUTHORIZE_ENDPOINT', ''),
     pingAuthorizeWorkerId: optional('PINGAUTHORIZE_WORKER_ID', ''),
     hitlServiceUrl: optional('HITL_SERVICE_URL', ''),

@@ -33,13 +33,27 @@ function optional(name: string, fallback: string): string {
   return process.env[name] || fallback;
 }
 
+// Compute the PingOne token endpoint from envId + region when an explicit
+// PINGONE_TOKEN_ENDPOINT isn't set. Same logic as banking_mcp_gateway and
+// the BFF's oauthEndpointResolver — every setup:fresh writes
+// PINGONE_ENVIRONMENT_ID + PINGONE_REGION, so users shouldn't have to set
+// PINGONE_TOKEN_ENDPOINT manually.
+function resolveTokenEndpoint(): string {
+  const explicit = process.env.PINGONE_TOKEN_ENDPOINT;
+  if (explicit) return explicit;
+  const envId = process.env.PINGONE_ENVIRONMENT_ID;
+  const region = process.env.PINGONE_REGION || 'com';
+  if (envId) return `https://auth.pingone.${region}/${envId}/as/token`;
+  return required('PINGONE_TOKEN_ENDPOINT');
+}
+
 export function loadConfig(): AgentConfig {
   return {
     port: parseInt(process.env.PORT || '3006', 10),
     host: process.env.HOST || '0.0.0.0',
     clientId: required('AGENT_CLIENT_ID'),
     clientSecret: optional('AGENT_CLIENT_SECRET', ''),
-    tokenEndpoint: required('PINGONE_TOKEN_ENDPOINT'),
+    tokenEndpoint: resolveTokenEndpoint(),
     mcpGatewayWsUrl: optional('MCP_GATEWAY_WS_URL', 'ws://localhost:3005'),
     mcpGatewayResourceUri: required('MCP_GW_RESOURCE_URI'),
     llmProvider: (optional('LLM_PROVIDER', 'none') as AgentConfig['llmProvider']),
