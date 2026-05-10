@@ -23,6 +23,22 @@
  *   node scripts/bootstrapPingOne.js --non-interactive
  */
 
+// Force stdout/stderr to be blocking (synchronous). When this script is
+// spawned by setupFresh.js with stdio:[pipe, pipe], Node's default async
+// pipe writes can buffer for many seconds while we sit in axios calls to
+// PingOne — so the user sees no progress and assumes a hang. Blocking
+// writes flush immediately to the pipe, which the parent then tees to the
+// terminal in real time.
+//
+// This is safe in CLI scripts: the small per-write latency cost is
+// negligible compared to the multi-second PingOne API calls.
+if (process.stdout._handle && typeof process.stdout._handle.setBlocking === 'function') {
+  process.stdout._handle.setBlocking(true);
+}
+if (process.stderr._handle && typeof process.stderr._handle.setBlocking === 'function') {
+  process.stderr._handle.setBlocking(true);
+}
+
 const path = require('path');
 const readline = require('readline');
 const crypto = require('crypto');
@@ -771,17 +787,22 @@ async function main() {
   if (!NON_INTERACTIVE) {
     const tty = getInteractiveInput();
     const rl = readline.createInterface({ input: tty.stream, output: process.stdout, terminal: true });
-    const confirm = await prompt(rl, 'Proceed with provisioning? [y/N]');
+    // Default Yes — the user just pasted creds; pressing Enter to proceed is
+    // the expected path. Anything other than empty / y / yes aborts.
+    const confirm = await prompt(rl, 'Proceed with provisioning? [Y/n]', { defaultValue: 'y' });
     rl.close();
     if (tty.opened) try { tty.stream.destroy(); } catch (_e) {}
-    if (!/^y(es)?$/i.test(String(confirm).trim())) {
+    const answer = String(confirm).trim().toLowerCase();
+    if (answer && !/^y(es)?$/.test(answer)) {
       console.log('Aborted by user.');
       process.exit(2);
     }
   }
 
   // Lazy-require so --help and prompts don't pay the bootstrap import cost.
+  console.log('Loading provisioning service...');
   const { provisionEnvironment, wipeEnvironment } = require('../services/pingoneProvisionService');
+  console.log('Provisioning service loaded.');
 
   // --- WIPE-ENVIRONMENT MODE -----------------------------------------------
   // Replaces the normal provisioning flow with a destructive wipe of every
@@ -790,7 +811,16 @@ async function main() {
   // the env id in the plan summary, but we re-confirm because this is destructive).
   if (WIPE_ENVIRONMENT) {
     if (!NON_INTERACTIVE) {
-      const tty = getInteractiveInput();
+      console.log('Opening confirmation prompt...');
+      let tty;
+      try {
+        tty = getInteractiveInput();
+      } catch (err) {
+        console.error(`Failed to open /dev/tty for wipe confirmation: ${err.message}`);
+        console.error('Cannot ask for type-the-env-id confirmation in this environment.');
+        console.error('Pass --non-interactive to skip the prompt (uses PINGONE_BOOTSTRAP_* env vars).');
+        process.exit(1);
+      }
       const rl = readline.createInterface({ input: tty.stream, output: process.stdout, terminal: true });
       console.log('');
       console.log('💣  --wipe-environment will DELETE every app, resource server, group,');
@@ -809,7 +839,10 @@ async function main() {
     console.log('═'.repeat(60));
     console.log('  PingOne wipe');
     console.log('═'.repeat(60));
-    const summary = await wipeEnvironment(creds, (s) => console.log(`  ${s.icon || '·'}  ${s.message || ''}`));
+    console.log('Authenticating with PingOne (acquiring management worker token)...');
+    const summary = await wipeEnvironment(creds, (s) => {
+      console.log(`  ${s.icon || '·'}  ${s.message || ''}`);
+    });
     console.log('');
     console.log(`Wipe complete:  ${summary.deleted.apps} apps, ${summary.deleted.resources} resources, ${summary.deleted.groups} groups, ${summary.deleted.attrs} attributes, ${summary.deleted.users} users deleted.`);
     if (summary.failed.length > 0) {
