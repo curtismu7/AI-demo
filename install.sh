@@ -206,6 +206,43 @@ main() {
   target="${target%/}"
   [[ -z "$target" ]] && target="/"
 
+  # Refuse to install at filesystem root (or any non-writable parent). On macOS
+  # SIP makes `/` read-only; on Linux it'd require sudo. Either way, '/banking-demo'
+  # is almost certainly not what the user meant — they were probably at '/' by accident.
+  local parent
+  parent="$(dirname "$target")"
+  if [[ "$target" == "/${DEFAULT_DIR_NAME}" || "$parent" == "/" ]]; then
+    err "Refusing to install at filesystem root: ${target}"
+    cat >&2 <<EOF
+
+  This usually means you ran the curl-pipe from '/'. Pick a writable directory:
+
+    cd ~                                    # install under your home directory
+    cd /tmp                                 # or a temp directory
+    curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash
+
+  Or override the path explicitly:
+
+    curl -fsSL ... | INSTALL_DIR=~/banking-demo bash
+
+EOF
+    exit 1
+  fi
+
+  if [[ ! -w "$parent" ]]; then
+    err "Cannot write to parent directory: ${parent}"
+    cat >&2 <<EOF
+
+  The installer needs write permission on the parent of the install path so it
+  can create '${DEFAULT_DIR_NAME}/' there. Either:
+
+    1. Pick a path you can write to:    INSTALL_DIR=~/banking-demo
+    2. Fix permissions on ${parent}    (typically: chmod u+w "${parent}")
+
+EOF
+    exit 1
+  fi
+
   local exists="no"
   [[ -d "$target" ]] && exists="yes"
 
