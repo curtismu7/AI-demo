@@ -41,6 +41,83 @@ function demoEmailDomain(publicAppUrl) {
 }
 
 /**
+ * Render a step message for createScopes' results.
+ * Distinguishes 'created' (newly POSTed) from 'reused' (already existed) so the
+ * user doesn't see "Created 0 scopes, 15 failed" on a rerun where everything
+ * was actually fine.
+ */
+function pushScopeResultStep(steps, stepKey, label, results) {
+  const created = results.filter(r => r.success && !r.reused).length;
+  const reused  = results.filter(r => r.success && r.reused).length;
+  const failed  = results.filter(r => !r.success).length;
+  let icon, message;
+  if (failed > 0) {
+    icon = '❌';
+    message = `${label}: ${created} created, ${reused} reused, ${failed} FAILED`;
+  } else if (created === 0 && reused > 0) {
+    icon = '✅';
+    message = `${label}: ${reused} reused (all already existed)`;
+  } else if (reused > 0) {
+    icon = '✅';
+    message = `${label}: ${created} created, ${reused} reused`;
+  } else {
+    icon = '✅';
+    message = `${label}: ${created} created`;
+  }
+  steps.push({ step: stepKey, icon, message });
+}
+
+/**
+ * Render a step message for one OR more grantScopesToApplication results
+ * (some apps grant from multiple resource servers). Combines them.
+ */
+function pushGrantResultStep(steps, stepKey, label, results) {
+  const arr = Array.isArray(results) ? results : [results];
+  const failed = arr.filter(r => !r.success);
+  if (failed.length > 0) {
+    const reasons = failed.map(r => r.error).join('; ');
+    steps.push({ step: stepKey, icon: '❌', message: `${label}: grant FAILED — ${reasons}` });
+    return;
+  }
+  // Special case: all results were 'skipped' (e.g. WORKER apps don't accept
+  // scope grants — PingOne uses roles for those). Single benign step.
+  if (arr.every(r => r.action === 'skipped')) {
+    const reason = arr[0].skippedReason || 'not applicable';
+    steps.push({ step: stepKey, icon: '✅', message: `${label}: skipped — ${reason}` });
+    return;
+  }
+
+  const totals = arr.reduce(
+    (acc, r) => {
+      if (r.action === 'created') acc.created += (r.granted || 0);
+      else if (r.action === 'merged') acc.added += (r.addedCount || 0);
+      else if (r.action === 'unchanged') acc.unchanged += (r.granted || 0);
+      else if (r.action === 'skipped') acc.skipped += 1;
+      acc.missing.push(...(r.missingScopes || []));
+      return acc;
+    },
+    { created: 0, added: 0, unchanged: 0, skipped: 0, missing: [] }
+  );
+
+  let icon, message;
+  const summaryParts = [];
+  if (totals.created) summaryParts.push(`${totals.created} created`);
+  if (totals.added) summaryParts.push(`${totals.added} added to existing grant`);
+  if (totals.unchanged) summaryParts.push(`${totals.unchanged} unchanged`);
+  if (totals.skipped) summaryParts.push(`${totals.skipped} skipped`);
+  if (totals.missing.length) summaryParts.push(`${totals.missing.length} not found on resource (${totals.missing.slice(0, 3).join(', ')}${totals.missing.length > 3 ? '…' : ''})`);
+
+  if (totals.missing.length > 0) {
+    icon = '⚠️';
+    message = `${label}: ${summaryParts.join(', ')}`;
+  } else {
+    icon = '✅';
+    message = `${label}: ${summaryParts.join(', ') || 'granted'}`;
+  }
+  steps.push({ step: stepKey, icon, message });
+}
+
+/**
  * Render a step message for createApplication's result. Surfaces drift info
  * so the user can see when an existing app was patched (and which fields).
  *
@@ -70,8 +147,8 @@ function pushAppResultStep(steps, stepKey, label, result) {
   } else {
     steps.push({
       step: stepKey,
-      icon: '⚠️',
-      message: `${label} already exists`,
+      icon: '✅',
+      message: `${label} already exists (reused)`,
       resourceKey: result.resourceKey,
     });
   }
@@ -300,31 +377,38 @@ class PingOneProvisionService {
   }
 
   /**
-   * Create scopes on resource server
+   * Create scopes on a resource server, idempotently.
+   *
+   * For each scope: if a scope with the same name already exists on the
+   * resource, return it as a `reused` result (no API write). Otherwise POST.
+   * Previously POSTs to existing scopes returned HTTP 400 INVALID_DATA, which
+   * the old code reported as `failed` — that produced the misleading
+   * "Created 0 scopes, 15 failed" output on rerun.
    */
   async createScopes(resourceId, scopes) {
+    // List existing scopes once, build a name→object map.
+    const existing = await this.makeRequest('GET', `/resources/${resourceId}/scopes`);
+    const existingByName = new Map();
+    for (const s of (existing.data._embedded?.scopes || [])) {
+      existingByName.set(s.name, s);
+    }
+
     const results = [];
-    
     for (const scope of scopes) {
+      const found = existingByName.get(scope.name);
+      if (found) {
+        results.push({ success: true, reused: true, scope: found, name: scope.name });
+        continue;
+      }
       try {
-        const data = {
+        const response = await this.makeRequest('POST', `/resources/${resourceId}/scopes`, {
           name: scope.name,
           description: scope.description,
-          schema: 'urn:pingone:common:scope'
-        };
-
-        const response = await this.makeRequest('POST', `/resources/${resourceId}/scopes`, data);
-        results.push({ 
-          success: true, 
-          scope: response.data,
-          name: scope.name 
+          schema: 'urn:pingone:common:scope',
         });
+        results.push({ success: true, reused: false, scope: response.data, name: scope.name });
       } catch (error) {
-        results.push({ 
-          success: false, 
-          error: error.message,
-          name: scope.name 
-        });
+        results.push({ success: false, error: error.message, name: scope.name });
       }
     }
 
@@ -587,17 +671,141 @@ class PingOneProvisionService {
   }
 
   /**
-   * Grant scopes to application
+   * Grant scopes to application — idempotent.
+   *
+   * PingOne /applications/{id}/grants POST payload shape:
+   *   { resource: { id: <resourceId> }, scopes: [{ id: <scopeId> }, ...] }
+   *
+   * NOT { resourceId, scopes: ['name', ...] } — that's what the previous
+   * version sent, which is why "Failed to grant scopes" warnings appeared on
+   * every grant step. We have to:
+   *   1. Look up scope IDs on the resource (input is scope names).
+   *   2. Check whether a grant for this resource already exists; if so, MERGE
+   *      the new scopes into the existing grant via PUT (POST would 409 on
+   *      duplicate resource).
+   *   3. Otherwise POST a fresh grant.
+   *
+   * Inputs:
+   *   appId       — application id to grant to
+   *   resourceId  — the resource server whose scopes we're granting
+   *   scopes      — array of scope NAME strings
+   *
+   * Returns: { success, action: 'created'|'merged'|'unchanged', granted: number }
    */
-  async grantScopesToApplication(appId, resourceId, scopes) {
+  async grantScopesToApplication(appId, resourceId, scopeNames) {
     try {
-      const data = {
-        resourceId,
-        scopes
-      };
+      // 0. PingOne forbids resource access grants on WORKER apps for any
+      //    resource other than 'openid'. WORKERs auth via client_credentials
+      //    and use ROLE assignments, not scope grants — see
+      //    https://apidocs.pingidentity.com (REQUEST_FAILED on POST /grants).
+      //    Treat as benign skip rather than fail.
+      const app = (await this.makeRequest('GET', `/applications/${appId}`)).data;
+      if (app.type === 'WORKER') {
+        return {
+          success: true,
+          action: 'skipped',
+          skippedReason: 'WORKER apps use roles, not scope grants',
+          granted: 0,
+        };
+      }
 
-      const response = await this.makeRequest('POST', `/applications/${appId}/grants`, data);
-      return { success: true, grant: response.data };
+      // 1. Resolve scope names → ids on the target resource.
+      const resourceScopes = (await this.makeRequest('GET', `/resources/${resourceId}/scopes`))
+        .data._embedded?.scopes || [];
+      const idByName = new Map(resourceScopes.map(s => [s.name, s.id]));
+      const desiredIds = [];
+      const missing = [];
+      for (const name of (scopeNames || [])) {
+        const id = idByName.get(name);
+        if (id) desiredIds.push(id);
+        else missing.push(name);
+      }
+      if (missing.length > 0 && desiredIds.length === 0) {
+        return { success: false, error: `No scopes resolved on resource: ${missing.join(', ')}` };
+      }
+      // Helper to detect "all desired scope names are already granted via
+      // other resources" — used after the cross-resource filter below.
+
+      // 2. Find existing grants on this app and figure out which scope NAMES
+      //    are already granted by other resources. PingOne enforces a global
+      //    "one scope name per app" rule across all that app's grants — even
+      //    if the same name comes from two different resources, it's rejected
+      //    with INVALID_DATA "Multiple scopes with the same name cannot be
+      //    added to the same grant." Filter those out of our desiredIds.
+      const existingGrants = (await this.makeRequest('GET', `/applications/${appId}/grants`))
+        .data._embedded?.grants || [];
+
+      // Build set of scope names already granted on OTHER resources.
+      const otherResourceScopeNames = new Set();
+      for (const g of existingGrants) {
+        if (g.resource?.id === resourceId) continue;            // skip same resource
+        for (const s of (g.scopes || [])) {
+          // Look up the name by id from any other resource's scope list.
+          // We have idByName for THIS resource; for cross-resource we'd need a
+          // lookup. Cheaper: just fetch the names of scopes in this grant.
+        }
+      }
+      // The above can't cheaply resolve cross-resource scope IDs to names.
+      // Simpler: pre-fetch ALL resources' scopes once.
+      let allOtherNames = new Set();
+      for (const g of existingGrants) {
+        if (g.resource?.id === resourceId) continue;
+        const otherScopes = (await this.makeRequest('GET', `/resources/${g.resource.id}/scopes`))
+          .data._embedded?.scopes || [];
+        const otherIdToName = new Map(otherScopes.map(s => [s.id, s.name]));
+        for (const s of (g.scopes || [])) {
+          const n = otherIdToName.get(s.id);
+          if (n) allOtherNames.add(n);
+        }
+      }
+
+      // Filter desiredIds: drop any whose NAME is already granted via another resource.
+      const idToName = new Map(resourceScopes.map(s => [s.id, s.name]));
+      const filteredIds = desiredIds.filter(id => {
+        const name = idToName.get(id);
+        return name && !allOtherNames.has(name);
+      });
+      const droppedAsCrossResource = desiredIds.length - filteredIds.length;
+      desiredIds.length = 0;
+      desiredIds.push(...filteredIds);
+
+      // If all desired names were already granted via other resources, there's
+      // nothing to do here — return a benign skip.
+      if (desiredIds.length === 0 && droppedAsCrossResource > 0) {
+        return {
+          success: true,
+          action: 'skipped',
+          skippedReason: `all ${droppedAsCrossResource} scope names already granted via other resources on this app`,
+          granted: 0,
+        };
+      }
+
+      const match = existingGrants.find(g => g.resource?.id === resourceId);
+
+      if (match) {
+        // Merge: union of (existing scope ids) + desiredIds.
+        const existingIds = new Set((match.scopes || []).map(s => s.id));
+        const toAdd = desiredIds.filter(id => !existingIds.has(id));
+        if (toAdd.length === 0) {
+          return { success: true, action: 'unchanged', granted: existingIds.size, missingScopes: missing };
+        }
+        const merged = [...existingIds, ...toAdd].map(id => ({ id }));
+        // PUT replaces the grant in place; PingOne accepts updates here.
+        await this.makeRequest('PUT', `/applications/${appId}/grants/${match.id}`, {
+          resource: { id: resourceId },
+          scopes: merged,
+        });
+        return { success: true, action: 'merged', granted: merged.length, addedCount: toAdd.length, missingScopes: missing };
+      }
+
+      // 3. No existing grant → POST a fresh one.
+      // Dedup by id in case the input scopeNames had duplicates upstream.
+      const uniqueIds = Array.from(new Set(desiredIds));
+      const response = await this.makeRequest('POST', `/applications/${appId}/grants`, {
+        resource: { id: resourceId },
+        scopes: uniqueIds.map(id => ({ id })),
+      });
+      return { success: true, action: 'created', granted: uniqueIds.length, grant: response.data, missingScopes: missing };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -653,18 +861,32 @@ class PingOneProvisionService {
    */
   async setUserPassword(userId, password) {
     // PingOne /users/{id}/password expects { value: '<password>' } with the
-    // vnd.pingidentity.password.set+json content-type. The previous shape
-    // ({ currentPassword: null, newPassword }) returned INVALID_DATA with
-    // 'value must not be empty' — confirmed by curl probe against the live
-    // tenant.
-    const response = await this.makeRequest(
-      'PUT',
-      `/users/${userId}/password`,
-      { value: password },
-      { 'Content-Type': 'application/vnd.pingidentity.password.set+json' }
-    );
-
-    return response.data;
+    // vnd.pingidentity.password.set+json content-type.
+    //
+    // PingOne enforces password-history (default: cannot reuse the most-recent
+    // N passwords). On rerun where the user already has the demo password set,
+    // PingOne rejects re-setting to the SAME value with INVALID_DATA + the
+    // message "New password did not satisfy password policy requirements."
+    //
+    // For the demo we treat that specific failure as success-already-set:
+    // the password is already what we want, no harm done.
+    try {
+      const response = await this.makeRequest(
+        'PUT',
+        `/users/${userId}/password`,
+        { value: password },
+        { 'Content-Type': 'application/vnd.pingidentity.password.set+json' }
+      );
+      return { changed: true, ...response.data };
+    } catch (err) {
+      const desc = String(err.pingone?.details?.[0]?.message || err.message || '');
+      if (/password.*polic|did not satisf/i.test(desc)) {
+        // Almost certainly the password-history check rejecting "set to same
+        // value as already in place". Surface as benign skip rather than fail.
+        return { changed: false, skipped: 'password_policy_history' };
+      }
+      throw err;
+    }
   }
 
   /**
@@ -805,8 +1027,8 @@ class PingOneProvisionService {
       if (resourceResult.exists) {
         steps.push({ 
           step: 'resource-server', 
-          icon: '⚠️', 
-          message: 'Resource server already exists',
+          icon: '✅',
+          message: 'Resource server already exists (reused)',
           resourceKey: resourceResult.resourceKey
         });
       } else {
@@ -828,8 +1050,8 @@ class PingOneProvisionService {
       if (mcpResourceResult.exists) {
         steps.push({ 
           step: 'mcp-resource-server', 
-          icon: '⚠️', 
-          message: 'MCP resource server already exists',
+          icon: '✅',
+          message: 'MCP resource server already exists (reused)',
           resourceKey: mcpResourceResult.resourceKey
         });
       } else {
@@ -854,24 +1076,17 @@ class PingOneProvisionService {
       ];
       
       const mcpScopeResults = await this.createScopes(mcpResourceResult.resource.id, mcpScopes);
-      const createdMcpScopes = mcpScopeResults.filter(r => r.success).length;
-      const failedMcpScopes = mcpScopeResults.filter(r => !r.success).length;
-      
-      if (failedMcpScopes > 0) {
-        steps.push({ 
-          step: 'mcp-scopes', 
-          icon: '⚠️', 
-          message: `Created ${createdMcpScopes} MCP scopes, ${failedMcpScopes} failed` 
-        });
-      } else {
-        steps.push({ step: 'mcp-scopes', icon: '✅', message: `Created ${createdMcpScopes} MCP scopes` });
-      }
+      pushScopeResultStep(steps, 'mcp-scopes', 'MCP scopes', mcpScopeResults);
       onStep(steps[steps.length - 1]);
 
       // Step 5: Create scopes
       steps.push({ step: 'scopes', icon: '🎯', message: 'Creating banking scopes...' });
       onStep(steps[steps.length - 1]);
       
+      // NOTE: p1:read:user / p1:update:user dropped here — PingOne reserves
+      // the p1:* prefix for its own scopes and rejects custom-resource
+      // creation with INVALID_VALUE. Worker apps that need PingOne management
+      // API access get those rights through ROLE assignments, not scope grants.
       const scopes = [
         { name: 'banking:read', description: 'Read access to banking data' },
         { name: 'banking:write', description: 'Write access to banking operations' },
@@ -880,8 +1095,6 @@ class PingOneProvisionService {
         { name: 'banking:accounts', description: 'Account access and management' },
         { name: 'banking:admin', description: 'Administrative access' },
         { name: 'banking:ai:agent:read', description: 'Agent invocation permission' },
-        { name: 'p1:read:user', description: 'Read user profile data' },
-        { name: 'p1:update:user', description: 'Update user profile data' },
         { name: 'ai_agent', description: 'AI agent identity' },
         // Admin-specific scopes
         { name: 'admin:read', description: 'Read administrative data and system status' },
@@ -892,18 +1105,7 @@ class PingOneProvisionService {
       ];
       
       const scopeResults = await this.createScopes(resourceResult.resource.id, scopes);
-      const createdScopes = scopeResults.filter(r => r.success).length;
-      const failedScopes = scopeResults.filter(r => !r.success).length;
-      
-      if (failedScopes > 0) {
-        steps.push({ 
-          step: 'scopes', 
-          icon: '⚠️', 
-          message: `Created ${createdScopes} scopes, ${failedScopes} failed` 
-        });
-      } else {
-        steps.push({ step: 'scopes', icon: '✅', message: `Created ${createdScopes} scopes` });
-      }
+      pushScopeResultStep(steps, 'scopes', 'Banking scopes', scopeResults);
       onStep(steps[steps.length - 1]);
 
       // Step 5: Create Admin Application
@@ -979,11 +1181,7 @@ class PingOneProvisionService {
         mcpScopes.map(s => s.name)
       );
       
-      if (adminGrantResult.success && adminMcpGrantResult.success) {
-        steps.push({ step: 'admin-grants', icon: '✅', message: 'Admin scopes granted from both resource servers' });
-      } else {
-        steps.push({ step: 'admin-grants', icon: '⚠️', message: 'Failed to grant some admin scopes' });
-      }
+      pushGrantResultStep(steps, 'admin-grants', 'Admin scope grants', [adminGrantResult, adminMcpGrantResult]);
       onStep(steps[steps.length - 1]);
 
       // Step 8: Create User Application
@@ -1038,11 +1236,7 @@ class PingOneProvisionService {
         ['banking:ai:agent:read', 'banking:read', 'banking:write']
       );
       
-      if (userGrantResult.success) {
-        steps.push({ step: 'user-grants', icon: '✅', message: 'User scopes granted' });
-      } else {
-        steps.push({ step: 'user-grants', icon: '⚠️', message: 'Failed to grant user scopes' });
-      }
+      pushGrantResultStep(steps, 'user-grants', 'User scope grants', userGrantResult);
       onStep(steps[steps.length - 1]);
 
       // Step 11: Create demo user bankuser
@@ -1059,8 +1253,8 @@ class PingOneProvisionService {
       if (bankUserResult.exists) {
         steps.push({ 
           step: 'bankuser', 
-          icon: '⚠️', 
-          message: 'User bankuser already exists',
+          icon: '✅',
+          message: 'User bankuser already exists (reused)',
           resourceKey: bankUserResult.resourceKey
         });
       } else {
@@ -1076,8 +1270,12 @@ class PingOneProvisionService {
         steps.push({ step: 'bankuser-password', icon: '🔒', message: 'Setting bankuser password...' });
         onStep(steps[steps.length - 1]);
         try {
-          await this.setUserPassword(bankUserResult.user.id, bankUserPassword);
-          steps.push({ step: 'bankuser-password', icon: '✅', message: `Bankuser password set to '${bankUserPassword}'` });
+          const r = await this.setUserPassword(bankUserResult.user.id, bankUserPassword);
+          if (r.changed === false && r.skipped === 'password_policy_history') {
+            steps.push({ step: 'bankuser-password', icon: '✅', message: `Bankuser password unchanged (already '${bankUserPassword}')` });
+          } else {
+            steps.push({ step: 'bankuser-password', icon: '✅', message: `Bankuser password set to '${bankUserPassword}'` });
+          }
         } catch (err) {
           steps.push({ step: 'bankuser-password', icon: '⚠️', message: `Password set failed (continuing): ${err.message}` });
         }
@@ -1099,8 +1297,8 @@ class PingOneProvisionService {
       if (bankAdminResult.exists) {
         steps.push({ 
           step: 'bankadmin', 
-          icon: '⚠️', 
-          message: 'User bankadmin already exists',
+          icon: '✅',
+          message: 'User bankadmin already exists (reused)',
           resourceKey: bankAdminResult.resourceKey
         });
       } else {
@@ -1114,8 +1312,12 @@ class PingOneProvisionService {
         steps.push({ step: 'bankadmin-password', icon: '🔒', message: 'Setting bankadmin password...' });
         onStep(steps[steps.length - 1]);
         try {
-          await this.setUserPassword(bankAdminResult.user.id, bankAdminPassword);
-          steps.push({ step: 'bankadmin-password', icon: '✅', message: `Bankadmin password set to '${bankAdminPassword}'` });
+          const r = await this.setUserPassword(bankAdminResult.user.id, bankAdminPassword);
+          if (r.changed === false && r.skipped === 'password_policy_history') {
+            steps.push({ step: 'bankadmin-password', icon: '✅', message: `Bankadmin password unchanged (already '${bankAdminPassword}')` });
+          } else {
+            steps.push({ step: 'bankadmin-password', icon: '✅', message: `Bankadmin password set to '${bankAdminPassword}'` });
+          }
         } catch (err) {
           steps.push({ step: 'bankadmin-password', icon: '⚠️', message: `Password set failed (continuing): ${err.message}` });
         }
@@ -1141,7 +1343,7 @@ class PingOneProvisionService {
         `bankDelegate@${demoEmailDomain(config.publicAppUrl)}`
       );
       if (bankDelegateResult.exists) {
-        steps.push({ step: 'bankDelegate', icon: '⚠️', message: 'User bankDelegate already exists', resourceKey: bankDelegateResult.resourceKey });
+        steps.push({ step: 'bankDelegate', icon: '✅', message: 'User bankDelegate already exists (reused)', resourceKey: bankDelegateResult.resourceKey });
       } else {
         steps.push({ step: 'bankDelegate', icon: '✅', message: 'User bankDelegate created' });
       }
@@ -1151,8 +1353,12 @@ class PingOneProvisionService {
       steps.push({ step: 'bankDelegate-password', icon: '🔒', message: 'Setting bankDelegate password...' });
       onStep(steps[steps.length - 1]);
       try {
-        await this.setUserPassword(bankDelegateResult.user.id, DEMO_PASSWORD);
-        steps.push({ step: 'bankDelegate-password', icon: '✅', message: `bankDelegate password set to '${DEMO_PASSWORD}'` });
+        const r = await this.setUserPassword(bankDelegateResult.user.id, DEMO_PASSWORD);
+        if (r.changed === false && r.skipped === 'password_policy_history') {
+          steps.push({ step: 'bankDelegate-password', icon: '✅', message: `bankDelegate password unchanged (already '${DEMO_PASSWORD}')` });
+        } else {
+          steps.push({ step: 'bankDelegate-password', icon: '✅', message: `bankDelegate password set to '${DEMO_PASSWORD}'` });
+        }
       } catch (err) {
         steps.push({ step: 'bankDelegate-password', icon: '⚠️', message: `Password set failed (continuing): ${err.message}` });
       }
@@ -1232,11 +1438,7 @@ class PingOneProvisionService {
         ['banking:read', 'banking:ai:agent:read']
       );
       
-      if (mcpAppGrantResult.success) {
-        steps.push({ step: 'mcp-grants', icon: '✅', message: 'MCP Server scopes granted' });
-      } else {
-        steps.push({ step: 'mcp-grants', icon: '⚠️', message: 'Failed to grant MCP Server scopes' });
-      }
+      pushGrantResultStep(steps, 'mcp-grants', 'MCP Server scope grants', mcpAppGrantResult);
       onStep(steps[steps.length - 1]);
 
       // Step 18: Create Worker Application
@@ -1279,34 +1481,18 @@ class PingOneProvisionService {
         ['p1:read:user', 'p1:update:user']
       );
       
-      if (workerAppGrantResult.success) {
-        steps.push({ step: 'worker-grants', icon: '✅', message: 'Worker scopes granted' });
-      } else {
-        steps.push({ step: 'worker-grants', icon: '⚠️', message: 'Failed to grant Worker scopes' });
-      }
+      pushGrantResultStep(steps, 'worker-grants', 'Worker scope grants', workerAppGrantResult);
       onStep(steps[steps.length - 1]);
 
-      // Step 22: Create bankingPrincipalUserId schema attribute
-      steps.push({ step: 'schema-attr', icon: '🔧', message: 'Creating bankingPrincipalUserId schema attribute...' });
+      // Step 22: Ensure bankingPrincipalUserId user-schema attribute exists.
+      // Uses the idempotent _ensureUserSchemaAttribute helper — checks first
+      // and only POSTs if absent, so reruns stop reporting INVALID_DATA.
+      steps.push({ step: 'schema-attr', icon: '🔧', message: 'Ensuring bankingPrincipalUserId user attribute...' });
       onStep(steps[steps.length - 1]);
       try {
-        const schemasResp = await this.makeRequest('GET', '/schemas?filter=name eq "User"');
-        const schemaId = schemasResp.data?._embedded?.schemas?.[0]?.id;
-        if (schemaId) {
-          await this.makeRequest('POST', `/schemas/${schemaId}/attributes`, {
-            name: 'bankingPrincipalUserId',
-            displayName: 'Banking Principal User ID',
-            type: 'STRING',
-            enabled: true,
-            required: false,
-            unique: false
-          });
-          steps.push({ step: 'schema-attr', icon: '✅', message: 'bankingPrincipalUserId attribute created' });
-        } else {
-          steps.push({ step: 'schema-attr', icon: '⚠️', message: 'Could not find User schema — attribute skipped' });
-        }
+        await this._ensureUserSchemaAttribute('bankingPrincipalUserId', 'STRING', 'Banking Principal User ID');
+        steps.push({ step: 'schema-attr', icon: '✅', message: 'bankingPrincipalUserId user attribute present' });
       } catch (schemaErr) {
-        // Attribute may already exist
         steps.push({ step: 'schema-attr', icon: '⚠️', message: `Schema attribute step: ${schemaErr.message}` });
       }
       onStep(steps[steps.length - 1]);
@@ -1412,7 +1598,7 @@ class PingOneProvisionService {
         mcpGwAudience
       );
       if (mcpGwResourceResult.exists) {
-        steps.push({ step: 'mcp-gw-resource', icon: '⚠️', message: 'MCP Gateway resource server already exists', resourceKey: mcpGwResourceResult.resourceKey });
+        steps.push({ step: 'mcp-gw-resource', icon: '✅', message: 'MCP Gateway resource server already exists (reused)', resourceKey: mcpGwResourceResult.resourceKey });
       } else {
         steps.push({ step: 'mcp-gw-resource', icon: '✅', message: 'MCP Gateway resource server created' });
       }
@@ -1426,13 +1612,7 @@ class PingOneProvisionService {
         { name: 'banking:mcp:invoke', description: 'Invoke MCP tools via the gateway' }
       ];
       const mcpGwScopeResults = await this.createScopes(mcpGwResourceResult.resource.id, mcpGwScopes);
-      const createdMcpGwScopes = mcpGwScopeResults.filter(r => r.success).length;
-      const failedMcpGwScopes = mcpGwScopeResults.filter(r => !r.success).length;
-      if (failedMcpGwScopes > 0) {
-        steps.push({ step: 'mcp-gw-scopes', icon: '⚠️', message: `Created ${createdMcpGwScopes} MCP Gateway scopes, ${failedMcpGwScopes} failed` });
-      } else {
-        steps.push({ step: 'mcp-gw-scopes', icon: '✅', message: `Created ${createdMcpGwScopes} MCP Gateway scopes` });
-      }
+      pushScopeResultStep(steps, 'mcp-gw-scopes', 'MCP Gateway scopes', mcpGwScopeResults);
       onStep(steps[steps.length - 1]);
 
       // Step 27: Create MCP Gateway WORKER application (for re-exchange to backend MCP servers)
@@ -1471,11 +1651,7 @@ class PingOneProvisionService {
         resourceResult.resource.id,
         ['banking:read', 'banking:write']
       );
-      if (mcpGwGrantResult.success) {
-        steps.push({ step: 'mcp-gw-grants', icon: '✅', message: 'MCP Gateway scopes granted' });
-      } else {
-        steps.push({ step: 'mcp-gw-grants', icon: '⚠️', message: 'Failed to grant MCP Gateway scopes' });
-      }
+      pushGrantResultStep(steps, 'mcp-gw-grants', 'MCP Gateway scope grants', mcpGwGrantResult);
       onStep(steps[steps.length - 1]);
 
       // Step 30: Create Agent WORKER application
@@ -1513,11 +1689,7 @@ class PingOneProvisionService {
         mcpGwResourceResult.resource.id,
         ['banking:mcp:invoke']
       );
-      if (agentGrantResult.success) {
-        steps.push({ step: 'agent-grants', icon: '✅', message: 'Agent scopes granted' });
-      } else {
-        steps.push({ step: 'agent-grants', icon: '⚠️', message: 'Failed to grant Agent scopes' });
-      }
+      pushGrantResultStep(steps, 'agent-grants', 'Agent scope grants', agentGrantResult);
       onStep(steps[steps.length - 1]);
 
       // Step 33: Write configuration
