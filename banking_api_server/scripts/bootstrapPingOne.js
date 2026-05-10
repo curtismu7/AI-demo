@@ -157,7 +157,26 @@ function prompt(rl, question, { defaultValue, secret = false } = {}) {
   return new Promise((resolve) => {
     const display = defaultValue ? `${question} [${defaultValue}]: ` : `${question}: `;
 
-    if (!secret) {
+    // Hidden-input requires a real TTY with setRawMode support. When the
+    // script is launched from a parent process with stdin piped/ignored
+    // (e.g. setupFresh's spawn with stdio:['ignore',...]), our input stream
+    // is fs.createReadStream('/dev/tty'), which is NOT a full TTY and has
+    // no setRawMode. Trying to do raw-mode input there silently fails:
+    // keystrokes never reach our listener, and the next prompt hangs.
+    //
+    // When raw mode isn't available, fall back to plain rl.question — the
+    // secret will echo on screen, but the prompt will WORK. The user is
+    // pasting from a password manager into their own terminal anyway, so
+    // the visual leak is acceptable for a setup wizard.
+    const input = rl.input;
+    const canRaw = typeof input.setRawMode === 'function' && (input.isTTY === true);
+
+    if (!secret || !canRaw) {
+      if (secret && !canRaw) {
+        // Tell the user once that input will be visible. Without this they
+        // think their typing isn't working when they see characters appear.
+        process.stdout.write('  (input will be visible — no TTY available for hidden entry)\n');
+      }
       rl.question(display, (answer) => {
         const trimmed = String(answer || '').trim();
         resolve(trimmed || defaultValue || '');
@@ -165,36 +184,26 @@ function prompt(rl, question, { defaultValue, secret = false } = {}) {
       return;
     }
 
-    // Hidden input — operate on the SAME input stream readline is using
-    // (rl.input), not process.stdin. When the script is launched from a
-    // parent process with stdin piped/ignored (e.g. setupFresh's spawn with
-    // stdio:['ignore',...]), tty.stream is /dev/tty and process.stdin is
-    // not a TTY. Manipulating process.stdin in that case manipulates the
-    // wrong stream — readline still reads from /dev/tty, so the next
-    // non-secret prompt hangs waiting for input on a stream we never wrote.
+    // Hidden input on a real TTY — manual prompt + raw input, no echo.
     process.stdout.write(display);
-    const input = rl.input;
     let captured = '';
     const wasRaw = input.isRaw;
-    const canRaw = typeof input.setRawMode === 'function';
-    if (canRaw) input.setRawMode(true);
+    input.setRawMode(true);
     input.resume();
     input.setEncoding('utf8');
 
-    // Pause readline's own listeners while we have raw control. Failing to do
-    // this means readline still buffers the keystrokes we're capturing.
+    // Pause readline's own listener so it doesn't compete for keystrokes.
     const rlPaused = !rl.paused;
     if (rlPaused) rl.pause();
 
     const restore = () => {
-      if (canRaw) input.setRawMode(wasRaw);
+      input.setRawMode(wasRaw);
       input.removeListener('data', onData);
       if (rlPaused) rl.resume();
     };
 
     const onData = (ch) => {
       const c = ch.toString('utf8');
-      // Some terminals deliver \r\n as a single chunk on Enter — match prefix.
       if (c === '\n' || c === '\r' || c.startsWith('\r')) {
         restore();
         process.stdout.write('\n');
