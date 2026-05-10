@@ -64,7 +64,7 @@ Provisions a complete PingOne environment for the banking demo:
   - Applications:     Admin (WEB_APP), User (WEB_APP), MCP Server (WORKER),
                       Worker (WORKER), MCP Exchanger (WORKER), MCP Gateway (WORKER),
                       Agent (WORKER)
-  - Users:            bankuser, bankadmin (with generated passwords)
+  - Users:            bankuser, bankadmin, bankDelegate (all with password '2Federate!')
   - Schema attribute: bankingPrincipalUserId
   - Token claims:     bankingPrincipalUserId on User app, may_act on Admin app
 
@@ -570,6 +570,7 @@ ${appBlock('Agent service', p.agentApp)}
 
 - **bankuser** \`${p.bankUser?.password || '_(password not captured — user pre-existed)_'}\`
 - **bankadmin** \`${p.bankAdmin?.password || '_(password not captured — user pre-existed)_'}\`
+- **bankDelegate** \`${p.bankDelegate?.password || '_(password not captured — user pre-existed)_'}\`  _(delegated user; isDelegate=true; member of BankDelegates group)_
 
 ## Audiences (RFC 8707 resource indicators)
 
@@ -765,7 +766,7 @@ async function main() {
     { label: '③ Scopes',                  keys: ['scopes', 'mcp-scopes', 'mcp-gw-scopes'] },
     { label: '④ Applications',            keys: ['admin-app', 'admin-config', 'user-app', 'user-config', 'mcp-app', 'mcp-config', 'worker-app', 'worker-config', 'mcp-exchanger-app', 'mcp-gw-app', 'mcp-gw-config', 'agent-app', 'agent-config'] },
     { label: '⑤ Scope grants',            keys: ['admin-grants', 'user-grants', 'mcp-grants', 'worker-grants', 'mcp-gw-grants', 'agent-grants'] },
-    { label: '⑥ Demo users + claims',     keys: ['bankuser', 'bankuser-password', 'bankadmin', 'bankadmin-password', 'schema-attr', 'spel-claim'] },
+    { label: '⑥ Demo users + claims',     keys: ['bankuser', 'bankuser-password', 'bankadmin', 'bankadmin-password', 'bankDelegate', 'bankDelegate-password', 'isDelegate-schema', 'bankDelegate-flag', 'bankDelegates-group', 'schema-attr', 'spel-claim', 'may-act-claim', 'is-delegate-claim'] },
     { label: '⑦ Write .env',              keys: ['config'] },
   ];
   const phaseSeen = new Set();
@@ -821,13 +822,18 @@ async function main() {
     if (counters.failed > 0) console.log(`    ❌  ${counters.failed} failed (see lines above)`);
     console.log('');
 
-    if (result?.provisioned?.bankUser?.password || result?.provisioned?.bankAdmin?.password) {
+    if (result?.provisioned?.bankUser?.password ||
+        result?.provisioned?.bankAdmin?.password ||
+        result?.provisioned?.bankDelegate?.password) {
       console.log('  Demo credentials (also saved in banking_api_server/.env):');
       if (result.provisioned.bankUser?.password) {
-        console.log(`    bankuser   ${result.provisioned.bankUser.password}`);
+        console.log(`    bankuser      ${result.provisioned.bankUser.password}`);
       }
       if (result.provisioned.bankAdmin?.password) {
-        console.log(`    bankadmin  ${result.provisioned.bankAdmin.password}`);
+        console.log(`    bankadmin     ${result.provisioned.bankAdmin.password}`);
+      }
+      if (result.provisioned.bankDelegate?.password) {
+        console.log(`    bankDelegate  ${result.provisioned.bankDelegate.password}  (delegated user)`);
       }
       console.log('');
     }

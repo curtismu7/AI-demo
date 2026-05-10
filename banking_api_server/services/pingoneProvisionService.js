@@ -40,6 +40,43 @@ function demoEmailDomain(publicAppUrl) {
   return stripped;
 }
 
+/**
+ * Render a step message for createApplication's result. Surfaces drift info
+ * so the user can see when an existing app was patched (and which fields).
+ *
+ * Result shapes from createApplication:
+ *   { exists: false }                                 → created fresh
+ *   { exists: true, patched: false }                  → reused as-is
+ *   { exists: true, patched: true, driftedFields }    → drift detected + patched
+ *   { exists: true, patched: false, patchError }      → patch attempt failed
+ */
+function pushAppResultStep(steps, stepKey, label, result) {
+  if (!result.exists) {
+    steps.push({ step: stepKey, icon: '✅', message: `${label} created` });
+  } else if (result.patched) {
+    steps.push({
+      step: stepKey,
+      icon: '🔁',
+      message: `${label} already existed — patched drift in: ${result.driftedFields.join(', ')}`,
+      resourceKey: result.resourceKey,
+    });
+  } else if (result.patchError) {
+    steps.push({
+      step: stepKey,
+      icon: '⚠️',
+      message: `${label} already existed — drift detected but patch failed: ${result.patchError}`,
+      resourceKey: result.resourceKey,
+    });
+  } else {
+    steps.push({
+      step: stepKey,
+      icon: '⚠️',
+      message: `${label} already exists`,
+      resourceKey: result.resourceKey,
+    });
+  }
+}
+
 class PingOneProvisionService {
   constructor() {
     this.baseURL = null;
@@ -313,32 +350,86 @@ class PingOneProvisionService {
    * before sending so existing callers don't all have to change at once.
    */
   async createApplication(name, description, type, grantTypes) {
-    const existing = await this.findResourceByName('application', name);
-    if (existing) {
-      return {
-        exists: true,
-        application: existing,
-        resourceKey: `application:${existing.id}`,
-      };
-    }
-
-    // Normalize: 'authorization_code' → 'AUTHORIZATION_CODE',
-    //            'urn:ietf:params:oauth:grant-type:token-exchange' → 'TOKEN_EXCHANGE'
+    // Normalize grants once and reuse.
     const normalizeGrant = (g) => {
       if (g === 'urn:ietf:params:oauth:grant-type:token-exchange') return 'TOKEN_EXCHANGE';
       if (g === 'token_exchange') return 'TOKEN_EXCHANGE';
       return String(g).toUpperCase();
     };
-    const normalizedGrants = (grantTypes || []).map(normalizeGrant);
+    const desiredGrants = new Set((grantTypes || []).map(normalizeGrant));
+    const desiredAuthMethod = 'CLIENT_SECRET_BASIC';
 
+    const existing = await this.findResourceByName('application', name);
+
+    // Drift handling on existing apps: prefer patching; only delete + recreate
+    // when the type itself changed (PingOne won't let you change app type via
+    // PUT). We don't touch redirectUris here — the wizard's per-app
+    // updateApplication() steps set those with the current hostname; that's
+    // already an idempotent PUT-with-merge.
+    if (existing) {
+      // Type mismatch → can't patch, must recreate.
+      if (existing.type !== type) {
+        try {
+          await this.makeRequest('DELETE', `/applications/${existing.id}`);
+        } catch (_e) { /* fall through; create will fail with a clear error */ }
+        // fall out of this block to the create path below
+      } else {
+        // Compare patchable fields. PingOne's existing.grantTypes is already
+        // uppercase, so set-equality works.
+        const currentGrants = new Set((existing.grantTypes || []).map(g => String(g).toUpperCase()));
+        const grantsDrift = currentGrants.size !== desiredGrants.size ||
+                            [...desiredGrants].some(g => !currentGrants.has(g));
+        const authDrift = String(existing.tokenEndpointAuthMethod || '').toUpperCase() !== desiredAuthMethod;
+        const enabledDrift = existing.enabled !== true;
+
+        if (grantsDrift || authDrift || enabledDrift) {
+          const patch = {};
+          if (grantsDrift) patch.grantTypes = [...desiredGrants];
+          if (authDrift) patch.tokenEndpointAuthMethod = desiredAuthMethod;
+          if (enabledDrift) patch.enabled = true;
+          try {
+            await this.updateApplication(existing.id, patch);
+          } catch (err) {
+            // Patching failed — surface the error but keep existing app rather
+            // than destroying it.
+            return {
+              exists: true,
+              patched: false,
+              patchError: err.message,
+              application: existing,
+              resourceKey: `application:${existing.id}`,
+            };
+          }
+          // Re-fetch so callers see the updated state.
+          const refreshed = (await this.makeRequest('GET', `/applications/${existing.id}`)).data;
+          return {
+            exists: true,
+            patched: true,
+            driftedFields: Object.keys(patch),
+            application: refreshed,
+            resourceKey: `application:${refreshed.id}`,
+          };
+        }
+
+        // No drift — return as-is.
+        return {
+          exists: true,
+          patched: false,
+          application: existing,
+          resourceKey: `application:${existing.id}`,
+        };
+      }
+    }
+
+    // Create path (no existing OR existing was deleted due to type mismatch).
     const data = {
       name,
       description,
       enabled: true,
       type,
       protocol: 'OPENID_CONNECT',
-      grantTypes: normalizedGrants,
-      tokenEndpointAuthMethod: type === 'WORKER' ? 'CLIENT_SECRET_BASIC' : 'CLIENT_SECRET_BASIC',
+      grantTypes: [...desiredGrants],
+      tokenEndpointAuthMethod: desiredAuthMethod,
     };
 
     // WEB_APP / NATIVE_APP / SINGLE_PAGE_APP need responseTypes + redirectUris
@@ -353,7 +444,7 @@ class PingOneProvisionService {
     return {
       exists: false,
       application: response.data,
-      resourceKey: `application:${response.data.id}`
+      resourceKey: `application:${response.data.id}`,
     };
   }
 
@@ -440,6 +531,59 @@ class PingOneProvisionService {
       type: 'CUSTOM',
     });
     return response.data;
+  }
+
+  /**
+   * Idempotently ensure a CUSTOM user-schema attribute exists.
+   * PingOne's schema attribute API rejects re-creation with INVALID_DATA, so we
+   * check first and only POST if missing. PingOne user-schema attributes can
+   * only be STRING or JSON (BOOLEAN is rejected); we store boolean-ish values
+   * as the strings "true" / "false".
+   */
+  async _ensureUserSchemaAttribute(name, type = 'STRING', displayName = null) {
+    // Find the User schema id (cache once per service instance).
+    if (!this._userSchemaId) {
+      const schemas = (await this.makeRequest('GET', '/schemas?filter=name eq "User"')).data;
+      this._userSchemaId = schemas._embedded?.schemas?.[0]?.id;
+      if (!this._userSchemaId) throw new Error('User schema not found');
+    }
+    const attrs = (await this.makeRequest('GET', `/schemas/${this._userSchemaId}/attributes`)).data._embedded?.attributes || [];
+    const existing = attrs.find(a => a.name === name);
+    if (existing) return existing;
+
+    const response = await this.makeRequest('POST', `/schemas/${this._userSchemaId}/attributes`, {
+      name,
+      displayName: displayName || name,
+      type,
+      enabled: true,
+      required: false,
+      unique: false,
+    });
+    return response.data;
+  }
+
+  /**
+   * Idempotently ensure a group exists, return its id.
+   */
+  async _ensureGroup(name, description = '') {
+    const list = (await this.makeRequest('GET', `/groups?filter=name eq "${name}"`)).data._embedded?.groups || [];
+    if (list[0]) return list[0].id;
+    const response = await this.makeRequest('POST', '/groups', { name, description });
+    return response.data.id;
+  }
+
+  /**
+   * Idempotently add user to group via the membership sub-resource.
+   * Re-adding a user is a 204 no-op (PingOne handles dedup).
+   */
+  async _ensureUserInGroup(userId, groupId) {
+    try {
+      await this.makeRequest('POST', `/users/${userId}/memberOfGroups`, { id: groupId });
+    } catch (err) {
+      // 409 / "already a member" is success here. Re-throw anything else.
+      if (err.pingone?.status === 409 || /already.*member|already exists/i.test(err.message)) return;
+      throw err;
+    }
   }
 
   /**
@@ -773,16 +917,7 @@ class PingOneProvisionService {
         ['authorization_code', 'refresh_token']
       );
       
-      if (adminAppResult.exists) {
-        steps.push({ 
-          step: 'admin-app', 
-          icon: '⚠️', 
-          message: 'Admin application already exists',
-          resourceKey: adminAppResult.resourceKey
-        });
-      } else {
-        steps.push({ step: 'admin-app', icon: '✅', message: 'Admin application created' });
-      }
+      pushAppResultStep(steps, 'admin-app', 'Admin application', adminAppResult);
       onStep(steps[steps.length - 1]);
       provisioned.adminApp = adminAppResult.application;
       provisioned.adminApp.clientSecret = await this.getApplicationSecret(adminAppResult.application.id);
@@ -862,16 +997,7 @@ class PingOneProvisionService {
         ['authorization_code', 'refresh_token']
       );
       
-      if (userAppResult.exists) {
-        steps.push({ 
-          step: 'user-app', 
-          icon: '⚠️', 
-          message: 'User application already exists',
-          resourceKey: userAppResult.resourceKey
-        });
-      } else {
-        steps.push({ step: 'user-app', icon: '✅', message: 'User application created' });
-      }
+      pushAppResultStep(steps, 'user-app', 'User application', userAppResult);
       onStep(steps[steps.length - 1]);
       provisioned.userApp = userAppResult.application;
       provisioned.userApp.clientSecret = await this.getApplicationSecret(userAppResult.application.id);
@@ -997,6 +1123,75 @@ class PingOneProvisionService {
         onStep(steps[steps.length - 1]);
       }
 
+      // Step 14.5: Create demo user bankDelegate + delegation markers.
+      // Three artifacts wire delegation:
+      //   - User attribute `isDelegate` = "true" (CUSTOM STRING; PingOne user
+      //     attributes can't be BOOLEAN, so we store the string "true"/"false").
+      //   - Group `BankDelegates` membership.
+      //   - Token claim `is_delegate` emitted on the Super Banking API resource
+      //     via SPEL value `${user.isDelegate}`. Apps that want delegation
+      //     status read it from the access token without an extra API call.
+      steps.push({ step: 'bankDelegate', icon: '🤝', message: 'Creating demo user: bankDelegate...' });
+      onStep(steps[steps.length - 1]);
+
+      const bankDelegateResult = await this.createUser(
+        'bankDelegate',
+        'Demo',
+        'Delegate',
+        `bankDelegate@${demoEmailDomain(config.publicAppUrl)}`
+      );
+      if (bankDelegateResult.exists) {
+        steps.push({ step: 'bankDelegate', icon: '⚠️', message: 'User bankDelegate already exists', resourceKey: bankDelegateResult.resourceKey });
+      } else {
+        steps.push({ step: 'bankDelegate', icon: '✅', message: 'User bankDelegate created' });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Set password (always)
+      steps.push({ step: 'bankDelegate-password', icon: '🔒', message: 'Setting bankDelegate password...' });
+      onStep(steps[steps.length - 1]);
+      try {
+        await this.setUserPassword(bankDelegateResult.user.id, DEMO_PASSWORD);
+        steps.push({ step: 'bankDelegate-password', icon: '✅', message: `bankDelegate password set to '${DEMO_PASSWORD}'` });
+      } catch (err) {
+        steps.push({ step: 'bankDelegate-password', icon: '⚠️', message: `Password set failed (continuing): ${err.message}` });
+      }
+      provisioned.bankDelegate = { ...bankDelegateResult.user, password: DEMO_PASSWORD };
+      onStep(steps[steps.length - 1]);
+
+      // Ensure the isDelegate user-schema attribute exists (CUSTOM STRING).
+      steps.push({ step: 'isDelegate-schema', icon: '🔧', message: 'Ensuring isDelegate user attribute...' });
+      onStep(steps[steps.length - 1]);
+      try {
+        await this._ensureUserSchemaAttribute('isDelegate', 'STRING', 'Is delegate user');
+        steps.push({ step: 'isDelegate-schema', icon: '✅', message: 'isDelegate user attribute present' });
+      } catch (err) {
+        steps.push({ step: 'isDelegate-schema', icon: '⚠️', message: `isDelegate attribute step: ${err.message}` });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Set isDelegate=true on bankDelegate (PATCH user). Uses partial-update
+      // semantics — we only send the changed field.
+      try {
+        await this.makeRequest('PATCH', `/users/${bankDelegateResult.user.id}`, { isDelegate: 'true' });
+        steps.push({ step: 'bankDelegate-flag', icon: '✅', message: 'bankDelegate.isDelegate = true' });
+      } catch (err) {
+        steps.push({ step: 'bankDelegate-flag', icon: '⚠️', message: `Could not set isDelegate flag: ${err.message}` });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Create BankDelegates group + add bankDelegate as member (idempotent).
+      steps.push({ step: 'bankDelegates-group', icon: '👥', message: 'Ensuring BankDelegates group...' });
+      onStep(steps[steps.length - 1]);
+      try {
+        const groupId = await this._ensureGroup('BankDelegates', 'Users authorized as delegated agents (demo)');
+        await this._ensureUserInGroup(bankDelegateResult.user.id, groupId);
+        steps.push({ step: 'bankDelegates-group', icon: '✅', message: 'bankDelegate added to BankDelegates group' });
+      } catch (err) {
+        steps.push({ step: 'bankDelegates-group', icon: '⚠️', message: `Group step: ${err.message}` });
+      }
+      onStep(steps[steps.length - 1]);
+
       // Step 15: Create MCP Server Application
       steps.push({ step: 'mcp-app', icon: '🤖', message: 'Creating MCP Server application...' });
       onStep(steps[steps.length - 1]);
@@ -1008,16 +1203,7 @@ class PingOneProvisionService {
         ['client_credentials']
       );
       
-      if (mcpAppResult.exists) {
-        steps.push({ 
-          step: 'mcp-app', 
-          icon: '⚠️', 
-          message: 'MCP Server application already exists',
-          resourceKey: mcpAppResult.resourceKey
-        });
-      } else {
-        steps.push({ step: 'mcp-app', icon: '✅', message: 'MCP Server application created' });
-      }
+      pushAppResultStep(steps, 'mcp-app', 'MCP Server application', mcpAppResult);
       onStep(steps[steps.length - 1]);
       provisioned.mcpApp = mcpAppResult.application;
       provisioned.mcpApp.clientSecret = await this.getApplicationSecret(mcpAppResult.application.id);
@@ -1064,16 +1250,7 @@ class PingOneProvisionService {
         ['client_credentials']
       );
       
-      if (workerAppResult.exists) {
-        steps.push({ 
-          step: 'worker-app', 
-          icon: '⚠️', 
-          message: 'Worker application already exists',
-          resourceKey: workerAppResult.resourceKey
-        });
-      } else {
-        steps.push({ step: 'worker-app', icon: '✅', message: 'Worker application created' });
-      }
+      pushAppResultStep(steps, 'worker-app', 'Worker application', workerAppResult);
       onStep(steps[steps.length - 1]);
       provisioned.workerApp = workerAppResult.application;
       provisioned.workerApp.clientSecret = await this.getApplicationSecret(workerAppResult.application.id);
@@ -1146,11 +1323,7 @@ class PingOneProvisionService {
         );
         provisioned.mcpExchangerApp = mcpExchangerResult.application;
         provisioned.mcpExchangerApp.clientSecret = await this.getApplicationSecret(mcpExchangerResult.application.id);
-        if (mcpExchangerResult.exists) {
-          steps.push({ step: 'mcp-exchanger-app', icon: '⚠️', message: 'MCP Exchanger application already exists', resourceKey: mcpExchangerResult.resourceKey });
-        } else {
-          steps.push({ step: 'mcp-exchanger-app', icon: '✅', message: 'MCP Exchanger application created' });
-        }
+        pushAppResultStep(steps, 'mcp-exchanger-app', 'MCP Exchanger application', mcpExchangerResult);
       }
       onStep(steps[steps.length - 1]);
 
@@ -1188,6 +1361,25 @@ class PingOneProvisionService {
         }
       } catch (mayActErr) {
         steps.push({ step: 'may-act-claim', icon: '⚠️', message: `may_act claim step: ${mayActErr.message}` });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Step 23.6: Wire `is_delegate` token claim. SPEL `${user.isDelegate}`
+      // resolves at token-issue time to the user's stored attribute, so apps
+      // can read delegation status from the access token without an extra
+      // /v1/users API call. bankDelegate has isDelegate="true"; bankuser/
+      // bankadmin don't, so the claim is empty/false for them.
+      steps.push({ step: 'is-delegate-claim', icon: '🔧', message: 'Wiring is_delegate token claim → ${user.isDelegate}...' });
+      onStep(steps[steps.length - 1]);
+      try {
+        await this._setResourceAttribute(
+          provisioned.resourceServer.id,
+          'is_delegate',
+          '${user.isDelegate}'
+        );
+        steps.push({ step: 'is-delegate-claim', icon: '✅', message: 'is_delegate claim wired (SPEL = ${user.isDelegate})' });
+      } catch (delErr) {
+        steps.push({ step: 'is-delegate-claim', icon: '⚠️', message: `is_delegate claim step: ${delErr.message}` });
       }
       onStep(steps[steps.length - 1]);
 
@@ -1257,11 +1449,7 @@ class PingOneProvisionService {
       );
       provisioned.mcpGwApp = mcpGwAppResult.application;
       provisioned.mcpGwApp.clientSecret = await this.getApplicationSecret(mcpGwAppResult.application.id);
-      if (mcpGwAppResult.exists) {
-        steps.push({ step: 'mcp-gw-app', icon: '⚠️', message: 'MCP Gateway application already exists', resourceKey: mcpGwAppResult.resourceKey });
-      } else {
-        steps.push({ step: 'mcp-gw-app', icon: '✅', message: 'MCP Gateway application created' });
-      }
+      pushAppResultStep(steps, 'mcp-gw-app', 'MCP Gateway application', mcpGwAppResult);
       onStep(steps[steps.length - 1]);
 
       // Step 28: Configure MCP Gateway app (client_secret_basic — matches MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD default)
@@ -1303,11 +1491,7 @@ class PingOneProvisionService {
       );
       provisioned.agentApp = agentAppResult.application;
       provisioned.agentApp.clientSecret = await this.getApplicationSecret(agentAppResult.application.id);
-      if (agentAppResult.exists) {
-        steps.push({ step: 'agent-app', icon: '⚠️', message: 'Agent application already exists', resourceKey: agentAppResult.resourceKey });
-      } else {
-        steps.push({ step: 'agent-app', icon: '✅', message: 'Agent application created' });
-      }
+      pushAppResultStep(steps, 'agent-app', 'Agent application', agentAppResult);
       onStep(steps[steps.length - 1]);
 
       // Step 31: Configure Agent app
