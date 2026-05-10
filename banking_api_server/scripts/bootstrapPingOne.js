@@ -970,8 +970,17 @@ async function main() {
     console.log('');
     console.log(`Wipe complete:  ${summary.deleted.apps} apps, ${summary.deleted.resources} resources, ${summary.deleted.groups} groups, ${summary.deleted.attrs} attributes, ${summary.deleted.users} users deleted.`);
     if (summary.failed.length > 0) {
-      console.log(`${summary.failed.length} item(s) failed — see lines above.`);
-      process.exit(1);
+      // Per-item failures (e.g. PingOne rejecting a delete because of a
+      // lingering reference) are SOFT errors — they don't invalidate the
+      // wipe-then-provision flow. We log them as warnings but exit 0 so the
+      // parent setup:fresh continues to bootstrap. The provision step is
+      // idempotent and will overwrite any survivors. Use exit 1 only for
+      // fatal failures earlier in the call (auth, can't list, etc.) — those
+      // throw out of wipeEnvironment and reach the outer catch.
+      console.log(`${summary.failed.length} item(s) could not be deleted (continuing — provisioning will overwrite/reuse them).`);
+      for (const f of summary.failed) {
+        console.log(`  - ${f.kind} '${f.name}': ${f.error}`);
+      }
     }
     process.exit(0);
   }

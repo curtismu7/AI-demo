@@ -1913,7 +1913,24 @@ class PingOneProvisionService {
     };
     const step = (icon, message, extra = {}) => onStep({ step: 'wipe', icon, message, ...extra });
 
-    step('💣', `Wiping PingOne environment ${config.envId} (region: ${config.region})`);
+    // Banking-demo ownership filter. Everything provisioned by this demo
+    // matches one of these patterns; everything else (PingOne system apps,
+    // user-managed apps, shared infrastructure) is left alone.
+    //
+    // Apps + resources: name starts with "Super Banking" (singular convention).
+    // Groups:           name equals "BankDelegates".
+    // Custom attrs:     name equals "isDelegate" (the only one we provision).
+    // Users:            username in {bankuser, bankadmin, bankDelegate}.
+    //
+    // If you fork this demo and rename, update the constants here too.
+    const APP_PREFIX = 'Super Banking';
+    const RESOURCE_PREFIX = 'Super Banking';
+    const DEMO_GROUPS = new Set(['BankDelegates']);
+    const DEMO_ATTRS = new Set(['isDelegate']);
+    const DEMO_USERS = new Set(['bankuser', 'bankadmin', 'bankDelegate']);
+
+    step('💣', `Wiping banking-demo resources in PingOne env ${config.envId} (region: ${config.region})`);
+    step('🛡️', `Only items matching banking-demo naming will be deleted; everything else is preserved.`);
 
     // --- Apps -----------------------------------------------------------
     step('🔍', 'Listing applications…');
@@ -1923,12 +1940,18 @@ class PingOneProvisionService {
     } catch (err) {
       step('❌', `Could not list applications: ${err.message}`);
     }
-    step('🗑️', `Found ${apps.length} application(s) — preserving worker (${config.workerClientId})`);
+    const ownedApps = apps.filter(a => (a.name || '').startsWith(APP_PREFIX));
+    step('🗑️', `Found ${apps.length} application(s); ${ownedApps.length} match "${APP_PREFIX}*" — preserving worker (${config.workerClientId})`);
     for (const app of apps) {
-      // NEVER delete the worker we're auth'd as.
+      // Always preserve the worker we're auth'd as — even if it has the prefix.
       if (app.id === config.workerClientId || app.clientId === config.workerClientId) {
         summary.skipped.apps++;
         step('⏭️', `Kept worker app: ${app.name}`);
+        continue;
+      }
+      if (!(app.name || '').startsWith(APP_PREFIX)) {
+        summary.skipped.apps++;
+        // Don't spam a line per non-demo app; total skipped count surfaces in the summary.
         continue;
       }
       try {
@@ -1949,11 +1972,9 @@ class PingOneProvisionService {
     } catch (err) {
       step('❌', `Could not list resources: ${err.message}`);
     }
-    const SYSTEM_RESOURCES = new Set(['PingOne API', 'openid']);
     for (const r of resources) {
-      if (SYSTEM_RESOURCES.has(r.name)) {
+      if (!(r.name || '').startsWith(RESOURCE_PREFIX)) {
         summary.skipped.resources++;
-        step('⏭️', `Kept system resource: ${r.name}`);
         continue;
       }
       try {
@@ -1975,6 +1996,10 @@ class PingOneProvisionService {
       step('❌', `Could not list groups: ${err.message}`);
     }
     for (const g of groups) {
+      if (!DEMO_GROUPS.has(g.name)) {
+        summary.skipped.groups++;
+        continue;
+      }
       try {
         await this.makeRequest('DELETE', `/groups/${g.id}`);
         summary.deleted.groups++;
@@ -1987,6 +2012,7 @@ class PingOneProvisionService {
 
     // --- User schema attributes -----------------------------------------
     // CUSTOM only — CORE/STANDARD are managed by PingOne and refuse delete.
+    // We further filter to attributes the demo provisions (isDelegate).
     step('🔍', 'Listing custom user-schema attributes…');
     try {
       if (!this._userSchemaId) {
@@ -1996,7 +2022,7 @@ class PingOneProvisionService {
       if (this._userSchemaId) {
         const attrs = (await this.makeRequest('GET', `/schemas/${this._userSchemaId}/attributes`)).data._embedded?.attributes || [];
         for (const a of attrs) {
-          if (a.type !== 'CUSTOM') {
+          if (a.type !== 'CUSTOM' || !DEMO_ATTRS.has(a.name)) {
             summary.skipped.attrs++;
             continue;
           }
@@ -2015,27 +2041,37 @@ class PingOneProvisionService {
     }
 
     // --- Users -----------------------------------------------------------
-    // PingOne paginates; loop until empty. Skip nothing — wipe is wipe.
-    step('🔍', 'Deleting users…');
-    let userPage = await this.makeRequest('GET', '/users?limit=100');
-    let userList = userPage.data._embedded?.users || [];
-    while (userList.length > 0) {
-      for (const u of userList) {
-        try {
-          await this.makeRequest('DELETE', `/users/${u.id}`);
-          summary.deleted.users++;
-          step('✅', `Deleted user: ${u.username}`);
-        } catch (err) {
-          summary.failed.push({ kind: 'user', id: u.id, name: u.username, error: err.message });
-          step('❌', `Failed to delete user '${u.username}': ${err.message}`);
+    // Only delete demo accounts. PingOne paginates; loop until we've checked
+    // a full page that has no demo users in it (we don't blindly drain — we
+    // just need to find the 3 demo users by username).
+    step('🔍', 'Deleting demo users (bankuser, bankadmin, bankDelegate)…');
+    for (const username of DEMO_USERS) {
+      try {
+        const q = encodeURIComponent(`username eq "${username}"`);
+        const page = await this.makeRequest('GET', `/users?filter=${q}&limit=10`);
+        const users = page.data._embedded?.users || [];
+        if (users.length === 0) {
+          // Nothing to delete; count as skipped so summary doesn't lie.
+          summary.skipped.users++;
+          continue;
         }
+        for (const u of users) {
+          try {
+            await this.makeRequest('DELETE', `/users/${u.id}`);
+            summary.deleted.users++;
+            step('✅', `Deleted user: ${u.username}`);
+          } catch (err) {
+            summary.failed.push({ kind: 'user', id: u.id, name: u.username, error: err.message });
+            step('❌', `Failed to delete user '${u.username}': ${err.message}`);
+          }
+        }
+      } catch (err) {
+        step('❌', `Could not search for user '${username}': ${err.message}`);
       }
-      // Re-fetch — list shrinks as we delete.
-      userPage = await this.makeRequest('GET', '/users?limit=100');
-      userList = userPage.data._embedded?.users || [];
     }
 
-    step('🎉', `Wipe complete. Deleted: ${summary.deleted.apps} apps, ${summary.deleted.resources} resources, ${summary.deleted.groups} groups, ${summary.deleted.attrs} attrs, ${summary.deleted.users} users. Skipped: ${summary.skipped.apps + summary.skipped.resources + summary.skipped.attrs}. Failures: ${summary.failed.length}.`);
+    const totalSkipped = summary.skipped.apps + summary.skipped.resources + summary.skipped.groups + summary.skipped.attrs + summary.skipped.users;
+    step('🎉', `Wipe complete. Deleted: ${summary.deleted.apps} apps, ${summary.deleted.resources} resources, ${summary.deleted.groups} groups, ${summary.deleted.attrs} attrs, ${summary.deleted.users} users. Preserved (non-demo): ${totalSkipped}. Failures: ${summary.failed.length}.`);
     return summary;
   }
 
