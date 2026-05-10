@@ -111,26 +111,40 @@ confirm_dir() {
     return 0
   fi
 
-  # When we're in a curl-piped pipeline, stdin is the curl HTTP body —
-  # not the user's keyboard. Read prompt from /dev/tty so the question
-  # actually reaches the user.
-  local prompt="Proceed? [Y/n] "
-  local answer=""
-  if [[ -t 0 ]]; then
-    read -r -p "$prompt" answer
-  elif [[ -e /dev/tty ]]; then
-    # shellcheck disable=SC2162
-    read -p "$prompt" answer </dev/tty
-  else
-    warn "No TTY available — skipping prompt. Set ASSUME_YES=1 to silence this warning."
+  if ask_yes_no "Proceed? [Y/n] " yes; then
     return 0
   fi
 
-  case "${answer:-y}" in
-    y|Y|yes|YES|"") ;;
-    *) info "Aborted. To install elsewhere: cd to the desired directory, then re-run:"
-       echo "  curl -fsSL ${REPO_URL%.git}/raw/main/install.sh | bash"
-       exit 0 ;;
+  info "Aborted. To install elsewhere: cd to the desired directory, then re-run:"
+  echo "  curl -fsSL ${REPO_URL%.git}/raw/main/install.sh | bash"
+  exit 0
+}
+
+# Ask a yes/no question, reading from /dev/tty under curl-pipe (where stdin is
+# the HTTP body). Second arg is the default ('yes' or 'no'). Returns 0 on yes,
+# 1 on no. Returns the default if no TTY is available.
+ask_yes_no() {
+  local prompt="$1"
+  local default="${2:-yes}"
+  local answer=""
+  if [[ -t 0 ]]; then
+    read -r -p "$prompt" answer
+  elif [[ -e /dev/tty ]] && (read -t 0 -n 0 </dev/tty) 2>/dev/null; then
+    # /dev/tty exists AND is usable for input. shellcheck disable=SC2162
+    read -p "$prompt" answer </dev/tty
+  else
+    [[ "${ASSUME_YES:-0}" == "1" ]] || warn "No TTY available — using default ($default). Set ASSUME_YES=1 to silence this warning."
+    [[ "$default" == "yes" ]] && return 0 || return 1
+  fi
+
+  # Empty answer → default
+  if [[ -z "$answer" ]]; then
+    [[ "$default" == "yes" ]] && return 0 || return 1
+  fi
+  case "$answer" in
+    y|Y|yes|YES) return 0 ;;
+    n|N|no|NO)   return 1 ;;
+    *) [[ "$default" == "yes" ]] && return 0 || return 1 ;;
   esac
 }
 
@@ -206,27 +220,39 @@ main() {
   target="${target%/}"
   [[ -z "$target" ]] && target="/"
 
-  # Refuse to install at filesystem root (or any non-writable parent). On macOS
-  # SIP makes `/` read-only; on Linux it'd require sudo. Either way, '/banking-demo'
-  # is almost certainly not what the user meant — they were probably at '/' by accident.
+  # When the user is at filesystem root or pointing INSTALL_DIR there, offer
+  # to redirect to $HOME instead. macOS SIP makes / read-only; on Linux this
+  # would need sudo. Almost certainly an accident — but we ask rather than
+  # silently picking, since the user might have a non-standard reason.
   local parent
   parent="$(dirname "$target")"
   if [[ "$target" == "/${DEFAULT_DIR_NAME}" || "$parent" == "/" ]]; then
-    err "Refusing to install at filesystem root: ${target}"
-    cat >&2 <<EOF
+    warn "Cannot install at filesystem root: ${target}"
+    if [[ -z "${HOME:-}" ]]; then
+      err "\$HOME is unset — cannot suggest an alternate path."
+      echo "" >&2
+      echo "  Set INSTALL_DIR explicitly and re-run:" >&2
+      echo "    curl -fsSL ${REPO_URL%.git}/raw/main/install.sh | INSTALL_DIR=/path/to/banking-demo bash" >&2
+      exit 1
+    fi
+    local suggested="${HOME%/}/${DEFAULT_DIR_NAME}"
+    suggested="$(printf '%s' "$suggested" | sed 's|//*|/|g')"
 
-  This usually means you ran the curl-pipe from '/'. Pick a writable directory:
-
-    cd ~                                    # install under your home directory
-    cd /tmp                                 # or a temp directory
-    curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash
-
-  Or override the path explicitly:
-
-    curl -fsSL ... | INSTALL_DIR=~/banking-demo bash
-
-EOF
-    exit 1
+    echo ""
+    echo "  The filesystem root isn't writable (macOS SIP / Linux requires sudo)."
+    echo "  Suggested install location:  ${BOLD}${suggested}${RESET}"
+    echo ""
+    if ask_yes_no "Install there instead? [Y/n] " yes; then
+      target="$suggested"
+      parent="$(dirname "$target")"
+      ok "Redirecting to ${target}"
+    else
+      info "Aborted. cd into a writable directory and re-run:"
+      echo "  cd ~ && curl -fsSL ${REPO_URL%.git}/raw/main/install.sh | bash"
+      echo "  # or pick another path explicitly:"
+      echo "  curl -fsSL ${REPO_URL%.git}/raw/main/install.sh | INSTALL_DIR=/path/to/banking-demo bash"
+      exit 0
+    fi
   fi
 
   if [[ ! -w "$parent" ]]; then
