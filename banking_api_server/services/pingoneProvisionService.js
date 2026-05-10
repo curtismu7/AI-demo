@@ -12,6 +12,12 @@ const fs = require('fs').promises;
 const path = require('path');
 const { getTokenEndpoint } = require('./oauthEndpointResolver');
 
+// Standard demo password for the bankuser / bankadmin accounts. Same value
+// shipped in setup-config.md and the demo's docs — the demo is intentionally
+// not security-sensitive, and a known-good password makes onboarding /
+// regression testing trivial.
+const DEMO_PASSWORD = '2Federate!';
+
 /**
  * Derive a well-formed email domain from the public app URL.
  *
@@ -409,6 +415,31 @@ class PingOneProvisionService {
     } catch (_e) {
       return null;
     }
+  }
+
+  /**
+   * Idempotently set a CUSTOM attribute on a resource server.
+   * If an attribute with the same name already exists, it's deleted and
+   * recreated with the new value (PingOne doesn't accept a name-collision on
+   * POST). Reserved CORE attributes (e.g. 'sub') would refuse delete and are
+   * skipped.
+   */
+  async _setResourceAttribute(resourceId, name, value) {
+    // Find existing attr by name
+    const list = await this.makeRequest('GET', `/resources/${resourceId}/attributes`);
+    const existing = (list.data._embedded?.attributes || []).find(a => a.name === name);
+    if (existing) {
+      if (existing.type === 'CORE') return existing;       // can't delete CORE
+      try {
+        await this.makeRequest('DELETE', `/resources/${resourceId}/attributes/${existing.id}`);
+      } catch (_e) { /* fall through and let POST report a duplicate */ }
+    }
+    const response = await this.makeRequest('POST', `/resources/${resourceId}/attributes`, {
+      name,
+      value,
+      type: 'CUSTOM',
+    });
+    return response.data;
   }
 
   /**
@@ -911,19 +942,21 @@ class PingOneProvisionService {
       }
       onStep(steps[steps.length - 1]);
 
-      // Step 12: Set bankuser password
-      if (!bankUserResult.exists) {
-        const bankUserPassword = this.generatePassword();
+      // Step 12: Set bankuser password — always run, even on rerun, so the
+      // documented demo password is guaranteed to work even after manual
+      // PingOne admin changes or older partial-runs that wrote a different one.
+      {
+        const bankUserPassword = DEMO_PASSWORD;
         steps.push({ step: 'bankuser-password', icon: '🔒', message: 'Setting bankuser password...' });
         onStep(steps[steps.length - 1]);
-        
-        await this.setUserPassword(bankUserResult.user.id, bankUserPassword);
+        try {
+          await this.setUserPassword(bankUserResult.user.id, bankUserPassword);
+          steps.push({ step: 'bankuser-password', icon: '✅', message: `Bankuser password set to '${bankUserPassword}'` });
+        } catch (err) {
+          steps.push({ step: 'bankuser-password', icon: '⚠️', message: `Password set failed (continuing): ${err.message}` });
+        }
         provisioned.bankUser = { ...bankUserResult.user, password: bankUserPassword };
-        
-        steps.push({ step: 'bankuser-password', icon: '✅', message: 'Bankuser password set' });
         onStep(steps[steps.length - 1]);
-      } else {
-        provisioned.bankUser = { ...bankUserResult.user, password: 'BankUser123!' };
       }
 
       // Step 13: Create demo user bankadmin
@@ -949,19 +982,19 @@ class PingOneProvisionService {
       }
       onStep(steps[steps.length - 1]);
 
-      // Step 14: Set bankadmin password
-      if (!bankAdminResult.exists) {
-        const bankAdminPassword = this.generatePassword();
+      // Step 14: Set bankadmin password — always run (see bankuser step above).
+      {
+        const bankAdminPassword = DEMO_PASSWORD;
         steps.push({ step: 'bankadmin-password', icon: '🔒', message: 'Setting bankadmin password...' });
         onStep(steps[steps.length - 1]);
-        
-        await this.setUserPassword(bankAdminResult.user.id, bankAdminPassword);
+        try {
+          await this.setUserPassword(bankAdminResult.user.id, bankAdminPassword);
+          steps.push({ step: 'bankadmin-password', icon: '✅', message: `Bankadmin password set to '${bankAdminPassword}'` });
+        } catch (err) {
+          steps.push({ step: 'bankadmin-password', icon: '⚠️', message: `Password set failed (continuing): ${err.message}` });
+        }
         provisioned.bankAdmin = { ...bankAdminResult.user, password: bankAdminPassword };
-        
-        steps.push({ step: 'bankadmin-password', icon: '✅', message: 'Bankadmin password set' });
         onStep(steps[steps.length - 1]);
-      } else {
-        provisioned.bankAdmin = { ...bankAdminResult.user, password: 'BankAdmin123!' };
       }
 
       // Step 15: Create MCP Server Application
@@ -1118,6 +1151,43 @@ class PingOneProvisionService {
         } else {
           steps.push({ step: 'mcp-exchanger-app', icon: '✅', message: 'MCP Exchanger application created' });
         }
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Step 23.5: Wire `may_act` claim as a resource attribute on the main
+      // banking resource. RFC 8693 token-exchange uses this claim to declare
+      // who is allowed to act on behalf of the user; we point it at the MCP
+      // Exchanger client id so its tokens can be used to exchange for delegated
+      // banking tokens.
+      //
+      // Implemented as a CUSTOM attribute on the resource (NOT a per-app claim
+      // — that endpoint doesn't exist in PingOne). The attribute is rebuilt on
+      // every run so a re-provisioned exchanger client id is picked up.
+      steps.push({ step: 'may-act-claim', icon: '🔧', message: 'Wiring may_act token claim → MCP Exchanger client id...' });
+      onStep(steps[steps.length - 1]);
+      try {
+        const exchangerClientId = provisioned.mcpExchangerApp?.clientId;
+        if (!exchangerClientId) {
+          steps.push({ step: 'may-act-claim', icon: '⚠️', message: 'MCP Exchanger client id missing — skipping may_act' });
+        } else {
+          await this._setResourceAttribute(
+            provisioned.resourceServer.id,
+            'may_act',
+            JSON.stringify({ sub: exchangerClientId })
+          );
+          // Same claim on the MCP resource so admin tokens for the MCP server
+          // can also be exchanged.
+          if (provisioned.mcpResourceServer?.id) {
+            await this._setResourceAttribute(
+              provisioned.mcpResourceServer.id,
+              'may_act',
+              JSON.stringify({ sub: exchangerClientId })
+            );
+          }
+          steps.push({ step: 'may-act-claim', icon: '✅', message: `may_act claim wired (actor = ${exchangerClientId})` });
+        }
+      } catch (mayActErr) {
+        steps.push({ step: 'may-act-claim', icon: '⚠️', message: `may_act claim step: ${mayActErr.message}` });
       }
       onStep(steps[steps.length - 1]);
 
