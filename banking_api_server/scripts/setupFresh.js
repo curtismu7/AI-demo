@@ -807,9 +807,28 @@ function groupEnvKeys(keys) {
 
 openLog();
 patchConsole();
+
+// Global error capture — anything that escapes main() (sync throw, async
+// rejection, native crash) still ends up in setup.log so a confused user
+// can paste a single file when asking for help.
+process.on('uncaughtException', (err) => {
+  console.error('');
+  console.error('UNCAUGHT EXCEPTION:');
+  console.error(err && err.stack ? err.stack : String(err));
+  closeLog();
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('');
+  console.error('UNHANDLED PROMISE REJECTION:');
+  console.error(reason && reason.stack ? reason.stack : String(reason));
+  closeLog();
+  process.exit(1);
+});
+
 process.on('exit', closeLog);
-process.on('SIGINT',  () => { closeLog(); process.exit(130); });
-process.on('SIGTERM', () => { closeLog(); process.exit(143); });
+process.on('SIGINT',  () => { console.error('Interrupted (SIGINT)'); closeLog(); process.exit(130); });
+process.on('SIGTERM', () => { console.error('Terminated (SIGTERM)'); closeLog(); process.exit(143); });
 
 console.log(`Logging full transcript to: ${LOG_FILE}`);
 

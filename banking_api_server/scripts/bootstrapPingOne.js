@@ -758,7 +758,24 @@ async function main() {
   }
 }
 
+// Global error capture. When bootstrap is run as a child of setupFresh, the
+// parent's runChild tees our stderr into setup.log — so all of these errors
+// land there too. When run standalone, they go to terminal stderr only.
+process.on('uncaughtException', (err) => {
+  console.error('');
+  console.error('UNCAUGHT EXCEPTION (bootstrap):');
+  console.error(err && err.stack ? err.stack : String(err));
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('');
+  console.error('UNHANDLED PROMISE REJECTION (bootstrap):');
+  console.error(reason && reason.stack ? reason.stack : String(reason));
+  process.exit(1);
+});
+
 main().catch((e) => {
   console.error(`Unexpected error: ${e.message}`);
+  if (e && e.stack) console.error(e.stack);
   process.exit(1);
 });

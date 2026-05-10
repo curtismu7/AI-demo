@@ -522,7 +522,23 @@ async function main() {
   if (envBackupPath) console.log(`  cp ${envBackupPath} ${ENV_FILE}`);
 }
 
+// Capture errors that escape main() so they print stack traces (and so when
+// invoked as a child of setupFresh, they reach setup.log via stderr tee).
+process.on('uncaughtException', (err) => {
+  console.error('');
+  console.error('UNCAUGHT EXCEPTION (import):');
+  console.error(err && err.stack ? err.stack : String(err));
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('');
+  console.error('UNHANDLED PROMISE REJECTION (import):');
+  console.error(reason && reason.stack ? reason.stack : String(reason));
+  process.exit(1);
+});
+
 main().catch((e) => {
   console.error(`Unexpected error: ${e.message}`);
+  if (e && e.stack) console.error(e.stack);
   process.exit(1);
 });
