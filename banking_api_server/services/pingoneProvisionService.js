@@ -105,7 +105,13 @@ class PingOneProvisionService {
   async initialize(envId, workerClientId, workerClientSecret, region = 'com') {
     this.envId = envId;
     this.region = region;
-    this.baseURL = `https://api.pingone.${region}/${envId}`;
+    // PingOne Management API base. Endpoint paths in this file are like
+    // '/populations', '/applications', etc. — they're appended to baseURL.
+    // The full path MUST include /v1/environments/<envId>/. A previous version
+    // was missing the /v1/environments prefix, which made every call land on
+    // an unrelated PingOne URL that responded with 403 Forbidden — looking
+    // exactly like a permission error even though the token was fine.
+    this.baseURL = `https://api.pingone.${region}/v1/environments/${envId}`;
     this.workerToken = await this.getWorkerToken(envId, workerClientId, workerClientSecret, region);
     
     // Get default population ID for user creation
@@ -152,10 +158,20 @@ class PingOneProvisionService {
       const response = await axios(config);
       return response;
     } catch (error) {
-      const errorMessage = error.response?.data?.details?.[0]?.message || 
-                          error.response?.data?.message || 
-                          error.message;
-      throw new Error(`${method} ${endpoint} failed: ${errorMessage}`);
+      // PingOne returns: { code, message, details: [{ code, message, target?, innerError? }] }
+      const status = error.response?.status;
+      const data   = error.response?.data;
+      const parts  = [`${method} ${endpoint} failed`];
+      if (status) parts.push(`HTTP ${status}`);
+      if (data?.code) parts.push(`code=${data.code}`);
+      const detailMsg = data?.details?.[0]?.message;
+      const topMsg    = data?.message;
+      if (detailMsg && detailMsg !== topMsg) parts.push(detailMsg);
+      else if (topMsg) parts.push(topMsg);
+      else if (!data && error.message) parts.push(error.message);
+      const err = new Error(parts.join(' — '));
+      err.pingone = { status, code: data?.code, details: data?.details, url };
+      throw err;
     }
   }
 
