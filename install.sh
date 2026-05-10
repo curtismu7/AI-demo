@@ -181,10 +181,30 @@ main() {
   require_cmd git "  https://git-scm.com/downloads"
   check_node
 
-  # Resolve target
-  local target="${INSTALL_DIR:-$PWD/${DEFAULT_DIR_NAME}}"
-  # Make absolute so the user sees exactly where it's going.
-  target="$( cd "$(dirname "$target")" 2>/dev/null && pwd )/$(basename "$target")"
+  # Resolve target. We have to be defensive across three cases:
+  #   1. INSTALL_DIR set (absolute or relative) → use it.
+  #   2. INSTALL_DIR unset, $PWD valid          → $PWD/banking-demo.
+  #   3. INSTALL_DIR unset, $PWD empty/missing  → fall back to `pwd` builtin.
+  #
+  # The previous implementation did `cd "$(dirname "$target")" && pwd` which
+  # returned "/" when dirname produced "/", giving us "//banking-demo".
+  local cwd="${PWD:-$(pwd 2>/dev/null)}"
+  cwd="${cwd:-$HOME}"           # last-resort fallback if both PWD and pwd fail
+  local target="${INSTALL_DIR:-${cwd}/${DEFAULT_DIR_NAME}}"
+
+  # If relative, resolve against cwd.
+  case "$target" in
+    /*) ;;                            # already absolute
+    *) target="${cwd}/${target}" ;;
+  esac
+
+  # Collapse repeated slashes (//foo, ///foo) and strip trailing slash.
+  # Bash parameter expansion's `//\/\//\/` treatment of escapes is unreliable,
+  # so we use sed — it's a coreutils binary, already required for the rest of
+  # the script and has no install-script-specific risk.
+  target="$(printf '%s' "$target" | sed 's|//*|/|g')"
+  target="${target%/}"
+  [[ -z "$target" ]] && target="/"
 
   local exists="no"
   [[ -d "$target" ]] && exists="yes"
