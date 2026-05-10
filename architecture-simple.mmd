@@ -1,16 +1,27 @@
 ---
 title: Banking Demo — Architecture (clean view)
 ---
-%% This is a simplified version of architecture.mmd intended for the
-%% /architecture/overview image. Goals: every box is readable at a glance,
-%% no nested middleware sub-graphs, only the connections that show data /
-%% token flow (no health-check or monitoring noise).
+%% Simplified architecture diagram for /architecture/overview.
+%%
+%% Two notable layout decisions:
+%%
+%%   1. Ping Authorize is its OWN column between the Gateway and the
+%%      backends, not buried inside the PingOne cloud subgraph. Every
+%%      tool call is evaluated by Authorize, and the picture should
+%%      make that gate visible.
+%%
+%%   2. There are TWO backends on the far right:
+%%        - OAuth backend (current banking_api_server): forward the
+%%          downscoped MCP token, backend introspects.
+%%        - API-key backend (aspirational): Gateway swaps in a service
+%%          API key when calling — backend never sees a user token.
+%%          Drawn with a dashed border to signal "planned / reference",
+%%          not "live today".
 %%
 %% Regenerate the PNG with:
-%%   npx -y @mermaid-js/mermaid-cli -i architecture-simple.mmd \
-%%       -o banking_api_ui/public/architecture/overview.png -w 2400 -b transparent
-%%
-%% Or paste this file into https://mermaid.live and "Download PNG".
+%%   npm run build:diagrams -- overview
+%% or from the UI: /architecture/system → Regenerate this one (overview)
+
 flowchart LR
 
     %% ── Actors (browser side) ───────────────────────────────────────────
@@ -22,62 +33,80 @@ flowchart LR
     %% ── BFF ──────────────────────────────────────────────────────────────
     BFF["banking_api_server<br/>BFF · OAuth callback · session<br/>:3001"]
 
-    %% ── Backend services ────────────────────────────────────────────────
-    MCP["banking_mcp_server<br/>Tools: accounts · balance · transactions<br/>:8080 · WebSocket"]
-    Gateway["banking_mcp_gateway<br/>Policy-aware token exchange<br/>:3005"]
+    %% ── Agent service ───────────────────────────────────────────────────
     Agent["banking_agent_service<br/>LLM tool-calling agent<br/>:3006"]
-    HITL["banking_hitl_service<br/>Human-in-the-loop consent<br/>:3009"]
 
-    %% ── Identity (cloud) ────────────────────────────────────────────────
-    subgraph PingOne["PingOne cloud"]
+    %% ── Policy-aware gateway (the credential broker) ───────────────────
+    Gateway["banking_mcp_gateway<br/>Policy-aware credential broker<br/>:3005<br/><br/>• Inbound: user token + agent actor<br/>• Outbound: backend-appropriate creds<br/>• Calls Authorize per request"]
+
+    %% ── Human-in-the-loop (out-of-band consent) ────────────────────────
+    HITL["banking_hitl_service<br/>Out-of-band consent<br/>(high-value txns)<br/>:3009"]
+
+    %% ── Ping Authorize: dedicated column for the policy gate ──────────
+    Authorize["Ping Authorize (PDP)<br/><br/>Evaluates EVERY tool call:<br/>• scope · aud · may_act<br/>• transaction amount / threshold<br/>• tool-specific risk rules<br/>↓<br/>PERMIT · DENY · INDETERMINATE"]
+
+    %% ── Two backends on the far right ─────────────────────────────────
+    subgraph Backends["Backend resource servers"]
       direction TB
-      AS["Authorization server<br/>/authorize · /token<br/>/introspect · /jwks"]
-      AZ["Ping Authorize<br/>Policy decisions<br/>(scope · aud · risk · amount)"]
+      OAuthRS["OAuth backend<br/>(banking_api_server REST + MCP)<br/><br/>Accepts: downscoped MCP token<br/>Verifies: RFC 7662 introspect<br/>Pattern: standard OAuth 2.0"]
+      APIKeyRS["API-key backend<br/>(aspirational reference)<br/><br/>Accepts: X-API-Key header<br/>Verifies: shared-secret lookup<br/>Pattern: legacy / 3rd-party APIs<br/>Key injected by Gateway"]
+    end
+
+    %% ── PingOne IAM (auth server) ───────────────────────────────────────
+    subgraph PingOne["PingOne IAM"]
+      direction TB
+      AS["Authorization server<br/>/authorize · /token<br/>/introspect · /jwks<br/><br/>RFC 6749 · 7662 · 8693"]
     end
 
     %% ── Optional LLMs ───────────────────────────────────────────────────
     LLM["LLM provider<br/>(Helix · Anthropic · OpenAI)"]
 
-    %% ── Browser → SPA → BFF ─────────────────────────────────────────────
+    %% ── Flow: browser → SPA → BFF ──────────────────────────────────────
     User -->|HTTPS| UI
     UI -->|cookie session<br/>+ proxy /api/*| BFF
 
-    %% ── BFF ↔ PingOne (OAuth) ──────────────────────────────────────────
+    %% ── BFF ↔ PingOne (OAuth handshakes) ───────────────────────────────
     BFF <-->|"OAuth 2.0 + PKCE<br/>RFC 6749 / 7636"| AS
     BFF -->|"RFC 7662 introspect"| AS
 
-    %% ── Agent flow (BFF orchestrates tool calls) ───────────────────────
-    BFF -->|"prompt<br/>+ user token"| Agent
+    %% ── Agent flow ─────────────────────────────────────────────────────
+    BFF -->|"prompt + user token"| Agent
     Agent -->|"RFC 8693 token exchange<br/>(subject = user, actor = agent)"| AS
-    Agent -->|"tool call<br/>+ TX token"| Gateway
+    Agent -->|"tool call + TX token"| Gateway
 
-    %% ── Gateway authorizes each call ──────────────────────────────────
-    Gateway -->|"PDP evaluate:<br/>scope · aud · may_act · amount"| AZ
-    Gateway -->|"RFC 8693 downscope<br/>to MCP audience"| AS
-    Gateway -->|"forwards tool call<br/>+ MCP-scoped token"| MCP
+    %% ── Gateway is the policy gate AND the credential broker ──────────
+    Gateway -->|"PDP evaluate per call:<br/>scope · aud · may_act · amount"| Authorize
+    Authorize -.->|"PERMIT · DENY ·<br/>INDETERMINATE"| Gateway
 
-    %% ── HITL out-of-band consent on high-value txns ──────────────────
+    %% ── Permitted → forwarded with the RIGHT credential per backend ───
+    Gateway -->|"RFC 8693 downscope<br/>+ MCP token"| OAuthRS
+    Gateway -.->|"X-API-Key: &lt;svc-key&gt;<br/>(no user token)"| APIKeyRS
+
+    %% ── INDETERMINATE → HITL out-of-band consent ──────────────────────
     Gateway -.->|"INDETERMINATE →<br/>request consent"| HITL
     HITL -.->|"approval / deny<br/>(CIBA-style)"| Gateway
 
-    %% ── MCP calls the banking API for actual data ─────────────────────
-    MCP -->|"REST + RS token<br/>(aud=banking_api_enduser)"| BFF
-
-    %% ── Agent talks to the LLM ────────────────────────────────────────
+    %% ── Agent talks to the LLM for tool-call decisions ────────────────
     Agent -->|"prompt + tool defs"| LLM
     LLM -.->|"tool-call decisions"| Agent
 
-    %% ── Styling: one colour per tier so the layers read at a glance ───
+    %% ── Styling: one colour per tier so layers read at a glance ──────
     classDef user      fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px
     classDef frontend  fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px
     classDef bff       fill:#fef9c3,stroke:#ca8a04,color:#713f12,stroke-width:2px
     classDef tool      fill:#f3e8ff,stroke:#7c3aed,color:#3b0764,stroke-width:2px
+    classDef authorize fill:#fed7aa,stroke:#ea580c,color:#7c2d12,stroke-width:3px
+    classDef backend   fill:#fce7f3,stroke:#be185d,color:#831843,stroke-width:2px
+    classDef planned   fill:#fce7f3,stroke:#be185d,color:#831843,stroke-width:2px,stroke-dasharray: 6 4
     classDef cloud     fill:#fef2f2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
     classDef external  fill:#f1f5f9,stroke:#475569,color:#0f172a,stroke-width:2px
 
     class User user
     class UI frontend
     class BFF bff
-    class MCP,Gateway,Agent,HITL tool
-    class AS,AZ cloud
+    class Agent,Gateway,HITL tool
+    class Authorize authorize
+    class OAuthRS backend
+    class APIKeyRS planned
+    class AS cloud
     class LLM external
