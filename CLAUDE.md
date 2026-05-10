@@ -16,6 +16,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./run-bank.sh tail all      # tail all logs interleaved
 ```
 
+### Fresh install / migration (one-command)
+
+```bash
+npm run setup:fresh                              # brand-new install
+npm run setup:fresh -- /path/to/archive.tar.gz   # migrate from another machine
+```
+
+`setup:fresh` chains: optional `data:import` (when tar passed), then `bootstrapPingOne`. The bootstrap step pops a localhost form for PingOne worker creds (or `--no-browser` for terminal). It provisions all 7 apps, 3 resource servers, ~25 scopes, 2 demo users with passwords, and writes credentials to `banking_api_server/.env` while preserving `SESSION_SECRET` so `config.db` stays decryptable. Idempotent — re-running is safe.
+
+Underlying scripts (still callable independently):
+
+```bash
+cd banking_api_server
+npm run data:import -- archive.tar.gz   # import only, no bootstrap
+npm run pingone:bootstrap               # bootstrap only, browser form
+npm run pingone:bootstrap:ci            # bootstrap from PINGONE_BOOTSTRAP_* env vars
+```
+
 **One-time setup** (needed for HTTPS on `api.pingdemo.com`):
 ```bash
 echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts

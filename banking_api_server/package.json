@@ -36,6 +36,7 @@
     "data:preflight": "node scripts/importMigrationBundle.js --preflight-only",
     "pingone:bootstrap": "node scripts/bootstrapPingOne.js",
     "pingone:bootstrap:ci": "node scripts/bootstrapPingOne.js --non-interactive",
+    "setup:fresh": "node scripts/setupFresh.js",
     "build": "echo 'API server - no build required'",
     "install-client": "cd ../banking_api_ui && npm install",
     "heroku-postbuild": "npm run install-client && npm run build"

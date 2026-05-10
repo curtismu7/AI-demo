@@ -19,7 +19,17 @@ This is a **completely standalone** project — it can be handed to anyone and r
 
 ## New Machine Setup
 
-Two paths depending on whether you are starting fresh or moving an existing configuration.
+One command for both flows — `npm run setup:fresh`. Pass a tar archive if you're migrating; skip the argument if you're starting fresh.
+
+```bash
+# Migration (you have a banking-export-*.tar.gz from another machine):
+npm run setup:fresh -- /path/to/banking-export-<timestamp>.tar.gz
+
+# Brand-new install (no archive):
+npm run setup:fresh
+```
+
+Both flows end at the same place: a working `.env`, restored data (if you imported one), provisioned PingOne resources, ready for `./run-bank.sh`. The sections below walk through the prerequisites and the full sequence.
 
 ---
 
@@ -105,13 +115,36 @@ cd /path/to/banking-demo   # if you're not already there
 
 > If nvm isn't installed at all, the script falls back to the same guidance as § 0 and exits with instructions.
 
-#### 4. Configure PingOne credentials
+#### 4. Provision PingOne (recommended) — `npm run setup:fresh`
 
-Open **[https://api.pingdemo.com:4000/configure](https://api.pingdemo.com:4000/configure)** in your browser.  
-Enter your PingOne Environment ID, admin client credentials, and user client credentials.  
-The app saves them to `config.db` — no restart needed.
+This single command creates everything PingOne needs (resource servers, scopes, applications, demo users with passwords) and writes the credentials to `banking_api_server/.env`. It pops a localhost form for your worker creds, so you don't paste secrets into a terminal.
 
-See **[docs/SETUP.md](docs/SETUP.md)** for the full PingOne app configuration (grant types, redirect URIs, scopes).
+**Step 1 (you, in PingOne Admin Console):** create a worker app with the **Identity Data Admin** role. Note the Environment ID, Region, Client ID, and Client Secret.
+
+**Step 2 (in this repo, from the root):**
+
+```bash
+npm run setup:fresh
+```
+
+The browser pops a form. Submit your four worker creds. The script:
+
+1. Provisions resource servers (`Super Banking API`, `Super Banking MCP Server`, `Super Banking MCP Gateway`)
+2. Creates ~25 scopes (`banking:*`, `admin:*`, `users:*`, `p1:*`, `banking:mcp:invoke`)
+3. Creates **7 applications** (Admin, User, MCP Server, Worker, MCP Exchanger, MCP Gateway, Agent)
+4. Creates two demo users with generated passwords (`bankuser`, `bankadmin`)
+5. Adds the `bankingPrincipalUserId` schema attribute and SPEL/may_act token claims
+6. Writes `banking_api_server/.env` with all the new client IDs and secrets (preserving your `SESSION_SECRET` so `config.db` stays decryptable)
+
+The script is **idempotent** — re-running it on a fully-provisioned environment reports "exists" for each resource and exits cleanly.
+
+**Other modes:**
+- `npm run setup:fresh -- --no-browser` — terminal prompts only (SSH / headless boxes)
+- `cd banking_api_server && npm run pingone:bootstrap:ci` with `PINGONE_BOOTSTRAP_*` env vars set — non-interactive (CI / automation)
+
+**Prefer to enter credentials manually instead?** Open **[https://api.pingdemo.com:4000/configure](https://api.pingdemo.com:4000/configure)** in your browser after `./run-bank.sh` and enter your PingOne Environment ID and OAuth client credentials. The app saves them to `config.db` — no restart needed. Note: this manual path only sets the admin/user OAuth clients. The MCP gateway and agent service still need `MCP_GW_CLIENT_ID` / `AGENT_CLIENT_ID` in `.env`, which `setup:fresh` provides automatically.
+
+See **[docs/SETUP.md](docs/SETUP.md)** for the full PingOne app configuration reference.
 
 ---
 
@@ -132,43 +165,40 @@ It excludes `sessions.db` (machine-bound) and `certs/` (must be regenerated).
 
 > **Security:** The archive contains your `.env` and database secrets. Transfer it via `scp` or encrypted USB — do not commit to git or upload to public storage.
 
-#### On Machine B — set up the machine, then import
+#### On Machine B — set up the machine, then run setup:fresh with the tar
 
 ```bash
 # 1. Node 20 in this shell (see Path A § 0 if nvm isn't loaded yet)
 nvm use 20   # or: source ~/.zshrc && nvm use 20
 
-# 2. One-time machine prep (same as Path A step 1)
+# 2. One-time machine prep (same as Path A § 1)
 brew install mkcert && mkcert -install
 echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts
 
-# 3. Clone and install
+# 3. Clone (run-bank.sh installs all deps for you on first start)
 git clone https://github.com/curtismu7/banking-demo.git
 cd banking-demo
-cd banking_api_server && npm install && cd ..
-cd banking_mcp_server  && npm install && cd ..
-cd banking_api_ui      && npm install --legacy-peer-deps && cd ..
 
-# 4. Copy the archive from Machine A, then import
-cd banking_api_server
-npm run data:import -- /path/to/banking-export-<timestamp>.tar.gz
-cd ..
+# 4. Copy the archive from Machine A, then import + provision in one step
+npm run setup:fresh -- /path/to/banking-export-<timestamp>.tar.gz
 
 # 5. Generate TLS certs (machine-bound — not in the archive)
 mkdir -p certs && cd certs && mkcert api.pingdemo.com localhost 127.0.0.1 && cd ..
 
-# 6. Start (must be in the banking-demo repo root)
+# 6. Start
 ./run-bank.sh
 ```
 
-> The export and import scripts pre-flight your Node version against the repo's `engines.node` and bail with a clear message if you're on the wrong major — so if step 4 dies with "Node major 20 required," that's the cue to fix step 1 before retrying.
+> Step 4 chains `data:import` then `pingone:bootstrap`. If your archive already has full PingOne config (a recent export with `MCP_GW_CLIENT_ID` / `AGENT_CLIENT_ID`), the bootstrap step is skipped automatically and the command exits at "import complete." If the archive is older or PingOne config is missing, the browser pops the worker-cred form so you can finish provisioning in one go.
 
-The import script:
+> The export, import, and bootstrap scripts all pre-flight your Node version against the repo's `engines.node` and bail with a clear message if you're on the wrong major — so if step 4 dies with "Node major 20 required," that's the cue to fix step 1 before retrying.
+
+What the import portion of `setup:fresh` does:
 
 - Backs up existing `data/persistent/` before writing anything
 - Restores all data files and `.env`
 - Runs a config health check and shows a rollback command if anything fails
-- Prints next steps including cert generation if certs are missing
+- Hands off to bootstrap when needed; otherwise prints "import complete" and exits
 
 #### Verify the import worked
 
