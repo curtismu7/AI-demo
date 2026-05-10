@@ -55,8 +55,13 @@
  *   Import (with tar arg)       → ON          (omit the arg to skip)
  *   Bootstrap PingOne           → ON          (always runs; see import case
  *                                              for migration short-circuit)
- *   Helix LLM config prompt     → PROMPT      --helix (force-yes) /
- *                                              --skip-helix (force-no)
+ *   Helix LLM config prompt     → PROMPT (default Yes; Enter accepts).
+ *                                              --helix to skip the prompt and
+ *                                              go straight to field collection.
+ *                                              --skip-helix to force-no.
+ *                                              In non-interactive mode (no TTY):
+ *                                              auto-configures from HELIX_* env
+ *                                              vars if present, else skips.
  *   Browser-form for creds      → ON          --no-browser to use terminal only
  *   Read PINGONE_BOOTSTRAP_*    → OFF         --non-interactive to enable (CI)
  *
@@ -150,7 +155,9 @@ Defaults this script applies (override with the listed flag):
   Cleanup prior state   PROMPT   --clean (force) / --no-clean (skip)
   Wipe PingOne env      OFF      --reset-pingone to enable
   Recreate demo apps    OFF      --recreate-apps to enable
-  Helix LLM config      PROMPT   --helix (force-yes) / --skip-helix (force-no)
+  Helix LLM config      PROMPT (default Yes — Enter accepts. --skip-helix to
+                                 force-no. CI auto-configures from HELIX_* env
+                                 vars if present, else skips silently.)
   Browser cred form     ON       --no-browser to use terminal only
   PINGONE_BOOTSTRAP_*   OFF      --non-interactive to enable (CI)
 
@@ -164,9 +171,13 @@ Flags:
                       Combine with --clean for a full local + remote reset.
   --recreate-apps     Delete existing 'Super Banking *' PingOne apps + resources
                       before creating fresh ones. Less aggressive than --reset-pingone.
-  --helix             Configure Helix LLM during setup. Prompts for the 5 fields
-                      (base_url, api_key, environment_id, agent_id, prompt_field_id),
-                      OR reads HELIX_* env vars in non-interactive mode.
+  --helix             Skip the y/n prompt and go straight to collecting the
+                      5 Helix fields (base_url, api_key, environment_id,
+                      agent_id, prompt_field_id) — interactively or from
+                      HELIX_* env vars. Useful in CI when you want to require
+                      Helix config and fail loudly if vars are missing.
+                      (Without this flag, the prompt defaults to YES and the
+                      user can press Enter to configure.)
   --skip-helix        Don't ask about Helix at all. Use when you know the agent
                       will run heuristics-only or when you'll configure later via
                       /admin/langchain-config.
@@ -569,16 +580,28 @@ async function offerCleanup() {
 // natural-language UX. Without one, the agent runs heuristic-only and falls
 // through to the generic fallback message on inputs the regex doesn't catch.
 //
-// This phase asks the user (default NO) whether they want to wire Helix
-// creds during setup. On yes, prompts for the 5 fields the runtime reads
-// (helix_base_url, helix_api_key, helix_environment_id, helix_agent_id,
-// helix_prompt_field_id) and persists them to configStore (which encrypts
-// the api_key at rest using SESSION_SECRET / CONFIG_ENCRYPTION_KEY).
+// This phase asks the user (default YES — Helix is the recommended setup)
+// whether they want to wire Helix creds during setup. On yes, prompts for the
+// 5 fields the runtime reads (helix_base_url, helix_api_key,
+// helix_environment_id, helix_agent_id, helix_prompt_field_id) and persists
+// them to configStore (which encrypts the api_key at rest using
+// SESSION_SECRET / CONFIG_ENCRYPTION_KEY).
 //
-// Non-interactive mode (--helix flag, no TTY): reads HELIX_BASE_URL /
-// HELIX_API_KEY / HELIX_ENVIRONMENT_ID / HELIX_AGENT_ID /
-// HELIX_PROMPT_FIELD_ID env vars. Missing required vars fail the phase
-// with a clear message; the rest of setup continues.
+// Non-interactive mode (no TTY, e.g. --from-installer + curl-pipe, CI):
+// auto-configures from HELIX_* env vars when present, else skips silently —
+// matches how PINGONE_BOOTSTRAP_* works. To force-collect creds in CI, pass
+// --helix and provide HELIX_BASE_URL / HELIX_API_KEY / HELIX_ENVIRONMENT_ID /
+// HELIX_AGENT_ID / HELIX_PROMPT_FIELD_ID.
+
+function helixEnvVarsPresent() {
+  return Boolean(
+    process.env.HELIX_BASE_URL &&
+    process.env.HELIX_API_KEY &&
+    process.env.HELIX_ENVIRONMENT_ID &&
+    process.env.HELIX_AGENT_ID &&
+    process.env.HELIX_PROMPT_FIELD_ID
+  );
+}
 
 async function configureHelix() {
   if (SKIP_HELIX) {
@@ -586,10 +609,22 @@ async function configureHelix() {
     return;
   }
 
-  // Decide whether to prompt at all. --helix forces yes; absence + no flag
-  // means we ASK the user.
-  let proceed = FORCE_HELIX;
-  if (!FORCE_HELIX) {
+  // Non-interactive (no TTY, no --helix): auto-configure if HELIX_* env vars
+  // are present, otherwise skip silently. Mirrors PINGONE_BOOTSTRAP_*.
+  const interactive = process.stdin.isTTY || fs.existsSync('/dev/tty');
+  if (!interactive && !FORCE_HELIX) {
+    if (helixEnvVarsPresent()) {
+      // Fall through to the field-collection block; it already reads from env.
+    } else {
+      skip('Helix not configured (non-interactive, HELIX_* env vars not set) — agent will run heuristics-only');
+      return;
+    }
+  }
+
+  // Decide whether to prompt. --helix forces yes; HELIX_* env-var auto-config
+  // path skips the prompt; otherwise ASK the user (default YES).
+  let proceed = FORCE_HELIX || (!interactive && helixEnvVarsPresent());
+  if (!proceed) {
     console.log('');
     console.log('  PingOne Helix Agents power the natural-language UX in the banking agent.');
     console.log('  Without one, the agent runs heuristic-only — it answers common phrases');
@@ -599,7 +634,7 @@ async function configureHelix() {
     console.log('  Need: a Helix agent + API key from your PingOne tenant.');
     console.log('  Find them at: https://console.pingone.com → Helix → Agents.');
     console.log('');
-    proceed = await readlineQuestion('Configure Helix LLM now?', /* defaultYes */ false);
+    proceed = await readlineQuestion('Configure Helix LLM now?', /* defaultYes */ true);
   }
 
   if (!proceed) {
@@ -1174,7 +1209,9 @@ Defaults this script applies (override with the listed flag):
   Cleanup prior state   PROMPT   --clean (force) / --no-clean (skip)
   Wipe PingOne env      OFF      --reset-pingone to enable
   Recreate demo apps    OFF      --recreate-apps to enable
-  Helix LLM config      PROMPT   --helix (force-yes) / --skip-helix (force-no)
+  Helix LLM config      PROMPT (default Yes — Enter accepts. --skip-helix to
+                                 force-no. CI auto-configures from HELIX_* env
+                                 vars if present, else skips silently.)
   Browser cred form     ON       --no-browser to use terminal only
   PINGONE_BOOTSTRAP_*   OFF      --non-interactive to enable (CI)
 
