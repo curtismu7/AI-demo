@@ -750,6 +750,18 @@ const authenticateToken = async (req, res, next) => {
       );
       const sessionRole = sessionMatchesSub ? su.role : null;
       const derivedRole = (isAdminClient || sessionRole === 'admin') ? 'admin' : 'user';
+      // `is_delegate` is the demo's user-attribute-driven delegation flag,
+      // emitted as a SPEL token claim from the Super Banking API resource
+      // (value = ${user.isDelegate}). PingOne user attributes are STRING-only,
+      // so the value arrives as the literal string "true" / "false" — coerce
+      // here so downstream code can do straight boolean checks. Distinct from
+      // RFC 8693 `act` claim (handled below as `isDelegated`).
+      const isBankDelegate =
+        decoded.is_delegate === true ||
+        decoded.is_delegate === 'true' ||
+        decoded.isDelegate === true ||
+        decoded.isDelegate === 'true';
+
       req.user = {
         id: decoded.sub,
         sub: decoded.sub,
@@ -766,7 +778,13 @@ const authenticateToken = async (req, res, next) => {
         scopes: scopes,
         // RFC 8693 delegation: enrich req.user when token carries an act claim
         isDelegated: !!decoded.act,
-        actor: decoded.act || null     // { sub: <actor_client_id> } or { sub, act: { sub: ... } } for nested
+        actor: decoded.act || null,    // { sub: <actor_client_id> } or { sub, act: { sub: ... } } for nested
+        // Demo banking-delegate flag (separate from RFC 8693 isDelegated).
+        // True for users with isDelegate=true on their PingOne profile.
+        // Used by requireNotBankDelegate middleware to gate write operations
+        // that delegates aren't authorized to perform (transfers, payments,
+        // account create/delete, profile edits).
+        isBankDelegate,
       };
       
       return next();
@@ -1024,6 +1042,42 @@ const requireSession = (req, res, next) => {
   next();
 };
 
+/**
+ * Block bankDelegate users from a route.
+ *
+ * Reads req.user.isBankDelegate (set in authenticateToken from the
+ * is_delegate / isDelegate token claim) and returns 403 when true.
+ *
+ * Demo policy: bankDelegate can read account details + balances and make
+ * deposits, but cannot transfer, pay bills, create or close accounts, or
+ * change their own profile. Apply this middleware to the routes that
+ * delegates aren't authorized for.
+ *
+ * Operative AFTER authenticateToken — req.user must already be populated.
+ */
+const requireNotBankDelegate = (operationLabel = 'this operation') => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'unauthenticated', message: 'Authentication required.' });
+  }
+  if (req.user.isBankDelegate === true) {
+    logger.warn(LOG_CATEGORIES.AUTHORIZATION, 'Delegate user blocked from restricted operation', {
+      userId: req.user.id,
+      username: req.user.username,
+      path: req.path,
+      method: req.method,
+      operation: operationLabel,
+    });
+    return res.status(403).json({
+      error: 'forbidden_for_delegate',
+      message: `Delegated users are not authorized to perform ${operationLabel}. Delegates can read accounts and make deposits.`,
+      code: 'DELEGATE_RESTRICTED',
+      allowed: ['read accounts', 'read balances', 'view account profile', 'deposit funds'],
+      restricted: ['transfers', 'payments', 'account create/delete', 'profile changes'],
+    });
+  }
+  return next();
+};
+
 module.exports = {
   authenticateToken,
   requireSession,
@@ -1032,6 +1086,7 @@ module.exports = {
   requireEndUser,
   requireAIAgent,
   requireDelegation,
+  requireNotBankDelegate,
   requireScopes,
   verifyPassword,
   hashPassword,

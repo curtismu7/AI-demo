@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const dataStore = require('../data/store');
-const { requireAdmin, requireOwnershipOrAdmin, requireAIAgent, authenticateToken, requireScopes, hashPassword } = require('../middleware/auth');
+const { requireAdmin, requireOwnershipOrAdmin, requireAIAgent, authenticateToken, requireScopes, requireNotBankDelegate, hashPassword } = require('../middleware/auth');
 const { blockInDemoMode, isDemoMode } = require('../middleware/demoMode');
 const pingOneUserService = require('../services/pingOneUserService');
 
@@ -157,7 +157,7 @@ router.post('/', blockInDemoMode('user creation'), authenticateToken, requireSco
 });
 
 // Update user
-router.put('/:userId', authenticateToken, requireScopes(['banking:write']), requireOwnershipOrAdmin, async (req, res) => {
+router.put('/:userId', authenticateToken, requireScopes(['banking:write']), requireOwnershipOrAdmin, requireNotBankDelegate('profile changes'), async (req, res) => {
   try {
     const { userId } = req.params;
     const updates = req.body;

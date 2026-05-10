@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const dataStore = require('../data/store');
-const { authenticateToken, requireScopes } = require('../middleware/auth');
+const { authenticateToken, requireScopes, requireNotBankDelegate } = require('../middleware/auth');
 const { blockInDemoMode } = require('../middleware/demoMode');
 const demoScenarioStore = require('../services/demoScenarioStore');
 const posthog = require('../services/posthog');
@@ -372,7 +372,7 @@ router.get('/:id/balance', authenticateToken, requireScopes(['banking:read']), a
 });
 
 // Create new account (admin only)
-router.post('/', blockInDemoMode('account creation'), authenticateToken, requireScopes(['banking:write']), async (req, res) => {
+router.post('/', blockInDemoMode('account creation'), authenticateToken, requireScopes(['banking:write']), requireNotBankDelegate('account creation'), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -390,7 +390,7 @@ router.post('/', blockInDemoMode('account creation'), authenticateToken, require
 });
 
 // Update account (admin only)
-router.put('/:id', blockInDemoMode('account update'), authenticateToken, requireScopes(['banking:write']), async (req, res) => {
+router.put('/:id', blockInDemoMode('account update'), authenticateToken, requireScopes(['banking:write']), requireNotBankDelegate('account update'), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -411,7 +411,7 @@ router.put('/:id', blockInDemoMode('account update'), authenticateToken, require
 });
 
 // Delete account (admin only)
-router.delete('/:id', blockInDemoMode('account deletion'), authenticateToken, requireScopes(['banking:write']), async (req, res) => {
+router.delete('/:id', blockInDemoMode('account deletion'), authenticateToken, requireScopes(['banking:write']), requireNotBankDelegate('account deletion'), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {

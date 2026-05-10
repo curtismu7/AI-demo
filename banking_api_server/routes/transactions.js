@@ -289,6 +289,23 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
+    // Delegate-user gate: bankDelegate can deposit but cannot transfer,
+    // withdraw, or pay. Read-only ops (GET balances, GET account details)
+    // are unaffected by this — they're already gated by `banking:read` scope.
+    if (req.user.isBankDelegate === true) {
+      const requestedType = String(req.body.type || '').toLowerCase();
+      const ALLOWED_FOR_DELEGATE = new Set(['deposit']);
+      if (!ALLOWED_FOR_DELEGATE.has(requestedType)) {
+        return res.status(403).json({
+          error: 'forbidden_for_delegate',
+          message: `Delegated users cannot perform '${requestedType}' transactions. Allowed: deposit.`,
+          code: 'DELEGATE_RESTRICTED',
+          allowed: ['deposit'],
+          restricted: ['transfer', 'withdrawal', 'payment'],
+        });
+      }
+    }
+
     // Resolve account type names (e.g., "checking") to account IDs before lookups
     const userAccounts = dataStore.getAccountsByUserId(req.user.id);
     if (fromAccountId) {
