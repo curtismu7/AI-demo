@@ -80,6 +80,7 @@ const authorizeRoutes = require('./routes/authorize');
 const authorizeConfigRoutes = require('./routes/authorizeConfig');
 const setupRoutes = require('./routes/setup');
 const setupWizardRoutes = require('./routes/setupWizard');
+const diagramsRoutes = require('./routes/diagrams');
 const devToolsRoutes = require('./routes/devTools');
 const selfServiceUsersRoutes = require('./routes/selfServiceUsers');
 const {
@@ -867,6 +868,7 @@ app.use('/api/demo-scenario', authenticateToken, demoScenarioRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/admin/management', adminManagementRoutes);
 app.use('/api/admin/setup', setupWizardRoutes);
+app.use('/api/admin/diagrams', authenticateToken, diagramsRoutes);
 app.use('/api/dev', devToolsRoutes);
 app.use('/api/clients', authenticateToken, clientRegistrationRoutes);
 app.use('/api/oauth/clients', authenticateToken, oauthClientsRoutes);
