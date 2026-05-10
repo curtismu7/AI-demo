@@ -75,6 +75,8 @@ Usage:
   node scripts/bootstrapPingOne.js                    Interactive (browser, terminal fallback)
   node scripts/bootstrapPingOne.js --no-browser       Force terminal prompts
   node scripts/bootstrapPingOne.js --non-interactive  Read creds from env vars
+  node scripts/bootstrapPingOne.js --recreate-apps    Delete existing 'Super Banking *'
+                                                       apps + resources before creating
 
 Step 1: Create a PingOne worker app with the "Identity Data Admin" role.
 Step 2: Run this script. By default it pops a localhost form for the three creds
@@ -103,6 +105,9 @@ checkNodeVersion();
 
 const NON_INTERACTIVE = args.includes('--non-interactive') || !!process.env.CI;
 const NO_BROWSER = args.includes('--no-browser');
+// --recreate-apps: before provisioning, delete every 'Super Banking *' app
+// and every resource we'd create. Use when changing hostname / starting clean.
+const RECREATE_APPS = args.includes('--recreate-apps');
 
 // ── Prompts ──────────────────────────────────────────────────────────────────
 
@@ -629,6 +634,86 @@ or via \`scripts/pingone-audit-249.js\` (see CLAUDE.md).
   }
 }
 
+// ── Recreate-apps: wipe before provisioning ────────────────────────────────
+//
+// Deletes every PingOne application and resource server we'd create, by name
+// match against the canonical 'Super Banking *' names. Useful when:
+//   - hostname changed → existing apps have stale redirect URIs
+//   - resource audiences were misconfigured → easier to rebuild than patch
+//   - PingOne tenant got into a weird state from earlier broken runs
+//
+// Idempotent: missing items are silently skipped. Errors per item don't abort
+// the wipe — we report a summary at the end.
+
+const PROVISIONED_APP_NAMES = [
+  'Super Banking Admin App',
+  'Super Banking User App',
+  'Super Banking MCP Server',
+  'Super Banking Worker',
+  'Super Banking MCP Exchanger',
+  'Super Banking MCP Gateway',
+  'Super Banking Agent',
+];
+
+const PROVISIONED_RESOURCE_NAMES = [
+  'Super Banking API',
+  'Super Banking MCP Server',
+  'Super Banking MCP Gateway',
+];
+
+async function wipeExistingResources(creds) {
+  const { PingOneProvisionService } = require('../services/pingoneProvisionService');
+  const svc = new PingOneProvisionService();
+  await svc.initialize(creds.envId, creds.workerClientId, creds.workerClientSecret, creds.region);
+
+  console.log('');
+  console.log('▶ Pre-wipe (--recreate-apps)');
+  console.log(`  ${'─'.repeat(56)}`);
+
+  let appsDeleted = 0, appsMissing = 0, appsFailed = 0;
+  let resourcesDeleted = 0, resourcesMissing = 0, resourcesFailed = 0;
+
+  // Delete applications first — resources can't be deleted while apps still
+  // hold scope grants against them.
+  const apps = (await svc.makeRequest('GET', '/applications')).data._embedded?.applications || [];
+  for (const name of PROVISIONED_APP_NAMES) {
+    const found = apps.find(a => a.name === name);
+    if (!found) { appsMissing++; continue; }
+    try {
+      await svc.makeRequest('DELETE', `/applications/${found.id}`);
+      console.log(`  🗑️   Deleted app: ${name}`);
+      appsDeleted++;
+    } catch (err) {
+      console.log(`  ⚠️   Failed to delete app ${name}: ${err.message}`);
+      appsFailed++;
+    }
+  }
+
+  const resources = (await svc.makeRequest('GET', '/resources')).data._embedded?.resources || [];
+  for (const name of PROVISIONED_RESOURCE_NAMES) {
+    const found = resources.find(r => r.name === name);
+    if (!found) { resourcesMissing++; continue; }
+    try {
+      await svc.makeRequest('DELETE', `/resources/${found.id}`);
+      console.log(`  🗑️   Deleted resource server: ${name}`);
+      resourcesDeleted++;
+    } catch (err) {
+      console.log(`  ⚠️   Failed to delete resource ${name}: ${err.message}`);
+      resourcesFailed++;
+    }
+  }
+
+  console.log('');
+  console.log(`  Pre-wipe summary: ${appsDeleted}/${PROVISIONED_APP_NAMES.length} apps deleted, ` +
+              `${resourcesDeleted}/${PROVISIONED_RESOURCE_NAMES.length} resources deleted, ` +
+              `${appsMissing + resourcesMissing} not found, ` +
+              `${appsFailed + resourcesFailed} errors`);
+  if (appsFailed + resourcesFailed > 0) {
+    console.log('  (Provisioning will continue. Errors above usually mean a dependency');
+    console.log('  prevented the delete; the wizard will detect the leftover and reuse it.)');
+  }
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -711,6 +796,12 @@ async function main() {
 
     console.log(`  ${icon}  ${msg}`);
   };
+
+  // Optionally wipe existing Super Banking resources before provisioning.
+  // Used when changing hostname or wanting a guaranteed-clean tenant.
+  if (RECREATE_APPS) {
+    await wipeExistingResources(creds);
+  }
 
   try {
     const result = await provisionEnvironment(creds, onStep);

@@ -82,6 +82,9 @@ Flags:
   --yes               Skip the install-directory confirmation prompt.
   --clean             Wipe stale state (.env, data/persistent, certs) WITHOUT prompting.
   --no-clean          Keep stale state without prompting (skip cleanup).
+  --recreate-apps     Delete existing 'Super Banking *' PingOne apps + resources
+                      before creating fresh ones. Use when changing hostname or
+                      wanting a guaranteed-clean tenant.
   --from-installer    (Internal — set by install.sh; skips dir confirm.)
   --no-browser        Skip the localhost form; prompt in terminal only.
   --non-interactive   Read PINGONE_BOOTSTRAP_* env vars (CI).
