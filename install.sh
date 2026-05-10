@@ -101,7 +101,11 @@ confirm_dir() {
   echo "  Branch:      ${BRANCH}"
   echo "  Install to:  ${BOLD}${target}${RESET}"
   if [[ "$exists" == "yes" ]]; then
-    echo "               (directory exists — will git pull instead of clone)"
+    if [[ -d "$target/.git" ]]; then
+      echo "               (existing checkout — will fetch latest if remote matches)"
+    else
+      echo "               (directory exists — will refuse to clobber if non-empty)"
+    fi
   else
     echo "               (directory will be created)"
   fi
@@ -152,7 +156,35 @@ ask_yes_no() {
 
 clone_or_update() {
   local dir="$1"
+
+  # Existing-target handling:
+  #   - $dir doesn't exist        → fresh clone (the happy path)
+  #   - $dir is a file             → refuse (user pointed at a regular file)
+  #   - $dir/.git exists, remote matches → fetch + ff-only pull
+  #   - $dir/.git exists, remote different → refuse (probably a fork/unrelated repo)
+  #   - $dir exists but is not a git repo → refuse unless empty
+  if [[ -e "$dir" && ! -d "$dir" ]]; then
+    err "Path exists and is not a directory: ${dir}"
+    echo "" >&2
+    echo "  Remove or rename it, then re-run." >&2
+    exit 1
+  fi
+
   if [[ -d "$dir/.git" ]]; then
+    # Verify the existing checkout actually points at this repo. If it points
+    # somewhere else (a fork, an unrelated project), pulling could destroy work.
+    local existing_remote
+    existing_remote="$( cd "$dir" && git remote get-url origin 2>/dev/null || echo '' )"
+    if [[ -n "$existing_remote" && "$existing_remote" != "$REPO_URL" ]]; then
+      err "Existing git repo at ${dir} has a different remote:"
+      echo "    expected: ${REPO_URL}" >&2
+      echo "    found:    ${existing_remote}" >&2
+      echo "" >&2
+      echo "  This is likely an unrelated checkout (a fork? a different project?)." >&2
+      echo "  Pick a different install path, or remove ${dir} and re-run:" >&2
+      echo "    curl -fsSL ${REPO_URL%.git}/raw/main/install.sh | INSTALL_DIR=/some/other/path bash" >&2
+      exit 1
+    fi
     info "Existing checkout found — fetching latest ${BRANCH}..."
     if [[ "${DRY_RUN:-0}" == "1" ]]; then
       echo "  DRY: cd $dir && git fetch origin $BRANCH && git checkout $BRANCH && git pull --ff-only"
@@ -160,15 +192,39 @@ clone_or_update() {
       ( cd "$dir" && git fetch origin "$BRANCH" --quiet && git checkout "$BRANCH" --quiet && git pull --ff-only --quiet )
     fi
     ok "Updated $dir to latest $BRANCH"
-  else
-    info "Cloning ${REPO_URL} into ${dir}..."
-    if [[ "${DRY_RUN:-0}" == "1" ]]; then
-      echo "  DRY: git clone --branch $BRANCH $REPO_URL $dir"
-    else
-      git clone --branch "$BRANCH" --quiet "$REPO_URL" "$dir"
-    fi
-    ok "Cloned to $dir"
+    return 0
   fi
+
+  if [[ -d "$dir" ]]; then
+    # Directory exists but isn't a git checkout. Empty dirs we'll use; non-empty
+    # dirs we refuse so we don't clobber whatever's there.
+    local entry_count
+    entry_count=$(find "$dir" -mindepth 1 -maxdepth 1 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "$entry_count" != "0" ]]; then
+      err "Directory exists and is not a git checkout: ${dir}"
+      echo "" >&2
+      echo "  ${dir} contains ${entry_count} file(s) we don't recognize." >&2
+      echo "  This is probably an unrelated directory we shouldn't touch." >&2
+      echo "" >&2
+      echo "  Either remove it:" >&2
+      echo "    rm -rf ${dir}" >&2
+      echo "  Or install somewhere else:" >&2
+      echo "    curl -fsSL ${REPO_URL%.git}/raw/main/install.sh | INSTALL_DIR=/some/other/path bash" >&2
+      exit 1
+    fi
+    # Empty existing dir — git clone refuses to clone INTO an existing dir,
+    # so we remove the empty dir first. Safe because we just verified it's empty.
+    info "Removing empty target directory before clone: ${dir}"
+    [[ "${DRY_RUN:-0}" == "1" ]] || rmdir "$dir"
+  fi
+
+  info "Cloning ${REPO_URL} into ${dir}..."
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    echo "  DRY: git clone --branch $BRANCH $REPO_URL $dir"
+  else
+    git clone --branch "$BRANCH" --quiet "$REPO_URL" "$dir"
+  fi
+  ok "Cloned to $dir"
 }
 
 # ── Hand off to setup:fresh ───────────────────────────────────────────────────
