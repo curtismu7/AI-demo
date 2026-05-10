@@ -1266,11 +1266,12 @@ function printDone({ ranBootstrap, fromTar }) {
   console.log(`      ${YELLOW}${BOLD}https://api.ping.demo:4000/dashboard${RESET}   ${DIM}end-user portal${RESET}`);
   console.log(`      ${YELLOW}${BOLD}https://api.ping.demo:4000/admin${RESET}       ${DIM}admin portal${RESET}`);
   console.log('');
-  console.log(`  ${BOLD}3.  Sign in with one of these demo users${RESET} ${DIM}(all passwords: 2Federate!):${RESET}`);
+  console.log(`  ${BOLD}3.  Sign in with one of these demo users${RESET} ${DIM}(username / password — role):${RESET}`);
   console.log('');
-  console.log(`      ${GREEN}${BOLD}bankuser${RESET}      ${DIM}— end-user dashboard${RESET}`);
-  console.log(`      ${GREEN}${BOLD}bankadmin${RESET}     ${DIM}— admin portal${RESET}`);
-  console.log(`      ${GREEN}${BOLD}bankDelegate${RESET}  ${DIM}— delegated user (deposit-only)${RESET}`);
+  console.log(`      ${BOLD}Username${RESET}        ${BOLD}Password${RESET}        ${BOLD}Role${RESET}`);
+  console.log(`      ${GREEN}${BOLD}bankuser${RESET}        ${GREEN}${BOLD}2Federate!${RESET}      ${DIM}End-user dashboard (customer)${RESET}`);
+  console.log(`      ${GREEN}${BOLD}bankadmin${RESET}       ${GREEN}${BOLD}2Federate!${RESET}      ${DIM}Admin portal (staff)${RESET}`);
+  console.log(`      ${GREEN}${BOLD}bankDelegate${RESET}    ${GREEN}${BOLD}2Federate!${RESET}      ${DIM}Delegated user (read + deposit only)${RESET}`);
   console.log('');
   console.log(`${BOLD}${CYAN}${HR}${RESET}`);
   console.log('');
