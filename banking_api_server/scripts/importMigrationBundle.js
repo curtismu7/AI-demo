@@ -371,16 +371,18 @@ async function main() {
   delete require.cache[configStorePath];
 
   let configStore;
+  let pingoneConfigured = false;
+  let pingoneUserConfigured = false;
   try {
     configStore = require('../services/configStore');
     await configStore.ensureInitialized();
 
-    const configured = configStore.isConfigured();
-    const userConfigured = configStore.isUserOAuthConfigured();
+    pingoneConfigured = configStore.isConfigured();
+    pingoneUserConfigured = configStore.isUserOAuthConfigured();
 
-    if (configured && userConfigured) {
+    if (pingoneConfigured && pingoneUserConfigured) {
       console.log('Config OK: environment_id, admin_client_id, and user_client_id are all set');
-    } else if (configured) {
+    } else if (pingoneConfigured) {
       console.log('Config partial: environment_id and admin_client_id set, but user_client_id missing');
     } else {
       console.log('Config incomplete: environment_id or admin_client_id missing');
@@ -434,6 +436,22 @@ async function main() {
     !fs.existsSync(path.join(REPO_ROOT, dir, 'node_modules'))
   );
 
+  // Detect missing PingOne provisioning. The wizard provisions both PingOne resources
+  // (apps/scopes/users) AND writes the env vars the gateway/agent need to start.
+  // We nudge the user to it when:
+  //   (a) configStore says PingOne isn't configured (no env_id / admin_client_id), OR
+  //   (b) MCP_GW_CLIENT_ID or AGENT_CLIENT_ID are absent — :3005 / :3006 will fail to start otherwise.
+  let needsBootstrap = !pingoneConfigured || !pingoneUserConfigured;
+  if (!needsBootstrap && fs.existsSync(ENV_FILE)) {
+    try {
+      const envText = fs.readFileSync(ENV_FILE, 'utf8');
+      const has = (key) => new RegExp(`^${key}=\\S`, 'm').test(envText);
+      if (!has('MCP_GW_CLIENT_ID') || !has('AGENT_CLIENT_ID')) {
+        needsBootstrap = true;
+      }
+    } catch (_e) { /* if .env unreadable, configStore would have already errored above */ }
+  }
+
   console.log('Next steps:');
   let stepNum = 1;
   if (siblingsMissingDeps.length > 0) {
@@ -454,6 +472,14 @@ async function main() {
     console.log('');
   }
   console.log(`  ${stepNum++}. Start the server:  ./run-bank.sh`);
+  if (needsBootstrap) {
+    console.log(`  ${stepNum++}. Provision PingOne (creates apps, scopes, users; writes MCP_GW / AGENT creds):`);
+    console.log('       Log in as admin, then visit:  https://api.pingdemo.com:4000/setup/wizard');
+    console.log('       You will need PingOne management worker creds (env id, region, client id, secret).');
+    console.log('       After provisioning, restart the server so the new .env vars take effect:');
+    console.log('         ./run-bank.sh restart');
+    console.log('');
+  }
   console.log(`  ${stepNum++}. Visit /configure   — page will show "Import verified" if config is OK`);
   console.log('');
   console.log('To rollback:');
