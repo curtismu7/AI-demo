@@ -887,10 +887,53 @@ async function main() {
     console.log('    banking_api_server/.env       all PingOne credentials');
     if (configPath) console.log(`    ${path.relative(process.cwd(), configPath).padEnd(30)}reference dump (resource IDs, demo creds, all non-secret config)`);
     console.log('');
-    console.log('  Restart services so they pick up the new .env values:');
-    console.log('    ./run-bank.sh restart');
+
+    // Offer to auto-run ./run-bank.sh restart so the running services pick up
+    // the new .env. Skipped under --non-interactive (CI / scripted runs print
+    // the instruction and exit). The repo root is two levels up from this
+    // script: banking_api_server/scripts/bootstrapPingOne.js → repo root.
+    const REPO_ROOT = path.resolve(__dirname, '..', '..');
+    const runBankSh = path.join(REPO_ROOT, 'run-bank.sh');
+    const runBankAvailable = require('fs').existsSync(runBankSh);
+
+    if (NON_INTERACTIVE || !runBankAvailable) {
+      console.log('  Restart services so they pick up the new .env values:');
+      console.log(`    cd ${REPO_ROOT} && ./run-bank.sh restart`);
+      console.log('');
+      process.exit(0);
+    }
+
+    // Interactive — prompt to run it now.
+    const tty = getInteractiveInput();
+    const rl = readline.createInterface({ input: tty.stream, output: process.stdout, terminal: true });
+    const answer = await prompt(rl, 'Restart services now? [Y/n]');
+    rl.close();
+    if (tty.opened) try { tty.stream.destroy(); } catch (_e) {}
+
+    const trimmed = String(answer || '').trim();
+    const yes = trimmed === '' || /^y(es)?$/i.test(trimmed);
+    if (!yes) {
+      console.log('');
+      console.log('  Skipping. Restart later with:');
+      console.log(`    cd ${REPO_ROOT} && ./run-bank.sh restart`);
+      console.log('');
+      process.exit(0);
+    }
+
     console.log('');
-    process.exit(0);
+    console.log(`  Running: ${runBankSh} restart`);
+    console.log('');
+    const restartResult = require('child_process').spawnSync(runBankSh, ['restart'], {
+      cwd: REPO_ROOT,
+      stdio: 'inherit',
+    });
+    if (restartResult.error) {
+      console.error('');
+      console.error(`  Failed to spawn run-bank.sh: ${restartResult.error.message}`);
+      console.error(`  Run it manually: cd ${REPO_ROOT} && ./run-bank.sh restart`);
+      process.exit(1);
+    }
+    process.exit(restartResult.status || 0);
   } catch (err) {
     console.log('');
     console.log('═'.repeat(60));
