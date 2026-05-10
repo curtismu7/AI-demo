@@ -17,11 +17,20 @@
  * @type {Record<string, string>}
  */
 module.exports = {
-  pingone_environment_id: 'd02d2305-f445-406d-82ee-7cdbf6eeabfd',
-  admin_client_id:        '949a748e-4dd0-44a3-944e-721ee1e3ca16',
-  user_client_id:         '5df1fbdb-0f2e-46b1-a5bb-86f456e83620',
-  pingone_worker_client_id:              '95dc946f-5e0a-4a8b-a8ba-b587b244e005',
-  pingone_mcp_token_exchanger_client_id: '6380065f-f328-41c2-81ed-1daeec811285',
+  // Empty by default. Each install runs `npm run setup:fresh`, which writes
+  // real values into banking_api_server/.env. The values here are only used
+  // when both runtime config (KV/SQLite) AND env vars are absent — and in
+  // that state the app is unconfigured anyway, so falling back to ANY
+  // hardcoded UUID here is wrong (it always points at someone else's tenant
+  // and produces "NOT_FOUND" sign-on errors that look unexplained).
+  //
+  // If you're forking this for a specific deployment, fill in the public
+  // identifiers below — but never commit client secrets.
+  pingone_environment_id: '',
+  admin_client_id:        '',
+  user_client_id:         '',
+  pingone_worker_client_id:              '',
+  pingone_mcp_token_exchanger_client_id: '',
   /** Redirect URIs are derived from the public app URL at runtime. */
   admin_redirect_uri: '',
   user_redirect_uri:  '',
