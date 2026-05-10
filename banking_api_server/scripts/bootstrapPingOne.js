@@ -902,11 +902,12 @@ async function main() {
     const tty = getInteractiveInput();
     const rl = readline.createInterface({ input: tty.stream, output: process.stdout, terminal: true });
     // Default Yes — the user just pasted creds; pressing Enter to proceed is
-    // the expected path. Anything other than empty / y / yes aborts.
-    const confirm = await prompt(rl, 'Proceed with provisioning?', { defaultValue: 'y' });
+    // the expected path. Capital Y in [Y/n] indicates Enter accepts.
+    const confirm = await prompt(rl, 'Proceed with provisioning? [Y/n]');
     rl.close();
     if (tty.opened) try { tty.stream.destroy(); } catch (_e) {}
     const answer = String(confirm).trim().toLowerCase();
+    // Empty input = default Yes. Only an explicit non-yes answer aborts.
     if (answer && !/^y(es)?$/.test(answer)) {
       console.log('Aborted by user.');
       process.exit(2);
@@ -945,7 +946,11 @@ async function main() {
       console.log('');
       console.log('    (preserving only the worker app being used to authenticate)');
       console.log('');
-      const answer = await prompt(rl, 'Wipe this environment?');
+      // Capital N in [y/N] makes it visually clear default is "no" — wipe
+      // is destructive, so empty Enter must abort, not proceed. We don't
+      // pass defaultValue here; empty input falls through to the regex check
+      // below which only matches y/yes.
+      const answer = await prompt(rl, 'Wipe this environment? [y/N]');
       rl.close();
       if (tty.opened) try { tty.stream.destroy(); } catch (_e) {}
       const a = String(answer).trim().toLowerCase();
