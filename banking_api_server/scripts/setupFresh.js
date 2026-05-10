@@ -714,6 +714,11 @@ async function configureHelix() {
     { key: 'helix_api_key',          label: 'Helix API Key',                                       envVar: 'HELIX_API_KEY',          required: true, secret: true },
   ];
 
+  // First-prompt hint — explain skip/cancel up front so the user knows the
+  // escape hatches before they're staring at an empty Base URL prompt.
+  console.log('  Type "skip" at any prompt to abandon Helix config and continue without it.');
+  console.log('');
+
   const values = {};
   for (const f of fields) {
     const fromEnv = process.env[f.envVar];
@@ -723,11 +728,25 @@ async function configureHelix() {
       console.log(`  ${f.label}: ${display}  (from $${f.envVar})`);
       continue;
     }
-    // Interactive — prompt for it.
-    const v = await readlineFreeText(f.label, { secret: f.secret });
-    if (!v && f.required) {
-      fail(`${f.label} is required. Aborting Helix configuration.`);
-      return;
+
+    // Interactive — re-prompt until we get a non-empty answer, the user
+    // types "skip", or they Ctrl-C. Empty-input bail-outs that surprise
+    // the user mid-flow are the main complaint we're fixing here.
+    let v;
+    while (true) {
+      v = await readlineFreeText(f.label, { secret: f.secret });
+      const trimmed = String(v || '').trim();
+      if (trimmed.toLowerCase() === 'skip') {
+        skip('Helix configuration skipped (typed "skip") — agent will run heuristics-only');
+        return;
+      }
+      if (trimmed) { v = trimmed; break; }
+      // Empty + required: re-prompt. Tell them how to bail out.
+      if (f.required) {
+        console.log(`  ${f.label} is required. Paste the value, or type "skip" to abandon Helix config.`);
+        continue;
+      }
+      v = ''; break;
     }
     values[f.key] = v;
   }
