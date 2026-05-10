@@ -83,7 +83,7 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": "20.x",
+    "node": ">=20",
     "npm": ">=9"
   }
 }

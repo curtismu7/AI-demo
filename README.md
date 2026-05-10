@@ -21,7 +21,7 @@ This is a **completely standalone** project — it can be handed to anyone and r
 
 ### TL;DR — one-line install
 
-If you have **Node 20** and **git** already, this is all you need:
+If you have **Node 20+** (Node 20, 22, or 24 — any modern LTS works) and **git** already, this is all you need:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash
@@ -236,11 +236,11 @@ npm run uninstall                  # full tear-down: stop services + wipe PingOn
 
 ### Path A — Fresh install (first time on this machine)
 
-**Prerequisites:** Node **20.x** (verify with `node --version`), npm 9+, Git, [mkcert](https://github.com/FiloSottile/mkcert)
+**Prerequisites:** Node **20 or newer** (Node 20, 22, 24 — any modern LTS; verify with `node --version`), npm 9+, Git, [mkcert](https://github.com/FiloSottile/mkcert)
 
-> **Heads up — Node 20 must be active in the shell you run commands in.** If you installed Node via nvm (recommended), nvm is a shell function — opening a new terminal that doesn't auto-load it gives `zsh: command not found: nvm`. Make sure your `~/.zshrc` (or `~/.bashrc`) sources nvm; see [§ 0 below](#0-node-version-setup-skip-if-node---version-shows-v20).
+> **Heads up — Node 20+ must be active in the shell you run commands in.** If you installed Node via nvm (recommended), nvm is a shell function — opening a new terminal that doesn't auto-load it gives `zsh: command not found: nvm`. Make sure your `~/.zshrc` (or `~/.bashrc`) sources nvm; see [§ 0 below](#0-node-version-setup-skip-if-node---version-shows-v20-or-newer).
 
-#### 0. Node version setup (skip if `node --version` shows `v20.…`)
+#### 0. Node version setup (skip if `node --version` shows `v20.…` or newer)
 
 ```bash
 # Install nvm if you don't have it yet:
@@ -252,9 +252,12 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 EOF
 
-# Apply to the current shell, then install + select Node 20:
+# Apply to the current shell, then install + select a Node 20+ release.
+# Any of these work — pick one. Newer versions get longer support.
 source ~/.zshrc
-nvm install 20 && nvm use 20
+nvm install 20 && nvm use 20      # Node 20 LTS (active LTS through 2026-04)
+# nvm install 22 && nvm use 22    # Node 22 LTS (active LTS through 2027-04)
+# nvm install 24 && nvm use 24    # Node 24 LTS (active LTS through 2028-04)
 ```
 
 #### 1. One-time machine prep (run once per machine, not per repo)
@@ -369,8 +372,8 @@ It excludes `sessions.db` (machine-bound) and `certs/` (must be regenerated).
 #### On Machine B — set up the machine, then run setup:fresh with the tar
 
 ```bash
-# 1. Node 20 in this shell (see Path A § 0 if nvm isn't loaded yet)
-nvm use 20   # or: source ~/.zshrc && nvm use 20
+# 1. Node 20+ in this shell (see Path A § 0 if nvm isn't loaded yet)
+nvm use 20   # or: source ~/.zshrc && nvm use 20  (or use 22 / 24 — any LTS)
 
 # 2. One-time machine prep (same as Path A § 1)
 brew install mkcert && mkcert -install

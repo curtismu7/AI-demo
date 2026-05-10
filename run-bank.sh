@@ -113,7 +113,9 @@ RED='\033[1;31m'
 DIM='\033[2m'
 RESET='\033[0m'
 
-# Must match root package.json#engines.node (currently "20.x").
+# Floor for the running Node major. Must match root package.json#engines.node
+# (currently ">=20"). The runtime accepts any major at or above this floor —
+# Node 20, 22, 24, future LTSes are all fine.
 NODE_MIN_VERSION=20
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -134,7 +136,9 @@ _node_major() {
 ensure_node_runtime() {
   local current
   current="$(_node_major)"
-  if [[ "${current}" == "${NODE_MIN_VERSION}" ]]; then
+  # Pass when current Node major is at or above the floor (20+). Node 22, 24,
+  # future LTSes all work; we only need to act when current is missing or below.
+  if [[ -n "${current}" ]] && [[ "${current}" -ge "${NODE_MIN_VERSION}" ]] 2>/dev/null; then
     return 0
   fi
 
@@ -153,10 +157,10 @@ ensure_node_runtime() {
   if [[ -z "${current}" ]]; then
     err "Node.js is not on PATH in this shell."
   else
-    err "Node major ${NODE_MIN_VERSION} required, but this shell is using Node v${current}."
+    err "Node ${NODE_MIN_VERSION}+ required, but this shell is using Node v${current}."
   fi
   echo ""
-  echo "  Fix (zsh/bash) — load nvm into this shell, then install/select Node ${NODE_MIN_VERSION}:"
+  echo "  Fix (zsh/bash) — load nvm into this shell, then install/select Node ${NODE_MIN_VERSION} or newer:"
   echo "    export NVM_DIR=\"\$HOME/.nvm\""
   echo "    [ -s \"\$NVM_DIR/nvm.sh\" ] && \\. \"\$NVM_DIR/nvm.sh\""
   echo "    nvm install ${NODE_MIN_VERSION} && nvm use ${NODE_MIN_VERSION}"

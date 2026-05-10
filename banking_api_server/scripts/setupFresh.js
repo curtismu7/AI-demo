@@ -90,24 +90,28 @@ const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 
 // ── Step 0 — Node version pre-flight ─────────────────────────────────────────
+// Reads engines.node from the root package.json and accepts any Node major at
+// or above the floor. Examples of accepted engines.node values: ">=20", "20.x",
+// "20", ">=20.0.0" — the first digit run is the floor. Examples passing the
+// check on a >=20 floor: 20.20.2, 22.5.0, 24.3.0.
 function checkNodeVersion() {
   const ROOT_PKG = path.resolve(__dirname, '..', '..', 'package.json');
-  let required = '20';
+  let floor = 20;
   try {
     const engines = JSON.parse(fs.readFileSync(ROOT_PKG, 'utf8')).engines;
     const m = engines && engines.node && String(engines.node).match(/(\d+)/);
-    if (m) required = m[1];
-  } catch (_e) { /* fall back */ }
+    if (m) floor = parseInt(m[1], 10);
+  } catch (_e) { /* fall back to 20 */ }
 
-  const actual = String(process.versions.node || '').split('.')[0];
-  if (!actual || actual === required) return;
+  const actual = parseInt(String(process.versions.node || '').split('.')[0], 10);
+  if (Number.isFinite(actual) && actual >= floor) return;
 
-  console.error(`Node major ${required} required, but this shell is using Node ${process.version}.`);
+  console.error(`Node ${floor}+ required, but this shell is using Node ${process.version}.`);
   console.error('');
-  console.error('Fix (zsh/bash) — load nvm into THIS shell, then switch:');
+  console.error(`Fix (zsh/bash) — load nvm into THIS shell, then switch to Node ${floor} or newer:`);
   console.error('  export NVM_DIR="$HOME/.nvm"');
   console.error('  [ -s "$NVM_DIR/nvm.sh" ] && \\. "$NVM_DIR/nvm.sh"');
-  console.error(`  nvm install ${required} && nvm use ${required}`);
+  console.error(`  nvm install ${floor} && nvm use ${floor}`);
   process.exit(1);
 }
 

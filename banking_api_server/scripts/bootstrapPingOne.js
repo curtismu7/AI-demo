@@ -31,24 +31,25 @@ const { spawn } = require('child_process');
 // Defer Node-version pre-flight until after --help so users can read help text
 // from any Node. checkNodeVersion() is called below, after the --help branch.
 function checkNodeVersion() {
+  // Accept any Node major at or above engines.node's floor (e.g. ">=20", "20.x").
   const fs = require('fs');
   const ROOT_PKG = path.resolve(__dirname, '..', '..', 'package.json');
-  let required = '20';
+  let floor = 20;
   try {
     const engines = JSON.parse(fs.readFileSync(ROOT_PKG, 'utf8')).engines;
     const m = engines && engines.node && String(engines.node).match(/(\d+)/);
-    if (m) required = m[1];
-  } catch (_e) { /* fall back to default */ }
+    if (m) floor = parseInt(m[1], 10);
+  } catch (_e) { /* fall back to 20 */ }
 
-  const actual = String(process.versions.node || '').split('.')[0];
-  if (!actual || actual === required) return;
+  const actual = parseInt(String(process.versions.node || '').split('.')[0], 10);
+  if (Number.isFinite(actual) && actual >= floor) return;
 
-  console.error(`Node major ${required} required, but this shell is using Node ${process.version}.`);
+  console.error(`Node ${floor}+ required, but this shell is using Node ${process.version}.`);
   console.error('');
-  console.error('Fix (zsh/bash) — load nvm into THIS shell, then switch:');
+  console.error(`Fix (zsh/bash) — load nvm into THIS shell, then switch to Node ${floor} or newer:`);
   console.error('  export NVM_DIR="$HOME/.nvm"');
   console.error('  [ -s "$NVM_DIR/nvm.sh" ] && \\. "$NVM_DIR/nvm.sh"');
-  console.error(`  nvm install ${required} && nvm use ${required}`);
+  console.error(`  nvm install ${floor} && nvm use ${floor}`);
   process.exit(1);
 }
 

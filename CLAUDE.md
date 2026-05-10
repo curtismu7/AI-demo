@@ -42,7 +42,8 @@ brew install mkcert && mkcert -install
 
 ### Environment quirks AI assistants must know
 
-**Node 20.x is required** (root [`package.json#engines.node`](package.json) = `"20.x"`).
+**Node 20+ is required** (root [`package.json#engines.node`](package.json) = `">=20"`).
+Node 20, 22, and 24 LTSes are all supported — pick whichever the user already has.
 The repo standardizes on **nvm** for managing Node, which causes two predictable
 failure modes in fresh shells:
 
@@ -66,10 +67,10 @@ failure modes in fresh shells:
    to find its own files, so a different cwd doesn't matter once the script is
    running — but the *invocation* still needs the relative path or absolute path.
 
-When installing Node 20 for the user yourself, prefer `nvm install 20 && nvm use 20`
-(matches the rest of the toolchain). Don't fall back to a Homebrew `node@20` install
-unless the user explicitly asks — it conflicts with nvm's `node` and creates the
-same `wrong major in this shell` confusion later.
+When installing Node for the user yourself, prefer `nvm install 20 && nvm use 20`
+(or 22 / 24 — any modern LTS works). Don't fall back to a Homebrew `node@20`
+install unless the user explicitly asks — it conflicts with nvm's `node` and
+creates the same `wrong major in this shell` confusion later.
 
 ### Node services and what each needs to start
 

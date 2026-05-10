@@ -44,17 +44,18 @@ const { spawn, spawnSync } = require('child_process');
 
 // ── Node version pre-flight (same pattern as setupFresh / export / import) ───
 function checkNodeVersion() {
+  // Accept any Node major at or above engines.node's floor (e.g. ">=20", "20.x").
   const ROOT_PKG = path.resolve(__dirname, '..', '..', 'package.json');
-  let required = '20';
+  let floor = 20;
   try {
     const engines = JSON.parse(fs.readFileSync(ROOT_PKG, 'utf8')).engines;
     const m = engines && engines.node && String(engines.node).match(/(\d+)/);
-    if (m) required = m[1];
+    if (m) floor = parseInt(m[1], 10);
   } catch (_e) { /* fall back */ }
-  const actual = String(process.versions.node || '').split('.')[0];
-  if (!actual || actual === required) return;
-  console.error(`Node major ${required} required, but this shell is using Node ${process.version}.`);
-  console.error('Fix:  export NVM_DIR="$HOME/.nvm" && \\. "$NVM_DIR/nvm.sh" && nvm use ' + required);
+  const actual = parseInt(String(process.versions.node || '').split('.')[0], 10);
+  if (Number.isFinite(actual) && actual >= floor) return;
+  console.error(`Node ${floor}+ required, but this shell is using Node ${process.version}.`);
+  console.error(`Fix:  export NVM_DIR="$HOME/.nvm" && \\. "$NVM_DIR/nvm.sh" && nvm use ${floor}`);
   process.exit(1);
 }
 
