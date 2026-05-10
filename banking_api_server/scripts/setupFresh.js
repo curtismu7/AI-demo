@@ -714,9 +714,12 @@ async function configureHelix() {
     { key: 'helix_api_key',          label: 'Helix API Key',                                       envVar: 'HELIX_API_KEY',          required: true, secret: true },
   ];
 
-  // First-prompt hint — explain skip/cancel up front so the user knows the
-  // escape hatches before they're staring at an empty Base URL prompt.
-  console.log('  Type "skip" at any prompt to abandon Helix config and continue without it.');
+  // Universal-Enter rule for this wizard: pressing Enter at any prompt
+  // takes the safe default. For Helix's required fields there is no real
+  // default value, so empty Enter means "skip Helix entirely." The user
+  // can always configure Helix later via /admin/langchain-config.
+  console.log('  Press Enter at any prompt to skip Helix and continue without it.');
+  console.log('  (You can configure Helix later from /admin/langchain-config.)');
   console.log('');
 
   const values = {};
@@ -729,26 +732,16 @@ async function configureHelix() {
       continue;
     }
 
-    // Interactive — re-prompt until we get a non-empty answer, the user
-    // types "skip", or they Ctrl-C. Empty-input bail-outs that surprise
-    // the user mid-flow are the main complaint we're fixing here.
-    let v;
-    while (true) {
-      v = await readlineFreeText(f.label, { secret: f.secret });
-      const trimmed = String(v || '').trim();
-      if (trimmed.toLowerCase() === 'skip') {
-        skip('Helix configuration skipped (typed "skip") — agent will run heuristics-only');
-        return;
-      }
-      if (trimmed) { v = trimmed; break; }
-      // Empty + required: re-prompt. Tell them how to bail out.
-      if (f.required) {
-        console.log(`  ${f.label} is required. Paste the value, or type "skip" to abandon Helix config.`);
-        continue;
-      }
-      v = ''; break;
+    const v = await readlineFreeText(f.label, { secret: f.secret });
+    const trimmed = String(v || '').trim();
+
+    // Empty input on a required field = clean skip of Helix config. We
+    // already warned them up top; no more "is required, aborting" surprise.
+    if (!trimmed && f.required) {
+      skip('Helix configuration skipped (Enter at empty prompt) — agent will run heuristics-only');
+      return;
     }
-    values[f.key] = v;
+    values[f.key] = trimmed;
   }
 
   // Persist via configStore. setConfig encrypts api_key at rest (it's in
