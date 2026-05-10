@@ -82,9 +82,12 @@ Flags:
   --yes               Skip the install-directory confirmation prompt.
   --clean             Wipe stale state (.env, data/persistent, certs) WITHOUT prompting.
   --no-clean          Keep stale state without prompting (skip cleanup).
+  --reset-pingone     NUCLEAR: wipe the PingOne environment BEFORE import/bootstrap.
+                      Deletes every app, resource server, group, custom user attr,
+                      and user (preserving the worker app being used to authenticate).
+                      Combine with --clean for a full local + remote reset.
   --recreate-apps     Delete existing 'Super Banking *' PingOne apps + resources
-                      before creating fresh ones. Use when changing hostname or
-                      wanting a guaranteed-clean tenant.
+                      before creating fresh ones. Less aggressive than --reset-pingone.
   --from-installer    (Internal — set by install.sh; skips dir confirm.)
   --no-browser        Skip the localhost form; prompt in terminal only.
   --non-interactive   Read PINGONE_BOOTSTRAP_* env vars (CI).
@@ -106,8 +109,12 @@ checkNodeVersion();
 // First non-flag argument is the tar archive path (if any).
 const tarArg = args.find(a => !a.startsWith('--'));
 // Strip flags we consume locally; everything else passes through to bootstrap.
-const LOCAL_FLAGS = new Set(['--from-installer', '--yes', '--clean', '--no-clean']);
+// `--reset-pingone` is a setupFresh-specific flag: wipe the PingOne env
+// BEFORE the import/bootstrap chain runs. Forwarded into bootstrap via the
+// passthrough, but consumed locally too so we know to insert a wipe step.
+const LOCAL_FLAGS = new Set(['--from-installer', '--yes', '--clean', '--no-clean', '--reset-pingone']);
 const passthroughFlags = args.filter(a => a.startsWith('--') && !LOCAL_FLAGS.has(a));
+const RESET_PINGONE = args.includes('--reset-pingone');
 
 // `--from-installer` is set by install.sh, which already confirmed the install
 // directory with the user — skip our own dir-confirm prompt to avoid double-asking.
@@ -659,6 +666,7 @@ async function main() {
   // user, so "step 3 of 5" reflects reality instead of a fixed 6-step count
   // that includes phases we'll skip.
   const phases = ['confirm-dir', 'cleanup', 'deps', 'hosts'];
+  if (RESET_PINGONE) phases.push('pingone-wipe');
   if (tarArg) phases.push('import');
   phases.push('bootstrap');
   const total = phases.length;
@@ -694,6 +702,32 @@ async function main() {
   const hostsOk = await ensureHostsEntry();
   if (hostsOk) ok('/etc/hosts entry present');
   else         fail('/etc/hosts entry missing — browser will fail until you add it');
+
+  // Phase: PingOne wipe (only when --reset-pingone is passed). Runs the
+  // bootstrap script with --wipe-environment so the user goes through the
+  // standard cred-collection + type-the-env-id confirmation flow before any
+  // PingOne resources are deleted. We forward all the bootstrap-relevant
+  // passthrough flags (--no-browser, --non-interactive) so the wipe respects
+  // the same UX choices as the upcoming bootstrap.
+  if (RESET_PINGONE) {
+    n++;
+    phase(n, total, 'Reset PingOne environment (--reset-pingone)');
+    const wipeStatus = await runChild('PingOne wipe', [
+      'scripts/bootstrapPingOne.js',
+      '--wipe-environment',
+      ...passthroughFlags,
+    ]);
+    if (wipeStatus === 2) {
+      // User aborted at the type-env-id confirmation — surface as setupFresh exit 2.
+      fail('User aborted PingOne wipe at the confirmation prompt');
+      process.exit(2);
+    }
+    if (wipeStatus !== 0) {
+      fail(`PingOne wipe failed (exit ${wipeStatus}). Stopping before import/bootstrap.`);
+      process.exit(1);
+    }
+    ok('PingOne environment wiped — proceeding to fresh provisioning');
+  }
 
   // Phase: import archive (only when tar arg given)
   let skipBootstrap = false;

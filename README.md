@@ -95,6 +95,24 @@ npm run setup:fresh -- /path/to/archive.tar.gz   # migration
 
 Both flows end at the same place: a working `.env`, restored data (if you imported one), provisioned PingOne resources, ready for `./run-bank.sh`. The sections below walk through the prerequisites and the full sequence.
 
+### Other npm shortcuts
+
+```bash
+# Day-to-day
+npm run pingone:bootstrap          # re-provision PingOne (idempotent; reuses existing apps)
+npm run import -- archive.tar.gz   # restore .env + data from a tar (no PingOne work)
+npm run export                     # create a banking-export-<timestamp>.tar.gz
+
+# Destructive (require confirmation prompts)
+npm run pingone:recreate           # delete 'Super Banking *' apps and recreate
+npm run pingone:wipe               # NUCLEAR: delete every app/resource/group/user in the PingOne env
+npm run reset                      # full reset: wipe local state + wipe PingOne + re-provision
+npm run reset:import -- archive.tar.gz
+                                   # full reset + import (wipe → import → bootstrap)
+```
+
+`reset` and `pingone:wipe` both ask you to type the environment id to confirm before destroying anything.
+
 ---
 
 ### Path A — Fresh install (first time on this machine)
