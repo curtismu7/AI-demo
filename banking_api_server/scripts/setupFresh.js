@@ -1230,15 +1230,59 @@ function printDone({ ranBootstrap, fromTar }) {
   }
   console.log('');
 
-  console.log('  Next steps:');
-  console.log(`    1. Start the demo:    cd ${REPO_ROOT} && ./run-bank.sh`);
-  console.log('    2. Open in browser:');
-  console.log('        https://api.ping.demo:4000/configure   verify config');
-  console.log('        https://api.ping.demo:4000/dashboard   end-user portal');
-  console.log('        https://api.ping.demo:4000/admin       admin portal');
+  // ANSI escapes for emphasis. Most modern terminals support these; on
+  // terminals that don't, the box characters and bold-marker text still
+  // convey the structure. We avoid 256-color codes to stay broadly portable.
+  const BOLD   = '\x1b[1m';
+  const CYAN   = '\x1b[36m';
+  const YELLOW = '\x1b[33m';
+  const GREEN  = '\x1b[32m';
+  const DIM    = '\x1b[2m';
+  const RESET  = '\x1b[0m';
+
+  // Box-row helper: takes plain text, computes visible width (ignoring ANSI),
+  // pads to the box's interior width, wraps in cyan ║ borders. This is the
+  // only correct way to align rows that contain colored content — counting
+  // raw characters always under-fills because ANSI bytes are zero-width.
+  const W = 78;
+  const innerW = W - 2; // space inside the borders
+  const visible = (s) => s.replace(/\x1b\[[0-9;]*m/g, '');
+  const row = (content) => {
+    const v = visible(content);
+    const pad = Math.max(0, innerW - v.length);
+    console.log(`${BOLD}${CYAN}║${RESET}${content}${' '.repeat(pad)}${BOLD}${CYAN}║${RESET}`);
+  };
+  const sep = (char = '═') => {
+    const left  = char === '═' ? '╔' : char === '═' && false ? '' : char === '═' ? '╔' : '╠';
+    const right = char === '═' ? '╗' : '╣';
+    console.log(`${BOLD}${CYAN}${left}${char.repeat(innerW)}${right}${RESET}`);
+  };
+  const top    = () => console.log(`${BOLD}${CYAN}╔${'═'.repeat(innerW)}╗${RESET}`);
+  const middle = () => console.log(`${BOLD}${CYAN}╠${'═'.repeat(innerW)}╣${RESET}`);
+  const bot    = () => console.log(`${BOLD}${CYAN}╚${'═'.repeat(innerW)}╝${RESET}`);
+
   console.log('');
-  console.log('  If you forgot the demo passwords, see the bootstrap output above');
-  console.log('  (or look in banking_api_server/.env at DEMO_USER_PASSWORD / DEMO_ADMIN_PASSWORD).');
+  top();
+  row(`  ${BOLD}${YELLOW}NEXT STEPS — what to do now${RESET}`);
+  middle();
+  row('');
+  row(`    ${BOLD}1.  Start the demo:${RESET}`);
+  row(`        ${GREEN}${BOLD}cd ${REPO_ROOT} && ./run-bank.sh${RESET}`);
+  row('');
+  row(`    ${BOLD}2.  Open in browser:${RESET}`);
+  row(`        ${YELLOW}${BOLD}https://api.ping.demo:4000/configure${RESET}   ${DIM}verify config${RESET}`);
+  row(`        ${YELLOW}${BOLD}https://api.ping.demo:4000/dashboard${RESET}   ${DIM}end-user portal${RESET}`);
+  row(`        ${YELLOW}${BOLD}https://api.ping.demo:4000/admin${RESET}       ${DIM}admin portal${RESET}`);
+  row('');
+  row(`    ${BOLD}Demo credentials${RESET} ${DIM}(also in setup-config.md and banking_api_server/.env):${RESET}`);
+  row(`        ${GREEN}${BOLD}bankuser${RESET}     /  ${GREEN}${BOLD}2Federate!${RESET}    ${DIM}— end-user dashboard${RESET}`);
+  row(`        ${GREEN}${BOLD}bankadmin${RESET}    /  ${GREEN}${BOLD}2Federate!${RESET}    ${DIM}— admin portal${RESET}`);
+  row(`        ${GREEN}${BOLD}bankDelegate${RESET} /  ${GREEN}${BOLD}2Federate!${RESET}    ${DIM}— delegated user (deposit-only)${RESET}`);
+  row('');
+  bot();
+  console.log('');
+  console.log(`${DIM}  Forgot the passwords or want the full provisioning summary?${RESET}`);
+  console.log(`${DIM}  See ${BOLD}setup-config.md${RESET}${DIM} at the repo root, or banking_api_server/.env.${RESET}`);
   console.log('');
 }
 
