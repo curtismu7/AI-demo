@@ -173,26 +173,54 @@ function prompt(rl, question, { defaultValue, secret = false } = {}) {
   return new Promise((resolve) => {
     const display = defaultValue ? `${question} [${defaultValue}]: ` : `${question}: `;
 
-    // Hidden-input requires a real TTY with setRawMode support. When the
-    // script is launched from a parent process with stdin piped/ignored
-    // (e.g. setupFresh's spawn with stdio:['ignore',...]), our input stream
-    // is fs.createReadStream('/dev/tty'), which is NOT a full TTY and has
-    // no setRawMode. Trying to do raw-mode input there silently fails:
-    // keystrokes never reach our listener, and the next prompt hangs.
-    //
-    // When raw mode isn't available, fall back to plain rl.question — the
-    // secret will echo on screen, but the prompt will WORK. The user is
-    // pasting from a password manager into their own terminal anyway, so
-    // the visual leak is acceptable for a setup wizard.
     const input = rl.input;
-    const canRaw = typeof input.setRawMode === 'function' && (input.isTTY === true);
+    // A "real" TTY is process.stdin when stdin.isTTY is true. Anything else
+    // (including fs.createReadStream('/dev/tty')) is a regular ReadStream
+    // that doesn't support raw-mode hidden input — and, critically, doesn't
+    // play nicely with readline.question() either when the parent process
+    // ignored stdin. Detect this and switch to manual line-buffering.
+    const isRealTTY = typeof input.setRawMode === 'function' && input.isTTY === true;
 
-    if (!secret || !canRaw) {
-      if (secret && !canRaw) {
-        // Tell the user once that input will be visible. Without this they
-        // think their typing isn't working when they see characters appear.
-        process.stdout.write('  (input will be visible — no TTY available for hidden entry)\n');
-      }
+    // Path 1: real TTY, hidden input — raw mode, no echo.
+    if (secret && isRealTTY) {
+      process.stdout.write(display);
+      let captured = '';
+      const wasRaw = input.isRaw;
+      input.setRawMode(true);
+      input.resume();
+      input.setEncoding('utf8');
+      const rlPaused = !rl.paused;
+      if (rlPaused) rl.pause();
+      const restore = () => {
+        input.setRawMode(wasRaw);
+        input.removeListener('data', onData);
+        if (rlPaused) rl.resume();
+      };
+      const onData = (ch) => {
+        const c = ch.toString('utf8');
+        if (c === '\n' || c === '\r' || c.startsWith('\r')) {
+          restore();
+          process.stdout.write('\n');
+          resolve(captured.trim() || defaultValue || '');
+          return;
+        }
+        const code = c.charCodeAt(0);
+        if (code === CTRL_C) {
+          restore();
+          process.stdout.write('\n');
+          process.exit(130);
+        } else if (code === DEL || code === BACKSPACE) {
+          captured = captured.slice(0, -1);
+        } else if (code >= 0x20) {
+          captured += c;
+        }
+      };
+      input.on('data', onData);
+      return;
+    }
+
+    // Path 2: real TTY, visible input — readline.question is reliable here.
+    if (isRealTTY) {
       rl.question(display, (answer) => {
         const trimmed = String(answer || '').trim();
         resolve(trimmed || defaultValue || '');
@@ -200,42 +228,31 @@ function prompt(rl, question, { defaultValue, secret = false } = {}) {
       return;
     }
 
-    // Hidden input on a real TTY — manual prompt + raw input, no echo.
+    // Path 3: input is /dev/tty via fs.createReadStream (no real TTY).
+    // readline.question() is unreliable here under some Node versions when
+    // the parent ignored stdin — the question text prints but data events
+    // never reach readline's internal listener. Bypass readline entirely:
+    // attach our own data listener, buffer until newline, resolve.
+    if (secret) {
+      process.stdout.write('  (input will be visible — no TTY available for hidden entry)\n');
+    }
     process.stdout.write(display);
-    let captured = '';
-    const wasRaw = input.isRaw;
-    input.setRawMode(true);
-    input.resume();
     input.setEncoding('utf8');
+    input.resume();
 
-    // Pause readline's own listener so it doesn't compete for keystrokes.
-    const rlPaused = !rl.paused;
-    if (rlPaused) rl.pause();
-
-    const restore = () => {
-      input.setRawMode(wasRaw);
+    let buffer = '';
+    const onData = (chunk) => {
+      const s = chunk.toString('utf8');
+      buffer += s;
+      // Resolve on the first newline. Trailing data after \n is rare in
+      // interactive use; if it ever happens, we'd unshift it back, but
+      // for one-prompt-at-a-time CLI this is fine.
+      const nlIdx = buffer.indexOf('\n');
+      if (nlIdx === -1) return;
       input.removeListener('data', onData);
-      if (rlPaused) rl.resume();
-    };
-
-    const onData = (ch) => {
-      const c = ch.toString('utf8');
-      if (c === '\n' || c === '\r' || c.startsWith('\r')) {
-        restore();
-        process.stdout.write('\n');
-        resolve(captured.trim() || defaultValue || '');
-        return;
-      }
-      const code = c.charCodeAt(0);
-      if (code === CTRL_C) {
-        restore();
-        process.stdout.write('\n');
-        process.exit(130);
-      } else if (code === DEL || code === BACKSPACE) {
-        captured = captured.slice(0, -1);
-      } else if (code >= 0x20) {
-        captured += c;
-      }
+      const answer = buffer.slice(0, nlIdx).replace(/\r$/, '');
+      const trimmed = answer.trim();
+      resolve(trimmed || defaultValue || '');
     };
     input.on('data', onData);
   });
@@ -789,7 +806,7 @@ async function main() {
     const rl = readline.createInterface({ input: tty.stream, output: process.stdout, terminal: true });
     // Default Yes — the user just pasted creds; pressing Enter to proceed is
     // the expected path. Anything other than empty / y / yes aborts.
-    const confirm = await prompt(rl, 'Proceed with provisioning? [Y/n]', { defaultValue: 'y' });
+    const confirm = await prompt(rl, 'Proceed with provisioning?', { defaultValue: 'y' });
     rl.close();
     if (tty.opened) try { tty.stream.destroy(); } catch (_e) {}
     const answer = String(confirm).trim().toLowerCase();
