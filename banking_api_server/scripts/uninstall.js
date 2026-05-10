@@ -11,7 +11,7 @@
  *
  *   1. Stop services        ./run-bank.sh stop
  *   2. Wipe PingOne env     bootstrapPingOne.js --wipe-environment
- *                           (type-the-env-id confirmation, idempotent)
+ *                           (y/N confirmation, idempotent)
  *   3. Delete local state   .env, data/persistent/, data/sessions.db,
  *                           data/backups/, setup.log, certs/
  *   4. Delete node_modules  in all 7 Node services (~2 GB)
@@ -72,7 +72,7 @@ What runs by default (override with --keep-* flags):
 
   Phase 1   Stop services        ./run-bank.sh stop
   Phase 2   Wipe PingOne env     bootstrapPingOne.js --wipe-environment
-                                 (type-the-env-id confirmation, idempotent)
+                                 (y/N confirmation, idempotent)
   Phase 3   Delete local state   .env, data/persistent/, data/sessions.db,
                                  data/backups/, setup.log, certs/*
   Phase 4   Delete node_modules  in all 7 Node services (~2 GB)
@@ -205,7 +205,7 @@ ${lines}
 
 What this will REMOVE:
   - Running banking-demo services on this machine
-${!KEEP_PINGONE      ? '  - Every Super Banking app, resource, group, custom attr, and demo\n    user in your PingOne env (type-the-env-id confirmation required)\n' : ''}\
+${!KEEP_PINGONE      ? '  - Every Super Banking app, resource, group, custom attr, and demo\n    user in your PingOne env (y/N confirmation required)\n' : ''}\
 ${!KEEP_LOCAL        ? '  - banking_api_server/.env\n  - banking_api_server/data/persistent/  (config.db, banking.db, …)\n  - banking_api_server/data/sessions.db, data/backups/\n  - certs/*.pem\n  - setup.log\n' : ''}\
 ${!KEEP_NODE_MODULES ? `  - node_modules in all ${SERVICES.length} Node services (~2 GB)\n` : ''}\
 
@@ -241,7 +241,7 @@ async function confirmRun() {
 
   if (SKIP_GATE) {
     console.log('  --yes flag set — skipping the run-summary confirmation.');
-    console.log('  (PingOne wipe still requires type-the-env-id confirmation.)');
+    console.log('  (PingOne wipe still requires y/N confirmation.)');
     console.log('');
     return true;
   }
@@ -288,7 +288,7 @@ async function phaseWipePingOne() {
     child.on('close', (code) => {
       if (code === 0) ok('PingOne environment wiped');
       else if (code === 2) {
-        // User declined the type-the-env-id confirmation. Treat as a soft skip
+        // User declined the y/N confirmation. Treat as a soft skip
         // (uninstall continues so the user can still reach phase 3/4).
         skip('PingOne wipe declined at confirmation — continuing with local cleanup');
         return resolve(0);

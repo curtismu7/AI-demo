@@ -823,9 +823,11 @@ async function main() {
 
   // --- WIPE-ENVIRONMENT MODE -----------------------------------------------
   // Replaces the normal provisioning flow with a destructive wipe of every
-  // app/resource/group/attr/user in the env. Requires explicit type-the-env-id
-  // confirmation when interactive (the browser/terminal flow already showed
-  // the env id in the plan summary, but we re-confirm because this is destructive).
+  // app/resource/group/attr/user in the env. Default-no y/N confirmation —
+  // explicit "y" required to proceed. We previously asked the user to type
+  // the env id back, but that's hostile when the user can paste the id (no
+  // actual safety vs. typo benefit) so we just show the id prominently in
+  // the question instead.
   if (WIPE_ENVIRONMENT) {
     if (!NON_INTERACTIVE) {
       console.log('Opening confirmation prompt...');
@@ -834,21 +836,24 @@ async function main() {
         tty = getInteractiveInput();
       } catch (err) {
         console.error(`Failed to open /dev/tty for wipe confirmation: ${err.message}`);
-        console.error('Cannot ask for type-the-env-id confirmation in this environment.');
         console.error('Pass --non-interactive to skip the prompt (uses PINGONE_BOOTSTRAP_* env vars).');
         process.exit(1);
       }
       const rl = readline.createInterface({ input: tty.stream, output: process.stdout, terminal: true });
       console.log('');
       console.log('💣  --wipe-environment will DELETE every app, resource server, group,');
-      console.log('    custom user attribute, and user in environment ' + creds.envId);
-      console.log('    (preserving only the worker app being used to authenticate).');
+      console.log('    custom user attribute, and user in environment:');
       console.log('');
-      const typed = await prompt(rl, `Type the environment id (${creds.envId}) to confirm`);
+      console.log(`      ${creds.envId}`);
+      console.log('');
+      console.log('    (preserving only the worker app being used to authenticate)');
+      console.log('');
+      const answer = await prompt(rl, 'Wipe this environment?');
       rl.close();
       if (tty.opened) try { tty.stream.destroy(); } catch (_e) {}
-      if (String(typed).trim() !== creds.envId) {
-        console.log('Confirmation mismatch — aborted.');
+      const a = String(answer).trim().toLowerCase();
+      if (!/^y(es)?$/.test(a)) {
+        console.log('Aborted — empty / non-yes answer.');
         process.exit(2);
       }
     }

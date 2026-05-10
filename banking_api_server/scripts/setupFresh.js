@@ -1072,7 +1072,7 @@ async function main() {
 
   // Phase: PingOne wipe (only when --reset-pingone is passed). Runs the
   // bootstrap script with --wipe-environment so the user goes through the
-  // standard cred-collection + type-the-env-id confirmation flow before any
+  // standard cred-collection + y/N confirmation flow before any
   // PingOne resources are deleted. We forward all the bootstrap-relevant
   // passthrough flags (--no-browser, --non-interactive) so the wipe respects
   // the same UX choices as the upcoming bootstrap.
