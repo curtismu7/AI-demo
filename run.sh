@@ -8,13 +8,13 @@
 # instead (which uses :3002/:4000). Both scripts use UI on :4000.
 #
 # Port layout:
-#   Banking API Server  → https://api.pingdemo.com:3001
-#   Banking UI (React)  → https://api.pingdemo.com:4000
+#   Banking API Server  → https://api.ping.demo:3001
+#   Banking UI (React)  → https://api.ping.demo:4000
 #   Banking MCP Server  → localhost:8080
 #   LangChain Agent     → localhost:8888
 #
 # One-time setup (run once each, requires sudo for /etc/hosts):
-#   echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts
+#   echo '127.0.0.1  api.ping.demo' | sudo tee -a /etc/hosts
 #   mkcert -install   # install local CA (once per machine)
 #
 # Usage:
@@ -34,7 +34,7 @@ set -euo pipefail
 # ── Constants ────────────────────────────────────────────────────────────────
 BASEDIR="$(cd "$(dirname "$0")" && pwd)"
 
-API_HOST="api.pingdemo.com"
+API_HOST="api.ping.demo"
 API_PORT=3001
 UI_PORT=4000
 MCP_PORT=8080
@@ -42,8 +42,8 @@ AGENT_PORT=8888
 NODE_MIN_VERSION=16
 
 CERT_DIR="${BASEDIR}/certs"
-CERT_FILE="${CERT_DIR}/api.pingdemo.com+2.pem"
-KEY_FILE="${CERT_DIR}/api.pingdemo.com+2-key.pem"
+CERT_FILE="${CERT_DIR}/api.ping.demo+2.pem"
+KEY_FILE="${CERT_DIR}/api.ping.demo+2-key.pem"
 
 # URLs — updated below based on /etc/hosts and cert availability
 API_URL="https://${API_HOST}:${API_PORT}"
@@ -94,9 +94,9 @@ info() { echo -e "  ${CYAN}→${NC}  $1"; }
 if ! grep -q "${API_HOST}" /etc/hosts 2>/dev/null; then
   echo -e "${YELLOW}⚠  ${API_HOST} is not in /etc/hosts.${NC}"
   echo "   Run this once:  echo '127.0.0.1  ${API_HOST}' | sudo tee -a /etc/hosts"
-  echo "   Continuing with api.pingdemo.com URLs (ensure /etc/hosts is set)..."
-  API_URL="https://api.pingdemo.com:${API_PORT}"
-  CLIENT_URL="https://api.pingdemo.com:${UI_PORT}"
+  echo "   Continuing with api.ping.demo URLs (ensure /etc/hosts is set)..."
+  API_URL="https://api.ping.demo:${API_PORT}"
+  CLIENT_URL="https://api.ping.demo:${UI_PORT}"
 fi
 
 # ── SSL cert check / auto-generate ──────────────────────────────────────────

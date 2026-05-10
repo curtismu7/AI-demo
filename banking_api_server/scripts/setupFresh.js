@@ -78,7 +78,9 @@ What runs in each case:
   Without tar:  setupFresh -> bootstrapPingOne  (creates apps + writes .env)
   With tar:     setupFresh -> data:import -> bootstrapPingOne (only if needed)
 
-Flags forwarded to bootstrapPingOne.js:
+Flags:
+  --yes               Skip the install-directory confirmation prompt.
+  --from-installer    (Internal — set by install.sh; skips dir confirm.)
   --no-browser        Skip the localhost form; prompt in terminal only.
   --non-interactive   Read PINGONE_BOOTSTRAP_* env vars (CI).
 
@@ -98,9 +100,18 @@ checkNodeVersion();
 
 // First non-flag argument is the tar archive path (if any).
 const tarArg = args.find(a => !a.startsWith('--'));
-const passthroughFlags = args.filter(a => a.startsWith('--'));
+// Strip flags we consume locally; everything else passes through to bootstrap.
+const LOCAL_FLAGS = new Set(['--from-installer', '--yes']);
+const passthroughFlags = args.filter(a => a.startsWith('--') && !LOCAL_FLAGS.has(a));
+
+// `--from-installer` is set by install.sh, which already confirmed the install
+// directory with the user — skip our own dir-confirm prompt to avoid double-asking.
+// `--yes` skips the dir-confirm prompt (for advanced users / scripted runs).
+const FROM_INSTALLER = args.includes('--from-installer');
+const SKIP_CONFIRM = FROM_INSTALLER || args.includes('--yes');
 
 const SERVER_ROOT = path.resolve(__dirname, '..');
+const REPO_ROOT = path.resolve(SERVER_ROOT, '..');
 const ENV_FILE = path.join(SERVER_ROOT, '.env');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -155,6 +166,150 @@ function ensureEnvForFreshInstall() {
   return { created: true };
 }
 
+// ── Install-directory confirmation ──────────────────────────────────────────
+//
+// Tell the user where setup will land and let them abort if it's the wrong
+// place. Default is "yes" — typing nothing or "y" proceeds; anything else
+// aborts cleanly (so the user can `cd` somewhere else and re-run).
+// Skipped under --from-installer (install.sh already confirmed) and --yes.
+
+async function confirmInstallDirectory() {
+  if (SKIP_CONFIRM) return true;
+
+  console.log('');
+  console.log('Install location');
+  console.log('────────────────');
+  console.log(`  Repo root:  ${REPO_ROOT}`);
+  console.log(`  Will write to:`);
+  console.log(`    - ${path.join(SERVER_ROOT, '.env')}`);
+  console.log(`    - ${path.join(SERVER_ROOT, 'data/persistent/')}*`);
+  console.log(`    - ${path.join(REPO_ROOT, 'certs/')}* (if missing)`);
+  console.log('');
+
+  const ok = await readlineQuestion('Proceed in this directory?', /* defaultYes */ true);
+  if (!ok) {
+    console.log('');
+    console.log('Aborted. To install elsewhere:');
+    console.log('  1. cd to the directory you want');
+    console.log('  2. git clone https://github.com/curtismu7/banking-demo.git');
+    console.log('  3. cd banking-demo && npm run setup:fresh');
+    console.log('');
+    console.log('Or use the standalone installer:');
+    console.log('  curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash');
+    process.exit(2);
+  }
+  return true;
+}
+
+// ── /etc/hosts pre-check ─────────────────────────────────────────────────────
+//
+// The demo serves on api.ping.demo (loopback). Without the matching /etc/hosts
+// entry, the browser fails to load https://api.ping.demo:4000 after setup
+// completes — confusing because the bootstrap (which binds 127.0.0.1) succeeds.
+// We check upfront, prompt to fix, and on macOS open Terminal.app with the
+// sudo command pre-typed so the user runs it without leaving the flow.
+
+const APP_HOST = 'api.ping.demo';
+const HOSTS_FILE = '/etc/hosts';
+const HOSTS_LINE = `127.0.0.1  ${APP_HOST}`;
+
+function hostsEntryPresent() {
+  try {
+    const txt = fs.readFileSync(HOSTS_FILE, 'utf8');
+    // Match any line that maps a 127.x address to APP_HOST.
+    const re = new RegExp(`^\\s*127\\.[0-9.]+\\s+(?:[^\\s#]+\\s+)*${APP_HOST.replace(/\./g, '\\.')}(?:\\s|$)`, 'm');
+    return re.test(txt);
+  } catch (_e) { return false; }
+}
+
+function readlineQuestion(question, defaultYes = true) {
+  return new Promise((resolve) => {
+    const readline = require('readline');
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+    const suffix = defaultYes ? ' [Y/n] ' : ' [y/N] ';
+    rl.question(question + suffix, (answer) => {
+      rl.close();
+      const s = String(answer || '').trim().toLowerCase();
+      if (!s) return resolve(defaultYes);
+      resolve(/^y(es)?$/.test(s));
+    });
+  });
+}
+
+function openTerminalWithCommand(command) {
+  if (process.platform !== 'darwin') return false;
+  // osascript: open Terminal.app, run a new tab, send keystrokes (so the user
+  // sees the command pre-typed and just hits Enter / types their password).
+  // We use 'do script' which both opens a window AND types the text. The user
+  // still has to press Enter — gives them a chance to read what's about to run.
+  const escaped = command.replace(/"/g, '\\"').replace(/\\/g, '\\\\');
+  const script = `tell application "Terminal" to do script "${escaped}"
+tell application "Terminal" to activate`;
+  try {
+    const result = spawnSync('osascript', ['-e', script], { stdio: 'ignore' });
+    return result.status === 0;
+  } catch (_e) { return false; }
+}
+
+async function ensureHostsEntry() {
+  if (hostsEntryPresent()) return true;
+
+  console.log('');
+  console.log(`The ${APP_HOST} loopback entry is missing from /etc/hosts.`);
+  console.log('');
+  console.log('Why this matters: the demo serves on https://api.ping.demo:4000. Without the');
+  console.log(`/etc/hosts entry your browser will fail to reach it after setup completes.`);
+  console.log('');
+  console.log('Required line:');
+  console.log(`  ${HOSTS_LINE}`);
+  console.log('');
+
+  const proceed = await readlineQuestion('Add it now via sudo?', /* defaultYes */ true);
+  if (!proceed) {
+    console.log('');
+    console.log('Skipping. Add it yourself before opening the browser:');
+    console.log(`  echo '${HOSTS_LINE}' | sudo tee -a /etc/hosts`);
+    console.log('');
+    return false;
+  }
+
+  const sudoCmd = `echo '${HOSTS_LINE}' | sudo tee -a /etc/hosts`;
+
+  if (process.platform === 'darwin') {
+    console.log('');
+    console.log('Opening Terminal.app with the sudo command pre-typed.');
+    console.log('Press Enter in that window, then your sudo password.');
+    const opened = openTerminalWithCommand(sudoCmd);
+    if (!opened) {
+      console.log('');
+      console.log('Could not open Terminal.app. Run this command yourself:');
+      console.log(`  ${sudoCmd}`);
+    }
+  } else {
+    console.log('');
+    console.log('Run this in another terminal (or here, then re-run setup:fresh):');
+    console.log(`  ${sudoCmd}`);
+    console.log('');
+  }
+
+  // Poll /etc/hosts every 2 seconds for up to 2 minutes.
+  console.log('Waiting for /etc/hosts to be updated (Ctrl-C to skip)...');
+  const deadline = Date.now() + 2 * 60 * 1000;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 2000));
+    if (hostsEntryPresent()) {
+      console.log(`✅ ${APP_HOST} entry found.`);
+      console.log('');
+      return true;
+    }
+    process.stdout.write('.');
+  }
+  console.log('');
+  console.log('Timed out waiting. Continuing setup — re-run setup:fresh after adding the entry.');
+  console.log('');
+  return false;
+}
+
 function importedEnvNeedsBootstrap() {
   const envText = readEnvSafely();
   if (!envText) return true;            // nothing to read; bootstrap is needed
@@ -165,7 +320,7 @@ function importedEnvNeedsBootstrap() {
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
-function main() {
+async function main() {
   console.log('');
   console.log('Banking demo setup');
   console.log('==================');
@@ -176,6 +331,13 @@ function main() {
   }
   console.log(`Target: ${SERVER_ROOT}`);
   console.log('');
+
+  // Step 0 — confirm install directory (skipped when called from install.sh).
+  await confirmInstallDirectory();
+
+  // Step 0b — verify /etc/hosts has the loopback entry (browser needs this).
+  // We check before doing any work so the user can fix it once.
+  await ensureHostsEntry();
 
   // Step 1 — import path (tar arg)
   if (tarArg) {
@@ -244,10 +406,15 @@ function printDone({ ranBootstrap, fromTar }) {
   console.log('  ./run-bank.sh');
   console.log('');
   console.log('Then visit:');
-  console.log('  https://api.pingdemo.com:4000/configure   (verify config)');
-  console.log('  https://api.pingdemo.com:4000/dashboard   (end-user)');
-  console.log('  https://api.pingdemo.com:4000/admin       (admin)');
+  console.log('  https://api.ping.demo:4000/configure   (verify config)');
+  console.log('  https://api.ping.demo:4000/dashboard   (end-user)');
+  console.log('  https://api.ping.demo:4000/admin       (admin)');
   console.log('');
 }
 
-main();
+main().catch((err) => {
+  console.error('');
+  console.error(`setup:fresh failed: ${err.message}`);
+  console.error(err.stack);
+  process.exit(1);
+});

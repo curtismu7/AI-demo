@@ -334,6 +334,41 @@ async function main() {
     fs.rmSync(extractDir, { recursive: true, force: true });
   }
 
+  // Step 6.5 — rewrite legacy hostname in extracted text files.
+  // The demo hostname changed from api.pingdemo.com → api.ping.demo. Old archives
+  // may have the legacy host hardcoded in .env or in any JSON config in
+  // data/persistent/. We rewrite text files here so configStore reads the new
+  // hostname when it initialises below. Binary .db files are NOT touched —
+  // their encrypted redirect URIs get refreshed on the next bootstrap step
+  // (which calls updateApplication() with config.publicAppUrl).
+  const LEGACY_HOST = 'api.pingdemo.com';
+  const NEW_HOST = 'api.ping.demo';
+  const rewriteFile = (filePath) => {
+    try {
+      const original = fs.readFileSync(filePath, 'utf8');
+      if (!original.includes(LEGACY_HOST)) return 0;
+      const rewritten = original.split(LEGACY_HOST).join(NEW_HOST);
+      fs.writeFileSync(filePath, rewritten, 'utf8');
+      return (original.match(new RegExp(LEGACY_HOST.replace(/\./g, '\\.'), 'g')) || []).length;
+    } catch (_e) { return 0; }
+  };
+  let rewriteCount = 0;
+  if (fs.existsSync(ENV_FILE)) {
+    const n = rewriteFile(ENV_FILE);
+    if (n > 0) { console.log(`  Hostname rewrite (.env): ${n} → ${NEW_HOST}`); rewriteCount += n; }
+  }
+  if (fs.existsSync(DATA_PERSISTENT)) {
+    for (const f of fs.readdirSync(DATA_PERSISTENT)) {
+      if (!f.endsWith('.json')) continue;     // skip .db SQLite binaries
+      const n = rewriteFile(path.join(DATA_PERSISTENT, f));
+      if (n > 0) { console.log(`  Hostname rewrite (${f}): ${n} → ${NEW_HOST}`); rewriteCount += n; }
+    }
+  }
+  if (rewriteCount > 0) {
+    console.log(`Rewrote ${rewriteCount} legacy hostname reference(s) in imported text files.`);
+    console.log(`Note: encrypted redirect URIs in config.db will be refreshed by the bootstrap step.`);
+  }
+
   // Verify expected files landed
   const missingFiles = [];
   for (const f of manifest.files) {
@@ -424,7 +459,7 @@ async function main() {
   console.log('');
   // Check if TLS certs exist on this machine
   const REPO_ROOT = path.resolve(SERVER_ROOT, '..');
-  const certFile = path.join(REPO_ROOT, 'certs', 'api.pingdemo.com+2.pem');
+  const certFile = path.join(REPO_ROOT, 'certs', 'api.ping.demo+2.pem');
   const certsMissing = !fs.existsSync(certFile);
 
   // Check sibling packages — running app needs all three. CRA peerOptional quirk on UI.
@@ -464,17 +499,17 @@ async function main() {
   if (certsMissing) {
     console.log(`  ${stepNum++}. Generate TLS certs (machine-bound — not in archive):`);
     if (hasMkcert()) {
-      console.log('       mkdir -p certs && cd certs && mkcert api.pingdemo.com localhost 127.0.0.1');
+      console.log('       mkdir -p certs && cd certs && mkcert api.ping.demo localhost 127.0.0.1');
     } else {
       console.log('       brew install mkcert && mkcert -install');
-      console.log('       mkdir -p certs && cd certs && mkcert api.pingdemo.com localhost 127.0.0.1');
+      console.log('       mkdir -p certs && cd certs && mkcert api.ping.demo localhost 127.0.0.1');
     }
     console.log('');
   }
   console.log(`  ${stepNum++}. Start the server:  ./run-bank.sh`);
   if (needsBootstrap) {
     console.log(`  ${stepNum++}. Provision PingOne (creates apps, scopes, users; writes MCP_GW / AGENT creds):`);
-    console.log('       Log in as admin, then visit:  https://api.pingdemo.com:4000/setup/wizard');
+    console.log('       Log in as admin, then visit:  https://api.ping.demo:4000/setup/wizard');
     console.log('       You will need PingOne management worker creds (env id, region, client id, secret).');
     console.log('       After provisioning, restart the server so the new .env vars take effect:');
     console.log('         ./run-bank.sh restart');

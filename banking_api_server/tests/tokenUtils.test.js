@@ -23,7 +23,7 @@ const VALID_USER_JWT = makeJwt(
   { alg: 'RS256', typ: 'JWT' },
   {
     sub: 'user-001',
-    aud: 'https://api.pingdemo.com',
+    aud: 'https://api.ping.demo',
     may_act: { sub: 'agent-001' },
     exp: 9999999999,
     iat: 1700000000,

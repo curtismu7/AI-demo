@@ -22,14 +22,14 @@ const { logger } = require('../utils/logger');
 // In-memory cache — holds the authoritative hostname value
 let _hostnameCache = null;
 const CONFIG_KEY = 'CONFIGURED_HOSTNAME';
-const DEFAULT_HOSTNAME = process.env.PUBLIC_APP_URL || 'https://api.pingdemo.com:3001';
+const DEFAULT_HOSTNAME = process.env.PUBLIC_APP_URL || 'https://api.ping.demo:3001';
 
 // Regex for hostname validation: https?://host(:port)?
 // Allows:
 // - https:// or http://
 // - domain: alphanumeric, dots, hyphens
 // - optional port: 1-5 digits
-// Examples: https://api.pingdemo.com:4000, http://localhost:3000, https://staging.app.com
+// Examples: https://api.ping.demo:4000, http://localhost:3000, https://staging.app.com
 const HOSTNAME_REGEX = /^https?:\/\/[a-zA-Z0-9.-]+(:\d{1,5})?$/;
 
 /**

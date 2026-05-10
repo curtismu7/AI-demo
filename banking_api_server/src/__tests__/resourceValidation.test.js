@@ -48,7 +48,7 @@ describe('Resource Validation Service', () => {
         {
           id: 'res-3',
           name: 'Super Banking Banking API',
-          audience: 'https://banking-api.pingdemo.com',
+          audience: 'https://banking-api.ping.demo',
           authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
         },
         {

@@ -42,7 +42,7 @@ describe('Scope Audit Service', () => {
           resourceId: 'res-2',
           name: 'Super Banking Banking API',
           status: 'CORRECT',
-          audience: 'https://banking-api.pingdemo.com'
+          audience: 'https://banking-api.ping.demo'
         }
       ];
 

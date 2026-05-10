@@ -19,14 +19,36 @@ This is a **completely standalone** project — it can be handed to anyone and r
 
 ## New Machine Setup
 
-One command for both flows — `npm run setup:fresh`. Pass a tar archive if you're migrating; skip the argument if you're starting fresh.
+### TL;DR — one-line install
+
+If you have **Node 20** and **git** already, this is all you need:
 
 ```bash
-# Migration (you have a banking-export-*.tar.gz from another machine):
-npm run setup:fresh -- /path/to/banking-export-<timestamp>.tar.gz
+curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash
+```
 
-# Brand-new install (no archive):
-npm run setup:fresh
+The installer:
+
+1. Confirms the install directory (defaults to `./banking-demo` in your current dir; you can hit Enter or abort).
+2. Clones the repo (or pulls latest if it already exists).
+3. Runs `npm run setup:fresh` inside it — which prompts for PingOne worker creds via a localhost browser form, provisions all PingOne resources, and writes `banking_api_server/.env`.
+
+When done: `cd banking-demo && ./run-bank.sh`. That's it.
+
+**Migrating from another machine?** Add the tar path as an argument:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash -s -- /path/to/banking-export-<timestamp>.tar.gz
+```
+
+### If you already cloned the repo
+
+Run the inner command directly — same flow, skips the clone:
+
+```bash
+cd banking-demo
+npm run setup:fresh                              # brand-new install
+npm run setup:fresh -- /path/to/archive.tar.gz   # migration
 ```
 
 Both flows end at the same place: a working `.env`, restored data (if you imported one), provisioned PingOne resources, ready for `./run-bank.sh`. The sections below walk through the prerequisites and the full sequence.
@@ -61,7 +83,7 @@ nvm install 20 && nvm use 20
 ```bash
 brew install mkcert      # macOS — skip if already installed
 mkcert -install          # installs the local CA into the system trust store
-echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts
+echo '127.0.0.1  api.ping.demo' | sudo tee -a /etc/hosts
 ```
 
 #### 2. Clone — let `./run-bank.sh` do the rest
@@ -142,7 +164,7 @@ The script is **idempotent** — re-running it on a fully-provisioned environmen
 - `npm run setup:fresh -- --no-browser` — terminal prompts only (SSH / headless boxes)
 - `cd banking_api_server && npm run pingone:bootstrap:ci` with `PINGONE_BOOTSTRAP_*` env vars set — non-interactive (CI / automation)
 
-**Prefer to enter credentials manually instead?** Open **[https://api.pingdemo.com:4000/configure](https://api.pingdemo.com:4000/configure)** in your browser after `./run-bank.sh` and enter your PingOne Environment ID and OAuth client credentials. The app saves them to `config.db` — no restart needed. Note: this manual path only sets the admin/user OAuth clients. The MCP gateway and agent service still need `MCP_GW_CLIENT_ID` / `AGENT_CLIENT_ID` in `.env`, which `setup:fresh` provides automatically.
+**Prefer to enter credentials manually instead?** Open **[https://api.ping.demo:4000/configure](https://api.ping.demo:4000/configure)** in your browser after `./run-bank.sh` and enter your PingOne Environment ID and OAuth client credentials. The app saves them to `config.db` — no restart needed. Note: this manual path only sets the admin/user OAuth clients. The MCP gateway and agent service still need `MCP_GW_CLIENT_ID` / `AGENT_CLIENT_ID` in `.env`, which `setup:fresh` provides automatically.
 
 See **[docs/SETUP.md](docs/SETUP.md)** for the full PingOne app configuration reference.
 
@@ -173,7 +195,7 @@ nvm use 20   # or: source ~/.zshrc && nvm use 20
 
 # 2. One-time machine prep (same as Path A § 1)
 brew install mkcert && mkcert -install
-echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts
+echo '127.0.0.1  api.ping.demo' | sudo tee -a /etc/hosts
 
 # 3. Clone (run-bank.sh installs all deps for you on first start)
 git clone https://github.com/curtismu7/banking-demo.git
@@ -183,7 +205,7 @@ cd banking-demo
 npm run setup:fresh -- /path/to/banking-export-<timestamp>.tar.gz
 
 # 5. Generate TLS certs (machine-bound — not in the archive)
-mkdir -p certs && cd certs && mkcert api.pingdemo.com localhost 127.0.0.1 && cd ..
+mkdir -p certs && cd certs && mkcert api.ping.demo localhost 127.0.0.1 && cd ..
 
 # 6. Start
 ./run-bank.sh
@@ -202,7 +224,7 @@ What the import portion of `setup:fresh` does:
 
 #### Verify the import worked
 
-Open **[https://api.pingdemo.com:4000/configure](https://api.pingdemo.com:4000/configure)** — it should show "Import verified" with your PingOne credentials loaded.
+Open **[https://api.ping.demo:4000/configure](https://api.ping.demo:4000/configure)** — it should show "Import verified" with your PingOne credentials loaded.
 
 ---
 
@@ -213,8 +235,8 @@ Open **[https://api.pingdemo.com:4000/configure](https://api.pingdemo.com:4000/c
 | `zsh: command not found: nvm` | nvm isn't loaded in this shell — it's a shell function, not a binary on PATH | `export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"` (one-shot), then add those two lines to `~/.zshrc` (or `~/.bashrc`) so new terminals pick it up automatically. See Path A § 0. |
 | `zsh: no such file or directory: ./run-bank.sh` | You're not in the repo root — `./run-bank.sh` is repo-local | `cd /path/to/banking-demo` first, then `./run-bank.sh` |
 | Export/import fails with `Node major 20 required, but this shell is using Node vX` | Wrong Node version active in this shell | `nvm use 20` (run nvm-load snippet above first if needed); see Path A § 0 |
-| Browser shows cert error | Certs not generated or CA not trusted | Run `mkcert -install` then `cd certs && mkcert api.pingdemo.com localhost 127.0.0.1` |
-| `api.pingdemo.com` doesn't resolve | `/etc/hosts` entry missing | `echo '127.0.0.1 api.pingdemo.com' \| sudo tee -a /etc/hosts` |
+| Browser shows cert error | Certs not generated or CA not trusted | Run `mkcert -install` then `cd certs && mkcert api.ping.demo localhost 127.0.0.1` |
+| `api.ping.demo` doesn't resolve | `/etc/hosts` entry missing | `echo '127.0.0.1 api.ping.demo' \| sudo tee -a /etc/hosts` |
 | `/configure` shows all fields blank after import | `.env` encryption key mismatch | Re-import with the original archive; ensure `.env` from the source machine was included |
 | `better-sqlite3` binary error on start | Node version mismatch (binary built against a different Node major) | `nvm use 20 && cd banking_api_server && npm rebuild better-sqlite3` |
 | Import fails with "server is running" | Server must be stopped before import | `./run-bank.sh stop` then retry import |

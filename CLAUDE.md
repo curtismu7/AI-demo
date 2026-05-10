@@ -34,9 +34,9 @@ npm run pingone:bootstrap               # bootstrap only, browser form
 npm run pingone:bootstrap:ci            # bootstrap from PINGONE_BOOTSTRAP_* env vars
 ```
 
-**One-time setup** (needed for HTTPS on `api.pingdemo.com`):
+**One-time setup** (needed for HTTPS on `api.ping.demo`):
 ```bash
-echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts
+echo '127.0.0.1  api.ping.demo' | sudo tee -a /etc/hosts
 brew install mkcert && mkcert -install
 ```
 

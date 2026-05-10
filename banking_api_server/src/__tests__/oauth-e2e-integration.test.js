@@ -568,7 +568,7 @@ describe('End-to-End OAuth Integration Tests', () => {
     it('should handle CORS properly for OAuth endpoints', async () => {
       const response = await agent
         .options('/api/auth/oauth/user/status')
-        .set('Origin', 'https://api.pingdemo.com')
+        .set('Origin', 'https://api.ping.demo')
         .expect(204);
 
       expect(response.headers['access-control-allow-origin']).toBeDefined();

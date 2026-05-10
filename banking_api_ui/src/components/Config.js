@@ -2842,7 +2842,7 @@ export default function Config() {
                           🖥️ Path B: Run on localhost
                         </h3>
                         <p className="config-page__path-desc">
-                          Default API server uses <code>api.pingdemo.com</code>{" "}
+                          Default API server uses <code>api.ping.demo</code>{" "}
                           as the host.
                         </p>
                         <ol className="config-page__path-steps">
@@ -2854,7 +2854,7 @@ export default function Config() {
                           </li>
                           <li>
                             By default the API server listens on{" "}
-                            <code>api.pingdemo.com</code> — add that to your
+                            <code>api.ping.demo</code> — add that to your
                             local hosts file, or change <code>PORT</code>/
                             <code>HOST</code> in <code>.env</code>
                           </li>
@@ -2958,7 +2958,7 @@ export default function Config() {
                       type="text"
                       value={hostnameInput}
                       onChange={(e) => setHostnameInput(e.target.value)}
-                      placeholder="https://api.pingdemo.com:4000"
+                      placeholder="https://api.ping.demo:4000"
                       disabled={hostnameLoading}
                       style={{
                         width: "100%",

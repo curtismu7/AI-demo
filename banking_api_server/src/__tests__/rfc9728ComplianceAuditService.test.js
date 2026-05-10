@@ -288,7 +288,7 @@ describe('RFC9728ComplianceAuditService', () => {
               ['cache-control', 'max-age=3600, public']
             ]),
             json: jest.fn().mockResolvedValue({
-              resource: 'https://banking-api.pingdemo.com/api',
+              resource: 'https://banking-api.ping.demo/api',
               authorization_servers: ['https://auth.pingone.com/123456/as'],
               scopes_supported: ['banking:read', 'banking:write'],
               bearer_methods_supported: ['header'],

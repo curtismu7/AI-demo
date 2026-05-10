@@ -493,7 +493,7 @@ router.get('/packages', (_req, res) => {
 
   // TLS certs (machine-bound — not in migration archive)
   const REPO_ROOT = nodePath.resolve(SERVER_ROOT, '..');
-  const certFile = nodePath.join(REPO_ROOT, 'certs', 'api.pingdemo.com+2.pem');
+  const certFile = nodePath.join(REPO_ROOT, 'certs', 'api.ping.demo+2.pem');
   checks.tls_certs = require('node:fs').existsSync(certFile);
 
   // mkcert available (needed to generate certs on a new machine)
@@ -514,7 +514,7 @@ router.get('/packages', (_req, res) => {
       node_modules: 'cd banking_api_server && npm install',
       tar: 'cd banking_api_server && npm install',
       sqlite_native_ok: 'cd banking_api_server && npm rebuild better-sqlite3',
-      tls_certs: 'mkdir -p certs && cd certs && mkcert api.pingdemo.com localhost 127.0.0.1',
+      tls_certs: 'mkdir -p certs && cd certs && mkcert api.ping.demo localhost 127.0.0.1',
       mkcert: 'brew install mkcert && mkcert -install',
     },
   });

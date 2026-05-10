@@ -208,7 +208,7 @@ describe('RFC 9728 Educational Content Verification', () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          resource: 'https://banking-api.pingdemo.com/api',
+          resource: 'https://banking-api.ping.demo/api',
           authorization_servers: ['https://auth.pingone.com/123456/as'],
           scopes_supported: [
             'banking:read',
@@ -228,7 +228,7 @@ describe('RFC 9728 Educational Content Verification', () => {
       const actualMetadata = await response.json();
 
       // Verify educational content matches actual implementation
-      expect(actualMetadata.resource).toBe('https://banking-api.pingdemo.com/api');
+      expect(actualMetadata.resource).toBe('https://banking-api.ping.demo/api');
       expect(actualMetadata.scopes_supported).toContain('banking:read');
       expect(actualMetadata.scopes_supported).toContain('banking:write');
       expect(actualMetadata.bearer_methods_supported).toEqual(['header']);
@@ -240,7 +240,7 @@ describe('RFC 9728 Educational Content Verification', () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          resource: 'https://banking-api.pingdemo.com/api',
+          resource: 'https://banking-api.ping.demo/api',
           authorization_servers: ['https://auth.pingone.com/123456/as'],
           scopes_supported: ['banking:read', 'banking:write']
         })
@@ -266,7 +266,7 @@ describe('RFC 9728 Educational Content Verification', () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          resource: 'https://banking-api.pingdemo.com/api',
+          resource: 'https://banking-api.ping.demo/api',
           authorization_servers: ['https://auth.pingone.com/123456/as'],
           scopes_supported: ['banking:read', 'banking:write']
         })

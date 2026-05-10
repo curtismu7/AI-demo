@@ -12,7 +12,7 @@ const configStore = require('./configStore');
  * Resource indicator configuration and definitions
  */
 const RESOURCE_DEFINITIONS = {
-  'https://banking-api.pingdemo.com/': {
+  'https://banking-api.ping.demo/': {
     name: 'Banking API',
     description: 'Core banking operations and account management',
     scopes: ['banking:read', 'banking:write', 'transactions:read', 'accounts:read'],
@@ -28,7 +28,7 @@ const RESOURCE_DEFINITIONS = {
     category: 'ai',
     required: false
   },
-  'https://admin-api.pingdemo.com/': {
+  'https://admin-api.ping.demo/': {
     name: 'Admin API',
     description: 'Administrative operations and user management',
     scopes: ['admin:read', 'admin:write', 'users:manage', 'config:read'],
@@ -36,7 +36,7 @@ const RESOURCE_DEFINITIONS = {
     category: 'admin',
     required: false
   },
-  'https://config-api.pingdemo.com/': {
+  'https://config-api.ping.demo/': {
     name: 'Configuration API',
     description: 'System configuration and settings',
     scopes: ['config:read', 'config:write', 'settings:manage'],
@@ -51,7 +51,7 @@ const RESOURCE_DEFINITIONS = {
  */
 const RESOURCE_CONFIG = {
   enabled: configStore.getEffective('ff_rfc_9728_enabled') === true,
-  defaultResources: ['https://banking-api.pingdemo.com/'],
+  defaultResources: ['https://banking-api.ping.demo/'],
   maxResources: configStore.getEffective('max_resources_per_token') || 3,
   requireUserConsent: true,
   resourceSelection: {
@@ -148,19 +148,19 @@ function getClientResourceConfig(clientId) {
   const clientConfigs = {
     'banking-demo-client': {
       allowedResources: [
-        'https://banking-api.pingdemo.com/',
+        'https://banking-api.ping.demo/',
         'https://mcp-server.pingdemo.com/'
       ],
-      defaultResources: ['https://banking-api.pingdemo.com/'],
+      defaultResources: ['https://banking-api.ping.demo/'],
       maxResources: 2,
       requireConsent: true
     },
     'admin-client': {
       allowedResources: [
-        'https://admin-api.pingdemo.com/',
-        'https://config-api.pingdemo.com/'
+        'https://admin-api.ping.demo/',
+        'https://config-api.ping.demo/'
       ],
-      defaultResources: ['https://admin-api.pingdemo.com/'],
+      defaultResources: ['https://admin-api.ping.demo/'],
       maxResources: 2,
       requireConsent: true
     }
@@ -237,10 +237,10 @@ function validateResourceSelection(clientId, selectedResources) {
  */
 function validateScopeResourceCompatibility(scopes, resources) {
   const resourceScopeMap = {
-    'https://banking-api.pingdemo.com/': ['banking:', 'transactions:', 'accounts:'],
+    'https://banking-api.ping.demo/': ['banking:', 'transactions:', 'accounts:'],
     'https://mcp-server.pingdemo.com/': ['ai:', 'agent:', 'mcp:'],
-    'https://admin-api.pingdemo.com/': ['admin:', 'users:', 'config:'],
-    'https://config-api.pingdemo.com/': ['config:', 'settings:']
+    'https://admin-api.ping.demo/': ['admin:', 'users:', 'config:'],
+    'https://config-api.ping.demo/': ['config:', 'settings:']
   };
   
   const validScopes = [];
@@ -376,13 +376,13 @@ function getResourceFromRequest(req) {
   // Derive from request path
   const path = req.path;
   if (path.startsWith('/banking')) {
-    return 'https://banking-api.pingdemo.com/';
+    return 'https://banking-api.ping.demo/';
   } else if (path.startsWith('/mcp')) {
     return 'https://mcp-server.pingdemo.com/';
   } else if (path.startsWith('/admin')) {
-    return 'https://admin-api.pingdemo.com/';
+    return 'https://admin-api.ping.demo/';
   } else if (path.startsWith('/config')) {
-    return 'https://config-api.pingdemo.com/';
+    return 'https://config-api.ping.demo/';
   }
   
   return null;

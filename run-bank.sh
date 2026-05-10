@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # run-bank.sh — Primary startup script for the Banking Digital Assistant.
-# Runs on api.pingdemo.com (HTTPS).
+# Runs on api.ping.demo (HTTPS).
 #
 # Port layout:
-#   Banking API Server  → https://api.pingdemo.com:3001
-#   Banking UI          → https://api.pingdemo.com:4000
+#   Banking API Server  → https://api.ping.demo:3001
+#   Banking UI          → https://api.ping.demo:4000
 #   Banking MCP Server  → localhost:8080
 #   LangChain Agent     → localhost:8888
 #
 # One-time setup (run once each, requires sudo for /etc/hosts):
-#   echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts
+#   echo '127.0.0.1  api.ping.demo' | sudo tee -a /etc/hosts
 #   mkcert -install   # install local CA (once per machine)
 #
 # Usage:
@@ -27,15 +27,15 @@ set -euo pipefail
 
 BASEDIR="$(cd "$(dirname "$0")" && pwd)"
 
-API_HOST="api.pingdemo.com"
+API_HOST="api.ping.demo"
 API_PORT=3001
 UI_PORT=4000
 API_URL="https://${API_HOST}:${API_PORT}"
 CLIENT_URL="https://${API_HOST}:${UI_PORT}"
 
 CERT_DIR="${BASEDIR}/certs"
-CERT_FILE="${CERT_DIR}/api.pingdemo.com+2.pem"
-KEY_FILE="${CERT_DIR}/api.pingdemo.com+2-key.pem"
+CERT_FILE="${CERT_DIR}/api.ping.demo+2.pem"
+KEY_FILE="${CERT_DIR}/api.ping.demo+2-key.pem"
 
 # ── /etc/hosts check ─────────────────────────────────────────────────────────────────
 if ! grep -q "${API_HOST}" /etc/hosts 2>/dev/null; then
@@ -43,9 +43,9 @@ if ! grep -q "${API_HOST}" /etc/hosts 2>/dev/null; then
   echo "   Run this once to add it, then restart the script:"
   echo "   echo '127.0.0.1  ${API_HOST}' | sudo tee -a /etc/hosts"
   echo ""
-  echo "   Continuing with api.pingdemo.com URLs (ensure /etc/hosts is set)..."
-  API_URL="https://api.pingdemo.com:${API_PORT}"
-  CLIENT_URL="https://api.pingdemo.com:${UI_PORT}"
+  echo "   Continuing with api.ping.demo URLs (ensure /etc/hosts is set)..."
+  API_URL="https://api.ping.demo:${API_PORT}"
+  CLIENT_URL="https://api.ping.demo:${UI_PORT}"
 fi
 
 # ── SSL cert check / auto-generate ───────────────────────────────────────────
@@ -459,7 +459,7 @@ cmd_help() {
   echo -e "${WHITE}${BOLD}  Usage:${RESET} ./run-bank.sh <command>"
   echo ""
   echo -e "${WHITE}${BOLD}  Commands:${RESET}"
-  echo "    (default)  Start all services (HTTPS on api.pingdemo.com)"
+  echo "    (default)  Start all services (HTTPS on api.ping.demo)"
   echo "    stop       Stop all services gracefully (process tree + port sweep)"
   echo "    restart    Stop then start all services"
   echo "    status     Show running/stopped status with ports and URLs"
@@ -488,8 +488,8 @@ cmd_help() {
   echo "    ${LOG_AUTH}"
   echo ""
   echo -e "${WHITE}${BOLD}  One-time Setup:${RESET}"
-  echo "    echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts"
-  echo "    mkcert -install && cd certs && mkcert api.pingdemo.com localhost 127.0.0.1"
+  echo "    echo '127.0.0.1  api.ping.demo' | sudo tee -a /etc/hosts"
+  echo "    mkcert -install && cd certs && mkcert api.ping.demo localhost 127.0.0.1"
   echo ""
 }
 
@@ -625,7 +625,7 @@ echo "[LAUNCH] Starting Banking API Server on ${API_HOST}:${API_PORT}..."
   REACT_APP_CLIENT_URL=${CLIENT_URL} \
   FRONTEND_ADMIN_URL=${CLIENT_URL}/admin \
   FRONTEND_DASHBOARD_URL=${CLIENT_URL}/dashboard \
-  MCP_GATEWAY_HTTP_URL="${MCP_GATEWAY_HTTP_URL:-https://api.pingdemo.com:3005}" \
+  MCP_GATEWAY_HTTP_URL="${MCP_GATEWAY_HTTP_URL:-https://api.ping.demo:3005}" \
   npm start > /tmp/bank-api-server.log 2>&1
 ) &
 echo $! > "$PID_API"
@@ -712,7 +712,7 @@ fi
 # ── Banking UI (CRA) on :4000 ────────────────────────────────────────────────
 # REACT_APP_API_PORT  → picked up by src/setupProxy.js to proxy /api/* to :3001
 # REACT_APP_API_URL   → used by apiClient.js for absolute axios calls
-# HOST                → binds CRA dev server to 0.0.0.0 so api.pingdemo.com resolves
+# HOST                → binds CRA dev server to 0.0.0.0 so api.ping.demo resolves
 # DANGEROUSLY_DISABLE_HOST_CHECK → allows non-localhost hostnames in CRA dev
 echo "[WEB] Starting Banking UI on ${CLIENT_URL}..."
 (

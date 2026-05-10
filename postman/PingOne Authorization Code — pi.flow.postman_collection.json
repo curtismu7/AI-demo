@@ -957,7 +957,7 @@
     },
     {
       "key": "redirect_uri",
-      "value": "https://api.pingdemo.com:4000/api/auth/oauth/user/callback",
+      "value": "https://api.ping.demo:4000/api/auth/oauth/user/callback",
       "description": "Must be registered on the PingOne application"
     },
     {

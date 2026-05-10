@@ -20,7 +20,7 @@ const path = require('path');
 async function _callTransactionsApi(body, userToken) {
   if (!userToken) throw new Error('No user token — cannot call /api/transactions');
   const PORT = process.env.PORT || 3001;
-  const certFile = path.join(__dirname, '../certs/api.pingdemo.com+2.pem');
+  const certFile = path.join(__dirname, '../certs/api.ping.demo+2.pem');
   const useHttps = fs.existsSync(certFile);
   const baseUrl = `${useHttps ? 'https' : 'http'}://localhost:${PORT}`;
   const config = {

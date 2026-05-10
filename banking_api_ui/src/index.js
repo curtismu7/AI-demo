@@ -18,7 +18,7 @@ try {
   /* ignore */
 }
 
-// Redirect localhost → canonical host (api.pingdemo.com) so CORS + cookies work correctly
+// Redirect localhost → canonical host (api.ping.demo) so CORS + cookies work correctly
 if (
   typeof window !== 'undefined' &&
   window.location.hostname === 'localhost' &&

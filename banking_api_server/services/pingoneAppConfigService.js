@@ -41,13 +41,13 @@ async function updateAppConfig(appId, config) {
  */
 async function fixLogoutUrls(appId, publicAppUrl) {
   const current = await getAppConfig(appId);
-  const url = publicAppUrl || configStore.getEffective('public_app_url') || 'https://api.pingdemo.com:4000';
+  const url = publicAppUrl || configStore.getEffective('public_app_url') || 'https://api.ping.demo:4000';
 
   const logoutUrls = [
     url,
     `${url}/login`,
-    'https://api.pingdemo.com:4000',
-    'https://api.pingdemo.com:3001'
+    'https://api.ping.demo:4000',
+    'https://api.ping.demo:3001'
   ];
   // Deduplicate
   const uniqueUrls = [...new Set(logoutUrls)];
@@ -102,7 +102,7 @@ async function auditAppConfig(appId) {
   } else {
     const hasLocalhost = config.redirectUris.some(u => u.includes('localhost'));
     if (!hasLocalhost) {
-      issues.push({ check: 'redirectUris', severity: 'warning', message: 'No api.pingdemo.com redirect URIs — ensure PingOne app lists https://api.pingdemo.com:3001 redirect URIs' });
+      issues.push({ check: 'redirectUris', severity: 'warning', message: 'No api.ping.demo redirect URIs — ensure PingOne app lists https://api.ping.demo:3001 redirect URIs' });
     } else {
       passes.push({ check: 'redirectUris', message: `${config.redirectUris.length} redirect URIs configured` });
     }
@@ -203,7 +203,7 @@ async function ensureAllRedirectUris() {
   ).replace(/\/+$/, '').trim();
 
   // Build redirect URIs — use PUBLIC_APP_URL if available, else fall back to localhost:PORT
-  const base = publicAppUrl || process.env.REACT_APP_CLIENT_URL || `https://api.pingdemo.com:${PORT}`;
+  const base = publicAppUrl || process.env.REACT_APP_CLIENT_URL || `https://api.ping.demo:${PORT}`;
 
   // Enforce port in URI when not on standard port (HTTPS:443, HTTP:80)
   function withPort(uri) {

@@ -489,7 +489,7 @@ describe('Client Credentials Token Service', () => {
       const response = await processClientCredentialsGrant(request);
       const payload = JSON.parse(Buffer.from(response.access_token.split('.')[1], 'base64').toString());
 
-      expect(payload.iss).toBe('https://banking-api.pingdemo.com');
+      expect(payload.iss).toBe('https://banking-api.ping.demo');
     });
 
     test('should include correct subject in token', async () => {

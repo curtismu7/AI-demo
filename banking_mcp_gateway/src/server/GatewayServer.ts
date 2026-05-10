@@ -85,8 +85,8 @@ export class GatewayServer {
     // TLS: use https if cert/key are provided via env or certs/ directory
     const certEnv = process.env.GW_TLS_CERT;
     const keyEnv = process.env.GW_TLS_KEY;
-    const defaultCert = resolve(__dirname, '../../../certs/api.pingdemo.com+2.pem');
-    const defaultKey  = resolve(__dirname, '../../../certs/api.pingdemo.com+2-key.pem');
+    const defaultCert = resolve(__dirname, '../../../certs/api.ping.demo+2.pem');
+    const defaultKey  = resolve(__dirname, '../../../certs/api.ping.demo+2-key.pem');
     const certPath = certEnv || (existsSync(defaultCert) ? defaultCert : null);
     const keyPath  = keyEnv  || (existsSync(defaultKey)  ? defaultKey  : null);
     const reqHandler = (req: IncomingMessage, res: ServerResponse) => {

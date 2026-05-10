@@ -156,7 +156,7 @@ const response = fetch('https://mcp-server.pingdemo.com/api', {
 - https://api.pingone.com
 
 Bad:
-- https://api.pingdemo.com (too generic)
+- https://api.ping.demo (too generic)
 - https://pingdemo.com (too broad)`}
         </pre>
       </div>

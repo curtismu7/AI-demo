@@ -32,7 +32,7 @@ const RESOURCE_REFERENCE_TABLE = [
   },
   {
     name: 'Super Banking Banking API',
-    audience: 'https://banking-api.pingdemo.com',
+    audience: 'https://banking-api.ping.demo',
     expectedScopes: ['banking:accounts:read', 'banking:transactions:read', 'banking:transactions:write'],
     ttl: 3600,
     authMethod: undefined, // standard resource server

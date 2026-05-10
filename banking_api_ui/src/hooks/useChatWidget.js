@@ -7,7 +7,7 @@ const useChatWidget = () => {
     // index.html only calls initializeChatWidget on localhost; hosted builds use React BankingAgent.
     const isLocalhost =
       typeof window !== 'undefined' &&
-      false /* always use api.pingdemo.com */;
+      false /* always use api.ping.demo */;
     if (!isLocalhost) {
       setIsInitialized(true);
       return;

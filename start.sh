@@ -45,9 +45,9 @@ fi
 
 echo ""
 echo "✅ Services started:"
-echo "   Banking API Server: https://api.pingdemo.com:3001"
+echo "   Banking API Server: https://api.ping.demo:3001"
 echo "   Banking MCP Server: ws://localhost:8080 (internal)"
-echo "   Banking UI:         https://api.pingdemo.com:4000"
+echo "   Banking UI:         https://api.ping.demo:4000"
 echo "   LangChain Agent:    http://localhost:8888 (internal)"
 echo ""
 echo "📋 Logs:"

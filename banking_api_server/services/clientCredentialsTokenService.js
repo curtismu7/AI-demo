@@ -19,7 +19,7 @@ const { writeExchangeEvent } = require('./exchangeAuditStore');
 const TOKEN_CONFIG = {
   // 30-minute token TTL as specified in requirements
   accessTokenTTL: 30 * 60, // 30 minutes in seconds
-  issuer: process.env.JWT_ISSUER || 'https://banking-api.pingdemo.com',
+  issuer: process.env.JWT_ISSUER || 'https://banking-api.ping.demo',
   algorithm: 'RS256', // Use RSA for production, can fallback to HS256 for development
   // For development, we'll use HS256 with a secret key
   secretKey: process.env.JWT_SECRET || 'development-secret-key-change-in-production'

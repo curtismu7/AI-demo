@@ -603,6 +603,19 @@ class PingOneProvisionService {
         
         steps.push({ step: 'admin-config', icon: '✅', message: 'Admin application configured with token exchange' });
         onStep(steps[steps.length - 1]);
+      } else {
+        // Existing admin app — refresh redirect URI only. Don't overwrite other settings,
+        // which the user may have customized in PingOne admin. Important for migration:
+        // archived apps may still point at api.pingdemo.com; we sync to current host.
+        const targetUri = `${config.publicAppUrl}/api/auth/oauth/callback`;
+        const currentUris = adminAppResult.application.redirectUris || [];
+        if (!currentUris.includes(targetUri)) {
+          steps.push({ step: 'admin-config', icon: '🔁', message: `Refreshing admin redirect URI → ${targetUri}` });
+          onStep(steps[steps.length - 1]);
+          await this.updateApplication(adminAppResult.application.id, { redirectUris: [targetUri] });
+          steps.push({ step: 'admin-config', icon: '✅', message: 'Admin redirect URI refreshed' });
+          onStep(steps[steps.length - 1]);
+        }
       }
 
       // Step 7: Grant scopes to Admin Application
@@ -668,6 +681,17 @@ class PingOneProvisionService {
         
         steps.push({ step: 'user-config', icon: '✅', message: 'User application configured' });
         onStep(steps[steps.length - 1]);
+      } else {
+        // Existing user app — refresh redirect URI only (see admin branch above).
+        const targetUri = `${config.publicAppUrl}/api/auth/oauth/callback`;
+        const currentUris = userAppResult.application.redirectUris || [];
+        if (!currentUris.includes(targetUri)) {
+          steps.push({ step: 'user-config', icon: '🔁', message: `Refreshing user redirect URI → ${targetUri}` });
+          onStep(steps[steps.length - 1]);
+          await this.updateApplication(userAppResult.application.id, { redirectUris: [targetUri] });
+          steps.push({ step: 'user-config', icon: '✅', message: 'User redirect URI refreshed' });
+          onStep(steps[steps.length - 1]);
+        }
       }
 
       // Step 10: Grant scopes to User Application

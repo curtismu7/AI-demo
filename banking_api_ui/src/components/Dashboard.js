@@ -58,7 +58,7 @@ const Dashboard = ({ user, onLogout }) => {
   const [metricDetails, setMetricDetails] = useState(null);
 
   const isLocalApiHost =
-    typeof window !== "undefined" && false; /* always use api.pingdemo.com */
+    typeof window !== "undefined" && false; /* always use api.ping.demo */
 
   const handleDownloadBootstrap = async () => {
     try {

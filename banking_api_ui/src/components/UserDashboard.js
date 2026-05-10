@@ -623,7 +623,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const stepUpVerifyHref = useMemo(
     () =>
       `/api/auth/oauth/user/stepup?return_to=${encodeURIComponent(
-        (process.env.REACT_APP_CLIENT_URL || "https://api.pingdemo.com:4000") +
+        (process.env.REACT_APP_CLIENT_URL || "https://api.ping.demo:4000") +
           "/dashboard",
       )}`,
     [],
@@ -1790,7 +1790,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             className="ud-qa-btn ud-qa-btn--delegate"
             onClick={() =>
               window.open(
-                "https://api.pingdemo.com:4000/delegated-access",
+                "https://api.ping.demo:4000/delegated-access",
                 "_blank",
                 "noopener,noreferrer",
               )

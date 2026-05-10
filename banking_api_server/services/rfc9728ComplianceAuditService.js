@@ -740,7 +740,7 @@ class RFC9728ComplianceAuditService {
    */
   generateTestMetadata() {
     return {
-      resource: 'https://banking-api.pingdemo.com/api',
+      resource: 'https://banking-api.ping.demo/api',
       authorization_servers: ['https://auth.pingone.com/123456/as'],
       scopes_supported: [
         'banking:read',

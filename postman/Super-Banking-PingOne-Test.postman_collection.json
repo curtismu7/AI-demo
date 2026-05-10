@@ -1,13 +1,13 @@
 {
   "info": {
     "name": "Super Banking — PingOne Test Endpoints",
-    "description": "All `/api/pingone-test/*` BFF endpoints for the Super Banking demo.\n\n## How to authenticate (session-based endpoints)\n\nThe BFF uses OAuth Authorization Code + PKCE which requires a real browser. Postman cannot complete this flow directly.\n\n1. **Log in via browser** — open `https://api.pingdemo.com:4000` and sign in (e.g. bankuser / Tigers7&).\n2. **Copy the session cookie** — in DevTools → Application → Cookies → `api.pingdemo.com`, copy the `connect.sid` value.\n3. **Paste into Postman** — set the `sessionCookie` collection variable to the copied value (including the `s%3A` prefix).\n4. **Send 🔑 Token Operations requests** — the Cookie header is pre-configured.\n\nNo-session endpoints (🔧 Setup, 📋 Discovery, 🛠️ Update/Fix) work without authentication.",
+    "description": "All `/api/pingone-test/*` BFF endpoints for the Super Banking demo.\n\n## How to authenticate (session-based endpoints)\n\nThe BFF uses OAuth Authorization Code + PKCE which requires a real browser. Postman cannot complete this flow directly.\n\n1. **Log in via browser** — open `https://api.ping.demo:4000` and sign in (e.g. bankuser / Tigers7&).\n2. **Copy the session cookie** — in DevTools → Application → Cookies → `api.ping.demo`, copy the `connect.sid` value.\n3. **Paste into Postman** — set the `sessionCookie` collection variable to the copied value (including the `s%3A` prefix).\n4. **Send 🔑 Token Operations requests** — the Cookie header is pre-configured.\n\nNo-session endpoints (🔧 Setup, 📋 Discovery, 🛠️ Update/Fix) work without authentication.",
     "_postman_id": "super-banking-pingone-test-v1",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "https://api.pingdemo.com:3001", "type": "string" },
-    { "key": "frontendUrl", "value": "https://api.pingdemo.com:4000", "type": "string" },
+    { "key": "baseUrl", "value": "https://api.ping.demo:3001", "type": "string" },
+    { "key": "frontendUrl", "value": "https://api.ping.demo:4000", "type": "string" },
     { "key": "userId", "value": "", "type": "string" },
     { "key": "sessionCookie", "value": "", "type": "string", "description": "Paste connect.sid cookie value from browser DevTools" }
   ],
@@ -21,7 +21,7 @@
           "request": {
             "method": "GET",
             "url": "{{frontendUrl}}",
-            "description": "This request just opens the frontend. It is here as a reminder:\n\n1. Open {{frontendUrl}} in your **browser** (not Postman).\n2. Sign in as `bankuser` / `Tigers7&` (user) or your admin account.\n3. Open DevTools → Application → Cookies → `api.pingdemo.com`.\n4. Copy the full `connect.sid` value (including `s%3A` prefix).\n5. In Postman: Collection Variables → set `sessionCookie` to the copied value.\n\nAll 🔑 Token Operations requests include a `Cookie: connect.sid={{sessionCookie}}` header."
+            "description": "This request just opens the frontend. It is here as a reminder:\n\n1. Open {{frontendUrl}} in your **browser** (not Postman).\n2. Sign in as `bankuser` / `Tigers7&` (user) or your admin account.\n3. Open DevTools → Application → Cookies → `api.ping.demo`.\n4. Copy the full `connect.sid` value (including `s%3A` prefix).\n5. In Postman: Collection Variables → set `sessionCookie` to the copied value.\n\nAll 🔑 Token Operations requests include a `Cookie: connect.sid={{sessionCookie}}` header."
           }
         }
       ]

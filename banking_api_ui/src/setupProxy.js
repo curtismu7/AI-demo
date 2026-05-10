@@ -30,13 +30,13 @@ module.exports = function (app) {
   // Use HTTPS automatically whenever the cert file is present — this mirrors the
   // same check in server.js so the proxy protocol always matches the server.
   // REACT_APP_API_HTTPS=true can still force-enable it even if the path differs.
-  const certFile = path.join(__dirname, '../../certs/api.pingdemo.com+2.pem');
+  const certFile = path.join(__dirname, '../../certs/api.ping.demo+2.pem');
   const apiHttps = fs.existsSync(certFile) || process.env.REACT_APP_API_HTTPS === 'true';
   const protocol = apiHttps ? 'https' : 'http';
-  // Use api.pingdemo.com as hostname to match the SSL certificate issued for that domain.
+  // Use api.ping.demo as hostname to match the SSL certificate issued for that domain.
   // The server.js also uses this hostname when HTTPS is enabled.
   // When certificates are present, must use matching hostname for SSL/TLS handshake.
-  const hostname = apiHttps ? 'api.pingdemo.com' : 'localhost';
+  const hostname = apiHttps ? 'api.ping.demo' : 'localhost';
   const target = `${protocol}://${hostname}:${apiPort}`;
 
   app.use(

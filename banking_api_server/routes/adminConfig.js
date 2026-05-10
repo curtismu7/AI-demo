@@ -281,7 +281,7 @@ router.post('/generate-keypair', requireAdminOrUnconfigured, async (req, res) =>
 
 /**
  * GET /config/hostname — retrieve current configured hostname
- * Public endpoint (no auth required) — returns { hostname: "https://api.pingdemo.com:4000" }
+ * Public endpoint (no auth required) — returns { hostname: "https://api.ping.demo:4000" }
  */
 router.get('/hostname', (req, res) => {
   try {

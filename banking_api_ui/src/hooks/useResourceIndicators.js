@@ -15,7 +15,7 @@ const resourceApiService = {
     const mockResources = {
       'banking-demo-client': [
         {
-          uri: 'https://banking-api.pingdemo.com/',
+          uri: 'https://banking-api.ping.demo/',
           name: 'Banking API',
           description: 'Core banking operations and account management',
           scopes: ['banking:read', 'banking:write', 'transactions:read', 'accounts:read'],
@@ -35,7 +35,7 @@ const resourceApiService = {
       ],
       'admin-client': [
         {
-          uri: 'https://admin-api.pingdemo.com/',
+          uri: 'https://admin-api.ping.demo/',
           name: 'Admin API',
           description: 'Administrative operations and user management',
           scopes: ['admin:read', 'admin:write', 'users:manage', 'config:read'],
@@ -44,7 +44,7 @@ const resourceApiService = {
           required: false
         },
         {
-          uri: 'https://config-api.pingdemo.com/',
+          uri: 'https://config-api.ping.demo/',
           name: 'Configuration API',
           description: 'System configuration and settings',
           scopes: ['config:read', 'config:write', 'settings:manage'],
@@ -86,10 +86,10 @@ const resourceApiService = {
 
     // Check for unknown resources
     const knownResources = [
-      'https://banking-api.pingdemo.com/',
+      'https://banking-api.ping.demo/',
       'https://mcp-server.pingdemo.com/',
-      'https://admin-api.pingdemo.com/',
-      'https://config-api.pingdemo.com/'
+      'https://admin-api.ping.demo/',
+      'https://config-api.ping.demo/'
     ];
 
     for (const resource of resources) {
@@ -111,8 +111,8 @@ const resourceApiService = {
   getDefaultResources: async (clientId) => {
     // Get default resources for client
     const defaults = {
-      'banking-demo-client': ['https://banking-api.pingdemo.com/'],
-      'admin-client': ['https://admin-api.pingdemo.com/']
+      'banking-demo-client': ['https://banking-api.ping.demo/'],
+      'admin-client': ['https://admin-api.ping.demo/']
     };
 
     return defaults[clientId] || [];

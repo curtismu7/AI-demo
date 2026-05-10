@@ -122,7 +122,7 @@ async function callMcpToolInternal(toolName, params, agentToken, userId, tokenEv
  */
 async function callMcpTool(toolName, params, agentToken, userId, tokenEvents = [], _scopeUpgradeAttempted = false) {
   try {
-    const mcpEndpoint = process.env.MCP_TOOL_ENDPOINT || 'https://api.pingdemo.com:3001/api/mcp/tool';
+    const mcpEndpoint = process.env.MCP_TOOL_ENDPOINT || 'https://api.ping.demo:3001/api/mcp/tool';
 
     const response = await fetch(mcpEndpoint, {
       method: 'POST',
@@ -328,7 +328,7 @@ function createMcpToolRegistry() {
           // Call BFF login activity endpoint
           const endpoint = process.env.MCP_TOOL_ENDPOINT
             ? new URL('/api/auth/activity/by-username', process.env.MCP_TOOL_ENDPOINT).href
-            : 'https://api.pingdemo.com:3001/api/auth/activity/by-username';
+            : 'https://api.ping.demo:3001/api/auth/activity/by-username';
           const res = await fetch(`${endpoint}?username=${encodeURIComponent(username)}`, {
             headers: {
               ...(agentToken && { Authorization: `Bearer ${agentToken}` }),

@@ -27,13 +27,13 @@ describe('Delegation Chain Validation Service', () => {
     test('should create chain node with required properties', () => {
       const node = new ChainNode('user', 'user-12345', {
         scopes: ['banking:read'],
-        audience: 'https://banking-api.pingdemo.com'
+        audience: 'https://banking-api.ping.demo'
       });
 
       expect(node.type).toBe('user');
       expect(node.sub).toBe('user-12345');
       expect(node.scopes).toEqual(['banking:read']);
-      expect(node.audience).toBe('https://banking-api.pingdemo.com');
+      expect(node.audience).toBe('https://banking-api.ping.demo');
       expect(node.timestamp).toBeDefined();
       expect(node.getIdentifier()).toBe('user:user-12345');
     });

@@ -19,7 +19,7 @@
  *   PINGONE_BOOTSTRAP_REGION=com
  *   PINGONE_BOOTSTRAP_CLIENT_ID=...
  *   PINGONE_BOOTSTRAP_CLIENT_SECRET=...
- *   PUBLIC_APP_URL=https://api.pingdemo.com:4000   (optional)
+ *   PUBLIC_APP_URL=https://api.ping.demo:4000   (optional)
  *   node scripts/bootstrapPingOne.js --non-interactive
  */
 
@@ -86,7 +86,7 @@ Env vars (non-interactive mode):
   PINGONE_BOOTSTRAP_REGION         com | eu | ca | asia | com.au   (default: com)
   PINGONE_BOOTSTRAP_CLIENT_ID      Management worker client id
   PINGONE_BOOTSTRAP_CLIENT_SECRET  Management worker client secret
-  PUBLIC_APP_URL                   App base URL              (default: https://api.pingdemo.com:4000)
+  PUBLIC_APP_URL                   App base URL              (default: https://api.ping.demo:4000)
   PINGONE_BOOTSTRAP_AUDIENCE       Resource server audience  (default: banking_api_enduser)
   MCP_GW_AUDIENCE                  Gateway audience          (default: mcp-gw.bxf.com)
 
@@ -265,8 +265,8 @@ function browserPrompt({ timeoutMs = 5 * 60 * 1000 } = {}) {
   return new Promise((resolve, reject) => {
     const fs = require('fs');
     const REPO_ROOT = path.resolve(__dirname, '..', '..');
-    const certPath = path.join(REPO_ROOT, 'certs', 'api.pingdemo.com+2.pem');
-    const keyPath  = path.join(REPO_ROOT, 'certs', 'api.pingdemo.com+2-key.pem');
+    const certPath = path.join(REPO_ROOT, 'certs', 'api.ping.demo+2.pem');
+    const keyPath  = path.join(REPO_ROOT, 'certs', 'api.ping.demo+2-key.pem');
     const useTls = fs.existsSync(certPath) && fs.existsSync(keyPath);
 
     const nonce = crypto.randomBytes(24).toString('base64url');
@@ -358,7 +358,7 @@ async function gatherCredsViaBrowser() {
   console.log('in a localhost form. Auth method is hard-coded to client_secret_basic.');
   const fromForm = await browserPrompt();
 
-  const publicAppUrl = process.env.PUBLIC_APP_URL || 'https://api.pingdemo.com:4000';
+  const publicAppUrl = process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000';
   const audience = process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'banking_api_enduser';
   const mcpGatewayAudience = process.env.MCP_GW_AUDIENCE || 'mcp-gw.bxf.com';
   return { ...fromForm, publicAppUrl, audience, mcpGatewayAudience };
@@ -383,7 +383,7 @@ async function gatherCredsInteractive() {
     if (!workerClientSecret) throw new Error('Management client secret is required.');
 
     const publicAppUrl = await prompt(rl, 'Public App URL', {
-      defaultValue: process.env.PUBLIC_APP_URL || 'https://api.pingdemo.com:4000',
+      defaultValue: process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000',
     });
 
     const audience = process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'banking_api_enduser';
@@ -413,7 +413,7 @@ function gatherCredsFromEnv() {
     region: process.env.PINGONE_BOOTSTRAP_REGION || 'com',
     workerClientId,
     workerClientSecret,
-    publicAppUrl: process.env.PUBLIC_APP_URL || 'https://api.pingdemo.com:4000',
+    publicAppUrl: process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000',
     audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'banking_api_enduser',
     mcpGatewayAudience: process.env.MCP_GW_AUDIENCE || 'mcp-gw.bxf.com',
   };

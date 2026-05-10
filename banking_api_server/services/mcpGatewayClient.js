@@ -9,20 +9,20 @@
  * bearer here and must already be scoped to the gateway audience.
  *
  * Env vars:
- *   MCP_GATEWAY_HTTP_URL   — base URL of banking-mcp-gateway (default: https://api.pingdemo.com:3005)
+ *   MCP_GATEWAY_HTTP_URL   — base URL of banking-mcp-gateway (default: https://api.ping.demo:3005)
  *   MCP_GATEWAY_TIMEOUT_MS — per-request timeout in ms (default: 30000)
  */
 
 const axios = require('axios');
 const https = require('https');
 
-// For local dev the gateway runs with a self-signed cert (api.pingdemo.com:3005).
+// For local dev the gateway runs with a self-signed cert (api.ping.demo:3005).
 // Bypass cert verification only when MCP_GATEWAY_REJECT_UNAUTHORIZED is not
 // explicitly set to '1' and the URL is not a public HTTPS origin.
 const _gatewayRejectUnauthorized = process.env.MCP_GATEWAY_REJECT_UNAUTHORIZED === '1';
 const _devHttpsAgent = new https.Agent({ rejectUnauthorized: _gatewayRejectUnauthorized });
 
-const DEFAULT_GATEWAY_URL = 'https://api.pingdemo.com:3005';
+const DEFAULT_GATEWAY_URL = 'https://api.ping.demo:3005';
 const DEFAULT_TIMEOUT_MS  = 30_000;
 const MCP_PROTOCOL_VERSION = '2025-11-25';
 
@@ -68,7 +68,7 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
         timeout: timeoutMs,
         // Handle error status codes ourselves so we can emit structured errors
         validateStatus: () => true,
-        // Allow self-signed certs in local dev (api.pingdemo.com:3005)
+        // Allow self-signed certs in local dev (api.ping.demo:3005)
         httpsAgent: _devHttpsAgent,
     });
 

@@ -451,7 +451,7 @@ function StepInfoPanel({
 // IMPORTANT: No emojis in any UI text (participant labels, step labels, notes).
 // All labels and notes must match i4ai-ref-arch.mmd exactly, including multi-line formatting.
 
-// PARTICIPANTS (from i4ai-ref-arch.mmd, see https://api.pingdemo.com:4000/architecture/flow)
+// PARTICIPANTS (from i4ai-ref-arch.mmd, see https://api.ping.demo:4000/architecture/flow)
 const PARTICIPANTS = [
   // Mermaid: actor U as User
   { id: "U", label: "User", icon: "" },
@@ -475,7 +475,7 @@ const PARTICIPANTS = [
   { id: "RS", label: "Resource Server (OAuth 2.1)", icon: "" },
 ];
 
-// ALL_STEPS: 1:1 with i4ai-ref-arch.mmd (see https://api.pingdemo.com:4000/architecture/flow)
+// ALL_STEPS: 1:1 with i4ai-ref-arch.mmd (see https://api.ping.demo:4000/architecture/flow)
 // Each step/note references the corresponding Mermaid line in a comment.
 // description field: brief human-readable title for the left step panel (2-5 words)
 const ALL_STEPS = [

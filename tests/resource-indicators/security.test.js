@@ -40,9 +40,9 @@ describe('Resource Indicator Security', () => {
 
     test('should prevent protocol downgrade attacks', () => {
       const downgradeResources = [
-        'http://banking-api.pingdemo.com/',
-        'ftp://banking-api.pingdemo.com/',
-        'ws://banking-api.pingdemo.com/',
+        'http://banking-api.ping.demo/',
+        'ftp://banking-api.ping.demo/',
+        'ws://banking-api.ping.demo/',
         'http://insecure-protocol.com/'
       ];
 
@@ -53,9 +53,9 @@ describe('Resource Indicator Security', () => {
 
     test('should prevent path traversal attacks', () => {
       const pathTraversalResources = [
-        'https://banking-api.pingdemo.com/../../../etc/passwd',
-        'https://banking-api.pingdemo.com/..%2F..%2F..%2Fetc%2Fpasswd',
-        'https://banking-api.pingdemo.com/%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd'
+        'https://banking-api.ping.demo/../../../etc/passwd',
+        'https://banking-api.ping.demo/..%2F..%2F..%2Fetc%2Fpasswd',
+        'https://banking-api.ping.demo/%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd'
       ];
 
       pathTraversalResources.forEach(resource => {
@@ -67,14 +67,14 @@ describe('Resource Indicator Security', () => {
   describe('Cross-Resource Attack Prevention', () => {
     test('should prevent cross-resource token usage', () => {
       const token = {
-        resource: ['https://banking-api.pingdemo.com/'],
+        resource: ['https://banking-api.ping.demo/'],
         client_id: 'test-client'
       };
 
       const attackScenarios = [
         'https://mcp-server.pingdemo.com/',
-        'https://admin-api.pingdemo.com/',
-        'https://config-api.pingdemo.com/',
+        'https://admin-api.ping.demo/',
+        'https://config-api.ping.demo/',
         'https://external-service.com/'
       ];
 
@@ -86,7 +86,7 @@ describe('Resource Indicator Security', () => {
 
     test('should prevent subdomain crossing attacks', () => {
       const token = {
-        resource: ['https://api.pingdemo.com/'],
+        resource: ['https://api.ping.demo/'],
         client_id: 'test-client'
       };
 
@@ -105,13 +105,13 @@ describe('Resource Indicator Security', () => {
 
     test('should prevent resource pattern bypass', () => {
       const token = {
-        resource: ['https://banking-api.pingdemo.com/'],
+        resource: ['https://banking-api.ping.demo/'],
         client_id: 'test-client'
       };
 
       const bypassAttempts = [
-        'https://banking-api.pingdemo.com.evil.com/',
-        'https://banking-api.pingdemo.com.malicious.net/',
+        'https://banking-api.ping.demo.evil.com/',
+        'https://banking-api.ping.demo.malicious.net/',
         'https://banking-api-malicious.pingdemo.com/'
       ];
 
@@ -130,7 +130,7 @@ describe('Resource Indicator Security', () => {
         exp: Math.floor(Date.now() / 1000) + 3600
       };
 
-      const resources = ['https://banking-api.pingdemo.com/'];
+      const resources = ['https://banking-api.ping.demo/'];
       const boundToken1 = resourceIndicatorService.createResourceBinding(token, resources);
       const boundToken2 = resourceIndicatorService.createResourceBinding(token, resources);
 
@@ -148,7 +148,7 @@ describe('Resource Indicator Security', () => {
         exp: Math.floor(Date.now() / 1000) + 3600
       };
 
-      const resources = ['https://banking-api.pingdemo.com/'];
+      const resources = ['https://banking-api.ping.demo/'];
       const boundToken = resourceIndicatorService.createResourceBinding(token, resources);
 
       // Verify binding contains expected data structure
@@ -168,14 +168,14 @@ describe('Resource Indicator Security', () => {
 
     test('should prevent resource binding tampering', () => {
       const token = {
-        resource: ['https://banking-api.pingdemo.com/'],
+        resource: ['https://banking-api.ping.demo/'],
         client_id: 'test-client',
         resource_binding: 'tampered-hash-12345'
       };
 
       const isValid = resourceIndicatorService.validateResourceBinding(
         token,
-        'https://banking-api.pingdemo.com/'
+        'https://banking-api.ping.demo/'
       );
 
       // Should still validate based on resource presence, but binding hash would be invalid
@@ -187,16 +187,16 @@ describe('Resource Indicator Security', () => {
   describe('Authorization Bypass Prevention', () => {
     test('should prevent authorization bypass with resource manipulation', () => {
       const token = {
-        resource: ['https://banking-api.pingdemo.com/'],
+        resource: ['https://banking-api.ping.demo/'],
         client_id: 'test-client'
       };
 
       const bypassAttempts = [
-        'https://banking-api.pingdemo.com/', // Same resource - should work
+        'https://banking-api.ping.demo/', // Same resource - should work
         'https://BANKING-API.PINGDEMO.COM/', // Case variation - should fail
-        'https://banking-api.pingdemo.com', // Missing trailing slash - should fail
-        'https://banking-api.pingdemo.com//', // Double slash - should fail
-        'https://banking-api.pingdemo.com:443/', // Port specification - should fail
+        'https://banking-api.ping.demo', // Missing trailing slash - should fail
+        'https://banking-api.ping.demo//', // Double slash - should fail
+        'https://banking-api.ping.demo:443/', // Port specification - should fail
       ];
 
       bypassAttempts.forEach((targetResource, index) => {
@@ -211,7 +211,7 @@ describe('Resource Indicator Security', () => {
 
     test('should prevent scope escalation through resource selection', () => {
       const limitedScopes = ['banking:read'];
-      const resources = ['https://banking-api.pingdemo.com/'];
+      const resources = ['https://banking-api.ping.demo/'];
 
       const compatibility = resourceIndicatorService.validateScopeResourceCompatibility(
         limitedScopes,
@@ -225,8 +225,8 @@ describe('Resource Indicator Security', () => {
     test('should prevent privilege escalation through multi-resource selection', () => {
       const userScopes = ['banking:read'];
       const privilegedResources = [
-        'https://banking-api.pingdemo.com/',
-        'https://admin-api.pingdemo.com/'
+        'https://banking-api.ping.demo/',
+        'https://admin-api.ping.demo/'
       ];
 
       const validation = resourceIndicatorService.validateResourceSelection(
@@ -261,7 +261,7 @@ describe('Resource Indicator Security', () => {
       );
 
       // Should not reveal which resources are allowed for the client
-      expect(validation.errors).not.toContain('https://banking-api.pingdemo.com');
+      expect(validation.errors).not.toContain('https://banking-api.ping.demo');
       expect(validation.errors).not.toContain('https://mcp-server.pingdemo.com');
     });
   });
@@ -282,14 +282,14 @@ describe('Resource Indicator Security', () => {
     });
 
     test('should handle extremely long resource URIs', () => {
-      const longResource = 'https://banking-api.pingdemo.com/' + 'a'.repeat(10000) + '/';
+      const longResource = 'https://banking-api.ping.demo/' + 'a'.repeat(10000) + '/';
 
       const isValid = resourceIndicatorService.validateResourceFormat(longResource);
       expect(isValid).toBe(false);
     });
 
     test('should handle deeply nested resource paths', () => {
-      const deepResource = 'https://banking-api.pingdemo.com/' + 'deep/'.repeat(100);
+      const deepResource = 'https://banking-api.ping.demo/' + 'deep/'.repeat(100);
 
       const isValid = resourceIndicatorService.validateResourceFormat(deepResource);
       expect(isValid).toBe(false);
@@ -298,7 +298,7 @@ describe('Resource Indicator Security', () => {
 
   describe('Session Security', () => {
     test('should validate resource persistence across sessions', () => {
-      const sessionResources = ['https://banking-api.pingdemo.com/'];
+      const sessionResources = ['https://banking-api.ping.demo/'];
       
       // Resources should be validated when retrieved from session
       const validation = resourceIndicatorService.validateResourceSelection(
@@ -312,8 +312,8 @@ describe('Resource Indicator Security', () => {
     test('should prevent session tampering with resources', () => {
       // Simulate tampered session data
       const tamperedResources = [
-        'https://banking-api.pingdemo.com/',
-        'https://admin-api.pingdemo.com/' // User shouldn't have access to this
+        'https://banking-api.ping.demo/',
+        'https://admin-api.ping.demo/' // User shouldn't have access to this
       ];
 
       const validation = resourceIndicatorService.validateResourceSelection(
@@ -329,11 +329,11 @@ describe('Resource Indicator Security', () => {
     test('should log resource access for security monitoring', () => {
       const token = {
         sub: 'user-123',
-        resource: ['https://banking-api.pingdemo.com/'],
+        resource: ['https://banking-api.ping.demo/'],
         client_id: 'test-client'
       };
 
-      const requestResource = 'https://banking-api.pingdemo.com/';
+      const requestResource = 'https://banking-api.ping.demo/';
       
       // In a real implementation, this would trigger audit logging
       const isValid = resourceIndicatorService.validateResourceBinding(token, requestResource);
@@ -345,11 +345,11 @@ describe('Resource Indicator Security', () => {
     test('should log failed resource access attempts', () => {
       const token = {
         sub: 'user-123',
-        resource: ['https://banking-api.pingdemo.com/'],
+        resource: ['https://banking-api.ping.demo/'],
         client_id: 'test-client'
       };
 
-      const unauthorizedResource = 'https://admin-api.pingdemo.com/';
+      const unauthorizedResource = 'https://admin-api.ping.demo/';
       
       // In a real implementation, this would trigger security alert logging
       const isValid = resourceIndicatorService.validateCrossResourceUsage(token, unauthorizedResource);
