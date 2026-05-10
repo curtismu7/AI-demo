@@ -1784,27 +1784,188 @@ class PingOneProvisionService {
    */
   async recreateResource(config, resourceKey) {
     const [type, id] = resourceKey.split(':');
-    
+
     try {
       switch (type) {
         case 'resource':
           await this.makeRequest('DELETE', `/resources/${id}`);
           return { success: true, message: 'Resource server deleted' };
-          
+
         case 'application':
           await this.makeRequest('DELETE', `/applications/${id}`);
           return { success: true, message: 'Application deleted' };
-          
+
         case 'user':
           await this.makeRequest('DELETE', `/users/${id}`);
           return { success: true, message: 'User deleted' };
-          
+
         default:
           throw new Error(`Unknown resource type: ${type}`);
       }
     } catch (error) {
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Nuclear option: delete EVERYTHING in the environment that we can.
+   *
+   * Deletes:
+   *   - All applications EXCEPT the worker app being used to authenticate
+   *     (deleting that mid-run kills the access token).
+   *   - All resource servers EXCEPT system-defaults `PingOne API` and `openid`
+   *     (PingOne refuses to delete them anyway).
+   *   - All groups.
+   *   - All custom user-schema attributes (CORE / STANDARD attrs are
+   *     PingOne-managed and rejected).
+   *   - All non-CORE users in the default population.
+   *
+   * Does NOT delete:
+   *   - The environment itself.
+   *   - The worker app (`config.workerClientId` is the actor — would invalidate
+   *     the very token we're holding).
+   *   - System-default resource servers.
+   *   - Built-in user-schema attributes.
+   *
+   * Streams progress via onStep callback (same shape as provisionEnvironment).
+   * Per-item failures don't abort; reported in the summary. Returns:
+   *   { deleted: { apps, resources, groups, attrs, users },
+   *     skipped: { ... }, failed: [...] }
+   */
+  async wipeEnvironment(config, onStep = () => {}) {
+    await this.initialize(config.envId, config.workerClientId, config.workerClientSecret, config.region);
+
+    const summary = {
+      deleted: { apps: 0, resources: 0, groups: 0, attrs: 0, users: 0 },
+      skipped: { apps: 0, resources: 0, groups: 0, attrs: 0, users: 0 },
+      failed:  [],
+    };
+    const step = (icon, message, extra = {}) => onStep({ step: 'wipe', icon, message, ...extra });
+
+    step('💣', `Wiping PingOne environment ${config.envId} (region: ${config.region})`);
+
+    // --- Apps -----------------------------------------------------------
+    step('🔍', 'Listing applications…');
+    let apps = [];
+    try {
+      apps = (await this.makeRequest('GET', '/applications')).data._embedded?.applications || [];
+    } catch (err) {
+      step('❌', `Could not list applications: ${err.message}`);
+    }
+    step('🗑️', `Found ${apps.length} application(s) — preserving worker (${config.workerClientId})`);
+    for (const app of apps) {
+      // NEVER delete the worker we're auth'd as.
+      if (app.id === config.workerClientId || app.clientId === config.workerClientId) {
+        summary.skipped.apps++;
+        step('⏭️', `Kept worker app: ${app.name}`);
+        continue;
+      }
+      try {
+        await this.makeRequest('DELETE', `/applications/${app.id}`);
+        summary.deleted.apps++;
+        step('✅', `Deleted app: ${app.name}`);
+      } catch (err) {
+        summary.failed.push({ kind: 'app', id: app.id, name: app.name, error: err.message });
+        step('❌', `Failed to delete app '${app.name}': ${err.message}`);
+      }
+    }
+
+    // --- Resource servers ------------------------------------------------
+    step('🔍', 'Listing resource servers…');
+    let resources = [];
+    try {
+      resources = (await this.makeRequest('GET', '/resources')).data._embedded?.resources || [];
+    } catch (err) {
+      step('❌', `Could not list resources: ${err.message}`);
+    }
+    const SYSTEM_RESOURCES = new Set(['PingOne API', 'openid']);
+    for (const r of resources) {
+      if (SYSTEM_RESOURCES.has(r.name)) {
+        summary.skipped.resources++;
+        step('⏭️', `Kept system resource: ${r.name}`);
+        continue;
+      }
+      try {
+        await this.makeRequest('DELETE', `/resources/${r.id}`);
+        summary.deleted.resources++;
+        step('✅', `Deleted resource: ${r.name}`);
+      } catch (err) {
+        summary.failed.push({ kind: 'resource', id: r.id, name: r.name, error: err.message });
+        step('❌', `Failed to delete resource '${r.name}': ${err.message}`);
+      }
+    }
+
+    // --- Groups ----------------------------------------------------------
+    step('🔍', 'Listing groups…');
+    let groups = [];
+    try {
+      groups = (await this.makeRequest('GET', '/groups')).data._embedded?.groups || [];
+    } catch (err) {
+      step('❌', `Could not list groups: ${err.message}`);
+    }
+    for (const g of groups) {
+      try {
+        await this.makeRequest('DELETE', `/groups/${g.id}`);
+        summary.deleted.groups++;
+        step('✅', `Deleted group: ${g.name}`);
+      } catch (err) {
+        summary.failed.push({ kind: 'group', id: g.id, name: g.name, error: err.message });
+        step('❌', `Failed to delete group '${g.name}': ${err.message}`);
+      }
+    }
+
+    // --- User schema attributes -----------------------------------------
+    // CUSTOM only — CORE/STANDARD are managed by PingOne and refuse delete.
+    step('🔍', 'Listing custom user-schema attributes…');
+    try {
+      if (!this._userSchemaId) {
+        const schemas = (await this.makeRequest('GET', '/schemas?filter=name eq "User"')).data;
+        this._userSchemaId = schemas._embedded?.schemas?.[0]?.id;
+      }
+      if (this._userSchemaId) {
+        const attrs = (await this.makeRequest('GET', `/schemas/${this._userSchemaId}/attributes`)).data._embedded?.attributes || [];
+        for (const a of attrs) {
+          if (a.type !== 'CUSTOM') {
+            summary.skipped.attrs++;
+            continue;
+          }
+          try {
+            await this.makeRequest('DELETE', `/schemas/${this._userSchemaId}/attributes/${a.id}`);
+            summary.deleted.attrs++;
+            step('✅', `Deleted user attribute: ${a.name}`);
+          } catch (err) {
+            summary.failed.push({ kind: 'attr', id: a.id, name: a.name, error: err.message });
+            step('❌', `Failed to delete attribute '${a.name}': ${err.message}`);
+          }
+        }
+      }
+    } catch (err) {
+      step('❌', `Could not enumerate user schema: ${err.message}`);
+    }
+
+    // --- Users -----------------------------------------------------------
+    // PingOne paginates; loop until empty. Skip nothing — wipe is wipe.
+    step('🔍', 'Deleting users…');
+    let userPage = await this.makeRequest('GET', '/users?limit=100');
+    let userList = userPage.data._embedded?.users || [];
+    while (userList.length > 0) {
+      for (const u of userList) {
+        try {
+          await this.makeRequest('DELETE', `/users/${u.id}`);
+          summary.deleted.users++;
+          step('✅', `Deleted user: ${u.username}`);
+        } catch (err) {
+          summary.failed.push({ kind: 'user', id: u.id, name: u.username, error: err.message });
+          step('❌', `Failed to delete user '${u.username}': ${err.message}`);
+        }
+      }
+      // Re-fetch — list shrinks as we delete.
+      userPage = await this.makeRequest('GET', '/users?limit=100');
+      userList = userPage.data._embedded?.users || [];
+    }
+
+    step('🎉', `Wipe complete. Deleted: ${summary.deleted.apps} apps, ${summary.deleted.resources} resources, ${summary.deleted.groups} groups, ${summary.deleted.attrs} attrs, ${summary.deleted.users} users. Skipped: ${summary.skipped.apps + summary.skipped.resources + summary.skipped.attrs}. Failures: ${summary.failed.length}.`);
+    return summary;
   }
 
   /**
@@ -1848,5 +2009,9 @@ module.exports = {
   provisionService,
   provisionEnvironment: (config, onStep) => provisionService.provisionEnvironment(config, onStep),
   recreateResource: (config, resourceKey) => provisionService.recreateResource(config, resourceKey),
+  // Caller MUST construct a fresh service instance for wipe — the module
+  // singleton may have leftover state from a prior provision call. Each
+  // wipeEnvironment call also re-initializes (calls getWorkerToken).
+  wipeEnvironment: (config, onStep) => new PingOneProvisionService().wipeEnvironment(config, onStep),
   checkResourceExists: (type, name) => provisionService.findResourceByName(type, name)
 };

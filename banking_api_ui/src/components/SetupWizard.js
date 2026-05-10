@@ -122,6 +122,74 @@ export default function SetupWizard() {
   const [verifyError, setVerifyError] = useState('');
   const [verifyLoading, setVerifyLoading] = useState(false);
 
+  // ── Danger Zone: wipe-environment ─────────────────────────────────────
+  // Posts to /api/admin/setup/wipe-environment with type-the-env-id confirmation.
+  // Reuses the same `creds` state the create flow uses, plus a separate
+  // confirmation field that must EXACTLY match envId before the button enables.
+  const [wipeConfirmEnvId, setWipeConfirmEnvId] = useState('');
+  const [wipeRunning, setWipeRunning] = useState(false);
+  const [wipeLog, setWipeLog] = useState([]);
+  const [wipeSummary, setWipeSummary] = useState(null);
+  const wipeReady = !!creds.envId
+                  && !!creds.workerClientId
+                  && !!creds.workerClientSecret
+                  && wipeConfirmEnvId === creds.envId
+                  && !wipeRunning;
+  const startWipe = async () => {
+    if (!wipeReady) return;
+    if (!window.confirm(`This will DELETE EVERYTHING in PingOne env ${creds.envId}.\n\nApps, resource servers, groups, custom user attributes, and users will be removed (except the worker app you're authenticated as).\n\nThis cannot be undone. Proceed?`)) return;
+    setWipeRunning(true);
+    setWipeLog([]);
+    setWipeSummary(null);
+    try {
+      const resp = await fetch('/api/admin/setup/wipe-environment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          envId: creds.envId,
+          workerClientId: creds.workerClientId,
+          workerClientSecret: creds.workerClientSecret,
+          region: creds.region || 'com',
+          confirmEnvId: wipeConfirmEnvId,
+        }),
+      });
+      if (!resp.ok || !resp.body) {
+        const t = await resp.text().catch(() => resp.statusText);
+        setWipeLog((l) => [...l, { icon: '❌', message: `Wipe failed: ${t}` }]);
+        setWipeRunning(false);
+        return;
+      }
+      // SSE stream — same pattern as the existing /run handler.
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let nl;
+        while ((nl = buffer.indexOf('\n\n')) !== -1) {
+          const chunk = buffer.slice(0, nl).trim();
+          buffer = buffer.slice(nl + 2);
+          if (!chunk.startsWith('data: ')) continue;
+          const payload = chunk.slice(6).trim();
+          if (payload === '[DONE]') continue;
+          try {
+            const ev = JSON.parse(payload);
+            setWipeLog((l) => [...l, ev]);
+            if (ev.summary) setWipeSummary(ev.summary);
+          } catch (_e) { /* ignore */ }
+        }
+      }
+    } catch (err) {
+      setWipeLog((l) => [...l, { icon: '❌', message: `Wipe failed: ${err.message}` }]);
+    } finally {
+      setWipeRunning(false);
+      setWipeConfirmEnvId('');   // require re-typing for any subsequent run
+    }
+  };
+
   // Resume from localStorage on mount
   useEffect(() => {
     try {
@@ -501,6 +569,80 @@ export default function SetupWizard() {
           )}
         </div>
       ))}
+
+      {/* ── Danger Zone ─────────────────────────────────────────────── */}
+      <div
+        className="wizard-danger-zone"
+        style={{
+          marginTop: 32,
+          padding: 16,
+          border: '2px solid #c53030',
+          borderRadius: 8,
+          background: '#fff5f5',
+        }}
+      >
+        <h2 style={{ color: '#c53030', marginTop: 0 }}>⚠️ Danger zone</h2>
+        <p style={{ marginTop: 0 }}>
+          <strong>Wipe entire PingOne environment.</strong> Deletes every application,
+          resource server, group, custom user attribute, and user in the env above
+          (preserving the worker app being used to authenticate). This <em>cannot</em>{' '}
+          be undone. Use only on a sacrificial demo tenant.
+        </p>
+        <p style={{ fontSize: 13, color: '#742a2a' }}>
+          Uses the credentials from the form above. Make sure the Environment ID and
+          worker client are correct before continuing.
+        </p>
+        <label style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>
+          Type the Environment ID to confirm:
+        </label>
+        <input
+          type="text"
+          value={wipeConfirmEnvId}
+          onChange={(e) => setWipeConfirmEnvId(e.target.value)}
+          placeholder={creds.envId || 'enter env id from above'}
+          disabled={wipeRunning}
+          style={{
+            width: '100%',
+            padding: '8px 10px',
+            border: '1px solid #c7c7cc',
+            borderRadius: 6,
+            fontFamily: 'monospace',
+            marginBottom: 8,
+          }}
+        />
+        <button
+          type="button"
+          onClick={startWipe}
+          disabled={!wipeReady}
+          style={{
+            background: wipeReady ? '#c53030' : '#999',
+            color: '#fff',
+            border: 0,
+            padding: '10px 18px',
+            borderRadius: 6,
+            fontWeight: 600,
+            cursor: wipeReady ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {wipeRunning ? 'Wiping…' : '💣 Wipe environment'}
+        </button>
+        {wipeLog.length > 0 && (
+          <div style={{ marginTop: 16, maxHeight: 320, overflowY: 'auto', background: '#fff', border: '1px solid #c7c7cc', borderRadius: 6, padding: 12, fontFamily: 'monospace', fontSize: 13 }}>
+            {wipeLog.map((ev, i) => (
+              <div key={i}>{ev.icon || '·'}  {ev.message || ''}</div>
+            ))}
+          </div>
+        )}
+        {wipeSummary && (
+          <div style={{ marginTop: 12, padding: 10, background: '#fff', border: '1px solid #38a169', borderRadius: 6 }}>
+            <strong style={{ color: '#22543d' }}>Wipe complete.</strong>{' '}
+            Deleted: {wipeSummary.deleted.apps} apps, {wipeSummary.deleted.resources} resources,{' '}
+            {wipeSummary.deleted.groups} groups, {wipeSummary.deleted.attrs} attributes,{' '}
+            {wipeSummary.deleted.users} users.{' '}
+            {wipeSummary.failed.length > 0 ? `${wipeSummary.failed.length} failures (see log).` : 'Zero failures.'}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -77,6 +77,10 @@ Usage:
   node scripts/bootstrapPingOne.js --non-interactive  Read creds from env vars
   node scripts/bootstrapPingOne.js --recreate-apps    Delete existing 'Super Banking *'
                                                        apps + resources before creating
+  node scripts/bootstrapPingOne.js --wipe-environment NUCLEAR — delete EVERYTHING in the
+                                                       PingOne env (apps, resources, groups,
+                                                       custom user attrs, users) and EXIT.
+                                                       Does not provision afterward.
 
 Step 1: Create a PingOne worker app with the "Identity Data Admin" role.
 Step 2: Run this script. By default it pops a localhost form for the three creds
@@ -108,6 +112,12 @@ const NO_BROWSER = args.includes('--no-browser');
 // --recreate-apps: before provisioning, delete every 'Super Banking *' app
 // and every resource we'd create. Use when changing hostname / starting clean.
 const RECREATE_APPS = args.includes('--recreate-apps');
+// --wipe-environment: nuclear option. Delete EVERYTHING in the PingOne env
+// (apps, resources, groups, custom user-schema attrs, users) except the
+// worker we're authenticated as and PingOne system defaults. Then EXIT —
+// does NOT continue to provisioning. Use when starting from a totally clean
+// slate or recovering from severe drift.
+const WIPE_ENVIRONMENT = args.includes('--wipe-environment');
 
 // ── Prompts ──────────────────────────────────────────────────────────────────
 
@@ -749,7 +759,43 @@ async function main() {
   }
 
   // Lazy-require so --help and prompts don't pay the bootstrap import cost.
-  const { provisionEnvironment } = require('../services/pingoneProvisionService');
+  const { provisionEnvironment, wipeEnvironment } = require('../services/pingoneProvisionService');
+
+  // --- WIPE-ENVIRONMENT MODE -----------------------------------------------
+  // Replaces the normal provisioning flow with a destructive wipe of every
+  // app/resource/group/attr/user in the env. Requires explicit type-the-env-id
+  // confirmation when interactive (the browser/terminal flow already showed
+  // the env id in the plan summary, but we re-confirm because this is destructive).
+  if (WIPE_ENVIRONMENT) {
+    if (!NON_INTERACTIVE) {
+      const tty = getInteractiveInput();
+      const rl = readline.createInterface({ input: tty.stream, output: process.stdout, terminal: true });
+      console.log('');
+      console.log('💣  --wipe-environment will DELETE every app, resource server, group,');
+      console.log('    custom user attribute, and user in environment ' + creds.envId);
+      console.log('    (preserving only the worker app being used to authenticate).');
+      console.log('');
+      const typed = await prompt(rl, `Type the environment id (${creds.envId}) to confirm`);
+      rl.close();
+      if (tty.opened) try { tty.stream.destroy(); } catch (_e) {}
+      if (String(typed).trim() !== creds.envId) {
+        console.log('Confirmation mismatch — aborted.');
+        process.exit(2);
+      }
+    }
+    console.log('');
+    console.log('═'.repeat(60));
+    console.log('  PingOne wipe');
+    console.log('═'.repeat(60));
+    const summary = await wipeEnvironment(creds, (s) => console.log(`  ${s.icon || '·'}  ${s.message || ''}`));
+    console.log('');
+    console.log(`Wipe complete:  ${summary.deleted.apps} apps, ${summary.deleted.resources} resources, ${summary.deleted.groups} groups, ${summary.deleted.attrs} attributes, ${summary.deleted.users} users deleted.`);
+    if (summary.failed.length > 0) {
+      console.log(`${summary.failed.length} item(s) failed — see lines above.`);
+      process.exit(1);
+    }
+    process.exit(0);
+  }
 
   console.log('');
   console.log('═'.repeat(60));

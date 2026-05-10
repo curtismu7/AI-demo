@@ -25,6 +25,7 @@ const TEST_SUITES = {
 const {
     provisionEnvironment,
     recreateResource,
+    wipeEnvironment,
     PingOneProvisionService
 } = require('../services/pingoneProvisionService');
 const {
@@ -380,6 +381,63 @@ router.get('/config-template', requireAdmin, async (req, res) => {
     };
 
     res.json(template);
+});
+
+/**
+ * POST /api/admin/setup/wipe-environment
+ *
+ * NUCLEAR OPTION: deletes every app, resource server, group, custom user
+ * attribute, and user in the PingOne environment. Streams progress via SSE.
+ *
+ * Required body:
+ *   envId, workerClientId, workerClientSecret, region — same as /run
+ *   confirmEnvId — must EXACTLY match envId. Type-the-env-id confirmation
+ *                  prevents one-click accidents AND wrong-tenant disasters.
+ *
+ * Worker app being used to authenticate is preserved (deleting it mid-run
+ * would invalidate our token). System-default resources (PingOne API, openid)
+ * are also preserved — PingOne refuses to delete them anyway.
+ */
+router.post('/wipe-environment', requireAdmin, async (req, res) => {
+    const { envId, workerClientId, workerClientSecret, region, confirmEnvId } = req.body;
+
+    if (!envId || !workerClientId || !workerClientSecret) {
+        return res.status(400).json({
+            error: 'missing_required_fields',
+            message: 'envId, workerClientId, and workerClientSecret are required',
+        });
+    }
+    if (!confirmEnvId || confirmEnvId !== envId) {
+        return res.status(400).json({
+            error: 'confirmation_mismatch',
+            message: 'confirmEnvId must EXACTLY match envId. Type the environment ID to confirm.',
+        });
+    }
+
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+    });
+    res.write(`data: ${JSON.stringify({ step: 'connected', icon: '🔗', message: 'Connected to wipe stream' })}\n\n`);
+
+    const onStep = (step) => {
+        try { res.write(`data: ${JSON.stringify(step)}\n\n`); }
+        catch (err) { console.error('[wipe] write failed:', err.message); }
+    };
+
+    try {
+        console.warn(`[wipe] WIPE STARTED for env ${envId} by admin ${req.user?.username}`);
+        const summary = await wipeEnvironment({ envId, workerClientId, workerClientSecret, region: region || 'com' }, onStep);
+        onStep({ step: 'complete', icon: '🎉', message: 'Wipe complete', summary });
+        console.warn(`[wipe] WIPE COMPLETE for env ${envId}: ${JSON.stringify(summary.deleted)}`);
+    } catch (err) {
+        console.error('[wipe] failed:', err.message);
+        onStep({ step: 'error', icon: '❌', message: `Wipe failed: ${err.message}`, error: err.message });
+    }
+
+    try { res.write('data: [DONE]\n\n'); res.end(); } catch (_) {}
 });
 
 /**
