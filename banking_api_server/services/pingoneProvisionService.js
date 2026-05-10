@@ -203,18 +203,34 @@ class PingOneProvisionService {
       };
     }
 
+    // PingOne /resources schema:
+    //   - type: enum { OPENID_CONNECT, PINGONE_API, CUSTOM } — must be CUSTOM
+    //     for our use case (NOT the URN string we used to send).
+    //   - audience: STRING (single value), not an array. Sending an array
+    //     produces "INVALID_VALUE for attribute audience" → INVALID_REQUEST.
+    //   - audience is optional; omitting it defaults to `name`. We pass the
+    //     caller-provided audience explicitly so callers can use a stable
+    //     loopback hostname like `mcp-gw.bxf.com`.
     const data = {
       name,
       description,
-      type: 'urn:pingone:resource-server',
-      audience: [audience]
+      type: 'CUSTOM',
+      audience,
     };
 
     const response = await this.makeRequest('POST', '/resources', data);
-    return { 
-      exists: false, 
-      resource: response.data,
-      resourceKey: `resource:${response.data.id}`
+    // The response shape PingOne returns matches our previous expectations:
+    // resource has an `audience` field (string), surfaced as a single-item
+    // array `audience: [aud]` for backwards-compat — wrap it here so code that
+    // reads provisioned.resourceServer.audience[0] still works.
+    const resource = response.data;
+    if (typeof resource.audience === 'string') {
+      resource.audience = [resource.audience];
+    }
+    return {
+      exists: false,
+      resource,
+      resourceKey: `resource:${resource.id}`,
     };
   }
 
