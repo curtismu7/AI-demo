@@ -194,11 +194,18 @@ function runChild(label, scriptArgs, opts = {}) {
   // We use spawn (not spawnSync) so we can stream the child's output as it
   // arrives — both to our terminal and to the log file. spawnSync's
   // stdio:'inherit' would skip our log pipe entirely.
+  //
+  // stdio[0]='ignore' detaches stdin from our parent's stdin. Under curl-pipe,
+  // our stdin is the HTTP body (closed/exhausted), and inheriting that into a
+  // child caused npm install / git operations to crash with EBADF when they
+  // probed stdin. Children that DO need user input (bootstrapPingOne) read
+  // from /dev/tty directly via the getInteractiveInput() helper, so they
+  // don't depend on inherited stdin anyway.
   const { spawn } = require('child_process');
   return new Promise((resolve) => {
     const child = spawn('node', scriptArgs, {
       cwd: opts.cwd || SERVER_ROOT,
-      stdio: ['inherit', 'pipe', 'pipe'],   // stdin inherited so prompts work
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
 
     const tee = (chunk, isErr) => {
@@ -223,12 +230,14 @@ function runChild(label, scriptArgs, opts = {}) {
 }
 
 // npm install needs the same tee treatment but isn't a 'node' invocation.
+// Same stdin='ignore' rationale as runChild — under curl-pipe, inheriting
+// stdin caused EBADF when npm probed it.
 function runNpmInstall(cwd) {
   const { spawn } = require('child_process');
   console.log(`  Running npm install in ${cwd}...`);
   if (logStream) logStream.write(`\n[NPM START] cwd=${cwd}\n`);
   return new Promise((resolve) => {
-    const child = spawn('npm', ['install'], { cwd, stdio: ['inherit', 'pipe', 'pipe'] });
+    const child = spawn('npm', ['install'], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
     const tee = (chunk, isErr) => {
       const out = isErr ? process.stderr : process.stdout;
       out.write(chunk);
