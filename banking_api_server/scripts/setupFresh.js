@@ -120,21 +120,131 @@ const SERVER_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(SERVER_ROOT, '..');
 const ENV_FILE = path.join(SERVER_ROOT, '.env');
 
+// ── Transcript logging ──────────────────────────────────────────────────────
+//
+// Tee everything (our own console output AND every child process's stdout/
+// stderr) into setup.log at the repo root. The user gets a complete record of
+// what happened, including npm install verbosity and the per-step provisioning
+// detail — useful when debugging "the bootstrap silently exited" type issues.
+//
+// Two layers:
+//   1. console.log / console.error are wrapped so anything we print also lands
+//      in the log file.
+//   2. spawnSync children are launched with piped stdio; we then forward their
+//      output to BOTH our terminal AND the log file.
+//
+// Stdin is left as 'inherit' for children so prompts still receive keyboard
+// input.
+
+const LOG_FILE = path.join(REPO_ROOT, 'setup.log');
+let logStream = null;
+
+function openLog() {
+  // Append mode so re-runs accumulate; the banner separates runs visibly.
+  logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
+  const stamp = new Date().toISOString();
+  logStream.write(`\n\n${'═'.repeat(78)}\n`);
+  logStream.write(`  setup:fresh run started ${stamp}\n`);
+  logStream.write(`  argv: ${process.argv.slice(2).join(' ') || '(none)'}\n`);
+  logStream.write(`  node: ${process.version}\n`);
+  logStream.write(`  cwd:  ${process.cwd()}\n`);
+  logStream.write(`${'═'.repeat(78)}\n\n`);
+}
+
+function closeLog() {
+  if (logStream) try { logStream.end(); } catch (_e) {}
+}
+
+function patchConsole() {
+  const origLog  = console.log.bind(console);
+  const origErr  = console.error.bind(console);
+  const origWarn = console.warn.bind(console);
+  console.log = (...args) => {
+    origLog(...args);
+    if (logStream) logStream.write(args.map(formatForLog).join(' ') + '\n');
+  };
+  console.error = (...args) => {
+    origErr(...args);
+    if (logStream) logStream.write('[ERR] ' + args.map(formatForLog).join(' ') + '\n');
+  };
+  console.warn = (...args) => {
+    origWarn(...args);
+    if (logStream) logStream.write('[WARN] ' + args.map(formatForLog).join(' ') + '\n');
+  };
+}
+
+function formatForLog(v) {
+  if (typeof v === 'string') return v;
+  try { return JSON.stringify(v); } catch (_e) { return String(v); }
+}
+
+// Strip ANSI escape codes so the log file is grep-friendly. Children may emit
+// colored output even when not on a TTY (e.g. FORCE_COLOR set).
+const ANSI_RE = /\x1b\[[0-9;]*m/g;
+function stripAnsi(s) { return s.replace(ANSI_RE, ''); }
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function runChild(label, scriptArgs) {
+function runChild(label, scriptArgs, opts = {}) {
   console.log('');
   console.log(`── ${label} ${'─'.repeat(Math.max(0, 60 - label.length))}`);
   console.log('');
-  const result = spawnSync('node', scriptArgs, {
-    stdio: 'inherit',
-    cwd: SERVER_ROOT,
+  if (logStream) logStream.write(`\n[CHILD START] ${label}: node ${scriptArgs.join(' ')}\n`);
+
+  // We use spawn (not spawnSync) so we can stream the child's output as it
+  // arrives — both to our terminal and to the log file. spawnSync's
+  // stdio:'inherit' would skip our log pipe entirely.
+  const { spawn } = require('child_process');
+  return new Promise((resolve) => {
+    const child = spawn('node', scriptArgs, {
+      cwd: opts.cwd || SERVER_ROOT,
+      stdio: ['inherit', 'pipe', 'pipe'],   // stdin inherited so prompts work
+    });
+
+    const tee = (chunk, isErr) => {
+      // Write to our own stdout/stderr verbatim (preserves colors for the user)
+      const out = isErr ? process.stderr : process.stdout;
+      out.write(chunk);
+      // Strip ANSI for the log file
+      if (logStream) logStream.write(stripAnsi(chunk.toString('utf8')));
+    };
+    child.stdout.on('data', (chunk) => tee(chunk, false));
+    child.stderr.on('data', (chunk) => tee(chunk, true));
+
+    child.on('error', (err) => {
+      console.error(`Failed to spawn child: ${err.message}`);
+      resolve(1);
+    });
+    child.on('close', (code) => {
+      if (logStream) logStream.write(`\n[CHILD EXIT] ${label}: exit ${code}\n`);
+      resolve(code);
+    });
   });
-  if (result.error) {
-    console.error(`Failed to spawn child: ${result.error.message}`);
-    process.exit(1);
-  }
-  return result.status; // null if killed by signal
+}
+
+// npm install needs the same tee treatment but isn't a 'node' invocation.
+function runNpmInstall(cwd) {
+  const { spawn } = require('child_process');
+  console.log(`  Running npm install in ${cwd}...`);
+  if (logStream) logStream.write(`\n[NPM START] cwd=${cwd}\n`);
+  return new Promise((resolve) => {
+    const child = spawn('npm', ['install'], { cwd, stdio: ['inherit', 'pipe', 'pipe'] });
+    const tee = (chunk, isErr) => {
+      const out = isErr ? process.stderr : process.stdout;
+      out.write(chunk);
+      if (logStream) logStream.write(stripAnsi(chunk.toString('utf8')));
+    };
+    child.stdout.on('data', (c) => tee(c, false));
+    child.stderr.on('data', (c) => tee(c, true));
+    child.on('error', (err) => {
+      console.error(`Failed to spawn npm: ${err.message}`);
+      resolve(1);
+    });
+    child.on('close', (code) => {
+      if (logStream) logStream.write(`\n[NPM EXIT] cwd=${cwd}: exit ${code}\n`);
+      resolve(code);
+    });
+  });
 }
 
 // ── Status banners ──────────────────────────────────────────────────────────
@@ -170,21 +280,16 @@ function fail(text) { console.log(`✗ ${text}`); }
 // add the same one to the fresh-install path so it doesn't matter which
 // route the user came in on.
 
-function ensureDependencies() {
+async function ensureDependencies() {
   const nm = path.join(SERVER_ROOT, 'node_modules');
   if (fs.existsSync(nm)) return { installed: false };
 
   console.log('');
   console.log(`  banking_api_server/node_modules not found.`);
-  console.log(`  Running npm install...`);
   console.log('');
-  const result = spawnSync('npm', ['install'], { stdio: 'inherit', cwd: SERVER_ROOT });
-  if (result.error) {
-    fail(`Failed to spawn npm: ${result.error.message}`);
-    process.exit(1);
-  }
-  if (result.status !== 0) {
-    fail(`npm install failed (exit ${result.status}). Fix the error above and retry.`);
+  const status = await runNpmInstall(SERVER_ROOT);
+  if (status !== 0) {
+    fail(`npm install failed (exit ${status}). Fix the error above and retry.`);
     process.exit(1);
   }
   return { installed: true };
@@ -553,7 +658,7 @@ async function main() {
   // Phase: install dependencies if missing
   n++;
   phase(n, total, 'Install banking_api_server dependencies');
-  const deps = ensureDependencies();
+  const deps = await ensureDependencies();
   if (deps.installed) ok('npm install complete');
   else                skip('node_modules already present');
 
@@ -573,7 +678,7 @@ async function main() {
       fail(`Archive not found: ${tarArg}`);
       process.exit(1);
     }
-    const importStatus = runChild('Importing', [
+    const importStatus = await runChild('Importing', [
       'scripts/importMigrationBundle.js',
       tarArg,
     ]);
@@ -610,7 +715,7 @@ async function main() {
   console.log('  This step opens a browser form for your worker creds, then');
   console.log('  creates resource servers, scopes, applications, users, and writes .env.');
   console.log('');
-  const bootstrapStatus = runChild('Bootstrap', [
+  const bootstrapStatus = await runChild('Bootstrap', [
     'scripts/bootstrapPingOne.js',
     ...passthroughFlags,
   ]);
@@ -698,9 +803,20 @@ function groupEnvKeys(keys) {
   return Array.from(groups.entries());
 }
 
-main().catch((err) => {
+// ── Entry ────────────────────────────────────────────────────────────────────
+
+openLog();
+patchConsole();
+process.on('exit', closeLog);
+process.on('SIGINT',  () => { closeLog(); process.exit(130); });
+process.on('SIGTERM', () => { closeLog(); process.exit(143); });
+
+console.log(`Logging full transcript to: ${LOG_FILE}`);
+
+main().then(() => closeLog()).catch((err) => {
   console.error('');
   console.error(`setup:fresh failed: ${err.message}`);
   console.error(err.stack);
+  closeLog();
   process.exit(1);
 });

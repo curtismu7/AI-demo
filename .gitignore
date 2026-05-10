@@ -42,6 +42,11 @@ logs/
 *.log
 npm-debug.log*
 
+# setup:fresh artifacts — contain demo passwords + management worker creds
+# See banking_api_server/scripts/setupFresh.js + bootstrapPingOne.js
+setup.log
+setup-config.md
+
 # Runtime
 *.pid
 *.sock
