@@ -212,9 +212,120 @@ function hasMkcert() {
   return which.status === 0;
 }
 
+// ── Run-summary table + Y/N confirm ───────────────────────────────────────────
+//
+// Same pattern as setupFresh.js: print what's about to happen and the recipes
+// the user could run instead, then ask Y/N. Always asks when there's a TTY;
+// auto-accepts when there isn't (CI / non-interactive). User aborts → exit 2.
+
+function importRunSummaryText() {
+  const sizeMB = (fs.statSync(resolvedArchive).size / 1024 / 1024).toFixed(2);
+  return `═══════════════════════════════════════════════════════════════════════════
+  data:import — what's about to happen
+═══════════════════════════════════════════════════════════════════════════
+
+This will:
+  1. Verify the server isn't running (would corrupt config.db).
+  2. Back up data/persistent/* and .env to data/backups/<timestamp>/.
+  3. Extract the bundle into data/persistent/ and write .env.
+  4. Rewrite legacy hostname (api.pingdemo.com → api.ping.demo) in text files.
+  5. Re-init configStore against the imported .env to verify decryption works.
+
+Archive:  ${resolvedArchive}
+          ${sizeMB} MB
+
+Defaults this script applies (override with the listed flag):
+
+  Server-running check    ON (FATAL)   (no flag — abort if server is up)
+  Backup before extract   ON           (no flag — always taken)
+  Skip machine-bound      ON           (no flag — sessions.db, runtimeData)
+  Bootstrap PingOne       OFF          (use setup:fresh wrapper to chain)
+  Helix LLM config        OFF          (use setup:fresh wrapper to chain)
+
+Other recipes you could run instead (Ctrl-C now and pick one):
+
+  1) Import THIS bundle now (the default — what's about to run)
+       npm run import -- <bundle>
+
+  2) Import + provision PingOne + offer Helix (the full migration path)
+       npm run setup:fresh -- <bundle>
+
+  3) Nuclear reset, then import (wipe local + PingOne, then load bundle)
+       npm run reset:import -- <bundle>
+
+  4) Just check this machine can import (don't actually do it)
+       npm run import -- --preflight-only <bundle>
+
+═══════════════════════════════════════════════════════════════════════════`;
+}
+
+// Return true only if we can actually open /dev/tty. fs.existsSync('/dev/tty')
+// is true on macOS even with no controlling terminal — and in that state,
+// opening it throws ENXIO. Probe the open here so callers don't crash.
+function isInteractiveStdin() {
+  if (process.stdin.isTTY) return true;
+  try {
+    const fd = fs.openSync('/dev/tty', 'r');
+    fs.closeSync(fd);
+    return true;
+  } catch (_e) {
+    return false;
+  }
+}
+
+async function confirmImportRun() {
+  console.log('');
+  console.log(importRunSummaryText());
+  console.log('');
+
+  const interactive = isInteractiveStdin();
+  if (!interactive) {
+    console.log('  (No TTY detected — auto-accepting. Ctrl-C now if wrong.)');
+    console.log('');
+    return true;
+  }
+
+  return new Promise((resolve) => {
+    const readline = require('readline');
+    let input = process.stdin;
+    let openedTty = false;
+    if (!process.stdin.isTTY) {
+      try {
+        input = fs.createReadStream('/dev/tty');
+        openedTty = true;
+        input.on('error', () => { try { input.destroy(); } catch (_e) {} resolve(true); });
+      } catch (_e) {
+        return resolve(true);
+      }
+    }
+    const rl = readline.createInterface({ input, output: process.stdout, terminal: true });
+    rl.question('Continue with this import? [Y/n] ', (answer) => {
+      rl.close();
+      if (openedTty) try { input.destroy(); } catch (_e) {}
+      const s = String(answer || '').trim().toLowerCase();
+      // Default Yes — empty input accepts.
+      if (!s) return resolve(true);
+      resolve(/^y(es)?$/.test(s));
+    });
+  });
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
+  // Print run-summary + presets and ask Y/N before any side effects (server
+  // check, backups, extraction). Always asks when TTY is available; auto-
+  // accepts in non-interactive contexts. Skipped under --preflight-only
+  // (handled before main is called) and when invoked as a child of setupFresh
+  // (which already showed its own confirmation gate).
+  if (!process.argv.includes('--from-setup-fresh')) {
+    if (!(await confirmImportRun())) {
+      console.log('Aborted at run-summary confirmation. Re-run with a different');
+      console.log('archive or one of the recipes above.');
+      process.exit(2);
+    }
+  }
+
   // Step 2 — server check
   const serverStatus = await checkServer();
   if (serverStatus === 'up') {

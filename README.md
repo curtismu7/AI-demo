@@ -95,6 +95,57 @@ npm run setup:fresh -- /path/to/archive.tar.gz   # migration
 
 Both flows end at the same place: a working `.env`, restored data (if you imported one), provisioned PingOne resources, ready for `./run-bank.sh`. The sections below walk through the prerequisites and the full sequence.
 
+### Defaults & presets — what each command does
+
+Both `npm run setup:fresh` and `npm run import` print this same table at the start of every interactive run, then ask "Continue with these defaults? [Y/n]" so you can bail out and pick a different recipe before any provisioning starts.
+
+#### `npm run setup:fresh` defaults
+
+| Setting               | Default                          | Override |
+|-----------------------|----------------------------------|----------|
+| Confirm install dir   | ON                               | `--yes` / `--from-installer` |
+| Cleanup prior state   | PROMPT (only if state found)     | `--clean` (force) / `--no-clean` (skip) |
+| Wipe PingOne env      | OFF                              | `--reset-pingone` |
+| Recreate demo apps    | OFF                              | `--recreate-apps` |
+| Bootstrap PingOne     | ON (always; idempotent)          | — |
+| Helix LLM config      | PROMPT (default **Yes**)         | `--helix` (skip prompt) / `--skip-helix` (force-no) |
+| Browser cred form     | ON                               | `--no-browser` (terminal only) |
+| Read PINGONE_BOOTSTRAP_* | OFF                           | `--non-interactive` (CI) |
+
+Helix env vars (auto-config in non-interactive mode if all five are set): `HELIX_BASE_URL`, `HELIX_API_KEY`, `HELIX_ENVIRONMENT_ID`, `HELIX_AGENT_ID`, `HELIX_PROMPT_FIELD_ID`.
+
+#### `npm run import` defaults
+
+| Setting                | Default      | Override |
+|------------------------|--------------|----------|
+| Server-running check   | ON (FATAL)   | — (abort if server is up) |
+| Backup before extract  | ON           | — (always taken) |
+| Skip machine-bound     | ON           | — (`sessions.db`, `runtimeData.json`) |
+| Bootstrap PingOne      | OFF          | use `npm run setup:fresh` to chain |
+| Helix LLM config       | OFF          | use `npm run setup:fresh` to chain |
+
+#### Presets — copy & paste
+
+```bash
+# 1) Fresh install on this machine (the default)
+npm run setup:fresh
+
+# 2) Migrate from another machine using a bundle
+npm run setup:fresh -- ~/banking-export-2026-XX-XX.tar.gz
+
+# 3) Nuclear reset (wipe local state AND PingOne env, then re-provision)
+npm run reset
+
+# 4) CI / scripted (no prompts; needs PINGONE_BOOTSTRAP_* + HELIX_* env vars)
+npm run setup:fresh -- --non-interactive --skip-helix
+
+# 5) Just import a bundle (no PingOne work, no Helix)
+npm run import -- ~/banking-export-2026-XX-XX.tar.gz
+
+# 6) Just check this machine can import (no side effects)
+npm run import -- --preflight-only ~/banking-export-2026-XX-XX.tar.gz
+```
+
 ### Other npm shortcuts
 
 ```bash

@@ -161,6 +161,24 @@ Defaults this script applies (override with the listed flag):
   Browser cred form     ON       --no-browser to use terminal only
   PINGONE_BOOTSTRAP_*   OFF      --non-interactive to enable (CI)
 
+Every interactive run prints the same defaults table and asks "Continue
+with these defaults? [Y/n]" before any provisioning. Press n to bail out
+and re-run with one of the recipes below.
+
+Presets (copy & paste):
+
+  1) Fresh install on this machine (the default)
+       npm run setup:fresh
+
+  2) Migrate from another machine using a bundle
+       npm run setup:fresh -- ~/banking-export-2026-XX-XX.tar.gz
+
+  3) Nuclear reset (wipe local state AND PingOne env, then re-provision)
+       npm run reset
+
+  4) CI / scripted (no prompts; needs PINGONE_BOOTSTRAP_* + HELIX_* env vars)
+       npm run setup:fresh -- --non-interactive --skip-helix
+
 Flags:
   --yes               Skip the install-directory confirmation prompt.
   --clean             Wipe stale state (.env, data/persistent, certs) WITHOUT prompting.
@@ -196,7 +214,8 @@ Step 3:       ./run-bank.sh
 Exit codes:
   0  Setup completed successfully
   1  Fatal error (import or bootstrap failed)
-  2  User aborted at bootstrap confirmation
+  2  User aborted at run-summary confirmation, install-dir confirm,
+     bootstrap confirm, or PingOne wipe confirmation
 `);
   process.exit(0);
 }
@@ -611,7 +630,7 @@ async function configureHelix() {
 
   // Non-interactive (no TTY, no --helix): auto-configure if HELIX_* env vars
   // are present, otherwise skip silently. Mirrors PINGONE_BOOTSTRAP_*.
-  const interactive = process.stdin.isTTY || fs.existsSync('/dev/tty');
+  const interactive = isInteractiveStdin();
   if (!interactive && !FORCE_HELIX) {
     if (helixEnvVarsPresent()) {
       // Fall through to the field-collection block; it already reads from env.
@@ -696,6 +715,22 @@ function maskSecret(s) {
   const v = String(s || '');
   if (v.length <= 6) return '***';
   return v.slice(0, 3) + '…' + v.slice(-2);
+}
+
+// Return true only if we can actually read from a terminal. The naive check
+// fs.existsSync('/dev/tty') returns true on macOS even when stdin is piped
+// AND there's no controlling terminal (e.g. `echo n | node script` from a
+// detached shell), and trying to open /dev/tty in that state throws ENXIO.
+// Test the open up front so callers can pick a non-interactive path safely.
+function isInteractiveStdin() {
+  if (process.stdin.isTTY) return true;
+  try {
+    const fd = fs.openSync('/dev/tty', 'r');
+    fs.closeSync(fd);
+    return true;
+  } catch (_e) {
+    return false;
+  }
 }
 
 // ── Install-directory confirmation ──────────────────────────────────────────
@@ -936,11 +971,16 @@ async function main() {
   } else {
     console.log(`  Mode:   fresh install`);
   }
-  // Show the user every related command up front, so if they meant to run
-  // `reset` or `pingone:wipe` (or just `import`) they can Ctrl-C and switch
-  // before any provisioning starts. Suppressed under --from-installer.
-  printCommandReference();
   console.log(`  Target: ${SERVER_ROOT}`);
+
+  // Show the defaults table + presets, then ask the user to confirm. Always
+  // asks when there's a TTY (even under --yes / --from-installer) so a
+  // surprising destructive default like --reset-pingone can't run unnoticed.
+  // Without a TTY (CI / curl-pipe), auto-accepts. Exit 2 on decline so the
+  // user can re-run with a different recipe.
+  if (!(await confirmRunPreset())) {
+    process.exit(2);
+  }
 
   // We number phases dynamically — only count what'll actually run for THIS
   // user, so "step 3 of 5" reflects reality instead of a fixed 6-step count
@@ -1022,8 +1062,11 @@ async function main() {
       fail(`Archive not found: ${tarArg}`);
       process.exit(1);
     }
+    // --from-setup-fresh suppresses the import script's own run-summary
+    // Y/N gate; setupFresh already showed its confirmation up front.
     const importStatus = await runChild('Importing', [
       'scripts/importMigrationBundle.js',
+      '--from-setup-fresh',
       tarArg,
     ]);
     if (importStatus !== 0) {
@@ -1164,66 +1207,105 @@ function groupEnvKeys(keys) {
   return Array.from(groups.entries());
 }
 
-// ── Command reference cheat-sheet ────────────────────────────────────────────
+// ── Run-summary table + presets + Y/N confirm ────────────────────────────────
 //
-// Printed once at the top of every interactive run, and embedded in --help.
-// Goal: a user who ran `npm run setup:fresh` should immediately see what else
-// they could have run instead (reset, import, pingone:wipe, etc.) so they can
-// Ctrl-C and pick a different shortcut without hunting through README.
+// Printed once at the top of every run, and embedded in --help. Goal: a user
+// who ran `npm run setup:fresh` should see (1) what's about to happen with the
+// current flags, (2) the other recipes they could have run instead, and (3)
+// have a chance to bail out before any provisioning starts.
 //
-// Suppressed under --from-installer to keep the curl-pipe install banner-clean.
+// The Y/N confirm always asks when there's a TTY — even under --yes or
+// --from-installer — because surprising a user with a destructive default is
+// worse than one extra Enter press. Without a TTY (CI / curl-pipe install),
+// it auto-accepts (default Yes) so unattended flows don't hang.
 
-function commandReferenceText() {
-  return `What you can run instead (all from the repo root):
-
-  Setup / migration
-    npm run setup:fresh                       Fresh install (this command).
-    npm run setup:fresh -- <bundle.tar.gz>    Migrate from another machine.
-    npm run import -- <bundle.tar.gz>         Import only — no bootstrap.
-    npm run export                            Build a migration bundle from this
-                                              machine into ./bundles/.
-
-  Reset / nuke
-    npm run reset                             Wipe local state AND PingOne env,
-                                              then re-provision from scratch.
-                                              (= setup:fresh --clean --reset-pingone)
-    npm run reset:import -- <bundle.tar.gz>   Same nuclear reset, then import.
-
-  PingOne only (no deps install, no Helix, no hosts check)
-    npm run pingone:bootstrap                 Provision/repair PingOne. Idempotent.
-    npm run pingone:wipe                      Type-to-confirm wipe of every
-                                              Super Banking app, resource, group,
-                                              custom attr, and demo user.
-    npm run pingone:recreate                  Delete + recreate the demo apps and
-                                              resources only. Less aggressive
-                                              than pingone:wipe.
-
-  Run / control services (after setup completes)
-    ./run-bank.sh                             Start everything.
-    ./run-bank.sh restart                     Pick up new .env values.
-    ./run-bank.sh stop                        Stop everything.
-    ./run-bank.sh status                      Health check.
-
-Defaults this script applies (override with the listed flag):
-  Confirm install dir   ON       --yes / --from-installer to skip
-  Cleanup prior state   PROMPT   --clean (force) / --no-clean (skip)
-  Wipe PingOne env      OFF      --reset-pingone to enable
-  Recreate demo apps    OFF      --recreate-apps to enable
-  Helix LLM config      PROMPT (default Yes — Enter accepts. --skip-helix to
-                                 force-no. CI auto-configures from HELIX_* env
-                                 vars if present, else skips silently.)
-  Browser cred form     ON       --no-browser to use terminal only
-  PINGONE_BOOTSTRAP_*   OFF      --non-interactive to enable (CI)
-
-Run with --help for full flag docs and exit codes.`;
+function defaultsTableText() {
+  // Build the row list dynamically so flags affect what gets shown as
+  // "active for this run" vs "default". Lines stay aligned via padEnd.
+  const rows = [
+    ['Confirm install dir', SKIP_CONFIRM ? 'OFF (--yes / --from-installer)' : 'ON',
+      '--yes to skip'],
+    ['Cleanup prior state', FORCE_CLEAN ? 'FORCE (--clean)' : SKIP_CLEAN ? 'SKIP (--no-clean)' : 'PROMPT (only if state found)',
+      '--clean / --no-clean'],
+    ['Wipe PingOne env',    RESET_PINGONE ? 'ON (--reset-pingone) — DESTRUCTIVE' : 'OFF',
+      '--reset-pingone'],
+    ['Recreate demo apps',  passthroughFlags.includes('--recreate-apps') ? 'ON (--recreate-apps)' : 'OFF',
+      '--recreate-apps'],
+    ['Bootstrap PingOne',   'ON (idempotent)',
+      '(always runs)'],
+    ['Helix LLM config',    SKIP_HELIX ? 'SKIP (--skip-helix)' : FORCE_HELIX ? 'COLLECT (--helix)' : 'PROMPT (default Yes)',
+      '--helix / --skip-helix'],
+    ['Browser cred form',   passthroughFlags.includes('--no-browser') ? 'OFF (--no-browser)' : 'ON',
+      '--no-browser'],
+    ['Read PINGONE_BOOTSTRAP_*', passthroughFlags.includes('--non-interactive') ? 'ON (--non-interactive)' : 'OFF',
+      '--non-interactive'],
+  ];
+  const w1 = Math.max(...rows.map(r => r[0].length));
+  const w2 = Math.max(...rows.map(r => r[1].length));
+  const lines = rows.map(([k, v, flag]) =>
+    `  ${k.padEnd(w1)}   ${v.padEnd(w2)}   ${flag}`
+  );
+  return lines.join('\n');
 }
 
-function printCommandReference() {
-  // Don't spam the install.sh curl-pipe path — installer already printed its own banner.
-  if (FROM_INSTALLER) return;
+function presetsText() {
+  return `  1) Fresh install on this machine (the default — what's about to run)
+       npm run setup:fresh
+
+  2) Migrate from another machine using a bundle
+       npm run setup:fresh -- ~/banking-export-2026-XX-XX.tar.gz
+
+  3) Nuclear reset (wipe local state AND PingOne env, then re-provision)
+       npm run reset
+
+  4) CI / scripted (no prompts; reads PINGONE_BOOTSTRAP_* + HELIX_* env vars)
+       npm run setup:fresh -- --non-interactive --skip-helix`;
+}
+
+function runSummaryText() {
+  const argLine = process.argv.slice(2).join(' ') || '(no flags)';
+  return `═══════════════════════════════════════════════════════════════════════════
+  setup:fresh — what's about to happen
+═══════════════════════════════════════════════════════════════════════════
+
+This run's flags: ${argLine}
+
+Defaults (column 2 reflects this run; column 3 is the override flag):
+
+${defaultsTableText()}
+
+Other recipes you could run instead (Ctrl-C now and pick one):
+
+${presetsText()}
+
+Full flag docs: npm run setup:fresh -- --help
+═══════════════════════════════════════════════════════════════════════════`;
+}
+
+// Y/N confirmation gate. Always asks when there's a TTY; auto-accepts (default
+// Yes) when there isn't. Returns true to proceed, false to abort.
+async function confirmRunPreset() {
   console.log('');
-  console.log(commandReferenceText());
+  console.log(runSummaryText());
   console.log('');
+
+  const interactive = isInteractiveStdin();
+  if (!interactive) {
+    console.log('  (No TTY detected — auto-accepting defaults. Ctrl-C now if wrong.)');
+    console.log('');
+    return true;
+  }
+
+  const proceed = await readlineQuestion(
+    'Continue with these defaults?', /* defaultYes */ true
+  );
+  if (!proceed) {
+    console.log('');
+    console.log('Aborted at run-summary confirmation. Re-run with different flags');
+    console.log('or use one of the recipes printed above.');
+    console.log('');
+  }
+  return proceed;
 }
 
 // ── Entry ────────────────────────────────────────────────────────────────────
