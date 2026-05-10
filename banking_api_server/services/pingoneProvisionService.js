@@ -220,6 +220,21 @@ class PingOneProvisionService {
   }
 
   /**
+   * Fetch the client secret for an application from /applications/{id}/secret.
+   * PingOne does NOT return clientSecret on POST /applications — it lives on a
+   * separate sub-resource and must be fetched explicitly.
+   * Returns null on failure (e.g. NONE auth method, where no secret exists).
+   */
+  async getApplicationSecret(appId) {
+    try {
+      const response = await this.makeRequest('GET', `/applications/${appId}/secret`);
+      return response.data?.secret || null;
+    } catch (_e) {
+      return null;
+    }
+  }
+
+  /**
    * Grant scopes to application
    */
   async grantScopesToApplication(appId, resourceId, scopes) {
@@ -302,11 +317,13 @@ class PingOneProvisionService {
 
   /**
    * Write .env file
+   * Resolves to banking_api_server/.env regardless of cwd, so the wizard can be
+   * invoked from anywhere without clobbering an unrelated .env.
    */
   async writeEnvFile(config, provisioned) {
     const envContent = this.generateEnvContent(config, provisioned);
-    const envPath = path.join(process.cwd(), '.env');
-    
+    const envPath = path.resolve(__dirname, '..', '.env');
+
     await fs.writeFile(envPath, envContent, 'utf8');
     return envPath;
   }
@@ -338,11 +355,17 @@ class PingOneProvisionService {
       '',
       '# MCP Exchanger (Token Exchange)',
       `PINGONE_MCP_EXCHANGER_CLIENT_ID=${provisioned.mcpExchangerApp?.clientId || ''}`,
-      'PINGONE_MCP_EXCHANGER_CLIENT_SECRET=<set-in-pingone-console>',
+      `PINGONE_MCP_EXCHANGER_CLIENT_SECRET=${provisioned.mcpExchangerApp?.clientSecret || '<set-in-pingone-console>'}`,
       '',
-      '# MCP Exchanger (Token Exchange)',
-      `PINGONE_MCP_EXCHANGER_CLIENT_ID=${provisioned.mcpExchangerApp?.clientId || ''}`,
-      'PINGONE_MCP_EXCHANGER_CLIENT_SECRET=<set-in-pingone-console>',
+      '# MCP Gateway (banking_mcp_gateway on :3005)',
+      `MCP_GW_CLIENT_ID=${provisioned.mcpGwApp?.clientId || ''}`,
+      `MCP_GW_CLIENT_SECRET=${provisioned.mcpGwApp?.clientSecret || '<set-in-pingone-console>'}`,
+      `MCP_GW_RESOURCE_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcp-gw.bxf.com'}`,
+      'MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD=basic',
+      '',
+      '# Agent Service (banking_agent_service on :3006)',
+      `AGENT_CLIENT_ID=${provisioned.agentApp?.clientId || ''}`,
+      `AGENT_CLIENT_SECRET=${provisioned.agentApp?.clientSecret || '<set-in-pingone-console>'}`,
       '',
       '# Admin Token Exchange',
       `ff_admin_token_exchange=true`,
@@ -523,6 +546,7 @@ class PingOneProvisionService {
       }
       onStep(steps[steps.length - 1]);
       provisioned.adminApp = adminAppResult.application;
+      provisioned.adminApp.clientSecret = await this.getApplicationSecret(adminAppResult.application.id);
 
       // Step 6: Configure Admin Application
       if (!adminAppResult.exists) {
@@ -598,6 +622,7 @@ class PingOneProvisionService {
       }
       onStep(steps[steps.length - 1]);
       provisioned.userApp = userAppResult.application;
+      provisioned.userApp.clientSecret = await this.getApplicationSecret(userAppResult.application.id);
 
       // Step 9: Configure User Application
       if (!userAppResult.exists) {
@@ -730,6 +755,7 @@ class PingOneProvisionService {
       }
       onStep(steps[steps.length - 1]);
       provisioned.mcpApp = mcpAppResult.application;
+      provisioned.mcpApp.clientSecret = await this.getApplicationSecret(mcpAppResult.application.id);
 
       // Step 16: Configure MCP Server Application
       if (!mcpAppResult.exists) {
@@ -785,6 +811,7 @@ class PingOneProvisionService {
       }
       onStep(steps[steps.length - 1]);
       provisioned.workerApp = workerAppResult.application;
+      provisioned.workerApp.clientSecret = await this.getApplicationSecret(workerAppResult.application.id);
 
       // Step 19: Configure Worker Application
       if (!workerAppResult.exists) {
@@ -853,6 +880,7 @@ class PingOneProvisionService {
           ['client_credentials', 'token_exchange']
         );
         provisioned.mcpExchangerApp = mcpExchangerResult.application;
+        provisioned.mcpExchangerApp.clientSecret = await this.getApplicationSecret(mcpExchangerResult.application.id);
         if (mcpExchangerResult.exists) {
           steps.push({ step: 'mcp-exchanger-app', icon: '⚠️', message: 'MCP Exchanger application already exists', resourceKey: mcpExchangerResult.resourceKey });
         } else {
@@ -878,7 +906,135 @@ class PingOneProvisionService {
       }
       onStep(steps[steps.length - 1]);
 
-      // Step 21: Write configuration
+      // Step 25: Create MCP Gateway resource server
+      // Inbound tokens to the gateway carry aud = MCP_GW_RESOURCE_URI; the gateway re-exchanges
+      // them for backend-MCP audiences. See banking_mcp_gateway/src/config.ts.
+      steps.push({ step: 'mcp-gw-resource', icon: '🛡️', message: 'Creating MCP Gateway resource server...' });
+      onStep(steps[steps.length - 1]);
+      const mcpGwAudience = config.mcpGatewayAudience || 'mcp-gw.bxf.com';
+      const mcpGwResourceResult = await this.createResourceServer(
+        'Super Banking MCP Gateway',
+        'Inbound resource server for the MCP Gateway (aud target for delegated tokens)',
+        mcpGwAudience
+      );
+      if (mcpGwResourceResult.exists) {
+        steps.push({ step: 'mcp-gw-resource', icon: '⚠️', message: 'MCP Gateway resource server already exists', resourceKey: mcpGwResourceResult.resourceKey });
+      } else {
+        steps.push({ step: 'mcp-gw-resource', icon: '✅', message: 'MCP Gateway resource server created' });
+      }
+      onStep(steps[steps.length - 1]);
+      provisioned.mcpGwResourceServer = mcpGwResourceResult.resource;
+
+      // Step 26: Create MCP Gateway scope (banking:mcp:invoke)
+      steps.push({ step: 'mcp-gw-scopes', icon: '🎯', message: 'Creating MCP Gateway scopes...' });
+      onStep(steps[steps.length - 1]);
+      const mcpGwScopes = [
+        { name: 'banking:mcp:invoke', description: 'Invoke MCP tools via the gateway' }
+      ];
+      const mcpGwScopeResults = await this.createScopes(mcpGwResourceResult.resource.id, mcpGwScopes);
+      const createdMcpGwScopes = mcpGwScopeResults.filter(r => r.success).length;
+      const failedMcpGwScopes = mcpGwScopeResults.filter(r => !r.success).length;
+      if (failedMcpGwScopes > 0) {
+        steps.push({ step: 'mcp-gw-scopes', icon: '⚠️', message: `Created ${createdMcpGwScopes} MCP Gateway scopes, ${failedMcpGwScopes} failed` });
+      } else {
+        steps.push({ step: 'mcp-gw-scopes', icon: '✅', message: `Created ${createdMcpGwScopes} MCP Gateway scopes` });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Step 27: Create MCP Gateway WORKER application (for re-exchange to backend MCP servers)
+      // banking_mcp_gateway requires MCP_GW_CLIENT_ID / MCP_GW_CLIENT_SECRET; without them
+      // the service exits at startup. Token-exchange grant is needed because the gateway
+      // re-exchanges incoming user tokens for backend-aud-narrowed tokens.
+      steps.push({ step: 'mcp-gw-app', icon: '🚪', message: 'Creating MCP Gateway application...' });
+      onStep(steps[steps.length - 1]);
+      const mcpGwAppResult = await this.createApplication(
+        'Super Banking MCP Gateway',
+        'Worker application for the MCP Gateway (re-exchanges tokens for backend MCP servers)',
+        'WORKER',
+        ['client_credentials', 'urn:ietf:params:oauth:grant-type:token-exchange']
+      );
+      provisioned.mcpGwApp = mcpGwAppResult.application;
+      provisioned.mcpGwApp.clientSecret = await this.getApplicationSecret(mcpGwAppResult.application.id);
+      if (mcpGwAppResult.exists) {
+        steps.push({ step: 'mcp-gw-app', icon: '⚠️', message: 'MCP Gateway application already exists', resourceKey: mcpGwAppResult.resourceKey });
+      } else {
+        steps.push({ step: 'mcp-gw-app', icon: '✅', message: 'MCP Gateway application created' });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Step 28: Configure MCP Gateway app (client_secret_basic — matches MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD default)
+      if (!mcpGwAppResult.exists) {
+        steps.push({ step: 'mcp-gw-config', icon: '⚙️', message: 'Configuring MCP Gateway application...' });
+        onStep(steps[steps.length - 1]);
+        await this.updateApplication(mcpGwAppResult.application.id, {
+          tokenEndpointAuthMethod: 'client_secret_basic'
+        });
+        steps.push({ step: 'mcp-gw-config', icon: '✅', message: 'MCP Gateway application configured' });
+        onStep(steps[steps.length - 1]);
+      }
+
+      // Step 29: Grant scopes to MCP Gateway app (it acts as the actor in token-exchange)
+      steps.push({ step: 'mcp-gw-grants', icon: '🔑', message: 'Granting scopes to MCP Gateway application...' });
+      onStep(steps[steps.length - 1]);
+      const mcpGwGrantResult = await this.grantScopesToApplication(
+        mcpGwAppResult.application.id,
+        resourceResult.resource.id,
+        ['banking:read', 'banking:write']
+      );
+      if (mcpGwGrantResult.success) {
+        steps.push({ step: 'mcp-gw-grants', icon: '✅', message: 'MCP Gateway scopes granted' });
+      } else {
+        steps.push({ step: 'mcp-gw-grants', icon: '⚠️', message: 'Failed to grant MCP Gateway scopes' });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Step 30: Create Agent WORKER application
+      // banking_agent_service requires AGENT_CLIENT_ID; without it port 3006 exits at startup.
+      // The agent is the actor in delegated token-exchange (act.sub = AGENT_CLIENT_ID).
+      steps.push({ step: 'agent-app', icon: '🤝', message: 'Creating Agent application...' });
+      onStep(steps[steps.length - 1]);
+      const agentAppResult = await this.createApplication(
+        'Super Banking Agent',
+        'Worker application for the agent service (actor in delegated token-exchange)',
+        'WORKER',
+        ['client_credentials']
+      );
+      provisioned.agentApp = agentAppResult.application;
+      provisioned.agentApp.clientSecret = await this.getApplicationSecret(agentAppResult.application.id);
+      if (agentAppResult.exists) {
+        steps.push({ step: 'agent-app', icon: '⚠️', message: 'Agent application already exists', resourceKey: agentAppResult.resourceKey });
+      } else {
+        steps.push({ step: 'agent-app', icon: '✅', message: 'Agent application created' });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Step 31: Configure Agent app
+      if (!agentAppResult.exists) {
+        steps.push({ step: 'agent-config', icon: '⚙️', message: 'Configuring Agent application...' });
+        onStep(steps[steps.length - 1]);
+        await this.updateApplication(agentAppResult.application.id, {
+          tokenEndpointAuthMethod: 'client_secret_basic'
+        });
+        steps.push({ step: 'agent-config', icon: '✅', message: 'Agent application configured' });
+        onStep(steps[steps.length - 1]);
+      }
+
+      // Step 32: Grant the agent the gateway scope so its token-exchange targets the gateway aud
+      steps.push({ step: 'agent-grants', icon: '🔑', message: 'Granting scopes to Agent application...' });
+      onStep(steps[steps.length - 1]);
+      const agentGrantResult = await this.grantScopesToApplication(
+        agentAppResult.application.id,
+        mcpGwResourceResult.resource.id,
+        ['banking:mcp:invoke']
+      );
+      if (agentGrantResult.success) {
+        steps.push({ step: 'agent-grants', icon: '✅', message: 'Agent scopes granted' });
+      } else {
+        steps.push({ step: 'agent-grants', icon: '⚠️', message: 'Failed to grant Agent scopes' });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Step 33: Write configuration
       steps.push({ step: 'config', icon: '📝', message: 'Writing .env file...' });
       onStep(steps[steps.length - 1]);
       

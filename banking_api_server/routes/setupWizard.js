@@ -291,8 +291,15 @@ router.get('/status', requireAdmin, async (req, res) => {
         // Check existing resources
         const existingResources = {
             resourceServer: await service.findResourceByName('resource', 'Super Banking API'),
+            mcpResourceServer: await service.findResourceByName('resource', 'Super Banking MCP Server'),
+            mcpGwResourceServer: await service.findResourceByName('resource', 'Super Banking MCP Gateway'),
             adminApp: await service.findResourceByName('application', 'Super Banking Admin App'),
             userApp: await service.findResourceByName('application', 'Super Banking User App'),
+            mcpApp: await service.findResourceByName('application', 'Super Banking MCP Server'),
+            workerApp: await service.findResourceByName('application', 'Super Banking Worker'),
+            mcpExchangerApp: await service.findResourceByName('application', 'Super Banking MCP Exchanger'),
+            mcpGwApp: await service.findResourceByName('application', 'Super Banking MCP Gateway'),
+            agentApp: await service.findResourceByName('application', 'Super Banking Agent'),
             bankUser: await service.findUserByUsername('bankuser'),
             bankAdmin: await service.findUserByUsername('bankadmin')
         };
