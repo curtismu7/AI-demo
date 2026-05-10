@@ -267,44 +267,110 @@ class PingOneProvisionService {
   }
 
   /**
-   * Create OIDC application
+   * Create OIDC application.
+   *
+   * PingOne /applications POST schema rules learned by curl probe:
+   *   - protocol is REQUIRED on creation. Empty value → INVALID_DATA.
+   *   - grantTypes uses the canonical UPPERCASE enum form (AUTHORIZATION_CODE,
+   *     CLIENT_CREDENTIALS, REFRESH_TOKEN, TOKEN_EXCHANGE, IMPLICIT, etc).
+   *     RFC 6749 lowercase ("authorization_code") is silently rejected.
+   *   - tokenEndpointAuthMethod also uses UPPERCASE (CLIENT_SECRET_BASIC etc).
+   *   - pkceEnforcement, not pkceMethod (different field name + uppercase enum).
+   *   - responseTypes is required for WEB_APP (CODE / TOKEN / ID_TOKEN).
+   *   - WORKER apps don't accept refreshToken / pkceEnforcement / responseTypes;
+   *     leaving those fields off lets PingOne pick correct defaults.
+   *
+   * The grantTypes / tokenEndpointAuthMethod input parameters are accepted in
+   * either lowercase (legacy) or uppercase form — we normalize to UPPERCASE
+   * before sending so existing callers don't all have to change at once.
    */
   async createApplication(name, description, type, grantTypes) {
     const existing = await this.findResourceByName('application', name);
     if (existing) {
-      return { 
-        exists: true, 
+      return {
+        exists: true,
         application: existing,
-        resourceKey: `application:${existing.id}`
+        resourceKey: `application:${existing.id}`,
       };
     }
+
+    // Normalize: 'authorization_code' → 'AUTHORIZATION_CODE',
+    //            'urn:ietf:params:oauth:grant-type:token-exchange' → 'TOKEN_EXCHANGE'
+    const normalizeGrant = (g) => {
+      if (g === 'urn:ietf:params:oauth:grant-type:token-exchange') return 'TOKEN_EXCHANGE';
+      if (g === 'token_exchange') return 'TOKEN_EXCHANGE';
+      return String(g).toUpperCase();
+    };
+    const normalizedGrants = (grantTypes || []).map(normalizeGrant);
 
     const data = {
       name,
       description,
+      enabled: true,
       type,
-      grantTypes,
-      tokenEndpointAuthMethod: 'client_secret_post',
-      pkceMethod: 'S256',
-      refreshToken: {
-        rotating: true,
-        reuseTokens: false
-      }
+      protocol: 'OPENID_CONNECT',
+      grantTypes: normalizedGrants,
+      tokenEndpointAuthMethod: type === 'WORKER' ? 'CLIENT_SECRET_BASIC' : 'CLIENT_SECRET_BASIC',
     };
 
+    // WEB_APP / NATIVE_APP / SINGLE_PAGE_APP need responseTypes + redirectUris
+    // setup later via updateApplication. WORKER doesn't.
+    if (type !== 'WORKER') {
+      data.responseTypes = ['CODE'];
+      data.pkceEnforcement = 'S256_REQUIRED';
+      data.refreshToken = { rotating: true, reuseTokens: false };
+    }
+
     const response = await this.makeRequest('POST', '/applications', data);
-    return { 
-      exists: false, 
+    return {
+      exists: false,
       application: response.data,
       resourceKey: `application:${response.data.id}`
     };
   }
 
   /**
-   * Update application redirect URIs and PKCE settings
+   * Update application redirect URIs and PKCE settings.
+   *
+   * Normalizes legacy lowercase enum values to the UPPERCASE form PingOne
+   * requires, and rewrites legacy field names that callers may still pass:
+   *   pkceMethod    →  pkceEnforcement
+   *   grantTypes    →  uppercased + token-exchange URN expanded
+   *   tokenEndpointAuthMethod →  uppercased
+   *
+   * All callers can pass either form; we send the canonical PingOne form.
    */
   async updateApplication(appId, updates) {
-    const response = await this.makeRequest('PUT', `/applications/${appId}`, updates);
+    const normalizeGrant = (g) => {
+      if (g === 'urn:ietf:params:oauth:grant-type:token-exchange') return 'TOKEN_EXCHANGE';
+      if (g === 'token_exchange') return 'TOKEN_EXCHANGE';
+      return String(g).toUpperCase();
+    };
+    const normalized = { ...updates };
+    if (Array.isArray(normalized.grantTypes)) {
+      normalized.grantTypes = normalized.grantTypes.map(normalizeGrant);
+    }
+    if (typeof normalized.tokenEndpointAuthMethod === 'string') {
+      normalized.tokenEndpointAuthMethod = normalized.tokenEndpointAuthMethod.toUpperCase();
+    }
+    if (normalized.pkceMethod && !normalized.pkceEnforcement) {
+      normalized.pkceEnforcement = String(normalized.pkceMethod).toUpperCase() === 'S256'
+        ? 'S256_REQUIRED'
+        : String(normalized.pkceMethod).toUpperCase();
+      delete normalized.pkceMethod;
+    }
+
+    // PingOne PUT /applications/{id} is a FULL replace, not a partial patch —
+    // sending only the fields you want to change drops the others (and
+    // immediately fails on required fields like 'protocol' with INVALID_DATA).
+    // Fetch the current app, merge our changes on top, strip read-only/HATEOAS
+    // fields, and send the result.
+    const current = (await this.makeRequest('GET', `/applications/${appId}`)).data;
+    const READONLY_FIELDS = ['_links', 'environment', 'id', 'createdAt', 'updatedAt', 'clientId', 'signing'];
+    const merged = { ...current, ...normalized };
+    for (const k of READONLY_FIELDS) delete merged[k];
+
+    const response = await this.makeRequest('PUT', `/applications/${appId}`, merged);
     return response.data;
   }
 
