@@ -135,6 +135,62 @@ const RECREATE_APPS = args.includes('--recreate-apps');
 // does NOT continue to provisioning. Use when starting from a totally clean
 // slate or recovering from severe drift.
 const WIPE_ENVIRONMENT = args.includes('--wipe-environment');
+// --reset-creds: ignore (and delete) the cached creds at ~/.banking-demo-creds.
+// Use when switching tenants or after rotating the worker secret.
+const RESET_CREDS = args.includes('--reset-creds');
+
+// Cached credentials live OUTSIDE the repo so they survive `npm run uninstall`
+// and are reachable from other clones on the same machine. Mode 0600 = only
+// this user can read/write. Cache is JSON; missing/corrupt = silently treated
+// as no cache.
+const CRED_CACHE_PATH = require('path').join(require('os').homedir(), '.banking-demo-creds');
+
+function readCredCache() {
+  if (RESET_CREDS) return null;
+  const fs = require('fs');
+  try {
+    const text = fs.readFileSync(CRED_CACHE_PATH, 'utf8');
+    const obj = JSON.parse(text);
+    // Validate shape — at minimum we need envId and workerClientId/Secret.
+    // If the cache predates a field we now require, treat as miss and re-prompt.
+    if (!obj || typeof obj !== 'object') return null;
+    if (!obj.envId || !obj.workerClientId || !obj.workerClientSecret) return null;
+    return obj;
+  } catch (_e) {
+    return null;
+  }
+}
+
+function writeCredCache(creds) {
+  const fs = require('fs');
+  // Only persist the bits a future run actually needs to skip prompts. We
+  // deliberately exclude transient values (audience, mcpGatewayAudience) so
+  // changes in code don't strand the cache with stale content.
+  const cached = {
+    envId: creds.envId,
+    region: creds.region,
+    workerClientId: creds.workerClientId,
+    workerClientSecret: creds.workerClientSecret,
+    publicAppUrl: creds.publicAppUrl,
+    cachedAt: new Date().toISOString(),
+  };
+  try {
+    fs.writeFileSync(CRED_CACHE_PATH, JSON.stringify(cached, null, 2), { mode: 0o600 });
+    fs.chmodSync(CRED_CACHE_PATH, 0o600);  // belt + suspenders
+  } catch (e) {
+    console.warn(`(could not write cred cache to ${CRED_CACHE_PATH}: ${e.message})`);
+  }
+}
+
+function clearCredCache() {
+  const fs = require('fs');
+  try { fs.unlinkSync(CRED_CACHE_PATH); } catch (_e) { /* didn't exist */ }
+}
+
+if (RESET_CREDS) {
+  clearCredCache();
+  console.log(`Cleared cached PingOne creds at ${CRED_CACHE_PATH}.`);
+}
 
 // ── Prompts ──────────────────────────────────────────────────────────────────
 
@@ -459,6 +515,24 @@ function browserPrompt({ timeoutMs = 5 * 60 * 1000 } = {}) {
 }
 
 async function gatherCredsViaBrowser() {
+  // Cache short-circuit: if we have all the bits a previous run cached,
+  // skip the browser form entirely. The user explicitly opts out via
+  // --reset-creds (handled at top of file).
+  const cached = readCredCache();
+  if (cached) {
+    console.log(`Using cached PingOne creds from ${CRED_CACHE_PATH} (cached ${cached.cachedAt}).`);
+    console.log('Pass --reset-creds to forget them and re-prompt.');
+    return {
+      envId: cached.envId,
+      region: cached.region || 'com',
+      workerClientId: cached.workerClientId,
+      workerClientSecret: cached.workerClientSecret,
+      publicAppUrl: cached.publicAppUrl || process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000',
+      audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'banking_api_enduser',
+      mcpGatewayAudience: process.env.MCP_GW_AUDIENCE || 'mcp-gw.bxf.com',
+    };
+  }
+
   console.log('PingOne Bootstrap — browser-based credential entry');
   console.log('You will enter Environment ID, Worker Client ID, and Worker Client Secret');
   console.log('in a localhost form. Auth method is hard-coded to client_secret_basic.');
@@ -467,16 +541,36 @@ async function gatherCredsViaBrowser() {
   const publicAppUrl = process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000';
   const audience = process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'banking_api_enduser';
   const mcpGatewayAudience = process.env.MCP_GW_AUDIENCE || 'mcp-gw.bxf.com';
-  return { ...fromForm, publicAppUrl, audience, mcpGatewayAudience };
+  const creds = { ...fromForm, publicAppUrl, audience, mcpGatewayAudience };
+  writeCredCache(creds);
+  console.log(`Saved creds to ${CRED_CACHE_PATH} (mode 0600). Future runs will skip these prompts.`);
+  return creds;
 }
 
 async function gatherCredsInteractive() {
+  // Cache short-circuit: skip all 5 prompts if we've cached creds before.
+  const cached = readCredCache();
+  if (cached) {
+    console.log(`Using cached PingOne creds from ${CRED_CACHE_PATH} (cached ${cached.cachedAt}).`);
+    console.log('Pass --reset-creds to forget them and re-prompt.');
+    return {
+      envId: cached.envId,
+      region: cached.region || 'com',
+      workerClientId: cached.workerClientId,
+      workerClientSecret: cached.workerClientSecret,
+      publicAppUrl: cached.publicAppUrl || process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000',
+      audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'banking_api_enduser',
+      mcpGatewayAudience: process.env.MCP_GW_AUDIENCE || 'mcp-gw.bxf.com',
+    };
+  }
+
   const tty = getInteractiveInput();
   const rl = readline.createInterface({ input: tty.stream, output: process.stdout, terminal: true });
   try {
     console.log('PingOne Bootstrap — interactive setup');
     console.log('Paste your PingOne management worker credentials (the worker app needs');
     console.log('the "Identity Data Admin" role to create users / apps / resources).');
+    console.log(`(Creds will be cached at ${CRED_CACHE_PATH} so future runs skip these prompts.)`);
     console.log('');
 
     const envId = await prompt(rl, 'PingOne Environment ID (UUID)');
@@ -496,7 +590,10 @@ async function gatherCredsInteractive() {
     const audience = process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'banking_api_enduser';
     const mcpGatewayAudience = process.env.MCP_GW_AUDIENCE || 'mcp-gw.bxf.com';
 
-    return { envId, region, workerClientId, workerClientSecret, publicAppUrl, audience, mcpGatewayAudience };
+    const creds = { envId, region, workerClientId, workerClientSecret, publicAppUrl, audience, mcpGatewayAudience };
+    writeCredCache(creds);
+    console.log(`Saved creds to ${CRED_CACHE_PATH} (mode 0600). Future runs will skip these prompts.`);
+    return creds;
   } finally {
     rl.close();
     if (tty.opened) try { tty.stream.destroy(); } catch (_e) {}

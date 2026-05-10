@@ -209,6 +209,10 @@ Flags:
   --from-installer    (Internal — set by install.sh; skips dir confirm.)
   --no-browser        Skip the localhost form; prompt in terminal only.
   --non-interactive   Read PINGONE_BOOTSTRAP_* env vars (CI).
+  --reset-creds       Forget cached PingOne creds at ~/.banking-demo-creds and
+                      re-prompt. Use when switching tenants or after rotating
+                      the worker secret. Without this flag, after the first
+                      successful prompt every future run skips cred entry.
 
 Helix env vars (used by --helix in non-interactive contexts):
   HELIX_BASE_URL, HELIX_API_KEY, HELIX_ENVIRONMENT_ID, HELIX_AGENT_ID,

@@ -304,6 +304,10 @@ async function phaseWipePingOne() {
 // ── Phase 3: delete local state ──────────────────────────────────────────────
 async function phaseDeleteLocal() {
   // Each entry: { abs path, label }. Only deletes what exists.
+  // Includes the cred cache at ~/.banking-demo-creds — uninstall really
+  // means "back to a fresh-install state" and a stale cache would silently
+  // skip the prompt step on the next setup:fresh.
+  const HOME = require('os').homedir();
   const targets = [
     { abs: path.join(SERVER_ROOT, '.env'),                          label: '.env' },
     { abs: path.join(SERVER_ROOT, 'data', 'persistent'),            label: 'data/persistent/', isDir: true },
@@ -314,6 +318,7 @@ async function phaseDeleteLocal() {
     { abs: path.join(SERVER_ROOT, 'data', 'backups'),               label: 'data/backups/',   isDir: true },
     { abs: path.join(REPO_ROOT, 'setup.log'),                       label: 'setup.log' },
     { abs: path.join(REPO_ROOT, 'certs'),                           label: 'certs/',         isDir: true },
+    { abs: path.join(HOME, '.banking-demo-creds'),                  label: '~/.banking-demo-creds' },
   ];
 
   let removed = 0;
