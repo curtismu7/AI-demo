@@ -651,12 +651,40 @@ echo $! > "$PID_API"
 
 sleep 1
 
+# Helper: ensure a sibling Node service has a .env that points at the API
+# server's .env. Without this, services that do `dotenv.config()` find no
+# .env and fail with "Missing required env var" even though every key they
+# need exists upstairs in banking_api_server/.env.
+#
+# Symlink instead of copy so any future bootstrap rewrite is picked up
+# immediately by all services on next restart — no chance of one service
+# running against a stale snapshot.
+ensure_service_env() {
+  local svc_dir="$1"
+  local api_env="${BASEDIR}/banking_api_server/.env"
+  local svc_env="${BASEDIR}/${svc_dir}/.env"
+
+  # If the service has its own .env.development, preserve the existing
+  # behavior (legacy path used by banking_mcp_server / hitl).
+  if [[ -f "${BASEDIR}/${svc_dir}/.env.development" ]]; then
+    cp "${BASEDIR}/${svc_dir}/.env.development" "${svc_env}" 2>/dev/null || true
+    return
+  fi
+
+  # No service-specific .env.development → link to API server's .env.
+  if [[ -f "$api_env" ]]; then
+    # Drop any existing link/copy so we get the current source of truth.
+    rm -f "${svc_env}"
+    ln -s "$api_env" "${svc_env}"
+  fi
+}
+
 # ── Banking MCP Server on :8080 ──────────────────────────────────────────────
 if [[ -d "$BASEDIR/banking_mcp_server" ]]; then
   echo "[BOT] Starting Banking MCP Server on :8080..."
+  ensure_service_env banking_mcp_server
   (
     cd "$BASEDIR/banking_mcp_server"
-    cp .env.development .env 2>/dev/null || true
     npm start > /tmp/bank-mcp-server.log 2>&1
   ) &
   echo $! > "$PID_MCP"
@@ -667,9 +695,9 @@ fi
 # and don't swallow its errors silently (that's how MODULE_NOT_FOUND happens).
 if [[ -d "$BASEDIR/banking_mcp_gateway" ]]; then
   echo "[SHIELD]  Starting MCP Gateway on :3005..."
+  ensure_service_env banking_mcp_gateway
   (
     cd "$BASEDIR/banking_mcp_gateway"
-    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
     npm start > "${LOG_GW}" 2>&1
   ) &
   echo $! > "$PID_GW"
@@ -678,9 +706,9 @@ fi
 # ── HITL Service on :3009 ───────────────────────────────────────────────────
 if [[ -d "$BASEDIR/banking_hitl_service" ]]; then
   echo "[ALERT] Starting HITL Service on :3009..."
+  ensure_service_env banking_hitl_service
   (
     cd "$BASEDIR/banking_hitl_service"
-    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
     PORT=3009 npm start > "${LOG_HITL}" 2>&1
   ) &
   echo $! > "$PID_HITL"
@@ -690,9 +718,9 @@ fi
 # dist/ is guaranteed by the dependency check loop above (it builds or aborts).
 if [[ -d "$BASEDIR/banking_agent_service" ]]; then
   echo "[CONNECT] Starting Agent Service on :3006..."
+  ensure_service_env banking_agent_service
   (
     cd "$BASEDIR/banking_agent_service"
-    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
     PORT=3006 npm start > "${LOG_AGENT_SVC}" 2>&1
   ) &
   echo $! > "$PID_AGENT_SVC"
@@ -701,9 +729,9 @@ fi
 # ── MCP Invest Server on :8081 ──────────────────────────────────────────────
 if [[ -d "$BASEDIR/banking_mcp_invest" ]]; then
   echo "[INVEST] Starting MCP Invest Server on :8081..."
+  ensure_service_env banking_mcp_invest
   (
     cd "$BASEDIR/banking_mcp_invest"
-    [[ -f .env.development ]] && cp .env.development .env 2>/dev/null || true
     PORT=8081 npm start > "${LOG_INVEST}" 2>&1
   ) &
   echo $! > "$PID_INVEST"
