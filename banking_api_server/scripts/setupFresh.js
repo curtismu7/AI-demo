@@ -5,12 +5,63 @@
 /**
  * setupFresh.js — one-command setup for both fresh installs and migrations.
  *
- * Two paths, one command:
+ * ─── Quick command reference ────────────────────────────────────────────────
  *
- *   npm run setup:fresh                              # brand-new user
- *   npm run setup:fresh -- /path/to/archive.tar.gz   # migrating from another machine
+ * All commands run from the repo root. The default for `npm run setup:fresh`
+ * (no flags) is: confirm install dir → cleanup IF prior state exists (prompted)
+ * → npm install (if needed) → /etc/hosts check → bootstrap PingOne (apps,
+ * resources, scopes, demo users, .env) → ask about Helix LLM config → restart
+ * services. Touches PingOne; does NOT wipe it.
  *
- * Behavior:
+ *   npm run setup:fresh                          Fresh install (default).
+ *                                                Idempotent: safe to rerun.
+ *   npm run setup:fresh -- <bundle.tar.gz>       Migrate from another machine.
+ *                                                Imports data + .env, then only
+ *                                                runs bootstrap if .env is
+ *                                                missing newer apps.
+ *   npm run import -- <bundle.tar.gz>            Just the import — no bootstrap,
+ *                                                no Helix prompt.
+ *   npm run export                               Build a migration bundle from
+ *                                                THIS machine into ./bundles/.
+ *   npm run reset                                Nuclear reset: wipes BOTH local
+ *                                                state AND the PingOne env, then
+ *                                                provisions from scratch.
+ *                                                = setup:fresh --clean --reset-pingone
+ *   npm run reset:import -- <bundle.tar.gz>      Same nuclear reset, then import
+ *                                                the bundle.
+ *   npm run pingone:bootstrap                    Bootstrap PingOne ONLY.
+ *                                                No deps, no hosts, no Helix.
+ *                                                Idempotent.
+ *   npm run pingone:wipe                         Type-to-confirm wipe of every
+ *                                                Super Banking app, resource,
+ *                                                group, custom attr, and demo
+ *                                                user in PingOne.
+ *   npm run pingone:recreate                     Delete the demo apps + resources
+ *                                                in PingOne, then create fresh
+ *                                                ones. Less aggressive than wipe.
+ *   ./run-bank.sh                                Start everything. Run after
+ *                                                setup:fresh completes.
+ *   ./run-bank.sh restart                        Pick up new .env values.
+ *   ./run-bank.sh stop                           Stop everything.
+ *   ./run-bank.sh status                         Health check.
+ *
+ * ─── Defaults this script applies (override with the listed flag) ───────────
+ *
+ *   Confirm install dir prompt → ON           --yes / --from-installer to skip
+ *   Cleanup prior state         → PROMPT      --clean (force) / --no-clean
+ *   /etc/hosts check            → ON          (no flag — passive check only)
+ *   Wipe PingOne env first      → OFF         --reset-pingone to enable
+ *   Recreate just demo apps     → OFF         --recreate-apps to enable
+ *   Import (with tar arg)       → ON          (omit the arg to skip)
+ *   Bootstrap PingOne           → ON          (always runs; see import case
+ *                                              for migration short-circuit)
+ *   Helix LLM config prompt     → PROMPT      --helix (force-yes) /
+ *                                              --skip-helix (force-no)
+ *   Browser-form for creds      → ON          --no-browser to use terminal only
+ *   Read PINGONE_BOOTSTRAP_*    → OFF         --non-interactive to enable (CI)
+ *
+ * ─── How this script behaves ────────────────────────────────────────────────
+ *
  *   - Pre-flights Node version (matches export/import scripts).
  *   - With a tar arg: runs scripts/importMigrationBundle.js, then runs
  *     scripts/bootstrapPingOne.js IFF the imported .env is missing
@@ -21,10 +72,6 @@
  *   - The bootstrap script preserves SESSION_SECRET / CONFIG_ENCRYPTION_KEY
  *     from any pre-existing .env, so the encrypted config.db stays decryptable
  *     across reruns.
- *
- * Flags forwarded to bootstrapPingOne.js:
- *   --no-browser        terminal prompts only (skip the localhost form)
- *   --non-interactive   read PINGONE_BOOTSTRAP_* env vars (CI / scripted runs)
  *
  * Exit codes:
  *   0  setup completed; ./run-bank.sh ready to start
@@ -64,6 +111,10 @@ function checkNodeVersion() {
 const args = process.argv.slice(2);
 
 if (args.includes('--help') || args.includes('-h')) {
+  // We synthesize the cheat-sheet inline (rather than reusing
+  // commandReferenceText()) because that helper lives further down the file,
+  // after CLI-arg parsing and `checkNodeVersion()`, and we want --help to work
+  // on any Node version without throwing.
   console.log(`Banking demo setup — fresh install or migration
 
 Usage:
@@ -77,6 +128,31 @@ demo ready for ./run-bank.sh.
 What runs in each case:
   Without tar:  setupFresh -> bootstrapPingOne  (creates apps + writes .env)
   With tar:     setupFresh -> data:import -> bootstrapPingOne (only if needed)
+
+Related commands (run from repo root):
+  npm run setup:fresh                       Fresh install (this command).
+  npm run setup:fresh -- <bundle.tar.gz>    Migrate from another machine.
+  npm run import -- <bundle.tar.gz>         Import only — no bootstrap.
+  npm run export                            Build a migration bundle into ./bundles/.
+  npm run reset                             Nuke local state + PingOne env, then
+                                            re-provision. = --clean --reset-pingone.
+  npm run reset:import -- <bundle.tar.gz>   Same nuke, then import bundle.
+  npm run pingone:bootstrap                 Provision/repair PingOne only. Idempotent.
+  npm run pingone:wipe                      Type-to-confirm wipe of all Super
+                                            Banking apps/resources/groups/users.
+  npm run pingone:recreate                  Delete + recreate demo apps + resources.
+  ./run-bank.sh                             Start everything (after setup completes).
+  ./run-bank.sh restart                     Pick up new .env values.
+  ./run-bank.sh stop / status               Stop / health check.
+
+Defaults this script applies (override with the listed flag):
+  Confirm install dir   ON       --yes / --from-installer to skip
+  Cleanup prior state   PROMPT   --clean (force) / --no-clean (skip)
+  Wipe PingOne env      OFF      --reset-pingone to enable
+  Recreate demo apps    OFF      --recreate-apps to enable
+  Helix LLM config      PROMPT   --helix (force-yes) / --skip-helix (force-no)
+  Browser cred form     ON       --no-browser to use terminal only
+  PINGONE_BOOTSTRAP_*   OFF      --non-interactive to enable (CI)
 
 Flags:
   --yes               Skip the install-directory confirmation prompt.
@@ -825,6 +901,10 @@ async function main() {
   } else {
     console.log(`  Mode:   fresh install`);
   }
+  // Show the user every related command up front, so if they meant to run
+  // `reset` or `pingone:wipe` (or just `import`) they can Ctrl-C and switch
+  // before any provisioning starts. Suppressed under --from-installer.
+  printCommandReference();
   console.log(`  Target: ${SERVER_ROOT}`);
 
   // We number phases dynamically — only count what'll actually run for THIS
@@ -1047,6 +1127,66 @@ function groupEnvKeys(keys) {
     ['Session/encryption',keys.filter(k => /^SESSION_SECRET|^CONFIG_ENCRYPTION_KEY/.test(k))],
   ]);
   return Array.from(groups.entries());
+}
+
+// ── Command reference cheat-sheet ────────────────────────────────────────────
+//
+// Printed once at the top of every interactive run, and embedded in --help.
+// Goal: a user who ran `npm run setup:fresh` should immediately see what else
+// they could have run instead (reset, import, pingone:wipe, etc.) so they can
+// Ctrl-C and pick a different shortcut without hunting through README.
+//
+// Suppressed under --from-installer to keep the curl-pipe install banner-clean.
+
+function commandReferenceText() {
+  return `What you can run instead (all from the repo root):
+
+  Setup / migration
+    npm run setup:fresh                       Fresh install (this command).
+    npm run setup:fresh -- <bundle.tar.gz>    Migrate from another machine.
+    npm run import -- <bundle.tar.gz>         Import only — no bootstrap.
+    npm run export                            Build a migration bundle from this
+                                              machine into ./bundles/.
+
+  Reset / nuke
+    npm run reset                             Wipe local state AND PingOne env,
+                                              then re-provision from scratch.
+                                              (= setup:fresh --clean --reset-pingone)
+    npm run reset:import -- <bundle.tar.gz>   Same nuclear reset, then import.
+
+  PingOne only (no deps install, no Helix, no hosts check)
+    npm run pingone:bootstrap                 Provision/repair PingOne. Idempotent.
+    npm run pingone:wipe                      Type-to-confirm wipe of every
+                                              Super Banking app, resource, group,
+                                              custom attr, and demo user.
+    npm run pingone:recreate                  Delete + recreate the demo apps and
+                                              resources only. Less aggressive
+                                              than pingone:wipe.
+
+  Run / control services (after setup completes)
+    ./run-bank.sh                             Start everything.
+    ./run-bank.sh restart                     Pick up new .env values.
+    ./run-bank.sh stop                        Stop everything.
+    ./run-bank.sh status                      Health check.
+
+Defaults this script applies (override with the listed flag):
+  Confirm install dir   ON       --yes / --from-installer to skip
+  Cleanup prior state   PROMPT   --clean (force) / --no-clean (skip)
+  Wipe PingOne env      OFF      --reset-pingone to enable
+  Recreate demo apps    OFF      --recreate-apps to enable
+  Helix LLM config      PROMPT   --helix (force-yes) / --skip-helix (force-no)
+  Browser cred form     ON       --no-browser to use terminal only
+  PINGONE_BOOTSTRAP_*   OFF      --non-interactive to enable (CI)
+
+Run with --help for full flag docs and exit codes.`;
+}
+
+function printCommandReference() {
+  // Don't spam the install.sh curl-pipe path — installer already printed its own banner.
+  if (FROM_INSTALLER) return;
+  console.log('');
+  console.log(commandReferenceText());
+  console.log('');
 }
 
 // ── Entry ────────────────────────────────────────────────────────────────────
