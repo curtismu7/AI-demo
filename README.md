@@ -35,11 +35,53 @@ The installer:
 
 When done: `cd banking-demo && ./run-bank.sh`. That's it.
 
-**Migrating from another machine?** Add the tar path as an argument:
+#### Where will it install?
+
+The installer creates `banking-demo/` **in your current working directory**. Pick where you want it before you run the curl line:
+
+```bash
+# Suggested: install under your home directory
+cd ~
+curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash
+# → /Users/you/banking-demo/
+
+# Or somewhere temporary
+cd /tmp
+curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash
+# → /tmp/banking-demo/
+```
+
+The installer prints the absolute target path **before** doing anything and asks `Proceed? [Y/n]`. Press `n` to abort if the path is wrong, then re-run from a different `cwd`.
+
+#### Override the install path
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | INSTALL_DIR=~/work/banking-demo bash
+```
+
+Other env-var overrides (mostly for testing/CI):
+
+| Variable | Default | Effect |
+|---|---|---|
+| `INSTALL_DIR` | `$PWD/banking-demo` | Target install path (absolute or relative). |
+| `BANKING_BRANCH` | `main` | Branch to check out. |
+| `REPO_URL` | github.com/curtismu7/banking-demo | Override the git remote. |
+| `ASSUME_YES=1` | (unset) | Skip the confirmation prompt. |
+| `DRY_RUN=1` | (unset) | Print every command without executing. Useful to preview what will happen. |
+
+#### Migrating from another machine
+
+Pass the tar archive as an argument:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash -s -- /path/to/banking-export-<timestamp>.tar.gz
 ```
+
+`bash -s --` is the standard pattern for forwarding arguments through a curl-pipe. The installer chains import → bootstrap automatically; if the archive is older than the `MCP_GW` / `AGENT` apps were added, bootstrap fills the gap.
+
+#### Re-running the installer
+
+Safe. If `banking-demo/` already exists with a git checkout, the installer does `git pull --ff-only` instead of `git clone`, then re-runs setup:fresh. PingOne provisioning is idempotent — already-existing resources are detected and reused; redirect URIs on existing apps are refreshed if they don't match.
 
 ### If you already cloned the repo
 
