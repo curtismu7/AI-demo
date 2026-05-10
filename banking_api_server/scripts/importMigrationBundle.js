@@ -250,11 +250,14 @@ Other recipes you could run instead (Ctrl-C now and pick one):
   2) Import + provision PingOne + offer Helix (the full migration path)
        npm run setup:fresh -- <bundle>
 
-  3) Nuclear reset, then import (wipe local + PingOne, then load bundle)
+  3) Full wipe + import (wipe local + PingOne, then load bundle)
        npm run reset:import -- <bundle>
 
   4) Just check this machine can import (don't actually do it)
        npm run import -- --preflight-only <bundle>
+
+  5) Tear down everything instead (stop services, wipe PingOne, delete state)
+       npm run uninstall
 
 ═══════════════════════════════════════════════════════════════════════════`;
 }

@@ -26,6 +26,7 @@
     "export": "cd banking_api_server && node scripts/exportMigrationBundle.js",
     "reset": "cd banking_api_server && node scripts/setupFresh.js --clean --reset-pingone",
     "reset:import": "cd banking_api_server && node scripts/setupFresh.js --clean --reset-pingone",
+    "uninstall": "cd banking_api_server && node scripts/uninstall.js",
     "pingone:bootstrap": "cd banking_api_server && node scripts/bootstrapPingOne.js",
     "pingone:wipe": "cd banking_api_server && node scripts/bootstrapPingOne.js --wipe-environment",
     "pingone:recreate": "cd banking_api_server && node scripts/bootstrapPingOne.js --recreate-apps",

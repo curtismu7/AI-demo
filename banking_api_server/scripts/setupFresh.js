@@ -173,11 +173,14 @@ Presets (copy & paste):
   2) Migrate from another machine using a bundle
        npm run setup:fresh -- ~/banking-export-2026-XX-XX.tar.gz
 
-  3) Nuclear reset (wipe local state AND PingOne env, then re-provision)
+  3) Full wipe + start blank (wipe local AND PingOne, then re-provision)
        npm run reset
 
   4) CI / scripted (no prompts; needs PINGONE_BOOTSTRAP_* + HELIX_* env vars)
        npm run setup:fresh -- --non-interactive --skip-helix
+
+  5) Tear down everything (stop services, wipe PingOne, delete local + node_modules)
+       npm run uninstall
 
 Flags:
   --yes               Skip the install-directory confirmation prompt.
@@ -1255,11 +1258,14 @@ function presetsText() {
   2) Migrate from another machine using a bundle
        npm run setup:fresh -- ~/banking-export-2026-XX-XX.tar.gz
 
-  3) Nuclear reset (wipe local state AND PingOne env, then re-provision)
+  3) Full wipe + start blank (wipe local state AND PingOne env, then re-provision)
        npm run reset
 
   4) CI / scripted (no prompts; reads PINGONE_BOOTSTRAP_* + HELIX_* env vars)
-       npm run setup:fresh -- --non-interactive --skip-helix`;
+       npm run setup:fresh -- --non-interactive --skip-helix
+
+  5) Tear down everything (stop services, wipe PingOne, delete local + node_modules)
+       npm run uninstall`;
 }
 
 function runSummaryText() {

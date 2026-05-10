@@ -146,6 +146,73 @@ npm run import -- ~/banking-export-2026-XX-XX.tar.gz
 npm run import -- --preflight-only ~/banking-export-2026-XX-XX.tar.gz
 ```
 
+### Worked example — full wipe and start from blank
+
+When something has drifted (`.env` got mangled, PingOne apps don't match the local state, you're testing a fresh-install path against a tenant you've already provisioned) the cleanest reset is one command:
+
+```bash
+cd banking-demo
+npm run reset
+```
+
+What this runs end-to-end (it's `setup:fresh --clean --reset-pingone` under the hood):
+
+| Phase | What happens |
+|-------|--------------|
+| 1. Confirm install dir | You see the install path, confirm. |
+| 2. Cleanup prior state | `--clean` → deletes `.env`, `data/persistent/`, `data/sessions.db`, `data/backups/`, `certs/*.pem`. `.env` is backed up to `.env.pre-cleanup-<timestamp>` first. |
+| 3. Install dependencies | `npm install` if `node_modules/` is missing. |
+| 4. `/etc/hosts` check | Confirms `127.0.0.1 api.ping.demo` is present. |
+| 5. PingOne wipe | `--reset-pingone` → opens the cred form, then asks you to type the env id to confirm. Deletes every `Super Banking *` app, resource server, group, custom attribute, and demo user (the worker you authenticated with is preserved). |
+| 6. Bootstrap PingOne | Re-creates everything from scratch and writes a fresh `.env`. |
+| 7. Helix LLM config | Prompts (default Yes); collects 5 fields, persists encrypted to `config.db`. |
+
+After it completes:
+
+```bash
+./run-bank.sh                      # start everything against the new state
+./run-bank.sh status               # verify all 8 services are healthy
+```
+
+If you want to import a known-good bundle as the final step instead of letting bootstrap re-provision, use `npm run reset:import -- /path/to/bundle.tar.gz` (same wipe + the bundle on top).
+
+### Uninstall — tear down everything
+
+When you're done with the demo on this machine and want to free disk / leave the PingOne tenant clean:
+
+```bash
+cd banking-demo
+npm run uninstall
+```
+
+What it does (4 phases — each can be skipped via `--keep-*` flags):
+
+| Phase | What happens |
+|-------|--------------|
+| 1. Stop services | `./run-bank.sh stop` — gracefully stops API, UI, MCP server, MCP gateway, agent service, MCP invest, HITL, LangChain agent. |
+| 2. Wipe PingOne env | Type-the-env-id confirmation, then deletes every Super Banking app, resource server, group, custom attribute, and demo user in your PingOne env. |
+| 3. Delete local state | Removes `banking_api_server/.env`, `data/persistent/`, `data/sessions.db*`, `data/backups/`, `certs/`, `setup.log`. |
+| 4. Delete node_modules | Removes `node_modules/` + `dist/` in all 7 Node services (~2 GB). |
+
+Skip individual phases:
+
+```bash
+npm run uninstall -- --keep-pingone        # local cleanup only
+npm run uninstall -- --keep-node-modules   # don't free the 2 GB of deps
+npm run uninstall -- --keep-services       # services are already down
+npm run uninstall -- --keep-local          # only stop services + wipe PingOne
+```
+
+What `uninstall` does **NOT** remove (you do these by hand):
+
+- The repo directory itself — `rm -rf banking-demo` after the script runs
+- Source code (it's all in the git tree; not deleted)
+- Your shell's nvm bootstrap (`~/.zshrc` / `~/.bashrc` lines)
+- `mkcert` root CA (machine-wide; affects other apps)
+- Anything in your Helix tenant — the script doesn't touch Helix
+
+Run `npm run uninstall -- --help` for the full flag list.
+
 ### Other npm shortcuts
 
 ```bash
@@ -157,9 +224,10 @@ npm run export                     # create a banking-export-<timestamp>.tar.gz
 # Destructive (require confirmation prompts)
 npm run pingone:recreate           # delete 'Super Banking *' apps and recreate
 npm run pingone:wipe               # NUCLEAR: delete every app/resource/group/user in the PingOne env
-npm run reset                      # full reset: wipe local state + wipe PingOne + re-provision
+npm run reset                      # full wipe + start blank: local state + PingOne + re-provision
 npm run reset:import -- archive.tar.gz
-                                   # full reset + import (wipe → import → bootstrap)
+                                   # full wipe + import (wipe → import → bootstrap)
+npm run uninstall                  # full tear-down: stop services + wipe PingOne + delete local + node_modules
 ```
 
 `reset` and `pingone:wipe` both ask you to type the environment id to confirm before destroying anything.
