@@ -133,8 +133,11 @@ ask_yes_no() {
   local answer=""
   if [[ -t 0 ]]; then
     read -r -p "$prompt" answer
-  elif [[ -e /dev/tty ]] && (read -t 0 -n 0 </dev/tty) 2>/dev/null; then
-    # /dev/tty exists AND is usable for input. shellcheck disable=SC2162
+  elif [[ -r /dev/tty ]]; then
+    # Stdin is the curl-pipe HTTP body, but the user's keyboard is at /dev/tty.
+    # We test for readability with `-r` (not `-t 0`, which checks for immediately
+    # available input — wrong test; the user hasn't typed yet).
+    # shellcheck disable=SC2162
     read -p "$prompt" answer </dev/tty
   else
     [[ "${ASSUME_YES:-0}" == "1" ]] || warn "No TTY available — using default ($default). Set ASSUME_YES=1 to silence this warning."
@@ -233,11 +236,15 @@ run_setup() {
   local dir="$1"
   info "Running setup:fresh inside ${dir}..."
   echo ""
+
+  # macOS ships bash 3.2, which incorrectly triggers `set -u` (nounset) on
+  # `${arr[@]}` when the array is empty. Guard with `${arr[@]+"${arr[@]}"}`
+  # so the expansion produces zero words instead of an unbound-var error.
   if [[ "${DRY_RUN:-0}" == "1" ]]; then
-    echo "  DRY: cd $dir && npm run setup:fresh -- --from-installer ${EXTRA_ARGS[*]:-}"
+    echo "  DRY: cd $dir && npm run setup:fresh -- --from-installer ${EXTRA_ARGS[*]+${EXTRA_ARGS[*]}}"
     return 0
   fi
-  ( cd "$dir" && npm run setup:fresh -- --from-installer "${EXTRA_ARGS[@]}" )
+  ( cd "$dir" && npm run setup:fresh -- --from-installer ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} )
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
