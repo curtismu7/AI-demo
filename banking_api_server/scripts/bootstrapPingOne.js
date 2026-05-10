@@ -115,17 +115,25 @@ const DEL      = 0x7f;
 // body — not the user's keyboard. process.stdin.isTTY is false in that case.
 // The user's keyboard is at /dev/tty; this helper returns a usable read stream
 // (either process.stdin if it's a real terminal, or a freshly opened /dev/tty).
-// Returns { stream, fd } — caller closes fd when done. fd is null when we're
-// using process.stdin directly.
+// Returns { stream, opened } — caller calls release() when done. We let
+// fs.createReadStream OWN the fd (autoClose: true) so we never close it
+// while the stream still has a pending read — that pattern caused EBADF
+// crashes in setupFresh because a closed fd held a dangling read in the
+// event loop, and the next spawn() inherited that and crashed.
 function getInteractiveInput() {
-  if (process.stdin.isTTY) return { stream: process.stdin, fd: null };
+  if (process.stdin.isTTY) return { stream: process.stdin, opened: false };
   const fs = require('fs');
   try {
-    const fd = fs.openSync('/dev/tty', 'r');
-    const stream = fs.createReadStream('', { fd });
-    return { stream, fd };
+    const stream = fs.createReadStream('/dev/tty');
+    // Trap async open errors (e.g. ENXIO when no controlling terminal — happens
+    // in CI / headless / nested-bash contexts). Without this, an EventEmitter
+    // 'error' on the stream would propagate as an uncaught exception.
+    stream.on('error', (err) => {
+      console.warn(`(/dev/tty error: ${err.code || err.message} — falling back to process.stdin)`);
+    });
+    return { stream, opened: true };
   } catch (_e) {
-    return { stream: process.stdin, fd: null };  // fall back; will likely fail
+    return { stream: process.stdin, opened: false };  // fall back; will likely fail
   }
 }
 
@@ -421,7 +429,7 @@ async function gatherCredsInteractive() {
     return { envId, region, workerClientId, workerClientSecret, publicAppUrl, audience, mcpGatewayAudience };
   } finally {
     rl.close();
-    if (tty.fd != null) { try { require('fs').closeSync(tty.fd); } catch (_e) {} }
+    if (tty.opened) try { tty.stream.destroy(); } catch (_e) {}
   }
 }
 
@@ -647,7 +655,7 @@ async function main() {
     const rl = readline.createInterface({ input: tty.stream, output: process.stdout, terminal: true });
     const confirm = await prompt(rl, 'Proceed with provisioning? [y/N]');
     rl.close();
-    if (tty.fd != null) { try { require('fs').closeSync(tty.fd); } catch (_e) {} }
+    if (tty.opened) try { tty.stream.destroy(); } catch (_e) {}
     if (!/^y(es)?$/i.test(String(confirm).trim())) {
       console.log('Aborted by user.');
       process.exit(2);

@@ -519,14 +519,27 @@ function readlineQuestion(question, defaultYes = true) {
     // bash that spawned us inherits that closed/exhausted stdin to node, so
     // process.stdin.isTTY is false and rl.question would resolve immediately
     // with empty input. The user's keyboard is at /dev/tty in that case.
+    //
+    // We let fs.createReadStream open and own the fd (autoClose: true). An
+    // earlier version did fs.openSync + fs.createReadStream with the explicit
+    // fd, then fs.closeSync after rl.close() — that closed the fd while the
+    // ReadStream still held a reference, and the next subprocess spawn (npm
+    // install) would crash with EBADF: bad file descriptor when the stream's
+    // dangling read handler fired in a microtask.
     let input = process.stdin;
-    let inputFd = null;
+    let openedTty = false;
     if (!process.stdin.isTTY) {
       try {
-        inputFd = fs.openSync('/dev/tty', 'r');
-        input = fs.createReadStream('', { fd: inputFd });
+        input = fs.createReadStream('/dev/tty');
+        openedTty = true;
+        // Catch async open errors (e.g. ENXIO when no controlling terminal)
+        // so they don't crash the process. fall back to default.
+        input.on('error', (err) => {
+          console.log(`(could not open /dev/tty: ${err.code || err.message} — using default ${defaultYes ? 'Yes' : 'No'})`);
+          try { input.destroy(); } catch (_e) {}
+          resolve(defaultYes);
+        });
       } catch (_e) {
-        // No /dev/tty (CI, headless) — fall back to the default and warn.
         console.log(`(no TTY available — using default ${defaultYes ? 'Yes' : 'No'})`);
         return resolve(defaultYes);
       }
@@ -536,8 +549,9 @@ function readlineQuestion(question, defaultYes = true) {
     const suffix = defaultYes ? ' [Y/n] ' : ' [y/N] ';
     rl.question(question + suffix, (answer) => {
       rl.close();
-      // Closing the stream we opened ensures the process can exit cleanly.
-      if (inputFd != null) { try { fs.closeSync(inputFd); } catch (_e) {} }
+      // Destroy the read stream so its fd is released cleanly. autoClose
+      // closes the fd when destroy() runs; no manual closeSync needed.
+      if (openedTty) try { input.destroy(); } catch (_e) {}
       const s = String(answer || '').trim().toLowerCase();
       if (!s) return resolve(defaultYes);
       resolve(/^y(es)?$/.test(s));
