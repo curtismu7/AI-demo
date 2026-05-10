@@ -167,6 +167,87 @@ function OneFlowCard({ token }) {
 }
 
 // StepInfoPanel: left sidebar showing current step number, description, and details
+// Collapsible <details>-style section used by the rich step panel below.
+// Default-open for "Why" so the most-important context is always visible
+// without a click; everything else is default-closed to keep the column
+// scrollable. Tone: muted gray header, accent bar on the left when open.
+function StepDetailSection({ title, accent = "#3b82f6", defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div
+      style={{
+        marginTop: "0.5rem",
+        borderTop: "1px solid #e2e8f0",
+        paddingTop: "0.5rem",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          width: "100%",
+          textAlign: "left",
+          cursor: "pointer",
+          color: "#475569",
+          fontWeight: 600,
+          fontSize: "0.7rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.35rem",
+          marginBottom: open ? "0.4rem" : 0,
+        }}
+      >
+        <span style={{ color: accent, fontSize: "0.65rem", width: "0.7rem" }}>
+          {open ? "▼" : "▶"}
+        </span>
+        {title}
+      </button>
+      {open ? (
+        <div
+          style={{
+            borderLeft: `2px solid ${accent}`,
+            paddingLeft: "0.5rem",
+            fontSize: "0.7rem",
+            color: "#334155",
+            lineHeight: 1.5,
+          }}
+        >
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// Pretty key/value rows for request/response blocks. Long URLs and bodies
+// wrap onto multiple lines; values render in a slightly darker code-style
+// font so the reader can pick fields apart at a glance.
+function HttpDetailGrid({ entries }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+      {entries.map(([k, v]) => (
+        <div key={k} style={{ display: "flex", gap: "0.4rem" }}>
+          <div style={{ fontWeight: 600, color: "#64748b", minWidth: "3.5rem", flexShrink: 0 }}>
+            {k}
+          </div>
+          <div style={{
+            color: "#0f172a",
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+            fontSize: "0.65rem",
+            wordBreak: "break-word",
+            whiteSpace: "pre-wrap",
+          }}>
+            {typeof v === "string" || typeof v === "number" ? String(v) : JSON.stringify(v, null, 2)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function StepInfoPanel({
   activeStep,
   currentStepIdx,
@@ -386,6 +467,102 @@ function StepInfoPanel({
             </div>
           </div>
         )}
+
+        {/* Rich detail sections. Default-open for Why (most-important context);
+            everything else is collapsed so the column stays scrollable. Sections
+            self-hide when the step doesn't define that field. */}
+        {activeStep.why && (
+          <StepDetailSection title="Why this step matters" accent="#0f766e" defaultOpen={true}>
+            {activeStep.why}
+          </StepDetailSection>
+        )}
+
+        {activeStep.request && (
+          <StepDetailSection title="Request" accent="#1d4ed8">
+            <HttpDetailGrid
+              entries={Object.entries(activeStep.request).filter(([_, v]) => v != null && v !== "")}
+            />
+          </StepDetailSection>
+        )}
+
+        {activeStep.response && (
+          <StepDetailSection title="Response" accent="#15803d">
+            <HttpDetailGrid
+              entries={Object.entries(activeStep.response).filter(([_, v]) => v != null && v !== "")}
+            />
+          </StepDetailSection>
+        )}
+
+        {activeStep.rulesEvaluated && activeStep.rulesEvaluated.length > 0 && (
+          <StepDetailSection title="Policy rules checked" accent="#7c3aed" defaultOpen={true}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              {activeStep.rulesEvaluated.map((r, i) => {
+                // Colour-code by result: green = PASS, red = FAIL, gray = N/A.
+                // Show the rule on its own line, then a smaller detail line beneath.
+                const palette = r.result === "PASS"
+                  ? { bg: "#ecfdf5", border: "#a7f3d0", badgeBg: "#10b981", badgeFg: "#fff" }
+                  : r.result === "FAIL"
+                  ? { bg: "#fef2f2", border: "#fecaca", badgeBg: "#dc2626", badgeFg: "#fff" }
+                  : { bg: "#f8fafc", border: "#e2e8f0", badgeBg: "#94a3b8", badgeFg: "#fff" };
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      background: palette.bg,
+                      border: `1px solid ${palette.border}`,
+                      borderRadius: 4,
+                      padding: "0.4rem 0.5rem",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "0.4rem" }}>
+                      <span style={{
+                        background: palette.badgeBg,
+                        color: palette.badgeFg,
+                        fontWeight: 700,
+                        fontSize: "0.6rem",
+                        padding: "0.1rem 0.35rem",
+                        borderRadius: 3,
+                        flexShrink: 0,
+                        marginTop: "0.05rem",
+                      }}>
+                        {r.result}
+                      </span>
+                      <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.7rem" }}>
+                        {r.rule}
+                      </span>
+                    </div>
+                    {r.detail ? (
+                      <div style={{
+                        marginLeft: "2.25rem",
+                        marginTop: "0.2rem",
+                        fontSize: "0.65rem",
+                        color: "#475569",
+                        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                        wordBreak: "break-word",
+                      }}>
+                        {r.detail}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </StepDetailSection>
+        )}
+
+        {activeStep.onError && (
+          <StepDetailSection title="What can go wrong" accent="#b91c1c">
+            {Array.isArray(activeStep.onError) ? (
+              <ul style={{ paddingLeft: "1rem", margin: 0 }}>
+                {activeStep.onError.map((line, i) => (
+                  <li key={i} style={{ marginBottom: "0.25rem" }}>{line}</li>
+                ))}
+              </ul>
+            ) : (
+              activeStep.onError
+            )}
+          </StepDetailSection>
+        )}
       </div>
 
       {/* Step list */}
@@ -485,6 +662,11 @@ const ALL_STEPS = [
     participants: ["U", "CB"],
     text: "User submits prompt",
     description: "User submits prompt",
+    why: "Frames the scenario: a real customer is about to ask the chatbot a question that needs access to their private banking data. Everything that follows is in service of answering that one prompt safely.",
+    onError: [
+      "No prompt entered — the chatbot has nothing to act on; UI should disable submit until input is non-empty",
+      "User isn't on the chatbot page at all — front-end routing issue, not an auth issue",
+    ],
   },
   // U->>CB: "What is my current account balance\nand recent transactions?"
   {
@@ -494,6 +676,29 @@ const ALL_STEPS = [
     label: '"What is my current account balance\nand recent transactions?"',
     type: "request",
     description: "User Prompt",
+    why: "The user's natural-language question is the trigger for the whole flow. Capturing it cleanly is what lets the agent later decide which banking tool to call.",
+    request: {
+      method: "POST",
+      url: "https://api.ping.demo:4000/chat",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: "connect.sid=s%3A{SESSION_ID}.{SIG}",
+      },
+      body: {
+        message: "What is my current account balance and recent transactions?",
+        conversationId: "conv_01HXYZ...",
+      },
+    },
+    response: {
+      status: 202,
+      headers: { "Content-Type": "application/json" },
+      body: { accepted: true, conversationId: "conv_01HXYZ..." },
+    },
+    onError: [
+      "401 Unauthorized — user's session cookie expired; chatbot should redirect to login",
+      "413 Payload Too Large — prompt exceeded the chatbot's input limit",
+      "Network error — UI should retry with backoff and show a transient banner",
+    ],
   },
   // CB->>A: Process user request via Agent
   {
@@ -503,6 +708,29 @@ const ALL_STEPS = [
     label: "Process user request via Agent",
     type: "request",
     description: "Agent Handoff",
+    why: "The chatbot UI itself doesn't reason — it hands the prompt to the Agent (digital assistant) service, which owns LLM orchestration and tool calling. This keeps the front-end thin and the brains server-side.",
+    request: {
+      method: "POST",
+      url: "https://api.ping.demo:3001/api/agent/converse",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: "connect.sid=s%3A{SESSION_ID}.{SIG}",
+      },
+      body: {
+        prompt: "What is my current account balance and recent transactions?",
+        conversationId: "conv_01HXYZ...",
+      },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { agentRequestId: "agent_req_01HXYZ...", status: "processing" },
+    },
+    onError: [
+      "502 Bad Gateway — agent service is down or unreachable from the BFF",
+      "503 Service Unavailable — agent service overloaded; surface a retry hint",
+      "504 Gateway Timeout — agent took too long to acknowledge the handoff",
+    ],
   },
   // Note over A: Agent initializes
   {
@@ -510,6 +738,11 @@ const ALL_STEPS = [
     participants: ["A"],
     text: "Agent initializes",
     description: "Agent initializes",
+    why: "Before the agent can do anything useful it has to introduce itself to PingOne as a trusted identity. This is where it acquires its own credentials, separate from the user's.",
+    onError: [
+      "Misconfigured client_id/secret in agent service environment — initialization will fail on first token call",
+      "PingOne reachability problem from the agent host — DNS or egress firewall issue",
+    ],
   },
   // A->>PID: Token request (client_credentials)
   {
@@ -519,6 +752,31 @@ const ALL_STEPS = [
     label: "Token request (client_credentials)",
     type: "request",
     description: "CC Token Request",
+    why: "The agent authenticates as itself using OAuth 2.0 client credentials. This token represents the agent's own identity — not the user — and is used for things only the agent should be allowed to do, like listing available tools.",
+    request: {
+      method: "POST",
+      url: "https://auth.pingone.com/{ENV_ID}/as/token",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: "Basic {BASE64(CLIENT_ID:CLIENT_SECRET)}",
+      },
+      body: "grant_type=client_credentials&scope=tools.list",
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      body: {
+        access_token: "eyJhbGciOi...AgentCCToken...",
+        token_type: "Bearer",
+        expires_in: 3600,
+        scope: "tools.list",
+      },
+    },
+    onError: [
+      "401 invalid_client — wrong client_id or client_secret, or the app isn't enabled in PingOne",
+      "400 unauthorized_client — client_credentials grant not allowed on this PingOne app",
+      "400 invalid_scope — agent requested a scope it isn't entitled to",
+    ],
   },
   // PID-->>A: Access token
   {
@@ -528,6 +786,35 @@ const ALL_STEPS = [
     label: "Access token",
     type: "response",
     description: "Access Token",
+    why: "PingOne issues a short-lived bearer token that proves the agent's identity. The agent will present this on the next call so downstream services know who is asking.",
+    request: {
+      frame: "token-response",
+      payload: { grant_type: "client_credentials", aud: "agent-gateway" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        access_token: "eyJhbGciOi...AgentCCToken...",
+        token_type: "Bearer",
+        expires_in: 3600,
+        scope: "tools.list",
+        claims: {
+          sub: "agent1-cc-client",
+          aud: "agent-gateway",
+          iss: "https://auth.pingone.com/{ENV_ID}",
+          scope: "tools.list",
+          client_id: "{AGENT_CLIENT_ID}",
+          iat: 1778000000,
+          exp: 1778003600,
+        },
+      },
+    },
+    onError: [
+      "Token missing expected audience — PingOne resource config doesn't map this client to the agent-gateway resource",
+      "Token has wider scope than requested — review PingOne app's default scopes",
+      "Clock skew on the agent host — exp/iat checks downstream will fail",
+    ],
   },
   // Note over A: Request tool list
   {
@@ -535,6 +822,11 @@ const ALL_STEPS = [
     participants: ["A"],
     text: "Request tool list",
     description: "Request tool list",
+    why: "Before the agent can pick a tool, it needs to know which tools it's even allowed to use. Asking the gateway lets policy — not hardcoding — decide what's available.",
+    onError: [
+      "Agent skips this step and hardcodes a tool list — fragile, won't reflect policy changes",
+      "Agent caches the list too long and misses newly added or revoked tools",
+    ],
   },
   // A->>AG: tools/list (JSON-RPC)
   {
@@ -544,6 +836,35 @@ const ALL_STEPS = [
     label: "tools/list (JSON-RPC)",
     type: "request",
     description: "Tools List Request",
+    why: "The agent asks the gateway for its catalog of MCP tools, presenting its own client_credentials token. The gateway will use this token to ask the authorizer what this agent is allowed to see.",
+    request: {
+      method: "POST",
+      url: "ws://localhost:3005/jsonrpc",
+      headers: {
+        Authorization: "Bearer eyJhbGciOi...AgentCCToken...",
+        "Content-Type": "application/json",
+      },
+      body: {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/list",
+        params: {},
+      },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        jsonrpc: "2.0",
+        id: 1,
+        result: { tools: ["check_balance", "list_transactions", "transfer_funds"] },
+      },
+    },
+    onError: [
+      "401 invalid_token — gateway can't verify the agent's bearer (wrong issuer or expired)",
+      "WebSocket connection refused — gateway not running on 3005 or firewall blocking",
+      "JSON-RPC parse error — malformed payload from agent",
+    ],
   },
   // AG->>PA: Authorization check (agent token)
   {
@@ -553,6 +874,37 @@ const ALL_STEPS = [
     label: "Authorization check (agent token)",
     type: "request",
     description: "Auth Check (Agent)",
+    why: "The gateway never decides authorization itself — it always asks Ping Authorize. This keeps policy externalized so the security team can change it without redeploying gateways.",
+    request: {
+      method: "POST",
+      url: "https://pa.ping.demo/governance-engine/decision",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer {GATEWAY_PA_CLIENT_TOKEN}",
+      },
+      body: {
+        action: "tools/list",
+        subject: { token: "eyJhbGciOi...AgentCCToken..." },
+        resource: { type: "mcp.tools", id: "*" },
+      },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { decision: "PERMIT", obligations: { filter_tools_by: "agent_scope" } },
+    },
+    rulesEvaluated: [
+      { rule: "Agent identity is a registered agent app", result: "PASS", detail: "client_id={AGENT_CLIENT_ID} matches registered AI_AGENT app" },
+      { rule: "Agent token has tools.list scope", result: "PASS", detail: "scope='tools.list'" },
+      { rule: "Token audience matches agent gateway", result: "PASS", detail: "aud='agent-gateway'" },
+      { rule: "Token not expired", result: "PASS", detail: "exp=1778003600 > now" },
+      { rule: "Agent persona permits tool discovery", result: "PASS", detail: "role=banking_assistant; discovery=allowed" },
+    ],
+    onError: [
+      "401 from Ping Authorize — gateway's own service credentials are wrong",
+      "Policy returns INDETERMINATE — missing attributes; check the PA policy trace",
+      "Network timeout to PA — falling back may unsafely permit; ensure fail-closed default",
+    ],
   },
   // PA->>PID: Introspect agent token
   {
@@ -562,6 +914,34 @@ const ALL_STEPS = [
     label: "Introspect agent token",
     type: "request",
     description: "Token Introspect",
+    why: "Ping Authorize doesn't trust raw token bytes — it asks PingOne to confirm the token is real, unrevoked, and to surface its claims. This is OAuth 2.0 Token Introspection (RFC 7662).",
+    request: {
+      method: "POST",
+      url: "https://auth.pingone.com/{ENV_ID}/as/introspect",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: "Basic {BASE64(PA_INTROSPECT_CLIENT_ID:SECRET)}",
+      },
+      body: "token=eyJhbGciOi...AgentCCToken...&token_type_hint=access_token",
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        active: true,
+        sub: "agent1-cc-client",
+        aud: "agent-gateway",
+        scope: "tools.list",
+        client_id: "{AGENT_CLIENT_ID}",
+        iat: 1778000000,
+        exp: 1778003600,
+      },
+    },
+    onError: [
+      "401 invalid_client — PA's introspection credentials are wrong",
+      "200 with active:false — token revoked or expired; deny the request",
+      "Slow introspect responses — consider short-lived JWT validation with JWKS as a fallback",
+    ],
   },
   // PID-->>PA: Token claims (sub, aud, scope)
   {
@@ -571,6 +951,30 @@ const ALL_STEPS = [
     label: "Token claims (sub, aud, scope)",
     type: "response",
     description: "Token Claims",
+    why: "PingOne returns the introspected token's claims so Ping Authorize can make a policy decision. Without this, the authorizer would be blind to the requester's identity and scopes.",
+    request: {
+      frame: "introspect-claims-return",
+      payload: { token_type_hint: "access_token" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        active: true,
+        sub: "agent1-cc-client",
+        aud: "agent-gateway",
+        scope: "tools.list",
+        client_id: "{AGENT_CLIENT_ID}",
+        iss: "https://auth.pingone.com/{ENV_ID}",
+        iat: 1778000000,
+        exp: 1778003600,
+      },
+    },
+    onError: [
+      "Claims missing the aud — PA can't enforce audience binding; treat as deny",
+      "active:false slipped past — usually a caching bug at PA",
+      "Empty scope claim — PingOne app config didn't grant any scope to this client",
+    ],
   },
   // Note over PA: Fine-grained policy evaluation:<br/>return allowed tools for this agent
   {
@@ -578,6 +982,19 @@ const ALL_STEPS = [
     participants: ["PA"],
     text: "Fine-grained policy evaluation:\nreturn allowed tools for this agent",
     description: "Fine-grained policy evaluation",
+    why: "Different agents may have access to different tool sets. Ping Authorize trims the catalog down to exactly what this agent's identity and scopes permit — least privilege, enforced centrally.",
+    rulesEvaluated: [
+      { rule: "Per-tool agent allowlist", result: "PASS", detail: "agent1 allowed: check_balance, list_transactions, transfer_funds; denied: admin_close_account, freeze_user" },
+      { rule: "Subject-less tools available without user context", result: "N/A", detail: "no educational/public tools registered for this catalog" },
+      { rule: "Risk tier of each tool vs agent's risk authorization", result: "PASS", detail: "agent risk_tier=medium; included tools tier <= medium" },
+      { rule: "Tenant-level tool feature flags", result: "PASS", detail: "tenant=bxf; flags allow read+transfer tools" },
+      { rule: "Scope reduction filter — drop tools requiring missing scopes", result: "PASS", detail: "agent has tools.list; tools requiring banking:admin filtered out" },
+    ],
+    onError: [
+      "Policy returns the full catalog by mistake — agent ends up with tools it shouldn't see",
+      "Policy returns an empty list — likely a missing entitlement assignment in PA",
+      "Decision latency spikes — add a short cache keyed on (subject, resource) to keep UX snappy",
+    ],
   },
   // PA-->>AG: Permitted tool list for agent
   {
@@ -587,6 +1004,30 @@ const ALL_STEPS = [
     label: "Permitted tool list for agent",
     type: "response",
     description: "Tool List (Filtered)",
+    why: "Ping Authorize hands the gateway the final, policy-filtered list. The gateway can now answer the agent confidently without making its own access decisions.",
+    request: {
+      frame: "pa-decision-result",
+      payload: { agent: "agent1-cc-client" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        decision: "PERMIT",
+        permitted_tools: ["check_balance", "list_transactions", "transfer_funds"],
+      },
+    },
+    rulesEvaluated: [
+      { rule: "Per-tool agent allowlist applied", result: "PASS", detail: "returned 3 of 5 catalog tools after allowlist filter" },
+      { rule: "Subject-less mode tools", result: "N/A", detail: "no public tools registered" },
+      { rule: "Risk tier filter applied", result: "PASS", detail: "all returned tools <= agent risk_tier (medium)" },
+      { rule: "Tenant feature flags applied", result: "PASS", detail: "tenant=bxf flags honored" },
+      { rule: "Scope reduction filter applied", result: "PASS", detail: "tools needing scopes outside agent grant removed" },
+    ],
+    onError: [
+      "Decision body missing permitted_tools — gateway should fail closed and return an empty list",
+      "PA returns DENY at the top level — agent shouldn't have reached tools/list at all; revisit baseline scope grants",
+    ],
   },
   // AG-->>A: List of available tools
   {
@@ -596,6 +1037,31 @@ const ALL_STEPS = [
     label: "List of available tools",
     type: "response",
     description: "Available Tools",
+    why: "The agent now knows the menu. It will hand this list to the LLM so the model can pick the right tool for the user's question.",
+    request: {
+      frame: "tools-list-response",
+      payload: { jsonrpc: "2.0", id: 1 },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          tools: [
+            { name: "check_balance", description: "Get current account balance" },
+            { name: "list_transactions", description: "List recent transactions" },
+            { name: "transfer_funds", description: "Transfer money between accounts" },
+          ],
+        },
+      },
+    },
+    onError: [
+      "WebSocket dropped before result arrived — agent should reopen and retry once",
+      "Tools missing descriptions — LLM tool-choice quality drops; ensure schemas are populated",
+      "Stale list cached at agent — refresh on every conversation start to honor policy changes",
+    ],
   },
   // CB->>A: Pass user prompt to agent
   {
@@ -605,6 +1071,30 @@ const ALL_STEPS = [
     label: "Pass user prompt to agent",
     type: "request",
     description: "Forward Prompt to Agent",
+    why: "Now that the agent has its tool catalog, the chatbot relays the user's original question so the agent can reason about which tool fits. Splitting prompt handling from tool listing keeps each step debuggable.",
+    request: {
+      method: "POST",
+      url: "https://api.ping.demo:3001/api/agent/prompt",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: "connect.sid=s%3A{SESSION_ID}.{SIG}",
+      },
+      body: {
+        agentRequestId: "agent_req_01HXYZ...",
+        prompt: "What is my current account balance and recent transactions?",
+        availableTools: ["check_balance", "list_transactions", "transfer_funds"],
+      },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { accepted: true },
+    },
+    onError: [
+      "404 — agentRequestId not found; conversation state was lost server-side",
+      "400 — prompt missing or malformed",
+      "Race condition where tools list hadn't completed — chatbot should await step 10 before this",
+    ],
   },
   // A->>LLM: Tool list + chatbot prompt
   {
@@ -614,6 +1104,37 @@ const ALL_STEPS = [
     label: "Tool list + chatbot prompt",
     type: "request",
     description: "Pass Prompt to LLM",
+    why: "The agent gives the LLM both the user's question and the menu of allowed tools. The model's job is to decide which (if any) tool to invoke — it doesn't see tokens or call anything itself.",
+    request: {
+      method: "POST",
+      url: "https://api.anthropic.com/v1/messages",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": "{ANTHROPIC_API_KEY}",
+        "anthropic-version": "2023-06-01",
+      },
+      body: {
+        model: "claude-opus-4-7",
+        max_tokens: 1024,
+        tools: [
+          { name: "check_balance", input_schema: { type: "object", properties: {} } },
+          { name: "list_transactions", input_schema: { type: "object", properties: {} } },
+        ],
+        messages: [
+          { role: "user", content: "What is my current account balance and recent transactions?" },
+        ],
+      },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { id: "msg_01XYZ", stop_reason: "tool_use" },
+    },
+    onError: [
+      "401 from LLM provider — bad or rotated API key",
+      "429 rate limited — agent should back off and retry",
+      "Tool schemas malformed — model can't emit a valid tool_use; tighten JSON Schema",
+    ],
   },
   // LLM-->>A: Determine tool to use (check_balance)
   {
@@ -623,6 +1144,26 @@ const ALL_STEPS = [
     label: "Determine tool to use (check_balance)",
     type: "response",
     description: "Tool Decision",
+    why: "The LLM returns a structured tool_use directive telling the agent to call check_balance. Centralizing this decision in the model is what lets the chatbot answer freeform questions without hard-coded routing.",
+    request: {
+      frame: "llm-tool-decision",
+      payload: { stop_reason: "tool_use" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        content: [
+          { type: "tool_use", id: "tool_use_01ABC", name: "check_balance", input: {} },
+        ],
+        stop_reason: "tool_use",
+      },
+    },
+    onError: [
+      "Model hallucinated a tool name not in the catalog — agent must reject and reprompt",
+      "Model returned plain text instead of tool_use — usually a malformed system prompt",
+      "Model invented unsafe parameters — agent must validate against the tool's JSON Schema",
+    ],
   },
   // Note over A: Tool call — agent context only <br/> (no user subject token)
   {
@@ -630,6 +1171,11 @@ const ALL_STEPS = [
     participants: ["A"],
     text: "Tool call — agent context only\n(no user subject token)",
     description: "Tool call — agent context only",
+    why: "This is the deliberate failure we want viewers to see. The agent tries to call check_balance using only its own identity. The system must refuse — agents shouldn't read a specific user's balance without that user's consent.",
+    onError: [
+      "Agent skips this attempt and goes straight to step-up — viewers miss the security teaching moment",
+      "Gateway erroneously permits the call — major security regression; PA policy is broken",
+    ],
   },
   // A->>AG: tools/call check_balance (JSON-RPC)
   {
@@ -639,6 +1185,31 @@ const ALL_STEPS = [
     label: "tools/call check_balance (JSON-RPC)",
     type: "request",
     description: "Tool Call (No Subject)",
+    why: "The agent calls the tool with only its own client_credentials token attached. There's no user identity in the request, which is exactly the condition the next steps will catch.",
+    request: {
+      method: "POST",
+      url: "ws://localhost:3005/jsonrpc",
+      headers: {
+        Authorization: "Bearer eyJhbGciOi...AgentCCToken...",
+        "Content-Type": "application/json",
+      },
+      body: {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "check_balance", arguments: {} },
+      },
+    },
+    response: {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+      body: { jsonrpc: "2.0", id: 2, error: { code: -32001, message: "insufficient_scope" } },
+    },
+    onError: [
+      "Agent forgets it has no user token and assumes success — wrap tool calls in error handling",
+      "401 instead of 403 — token expired entirely; refresh client_credentials and retry",
+      "WS frame too large — tool args bloated; trim or paginate",
+    ],
   },
   // AG->>PA: Authorization check
   {
@@ -648,6 +1219,37 @@ const ALL_STEPS = [
     label: "Authorization check",
     type: "request",
     description: "Auth Check (No Subject)",
+    why: "Gateway asks Ping Authorize whether this specific tool call is allowed given only the agent's token. The point of this step is for PA to notice no user subject is present and refuse.",
+    request: {
+      method: "POST",
+      url: "https://pa.ping.demo/governance-engine/decision",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer {GATEWAY_PA_CLIENT_TOKEN}",
+      },
+      body: {
+        action: "tools/call",
+        tool: "check_balance",
+        subject: { token: "eyJhbGciOi...AgentCCToken..." },
+        resource: { type: "mcp.tool", id: "check_balance", required_scope: "banking:read" },
+      },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { decision: "DENY", reason: "insufficient_scope:balance, no_subject_token" },
+    },
+    rulesEvaluated: [
+      { rule: "subject_token present for user-context tools", result: "FAIL", detail: "subject_token=null; check_balance requires user identity" },
+      { rule: "Tool's requires_user_context flag", result: "FAIL", detail: "check_balance.requires_user_context=true; no user supplied" },
+      { rule: "Agent client_credentials scope sufficient for user-specific data", result: "FAIL", detail: "CC token has only 'tools.list'; missing banking:read for user resource" },
+      { rule: "Audience match for MCP gateway", result: "PASS", detail: "aud='agent-gateway' (correct gateway)" },
+    ],
+    onError: [
+      "PA returns PERMIT despite missing subject — policy gap; banking data could leak",
+      "PA returns INDETERMINATE — likely missing attribute; treat as deny",
+      "PA unreachable — gateway MUST fail closed, never open",
+    ],
   },
   // PA-->>AG: Deny (insufficient_scope: balance, no subject token)
   {
@@ -657,6 +1259,26 @@ const ALL_STEPS = [
     label: "Deny (insufficient_scope: balance, no subject token)",
     type: "response",
     description: "DENY — No Subject Token",
+    why: "Ping Authorize correctly refuses: reading a user's balance requires the user's consent, encoded as a subject token. The deny carries enough context for the agent to know what's missing and trigger step-up.",
+    request: {
+      frame: "pa-decision-result",
+      payload: { action: "tools/call", tool: "check_balance" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        decision: "DENY",
+        reason: "insufficient_scope:balance, no_subject_token",
+        required_scope: "banking:read",
+        required_resource: "agent1",
+      },
+    },
+    rulesEvaluated: [
+      { rule: "requires_user_context=true AND subject_token=null triggers DENY", result: "FAIL", detail: "tool=check_balance; requires_user_context=true; subject_token=null" },
+      { rule: "Policy requires act.sub != null AND sub != client_id", result: "FAIL", detail: "sub=client_id ({AGENT_CLIENT_ID}); no act delegation present" },
+      { rule: "Required scope banking:read present on subject token", result: "FAIL", detail: "no subject token → no banking:read scope available" },
+    ],
   },
   // AG-->>A: HTTP 403 Forbidden (insufficient_scope: balance, no subject token)
   {
@@ -666,6 +1288,27 @@ const ALL_STEPS = [
     label: "HTTP 403 Forbidden (insufficient_scope: balance, no subject token)",
     type: "response",
     description: "403 Forbidden",
+    why: "The gateway translates PA's deny into a standards-compliant 403 with an insufficient_scope hint, telling the agent precisely what additional context is required (a user subject token with the balance scope).",
+    request: {
+      frame: "gateway-deny",
+      payload: { jsonrpc: "2.0", id: 2 },
+    },
+    response: {
+      status: 403,
+      headers: {
+        "Content-Type": "application/json",
+        "WWW-Authenticate": 'Bearer error="insufficient_scope", scope="banking:read", resource="agent1"',
+      },
+      body: {
+        jsonrpc: "2.0",
+        id: 2,
+        error: {
+          code: -32001,
+          message: "insufficient_scope",
+          data: { required_scope: "banking:read", required_resource: "agent1" },
+        },
+      },
+    },
   },
   // A-->>CB: User context required (resource: agent1, scope: balance)
   {
@@ -675,6 +1318,25 @@ const ALL_STEPS = [
     label: "User context required (resource: agent1, scope: balance)",
     type: "response",
     description: "User Context Required",
+    why: "The agent reports back to the chatbot that this question can't be answered without the user's explicit consent. The chatbot now has everything it needs to either send the user to login or use an existing session to mint a scoped token.",
+    request: {
+      frame: "agent-needs-user-context",
+      payload: { agentRequestId: "agent_req_01HXYZ..." },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        status: "user_context_required",
+        required: { resource: "agent1", scope: "banking:read" },
+        prompt_replay_token: "replay_01XYZ",
+      },
+    },
+    onError: [
+      "Chatbot misinterprets as a hard failure — surface a clean 'sign in to continue' UI instead",
+      "prompt_replay_token missing — user has to retype their question after auth; bad UX",
+      "Loop risk if chatbot retries the same call without obtaining context — guard with a state flag",
+    ],
   },
   // Note over CB,WA: EITHER: User already authenticated (skip to step 19)
   {
@@ -682,6 +1344,11 @@ const ALL_STEPS = [
     participants: ["CB", "WA"],
     text: "EITHER: User already authenticated\nObtain scoped subject token (skip to step 19)",
     description: "User already authenticated",
+    why: "If the user has already signed in to the web app, there's no need to interrupt them with another login. The chatbot can reuse the existing session to mint a narrow, agent-scoped token immediately.",
+    onError: [
+      "Session cookie present but expired — treat as not-authenticated and fall into the login branch",
+      "Session belongs to a different PingOne environment — reject and force re-login",
+    ],
   },
   // Note over CB,WA: OR: If user is not authenticated
   {
@@ -689,6 +1356,11 @@ const ALL_STEPS = [
     participants: ["CB", "WA"],
     text: "OR: If user is not authenticated,\nPingOne authentication is triggered",
     description: "If user is not authenticated",
+    why: "If there's no live session, the chatbot has to send the user through standard OIDC authentication before any tokens can be minted. This is the branch where PingOne sees the user in person for the first time.",
+    onError: [
+      "User abandons login — chatbot must time out gracefully and not loop the redirect",
+      "Third-party cookies blocked — popup-based login flows can fail silently on Safari",
+    ],
   },
   // CB-->>U: Redirect to PingOne login
   {
@@ -698,6 +1370,23 @@ const ALL_STEPS = [
     label: "Redirect to PingOne login (OIDC authorize)",
     type: "response",
     description: "Redirect to PingOne",
+    why: "Authentication has to happen on PingOne's own domain, not on the chatbot's. The redirect hands control to PingOne and includes the resource/scope hints so PingOne can issue the right kind of token at the end.",
+    request: {
+      frame: "browser-redirect",
+      payload: { trigger: "user_context_required" },
+    },
+    response: {
+      status: 302,
+      headers: {
+        Location:
+          "https://auth.pingone.com/{ENV_ID}/as/authorize?response_type=code&client_id={WA_CLIENT_ID}&redirect_uri=https%3A%2F%2Fapi.ping.demo%3A4000%2Fcallback&scope=openid%20profile%20banking%3Aread&resource=agent1&state={STATE}&code_challenge={PKCE_CHALLENGE}&code_challenge_method=S256",
+      },
+    },
+    onError: [
+      "Missing state or PKCE challenge — CSRF and code-injection protections are off; abort",
+      "redirect_uri not allowlisted in PingOne — PingOne will return invalid_redirect_uri",
+      "scope contains a value the app isn't entitled to — PingOne returns invalid_scope",
+    ],
   },
   // U->>PID: Authenticate with PingOne
   {
@@ -707,6 +1396,23 @@ const ALL_STEPS = [
     label: "Authenticate (email, password, MFA)",
     type: "request",
     description: "PingOne Authentication",
+    why: "PingOne actually verifies the human — credentials, MFA, risk signals. Keeping this work centralized means the chatbot and BFF never see passwords and can't be tricked into accepting weaker auth.",
+    request: {
+      method: "POST",
+      url: "https://auth.pingone.com/{ENV_ID}/as/authorize/login",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "username=jane.doe%40example.com&password=*****&mfa_otp=123456",
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { status: "AUTHENTICATION_SUCCESS", flowId: "flow_01ABC" },
+    },
+    onError: [
+      "401 INVALID_CREDENTIALS — user mistyped; PingOne handles retry counting",
+      "PASSWORD_LOCKED_OUT — too many bad attempts; surface unlock instructions",
+      "MFA_REQUIRED challenge — flow needs another round trip for OTP/push",
+    ],
   },
   // PID-->>U: Session established, redirect to app callback
   {
@@ -716,6 +1422,24 @@ const ALL_STEPS = [
     label: "Session established, redirect to callback URL",
     type: "response",
     description: "Session Established",
+    why: "Once PingOne is satisfied, it sets its own session cookie and bounces the browser back to the chatbot's callback with an authorization code. The code is short-lived and only redeemable by the chatbot's BFF — never by JavaScript.",
+    request: {
+      frame: "browser-redirect-back",
+      payload: { flowId: "flow_01ABC" },
+    },
+    response: {
+      status: 302,
+      headers: {
+        Location:
+          "https://api.ping.demo:4000/callback?code={AUTH_CODE}&state={STATE}",
+        "Set-Cookie": "ST={PINGONE_SESSION}; Path=/; Secure; HttpOnly; SameSite=None",
+      },
+    },
+    onError: [
+      "state mismatch on return — possible CSRF; reject immediately",
+      "code already redeemed — PingOne returns invalid_grant; user must restart login",
+      "Browser drops third-party cookies — session won't persist across redirects",
+    ],
   },
   // U-->>CB: User returns authenticated
   {
@@ -725,8 +1449,26 @@ const ALL_STEPS = [
     label: "User authenticated, session cookie set",
     type: "response",
     description: "Authenticated Session",
+    why: "The chatbot's BFF exchanges the auth code for tokens server-side and sets its own httpOnly session cookie. From the browser's perspective the user is just 'signed in' — tokens never touch front-end code.",
+    request: {
+      method: "GET",
+      url: "https://api.ping.demo:4000/callback?code={AUTH_CODE}&state={STATE}",
+      headers: { Cookie: "ST={PINGONE_SESSION}" },
+    },
+    response: {
+      status: 302,
+      headers: {
+        Location: "https://api.ping.demo:4000/chat?resume=replay_01XYZ",
+        "Set-Cookie": "connect.sid=s%3A{SESSION_ID}.{SIG}; Path=/; HttpOnly; Secure; SameSite=Lax",
+      },
+    },
+    onError: [
+      "Code exchange fails (invalid_grant) — usually clock skew or reused code",
+      "Session cookie not Secure/HttpOnly — token-custody rule violated; review BFF middleware",
+      "replay_token lost in the redirect — user lands on the chatbot with no original question to answer",
+    ],
   },
-  // CB->>WA: Request token (resource: agent1, scope: balance)
+  // CB->>A: Request token (resource: agent1, scope: balance)
   {
     step: 19,
     from: "CB",
@@ -734,6 +1476,26 @@ const ALL_STEPS = [
     label: "Request token (resource: agent1, scope: balance)",
     type: "request",
     description: "Scoped Token Request",
+    why: "Now that there's a logged-in user, the chatbot asks the web app's BFF to mint a token specifically scoped to what the agent needs — not a broad-access token. Narrow scope means even a leaked token has limited blast radius.",
+    request: {
+      method: "POST",
+      url: "https://api.ping.demo:4000/api/agent-token",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: "connect.sid=s%3A{SESSION_ID}.{SIG}",
+      },
+      body: { resource: "agent1", scope: "banking:read" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { tokenRequestId: "treq_01XYZ", status: "issuing" },
+    },
+    onError: [
+      "401 — session expired between login and this call; bounce user to login again",
+      "400 invalid_resource — resource indicator not registered in PingOne",
+      "403 — user not entitled to the requested scope; show a clear permission-denied message",
+    ],
   },
   // WA->>PID: Token request (resource: agent1, scope: balance)
   {
@@ -744,6 +1506,31 @@ const ALL_STEPS = [
     type: "request",
     description: "PingOne Token Request",
     scopes: ["banking:read"],
+    why: "The BFF talks to PingOne on the user's behalf to issue a subject token narrowly audienced to the agent. The resource indicator (RFC 8707) is what tells PingOne to embed aud=agent1 and may_act so this token can later be exchanged.",
+    request: {
+      method: "POST",
+      url: "https://auth.pingone.com/{ENV_ID}/as/token",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: "Basic {BASE64(WA_CLIENT_ID:SECRET)}",
+      },
+      body: "grant_type=authorization_code&code={AUTH_CODE}&redirect_uri=https%3A%2F%2Fapi.ping.demo%3A4000%2Fcallback&resource=agent1&scope=banking%3Aread&code_verifier={PKCE_VERIFIER}",
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        access_token: "eyJhbGciOi...SubjectToken...",
+        token_type: "Bearer",
+        expires_in: 600,
+        scope: "banking:read",
+      },
+    },
+    onError: [
+      "400 invalid_grant — auth code already used or expired",
+      "400 invalid_target — resource indicator agent1 not registered in PingOne",
+      "401 invalid_client — BFF's client_id/secret wrong",
+    ],
   },
   // PID-->>WA: Subject token (sub: user, aud: agent1, may_act: {sub: agent1}, scope: balance)
   {
@@ -755,6 +1542,35 @@ const ALL_STEPS = [
     type: "response",
     description: "Subject Token Issued",
     scopes: ["banking:read"],
+    why: "PingOne issues a token where the user is the subject and the agent is recorded as an allowed actor via may_act. That single claim is what unlocks safe RFC 8693 delegation downstream — it's the consent record.",
+    request: {
+      frame: "token-issuance-response",
+      payload: { grant_type: "authorization_code", resource: "agent1" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      body: {
+        access_token: "eyJhbGciOi...SubjectToken...",
+        token_type: "Bearer",
+        expires_in: 600,
+        scope: "banking:read",
+        claims: {
+          sub: "user_jane_doe",
+          aud: "agent1",
+          iss: "https://auth.pingone.com/{ENV_ID}",
+          scope: "banking:read",
+          may_act: { sub: "agent1-cc-client" },
+          iat: 1778000000,
+          exp: 1778000600,
+        },
+      },
+    },
+    onError: [
+      "Token missing may_act — RFC 8693 exchange in step 24 will fail; check PingOne actor policy",
+      "Token aud is too broad — narrow it via resource indicators; otherwise it can be used anywhere",
+      "Expiry too long — subject tokens should be short-lived; 5-10 min is typical",
+    ],
   },
   // WA-->>CB: Subject token
   {
@@ -764,6 +1580,24 @@ const ALL_STEPS = [
     label: "Subject token",
     type: "response",
     description: "Subject Token Return",
+    why: "The BFF passes the subject token to the chatbot's server-side handler. Crucially the token itself never reaches the browser — only its session cookie does.",
+    request: {
+      frame: "internal-handoff",
+      payload: { tokenRequestId: "treq_01XYZ" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        subject_token: "eyJhbGciOi...SubjectToken...",
+        token_type: "urn:ietf:params:oauth:token-type:access_token",
+        expires_in: 600,
+      },
+    },
+    onError: [
+      "Token leaked into a browser-visible response — token-custody rule broken; redact and audit",
+      "Chatbot service stores token longer than expires_in — stale-token failures downstream",
+    ],
   },
   // CB->>A: Subject token (sub: user, may_act: {sub: agent1})
   {
@@ -773,6 +1607,29 @@ const ALL_STEPS = [
     label: "Subject token (sub: user, may_act: {sub: agent1})",
     type: "request",
     description: "Subject Token to Agent",
+    why: "The chatbot hands the subject token to the agent service so the agent can use it as the subject in the upcoming RFC 8693 exchange. The agent never receives the user's password — only this purpose-built token.",
+    request: {
+      method: "POST",
+      url: "https://api.ping.demo:3001/api/agent/attach-subject-token",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: "connect.sid=s%3A{SESSION_ID}.{SIG}",
+      },
+      body: {
+        agentRequestId: "agent_req_01HXYZ...",
+        subject_token: "eyJhbGciOi...SubjectToken...",
+      },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { attached: true, ready_to_retry: true },
+    },
+    onError: [
+      "Token forwarded over plain HTTP — must be TLS only",
+      "Agent caches the token past its exp — every tool call will 401; refresh on demand",
+      "agentRequestId doesn't match — conversation state was lost; start over",
+    ],
   },
   // Note over A,PID: Exchange token for Agent Gateway (RFC 8693)
   {
@@ -780,6 +1637,11 @@ const ALL_STEPS = [
     participants: ["A", "PID"],
     text: "Exchange token for Agent Gateway (RFC 8693)",
     description: "Exchange token — Agent Gateway",
+    why: "Rather than reusing the same token everywhere, each hop gets its own audience-bound token via RFC 8693 Token Exchange. That way a token stolen from one segment can't be replayed against another.",
+    onError: [
+      "Teams skip exchange and reuse the subject token everywhere — audience binding lost; major security regression",
+      "Confused subject vs. actor token order — exchange will succeed but with wrong sub/act claims",
+    ],
   },
   // A->>PID: Token exchange (actor_token: agent token, subject_token: user token)
   {
@@ -794,6 +1656,32 @@ const ALL_STEPS = [
       "Add act claim (agent1)",
       "Change aud to mcp-gw",
       "Keep scope: banking:read",
+    ],
+    why: "The agent asks PingOne to mint a new token that says 'this is the user, being acted on by agent1, targeted at the gateway'. This is the core RFC 8693 'delegation' pattern — provable on-behalf-of with no impersonation.",
+    request: {
+      method: "POST",
+      url: "https://auth.pingone.com/{ENV_ID}/as/token",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: "Basic {BASE64(AGENT_CLIENT_ID:SECRET)}",
+      },
+      body: "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&subject_token=eyJhbGciOi...SubjectToken...&subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&actor_token=eyJhbGciOi...AgentCCToken...&actor_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&resource=mcp-gw&scope=banking%3Aread",
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        access_token: "eyJhbGciOi...TxTokenGW...",
+        issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+        token_type: "Bearer",
+        expires_in: 600,
+        scope: "banking:read",
+      },
+    },
+    onError: [
+      "400 unsupported_grant_type — token-exchange grant not enabled on the PingOne app",
+      "400 invalid_request — subject_token missing may_act for this actor",
+      "400 invalid_target — mcp-gw not registered as a resource indicator in PingOne",
     ],
   },
   // PID-->>A: TX token (sub: user, act: {sub: agent1}, aud: mcp-gw, scope: balance)
@@ -810,6 +1698,36 @@ const ALL_STEPS = [
       "Change aud to mcp-gw",
       "Keep scope: banking:read",
     ],
+    why: "PingOne returns the first exchanged token. The act claim is the cryptographic proof that the agent is operating on the user's behalf — downstream services can see both who and on-whose-behalf in one token.",
+    request: {
+      frame: "token-exchange-response",
+      payload: { grant_type: "urn:ietf:params:oauth:grant-type:token-exchange", resource: "mcp-gw" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      body: {
+        access_token: "eyJhbGciOi...TxTokenGW...",
+        issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+        token_type: "Bearer",
+        expires_in: 600,
+        scope: "banking:read",
+        claims: {
+          sub: "user_jane_doe",
+          aud: "mcp-gw",
+          iss: "https://auth.pingone.com/{ENV_ID}",
+          scope: "banking:read",
+          act: { sub: "agent1-cc-client", client_id: "{AGENT_CLIENT_ID}" },
+          iat: 1778000000,
+          exp: 1778000600,
+        },
+      },
+    },
+    onError: [
+      "act claim absent — PingOne resource policy needs to emit it; see CLAUDE.md token-policy notes",
+      "Token still has aud=agent1 — resource indicator was ignored; check PingOne config",
+      "scope quietly widened — verify PingOne scope-policy isn't auto-granting extra scopes",
+    ],
   },
   // Note over A: sub=user, act=agent1 — Agent acts on behalf of user
   {
@@ -817,6 +1735,10 @@ const ALL_STEPS = [
     participants: ["A"],
     text: "sub=user, act=agent1 — Agent acts on behalf of user",
     description: "sub=user, act=agent1",
+    why: "This is the moment to pause and explain: the token is provably 'about the user, by the agent'. Any service that reads it can hold both parties accountable in the audit log.",
+    onError: [
+      "Teams confuse sub and act and audit by the wrong party — train ops staff on RFC 8693 semantics",
+    ],
   },
   // Note over A: Option: aud: mcp-olb<br/>(requires assurance only path to MCP is via gateway)
   {
@@ -824,6 +1746,11 @@ const ALL_STEPS = [
     participants: ["A"],
     text: "Option: aud: mcp-olb\n(requires assurance only path to MCP is via gateway)",
     description: "aud: mcp-olb option",
+    why: "An advanced topology can target the MCP directly (aud: mcp-olb) but only if you can prove the gateway is the sole entry point. Most deployments keep aud=mcp-gw for safety — exchanges happen at each boundary.",
+    onError: [
+      "aud=mcp-olb used without enforcing gateway-only ingress — MCP can be hit directly with stolen token",
+      "Mixing audiences across calls — confusing to operate; pick one model and stick to it",
+    ],
   },
   // A->>AG: tools/call check_balance (JSON-RPC) with TX token
   {
@@ -833,6 +1760,31 @@ const ALL_STEPS = [
     label: "tools/call check_balance (JSON-RPC) with TX token",
     type: "request",
     description: "Tool Call with TX Token",
+    why: "This is the retry of step 14, but now with a real on-behalf-of token. The agent expects this call to succeed because the token carries both the user's consent and the agent's identity.",
+    request: {
+      method: "POST",
+      url: "ws://localhost:3005/jsonrpc",
+      headers: {
+        Authorization: "Bearer eyJhbGciOi...TxTokenGW...",
+        "Content-Type": "application/json",
+      },
+      body: {
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tools/call",
+        params: { name: "check_balance", arguments: {} },
+      },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { jsonrpc: "2.0", id: 3, result: { balance: 2450.32 } },
+    },
+    onError: [
+      "401 invalid_token — TX token expired in transit; mint a fresh one",
+      "403 — gateway saw aud != mcp-gw; the exchange in step 24 used the wrong resource indicator",
+      "WebSocket closed mid-frame — retry with the same id, server should dedupe",
+    ],
   },
   // Note over AG,PA: Gateway authorizes TX token + tool call
   {
@@ -840,6 +1792,11 @@ const ALL_STEPS = [
     participants: ["AG", "PA"],
     text: "Gateway authorizes TX token + tool call",
     description: "Gateway authorizes TX token",
+    why: "Even with a delegated token, the gateway re-checks with the authorizer. Never trust a token blindly — always ask policy whether this token, this scope, and this specific tool call are still allowed right now.",
+    onError: [
+      "Gateway skips authorization because the token 'looks valid' — that's how scope creep happens",
+      "Policy cache too aggressive — authorize on every call or use very short TTLs",
+    ],
   },
   // AG->>PA: Authorization check (TX token, tool: check_balance)
   {
@@ -849,6 +1806,40 @@ const ALL_STEPS = [
     label: "Authorization check (TX token, tool: check_balance)",
     type: "request",
     description: "Auth Check (TX Token)",
+    why: "Gateway hands Ping Authorize both the delegated token and the specific tool being invoked. PA can now make a holistic decision: who is the user, who is the agent, what tool, what arguments.",
+    request: {
+      method: "POST",
+      url: "https://pa.ping.demo/governance-engine/decision",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer {GATEWAY_PA_CLIENT_TOKEN}",
+      },
+      body: {
+        action: "tools/call",
+        tool: "check_balance",
+        subject: { token: "eyJhbGciOi...TxTokenGW..." },
+        resource: { type: "mcp.tool", id: "check_balance" },
+      },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { decision: "PERMIT" },
+    },
+    rulesEvaluated: [
+      { rule: "Subject token valid (user not revoked, not expired)", result: "PASS", detail: "sub=user_jane_doe; active=true; exp in future" },
+      { rule: "Actor token valid (agent client active)", result: "PASS", detail: "act.sub=agent1-cc-client; client status=active" },
+      { rule: "may_act claim lists this agent as permitted actor", result: "PASS", detail: "may_act.sub=agent1-cc-client matches act.sub" },
+      { rule: "Resource indicator (aud) matches MCP gateway", result: "PASS", detail: "aud='mcp-gw'" },
+      { rule: "Requested scope is subset of user's granted scopes", result: "PASS", detail: "requested=banking:read; user granted=banking:read banking:write" },
+      { rule: "High-value transaction threshold (>$500 requires step-up)", result: "N/A", detail: "tool=check_balance (read-only, non-monetary)" },
+      { rule: "Tool-specific business rules (account ownership, consent)", result: "PASS", detail: "check_balance on user's own account; no consent gate triggered" },
+    ],
+    onError: [
+      "PA returns DENY despite a valid token — check the act-claim policy attribute mapping in PA",
+      "PA returns INDETERMINATE — required attributes missing in the decision context",
+      "Decision context too large — trim what gateway sends to keep latency low",
+    ],
   },
   // PA->>PID: Introspect TX token
   {
@@ -858,6 +1849,32 @@ const ALL_STEPS = [
     label: "Introspect TX token",
     type: "request",
     description: "TX Token Introspect",
+    why: "PA verifies the new delegated token the same way it verified the agent token earlier. Introspection confirms the token is real, unrevoked, and exposes the act claim PA needs for policy.",
+    request: {
+      method: "POST",
+      url: "https://auth.pingone.com/{ENV_ID}/as/introspect",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: "Basic {BASE64(PA_INTROSPECT_CLIENT_ID:SECRET)}",
+      },
+      body: "token=eyJhbGciOi...TxTokenGW...&token_type_hint=access_token",
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        active: true,
+        sub: "user_jane_doe",
+        aud: "mcp-gw",
+        scope: "banking:read",
+        act: { sub: "agent1-cc-client" },
+      },
+    },
+    onError: [
+      "active:false — token revoked, possibly by an admin or user logout",
+      "Slow PingOne response — consider local JWT validation with JWKS for steady-state perf",
+      "act claim missing — PingOne didn't propagate it through exchange; policy will incorrectly run as if no agent",
+    ],
   },
   // PID-->>PA: Token claims (sub, act, aud, scope)
   {
@@ -867,6 +1884,29 @@ const ALL_STEPS = [
     label: "Token claims (sub, act, aud, scope)",
     type: "response",
     description: "TX Token Claims",
+    why: "PingOne returns the full claim set including the act delegation chain. Now PA can evaluate policy with full context — who acted on behalf of whom, with what scope, for what audience.",
+    request: {
+      frame: "introspect-claims-return",
+      payload: { token_type_hint: "access_token" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        active: true,
+        sub: "user_jane_doe",
+        aud: "mcp-gw",
+        scope: "banking:read",
+        act: { sub: "agent1-cc-client", client_id: "{AGENT_CLIENT_ID}" },
+        iss: "https://auth.pingone.com/{ENV_ID}",
+        iat: 1778000000,
+        exp: 1778000600,
+      },
+    },
+    onError: [
+      "Audit logs show sub but not act — fix log emit to record the delegation chain",
+      "act.sub doesn't match any known agent — possible token misuse; alert and deny",
+    ],
   },
   // Note over PA: Validate: aud, scope: balance,<br/>tool call details vs. policy
   {
@@ -874,6 +1914,18 @@ const ALL_STEPS = [
     participants: ["PA"],
     text: "Validate: aud, scope: balance,\ntool call details vs. policy",
     description: "Validate policy",
+    why: "PA enforces the full constraint set in one place: token audience matches the gateway, scope covers the requested action, agent is one of the allowed actors, and the tool itself is approved for this user. Centralized policy beats scattered per-service if-statements.",
+    rulesEvaluated: [
+      { rule: "Token aud matches gateway", result: "PASS", detail: "aud='mcp-gw'" },
+      { rule: "Scope covers requested action", result: "PASS", detail: "scope='banking:read' satisfies check_balance" },
+      { rule: "Agent is in user's may_act allowlist", result: "PASS", detail: "may_act.sub=agent1-cc-client" },
+      { rule: "Tool approved for this user", result: "PASS", detail: "user_jane_doe entitled to check_balance" },
+    ],
+    onError: [
+      "Policy allows aud mismatch — fundamental authz bug; must always check aud",
+      "Policy ignores scope — defeats the purpose of narrow tokens",
+      "Policy doesn't constrain by tool — agent could call destructive tools with read-only scope",
+    ],
   },
   // PA-->>AG: Permit
   {
@@ -883,6 +1935,25 @@ const ALL_STEPS = [
     label: "Permit",
     type: "response",
     description: "PERMIT",
+    why: "Policy decision returns clean — the gateway can proceed. This PERMIT is the audit anchor: if anyone asks 'why was this allowed?', the policy trace can be replayed against the exact decision context.",
+    request: {
+      frame: "pa-decision-result",
+      payload: { action: "tools/call", tool: "check_balance" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { decision: "PERMIT", obligations: { log_audit_event: true } },
+    },
+    rulesEvaluated: [
+      { rule: "All sub/act/aud/scope/may_act checks passed", result: "PASS", detail: "sub=user_jane_doe, act=agent1-cc-client, aud=mcp-gw, scope=banking:read, may_act match" },
+      { rule: "Transaction amount under high-value threshold OR step-up satisfied", result: "PASS", detail: "tool=check_balance (no monetary value); threshold N/A" },
+      { rule: "No fraud/risk signals flagged on session", result: "PASS", detail: "risk_score=low; no anomaly flags on session_id" },
+    ],
+    onError: [
+      "PERMIT returned but obligations dropped — gateway must enforce obligations (e.g., audit logging)",
+      "Latency spike — first decision can be slow; warm the policy cache at startup",
+    ],
   },
   // Note over AG,PID: Exchange token for MCP
   {
@@ -890,6 +1961,11 @@ const ALL_STEPS = [
     participants: ["AG", "PID"],
     text: "Exchange token for MCP",
     description: "Exchange token — MCP",
+    why: "Even though the gateway has a valid token, that token is audienced for the gateway itself, not MCP. To call MCP correctly the gateway exchanges it for a fresh token audienced to MCP — preserving the user/agent identity chain.",
+    onError: [
+      "Skipping this exchange and passing the gateway-audienced token to MCP — MCP should reject on aud mismatch",
+      "Exchange runs but with the agent's CC token as subject — loses the user identity; never reuse the wrong subject",
+    ],
   },
   // AG->>PID: Token exchange (TX token → aud: mcp)
   {
@@ -904,6 +1980,32 @@ const ALL_STEPS = [
       "Keep act claim (agent1)",
       "Change aud to mcp",
       "Keep scope: banking:read",
+    ],
+    why: "Second RFC 8693 hop. The gateway uses its own credentials to ask PingOne to re-audience the token to mcp while keeping the act delegation chain intact. Each segment of the call gets a purpose-built token.",
+    request: {
+      method: "POST",
+      url: "https://auth.pingone.com/{ENV_ID}/as/token",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: "Basic {BASE64(GATEWAY_CLIENT_ID:SECRET)}",
+      },
+      body: "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&subject_token=eyJhbGciOi...TxTokenGW...&subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&resource=mcp&scope=banking%3Aread%20banking%3Amcp%3Ainvoke",
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        access_token: "eyJhbGciOi...McpToken...",
+        issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+        token_type: "Bearer",
+        expires_in: 600,
+        scope: "banking:read banking:mcp:invoke",
+      },
+    },
+    onError: [
+      "400 invalid_target — mcp resource indicator not registered in PingOne",
+      "act claim dropped during chain — PingOne resource policy needs to preserve actor through exchange",
+      "Gateway lacks token-exchange grant — enable it on the gateway's PingOne app",
     ],
   },
   // PID-->>AG: MCP token (sub: user, act: {sub: agent1}, aud: mcp, scope: balance)
@@ -921,6 +2023,36 @@ const ALL_STEPS = [
       "Change aud to mcp",
       "Keep scope: banking:read",
     ],
+    why: "PingOne returns the MCP-audienced token, still carrying sub=user and act=agent1. The gateway can now talk to MCP without ever giving up the user-identity context.",
+    request: {
+      frame: "token-exchange-response",
+      payload: { resource: "mcp" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      body: {
+        access_token: "eyJhbGciOi...McpToken...",
+        issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+        token_type: "Bearer",
+        expires_in: 600,
+        scope: "banking:read banking:mcp:invoke",
+        claims: {
+          sub: "user_jane_doe",
+          aud: "mcp",
+          iss: "https://auth.pingone.com/{ENV_ID}",
+          scope: "banking:read banking:mcp:invoke",
+          act: { sub: "agent1-cc-client" },
+          iat: 1778000000,
+          exp: 1778000600,
+        },
+      },
+    },
+    onError: [
+      "aud still says mcp-gw — resource indicator wasn't honored; check PingOne",
+      "Extra scope appeared — review default scope policy on the gateway's app",
+      "exp shorter than the gateway → MCP call latency — risk of in-flight expiry; bump expires_in modestly",
+    ],
   },
   // AG->>MCP: tools/call check_balance (JSON-RPC) with MCP token
   {
@@ -930,6 +2062,31 @@ const ALL_STEPS = [
     label: "tools/call check_balance (JSON-RPC) with MCP token",
     type: "request",
     description: "Tool Call to MCP",
+    why: "The gateway forwards the tool call to the MCP server with the MCP-audienced token. MCP will use this token both to authenticate the call and as the subject for its own downstream exchange to the resource server.",
+    request: {
+      method: "POST",
+      url: "ws://mcp.ping.demo:8080/jsonrpc",
+      headers: {
+        Authorization: "Bearer eyJhbGciOi...McpToken...",
+        "Content-Type": "application/json",
+      },
+      body: {
+        jsonrpc: "2.0",
+        id: 4,
+        method: "tools/call",
+        params: { name: "check_balance", arguments: {} },
+      },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { jsonrpc: "2.0", id: 4, result: { balance: 2450.32 } },
+    },
+    onError: [
+      "401 invalid_token — MCP saw aud != mcp; verify the resource indicator on the gateway's exchange",
+      "WebSocket connection refused — MCP not up, or TLS chain broken on mcp.ping.demo",
+      "Tool name not registered in MCP — BankingToolRegistry missing this tool",
+    ],
   },
   // Note over MCP,PID: Exchange token for Resource Server
   {
@@ -937,6 +2094,11 @@ const ALL_STEPS = [
     participants: ["MCP", "PID"],
     text: "Exchange token for Resource Server",
     description: "Exchange token — Resource Server",
+    why: "MCP can't call the banking API with a token audienced to MCP itself — the API would reject it. One more exchange re-audiences to the resource server, completing the delegation chain end-to-end.",
+    onError: [
+      "MCP reuses its own token to call the API — API rejects on aud mismatch (correct behavior)",
+      "MCP forgets to forward act — RS-side audit shows the call as 'user' without agent attribution",
+    ],
   },
   // MCP->>PID: Token exchange (MCP token → aud: resource-server)
   {
@@ -950,6 +2112,32 @@ const ALL_STEPS = [
       "Keep act claim (agent1)",
       "Change aud to resource-server",
       "Keep scope: banking:read",
+    ],
+    why: "Third and final RFC 8693 hop. MCP uses its own credentials to mint a resource-server-audienced token, still carrying the same user subject and act chain.",
+    request: {
+      method: "POST",
+      url: "https://auth.pingone.com/{ENV_ID}/as/token",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: "Basic {BASE64(MCP_CLIENT_ID:SECRET)}",
+      },
+      body: "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&subject_token=eyJhbGciOi...McpToken...&subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&resource=https%3A%2F%2Fapi.ping.demo&scope=banking%3Aread",
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        access_token: "eyJhbGciOi...RsToken...",
+        issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+        token_type: "Bearer",
+        expires_in: 600,
+        scope: "banking:read",
+      },
+    },
+    onError: [
+      "400 invalid_target — resource server URI not registered as a PingOne resource",
+      "Token's may_act doesn't allow this MCP client — exchange will fail with invalid_request",
+      "Repeated exchanges per call without caching — high PingOne load; cache by (sub, aud) for token lifetime",
     ],
   },
   // PID-->>MCP: RS token (sub: user, act: {sub: agent1}, aud: resource-server, scope: balance)
@@ -966,6 +2154,35 @@ const ALL_STEPS = [
       "Change aud to resource-server",
       "Keep scope: banking:read",
     ],
+    why: "Final delegated token. By the time it lands at the resource server, the API can answer 'who is this for?' (the user), 'who is asking?' (the agent), 'what scope?' (banking:read), and 'is the audience me?' (yes) — all from one signed JWT.",
+    request: {
+      frame: "token-exchange-response",
+      payload: { resource: "https://api.ping.demo" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      body: {
+        access_token: "eyJhbGciOi...RsToken...",
+        issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+        token_type: "Bearer",
+        expires_in: 600,
+        scope: "banking:read",
+        claims: {
+          sub: "user_jane_doe",
+          aud: "https://api.ping.demo",
+          iss: "https://auth.pingone.com/{ENV_ID}",
+          scope: "banking:read",
+          act: { sub: "agent1-cc-client" },
+          iat: 1778000000,
+          exp: 1778000600,
+        },
+      },
+    },
+    onError: [
+      "aud is a plain string the RS doesn't recognize — agree on a canonical URI between PingOne and the RS",
+      "Token lifetime exceeds the user's session — risks data access after logout; align with session policy",
+    ],
   },
   // MCP->>RS: GET /balance (RS token)
   {
@@ -975,6 +2192,25 @@ const ALL_STEPS = [
     label: "GET /balance (RS token)",
     type: "request",
     description: "GET /balance",
+    why: "MCP finally calls the actual banking API with the resource-server-audienced token. This is the first time the request reaches code that owns the user's data — and the token alone is enough to prove it's allowed in.",
+    request: {
+      method: "GET",
+      url: "https://api.ping.demo:3001/api/accounts/balance",
+      headers: {
+        Authorization: "Bearer eyJhbGciOi...RsToken...",
+        Accept: "application/json",
+      },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { accountId: "acct_01ABC", balance: 2450.32, currency: "USD" },
+    },
+    onError: [
+      "401 invalid_token — RS rejected aud or signature; check JWKS URL on RS",
+      "403 insufficient_scope — token's scope missing banking:read",
+      "404 — accountId not found for this sub; data layer mismatch with PingOne user id",
+    ],
   },
   // RS->>PID: Introspect RS token
   {
@@ -984,6 +2220,32 @@ const ALL_STEPS = [
     label: "Introspect RS token",
     type: "request",
     description: "RS Token Introspect",
+    why: "Like Ping Authorize earlier, the resource server itself verifies the token via introspection — or by locally validating the JWT against PingOne's published keys. Either way, the API never trusts a token without checking it.",
+    request: {
+      method: "POST",
+      url: "https://auth.pingone.com/{ENV_ID}/as/introspect",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: "Basic {BASE64(RS_INTROSPECT_CLIENT_ID:SECRET)}",
+      },
+      body: "token=eyJhbGciOi...RsToken...&token_type_hint=access_token",
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        active: true,
+        sub: "user_jane_doe",
+        aud: "https://api.ping.demo",
+        scope: "banking:read",
+        act: { sub: "agent1-cc-client" },
+      },
+    },
+    onError: [
+      "Per-request introspection adds latency — prefer local JWT validation with cached JWKS",
+      "JWKS cache stale during PingOne key rotation — refresh on signature mismatch",
+      "Introspect endpoint rate-limited — back off and switch to local verification temporarily",
+    ],
   },
   // PID-->>RS: Token claims (sub, act, aud, scope)
   {
@@ -993,6 +2255,29 @@ const ALL_STEPS = [
     label: "Token claims (sub, act, aud, scope)",
     type: "response",
     description: "RS Token Claims",
+    why: "PingOne returns the full claims so the resource server can apply final fine-grained checks: is sub a real user in our system, is the scope sufficient, is the audience really us, and who acted.",
+    request: {
+      frame: "introspect-claims-return",
+      payload: { token_type_hint: "access_token" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        active: true,
+        sub: "user_jane_doe",
+        aud: "https://api.ping.demo",
+        scope: "banking:read",
+        act: { sub: "agent1-cc-client", client_id: "{AGENT_CLIENT_ID}" },
+        iss: "https://auth.pingone.com/{ENV_ID}",
+        iat: 1778000000,
+        exp: 1778000600,
+      },
+    },
+    onError: [
+      "RS audit logs don't capture act — fix log emit so agent actions are attributable",
+      "Multiple audiences in the claim — pick the canonical one or treat as deny",
+    ],
   },
   // Note over RS: Validate: aud=resource-server,<br/>scope: balance, act: agent1
   {
@@ -1000,6 +2285,12 @@ const ALL_STEPS = [
     participants: ["RS"],
     text: "Validate: aud=resource-server,\nscope: balance, act: agent1",
     description: "Validate RS token",
+    why: "Last line of defense: the API itself enforces aud, scope, and an allowed agent in the act claim. Even if every other layer mis-routed something, this check stops bad calls cold.",
+    onError: [
+      "Skipping aud check at the RS — biggest risk in OAuth deployments; tokens from other audiences would work",
+      "Not checking act — agent attribution lost; can't tell user from agent in audit",
+      "Wildcard scope check — defeats narrow scoping; require exact match",
+    ],
   },
   // RS-->>MCP: Balance data
   {
@@ -1009,6 +2300,28 @@ const ALL_STEPS = [
     label: "Balance data",
     type: "response",
     description: "Balance Data",
+    why: "Resource server returns only the data this token is allowed to see. The data leaves the secure boundary already filtered to the user — MCP can pass it on without re-checking permissions.",
+    request: {
+      frame: "rs-data-response",
+      payload: { resource: "balance" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        accountId: "acct_01ABC",
+        balance: 2450.32,
+        currency: "USD",
+        recentTransactions: [
+          { date: "2026-05-09", description: "Starbucks", amount: -5.42 },
+          { date: "2026-05-07", description: "Employer Payroll", amount: 2500.0 },
+        ],
+      },
+    },
+    onError: [
+      "RS leaks fields not in scope — review serializer to honor scope-driven field masking",
+      "PII included where not needed — apply data minimization for agent calls",
+    ],
   },
   // MCP-->>AG: Tool result
   {
@@ -1018,6 +2331,27 @@ const ALL_STEPS = [
     label: "Tool result",
     type: "response",
     description: "Tool Result (MCP → GW)",
+    why: "MCP wraps the data in the standard tool-result envelope and returns it to the gateway. From here on it's pure data transit — no more auth decisions.",
+    request: {
+      frame: "tool-result",
+      payload: { tool: "check_balance", request_id: 4 },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        jsonrpc: "2.0",
+        id: 4,
+        result: {
+          content: [{ type: "text", text: "Balance: $2,450.32" }],
+          structuredContent: { balance: 2450.32, currency: "USD" },
+        },
+      },
+    },
+    onError: [
+      "Result not in MCP envelope format — gateway can't forward; agent will fail to parse",
+      "Result too large — paginate or summarize; otherwise WS frame size issues",
+    ],
   },
   // AG-->>A: Tool result
   {
@@ -1027,6 +2361,27 @@ const ALL_STEPS = [
     label: "Tool result",
     type: "response",
     description: "Tool Result (GW → Agent)",
+    why: "Gateway relays the tool result back to the agent service. The agent now has structured data to give to the LLM so it can phrase a human-friendly answer.",
+    request: {
+      frame: "tool-result-forward",
+      payload: { request_id: 3 },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        jsonrpc: "2.0",
+        id: 3,
+        result: {
+          content: [{ type: "text", text: "Balance: $2,450.32" }],
+          structuredContent: { balance: 2450.32, currency: "USD" },
+        },
+      },
+    },
+    onError: [
+      "Gateway drops part of the result (truncation) — bump WS frame and HTTP body limits",
+      "Multiple in-flight tool calls confused — make sure JSON-RPC id is correlated correctly",
+    ],
   },
   // A->>LLM: Tool result + context
   {
@@ -1036,6 +2391,44 @@ const ALL_STEPS = [
     label: "Tool result + context",
     type: "request",
     description: "LLM Context",
+    why: "The agent feeds the structured tool result back to the LLM along with the original prompt. The model's job now is to turn raw numbers and transaction rows into something a human will understand.",
+    request: {
+      method: "POST",
+      url: "https://api.anthropic.com/v1/messages",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": "{ANTHROPIC_API_KEY}",
+        "anthropic-version": "2023-06-01",
+      },
+      body: {
+        model: "claude-opus-4-7",
+        max_tokens: 1024,
+        messages: [
+          { role: "user", content: "What is my current account balance and recent transactions?" },
+          { role: "assistant", content: [{ type: "tool_use", id: "tool_use_01ABC", name: "check_balance", input: {} }] },
+          {
+            role: "user",
+            content: [
+              {
+                type: "tool_result",
+                tool_use_id: "tool_use_01ABC",
+                content: '{"balance":2450.32,"currency":"USD","recentTransactions":[...]}',
+              },
+            ],
+          },
+        ],
+      },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { id: "msg_02XYZ", stop_reason: "end_turn" },
+    },
+    onError: [
+      "Tool result too large for the model's context — summarize or chunk before sending",
+      "LLM model deprecated mid-conversation — pin a specific model id and update deliberately",
+      "Provider outage — fall back to a templated response so the user still sees their balance",
+    ],
   },
   // LLM-->>A: Natural language response
   {
@@ -1045,6 +2438,29 @@ const ALL_STEPS = [
     label: "Natural language response",
     type: "response",
     description: "Natural Language Response",
+    why: "The model returns a friendly, plain-English summary of the user's balance and transactions. This is what makes a chatbot feel like a chatbot rather than a database query tool.",
+    request: {
+      frame: "llm-text-response",
+      payload: { msg_id: "msg_02XYZ" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        content: [
+          {
+            type: "text",
+            text: "Your checking account balance is $2,450.32. Recent transactions: Purchase at Starbucks ($5.42), Direct deposit from employer ($2,500.00).",
+          },
+        ],
+        stop_reason: "end_turn",
+      },
+    },
+    onError: [
+      "Model hallucinates a balance not in the tool result — strict prompt + post-check against the structured data",
+      "Reply omits the actual answer the user asked for — tune the system prompt to always include numbers from tool results",
+      "PII echoed verbatim in ways the user didn't ask for — apply output filtering",
+    ],
   },
   // A-->>CB: Response
   {
@@ -1054,6 +2470,25 @@ const ALL_STEPS = [
     label: "Response",
     type: "response",
     description: "Agent → Chatbot",
+    why: "The agent service hands the rendered answer back to the chatbot. From the chatbot's perspective, the whole token dance just looked like 'asked agent, got answer'.",
+    request: {
+      frame: "agent-response",
+      payload: { agentRequestId: "agent_req_01HXYZ..." },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        status: "complete",
+        message:
+          "Your checking account balance is $2,450.32. Recent transactions: Purchase at Starbucks ($5.42), Direct deposit from employer ($2,500.00).",
+        conversationId: "conv_01HXYZ...",
+      },
+    },
+    onError: [
+      "Chatbot loses the agentRequestId mapping — response gets dropped; ensure idempotency keys",
+      "Long-running response not streamed — UX feels frozen; switch to SSE/WS streaming if available",
+    ],
   },
   // Note over CB,U: Chatbot shows AI response:<br/>"Your checking account balance is $2,450.32.<br/>Recent transactions: Purchase at Starbucks ($5.42),<br/>Direct deposit from employer ($2,500.00)..."
   {
@@ -1061,6 +2496,11 @@ const ALL_STEPS = [
     participants: ["CB", "U"],
     text: 'Chatbot shows AI response:\n"Your checking account balance is $2,450.32.\nRecent transactions: Purchase at Starbucks ($5.42),\nDirect deposit from employer ($2,500.00)..."',
     description: "Chatbot shows AI response",
+    why: "The point of the entire flow: the user gets a useful, accurate, plain-English answer to their question. Behind that one sentence are three RFC 8693 exchanges and four authorization checks — all invisible to them.",
+    onError: [
+      "User sees a generic 'I can help with that' instead of actual numbers — the tool path silently fell back to no-op",
+      "Old conversation content leaks in — make sure conversation history is properly scoped per session",
+    ],
   },
   // CB-->>U: Display in chatbot interface
   {
@@ -1070,6 +2510,23 @@ const ALL_STEPS = [
     label: "Display in chatbot interface",
     type: "response",
     description: "Display in Chatbot",
+    why: "The chatbot UI renders the agent's response in the conversation thread. From the user's point of view, the entire OAuth + token-exchange flow just happened in a couple of seconds.",
+    request: {
+      frame: "ui-render",
+      payload: { conversationId: "conv_01HXYZ..." },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "text/html" },
+      body: {
+        rendered:
+          "<div class='msg agent'>Your checking account balance is $2,450.32...</div>",
+      },
+    },
+    onError: [
+      "XSS risk if the response is rendered as raw HTML — always escape model output",
+      "Markdown not rendered — tables/lists from the model look like raw asterisks; pipe through a renderer",
+    ],
   },
   // CB-->>WA: Response + context
   {
@@ -1079,6 +2536,28 @@ const ALL_STEPS = [
     label: "Response + context",
     type: "response",
     description: "Sync to Web App",
+    why: "Some demos keep the chatbot pane and the main web app dashboard in sync, so an answer in the chatbot also updates the dashboard's balance widget. This shows OAuth-bound data flowing into multiple UIs at once.",
+    request: {
+      method: "POST",
+      url: "https://api.ping.demo:4000/api/dashboard/sync",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: "connect.sid=s%3A{SESSION_ID}.{SIG}",
+      },
+      body: {
+        conversationId: "conv_01HXYZ...",
+        update: { type: "balance", accountId: "acct_01ABC", balance: 2450.32 },
+      },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { synced: true },
+    },
+    onError: [
+      "Dashboard sync uses cached stale data — invalidate after every tool call that mutates state",
+      "Sync runs without checking session — could update the wrong user's dashboard",
+    ],
   },
   // WA-->>U: Also sync to dashboard/full UI
   {
@@ -1088,6 +2567,25 @@ const ALL_STEPS = [
     label: "Also sync to dashboard/full UI",
     type: "response",
     description: "Dashboard Update",
+    why: "The web app pushes the updated balance to the dashboard UI (often via WebSocket or SSE). The user sees both the chatbot answer and the dashboard widget update together — proof the data is one consistent source.",
+    request: {
+      frame: "ws-push",
+      payload: { channel: "dashboard:{USER_ID}" },
+    },
+    response: {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: {
+        event: "balance.updated",
+        accountId: "acct_01ABC",
+        balance: 2450.32,
+        timestamp: "2026-05-10T12:34:56Z",
+      },
+    },
+    onError: [
+      "WebSocket to the browser disconnected — fall back to polling so the UI eventually catches up",
+      "Pushed event includes more data than the scoped token permitted — re-derive what to push from the tool result",
+    ],
   },
   // Note over U: User can view in both<br/>chatbot interface and main dashboard
   {
@@ -1095,6 +2593,11 @@ const ALL_STEPS = [
     participants: ["U"],
     text: "User can view in both\nchatbot interface and main dashboard",
     description: "User can view in both",
+    why: "End of flow. The user got their answer in the chatbot and saw their dashboard update, all without ever seeing or handling a token, and with every backend hop independently audited and authorized.",
+    onError: [
+      "Two views show inconsistent numbers — likely a caching mismatch between chatbot and dashboard",
+      "User unsure which surface to trust — agree on a single source of truth (the resource server) and propagate from there",
+    ],
   },
 ];
 
