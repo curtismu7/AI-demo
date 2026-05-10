@@ -1,0 +1,83 @@
+---
+title: Banking Demo — Architecture (clean view)
+---
+%% This is a simplified version of architecture.mmd intended for the
+%% /architecture/overview image. Goals: every box is readable at a glance,
+%% no nested middleware sub-graphs, only the connections that show data /
+%% token flow (no health-check or monitoring noise).
+%%
+%% Regenerate the PNG with:
+%%   npx -y @mermaid-js/mermaid-cli -i architecture-simple.mmd \
+%%       -o banking_api_ui/public/architecture/overview.png -w 2400 -b transparent
+%%
+%% Or paste this file into https://mermaid.live and "Download PNG".
+flowchart LR
+
+    %% ── Actors (browser side) ───────────────────────────────────────────
+    User["End user<br/>(browser)"]
+
+    %% ── Frontend ─────────────────────────────────────────────────────────
+    UI["banking_api_ui<br/>(React SPA · :4000)"]
+
+    %% ── BFF ──────────────────────────────────────────────────────────────
+    BFF["banking_api_server<br/>BFF · OAuth callback · session<br/>:3001"]
+
+    %% ── Backend services ────────────────────────────────────────────────
+    MCP["banking_mcp_server<br/>Tools: accounts · balance · transactions<br/>:8080 · WebSocket"]
+    Gateway["banking_mcp_gateway<br/>Policy-aware token exchange<br/>:3005"]
+    Agent["banking_agent_service<br/>LLM tool-calling agent<br/>:3006"]
+    HITL["banking_hitl_service<br/>Human-in-the-loop consent<br/>:3009"]
+
+    %% ── Identity (cloud) ────────────────────────────────────────────────
+    subgraph PingOne["PingOne cloud"]
+      direction TB
+      AS["Authorization server<br/>/authorize · /token<br/>/introspect · /jwks"]
+      AZ["Ping Authorize<br/>Policy decisions<br/>(scope · aud · risk · amount)"]
+    end
+
+    %% ── Optional LLMs ───────────────────────────────────────────────────
+    LLM["LLM provider<br/>(Helix · Anthropic · OpenAI)"]
+
+    %% ── Browser → SPA → BFF ─────────────────────────────────────────────
+    User -->|HTTPS| UI
+    UI -->|cookie session<br/>+ proxy /api/*| BFF
+
+    %% ── BFF ↔ PingOne (OAuth) ──────────────────────────────────────────
+    BFF <-->|"OAuth 2.0 + PKCE<br/>RFC 6749 / 7636"| AS
+    BFF -->|"RFC 7662 introspect"| AS
+
+    %% ── Agent flow (BFF orchestrates tool calls) ───────────────────────
+    BFF -->|"prompt<br/>+ user token"| Agent
+    Agent -->|"RFC 8693 token exchange<br/>(subject = user, actor = agent)"| AS
+    Agent -->|"tool call<br/>+ TX token"| Gateway
+
+    %% ── Gateway authorizes each call ──────────────────────────────────
+    Gateway -->|"PDP evaluate:<br/>scope · aud · may_act · amount"| AZ
+    Gateway -->|"RFC 8693 downscope<br/>to MCP audience"| AS
+    Gateway -->|"forwards tool call<br/>+ MCP-scoped token"| MCP
+
+    %% ── HITL out-of-band consent on high-value txns ──────────────────
+    Gateway -.->|"INDETERMINATE →<br/>request consent"| HITL
+    HITL -.->|"approval / deny<br/>(CIBA-style)"| Gateway
+
+    %% ── MCP calls the banking API for actual data ─────────────────────
+    MCP -->|"REST + RS token<br/>(aud=banking_api_enduser)"| BFF
+
+    %% ── Agent talks to the LLM ────────────────────────────────────────
+    Agent -->|"prompt + tool defs"| LLM
+    LLM -.->|"tool-call decisions"| Agent
+
+    %% ── Styling: one colour per tier so the layers read at a glance ───
+    classDef user      fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px
+    classDef frontend  fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px
+    classDef bff       fill:#fef9c3,stroke:#ca8a04,color:#713f12,stroke-width:2px
+    classDef tool      fill:#f3e8ff,stroke:#7c3aed,color:#3b0764,stroke-width:2px
+    classDef cloud     fill:#fef2f2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef external  fill:#f1f5f9,stroke:#475569,color:#0f172a,stroke-width:2px
+
+    class User user
+    class UI frontend
+    class BFF bff
+    class MCP,Gateway,Agent,HITL tool
+    class AS,AZ cloud
+    class LLM external
