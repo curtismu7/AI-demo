@@ -21,6 +21,7 @@
     "test:e2e:ui": "cd banking_api_ui && npm run test:e2e:ci",
     "test:e2e:ui:smoke": "cd banking_api_ui && npm run test:e2e:ui:smoke",
     "release": "node scripts/release.js",
+    "build:diagrams": "bash scripts/build-diagrams.sh",
     "setup:fresh": "bash scripts/run-node.sh banking_api_server/scripts/setupFresh.js",
     "import": "bash scripts/run-node.sh banking_api_server/scripts/importMigrationBundle.js",
     "export": "bash scripts/run-node.sh banking_api_server/scripts/exportMigrationBundle.js",
