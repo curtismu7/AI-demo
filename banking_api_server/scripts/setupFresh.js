@@ -88,9 +88,19 @@ Flags:
                       Combine with --clean for a full local + remote reset.
   --recreate-apps     Delete existing 'Super Banking *' PingOne apps + resources
                       before creating fresh ones. Less aggressive than --reset-pingone.
+  --helix             Configure Helix LLM during setup. Prompts for the 5 fields
+                      (base_url, api_key, environment_id, agent_id, prompt_field_id),
+                      OR reads HELIX_* env vars in non-interactive mode.
+  --skip-helix        Don't ask about Helix at all. Use when you know the agent
+                      will run heuristics-only or when you'll configure later via
+                      /admin/langchain-config.
   --from-installer    (Internal — set by install.sh; skips dir confirm.)
   --no-browser        Skip the localhost form; prompt in terminal only.
   --non-interactive   Read PINGONE_BOOTSTRAP_* env vars (CI).
+
+Helix env vars (used by --helix in non-interactive contexts):
+  HELIX_BASE_URL, HELIX_API_KEY, HELIX_ENVIRONMENT_ID, HELIX_AGENT_ID,
+  HELIX_PROMPT_FIELD_ID
 
 Step 1 (you): Create a PingOne worker app with "Identity Data Admin" role.
 Step 2:       Run this command. The browser pops a form for your worker creds.
@@ -112,9 +122,21 @@ const tarArg = args.find(a => !a.startsWith('--'));
 // `--reset-pingone` is a setupFresh-specific flag: wipe the PingOne env
 // BEFORE the import/bootstrap chain runs. Forwarded into bootstrap via the
 // passthrough, but consumed locally too so we know to insert a wipe step.
-const LOCAL_FLAGS = new Set(['--from-installer', '--yes', '--clean', '--no-clean', '--reset-pingone']);
+//
+// `--skip-helix` and `--helix` control the Helix LLM-config phase:
+//   --skip-helix → never prompt, never configure (default behavior actually,
+//                   so this flag mostly exists for explicit CI clarity)
+//   --helix      → assume yes; collect creds (interactive) or read HELIX_*
+//                   env vars (non-interactive)
+const LOCAL_FLAGS = new Set([
+  '--from-installer', '--yes', '--clean', '--no-clean',
+  '--reset-pingone',
+  '--skip-helix', '--helix',
+]);
 const passthroughFlags = args.filter(a => a.startsWith('--') && !LOCAL_FLAGS.has(a));
 const RESET_PINGONE = args.includes('--reset-pingone');
+const SKIP_HELIX    = args.includes('--skip-helix');
+const FORCE_HELIX   = args.includes('--helix');
 
 // `--from-installer` is set by install.sh, which already confirmed the install
 // directory with the user — skip our own dir-confirm prompt to avoid double-asking.
@@ -465,6 +487,106 @@ async function offerCleanup() {
   console.log('');
 }
 
+// ── Helix LLM configuration ─────────────────────────────────────────────────
+//
+// PingOne Helix Agents are the recommended LLM provider for this demo's
+// natural-language UX. Without one, the agent runs heuristic-only and falls
+// through to the generic fallback message on inputs the regex doesn't catch.
+//
+// This phase asks the user (default NO) whether they want to wire Helix
+// creds during setup. On yes, prompts for the 5 fields the runtime reads
+// (helix_base_url, helix_api_key, helix_environment_id, helix_agent_id,
+// helix_prompt_field_id) and persists them to configStore (which encrypts
+// the api_key at rest using SESSION_SECRET / CONFIG_ENCRYPTION_KEY).
+//
+// Non-interactive mode (--helix flag, no TTY): reads HELIX_BASE_URL /
+// HELIX_API_KEY / HELIX_ENVIRONMENT_ID / HELIX_AGENT_ID /
+// HELIX_PROMPT_FIELD_ID env vars. Missing required vars fail the phase
+// with a clear message; the rest of setup continues.
+
+async function configureHelix() {
+  if (SKIP_HELIX) {
+    skip('Helix configuration skipped (--skip-helix)');
+    return;
+  }
+
+  // Decide whether to prompt at all. --helix forces yes; absence + no flag
+  // means we ASK the user.
+  let proceed = FORCE_HELIX;
+  if (!FORCE_HELIX) {
+    console.log('');
+    console.log('  PingOne Helix Agents power the natural-language UX in the banking agent.');
+    console.log('  Without one, the agent runs heuristic-only — it answers common phrases');
+    console.log('  ("balance", "show my accounts", "recent transactions", education topics)');
+    console.log('  but falls through on free-form natural language.');
+    console.log('');
+    console.log('  Need: a Helix agent + API key from your PingOne tenant.');
+    console.log('  Find them at: https://console.pingone.com → Helix → Agents.');
+    console.log('');
+    proceed = await readlineQuestion('Configure Helix LLM now?', /* defaultYes */ false);
+  }
+
+  if (!proceed) {
+    skip('Helix not configured — agent will run heuristics-only (configure later via /admin/langchain-config)');
+    return;
+  }
+
+  // Collect the 5 fields. CLI / env-var values override prompts, so users
+  // can pre-fill any subset and answer the rest interactively.
+  const fields = [
+    { key: 'helix_base_url',         label: 'Helix Base URL (e.g. https://helix.pingone.com/v1)', envVar: 'HELIX_BASE_URL',         required: true },
+    { key: 'helix_environment_id',   label: 'Helix Environment ID',                                envVar: 'HELIX_ENVIRONMENT_ID',   required: true },
+    { key: 'helix_agent_id',         label: 'Helix Agent ID',                                      envVar: 'HELIX_AGENT_ID',         required: true },
+    { key: 'helix_prompt_field_id',  label: 'Helix Prompt Field ID (the variable in your agent template)', envVar: 'HELIX_PROMPT_FIELD_ID',  required: true },
+    { key: 'helix_api_key',          label: 'Helix API Key',                                       envVar: 'HELIX_API_KEY',          required: true, secret: true },
+  ];
+
+  const values = {};
+  for (const f of fields) {
+    const fromEnv = process.env[f.envVar];
+    if (fromEnv) {
+      values[f.key] = fromEnv;
+      const display = f.secret ? maskSecret(fromEnv) : fromEnv;
+      console.log(`  ${f.label}: ${display}  (from $${f.envVar})`);
+      continue;
+    }
+    // Interactive — prompt for it.
+    const v = await readlineFreeText(f.label, { secret: f.secret });
+    if (!v && f.required) {
+      fail(`${f.label} is required. Aborting Helix configuration.`);
+      return;
+    }
+    values[f.key] = v;
+  }
+
+  // Persist via configStore. setConfig encrypts api_key at rest (it's in
+  // configStore's SECRET_KEYS list). Set provider=helix so parseNaturalLanguage
+  // routes to it instead of falling back to ollama.
+  try {
+    const configStore = require('../services/configStore');
+    await configStore.ensureInitialized();
+    await configStore.setConfig({
+      ...values,
+      provider: 'helix',
+    });
+    ok('Helix configuration saved (provider = helix)');
+    console.log(`     base_url:      ${values.helix_base_url}`);
+    console.log(`     environment:   ${values.helix_environment_id}`);
+    console.log(`     agent:         ${values.helix_agent_id}`);
+    console.log(`     prompt field:  ${values.helix_prompt_field_id}`);
+    console.log(`     api_key:       ${maskSecret(values.helix_api_key)}`);
+  } catch (err) {
+    fail(`Failed to persist Helix configuration: ${err.message}`);
+    console.log('  (Setup continues — re-configure later via /admin/langchain-config.)');
+  }
+}
+
+function maskSecret(s) {
+  const v = String(s || '');
+  if (v.length <= 6) return '***';
+  return v.slice(0, 3) + '…' + v.slice(-2);
+}
+
 // ── Install-directory confirmation ──────────────────────────────────────────
 //
 // Tell the user where setup will land and let them abort if it's the wrong
@@ -569,6 +691,49 @@ function readlineQuestion(question, defaultYes = true) {
   });
 }
 
+/**
+ * Free-text variant of readlineQuestion. Returns the trimmed answer string
+ * (or `defaultValue` on empty input). `secret: true` doesn't actually hide
+ * input on this terminal — see note below — but it does mark the field so
+ * the value can be masked when echoed back.
+ *
+ * Note on secret handling: real password-style hidden input on a fresh
+ * /dev/tty stream requires raw-mode + manual char echo, which doesn't work
+ * cleanly across all terminals (bash 3.2 / non-TTY parents / etc). For the
+ * Helix API key prompt we accept that the value is briefly visible while
+ * being typed — same tradeoff as the existing /etc/hosts sudo prompt where
+ * the user's password gets typed into Terminal.app.
+ */
+function readlineFreeText(question, { defaultValue = '', secret = false } = {}) {
+  return new Promise((resolve) => {
+    const readline = require('readline');
+    const suffix = defaultValue ? ` [${defaultValue}]` : '';
+    const promptStr = `${question}${suffix}: `;
+
+    let input = process.stdin;
+    let openedTty = false;
+    if (!process.stdin.isTTY) {
+      try {
+        input = fs.createReadStream('/dev/tty');
+        openedTty = true;
+        input.on('error', (err) => {
+          console.log(`(could not open /dev/tty: ${err.code || err.message} — using default '${defaultValue}')`);
+          resolve(defaultValue);
+        });
+      } catch (_e) {
+        return resolve(defaultValue);
+      }
+    }
+    const rl = readline.createInterface({ input, output: process.stdout, terminal: true });
+    rl.question(promptStr, (answer) => {
+      rl.close();
+      if (openedTty) try { input.destroy(); } catch (_e) {}
+      const s = String(answer || '').trim();
+      resolve(s || defaultValue);
+    });
+  });
+}
+
 function openTerminalWithCommand(command) {
   if (process.platform !== 'darwin') return false;
   // osascript: open Terminal.app, run a new tab, send keystrokes (so the user
@@ -669,6 +834,10 @@ async function main() {
   if (RESET_PINGONE) phases.push('pingone-wipe');
   if (tarArg) phases.push('import');
   phases.push('bootstrap');
+  // Helix LLM config phase — runs after bootstrap so .env is in place. We
+  // count it whenever it MIGHT run (i.e. unless --skip-helix); the prompt
+  // itself might end up declined, but the phase header still shows.
+  if (!SKIP_HELIX) phases.push('helix');
   const total = phases.length;
   let n = 0;
 
@@ -767,6 +936,13 @@ async function main() {
   if (skipBootstrap) {
     phase(n, total, 'Provision PingOne (skipped — already configured)');
     skip('Imported config covers all required PingOne resources');
+    // Even when bootstrap is skipped, still offer the Helix config phase
+    // — the imported .env might not have Helix creds.
+    if (!SKIP_HELIX) {
+      n++;
+      phase(n, total, 'Configure Helix LLM (optional)');
+      await configureHelix();
+    }
     printDone({ ranBootstrap: false, fromTar: true });
     return;
   }
@@ -789,6 +965,16 @@ async function main() {
     process.exit(1);
   }
   ok('PingOne resources provisioned');
+
+  // Phase: Helix LLM configuration (optional). After bootstrap so .env exists
+  // and configStore can decrypt against the now-stable SESSION_SECRET. Phase
+  // is silent on --skip-helix; under default (no flag) it asks once, defaults
+  // to no, persists creds via configStore on yes.
+  if (!SKIP_HELIX) {
+    n++;
+    phase(n, total, 'Configure Helix LLM (optional)');
+    await configureHelix();
+  }
 
   printDone({ ranBootstrap: true, fromTar: !!tarArg });
 }
