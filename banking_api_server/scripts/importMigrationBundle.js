@@ -135,7 +135,17 @@ const DATA_PERSISTENT = path.join(SERVER_ROOT, 'data', 'persistent');
 const DATA_BACKUPS = path.join(SERVER_ROOT, 'data', 'backups');
 const ENV_FILE = path.join(SERVER_ROOT, '.env');
 
-const SKIP_FILES = new Set(['sessions.db', 'runtimeData.json', 'runtimeData.json.bak']);
+// Mirror the export's SKIP_PERSISTENT so an old archive that accidentally
+// included one of these (e.g. sessions.db from a pre-deny-list export) doesn't
+// clobber the destination machine's local state.
+const SKIP_FILES = new Set([
+  'sessions.db',
+  'sessions.db-journal',
+  'sessions.db-wal',
+  'sessions.db-shm',
+  'runtimeData.json',
+  'runtimeData.json.bak',
+]);
 
 // ── Step 1 — validate arguments ───────────────────────────────────────────────
 
@@ -307,21 +317,30 @@ async function main() {
       fs.copyFileSync(manifestSrc, path.join(DATA_PERSISTENT, 'manifest-last-import.json'));
     }
 
-    // Copy persistent/* files, skipping excluded ones
+    // Copy persistent/** files, skipping excluded ones. We walk recursively
+    // so that any subdirectory the export bundled (future services may
+    // namespace state under data/persistent/<service>/) is preserved.
     const persistentSrc = path.join(extractDir, 'persistent');
     if (fs.existsSync(persistentSrc)) {
       fs.mkdirSync(DATA_PERSISTENT, { recursive: true });
-      const filesToExtract = fs.readdirSync(persistentSrc);
-      for (const file of filesToExtract) {
-        if (SKIP_FILES.has(file)) {
-          console.log(`  Skipping ${file} (excluded)`);
-          continue;
+      const copyTree = (srcDir, dstDir) => {
+        for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+          const srcPath = path.join(srcDir, entry.name);
+          const dstPath = path.join(dstDir, entry.name);
+          if (entry.isDirectory()) {
+            fs.mkdirSync(dstPath, { recursive: true });
+            copyTree(srcPath, dstPath);
+            continue;
+          }
+          if (!entry.isFile()) continue;
+          if (SKIP_FILES.has(entry.name)) {
+            console.log(`  Skipping ${entry.name} (excluded)`);
+            continue;
+          }
+          fs.copyFileSync(srcPath, dstPath);
         }
-        fs.copyFileSync(
-          path.join(persistentSrc, file),
-          path.join(DATA_PERSISTENT, file)
-        );
-      }
+      };
+      copyTree(persistentSrc, DATA_PERSISTENT);
     }
 
     // Write .env

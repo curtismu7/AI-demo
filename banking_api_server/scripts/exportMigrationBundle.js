@@ -120,19 +120,30 @@ const SERVER_ROOT = path.resolve(__dirname, '..');
 const DATA_PERSISTENT = path.join(SERVER_ROOT, 'data', 'persistent');
 const ENV_FILE = path.join(SERVER_ROOT, '.env');
 
-const DB_FILES = [
-  'config.db',
-  'banking.db',
-  'delegations.db',
-  'demoAccounts.db'
-];
+// Forward-compat: walk data/persistent/ and bundle every regular file except
+// the documented skip-list. Older versions of this script used a hard-coded
+// allow-list (DB_FILES + JSON_FILES) which silently dropped any new persistent
+// file a service later added — e.g. agentIdentityMappings.json. The deny-list
+// approach below picks up new state automatically; if a future file genuinely
+// shouldn't migrate (machine-bound, ephemeral), add it to SKIP_PERSISTENT.
+//
+// Anything machine-bound (sessions, host-specific TLS, transient probe state)
+// or rebuilt at runtime from authoritative sources lives here:
+const SKIP_PERSISTENT = new Set([
+  'sessions.db',                    // Express session store — machine-bound
+  'sessions.db-journal',            // SQLite write-ahead artifact
+  'sessions.db-wal',
+  'sessions.db-shm',
+  'runtimeData.json',               // ephemeral snapshot rebuilt from banking.db
+  'runtimeData.json.bak',
+  'manifest-last-import.json',      // breadcrumb from last import; not data
+]);
 
-const JSON_FILES = [
-  'users.json',
-  'accounts.json',
-  'transactions.json',
-  'activityLogs.json'
-];
+// Skip these even if they sneak into data/persistent/. Backups belong in
+// data/backups/ (excluded by directory walk), but if anything weird ever
+// appears here we want to filter it deterministically.
+const SKIP_PREFIXES = ['runtimeData-'];   // dated runtimeData backups
+const SKIP_SUFFIXES = ['.tmp', '.lock'];  // half-written / lock files
 
 // Step 1 — resolve output path
 function resolveOutputPath() {
@@ -187,45 +198,64 @@ async function main() {
     console.log('Server is stopped — opening databases normally');
   }
 
-  // Step 3 — probe .db files
-  const validDbFiles = [];
-  const skippedDb = [];
+  // Step 3 — discover everything in data/persistent/ (deny-list approach).
+  //
+  // Walk the directory and bundle every regular file the deny-list doesn't
+  // exclude. .db files get an open/close probe (when better-sqlite3 is
+  // available) so corrupt databases are surfaced early instead of bundled
+  // silently. Subdirectories are walked recursively so future services can
+  // namespace their state under data/persistent/<service>/.
+  const includedFiles = [];   // archive paths, e.g. 'persistent/config.db'
+  const skipped = [];         // human-readable reasons for the manifest
 
-  for (const dbFile of DB_FILES) {
-    const filePath = path.join(DATA_PERSISTENT, dbFile);
-    if (!fs.existsSync(filePath)) {
-      console.warn(`  Skipping ${dbFile}: file not found`);
-      skippedDb.push(`${dbFile} — not found`);
-      continue;
-    }
-    if (Database) {
-      try {
-        const db = new Database(filePath, dbOpenOptions);
-        db.close();
-        validDbFiles.push(dbFile);
-      } catch (e) {
-        console.warn(`  Skipping ${dbFile}: could not open — ${e.message}`);
-        skippedDb.push(`${dbFile} — open failed: ${e.message}`);
+  function shouldSkip(name) {
+    if (SKIP_PERSISTENT.has(name)) return 'machine-bound or ephemeral';
+    if (SKIP_PREFIXES.some(p => name.startsWith(p))) return 'matches skip prefix';
+    if (SKIP_SUFFIXES.some(s => name.endsWith(s)))   return 'matches skip suffix';
+    return null;
+  }
+
+  function walk(absDir, archiveDir) {
+    if (!fs.existsSync(absDir)) return;
+    for (const entry of fs.readdirSync(absDir, { withFileTypes: true })) {
+      const abs = path.join(absDir, entry.name);
+      const archiveName = path.posix.join(archiveDir, entry.name);
+
+      if (entry.isDirectory()) {
+        walk(abs, archiveName);
+        continue;
       }
-    } else {
-      // No open/close probe available — file existence confirmed above
-      validDbFiles.push(dbFile);
+      if (!entry.isFile()) continue;            // skip symlinks, sockets, fifos
+
+      const skipReason = shouldSkip(entry.name);
+      if (skipReason) {
+        skipped.push(`${archiveName} — ${skipReason}`);
+        continue;
+      }
+
+      // Probe SQLite files — bundling a corrupt .db would silently produce a
+      // broken import on the destination. We surface the failure instead.
+      if (entry.name.endsWith('.db') && Database) {
+        try {
+          const db = new Database(abs, dbOpenOptions);
+          db.close();
+        } catch (e) {
+          console.warn(`  Skipping ${archiveName}: could not open — ${e.message}`);
+          skipped.push(`${archiveName} — open failed: ${e.message}`);
+          continue;
+        }
+      }
+
+      includedFiles.push(archiveName);
     }
   }
 
-  // Step 4 — probe .json files
-  const validJsonFiles = [];
+  walk(DATA_PERSISTENT, 'persistent');
 
-  for (const jsonFile of JSON_FILES) {
-    const filePath = path.join(DATA_PERSISTENT, jsonFile);
-    if (!fs.existsSync(filePath)) {
-      console.warn(`  Skipping ${jsonFile}: file not found`);
-      continue;
-    }
-    validJsonFiles.push(jsonFile);
-  }
+  // Stable order so reruns produce identical manifests when content matches.
+  includedFiles.sort();
 
-  // Step 5 — collect .env
+  // Step 4 — collect .env
   const hasEnv = fs.existsSync(ENV_FILE);
   if (!hasEnv) {
     console.warn('');
@@ -234,12 +264,8 @@ async function main() {
     console.warn('');
   }
 
-  // Step 6 — build manifest
-  const persistentFiles = [
-    ...validDbFiles.map(f => `persistent/${f}`),
-    ...validJsonFiles.map(f => `persistent/${f}`),
-  ];
-  const allFiles = hasEnv ? ['.env', ...persistentFiles] : persistentFiles;
+  // Step 5 — build manifest
+  const allFiles = hasEnv ? ['.env', ...includedFiles] : [...includedFiles];
 
   const manifest = {
     version: 2,
@@ -252,22 +278,19 @@ async function main() {
       'sessions.db — machine-bound Express sessions',
       'runtimeData.json — ephemeral in-memory snapshot',
       'certs/ — machine-bound TLS certificates (regenerate with mkcert on destination)',
-      ...skippedDb,
+      ...skipped,
     ],
   };
 
-  // Step 7 — create archive
+  // Step 6 — create archive
   const tempPath = outputPath + '.tmp.' + process.pid;
 
-  // Build list of entries: { filePath, archiveName }
-  const entries = [];
-
-  for (const dbFile of validDbFiles) {
-    entries.push({ src: path.join(DATA_PERSISTENT, dbFile), name: `persistent/${dbFile}` });
-  }
-  for (const jsonFile of validJsonFiles) {
-    entries.push({ src: path.join(DATA_PERSISTENT, jsonFile), name: `persistent/${jsonFile}` });
-  }
+  // Build list of entries: { src, archiveName }. archiveName already starts
+  // with 'persistent/' from the walk; map it back to an absolute source path.
+  const entries = includedFiles.map(archiveName => ({
+    src: path.join(DATA_PERSISTENT, archiveName.slice('persistent/'.length)),
+    name: archiveName,
+  }));
   if (hasEnv) {
     entries.push({ src: ENV_FILE, name: '.env' });
   }
@@ -329,23 +352,24 @@ async function main() {
     const envStat = fs.statSync(ENV_FILE);
     console.log(`  .env  (${(envStat.size / 1024).toFixed(1)} KB)`);
   }
-  for (const dbFile of validDbFiles) {
-    const s = fs.statSync(path.join(DATA_PERSISTENT, dbFile));
-    console.log(`  persistent/${dbFile}  (${(s.size / 1024).toFixed(1)} KB)`);
-  }
-  for (const jsonFile of validJsonFiles) {
-    const s = fs.statSync(path.join(DATA_PERSISTENT, jsonFile));
-    console.log(`  persistent/${jsonFile}  (${(s.size / 1024).toFixed(1)} KB)`);
+  for (const archiveName of includedFiles) {
+    const abs = path.join(DATA_PERSISTENT, archiveName.slice('persistent/'.length));
+    const s = fs.statSync(abs);
+    console.log(`  ${archiveName}  (${(s.size / 1024).toFixed(1)} KB)`);
   }
   console.log('');
   console.log('Skipped:');
   console.log('  sessions.db       (machine-bound Express sessions)');
   console.log('  runtimeData.json  (ephemeral in-memory snapshot)');
   console.log('  certs/            (machine-bound TLS certs — regenerate on destination)');
-  if (skippedDb.length > 0) {
-    for (const s of skippedDb) {
-      console.log(`  ${s}`);
-    }
+  // Surface any per-file skips the walk recorded (corrupt .db, prefix/suffix
+  // matches, etc.) — these aren't part of the standard machine-bound list.
+  const extraSkips = skipped.filter(s =>
+    !s.startsWith('persistent/sessions.db') &&
+    !s.includes('runtimeData')
+  );
+  for (const s of extraSkips) {
+    console.log(`  ${s}`);
   }
   const archiveName = path.basename(outputPath);
   console.log('');
