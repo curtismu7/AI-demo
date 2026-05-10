@@ -137,6 +137,59 @@ function runChild(label, scriptArgs) {
   return result.status; // null if killed by signal
 }
 
+// ── Status banners ──────────────────────────────────────────────────────────
+//
+// Visual structure for the multi-phase setup so the user always knows
+// where in the flow they are. Each phase has a numbered banner; results
+// (success/skip/fail) print on completion.
+
+function banner(text) {
+  const width = Math.max(60, text.length + 4);
+  const line = '═'.repeat(width);
+  console.log('');
+  console.log(line);
+  console.log(`  ${text}`);
+  console.log(line);
+  console.log('');
+}
+
+function phase(num, total, text) {
+  console.log('');
+  console.log(`▶ STEP ${num}/${total} — ${text}`);
+  console.log(`  ${'─'.repeat(Math.max(0, 60 - 2))}`);
+}
+
+function ok(text)   { console.log(`✓ ${text}`); }
+function skip(text) { console.log(`○ ${text}`); }
+function fail(text) { console.log(`✗ ${text}`); }
+
+// ── npm install pre-flight ──────────────────────────────────────────────────
+//
+// Without node_modules, bootstrapPingOne fails silently when it tries to
+// require('axios') etc. importMigrationBundle has its own pre-flight; we
+// add the same one to the fresh-install path so it doesn't matter which
+// route the user came in on.
+
+function ensureDependencies() {
+  const nm = path.join(SERVER_ROOT, 'node_modules');
+  if (fs.existsSync(nm)) return { installed: false };
+
+  console.log('');
+  console.log(`  banking_api_server/node_modules not found.`);
+  console.log(`  Running npm install...`);
+  console.log('');
+  const result = spawnSync('npm', ['install'], { stdio: 'inherit', cwd: SERVER_ROOT });
+  if (result.error) {
+    fail(`Failed to spawn npm: ${result.error.message}`);
+    process.exit(1);
+  }
+  if (result.status !== 0) {
+    fail(`npm install failed (exit ${result.status}). Fix the error above and retry.`);
+    process.exit(1);
+  }
+  return { installed: true };
+}
+
 function envHas(envText, key) {
   return new RegExp(`^${key}=\\S`, 'm').test(envText);
 }
@@ -463,99 +516,186 @@ function importedEnvNeedsBootstrap() {
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('');
-  console.log('Banking demo setup');
-  console.log('==================');
+  banner('Banking demo setup');
   if (tarArg) {
-    console.log(`Mode:   migration (importing ${path.basename(tarArg)})`);
+    console.log(`  Mode:   migration (importing ${path.basename(tarArg)})`);
   } else {
-    console.log('Mode:   fresh install');
+    console.log(`  Mode:   fresh install`);
   }
-  console.log(`Target: ${SERVER_ROOT}`);
-  console.log('');
+  console.log(`  Target: ${SERVER_ROOT}`);
 
-  // Step 0 — confirm install directory (skipped when called from install.sh).
-  await confirmInstallDirectory();
+  // We number phases dynamically — only count what'll actually run for THIS
+  // user, so "step 3 of 5" reflects reality instead of a fixed 6-step count
+  // that includes phases we'll skip.
+  const phases = ['confirm-dir', 'cleanup', 'deps', 'hosts'];
+  if (tarArg) phases.push('import');
+  phases.push('bootstrap');
+  const total = phases.length;
+  let n = 0;
 
-  // Step 0b — offer to wipe stale state from a previous run. Only fires when
-  // existing state is detected; --clean / --no-clean override the prompt.
+  // Phase: confirm install directory (skipped under --from-installer)
+  n++;
+  if (!SKIP_CONFIRM) {
+    phase(n, total, 'Confirm install directory');
+    await confirmInstallDirectory();
+    ok(`Installing into ${SERVER_ROOT}`);
+  } else {
+    phase(n, total, 'Install directory (auto-confirmed by installer)');
+    skip(`Using ${SERVER_ROOT}`);
+  }
+
+  // Phase: cleanup prior state (silent if nothing to clean)
+  n++;
+  phase(n, total, 'Clean up prior installation state');
   await offerCleanup();
+  // offerCleanup() prints its own status; we don't add an explicit ok here.
 
-  // Step 0c — verify /etc/hosts has the loopback entry (browser needs this).
-  // We check before doing any work so the user can fix it once.
-  await ensureHostsEntry();
+  // Phase: install dependencies if missing
+  n++;
+  phase(n, total, 'Install banking_api_server dependencies');
+  const deps = ensureDependencies();
+  if (deps.installed) ok('npm install complete');
+  else                skip('node_modules already present');
 
-  // Step 1 — import path (tar arg)
+  // Phase: /etc/hosts loopback entry
+  n++;
+  phase(n, total, 'Verify /etc/hosts entry for api.ping.demo');
+  const hostsOk = await ensureHostsEntry();
+  if (hostsOk) ok('/etc/hosts entry present');
+  else         fail('/etc/hosts entry missing — browser will fail until you add it');
+
+  // Phase: import archive (only when tar arg given)
+  let skipBootstrap = false;
   if (tarArg) {
+    n++;
+    phase(n, total, `Import data archive (${path.basename(tarArg)})`);
     if (!fs.existsSync(path.resolve(tarArg))) {
-      console.error(`Archive not found: ${tarArg}`);
+      fail(`Archive not found: ${tarArg}`);
       process.exit(1);
     }
-    const importStatus = runChild('Step 1 of 2 — Importing data archive', [
+    const importStatus = runChild('Importing', [
       'scripts/importMigrationBundle.js',
       tarArg,
     ]);
     if (importStatus !== 0) {
-      console.error('');
-      console.error(`Import failed (exit ${importStatus}). Stopping before bootstrap.`);
+      fail(`Import failed (exit ${importStatus}). Stopping before bootstrap.`);
       process.exit(1);
     }
+    ok('Archive imported');
     if (!importedEnvNeedsBootstrap()) {
       console.log('');
-      console.log('Imported .env already has full PingOne config — skipping bootstrap.');
-      printDone({ ranBootstrap: false, fromTar: true });
-      return;
+      console.log('  Imported .env already has full PingOne config — skipping bootstrap.');
+      skipBootstrap = true;
+    } else {
+      console.log('');
+      console.log('  Imported .env is missing some PingOne config — continuing to bootstrap.');
     }
-    console.log('');
-    console.log('Imported .env is missing PingOne config (or older archive without MCP_GW / AGENT vars).');
-    console.log('Continuing to bootstrap to provision missing PingOne resources.');
   } else {
     const r = ensureEnvForFreshInstall();
-    if (r.created) console.log('Wrote stub banking_api_server/.env with a generated SESSION_SECRET.');
-    else if (r.appended) console.log('Appended a generated SESSION_SECRET to existing .env.');
+    if (r.created)       ok('Wrote stub banking_api_server/.env with generated SESSION_SECRET');
+    else if (r.appended) ok('Appended generated SESSION_SECRET to existing .env');
+    else                 skip('.env already has SESSION_SECRET');
   }
 
-  // Step 2 — bootstrap
-  const bootstrapStatus = runChild(
-    tarArg ? 'Step 2 of 2 — Provisioning missing PingOne resources' : 'Step 1 of 1 — Provisioning PingOne',
-    ['scripts/bootstrapPingOne.js', ...passthroughFlags]
-  );
+  // Phase: bootstrap PingOne
+  n++;
+  if (skipBootstrap) {
+    phase(n, total, 'Provision PingOne (skipped — already configured)');
+    skip('Imported config covers all required PingOne resources');
+    printDone({ ranBootstrap: false, fromTar: true });
+    return;
+  }
+
+  phase(n, total, 'Provision PingOne resources');
+  console.log('  This step opens a browser form for your worker creds, then');
+  console.log('  creates resource servers, scopes, applications, users, and writes .env.');
+  console.log('');
+  const bootstrapStatus = runChild('Bootstrap', [
+    'scripts/bootstrapPingOne.js',
+    ...passthroughFlags,
+  ]);
 
   if (bootstrapStatus === 2) {
-    // User aborted at the [y/N] confirm — surface that exit code as-is.
+    fail('User aborted bootstrap at the confirmation prompt');
     process.exit(2);
   }
   if (bootstrapStatus !== 0) {
-    console.error('');
-    console.error(`Bootstrap failed (exit ${bootstrapStatus}).`);
+    fail(`Bootstrap failed (exit ${bootstrapStatus})`);
     process.exit(1);
   }
+  ok('PingOne resources provisioned');
 
   printDone({ ranBootstrap: true, fromTar: !!tarArg });
 }
 
 function printDone({ ranBootstrap, fromTar }) {
-  console.log('');
-  console.log('================');
-  console.log('Setup complete.');
-  console.log('================');
-  console.log('');
+  banner('Setup complete');
+
   if (fromTar && !ranBootstrap) {
-    console.log('Imported existing config from archive — no PingOne provisioning needed.');
+    console.log('  Mode:  migration (archive imported, PingOne already configured)');
   } else if (fromTar && ranBootstrap) {
-    console.log('Imported data archive and provisioned missing PingOne resources.');
+    console.log('  Mode:  migration + bootstrap (archive imported, missing apps provisioned)');
   } else {
-    console.log('Provisioned PingOne resources for a fresh install.');
+    console.log('  Mode:  fresh install');
   }
   console.log('');
-  console.log('Next: start the demo from the repo root:');
-  console.log('  ./run-bank.sh');
+
+  // Summary of what's actually on disk now.
+  console.log('  What was set up:');
+  const envKeys = readEnvKeys();
+  if (envKeys.length > 0) {
+    console.log(`    ✓ banking_api_server/.env  (${envKeys.length} keys)`);
+    const groups = groupEnvKeys(envKeys);
+    for (const [label, keys] of groups) {
+      if (keys.length > 0) console.log(`        - ${label.padEnd(26)} ${keys.join(', ')}`);
+    }
+  }
+  if (fs.existsSync(path.join(SERVER_ROOT, 'data', 'persistent'))) {
+    const files = fs.readdirSync(path.join(SERVER_ROOT, 'data', 'persistent'));
+    if (files.length > 0) console.log(`    ✓ data/persistent/         ${files.length} file(s)`);
+  }
+  const certsDir = path.join(REPO_ROOT, 'certs');
+  if (fs.existsSync(certsDir) && fs.readdirSync(certsDir).filter(f => f.endsWith('.pem')).length > 0) {
+    console.log(`    ✓ certs/                    TLS certificates present`);
+  } else {
+    console.log(`    ○ certs/                    not yet generated (run-bank.sh will create on first start)`);
+  }
   console.log('');
-  console.log('Then visit:');
-  console.log('  https://api.ping.demo:4000/configure   (verify config)');
-  console.log('  https://api.ping.demo:4000/dashboard   (end-user)');
-  console.log('  https://api.ping.demo:4000/admin       (admin)');
+
+  console.log('  Next steps:');
+  console.log(`    1. Start the demo:    cd ${REPO_ROOT} && ./run-bank.sh`);
+  console.log('    2. Open in browser:');
+  console.log('        https://api.ping.demo:4000/configure   verify config');
+  console.log('        https://api.ping.demo:4000/dashboard   end-user portal');
+  console.log('        https://api.ping.demo:4000/admin       admin portal');
   console.log('');
+  console.log('  If you forgot the demo passwords, see the bootstrap output above');
+  console.log('  (or look in banking_api_server/.env at DEMO_USER_PASSWORD / DEMO_ADMIN_PASSWORD).');
+  console.log('');
+}
+
+function readEnvKeys() {
+  const text = readEnvSafely();
+  if (!text) return [];
+  return Array.from(new Set(
+    text.split('\n')
+      .map(l => l.trim())
+      .filter(l => l && !l.startsWith('#'))
+      .map(l => l.split('=')[0])
+      .filter(Boolean)
+  ));
+}
+
+function groupEnvKeys(keys) {
+  const groups = new Map([
+    ['PingOne env',       keys.filter(k => k.startsWith('PINGONE_ENVIRONMENT_ID') || k === 'PINGONE_REGION')],
+    ['OAuth clients',     keys.filter(k => /CLIENT_ID|CLIENT_SECRET|REDIRECT_URI/.test(k))],
+    ['MCP gateway/agent', keys.filter(k => /^MCP_GW_|^AGENT_/.test(k))],
+    ['Resource server',   keys.filter(k => /^MCP_RESOURCE|^ENDUSER_AUDIENCE/.test(k))],
+    ['Demo users',        keys.filter(k => /^DEMO_/.test(k))],
+    ['Session/encryption',keys.filter(k => /^SESSION_SECRET|^CONFIG_ENCRYPTION_KEY/.test(k))],
+  ]);
+  return Array.from(groups.entries());
 }
 
 main().catch((err) => {

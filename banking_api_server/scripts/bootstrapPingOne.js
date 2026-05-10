@@ -509,45 +509,94 @@ async function main() {
   const { provisionEnvironment } = require('../services/pingoneProvisionService');
 
   console.log('');
-  console.log('Provisioning…');
+  console.log('═'.repeat(60));
+  console.log('  PingOne provisioning');
+  console.log('═'.repeat(60));
   console.log('');
 
+  // Group the wizard's ~30 step keys into 6 user-readable phases. Each phase
+  // gets a banner the FIRST time we see one of its keys; everything else
+  // prints as an indented line under that banner.
+  const PHASE_GROUPS = [
+    { label: '① Validate worker creds',  keys: ['validate', 'population'] },
+    { label: '② Resource servers',        keys: ['resource-server', 'mcp-resource-server', 'mcp-gw-resource'] },
+    { label: '③ Scopes',                  keys: ['scopes', 'mcp-scopes', 'mcp-gw-scopes'] },
+    { label: '④ Applications',            keys: ['admin-app', 'admin-config', 'user-app', 'user-config', 'mcp-app', 'mcp-config', 'worker-app', 'worker-config', 'mcp-exchanger-app', 'mcp-gw-app', 'mcp-gw-config', 'agent-app', 'agent-config'] },
+    { label: '⑤ Scope grants',            keys: ['admin-grants', 'user-grants', 'mcp-grants', 'worker-grants', 'mcp-gw-grants', 'agent-grants'] },
+    { label: '⑥ Demo users + claims',     keys: ['bankuser', 'bankuser-password', 'bankadmin', 'bankadmin-password', 'schema-attr', 'spel-claim'] },
+    { label: '⑦ Write .env',              keys: ['config'] },
+  ];
+  const phaseSeen = new Set();
+
   let lastIcon = '';
+  let stepCount = 0;
+  const counters = { created: 0, exists: 0, failed: 0 };
   const onStep = (step) => {
+    stepCount++;
     const icon = step.icon || '·';
     const msg = step.message || step.step || '';
-    const tag = step.step ? ` [${step.step}]` : '';
-    console.log(`  ${icon}${tag} ${msg}`);
     lastIcon = icon;
+
+    // Print phase banner the first time we see a key from a new phase.
+    const group = PHASE_GROUPS.find(g => g.keys.includes(step.step));
+    if (group && !phaseSeen.has(group.label)) {
+      phaseSeen.add(group.label);
+      console.log('');
+      console.log(`▶ ${group.label}`);
+      console.log(`  ${'─'.repeat(56)}`);
+    }
+
+    // Tally outcomes by icon — provisionEnvironment uses ✅ for created and
+    // ⚠️ for "already exists". Failures use ❌.
+    if (icon === '✅') counters.created++;
+    else if (icon === '⚠️') counters.exists++;
+    else if (icon === '❌') counters.failed++;
+
+    console.log(`  ${icon}  ${msg}`);
   };
 
   try {
     const result = await provisionEnvironment(creds, onStep);
     console.log('');
-    console.log('Bootstrap complete.');
+    console.log('═'.repeat(60));
+    console.log('  PingOne provisioning complete');
+    console.log('═'.repeat(60));
+    console.log('');
+    console.log(`  ${stepCount} steps run:`);
+    console.log(`    ✅  ${counters.created} created`);
+    if (counters.exists > 0) console.log(`    ⚠️   ${counters.exists} already existed (reused)`);
+    if (counters.failed > 0) console.log(`    ❌  ${counters.failed} failed (see lines above)`);
+    console.log('');
+
     if (result?.provisioned?.bankUser?.password || result?.provisioned?.bankAdmin?.password) {
-      console.log('');
-      console.log('Demo credentials:');
+      console.log('  Demo credentials (also saved in banking_api_server/.env):');
       if (result.provisioned.bankUser?.password) {
-        console.log(`  bankuser  / ${result.provisioned.bankUser.password}`);
+        console.log(`    bankuser   ${result.provisioned.bankUser.password}`);
       }
       if (result.provisioned.bankAdmin?.password) {
-        console.log(`  bankadmin / ${result.provisioned.bankAdmin.password}`);
+        console.log(`    bankadmin  ${result.provisioned.bankAdmin.password}`);
       }
       console.log('');
-      console.log('These are also recorded in banking_api_server/.env.');
     }
+    console.log('  banking_api_server/.env has been written with all PingOne credentials.');
+    console.log('  Restart services so they pick up the new .env values:');
+    console.log('    ./run-bank.sh restart');
     console.log('');
-    console.log('Restart services so the new .env vars take effect:');
-    console.log('  ./run-bank.sh restart');
     process.exit(0);
   } catch (err) {
     console.log('');
-    console.error(`Bootstrap failed: ${err.message}`);
+    console.log('═'.repeat(60));
+    console.log('  Bootstrap failed');
+    console.log('═'.repeat(60));
     console.error('');
-    console.error('Last step icon emitted:', lastIcon || '(none)');
-    console.error('PingOne resources created up to this point are preserved (no rollback).');
-    console.error('Re-running this command is safe; idempotent steps will report "exists".');
+    console.error(`  Error: ${err.message}`);
+    console.error('');
+    console.error('  Last step icon emitted:', lastIcon || '(none)');
+    console.error(`  Counters before failure: ${counters.created} created, ${counters.exists} already existed, ${counters.failed} failed`);
+    console.error('');
+    console.error('  PingOne resources created up to this point are preserved (no rollback).');
+    console.error('  Re-running this command is safe — idempotent steps will report "already exists" and reuse.');
+    console.error('');
     process.exit(1);
   }
 }
