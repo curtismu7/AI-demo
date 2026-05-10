@@ -165,19 +165,31 @@ function prompt(rl, question, { defaultValue, secret = false } = {}) {
       return;
     }
 
-    // Hidden input — manual prompt + raw stdin, no echo.
+    // Hidden input — operate on the SAME input stream readline is using
+    // (rl.input), not process.stdin. When the script is launched from a
+    // parent process with stdin piped/ignored (e.g. setupFresh's spawn with
+    // stdio:['ignore',...]), tty.stream is /dev/tty and process.stdin is
+    // not a TTY. Manipulating process.stdin in that case manipulates the
+    // wrong stream — readline still reads from /dev/tty, so the next
+    // non-secret prompt hangs waiting for input on a stream we never wrote.
     process.stdout.write(display);
-    const stdin = process.stdin;
+    const input = rl.input;
     let captured = '';
-    const wasRaw = stdin.isRaw;
-    if (typeof stdin.setRawMode === 'function') stdin.setRawMode(true);
-    stdin.resume();
-    stdin.setEncoding('utf8');
+    const wasRaw = input.isRaw;
+    const canRaw = typeof input.setRawMode === 'function';
+    if (canRaw) input.setRawMode(true);
+    input.resume();
+    input.setEncoding('utf8');
+
+    // Pause readline's own listeners while we have raw control. Failing to do
+    // this means readline still buffers the keystrokes we're capturing.
+    const rlPaused = !rl.paused;
+    if (rlPaused) rl.pause();
 
     const restore = () => {
-      if (typeof stdin.setRawMode === 'function') stdin.setRawMode(wasRaw);
-      stdin.removeListener('data', onData);
-      stdin.pause();
+      if (canRaw) input.setRawMode(wasRaw);
+      input.removeListener('data', onData);
+      if (rlPaused) rl.resume();
     };
 
     const onData = (ch) => {
@@ -200,7 +212,7 @@ function prompt(rl, question, { defaultValue, secret = false } = {}) {
         captured += c;
       }
     };
-    stdin.on('data', onData);
+    input.on('data', onData);
   });
 }
 
