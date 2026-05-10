@@ -286,6 +286,13 @@ function browserPrompt({ timeoutMs = 5 * 60 * 1000 } = {}) {
         return res.end(formPage);
       }
 
+      // Browsers auto-fetch /favicon.ico — return 204 so it doesn't pollute the
+      // console with a 404 (cosmetic, but the user sees it and worries).
+      if (req.method === 'GET' && req.url === '/favicon.ico') {
+        res.writeHead(204);
+        return res.end();
+      }
+
       if (req.method === 'POST' && req.url === '/submit') {
         if (req.headers['x-bootstrap-nonce'] !== nonce) {
           res.writeHead(403, { 'content-type': 'text/plain' });
@@ -315,8 +322,11 @@ function browserPrompt({ timeoutMs = 5 * 60 * 1000 } = {}) {
 
           res.writeHead(200, { 'content-type': 'text/plain' });
           res.end('ok');
-          // Close the listener after the response is flushed.
-          setImmediate(() => server.close());
+          // Keep the listener alive briefly so the page's post-submit "Submitted —
+          // closing tab" view can render and self-close without ERR_CONNECTION_REFUSED.
+          // The page calls window.close() at +800ms; 3000ms gives a comfortable margin
+          // (favicon refetch, password manager extension callback, browser-internal hits).
+          setTimeout(() => { try { server.close(); } catch (_e) {} }, 3000);
           finish({ envId, region, workerClientId: clientId, workerClientSecret: clientSecret });
         });
         return;
