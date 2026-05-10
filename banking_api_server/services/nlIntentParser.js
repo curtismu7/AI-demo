@@ -201,7 +201,7 @@ function parseBanking(t) {
     return { kind: 'banking', banking: { action: 'sensitive_account_details' } };
   }
   // Balance: explicit account id, or phrases like "my balance", "current balance", "check balance" — MUST precede accounts check
-  if (/\bbalance\b/.test(t)) {
+  if (/\bbalances?\b/.test(t)) {
     const m = t.match(/acc[_a-z0-9-]{6,}/i);
     if (m) return { kind: 'banking', banking: { action: 'balance', params: { accountId: m[0] } } };
     const accountTypeMatch = t.match(/\b(checking|savings|chk|sav)\b/i);
@@ -210,16 +210,16 @@ function parseBanking(t) {
       const accountType = raw === 'chk' ? 'checking' : raw === 'sav' ? 'savings' : raw;
       return { kind: 'banking', banking: { action: 'balance', params: { accountType } } };
     }
-    if (
-      /\b(account|acc)\b/.test(t) ||
-      /\b(my|the|current|check|what|show|get)\b.*\bbalance\b/.test(t) ||
-      /\bbalance\b.*\b(my|current)\b/.test(t)
-    ) {
-      return { kind: 'banking', banking: { action: 'balance' } };
-    }
+    // Broadened: any mention of "balance" / "balances" alone — even single
+    // word — is treated as a balance lookup. The previous regex required a
+    // helper word ("my", "current", "show", etc.) which made bare "balance"
+    // fall through to LLM, only to land on the generic fallback message
+    // when no LLM was configured. Demo audiences type "balance" with no
+    // ceremony; we should answer.
+    return { kind: 'banking', banking: { action: 'balance' } };
   }
   // Accounts: show/list/get/what accounts
-  if (/\b(what|show|list|get|see|view|pull|display).*(accounts?)\b|\bmy accounts?\b(?!\s+balance)|\ball\b.*\baccounts?\b|\bcustomer accounts?\b/.test(t)) {
+  if (/\b(what|show|list|get|see|view|pull|display).*(accounts?)\b|\bmy accounts?\b(?!\s+balance)|\ball\b.*\baccounts?\b|\bcustomer accounts?\b|^accounts?$/.test(t)) {
     return { kind: 'banking', banking: { action: 'accounts' } };
   }
   if (/\b(biggest|largest|highest|top)\b.*(purchase|spend|transaction|payment)\b|\b(purchase|spend|transaction|payment).*(biggest|largest|highest)\b|\bmost expensive\b|\bspent the most\b|\bbiggest spend\b/.test(t)) {
@@ -305,7 +305,13 @@ function parseHeuristic(message) {
   return {
     kind: 'none',
     message:
-      'Try: “show my accounts”, “recent transactions”, “explain token exchange”, or “what is CIBA”.',
+      `I didn't recognize that. Try one of:\n` +
+      `  • "balance" or "show my checking balance"\n` +
+      `  • "show my accounts"\n` +
+      `  • "recent transactions"\n` +
+      `  • "transfer $100 from checking to savings"\n` +
+      `  • "explain token exchange" / "what is CIBA"\n\n` +
+      `(No LLM is configured, so I'm running heuristics-only. If you want full natural-language understanding, configure Helix or Ollama in /admin/langchain-config.)`,
   };
 }
 

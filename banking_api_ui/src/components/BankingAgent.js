@@ -5400,10 +5400,13 @@ export default function BankingAgent({
       }
       return;
     }
+    // Prefer the server's message (heuristic / LLM produces a useful one).
+    // The hard-coded fallback is only for the rare case where result.message
+    // is missing — e.g. server crashed before populating it.
     addMessage(
       "assistant",
       result.message ||
-        'Try a banking action or a topic like "token exchange".',
+        `I didn't catch that. Try "show my accounts", "balance", "recent transactions", or "explain token exchange".`,
       null,
       { source: _source },
     );
