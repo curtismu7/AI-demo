@@ -338,14 +338,29 @@ force_kill_listeners_on_banking_ports() {
   done
 }
 
-# Wait for a port with a timeout; prints 'up' or 'timeout'
+# Wait for a port with a timeout; returns "up" or "timeout" on stdout.
+# When stderr is a TTY, also prints a per-second heartbeat to stderr so the
+# user can see we're still working — without polluting any caller that's
+# parsing stdout. The heartbeat clears itself before returning.
 wait_for_port() {
-  local port="$1" timeout="${2:-25}" i=0
+  local port="$1" timeout="${2:-25}" label="${3:-port $1}" i=0
+  local interactive=0
+  if [[ -t 2 ]]; then interactive=1; fi
+
+  if [[ $interactive -eq 1 ]]; then
+    printf "    waiting for %s (port %s)" "$label" "$port" >&2
+  fi
+
   while [[ $i -lt $timeout ]]; do
-    port_listening "$port" && echo "up" && return 0
+    if port_listening "$port"; then
+      [[ $interactive -eq 1 ]] && printf " — up after %ds\n" "$i" >&2
+      echo "up"; return 0
+    fi
+    [[ $interactive -eq 1 ]] && printf "." >&2
     sleep 1
     (( i++ )) || true
   done
+  [[ $interactive -eq 1 ]] && printf " — TIMEOUT after %ds\n" "$timeout" >&2
   echo "timeout"
 }
 
@@ -742,10 +757,15 @@ echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━
 echo -e "${CYAN}${BOLD}   [BANK]  SUPER BANK BANKING DEMO — STARTING                         ${RESET}"
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
-echo -e "${DIM}  Waiting for Banking API and MCP Server to come up…${RESET}"
+echo -e "${DIM}  Waiting for services to come up (this can take 30-60 seconds on first start)…${RESET}"
 
-wait_for_port "${API_PORT}" 25 >/dev/null
-wait_for_port 8080 25 >/dev/null
+wait_for_port "${API_PORT}" 25 "Banking API Server" >/dev/null
+wait_for_port 8080         25 "Banking MCP Server" >/dev/null
+wait_for_port 3005         15 "MCP Gateway"        >/dev/null
+wait_for_port 3009         15 "HITL Service"       >/dev/null
+wait_for_port 3006         15 "Agent Service"      >/dev/null
+wait_for_port 8081         15 "MCP Invest Server"  >/dev/null
+wait_for_port "${UI_PORT}" 60 "Banking UI (React)" >/dev/null
 sleep 1   # give LangChain agent a moment too
 
 echo -e "${GREEN}${BOLD}  [CLEAR]  DEMO STATE CLEARED${RESET} — all in-memory state reset on startup:"
