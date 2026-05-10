@@ -1244,46 +1244,35 @@ function printDone({ ranBootstrap, fromTar }) {
   const DIM    = '\x1b[2m';
   const RESET  = '\x1b[0m';
 
-  // Box-row helper: takes plain text, computes visible width (ignoring ANSI),
-  // pads to the box's interior width, wraps in cyan ║ borders. This is the
-  // only correct way to align rows that contain colored content — counting
-  // raw characters always under-fills because ANSI bytes are zero-width.
-  const W = 78;
-  const innerW = W - 2; // space inside the borders
-  const visible = (s) => s.replace(/\x1b\[[0-9;]*m/g, '');
-  const row = (content) => {
-    const v = visible(content);
-    const pad = Math.max(0, innerW - v.length);
-    console.log(`${BOLD}${CYAN}║${RESET}${content}${' '.repeat(pad)}${BOLD}${CYAN}║${RESET}`);
-  };
-  const sep = (char = '═') => {
-    const left  = char === '═' ? '╔' : char === '═' && false ? '' : char === '═' ? '╔' : '╠';
-    const right = char === '═' ? '╗' : '╣';
-    console.log(`${BOLD}${CYAN}${left}${char.repeat(innerW)}${right}${RESET}`);
-  };
-  const top    = () => console.log(`${BOLD}${CYAN}╔${'═'.repeat(innerW)}╗${RESET}`);
-  const middle = () => console.log(`${BOLD}${CYAN}╠${'═'.repeat(innerW)}╣${RESET}`);
-  const bot    = () => console.log(`${BOLD}${CYAN}╚${'═'.repeat(innerW)}╝${RESET}`);
+  // No box characters around content rows — earlier versions used `║` borders
+  // on every line, but users naturally copy-pasted a row to run a command and
+  // the leading/trailing `║` then surfaced as `command not found: ║`. Here we
+  // use bold horizontal dividers as the visual frame; every code/URL line is
+  // its own bare line that's safe to triple-click and copy.
+  const HR = '═'.repeat(78);
 
   console.log('');
-  top();
-  row(`  ${BOLD}${YELLOW}NEXT STEPS — what to do now${RESET}`);
-  middle();
-  row('');
-  row(`    ${BOLD}1.  Start the demo:${RESET}`);
-  row(`        ${GREEN}${BOLD}cd ${REPO_ROOT} && ./run-bank.sh${RESET}`);
-  row('');
-  row(`    ${BOLD}2.  Open in browser:${RESET}`);
-  row(`        ${YELLOW}${BOLD}https://api.ping.demo:4000/configure${RESET}   ${DIM}verify config${RESET}`);
-  row(`        ${YELLOW}${BOLD}https://api.ping.demo:4000/dashboard${RESET}   ${DIM}end-user portal${RESET}`);
-  row(`        ${YELLOW}${BOLD}https://api.ping.demo:4000/admin${RESET}       ${DIM}admin portal${RESET}`);
-  row('');
-  row(`    ${BOLD}Demo credentials${RESET} ${DIM}(also in setup-config.md and banking_api_server/.env):${RESET}`);
-  row(`        ${GREEN}${BOLD}bankuser${RESET}     /  ${GREEN}${BOLD}2Federate!${RESET}    ${DIM}— end-user dashboard${RESET}`);
-  row(`        ${GREEN}${BOLD}bankadmin${RESET}    /  ${GREEN}${BOLD}2Federate!${RESET}    ${DIM}— admin portal${RESET}`);
-  row(`        ${GREEN}${BOLD}bankDelegate${RESET} /  ${GREEN}${BOLD}2Federate!${RESET}    ${DIM}— delegated user (deposit-only)${RESET}`);
-  row('');
-  bot();
+  console.log(`${BOLD}${CYAN}${HR}${RESET}`);
+  console.log(`${BOLD}${YELLOW}  NEXT STEPS — what to do now${RESET}`);
+  console.log(`${BOLD}${CYAN}${HR}${RESET}`);
+  console.log('');
+  console.log(`  ${BOLD}1.  Start the demo${RESET} ${DIM}(copy this line):${RESET}`);
+  console.log('');
+  console.log(`      ${GREEN}${BOLD}cd ${REPO_ROOT} && ./run-bank.sh${RESET}`);
+  console.log('');
+  console.log(`  ${BOLD}2.  Open in browser${RESET} ${DIM}(click or copy):${RESET}`);
+  console.log('');
+  console.log(`      ${YELLOW}${BOLD}https://api.ping.demo:4000/configure${RESET}   ${DIM}verify config${RESET}`);
+  console.log(`      ${YELLOW}${BOLD}https://api.ping.demo:4000/dashboard${RESET}   ${DIM}end-user portal${RESET}`);
+  console.log(`      ${YELLOW}${BOLD}https://api.ping.demo:4000/admin${RESET}       ${DIM}admin portal${RESET}`);
+  console.log('');
+  console.log(`  ${BOLD}3.  Sign in with one of these demo users${RESET} ${DIM}(all passwords: 2Federate!):${RESET}`);
+  console.log('');
+  console.log(`      ${GREEN}${BOLD}bankuser${RESET}      ${DIM}— end-user dashboard${RESET}`);
+  console.log(`      ${GREEN}${BOLD}bankadmin${RESET}     ${DIM}— admin portal${RESET}`);
+  console.log(`      ${GREEN}${BOLD}bankDelegate${RESET}  ${DIM}— delegated user (deposit-only)${RESET}`);
+  console.log('');
+  console.log(`${BOLD}${CYAN}${HR}${RESET}`);
   console.log('');
   console.log(`${DIM}  Forgot the passwords or want the full provisioning summary?${RESET}`);
   console.log(`${DIM}  See ${BOLD}setup-config.md${RESET}${DIM} at the repo root, or banking_api_server/.env.${RESET}`);
