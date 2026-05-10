@@ -43,14 +43,36 @@ function ArchNode({ data }) {
   const c = COLOR[data.colorClass] || COLOR.default;
   const pulse = data.colorClass && data.colorClass !== 'active-prev';
   const b = data.badge;
+  // Aspirational nodes (e.g. the planned API-key backend) render with a
+  // dashed border and a small "planned" badge so viewers see they're
+  // reference architecture, not live code.
+  const isAspirational = !!data.aspirational;
   return (
     <div style={{
-      background: c.bg, border: `2px solid ${c.border}`, borderRadius: 8,
+      background: c.bg,
+      border: `2px ${isAspirational ? 'dashed' : 'solid'} ${c.border}`,
+      borderRadius: 8,
       padding: '6px 10px', minWidth: 85, maxWidth: 135, textAlign: 'center',
       boxShadow: pulse ? `0 0 14px ${c.border}55` : '0 2px 6px rgba(0,0,0,0.07)',
       transition: 'background 0.3s, border-color 0.3s',
       animation: pulse ? 'arch-node-pulse 1.2s ease-in-out infinite' : 'none',
+      opacity: isAspirational ? 0.85 : 1,
     }}>
+      {isAspirational && (
+        <div style={{
+          fontSize: '0.5rem',
+          fontWeight: 700,
+          color: '#854d0e',
+          background: '#fef9c3',
+          borderRadius: 3,
+          padding: '1px 4px',
+          marginBottom: 3,
+          textTransform: 'uppercase',
+          letterSpacing: 0.4,
+        }}>
+          planned
+        </div>
+      )}
       <div style={{ fontSize: '1.1rem', marginBottom: 2 }}>{data.icon}</div>
       <div style={{ fontWeight: 700, fontSize: '0.68rem', color: c.text, lineHeight: 1.2, marginBottom: data.label2 ? 0.5 : 0 }}>
         {data.label}
@@ -120,7 +142,12 @@ const INITIAL_NODES = [
   { id: 'pingauthorize',type: 'arch', position: { x: 650, y: 30  }, data: { label: 'PingAuthorize',label2: 'Fine-grained AZ',  icon: '⚖️',  colorClass: '' } },
   { id: 'mcp-gw',       type: 'arch', position: { x: 650, y: 180 }, data: { label: 'Agent Gw',     label2: 'Auth + Route',     icon: '🔀',  colorClass: '' } },
   { id: 'mcp-server',   type: 'arch', position: { x: 650, y: 310 }, data: { label: 'MCP Server',   label2: 'banking_mcp',     icon: '🛠️',  colorClass: '' } },
-  { id: 'banking-api',  type: 'arch', position: { x: 840, y: 180 }, data: { label: 'Banking API',  label2: 'banking_api',     icon: '🏦',  colorClass: '' } },
+  { id: 'banking-api',  type: 'arch', position: { x: 840, y: 120 }, data: { label: 'Banking API',  label2: 'OAuth bearer',     icon: '🏦',  colorClass: '' } },
+  // Aspirational: a 3rd-party / legacy backend that takes an API key instead
+  // of an OAuth bearer. The Gateway swaps in the key when forwarding; the
+  // backend never sees a user token. Drawn dashed via aspirational:true to
+  // signal "reference architecture, not live yet."
+  { id: 'api-key-backend', type: 'arch', position: { x: 840, y: 260 }, data: { label: '3rd-party API',  label2: 'X-API-Key',  icon: '🔑',  colorClass: '', aspirational: true } },
   { id: 'hitl',         type: 'arch', position: { x: 140, y: 310 }, data: { label: 'HITL',         label2: 'Manual Approval',  icon: '🧑‍⚖️', colorClass: '' } },
 ];
 
@@ -143,6 +170,11 @@ const INITIAL_EDGES = [
   { id: 'mcp-gw-server', source: 'mcp-gw',      target: 'mcp-server',   style: B, label: 'Proxy' },
   { id: 'mcp-server-api',source: 'mcp-server',  target: 'banking-api',  style: B, label: 'REST call' },
   { id: 'rs-idp',        source: 'banking-api', target: 'idp-oauth-as', style: B, label: 'Introspect' },
+  // Aspirational: Gateway forwards a tool call to a 3rd-party API by swapping
+  // the user token for a service API key. Dashed line matches the dashed node.
+  { id: 'gw-apikey',     source: 'mcp-gw',      target: 'api-key-backend',
+    style: { stroke: '#ca8a04', strokeWidth: 1.5, strokeDasharray: '6 4' },
+    label: 'X-API-Key (planned)' },
   { id: 'agent-hitl',    source: 'agent',       target: 'hitl',         style: B, label: 'Request consent' },
   { id: 'hitl-chatbot',  source: 'hitl',        target: 'chatbot',       style: B, label: 'Notify' },
   { id: 'hitl-agent',    source: 'hitl',        target: 'agent',        style: B, label: 'Approved ✓' },
