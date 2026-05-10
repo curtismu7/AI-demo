@@ -1667,6 +1667,14 @@ export default function BankingAgent({
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
   const [selectedLlmProvider] = useState("helix");
+  // Single-slot conversation state for clarification follow-ups.
+  // Set when we asked "Which account?"/"How much?" and we're waiting on
+  // the user's next message to fill that slot. Shape: { action, slot, asked }.
+  // - action: one of 'balance' | 'deposit' | 'withdraw' | 'transfer'
+  // - slot:   which field of the action's params the next message fills
+  //           (e.g. 'accountType' for balance, free-text-parse for others).
+  // Cleared the moment we consume it OR a turn later if user changed topic.
+  const [pendingClarification, setPendingClarification] = useState(null);
   /** Set when returning from PingOne with a pending banking NL line to run after session exists. */
   const [nlResumeAfterAuth, setNlResumeAfterAuth] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -5037,8 +5045,110 @@ export default function BankingAgent({
     demo_intent_delegation: "Run an intent-bound transfer demo",
   };
 
+  // Slot-filling parser for the second turn of a clarification dialog.
+  // The user just answered our "Which account?" / "How much?" prompt; we
+  // know which action they were trying to do, so we only need to pull the
+  // specific slot(s) out of the reply.
+  //
+  // Returns merged params on success, or null when we couldn't extract
+  // anything useful (the caller re-asks once before giving up).
+  function parseClarificationReply(action, text, partialParams) {
+    const t = String(text || "").toLowerCase().trim();
+    if (!t) return null;
+
+    // Extract account-type mentions. Accepts bare "checking" / "savings",
+    // or phrases like "my checking account" / "from savings".
+    const accountTypes = ["checking", "savings", "credit", "credit card", "loan", "mortgage"];
+    const matchedTypes = accountTypes.filter((kind) => t.includes(kind));
+
+    // Extract dollar amount. Accepts "$200", "200 dollars", "200".
+    const amountMatch = t.match(/\$?\s*(\d+(?:\.\d{1,2})?)\s*(?:dollars?|usd)?/);
+    const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
+
+    // Extract direction prepositions for transfers: "from X to Y".
+    const fromTo = t.match(/from\s+(\w+)\s+to\s+(\w+)/);
+
+    if (action === "balance") {
+      // Slot: which account. Take the first account-type we found.
+      // (Bare "checking" → matchedTypes=["checking"] → fills accountType.)
+      if (matchedTypes.length > 0) {
+        return { ...partialParams, accountType: matchedTypes[0] };
+      }
+      return null;
+    }
+
+    if (action === "deposit" || action === "withdraw") {
+      // Slots: amount + account. Either or both can come in this turn.
+      const next = { ...partialParams };
+      if (amount != null) next.amount = amount;
+      if (matchedTypes.length > 0) {
+        // For deposit, the account is the destination (toId); for withdraw, source (fromId).
+        if (action === "deposit") next.toId = matchedTypes[0];
+        else next.fromId = matchedTypes[0];
+      }
+      // Need at least an amount AND an account to actually run.
+      const hasAmount = next.amount != null;
+      const hasAcct = action === "deposit" ? next.toId : next.fromId;
+      return hasAmount && hasAcct ? next : null;
+    }
+
+    if (action === "transfer") {
+      const next = { ...partialParams };
+      if (amount != null) next.amount = amount;
+      if (fromTo) {
+        next.fromId = fromTo[1];
+        next.toId = fromTo[2];
+      } else if (matchedTypes.length >= 2) {
+        // "checking to savings" without explicit "from"
+        next.fromId = matchedTypes[0];
+        next.toId = matchedTypes[1];
+      }
+      return next.amount != null && next.fromId && next.toId ? next : null;
+    }
+
+    return null;
+  }
+
   // Sends text through the full NL pipeline (same path as typing in the chat box).
   function sendAsNl(text) {
+    // Clarification-follow-up path: if our previous turn asked "Which
+    // account?"/"How much?", treat this message as the missing slot
+    // instead of re-parsing it as a brand-new intent. This is what was
+    // broken: the parser saw "checking" in isolation, found no keyword
+    // match, and fell through to "I didn't recognize that."
+    if (pendingClarification) {
+      const pc = pendingClarification;
+      setPendingClarification(null);
+
+      // Echo the user's reply in the transcript before dispatching.
+      setNlInput("");
+      addMessage("user", text);
+
+      // Parse the reply into params based on what we asked.
+      // Heuristic but tight: enough to handle the common shapes a user
+      // would type ("checking", "$50 to savings", "200 from checking
+      // to savings"). Anything we can't parse falls back to one more
+      // round of clarification.
+      const merged = parseClarificationReply(pc.action, text, pc.partialParams || {});
+      if (!merged) {
+        // Couldn't extract — re-ask once. After that, give up and let
+        // the parser try a normal interpretation.
+        addMessage(
+          "assistant",
+          `Sorry, I didn't catch that. ${pc.asked}`,
+        );
+        setPendingClarification(pc);
+        return;
+      }
+
+      // Build a synthetic NL result that mirrors what the server would
+      // have produced, and dispatch through the same path. source='clarify'
+      // so the token-chain panel can label it correctly.
+      const syntheticResult = { kind: "action", action: pc.action, params: merged };
+      dispatchNlResult(syntheticResult, "clarify", text).catch((err) => reportNlFailure(err));
+      return;
+    }
+
     setNlInput(text);
     // Use rAF so the input state settles before the synthetic submit fires
     requestAnimationFrame(() => {
@@ -5395,6 +5505,16 @@ export default function BankingAgent({
             "Which accounts would you like to transfer between, and how much? (e.g. 'Transfer $200 from checking to savings')",
         };
         addMessage("assistant", questions[action]);
+        // Remember WHAT we asked so the next user message can fill the slot.
+        // sendAsNl() inspects this on the next turn and skips re-parsing
+        // when we already know the intent. We also remember any partial
+        // params the parser already filled so e.g. "checking" + previous
+        // amount=$50 still works on the next turn.
+        setPendingClarification({
+          action,
+          partialParams: p || {},
+          asked: questions[action],
+        });
       } else {
         await runAction(action, p, { skipUserLabel: true });
       }
