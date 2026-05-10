@@ -657,6 +657,59 @@ class PingOneProvisionService {
   }
 
   /**
+   * Idempotently ensure a permissive password policy exists.
+   *
+   * Demo-tuned: lowest-friction policy PingOne will accept.
+   *   - length min 8 (PingOne floor; can't go below)
+   *   - no character-class requirements (no minCharacters)
+   *   - no commonly-used dictionary check
+   *   - no profile-data similarity check
+   *   - no current-password similarity check
+   *   - no history field (only PingOne's hardcoded floor "can't reuse current
+   *     password" still applies — there's no API to disable that)
+   *   - no age limits, no max-repeat, no min-unique
+   *
+   * Returns the policy id.
+   */
+  async _ensurePasswordPolicy(name, description = '') {
+    const list = (await this.makeRequest('GET', '/passwordPolicies')).data._embedded?.passwordPolicies || [];
+    const existing = list.find(p => p.name === name);
+    if (existing) return existing.id;
+
+    const response = await this.makeRequest('POST', '/passwordPolicies', {
+      name,
+      description: description || 'Demo-friendly password policy: 8-char minimum, no other rules.',
+      excludesProfileData: false,
+      notSimilarToCurrent: false,
+      excludesCommonlyUsed: false,
+      length: { min: 8, max: 255 },
+      // Intentionally omit history/lockout/minCharacters/age fields — those
+      // become "no rule" when absent from the policy.
+    });
+    return response.data.id;
+  }
+
+  /**
+   * Bind a password policy to a population. PingOne's PUT /populations/{id}
+   * is FULL replace — must include name, default flag, and other fields or
+   * they get reset. We preserve the population's existing fields and only
+   * change passwordPolicy.
+   */
+  async _bindPopulationPolicy(populationId, policyId) {
+    const current = (await this.makeRequest('GET', `/populations/${populationId}`)).data;
+    const body = {
+      name: current.name,
+      description: current.description || '',
+      default: current.default || false,
+      preferredLanguage: current.preferredLanguage,
+      passwordPolicy: { id: policyId },
+    };
+    // Optional fields PingOne may set; only include if non-empty.
+    if (current.theme?.id) body.theme = { id: current.theme.id };
+    await this.makeRequest('PUT', `/populations/${populationId}`, body);
+  }
+
+  /**
    * Idempotently add user to group via the membership sub-resource.
    * Re-adding a user is a 204 no-op (PingOne handles dedup).
    */
@@ -1237,6 +1290,24 @@ class PingOneProvisionService {
       );
       
       pushGrantResultStep(steps, 'user-grants', 'User scope grants', userGrantResult);
+      onStep(steps[steps.length - 1]);
+
+      // Step 10.5: Ensure permissive demo password policy is bound to the
+      // default population BEFORE we create users — otherwise the very first
+      // user creation has to satisfy PingOne's Standard policy (history of 6
+      // entries, requires upper+lower+digit+special, etc).
+      steps.push({ step: 'password-policy', icon: '🔧', message: 'Ensuring permissive demo password policy...' });
+      onStep(steps[steps.length - 1]);
+      try {
+        const policyId = await this._ensurePasswordPolicy(
+          'Banking Demo',
+          'Demo-friendly: 8-char minimum, no character classes, no commonly-used check, no history beyond PingOne floor.'
+        );
+        await this._bindPopulationPolicy(this.populationId, policyId);
+        steps.push({ step: 'password-policy', icon: '✅', message: 'Banking Demo password policy bound to default population' });
+      } catch (polErr) {
+        steps.push({ step: 'password-policy', icon: '⚠️', message: `Password policy step: ${polErr.message}` });
+      }
       onStep(steps[steps.length - 1]);
 
       // Step 11: Create demo user bankuser
