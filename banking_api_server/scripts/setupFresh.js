@@ -374,6 +374,42 @@ function runChild(label, scriptArgs, opts = {}) {
   });
 }
 
+// Interactive variant of runChild: inherits stdio so the child has direct
+// access to the parent's TTY. Trade-off: child output bypasses our log tee
+// (it's not captured to setup.log), but interactive prompts actually work.
+//
+// Use this for any child that needs to read keystrokes — bootstrapPingOne
+// in particular. Under runChild's stdio:[pipe,pipe], the child's only
+// option for keyboard input is fs.createReadStream('/dev/tty'), which
+// behaves erratically when there's no controlling terminal in the child's
+// process group: prompts appear, but data events never fire.
+//
+// Under stdio:'inherit', the child's stdin/stdout/stderr ARE the parent's,
+// so process.stdin.isTTY is true, raw mode works, readline works.
+function runChildInteractive(label, scriptArgs, opts = {}) {
+  console.log('');
+  console.log(`── ${label} ${'─'.repeat(Math.max(0, 60 - label.length))}`);
+  console.log('');
+  if (logStream) {
+    logStream.write(`\n[CHILD START] ${label} (interactive — output not captured): node ${scriptArgs.join(' ')}\n`);
+  }
+  const { spawn } = require('child_process');
+  return new Promise((resolve) => {
+    const child = spawn('node', scriptArgs, {
+      cwd: opts.cwd || SERVER_ROOT,
+      stdio: 'inherit',
+    });
+    child.on('error', (err) => {
+      console.error(`Failed to spawn child: ${err.message}`);
+      resolve(1);
+    });
+    child.on('close', (code) => {
+      if (logStream) logStream.write(`\n[CHILD EXIT] ${label}: exit ${code}\n`);
+      resolve(code);
+    });
+  });
+}
+
 // npm install needs the same tee treatment but isn't a 'node' invocation.
 // Same stdin='ignore' rationale as runChild — under curl-pipe, inheriting
 // stdin caused EBADF when npm probed it.
@@ -1043,7 +1079,9 @@ async function main() {
   if (RESET_PINGONE) {
     n++;
     phase(n, total, 'Reset PingOne environment (--reset-pingone)');
-    const wipeStatus = await runChild('PingOne wipe', [
+    // Use runChildInteractive so the bootstrap script gets the parent's TTY
+    // directly (cred + type-env-id prompts need a real terminal).
+    const wipeStatus = await runChildInteractive('PingOne wipe', [
       'scripts/bootstrapPingOne.js',
       '--wipe-environment',
       ...passthroughFlags,
@@ -1116,7 +1154,9 @@ async function main() {
   console.log('  This step opens a browser form for your worker creds, then');
   console.log('  creates resource servers, scopes, applications, users, and writes .env.');
   console.log('');
-  const bootstrapStatus = await runChild('Bootstrap', [
+  // Use runChildInteractive so the bootstrap script gets the parent's TTY
+  // directly (cred + proceed prompts need a real terminal).
+  const bootstrapStatus = await runChildInteractive('Bootstrap', [
     'scripts/bootstrapPingOne.js',
     ...passthroughFlags,
   ]);
