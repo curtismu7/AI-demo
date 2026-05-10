@@ -80,6 +80,8 @@ What runs in each case:
 
 Flags:
   --yes               Skip the install-directory confirmation prompt.
+  --clean             Wipe stale state (.env, data/persistent, certs) WITHOUT prompting.
+  --no-clean          Keep stale state without prompting (skip cleanup).
   --from-installer    (Internal — set by install.sh; skips dir confirm.)
   --no-browser        Skip the localhost form; prompt in terminal only.
   --non-interactive   Read PINGONE_BOOTSTRAP_* env vars (CI).
@@ -101,7 +103,7 @@ checkNodeVersion();
 // First non-flag argument is the tar archive path (if any).
 const tarArg = args.find(a => !a.startsWith('--'));
 // Strip flags we consume locally; everything else passes through to bootstrap.
-const LOCAL_FLAGS = new Set(['--from-installer', '--yes']);
+const LOCAL_FLAGS = new Set(['--from-installer', '--yes', '--clean', '--no-clean']);
 const passthroughFlags = args.filter(a => a.startsWith('--') && !LOCAL_FLAGS.has(a));
 
 // `--from-installer` is set by install.sh, which already confirmed the install
@@ -109,6 +111,10 @@ const passthroughFlags = args.filter(a => a.startsWith('--') && !LOCAL_FLAGS.has
 // `--yes` skips the dir-confirm prompt (for advanced users / scripted runs).
 const FROM_INSTALLER = args.includes('--from-installer');
 const SKIP_CONFIRM = FROM_INSTALLER || args.includes('--yes');
+// Cleanup mode: --clean = wipe without asking, --no-clean = skip wipe without
+// asking, neither = prompt (default behavior, only fires when prior state exists).
+const FORCE_CLEAN = args.includes('--clean');
+const SKIP_CLEAN = args.includes('--no-clean');
 
 const SERVER_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(SERVER_ROOT, '..');
@@ -164,6 +170,122 @@ function ensureEnvForFreshInstall() {
   }
   fs.writeFileSync(ENV_FILE, stub, 'utf8');
   return { created: true };
+}
+
+// ── Cleanup of prior installation state ─────────────────────────────────────
+//
+// A re-run of setup:fresh against a partial install (or stale config) can fail
+// in confusing ways:
+//   - existing config.db encrypted with an old key won't decrypt against a
+//     freshly generated SESSION_SECRET
+//   - certs from a prior hostname (api.pingdemo.com+2.pem) get picked up by
+//     run-bank.sh and confuse mkcert detection
+//   - leftover sessions.db carries logged-in state from another tenant
+//
+// We detect those, list them to the user, and ask once whether to wipe before
+// continuing. Default: skip cleanup (so reruns against intentionally-preserved
+// state, like a partial bootstrap, don't lose work). Wipe always backs up .env
+// to .env.pre-cleanup-<timestamp> first so the user can recover.
+
+const CLEANUP_TARGETS = [
+  // path-relative-to-SERVER_ROOT, label, optional description
+  { p: '.env',                                label: 'Server env file' },
+  { p: 'data/persistent',                     label: 'Persistent data dir', isDir: true },
+  { p: 'data/sessions.db',                    label: 'Active sessions DB' },
+  { p: 'data/backups',                        label: 'Pre-import backups',  isDir: true },
+];
+// Cert dir is sibling of SERVER_ROOT; handled separately.
+
+function findExistingState() {
+  const found = [];
+  for (const t of CLEANUP_TARGETS) {
+    const abs = path.join(SERVER_ROOT, t.p);
+    if (fs.existsSync(abs)) {
+      // For dirs, only count as "existing state" if non-empty.
+      if (t.isDir) {
+        try {
+          const entries = fs.readdirSync(abs);
+          if (entries.length > 0) found.push({ ...t, abs, count: entries.length });
+        } catch (_e) { /* unreadable — skip */ }
+      } else {
+        found.push({ ...t, abs });
+      }
+    }
+  }
+  // Certs: detect any *.pem in the certs dir
+  const certsDir = path.join(REPO_ROOT, 'certs');
+  if (fs.existsSync(certsDir)) {
+    try {
+      const pems = fs.readdirSync(certsDir).filter(f => f.endsWith('.pem'));
+      if (pems.length > 0) found.push({ p: '../certs', label: 'TLS certs', isDir: true, abs: certsDir, count: pems.length });
+    } catch (_e) { /* skip */ }
+  }
+  return found;
+}
+
+async function offerCleanup() {
+  const found = findExistingState();
+  if (found.length === 0) return;     // nothing to clean — silent
+
+  console.log('');
+  console.log('Existing state detected');
+  console.log('───────────────────────');
+  for (const item of found) {
+    const desc = item.count != null ? ` (${item.count} item${item.count === 1 ? '' : 's'})` : '';
+    console.log(`  • ${item.label}: ${item.abs}${desc}`);
+  }
+  console.log('');
+  console.log('Wiping these gives you a clean slate. Recommended if:');
+  console.log('  - this is a re-run after a failed install');
+  console.log('  - you changed the PingOne tenant since last setup');
+  console.log('  - run-bank.sh is reporting decrypt or hostname errors');
+  console.log('');
+  console.log('Skip cleanup if you want to preserve current data and only re-run bootstrap.');
+  console.log('');
+
+  let wipe;
+  if (FORCE_CLEAN) {
+    console.log('--clean flag set — wiping without prompting.');
+    wipe = true;
+  } else if (SKIP_CLEAN) {
+    console.log('--no-clean flag set — skipping cleanup.');
+    wipe = false;
+  } else {
+    wipe = await readlineQuestion('Wipe and start fresh?', /* defaultYes */ false);
+  }
+
+  if (!wipe) {
+    console.log('Continuing without cleanup. Existing state preserved.');
+    console.log('');
+    return;
+  }
+
+  // Backup .env first if it exists, so the user has a recovery path.
+  const envPath = path.join(SERVER_ROOT, '.env');
+  if (fs.existsSync(envPath)) {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const backup = `${envPath}.pre-cleanup-${ts}`;
+    fs.copyFileSync(envPath, backup);
+    console.log(`Backed up .env to ${path.basename(backup)}`);
+  }
+
+  for (const item of found) {
+    try {
+      if (item.isDir) {
+        fs.rmSync(item.abs, { recursive: true, force: true });
+        // Recreate empty dir for the persistent data path so import scripts find it
+        if (item.p === 'data/persistent') fs.mkdirSync(item.abs, { recursive: true });
+        console.log(`Removed ${item.label}: ${item.abs}`);
+      } else {
+        fs.unlinkSync(item.abs);
+        console.log(`Removed ${item.label}: ${item.abs}`);
+      }
+    } catch (err) {
+      console.error(`Failed to remove ${item.abs}: ${err.message}`);
+      console.error('Continuing anyway — bootstrap may fail. Re-run with --no-clean to skip this prompt.');
+    }
+  }
+  console.log('');
 }
 
 // ── Install-directory confirmation ──────────────────────────────────────────
@@ -335,7 +457,11 @@ async function main() {
   // Step 0 — confirm install directory (skipped when called from install.sh).
   await confirmInstallDirectory();
 
-  // Step 0b — verify /etc/hosts has the loopback entry (browser needs this).
+  // Step 0b — offer to wipe stale state from a previous run. Only fires when
+  // existing state is detected; --clean / --no-clean override the prompt.
+  await offerCleanup();
+
+  // Step 0c — verify /etc/hosts has the loopback entry (browser needs this).
   // We check before doing any work so the user can fix it once.
   await ensureHostsEntry();
 
