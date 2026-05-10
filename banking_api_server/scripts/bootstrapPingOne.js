@@ -111,6 +111,24 @@ const CTRL_C = 0x03;
 const BACKSPACE = 0x08;
 const DEL      = 0x7f;
 
+// Under `curl ... | bash` and similar pipelines, process.stdin is the HTTP
+// body — not the user's keyboard. process.stdin.isTTY is false in that case.
+// The user's keyboard is at /dev/tty; this helper returns a usable read stream
+// (either process.stdin if it's a real terminal, or a freshly opened /dev/tty).
+// Returns { stream, fd } — caller closes fd when done. fd is null when we're
+// using process.stdin directly.
+function getInteractiveInput() {
+  if (process.stdin.isTTY) return { stream: process.stdin, fd: null };
+  const fs = require('fs');
+  try {
+    const fd = fs.openSync('/dev/tty', 'r');
+    const stream = fs.createReadStream('', { fd });
+    return { stream, fd };
+  } catch (_e) {
+    return { stream: process.stdin, fd: null };  // fall back; will likely fail
+  }
+}
+
 function prompt(rl, question, { defaultValue, secret = false } = {}) {
   return new Promise((resolve) => {
     const display = defaultValue ? `${question} [${defaultValue}]: ` : `${question}: `;
@@ -375,7 +393,8 @@ async function gatherCredsViaBrowser() {
 }
 
 async function gatherCredsInteractive() {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+  const tty = getInteractiveInput();
+  const rl = readline.createInterface({ input: tty.stream, output: process.stdout, terminal: true });
   try {
     console.log('PingOne Bootstrap — interactive setup');
     console.log('Paste your PingOne management worker credentials (the worker app needs');
@@ -402,6 +421,7 @@ async function gatherCredsInteractive() {
     return { envId, region, workerClientId, workerClientSecret, publicAppUrl, audience, mcpGatewayAudience };
   } finally {
     rl.close();
+    if (tty.fd != null) { try { require('fs').closeSync(tty.fd); } catch (_e) {} }
   }
 }
 
@@ -474,9 +494,11 @@ async function main() {
   printPlan(creds);
 
   if (!NON_INTERACTIVE) {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+    const tty = getInteractiveInput();
+    const rl = readline.createInterface({ input: tty.stream, output: process.stdout, terminal: true });
     const confirm = await prompt(rl, 'Proceed with provisioning? [y/N]');
     rl.close();
+    if (tty.fd != null) { try { require('fs').closeSync(tty.fd); } catch (_e) {} }
     if (!/^y(es)?$/i.test(String(confirm).trim())) {
       console.log('Aborted by user.');
       process.exit(2);

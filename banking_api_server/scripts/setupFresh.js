@@ -347,10 +347,30 @@ function hostsEntryPresent() {
 function readlineQuestion(question, defaultYes = true) {
   return new Promise((resolve) => {
     const readline = require('readline');
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+
+    // Under `curl ... | bash`, stdin is the HTTP body — not the keyboard. The
+    // bash that spawned us inherits that closed/exhausted stdin to node, so
+    // process.stdin.isTTY is false and rl.question would resolve immediately
+    // with empty input. The user's keyboard is at /dev/tty in that case.
+    let input = process.stdin;
+    let inputFd = null;
+    if (!process.stdin.isTTY) {
+      try {
+        inputFd = fs.openSync('/dev/tty', 'r');
+        input = fs.createReadStream('', { fd: inputFd });
+      } catch (_e) {
+        // No /dev/tty (CI, headless) — fall back to the default and warn.
+        console.log(`(no TTY available — using default ${defaultYes ? 'Yes' : 'No'})`);
+        return resolve(defaultYes);
+      }
+    }
+
+    const rl = readline.createInterface({ input, output: process.stdout, terminal: true });
     const suffix = defaultYes ? ' [Y/n] ' : ' [y/N] ';
     rl.question(question + suffix, (answer) => {
       rl.close();
+      // Closing the stream we opened ensures the process can exit cleanly.
+      if (inputFd != null) { try { fs.closeSync(inputFd); } catch (_e) {} }
       const s = String(answer || '').trim().toLowerCase();
       if (!s) return resolve(defaultYes);
       resolve(/^y(es)?$/.test(s));
