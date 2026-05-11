@@ -10,7 +10,10 @@
  *
  * Per CLAUDE.md "Token custody rule": tokens never reach the browser.
  */
-const JWT_RE = /^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+// Matches 3-segment JWS and 5-segment JWE compact serializations. PingOne can
+// issue JWE-format id_tokens depending on token policy; the 3-segment-only regex
+// would silently pass those through unredacted.
+const JWT_RE = /^eyJ[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]*){2,4}$/;
 
 /**
  * Recursively walks a value tree and redacts any JWT-shaped strings.

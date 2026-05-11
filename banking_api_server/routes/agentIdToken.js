@@ -19,13 +19,22 @@
  *   503  session_store_unavailable    — memory-store fallback or store not registered
  */
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 
 const INTERNAL_SECRET = process.env.BFF_INTERNAL_SECRET || 'dev-shared-secret-change-me';
+const INTERNAL_SECRET_BUF = Buffer.from(INTERNAL_SECRET);
 
 router.get('/id-token', (req, res) => {
   const presented = req.headers['x-internal-gateway-secret'];
-  if (!presented || presented !== INTERNAL_SECRET) {
+  // Constant-time comparison — short-circuit equality leaks per-byte timing to an
+  // attacker with network or SSRF access to the bound 0.0.0.0 interface.
+  const presentedBuf = typeof presented === 'string' ? Buffer.from(presented) : null;
+  if (
+    !presentedBuf ||
+    presentedBuf.length !== INTERNAL_SECRET_BUF.length ||
+    !crypto.timingSafeEqual(presentedBuf, INTERNAL_SECRET_BUF)
+  ) {
     return res.status(403).json({ error: 'forbidden' });
   }
 

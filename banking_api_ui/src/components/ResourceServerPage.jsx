@@ -1,6 +1,6 @@
 // banking_api_ui/src/components/ResourceServerPage.jsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import bffAxios from '../services/bffAxios';
 import './ResourceServerPage.css';
 
 const CLAIM_GLOSSARY = {
@@ -89,7 +89,7 @@ export default function ResourceServerPage() {
   const [timeRemaining, setTimeRemaining] = useState(null);
 
   useEffect(() => {
-    axios.get('/api/resource-server/summary')
+    bffAxios.get('/api/resource-server/summary')
       .then(res => {
         setData(res.data);
         setLoading(false);

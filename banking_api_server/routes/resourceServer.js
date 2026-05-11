@@ -218,7 +218,7 @@ router.get('/accounts', (req, res) => {
       status: a.status || 'active',
       accountNumber: a.accountNumber,
     }));
-    return res.json({ accounts: formatted });
+    return res.json(scrubRawJwts({ accounts: formatted }));
   } catch (err) {
     console.error('[resource-server] /accounts error:', err.message);
     return res.status(500).json({ error: 'internal_error' });
@@ -247,7 +247,7 @@ router.get('/transactions', (req, res) => {
       description: t.description || t.type,
       createdAt: t.createdAt,
     }));
-    return res.json({ transactions: formatted });
+    return res.json(scrubRawJwts({ transactions: formatted }));
   } catch (err) {
     console.error('[resource-server] /transactions error:', err.message);
     return res.status(500).json({ error: 'internal_error' });
