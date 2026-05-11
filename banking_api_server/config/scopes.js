@@ -44,7 +44,13 @@ const BANKING_SCOPES = {
 const COMPOUND_SCOPES = {
   ACCOUNTS_READ: 'banking:accounts:read',
   TRANSACTIONS_READ: 'banking:transactions:read',
-  TRANSACTIONS_WRITE: 'banking:transactions:write'
+  TRANSACTIONS_WRITE: 'banking:transactions:write',
+  // Phase 267 — domain-specific scope for the mortgage path.
+  // Required for the api_key disposition that calls banking_mortgage_service.
+  // The gateway verifies the user's token includes this scope before performing
+  // the bearer→X-API-Key swap; the mortgage service itself does NOT check scope
+  // (it gates on X-API-Key only — service-to-service trust).
+  MORTGAGE_READ: 'banking:mortgage:read'
 };
 
 // User type to canonical scope mappings (reference: SCOPE_VOCABULARY.md § User Type Scope Assignments)
@@ -62,7 +68,8 @@ const USER_TYPE_SCOPES = {
   customer: [
     BANKING_SCOPES.BANKING_READ,  // Read own accounts + transactions
     BANKING_SCOPES.BANKING_WRITE, // Write banking operations
-    BANKING_SCOPES.AI_AGENT       // AI agent identification
+    BANKING_SCOPES.AI_AGENT,      // AI agent identification
+    COMPOUND_SCOPES.MORTGAGE_READ // Phase 267 — read mortgage data via Path A
   ],
   
   // Read-only users get only read access
@@ -75,7 +82,8 @@ const USER_TYPE_SCOPES = {
     BANKING_SCOPES.AI_AGENT,          // AI agent identification (resource server)
     BANKING_SCOPES.AI_AGENT_IDENTITY, // AI agent identity (OIDC)
     BANKING_SCOPES.BANKING_READ,      // Read accounts + transactions
-    BANKING_SCOPES.BANKING_WRITE      // Write banking operations
+    BANKING_SCOPES.BANKING_WRITE,     // Write banking operations
+    COMPOUND_SCOPES.MORTGAGE_READ     // Phase 267 — mortgage data via api_key disposition
   ]
 };
 

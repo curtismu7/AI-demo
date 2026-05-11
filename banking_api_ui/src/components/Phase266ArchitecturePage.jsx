@@ -21,6 +21,7 @@ const MERMAID_SOURCE = `flowchart TB
     classDef rs fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
     classDef db fill:#e5e7eb,stroke:#374151,color:#111827,stroke-width:2px
     classDef aspirational stroke-dasharray: 5 5,fill:#fef9c3,stroke:#a16207,color:#713f12
+    classDef mortgage fill:#fef3c7,stroke:#b45309,color:#78350f,stroke-width:3px
 
     User([User<br/>browser])
     SPA["SPA<br/>banking_api_ui :4000<br/>───────────────<br/>3 result pages:<br/>• ResourceServerPage (blue)<br/>• ApiKeyPathPage (amber)<br/>• AccessIdTokenPathPage (teal)"]
@@ -44,7 +45,7 @@ const MERMAID_SOURCE = `flowchart TB
 
     PingOne["PingOne AS<br/>━━━━━━━━━━<br/>RFC 8693 /token<br/>RFC 7662 /introspect<br/>RFC 7517 /jwks"]
 
-    ApiKeyBackend["3rd-party API<br/>(aspirational — not<br/>wired in this phase)"]:::aspirational
+    MortgageService["banking_mortgage_service :8082<br/>━━━━━━━━━━━━━<br/>X-API-Key gate<br/>GET /mortgage<br/>━━━━━━━━━━━━━<br/>returns dummy mortgage record<br/>(no OAuth involved)"]:::mortgage
 
     User -- "1. OIDC login<br/>(OIDC Core)" --> SPA
     SPA -- "session cookie" --> Session
@@ -58,9 +59,10 @@ const MERMAID_SOURCE = `flowchart TB
     Gateway -- "fetches id_token<br/>(server-to-server,<br/>secret-gated)" --> InternalIdToken
     InternalIdToken --> Session
 
-    Gateway -. "Path A: api_key<br/>━━━━━━━━━━━━━<br/>1. swap bearer → service apikey<br/>2. NO backend call<br/>3. return marker + tokenEvents" .-> ApiKeyBackend
-    Gateway -- "Path A marker response<br/>credentialPath: api_key" --> SPA
-    SPA -. "fetches via bffAxios" .-> PathInfo
+    Gateway == "<b>Path A: api_key</b><br/>━━━━━━━━━━━━━<br/>GET /mortgage<br/>X-API-Key: SERVICE_KEY<br/>(no OAuth bearer)" ==> MortgageService
+    MortgageService -- "mortgage record<br/>(JSON)" --> Gateway
+    Gateway -- "Path A response<br/>credentialPath: api_key<br/>+ masked last4" --> SPA
+    SPA -. "fetches /api/path/mortgage<br/>via bffAxios" .-> PathInfo
 
     Gateway == "<b>Path B: dual_token</b><br/>━━━━━━━━━━━━━━<br/>POST /api/resource-server/identity<br/>Authorization: Bearer EXCHANGED<br/>body: {jsonrpc, params:{idToken}}" ==> Identity
 
@@ -93,10 +95,10 @@ const MERMAID_SOURCE = `flowchart TB
 const PATH_LEGEND = [
   {
     key: 'A',
-    label: 'Path A — API-key',
+    label: 'Path A — API-key (mortgage service)',
     swatch: '#b45309',
     description:
-      'Gateway swaps bearer for a service API key, no backend call. SPA renders amber info page.',
+      'Gateway swaps bearer for service API key, calls banking_mortgage_service :8082 (X-API-Key). Prompt: "show mortgage data".',
   },
   {
     key: 'B',

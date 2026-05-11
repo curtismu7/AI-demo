@@ -3173,6 +3173,24 @@ export default function BankingAgent({
           toast.update(toastId, { render: " Calling get_my_accounts…" });
           response = await getMyAccounts();
           break;
+        case "mortgage_demo":
+          // Phase 266 / Phase 267 Path A — the agent's intended behavior is:
+          //   1. Call gateway MCP tool 'show_mortgage' (api_key disposition)
+          //   2. Gateway swaps user's OAuth bearer for service API key
+          //   3. Gateway calls banking_mortgage_service (X-API-Key, no OAuth)
+          //   4. Gateway returns the mortgage payload + _meta.credentialPath
+          //   5. Navigate to /path/mortgage with the payload in location.state
+          //
+          // Until Plan 01 of Phase 266 + Phase 267 ship the gateway's api_key
+          // disposition end-to-end, this dispatch just navigates to the page;
+          // the page renders an empty-state explaining what's required.
+          // Once the gateway routing is implemented, replace the navigate()
+          // call with: callMcpTool('show_mortgage') → navigate with payload.
+          toast.update(toastId, { render: " Routing to mortgage path (API-key — Phase 267 will wire the gateway)…" });
+          setLoading(false);
+          toolProgressIdRef.current = null;
+          navigate("/path/mortgage");
+          return;
         case "transactions":
           toast.update(toastId, { render: " Calling get_my_transactions…" });
           response = await getMyTransactions();

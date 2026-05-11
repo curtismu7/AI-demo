@@ -32,6 +32,7 @@ import SequenceDiagramPage from "./components/SequenceDiagramPage";
 import ArchitectureTabsPanel from "./components/ArchitectureTabsPanel";
 import ArchitectureTokenFlowPage from "./components/ArchitectureTokenFlowPage";
 import Phase266ArchitecturePage from "./components/Phase266ArchitecturePage";
+import MortgagePathPage from "./components/MortgagePathPage";
 import ApiTrafficPage from "./components/ApiTrafficPage";
 import AuditPage from "./components/AuditPage";
 import BankingAdminOps from "./components/BankingAdminOps";
@@ -1316,6 +1317,16 @@ function AppWithAuth() {
                             element={
                               user ? (
                                 <ResourceServerPage />
+                              ) : (
+                                <Navigate to="/" replace />
+                              )
+                            }
+                          />
+                          <Route
+                            path="/path/mortgage"
+                            element={
+                              user ? (
+                                <MortgagePathPage />
                               ) : (
                                 <Navigate to="/" replace />
                               )

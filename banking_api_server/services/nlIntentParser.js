@@ -228,6 +228,11 @@ function parseBanking(t) {
   if (/\b(spending summary|total spend|how much.*(spend|spent)|where.*money|breakdown.*spend\w*|spend\w*.*breakdown)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'spending_summary' } };
   }
+  // Phase 266 — Path A demo: mortgage data via api-key-gated backend.
+  // Trigger: "show mortgage data", "show my mortgage", "mortgage", "home loan".
+  if (/\b(show|view|see|get|my)\s*(mortgage|home\s*loan)\b|\b(mortgage|home\s*loan)\s*(data|info|details|balance|summary)\b|^mortgage$|^home\s*loan$/.test(t)) {
+    return { kind: 'banking', banking: { action: 'mortgage_demo' } };
+  }
   if (/\b(transaction|history|activity|recent)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'transactions' } };
   }

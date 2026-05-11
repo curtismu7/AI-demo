@@ -2138,6 +2138,90 @@ Plans:
 - [ ] 265-01-PLAN.md — BFF route demoProvisioning.js (create user, set mayAct, enroll email OTP) + server.js wiring
 - [ ] 265-02-PLAN.md — DemoDataPage.js Create Demo User section (email input, step log, credential card) + DemoDataPage.css
 
+### Phase 266: Add API-key and ID-token backend variants with dedicated result pages
+
+**Goal:** Extend the demo so the Gateway can broker calls to TWO new backend variants in addition to the existing OAuth resource server, each with its own visibly-distinct result page so users can tell at a glance which backend served the response.
+
+**Requirements / Scope:**
+
+1. **API-key backend variant**
+   - New backend service that accepts `X-API-Key` header (no OAuth bearer)
+   - Returns "special data" only available from this backend (label/title makes it obvious the response came from the API-key server)
+   - Gateway swaps the user's OAuth token for a service API key when calling this backend
+   - New chat prompt that triggers the API-key flow end-to-end
+   - New result page (distinct title / colour / badge) showing the response
+
+2. **ID-token + access-token backend variant**
+   - New backend that accepts BOTH an access token (auth) AND an ID token (identity)
+   - Renders user data derived from ID-token claims (name, email, sub, picture if present)
+   - New chat prompt that triggers this flow
+   - New result page that's visually distinct from the API-key page AND from the existing OAuth resource-server page
+
+3. **Visible page identification**
+   - Each of the 3 backend result surfaces (existing OAuth, new API-key, new ID-token) must have a clearly different header / badge / colour so a viewer always knows which backend served the data
+   - Page identifier visible in screenshots without needing to read the URL
+
+4. **Documentation/demo support**
+   - Update /architecture/flow simulation scenarios to walk through the new flows
+   - Add the new backend nodes (currently aspirational/dashed) as live nodes when these variants land
+   - Update /sequence-diagram with new steps where the flow diverges (cred swap at gateway for API key; ID-token forward for the userinfo path)
+
+**Depends on:** Phase 265
+**Plans:** 5 plans
+
+Note: Phase 266 has been REPLANNED. The original 6-plan split scaffolded two new backend services; user clarification (2026-05-10) corrected this. The 3 credential dispositions (oauth_bearer / api_key / dual_token) all live at the Gateway; api_key and dual_token paths terminate at SPA info pages without calling backends. Only Path C (existing OAuth resource server) returns banking data.
+
+Plans:
+- [ ] 266-01-PLAN.md (Wave 1) — Gateway 3-disposition router + credentialSwap + BFF /internal/id-token endpoint
+- [ ] 266-02-PLAN.md (Wave 1) — BFF /api/path/{apikey,dualtoken}-info routes + nlIntentParser actions + scrubRawJwts + configStore key
+- [ ] 266-03-PLAN.md (Wave 2) — TokenChainContext credentialPath plumbing + TokenChainDisplay/Modal/FloatingPanel path-aware rendering + ActivityLogs GATEWAY_PATH category
+- [ ] 266-04-PLAN.md (Wave 2) — ApiKeyPathPage (amber) + AccessIdTokenPathPage (teal) + ResourceServerPage OAUTH BEARER PATH badge + BankingAgent dispatch wiring
+- [ ] 266-05-PLAN.md (Wave 3) — All diagrams + step trackers updated (ArchitectureFlowPage, SequenceDiagramPage, ArchitectureTokenFlowPage, TokenExchangeFlowDiagram, AgentFlowDiagramPanel, UnifiedTokenFlowInspector, NarrativePanel, OidcFlowTimeline) + 4 .mmd sources + regenerated PNGs
+
+---
+
+### Phase 267: Mortgage backend service — wire Path A end-to-end through MCP Gateway
+
+**Goal:** Phase 266 originally documented Path A (api_key disposition) as Gateway-terminating with no real backend. After user feedback (2026-05-10), Path A is now backed by a real standalone Node service (`banking_mortgage_service`) on port 8082, returning a dummy mortgage record gated by `X-API-Key`. This phase wires the MCP Gateway's api_key disposition to call that service AS AN AI ACTION (through the gateway's normal tool-call routing), with proper scope enforcement.
+
+**Requirements / Scope:**
+
+1. **banking_mortgage_service (already exists from interim work)**
+   - Standalone Node service on port 8082; single route `GET /mortgage` gated by `X-API-Key`
+   - Returns a dummy mortgage record (single object: id/propertyAddress/loanAmount/currentBalance/interestRate/monthlyPayment/nextPaymentDate/term/originationDate)
+   - Already wired into `run-bank.sh` (LOG_MORTGAGE, PID_MORTGAGE, SVC_LIST, port-sweep, status line)
+   - Already has 6 passing tests (jest + supertest)
+
+2. **MCP Gateway api_key disposition (NEW WORK)**
+   - Plan 01 of Phase 266 introduces credentialSwap + 3-disposition router. Phase 267 EXTENDS that for the api_key path to actually call banking_mortgage_service.
+   - Tool name: `show_mortgage` → routes to `apikey` BackendTarget → backendHttpUrl = `http://localhost:8082/mortgage` → outbound `X-API-Key: <DEMO_APIKEY_SERVICE_KEY>` (NO Authorization bearer)
+   - Gateway records the swap in `_meta.tokenEvents` per the existing Path A narrative (evt-inbound, evt-swap)
+   - Response payload reaches the SPA via the MCP tool-call response shape
+
+3. **Scope enforcement (NEW)**
+   - New scope `banking:mortgage:read` added to `banking_api_server/config/scopes.js` COMPOUND_SCOPES (already done) + customer + ai_agent user-type allowed lists (already done)
+   - Gateway's `guardToolCall` (or equivalent) MUST verify the user's MCP-side bearer carries `banking:mortgage:read` before dispatching the api_key swap; otherwise 403/insufficient_scope
+   - PingOne config: add `banking:mortgage:read` as a custom resource scope on the banking-api resource; add to AI_AGENT app's allowed scopes; add to ENDUSER (customer) profile
+   - Documentation: explain in CONTEXT.md why a dedicated scope is the right least-privilege choice for the demo
+
+4. **SPA — MortgagePathPage (already scaffolded)**
+   - `/path/mortgage` route exists; component reads `location.state.mortgagePayload` set by BankingAgent dispatch after the gateway returns
+   - Empty-state already present (renders helpful message when state is missing)
+   - BankingAgent's `mortgage_demo` dispatch (currently navigates to empty state) must be rewritten to: call `callMcpTool('show_mortgage')` → `navigate('/path/mortgage', { state: { mortgagePayload: response.result } })`
+
+5. **NL parser (already done)**
+   - `nlIntentParser.js` recognizes "show mortgage data", "show my mortgage", "mortgage", "home loan" → action `mortgage_demo`
+
+6. **Architecture diagram (already done in interim work)**
+   - `Phase266ArchitecturePage.jsx` flipped the aspirational 3rd-party API node to live `banking_mortgage_service` on :8082 with X-API-Key edge from the gateway
+   - `ArchitectureFlowPage.js` :150 `api-key-backend` node still aspirational — Phase 267 flips it to live + relabels to `banking_mortgage_service`
+
+**Depends on:** Phase 266 (Plan 01 — credentialSwap + 3-disposition router must be on main before Phase 267 dispatch wiring can land)
+**Plans:** TBD (run `/gsd-plan-phase 267` once Phase 266 is executing or complete)
+
+Plans:
+- [ ] TBD
+
 ---
 
 ### Phase 262: CSS Hygiene — dead code purge, :root consolidation, !important audit

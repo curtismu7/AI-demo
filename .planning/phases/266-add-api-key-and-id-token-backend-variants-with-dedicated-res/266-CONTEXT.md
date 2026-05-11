@@ -21,11 +21,14 @@ Path A is the only path that does not reach a backend — it terminates inside t
 
 The three paths terminate as follows:
 
-1. **Path A — API-Key path (Gateway-only, no backend call):**
-   - Gateway swaps the user's OAuth token for a configured service API key.
-   - Gateway records the swap in Token Chain (`_meta.tokenEvents`) and returns a marker response.
-   - **No backend call is made.** The flow stops at the Gateway.
-   - SPA routes the response to a new info page with amber visual identity, "API-KEY PATH" badge, masked API-key string (last 4 chars), explanation text, and a "Back to Dashboard" button.
+1. **Path A — API-Key path (Gateway → banking_mortgage_service via X-API-Key; UPDATED in Phase 267):**
+   - **Original Phase 266 framing:** Gateway-terminating, no backend call (marker response only).
+   - **Updated post-execution-review (Phase 267):** Gateway calls a REAL backend `banking_mortgage_service` (port 8082) over plain HTTP with `X-API-Key` header. The user's OAuth bearer is NOT forwarded — only the service API key.
+   - Gateway first verifies the user's MCP-side bearer carries the `banking:mortgage:read` scope (NEW dedicated scope added in Phase 267 to demonstrate least-privilege consent). Missing scope → JSON-RPC `-32403 insufficient_scope`.
+   - Gateway swaps the bearer for the configured `demoApiKeyServiceKey`, records the swap in `_meta.tokenEvents` (evt-inbound + evt-swap), and `axios.get(http://localhost:8082/mortgage, { headers: { 'X-API-Key': <key> } })`.
+   - `banking_mortgage_service` returns a dummy single-mortgage record (id/address/loanAmount/currentBalance/interestRate/monthlyPayment/nextPaymentDate/term/originationDate). No OAuth on this hop.
+   - SPA routes the response to `/path/mortgage` (`MortgagePathPage`) with amber visual identity, "API-KEY PATH" badge, the mortgage data card, AND a credential-swap explanation card showing the masked API key (last 4 chars). "Back to Dashboard" button.
+   - Phase 267 documents the gateway dispatch wiring + the new scope. Phase 266 Plan 01 introduces the api_key disposition skeleton; Phase 267 extends it to call the mortgage service.
 
 2. **Path B — Access-Token + ID-Token path (banking_resource_server, identity route — accepts BOTH HTTP verbs):**
    - The `/api/resource-server/identity` endpoint accepts BOTH `POST` (used by the gateway with wire-forwarded id_token) AND `GET` (used by the SPA's `AccessIdTokenPathPage` direct fetch). Both verbs bind to the same handler.

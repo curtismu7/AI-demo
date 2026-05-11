@@ -82,6 +82,8 @@ PID_AGENT_SVC=/tmp/bank-agent-service.pid
 LOG_AGENT_SVC=/tmp/bank-agent-service.log
 PID_INVEST=/tmp/bank-mcp-invest.pid
 LOG_INVEST=/tmp/bank-mcp-invest.log
+PID_MORTGAGE=/tmp/bank-mortgage-service.pid
+LOG_MORTGAGE=/tmp/bank-mortgage-service.log
 LOG_AUTH=/tmp/bank-authorize-server.log
 LOG_HELIX=/tmp/bank-helix.log
 
@@ -91,13 +93,13 @@ LOG_HELIX=/tmp/bank-helix.log
 # debugging the current startup. Only run on `start` to keep `status`/`tail` safe.
 if [[ "${1:-start}" == "start" || "${1:-start}" == "restart" || -z "${1:-}" ]]; then
   for _logf in "${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" \
-               "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_AUTH}" \
+               "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_MORTGAGE}" "${LOG_AUTH}" \
                "${LOG_HELIX}"; do
     : > "${_logf}" 2>/dev/null || true
   done
 else
   touch "${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" \
-        "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_AUTH}" \
+        "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_MORTGAGE}" "${LOG_AUTH}" \
         "${LOG_HELIX}" 2>/dev/null || true
 fi
 
@@ -242,8 +244,8 @@ preflight_checks() {
 tail_bank_logs() {
   local pre="${1:-}"
   [[ "${pre}" == "ALL" || "${pre}" == "All" ]] && pre="all"
-  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent" "MCP Traffic" "MCP Gateway" "HITL Service" "Agent Service" "MCP Invest" "Authorize Server" "Helix LLM")
-  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_AUTH}" "${LOG_HELIX}")
+  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent" "MCP Traffic" "MCP Gateway" "HITL Service" "Agent Service" "MCP Invest" "Mortgage Service" "Authorize Server" "Helix LLM")
+  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_MORTGAGE}" "${LOG_AUTH}" "${LOG_HELIX}")
   local count=${#names[@]}
   local all_opt=$((count + 1))
   local choice=""
@@ -315,7 +317,7 @@ kill_process_tree() {
 # Stop anything still listening on Banking ports (orphaned node/python after PID file lost).
 stop_listeners_on_banking_ports() {
   local port pid pids
-  for port in 3001 4000 8080 8888 3005 3006 3009 8081; do
+  for port in 3001 4000 8080 8888 3005 3006 3009 8081 8082; do
     pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
     for pid in $pids; do
       [[ -z "$pid" ]] && continue
@@ -327,7 +329,7 @@ stop_listeners_on_banking_ports() {
 
 force_kill_listeners_on_banking_ports() {
   local port pid pids
-  for port in 3001 4000 8080 8888 3005 3006 3009 8081; do
+  for port in 3001 4000 8080 8888 3005 3006 3009 8081 8082; do
     pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
     for pid in $pids; do
       [[ -z "$pid" ]] && continue
@@ -381,6 +383,7 @@ print_status_table() {
   service_status_line "Banking MCP Server"  8080         "ws://localhost:8080 (internal)"
   service_status_line "MCP Gateway"          3005         "http://localhost:3005 (internal)"
   service_status_line "MCP Invest Server"   8081         "ws://localhost:8081 (internal)"
+  service_status_line "Mortgage Service"    8082         "http://localhost:8082 (Phase 266 Path A backend)"
   service_status_line "Agent Service"       3006         "http://localhost:3006 (internal)"
   service_status_line "HITL Service"        3009         "http://localhost:3009 (internal)"
   service_status_line "LangChain Agent"     8888         "http://localhost:8888 (internal)"
@@ -395,7 +398,7 @@ print_status_table() {
 cmd_stop() {
   echo "[STOP] Stopping Banking services (run-bank.sh)..."
   set +e
-  for pid_file in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_AGENT" "$PID_UI"; do
+  for pid_file in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_MORTGAGE" "$PID_AGENT" "$PID_UI"; do
     if [[ -f "$pid_file" ]]; then
       PID=$(cat "$pid_file" 2>/dev/null || true)
       rm -f "$pid_file"
@@ -406,7 +409,7 @@ cmd_stop() {
     fi
   done
   sleep 1
-  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :8080, GW :3005, Agent :3006, HITL :3009, Invest :8081)…"
+  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :8080, GW :3005, Agent :3006, HITL :3009, Invest :8081, Mortgage :8082)…"
   stop_listeners_on_banking_ports
   sleep 1
   force_kill_listeners_on_banking_ports
@@ -504,6 +507,7 @@ cmd_help() {
   echo "    ${LOG_HITL}"
   echo "    ${LOG_AGENT_SVC}"
   echo "    ${LOG_INVEST}"
+  echo "    ${LOG_MORTGAGE}"
   echo "    ${LOG_AUTH}"
   echo ""
   echo -e "${WHITE}${BOLD}  One-time Setup:${RESET}"
@@ -609,9 +613,9 @@ fi
 # need extra `npm install` flags (banking_api_ui needs --legacy-peer-deps for
 # CRA/typescript peerOptional). Loud failure on any error — silent skips here
 # are exactly how we got cryptic MODULE_NOT_FOUND in service logs.
-SVC_LIST=(banking_api_server banking_mcp_server banking_api_ui      banking_mcp_gateway banking_hitl_service banking_agent_service banking_mcp_invest)
-SVC_BUILD=(""                "ts"               ""                  "ts"                ""                   "ts"                  "ts")
-SVC_INSTALL_FLAGS=(""        ""                 "--legacy-peer-deps" ""                  ""                   ""                    "")
+SVC_LIST=(banking_api_server banking_mcp_server banking_api_ui      banking_mcp_gateway banking_hitl_service banking_agent_service banking_mcp_invest banking_mortgage_service)
+SVC_BUILD=(""                "ts"               ""                  "ts"                ""                   "ts"                  "ts"               "")
+SVC_INSTALL_FLAGS=(""        ""                 "--legacy-peer-deps" ""                  ""                   ""                    ""                 "")
 
 for i in "${!SVC_LIST[@]}"; do
   svc="${SVC_LIST[$i]}"
@@ -737,6 +741,19 @@ if [[ -d "$BASEDIR/banking_mcp_invest" ]]; then
   echo $! > "$PID_INVEST"
 fi
 
+# ── Mortgage Service on :8082 (Phase 266 Path A backend) ─────────────────────
+# API-key-gated. Gateway swaps the user's OAuth bearer for X-API-Key and calls
+# this service on the api_key disposition. Single GET /mortgage route returns
+# a dummy mortgage record.
+if [[ -d "$BASEDIR/banking_mortgage_service" ]]; then
+  echo "[MORTGAGE] Starting Mortgage Service on :8082..."
+  (
+    cd "$BASEDIR/banking_mortgage_service"
+    MORTGAGE_SERVICE_PORT=8082 npm start > "${LOG_MORTGAGE}" 2>&1
+  ) &
+  echo $! > "$PID_MORTGAGE"
+fi
+
 # ── LangChain Agent on :8888 ─────────────────────────────────────────────────
 if [[ -f "$BASEDIR/langchain_agent/main.py" ]] || [[ -f "$BASEDIR/langchain_agent/server.py" ]]; then
   ENTRY="main"
@@ -793,6 +810,7 @@ wait_for_port 3005         15 "MCP Gateway"        >/dev/null
 wait_for_port 3009         15 "HITL Service"       >/dev/null
 wait_for_port 3006         15 "Agent Service"      >/dev/null
 wait_for_port 8081         15 "MCP Invest Server"  >/dev/null
+wait_for_port 8082         10 "Mortgage Service"   >/dev/null
 wait_for_port "${UI_PORT}" 60 "Banking UI (React)" >/dev/null
 sleep 1   # give LangChain agent a moment too
 
