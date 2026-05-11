@@ -2167,15 +2167,15 @@ Plans:
    - Update /sequence-diagram with new steps where the flow diverges (cred swap at gateway for API key; ID-token forward for the userinfo path)
 
 **Depends on:** Phase 265
-**Plans:** 5 plans
+**Plans:** 4/5 plans executed
 
 Note: Phase 266 has been REPLANNED. The original 6-plan split scaffolded two new backend services; user clarification (2026-05-10) corrected this. The 3 credential dispositions (oauth_bearer / api_key / dual_token) all live at the Gateway; api_key and dual_token paths terminate at SPA info pages without calling backends. Only Path C (existing OAuth resource server) returns banking data.
 
 Plans:
-- [ ] 266-01-PLAN.md (Wave 1) — Gateway 3-disposition router + credentialSwap + BFF /internal/id-token endpoint
-- [ ] 266-02-PLAN.md (Wave 1) — BFF /api/path/{apikey,dualtoken}-info routes + nlIntentParser actions + scrubRawJwts + configStore key
-- [ ] 266-03-PLAN.md (Wave 2) — TokenChainContext credentialPath plumbing + TokenChainDisplay/Modal/FloatingPanel path-aware rendering + ActivityLogs GATEWAY_PATH category
-- [ ] 266-04-PLAN.md (Wave 2) — ApiKeyPathPage (amber) + AccessIdTokenPathPage (teal) + ResourceServerPage OAUTH BEARER PATH badge + BankingAgent dispatch wiring
+- [x] 266-01-PLAN.md (Wave 1) — Gateway 3-disposition router + credentialSwap + BFF /internal/id-token endpoint
+- [x] 266-02-PLAN.md (Wave 1) — BFF /api/path/{apikey,dualtoken}-info routes + nlIntentParser actions + scrubRawJwts + configStore key
+- [x] 266-03-PLAN.md (Wave 2) — TokenChainContext credentialPath plumbing + TokenChainDisplay/Modal/FloatingPanel path-aware rendering + ActivityLogs GATEWAY_PATH category
+- [x] 266-04-PLAN.md (Wave 2) — ApiKeyPathPage (amber) + AccessIdTokenPathPage (teal) + ResourceServerPage OAUTH BEARER PATH badge + BankingAgent dispatch wiring
 - [ ] 266-05-PLAN.md (Wave 3) — All diagrams + step trackers updated (ArchitectureFlowPage, SequenceDiagramPage, ArchitectureTokenFlowPage, TokenExchangeFlowDiagram, AgentFlowDiagramPanel, UnifiedTokenFlowInspector, NarrativePanel, OidcFlowTimeline) + 4 .mmd sources + regenerated PNGs
 
 ---
