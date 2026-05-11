@@ -33,6 +33,8 @@ import ArchitectureTabsPanel from "./components/ArchitectureTabsPanel";
 import ArchitectureTokenFlowPage from "./components/ArchitectureTokenFlowPage";
 import Phase266ArchitecturePage from "./components/Phase266ArchitecturePage";
 import MortgagePathPage from "./components/MortgagePathPage";
+import ApiKeyPathPage from "./components/ApiKeyPathPage";
+import AccessIdTokenPathPage from "./components/AccessIdTokenPathPage";
 import ApiTrafficPage from "./components/ApiTrafficPage";
 import AuditPage from "./components/AuditPage";
 import BankingAdminOps from "./components/BankingAdminOps";
@@ -1327,6 +1329,26 @@ function AppWithAuth() {
                             element={
                               user ? (
                                 <MortgagePathPage />
+                              ) : (
+                                <Navigate to="/" replace />
+                              )
+                            }
+                          />
+                          <Route
+                            path="/path/apikey-info"
+                            element={
+                              user ? (
+                                <ApiKeyPathPage />
+                              ) : (
+                                <Navigate to="/" replace />
+                              )
+                            }
+                          />
+                          <Route
+                            path="/path/dualtoken-info"
+                            element={
+                              user ? (
+                                <AccessIdTokenPathPage />
                               ) : (
                                 <Navigate to="/" replace />
                               )

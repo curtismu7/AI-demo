@@ -26,6 +26,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **Phase 266 credential-path info pages** — ApiKeyPathPage (amber, /path/apikey-info) and AccessIdTokenPathPage (teal, /path/dualtoken-info) show the gateway's API-key and dual-token credential dispositions with decoded claims, masked key, and Back to Dashboard navigation.
 - **Export / Import tab** — new "Export / Import" tab in `/config` (second after Quick Start, no auth required) with step-by-step export and import instructions and copy buttons. `exportMigrationBundle.js` script produces a portable `.tar.gz` of all persistent data and `.env`.
 - **Subscriptions data** — `sampleSubscriptions` seed data + `DataStore.subscriptions` map wired up in store.js.
 - **Custom Actions** — user-defined quick-action chips; created and managed in Config > Custom Actions tab (Advanced); chips appear in BankingChips heuristic/LLM sections and agent discovery popout; persisted via `useCustomChips` hook (localStorage).

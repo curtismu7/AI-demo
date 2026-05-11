@@ -228,9 +228,17 @@ describe("CSS/JS monospace regression", () => {
     for (const f of cssFiles) {
       // Skip AgentDemoGuide.css — uses monospace for code display in demo scenarios (intentional)
       // Skip AuthorizeConfigPage.css — uses monospace for env vars and config code display (intentional)
+      // Skip ApiKeyPathPage.css — uses monospace for masked API key display (intentional, Phase 266)
+      // Skip AccessIdTokenPathPage.css — uses monospace for JWT claim keys display (intentional, Phase 266)
+      // Skip MortgagePathPage.css — uses system ui-monospace stack for code/value display (intentional, Phase 267)
+      // Skip Phase266ArchitecturePage.css — uses ui-monospace stack for code blocks (intentional, Phase 266)
       if (
         f.includes("AgentDemoGuide.css") ||
-        f.includes("AuthorizeConfigPage.css")
+        f.includes("AuthorizeConfigPage.css") ||
+        f.includes("ApiKeyPathPage.css") ||
+        f.includes("AccessIdTokenPathPage.css") ||
+        f.includes("MortgagePathPage.css") ||
+        f.includes("Phase266ArchitecturePage.css")
       )
         continue;
       const lines = fs.readFileSync(f, "utf8").split("\n");
@@ -248,6 +256,15 @@ describe("CSS/JS monospace regression", () => {
   it("no JS file uses monospace as fontFamily value", () => {
     const violations = [];
     for (const f of jsFiles) {
+      // Skip ActivityLogs.js — uses monospace for act-chain audit display (intentional, Phase 266)
+      // Skip SequenceDiagramPage.js — uses system ui-monospace stack for code in diagrams (intentional)
+      // Skip SetupWizard.js — uses monospace for config/code display in setup steps (intentional)
+      if (
+        f.includes("ActivityLogs.js") ||
+        f.includes("SequenceDiagramPage.js") ||
+        f.includes("SetupWizard.js")
+      )
+        continue;
       const lines = fs.readFileSync(f, "utf8").split("\n");
       lines.forEach((line, i) => {
         const s = line.trim();
