@@ -11,6 +11,14 @@ const HEURISTIC_CHIPS = [
     label: "Transfer $600 from Savings to Checking",
     message: "transfer $600 from my savings account to checking",
   },
+  // Phase 267 — Path A (api-key disposition through banking_mortgage_service).
+  // The NL parser maps this exact phrasing to action: 'mortgage_demo', which
+  // BankingAgent dispatches → callMcpTool('show_mortgage') → /path/mortgage.
+  {
+    id: "mortgage",
+    label: "Show Mortgage Data",
+    message: "show mortgage data",
+  },
 ];
 
 const LLM_CHIPS = {
@@ -122,6 +130,31 @@ const LLM_CHIPS = {
       id: "recommendations",
       label: "Recommendations",
       message: "How can I reduce spending?",
+    },
+  ],
+  // Phase 267 — Path A demo (api-key disposition via banking_mortgage_service).
+  // These prompts route to action: 'mortgage_demo' through either the heuristic
+  // parser (preferred — zero LLM latency) or the Gemini/Helix fallback.
+  "Mortgage (Path A — API-Key)": [
+    {
+      id: "mortgage_data",
+      label: "Show Mortgage Data",
+      message: "show mortgage data",
+    },
+    {
+      id: "mortgage_my",
+      label: "My Mortgage",
+      message: "show my mortgage",
+    },
+    {
+      id: "mortgage_home_loan",
+      label: "Home Loan Balance",
+      message: "what's my home loan balance",
+    },
+    {
+      id: "mortgage_details",
+      label: "Mortgage Details",
+      message: "show mortgage details",
     },
   ],
 };

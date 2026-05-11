@@ -27,6 +27,7 @@ Return ONLY a JSON object (no markdown) with one of:
 {"kind":"banking","banking":{"action":"deposit","params":{"toId":"checking","amount":100}}}
 {"kind":"banking","banking":{"action":"biggest_purchase","params":{}}}
 {"kind":"banking","banking":{"action":"spending_summary","params":{}}}
+{"kind":"banking","banking":{"action":"mortgage_demo","params":{}}}
 {"kind":"none","message":"short hint"}
 
 Pipes in examples (accounts|balance) mean "pick one action" — never output pipe characters or the word "optional" as a field value.
@@ -34,12 +35,15 @@ For "check my balance" / "my account balance" use {"action":"balance","params":{
 For transfer/deposit/withdraw: always extract amount as a number and account types as "checking" or "savings" (never use account IDs or numbers).
 Use biggest_purchase for: "biggest purchase", "largest transaction", "most expensive", "highest spend", "what did I spend the most on".
 Use spending_summary for: "spending summary", "how much did I spend", "total spending", "breakdown of spending", "where is my money going".
+Use mortgage_demo for: "show mortgage data", "show my mortgage", "mortgage", "home loan", "mortgage balance", "mortgage details", "home loan balance", "mortgage payment", "my home loan". This is the Phase 267 Path A demo (api-key disposition through banking_mortgage_service). ALWAYS return params:{} — the route exposes a single fixed record; do not invent loan IDs or amounts.
 Examples:
   "transfer 400 from checking to savings" → {"kind":"banking","banking":{"action":"transfer","params":{"fromId":"checking","toId":"savings","amount":400}}}
   "deposit 100 into savings" → {"kind":"banking","banking":{"action":"deposit","params":{"toId":"savings","amount":100}}}
   "withdraw 50 from checking" → {"kind":"banking","banking":{"action":"withdraw","params":{"fromId":"checking","amount":50}}}
   "what's my biggest purchase" → {"kind":"banking","banking":{"action":"biggest_purchase","params":{}}}
   "show me a spending summary" → {"kind":"banking","banking":{"action":"spending_summary","params":{}}}
+  "show mortgage data" → {"kind":"banking","banking":{"action":"mortgage_demo","params":{}}}
+  "what's my home loan balance" → {"kind":"banking","banking":{"action":"mortgage_demo","params":{}}}
   "search for PingOne token exchange" → {"kind":"banking","banking":{"action":"web_search","query":"PingOne token exchange"}}
   "find information about RFC 8693" → {"kind":"banking","banking":{"action":"web_search","query":"RFC 8693"}}
 
