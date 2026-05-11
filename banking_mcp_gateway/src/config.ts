@@ -32,6 +32,18 @@ export interface GatewayConfig {
   introspectionEndpoint: string;
   // Dev/mock bypass — when true, skip required-var guards and make auth pipeline passthrough.
   devBypass: boolean;
+  // Phase 266: Path A — service API key for the api_key credential disposition (demo only)
+  demoApiKeyServiceKey: string;
+  // Phase 266: Path B — BFF-internal id_token retrieval endpoint (server-to-server)
+  bffInternalIdTokenUrl: string;
+  // Phase 266: shared secret for BFF /internal/id-token requests
+  bffInternalSecret: string;
+  // Phase 266: base URL of banking_resource_server (e.g. http://localhost:3001)
+  bankingResourceServerBaseUrl: string;
+  // Phase 266: OAuth audience for banking_resource_server — MUST match BANKING_API_RESOURCE_URI
+  // on the backend; used as the `audience` parameter in RFC 8693 token exchange.
+  // Per RFC 8707 + RFC 9068: audience values are logical URIs, not network addresses.
+  bankingResourceServerResourceUri: string;
 }
 
 const DEV_BYPASS = process.env.MCP_GW_DEV_BYPASS === 'true';
@@ -91,5 +103,11 @@ export function loadConfig(): GatewayConfig {
     introspectionEndpoint: optional('GW_INTROSPECTION_ENDPOINT',
       optional('PINGONE_INTROSPECTION_ENDPOINT', '')),
     devBypass: DEV_BYPASS,
+    // Phase 266 fields
+    demoApiKeyServiceKey: optional('DEMO_APIKEY_SERVICE_KEY', 'demo-api-key-0000'),
+    bffInternalIdTokenUrl: optional('BFF_INTERNAL_ID_TOKEN_URL', 'http://localhost:3001/internal/id-token'),
+    bffInternalSecret: optional('BFF_INTERNAL_SECRET', 'dev-shared-secret-change-me'),
+    bankingResourceServerBaseUrl: optional('BANKING_RESOURCE_SERVER_BASE_URL', 'http://localhost:3001'),
+    bankingResourceServerResourceUri: optional('BANKING_RESOURCE_SERVER_RESOURCE_URI', 'https://banking-resource-server.bxf.com'),
   };
 }
