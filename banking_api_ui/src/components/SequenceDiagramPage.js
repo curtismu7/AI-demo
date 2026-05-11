@@ -2620,6 +2620,160 @@ const SCENARIOS = {
   "data-return": ALL_STEPS.filter(
     (s) => s.step && s.step >= 36 && s.step <= 47,
   ),
+
+  // Phase 266 R2: 3 credential-path scenarios (gateway divergence branches)
+  "api-key-path": [
+    {
+      type: "note",
+      participants: ["U", "CB"],
+      text: "API-KEY PATH: no backend call\nGateway-terminating credential swap",
+      description: "Path A: the gateway swaps the OAuth bearer for a service API key and terminates — no backend is called.",
+      why: "Demonstrates credential swap pattern: user token never reaches the backend; only the API key is forwarded.",
+    },
+    {
+      type: "arrow",
+      from: "U",
+      to: "CB",
+      label: "User: 'show special offers'",
+      description: "User triggers the api_key demo prompt via natural language.",
+      token: { type: "NL prompt", credentialPath: "api_key", tool: "special_offers" },
+    },
+    {
+      type: "arrow",
+      from: "CB",
+      to: "AG",
+      label: "tools/call special_offers (OAuth bearer)",
+      description: "Agent forwards the tool call to the MCP gateway with the user OAuth bearer.",
+      token: { type: "OAuth Bearer (inbound)", credentialPath: "oauth_bearer" },
+    },
+    {
+      type: "note",
+      participants: ["AG"],
+      text: "API-KEY PATH: no backend call\nGateway swaps bearer for X-API-Key\ncredentialPath = api_key",
+      description: "The gateway recognizes special_offers as an api_key-disposition tool. The OAuth bearer is dropped; X-API-Key is injected. No RFC 8693 exchange on this path.",
+      why: "API-KEY PATH distinguishes this from oauth_bearer (RFC 8693 exchange) and dual_token (id_token forward).",
+    },
+    {
+      type: "arrow",
+      from: "AG",
+      to: "CB",
+      label: "Marker response: credentialPath=api_key",
+      description: "Gateway returns a marker response. The SPA routes to /path/apikey-info.",
+      token: { type: "Marker response", credentialPath: "api_key", destination: "/path/apikey-info" },
+    },
+  ],
+
+  "dual-token-path": [
+    {
+      type: "note",
+      participants: ["U", "CB"],
+      text: "DUAL-TOKEN PATH: /api/resource-server/identity\nbearer validated + id_token decoded server-side",
+      description: "Path B: gateway forwards the OAuth bearer AND id_token to banking_resource_server /identity.",
+      why: "Demonstrates dual-credential forwarding: access token proves authorization; id_token provides identity claims. Both decoded server-side — no raw JWT crosses any boundary.",
+    },
+    {
+      type: "arrow",
+      from: "U",
+      to: "CB",
+      label: "User: 'show my profile card'",
+      description: "User triggers the dual_token demo prompt.",
+      token: { type: "NL prompt", credentialPath: "dual_token", tool: "user_profile_card" },
+    },
+    {
+      type: "arrow",
+      from: "CB",
+      to: "AG",
+      label: "tools/call user_profile_card (OAuth bearer)",
+      description: "Agent forwards tool call with user OAuth bearer (inbound).",
+      token: { type: "OAuth Bearer (inbound)", credentialPath: "oauth_bearer" },
+    },
+    {
+      type: "note",
+      participants: ["AG"],
+      text: "DUAL-TOKEN PATH: /api/resource-server/identity\nGateway fetches id_token from BFF session\nForwards: bearer (Authorization header) + id_token (params.idToken body)",
+      description: "Gateway performs a server-to-server call to BFF /internal/id-token to retrieve the id_token, then POSTs both to banking_resource_server /identity in a JSON-RPC envelope.",
+      why: "id_token lives only in the BFF session (OIDC Core §3.1.3.7). The SPA never sees the raw JWT.",
+    },
+    {
+      type: "arrow",
+      from: "AG",
+      to: "RS",
+      label: "POST /api/resource-server/identity (Bearer + id_token)",
+      description: "Gateway sends JSON-RPC envelope to banking_resource_server /identity. Bearer in Authorization header; id_token in params.idToken.",
+      token: { type: "Bearer + id_token", credentialPath: "dual_token", route: "/api/resource-server/identity" },
+    },
+    {
+      type: "note",
+      participants: ["RS"],
+      text: "banking_resource_server validates bearer (RFC 6750)\ndecodes id_token server-side (OIDC Core)\nreturns claims only — no raw JWT",
+      description: "authenticateToken middleware validates the access token signature/exp/aud. id_token sub is verified against bearer sub. Claims decoded server-side via decodeJwtClaims. scrubRawJwts walker applied before response.",
+      why: "Token custody rule: raw JWTs never cross the server boundary. Only sanitized claims are returned.",
+    },
+    {
+      type: "arrow",
+      from: "RS",
+      to: "CB",
+      label: "200 OK: accessTokenClaims + idTokenClaims",
+      description: "banking_resource_server returns decoded claims only. SPA routes to /path/dualtoken-info.",
+      token: { type: "Claims response (identity)", credentialPath: "dual_token", destination: "/path/dualtoken-info" },
+    },
+  ],
+
+  "oauth-bearer-path": [
+    {
+      type: "note",
+      participants: ["U", "CB"],
+      text: "OAUTH BEARER PATH: /api/resource-server/accounts | /transactions\nRFC 8693 exchange + SQLite-backed banking data",
+      description: "Path C: gateway performs RFC 8693 token exchange, then forwards the backend-scoped bearer to banking_resource_server /accounts or /transactions.",
+      why: "Demonstrates the standard OAuth 2.0 resource-server pattern: RFC 8693 narrows audience to banking_resource_server; bank data served from SQLite seeded at boot.",
+    },
+    {
+      type: "arrow",
+      from: "U",
+      to: "CB",
+      label: "User: 'show my accounts'",
+      description: "User triggers the oauth_bearer banking-data prompt.",
+      token: { type: "NL prompt", credentialPath: "oauth_bearer", tool: "demo_show_accounts" },
+    },
+    {
+      type: "arrow",
+      from: "CB",
+      to: "AG",
+      label: "tools/call demo_show_accounts (OAuth bearer)",
+      description: "Agent forwards tool call with user OAuth bearer.",
+      token: { type: "OAuth Bearer (inbound)", credentialPath: "oauth_bearer" },
+    },
+    {
+      type: "note",
+      participants: ["AG", "PID"],
+      text: "OAUTH BEARER PATH: RFC 8693 token exchange\naud narrowed to banking_resource_server (RFC 8707)\nact chain preserved",
+      description: "RFC 8693 token exchange: subject_token = user bearer; audience = banking_resource_server resource URI (RFC 8707). Resulting token has aud=banking_resource_server and act claim for audit trail.",
+      why: "RFC 8693 §3: the inbound user bearer (aud=AI-agent-resource) is rejected by the RS per RFC 6750/8707. Exchange is mandatory.",
+    },
+    {
+      type: "arrow",
+      from: "AG",
+      to: "RS",
+      label: "GET /api/resource-server/accounts (exchanged Bearer)",
+      description: "Gateway forwards the backend-scoped bearer to banking_resource_server /accounts (or /transactions).",
+      token: { type: "Exchanged Bearer", credentialPath: "oauth_bearer", route: "/api/resource-server/accounts", aud: "banking_resource_server" },
+    },
+    {
+      type: "note",
+      participants: ["RS"],
+      text: "banking_resource_server validates bearer (RFC 6750)\nqueries banking-resource-server.db (SQLite)\nreturns accounts/transactions",
+      description: "authenticateToken validates the exchanged bearer. bankingDb.getAccountsByUserId queries the SQLite file seeded from data/store.js at first BFF boot.",
+      why: "SQLite persistence: bank data survives BFF restarts; idempotent seed from in-memory store on first boot.",
+    },
+    {
+      type: "arrow",
+      from: "RS",
+      to: "CB",
+      label: "200 OK: accounts (SQLite-backed)",
+      description: "banking_resource_server returns accounts or transactions. ResourceServerPage renders with OAUTH BEARER PATH badge.",
+      token: { type: "Banking data response", credentialPath: "oauth_bearer", data_source: "banking-resource-server.db" },
+    },
+  ],
 };
 
 // ─── Main Component ────────────────────────────────────────────────────────
@@ -2828,6 +2982,9 @@ export default function SequenceDiagramPage() {
             <option value="token-exchanges">RFC 8693 Exchanges</option>
             <option value="full-auth">Full Auth (tools/call + PA)</option>
             <option value="data-return">Data Return (RS → Results)</option>
+            <option value="api-key-path">API-Key Path (Path A)</option>
+            <option value="dual-token-path">Dual-Token Path (Path B)</option>
+            <option value="oauth-bearer-path">OAuth Bearer Path (Path C)</option>
           </select>
         </div>
         <div

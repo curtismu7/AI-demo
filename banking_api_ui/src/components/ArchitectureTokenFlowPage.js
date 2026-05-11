@@ -440,6 +440,86 @@ const SCENARIO_STEPS_TF = {
         note: 'Graceful degradation: surface clear message, request scope upgrade, never silent-fail' },
     },
   ],
+
+  // ─── Phase 266 R2: 3 credential-path scenarios ──────────────────────────────
+
+  'api-key-path': [
+    {
+      regionIds: ['chatbot', 'agent1'], colorClass: 'active', label: 'API-KEY PATH: user bearer arrives at gateway',
+      token: { type: 'OAuth Bearer (inbound)', _type: 'oauth', _rfcs: ['RFC 6750'],
+        credentialPath: 'oauth_bearer (inbound)', tool: 'special_offers',
+        note: 'Gateway receives bearer — will swap for api_key disposition. No RFC 8693 exchange on this path.' },
+    },
+    {
+      regionIds: ['mcp-gateway-tf'], colorClass: 'active-permit', label: 'API-KEY PATH: no backend call — gateway-terminating swap',
+      token: { type: 'API Key Swap', _type: 'mcp',
+        credentialPath: 'api_key', swap: 'OAuth bearer dropped; X-API-Key attached',
+        terminus: 'Gateway-terminating — no backend call in Phase 266',
+        note: 'The service API key (last4: ****) is injected. The user bearer is NOT forwarded to any backend.' },
+    },
+    {
+      regionIds: ['chatbot'], colorClass: 'active', label: 'API-KEY PATH: SPA routed to /path/apikey-info',
+      token: { type: 'SPA route', _type: 'mcp',
+        credentialPath: 'api_key', destination: '/path/apikey-info',
+        note: 'Amber info page: shows masked API key last-4 + credential-swap explanation.' },
+    },
+  ],
+
+  'dual-token-path': [
+    {
+      regionIds: ['chatbot', 'agent1'], colorClass: 'active', label: 'DUAL-TOKEN PATH: user bearer arrives at gateway',
+      token: { type: 'OAuth Bearer (inbound)', _type: 'oauth', _rfcs: ['RFC 6750'],
+        credentialPath: 'oauth_bearer (inbound)', tool: 'user_profile_card',
+        note: 'Gateway receives bearer — will fetch id_token from BFF session and forward BOTH.' },
+    },
+    {
+      regionIds: ['mcp-gateway-tf'], colorClass: 'active', label: 'DUAL-TOKEN PATH: /api/resource-server/identity',
+      token: { type: 'Bearer + id_token forward', _type: 'oauth', _rfcs: ['RFC 6750', 'OIDC Core'],
+        credentialPath: 'dual_token', route: '/api/resource-server/identity',
+        id_token_source: 'BFF session (req.session.oauthTokens.idToken)',
+        note: 'Gateway POSTs JSON-RPC envelope: bearer in Authorization header, id_token in params.idToken.' },
+    },
+    {
+      regionIds: ['oauth-rs'], colorClass: 'active-permit', label: 'DUAL-TOKEN PATH: banking_resource_server validates + decodes',
+      token: { type: 'Claims Response (identity)', _type: 'oauth', _rfcs: ['RFC 6750', 'OIDC Core'],
+        credentialPath: 'dual_token', route: '/identity',
+        bearer_validated: 'authenticateToken middleware (signature/exp/aud)',
+        id_token_decoded: 'server-side only — claims only returned, no raw JWT',
+        note: 'banking_resource_server returns sanitized claims. No raw JWT crosses any boundary.' },
+    },
+    {
+      regionIds: ['chatbot'], colorClass: 'active', label: 'DUAL-TOKEN PATH: SPA routed to /path/dualtoken-info',
+      token: { type: 'SPA route', _type: 'mcp',
+        credentialPath: 'dual_token', destination: '/path/dualtoken-info',
+        note: 'Teal info page: access-token + id-token claims rendered side-by-side.' },
+    },
+  ],
+
+  'oauth-bearer-path': [
+    {
+      regionIds: ['chatbot', 'agent1'], colorClass: 'active', label: 'OAUTH BEARER PATH: user bearer arrives at gateway',
+      token: { type: 'OAuth Bearer (inbound)', _type: 'oauth', _rfcs: ['RFC 6750'],
+        credentialPath: 'oauth_bearer', tool: 'demo_show_accounts',
+        note: 'Standard bearer token — gateway will exchange via RFC 8693 before forwarding.' },
+    },
+    {
+      regionIds: ['mcp-gateway-tf', 'pingone-aic'], colorClass: 'active', label: 'OAUTH BEARER PATH: RFC 8693 exchange → backend-scoped bearer',
+      isTokenExchange: true,
+      token: { type: 'RFC 8693 Exchange (subject)', _type: 'exchange', _rfcs: ['RFC 8693', 'RFC 8707'],
+        credentialPath: 'oauth_bearer',
+        note: 'Gateway exchanges user bearer for a new bearer scoped to banking_resource_server.' },
+      tokenOut: { type: 'Backend-scoped Bearer', _type: 'oauth', _rfcs: ['RFC 8693'],
+        aud: 'banking_resource_server', credentialPath: 'oauth_bearer',
+        note: 'New aud matches banking_resource_server resource URI (RFC 8707 audience binding).' },
+    },
+    {
+      regionIds: ['oauth-rs'], colorClass: 'active-permit', label: 'OAUTH BEARER PATH: /accounts or /transactions (SQLite-backed)',
+      token: { type: 'Banking Data Response', _type: 'oauth', _rfcs: ['RFC 6750'],
+        credentialPath: 'oauth_bearer', route: '/api/resource-server/accounts',
+        data_source: 'banking-resource-server.db (SQLite, seeded from data/store.js)',
+        note: 'authenticateToken validates bearer; bankingDb.getAccountsByUserId queries SQLite.' },
+    },
+  ],
 };
 
 const HIGHLIGHT_MS  = 4000;
@@ -711,6 +791,9 @@ export default function ArchitectureTokenFlowPage({ user }) {
         <option value="get-accounts">Get Accounts (Read Scope)</option>
         <option value="withdrawal">Withdrawal + HITL</option>
         <option value="bad-scope">Bad Scope (401 / 403)</option>
+        <option value="api-key-path">API-Key Path (Path A)</option>
+        <option value="dual-token-path">Dual-Token Path (Path B)</option>
+        <option value="oauth-bearer-path">OAuth Bearer Path (Path C)</option>
       </select>
     </div>
   );

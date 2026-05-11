@@ -138,6 +138,41 @@ export default function TokenExchangeFlowDiagram({ mode = 'single', className = 
         )}
         <button className="tefd-btn tefd-btn--secondary" onClick={() => openEducation('mcp-protocol')}>MCP Protocol</button>
       </div>
+
+      {/* Phase 266 R2: Gateway credential-disposition branches */}
+      <div
+        className="tefd-path-branches"
+        style={{
+          marginTop: 12,
+          padding: '10px 14px',
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: 8,
+          fontSize: '0.74rem',
+          color: '#334155',
+        }}
+      >
+        <div style={{ fontWeight: 700, marginBottom: 6, fontSize: '0.76rem', color: '#1e293b' }}>
+          Gateway credential dispositions (Phase 266)
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ fontWeight: 700, color: '#ca8a04', minWidth: 120 }}>API-KEY PATH (A):</span>
+            <span>Swap — X-API-Key (last4: ****) — terminates at Gateway (no backend call)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ fontWeight: 700, color: '#0d9488', minWidth: 120 }}>DUAL-TOKEN (B):</span>
+            <span>Forward — Bearer + id_token — banking_resource_server /identity (RFC 8693 annotated)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ fontWeight: 700, color: '#004687', minWidth: 120 }}>OAUTH BEARER (C):</span>
+            <span>RFC 8693 exchange — Bearer (new aud) — banking_resource_server /accounts /transactions</span>
+          </div>
+        </div>
+        <div style={{ marginTop: 6, color: '#64748b', fontStyle: 'italic' }}>
+          Paths B and C both reach the same banking_resource_server backend at different routes.
+        </div>
+      </div>
     </div>
   );
 }
