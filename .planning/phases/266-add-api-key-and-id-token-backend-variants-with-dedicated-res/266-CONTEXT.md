@@ -28,11 +28,12 @@ The three paths terminate as follows:
    - SPA routes the response to a new info page with amber visual identity, "API-KEY PATH" badge, masked API-key string (last 4 chars), explanation text, and a "Back to Dashboard" button.
 
 2. **Path B — Access-Token + ID-Token path (banking_resource_server, identity route):**
-   - Gateway forwards the bearer (Authorization header) AND attaches the `id_token` to the request payload (NOT as an HTTP header — JSON-RPC params per RESEARCH.md §Pitfall 2 / Upstash header-size limit).
+   - Gateway forwards ONLY the bearer (Authorization header). The id_token is NOT sent on the wire (B1 fix — GET-with-body unreliable across HTTP clients/proxies). The gateway still fetches the id_token via the internal BFF endpoint to populate its synthesized Token Chain narrative (proves possession at the swap point), but does not forward it.
    - Request reaches a new route on `banking_resource_server`: `GET /api/resource-server/identity`.
    - The route is protected by the existing `authenticateToken` middleware — the access token is validated (signature/exp/aud).
-   - On valid access token: the route decodes the access token AND the id_token server-side, returns CLAIMS ONLY (no raw JWTs). Includes `scrubRawJwts` walker as defense-in-depth.
+   - On valid access token: the route reads `req.session.oauthTokens.idToken` (canonical server-side source, set at `oauthUser.js:471`), decodes the access token AND the id_token server-side, and returns CLAIMS ONLY (no raw JWTs). Includes `scrubRawJwts` walker as defense-in-depth.
    - On invalid/missing access token: 401, no data returned.
+   - On missing id_token in session (login without openid scope): 412 with `error: 'id_token_missing'` and a user-facing message asking the user to sign in again.
    - SPA routes the response to a new info page with teal visual identity, "ACCESS + ID-TOKEN PATH" badge, decoded access-token claims AND decoded id-token claims rendered side-by-side, and a "Back to Dashboard" button. **No banking data is shown on this page** — identity only.
 
 3. **Path C — Bearer / OAuth resource-server path (banking_resource_server, banking-data route):**
@@ -111,7 +112,7 @@ The existing `/api/resource-server/summary` route currently returns a mixed payl
 - Each path's chain segment renders with the matching path colour (blue/amber/teal) so the user sees three visually distinct token chains as they exercise the three demo prompts.
 
 ### Diagrams (MANDATORY)
-- `/architecture/flow` (`ArchitectureFlowPage.js`) — flip the aspirational `api-key-backend` node to live; add a sibling `id-token-backend` node; add simulation scenarios for all three paths.
+- `/architecture/flow` (`ArchitectureFlowPage.js`) — KEEP `api-key-backend` as `aspirational: true` (Path A is Gateway-terminating in this phase; no real 3rd-party API service is wired — see W4 in §Deferred Ideas). Replace the previously-aspirational `id-token-backend` node with a LIVE `banking-resource-server` node (handles Path B `/identity` AND Path C `/accounts`/`/transactions`) plus a sibling `sqlite-banking-db` cylinder node. Add simulation scenarios for all three paths.
 - `/sequence-diagram` (`SequenceDiagramPage.js`) — add divergent steps for each of the three paths, clearly labelled.
 - `/architecture` page — review for any tracker/step diagrams that reference the OAuth path; add the new paths.
 - `ArchitectureTokenFlowPage.js` — add the new path branches.
@@ -159,7 +160,7 @@ The existing `/api/resource-server/summary` route currently returns a mixed payl
 - `banking_api_ui/src/context/TokenChainContext.js` — Token Chain context; add `credentialPath` field
 - `banking_api_ui/src/components/TokenChainDisplay.js` — Token Chain UI; add visual differentiation per path
 - `banking_api_ui/src/components/ResourceServerPage.jsx` — Existing Path C result page; minimal touch to add the "OAUTH BEARER PATH" badge. Continues using `/api/resource-server/summary` in this phase.
-- `banking_api_ui/src/components/ArchitectureFlowPage.js:150` — Where the aspirational `api-key-backend` node lives; flip `aspirational:true` to `false` and add sibling `id-token-backend` node
+- `banking_api_ui/src/components/ArchitectureFlowPage.js:150` — Where the aspirational `api-key-backend` node lives. Per W4 (see §Deferred Ideas) this node STAYS `aspirational: true`. Add a NEW live `banking-resource-server` node + `sqlite-banking-db` cylinder node alongside it, with edges representing Paths B (`/identity`) and C (`/accounts`+`/transactions`).
 - `banking_api_ui/src/components/SequenceDiagramPage.js` — Sequence diagram source; add the three-path branches
 - `banking_api_ui/src/components/ArchitectureTokenFlowPage.js` — Token-flow diagram; add the three paths
 
