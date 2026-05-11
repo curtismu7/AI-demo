@@ -56,6 +56,7 @@ The existing `/api/resource-server/summary` route currently returns a mixed payl
 ## Implementation Decisions
 
 ### Architecture
+- **Gateway role = traffic cop.** `banking_mcp_gateway` is the single point that (a) routes inbound tool calls to the correct disposition based on tool name, (b) handles credential transformation per disposition (RFC 8693 exchange, API-key swap, dual-token attach), (c) labels every response with `_meta.credentialPath` + `_meta.tokenEvents` so the SPA can render the right surface, and (d) is the SOLE caller of `banking_resource_server` for paths B and C in the demo. The gateway never makes a credential decision invisible to the audit chain — every swap/attach/exchange is recorded in tokenEvents AND logged to ActivityLogs INTROSPECTION-category events. The SPA does not bypass the gateway for Path B or C dispatches; bypassing it would break the demo narrative and skip the audit trail.
 - **No new Node services / no new ports.** Reject any plan that scaffolds `banking_demo_apikey_backend/`, `banking_demo_userinfo_backend/`, or any new directory with its own `package.json`/`server.js`. The original planner draft did this; it is wrong.
 - **Logical resource server name:** `banking_resource_server`. Implementation: extension of `banking_api_server/routes/resourceServer.js` (same Node process, same port 3001, same `authenticateToken` middleware mounted at `/api/resource-server/*` in `server.js:846`).
 - **Three terminating paths:**
@@ -154,6 +155,33 @@ This phase implements a multi-hop OAuth flow that MUST follow established specs.
 - API key string is returned MASKED to the SPA (last 4 chars visible). The full key never reaches the browser.
 - All BFF calls from the SPA continue to use `bffAxios` (cookie-based).
 
+### Startup + runtime logging (R4 — operator visibility)
+
+Phase 266 does NOT introduce new Node services, so `run-bank.sh` does NOT need new `LOG_*` files — the new code writes to existing logs:
+
+- `LOG_API=/tmp/bank-api-server.log` — banking_api_server (includes new `/identity`, `/accounts`, `/transactions` route handlers + `bankingDb.js` seed events + INTROSPECTION-category audit logs)
+- `LOG_GW=/tmp/bank-mcp-gateway.log` — banking_mcp_gateway (includes new dispatch dispositions + RFC 8693 exchange calls + tokenEvents synthesis)
+
+**Logging convention (MANDATORY):** every new log statement Phase 266 introduces MUST use a grep-able tag prefix so an operator can filter by phase or by path:
+
+| Component | Log tag prefix | Example |
+|---|---|---|
+| `bankingDb.js` (init/seed) | `[bankingDb]` | `[bankingDb] Seeded banking-resource-server.db from data/store.js` |
+| `routes/resourceServer.js` new handlers | `[resource-server]` (existing prefix) + path | `[resource-server][/identity] act-chain logged: sub=alice client_id=gw-client` |
+| `routes/pathInfo.js` | `[pathInfo]` | `[pathInfo] apikey-info served (last4=XXXX)` |
+| `routes/agentIdToken.js` | `[agentIdToken]` | `[agentIdToken] 403 — secret mismatch` |
+| `banking_mcp_gateway/src/index.ts` dispatch | `[gw]` (existing prefix) + disposition | `[gw][dual_token] RFC 8693 exchange ok, posting to /identity` |
+| `credentialSwap.ts` | `[credentialSwap]` | `[credentialSwap] selectCredentialForBackend(target=apikey)` |
+
+**Developer hint** (add to Plan 02 + Plan 01 SUMMARY templates): operators can filter Phase 266 activity with:
+```bash
+tail -f /tmp/bank-api-server.log /tmp/bank-mcp-gateway.log | grep -E "\[bankingDb\]|\[resource-server\]\[/identity\]|\[gw\]\[(api_key|dual_token|oauth_bearer)\]|\[credentialSwap\]|\[pathInfo\]|\[agentIdToken\]"
+```
+
+**Activity Log surfacing:** every act-chain audit event (Plan 02's `INTROSPECTION` `identity_call` payload) ALSO appears in the ActivityLogs UI panel, NOT just in the log file. The file log is for operators; the UI panel is for the demo audience.
+
+**run-bank.sh:** no edits required — the existing 11-log allow-list covers Phase 266. If the future scope reintroduces new Node services (currently rejected per CONTEXT.md §Architecture), `run-bank.sh` would need: (a) a new `LOG_<svc>` var, (b) entry in the `_logf` pre-create loop (line ~94), (c) entry in `tail_bank_logs()` switch, (d) entry in `service_status_line` (line ~382), (e) port in port-sweep loop (line ~318+). Phase 266 doesn't trigger any of these.
+
 ### Claude's Discretion
 - Exact React component organization (single component file per page vs. shared base + variants). Researcher recommended separate `ApiKeyResultPage.jsx` and `UserInfoResultPage.jsx` (now better named `AccessIdTokenResultPage.jsx`). Use whichever clean naming aligns with existing `ResourceServerPage.jsx`.
 - Exact API key storage: configStore vs. env var fallback. Default to configStore with env fallback per existing pattern in `configStore.getEffective`.
@@ -220,7 +248,12 @@ This phase implements a multi-hop OAuth flow that MUST follow established specs.
 - Schema migrations for `banking-resource-server.db` — the schema is created once on first boot. A migration strategy can be added in a later phase if the schema needs to evolve.
 - **H3 known limitation — write-drift between in-memory store and SQLite:** the new `/api/resource-server/accounts` and `/api/resource-server/transactions` routes (Path C) read from `banking-resource-server.db`. The existing write paths (`accounts.js`, `transactions.js`, `oauthUser.js`, `transactionConsentChallenge.js`, `demoScenario.js`, etc.) continue to write to the in-memory `data/store.js` — those writes do NOT propagate to `banking-resource-server.db`. Result: the new routes return a frozen first-boot snapshot. The existing `/summary` route still reads from `data/store.js`, so `ResourceServerPage.jsx` (which uses `/summary`) sees live writes; only the NEW routes see stale data. **For the Phase 266 demo this is acceptable** — the demo narrative is "show that the gateway CAN reach SQLite-backed routes," not "Path C is the canonical data path." If a future phase migrates writes through `bankingDb.js`, both routes will see live data and `/summary` can be deprecated. Out of scope for this phase. **Recovery if drift becomes confusing during demo:** delete `banking_api_server/data/persistent/banking-resource-server.db` and restart BFF — the idempotent seed reseeds from current `data/store.js` state.
 - LangChain agent (port 8888) integration — heuristic-only NL routing for Phase 266; LangChain deferred.
-- Token introspection via PingOne `/as/introspect` — out of scope. `authenticateToken` does JWKS-based local validation, which is what the rest of the BFF uses.
+- Token introspection via PingOne `/as/introspect` — out of scope by default. `authenticateToken` does JWKS-based local validation, which is what the rest of the BFF uses. Phase 266 makes RFC 7662 introspection AVAILABLE on the new routes via the existing `ff_introspection_required` flag (Phase 235 wiring); enabling it for production is a separate decision.
+- **OIDC Core §3.1.3.7 — full id_token signature/iss/exp verification:** Phase 266's `/identity` route decodes the id_token's claims (via `decodeJwtClaims`) and verifies its `sub` matches the access_token's `sub` (integrity check). It does NOT cryptographically verify the id_token's signature, `iss`, or `exp` independently. The access-token verification by `authenticateToken` upstream provides indirect protection (the gateway can only get a valid id_token from the BFF session, which was populated by the OIDC login flow that DID verify the id_token at issuance). For a demo this is acceptable; production deployment SHOULD add full id_token validation per OIDC Core §3.1.3.7. Documented as future-work — out of scope for Phase 266.
+- **RFC 9728 — banking_resource_server doesn't publish Protected Resource Metadata.** The gateway publishes `/.well-known/oauth-protected-resource` at `banking_mcp_gateway/src/index.ts:43`, but `banking_resource_server` (the BFF /api/resource-server/* mount) does not. The audience is configured via `BANKING_API_RESOURCE_URI` env var on the RS side and `BANKING_RESOURCE_SERVER_RESOURCE_URI` env var on the gateway side; they must match. In a multi-tenant production deployment, the RS would publish its own metadata doc so clients (including the gateway) could discover the audience dynamically. Adding this is a small future-work item (one route handler + JSON template at `routes/wellKnown.js` or similar).
+- **WWW-Authenticate header on 401 (RFC 6750 §3.1):** existing `authenticateToken` middleware returns 401 but does not always populate the `WWW-Authenticate: Bearer realm=..., error=..., error_description=...` header. Not a Phase 266 regression — pre-existing. Future hardening item.
+- **G1 — AI best-practice over-scoping on dual_token exchange.** The existing `exchangeTokenForBackend` does NOT pass an explicit `scope` parameter to PingOne; it relies on whatever scopes the actor token (gateway client creds) permits — currently `MCP_TOKEN_EXCHANGE_SCOPES=banking:read banking:write banking:mcp:invoke` (CLAUDE.md). Path B (dual_token) is identity-only and should ideally request narrower scopes (e.g., `openid profile email`). Phase 266 inherits the existing over-scoping for simplicity; principle-of-least-privilege fix would extend `exchangeTokenForBackend` to accept an optional `scope` parameter and call it as `exchangeTokenForBackend(subject, aud, config, { scope: 'openid profile email' })` on the dual_token path. Out of scope for Phase 266 — flagged for follow-up.
+- **G2 — Audit log PII scope.** Plan 02's INTROSPECTION-category audit event captures `{sub, aud, act, may_act, idTokenSource, route}` ONLY. Explicitly NOT captured: `name`, `email`, `given_name`, `family_name`, `preferred_username`, `picture`, or any other identifying claim from either the access_token or id_token. The `sub` (stable UUID) and `aud` (resource URI) are sufficient to reconstruct the call's authorization context without leaking PII into the operator log file. Test 5d MUST assert: `expect(logCall.payload).not.toHaveProperty('email')` (and similar for the other PII claim names) — this is a regression-guard that prevents a future bug from leaking PII via the audit channel.
 
 </deferred>
 
