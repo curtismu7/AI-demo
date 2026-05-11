@@ -148,6 +148,10 @@ const INITIAL_NODES = [
   // backend never sees a user token. Drawn dashed via aspirational:true to
   // signal "reference architecture, not live yet."
   { id: 'api-key-backend', type: 'arch', position: { x: 840, y: 260 }, data: { label: '3rd-party API',  label2: 'X-API-Key',  icon: '🔑',  colorClass: '', aspirational: true } },
+  // Phase 266 R2: banking_resource_server (live) — handles Path B (/identity) and Path C (/accounts /transactions).
+  // Both paths B and C terminate here; Path C reads from SQLite.
+  { id: 'banking-resource-server', type: 'arch', position: { x: 840, y: 360 }, data: { label: 'banking_resource_server', label2: '/identity · /accounts · /transactions', icon: null, colorClass: '', aspirational: false } },
+  { id: 'sqlite-banking-db', type: 'arch', position: { x: 1040, y: 360 }, data: { label: 'SQLite', label2: 'banking-resource-server.db', icon: null, colorClass: '', aspirational: false, shape: 'cylinder' } },
   { id: 'hitl',         type: 'arch', position: { x: 140, y: 310 }, data: { label: 'HITL',         label2: 'Manual Approval',  icon: '🧑‍⚖️', colorClass: '' } },
 ];
 
@@ -175,6 +179,16 @@ const INITIAL_EDGES = [
   { id: 'gw-apikey',     source: 'mcp-gw',      target: 'api-key-backend',
     style: { stroke: '#ca8a04', strokeWidth: 1.5, strokeDasharray: '6 4' },
     label: 'X-API-Key (planned)' },
+  // Phase 266 R2: Path B (dual_token) and Path C (oauth_bearer) both reach banking_resource_server.
+  { id: 'gw-rs-identity',     source: 'mcp-gw', target: 'banking-resource-server',
+    style: { stroke: '#0d9488', strokeWidth: 2.5 },
+    label: 'Bearer + id_token → /identity (dual_token)' },
+  { id: 'gw-rs-bankingdata',  source: 'mcp-gw', target: 'banking-resource-server',
+    style: { stroke: '#004687', strokeWidth: 2.5 },
+    label: 'Bearer → /accounts /transactions (oauth_bearer)' },
+  { id: 'rs-sqlite',          source: 'banking-resource-server', target: 'sqlite-banking-db',
+    style: { stroke: '#374151', strokeWidth: 2, strokeDasharray: '4 2' },
+    label: 'reads accounts + transactions' },
   { id: 'agent-hitl',    source: 'agent',       target: 'hitl',         style: B, label: 'Request consent' },
   { id: 'hitl-chatbot',  source: 'hitl',        target: 'chatbot',       style: B, label: 'Notify' },
   { id: 'hitl-agent',    source: 'hitl',        target: 'agent',        style: B, label: 'Approved ✓' },
@@ -703,6 +717,105 @@ const SCENARIO_STEPS_FLOW = {
       token: { type: 'Subject Token (issued)', sub: 'alice@bank.com', aud: 'agent1', may_act: '{sub: agent1}', scope: 'balance', note: 'may_act pre-authorizes agent to act on behalf of user' },
     },
   ],
+
+  // ─── Phase 266 R2: 3 credential-path scenarios ──────────────────────────────
+
+  'api-key-path': [
+    {
+      nodeIds: ['user', 'chatbot'], colorClass: 'active',
+      stepLabel: 'User sends prompt: "show special offers"',
+      description: 'User triggers the API-key demo prompt. The chat agent will route this to the gateway tool special_offers.',
+      activeEdgeIds: ['user-chatbot'], edgeStyle: A,
+      nodeBadges: {},
+      token: { type: 'NL prompt', text: 'show special offers', note: 'Routes to api_key disposition at the gateway' },
+    },
+    {
+      nodeIds: ['agent', 'mcp-gw'], colorClass: 'active',
+      stepLabel: 'Agent → Gateway: tools/call special_offers (with user OAuth bearer)',
+      description: 'The agent forwards the tool call to the MCP gateway carrying the user OAuth bearer.',
+      activeEdgeIds: ['agent-mcp'], edgeStyle: A,
+      nodeBadges: { 'mcp-gw': { credentialPath: 'oauth_bearer (incoming)', _changed: ['credentialPath'] } },
+      token: { type: 'OAuth Bearer (inbound)', credentialPath: 'oauth_bearer', tool: 'special_offers' },
+    },
+    {
+      nodeIds: ['mcp-gw', 'api-key-backend'], colorClass: 'active-permit',
+      stepLabel: 'Gateway swaps the OAuth bearer for the service API key (no backend call)',
+      description: 'API-KEY PATH: no backend call. The gateway recognizes special_offers as an api_key-disposition tool. The user OAuth bearer is dropped; the service API key is attached. Phase 266 demo terminates here — no real 3rd-party backend is wired.',
+      activeEdgeIds: ['gw-apikey'], edgeStyle: { stroke: '#ca8a04', strokeWidth: 2.5 },
+      nodeBadges: { 'api-key-backend': { credentialPath: 'api_key', _changed: ['credentialPath'] } },
+      token: { type: 'API Key (X-API-Key header)', credentialPath: 'api_key', note: 'No banking data — Phase 266 demo terminates here' },
+    },
+    {
+      nodeIds: ['chatbot'], colorClass: 'active',
+      stepLabel: 'SPA navigates to /path/apikey-info (amber info page)',
+      description: 'The gateway returned a marker response with credentialPath=api_key. The SPA routes the user to the API-Key info page.',
+      activeEdgeIds: ['hitl-chatbot'], edgeStyle: A,
+      nodeBadges: {},
+      token: { type: 'SPA route', destination: '/path/apikey-info', credentialPath: 'api_key' },
+    },
+  ],
+
+  'dual-token-path': [
+    {
+      nodeIds: ['user', 'chatbot'], colorClass: 'active',
+      stepLabel: 'User sends prompt: "show my profile card"',
+      description: 'User triggers the dual-token demo prompt. The chat agent will route this to the gateway tool user_profile_card.',
+      activeEdgeIds: ['user-chatbot'], edgeStyle: A,
+      nodeBadges: {},
+      token: { type: 'NL prompt', text: 'show my profile card', note: 'Routes to dual_token disposition' },
+    },
+    {
+      nodeIds: ['agent', 'mcp-gw'], colorClass: 'active',
+      stepLabel: 'Agent → Gateway: tools/call user_profile_card',
+      description: 'The agent forwards the tool call with the user OAuth bearer. The gateway will fetch the id_token from the BFF session and forward BOTH to banking_resource_server /identity.',
+      activeEdgeIds: ['agent-mcp'], edgeStyle: A,
+      nodeBadges: { 'mcp-gw': { credentialPath: 'oauth_bearer (incoming)', _changed: ['credentialPath'] } },
+      token: { type: 'OAuth Bearer (inbound)', credentialPath: 'oauth_bearer', tool: 'user_profile_card' },
+    },
+    {
+      nodeIds: ['mcp-gw', 'banking-resource-server'], colorClass: 'active-permit',
+      stepLabel: 'Gateway POSTs bearer + id_token to banking_resource_server /identity',
+      description: 'DUAL-TOKEN PATH: /api/resource-server/identity. Gateway sends an HTTP POST carrying a JSON-RPC envelope: bearer in Authorization header, id_token in params.idToken (body). banking_resource_server validates the bearer via authenticateToken; verifies the id_token sub matches the bearer sub; decodes both tokens server-side; returns sanitized claims only.',
+      activeEdgeIds: ['gw-rs-identity'], edgeStyle: { stroke: '#0d9488', strokeWidth: 2.5 },
+      nodeBadges: { 'banking-resource-server': { credentialPath: 'dual_token', route: '/identity', _changed: ['credentialPath', 'route'] } },
+      token: { type: 'Bearer + id_token', credentialPath: 'dual_token', route: '/identity', note: 'Claims only returned; no raw JWT crosses any boundary' },
+    },
+    {
+      nodeIds: ['chatbot'], colorClass: 'active',
+      stepLabel: 'SPA navigates to /path/dualtoken-info (teal info page)',
+      description: 'AccessIdTokenPathPage fetches /api/resource-server/identity directly via bffAxios; renders decoded access-token + id-token claims side-by-side.',
+      activeEdgeIds: ['hitl-chatbot'], edgeStyle: A,
+      nodeBadges: {},
+      token: { type: 'SPA route', destination: '/path/dualtoken-info', credentialPath: 'dual_token' },
+    },
+  ],
+
+  'oauth-bearer-path': [
+    {
+      nodeIds: ['user', 'chatbot'], colorClass: 'active',
+      stepLabel: 'User sends prompt: "show my accounts"',
+      description: 'User triggers the standard banking-data prompt; routed to gateway tool demo_show_accounts.',
+      activeEdgeIds: ['user-chatbot'], edgeStyle: A,
+      nodeBadges: {},
+      token: { type: 'NL prompt', text: 'show my accounts', note: 'Routes to oauth_bearer disposition' },
+    },
+    {
+      nodeIds: ['mcp-gw'], colorClass: 'active',
+      stepLabel: 'Gateway: RFC 8693 token exchange → backend-scoped bearer',
+      description: 'Standard RFC 8693 exchange with PingOne; result is a new bearer scoped to banking_resource_server.',
+      activeEdgeIds: ['mcp-gw-idp'], edgeStyle: A,
+      nodeBadges: { 'mcp-gw': { credentialPath: 'oauth_bearer', _changed: ['credentialPath'] } },
+      token: { type: 'Exchanged Bearer', credentialPath: 'oauth_bearer' },
+    },
+    {
+      nodeIds: ['mcp-gw', 'banking-resource-server'], colorClass: 'active-permit',
+      stepLabel: 'Gateway → banking_resource_server /accounts (or /transactions)',
+      description: 'OAUTH BEARER PATH: /api/resource-server/accounts | /transactions. Gateway forwards the exchanged bearer to the SQLite-backed account/transaction route. authenticateToken validates the bearer; route queries banking-resource-server.db via bankingDb.getAccountsByUserId.',
+      activeEdgeIds: ['gw-rs-bankingdata', 'rs-sqlite'], edgeStyle: { stroke: '#004687', strokeWidth: 2.5 },
+      nodeBadges: { 'banking-resource-server': { credentialPath: 'oauth_bearer', route: '/accounts', _changed: ['route'] } },
+      token: { type: 'Bearer', credentialPath: 'oauth_bearer', route: '/accounts' },
+    },
+  ],
 };
 
 function AudTrail({ stepIndex }) {
@@ -1188,6 +1301,9 @@ export default function ArchitectureFlowPage({ user }) {
             <option value="get-accounts">Get Accounts (Read Scope)</option>
             <option value="withdrawal">Withdrawal + HITL</option>
             <option value="bad-scope">Bad Scope (401 / 403)</option>
+            <option value="api-key-path">API-Key Path (Path A)</option>
+            <option value="dual-token-path">Dual-Token Path (Path B)</option>
+            <option value="oauth-bearer-path">OAuth Bearer Path (Path C)</option>
           </select>
         </div>
         {!isSimulating && (
