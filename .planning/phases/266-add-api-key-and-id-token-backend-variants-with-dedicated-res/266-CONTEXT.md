@@ -27,13 +27,15 @@ The three paths terminate as follows:
    - **No backend call is made.** The flow stops at the Gateway.
    - SPA routes the response to a new info page with amber visual identity, "API-KEY PATH" badge, masked API-key string (last 4 chars), explanation text, and a "Back to Dashboard" button.
 
-2. **Path B — Access-Token + ID-Token path (banking_resource_server, identity route):**
-   - Gateway forwards ONLY the bearer (Authorization header). The id_token is NOT sent on the wire (B1 fix — GET-with-body unreliable across HTTP clients/proxies). The gateway still fetches the id_token via the internal BFF endpoint to populate its synthesized Token Chain narrative (proves possession at the swap point), but does not forward it.
-   - Request reaches a new route on `banking_resource_server`: `GET /api/resource-server/identity`.
-   - The route is protected by the existing `authenticateToken` middleware — the access token is validated (signature/exp/aud).
-   - On valid access token: the route reads `req.session.oauthTokens.idToken` (canonical server-side source, set at `oauthUser.js:471`), decodes the access token AND the id_token server-side, and returns CLAIMS ONLY (no raw JWTs). Includes `scrubRawJwts` walker as defense-in-depth.
+2. **Path B — Access-Token + ID-Token path (banking_resource_server, identity route — accepts BOTH HTTP verbs):**
+   - The `/api/resource-server/identity` endpoint accepts BOTH `POST` (used by the gateway with wire-forwarded id_token) AND `GET` (used by the SPA's `AccessIdTokenPathPage` direct fetch). Both verbs bind to the same handler.
+   - **Gateway path (POST):** Gateway POSTs a JSON-RPC envelope `{ jsonrpc:'2.0', method:'identity.show', params:{ idToken }, id }` to the backend route. Bearer in Authorization header; id_token in `params.idToken` (body). JSON-RPC is a POST protocol; bodies are unambiguous on POST. The earlier B1 hesitation about "GET-with-body unreliability" was misplaced — using POST resolves both the protocol-correctness issue and the Upstash header-size concern in one move. Real-world correct: if `banking_resource_server` is split into a separate process later (no shared session), the gateway-forward IS the source of truth for the id_token.
+   - **SPA path (GET):** AccessIdTokenPathPage calls `bffAxios.get('/api/resource-server/identity')` when the user arrives at the route after BankingAgent dispatched them there. The SPA does NOT have the raw id_token (token custody — id_token lives only on the BFF), so it can't supply one in the body. The route reads `req.session.oauthTokens.idToken` for SPA callers. This is fine because the SPA's bffAxios call carries the session cookie, and the BFF middleware binds session ↔ bearer ↔ user.
+   - Both verbs inherit the existing `authenticateToken` middleware (mounted at server.js:846) — the access token is validated (signature/exp/aud) before the handler runs, regardless of verb.
+   - id_token resolution: `req.body.params.idToken` (primary, gateway POST) → `req.session.oauthTokens.idToken` (fallback, SPA GET or shared-process scenarios). Both paths decode server-side, return CLAIMS ONLY, with `scrubRawJwts` walker as defense-in-depth. Response includes `idTokenSource: 'wire' | 'session'` so the SPA can show which path was taken.
+   - Integrity check: when a body id_token IS supplied (gateway POST), its `sub` MUST match `req.user.sub`; mismatch returns 412 `id_token_subject_mismatch`. (The check is moot for session-sourced id_tokens — the session already binds them to the bearer's user.)
    - On invalid/missing access token: 401, no data returned.
-   - On missing id_token in session (login without openid scope): 412 with `error: 'id_token_missing'` and a user-facing message asking the user to sign in again.
+   - On missing id_token in BOTH body AND session: 412 with `error: 'id_token_missing'`.
    - SPA routes the response to a new info page with teal visual identity, "ACCESS + ID-TOKEN PATH" badge, decoded access-token claims AND decoded id-token claims rendered side-by-side, and a "Back to Dashboard" button. **No banking data is shown on this page** — identity only.
 
 3. **Path C — Bearer / OAuth resource-server path (banking_resource_server, banking-data route):**
