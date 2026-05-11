@@ -60,14 +60,6 @@ if (!sessionStore) {
     }
 }
 
-// Phase 266: register sessionStore on the Express app so internal routes
-// (e.g., /internal/id-token) can look up sessions by subject sub. Guarded
-// so a memory-fallback install (sessionStore === undefined) does NOT
-// register a null — /internal/id-token then returns 503 gracefully.
-if (sessionStore) {
-    app.set('sessionStore', sessionStore);
-}
-
 // Import routes
 const authRoutes = require('./routes/auth');
 const oauthRoutes = require('./routes/oauth');
@@ -165,6 +157,14 @@ const {
 const audValidationMiddleware = require('./middleware/audValidationMiddleware');
 
 const app = express();
+
+// Phase 266: register sessionStore on the Express app so internal routes
+// (e.g., /internal/id-token) can look up sessions by subject sub. Guarded
+// so a memory-fallback install (sessionStore === undefined) does NOT
+// register a null — /internal/id-token then returns 503 gracefully.
+if (sessionStore) {
+    app.set('sessionStore', sessionStore);
+}
 
 // Response timing instrumentation
 app.use(require('./middleware/timing'));
