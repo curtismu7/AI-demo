@@ -31,6 +31,7 @@ import ArchitectureOverviewPage from "./components/ArchitectureOverviewPage";
 import SequenceDiagramPage from "./components/SequenceDiagramPage";
 import ArchitectureTabsPanel from "./components/ArchitectureTabsPanel";
 import ArchitectureTokenFlowPage from "./components/ArchitectureTokenFlowPage";
+import Phase266ArchitecturePage from "./components/Phase266ArchitecturePage";
 import ApiTrafficPage from "./components/ApiTrafficPage";
 import AuditPage from "./components/AuditPage";
 import BankingAdminOps from "./components/BankingAdminOps";
@@ -799,6 +800,10 @@ function AppWithAuth() {
                         <Route
                           path="flow"
                           element={<ArchitectureFlowPage user={user} />}
+                        />
+                        <Route
+                          path="phase-266"
+                          element={<Phase266ArchitecturePage />}
                         />
                       </Routes>
                     </main>
