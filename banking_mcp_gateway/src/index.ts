@@ -60,6 +60,7 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
         'banking:read',
         'banking:write',
         'banking:admin',
+        'banking:mortgage:read',  // Phase 267 — Path A api_key disposition
         'ai_agent',
       ],
       resource_name: 'Super Banking MCP Gateway',

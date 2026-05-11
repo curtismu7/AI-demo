@@ -5,7 +5,7 @@
  */
 'use strict';
 
-const { BANKING_SCOPES } = require('../config/scopes');
+const { BANKING_SCOPES, COMPOUND_SCOPES } = require('../config/scopes');
 
 /** Scopes this demo understands for MCP banking tools (must match PingOne + MCP registry). */
 const KNOWN_AGENT_MCP_SCOPES = [
@@ -18,6 +18,7 @@ const KNOWN_AGENT_MCP_SCOPES = [
   BANKING_SCOPES.SENSITIVE,                 // sensitive data operations
   BANKING_SCOPES.ADMIN,                     // admin operations
   BANKING_SCOPES.AI_AGENT,                  // AI Agent operations
+  COMPOUND_SCOPES.MORTGAGE_READ,            // Phase 267 — mortgage data via api_key swap
 ];
 
 const DEFAULT_AGENT_MCP_ALLOWED_SCOPES = KNOWN_AGENT_MCP_SCOPES.join(' ');

@@ -85,6 +85,11 @@ router.get('/config', authenticateToken, async (_req, res) => {
         description: 'Call MCP banking tools via agent',
         permissions: ['invoke_mcp_tools'],
       },
+      'banking:mortgage:read': {
+        label: 'Read Mortgage Data',
+        description: 'Read mortgage account data via the api-key disposition (Phase 267)',
+        permissions: ['read_mortgage'],
+      },
     };
 
     const envVars = {

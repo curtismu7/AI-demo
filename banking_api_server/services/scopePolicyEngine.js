@@ -38,6 +38,13 @@ const SCOPE_TAXONOMY = {
     category: 'banking',
     requires_user_context: true
   },
+  'banking:mortgage:read': {
+    description: 'Read access to mortgage account data (Phase 267 — Path A api-key disposition)',
+    operations: ['GET /mortgage (via gateway api_key swap to banking_mortgage_service)'],
+    risk_level: 'low',
+    category: 'banking',
+    requires_user_context: true
+  },
   'banking:write': {
     description: 'Write access to banking operations (transfers, deposits)',
     operations: ['POST /transactions/*', 'PUT /accounts/*'],

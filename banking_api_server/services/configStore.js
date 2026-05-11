@@ -182,7 +182,7 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   agent_mcp_allowed_scopes: {
     public: true,
     default:
-      'banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write ai_agent',
+      'banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write banking:mortgage:read ai_agent',
   },
 
   // Multi-IDP: configurable OAuth endpoints — optional overrides for non-PingOne IDPs.
@@ -239,7 +239,7 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   ai_agent_audience:                     { public: true,  default: '' },
   ai_agent_scope:                        { public: true,  default: 'ai_agent' },
   banking_api_resource_uri:              { public: true,  default: '' },
-  mcp_token_exchange_scopes:             { public: true,  default: 'banking:read banking:write banking:mcp:invoke' },
+  mcp_token_exchange_scopes:             { public: true,  default: 'banking:read banking:write banking:mcp:invoke banking:mortgage:read' },
 
   // Token exchange auth methods
   pingone_token_exchange_auth_method:    { public: true,  default: 'post' },

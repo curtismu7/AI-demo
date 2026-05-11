@@ -748,7 +748,8 @@ class RFC9728ComplianceAuditService {
         'banking:admin',
         'banking:accounts:read',
         'banking:transactions:read',
-        'banking:transactions:write'
+        'banking:transactions:write',
+        'banking:mortgage:read'
       ],
       bearer_methods_supported: ['header'],
       resource_name: 'Super Banking Banking API',

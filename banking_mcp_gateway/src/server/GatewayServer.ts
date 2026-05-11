@@ -37,6 +37,7 @@ const GATEWAY_SCOPES = [
   'banking:read',
   'banking:write',
   'banking:admin',
+  'banking:mortgage:read',  // Phase 267 — Path A api_key disposition
   'ai_agent',
 ];
 

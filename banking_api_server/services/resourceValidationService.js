@@ -19,7 +19,7 @@ const RESOURCE_REFERENCE_TABLE = [
   {
     name: 'Super Banking MCP Server',
     audience: 'https://mcp-server.pingdemo.com',
-    expectedScopes: ['banking:accounts:read', 'banking:transactions:read', 'banking:transactions:write'],
+    expectedScopes: ['banking:accounts:read', 'banking:transactions:read', 'banking:transactions:write', 'banking:mortgage:read'],
     ttl: 3600,
     authMethod: 'Client Secret Basic',
   },
@@ -33,7 +33,7 @@ const RESOURCE_REFERENCE_TABLE = [
   {
     name: 'Super Banking Banking API',
     audience: 'https://banking-api.ping.demo',
-    expectedScopes: ['banking:accounts:read', 'banking:transactions:read', 'banking:transactions:write'],
+    expectedScopes: ['banking:accounts:read', 'banking:transactions:read', 'banking:transactions:write', 'banking:mortgage:read'],
     ttl: 3600,
     authMethod: undefined, // standard resource server
   },

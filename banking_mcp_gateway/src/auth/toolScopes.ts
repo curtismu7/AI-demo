@@ -27,6 +27,14 @@ export const TOOL_SCOPES: Record<string, string[]> = {
   get_investment_balance:       ['banking:read'],
   get_investment_accounts:      ['banking:read'],
   get_portfolio_summary:        ['banking:read'],
+
+  // Phase 267 — Path A (api_key disposition) tool.
+  // The gateway will swap the user's OAuth bearer for an X-API-Key when calling
+  // banking_mortgage_service. The scope check below runs BEFORE the swap, so
+  // the user MUST hold banking:mortgage:read on their MCP-side bearer for the
+  // dispatch to proceed. This is the principal-consent gate before service-to-
+  // service credential transformation.
+  show_mortgage:                ['banking:mortgage:read'],
 };
 
 /** Scopes required by a given tool. Falls back to ['banking:read'] for unknown tools. */

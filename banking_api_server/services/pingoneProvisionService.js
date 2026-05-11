@@ -1130,7 +1130,11 @@ class PingOneProvisionService {
         { name: 'users:manage', description: 'Manage user accounts and permissions' },
         { name: 'banking:read', description: 'Read banking data and transaction history' },
         { name: 'banking:write', description: 'Perform banking operations and transfers' },
-        { name: 'banking:ai:agent:read', description: 'Agent invocation permission' }
+        { name: 'banking:ai:agent:read', description: 'Agent invocation permission' },
+        // Phase 267 — mortgage scope must exist on the MCP-server resource too
+        // so the user's inbound token can carry it; the gateway then re-exchanges
+        // (RFC 8693) it for the backend-scoped token used to call mortgage service.
+        { name: 'banking:mortgage:read', description: 'Read mortgage account data (Path A api-key disposition)' }
       ];
       
       const mcpScopeResults = await this.createScopes(mcpResourceResult.resource.id, mcpScopes);
@@ -1150,6 +1154,7 @@ class PingOneProvisionService {
         { name: 'banking:write', description: 'Write access to banking operations' },
         { name: 'banking:accounts:read', description: 'Read account information and balances' },
         { name: 'banking:transactions:read', description: 'Read transaction history and details' },
+        { name: 'banking:mortgage:read', description: 'Read mortgage account data (Phase 267 — Path A api-key disposition)' },
         { name: 'banking:accounts', description: 'Account access and management' },
         { name: 'banking:admin', description: 'Administrative access' },
         { name: 'banking:ai:agent:read', description: 'Agent invocation permission' },
@@ -1295,7 +1300,7 @@ class PingOneProvisionService {
       const userGrantResult = await this.grantScopesToApplication(
         userAppResult.application.id,
         resourceResult.resource.id,
-        ['banking:ai:agent:read', 'banking:read', 'banking:write']
+        ['banking:ai:agent:read', 'banking:read', 'banking:write', 'banking:mortgage:read']
       );
       
       pushGrantResultStep(steps, 'user-grants', 'User scope grants', userGrantResult);
@@ -1511,11 +1516,14 @@ class PingOneProvisionService {
       steps.push({ step: 'mcp-grants', icon: '🔑', message: 'Granting scopes to MCP Server application...' });
       onStep(steps[steps.length - 1]);
       
-      // Grant scopes for client credentials (Step 6 in documentation)
+      // Grant scopes for client credentials (Step 6 in documentation).
+      // MCP Server is the token-exchange CLIENT — it needs every scope it
+      // might re-request during exchange. Phase 267 adds banking:mortgage:read
+      // for the Path A (api-key disposition) flow.
       const mcpAppGrantResult = await this.grantScopesToApplication(
         mcpAppResult.application.id,
         resourceResult.resource.id,
-        ['banking:read', 'banking:ai:agent:read']
+        ['banking:read', 'banking:ai:agent:read', 'banking:mortgage:read']
       );
       
       pushGrantResultStep(steps, 'mcp-grants', 'MCP Server scope grants', mcpAppGrantResult);
@@ -1723,13 +1731,15 @@ class PingOneProvisionService {
         onStep(steps[steps.length - 1]);
       }
 
-      // Step 29: Grant scopes to MCP Gateway app (it acts as the actor in token-exchange)
+      // Step 29: Grant scopes to MCP Gateway app (it acts as the actor in token-exchange).
+      // Phase 267: gateway also needs banking:mortgage:read so the api_key disposition
+      // can request that scope when exchanging the user bearer for the api-key swap.
       steps.push({ step: 'mcp-gw-grants', icon: '🔑', message: 'Granting scopes to MCP Gateway application...' });
       onStep(steps[steps.length - 1]);
       const mcpGwGrantResult = await this.grantScopesToApplication(
         mcpGwAppResult.application.id,
         resourceResult.resource.id,
-        ['banking:read', 'banking:write']
+        ['banking:read', 'banking:write', 'banking:mortgage:read']
       );
       pushGrantResultStep(steps, 'mcp-gw-grants', 'MCP Gateway scope grants', mcpGwGrantResult);
       onStep(steps[steps.length - 1]);

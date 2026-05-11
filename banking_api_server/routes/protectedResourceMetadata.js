@@ -49,6 +49,7 @@ function buildMetadata(req) {
       'banking:accounts:read',
       'banking:transactions:read',
       'banking:transactions:write',
+      'banking:mortgage:read',
     ],
     resource_name: 'Super Banking Banking API',
     resource_documentation: 'https://datatracker.ietf.org/doc/html/rfc9728',
