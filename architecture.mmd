@@ -159,6 +159,16 @@ RFC 7662 probe"| OIDC_AS
     AuthMW -->|"introspection mode:
 POST /as/introspect RFC 7662"| OIDC_AS
 
+    %% Phase 266 R2: banking_resource_server (live) — Paths B and C both terminate here.
+    %% Path A (api_key): RFC 6750 bearer dropped; X-API-Key injected at Gateway — no backend call.
+    %% Path B (dual_token): Bearer + id_token forwarded to /identity — RFC 8693 + RFC 8707 + OIDC Core ss3.1.3.7.
+    %% Path C (oauth_bearer): RFC 8693 exchange; Bearer (new aud) to /accounts /transactions — SQLite-backed.
+    BankingRS["banking_resource_server\n/identity (dual_token Path B)\n/accounts /transactions (oauth_bearer Path C)"]
+    SQLite[("SQLite\nbanking-resource-server.db")]
+
+    BankingRS -->|"Bearer + id_token\ndual_token Path B /identity"| JWKS
+    BankingRS -.->|"reads accounts\n+ transactions"| SQLite
+
     %% ── Standards Legend ──────────────────────────────────────────────────────
     subgraph Standards["Standards & Protocols"]
         direction TB

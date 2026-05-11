@@ -1,28 +1,26 @@
----
-title: Banking Demo — Architecture (clean view)
----
-%% Simplified architecture diagram for /architecture/overview.
-%%
-%% Two notable layout decisions:
-%%
-%%   1. Ping Authorize is its OWN column between the Gateway and the
-%%      backends, not buried inside the PingOne cloud subgraph. Every
-%%      tool call is evaluated by Authorize, and the picture should
-%%      make that gate visible.
-%%
-%%   2. There are TWO backends on the far right:
-%%        - OAuth backend (current banking_api_server): forward the
-%%          downscoped MCP token, backend introspects.
-%%        - API-key backend (aspirational): Gateway swaps in a service
-%%          API key when calling — backend never sees a user token.
-%%          Drawn with a dashed border to signal "planned / reference",
-%%          not "live today".
-%%
-%% Regenerate the PNG with:
-%%   npm run build:diagrams -- overview
-%% or from the UI: /architecture/system → Regenerate this one (overview)
-
 flowchart LR
+
+    %% title: Banking Demo — Architecture (clean view)
+    %% Simplified architecture diagram for /architecture/overview.
+    %%
+    %% Two notable layout decisions:
+    %%
+    %%   1. Ping Authorize is its OWN column between the Gateway and the
+    %%      backends, not buried inside the PingOne cloud subgraph. Every
+    %%      tool call is evaluated by Authorize, and the picture should
+    %%      make that gate visible.
+    %%
+    %%   2. There are TWO backends on the far right:
+    %%        - OAuth backend (current banking_api_server): forward the
+    %%          downscoped MCP token, backend introspects.
+    %%        - API-key backend (aspirational): Gateway swaps in a service
+    %%          API key when calling — backend never sees a user token.
+    %%          Drawn with a dashed border to signal "planned / reference",
+    %%          not "live today".
+    %%
+    %% Regenerate the PNG with:
+    %%   npm run build:diagrams -- overview
+    %% or from the UI: /architecture/system → Regenerate this one (overview)
 
     %% ── Actors (browser side) ───────────────────────────────────────────
     User["End user<br/>(browser)"]
@@ -45,11 +43,19 @@ flowchart LR
     %% ── Ping Authorize: dedicated column for the policy gate ──────────
     Authorize["Ping Authorize (PDP)<br/><br/>Evaluates EVERY tool call:<br/>• scope · aud · may_act<br/>• transaction amount / threshold<br/>• tool-specific risk rules<br/>↓<br/>PERMIT · DENY · INDETERMINATE"]
 
+    %% Phase 266 R2: three credential paths from the Gateway.
+    %% Path A (api_key): Gateway-terminating swap, no backend call. RFC 6750 bearer dropped; X-API-Key injected.
+    %% Path B (dual_token): Bearer + id_token forwarded to banking_resource_server /identity. RFC 8693 + RFC 8707 audience binding.
+    %% Path C (oauth_bearer): RFC 8693 exchange, Bearer (new aud) to banking_resource_server /accounts /transactions.
+    %% Paths B and C both terminate at the same banking_resource_server node at different routes.
+
     %% ── Two backends on the far right ─────────────────────────────────
     subgraph Backends["Backend resource servers"]
       direction TB
       OAuthRS["OAuth backend<br/>(banking_api_server REST + MCP)<br/><br/>Accepts: downscoped MCP token<br/>Verifies: RFC 7662 introspect<br/>Pattern: standard OAuth 2.0"]
       APIKeyRS["API-key backend<br/>(aspirational reference)<br/><br/>Accepts: X-API-Key header<br/>Verifies: shared-secret lookup<br/>Pattern: legacy / 3rd-party APIs<br/>Key injected by Gateway"]
+      BankingRS["banking_resource_server<br/>/identity - /accounts - /transactions<br/><br/>Path B: Bearer + id_token (dual_token)<br/>Path C: Bearer OAuth (oauth_bearer)<br/>Validates: RFC 6750 authenticateToken"]
+      SQLite["SQLite DB<br/>banking-resource-server.db<br/>(seeded from data/store.js)"]
     end
 
     %% ── PingOne IAM (auth server) ───────────────────────────────────────
@@ -80,7 +86,12 @@ flowchart LR
 
     %% ── Permitted → forwarded with the RIGHT credential per backend ───
     Gateway -->|"RFC 8693 downscope<br/>+ MCP token"| OAuthRS
-    Gateway -.->|"X-API-Key: &lt;svc-key&gt;<br/>(no user token)"| APIKeyRS
+    Gateway -.->|"X-API-Key: svc-key<br/>(no user token)"| APIKeyRS
+
+    %% Phase 266 R2: Path B and Path C both reach banking_resource_server
+    Gateway -->|"Bearer + id_token<br/>dual_token - /identity"| BankingRS
+    Gateway -->|"Bearer (RFC 8693 exchange)<br/>oauth_bearer - /accounts /transactions"| BankingRS
+    BankingRS -.->|"reads accounts + transactions"| SQLite
 
     %% ── INDETERMINATE → HITL out-of-band consent ──────────────────────
     Gateway -.->|"INDETERMINATE →<br/>request consent"| HITL
@@ -108,5 +119,7 @@ flowchart LR
     class Authorize authorize
     class OAuthRS backend
     class APIKeyRS planned
+    class BankingRS backend
+    class SQLite backend
     class AS cloud
     class LLM external
