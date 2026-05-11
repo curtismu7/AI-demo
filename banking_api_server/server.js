@@ -60,6 +60,14 @@ if (!sessionStore) {
     }
 }
 
+// Phase 266: register sessionStore on the Express app so internal routes
+// (e.g., /internal/id-token) can look up sessions by subject sub. Guarded
+// so a memory-fallback install (sessionStore === undefined) does NOT
+// register a null — /internal/id-token then returns 503 gracefully.
+if (sessionStore) {
+    app.set('sessionStore', sessionStore);
+}
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const oauthRoutes = require('./routes/oauth');
@@ -845,6 +853,10 @@ app.use('/api/accounts', authenticateToken, accountRoutes);
 app.use('/api/accounts', authenticateToken, sensitiveBankingRoutes);
 app.use('/api/resource-server', authenticateToken, resourceServerRoutes);
 app.use('/api/resource-server-cc', authenticateToken, resourceServerCCRoutes);
+
+// Internal gateway-only endpoint — NOT under /api/*; NOT exposed to the browser.
+// Phase 266: gateway reads the user's id_token server-to-server via shared secret.
+app.use('/internal', require('./routes/agentIdToken'));
 app.use('/api/transactions', (req, res, next) => {
     // Allow Bearer-token requests (MCP server, agent gateway, direct API calls) to bypass
     // the session-cookie check — authenticateToken validates the JWT below.

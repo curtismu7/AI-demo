@@ -503,6 +503,11 @@ router.get('/callback', async (req, res) => {
       }
     } catch (_) { /* non-fatal — acr / may_act stay null */ }
 
+    // Phase 266: cache subject sub so /internal/id-token can look up sessions by sub
+    // without needing the session cookie. Smallest possible additive change — does not
+    // affect any existing behavior.
+    oauthTokens.subjectSub = idTokenClaims.sub || null;
+
     console.log('End user OAuth login successful for:', authedUser.username);
     appEventService.logEvent('auth_lifecycle', 'info', `User authenticated: ${authedUser.username}`, { tag: 'oauth/user/callback', username: authedUser.username });
 
