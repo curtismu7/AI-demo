@@ -425,27 +425,35 @@ if (/(?:show|view|my)?\s*(?:user\s+)?profile(?:\s+card)?|who\s+am\s+i|user\s+inf
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All four open questions raised during research were resolved by CONTEXT.md (the
+> in-session user pivot recorded 2026-05-10). RESOLVED markers added per W3 (revision
+> 2026-05-10) so downstream agents can see the resolution path without re-deriving.
 
 1. **Does PingOne issue id_tokens with a `picture` claim in this environment?**
    - What we know: id_token shape varies by IDP and user attribute mapping. PingOne can return `picture` if mapped from a user attribute.
    - What's unclear: Whether this specific demo environment has `picture` mapped.
    - Recommendation: Render `picture || null`; show a CSS-styled placeholder initial circle when absent. Tag as A7 in the assumptions log.
+   - **RESOLVED:** CONTEXT.md §Path B specifies "decoded id-token claims (name, email, sub, picture if PingOne emits it)" — render `picture || null`. The plan handles absence gracefully (Plan 04 AccessIdTokenPathPage renders whatever sanitized claims arrive; missing fields simply do not render).
 
 2. **Should the API-key backend's "special data" be persisted, or always synthetic per-call?**
    - What we know: `banking_mcp_invest` returns synthetic-per-call data (no store).
    - What's unclear: Whether the demo wants "special offers" to feel personalized to the user (would require keying off something — e.g., the inbound token's `sub` even though the backend ignores OAuth otherwise).
    - Recommendation: Keep it synthetic-per-call but include a `recommended_for` field with a generic label (e.g., "Premium customers"). Avoid `sub`-based personalization on the API-key path — it muddies the "this backend doesn't know who the user is" narrative.
+   - **RESOLVED:** Moot — CONTEXT.md §Path A locks the demo as "no banking data returned on this path — it demonstrates the credential-swap pattern." There is no backend call, hence no data shape to design. The Path A info page renders only the masked API key + an explanatory message.
 
 3. **Does Phase 266 need to update the LangChain agent (port 8888) or only the heuristic NL path?**
    - What we know: Heuristic NL covers the demo flow; LangChain agent is an "optional component, not primary demo path" (REQUIREMENTS.md v2 deferred line 53).
    - What's unclear: Whether the demo will run from LangChain on stage.
    - Recommendation: Heuristic-only for Phase 266. If LangChain coverage is added later, it's a small follow-up phase.
+   - **RESOLVED:** Deferred per CONTEXT.md §Deferred Ideas — "LangChain agent (port 8888) integration — heuristic-only NL routing for Phase 266; LangChain deferred." Plan 02 extends `nlIntentParser.js` heuristics only.
 
 4. **Does the existing `BankingAgent.js` `runAction` switch dispatcher need a new `case` for each new tool, or can the heuristic route through the existing `mcp_tools` path?**
    - What we know: `runAction` has explicit cases per action (accounts, transactions, balance, deposit, withdraw, transfer, mcp_tools, web_search, sensitive-account-details, sequential_think, plus AI). New tools that produce a custom result panel need explicit cases.
    - What's unclear: Whether a generic "call this MCP tool, render this panel" abstraction would be cleaner than two more explicit cases.
    - Recommendation: Add two explicit cases (`special_offers`, `user_profile_card`). Don't refactor the dispatcher — that's outside Phase 266 scope and violates minimal-diff.
+   - **RESOLVED:** Explicit cases, no refactor — per CONTEXT.md §Implementation Decisions §Architecture (minimal-diff principle, "no new backend services," "existing resource server is unchanged in behavior") and CLAUDE.md "Don't refactor BankingAgent.js (8503 LOC)". Plan 04 Task 2 appends two explicit cases (`api_key_demo`, `dual_token_demo`) to the dispatcher — no abstraction layer introduced.
 
 ---
 
