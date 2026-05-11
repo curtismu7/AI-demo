@@ -414,3 +414,64 @@ describe('nlIntentParser — spending_summary', () => {
   });
 });
 
+// ── Phase 266 — API-key path demo ─────────────────────────────────────────────
+
+describe('nlIntentParser — Phase 266 API-key path demo (api_key_demo)', () => {
+  // Test 6: "show special offers" → api_key_demo
+  it('Test 6: routes "show special offers" → api_key_demo', () => {
+    const r = parseHeuristic('show special offers');
+    expect(r.kind).toBe('banking');
+    expect(r.banking.action).toBe('api_key_demo');
+  });
+
+  // Test 7: "use the api-key path" → api_key_demo
+  it('Test 7: routes "use the api-key path" → api_key_demo', () => {
+    const r = parseHeuristic('use the api-key path');
+    expect(r.kind).toBe('banking');
+    expect(r.banking.action).toBe('api_key_demo');
+  });
+
+  // Test 8: "show me promotions" → api_key_demo
+  it('Test 8: routes "show me promotions" → api_key_demo', () => {
+    const r = parseHeuristic('show me promotions');
+    expect(r.kind).toBe('banking');
+    expect(r.banking.action).toBe('api_key_demo');
+  });
+});
+
+// ── Phase 266 — Dual-token path demo ─────────────────────────────────────────
+
+describe('nlIntentParser — Phase 266 Dual-token path demo (dual_token_demo)', () => {
+  // Test 9: "show my profile card" → dual_token_demo
+  it('Test 9: routes "show my profile card" → dual_token_demo', () => {
+    const r = parseHeuristic('show my profile card');
+    expect(r.kind).toBe('banking');
+    expect(r.banking.action).toBe('dual_token_demo');
+  });
+
+  // Test 10: "use the access-and-id-token path" → dual_token_demo
+  it('Test 10: routes "use the access-and-id-token path" → dual_token_demo', () => {
+    const r = parseHeuristic('use the access-and-id-token path');
+    expect(r.kind).toBe('banking');
+    expect(r.banking.action).toBe('dual_token_demo');
+  });
+});
+
+// ── Phase 266 — Regression guard (existing actions still work) ────────────────
+
+describe('nlIntentParser — Phase 266 regression guard (existing actions unaffected)', () => {
+  // Test 11: "show my balance" still returns existing balance action
+  it('Test 11: "show my balance" still routes → balance (no regression)', () => {
+    const r = parseHeuristic('show my balance');
+    expect(r.kind).toBe('banking');
+    expect(r.banking.action).toBe('balance');
+  });
+
+  // Test 12: "show my accounts" still returns existing accounts action
+  it('Test 12: "show my accounts" still routes → accounts (no regression)', () => {
+    const r = parseHeuristic('show my accounts');
+    expect(r.kind).toBe('banking');
+    expect(r.banking.action).toBe('accounts');
+  });
+});
+

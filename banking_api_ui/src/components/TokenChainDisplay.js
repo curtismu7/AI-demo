@@ -11,6 +11,8 @@ import {
   TokenColorLegend,
   getTokenColor,
 } from "./TokenColorSystem";
+// Phase 266 R3 — spec-citation pills (educational/teaching demo). Runs offline.
+import { SPEC_GUIDE } from "./specGuide";
 
 const FETCH_COOLDOWN_MS = 5000; // Don't fetch more than once per 5 seconds
 
@@ -1958,6 +1960,62 @@ function NlRoutingCard({ event }) {
   );
 }
 
+// ─── Phase 266 R3: spec-citation pills ───────────────────────────────────────
+
+/**
+ * Renders clickable spec-reference pill(s) for a token chain event's specRef field.
+ * Multi-spec citations like "RFC 8693 + draft-ietf-oauth-identity-chaining" split on " + ".
+ * Hover/click expands a 1-3 sentence educational summary sourced from specGuide.js (offline).
+ * Per REGRESSION_PLAN §0: no emoji in pill labels.
+ */
+function SpecRefPill({ specRef }) {
+  const [expanded, setExpanded] = React.useState(false);
+  const refs = specRef.split(' + ');
+  return (
+    <span className="tcd-specref-group">
+      {refs.map((r) => {
+        const entry = SPEC_GUIDE[r] || SPEC_GUIDE[specRef] || null;
+        if (!entry) {
+          return (
+            <span key={r} className="tcd-specref-pill tcd-specref-unknown">{r}</span>
+          );
+        }
+        return (
+          <a
+            key={r}
+            className="tcd-specref-pill"
+            href={entry.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onMouseEnter={() => setExpanded(true)}
+            onMouseLeave={() => setExpanded(false)}
+            onClick={(e) => { e.preventDefault(); setExpanded((v) => !v); }}
+            title={entry.title}
+          >
+            {r}
+            <span className="tcd-specref-link-icon" aria-hidden="true">{'↗'}</span>
+          </a>
+        );
+      })}
+      {expanded && (
+        <div className="tcd-specref-explainer">
+          {refs.map((r) => {
+            const entry = SPEC_GUIDE[r] || SPEC_GUIDE[specRef] || null;
+            return entry ? (
+              <div key={r} className="tcd-specref-explainer-row">
+                <strong>{entry.title}:</strong> {entry.summary}{' '}
+                <a href={entry.url} target="_blank" rel="noopener noreferrer">
+                  read spec {'↗'}
+                </a>
+              </div>
+            ) : null;
+          })}
+        </div>
+      )}
+    </span>
+  );
+}
+
 /** Renders one step in the token chain. The inspect icon (right side) opens the floating inspector panel. */
 function EventRow({
   event,
@@ -2063,8 +2121,19 @@ function EventRow({
         })()
       : null;
 
+  // Phase 266 — credentialPath visual identity per chain segment
+  const credPath = event.credentialPath || 'oauth_bearer';
+  const credPathBadgeText =
+    credPath === 'api_key'
+      ? 'API-KEY PATH'
+      : credPath === 'dual_token'
+        ? 'ACCESS + ID-TOKEN PATH'
+        : 'OAUTH BEARER PATH';
+
   return (
-    <div className="tcd-event-wrap">
+    <div className={`tcd-event-wrap tcd-path-${credPath}`} data-credential-path={credPath}>
+      {/* Phase 266 path badge — plain text, no emoji (REGRESSION_PLAN §0) */}
+      <span className="tcd-path-badge">{credPathBadgeText}</span>
       <div className={`tcd-event ${event.status}`}>
         <div className="tcd-event-content">
           <div className="tcd-event-title-row">
@@ -2073,6 +2142,8 @@ function EventRow({
               size={10}
             />
             <span className="tcd-event-label">{event.label}</span>
+            {/* Phase 266 R3 — spec-citation pill */}
+            {event.specRef && <SpecRefPill specRef={event.specRef} />}
           </div>
 
           {/* Prominent User ID and Agent ID display with enhanced visual treatment */}

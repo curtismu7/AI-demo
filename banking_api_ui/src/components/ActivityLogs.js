@@ -24,6 +24,8 @@ const CATEGORY_ICONS = {
   agent_prompt: '\u{1F9E0}',
   delegation: '\u{1F91D}',
   introspection: '\u{1F52C}',
+  // Phase 266 \u2014 no emoji for gateway_path per REGRESSION_PLAN \u00A70
+  gateway_path: null,
 };
 
 const CATEGORY_LABELS = {
@@ -37,6 +39,15 @@ const CATEGORY_LABELS = {
   agent_prompt: 'Agent Prompt',
   delegation: 'Delegation',
   introspection: 'Introspection',
+  // Phase 266 \u2014 gateway credential-path routing label (plain text, no emoji)
+  gateway_path: 'Gateway Path',
+};
+
+// Phase 266 \u2014 sub-labels for gateway path events, keyed by event tag
+const GATEWAY_PATH_LABELS = {
+  'gateway.path.bearer':    'OAUTH BEARER PATH',
+  'gateway.path.apikey':    'API-KEY PATH',
+  'gateway.path.dualtoken': 'ACCESS + ID-TOKEN PATH',
 };
 
 const SEVERITY_BORDER = {
@@ -326,6 +337,26 @@ const ActivityLogs = ({ user, onLogout }) => {
             {evt.tag && (
               <div style={{ marginBottom: '0.25rem' }}>
                 <strong>Tag:</strong>{' '}<code style={{ backgroundColor: 'var(--code-bg, #f1f5f9)', padding: '0.1rem 0.3rem', borderRadius: '0.2rem', fontSize: '0.75rem' }}>{evt.tag}</code>
+              </div>
+            )}
+            {/* Phase 266 — gateway path sub-label (plain text per REGRESSION_PLAN §0) */}
+            {evt.category === 'gateway_path' && evt.tag && GATEWAY_PATH_LABELS[evt.tag] && (
+              <div style={{ marginBottom: '0.25rem' }}>
+                <strong>Path:</strong>{' '}
+                <span style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.75rem', padding: '1px 6px', borderRadius: '2px', background: evt.tag === 'gateway.path.apikey' ? '#ca8a04' : evt.tag === 'gateway.path.dualtoken' ? '#0d9488' : '#004687', color: '#fff' }}>
+                  {GATEWAY_PATH_LABELS[evt.tag]}
+                </span>
+              </div>
+            )}
+            {/* Phase 266 — INTROSPECTION-category act-chain: visible delegation audit trail */}
+            {evt.category === 'introspection' && evt.metadata?.act && (
+              <div style={{ marginTop: '0.35rem', marginBottom: '0.25rem', fontFamily: 'monospace', fontSize: '0.75rem', padding: '6px 10px', background: 'var(--code-bg, #f1f5f9)', borderRadius: '4px', borderLeft: '3px solid #6366f1' }}>
+                <strong style={{ fontFamily: 'inherit', display: 'block', marginBottom: '4px' }}>Identity chain (delegation audit trail):</strong>
+                <span style={{ color: '#1d4ed8' }}>user (sub={String(evt.metadata.sub || '').slice(0, 16)}{String(evt.metadata.sub || '').length > 16 ? '…' : ''})</span>
+                {' → '}
+                <span style={{ color: '#7c3aed' }}>via {evt.metadata.act?.client_id || evt.metadata.act?.sub || '?'}</span>
+                {' → '}
+                <span style={{ color: '#0d9488' }}>banking_resource_server (aud={String(evt.metadata.aud || '').split('/').pop()})</span>
               </div>
             )}
             {evt.flowId && (

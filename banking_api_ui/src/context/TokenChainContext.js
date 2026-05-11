@@ -59,6 +59,13 @@ export function TokenChainProvider({ children, activePath = "" }) {
   /**
    * Called by bankingAgentService after each MCP tool call.
    * Replaces current events and prepends to history.
+   *
+   * @param {string} tool
+   * @param {Array<{ id, label, status, decoded, explanation, credentialPath?, specRef?, ... }>} newEvents
+   *   credentialPath: 'oauth_bearer' | 'api_key' | 'dual_token' — Phase 266
+   *   When absent, downstream renderers default to 'oauth_bearer'.
+   *   specRef: e.g. 'RFC 6750 §3', 'RFC 8693', 'RFC 8693 + draft-ietf-oauth-identity-chaining' — Phase 266 R3
+   *   Used by TokenChainDisplay to render spec-citation pills with hover/click explainers.
    */
   const setTokenEvents = useCallback(
     (tool, newEvents) => {

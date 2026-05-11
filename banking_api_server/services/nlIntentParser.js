@@ -272,6 +272,18 @@ function parseBanking(t) {
     return { kind: 'banking', banking: { action: 'logout' } };
   }
 
+  // Phase 266 — API-key path demo (Path A)
+  // Trigger: "special offers", "use the api-key path", "promotions"
+  if (/(?:show|get|use)?\s*(?:special\s+)?offers?|\bpromotions?\b|\bapi[- ]?key\s+path\b/i.test(t)) {
+    return { kind: 'banking', banking: { action: 'api_key_demo' } };
+  }
+
+  // Phase 266 — Access + ID-Token path demo (Path B)
+  // Trigger: "show my profile card", "use the access-and-id-token path", "dual token path"
+  if (/(?:show|view|my)?\s*profile\s*card|\baccess[- ]?and[- ]?id[- ]?token\s+path\b|\bdual[- ]?token\s+path\b/i.test(t)) {
+    return { kind: 'banking', banking: { action: 'dual_token_demo' } };
+  }
+
   // Web search: general queries not related to banking or OAuth education
   if (
     /\b(search|find info|look up|look up|what is|tell me about|who is)\b/i.test(t) &&

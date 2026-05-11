@@ -24,6 +24,8 @@ const EVENT_CATEGORIES = {
   DELEGATION: 'delegation',
   INTROSPECTION: 'introspection',
   HELIX: 'helix',
+  // Phase 266 — gateway credential-path routing events (oauth_bearer / api_key / dual_token)
+  GATEWAY_PATH: 'gateway_path',
 };
 
 // Event severity levels

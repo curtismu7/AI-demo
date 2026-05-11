@@ -9,6 +9,10 @@ import './FloatingTokenChainPanel.css';
 /**
  * Floating, draggable, resizable Token Chain panel for the marketing page.
  * Shows the RFC 8693 token chain visualization in a movable overlay.
+ *
+ * credentialPath: each event in the chain carries a credentialPath field added in Phase 266.
+ * TokenChainPanel (below) delegates to TokenChainDisplay which renders per-segment
+ * colour/badge (blue/amber/teal) based on that field. No pass-through change needed here.
  */
 export default function FloatingTokenChainPanel({ isOpen, onClose }) {
   const [minimized, setMinimized] = useState(false);

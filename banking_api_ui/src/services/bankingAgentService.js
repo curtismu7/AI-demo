@@ -430,19 +430,42 @@ export async function callMcpTool(tool, params = {}) {
       });
     }
 
-    appendTokenEvents(tool, allTokenEvents);
+    // Phase 266 — credentialPath stamping and gateway-synthesized event merge.
+    // The gateway labels each response with result._meta.credentialPath
+    // ('oauth_bearer' | 'api_key' | 'dual_token') and synthesizes tokenEvents
+    // that describe the gateway-side disposition (e.g. the dual_token 4-segment
+    // narrative: inbound + idtoken-fetch + bearer-validated + idtoken-decoded).
+    const credentialPath = data.result?._meta?.credentialPath || 'oauth_bearer';
+    const gatewayTokenEvents = Array.isArray(data.result?._meta?.tokenEvents)
+      ? data.result._meta.tokenEvents
+      : [];
+    // Merge gateway-synthesized events (not duplicates — they describe gateway
+    // disposition, separate from the local exchange chain already in allTokenEvents).
+    for (const gEvt of gatewayTokenEvents) {
+      if (!allTokenEvents.some((e) => e.id === gEvt.id)) {
+        allTokenEvents.push(gEvt);
+      }
+    }
+    // Stamp every event with the credentialPath so TokenChainDisplay can render
+    // per-segment colour/badge (blue/amber/teal for oauth_bearer/api_key/dual_token).
+    const pathTaggedEvents = allTokenEvents.map((evt) => ({
+      ...evt,
+      credentialPath: evt.credentialPath || credentialPath,
+    }));
+
+    appendTokenEvents(tool, pathTaggedEvents);
     // Phase 194: mark tool milestone done
     updateMilestoneStatus(_toolId, "done");
     addMilestone("Flow Complete", "flow_complete", {});
     agentFlowDiagram.completeMcpToolCall({
       toolName: tool,
-      tokenEvents: allTokenEvents,
+      tokenEvents: pathTaggedEvents,
       ok: true,
       errorMessage: null,
     });
     return {
       result: data.result,
-      tokenEvents: allTokenEvents,
+      tokenEvents: pathTaggedEvents,
     };
   } catch (e) {
     // Phase 194: mark milestone error

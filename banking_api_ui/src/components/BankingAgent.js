@@ -75,6 +75,18 @@ import { getColdStartRetryDelays } from "../services/apiErrorHandler";
 import APP_CONFIG from "../services/appConfig";
 import { useCustomChips } from "../hooks/useCustomChips";
 
+// Phase 266 H2 audit: TokenChain credentialPath stamping origins per setTokenEvents call:
+//   line 3433 (scopeTestRes.tokenEvents)  — origin: scope-test path via callMcpTool; credentialPath: oauth_bearer (default; stamped by bankingAgentService)
+//   line 3503 (audTestRes.tokenEvents)    — origin: aud-test path via callMcpTool; credentialPath: oauth_bearer (default; stamped by bankingAgentService)
+//   line 4060 (tokenEventsErr)            — origin: error path from callMcpTool response; credentialPath: stamped by bankingAgentService before throw
+//   line 4259 (tokenEvents)               — origin: bankingAgentService.callMcpTool success path ✓ stamped
+//   line 5811 (response.tokenEvents)      — origin: sendAgentMessage (LangGraph/NL agent path); credentialPath: oauth_bearer (default; no credential swap on NL agent path)
+//   line 6052 (data.tokenEvents)          — origin: scope_upgrade token exchange; credentialPath: oauth_bearer (default; BFF /api/scope/upgrade path)
+//   line 7042 (response.tokenEvents)      — origin: HITL replay sendAgentMessage; credentialPath: oauth_bearer (default; same as NL agent path)
+// Conclusion: all 7 existing call sites produce oauth_bearer chains. The three new Phase 266
+// credential paths (api_key, dual_token, bankingdata) will all flow through bankingAgentService.callMcpTool
+// where the stamp is applied. No additional stamping needed at BankingAgent call sites.
+
 /** NL message to replay after customer OAuth redirect from marketing agent (sessionStorage). */
 const BX_AGENT_PENDING_NL_KEY = "bx_agent_pending_nl";
 

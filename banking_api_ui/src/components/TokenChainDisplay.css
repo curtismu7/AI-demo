@@ -2013,3 +2013,84 @@ pre.tcd-jwt-dump {
   color: #64748b;
   margin-left: 4px;
 }
+
+/* ─── Phase 266 — credentialPath visual identity per chain segment ─────────── */
+.tcd-path-oauth_bearer {
+  border-left: 3px solid #004687; /* OAuth blue */
+}
+.tcd-path-api_key {
+  border-left: 3px solid #ca8a04; /* amber */
+  background: rgba(202, 138, 4, 0.04);
+}
+.tcd-path-dual_token {
+  border-left: 3px solid #0d9488; /* teal */
+  background: rgba(13, 148, 136, 0.04);
+}
+.tcd-path-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  margin-bottom: 2px;
+  border-radius: 2px;
+  color: #fff;
+}
+.tcd-path-oauth_bearer > .tcd-path-badge { background: #004687; }
+.tcd-path-api_key      > .tcd-path-badge { background: #ca8a04; }
+.tcd-path-dual_token   > .tcd-path-badge { background: #0d9488; }
+
+/* ─── Phase 266 R3 — spec-citation pills on each token chain segment ─────── */
+.tcd-specref-group {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 8px;
+  flex-wrap: wrap;
+  vertical-align: middle;
+}
+.tcd-specref-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.tcd-specref-pill:hover { background: #e0e7ff; }
+.tcd-specref-unknown {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+  cursor: default;
+}
+.tcd-specref-link-icon {
+  font-size: 9px;
+  opacity: 0.7;
+}
+.tcd-specref-explainer {
+  display: block;
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #374151;
+  line-height: 1.5;
+  white-space: normal;
+  position: relative;
+  z-index: 10;
+}
+.tcd-specref-explainer-row {
+  margin-bottom: 6px;
+}
+.tcd-specref-explainer-row:last-child {
+  margin-bottom: 0;
+}

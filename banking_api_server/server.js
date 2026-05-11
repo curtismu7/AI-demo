@@ -391,6 +391,15 @@ initializeDiscovery().catch(err => {
     console.warn('[server] OIDC discovery initialization failed:', err.message);
 });
 
+// Phase 266 R2: ensure banking-resource-server.db exists (idempotent seed from data/store.js on first boot)
+try {
+    const { initBankingDb } = require('./services/bankingDb');
+    initBankingDb();
+} catch (err) {
+    console.warn('[server] banking-resource-server.db init failed:', err.message);
+    // Routes /accounts and /transactions will 500 until fixed; recovery: delete the file and restart.
+}
+
 // Restore session user from signed _auth cookie when in-memory session is empty.
 app.use(restoreSessionFromCookie);
 
@@ -857,6 +866,9 @@ app.use('/api/resource-server-cc', authenticateToken, resourceServerCCRoutes);
 // Internal gateway-only endpoint — NOT under /api/*; NOT exposed to the browser.
 // Phase 266: gateway reads the user's id_token server-to-server via shared secret.
 app.use('/internal', require('./routes/agentIdToken'));
+
+// Phase 266 R2 — Path A info marker (session-cookie auth; no Bearer needed from SPA)
+app.use('/api/path', require('./routes/pathInfo'));
 app.use('/api/transactions', (req, res, next) => {
     // Allow Bearer-token requests (MCP server, agent gateway, direct API calls) to bypass
     // the session-cookie check — authenticateToken validates the JWT below.

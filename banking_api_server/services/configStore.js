@@ -291,6 +291,9 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // Demo credentials (local only)
   demo_username:                         { public: true,  default: '' },
   demo_password:                         { public: false, default: '' },
+
+  // Phase 266 — Path A demo: service API key the gateway swaps in (masked last-4 shown on info page)
+  demo_apikey_backend_service_key:       { public: false, default: 'demo-api-key-0000' },
 };
 
 // ---------------------------------------------------------------------------
@@ -722,6 +725,9 @@ class ConfigStore {
       // Ollama
       ollama_base_url:                      ['OLLAMA_BASE_URL'],
       ollama_model:                         ['OLLAMA_MODEL'],
+
+      // Phase 266 — Path A demo API key
+      demo_apikey_backend_service_key:      ['DEMO_APIKEY_SERVICE_KEY'],
     };
 
     const envVars = envFallbackMap[key] || [];
