@@ -306,6 +306,18 @@ const ACTION_GROUPS = {
       desc: "Natural language query routed through LLM — exercises step 1a (LLM routing) in compliance checklist",
       rfcs: [],
     },
+    {
+      id: "api_key_demo",
+      label: "API-Key Path Demo",
+      desc: "Exercise gateway API-key credential swap (Path A) — tool 'special_offers' via Phase 266 gateway router",
+      rfcs: ["8693"],
+    },
+    {
+      id: "dual_token_demo",
+      label: "Access + ID-Token Path Demo",
+      desc: "Exercise gateway dual-token path (Path B) — tool 'user_profile_card' via Phase 266 gateway router",
+      rfcs: ["8693", "8707"],
+    },
   ],
 };
 
@@ -4050,6 +4062,38 @@ export default function BankingAgent({
               "Give me 5 tips for reducing transaction fees and managing money better",
           });
           break;
+        case "api_key_demo": {
+          // Phase 266 Path A: exercise the gateway API-key credential swap.
+          // Tool name 'special_offers' is defined ONLY by Phase 266-01 gateway router.
+          // Gateway swaps OAuth bearer for service API key, records swap in _meta.tokenEvents.
+          // Destination route is hard-coded (T-266-04-01: no open-redirect via infoPageHint).
+          toast.update(toastId, { render: "Routing to API-key credential path…" });
+          try {
+            await callMcpTool("special_offers", {});
+          } catch (e) {
+            console.error("[BankingAgent] api_key_demo dispatch failed:", e?.message);
+          }
+          setLoading(false);
+          toolProgressIdRef.current = null;
+          navigate("/path/apikey-info");
+          return;
+        }
+        case "dual_token_demo": {
+          // Phase 266 Path B: exercise the gateway dual-token (access + id_token) path.
+          // Tool name 'user_profile_card' is defined ONLY by Phase 266-01 gateway router.
+          // R2: gateway forwards to /api/resource-server/identity; SPA page fetches it directly.
+          // Destination route is hard-coded (T-266-04-01: no open-redirect via infoPageHint).
+          toast.update(toastId, { render: "Routing to access + id-token credential path…" });
+          try {
+            await callMcpTool("user_profile_card", {});
+          } catch (e) {
+            console.error("[BankingAgent] dual_token_demo dispatch failed:", e?.message);
+          }
+          setLoading(false);
+          toolProgressIdRef.current = null;
+          navigate("/path/dualtoken-info");
+          return;
+        }
         default: {
           const customChip = customChips.find((c) => c.id === actionId);
           if (customChip) {

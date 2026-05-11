@@ -158,6 +158,7 @@ export default function ResourceServerPage() {
       {/* Header */}
       <div className="rsp-header">
         <div className="rsp-header-content">
+          <span className="rsp-path-badge">OAUTH BEARER PATH</span>
           <h1>🔐 OIDC Resource Server</h1>
           <p className="rsp-subtitle">Banking API — MCP Exchange Target · User-delegated access</p>
         </div>
