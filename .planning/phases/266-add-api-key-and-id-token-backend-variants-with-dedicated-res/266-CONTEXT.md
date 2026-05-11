@@ -6,7 +6,7 @@
 
 **Revision history:**
 - 2026-05-10 R1: Pivot from "two new backend services" to "three gateway dispositions; only existing OAuth resource server returns data"
-- 2026-05-10 R2: Added banking_resource_server naming; Path B and Path C both served by extended `banking_api_server/routes/resourceServer.js`; SQLite-backed bank data in new `banking_api_server/data/banking.db`; both paths require valid access token (existing `authenticateToken` middleware); banking.db seeded on first BFF boot, idempotent; Path B returns decoded claims ONLY
+- 2026-05-10 R2: Added banking_resource_server naming; Path B and Path C both served by extended `banking_api_server/routes/resourceServer.js`; SQLite-backed bank data in new `banking_api_server/data/banking-resource-server.db`; both paths require valid access token (existing `authenticateToken` middleware); banking-resource-server.db seeded on first BFF boot, idempotent; Path B returns decoded claims ONLY
 
 ---
 
@@ -39,7 +39,7 @@ The three paths terminate as follows:
    - Gateway forwards the standard OAuth bearer (no id_token attached).
    - Request reaches a new SQLite-backed route on `banking_resource_server`: `GET /api/resource-server/accounts` and/or `GET /api/resource-server/transactions` (split from the current monolithic `/summary` route).
    - The route is protected by the existing `authenticateToken` middleware — the access token is validated.
-   - On valid access token: the route reads the requesting user's accounts/transactions from a new SQLite file `banking_api_server/data/banking.db` and returns them.
+   - On valid access token: the route reads the requesting user's accounts/transactions from a new SQLite file `banking_api_server/data/banking-resource-server.db` and returns them.
    - On invalid/missing access token: 401, no data returned.
    - SPA renders the result on the existing `ResourceServerPage` with the existing blue/OAuth styling. The only visual change is adding a plain-text "OAUTH BEARER PATH" badge to the page header.
 
@@ -60,7 +60,7 @@ The existing `/api/resource-server/summary` route currently returns a mixed payl
   - Path B — banking_resource_server identity route (`GET /api/resource-server/identity`)
   - Path C — banking_resource_server banking-data routes (`GET /api/resource-server/accounts`, `GET /api/resource-server/transactions`)
 - **Paths B and C are token-gated.** The existing `authenticateToken` middleware validates the PingOne access token (signature, exp, aud) on every request. Without a valid access token, the route returns 401 and no data.
-- **Bank data is SQLite-backed.** New file `banking_api_server/data/banking.db` (better-sqlite3 — already a dependency for `config.db`). On first BFF boot, idempotent seed: if the file is missing, create schema (`accounts`, `transactions`) and seed from `banking_api_server/data/store.js`. Subsequent boots use the persisted file. Survives restarts. Path C routes read from this DB.
+- **Bank data is SQLite-backed.** New file `banking_api_server/data/banking-resource-server.db` (better-sqlite3 — already a dependency for `config.db`). On first BFF boot, idempotent seed: if the file is missing, create schema (`accounts`, `transactions`) and seed from `banking_api_server/data/store.js`. Subsequent boots use the persisted file. Survives restarts. Path C routes read from this DB.
 - **Existing `/api/resource-server/summary` route is preserved untouched** — it currently powers `ResourceServerPage.jsx` and is not migrated in this phase. New routes (`/identity`, `/accounts`, `/transactions`) are added alongside it. A future phase can deprecate `/summary` if desired.
 - **Gateway changes:** extend the router to support three credential dispositions:
   1. `oauth_bearer` — forward the bearer to `banking_resource_server` accounts/transactions routes
@@ -87,10 +87,11 @@ The existing `/api/resource-server/summary` route currently returns a mixed payl
 
 ### Path C — banking_resource_server `/accounts` + `/transactions` routes (SQLite-backed)
 - New routes `GET /api/resource-server/accounts` and `GET /api/resource-server/transactions` on `banking_resource_server`, mounted under the existing `authenticateToken` middleware. Access-token validation is mandatory — no valid bearer → 401 → no data.
-- Route logic: extract user id from validated `req.user` / session; query SQLite `banking.db` for the user's accounts and transactions; return the SAME response shape currently used by `/summary` for the `accounts` and `transactions` fields (so a future migration is drop-in).
-- SQLite seeding (idempotent, on first BFF boot): if `banking_api_server/data/banking.db` does not exist, create schema (`accounts(id, userId, accountType, name, balance, currency, status, accountNumber)`, `transactions(id, userId, accountId, type, amount, description, createdAt)`), then insert all rows from `data/store.js`'s in-memory store. Wrap in a single transaction. Subsequent boots use the persisted file.
-- The seed runs once at BFF startup (in `server.js` or a small `services/bankingDbInit.js` helper called from `server.js`). Idempotency check: `if (!fs.existsSync(banking.db.path))` then seed.
+- Route logic: extract user id from validated `req.user` / session; query SQLite `banking-resource-server.db` for the user's accounts and transactions; return the SAME response shape currently used by `/summary` for the `accounts` and `transactions` fields (so a future migration is drop-in).
+- SQLite seeding (idempotent, on first BFF boot): if `banking_api_server/data/banking-resource-server.db` does not exist, create schema (`accounts(id, userId, accountType, name, balance, currency, status, accountNumber)`, `transactions(id, userId, accountId, type, amount, description, createdAt)`), then insert all rows from `data/store.js`'s in-memory store. Wrap in a single transaction. Subsequent boots use the persisted file.
+- The seed runs once at BFF startup (in `server.js` or a small `services/bankingDbInit.js` helper called from `server.js`). Idempotency check: `if (!fs.existsSync(banking-resource-server.db.path))` then seed.
 - SPA renders the result on the EXISTING `ResourceServerPage.jsx` for now (it still uses `/summary`). The only visual change to that page is adding a plain-text "OAUTH BEARER PATH" badge to the page header. Phase 266 does NOT migrate the page off `/summary` — that's a follow-up.
+- **W1 routing note (gateway):** the existing OLB tools (`get_my_accounts`, `get_account_balance`, `get_my_transactions`, etc.) continue to route via the gateway's existing `'olb'` target (WebSocket → `banking_mcp_server` on port 8080). Phase 266 ADDS a sibling `'bankingdata'` target that maps to the new HTTP routes; only NEW Phase-266 tool names (`demo_show_accounts`, `demo_show_transactions`) route through `'bankingdata'`. The existing chat prompt "show my accounts" therefore continues to flow through OLB end-to-end — its dashboard surface (`ResourceServerPage` via `/summary`) is what shows up. The new SQLite-backed HTTP routes are exercised by tests + manual curl + (optionally) a separate demo prompt that dispatches the new tool names. **Implication for the demo narrative:** Path C in this phase is "the gateway CAN reach the new SQLite-backed routes" (proven by Plan 02's integration tests), not "Path C's user-visible chat flow goes through them." Updating BankingAgent's NL parser to route "show my accounts" to `demo_show_accounts` is out of scope for this phase — that's a separate cutover.
 
 ### Database seeding & data layer
 - New file `banking_api_server/services/bankingDb.js` — thin better-sqlite3 wrapper exporting `getAccountsByUserId(userId)`, `getTransactionsByUserId(userId, limit?)`, and `initBankingDb()` (the boot-time seeder). Mirrors `data/store.js` API so swap is transparent.
@@ -148,8 +149,8 @@ The existing `/api/resource-server/summary` route currently returns a mixed payl
 - `banking_api_server/server.js:846` — Where `authenticateToken` middleware is mounted on `/api/resource-server/*`. New routes inherit this guard automatically.
 - `banking_api_server/middleware/auth.js` — PingOne access-token validator (signature, exp, aud). Reused as-is for the new routes.
 - `banking_api_server/services/tokenValidationService.js` — Backing JWKS validation (PingOne). Already wired through middleware/auth.
-- `banking_api_server/data/store.js` — Existing in-memory store. The SEED SOURCE for `banking.db` on first boot; not modified.
-- `banking_api_server/data/banking.db` — NEW SQLite file. Created and seeded idempotently on first BFF boot.
+- `banking_api_server/data/store.js` — Existing in-memory store. The SEED SOURCE for `banking-resource-server.db` on first boot; not modified.
+- `banking_api_server/data/banking-resource-server.db` — NEW SQLite file. Created and seeded idempotently on first BFF boot.
 - `banking_api_server/services/bankingDb.js` — NEW thin better-sqlite3 wrapper (created by Plan 02 or similar). Exports `getAccountsByUserId`, `getTransactionsByUserId`, `initBankingDb`.
 - `banking_api_server/services/configStore.js` — Existing better-sqlite3 user (template for `bankingDb.js` to mirror).
 - `banking_api_server/routes/oauthUser.js:471` — Where `req.session.oauthTokens.idToken` is set. ID token is already persisted; planners must not introduce schema changes here.
@@ -181,7 +182,7 @@ The existing `/api/resource-server/summary` route currently returns a mixed payl
 - Path A is purely Gateway plumbing — no backend involvement. This makes it the most "different" of the three and visually justifies its standalone info page.
 - "Back to Dashboard" button on Paths A and B is critical UX — the user must always have a clear way out of the informational pages. Path C continues to render in the existing dashboard surfaces via `ResourceServerPage`.
 - Token Chain visualization across three paths is a primary deliverable — when a presenter clicks all three demo prompts in sequence, the Token Chain panel should show three visibly different chains (api_key swap, dual_token attach, oauth_bearer forward).
-- Why SQLite: the demo narrative claims a "real" resource server. In-memory `data/store.js` resets on every restart and can't credibly play that role. `banking.db` is persisted, seeded from the existing store on first boot, and read by the new `/accounts` + `/transactions` routes — same response shape as today's `/summary`, just sourced differently.
+- Why SQLite: the demo narrative claims a "real" resource server. In-memory `data/store.js` resets on every restart and can't credibly play that role. `banking-resource-server.db` is persisted, seeded from the existing store on first boot, and read by the new `/accounts` + `/transactions` routes — same response shape as today's `/summary`, just sourced differently.
 
 </specifics>
 
@@ -189,9 +190,10 @@ The existing `/api/resource-server/summary` route currently returns a mixed payl
 ## Deferred Ideas
 
 - Actual API-key-gated standalone Node backend service — could become a future phase if the demo needs to show a separate process accepting `X-API-Key`. For Phase 266, Path A is Gateway-only.
+- **W4 deviation from roadmap:** the roadmap section for Phase 266 (point 4 under Requirements / Scope) says "Add the new backend nodes (currently aspirational/dashed) as live nodes when these variants land." R2 deviates from this on the API-key node specifically — `api-key-backend` in `ArchitectureFlowPage.js` REMAINS `aspirational: true` because Path A is Gateway-terminating in this phase (no real 3rd-party API-key-gated backend is wired). The `id-token-backend` node is REPLACED by the live `banking-resource-server` node (which handles both Path B `/identity` and Path C `/accounts`/`/transactions`). Flipping `api-key-backend` to live is deferred to a future phase that builds an actual API-key-gated backend service. This deviation is intentional — recorded here so a future roadmap audit doesn't flag it as a missed requirement.
 - Actual dual-token-gated standalone Node backend service — same reasoning. Path B reaches `banking_resource_server`'s `/identity` route in the same process.
 - Migrating `ResourceServerPage.jsx` off `/api/resource-server/summary` onto the new `/accounts` + `/transactions` routes — deferred follow-up. The new routes exist in this phase but the existing UI continues to use `/summary` for backwards compatibility.
-- Schema migrations for `banking.db` — the schema is created once on first boot. A migration strategy can be added in a later phase if the schema needs to evolve.
+- Schema migrations for `banking-resource-server.db` — the schema is created once on first boot. A migration strategy can be added in a later phase if the schema needs to evolve.
 - LangChain agent (port 8888) integration — heuristic-only NL routing for Phase 266; LangChain deferred.
 - Token introspection via PingOne `/as/introspect` — out of scope. `authenticateToken` does JWKS-based local validation, which is what the rest of the BFF uses.
 
@@ -202,4 +204,4 @@ The existing `/api/resource-server/summary` route currently returns a mixed payl
 *Phase: 266-add-api-key-and-id-token-backend-variants-with-dedicated-res*
 *Context gathered: 2026-05-10 via roadmap + in-session user pivot*
 *R1 pivot recorded: 2026-05-10 — original planner draft built two new backend services; user clarified Path A terminates at the Gateway info page and only Path C reaches a real backend.*
-*R2 pivot recorded: 2026-05-10 — user named the unified backend `banking_resource_server` (extension of existing `banking_api_server/routes/resourceServer.js`, NOT a new service); Paths B and C are BOTH served by it with three new routes (`/identity`, `/accounts`, `/transactions`) gated by the existing `authenticateToken` middleware; bank data moves to a new SQLite file `banking_api_server/data/banking.db` seeded from `data/store.js` on first BFF boot.*
+*R2 pivot recorded: 2026-05-10 — user named the unified backend `banking_resource_server` (extension of existing `banking_api_server/routes/resourceServer.js`, NOT a new service); Paths B and C are BOTH served by it with three new routes (`/identity`, `/accounts`, `/transactions`) gated by the existing `authenticateToken` middleware; bank data moves to a new SQLite file `banking_api_server/data/banking-resource-server.db` seeded from `data/store.js` on first BFF boot.*
