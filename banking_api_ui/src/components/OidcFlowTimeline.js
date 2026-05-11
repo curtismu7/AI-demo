@@ -1,8 +1,14 @@
 /**
+ * Phase 266 audit (2026-05-11): this timeline covers the OIDC login flow only;
+ * the 3-path credential divergence is documented in AgentFlowDiagramPanel.js and
+ * ArchitectureTokenFlowPage.js. No changes required here.
+ */
+
+/**
  * OidcFlowTimeline Component
  * Displays a vertical timeline of OIDC flow milestones
  * Shows: OIDC login → token exchange → MCP tool calls → backend operations
- * 
+ *
  * Each milestone displays:
  * - Milestone name and description
  * - Timestamp

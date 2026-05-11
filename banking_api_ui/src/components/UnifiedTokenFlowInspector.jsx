@@ -191,6 +191,21 @@ function AgentFlowSection({ compact = false, onSelectToken, selectedTokenId: sel
 
   const { steps, hint, phase, toolName } = snap;
 
+  // Phase 266 R2: credential-path ribbon
+  const utfiCredentialPath = tokenChainCtx?.events?.[0]?.credentialPath || 'oauth_bearer';
+  const UTFI_PATH_LABELS = {
+    oauth_bearer: 'OAUTH BEARER PATH',
+    api_key:      'API-KEY PATH',
+    dual_token:   'ACCESS + ID-TOKEN PATH',
+  };
+  const UTFI_PATH_COLORS = {
+    oauth_bearer: { bg: '#dbeafe', border: '#004687', text: '#004687' },
+    api_key:      { bg: '#fef9c3', border: '#ca8a04', text: '#713f12' },
+    dual_token:   { bg: '#ccfbf1', border: '#0d9488', text: '#0d9488' },
+  };
+  const utfiPathLabel = UTFI_PATH_LABELS[utfiCredentialPath] || UTFI_PATH_LABELS.oauth_bearer;
+  const utfiPathColor = UTFI_PATH_COLORS[utfiCredentialPath] || UTFI_PATH_COLORS.oauth_bearer;
+
   return (
     <div className="utfi-agent-flow-section">
       <div className="utfi-section-header">
@@ -198,6 +213,38 @@ function AgentFlowSection({ compact = false, onSelectToken, selectedTokenId: sel
         <h3>Agent Request Flow</h3>
         {toolName && <span className="utfi-tool-name">{toolName}</span>}
       </div>
+
+      {/* Phase 266 R2: path-coloured ribbon showing active credential disposition */}
+      {tokenChainCtx?.events?.length > 0 && (
+        <div style={{
+          margin: '4px 0 6px',
+          padding: '4px 10px',
+          borderRadius: 5,
+          background: utfiPathColor.bg,
+          borderLeft: `3px solid ${utfiPathColor.border}`,
+          fontSize: '0.71rem',
+          fontWeight: 700,
+          color: utfiPathColor.text,
+          letterSpacing: 0.3,
+        }}>
+          {utfiPathLabel}
+          {utfiCredentialPath === 'dual_token' && (
+            <span style={{ fontWeight: 400, marginLeft: 6, color: '#334155' }}>
+              — user bearer validated + id_token decoded at banking_resource_server /identity
+            </span>
+          )}
+          {utfiCredentialPath === 'oauth_bearer' && (
+            <span style={{ fontWeight: 400, marginLeft: 6, color: '#334155' }}>
+              — RFC 8693 exchange, banking_resource_server /accounts /transactions
+            </span>
+          )}
+          {utfiCredentialPath === 'api_key' && (
+            <span style={{ fontWeight: 400, marginLeft: 6, color: '#334155' }}>
+              — X-API-Key swap, no backend call
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="utfi-agent-flow-body">
         {hint && steps.length === 0 && <p className="utfi-hint">{hint}</p>}

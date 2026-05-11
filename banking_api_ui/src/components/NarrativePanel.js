@@ -4,6 +4,20 @@ import { useTokenChainOptional } from '../context/TokenChainContext';
 import RfcLink from './shared/RfcLink';
 import './NarrativePanel.css';
 
+// Phase 266 R2: credential-path labels and narration text per path.
+// credentialPath is read from TokenChainContext (set by gateway _meta.credentialPath).
+const PATH_LABELS = {
+  oauth_bearer: 'OAUTH BEARER PATH',
+  api_key:      'API-KEY PATH',
+  dual_token:   'ACCESS + ID-TOKEN PATH',
+};
+
+const PATH_NARRATION = {
+  oauth_bearer: 'The gateway performs RFC 8693 token exchange (RFC 8693 + RFC 8707 audience binding) to obtain a backend-scoped bearer, then forwards the tool call to banking_resource_server /accounts or /transactions. Data is sourced from a SQLite file seeded from the demo store (inbound bearer per RFC 6750; audit chain per draft-ietf-oauth-identity-chaining).',
+  api_key:      'The gateway exchanges your OAuth token for a service API key. Phase 266 demo terminates here without calling a backend; see the API-Key info page.',
+  dual_token:   'The gateway forwards your access token AND id_token to banking_resource_server /identity. The access token is validated server-side by the authenticateToken middleware (RFC 6750; JWKS per RFC 7515/7517); the id_token is fetched from the BFF session (OIDC Core §3.1.3.7) and decoded server-side; only sanitized claims are returned (no raw JWT crosses any boundary). RFC 8693 exchange narrows audience per RFC 8707; act chain logged per draft-ietf-oauth-identity-chaining.',
+};
+
 function dotClass(status) {
   if (status === 'success' || status === 'acquired') return 'np-dot np-dot--success';
   if (status === 'error') return 'np-dot np-dot--error';
@@ -82,6 +96,9 @@ function buildSummary(events) {
 export default function NarrativePanel() {
   const ctx = useTokenChainOptional();
   const events = ctx?.events || [];
+  const credentialPath = ctx?.events?.[0]?.credentialPath || 'oauth_bearer';
+  const pathLabel = PATH_LABELS[credentialPath] || PATH_LABELS.oauth_bearer;
+  const pathNarration = PATH_NARRATION[credentialPath] || PATH_NARRATION.oauth_bearer;
 
   if (events.length === 0) {
     return (
@@ -104,6 +121,19 @@ export default function NarrativePanel() {
     <div className="np-root">
       <div className="np-title">What's Happening</div>
       <div className="np-subtitle">Plain-English walkthrough · <RfcLink rfc="RFC_8693" /></div>
+      {/* Phase 266 R2: path-specific narration badge + text */}
+      <div style={{
+        marginBottom: 8,
+        padding: '6px 10px',
+        borderRadius: 6,
+        background: credentialPath === 'api_key' ? '#fef9c3' : credentialPath === 'dual_token' ? '#ccfbf1' : '#dbeafe',
+        border: `1px solid ${credentialPath === 'api_key' ? '#ca8a04' : credentialPath === 'dual_token' ? '#0d9488' : '#004687'}`,
+        fontSize: '0.72rem',
+        color: '#1e293b',
+      }}>
+        <span style={{ fontWeight: 700, marginRight: 6 }}>{pathLabel}:</span>
+        {pathNarration}
+      </div>
 
       <div className="np-timeline">
         {steps.map(({ ev, label, body, rfcNode, claims, prev }) => (

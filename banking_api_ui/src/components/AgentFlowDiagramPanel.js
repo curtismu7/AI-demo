@@ -110,6 +110,19 @@ function TokenChainDisplay({ events, resolvedIdentity }) {
   );
 }
 
+// Phase 266 R2: credential-path label map for the panel badge.
+const AFD_PATH_LABELS = {
+  oauth_bearer: 'OAUTH BEARER PATH',
+  api_key:      'API-KEY PATH',
+  dual_token:   'ACCESS + ID-TOKEN PATH',
+};
+
+const AFD_PATH_COLORS = {
+  oauth_bearer: { bg: '#dbeafe', border: '#004687', text: '#004687' },
+  api_key:      { bg: '#fef9c3', border: '#ca8a04', text: '#713f12' },
+  dual_token:   { bg: '#ccfbf1', border: '#0d9488', text: '#0d9488' },
+};
+
 /**
  * Floating, draggable, resizable live diagram: PingOne → Agent → BFF → MCP → tool.
  * State is driven by agentFlowDiagramService (bankingAgentService + BankingAgent).
@@ -122,6 +135,9 @@ export default function AgentFlowDiagramPanel() {
   const edu = useEducationUIOptional();
   const tokenChainCtx = useTokenChainOptional();
   const resolvedIdentity = tokenChainCtx?.resolvedIdentity ?? null;
+  const credentialPath = tokenChainCtx?.events?.[0]?.credentialPath || 'oauth_bearer';
+  const afdPathLabel = AFD_PATH_LABELS[credentialPath] || AFD_PATH_LABELS.oauth_bearer;
+  const afdPathColor = AFD_PATH_COLORS[credentialPath] || AFD_PATH_COLORS.oauth_bearer;
 
   const { pos, size, handleDragStart, createResizeHandler } = useDraggablePanel(
     () => ({
@@ -195,6 +211,23 @@ export default function AgentFlowDiagramPanel() {
             {phase === 'running' ? 'Live' : phase === 'done' ? 'Complete' : phase === 'error' ? 'Completed with errors' : 'Overview'}
             {toolName ? ` · ${toolName}` : ''}
           </span>
+          {/* Phase 266 R2: show credential path badge when a path is active */}
+          {tokenChainCtx?.events?.length > 0 && (
+            <span style={{
+              display: 'inline-block',
+              marginTop: 2,
+              padding: '1px 6px',
+              borderRadius: 4,
+              fontSize: '0.6rem',
+              fontWeight: 700,
+              background: afdPathColor.bg,
+              border: `1px solid ${afdPathColor.border}`,
+              color: afdPathColor.text,
+              letterSpacing: 0.3,
+            }}>
+              {afdPathLabel}
+            </span>
+          )}
         </div>
         <div className="afd-header-actions">
           <button
