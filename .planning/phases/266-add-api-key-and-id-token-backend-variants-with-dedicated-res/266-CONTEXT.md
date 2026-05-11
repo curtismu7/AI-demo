@@ -71,6 +71,27 @@ The existing `/api/resource-server/summary` route currently returns a mixed payl
   3. `dual_token` — forward the bearer AND attach the `id_token` (from BFF session, fetched via a server-to-server BFF endpoint) to the `banking_resource_server` identity route; record both in Token Chain
 - **Gateway is the source of truth for which path was taken** — it labels the response with a `credentialPath` field so the SPA can route the result card to the correct page.
 
+### Spec compliance for token flow (R3 — MANDATORY)
+
+This phase implements a multi-hop OAuth flow that MUST follow established specs. Plans MUST cite and enforce these:
+
+| Hop | Spec | What's enforced |
+|---|---|---|
+| User → BFF (login) | OIDC Core 1.0 §3.1.3.7 | id_token is issued, validated, persisted in BFF session at `oauthUser.js:471` |
+| User token shape | RFC 9068 (JWT profile for OAuth access tokens) + RFC 7519 | `typ: at+jwt`, claims `iss/sub/aud/exp/iat/scope/may_act` |
+| Gateway exchanges user bearer for backend-scoped token | **RFC 8693** (Token Exchange) | `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`, `subject_token`=user bearer, gateway client creds = actor (Basic auth on the exchange call), `audience`=banking_resource_server resource URI. This is THE spec-critical step for dual_token + oauth_bearer dispositions. Already implemented in `banking_mcp_gateway/src/tokenExchange.ts`. |
+| Identity-chain audit trail | **draft-ietf-oauth-identity-chaining** (a.k.a. "JAG") + RFC 8693 §4.1 | Resulting exchanged token carries `act: { sub: <gateway-client>, client_id: <gateway-client> }` proving "the gateway, acting as an agent, exchanged on behalf of the user." `may_act` on the user's token MUST permit the gateway-client as an actor. |
+| Audience binding | **RFC 8707** + **MCP 2025-11-25 §Authorization** | The exchanged token's `aud` MUST match the downstream RS's resource identifier. banking_resource_server publishes its identifier via `BANKING_API_RESOURCE_URI` env var and (in prod) via `/.well-known/oauth-protected-resource` (RFC 9728). The gateway MUST request this audience; the RS MUST reject any token without it. |
+| RS validates the incoming bearer | RFC 7515 (JWS) + RFC 7517 (JWKS) + RFC 8414 (AS metadata discovery) | banking_api_server's existing `authenticateToken` middleware (server.js:846) does this: verifies signature against PingOne's JWKS, verifies `iss`, `exp`, `aud`. Local validation — no round-trip to AS per request. |
+| Optional RS introspection layer | **RFC 7662** | When `configStore.getEffective('ff_introspection_required')==='true'` (existing Phase 235 flag), the middleware ALSO calls PingOne's `/as/introspect` endpoint via the existing `tokenIntrospectionService.js`. The RS sends `token` + its own client credentials and gets `{active, scope, sub, aud, exp, client_id, ...}` back. Gives real-time revocation. Configurable defense-in-depth; not required for the demo flow but available. |
+| Identity claims surfacing | OIDC Core 1.0 §5 | banking_resource_server's `/identity` route decodes the id_token's CLAIMS only and returns them; raw JWT never crosses the boundary (CLAUDE.md token-custody rule + `scrubRawJwts` walker). |
+
+**Phase 266's responsibility:** ensure every hop in the chain follows the right spec. Specifically:
+- Plan 01 MUST call `exchangeTokenForBackend(..., bankingResourceServerResourceUri, ...)` on the dual_token path before forwarding — the inbound user bearer (aud=AI-agent-resource) is REJECTED at the backend per RFC 6750/8707.
+- Plan 01 MUST surface the act-chain in `_meta.tokenEvents` so Token Chain UI shows the audit trail.
+- Plan 02's `/identity` route MUST log the act chain via `appEventService.logEvent('INTROSPECTION', ...)` (Phase 235 wiring) so compliance review sees `{sub, aud, act, may_act}` per request.
+- Plan 02 MUST support optional RFC 7662 introspection when the existing feature flag is enabled.
+
 ### Path A — API-Key page (Gateway-only)
 - Gateway-terminating; no backend call.
 - New result surface (routed React page) with amber/yellow visual identity and a plain-text "API-KEY PATH" badge in the header (no emoji glyphs per REGRESSION_PLAN §0).
