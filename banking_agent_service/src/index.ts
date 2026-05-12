@@ -40,11 +40,36 @@ app.use(express.json());
 // Auth middleware — extract user Bearer token
 // ---------------------------------------------------------------------------
 
+/**
+ * HI-04: cheap local subject_token validation. Without this, any caller could
+ * submit a malformed value and trigger a PingOne RFC 8693 round trip (free
+ * DoS vector against our tenant). Decoding here is base64 only — signature
+ * verification is still done at the PingOne /as/token endpoint.
+ */
+function _validateSubjectTokenShape(token: string): { ok: true } | { ok: false; reason: string } {
+  const parts = token.split('.');
+  if (parts.length !== 3) return { ok: false, reason: 'jwt_must_have_three_segments' };
+  let payload: any;
+  try {
+    payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+  } catch {
+    return { ok: false, reason: 'jwt_payload_unparseable' };
+  }
+  if (typeof payload?.exp !== 'number') return { ok: false, reason: 'jwt_exp_missing' };
+  if (payload.exp * 1000 < Date.now()) return { ok: false, reason: 'jwt_expired' };
+  return { ok: true };
+}
+
 function requireBearerToken(req: Request, res: Response, next: NextFunction): void {
   const auth = req.headers.authorization || '';
   const parts = auth.split(' ');
   if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
     res.status(401).json({ error: 'Bearer token required' });
+    return;
+  }
+  const validation = _validateSubjectTokenShape(parts[1]);
+  if (!validation.ok) {
+    res.status(400).json({ error: 'invalid_subject_token', detail: validation.reason });
     return;
   }
   (req as any).userToken = parts[1];
