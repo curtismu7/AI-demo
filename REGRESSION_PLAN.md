@@ -102,6 +102,28 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-12 — Architecture menu group is now 401-free for anonymous visitors (`ArchitectureTabsPanel` gates `/api/admin/diagrams/list` behind `user?.role === 'admin'`)
+
+**Files changed:**
+- `banking_api_ui/src/components/ArchitectureTabsPanel.jsx` — `DiagramRegeneratePanel` previously called `bffAxios.get('/api/admin/diagrams/list')` unconditionally on mount and relied on the 401/403 response to hide itself for non-admins. The catch branch did its job, but the failed request still produced a red 401/403 entry in the DevTools Network/Console tab on `/architecture/system` for any anon visitor. Now the component accepts a `user` prop and the mount-time effect early-returns with `setHidden(true)` whenever `user?.role !== 'admin'`, so we never send a request that would 401/403. `ArchitectureTabsPanel` was extended to accept and forward the `user` prop.
+- `banking_api_ui/src/App.js` — `/architecture/system` now passes `user={user}` to `<ArchitectureTabsPanel>` (the other five Architecture sub-routes were already passing it).
+- `banking_api_ui/src/components/__tests__/ArchitectureTabsPanel.anon.test.js` (new) — three regression cases: anon visitor sees no `/api/admin/diagrams/list` call, non-admin sees no call, admin gets the call. Pairs with the `/sequence-diagram` and `SessionExpiryTimer` educational-path tests added in the prior entry.
+
+**What was broken:** Every visit to `/architecture/system` by an anonymous or non-admin user produced a 401/403 against `/api/admin/diagrams/list`. The Network/Console noise undermined the "Architecture menu group is publicly viewable documentation" stance — the bug fixed in the prior entry only fixed `SessionExpiryTimer` and `/sequence-diagram` itself, not the admin-only diagram regen toolbar embedded inside the System Architecture tab.
+
+**What was fixed:** No request is issued at all unless the rendered user is an admin. The regen toolbar continues to work identically for admins (it was already gated server-side; the change is purely client-side pre-check). For anon and non-admin visitors, the panel is hidden silently — same UX as before, no 401 noise.
+
+**Verify:**
+- `cd banking_api_ui && CI=true npx react-scripts test --watchAll=false --testPathPattern="ArchitectureTabsPanel.anon"` → **`Tests: 3 passed, 3 total`**
+- `cd banking_api_ui && CI=true npm run build` → exit 0
+- Manual smoke: open `https://api.ping.demo:4000/architecture/system` in a private window. Page renders, no 401/403 in DevTools Network, no errors in Console. Then log in as admin and revisit — the "Regenerate Diagrams" toolbar appears and clicking it still works.
+
+**Do not break:**
+- Do not re-add a fetch in `DiagramRegeneratePanel` that fires before the `user?.role === 'admin'` check. The whole point of this fix is that an anon visitor produces *zero* admin-route requests. Any client-side admin tooling added in this area must follow the same "pre-check role, don't rely on server 401 to gate UI" pattern.
+- Do not remove the `setHidden(true)` on the non-admin branch. Even if a future contributor adds a fallback rendering for non-admins, the panel must still hide itself for the regen-toolbar use case — non-admins have no authority to regenerate diagrams.
+- Do not weaken `/api/admin/diagrams/list`'s server-side gate. The client gate is a UX improvement, not the security boundary; the route must continue to require admin authentication. The matching test in this entry only verifies *client behavior*, not server enforcement.
+- Do not add other admin-only mount-time fetches to components that render under the Architecture menu group (`/architecture/*`, `/sequence-diagram`). The entire group is supposed to be safe to link from external marketing or conference docs without leaking 401/403 noise.
+
 ### 2026-05-12 — `/sequence-diagram` is now genuinely public; `SessionExpiryTimer` no longer fires 401-bound fetches on educational pages
 
 **Files changed:**

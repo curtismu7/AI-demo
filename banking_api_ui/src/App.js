@@ -790,7 +790,7 @@ function AppWithAuth() {
                       <Routes>
                         <Route
                           path="system"
-                          element={<ArchitectureTabsPanel />}
+                          element={<ArchitectureTabsPanel user={user} />}
                         />
                         <Route
                           path="overview"

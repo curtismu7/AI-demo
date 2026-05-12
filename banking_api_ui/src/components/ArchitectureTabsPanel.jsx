@@ -30,7 +30,7 @@ import './ArchitectureTabsPanel.css';
  * Hidden gracefully for non-admin users — /list 403s for them and we just
  * render nothing rather than show a button they can't use.
  */
-function DiagramRegeneratePanel() {
+function DiagramRegeneratePanel({ user }) {
   const [items, setItems] = useState([]);
   const [hidden, setHidden] = useState(false);
   const [running, setRunning] = useState(false);
@@ -53,7 +53,18 @@ function DiagramRegeneratePanel() {
     }
   }, []);
 
-  useEffect(() => { loadList(); }, [loadList]);
+  useEffect(() => {
+    // Only admins can use the regen tooling, and the /diagrams/list route is
+    // admin-gated. Pre-emptively hide the panel for anon visitors and non-admin
+    // users so we never issue a request that would 401/403. This keeps the
+    // Architecture menu group genuinely public — no DevTools-Console noise
+    // when an unauthenticated visitor opens /architecture/system.
+    if (user?.role !== 'admin') {
+      setHidden(true);
+      return;
+    }
+    loadList();
+  }, [loadList, user]);
 
   // SSE consumer for the regen stream. fetch + ReadableStream gives us
   // POST-with-body support (the standard EventSource API is GET-only).
@@ -299,7 +310,7 @@ function badgeStyle(bg, fg) {
   };
 }
 
-const ArchitectureTabsPanel = () => {
+const ArchitectureTabsPanel = ({ user } = {}) => {
   const [activeTab, setActiveTab] = useState('architecture');
   const { mode } = useExchangeMode();
 
@@ -308,7 +319,7 @@ const ArchitectureTabsPanel = () => {
       {/* Regenerate-diagrams toolbar — admin only; sits above the tabs so
           it's visible from every sub-view and the user doesn't have to
           remember a hidden URL or shell command. */}
-      <DiagramRegeneratePanel />
+      <DiagramRegeneratePanel user={user} />
 
       {/* Tab header row */}
       <div role="tablist" className="architecture-tabs-header">
