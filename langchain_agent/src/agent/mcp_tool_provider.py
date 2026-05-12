@@ -274,7 +274,12 @@ class MCPTool(BaseTool):
             self._current_agent_token = await self.auth_manager.get_client_credentials_token(
                 additional_scopes=["ai_agent"]
             )
-            logger.debug(f"Agent token ready: {self._current_agent_token}")
+            # BL-01: never log the raw AccessToken — mask via fingerprint helper.
+            # AccessToken.__repr__ also masks, but logging the fingerprint is the
+            # form callers should imitate when debugging token flow.
+            logger.debug(
+                f"Agent token ready: {self._current_agent_token.masked_fingerprint() if self._current_agent_token else 'none'}"
+            )
             
             logger.info(f"Executing MCP tool {self.tool_info.full_name} with parameters: {parameters}")
             logger.debug(f"Tool execution details - Server: {self.tool_info.server_name}, Tool: {self.tool_info.name}, Session: {self._current_session_id}")

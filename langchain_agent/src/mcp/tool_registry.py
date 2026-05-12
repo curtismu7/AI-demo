@@ -216,8 +216,11 @@ class MCPToolExecutor:
         
         logger.info(f"Executing tool {full_tool_name} for session {session_id}")
         logger.debug(f"Tool execution parameters: {parameters}")
-        logger.debug(f"Agent token: {agent_token}")
-        logger.debug(f"User auth code: {user_auth_code}")
+        # BL-01: never log the raw AccessToken — mask via fingerprint helper.
+        # AccessToken.__repr__ now masks too, but logging the fingerprint is the
+        # form callers should imitate when debugging token flow.
+        logger.debug(f"Agent token: {agent_token.masked_fingerprint() if agent_token else 'none'}")
+        logger.debug(f"User auth code present: {user_auth_code is not None}")
         
         try:
             # Get server configuration (we need this to get a connection)

@@ -107,6 +107,25 @@ class AccessToken:
         """Get the Authorization header value"""
         return f"{self.token_type} {self.token}"
 
+    # BL-01: token must never appear in log lines via %s / f-string / repr.
+    # The default dataclass __repr__ embeds every field including the raw JWT.
+    # Override both __repr__ and __str__ to a fixed redacted form. Callers
+    # that need a stable correlation tag should emit the masked helper below.
+    def __repr__(self) -> str:  # pragma: no cover - trivial
+        return "AccessToken(***masked***)"
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return "AccessToken(***masked***)"
+
+    def masked_fingerprint(self) -> str:
+        """Stable, non-reversible correlation tag for logs.
+
+        Returns `sha256:<first 12 hex chars>` of the raw token. Safe for
+        debug logs; never returns any portion of the token itself.
+        """
+        import hashlib
+        digest = hashlib.sha256(self.token.encode("utf-8")).hexdigest()
+        return f"sha256:{digest[:12]}"
 
 
 @dataclass

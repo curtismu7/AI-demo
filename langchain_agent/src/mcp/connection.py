@@ -173,7 +173,13 @@ class MCPConnection(MCPClient):
                 "params": params
             }
             
-            logger.info(f"Sending tools/call request to {self.server_config.name}: {message}")
+            # BL-01: redact userAuthCode from the logged JSON-RPC envelope.
+            # The full `message` dict embeds params["userAuthCode"] which is the
+            # raw OAuth authorization code — never safe for stdout/file logs.
+            redacted_message = {**message, "params": {**params}}
+            if "userAuthCode" in redacted_message["params"]:
+                redacted_message["params"] = {**redacted_message["params"], "userAuthCode": "[REDACTED]"}
+            logger.info(f"Sending tools/call request to {self.server_config.name}: {redacted_message}")
             logger.debug(f"Tool call details - name: {tool_call.tool_name}, params: {tool_call.parameters}")
             logger.debug(f"Session ID: {tool_call.session_id}")
             logger.debug(f"Agent token present: {tool_call.agent_token is not None}")
