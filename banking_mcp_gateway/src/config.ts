@@ -48,6 +48,10 @@ export interface GatewayConfig {
 
 const DEV_BYPASS = process.env.MCP_GW_DEV_BYPASS === 'true';
 
+// Phase 266 — must match the literal used as the optional() fallback for BFF_INTERNAL_SECRET below.
+// Production startup refuses this exact value to prevent shipping the dev fallback.
+const DEFAULT_BFF_INTERNAL_SECRET = 'dev-shared-secret-change-me';
+
 function required(name: string, stub = 'dev-bypass-placeholder'): string {
   const v = process.env[name];
   if (!v) {
@@ -106,8 +110,31 @@ export function loadConfig(): GatewayConfig {
     // Phase 266 fields
     demoApiKeyServiceKey: optional('DEMO_APIKEY_SERVICE_KEY', 'demo-api-key-0000'),
     bffInternalIdTokenUrl: optional('BFF_INTERNAL_ID_TOKEN_URL', 'http://localhost:3001/internal/id-token'),
-    bffInternalSecret: optional('BFF_INTERNAL_SECRET', 'dev-shared-secret-change-me'),
+    bffInternalSecret: optional('BFF_INTERNAL_SECRET', DEFAULT_BFF_INTERNAL_SECRET),
     bankingResourceServerBaseUrl: optional('BANKING_RESOURCE_SERVER_BASE_URL', 'http://localhost:3001'),
     bankingResourceServerResourceUri: optional('BANKING_RESOURCE_SERVER_RESOURCE_URI', 'https://banking-resource-server.bxf.com'),
   };
+}
+
+/**
+ * BL-03 startup assertion: refuse the committed dev-fallback BFF_INTERNAL_SECRET
+ * when running in production. The same default literal lives on the BFF side
+ * (banking_api_server/routes/agentIdToken.js); both processes must reject it
+ * symmetrically so a misconfigured deploy fails closed instead of silently
+ * exposing /internal/id-token to anyone who guesses the public default.
+ *
+ * Pure assertion — call from process entry (index.ts) so the gateway exits
+ * non-zero before binding any port.
+ */
+export function assertProductionSecrets(cfg: GatewayConfig): void {
+  if (process.env.NODE_ENV !== 'production') return;
+  if (cfg.bffInternalSecret === DEFAULT_BFF_INTERNAL_SECRET) {
+    // eslint-disable-next-line no-console
+    console.error(
+      '[GW] FATAL: BFF_INTERNAL_SECRET is set to the committed dev default ' +
+      `('${DEFAULT_BFF_INTERNAL_SECRET}') and NODE_ENV=production. ` +
+      'Refusing to start. Set BFF_INTERNAL_SECRET to a unique 32+ byte secret.',
+    );
+    process.exit(1);
+  }
 }

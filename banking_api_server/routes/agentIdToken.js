@@ -22,8 +22,24 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 
-const INTERNAL_SECRET = process.env.BFF_INTERNAL_SECRET || 'dev-shared-secret-change-me';
+// BL-03: must match banking_mcp_gateway/src/config.ts DEFAULT_BFF_INTERNAL_SECRET.
+// Production startup refuses this literal so the dev fallback can't ship.
+const DEFAULT_INTERNAL_SECRET = 'dev-shared-secret-change-me';
+const INTERNAL_SECRET = process.env.BFF_INTERNAL_SECRET || DEFAULT_INTERNAL_SECRET;
 const INTERNAL_SECRET_BUF = Buffer.from(INTERNAL_SECRET);
+
+if (process.env.NODE_ENV === 'production' && INTERNAL_SECRET === DEFAULT_INTERNAL_SECRET) {
+  // Fail-hard at module load: /internal/id-token would otherwise be open to
+  // anyone who knows the public default secret. Symmetric with the gateway
+  // assertion in banking_mcp_gateway/src/config.ts::assertProductionSecrets.
+  // eslint-disable-next-line no-console
+  console.error(
+    '[BFF] FATAL: BFF_INTERNAL_SECRET is set to the committed dev default ' +
+    `('${DEFAULT_INTERNAL_SECRET}') and NODE_ENV=production. ` +
+    'Refusing to start. Set BFF_INTERNAL_SECRET to a unique 32+ byte secret.',
+  );
+  process.exit(1);
+}
 
 router.get('/id-token', (req, res) => {
   const presented = req.headers['x-internal-gateway-secret'];

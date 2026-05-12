@@ -21,7 +21,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import WebSocket from 'ws';
 import axios from 'axios';
-import { loadConfig, GatewayConfig } from './config';
+import { loadConfig, GatewayConfig, assertProductionSecrets } from './config';
 import { validateInboundToken, extractBearerToken, TokenValidationError } from './tokenValidator';
 import { routeTool, backendWsUrl, backendResourceUri, backendHttpUrl } from './router';
 import { exchangeTokenForBackend } from './tokenExchange';
@@ -40,6 +40,9 @@ try {
   console.error('[GW] Configuration error:', err instanceof Error ? err.message : err);
   process.exit(1);
 }
+
+// BL-03: refuse the committed dev fallback secret in production.
+assertProductionSecrets(config);
 
 // ---------------------------------------------------------------------------
 // HTTP server (metadata + health)
