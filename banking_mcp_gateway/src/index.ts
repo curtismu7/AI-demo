@@ -778,7 +778,27 @@ const gatewayServer = new GatewayServer({
   requestMiddleware: buildAuthorizeMcpRequest(config),
 });
 const httpServer = gatewayServer.httpServer;
-const wss = new WebSocket.Server({ server: httpServer });
+
+// HI-07: cap WS payload size and gate on Origin so the WS transport has
+// the same defenses the HTTP transport has via GatewayServer.validateCors.
+// Without these, a 100 MB JSON-RPC frame can hang Node parsing it and
+// any cross-origin browser can open the WS.
+const _wsAcceptedOriginsRe = new RegExp(process.env.MCP_ACCEPTED_ORIGINS ?? '.*');
+const WS_MAX_PAYLOAD_BYTES = Number(process.env.MCP_WS_MAX_PAYLOAD_BYTES ?? 1024 * 1024); // 1 MB default
+
+const wss = new WebSocket.Server({
+  server: httpServer,
+  maxPayload: WS_MAX_PAYLOAD_BYTES,
+  verifyClient: ({ origin, req }, cb) => {
+    // Permit no-origin clients (server-to-server WebSockets, including
+    // banking_agent_service and other internal callers that don't set
+    // Origin). Browser-origin clients must match the configured regex.
+    if (!origin) return cb(true);
+    if (_wsAcceptedOriginsRe.test(origin)) return cb(true);
+    console.warn(`[GW] WS upgrade rejected — origin ${origin} not in MCP_ACCEPTED_ORIGINS`);
+    cb(false, 403, 'Origin not permitted');
+  },
+});
 
 wss.on('connection', (ws, req) => {
   const authHeader = req.headers['authorization'];
