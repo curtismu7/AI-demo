@@ -1494,15 +1494,29 @@ SYSTEM_AUTH_POPUP_REQUEST_END
                     if isinstance(users, dict):
                         users = users.get('users', users.get('data', []))
                     
-                    # Match by id, userId, or pingIdentityId
-                    matched = None
-                    for u in users:
-                        if (str(u.get('id', '')) == str(user_id) or
-                            str(u.get('userId', '')) == str(user_id) or
-                            str(u.get('pingIdentityId', '')) == str(user_id) or
-                            str(u.get('externalId', '')) == str(user_id)):
-                            matched = u
-                            break
+                    # HI-06: match by id / userId / pingIdentityId / externalId
+                    # with EXACT string equality, and refuse to pick a winner
+                    # silently when multiple users match. Previously "first
+                    # match wins" — a duplicate identifier across users would
+                    # bind the wrong identity to this chat session.
+                    user_id_str = str(user_id)
+                    matches = [
+                        u for u in users
+                        if (str(u.get('id', '')) == user_id_str
+                            or str(u.get('userId', '')) == user_id_str
+                            or str(u.get('pingIdentityId', '')) == user_id_str
+                            or str(u.get('externalId', '')) == user_id_str)
+                    ]
+                    if len(matches) > 1:
+                        # This should be impossible — IDs are unique. Refuse to guess.
+                        logger.error(
+                            f"Multiple users matched user_id={user_id_str} for session {session_id}: "
+                            f"{[m.get('email') for m in matches]} — refusing to bind identity"
+                        )
+                        raise ValueError(
+                            f"Ambiguous user_id={user_id_str} matched {len(matches)} users"
+                        )
+                    matched = matches[0] if matches else None
 
                     if matched:
                         email = matched.get('email')
