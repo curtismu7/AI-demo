@@ -24,11 +24,30 @@ export interface ExchangeResult {
 }
 
 // Simple in-memory cache: sha256(subjectToken + targetAud) → { token, expiresAt }
+// HI-06: cap to MCP_EXCHANGE_CACHE_MAX, sweep expired + FIFO-evict on overflow.
+// Same pattern as tokenExchange.ts so the two parallel caches share semantics.
 const _cache = new Map<string, { token: string; expiresAt: number }>();
+const MCP_EXCHANGE_CACHE_MAX = 1000;
 
 function cacheKey(subjectToken: string, targetAud: string): string {
+  // Full SHA-256 hex — no truncation in token-isolation primitives.
   const { createHash } = require('crypto');
-  return createHash('sha256').update(`${subjectToken}:${targetAud}`).digest('hex').slice(0, 16);
+  return createHash('sha256').update(`${subjectToken}:${targetAud}`).digest('hex');
+}
+
+function _cacheInsertWithEviction(key: string, value: { token: string; expiresAt: number }): void {
+  if (_cache.size >= MCP_EXCHANGE_CACHE_MAX) {
+    const now = Date.now();
+    for (const [k, v] of _cache) {
+      if (v.expiresAt <= now) _cache.delete(k);
+    }
+    while (_cache.size >= MCP_EXCHANGE_CACHE_MAX) {
+      const oldestKey = _cache.keys().next().value;
+      if (oldestKey === undefined) break;
+      _cache.delete(oldestKey);
+    }
+  }
+  _cache.set(key, value);
 }
 
 export class McpTokenExchangeClient {
@@ -86,7 +105,7 @@ export class McpTokenExchangeClient {
       throw new Error('Token exchange response missing access_token');
     }
 
-    _cache.set(key, {
+    _cacheInsertWithEviction(key, {
       token: access_token,
       expiresAt: Date.now() + (expires_in ?? 300) * 1000,
     });

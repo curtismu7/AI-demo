@@ -12,12 +12,34 @@ import axios from 'axios';
 import { GatewayConfig } from './config';
 
 // Simple in-memory cache: gatewayToken+targetAud → { token, expiresAt }
+// HI-06: previously this Map grew without bound. Under load (many distinct
+// tokens × many distinct audiences), memory grew monotonically until
+// process restart. Cap to TOKEN_EXCHANGE_CACHE_MAX entries; when at cap,
+// sweep expired entries first, then FIFO-evict the oldest insertion.
 const _cache = new Map<string, { token: string; expiresAt: number }>();
+const TOKEN_EXCHANGE_CACHE_MAX = 1000;
 
 function cacheKey(subjectToken: string, targetAud: string): string {
-  // Hash to avoid storing raw tokens as map keys
+  // Hash to avoid storing raw tokens as map keys. Full SHA-256 hex —
+  // matching the agent-service BL-02 fix; no truncation in token-isolation
+  // primitives.
   const { createHash } = require('crypto');
-  return createHash('sha256').update(`${subjectToken}:${targetAud}`).digest('hex').slice(0, 16);
+  return createHash('sha256').update(`${subjectToken}:${targetAud}`).digest('hex');
+}
+
+function _cacheInsertWithEviction(key: string, value: { token: string; expiresAt: number }): void {
+  if (_cache.size >= TOKEN_EXCHANGE_CACHE_MAX) {
+    const now = Date.now();
+    for (const [k, v] of _cache) {
+      if (v.expiresAt <= now) _cache.delete(k);
+    }
+    while (_cache.size >= TOKEN_EXCHANGE_CACHE_MAX) {
+      const oldestKey = _cache.keys().next().value;
+      if (oldestKey === undefined) break;
+      _cache.delete(oldestKey);
+    }
+  }
+  _cache.set(key, value);
 }
 
 export async function exchangeTokenForBackend(
@@ -53,7 +75,7 @@ export async function exchangeTokenForBackend(
   const { access_token, expires_in } = response.data;
   if (!access_token) throw new Error('Token exchange response missing access_token');
 
-  _cache.set(key, {
+  _cacheInsertWithEviction(key, {
     token: access_token,
     expiresAt: Date.now() + (expires_in || 300) * 1000,
   });
