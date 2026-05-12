@@ -486,7 +486,30 @@ describe('JWT decode helper', () => {
     }
   }
 
+  async function expectAnonOk(path, predicate) {
+    try {
+      const res = await axios.get(`${BFF_BASE}${path}`, {
+        timeout: 5000, maxRedirects: 0, validateStatus: () => true,
+      });
+      expect(res.status).toBe(200);
+      expect(predicate(res.data)).toBe(true);
+      console.log(`[anon-ok test] ${path} -> 200`);
+    } catch (err) {
+      if (err.code === 'ECONNREFUSED' || err.code === 'ECONNABORTED' || err.code === 'EPROTO' || err.message?.includes('socket hang up')) {
+        console.warn(`[anon-ok test] BFF not reachable at ${BFF_BASE} - skipping`);
+        return;
+      }
+      throw err;
+    }
+  }
+
   it('GET /api/accounts/my returns 401 without session', () => expectUnauthorized('/api/accounts/my'));
-  it('GET /api/tokens/session-preview returns 401 without session', () => expectUnauthorized('/api/tokens/session-preview'));
+  // session-preview is intentionally anon-friendly: returns an empty tokenEvents
+  // array when there's no session so the SPA can render the Token Chain panel
+  // pre-login without producing 401 noise. Do not add requireSession to this route.
+  it('GET /api/tokens/session-preview returns 200 with empty tokenEvents (no session)', () =>
+    expectAnonOk('/api/tokens/session-preview', (data) =>
+      Array.isArray(data?.tokenEvents) && data.tokenEvents.length === 0
+    ));
   it('GET /api/tokens/userinfo returns 401 without session', () => expectUnauthorized('/api/tokens/userinfo'));
 });

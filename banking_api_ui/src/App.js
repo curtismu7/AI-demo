@@ -856,17 +856,13 @@ function AppWithAuth() {
               <Route
                 path="/sequence-diagram"
                 element={
-                  loading ? null : user ? (
-                    <>
-                      <AdminSideNav user={user} />
-                      <TopNav user={user} onLogout={logout} />
-                      <main className="main-content">
-                        <SequenceDiagramPage user={user} />
-                      </main>
-                    </>
-                  ) : (
-                    <Navigate to="/" replace />
-                  )
+                  <>
+                    <AdminSideNav user={user} />
+                    <TopNav user={user} onLogout={logout} />
+                    <main className="main-content">
+                      <SequenceDiagramPage user={user} />
+                    </main>
+                  </>
                 }
               />
               {/* Public landing page — available to all users */}

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import bffAxios from "../services/bffAxios";
+import { isEducationalPath } from "../utils/educationalPages";
 import "./SessionExpiryTimer.css";
 
 /**
@@ -31,6 +32,13 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
 
   // Fetch session token and user info
   useEffect(() => {
+    // Skip on documentation-only pages — no session is expected there and
+    // both endpoints below would 401, producing console noise.
+    if (isEducationalPath(pathname) || shouldHide) {
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
     async function fetchSessionData() {
