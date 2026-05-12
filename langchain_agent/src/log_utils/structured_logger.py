@@ -318,7 +318,7 @@ def create_log_context(
 def setup_logging(level: str = "INFO", format_type: str = "structured") -> None:
     """
     Setup application logging configuration.
-    
+
     Args:
         level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         format_type: Format type ("structured" or "simple")
@@ -326,26 +326,27 @@ def setup_logging(level: str = "INFO", format_type: str = "structured") -> None:
     import logging
     import sys
     from pathlib import Path
-    
+    from .secure_logger import SensitiveDataFilter
+
     # Create logs directory if it doesn't exist
     logs_dir = Path("logs")
     logs_dir.mkdir(exist_ok=True)
-    
+
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, level.upper()))
-    
+
     # Clear existing handlers
     root_logger.handlers.clear()
-    
+
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(getattr(logging, level.upper()))
-    
+
     # File handler
     file_handler = logging.FileHandler(logs_dir / "app.log")
     file_handler.setLevel(getattr(logging, level.upper()))
-    
+
     # Set formatters
     if format_type == "structured":
         formatter = logging.Formatter(
@@ -355,14 +356,27 @@ def setup_logging(level: str = "INFO", format_type: str = "structured") -> None:
         formatter = logging.Formatter(
             '%(asctime)s - %(levelname)s - %(message)s'
         )
-    
+
     console_handler.setFormatter(formatter)
     file_handler.setFormatter(formatter)
-    
+
+    # BL-02: attach SensitiveDataFilter to BOTH handlers. Without this, every
+    # module-level `logging.getLogger(__name__)` produces records that bypass
+    # the filter entirely — module loggers inherit handlers from root but
+    # filters attached on a *logger* don't apply to inherited handlers. The
+    # reliable place is the handler itself.
+    redaction_filter = SensitiveDataFilter()
+    console_handler.addFilter(redaction_filter)
+    file_handler.addFilter(redaction_filter)
+
+    # Belt-and-braces: also attach to the root logger so any future handler
+    # added by third-party code inherits the filter at logger-level.
+    root_logger.addFilter(redaction_filter)
+
     # Add handlers
     root_logger.addHandler(console_handler)
     root_logger.addHandler(file_handler)
-    
+
     # Set specific logger levels
     logging.getLogger("websockets").setLevel(logging.WARNING)
     logging.getLogger("aiohttp").setLevel(logging.WARNING)

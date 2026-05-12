@@ -49,11 +49,17 @@ class SensitiveDataFilter(logging.Filter):
         
         # Common sensitive field names
         (r'("(?:secret|key|token|password|credential)":\s*")[^"]*(")', r'\1[REDACTED]\2'),
-        
+
         # PII patterns
         (r'("email":\s*")[^"]*(")', r'\1[EMAIL_REDACTED]\2'),
         (r'("phone":\s*")[^"]*(")', r'\1[PHONE_REDACTED]\2'),
         (r'("ssn":\s*")[^"]*(")', r'\1[SSN_REDACTED]\2'),
+
+        # BL-02: bare JWT in a log line — three base64url segments joined by '.'.
+        # Catches any AccessToken whose call site forgot to mask, including
+        # third-party libraries that log full request payloads. The pattern is
+        # length-bounded to limit catastrophic backtracking risk on huge inputs.
+        (r'\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\b', '[REDACTED_JWT]'),
     ]
     
     # Fields that should be completely removed from logs
