@@ -350,16 +350,26 @@ async function handleMessage(
     }
 
     // Proxy tools/list to both backends, merge results
+    const backendLabels = ['olb', 'invest'] as const;
     const results = await Promise.allSettled([
       proxyToolsList('olb', token),
       proxyToolsList('invest', token),
     ]);
 
     const allTools: unknown[] = [];
-    for (const r of results) {
+    // HI-04: surface backend failures in _meta. Previously a partial outage
+    // returned a shorter tools list with zero signal, and callers might
+    // conclude they had the full menu. The _meta block reports which
+    // backends failed so the agent (and the Token Chain UI) can show that.
+    const failedBackends: string[] = [];
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i];
       if (r.status === 'fulfilled') {
         const tools = (r.value as any)?.result?.tools;
         if (Array.isArray(tools)) allTools.push(...tools);
+      } else {
+        failedBackends.push(backendLabels[i]);
+        console.warn(`[GW] tools/list failed for backend=${backendLabels[i]}:`, r.reason instanceof Error ? r.reason.message : r.reason);
       }
     }
 
@@ -382,7 +392,18 @@ async function handleMessage(
     ];
     allTools.push(...gatewayTools);
 
-    send(JSON.stringify({ jsonrpc: '2.0', id, result: { tools: allTools } }));
+    // HI-04: when any backend rejected, mark the response so the caller
+    // can render a partial-results warning. The gateway-owned tools are
+    // always available even if both backends are down — flag that case.
+    const responseResult: { tools: unknown[]; _meta?: Record<string, unknown> } = { tools: allTools };
+    if (failedBackends.length > 0) {
+      responseResult._meta = {
+        partialResults: true,
+        failedBackends,
+        warning: `Backend(s) unreachable: ${failedBackends.join(', ')}. The tool list is incomplete.`,
+      };
+    }
+    send(JSON.stringify({ jsonrpc: '2.0', id, result: responseResult }));
     return;
   }
 
