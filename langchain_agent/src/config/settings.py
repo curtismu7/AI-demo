@@ -407,19 +407,32 @@ class ConfigManager:
     def get_mcp_server_configs(self) -> Dict[str, Dict[str, Any]]:
         """Load MCP server configurations from environment variables."""
         configs = {}
-        
+
+        # HI-04: in production, agent bearer tokens travel via Authorization
+        # header over WebSocket. Plain ws:// puts them on the wire in clear
+        # text. Reject anything that isn't wss:// or local:// at startup so
+        # the misconfiguration is loud, not silent.
+        environment = (os.getenv("ENVIRONMENT") or "development").lower()
+        is_production = environment == "production"
+
         # Look for MCP server configurations in format: MCP_SERVER_{NAME}_ENDPOINT
         for key, value in os.environ.items():
             if key.startswith("MCP_SERVER_") and key.endswith("_ENDPOINT"):
                 # Extract server name from environment variable
                 server_name = key.replace("MCP_SERVER_", "").replace("_ENDPOINT", "").lower()
-                
+
+                if is_production and not (value.startswith("wss://") or value.startswith("local://")):
+                    raise ValueError(
+                        f"MCP server '{server_name}' endpoint must use wss:// or local:// "
+                        f"in production (got {value.split('://')[0]}://...)"
+                    )
+
                 configs[server_name] = {
                     "endpoint": value,
                     "capabilities": os.getenv(f"MCP_SERVER_{server_name.upper()}_CAPABILITIES", "").split(","),
                     "auth_required": os.getenv(f"MCP_SERVER_{server_name.upper()}_AUTH_REQUIRED", "false").lower() == "true"
                 }
-        
+
         return configs
 
 
