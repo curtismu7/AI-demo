@@ -10,7 +10,7 @@ Scope-to-audience mapping is explicit and mandatory. All scopes for a token exch
 
 ### End-User Banking API (Standard 1-Exchange)
 Audience: `https://banking-api.banking-demo.com` (configurable via `PINGONE_AUDIENCE_ENDUSER`)  
-Resource: Super Banking Banking API  
+Resource: Super Banking API  
 Purpose: User access to banking operations (accounts, transactions)
 
 | Scope | Purpose | Valid |

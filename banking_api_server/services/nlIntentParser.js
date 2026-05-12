@@ -233,7 +233,7 @@ function parseBanking(t) {
   if (/\b(show|view|see|get|my)\s*(mortgage|home\s*loan)\b|\b(mortgage|home\s*loan)\s*(data|info|details|balance|summary)\b|^mortgage$|^home\s*loan$/.test(t)) {
     return { kind: 'banking', banking: { action: 'mortgage_demo' } };
   }
-  if (/\b(transaction|history|activity|recent)\b/.test(t)) {
+  if (/\b(transactions?|history|activity|recent)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'transactions' } };
   }
   if (/\btransfer\b/.test(t)) {

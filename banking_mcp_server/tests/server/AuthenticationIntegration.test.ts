@@ -78,7 +78,15 @@ describe('AuthenticationIntegration', () => {
       expect(result.success).toBe(true);
       expect(result.session).toBe(mockSession);
       expect(mockAuthManager.validateAgentToken).toHaveBeenCalledWith('test-agent-token');
-      expect(mockSessionManager.createSession).toHaveBeenCalledWith('test-agent-token');
+      // Phase 198: createSession now accepts token-mode metadata (tokenMode, txnId, txnScope)
+      // for dual-mode (RFC 8693 vs RFC 9728) token exchange.
+      expect(mockSessionManager.createSession).toHaveBeenCalledWith(
+        'test-agent-token',
+        24,
+        undefined,
+        undefined,
+        undefined
+      );
     });
 
     it('should use existing session if available', async () => {
@@ -285,9 +293,14 @@ describe('AuthenticationIntegration', () => {
 
       const result = await authIntegration.checkUserAuthorization(mockSession, ['banking:accounts:read']);
 
+      // Phase 198+: source returns insufficientScope/missingScopes/availableScopes
+      // instead of an authChallenge for the insufficient-scope case. The caller
+      // (MCPMessageHandler) decides whether to escalate to step-up consent.
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Insufficient permissions');
-      expect(result.authChallenge).toBe(mockAuthRequest);
+      expect(result.error).toBe('Insufficient scope');
+      expect(result.insufficientScope).toBe(true);
+      expect(result.missingScopes).toEqual(['banking:accounts:read']);
+      expect(result.availableScopes).toEqual([]);
     });
 
     it('should handle insufficient scopes', async () => {
@@ -327,9 +340,13 @@ describe('AuthenticationIntegration', () => {
 
       const result = await authIntegration.checkUserAuthorization(mockSession, ['banking:transactions:write']);
 
+      // Phase 198+: insufficient-scope path returns missingScopes/availableScopes,
+      // not authChallenge. Use flat scope 'banking:write' to match source.
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Insufficient permissions');
-      expect(result.authChallenge).toBe(mockAuthRequest);
+      expect(result.error).toBe('Insufficient scope');
+      expect(result.insufficientScope).toBe(true);
+      expect(result.missingScopes).toEqual(['banking:transactions:write']);
+      expect(result.availableScopes).toEqual([]);
     });
   });
 

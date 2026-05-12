@@ -1,4 +1,4 @@
-# BX Finance — Feature & Demo Guide
+# Super Banking — Feature & Demo Guide
 
 > **Who this is for:** Solutions engineers, architects, and anyone giving a live demo.  
 > **What it covers:** Every demoable capability, use-case walkthroughs, and a 20-minute pitch checklist.
@@ -7,7 +7,7 @@
 
 ## Elevator Pitch
 
-**BX Finance** is a production-grade AI banking demo that shows PingOne doing real identity work — not simulated. Every time the AI agent moves money or reads account data, a live RFC 8693 token exchange fires, PingOne issues a narrow-scoped MCP token, and the full delegation chain is visualised in the browser in real time.
+**Super Banking** is a production-grade AI banking demo that shows PingOne doing real identity work — not simulated. Every time the AI agent moves money or reads account data, a live RFC 8693 token exchange fires, PingOne issues a narrow-scoped MCP token, and the full delegation chain is visualised in the browser in real time.
 
 It's the answer to *"Show me how PingOne secures an AI agent."*
 
@@ -37,14 +37,24 @@ The AI agent attempts a transfer over the threshold (default **$500**). PingOne 
 
 ---
 
-### UC-C — AI Banking Agent (MCP + LangChain)
-The Banking Agent understands natural language. Ask it to check balances, transfer money, explain a transaction, or look up another user. It uses a LangChain/Groq pipeline with an OpenAI-compatible model and routes every banking tool call through the MCP server.
+### UC-C — AI Banking Agent (MCP + NL routing)
+The Banking Agent understands natural language. Ask it to check balances, transfer money, explain a transaction, or look up another user. Every banking tool call is routed through the MCP server.
 
 **Demoable commands:**
 - *"What's my checking balance?"*
 - *"Transfer $50 from Savings to Checking"*
 - *"Show me my last 5 transactions"*
 - *"Find the account for user@example.com"*
+
+**Natural-language routing pipeline** (`banking_api_server/services/geminiNlIntent.js`):
+
+The agent uses a **three-tier routing chain**, in this order on every prompt:
+
+1. **Heuristic parser (zero latency, ALWAYS runs).** A pure in-process regex matcher (`nlIntentParser.js`) recognises well-known phrases like `accounts`, `balance`, `transactions`, `transfer $600 from checking to savings`, `show mortgage data`, `what's my biggest purchase`. Every chip in the agent UI is matched here. When the heuristic finds a match and the default `ff_heuristic_enabled=true` flag is set, the result short-circuits the LLM entirely — the user sees the tool result instantly with no LLM round-trip cost.
+2. **LLM (Helix by default; configurable).** When the heuristic finds no match — or when the operator flips the "LLM only" toggle in the agent UI (`ff_heuristic_enabled=false`) — the prompt goes to a configured LLM. The default is the public **LLM2** Helix agent on `openam-helix.forgeblocks.com`. Operators can switch to Ollama (local), or override the Helix tenant via `/setup` or `HELIX_*` env vars. The LLM is a JSON router: it returns a structured intent (`{"kind":"banking","banking":{"action":"transfer",…}}`) that is then dispatched to the matching banking tool.
+3. **Heuristic safety net (fallback).** If the LLM is unreachable, mis-configured, or returns `kind:none`, the routing chain falls back to the heuristic's result — even if the heuristic produced `kind:none` itself. The agent UI never returns the canned "I didn't catch that" fallback when the heuristic recognised the input; it only surfaces that hint as a last-resort.
+
+This three-tier contract was introduced 2026-05-11 to guarantee chip clicks work regardless of LLM availability. See [REGRESSION_PLAN.md §4](../REGRESSION_PLAN.md#4-bug-fix-log-reverse-chronological) "NL parser: heuristic is a deterministic safety net" for the do-not-break rules.
 
 **Agent layouts:** Float, left-dock, right-dock, bottom-dock — all resizable.
 

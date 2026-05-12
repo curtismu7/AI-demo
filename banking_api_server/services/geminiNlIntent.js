@@ -72,12 +72,15 @@ If the user asks to pay, transfer, or send money involving a "credit card", "cre
  */
 async function answerWithHelix(userMessage, context = {}) {
   try {
+    // Use getEffective so committed FIELD_DEFS defaults (base_url, env_id,
+    // agent_id, prompt_field_id) work for fresh clones with empty SQLite.
+    // helix_api_key must still be supplied by the operator.
     const helixConfig = {
-      helix_base_url: configStore.get('helix_base_url'),
-      helix_api_key: configStore.get('helix_api_key'),
-      helix_environment_id: configStore.get('helix_environment_id'),
-      helix_agent_id: configStore.get('helix_agent_id'),
-      helix_prompt_field_id: configStore.get('helix_prompt_field_id'),
+      helix_base_url: configStore.getEffective('helix_base_url'),
+      helix_api_key: configStore.getEffective('helix_api_key'),
+      helix_environment_id: configStore.getEffective('helix_environment_id'),
+      helix_agent_id: configStore.getEffective('helix_agent_id'),
+      helix_prompt_field_id: configStore.getEffective('helix_prompt_field_id'),
     };
 
     // Check if Helix is configured
@@ -176,10 +179,12 @@ async function parseWithOllama(userMessage, context = {}) {
  * @returns {Promise<{ source: 'ollama'|'heuristic'|'helix'|'helix_fallback', result: object }>}
  */
 async function parseNaturalLanguage(message, context = {}, provider = 'auto', langchainConfig = {}) {
-  // 1. HEURISTIC FIRST — regex patterns for known banking actions (zero latency)
-  // Skip when ff_heuristic_enabled=false (user selected LLM-only mode via agent UI toggle)
+  // 1. HEURISTIC ALWAYS RUNS as a deterministic safety net (zero latency).
+  // ff_heuristic_enabled=false (the agent UI's "LLM only" toggle) means "prefer LLM",
+  // not "disable heuristic" — if every LLM falls through, we still want the heuristic
+  // answer instead of a canned "I didn't catch that" UI fallback.
   const heuristicEnabled = configStore.getEffective('ff_heuristic_enabled') !== 'false';
-  const heuristicResult = heuristicEnabled ? parseHeuristic(message) : { kind: 'none', message: '' };
+  const heuristicResult = parseHeuristic(message);
   if (heuristicEnabled && heuristicResult && heuristicResult.kind !== 'none') {
     return { source: 'heuristic', result: heuristicResult };
   }
@@ -199,12 +204,13 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
       : SYSTEM;
 
     try {
+      // Use getEffective so FIELD_DEFS defaults reach fresh clones (see answerWithHelix).
       const helixConfig = {
-        helix_base_url: langchainConfig.helix_base_url || configStore.get('helix_base_url'),
-        helix_api_key: langchainConfig.helix_api_key || configStore.get('helix_api_key'),
-        helix_environment_id: langchainConfig.helix_environment_id || configStore.get('helix_environment_id'),
-        helix_agent_id: langchainConfig.helix_agent_id || configStore.get('helix_agent_id'),
-        helix_prompt_field_id: langchainConfig.helix_prompt_field_id || configStore.get('helix_prompt_field_id'),
+        helix_base_url: langchainConfig.helix_base_url || configStore.getEffective('helix_base_url'),
+        helix_api_key: langchainConfig.helix_api_key || configStore.getEffective('helix_api_key'),
+        helix_environment_id: langchainConfig.helix_environment_id || configStore.getEffective('helix_environment_id'),
+        helix_agent_id: langchainConfig.helix_agent_id || configStore.getEffective('helix_agent_id'),
+        helix_prompt_field_id: langchainConfig.helix_prompt_field_id || configStore.getEffective('helix_prompt_field_id'),
       };
 
       // Check if Helix is configured
@@ -243,6 +249,13 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
     if (helixAnswer) {
       return { source: 'helix_fallback', result: helixAnswer };
     }
+    // LLM-only mode but no LLM produced an answer (e.g. Helix not configured,
+    // network failure). Fall back to the heuristic so chips and known phrases
+    // still work — never let a UI canned "I didn't catch that" win.
+    if (heuristicResult && heuristicResult.kind !== 'none') {
+      console.warn('[nlIntent] LLM-only mode: no LLM produced an answer — falling back to heuristic');
+      return { source: 'heuristic', result: heuristicResult };
+    }
     return { source: 'heuristic', result: heuristicResult };
   }
 
@@ -268,7 +281,9 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
     }
   }
 
-  // 4. Final fallback: heuristic returns kind:'none' (unrecognized input)
+  // 4. Final fallback: return whatever heuristic gave (recognized result or kind:none).
+  // The heuristic always ran at step 1; if it produced kind:none, this is the canonical
+  // "no LLM available and heuristic didn't match" outcome — the UI shows its canned hint.
   return { source: 'heuristic', result: heuristicResult };
 }
 

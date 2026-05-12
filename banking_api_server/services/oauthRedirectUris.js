@@ -42,16 +42,16 @@ function getConfiguredHostnameOrNull() {
  */
 const REFERENCE_REDIRECT_SETS = [
   {
-    id: 'localhost',
-    label: 'Local development (standard or run-bank.sh)',
-    adminRedirectUri: 'http://localhost:3001/api/auth/oauth/callback',
-    userRedirectUri: 'http://localhost:3001/api/auth/oauth/user/callback',
-    postLogoutExample: 'http://localhost:3000/logout (standard) or http://localhost:4000/logout (run-bank.sh)',
-    hint: 'Standard: UI on :3000, API on :3001. run-bank.sh: UI on :4000, API on :3002. OAuth callbacks always hit BFF origin (:3001).',
+    id: 'api-ping-demo',
+    label: 'Local development (api.ping.demo via run-bank.sh, default)',
+    adminRedirectUri: 'https://api.ping.demo:4000/api/auth/oauth/callback',
+    userRedirectUri: 'https://api.ping.demo:4000/api/auth/oauth/user/callback',
+    postLogoutExample: 'https://api.ping.demo:4000/logout',
+    hint: 'Default local host. UI on :4000 (public origin), BFF on :3001. OAuth callbacks land at the UI origin; CRA proxy forwards /api/* to BFF.',
   },
   {
-    id: 'api-pingdeme',
-    label: 'Custom API host (example: api.pingdeme.org)',
+    id: 'custom-host',
+    label: 'Custom host (example: api.pingdeme.org)',
     adminRedirectUri: 'https://api.pingdeme.org/api/auth/oauth/callback',
     userRedirectUri: 'https://api.pingdeme.org/api/auth/oauth/user/callback',
     postLogoutExample: 'https://api.pingdeme.org/logout',

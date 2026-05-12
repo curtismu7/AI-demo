@@ -102,7 +102,7 @@ Copy `.env.example` to `.env` and configure the required environment variables:
 
 ## AI Client Setup
 
-Connect your AI client to the BX Finance Banking MCP server for tool-assisted banking demos.
+Connect your AI client to the Super Banking MCP server for tool-assisted banking demos.
 
 ### Prerequisites
 1. Start the banking demo stack: `./run-bank.sh` or `npm run start` in `banking_api_server/`

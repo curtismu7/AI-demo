@@ -70,7 +70,8 @@ class LangChainConfig:
 @dataclass
 class ChatConfig:
     """Configuration for chat interface."""
-    websocket_port: int = 8080
+    # Default 8889 (not 8080) — 8080 is owned by banking_mcp_server in run-bank.sh.
+    websocket_port: int = 8889
     max_message_length: int = 4096
     conversation_history_limit: int = 100
     session_cleanup_interval_minutes: int = 15
@@ -118,10 +119,10 @@ class DevelopmentConfig(BaseEnvironmentConfig):
         return {
             "DEBUG": "true",
             "LOG_LEVEL": "DEBUG",
-            "WEBSOCKET_PORT": "8080",
+            "WEBSOCKET_PORT": "8889",
             "LANGCHAIN_VERBOSE": "true",
             "LANGCHAIN_MODEL_NAME": "gpt-3.5-turbo",
-            "PINGONE_REDIRECT_URI": "http://localhost:8080/auth/callback",
+            "PINGONE_REDIRECT_URI": "http://localhost:8889/auth/callback",
             "SESSION_TIMEOUT_MINUTES": "30",  # Shorter timeout for development
         }
     
@@ -142,7 +143,7 @@ class StagingConfig(BaseEnvironmentConfig):
         return {
             "DEBUG": "false",
             "LOG_LEVEL": "INFO",
-            "WEBSOCKET_PORT": "8080",
+            "WEBSOCKET_PORT": "8889",
             "LANGCHAIN_VERBOSE": "false",
             "LANGCHAIN_MODEL_NAME": "gpt-3.5-turbo",
             "SESSION_TIMEOUT_MINUTES": "60",
@@ -168,7 +169,7 @@ class ProductionConfig(BaseEnvironmentConfig):
         return {
             "DEBUG": "false",
             "LOG_LEVEL": "WARNING",
-            "WEBSOCKET_PORT": "8080",
+            "WEBSOCKET_PORT": "8889",
             "LANGCHAIN_VERBOSE": "false",
             "LANGCHAIN_MODEL_NAME": "gpt-4",  # Use more capable model in production
             "SESSION_TIMEOUT_MINUTES": "120",  # Longer timeout for production
@@ -348,7 +349,7 @@ class ConfigManager:
         
         # Chat configuration
         chat_config = ChatConfig(
-            websocket_port=int(get_env_value("WEBSOCKET_PORT", "8080")),
+            websocket_port=int(get_env_value("WEBSOCKET_PORT", "8889")),
             max_message_length=int(get_env_value("MAX_MESSAGE_LENGTH", "4096")),
             conversation_history_limit=int(get_env_value("CONVERSATION_HISTORY_LIMIT", "100")),
             session_cleanup_interval_minutes=int(get_env_value("SESSION_CLEANUP_INTERVAL_MINUTES", "15"))

@@ -4,12 +4,12 @@
 
 | Collection | Audience | Best for |
 |------------|----------|----------|
-| `BX-Finance-1-Exchange-Step-by-Step.postman_collection.json` | Learner | Understanding each OAuth step individually |
+| `Super-Banking-1-Exchange-Step-by-Step.postman_collection.json` | Learner | Understanding each OAuth step individually |
 | `Super Banking — 1-Exchange Delegated Chain — pi.flow.postman_collection.json` | Demo runner | Running the full 1-exchange flow quickly |
 | `Super Banking — 2-Exchange Delegated Chain — pi.flow.postman_collection.json` | Demo runner | Running the full 2-exchange (nested delegation) flow |
-| `BX-Finance-Advanced-Utilities.postman_collection.json` | Engineer | PAZ policy decisions, token revocation |
+| `Super-Banking-Advanced-Utilities.postman_collection.json` | Engineer | PAZ policy decisions, token revocation |
 
-All collections use: `BX-Finance-Shared.postman_environment.json`
+All collections use: `Super-Banking-Shared.postman_environment.json`
 
 ---
 
@@ -17,7 +17,7 @@ All collections use: `BX-Finance-Shared.postman_environment.json`
 
 Before running any collection:
 
-1. **Import the shared environment** — In Postman: **Import** → select `BX-Finance-Shared.postman_environment.json`. Then select **Super Banking — Shared** from the environment dropdown (top-right in Postman).
+1. **Import the shared environment** — In Postman: **Import** → select `Super-Banking-Shared.postman_environment.json`. Then select **Super Banking — Shared** from the environment dropdown (top-right in Postman).
 2. **Fill in your values** — In the environment editor, set:
    - `PINGONE_ENVIRONMENT_ID` — your PingOne environment ID (Admin Console → Settings → Environment ID)
    - `PINGONE_CORE_USER_CLIENT_ID` / `PINGONE_CORE_USER_CLIENT_SECRET` — end-user app credentials
@@ -33,7 +33,7 @@ Before running any collection:
 
 ## If you're a Learner (want to understand each OAuth step)
 
-Use: **`BX-Finance-1-Exchange-Step-by-Step`** + shared env
+Use: **`Super-Banking-1-Exchange-Step-by-Step`** + shared env
 
 Run steps **1 → 2 → 3 → 4** in order.
 
@@ -55,7 +55,7 @@ Run steps **1 → 2 → 3 → 4 → 5a → 5b → 6a → 6b → 7 → 8** in ord
 
 ## If you're an Engineer (want PAZ or token revocation)
 
-Use: **`BX-Finance-Advanced-Utilities`** + shared env
+Use: **`Super-Banking-Advanced-Utilities`** + shared env
 
 - **PAZ Policy Decision**: Run the 2-exchange pi.flow first to populate `mcp_exchanged_token` (Step 6b saves it). Set `PAZ_DECISION_ENDPOINT_ID` in the shared environment (PingOne Admin → Authorize → Decision Endpoints → copy the UUID from the endpoint URL). Then run **PAZ Policy Decision** — expected response: `200` with a `decision` field (PERMIT or DENY).
 - **Token Revocation**: Set `token_to_revoke` in the **Advanced Utilities collection variables** to the token you want to invalidate. Run **Token Revocation** — expected response: `200` empty body (token revoked).

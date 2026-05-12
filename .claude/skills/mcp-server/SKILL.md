@@ -1,28 +1,36 @@
 ---
 name: mcp-server
-description: 'BX Finance MCP server (TypeScript): tool registration, session management, auth challenge handling, WebSocket protocol. USE FOR: add or modify MCP tools, BankingToolRegistry, BankingToolProvider, MCPMessageHandler, BankingSessionManager, tools/call, tools/list, initialize handshake, auth challenge flow, missing scope detection, Railway/Render/Fly deployment of MCP server. DO NOT USE FOR: OAuth token flows or PKCE (use oauth-pingone); PingOne Management API calls (use pingone-api-calls); Vercel deployment (use vercel-banking); TypeScript style rules (use typescript-banking).'
+description: 'Super Banking MCP server (TypeScript): tool registration, session management, auth challenge handling, WebSocket protocol. USE FOR: add or modify MCP tools, BankingToolRegistry, BankingToolProvider, MCPMessageHandler, BankingSessionManager, tools/call, tools/list, initialize handshake, auth challenge flow, missing scope detection, local run on port 8080, Railway/Render/Fly remote deployment of MCP server. DO NOT USE FOR: OAuth token flows or PKCE (use oauth-pingone); PingOne Management API calls (use pingone-api-calls); TypeScript style rules (use typescript-banking).'
 argument-hint: 'Describe the MCP tool or server feature you need to add or modify'
 ---
 
-# MCP Server — BX Finance Banking MCP Server
+# MCP Server — Super Banking MCP Server
 
 ## Architecture
 
 ```
-banking_api_ui (React)
-    │  WebSocket (wss://mcp-server-host)
-    ▼
-banking_mcp_server           ← TypeScript MCP server (must run on always-on host)
+banking_api_ui (React)        ← NEVER calls MCP directly (token custody)
     │
-    ├─ MCPMessageHandler     → routes initialize / tools/list / tools/call
-    ├─ BankingToolRegistry   → static registry of all tool definitions
-    ├─ BankingToolProvider   → executes tools, handles auth challenges
+    ▼
+banking_api_server (BFF)      ← sole MCP client; exchanges T1→T2 via RFC 8693
+    │
+    ├─ WebSocket  ─────────────► banking_mcp_server  (always on)
+    └─ HTTP POST /mcp ─────────► banking_mcp_server  (HTTP_MCP_TRANSPORT_ENABLED=true)
+
+banking_mcp_server               ← TypeScript MCP server, both transports on one port
+    │
+    ├─ HttpMCPTransport          → POST /mcp Streamable HTTP + RFC 9728 metadata
+    ├─ MCPMessageHandler         → routes initialize / tools/list / tools/call
+    ├─ BankingToolRegistry       → static registry of all tool definitions
+    ├─ BankingToolProvider       → executes tools, handles auth challenges
+    ├─ BankingToolValidator      → JSON-Schema validates tool params
     ├─ AuthorizationChallengeHandler → detects missing scopes, generates OAuth challenge
-    ├─ BankingSessionManager → per-connection session (userTokens, CIBA state)
-    └─ BankingAPIClient      → calls banking_api_server HTTP endpoints
+    ├─ AuthenticationIntegration → validates inbound agent tokens (introspection + RFC 8707 aud)
+    ├─ BankingSessionManager     → per-connection session (userTokens, CIBA state)
+    └─ BankingAPIClient          → calls banking_api_server HTTP endpoints
 ```
 
-> **Important:** Vercel does NOT support persistent WebSocket connections. The MCP server must be deployed separately on Railway, Render, or Fly.io. Set `MCP_SERVER_URL=wss://...` in Vercel env vars.
+> **Important:** the MCP server exposes **two transports** — WebSocket (always on) and HTTP (`POST /mcp` Streamable HTTP + RFC 9728 metadata, controlled by `HTTP_MCP_TRANSPORT_ENABLED`, default `true`). Both run on the same port simultaneously. The service cannot run on stateless serverless platforms (Lambda, Cloud Run with default settings) because WebSocket connections are stateful. Locally it binds to `localhost:8080` via `run-bank.sh` — the MCP server uses plain HTTP/WS internally (no `api.ping.demo` cert needed); the BFF on `api.ping.demo:3001` is what dials it. For remote hosting use an always-on platform: Railway, Render, or Fly.io. Set `PINGONE_MCP_SERVER_URL=wss://your-mcp-host` in the BFF's env (`banking_api_server/.env`, default `ws://localhost:8080`) so `banking_api_server` can dial it.
 
 ---
 
@@ -39,7 +47,7 @@ export class BankingToolRegistry {
       name: 'my_new_tool',
       description: 'Human-readable description for the AI agent',
       requiresUserAuth: true,          // false for public/query operations
-      requiredScopes: ['banking:transactions:write'],  // PingOne scopes needed
+      requiredScopes: ['banking:write'],  // flat scopes — see toolScopeMap.ts
       handler: 'executeMyNewTool',     // method name on BankingToolProvider
       inputSchema: {
         type: 'object',
@@ -65,14 +73,14 @@ export class BankingToolRegistry {
 }
 ```
 
-**Scope reference:**
+**Scope reference** (real scope names from `src/tools/toolScopeMap.ts` — flat, not nested):
 
-| Scope | Action |
-|-------|--------|
-| `banking:accounts:read` | Get accounts, balances |
-| `banking:transactions:read` | Get transactions |
-| `banking:transactions:write` | Deposit, withdrawal, transfer |
-| (empty `[]`) | Public/query, no OAuth required |
+| Scope | Tools | Action |
+|---|---|---|
+| `banking:read` | `get_my_accounts`, `get_account_balance`, `get_sensitive_account_details`, `get_my_transactions`, `query_user_by_email`, `sequential_think` | Read accounts, balances, transactions, sensitive details |
+| `banking:write` | `create_deposit`, `create_withdrawal`, `create_transfer` | Mutating banking operations |
+
+Unknown tools fall back to `['banking:read']` (safe default — read-only) via `getScopesForTool()`. There is no "empty scopes / no OAuth" path in the current registry.
 
 ### 2. Implement handler in `BankingToolProvider.ts`
 
@@ -96,7 +104,7 @@ async executeMyNewTool(
   } catch (err) {
     if (err instanceof AuthenticationError) {
       const challenge = await this.authChallengeHandler.generateAuthorizationChallenge(
-        session.sessionId, ['banking:transactions:write'],
+        session.sessionId, ['banking:write'],
       );
       return { type: 'text', text: 'Authorization required', success: false, authChallenge: challenge };
     }
@@ -250,7 +258,19 @@ const result = await this.apiClient.post('/api/transactions/transfer', {
 
 ## Deployment
 
-The MCP server is **not** on Vercel. Use an always-on WebSocket host:
+### Local (default)
+
+`run-bank.sh` starts `banking_mcp_server` on `localhost:8080` alongside the BFF. The **BFF** (not the React UI — token custody rule means the SPA never talks to MCP directly) dials it via `PINGONE_MCP_SERVER_URL=ws://localhost:8080` set in `banking_api_server/.env`. No remote host needed for local development on `api.ping.demo`.
+
+```bash
+cd banking_mcp_server
+npm run build:clean   # rm -rf dist && tsc
+npm run start:prod    # NODE_ENV=production node dist/index.js
+```
+
+### Remote (when sharing the demo)
+
+WebSocket requires an always-on host — pick one:
 
 | Platform | Free tier | Deploy command |
 |----------|-----------|----------------|
@@ -258,17 +278,39 @@ The MCP server is **not** on Vercel. Use an always-on WebSocket host:
 | Render | Free (sleeps 15min) | Connect GitHub repo |
 | Fly.io | Free (3 shared VMs) | `fly deploy` |
 
-```bash
-cd banking_mcp_server
-npm run build:clean   # rm -rf dist && tsc
-npm run start:prod    # NODE_ENV=production node dist/index.js
+Required env vars on the MCP host (names match `banking_mcp_server/.env.example` — see it for the full list):
 
-# Required env vars on MCP host:
-BANKING_API_URL=https://banking-demo-puce.vercel.app
-PINGONE_AUTH_URL=https://auth.pingone.com/{envId}/as
-ADMIN_CLIENT_ID=...
-ADMIN_CLIENT_SECRET=...
-PORT=8080
+```bash
+# Banking API backend
+BANKING_API_BASE_URL=https://api.ping.demo:3001   # or wherever the BFF is reachable
+
+# PingOne — endpoints are explicit on the MCP server, not auto-resolved
+PINGONE_BASE_URL=https://auth.pingone.${region}/${environmentId}
+PINGONE_AUTHORIZATION_ENDPOINT=https://auth.pingone.${region}/${environmentId}/as/authorize
+PINGONE_TOKEN_ENDPOINT=https://auth.pingone.${region}/${environmentId}/as/token
+PINGONE_INTROSPECTION_ENDPOINT=https://auth.pingone.${region}/${environmentId}/as/introspect
+PINGONE_CLIENT_ID=<mcp-server-client-id>
+PINGONE_CLIENT_SECRET="<mcp-server-client-secret>"
+
+# HTTP transport (RFC 9728 + Streamable HTTP)
+HTTP_MCP_TRANSPORT_ENABLED=true
+MCP_RESOURCE_URL=https://your-mcp-host                # appears in WWW-Authenticate + RFC 9728 metadata
+MCP_SERVER_RESOURCE_URI=https://your-mcp-host         # RFC 8707 audience validation on inbound tokens
+MCP_ALLOWED_ORIGINS=https://api.ping.demo:4000        # comma-separated; blank = allow all
+
+# Server
+MCP_SERVER_HOST=0.0.0.0
+MCP_SERVER_PORT=8080
 ```
 
-After deploying: set `MCP_SERVER_URL=wss://your-mcp-host` in Vercel project settings.
+After deploying remotely: set `PINGONE_MCP_SERVER_URL=wss://your-mcp-host` in the BFF's env (`banking_api_server/.env`) so it can dial the WebSocket.
+
+---
+
+## See Also
+
+- [oauth-pingone skill](../oauth-pingone/SKILL.md) — RFC 8693 token exchange details, scope mechanics
+- [bff-sessions skill](../bff-sessions/SKILL.md) — session/token custody on the BFF side (sole MCP client)
+- [hitl-consent skill](../hitl-consent/SKILL.md) — `mcpToolAuthorizationService` confirm vs step-up gates, banking_hitl_service handoff
+- [regression-guard skill](../regression-guard/SKILL.md) — REGRESSION_PLAN §1 entries that touch MCP tool flow
+- [typescript-banking skill](../typescript-banking/SKILL.md) — TS style for the `banking_mcp_server/src/` package

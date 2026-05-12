@@ -91,7 +91,8 @@ table in sync when adding a service.
 | `banking_hitl_service` | 3009 | Plain JS    | `npm install` | — |
 | `banking_agent_service`| 3006 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
 | `banking_mcp_invest`   | 8081 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
-| `langchain_agent`      | 8888 | Python      | `pip install -r requirements.txt` (separate concern) | — |
+| `banking_mortgage_service` | 8082 | Plain JS | `npm install` | — |
+| `langchain_agent`      | 8888 (uvicorn) + 8889 (chat WS) + 8890 (health/inspector) | Python | `pip install -r requirements.txt` (separate concern) | — |
 
 Two recurring failure modes to watch for when adding or modifying service launches in `run-bank.sh`:
 
@@ -140,7 +141,10 @@ npm run test:e2e:admin
 | `.cursor/rules/regression-guard.mdc` | Cursor rule mirroring regression checks |
 | `.claude/skills/` | Domain skills (OAuth, MCP, Vercel, PingOne API, TypeScript) |
 
-**Ports:** See `REGRESSION_PLAN.md` §3. Default UI/API: 3000/3001; `run-bank.sh` uses 4000/3002 — keep `banking_api_ui/.env` (`REACT_APP_API_PORT`) in sync.
+**Ports** (authoritative — see `REGRESSION_PLAN.md` §3 and `run-bank.sh`):
+- **External (`api.ping.demo` HTTPS):** BFF `:3001`, UI `:4000`
+- **Loopback only:** MCP `:8080`, MCP Invest `:8081`, Mortgage `:8082`, LangChain `:8888` (+ `:8889` chat WS + `:8890` health/inspector), MCP Gateway `:3005`, Agent `:3006`, HITL `:3009`
+- `banking_api_ui/.env` `REACT_APP_API_PORT=3001` must match the BFF port.
 
 ---
 
@@ -188,9 +192,10 @@ Browser → (cookie) → BFF (agentMcpTokenService.js)
 1. **Read** [REGRESSION_PLAN.md](REGRESSION_PLAN.md) §0–1 before editing listed files. State what you will **not** break.
 2. **Minimal diff** — name the component/element; do not refactor unrelated code.
 3. **After any `banking_api_ui` UI edit:** run `npm run build` in `banking_api_ui/`; exit code must be **0**.
-4. **No emojis in UI text.** Banking apps are professional. Remove emojis from button labels, status text, headers, and descriptions whenever you encounter them. See [REGRESSION_PLAN.md §0](REGRESSION_PLAN.md#0-ui-style-guidelines).
-5. **Bug fixes:** add an entry to `REGRESSION_PLAN.md` §4 (Bug Fix Log) per the template in the regression-guard rule.
-6. **Do not** edit marketing-only pages unless the task explicitly says so (user preference: `/marketing` stability).
+4. **Emoji rule.** Banking apps are professional. The **only** emojis permitted anywhere — UI text, docs, skills, code, comments — are `⚠️` (warning), `✅` (green check), `❌` (red X). Remove any other emoji you encounter in button labels, status text, headers, and descriptions. CSS icons / semantic HTML only for everything else. See [REGRESSION_PLAN.md §0](REGRESSION_PLAN.md#0-ui-style-guidelines).
+5. **Default host:** `api.ping.demo` is the canonical local host (BFF `https://api.ping.demo:3001`, UI `https://api.ping.demo:4000`, HTTPS via `mkcert`). Use it in all skills, docs, examples, and PingOne app Redirect URIs. Users can override via the `/setup` page (writes configStore) or `.env` (`PUBLIC_APP_URL`, `REACT_APP_CLIENT_URL`, `CORS_ORIGIN`). Code **must not** hardcode `localhost:3001` / `localhost:4000` in `routes/oauth*.js` — read the configured host (REGRESSION_PLAN §1 "OAuth redirect origin").
+6. **Bug fixes:** add an entry to `REGRESSION_PLAN.md` §4 (Bug Fix Log) per the template in the regression-guard rule.
+7. **Do not** edit marketing-only pages unless the task explicitly says so (user preference: `/marketing` stability).
 
 ---
 
@@ -318,7 +323,9 @@ Even when all code and configuration above is correct, the returned MCP token ma
 | PingOne OAuth, PKCE, tokens | `oauth-pingone` |
 | MCP server, tools, WebSocket | `mcp-server` |
 | PingOne Management API from BFF | `pingone-api-calls` |
-| Vercel, `vercel.json`, serverless sessions | `vercel-banking` |
+| BFF sessions, cookies, token custody, prod hardening | `bff-sessions` |
+| HITL consent, 428 enforcement, Phase 170 | `hitl-consent` |
+| Pre-edit discipline, §1/§4, pre-deploy checklist | `regression-guard` |
 | TS/JS style in this monorepo | `typescript-banking` |
 
 ---
@@ -344,7 +351,7 @@ Even when all code and configuration above is correct, the returned MCP token ma
 
 - `cd banking_api_ui && npm run build` → **0**
 - No new unhandled rejections / noisy `console.error` in flows you changed
-- If OAuth touched: admin login → `/admin`; user login → `/dashboard`; callbacks use real host not localhost
+- If OAuth touched: admin login → `/admin`; user login → `/dashboard`; callbacks resolve to `https://api.ping.demo:4000` (the configured default) — never a hardcoded `localhost`
 - If agent/MCP touched:
   - FAB visibility and agent sidebar in `/dashboard`
   - Click a banking tool (e.g., "🏦 My Accounts") → Token Chain panel shows token exchange events

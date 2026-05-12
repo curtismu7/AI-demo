@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides comprehensive API documentation for the OAuth 2.0 client credentials implementation in the BX Finance Banking API. It includes all endpoints, request/response formats, error handling, and usage examples.
+This document provides comprehensive API documentation for the OAuth 2.0 client credentials implementation in the Super Banking API. It includes all endpoints, request/response formats, error handling, and usage examples.
 
 ## Base URL
 

@@ -22,7 +22,7 @@
             "mcp-server"
           ]
         },
-        "description": "Public MCP server discovery manifest for Vercel deployment. Returns serverInfo, capabilities, tools list, and oauth_metadata_url. No authentication required.\n\nSpec: MCP Protocol discovery via /.well-known endpoint.\n\nSample response fields:\n- serverInfo.name: Super Banking Banking MCP Server\n- capabilities.tools: { listChanged: false }\n- tools[]: list of available banking tools with inputSchema\n- oauth_metadata_url: PingOne OIDC discovery URL"
+        "description": "Public MCP server discovery manifest for Vercel deployment. Returns serverInfo, capabilities, tools list, and oauth_metadata_url. No authentication required.\n\nSpec: MCP Protocol discovery via /.well-known endpoint.\n\nSample response fields:\n- serverInfo.name: Super Banking MCP Server\n- capabilities.tools: { listChanged: false }\n- tools[]: list of available banking tools with inputSchema\n- oauth_metadata_url: PingOne OIDC discovery URL"
       },
       "response": []
     },

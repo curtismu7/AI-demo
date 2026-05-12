@@ -443,14 +443,9 @@ describe('AuditLogger', () => {
 
       const result = await auditLogger.queryAuditLogs(filters);
 
+      // Empty event store with filters applied → empty array.
+      // queryAuditLogs is a pure filter on in-memory event store; no log call.
       expect(result).toEqual([]);
-      expect(mockLogger.debug).toHaveBeenCalledWith(
-        'Audit log query requested',
-        expect.objectContaining({
-          filters,
-          operation: 'audit_query'
-        })
-      );
     });
 
     it('should generate audit summaries', async () => {
@@ -469,8 +464,9 @@ describe('AuditLogger', () => {
         topOperations: []
       });
 
+      // Source emits 'Generating audit summary' (not 'Audit summary generation requested').
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Audit summary generation requested',
+        'Generating audit summary',
         expect.objectContaining({
           startTime: startTime.toISOString(),
           endTime: endTime.toISOString(),

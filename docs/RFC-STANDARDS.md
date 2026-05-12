@@ -1,4 +1,4 @@
-# BX Finance — RFC & Standards Reference
+# Super Banking — RFC & Standards Reference
 
 > **Who this is for:** Security architects, evaluators, and SEs who need to verify exactly which standards the demo implements and how.
 >

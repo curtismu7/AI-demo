@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide provides comprehensive instructions for integrating with the BX Finance Banking API using OAuth 2.0 client credentials. This approach replaces Personal Access Tokens (PATs) with a more secure, scalable authentication method.
+This guide provides comprehensive instructions for integrating with the Super Banking API using OAuth 2.0 client credentials. This approach replaces Personal Access Tokens (PATs) with a more secure, scalable authentication method.
 
 ## Quick Start
 

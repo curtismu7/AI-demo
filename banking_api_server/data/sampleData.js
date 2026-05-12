@@ -280,7 +280,12 @@ function generateRealisticBankingData() {
   const accounts = [];
   const txns = [];
 
-  // Generate 250 realistic users
+  // Generate 250 realistic users.
+  // bcrypt.hashSync at rounds=10 costs ~60ms each — hoist out of the loop so
+  // the 250-iteration init goes from ~15s to ~60ms. All generated users share
+  // the same demo password ('password123') anyway, so a shared hash is correct.
+  // bcrypt.compareSync still works against any valid hash for that plaintext.
+  const SHARED_DEMO_HASH = bcrypt.hashSync('password123', 10);
   for (let i = 1; i <= 250; i++) {
     const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
     const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
@@ -290,7 +295,7 @@ function generateRealisticBankingData() {
       email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@example.com`,
       firstName,
       lastName,
-      password: bcrypt.hashSync('password123', 10),
+      password: SHARED_DEMO_HASH,
       role: 'customer',
       createdAt: new Date(2024, 0, Math.floor(Math.random() * 60) + 1),
       isActive: Math.random() > 0.1

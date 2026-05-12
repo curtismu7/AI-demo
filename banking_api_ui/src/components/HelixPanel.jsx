@@ -3,6 +3,9 @@ import apiClient from "../services/apiClient";
 import { notifySuccess, notifyError } from "../utils/appToast";
 
 export default function HelixPanel() {
+  // Initial blanks — server-side configStore (FIELD_DEFS in configStore.js)
+  // returns the public demo defaults from /api/langchain/config/status on
+  // first render, so fresh clones see the LLM2 demo agent pre-filled.
   const [helixConfig, setHelixConfig] = useState({
     base_url: "",
     api_key: "",
@@ -233,7 +236,7 @@ export default function HelixPanel() {
           </label>
           <input
             type="text"
-            placeholder="https://openam-helix.forgeblocks.com/dpc/jas/helix/v1"
+            placeholder="https://openam-helix.forgeblocks.com"
             value={helixConfig.base_url}
             onChange={(e) =>
               setHelixConfig({ ...helixConfig, base_url: e.target.value })
@@ -246,6 +249,15 @@ export default function HelixPanel() {
               fontSize: "0.9rem",
             }}
           />
+          <div
+            style={{
+              fontSize: "0.75rem",
+              color: "#6b7280",
+              marginTop: "0.35rem",
+            }}
+          >
+            Your Helix tenant origin — leave as-is if you use the shared Ping-hosted preview tenant.
+          </div>
         </div>
 
         <div>

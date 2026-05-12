@@ -25,7 +25,7 @@ private handleMetadata(_req: IncomingMessage, res: ServerResponse): void {
     authorization_servers: [this.config.authServerUrl],
     bearer_methods_supported: ['header'],
     scopes_supported: BANKING_SCOPES,
-    resource_name: 'BX Finance Banking MCP Server',
+    resource_name: 'Super Banking MCP Server',
     resource_documentation: 'https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization',
   };
 }
@@ -46,7 +46,7 @@ private handleMetadata(_req: IncomingMessage, res: ServerResponse): void {
 ```typescript
 private handleMcpDiscovery(res: ServerResponse): void {
   const manifest = {
-    name: 'BX Finance Banking MCP Server',
+    name: 'Super Banking MCP Server',
     description: 'MCP server providing banking tools for AI agents...',
     version: pkg.version,
     tools: allTools.map((t) => ({ name: t.name, description: t.description, readOnly: t.readOnly })),
@@ -170,7 +170,7 @@ private handleMetadata(_req: IncomingMessage, res: ServerResponse): void {
     authorization_servers: [this.config.authServerUrl],
     bearer_methods_supported: ['header'],
     scopes_supported: BANKING_SCOPES,
-    resource_name: 'BX Finance Banking MCP Server',
+    resource_name: 'Super Banking MCP Server',
     resource_documentation: 'https://github.com/curtismu7/banking-demo/docs/MCP_SERVER_EDUCATION.md',
     introspection_endpoint: `${base}/.well-known/oauth-protected-resource/introspect`,
     revocation_endpoint: `${base}/.well-known/oauth-protected-resource/revoke`,

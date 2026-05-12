@@ -1,4 +1,4 @@
-# SPIFFE / SPIRE — Implementation Plan (Super Banking Banking Demo)
+# SPIFFE / SPIRE — Implementation Plan (Super Banking demo)
 
 This document defines the integration strategy for **SPIFFE** (Secure Production Identity
 Framework For Everyone) in Super Banking. It follows the same structure as

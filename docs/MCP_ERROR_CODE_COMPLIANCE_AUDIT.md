@@ -20,7 +20,7 @@ This audit report evaluates the current MCP (Model Context Protocol) error code 
 private sendUnauthorized(res: ServerResponse, detail: string, requiredScopes?: string[]): void {
   res.writeHead(401, {
     'Content-Type': 'application/json',
-    'WWW-Authenticate': `Bearer realm="BX Finance Banking MCP Server"...`
+    'WWW-Authenticate': `Bearer realm="Super Banking MCP Server"...`
   });
   res.end(JSON.stringify({ error: 'unauthorized', error_description: detail }));
 }
@@ -29,7 +29,7 @@ private sendUnauthorized(res: ServerResponse, detail: string, requiredScopes?: s
 private sendInsufficientScope(res: ServerResponse, requiredScopes: string[]): void {
   res.writeHead(403, {
     'Content-Type': 'application/json',
-    'WWW-Authenticate': `Bearer realm="BX Finance Banking MCP Server"...`
+    'WWW-Authenticate': `Bearer realm="Super Banking MCP Server"...`
   });
   res.end(JSON.stringify({
     error: 'insufficient_scope',
@@ -298,7 +298,7 @@ private sendUnauthorized(res: ServerResponse, detail: string, options?: {
   res.writeHead(401, {
     'Content-Type': 'application/json',
     'WWW-Authenticate': 
-      `Bearer realm="BX Finance Banking MCP Server"${scopePart}, ` +
+      `Bearer realm="Super Banking MCP Server"${scopePart}, ` +
       `error="unauthorized", ` +
       `error_description="${detail}", ` +
       `resource_metadata="${base}/.well-known/oauth-protected-resource"`
@@ -327,7 +327,7 @@ private sendInsufficientScope(
   res.writeHead(403, {
     'Content-Type': 'application/json',
     'WWW-Authenticate': 
-      `Bearer realm="BX Finance Banking MCP Server", ` +
+      `Bearer realm="Super Banking MCP Server", ` +
       `error="insufficient_scope", ` +
       `scope="${requiredScopes.join(' ')}", ` +
       `error_description="Token is missing required scope(s): ${requiredScopes.join(', ')}", ` +
@@ -415,7 +415,7 @@ export class ErrorContextBuilder {
         stack: new Error().stack,
         timestamp: new Date().toISOString(),
         requestId,
-        server: 'BX Finance Banking MCP Server',
+        server: 'Super Banking MCP Server',
         version: process.env.npm_package_version || '1.0.0'
       }
     };

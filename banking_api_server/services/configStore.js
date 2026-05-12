@@ -150,11 +150,15 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   active_vertical:            { public: true,  default: 'banking' },
 
   // Helix LLM Provider Configuration
-  helix_base_url:             { public: true,  default: '' },
+  // Helix defaults point at the shared Super Banking demo agent (LLM2) on the
+  // Ping-hosted preview tenant. New clones work out of the box once the API key
+  // is supplied via /setup or HELIX_API_KEY in .env — see docs/helix-setup.md
+  // "Public demo Helix agent" section.
+  helix_base_url:             { public: true,  default: 'https://openam-helix.forgeblocks.com' },
   helix_api_key:              { public: false, default: '' },
-  helix_environment_id:       { public: true,  default: '' },
-  helix_agent_id:             { public: true,  default: '' },
-  helix_prompt_field_id:      { public: true,  default: '' },
+  helix_environment_id:       { public: true,  default: 'fe213c3c-9c1d-4bdb-954a-a22879dad26d' },
+  helix_agent_id:             { public: true,  default: 'LLM2' },
+  helix_prompt_field_id:      { public: true,  default: 'textInputa7c39a0e8292' },
 
   // CIBA — Client-Initiated Backchannel Authentication
   CIBA_ENABLED:               { public: true,  default: 'false' },

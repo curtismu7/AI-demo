@@ -45,6 +45,12 @@ describe('MCPMessageHandler', () => {
 
     // Set up default mocks
     mockToolProvider.getAvailableTools = jest.fn().mockReturnValue([]);
+    // Phase 210+: handleListTools now calls getAvailableToolsForToken(tokenScopes).
+    // Default to passing scopes through to whatever getAvailableTools returns so
+    // tests that only stub getAvailableTools still work.
+    mockToolProvider.getAvailableToolsForToken = jest.fn().mockImplementation(() =>
+      mockToolProvider.getAvailableTools()
+    );
     mockToolProvider.executeTool = jest.fn();
     mockToolProvider.handleAuthorizationCode = jest.fn();
 
@@ -212,7 +218,7 @@ describe('MCPMessageHandler', () => {
       expect(response.result!.tools).toHaveLength(2);
       expect(response.result!.tools[0].name).toBe('get_my_accounts');
       expect(response.result!.tools[1].name).toBe('get_account_balance');
-      expect(mockToolProvider.getAvailableTools).toHaveBeenCalled();
+      expect(mockToolProvider.getAvailableToolsForToken).toHaveBeenCalled();
     });
 
     it('should preserve title icons annotations and readOnly metadata in tools/list response', async () => {

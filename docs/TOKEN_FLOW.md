@@ -1,4 +1,4 @@
-# Token Flow — BX Finance Banking Demo
+# Token Flow — Super Banking demo
 
 Complete reference for OAuth token lifecycle: how tokens are obtained, what resource and scopes they carry, how they are exchanged (2-exchange delegation), and how decoded claims reach the UI.
 

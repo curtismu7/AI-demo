@@ -81,8 +81,8 @@ Example output:
 ℹ️  Fetching PingOne resources...
 ✅ Found 7 resources
 
-ℹ️  Checking: Super Banking Banking API (https://banking-api.banking-demo.com)
-  Description: Super Banking Banking API (End-User)
+ℹ️  Checking: Super Banking API (https://banking-api.banking-demo.com)
+  Description: Super Banking API (End-User)
   URI: https://banking-api.banking-demo.com
   Current scopes: banking:read, banking:write, banking:accounts:read
 ✅ All required scopes present
@@ -102,7 +102,7 @@ Example output:
 
 ℹ️  Resource Configuration Summary:
 
-Resource: Super Banking Banking API
+Resource: Super Banking API
   URI: https://banking-api.banking-demo.com
   ID: e9f8a7b6-c5d4-3c2b-1a09-f8e7d6c5b4a3
   Scopes: banking:read, banking:write
@@ -131,7 +131,7 @@ If the script reports issues or you want to manually verify:
 
 1. Go to **PingOne Admin Console** → **Integrations** → **Resources**
 2. You should see at least these 5 resources:
-   - **Super Banking Banking API**
+   - **Super Banking API**
    - **Super Banking Agent Gateway**
    - **Super Banking AI Agent Service**
    - **Super Banking MCP Gateway**
@@ -145,7 +145,7 @@ For each resource:
 2. Go to **Scopes** tab
 3. Verify that the required scopes are listed:
 
-**Super Banking Banking API:**
+**Super Banking API:**
 - ✅ `banking:read` (required)
 - ✅ `banking:write` (required)
 - Optional: `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write`

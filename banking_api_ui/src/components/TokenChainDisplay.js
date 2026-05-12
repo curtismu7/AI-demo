@@ -13,6 +13,7 @@ import {
 } from "./TokenColorSystem";
 // Phase 266 R3 — spec-citation pills (educational/teaching demo). Runs offline.
 import { SPEC_GUIDE } from "./specGuide";
+import { isEducationalPath } from "../utils/educationalPages";
 
 const FETCH_COOLDOWN_MS = 5000; // Don't fetch more than once per 5 seconds
 
@@ -2689,6 +2690,9 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
 
   /** Silently prefetch agent CC token on mount — shows agent actor identity before first MCP call. */
   React.useEffect(() => {
+    // Skip on documentation-only pages — they don't need agent-context tokens
+    // and the BFF returns 401 there, producing noisy DevTools warnings.
+    if (isEducationalPath()) return;
     let cancelled = false;
     (async () => {
       try {

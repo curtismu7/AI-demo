@@ -116,3 +116,14 @@ test-results/
 postman/*.postman_environment.json
 banking_api_server/data/runtimeData.json
 banking_api_server/data/backups/
+
+# Helix agent API key JSON files (one per agent) — contain keyValue secret.
+# The 4 non-secret defaults are committed in configStore.js FIELD_DEFS;
+# only the keyValue is sensitive. See helix-setup.md "Public demo Helix agent".
+LLM*.json
+
+# Partial / temporary migration archives — safe to discard
+banking-export-*.tar.gz.tmp.*
+
+# Local archive folder for old/superseded artifacts
+/.archive/

@@ -26,12 +26,17 @@ describe('BankingToolProvider', () => {
     mockApiClient = new BankingAPIClient() as jest.Mocked<BankingAPIClient>;
     mockAuthManager = new BankingAuthenticationManager({} as any) as jest.Mocked<BankingAuthenticationManager>;
     mockSessionManager = new BankingSessionManager('test', 'test-key') as jest.Mocked<BankingSessionManager>;
-    
+
     // Set up default mocks for AuthenticationManager
     mockAuthManager.generateAuthorizationRequest = jest.fn();
     mockAuthManager.isTokenExpired = jest.fn();
     mockAuthManager.validateBankingScopes = jest.fn();
-    
+
+    // Phase 226+: BankingAPIClient grew startTrace/stopTrace for HTTP debug capture.
+    // Mock returns an empty trace array so attachTrace() in BankingToolProvider works.
+    mockApiClient.startTrace = jest.fn();
+    mockApiClient.stopTrace = jest.fn(() => []);
+
     provider = new BankingToolProvider(mockApiClient, mockAuthManager, mockSessionManager);
 
     // Create mock session with valid user tokens
@@ -40,7 +45,8 @@ describe('BankingToolProvider', () => {
       refreshToken: 'valid_refresh_token',
       tokenType: 'Bearer',
       expiresIn: 3600,
-      scope: 'banking:accounts:read banking:transactions:read banking:transactions:write',
+      // Phase 210+: flat scope model (banking:read, banking:write, banking:sensitive:read).
+      scope: 'banking:read banking:write banking:sensitive:read',
       issuedAt: new Date()
     };
 
@@ -74,16 +80,19 @@ describe('BankingToolProvider', () => {
   describe('getAvailableTools', () => {
     it('should return all banking tools', () => {
       const tools = provider.getAvailableTools();
-      
-      expect(tools).toHaveLength(7);
+
+      // Phase 210+: 9 tools (added get_sensitive_account_details and sequential_think).
+      expect(tools).toHaveLength(9);
       expect(tools.map(t => t.name)).toEqual([
         'get_my_accounts',
         'get_account_balance',
+        'get_sensitive_account_details',
         'get_my_transactions',
         'create_deposit',
         'create_withdrawal',
         'create_transfer',
-        'query_user_by_email'
+        'query_user_by_email',
+        'sequential_think',
       ]);
     });
   });
@@ -271,11 +280,12 @@ describe('BankingToolProvider', () => {
         expect(result.success).toBe(true);
         const data = JSON.parse(result.text);
         expect(data.count).toBe(2);
+        // Source returns full Account shape with `accountType` (not the abbreviated `type`).
         expect(data.accounts[0].id).toBe('acc_123');
-        expect(data.accounts[0].type).toBe('checking');
+        expect(data.accounts[0].accountType).toBe('checking');
         expect(data.accounts[0].balance).toBe(1000.50);
         expect(data.accounts[1].id).toBe('acc_456');
-        expect(data.accounts[1].type).toBe('savings');
+        expect(data.accounts[1].accountType).toBe('savings');
         expect(data.accounts[1].balance).toBe(5000.00);
       });
 
@@ -499,12 +509,14 @@ describe('BankingToolProvider', () => {
         mockSuccessfulAuthorization();
         mockApiClient.queryUserByEmail.mockResolvedValue(mockUserResponse);
 
+        // Phase 198+: query_user_by_email runs on the agent-delegated token, not the
+        // user token. Pass agentToken as the 4th arg to executeTool.
         const result = await provider.executeTool('query_user_by_email', {
           email: 'john.doe@example.com'
-        }, mockSession);
-        
+        }, mockSession, 'agent-delegated-token');
+
         expect(result.success).toBe(true);
-        
+
         // Parse the JSON response
         const responseData = JSON.parse(result.text);
         expect(responseData.exists).toBe(true);
@@ -519,7 +531,7 @@ describe('BankingToolProvider', () => {
         expect(responseData.user.oauthProvider).toBe('pingone_ai_core');
         expect(responseData.queriedBy).toBe('ai_agent_test');
         expect(responseData.queriedAt).toBe('2023-01-01T12:00:00Z');
-        expect(mockApiClient.queryUserByEmail).toHaveBeenCalledWith('valid_access_token', 'john.doe@example.com');
+        expect(mockApiClient.queryUserByEmail).toHaveBeenCalledWith('agent-delegated-token', 'john.doe@example.com');
       });
 
       it('should handle user not found', async () => {
@@ -533,27 +545,27 @@ describe('BankingToolProvider', () => {
 
         const result = await provider.executeTool('query_user_by_email', {
           email: 'nonexistent@example.com'
-        }, mockSession);
-        
+        }, mockSession, 'agent-delegated-token');
+
         expect(result.success).toBe(true);
-        
+
         // Parse the JSON response
         const responseData = JSON.parse(result.text);
         expect(responseData.exists).toBe(false);
         expect(responseData.email).toBe('nonexistent@example.com');
-        expect(mockApiClient.queryUserByEmail).toHaveBeenCalledWith('valid_access_token', 'nonexistent@example.com');
+        expect(mockApiClient.queryUserByEmail).toHaveBeenCalledWith('agent-delegated-token', 'nonexistent@example.com');
       });
 
       it('should handle 404 API error as user not found', async () => {
         mockSuccessfulAuthorization();
-        
+
         const apiError = new BankingAPIError('User not found', 404, 'USER_NOT_FOUND');
         mockApiClient.queryUserByEmail.mockRejectedValue(apiError);
 
         const result = await provider.executeTool('query_user_by_email', {
           email: 'notfound@example.com'
-        }, mockSession);
-        
+        }, mockSession, 'agent-delegated-token');
+
         expect(result.success).toBe(true);
         
         // Parse the JSON response
@@ -710,33 +722,41 @@ describe('BankingToolProvider', () => {
       expect(mockApiClient.getMyAccounts).not.toHaveBeenCalled();
     });
 
-    it('D-02: hard fails when exchanged token has no act claim', async () => {
+    // D-02 was reformulated in Phase 198+: the provider no longer decodes unsigned JWT
+    // payloads to inspect the `act` claim (that was deemed unsafe — see the comment in
+    // BankingToolProvider around line 473-481). Instead D-02 now verifies the
+    // TLS-secured exchange response *shape*: `token_type === 'Bearer'` AND `expires_in > 0`.
+    // Per-claim validation lives in TokenExchangeService.validateDelegationChain() and is
+    // exercised when the real exchange service is wired (not the test's mock).
+    it('D-02: hard fails when exchange returns wrong token_type (not Bearer)', async () => {
       const noActToken = makeJwt({ sub: 'user123', aud: 'mcp', exp: Math.floor(Date.now() / 1000) + 3600 });
       mockExchangeService.exchangeToken.mockResolvedValue({
         access_token: noActToken,
         expires_in: 3600,
-        token_type: 'Bearer',
+        token_type: 'opaque',
       });
 
       const result = await providerWithExchange.executeTool('get_my_accounts', {}, mockSession);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('act claim');
+      expect(result.error).toContain("Token exchange for 'get_my_accounts' returned unexpected response");
+      expect(result.error).toContain('token_type: opaque');
       expect(mockApiClient.getMyAccounts).not.toHaveBeenCalled();
     });
 
-    it('D-02: hard fails when act claim is present but empty (no sub or client_id)', async () => {
+    it('D-02: hard fails when exchange returns non-positive expires_in', async () => {
       const emptyActToken = makeJwt({ sub: 'user123', act: {} });
       mockExchangeService.exchangeToken.mockResolvedValue({
         access_token: emptyActToken,
-        expires_in: 3600,
+        expires_in: 0,
         token_type: 'Bearer',
       });
 
       const result = await providerWithExchange.executeTool('get_my_accounts', {}, mockSession);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('act claim');
+      expect(result.error).toContain("Token exchange for 'get_my_accounts' returned unexpected response");
+      expect(result.error).toContain('expires_in: 0');
       expect(mockApiClient.getMyAccounts).not.toHaveBeenCalled();
     });
 

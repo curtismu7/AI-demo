@@ -41,7 +41,7 @@ You need **four PingOne applications** (two for browser login, one worker for Ma
 Before creating the apps, define the Resource that the custom `banking:*` scopes belong to.
 
 1. PingOne Admin → **Environment** → **Resources** (or **APIs**)
-2. Click **Add Resource** → give it any name (e.g. `Super Banking Banking API`)
+2. Click **Add Resource** → give it any name (e.g. `Super Banking API`)
 3. **Audience**: `banking_mcp_01` (or your preferred value; must match `REACT_APP_ENDUSER_AUDIENCE`)
 4. Add the following **custom scopes** (consolidated from 14 to 6 scopes):
 

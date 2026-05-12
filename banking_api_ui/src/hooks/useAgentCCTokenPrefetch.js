@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useTokenChainOptional } from '../context/TokenChainContext';
+import { isEducationalPath } from '../utils/educationalPages';
 
 /**
  * Hook to prefetch the agent CC token (client credentials) once on component mount.
@@ -13,6 +14,9 @@ export function useAgentCCTokenPrefetch() {
 
   useEffect(() => {
     if (!tokenChain) return;
+    // Skip on documentation-only pages — they don't need agent-context tokens
+    // and the BFF returns 401 there, producing noisy DevTools warnings.
+    if (isEducationalPath()) return;
 
     let isMounted = true;
 

@@ -50,15 +50,20 @@ const HELIX_CONFIG = {
   helix_prompt_field_id: 'field-1',
 };
 
+// Code-under-test now reads helix_* via getEffective so committed FIELD_DEFS
+// defaults reach fresh clones. Mocks reflect that: getEffective serves both
+// the ff_heuristic_enabled flag AND the helix_* keys; get() is kept in sync
+// for any caller still using it.
 function setLlmOnlyMode() {
-  configStore.getEffective.mockImplementation((key) =>
-    key === 'ff_heuristic_enabled' ? 'false' : null,
-  );
+  configStore.getEffective.mockImplementation((key) => {
+    if (key === 'ff_heuristic_enabled') return 'false';
+    return HELIX_CONFIG[key] || null;
+  });
   configStore.get.mockImplementation((key) => HELIX_CONFIG[key] || null);
 }
 
 function setHeuristicMode() {
-  configStore.getEffective.mockReturnValue(null); // absent → enabled
+  configStore.getEffective.mockImplementation((key) => HELIX_CONFIG[key] || null);
   configStore.get.mockImplementation((key) => HELIX_CONFIG[key] || null);
 }
 
@@ -67,16 +72,19 @@ beforeEach(() => {
 });
 
 describe('geminiNlIntent — LLM-only mode (ff_heuristic_enabled=false)', () => {
-  it('does not call parseHeuristic', async () => {
+  it('calls parseHeuristic as a safety net even in LLM-only mode', async () => {
+    // Contract (revised 2026-05-11): heuristic ALWAYS runs so its result is
+    // available as a fallback when the LLM produces nothing. LLM-only mode
+    // means "prefer LLM", not "disable heuristic".
     setLlmOnlyMode();
-    // Helix router returns kind:'none'; answerWithHelix also returns null
+    parseHeuristic.mockReturnValue({ kind: 'none', message: '' });
     callHelixAgent
       .mockResolvedValueOnce('{"kind":"none","message":"I don\'t know"}')
       .mockResolvedValueOnce(null);
 
     await parseNaturalLanguage('what is my biggest purchase', {}, 'auto', {});
 
-    expect(parseHeuristic).not.toHaveBeenCalled();
+    expect(parseHeuristic).toHaveBeenCalledTimes(1);
   });
 
   it('skips Ollama — global.fetch is never called for Ollama endpoint', async () => {
@@ -122,12 +130,37 @@ describe('geminiNlIntent — LLM-only mode (ff_heuristic_enabled=false)', () => 
 
   it('returns heuristic kind:none result when answerWithHelix also returns null', async () => {
     setLlmOnlyMode();
+    parseHeuristic.mockReturnValue({ kind: 'none', message: '' });
     callHelixAgent.mockResolvedValue(null); // both calls return null
 
     const r = await parseNaturalLanguage('something unclear', {}, 'auto', {});
 
     expect(r.source).toBe('heuristic');
     expect(r.result.kind).toBe('none');
+  });
+
+  it('falls back to heuristic match when LLM-only mode is on but no LLM is configured', async () => {
+    // Critical safety-net test: user has "LLM only" UI toggle on, but Helix is
+    // not configured. A chip click like "accounts" must STILL work via heuristic.
+    setLlmOnlyMode();
+    // Override BOTH get and getEffective so Helix appears unconfigured.
+    // (Code reads helix_* via getEffective; the ff_heuristic_enabled flag still
+    // needs to return 'false' for LLM-only mode.)
+    configStore.get.mockImplementation(() => null);
+    configStore.getEffective.mockImplementation((key) =>
+      key === 'ff_heuristic_enabled' ? 'false' : null,
+    );
+    parseHeuristic.mockReturnValue({
+      kind: 'banking',
+      banking: { action: 'accounts', params: {} },
+    });
+    callHelixAgent.mockResolvedValue(null);
+
+    const r = await parseNaturalLanguage('accounts', {}, 'auto', {});
+
+    expect(r.source).toBe('heuristic');
+    expect(r.result.kind).toBe('banking');
+    expect(r.result.banking.action).toBe('accounts');
   });
 
   it('routes a recognised banking phrase through Helix JSON router', async () => {

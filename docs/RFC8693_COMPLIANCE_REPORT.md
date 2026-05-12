@@ -1,4 +1,4 @@
-# RFC 8693 Compliance Report: BX Finance Banking Demo
+# RFC 8693 Compliance Report: Super Banking demo
 
 ## Achievement Status: ✅ 100% COMPLIANT
 
@@ -276,7 +276,7 @@ MCP Server
 
 **As of April 9, 2026:**
 
-The BX Finance Banking Demo is **100% compliant** with RFC 8693 (Token Exchange) across all required sections:
+The Super Banking demo is **100% compliant** with RFC 8693 (Token Exchange) across all required sections:
 
 - ✅ §2.1: Token Exchange Basics (single and multi-party delegation)
 - ✅ §2.2: Actor Token Support (client credentials grant)

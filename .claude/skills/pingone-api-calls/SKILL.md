@@ -1,6 +1,6 @@
 ---
 name: pingone-api-calls
-description: 'Patterns for calling PingOne Management API from banking_api_server. USE FOR: read user, update user attributes, p1:read:user, p1:update:user, list users, create user, delete user, MFA device enrollment, enable/disable MFA, PingOne Management API /v1/environments, /users endpoint, worker app token calls, admin PingOne REST API, new service file, new route calling PingOne, error handling for PingOne responses. DO NOT USE FOR: OAuth login, token exchange, or session flows (use oauth-pingone); MCP server tools (use mcp-server); Vercel config (use vercel-banking).'
+description: 'Patterns for calling PingOne Management API from banking_api_server. USE FOR: read user, update user attributes, p1:read:user, p1:update:user, list users, create user, delete user, MFA device enrollment, enable/disable MFA, PingOne Management API /v1/environments, /users endpoint, worker app token calls, admin PingOne REST API, new service file, new route calling PingOne, error handling for PingOne responses, existing services (mfaService.js, pingoneManagementService.js, pingoneUserService.js, pingoneBootstrapService.js). DO NOT USE FOR: OAuth login, token exchange, or session flows (use oauth-pingone); MCP server tools (use mcp-server); session/cookie patterns (use bff-sessions); HITL/consent (use hitl-consent).'
 argument-hint: 'Describe the PingOne API call you need to make (e.g. read user, update MFA)'
 ---
 
@@ -107,11 +107,13 @@ Use `oauthService` for auth-server calls (token exchange, refresh, revoke):
 ```javascript
 const oauthService = require('../services/oauthService');
 
-// Token exchange (RFC 8693) — T1 → T2 scoped for MCP
+// Token exchange (RFC 8693) — T1 → T2 scoped for MCP.
+// Always read config via configStore — never process.env in handlers (CLAUDE.md).
+const configStore = require('../services/configStore');
 const mcpToken = await oauthService.performTokenExchange(
   req.session.oauthTokens.access_token,
-  process.env.MCP_SERVER_AUDIENCE,
-  ['banking:read', 'banking:write']
+  configStore.getEffective('pingone_resource_mcp_server_uri'),
+  ['banking:read', 'banking:write', 'banking:mcp:invoke']
 );
 
 // Refresh
@@ -278,15 +280,43 @@ router.post('/my-route', authenticateToken, async (req, res) => {
 | `eu` | `auth.pingone.eu` | `api.pingone.eu` |
 | `ca` | `auth.pingone.ca` | `api.pingone.ca` |
 | `asia` | `auth.pingone.asia` | `api.pingone.asia` |
+| `com.au` | `auth.pingone.com.au` | `api.pingone.com.au` |
+| `sg` | `auth.pingone.sg` | `api.pingone.sg` |
+
+---
+
+## Existing services in this repo (don't reinvent)
+
+Before writing a new service that calls PingOne Management API, check whether the operation already lives in one of these:
+
+| Service | Owns |
+|---|---|
+| `banking_api_server/services/mfaService.js` | MFA device list/delete/rename, nickname patch, enrollment helpers |
+| `banking_api_server/services/pingoneUserService.js` | User CRUD against `/v1/environments/{envId}/users` |
+| `banking_api_server/services/pingoneManagementService.js` | Generic Management API helpers (HTTP client, error wrapping, worker-token caching) |
+| `banking_api_server/services/pingoneBootstrapService.js` | Idempotent provisioning used by `npm run pingone:bootstrap` (apps, resources, scopes, demo users) |
+
+When you add a new Management API operation, add it as a method on the appropriate service above — don't fork a parallel service in a route file. The token-custody and `configStore` rules apply to anything you add.
 
 ---
 
 ## Security Rules
 
 - ✅ All PingOne calls go through `banking_api_server` — never from the browser
-- ✅ Client secrets read from `configStore.getEffective()` — not `process.env` in route files
-- ✅ Management API tokens are short-lived, obtained per-request via client_credentials
+- ✅ Client secrets read from `configStore.getEffective()` — not `process.env` in route files (CLAUDE.md non-negotiable)
+- ✅ Management API tokens are short-lived, obtained per-request via client_credentials and cached for their TTL by `pingoneManagementService`
 - ✅ `timeout: 10000` on all `axios` calls
-- ✅ Check `configStore.isConfigured()` before PingOne calls; return graceful error if not set up
+- ✅ Check `configStore.isConfigured()` (or per-key `configStore.getEffective` returning non-null) before PingOne calls; return graceful error if not set up
 - ❌ Never log `access_token`, `client_secret`, or `code_verifier` values
 - ❌ Never pass raw tokens to `res.json()` — store in `req.session.oauthTokens`
+
+---
+
+## See Also
+
+- [oauth-pingone skill](../oauth-pingone/SKILL.md) — auth-server calls (login, token exchange, refresh, revoke, introspection)
+- [bff-sessions skill](../bff-sessions/SKILL.md) — session/token custody, `configStore` lookup pattern
+- [mcp-server skill](../mcp-server/SKILL.md) — when the PingOne call originates from an agent/MCP tool
+- [hitl-consent skill](../hitl-consent/SKILL.md) — when a Management API call should be gated by user approval
+- [regression-guard skill](../regression-guard/SKILL.md) — pre-edit rules for files touching PingOne config
+- [typescript-banking skill](../typescript-banking/SKILL.md) — style rules for new service code

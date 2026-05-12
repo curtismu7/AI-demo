@@ -6,7 +6,7 @@
 #   Banking API Server  → https://api.ping.demo:3001
 #   Banking UI          → https://api.ping.demo:4000
 #   Banking MCP Server  → localhost:8080
-#   LangChain Agent     → localhost:8888
+#   LangChain Agent     → localhost:8888 (uvicorn) + 8889 (chat WS) + 8890 (health/inspector)
 #
 # One-time setup (run once each, requires sudo for /etc/hosts):
 #   echo '127.0.0.1  api.ping.demo' | sudo tee -a /etc/hosts
@@ -317,7 +317,7 @@ kill_process_tree() {
 # Stop anything still listening on Banking ports (orphaned node/python after PID file lost).
 stop_listeners_on_banking_ports() {
   local port pid pids
-  for port in 3001 4000 8080 8888 3005 3006 3009 8081 8082; do
+  for port in 3001 4000 8080 8888 8889 8890 3005 3006 3009 8081 8082; do
     pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
     for pid in $pids; do
       [[ -z "$pid" ]] && continue
@@ -329,7 +329,7 @@ stop_listeners_on_banking_ports() {
 
 force_kill_listeners_on_banking_ports() {
   local port pid pids
-  for port in 3001 4000 8080 8888 3005 3006 3009 8081 8082; do
+  for port in 3001 4000 8080 8888 8889 8890 3005 3006 3009 8081 8082; do
     pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
     for pid in $pids; do
       [[ -z "$pid" ]] && continue
@@ -386,7 +386,7 @@ print_status_table() {
   service_status_line "Mortgage Service"    8082         "http://localhost:8082 (Phase 266 Path A backend)"
   service_status_line "Agent Service"       3006         "http://localhost:3006 (internal)"
   service_status_line "HITL Service"        3009         "http://localhost:3009 (internal)"
-  service_status_line "LangChain Agent"     8888         "http://localhost:8888 (internal)"
+  service_status_line "LangChain Agent"     8888         "http://localhost:8888 (uvicorn main); :8889 (chat WS); :8890 (health)"
   if port_listening ${UI_PORT}; then
     printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
   else
@@ -409,7 +409,7 @@ cmd_stop() {
     fi
   done
   sleep 1
-  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :8080, GW :3005, Agent :3006, HITL :3009, Invest :8081, Mortgage :8082)…"
+  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :8080, LangChain :8888/8889/8890, GW :3005, Agent :3006, HITL :3009, Invest :8081, Mortgage :8082)…"
   stop_listeners_on_banking_ports
   sleep 1
   force_kill_listeners_on_banking_ports

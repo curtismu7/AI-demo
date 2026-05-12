@@ -13,13 +13,14 @@ import {
   validateToolCallMessage,
   validateMCPMethod
 } from '../../src/types/validation';
-import { 
-  MCPMessage, 
-  MCPResponse, 
-  MCPError, 
-  ToolDefinition, 
-  ToolResult, 
-  HandshakeMessage, 
+import {
+  MCPMessage,
+  MCPResponse,
+  MCPError,
+  MCPErrorCode,
+  ToolDefinition,
+  ToolResult,
+  HandshakeMessage,
   ToolCallMessage,
   JSONSchema
 } from '../../src/interfaces/mcp';
@@ -80,7 +81,8 @@ describe('MCP Protocol Model Validation', () => {
     const validErrorResponse: MCPResponse = {
       id: 'msg-123',
       error: {
-        code: -1,
+        // Phase 167+: MCPError.code is now strongly typed as MCPErrorCode enum.
+        code: MCPErrorCode.INTERNAL_ERROR,
         message: 'Test error'
       }
     };
@@ -125,7 +127,7 @@ describe('MCP Protocol Model Validation', () => {
 
   describe('validateMCPError', () => {
     const validError: MCPError = {
-      code: -1,
+      code: MCPErrorCode.INTERNAL_ERROR,
       message: 'Test error',
       data: { details: 'error details' }
     };

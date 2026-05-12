@@ -59,13 +59,16 @@ router.get('/config/status', (req, res) => {
     let helix_agent_id = cfg.helix_agent_id || '';
     let helix_prompt_field_id = cfg.helix_prompt_field_id || '';
 
-    // Try to load from configStore but don't let it crash the response
+    // Try to load from configStore but don't let it crash the response.
+    // Use getEffective so FIELD_DEFS defaults (committed in configStore.js for
+    // helix_base_url, helix_environment_id, helix_agent_id, helix_prompt_field_id)
+    // reach fresh clones whose SQLite has not yet been populated.
     try {
-      helix_base_url = helix_base_url || configStore.get('helix_base_url') || '';
-      helix_api_key = helix_api_key || configStore.get('helix_api_key') || '';
-      helix_environment_id = helix_environment_id || configStore.get('helix_environment_id') || '';
-      helix_agent_id = helix_agent_id || configStore.get('helix_agent_id') || '';
-      helix_prompt_field_id = helix_prompt_field_id || configStore.get('helix_prompt_field_id') || '';
+      helix_base_url = helix_base_url || configStore.getEffective('helix_base_url') || '';
+      helix_api_key = helix_api_key || configStore.getEffective('helix_api_key') || '';
+      helix_environment_id = helix_environment_id || configStore.getEffective('helix_environment_id') || '';
+      helix_agent_id = helix_agent_id || configStore.getEffective('helix_agent_id') || '';
+      helix_prompt_field_id = helix_prompt_field_id || configStore.getEffective('helix_prompt_field_id') || '';
     } catch (dbErr) {
       console.warn('[langchainConfig GET] configStore error:', dbErr.message);
     }
@@ -340,13 +343,14 @@ router.get('/provider/:providerName/status', async (req, res) => {
     const { getProviderStatus } = require('../services/llmProviderStatus');
     const cfg = getLangchainConfig(req);
 
-    // For Helix, try to load from SQLite if not in session
+    // For Helix, try to load from SQLite if not in session.
+    // Use getEffective so FIELD_DEFS defaults reach fresh clones.
     if (providerName === 'helix') {
       try {
-        cfg.helix_base_url = cfg.helix_base_url || configStore.get('helix_base_url') || '';
-        cfg.helix_api_key = cfg.helix_api_key || configStore.get('helix_api_key') || '';
-        cfg.helix_environment_id = cfg.helix_environment_id || configStore.get('helix_environment_id') || '';
-        cfg.helix_agent_id = cfg.helix_agent_id || configStore.get('helix_agent_id') || '';
+        cfg.helix_base_url = cfg.helix_base_url || configStore.getEffective('helix_base_url') || '';
+        cfg.helix_api_key = cfg.helix_api_key || configStore.getEffective('helix_api_key') || '';
+        cfg.helix_environment_id = cfg.helix_environment_id || configStore.getEffective('helix_environment_id') || '';
+        cfg.helix_agent_id = cfg.helix_agent_id || configStore.getEffective('helix_agent_id') || '';
       } catch (dbErr) {
         console.warn('[langchainConfig provider status] configStore error:', dbErr.message);
       }

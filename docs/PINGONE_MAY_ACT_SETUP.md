@@ -61,7 +61,7 @@ Subject Token  [TOKEN 1 — user's session token with banking:ai:agent:read scop
   │  Token Exchange #1 (RFC 8693)
   │  Banking app server POSTs the Subject Token to PingOne's /token endpoint.
   │  PingOne checks: may_act.sub == actorToken.aud[0]? → issues MCP Token.
-  │  Exchanger: Super Banking Banking App (PINGONE_CORE_CLIENT_ID)
+  │  Exchanger: Super Banking App (PINGONE_CORE_CLIENT_ID)
   ▼
 MCP Token  [TOKEN 2 — delegated tool-call token with narrowed scopes + act claim]
   { sub: "<user-id>",
@@ -531,7 +531,7 @@ This compares `may_act.sub` in the Subject Token (the permitted actor's UUID) ag
 >
 > So `#root.context.requestData.subjectToken.may_act.sub` works. `#root.context.requestData.subjectToken.sub` returns `null`.
 >
-> **`may_act.sub` must be the Banking App UUID, not a URL.** If your Subject Token has `may_act.sub` set to a URL (e.g. `https://agent1.example.com`) instead of the Banking App's client ID UUID, the comparison against `actorToken.aud[0]` will always fail and `act` will be `null`. Fix: set `mayAct = { "sub": "<UUID-of-BX-Finance-Banking-App>" }` on the user record (Part 3c).
+> **`may_act.sub` must be the Banking App UUID, not a URL.** If your Subject Token has `may_act.sub` set to a URL (e.g. `https://agent1.example.com`) instead of the Banking App's client ID UUID, the comparison against `actorToken.aud[0]` will always fail and `act` will be `null`. Fix: set `mayAct = { "sub": "<UUID-of-Super-Banking-Banking-App>" }` on the user record (Part 3c).
 >
 > 3. Click **Test Expression** — the Result panel should show:
 > ```json
@@ -663,7 +663,7 @@ Click **Save**.
 
 ---
 
-### 2b. Configure: Super Banking Banking App  *(exchanges Subject Token → MCP Token)*
+### 2b. Configure: Super Banking App  *(exchanges Subject Token → MCP Token)*
 
 This is the banking app's server-side component. It holds user sessions and performs Token Exchange #1: trading the user's Subject Token for a narrower MCP-scoped token. Its Client ID is what you store in `mayAct` on each user record.
 
@@ -795,14 +795,14 @@ If `may_act` is absent:
 
 ### 3c. Set `mayAct` on the User Record
 
-The value must be the **client ID UUID of Super Banking Banking App** (`PINGONE_CORE_CLIENT_ID`). This is what PingOne compares against `actorToken.aud[0]` during Token Exchange #1.
+The value must be the **client ID UUID of Super Banking App** (`PINGONE_CORE_CLIENT_ID`). This is what PingOne compares against `actorToken.aud[0]` during Token Exchange #1.
 
 **Option A — PingOne Admin Console:**
 1. **Directory → Users** → open the user
 2. Find **Custom Attributes → mayAct**
 3. Enter the UUID of Super Banking Admin App:
 ```json
-{ "sub": "<client-id-uuid-of-BX-Finance-Banking-App>" }
+{ "sub": "<client-id-uuid-of-Super-Banking-Banking-App>" }
 ```
 
 **Option B — PingOne Management API:**
@@ -954,8 +954,8 @@ Open the collection → **Variables tab** and fill in:
 | `env_id` | PingOne Console → Environment → Settings |
 | `client_id` | Client ID of **Super Banking User** app |
 | `client_secret` | Client Secret of **Super Banking User** app |
-| `banking_app_client_id` | Client ID of **Super Banking Banking App** |
-| `banking_app_client_secret` | Client Secret of **Super Banking Banking App** |
+| `banking_app_client_id` | Client ID of **Super Banking App** |
+| `banking_app_client_secret` | Client Secret of **Super Banking App** |
 | `mcp_client_id` | Client ID of **Super Banking MCP Service** app |
 | `mcp_client_secret` | Client Secret of **Super Banking MCP Service** app |
 | `username` | Test user login |
@@ -1036,7 +1036,7 @@ echo "<token>" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | python3 -m
   "may_act": { "sub": "<PINGONE_CORE_CLIENT_ID>" }
 }
 ```
-`may_act.sub` = the **client ID UUID** of Super Banking Banking App. PingOne compares this to the actor token’s `client_id` during Exchange #1.
+`may_act.sub` = the **client ID UUID** of Super Banking App. PingOne compares this to the actor token’s `client_id` during Exchange #1.
 
 **MCP Token** — after Token Exchange #1 (Token 2):
 ```json
@@ -1047,7 +1047,7 @@ echo "<token>" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | python3 -m
   "act": { "sub": "<PINGONE_CORE_CLIENT_ID>" }
 }
 ```
-`act.sub` = **client ID UUID** of Super Banking Banking App — verifiable proof it performed Exchange #1.
+`act.sub` = **client ID UUID** of Super Banking App — verifiable proof it performed Exchange #1.
 
 **PingOne API Token** — from Client Credentials (Token 3):
 ```json
@@ -1069,7 +1069,7 @@ The MCP server holds both Token 2 (proves who the user is + delegation) and Toke
 | `may_act` missing from Subject Token | Token claim mapping missing, or user's `mayAct` attribute is null | Part 3b (add claim map) and Part 3c (set attribute on user) |
 | `may_act` is a plain string, not an object | `mayAct` schema attribute type is `STRING` | Delete and re-create as type `JSON`; re-set the value on the user |
 | Subject Token → MCP Token: `invalid_grant` | `may_act.sub` doesn’t match the Banking App’s client ID | Set `mayAct` = `{ "sub": "<PINGONE_CORE_CLIENT_ID-UUID>" }` on the user — use Option C (demo app) to set it automatically |
-| Subject Token → MCP Token: `unauthorized_client` | `Super Banking Banking App` missing Token Exchange grant type | Part 2b — enable Token Exchange grant |
+| Subject Token → MCP Token: `unauthorized_client` | `Super Banking App` missing Token Exchange grant type | Part 2b — enable Token Exchange grant |
 | MCP Service client credentials failing (`invalid_scope: p1:read:user`) | `p1:read:user`/`p1:update:user` not enabled on app Resources tab | Enable both scopes on the **Resources tab** of **Super Banking MCP Service** (Part 2c). Do **not** add `openid` to the CC scope — it causes `invalid_scope` for Web App type client credentials |
 | MCP Service client credentials failing (`unauthorized_client`) | App type is Worker (role-based, can't use resource scopes) | Part 2c — create as Native or Web App type, not Worker |
 | `May not request scopes for multiple resources` on login | `banking:agent:invoke` and `banking:*` scopes mixed in the same `/authorize` | Keep only `banking:agent:invoke` as a non-OIDC scope on the user app; `banking:*` scopes come via exchange, not direct login |

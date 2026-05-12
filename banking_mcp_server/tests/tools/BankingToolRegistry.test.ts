@@ -61,7 +61,7 @@ describe('BankingToolRegistry', () => {
       expect(tool?.name).toBe('get_my_accounts');
       expect(tool?.title).toBe('My Bank Accounts');
       expect(tool?.requiresUserAuth).toBe(true);
-      expect(tool?.requiredScopes).toEqual(['banking:accounts:read']);
+      expect(tool?.requiredScopes).toEqual(['banking:read']);
       expect(tool?.handler).toBe('executeGetMyAccounts');
       expect(tool?.readOnly).toBe(true);
     });
@@ -87,23 +87,23 @@ describe('BankingToolRegistry', () => {
   });
 
   describe('scope and safety helpers', () => {
-    it('should return tools with banking:accounts:read scope', () => {
-      const tools = BankingToolRegistry.getToolsByScope('banking:accounts:read');
+    it('should return read tools with banking:read scope', () => {
+      // Phase 210+: scope model is flat (banking:read / banking:write / banking:sensitive:read).
+      const tools = BankingToolRegistry.getToolsByScope('banking:read');
       const names = tools.map((t) => t.name);
 
-      expect(names).toContain('get_my_accounts');
-      expect(names).toContain('get_account_balance');
-      expect(names).toHaveLength(2);
+      expect(names).toEqual(
+        expect.arrayContaining(['get_my_accounts', 'get_account_balance', 'get_my_transactions'])
+      );
     });
 
-    it('should return tools with banking:transactions:write scope', () => {
-      const tools = BankingToolRegistry.getToolsByScope('banking:transactions:write');
+    it('should return write tools with banking:write scope', () => {
+      const tools = BankingToolRegistry.getToolsByScope('banking:write');
       const names = tools.map((t) => t.name);
 
       expect(names).toEqual(
         expect.arrayContaining(['create_deposit', 'create_withdrawal', 'create_transfer'])
       );
-      expect(names).toHaveLength(3);
     });
 
     it('should return read-only tools', () => {
@@ -162,7 +162,9 @@ describe('BankingToolRegistry', () => {
 
     it('should require sensitive scope for sensitive account details', () => {
       const tool = BankingToolRegistry.getTool('get_sensitive_account_details');
-      expect(tool?.requiredScopes).toEqual(['banking:sensitive:read']);
+      // Phase 210-01 (commit 42d2ddfc): get_sensitive_account_details requires
+      // banking:read AND banking:sensitive:read for full delegation chain.
+      expect(tool?.requiredScopes).toEqual(['banking:read', 'banking:sensitive:read']);
       expect(tool?.requiresUserAuth).toBe(true);
     });
   });

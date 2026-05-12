@@ -2,12 +2,15 @@
  * @file geminiNlIntent.heuristic.test.js
  * Unit tests for the ff_heuristic_enabled feature flag in parseNaturalLanguage.
  *
- * Commit 7b1c6cae: the LLM-only toggle patches ff_heuristic_enabled=false via the
- * agent UI. When false, parseHeuristic must not be called — all messages go directly
- * to the LLM path (Ollama/Helix). When true (default), heuristic runs first.
+ * Contract (revised 2026-05-11): the heuristic is a deterministic safety net and
+ * ALWAYS runs — chip clicks and other well-known phrases must work even when
+ * Ollama/Helix are not configured. The ff_heuristic_enabled=false flag (set by the
+ * "LLM only" UI toggle) changes *short-circuit* behavior: when false, a heuristic
+ * match is NOT used to return early — the LLM path is preferred. The heuristic
+ * result is still used as a fallback when the LLM produces nothing.
  *
  * Strategy: mock nlIntentParser, configStore, and the LLM path so we can assert
- * parseHeuristic call count without spawning real HTTP requests.
+ * parseHeuristic call count and the chosen `source` without real HTTP requests.
  */
 
 'use strict';
@@ -68,8 +71,9 @@ describe('parseNaturalLanguage — ff_heuristic_enabled flag', () => {
     expect(r.source).toBe('heuristic');
   });
 
-  it('does NOT call parseHeuristic when ff_heuristic_enabled=false (LLM-only mode)', async () => {
-    // parseHeuristic would normally match "show my accounts" — but flag bypasses it
+  it('calls parseHeuristic even in LLM-only mode (ff_heuristic_enabled=false) — safety net always runs', async () => {
+    // Even with the flag off, parseHeuristic is called so its result is available
+    // as a fallback when the LLM produces nothing.
     parseHeuristic.mockReturnValue({ kind: 'banking', banking: { action: 'accounts', params: {} } });
     configStore.getEffective.mockImplementation((key) =>
       key === 'ff_heuristic_enabled' ? 'false' : null,
@@ -77,20 +81,22 @@ describe('parseNaturalLanguage — ff_heuristic_enabled flag', () => {
 
     await parseNaturalLanguage('show my accounts', {}, 'auto', {});
 
-    expect(parseHeuristic).not.toHaveBeenCalled();
+    expect(parseHeuristic).toHaveBeenCalledTimes(1);
   });
 
-  it('parseHeuristic not called even for a well-known phrase when flag is false', async () => {
-    // "Transfer $100" is a phrase the heuristic recognises, but the flag must suppress it.
+  it('LLM-only mode does not short-circuit on heuristic match — LLM is preferred', async () => {
+    // Heuristic recognises "Transfer $100" but flag prevents it from short-circuiting.
     parseHeuristic.mockReturnValue({ kind: 'banking', banking: { action: 'transfer', params: {} } });
     configStore.getEffective.mockImplementation((key) =>
       key === 'ff_heuristic_enabled' ? 'false' : null,
     );
 
-    // Result may succeed or fail depending on LLM availability — we only care that
-    // parseHeuristic was bypassed, not what the LLM ultimately returned.
-    try { await parseNaturalLanguage('Transfer $100', {}, 'auto', {}); } catch (_) { /* LLM unavailable */ }
+    // Helix and Ollama mocked to fail above; heuristic should be the fallback source.
+    const r = await parseNaturalLanguage('Transfer $100', {}, 'auto', {});
 
-    expect(parseHeuristic).not.toHaveBeenCalled();
+    // parseHeuristic ran (safety net), but LLM was preferred. With LLM unavailable,
+    // heuristic result is used as the final fallback.
+    expect(parseHeuristic).toHaveBeenCalledTimes(1);
+    expect(r.source).toBe('heuristic');
   });
 });

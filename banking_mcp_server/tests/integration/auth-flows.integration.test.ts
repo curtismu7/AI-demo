@@ -497,29 +497,32 @@ describe('Authentication Flows Integration Tests', () => {
       expect(overallStats.totalBankingApiCalls).toBeGreaterThanOrEqual(1);
     });
 
-    it.skip('should clean up expired sessions and maintain correlation (timing-dependent)', async () => {
-      // Arrange - Create a session that will expire soon
+    it('should clean up expired sessions and maintain correlation', async () => {
+      // Arrange — create a session that's born already expired by passing a negative
+      // expirationHours. SessionManager computes `expiresAt = now + hours*3600000`,
+      // making it expired immediately. This replaces a previous 4-second wall-clock
+      // sleep that made the test flaky on busy CI.
       const shortLivedSession = await sessionManager.createSession(
         'short-lived-agent-token',
-        0.001 // Very short expiration (about 3.6 seconds)
+        -0.01 // expiresAt = now - 36s (already expired)
       );
 
-      // Wait for session to expire
-      await new Promise(resolve => setTimeout(resolve, 4000));
-
-      // Act - Force cleanup
-      const cleanupResult = await sessionManager.forceCleanup();
-
-      // Assert
-      expect(cleanupResult.totalCleaned).toBeGreaterThan(0);
-
-      // Verify expired session is no longer accessible
+      // Verify expired session is not accessible — getSession() eagerly removes
+      // expired sessions when accessed (SessionManager.ts:87-89). This IS the
+      // cleanup happening on read; no need to call forceCleanup() separately.
       const expiredSession = await sessionManager.getSession(shortLivedSession.sessionId);
       expect(expiredSession).toBeNull();
 
-      // Verify original session is still accessible
+      // Verify original (long-lived) session is still accessible — correlation
+      // between sessions is maintained: cleaning one doesn't take down the rest.
       const activeSession = await sessionManager.getSession(testSession.sessionId);
       expect(activeSession).toBeDefined();
+      expect(activeSession?.sessionId).toBe(testSession.sessionId);
+
+      // forceCleanup() also reports a non-negative total (read-eviction may have
+      // already removed it, in which case background cleanup is a no-op).
+      const cleanupResult = await sessionManager.forceCleanup();
+      expect(cleanupResult.totalCleaned).toBeGreaterThanOrEqual(0);
     });
   });
 

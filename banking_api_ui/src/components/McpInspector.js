@@ -44,7 +44,7 @@ const STATIC_LOCAL_TOOLS = [
 
 /**
  * Demo MCP Inspector: live tools/list + tools/call via the Backend-for-Frontend (BFF) MCP Host proxy.
- * Complements LangChain MCP Host JSON at REACT_APP_LANGCHAIN_INSPECTOR_URL (default :8081/inspector/mcp-host).
+ * Complements LangChain MCP Host JSON at REACT_APP_LANGCHAIN_INSPECTOR_URL (default :8890/inspector/mcp-host).
  */
 const McpInspector = ({ user, onLogout }) => {
   const { open } = useEducationUI();
@@ -58,7 +58,7 @@ const McpInspector = ({ user, onLogout }) => {
   const [busy, setBusy] = useState(false);
 
   // Proxy through the BFF so the browser can use HTTPS.
-  // The BFF fetches from http://localhost:8081 server-side where TLS is not needed.
+  // The BFF fetches from http://localhost:8890 server-side where TLS is not needed.
   const langchainInspector =
     process.env.REACT_APP_LANGCHAIN_INSPECTOR_URL ||
     '/api/mcp/inspector/langchain-host';

@@ -92,7 +92,7 @@ When making UI changes, check each criterion applies. When adding new UI feature
 
 | Rule | Standard |
 |------|---------|
-| Brand name | Exactly "Super Banking" (not "BXFinance", "BX finance", etc.) |
+| Brand name | Exactly "Super Banking" (not "SuperBanking", "Super banking", etc.) |
 | Dashboard sections | "Your Accounts" + "Recent Transactions" always present |
 | Visible text | No HTML entities (`&lt;`, `&amp;`), no raw JSON key patterns |
 | Images | No broken images (zero `img` with empty `src` or 0 natural width) |

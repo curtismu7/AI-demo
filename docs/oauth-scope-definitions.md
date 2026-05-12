@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document defines all available OAuth scopes for the BX Finance Banking API and provides guidance on their proper usage. Scopes control access to specific API endpoints and operations, following the principle of least privilege.
+This document defines all available OAuth scopes for the Super Banking API and provides guidance on their proper usage. Scopes control access to specific API endpoints and operations, following the principle of least privilege.
 
 ## Scope Taxonomy
 

@@ -1,4 +1,4 @@
-# MCP Specification 2025-11-25 — Gap Analysis (Super Banking Banking Demo)
+# MCP Specification 2025-11-25 — Gap Analysis (Super Banking demo)
 
 This document compares this repository’s MCP implementation (primarily `banking_mcp_server/` + BFF bridge `banking_api_server/services/mcpWebSocketClient.js`) against the authoritative specification:
 

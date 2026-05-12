@@ -81,12 +81,12 @@ Use the [1-exchange pattern](PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md) instead when
 | **Super Banking MCP Server** (resource server) | Final MCP Token audience | Exchange #1 output audience | ✅ Reuse — same `act` expression works for both; PingOne checks `may_act.sub == actorToken.aud[0]` regardless of which UUID is in each field |
 | **Super Banking User App** (app) | OIDC login | OIDC login | ✅ Reuse — no change |
 | **Super Banking Admin App** (app) | Exchange #1 exchanger | Not in the exchange chain (BFF bypasses it when flag is ON) | ✅ Reuse — keep the app; 2-exchange does not break or remove it. See Step 2d if missing. |
-| **Super Banking MCP Token Exchanger** (app) | Client Credentials for PingOne API | Exchange #2 exchanger + Client Credentials for PingOne API | ✅ Modify — add `Token Exchange` grant; enable Super Banking MCP Gateway and Super Banking Banking API scopes |
+| **Super Banking MCP Token Exchanger** (app) | Client Credentials for PingOne API | Exchange #2 exchanger + Client Credentials for PingOne API | ✅ Modify — add `Token Exchange` grant; enable Super Banking MCP Gateway and Super Banking API scopes |
 | **PingOne API** (built-in resource server) | CC token audience | CC token audience | ✅ Reuse — no change |
 | **`mayAct` user schema attribute** | Holds Banking App UUID | Holds AI Agent App UUID | ✅ Reuse schema — change the **value** on user records |
 | **Super Banking AI Agent App** (app) | — | Exchange #1 exchanger | 🆕 Create new |
 | **Super Banking MCP Gateway** (resource server) | — | MCP Service actor token audience | 🆕 Create new |
-| **Super Banking Banking API** (resource server) | — | Final MCP Exchanged Token audience | 🆕 Create new |
+| **Super Banking API** (resource server) | — | Final MCP Exchanged Token audience | 🆕 Create new |
 
 **The only per-user change** is `mayAct.sub` — it must point to `AI_AGENT_CLIENT_ID` for 2-exchange (vs Banking App client ID for 1-exchange). The DemoDataPage **Delegation Mode** radio button and **Enable may_act** button set this automatically.
 
@@ -555,7 +555,7 @@ Click **Save**.
 
 ---
 
-### 1e. Super Banking Banking API *(final MCP Exchanged Token audience)*
+### 1e. Super Banking API *(final MCP Exchanged Token audience)*
 
 This is the protected resource the MCP Exchanged Token grants access to. The MCP Service performs Exchange #2 requesting this audience — the resulting token is scoped to `https://resource-server.pingdemo.com` and carries the `act` claim proving the full delegation chain. PAZ (PingOne Authorize) introspects this token and enforces `act.sub` (AI Agent) as a named policy attribute before permitting tool access.
 
@@ -567,7 +567,7 @@ Click **Add Resource** and fill in:
 
 | Field | Value |
 |-------|-------|
-| **Resource name** | `Super Banking Banking API` |
+| **Resource name** | `Super Banking API` |
 | **Audience** | `https://resource-server.pingdemo.com` |
 | **Description** | `Protected resource server for the Super Banking banking tools. The MCP Exchanged Token is scoped to this audience and carries act.sub proving the AI Agent delegation chain. PAZ introspects tokens against this audience to enforce actor identity before permitting tool access.` |
 | **Access token time to live (seconds)** | `3600` |
@@ -686,7 +686,7 @@ Click **Save**, then:
 
 ### 2c. Configure: Super Banking MCP Token Exchanger *(performs Exchange #2 + PingOne API calls)*
 
-> **If you have 1-exchange set up:** This app already exists with `Client Credentials` grant and `p1:read:user`/`p1:update:user` scopes. You need to: (1) add `Token Exchange` grant on the Configuration tab, (2) enable scopes from **Super Banking MCP Gateway** and **Super Banking Banking API** on the Resources tab.
+> **If you have 1-exchange set up:** This app already exists with `Client Credentials` grant and `p1:read:user`/`p1:update:user` scopes. You need to: (1) add `Token Exchange` grant on the Configuration tab, (2) enable scopes from **Super Banking MCP Gateway** and **Super Banking API** on the Resources tab.
 
 This app performs two roles in the 2-exchange chain:
 1. Gets its own Actor Token via Client Credentials (audience: `https://mcp-gateway.pingdemo.com`) to use as `actor_token` in Exchange #2
@@ -703,7 +703,7 @@ This app performs two roles in the 2-exchange chain:
 
 **Resources tab → Allowed scopes — enable:**
 
-- ✅ `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` from **Super Banking Banking API** — these flow into the final MCP Exchanged Token (Exchange #2 output)
+- ✅ `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` from **Super Banking API** — these flow into the final MCP Exchanged Token (Exchange #2 output)
 - ✅ `mcp:invoke` from **Super Banking MCP Gateway** — CC actor token scope; PingOne issues a token with `aud: https://mcp-gateway.pingdemo.com` only when this app has this scope selected. Without it, the audience parameter is ignored and the wrong `aud` is returned.
 - ✅ `p1:read:user`, `p1:update:user` from **PingOne API** *(for Management API calls to read/update user records)*
 
@@ -1041,7 +1041,7 @@ echo "<token>" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | python3 -m
 | Exchange #1: `unauthorized_client` | Token Exchange grant not enabled on AI Agent App | Part 2b — enable Token Exchange grant |
 | Exchange #2: `invalid_grant` | Agent Exchanged Token has no `act` claim | Check `act` expression on Super Banking MCP Server resource server (Step 1c) |
 | Exchange #2: `unauthorized_client` | Token Exchange grant not enabled on MCP Service App | Part 2c — enable Token Exchange grant |
-| Final token missing `act.act.sub` | `act` expression on Super Banking Banking API is wrong | Check Step 1e expression — must nest incoming `act` as `act.act` |
+| Final token missing `act.act.sub` | `act` expression on Super Banking API is wrong | Check Step 1e expression — must nest incoming `act` as `act.act` |
 | PAZ denies all requests | `act.sub` or `act.act.sub` not matching policy values | Check PAZ policy — values must be the client ID UUIDs, not URLs |
 
 

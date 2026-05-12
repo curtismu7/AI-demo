@@ -236,56 +236,45 @@ describe('BankingToolValidator', () => {
   });
 
   describe('validateScopes', () => {
+    // Phase 210+: flat scope model — banking:read / banking:write / banking:sensitive:read.
     it('should validate sufficient scopes for get_my_accounts', () => {
-      const result = BankingToolValidator.validateScopes('get_my_accounts', [
-        'banking:accounts:read',
-        'banking:transactions:read'
-      ]);
-      
+      const result = BankingToolValidator.validateScopes('get_my_accounts', ['banking:read']);
+
       expect(result.isValid).toBe(true);
       expect(result.errors).toHaveLength(0);
     });
 
     it('should validate sufficient scopes for create_deposit', () => {
-      const result = BankingToolValidator.validateScopes('create_deposit', [
-        'banking:transactions:write',
-        'banking:accounts:read'
-      ]);
-      
+      const result = BankingToolValidator.validateScopes('create_deposit', ['banking:write']);
+
       expect(result.isValid).toBe(true);
       expect(result.errors).toHaveLength(0);
     });
 
     it('should reject insufficient scopes', () => {
-      const result = BankingToolValidator.validateScopes('get_my_accounts', [
-        'banking:transactions:read'
-      ]);
-      
+      const result = BankingToolValidator.validateScopes('get_my_accounts', ['banking:write']);
+
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('Missing required scopes: banking:accounts:read');
+      expect(result.errors).toContain('Missing required scopes: banking:read');
     });
 
     it('should reject multiple missing scopes', () => {
       const result = BankingToolValidator.validateScopes('create_transfer', []);
-      
+
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('Missing required scopes: banking:transactions:write');
+      expect(result.errors).toContain('Missing required scopes: banking:write');
     });
 
     it('should reject unknown tool for scope validation', () => {
-      const result = BankingToolValidator.validateScopes('unknown_tool', [
-        'banking:accounts:read'
-      ]);
-      
+      const result = BankingToolValidator.validateScopes('unknown_tool', ['banking:read']);
+
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Unknown tool: unknown_tool');
     });
 
     it('should validate exact scope match', () => {
-      const result = BankingToolValidator.validateScopes('get_my_transactions', [
-        'banking:transactions:read'
-      ]);
-      
+      const result = BankingToolValidator.validateScopes('get_my_transactions', ['banking:read']);
+
       expect(result.isValid).toBe(true);
       expect(result.errors).toHaveLength(0);
     });

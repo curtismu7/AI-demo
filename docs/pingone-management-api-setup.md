@@ -2,7 +2,7 @@
 
 ## Overview
 
-The PingOne Management API provides automated setup of resource servers, scopes, and applications for the BX Finance banking demo. This guide explains how to configure and use the Management API features.
+The PingOne Management API provides automated setup of resource servers, scopes, and applications for the Super Banking banking demo. This guide explains how to configure and use the Management API features.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ The PingOne Management API provides automated setup of resource servers, scopes,
 2. **Create Service Account**
    - Go to `Service Accounts` in the left menu
    - Click `+ Add Service Account`
-   - Name: `BX Finance Management API`
+   - Name: `Super Banking Management API`
    - Description: `Service account for automated resource server and application setup`
 
 3. **Configure Permissions**
@@ -56,7 +56,7 @@ PINGONE_REGION=<your-region>  # com, eu, ca, asia, com.au
   - `banking:ai:agent:admin` - AI agent admin operations
   - `banking:read` - Read access to banking data
   - `banking:write` - Write access to banking operations
-- Application: `BX Finance AI Agent App` (Worker type)
+- Application: `Super Banking AI Agent App` (Worker type)
 
 **Use Case**: Standard MCP server setup for AI agent integration
 
@@ -71,7 +71,7 @@ PINGONE_REGION=<your-region>  # com, eu, ca, asia, com.au
   - `banking:ai:agent:read` - AI agent delegation permission (primary scope for 2-exchange)
   - `banking:ai:agent:write` - AI agent write operations
   - `banking:ai:agent:admin` - AI agent admin operations
-- Application: `BX Finance AI Agent App` (Worker type)
+- Application: `Super Banking AI Agent App` (Worker type)
 
 **Use Case**: Enhanced security with 2-exchange delegation pattern
 
@@ -371,5 +371,5 @@ For issues with the Management API setup:
 
 For additional help, refer to:
 - PingOne Management API documentation
-- BX Finance banking demo documentation
+- Super Banking banking demo documentation
 - Server logs and error messages

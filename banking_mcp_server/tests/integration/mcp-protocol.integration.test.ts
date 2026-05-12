@@ -398,7 +398,7 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         description: expect.any(String),
         inputSchema: expect.any(Object),
         requiresUserAuth: true,
-        requiredScopes: expect.arrayContaining(['banking:accounts:read'])
+        requiredScopes: expect.arrayContaining(['banking:read'])
       });
     });
 
@@ -424,6 +424,13 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
     });
   });
 
+  // Phase 198+: with an agentToken from the handshake, MCPMessageHandler ->
+  // AuthenticationIntegration.validateToolAuthentication() short-circuits at
+  // `if (agentToken) return { success: true, session }` (AuthenticationIntegration.ts:435–438).
+  // The tool then executes directly via the agent-delegated token path — no
+  // user-token challenge is generated, because in the BFF → MCP Gateway → MCP Server
+  // flow scopes are enforced upstream. Tests below assert tool execution against
+  // the agent-token path, not the legacy authChallenge-then-auth-code flow.
   describe('Tool Execution with Authentication', () => {
     let authenticatedWs: WebSocket;
 
@@ -469,88 +476,43 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
       }
     });
 
-    it('should return authorization challenge when user tokens are missing', async () => {
-      // Arrange
-      const toolCallMessage: ToolCallMessage = {
-        id: 'tool-call-no-auth',
-        method: 'tools/call',
-        params: {
-          name: 'get_my_accounts',
-          arguments: {}
-        }
-      };
-
-      // Act
-      const response = await sendMessageAndWaitForResponse(authenticatedWs, toolCallMessage);
-
-      // Assert
-      expect(response.id).toBe('tool-call-no-auth');
-      expect(response.result).toBeDefined();
-      expect(response.result!.content).toBeInstanceOf(Array);
-      // Redirect challenge comes from AuthenticationIntegration (not BankingToolProvider JSON shape)
-      expect(response.result!.content[0]).toMatchObject({
-        type: 'text',
-        authChallenge: expect.objectContaining({
-          authorizationUrl: expect.stringContaining('https://test.pingone.com/as/authorization'),
-          state: expect.any(String),
-          scope: expect.any(String)
-        })
-      });
-      expect(response.result!.content[0].text).toContain('User authorization is required');
-      expect(response.result!.isError).toBe(false);
-    });
-
-    it('should execute tool successfully with valid user tokens', async () => {
-      // Arrange - First get authorization challenge to create session
-      const initialToolCall: ToolCallMessage = {
-        id: 'initial-call',
-        method: 'tools/call',
-        params: {
-          name: 'get_my_accounts',
-          arguments: {}
-        }
-      };
-
-      const challengeResponse = await sendMessageAndWaitForResponse(authenticatedWs, initialToolCall);
-      const authChallenge = challengeResponse.result!.content[0].authChallenge;
-
-      // Mock authorization code exchange
-      const mockUserTokens = {
-        access_token: 'user-access-token-123',
-        refresh_token: 'user-refresh-token-123',
-        token_type: 'Bearer',
-        expires_in: 3600,
-        scope: 'banking:accounts:read banking:transactions:read'
-      };
-
-      mockedAxios.post.mockResolvedValueOnce({
-        data: mockUserTokens
-      });
-
-      // Handle authorization code
-      const authCodeMessage: ToolCallMessage = {
-        id: 'auth-code-exchange',
-        method: 'tools/call',
-        params: {
-          name: 'handle_authorization',
-          arguments: {
-            authorization_code: 'test-auth-code-123',
-            state: authChallenge.state
-          }
-        }
-      };
-
-      const authResult = await sendMessageAndWaitForResponse(authenticatedWs, authCodeMessage);
-      expect(authResult.result!.content[0].success).toBe(true);
-
-      // Mock banking API response
+    it('with agentToken: tool call goes straight to banking API (no user-tokens challenge)', async () => {
+      // Phase 198+ contract: agentToken from handshake means BFF has already enforced
+      // scopes upstream. AuthenticationIntegration short-circuits to success and lets
+      // the tool run. Source code: AuthenticationIntegration.ts:435-438.
       mockedAxios.request.mockResolvedValueOnce({
         status: 200,
         data: { accounts: mockAccounts },
         config: { url: '/api/accounts/my', method: 'get' }
       });
 
-      // Act - Now execute the tool with valid user tokens
+      const toolCallMessage: ToolCallMessage = {
+        id: 'tool-call-agent-token',
+        method: 'tools/call',
+        params: {
+          name: 'get_my_accounts',
+          arguments: {}
+        }
+      };
+
+      const response = await sendMessageAndWaitForResponse(authenticatedWs, toolCallMessage);
+
+      expect(response.id).toBe('tool-call-agent-token');
+      expect(response.result).toBeDefined();
+      expect(response.result!.content).toBeInstanceOf(Array);
+      // No authChallenge — agent-token bypass means tool ran directly.
+      expect(response.result!.content[0].authChallenge).toBeUndefined();
+      expect(response.result!.content[0].type).toBe('text');
+      expect(response.result!.isError).toBe(false);
+    });
+
+    it('should execute tool successfully with agent token', async () => {
+      mockedAxios.request.mockResolvedValueOnce({
+        status: 200,
+        data: { accounts: mockAccounts },
+        config: { url: '/api/accounts/my', method: 'get' }
+      });
+
       const toolCallMessage: ToolCallMessage = {
         id: 'tool-call-with-auth',
         method: 'tools/call',
@@ -562,7 +524,6 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
 
       const response = await sendMessageAndWaitForResponse(authenticatedWs, toolCallMessage);
 
-      // Assert
       expect(response.id).toBe('tool-call-with-auth');
       expect(response.result).toBeDefined();
       const accountsPayload = JSON.parse(response.result!.content[0].text);
@@ -570,22 +531,20 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
       expect(response.result!.content[0].success).toBe(true);
       expect(response.result!.isError).toBe(false);
 
+      // BankingAPIClient forwards the bearer header; the actual token value comes from
+      // the BFF-delegated path (agent-token-or-exchanged-resource-token depending on env).
       expect(mockedAxios.request).toHaveBeenCalledWith(
         expect.objectContaining({
           method: 'get',
           url: '/api/accounts/my',
           headers: expect.objectContaining({
-            Authorization: 'Bearer user-access-token-123',
+            Authorization: expect.stringMatching(/^Bearer /),
           }),
         }),
       );
     });
 
     it('should handle tool execution with parameters', async () => {
-      // Arrange - Setup session with user tokens (simplified)
-      await setupSessionWithUserTokens(authenticatedWs);
-
-      // Mock banking API response
       mockedAxios.request.mockResolvedValueOnce({
         status: 200,
         data: { balance: 1500.50 },
@@ -597,16 +556,12 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         method: 'tools/call',
         params: {
           name: 'get_account_balance',
-          arguments: {
-            account_id: 'acc-123'
-          }
+          arguments: { account_id: 'acc-123' }
         }
       };
 
-      // Act
       const response = await sendMessageAndWaitForResponse(authenticatedWs, toolCallMessage);
 
-      // Assert
       expect(response.id).toBe('tool-call-with-params');
       const bal = JSON.parse(response.result!.content[0].text);
       expect(bal.success).toBe(true);
@@ -614,9 +569,6 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
     });
 
     it('should handle banking API errors gracefully', async () => {
-      // Arrange - Setup session with user tokens
-      await setupSessionWithUserTokens(authenticatedWs);
-
       mockedAxios.request.mockRejectedValueOnce(
         mockAxiosHttpError(404, {
           error: 'Account not found',
@@ -629,16 +581,12 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         method: 'tools/call',
         params: {
           name: 'get_account_balance',
-          arguments: {
-            account_id: 'non-existent-account'
-          }
+          arguments: { account_id: 'non-existent-account' }
         }
       };
 
-      // Act
       const response = await sendMessageAndWaitForResponse(authenticatedWs, toolCallMessage);
 
-      // Assert
       expect(response.id).toBe('tool-call-error');
       expect(response.result!.content[0].success).toBe(false);
       expect(response.result!.content[0].text).toContain('Banking API error');
@@ -669,17 +617,14 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
     });
 
     it('should handle invalid tool parameters', async () => {
-      // Auth runs before tool execution; need user tokens so validation errors surface (not redirect challenge)
-      await setupSessionWithUserTokens(authenticatedWs);
-
+      // Agent token from handshake means auth check is skipped — schema validation
+      // surfaces the empty account_id as an Invalid parameters error.
       const toolCallMessage: ToolCallMessage = {
         id: 'invalid-params',
         method: 'tools/call',
         params: {
           name: 'get_account_balance',
-          arguments: {
-            account_id: '' // Invalid empty account ID
-          }
+          arguments: { account_id: '' } // Invalid empty account ID
         }
       };
 
@@ -692,6 +637,9 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
     });
   });
 
+  // Concurrent-session tests rely on the older auth-challenge response shape;
+  // the "multiple agents" test is also tightly coupled to that flow. Mark the
+  // concurrent-tool-execution test alone; keep the simpler connection-pool test.
   describe('Performance and Concurrent Sessions', () => {
     it('should handle multiple concurrent agent connections', async () => {
       // Arrange
@@ -760,7 +708,9 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
     });
 
     it('should handle concurrent tool executions from multiple agents', async () => {
-      // Arrange
+      // Phase 198+ contract: each agent token from handshake gives that connection
+      // the agent-token bypass at AuthenticationIntegration.ts:435-438. Each tool
+      // call runs against the banking API directly.
       const concurrentAgents = 5;
       const connections: WebSocket[] = [];
 
@@ -768,13 +718,13 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
       for (let i = 0; i < concurrentAgents; i++) {
         const ws = new WebSocket(`ws://localhost:${serverPort}`);
         connections.push(ws);
-        
+
         await new Promise<void>((resolve, reject) => {
           ws.on('open', resolve);
           ws.on('error', reject);
         });
 
-        // Mock agent token validation
+        // Mock agent token introspection — one per handshake.
         mockedAxios.post.mockResolvedValueOnce({
           data: {
             active: true,
@@ -784,7 +734,6 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
           }
         });
 
-        // Complete handshake
         const handshakeMessage: HandshakeMessage = {
           id: `setup-${i}`,
           method: 'initialize',
@@ -797,14 +746,10 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         };
 
         await sendMessageAndWaitForResponse(ws, handshakeMessage);
-        // Complete lifecycle per MCP spec before sending tool calls
         ws.send(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }));
-
-        // Setup user tokens for each session
-        await setupSessionWithUserTokens(ws, i);
       }
 
-      // Mock banking API responses for all concurrent calls
+      // Mock banking API responses — one per concurrent call.
       for (let i = 0; i < concurrentAgents; i++) {
         mockedAxios.request.mockResolvedValueOnce({
           status: 200,
@@ -813,22 +758,18 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         });
       }
 
-      // Act - Execute tools concurrently
+      // Execute tools concurrently
       const toolCallPromises = connections.map((ws, index) => {
         const toolCallMessage: ToolCallMessage = {
           id: `concurrent-tool-${index}`,
           method: 'tools/call',
-          params: {
-            name: 'get_my_accounts',
-            arguments: {}
-          }
+          params: { name: 'get_my_accounts', arguments: {} }
         };
         return sendMessageAndWaitForResponse(ws, toolCallMessage);
       });
 
       const responses = await Promise.all(toolCallPromises);
 
-      // Assert
       expect(responses).toHaveLength(concurrentAgents);
       responses.forEach((response, index) => {
         expect(response.id).toBe(`concurrent-tool-${index}`);
@@ -836,7 +777,6 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         expect(JSON.parse(response.result!.content[0].text).count).toBe(1);
       });
 
-      // Cleanup
       connections.forEach(ws => ws.close());
     });
 
@@ -910,26 +850,46 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
   });
 
   describe('Error Handling and Edge Cases', () => {
-    it.skip('should handle WebSocket connection errors gracefully (error counters vary by runtime)', async () => {
-      // Arrange
-      const ws = new WebSocket(`ws://localhost:${serverPort}`);
-      
+    it('should handle WebSocket connection errors gracefully (server stays up)', async () => {
+      // The server should respond to bad input without crashing. Earlier this test
+      // asserted `totalErrors > 0` after sending raw invalid UTF-8, but whether that
+      // counter increments depends on which WebSocket layer rejects the frame —
+      // the `ws` library, Node's stream, or BankingMCPServer.processMessage. We now
+      // assert the contract that actually matters: server remains responsive after
+      // garbage input. Malformed JSON inside a valid UTF-8 text frame is the canonical
+      // case — BankingMCPServer.ts:280-282 catches it and returns -32700 Parse error.
+      const ws1 = new WebSocket(`ws://localhost:${serverPort}`);
       await new Promise<void>((resolve, reject) => {
-        ws.on('open', resolve);
-        ws.on('error', reject);
+        ws1.on('open', resolve);
+        ws1.on('error', reject);
       });
 
-      // Act - Force connection error by sending invalid data
-      ws.send(Buffer.from([0xFF, 0xFF, 0xFF, 0xFF])); // Invalid UTF-8
-
-      // Wait for connection to close
-      await new Promise<void>((resolve) => {
-        ws.on('close', resolve);
+      // Send malformed JSON — server replies with -32700 Parse error, does not crash.
+      const parseErrorResponse = await new Promise<any>((resolve) => {
+        ws1.once('message', (data) => resolve(JSON.parse(data.toString())));
+        ws1.send('{not valid json');
       });
+      expect(parseErrorResponse.error).toBeDefined();
+      expect(parseErrorResponse.error.code).toBe(-32700);
 
-      // Assert - Server should handle the error gracefully
-      const serverStats = server.getServerStats();
-      expect(serverStats.totalErrors).toBeGreaterThan(0);
+      // Send a structurally-invalid MCP message (missing required `method`).
+      const invalidRequestResponse = await new Promise<any>((resolve) => {
+        ws1.once('message', (data) => resolve(JSON.parse(data.toString())));
+        ws1.send(JSON.stringify({ id: 'bad-msg', jsonrpc: '2.0' })); // no method
+      });
+      expect(invalidRequestResponse.error).toBeDefined();
+      expect(invalidRequestResponse.error.code).toBe(-32600);
+
+      ws1.close();
+
+      // Confirm the server still serves a fresh connection (proves it didn't die).
+      const ws2 = new WebSocket(`ws://localhost:${serverPort}`);
+      await new Promise<void>((resolve, reject) => {
+        ws2.on('open', resolve);
+        ws2.on('error', reject);
+      });
+      expect(ws2.readyState).toBe(WebSocket.OPEN);
+      ws2.close();
     });
 
     it('should handle unknown MCP methods', async () => {
@@ -1041,7 +1001,7 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         refresh_token: `user-refresh-token-${index}`,
         token_type: 'Bearer',
         expires_in: 3600,
-        scope: 'banking:accounts:read banking:transactions:read banking:transactions:write'
+        scope: 'banking:read banking:write banking:sensitive:read'
       }
     });
 

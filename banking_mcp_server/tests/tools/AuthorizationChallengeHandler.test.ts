@@ -330,7 +330,8 @@ describe('AuthorizationChallengeHandler', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Invalid authorization code');
-      expect(result.errorCode).toBe(AuthErrorCodes.INVALID_AUTHORIZATION_CODE);
+      // Source coerces error.code to string via String(error.code) — assert string form.
+      expect(result.errorCode).toBe(String(AuthErrorCodes.INVALID_AUTHORIZATION_CODE));
     });
   });
 
@@ -466,7 +467,8 @@ describe('AuthorizationChallengeHandler', () => {
       expect(result.type).toBe('text');
       expect(result.text).toBe('Authorization Error: Token expired');
       expect(result.error).toBe('Token expired');
-      expect(result.errorCode).toBe(AuthErrorCodes.TOKEN_EXPIRED);
+      // Source coerces error.code to string via String(error.code) — assert string form.
+      expect(result.errorCode).toBe(String(AuthErrorCodes.TOKEN_EXPIRED));
     });
 
     it('should handle generic Error', () => {
@@ -480,8 +482,22 @@ describe('AuthorizationChallengeHandler', () => {
       expect(result.errorCode).toBe('AUTHORIZATION_ERROR');
     });
 
-    it('should handle unknown error types', () => {
-      const unknownError = 'string error';
+    it('should handle string error types', () => {
+      // Source preserves string errors directly (Authorization Error: <string>).
+      // Only truly unknown types (object, number, etc.) fall back to 'Authorization failed'.
+      const stringError = 'string error';
+
+      const result = handler.handleAuthorizationError(stringError);
+
+      expect(result.type).toBe('text');
+      expect(result.text).toBe('Authorization Error: string error');
+      expect(result.error).toBe('string error');
+      expect(result.errorCode).toBe('AUTHORIZATION_ERROR');
+    });
+
+    it('should handle truly unknown error types (object, number)', () => {
+      // Non-Error, non-string, non-AuthenticationError input falls back to default text.
+      const unknownError = { not_an_error: true };
 
       const result = handler.handleAuthorizationError(unknownError);
 

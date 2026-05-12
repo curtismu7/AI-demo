@@ -55,8 +55,9 @@ class LangChainMCPApplication:
         logger.info("Initializing LangChain MCP OAuth Agent...")
         
         try:
-            # Start health check server first (port 8081 by default; override with HEALTH_HTTP_PORT)
-            health_port = int(os.getenv("HEALTH_HTTP_PORT", "8081"))
+            # Start health check server first (port 8890 by default; override with HEALTH_HTTP_PORT).
+            # 8081 is reserved for banking_mcp_invest in run-bank.sh — do not revert.
+            health_port = int(os.getenv("HEALTH_HTTP_PORT", "8890"))
             logger.info("Starting health check server on port %s...", health_port)
             self.health_server = HealthCheckServer(port=health_port)
             self.health_server.start()
@@ -252,12 +253,12 @@ class LangChainMCPApplication:
             # Register signal handlers
             self._setup_signal_handlers()
             
-            logger.info("🚀 LangChain MCP OAuth Agent is running!")
-            logger.info(f"📡 WebSocket endpoint: ws://localhost:{self.config.chat.websocket_port}")
-            logger.info("🔗 Frontend URL: http://localhost:3030 (if running)")
-            hp = self.health_server.port if self.health_server else int(os.getenv("HEALTH_HTTP_PORT", "8081"))
-            logger.info("📋 Health check: http://localhost:%s/health", hp)
-            logger.info("📋 MCP host inspector JSON: http://localhost:%s/inspector/mcp-host", hp)
+            logger.info("LangChain MCP OAuth Agent is running")
+            logger.info("WebSocket endpoint: ws://localhost:%s", self.config.chat.websocket_port)
+            logger.info("Frontend URL: https://api.ping.demo:4000 (if running)")
+            hp = self.health_server.port if self.health_server else int(os.getenv("HEALTH_HTTP_PORT", "8890"))
+            logger.info("Health check: http://localhost:%s/health", hp)
+            logger.info("MCP host inspector JSON: http://localhost:%s/inspector/mcp-host", hp)
             logger.info("Press Ctrl+C to stop")
             
             # Wait for shutdown signal

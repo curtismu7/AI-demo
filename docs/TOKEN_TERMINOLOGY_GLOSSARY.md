@@ -1,6 +1,6 @@
 # RFC 8693 Token Exchange Terminology Glossary
 
-> **Purpose:** Map RFC 8693 normative terms to common alternate names used in the BX Finance AI Banking Demo. All code, documentation, and education panels use these RFC terms as primary vocabulary.
+> **Purpose:** Map RFC 8693 normative terms to common alternate names used in the Super Banking AI Banking Demo. All code, documentation, and education panels use these RFC terms as primary vocabulary.
 
 ---
 

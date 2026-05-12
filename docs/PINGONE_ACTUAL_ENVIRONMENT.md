@@ -47,7 +47,7 @@ The PingOne API endpoint for resource servers returned a 403 error (authorizatio
 - Super Banking AI Agent (audience: `https://ai-agent.pingdemo.com`)
 - Super Banking MCP Server (audience: `https://mcp-server.pingdemo.com`)
 - Super Banking Agent Gateway (audience: `https://agent-gateway.pingdemo.com`)
-- Super Banking Banking API (audience: `https://banking-api.pingdemo.com`)
+- Super Banking API (audience: `https://banking-api.pingdemo.com`)
 
 ---
 

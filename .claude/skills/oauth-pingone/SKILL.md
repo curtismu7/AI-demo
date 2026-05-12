@@ -5,7 +5,13 @@ argument-hint: 'Describe the OAuth flow or token operation you need to implement
 ---
 
 # PingOne OAuth 2.0 / OIDC — Complete Implementation Guide
-## BX Finance Banking Demo
+## Super Banking demo
+
+> **Default host:** local development uses `https://api.ping.demo:4000` (UI / public origin) and `https://api.ping.demo:3001` (BFF) via `mkcert` HTTPS. OAuth callbacks land at the **UI** origin :4000 — CRA's `setupProxy.js` forwards `/api/*` to BFF :3001. PingOne app **Redirect URIs** must include the UI-port callback URLs:
+> - Admin: `https://api.ping.demo:4000/api/auth/oauth/callback`
+> - User:  `https://api.ping.demo:4000/api/auth/oauth/user/callback`
+>
+> Users can override the host via the `/setup` page (configStore-backed) or by setting `PUBLIC_APP_URL` / `REACT_APP_CLIENT_URL` — but skills, docs, examples, and PingOne app config use `api.ping.demo:4000` for callbacks. Don't hardcode `localhost` in `routes/oauth*.js` callbacks (REGRESSION_PLAN §1).
 
 ---
 
@@ -71,31 +77,32 @@ Config pointer (lazy): `oauthConfig._base` = `https://auth.pingone.${region}/${e
 
 ## 3. Environment Variables
 
+All real env vars use the `PINGONE_*` prefix. Endpoints are auto-computed from `PINGONE_ENVIRONMENT_ID` + `PINGONE_REGION` via `oauthEndpointResolver.js` — you don't set `_TOKEN_ENDPOINT` / `_AUTHORIZATION_ENDPOINT` manually. Always read values via `configStore.getEffective(key)`, never `process.env.*` directly in route handlers (CLAUDE.md rule).
+
 ```bash
 # PingOne Core
-PINGONE_AUTH_URL=https://auth.pingone.com/{environmentId}/as
-PINGONE_ENV_ID=<envId>
+PINGONE_ENVIRONMENT_ID=<envId>
 PINGONE_REGION=com  # com | ca | eu | com.au | sg | asia
 
 # Admin (confidential) client — WEB_APP type, Authorization Code + PKCE
-ADMIN_CLIENT_ID=<admin-app-client-id>
-ADMIN_CLIENT_SECRET=<admin-app-client-secret>
-ADMIN_REDIRECT_URI=https://your-domain.com/api/auth/oauth/callback
+PINGONE_ADMIN_CLIENT_ID=<admin-app-client-id>
+PINGONE_ADMIN_CLIENT_SECRET="<admin-app-client-secret>"   # quote secrets with special chars
+PINGONE_ADMIN_TOKEN_ENDPOINT_AUTH=basic                   # basic | post
 
 # User (public/confidential) client — WEB_APP or NATIVE_APP type
-USER_CLIENT_ID=<user-app-client-id>
-USER_CLIENT_SECRET=<user-app-client-secret>    # omit for public client (PKCE only)
-USER_REDIRECT_URI=https://your-domain.com/api/auth/oauthuser/callback
+PINGONE_USER_CLIENT_ID=<user-app-client-id>
+PINGONE_USER_CLIENT_SECRET="<user-app-client-secret>"     # omit for public client (PKCE only)
 
 # Token exchange / MCP delegation (RFC 8693)
-ENDUSER_AUDIENCE=<resource-server-audience-for-user-tokens>
-MCP_SERVER_AUDIENCE=<resource-server-audience-for-mcp-tokens>
-MCP_RESOURCE_URI=<mcp-server-resource-uri>
+PINGONE_AUDIENCE_ENDUSER=<resource-server-audience-for-user-tokens>
+PINGONE_RESOURCE_MCP_SERVER_URI=<mcp-server-resource-uri-and-audience>
 
-# Agent OAuth (client credentials for actor token in token exchange)
-AGENT_OAUTH_CLIENT_ID=<agent-client-id>
-AGENT_OAUTH_CLIENT_SECRET=<agent-client-secret>
-AGENT_OAUTH_CLIENT_SCOPES=openid
+# Token exchanger client (client_credentials for the RFC 8693 actor token)
+PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID=<agent-client-id>
+PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET="<agent-client-secret>"
+PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SCOPES=openid
+PINGONE_MCP_TOKEN_EXCHANGER_AUTH_METHOD=basic           # basic | post (post for PingOne AI_AGENT apps)
+MCP_TOKEN_EXCHANGE_SCOPES=banking:read banking:write banking:mcp:invoke
 
 # CIBA
 CIBA_ENABLED=true
@@ -135,7 +142,7 @@ router.get('/login', (req, res) => {
   const uriCheck = validateRedirectUriOrigin(redirectUri);
   if (!uriCheck.ok) return res.status(400).json({ error: 'invalid_redirect_uri' });
 
-  // Store in session AND signed cookie (Vercel serverless cross-instance fallback)
+  // Store in session AND signed cookie (PKCE/state fallback for any async or cross-process store)
   req.session.oauthState = state;
   req.session.oauthCodeVerifier = codeVerifier;
   req.session.oauthRedirectUri = redirectUri;
@@ -144,7 +151,7 @@ router.get('/login', (req, res) => {
 
   const authUrl = oauthService.generateAuthorizationUrl(state, codeVerifier, redirectUri, nonce);
 
-  // Save session BEFORE redirect (required for async stores like Upstash/Redis)
+  // Save session BEFORE redirect (required for async stores like SQLite)
   req.session.save(err => {
     if (err) return res.status(500).json({ error: 'session_save_failed' });
     res.redirect(authUrl);
@@ -179,7 +186,7 @@ router.get('/callback', async (req, res) => {
     return res.redirect(`${getFrontendOrigin(req)}/login?error=${encodeURIComponent(error)}`);
   }
 
-  // State validation — prefer session, fall back to PKCE cookie (serverless)
+  // State validation — prefer session, fall back to signed PKCE cookie if session lookup fails
   const pkceData = req.session.oauthState === state
     ? { codeVerifier: req.session.oauthCodeVerifier, redirectUri: req.session.oauthRedirectUri, nonce: req.session.oauthNonce }
     : readPkceCookie(req);  // validates HMAC signature internally
@@ -240,11 +247,13 @@ Used for machine-to-machine auth where no user is involved.
 
 ```javascript
 // services/oauthService.js — getAgentClientCredentialsToken()
+// Always read via configStore.getEffective — NEVER process.env in handlers (CLAUDE.md).
+const configStore = require('./configStore');
 const body = new URLSearchParams({
   grant_type: 'client_credentials',
-  client_id: process.env.AGENT_OAUTH_CLIENT_ID,
-  client_secret: process.env.AGENT_OAUTH_CLIENT_SECRET,
-  scope: process.env.AGENT_OAUTH_CLIENT_SCOPES || 'openid',
+  client_id: configStore.getEffective('pingone_mcp_token_exchanger_client_id'),
+  client_secret: configStore.getEffective('pingone_mcp_token_exchanger_client_secret'),
+  scope: configStore.getEffective('pingone_mcp_token_exchanger_client_scopes') || 'openid',
 });
 const response = await axios.post(tokenEndpoint, body.toString(), {
   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -280,7 +289,7 @@ Content-Type: application/x-www-form-urlencoded
 
 login_hint=user@email.com
 &scope=openid profile email
-&binding_message=BX Finance — Approve Transfer
+&binding_message=Super Banking — Approve Transfer
 &acr_values=Multi_factor                        // optional step-up ACR
 // For ping mode only: &client_notification_token=<random-32-bytes-hex>
 ```
@@ -312,7 +321,7 @@ router.post('/initiate', authenticateToken, async (req, res) => {
   const loginHint = req.body.login_hint || req.session.user?.email;
   const result = await initiateBackchannelAuth(
     loginHint,
-    req.body.binding_message || 'BX Finance Authentication',
+    req.body.binding_message || 'Super Banking Authentication',
     req.body.scope || 'openid profile email',
     req.body.acr_values,  // e.g. process.env.STEP_UP_ACR_VALUE
   );
@@ -354,15 +363,16 @@ Used to mint a scoped delegated token for a specific audience (e.g., MCP server)
 ```javascript
 // services/oauthService.js — performTokenExchange()
 // T1 (user access token) → T2 (MCP-scoped delegated token)
+const configStore = require('./configStore');
 const body = new URLSearchParams({
   grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
   subject_token: userAccessToken,           // T1 — end-user's token
   subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
   requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
-  audience: process.env.MCP_SERVER_AUDIENCE,
-  scope: 'banking:read banking:write',
-  client_id: process.env.ADMIN_CLIENT_ID,
-  client_secret: process.env.ADMIN_CLIENT_SECRET,
+  audience: configStore.getEffective('pingone_resource_mcp_server_uri'),
+  scope: configStore.getEffective('mcp_token_exchange_scopes') || 'banking:read banking:write banking:mcp:invoke',
+  client_id: configStore.getEffective('pingone_admin_client_id'),
+  client_secret: configStore.getEffective('pingone_admin_client_secret'),
 });
 // T2: sub = user sub (unchanged), act = { client_id: <bff-client-id> }
 // This is delegation, NOT impersonation
@@ -372,6 +382,7 @@ const body = new URLSearchParams({
 
 ```javascript
 // services/oauthService.js — performTokenExchangeWithActor()
+const configStore = require('./configStore');
 const body = new URLSearchParams({
   grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
   subject_token: userAccessToken,           // who the action is FOR
@@ -379,10 +390,10 @@ const body = new URLSearchParams({
   actor_token: agentClientCredToken,        // who performs the action
   actor_token_type: 'urn:ietf:params:oauth:token-type:access_token',
   requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
-  audience: process.env.MCP_SERVER_AUDIENCE,
-  scope: 'banking:read banking:write',
-  client_id: process.env.ADMIN_CLIENT_ID,
-  client_secret: process.env.ADMIN_CLIENT_SECRET,
+  audience: configStore.getEffective('pingone_resource_mcp_server_uri'),
+  scope: configStore.getEffective('mcp_token_exchange_scopes') || 'banking:read banking:write banking:mcp:invoke',
+  client_id: configStore.getEffective('pingone_admin_client_id'),
+  client_secret: configStore.getEffective('pingone_admin_client_secret'),
 });
 // T3: sub = user sub, act = { sub: <agent-sub>, client_id: <agent-id> }
 ```
@@ -564,8 +575,8 @@ res.redirect(`${AUTH_BASE}/authorize?client_id=${CLIENT_ID}&request_uri=${encode
 | PKCE enforcement | `S256_REQUIRED` | `S256_REQUIRED` | N/A |
 | Token endpoint auth | `CLIENT_SECRET_BASIC` | `CLIENT_SECRET_BASIC` | `CLIENT_SECRET_BASIC` |
 | Redirect URIs | `/api/auth/oauth/callback` | `/api/auth/oauthuser/callback` | N/A |
-| Token exchange | ✅ Enable | ✗ | ✗ |
-| CIBA | ✅ Enable | ✗ | ✗ |
+| Token exchange | ✅ Enable | ❌ | ❌ |
+| CIBA | ✅ Enable | ❌ | ❌ |
 
 ---
 
@@ -609,5 +620,9 @@ res.redirect(`${AUTH_BASE}/authorize?client_id=${CLIENT_ID}&request_uri=${encode
 
 - [.cursor/rules/oauth-references/python-java.md](../../.cursor/rules/oauth-references/python-java.md) — Python Flask + Java Spring Security examples
 - [pingone-api-calls skill](../pingone-api-calls/SKILL.md) — PingOne Management API (users, MFA)
-- [vercel-banking skill](../vercel-banking/SKILL.md) — Vercel session + Upstash setup
+- [bff-sessions skill](../bff-sessions/SKILL.md) — session store, cookies, `req.session.save()`, PKCE/state cookie fallback
+- [mcp-server skill](../mcp-server/SKILL.md) — MCP tool auth challenge, RFC 8693 token exchange in the MCP context
+- [hitl-consent skill](../hitl-consent/SKILL.md) — HITL/step-up gating after OAuth, Phase 170 transfer consent
+- [regression-guard skill](../regression-guard/SKILL.md) — REGRESSION_PLAN §1 OAuth-protected files; never hardcode `localhost` in callbacks
+- [typescript-banking skill](../typescript-banking/SKILL.md) — TS/JS style for OAuth handlers and services
 - [mcp-server skill](../mcp-server/SKILL.md) — MCP tool auth challenge, token chain

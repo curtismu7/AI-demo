@@ -105,7 +105,7 @@ Your PingOne environment has **7 API Resources** configured (from screenshot):
 | **PingOne API** | b0500023-a94d-4730-a85d-f25603cdd7e5 | `https://api.pingone.com` | p1:read:user (built-in) | ✅ For management API calls |
 | **Super Banking Agent Gateway** | c9d85ed6-15b2-488d-8085-25f005a1f92f | `https://agent-gateway.banking-demo.com` | ❓ (not visible in screenshot) | 🟠 Need to verify attached scopes |
 | **Super Banking AI Agent Service** | 041502b7-9c80-43aa-bf2c-bc5cf41e4bf8 | `https://ai-agent-gateway.banking-demo.com` | ❓ | 🟠 Need to verify |
-| **Super Banking Banking API** | af187eab-494a-4acc-b945-013999e5ccd6 | `https://banking-api.banking-demo.com` | ❓ | 🟠 Need to verify |
+| **Super Banking API** | af187eab-494a-4acc-b945-013999e5ccd6 | `https://banking-api.banking-demo.com` | ❓ | 🟠 Need to verify |
 | **Super Banking MCP Gateway** | 387b1be5-963f-4400-a5cd-68406cce82a | `https://mcp-gateway.banking-demo.com` | ❓ | 🟠 Need to verify |
 | **Super Banking MCP Server** | 6769d0a4-405d-444e-a3a7-1bfd6fa04c94 | `https://mcp-server.banking-demo.com` | ❓ | 🟠 Need to verify |
 
@@ -183,7 +183,7 @@ const ALLOWED_SCOPES_BY_AUDIENCE = {
 1. In PingOne admin console, go to **Integrations > Applications** → Your user OAuth app
 2. Go to **OAuth Resource** tab
 3. Verify **"PingOne API"** is listed
-4. Find **"Super Banking Banking API"** resource (or create it if missing)
+4. Find **"Super Banking API"** resource (or create it if missing)
 5. Click **"Add Scopes"** and add:
    - ✅ `banking:read` (required)
    - ✅ `banking:write` (required for transfers/deposits)
@@ -193,7 +193,7 @@ const ALLOWED_SCOPES_BY_AUDIENCE = {
 7. **Test:** Log out, log in fresh, check user token scopes in `/api/session/preview`
 
 #### **Option B: Create a Custom Resource Server (Recommended)**
-1. Create a PingOne Resource Server named **"Super Banking Banking API"**
+1. Create a PingOne Resource Server named **"Super Banking API"**
 2. Set resource URI: `https://banking-api.banking-demo.com` (or your domain)
 3. Add resource scopes: `banking:read`, `banking:write`, `ai_agent`, and others
 4. Configure user OAuth app to request access to this resource
@@ -280,10 +280,10 @@ const ALLOWED_SCOPES_BY_AUDIENCE = {
 
 | Use Case | User Audience | Resource | Required Scopes | Code Location | PingOne Status |
 |----------|---------------|----------|-----------------|----------------|----------------|
-| User reads accounts | https://banking-api.banking-demo.com | Super Banking Banking API | `banking:read` OR `banking:accounts:read` | GET /api/accounts/my | 🟠 Need to verify |
-| User executes transfer | https://banking-api.banking-demo.com | Super Banking Banking API | `banking:write` OR `banking:transactions:write` | POST /api/transactions | 🟠 Need to verify |
+| User reads accounts | https://banking-api.banking-demo.com | Super Banking API | `banking:read` OR `banking:accounts:read` | GET /api/accounts/my | 🟠 Need to verify |
+| User executes transfer | https://banking-api.banking-demo.com | Super Banking API | `banking:write` OR `banking:transactions:write` | POST /api/transactions | 🟠 Need to verify |
 | Agent invokes MCP tool | https://mcp-server.banking-demo.com | Super Banking MCP Server | `get_accounts:read` (narrowed) | RFC 8693 exchange | 🟠 Need to verify |
-| Admin views all users | https://banking-api.banking-demo.com | Super Banking Banking API | `banking:admin` | GET /api/admin/users | 🟠 Need to verify |
+| Admin views all users | https://banking-api.banking-demo.com | Super Banking API | `banking:admin` | GET /api/admin/users | 🟠 Need to verify |
 
 ---
 

@@ -120,7 +120,7 @@ All env vars are correctly mapped as of the current codebase. Verified alignment
    - [ ] Super Banking AI Agent: audience = `https://ai-agent.pingdemo.com`
    - [ ] Super Banking MCP Server: audience = `https://mcp-server.pingdemo.com`
    - [ ] Super Banking Agent Gateway: audience = `https://agent-gateway.pingdemo.com`
-   - [ ] Super Banking Banking API: audience = `https://banking-api.pingdemo.com`
+   - [ ] Super Banking API: audience = `https://banking-api.pingdemo.com`
 
 3. **.env file:**
    - [ ] `PINGONE_USER_CLIENT_ID` = `b2752071-2d03-4927-b865-089dc40b9c85` (Super Banking User App)
@@ -162,7 +162,7 @@ PINGONE_{APP_OR_SERVICE}_{TYPE}
   ENDUSER_AUDIENCE                  ← Maps to PingOne resource: Super Banking AI Agent
   MCP_RESOURCE_URI                  ← Maps to PingOne resource: Super Banking MCP Server
   AGENT_GATEWAY_AUDIENCE            ← Maps to PingOne resource: Super Banking Agent Gateway
-  BFF_RESOURCE_URI                  ← Maps to PingOne resource: Super Banking Banking API
+  BFF_RESOURCE_URI                  ← Maps to PingOne resource: Super Banking API
 ```
 
 **Principle:**

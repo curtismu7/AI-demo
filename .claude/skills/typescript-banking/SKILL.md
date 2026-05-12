@@ -1,18 +1,20 @@
 ---
 name: typescript-banking
-description: 'TypeScript and JavaScript coding standards for BX Finance banking demo. USE FOR: strict TypeScript, eliminate any types, type errors, ESLint rules, CJS vs ESM modules, async/await patterns, React JSX components, React hooks, jest unit tests, interface vs type alias, generics, null safety, module imports, banking_mcp_server TypeScript, banking_api_server JavaScript, banking_api_ui React. DO NOT USE FOR: OAuth flows (use oauth-pingone); Vercel deployment config (use vercel-banking); PingOne Management API calls (use pingone-api-calls).'
+description: 'TypeScript and JavaScript coding standards for Super Banking banking demo. USE FOR: strict TypeScript, eliminate any types, type errors, ESLint rules, CJS vs ESM modules, async/await patterns, React JSX components, React hooks, jest unit tests, ts-jest, interface vs type alias, generics, null safety, module imports, bffAxios usage instead of raw fetch, banking_mcp_server TypeScript, banking_api_server JavaScript, banking_api_ui React. DO NOT USE FOR: OAuth flows (use oauth-pingone); MCP tool registration patterns (use mcp-server); session/cookie/token custody (use bff-sessions); PingOne Management API calls (use pingone-api-calls); HITL/consent state (use hitl-consent); pre-edit regression discipline (use regression-guard).'
 argument-hint: 'Describe the code you are writing or the type/pattern question you have'
 ---
 
-# TypeScript / JavaScript Development — BX Finance Banking Demo
+# TypeScript / JavaScript Development — Super Banking demo
 
 ## Project Language Map
 
+Root `package.json` requires **Node 20+** (`engines.node = ">=20"`). Node 20, 22, and 24 LTS are all supported.
+
 | Package | Language | Runtime | Entry |
 |---------|----------|---------|-------|
-| `banking_mcp_server` | **TypeScript** (strict) | Node 18+ / ts-node | `src/index.ts` → `dist/index.js` |
-| `banking_api_server` | **JavaScript** (ES2020, CommonJS) | Node 18+ | `server.js` |
-| `banking_api_ui` | **JavaScript + JSX** (React 18, CRA) | Browser | `src/index.js` |
+| `banking_mcp_server` | **TypeScript** (strict) | Node 20+ / ts-node | `src/index.ts` → `dist/index.js` |
+| `banking_api_server` | **JavaScript** (ES2020, CommonJS) | Node 20+ | `server.js` |
+| `banking_api_ui` | **JavaScript + JSX** (React, CRA) | Browser | `src/index.js` |
 
 ---
 
@@ -277,16 +279,24 @@ export default function AccountList({ userId }) {
 
 ### API Calls
 
-Always use the service layer (`src/services/`) — never `fetch` directly in components:
+Always use **`bffAxios`** from `src/services/bffAxios.js` for BFF calls. The SPA never imports plain `axios` or uses raw `fetch` for `/api/*`. The token-custody rule (see `bff-sessions` skill) means the SPA holds only the `connect.sid` cookie — `bffAxios` is preconfigured with `withCredentials: true` so the cookie rides along automatically. No `Authorization` header from the browser, ever.
 
 ```javascript
 // src/services/accountService.js
+import bffAxios from './bffAxios';
+
 export async function getAccounts() {
-  const resp = await fetch('/api/accounts', { credentials: 'include' });
-  if (!resp.ok) throw new Error(`Failed to load accounts: ${resp.status}`);
-  return resp.json();
+  const { data } = await bffAxios.get('/api/accounts');
+  return data;
 }
 ```
+
+Don't:
+- `import axios from 'axios'` in a component or service
+- `fetch('/api/...', { credentials: 'include' })`
+- Read an OAuth token from `localStorage`/`sessionStorage`
+
+See `bff-sessions` skill for the full custody rule and `regression-guard` for the §1 enforcement entries.
 
 ### CSS / Styling
 
@@ -321,5 +331,21 @@ Use structured JSX — **not** raw text in `<pre>` blocks:
 - **No `console.log` with raw tokens, passwords, or PII.** Log event type and metadata only.
 - **No `TODO` comments** in committed code — fix it or open a GitHub issue.
 - **Prefer composition over inheritance** — use utilities from `src/utils/` (Logger, ErrorHandler, RetryManager, CircuitBreaker).
-- **Security:** Never hardcode credentials. All secrets come from `process.env` or `configStore`.
-- **Testing:** Unit tests in `tests/unit/`, integration tests in `tests/integration/`. Run `npm run validate` before committing to `banking_mcp_server`.
+- **Security:** Never hardcode credentials. Read secrets via `configStore.getEffective(key)` in `banking_api_server` route handlers — never `process.env.*` directly in routes (CLAUDE.md rule).
+- **Emoji rule:** the only emojis allowed in any file (code, comments, JSX text, docs) are `⚠️`, `✅`, `❌`. Anything else is a defect — see `regression-guard` skill.
+- **Testing — critical routes** (OAuth, HITL, transactions): use the two-tier pattern from CLAUDE.md.
+  - `*.regression.test.js` mocks `configStore` (`{ ff_hitl_enabled: 'true', confirm_threshold_usd: '500' }`).
+  - `*.integration.test.js` uses real `configStore` from `.env`, mocks only data/external.
+  - Run both: `npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration` — 43 tests, all passing.
+- **Testing — TypeScript packages:** Jest + `ts-jest`. Unit tests in `tests/unit/` or `src/__tests__/`, integration in `tests/integration/`. Run `npm run validate` (or `npm test` + `npm run build`) before committing to `banking_mcp_server`.
+
+---
+
+## See Also
+
+- [bff-sessions skill](../bff-sessions/SKILL.md) — token custody, `bffAxios`, `connect.sid` cookie attributes
+- [oauth-pingone skill](../oauth-pingone/SKILL.md) — OAuth handler patterns, `configStore.getEffective` usage
+- [mcp-server skill](../mcp-server/SKILL.md) — TS patterns specific to `banking_mcp_server`, scope shape, tool registration
+- [pingone-api-calls skill](../pingone-api-calls/SKILL.md) — calling PingOne Management API from services
+- [hitl-consent skill](../hitl-consent/SKILL.md) — consent challenge service patterns, OTP/HMAC
+- [regression-guard skill](../regression-guard/SKILL.md) — pre-edit discipline, §1 protected files, emoji rule enforcement

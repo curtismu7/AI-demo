@@ -2,7 +2,7 @@
 
 ## Overview
 
-PingOne provides distinct application groups to help organize and manage different types of applications. This guide explains the recommended organization for the BX Finance banking demo applications.
+PingOne provides distinct application groups to help organize and manage different types of applications. This guide explains the recommended organization for the Super Banking banking demo applications.
 
 ## Application Groups
 
@@ -14,9 +14,9 @@ Applications that represent AI agents, MCP services, and automated systems shoul
 
 | Application Name | Client ID | Purpose | Type |
 |------------------|------------|---------|------|
-| **BX Finance AI Agent App** | `80145519` | OIDC application for AI agent identity in 2-exchange delegation | Web App |
-| **BX Finance MCP Service** | `d98f4336` | MCP service application for token exchange | Web App |
-| **BX Finance MCP ServiceV1** | `bdf0fa76` | Introspection service application for token validation | Worker |
+| **Super Banking AI Agent App** | `80145519` | OIDC application for AI agent identity in 2-exchange delegation | Web App |
+| **Super Banking MCP Service** | `d98f4336` | MCP service application for token exchange | Web App |
+| **Super Banking MCP ServiceV1** | `bdf0fa76` | Introspection service application for token validation | Worker |
 
 #### Why AI Agents Group?
 
@@ -33,8 +33,8 @@ User-facing OIDC applications should remain under the standard **Applications** 
 
 | Application Name | Client ID | Purpose | Type |
 |------------------|------------|---------|------|
-| **BX Finance User** | `5df1fbdb` | End-user authentication application | Web App |
-| **BX Finance Banking App** | `949a748e` | Banking web application interface | Web App |
+| **Super Banking User** | `5df1fbdb` | End-user authentication application | Web App |
+| **Super Banking App** | `949a748e` | Banking web application interface | Web App |
 | **Super Banking User App** | - | User authentication application | Web App |
 | **Super Banking Admin App** | `14cefa5b-d9d6-4e51-8749-e938d4edd1c0` | Admin authentication application | Web App |
 
@@ -58,9 +58,9 @@ User-facing OIDC applications should remain under the standard **Applications** 
 For each AI-related application:
 
 1. **Select the application**:
-   - `BX Finance AI Agent App` (`80145519`)
-   - `BX Finance MCP Service` (`d98f4336`)
-   - `BX Finance MCP ServiceV1` (`bdf0fa76`)
+   - `Super Banking AI Agent App` (`80145519`)
+   - `Super Banking MCP Service` (`d98f4336`)
+   - `Super Banking MCP ServiceV1` (`bdf0fa76`)
 
 2. **Click "Edit"** or the pencil icon
 
@@ -74,8 +74,8 @@ For each AI-related application:
 
 Ensure user-facing applications remain in the **Applications** group:
 
-1. **BX Finance User** (`5df1fbdb`)
-2. **BX Finance Banking App** (`949a748e`)
+1. **Super Banking User** (`5df1fbdb`)
+2. **Super Banking App** (`949a748e`)
 3. **Super Banking User App**
 4. **Super Banking Admin App**
 
@@ -108,14 +108,14 @@ Ensure user-facing applications remain in the **Applications** group:
 Follow these naming patterns for consistency:
 
 #### AI Agents Group
-- `BX Finance AI Agent App` - AI agent identities
-- `BX Finance MCP Service` - MCP service applications
-- `BX Finance Automation Service` - Other automated services
+- `Super Banking AI Agent App` - AI agent identities
+- `Super Banking MCP Service` - MCP service applications
+- `Super Banking Automation Service` - Other automated services
 
 #### Applications Group
-- `BX Finance User` - End-user applications
-- `BX Finance Banking App` - Main application interfaces
-- `BX Finance Admin App` - Administrative interfaces
+- `Super Banking User` - End-user applications
+- `Super Banking App` - Main application interfaces
+- `Super Banking Admin App` - Administrative interfaces
 
 ### Documentation Updates
 
@@ -188,6 +188,6 @@ When adding new applications:
 ## References
 
 - [PingOne Documentation: Application Groups](https://docs.pingidentity.com/pingone/p1_cloud__platform_main_landing_page.html)
-- [BX Finance Architecture Overview](./ARCHITECTURE_WALKTHROUGH.md)
+- [Super Banking Architecture Overview](./ARCHITECTURE_WALKTHROUGH.md)
 - [PingOne Token Exchange Setup](./PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md)
 - [PingOne Two-Exchange Setup](./PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md)
