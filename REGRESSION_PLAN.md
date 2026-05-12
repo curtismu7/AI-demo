@@ -102,6 +102,81 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-12 — Agent-code review BLOCK fixes (10 of 10) — gateway + agent-service + LangChain hardening pass
+
+This is a single rolled-up entry for the ten BLOCK findings from
+`.planning/code-reviews/agent-code-review-2026-05-12/`. Each finding is
+its own commit; the per-commit messages have the full rationale. Summary
+of what shipped:
+
+**Gateway BL-01 — `/admin/config` was unauthenticated (commit `f480701d`)**
+- `banking_mcp_gateway/src/index.ts` — both `GET` and `POST /admin/config` now require an `x-internal-gateway-secret` header compared via `crypto.timingSafeEqual` on equal-length buffers (mirrors the BFF pattern in `banking_api_server/routes/agentIdToken.js`). `POST` requests carrying `devBypass: true` are 403'd when `NODE_ENV === 'production'`. The route has no in-tree callers — no client integration to update.
+
+**Gateway BL-02 — WS transport bypassed introspection + D-05 anti-bypass (commit `a28ec20a`)**
+- `banking_mcp_gateway/src/auth/authorizeMcpRequestCore.ts` (new) — extracted the transport-agnostic pipeline: RFC 7662 introspection + `GatewayTokenPolicy.validate` (sub/act/D-05). Returns a tagged-union result so each transport renders its own failure shape.
+- `banking_mcp_gateway/src/middleware/authorizeMcpRequest.ts` — HTTP middleware now delegates steps 0+1 to the core; PingOne Authorize + RFC 8693 exchange + forward stay inline.
+- `banking_mcp_gateway/src/index.ts` — added `runWsAuthorizationPipeline` helper; both `tools/list` and `tools/call` branches in the WS handler call it before `guardTool{sList,Call}`. Single `GatewayIntrospectionClient` shared between HTTP and WS.
+
+**Gateway BL-03 — production default `BFF_INTERNAL_SECRET` (commit `7a0bc485`)**
+- `banking_mcp_gateway/src/config.ts` — extracted `DEFAULT_BFF_INTERNAL_SECRET` literal and exported `assertProductionSecrets(cfg)` that `process.exit(1)`s when `NODE_ENV=production` and the secret equals the default.
+- `banking_mcp_gateway/src/index.ts` — calls `assertProductionSecrets` immediately after `loadConfig`, before binding any port.
+- `banking_api_server/routes/agentIdToken.js` — symmetric check at module load using the same literal; `process.exit(1)` before the router is mounted.
+
+**Gateway BL-04 — `rejectUnauthorized: false` on BFF→gateway health probe (commit `e5678b07`)**
+- `banking_api_server/services/agentMcpTokenService.js::_resolveFinalMcpAudience` — TLS verification on by default. Dev escape hatch requires BOTH `GATEWAY_HEALTH_PROBE_INSECURE === 'true'` AND `NODE_ENV !== 'production'`; production hard-ignores the flag. One-time WARN log when the dev path is taken.
+
+**agent-service BL-01 — post-`open` WebSocket errors swallowed (commit `fedf0aac`)**
+- `banking_agent_service/src/mcpGatewayClient.ts` — new `GatewayConnectionClosed` typed error; `ws.on('close', …)` walks the pending map and rejects every entry; `_request` checks `readyState === WebSocket.OPEN` before `ws.send`; `connect()` now has a 10s handshake timeout and guards against double-resolve via a `settled` flag; pending map now stores `{resolve, reject, timer}` so `_failAllPending` can cancel timers in one pass.
+
+**agent-service BL-02 — token cache key truncated to 64 bits (commit `3a691964`)**
+- `banking_agent_service/src/tokenResolver.ts::tokenHash` — dropped the `.slice(0, 16)`; now returns the full 64-char SHA-256 digest. No tests asserted the truncated form.
+
+**LangChain BL-01 — raw bearer tokens debug-logged (commit `3537295d`)**
+- `langchain_agent/src/models/auth.py::AccessToken` — `__repr__` and `__str__` now return `AccessToken(***masked***)`; new `masked_fingerprint()` returns `sha256:<first 12 hex>` for log correlation.
+- `langchain_agent/src/mcp/tool_registry.py` (lines 218-220) — log `masked_fingerprint()` instead of the token object; user_auth_code log replaced with a presence boolean.
+- `langchain_agent/src/mcp/connection.py` (lines 176-180) — log a redacted copy of the JSON-RPC envelope where `params.userAuthCode` is replaced with `[REDACTED]`.
+- `langchain_agent/src/agent/mcp_tool_provider.py:277` — log `masked_fingerprint()` instead of the token object.
+
+**LangChain BL-02 — `SensitiveDataFilter` never attached to root logger (commit `d93873b7`)**
+- `langchain_agent/src/log_utils/structured_logger.py::setup_logging` — attaches `SensitiveDataFilter` to BOTH the console and file handlers (the reliable hook — record-level filters on a logger don't propagate to inherited handlers). Also attaches at logger-level for belt-and-braces.
+- `langchain_agent/src/log_utils/secure_logger.py::SensitiveDataFilter.SENSITIVE_PATTERNS` — added a JWT-shape regex anchored on the `eyJ` header prefix, length-bounded to limit backtracking on huge inputs.
+
+**LangChain BL-03 — `handle_authorization_callback` skipped state validation (commit `232175b2`)**
+- `langchain_agent/src/authentication/oauth_manager.py` — both `handle_authorization_callback` and the wrapping `handle_user_authorization_callback` accept an optional `session_id`. When provided, `validate_state(state, session_id)` runs BEFORE the existence/expiry checks; mismatch raises `ValueError('Invalid, expired, or session-mismatched state parameter')`. Old call sites (auth_code, state) keep working unchanged.
+- `langchain_agent/src/authentication/interfaces.py` — ABC signature updated to match; docstring requires implementations to invoke `validate_state` when `session_id` is provided.
+
+**LangChain BL-04 — `process_auth_response` trusted user-supplied `session_id` (commit `07323730`)**
+- `langchain_agent/src/api/websocket_handler.py::_handle_auth_response` — reads the authenticated session from `_connection_metadata[connection_id]['session_id']` (set during `_handle_session_init` / `_handle_chat_message`). If the message body carries a `session_id`, it MUST match the connection-bound one — mismatch returns `error_code=session_id_mismatch`. Connections without a bound session_id (i.e. session_init never ran) return `error_code=invalid_session`. The `process_auth_response` function in `message_processor.py` is left as-is — its body already cross-checked `session_id` against `_pending_auth_requests[state]`; the actual trust boundary was the WS handler.
+- `langchain_agent/tests/test_websocket_handler.py` — 2 new regression tests (`test_handle_auth_response_rejects_body_session_mismatch`, `test_handle_auth_response_rejects_unbound_connection`); updated the existing happy-path test to seed `_connection_metadata` first.
+
+**What was broken (rolled up):** Ten classes of agent-surface security defect surfaced in the 2026-05-12 cross-subsystem audit. The most severe were Gateway BL-01/BL-02/BL-03 (a chain that, combined, gave an unauthenticated network reachable user a path to flip devBypass, mint tokens for the wrong audience, and bypass the gateway's anti-bypass invariant on WS), Gateway BL-04 (MITM on the health probe could downgrade audience selection), and LangChain BL-01/BL-02 (every "we mask tokens" claim was aspirational; the filter wasn't attached and `AccessToken.__repr__` emitted raw JWTs).
+
+**What was fixed (rolled up):** Each BLOCK has its own atomic commit with the full per-finding rationale. None of the fixes touched UI code, so no `cd banking_api_ui && npm run build` is required for this entry.
+
+**Verify (per-commit):**
+- `cd banking_mcp_gateway && npx tsc --noEmit` → clean (after BL-01, BL-02, BL-03)
+- `cd banking_mcp_gateway && npm run build` → clean
+- `cd banking_mcp_gateway && npm test` → **`47 passed, 3 suites`**
+- `cd banking_agent_service && npx tsc --noEmit` → clean (after BL-01, BL-02)
+- `node -c banking_api_server/routes/agentIdToken.js` → exit 0
+- `node -c banking_api_server/services/agentMcpTokenService.js` → exit 0
+- `cd langchain_agent && python3 -m pytest tests/test_oauth_manager.py -k "authorization_callback or validate_state or UserAuthorizationFacilitator"` → **`8 passed, 23 deselected`**
+- `cd langchain_agent && python3 -m pytest tests/test_websocket_handler.py -k auth_response` → **`3 passed, 21 deselected`**
+
+**Do not break:**
+- Do not remove `assertProductionSecrets` from `banking_mcp_gateway/src/index.ts` or the matching exit at the top of `banking_api_server/routes/agentIdToken.js`. Both processes must refuse the literal `'dev-shared-secret-change-me'` in production; symmetric refusal is the contract. If you rotate the default literal, change it in BOTH files.
+- Do not put `rejectUnauthorized: false` back on the BFF gateway-health probe (`agentMcpTokenService.js::_resolveFinalMcpAudience`) without the same two-gate dev-flag pattern. Production must hard-ignore the flag — that's how this probe stops being a MITM downgrade primitive.
+- Do not call `tokenHash(t).slice(...)` on the result in `banking_agent_service/src/tokenResolver.ts`. The full SHA-256 digest is the cache key. Probabilistic collision in 64 bits would leak cross-user delegated tokens.
+- Do not skip the `runWsAuthorizationPipeline` call in `banking_mcp_gateway/src/index.ts::handleMessage` for either `tools/list` or `tools/call`. The D-05 anti-bypass invariant lives inside `GatewayTokenPolicy.validate`, which is invoked from the shared core; bypassing the call re-opens the WS escalation vector.
+- Do not log the raw `AccessToken` object via `%s`/f-string. `__repr__` masks now, but call sites must use `access_token.masked_fingerprint()` when correlation tags are needed. Never reconstruct the original token from a fingerprint — it's an irreversible SHA-256 prefix by design.
+- Do not detach `SensitiveDataFilter` from the console/file handlers in `setup_logging()`. Record-level filters on a logger don't propagate to inherited handlers; the handler is the reliable attachment point.
+- Do not remove the `_connection_metadata[connection_id]["session_id"]` read in `_handle_auth_response`. The body-supplied `session_id` is attacker-controlled; the connection-bound one is the trust boundary. If a future refactor changes how `session_init` records the session, update both `_handle_chat_message` and `_handle_auth_response` together so the binding stays consistent.
+- Do not skip `validate_state(state, session_id)` from `handle_authorization_callback` when a caller supplies a session_id. The existing existence + expiry checks are NOT a substitute for the session-binding check — that's what makes the state parameter a CSRF/replay defense.
+- Do not remove the `ws.on('close', ...)` failover in `banking_agent_service/src/mcpGatewayClient.ts`. Without it, every gateway restart pegs the agent for `MAX_TOOL_ITERATIONS × 30s`. If you add another long-lived pending-state container alongside `this.pending`, it must also be drained on close.
+- Do not remove the timing-safe internal-secret check from the gateway's `/admin/config` handler. The route flips routing URLs and the devBypass flag — both are full auth-bypass primitives in the wrong hands. Mirror the BFF's pattern (constant-time compare on equal-length buffers).
+
+---
+
 ### 2026-05-12 — Architecture menu group is now 401-free for anonymous visitors (`ArchitectureTabsPanel` gates `/api/admin/diagrams/list` behind `user?.role === 'admin'`)
 
 **Files changed:**
