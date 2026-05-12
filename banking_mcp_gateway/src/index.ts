@@ -19,6 +19,7 @@ dotenv.config();
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import * as crypto from 'node:crypto';
 import WebSocket from 'ws';
 import axios from 'axios';
 import { loadConfig, GatewayConfig, assertProductionSecrets } from './config';
@@ -43,6 +44,35 @@ try {
 
 // BL-03: refuse the committed dev fallback secret in production.
 assertProductionSecrets(config);
+
+// ---------------------------------------------------------------------------
+// BL-01: timing-safe internal-secret check. Mirrors the BFF pattern in
+// banking_api_server/routes/agentIdToken.js — both processes use
+// crypto.timingSafeEqual on Buffers of equal length. Mismatched lengths
+// must still consume constant time, so we pad the shorter buffer to the
+// length of the configured secret before comparing.
+// ---------------------------------------------------------------------------
+
+function requireInternalSecret(req: IncomingMessage, res: ServerResponse, cfg: GatewayConfig): boolean {
+  const presented = req.headers['x-internal-gateway-secret'];
+  const expectedBuf = Buffer.from(cfg.bffInternalSecret);
+  const presentedStr = typeof presented === 'string' ? presented : '';
+  const presentedBuf = Buffer.from(presentedStr);
+
+  // Always compare against an equal-length buffer so timingSafeEqual never
+  // short-circuits on length mismatch. Pad/truncate presented to expected length.
+  const padded = Buffer.alloc(expectedBuf.length);
+  presentedBuf.copy(padded, 0, 0, Math.min(presentedBuf.length, expectedBuf.length));
+  const equalContent = crypto.timingSafeEqual(padded, expectedBuf);
+  const equalLength = presentedBuf.length === expectedBuf.length;
+
+  if (!equalContent || !equalLength) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'unauthorized' }));
+    return false;
+  }
+  return true;
+}
 
 // ---------------------------------------------------------------------------
 // HTTP server (metadata + health)
@@ -108,14 +138,38 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
   // ---------------------------------------------------------------------------
   // POST /admin/config — push dynamic config updates without restart.
   // Only non-sensitive, non-binding fields are accepted.
-  // Localhost-only in practice (gateway binds to 0.0.0.0 but BFF proxies).
+  //
+  // BL-01: REQUIRES x-internal-gateway-secret header (timing-safe compare).
+  // Without auth, anyone on 0.0.0.0:3005 could flip devBypass:true and redirect
+  // upstream WebSocket URLs — a full auth-bypass primitive.
+  //
+  // BL-01: even with the secret, `devBypass: true` is REFUSED when NODE_ENV
+  // is 'production'. Dev bypass is a localhost-only debugging affordance and
+  // must never be flippable on a production deploy.
   // ---------------------------------------------------------------------------
   if (url === '/admin/config' && req.method === 'POST') {
+    if (!requireInternalSecret(req, res, config)) return;
+
     let body = '';
     req.on('data', (chunk) => { body += chunk; });
     req.on('end', () => {
       try {
         const updates: Partial<Record<string, string | boolean>> = JSON.parse(body || '{}');
+
+        // BL-01: refuse devBypass mutations in production.
+        if (
+          process.env.NODE_ENV === 'production' &&
+          'devBypass' in updates &&
+          updates.devBypass === true
+        ) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            error: 'forbidden',
+            message: 'devBypass=true is not permitted when NODE_ENV=production',
+          }));
+          return;
+        }
+
         const allowed: Array<keyof typeof config> = [
           'gatewayResourceUri',
           'mcpOlbWsUrl', 'mcpInvestWsUrl',
@@ -152,8 +206,12 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
     return;
   }
 
-  // GET /admin/config — read current live config (no secrets)
+  // GET /admin/config — read current live config (no secrets).
+  // BL-01: also gated behind the internal secret — the response leaks live
+  // routing URLs (mcpOlbWsUrl etc.) and the devBypass flag, both of which
+  // are useful reconnaissance for an attacker.
   if (url === '/admin/config' && req.method === 'GET') {
+    if (!requireInternalSecret(req, res, config)) return;
     const safe = {
       gatewayResourceUri:    config.gatewayResourceUri,
       mcpOlbWsUrl:           config.mcpOlbWsUrl,
