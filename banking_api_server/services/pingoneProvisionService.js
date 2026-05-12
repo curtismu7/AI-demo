@@ -1226,16 +1226,28 @@ class PingOneProvisionService {
         steps.push({ step: 'admin-config', icon: '✅', message: 'Admin application configured with token exchange' });
         onStep(steps[steps.length - 1]);
       } else {
-        // Existing admin app — refresh redirect URI only. Don't overwrite other settings,
-        // which the user may have customized in PingOne admin. Important for migration:
-        // archived apps may still point at api.pingdemo.com; we sync to current host.
+        // Existing admin app — refresh redirect URI AND reconcile auth method.
+        // See the matching user-app branch below for the rationale: the BFF sends
+        // creds in the body (post), so any app drift to CLIENT_SECRET_BASIC breaks
+        // login. Important for migration: archived apps may still point at
+        // api.pingdemo.com; we sync to current host.
         const targetUri = `${config.publicAppUrl}/api/auth/oauth/callback`;
         const currentUris = adminAppResult.application.redirectUris || [];
-        if (!currentUris.includes(targetUri)) {
-          steps.push({ step: 'admin-config', icon: '🔁', message: `Refreshing admin redirect URI → ${targetUri}` });
+        const currentAuthMethod = String(adminAppResult.application.tokenEndpointAuthMethod || '').toUpperCase();
+        const needsUriUpdate = !currentUris.includes(targetUri);
+        const needsAuthMethodUpdate = currentAuthMethod !== 'CLIENT_SECRET_POST';
+        if (needsUriUpdate || needsAuthMethodUpdate) {
+          const drifts = [
+            needsUriUpdate ? `redirect URI → ${targetUri}` : null,
+            needsAuthMethodUpdate ? `auth method (${currentAuthMethod || 'unset'} → CLIENT_SECRET_POST)` : null,
+          ].filter(Boolean).join(', ');
+          steps.push({ step: 'admin-config', icon: '🔁', message: `Refreshing admin app: ${drifts}` });
           onStep(steps[steps.length - 1]);
-          await this.updateApplication(adminAppResult.application.id, { redirectUris: [targetUri] });
-          steps.push({ step: 'admin-config', icon: '✅', message: 'Admin redirect URI refreshed' });
+          const patch = {};
+          if (needsUriUpdate) patch.redirectUris = [targetUri];
+          if (needsAuthMethodUpdate) patch.tokenEndpointAuthMethod = 'client_secret_post';
+          await this.updateApplication(adminAppResult.application.id, patch);
+          steps.push({ step: 'admin-config', icon: '✅', message: 'Admin application reconciled' });
           onStep(steps[steps.length - 1]);
         }
       }
@@ -1296,13 +1308,28 @@ class PingOneProvisionService {
         steps.push({ step: 'user-config', icon: '✅', message: 'User application configured' });
         onStep(steps[steps.length - 1]);
       } else {
-        // Existing user app — refresh redirect URI only (see admin branch above).
+        // Existing user app — refresh redirect URI AND reconcile auth method.
+        // The BFF's oauthUserService.exchangeCodeForToken sends client_id/client_secret
+        // in the body (client_secret_post style). If the existing app's auth method
+        // drifted to CLIENT_SECRET_BASIC (PingOne's default), token exchange fails with
+        // "invalid_client — Unsupported authentication method" and the user can't log in.
+        // Reconciling auth method on idempotent reruns prevents this.
         const currentUris = userAppResult.application.redirectUris || [];
-        if (!currentUris.includes(userRedirectUri)) {
-          steps.push({ step: 'user-config', icon: '🔁', message: `Refreshing user redirect URI → ${userRedirectUri}` });
+        const currentAuthMethod = String(userAppResult.application.tokenEndpointAuthMethod || '').toUpperCase();
+        const needsUriUpdate = !currentUris.includes(userRedirectUri);
+        const needsAuthMethodUpdate = currentAuthMethod !== 'CLIENT_SECRET_POST';
+        if (needsUriUpdate || needsAuthMethodUpdate) {
+          const drifts = [
+            needsUriUpdate ? 'redirect URI' : null,
+            needsAuthMethodUpdate ? `auth method (${currentAuthMethod || 'unset'} → CLIENT_SECRET_POST)` : null,
+          ].filter(Boolean).join(', ');
+          steps.push({ step: 'user-config', icon: '🔁', message: `Refreshing user app: ${drifts}` });
           onStep(steps[steps.length - 1]);
-          await this.updateApplication(userAppResult.application.id, { redirectUris: [userRedirectUri] });
-          steps.push({ step: 'user-config', icon: '✅', message: 'User redirect URI refreshed' });
+          const patch = {};
+          if (needsUriUpdate) patch.redirectUris = [userRedirectUri];
+          if (needsAuthMethodUpdate) patch.tokenEndpointAuthMethod = 'client_secret_post';
+          await this.updateApplication(userAppResult.application.id, patch);
+          steps.push({ step: 'user-config', icon: '✅', message: 'User application reconciled' });
           onStep(steps[steps.length - 1]);
         }
       }
