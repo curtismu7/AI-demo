@@ -10,6 +10,27 @@ from datetime import datetime, timezone
 from security.encryption import EncryptionManager, EncryptionError
 
 
+# HI-08: O_NOFOLLOW defeats a symlink TOCTOU attack on ./.storage/{key}.enc.
+# Without it, a symlink planted at the target path could redirect the
+# write to a privileged file (briefly 0644 before the chmod) or redirect
+# the read to a file the process shouldn't be reading. Wrap into helpers
+# so both store() and retrieve() use the same hardened open semantics.
+def _safe_open_for_write(path: Path) -> int:
+    """Open `path` for write with O_NOFOLLOW + 0600 perms atomically.
+
+    Returns an OS fd. Caller is responsible for closing (or wrapping in
+    os.fdopen which handles close on context exit).
+    """
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW
+    return os.open(str(path), flags, 0o600)
+
+
+def _safe_open_for_read(path: Path) -> int:
+    """Open `path` for read with O_NOFOLLOW. Refuses to follow symlinks."""
+    flags = os.O_RDONLY | os.O_NOFOLLOW
+    return os.open(str(path), flags)
+
+
 class SecureStorageError(Exception):
     """Exception raised for secure storage operations."""
     pass
@@ -55,14 +76,22 @@ class SecureStorage:
                 # Encrypt the data
                 encrypted_data = self.encryption_manager.encrypt_dict(storage_data)
                 
-                # Write to file
+                # Write to file. HI-08: O_NOFOLLOW + 0600 atomically — a
+                # symlink at this path is rejected; perms are set on the fd
+                # at open time so there is no 0644 window before chmod.
                 file_path = self._get_file_path(key)
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(encrypted_data)
-                
-                # Set secure file permissions
-                os.chmod(file_path, 0o600)
-                
+                fd = _safe_open_for_write(file_path)
+                try:
+                    with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                        f.write(encrypted_data)
+                except Exception:
+                    # If os.fdopen failed, fd may still be open — close it.
+                    try:
+                        os.close(fd)
+                    except OSError:
+                        pass
+                    raise
+
             except Exception as e:
                 raise SecureStorageError(f"Failed to store data for key '{key}': {e}")
     
@@ -86,9 +115,18 @@ class SecureStorage:
                 if not file_path.exists():
                     return None
                 
-                # Read encrypted data
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    encrypted_data = f.read().strip()
+                # Read encrypted data. HI-08: O_NOFOLLOW refuses to follow
+                # a symlink that may have been planted at the target path.
+                fd = _safe_open_for_read(file_path)
+                try:
+                    with os.fdopen(fd, 'r', encoding='utf-8') as f:
+                        encrypted_data = f.read().strip()
+                except Exception:
+                    try:
+                        os.close(fd)
+                    except OSError:
+                        pass
+                    raise
                 
                 if not encrypted_data:
                     return None
