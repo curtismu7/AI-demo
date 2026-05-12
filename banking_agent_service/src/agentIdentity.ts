@@ -19,16 +19,26 @@ import jwt from 'jsonwebtoken';
 import { AgentConfig } from './config';
 
 let _cachedActorToken: { token: string; expiresAt: number } | null = null;
+// HI-01: in-flight promise cache. The first cold-start caller fires the CC
+// request to PingOne and stores the promise here; concurrent callers await
+// the same promise so we never run N parallel client_credentials grants on
+// startup. Cleared in the `.finally(...)` so future expiries can re-fetch.
+let _inflightActorToken: Promise<string> | null = null;
 
 export async function getActorToken(config: AgentConfig): Promise<string> {
   if (_cachedActorToken && _cachedActorToken.expiresAt > Date.now() + 10_000) {
     return _cachedActorToken.token;
   }
 
-  if (config.usePkiCreds) {
-    return _acquireViaPrivateKeyJwt(config);
-  }
-  return _acquireViaClientSecret(config);
+  if (_inflightActorToken) return _inflightActorToken;
+
+  const fetcher = config.usePkiCreds
+    ? _acquireViaPrivateKeyJwt(config)
+    : _acquireViaClientSecret(config);
+  _inflightActorToken = fetcher.finally(() => {
+    _inflightActorToken = null;
+  });
+  return _inflightActorToken;
 }
 
 async function _acquireViaClientSecret(config: AgentConfig): Promise<string> {
@@ -38,13 +48,22 @@ async function _acquireViaClientSecret(config: AgentConfig): Promise<string> {
     scope: 'ai_agent',
   });
 
-  const response = await axios.post(config.tokenEndpoint, params.toString(), {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${credentials}`,
-    },
-    timeout: 10_000,
-  });
+  // HI-03: scrub axios error before it bubbles up — the default error carries
+  // the request body and Basic credentials via `err.config`.
+  let response;
+  try {
+    response = await axios.post(config.tokenEndpoint, params.toString(), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${credentials}`,
+      },
+      timeout: 10_000,
+    });
+  } catch (e: any) {
+    const status = e?.response?.status;
+    const detail = e?.response?.data?.error || e?.response?.data?.error_description || e?.message || 'unknown';
+    throw new Error(`agent_cc_failed status=${status ?? 'n/a'} detail=${detail}`);
+  }
 
   const { access_token, expires_in } = response.data;
   if (!access_token) throw new Error('client_credentials response missing access_token');
@@ -85,10 +104,18 @@ async function _acquireViaPrivateKeyJwt(config: AgentConfig): Promise<string> {
     client_id: config.clientId,
   });
 
-  const response = await axios.post(config.tokenEndpoint, params.toString(), {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    timeout: 10_000,
-  });
+  // HI-03: scrub axios error — body carries the signed client_assertion.
+  let response;
+  try {
+    response = await axios.post(config.tokenEndpoint, params.toString(), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 10_000,
+    });
+  } catch (e: any) {
+    const status = e?.response?.status;
+    const detail = e?.response?.data?.error || e?.response?.data?.error_description || e?.message || 'unknown';
+    throw new Error(`agent_cc_pki_failed status=${status ?? 'n/a'} detail=${detail}`);
+  }
 
   const { access_token, expires_in } = response.data;
   if (!access_token) throw new Error('private_key_jwt client_credentials response missing access_token');
