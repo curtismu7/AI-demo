@@ -260,6 +260,10 @@ class TokenManager:
         self.session: Optional[aiohttp.ClientSession] = None
         self._current_token: Optional[AccessToken] = None
         self._current_credentials: Optional[ClientCredentials] = None
+        # HI-02: serialize concurrent get_valid_token() callers so two
+        # parallel tool calls don't both miss the cache and double-fetch
+        # against the token endpoint (which then rate-limits at 429).
+        self._refresh_lock = asyncio.Lock()
     
     async def __aenter__(self):
         """Async context manager entry."""
@@ -430,25 +434,32 @@ class TokenManager:
         # Use only explicitly requested additional_scopes (e.g., ai_agent).
         scopes = list(additional_scopes) if additional_scopes else []
         scope_key = " ".join(sorted(scopes)) if scopes else ''
-        
-        # Check if we have a current token and if it's still valid
-        if (self._current_token and 
-            self._current_credentials and 
-            self._current_credentials.client_id == client_credentials.client_id and
-            not self._is_token_near_expiry(self._current_token) and
-            self._current_token.scope == scope_key):
-            logger.debug("Using cached access token")
-            return self._current_token
-        
-        # Need to get a new token
-        logger.info("Acquiring new access token")
-        token = await self.get_client_credentials_token(client_credentials, additional_scopes)
-        
-        # Cache the token and credentials
-        self._current_token = token
-        self._current_credentials = client_credentials
-        
-        return token
+
+        # HI-02: take the refresh lock around the cache-check + refresh path.
+        # Without this, two concurrent MCP tool calls both observe the cache
+        # miss and both POST to the token endpoint. The lock keeps the
+        # cache-hit fast path (it just compares fields) yet serializes the
+        # rare cache miss to one in-flight grant.
+        async with self._refresh_lock:
+            # Re-check inside the lock — a second caller racing the first
+            # should find the token already cached on second look.
+            if (self._current_token and
+                self._current_credentials and
+                self._current_credentials.client_id == client_credentials.client_id and
+                not self._is_token_near_expiry(self._current_token) and
+                self._current_token.scope == scope_key):
+                logger.debug("Using cached access token")
+                return self._current_token
+
+            # Need to get a new token
+            logger.info("Acquiring new access token")
+            token = await self.get_client_credentials_token(client_credentials, additional_scopes)
+
+            # Cache the token and credentials
+            self._current_token = token
+            self._current_credentials = client_credentials
+
+            return token
     
     def _is_token_near_expiry(self, token: AccessToken) -> bool:
         """
