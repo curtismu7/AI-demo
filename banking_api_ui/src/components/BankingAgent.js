@@ -2426,6 +2426,8 @@ export default function BankingAgent({
   // Uses sessionStorage so a reset-demo + reload starts blank (reset clears the key).
   const AGENT_AUTO_LOADED_KEY = "_agent_auto_loaded";
   const autoLoadedRef = useRef(false);
+  const runActionRef = useRef(null);
+  runActionRef.current = runAction;
   const addMessageRef = useRef(null);
   addMessageRef.current = addMessage;
   useEffect(() => {
@@ -4267,7 +4269,14 @@ export default function BankingAgent({
           PendingActionManager.save({ actionId, form });
           addMessage(
             "assistant",
-            ` Login required.\n\nThis operation requires you to be signed in. Click the link below — your request will resume automatically after you authenticate.\n\n[Sign in →](${loginUrl})`,
+            ` Login required.\n\nThis operation requires you to be signed in. Click the button below — your request will resume automatically after you authenticate.`,
+            actionId,
+          );
+          addMessage(
+            "assistant",
+            '<a href="' +
+              loginUrl +
+              '" style="display:inline-block;margin-top:8px;padding:8px 16px;background:#4f7df3;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">Sign in →</a>',
             actionId,
           );
           toast.dismiss(toastId);
@@ -4627,14 +4636,13 @@ export default function BankingAgent({
         }
       }
 
-      const connErrMsg = String(err?.message || "");
       const isConnErr =
-        connErrMsg.includes("timed out") ||
-        connErrMsg.includes("ECONNREFUSED") ||
-        connErrMsg.includes("ENETUNREACH") ||
-        connErrMsg.includes("mcp_error") ||
-        connErrMsg.includes("Failed to fetch") ||
-        connErrMsg.includes("502");
+        err.message.includes("timed out") ||
+        err.message.includes("ECONNREFUSED") ||
+        err.message.includes("ENETUNREACH") ||
+        err.message.includes("mcp_error") ||
+        err.message.includes("Failed to fetch") ||
+        err.message.includes("502");
 
       const mcpToolsUnauthorized =
         actionId === "mcp_tools" &&

@@ -1,44 +1,17 @@
 // MarkdownText.js — shared inline markdown renderer
-// Supports: [label](url), **bold**, *italic*, `code`, # headings, - bullet lists, numbered lists, ---
+// Supports: **bold**, *italic*, `code`, # headings, - bullet lists, numbered lists, ---
 import React from 'react';
-
-// Only allow http(s) and relative ("/...") link targets — no javascript:, data:, file:.
-function safeHref(url) {
-  if (!url) return null;
-  const trimmed = String(url).trim();
-  if (trimmed.startsWith('/')) return trimmed;
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  return null;
-}
 
 /**
  * Renders a single run of text with inline markdown tokens:
- * [label](url), **bold**, *italic*, `code`
+ * **bold**, *italic*, `code`
  */
 export function InlineMd({ text }) {
   if (!text) return null;
-  const tokens = text.split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+  const tokens = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
   return (
     <>
       {tokens.map((tok, i) => {
-        const linkMatch = tok.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-        if (linkMatch) {
-          const href = safeHref(linkMatch[2]);
-          if (href) {
-            return (
-              <a
-                key={i}
-                href={href}
-                className="md-link"
-                rel="noopener noreferrer"
-              >
-                {linkMatch[1]}
-              </a>
-            );
-          }
-          // Unsafe scheme — render as plain text rather than create a vector.
-          return tok;
-        }
         if (tok.startsWith('**') && tok.endsWith('**'))
           return <strong key={i}>{tok.slice(2, -2)}</strong>;
         if (tok.startsWith('*') && tok.endsWith('*'))
