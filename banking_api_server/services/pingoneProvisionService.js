@@ -338,8 +338,16 @@ class PingOneProvisionService {
   async createResourceServer(name, description, audience) {
     const existing = await this.findResourceByName('resource', name);
     if (existing) {
-      return { 
-        exists: true, 
+      // PingOne returns audience as a string on GET; wrap it so callers that
+      // read resource.audience[0] (see pingoneProvisionService.js:1014/1017/1026
+      // ENDUSER_AUDIENCE / MCP_RESOURCE_URI / MCP_GW_RESOURCE_URI writers) get
+      // a URI, not a single character. Without this, the idempotent rerun path
+      // wrote `ENDUSER_AUDIENCE=b` (first char of 'banking-...') into .env.
+      if (typeof existing.audience === 'string') {
+        existing.audience = [existing.audience];
+      }
+      return {
+        exists: true,
         resource: existing,
         resourceKey: `resource:${existing.id}`
       };
@@ -1099,10 +1107,16 @@ class PingOneProvisionService {
       steps.push({ step: 'mcp-resource-server', icon: '🔧', message: 'Creating MCP resource server for admin operations...' });
       onStep(steps[steps.length - 1]);
       
+      // Args are (name, description, audience). The audience string is what
+      // ends up in JWT `aud` claims and must be a stable identifier — not a
+      // human description. Previously these two were swapped, causing tokens
+      // minted for this resource to have aud='MCP server for admin tool…'
+      // which then either failed downstream audience checks or polluted
+      // .env with the description string as MCP_RESOURCE_URI.
       const mcpResourceResult = await this.createResourceServer(
         'Super Banking MCP Server',
-        'https://mcp-server.pingdemo.com',
-        'MCP server for admin tool execution and privileged operations'
+        'MCP server for admin tool execution and privileged operations',
+        config.mcpResourceAudience || 'mcp-server.bxf.com'
       );
       
       if (mcpResourceResult.exists) {
