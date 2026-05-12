@@ -80,7 +80,10 @@ class TokenCache {
 const _cache = new TokenCache();
 
 function tokenHash(t: string): string {
-  return createHash('sha256').update(t).digest('hex').slice(0, 16);
+  // BL-02: use the full 64-char SHA-256 digest. The previous .slice(0, 16)
+  // truncated to 64 bits, which is a probabilistic collision surface for a
+  // primitive that gates user-token isolation in the gateway-token cache.
+  return createHash('sha256').update(t).digest('hex');
 }
 
 export async function resolveGatewayToken(
