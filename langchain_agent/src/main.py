@@ -217,12 +217,26 @@ class LangChainMCPApplication:
     async def start_websocket_server(self):
         """Start the WebSocket server."""
         import websockets
-        
+
         host = "0.0.0.0"
         port = self.config.chat.websocket_port
-        
-        logger.info(f"Starting WebSocket server on {host}:{port}...")
-        
+
+        # HI-01: bound message size and check Origin to defeat 50MB-frame DoS
+        # and cross-site WebSocket hijacking. Allowlist comes from
+        # ALLOWED_WS_ORIGINS (comma-separated); falls back to the canonical
+        # api.ping.demo origin used by run-bank.sh local dev.
+        allowed_origins_raw = os.getenv(
+            "ALLOWED_WS_ORIGINS",
+            "https://api.ping.demo:4000,http://localhost:4000,http://127.0.0.1:4000",
+        )
+        allowed_origins = [o.strip() for o in allowed_origins_raw.split(",") if o.strip()]
+        max_ws_size = int(os.getenv("WS_MAX_MESSAGE_BYTES", str(64 * 1024)))  # 64KB default
+
+        logger.info(
+            f"Starting WebSocket server on {host}:{port} "
+            f"(origins={allowed_origins}, max_size={max_ws_size}B)..."
+        )
+
         try:
             self.websocket_server = await websockets.serve(
                 self.websocket_handler.handle_connection,
@@ -230,7 +244,9 @@ class LangChainMCPApplication:
                 port,
                 ping_interval=30,
                 ping_timeout=10,
-                close_timeout=10
+                close_timeout=10,
+                max_size=max_ws_size,
+                origins=allowed_origins,
             )
             
             self.health_server.update_status("websocket_server", "ready")
