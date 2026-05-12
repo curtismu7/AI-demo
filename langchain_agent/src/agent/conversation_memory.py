@@ -4,7 +4,7 @@ Conversation memory management for LangChain MCP Agent.
 import asyncio
 import logging
 from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
@@ -99,15 +99,15 @@ class ConversationMemory:
         if session_id in self._sessions:
             # Update last activity
             session = self._sessions[session_id]
-            session.last_activity = datetime.now()
+            session.last_activity = datetime.now(timezone.utc)
             return session
         
         # Create new session
         session = ChatSession(
             session_id=session_id,
             user_id=user_id,
-            created_at=datetime.now(),
-            last_activity=datetime.now(),
+            created_at=datetime.now(timezone.utc),
+            last_activity=datetime.now(timezone.utc),
             context={}
         )
         
@@ -206,7 +206,7 @@ class ConversationMemory:
         """
         session = await self.get_or_create_session(session_id)
         session.context.update(context_updates)
-        session.last_activity = datetime.now()
+        session.last_activity = datetime.now(timezone.utc)
         
         logger.debug(f"Updated context for session {session_id}: {list(context_updates.keys())}")
     
@@ -250,7 +250,7 @@ class ConversationMemory:
             "user_identified": True,
             "user_email": user_email,
             "user_id": user_id,
-            "identification_timestamp": datetime.now().isoformat()
+            "identification_timestamp": datetime.now(timezone.utc).isoformat()
         })
         logger.info(f"User identified in session {session_id}: {user_email}")
     
@@ -299,7 +299,7 @@ class ConversationMemory:
         Returns:
             List of active session IDs
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         active_sessions = []
         
         for session_id, session in self._sessions.items():
@@ -345,7 +345,7 @@ class ConversationMemory:
             "user_messages": len(user_messages),
             "assistant_messages": len(assistant_messages),
             "context_keys": list(session.context.keys()),
-            "is_active": datetime.now() - session.last_activity < self.session_timeout
+            "is_active": datetime.now(timezone.utc) - session.last_activity < self.session_timeout
         }
     
     async def _trim_session_messages(self, session_id: str) -> None:
@@ -386,7 +386,7 @@ class ConversationMemory:
     
     async def _cleanup_expired_sessions(self) -> None:
         """Clean up expired sessions."""
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         expired_sessions = []
         
         for session_id, session in self._sessions.items():
