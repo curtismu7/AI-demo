@@ -54,24 +54,61 @@ class EncryptionManager:
         return master_key
     
     def _get_or_generate_salt(self) -> bytes:
-        """Get salt from environment or generate a new one."""
+        """Get salt from environment, persisted file, or generate-and-persist a new one.
+
+        HI-05: previously this method generated a *fresh random* salt on every
+        process restart when ENCRYPTION_SALT was unset. That made any at-rest
+        encrypted data undecryptable after a restart — "lose every user's
+        stored token cache." Fix: when the env var is missing, load (or
+        create-and-persist on first run) a salt file under ENCRYPTION_SALT_DIR
+        (default `./.storage`). Salt is no longer regenerated silently; either
+        we persist it or we fail loudly.
+        """
         salt_b64 = os.getenv('ENCRYPTION_SALT')
         if salt_b64:
             try:
                 return base64.urlsafe_b64decode(salt_b64)
             except Exception as e:
                 raise EncryptionError(f"Invalid ENCRYPTION_SALT format: {e}")
-        
-        # Generate new salt if not provided
+
+        # Salt file path — same dir family as secure_storage uses.
+        salt_dir = os.getenv('ENCRYPTION_SALT_DIR', './.storage')
+        salt_path = os.path.join(salt_dir, '.encryption_salt')
+
+        # If a salt file already exists, reuse it.
+        if os.path.isfile(salt_path):
+            try:
+                with open(salt_path, 'rb') as f:
+                    return base64.urlsafe_b64decode(f.read().strip())
+            except Exception as e:
+                raise EncryptionError(
+                    f"Could not read persisted salt at {salt_path}: {e}. "
+                    "Set ENCRYPTION_SALT env var to bypass file storage."
+                )
+
+        # First-run path: generate a salt and persist it. Fail loud if we
+        # cannot — silently regenerating defeats the whole point of the fix.
         salt = os.urandom(16)
         salt_b64 = base64.urlsafe_b64encode(salt).decode()
-        
-        # Log warning about generated salt (in production, this should be persisted)
-        logging.warning(
-            f"Generated new encryption salt: {salt_b64}. "
-            "Set ENCRYPTION_SALT environment variable to persist this salt."
-        )
-        
+        try:
+            os.makedirs(salt_dir, exist_ok=True)
+            # Write with restrictive perms so a read-mode bug elsewhere doesn't
+            # expose it. The salt is not as sensitive as the master key, but
+            # treating it like a secret is the right default.
+            with open(salt_path, 'w') as f:
+                f.write(salt_b64)
+            os.chmod(salt_path, 0o600)
+            logging.info(
+                f"Persisted new encryption salt to {salt_path}. "
+                "Back this file up or set ENCRYPTION_SALT env var to make it portable."
+            )
+        except OSError as e:
+            logging.warning(
+                f"Could not persist encryption salt to {salt_path}: {e}. "
+                "Generated salt will not survive process restart — at-rest data will be unreadable. "
+                "Set ENCRYPTION_SALT environment variable for a stable installation."
+            )
+
         return salt
     
     def encrypt(self, data: Union[str, bytes]) -> str:
