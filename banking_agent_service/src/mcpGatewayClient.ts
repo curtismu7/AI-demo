@@ -38,21 +38,58 @@ export class McpGatewayError extends Error {
   }
 }
 
+/**
+ * BL-01: typed error for transport-layer failures (close / send-on-closed /
+ * connect-timeout). Distinct from McpGatewayError so callers can tell the
+ * difference between "server returned -32xxx" and "the WebSocket dropped".
+ */
+export class GatewayConnectionClosed extends Error {
+  constructor(message: string, public readonly code?: number, public readonly reason?: string) {
+    super(message);
+    this.name = 'GatewayConnectionClosed';
+  }
+}
+
+const CONNECT_TIMEOUT_MS = 10_000;
+const REQUEST_TIMEOUT_MS = 30_000;
+
 export class McpGatewayClient {
   private ws: WebSocket | null = null;
   private initialized = false;
-  private readonly pending = new Map<string | number, (msg: unknown) => void>();
+  private closed = false;
+  private readonly pending = new Map<string | number, { resolve: (msg: unknown) => void; reject: (err: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private _idSeq = 0;
 
   constructor(private readonly wsUrl: string, private readonly token: string) {}
 
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      let settled = false;
+      const settle = (fn: () => void) => {
+        if (settled) return;
+        settled = true;
+        fn();
+      };
+
       this.ws = new WebSocket(this.wsUrl, {
         headers: { Authorization: `Bearer ${this.token}` },
       });
 
-      this.ws.on('error', reject);
+      // BL-01: cap the handshake so a stuck connect doesn't dangle forever.
+      const connectTimer = setTimeout(() => {
+        settle(() => {
+          try { this.ws?.terminate(); } catch { /* ignore */ }
+          reject(new GatewayConnectionClosed(`MCP connect timeout after ${CONNECT_TIMEOUT_MS}ms`));
+        });
+      }, CONNECT_TIMEOUT_MS);
+
+      this.ws.on('error', (err) => {
+        settle(() => {
+          clearTimeout(connectTimer);
+          reject(err);
+        });
+      });
+
       this.ws.on('open', () => {
         this._send({
           jsonrpc: '2.0',
@@ -73,15 +110,40 @@ export class McpGatewayClient {
         if (msg.id === 'init' && msg.result) {
           this.ws!.send(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} }));
           this.initialized = true;
-          resolve();
+          settle(() => {
+            clearTimeout(connectTimer);
+            resolve();
+          });
           return;
         }
 
-        const cb = this.pending.get(msg.id);
-        if (cb) {
+        const entry = this.pending.get(msg.id);
+        if (entry) {
           this.pending.delete(msg.id);
-          cb(msg);
+          clearTimeout(entry.timer);
+          entry.resolve(msg);
         }
+      });
+
+      // BL-01: on close, fail every pending request with a typed error.
+      // Without this handler, a gateway restart leaves pending callers
+      // hanging until the per-request 30s timeout fires for EACH request,
+      // pegging the agent for MAX_TOOL_ITERATIONS * 30s.
+      this.ws.on('close', (code, reasonBuf) => {
+        this.closed = true;
+        this.initialized = false;
+        const reason = reasonBuf?.toString() || undefined;
+        const err = new GatewayConnectionClosed(
+          `MCP gateway WebSocket closed (code=${code}${reason ? `, reason=${reason}` : ''})`,
+          code,
+          reason,
+        );
+        this._failAllPending(err);
+        // If the close happens before init resolved, fail the connect promise too.
+        settle(() => {
+          clearTimeout(connectTimer);
+          reject(err);
+        });
       });
     });
   }
@@ -114,6 +176,14 @@ export class McpGatewayClient {
     this.ws?.close();
   }
 
+  private _failAllPending(err: Error): void {
+    for (const [, entry] of this.pending) {
+      clearTimeout(entry.timer);
+      entry.reject(err);
+    }
+    this.pending.clear();
+  }
+
   private _send(msg: unknown): void {
     this.ws?.send(JSON.stringify(msg));
   }
@@ -121,14 +191,24 @@ export class McpGatewayClient {
   private _request(msg: any): Promise<unknown> {
     return new Promise((resolve, reject) => {
       if (!this.initialized) { reject(new Error('MCP client not initialized')); return; }
-      const timeout = setTimeout(() => {
+      // BL-01: never call ws.send on a closed/closing socket — `ws` would
+      // throw asynchronously and the request would dangle. Reject immediately
+      // with the typed connection-closed error so callers can branch on it.
+      if (this.closed || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        reject(new GatewayConnectionClosed(
+          `MCP gateway WebSocket not open (readyState=${this.ws?.readyState ?? 'null'})`,
+        ));
+        return;
+      }
+      const timer = setTimeout(() => {
         this.pending.delete(msg.id);
         reject(new Error(`MCP request timeout: ${msg.method}`));
-      }, 30_000);
+      }, REQUEST_TIMEOUT_MS);
 
-      this.pending.set(msg.id, (response) => {
-        clearTimeout(timeout);
-        resolve(response);
+      this.pending.set(msg.id, {
+        resolve,
+        reject,
+        timer,
       });
       this._send(msg);
     });
