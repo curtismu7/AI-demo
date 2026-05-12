@@ -28,10 +28,18 @@ export interface IntrospectionResult {
 }
 
 const _cache = new Map<string, { result: IntrospectionResult; expiresAt: number }>();
-const CACHE_TTL_MS = 30_000;
+// HI-01: in production the positive-cache TTL is the residual revocation
+// window — a token marked inactive at the AS still works for up to TTL
+// against the gateway. 5s is a reasonable trade for a banking deployment;
+// dev keeps 30s to limit AS round trips during demos. Document this in
+// bff-sessions skill.
+const CACHE_TTL_MS = process.env.NODE_ENV === 'production' ? 5_000 : 30_000;
 
 function cacheKey(token: string): string {
-  return createHash('sha256').update(token).digest('hex').slice(0, 24);
+  // Full hex digest — the cosmetic .slice(0, 24) is a 96-bit collision
+  // surface for a cache used in a security-sensitive code path. Memory
+  // cost of the extra 40 hex chars is trivial.
+  return createHash('sha256').update(token).digest('hex');
 }
 
 export class GatewayIntrospectionClient {
