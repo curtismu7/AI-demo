@@ -109,17 +109,67 @@ export async function resolveGatewayToken(
     audience: config.mcpGatewayResourceUri,
   });
 
-  const response = await axios.post(config.tokenEndpoint, params.toString(), {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${credentials}`,
-    },
-    timeout: 10_000,
-  });
+  // HI-03: axios's default Error carries `err.config.data` (the
+  // URL-encoded body containing subject_token + actor_token JWTs) and
+  // `err.request._header` — both leak raw bearer tokens via any caller
+  // that prints `err`, `err.stack`, or JSON.stringifies the thrown error.
+  // Re-throw a sanitized Error so the upstream `console.error('[Agent]
+  // Token exchange failed:', msg)` in index.ts cannot ever emit the body.
+  let response;
+  try {
+    response = await axios.post(config.tokenEndpoint, params.toString(), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${credentials}`,
+      },
+      timeout: 10_000,
+    });
+  } catch (e: any) {
+    const status = e?.response?.status;
+    const detail = e?.response?.data?.error || e?.response?.data?.error_description || e?.message || 'unknown';
+    throw new Error(`token_exchange_failed status=${status ?? 'n/a'} detail=${detail}`);
+  }
 
   const { access_token, expires_in } = response.data;
   if (!access_token) throw new Error('Token exchange response missing access_token');
 
+  // HI-05: assert the returned token is aud-narrowed to the gateway and
+  // (best-effort) that act.sub matches the agent's CC client_id. PingOne
+  // issued the token to us seconds ago, so a decode-without-verify is
+  // sound here — we only need to confirm the policy didn't widen.
+  _assertGatewayTokenShape(access_token, config);
+
   _cache.set(key, access_token, Date.now() + (expires_in || 300) * 1000);
   return access_token;
+}
+
+/**
+ * HI-05: decode the returned gateway token and verify it is narrowed to the
+ * MCP gateway audience and (when present) carries `act.sub` matching this
+ * agent's CC client_id. Throws on aud mismatch; only warns on `act.sub`
+ * mismatch since PingOne policy may not emit `act` in all configurations
+ * (see CLAUDE.md → "Why `act` claim might be absent").
+ */
+function _assertGatewayTokenShape(accessToken: string, config: AgentConfig): void {
+  const parts = accessToken.split('.');
+  if (parts.length !== 3) {
+    throw new Error('token_exchange returned malformed JWT (segments != 3)');
+  }
+  let payload: any;
+  try {
+    payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+  } catch {
+    throw new Error('token_exchange returned JWT with unparseable payload');
+  }
+  const expected = config.mcpGatewayResourceUri;
+  const aud = payload?.aud;
+  const audMatches = Array.isArray(aud) ? aud.includes(expected) : aud === expected;
+  if (!audMatches) {
+    throw new Error(`token_exchange returned wrong aud (expected=${expected})`);
+  }
+  if (payload?.act?.sub && payload.act.sub !== config.clientId) {
+    console.warn(
+      `[Agent] Gateway token act.sub mismatch (got=${payload.act.sub}, expected=${config.clientId}) — delegation chain may be broken`,
+    );
+  }
 }
