@@ -22,6 +22,30 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 
+// HI-03: audit-log every id_token retrieval so a compromised gateway
+// scraping subs against the BFF leaves a forensic trail. Best-effort —
+// failure to log must NEVER block the request path.
+let _appEvents = null;
+function _logIdTokenRetrieval(severity, message, metadata) {
+  if (_appEvents === null) {
+    try { _appEvents = require('../services/appEventService'); }
+    catch (_) { _appEvents = false; }
+  }
+  if (_appEvents && typeof _appEvents.logEvent === 'function') {
+    try { _appEvents.logEvent('oauth', severity, message, { tag: 'oauth/id-token', metadata }); }
+    catch (_) { /* swallow — auditing must not affect the response */ }
+  }
+}
+
+// HI-03: refuse to return id_tokens for sessions that haven't been touched
+// recently. The default window matches the BFF's session activity timeout
+// and lets ops widen / narrow it via env. Five minutes is tight enough to
+// limit any single leaked-secret blast radius without disrupting active
+// chat sessions.
+const ID_TOKEN_MAX_SESSION_STALE_MS = Number(
+  process.env.AGENT_ID_TOKEN_MAX_STALE_MS || 5 * 60 * 1000,
+);
+
 // BL-03: must match banking_mcp_gateway/src/config.ts DEFAULT_BFF_INTERNAL_SECRET.
 // Production startup refuses this literal so the dev fallback can't ship.
 const DEFAULT_INTERNAL_SECRET = 'dev-shared-secret-change-me';
@@ -51,6 +75,10 @@ router.get('/id-token', (req, res) => {
     presentedBuf.length !== INTERNAL_SECRET_BUF.length ||
     !crypto.timingSafeEqual(presentedBuf, INTERNAL_SECRET_BUF)
   ) {
+    _logIdTokenRetrieval('warn', 'id_token request rejected — bad internal secret', {
+      remoteIp: req.ip,
+      hasSubHeader: !!req.headers['x-subject-sub'],
+    });
     return res.status(403).json({ error: 'forbidden' });
   }
 
@@ -58,6 +86,11 @@ router.get('/id-token', (req, res) => {
   // identifies the user via x-subject-sub from the validated MCP token.
   const sub = req.headers['x-subject-sub'];
   if (!sub) return res.status(400).json({ error: 'missing_sub' });
+
+  // Optional correlation header from the gateway so a compromised-gateway
+  // forensic trail can be reconstructed across services.
+  const gatewayRequestId = req.headers['x-gateway-request-id'] || null;
+  const requestedToolName = req.headers['x-tool-name'] || null;
 
   // Read the registered sessionStore. server.js calls app.set('sessionStore', sessionStore)
   // after instantiation (only when a real store is created; memory fallback does NOT
@@ -83,9 +116,39 @@ router.get('/id-token', (req, res) => {
       if (!tokens) return false;
       return tokens.subjectSub === sub || tokens.sub === sub;
     });
-    if (!match) return res.status(404).json({ error: 'session_not_found' });
-    const idToken = match.oauthTokens && match.oauthTokens.idToken;
-    if (!idToken) return res.status(412).json({ error: 'id_token_missing' });
+    if (!match) {
+      _logIdTokenRetrieval('info', 'id_token request: no session matched sub', {
+        sub, gatewayRequestId, toolName: requestedToolName,
+      });
+      return res.status(404).json({ error: 'session_not_found' });
+    }
+    // HI-03: refuse to surface id_tokens for stale sessions. The gateway
+    // is supposed to be online and walking active users; an old session
+    // pulled out of the store for a long-departed user is a defense-in-
+    // depth concern when the shared secret is the only trust boundary.
+    // We use oauthTokens.expiresAt as the freshness proxy because the
+    // session cookie's maxAge is 24h regardless of activity.
+    const tokens = match.oauthTokens;
+    const expiresAt = tokens.expiresAt || 0;
+    const ageMs = Date.now() - expiresAt;
+    if (expiresAt && ageMs > ID_TOKEN_MAX_SESSION_STALE_MS) {
+      _logIdTokenRetrieval('warn', 'id_token request rejected — session stale', {
+        sub, gatewayRequestId, toolName: requestedToolName,
+        accessTokenAgeMs: ageMs,
+        maxStaleMs: ID_TOKEN_MAX_SESSION_STALE_MS,
+      });
+      return res.status(404).json({ error: 'session_not_found', reason: 'session_stale' });
+    }
+    const idToken = tokens.idToken;
+    if (!idToken) {
+      _logIdTokenRetrieval('info', 'id_token request: openid scope missing', {
+        sub, gatewayRequestId, toolName: requestedToolName,
+      });
+      return res.status(412).json({ error: 'id_token_missing' });
+    }
+    _logIdTokenRetrieval('info', 'id_token returned to gateway', {
+      sub, gatewayRequestId, toolName: requestedToolName,
+    });
     return res.json({ idToken });
   });
 });
