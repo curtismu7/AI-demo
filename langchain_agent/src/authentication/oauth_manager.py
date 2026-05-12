@@ -527,27 +527,50 @@ class UserAuthorizationFacilitator:
         logger.info(f"Generated authorization URL for MCP server {mcp_server_id}, session {session_id}")
         return auth_url
     
-    def handle_authorization_callback(self, auth_code: str, state: str) -> Dict[str, Any]:
+    def handle_authorization_callback(
+        self,
+        auth_code: str,
+        state: str,
+        session_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
         Handle authorization callback and prepare data for MCP server.
-        
+
         Args:
             auth_code: The authorization code from the callback
             state: The state parameter from the callback
-            
+            session_id: Optional connection-bound session ID. When provided,
+                validate_state() is invoked to enforce that the state was
+                issued for this exact session — closes the CSRF/replay
+                window flagged in BL-03. When None, only the existence +
+                expiry checks run (legacy callers).
+
         Returns:
             Dict containing authorization info for the MCP server
-            
+
         Raises:
-            ValueError: If state is invalid or expired
+            ValueError: If state is invalid, expired, or (when session_id
+                is supplied) doesn't match the issuing session.
         """
+        # BL-03: when caller can supply session_id, run validate_state() FIRST
+        # so a mismatching session is rejected before we even peek at the
+        # stored auth_info. validate_state has the side-effect of deleting
+        # expired entries; calling it here keeps that contract.
+        if session_id is not None:
+            if not self.validate_state(state, session_id):
+                logger.error(
+                    f"State validation failed in callback "
+                    f"(state={state!r}, session={session_id!r})"
+                )
+                raise ValueError("Invalid, expired, or session-mismatched state parameter")
+
         # Validate state parameter
         if state not in self._pending_authorizations:
             logger.error(f"Invalid state parameter: {state}")
             raise ValueError("Invalid or expired state parameter")
-        
+
         auth_info = self._pending_authorizations[state]
-        
+
         # Check if state has expired
         if datetime.now(timezone.utc) > auth_info["expires_at"]:
             del self._pending_authorizations[state]
@@ -800,21 +823,31 @@ class OAuthAuthenticationManager(AuthenticationProvider):
             mcp_server_id=mcp_server_id
         )
     
-    def handle_user_authorization_callback(self, auth_code: str, state: str) -> Dict[str, Any]:
+    def handle_user_authorization_callback(
+        self,
+        auth_code: str,
+        state: str,
+        session_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
         Handle authorization callback and prepare data for MCP server.
-        
+
         Args:
             auth_code: The authorization code from the callback
             state: The state parameter from the callback
-            
+            session_id: Optional connection-bound session ID. When provided,
+                forwarded to the facilitator so validate_state() enforces a
+                session-binding check (BL-03).
+
         Returns:
             Dict containing authorization info for the MCP server
         """
         if not self._user_auth_facilitator:
             raise RuntimeError("OAuthAuthenticationManager must be used as async context manager")
-        
-        return self._user_auth_facilitator.handle_authorization_callback(auth_code, state)
+
+        return self._user_auth_facilitator.handle_authorization_callback(
+            auth_code, state, session_id=session_id
+        )
     
     def validate_authorization_state(self, state: str, session_id: str) -> bool:
         """

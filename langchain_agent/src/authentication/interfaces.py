@@ -70,8 +70,18 @@ class UserAuthorizationFacilitator(ABC):
         pass
     
     @abstractmethod
-    def handle_authorization_callback(self, auth_code: str, state: str) -> Dict[str, Any]:
-        """Handle authorization callback and prepare data for MCP server."""
+    def handle_authorization_callback(
+        self,
+        auth_code: str,
+        state: str,
+        session_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Handle authorization callback and prepare data for MCP server.
+
+        When session_id is provided, the implementation MUST invoke
+        validate_state(state, session_id) before exchanging the auth code
+        (BL-03 — closes the CSRF/replay window on the OAuth callback).
+        """
         pass
     
     @abstractmethod
