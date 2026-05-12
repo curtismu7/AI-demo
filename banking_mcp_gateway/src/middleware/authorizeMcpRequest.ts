@@ -23,12 +23,10 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
-import { GatewayTokenPolicy, GatewayTokenPolicyError } from '../auth/GatewayTokenPolicy';
 import { PingOneAuthorizeClient } from '../auth/PingOneAuthorizeClient';
 import { McpTokenExchangeClient } from '../auth/McpTokenExchangeClient';
-import { GatewayIntrospectionClient, type IntrospectionResult } from '../auth/GatewayIntrospectionClient';
-import type { DecodedGatewayToken } from '../tokenValidator';
-import jwt from 'jsonwebtoken';
+import { GatewayIntrospectionClient } from '../auth/GatewayIntrospectionClient';
+import { runMcpAuthorizationPipeline } from '../auth/authorizeMcpRequestCore';
 import type { McpRequestMiddleware } from '../server/GatewayServer';
 import type { GatewayConfig } from '../config';
 import { getScopesForGatewayTool } from '../auth/toolScopes';
@@ -47,6 +45,7 @@ interface JsonRpcBody {
 
 interface GwAuditTrail {
   introspection: { active: boolean; skipped?: boolean; sub?: string; exp?: number; error?: string } | null;
+  policy: { passed: boolean; error?: string } | null;
   authorize: { decision: string; reason?: string } | null;
   exchange: { targetAud: string } | null;
 }
@@ -87,6 +86,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
 
     const auditTrail: GwAuditTrail = {
       introspection: null,
+      policy: null,
       authorize: null,
       exchange: null,
     };
@@ -100,16 +100,15 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       }
     };
 
-    // ── Step 0: RFC 7662 active-token introspection ───────────────────────────────
-    const introspResult = await introspectionClient.introspect(bearerToken);
-    auditTrail.introspection = {
-      active: introspResult.active,
-      skipped: introspResult.skipped,
-      sub: introspResult.sub,
-      exp: introspResult.exp,
-      error: introspResult.error,
-    };
-    if (!introspResult.active && !introspResult.skipped) {
+    // ── Steps 0 + 1: transport-agnostic pipeline (introspection + policy) ─────
+    // Delegated to authorizeMcpRequestCore so the same checks run on the WS
+    // transport path (BL-02). HTTP-specific rendering (writeHead, WWW-Authenticate,
+    // JSON body shape) stays here; the core only returns a tagged decision.
+    const pipelineResult = await runMcpAuthorizationPipeline(bearerToken, introspectionClient, config);
+    auditTrail.introspection = pipelineResult.audit.introspection;
+    auditTrail.policy = pipelineResult.audit.policy;
+
+    if (pipelineResult.kind === 'introspection_failed') {
       setAuditHeader(res);
       res.writeHead(401, {
         'Content-Type': 'application/json',
@@ -124,27 +123,22 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       return;
     }
 
-    // ── Step 1: Decode claims + apply gateway token policy ─────────────────────
-    // Note: GatewayServer already validated aud/exp before invoking middleware.
-    // Here we jwt.decode (no re-throw on aud/exp) to extract sub/act for Authorize.
-    let decoded: DecodedGatewayToken;
-    try {
-      const raw = jwt.decode(bearerToken) as DecodedGatewayToken | null;
-      if (!raw || !raw.sub) throw new GatewayTokenPolicyError('Empty or missing token payload', 'invalid_token');
-      decoded = raw;
-      GatewayTokenPolicy.validate(decoded, config);
-    } catch (err) {
-      if (err instanceof GatewayTokenPolicyError) {
-        setAuditHeader(res);
-        res.writeHead(401, {
-          'Content-Type': 'application/json',
-          'WWW-Authenticate': `Bearer realm="PingOne", resource_metadata="${config.gatewayResourceUri}/.well-known/mcp-server", error="${err.code}", error_description="${err.message}"`,
-        });
-        res.end(JSON.stringify({ error: err.code, message: err.message, required_scopes: ['banking:read'], login_required: true }));
-        return;
-      }
-      throw err;
+    if (pipelineResult.kind === 'policy_violation') {
+      setAuditHeader(res);
+      res.writeHead(401, {
+        'Content-Type': 'application/json',
+        'WWW-Authenticate': `Bearer realm="PingOne", resource_metadata="${config.gatewayResourceUri}/.well-known/mcp-server", error="${pipelineResult.code}", error_description="${pipelineResult.message}"`,
+      });
+      res.end(JSON.stringify({
+        error: pipelineResult.code,
+        message: pipelineResult.message,
+        required_scopes: ['banking:read'],
+        login_required: true,
+      }));
+      return;
     }
+
+    const decoded = pipelineResult.decoded;
 
     // ── Step 2: Parse JSON-RPC to get method, tool name, and transaction args ──────
     const { method = 'unknown', params } = parseJsonRpcBody(body);

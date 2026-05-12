@@ -33,6 +33,8 @@ import { createHitlChallenge, getHitlChallengeStatus } from './hitlClient';
 import { GatewayServer } from './server/GatewayServer';
 import { buildAuthorizeMcpRequest } from './middleware/authorizeMcpRequest';
 import { getScopesForGatewayTool, getChallengeTypeForTool } from './auth/toolScopes';
+import { GatewayIntrospectionClient } from './auth/GatewayIntrospectionClient';
+import { runMcpAuthorizationPipeline } from './auth/authorizeMcpRequestCore';
 
 let config: GatewayConfig;
 try {
@@ -44,6 +46,13 @@ try {
 
 // BL-03: refuse the committed dev fallback secret in production.
 assertProductionSecrets(config);
+
+// BL-02: single introspection client shared between the HTTP middleware
+// (built later via buildAuthorizeMcpRequest) and the WebSocket handler.
+// The WS path now runs the same RFC 7662 + GatewayTokenPolicy pre-checks
+// the HTTP path has always run — including the D-05 anti-bypass invariant
+// (rejects tokens whose aud is an upstream MCP-server URI).
+const wsIntrospectionClient = new GatewayIntrospectionClient(config);
 
 // ---------------------------------------------------------------------------
 // BL-01: timing-safe internal-secret check. Mirrors the BFF pattern in
@@ -240,6 +249,44 @@ function jsonRpcError(id: unknown, code: number, message: string, data?: unknown
   return JSON.stringify({ jsonrpc: '2.0', id: id ?? null, error: { code, message, ...(data ? { data } : {}) } });
 }
 
+/**
+ * BL-02: run the transport-agnostic introspection + GatewayTokenPolicy pipeline
+ * on the WS path. The HTTP middleware (authorizeMcpRequest.ts) runs the same
+ * core; pulling it out into authorizeMcpRequestCore means BOTH transports
+ * enforce:
+ *   - RFC 7662 active-token introspection
+ *   - sub / act.sub identity invariants
+ *   - D-05 anti-bypass — token aud cannot equal an upstream MCP-server URI
+ *
+ * Returns true on PERMIT, or false after writing a JSON-RPC error envelope.
+ * The caller MUST return immediately on false.
+ */
+async function runWsAuthorizationPipeline(
+  token: string,
+  id: unknown,
+  send: (s: string) => void,
+): Promise<boolean> {
+  const result = await runMcpAuthorizationPipeline(token, wsIntrospectionClient, config);
+  if (result.kind === 'authorized') return true;
+
+  if (result.kind === 'introspection_failed') {
+    send(jsonRpcError(id, -32001, 'Token is revoked or no longer active (RFC 7662)', {
+      error: 'login_required',
+      required_scopes: ['banking:read'],
+      login_required: true,
+    }));
+    return false;
+  }
+
+  // policy_violation — includes the D-05 anti-bypass case
+  send(jsonRpcError(id, -32001, result.message, {
+    error: result.code,
+    required_scopes: ['banking:read'],
+    login_required: true,
+  }));
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // BFF id_token retrieval — server-to-server only; never called from browser
 // ---------------------------------------------------------------------------
@@ -287,6 +334,10 @@ async function handleMessage(
       send(jsonRpcError(id, -32001, ve.message));
       return;
     }
+
+    // BL-02: run the shared introspection + policy pipeline. Closes the WS
+    // bypass for tokens whose aud is an upstream MCP-server URI.
+    if (!(await runWsAuthorizationPipeline(token, id, send))) return;
 
     const authz = await guardToolsList(decoded, config);
     if (!authz.permitted) {
@@ -349,6 +400,11 @@ async function handleMessage(
       }));
       return;
     }
+
+    // BL-02: run the shared introspection + policy pipeline. The D-05
+    // anti-bypass check in GatewayTokenPolicy now blocks WS tokens that
+    // carry mcpOlbResourceUri (or any upstream MCP-server URI) in aud.
+    if (!(await runWsAuthorizationPipeline(token, id, send))) return;
 
     const msgParams = msg.params as { name?: string; arguments?: Record<string, unknown> } | undefined;
     const toolName: string = msgParams?.name || '';
