@@ -1485,6 +1485,8 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
 
 let _bypassCache = null; // { devBypass: boolean, ts: number } | null
 const BYPASS_CACHE_TTL_MS = 30_000;
+// BL-04: one-time warn when the dev-only insecure flag is honored.
+let _warnedInsecureProbe = false;
 
 /**
  * Resolve the final audience for Exchange #2 of the two-exchange delegation flow.
@@ -1516,7 +1518,26 @@ async function _resolveFinalMcpAudience(gatewayAud, mcpServerAud) {
     const healthResult = await new Promise((resolve, reject) => {
       const isHttps = baseUrl.startsWith('https://');
       const httpModule = isHttps ? require('https') : require('http');
-      const req = httpModule.get(`${baseUrl}/health`, { rejectUnauthorized: false }, (res) => {
+      // BL-04: TLS verification on by default. The previous unconditional
+      // `rejectUnauthorized: false` let a MITM on the BFF↔gateway path flip
+      // this probe's perception of `devBypass`, downgrading audience selection
+      // to direct-to-MCP-server (bypassing the gateway entirely).
+      //
+      // Dev escape hatch: only when explicitly opted in via
+      // GATEWAY_HEALTH_PROBE_INSECURE=true AND NODE_ENV != 'production'.
+      // Production hard-ignores the flag.
+      const insecureFlag = process.env.GATEWAY_HEALTH_PROBE_INSECURE === 'true';
+      const isProd = process.env.NODE_ENV === 'production';
+      const allowInsecure = insecureFlag && !isProd;
+      if (allowInsecure && !_warnedInsecureProbe) {
+        console.warn(
+          '[TwoExchange] ⚠️  GATEWAY_HEALTH_PROBE_INSECURE=true and NODE_ENV is non-production — ' +
+          'TLS verification on /health probe is DISABLED. Never set this flag in production.',
+        );
+        _warnedInsecureProbe = true;
+      }
+      const httpsOpts = isHttps && allowInsecure ? { rejectUnauthorized: false } : {};
+      const req = httpModule.get(`${baseUrl}/health`, httpsOpts, (res) => {
         let data = '';
         res.on('data', (chunk) => { data += chunk; });
         res.on('end', () => {
