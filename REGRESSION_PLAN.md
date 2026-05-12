@@ -102,6 +102,73 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-12 — Agent-code review HIGH fixes (21 of 25) — gateway + agent-service + LangChain + UI hardening pass
+
+Follow-up to the BLOCK pass on the same day (entry immediately below this
+one). Single rolled-up entry for the HIGH findings from
+`.planning/code-reviews/agent-code-review-2026-05-12/`. Each finding is
+its own atomic commit; per-commit messages have the full rationale.
+Findings explicitly skipped or deferred are listed at the bottom.
+
+**Summary of fixes shipped (21):**
+
+| Subsystem | Finding | Commit | Files |
+|---|---|---|---|
+| UI | H1 — `err.message.includes` crash | `95e1014c` | `banking_api_ui/src/components/BankingAgent.js` |
+| UI | H2 — `<a>` escaped by MarkdownContent → broken Sign in CTA | `95e1014c` | `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/components/shared/MarkdownText.js` |
+| UI | H3 — dead `runActionRef` | `95e1014c` | `banking_api_ui/src/components/BankingAgent.js` |
+| agent-service | HI-01 — actor-token cache race (in-flight Promise) | `d09dc0fb` | `banking_agent_service/src/agentIdentity.ts` |
+| agent-service | HI-03 — axios errors leak request body (subject/actor tokens) | `d09dc0fb`, `5d220267` | `banking_agent_service/src/agentIdentity.ts`, `banking_agent_service/src/tokenResolver.ts` |
+| agent-service | HI-04 — subject_token shape validation (JWT 3-segment + exp pre-check) | `ace19969` | `banking_agent_service/src/index.ts` |
+| agent-service | HI-05 — assert returned aud / act.sub on exchanged token | `5d220267` | `banking_agent_service/src/tokenResolver.ts` |
+| LangChain | HI-01 — WS max_size + Origin allowlist | `8201432d` | `langchain_agent/src/main.py` |
+| LangChain | HI-02 — TokenManager refresh asyncio.Lock | `f29e432d` | `langchain_agent/src/authentication/oauth_manager.py` |
+| LangChain | HI-04 — refuse `ws://` MCP endpoints in production | `4fbc20ff` | `langchain_agent/src/config/settings.py` |
+| LangChain | HI-05 — persist generated encryption salt | `921dd795` | `langchain_agent/src/security/encryption.py` |
+| LangChain | HI-06 — refuse ambiguous user_id matches | `498c98d9` | `langchain_agent/src/agent/langchain_mcp_agent.py` |
+| LangChain | HI-07 — tz-aware datetimes in conversation_memory | `beb05581` | `langchain_agent/src/agent/conversation_memory.py` |
+| LangChain | HI-08 — O_NOFOLLOW on secure_storage open paths | `c42b408a` | `langchain_agent/src/storage/secure_storage.py` |
+| gateway | HI-01 — narrow introspection TTL in prod + full SHA-256 cache key | `725a532e` | `banking_mcp_gateway/src/auth/GatewayIntrospectionClient.ts` |
+| BFF (gateway-related) | HI-03 — audit + freshness gate on `/internal/id-token` | `ebf9224b` | `banking_api_server/routes/agentIdToken.js` |
+| gateway | HI-04 — partial-results `_meta` on tools/list aggregator | `e3a7aee9` | `banking_mcp_gateway/src/index.ts` |
+| gateway | HI-06 — cap token-exchange caches w/ FIFO+sweep eviction | `5bbffcb6` | `banking_mcp_gateway/src/tokenExchange.ts`, `banking_mcp_gateway/src/auth/McpTokenExchangeClient.ts` |
+| gateway | HI-07 — WS maxPayload + Origin verifyClient | `a68ba62d` | `banking_mcp_gateway/src/index.ts` |
+| gateway | HI-08 — refuse devBypass=true on production startup | `e1f04a12` | `banking_mcp_gateway/src/config.ts` |
+| gateway | HI-09 — surface PingAuthorize decision_id / policy_version | `2b97ebaa` | `banking_mcp_gateway/src/auth/PingOneAuthorizeClient.ts` |
+
+**Already-fixed-in-pass-1 (1):**
+- agent-service HI-02 (`mcpGatewayClient.connect()` no timeout / double-resolve) — the BLOCK BL-01 fix (`fedf0aac`) already added the 10s `CONNECT_TIMEOUT_MS` and the `settled` flag.
+
+**Deferred (3):**
+- LangChain HI-03 (refresh-on-401 from MCP server) — semantic ambiguity: JSON-RPC `-32001` is currently treated as "user OAuth needed" and triggers the user authorization flow. Distinguishing "stale agent token" from "user grant missing" is a real semantic gap that's larger than a minimal-diff fix.
+- gateway HI-02 (JWKS signature verification in `validateInboundToken`) — adds a new dep (`jwks-rsa` or similar), requires test-infrastructure changes, and the BL-02 fix already runs introspection on the WS path so the original "signature check needed on WS because introspection doesn't" gap is closed.
+- gateway HI-05 (per-step `'pending'` → `'ok'` in dual_token tokenEvents) — current code emits the events array only on the success branch (`identityResp.status < 400`), so the static `status: 'ok'` claims are factually correct for the path taken. The refactor to track per-step status is future-proofing, not a current correctness fix.
+
+**What was broken (rolled up):** Three classes of HIGH defect across four subsystems — (1) **error-surface leaks** (axios errors carrying subject/actor tokens, BFF id_token retrieval with no audit), (2) **race-on-cold-start / unbounded-resource** (actor-token cache race, TokenManager unlocked refresh, two unbounded MCP exchange Maps), (3) **transport-layer hardening gaps** (WS max payload, WS Origin check, plain `ws://` in production, ambiguous user_id match). The UI HIGH set was three independent bugs: a crash on errors without `.message`, a broken markdown-vs-HTML sign-in link, and dead-code ref maintenance trap.
+
+**What was fixed (rolled up):** Each fix lives in its own atomic commit with full rationale. The minimal-diff bar held: no new dependencies, no refactors beyond the immediate concern. Verification per finding is on the per-commit messages.
+
+**Verify (rolled up):**
+- `cd banking_api_ui && npm run build` → exit 0
+- `cd banking_agent_service && npx tsc --noEmit` → clean
+- `cd banking_mcp_gateway && npx tsc --noEmit && npm test` → **`47 passed, 3 suites`**
+- `python3 -c "import ast; [ast.parse(open(f).read()) for f in [...]]"` → exit 0 for every Python file touched
+
+**Do not break:**
+- Do not remove the `_inflightActorToken` promise cache in `banking_agent_service/src/agentIdentity.ts`. Cold-start parallelism is a real demo scenario, and PingOne will rate-limit if the agent fires N parallel CC grants.
+- Do not unwrap the `try/catch` around the `axios.post(...)` calls in `banking_agent_service/src/{agentIdentity,tokenResolver}.ts`. Axios's default Error carries `err.config.data` which is the URL-encoded body containing raw subject/actor JWTs.
+- Do not skip `_validateSubjectTokenShape` in `banking_agent_service/src/index.ts::requireBearerToken`. Forwarding any opaque string to PingOne as `subject_token` is both a DoS vector and a debug-leak risk.
+- Do not skip `_assertGatewayTokenShape` in `banking_agent_service/src/tokenResolver.ts`. A misconfigured PingOne policy that widens the returned aud is exactly the kind of silent drift this check catches at the boundary.
+- Do not drop the `asyncio.Lock` in `langchain_agent/src/authentication/oauth_manager.py::TokenManager`. Concurrent MCP tool calls (one turn → many tools) are common and will trip PingOne 429 without the lock.
+- Do not silently regenerate the encryption salt in `langchain_agent/src/security/encryption.py::_get_or_generate_salt`. The previous behavior — fresh `os.urandom(16)` on every restart — made at-rest encrypted data permanently undecryptable.
+- Do not return the first-match user in `langchain_agent/src/agent/langchain_mcp_agent.py::initialize_session_with_user_id`. Multiple matches must raise — IDs are unique, and silently binding the wrong identity to a chat session is the worst-case failure mode for this code path.
+- Do not relax the production refusal of `MCP_GW_DEV_BYPASS=true` in `banking_mcp_gateway/src/config.ts::assertProductionSecrets`. Dev bypass forwards inbound user tokens unchanged — this MUST never run in production.
+- Do not relax the WS `verifyClient` or `maxPayload` in `banking_mcp_gateway/src/index.ts`. The Origin allowlist mirrors the HTTP transport's `GatewayServer.validateCors`; without it, browser-cross-origin attackers can open the WS transport.
+- Do not drop the audit-log calls or stale-session refusal in `banking_api_server/routes/agentIdToken.js`. The shared internal secret IS the trust boundary; without these, a compromised gateway can scrape id_tokens with zero forensic trail.
+- Do not put back the `.slice(0, N)` truncations on any SHA-256 cache key in the gateway (`tokenExchange.ts`, `McpTokenExchangeClient.ts`, `GatewayIntrospectionClient.ts`). Same principle as agent-service BL-02 — token-isolation primitives must not be probabilistic.
+
+---
+
 ### 2026-05-12 — Agent-code review BLOCK fixes (10 of 10) — gateway + agent-service + LangChain hardening pass
 
 This is a single rolled-up entry for the ten BLOCK findings from
