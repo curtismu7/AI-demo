@@ -363,7 +363,10 @@ class TestChatWebSocketHandler:
         session_id = "test-session-1"
         mock_websocket = MockWebSocket()
         websocket_handler._connections[connection_id] = mock_websocket
-        
+        # BL-04: bind session_id to the connection metadata first. _handle_auth_response
+        # now reads the authenticated session from connection_metadata, not the body.
+        websocket_handler._connection_metadata[connection_id] = {"session_id": session_id}
+
         # Mock the auth response notification
         with patch.object(websocket_handler, '_notify_auth_response') as mock_notify:
             message = {
@@ -374,17 +377,67 @@ class TestChatWebSocketHandler:
                 "_connection_id": connection_id,
                 "_timestamp": datetime.now(timezone.utc).isoformat()
             }
-            
+
             await websocket_handler._handle_auth_response(message)
-        
+
         # Should send acknowledgment
         assert len(mock_websocket.sent_messages) == 1
         response = json.loads(mock_websocket.sent_messages[0])
         assert response["type"] == "auth_received"
         assert response["session_id"] == session_id
-        
+
         # Should notify about auth response
         mock_notify.assert_called_once_with(session_id, "test-auth-code", "test-state")
+
+    async def test_handle_auth_response_rejects_body_session_mismatch(self, websocket_handler):
+        """BL-04: reject when message body session_id differs from connection-bound session."""
+        connection_id = "test-conn-1"
+        bound_session = "real-session-A"
+        mock_websocket = MockWebSocket()
+        websocket_handler._connections[connection_id] = mock_websocket
+        websocket_handler._connection_metadata[connection_id] = {"session_id": bound_session}
+
+        with patch.object(websocket_handler, '_notify_auth_response') as mock_notify:
+            message = {
+                "type": "auth_response",
+                "session_id": "attacker-session-B",  # tampered
+                "auth_code": "test-auth-code",
+                "state": "test-state",
+                "_connection_id": connection_id,
+                "_timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            await websocket_handler._handle_auth_response(message)
+
+        # No notification, error sent instead.
+        mock_notify.assert_not_called()
+        assert len(mock_websocket.sent_messages) == 1
+        response = json.loads(mock_websocket.sent_messages[0])
+        assert response["type"] == "error"
+        assert response["error_code"] == "session_id_mismatch"
+
+    async def test_handle_auth_response_rejects_unbound_connection(self, websocket_handler):
+        """BL-04: reject when connection has not been bound to a session via session_init."""
+        connection_id = "test-conn-1"
+        mock_websocket = MockWebSocket()
+        websocket_handler._connections[connection_id] = mock_websocket
+        # NOTE: no _connection_metadata entry — connection never ran session_init.
+
+        with patch.object(websocket_handler, '_notify_auth_response') as mock_notify:
+            message = {
+                "type": "auth_response",
+                "session_id": "some-session",
+                "auth_code": "test-auth-code",
+                "state": "test-state",
+                "_connection_id": connection_id,
+                "_timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            await websocket_handler._handle_auth_response(message)
+
+        mock_notify.assert_not_called()
+        assert len(mock_websocket.sent_messages) == 1
+        response = json.loads(mock_websocket.sent_messages[0])
+        assert response["type"] == "error"
+        assert response["error_code"] == "invalid_session"
     
     async def test_send_message_to_session_success(self, websocket_handler):
         """Test sending message to session successfully."""

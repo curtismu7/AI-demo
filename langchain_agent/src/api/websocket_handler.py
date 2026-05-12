@@ -358,37 +358,73 @@ class ChatWebSocketHandler:
     async def _handle_auth_response(self, message: Dict[str, Any]) -> None:
         """
         Handle authorization response from user.
-        
+
         Args:
             message: The message data
         """
         connection_id = message["_connection_id"]
         websocket = self._connections.get(connection_id)
-        
+
         if not websocket:
             return
-        
+
         try:
-            session_id = message.get("session_id")
+            # BL-04: the session_id is taken from the WebSocket connection
+            # metadata (set during _handle_session_init or _handle_chat_message).
+            # NEVER trust the session_id field carried in the message body —
+            # an attacker controlling one WebSocket could inject another user's
+            # session_id and bind a stolen auth_code to their account.
+            connection_session_id = None
+            if connection_id in self._connection_metadata:
+                connection_session_id = self._connection_metadata[connection_id].get("session_id")
+
+            if not connection_session_id:
+                logger.warning(
+                    f"Auth response received on connection {connection_id} "
+                    f"with no bound session_id — rejecting"
+                )
+                await self._send_error(
+                    websocket,
+                    "invalid_session",
+                    "WebSocket has no authenticated session — call session_init first",
+                )
+                return
+
+            # If the client carried a session_id in the body, it MUST match the
+            # connection-bound one. Mismatch is a tampering signal — refuse.
+            body_session_id = message.get("session_id")
+            if body_session_id is not None and body_session_id != connection_session_id:
+                logger.warning(
+                    f"Auth response session_id mismatch on connection {connection_id}: "
+                    f"body={body_session_id!r} bound={connection_session_id!r}"
+                )
+                await self._send_error(
+                    websocket,
+                    "session_id_mismatch",
+                    "session_id in message body does not match the WebSocket's authenticated session",
+                )
+                return
+
+            session_id = connection_session_id
             auth_code = message.get("auth_code")
             state = message.get("state")
-            
-            if not session_id or not auth_code:
-                await self._send_error(websocket, "invalid_auth", "Session ID and auth code are required")
+
+            if not auth_code:
+                await self._send_error(websocket, "invalid_auth", "auth_code is required")
                 return
-            
+
             # Send acknowledgment
             await self._send_message(websocket, {
                 "type": "auth_received",
                 "session_id": session_id,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             })
-            
+
             # Notify message processor about auth response
             await self._notify_auth_response(session_id, auth_code, state)
-            
+
             logger.info(f"Processed auth response for session {session_id}")
-            
+
         except Exception as e:
             logger.error(f"Error handling auth response: {e}")
             await self._send_error(websocket, "auth_error", "Failed to process authorization response")
