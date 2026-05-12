@@ -25,6 +25,14 @@ export type AuthzDecisionOutcome = 'PERMIT' | 'DENY' | 'INDETERMINATE';
 export interface AuthzDecision {
   decision: AuthzDecisionOutcome;
   reason?: string;
+  // HI-09: surface decision metadata for the audit trail. PingAuthorize
+  // returns a unique decision_id / policy_version per evaluation — without
+  // these, a stale or replayed PERMIT cannot be distinguished from a
+  // fresh one. Optional because dev/no-authz mode and PA error paths
+  // don't carry them.
+  decisionId?: string;
+  policyVersion?: string;
+  traceId?: string;
 }
 
 export interface ToolArgs {
@@ -81,11 +89,20 @@ export class PingOneAuthorizeClient {
       );
 
       const outcome: string = response.data?.decision ?? 'DENY';
-      if (outcome === 'PERMIT') return { decision: 'PERMIT' };
+      // HI-09: lift decision_id / policy_version / trace_id off the
+      // response so downstream audit logs can attribute the PERMIT to a
+      // specific policy evaluation. PingAuthorize naming varies (decision_id
+      // vs decisionId; policy_version vs policyVersion); accept either.
+      const meta = {
+        decisionId: (response.data?.decision_id ?? response.data?.decisionId) as string | undefined,
+        policyVersion: (response.data?.policy_version ?? response.data?.policyVersion) as string | undefined,
+        traceId: (response.data?.trace_id ?? response.data?.traceId) as string | undefined,
+      };
+      if (outcome === 'PERMIT') return { decision: 'PERMIT', ...meta };
       if (outcome === 'INDETERMINATE') {
-        return { decision: 'INDETERMINATE', reason: 'HITL_REQUIRED' };
+        return { decision: 'INDETERMINATE', reason: 'HITL_REQUIRED', ...meta };
       }
-      return { decision: 'DENY', reason: `PingAuthorize decision: ${outcome}` };
+      return { decision: 'DENY', reason: `PingAuthorize decision: ${outcome}`, ...meta };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn('[PingOneAuthorizeClient] Authorize endpoint unavailable — failing closed:', msg);
