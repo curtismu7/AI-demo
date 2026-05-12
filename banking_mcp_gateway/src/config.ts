@@ -137,4 +137,18 @@ export function assertProductionSecrets(cfg: GatewayConfig): void {
     );
     process.exit(1);
   }
+  // HI-08: dev bypass forwards the inbound user token unchanged. This is
+  // a localhost-only debugging affordance and must never run on a
+  // production deploy. The /admin/config route already refuses to flip
+  // devBypass=true (BL-01); this catches the env-var startup path so the
+  // gateway exits non-zero rather than silently shipping in bypass mode.
+  if (cfg.devBypass) {
+    // eslint-disable-next-line no-console
+    console.error(
+      '[GW] FATAL: MCP_GW_DEV_BYPASS=true and NODE_ENV=production. ' +
+      'Dev bypass forwards inbound bearer tokens with zero policy evaluation. ' +
+      'Refusing to start.',
+    );
+    process.exit(1);
+  }
 }
