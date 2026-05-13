@@ -1255,26 +1255,36 @@ class PingOneProvisionService {
         steps.push({ step: 'admin-config', icon: '✅', message: 'Admin application configured with token exchange' });
         onStep(steps[steps.length - 1]);
       } else {
-        // Existing admin app — refresh redirect URI AND reconcile auth method.
-        // See the matching user-app branch below for the rationale: the BFF sends
-        // creds in the body (post), so any app drift to CLIENT_SECRET_BASIC breaks
-        // login. Important for migration: archived apps may still point at
-        // api.pingdemo.com; we sync to current host.
+        // Existing admin app — refresh redirect URI AND reconcile auth method
+        // AND reconcile grant types. The BFF's performTokenExchange authenticates
+        // as the Admin app when calling PingOne's token-exchange endpoint
+        // (oauthService.js performTokenExchange → config.clientId = admin_client_id).
+        // If the Admin app is missing TOKEN_EXCHANGE in its grantTypes, PingOne
+        // returns "Token exchange can only be used to issue tokens for custom
+        // resources" / "Unsupported grant type" — even though the target resource
+        // server IS custom. This block reconciles all three on rerun so an
+        // existing app created with only ['authorization_code','refresh_token']
+        // gets upgraded to the full grant set that fresh-install adds at line ~1242.
         const targetUri = `${config.publicAppUrl}/api/auth/oauth/callback`;
+        const requiredGrants = ['AUTHORIZATION_CODE', 'REFRESH_TOKEN', 'TOKEN_EXCHANGE'];
         const currentUris = adminAppResult.application.redirectUris || [];
         const currentAuthMethod = String(adminAppResult.application.tokenEndpointAuthMethod || '').toUpperCase();
+        const currentGrants = new Set((adminAppResult.application.grantTypes || []).map(g => String(g).toUpperCase()));
         const needsUriUpdate = !currentUris.includes(targetUri);
         const needsAuthMethodUpdate = currentAuthMethod !== 'CLIENT_SECRET_POST';
-        if (needsUriUpdate || needsAuthMethodUpdate) {
+        const needsGrantsUpdate = requiredGrants.some(g => !currentGrants.has(g));
+        if (needsUriUpdate || needsAuthMethodUpdate || needsGrantsUpdate) {
           const drifts = [
             needsUriUpdate ? `redirect URI → ${targetUri}` : null,
             needsAuthMethodUpdate ? `auth method (${currentAuthMethod || 'unset'} → CLIENT_SECRET_POST)` : null,
+            needsGrantsUpdate ? `grants → [${requiredGrants.join(',')}]` : null,
           ].filter(Boolean).join(', ');
           steps.push({ step: 'admin-config', icon: '🔁', message: `Refreshing admin app: ${drifts}` });
           onStep(steps[steps.length - 1]);
           const patch = {};
           if (needsUriUpdate) patch.redirectUris = [targetUri];
           if (needsAuthMethodUpdate) patch.tokenEndpointAuthMethod = 'client_secret_post';
+          if (needsGrantsUpdate) patch.grantTypes = requiredGrants;
           await this.updateApplication(adminAppResult.application.id, patch);
           steps.push({ step: 'admin-config', icon: '✅', message: 'Admin application reconciled' });
           onStep(steps[steps.length - 1]);
