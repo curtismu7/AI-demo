@@ -102,6 +102,35 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-13 — Agent chat: "Check Balance" duplicate response, RFC links, and Helix-not-configured chip UX
+
+**Files changed:**
+- `banking_api_ui/src/components/BankingAgent.js` — line ~4540: `addMessage("assistant", formatHttpTrace(...))` → `addMessage("token-event", formatHttpTrace(...))`. Every successful read action (Check Balance, My Accounts, Transactions, Show Mortgage Data) was rendering two assistant bubbles in chat: the formatted result followed by the JSON request/response trace. The trace is debug content; users with the "RFC info" checkbox off saw it as a duplicate response. Token-event role gates it through the existing render filter at line ~8120.
+- `banking_api_ui/src/components/BankingAgent.js` — chip onClick at line ~6480: when `result.kind === "none"` AND `selectedLlmProvider !== "heuristic"`, replace the generic "I didn't recognize that. Try one of: balance, accounts, …" with a clearer hint pointing at the Helix tab. The Advanced Analysis chips (Time-Based, Amount-Based, Spending Analysis, Category Analysis, Smart Insights) need an LLM provider; when none is configured the BFF falls back to heuristics and returns the unhelpful message — now users see "This chip needs an LLM (Helix or Ollama) to interpret freeform questions, but no provider is configured. Open the Helix tab…".
+- `banking_api_ui/src/config/rfcLinks.js` — added 7 RFCs that the chat references but had no link config: 6750 (Bearer Token Usage), 7515 (JWS), 7519 (JWT), 7591 (Dynamic Client Registration), 7662 (Token Introspection), 8707 (Resource Indicators), 9470 (Step Up Authentication). Reordered numerically.
+- `banking_api_ui/src/components/shared/MarkdownText.js` — `InlineMd` now auto-detects `RFC NNNN` (and optional `§N.N` section) patterns inside text, bold, or italic runs and wraps them in a clickable `RfcLink` when the RFC is in `RFC_LINKS`. Backtick code spans are unchanged — they still render as inline code, never as a link, so a literal backticked `` `RFC 8693` `` keeps its code styling.
+
+**What was broken:**
+1. **Duplicate response on Check Balance.** Click → "balance" → assistant bubble "Balance: $X" → second assistant bubble dumping the GET /accounts/X/balance request and response as JSON. The trace was added with role `"assistant"` so the existing RFC-checkbox gate at the render filter didn't apply to it.
+2. **RFCs in chat token-event messages were plain text.** The tokenMsg verification grid at line ~4376 referenced "RFC 8693", "RFC 7662", "RFC 7515", "RFC 8707" etc. with no links — even though `RfcLink` and `RFC_LINKS` exist and are used in NarrativePanel/TokenDiffPanel. Users had no easy way to read the cited specs.
+3. **Advanced Analysis chips silently failed when Helix wasn't set up.** The 24 LLM chips ("Big Purchases", "Spending Habits", etc.) were unrecognised by the heuristic parser (correct — they're conversational), so the BFF returned `kind:"none"` with a long fallback message that mentioned configuration but didn't tell users *which* chip group needed the LLM or *where* to configure it.
+
+**What was fixed:**
+1. HTTP trace is now `token-event` and gated by the same "RFC info" checkbox as the verification grid. With the checkbox off, Check Balance produces exactly one assistant bubble: "Balance: $X". With the checkbox on, both the verification grid and the trace render — debugging UX is unchanged.
+2. Any "RFC NNNN" or "RFC NNNN §X.Y" in chat text is now a clickable link (when the RFC is in `RFC_LINKS`). The verification grid lines like "✅ RFC 8693  Token Exchange…" have working links to rfc-editor.org. Backticked code spans are preserved untouched.
+3. Clicking an LLM-only chip with no provider configured now produces a clear hint: "This chip needs an LLM (Helix or Ollama)… Open the Helix tab in the agent and add base_url + api_key + agent_id, or pick a different chip from "Quick Actions"…".
+
+**Verify:**
+- `cd banking_api_ui && npm run build` → exit 0 (this PR)
+- `curl -sk -X POST https://api.ping.demo:3001/api/banking-agent/nl -H "Content-Type: application/json" -d '{"message":"balance","provider":"heuristic"}'` → returns `{"source":"heuristic","result":{"kind":"banking","banking":{"action":"balance"}}}`. Same shape for all 6 heuristic chips (accounts, transactions, transfer, transfer-with-amount, mortgage_demo).
+- Manual smoke (after relaunching UI): sign in as user, click Check Balance with RFC checkbox OFF → exactly one assistant bubble "Balance: $X". Toggle RFC checkbox ON → verification grid + HTTP trace appear, "RFC 8693" / "RFC 7662" etc. are clickable links. Click an Advanced Analysis chip → either get a real LLM answer (if Helix configured) or the new "configure Helix" hint (if not).
+
+**Do not break:**
+- Do not change the role of the success HTTP trace back to `"assistant"`. The "RFC info" checkbox at line ~8120 is the gate for both the verification grid and the trace; both must share that gate to keep Check Balance from looking duplicated. If a future change wants the trace visible by default, add a separate toggle — don't widen the gate to all read actions.
+- Do not delete `RFC_LINKS` entries for 6750, 7515, 7519, 7591, 7662, 8707, 9470. The chat references them in token-event messages; a missing entry causes `RfcLink` to render nothing (silent dead text instead of a link).
+- Do not weaken the `isAgentBlockedByConsentDecline()` check above the chip onClick — it must run BEFORE the new "configure Helix" hint logic so the consent-block message still wins when applicable.
+- Do not change `InlineMd`'s backtick handling. Backticks still render as `<code>` spans regardless of content; only the bold / italic / unstyled runs are scanned for "RFC NNNN" patterns. A backticked `` `RFC 8693` `` deliberately stays as code, not a link, because that's how docs reference identifiers literally.
+
 ### 2026-05-12 — Agent-code review HIGH fixes (21 of 25) — gateway + agent-service + LangChain + UI hardening pass
 
 Follow-up to the BLOCK pass on the same day (entry immediately below this

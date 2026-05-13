@@ -4534,10 +4534,13 @@ export default function BankingAgent({
       // in the main agent conversation flow.
       addMessage("assistant", formatResult(response.result), actionId);
 
-      // Append HTTP trace (banking API call detail) after success result if present
+      // Append HTTP trace (banking API call detail) as a token-event so it
+      // shares the RFC-info checkbox gate at the render filter (line ~8120).
+      // Previously rendered as 'assistant' which made every successful read
+      // action look like two assistant bubbles ("Balance: $X" + JSON dump).
       const successTrace = response.result?.httpTrace;
       if (successTrace && successTrace.length > 0) {
-        addMessage("assistant", formatHttpTrace(successTrace), actionId);
+        addMessage("token-event", formatHttpTrace(successTrace), actionId);
       }
 
       // ── Post-result educational RFC annotation ──
@@ -6509,6 +6512,23 @@ export default function BankingAgent({
                               },
                               source: "heuristic",
                             }));
+                          // Advanced Analysis chips need an LLM provider; when one is
+                          // selected (helix/ollama) but no provider is configured the
+                          // backend falls back to heuristics and returns kind:"none"
+                          // with a generic "didn't recognize" message. Surface a
+                          // clearer hint that points at the actual fix.
+                          if (
+                            result?.kind === "none" &&
+                            selectedLlmProvider &&
+                            selectedLlmProvider !== "heuristic"
+                          ) {
+                            result.message =
+                              `This chip needs an LLM (Helix or Ollama) to interpret freeform questions, ` +
+                              `but no provider is configured.\n\n` +
+                              `Open the Helix tab in the agent and add base_url + api_key + agent_id, ` +
+                              `or pick a different chip from "Quick Actions" — those use the local ` +
+                              `heuristic parser and work without an LLM.`;
+                          }
                           await dispatchNlResult(
                             result,
                             source || "heuristic",

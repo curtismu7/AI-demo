@@ -1,10 +1,38 @@
 // MarkdownText.js — shared inline markdown renderer
 // Supports: **bold**, *italic*, `code`, # headings, - bullet lists, numbered lists, ---
+// Also auto-links references to "RFC NNNN" (with optional §section) when present in RFC_LINKS.
 import React from 'react';
+import RfcLink from './RfcLink';
+import { RFC_LINKS } from '../../config/rfcLinks';
+
+// Matches "RFC 8693" or "RFC 8693 §3.1" — number is captured, optional section follows.
+const RFC_PATTERN = /\b(RFC\s+\d{3,5})(\s+§[\d.]+)?\b/g;
+
+function renderRfcRuns(text, keyPrefix) {
+  if (!text || !RFC_PATTERN.test(text)) return text;
+  RFC_PATTERN.lastIndex = 0;
+  const out = [];
+  let last = 0;
+  let m;
+  let i = 0;
+  while ((m = RFC_PATTERN.exec(text)) !== null) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    const rfcKey = m[1].replace(/\s+/, '_'); // "RFC 8693" → "RFC_8693"
+    const section = m[2] ? m[2].trim() : undefined;
+    if (RFC_LINKS[rfcKey]) {
+      out.push(<RfcLink key={`${keyPrefix}-rfc-${i++}`} rfc={rfcKey} section={section} />);
+    } else {
+      out.push(m[0]);
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
 
 /**
  * Renders a single run of text with inline markdown tokens:
- * **bold**, *italic*, `code`
+ * **bold**, *italic*, `code`, plus auto-linked `RFC NNNN` references.
  */
 export function InlineMd({ text }) {
   if (!text) return null;
@@ -13,12 +41,13 @@ export function InlineMd({ text }) {
     <>
       {tokens.map((tok, i) => {
         if (tok.startsWith('**') && tok.endsWith('**'))
-          return <strong key={i}>{tok.slice(2, -2)}</strong>;
+          return <strong key={i}>{renderRfcRuns(tok.slice(2, -2), `b${i}`)}</strong>;
         if (tok.startsWith('*') && tok.endsWith('*'))
-          return <em key={i}>{tok.slice(1, -1)}</em>;
+          return <em key={i}>{renderRfcRuns(tok.slice(1, -1), `i${i}`)}</em>;
         if (tok.startsWith('`') && tok.endsWith('`'))
           return <code key={i} className="md-inline-code" style={{ background: 'rgba(0,0,0,0.08)', borderRadius: 3, padding: '0 3px' }}>{tok.slice(1, -1)}</code>;
-        return tok;
+        const linked = renderRfcRuns(tok, `t${i}`);
+        return Array.isArray(linked) ? <React.Fragment key={i}>{linked}</React.Fragment> : <React.Fragment key={i}>{linked}</React.Fragment>;
       })}
     </>
   );
