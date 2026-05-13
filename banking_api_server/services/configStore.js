@@ -746,6 +746,26 @@ class ConfigStore {
       if (stored) return stored;
     }
 
+    // Helix agent API key: when nothing above has it, look for a per-agent
+    // export file (<helix_agent_id>.json) in repo root / ~/Documents /
+    // ~/Downloads. Lets fresh clones with the demo agent's key file present
+    // run Helix with no /setup step. See services/helixAgentKeyLoader.js.
+    if (key === 'helix_api_key') {
+      try {
+        const { loadAgentKey } = require('./helixAgentKeyLoader');
+        // Resolve the agent id without recursing into helix_api_key.
+        const agentName =
+          process.env.HELIX_AGENT_ID ||
+          this.get('helix_agent_id') ||
+          FIELD_DEFS.helix_agent_id?.default ||
+          'LLM2';
+        const fromFile = loadAgentKey(agentName);
+        if (fromFile) return fromFile;
+      } catch (_) {
+        /* loader missing or threw — fall through to defaults */
+      }
+    }
+
     // Optional committed defaults — last resort so any env var above wins.
     // Used for the hosted demo where visitors have no need to configure credentials.
     try {

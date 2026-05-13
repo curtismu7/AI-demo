@@ -102,6 +102,56 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-13 — Helix understands every Quick Actions + Advanced Analysis chip (24/24 LLM chips route to a banking action)
+
+**Files changed:**
+- `banking_api_server/services/geminiNlIntent.js` — `SYSTEM` constant rewritten as a directive-style prompt: a `CRITICAL CONTEXT` block telling the LLM the user is already authenticated and tools work (so refusals like "I cannot access your account" / "this is a demo platform" never happen), an action vocabulary section listing every chip phrase mapped to its banking action, and an explicit refusal policy that allows refusal only for unsupported account types (credit cards, investment accounts).
+- `banking_api_server/services/geminiNlIntent.js` — added retry-on-refusal logic in the Helix call path. If `JSON.parse` fails or the response matches a refusal regex (`cannot|can't|unable|won'?t|not able|do not have access|don't have access|this is a (banking )?demo|log in to your`), the BFF makes a second Helix call appending a `RETRY NOTE` that explicitly orders JSON output and provides safe defaults (`spending_summary` for category questions, `transactions` for list questions, `balance` for balance questions). One retry only; failure falls through to the existing conversational `helix_fallback` path.
+- `HELIX_LLM2_DIRECTIVE.md` (new, top-level repo doc) — the standalone directive text to paste into the Helix Console (`LLM2` agent → Settings → Directive → Publish). The BFF SYSTEM prompt is the primary mechanism; the Helix Console directive is the safety net for any caller that hits the agent without the SYSTEM prompt.
+
+**What was broken:** When `LLM2.json` made Helix actually reachable (entry below), one chip out of 24 failed end-to-end — chip #10 "What percentage of my spending was over $100?". Helix replied with a refusal ("I cannot fulfill that request directly through this chat interface. This is a banking demo platform…"), the BFF couldn't parse it as JSON, fell through to the conversational `helix_fallback` path, and the user saw the refusal text instead of a spending breakdown. Several other chips also routed to suboptimal banking actions (e.g. "Any purchases last week?" → `spending_summary` instead of `transactions`; "What are my top spending categories?" → `spending_summary` only when Helix happened to interpret it correctly).
+
+**What was fixed:** Re-tested with `LLM2.json` loaded and the new SYSTEM prompt:
+- 24/24 LLM chips now return `{kind:"banking"}` — no more `helix_fallback → education/general-knowledge` for the failure case.
+- 6/6 heuristic chips still pass through the regex fast-path in both `provider=heuristic` and `provider=helix` modes.
+- Routing accuracy improved on borderline cases: "Any purchases last week?" now → `transactions`, "What percentage of my spending was over $100?" now → `spending_summary` (was a refusal), borderline "max"/"highest spend" questions consistently go to `biggest_purchase`.
+- Retry-on-refusal logic survived its first test: in the fixed run no retry was needed for any chip, but the safety net is in place if Helix's published version drifts.
+
+**Verify:**
+- `cd banking_api_server && bash /tmp/llm-chip-test.sh` (the test script in /tmp is the script used during this fix; full content is in the chat transcript). Expected: every row shows `banking → <action>`, no `education` or `none`.
+- Manual smoke after BFF restart: open `https://api.ping.demo:4000`, sign in, click each Advanced Analysis chip. Each one should either route immediately via heuristic (no spinner) or briefly hit Helix and then render a banking result panel.
+- Live Helix log line confirms calls are happening: `tail -f /tmp/bank-api-server.log | grep -i helix` shows `Helix call started` then `Response received` (immediate or poll) for the LLM-routed chips.
+
+**Do not break:**
+- Do not delete the `CRITICAL CONTEXT` block in `SYSTEM`. It's the load-bearing line that prevents Helix from refusing on "this is a demo platform" / "I don't have access to your account" grounds. The action vocabulary alone wasn't enough — the LLM needs the explicit "tools work, the user is authenticated" framing.
+- Do not weaken the refusal policy to forbid all refusals. The credit-card / investment-account carve-out is intentional: those banking primitives don't exist in the demo data store, so emitting `transfer` for them would 500. The current carve-out is the only allowed refusal class.
+- Do not remove the retry-on-refusal logic. Helix's published version of `LLM2` can drift; the retry is a free-of-cost safety net (only fires when JSON.parse fails or the response looks refusal-shaped). Removing it re-introduces the "Helix returned prose so we showed the user the prose" failure mode.
+- Do not change the retry-detection regex without re-running the 24-chip suite. The current regex is calibrated against Helix's specific refusal phrasings ("cannot fulfill", "do not have access", "this is a banking demo"); narrowing it could let new refusal styles slip through.
+- The Helix Console directive (`HELIX_LLM2_DIRECTIVE.md`) is documentation, not code — but if you publish a new version of the LLM2 agent and it stops behaving, re-paste from this file. The BFF SYSTEM prompt is enough on its own; the Console directive is belt-and-suspenders against other callers.
+
+### 2026-05-13 — Helix API key auto-loads from `<HELIX_AGENT_ID>.json` (repo root, ~/Documents, ~/Downloads)
+
+**Files changed:**
+- `banking_api_server/services/helixAgentKeyLoader.js` (new) — exports `loadAgentKey(agentName)`. Searches three locations in order: repo root, `~/Documents`, `~/Downloads` for `<agentName>.json`, parses it, returns `parsed.keyValue`. Result is memoized per-agent. Filename is sanitized via `[^A-Za-z0-9_.-]` strip so a malicious agent id can't path-traverse. Logs once on first successful load (path only — never the key).
+- `banking_api_server/services/configStore.js` — `getEffective('helix_api_key')` now consults the loader as the **last fallback before committed defaults**. Order: `HELIX_API_KEY` env → SQLite (set via /setup UI) → loader file → committed defaults → `''`. The agent name resolves via the same chain (env → SQLite → default `LLM2`) without recursing back through `helix_api_key`.
+- `banking_api_server/.env.example` — documented the three ways to supply the key (env, /setup UI, JSON file) with priority order. Reuses the existing "fresh clones run Helix without setup" framing from the 2026-05-12 entry below.
+
+**What was broken:** Five Helix config values were needed for the LLM-only chips to work; four had committed defaults but the API key was always empty on a fresh clone. Users had to either edit `.env` or click through `/setup → LLM Provider → Helix` before any "Advanced Analysis" chip would do anything. The team had a shared `LLM2.json` export sitting at the repo root (gitignored) but nothing read it.
+
+**What was fixed:** With the team's `LLM2.json` present in repo root (or `~/Documents` or `~/Downloads`), `getEffective('helix_api_key')` returns the JSON's `keyValue` automatically. Helix-routed chips work end-to-end on first run with no setup. Power users / CI still drop `HELIX_API_KEY` into env to override; the /setup UI still writes to SQLite which still wins over the file. Rotation: replace the file and restart the BFF (the loader memoizes for the process lifetime).
+
+**Verify:**
+- `cd banking_api_server && node -e "const cs=require('./services/configStore'); console.log('len:', cs.getEffective('helix_api_key').length)"` → prints 116 with `LLM2.json` present, 0 without. The loader logs `[Helix] API key loaded from <path> (agent: LLM2)` on first call.
+- `cd banking_api_server && HELIX_API_KEY=foo node -e "const cs=require('./services/configStore'); console.log(cs.getEffective('helix_api_key'))"` → prints `foo`. Env still wins.
+- Manual smoke after BFF restart: open `https://api.ping.demo:4000`, sign in, click an Advanced Analysis chip ("Big Purchases", "Spending Habits"). The chip routes through Helix and returns a real LLM answer. Without the JSON / env / UI key, the same chip falls back to the heuristic-not-configured hint added in the entry below.
+
+**Do not break:**
+- Do not invert the env→SQLite→file→builtin precedence in `getEffective`. The whole design is "explicit user intent always wins over the ambient file." Reordering would mean a `/setup` UI change silently does nothing because the file overrides it.
+- Do not remove the filename sanitization (`[^A-Za-z0-9_.-]` strip) in `helixAgentKeyLoader.js`. The agent name becomes a filename; without sanitization a configStore-stored `helix_agent_id` containing `..` or `/` would let a request path-traverse off the search roots.
+- Do not log the `keyValue` itself — the one-shot log only emits the file path. The key never reaches stdout/stderr.
+- Do not switch to file-watching / hot-reload. The loader is a startup convenience; rotation is "replace file + restart server", consistent with how `.env` works. Adding a watcher introduces stale-cache races and complicates the demo's mental model.
+- Do not add the JSON file (`LLM2.json` or any `LLM*.json`) to git. It contains a real Helix key. The `LLM*.json` glob in root `.gitignore` already covers this — keep it there.
+
 ### 2026-05-13 — Agent chat: "Check Balance" duplicate response, RFC links, and Helix-not-configured chip UX
 
 **Files changed:**
