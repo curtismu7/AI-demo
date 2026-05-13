@@ -1904,8 +1904,19 @@ class PingOneProvisionService {
       provisioned.twoExIntermediateResourceServer = twoExIntResourceResult.resource;
       steps.push({ step: 'twoex-intermediate-resource', icon: '✅', message: `Two-Exchange Intermediate resource ${twoExIntResourceResult.exists ? 'reused' : 'created'} (aud: ${twoExIntAud})` });
       onStep(steps[steps.length - 1]);
+      // The Intermediate resource needs to be able to ISSUE tokens carrying the
+      // user's banking scopes — PingOne refuses RFC 8693 exchanges that target
+      // a resource whose scope list doesn't include the requested scopes (the
+      // error message "Token exchange can only be used to issue tokens for
+      // custom resources" is misleading; the actual gate is the scope match).
+      // Mirror the scope vocabulary present on the working MCP Server resource.
       const twoExIntScopeResults = await this.createScopes(twoExIntResourceResult.resource.id, [
         { name: 'banking:two-exchange:intermediate', description: 'Exchange #1 final-token scope (Step 2 audience marker)' },
+        { name: 'banking:read', description: 'Read banking data (mirrored for exchange compatibility)' },
+        { name: 'banking:write', description: 'Perform banking operations (mirrored for exchange compatibility)' },
+        { name: 'banking:mcp:invoke', description: 'MCP tool invocation (mirrored for exchange compatibility)' },
+        { name: 'banking:ai:agent:read', description: 'Agent invocation permission (mirrored)' },
+        { name: 'banking:mortgage:read', description: 'Mortgage account data (mirrored)' },
       ]);
       pushScopeResultStep(steps, 'twoex-intermediate-scopes', 'Two-Exchange Intermediate scopes', twoExIntScopeResults);
       onStep(steps[steps.length - 1]);
@@ -1922,8 +1933,14 @@ class PingOneProvisionService {
       provisioned.twoExFinalResourceServer = twoExFinalResourceResult.resource;
       steps.push({ step: 'twoex-final-resource', icon: '✅', message: `Two-Exchange Final resource ${twoExFinalResourceResult.exists ? 'reused' : 'created'} (aud: ${twoExFinalAud})` });
       onStep(steps[steps.length - 1]);
+      // Same scope-vocabulary requirement as Intermediate (see comment above).
       const twoExFinalScopeResults = await this.createScopes(twoExFinalResourceResult.resource.id, [
         { name: 'banking:two-exchange:final', description: 'Exchange #2 final-token scope (Step 4 audience marker — downstream MCP)' },
+        { name: 'banking:read', description: 'Read banking data (mirrored for exchange compatibility)' },
+        { name: 'banking:write', description: 'Perform banking operations (mirrored for exchange compatibility)' },
+        { name: 'banking:mcp:invoke', description: 'MCP tool invocation (mirrored for exchange compatibility)' },
+        { name: 'banking:ai:agent:read', description: 'Agent invocation permission (mirrored)' },
+        { name: 'banking:mortgage:read', description: 'Mortgage account data (mirrored)' },
       ]);
       pushScopeResultStep(steps, 'twoex-final-scopes', 'Two-Exchange Final scopes', twoExFinalScopeResults);
       onStep(steps[steps.length - 1]);
