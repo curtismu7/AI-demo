@@ -102,6 +102,24 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-13 — `FF_HEURISTIC_ENABLED` env-var fallback + LLM-only mode tested 30/30
+
+**Files changed:**
+- `banking_api_server/services/configStore.js` — added `ff_heuristic_enabled: ['FF_HEURISTIC_ENABLED']` to the env-fallback map. Matches the existing `FF_TWO_EXCHANGE_DELEGATION` pattern. Lets you flip the LLM-only mode flag for a single BFF process without admin-API calls or runtimeData.json edits — useful for chip-test runs and CI.
+
+**What was broken:** The "LLM only" UI checkbox calls `PATCH /api/admin/feature-flags` to flip `ff_heuristic_enabled`, which requires admin auth. There was no env-var route, so a CI run / standalone test that wanted to verify the LLM-only code path had to either spin up an authed admin session or hand-edit a 50k-line `runtimeData.json`. The `setConfig`/`setRaw` methods on configStore failed with `db.transaction is not a function` from a non-BFF Node process because the running BFF held the SQLite handle.
+
+**What was fixed:** `FF_HEURISTIC_ENABLED=false` in the BFF process's environment now resolves through the standard `getEffective` chain (env → SQLite → committed defaults). Verified with the 30-chip LLM-only test: with `FF_HEURISTIC_ENABLED=false` set on a fresh BFF process, all 30 chip phrases (6 Quick Actions + 24 Advanced Analysis) routed `helix → banking`, zero refusals, zero `helix_fallback`, zero heuristic shortcuts.
+
+**Verify:**
+- `node -e "const cs=require('./services/configStore'); console.log(cs.getEffective('ff_heuristic_enabled'))"` (from `banking_api_server/`) → `true` by default.
+- `FF_HEURISTIC_ENABLED=false node -e "..."` → `false`.
+- BFF process must be restarted with the env var set; live config-cache reload is not implemented and not in scope.
+
+**Do not break:**
+- Do not remove the env-fallback row. Without it, the LLM-only chip-test path is the only way to detect that a directive update or SYSTEM-prompt change in `geminiNlIntent.js` regresses Helix routing behavior. The 30-chip suite is the canonical "Helix understands every chip" check.
+- Do not change the precedence to make SQLite win over env. The flag mirrors the existing `FF_TWO_EXCHANGE_DELEGATION` ordering: env wins, /admin/feature-flags writes to SQLite which wins over committed default.
+
 ### 2026-05-13 — Mortgage routing + agent header overflow on narrow widths
 
 **Files changed:**
