@@ -2222,6 +2222,46 @@ Plans:
 Plans:
 - [ ] TBD
 
+### Phase 268: Production hosting hardening for Kubernetes + Docker deployment — multi-area public deployment readiness. Hosting decision: K8s with Docker images per service. Scope covers: per-service Dockerfiles + multi-stage builds + non-root users; K8s manifests (Deployment, Service, Ingress, ConfigMap, Secret) for BFF + Gateway as public-facing; remaining 5 services as ClusterIP-only (MCP Server, MCP Invest, Mortgage, HITL, Agent); ingress-controller TLS termination via cert-manager + Let's Encrypt for the real domain; secrets via K8s Secret + sealed-secrets or external-secrets-operator (no .env in image); Redis session store via cluster service; PingOne app redirect URI updates for the new public domain; CORS/cookie tightening (Secure, SameSite, trust proxy); Token Chain debug-surface admin-gating; structured logging + container-log-shipper compatibility; rate limiting on /api/banking-agent/nl + /api/auth/* + /api/mcp/tool; health/readiness probes for K8s; Helm chart or Kustomize overlay for env-specific config (dev/staging/prod); image-build CI pipeline. Out of scope (defer): pen-testing, full observability stack (Prometheus/Grafana setup), service mesh (Istio/Linkerd) for the private inter-service traffic. First plan should pick: Helm vs Kustomize, sealed-secrets vs external-secrets-operator, cert-manager issuer (Let's Encrypt staging vs prod), image registry.
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 267
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 268 to break down)
+
+### Phase 269: Portable encrypted credential vault — single-file store for API keys + service credentials that is portable across machines and decrypted only by a password (no machine-bound keys, no .env-on-disk for secrets). Consumers: (1) banking_mcp_gateway reads AI keys (HELIX_API_KEY today; future provider keys) from the vault at startup; (2) BFF startup reads vault to inject env vars into the process (replaces today's .env-for-secrets pattern). Integrity protection: AEAD encryption + HMAC + version header so silent corruption is impossible — a single flipped byte fails decryption with a clear error rather than silently loading garbage. Format must support adding/rotating keys without re-encrypting everything (per-entry sealing) and must survive being committed accidentally (encrypted at rest). First plan should pick: cipher (AES-256-GCM vs XChaCha20-Poly1305), KDF (Argon2id parameters), key-stretching iteration count, file extension/location, CLI for read/write/rotate, recovery procedure for forgotten password, audit trail of access. Out of scope (defer to other phases): Phase 268 K8s integration via external-secrets-operator / sealed-secrets (vault is the source of truth a K8s wrapper can later target), PingOne client secrets that already live in PingOne (vault stores demo-side keys only).
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 268
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 269 to break down)
+
+### Phase 270: Architecture diagram completeness audit — /architecture/system page must fully represent every running service, every inter-service edge, every external integration, and every token-flow arrow in the demo. Today's diagram is known to be partial (predates Phase 266 Path A mortgage-service, Phase 267 mortgage_demo chip, Phase 268 K8s topology, Phase 269 vault). Acceptance criteria: every service listed in run-bank.sh SVC_LIST appears as a node; every URL/WebSocket the BFF, MCP Gateway, or MCP Server talks to appears as an edge; every OAuth grant (auth code, CC, RFC 8693 single + 2x exchange, RFC 8693 transaction tokens) is represented; external boxes for PingOne (auth + management API), Helix LLM, browser SPA. Scope: AUDIT the existing diagram source files (banking_api_ui/src/components/ArchitectureTabsPanel.jsx + the diagram registry/regenerate flow + any mermaid/png sources under banking_api_ui/public/), reconcile against the current code state via a parallel-agent scan, write a checklist of additions, then make the changes. Out of scope: redesigning the diagram UI itself (Phase 264 covers config-page rework). First plan should pick: do we extend existing diagrams in place, or generate a new 'full-system' diagram alongside; mermaid vs draw.io vs manual SVG; how to keep the diagram in sync going forward (test? auto-regenerate on phase add?).
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 269
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 270 to break down)
+
+### Phase 271: Authorization-server-everywhere: every receiving server (MCP Gateway, MCP Server, BFF resource-server routes) calls the active AS (custom simulated OR PingAuthorize per ff_authorize_simulated) before fulfilling each request. The AS validates aud + required scopes + existing rules (tool denylist, HITL, amount thresholds, step-up, ACR). Both AS implementations enforce the same rules so flipping the FF doesn't change security posture. FROZEN DECISIONS: (1) ONE general PingAuthorize decision endpoint takes the calling server's expected scopes as input parameters (not 5 per-server endpoints) — keeps Console config simple and lets every server reuse the same endpoint. (2) ALL THREE servers in scope (MCP Gateway, MCP Server, BFF resource routes). (3) Conditional caching: simulated AS uncached (in-process, fast), PingAuthorize 60s decision cache keyed on (token_hash, route, scope set) to manage HTTP latency at scale. PRESERVE existing AS rules: do NOT lose tool denylist, HITL list, amount thresholds, step-up, ACR — only ADD scope+aud checks. Each receiving server gets a thin AS-call helper; cross-process auth context (session, bearer) threaded carefully. Out of scope (defer): Mortgage/HITL/Agent/MCP Invest service AS wire-ups (these are non-critical-path services for the demo; can follow later), PingAuthorize Trust Framework policy authoring (lives in PingOne Console; doc explains the rule but cannot be programmatically added). DEPENDENCIES: builds on dda04c2b (aud-match guard in simulated AS) and 641cf843 (extended grants on Two-Exchange resources).
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 270
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 271 to break down)
+
 ---
 
 ### Phase 262: CSS Hygiene — dead code purge, :root consolidation, !important audit

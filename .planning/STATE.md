@@ -300,6 +300,14 @@ Next phase: Available for execution or verification workflow
 
 ### Roadmap Evolution
 
+- Phase 271 added: Authorization-server-everywhere — MCP Gateway + MCP Server + BFF resource routes all call the active AS (sim or PingAuthorize) for aud + scope + existing-rule checks. Frozen decisions: one general PA endpoint with scopes as input params, all three servers in scope, conditional 60s cache only for PingAuthorize. Builds on dda04c2b + 641cf843.
+
+- Phase 270 added: Architecture diagram completeness audit — /architecture/system page must fully represent every service, edge, integration, and OAuth grant (catches up with Phases 266/267/268/269)
+
+- Phase 269 added: Portable encrypted credential vault — single-file password-decrypted store for API keys + service credentials with integrity protection; consumed by MCP Gateway (AI keys) and BFF startup (env injection); designed to be portable across machines and to feed Phase 268's K8s external-secrets wrapper
+
+- Phase 268 added: Production hosting hardening for Kubernetes + Docker deployment — public deployment readiness (BFF + Gateway public, 5 services ClusterIP-only, cert-manager + Let's Encrypt, secrets manager, Redis sessions, PingOne URI updates, CORS/cookie tightening, debug-surface gating, structured logging, rate limits, K8s probes, Helm/Kustomize, image-build CI)
+
 - Phase 265 added: Demo data page: create demo user with may_act, P1MFA registration
 
 - Phase 264 added: MCP Gateway config page — show and configure routes, link PingGateway docs, full UI for config (not just JSON files)
