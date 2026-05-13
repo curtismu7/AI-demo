@@ -1665,21 +1665,48 @@ class PingOneProvisionService {
       }
       onStep(steps[steps.length - 1]);
 
-      // Step 23: Create MCP Exchanger WORKER application
+      // Step 23: Create MCP Exchanger application.
+      //
+      // App type is WEB_APP (NOT WORKER). The 2026-05-13 token-flow audit
+      // (docs/token-flow-audit.md) and the live PingOne spike test confirmed:
+      // WORKER-type apps silently bind their client_credentials tokens to
+      // aud=["https://api.pingone.com"] (the Mgmt API resource), ignoring the
+      // `audience` parameter on the request. When that worker-aud token is
+      // used as actor_token in an RFC 8693 exchange, PingOne refuses with
+      // "Token exchange can only be used to issue tokens for custom resources"
+      // (the error applies to the ACTOR's aud, not the target).
+      //
+      // WEB_APP with client_credentials + token_exchange grants + a scope
+      // grant on a custom resource produces a CC token bound to that custom
+      // audience. The redirect URI is a placeholder — required by PingOne
+      // for any WEB_APP, never actually used because we don't run the
+      // authorization_code flow from this app.
+      let mcpExchangerResult;
       steps.push({ step: 'mcp-exchanger-app', icon: '🔧', message: 'Creating MCP Exchanger application...' });
       onStep(steps[steps.length - 1]);
-      {
-        const mcpExchangerResult = await this.createApplication(
-          'Super Banking MCP Exchanger',
-          'Worker application for on-behalf-of token exchange (Phase 143)',
-          'WORKER',
-          ['client_credentials', 'token_exchange']
-        );
-        provisioned.mcpExchangerApp = mcpExchangerResult.application;
-        provisioned.mcpExchangerApp.clientSecret = await this.getApplicationSecret(mcpExchangerResult.application.id);
-        pushAppResultStep(steps, 'mcp-exchanger-app', 'MCP Exchanger application', mcpExchangerResult);
-      }
+      mcpExchangerResult = await this.createApplication(
+        'Super Banking MCP Exchanger',
+        'Web application for on-behalf-of token exchange (RFC 8693 actor identity for MCP audience). NOT a WORKER — see docs/token-flow-audit.md.',
+        'WEB_APP',
+        ['authorization_code', 'client_credentials', 'token_exchange']
+      );
+      provisioned.mcpExchangerApp = mcpExchangerResult.application;
+      provisioned.mcpExchangerApp.clientSecret = await this.getApplicationSecret(mcpExchangerResult.application.id);
+      pushAppResultStep(steps, 'mcp-exchanger-app', 'MCP Exchanger application', mcpExchangerResult);
       onStep(steps[steps.length - 1]);
+
+      // Step 23a: Configure MCP Exchanger redirect URI + auth method.
+      // WEB_APP requires redirectUris on create; we set a placeholder because
+      // this app never actually runs the authorization_code redirect flow —
+      // it's only used for CC + token-exchange. tokenEndpointAuthMethod is
+      // CLIENT_SECRET_BASIC because that's what oauthService default for the
+      // actor-CC mint uses (see agentMcpTokenService.js line ~1735).
+      if (!mcpExchangerResult.exists) {
+        await this.updateApplication(mcpExchangerResult.application.id, {
+          redirectUris: [`${config.publicAppUrl}/api/auth/oauth/mcp-exchanger-placeholder-callback`],
+          tokenEndpointAuthMethod: 'client_secret_basic',
+        });
+      }
 
       // Step 23.5: Wire `may_act` claim as a resource attribute on the main
       // banking resource. RFC 8693 token-exchange uses this claim to declare
@@ -1958,38 +1985,81 @@ class PingOneProvisionService {
       // (Step 35.5 may_act wiring relocated below Step 37 — it references
       // provisioned.aiAgentApp which the AI Agent app step creates next.)
 
-      // Step 36: Create AI Agent worker application (the LLM identity in Exchange #1).
-      // WORKER + client_credentials so the agent can mint its own actor token in Step 1;
-      // also needs token_exchange grant so it can be the actor in Exchange #1.
+      // Step 36: Create AI Agent application (the LLM identity in Two-Exchange).
+      //
+      // App type is WEB_APP (NOT WORKER) for the same reason as the MCP Exchanger
+      // — see docs/token-flow-audit.md. WORKER tokens silently bind to the Mgmt
+      // API audience and break the Two-Exchange Step 1 actor-token aud. WEB_APP
+      // with a scope grant on a custom resource produces a CC token bound to
+      // that resource's audience.
       steps.push({ step: 'ai-agent-app', icon: '🤖', message: 'Creating Super Banking AI Agent application (Two-Exchange actor)...' });
       onStep(steps[steps.length - 1]);
       const aiAgentAppResult = await this.createApplication(
         'Super Banking AI Agent',
-        'AI Agent worker application — actor identity in Two-Exchange (act.sub on exchanged token)',
-        'WORKER',
-        ['client_credentials', 'urn:ietf:params:oauth:grant-type:token-exchange']
+        'AI Agent web application — actor identity in Two-Exchange Step 1 (act.sub on exchanged token). NOT a WORKER — see docs/token-flow-audit.md.',
+        'WEB_APP',
+        ['authorization_code', 'client_credentials', 'urn:ietf:params:oauth:grant-type:token-exchange']
       );
       provisioned.aiAgentApp = aiAgentAppResult.application;
       provisioned.aiAgentApp.clientSecret = await this.getApplicationSecret(aiAgentAppResult.application.id);
       pushAppResultStep(steps, 'ai-agent-app', 'AI Agent application', aiAgentAppResult);
       onStep(steps[steps.length - 1]);
 
-      // Step 37: Configure AI Agent app auth method.
+      // Step 37: Configure AI Agent redirect URI + auth method.
+      // WEB_APP needs redirectUris; the authorization_code flow is never used
+      // for this app — it only mints CC tokens for token-exchange.
       if (!aiAgentAppResult.exists) {
         steps.push({ step: 'ai-agent-config', icon: '⚙️', message: 'Configuring AI Agent application...' });
         onStep(steps[steps.length - 1]);
         await this.updateApplication(aiAgentAppResult.application.id, {
-          tokenEndpointAuthMethod: 'client_secret_basic'
+          redirectUris: [`${config.publicAppUrl}/api/auth/oauth/ai-agent-placeholder-callback`],
+          tokenEndpointAuthMethod: 'client_secret_basic',
         });
         steps.push({ step: 'ai-agent-config', icon: '✅', message: 'AI Agent application configured' });
         onStep(steps[steps.length - 1]);
       }
 
-      // No explicit scope grant for the AI Agent: PingOne forbids resource
-      // grants on WORKER apps for anything except 'openid' (see grant function
-      // line ~759). Token-exchange targets resources by the audience the
-      // requester asks for in the CC call; the audience binding is enforced
-      // by the resource server's token-exchange policy, not by a scope grant.
+      // Step 37a: Grant scope on the Agent Gateway resource to the AI Agent app.
+      // THIS IS THE PIECE that binds the AI Agent's CC tokens to the Agent
+      // Gateway custom audience. Without it, the CC token comes back with
+      // aud=["https://api.pingone.com"] regardless of what the BFF requests,
+      // and Exchange #1 fails. Verified via spike test against live PingOne.
+      steps.push({ step: 'ai-agent-grants', icon: '🔑', message: 'Granting Agent Gateway scope to AI Agent application...' });
+      onStep(steps[steps.length - 1]);
+      try {
+        const aiAgentGrantResult = await this.grantScopesToApplication(
+          aiAgentAppResult.application.id,
+          agentGwResourceResult.resource.id,
+          ['banking:agent:invoke'],
+        );
+        pushGrantResultStep(steps, 'ai-agent-grants', 'AI Agent scope grants', aiAgentGrantResult);
+      } catch (e) {
+        steps.push({ step: 'ai-agent-grants', icon: '⚠️', message: `AI Agent grant skipped: ${e.message}` });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Step 37b: Grant scope on the MCP Gateway resource to the MCP Exchanger app.
+      // Same pattern — binds MCP Exchanger's CC tokens to the MCP Gateway
+      // audience for Two-Exchange Step 3.
+      steps.push({ step: 'mcp-exchanger-grants', icon: '🔑', message: 'Granting MCP Gateway scope to MCP Exchanger application...' });
+      onStep(steps[steps.length - 1]);
+      try {
+        const mcpExchangerGrantResult = await this.grantScopesToApplication(
+          mcpExchangerResult.application.id,
+          mcpGwResourceResult.resource.id,
+          ['banking:mcp:invoke'],
+        );
+        pushGrantResultStep(steps, 'mcp-exchanger-grants', 'MCP Exchanger scope grants', mcpExchangerGrantResult);
+      } catch (e) {
+        steps.push({ step: 'mcp-exchanger-grants', icon: '⚠️', message: `MCP Exchanger grant skipped: ${e.message}` });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Historical note: the previous WORKER-based provisioning had no explicit
+      // scope grant because grantScopesToApplication skips WORKER apps entirely
+      // (line ~758 — "PingOne forbids resource access grants on WORKER apps").
+      // With the app types switched to WEB_APP above, grant calls now succeed
+      // and are required for the CC mint to honor custom audiences.
       // If the apps need explicit policy wiring (e.g. "this app may exchange
       // for this resource"), that's done in Phase B via the resource server's
       // token-exchange policy — not at provisioning time here.

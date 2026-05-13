@@ -169,6 +169,61 @@ describe('PingOneProvisionService — regression suite', () => {
   });
 
   // ──────────────────────────────────────────────────────────────────────
+  // T1c: source — AI Agent and MCP Exchanger apps are NOT created as WORKER.
+  //
+  // The 2026-05-13 token-flow audit + live PingOne spike test confirmed that
+  // WORKER-type apps silently bind their CC tokens to aud=https://api.pingone.com
+  // (the Mgmt API resource), regardless of the requested `audience` parameter.
+  // When that worker-aud token is used as actor_token in an RFC 8693 exchange,
+  // PingOne refuses ("Token exchange can only be used to issue tokens for
+  // custom resources" — applied to the actor's aud, not the target).
+  //
+  // Fix shipped: AI Agent + MCP Exchanger created as WEB_APP. This test pins
+  // that choice at the source-text level so a future refactor doesn't quietly
+  // revert it.
+  // ──────────────────────────────────────────────────────────────────────
+  describe('source: AI Agent and MCP Exchanger app types', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(
+      path.resolve(__dirname, '../../services/pingoneProvisionService.js'),
+      'utf8',
+    );
+    const lines = src.split('\n');
+
+    // Walk lines; when we see the app name literal, look at the next 5 lines
+    // for the createApplication 3rd positional arg (the app type).
+    function appTypeFor(appName) {
+      for (let i = 0; i < lines.length; i++) {
+        if (!lines[i].includes(`'${appName}'`)) continue;
+        // Confirm this is the createApplication call (look back up to 3 lines).
+        const prior = lines.slice(Math.max(0, i - 3), i).join('\n');
+        if (!/createApplication\(/.test(prior)) continue;
+        // The type arg is the next quoted UPPERCASE_WITH_UNDERSCORE string.
+        for (let j = i + 1; j < Math.min(lines.length, i + 6); j++) {
+          const m = lines[j].match(/['"`]([A-Z][A-Z_]+)['"`]/);
+          if (m) return m[1];
+        }
+      }
+      return null;
+    }
+
+    it('Super Banking AI Agent is NOT created as WORKER', () => {
+      const type = appTypeFor('Super Banking AI Agent');
+      expect(type).not.toBeNull();
+      expect(type).not.toBe('WORKER');
+      expect(type).toBe('WEB_APP');
+    });
+
+    it('Super Banking MCP Exchanger is NOT created as WORKER', () => {
+      const type = appTypeFor('Super Banking MCP Exchanger');
+      expect(type).not.toBeNull();
+      expect(type).not.toBe('WORKER');
+      expect(type).toBe('WEB_APP');
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────
   // T2b: source-level ordering — Two-Exchange may_act block runs AFTER
   // the AI Agent app create.
   //
