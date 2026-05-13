@@ -1928,45 +1928,8 @@ class PingOneProvisionService {
       pushScopeResultStep(steps, 'twoex-final-scopes', 'Two-Exchange Final scopes', twoExFinalScopeResults);
       onStep(steps[steps.length - 1]);
 
-      // Step 35.5: Wire may_act claims on the 2 exchange-target resources.
-      // Without this, PingOne rejects token-exchange against these audiences with
-      //   "Token exchange can only be used to issue tokens for custom resources"
-      // even though the resources ARE typed CUSTOM — the missing piece is the
-      // resource attribute that declares which client_id may act on behalf of
-      // the user. (Mirrors Step 23.5 above where the same wiring is applied to
-      // the main banking + MCP resources for the single-exchange flow.)
-      //
-      // - Intermediate audience  ← actor is the AI Agent app (Exchange #1 actor)
-      // - Final audience         ← actor is the MCP Token Exchanger (Exchange #2 actor)
-      // - Agent Gateway audience ← NO may_act needed (Step 1 is a CC token, not an exchange)
-      steps.push({ step: 'twoex-may-act', icon: '🔧', message: 'Wiring may_act on Two-Exchange resources...' });
-      onStep(steps[steps.length - 1]);
-      try {
-        const aiAgentClientId = provisioned.aiAgentApp?.clientId;
-        const mcpExchangerClientId = provisioned.mcpExchangerApp?.clientId;
-        if (aiAgentClientId && twoExIntResourceResult.resource?.id) {
-          await this._setResourceAttribute(
-            twoExIntResourceResult.resource.id,
-            'may_act',
-            JSON.stringify({ sub: aiAgentClientId }),
-          );
-        }
-        if (mcpExchangerClientId && twoExFinalResourceResult.resource?.id) {
-          await this._setResourceAttribute(
-            twoExFinalResourceResult.resource.id,
-            'may_act',
-            JSON.stringify({ sub: mcpExchangerClientId }),
-          );
-        }
-        const wired = [
-          aiAgentClientId ? `Intermediate ← AI Agent (${aiAgentClientId.slice(0, 8)})` : null,
-          mcpExchangerClientId ? `Final ← MCP Exchanger (${mcpExchangerClientId.slice(0, 8)})` : null,
-        ].filter(Boolean).join(', ');
-        steps.push({ step: 'twoex-may-act', icon: '✅', message: `may_act wired on Two-Exchange resources: ${wired}` });
-      } catch (mayActErr) {
-        steps.push({ step: 'twoex-may-act', icon: '⚠️', message: `Two-Exchange may_act step: ${mayActErr.message}` });
-      }
-      onStep(steps[steps.length - 1]);
+      // (Step 35.5 may_act wiring relocated below Step 37 — it references
+      // provisioned.aiAgentApp which the AI Agent app step creates next.)
 
       // Step 36: Create AI Agent worker application (the LLM identity in Exchange #1).
       // WORKER + client_credentials so the agent can mint its own actor token in Step 1;
@@ -2003,6 +1966,47 @@ class PingOneProvisionService {
       // If the apps need explicit policy wiring (e.g. "this app may exchange
       // for this resource"), that's done in Phase B via the resource server's
       // token-exchange policy — not at provisioning time here.
+
+      // Step 38 (formerly 35.5): Wire may_act claims on the 2 exchange-target resources.
+      // MUST run AFTER Step 36 (AI Agent app create) so provisioned.aiAgentApp is set.
+      // Without this, PingOne rejects token-exchange against these audiences with
+      //   "Token exchange can only be used to issue tokens for custom resources"
+      // even though the resources ARE typed CUSTOM — the missing piece is the
+      // resource attribute that declares which client_id may act on behalf of
+      // the user. (Mirrors Step 23.5 above where the same wiring is applied to
+      // the main banking + MCP resources for the single-exchange flow.)
+      //
+      // - Intermediate audience  ← actor is the AI Agent app (Exchange #1 actor)
+      // - Final audience         ← actor is the MCP Token Exchanger (Exchange #2 actor)
+      // - Agent Gateway audience ← NO may_act needed (Step 1 is a CC token, not an exchange)
+      steps.push({ step: 'twoex-may-act', icon: '🔧', message: 'Wiring may_act on Two-Exchange resources...' });
+      onStep(steps[steps.length - 1]);
+      try {
+        const aiAgentClientId = provisioned.aiAgentApp?.clientId;
+        const mcpExchangerClientId = provisioned.mcpExchangerApp?.clientId;
+        if (aiAgentClientId && twoExIntResourceResult.resource?.id) {
+          await this._setResourceAttribute(
+            twoExIntResourceResult.resource.id,
+            'may_act',
+            JSON.stringify({ sub: aiAgentClientId }),
+          );
+        }
+        if (mcpExchangerClientId && twoExFinalResourceResult.resource?.id) {
+          await this._setResourceAttribute(
+            twoExFinalResourceResult.resource.id,
+            'may_act',
+            JSON.stringify({ sub: mcpExchangerClientId }),
+          );
+        }
+        const wired = [
+          aiAgentClientId ? `Intermediate ← AI Agent (${aiAgentClientId.slice(0, 8)})` : null,
+          mcpExchangerClientId ? `Final ← MCP Exchanger (${mcpExchangerClientId.slice(0, 8)})` : null,
+        ].filter(Boolean).join(', ');
+        steps.push({ step: 'twoex-may-act', icon: '✅', message: `may_act wired on Two-Exchange resources: ${wired || '(skipped — both client IDs missing)'}` });
+      } catch (mayActErr) {
+        steps.push({ step: 'twoex-may-act', icon: '⚠️', message: `Two-Exchange may_act step: ${mayActErr.message}` });
+      }
+      onStep(steps[steps.length - 1]);
 
       // Step 33: Write configuration
       steps.push({ step: 'config', icon: '📝', message: 'Writing .env file...' });
