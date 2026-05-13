@@ -2019,37 +2019,62 @@ class PingOneProvisionService {
         onStep(steps[steps.length - 1]);
       }
 
-      // Step 37a: Grant scope on the Agent Gateway resource to the AI Agent app.
-      // THIS IS THE PIECE that binds the AI Agent's CC tokens to the Agent
-      // Gateway custom audience. Without it, the CC token comes back with
-      // aud=["https://api.pingone.com"] regardless of what the BFF requests,
-      // and Exchange #1 fails. Verified via spike test against live PingOne.
-      steps.push({ step: 'ai-agent-grants', icon: '🔑', message: 'Granting Agent Gateway scope to AI Agent application...' });
+      // Step 37a: Grant scopes on resources the AI Agent needs to act on.
+      //
+      // Two-Exchange Step 1: AI Agent mints CC token bound to Agent Gateway aud
+      //   → needs banking:agent:invoke on Agent Gateway resource
+      // Two-Exchange Step 2: AI Agent exchanges user token → Intermediate aud,
+      //   issuing the new token with the user's banking scopes
+      //   → needs banking:read, banking:write, banking:mcp:invoke etc. ON THE
+      //     INTERMEDIATE RESOURCE (PingOne checks the exchanging client's grants
+      //     against the target resource — without these, PingOne refuses with
+      //     'invalid_scope: At least one scope must be granted')
+      steps.push({ step: 'ai-agent-grants', icon: '🔑', message: 'Granting scopes to AI Agent application (Agent Gateway + Intermediate)...' });
       onStep(steps[steps.length - 1]);
       try {
-        const aiAgentGrantResult = await this.grantScopesToApplication(
+        const aiAgentGwGrant = await this.grantScopesToApplication(
           aiAgentAppResult.application.id,
           agentGwResourceResult.resource.id,
           ['banking:agent:invoke'],
         );
-        pushGrantResultStep(steps, 'ai-agent-grants', 'AI Agent scope grants', aiAgentGrantResult);
+        const aiAgentIntGrant = await this.grantScopesToApplication(
+          aiAgentAppResult.application.id,
+          twoExIntResourceResult.resource.id,
+          ['banking:read', 'banking:write', 'banking:mcp:invoke', 'banking:ai:agent:read', 'banking:mortgage:read'],
+        );
+        pushGrantResultStep(steps, 'ai-agent-grants', 'AI Agent scope grants', [aiAgentGwGrant, aiAgentIntGrant]);
       } catch (e) {
         steps.push({ step: 'ai-agent-grants', icon: '⚠️', message: `AI Agent grant skipped: ${e.message}` });
       }
       onStep(steps[steps.length - 1]);
 
-      // Step 37b: Grant scope on the MCP Gateway resource to the MCP Exchanger app.
-      // Same pattern — binds MCP Exchanger's CC tokens to the MCP Gateway
-      // audience for Two-Exchange Step 3.
-      steps.push({ step: 'mcp-exchanger-grants', icon: '🔑', message: 'Granting MCP Gateway scope to MCP Exchanger application...' });
+      // Step 37b: Grant scopes on resources the MCP Exchanger needs to act on.
+      //
+      // Two-Exchange Step 3: MCP Exchanger mints CC token bound to MCP Gateway aud
+      //   → needs banking:mcp:invoke on MCP Gateway resource
+      // Two-Exchange Step 4: MCP Exchanger exchanges intermediate token → Final aud
+      //   → needs banking:read, banking:write etc. on Two-Exchange Final resource
+      // Single-Exchange path: MCP Exchanger also targets the MCP Server resource
+      //   → needs banking:read, banking:write etc. on MCP Server resource too
+      steps.push({ step: 'mcp-exchanger-grants', icon: '🔑', message: 'Granting scopes to MCP Exchanger application (MCP Gateway + Final + MCP Server)...' });
       onStep(steps[steps.length - 1]);
       try {
-        const mcpExchangerGrantResult = await this.grantScopesToApplication(
+        const mcpExGwGrant = await this.grantScopesToApplication(
           mcpExchangerResult.application.id,
           mcpGwResourceResult.resource.id,
           ['banking:mcp:invoke'],
         );
-        pushGrantResultStep(steps, 'mcp-exchanger-grants', 'MCP Exchanger scope grants', mcpExchangerGrantResult);
+        const mcpExFinalGrant = await this.grantScopesToApplication(
+          mcpExchangerResult.application.id,
+          twoExFinalResourceResult.resource.id,
+          ['banking:read', 'banking:write', 'banking:mcp:invoke', 'banking:ai:agent:read', 'banking:mortgage:read'],
+        );
+        const mcpExServerGrant = await this.grantScopesToApplication(
+          mcpExchangerResult.application.id,
+          mcpResourceResult.resource.id,
+          ['banking:read', 'banking:write', 'banking:ai:agent:read', 'banking:mortgage:read'],
+        );
+        pushGrantResultStep(steps, 'mcp-exchanger-grants', 'MCP Exchanger scope grants', [mcpExGwGrant, mcpExFinalGrant, mcpExServerGrant]);
       } catch (e) {
         steps.push({ step: 'mcp-exchanger-grants', icon: '⚠️', message: `MCP Exchanger grant skipped: ${e.message}` });
       }
