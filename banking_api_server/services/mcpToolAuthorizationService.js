@@ -103,7 +103,20 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
     ? String(claims.act.client_id || claims.act.sub || '')
     : '';
   const nestedActClientId = nestedActIdFromClaim(claims.act);
-  const mcpResourceUri = configStore.getEffective('mcp_resource_uri') || '';
+  // EXPECTED audience the BFF passes to the policy. The policy compares this
+  // against the bearer token's `aud` to catch step-skipping (an attacker
+  // sending an intermediate-step token directly to MCP). The expected aud
+  // depends on which exchange flow is active:
+  //   Single-Exchange (FF off) → mcp_resource_uri (e.g. "mcp-server.bxf.com")
+  //   Two-Exchange (FF on)     → pingone_resource_two_exchange_uri (e.g. "final.2x.bxf.com")
+  // Both authorization-server implementations (simulated + PingOne) receive
+  // the same expected aud and must enforce the same audience-match rule.
+  const twoExchangeOn = configStore.getEffective('ff_two_exchange_delegation') !== 'false';
+  const mcpResourceUri = twoExchangeOn
+    ? (configStore.getEffective('pingone_resource_two_exchange_uri')
+        || configStore.getEffective('mcp_resource_uri')
+        || '')
+    : (configStore.getEffective('mcp_resource_uri') || '');
 
   try {
     if (USE_SIMULATED) {

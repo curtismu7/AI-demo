@@ -191,6 +191,42 @@ async function evaluateMcpFirstTool({
       'Set SIMULATED_MCP_DENY_TOOLS to force DENY; SIMULATED_MCP_HITL_TOOLS for HITL.',
   };
 
+  // ── Audience-match guard (highest-priority deny — runs before tool-name checks).
+  //
+  // The bearer token's `aud` MUST equal the expected aud for the active flow:
+  //   Single-Exchange → mcp_resource_uri (e.g. mcp-server.bxf.com)
+  //   Two-Exchange    → pingone_resource_two_exchange_uri (e.g. final.2x.bxf.com)
+  // Caller (mcpToolAuthorizationService) picks the right one and passes it as
+  // `mcpResourceUri`. If the token aud doesn't match, an attacker may have
+  // sent an intermediate-step token directly to MCP (skipping a step).
+  //
+  // Both the simulated AS (this file) and the PingOne PingAuthorize policy
+  // enforce this rule — they receive the same inputs and must agree on the
+  // same outputs (parity is a design requirement; ff_authorize_simulated
+  // picks which one runs at runtime).
+  if (mcpResourceUri && tokenAudience) {
+    const tokenAudList = String(tokenAudience).split(/[\s,]+/).filter(Boolean);
+    const expected = String(mcpResourceUri).trim();
+    if (!tokenAudList.includes(expected)) {
+      const out = {
+        decision: 'DENY',
+        stepUpRequired: false,
+        hitlRequired: false,
+        path: 'simulated',
+        decisionId,
+        raw: {
+          ...rawBase,
+          decision: 'DENY',
+          reason:
+            `Audience mismatch — token aud=${JSON.stringify(tokenAudList)} does not include expected ` +
+            `${JSON.stringify(expected)}. Possible step-skipping (token not from final exchange step).`,
+        },
+      };
+      recordSimulatedDecision(out);
+      return out;
+    }
+  }
+
   let out;
   if (denied) {
     out = {

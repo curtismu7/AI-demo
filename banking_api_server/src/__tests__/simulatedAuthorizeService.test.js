@@ -178,6 +178,63 @@ describe('simulatedAuthorizeService', () => {
     });
   });
 
+  // ──────────────────────────────────────────────────────────────────────
+  // Audience-match guard — locks the policy parity rule between simulated
+  // AS and PingOne PAZ. Both must DENY when token aud ≠ expected resource
+  // aud (catches step-skipping attacks where an intermediate-step token
+  // is sent directly to MCP).
+  // ──────────────────────────────────────────────────────────────────────
+  describe('evaluateMcpFirstTool — audience-match guard (anti step-skipping)', () => {
+    it('DENIES when tokenAudience does not include the expected mcpResourceUri', async () => {
+      const r = await evaluateMcpFirstTool({
+        userId: 'u-mcp',
+        toolName: 'get_my_accounts',
+        tokenAudience: 'intermediate.2x.bxf.com',  // attacker sends Step 2 (intermediate) token
+        mcpResourceUri: 'final.2x.bxf.com',        // policy expects Step 4 (final) token
+        actClientId: 'agent',
+      });
+      expect(r.decision).toBe('DENY');
+      expect(r.raw.reason).toMatch(/Audience mismatch/);
+      expect(r.raw.reason).toMatch(/step-skipping/);
+    });
+
+    it('PERMITS when tokenAudience matches mcpResourceUri exactly', async () => {
+      const r = await evaluateMcpFirstTool({
+        userId: 'u-mcp',
+        toolName: 'get_my_accounts',
+        tokenAudience: 'final.2x.bxf.com',
+        mcpResourceUri: 'final.2x.bxf.com',
+        actClientId: 'agent',
+      });
+      expect(r.decision).toBe('PERMIT');
+    });
+
+    it('PERMITS when tokenAudience is a space-separated list that includes the expected aud', async () => {
+      // PingOne sometimes returns aud as an array; the BFF flattens to space-separated string.
+      const r = await evaluateMcpFirstTool({
+        userId: 'u-mcp',
+        toolName: 'get_my_accounts',
+        tokenAudience: 'foo.example.com final.2x.bxf.com bar.example.com',
+        mcpResourceUri: 'final.2x.bxf.com',
+        actClientId: 'agent',
+      });
+      expect(r.decision).toBe('PERMIT');
+    });
+
+    it('skips the guard (legacy callers) when mcpResourceUri is empty', async () => {
+      // Before this guard was added, callers passed no mcpResourceUri. The guard must
+      // be backward-compatible — only enforce when both sides provide a value.
+      const r = await evaluateMcpFirstTool({
+        userId: 'u-mcp',
+        toolName: 'get_my_accounts',
+        tokenAudience: 'whatever.example.com',
+        mcpResourceUri: '',
+        actClientId: 'agent',
+      });
+      expect(r.decision).toBe('PERMIT');
+    });
+  });
+
   describe('isSimulatedModeEnabled', () => {
     it('returns true when configStore has ff_authorize_simulated true', () => {
       expect(isSimulatedModeEnabled({ get: (k) => (k === 'ff_authorize_simulated' ? 'true' : null) })).toBe(true);
