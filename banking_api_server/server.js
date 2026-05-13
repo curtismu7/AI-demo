@@ -11,6 +11,10 @@ require('dotenv').config({
 // Validate required env vars at startup — exits in production if any are missing
 require('./scripts/check-env');
 
+// Phase 269: vault loader — loads encrypted secrets into configStore at startup.
+// Wired below at .listen() time so the cache is populated BEFORE the first request.
+const { loadVaultIntoConfigStore } = require('./services/vaultLoader');
+
 // ConfigStore must be required early so oauth config module getters are ready
 const configStore = require('./services/configStore');
 const appEventService = require('./services/appEventService');
@@ -2045,45 +2049,62 @@ process.on('uncaughtException', (err) => {
 
 // Only start the server if this file is run directly (not imported for testing)
 if (require.main === module) {
-    const fs = require('fs');
-    const certDir = path.join(__dirname, '../certs');
-    const certFile = path.join(certDir, 'api.ping.demo+2.pem');
-    const keyFile = path.join(certDir, 'api.ping.demo+2-key.pem');
-
-    let server;
-    if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
-        const https = require('https');
-        server = https.createServer({
-            key: fs.readFileSync(keyFile),
-            cert: fs.readFileSync(certFile),
-        }, app).listen(PORT, () => {
-            console.log(`Banking API server (HTTPS) running on https://api.ping.demo:${PORT}`);
-            // Check HITL status
-            const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
-            if (!hitlEnabled) {
-              console.warn('\n⚠️  [SECURITY WARNING] HITL (Human-in-the-Loop) consent enforcement is DISABLED.');
-              console.warn('   → High-value transactions will NOT require human approval.');
-              console.warn('   → Enable it at /admin/config (ff_hitl_enabled: true) or set FF_HITL_ENABLED=true.\n');
+    // Phase 269: load encrypted vault entries into configStore BEFORE binding .listen.
+    // Skips silently when no secrets.vault exists; fails fast (exit 1) when a vault
+    // file is present but VAULT_PASSWORD is unset. Vercel is bypassed automatically.
+    // The express() app + session middleware + all route mounts above are byte-for-byte
+    // unchanged — only the .listen call is now inside an async startup wrapper.
+    (async () => {
+        try {
+            const result = await loadVaultIntoConfigStore({});
+            if (result.loaded) {
+                console.log('[vault] startup load complete — ' + result.entries + ' entries cached');
             }
-        });
-    } else {
-        server = app.listen(PORT, () => {
-            console.log(`Banking API server running on https://api.ping.demo:3001 (local port ${PORT})`);
-            console.log('Tip: run mkcert in Banking/certs/ to enable HTTPS (see run-bank.sh)');
-            // Check HITL status
-            const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
-            if (!hitlEnabled) {
-              console.warn('\n⚠️  [SECURITY WARNING] HITL (Human-in-the-Loop) consent enforcement is DISABLED.');
-              console.warn('   → High-value transactions will NOT require human approval.');
-              console.warn('   → Enable it at /admin/config (ff_hitl_enabled: true) or set FF_HITL_ENABLED=true.\n');
-            }
-        });
-    }
+        } catch (err) {
+            console.error('[vault] startup load failed; refusing to start.', err.message);
+            process.exit(1);
+        }
 
-    process.on('SIGTERM', () => {
-        oauthMonitor.stop();
-        server.close(() => process.exit(0));
-    });
+        const fs = require('fs');
+        const certDir = path.join(__dirname, '../certs');
+        const certFile = path.join(certDir, 'api.ping.demo+2.pem');
+        const keyFile = path.join(certDir, 'api.ping.demo+2-key.pem');
+
+        let server;
+        if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
+            const https = require('https');
+            server = https.createServer({
+                key: fs.readFileSync(keyFile),
+                cert: fs.readFileSync(certFile),
+            }, app).listen(PORT, () => {
+                console.log(`Banking API server (HTTPS) running on https://api.ping.demo:${PORT}`);
+                // Check HITL status
+                const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
+                if (!hitlEnabled) {
+                  console.warn('\n⚠️  [SECURITY WARNING] HITL (Human-in-the-Loop) consent enforcement is DISABLED.');
+                  console.warn('   → High-value transactions will NOT require human approval.');
+                  console.warn('   → Enable it at /admin/config (ff_hitl_enabled: true) or set FF_HITL_ENABLED=true.\n');
+                }
+            });
+        } else {
+            server = app.listen(PORT, () => {
+                console.log(`Banking API server running on https://api.ping.demo:3001 (local port ${PORT})`);
+                console.log('Tip: run mkcert in Banking/certs/ to enable HTTPS (see run-bank.sh)');
+                // Check HITL status
+                const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
+                if (!hitlEnabled) {
+                  console.warn('\n⚠️  [SECURITY WARNING] HITL (Human-in-the-Loop) consent enforcement is DISABLED.');
+                  console.warn('   → High-value transactions will NOT require human approval.');
+                  console.warn('   → Enable it at /admin/config (ff_hitl_enabled: true) or set FF_HITL_ENABLED=true.\n');
+                }
+            });
+        }
+
+        process.on('SIGTERM', () => {
+            oauthMonitor.stop();
+            server.close(() => process.exit(0));
+        });
+    })();
 }
 
 
