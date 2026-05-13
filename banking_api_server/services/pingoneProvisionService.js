@@ -1038,6 +1038,26 @@ class PingOneProvisionService {
       `AGENT_CLIENT_ID=${provisioned.agentApp?.clientId || ''}`,
       `AGENT_CLIENT_SECRET=${provisioned.agentApp?.clientSecret || '<set-in-pingone-console>'}`,
       '',
+      '# ─── Two-Exchange Delegation (RFC 8693 §2.1) ───────────────────────────',
+      '# Phase 268. Enables nested actor-token delegation:',
+      '#   Step 1: AI Agent → CC token (aud = AGENT_GATEWAY_URI)',
+      '#   Step 2: Exchange #1 — user token + AI Agent actor → token (aud = INTERMEDIATE_AUDIENCE)',
+      '#   Step 3: MCP Exchanger → CC token (aud = MCP_GATEWAY_URI)',
+      '#   Step 4: Exchange #2 — exchanged token + MCP Exchanger actor → final (aud = TWO_EXCHANGE_URI)',
+      '# When ff_two_exchange_delegation=true the BFF will validate ALL of these.',
+      `FF_TWO_EXCHANGE_DELEGATION=true`,
+      `PINGONE_AI_AGENT_CLIENT_ID=${provisioned.aiAgentApp?.clientId || ''}`,
+      `PINGONE_AI_AGENT_CLIENT_SECRET=${provisioned.aiAgentApp?.clientSecret || '<set-in-pingone-console>'}`,
+      `PINGONE_RESOURCE_AGENT_GATEWAY_URI=${provisioned.agentGwResourceServer?.audience?.[0] || 'agent-gateway.bxf.com'}`,
+      `PINGONE_RESOURCE_MCP_GATEWAY_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcp-gw.bxf.com'}`,
+      `AI_AGENT_INTERMEDIATE_AUDIENCE=${provisioned.twoExIntermediateResourceServer?.audience?.[0] || 'intermediate.2x.bxf.com'}`,
+      `PINGONE_RESOURCE_TWO_EXCHANGE_URI=${provisioned.twoExFinalResourceServer?.audience?.[0] || 'final.2x.bxf.com'}`,
+      '# AGENT_OAUTH_CLIENT_ID/SECRET aliases — same MCP Token Exchanger app as',
+      '# PINGONE_MCP_EXCHANGER_*, but the validateTwoExchangeConfig() function',
+      '# reads them under these names. Keep both in sync.',
+      `AGENT_OAUTH_CLIENT_ID=${provisioned.mcpExchangerApp?.clientId || ''}`,
+      `AGENT_OAUTH_CLIENT_SECRET=${provisioned.mcpExchangerApp?.clientSecret || '<set-in-pingone-console>'}`,
+      '',
       '# Admin Token Exchange',
       `ff_admin_token_exchange=true`,
       `ADMIN_TOKEN_LIFETIME=7200`,
@@ -1831,6 +1851,114 @@ class PingOneProvisionService {
       );
       pushGrantResultStep(steps, 'agent-grants', 'Agent scope grants', agentGrantResult);
       onStep(steps[steps.length - 1]);
+
+      // ─────────────────────────────────────────────────────────────────────
+      // Phase 268 — Two-Exchange Delegation (RFC 8693 §2.1) infrastructure
+      // ─────────────────────────────────────────────────────────────────────
+      // The Two-Exchange flow needs four distinct audiences and one new app
+      // beyond what the single-exchange flow uses:
+      //   Step 1 — AI Agent CC token        → audience = AGENT_GATEWAY_AUD       (NEW resource server)
+      //   Step 2 — Exchange #1 final token  → audience = INTERMEDIATE_AUD        (NEW resource server)
+      //   Step 3 — MCP Exchanger CC token   → audience = MCP_GATEWAY_AUD         (existing MCP Gateway)
+      //   Step 4 — Exchange #2 final token  → audience = TWO_EXCHANGE_FINAL_AUD  (NEW resource server)
+      // Plus a new "Super Banking AI Agent" worker app to act as the LLM
+      // identity in Exchange #1 (act.sub on the exchanged token).
+      // The MCP Token Exchanger (created above) is reused as the actor in
+      // Exchange #2; we additionally export its credentials under
+      // AGENT_OAUTH_CLIENT_ID/SECRET (the names the validator expects).
+
+      // Step 33: Create Agent Gateway resource server (Step 1 audience).
+      // Every resource server needs at least one scope (PingOne requirement);
+      // we add `openid` immediately after creation to satisfy that and to give
+      // Token Chain UI a labelled scope to display.
+      steps.push({ step: 'agent-gw-resource', icon: '🛡️', message: 'Creating Agent Gateway resource server (Two-Exchange Step 1)...' });
+      onStep(steps[steps.length - 1]);
+      const agentGwAud = config.agentGatewayAudience || 'agent-gateway.bxf.com';
+      const agentGwResourceResult = await this.createResourceServer(
+        'Super Banking Agent Gateway',
+        'Two-Exchange Step 1 audience — AI Agent client-credentials token target',
+        agentGwAud
+      );
+      provisioned.agentGwResourceServer = agentGwResourceResult.resource;
+      steps.push({ step: 'agent-gw-resource', icon: '✅', message: `Agent Gateway resource ${agentGwResourceResult.exists ? 'reused' : 'created'} (aud: ${agentGwAud})` });
+      onStep(steps[steps.length - 1]);
+      const agentGwScopeResults = await this.createScopes(agentGwResourceResult.resource.id, [
+        { name: 'openid', description: 'OIDC scope (PingOne requires at least one scope per resource server)' },
+      ]);
+      pushScopeResultStep(steps, 'agent-gw-scopes', 'Agent Gateway scopes', agentGwScopeResults);
+      onStep(steps[steps.length - 1]);
+
+      // Step 34: Create Two-Exchange Intermediate resource server (Step 2 audience).
+      steps.push({ step: 'twoex-intermediate-resource', icon: '🛡️', message: 'Creating Two-Exchange Intermediate resource server (Step 2)...' });
+      onStep(steps[steps.length - 1]);
+      const twoExIntAud = config.twoExchangeIntermediateAudience || 'intermediate.2x.bxf.com';
+      const twoExIntResourceResult = await this.createResourceServer(
+        'Super Banking Two-Exchange Intermediate',
+        'Two-Exchange Step 2 audience — Exchange #1 final token target (delegation handoff)',
+        twoExIntAud
+      );
+      provisioned.twoExIntermediateResourceServer = twoExIntResourceResult.resource;
+      steps.push({ step: 'twoex-intermediate-resource', icon: '✅', message: `Two-Exchange Intermediate resource ${twoExIntResourceResult.exists ? 'reused' : 'created'} (aud: ${twoExIntAud})` });
+      onStep(steps[steps.length - 1]);
+      const twoExIntScopeResults = await this.createScopes(twoExIntResourceResult.resource.id, [
+        { name: 'openid', description: 'OIDC scope (PingOne requires at least one scope per resource server)' },
+      ]);
+      pushScopeResultStep(steps, 'twoex-intermediate-scopes', 'Two-Exchange Intermediate scopes', twoExIntScopeResults);
+      onStep(steps[steps.length - 1]);
+
+      // Step 35: Create Two-Exchange Final resource server (Step 4 audience).
+      steps.push({ step: 'twoex-final-resource', icon: '🛡️', message: 'Creating Two-Exchange Final resource server (Step 4)...' });
+      onStep(steps[steps.length - 1]);
+      const twoExFinalAud = config.twoExchangeFinalAudience || 'final.2x.bxf.com';
+      const twoExFinalResourceResult = await this.createResourceServer(
+        'Super Banking Two-Exchange Final',
+        'Two-Exchange Step 4 audience — Exchange #2 final token target (downstream MCP)',
+        twoExFinalAud
+      );
+      provisioned.twoExFinalResourceServer = twoExFinalResourceResult.resource;
+      steps.push({ step: 'twoex-final-resource', icon: '✅', message: `Two-Exchange Final resource ${twoExFinalResourceResult.exists ? 'reused' : 'created'} (aud: ${twoExFinalAud})` });
+      onStep(steps[steps.length - 1]);
+      const twoExFinalScopeResults = await this.createScopes(twoExFinalResourceResult.resource.id, [
+        { name: 'openid', description: 'OIDC scope (PingOne requires at least one scope per resource server)' },
+      ]);
+      pushScopeResultStep(steps, 'twoex-final-scopes', 'Two-Exchange Final scopes', twoExFinalScopeResults);
+      onStep(steps[steps.length - 1]);
+
+      // Step 36: Create AI Agent worker application (the LLM identity in Exchange #1).
+      // WORKER + client_credentials so the agent can mint its own actor token in Step 1;
+      // also needs token_exchange grant so it can be the actor in Exchange #1.
+      steps.push({ step: 'ai-agent-app', icon: '🤖', message: 'Creating Super Banking AI Agent application (Two-Exchange actor)...' });
+      onStep(steps[steps.length - 1]);
+      const aiAgentAppResult = await this.createApplication(
+        'Super Banking AI Agent',
+        'AI Agent worker application — actor identity in Two-Exchange (act.sub on exchanged token)',
+        'WORKER',
+        ['client_credentials', 'urn:ietf:params:oauth:grant-type:token-exchange']
+      );
+      provisioned.aiAgentApp = aiAgentAppResult.application;
+      provisioned.aiAgentApp.clientSecret = await this.getApplicationSecret(aiAgentAppResult.application.id);
+      pushAppResultStep(steps, 'ai-agent-app', 'AI Agent application', aiAgentAppResult);
+      onStep(steps[steps.length - 1]);
+
+      // Step 37: Configure AI Agent app auth method.
+      if (!aiAgentAppResult.exists) {
+        steps.push({ step: 'ai-agent-config', icon: '⚙️', message: 'Configuring AI Agent application...' });
+        onStep(steps[steps.length - 1]);
+        await this.updateApplication(aiAgentAppResult.application.id, {
+          tokenEndpointAuthMethod: 'client_secret_basic'
+        });
+        steps.push({ step: 'ai-agent-config', icon: '✅', message: 'AI Agent application configured' });
+        onStep(steps[steps.length - 1]);
+      }
+
+      // No explicit scope grant for the AI Agent: PingOne forbids resource
+      // grants on WORKER apps for anything except 'openid' (see grant function
+      // line ~759). Token-exchange targets resources by the audience the
+      // requester asks for in the CC call; the audience binding is enforced
+      // by the resource server's token-exchange policy, not by a scope grant.
+      // If the apps need explicit policy wiring (e.g. "this app may exchange
+      // for this resource"), that's done in Phase B via the resource server's
+      // token-exchange policy — not at provisioning time here.
 
       // Step 33: Write configuration
       steps.push({ step: 'config', icon: '📝', message: 'Writing .env file...' });

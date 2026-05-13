@@ -102,6 +102,34 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-13 — Two-Exchange (RFC 8693 §2.1) provisioning: AI Agent app + 3 audiences (Phase A — provisioning only)
+
+**Files changed:**
+- `banking_api_server/services/pingoneProvisionService.js` — added 3 new resource servers (Super Banking Agent Gateway, Two-Exchange Intermediate, Two-Exchange Final) each with an `openid` scope (PingOne requires at least one scope per resource server; the catch in `createScopes` handles "already exists" gracefully if PingOne treats `openid` as system-defined). Added 1 new WORKER application (Super Banking AI Agent) with `client_credentials` + `urn:ietf:params:oauth:grant-type:token-exchange` grants — this is the LLM identity that mints actor tokens in Exchange #1. Extended `writeEnvFile` to emit 8 new env lines covering the Two-Exchange config keys the validator at `configStore.js:847` requires: `PINGONE_AI_AGENT_CLIENT_ID/SECRET`, `PINGONE_RESOURCE_AGENT_GATEWAY_URI`, `PINGONE_RESOURCE_MCP_GATEWAY_URI`, `AI_AGENT_INTERMEDIATE_AUDIENCE`, `PINGONE_RESOURCE_TWO_EXCHANGE_URI`, plus `AGENT_OAUTH_CLIENT_ID/SECRET` aliases for the existing MCP Token Exchanger app under the names the validator looks for. `FF_TWO_EXCHANGE_DELEGATION=true` is also written.
+
+**What was broken:** The agent's MCP token-exchange path at `agentMcpTokenService.js:1577` calls `configStore.validateTwoExchangeConfig()` whenever `ff_two_exchange_delegation=true`. The validator hard-requires 8 specific config keys; the provisioner created 0 of the supporting PingOne resources for those keys. Fresh setup runs that enabled the feature flag (default per `.env.example`) hit a `Two-Exchange Configuration Validation Failed` modal in the UI listing all 8 missing variables — visible in today's screenshot. The screenshot shows the user attempted an MCP-using action (e.g. clicking a chip in LLM-only mode) and the BFF threw the validation error before the tool ran.
+
+**What was fixed (Phase A — this commit):**
+- The PingOne side: 1 new app + 3 new resource servers + 3 new openid scopes are created on first `setup:fresh` and reused on reruns (idempotent via the `existing` branch in `createApplication` and `createResourceServer`).
+- The .env side: 8 new lines so the BFF picks up valid config without manual editing.
+- Result on a fresh / rerun setup: `validateTwoExchangeConfig()` returns `{valid: true}` with all 4 audiences and both client IDs populated; the modal goes away.
+
+**What is NOT in this commit (Phase B — follow-up):**
+- Per-resource token-exchange policies in PingOne (which apps may exchange tokens for which audiences). For now, the provisioned resources accept whatever the BFF requests; tightening the policies is a separate task in `ROADMAP.md`.
+- End-to-end Two-Exchange demo run through the Token Chain UI showing the 4-step flow visually. The pieces exist after Phase A; verifying the full flow with a real chip click + token-event grid render is the Phase B exit criterion.
+
+**Verify (after running `npm run setup:fresh`):**
+- Check the .env block under `# ─── Two-Exchange Delegation` exists and all 8 keys are non-empty.
+- `cd banking_api_server && node -e "const cs=require('./services/configStore'); const r=cs.validateTwoExchangeConfig(); console.log('valid:', r.valid, '\\nauds:', r.audiences)"` → prints `valid: true` with all 4 audience values.
+- Re-run `setup:fresh` once more; observe the new resources/app under "reused" status (no PingOne duplicates created). Specifically watch for `Agent Gateway resource reused`, `Two-Exchange Intermediate resource reused`, `Two-Exchange Final resource reused`, `AI Agent application` showing "exists: true".
+
+**Do not break:**
+- Do not change the order of the new steps relative to Step 32 (Agent app grants). The MCP Exchanger client ID is referenced in the .env writeback for `AGENT_OAUTH_CLIENT_ID` — that ID has to be available before the writeback runs. Adding the Two-Exchange resources between Step 32 and Step 33 (writeback) keeps the dependency intact.
+- Do not remove the `openid` scope on the 3 new resource servers without first verifying PingOne accepts a 0-scope custom resource. Today's experiment may show that's allowed — until that's verified in writing, leave openid in place.
+- Do not change `Super Banking AI Agent` to a non-WORKER type. The validator + Two-Exchange flow expects a worker app that authenticates via client_credentials; switching to WEB_APP would re-introduce the missing-credentials class of failure when the BFF tries to mint a CC token.
+- Do not stop emitting `AGENT_OAUTH_CLIENT_ID/SECRET` to .env. The validator at `configStore.js:859-861` reads `AGENT_OAUTH_CLIENT_ID` (not `PINGONE_MCP_EXCHANGER_CLIENT_ID`) — without the alias, validateTwoExchangeConfig still throws even though the underlying app exists.
+- The `FF_TWO_EXCHANGE_DELEGATION=true` line in the writeback is intentional — the demo's narrative purpose is to show 2-exchange delegation. If you want to ship a "single-exchange demo only" variant, gate the entire Two-Exchange block (Steps 33-36 and the .env block) behind a `config.includeTwoExchange !== false` check; don't just disable the flag while leaving the resources unprovisioned.
+
 ### 2026-05-13 — `FF_HEURISTIC_ENABLED` env-var fallback + LLM-only mode tested 30/30
 
 **Files changed:**
