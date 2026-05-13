@@ -1882,8 +1882,12 @@ class PingOneProvisionService {
       provisioned.agentGwResourceServer = agentGwResourceResult.resource;
       steps.push({ step: 'agent-gw-resource', icon: '✅', message: `Agent Gateway resource ${agentGwResourceResult.exists ? 'reused' : 'created'} (aud: ${agentGwAud})` });
       onStep(steps[steps.length - 1]);
+      // Custom scope name (NOT 'openid' — that's a PingOne system-defined scope
+      // and POSTing it to a CUSTOM resource fails with INVALID_DATA, leaving the
+      // resource scope-less). Any custom name satisfies the "at least one scope
+      // per resource" requirement; we pick a name that reads in the Token Chain UI.
       const agentGwScopeResults = await this.createScopes(agentGwResourceResult.resource.id, [
-        { name: 'openid', description: 'OIDC scope (PingOne requires at least one scope per resource server)' },
+        { name: 'banking:agent:invoke', description: 'AI Agent invocation scope (Two-Exchange Step 1 audience marker)' },
       ]);
       pushScopeResultStep(steps, 'agent-gw-scopes', 'Agent Gateway scopes', agentGwScopeResults);
       onStep(steps[steps.length - 1]);
@@ -1901,7 +1905,7 @@ class PingOneProvisionService {
       steps.push({ step: 'twoex-intermediate-resource', icon: '✅', message: `Two-Exchange Intermediate resource ${twoExIntResourceResult.exists ? 'reused' : 'created'} (aud: ${twoExIntAud})` });
       onStep(steps[steps.length - 1]);
       const twoExIntScopeResults = await this.createScopes(twoExIntResourceResult.resource.id, [
-        { name: 'openid', description: 'OIDC scope (PingOne requires at least one scope per resource server)' },
+        { name: 'banking:two-exchange:intermediate', description: 'Exchange #1 final-token scope (Step 2 audience marker)' },
       ]);
       pushScopeResultStep(steps, 'twoex-intermediate-scopes', 'Two-Exchange Intermediate scopes', twoExIntScopeResults);
       onStep(steps[steps.length - 1]);
@@ -1919,7 +1923,7 @@ class PingOneProvisionService {
       steps.push({ step: 'twoex-final-resource', icon: '✅', message: `Two-Exchange Final resource ${twoExFinalResourceResult.exists ? 'reused' : 'created'} (aud: ${twoExFinalAud})` });
       onStep(steps[steps.length - 1]);
       const twoExFinalScopeResults = await this.createScopes(twoExFinalResourceResult.resource.id, [
-        { name: 'openid', description: 'OIDC scope (PingOne requires at least one scope per resource server)' },
+        { name: 'banking:two-exchange:final', description: 'Exchange #2 final-token scope (Step 4 audience marker — downstream MCP)' },
       ]);
       pushScopeResultStep(steps, 'twoex-final-scopes', 'Two-Exchange Final scopes', twoExFinalScopeResults);
       onStep(steps[steps.length - 1]);
