@@ -2237,10 +2237,10 @@ Plans:
 **Goal:** Portable encrypted credential vault: BFF + MCP Gateway read secrets (HELIX_API_KEY, PingOne worker secrets, MCP_GW_CLIENT_SECRET, etc.) from a single password-locked `secrets.vault` file at startup. AES-256-GCM AEAD + Argon2id KDF (m=64MiB, t=3, p=4) + whole-file HMAC + per-entry sealing. Operator CLI (`npm run vault:get/set/list/delete/rotate`) plus a one-shot `vault:migrate-from-env` for transitioning from `.env`. No password recovery by design. Vercel deploys are bypassed (use Encrypted Environment Variables).
 **Requirements**: REQ-VAULT-01, REQ-VAULT-02, REQ-VAULT-03, REQ-VAULT-04, REQ-VAULT-05, REQ-VAULT-06, REQ-VAULT-07, REQ-VAULT-08, REQ-VAULT-09, REQ-VAULT-10, REQ-VAULT-11, REQ-VAULT-12, REQ-VAULT-13
 **Depends on:** Phase 268
-**Plans:** 5 plans
+**Plans:** 1/5 plans executed
 
 Plans:
-- [ ] 269-01-PLAN.md — Vault core library (lib/vault: crypto, format, audit, errors, index) + golden fixtures + configStore.setRaw {persist:false} extension + REQUIREMENTS.md + .gitignore
+- [x] 269-01-PLAN.md — Vault core library (lib/vault: crypto, format, audit, errors, index) + golden fixtures + configStore.setRaw {persist:false} extension + REQUIREMENTS.md + .gitignore
 - [ ] 269-02-PLAN.md — Operator CLI (scripts/vault.js) with get/set/list/delete/rotate + @inquirer/password + commander + 5 npm scripts
 - [ ] 269-03-PLAN.md — BFF startup wiring (services/vaultLoader.js + server.js IIFE wrapper + .env.example) — preserves REGRESSION_PLAN §1 invariants
 - [ ] 269-04-PLAN.md — MCP Gateway startup wiring (banking_mcp_gateway/src/vault.ts + index.ts IIFE) with allowlist regex for env injection defense
