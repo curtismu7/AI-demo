@@ -487,24 +487,36 @@ class ConfigStore {
   /**
    * Persist arbitrary key-value pairs to SQLite and cache without FIELD_DEFS validation.
    * Used by feature flags, which have their own flag-ID namespace (not in FIELD_DEFS).
+   *
+   * Phase 269: opts.persist (boolean, default true) — when explicitly false,
+   * skip the SQLite upsert and update only the in-memory cache. The vault
+   * loader uses this so secrets never get duplicated at rest in config.db
+   * (the vault is already the encrypted-at-rest source of truth).
    */
-  async setRaw(data) {
+  async setRaw(data, opts = {}) {
     await this.ensureInitialized();
-    try {
-      const db = _getSQLite();
-      const upsert = db.prepare(
-        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)'
-      );
-      const now = new Date().toISOString();
-      db.transaction(() => {
-        for (const [key, value] of Object.entries(data)) {
-          upsert.run(key, String(value), now);
-        }
-      })();
-    } catch (err) {
-      console.warn('[ConfigStore] SQLite write failed, raw config will be in-memory only:', err.message);
+    // Strict boolean check — catch typos like {persist:'no'} or {persist:1}
+    if (opts.persist !== undefined && typeof opts.persist !== 'boolean') {
+      throw new Error(`ConfigStore.setRaw: opts.persist must be boolean, got ${typeof opts.persist}`);
     }
-    // Update cache regardless of SQLite outcome
+    const shouldPersist = opts.persist !== false;
+    if (shouldPersist) {
+      try {
+        const db = _getSQLite();
+        const upsert = db.prepare(
+          'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)'
+        );
+        const now = new Date().toISOString();
+        db.transaction(() => {
+          for (const [key, value] of Object.entries(data)) {
+            upsert.run(key, String(value), now);
+          }
+        })();
+      } catch (err) {
+        console.warn('[ConfigStore] SQLite write failed, raw config will be in-memory only:', err.message);
+      }
+    }
+    // Update cache regardless of SQLite outcome (or skip)
     Object.assign(this._cache, data);
   }
 
