@@ -66,21 +66,53 @@ async function validateToken(token) {
       process.env.PINGONE_INTROSPECTION_ENDPOINT ||
       configStore.getEffective('pingone_introspection_endpoint') ||
       (() => { const base = oauthEndpointResolver.getTokenEndpoint?.(); return base ? base.replace('/token', '/introspect') : ''; })();
-    const clientId =
+
+    // ── Per-token-issuer introspection credentials ──────────────────────────
+    // PingOne's RFC 7662 endpoint returns active:false when the introspecting
+    // client_id differs from the token's client_id (same-client rule). The
+    // historical default in this service was the worker app, which produced
+    // false negatives on every user/admin/MCP-exchanger token. Now: decode
+    // the subject token's `client_id` claim and pick credentials that match.
+    // Falls back to worker if no match (for tokens minted by external clients).
+    let tokenClientId = null;
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+        tokenClientId = payload.client_id || payload.azp || null;
+      }
+    } catch (_) { /* not a JWT — leave tokenClientId null */ }
+
+    // Map known client_id → (id, secret, authMethod) tuples.
+    // Env-name pairs (canonical first, provision-script alias second) match the
+    // names actually consumed elsewhere in the BFF — see configStore.js,
+    // agentMcpTokenService.js, oauthService.js, and pingoneProvisionService.js.
+    // All entries use 'post' to match how the apps are provisioned in PingOne.
+    const clientMatrix = [
+      { id: process.env.PINGONE_USER_CLIENT_ID,                                                     secret: process.env.PINGONE_USER_CLIENT_SECRET,                                                            auth: 'post' },
+      { id: process.env.PINGONE_ADMIN_CLIENT_ID,                                                    secret: process.env.PINGONE_ADMIN_CLIENT_SECRET,                                                           auth: 'post' },
+      { id: process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID || process.env.PINGONE_MCP_EXCHANGER_CLIENT_ID, secret: process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET || process.env.PINGONE_MCP_EXCHANGER_CLIENT_SECRET, auth: 'post' },
+      { id: process.env.MCP_GW_CLIENT_ID,                                                           secret: process.env.MCP_GW_CLIENT_SECRET,                                                                  auth: 'post' },
+      { id: process.env.PINGONE_AGENT_CLIENT_ID || process.env.AGENT_CLIENT_ID,                     secret: process.env.PINGONE_AGENT_CLIENT_SECRET || process.env.AGENT_CLIENT_SECRET,                        auth: 'post' },
+      { id: process.env.PINGONE_AI_AGENT_CLIENT_ID,                                                 secret: process.env.PINGONE_AI_AGENT_CLIENT_SECRET,                                                        auth: 'post' },
+    ];
+    const matched = tokenClientId
+      ? clientMatrix.find(c => c.id && c.id === tokenClientId)
+      : null;
+
+    const clientId = matched?.id ||
       process.env.PINGONE_INTROSPECTION_CLIENT_ID ||
       process.env.PINGONE_WORKER_CLIENT_ID ||
       process.env.PINGONE_WORKER_TOKEN_CLIENT_ID ||
       configStore.getEffective('admin_client_id') ||
       configStore.getEffective('worker_client_id');
-    const clientSecret =
+    const clientSecret = matched?.secret ||
       process.env.PINGONE_INTROSPECTION_CLIENT_SECRET ||
       process.env.PINGONE_WORKER_CLIENT_SECRET ||
       process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET ||
       configStore.getEffective('admin_client_secret') ||
       configStore.getEffective('worker_client_secret');
-    // Auth method: 'basic' sends credentials in Authorization header;
-    // default 'post' sends them in the request body (matches admin app config)
-    const authMethod =
+    const authMethod = matched?.auth ||
       process.env.PINGONE_INTROSPECTION_AUTH_METHOD ||
       process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD ||
       'post';
