@@ -79,6 +79,22 @@
 | TOKEN-FIX-01, TOKEN-FIX-02 | Phase 6 — Token Exchange Fix |
 | CUA-01, CUA-02, CUA-03 | Phase 181 — CUA Training Slide-Out |
 
+### Portable Encrypted Credential Vault (Phase 269)
+
+- [ ] **REQ-VAULT-01**: AES-256-GCM AEAD encryption of all entry values; auth tag detects single-byte tampering on any byte of iv/tag/ct.
+- [ ] **REQ-VAULT-02**: Argon2id KDF with parameters m=65536 (64 MiB) / t=3 / p=4 / hashLen=32; KDF_PARAMS Object.freeze'd in `lib/vault/crypto.js`.
+- [ ] **REQ-VAULT-03**: JSON envelope with magic 'BNKV' + version 1 + whole-file HMAC-SHA256 over canonical JSON; magic/version/HMAC mismatch raises VaultIntegrityError BEFORE any per-entry AEAD attempt.
+- [ ] **REQ-VAULT-04**: Vault discovered at `VAULT_PATH || repo-root/secrets.vault`; missing file is a benign skip (BFF still starts on env+configStore fallbacks).
+- [ ] **REQ-VAULT-05**: CLI subcommands `vault:get | set | list | delete | rotate` work end-to-end with TTY password prompt (no echo) and `VAULT_PASSWORD` env override for non-TTY use.
+- [ ] **REQ-VAULT-06**: Forgotten-password recovery is documented as "no recovery — re-provision from source"; CLI prints `⚠️` warning on `set` and `rotate`; no `--recover` flag exists.
+- [ ] **REQ-VAULT-07**: NDJSON audit log at `secrets.vault.audit.log` records `{ts,op,key,pid,caller,host,result}`; physically cannot contain decrypted values (audit module does not import crypto.js or format.js; recordAudit signature rejects any field other than {op,key,result,caller}).
+- [ ] **REQ-VAULT-08**: MCP Gateway reads optional provider-key entries (new keys, not HELIX) from vault at startup. Phase 269 scope: gateway library wiring + dev-bypass behavior when vault absent. Existing HELIX flow stays in BFF — gateway has no Helix dependency today.
+- [ ] **REQ-VAULT-09**: BFF startup loads every vault entry into `configStore.setRaw(name.toLowerCase(), value, {persist:false})`; deletes `process.env.VAULT_PASSWORD` immediately after open; fails fast if `secrets.vault` exists but `VAULT_PASSWORD` unset.
+- [ ] **REQ-VAULT-10**: `VAULT_PASSWORD` env var honored when stdin is not a TTY; interactive `@inquirer/password` prompt when stdin is a TTY; both paths reach the same vault.openVault code.
+- [ ] **REQ-VAULT-11**: On Vercel (`process.env.VERCEL === '1'`), vault load is skipped (Vercel keeps using Encrypted Environment Variables — out of scope per RESEARCH.md "Serverless treatment").
+- [ ] **REQ-VAULT-12**: Golden file fixtures `tests/vault/fixtures/{valid-v1,corrupted-v1}.vault` round-trip; corrupted golden raises VaultIntegrityError on every release build (regression-guards format drift).
+- [ ] **REQ-VAULT-13**: Critical existing regression suite (`oauthStatus.regression`, `oauthStatus.integration`, `hitlRoute.regression`, `hitlRoute.integration`) continues to pass after BFF startup change in Plan 03.
+
 ### MCP Server Advanced Capabilities (Phase 32)
 
 - [ ] **MCP-ADV-01**: `sequential_think` MCP tool — AI agents can reason step-by-step through complex banking decisions; steps rendered inline in agent chat as a collapsible "Reasoning" chain; tool callable without user auth
