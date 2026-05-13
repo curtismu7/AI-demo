@@ -200,6 +200,14 @@ function parseBanking(t) {
   if (/\b(sensitive account details|full account|routing number|account number|account details)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'sensitive_account_details' } };
   }
+  // Phase 266 — Path A demo: mortgage data via api-key-gated backend.
+  // Trigger: "show mortgage data", "show my mortgage", "mortgage", "home loan".
+  // MUST precede the balance check so "what's my home loan balance" /
+  // "mortgage balance" routes to the mortgage demo widget rather than the
+  // generic balance flow (which has no record of mortgage/loan accounts).
+  if (/\b(show|view|see|get|my|whats?|what is)\s*(mortgage|home\s*loan)\b|\b(mortgage|home\s*loan)\s*(data|info|details|balance|summary|payment)\b|^mortgage$|^home\s*loan$/.test(t)) {
+    return { kind: 'banking', banking: { action: 'mortgage_demo' } };
+  }
   // Balance: explicit account id, or phrases like "my balance", "current balance", "check balance" — MUST precede accounts check
   if (/\bbalances?\b/.test(t)) {
     const m = t.match(/acc[_a-z0-9-]{6,}/i);
@@ -227,11 +235,6 @@ function parseBanking(t) {
   }
   if (/\b(spending summary|total spend|how much.*(spend|spent)|where.*money|breakdown.*spend\w*|spend\w*.*breakdown)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'spending_summary' } };
-  }
-  // Phase 266 — Path A demo: mortgage data via api-key-gated backend.
-  // Trigger: "show mortgage data", "show my mortgage", "mortgage", "home loan".
-  if (/\b(show|view|see|get|my)\s*(mortgage|home\s*loan)\b|\b(mortgage|home\s*loan)\s*(data|info|details|balance|summary)\b|^mortgage$|^home\s*loan$/.test(t)) {
-    return { kind: 'banking', banking: { action: 'mortgage_demo' } };
   }
   if (/\b(transactions?|history|activity|recent)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'transactions' } };

@@ -883,6 +883,16 @@ body > .banking-agent-float-root .banking-agent-panel {
   gap: 4px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  /* Constrain width so we can never overflow the parent column.
+     Without these, the row tries to size to the unwrapped content and
+     parent overflow:hidden clips the rightmost button mid-word ("A...").
+     min-width:0 lets the flex item shrink below its content width;
+     width: 100% + max-width: 100% pin it to the panel width so the
+     buttons must wrap to a new row when they can't fit on one. */
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  flex-basis: 100%;
 }
 
 /* Agent panel theme: match page (auto) or override — compact control next to page theme button */

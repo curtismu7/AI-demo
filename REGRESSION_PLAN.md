@@ -102,6 +102,31 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-13 — Mortgage routing + agent header overflow on narrow widths
+
+**Files changed:**
+- `banking_api_server/services/nlIntentParser.js` — `mortgage_demo` regex moved above the `balance` regex so phrases like "what's my home loan balance" / "mortgage balance" route to the mortgage demo widget instead of the generic balance flow (which has no mortgage/loan account record). The mortgage regex was also broadened to include `whats?` / `what is` so questions about home loans match. Verified: 6/6 mortgage phrasings → `mortgage_demo`; checking/savings balance phrasings still → `balance`.
+- `banking_api_ui/src/components/BankingAgent.css` — `.ba-header-tools` now pins to `width: 100%; flex-basis: 100%; min-width: 0; max-width: 100%`. Without these, the row of header buttons (RFC info / LLM only / Compliance / Token Chain / Actions) sized to its unwrapped content width and a parent `overflow: hidden` clipped the rightmost button mid-word ("A..." in the user's screenshot). With the new constraints, the row sits below the title/subtitle and wraps to additional rows before any button gets clipped.
+
+**What was broken:**
+1. Heuristic chip "what's my home loan balance" returned `action: balance` (no balance record exists for mortgage accounts in the demo data, so the user saw a generic "no balance found" or the wrong account's balance). Phase 267 explicitly created `mortgage_demo` as the Path A api-key disposition demo, but the heuristic regex had `balance` listed before `mortgage`, so "balance" always won.
+2. The agent header row of buttons rendered as one row that overflowed its container, producing a clipped "A..." button label in the screenshot. `.ba-header-top` already had `flex-wrap: wrap` and `.ba-header-tools` already had `flex-wrap: wrap`, but the tools row's intrinsic content-driven width prevented it from shrinking, so the wrap point never triggered before the parent's `overflow: hidden` clipped the row.
+
+**What was fixed:**
+1. Six mortgage-related phrasings now resolve to `mortgage_demo`: `mortgage`, `home loan`, `show mortgage data`, `show my mortgage`, `mortgage balance`, `mortgage details`, `home loan balance`, `what's my home loan balance`. Regular checking/savings balance phrases (`balance`, `what's my checking balance`) still resolve to `balance`.
+2. The header tools row now wraps to a second / third row as the panel narrows. No button is ever clipped mid-word.
+
+**Verify:**
+- `for p in "what's my home loan balance" "balance" "show mortgage data"; do curl -sk -X POST https://api.ping.demo:3001/api/banking-agent/nl -H "Content-Type: application/json" -d "{\"message\":\"$p\",\"provider\":\"heuristic\"}" | python3 -c "import sys,json; r=json.loads(sys.stdin.read())['result']; print(r['banking']['action'] if r.get('kind')=='banking' else r.get('kind'))"; done` → prints `mortgage_demo`, `balance`, `mortgage_demo`.
+- `cd banking_api_ui && npm run build` → exit 0.
+- Manual smoke: open the agent panel, drag/resize to a narrow width (~360px). All header buttons remain visible and wrap onto multiple rows. None show ellipsis mid-label.
+
+**Do not break:**
+- Do not move the mortgage regex back below the balance regex in `nlIntentParser.js`. The Phase 267 demo data store has no mortgage account in the standard `liveAccounts` collection — `balance` for a "home loan" phrasing returns confusing results. Mortgage phrases must short-circuit to `mortgage_demo`.
+- Do not narrow the mortgage regex to require a leading verb. The current pattern intentionally matches bare `mortgage` and `home loan` so users typing the chip phrase verbatim still hit Path A.
+- Do not remove the `width: 100%; flex-basis: 100%` constraints on `.ba-header-tools`. Without them, the header reverts to clipping the rightmost button on narrow widths — there are several `overflow: hidden` rules upstream in `.banking-agent-panel` that the constraints work around.
+- If you add a NEW header button, make sure it inherits one of the existing classes (`.ba-rfc-toggle-label`, `.ba-actions-trigger`) so it picks up `white-space: nowrap` per-button and the row's flex-wrap. Don't add a button with intrinsic `display: block` or `flex: 1` — that re-breaks the wrap.
+
 ### 2026-05-13 — Helix understands every Quick Actions + Advanced Analysis chip (24/24 LLM chips route to a banking action)
 
 **Files changed:**
