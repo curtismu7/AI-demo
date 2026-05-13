@@ -641,10 +641,30 @@ for i in "${!SVC_LIST[@]}"; do
 done
 
 # ── Banking API Server (Express) on :3001 ────────────────────────────────────
+# NODE_EXTRA_CA_CERTS points Node at mkcert's root CA so BFF→MCP-Gateway
+# HTTPS probes can validate the gateway's mkcert-issued cert. Without this
+# they fail with UNABLE_TO_VERIFY_LEAF_SIGNATURE and the agent UI surfaces
+# "MCP Gateway unavailable; bypass not permitted".
+#
+# NODE_OPTIONS=--use-system-ca was tried first but doesn't work reliably on
+# Node 24 (didn't pick up the mkcert root from the macOS System keychain
+# in our local test). Pointing at rootCA.pem directly works on every Node
+# version that supports NODE_EXTRA_CA_CERTS (Node 12+).
+#
+# Resolved at script time so a missing mkcert install becomes a clear
+# message rather than a silent TLS failure later.
+MKCERT_ROOT_PEM="$(mkcert -CAROOT 2>/dev/null)/rootCA.pem"
+if [[ -f "$MKCERT_ROOT_PEM" ]]; then
+  export NODE_EXTRA_CA_CERTS="$MKCERT_ROOT_PEM"
+else
+  echo "[WARN] mkcert root CA not found at expected path. Run \`mkcert -install\` once if BFF→MCP Gateway HTTPS probes fail."
+fi
+
 echo "[LAUNCH] Starting Banking API Server on ${API_HOST}:${API_PORT}..."
 (
   cd "$BASEDIR/banking_api_server"
   PORT=${API_PORT} \
+  NODE_EXTRA_CA_CERTS="${NODE_EXTRA_CA_CERTS:-}" \
   REACT_APP_CLIENT_URL=${CLIENT_URL} \
   FRONTEND_ADMIN_URL=${CLIENT_URL}/admin \
   FRONTEND_DASHBOARD_URL=${CLIENT_URL}/dashboard \
