@@ -102,6 +102,22 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-13 — Removed Helix Console directive plumbing (BFF already injects the directive at runtime)
+
+**Files changed:**
+- `banking_api_server/scripts/uploadHelixDirective.js` — **deleted**.
+- `HELIX_LLM2_DIRECTIVE.md` — **deleted**.
+
+**What was wrong:** Two earlier entries today (`feat(helix): chip-aware SYSTEM directive` and `feat(helix): scripts/uploadHelixDirective.js`) added a script + doc to deploy a directive into the Helix Console's `LLM2` agent. The premise was that the Helix-side directive controls runtime behavior. It does not — `helixLlmService.js:90-94` already prepends the BFF's SYSTEM prompt to every user message, so Helix sees the chip-aware vocabulary on every call regardless of what the Console directive contains. The 24/24 chip test verified earlier today succeeded with an EMPTY Helix Console directive — proof that the runtime injection is the load-bearing path. Trying to also write to the Console added complexity (draft vs published versioning, no documented publish endpoint, Console save-on-blur ambiguity) for zero behavioral benefit.
+
+**What was fixed:** Both files removed. The directive lives where it actually has an effect: in `geminiNlIntent.js`'s `SYSTEM` constant (rewritten in commit `68c1396f` with the chip-aware vocabulary + retry-on-refusal). The Helix Console's `LLM2` directive field can stay empty.
+
+**Verify:** The 24/24 LLM-routed chip test (and the 30/30 LLM-only test in commit `8fce81c6`) both pass. No deployment step needed; rerun either suite at any time without touching Helix Console.
+
+**Do not break:**
+- Do not re-introduce a Helix Console directive uploader unless you also remove the runtime SYSTEM-prompt prepend in `helixLlmService.js:94`. Two sources of truth for the directive guarantees the two will drift apart and we'll spend an afternoon debugging "why does the Helix Console directive say X but the agent behaves like Y."
+- If you ever do need to deploy a Console directive (e.g. for a non-BFF caller of `LLM2`), the working API path is: `GET/PUT https://openam-helix.forgeblocks.com/dpc/jas/helix/v1/environments/{env_id}/agents/{agent_name}?version=draft` — the bare `/agents/{name}` PUT 400s with "Draft Agent missing." The directive lives at `entities.entities.<taskNodeId>.withMultimodalToTextGeneration.prompt.directive`. Publish step is unverified (no separate `/publish` endpoint found in probing; the Console may auto-publish on save or use a route the BFF probe missed).
+
 ### 2026-05-13 — Two-Exchange (RFC 8693 §2.1) provisioning: AI Agent app + 3 audiences (Phase A — provisioning only)
 
 **Files changed:**
