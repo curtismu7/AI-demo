@@ -1,9 +1,14 @@
 // banking_api_server/services/http2McpBridge.js
 /**
- * HTTP/2 adapter between BFF and MCP server's POST /mcp endpoint.
+ * HTTP/2-capable adapter between BFF and MCP server's POST /mcp endpoint.
  *
- * Replaces the WebSocket-based mcpRpc path with persistent HTTP/2 connections
- * that support multiplexing — multiple tool calls over a single socket.
+ * Status (2026-05-14): the BFF default is still `MCP_SERVER_URL=ws://localhost:8080`
+ * (server.js line ~1729), so this bridge is only exercised when an operator sets
+ * `MCP_SERVER_URL` to an `http://` / `https://` URL. Even when invoked, the local
+ * MCP server runs on plain `http.createServer` (banking_mcp_server BankingMCPServer.ts),
+ * which does NOT advertise h2 — Node's `http2.connect(..., { allowHTTP1: true })`
+ * therefore negotiates DOWN to HTTP/1.1. The "multiplexing" benefit is theoretical
+ * until the MCP server enables `http2.createServer({ allowHTTP1: true })`.
  *
  * Connection pool: keyed by `{url}:{tokenPrefix}`, max 5 concurrent sessions.
  * Graceful shutdown: drain pending streams on SIGTERM.

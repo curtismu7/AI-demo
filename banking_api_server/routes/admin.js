@@ -1041,6 +1041,46 @@ router.get('/app-events/categories', requireAdmin, requireScopes(['banking:admin
 });
 
 /**
+ * GET /api/admin/app-events/stream — Server-Sent Events stream of app events.
+ *
+ * Multiplexes cleanly over HTTP/2 (one TCP connection serves many SSE streams).
+ * Replaces polling /app-events every N seconds.
+ *
+ * Query params:
+ *   ?category=<oauth|token_exchange|...>  — only emit events of this category
+ */
+router.get('/app-events/stream', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+  const { category } = req.query;
+
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  res.flushHeaders();
+
+  res.write(`event: hello\ndata: ${JSON.stringify({ ts: new Date().toISOString() })}\n\n`);
+
+  const unsubscribe = appEventService.subscribe((event) => {
+    if (category && event.category !== category) return;
+    try {
+      res.write(`event: app-event\ndata: ${JSON.stringify(event)}\n\n`);
+    } catch (_) { /* connection closed mid-write */ }
+  });
+
+  // Heartbeat keeps proxies/load balancers from idle-closing the stream.
+  const heartbeat = setInterval(() => {
+    try { res.write(': hb\n\n'); } catch (_) {}
+  }, 25000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    unsubscribe();
+  });
+});
+
+/**
  * POST /api/admin/app-events — Accept a frontend-emitted app event
  * Auth: authenticateToken only (valid session, any role) — per D-05
  * Body: { category, severity, message, tag?, metadata? }
