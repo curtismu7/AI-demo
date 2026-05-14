@@ -1,3 +1,27 @@
+/**
+ * InteractiveArchDiagram — 5-node simplified diagram driven by TokenChainContext.
+ *
+ * NOTE (Phase 270): This component is intentionally PARTIAL. It renders only 5 of the
+ * 14 distinct nodes the system actually runs (User, BFF, PingOne, LLM, MCP) so the
+ * inline "live highlighting" stays compact when token-chain events fire. It is NOT
+ * the authoritative architecture view.
+ *
+ * For the COMPLETE system picture, see:
+ *   - Mermaid source:  architecture-simple.mmd  (repo root)
+ *   - Rendered PNG:    banking_api_ui/public/architecture/overview.png
+ *   - Detailed view:   architecture.mmd → overview2.png
+ *
+ * The Jest sync test
+ *   banking_api_ui/src/components/__tests__/ArchitectureDiagram.completeness.test.js
+ * enforces "every service in run-bank.sh SVC_LIST appears in at least one .mmd source"
+ * — DO NOT add nodes here to satisfy that test; add them to the .mmd sources instead.
+ *
+ * Why this component was retained (Phase 270 user decision): it drives off
+ * TokenChainContext to highlight which boxes have been touched during the current
+ * agent flow. That live behaviour is not replicated by a static PNG. If you find
+ * yourself maintaining two parallel diagrams, prefer the PNG and remove this
+ * component in a future phase.
+ */
 // banking_api_ui/src/components/education/InteractiveArchDiagram.js
 import React, { useState } from "react";
 import { useTokenChainOptional } from "../../context/TokenChainContext";
