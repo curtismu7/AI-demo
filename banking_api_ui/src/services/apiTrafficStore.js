@@ -69,6 +69,7 @@ const REDACT_HEADERS = new Set(['authorization', 'cookie', 'set-cookie', 'x-api-
 const REDACT_BODY_KEYS = new Set([
   'access_token', 'refresh_token', 'id_token', 'client_secret', 'password', 'token',
   'client_credentials', 'code_verifier',
+  'currentpassword', 'newpassword',  // Phase 269.1 — /api/admin/vault/rotate body
 ]);
 
 /** Redact sensitive request/response headers. */
