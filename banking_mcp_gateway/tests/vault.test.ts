@@ -196,7 +196,7 @@ describe('loadVaultIntoEnv (banking_mcp_gateway)', () => {
       ...logger.warn.mock.calls,
       ...logger.log.mock.calls,
     ]
-      .map((c) => c.map((p) => (typeof p === 'string' ? p : '')).join(' '))
+      .map((c: unknown[]) => c.map((p) => (typeof p === 'string' ? p : '')).join(' '))
       .join(' ');
     expect(allLogs).not.toMatch(/argon|\bkek\b|\bdek\b/i);
   });
