@@ -74,7 +74,8 @@ function buildApp({ withVercel = false, withAuth = 'admin' } = {}) {
   } else {
     delete process.env.VERCEL;
   }
-  delete process.env.VAULT_PATH;
+  // NOTE: process.env.VAULT_PATH is read lazily by the route at request time
+  // via resolveVaultPath(), so individual tests set/clear it themselves.
 
   const app = express();
   app.use(express.json());
@@ -103,7 +104,10 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // Restore env so VAULT_PATH / VERCEL set by individual tests doesn't leak.
   process.env = { ...ORIG_ENV };
+  delete process.env.VAULT_PATH;
+  delete process.env.VERCEL;
 });
 
 // ============================================================================
@@ -112,10 +116,10 @@ afterEach(() => {
 
 describe('GET /api/admin/vault/status', () => {
   test('1. returns documented shape with no entry names / keys', async () => {
+    const app = buildApp();
     const m = getMocks();
     m.vaultLoader.isVaultUnlockedThisProcess.mockReturnValue(true);
     m.vaultLoader.vaultEntryCountThisProcess.mockReturnValue(7);
-    const app = buildApp();
     const res = await request(app).get('/api/admin/vault/status');
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('unlocked');
@@ -130,11 +134,13 @@ describe('GET /api/admin/vault/status', () => {
   });
 
   test('2. vaultPath uses path.basename — never full path (T-269.1-09)', async () => {
+    // Set VAULT_PATH env BEFORE buildApp() resets modules so the route picks it up
+    // via resolveVaultPath() = process.env.VAULT_PATH || DEFAULT_VAULT_PATH.
+    process.env.VAULT_PATH = '/very/deep/path/secrets.vault';
+    const app = buildApp();
     const m = getMocks();
     m.vaultLoader.isVaultUnlockedThisProcess.mockReturnValue(false);
     m.vaultLoader.vaultEntryCountThisProcess.mockReturnValue(0);
-    m.vaultLoader.DEFAULT_VAULT_PATH = '/very/deep/path/secrets.vault';
-    const app = buildApp();
     const res = await request(app).get('/api/admin/vault/status');
     expect(res.status).toBe(200);
     expect(res.body.vaultPath).toBe('secrets.vault');

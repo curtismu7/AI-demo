@@ -896,6 +896,7 @@ app.use('/api/demo-scenario', authenticateToken, demoScenarioRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/admin/management', adminManagementRoutes);
 app.use('/api/admin/setup', setupWizardRoutes);
+app.use('/api/admin/vault', authenticateToken, require('./routes/adminVault'));
 app.use('/api/admin/diagrams', authenticateToken, diagramsRoutes);
 app.use('/api/dev', devToolsRoutes);
 app.use('/api/clients', authenticateToken, clientRegistrationRoutes);
