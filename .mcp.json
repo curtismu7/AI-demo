@@ -27,6 +27,10 @@
     "sequential-thinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "banking-dev": {
+      "command": "node",
+      "args": ["/Users/curtismuir/Development/banking/dev_mcp/banking-dev/dist/index.js"]
     }
   }
 }
