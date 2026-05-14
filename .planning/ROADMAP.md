@@ -2264,11 +2264,11 @@ Plans:
 **Goal:** Bring all four mermaid sources (`architecture-simple.mmd`, `architecture.mmd`, `i4ai-ref-arch.mmd`, `mcp-security-gateway.mmd`) into line with the live code state — every SVC_LIST service named, every inter-service edge drawn, Phase 268 K8s as `planned` (dashed), Phase 269 vault as a startup-load arrow, all §0-violating emojis removed; install a Jest sync test that reads `SVC_LIST` from `run-bank.sh` and asserts coverage so future drift is caught immediately; regenerate all four PNGs via mermaid-cli@11; record the diagram-completeness invariant as a new REGRESSION_PLAN §1 row pointing at the test as the enforcer.
 **Requirements**: REQ-DIAGRAM-01..15 (see .planning/REQUIREMENTS.md)
 **Depends on:** Phase 269
-**Plans:** 4 plans
+**Plans:** 2/4 plans executed
 
 Plans:
-- [ ] 270-01-PLAN.md — Extend architecture-simple.mmd + architecture.mmd with missing services, vault, K8s; delete duplicate (1).mmd; add REQ-DIAGRAM-* to REQUIREMENTS.md
-- [ ] 270-02-PLAN.md — Jest sync test asserts every SVC_LIST entry appears in at least one .mmd source + OAuth markers + emoji allowlist + no secret values
+- [x] 270-01-PLAN.md — Extend architecture-simple.mmd + architecture.mmd with missing services, vault, K8s; delete duplicate (1).mmd; add REQ-DIAGRAM-* to REQUIREMENTS.md
+- [x] 270-02-PLAN.md — Jest sync test asserts every SVC_LIST entry appears in at least one .mmd source + OAuth markers + emoji allowlist + no secret values
 - [ ] 270-03-PLAN.md — Bump mermaid-cli @10 → @11; regenerate all four PNGs; verify UI build gate
 - [ ] 270-04-PLAN.md — REGRESSION_PLAN §1 row + §4 entry; InteractiveArchDiagram.js top comment; finalize 270-VALIDATION.md
 
