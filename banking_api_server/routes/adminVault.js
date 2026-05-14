@@ -92,6 +92,12 @@ let rotateInProgress = false;
 // ---------------------------------------------------------------------------
 // GET /api/admin/vault/status — no audit (read-only metadata)
 // ---------------------------------------------------------------------------
+// WR-02 (Phase 269.1 review): `entriesLoaded` returns the integer count, not a
+// boolean. This is a deliberate operator-UX trade — admins need to confirm
+// "vault loaded N entries as expected" after unlock/rotate, and an admin who
+// reaches this endpoint is already inside the trust boundary (authenticated +
+// requireAdmin). Names are never returned; only the count. Disposition:
+// accepted (admin-only; no enumeration of names).
 router.get('/status', requireAdmin, (req, res) => {
   const vaultPath = resolveVaultPath();
   return res.json({
