@@ -119,9 +119,10 @@ describe('Architecture diagram completeness', () => {
       { re: /VAULT_PASSWORD\s*=\s*\S/, name: 'VAULT_PASSWORD=value' },
       { re: /client_secret\s*=\s*\S/, name: 'client_secret=value' },
       { re: /_SECRET\s*=\s*[^"\s]/, name: '*_SECRET=value' },
-      // api_key=... when followed by something that isn't whitespace/quote, but
-      // do NOT match "X-API-Key" header references (header is a name, not a value).
-      { re: /\bapi_key\s*=\s*[^X\s"][^\s"]*/i, name: 'api_key=value' },
+      // api_key=... when followed by something that isn't whitespace/quote.
+      // The `=` requirement alone disambiguates header references like
+      // "X-API-Key:" (uses `:`, not `=`) from value-bearing assignments.
+      { re: /\bapi_key\s*=\s*[^\s"][^\s"]*/i, name: 'api_key=value' },
     ];
 
     test.each(MMD_FILES)('%s contains no secret-value substring', (file) => {
@@ -136,6 +137,17 @@ describe('Architecture diagram completeness', () => {
           );
         }
       }
+    });
+
+    // Regression: prior regex used `[^X\s"]` which silently allowed any
+    // api_key=X... value through (e.g. "api_key=Xabcd1234567890"). The fix
+    // drops the X-exclusion. This synthetic test pins detection capability.
+    test('api_key=value pattern catches values starting with X', () => {
+      const synthetic = 'node[Service api_key=Xabcd1234567890 here]';
+      const apiKeyPattern = FORBIDDEN_PATTERNS.find(
+        (p) => p.name === 'api_key=value',
+      ).re;
+      expect(synthetic).toMatch(apiKeyPattern);
     });
   });
 
