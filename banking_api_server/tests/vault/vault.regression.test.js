@@ -243,4 +243,34 @@ describe('vault: tampered file detection', () => {
       caught instanceof VaultIntegrityError || caught instanceof VaultAuthError,
     ).toBe(true);
   });
+
+  // WR-01: KDF param tampering should fail fast in parseEnvelope, BEFORE the
+  // ~100ms Argon2id derive. Asserts both error type and that the call returned
+  // in well under one full Argon2id cost (a single derive @ m=64MiB/t=3/p=4
+  // measures ~60-300ms on the test box; we cap the failure budget at 200ms
+  // which is comfortably below a single derive but well above a JSON parse).
+  test('downgraded kdf.memCost in envelope throws VaultIntegrityError WITHOUT running deriveKek', async () => {
+    p = tmpVaultPath();
+    const v = await createVault(p, 'pw');
+    await v.save();
+    v.close();
+
+    const env = JSON.parse(fs.readFileSync(p, 'utf8'));
+    env.kdf.memCost = 1; // downgrade attempt
+    fs.writeFileSync(p, JSON.stringify(env));
+
+    const t0 = Date.now();
+    let caught;
+    try {
+      await openVault(p, 'pw');
+    } catch (err) {
+      caught = err;
+    }
+    const elapsed = Date.now() - t0;
+    expect(caught).toBeInstanceOf(VaultIntegrityError);
+    expect(caught.message).toMatch(/unsupported kdf parameters/);
+    // Confirm the failure path skipped deriveKek (which would dominate at
+    // ~60ms+). Generous ceiling for CI noise; tighten only if it flakes low.
+    expect(elapsed).toBeLessThan(200);
+  });
 });

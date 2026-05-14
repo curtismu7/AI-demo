@@ -54,8 +54,17 @@ describe('vault/format: serializeEnvelope', () => {
 });
 
 describe('vault/format: parseEnvelope', () => {
+  const VALID_KDF = {
+    alg: 'argon2id',
+    salt: 'AAAAAAAAAAAAAAAAAAAAAA==',
+    memCost: 65536,
+    timeCost: 3,
+    parallelism: 4,
+    hashLen: 32,
+  };
+
   test('parses a valid envelope', () => {
-    const env = { magic: 'BNKV', version: 1, entries: {} };
+    const env = { magic: 'BNKV', version: 1, kdf: VALID_KDF, entries: {} };
     const buf = serializeEnvelope(env);
     const out = parseEnvelope(buf);
     expect(out.magic).toBe('BNKV');
@@ -80,6 +89,52 @@ describe('vault/format: parseEnvelope', () => {
 
   test('throws VaultIntegrityError on invalid JSON', () => {
     expect(() => parseEnvelope(Buffer.from('not json'))).toThrow(VaultIntegrityError);
+  });
+
+  // WR-01: KDF param validation fires BEFORE deriveKek runs.
+  test('throws VaultIntegrityError when kdf block is missing', () => {
+    const env = { magic: 'BNKV', version: 1, entries: {} };
+    const buf = serializeEnvelope(env);
+    expect(() => parseEnvelope(buf)).toThrow(VaultIntegrityError);
+    expect(() => parseEnvelope(buf)).toThrow(/missing kdf block/);
+  });
+
+  test('throws VaultIntegrityError when kdf.memCost is downgraded', () => {
+    const env = {
+      magic: 'BNKV', version: 1,
+      kdf: { ...VALID_KDF, memCost: 1 },
+      entries: {},
+    };
+    const buf = serializeEnvelope(env);
+    expect(() => parseEnvelope(buf)).toThrow(VaultIntegrityError);
+    expect(() => parseEnvelope(buf)).toThrow(/unsupported kdf parameters/);
+  });
+
+  test('throws VaultIntegrityError when kdf.timeCost is downgraded', () => {
+    const env = {
+      magic: 'BNKV', version: 1,
+      kdf: { ...VALID_KDF, timeCost: 1 },
+      entries: {},
+    };
+    const buf = serializeEnvelope(env);
+    expect(() => parseEnvelope(buf)).toThrow(/unsupported kdf parameters/);
+  });
+
+  test('throws VaultIntegrityError when kdf.alg differs', () => {
+    const env = {
+      magic: 'BNKV', version: 1,
+      kdf: { ...VALID_KDF, alg: 'scrypt' },
+      entries: {},
+    };
+    const buf = serializeEnvelope(env);
+    expect(() => parseEnvelope(buf)).toThrow(/unsupported kdf parameters/);
+  });
+
+  test('throws VaultIntegrityError when kdf.salt is missing', () => {
+    const { salt: _drop, ...kdfNoSalt } = VALID_KDF;
+    const env = { magic: 'BNKV', version: 1, kdf: kdfNoSalt, entries: {} };
+    const buf = serializeEnvelope(env);
+    expect(() => parseEnvelope(buf)).toThrow(/missing kdf salt/);
   });
 });
 

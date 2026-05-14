@@ -28,6 +28,26 @@ const MAGIC = 'BNKV';
 const VERSION = 1;
 
 /**
+ * Frozen KDF parameters that MUST appear on-disk for a v1 envelope. These are
+ * advertised in the envelope's `kdf` block; parseEnvelope rejects any envelope
+ * whose advertised values disagree with these constants. The intent is to
+ * fail fast BEFORE deriveKek runs (which would otherwise spend the full
+ * Argon2id memory budget on a tampered file).
+ *
+ * The values mirror crypto.js's KDF_PARAMS (memoryCost / hashLength) but use
+ * the on-disk field names (memCost / hashLen) used in createVault().
+ *
+ * If you bump these values you MUST also bump VERSION and add a migration.
+ */
+const FROZEN_ENVELOPE_KDF = Object.freeze({
+  alg: 'argon2id',
+  memCost: 65536,
+  timeCost: 3,
+  parallelism: 4,
+  hashLen: 32,
+});
+
+/**
  * Canonical JSON: object keys sorted alphabetically at every level; arrays
  * preserve their input order. Primitives go through JSON.stringify.
  *
@@ -81,6 +101,24 @@ function parseEnvelope(buf) {
   }
   if (obj.version !== VERSION) {
     throw new VaultIntegrityError(`vault: format version ${obj.version} not supported`);
+  }
+  // WR-01: validate KDF params BEFORE the caller runs the expensive
+  // deriveKek(). A tampered envelope that downgraded memCost/timeCost would
+  // otherwise still consume the FROZEN crypto.js budget (because deriveKek
+  // ignores envelope params), but the victim wouldn't learn the file was
+  // bad until the HMAC check fired AFTER ~100ms of Argon2id work. Catching
+  // the divergence here keeps the trust chain self-documenting and avoids
+  // the DoS amplifier.
+  if (!obj.kdf || typeof obj.kdf !== 'object') {
+    throw new VaultIntegrityError('vault: missing kdf block');
+  }
+  for (const [k, v] of Object.entries(FROZEN_ENVELOPE_KDF)) {
+    if (obj.kdf[k] !== v) {
+      throw new VaultIntegrityError('vault: unsupported kdf parameters');
+    }
+  }
+  if (typeof obj.kdf.salt !== 'string' || obj.kdf.salt.length === 0) {
+    throw new VaultIntegrityError('vault: missing kdf salt');
   }
   return obj;
 }
