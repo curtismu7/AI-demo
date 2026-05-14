@@ -2246,6 +2246,16 @@ Plans:
 - [x] 269-04-PLAN.md — MCP Gateway startup wiring (banking_mcp_gateway/src/vault.ts + index.ts IIFE) with allowlist regex for env injection defense
 - [x] 269-05-PLAN.md — vault-migrate-from-env script + docs/vault.md operator reference + REGRESSION_PLAN.md §1 + §4 updates + 269-VALIDATION.md finalize
 
+### Phase 269.1: Admin vault-password setup screen — PingOne-gated /api/vault/unlock + /api/vault/rotate routes plus React admin page; extends vaultLoader with runtime unlock (no process restart) (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 269
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 269.1 to break down)
+
 ### Phase 270: Architecture diagram completeness audit — /architecture/system page must fully represent every running service, every inter-service edge, every external integration, and every token-flow arrow in the demo. Today's diagram is known to be partial (predates Phase 266 Path A mortgage-service, Phase 267 mortgage_demo chip, Phase 268 K8s topology, Phase 269 vault). Acceptance criteria: every service listed in run-bank.sh SVC_LIST appears as a node; every URL/WebSocket the BFF, MCP Gateway, or MCP Server talks to appears as an edge; every OAuth grant (auth code, CC, RFC 8693 single + 2x exchange, RFC 8693 transaction tokens) is represented; external boxes for PingOne (auth + management API), Helix LLM, browser SPA. Scope: AUDIT the existing diagram source files (banking_api_ui/src/components/ArchitectureTabsPanel.jsx + the diagram registry/regenerate flow + any mermaid/png sources under banking_api_ui/public/), reconcile against the current code state via a parallel-agent scan, write a checklist of additions, then make the changes. Out of scope: redesigning the diagram UI itself (Phase 264 covers config-page rework). First plan should pick: do we extend existing diagrams in place, or generate a new 'full-system' diagram alongside; mermaid vs draw.io vs manual SVG; how to keep the diagram in sync going forward (test? auto-regenerate on phase add?).
 
 **Goal:** [To be planned]

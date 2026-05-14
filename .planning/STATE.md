@@ -300,6 +300,8 @@ Next phase: Available for execution or verification workflow
 
 ### Roadmap Evolution
 
+- Phase 269.1 inserted after Phase 269: Admin vault-password setup screen — PingOne-gated /api/vault/unlock + /api/vault/rotate routes + React admin page; extends vaultLoader.js with runtime unlock (no process restart) (URGENT)
+
 - Phase 271 added: Authorization-server-everywhere — MCP Gateway + MCP Server + BFF resource routes all call the active AS (sim or PingAuthorize) for aud + scope + existing-rule checks. Frozen decisions: one general PA endpoint with scopes as input params, all three servers in scope, conditional 60s cache only for PingAuthorize. Builds on dda04c2b + 641cf843.
 
 - Phase 270 added: Architecture diagram completeness audit — /architecture/system page must fully represent every service, edge, integration, and OAuth grant (catches up with Phases 266/267/268/269)
