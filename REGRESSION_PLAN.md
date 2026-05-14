@@ -73,6 +73,7 @@ Real banking applications use professional typography. Emojis break the enterpri
 | **setupFresh.js phase order** | **Re-ordering or renaming phases in `main()` silently breaks the phase-N-of-M counters and the `--skip-*` flag semantics; new phases inserted before bootstrap break the `skipBootstrap` early-return** | `banking_api_server/scripts/setupFresh.js` — phase order is contractual: confirm-dir → cleanup → deps → hosts → [pingone-wipe] → [import] → bootstrap → [vault] → [helix]. New phases must be APPENDED, never spliced in. The `skipBootstrap` early-return branch (~line 1155) must include any new optional post-bootstrap phase. Phase 269. |
 | **setupFresh.js runChild env passthrough** | **`runChild(label, scriptArgs, opts)` now honors `opts.env` (defaults to `process.env`). Reverting to the prior behavior (silently dropping `opts.env`) breaks `configureVault()` — VAULT_PASSWORD never reaches `vault:create` and vault setup fails at `setup:fresh` time. Any future refactor of runChild MUST preserve env passthrough.** | `banking_api_server/scripts/setupFresh.js` — the spawn call inside `runChild` (lines ~354-358) MUST include `env: opts.env \|\| process.env`. Verified by `grep -c 'env: opts.env' banking_api_server/scripts/setupFresh.js` ≥ 1. Existing call sites (no opts.env) are unaffected because the `\|\| process.env` fallback matches spawn's default-inherit semantics. Phase 269. |
 | **Vault runtime routes** | **Skipping admin auth, weakening the password re-verify on rotate, removing the rotate mutex, returning entry names from /status, or echoing passwords in responses each individually breaks operator-facing vault security; mounting these routes without `authenticateToken` upstream creates an unauthenticated decryption oracle** | `banking_api_server/routes/adminVault.js`, `banking_api_server/services/vaultLoader.js` (extended with `unlockVaultAtRuntime` + `isVaultUnlockedThisProcess` + `vaultEntryCountThisProcess` sibling exports — `loadVaultIntoConfigStore` behavior preserved byte-identical except for a 2-line state mirror on its success path that writes only to module-scoped flags introduced in Phase 269.1), `banking_api_server/server.js` (one new `app.use('/api/admin/vault', authenticateToken, require('./routes/adminVault'))` mount line at ~899, adjacent to the canonical `/api/admin` mount at line 896). MUST require `authenticateToken` + `requireAdmin` on every handler; MUST re-verify `currentPassword` on rotate via `vaultLib.openVault` BEFORE `handle.rotate` (defense-in-depth even when `isVaultUnlockedThisProcess()` says unlocked); MUST gate rotate behind `isVaultUnlockedThisProcess()` (423 if false); MUST mutex rotate with module-scoped `rotateInProgress` flag (409 on concurrent call); `GET /status` MUST NEVER include entry names — only `entriesLoaded` count + `path.basename(vaultPath)`; `POST /unlock` + `POST /rotate` response bodies MUST NEVER include the password value; Vercel guard (`router.use(...)` returning 503 `vault_disabled_serverless`) MUST run AFTER outer `authenticateToken` but BEFORE per-handler `requireAdmin` (admin probers see 503, unauthenticated probers see 401 — neither path leaks a decryption oracle). `VaultAuthError` and `VaultIntegrityError` MUST map to byte-identical 401 message `'vault: open failed (bad password or tampered file)'` (no enumeration oracle). `POST /unlock` rate limit MUST stay at 5 attempts / 5 min keyed by `req.user?.sub \|\| req.ip` and MUST short-circuit BEFORE calling `unlockVaultAtRuntime` (no Argon2id burn on rate-limited attempts). Phase 269.1. |
+| **Architecture diagram completeness** | **`/architecture/system` page silently drifts when a new service is added to `run-bank.sh` SVC_LIST but the mermaid sources aren't updated — viewers see a partial system picture, miss the new service in compliance/audit reviews, and the demo's "what's where" claim becomes false.** Removing or weakening the Jest sync test below disables drift detection; emojis outside the §0 allowlist (⚠️ ✅ ❌) in any `.mmd` source violate §0; secret-value substrings (`VAULT_PASSWORD=`, `client_secret=`, `_SECRET=`, `api_key=value`) in any label leak credentials into rendered PNGs and git history. | `banking_api_ui/src/components/__tests__/ArchitectureDiagram.completeness.test.js` (enforcer — pure file-read test, parses `SVC_LIST=(...)` from `run-bank.sh` and asserts every service appears in at least one of `architecture-simple.mmd`, `architecture.mmd`, `i4ai-ref-arch.mmd`, `mcp-security-gateway.mmd`); `run-bank.sh` (SVC_LIST is the single source of truth — test reads this, never duplicate); `scripts/build-diagrams.sh` (regen pipeline, mermaid-cli@11 pin); `banking_api_ui/public/architecture/{overview,overview2,token-flow,token-flow2}.png` (rendered outputs — must be newer than their `.mmd` source after every `.mmd` edit). Phase 270. |
 
 ---
 
@@ -106,6 +107,38 @@ Real banking applications use professional typography. Emojis break the enterpri
 ---
 
 ## 4. Bug Fix Log (reverse-chronological)
+
+### 2026-05-14 — Phase 270: Architecture diagram completeness audit — `/architecture/system` brought current with code state
+
+- **Source edits** (`architecture-simple.mmd`, `architecture.mmd`): added missing nodes (`banking_mcp_invest`, `banking_mortgage_service`, `banking_agent_service`, `banking_hitl_service`, `banking_mcp_gateway`, `langchain_agent`, `secrets.vault`, PingOne Management API), Phase 269 vault startup-load arrow, Phase 268 K8s topology as `planned` (dashed) subgraph, Helix-default LLM label with optional providers.
+- **Cleanup** (`architecture.mmd`): removed §0-violating emojis (🖥️ ☁️), fixed stale `:3000` → `:4000` port labels (UI runs on 4000 under run-bank.sh), replaced OpenAI-only LLM label with Helix-default fallback chain, enclosed the previously-stray `BankingRS` block in a proper `ResourceServer` subgraph.
+- **Duplicate removed**: deleted `i4ai-ref-arch (1).mmd` (Finder-duplicated copy at repo root; not referenced by the build pipeline or any code).
+- **Regression guard** (`banking_api_ui/src/components/__tests__/ArchitectureDiagram.completeness.test.js`): new Jest test reads `SVC_LIST=(...)` from `run-bank.sh` and asserts every service appears in at least one `.mmd` source; also enforces OAuth grant markers (`PingOne`, `RFC 8693`, `PKCE`, `client_credentials`), the §0 emoji allowlist, and the no-secret-values invariant. Pure file-read test — no React imports — so it cannot break the existing `ArchitectureTabsPanel.anon.test.js`.
+- **Pipeline bump** (`scripts/build-diagrams.sh`): `@mermaid-js/mermaid-cli@10` → `@11` (current major; one-character edit on line 49; backwards-compatible with the four existing `.mmd` sources).
+- **PNGs regenerated**: all four output PNGs (`overview.png`, `overview2.png`, `token-flow.png`, `token-flow2.png`) re-rendered; mtime now newer than their source `.mmd`; DiagramRegeneratePanel admin UI no longer shows "stale" badges.
+- **Component annotation** (`banking_api_ui/src/components/education/InteractiveArchDiagram.js`): top-of-file comment added noting the authoritative diagram source is `public/architecture/overview.png` (rendered from `architecture-simple.mmd`). Component is RETAINED per user decision — research recommended deletion, user chose to keep the limited interactive highlighting that drives off `TokenChainContext`.
+
+**Files changed:**
+
+- `architecture-simple.mmd`, `architecture.mmd`, `scripts/build-diagrams.sh`
+- `banking_api_ui/src/components/__tests__/ArchitectureDiagram.completeness.test.js` (NEW)
+- `banking_api_ui/public/architecture/{overview,overview2,token-flow,token-flow2}.png` (regenerated)
+- `banking_api_ui/src/components/education/InteractiveArchDiagram.js` (comment-only)
+- `.planning/REQUIREMENTS.md` (REQ-DIAGRAM-01..15 appended)
+- `.planning/phases/270-*/270-VALIDATION.md` (per-task verification map filled in)
+- `REGRESSION_PLAN.md` (this §1 row + §4 entry)
+- Deleted: `i4ai-ref-arch (1).mmd`
+
+**Verification:**
+
+- `cd banking_api_ui && CI=true npx react-scripts test --watchAll=false --testPathPattern='ArchitectureDiagram.completeness'` → **passes**
+- `cd banking_api_ui && CI=true npx react-scripts test --watchAll=false --testPathPattern='ArchitectureTabsPanel.anon'` → **still passes** (existing test not regressed)
+- `cd banking_api_ui && npm run build` → **exit 0** (UI build gate per CLAUDE.md)
+- `bash scripts/build-diagrams.sh` → **exit 0** with all four `[ok]` lines
+
+**Why this matters:**
+
+The demo's entire educational pitch is "here's where every token, every service, every PingOne API call lives." When the picture is partially wrong, the pitch is partially wrong. Before this phase, the System Architecture tab showed 5 of the 14 distinct nodes the system actually runs; after this phase it shows all 14 plus the planned Phase 268 K8s topology and the Phase 269 vault. The Jest sync test prevents this from drifting again.
 
 ### 2026-05-14 — Phase 269.1: Admin vault routes for runtime unlock and rotate added
 
@@ -2771,3 +2804,14 @@ cd ..
 - **ff_hitl_enabled=false:** Skips consent enforcement; deny and step-up still enforced via Authorize.
 - **Regression check:** `cd banking_api_ui && npm run build` → exit 0. Test $250 (confirm only), $500 (consent+MFA), $2000 (deny).
 - **Do not break:** Transfer/withdrawal/deposit HITL enforcement (now Authorize-driven). OTP bypass `123123`. MCP gateway HITL path. Existing consent modal + step-up MFA flows still trigger correctly.
+
+### 2026-05-14 — MCP Spec 2025-11-25 Priority 1 hardening (banking_mcp_server)
+
+- **Change:** Three security fixes in `banking_mcp_server` aligning with MCP 2025-11-25 spec §Authorization (RFC 8707), §Token Passthrough, and §Transports/Security.
+- **1. Aud-claim validation hardened** (`src/auth/TokenIntrospector.ts`): Previously, `MCP_SERVER_RESOURCE_URI` unset silently disabled the aud check; missing aud claim logged a warning and was allowed through. Now: outside `NODE_ENV=development|dev|test` (or unset), an unset `MCP_SERVER_RESOURCE_URI` throws — spec requires audience binding. When set, a missing aud claim throws; an aud value (string or array) that does not include the resource URI throws. Dev/test still warns only, for unchanged local DX.
+- **2. Token-passthrough fallback gated** (`src/tools/BankingToolProvider.ts`): The "no TokenExchangeService → forward user token directly" path violates the spec's "MCP server MUST NOT pass through" rule. It now throws outside dev/test; dev keeps the warning-only behavior so local runs without PingOne still work.
+- **3. Loopback default** (`src/config/environments.ts`, `src/config/loader.ts`, `src/server/BankingMCPServer.ts`): Base fallback host changed from `0.0.0.0` → `127.0.0.1` (development env already defaulted to `localhost`; staging/production still explicitly bind `0.0.0.0`). Startup log now flags when bound to `ALL interfaces` with an explicit override hint.
+- **Files modified:** `banking_mcp_server/src/auth/TokenIntrospector.ts`, `banking_mcp_server/src/tools/BankingToolProvider.ts`, `banking_mcp_server/src/config/environments.ts`, `banking_mcp_server/src/config/loader.ts`, `banking_mcp_server/src/server/BankingMCPServer.ts`, `banking_mcp_server/tests/auth/TokenIntrospector.test.ts` (+6 tests under `describe('RFC 8707 audience validation …')`), `.claude/skills/mcp-server/SKILL.md` (spec-deviation notes + audit-grounded compliance checklists).
+- **Regression check:** `cd banking_mcp_server && npm run build` → exit 0. `npx jest` (full mcp suite) → 745/745 pass, 34/34 suites. TokenIntrospector aud-validation tests cover string-aud match, array-aud match, mismatch, missing aud + URI set, production with URI unset (rejects), dev with URI unset (warns + allows).
+- **Do not break:** Existing WebSocket auth flow (unchanged — same `validateAgentToken` path); RFC 8693 token exchange path in `BankingToolProvider` (unchanged — only the no-exchange fallback is now gated); gateway-mode aud enforcement in `HttpMCPTransport.enforceUpstreamContract` (unchanged); local dev with no `MCP_SERVER_RESOURCE_URI` and `NODE_ENV` unset still works.
+- **Operator note:** Production / staging deploys MUST set `MCP_SERVER_RESOURCE_URI` and configure `TokenExchangeService` (already required by RFC 8693 flow). Failure to do so now produces a clear startup-time AuthenticationError instead of silent passthrough.
