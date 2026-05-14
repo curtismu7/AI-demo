@@ -44,6 +44,12 @@ const fs = require('node:fs');
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const DEFAULT_VAULT_PATH = path.join(REPO_ROOT, 'secrets.vault');
 
+// Phase 269.1 — in-process unlocked state. Flipped to true ONLY after a
+// successful vault open (startup OR runtime). Used by GET /api/admin/vault/status
+// to answer "is the vault unlocked" without enumerating configStore.
+let _unlocked = false;
+let _entriesLoaded = 0;
+
 async function loadVaultIntoConfigStore(opts = {}) {
   const vaultPath  = opts.vaultPath   ?? process.env.VAULT_PATH ?? DEFAULT_VAULT_PATH;
   const password   = opts.password    ?? process.env.VAULT_PASSWORD;
@@ -104,8 +110,91 @@ async function loadVaultIntoConfigStore(opts = {}) {
     delete process.env.VAULT_PASSWORD;
   }
 
+  _unlocked = true;
+  _entriesLoaded = entryCount;
   logger.log('[vault] loaded ' + entryCount + ' entries from ' + vaultPath);
   return { loaded: true, entries: entryCount };
 }
 
-module.exports = { loadVaultIntoConfigStore, DEFAULT_VAULT_PATH };
+/**
+ * Runtime unlock (Phase 269.1) — sibling of loadVaultIntoConfigStore.
+ *
+ * Called from POST /api/admin/vault/unlock so the operator can unlock the
+ * vault from the web UI without restarting the BFF. Differences vs. the
+ * startup loader:
+ *   - password is REQUIRED (no process.env fallback) — caller supplies via req.body
+ *   - does NOT consult process.env.VERCEL (route handler enforces the 503)
+ *   - does NOT call delete process.env.VAULT_PASSWORD (the password never came from env)
+ * Same as the startup loader:
+ *   - configStore.setRaw(data, {persist: false}) — values stay in memory only
+ *   - vault.close() runs in finally — KEK + DEKs always get zeroed
+ *   - logger.error logs only err.message (never err.stack) on open failure
+ *
+ * @returns {Promise<{loaded: true, entries: number}>}
+ * @throws {Error} with code 'VAULT_PASSWORD_MISSING' if password missing/empty
+ * @throws {Error} with code 'VAULT_FILE_NOT_FOUND' if vault file does not exist
+ * @throws {VaultAuthError | VaultIntegrityError} from lib/vault.openVault on bad/tampered vault
+ */
+async function unlockVaultAtRuntime(opts = {}) {
+  const password    = opts.password;
+  const vaultPath   = opts.vaultPath   ?? process.env.VAULT_PATH ?? DEFAULT_VAULT_PATH;
+  const configStore = opts.configStore ?? require('./configStore');
+  const vaultLib    = opts.vaultLib    ?? require('../lib/vault');
+  const logger      = opts.logger      ?? console;
+
+  if (typeof password !== 'string' || password.length === 0) {
+    const err = new Error('vault: password required');
+    err.code = 'VAULT_PASSWORD_MISSING';
+    throw err;
+  }
+  if (!fs.existsSync(vaultPath)) {
+    const err = new Error('vault: file not found');
+    err.code = 'VAULT_FILE_NOT_FOUND';
+    throw err;
+  }
+
+  let vault;
+  try {
+    vault = await vaultLib.openVault(vaultPath, password);
+  } catch (err) {
+    // Generic log — never err.stack (no argon/kek/dek leak). Mirrors loadVaultIntoConfigStore.
+    logger.error('[vault] runtime open failed:', err.message);
+    throw err;
+  }
+
+  let entryCount = 0;
+  try {
+    const data = {};
+    for (const name of vault.list()) {
+      data[name.toLowerCase()] = vault.read(name);
+      entryCount++;
+    }
+    if (entryCount > 0) {
+      await configStore.setRaw(data, { persist: false });
+    }
+  } finally {
+    // KEK + DEKs zeroed even on partial-read failure.
+    try { vault.close(); } catch (_) { /* ignore */ }
+    // DELIBERATELY do NOT delete process.env.VAULT_PASSWORD —
+    // runtime password came from req.body, not env.
+  }
+
+  _unlocked = true;
+  _entriesLoaded = entryCount;
+  logger.log('[vault] runtime unlock complete — ' + entryCount + ' entries cached');
+  return { loaded: true, entries: entryCount };
+}
+
+/** Phase 269.1 — returns whether THIS PROCESS has successfully unlocked a vault since boot. */
+function isVaultUnlockedThisProcess() { return _unlocked; }
+
+/** Phase 269.1 — entry count from the last successful unlock (or 0). */
+function vaultEntryCountThisProcess() { return _entriesLoaded; }
+
+module.exports = {
+  loadVaultIntoConfigStore,
+  unlockVaultAtRuntime,
+  isVaultUnlockedThisProcess,
+  vaultEntryCountThisProcess,
+  DEFAULT_VAULT_PATH,
+};
