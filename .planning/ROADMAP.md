@@ -2282,6 +2282,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 271 to break down)
 
+### Phase 272: banking_mcp_cards — multi-tenant credit-card issuer MCP server demonstrating cross-tenant isolation via tenant_id claim propagation
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 271
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 272 to break down)
+
 ---
 
 ### Phase 262: CSS Hygiene — dead code purge, :root consolidation, !important audit
@@ -2296,3 +2306,47 @@ Plans:
 - [ ] 262-02-PLAN.md — Consolidate :root blocks into index.css (dashboard-theme + FloatingPanel)
 - [ ] 262-03-PLAN.md — BankingAgent.css !important audit (67 → ≤50)
 - [ ] 262-04-PLAN.md — App.css cleanup: drop webkit prefix dupes + !important audit (26 → ≤20)
+
+---
+
+## Backlog
+
+### Phase 999.1: MCP server — enable h2 transport so http2McpBridge actually multiplexes (BACKLOG)
+
+**Goal:** Make the existing `banking_api_server/services/http2McpBridge.js` actually negotiate HTTP/2 to the MCP server. Today the bridge calls `http2.connect(..., { allowHTTP1: true })` against `banking_mcp_server`, which uses plain `http.createServer` — so Node silently downgrades to HTTP/1.1 and the "multiplexing" claim in the bridge docstring is theoretical.
+
+**Requirements:** TBD
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Captured context (2026-05-14):**
+
+Concrete work:
+1. Switch `banking_mcp_server/src/server/BankingMCPServer.ts` (line ~108) from `http.createServer` to `http2.createServer({ allowHTTP1: true })` — h2c, plaintext, matches existing `http://localhost:8080`. No cert needed.
+2. Verify WebSocket clients still upgrade through the shared port on the current Node version. h2 has no `'upgrade'` event, so this hinges on `ws.Server` attaching via the http/1.1 ALPN path. Affected clients: langchain_agent, banking_agent_service, the existing BFF WS path.
+3. Flip `MCP_SERVER_URL` default in `banking_api_server/server.js` (line ~1729) from `ws://localhost:8080` to `http://localhost:8080` so the http2McpBridge path is actually exercised.
+4. Verify with `curl -v --http2-prior-knowledge http://localhost:8080/mcp` showing HTTP/2 stream IDs in the trace.
+5. Add a REGRESSION_PLAN §4 entry.
+
+Risk:
+- Same Node 24 http2-compat-layer crash I hit when trying h2 on the BFF: `TypeError: Cannot read properties of undefined (reading 'readable') at IncomingMessage._read (node:_http_incoming:211:19)`. Either pin to a Node version with stable http2-compat coexistence, or use a library like `spdy` that has a more mature compat layer.
+
+Triggers to promote:
+- First reported BFF→MCP latency complaint.
+- v1.1 milestone planning.
+- Node version pin or upgrade to a release with verified http2-compat stability.
+
+Why not now:
+- Current concurrent tool-call count per user action is 1–3. No user-visible latency.
+- v1.0 is at 97% — risk budget should not go to a transport optimization that no demo viewer will notice.
+- The bridge's misleading docstring has been corrected to disclose the fallback (commit 2026-05-14).
+
+Estimated effort: 2–4 hours including testing and the §4 entry.
+
+Related files:
+- `banking_api_server/services/http2McpBridge.js`
+- `banking_mcp_server/src/server/BankingMCPServer.ts`
+- `banking_api_server/server.js` (line ~1729 — `MCP_SERVER_URL` default)
