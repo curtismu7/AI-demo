@@ -132,3 +132,23 @@
 - [x] **DELEG-05**: Worker App config tab — new "Worker App" tab on `/config` page. Editable fields for `pingone_client_id`, `pingone_client_secret`, `pingone_environment_id`. Save via existing `configStore`. "Test Connection" button calls `GET /api/admin/config/worker-test` and shows pass/fail.
 - [x] **DELEG-06**: `/delegation` management page — dedicated React page with: add-delegate form (email + scope checkboxes), active delegates list with revoke, delegation history table.
 - [x] **DELEG-07**: App wiring — `/delegation` route in React Router, "Manage Delegates" nav link in UserDashboard. `npm run build` exits 0.
+
+---
+
+## Architecture Diagram Completeness (Phase 270)
+
+- [ ] **REQ-DIAGRAM-01**: Every `run-bank.sh` SVC_LIST entry (banking_api_server, banking_mcp_server, banking_api_ui, banking_mcp_gateway, banking_hitl_service, banking_agent_service, banking_mcp_invest, banking_mortgage_service) appears as a node label substring in at least one `.mmd` source at repo root.
+- [ ] **REQ-DIAGRAM-02**: Inter-service edges drawn — BFF→Gateway, Gateway→MCP Server, Gateway→banking_resource_server, MCP→MCP Invest, BFF→Helix, BFF→PingOne AS, BFF→PingOne Management, HITL↔BFF.
+- [ ] **REQ-DIAGRAM-03**: Every OAuth grant in active use is labelled — Auth Code+PKCE, Client Credentials, RFC 8693 single-exchange, RFC 8693 dual-token, CIBA, RFC 7662 introspection (in at least one of the four `.mmd` sources).
+- [ ] **REQ-DIAGRAM-04**: External cloud nodes present and distinguished — PingOne AS, PingOne Management API, PingOne Authorize PDP, Helix LLM (with optional providers).
+- [ ] **REQ-DIAGRAM-05**: Phase 266 paths (A api_key, B dual_token, C oauth_bearer) drawn with distinct edge styles in at least one .mmd source.
+- [ ] **REQ-DIAGRAM-06**: Phase 268 K8s topology drawn as `planned` (stroke-dasharray subgraph) in `architecture.mmd`.
+- [ ] **REQ-DIAGRAM-07**: Phase 269 `secrets.vault` startup-load arrow into BFF drawn in `architecture-simple.mmd` and `architecture.mmd`.
+- [ ] **REQ-DIAGRAM-08**: No emojis outside REGRESSION_PLAN §0 allowlist (⚠️ ✅ ❌) in any `.mmd` source.
+- [ ] **REQ-DIAGRAM-09**: Jest sync test `banking_api_ui/src/components/__tests__/ArchitectureDiagram.completeness.test.js` asserts every SVC_LIST entry appears in at least one .mmd source.
+- [ ] **REQ-DIAGRAM-10**: Jest sync test asserts OAuth grant markers (PingOne, RFC 8693, PKCE, client_credentials) appear in at least one .mmd source.
+- [ ] **REQ-DIAGRAM-11**: Stale port label `:3000` removed from `architecture.mmd` (UI runs on `:4000` under run-bank.sh); OpenAI-only LLM label replaced with Helix-default fallback chain.
+- [ ] **REQ-DIAGRAM-12**: New REGRESSION_PLAN §1 row added: "Architecture diagram completeness" pointing at the sync test as the enforcer.
+- [ ] **REQ-DIAGRAM-13**: PNGs regenerated via `scripts/build-diagrams.sh`; all four output PNGs (overview, overview2, token-flow, token-flow2) have non-zero size and mtime newer than their .mmd source.
+- [ ] **REQ-DIAGRAM-14**: `InteractiveArchDiagram.js` retained per locked user decision (not removed), with a top-of-file comment noting the authoritative source is `architecture-simple.png`.
+- [ ] **REQ-DIAGRAM-15**: Sync test asserts no .mmd source contains a secret-value substring pattern (VAULT_PASSWORD=, client_secret=, _SECRET=, api_key= with value); arrow labels reference mechanisms (`startup-load`, `X-API-Key`), never values.
