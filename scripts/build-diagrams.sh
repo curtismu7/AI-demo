@@ -46,7 +46,7 @@ render_one() {
   fi
 
   echo "  [render] ${name}: ${src_rel} -> $(basename "${out}") (${width}px)"
-  if ! npx -y @mermaid-js/mermaid-cli@10 \
+  if ! npx -y @mermaid-js/mermaid-cli@11 \
         -i "${src}" -o "${out}" -w "${width}" -b transparent >/dev/null 2>&1; then
     echo "    [fail]  ${name}: mermaid-cli could not render." >&2
     echo "            Manual fallback: open https://mermaid.live, paste ${src_rel}," >&2
