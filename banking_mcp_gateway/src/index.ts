@@ -35,8 +35,35 @@ import { buildAuthorizeMcpRequest } from './middleware/authorizeMcpRequest';
 import { getScopesForGatewayTool, getChallengeTypeForTool } from './auth/toolScopes';
 import { GatewayIntrospectionClient } from './auth/GatewayIntrospectionClient';
 import { runMcpAuthorizationPipeline } from './auth/authorizeMcpRequestCore';
+import { loadVaultIntoEnv } from './vault';
 
+// Phase 269 Plan 04: load encrypted vault entries into process.env BEFORE
+// loadConfig() runs. The vault populates MCP_GW_*, PROVIDER_*, HELIX_*, and
+// BFF_INTERNAL_* env vars; loadConfig() then reads process.env as usual —
+// zero new code paths in config.ts. Skips silently when no secrets.vault
+// exists; fails fast if a vault is present but VAULT_PASSWORD is missing.
+//
+// Because vault load is async and the rest of the module's top-level code
+// (loadConfig, assertProductionSecrets, GatewayServer construction, .listen)
+// is synchronous, we wrap the entire module body in a single async IIFE.
+// The diff is the import line above + the IIFE opener here + the IIFE
+// closer at the bottom of the file. All existing logic is byte-for-byte
+// preserved inside.
 let config: GatewayConfig;
+(async () => {
+try {
+  const vaultResult = await loadVaultIntoEnv();
+  if (vaultResult.loaded) {
+    console.log('[GW vault] loaded ' + vaultResult.entries + ' entries into process.env');
+  }
+} catch (err) {
+  console.error(
+    '[GW vault] startup load failed; refusing to start.',
+    err instanceof Error ? err.message : err,
+  );
+  process.exit(1);
+}
+
 try {
   config = loadConfig();
 } catch (err) {
@@ -833,3 +860,4 @@ httpServer.listen(config.port, config.host, () => {
 
 process.on('SIGINT', () => { httpServer.close(); process.exit(0); });
 process.on('SIGTERM', () => { httpServer.close(); process.exit(0); });
+})();
