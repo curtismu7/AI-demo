@@ -245,6 +245,7 @@ export default function AdminSideNav({ user }) {
         { label: "LLM Config", path: "/llm-config", icon: "🤖" },
         { label: "App Configuration", path: "/configure", icon: "🔧" },
         { label: "Postman Collections", path: "/postman", icon: "📬" },
+        { label: "Vault", path: "/admin/vault" },
       ],
     },
     {

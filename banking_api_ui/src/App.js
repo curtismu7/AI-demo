@@ -23,6 +23,7 @@ import { ActorTokenEducation } from "./components/ActorTokenEducation";
 import AdminErrorAuditLog from "./components/AdminErrorAuditLog";
 import AdminSideNav from "./components/AdminSideNav";
 import AdminTokenComplianceAudit from "./components/AdminTokenComplianceAudit";
+import AdminVaultPage from "./components/AdminVaultPage";
 import AgentFlowDiagramPanel from "./components/AgentFlowDiagramPanel";
 import { AgenticTrustEducation } from "./components/AgenticTrustEducation";
 import ApiExplorerPanel from "./components/ApiExplorerPanel";
@@ -1107,6 +1108,14 @@ function AppWithAuth() {
                             element={
                               <AdminRoute user={user}>
                                 <LlmConfigPage user={user} onLogout={logout} />
+                              </AdminRoute>
+                            }
+                          />
+                          <Route
+                            path="/admin/vault"
+                            element={
+                              <AdminRoute user={user}>
+                                <AdminVaultPage />
                               </AdminRoute>
                             }
                           />
