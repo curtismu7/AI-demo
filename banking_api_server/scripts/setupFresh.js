@@ -213,6 +213,18 @@ Flags:
                       re-prompt. Use when switching tenants or after rotating
                       the worker secret. Without this flag, after the first
                       successful prompt every future run skips cred entry.
+  --skip-vault        Skip the credential vault setup phase. No prompt, no file
+                      written, no .env mutation. Use when you want to defer the
+                      vault to later or run the agent fully on .env values.
+  --vault-password <pw>  Vault password (Phase 269). REQUIRED when the vault
+                      phase runs (setupFresh does NOT prompt interactively
+                      because the built-in readline does not mask password
+                      input safely). WARNING: visible in /proc/<pid>/cmdline.
+                      On shared machines, prefer 'export VAULT_PASSWORD=...'
+                      before running setup:fresh. Use --skip-vault if you do
+                      not want vault setup.
+  --vault-path <path>  Override the vault file path. Default:
+                      <repo-root>/secrets.vault
 
 Helix env vars (used by --helix in non-interactive contexts):
   HELIX_BASE_URL, HELIX_API_KEY, HELIX_ENVIRONMENT_ID, HELIX_AGENT_ID,
@@ -249,11 +261,41 @@ const LOCAL_FLAGS = new Set([
   '--from-installer', '--yes', '--clean', '--no-clean',
   '--reset-pingone',
   '--skip-helix', '--helix',
+  // Phase 269 — vault setup flags. --vault-password and --vault-path
+  // each consume a value token (next arg); see _stripValueFlag below.
+  '--skip-vault', '--vault-password', '--vault-path',
 ]);
 const passthroughFlags = args.filter(a => a.startsWith('--') && !LOCAL_FLAGS.has(a));
+
+// Phase 269: --vault-password and --vault-path each consume a value token
+// that does NOT start with '--', so the dash-prefixed filter above lets it
+// through. Strip those value tokens explicitly so they don't reach
+// bootstrapPingOne as an unrecognized positional.
+function _stripValueFlag(flag) {
+  const i = args.indexOf(flag);
+  if (i >= 0 && i + 1 < args.length) {
+    const valueToken = args[i + 1];
+    const idx = passthroughFlags.indexOf(valueToken);
+    if (idx >= 0) passthroughFlags.splice(idx, 1);
+  }
+}
+_stripValueFlag('--vault-password');
+_stripValueFlag('--vault-path');
+
 const RESET_PINGONE = args.includes('--reset-pingone');
 const SKIP_HELIX    = args.includes('--skip-helix');
 const FORCE_HELIX   = args.includes('--helix');
+
+// Phase 269 — vault setup
+const SKIP_VAULT = args.includes('--skip-vault');
+const VAULT_PASSWORD_ARG = (() => {
+  const i = args.indexOf('--vault-password');
+  return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
+})();
+const VAULT_PATH_ARG = (() => {
+  const i = args.indexOf('--vault-path');
+  return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
+})();
 
 // `--from-installer` is set by install.sh, which already confirmed the install
 // directory with the user — skip our own dir-confirm prompt to avoid double-asking.
@@ -354,6 +396,12 @@ function runChild(label, scriptArgs, opts = {}) {
   return new Promise((resolve) => {
     const child = spawn('node', scriptArgs, {
       cwd: opts.cwd || SERVER_ROOT,
+      // Phase 269: honor opts.env so configureVault() can pass VAULT_PASSWORD +
+      // VAULT_PATH to vault:create / vault:migrate-from-env children via env
+      // (NOT argv — T-269-27 cmdline leak). Default to process.env preserves
+      // existing call sites byte-for-byte (spawn's default-inherit semantics
+      // is equivalent to env: process.env).
+      env: opts.env || process.env,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -776,6 +824,121 @@ function maskSecret(s) {
   return v.slice(0, 3) + '…' + v.slice(-2);
 }
 
+/**
+ * Phase 269 — vault setup phase. Pure-ish: all collaborators are injectable
+ * for unit testing. Defaults resolve to the module-scoped helpers so the
+ * production call site `await configureVault()` is unchanged.
+ *
+ * On success: returns { ok: true }.
+ * On fail-fast (interactive + no password): returns { ok: false, reason: '...' }
+ * — the caller (main()) decides whether to process.exit(1). Keeping process.exit
+ * out of the function makes it unit-testable without killing the test runner.
+ *
+ * @param {object}   [opts]
+ * @param {string}   [opts.password]       Default: VAULT_PASSWORD_ARG || process.env.VAULT_PASSWORD
+ * @param {string}   [opts.vaultPath]      Default: VAULT_PATH_ARG || REPO_ROOT/secrets.vault
+ * @param {string}   [opts.envFile]        Default: ENV_FILE (banking_api_server/.env)
+ * @param {boolean}  [opts.interactive]    Default: isInteractiveStdin()
+ * @param {Function} [opts.runChild]       Default: module-scoped runChild
+ * @param {Function} [opts.readQuestion]   Default: readlineQuestion
+ * @param {Function} [opts.ok]             Default: ok() log helper
+ * @param {Function} [opts.skip]           Default: skip() log helper
+ * @param {Function} [opts.fail]           Default: fail() log helper (does NOT exit)
+ * @returns {Promise<{ok: boolean, reason?: string}>}
+ */
+async function configureVault(opts = {}) {
+  const password = opts.password !== undefined
+    ? opts.password
+    : (VAULT_PASSWORD_ARG || process.env.VAULT_PASSWORD);
+  const vaultPath = opts.vaultPath
+    || VAULT_PATH_ARG
+    || path.join(REPO_ROOT, 'secrets.vault');
+  const envFile = opts.envFile || ENV_FILE;
+  const interactive = opts.interactive !== undefined
+    ? opts.interactive
+    : isInteractiveStdin();
+  const _runChild = opts.runChild || runChild;
+  // _readQuestion is intentionally declared but only used in the
+  // explicit-consent branch below — kept for future expansion / DI symmetry.
+  const _readQuestion = opts.readQuestion || readlineQuestion;
+  const _ok = opts.ok || ok;
+  const _skip = opts.skip || skip;
+  const _fail = opts.fail || fail;
+
+  // T-269-29: re-run safety — if vault already exists at the configured path,
+  // skip without prompting (no overwrite). Operator must `vault:rotate` or
+  // delete first.
+  if (fs.existsSync(vaultPath)) {
+    _skip(`vault present at ${vaultPath} — skipping creation`);
+    return { ok: true };
+  }
+
+  // T-269-26: fail-fast password contract. NO interactive prompt for the
+  // password — readlineFreeText does not mask input (documented limitation
+  // ~line 905). Risk: visible-typing leak. Mitigation: refuse to prompt;
+  // require explicit --vault-password / VAULT_PASSWORD / --skip-vault.
+  if (!password) {
+    if (interactive) {
+      _fail('No vault password supplied. Pass --vault-password <pw> or set VAULT_PASSWORD env, otherwise use --skip-vault.');
+      return { ok: false, reason: 'no-password' };
+    }
+    // Non-interactive (e.g. CI without --vault-password): silent skip — matches
+    // the existing `--skip-helix` non-interactive behavior.
+    _skip('no --vault-password and no VAULT_PASSWORD env — skipping vault setup (use --vault-password or --skip-vault explicitly)');
+    return { ok: true };
+  }
+
+  // Reference _readQuestion so the DI parameter isn't dead code; explicit
+  // consent prompts can be added later by toggling the boolean. For now,
+  // having a non-empty password (from flag OR env) is taken as consent.
+  void _readQuestion;
+
+  // Create the empty vault via Plan 02's vault:create subcommand.
+  // runChild uses stdio:['ignore',...] so child stdin is /dev/null — vault:create
+  // is specifically designed for this (no stdin read, password from env).
+  // VAULT_PASSWORD + VAULT_PATH go through env (NOT argv — T-269-27).
+  let r = await _runChild('vault-create', [
+    'scripts/vault.js', 'create',
+  ], {
+    env: { ...process.env, VAULT_PASSWORD: password, VAULT_PATH: vaultPath },
+  });
+  if (r !== 0) {
+    _fail(`vault creation failed (exit ${r})`);
+    return { ok: false, reason: 'create-failed' };
+  }
+
+  // T-269-28: migrate the just-bootstrapped .env secrets into the new vault.
+  // Failure here fails the whole setup phase — no half-state where vault
+  // exists but secrets weren't copied.
+  r = await _runChild('vault-migrate', [
+    'scripts/vault-migrate.js',
+  ], {
+    env: { ...process.env, VAULT_PASSWORD: password, VAULT_PATH: vaultPath },
+  });
+  if (r !== 0) {
+    _fail(`vault migration failed (exit ${r})`);
+    return { ok: false, reason: 'migrate-failed' };
+  }
+
+  // Persist VAULT_PATH (but NEVER VAULT_PASSWORD) into banking_api_server/.env
+  // so run-bank.sh finds it next boot. banking_mcp_gateway/.env is typically a
+  // SYMLINK to this same file (created by run-bank.sh's ensure_service_env
+  // helper — see Plan 04 SUMMARY), so the gateway sees the same VAULT_PATH
+  // automatically.
+  const envText = (() => {
+    try {
+      return fs.readFileSync(envFile, 'utf8');
+    } catch (_e) {
+      return '';
+    }
+  })();
+  if (!envHas(envText, 'VAULT_PATH')) {
+    fs.appendFileSync(envFile, `\nVAULT_PATH=${vaultPath}\n`);
+  }
+  _ok(`Vault created at ${vaultPath}; migrated secrets from .env`);
+  return { ok: true };
+}
+
 // Return true only if we can actually read from a terminal. The naive check
 // fs.existsSync('/dev/tty') returns true on macOS even when stdin is piped
 // AND there's no controlling terminal (e.g. `echo n | node script` from a
@@ -1048,6 +1211,10 @@ async function main() {
   if (RESET_PINGONE) phases.push('pingone-wipe');
   if (tarArg) phases.push('import');
   phases.push('bootstrap');
+  // Phase 269 — Vault setup phase. Optional; runs after bootstrap (so .env
+  // exists with all secrets) and BEFORE helix (so Helix creds can land in the
+  // vault directly via vault:migrate-from-env). Counted when MIGHT run.
+  if (!SKIP_VAULT) phases.push('vault');
   // Helix LLM config phase — runs after bootstrap so .env is in place. We
   // count it whenever it MIGHT run (i.e. unless --skip-helix); the prompt
   // itself might end up declined, but the phase header still shows.
@@ -1155,6 +1322,15 @@ async function main() {
   if (skipBootstrap) {
     phase(n, total, 'Provision PingOne (skipped — already configured)');
     skip('Imported config covers all required PingOne resources');
+    // Phase 269: Vault setup also runs in the skipBootstrap branch — the
+    // imported .env still has secrets that should go into the vault. Same
+    // fail-fast contract as the bootstrap-ran branch.
+    if (!SKIP_VAULT) {
+      n++;
+      phase(n, total, 'Configure credential vault (optional)');
+      const vr = await configureVault();
+      if (!vr.ok) process.exit(1);
+    }
     // Even when bootstrap is skipped, still offer the Helix config phase
     // — the imported .env might not have Helix creds.
     if (!SKIP_HELIX) {
@@ -1186,6 +1362,17 @@ async function main() {
     process.exit(1);
   }
   ok('PingOne resources provisioned');
+
+  // Phase 269: Vault setup (optional). After bootstrap so .env exists with
+  // all secrets; before Helix so Helix creds can also land in the vault via
+  // vault:migrate-from-env on the next manual rerun. Fail-fast on missing
+  // password in interactive mode; silent skip in non-interactive mode.
+  if (!SKIP_VAULT) {
+    n++;
+    phase(n, total, 'Configure credential vault (optional)');
+    const vr = await configureVault();
+    if (!vr.ok) process.exit(1);
+  }
 
   // Phase: Helix LLM configuration (optional). After bootstrap so .env exists
   // and configStore can decrypt against the now-stable SESSION_SECRET. Phase
@@ -1410,37 +1597,44 @@ async function confirmRunPreset() {
 
 // ── Entry ────────────────────────────────────────────────────────────────────
 
-openLog();
-patchConsole();
+// Phase 269: export configureVault for unit-test DI. `main()` and the
+// rest of the boot sequence below are guarded by `require.main === module`
+// so `require('./setupFresh.js')` from a test does NOT auto-run setup.
+module.exports = { configureVault };
 
-// Global error capture — anything that escapes main() (sync throw, async
-// rejection, native crash) still ends up in setup.log so a confused user
-// can paste a single file when asking for help.
-process.on('uncaughtException', (err) => {
-  console.error('');
-  console.error('UNCAUGHT EXCEPTION:');
-  console.error(err && err.stack ? err.stack : String(err));
-  closeLog();
-  process.exit(1);
-});
-process.on('unhandledRejection', (reason) => {
-  console.error('');
-  console.error('UNHANDLED PROMISE REJECTION:');
-  console.error(reason && reason.stack ? reason.stack : String(reason));
-  closeLog();
-  process.exit(1);
-});
+if (require.main === module) {
+  openLog();
+  patchConsole();
 
-process.on('exit', closeLog);
-process.on('SIGINT',  () => { console.error('Interrupted (SIGINT)'); closeLog(); process.exit(130); });
-process.on('SIGTERM', () => { console.error('Terminated (SIGTERM)'); closeLog(); process.exit(143); });
+  // Global error capture — anything that escapes main() (sync throw, async
+  // rejection, native crash) still ends up in setup.log so a confused user
+  // can paste a single file when asking for help.
+  process.on('uncaughtException', (err) => {
+    console.error('');
+    console.error('UNCAUGHT EXCEPTION:');
+    console.error(err && err.stack ? err.stack : String(err));
+    closeLog();
+    process.exit(1);
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error('');
+    console.error('UNHANDLED PROMISE REJECTION:');
+    console.error(reason && reason.stack ? reason.stack : String(reason));
+    closeLog();
+    process.exit(1);
+  });
 
-console.log(`Logging full transcript to: ${LOG_FILE}`);
+  process.on('exit', closeLog);
+  process.on('SIGINT',  () => { console.error('Interrupted (SIGINT)'); closeLog(); process.exit(130); });
+  process.on('SIGTERM', () => { console.error('Terminated (SIGTERM)'); closeLog(); process.exit(143); });
 
-main().then(() => closeLog()).catch((err) => {
-  console.error('');
-  console.error(`setup:fresh failed: ${err.message}`);
-  console.error(err.stack);
-  closeLog();
-  process.exit(1);
-});
+  console.log(`Logging full transcript to: ${LOG_FILE}`);
+
+  main().then(() => closeLog()).catch((err) => {
+    console.error('');
+    console.error(`setup:fresh failed: ${err.message}`);
+    console.error(err.stack);
+    closeLog();
+    process.exit(1);
+  });
+}
