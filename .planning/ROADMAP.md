@@ -2251,13 +2251,13 @@ Plans:
 **Goal:** Operators unlock and rotate the credential vault from a PingOne-gated admin web page (`/admin/vault`) without restarting the BFF. Three new HTTP routes (`GET /api/admin/vault/status`, `POST /api/admin/vault/unlock`, `POST /api/admin/vault/rotate`) sit behind `authenticateToken + requireAdmin`; rate-limited (5 unlock attempts / 5 min per session sub); rotate is mutex-guarded and re-verifies currentPassword; password never leaves the BFF. Adds a sibling `unlockVaultAtRuntime` to `services/vaultLoader.js` (the existing `loadVaultIntoConfigStore` body stays byte-identical, preserving REGRESSION_PLAN §1 row "Vault BFF startup"). Adds a new §1 row "Vault runtime routes" + a §4 entry. Vercel-503'd.
 **Requirements**: REQ-VAULT-ADMIN-01, REQ-VAULT-ADMIN-02, REQ-VAULT-ADMIN-03, REQ-VAULT-ADMIN-04, REQ-VAULT-ADMIN-05, REQ-VAULT-ADMIN-06, REQ-VAULT-ADMIN-07, REQ-VAULT-ADMIN-08, REQ-VAULT-ADMIN-09, REQ-VAULT-ADMIN-10, REQ-VAULT-ADMIN-11, REQ-VAULT-ADMIN-12, REQ-VAULT-ADMIN-13, REQ-VAULT-ADMIN-14, REQ-VAULT-ADMIN-15
 **Depends on:** Phase 269
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 269.1-01-PLAN.md — Add unlockVaultAtRuntime sibling + state helpers to vaultLoader.js (RED/GREEN) + REQ-VAULT-ADMIN-01..15 to REQUIREMENTS.md
-- [ ] 269.1-02-PLAN.md — Mount /api/admin/vault/{status,unlock,rotate} routes with admin auth + rate limit + mutex (RED/GREEN); regression + integration test suites
-- [ ] 269.1-03-PLAN.md — React AdminVaultPage + /admin/vault route + sidebar entry + component tests; UI build gate exit 0
-- [ ] 269.1-04-PLAN.md — docs/vault.md runtime+post-rotate sections; REGRESSION_PLAN §1 + §4; finalize 269.1-VALIDATION.md
+- [x] 269.1-01-PLAN.md — Add unlockVaultAtRuntime sibling + state helpers to vaultLoader.js (RED/GREEN) + REQ-VAULT-ADMIN-01..15 to REQUIREMENTS.md
+- [x] 269.1-02-PLAN.md — Mount /api/admin/vault/{status,unlock,rotate} routes with admin auth + rate limit + mutex (RED/GREEN); regression + integration test suites
+- [x] 269.1-03-PLAN.md — React AdminVaultPage + /admin/vault route + sidebar entry + component tests; UI build gate exit 0
+- [x] 269.1-04-PLAN.md — docs/vault.md runtime+post-rotate sections; REGRESSION_PLAN §1 + §4; finalize 269.1-VALIDATION.md
 
 ### Phase 270: Architecture diagram completeness audit — /architecture/system page must fully represent every running service, every inter-service edge, every external integration, and every token-flow arrow in the demo. Today's diagram is known to be partial (predates Phase 266 Path A mortgage-service, Phase 267 mortgage_demo chip, Phase 268 K8s topology, Phase 269 vault). Acceptance criteria: every service listed in run-bank.sh SVC_LIST appears as a node; every URL/WebSocket the BFF, MCP Gateway, or MCP Server talks to appears as an edge; every OAuth grant (auth code, CC, RFC 8693 single + 2x exchange, RFC 8693 transaction tokens) is represented; external boxes for PingOne (auth + management API), Helix LLM, browser SPA. Scope: AUDIT the existing diagram source files (banking_api_ui/src/components/ArchitectureTabsPanel.jsx + the diagram registry/regenerate flow + any mermaid/png sources under banking_api_ui/public/), reconcile against the current code state via a parallel-agent scan, write a checklist of additions, then make the changes. Out of scope: redesigning the diagram UI itself (Phase 264 covers config-page rework). First plan should pick: do we extend existing diagrams in place, or generate a new 'full-system' diagram alongside; mermaid vs draw.io vs manual SVG; how to keep the diagram in sync going forward (test? auto-regenerate on phase add?).
 
