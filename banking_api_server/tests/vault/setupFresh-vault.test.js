@@ -12,7 +12,7 @@
 const path = require('node:path');
 const os = require('node:os');
 const fs = require('node:fs');
-const { configureVault } = require('../../scripts/setupFresh');
+const { configureVault, envHas } = require('../../scripts/setupFresh');
 const { openVault, createVault } = require('../../lib/vault');
 
 function uniqPaths() {
@@ -339,5 +339,37 @@ describe('configureVault (Phase 269 Plan 05 Task 3)', () => {
     } finally {
       fsExistsSpy.mockRestore();
     }
+  });
+});
+
+// WR-04: envHas must treat regex metacharacters in `key` as literal text.
+describe('envHas (WR-04 regex escaping)', () => {
+  test('matches a present key with non-whitespace value', () => {
+    expect(envHas('FOO=bar\n', 'FOO')).toBe(true);
+  });
+
+  test('returns false when the key is absent', () => {
+    expect(envHas('BAR=baz\n', 'FOO')).toBe(false);
+  });
+
+  test('returns false when the key value is empty (KEY=)', () => {
+    // Preserves existing semantics: a bare KEY= line does NOT count as "has key".
+    expect(envHas('FOO=\n', 'FOO')).toBe(false);
+  });
+
+  test('escapes . so KEY="A.B" does not match "AXB"', () => {
+    expect(envHas('AXB=value\n', 'A.B')).toBe(false);
+  });
+
+  test('escapes $ so KEY="FOO$" does not eat the end-of-line anchor', () => {
+    expect(envHas('FOO=value\n', 'FOO$')).toBe(false);
+  });
+
+  test('matches a key containing a literal dot when that key is actually present', () => {
+    expect(envHas('A.B=value\n', 'A.B')).toBe(true);
+  });
+
+  test('still matches a normal uppercase key (no regression)', () => {
+    expect(envHas('VAULT_PATH=/tmp/x.vault\n', 'VAULT_PATH')).toBe(true);
   });
 });

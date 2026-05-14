@@ -538,7 +538,12 @@ async function ensureDependencies() {
 }
 
 function envHas(envText, key) {
-  return new RegExp(`^${key}=\\S`, 'm').test(envText);
+  // WR-04: escape regex metacharacters in `key` so callers passing keys with
+  // `.` `$` etc. don't accidentally match unintended lines. Keeping the
+  // \S anchor preserves the existing semantic that an empty `KEY=` line does
+  // NOT count as "has key" (the caller uses this to decide whether to write).
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${escaped}=\\S`, 'm').test(envText);
 }
 
 function readEnvSafely() {
@@ -1613,7 +1618,7 @@ async function confirmRunPreset() {
 // Phase 269: export configureVault for unit-test DI. `main()` and the
 // rest of the boot sequence below are guarded by `require.main === module`
 // so `require('./setupFresh.js')` from a test does NOT auto-run setup.
-module.exports = { configureVault };
+module.exports = { configureVault, envHas };
 
 if (require.main === module) {
   openLog();
