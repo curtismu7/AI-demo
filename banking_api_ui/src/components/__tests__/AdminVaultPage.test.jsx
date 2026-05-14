@@ -10,12 +10,10 @@
 //   - only ⚠️ ✅ ❌ emojis appear in rendered output (CLAUDE.md non-negotiable #4)
 import React from "react";
 import "@testing-library/jest-dom";
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+
+import apiClient from "../../services/apiClient";
+import AdminVaultPage from "../AdminVaultPage";
 
 jest.mock("../../services/apiClient", () => ({
   __esModule: true,
@@ -24,9 +22,6 @@ jest.mock("../../services/apiClient", () => ({
     post: jest.fn(),
   },
 }));
-
-import apiClient from "../../services/apiClient";
-import AdminVaultPage from "../AdminVaultPage";
 
 const STATUS_OK_LOCKED = {
   data: {

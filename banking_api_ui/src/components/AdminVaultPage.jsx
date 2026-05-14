@@ -144,8 +144,7 @@ export default function AdminVaultPage() {
       setConfirmNewPassword("");
       setBanner({
         kind: "ok",
-        text:
-          "✅ Vault password rotated. ⚠️ Update VAULT_PASSWORD in your .env / pm2 / secret manager before the next BFF restart.",
+        text: "✅ Vault password rotated. ⚠️ Update VAULT_PASSWORD in your .env / pm2 / secret manager before the next BFF restart.",
       });
       await refresh();
     } catch (err) {
@@ -174,8 +173,7 @@ export default function AdminVaultPage() {
         ) : (
           <ul>
             <li>
-              Vault file present:{" "}
-              {status.vaultFilePresent ? "✅ yes" : "❌ no"}
+              Vault file present: {status.vaultFilePresent ? "✅ yes" : "❌ no"}
             </li>
             <li>
               Vault file: <code>{status.vaultPath}</code>
@@ -218,10 +216,7 @@ export default function AdminVaultPage() {
             onChange={(e) => setUnlockPassword(e.target.value)}
             disabled={submitting}
           />
-          <button
-            type="submit"
-            disabled={submitting || unlockPassword === ""}
-          >
+          <button type="submit" disabled={submitting || unlockPassword === ""}>
             {submitting ? "Unlocking…" : "Unlock"}
           </button>
         </form>

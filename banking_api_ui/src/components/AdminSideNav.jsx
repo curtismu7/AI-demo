@@ -198,7 +198,11 @@ export default function AdminSideNav({ user }) {
           icon: "🔗",
         },
         { label: "Interactive Flow", path: "/architecture/flow", icon: "⚡" },
-        { label: "Phase 266 — 3 Paths", path: "/architecture/phase-266", icon: "🛣️" },
+        {
+          label: "Phase 266 — 3 Paths",
+          path: "/architecture/phase-266",
+          icon: "🛣️",
+        },
         { label: "Sequence Diagram", path: "/sequence-diagram", icon: "📋" },
       ],
     },
