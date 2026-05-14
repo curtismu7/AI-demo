@@ -68,6 +68,10 @@ Real banking applications use professional typography. Emojis break the enterpri
 | Vercel SPA routing | All non-API routes 404 on Vercel | `vercel.json` (SPA catch-all rewrite) |
 | OAuth redirect origin | Redirects go to localhost in production | `routes/oauth.js`, `routes/oauthUser.js` (`getOrigin`) |
 | Vercel build | Production deployment fails | `banking_api_ui/package.json`, `vercel.json` |
+| **Vault library** | **Any change to AEAD/KDF/HMAC primitives or to the on-disk format silently breaks every existing vault file; rotating Argon2 parameters without a format version bump can OOM CI runners** | `banking_api_server/lib/vault/{crypto,format,audit,index}.js` — touch only via a format-version bump (v2). Per-entry DEK design + whole-file HMAC + magic `BNKV` + version `1` are LOAD-BEARING; changing any one without bumping VERSION breaks every existing vault. See `docs/vault.md` "Crypto choices". Phase 269. |
+| **Vault BFF startup** | **Mis-wiring loadVaultIntoConfigStore breaks BFF startup; values land in config.db (persist:false ignored) duplicating secrets at rest; VAULT_PASSWORD lingers in process.env beyond startup** | `banking_api_server/services/vaultLoader.js`, `banking_api_server/server.js` (top + IIFE-wrapped .listen). MUST call configStore.setRaw with `{persist:false}`; MUST call vault.close() in finally; MUST `delete process.env.VAULT_PASSWORD` after open. Phase 269. |
+| **setupFresh.js phase order** | **Re-ordering or renaming phases in `main()` silently breaks the phase-N-of-M counters and the `--skip-*` flag semantics; new phases inserted before bootstrap break the `skipBootstrap` early-return** | `banking_api_server/scripts/setupFresh.js` — phase order is contractual: confirm-dir → cleanup → deps → hosts → [pingone-wipe] → [import] → bootstrap → [vault] → [helix]. New phases must be APPENDED, never spliced in. The `skipBootstrap` early-return branch (~line 1155) must include any new optional post-bootstrap phase. Phase 269. |
+| **setupFresh.js runChild env passthrough** | **`runChild(label, scriptArgs, opts)` now honors `opts.env` (defaults to `process.env`). Reverting to the prior behavior (silently dropping `opts.env`) breaks `configureVault()` — VAULT_PASSWORD never reaches `vault:create` and vault setup fails at `setup:fresh` time. Any future refactor of runChild MUST preserve env passthrough.** | `banking_api_server/scripts/setupFresh.js` — the spawn call inside `runChild` (lines ~354-358) MUST include `env: opts.env \|\| process.env`. Verified by `grep -c 'env: opts.env' banking_api_server/scripts/setupFresh.js` ≥ 1. Existing call sites (no opts.env) are unaffected because the `\|\| process.env` fallback matches spawn's default-inherit semantics. Phase 269. |
 
 ---
 
@@ -101,6 +105,24 @@ Real banking applications use professional typography. Emojis break the enterpri
 ---
 
 ## 4. Bug Fix Log (reverse-chronological)
+
+### 2026-05-13 — Phase 269: Portable encrypted credential vault added
+
+- **Category:** Feature addition (regression-relevant)
+- **Phase:** 269
+- **Files:** `banking_api_server/lib/vault/*.js`, `banking_api_server/services/vaultLoader.js`, `banking_api_server/scripts/vault.js` (6 subcommands incl. `vault:create`), `banking_api_server/scripts/vault-migrate.js`, `banking_api_server/services/configStore.js` (setRaw signature extended with `{persist: false}` option), `banking_api_server/server.js` (vault load in IIFE around `.listen`), `banking_api_server/scripts/setupFresh.js` (new `configureVault()` phase + `runChild` env passthrough), `banking_mcp_gateway/src/vault.ts`, `banking_mcp_gateway/src/index.ts`, `.gitignore` (3 new patterns: `secrets.vault`, `secrets.vault.tmp`, `secrets.vault.audit.log`), `docs/vault.md`, `REGRESSION_PLAN.md` §1 (4 new APPEND-ONLY rows).
+- **Why this matters for regressions:**
+  - `configStore.setRaw` signature changed from `setRaw(data)` to `setRaw(data, opts = {})`. Existing callers (no opts) are unaffected; the new `{persist: false}` option is used only by the vault loader to keep vault values out of `config.db` (avoids duplicating secrets at rest).
+  - `banking_api_server/server.js` `.listen(...)` is now inside an async IIFE that first awaits `loadVaultIntoConfigStore`. The middle of server.js (express, session middleware, routes) is unchanged. Critical 38/38 regression suite (`oauthStatus.regression`, `oauthStatus.integration`, `hitlRoute.regression`, `hitlRoute.integration`) green after the diff.
+  - `banking_api_server/scripts/setupFresh.js` gained a new optional phase ("Configure credential vault") between bootstrap and helix. Phase order is contractual — see §1 row "setupFresh.js phase order".
+  - `banking_api_server/scripts/setupFresh.js` `runChild()` now honors `opts.env` (defaults to `process.env` — no behavior change for existing call sites). Required for vault setup to pass `VAULT_PASSWORD` + `VAULT_PATH` to `vault:create` / `vault:migrate-from-env` children via env (NOT argv — T-269-27). See §1 row "setupFresh.js runChild env passthrough".
+  - Vault library MUST NOT have its on-disk format altered without a `VERSION` bump — see §1 "Vault library" row.
+- **Verification:** `cd banking_api_server && npx jest tests/vault/ oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration --bail` — all green (REQ-VAULT-13). 130+ vault tests across 12+ files; 38/38 critical regression tests preserved.
+- **Do not break:**
+  - The 4 §1 rows added in this phase: `Vault library`, `Vault BFF startup`, `setupFresh.js phase order`, `setupFresh.js runChild env passthrough`.
+  - The vault library's on-disk format (BNKV magic + version 1 + Argon2id m=65536/t=3/p=4 + AES-256-GCM + whole-file HMAC) — bumping `VERSION` and writing a migration is the ONLY supported way to change it.
+  - The BFF startup IIFE ordering (`await loadVaultIntoConfigStore({})` BEFORE `app.listen(...)`).
+  - The fail-fast password contract in `configureVault()` — interactive TTY without `--vault-password` and without `VAULT_PASSWORD` env must exit 1, never prompt via `readlineFreeText` (which does not mask input).
 
 ### 2026-05-13 — Removed Helix Console directive plumbing (BFF already injects the directive at runtime)
 
