@@ -574,4 +574,182 @@ shell session before starting services.
 
 ---
 
-*Last updated 2026-05-13 (Phase 269 Plan 05).*
+## Runtime unlock and rotate via /admin/vault
+
+Phase 269.1 adds a web admin surface for unlocking and rotating the
+vault **without restarting the BFF**. The CLI (`npm run vault:rotate`)
+remains the simpler option when restart is acceptable; the web routes
+exist for the hosted-demo case where restart causes user-visible
+downtime, or when the operator only has a browser handy.
+
+### When to use the CLI vs. /admin/vault
+
+- **Use the CLI (`npm run vault:rotate`)** when you can restart the BFF
+  — simpler, fewer moving parts, and the resulting `VAULT_PASSWORD` env
+  is what the next BFF startup already expects.
+- **Use `/admin/vault`** when you must rotate without downtime, OR when
+  the operator only has browser access to the running BFF (e.g. a
+  remote conference demo machine).
+
+### Prerequisites
+
+- Admin login session (PingOne-authenticated session OR a token bearing
+  the `banking:admin` scope). The routes are mounted under
+  `app.use('/api/admin/vault', authenticateToken, require('./routes/adminVault'))`
+  at `banking_api_server/server.js:899` and every handler runs the
+  `requireAdmin` middleware.
+- Vault file present at `VAULT_PATH || <repo-root>/secrets.vault`.
+- Not running on Vercel — see the "Vercel" section above. `/admin/vault`
+  routes return 503 `{error:"vault_disabled_serverless"}` when
+  `process.env.VERCEL === '1'`.
+
+### Endpoint reference
+
+| Method + Path | Status | Body (success) | Notes |
+|---|---|---|---|
+| `GET  /api/admin/vault/status` | 200 | `{unlocked, entriesLoaded, vaultFilePresent, vaultPath}` | `vaultPath` is `path.basename(...)` only — full path never leaks (T-269.1-09) |
+| `GET  /api/admin/vault/status` | 401 / 403 / 503 | error envelope | unauth / non-admin / Vercel |
+| `POST /api/admin/vault/unlock` | 200 | `{ok:true, entriesLoaded:N}` | password NEVER echoed in the response (T-269.1-08) |
+| `POST /api/admin/vault/unlock` | 401 | `{error:"unauthorized", message:"vault: open failed (bad password or tampered file)"}` | byte-identical message for `VaultAuthError` AND `VaultIntegrityError` — no enumeration oracle (T-269.1-10) |
+| `POST /api/admin/vault/unlock` | 404 | `{error:"vault_file_not_found"}` | vault file absent |
+| `POST /api/admin/vault/unlock` | 429 | `{error:"too_many_requests"}` + `Retry-After` header | rate limit — 5 attempts / 5 min keyed by `req.user.sub` |
+| `POST /api/admin/vault/rotate` | 200 | `{ok:true, message:"Vault password rotated. Update VAULT_PASSWORD before next BFF restart."}` | |
+| `POST /api/admin/vault/rotate` | 400 | `{error:"bad_request"\|"weak_password"\|"same_password"}` | `newPassword` length < 12, or equals `currentPassword` |
+| `POST /api/admin/vault/rotate` | 401 | opaque-same-as-unlock | wrong `currentPassword` — `rotate` re-opens the vault with `currentPassword` BEFORE re-wrapping DEKs (defense-in-depth, T-269.1-05) |
+| `POST /api/admin/vault/rotate` | 409 | `{error:"rotate_in_progress"}` | module-scoped `rotateInProgress` mutex held by a concurrent call (T-269.1-06) |
+| `POST /api/admin/vault/rotate` | 423 | `{error:"vault_locked"}` | `isVaultUnlockedThisProcess() === false` — must unlock first |
+| `POST /api/admin/vault/rotate` | 503 | `{error:"vault_disabled_serverless"}` | Vercel guard |
+
+### UI workflow
+
+1. Navigate to `https://api.ping.demo:4000/admin/vault` (or your configured
+   host — see CLAUDE.md non-negotiable #5).
+2. The page renders three sections: a status card, an unlock form, and
+   a rotate form.
+3. **Unlock:** type the current password, submit. On success the banner
+   reports `Vault unlocked (N entries loaded)` and the status card
+   flips `unlocked` from ❌ to ✅.
+4. **Rotate:** requires the vault to be unlocked first. Type the
+   current password, then the new password twice. On success the banner
+   restates the post-rotate env-var warning verbatim.
+
+### Audit trail
+
+Every unlock and rotate writes one NDJSON line to
+`<vaultPath>.audit.log` via `lib/vault/audit.js`'s 4-field allowlist
+(`op`, `key`, `result`, `caller`). The web routes set `caller:"adminVault"`;
+the CLI sets `caller:"vault.js"`. Both rotate-via-CLI and rotate-via-web
+therefore appear in the same audit log, distinguished by the `caller`
+field for forensic clarity. The audit allowlist physically cannot leak
+the password (T-269.1-03).
+
+### Rate limit on unlock
+
+`POST /api/admin/vault/unlock` is throttled to **5 attempts per 5-minute
+window per admin session sub** via `express-rate-limit`. The 6th
+attempt returns 429 with a `Retry-After` header before the handler
+calls `unlockVaultAtRuntime` (so Argon2id is not burned on attempts
+that will be rejected anyway). Wait 5 minutes or rotate from a
+different admin session to reset.
+
+### Mutex on rotate
+
+`POST /api/admin/vault/rotate` is serialized via a module-scoped
+`rotateInProgress` boolean set/cleared in `try/finally`. Two
+simultaneous rotate calls → one returns 200, the other returns 409
+`rotate_in_progress`. The human retries (this is a single-process demo
+BFF; if you need multi-process rotate coordination, that's a different
+architecture).
+
+### CSRF posture
+
+The `/api/admin/vault/*` routes inherit the project-wide BFF CSRF
+defense: httpOnly session cookie + sameSite=none in production /
+sameSite=lax in development + admin PingOne JWT or scope check on
+every handler + JSON content-type preflight (browsers refuse
+cross-origin POST with JSON body without a CORS preflight that fails
+without a proper `Origin`) + no CSRF token middleware. This is the
+existing project posture across all `/api/admin/*` routes (see
+`banking_api_server/server.js` session cookie config and the admin
+route mount pattern at line 896). T-269.1-02 disposition: accept
+(existing posture); no new CSRF surface introduced.
+
+### MCP Gateway desync caveat (T-269.1-07)
+
+Phase 269.1's runtime rotate ONLY changes the BFF's view of the vault.
+The MCP Gateway (`banking_mcp_gateway`) loads the vault at ITS OWN
+startup using ITS OWN `VAULT_PASSWORD` env. After a web-rotate, the
+gateway is still operating on the OLD password in its env; on the next
+gateway restart it WILL fail to open the vault with
+`[gw-vault] startup load failed`.
+
+⚠️ **Operator workflow after a successful /admin/vault rotate:**
+
+1. Confirm the web banner success: *"Vault password rotated"*.
+2. Update `VAULT_PASSWORD` in every BFF env AND every gateway env
+   — see the "After rotating: update VAULT_PASSWORD before next
+   restart" checklist below.
+3. Restart the MCP Gateway: `./run-bank.sh stop && ./run-bank.sh`
+   (or just the gateway service if you have selective restart wired up).
+
+The gateway does **not** have a `/admin/vault` equivalent in this
+phase — it's intentionally out of scope. The gateway is a small,
+restart-tolerant service and adding an admin web surface to it has
+diminishing returns relative to the operator-facing complexity it
+would add.
+
+---
+
+## After rotating: update VAULT_PASSWORD before next restart
+
+⚠️ **This is the single most important post-rotate step. Read it.**
+
+After `POST /api/admin/vault/rotate` returns 200, the vault FILE on
+disk is encrypted with the NEW password but the BFF's startup
+environment still has the OLD `VAULT_PASSWORD`. The next BFF restart
+will fail-fast with:
+
+```
+[vault] startup load failed; refusing to start.
+```
+
+The web UI banner restates this verbatim — it is not a stylistic
+warning, it is the failure mode you will hit if you ignore it.
+
+### Update VAULT_PASSWORD everywhere the BFF + gateway might read it
+
+After a successful rotate, update `VAULT_PASSWORD` in every place that
+might run the BFF or MCP Gateway:
+
+1. **`banking_api_server/.env`** (or wherever your shell sources from
+   when you run `./run-bank.sh`).
+2. **Your pm2 ecosystem file** (`ecosystem.config.js` env block) if
+   you use pm2 for service management.
+3. **Your secret manager** (1Password, SOPS, direnv `.envrc`,
+   `op://Banking/Vault/password` references) if you use one. Update
+   the source-of-truth value, not just the local file.
+4. **Any CI/CD environment that runs the BFF** (GitHub Actions
+   secrets, Vercel build envs — note Vercel deployments skip the
+   vault entirely; see the "Vercel" section above).
+
+### How to verify the new password works before next restart
+
+```bash
+VAULT_PASSWORD="<new-password>" npm run vault:list
+# From banking_api_server/
+```
+
+Should print the list of vault entry names. If it fails with
+`vault: open failed (bad password or tampered file)`, your
+`VAULT_PASSWORD` copy is wrong somewhere — re-check the four places
+above before letting the BFF restart.
+
+### Recovery if you forget the new password
+
+You cannot recover the new password. The vault has no backdoor (T-269-04).
+Re-provision from source secrets — see the "Recovery procedure
+(forgotten password)" section above.
+
+---
+
+*Last updated 2026-05-14 (Phase 269.1 Plan 04).*
