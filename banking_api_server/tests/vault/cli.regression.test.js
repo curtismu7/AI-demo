@@ -275,6 +275,44 @@ describe('vault CLI — subcommand handlers', () => {
     fs.existsSync.mockRestore();
   });
 
+  // WR-05: empty stdin should exit non-zero, NOT silently store ''.
+  test('cmdSet with empty stdin (non-TTY) exits 1 and does NOT call vault.set', async () => {
+    const fs = require('node:fs');
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true); // vault exists
+    const stdin = process.stdin;
+    setImmediate(() => {
+      // No 'data' event — straight to 'end'. Simulates `vault:set X < /dev/null`.
+      stdin.emit('end');
+    });
+
+    await cli.cmdSet('FOO');
+
+    expect(process.exitCode).toBe(1);
+    expect(mockHandle.set).not.toHaveBeenCalled();
+    expect(mockHandle.save).not.toHaveBeenCalled();
+    expect(stderrSpy.mock.calls.some((c) =>
+      String(c[0]).includes('refusing to set FOO to empty value'),
+    )).toBe(true);
+    fs.existsSync.mockRestore();
+  });
+
+  test('cmdSet with whitespace-only newline stdin (non-TTY) exits 1', async () => {
+    // `echo '' | vault:set X` produces a single '\n' on stdin which trims to ''.
+    const fs = require('node:fs');
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    const stdin = process.stdin;
+    setImmediate(() => {
+      stdin.emit('data', '\n');
+      stdin.emit('end');
+    });
+
+    await cli.cmdSet('BAR');
+
+    expect(process.exitCode).toBe(1);
+    expect(mockHandle.set).not.toHaveBeenCalled();
+    fs.existsSync.mockRestore();
+  });
+
   test('cmdRotate prints no-recovery warning before rotate; uses VAULT_NEW_PASSWORD in non-TTY', async () => {
     process.env.VAULT_NEW_PASSWORD = 'pw-2';
     await cli.cmdRotate();

@@ -179,6 +179,17 @@ async function cmdSet(name) {
       value = await readAllStdin();
       // Trim a single trailing newline that `echo 'v' | …` always appends.
       if (value.endsWith('\n')) value = value.slice(0, -1);
+      // WR-05: refuse to silently write an empty value when stdin is closed
+      // (e.g. `vault:set FOO < /dev/null` or a piped command that produced
+      // no output). Without this guard the entry is set to '' and the
+      // audit log shows op:set,result:ok with no signal anything went wrong.
+      if (value === '') {
+        console.error(
+          'vault: refusing to set ' + name + ' to empty value (stdin was empty)',
+        );
+        process.exitCode = 1;
+        return;
+      }
     }
     vault.set(name, value);
     await vault.save();
