@@ -925,6 +925,14 @@ async function configureVault(opts = {}) {
   // SYMLINK to this same file (created by run-bank.sh's ensure_service_env
   // helper — see Plan 04 SUMMARY), so the gateway sees the same VAULT_PATH
   // automatically.
+  //
+  // WR-03: validate vaultPath cannot inject extra .env lines (newline) or
+  // confuse parsing (=, #). setupFresh otherwise trusts its --vault-path arg
+  // (T-269-27 documented), but the .env write needs the same scrutiny.
+  if (/[\r\n=#]/.test(vaultPath)) {
+    _fail(`Invalid vault path (cannot contain newline, =, or #): ${vaultPath}`);
+    return { ok: false, reason: 'invalid-vault-path' };
+  }
   const envText = (() => {
     try {
       return fs.readFileSync(envFile, 'utf8');
@@ -933,7 +941,12 @@ async function configureVault(opts = {}) {
     }
   })();
   if (!envHas(envText, 'VAULT_PATH')) {
-    fs.appendFileSync(envFile, `\nVAULT_PATH=${vaultPath}\n`);
+    // WR-03: atomic write — tmp + rename — so a SIGKILL mid-append cannot
+    // leave the .env corrupt. Preserve trailing-newline normalization.
+    const newText = `${envText.replace(/\n*$/, '\n')}VAULT_PATH=${vaultPath}\n`;
+    const tmp = envFile + '.tmp';
+    fs.writeFileSync(tmp, newText);
+    fs.renameSync(tmp, envFile);
   }
   _ok(`Vault created at ${vaultPath}; migrated secrets from .env`);
   return { ok: true };

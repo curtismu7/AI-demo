@@ -247,6 +247,77 @@ describe('configureVault (Phase 269 Plan 05 Task 3)', () => {
     expect(allLogs).not.toContain(SENTINEL);
   });
 
+  // WR-03: vaultPath must reject characters that could inject extra .env
+  // lines (\n, \r) or confuse parsing (=, #). The .env write also uses
+  // atomic tmp+rename so SIGKILL mid-append cannot corrupt the file.
+  test('WR-03: rejects vaultPath containing newline', async () => {
+    const f = fakes();
+    const result = await configureVault({
+      password: 'pw',
+      vaultPath: `${paths.vaultPath}\nKEY=evil`,
+      envFile: paths.envFile,
+      interactive: false,
+      runChild: f.runChild,
+      ok: f.ok,
+      skip: f.skip,
+      fail: f.fail,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('invalid-vault-path');
+    expect(f.calls.fail.join(' ')).toMatch(/Invalid vault path/);
+    // .env was NOT touched
+    expect(fs.readFileSync(paths.envFile, 'utf8')).toBe('');
+  });
+
+  test('WR-03: rejects vaultPath containing equals sign', async () => {
+    const f = fakes();
+    const result = await configureVault({
+      password: 'pw',
+      vaultPath: `${paths.vaultPath}=oops`,
+      envFile: paths.envFile,
+      interactive: false,
+      runChild: f.runChild,
+      ok: f.ok,
+      skip: f.skip,
+      fail: f.fail,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('invalid-vault-path');
+  });
+
+  test('WR-03: rejects vaultPath containing hash comment marker', async () => {
+    const f = fakes();
+    const result = await configureVault({
+      password: 'pw',
+      vaultPath: `${paths.vaultPath}#comment`,
+      envFile: paths.envFile,
+      interactive: false,
+      runChild: f.runChild,
+      ok: f.ok,
+      skip: f.skip,
+      fail: f.fail,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('invalid-vault-path');
+  });
+
+  test('WR-03: .env write does NOT leave a .tmp file on disk', async () => {
+    const f = fakes();
+    const result = await configureVault({
+      password: 'pw',
+      vaultPath: paths.vaultPath,
+      envFile: paths.envFile,
+      interactive: false,
+      runChild: f.runChild,
+      ok: f.ok,
+      skip: f.skip,
+      fail: f.fail,
+    });
+    expect(result.ok).toBe(true);
+    expect(fs.existsSync(paths.envFile)).toBe(true);
+    expect(fs.existsSync(paths.envFile + '.tmp')).toBe(false);
+  });
+
   test('default vault path is REPO_ROOT/secrets.vault when not overridden', async () => {
     const f = fakes();
     // Force the "vault file doesn't exist" branch regardless of the operator's
