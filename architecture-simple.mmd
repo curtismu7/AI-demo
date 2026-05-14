@@ -43,6 +43,14 @@ flowchart LR
     %% ── Ping Authorize: dedicated column for the policy gate ──────────
     Authorize["Ping Authorize (PDP)<br/><br/>Evaluates EVERY tool call:<br/>• scope · aud · may_act<br/>• transaction amount / threshold<br/>• tool-specific risk rules<br/>↓<br/>PERMIT · DENY · INDETERMINATE"]
 
+    %% ── Additional Node services (Phase 270 audit) ─────────────────────
+    MCPServer["banking_mcp_server<br/>MCP protocol · WebSocket :8080<br/>tools/list · tools/call"]
+    MCPInvest["banking_mcp_invest<br/>Investment MCP server :8081<br/>(WebSocket + HTTP)"]
+    Mortgage["banking_mortgage_service<br/>Phase 266 Path A backend :8082<br/>X-API-Key gated"]
+    LangChain["langchain_agent<br/>Python uvicorn :8888<br/>chat WS :8889 - health :8890"]
+    Vault[("secrets.vault<br/>AEAD + Argon2id<br/>startup-loaded - Phase 269")]
+    MgmtAPI["PingOne Management API<br/>/v1/environments/{env}/users<br/>worker token (CC)"]
+
     %% Phase 266 R2: three credential paths from the Gateway.
     %% Path A (api_key): Gateway-terminating swap, no backend call. RFC 6750 bearer dropped; X-API-Key injected.
     %% Path B (dual_token): Bearer + id_token forwarded to banking_resource_server /identity. RFC 8693 + RFC 8707 audience binding.
@@ -65,7 +73,7 @@ flowchart LR
     end
 
     %% ── Optional LLMs ───────────────────────────────────────────────────
-    LLM["LLM provider<br/>(Helix · Anthropic · OpenAI)"]
+    LLM["LLM provider<br/>Helix (default) - x-api-key<br/>OpenAI - Anthropic - Groq - Gemini (optional)"]
 
     %% ── Flow: browser → SPA → BFF ──────────────────────────────────────
     User -->|HTTPS| UI
@@ -79,6 +87,19 @@ flowchart LR
     BFF -->|"prompt + user token"| Agent
     Agent -->|"RFC 8693 token exchange<br/>(subject = user, actor = agent)"| AS
     Agent -->|"tool call + TX token"| Gateway
+
+    %% ── Phase 270: edges for newly-named services ─────────────────────
+    Gateway -->|"WS MCP - exchanged Bearer<br/>tools/call"| MCPServer
+    Gateway -->|"WS MCP - invest tools"| MCPInvest
+    Gateway -->|"X-API-Key (Path A)<br/>OAuth Bearer dropped"| Mortgage
+    MCPServer -->|"REST - exchanged Bearer<br/>BankingAPIClient"| OAuthRS
+    MCPServer -->|"RFC 7662 introspect<br/>RFC 8693 chained exchange"| AS
+    MCPInvest -->|"REST - exchanged Bearer"| OAuthRS
+    BFF -->|"PingOne Management API<br/>worker token (CC) - RFC 6749 §4.4"| MgmtAPI
+    BFF -->|"vaultLoader.js startup-load<br/>configStore.setRaw persist:false"| Vault
+    LangChain -->|"WS MCP - Bearer in JSON-RPC"| MCPServer
+    LangChain -->|"HTTPS - provider API key"| LLM
+    User -.->|"WebSocket chat :8889"| LangChain
 
     %% ── Gateway is the policy gate AND the credential broker ──────────
     Gateway -->|"PDP evaluate per call:<br/>scope · aud · may_act · amount"| Authorize
@@ -123,3 +144,8 @@ flowchart LR
     class SQLite backend
     class AS cloud
     class LLM external
+    class MCPServer,MCPInvest tool
+    class Mortgage backend
+    class MgmtAPI cloud
+    class LangChain external
+    class Vault planned
