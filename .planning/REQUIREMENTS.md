@@ -95,6 +95,24 @@
 - [ ] **REQ-VAULT-12**: Golden file fixtures `tests/vault/fixtures/{valid-v1,corrupted-v1}.vault` round-trip; corrupted golden raises VaultIntegrityError on every release build (regression-guards format drift).
 - [ ] **REQ-VAULT-13**: Critical existing regression suite (`oauthStatus.regression`, `oauthStatus.integration`, `hitlRoute.regression`, `hitlRoute.integration`) continues to pass after BFF startup change in Plan 03.
 
+### Admin Vault Routes (Phase 269.1)
+
+- [ ] **REQ-VAULT-ADMIN-01**: Mount `POST /api/admin/vault/unlock` requiring `authenticateToken + requireAdmin` (no new scope).
+- [ ] **REQ-VAULT-ADMIN-02**: Mount `POST /api/admin/vault/rotate` requiring `authenticateToken + requireAdmin`; require vault already unlocked + currentPassword re-verify.
+- [ ] **REQ-VAULT-ADMIN-03**: Mount `GET /api/admin/vault/status` returning `{unlocked: bool, entriesLoaded: N, vaultFilePresent: bool}` (no password material).
+- [ ] **REQ-VAULT-ADMIN-04**: Add `services/vaultLoader.js` export `unlockVaultAtRuntime({password, vaultPath, configStore, vaultLib, logger})` — sibling to `loadVaultIntoConfigStore` — does NOT touch `process.env.VAULT_PASSWORD`, NOT gated by `isVercel` (caller decides).
+- [ ] **REQ-VAULT-ADMIN-05**: Password supplied in POST body JSON `{password: string}` (unlock) or `{currentPassword, newPassword}` (rotate) — never URL/query.
+- [ ] **REQ-VAULT-ADMIN-06**: Audit every unlock/rotate via `lib/vault/audit.recordAudit` to existing `secrets.vault.audit.log` NDJSON file using already-allowed fields `{op, key, result, caller}` only.
+- [ ] **REQ-VAULT-ADMIN-07**: Failure UX: same opaque message as Plan 01 for wrong password / tampered file (no enumeration oracle).
+- [ ] **REQ-VAULT-ADMIN-08**: Per-process rate limit on unlock: `express-rate-limit` with 5 attempts / 5 min window per session sub (or IP if anonymous, which shouldn't happen because route is admin-only).
+- [ ] **REQ-VAULT-ADMIN-09**: Vercel guard: `process.env.VERCEL === '1'` → routes return 503 `{error:'vault_disabled_serverless'}`.
+- [ ] **REQ-VAULT-ADMIN-10**: Concurrent rotate guard: in-memory mutex (single async lock) so two parallel rotate calls cannot both observe stale state.
+- [ ] **REQ-VAULT-ADMIN-11**: React page `components/AdminVaultPage.jsx` at route `/admin/vault` wrapped in `<AdminLayout>` like every other admin page; two forms (unlock + rotate); status indicator; success/failure banners; no password echo.
+- [ ] **REQ-VAULT-ADMIN-12**: UI build gate: `cd banking_api_ui && npm run build` exits 0.
+- [ ] **REQ-VAULT-ADMIN-13**: After-rotate operator-UX hint: docs/vault.md gains a section: *"After /admin/vault rotate succeeds, also update `VAULT_PASSWORD` in your shell/.env/secret store before next BFF restart, otherwise startup will fail-fast on the now-wrong password."*
+- [ ] **REQ-VAULT-ADMIN-14**: Threat model documented in this RESEARCH; STRIDE for each route + mitigation; planner mirrors into REGRESSION_PLAN §1 entry "Vault runtime routes".
+- [ ] **REQ-VAULT-ADMIN-15**: Critical regression suite (REQ-VAULT-13 from Phase 269) — `oauthStatus.regression`, `oauthStatus.integration`, `hitlRoute.regression`, `hitlRoute.integration` — stays green after these changes (39 tests minimum after this phase).
+
 ### MCP Server Advanced Capabilities (Phase 32)
 
 - [ ] **MCP-ADV-01**: `sequential_think` MCP tool — AI agents can reason step-by-step through complex banking decisions; steps rendered inline in agent chat as a collapsible "Reasoning" chain; tool callable without user auth
