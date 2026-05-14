@@ -53,8 +53,17 @@ function fakeLogger() {
 describe('vaultLoader.loadVaultIntoConfigStore', () => {
   // Save + restore process.env across tests so we don't bleed state.
   const ORIG_ENV = { ...process.env };
+  // WR-02: defense vs leak from another suite/worker that may have left
+  // VAULT_PASSWORD in env. The ORIG_ENV snapshot is taken at module load,
+  // BEFORE any test mutation — restoring to it is correct — but an explicit
+  // delete before each test makes the contract obvious to future maintainers
+  // and prevents a misordered afterEach from breaking a parallel test.
+  beforeEach(() => {
+    delete process.env.VAULT_PASSWORD;
+  });
   afterEach(() => {
     process.env = { ...ORIG_ENV };
+    delete process.env.VAULT_PASSWORD;
     jest.restoreAllMocks();
   });
 

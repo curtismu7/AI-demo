@@ -70,6 +70,12 @@ const originalPromptForPassword = cli._promptForPassword;
 beforeEach(() => {
   cli._promptForPassword = mockPasswordPrompt;
   mockPasswordPrompt.mockReset();
+  // WR-02: defense vs VAULT_PASSWORD / VAULT_NEW_PASSWORD leaking in from a
+  // parallel test file (Jest workers share process.env across suites in the
+  // same worker). Individual `describe` blocks below set these explicitly when
+  // they need them — start clean to avoid by-luck ordering.
+  delete process.env.VAULT_PASSWORD;
+  delete process.env.VAULT_NEW_PASSWORD;
 });
 afterAll(() => {
   cli._promptForPassword = originalPromptForPassword;

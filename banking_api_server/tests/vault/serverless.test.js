@@ -38,9 +38,14 @@ function cleanupVault(p) {
 
 describe('vaultLoader Vercel bypass (REQ-VAULT-11)', () => {
   const ORIG_VERCEL = process.env.VERCEL;
+  // WR-02: defense vs VAULT_PASSWORD leaking in from a parallel test file.
+  beforeEach(() => {
+    delete process.env.VAULT_PASSWORD;
+  });
   afterEach(() => {
     if (ORIG_VERCEL === undefined) delete process.env.VERCEL;
     else process.env.VERCEL = ORIG_VERCEL;
+    delete process.env.VAULT_PASSWORD;
   });
 
   test('VERCEL=1 + vault file present + password set → loader bypassed; configStore untouched', async () => {
