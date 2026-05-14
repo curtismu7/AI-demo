@@ -621,34 +621,40 @@ async function loadVaultIntoConfigStore({ vaultPath, password }) {
 | A7 | `Helix LLM` has its own external node and is not the same as "PingOne" (Helix is an internal Ping Identity LLM but it's a separate HTTPS endpoint) | "Edge Inventory" | If wrong: minor diagram label clarification. Verified via `helixLlmService.js:38` showing `new URL(baseUrl).origin + HELIX_PATH` — distinct host. [VERIFIED via code read] |
 | A8 | A "diagram completeness" REGRESSION_PLAN §1 row addition is appropriate scope | "Project Constraints" | If wrong: row could live in §6 (Known Limitations) instead. Discuss-phase will confirm. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should tab 1 of `/architecture/system` keep `InteractiveArchDiagram.js` or replace with a static PNG view of `overview.png`?**
    - What we know: `InteractiveArchDiagram.js` is 178 lines of hand-rolled React with only 5 nodes; adding the missing 13 nodes would balloon it to ~500 lines and duplicate the mermaid source. It has limited "active state" highlighting from `TokenChainContext` (lighting up which nodes have been touched in the current token-chain trace).
    - What's unclear: whether the live-highlight behaviour is valuable enough to justify maintaining a parallel React-coded diagram.
    - Recommendation: replace with `ArchitectureOverviewPage`-style PNG viewer (already exists, mounted at `/architecture/overview`), and offer the live-highlight feature on a NEW tab if needed.
+   - **RESOLVED — user chose KEEP `InteractiveArchDiagram.js` per Plan 04 Task 2 (annotates top-of-file with a pointer comment to the canonical mermaid sources; live-highlight behaviour preserved).**
 
 2. **Should the Phase 268 K8s topology be included as "planned" or omitted until Phase 268 actually ships?**
    - What we know: Phase 268 description is in ROADMAP with detailed scope ("BFF + Gateway public, 5 services ClusterIP-only, cert-manager + Let's Encrypt, …"). Not started (Plans 0/0).
    - What's unclear: whether showing planned K8s topology helps viewers (forward-looking architecture) or confuses them (looks shipped).
    - Recommendation: include as a `planned` class subgraph with a top-of-diagram caption "Dashed elements indicate planned future state".
+   - **RESOLVED — included as `planned` dashed subgraph in `architecture.mmd` per Plan 01 Task 2 (REQ-DIAGRAM-06); T-270-05 mitigated by legend block.**
 
 3. **Should CIBA arrows appear in `architecture-simple.mmd` (the clean view)?**
    - What we know: CIBA is in `architecture.mmd` (detailed view) and is wired in `services/cibaService.js` + `routes/ciba*.js`. The clean view today omits it.
    - What's unclear: whether the clean-view audience needs CIBA shown.
    - Recommendation: add a single dashed arrow `BFF -.->|CIBA bc-authorize| AS` with a comment "rarely-used path, see overview-full for full sequence".
+   - **RESOLVED — not added to clean view (`architecture-simple.mmd`) per user decision; CIBA remains in the detailed view (`architecture.mmd`) status quo. Can be added incrementally in a later phase if clean-view audience need surfaces.**
 
 4. **The duplicate file `i4ai-ref-arch (1).mmd` — keep, rename, or delete?**
    - What we know: Two files exist at repo root: `i4ai-ref-arch.mmd` (the one referenced in `scripts/build-diagrams.sh`) and `i4ai-ref-arch (1).mmd` (likely a Finder-duplicated copy).
    - Recommendation: delete the `(1)` copy in this phase as a hygiene step.
+   - **RESOLVED — deleted in Plan 01 Task 3 with pre-flight grep (T-270-04 mitigation: confirm filename is not referenced in any source / script / docs before `git rm`).**
 
 5. **Should the sync test also check Phase 266 paths (A/B/C) and Phase 269 vault?**
    - What we know: REQ-DIAGRAM-05 and REQ-DIAGRAM-07 require these. The proposed test has substring checks for `RFC 8693`, `PKCE`, etc.; adding `Path A`, `Path B`, `Path C`, `secrets.vault` is one-line each.
    - Recommendation: yes, add these substring checks once the `.mmd` edits land.
+   - **RESOLVED — Plan 02 Task 1 acceptance criteria extended to include explicit substring assertions for `Path A`, `Path B`, `Path C` (REQ-DIAGRAM-05) and `secrets.vault` (REQ-DIAGRAM-07). The test is the enforcer for both requirements.**
 
 6. **Should the audit also include the `docs/*.drawio` files (22 of them)?**
    - What we know: 22 .drawio files in `docs/` are separate teaching aids; not rendered by the React app.
    - Recommendation: scope rule — this phase touches ONLY mermaid sources at repo root + the React `/architecture/*` pages. The `.drawio` files in `docs/` are out of scope.
+   - **RESOLVED — out of scope per user decision; Plan 01 explicitly excludes `docs/*.drawio` from edits. Future phase may revisit if drawio drift becomes a maintenance burden.**
 
 ## Environment Availability
 
