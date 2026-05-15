@@ -3,6 +3,7 @@ Health check endpoints for monitoring and status.
 """
 import asyncio
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Dict, Any
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -77,12 +78,17 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self._send_response(200, payload)
     
     def _send_response(self, status_code: int, data: Dict[str, Any]):
-        """Send JSON response."""
+        """Send JSON response.
+
+        CR-03: No CORS wildcard. The health server binds to loopback only
+        (see HealthCheckServer.start), and inspector endpoints leak the
+        MCP tool registry — neither should be reachable from a browser
+        on a different origin.
+        """
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
-        
+
         response_json = json.dumps(data, indent=2)
         self.wfile.write(response_json.encode())
     
@@ -110,22 +116,28 @@ class HealthCheckServer:
             # Create handler with app status
             def handler(*args, **kwargs):
                 return HealthCheckHandler(self.app_status, *args, **kwargs)
-            
-            # Create server
-            self.server = HTTPServer(("0.0.0.0", self.port), handler)
-            
+
+            # CR-03: Bind to loopback only. CLAUDE.md "Repository map > Ports"
+            # specifies LangChain ports (8888-8890) are loopback-only — the
+            # /inspector/mcp-host endpoint leaks the full MCP tool registry
+            # with no auth, so it must never be reachable from the LAN.
+            # HEALTH_HTTP_HOST allows override only for explicit container
+            # networking; default stays on 127.0.0.1.
+            bind_host = os.getenv("HEALTH_HTTP_HOST", "127.0.0.1")
+            self.server = HTTPServer((bind_host, self.port), handler)
+
             # Start server in background thread
             self.server_thread = threading.Thread(
                 target=self.server.serve_forever,
                 daemon=True
             )
             self.server_thread.start()
-            
-            logger.info(f"Health check server started on port {self.port}")
-            logger.info(f"Health check: http://localhost:{self.port}/health")
-            logger.info(f"Status check: http://localhost:{self.port}/status")
-            logger.info(f"MCP Host inspector: http://localhost:{self.port}/inspector/mcp-host")
-            
+
+            logger.info(f"Health check server started on {bind_host}:{self.port}")
+            logger.info(f"Health check: http://{bind_host}:{self.port}/health")
+            logger.info(f"Status check: http://{bind_host}:{self.port}/status")
+            logger.info(f"MCP Host inspector: http://{bind_host}:{self.port}/inspector/mcp-host")
+
         except Exception as e:
             logger.error(f"Failed to start health check server: {e}")
             raise
