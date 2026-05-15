@@ -14,6 +14,7 @@ websockets>=11.0.0
 httpx>=0.24.0
 aiohttp>=3.8.0
 cryptography>=41.0.0
+PyJWT[crypto]>=2.8.0  # Path A: PingOne JWKS access-token validation (token_validator.py)
 python-dotenv>=1.0.0
 
 # Development dependencies

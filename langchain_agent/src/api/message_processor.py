@@ -452,32 +452,27 @@ class MessageProcessor:
             )
         }
     
-    async def process_session_init_with_email(self, session_id: str, user_email: str, user_id: str = None) -> None:
+    async def process_session_init_with_token(self, session_id: str, user_token: str) -> None:
         """
-        Pre-identify user directly from their email address.
-        No API call needed — email came from the authenticated frontend session.
-        """
-        try:
-            await self.agent.initialize_session_with_email(session_id, user_email, user_id)
-            logger.info(f"Pre-identified user '{user_email}' for session {session_id}")
-        except Exception as e:
-            logger.warning(f"Email pre-identification failed for session {session_id}: {e}")
+        Pre-identify the user STRICTLY from a validated PingOne access token
+        delivered by the BFF proxy in `session_init` (Path A, CR-02/CR-04).
 
-    async def process_session_init_with_user_id(self, session_id: str, user_id: str) -> None:
-        """
-        Pre-identify user from their user_id (received in session_init message).
-        Looks up the user via the banking API using the agent's service credentials.
-        
+        Identity is derived only from validated token claims. Any failure is
+        propagated so the WebSocket handler can refuse the session — there is
+        no fallback to a client-supplied id/email (the CR-02 spoof primitive
+        has been removed).
+
         Args:
             session_id: The chat session ID
-            user_id: The user ID from the widget's session_init message
+            user_token: PingOne access token resolved server-side by the BFF.
+
+        Raises:
+            TokenValidationError: token absent / invalid / expired / wrong aud.
         """
-        try:
-            logger.info(f"Pre-identifying user {user_id} for session {session_id}")
-            await self.agent.initialize_session_with_user_id(session_id, user_id)
-            logger.info(f"Successfully pre-identified user {user_id} for session {session_id}")
-        except Exception as e:
-            logger.warning(f"Could not pre-identify user {user_id} for session {session_id}: {e}")
+        await self.agent.initialize_session_with_token(session_id, user_token)
+        logger.info(
+            "Token-bound identity established for session %s (Path A)", session_id
+        )
 
     def _sweep_pending_auth_requests(self) -> int:
         """Evict pending auth requests older than _pending_auth_ttl.

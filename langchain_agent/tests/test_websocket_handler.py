@@ -238,70 +238,146 @@ class TestChatWebSocketHandler:
         assert error_message["type"] == "error"
         assert error_message["error_code"] == "message_too_long"
     
-    async def test_handle_session_init(self, websocket_handler):
-        """Test session initialization handling."""
+    async def test_handle_session_init_with_valid_token(self, websocket_handler):
+        """Path A: a valid token (validated by the message processor) binds the
+        session and the ack carries NO user identifier back to the browser."""
         connection_id = "test-conn-1"
         session_id = "test-session-1"
-        user_id = "test-user-1"
         mock_websocket = MockWebSocket()
-        
+
         websocket_handler._connections[connection_id] = mock_websocket
         websocket_handler._connection_metadata[connection_id] = {
             "connected_at": datetime.now(timezone.utc),
             "path": "/chat",
             "session_id": None,
-            "user_id": None
+            "user_id": None,
         }
-        
+
+        # Message processor is the token validator boundary; mock it succeeding.
+        mock_processor = Mock()
+        mock_processor.process_session_init_with_token = AsyncMock(return_value=None)
+        websocket_handler.set_message_processor(mock_processor)
+
         message = {
             "type": "session_init",
             "session_id": session_id,
-            "user_id": user_id,
+            "auth_token": "valid.bff.delivered.token",
             "_connection_id": connection_id,
-            "_timestamp": datetime.now(timezone.utc).isoformat()
+            "_timestamp": datetime.now(timezone.utc).isoformat(),
         }
-        
+
         await websocket_handler._handle_session_init(message)
-        
-        # Should send session initialized response
+
+        # Token was handed to the validation boundary.
+        mock_processor.process_session_init_with_token.assert_awaited_once_with(
+            session_id, "valid.bff.delivered.token"
+        )
+
         assert len(mock_websocket.sent_messages) == 1
         response = json.loads(mock_websocket.sent_messages[0])
         assert response["type"] == "session_initialized"
         assert response["session_id"] == session_id
-        assert response["user_id"] == user_id
-        
-        # Should update connection metadata
+        # Identity is NOT echoed back to the browser (token custody / Path A).
+        assert "user_id" not in response
+        assert "userEmail" not in response
         assert websocket_handler._connection_metadata[connection_id]["session_id"] == session_id
-        assert websocket_handler._connection_metadata[connection_id]["user_id"] == user_id
         assert websocket_handler._session_connections[session_id] == connection_id
-    
-    async def test_handle_session_init_generate_id(self, websocket_handler):
-        """Test session initialization with generated session ID."""
+
+    async def test_handle_session_init_no_token_refused(self, websocket_handler):
+        """Path A: session_init WITHOUT a token is refused (no identity source)."""
         connection_id = "test-conn-1"
         mock_websocket = MockWebSocket()
-        
+
         websocket_handler._connections[connection_id] = mock_websocket
         websocket_handler._connection_metadata[connection_id] = {
             "connected_at": datetime.now(timezone.utc),
             "path": "/chat",
             "session_id": None,
-            "user_id": None
+            "user_id": None,
         }
-        
+
         message = {
             "type": "session_init",
             "_connection_id": connection_id,
-            "_timestamp": datetime.now(timezone.utc).isoformat()
+            "_timestamp": datetime.now(timezone.utc).isoformat(),
         }
-        
+
         await websocket_handler._handle_session_init(message)
-        
-        # Should send session initialized response with generated ID
+
         assert len(mock_websocket.sent_messages) == 1
         response = json.loads(mock_websocket.sent_messages[0])
-        assert response["type"] == "session_initialized"
-        assert "session_id" in response
-        assert response["session_id"] is not None
+        assert response["type"] == "error"
+        assert response["error_code"] == "auth_required"
+
+    async def test_handle_session_init_spoofed_user_id_no_token_refused(
+        self, websocket_handler
+    ):
+        """CR-02 regression: a client-supplied user_id with NO token cannot
+        impersonate anyone — the session is refused, not bound."""
+        connection_id = "test-conn-1"
+        mock_websocket = MockWebSocket()
+
+        websocket_handler._connections[connection_id] = mock_websocket
+        websocket_handler._connection_metadata[connection_id] = {
+            "connected_at": datetime.now(timezone.utc),
+            "path": "/chat",
+            "session_id": None,
+            "user_id": None,
+        }
+
+        mock_processor = Mock()
+        mock_processor.process_session_init_with_token = AsyncMock(return_value=None)
+        websocket_handler.set_message_processor(mock_processor)
+
+        message = {
+            "type": "session_init",
+            "session_id": "s1",
+            "user_id": "victim-user-id",
+            "userEmail": "victim@example.com",
+            "_connection_id": connection_id,
+            "_timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        await websocket_handler._handle_session_init(message)
+
+        # Identity binding was NEVER attempted from the claimed id/email.
+        mock_processor.process_session_init_with_token.assert_not_awaited()
+        response = json.loads(mock_websocket.sent_messages[0])
+        assert response["type"] == "error"
+        assert response["error_code"] == "auth_required"
+
+    async def test_handle_session_init_invalid_token_refused(self, websocket_handler):
+        """Path A: a token the validator rejects refuses the session."""
+        connection_id = "test-conn-1"
+        mock_websocket = MockWebSocket()
+
+        websocket_handler._connections[connection_id] = mock_websocket
+        websocket_handler._connection_metadata[connection_id] = {
+            "connected_at": datetime.now(timezone.utc),
+            "path": "/chat",
+            "session_id": None,
+            "user_id": None,
+        }
+
+        mock_processor = Mock()
+        mock_processor.process_session_init_with_token = AsyncMock(
+            side_effect=Exception("Token rejected: signature verification failed")
+        )
+        websocket_handler.set_message_processor(mock_processor)
+
+        message = {
+            "type": "session_init",
+            "session_id": "s1",
+            "auth_token": "tampered.token",
+            "_connection_id": connection_id,
+            "_timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        await websocket_handler._handle_session_init(message)
+
+        response = json.loads(mock_websocket.sent_messages[0])
+        assert response["type"] == "error"
+        assert response["error_code"] == "auth_invalid"
     
     async def test_handle_session_close(self, websocket_handler):
         """Test session close handling."""

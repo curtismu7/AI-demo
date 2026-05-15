@@ -1393,146 +1393,55 @@ Authorization Required: I need your permission to access your banking data. I'll
     
     async def initialize_session_with_token(self, session_id: str, user_token: str) -> None:
         """
-        Pre-identify a user from their auth token so the agent skips the email prompt.
-        
-        Calls the banking API /api/users/me with the token to retrieve user info,
-        then stores it in conversation memory as an identified user.
-        
+        Pre-identify a user STRICTLY from a validated, PingOne-issued access
+        token delivered by the BFF proxy in `session_init` (Path A, CR-02/CR-04).
+
+        Identity (`sub`, email claim) comes ONLY from the cryptographically
+        validated token. There is no `/api/users/me` lookup and no fallback to
+        a client-supplied id/email. A missing / invalid / expired / wrong-aud
+        token is a hard refusal — the caller (message_processor) closes the
+        session with an error.
+
         Args:
             session_id: The chat session ID
-            user_token: The bearer token from the authenticated banking frontend
+            user_token: PingOne access token resolved server-side by the BFF
+                        proxy (never supplied by the browser).
+
+        Raises:
+            TokenValidationError: token absent / invalid / expired / wrong aud.
         """
-        import httpx
+        # Imported lazily so the agent module has no hard dependency on PyJWT
+        # for code paths that never touch token validation.
+        from authentication.token_validator import (
+            get_token_validator,
+            TokenValidationError,
+        )
 
-        banking_api_url = getattr(self.config, 'banking_api_url', 'http://localhost:3001')
+        if not user_token:
+            raise TokenValidationError(
+                "session_init carried no auth token — refusing session (Path A)"
+            )
 
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(
-                    f"{banking_api_url}/api/users/me",
-                    headers={"Authorization": f"Bearer {user_token}"}
-                )
+        identity = get_token_validator().validate(user_token)
 
-            if response.status_code == 200:
-                user_data = response.json()
-                email = user_data.get("email") or user_data.get("user", {}).get("email")
-                user_id = user_data.get("id") or user_data.get("user", {}).get("id")
+        if not identity.email:
+            # Identity must be usable for the banking flow. PingOne profile
+            # without an email claim cannot be bound; refuse rather than guess.
+            raise TokenValidationError(
+                f"Validated token for sub={identity.sub} has no email claim — "
+                f"cannot bind chat identity"
+            )
 
-                if email:
-                    await self.conversation_memory.set_user_identified(
-                        session_id,
-                        user_email=email,
-                        user_id=str(user_id) if user_id else "unknown"
-                    )
-                    logger.info(f"Pre-identified user '{email}' for session {session_id} via token")
-                else:
-                    logger.warning(f"Token valid but no email in response for session {session_id}: {user_data}")
-            else:
-                logger.warning(
-                    f"Token validation failed for session {session_id}: "
-                    f"HTTP {response.status_code}"
-                )
-
-        except Exception as e:
-            logger.warning(f"initialize_session_with_token failed for session {session_id}: {e}")
-            raise
-
-    async def initialize_session_with_email(self, session_id: str, user_email: str, user_id: str = None) -> None:
-        """
-        Pre-identify a user directly from their email address.
-        Called when the authenticated frontend passes the email in session_init.
-        No external API call needed.
-        """
         await self.conversation_memory.set_user_identified(
             session_id,
-            user_email=user_email,
-            user_id=user_id or "unknown"
+            user_email=identity.email,
+            user_id=identity.sub,
         )
-        logger.info(f"Pre-identified user '{user_email}' for session {session_id} via email")
-
-    async def initialize_session_with_user_id(self, session_id: str, user_id: str) -> None:
-        """
-        Pre-identify a user from their user_id (from session_init message).
-        Uses the agent's own OAuth service token to look up the user in the banking API.
-        
-        Args:
-            session_id: The chat session ID
-            user_id: The user ID from the widget (e.g. "user_1234567890")
-        """
-        import httpx
-
-        banking_api_url = getattr(self.config, 'banking_api_url', 'http://localhost:3001')
-
-        try:
-            # Get a service token from the auth manager
-            service_token = None
-            try:
-                token_obj = await self.auth_manager.get_agent_token()
-                if token_obj:
-                    service_token = token_obj.access_token if hasattr(token_obj, 'access_token') else str(token_obj)
-            except Exception as e:
-                logger.warning(f"Could not get service token from auth_manager: {e}")
-
-            if not service_token:
-                logger.warning(f"No service token available for user_id lookup, skipping pre-identification")
-                return
-
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                # Try admin users endpoint first
-                response = await client.get(
-                    f"{banking_api_url}/api/admin/users",
-                    headers={"Authorization": f"Bearer {service_token}"}
-                )
-
-                if response.status_code == 200:
-                    users = response.json()
-                    # Handle both list and paginated response
-                    if isinstance(users, dict):
-                        users = users.get('users', users.get('data', []))
-                    
-                    # HI-06: match by id / userId / pingIdentityId / externalId
-                    # with EXACT string equality, and refuse to pick a winner
-                    # silently when multiple users match. Previously "first
-                    # match wins" — a duplicate identifier across users would
-                    # bind the wrong identity to this chat session.
-                    user_id_str = str(user_id)
-                    matches = [
-                        u for u in users
-                        if (str(u.get('id', '')) == user_id_str
-                            or str(u.get('userId', '')) == user_id_str
-                            or str(u.get('pingIdentityId', '')) == user_id_str
-                            or str(u.get('externalId', '')) == user_id_str)
-                    ]
-                    if len(matches) > 1:
-                        # This should be impossible — IDs are unique. Refuse to guess.
-                        logger.error(
-                            f"Multiple users matched user_id={user_id_str} for session {session_id}: "
-                            f"{[m.get('email') for m in matches]} — refusing to bind identity"
-                        )
-                        raise ValueError(
-                            f"Ambiguous user_id={user_id_str} matched {len(matches)} users"
-                        )
-                    matched = matches[0] if matches else None
-
-                    if matched:
-                        email = matched.get('email')
-                        uid = matched.get('id', user_id)
-                        if email:
-                            await self.conversation_memory.set_user_identified(
-                                session_id,
-                                user_email=email,
-                                user_id=str(uid)
-                            )
-                            logger.info(f"Pre-identified user '{email}' for session {session_id} via user_id lookup")
-                            return
-
-                    logger.warning(f"User {user_id} not found in admin users list for session {session_id}")
-                else:
-                    logger.warning(f"Admin users endpoint returned {response.status_code} for session {session_id}")
-
-        except Exception as e:
-            logger.warning(f"initialize_session_with_user_id failed for session {session_id}: {e}")
-            raise
+        logger.info(
+            "Bound session %s to validated identity sub=%s (token-derived, Path A)",
+            session_id,
+            identity.sub,
+        )
 
     async def clear_session_memory(self, session_id: str) -> None:
         """
