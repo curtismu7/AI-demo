@@ -58,6 +58,7 @@ router.get('/:id', (req, res) => {
     status: challenge.status,
     tool: challenge.tool,
     userId: challenge.userId,
+    agentId: challenge.agentId,
     context: challenge.context,
     createdAt: new Date(challenge.createdAt).toISOString(),
     expiresAt: new Date(challenge.expiresAt).toISOString(),

@@ -15,6 +15,16 @@ export interface HitlChallenge {
   challengeId: string;
   status: 'pending' | 'approved' | 'denied' | 'expired';
   expiresAt: string;
+  /**
+   * Phase 2 CR-01 — caller-binding fields used by the gateway when an agent
+   * retries `tools/call` with `_hitl_challenge_id` to defend against replay
+   * across user/agent/tool boundaries. These mirror what the HITL service
+   * already persists in its challenge store; they are optional here because
+   * older HITL service versions may not include them in the GET response.
+   */
+  userId?: string | null;
+  agentId?: string | null;
+  tool?: string;
 }
 
 export async function createHitlChallenge(
