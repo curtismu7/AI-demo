@@ -60,9 +60,6 @@ export interface BankingToolResult extends ToolResult {
 /** Maximum number of distinct sessions tracked in chainIndexBySession before FIFO eviction. */
 const MAX_SESSION_CHAIN_ENTRIES = 1_000;
 
-/** HITL consent-gate threshold in USD. Configurable via HITL_THRESHOLD_USD env var. */
-const HITL_THRESHOLD_USD = Number(process.env.HITL_THRESHOLD_USD ?? 500);
-
 export class BankingToolProvider {
   private authChallengeHandler: AuthorizationChallengeHandler;
   private auditLogger: AuditLogger;
