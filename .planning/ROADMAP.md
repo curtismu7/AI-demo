@@ -2317,10 +2317,13 @@ Plans:
 
 **Requirements:** TBD
 
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] 999.1-01-PLAN.md — Wave 0 test scaffolds (6 RED tests, AC-01..AC-06)
+- [ ] 999.1-02-PLAN.md — MCP server opt-in h2c listener on 8083 + D-05 try/catch fallback
+- [ ] 999.1-03-PLAN.md — BFF h2 bridge detection + server.js MCP_SERVER_HTTP2_URL resolution + run-bank.sh/REGRESSION_PLAN/ADR
+- [ ] 999.1-04-PLAN.md — D-06 UI surfacing: Token Chain transport pill + read-only admin h2 inspector
 
 **Captured context (2026-05-14):**
 
