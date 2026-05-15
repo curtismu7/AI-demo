@@ -16,7 +16,8 @@ import { Session, AuthErrorCodes, AuthenticationError } from '../interfaces/auth
 import { BankingAPIError } from '../interfaces/banking';
 import type { Account } from '../interfaces/banking';
 import { TokenExchangeService } from '../auth/TokenExchangeService';
-import { AuditLogger, UserTokenInfo, ExchangedTokenInfo, TokenChainExecutionResult } from '../utils/AuditLogger';
+import { AuditLogger } from '../utils/AuditLogger';
+import { TokenChainAuditor } from './TokenChainAuditor';
 import { Logger, createDefaultLoggerConfig } from '../utils/Logger';
 import { filterToolsByScope } from './toolScopeMap';
 import { TokenResolver } from './TokenResolver';
@@ -38,14 +39,10 @@ export interface BankingToolResult extends ToolResult {
   httpTrace?: HttpTraceEntry[];           // Actual HTTP calls made to the banking API
 }
 
-/** Maximum number of distinct sessions tracked in chainIndexBySession before FIFO eviction. */
-const MAX_SESSION_CHAIN_ENTRIES = 1_000;
-
 export class BankingToolProvider {
   private authChallengeHandler: AuthorizationChallengeHandler;
-  private auditLogger: AuditLogger;
+  private auditor: TokenChainAuditor;
   private logger: Logger;
-  private chainIndexBySession: Map<string, number> = new Map();  // Track call count per session
   private tokenResolver: TokenResolver;
   private jwtVerifier: JwtClaimVerifier;
 
@@ -57,27 +54,9 @@ export class BankingToolProvider {
   ) {
     this.logger = Logger.getInstance(createDefaultLoggerConfig());
     this.authChallengeHandler = new AuthorizationChallengeHandler(authManager, sessionManager);
-    this.auditLogger = AuditLogger.getInstance(this.logger);
     this.tokenResolver = new TokenResolver({ authManager: this.authManager, tokenExchangeService: this.tokenExchangeService, logger: this.logger });
     this.jwtVerifier = new JwtClaimVerifier(this.logger);
-  }
-
-  /**
-   * Increment and return chain index for session (per-session call count).
-   * Evicts the oldest session entry when the map reaches MAX_SESSION_CHAIN_ENTRIES
-   * to prevent unbounded growth in long-running processes.
-   */
-  private incrementChainIndex(sessionId: string): number {
-    const current = this.chainIndexBySession.get(sessionId) || 0;
-    const next = current + 1;
-
-    if (!this.chainIndexBySession.has(sessionId) && this.chainIndexBySession.size >= MAX_SESSION_CHAIN_ENTRIES) {
-      const oldestKey = this.chainIndexBySession.keys().next().value as string | undefined;
-      if (oldestKey !== undefined) this.chainIndexBySession.delete(oldestKey);
-    }
-
-    this.chainIndexBySession.set(sessionId, next);
-    return next;
+    this.auditor = new TokenChainAuditor(AuditLogger.getInstance(this.logger), this.jwtVerifier, this.logger);
   }
 
   /**
@@ -85,7 +64,7 @@ export class BankingToolProvider {
    * Callers (e.g. BankingSessionManager) should invoke this on session teardown.
    */
   clearSessionChainIndex(sessionId: string): void {
-    this.chainIndexBySession.delete(sessionId);
+    this.auditor.clearSession(sessionId);
   }
 
   /**
@@ -165,81 +144,7 @@ export class BankingToolProvider {
       this.logger.info(`[BankingToolProvider] Tool execution completed: ${toolName} (${executionTime}ms) - Success: ${result.success}`);
 
       // Log token chain audit event (D-03, D-04)
-      try {
-        const chainIndex = this.incrementChainIndex(session.sessionId);
-        
-        // Extract user token info from session
-        let userToken = session.userTokens;
-        if (Array.isArray(userToken)) {
-          userToken = userToken[0];
-        }
-
-        // Decode real sub from the token payload; fall back to 'unknown' for opaque tokens.
-        const userTokenClaims = userToken ? this.jwtVerifier.decodePayload(userToken.accessToken) : null;
-        const userSub = typeof userTokenClaims?.sub === 'string' ? userTokenClaims.sub : 'unknown';
-
-        const userTokenInfo: UserTokenInfo = userToken
-          ? {
-              sub: userSub,
-              scope: userToken.scope?.split(' ') || [],
-              issuedAt: new Date(userToken.issuedAt).toISOString(),
-              expiresAt: new Date(new Date(userToken.issuedAt).getTime() + (userToken.expiresIn || 3600) * 1000).toISOString(),
-              tokenId: userSub
-            }
-          : {
-              sub: 'unknown',
-              scope: [],
-              issuedAt: new Date().toISOString(),
-              expiresAt: undefined,
-              tokenId: 'unknown'
-            };
-
-        // Extract exchanged token info if agent token was used (RFC 8693 delegation)
-        const exchangedTokenInfo: ExchangedTokenInfo | null = agentToken
-          ? {
-              sub: 'mcp-agent',  // MCP server as delegated subject
-              act: {
-                iss: 'pingone',
-                sub: userSub  // Original actor resolved from session token
-              },
-              scope: tool.requiredScopes || [],
-              issuedAt: new Date().toISOString(),
-              expiresAt: undefined,
-              tokenId: 'exchange'
-            }
-          : null;
-
-        // Construct tool result summary (non-sensitive, stable regardless of tool output shape)
-        const toolResultSummary = result.success ? `${toolName} completed` : `${toolName} failed`;
-
-        // Log to AuditLogger
-        await this.auditLogger.logTokenChain(
-          toolName,
-          chainIndex,
-          userTokenInfo,
-          exchangedTokenInfo,
-          {
-            sessionId: session.sessionId,
-            userId: undefined,  // Would need to be extracted from token claims
-            ipAddress: undefined,  // Could be extracted from request context if available
-            userAgent: undefined
-          },
-          'completed',  // toolExecutionStatus
-          {
-            success: result.success || false,
-            errorCode: result.error ? 'TOOL_ERROR' : undefined,
-            duration: executionTime,
-            toolResultSummary,
-            toolResultJson: result.success ? {
-              text: result.text,
-              isError: !!result.error
-            } : undefined
-          }
-        );
-      } catch (auditError) {
-        // Don't let audit failure block tool result
-        this.logger.warn(`[BankingToolProvider] Failed to log token chain: ${auditError instanceof Error ? auditError.message : String(auditError)}`);
-      }
+      await this.auditor.record({ toolName, tool, session, agentToken, result, executionTime });
 
       return result;
 
