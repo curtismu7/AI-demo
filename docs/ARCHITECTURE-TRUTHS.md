@@ -174,12 +174,17 @@ This is enforced in both directions:
 
 - **Forward:** `audList.includes(expectedAud)` — wrong `aud` is rejected at every
   hop, including the gateway and each MCP server.
-- **Anti-bypass (D-05):** a token whose `aud` *already* contains an upstream
-  MCP-server URI (`mcpOlbResourceUri` / `mcpInvestResourceUri`) is rejected by
-  the gateway with `bypass_attempt` — a caller must obtain a gateway-targeted
-  token first; only the gateway may exchange it onward. Without this, an
-  attacker who minted a token for `mcp-olb` directly would skip the gateway's
-  policy + introspection entirely.
+- **Anti-bypass (D-05):** a token whose `aud` *already* contains a downstream
+  resource URI the gateway exchanges toward — `mcpOlbResourceUri`,
+  `mcpInvestResourceUri`, **and `bankingResourceServerResourceUri`** (the
+  Phase 266 banking-resource-server audience; added 2026-05-15, GW review
+  WR-01) — is rejected by the gateway with `bypass_attempt`. A caller must
+  obtain a gateway-targeted token first; only the gateway may exchange it
+  onward. The set must include *every* downstream audience the gateway can
+  exchange to: any omission is a bypass hole (that was exactly WR-01 — the
+  banking-resource-server URI was missing). Without this, an attacker who
+  minted a token for a downstream directly would skip the gateway's policy +
+  introspection entirely.
 
 Both checks **fail closed**: a mismatched or missing `aud` is a rejection, not a
 pass-through.
@@ -225,6 +230,78 @@ other id field is a legacy artifact and using it returns the wrong user's
 - Code: `banking_api_server/middleware/auth.js` (`req.user.id = decoded.sub`), `middleware/agentSessionMiddleware.js` (agentContext.userId), `data/store.js` (`getTransactionsByUserId` / `getAccountsByUserId` filter on the PingOne UUID)
 - Related: T-4 (identity comes from a PingOne-issued token the AS accepts, never a client string)
 - Glossary: [CONTEXT.md](../CONTEXT.md) "token custody", "user"
+
+---
+
+## T-7 — The BFF LangGraph agent does NOT route through the gateway, yet still asks PingAuthorize itself
+
+There are three agents (CONTEXT.md "agent"). They reach MCP tools by **two
+different topologies**, and conflating them causes wrong architectural
+conclusions:
+
+- **`banking_agent_service` and `langchain_agent`** reach tools *through the
+  gateway* (`banking_mcp_gateway`, 3005). The gateway asks PingAuthorize and
+  enforces (T-2).
+- **The BFF LangGraph agent** (`/api/banking-agent/message` inside
+  `banking_api_server`) does **not** touch the gateway at all. It dials
+  `banking_mcp_server` **directly** (`services/mcpWebSocketClient.js`,
+  `MCP_SERVER_URL` default `ws://localhost:8080`). Its authoritative
+  authorization gate is `mcpToolAuthorizationService.evaluateMcpFirstToolGate`
+  at `server.js:~1535`, which the BFF runs itself on **every** MCP tool call
+  (PingAuthorize or simulated; acts on PERMIT / DENY / HITL).
+
+So "the gateway is where the PingAuthorize decision happens" is true for two
+agents and **false for the BFF agent** — the BFF makes its own PingAuthorize
+call, on a different code path, because the gateway is not in its path. Both
+topologies satisfy T-2 (authorization decision is external and authoritative);
+they just ask at different enforcement points. A redundant *second* local
+scope-map decision that used to also run in the BFF was removed (ADR-0003 / R1)
+precisely because the real gate at `server.js:~1535` already exists
+independently — verifying this topology is what flipped that decision from
+"risky" to "safe."
+
+**Naive reading that is wrong:** "all agents go through the gateway, so the
+gateway's PingAuthorize call covers everything" — the BFF agent bypasses the
+gateway entirely and has its own authoritative PingAuthorize gate. Reasoning
+about agent authorization without first asking *which agent / which topology*
+leads to false conclusions (it nearly did for the R1 decision).
+
+- Where: [banking-api-server/SKILL.md](../.claude/skills/banking-api-server/SKILL.md) (the /api/mcp/tool pipeline), [banking-mcp-gateway/SKILL.md](../.claude/skills/banking-mcp-gateway/SKILL.md) (the other two agents' path)
+- Code: `banking_api_server/server.js:~1535` (`evaluateMcpFirstToolGate` — BFF's own gate), `banking_api_server/services/mcpWebSocketClient.js` (direct to 8080, not via 3005)
+- Related: T-2 (authorization decision is external — true at *both* enforcement points), [ADR-0003](adr/0003-pingauthorize-is-sole-bff-tool-gate.md) (the BFF's sole authoritative gate; local scope policy removed)
+- Glossary: [CONTEXT.md](../CONTEXT.md) "agent" (qualify which one), "gateway"
+
+---
+
+## T-8 — A bug can be latent only because another defect masks it; fix the mask last
+
+Several agent-code defects were *individually safe only because a coarser
+mechanism serialized away the concurrency that would expose them*. The single
+global message-queue worker in `langchain_agent` (WR-02) made three distinct
+bugs harmless: CR-06 (shared MCP connection had no JSON-RPC id correlation —
+cross-session response leak), WR-06 (`_current_tracer` was a module global —
+cross-session trace bleed), and WR-01 (chat-message session-id was trusted from
+the body). None could fire while everything was serialized through one worker.
+
+The disciplined order is: **fix the masked defects properly first
+(CR-06 → id correlation, WR-06 → ContextVar, WR-01 → BL-04 session-trust),
+then remove the mask (WR-02 → per-session workers).** Removing the mask first
+would have turned three latent bugs into live cross-session data leaks the
+moment concurrency was introduced. Each masked fix shipped with a leak-proof
+test that *proves* it holds under concurrency, so that when the mask was finally
+removed (WR-02 Option A, per-session workers) the safety was already exercised
+under real concurrency, not assumed.
+
+**Naive reading that is wrong:** "the single-worker queue is just a performance
+limitation; parallelize it for throughput." It was also load-bearing safety
+scaffolding. Any change that increases concurrency (worker pools, async fan-out,
+per-session tasks) must first confirm that every layer it exposes
+(connection demux, per-context state, identity trust) is independently
+concurrency-safe — or it converts dormant defects into live ones.
+
+- Where: [langchain-agent/SKILL.md](../.claude/skills/langchain-agent/SKILL.md) (per-session worker model), code-review fix reports under `.planning/REVIEW-FIX-*`
+- Code: `langchain_agent/src/api/message_processor.py` (per-session `_SessionWorker`), `src/mcp/connection.py` (CR-06 reader/demux), `src/agent/mcp_tool_provider.py` (WR-06 ContextVar tracer), `src/api/websocket_handler.py` (WR-01 BL-04 session-trust)
+- Enforced as do-not-break: `REGRESSION_PLAN.md` §1 ("per-session message ordering must never reorder a conversation's turns"; "per-session worker reaper must be started at init")
 
 ---
 
