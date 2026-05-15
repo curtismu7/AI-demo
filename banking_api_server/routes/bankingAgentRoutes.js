@@ -5,10 +5,10 @@
  */
 
 const express = require('express');
+const crypto = require('crypto');
 const { agentSessionMiddleware } = require('../middleware/agentSessionMiddleware');
 const {
   storeConsentRequest,
-  getConsentDecision,
   recordConsentDecision,
 } = require('../middleware/hitlGatewayMiddleware');
 const { processAgentMessage } = require('../services/bankingAgentLangGraphService');
@@ -145,14 +145,13 @@ router.post('/message', async (req, res) => {
       return res.status(401).json({ error: 'Session expired', agentInitRequired: true, need_auth: true });
     }
 
-    // Check for pending consent decisions
-    console.log('[banking-agent/message] Checking consent decision...');
-    const consentDecision = await getConsentDecision(req.session.id);
-    console.log('[banking-agent/message] Consent decision:', consentDecision);
-    if (consentDecision?.decision === 'denied') {
-      console.log('[banking-agent/message] Consent denied');
-      return res.status(403).json({ error: 'User denied consent', consentDenied: true });
-    }
+    // Phase 2 CR-02: pre-flight consent lookup removed. The previous code
+    // called getConsentDecision(req.session.id), but the store is keyed by
+    // consentId (a per-request token), not by sessionId — so the check
+    // could never fire. Consent enforcement happens via the 428 reply on
+    // /api/transactions (Phase 170) and via the explicit POST /consent
+    // handshake below; there is no pending consent to look up at this
+    // point in the flow.
 
     // Chatbot is dumb: just forward prompt to agent
     // Agent (with LLM) decides which tools to use, handles authorization, token exchange
@@ -188,9 +187,21 @@ router.post('/message', async (req, res) => {
     // Check if consent is required
     if (response.requiresConsent) {
       console.log('[banking-agent/message] Consent required, storing request...');
-      const consentId = Math.random().toString(36).substr(2, 9);
-      await storeConsentRequest(req.session.id, {
+      // Phase 2 CR-02: the store is keyed by consentId. The previous code
+      // stored under req.session.id, which never matched the lookup in
+      // hitlGatewayMiddleware.getConsentDecision/recordConsentDecision
+      // (those key by consentId). Aligning the write site here.
+      //
+      // Phase 2 CR-03: was Math.random().toString(36).substr(2, 9) — not
+      // cryptographically secure (V8 xorshift128+ is predictable), ~52 bits
+      // of entropy, and used the deprecated .substr() method. crypto.randomUUID
+      // gives 128 bits of entropy from the platform CSPRNG. Must land in the
+      // same commit as CR-02: without CR-02 the weak ID was dead-code; once
+      // CR-02 makes the store functional, the ID becomes attack surface.
+      const consentId = crypto.randomUUID();
+      await storeConsentRequest(consentId, {
         id: consentId,
+        sessionId: req.session.id,
         action: response.action,
         amount: response.amount,
         details: response.details
@@ -337,7 +348,12 @@ router.post('/consent', async (req, res) => {
       return res.status(400).json({ error: 'consentId and approved required' });
     }
 
-    await recordConsentDecision(req.session.id, consentId, approved);
+    // Phase 2 CR-02: recordConsentDecision signature is (consentId, decision).
+    // The previous call passed (req.session.id, consentId, approved) — three
+    // args — which silently dropped `approved` and stored the consentId string
+    // as the decision. Fixed to (consentId, 'approve'|'reject') so the truth
+    // check `consent.decision === 'approve'` actually works.
+    await recordConsentDecision(consentId, approved ? 'approve' : 'reject');
     res.json({ recorded: true, approved });
   } catch (error) {
     console.error('Consent recording error:', error);
