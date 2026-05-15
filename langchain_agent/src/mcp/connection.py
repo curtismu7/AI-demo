@@ -3,6 +3,7 @@ MCP connection management with pooling and retry logic.
 """
 import asyncio
 import logging
+import secrets
 import uuid
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
@@ -88,6 +89,12 @@ class MCPConnection(MCPClient):
         self._pending: Dict[Any, asyncio.Future] = {}
         self._reader_task: Optional[asyncio.Task] = None
         self._agent_token: Optional[str] = None  # Used as Authorization header on (re)connect
+        # WR-11: CSRF state for synthesized auth challenges. The old value was
+        # the predictable f"session_{session_id}". Generate a cryptographically
+        # random state per challenge and keep the state -> session_id mapping
+        # here so the callback can still resolve which session a returned state
+        # belongs to (and reject a forged/unknown state).
+        self._auth_challenge_states: Dict[str, str] = {}
         
         logger.info(f"Initialized MCP connection for server: {server_config.name}")
     
@@ -106,6 +113,25 @@ class MCPConnection(MCPClient):
         """Get last connection error"""
         return self._last_error
     
+    def _new_auth_challenge_state(self, session_id: str) -> str:
+        """Mint a cryptographically random CSRF state for an auth challenge
+        and correlate it back to the originating session (WR-11).
+
+        secrets.token_urlsafe(32) yields ~43 unguessable URL-safe chars —
+        unlike the old f"session_{session_id}" which a client could trivially
+        derive. The mapping lets validate_auth_challenge_state() reject any
+        returned state we did not issue (forged/replayed) and recover the
+        session for a legitimate one.
+        """
+        state = secrets.token_urlsafe(32)
+        self._auth_challenge_states[state] = session_id
+        return state
+
+    def validate_auth_challenge_state(self, state: str) -> Optional[str]:
+        """Return the session_id bound to ``state`` (single-use) or None if
+        the state was never issued by this connection (WR-11)."""
+        return self._auth_challenge_states.pop(state, None)
+
     async def connect(self, server_config: MCPServerConfig) -> None:
         """Establish connection to MCP server with retry logic"""
         async with self._connection_lock:
@@ -405,11 +431,13 @@ class MCPConnection(MCPClient):
                     
                     # Create an authentication challenge
                     # This should trigger the user authorization flow
+                    # WR-11: unpredictable, session-correlated CSRF state
+                    # instead of the guessable f"session_{session_id}".
                     challenge = AuthChallenge(
                         challenge_type="oauth2",
                         authorization_url="",  # Will be filled by auth manager
                         scope="banking:accounts:read banking:transactions:read banking:transactions:write",
-                        state=f"session_{tool_call.session_id}"
+                        state=self._new_auth_challenge_state(tool_call.session_id)
                     )
                     return {"type": "auth_challenge", "challenge": challenge}
                 
