@@ -266,7 +266,7 @@ class ConfigManager:
             "PINGONE_AUTHORIZATION_ENDPOINT=https://your-tenant.forgeblocks.com/am/oauth2/realms/alpha/authorize",
             "ENCRYPTION_MASTER_KEY=your-base64-encoded-master-key-here",
             "ENCRYPTION_SALT=your-base64-encoded-salt-here",
-            "OPENAI_API_KEY=your-openai-api-key-here",
+            # WR-13: OPENAI_API_KEY removed — Ollama-only; not a required var.
         ]
         
         template_lines.extend(["", "# Required variables - must be set"])
@@ -427,9 +427,20 @@ class ConfigManager:
                         f"in production (got {value.split('://')[0]}://...)"
                     )
 
+                # IN-05: "".split(",") yields [""] (one empty element), not
+                # []. Downstream treats this as a list of capabilities, so an
+                # unset env var leaked a phantom "" capability. Filter empties.
+                capabilities = [
+                    c.strip()
+                    for c in os.getenv(
+                        f"MCP_SERVER_{server_name.upper()}_CAPABILITIES", ""
+                    ).split(",")
+                    if c.strip()
+                ]
+
                 configs[server_name] = {
                     "endpoint": value,
-                    "capabilities": os.getenv(f"MCP_SERVER_{server_name.upper()}_CAPABILITIES", "").split(","),
+                    "capabilities": capabilities,
                     "auth_required": os.getenv(f"MCP_SERVER_{server_name.upper()}_AUTH_REQUIRED", "false").lower() == "true"
                 }
 
