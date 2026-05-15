@@ -702,42 +702,43 @@ For example: 123 Main St, New York, NY, 10001, USA"""
             return response
         
         elif registration_step == "collecting_address":
-            # User provided address, complete registration
+            # User provided address. The actual user-registration MCP tool
+            # is not wired up here yet (the original code path silently
+            # faked success and stored a synthetic "new_user_<sid>" id).
+            # Until the registration MCP tool is integrated, surface the
+            # gap to the user instead of claiming a fake completion.
             registration_data = context.get("registration_data", {})
             registration_data["address"] = user_message.strip()
-            
-            # TODO: Call registration MCP tool here
-            # For now, just complete the registration flow
+
             await self.conversation_memory.update_session_context(session_id, {
-                "registration_step": "completed",
-                "registration_data": registration_data
+                "registration_step": "pending_backend",
+                "registration_data": registration_data,
             })
-            
-            response = f"""Excellent! I have all your information:
 
-✅ Email: {registration_data.get('email', '')}
-✅ Name: {registration_data.get('full_name', '')}
-✅ Phone: {registration_data.get('phone', '')}
-✅ Date of Birth: {registration_data.get('date_of_birth', '')}
-✅ Address: {registration_data.get('address', '')}
-
-Your account registration is now complete! You can now use all banking services. How can I help you today?"""
-            
-            # Mark user as identified with the new registration
-            await self.conversation_memory.set_user_identified(
-                session_id, 
-                registration_data.get('email', ''), 
-                "new_user_" + session_id  # Temporary user ID until real registration
+            response = (
+                "Thanks — I have all the details:\n\n"
+                f"Email: {registration_data.get('email', '')}\n"
+                f"Name: {registration_data.get('full_name', '')}\n"
+                f"Phone: {registration_data.get('phone', '')}\n"
+                f"Date of Birth: {registration_data.get('date_of_birth', '')}\n"
+                f"Address: {registration_data.get('address', '')}\n\n"
+                "Registration backend isn't connected in this build, so I "
+                "can't finalize a new account from chat. Please use the "
+                "Setup page to provision a demo user, or sign in with an "
+                "existing account."
             )
-            
-            # Store the assistant's response
+
+            # Do NOT call set_user_identified — nothing was actually
+            # registered. Marking the user identified would mask later
+            # tool calls failing because there is no real backend user.
+
             assistant_msg = ChatMessage.create_assistant_message(
-                session_id, 
+                session_id,
                 response,
-                {"registration_completed": True, "user_identified": True}
+                {"registration_completed": False, "registration_pending_backend": True},
             )
             await self.conversation_memory.add_message(session_id, assistant_msg)
-            
+
             return response
         
         # If we get here, registration flow didn't handle the message
