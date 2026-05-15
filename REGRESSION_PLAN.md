@@ -108,6 +108,42 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-14 — Phase 3 CR-03: Gateway GET /mcp + DELETE /mcp now run the same auth pipeline as POST /mcp
+
+- **Category:** Security correctness (auth pipeline bypass on the HTTP MCP gateway). Critical.
+- **Findings:** Phase 3 CR-03 (`.planning/REVIEW-banking-mcp-gateway-agent.md`).
+- **Files:** `banking_mcp_gateway/src/server/GatewayServer.ts` (refactored `handleMcpGet` and `handleMcpDelete` to route through `this.middleware(...)`), `banking_mcp_gateway/tests/gateway-get-delete-middleware.test.ts` (NEW — 8 tests).
+
+**What was wrong:**
+`POST /mcp` correctly handed off to the injected `requestMiddleware` (which in production is `buildAuthorizeMcpRequest` — running RFC 7662 introspection, `GatewayTokenPolicy` with D-05 anti-bypass, PingAuthorize `PERMIT/DENY/INDETERMINATE` evaluation, and RFC 8693 re-exchange to the backend audience). But `GET /mcp` (SSE) and `DELETE /mcp` only extracted the inbound bearer, validated `aud === gatewayResourceUri`, and then forwarded the **inbound** bearer verbatim to `${upstreamMcpUrl}/mcp` as `Authorization: Bearer …`. Three security invariants were silently bypassed on those two verbs:
+1. RFC 7662 introspection — a revoked token would still work for SSE / session-termination.
+2. `GatewayTokenPolicy` (incl. the D-05 anti-bypass invariant that rejects tokens whose `aud` is already an upstream MCP-server URI).
+3. RFC 8693 re-exchange — the upstream MCP server received a token whose `aud` is the gateway's URI (`mcp-gateway.bxf.com`) rather than its own (`mcp-olb.bxf.com` / `mcp-invest.bxf.com`), a direct RFC 8707 / D-05 violation.
+
+**What was fixed:**
+Both handlers now invoke `this.middleware(bearerToken, body, req, res, async (upstreamToken) => { … })` after the same pre-checks the POST path runs (CORS, bearer presence → 401, inbound aud validation skipped under `devBypass` for parity). The continuation runs the SSE pipe (GET) or upstream DELETE call with `upstreamToken` — the **exchanged** token from the middleware — not the inbound bearer. For GET / DELETE there is no JSON-RPC body, so `Buffer.alloc(0)` is passed; the middleware's body parser already returns `{}` on parse failure, which lands naturally in PingAuthorize's `McpRequest` decision context (vs. `McpToolCall`), so the existing `PingOneAuthorizeClient` works unchanged — no signature extension required. `devBypass` is honored end-to-end (middleware's own short-circuit forwards the inbound bearer when `config.devBypass === true`).
+
+**Test additions (`banking_mcp_gateway/tests/gateway-get-delete-middleware.test.ts`):**
+- GET /mcp with `aud=gatewayResourceUri` → middleware is invoked, upstream receives the re-exchanged token (not the inbound bearer).
+- GET /mcp with `aud=mcpOlbResourceUri` (pre-exchanged) → rejected before the middleware runs (D-05 anti-bypass at the edge).
+- GET /mcp without a bearer → 401, middleware is **not** invoked.
+- GET /mcp under `devBypass=true` → middleware short-circuit forwards the inbound bearer.
+- DELETE /mcp — same four cases.
+
+**Verification:**
+- Gateway: `cd banking_mcp_gateway && npx jest` → **73 tests, all passing** (65 existing + 8 new in `gateway-get-delete-middleware.test.ts`).
+- Gateway: `npm run build` → **exit 0**.
+- BFF critical suite: `cd banking_api_server && npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration hitlGateway.regression hitlGateway.integration` → **48/48 passing** (no cross-impact).
+
+**Why this matters:**
+The gateway's whole reason to exist is to be the only door through which an upstream MCP server receives a request — running policy + exchange so the backend gets a correctly-audienced token. A handler that forwards the inbound bearer is not a gateway; it's a passthrough. With this fix, all three MCP HTTP verbs (POST, GET, DELETE) share one auth pipeline. Future work that extends the pipeline (e.g. additional claim invariants in `GatewayTokenPolicy`, or new PingAuthorize signals) automatically applies to SSE and session-termination requests, not just tool calls.
+
+**Do not break:**
+- All three `/mcp` verbs must continue to call `this.middleware(...)` before any upstream call. Specifically, do not reintroduce direct `axios.delete(..., { Authorization: \`Bearer ${bearerToken}\` })` or `pipeGetToUpstream(req, res, bearerToken)` calls that use the inbound bearer.
+- The continuation for GET must use the `upstreamToken` argument as the upstream `Authorization`, not the captured `bearerToken`.
+- The continuation for DELETE must use the `upstreamToken` argument as the upstream `Authorization`, not the captured `bearerToken`.
+- For body-less verbs, pass `Buffer.alloc(0)` to the middleware — `parseJsonRpcBody` returns `{}` and the request lands in PingAuthorize's `McpRequest` (non-tool-call) decision branch.
+
 ### 2026-05-14 — Phase 2 review fixes: Gateway HITL receipt-replay bind + BFF consent store key alignment + secure consentId
 
 - **Category:** Security correctness (HITL control plane). Three findings on the same control plane, fixed together.

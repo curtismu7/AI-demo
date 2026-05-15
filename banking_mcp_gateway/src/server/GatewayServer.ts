@@ -12,14 +12,18 @@
  * It is NOT a pass-through to the upstream MCP server metadata — the resource claim
  * belongs to the gateway, not the upstream.
  *
- * Auth pipeline (Plans 243-01/02):
+ * Auth pipeline (Plans 243-01/02; Phase 3 CR-03 extends to GET + DELETE):
  *   1. Extract bearer token from Authorization header
  *   2. Validate inbound aud = gateway audience (rejects wrong-hop tokens, D-05)
  *   3. (Plan 243-02) PingOne Authorize evaluation via authorizeMcpRequest middleware
  *   4. (Plan 243-02) RFC 8693 exchange → upstream MCP-server audience
  *   5. Forward to upstream with exchanged token + MCP headers
  *
- * Plan 243-01 implements steps 1-2 and basic forwarding; step 3-4 are wired in 243-02.
+ * Plan 243-01 implemented steps 1-2 and basic forwarding for POST /mcp; step
+ * 3-4 were wired in 243-02. Phase 3 CR-03 unified GET /mcp (SSE) and DELETE
+ * /mcp through the same middleware() callback so all three verbs now share
+ * the introspection + GatewayTokenPolicy + PingAuthorize + RFC 8693 pipeline
+ * — they were previously forwarding the inbound bearer verbatim.
  */
 
 import http, { IncomingMessage, ServerResponse } from 'http';
@@ -201,6 +205,17 @@ export class GatewayServer {
   // ---------------------------------------------------------------------------
   // GET /mcp — SSE passthrough (PingGateway: ReverseProxyHandler + streamingEnabled)
   // Mirror of McpProtectionFilter + McpValidationFilter for GET requests.
+  //
+  // Phase 3 CR-03 fix: this handler now routes through the SAME middleware()
+  // pipeline that POST /mcp uses — RFC 7662 introspection, GatewayTokenPolicy
+  // (D-05 anti-bypass), PingAuthorize evaluation, and RFC 8693 re-exchange.
+  // Previously the inbound bearer was forwarded verbatim to the upstream MCP
+  // server, which (a) bypassed introspection, policy, and exchange entirely,
+  // and (b) sent a token whose `aud` is the gateway's audience to a server
+  // that expects its own audience — a violation of RFC 8707 / D-05.
+  // GET has no JSON-RPC body, so we pass an empty buffer; the middleware's
+  // body parser returns `{}` on parse failure, which naturally lands in the
+  // `McpRequest` (not `McpToolCall`) branch of PingAuthorize evaluation.
   // ---------------------------------------------------------------------------
 
   private async handleMcpGet(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -210,20 +225,38 @@ export class GatewayServer {
       this.sendUnauthorized(res, 'invalid_token', 'Bearer token required');
       return;
     }
-    try {
-      validateInboundToken(bearerToken, this.config.gatewayResourceUri);
-    } catch (err) {
-      if (err instanceof TokenValidationError) {
-        this.sendUnauthorized(res, err.code, err.message);
-        return;
+    // Inbound aud validation runs before the middleware (parity with POST).
+    // Dev bypass: skip inbound validation; middleware will also short-circuit.
+    if (!this.config.devBypass) {
+      try {
+        validateInboundToken(bearerToken, this.config.gatewayResourceUri);
+      } catch (err) {
+        if (err instanceof TokenValidationError) {
+          this.sendUnauthorized(res, err.code, err.message);
+          return;
+        }
+        throw err;
       }
-      throw err;
     }
-    await this.pipeGetToUpstream(req, res, bearerToken);
+
+    await this.middleware(
+      bearerToken,
+      Buffer.alloc(0),
+      req,
+      res,
+      async (upstreamToken) => {
+        await this.pipeGetToUpstream(req, res, upstreamToken);
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------
   // DELETE /mcp — session termination (MCP spec 2025-11-25)
+  //
+  // Phase 3 CR-03 fix: same middleware routing as GET above. DELETE bypassed
+  // the full auth pipeline previously; it now runs introspection + policy +
+  // exchange before forwarding the session-termination request upstream with
+  // the re-exchanged token.
   // ---------------------------------------------------------------------------
 
   private async handleMcpDelete(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -232,28 +265,39 @@ export class GatewayServer {
       this.sendUnauthorized(res, 'invalid_token', 'Bearer token required');
       return;
     }
-    try {
-      validateInboundToken(bearerToken, this.config.gatewayResourceUri);
-    } catch (err) {
-      if (err instanceof TokenValidationError) {
-        this.sendUnauthorized(res, err.code, err.message);
-        return;
+    if (!this.config.devBypass) {
+      try {
+        validateInboundToken(bearerToken, this.config.gatewayResourceUri);
+      } catch (err) {
+        if (err instanceof TokenValidationError) {
+          this.sendUnauthorized(res, err.code, err.message);
+          return;
+        }
+        throw err;
       }
-      throw err;
     }
-    try {
-      const upstream = await axios.delete(`${this.upstreamMcpUrl}/mcp`, {
-        headers: { Authorization: `Bearer ${bearerToken}` },
-        validateStatus: () => true,
-        timeout: 5000,
-      });
-      const sessionId = req.headers[MCP_SESSION_HEADER] as string | undefined;
-      res.writeHead(upstream.status, sessionId ? { [MCP_SESSION_HEADER]: sessionId } : {});
-      res.end();
-    } catch {
-      res.writeHead(502, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'upstream_unavailable' }));
-    }
+
+    await this.middleware(
+      bearerToken,
+      Buffer.alloc(0),
+      req,
+      res,
+      async (upstreamToken) => {
+        try {
+          const upstream = await axios.delete(`${this.upstreamMcpUrl}/mcp`, {
+            headers: { Authorization: `Bearer ${upstreamToken}` },
+            validateStatus: () => true,
+            timeout: 5000,
+          });
+          const sessionId = req.headers[MCP_SESSION_HEADER] as string | undefined;
+          res.writeHead(upstream.status, sessionId ? { [MCP_SESSION_HEADER]: sessionId } : {});
+          res.end();
+        } catch {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'upstream_unavailable' }));
+        }
+      },
+    );
   }
 
   // SSE pipeline — pipe GET /mcp to upstream without buffering (Node http.request)
