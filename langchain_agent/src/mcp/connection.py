@@ -3,6 +3,7 @@ MCP connection management with pooling and retry logic.
 """
 import asyncio
 import logging
+import uuid
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 from enum import Enum
@@ -44,6 +45,23 @@ class ConnectionState(Enum):
     FAILED = "failed"
 
 
+class MCPConnectionClosedError(Exception):
+    """Raised to fail in-flight requests when the shared connection closes.
+
+    The single per-connection reader task rejects every pending request future
+    with this error on connection close/error so callers fail fast instead of
+    hanging until their per-request timeout (CR-06).
+    """
+
+
+class MCPRequestTimeoutError(Exception):
+    """Raised when a single JSON-RPC request exceeds its per-request timeout.
+
+    The pending entry is removed before raising so the shared connection stays
+    usable for other waiters (CR-06).
+    """
+
+
 class MCPConnection(MCPClient):
     """Individual MCP server connection with retry logic"""
     
@@ -61,12 +79,14 @@ class MCPConnection(MCPClient):
         self._available_tools: List[str] = []
         self._tool_schemas: Dict[str, Dict[str, Any]] = {}
         self._connection_lock = asyncio.Lock()
-        # Serialize send/recv on the shared WebSocket. The JSON-RPC over WS
-        # protocol has no client-side id->future dispatcher here, so two
-        # concurrent send/recv pairs on the same socket would interleave and
-        # deliver the wrong response to the wrong caller. Hold this lock for
-        # the duration of each request/response round-trip.
-        self._io_lock = asyncio.Lock()
+        # CR-06: JSON-RPC id correlation. There is exactly ONE consumer of
+        # self._websocket.recv() per connection — the reader task started in
+        # connect(). Every request registers a Future in self._pending keyed by
+        # its unique JSON-RPC id BEFORE sending, then awaits that Future. The
+        # reader demultiplexes incoming frames by id back to the right waiter.
+        # No other code path may call self._websocket.recv() directly.
+        self._pending: Dict[Any, asyncio.Future] = {}
+        self._reader_task: Optional[asyncio.Task] = None
         self._agent_token: Optional[str] = None  # Used as Authorization header on (re)connect
         
         logger.info(f"Initialized MCP connection for server: {server_config.name}")
@@ -109,7 +129,16 @@ class MCPConnection(MCPClient):
                         websockets.connect(server_config.endpoint, **_ws_kwargs),
                         timeout=self.connection_timeout
                     )
-                    
+
+                    # CR-06: enforce exactly ONE reader per connection — tear
+                    # down any prior reader (e.g. from a lost socket during
+                    # reconnect) before starting the new one. Start it BEFORE
+                    # the handshake: _perform_handshake / _refresh_tools now go
+                    # through the id-correlated request path and need a running
+                    # demultiplexer.
+                    await self._stop_reader()
+                    self._start_reader()
+
                     # Perform handshake
                     await self._perform_handshake()
                     
@@ -156,6 +185,131 @@ class MCPConnection(MCPClient):
                     self._state = ConnectionState.DISCONNECTED
                     self._available_tools = []
                     self._tool_schemas = {}
+            # CR-06: tear down the reader task and reject any stragglers so no
+            # orphaned task survives and no caller hangs across a reconnect.
+            await self._stop_reader()
+            self._fail_all_pending(
+                MCPConnectionClosedError(
+                    f"MCP connection to {self.server_config.name} closed"
+                )
+            )
+
+    def _start_reader(self) -> None:
+        """Start the single per-connection reader task (CR-06).
+
+        Exactly one consumer of self._websocket.recv() per connection.
+        """
+        if self._reader_task is not None and not self._reader_task.done():
+            return
+        self._reader_task = asyncio.create_task(self._read_loop())
+
+    async def _stop_reader(self) -> None:
+        """Cancel and await the reader task so there is no orphaned task."""
+        task = self._reader_task
+        self._reader_task = None
+        if task is None:
+            return
+        task.cancel()
+        try:
+            await task
+        except (asyncio.CancelledError, Exception):  # noqa: BLE001 - teardown
+            pass
+
+    def _fail_all_pending(self, error: Exception) -> None:
+        """Reject every in-flight request future immediately (CR-06).
+
+        Mirrors the gateway/agent-service pattern: a closed connection fails
+        all pending requests now rather than letting each hang until its own
+        per-request timeout.
+        """
+        pending = self._pending
+        self._pending = {}
+        for fut in pending.values():
+            if not fut.done():
+                fut.set_exception(error)
+
+    async def _read_loop(self) -> None:
+        """Single per-connection frame demultiplexer (CR-06).
+
+        Loops recv() on the shared WebSocket and routes each frame to the
+        waiter whose JSON-RPC id matches. id-less frames (notifications) are
+        logged and dropped — never resolve a random waiter. A malformed frame
+        is logged and skipped (the loop survives). On connection close/error
+        every pending future is rejected with MCPConnectionClosedError and the
+        loop exits cleanly.
+        """
+        ws = self._websocket
+        try:
+            while True:
+                raw = await ws.recv()
+                try:
+                    frame = json.loads(raw)
+                except (json.JSONDecodeError, TypeError, ValueError) as e:
+                    logger.warning(
+                        f"Discarding malformed frame from {self.server_config.name}: {e}"
+                    )
+                    continue
+
+                msg_id = frame.get("id") if isinstance(frame, dict) else None
+                if msg_id is None:
+                    # JSON-RPC notification / id-less frame — nothing in this
+                    # client consumes server-initiated notifications today.
+                    logger.debug(
+                        f"Unsolicited/notification frame from "
+                        f"{self.server_config.name} (no id) — dropped"
+                    )
+                    continue
+
+                fut = self._pending.pop(msg_id, None)
+                if fut is None:
+                    logger.debug(
+                        f"Frame for unknown/expired id={msg_id} from "
+                        f"{self.server_config.name} — dropped"
+                    )
+                    continue
+                if not fut.done():
+                    fut.set_result(frame)
+        except asyncio.CancelledError:
+            raise
+        except (ConnectionClosed, WebSocketException) as e:
+            logger.info(
+                f"Reader loop ending for {self.server_config.name}: {e}"
+            )
+        except Exception as e:  # noqa: BLE001 - reader must never crash silently
+            logger.error(
+                f"Unexpected error in reader loop for "
+                f"{self.server_config.name}: {e}"
+            )
+        finally:
+            self._fail_all_pending(
+                MCPConnectionClosedError(
+                    f"MCP connection to {self.server_config.name} lost "
+                    f"while requests were in flight"
+                )
+            )
+
+    async def _send_request(self, message: Dict[str, Any]) -> Dict[str, Any]:
+        """Send a JSON-RPC request and await its correlated response (CR-06).
+
+        Registers a Future under message["id"] BEFORE sending, awaits it with
+        the per-request timeout (reuses self.connection_timeout — the existing
+        MCP_CONNECTION_TIMEOUT_SECONDS config key), and always removes the
+        pending entry on completion/timeout/error so the registry never leaks.
+        """
+        msg_id = message["id"]
+        loop = asyncio.get_event_loop()
+        fut: asyncio.Future = loop.create_future()
+        self._pending[msg_id] = fut
+        try:
+            await self._websocket.send(json.dumps(message))
+            return await asyncio.wait_for(fut, timeout=self.connection_timeout)
+        except asyncio.TimeoutError:
+            raise MCPRequestTimeoutError(
+                f"MCP request id={msg_id} to {self.server_config.name} timed "
+                f"out after {self.connection_timeout}s"
+            )
+        finally:
+            self._pending.pop(msg_id, None)
     
     async def call_tool(self, tool_call: MCPToolCall) -> Dict[str, Any]:
         """Execute a tool call on the MCP server using JSON-RPC 2.0 format"""
@@ -190,7 +344,9 @@ class MCPConnection(MCPClient):
             
             message = {
                 "jsonrpc": "2.0",
-                "id": f"tool_call_{datetime.now().timestamp()}",
+                # CR-06: uuid4 guarantees a unique id even for two calls in the
+                # same millisecond (datetime.now().timestamp() could collide).
+                "id": str(uuid.uuid4()),
                 "method": "tools/call",
                 "params": params
             }
@@ -207,18 +363,12 @@ class MCPConnection(MCPClient):
             logger.debug(f"Agent token present: {tool_call.agent_token is not None}")
             logger.debug(f"User auth code present: {tool_call.user_auth_code is not None}")
             
-            # Send message and wait for response. Hold _io_lock so concurrent
-            # call_tool() invocations on this connection don't interleave their
-            # send/recv pairs (which would deliver the wrong response to the
-            # wrong caller — see _io_lock comment in __init__).
-            async with self._io_lock:
-                await self._websocket.send(json.dumps(message))
-                logger.debug(f"Sent message to MCP server, waiting for response...")
-
-                response_data = await self._websocket.recv()
-            logger.debug(f"Received raw response: {response_data}")
-
-            response = json.loads(response_data)
+            # CR-06: send + await the id-correlated response. The single
+            # per-connection reader task demultiplexes frames by JSON-RPC id,
+            # so concurrent call_tool() invocations on this shared connection
+            # can no longer receive each other's responses.
+            logger.debug(f"Sending message to MCP server, awaiting correlated response...")
+            response = await self._send_request(message)
             logger.info(f"Received tools/call response from {self.server_config.name}: {response}")
             
             # Check for JSON-RPC error
@@ -272,12 +422,7 @@ class MCPConnection(MCPClient):
             logger.error(f"Connection lost during tool call to {self.server_config.name}: {e}")
             await self._handle_connection_loss()
             raise
-        
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON response from {self.server_config.name}: {e}")
-            logger.error(f"Raw response data: {response_data}")
-            raise Exception(f"Invalid JSON response from MCP server: {e}")
-        
+
         except Exception as e:
             logger.error(f"Error executing tool call on {self.server_config.name}: {e}")
             logger.error(f"Exception type: {type(e)}")
@@ -305,30 +450,31 @@ class MCPConnection(MCPClient):
             await self._ensure_connected()
         
         try:
-            # Send challenge response
+            # Send challenge response. CR-06: carry an `id` so the single
+            # per-connection reader can correlate the response back to this
+            # caller (the server is expected to echo the id; an id-less reply
+            # would be dropped by the reader as a notification).
             message = {
                 "type": "auth_challenge_response",
+                "id": str(uuid.uuid4()),
                 "challenge_type": challenge.challenge_type,
                 "state": challenge.state
             }
+            return await self._send_request(message)
 
-            async with self._io_lock:
-                await self._websocket.send(json.dumps(message))
-                response_data = await self._websocket.recv()
-            response = json.loads(response_data)
-
-            return response
-            
         except Exception as e:
             logger.error(f"Error handling auth challenge for {self.server_config.name}: {e}")
             raise
     
     async def _perform_handshake(self) -> None:
         """Perform initial handshake with MCP server using JSON-RPC 2.0"""
-        # Send initialize request according to banking MCP server specification
+        # Send initialize request according to banking MCP server specification.
+        # CR-06: uuid4 id + id-correlated send so a reconnect's handshake can
+        # never collide with a prior one and the reader routes the reply here.
+        handshake_id = str(uuid.uuid4())
         initialize_message = {
             "jsonrpc": "2.0",
-            "id": "handshake-1",
+            "id": handshake_id,
             "method": "initialize",
             "params": {
                 "protocolVersion": "2024-11-05",
@@ -339,17 +485,15 @@ class MCPConnection(MCPClient):
                 }
             }
         }
-        
-        await self._websocket.send(json.dumps(initialize_message))
-        response_data = await self._websocket.recv()
-        response = json.loads(response_data)
-        
+
+        response = await self._send_request(initialize_message)
+
         # Check for JSON-RPC error
         if "error" in response:
             raise Exception(f"Initialize error: {response['error']}")
-        
+
         # Validate initialize response
-        if response.get("id") != "handshake-1" or "result" not in response:
+        if response.get("id") != handshake_id or "result" not in response:
             raise Exception(f"Invalid initialize response: {response}")
         
         # Send initialized notification (if required by the server)
@@ -366,18 +510,20 @@ class MCPConnection(MCPClient):
     async def _refresh_tools(self) -> None:
         """Refresh list of available tools from server using MCP protocol"""
         try:
+            # CR-06: uuid4 id + id-correlated send so concurrent reconnects /
+            # in-flight tool calls on the shared connection cannot deliver each
+            # other's frames here.
+            list_tools_id = str(uuid.uuid4())
             list_tools_message = {
                 "jsonrpc": "2.0",
-                "id": 1,
+                "id": list_tools_id,
                 "method": "tools/list",
                 "params": {}
             }
-            
+
             logger.info(f"Sending tools/list request: {list_tools_message}")
-            await self._websocket.send(json.dumps(list_tools_message))
-            response_data = await self._websocket.recv()
-            response = json.loads(response_data)
-            
+            response = await self._send_request(list_tools_message)
+
             logger.info(f"Received tools/list response: {response}")
             
             # Check for JSON-RPC error
@@ -388,7 +534,7 @@ class MCPConnection(MCPClient):
                 return
             
             # Extract tools from MCP response
-            if response.get("id") == 1 and "result" in response:
+            if response.get("id") == list_tools_id and "result" in response:
                 tools_result = response["result"]
                 if "tools" in tools_result:
                     # Extract tool names and schemas from MCP tool objects
