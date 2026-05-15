@@ -16,11 +16,10 @@ import { Session, AuthErrorCodes, AuthenticationError } from '../interfaces/auth
 import { BankingAPIError } from '../interfaces/banking';
 import type { Account } from '../interfaces/banking';
 import { TokenExchangeService } from '../auth/TokenExchangeService';
-import { TokenExchangeRequest } from '../interfaces/tokenExchange';
 import { AuditLogger, UserTokenInfo, ExchangedTokenInfo, TokenChainExecutionResult } from '../utils/AuditLogger';
 import { Logger, createDefaultLoggerConfig } from '../utils/Logger';
-import { tokenCache } from '../services/tokenCacheService';
-import { getScopesForTool, filterToolsByScope } from './toolScopeMap';
+import { filterToolsByScope } from './toolScopeMap';
+import { TokenResolver } from './TokenResolver';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 // Module-level JWKS key set — cached for process lifetime (jose handles key rotation)
@@ -65,6 +64,7 @@ export class BankingToolProvider {
   private auditLogger: AuditLogger;
   private logger: Logger;
   private chainIndexBySession: Map<string, number> = new Map();  // Track call count per session
+  private tokenResolver: TokenResolver;
 
   constructor(
     private apiClient: BankingAPIClient,
@@ -75,6 +75,7 @@ export class BankingToolProvider {
     this.logger = Logger.getInstance(createDefaultLoggerConfig());
     this.authChallengeHandler = new AuthorizationChallengeHandler(authManager, sessionManager);
     this.auditLogger = AuditLogger.getInstance(this.logger);
+    this.tokenResolver = new TokenResolver({ authManager: this.authManager, tokenExchangeService: this.tokenExchangeService, logger: this.logger });
   }
 
   /**
@@ -390,122 +391,7 @@ export class BankingToolProvider {
     // available — it carries the act claim proving the delegation chain and has the correct
     // audience for the BFF's data APIs. Fall back to the raw session user token only when
     // no delegated token was provided (e.g. ff_skip_token_exchange=true or direct MCP call).
-    let token: string;
-    if (agentToken) {
-      // Step 9: Second RFC 8693 exchange — exchange gateway-scoped token for resource-scoped token.
-      // Gated on BANKING_API_RESOURCE_URI: when absent, fall back to using gateway token directly
-      // for backward compatibility (e.g. local dev without full resource server config).
-      if (this.tokenExchangeService && process.env.BANKING_API_RESOURCE_URI) {
-        const toolScopes = getScopesForTool(context.toolName);
-        const agentCacheKey = `agent:${context.session.sessionId}:${[...toolScopes].sort().join(',')}`;
-        const cachedResourceToken = tokenCache.get(agentCacheKey, toolScopes);
-        if (cachedResourceToken) {
-          token = cachedResourceToken;
-          this.logger.debug(`[BankingToolProvider] Step 9 resource cache hit for ${tool.name}`);
-        } else {
-          this.logger.info(`[BankingToolProvider] Step 9 resource exchange initiated for tool: ${tool.name}, scopes: ${toolScopes.join(',')}`);
-          try {
-            const exchangeRequest: TokenExchangeRequest = {
-              grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-              subject_token: agentToken,
-              subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
-              scope: toolScopes.join(' '),
-              audience: process.env.BANKING_API_RESOURCE_URI,
-            };
-            const exchangeResponse = await this.tokenExchangeService.exchangeToken(exchangeRequest);
-            token = exchangeResponse.access_token;
-            const expiresAt = Date.now() + (exchangeResponse.expires_in * 1000);
-            tokenCache.set(agentCacheKey, toolScopes, token, expiresAt);
-            this.logger.info(`[BankingToolProvider] Step 9 resource exchange succeeded for ${tool.name} (expires_in: ${exchangeResponse.expires_in}s)`);
-          } catch (exchangeError) {
-            this.logger.error(`[BankingToolProvider] Step 9 resource exchange FAILED for ${tool.name}:`, {}, exchangeError instanceof Error ? exchangeError : undefined);
-            throw new Error(
-              `Step 9 token exchange failed for tool '${tool.name}': ${exchangeError instanceof Error ? exchangeError.message : 'Unknown error'}`
-            );
-          }
-        }
-      } else {
-        // Backward compat: no resource URI configured — use gateway token directly
-        token = agentToken;
-        this.logger.debug(`[BankingToolProvider] Using BFF-exchanged delegated token for ${tool.name} (no Step 9 resource exchange)`);
-      }
-    } else {
-      // Resolve user token from session
-      const userToken = this.getUserTokenForScopes(context.session, tool.requiredScopes);
-      if (!userToken) {
-        throw new AuthenticationError(
-          'No valid user tokens found for required scopes',
-          AuthErrorCodes.USER_AUTHORIZATION_REQUIRED,
-          undefined,
-          tool.requiredScopes
-        );
-      }
-
-      if (this.tokenExchangeService) {
-        // D-01: Lazy token exchange with cache — exchange on first call, cache with TTL
-        // D-03: Narrowed scopes per tool via getScopesForTool()
-        const toolScopes = getScopesForTool(context.toolName);
-        const cacheKey = context.session.sessionId;
-
-        // Check cache first
-        const cachedToken = tokenCache.get(cacheKey, toolScopes);
-        if (cachedToken) {
-          token = cachedToken;
-          this.logger.debug(`[BankingToolProvider] Cache hit for ${tool.name} (scopes: ${toolScopes.join(',')})`);
-        } else {
-          // Cache miss — perform RFC 8693 token exchange
-          this.logger.info(`[BankingToolProvider] Token exchange initiated for tool: ${tool.name}, scopes: ${toolScopes.join(',')}`);
-          try {
-            // Item 7 (RFC 8693 §2.1): include audience so PingOne scopes the token to the
-            // banking resource server. Only sent when the env var is configured.
-            const exchangeRequest: TokenExchangeRequest = {
-              grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-              subject_token: userToken.accessToken,
-              subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
-              scope: toolScopes.join(' '),
-              ...(process.env.BANKING_API_RESOURCE_URI && { audience: process.env.BANKING_API_RESOURCE_URI }),
-            };
-            const exchangeResponse = await this.tokenExchangeService.exchangeToken(exchangeRequest);
-            token = exchangeResponse.access_token;
-
-            // Item 6 (D-02): Confirm PingOne issued a valid access token by verifying the
-            // TLS-secured exchange response fields — token_type:'Bearer' + positive expires_in
-            // establishes the delegation chain without unsafe unsigned JWT payload decoding.
-            if (exchangeResponse.token_type !== 'Bearer' || !(exchangeResponse.expires_in > 0)) {
-              throw new Error(
-                `Token exchange for '${tool.name}' returned unexpected response — ` +
-                `token_type: ${exchangeResponse.token_type}, expires_in: ${exchangeResponse.expires_in}`
-              );
-            }
-
-            // Cache the exchanged token
-            const expiresAt = Date.now() + (exchangeResponse.expires_in * 1000);
-            tokenCache.set(cacheKey, toolScopes, token, expiresAt);
-
-            this.logger.info(`[BankingToolProvider] Token exchange succeeded for ${tool.name} (expires_in: ${exchangeResponse.expires_in}s)`);
-          } catch (exchangeError) {
-            // D-04: Hard fail on exchange error — no pass-through fallback
-            this.logger.error(`[BankingToolProvider] Token exchange FAILED for ${tool.name}:`, {}, exchangeError instanceof Error ? exchangeError : undefined);
-            throw new Error(
-              `Token exchange failed for tool '${tool.name}': ${exchangeError instanceof Error ? exchangeError.message : 'Unknown error'}`
-            );
-          }
-        }
-      } else {
-        // MCP spec 2025-11-25 §Token Passthrough: "The MCP server MUST NOT pass
-        // through the token it received from the MCP client." Outside dev/test
-        // the absence of TokenExchangeService is a hard configuration error.
-        const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
-        const isDevOrTest = nodeEnv === 'development' || nodeEnv === 'dev' || nodeEnv === 'test' || nodeEnv === '';
-        if (!isDevOrTest) {
-          throw new Error(
-            `Token passthrough fallback is not allowed in ${nodeEnv}: TokenExchangeService must be configured to satisfy MCP spec §Token Passthrough`
-          );
-        }
-        this.logger.warn(`[BankingToolProvider] No TokenExchangeService — passing user token directly to banking API (dev/test only; violates MCP spec in production)`);
-        token = userToken.accessToken;
-      }
-    }
+    const { token } = await this.tokenResolver.resolve(context.session, tool, agentToken);
 
     // Item 8: structural exp/iss/aud pre-flight for sensitive operations.
     // Non-network local decode — verifies token has not expired before we hit the banking API.
@@ -1001,31 +887,4 @@ export class BankingToolProvider {
     }
   }
 
-  /**
-   * Get user token that has the required scopes
-   */
-  private getUserTokenForScopes(session: Session, requiredScopes: string[]): import('../interfaces/auth').UserTokens | null {
-    if (!session.userTokens) {
-      return null;
-    }
-
-    // Handle both single token and token array
-    const tokens = Array.isArray(session.userTokens) ? session.userTokens : [session.userTokens];
-
-    // Find tokens that have all required scopes and are not expired
-    for (const userToken of tokens) {
-      if (this.authManager.isTokenExpired(userToken)) {
-        continue;
-      }
-
-      const tokenScopes = userToken.scope.split(' ');
-      const hasAllScopes = requiredScopes.every(scope => tokenScopes.includes(scope));
-
-      if (hasAllScopes) {
-        return userToken;
-      }
-    }
-
-    return null;
-  }
 }
