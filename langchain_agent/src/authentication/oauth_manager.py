@@ -1,5 +1,13 @@
 """
-OAuth authentication manager implementation for PingOne AI IAM Core (ForgeRock).
+OAuth authentication manager.
+
+By default reads pre-provisioned PingOne credentials from the environment
+(PINGONE_USER_CLIENT_ID/SECRET or AGENT_CLIENT_ID/SECRET), which the repo's
+`npm run pingone:bootstrap` provisions via the PingOne Management API.
+
+The DynamicClientRegistration class below targets ForgeRock DCR endpoints
+(/am/oauth2/realms/...). PingOne does not expose those, so DCR is opt-in
+via AGENT_DCR_ENABLED=true and only useful against a real ForgeRock tenant.
 """
 import asyncio
 import json
@@ -710,8 +718,15 @@ class OAuthAuthenticationManager(AuthenticationProvider):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit with automatic client cleanup."""
         try:
-            # Automatically delete the registered client if enabled and credentials exist
-            if self._auto_cleanup and self._registered_credentials and self._client_registration:
+            # Only delete DCR-registered clients. Pre-provisioned creds from
+            # .env are owned by the bootstrap process and must NOT be deleted.
+            dcr_enabled = os.getenv("AGENT_DCR_ENABLED", "false").lower() == "true"
+            if (
+                self._auto_cleanup
+                and dcr_enabled
+                and self._registered_credentials
+                and self._client_registration
+            ):
                 try:
                     logger.info("Auto-cleanup: Deleting registered OAuth client")
                     await self._client_registration.delete_client(self._registered_credentials)
@@ -727,19 +742,58 @@ class OAuthAuthenticationManager(AuthenticationProvider):
     
     async def register_client(self, additional_scopes: Optional[List[str]] = None) -> ClientCredentials:
         """
-        Register a new OAuth client with ForgeRock.
-        
-        Args:
-            additional_scopes: Optional list of additional scopes to request beyond default
-        
-        Returns:
-            ClientCredentials: The registered client credentials
+        Resolve OAuth client credentials.
+
+        PingOne (the demo's identity provider) does not expose ForgeRock-style
+        Dynamic Client Registration. Default behaviour: read pre-provisioned
+        credentials from PINGONE_USER_CLIENT_ID / PINGONE_USER_CLIENT_SECRET
+        (or AGENT_CLIENT_ID / AGENT_CLIENT_SECRET), which the repo's
+        `npm run pingone:bootstrap` already provisions.
+
+        Set AGENT_DCR_ENABLED=true to use the legacy ForgeRock DCR path
+        instead. Required when running against a real ForgeRock tenant.
         """
         if not self._client_registration:
             raise RuntimeError("OAuthAuthenticationManager must be used as async context manager")
-        
-        self._registered_credentials = await self._client_registration.register_client(additional_scopes)
-        logger.info(f"Successfully registered OAuth client: {self._registered_credentials.client_id}")
+
+        dcr_enabled = os.getenv("AGENT_DCR_ENABLED", "false").lower() == "true"
+        if dcr_enabled:
+            self._registered_credentials = await self._client_registration.register_client(additional_scopes)
+            logger.info(
+                "Successfully registered OAuth client (DCR): %s",
+                self._registered_credentials.client_id,
+            )
+            return self._registered_credentials
+
+        client_id = (
+            os.getenv("PINGONE_USER_CLIENT_ID")
+            or os.getenv("AGENT_CLIENT_ID")
+        )
+        client_secret = (
+            os.getenv("PINGONE_USER_CLIENT_SECRET")
+            or os.getenv("AGENT_CLIENT_SECRET")
+        )
+        if not client_id or not client_secret:
+            raise RuntimeError(
+                "No pre-provisioned OAuth client credentials found. Set "
+                "PINGONE_USER_CLIENT_ID/PINGONE_USER_CLIENT_SECRET (or "
+                "AGENT_CLIENT_ID/AGENT_CLIENT_SECRET) in the environment, "
+                "or enable DCR with AGENT_DCR_ENABLED=true."
+            )
+
+        # Pre-provisioned credentials don't expire in the DCR sense — set
+        # expires_at far in the future and use a synthetic registration_access_token
+        # since these creds were created by the bootstrap process, not DCR.
+        self._registered_credentials = ClientCredentials(
+            client_id=client_id,
+            client_secret=client_secret,
+            registration_access_token="pre-provisioned",
+            expires_at=datetime.now(timezone.utc) + timedelta(days=365 * 10),
+        )
+        logger.info(
+            "Using pre-provisioned OAuth client: client_id=%s (DCR disabled)",
+            client_id,
+        )
         return self._registered_credentials
     
     async def delete_client(self, client_credentials: Optional[ClientCredentials] = None) -> bool:
