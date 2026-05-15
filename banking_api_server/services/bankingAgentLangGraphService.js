@@ -15,6 +15,24 @@ const fs = require('fs');
 const path = require('path');
 
 /**
+ * WR-07(b): Sanitize an account identifier before it lands in a transaction
+ * `description` string. accountType is user-controlled (set at account
+ * creation) and flows unsanitized into the audit log + Token Chain
+ * explanation strings. Strip control chars and template/markup-injection-ish
+ * characters, collapse whitespace, and bound the length. Not a
+ * code-execution vector — defence-in-depth so a hostile account label can't
+ * inject into logged/persisted free text.
+ */
+function sanitizeAccountLabel(value) {
+  return String(value == null ? '' : value)
+    .replace(/[\u0000-\u001f\u007f]/g, '') // control chars
+    .replace(/[`$<>{}\\]/g, '')            // template / markup injection chars
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 64) || 'account';
+}
+
+/**
  * POST to /api/transactions via internal HTTP, going through all auth/HITL gates.
  * Uses HTTPS if certs are present (matching server.js startup logic), HTTP otherwise.
  */
@@ -164,7 +182,9 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
           toAccountId: toAcct.id,
           amount,
           type: 'transfer',
-          description: params.description || `Transfer from ${fromAcct.accountType} to ${toAcct.accountType}`,
+          // WR-07(b): sanitize account labels before they land in the
+          // transaction description (flows to audit log + Token Chain text).
+          description: params.description || `Transfer from ${sanitizeAccountLabel(fromAcct.accountType)} to ${sanitizeAccountLabel(toAcct.accountType)}`,
         }, userToken);
         if (txRes.status === 428) {
           const body = txRes.data;
@@ -180,7 +200,8 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
         }
         return { reply: `Transferred **$${amount.toFixed(2)}** from ${fromAcct.accountType} to ${toAcct.accountType}.`, success: true, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       } catch (err) {
-        return { reply: `Transfer failed: ${err.message}`, success: false, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        // WR-07(a): non-Error throws have no .message — surface the real value.
+        return { reply: `Transfer failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
     }
 
@@ -223,7 +244,8 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
         }
         return { reply: `Deposited **$${amount.toFixed(2)}** into ${toAcct.accountType}.`, success: true, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       } catch (err) {
-        return { reply: `Deposit failed: ${err.message}`, success: false, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        // WR-07(a): non-Error throws have no .message — surface the real value.
+        return { reply: `Deposit failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
     }
 
@@ -269,7 +291,8 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
         }
         return { reply: `Withdrew **$${amount.toFixed(2)}** from ${fromAcct.accountType}.`, success: true, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       } catch (err) {
-        return { reply: `Withdrawal failed: ${err.message}`, success: false, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        // WR-07(a): non-Error throws have no .message — surface the real value.
+        return { reply: `Withdrawal failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
     }
 
@@ -316,7 +339,17 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
       };
     }
   } catch (err) {
-    console.warn('[heuristicBanking] Error executing action:', action, err.message);
+    // WR-07(a): non-Error throws (string, MCP-error object without .message)
+    // previously logged `undefined` and were swallowed — the function then
+    // returned null, so the caller fell through to the LLM path which could
+    // RE-EXECUTE a write tool (transfer/deposit/withdraw) a second time.
+    // Log the real value, and re-throw for write actions so a partially
+    // executed mutation is surfaced instead of silently double-run.
+    const detail = (err && err.message) ? err.message : String(err);
+    console.warn('[heuristicBanking] Error executing action:', action, detail);
+    if (['transfer', 'deposit', 'withdraw'].includes(action)) {
+      throw (err instanceof Error) ? err : new Error(`[heuristicBanking] ${action} failed: ${detail}`);
+    }
   }
   return null;
 }
