@@ -214,19 +214,13 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
           },
         },
       };
-      let response;
-      try {
-        response = await model.bindTools(tools).invoke(messages, config);
-      } catch (invokeError) {
-        const is429 = invokeError.message?.includes('429') || invokeError.message?.includes('rate') || invokeError.status === 429;
-        if (is429 && fallbackModel) {
-          console.warn('[agentBuilder] Primary model rate-limited (429), falling back to Anthropic');
-          provider = 'anthropic';
-          response = await fallbackModel.bindTools(tools).invoke(messages, config);
-        } else {
-          throw invokeError;
-        }
-      }
+      // CR-01: previously had a 429 → Anthropic fallback branch here, but
+      // `fallbackModel` was never declared and `provider` is const — the
+      // branch was dead code that would throw ReferenceError if reached.
+      // Removed for graceful 429 failure (caught by processAgentMessage and
+      // surfaced as "Too many requests."). If a real fallback model is
+      // desired in future, declare it above and re-introduce the branch.
+      const response = await model.bindTools(tools).invoke(messages, config);
       // Handle LangChain response format - it may have tool_calls or content as array
       let messageContent;
       if (response.tool_calls && response.tool_calls.length > 0) {
