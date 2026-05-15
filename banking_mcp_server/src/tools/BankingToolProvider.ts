@@ -9,6 +9,7 @@ import { BankingAuthenticationManager } from '../auth/BankingAuthenticationManag
 import { BankingSessionManager } from '../storage/BankingSessionManager';
 import { BankingToolRegistry, BankingToolDefinition } from './BankingToolRegistry';
 import { BankingToolValidator } from './BankingToolValidator';
+import { mapTransactionError, TransactionOperation } from './TransactionErrorMapper';
 import { AuthorizationChallengeHandler, AuthorizationChallenge } from './AuthorizationChallengeHandler';
 import { ToolResult, AuthorizationRequest } from '../interfaces/mcp';
 import { Session, AuthErrorCodes, AuthenticationError } from '../interfaces/auth';
@@ -494,9 +495,18 @@ export class BankingToolProvider {
           }
         }
       } else {
-        // No token exchange service — direct pass-through (backward compat / ff_skip_token_exchange)
+        // MCP spec 2025-11-25 §Token Passthrough: "The MCP server MUST NOT pass
+        // through the token it received from the MCP client." Outside dev/test
+        // the absence of TokenExchangeService is a hard configuration error.
+        const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
+        const isDevOrTest = nodeEnv === 'development' || nodeEnv === 'dev' || nodeEnv === 'test' || nodeEnv === '';
+        if (!isDevOrTest) {
+          throw new Error(
+            `Token passthrough fallback is not allowed in ${nodeEnv}: TokenExchangeService must be configured to satisfy MCP spec §Token Passthrough`
+          );
+        }
+        this.logger.warn(`[BankingToolProvider] No TokenExchangeService — passing user token directly to banking API (dev/test only; violates MCP spec in production)`);
         token = userToken.accessToken;
-        this.logger.debug(`[BankingToolProvider] Using session user token for ${tool.name} (no token exchange service)`);
       }
     }
 
@@ -666,7 +676,7 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
-      const handled = this.handleTransactionBankingError(error, 'deposit', params.amount);
+      const handled = mapTransactionError(error, 'deposit' as TransactionOperation, params.amount);
       if (handled) return handled;
       throw error;
     }
@@ -703,7 +713,7 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
-      const handled = this.handleTransactionBankingError(error, 'withdrawal', params.amount);
+      const handled = mapTransactionError(error, 'withdrawal' as TransactionOperation, params.amount);
       if (handled) return handled;
       throw error;
     }
@@ -747,7 +757,7 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
-      const handled = this.handleTransactionBankingError(error, 'transfer', params.amount);
+      const handled = mapTransactionError(error, 'transfer' as TransactionOperation, params.amount);
       if (handled) return handled;
       throw error;
     }
@@ -827,98 +837,6 @@ export class BankingToolProvider {
         `Failed to retrieve sensitive account details: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
-  }
-
-  /**
-   * Central error handler for transactional banking operations (deposit / withdrawal / transfer).
-   * Returns a structured BankingToolResult for known recoverable error codes, or null when the
-   * error is not one of the recognised codes (caller should re-throw in that case).
-   *
-   * @param error         The caught error value
-   * @param operationLabel Human-readable operation name used in user-facing messages
-   * @param amount        The requested transaction amount
-   */
-  private handleTransactionBankingError(
-    error: unknown,
-    operationLabel: string,
-    amount: number,
-  ): BankingToolResult | null {
-    if (!(error instanceof BankingAPIError)) {
-      console.log(`[DEBUG-MCP-ERROR] ❌ Not a BankingAPIError, ignoring: ${error}`);
-      return null;
-    }
-    const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
-
-    console.log(`[DEBUG-MCP-HANDLER] 🔍 MCP ERROR HANDLER - Processing error:
-  errorCode: ${error.errorCode}
-  operationLabel: ${operationLabel}
-  amount: $${amount}
-  apiErrorDebugHitl: ${axiosData.debug_hitl_check}
-  apiErrorDebugStepup: ${axiosData.debug_stepup_check}`);
-
-    if (error.errorCode === 'amount_exceeds_hard_limit') {
-      const limit = typeof axiosData['limit'] === 'number' ? axiosData['limit'] : 1000;
-      const insufficientFundsAlso = axiosData['insufficient_funds_also'] === true;
-      const reasonNote = insufficientFundsAlso
-        ? `Note: your account also has insufficient funds for this amount.`
-        : `This is a system limit set by the administrator (separate from your account balance).`;
-      return this.createSuccessResult(
-        JSON.stringify(
-          {
-            error: 'amount_exceeds_hard_limit',
-            message: `The maximum ${operationLabel} amount is $${limit} per transaction. You requested $${amount}. ${reasonNote} Would you like me to try a smaller amount instead?`,
-            limit,
-            amount,
-          },
-          null,
-          2
-        )
-      );
-    }
-
-    if (error.errorCode === 'hitl_required') {
-      const hitlType: string = typeof (axiosData['hitl'] as any)?.type === 'string'
-        ? (axiosData['hitl'] as any).type : 'consent';
-      console.log(`[MCP-CONSENT] hitl_required (type=${hitlType}) for ${operationLabel} $${amount}`);
-      return this.createSuccessResult(
-        JSON.stringify(
-          {
-            error: 'hitl_required',
-            hitl: { type: hitlType },
-            message: error.message,
-            hitl_threshold_usd: HITL_THRESHOLD_USD,
-            amount: amount,
-            type: operationLabel,
-            fromAccountId: typeof axiosData['fromAccountId'] === 'string' ? axiosData['fromAccountId'] : null,
-            toAccountId: typeof axiosData['toAccountId'] === 'string' ? axiosData['toAccountId'] : null,
-          },
-          null,
-          2
-        )
-      );
-    }
-
-    if (error.errorCode === 'step_up_required') {
-      const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
-        ? (axiosData['step_up_method'] as string) : 'email';
-      console.log(`[MCP-STEPUP] step_up_required method=${stepUpMethod} for ${operationLabel} $${amount}`);
-      return this.createSuccessResult(
-        JSON.stringify(
-          {
-            error: 'step_up_required',
-            hitl: { type: 'step_up' },
-            step_up_required: true,
-            step_up_method: stepUpMethod,
-            message: `This transaction requires additional authentication (${stepUpMethod.toUpperCase()}). Please complete the step-up verification to proceed.`,
-            amount_threshold: typeof axiosData['amount_threshold'] === 'number' ? axiosData['amount_threshold'] : null,
-          },
-          null,
-          2
-        )
-      );
-    }
-
-    return null;
   }
 
   /**
