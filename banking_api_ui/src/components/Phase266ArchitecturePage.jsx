@@ -9,9 +9,9 @@
  * The diagram is rendered client-side via mermaid@11 — no PNG export step.
  * The mermaid source matches the diagram presented at plan-approval time.
  */
-import { useEffect, useRef, useState } from 'react';
-import mermaid from 'mermaid';
-import './Phase266ArchitecturePage.css';
+import { useEffect, useRef, useState } from "react";
+import mermaid from "mermaid";
+import "./Phase266ArchitecturePage.css";
 
 const MERMAID_SOURCE = `flowchart TB
     classDef user fill:#e0e7ff,stroke:#3730a3,color:#1e1b4b,stroke-width:2px
@@ -94,38 +94,62 @@ const MERMAID_SOURCE = `flowchart TB
 
 const PATH_LEGEND = [
   {
-    key: 'A',
-    label: 'Path A — API-key (mortgage service)',
-    swatch: '#b45309',
+    key: "A",
+    label: "Path A — API-key (mortgage service)",
+    swatch: "#b45309",
     description:
       'Gateway swaps bearer for service API key, calls banking_mortgage_service :8082 (X-API-Key). Prompt: "show mortgage data".',
   },
   {
-    key: 'B',
-    label: 'Path B — Access + ID-Token',
-    swatch: '#0f766e',
+    key: "B",
+    label: "Path B — Access + ID-Token",
+    swatch: "#0f766e",
     description:
-      'Gateway POSTs JSON-RPC envelope to /api/resource-server/identity (bearer + id_token).',
+      "Gateway POSTs JSON-RPC envelope to /api/resource-server/identity (bearer + id_token).",
   },
   {
-    key: 'C',
-    label: 'Path C — OAuth Bearer',
-    swatch: '#1e40af',
+    key: "C",
+    label: "Path C — OAuth Bearer",
+    swatch: "#1e40af",
     description:
-      'Gateway GETs /api/resource-server/accounts + /transactions (SQLite-backed, exchanged bearer).',
+      "Gateway GETs /api/resource-server/accounts + /transactions (SQLite-backed, exchanged bearer).",
   },
 ];
 
 const SPEC_HOPS = [
-  { label: 'OIDC Core 1.0', summary: 'id_token issuance + claims (§3.1.3.7)' },
-  { label: 'RFC 6750', summary: 'Bearer in Authorization header; RS validates aud/exp/sig' },
-  { label: 'RFC 8693', summary: 'Token exchange — gateway swaps user bearer for backend-scoped token' },
-  { label: 'RFC 8707', summary: 'Audience binding — exchanged token aud must match RS' },
-  { label: 'RFC 7515/7517/8414', summary: 'JWKS-based local validation by RS' },
-  { label: 'RFC 7662', summary: 'Optional introspection layer when ff_introspection_required=true' },
-  { label: 'RFC 9728', summary: 'Protected Resource Metadata (gateway publishes /.well-known/oauth-protected-resource)' },
-  { label: 'draft-ietf-oauth-identity-chaining', summary: 'act-claim audit trail — proves "gateway-agent acted for user"' },
-  { label: 'MCP 2025-11-25', summary: 'Gateway MUST exchange tokens before forwarding to downstream resource' },
+  { label: "OIDC Core 1.0", summary: "id_token issuance + claims (§3.1.3.7)" },
+  {
+    label: "RFC 6750",
+    summary: "Bearer in Authorization header; RS validates aud/exp/sig",
+  },
+  {
+    label: "RFC 8693",
+    summary:
+      "Token exchange — gateway swaps user bearer for backend-scoped token",
+  },
+  {
+    label: "RFC 8707",
+    summary: "Audience binding — exchanged token aud must match RS",
+  },
+  { label: "RFC 7515/7517/8414", summary: "JWKS-based local validation by RS" },
+  {
+    label: "RFC 7662",
+    summary: "Optional introspection layer when ff_introspection_required=true",
+  },
+  {
+    label: "RFC 9728",
+    summary:
+      "Protected Resource Metadata (gateway publishes /.well-known/oauth-protected-resource)",
+  },
+  {
+    label: "draft-ietf-oauth-identity-chaining",
+    summary: 'act-claim audit trail — proves "gateway-agent acted for user"',
+  },
+  {
+    label: "MCP 2025-11-25",
+    summary:
+      "Gateway MUST exchange tokens before forwarding to downstream resource",
+  },
 ];
 
 export default function Phase266ArchitecturePage() {
@@ -136,20 +160,23 @@ export default function Phase266ArchitecturePage() {
     let cancelled = false;
     mermaid.initialize({
       startOnLoad: false,
-      theme: 'default',
-      securityLevel: 'loose',
-      flowchart: { htmlLabels: true, useMaxWidth: true, curve: 'basis' },
+      theme: "default",
+      securityLevel: "loose",
+      flowchart: { htmlLabels: true, useMaxWidth: true, curve: "basis" },
     });
 
     async function render() {
       try {
-        const { svg } = await mermaid.render('phase266-architecture-svg', MERMAID_SOURCE);
+        const { svg } = await mermaid.render(
+          "phase266-architecture-svg",
+          MERMAID_SOURCE,
+        );
         if (!cancelled && containerRef.current) {
           containerRef.current.innerHTML = svg;
         }
       } catch (err) {
         if (!cancelled) {
-          setRenderError(err?.message || 'Mermaid render failed');
+          setRenderError(err?.message || "Mermaid render failed");
         }
       }
     }
@@ -165,21 +192,24 @@ export default function Phase266ArchitecturePage() {
         <span className="p266-arch-eyebrow">Phase 266</span>
         <h1>Three Credential Paths — Architecture</h1>
         <p className="p266-arch-subtitle">
-          One Gateway, three credential mechanisms. Live Mermaid render — matches the
-          diagram approved before execution.
+          One Gateway, three credential mechanisms. Live Mermaid render —
+          matches the diagram approved before execution.
         </p>
         <p className="p266-arch-subtitle">
-          Scope: this view is intentionally limited to the Phase 266 credential-disposition
-          paths. The investment MCP server (banking_mcp_invest) and HITL consent service
-          (banking_hitl_service) are out of scope here — see the Flow and Token Flow pages
-          for those.
+          Scope: this view is intentionally limited to the Phase 266
+          credential-disposition paths. The investment MCP server
+          (banking_mcp_invest) and HITL consent service (banking_hitl_service)
+          are out of scope here — see the Flow and Token Flow pages for those.
         </p>
       </header>
 
       <section className="p266-arch-legend-row">
         {PATH_LEGEND.map((p) => (
           <div key={p.key} className="p266-arch-legend-card">
-            <span className="p266-arch-legend-swatch" style={{ background: p.swatch }} />
+            <span
+              className="p266-arch-legend-swatch"
+              style={{ background: p.swatch }}
+            />
             <div>
               <strong>{p.label}</strong>
               <p>{p.description}</p>
@@ -201,8 +231,8 @@ export default function Phase266ArchitecturePage() {
       <section className="p266-arch-spec-section">
         <h2>Specs exercised by this flow</h2>
         <p className="p266-arch-spec-intro">
-          Phase 266 is spec-compliant end-to-end. Every hop in the diagram cites a specific
-          IETF / OIDC / MCP standard:
+          Phase 266 is spec-compliant end-to-end. Every hop in the diagram cites
+          a specific IETF / OIDC / MCP standard:
         </p>
         <dl className="p266-arch-spec-list">
           {SPEC_HOPS.map((s) => (
@@ -218,31 +248,38 @@ export default function Phase266ArchitecturePage() {
         <h2>Key architectural decisions</h2>
         <ul>
           <li>
-            <strong>Gateway = traffic cop.</strong> Single point that decides routing,
-            performs RFC 8693 exchange, and emits <code>_meta.credentialPath</code> +
-            <code>_meta.tokenEvents</code> so the SPA renders the right surface and the
-            audit chain is visible.
+            <strong>Gateway = traffic cop.</strong> Single point that decides
+            routing, performs RFC 8693 exchange, and emits{" "}
+            <code>_meta.credentialPath</code> +<code>_meta.tokenEvents</code> so
+            the SPA renders the right surface and the audit chain is visible.
           </li>
           <li>
-            <strong>Inbound user bearer is NEVER forwarded unchanged.</strong> Paths B and
-            C both go through PingOne RFC 8693 first; the new token's
-            <code>aud=banking_resource_server</code> and <code>act.client_id=gateway-client</code>.
+            <strong>Inbound user bearer is NEVER forwarded unchanged.</strong>{" "}
+            Paths B and C both go through PingOne RFC 8693 first; the new
+            token's
+            <code>aud=banking_resource_server</code> and{" "}
+            <code>act.client_id=gateway-client</code>.
           </li>
           <li>
-            <strong>id_token never reaches the browser as raw JWT.</strong> Decoded
-            server-side via <code>sanitizeClaims</code>; <code>scrubRawJwts</code> walker
-            on the response body as defense-in-depth.
+            <strong>id_token never reaches the browser as raw JWT.</strong>{" "}
+            Decoded server-side via <code>sanitizeClaims</code>;{" "}
+            <code>scrubRawJwts</code> walker on the response body as
+            defense-in-depth.
           </li>
           <li>
-            <strong>Existing <code>/summary</code> route preserved untouched.</strong>{' '}
-            <code>ResourceServerPage.jsx</code> continues to use it; new SQLite-backed
-            <code>/accounts</code> + <code>/transactions</code> routes are siblings.
+            <strong>
+              Existing <code>/summary</code> route preserved untouched.
+            </strong>{" "}
+            <code>ResourceServerPage.jsx</code> continues to use it; new
+            SQLite-backed
+            <code>/accounts</code> + <code>/transactions</code> routes are
+            siblings.
           </li>
           <li>
-            <strong>Audit trail per request.</strong> Every successful{' '}
-            <code>/identity</code> call logs an <code>INTROSPECTION</code>-category event
-            with <code>{'{ sub, aud, act, may_act }'}</code> — explicitly NOT PII (no
-            name/email/picture).
+            <strong>Audit trail per request.</strong> Every successful{" "}
+            <code>/identity</code> call logs an <code>INTROSPECTION</code>
+            -category event with <code>{"{ sub, aud, act, may_act }"}</code> —
+            explicitly NOT PII (no name/email/picture).
           </li>
         </ul>
       </section>
