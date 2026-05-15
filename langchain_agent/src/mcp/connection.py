@@ -7,8 +7,24 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 from enum import Enum
 import json
+import inspect
 import websockets
 from websockets.exceptions import ConnectionClosed, WebSocketException
+
+
+# websockets renamed extra_headers -> additional_headers in v13. Detect which
+# kwarg the installed version accepts so we work on both v11/12 and v13+.
+def _ws_header_kwarg() -> str:
+    try:
+        sig = inspect.signature(websockets.connect)
+        if "additional_headers" in sig.parameters:
+            return "additional_headers"
+    except (TypeError, ValueError):
+        pass
+    return "extra_headers"
+
+
+_WS_HEADER_KWARG = _ws_header_kwarg()
 
 from models.mcp import MCPServerConfig, MCPToolCall, AuthChallenge
 from models.auth import AccessToken
@@ -81,7 +97,7 @@ class MCPConnection(MCPClient):
                     # Connect to WebSocket endpoint — pass Authorization header if agent token available
                     _ws_kwargs: Dict[str, Any] = {}
                     if self._agent_token:
-                        _ws_kwargs['extra_headers'] = [('Authorization', f'Bearer {self._agent_token}')]
+                        _ws_kwargs[_WS_HEADER_KWARG] = [('Authorization', f'Bearer {self._agent_token}')]
                         logger.debug(f"Connecting to {server_config.name} with Authorization header")
                     self._websocket = await asyncio.wait_for(
                         websockets.connect(server_config.endpoint, **_ws_kwargs),
