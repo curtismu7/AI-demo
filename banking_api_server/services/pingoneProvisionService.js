@@ -2031,6 +2031,11 @@ class PingOneProvisionService {
       //     'invalid_scope: At least one scope must be granted')
       steps.push({ step: 'ai-agent-grants', icon: '🔑', message: 'Granting scopes to AI Agent application (Agent Gateway + Intermediate)...' });
       onStep(steps[steps.length - 1]);
+      // SYNC: the Agent-Gateway scope below is what the AI Agent actor CC
+      // token requests at runtime. If you change it, also update
+      // configStore default `agent_gateway_cc_scope`
+      // (used by agentMcpTokenService._performTwoExchangeDelegation Step 1).
+      // They MUST match or PingOne rejects the CC request with invalid_scope.
       try {
         const aiAgentGwGrant = await this.grantScopesToApplication(
           aiAgentAppResult.application.id,
@@ -2058,6 +2063,10 @@ class PingOneProvisionService {
       //   → needs banking:read, banking:write etc. on MCP Server resource too
       steps.push({ step: 'mcp-exchanger-grants', icon: '🔑', message: 'Granting scopes to MCP Exchanger application (MCP Gateway + Final + MCP Server)...' });
       onStep(steps[steps.length - 1]);
+      // SYNC: the MCP-Gateway scope below is what the MCP Exchanger actor CC
+      // token requests at runtime. If you change it, also update
+      // configStore default `mcp_gateway_cc_scope`
+      // (used by agentMcpTokenService._performTwoExchangeDelegation Step 3).
       try {
         const mcpExGwGrant = await this.grantScopesToApplication(
           mcpExchangerResult.application.id,

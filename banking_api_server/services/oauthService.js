@@ -676,14 +676,24 @@ class OAuthService {
    * @param {string} clientId
    * @param {string} clientSecret
    * @param {string} audience  Resource server audience URI (returned token will have aud=[audience])
+   * @param {string} method    Token endpoint auth method ('basic' | 'post')
+   * @param {string} [scope]   Space-delimited scopes for THIS audience's resource only.
+   *   PingOne rejects a CC request with `audience` but no `scope` when the client
+   *   is granted scopes spanning more than one resource server
+   *   (`invalid_scope: "May not request scopes for multiple resources"`).
+   *   The 2-exchange AI Agent / MCP Exchanger apps are intentionally granted
+   *   scopes on two resources each (gateway + intermediate/final), so the actor
+   *   CC request MUST name the single-resource scope explicitly. Mirrors the
+   *   working `getMcpExchangerToken()` pattern (scope, no audience there).
    */
-  async getClientCredentialsTokenAs(clientId, clientSecret, audience, method = 'basic') {
-    console.log(`[CC-As] Request: client=${clientId} audience=${audience} method=${method} endpoint=${this.config.tokenEndpoint} secret_len=${clientSecret?.length || 0}`);
+  async getClientCredentialsTokenAs(clientId, clientSecret, audience, method = 'basic', scope) {
+    console.log(`[CC-As] Request: client=${clientId} audience=${audience} scope=${scope || '(none)'} method=${method} endpoint=${this.config.tokenEndpoint} secret_len=${clientSecret?.length || 0}`);
     const body = new URLSearchParams({
       grant_type: 'client_credentials',
       client_id: clientId,
       audience,
     });
+    if (scope) body.set('scope', Array.isArray(scope) ? scope.join(' ') : scope);
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
     applyTokenEndpointAuth(clientId, clientSecret, method, body, headers);
     console.log(`[CC-As] Body params: ${[...body.keys()].join(', ')} | has_auth_header=${!!headers.Authorization}`);
