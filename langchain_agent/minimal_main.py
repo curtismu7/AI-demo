@@ -99,18 +99,18 @@ async def main():
     """Run minimal WebSocket server."""
     handler = MinimalWebSocketHandler()
     
-    logger.info("Starting minimal WebSocket server on ws://localhost:8080")
+    logger.info("Starting minimal WebSocket server on ws://localhost:18889")
     
     async with websockets.serve(
         handler.handle_connection,
         "0.0.0.0",
-        8080,
+        18889,
         ping_interval=30,
         ping_timeout=10,
         close_timeout=10
     ):
         logger.info("✅ Minimal WebSocket server started")
-        logger.info("📡 WebSocket endpoint: ws://localhost:8080")
+        logger.info("📡 WebSocket endpoint: ws://localhost:18889")
         logger.info("Press Ctrl+C to stop")
         
         try:
