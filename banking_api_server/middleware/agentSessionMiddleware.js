@@ -95,10 +95,28 @@ async function agentSessionMiddleware(req, res, next) {
     }
     console.log('[agentSessionMiddleware] Token valid');
 
-    // Step 3: Attach auth context to request for agent service
+    // Step 3: Attach auth context to request for agent service.
+    //
+    // ARCHITECTURE-TRUTHS T-6: user identity is the PingOne UUID (sub/oauthId)
+    // ONLY. session.user.id and session.user.oauthId are DIFFERENT UUIDs; the
+    // legacy `.id` does not match per-user data (seeded against the PingOne
+    // sub). The old `oauthId || id` fallback silently used the wrong identity
+    // whenever oauthId was absent, surfacing as empty accounts/transactions.
+    // Resolve from the PingOne sub only and fail closed if it is missing —
+    // never fall back to the numeric/internal id.
+    const pingOneSub = req.session.user.oauthId || req.session.user.sub;
+    if (!pingOneSub) {
+      console.error('[agentSessionMiddleware] ERROR: session.user has no PingOne sub (oauthId/sub) — refusing to fall back to legacy id');
+      return res.status(401).json({
+        error: 'Session expired',
+        message: 'Your session is missing its identity. Please sign in again.',
+        agentInitRequired: true,
+        need_auth: true,
+      });
+    }
     console.log('[agentSessionMiddleware] Attaching agentContext...');
     req.agentContext = {
-      userId: req.session.user.oauthId || req.session.user.id,
+      userId: pingOneSub,
       email: req.session.user.email || 'unknown',
       accessToken: req.session.oauthTokens.accessToken,
       refreshToken: req.session.oauthTokens.refreshToken || null,
