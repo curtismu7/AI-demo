@@ -442,6 +442,11 @@ export class GatewayServer {
 
     const baseHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
+      // MCP spec 2025-11-25 §Streamable HTTP: a POST to the upstream /mcp MUST
+      // list BOTH application/json and text/event-stream. Set this explicitly so
+      // upstream compliance is intentional, not an accident of the HTTP client's
+      // default Accept (axios happens to include */*, but that is not a contract).
+      Accept: 'application/json, text/event-stream',
       Authorization: `Bearer ${upstreamToken}`,
       [MCP_PROTO_HEADER]: '2025-11-25',
     };

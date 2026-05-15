@@ -17,6 +17,7 @@ Real banking applications use professional typography. Emojis break the enterpri
 - ❌ Do NOT add emojis to section headers or descriptions
 - ✅ DO remove ALL emojis when you encounter them during refactoring
 - ✅ DO use plain text, CSS icons (symbols like ☀ ☾), or semantic HTML only
+- ✅ DO allow directional arrows `→ ← ↑ ↓` and box-drawing `│ ├ └ ─ ┌ ┐ ┘ ┬ ┤` anywhere including UI text — these are typographic, not emoji (e.g. a transfer row "Checking → Savings"). This is the only allowlist addition beyond `⚠️ ✅ ❌`.
 
 **Files cleaned (Phase completed):** `BankingAgent.js`, `MFATestPage.jsx`, `PingOneTestPage.jsx`, `DemoDataPage.js`, and test pages.
 
@@ -107,6 +108,25 @@ Real banking applications use professional typography. Emojis break the enterpri
 ---
 
 ## 4. Bug Fix Log (reverse-chronological)
+
+### 2026-05-15 — Gateway upstream POST now sets explicit Accept (MCP 2025-11-25 §Streamable HTTP contract)
+
+- **Category:** Cross-component contract hardening (gateway → backing MCP server HTTP transport). Latent break, not yet user-visible.
+- **Findings:** Surfaced while smoke-testing the `refactor/mcp-provider-split` MCP spec-2025-11-25 rearchitecture. The rearchitected `banking_mcp_server` now rejects any POST `/mcp` whose `Accept` header does not include BOTH `application/json` and `text/event-stream` (or `*/*`) with `400`.
+- **Files:** `banking_mcp_gateway/src/server/GatewayServer.ts` (`forwardToUpstream` — added explicit `Accept` to `baseHeaders`).
+- **Commit:** see this entry's `git log`.
+
+**What was wrong:**
+`forwardToUpstream` built the upstream POST headers (`baseHeaders`) with `Content-Type`, `Authorization`, and `MCP-Protocol-Version` but **no explicit `Accept`**. The gateway→MCP POST path only satisfied the MCP server's new stricter Accept gate by accident: axios 1.15.2's default `Accept` is `application/json, text/plain, */*`, and the `*/*` token is what the server's `acceptHeaderIsValid()` keys on. Any future change that set an explicit `Accept: application/json`, or swapped the HTTP client, would have broken **every gateway-routed tool call** with a hard `400` — with no failing test to catch it (the dependency was incidental, not asserted).
+
+**What was fixed:**
+- `baseHeaders` now sets `Accept: 'application/json, text/event-stream'` explicitly, making upstream MCP-spec compliance intentional and self-documenting rather than a side effect of the HTTP client default.
+- No behavior change in the happy path (the request already passed); the GET/SSE path (`pipeGetToUpstream`, separate `outHeaders`) and the gateway's inbound Accept check are untouched.
+
+**Verification:**
+- Gateway: `cd banking_mcp_gateway && npm run build` → **exit 0**.
+- Gateway: `cd banking_mcp_gateway && npx jest` → **87 tests, all passing** (no change in count — no test regressed, forwarding tests still green).
+- MCP server (rearchitecture under test): `npm run build` → **0**; `npm run test:mcp-server` → **693/693**. Live: gateway-shaped POST (axios default Accept) reaches the auth layer (401), not the Accept gate (no 400) — confirmed no pre-existing regression; this entry is preventive hardening.
 
 ### 2026-05-15 — Phase 3 CR-02: Gateway POST /admin/config devBypass type-coercion silent-bypass closed (A+D hardening)
 

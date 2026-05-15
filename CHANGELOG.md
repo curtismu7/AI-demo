@@ -18,6 +18,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **Gateway upstream MCP Accept header** — `banking_mcp_gateway` now sets an explicit `Accept: application/json, text/event-stream` on POSTs to the backing MCP server, matching the MCP spec 2025-11-25 Streamable HTTP requirement. Previously the gateway only satisfied the server's stricter Accept gate by accident (axios default Accept includes `*/*`); a future explicit Accept or HTTP-client swap would have silently 400'd every routed tool call. No happy-path behavior change.
 - **Clean-install: `banking_api_ui` ERESOLVE** — pinned `legacy-peer-deps=true` in `banking_api_ui/.npmrc` so plain `npm install` works on a fresh clone (CRA + npm 7+ peer-dep quirk on `react-scripts` / `typescript`). README Path A/B install commands and troubleshooting table updated. Import-script "Next steps" now warns when sibling `node_modules` are missing; export-script "NEXT STEPS" now lists all 3 package installs (with `--legacy-peer-deps` for the UI) plus cert generation.
 - **Export script next-steps** — export output now prints the exact `scp`, `npm run data:import`, and `./run-bank.sh` commands to run on the target machine after the archive is created.
 - **Helix LLM service** — rewritten to read the answer directly from the `POST /messages` response (`message_class=complete`) instead of always polling; `helix_prompt_field_id` is now required (no safe default); polling kept as fallback for non-immediately-complete responses.
