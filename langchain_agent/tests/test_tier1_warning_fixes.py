@@ -194,7 +194,12 @@ class TestWR07PendingAuthorizationsBounded:
 # WR-11 — AuthChallenge state is unpredictable and session-correlated
 # ---------------------------------------------------------------------------
 class TestWR11RandomState:
-    def test_state_is_not_derived_from_session_id(self):
+    # async so pytest-asyncio (auto mode) supplies a running event loop:
+    # MCPConnection.__init__ builds an asyncio.Lock(), which on py3.9 needs
+    # a current loop. A prior async test that closed its loop would make a
+    # *sync* test here raise in get_event_loop() (test-isolation artifact,
+    # not a product bug).
+    async def test_state_is_not_derived_from_session_id(self):
         from mcp.connection import MCPConnection
         from models.mcp import MCPServerConfig, AuthRequirements, AuthRequirementType
 
