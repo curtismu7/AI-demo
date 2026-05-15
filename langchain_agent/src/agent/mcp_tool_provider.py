@@ -387,18 +387,18 @@ class MCPTool(BaseTool):
 }}
 SYSTEM_AUTH_POPUP_REQUEST_END
 
-🔐 Authorization Required: I need your permission to access your banking data. I'll open a secure popup window for you to complete the authorization process."""
+Authorization Required: I need your permission to access your banking data. I'll open a secure popup window for you to complete the authorization process."""
                     
                     logger.info("Returning popup authorization challenge message to user")
                     return formatted_message
                 else:
                     # Fallback to manual authorization
-                    formatted_message = f"""🔐 **Authorization Required**
+                    formatted_message = f"""**Authorization Required**
 
 To access your banking data, I need your permission. Please complete these steps:
 
 **Step 1:** Click the link below to authorize access:
-👉 [**Click here to authorize**]({auth_url})
+[**Click here to authorize**]({auth_url})
 
 **Step 2:** Complete the login and authorization process in your browser
 
@@ -620,7 +620,7 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
             logger.info(f"Retrieved {len(accounts)} accounts with IDs {account_ids} for session {self._current_session_id}")
             logger.info("Account IDs are now visible to the LLM for future banking operations")
         
-        response = f"💰 **Your Bank Accounts** ({len(accounts)} accounts)\n\n"
+        response = f"**Your Bank Accounts** ({len(accounts)} accounts)\n\n"
         
         for i, account in enumerate(accounts, 1):
             account_type = account.get("type", "unknown").title()
@@ -650,7 +650,7 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
         account_type = data.get("account_type", "Account")
         account_number = data.get("account_number", "")
         
-        response = f"💳 **{account_type.title()} Balance**\n\n"
+        response = f"**{account_type.title()} Balance**\n\n"
         if account_number:
             response += f"Account: {account_number}\n"
         response += f"Current Balance: **${balance:,.2f}**"
@@ -663,7 +663,7 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
             return "No transactions found or error retrieving transactions."
         
         transactions = data["transactions"]
-        response = f"📋 **Recent Transactions** ({len(transactions)} transactions)\n\n"
+        response = f"**Recent Transactions** ({len(transactions)} transactions)\n\n"
         
         for i, txn in enumerate(transactions[:10], 1):  # Show max 10 transactions
             date = txn.get("date", "N/A")
@@ -674,10 +674,10 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
             # Format amount with +/- and color indication
             if amount > 0:
                 amount_str = f"+${amount:,.2f}"
-                emoji = "💰"
+                emoji = ""
             else:
                 amount_str = f"-${abs(amount):,.2f}"
-                emoji = "💸"
+                emoji = ""
             
             response += f"{emoji} **{description}**\n"
             response += f"   • Date: {date}\n"
@@ -729,7 +729,7 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
         response += f"**Transaction Details:**\n"
         response += f"• Withdrawal ID: {withdrawal_id}\n"
         response += f"• Deposit ID: {deposit_id}\n\n"
-        response += f"💡 *If you need to reverse this transfer, just ask me to reverse it!*"
+        response += f"*If you need to reverse this transfer, just ask me to reverse it!*"
         
         return response
     
@@ -996,7 +996,7 @@ class MCPToolProvider:
         # This could be improved by passing session_id to this method
         logger.info(f"Retrieved {len(accounts)} accounts with IDs for future operations")
         
-        response = f"💰 **Your Bank Accounts** ({len(accounts)} accounts)\n\n"
+        response = f"**Your Bank Accounts** ({len(accounts)} accounts)\n\n"
         
         for i, account in enumerate(accounts, 1):
             account_type = account.get("type", "unknown").title()
@@ -1026,7 +1026,7 @@ class MCPToolProvider:
         account_type = data.get("account_type", "Account")
         account_number = data.get("account_number", "")
         
-        response = f"💳 **{account_type.title()} Balance**\n\n"
+        response = f"**{account_type.title()} Balance**\n\n"
         if account_number:
             response += f"Account: {account_number}\n"
         response += f"Current Balance: **${balance:,.2f}**"
@@ -1039,7 +1039,7 @@ class MCPToolProvider:
             return "No transactions found or error retrieving transactions."
         
         transactions = data["transactions"]
-        response = f"📋 **Recent Transactions** ({len(transactions)} transactions)\n\n"
+        response = f"**Recent Transactions** ({len(transactions)} transactions)\n\n"
         
         for i, txn in enumerate(transactions[:10], 1):  # Show max 10 transactions
             date = txn.get("date", "N/A")
@@ -1050,10 +1050,10 @@ class MCPToolProvider:
             # Format amount with +/- and color indication
             if amount > 0:
                 amount_str = f"+${amount:,.2f}"
-                emoji = "💰"
+                emoji = ""
             else:
                 amount_str = f"-${abs(amount):,.2f}"
-                emoji = "💸"
+                emoji = ""
             
             response += f"{emoji} **{description}**\n"
             response += f"   • Date: {date}\n"

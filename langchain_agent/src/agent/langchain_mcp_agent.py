@@ -511,7 +511,7 @@ Remember to maintain conversation context and provide helpful, accurate response
                                         "registration_step": "confirmation"
                                     })
                                     
-                                    response = f"""🔍 I couldn't find an account with the email address: {email}
+                                    response = f"""I couldn't find an account with the email address: {email}
 
 Would you like me to help you register a new banking account? I'll need to collect some information from you:
 - Your full name
@@ -878,7 +878,7 @@ For example: 123 Main St, New York, NY, 10001, USA"""
                 user_msg = ChatMessage.create_user_message(session_id, user_message)
                 await self.conversation_memory.add_message(session_id, user_msg)
                 
-                identification_response = """👋 Hello! I'm your AI banking assistant. To help you with your banking needs, I need to identify you first.
+                identification_response = """Hello! I'm your AI banking assistant. To help you with your banking needs, I need to identify you first.
 
 Please provide your email address so I can:
 - Check if you have an existing account
@@ -1029,7 +1029,7 @@ What's your email address?"""
 }}
 SYSTEM_AUTH_POPUP_REQUEST_END
 
-🔐 Authorization Required: I need your permission to access your banking data. I'll open a secure popup window for you to complete the authorization process."""
+Authorization Required: I need your permission to access your banking data. I'll open a secure popup window for you to complete the authorization process."""
                         
                         response = popup_response
             
@@ -1159,7 +1159,7 @@ SYSTEM_AUTH_POPUP_REQUEST_END
                 await self.conversation_memory.add_message(session_id, user_msg)
                 
                 # Ask for email identification
-                identification_response = """👋 Hello! I'm your AI banking assistant. To help you with your banking needs, I need to identify you first.
+                identification_response = """Hello! I'm your AI banking assistant. To help you with your banking needs, I need to identify you first.
 
 Please provide your email address so I can:
 - Check if you have an existing account
@@ -1264,7 +1264,7 @@ What's your email address?"""
 }}
 SYSTEM_AUTH_POPUP_REQUEST_END
 
-🔐 Authorization Required: I need your permission to access your banking data. I'll open a secure popup window for you to complete the authorization process."""
+Authorization Required: I need your permission to access your banking data. I'll open a secure popup window for you to complete the authorization process."""
                         
                         logger.info("Returning popup authorization response directly")
                         response = popup_response
