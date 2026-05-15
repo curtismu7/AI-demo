@@ -9,12 +9,10 @@ import { BankingAuthenticationManager } from '../auth/BankingAuthenticationManag
 import { BankingSessionManager } from '../storage/BankingSessionManager';
 import { BankingToolRegistry, BankingToolDefinition } from './BankingToolRegistry';
 import { BankingToolValidator } from './BankingToolValidator';
-import { mapTransactionError, TransactionOperation } from './TransactionErrorMapper';
 import { AuthorizationChallengeHandler, AuthorizationChallenge } from './AuthorizationChallengeHandler';
 import { ToolResult, AuthorizationRequest } from '../interfaces/mcp';
 import { Session, AuthErrorCodes, AuthenticationError } from '../interfaces/auth';
 import { BankingAPIError } from '../interfaces/banking';
-import type { Account } from '../interfaces/banking';
 import { TokenExchangeService } from '../auth/TokenExchangeService';
 import { AuditLogger } from '../utils/AuditLogger';
 import { TokenChainAuditor } from './TokenChainAuditor';
@@ -22,6 +20,7 @@ import { Logger, createDefaultLoggerConfig } from '../utils/Logger';
 import { filterToolsByScope } from './toolScopeMap';
 import { TokenResolver } from './TokenResolver';
 import { JwtClaimVerifier } from './JwtClaimVerifier';
+import { handlerMap, HandlerDeps } from './handlers';
 
 export interface ToolExecutionContext {
   session: Session;
@@ -45,6 +44,7 @@ export class BankingToolProvider {
   private logger: Logger;
   private tokenResolver: TokenResolver;
   private jwtVerifier: JwtClaimVerifier;
+  private handlerDeps: HandlerDeps;
 
   constructor(
     private apiClient: BankingAPIClient,
@@ -57,6 +57,7 @@ export class BankingToolProvider {
     this.tokenResolver = new TokenResolver({ authManager: this.authManager, tokenExchangeService: this.tokenExchangeService, logger: this.logger });
     this.jwtVerifier = new JwtClaimVerifier(this.logger);
     this.auditor = new TokenChainAuditor(AuditLogger.getInstance(this.logger), this.jwtVerifier, this.logger);
+    this.handlerDeps = { apiClient: this.apiClient, logger: this.logger };
   }
 
   /**
@@ -254,26 +255,27 @@ export class BankingToolProvider {
   ): Promise<BankingToolResult> {
     // Tools that do not require user auth — dispatch directly without token resolution
     if (!tool.requiresUserAuth) {
-      switch (tool.handler) {
-        case 'executeSequentialThink':
-          return await this.executeSequentialThink(
-            context.params as { query: string; context?: string }
+      if (tool.handler === 'executeQueryUserByEmail') {
+        // Identity lookup performed by the agent on behalf of the platform.
+        // Uses the BFF-issued agent delegated token rather than a user's own token.
+        // agentToken is always present in the normal BFF → MCP Gateway → MCP Server flow.
+        if (!agentToken) {
+          return this.createErrorResult(
+            'query_user_by_email requires an agent-delegated token; no agentToken was provided in this request.'
           );
-
-        case 'executeQueryUserByEmail':
-          // Identity lookup performed by the agent on behalf of the platform.
-          // Uses the BFF-issued agent delegated token rather than a user's own token.
-          // agentToken is always present in the normal BFF → MCP Gateway → MCP Server flow.
-          if (!agentToken) {
-            return this.createErrorResult(
-              'query_user_by_email requires an agent-delegated token; no agentToken was provided in this request.'
-            );
-          }
-          return await this.executeQueryUserByEmail(agentToken, context.params as { email: string });
-
-        default:
+        }
+        const handler = handlerMap[tool.handler];
+        if (!handler) {
           return this.createErrorResult(`Unknown non-auth tool handler: ${tool.handler}`, context.params);
+        }
+        return await handler(this.handlerDeps, agentToken, context.params);
       }
+
+      const handler = handlerMap[tool.handler];
+      if (!handler) {
+        return this.createErrorResult(`Unknown non-auth tool handler: ${tool.handler}`, context.params);
+      }
+      return await handler(this.handlerDeps, '', context.params);
     }
 
     // Token selection: prefer the BFF-issued delegated token (RFC 8693 agentToken) when
@@ -288,360 +290,11 @@ export class BankingToolProvider {
       await this.jwtVerifier.assertClaims(token, tool.name);
     }
 
-    switch (tool.handler) {
-      case 'executeGetMyAccounts':
-        return await this.executeGetMyAccounts(token, context.params as { account_type?: string });
-
-      case 'executeGetAccountBalance':
-        return await this.executeGetAccountBalance(token, context.params as { account_id: string });
-
-      case 'executeGetMyTransactions':
-        return await this.executeGetMyTransactions(token, context.params as { limit?: number });
-
-      case 'executeCreateDeposit':
-        return await this.executeCreateDeposit(token, context.params as { to_account_id: string; amount: number; description?: string });
-
-      case 'executeCreateWithdrawal':
-        return await this.executeCreateWithdrawal(token, context.params as { from_account_id: string; amount: number; description?: string });
-
-      case 'executeCreateTransfer':
-        return await this.executeCreateTransfer(token, context.params as { from_account_id: string; to_account_id: string; amount: number; description?: string });
-
-      case 'executeQueryUserByEmail':
-        return await this.executeQueryUserByEmail(token, context.params as { email: string });
-
-      case 'executeGetSensitiveAccountDetails':
-        return await this.executeGetSensitiveAccountDetails(token);
-
-      default:
-        return this.createErrorResult(`Unknown tool handler: ${tool.handler}`, context.params);
+    const handler = handlerMap[tool.handler];
+    if (!handler) {
+      return this.createErrorResult(`Unknown tool handler: ${tool.handler}`, context.params);
     }
-  }
-
-  /**
-   * Execute get_my_accounts tool
-   */
-  private async executeGetMyAccounts(userToken: string, params: { account_type?: string } = {}): Promise<BankingToolResult> {
-    this.logger.debug(`[BankingToolProvider] Calling Banking API: getMyAccounts`);
-    let accounts = await this.apiClient.getMyAccounts(userToken);
-
-    if (accounts && accounts.length !== undefined) {
-      this.logger.debug(`[BankingToolProvider] Banking API response: Found ${accounts.length} accounts`);
-    }
-
-    if (params.account_type) {
-      accounts = accounts.filter((a: Account) => a.accountType === params.account_type);
-    }
-
-    const response = {
-      success: true,
-      count: accounts.length,
-      accounts: accounts.map((account: Account) => ({
-        id: account.id,
-        accountType: account.accountType,
-        name: account.name || null,
-        accountNumber: account.accountNumber,
-        balance: account.balance,
-        currency: account.currency || 'USD',
-        status: account.status || 'active',
-        accountHolderName: account.accountHolderName || null,
-        swiftCode: account.swiftCode || null,
-        iban: account.iban || null,
-        branchName: account.branchName || null,
-        branchCode: account.branchCode || null,
-        openedDate: account.openedDate || null,
-        createdAt: account.createdAt,
-      }))
-    };
-
-    return this.createSuccessResult(JSON.stringify(response, null, 2));
-  }
-
-  /**
-   * Execute get_account_balance tool
-   */
-  private async executeGetAccountBalance(
-    userToken: string,
-    params: { account_id: string }
-  ): Promise<BankingToolResult> {
-    this.logger.debug(`[BankingToolProvider] Calling Banking API: getAccountBalance for account ${params.account_id}`);
-    const balanceResponse = await this.apiClient.getAccountBalance(userToken, params.account_id);
-    this.logger.debug(`[BankingToolProvider] Banking API response: Account balance retrieved`);
-
-    const response = {
-      success: true,
-      accountId: params.account_id,
-      balance: balanceResponse.balance
-    };
-
-    return this.createSuccessResult(JSON.stringify(response, null, 2));
-  }
-
-  /**
-   * Execute get_my_transactions tool
-   */
-  private async executeGetMyTransactions(userToken: string, params?: { limit?: number }): Promise<BankingToolResult> {
-    let transactions = await this.apiClient.getMyTransactions(userToken);
-    if (params?.limit && params.limit > 0) {
-      transactions = transactions.slice(0, params.limit);
-    }
-
-    if (!Array.isArray(transactions)) {
-      this.logger.warn(`[BankingToolProvider] Expected transactions array, got: ${typeof transactions}`);
-
-      return this.createErrorResult(`Invalid response format from banking API (received: ${typeof transactions})`);
-    }
-
-    const response = {
-      success: true,
-      count: transactions.length,
-      transactions: transactions.map(transaction => ({
-        id: transaction.id,
-        type: transaction.type,
-        amount: transaction.amount,
-        date: transaction.createdAt,
-        fromAccountId: transaction.fromAccountId || null,
-        toAccountId: transaction.toAccountId || null,
-        description: transaction.description || null
-      }))
-    };
-
-    return this.createSuccessResult(JSON.stringify(response, null, 2));
-  }
-
-  /**
-   * Execute create_deposit tool
-   */
-  private async executeCreateDeposit(
-    userToken: string,
-    params: { to_account_id: string; amount: number; description?: string }
-  ): Promise<BankingToolResult> {
-    this.logger.info(`[BankingToolProvider] Calling Banking API: createDeposit - Amount: ${params.amount}, Account: ${params.to_account_id}`);
-    try {
-      const response = await this.apiClient.createDeposit(
-        userToken,
-        params.to_account_id,
-        params.amount,
-        params.description
-      );
-      this.logger.info(`[BankingToolProvider] Banking API response: Deposit successful`);
-
-      const result = {
-        success: true,
-        operation: 'deposit',
-        message: response.message,
-        transaction: response.transaction ? {
-          id: response.transaction.id,
-          amount: params.amount,
-          toAccountId: params.to_account_id,
-          description: params.description || null
-        } : null,
-        amount: params.amount,
-        accountId: params.to_account_id
-      };
-
-      return this.createSuccessResult(JSON.stringify(result, null, 2));
-    } catch (error) {
-      const handled = mapTransactionError(error, 'deposit' as TransactionOperation, params.amount);
-      if (handled) return handled;
-      throw error;
-    }
-  }
-
-  /**
-   * Execute create_withdrawal tool
-   */
-  private async executeCreateWithdrawal(
-    userToken: string,
-    params: { from_account_id: string; amount: number; description?: string }
-  ): Promise<BankingToolResult> {
-    try {
-      const response = await this.apiClient.createWithdrawal(
-        userToken,
-        params.from_account_id,
-        params.amount,
-        params.description
-      );
-
-      const result = {
-        success: true,
-        operation: 'withdrawal',
-        message: response.message,
-        transaction: response.transaction ? {
-          id: response.transaction.id,
-          amount: params.amount,
-          fromAccountId: params.from_account_id,
-          description: params.description || null
-        } : null,
-        amount: params.amount,
-        accountId: params.from_account_id
-      };
-
-      return this.createSuccessResult(JSON.stringify(result, null, 2));
-    } catch (error) {
-      const handled = mapTransactionError(error, 'withdrawal' as TransactionOperation, params.amount);
-      if (handled) return handled;
-      throw error;
-    }
-  }
-
-  /**
-   * Execute create_transfer tool
-   */
-  private async executeCreateTransfer(
-    userToken: string,
-    params: { from_account_id: string; to_account_id: string; amount: number; description?: string }
-  ): Promise<BankingToolResult> {
-    try {
-      const response = await this.apiClient.createTransfer(
-        userToken,
-        params.from_account_id,
-        params.to_account_id,
-        params.amount,
-        params.description
-      );
-
-      const result = {
-        success: true,
-        operation: 'transfer',
-        message: response.message,
-        withdrawalTransaction: response.withdrawalTransaction ? {
-          id: response.withdrawalTransaction.id,
-          amount: params.amount,
-          fromAccountId: params.from_account_id
-        } : null,
-        depositTransaction: response.depositTransaction ? {
-          id: response.depositTransaction.id,
-          amount: params.amount,
-          toAccountId: params.to_account_id
-        } : null,
-        amount: params.amount,
-        fromAccountId: params.from_account_id,
-        toAccountId: params.to_account_id,
-        description: params.description || null
-      };
-
-      return this.createSuccessResult(JSON.stringify(result, null, 2));
-    } catch (error) {
-      const handled = mapTransactionError(error, 'transfer' as TransactionOperation, params.amount);
-      if (handled) return handled;
-      throw error;
-    }
-  }
-
-  /**
-   * Execute query_user_by_email tool
-   */
-  private async executeQueryUserByEmail(
-    userToken: string,
-    params: { email: string }
-  ): Promise<BankingToolResult> {
-    try {
-      this.logger.debug(`[BankingToolProvider] Calling Banking API: queryUserByEmail`);
-      const response = await this.apiClient.queryUserByEmail(userToken, params.email);
-      this.logger.debug(`[BankingToolProvider] Banking API response: queryUserByEmail completed`);
-
-      // Return the complete API response as JSON
-      return this.createSuccessResult(JSON.stringify(response, null, 2));
-    } catch (error) {
-      // Handle 404 as a normal "not found" response rather than an error
-      if (error instanceof BankingAPIError && error.statusCode === 404) {
-        const notFoundResponse = {
-          exists: false,
-          email: params.email,
-          error: "User not found"
-        };
-        return this.createSuccessResult(JSON.stringify(notFoundResponse, null, 2));
-      }
-      throw error; // Re-throw other errors to be handled by main executeTool method
-    }
-  }
-
-
-  /**
-   * Execute get_sensitive_account_details tool.
-   * Calls GET /accounts/sensitive-details on the BFF.
-   * Returns consent_required:true in the result text if the BFF gate is not satisfied.
-   */
-  private async executeGetSensitiveAccountDetails(userToken: string): Promise<BankingToolResult> {
-    this.logger.debug(`[BankingToolProvider] Calling Banking API: getSensitiveAccountDetails`);
-    try {
-      const response = await this.apiClient.getSensitiveAccountDetails(userToken);
-
-      // Step-up required (428 from BFF — ACR not elevated)
-      if (response && (response as any).ok === false && (response as any).step_up_required === true) {
-        const stepUpPayload = {
-          ok: false,
-          step_up_required: true,
-          error: 'step_up_required',
-          step_up_method: (response as any).step_up_method || 'email',
-        };
-        return this.createSuccessResult(JSON.stringify(stepUpPayload, null, 2));
-      }
-
-      // BFF gate returned consent_required — surface as structured result
-      if (response && (response as any).ok === false && (response as any).consent_required) {
-        const consentPayload = {
-          ok: false,
-          consent_required: true,
-          reason: (response as any).reason || 'sensitive_data_access',
-        };
-        return this.createSuccessResult(JSON.stringify(consentPayload, null, 2));
-      }
-
-      if (!response || (response as any).ok === false) {
-        return this.createErrorResult(`Access denied: ${(response as any)?.reason || 'paz_denied'}`);
-      }
-
-      return this.createSuccessResult(JSON.stringify({
-        success: true,
-        accounts: (response as any).accounts || [],
-      }, null, 2));
-    } catch (error) {
-      this.logger.error('[BankingToolProvider] getSensitiveAccountDetails error:', {}, error instanceof Error ? error : undefined);
-      return this.createErrorResult(
-        `Failed to retrieve sensitive account details: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    }
-  }
-
-  /**
-   * Execute sequential_think tool — structured step-by-step reasoning
-   * No user auth required; reasons about banking decisions without accessing live data.
-   */
-  private async executeSequentialThink(
-    params: { query: string; context?: string }
-  ): Promise<BankingToolResult> {
-    const { query, context: ctx } = params;
-
-    const steps: Array<{ title: string; description: string }> = [
-      {
-        title: 'Understand the request',
-        description: `Parsing: "${query}"${ctx ? `. Additional context: ${ctx}` : ''}.`
-      },
-      {
-        title: 'Identify relevant factors',
-        description: 'Considering account balances, transaction history, applicable limits, and user goals.'
-      },
-      {
-        title: 'Evaluate options',
-        description: 'Weighing the available actions against constraints: authorization scopes, daily limits, and account eligibility.'
-      },
-      {
-        title: 'Assess risk and impact',
-        description: 'Checking for potential issues: insufficient funds, scope requirements, consent gates, or regulatory flags.'
-      },
-      {
-        title: 'Formulate recommendation',
-        description: 'Based on analysis, selecting the most appropriate approach that satisfies the request safely.'
-      }
-    ];
-
-    const conclusion = `Analysis complete for: "${query}". Proceeding with recommended approach.`;
-    const result = { steps, conclusion };
-    this.logger.debug(`[BankingToolProvider] sequential_think completed: ${steps.length} steps for query: "${query.slice(0, 60)}"`);
-
-    return this.createSuccessResult(JSON.stringify(result, null, 2));
+    return await handler(this.handlerDeps, token, context.params);
   }
 
   /**
