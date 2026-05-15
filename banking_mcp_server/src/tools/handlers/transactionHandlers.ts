@@ -1,4 +1,4 @@
-import { HandlerFn } from './types';
+import type { HandlerFn } from './types';
 import { createSuccessResult, createErrorResult } from './results';
 import { mapTransactionError, TransactionOperation } from '../TransactionErrorMapper';
 

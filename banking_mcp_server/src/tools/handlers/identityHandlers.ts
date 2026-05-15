@@ -1,5 +1,5 @@
 import { BankingAPIError } from '../../interfaces/banking';
-import { HandlerFn } from './types';
+import type { HandlerFn } from './types';
 import { createSuccessResult } from './results';
 
 export const executeQueryUserByEmail: HandlerFn = async (deps, token, params) => {

@@ -1,4 +1,4 @@
-import { HandlerFn } from './types';
+import type { HandlerFn } from './types';
 import { createSuccessResult } from './results';
 
 export const executeSequentialThink: HandlerFn = async (deps, _token, params) => {

@@ -150,37 +150,52 @@ export class BankingToolProvider {
       return result;
 
     } catch (error) {
-      // Collect any HTTP trace entries captured before the exception
-      const errorTrace = this.apiClient.stopTrace();
-      const executionTime = Date.now() - startTime;
-      this.logger.error(`[BankingToolProvider] Error executing tool ${toolName} (${executionTime}ms):`, {}, error instanceof Error ? error : undefined);
-
-      const attachTrace = (r: BankingToolResult): BankingToolResult => {
-        if (errorTrace.length > 0) r.httpTrace = errorTrace;
-        return r;
-      };
-
-      if (error instanceof AuthenticationError) {
-        this.logger.warn(`[BankingToolProvider] Authentication error for ${toolName}: ${error.message}`);
-        if (error.code === AuthErrorCodes.USER_AUTHORIZATION_REQUIRED && error.authorizationUrl) {
-          // Generate a proper authorization challenge
-          const challenge = await this.authChallengeHandler.generateAuthorizationChallenge(
-            session.sessionId,
-            error.requiredScopes || []
-          );
-          return this.createAuthChallengeResult(challenge);
-        }
-        return attachTrace(this.createErrorResult(`Authentication error: ${error.message}`, params));
-      }
-
-      if (error instanceof BankingAPIError) {
-        this.logger.warn(`[BankingToolProvider] Banking API error for ${toolName}: ${error.message}`);
-        return attachTrace(this.createErrorResult(`Banking API error: ${error.message}`, params));
-      }
-
-      this.logger.error(`[BankingToolProvider] Unexpected error for ${toolName}:`, {}, error instanceof Error ? error : undefined);
-      return attachTrace(this.createErrorResult(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`, params));
+      return this.handleExecutionError(error, toolName, params, session, startTime);
     }
+  }
+
+  /**
+   * Handle errors thrown during tool execution.
+   * Collects any partial HTTP trace, logs the failure, and maps known error
+   * types (AuthenticationError, BankingAPIError) to structured results.
+   */
+  private async handleExecutionError(
+    error: unknown,
+    toolName: string,
+    params: Record<string, any>,
+    session: Session,
+    startTime: number
+  ): Promise<BankingToolResult> {
+    // Collect any HTTP trace entries captured before the exception
+    const errorTrace = this.apiClient.stopTrace();
+    const executionTime = Date.now() - startTime;
+    this.logger.error(`[BankingToolProvider] Error executing tool ${toolName} (${executionTime}ms):`, {}, error instanceof Error ? error : undefined);
+
+    const attachTrace = (r: BankingToolResult): BankingToolResult => {
+      if (errorTrace.length > 0) r.httpTrace = errorTrace;
+      return r;
+    };
+
+    if (error instanceof AuthenticationError) {
+      this.logger.warn(`[BankingToolProvider] Authentication error for ${toolName}: ${error.message}`);
+      if (error.code === AuthErrorCodes.USER_AUTHORIZATION_REQUIRED && error.authorizationUrl) {
+        // Generate a proper authorization challenge
+        const challenge = await this.authChallengeHandler.generateAuthorizationChallenge(
+          session.sessionId,
+          error.requiredScopes || []
+        );
+        return this.createAuthChallengeResult(challenge);
+      }
+      return attachTrace(this.createErrorResult(`Authentication error: ${error.message}`, params));
+    }
+
+    if (error instanceof BankingAPIError) {
+      this.logger.warn(`[BankingToolProvider] Banking API error for ${toolName}: ${error.message}`);
+      return attachTrace(this.createErrorResult(`Banking API error: ${error.message}`, params));
+    }
+
+    this.logger.error(`[BankingToolProvider] Unexpected error for ${toolName}:`, {}, error instanceof Error ? error : undefined);
+    return attachTrace(this.createErrorResult(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`, params));
   }
 
   /**

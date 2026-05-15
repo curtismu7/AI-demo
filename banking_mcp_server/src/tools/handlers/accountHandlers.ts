@@ -1,6 +1,5 @@
 import type { Account } from '../../interfaces/banking';
-import { BankingAPIError } from '../../interfaces/banking';
-import { HandlerFn } from './types';
+import type { HandlerFn } from './types';
 import { createSuccessResult, createErrorResult } from './results';
 
 export const executeGetMyAccounts: HandlerFn = async (deps, token, params) => {
