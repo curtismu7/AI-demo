@@ -52,7 +52,7 @@ class MCPConfig:
 @dataclass
 class LangChainConfig:
     """Configuration for LangChain agent."""
-    model_name: str = "llama-3.1-8b-instant"
+    model_name: str = "llama3.2"
     temperature: float = 0.7
     max_tokens: int = 1000
     openai_api_key: str = ""
@@ -121,7 +121,7 @@ class DevelopmentConfig(BaseEnvironmentConfig):
             "LOG_LEVEL": "DEBUG",
             "WEBSOCKET_PORT": "8889",
             "LANGCHAIN_VERBOSE": "true",
-            "LANGCHAIN_MODEL_NAME": "gpt-3.5-turbo",
+            "LANGCHAIN_MODEL_NAME": "llama3.2",
             "PINGONE_REDIRECT_URI": "http://localhost:8889/auth/callback",
             "SESSION_TIMEOUT_MINUTES": "30",  # Shorter timeout for development
         }
@@ -145,7 +145,7 @@ class StagingConfig(BaseEnvironmentConfig):
             "LOG_LEVEL": "INFO",
             "WEBSOCKET_PORT": "8889",
             "LANGCHAIN_VERBOSE": "false",
-            "LANGCHAIN_MODEL_NAME": "gpt-3.5-turbo",
+            "LANGCHAIN_MODEL_NAME": "llama3.2",
             "SESSION_TIMEOUT_MINUTES": "60",
             "MAX_RETRY_ATTEMPTS": "5",  # More retries in staging
         }
@@ -204,7 +204,7 @@ class TestConfig(BaseEnvironmentConfig):
             "LOG_LEVEL": "DEBUG",
             "WEBSOCKET_PORT": "8081",  # Different port for tests
             "LANGCHAIN_VERBOSE": "false",  # Keep test output clean
-            "LANGCHAIN_MODEL_NAME": "gpt-3.5-turbo",
+            "LANGCHAIN_MODEL_NAME": "llama3.2",
             "PINGONE_BASE_URL": "https://test.forgeblocks.com",
             "SESSION_TIMEOUT_MINUTES": "5",  # Short timeout for tests
             "MCP_CONNECTION_TIMEOUT_SECONDS": "5",  # Fast timeouts for tests
@@ -336,7 +336,7 @@ class ConfigManager:
         
         # LangChain configuration
         langchain_config = LangChainConfig(
-            model_name=get_env_value("LANGCHAIN_MODEL_NAME", "gpt-3.5-turbo"),
+            model_name=get_env_value("LANGCHAIN_MODEL_NAME", "llama3.2"),
             temperature=float(get_env_value("LANGCHAIN_TEMPERATURE", "0.7")),
             max_tokens=int(get_env_value("LANGCHAIN_MAX_TOKENS", "1000")),
             openai_api_key=get_env_value("OPENAI_API_KEY", ""),
