@@ -185,16 +185,51 @@ class ChatWebSocketHandler:
         try:
             # Validate required fields
             content = message.get("content")
-            session_id = message.get("session_id")
-            
+
             if not content or not isinstance(content, str):
                 await self._send_error(websocket, "invalid_content", "Message content is required")
                 return
-            
-            if not session_id or not isinstance(session_id, str):
-                await self._send_error(websocket, "invalid_session", "Session ID is required")
+
+            # WR-01: the authenticated session for this connection comes ONLY
+            # from the connection metadata bound during _handle_session_init.
+            # NEVER trust the session_id field carried in the message body —
+            # a client could put any session_id in a chat_message body and
+            # hijack/redirect session routing (poisoning the metadata that
+            # BL-04's _handle_auth_response then reads). This mirrors the exact
+            # BL-04 guard already applied to _handle_auth_response.
+            connection_session_id = None
+            if connection_id in self._connection_metadata:
+                connection_session_id = self._connection_metadata[connection_id].get("session_id")
+
+            if not connection_session_id:
+                logger.warning(
+                    f"Chat message received on connection {connection_id} "
+                    f"with no bound session_id — rejecting"
+                )
+                await self._send_error(
+                    websocket,
+                    "invalid_session",
+                    "WebSocket has no authenticated session — call session_init first",
+                )
                 return
-            
+
+            # If the client carried a session_id in the body, it MUST match the
+            # connection-bound one. Mismatch is a tampering signal — refuse.
+            body_session_id = message.get("session_id")
+            if body_session_id is not None and body_session_id != connection_session_id:
+                logger.warning(
+                    f"Chat message session_id mismatch on connection {connection_id}: "
+                    f"body={body_session_id!r} bound={connection_session_id!r}"
+                )
+                await self._send_error(
+                    websocket,
+                    "session_id_mismatch",
+                    "session_id in message body does not match the WebSocket's authenticated session",
+                )
+                return
+
+            session_id = connection_session_id
+
             # Validate message length. WR-12: measure UTF-8 BYTES, not code
             # points. The WS server caps frames at a byte limit; a multi-byte
             # payload (e.g. 4-byte emoji) under the char count can still blow
@@ -204,11 +239,6 @@ class ChatWebSocketHandler:
                 await self._send_error(websocket, "message_too_long",
                                      f"Message exceeds maximum length of {self.config.chat.max_message_length}")
                 return
-            
-            # Update connection metadata
-            if connection_id in self._connection_metadata:
-                self._connection_metadata[connection_id]["session_id"] = session_id
-                self._session_connections[session_id] = connection_id
             
             # Create chat message
             chat_message = ChatMessage.create_user_message(

@@ -160,13 +160,16 @@ class TestChatWebSocketHandler:
         mock_websocket = MockWebSocket()
         
         websocket_handler._connections[connection_id] = mock_websocket
+        # WR-01: the authenticated session must already be bound to the
+        # connection metadata (set during _handle_session_init). The chat
+        # handler derives the session from here, never from the message body.
         websocket_handler._connection_metadata[connection_id] = {
             "connected_at": datetime.now(timezone.utc),
             "path": "/chat",
-            "session_id": None,
+            "session_id": session_id,
             "user_id": None
         }
-        
+
         # Mock the message processor notification
         with patch.object(websocket_handler, '_notify_message_processor') as mock_notify:
             message = {
@@ -176,21 +179,79 @@ class TestChatWebSocketHandler:
                 "_connection_id": connection_id,
                 "_timestamp": datetime.now(timezone.utc).isoformat()
             }
-            
+
             await websocket_handler._handle_chat_message(message)
-        
+
         # Should send acknowledgment
         assert len(mock_websocket.sent_messages) == 1
         ack_message = json.loads(mock_websocket.sent_messages[0])
         assert ack_message["type"] == "message_received"
         assert ack_message["session_id"] == session_id
-        
-        # Should update connection metadata
-        assert websocket_handler._connection_metadata[connection_id]["session_id"] == session_id
-        assert websocket_handler._session_connections[session_id] == connection_id
-        
+
         # Should notify message processor
         mock_notify.assert_called_once()
+
+    async def test_handle_chat_message_rejects_body_session_mismatch(self, websocket_handler):
+        """WR-01: reject when message body session_id differs from the
+        connection-bound (authenticated) session, and do NOT mutate
+        _session_connections / _connection_metadata to the forged id."""
+        connection_id = "test-conn-1"
+        bound_session = "real-session-A"
+        forged_session = "attacker-session-B"
+        mock_websocket = MockWebSocket()
+        websocket_handler._connections[connection_id] = mock_websocket
+        websocket_handler._connection_metadata[connection_id] = {
+            "connected_at": datetime.now(timezone.utc),
+            "path": "/chat",
+            "session_id": bound_session,
+            "user_id": None
+        }
+
+        with patch.object(websocket_handler, '_notify_message_processor') as mock_notify:
+            message = {
+                "type": "chat_message",
+                "content": "Hello, world!",
+                "session_id": forged_session,  # tampered
+                "_connection_id": connection_id,
+                "_timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            await websocket_handler._handle_chat_message(message)
+
+        # No processing, error sent instead.
+        mock_notify.assert_not_called()
+        assert len(mock_websocket.sent_messages) == 1
+        response = json.loads(mock_websocket.sent_messages[0])
+        assert response["type"] == "error"
+        assert response["error_code"] == "session_id_mismatch"
+
+        # The forged id must NOT have leaked into the routing maps.
+        assert forged_session not in websocket_handler._session_connections
+        assert websocket_handler._connection_metadata[connection_id]["session_id"] == bound_session
+
+    async def test_handle_chat_message_rejects_before_session_init(self, websocket_handler):
+        """WR-01: a chat_message before any session_init (no bound session on
+        the connection) is rejected — chat before session_init is not valid."""
+        connection_id = "test-conn-1"
+        mock_websocket = MockWebSocket()
+        websocket_handler._connections[connection_id] = mock_websocket
+        # NOTE: no _connection_metadata entry — connection never ran session_init.
+
+        with patch.object(websocket_handler, '_notify_message_processor') as mock_notify:
+            message = {
+                "type": "chat_message",
+                "content": "Hello, world!",
+                "session_id": "some-session",
+                "_connection_id": connection_id,
+                "_timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            await websocket_handler._handle_chat_message(message)
+
+        mock_notify.assert_not_called()
+        assert len(mock_websocket.sent_messages) == 1
+        response = json.loads(mock_websocket.sent_messages[0])
+        assert response["type"] == "error"
+        assert response["error_code"] == "invalid_session"
+        assert "some-session" not in websocket_handler._session_connections
     
     async def test_handle_chat_message_missing_content(self, websocket_handler):
         """Test chat message handling with missing content."""
@@ -216,9 +277,18 @@ class TestChatWebSocketHandler:
     async def test_handle_chat_message_too_long(self, websocket_handler):
         """Test chat message handling with content too long."""
         connection_id = "test-conn-1"
+        session_id = "test-session-1"
         mock_websocket = MockWebSocket()
         websocket_handler._connections[connection_id] = mock_websocket
-        
+        # WR-01: bind the authenticated session so the handler reaches the
+        # WR-12 byte-length check (it now rejects unbound connections first).
+        websocket_handler._connection_metadata[connection_id] = {
+            "connected_at": datetime.now(timezone.utc),
+            "path": "/chat",
+            "session_id": session_id,
+            "user_id": None
+        }
+
         # Create message longer than max length
         long_content = "x" * (websocket_handler.config.chat.max_message_length + 1)
         
