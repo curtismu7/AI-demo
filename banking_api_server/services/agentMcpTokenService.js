@@ -131,7 +131,17 @@ function sanitizeClaims(claims) {
  * Build a token event object for the frontend Token Chain panel.
  * @param {string}  id
  * @param {string}  label
- * @param {string}  status  'active' | 'acquiring' | 'exchanged' | 'failed' | 'skipped'
+ * @param {string}  status  Token-chain status vocabulary. The SPA's
+ *   NarrativePanel.dotClass (banking_api_ui/src/components/NarrativePanel.js)
+ *   only styles a subset — 'success'/'acquired' (green), 'error' (red),
+ *   'active'/'pending' (amber) — and silently buckets any other value to the
+ *   default dot. The event SHAPE { id,label,status,timestamp,claims,
+ *   explanation,... } is the stable contract the SPA depends on; the status
+ *   STRING is presentation-only and intentionally NOT normalized to avoid
+ *   changing observable UI styling. Full set actually emitted across call
+ *   sites (kept here as the single source of truth so this doc cannot drift):
+ *   'active' | 'acquiring' | 'exchanged' | 'waiting' | 'success' | 'failed' |
+ *   'skipped' | 'warning' | 'degraded' | 'permit' | 'deny' | 'indeterminate'
  * @param {object|null} decoded  { header, claims } from decodeJwtClaims
  * @param {string}  explanation  Human-readable description of what happened and why
  * @param {object}  [extra]  Extra fields (exchangeDetails, error, rfc, etc.)

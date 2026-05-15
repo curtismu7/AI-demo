@@ -3,6 +3,14 @@
  * In-memory audit store for local (in-process) MCP tool calls.
  * Populated by agentBuilder.js toolNode; read by tokenChainService.getMCPToolCalls().
  * Matches the event shape expected by getMCPToolCalls().
+ *
+ * IN-05 — KNOWN LIMITATION (not a bug): this is a 200-event ring buffer in
+ * process memory ONLY. It survives exactly the current Node process and is
+ * lost on every restart (on Vercel, every cold start). It is a live-debug /
+ * Token Chain feed, NOT a durable compliance audit trail. For durable audit
+ * see mcpTrafficLogger (NDJSON to .logs/). Building persistence here is
+ * intentionally out of scope — do not add a DB/file here without a product
+ * requirement for a real audit trail.
  */
 
 const MAX_EVENTS = 200;

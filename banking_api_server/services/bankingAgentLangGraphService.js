@@ -13,6 +13,22 @@ const axios = require('axios');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+
+/**
+ * IN-04: agent chat content is PII-equivalent in a banking context. The
+ * verbose per-message preview/length console logs and the full-prompt
+ * appEventService entry are gated behind LOG_FULL_PROMPTS (off by default).
+ * When off, only a short non-reversible fingerprint is logged so the flow is
+ * still traceable without persisting the user's message text.
+ */
+const LOG_FULL_PROMPTS = process.env.LOG_FULL_PROMPTS === 'true';
+function _messageFingerprint(msg) {
+  const s = typeof msg === 'string' ? msg : String(msg ?? '');
+  const len = s.length;
+  const h = crypto.createHash('sha1').update(s).digest('hex').slice(0, 8);
+  return `len=${len} sha1=${h}`;
+}
 
 /**
  * WR-07(b): Sanitize an account identifier before it lands in a transaction
@@ -311,7 +327,7 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
       }
       const result = await get_sensitive_account_details({}, userId, effectiveReq);
       if (result.error === 'hitl_required' || result.hitl_required) {
-        return { reply: '🔒 Viewing sensitive account details requires your approval. Please confirm in the consent modal to continue.', success: false, toolsCalled: ['get_sensitive_account_details'], tokensUsed: 0, requiresConsent: true, agentConfigured: true, tokenEvents: [], error: 'hitl_required', hitl: { type: 'consent' }, hitl_threshold_usd: 0 };
+        return { reply: 'Viewing sensitive account details requires your approval. Please confirm in the consent modal to continue.', success: false, toolsCalled: ['get_sensitive_account_details'], tokensUsed: 0, requiresConsent: true, agentConfigured: true, tokenEvents: [], error: 'hitl_required', hitl: { type: 'consent' }, hitl_threshold_usd: 0 };
       }
       if (!result.ok) {
         return { reply: `❌ ${result.error || 'Could not retrieve sensitive account details.'}`, success: false, toolsCalled: ['get_sensitive_account_details'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
@@ -361,12 +377,18 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
   try {
     console.log('[processAgentMessage] Starting');
     appEventService.logEvent('agent', 'info', 'Agent processing message…', { tag: 'agent/message' });
-    console.log('[processAgentMessage] userId:', userId);
-    console.log('[processAgentMessage] userToken present:', !!userToken);
-    console.log('[processAgentMessage] userToken length:', userToken?.length || 0);
-    console.log('[processAgentMessage] sessionId:', sessionId);
-    console.log('[processAgentMessage] tokenEvents count:', tokenEvents?.length || 0);
-    console.log('[processAgentMessage] message length:', message?.length || 0);
+    // IN-04: non-reversible fingerprint by default; full detail only under
+    // LOG_FULL_PROMPTS (treat chat content as PII in a banking context).
+    if (LOG_FULL_PROMPTS) {
+      console.log('[processAgentMessage] userId:', userId);
+      console.log('[processAgentMessage] userToken present:', !!userToken);
+      console.log('[processAgentMessage] userToken length:', userToken?.length || 0);
+      console.log('[processAgentMessage] sessionId:', sessionId);
+      console.log('[processAgentMessage] tokenEvents count:', tokenEvents?.length || 0);
+      console.log('[processAgentMessage] message length:', message?.length || 0);
+    } else {
+      console.log('[processAgentMessage] message', _messageFingerprint(message));
+    }
 
     // Extract subject token from request (Phase 3: user has authorized)
     const subjectToken = req?.body?.subjectToken;
@@ -421,8 +443,15 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     // Invoke the LangGraph with the user message
     console.log('[processAgentMessage] Invoking LangGraph agent...');
     appEventService.logEvent('agent', 'info', 'LLM reasoning…', { tag: 'agent/invoke' });
-    appEventService.logEvent('agent_prompt', 'info', `LLM prompt: ${String(message)}`,
-      { tag: 'agent_prompt/llm_invoke', metadata: { userId, sessionId, messageLength: message?.length || 0, prompt: String(message), systemPrompt: langchainConfig?.systemPrompt || undefined, model: langchainConfig?.model || undefined, toolsAvailable: initialState?.tools?.map(t => t.name || t) || undefined } });
+    // IN-04: only emit the raw prompt into the admin events feed under
+    // LOG_FULL_PROMPTS; otherwise log a non-reversible fingerprint.
+    if (LOG_FULL_PROMPTS) {
+      appEventService.logEvent('agent_prompt', 'info', `LLM prompt: ${String(message)}`,
+        { tag: 'agent_prompt/llm_invoke', metadata: { userId, sessionId, messageLength: message?.length || 0, prompt: String(message), systemPrompt: langchainConfig?.systemPrompt || undefined, model: langchainConfig?.model || undefined, toolsAvailable: initialState?.tools?.map(t => t.name || t) || undefined } });
+    } else {
+      appEventService.logEvent('agent_prompt', 'info', `LLM prompt (${_messageFingerprint(message)})`,
+        { tag: 'agent_prompt/llm_invoke', metadata: { userId, sessionId, messageLength: message?.length || 0, promptFingerprint: _messageFingerprint(message), model: langchainConfig?.model || undefined, toolsAvailable: initialState?.tools?.map(t => t.name || t) || undefined } });
+    }
     let finalState;
     try {
       // WR-03: cap the agent⇄tools loop. recursionLimit counts every node
