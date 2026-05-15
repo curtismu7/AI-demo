@@ -2,6 +2,7 @@
 MCP Tool Provider for LangChain integration.
 """
 import asyncio
+import json
 import logging
 from typing import Dict, Any, List, Optional, Type
 from datetime import datetime
@@ -19,6 +20,46 @@ logger = logging.getLogger(__name__)
 
 # Global tracer reference for MCP tool execution tracing
 _current_tracer = None
+
+
+# WR-05: the auth-popup block was previously assembled with bare f-string
+# interpolation of values that originate from an MCP server's authChallenge
+# payload (authorizationUrl, scope, expiresAt, ...). A value containing a
+# double-quote or brace could break out of the hand-rolled "JSON" and inject
+# arbitrary keys the UI then trusts (e.g. redirect the popup elsewhere).
+# Build a real dict and json.dumps() it so every value is correctly escaped.
+def build_auth_popup_message(
+    *,
+    auth_url: str,
+    popup_width: Any,
+    popup_height: Any,
+    popup_title: str,
+    status_endpoint: str,
+    session_id: str,
+    scope: str,
+    expires_at: str,
+) -> str:
+    """Return the SYSTEM_AUTH_POPUP_REQUEST envelope with an injection-safe
+    JSON body. Shared by the tool provider and the agent so all three former
+    f-string sites have one correct implementation."""
+    payload = {
+        "authorizationUrl": auth_url,
+        "popupWidth": popup_width,
+        "popupHeight": popup_height,
+        "popupTitle": popup_title,
+        "statusEndpoint": status_endpoint,
+        "sessionId": session_id,
+        "scope": scope,
+        "expiresAt": expires_at,
+    }
+    return (
+        "SYSTEM_AUTH_POPUP_REQUEST_START\n"
+        + json.dumps(payload, indent=2)
+        + "\nSYSTEM_AUTH_POPUP_REQUEST_END\n\n"
+        + "Authorization Required: I need your permission to access your "
+        + "banking data. I'll open a secure popup window for you to "
+        + "complete the authorization process."
+    )
 
 
 class MCPToolInput(BaseModel):
@@ -373,21 +414,17 @@ class MCPTool(BaseTool):
                     popup_height = ui_hints.get("popupHeight", 650)
                     popup_title = ui_hints.get("popupTitle", "Authorization Required")
                     
-                    # Use a format that the LLM won't try to rewrite
-                    formatted_message = f"""SYSTEM_AUTH_POPUP_REQUEST_START
-{{
-  "authorizationUrl": "{auth_url}",
-  "popupWidth": {popup_width},
-  "popupHeight": {popup_height},
-  "popupTitle": "{popup_title}",
-  "statusEndpoint": "{status_endpoint}",
-  "sessionId": "{auth_challenge.get('sessionId', '')}",
-  "scope": "{scope}",
-  "expiresAt": "{expires_at}"
-}}
-SYSTEM_AUTH_POPUP_REQUEST_END
-
-Authorization Required: I need your permission to access your banking data. I'll open a secure popup window for you to complete the authorization process."""
+                    # WR-05: injection-safe JSON via shared helper.
+                    formatted_message = build_auth_popup_message(
+                        auth_url=auth_url,
+                        popup_width=popup_width,
+                        popup_height=popup_height,
+                        popup_title=popup_title,
+                        status_endpoint=status_endpoint,
+                        session_id=auth_challenge.get('sessionId', ''),
+                        scope=scope,
+                        expires_at=expires_at,
+                    )
                     
                     logger.info("Returning popup authorization challenge message to user")
                     return formatted_message

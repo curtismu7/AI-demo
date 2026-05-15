@@ -19,7 +19,7 @@ from authentication.oauth_manager import OAuthAuthenticationManager
 from models.auth import AccessToken
 from models.chat import ChatMessage, ChatSession
 from config.settings import get_config
-from .mcp_tool_provider import MCPToolProvider
+from .mcp_tool_provider import MCPToolProvider, build_auth_popup_message
 from .conversation_memory import ConversationMemory
 from .execution_tracer import AgentExecutionTracer, TracingMixin
 from .tracing_callback import DetailedTracingCallbackHandler
@@ -1016,21 +1016,18 @@ What's your email address?"""
                         expires_at = auth_challenge.get('expiresAt', '')
                         session_id_auth = auth_challenge.get('sessionId', '')
                         
-                        popup_response = f"""SYSTEM_AUTH_POPUP_REQUEST_START
-{{
-  "authorizationUrl": "{auth_url}",
-  "popupWidth": {popup_width},
-  "popupHeight": {popup_height},
-  "popupTitle": "{popup_title}",
-  "statusEndpoint": "{status_endpoint}",
-  "sessionId": "{session_id_auth}",
-  "scope": "{scope}",
-  "expiresAt": "{expires_at}"
-}}
-SYSTEM_AUTH_POPUP_REQUEST_END
+                        # WR-05: injection-safe JSON via shared helper.
+                        popup_response = build_auth_popup_message(
+                            auth_url=auth_url,
+                            popup_width=popup_width,
+                            popup_height=popup_height,
+                            popup_title=popup_title,
+                            status_endpoint=status_endpoint,
+                            session_id=session_id_auth,
+                            scope=scope,
+                            expires_at=expires_at,
+                        )
 
-Authorization Required: I need your permission to access your banking data. I'll open a secure popup window for you to complete the authorization process."""
-                        
                         response = popup_response
             
             # Store conversation in memory
@@ -1250,22 +1247,19 @@ What's your email address?"""
                         expires_at = auth_challenge.get('expiresAt', '')
                         session_id_auth = auth_challenge.get('sessionId', '')
                         
+                        # WR-05: injection-safe JSON via shared helper.
                         # Return structured response that bypasses LLM processing
-                        popup_response = f"""SYSTEM_AUTH_POPUP_REQUEST_START
-{{
-  "authorizationUrl": "{auth_url}",
-  "popupWidth": {popup_width},
-  "popupHeight": {popup_height},
-  "popupTitle": "{popup_title}",
-  "statusEndpoint": "{status_endpoint}",
-  "sessionId": "{session_id_auth}",
-  "scope": "{scope}",
-  "expiresAt": "{expires_at}"
-}}
-SYSTEM_AUTH_POPUP_REQUEST_END
+                        popup_response = build_auth_popup_message(
+                            auth_url=auth_url,
+                            popup_width=popup_width,
+                            popup_height=popup_height,
+                            popup_title=popup_title,
+                            status_endpoint=status_endpoint,
+                            session_id=session_id_auth,
+                            scope=scope,
+                            expires_at=expires_at,
+                        )
 
-Authorization Required: I need your permission to access your banking data. I'll open a secure popup window for you to complete the authorization process."""
-                        
                         logger.info("Returning popup authorization response directly")
                         response = popup_response
             
