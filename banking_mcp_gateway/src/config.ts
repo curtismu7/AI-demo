@@ -52,6 +52,18 @@ const DEV_BYPASS = process.env.MCP_GW_DEV_BYPASS === 'true';
 // Production startup refuses this exact value to prevent shipping the dev fallback.
 const DEFAULT_BFF_INTERNAL_SECRET = 'dev-shared-secret-change-me';
 
+// WR-07: minimum acceptable length for the internal shared secret at the
+// admin-surface gate. Below this, an empty/whitespace secret makes
+// timingSafeEqual(Buffer.alloc(0), ...) accept a header-less request,
+// turning /admin/config into an unauthenticated control plane. Exported
+// pure predicate so the gate and its test share one definition (the
+// index.ts IIFE is not directly unit-testable).
+export const MIN_INTERNAL_SECRET_LEN = 16;
+
+export function isInternalSecretUsable(secret: string | undefined | null): boolean {
+  return (secret ?? '').trim().length >= MIN_INTERNAL_SECRET_LEN;
+}
+
 function required(name: string, stub = 'dev-bypass-placeholder'): string {
   const v = process.env[name];
   if (!v) {
@@ -134,6 +146,20 @@ export function assertProductionSecrets(cfg: GatewayConfig): void {
       '[GW] FATAL: BFF_INTERNAL_SECRET is set to the committed dev default ' +
       `('${DEFAULT_BFF_INTERNAL_SECRET}') and NODE_ENV=production. ` +
       'Refusing to start. Set BFF_INTERNAL_SECRET to a unique 32+ byte secret.',
+    );
+    process.exit(1);
+  }
+  // WR-07: a whitespace / too-short BFF_INTERNAL_SECRET is NOT the default
+  // literal and is NOT empty-falsy, so it slips past the check above and
+  // optional()'s `||` fallback. A 1-byte secret is trivially brute-forced
+  // and an empty one defeats the timing-safe compare entirely. Refuse to
+  // start unless the secret is at least 32 bytes in production.
+  if (cfg.bffInternalSecret.trim().length < 32) {
+    // eslint-disable-next-line no-console
+    console.error(
+      '[GW] FATAL: BFF_INTERNAL_SECRET is too short (< 32 bytes after trim) ' +
+      'and NODE_ENV=production. Refusing to start. Set BFF_INTERNAL_SECRET ' +
+      'to a unique 32+ byte secret.',
     );
     process.exit(1);
   }

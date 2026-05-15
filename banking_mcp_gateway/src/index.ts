@@ -22,7 +22,7 @@ import { join } from 'node:path';
 import * as crypto from 'node:crypto';
 import WebSocket from 'ws';
 import axios from 'axios';
-import { loadConfig, GatewayConfig, assertProductionSecrets } from './config';
+import { loadConfig, GatewayConfig, assertProductionSecrets, isInternalSecretUsable } from './config';
 import { validateInboundToken, extractBearerToken, TokenValidationError } from './tokenValidator';
 import { routeTool, backendWsUrl, backendResourceUri, backendHttpUrl } from './router';
 import { exchangeTokenForBackend } from './tokenExchange';
@@ -91,6 +91,18 @@ const wsIntrospectionClient = new GatewayIntrospectionClient(config);
 // ---------------------------------------------------------------------------
 
 function requireInternalSecret(req: IncomingMessage, res: ServerResponse, cfg: GatewayConfig): boolean {
+  // WR-07: an empty (or near-empty) secret makes timingSafeEqual on two
+  // zero-length buffers return true for a header-less request — turning the
+  // admin surface into an unauthenticated control plane. Refuse to compare
+  // against a weak/empty secret; never treat that as a valid authorization.
+  // This must be explicit at the gate, not an emergent property of
+  // optional()'s `||` fallback (see isInternalSecretUsable in config.ts).
+  if (!isInternalSecretUsable(cfg.bffInternalSecret)) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'misconfigured' }));
+    return false;
+  }
+
   const presented = req.headers['x-internal-gateway-secret'];
   const expectedBuf = Buffer.from(cfg.bffInternalSecret);
   const presentedStr = typeof presented === 'string' ? presented : '';
@@ -857,6 +869,14 @@ httpServer.listen(config.port, config.host, () => {
   console.log(`[GW] RFC 9728 + HTTP MCP ingress — POST /mcp  http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${config.port}/.well-known/oauth-protected-resource`);
 });
 
-process.on('SIGINT', () => { httpServer.close(); process.exit(0); });
-process.on('SIGTERM', () => { httpServer.close(); process.exit(0); });
+// WR-05: graceful drain. httpServer.close() is async — exiting on the next
+// line killed in-flight tool calls (a create_transfer mid-flight is an
+// ambiguous financial outcome). Exit from the close callback, with an
+// unref'd hard-kill safety timer so a stalled drain still terminates.
+function shutdown(): void {
+  httpServer.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 10_000).unref();
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 })();
