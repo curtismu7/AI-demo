@@ -98,7 +98,16 @@ class LangChainMCPApplication:
             # Initialize session manager
             logger.info("Initializing session manager...")
             self.session_manager = SessionManager(self.config)
-            
+            # CR-01: start the periodic cleanup loop. Without this, _sessions /
+            # _session_messages / _user_sessions accumulate forever — the
+            # session_timeout_minutes config is silently inert.
+            await self.session_manager.start()
+
+            # CR-01: same for ConversationMemory cleanup (lives on the agent).
+            # Without start_cleanup_task(), _sessions / _messages /
+            # _langchain_memories grow unbounded for the process lifetime.
+            await self.agent.conversation_memory.start_cleanup_task()
+
             # Initialize WebSocket handler
             logger.info("Initializing WebSocket handler...")
             self.websocket_handler = ChatWebSocketHandler(self.config)
