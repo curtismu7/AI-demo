@@ -47,7 +47,22 @@ function resolveTokenEndpoint(): string {
   return required('PINGONE_TOKEN_ENDPOINT');
 }
 
+const VALID_LLM_PROVIDERS: ReadonlyArray<AgentConfig['llmProvider']> = [
+  'openai',
+  'anthropic',
+  'none',
+];
+
 export function loadConfig(): AgentConfig {
+  // IN-01: fail fast at startup on a typo'd LLM_PROVIDER (e.g. "Anthropic")
+  // rather than silently mis-routing and only throwing "Unknown LLM
+  // provider" deep in runAgentTask at request time.
+  const llmProviderRaw = optional('LLM_PROVIDER', 'none');
+  if (!VALID_LLM_PROVIDERS.includes(llmProviderRaw as AgentConfig['llmProvider'])) {
+    throw new Error(
+      `Invalid LLM_PROVIDER: "${llmProviderRaw}" — must be one of ${VALID_LLM_PROVIDERS.join(' | ')}`,
+    );
+  }
   return {
     port: parseInt(process.env.PORT || '3006', 10),
     // :3006 is loopback-only per REGRESSION_PLAN §3. Default to 127.0.0.1 so a
@@ -59,7 +74,7 @@ export function loadConfig(): AgentConfig {
     tokenEndpoint: resolveTokenEndpoint(),
     mcpGatewayWsUrl: optional('MCP_GATEWAY_WS_URL', 'ws://localhost:3005'),
     mcpGatewayResourceUri: required('MCP_GW_RESOURCE_URI'),
-    llmProvider: (optional('LLM_PROVIDER', 'none') as AgentConfig['llmProvider']),
+    llmProvider: llmProviderRaw as AgentConfig['llmProvider'],
     llmApiKey: optional('LLM_API_KEY', ''),
     llmModel: optional('LLM_MODEL', 'claude-sonnet-4.6'),
     usePkiCreds: optional('USE_PKI_AGENT_CREDS', 'false') === 'true',

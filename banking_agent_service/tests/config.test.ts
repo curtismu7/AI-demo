@@ -42,4 +42,26 @@ describe('loadConfig host default', () => {
     withRequiredEnv();
     expect(loadConfig().port).toBe(3006);
   });
+
+  // IN-01: a typo'd LLM_PROVIDER must fail fast at loadConfig() rather than
+  // silently mis-routing and only throwing deep in runAgentTask.
+  it('throws at startup on an invalid LLM_PROVIDER', () => {
+    withRequiredEnv();
+    process.env.LLM_PROVIDER = 'Anthropic'; // capital A — common typo
+    expect(() => loadConfig()).toThrow(/Invalid LLM_PROVIDER/);
+  });
+
+  it('accepts valid LLM_PROVIDER values', () => {
+    withRequiredEnv();
+    for (const p of ['openai', 'anthropic', 'none']) {
+      process.env.LLM_PROVIDER = p;
+      expect(loadConfig().llmProvider).toBe(p);
+    }
+  });
+
+  it('defaults LLM_PROVIDER to none when unset', () => {
+    withRequiredEnv();
+    delete process.env.LLM_PROVIDER;
+    expect(loadConfig().llmProvider).toBe('none');
+  });
 });
