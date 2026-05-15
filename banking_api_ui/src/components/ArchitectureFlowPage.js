@@ -136,12 +136,13 @@ const NODE_TYPES = { arch: ArchNode };
 const INITIAL_NODES = [
   { id: 'user',         type: 'arch', position: { x: 20,  y: 180 }, data: { label: 'User',          icon: '👤',  colorClass: '' } },
   { id: 'chatbot',      type: 'arch', position: { x: 140, y: 180 }, data: { label: 'Chatbot',       label2: 'UI',                icon: '💬', colorClass: '' } },
-  { id: 'agent',        type: 'arch', position: { x: 270, y: 180 }, data: { label: 'Agent',        label2: 'Digital Asst',     icon: '🤖',  colorClass: '' } },
+  { id: 'agent',        type: 'arch', position: { x: 270, y: 180 }, data: { label: 'Agent',        label2: 'BFF LangGraph (default)', icon: '🤖',  colorClass: '' } },
   { id: 'llm',          type: 'arch', position: { x: 270, y: 310 }, data: { label: 'LLM',          label2: 'Claude',           icon: '🧠',  colorClass: '' } },
   { id: 'idp-oauth-as', type: 'arch', position: { x: 460, y: 30  }, data: { label: 'Your IdP',     label2: 'OAuth AS / SSO',   icon: '🏛️',  colorClass: '' } },
   { id: 'pingauthorize',type: 'arch', position: { x: 650, y: 30  }, data: { label: 'PingAuthorize',label2: 'Fine-grained AZ',  icon: '⚖️',  colorClass: '' } },
-  { id: 'mcp-gw',       type: 'arch', position: { x: 650, y: 180 }, data: { label: 'Agent Gw',     label2: 'Auth + Route',     icon: '🔀',  colorClass: '' } },
-  { id: 'mcp-server',   type: 'arch', position: { x: 650, y: 310 }, data: { label: 'MCP Server',   label2: 'banking_mcp',     icon: '🛠️',  colorClass: '' } },
+  { id: 'mcp-gw',       type: 'arch', position: { x: 650, y: 180 }, data: { label: 'Agent Gw',     label2: 'banking_mcp_gateway :3005', icon: '🔀',  colorClass: '' } },
+  { id: 'mcp-server',   type: 'arch', position: { x: 650, y: 310 }, data: { label: 'MCP Server',   label2: 'banking_mcp_server :8080', icon: '🛠️',  colorClass: '' } },
+  { id: 'mcp-invest',   type: 'arch', position: { x: 650, y: 440 }, data: { label: 'MCP Invest',   label2: 'banking_mcp_invest :8081', icon: '🛠️',  colorClass: '' } },
   { id: 'banking-api',  type: 'arch', position: { x: 840, y: 120 }, data: { label: 'Banking API',  label2: 'OAuth bearer',     icon: '🏦',  colorClass: '' } },
   // Aspirational: a 3rd-party / legacy backend that takes an API key instead
   // of an OAuth bearer. The Gateway swaps in the key when forwarding; the
@@ -152,7 +153,7 @@ const INITIAL_NODES = [
   // Both paths B and C terminate here; Path C reads from SQLite.
   { id: 'banking-resource-server', type: 'arch', position: { x: 840, y: 360 }, data: { label: 'banking_resource_server', label2: '/identity · /accounts · /transactions', icon: null, colorClass: '', aspirational: false } },
   { id: 'sqlite-banking-db', type: 'arch', position: { x: 1040, y: 360 }, data: { label: 'SQLite', label2: 'banking-resource-server.db', icon: null, colorClass: '', aspirational: false, shape: 'cylinder' } },
-  { id: 'hitl',         type: 'arch', position: { x: 140, y: 310 }, data: { label: 'HITL',         label2: 'Manual Approval',  icon: '🧑‍⚖️', colorClass: '' } },
+  { id: 'hitl',         type: 'arch', position: { x: 140, y: 310 }, data: { label: 'HITL Service', label2: 'banking_hitl_service :3009', icon: '🧑‍⚖️', colorClass: '' } },
 ];
 
 const B = { stroke: '#cbd5e1', strokeWidth: 1 };
@@ -167,11 +168,12 @@ const INITIAL_EDGES = [
   { id: 'idp-agent',     source: 'idp-oauth-as',target: 'agent',        style: B, label: 'Token' },
   { id: 'agent-idp',     source: 'agent',       target: 'idp-oauth-as', style: B, label: 'RFC 8693' },
   { id: 'agent-llm',     source: 'agent',       target: 'llm',          style: B },
-  { id: 'agent-mcp',     source: 'agent',       target: 'mcp-gw',       style: B, label: 'MCP call' },
+  { id: 'agent-mcp',     source: 'agent',       target: 'mcp-gw',       style: B, label: 'MCP call (via gateway when MCP_GATEWAY_HTTP_URL set; else direct WS to :8080)' },
   { id: 'mcp-authz',     source: 'mcp-gw',      target: 'pingauthorize',style: B, label: 'Authz check' },
   { id: 'authz-idp',     source: 'pingauthorize',target: 'idp-oauth-as', style: B, label: 'Introspect' },
   { id: 'mcp-gw-idp',    source: 'mcp-gw',      target: 'idp-oauth-as', style: B, label: 'RFC 8693' },
-  { id: 'mcp-gw-server', source: 'mcp-gw',      target: 'mcp-server',   style: B, label: 'Proxy' },
+  { id: 'mcp-gw-server', source: 'mcp-gw',      target: 'mcp-server',   style: B, label: 'Proxy (OLB tools)' },
+  { id: 'mcp-gw-invest', source: 'mcp-gw',      target: 'mcp-invest',   style: { stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '5 3' }, label: 'Proxy (investment tools)' },
   { id: 'mcp-server-api',source: 'mcp-server',  target: 'banking-api',  style: B, label: 'REST call' },
   { id: 'rs-idp',        source: 'banking-api', target: 'idp-oauth-as', style: B, label: 'Introspect' },
   // Aspirational: Gateway forwards a tool call to a 3rd-party API by swapping

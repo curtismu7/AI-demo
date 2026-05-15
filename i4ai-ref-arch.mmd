@@ -14,8 +14,13 @@ sequenceDiagram
     participant PID as Ping Identity IDM/IAM
     participant AG as Agent Gateway
     participant PA as Ping Authorize
-    participant MCP as MCP
+    participant HITL as HITL Service (banking_hitl_service)
+    participant MCP as MCP OLB (banking_mcp_server)
+    participant INV as MCP Invest (banking_mcp_invest)
     participant RS as Resource Server (OAuth 2.1)
+
+    Note over A: Agent = BFF in-process LangGraph agent, default, /api/banking-agent.<br/>banking_agent_service port 3006 and langchain_agent port 8888 are optional alternatives.
+    Note over AG: Agent Gateway hop (banking_mcp_gateway port 3005) is active when<br/>MCP_GATEWAY_HTTP_URL is set, otherwise BFF calls banking_mcp_server port 8080 directly.
 
     Note over U,CB: User submits prompt (two paths)
     Note over U,CB: Path A: Click chip (e.g., "Balance") → Heuristic fast path<br/>Path B: Type natural language → Heuristic + LLM path
@@ -77,7 +82,15 @@ sequenceDiagram
     PA->>PID: "[30. Authorize → PingOne] Introspect TX token"
     PID-->>PA: "[31. PingOne → Authorize] Token claims (sub, act, aud, scope)"
     Note over PA: Validate: aud, scope: balance,<br/>tool call details vs. policy
-    PA-->>AG: "[32. Authorize → Gateway] Permit"
+    alt High-risk tool (e.g. create_transfer) — consent required
+        PA-->>AG: "[32a. Authorize → Gateway] INDETERMINATE — human consent required"
+        AG->>HITL: "[32b. Gateway → HITL] POST /challenges (create consent challenge)"
+        HITL-->>CB: "[32c. HITL → Chatbot] Out-of-band consent prompt (428 Precondition Required)"
+        CB-->>HITL: "[32d. Chatbot → HITL] User approves (OTP) → /challenges/:id/respond"
+        HITL-->>AG: "[32e. HITL → Gateway] Approved — proceed"
+    else Low-risk tool (e.g. check_balance) — auto-permit
+        PA-->>AG: "[32. Authorize → Gateway] Permit"
+    end
     Note over AG,PID: Phase 266 R2 — Gateway credential disposition branches
     Note over AG: Three paths diverge here based on tool disposition:
     Note over AG: Path A (api_key): Bearer dropped, X-API-Key injected — no backend call, info page returned
@@ -101,7 +114,8 @@ sequenceDiagram
     Note over AG,PID: Exchange token for MCP (standard path continues below)
     AG->>PID: "[33. Gateway → PingOne] Token exchange (subject_token: TX token, aud: mcp)"
     PID-->>AG: "[34. PingOne → Gateway] MCP token (sub: user, act: {sub: agent1}, aud: mcp, scope: balance)"
-    AG->>MCP: "[35. Gateway → MCP] tools/call check_balance (JSON-RPC) with MCP token"
+    Note over AG,INV: Gateway routes by tool — OLB tools (check_balance, create_transfer) go to MCP OLB,<br/>investment tools (get_portfolio, get_holdings) go to MCP Invest. check_balance shown below.
+    AG->>MCP: "[35. Gateway → MCP OLB] tools/call check_balance (JSON-RPC) with MCP token"
     Note over MCP,PID: Exchange token for Resource Server
     MCP->>PID: "[36. MCP → PingOne] Token exchange (subject_token: MCP token, aud: resource-server)"
     PID-->>MCP: "[37. PingOne → MCP] RS token (sub: user, act: {sub: agent1}, aud: resource-server, scope: balance)"

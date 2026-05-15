@@ -91,22 +91,22 @@ runtime switchable"]
     end
 
     %% ── LangChain Agent ───────────────────────────────────────────────────────
-    subgraph Agent["langchain_agent  (Python · FastAPI + WS)"]
-        FastAPI["HTTP API + chat WebSocket\n(WEBSOCKET_PORT)"]
-        HealthInsp["Health :8081\n/health · /inspector/mcp-host"]
-        LangChain["LangChain agent\nstreaming · tool calls"]
-        MCPClientPy["MCP Client\nWebSocket JSON-RPC + Bearer"]
+    subgraph Agent["langchain_agent  (Python · uvicorn :8888 · chat WS :8889 · health :8890)"]
+        FastAPI["uvicorn HTTP :8888<br/>chat WebSocket :8889"]
+        HealthInsp["Health :8890<br/>/health · /inspector/mcp-host"]
+        LangChain["LangChain agent<br/>streaming · tool calls"]
+        MCPClientPy["MCP Client<br/>WebSocket JSON-RPC + Bearer"]
     end
 
     %% ── MCP Gateway (Phase 243 + 266) ──────────────────────────────────
-    subgraph Gateway["banking_mcp_gateway  (TypeScript · port 3005)"]
+    subgraph Gateway["banking_mcp_gateway  (TypeScript · port 3005 · active when MCP_GATEWAY_HTTP_URL set; else BFF → MCP :8080 direct)"]
         direction TB
         GwProxy["Policy-aware credential broker<br/>RFC 8693 chained exchange<br/>Paths A api_key - B dual_token - C oauth_bearer"]
         GwAuthorize["pingAuthorizeGuard.ts<br/>per-tool-call PDP evaluation"]
     end
 
     %% ── Additional Node services ───────────────────────────────────────
-    AgentService["banking_agent_service<br/>TypeScript LangGraph agent :3006"]
+    AgentService["banking_agent_service<br/>TypeScript LangGraph agent :3006<br/>(optional alternative — default agent is<br/>in-process BFF LangGraph /api/banking-agent)"]
     MCPInvestSvc["banking_mcp_invest<br/>Investment MCP server :8081"]
     MortgageSvc["banking_mortgage_service<br/>Phase 266 Path A backend :8082<br/>X-API-Key gated"]
     HITLSvc["banking_hitl_service<br/>Out-of-band consent :3009"]

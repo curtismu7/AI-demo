@@ -168,6 +168,12 @@ export default function Phase266ArchitecturePage() {
           One Gateway, three credential mechanisms. Live Mermaid render — matches the
           diagram approved before execution.
         </p>
+        <p className="p266-arch-subtitle">
+          Scope: this view is intentionally limited to the Phase 266 credential-disposition
+          paths. The investment MCP server (banking_mcp_invest) and HITL consent service
+          (banking_hitl_service) are out of scope here — see the Flow and Token Flow pages
+          for those.
+        </p>
       </header>
 
       <section className="p266-arch-legend-row">
