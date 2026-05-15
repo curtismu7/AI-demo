@@ -61,6 +61,12 @@ class MCPConnection(MCPClient):
         self._available_tools: List[str] = []
         self._tool_schemas: Dict[str, Dict[str, Any]] = {}
         self._connection_lock = asyncio.Lock()
+        # Serialize send/recv on the shared WebSocket. The JSON-RPC over WS
+        # protocol has no client-side id->future dispatcher here, so two
+        # concurrent send/recv pairs on the same socket would interleave and
+        # deliver the wrong response to the wrong caller. Hold this lock for
+        # the duration of each request/response round-trip.
+        self._io_lock = asyncio.Lock()
         self._agent_token: Optional[str] = None  # Used as Authorization header on (re)connect
         
         logger.info(f"Initialized MCP connection for server: {server_config.name}")
@@ -201,13 +207,17 @@ class MCPConnection(MCPClient):
             logger.debug(f"Agent token present: {tool_call.agent_token is not None}")
             logger.debug(f"User auth code present: {tool_call.user_auth_code is not None}")
             
-            # Send message and wait for response
-            await self._websocket.send(json.dumps(message))
-            logger.debug(f"Sent message to MCP server, waiting for response...")
-            
-            response_data = await self._websocket.recv()
+            # Send message and wait for response. Hold _io_lock so concurrent
+            # call_tool() invocations on this connection don't interleave their
+            # send/recv pairs (which would deliver the wrong response to the
+            # wrong caller — see _io_lock comment in __init__).
+            async with self._io_lock:
+                await self._websocket.send(json.dumps(message))
+                logger.debug(f"Sent message to MCP server, waiting for response...")
+
+                response_data = await self._websocket.recv()
             logger.debug(f"Received raw response: {response_data}")
-            
+
             response = json.loads(response_data)
             logger.info(f"Received tools/call response from {self.server_config.name}: {response}")
             
@@ -301,11 +311,12 @@ class MCPConnection(MCPClient):
                 "challenge_type": challenge.challenge_type,
                 "state": challenge.state
             }
-            
-            await self._websocket.send(json.dumps(message))
-            response_data = await self._websocket.recv()
+
+            async with self._io_lock:
+                await self._websocket.send(json.dumps(message))
+                response_data = await self._websocket.recv()
             response = json.loads(response_data)
-            
+
             return response
             
         except Exception as e:
