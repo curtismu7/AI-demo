@@ -578,7 +578,7 @@ class UserAuthorizationFacilitator:
         self,
         auth_code: str,
         state: str,
-        session_id: Optional[str] = None,
+        session_id: str,
     ) -> Dict[str, Any]:
         """
         Handle authorization callback and prepare data for MCP server.
@@ -586,30 +586,40 @@ class UserAuthorizationFacilitator:
         Args:
             auth_code: The authorization code from the callback
             state: The state parameter from the callback
-            session_id: Optional connection-bound session ID. When provided,
-                validate_state() is invoked to enforce that the state was
-                issued for this exact session — closes the CSRF/replay
-                window flagged in BL-03. When None, only the existence +
-                expiry checks run (legacy callers).
+            session_id: Connection-bound session ID. REQUIRED. validate_state()
+                enforces that the state was issued for this exact session,
+                closing the CSRF/replay window flagged in BL-03.
 
         Returns:
             Dict containing authorization info for the MCP server
 
         Raises:
-            ValueError: If state is invalid, expired, or (when session_id
-                is supplied) doesn't match the issuing session.
+            ValueError: If session_id is missing/empty, or if state is
+                invalid, expired, or doesn't match the issuing session.
         """
-        # BL-03: when caller can supply session_id, run validate_state() FIRST
-        # so a mismatching session is rejected before we even peek at the
-        # stored auth_info. validate_state has the side-effect of deleting
-        # expired entries; calling it here keeps that contract.
-        if session_id is not None:
-            if not self.validate_state(state, session_id):
-                logger.error(
-                    f"State validation failed in callback "
-                    f"(state={state!r}, session={session_id!r})"
-                )
-                raise ValueError("Invalid, expired, or session-mismatched state parameter")
+        # IN-06: session_id is mandatory. The prior `Optional[str] = None`
+        # signature made BL-03 session-binding validation OPT-IN — any caller
+        # that omitted session_id (or passed None) silently fell through to
+        # existence+expiry only, i.e. zero CSRF protection on the public API.
+        # Reject the no-session path outright rather than silent-passing it;
+        # this is the same identity-hardening posture as Path A / WR-11.
+        if not session_id:
+            logger.error(
+                "handle_authorization_callback called without a session_id — "
+                "refusing (BL-03 session binding is mandatory)"
+            )
+            raise ValueError("session_id is required for authorization callback")
+
+        # BL-03: run validate_state() FIRST so a mismatching session is
+        # rejected before we even peek at the stored auth_info. validate_state
+        # has the side-effect of deleting expired entries; calling it here
+        # keeps that contract.
+        if not self.validate_state(state, session_id):
+            logger.error(
+                f"State validation failed in callback "
+                f"(state={state!r}, session={session_id!r})"
+            )
+            raise ValueError("Invalid, expired, or session-mismatched state parameter")
 
         # Validate state parameter
         if state not in self._pending_authorizations:
@@ -976,7 +986,7 @@ class OAuthAuthenticationManager(AuthenticationProvider):
         self,
         auth_code: str,
         state: str,
-        session_id: Optional[str] = None,
+        session_id: str,
     ) -> Dict[str, Any]:
         """
         Handle authorization callback and prepare data for MCP server.
@@ -984,9 +994,9 @@ class OAuthAuthenticationManager(AuthenticationProvider):
         Args:
             auth_code: The authorization code from the callback
             state: The state parameter from the callback
-            session_id: Optional connection-bound session ID. When provided,
-                forwarded to the facilitator so validate_state() enforces a
-                session-binding check (BL-03).
+            session_id: Connection-bound session ID. REQUIRED (IN-06).
+                Forwarded to the facilitator so validate_state() enforces the
+                BL-03 session-binding check; a missing session_id is rejected.
 
         Returns:
             Dict containing authorization info for the MCP server

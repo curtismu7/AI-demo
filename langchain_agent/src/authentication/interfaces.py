@@ -74,13 +74,14 @@ class UserAuthorizationFacilitator(ABC):
         self,
         auth_code: str,
         state: str,
-        session_id: Optional[str] = None,
+        session_id: str,
     ) -> Dict[str, Any]:
         """Handle authorization callback and prepare data for MCP server.
 
-        When session_id is provided, the implementation MUST invoke
+        session_id is REQUIRED (IN-06). The implementation MUST invoke
         validate_state(state, session_id) before exchanging the auth code
-        (BL-03 — closes the CSRF/replay window on the OAuth callback).
+        (BL-03 — closes the CSRF/replay window on the OAuth callback) and
+        MUST reject a missing/empty session_id rather than silent-passing.
         """
         pass
     

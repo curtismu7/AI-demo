@@ -143,7 +143,9 @@ class TestCallbackForwardsVerifier:
         state = params["state"][0]
         expected_verifier = facilitator._pending_authorizations[state]["code_verifier"]
 
-        auth_data = facilitator.handle_authorization_callback("the-auth-code", state)
+        auth_data = facilitator.handle_authorization_callback(
+            "the-auth-code", state, session_id="session-123"
+        )
 
         assert auth_data["code_verifier"] == expected_verifier
         assert params["code_challenge"][0] == _expected_challenge(
@@ -166,14 +168,18 @@ class TestCallbackForwardsVerifier:
         state = _params(auth_url)["state"][0]
 
         # First consumption succeeds and forwards the verifier.
-        first = facilitator.handle_authorization_callback("code-1", state)
+        first = facilitator.handle_authorization_callback(
+            "code-1", state, session_id="session-123"
+        )
         assert first["code_verifier"]
 
         # State (and its verifier) are consumed — a replay must be rejected,
         # so the verifier can never be reused for a second exchange.
         assert state not in facilitator._pending_authorizations
-        with pytest.raises(ValueError, match="Invalid or expired state parameter"):
-            facilitator.handle_authorization_callback("code-2", state)
+        with pytest.raises(ValueError, match="Invalid, expired, or session-mismatched state parameter"):
+            facilitator.handle_authorization_callback(
+                "code-2", state, session_id="session-123"
+            )
 
     def test_session_bound_callback_still_forwards_verifier(self, mock_config):
         """BL-03 session-binding path must also surface the verifier."""
