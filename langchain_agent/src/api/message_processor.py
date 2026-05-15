@@ -150,12 +150,16 @@ class MessageProcessor:
                 )
                 return
             
-            # Create authorization code object
+            # Create authorization code object. PingOne issues authorization
+            # codes with a default TTL of 10 minutes; mirror that on the
+            # client object so AuthorizationCode.is_expired() doesn't
+            # short-circuit immediately. The MCP server still does the
+            # authoritative validation against the IdP.
             auth_code_obj = AuthorizationCode(
                 code=auth_code,
                 state=state,
                 session_id=session_id,
-                expires_at=datetime.now(timezone.utc)  # Will be validated by MCP server
+                expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
             )
             
             # Queue auth response for processing
