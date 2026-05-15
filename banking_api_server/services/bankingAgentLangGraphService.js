@@ -22,7 +22,8 @@ async function _callTransactionsApi(body, userToken) {
   const PORT = process.env.PORT || 3001;
   const certFile = path.join(__dirname, '../certs/api.ping.demo+2.pem');
   const useHttps = fs.existsSync(certFile);
-  const baseUrl = `${useHttps ? 'https' : 'http'}://localhost:${PORT}`;
+  const host = 'localhost';
+  const baseUrl = `${useHttps ? 'https' : 'http'}://${host}:${PORT}`;
   const config = {
     method: 'POST',
     url: `${baseUrl}/api/transactions`,
@@ -30,7 +31,21 @@ async function _callTransactionsApi(body, userToken) {
     data: body,
     validateStatus: () => true,
   };
-  if (useHttps) config.httpsAgent = new https.Agent({ rejectUnauthorized: false });
+  if (useHttps) {
+    // CR-04: Default to TLS verification ON. Previously this passed
+    // `rejectUnauthorized: false` unconditionally, sending a PingOne bearer
+    // over an unverified TLS channel. mkcert installs the local CA, so the
+    // default agent verifies api.ping.demo / localhost loopback certs fine.
+    //
+    // Dev escape hatch (mirrors BL-04 in agentMcpTokenService._resolveFinalMcpAudience):
+    // only relax verification when NODE_ENV is non-production AND the target
+    // is a loopback hostname. Production hard-ignores the flag.
+    const isProd = process.env.NODE_ENV === 'production';
+    const isLoopback = host === 'localhost' || host === '127.0.0.1';
+    if (!isProd && isLoopback) {
+      config.httpsAgent = new https.Agent({ rejectUnauthorized: false });
+    }
+  }
   return axios(config);
 }
 
