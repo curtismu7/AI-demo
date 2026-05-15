@@ -17,6 +17,7 @@
 import axios from 'axios';
 import { routeTool, backendResourceUri } from '../router';
 import type { GatewayConfig } from '../config';
+import { cacheInsertWithEviction } from '../boundedTokenCache';
 
 export interface ExchangeResult {
   token: string;
@@ -36,18 +37,7 @@ function cacheKey(subjectToken: string, targetAud: string): string {
 }
 
 function _cacheInsertWithEviction(key: string, value: { token: string; expiresAt: number }): void {
-  if (_cache.size >= MCP_EXCHANGE_CACHE_MAX) {
-    const now = Date.now();
-    for (const [k, v] of _cache) {
-      if (v.expiresAt <= now) _cache.delete(k);
-    }
-    while (_cache.size >= MCP_EXCHANGE_CACHE_MAX) {
-      const oldestKey = _cache.keys().next().value;
-      if (oldestKey === undefined) break;
-      _cache.delete(oldestKey);
-    }
-  }
-  _cache.set(key, value);
+  cacheInsertWithEviction(_cache, key, value, MCP_EXCHANGE_CACHE_MAX);
 }
 
 export class McpTokenExchangeClient {

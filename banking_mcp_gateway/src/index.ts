@@ -36,7 +36,11 @@ import { getScopesForGatewayTool, getChallengeTypeForTool } from './auth/toolSco
 import { GatewayIntrospectionClient } from './auth/GatewayIntrospectionClient';
 import { runMcpAuthorizationPipeline } from './auth/authorizeMcpRequestCore';
 import { loadVaultIntoEnv } from './vault';
-import { applyAdminConfigUpdate, ADMIN_CONFIG_ALLOWED_KEYS } from './adminConfig';
+import {
+  applyAdminConfigUpdate,
+  ADMIN_CONFIG_ALLOWED_KEYS,
+  adminConfigSafeView,
+} from './adminConfig';
 
 // Phase 269 Plan 04: load encrypted vault entries into process.env BEFORE
 // loadConfig() runs. The vault populates MCP_GW_*, PROVIDER_*, HELIX_*, and
@@ -234,17 +238,10 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
   // are useful reconnaissance for an attacker.
   if (url === '/admin/config' && req.method === 'GET') {
     if (!requireInternalSecret(req, res, config)) return;
-    const safe = {
-      gatewayResourceUri:    config.gatewayResourceUri,
-      mcpOlbWsUrl:           config.mcpOlbWsUrl,
-      mcpInvestWsUrl:        config.mcpInvestWsUrl,
-      mcpOlbResourceUri:     config.mcpOlbResourceUri,
-      mcpInvestResourceUri:  config.mcpInvestResourceUri,
-      pingAuthorizeEndpoint: config.pingAuthorizeEndpoint,
-      pingAuthorizeWorkerId: config.pingAuthorizeWorkerId,
-      hitlServiceUrl:        config.hitlServiceUrl,
-      devBypass:             config.devBypass,
-    };
+    // IN-01: reuse the single safe-config projection from adminConfig.ts
+    // (also used by the POST echo) so the two views cannot drift and a
+    // future allowed-key addition cannot leak a secret here independently.
+    const safe = adminConfigSafeView(config);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(safe));
     return;
@@ -906,7 +903,9 @@ const httpServer = gatewayServer.httpServer;
 // the same defenses the HTTP transport has via GatewayServer.validateCors.
 // Without these, a 100 MB JSON-RPC frame can hang Node parsing it and
 // any cross-origin browser can open the WS.
-const _wsAcceptedOriginsRe = new RegExp(process.env.MCP_ACCEPTED_ORIGINS ?? '.*');
+// IN-05: anchored with ^(?:...)$ so a tightened MCP_ACCEPTED_ORIGINS matches
+// the full Origin, not a substring (parity with GatewayServer.validateCors).
+const _wsAcceptedOriginsRe = new RegExp(`^(?:${process.env.MCP_ACCEPTED_ORIGINS ?? '.*'})$`);
 const WS_MAX_PAYLOAD_BYTES = Number(process.env.MCP_WS_MAX_PAYLOAD_BYTES ?? 1024 * 1024); // 1 MB default
 
 const wss = new WebSocket.Server({

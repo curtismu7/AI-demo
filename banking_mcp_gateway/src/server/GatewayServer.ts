@@ -86,7 +86,10 @@ export class GatewayServer {
     ).replace(/\/$/, '');
     this.middleware = requestMiddleware ?? defaultMiddleware;
     // McpValidationFilter equivalent: accepted origins for CORS (default: allow all)
-    this.acceptedOriginsRe = new RegExp(process.env.MCP_ACCEPTED_ORIGINS ?? '.*');
+    // IN-05: anchor with ^(?:...)$ so an operator who tightens the value to
+    // e.g. `https://app.example.com` gets exact-origin semantics — an
+    // unanchored .test() would also match `https://app.example.com.evil.test`.
+    this.acceptedOriginsRe = new RegExp(`^(?:${process.env.MCP_ACCEPTED_ORIGINS ?? '.*'})$`);
     // TLS: use https if cert/key are provided via env or certs/ directory
     const certEnv = process.env.GW_TLS_CERT;
     const keyEnv = process.env.GW_TLS_KEY;
@@ -323,8 +326,21 @@ export class GatewayServer {
           timeout: parseInt(process.env.GW_UPSTREAM_TIMEOUT_MS || '30000', 10),
         },
         (upstreamRes: IncomingMessage) => {
+          // IN-06: mirror the deliberately-filtered POST allow-list
+          // (forwardToUpstream). Do NOT copy upstream headers verbatim —
+          // hop-by-hop headers (connection / transfer-encoding / keep-alive)
+          // and any upstream set-cookie/server must not cross the proxy.
           const upstreamHeaders = upstreamRes.headers as Record<string, string | string[]>;
-          res.writeHead(upstreamRes.statusCode ?? 200, upstreamHeaders);
+          const sseHeaders: Record<string, string> = {
+            'Content-Type': String(upstreamHeaders['content-type'] || 'text/event-stream'),
+          };
+          const sid = upstreamHeaders[MCP_SESSION_HEADER] as string | undefined;
+          if (sid) sseHeaders[MCP_SESSION_HEADER] = sid;
+          const cacheCtl = upstreamHeaders['cache-control'] as string | undefined;
+          if (cacheCtl) sseHeaders['Cache-Control'] = cacheCtl;
+          const wwwAuth = upstreamHeaders['www-authenticate'] as string | undefined;
+          if (wwwAuth) sseHeaders['WWW-Authenticate'] = wwwAuth;
+          res.writeHead(upstreamRes.statusCode ?? 200, sseHeaders);
           upstreamRes.pipe(res, { end: true });
           upstreamRes.on('end', resolve);
           upstreamRes.on('error', () => resolve());
@@ -424,6 +440,13 @@ export class GatewayServer {
   // to obtain a session ID, then forwards the actual request.
   // ---------------------------------------------------------------------------
 
+  // IN-04: each forward is a fresh axios request on the default agent (no
+  // keepAlive pool, no maxSockets cap), mirroring the per-call WS model in
+  // proxy.ts. This is intentional for demo scale — the stateless
+  // one-connection-per-call model keeps the proxy reasoning simple and the
+  // backend is loopback. If this is ever load-bearing, an
+  // http.Agent({ keepAlive: true, maxSockets }) here is the cheapest first
+  // step; not built now to avoid speculative complexity.
   private async forwardToUpstream(
     req: IncomingMessage,
     res: ServerResponse,
