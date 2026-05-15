@@ -91,11 +91,25 @@ Two call sites implement this with the same `!== 'false'` flag read and the same
   input still has the heuristic as the deterministic fallback downstream.
 
 LLM provider order when the heuristic doesn't answer: **Helix is the default
-provider; Ollama is OFF by default.** The intended path is **heuristic → Helix**.
-`agentBuilder.js` selects `langchainConfig?.provider || 'helix'` — Ollama is used
-only when a session explicitly selects it. Do not describe the flow as
-"heuristic → Ollama"; Ollama is opt-in local inference, not the default
-fallback.
+provider; Ollama is OFF by default.** The intended path is **heuristic → Helix
+→ (Ollama only if explicitly selected AND configured)**. Do not describe the
+flow as "heuristic → Ollama"; Ollama is opt-in local inference, never a silent
+default and never an automatic fallback. If Ollama is selected but not
+configured/reachable, resolution falls back to Helix, not to a dead Ollama
+call.
+
+**Single-resolver enforcement (binding as the agent-consolidation spec lands).**
+Provider resolution must be computed in **exactly one** BFF-side function
+(`banking_api_server/services/llmProviderResolver.js` — `Heuristic → Helix →
+Ollama-only-if-configured`). Every LLM path calls it; **no path may inline a
+provider default** (`|| 'helix'` / `|| 'ollama'`). The agent reasoning service
+(`banking_agent_service` :3006, post-consolidation) receives the *already
+resolved* provider+model in its request payload and does **not** re-resolve —
+the BFF is the single decision point (it owns `langchainConfig`, session,
+configStore). Historic drift this corrects: `agentBuilder.js:162`,
+`geminiNlIntent.js:250`, and `routes/langchainConfig.js:165` each had a
+different inline default (one of them defaulted to Ollama). See
+`docs/superpowers/specs/2026-05-15-agent-consolidation-design.md` §5.
 
 **Naive reading that is wrong:** "`ff_heuristic_enabled=false` turns the
 heuristic off." It does not. It changes precedence; the heuristic remains the
