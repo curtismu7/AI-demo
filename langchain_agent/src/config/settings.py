@@ -339,7 +339,7 @@ class ConfigManager:
             model_name=get_env_value("LANGCHAIN_MODEL_NAME", "gpt-3.5-turbo"),
             temperature=float(get_env_value("LANGCHAIN_TEMPERATURE", "0.7")),
             max_tokens=int(get_env_value("LANGCHAIN_MAX_TOKENS", "1000")),
-            openai_api_key=self._get_required_env("OPENAI_API_KEY", file_config, defaults),
+            openai_api_key=get_env_value("OPENAI_API_KEY", ""),
             verbose=get_env_value("LANGCHAIN_VERBOSE", "false").lower() == "true",
             max_iterations=int(get_env_value("LANGCHAIN_MAX_ITERATIONS", "10")),
             max_execution_time=int(get_env_value("LANGCHAIN_MAX_EXECUTION_TIME", "60")),
