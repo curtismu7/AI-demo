@@ -21,11 +21,32 @@ dotenv.config();
 
 import express, { Request, Response, NextFunction } from 'express';
 import { loadConfig } from './config';
+import { loadVaultIntoEnv } from './vault';
 import { resolveGatewayToken } from './tokenResolver';
 import { McpGatewayClient } from './mcpGatewayClient';
 import { runAgentTask } from './agentOrchestrator';
 
-let config;
+// Vault load MUST run (and complete) BEFORE loadConfig() reads process.env.
+// loadVaultIntoEnv is async (Argon2id KDF), so — exactly like
+// banking_mcp_gateway/src/index.ts — the entire module body is wrapped in a
+// single async IIFE. All existing logic below is byte-for-byte preserved
+// inside it. dotenv.config() stays at top-of-module (above) so .env still
+// loads first for non-secret vars; vault entries override .env per allowlist.
+let config: ReturnType<typeof loadConfig>;
+(async () => {
+try {
+  const vaultResult = await loadVaultIntoEnv();
+  if (vaultResult.loaded) {
+    console.log('[Agent vault] loaded ' + vaultResult.entries + ' entries into process.env');
+  }
+} catch (err) {
+  console.error(
+    '[Agent vault] startup load failed; refusing to start.',
+    err instanceof Error ? err.message : err,
+  );
+  process.exit(1);
+}
+
 try {
   config = loadConfig();
 } catch (err) {
@@ -133,3 +154,4 @@ app.listen(config.port, config.host, () => {
 
 process.on('SIGINT', () => process.exit(0));
 process.on('SIGTERM', () => process.exit(0));
+})();

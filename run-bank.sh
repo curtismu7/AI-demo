@@ -660,6 +660,28 @@ else
   echo "[WARN] mkcert root CA not found at expected path. Run \`mkcert -install\` once if BFF→MCP Gateway HTTPS probes fail."
 fi
 
+# ── Vault preflight (Phase 269 / agent vault-awareness follow-up) ────────────
+# The BFF, MCP Gateway, and Agent Service each load secrets from the encrypted
+# secrets.vault at startup and FAIL FAST if the vault file exists but
+# VAULT_PASSWORD is unset (REGRESSION_PLAN §1 "Vault BFF startup" /
+# "Vault Agent startup"). Without this preflight the operator would instead get
+# three separate cryptic "refusing to start" failures in three log files.
+# When no vault file exists, this is a transparent no-op — behavior is
+# byte-identical to before (the common dev case on machines with no vault).
+# Secret hygiene (T-269-27): VAULT_PASSWORD is only ever passed via the
+# subshell environment, never as a CLI arg, and is never echoed.
+VAULT_FILE="${VAULT_PATH:-$BASEDIR/secrets.vault}"
+if [[ -f "$VAULT_FILE" ]]; then
+  if [[ -z "${VAULT_PASSWORD:-}" ]]; then
+    echo "[ERROR] secrets.vault present at ${VAULT_FILE} but VAULT_PASSWORD is not set."
+    echo "        The BFF, MCP Gateway, and Agent Service will refuse to start."
+    echo "        Fix: export VAULT_PASSWORD=... before ./run-bank.sh"
+    echo "        (or remove/rename ${VAULT_FILE} to fall back to .env / process.env)."
+    exit 1
+  fi
+  echo "[VAULT] secrets.vault detected — passing VAULT_PASSWORD to vault-aware services."
+fi
+
 echo "[LAUNCH] Starting Banking API Server on ${API_HOST}:${API_PORT}..."
 (
   cd "$BASEDIR/banking_api_server"
@@ -669,6 +691,8 @@ echo "[LAUNCH] Starting Banking API Server on ${API_HOST}:${API_PORT}..."
   FRONTEND_ADMIN_URL=${CLIENT_URL}/admin \
   FRONTEND_DASHBOARD_URL=${CLIENT_URL}/dashboard \
   MCP_GATEWAY_HTTP_URL="${MCP_GATEWAY_HTTP_URL:-https://api.ping.demo:3005}" \
+  VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
+  VAULT_PATH="${VAULT_PATH:-}" \
   npm start > /tmp/bank-api-server.log 2>&1
 ) &
 echo $! > "$PID_API"
@@ -722,6 +746,8 @@ if [[ -d "$BASEDIR/banking_mcp_gateway" ]]; then
   ensure_service_env banking_mcp_gateway
   (
     cd "$BASEDIR/banking_mcp_gateway"
+    VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
+    VAULT_PATH="${VAULT_PATH:-}" \
     npm start > "${LOG_GW}" 2>&1
   ) &
   echo $! > "$PID_GW"
@@ -745,7 +771,10 @@ if [[ -d "$BASEDIR/banking_agent_service" ]]; then
   ensure_service_env banking_agent_service
   (
     cd "$BASEDIR/banking_agent_service"
-    PORT=3006 npm start > "${LOG_AGENT_SVC}" 2>&1
+    PORT=3006 \
+    VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
+    VAULT_PATH="${VAULT_PATH:-}" \
+    npm start > "${LOG_AGENT_SVC}" 2>&1
   ) &
   echo $! > "$PID_AGENT_SVC"
 fi
