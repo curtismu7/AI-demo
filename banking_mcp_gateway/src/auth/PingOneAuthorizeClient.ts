@@ -19,6 +19,7 @@
 import axios from 'axios';
 import type { DecodedGatewayToken } from '../tokenValidator';
 import type { GatewayConfig } from '../config';
+import { evaluateScopeDecisionLocally } from './toolScopes';
 
 export type AuthzDecisionOutcome = 'PERMIT' | 'DENY' | 'INDETERMINATE';
 
@@ -91,9 +92,16 @@ export class PingOneAuthorizeClient {
     toolName?: string,
     toolArgs?: ToolArgs,
   ): Promise<AuthzDecision> {
-    // No PingAuthorize configured — permit all (dev/no-authz mode)
+    // No PingAuthorize configured — apply the local scope decision so the
+    // gateway behaves the SAME as it would with a PingOne Authorize policy
+    // wired (scope-based PERMIT/DENY). Identity/transaction policy still
+    // requires PA; only the scope rule has a local equivalent.
     if (!this.config.pingAuthorizeEndpoint || !this.config.pingAuthorizeWorkerId) {
-      return { decision: 'PERMIT', reason: 'PingAuthorize not configured — permit all' };
+      const local = evaluateScopeDecisionLocally(toolName ?? '', decoded.scope);
+      if (local.decision === 'DENY') {
+        return { decision: 'DENY', reason: local.reason };
+      }
+      return { decision: 'PERMIT', reason: 'PingAuthorize not configured — local scope decision: PERMIT' };
     }
 
     const body = {

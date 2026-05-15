@@ -13,10 +13,10 @@ flowchart LR
     %%   2. There are TWO backends on the far right:
     %%        - OAuth backend (current banking_api_server): forward the
     %%          downscoped MCP token, backend introspects.
-    %%        - API-key backend (aspirational): Gateway swaps in a service
-    %%          API key when calling — backend never sees a user token.
-    %%          Drawn with a dashed border to signal "planned / reference",
-    %%          not "live today".
+    %%        - API-key backend (LIVE, Phase 267 — banking_mortgage_service
+    %%          :8082): Gateway swaps in a service API key + X-User-Sub when
+    %%          calling — backend never sees a user token. Drawn solid: this
+    %%          path is wired end-to-end today.
     %%
     %% Regenerate the PNG with:
     %%   npm run build:diagrams -- overview
@@ -52,7 +52,7 @@ flowchart LR
     MgmtAPI["PingOne Management API<br/>/v1/environments/{env}/users<br/>worker token (CC)"]
 
     %% Phase 266 R2: three credential paths from the Gateway.
-    %% Path A (api_key): Gateway-terminating swap, no backend call. RFC 6750 bearer dropped; X-API-Key injected.
+    %% Path A (api_key): RFC 6750 bearer dropped; X-API-Key + X-User-Sub injected; Gateway calls banking_mortgage_service :8082 (Phase 267, live).
     %% Path B (dual_token): Bearer + id_token forwarded to banking_resource_server /identity. RFC 8693 + RFC 8707 audience binding.
     %% Path C (oauth_bearer): RFC 8693 exchange, Bearer (new aud) to banking_resource_server /accounts /transactions.
     %% Paths B and C both terminate at the same banking_resource_server node at different routes.
@@ -61,7 +61,7 @@ flowchart LR
     subgraph Backends["Backend resource servers"]
       direction TB
       OAuthRS["OAuth backend<br/>(banking_api_server REST + MCP)<br/><br/>Accepts: downscoped MCP token<br/>Verifies: RFC 7662 introspect<br/>Pattern: standard OAuth 2.0"]
-      APIKeyRS["API-key backend<br/>(aspirational reference)<br/><br/>Accepts: X-API-Key header<br/>Verifies: shared-secret lookup<br/>Pattern: legacy / 3rd-party APIs<br/>Key injected by Gateway"]
+      APIKeyRS["API-key backend<br/>(banking_mortgage_service :8082 — LIVE)<br/><br/>Accepts: X-API-Key + X-User-Sub<br/>Verifies: constant-time shared-secret<br/>Pattern: legacy / 3rd-party APIs<br/>Key injected by Gateway (Phase 267)"]
       BankingRS["banking_resource_server<br/>/identity - /accounts - /transactions<br/><br/>Path B: Bearer + id_token (dual_token)<br/>Path C: Bearer OAuth (oauth_bearer)<br/>Validates: RFC 6750 authenticateToken"]
       SQLite["SQLite DB<br/>banking-resource-server.db<br/>(seeded from data/store.js)"]
     end
@@ -107,7 +107,7 @@ flowchart LR
 
     %% ── Permitted → forwarded with the RIGHT credential per backend ───
     Gateway -->|"RFC 8693 downscope<br/>+ MCP token"| OAuthRS
-    Gateway -.->|"X-API-Key: svc-key<br/>(no user token)"| APIKeyRS
+    Gateway -->|"X-API-Key: svc-key + X-User-Sub<br/>(no user token, Phase 267)"| APIKeyRS
 
     %% Phase 266 R2: Path B and Path C both reach banking_resource_server
     Gateway -->|"Bearer + id_token<br/>dual_token - /identity"| BankingRS

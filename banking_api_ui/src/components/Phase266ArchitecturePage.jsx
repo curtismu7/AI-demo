@@ -2,7 +2,7 @@
  * Phase266ArchitecturePage.jsx — /architecture/phase-266
  *
  * Live Mermaid render of the Phase 266 three-credential-path architecture:
- *   • Path A (api_key): Gateway-terminating, no backend call (amber)
+ *   • Path A (api_key): Gateway calls banking_mortgage_service :8082 via X-API-Key (amber, Phase 267)
  *   • Path B (dual_token): Gateway POSTs to banking_resource_server /identity (teal)
  *   • Path C (oauth_bearer): Gateway GETs banking_resource_server /accounts + /transactions (blue)
  *
@@ -59,10 +59,10 @@ const MERMAID_SOURCE = `flowchart TB
     Gateway -- "fetches id_token<br/>(server-to-server,<br/>secret-gated)" --> InternalIdToken
     InternalIdToken --> Session
 
-    Gateway == "<b>Path A: api_key</b><br/>━━━━━━━━━━━━━<br/>GET /mortgage<br/>X-API-Key: SERVICE_KEY<br/>(no OAuth bearer)" ==> MortgageService
+    Gateway == "<b>Path A: api_key</b><br/>━━━━━━━━━━━━━<br/>GET /mortgage<br/>X-API-Key: SERVICE_KEY<br/>X-User-Sub: user<br/>(no OAuth bearer)" ==> MortgageService
     MortgageService -- "mortgage record<br/>(JSON)" --> Gateway
     Gateway -- "Path A response<br/>credentialPath: api_key<br/>+ masked last4" --> SPA
-    SPA -. "fetches /api/path/mortgage<br/>via bffAxios" .-> PathInfo
+    SPA -- "navigate(/path/mortgage,<br/>state: mortgagePayload)" --> PathInfo
 
     Gateway == "<b>Path B: dual_token</b><br/>━━━━━━━━━━━━━━<br/>POST /api/resource-server/identity<br/>Authorization: Bearer EXCHANGED<br/>body: {jsonrpc, params:{idToken}}" ==> Identity
 

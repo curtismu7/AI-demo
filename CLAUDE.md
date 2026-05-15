@@ -74,11 +74,13 @@ creates the same `wrong major in this shell` confusion later.
 
 ### Node services and what each needs to start
 
-There are **seven** Node services. The naive "run `npm install` in three of them"
-approach (which the README used to recommend) leaves four services with missing
-`node_modules` or missing `dist/`, producing cryptic `MODULE_NOT_FOUND` and
+There are **eight** Node services (`banking_mortgage_service` became a live
+backend in Phase 267, wired behind the MCP Gateway's api_key disposition). The
+naive "run `npm install` in three of them" approach (which the README used to
+recommend) leaves the rest with missing `node_modules` or missing `dist/`,
+producing cryptic `MODULE_NOT_FOUND` and
 `Cannot find module '.../dist/index.js'` errors at startup. `run-bank.sh` now
-auto-installs and auto-builds all seven via the `SVC_LIST` / `SVC_BUILD` /
+auto-installs and auto-builds all eight via the `SVC_LIST` / `SVC_BUILD` /
 `SVC_INSTALL_FLAGS` parallel arrays in its dependency-check loop — keep that
 table in sync when adding a service.
 

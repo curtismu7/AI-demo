@@ -156,6 +156,80 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 **Do not break:** `_handle_chat_message` and `_handle_auth_response` MUST both derive the authenticated session from `_connection_metadata`, never from the message body — see §1 "langchain chat/auth handlers — session derived from connection metadata (BL-04)". The MCP tracer MUST stay ContextVar-scoped — see §1 "langchain MCP tracer — ContextVar-scoped".
 
+### 2026-05-15 — Phase 267: mortgage Path A wired end-to-end through MCP Gateway (api_key disposition)
+
+**Files changed:**
+- `banking_mcp_gateway/src/router.ts` — `APIKEY_TOOLS` now `{show_mortgage}` (was `{special_offers}`); `backendHttpUrl()` returns `${mortgageServiceBaseUrl}/mortgage` for `show_mortgage`, `''` for any other apikey tool (preserves Phase 266 Gateway-only marker behavior).
+- `banking_mcp_gateway/src/config.ts` — added `mortgageServiceBaseUrl` (`MORTGAGE_SERVICE_URL`, default `http://localhost:8082`) and `mortgageServiceApiKey` (`DEMO_MORTGAGE_SERVICE_KEY`, default `demo-mortgage-key-0000`, matches the mortgage service). `demoApiKeyServiceKey` left untouched.
+- `banking_mcp_gateway/src/index.ts` — apikey branch: if `backendHttpUrl` is non-empty, `axios.get` to the mortgage service with `X-API-Key` + `X-User-Sub` and returns the payload + `_meta.maskedApiKey`/`tokenEvents`. Falls through to the unchanged Phase 266 marker otherwise. **No scope logic in dispatch** — scope is an Authorize-layer decision (see below).
+- `banking_mcp_gateway/src/auth/toolScopes.ts` — added pure `missingScopesForTool()` + `evaluateScopeDecisionLocally()` (returns the same PERMIT/DENY shape a PingOne Authorize policy would).
+- `banking_mcp_gateway/src/auth/PingOneAuthorizeClient.ts` (HTTP transport) **and** `banking_mcp_gateway/src/pingAuthorizeGuard.ts` (WS transport) — the no-PA branch no longer blanket-PERMITs; it calls `evaluateScopeDecisionLocally()` so scope is enforced identically whether or not PingOne Authorize is configured, and identically across both transports.
+- `banking_api_ui/src/components/BankingAgent.js` — `mortgage_demo` now calls `callMcpTool('show_mortgage')` and navigates to `/path/mortgage` with `state.mortgagePayload`; surfaces an explicit "needs banking:mortgage:read, re-login" message on `insufficient_scope`. `api_key_demo` chip retargeted from removed `special_offers` to `show_mortgage`. NL routing source now threads into `runAction` (`opts.nlSource`) so action replies render the existing Heuristic/Helix LLM/Ollama source pill.
+- Architecture diagrams (`architecture.mmd`, `architecture-simple.mmd`, `i4ai-ref-arch.mmd`, `mcp-security-gateway.mmd`, `ArchitectureFlowPage.js`, `Phase266ArchitecturePage.jsx`, `ArchitectureTokenFlowPage.js`, `SequenceDiagramPage.js`) + regenerated PNGs — Path A flipped from "aspirational / no backend call" to the live banking_mortgage_service call.
+- Gateway test stubs updated for the two new `GatewayConfig` fields; `tests/mortgageDispatch.test.ts` added.
+
+**What was broken:** "show mortgage data" in the agent navigated to `/path/mortgage` with no payload (Phase 267 was unimplemented), so the page always showed the "Mortgage data not loaded" empty state. Separately, when the NL pipeline dispatched a banking action, the routing engine (heuristic vs Helix LLM vs Ollama) was never surfaced to the user — the source pill only appeared on conversational answers, not action replies.
+
+**What was fixed:** The gateway now performs the api_key disposition for `show_mortgage` end-to-end (Authorize PERMIT → bearer drop → X-API-Key swap → banking_mortgage_service call → payload back to the SPA), and the agent renders the result on the Mortgage page. `banking:mortgage:read` is enforced by the **Authorize layer** (PingOne Authorize policy when configured; the local `evaluateScopeDecisionLocally()` baseline when not) — not by the tool dispatch. Action replies now carry the same source pill conversational answers already had.
+
+**Do not break:**
+- **Scope enforcement is an Authorize-layer decision, never a dispatch concern.** Both transports (`PingOneAuthorizeClient.evaluate` HTTP, `guardToolCall` WS) MUST, in their no-PA branch, call `evaluateScopeDecisionLocally()` rather than blanket-PERMIT — so the gateway behaves the same with or without PingOne Authorize, and the same across HTTP/WS. Do not reintroduce scope checks into `index.ts` dispatch.
+- `evaluateScopeDecisionLocally()` must keep mirroring a PA scope policy: missing required tool scope → DENY `insufficient_scope`; otherwise PERMIT. Surfaced as `-32403`/403 with `required_scopes`.
+- `backendHttpUrl('apikey', toolName)` returns `''` for every apikey tool except `show_mortgage`. Other/future apikey tools must keep the Phase 266 Gateway-only marker path; only `show_mortgage` dispatches to a backend.
+- The full service API key never crosses the browser — only `_meta.maskedApiKey` / `apiKeyMaskedLast4` (last-4).
+
+**Verify:**
+- `cd banking_mcp_gateway && npm run build && npx jest` → all green (112 tests; `mortgageDispatch.test.ts` proves HTTP/WS scope-decision parity in no-PA mode).
+- `cd banking_api_ui && npm run build` → exit 0.
+- `./run-bank.sh`; log in as customer; agent: "show mortgage data" → Mortgage page renders the loan card + masked key; chat shows the Heuristic/Helix source pill. Without `banking:mortgage:read` on the bearer → Authorize DENYs (`insufficient_scope`), agent explains it, page stays empty.
+
+### 2026-05-15 — Agent identity fail-closed: agentContext.userId resolves to PingOne sub only, never legacy `session.user.id`
+
+**Files changed:**
+- `banking_api_server/middleware/agentSessionMiddleware.js` — `req.agentContext.userId` was `req.session.user.oauthId || req.session.user.id`. Now resolves `oauthId || sub` (both are the PingOne UUID) and returns 401 (`need_auth: true`, same shape as the existing route 401) when neither is present. No fallback to the legacy numeric `id`.
+- `banking_api_server/tests/agentSessionIdentity.regression.test.js` — new regression test.
+
+**What was broken:** `session.user.id` and `session.user.oauthId` are different UUIDs (`sessionUser.id=1eff6468-… oauthId=21756b10-…` in real logs). The `oauthId || id` fallback meant that if `oauthId` was ever absent/stale, the agent path silently used the legacy `id`, which does not match per-user data (accounts/transactions are keyed on the PingOne `sub`). Symptom: agent returns empty data ("no transactions") with no error — an identity mismatch masquerading as missing data. This was a latent bug found while diagnosing the 2-exchange CC-token failure below; it was not the cause of that specific 502 but is the same identity trap (ARCHITECTURE-TRUTHS T-6).
+
+**What was fixed:** Resolve identity from the PingOne sub only; fail closed with 401 if it is missing rather than silently using the wrong identity. The 401 shape matches the existing `Session expired` route response so the UI's re-auth handling is unchanged.
+
+**Verify:**
+- `cd banking_api_server && npx jest tests/agentSessionIdentity.regression.test.js` → 3 passed.
+- `npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration` → 38 passed.
+- Browser: sign in with PingOne → middle agent works normally (oauthId present → no behavior change for the happy path).
+
+**Do not break:** Never reintroduce `|| req.session.user.id` (or any legacy/numeric id) as an identity fallback in agent paths. See ARCHITECTURE-TRUTHS T-6. The 401 response shape must keep `need_auth: true` / `agentInitRequired: true` so the SPA triggers re-auth.
+
+### 2026-05-15 — Middle agent returns nothing for "transactions" (and all MCP tools) — 2-exchange actor CC token fails `invalid_scope: multiple resources`
+
+**Files changed:**
+- `banking_api_server/services/oauthService.js` — `getClientCredentialsTokenAs()` gained an optional `scope` arg; when provided it is sent in the CC request body. Previously it sent `audience` with no `scope`.
+- `banking_api_server/services/agentMcpTokenService.js` — `_performTwoExchangeDelegation()` Step 1 (AI Agent actor) and Step 3 (MCP Exchanger actor) now pass an explicit single-resource scope (`agent_gateway_cc_scope` default `banking:agent:invoke`; `mcp_gateway_cc_scope` default `banking:mcp:invoke`).
+- `banking_api_server/services/configStore.js` — registered `agent_gateway_cc_scope` / `mcp_gateway_cc_scope` env-fallback keys.
+- `banking_api_server/services/pingoneProvisionService.js` — added SYNC comments at Steps 37a/37b tying the granted gateway scope to the configStore CC-scope default.
+- `banking_api_server/tests/ccTokenScope.regression.test.js` — new regression test (request-body seam).
+
+**What was broken:** The middle agent ("Super Banking Assistant") dispatched "transactions" to MCP tool `get_my_transactions` → BFF `/api/mcp/tool` → RFC 8693 two-exchange delegation. Acquiring the AI Agent actor token via `getClientCredentialsTokenAs(clientId, secret, agentGatewayAud, method)` sent `grant_type=client_credentials` + `audience` but **no `scope`**. The AI Agent / MCP Exchanger worker apps are intentionally granted scopes on two resources each (gateway + intermediate/final — both grants are required for the two exchange steps). With `audience` set and `scope` omitted, PingOne tried every entitled scope, which spanned multiple resources, and returned `400 invalid_scope: "May not request scopes for multiple resources"`. No actor token → `[MCP Proxy] Token resolution failed ... actor token is invalid or expired` → `POST /api/mcp/tool` 502 → agent showed nothing. Affected **every** MCP tool on the 2-exchange path, not just transactions. (Same error class as the already-logged `/authorize` row in §1; different code path.)
+
+**What was fixed:** Pass an explicit single-resource scope on each actor CC request, mirroring the working `getMcpExchangerToken()` (scope, no audience). PingOne then narrows to one resource and issues the token. Scopes are configStore-overridable and default to the exact scope the provisioner grants on that gateway resource.
+
+**Verify:**
+- `cd banking_api_server && npx jest tests/ccTokenScope.regression.test.js` → 3 passed.
+- `npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration` → 38 passed.
+- Browser: sign in as customer → middle agent → type "transactions" → recent transactions render; Token Chain shows `2-Exchange #1 — AI Agent Actor Token (CC) ✔️` (not ❌); `/tmp/bank-api-server.log` shows `[CC-As] Issued actor token` and no `May not request scopes for multiple resources`.
+
+**Do not break:** The AI Agent / MCP Exchanger apps must keep their multi-resource grants (provisioner Steps 37a/37b) — those are required for the exchange steps. The fix is the explicit per-audience scope, NOT removing grants. If you change a gateway scope in the provisioner, change the matching configStore default (`agent_gateway_cc_scope` / `mcp_gateway_cc_scope`) too — the SYNC comments mark both ends. Do not revert `getClientCredentialsTokenAs` to omit `scope`.
+
+### 2026-05-15 — Login/agent buttons redirect to /config; logout returns raw `{"message":"Missing Authentication Token"}`
+
+**One-liner:** A `data:import` / migration run at 08:39:41 overwrote `banking_api_server/.env`, reducing it from 38 keys (all `PINGONE_*` creds + the real `SESSION_SECRET`) to a 47-byte stub holding only a placeholder `SESSION_SECRET=test-...`; with no PingOne client IDs readable, `configStore.isConfigured()` returned false so every login/agent click `302 → /config?error=not_configured` (by design in `routes/oauth.js:48` / `routes/oauthUser.js:175`) and logout couldn't build the PingOne signoff URL and fell through to the infra catch-all JSON. **No code was at fault — this was env-data loss.**
+
+**What was fixed:** Restored `.env` from `banking_api_server/.env.pre-import-2026-05-15T08-39-40-897Z` (the last 3914-byte backup written immediately before the wiping import; the broken stub was preserved as `.env.broken-stub-*`). This also restored the original `SESSION_SECRET`, making the encrypted `config.db` decryptable again ("file is not a database" / "SQLite transaction initialization failed" startup errors cleared). No `config.db` backup ever held PingOne creds — they live only in `.env` (configStore credential-priority: runtime store → `PINGONE_*` env → fallback env).
+
+**Verify:** `curl -sk -o /dev/null -w "%{http_code} -> %{redirect_url}\n" https://api.ping.demo:3001/api/auth/oauth/user/login` → `302 -> https://auth.pingone.com/<env>/as/authorize...` (not `/config?error=not_configured`); `…/api/auth/logout` → `302 -> …/as/signoff…`; startup log shows `[oauth/login] HIT … configured=true`.
+
+**Do not break / operational guard:** Any script that runs `data:import` / `setup:fresh` / migration **must preserve `banking_api_server/.env`** — specifically `SESSION_SECRET` (or `config.db` becomes undecryptable, per CLAUDE.md) and all `PINGONE_*` IDs. Before re-running an import, confirm a non-stub `.env.pre-import-*` (size ≫ 47 bytes) exists. Recovery: `cp` the newest `>1KB` `.env.pre-import-*` over `.env`, restart, re-verify the two curls above. If no good backup exists, `npm run pingone:bootstrap`.
+
 ### 2026-05-15 — Tier-1 langchain_agent WARNING batch (WR-03/04/05/07/10/11/12)
 
 **Files changed:**

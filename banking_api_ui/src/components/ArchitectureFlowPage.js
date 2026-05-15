@@ -98,7 +98,9 @@ function ArchNode({ data }) {
           planned
         </div>
       )}
-      <div style={{ fontSize: "1.1rem", marginBottom: 2 }}>{data.icon}</div>
+      {data.icon && (
+        <div style={{ fontSize: "1.1rem", marginBottom: 2 }}>{data.icon}</div>
+      )}
       <div
         style={{
           fontWeight: 700,
@@ -299,20 +301,20 @@ const INITIAL_NODES = [
       colorClass: "",
     },
   },
-  // Aspirational: a 3rd-party / legacy backend that takes an API key instead
-  // of an OAuth bearer. The Gateway swaps in the key when forwarding; the
-  // backend never sees a user token. Drawn dashed via aspirational:true to
-  // signal "reference architecture, not live yet."
+  // Phase 267 (LIVE): banking_mortgage_service — a legacy/3rd-party-style
+  // backend that takes an API key instead of an OAuth bearer. The Gateway
+  // drops the user bearer and injects X-API-Key + X-User-Sub when forwarding;
+  // the backend never sees a user token. Drawn solid (aspirational:false):
+  // this path is wired end-to-end today.
   {
     id: "api-key-backend",
     type: "arch",
     position: { x: 840, y: 260 },
     data: {
-      label: "3rd-party API",
-      label2: "X-API-Key",
-      icon: "🔑",
+      label: "banking_mortgage_service",
+      label2: "X-API-Key + X-User-Sub",
       colorClass: "",
-      aspirational: true,
+      aspirational: false,
     },
   },
   // Phase 266 R2: banking_resource_server (live) — handles Path B (/identity) and Path C (/accounts /transactions).
@@ -448,14 +450,14 @@ const INITIAL_EDGES = [
     style: B,
     label: "Introspect",
   },
-  // Aspirational: Gateway forwards a tool call to a 3rd-party API by swapping
-  // the user token for a service API key. Dashed line matches the dashed node.
+  // Phase 267 (LIVE): Gateway forwards show_mortgage to banking_mortgage_service
+  // by dropping the user bearer and injecting a service API key + X-User-Sub.
   {
     id: "gw-apikey",
     source: "mcp-gw",
     target: "api-key-backend",
-    style: { stroke: "#ca8a04", strokeWidth: 1.5, strokeDasharray: "6 4" },
-    label: "X-API-Key (planned)",
+    style: { stroke: "#ca8a04", strokeWidth: 2.5 },
+    label: "X-API-Key + X-User-Sub (api_key)",
   },
   // Phase 266 R2: Path B (dual_token) and Path C (oauth_bearer) both reach banking_resource_server.
   {
@@ -1707,15 +1709,15 @@ const SCENARIO_STEPS_FLOW = {
     {
       nodeIds: ["user", "chatbot"],
       colorClass: "active",
-      stepLabel: 'User sends prompt: "show special offers"',
+      stepLabel: 'User sends prompt: "show mortgage data"',
       description:
-        "User triggers the API-key demo prompt. The chat agent will route this to the gateway tool special_offers.",
+        "User triggers the API-key demo prompt. The chat agent routes this to the gateway tool show_mortgage (api_key disposition).",
       activeEdgeIds: ["user-chatbot"],
       edgeStyle: A,
       nodeBadges: {},
       token: {
         type: "NL prompt",
-        text: "show special offers",
+        text: "show mortgage data",
         note: "Routes to api_key disposition at the gateway",
       },
     },
@@ -1723,7 +1725,7 @@ const SCENARIO_STEPS_FLOW = {
       nodeIds: ["agent", "mcp-gw"],
       colorClass: "active",
       stepLabel:
-        "Agent → Gateway: tools/call special_offers (with user OAuth bearer)",
+        "Agent → Gateway: tools/call show_mortgage (with user OAuth bearer)",
       description:
         "The agent forwards the tool call to the MCP gateway carrying the user OAuth bearer.",
       activeEdgeIds: ["agent-mcp"],
@@ -1737,16 +1739,16 @@ const SCENARIO_STEPS_FLOW = {
       token: {
         type: "OAuth Bearer (inbound)",
         credentialPath: "oauth_bearer",
-        tool: "special_offers",
+        tool: "show_mortgage",
       },
     },
     {
       nodeIds: ["mcp-gw", "api-key-backend"],
       colorClass: "active-permit",
       stepLabel:
-        "Gateway swaps the OAuth bearer for the service API key (no backend call)",
+        "Gateway enforces banking:mortgage:read, then swaps the OAuth bearer for the service API key and calls banking_mortgage_service",
       description:
-        "API-KEY PATH: no backend call. The gateway recognizes special_offers as an api_key-disposition tool. The user OAuth bearer is dropped; the service API key is attached. Phase 266 demo terminates here — no real 3rd-party backend is wired.",
+        "API-KEY PATH: the gateway first verifies the user bearer carries banking:mortgage:read (local scope gate — consent before the swap). It then drops the OAuth bearer and attaches the service API key + X-User-Sub, and calls banking_mortgage_service :8082 GET /mortgage. The backend never sees a user token.",
       activeEdgeIds: ["gw-apikey"],
       edgeStyle: { stroke: "#ca8a04", strokeWidth: 2.5 },
       nodeBadges: {
@@ -1756,23 +1758,23 @@ const SCENARIO_STEPS_FLOW = {
         },
       },
       token: {
-        type: "API Key (X-API-Key header)",
+        type: "API Key (X-API-Key + X-User-Sub)",
         credentialPath: "api_key",
-        note: "No banking data — Phase 266 demo terminates here",
+        note: "banking_mortgage_service returns the mortgage record",
       },
     },
     {
       nodeIds: ["chatbot"],
       colorClass: "active",
-      stepLabel: "SPA navigates to /path/apikey-info (amber info page)",
+      stepLabel: "SPA navigates to /path/mortgage with the mortgage payload",
       description:
-        "The gateway returned a marker response with credentialPath=api_key. The SPA routes the user to the API-Key info page.",
+        "The gateway returned the mortgage record plus _meta.maskedApiKey (last-4 only). The SPA routes the user to the Mortgage page and renders the data + the credential-swap explanation.",
       activeEdgeIds: ["hitl-chatbot"],
       edgeStyle: A,
       nodeBadges: {},
       token: {
         type: "SPA route",
-        destination: "/path/apikey-info",
+        destination: "/path/mortgage",
         credentialPath: "api_key",
       },
     },

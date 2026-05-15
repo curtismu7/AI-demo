@@ -563,9 +563,94 @@ async function handleMessage(
         return;
       }
 
-      // ----- api_key (Path A) — Gateway-only marker, no backend call -----
-      // synthesized tokenEvents so the Token Chain renders a multi-segment swap/attach narrative.
+      // ----- api_key (Path A) -----
       if (target === 'apikey') {
+        // Scope enforcement is an Authorize-layer decision, NOT a dispatch
+        // concern. banking:mortgage:read is enforced upstream by guardToolCall
+        // (WS) / PingOneAuthorizeClient.evaluate (HTTP) — by the PingAuthorize
+        // policy when configured, or the local TOOL_SCOPES baseline when not.
+        // By the time we reach here the scope check has already passed.
+
+        // Phase 267: if this apikey tool maps to a real backend URL, dispatch
+        // to it via X-API-Key (the OAuth bearer is dropped at the gateway —
+        // the swap IS the demo). Otherwise fall through to the Phase 266
+        // Gateway-only marker behavior below (unchanged).
+        const mortgageUrl = backendHttpUrl(target, toolName, config);
+        if (mortgageUrl) {
+          let mResp;
+          try {
+            mResp = await axios.get(mortgageUrl, {
+              headers: {
+                'X-API-Key': config.mortgageServiceApiKey,
+                'X-User-Sub': decoded.sub,
+              },
+              timeout: 5000,
+              validateStatus: (s: number) => s < 500,
+            });
+          } catch (err) {
+            send(jsonRpcError(id, -32500, 'Mortgage backend unreachable', { credentialPath: 'api_key' }));
+            return;
+          }
+          if (mResp.status === 401) {
+            send(jsonRpcError(id, -32401, 'Mortgage backend rejected the service API key', { credentialPath: 'api_key' }));
+            return;
+          }
+          if (mResp.status >= 400) {
+            send(jsonRpcError(id, -32500, `Mortgage backend returned ${mResp.status}`, { credentialPath: 'api_key' }));
+            return;
+          }
+          const last4 = credential.apiKeyMaskedLast4 || 'XXXX';
+          send(JSON.stringify({
+            jsonrpc: '2.0', id,
+            result: {
+              content: [{ type: 'text', text: JSON.stringify(mResp.data) }],
+              _meta: {
+                credentialPath: 'api_key',
+                apiKeyMaskedLast4: last4,
+                maskedApiKey: `xxxx${last4}`,
+                backend: 'banking_mortgage_service',
+                infoPageHint: '/path/mortgage',
+                note: 'Gateway dropped your OAuth bearer, attached a service API key, and called banking_mortgage_service (X-API-Key + X-User-Sub).',
+                tokenEvents: [
+                  {
+                    id: 'evt-inbound',
+                    label: 'Inbound user bearer received (aud=AI-agent-resource, sub=user)',
+                    tokenType: 'access_token',
+                    credentialPath: 'api_key',
+                    status: 'ok',
+                    specRef: 'RFC 6750 §3',
+                  },
+                  {
+                    id: 'evt-scope',
+                    label: `Authorize PERMIT: ${getScopesForGatewayTool(toolName).join(', ')} present on the user bearer (scope decision before credential swap)`,
+                    tokenType: 'access_token',
+                    credentialPath: 'api_key',
+                    status: 'ok',
+                  },
+                  {
+                    id: 'evt-swap',
+                    label: 'Gateway swap: OAuth bearer dropped, service API key attached',
+                    tokenType: 'api_key',
+                    maskedValue: `...${last4}`,
+                    credentialPath: 'api_key',
+                    status: 'ok',
+                  },
+                  {
+                    id: 'evt-backend',
+                    label: 'Outbound GET banking_mortgage_service /mortgage (X-API-Key + X-User-Sub, no OAuth)',
+                    tokenType: 'api_key',
+                    credentialPath: 'api_key',
+                    status: 'ok',
+                  },
+                ],
+              },
+            },
+          }));
+          return;
+        }
+
+        // ----- Gateway-only marker (Phase 266, unchanged) — no backend call -----
+        // synthesized tokenEvents so the Token Chain renders a multi-segment swap/attach narrative.
         send(JSON.stringify({
           jsonrpc: '2.0', id,
           result: {

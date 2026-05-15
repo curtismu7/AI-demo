@@ -34,6 +34,12 @@ export interface GatewayConfig {
   devBypass: boolean;
   // Phase 266: Path A — service API key for the api_key credential disposition (demo only)
   demoApiKeyServiceKey: string;
+  // Phase 267: Path A backend — base URL of banking_mortgage_service (e.g. http://localhost:8082)
+  mortgageServiceBaseUrl: string;
+  // Phase 267: Path A backend — X-API-Key the gateway presents to banking_mortgage_service.
+  // MUST match MORTGAGE_SERVICE_API_KEY on the mortgage service side. Demo-grade shared
+  // secret; the full value never crosses the browser (only _meta.maskedApiKey last-4).
+  mortgageServiceApiKey: string;
   // Phase 266: Path B — BFF-internal id_token retrieval endpoint (server-to-server)
   bffInternalIdTokenUrl: string;
   // Phase 266: shared secret for BFF /internal/id-token requests
@@ -121,6 +127,10 @@ export function loadConfig(): GatewayConfig {
     devBypass: DEV_BYPASS,
     // Phase 266 fields
     demoApiKeyServiceKey: optional('DEMO_APIKEY_SERVICE_KEY', 'demo-api-key-0000'),
+    // Phase 267 fields — dedicated mortgage backend (kept separate from the
+    // Phase 266 marker key so the Gateway-only apikey tools are unaffected)
+    mortgageServiceBaseUrl: optional('MORTGAGE_SERVICE_URL', 'http://localhost:8082'),
+    mortgageServiceApiKey: optional('DEMO_MORTGAGE_SERVICE_KEY', 'demo-mortgage-key-0000'),
     bffInternalIdTokenUrl: optional('BFF_INTERNAL_ID_TOKEN_URL', 'http://localhost:3001/internal/id-token'),
     bffInternalSecret: optional('BFF_INTERNAL_SECRET', DEFAULT_BFF_INTERNAL_SECRET),
     bankingResourceServerBaseUrl: optional('BANKING_RESOURCE_SERVER_BASE_URL', 'http://localhost:3001'),

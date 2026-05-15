@@ -41,8 +41,13 @@ const INVEST_TOOLS = new Set([
   'get_portfolio_summary',
 ]);
 
-// Phase 266 Path A: Gateway-only API key marker
-const APIKEY_TOOLS = new Set(['special_offers']);
+// Path A: api_key disposition.
+//   Phase 266 shipped this target as a Gateway-only marker (no backend call).
+//   Phase 267 makes `show_mortgage` the first apikey tool that actually
+//   dispatches to a backend (banking_mortgage_service) via X-API-Key.
+//   Other apikey tools (if re-added) keep the Gateway-only marker behavior —
+//   the split is decided by backendHttpUrl() returning non-empty, not here.
+const APIKEY_TOOLS = new Set(['show_mortgage']);
 
 // Phase 266 Path B: Dual-token forward to /api/resource-server/identity
 const DUALTOKEN_TOOLS = new Set(['user_profile_card']);
@@ -87,7 +92,13 @@ export function backendResourceUri(target: BackendTarget, config: GatewayConfig)
 // Returns empty string for targets that use WebSocket ('olb', 'invest') or are
 // Gateway-terminating ('apikey').
 export function backendHttpUrl(target: BackendTarget, toolName: string, config: GatewayConfig): string {
-  if (target === 'apikey') return '';
+  if (target === 'apikey') {
+    // Phase 267: show_mortgage dispatches to banking_mortgage_service via
+    // X-API-Key. Any other apikey tool stays Gateway-only (empty string →
+    // index.ts returns the static marker, preserving Phase 266 behavior).
+    if (toolName === 'show_mortgage') return `${config.mortgageServiceBaseUrl}/mortgage`;
+    return '';
+  }
   if (target === 'olb' || target === 'invest') return '';
   if (target === 'dualtoken') {
     return `${config.bankingResourceServerBaseUrl}/api/resource-server/identity`;

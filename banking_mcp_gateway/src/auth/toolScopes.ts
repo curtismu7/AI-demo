@@ -42,6 +42,43 @@ export function getScopesForGatewayTool(toolName: string): string[] {
   return TOOL_SCOPES[toolName] ?? ['banking:read'];
 }
 
+/**
+ * Pure scope check. Returns the required scopes the caller's bearer does NOT
+ * carry. Empty array == all present. `scopeClaim` is the raw space-delimited
+ * `scope` claim from the decoded token (may be undefined/empty).
+ */
+export function missingScopesForTool(toolName: string, scopeClaim?: string): string[] {
+  const required = getScopesForGatewayTool(toolName);
+  const granted = new Set(String(scopeClaim || '').split(/\s+/).filter(Boolean));
+  return required.filter((s) => !granted.has(s));
+}
+
+/**
+ * Local Authorize decision — the scope rule applied when PingOne Authorize is
+ * NOT configured. It MUST mirror the outcome a PingOne Authorize policy would
+ * return for the same inputs so the gateway behaves identically with or
+ * without PA wired:
+ *
+ *   - bearer missing a required tool scope → DENY (insufficient_scope)
+ *   - otherwise                            → PERMIT
+ *
+ * Both transports call this from the same no-PA branch (HTTP:
+ * PingOneAuthorizeClient.evaluate, WS: pingAuthorizeGuard.guardToolCall) so
+ * "Authorize" and "PingOne Authorize" produce the same PERMIT/DENY result.
+ */
+export function evaluateScopeDecisionLocally(
+  toolName: string,
+  scopeClaim?: string,
+): { decision: 'PERMIT' } | { decision: 'DENY'; reason: string; missingScopes: string[] } {
+  const missing = missingScopesForTool(toolName, scopeClaim);
+  if (missing.length === 0) return { decision: 'PERMIT' };
+  return {
+    decision: 'DENY',
+    reason: `insufficient_scope: missing ${missing.join(', ')}`,
+    missingScopes: missing,
+  };
+}
+
 const STEP_UP_TOOLS = new Set(['create_deposit', 'create_withdrawal', 'create_transfer']);
 
 /**
