@@ -391,11 +391,23 @@ class ChatWebSocketHandler:
             return
         
         try:
-            session_id = message.get("session_id")
-            
+            # WR-01/BL-04 discipline: the session being closed is the one
+            # bound to THIS connection's metadata, never a body-supplied id.
+            bound_session_id = None
+            if connection_id in self._connection_metadata:
+                bound_session_id = self._connection_metadata[connection_id].get("session_id")
+            session_id = bound_session_id
+
             if session_id and session_id in self._session_connections:
                 del self._session_connections[session_id]
-            
+
+            # WR-02 Option A: deterministically tear down the session's
+            # per-session worker + queue on explicit close. Pending messages
+            # for the closed session are discarded (logged), not run against
+            # a dead session.
+            if session_id:
+                await self._teardown_session_worker(session_id)
+
             # Update connection metadata
             if connection_id in self._connection_metadata:
                 self._connection_metadata[connection_id]["session_id"] = None
@@ -626,13 +638,37 @@ class ChatWebSocketHandler:
                 session_id = self._connection_metadata[connection_id].get("session_id")
                 if session_id and session_id in self._session_connections:
                     del self._session_connections[session_id]
+                # WR-02 Option A: WS disconnect must also tear down the
+                # session's per-session worker so its task is cancelled +
+                # awaited (no orphans) and queued messages for the now-dead
+                # session are discarded with a logged reason.
+                if session_id:
+                    await self._teardown_session_worker(session_id)
                 del self._connection_metadata[connection_id]
-            
+
             logger.debug(f"Cleaned up connection {connection_id}")
             
         except Exception as e:
             logger.error(f"Error cleaning up connection {connection_id}: {e}")
     
+    async def _teardown_session_worker(self, session_id: str) -> None:
+        """Ask the message processor to deterministically tear down a session.
+
+        Delegates to MessageProcessor.clear_session_data, which (WR-02
+        Option A) cancels + awaits that session's per-session worker task
+        and discards any still-queued messages with a logged reason. Best
+        effort: a teardown failure must not break connection cleanup.
+        """
+        processor = getattr(self, "_message_processor", None)
+        if not processor:
+            return
+        try:
+            await processor.clear_session_data(session_id)
+        except Exception as e:
+            logger.error(
+                f"Error tearing down session worker for {session_id}: {e}"
+            )
+
     def set_message_processor(self, message_processor) -> None:
         """
         Set the message processor for handling messages.

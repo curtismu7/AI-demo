@@ -136,7 +136,13 @@ class LangChainMCPApplication:
             self.websocket_handler.set_message_processor(self.message_processor)
             self.websocket_handler.set_session_manager(self.session_manager)
             
-            # Start message processor
+            # Start message processor. WR-02 Option A: start() schedules BOTH
+            # the ingress dispatcher AND the per-session-worker idle reaper.
+            # CR-01-class guard: the reaper is wired but inert unless started
+            # here at app init (exactly the CR-01 class of bug — a cleanup
+            # loop that exists but is never started). This call sits next to
+            # SessionManager.start() / ConversationMemory.start_cleanup_task()
+            # above for the same reason.
             await self.message_processor.start()
             self.health_server.update_status("message_processor", "ready")
 
