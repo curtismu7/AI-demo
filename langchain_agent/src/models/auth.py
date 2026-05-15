@@ -82,8 +82,11 @@ class AccessToken:
         if not isinstance(self.expires_in, int) or self.expires_in <= 0:
             raise ValueError("expires_in must be a positive integer")
         
-        if not self.scope or not isinstance(self.scope, str):
-            raise ValueError("scope must be a non-empty string")
+        # Scope may be empty: PingOne can legitimately return scope="" for
+        # client-credentials tokens that don't request a scope. Reject only
+        # non-string types.
+        if not isinstance(self.scope, str):
+            raise ValueError("scope must be a string")
         
         if not isinstance(self.issued_at, datetime):
             raise ValueError("issued_at must be a datetime object")
