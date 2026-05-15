@@ -195,9 +195,13 @@ class ChatWebSocketHandler:
                 await self._send_error(websocket, "invalid_session", "Session ID is required")
                 return
             
-            # Validate message length
-            if len(content) > self.config.chat.max_message_length:
-                await self._send_error(websocket, "message_too_long", 
+            # Validate message length. WR-12: measure UTF-8 BYTES, not code
+            # points. The WS server caps frames at a byte limit; a multi-byte
+            # payload (e.g. 4-byte emoji) under the char count can still blow
+            # past the byte frame cap, so a char-based check let oversize
+            # payloads through. Byte length is consistent with the wire limit.
+            if len(content.encode("utf-8")) > self.config.chat.max_message_length:
+                await self._send_error(websocket, "message_too_long",
                                      f"Message exceeds maximum length of {self.config.chat.max_message_length}")
                 return
             
