@@ -72,6 +72,64 @@ describe('configStore key casing — UPPER-canonical regardless of caller/storag
   });
 });
 
+describe('configStore secret encrypt/decrypt round-trips regardless of key casing', () => {
+  const SECRET_CASES = [
+    'mcp_gw_client_secret',     // new lowercase secret (Task 1.5)
+    'demo_password',            // pre-existing lowercase secret (regressed by UPPER-case change)
+    'PINGONE_ADMIN_CLIENT_SECRET', // pre-existing UPPER secret (control — must still work)
+  ];
+
+  // Minimal cross-test row hygiene: freshConfigStore() resets the module
+  // cache, NOT the shared on-disk config.db. Delete the specific rows for
+  // these keys (UPPER-cased, matching the storage model) before each test
+  // so a stale row from a sibling test cannot mask the assertion.
+  beforeEach(() => {
+    const dbPath = path.join(__dirname, '..', '..', 'data', 'persistent', 'config.db');
+    const fs = require('node:fs');
+    if (!fs.existsSync(dbPath)) return;
+    let Database;
+    try {
+      Database = require('better-sqlite3');
+    } catch {
+      Database = require('node:sqlite').DatabaseSync;
+    }
+    const db = new Database(dbPath);
+    for (const key of SECRET_CASES) {
+      db.prepare('DELETE FROM config WHERE UPPER(key) = ?').run(key.toUpperCase());
+    }
+    db.close();
+  });
+
+  // freshConfigStore() relies on `delete require.cache[id]`, which is a
+  // NO-OP under jest's module registry (it returns the SAME singleton, so
+  // its in-memory cache still holds the plaintext from setConfig and the
+  // SQLite reload never runs — masking this bug). jest.isolateModules
+  // genuinely re-evaluates the module, giving a fresh ConfigStore whose
+  // empty cache forces a real _loadFromSQLite + decrypt — a faithful
+  // process-restart simulation.
+  function reloadedConfigStore() {
+    let mod;
+    jest.isolateModules(() => {
+      // eslint-disable-next-line global-require
+      mod = require('../../services/configStore');
+    });
+    return mod;
+  }
+
+  for (const key of SECRET_CASES) {
+    test(`${key}: set via setConfig, survives a reload as plaintext (not ciphertext)`, async () => {
+      const c = reloadedConfigStore();
+      await c.ensureInitialized();
+      const plaintext = `RT-${key}-VALUE`;
+      await c.setConfig({ [key]: plaintext });
+      // Simulate process restart: fresh module re-reads SQLite + decrypts.
+      const c2 = reloadedConfigStore();
+      await c2.ensureInitialized();
+      expect(c2.getEffective(key)).toBe(plaintext);
+    });
+  }
+});
+
 describe('configStore FIELD_DEFS defaults reachable for UPPER keys', () => {
   test('getEffective(UPPER key) returns FIELD_DEFS default when nothing else set', async () => {
     // "nothing else set" must also mean no stale SQLite row from a sibling

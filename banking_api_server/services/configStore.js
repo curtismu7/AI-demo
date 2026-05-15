@@ -24,8 +24,10 @@ const fs     = require('fs');
 // Constants
 // ---------------------------------------------------------------------------
 
-// Fields that must be encrypted at rest
-const SECRET_KEYS = new Set([
+// Fields that must be encrypted at rest. Listed verbatim for reviewability;
+// some entries are UPPER (PingOne app secrets) and some lowercase (FIELD_DEFS
+// keys), matching how each is written by callers.
+const _SECRET_KEYS_RAW = [
   'PINGONE_ADMIN_CLIENT_SECRET',
   'PINGONE_USER_CLIENT_SECRET',
   'PINGONE_SESSION_SECRET',
@@ -39,7 +41,13 @@ const SECRET_KEYS = new Set([
   'demo_password',
   'demo_admin_password',
   'mcp_gw_client_secret',
-]);
+];
+// Membership is UPPER-canonical: config keys are stored UPPER everywhere
+// (in-memory cache + SQLite rows), so secret detection must match regardless
+// of the case a caller or FIELD_DEFS uses, otherwise encrypt-on-write and
+// decrypt-on-load become asymmetric and lowercase secrets reload as
+// ciphertext. See REGRESSION_PLAN §4 (SECRET_KEYS casing).
+const SECRET_KEYS = new Set(_SECRET_KEYS_RAW.map((k) => k.toUpperCase()));
 
 // All known config keys with their defaults and whether they are public
 const FIELD_DEFS = {
@@ -469,7 +477,7 @@ class ConfigStore {
     const rows = db.prepare('SELECT key, value FROM config').all();
     const decoded = {};
     for (const row of rows) {
-      decoded[row.key] = SECRET_KEYS.has(row.key) ? _decrypt(row.value) : row.value;
+      decoded[row.key] = SECRET_KEYS.has(String(row.key).toUpperCase()) ? _decrypt(row.value) : row.value;
     }
     this._setCache(decoded, 'sqlite');
   }
@@ -514,7 +522,7 @@ class ConfigStore {
       if (value === null || value === undefined) continue;
       if (value === '' && !allowEmptyStringKeys.has(key)) continue;
       // Value is a non-empty string
-      const stored = SECRET_KEYS.has(key) ? _encrypt(value) : value;
+      const stored = SECRET_KEYS.has(String(key).toUpperCase()) ? _encrypt(value) : value;
       updates[key]      = stored;
       cacheUpdates[key] = value;
     }
@@ -588,7 +596,7 @@ class ConfigStore {
   getMasked() {
     const result = {};
     for (const key of Object.keys(FIELD_DEFS)) {
-      if (SECRET_KEYS.has(key)) {
+      if (SECRET_KEYS.has(String(key).toUpperCase())) {
         const isSet = String(this.getEffective(key) || '').trim() !== '';
         result[key] = isSet ? '••••••••' : '';
         result[`${key}_set`] = isSet;
