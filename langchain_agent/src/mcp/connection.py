@@ -38,7 +38,7 @@ class MCPConnection(MCPClient):
         self.retry_delay = retry_delay
         self.connection_timeout = connection_timeout
         
-        self._websocket: Optional[websockets.WebSocketServerProtocol] = None
+        self._websocket: Optional[websockets.WebSocketClientProtocol] = None
         self._state = ConnectionState.DISCONNECTED
         self._last_error: Optional[Exception] = None
         self._retry_count = 0
