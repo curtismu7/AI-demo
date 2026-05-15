@@ -369,7 +369,25 @@ class MCPConnection(MCPClient):
             # can no longer receive each other's responses.
             logger.debug(f"Sending message to MCP server, awaiting correlated response...")
             response = await self._send_request(message)
-            logger.info(f"Received tools/call response from {self.server_config.name}: {response}")
+            # WR-04: the response body carries balances / transactions / PII
+            # (and potentially tokens). Log only non-sensitive metadata at
+            # info; the full body stays at debug. Mirrors the redaction
+            # contract already applied to the outbound envelope above and does
+            # not change the CR-06 reader-loop logging.
+            _resp_id = response.get("id") if isinstance(response, dict) else None
+            _resp_keys = (
+                sorted(response.keys()) if isinstance(response, dict) else "non-dict"
+            )
+            _resp_status = (
+                "error" if isinstance(response, dict) and "error" in response else "ok"
+            )
+            logger.info(
+                f"Received tools/call response from {self.server_config.name}: "
+                f"id={_resp_id} status={_resp_status} keys={_resp_keys}"
+            )
+            logger.debug(
+                f"Full tools/call response body from {self.server_config.name}: {response}"
+            )
             
             # Check for JSON-RPC error
             if "error" in response:
