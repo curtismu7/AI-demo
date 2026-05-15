@@ -10,6 +10,8 @@ The DynamicClientRegistration class below targets ForgeRock DCR endpoints
 via AGENT_DCR_ENABLED=true and only useful against a real ForgeRock tenant.
 """
 import asyncio
+import base64
+import hashlib
 import json
 import os
 import secrets
@@ -521,24 +523,34 @@ class UserAuthorizationFacilitator:
         """
         # Generate cryptographically secure state parameter
         state = self._generate_state()
-        
+
+        # CR-05: PKCE S256 is mandatory for every authorization code flow
+        # (RFC 9700 / OAuth 2.1; oauth-pingone skill §4c). Generate a fresh,
+        # single-use code_verifier per authorization request and bind it to
+        # the same `state` correlation key the CSRF check already uses, so it
+        # survives until the code->token exchange. No new store is introduced.
+        code_verifier, code_challenge = self._generate_pkce_pair()
+
         # Store authorization request information for callback handling
         self._pending_authorizations[state] = {
             "session_id": session_id,
             "mcp_server_id": mcp_server_id,
             "scope": scope,
             "client_id": client_id,
+            "code_verifier": code_verifier,
             "created_at": datetime.now(timezone.utc),
             "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10)
         }
-        
+
         # Build authorization URL
         auth_params = {
             "response_type": "code",
             "client_id": client_id,
             "redirect_uri": self.config.pingone.redirect_uri,
             "scope": scope,
-            "state": state
+            "state": state,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256"
         }
         
         auth_url = f"{self.config.pingone.authorization_endpoint}?{urlencode(auth_params)}"
@@ -596,7 +608,11 @@ class UserAuthorizationFacilitator:
             logger.error(f"Expired state parameter: {state}")
             raise ValueError("State parameter has expired")
         
-        # Prepare authorization data for MCP server
+        # Prepare authorization data for MCP server.
+        # CR-05: forward the PKCE code_verifier so the party performing the
+        # code->token exchange can send it (RFC 7636 §4.5). The verifier is
+        # single-use: the _pending_authorizations[state] entry is deleted
+        # immediately below, so it cannot be replayed for another exchange.
         authorization_data = {
             "authorization_code": auth_code,
             "state": state,
@@ -604,10 +620,11 @@ class UserAuthorizationFacilitator:
             "mcp_server_id": auth_info["mcp_server_id"],
             "scope": auth_info["scope"],
             "client_id": auth_info["client_id"],
+            "code_verifier": auth_info.get("code_verifier"),
             "redirect_uri": self.config.pingone.redirect_uri,
             "received_at": datetime.now(timezone.utc)
         }
-        
+
         # Clean up state
         del self._pending_authorizations[state]
         
@@ -654,6 +671,28 @@ class UserAuthorizationFacilitator:
         """Generate a cryptographically secure state parameter."""
         alphabet = string.ascii_letters + string.digits + "-_"
         return ''.join(secrets.choice(alphabet) for _ in range(32))
+
+    @staticmethod
+    def _generate_pkce_pair() -> tuple[str, str]:
+        """
+        Generate an RFC 7636 PKCE (code_verifier, code_challenge) pair using
+        the S256 method — mandatory for every authorization code flow per
+        RFC 9700 / OAuth 2.1 and the oauth-pingone skill (PingOne enforces
+        ``pkceEnforcement=S256_REQUIRED``).
+
+        The verifier mirrors the BFF's strength (``crypto.randomBytes(64).hex``
+        = 128 hex chars / 512 bits of entropy): ``secrets.token_hex(64)`` is
+        128 URL-safe hex characters, comfortably within RFC 7636 §4.1's
+        43-128 character bound. The challenge is
+        ``base64url(SHA256(verifier))`` with padding stripped, per §4.2.
+
+        Returns:
+            tuple[str, str]: (code_verifier, code_challenge)
+        """
+        code_verifier = secrets.token_hex(64)
+        digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
+        code_challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+        return code_verifier, code_challenge
     
     def cleanup_expired_authorizations(self) -> None:
         """Clean up expired authorization requests."""
