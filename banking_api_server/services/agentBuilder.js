@@ -17,6 +17,16 @@ const { Annotation } = require('@langchain/langgraph');
 const { createMcpToolRegistry } = require('../utils/mcpToolRegistry');
 const { resolveMcpAccessTokenWithEvents } = require('./agentMcpTokenService');
 
+/**
+ * WR-03: Hard cap on LangGraph node steps (agent ⇄ tools loop). Without this,
+ * an LLM that keeps emitting tool_calls (some local Ollama models do this when
+ * a tool returns an unexpected format) loops tools→agent→tools forever — only
+ * the upstream HTTP timeout terminates it. Value mirrors
+ * banking_agent_service/src/agentOrchestrator.ts MAX_TOOL_ITERATIONS = 10 for
+ * cross-stack consistency. Passed to graph.invoke({ recursionLimit }).
+ */
+const MAX_TOOL_ITERATIONS = 10;
+
 // Default models per provider
 const DEFAULT_MODELS = {
   ollama:    'llama3.2',
@@ -322,4 +332,5 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
 module.exports = {
   createBankingAgent,
   BANKING_AGENT_SYSTEM_PROMPT,
+  MAX_TOOL_ITERATIONS,
 };

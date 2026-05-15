@@ -4,7 +4,8 @@
  * Priority: heuristic regex (instant, zero-cost) → LangGraph LLM (when regex returns kind:'none')
  */
 
-const { createBankingAgent } = require('./agentBuilder');
+const { createBankingAgent, MAX_TOOL_ITERATIONS } = require('./agentBuilder');
+const { GraphRecursionError } = require('@langchain/langgraph');
 const appEventService = require('./appEventService');
 const { parseHeuristic } = require('./nlIntentParser');
 const dataStore = require('../data/store');
@@ -391,11 +392,33 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       { tag: 'agent_prompt/llm_invoke', metadata: { userId, sessionId, messageLength: message?.length || 0, prompt: String(message), systemPrompt: langchainConfig?.systemPrompt || undefined, model: langchainConfig?.model || undefined, toolsAvailable: initialState?.tools?.map(t => t.name || t) || undefined } });
     let finalState;
     try {
+      // WR-03: cap the agent⇄tools loop. recursionLimit counts every node
+      // step; MAX_TOOL_ITERATIONS mirrors the agent_service orchestrator.
       finalState = await graph.invoke({
         ...initialState,
         messages: [{ role: 'user', content: message }],
-      });
+      }, { recursionLimit: MAX_TOOL_ITERATIONS });
     } catch (invokeErr) {
+      // WR-03: LangGraph throws GraphRecursionError when the cap is hit
+      // (LLM kept emitting tool_calls). Stop the loop and return a clear
+      // limit response instead of letting it surface as a generic error /
+      // upstream timeout. Shape matches this file's other return objects.
+      if (invokeErr instanceof GraphRecursionError) {
+        console.warn('[processAgentMessage] Max tool iteration limit reached:', MAX_TOOL_ITERATIONS);
+        appEventService.logEvent('agent', 'warning',
+          `Agent reached maximum tool iteration limit (${MAX_TOOL_ITERATIONS})`,
+          { tag: 'agent/recursion_limit' });
+        return {
+          reply: 'Agent reached maximum tool iteration limit. Please rephrase your request or try a simpler query.',
+          success: false,
+          toolsCalled: [],
+          tokensUsed: 0,
+          requiresConsent: false,
+          agentConfigured: true,
+          tokenEvents: tokenEvents || [],
+          error: 'max_tool_iterations',
+        };
+      }
       throw invokeErr;
     }
     console.log('[processAgentMessage] Agent invoke completed');
