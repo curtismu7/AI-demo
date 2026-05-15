@@ -42,6 +42,39 @@ export interface ToolArgs {
   [key: string]: unknown;
 }
 
+/**
+ * Build the PingAuthorize decision `parameters` block.
+ *
+ * Single source of truth for the policy-input shape so the HTTP transport
+ * (PingOneAuthorizeClient.evaluate) and the WS transport
+ * (pingAuthorizeGuard.guardToolCall) send IDENTICAL inputs for the same
+ * logical tool call. Without this, an amount-conditioned policy
+ * (`TransactionAmount > 500`) fired on HTTP but silently not on WS — the
+ * path real agents use for create_transfer (T-2 parity gap, WR-02).
+ */
+export function buildAuthorizeParameters(
+  decoded: DecodedGatewayToken,
+  method: string,
+  gatewayResourceUri: string,
+  toolName?: string,
+  toolArgs?: ToolArgs,
+): Record<string, string> {
+  const decisionContext = method === 'tools/call' ? 'McpToolCall' : 'McpRequest';
+  const tokenScopes = (decoded.scope ?? '').split(' ').filter(Boolean);
+  return {
+    DecisionContext: decisionContext,
+    McpMethod: method,
+    ToolName: toolName ?? '',
+    ClientId: decoded.sub,
+    ActClientId: decoded.act?.sub ?? '',
+    TokenScopes: tokenScopes.join(' '),
+    TokenAudience: gatewayResourceUri,
+    TransactionAmount: toolArgs?.amount !== undefined ? String(toolArgs.amount) : '',
+    TransactionType: toolArgs?.transaction_type ?? toolName ?? '',
+    ToAccountId: toolArgs?.to_account_id ?? '',
+  };
+}
+
 export class PingOneAuthorizeClient {
   constructor(private readonly config: GatewayConfig) {}
 
@@ -63,22 +96,14 @@ export class PingOneAuthorizeClient {
       return { decision: 'PERMIT', reason: 'PingAuthorize not configured — permit all' };
     }
 
-    const decisionContext = method === 'tools/call' ? 'McpToolCall' : 'McpRequest';
-    const tokenScopes = (decoded.scope ?? '').split(' ').filter(Boolean);
-
     const body = {
-      parameters: {
-        DecisionContext: decisionContext,
-        McpMethod: method,
-        ToolName: toolName ?? '',
-        ClientId: decoded.sub,
-        ActClientId: decoded.act?.sub ?? '',
-        TokenScopes: tokenScopes.join(' '),
-        TokenAudience: this.config.gatewayResourceUri,
-        TransactionAmount: toolArgs?.amount !== undefined ? String(toolArgs.amount) : '',
-        TransactionType: toolArgs?.transaction_type ?? toolName ?? '',
-        ToAccountId: toolArgs?.to_account_id ?? '',
-      },
+      parameters: buildAuthorizeParameters(
+        decoded,
+        method,
+        this.config.gatewayResourceUri,
+        toolName,
+        toolArgs,
+      ),
     };
 
     try {

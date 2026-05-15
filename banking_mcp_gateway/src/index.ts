@@ -474,7 +474,9 @@ async function handleMessage(
       }
     }
 
-    const authz = await guardToolCall(toolName, decoded, config);
+    // WR-02: forward the same transaction params the HTTP path sends so an
+    // amount-conditioned PingAuthorize policy fires identically on WS.
+    const authz = await guardToolCall(toolName, decoded, config, toolArgs);
     if (!authz.permitted) {
       if (authz.reason === 'HITL_REQUIRED') {
         // Create a challenge in HITL service and return the challengeId to the agent
