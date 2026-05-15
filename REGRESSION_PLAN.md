@@ -108,6 +108,43 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-15 — Phase 3 CR-02: Gateway POST /admin/config devBypass type-coercion silent-bypass closed (A+D hardening)
+
+- **Category:** Security correctness (auth-pipeline bypass primitive on the HTTP MCP gateway). Critical.
+- **Findings:** Phase 3 CR-02 (`.planning/REVIEW-banking-mcp-gateway-agent.md`).
+- **Files:** `banking_mcp_gateway/src/adminConfig.ts` (NEW — extracted, unit-testable `applyAdminConfigUpdate` carrying the A+D+belt logic), `banking_mcp_gateway/src/index.ts` (`POST /admin/config` now delegates to `applyAdminConfigUpdate`), `banking_mcp_gateway/tests/adminConfig-devbypass.test.ts` (NEW — 14 tests).
+- **Commit:** see commit referenced in this entry's `git log` (fix(3): CR-02 …).
+
+**What was wrong:**
+`POST /admin/config` is the runtime config-toggle endpoint (BL-01 gated by the timing-safe `x-internal-gateway-secret`). Its production refusal check used strict equality — `updates.devBypass === true` — so a body `{ "devBypass": "true" }`, `{ "devBypass": 1 }`, or `{ "devBypass": "yes" }` slipped past the prod refusal (string/number `!==` boolean `true`). The assignment loop then did `(config as any)[key] = updates[key]`, storing a *truthy non-boolean* `config.devBypass = "true"`. Every later `if (config.devBypass)` is truthy → the gateway stops calling PingAuthorize / introspection and forwards the inbound bearer raw to the backend — a full auth-pipeline bypass, even in production.
+
+**What was fixed (A + D + belt):**
+- **A — strict-boolean validation (all environments):** if `'devBypass' in updates && typeof updates.devBypass !== 'boolean'` the whole request is rejected `400 { error: 'invalid_config' }` BEFORE the prod check and BEFORE the assignment loop. The legitimate demo UI sends real JSON `true`/`false`, so it is unaffected.
+- **D — production hard-refuse any truthy devBypass:** in production, `'devBypass' in updates && updates.devBypass !== false` → `403 { error: 'forbidden' }`. Turning devBypass OFF (`false`) in production is always allowed.
+- **belt — assignment coercion:** `config.devBypass = updates.devBypass === true` (strict). Even if A and D were both bypassed, the stored value can only ever be a real boolean.
+- `devBypass` REMAINS in the `allowed` keys list — it is still a runtime UI toggle in non-prod (no restart), per the product requirement that demo config is UI-driven, not restart-driven.
+
+**Test additions (`banking_mcp_gateway/tests/adminConfig-devbypass.test.ts`):**
+- non-prod `{ devBypass: true }` → 200, `config.devBypass === true` (boolean); `{ devBypass: false }` → 200, `false`.
+- `{ devBypass: "true" | 1 | "yes" }` → 400, config unchanged; malformed devBypass also blocks sibling allowed keys (whole-request rejection).
+- prod `{ devBypass: true }` → 403, unchanged; prod `{ devBypass: false }` → 200 (turn-off allowed); prod `{ devBypass: "true" | 1 }` → rejected (400/403) + unchanged.
+- non-devBypass allowed key still applies normally.
+- BL-01 no-regression: timing-safe secret check still 401s a missing/wrong secret; correct secret accepted.
+
+**Verification:**
+- Gateway: `cd banking_mcp_gateway && npx jest` → **87 tests, all passing** (73 existing + 14 new).
+- Gateway: `npm run build` → **exit 0**.
+- BFF critical suite: `cd banking_api_server && npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration hitlGateway.regression hitlGateway.integration` → **48/48 passing** (no cross-impact).
+
+**Why this matters:**
+The gateway is a dumb pipe + enforcer. `devBypass` is the single switch that turns enforcement off; a type-confusion path that sets it from an attacker-controlled string is a production auth-bypass primitive behind only the internal secret. A+D makes the switch settable *only* via a real JSON boolean and *never* effective in production, while preserving the demo's no-restart UI toggle in non-prod.
+
+**Do not break:**
+- `devBypass` must stay in `ADMIN_CONFIG_ALLOWED_KEYS` (removing it breaks the non-prod demo UI toggle — explicitly out of bounds).
+- Layer A (400 on non-boolean) must run BEFORE layer D (prod 403) and BEFORE the assignment loop.
+- The assignment of `devBypass` must remain strict-boolean coercion (`=== true`), never a raw passthrough of `updates.devBypass`.
+- `POST /admin/config` must remain behind `requireInternalSecret` (BL-01); do not relocate the A/D checks ahead of the secret gate.
+
 ### 2026-05-14 — Phase 3 CR-03: Gateway GET /mcp + DELETE /mcp now run the same auth pipeline as POST /mcp
 
 - **Category:** Security correctness (auth pipeline bypass on the HTTP MCP gateway). Critical.

@@ -36,6 +36,7 @@ import { getScopesForGatewayTool, getChallengeTypeForTool } from './auth/toolSco
 import { GatewayIntrospectionClient } from './auth/GatewayIntrospectionClient';
 import { runMcpAuthorizationPipeline } from './auth/authorizeMcpRequestCore';
 import { loadVaultIntoEnv } from './vault';
+import { applyAdminConfigUpdate, ADMIN_CONFIG_ALLOWED_KEYS } from './adminConfig';
 
 // Phase 269 Plan 04: load encrypted vault entries into process.env BEFORE
 // loadConfig() runs. The vault populates MCP_GW_*, PROVIDER_*, HELIX_*, and
@@ -190,50 +191,23 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
     req.on('data', (chunk) => { body += chunk; });
     req.on('end', () => {
       try {
-        const updates: Partial<Record<string, string | boolean>> = JSON.parse(body || '{}');
+        const updates: Partial<Record<string, unknown>> = JSON.parse(body || '{}');
 
-        // BL-01: refuse devBypass mutations in production.
-        if (
-          process.env.NODE_ENV === 'production' &&
-          'devBypass' in updates &&
-          updates.devBypass === true
-        ) {
-          res.writeHead(403, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            error: 'forbidden',
-            message: 'devBypass=true is not permitted when NODE_ENV=production',
-          }));
-          return;
+        // Phase 3 CR-02: devBypass anti-bypass hardening (A + D + belt) lives
+        // in applyAdminConfigUpdate so it is unit-testable. A rejects non-boolean
+        // devBypass (400); D hard-refuses any truthy devBypass in production
+        // (403); the assignment loop coerces devBypass to a strict boolean.
+        const result = applyAdminConfigUpdate(config, updates, process.env.NODE_ENV);
+        if (result.mutated) {
+          console.log(
+            '[GW] /admin/config updated:',
+            Object.keys(updates).filter((k) =>
+              ADMIN_CONFIG_ALLOWED_KEYS.includes(k as keyof typeof config),
+            ),
+          );
         }
-
-        const allowed: Array<keyof typeof config> = [
-          'gatewayResourceUri',
-          'mcpOlbWsUrl', 'mcpInvestWsUrl',
-          'mcpOlbResourceUri', 'mcpInvestResourceUri',
-          'pingAuthorizeEndpoint', 'pingAuthorizeWorkerId',
-          'hitlServiceUrl',
-          'devBypass',
-        ];
-        for (const key of allowed) {
-          if (key in updates) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (config as any)[key] = updates[key as string];
-          }
-        }
-        console.log('[GW] /admin/config updated:', Object.keys(updates).filter(k => allowed.includes(k as keyof typeof config)));
-        const safe = {
-          gatewayResourceUri:    config.gatewayResourceUri,
-          mcpOlbWsUrl:           config.mcpOlbWsUrl,
-          mcpInvestWsUrl:        config.mcpInvestWsUrl,
-          mcpOlbResourceUri:     config.mcpOlbResourceUri,
-          mcpInvestResourceUri:  config.mcpInvestResourceUri,
-          pingAuthorizeEndpoint: config.pingAuthorizeEndpoint,
-          pingAuthorizeWorkerId: config.pingAuthorizeWorkerId,
-          hitlServiceUrl:        config.hitlServiceUrl,
-          devBypass:             config.devBypass,
-        };
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, config: safe }));
+        res.writeHead(result.status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result.body));
       } catch {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Invalid JSON body' }));
