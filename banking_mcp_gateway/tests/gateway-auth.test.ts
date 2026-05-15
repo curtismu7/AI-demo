@@ -347,6 +347,39 @@ describe('buildAuthorizeMcpRequest middleware', () => {
     expect(calledWithToken).not.toBe(bearerToken);
   });
 
+  it('WR-03: strips _hitl_challenge_id from arguments before forwarding on the HTTP path', async () => {
+    mockedAxios.post.mockResolvedValueOnce({ data: { decision: 'PERMIT' } });
+    mockedAxios.post.mockResolvedValueOnce({
+      data: { access_token: 'exchanged-olb-token', expires_in: 300 },
+    });
+
+    const body = Buffer.from(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+          name: 'create_transfer',
+          arguments: { amount: 10, _hitl_challenge_id: 'chal-abc', to_account_id: 'a1' },
+        },
+      }),
+    );
+
+    await middleware(
+      VALID_BEARER,
+      body,
+      req as IncomingMessage,
+      res as ServerResponse,
+      forwardSpy,
+    );
+
+    expect(forwardSpy).toHaveBeenCalledTimes(1);
+    const forwardedBody = forwardSpy.mock.calls[0][1] as Buffer;
+    const forwarded = JSON.parse(forwardedBody.toString('utf-8'));
+    expect(forwarded.params.arguments).not.toHaveProperty('_hitl_challenge_id');
+    expect(forwarded.params.arguments).toEqual({ amount: 10, to_account_id: 'a1' });
+  });
+
   it('deny from PingAuthorize → returns 403 and does NOT call forward', async () => {
     mockedAxios.post.mockResolvedValueOnce({ data: { decision: 'DENY' } });
 

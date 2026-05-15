@@ -141,9 +141,23 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
     const decoded = pipelineResult.decoded;
 
     // ── Step 2: Parse JSON-RPC to get method, tool name, and transaction args ──────
-    const { method = 'unknown', params } = parseJsonRpcBody(body);
+    const parsedBody = parseJsonRpcBody(body);
+    const { method = 'unknown', params } = parsedBody;
     const toolName = params?.name;
-    const toolArgs = params?.arguments as Record<string, unknown> | undefined;
+    let toolArgs = params?.arguments as Record<string, unknown> | undefined;
+
+    // WR-03: `_hitl_challenge_id` is a gateway-internal control field. The WS
+    // path (index.ts) strips it before forwarding (Phase 2 CR-01); the HTTP
+    // path forwarded the original body Buffer verbatim, leaking it to the
+    // backend (which may reject unrecognized args under strict input-schema
+    // validation). Rebuild the body with the field removed before forwarding.
+    let outBody = body;
+    if (toolArgs && '_hitl_challenge_id' in toolArgs) {
+      const { _hitl_challenge_id: _stripped, ...rest } = toolArgs;
+      toolArgs = rest;
+      if (parsedBody.params) parsedBody.params.arguments = rest;
+      outBody = Buffer.from(JSON.stringify(parsedBody), 'utf-8');
+    }
 
     // ── Step 3: PingOne Authorize evaluation (D-06) ───────────────────────────────
     let authzDecision;
@@ -203,7 +217,8 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
     auditTrail.exchange = { targetAud: exchangeResult.targetAud };
 
     // ── Step 5: Forward with exchanged token (D-04: original bearer stays at gateway) ──
+    // WR-03: outBody has `_hitl_challenge_id` stripped (or === body if absent).
     setAuditHeader(res);
-    await forward(exchangeResult.token, body);
+    await forward(exchangeResult.token, outBody);
   };
 }
