@@ -121,15 +121,23 @@ function releaseMcpWsSlot() {
  * @param {string} [correlationId] - Optional correlation ID for distributed tracing
  */
 function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) {
-  return new Promise((resolve, reject) => {
-    let released = false;
-    const safeRelease = () => {
-      if (!released) {
-        released = true;
-        releaseMcpWsSlot();
-      }
-    };
+  // WR-06: hold the pooled WS slot until the ENTIRE RPC promise settles.
+  // Previously safeRelease() ran inside the message handler before
+  // resolve()/reject() returned, so releaseMcpWsSlot() synchronously woke the
+  // next queued waiter — which constructed a new WebSocket while this one was
+  // still closing and this promise had not yet settled (response cross-talk /
+  // slot-exhaustion race). The slot is now released in a single .finally()
+  // after the promise resolves OR rejects. Pool size/topology unchanged —
+  // only the release TIMING moved.
+  let released = false;
+  const safeRelease = () => {
+    if (!released) {
+      released = true;
+      releaseMcpWsSlot();
+    }
+  };
 
+  const rpcPromise = new Promise((resolve, reject) => {
     const INIT_REQUEST_ID = 1;
     const FOLLOW_REQUEST_ID = 2;
 
@@ -144,13 +152,11 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
 
         const timeout = setTimeout(() => {
           ws.terminate();
-          safeRelease();
           reject(new Error('MCP call timed out'));
         }, 15000);
 
         ws.on('error', (err) => {
           clearTimeout(timeout);
-          safeRelease();
           reject(err);
         });
 
@@ -179,7 +185,6 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
             msg = JSON.parse(raw.toString());
           } catch {
             clearTimeout(timeout);
-            safeRelease();
             reject(new Error('MCP invalid JSON response'));
             return;
           }
@@ -187,14 +192,12 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
           if (phase === 'awaiting_init') {
             if (!jsonRpcIdsMatch(msg.id, INIT_REQUEST_ID)) {
               clearTimeout(timeout);
-              safeRelease();
               reject(new Error(`MCP unexpected response id (expected initialize ${INIT_REQUEST_ID})`));
               return;
             }
             if (msg.error) {
               clearTimeout(timeout);
               ws.close();
-              safeRelease();
               reject(new Error(msg.error.message || JSON.stringify(msg.error)));
               return;
             }
@@ -203,7 +206,6 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
             if (!SUPPORTED_PROTOCOL_VERSIONS.has(negotiatedVersion)) {
               clearTimeout(timeout);
               ws.close();
-              safeRelease();
               reject(new Error(`MCP server negotiated unsupported protocol version: ${negotiatedVersion}`));
               return;
             }
@@ -243,14 +245,12 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
           if (phase === 'awaiting_follow') {
             if (!jsonRpcIdsMatch(msg.id, FOLLOW_REQUEST_ID)) {
               clearTimeout(timeout);
-              safeRelease();
               reject(new Error(`MCP unexpected response id (expected ${followMethod} ${FOLLOW_REQUEST_ID})`));
               return;
             }
             clearTimeout(timeout);
             ws.close();
             if (msg.error) {
-              safeRelease();
               const mcpErr = new Error(msg.error.message || JSON.stringify(msg.error));
               if (msg.error.code === -32005) {
                 mcpErr.code = 'mcp_insufficient_scope';
@@ -269,7 +269,6 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
               });
               reject(mcpErr);
             } else {
-              safeRelease();
               writeMcpTrafficEntry({
                 dir: 'MCP→BFF',
                 type: 'rpc_response',
@@ -287,10 +286,13 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
         });
       })
       .catch((err) => {
-        safeRelease();
         reject(err);
       });
   });
+
+  // WR-06: slot held until the promise fully settles, regardless of which
+  // code path (success, MCP error, timeout, transport error) completed.
+  return rpcPromise.finally(safeRelease);
 }
 
 function mcpListTools(agentToken, userSub, correlationId) {
