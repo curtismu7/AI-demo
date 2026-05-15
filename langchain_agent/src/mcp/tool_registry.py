@@ -348,7 +348,20 @@ class MCPClientManager:
         self.tool_registry = ToolRegistry()
         self._server_configs: Dict[str, MCPServerConfig] = {}
         self.tool_executor = MCPToolExecutor(self.connection_pool, self.tool_registry, self._server_configs)
-        
+
+        # IN-03: pending per-session MCP auth challenges. Previously this was
+        # monkey-patched onto the instance from MCPToolProvider tool _arun
+        # paths (`if not hasattr(..., '_session_challenges'): ... = {}`),
+        # making it undiscoverable and the lifetime implicit. Declare it here
+        # as a real attribute. Process-scoped-singleton is correct: there is
+        # one MCPClientManager per process (constructed once in
+        # LangChainMCPApplication.initialize) and entries are keyed by
+        # session_id and deleted on consume/expiry, so there is no
+        # cross-session bleed of the WR-06 tracer class — the key IS the
+        # session. The remaining hasattr() guards in mcp_tool_provider.py are
+        # now always-true and harmless (kept to avoid an unrelated diff).
+        self._session_challenges: Dict[str, Dict[str, Any]] = {}
+
         logger.info("Initialized MCP client manager")
     
     async def register_server(self, server_config: MCPServerConfig) -> None:

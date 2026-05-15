@@ -381,9 +381,14 @@ Remember to maintain conversation context and provide helpful, accurate response
             r'\bauth[:\s=]+([A-Za-z0-9_-]+)\b',
         ]
         for pattern in prefixed_patterns:
-            matches = re.findall(pattern, message, re.IGNORECASE)
-            if matches:
-                return max(matches, key=len)
+            # IN-01: each pattern has exactly one capture group, so re.findall
+            # returns a list[str]. A prefixed OAuth code is a single token —
+            # the first match for the first matching prefix is the code. The
+            # old `max(matches, key=len)` "longest wins" tie-break was dead
+            # complexity (and silently wrong if a group ever became a tuple).
+            match = re.search(pattern, message, re.IGNORECASE)
+            if match:
+                return match.group(1)
         return None
     
     def _looks_like_email(self, message: str) -> bool:
@@ -425,9 +430,28 @@ Remember to maintain conversation context and provide helpful, accurate response
             if tracer:
                 self.mcp_tool_provider.set_tracer(tracer)
             
-            # Use user lookup tool
-            for tool in self._tools:
-                if tool.name == "banking_query_user_by_email":
+            # Use user lookup tool. IN-02: resolve by name with an explicit
+            # guard so a missing/renamed MCP tool fails loudly (logged with
+            # the names that ARE registered) instead of silently falling
+            # through to the opaque "having trouble" message.
+            USER_LOOKUP_TOOL = "banking_query_user_by_email"
+            lookup_tool = next(
+                (
+                    t
+                    for t in self._tools
+                    if getattr(t, "name", None) == USER_LOOKUP_TOOL
+                ),
+                None,
+            )
+            if lookup_tool is None:
+                logger.warning(
+                    "User-lookup tool %r not registered; available tools: %s. "
+                    "Has the MCP server renamed it?",
+                    USER_LOOKUP_TOOL,
+                    [getattr(t, "name", "?") for t in self._tools],
+                )
+            for tool in ([lookup_tool] if lookup_tool is not None else []):
+                if tool.name == USER_LOOKUP_TOOL:
                     logger.info("Found user lookup tool, executing...")
                     
                     # Log the tool execution start if tracer is available
