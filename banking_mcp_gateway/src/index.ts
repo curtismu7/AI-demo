@@ -29,7 +29,7 @@ import { exchangeTokenForBackend } from './tokenExchange';
 import { selectCredentialForBackend } from './credentialSwap';
 import { proxyJsonRpc, JsonRpcRequest, JsonRpcResponse } from './proxy';
 import { guardToolsList, guardToolCall } from './pingAuthorizeGuard';
-import { createHitlChallenge, getHitlChallengeStatus } from './hitlClient';
+import { createHitlChallenge, getHitlChallengeStatus, verifyHitlReceipt } from './hitlClient';
 import { GatewayServer } from './server/GatewayServer';
 import { buildAuthorizeMcpRequest } from './middleware/authorizeMcpRequest';
 import { getScopesForGatewayTool, getChallengeTypeForTool } from './auth/toolScopes';
@@ -456,23 +456,46 @@ async function handleMessage(
 
     const msgParams = msg.params as { name?: string; arguments?: Record<string, unknown> } | undefined;
     const toolName: string = msgParams?.name || '';
-    const toolArgs: Record<string, unknown> = msgParams?.arguments || {};
+    // Phase 2 CR-01 — `_hitl_challenge_id` is a gateway-internal field that
+    // gates the retry. Strip it from toolArgs before forwarding to the
+    // downstream MCP server: the backend has no use for it and may reject
+    // unrecognized arguments under strict input-schema validation.
+    const rawToolArgs: Record<string, unknown> = msgParams?.arguments || {};
+    const hitlChallengeId = rawToolArgs._hitl_challenge_id as string | undefined;
+    const toolArgs: Record<string, unknown> = { ...rawToolArgs };
+    delete toolArgs._hitl_challenge_id;
+    if (msgParams) {
+      msgParams.arguments = toolArgs;
+    }
 
-    // If agent is retrying with a HITL receipt, verify the challenge is approved
-    const hitlChallengeId = toolArgs._hitl_challenge_id as string | undefined;
+    // If agent is retrying with a HITL receipt, verify the challenge is
+    // approved AND that it was issued for THIS caller/agent/tool. Without
+    // the binding check, an approved receipt from {userA, toolA} can be
+    // replayed by {userB, toolB} — the downstream PingAuthorize evaluation
+    // is not sufficient because some tools may re-permit on the second pass.
     if (hitlChallengeId) {
       if (!config.hitlServiceUrl) {
         send(jsonRpcError(id, -32500, 'HITL service not configured'));
         return;
       }
+      let status;
       try {
-        const status = await getHitlChallengeStatus(config.hitlServiceUrl, hitlChallengeId);
-        if (status.status !== 'approved') {
-          send(jsonRpcError(id, -32002, `HITL challenge not approved (status: ${status.status})`, { hitl: true, challengeId: hitlChallengeId }));
-          return;
-        }
+        status = await getHitlChallengeStatus(config.hitlServiceUrl, hitlChallengeId);
       } catch {
         send(jsonRpcError(id, -32500, 'Failed to verify HITL challenge'));
+        return;
+      }
+      const verification = verifyHitlReceipt(
+        status,
+        decoded.sub,
+        decoded.act?.sub,
+        toolName,
+      );
+      if (!verification.ok) {
+        send(jsonRpcError(id, -32002, verification.message || 'HITL challenge invalid', {
+          hitl: true,
+          challengeId: hitlChallengeId,
+        }));
         return;
       }
     }
