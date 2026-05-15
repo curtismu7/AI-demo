@@ -504,6 +504,12 @@ class UserAuthorizationFacilitator:
     That is handled by the MCP servers directly with the authorization server.
     """
     
+    # WR-07: hard cap on tracked pending authorizations. A user who starts an
+    # OAuth flow but never returns leaves a (10-min TTL) entry forever; without
+    # a reaper the dict grows unbounded over uptime. The cap is generous
+    # relative to realistic concurrent in-flight logins for a demo.
+    _MAX_PENDING_AUTHORIZATIONS = 512
+
     def __init__(self, config=None):
         self.config = config or get_config()
         self._pending_authorizations: Dict[str, Dict[str, Any]] = {}
@@ -521,6 +527,16 @@ class UserAuthorizationFacilitator:
         Returns:
             str: The authorization URL for the user to visit
         """
+        # WR-07: self-reap before adding a new entry. cleanup_expired_...()
+        # only removes entries past their 10-minute expires_at, so a flow
+        # still inside its valid auth window (and its PKCE code_verifier) is
+        # never evicted. _enforce_pending_cap() then drops the OLDEST entries
+        # if the dict is still over the hard cap (FIFO, like the gateway
+        # tokenExchange cap) — bounding worst-case memory even under a flood
+        # of unexpired requests.
+        self.cleanup_expired_authorizations()
+        self._enforce_pending_cap()
+
         # Generate cryptographically secure state parameter
         state = self._generate_state()
 
@@ -694,6 +710,35 @@ class UserAuthorizationFacilitator:
         code_challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
         return code_verifier, code_challenge
     
+    def _enforce_pending_cap(self) -> None:
+        """Drop the oldest pending authorizations if over the hard cap (WR-07).
+
+        Called after cleanup_expired_authorizations() and BEFORE the caller
+        inserts its new entry, so reap down to cap-1 to guarantee the dict is
+        <= cap once that insert lands. Only fires when too many *unexpired*
+        flows are in flight at once. Eviction is FIFO by created_at — the
+        newest (most likely to still be completed) entries survive, mirroring
+        the gateway tokenExchange FIFO cap pattern.
+        """
+        overflow = (
+            len(self._pending_authorizations)
+            - (self._MAX_PENDING_AUTHORIZATIONS - 1)
+        )
+        if overflow <= 0:
+            return
+
+        oldest_states = sorted(
+            self._pending_authorizations,
+            key=lambda s: self._pending_authorizations[s]["created_at"],
+        )[:overflow]
+        for state in oldest_states:
+            del self._pending_authorizations[state]
+        logger.warning(
+            f"Pending-authorization cap ({self._MAX_PENDING_AUTHORIZATIONS}) "
+            f"exceeded; evicted {len(oldest_states)} oldest entr"
+            f"{'y' if len(oldest_states) == 1 else 'ies'}"
+        )
+
     def cleanup_expired_authorizations(self) -> None:
         """Clean up expired authorization requests."""
         now = datetime.now(timezone.utc)

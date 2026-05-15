@@ -120,9 +120,16 @@ class TestWR05JsonInjection:
 # ---------------------------------------------------------------------------
 class TestWR07PendingAuthorizationsBounded:
     def _facilitator(self):
+        from types import SimpleNamespace
         from authentication.oauth_manager import UserAuthorizationFacilitator
 
-        return UserAuthorizationFacilitator()
+        cfg = SimpleNamespace(
+            pingone=SimpleNamespace(
+                redirect_uri="https://api.ping.demo:4000/callback",
+                authorization_endpoint="https://auth.example/as/authorize",
+            )
+        )
+        return UserAuthorizationFacilitator(config=cfg)
 
     def test_expired_entry_evicted_recent_survives(self):
         fac = self._facilitator()
