@@ -2,6 +2,7 @@
 MCP Tool Provider for LangChain integration.
 """
 import asyncio
+import contextvars
 import json
 import logging
 from typing import Dict, Any, List, Optional, Type
@@ -18,8 +19,19 @@ from models.mcp import AuthChallenge
 
 logger = logging.getLogger(__name__)
 
-# Global tracer reference for MCP tool execution tracing
-_current_tracer = None
+# WR-06: the "current tracer" must be scoped to the async context/task that
+# set it, NOT shared process-wide. A module-level global was only safe while
+# WR-02's single global message-queue worker serialized all session
+# processing; the moment per-session concurrency is introduced, session A's
+# tracer would receive session B's log_step calls (cross-session trace bleed).
+# A ContextVar is the correct construct: asyncio.create_task copies the
+# context at creation time, so each concurrent task sees its OWN tracer.
+# Setter ordering is verified safe — set_tracer() runs BEFORE the tool
+# execution (agent_executor.ainvoke / tool.arun) that reads it, so the value
+# is captured into any child tasks the executor spawns (copy-on-create).
+_current_tracer: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar(
+    "mcp_current_tracer", default=None
+)
 
 
 # WR-05: the auth-popup block was previously assembled with bare f-string
@@ -326,9 +338,9 @@ class MCPTool(BaseTool):
             logger.debug(f"Tool execution details - Server: {self.tool_info.server_name}, Tool: {self.tool_info.name}, Session: {self._current_session_id}")
             
             # Log MCP tool execution start with detailed payload
-            global _current_tracer
-            if _current_tracer:
-                _current_tracer.log_step("mcp_tool_request", f"MCP Server: {self.tool_info.server_name}", {
+            tracer = _current_tracer.get()
+            if tracer:
+                tracer.log_step("mcp_tool_request", f"MCP Server: {self.tool_info.server_name}", {
                     "tool_name": self.tool_info.name,
                     "server_name": self.tool_info.server_name,
                     "input_parameters": parameters,
@@ -355,8 +367,9 @@ class MCPTool(BaseTool):
             logger.info(f"Has authChallenge: {'authChallenge' in result if isinstance(result, dict) else False}")
             
             # Log MCP tool execution response with detailed payload
-            if _current_tracer:
-                _current_tracer.log_step("mcp_tool_response", f"MCP Server: {self.tool_info.server_name}", {
+            tracer = _current_tracer.get()
+            if tracer:
+                tracer.log_step("mcp_tool_response", f"MCP Server: {self.tool_info.server_name}", {
                     "tool_name": self.tool_info.name,
                     "server_name": self.tool_info.server_name,
                     "result": result,
@@ -498,9 +511,10 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
             logger.error(f"Full traceback: {traceback.format_exc()}")
             
             # Log MCP tool execution error with detailed information
-            if _current_tracer:
+            tracer = _current_tracer.get()
+            if tracer:
                 execution_time_ms = int((datetime.now() - start_time).total_seconds() * 1000) if 'start_time' in locals() else 0
-                _current_tracer.log_step("mcp_tool_error", f"MCP Server: {self.tool_info.server_name}", {
+                tracer.log_step("mcp_tool_error", f"MCP Server: {self.tool_info.server_name}", {
                     "tool_name": self.tool_info.name,
                     "server_name": self.tool_info.server_name,
                     "error": str(e),
@@ -840,9 +854,15 @@ class MCPToolProvider:
         logger.info("Initialized MCP tool provider")
     
     def set_tracer(self, tracer):
-        """Set the current tracer for MCP tool execution logging."""
-        global _current_tracer
-        _current_tracer = tracer
+        """Set the current tracer for MCP tool execution logging.
+
+        WR-06: scoped to the calling async context (ContextVar), not a
+        process-wide global. Called once per agent turn BEFORE tool execution
+        in that turn — the value propagates (copy-on-create) into any child
+        tasks the agent executor spawns, so concurrent sessions never see
+        each other's tracer.
+        """
+        _current_tracer.set(tracer)
     
     async def get_langchain_tools(self) -> List[BaseTool]:
         """

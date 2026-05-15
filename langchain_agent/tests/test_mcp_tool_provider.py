@@ -465,9 +465,70 @@ class TestMCPToolProvider:
     def test_get_tools_count(self, mcp_tool_provider):
         """Test getting tools count."""
         assert mcp_tool_provider.get_tools_count() == 0
-        
+
         mcp_tool_provider._tools = [Mock(), Mock(), Mock()]
         assert mcp_tool_provider.get_tools_count() == 3
+
+
+class TestTracerContextIsolation:
+    """WR-06: the MCP tracer must be ContextVar-scoped, never a module
+    global. Concurrent sessions must never see each other's tracer
+    (cross-session trace bleed). Analogous to the CR-06 demux test."""
+
+    @pytest.mark.asyncio
+    async def test_concurrent_tasks_do_not_leak_tracers(
+        self, mcp_tool_provider
+    ):
+        """Two concurrent tasks each set their own tracer and then read it
+        back across an await point; each must observe ITS OWN tracer, never
+        the other task's — the leak-proof test."""
+        from src.agent import mcp_tool_provider as provider_mod
+
+        tracer_a = Mock(name="tracer-A")
+        tracer_b = Mock(name="tracer-B")
+
+        async def session_task(tracer, ready_evt, release_evt):
+            # Set within THIS task's context (copy-on-create isolation).
+            mcp_tool_provider.set_tracer(tracer)
+            ready_evt.set()
+            # Yield so the sibling task interleaves and sets ITS tracer.
+            # If the tracer were a module global, the sibling's set would
+            # have clobbered ours and this read would return the wrong one.
+            await release_evt.wait()
+            return provider_mod._current_tracer.get()
+
+        ready_a, ready_b = asyncio.Event(), asyncio.Event()
+        release = asyncio.Event()
+
+        task_a = asyncio.create_task(session_task(tracer_a, ready_a, release))
+        task_b = asyncio.create_task(session_task(tracer_b, ready_b, release))
+
+        # Ensure BOTH tasks have run set_tracer before either reads back.
+        await ready_a.wait()
+        await ready_b.wait()
+        release.set()
+
+        seen_a, seen_b = await asyncio.gather(task_a, task_b)
+
+        assert seen_a is tracer_a, "task A saw the wrong tracer (leak)"
+        assert seen_b is tracer_b, "task B saw the wrong tracer (leak)"
+        assert seen_a is not seen_b
+
+    @pytest.mark.asyncio
+    async def test_single_task_observes_its_tracer(self, mcp_tool_provider):
+        """Happy path: within one task the tracer set via set_tracer() is
+        observed correctly by a subsequent read."""
+        from src.agent import mcp_tool_provider as provider_mod
+
+        # Default before any set in this context.
+        assert provider_mod._current_tracer.get() is None
+
+        tracer = Mock(name="tracer-solo")
+        mcp_tool_provider.set_tracer(tracer)
+
+        # Survives an await boundary within the same task/context.
+        await asyncio.sleep(0)
+        assert provider_mod._current_tracer.get() is tracer
 
 
 if __name__ == "__main__":
