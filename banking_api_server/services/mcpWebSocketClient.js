@@ -24,10 +24,21 @@ function getMcpProtocolVersion() {
 /** Versions this client can interoperate with — disconnect on mismatch (spec SHOULD). */
 const SUPPORTED_PROTOCOL_VERSIONS = new Set(['2025-11-25', '2024-11-05']);
 
-/** Scopes requested for RFC 8693 token exchange per MCP tool (must match BankingToolRegistry names).
- *  Each tool lists [specific, broad] so either the precise scope OR the umbrella scope is sufficient.
+/** CATALOG (not an authorization gate): scopes the RFC 8693 token exchange
+ *  REQUESTS per MCP tool, and the requiredScopesHint surfaced by the MCP
+ *  Inspector. Each tool lists [specific, broad] so either the precise scope OR
+ *  the umbrella scope is sufficient.
  *  banking:read  = view own data (accounts, balances, transactions)
- *  banking:write = mutate data (transfer, deposit, withdrawal) */
+ *  banking:write = mutate data (transfer, deposit, withdrawal)
+ *
+ *  Architecture-note R1 (2026-05-15) / T-2: this map is NOT an authorization
+ *  oracle. Whether an MCP tool call is permitted is decided solely by
+ *  PingAuthorize (`mcpToolAuthorizationService.evaluateMcpFirstToolGate`,
+ *  server.js). Do not reintroduce a local authz decision keyed off this map.
+ *  Because it is no longer a security boundary, drift from BankingToolRegistry
+ *  (BFF review WR-01) is a request-scope/advertisement accuracy concern, not a
+ *  security gap — keep names aligned for correct exchange scopes, not for
+ *  enforcement. Names should still match BankingToolRegistry. */
 const MCP_TOOL_SCOPES = {
   // Read tools — flat scope per Phase 146
   get_my_accounts:             ['banking:read'],

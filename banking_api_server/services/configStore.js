@@ -188,8 +188,16 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   UI_INDUSTRY_PRESET: { public: true, default: 'bx_finance' },
 
   /**
-   * Space-separated OAuth scopes allowed for RFC 8693 exchange to MCP (agent capability).
-   * Subset of KNOWN scopes in agentMcpScopePolicy.js — disabling a scope blocks matching MCP tools.
+   * Space-separated OAuth scopes the demo presenter selects for the agent on the
+   * Application Configuration page ("Agent MCP scopes"). Advisory/catalog config
+   * only — it does NOT make an authorization decision in the BFF.
+   *
+   * Architecture-note R1 (2026-05-15) / T-2: the former local
+   * `agentMcpScopePolicy` veto that consumed this value to block tool calls has
+   * been removed. Whether an MCP tool call is permitted is decided solely by
+   * PingAuthorize (`mcpToolAuthorizationService.evaluateMcpFirstToolGate`). To
+   * demo a read-only agent (e.g. disable transfers), restrict the scopes in the
+   * PingOne Authorize / token-exchange policy — not via this local key.
    */
   agent_mcp_allowed_scopes: {
     public: true,
