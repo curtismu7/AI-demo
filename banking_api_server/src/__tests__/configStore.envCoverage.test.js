@@ -33,7 +33,34 @@ const IGNORED_VARS = new Set([
   'USERNAME',          // demo cred mapped as demo_username
   'PASSWORD',          // demo cred mapped as demo_password
   'PINGONE_MFA_POLICY_ID', // appears twice in .env (duplicate); mapped once
+  // VAULT_PASSWORD is the vault decryption password consumed by
+  // services/vaultLoader.js at bootstrap and deleted from process.env
+  // immediately after (vaultLoader.js ~line 110). configStore reads FROM the
+  // vault that VAULT_PASSWORD unlocks, so routing it through getEffective is
+  // both circular and contradicts the deliberate scrub. Pure infra/bootstrap
+  // secret — same category as NODE_ENV, not a config-coverage gap.
+  'VAULT_PASSWORD',
 ]);
+
+// Alias-prefix normalizations: maps a .env var prefix to the configStore key
+// prefix it is aliased under, so the coverage test can derive the correct
+// getEffective() candidate for vars that live under a renamed key. Each entry
+// is [regex, replacement]; applied against the lowercased var name to build
+// extra candidates. Keeps already-aliased vars (AGENT_OAUTH_*, AGENT_*,
+// MCP_RESOURCE_URI, etc.) from false-failing without needing redundant
+// envFallbackMap entries for keys that are already covered.
+const ALIAS_PREFIXES = [
+  [/^agent_oauth_/,        'pingone_mcp_token_exchanger_'],
+  [/^pingone_mcp_exchanger_/, 'pingone_mcp_token_exchanger_'],
+  [/^agent_/,              'pingone_ai_agent_'],
+  [/^pingone_worker_/,     'pingone_worker_token_'],
+  [/^demo_user_/,          'demo_'],
+];
+
+// Exact-name remaps for vars whose alias is not a clean prefix substitution.
+const ALIAS_EXACT = {
+  mcp_resource_uri: 'pingone_resource_mcp_server_uri',
+};
 
 // ── Build the envFallbackMap by requiring configStore internals ───────────────
 // We expose the map for testing by calling getEffective with a known sentinel
@@ -78,12 +105,22 @@ describe('configStore env coverage', () => {
 
       // Try both the exact env var name lowercased and some common patterns.
       // configStore normalises keys to lowercase internally.
+      const lower = envVar.toLowerCase();
       const candidates = [
-        envVar.toLowerCase(),
+        lower,
         // strip common prefixes to get the bare key
         envVar.replace(/^PINGONE_/, '').toLowerCase(),
+        envVar.replace(/^PINGONE_/, 'pingone_').toLowerCase(),
         envVar.replace(/^HELIX_/, 'helix_').toLowerCase(),
       ];
+
+      // Add alias-prefix-derived candidates so vars that are mapped under a
+      // renamed configStore key (e.g. AGENT_OAUTH_CLIENT_ID →
+      // pingone_mcp_token_exchanger_client_id) still resolve.
+      for (const [re, repl] of ALIAS_PREFIXES) {
+        if (re.test(lower)) candidates.push(lower.replace(re, repl));
+      }
+      if (ALIAS_EXACT[lower]) candidates.push(ALIAS_EXACT[lower]);
 
       let found = false;
       for (const candidate of candidates) {

@@ -37,6 +37,8 @@ const SECRET_KEYS = new Set([
   'pingone_introspection_client_secret',
   'posthog_api_key',
   'demo_password',
+  'demo_admin_password',
+  'mcp_gw_client_secret',
 ]);
 
 // All known config keys with their defaults and whether they are public
@@ -301,6 +303,18 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // Demo credentials (local only)
   demo_username:                         { public: true,  default: '' },
   demo_password:                         { public: false, default: '' },
+  demo_admin_username:                   { public: true,  default: '' },
+  demo_admin_password:                   { public: false, default: '' },
+
+  // MCP Gateway delegated-exchange app credentials
+  mcp_gw_client_id:                      { public: true,  default: '' },
+  mcp_gw_client_secret:                  { public: false, default: '' },
+  mcp_gw_resource_uri:                   { public: true,  default: '' },
+  mcp_gw_token_endpoint_auth_method:     { public: true,  default: '' },
+
+  // Admin token lifetimes (seconds)
+  admin_token_lifetime:                  { public: true,  default: '' },
+  admin_refresh_token_lifetime:          { public: true,  default: '' },
 
   // Phase 266 — Path A demo: service API key the gateway swaps in (masked last-4 shown on info page)
   demo_apikey_backend_service_key:       { public: false, default: 'demo-api-key-0000' },
@@ -666,16 +680,22 @@ class ConfigStore {
       agent_mcp_allowed_scopes: ['AGENT_MCP_ALLOWED_SCOPES'],
       ff_two_exchange_delegation:      ['FF_TWO_EXCHANGE_DELEGATION'],
       ff_heuristic_enabled:            ['FF_HEURISTIC_ENABLED'],
-      pingone_ai_agent_client_id:       ['PINGONE_AI_AGENT_CLIENT_ID', 'AI_AGENT_CLIENT_ID'],
-      pingone_ai_agent_client_secret:    ['PINGONE_AI_AGENT_CLIENT_SECRET', 'AI_AGENT_CLIENT_SECRET'],
+      pingone_ai_agent_client_id:       ['PINGONE_AI_AGENT_CLIENT_ID', 'AI_AGENT_CLIENT_ID', 'AGENT_CLIENT_ID'],
+      pingone_ai_agent_client_secret:    ['PINGONE_AI_AGENT_CLIENT_SECRET', 'AI_AGENT_CLIENT_SECRET', 'AGENT_CLIENT_SECRET'],
       pingone_worker_client_id:                    ['PINGONE_AUTHORIZE_WORKER_CLIENT_ID'],
-      pingone_mcp_token_exchanger_client_id:     ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID', 'AGENT_OAUTH_CLIENT_ID'],
-      pingone_mcp_token_exchanger_client_secret: ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET', 'AGENT_OAUTH_CLIENT_SECRET'],
+      pingone_mcp_token_exchanger_client_id:     ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID', 'PINGONE_MCP_EXCHANGER_CLIENT_ID', 'AGENT_OAUTH_CLIENT_ID'],
+      pingone_mcp_token_exchanger_client_secret: ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET', 'PINGONE_MCP_EXCHANGER_CLIENT_SECRET', 'AGENT_OAUTH_CLIENT_SECRET'],
       pingone_mcp_token_exchanger_client_scopes: ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SCOPES', 'AGENT_OAUTH_CLIENT_SCOPES'],
       pingone_resource_agent_gateway_uri: ['PINGONE_RESOURCE_AGENT_GATEWAY_URI', 'AGENT_GATEWAY_AUDIENCE'],
       agent_gateway_audience:             ['AGENT_GATEWAY_AUDIENCE', 'PINGONE_RESOURCE_AGENT_GATEWAY_URI'],
       ai_agent_intermediate_audience:  ['AI_AGENT_INTERMEDIATE_AUDIENCE'],
-      pingone_resource_mcp_gateway_uri: ['PINGONE_RESOURCE_MCP_GATEWAY_URI', 'MCP_GATEWAY_AUDIENCE'],
+      pingone_resource_mcp_gateway_uri: ['PINGONE_RESOURCE_MCP_GATEWAY_URI', 'MCP_GATEWAY_AUDIENCE', 'MCP_GW_RESOURCE_URI'],
+      // MCP Gateway delegated-exchange app credentials (direct MCP_GW_* names —
+      // previously only read via direct process.env in gateway token glue)
+      mcp_gw_client_id:                 ['MCP_GW_CLIENT_ID'],
+      mcp_gw_client_secret:             ['MCP_GW_CLIENT_SECRET'],
+      mcp_gw_resource_uri:              ['MCP_GW_RESOURCE_URI', 'PINGONE_RESOURCE_MCP_GATEWAY_URI'],
+      mcp_gw_token_endpoint_auth_method: ['MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD'],
       // RFC 8707: single-resource scope for the 2-exchange actor CC tokens.
       // MUST stay in sync with pingoneProvisionService.js Steps 37a/37b grants —
       // the AI Agent / MCP Exchanger apps are granted scopes on >1 resource, so
@@ -763,8 +783,14 @@ class ConfigStore {
       default_user_type:                    ['DEFAULT_USER_TYPE'],
 
       // Demo credentials
-      demo_username:                        ['USERNAME'],
-      demo_password:                        ['PASSWORD'],
+      demo_username:                        ['USERNAME', 'DEMO_USER_USERNAME'],
+      demo_password:                        ['PASSWORD', 'DEMO_USER_PASSWORD'],
+      demo_admin_username:                  ['DEMO_ADMIN_USERNAME'],
+      demo_admin_password:                  ['DEMO_ADMIN_PASSWORD'],
+
+      // Admin token lifetimes (docs-only env reads, now configStore-routable)
+      admin_token_lifetime:                 ['ADMIN_TOKEN_LIFETIME'],
+      admin_refresh_token_lifetime:         ['ADMIN_REFRESH_TOKEN_LIFETIME'],
 
       // MCP gateway HTTP URL
       mcp_gateway_http_url:                 ['MCP_GATEWAY_HTTP_URL'],
@@ -780,8 +806,8 @@ class ConfigStore {
       pingone_authorize_worker_client_secret: ['PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET'],
 
       // Worker token client (management API)
-      pingone_worker_token_client_id:       ['PINGONE_WORKER_TOKEN_CLIENT_ID'],
-      pingone_worker_token_client_secret:   ['PINGONE_WORKER_TOKEN_CLIENT_SECRET'],
+      pingone_worker_token_client_id:       ['PINGONE_WORKER_TOKEN_CLIENT_ID', 'PINGONE_WORKER_CLIENT_ID'],
+      pingone_worker_token_client_secret:   ['PINGONE_WORKER_TOKEN_CLIENT_SECRET', 'PINGONE_WORKER_CLIENT_SECRET'],
       pingone_worker_token_auth_method:     ['PINGONE_WORKER_TOKEN_AUTH_METHOD'],
 
       // Ollama
