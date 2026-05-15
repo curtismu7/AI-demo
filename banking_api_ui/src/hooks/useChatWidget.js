@@ -92,7 +92,9 @@ const useChatWidget = () => {
         if (window.initBankingChatWidget) {
           try {
             const widget = window.initBankingChatWidget({
-              apiUrl: `ws://${window.location.hostname}:8082/ws`,
+              // Path A: same-origin BFF chat-WS proxy (cookie-authed; the BFF
+              // attaches the PingOne identity token server-side).
+              apiUrl: `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/langchain`,
               position: 'bottom-right',
               theme: 'light',
               title: 'AI Banking Assistant',

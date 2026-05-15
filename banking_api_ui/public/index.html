@@ -60,27 +60,14 @@
   <noscript>You need to enable JavaScript to run this app.</noscript>
   <div id="root"></div>
 
-  <!-- WebSocket interceptor: injects auth token into URL before widget connects -->
-  <script>
-    (function() {
-      var _OrigWS = window.WebSocket;
-      function InterceptedWebSocket(url, protocols) {
-        if (url.indexOf('localhost:8082') !== -1 && window._bankingAuthToken) {
-          var sep = url.indexOf('?') !== -1 ? '&' : '?';
-          url = url + sep + 'token=' + encodeURIComponent(window._bankingAuthToken);
-          console.log('🔑 Auth token injected into WebSocket URL');
-        }
-        var ws = protocols ? new _OrigWS(url, protocols) : new _OrigWS(url);
-        return ws;
-      }
-      InterceptedWebSocket.prototype = _OrigWS.prototype;
-      InterceptedWebSocket.CONNECTING = _OrigWS.CONNECTING;
-      InterceptedWebSocket.OPEN = _OrigWS.OPEN;
-      InterceptedWebSocket.CLOSING = _OrigWS.CLOSING;
-      InterceptedWebSocket.CLOSED = _OrigWS.CLOSED;
-      window.WebSocket = InterceptedWebSocket;
-    })();
-  </script>
+  <!--
+    Path A (CR-02/CR-04): the global WebSocket URL-token interceptor was
+    removed. The browser never holds a PingOne token (token custody) — the
+    BFF chat-WS proxy at /ws/langchain resolves and attaches the identity
+    token server-side. Re-introducing any client-side token injection here
+    would reopen the token-custody hole. See REGRESSION_PLAN §1
+    "BFF langchain chat-WS proxy — token custody (Path A)".
+  -->
 
   <!-- Banking Chat Widget CSS -->
   <link rel="stylesheet" href="/banking-chat-widget.css">
@@ -217,9 +204,13 @@
       if (initFunction) {
         try {
           console.log('🎯 Calling initialization function...');
-          const wsUrl = userToken
-            ? `ws://localhost:8082/ws?token=${encodeURIComponent(userToken)}`
-            : 'ws://localhost:8082/ws';
+          // Path A (CR-02/CR-04): connect to the BFF chat-WS proxy on the
+          // SAME origin as every other BFF call (cookie-authenticated). The
+          // browser never sends a token in the URL or anywhere else — the BFF
+          // resolves the PingOne identity token server-side and attaches it to
+          // session_init. ws/wss is chosen from the page protocol.
+          const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+          const wsUrl = `${wsScheme}://${window.location.host}/ws/langchain`;
           bankingWidget = initFunction({
             apiUrl: wsUrl,
             position: 'bottom-right',
