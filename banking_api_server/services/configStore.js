@@ -143,6 +143,12 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // audience before forwarding to the MCP server (act claim identifies the Backend-for-Frontend (BFF)).
   PINGONE_RESOURCE_MCP_SERVER_URI:        { public: true,  default: '' },
 
+  // RFC 8693 Token Exchange — langchain chat agent resource URI (Path A).
+  // The BFF chat-WS proxy requests a token-exchange to this audience before
+  // delivering the token to langchain in session_init. langchain validates
+  // `aud` against this value (T-5: per-hop audience, no cascade).
+  PINGONE_RESOURCE_LANGCHAIN_AGENT_URI:   { public: true,  default: 'https://banking-langchain-agent.banking-demo.com' },
+
   // Demo Data — persistent demo accounts (JSON string, ignored for local SQLite)
   demo_accounts:              { public: false, default: '' },
 
@@ -616,6 +622,7 @@ class ConfigStore {
       public_app_url:         ['PUBLIC_APP_URL'],
       mcp_server_url:                   ['MCP_SERVER_URL'],
       pingone_resource_mcp_server_uri:  ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI'],
+      pingone_resource_langchain_agent_uri: ['PINGONE_RESOURCE_LANGCHAIN_AGENT_URI'],
       authorize_decision_endpoint_id:   ['PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID'],
       authorize_mcp_decision_endpoint_id: ['PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID'],
       debug_oauth:                      ['DEBUG_OAUTH'],
