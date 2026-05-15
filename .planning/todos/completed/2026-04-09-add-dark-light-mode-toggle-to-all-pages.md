@@ -37,3 +37,10 @@ Pages to check/update:
 - Use consistent button styling (emoji indicator + text or just emoji)
 - Ensure accessibility (aria-label, title attribute)
 - Test in both light and dark modes
+
+
+---
+
+## TRIAGE 2026-05-15 — CLOSED (DONE / superseded)
+
+Shipped. `banking_api_ui/src/context/ThemeContext.js` (ThemeProvider with toggleTheme/setTheme, localStorage persistence, cross-tab sync) wraps the whole app at `src/index.js`; `document.documentElement.dataset.theme` drives app-wide `html[data-theme="dark"]` CSS; 34 components consume `useTheme()`. Phase 1 design-system dark theme (see CHANGELOG). App-wide toggle is complete.

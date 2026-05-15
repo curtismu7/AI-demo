@@ -70,3 +70,10 @@ will clearly encode their PingOne application type.
   migrated — same backward-compat approach used in ab9d1ee.
 - The `PINGONE_WORKER_CLIENT_ID` name makes it obvious this is the Management API Worker
   app (type: WORKER in PingOne), not an OAuth login client.
+
+
+---
+
+## TRIAGE 2026-05-15 — CLOSED (DONE / superseded)
+
+Done. `banking_api_server/.env.example` + `configStore.js` field defs now use type-qualified names: PINGONE_ADMIN_CLIENT_ID, PINGONE_USER_CLIENT_ID, PINGONE_AGENT_CLIENT_ID, PINGONE_AI_AGENT_CLIENT_ID, PINGONE_WORKER_TOKEN_CLIENT_ID, PINGONE_MANAGEMENT_CLIENT_ID, PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID. Generic PINGONE_CLIENT_ID survives only as a backward-compat fallback in envFallbackMap. Rename complete.

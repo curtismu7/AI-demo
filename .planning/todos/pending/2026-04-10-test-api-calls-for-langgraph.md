@@ -21,3 +21,10 @@ Test the /api/banking-agent/message endpoint with various requests:
 4. Check that LangGraph state management works as expected
 
 **Note:** The endpoint requires authentication. Test through the UI at https://api.pingdemo.com:4000/agent after logging in, or use curl/Postman with valid session cookies/tokens.
+
+
+---
+
+## TRIAGE 2026-05-15 — PROMOTED to pending
+
+PARTIALLY DONE -> remaining work is TESTING ONLY. Phase 99 shipped the LangGraph StateGraph migration (`agentBuilder.js`, `routes/bankingAgentRoutes.js`, `/api/banking-agent/message` exists). What's missing: no test exercises that endpoint against the LangGraph implementation. Reframe scope: add endpoint/integration test(s) for `/api/banking-agent/message` verifying the LangGraph path responds correctly. Migration itself is NOT in scope (done).

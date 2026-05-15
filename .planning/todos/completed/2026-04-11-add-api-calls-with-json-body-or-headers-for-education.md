@@ -18,3 +18,10 @@ Create a service to capture and display API calls with their JSON bodies and hea
 - Display this information in a user-friendly format for education
 - Be reusable across multiple components since there will be many API calls to display
 - Integrate with PingOne test page and other educational components
+
+
+---
+
+## TRIAGE 2026-05-15 — CLOSED (DONE / superseded)
+
+Shipped (core). `ApiCallDisplay.jsx`, `ApiCallPreviewCard.jsx`, `PingOneTestPage.jsx` show request JSON body + headers for education. Phase 121 (api-display-modal-enhancement — full draggable/resizable modal) remains separately deferred in ROADMAP, but the educational API-call display itself is done.

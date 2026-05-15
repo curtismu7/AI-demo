@@ -49,3 +49,10 @@ the same credential to exist (old key written previously + new key written now).
 
 Backward-compat aliases in `configStore.getEffective()` can be removed once migration is
 confirmed across all environments (local, Vercel preview, Vercel prod).
+
+
+---
+
+## TRIAGE 2026-05-15 — PROMOTED to pending
+
+STILL VALID. `configStore.js` envFallbackMap carries backward-compat aliases (old AND new var names resolve), so reads work — but no documented audit/migration confirms Upstash KV (prod) + SQLite (local) were swept of OLD key names. Until that audit runs, the aliases cannot be safely removed. Directly relevant to the 2026-05-15 configStore/.env-truncation work. Scope: audit + (optionally) a migration, then the alias-removal follow-up.

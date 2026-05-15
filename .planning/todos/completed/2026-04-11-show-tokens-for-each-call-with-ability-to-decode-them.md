@@ -19,3 +19,10 @@ Create a token service that:
 - Can be integrated into PingOne test page and other components
 - Shows token metadata (issuer, audience, expiry, scopes) in a user-friendly format
 - Allows users to expand/collapse individual token details
+
+
+---
+
+## TRIAGE 2026-05-15 — CLOSED (DONE / superseded)
+
+Shipped. `DecodedTokenPanel.jsx` (collapsible header/payload/scopes/timing), `TokenChainDisplay.js`, `UnifiedTokenFlowInspector.jsx`, `TokenChainContext.js`. BFF pre-decodes JWTs server-side (token-custody rule) and the UI renders per-call decoded claims collapsibly. Done.

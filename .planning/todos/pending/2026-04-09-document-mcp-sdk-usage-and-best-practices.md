@@ -41,3 +41,10 @@ Currently, this knowledge exists only in SKILL.md and scattered comments. Should
 ## Tags
 
 docs, mcp, architecture, integration
+
+
+---
+
+## TRIAGE 2026-05-15 — PROMOTED to pending
+
+STILL VALID. `.claude/skills/mcp-server/SKILL.md` covers server internals/tool registration but NOT `@modelcontextprotocol/sdk` external-consumer usage + best practices. No `docs/MCP_SDK_GUIDE.md`. NOTE: this item's `files:` ref `.github/skills/mcp-server/SKILL.md` is a STALE PATH — the live path is `.claude/skills/mcp-server/SKILL.md`. Scope when picked up: a learner-facing MCP SDK guide, not the existing skill.

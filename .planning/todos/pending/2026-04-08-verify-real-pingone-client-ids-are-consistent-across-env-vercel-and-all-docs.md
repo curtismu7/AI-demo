@@ -54,3 +54,10 @@ Need to audit all configuration and documentation sources to ensure they use the
 5. **Commit clean-up:**
    - Update any files that had discrepancies
    - Add entry to CHANGELOG.md if changes made to configuration examples
+
+
+---
+
+## TRIAGE 2026-05-15 — PROMOTED to pending
+
+PARTIALLY DONE / refocus. `.env.example` correctly uses placeholders. The live concern: `docs/PINGONE_MAY_ACT_SETUP.md` hardcodes ~16 real tenant client-id UUIDs (credential-hygiene smell — real IDs in a committed doc). Reframe scope: scrub/placeholder the hardcoded UUIDs in docs and add a note that real IDs live in configStore/vault, NOT in committed files. The 'verify Vercel consistency' part is inherently a one-time pre-deploy manual check — keep as a checklist line, not a code task.
