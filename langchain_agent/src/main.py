@@ -64,11 +64,21 @@ class LangChainMCPApplication:
             
             # Initialize OAuth manager
             logger.info("Initializing OAuth authentication manager...")
-            self.oauth_manager = OAuthAuthenticationManager(self.config)
+            # WR-08: auto_register=False so __aenter__ does NOT call
+            # register_client() with no scopes. We want exactly ONE
+            # registration, and it must carry additional_scopes=["ai_agent"].
+            # The prior default (auto_register=True) double-registered on every
+            # startup: __aenter__'s scopeless register_client() then this
+            # explicit one — under DCR that orphans the first client in
+            # PingOne (no registration_access_token retained → undeletable),
+            # accumulating toward the tenant client cap on every restart.
+            self.oauth_manager = OAuthAuthenticationManager(
+                self.config, auto_register=False
+            )
             await self.oauth_manager.__aenter__()
             self.health_server.update_status("oauth_manager", "initializing")
-            
-            # Register OAuth client with ai_agent scope
+
+            # Register OAuth client with ai_agent scope (the single registration)
             logger.info("Registering OAuth client with ai_agent scope...")
             await self.oauth_manager.register_client(additional_scopes=["ai_agent"])
             self.health_server.update_status("oauth_manager", "ready")
