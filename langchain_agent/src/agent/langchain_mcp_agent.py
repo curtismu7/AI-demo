@@ -369,26 +369,21 @@ Remember to maintain conversation context and provide helpful, accurate response
             logger.info("Detected session-based authorization success")
             return message  # Return the full session success message
         
-        # Look for patterns that might be authorization codes
-        # Authorization codes are typically alphanumeric strings of certain lengths
-        patterns = [
-            r'\b[A-Za-z0-9_-]{20,}\b',  # General alphanumeric code pattern
-            r'code[:\s=]+([A-Za-z0-9_-]+)',  # "code: ABC123" or "code=ABC123"
-            r'authorization[:\s=]+([A-Za-z0-9_-]+)',  # "authorization: ABC123"
-            r'auth[:\s=]+([A-Za-z0-9_-]+)',  # "auth: ABC123"
+        # Require an explicit prefix. The previous heuristic — \b[A-Za-z0-9_-]{20,}\b
+        # plus a whole-message fallback — fired on normal user messages like
+        # "let-me-check-my-balance-please", silently steering them into the OAuth
+        # callback path. An OAuth code is only well-defined when the user is
+        # responding to a request_user_authorization step, so callers must
+        # surface it with a clear "code=", "authorization=", or "auth=" prefix.
+        prefixed_patterns = [
+            r'\bcode[:\s=]+([A-Za-z0-9_-]+)\b',
+            r'\bauthorization[:\s=]+([A-Za-z0-9_-]+)\b',
+            r'\bauth[:\s=]+([A-Za-z0-9_-]+)\b',
         ]
-        
-        for pattern in patterns:
+        for pattern in prefixed_patterns:
             matches = re.findall(pattern, message, re.IGNORECASE)
             if matches:
-                # Return the longest match (most likely to be the auth code)
-                return max(matches, key=len) if isinstance(matches[0], str) else max(matches[0] if matches else [], key=len)
-        
-        # If no pattern matches, check if the entire message (trimmed) looks like a code
-        trimmed = message.strip()
-        if len(trimmed) > 15 and re.match(r'^[A-Za-z0-9_-]+$', trimmed):
-            return trimmed
-            
+                return max(matches, key=len)
         return None
     
     def _looks_like_email(self, message: str) -> bool:
