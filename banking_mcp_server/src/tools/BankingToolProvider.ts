@@ -20,25 +20,7 @@ import { AuditLogger, UserTokenInfo, ExchangedTokenInfo, TokenChainExecutionResu
 import { Logger, createDefaultLoggerConfig } from '../utils/Logger';
 import { filterToolsByScope } from './toolScopeMap';
 import { TokenResolver } from './TokenResolver';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
-
-// Module-level JWKS key set — cached for process lifetime (jose handles key rotation)
-let _jwksKeySet: ReturnType<typeof createRemoteJWKSet> | null = null;
-
-function getJwksKeySet(): ReturnType<typeof createRemoteJWKSet> | null {
-  if (_jwksKeySet) return _jwksKeySet;
-  const jwksUri =
-    process.env.PINGONE_JWKS_URI ||
-    (process.env.PINGONE_ISSUER ? `${process.env.PINGONE_ISSUER}/jwks` : null) ||
-    (process.env.PINGONE_BASE_URL ? `${process.env.PINGONE_BASE_URL}/jwks` : null);
-  if (!jwksUri) return null;
-  try {
-    _jwksKeySet = createRemoteJWKSet(new URL(jwksUri));
-    return _jwksKeySet;
-  } catch {
-    return null;
-  }
-}
+import { JwtClaimVerifier } from './JwtClaimVerifier';
 
 export interface ToolExecutionContext {
   session: Session;
@@ -65,6 +47,7 @@ export class BankingToolProvider {
   private logger: Logger;
   private chainIndexBySession: Map<string, number> = new Map();  // Track call count per session
   private tokenResolver: TokenResolver;
+  private jwtVerifier: JwtClaimVerifier;
 
   constructor(
     private apiClient: BankingAPIClient,
@@ -76,6 +59,7 @@ export class BankingToolProvider {
     this.authChallengeHandler = new AuthorizationChallengeHandler(authManager, sessionManager);
     this.auditLogger = AuditLogger.getInstance(this.logger);
     this.tokenResolver = new TokenResolver({ authManager: this.authManager, tokenExchangeService: this.tokenExchangeService, logger: this.logger });
+    this.jwtVerifier = new JwtClaimVerifier(this.logger);
   }
 
   /**
@@ -191,7 +175,7 @@ export class BankingToolProvider {
         }
 
         // Decode real sub from the token payload; fall back to 'unknown' for opaque tokens.
-        const userTokenClaims = userToken ? this.decodeJwtPayload(userToken.accessToken) : null;
+        const userTokenClaims = userToken ? this.jwtVerifier.decodePayload(userToken.accessToken) : null;
         const userSub = typeof userTokenClaims?.sub === 'string' ? userTokenClaims.sub : 'unknown';
 
         const userTokenInfo: UserTokenInfo = userToken
@@ -395,14 +379,8 @@ export class BankingToolProvider {
 
     // Item 8: structural exp/iss/aud pre-flight for sensitive operations.
     // Non-network local decode — verifies token has not expired before we hit the banking API.
-    const SENSITIVE_HANDLERS = new Set([
-      'executeGetSensitiveAccountDetails',
-      'executeCreateTransfer',
-      'executeCreateWithdrawal',
-      'executeCreateDeposit',
-    ]);
-    if (SENSITIVE_HANDLERS.has(tool.handler)) {
-      await this.assertTokenClaims(token, tool.name);
+    if (this.jwtVerifier.isSensitiveHandler(tool.handler)) {
+      await this.jwtVerifier.assertClaims(token, tool.name);
     }
 
     switch (tool.handler) {
@@ -800,91 +778,6 @@ export class BankingToolProvider {
       error: 'User authorization required',
       authChallenge: mcpChallenge.authChallenge
     };
-  }
-
-  /**
-   * Decode the payload of a JWT without verifying the signature.
-   *
-   * SECURITY NOTE: This is intentionally unsigned decode. The token was issued
-   * by PingOne during RFC 8693 token exchange — PingOne verified the subject
-   * and actor tokens before issuing. We only inspect claims (act, sub, scopes)
-   * here; the BFF/MCP server validated the token signature at the transport
-   * boundary before it reached this point. Do NOT use this for authorization
-   * decisions outside of claim inspection on already-authenticated tokens.
-   */
-  private decodeJwtPayload(token: string): Record<string, unknown> | null {
-    try {
-      const parts = token.split('.');
-      if (parts.length < 2) return null;
-      return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as Record<string, unknown>;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Attempt JWKS signature verification first (RFC 7515); fall back to structural local check.
-   * Fail-open: JWKS failures are logged but never block the tool call.
-   */
-  private async assertTokenClaims(token: string, toolName: string): Promise<void> {
-    // ── Structural local check (exp/iss/aud) ───────────────────────────────────
-    const payload = this.decodeJwtPayload(token);
-    if (!payload) return; // opaque token — skip all checks
-
-    const now = Math.floor(Date.now() / 1000);
-    const exp = typeof payload.exp === 'number' ? payload.exp : null;
-    const iss = typeof payload.iss === 'string' ? payload.iss : null;
-    const aud = payload.aud;
-
-    if (exp !== null && exp < now) {
-      throw new AuthenticationError(
-        `Token for '${toolName}' has expired (exp: ${new Date(exp * 1000).toISOString()})`,
-        AuthErrorCodes.TOKEN_EXPIRED
-      );
-    }
-
-    if (!iss) {
-      this.logger.warn(`[BankingToolProvider] Token for sensitive tool '${toolName}' has no iss claim`);
-    }
-
-    const expectedAud = process.env.BANKING_API_RESOURCE_URI;
-    if (expectedAud && aud) {
-      const audArray: string[] = Array.isArray(aud) ? (aud as string[]) : [aud as string];
-      if (!audArray.includes(expectedAud)) {
-        this.logger.warn(
-          `[BankingToolProvider] Token aud [${audArray.join(', ')}] does not include ` +
-          `expected audience '${expectedAud}' for '${toolName}'`
-        );
-      }
-    }
-
-    // ── JWKS Cryptographic Signature Verification (RFC 7515) ──────────────────
-    // Verify the MCP token's RS256/ES256 signature using PingOne's published JWKS.
-    // Fail-open: JWKS failures are logged but never block the tool call — the BFF
-    // already performed JWKS verification before issuing this token to the MCP server.
-    const jwks = getJwksKeySet();
-    if (jwks) {
-      try {
-        const verifyOpts: Parameters<typeof jwtVerify>[2] = {};
-        if (expectedAud) verifyOpts.audience = expectedAud;
-        if (iss) verifyOpts.issuer = iss;
-        await jwtVerify(token, jwks, verifyOpts);
-        this.logger.info(`[BankingToolProvider] JWKS sig ✅ verified for sensitive tool '${toolName}'`);
-      } catch (jwksErr) {
-        const msg = jwksErr instanceof Error ? jwksErr.message : String(jwksErr);
-        // JWTExpired is already caught above — ignore it here to avoid double-log
-        if (!msg.includes('expired')) {
-          // STRICT_TOKEN_VERIFICATION=true promotes JWKS failures to hard errors.
-          // Leave unset (default fail-open) when the BFF already verified the signature upstream.
-          if (process.env.STRICT_TOKEN_VERIFICATION === 'true') {
-            throw new Error(`Token signature verification failed for '${toolName}': ${msg}`);
-          }
-          this.logger.warn(`[BankingToolProvider] JWKS sig ⚠ warning for '${toolName}': ${msg} (fail-open)`);
-        }
-      }
-    } else {
-      this.logger.debug(`[BankingToolProvider] JWKS not configured — skipping sig verification for '${toolName}'`);
-    }
   }
 
 }
