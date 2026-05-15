@@ -75,6 +75,20 @@ class ChatConfig:
     max_message_length: int = 4096
     conversation_history_limit: int = 100
     session_cleanup_interval_minutes: int = 15
+    # WR-02 (Option A): per-session message workers. Each chat session gets
+    # its own ordered processing path so different sessions run concurrently
+    # while turns within ONE session stay strictly ordered. These bound and
+    # reap that pool.
+    #   max_session_workers          — hard cap on concurrent per-session
+    #                                  workers; cap-hit => backpressure error
+    #                                  to the client (never silently dropped).
+    #   session_worker_idle_ttl_seconds — a worker idle (no messages) longer
+    #                                  than this is torn down + its task
+    #                                  cancelled/awaited by the reaper.
+    #   session_worker_reap_interval_seconds — reaper loop tick.
+    max_session_workers: int = 50
+    session_worker_idle_ttl_seconds: int = 900
+    session_worker_reap_interval_seconds: int = 60
 
 
 @dataclass
@@ -352,7 +366,10 @@ class ConfigManager:
             websocket_port=int(get_env_value("WEBSOCKET_PORT", "8889")),
             max_message_length=int(get_env_value("MAX_MESSAGE_LENGTH", "4096")),
             conversation_history_limit=int(get_env_value("CONVERSATION_HISTORY_LIMIT", "100")),
-            session_cleanup_interval_minutes=int(get_env_value("SESSION_CLEANUP_INTERVAL_MINUTES", "15"))
+            session_cleanup_interval_minutes=int(get_env_value("SESSION_CLEANUP_INTERVAL_MINUTES", "15")),
+            max_session_workers=int(get_env_value("MAX_SESSION_WORKERS", "50")),
+            session_worker_idle_ttl_seconds=int(get_env_value("SESSION_WORKER_IDLE_TTL_SECONDS", "900")),
+            session_worker_reap_interval_seconds=int(get_env_value("SESSION_WORKER_REAP_INTERVAL_SECONDS", "60")),
         )
         
         config = AppConfig(
