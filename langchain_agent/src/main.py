@@ -133,7 +133,11 @@ class LangChainMCPApplication:
             # MCP Host inspector snapshot (HTTP GET /inspector/mcp-host on health port)
             try:
                 tools = await self.agent.get_available_tools()
-                registry = await self.mcp_client_manager.get_manager_status()
+                # WR-09: attribute is `mcp_manager` on this class. The prior
+                # `self.mcp_client_manager` reference raised AttributeError,
+                # which the surrounding try/except swallowed, leaving
+                # /inspector/mcp-host returning 503 "inspector not ready" forever.
+                registry = await self.mcp_manager.get_manager_status()
                 self.health_server.app_status["mcp_host_inspector"] = {
                     "role": "mcp_host",
                     "summary": (
