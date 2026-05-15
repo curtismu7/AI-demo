@@ -49,6 +49,24 @@ const _SECRET_KEYS_RAW = [
 // ciphertext. See REGRESSION_PLAN §4 (SECRET_KEYS casing).
 const SECRET_KEYS = new Set(_SECRET_KEYS_RAW.map((k) => k.toUpperCase()));
 
+// ---------------------------------------------------------------------------
+// Bootstrap allowlist — keys read BEFORE the vault can be unlocked / before
+// configStore can decrypt SQLite. For these, .env (process.env) MUST stay
+// authoritative even when a vault/SQLite value exists, or the app cannot
+// reach the point where the vault could be opened. Lowercase — getEffective
+// has already lowercased `key` before the membership test. See
+// REGRESSION_PLAN §1 "Config UI / configStore" + §4.
+const BOOTSTRAP_ALLOWLIST = new Set([
+  'session_secret',
+  'config_encryption_key',
+  'vault_password',
+  'vault_path',
+  'node_env',
+  'port',
+  'pingone_environment_id',
+  'pingone_region',
+]);
+
 // All known config keys with their defaults and whether they are public
 const FIELD_DEFS = {
   // PingOne environment
@@ -835,15 +853,30 @@ class ConfigStore {
     };
 
     const envVars = envFallbackMap[key] || [];
-    for (const envKey of envVars) {
-      const v = process.env[envKey];
-      if (v) return v.trim();
-    }
+    const readEnv = () => {
+      for (const envKey of envVars) {
+        const v = process.env[envKey];
+        if (v) return v.trim();
+      }
+      return null;
+    };
 
-    // SQLite stored config — after env vars so env vars always win.
-    {
+    if (BOOTSTRAP_ALLOWLIST.has(key)) {
+      // Bootstrap keys: .env is authoritative (read before vault unlock).
+      const envVal = readEnv();
+      if (envVal) return envVal;
       const stored = this.get(key);
       if (stored) return stored;
+    } else {
+      // Everything else: Vault > SQLite > .env. this.get(key) reads the
+      // cache, which holds BOTH vault (provenance 'vault') and SQLite
+      // ('sqlite') values; Task 1's _setCache provenance guarantees a
+      // vault-owned key keeps its vault value, so a single this.get()
+      // already encodes "vault, then sqlite". .env is the fallback.
+      const stored = this.get(key);
+      if (stored) return stored;
+      const envVal = readEnv();
+      if (envVal) return envVal;
     }
 
     // Helix agent API key: when nothing above has it, look for a per-agent

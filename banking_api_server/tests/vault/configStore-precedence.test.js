@@ -130,6 +130,102 @@ describe('configStore secret encrypt/decrypt round-trips regardless of key casin
   }
 });
 
+describe('getEffective precedence — Vault > SQLite > .env with bootstrap allowlist', () => {
+  const SAVED = {};
+  const ENVV = ['OLLAMA_MODEL', 'OLLAMA_BASE_URL', 'PINGONE_REGION', 'PINGONE_ENVIRONMENT_ID'];
+  beforeEach(() => { for (const k of ENVV) SAVED[k] = process.env[k]; });
+  afterEach(() => {
+    for (const k of ENVV) {
+      if (SAVED[k] === undefined) delete process.env[k];
+      else process.env[k] = SAVED[k];
+    }
+  });
+
+  // True fresh module (empty cache) — delete require.cache is a no-op under
+  // jest, so use jest.isolateModules for a genuine re-evaluation.
+  function reloadedConfigStore() {
+    let mod;
+    jest.isolateModules(() => {
+      // eslint-disable-next-line global-require
+      mod = require('../../services/configStore');
+    });
+    return mod;
+  }
+
+  test('non-bootstrap key: vault (persist:false) beats a conflicting .env value', async () => {
+    const c = freshConfigStore();
+    await c.ensureInitialized();
+    process.env.OLLAMA_MODEL = 'env-model';
+    await c.setRaw({ ollama_model: 'vault-model' }, { persist: false });
+    expect(c.getEffective('ollama_model')).toBe('vault-model');
+  });
+
+  test('non-bootstrap key: SQLite (persist:true) beats a conflicting .env value', async () => {
+    const c = freshConfigStore();
+    await c.ensureInitialized();
+    process.env.OLLAMA_BASE_URL = 'http://env:11434';
+    await c.setRaw({ ollama_base_url: 'http://sqlite:11434' }, { persist: true });
+    expect(c.getEffective('ollama_base_url')).toBe('http://sqlite:11434');
+  });
+
+  test('non-bootstrap key: .env used when neither vault nor SQLite set it', async () => {
+    // Determinism: use a genuinely fresh module (empty cache) AND a key with
+    // an envFallbackMap entry but NO FIELD_DEFS default and NO builtin /
+    // pingoneBackendDefaults value, so .env is the only resolvable source.
+    // demo_apikey_backend_service_key → ['DEMO_APIKEY_SERVICE_KEY'] is such a
+    // key (Phase 266 Path A demo key, no FIELD_DEFS default). Clear any
+    // persisted SQLite row first so the cache is truly empty for this key.
+    const dbPath = path.join(__dirname, '..', '..', 'data', 'persistent', 'config.db');
+    const fs = require('node:fs');
+    if (fs.existsSync(dbPath)) {
+      let Database;
+      try {
+        Database = require('better-sqlite3');
+      } catch {
+        Database = require('node:sqlite').DatabaseSync;
+      }
+      const db = new Database(dbPath);
+      db.prepare('DELETE FROM config WHERE UPPER(key) = ?').run('DEMO_APIKEY_BACKEND_SERVICE_KEY');
+      db.close();
+    }
+    const saved = process.env.DEMO_APIKEY_SERVICE_KEY;
+    const sentinel = 'env-fallback-proof-' + Date.now();
+    process.env.DEMO_APIKEY_SERVICE_KEY = sentinel;
+    try {
+      const c = reloadedConfigStore();
+      await c.ensureInitialized();
+      expect(c.getEffective('demo_apikey_backend_service_key')).toBe(sentinel);
+    } finally {
+      if (saved === undefined) delete process.env.DEMO_APIKEY_SERVICE_KEY;
+      else process.env.DEMO_APIKEY_SERVICE_KEY = saved;
+    }
+  });
+
+  test('BOOTSTRAP key (pingone_region): .env wins even over a cache value', async () => {
+    const c = freshConfigStore();
+    await c.ensureInitialized();
+    process.env.PINGONE_REGION = 'env-region';
+    await c.setRaw({ pingone_region: 'vault-region' }, { persist: false });
+    expect(c.getEffective('pingone_region')).toBe('env-region');
+  });
+
+  test('BOOTSTRAP key (pingone_environment_id): .env wins over a SQLite value', async () => {
+    const c = freshConfigStore();
+    await c.ensureInitialized();
+    process.env.PINGONE_ENVIRONMENT_ID = 'env-eid';
+    await c.setRaw({ pingone_environment_id: 'sqlite-eid' }, { persist: true });
+    expect(c.getEffective('pingone_environment_id')).toBe('env-eid');
+  });
+
+  test('BOOTSTRAP key falls back to cache when .env is unset', async () => {
+    const c = freshConfigStore();
+    await c.ensureInitialized();
+    delete process.env.PINGONE_REGION;
+    await c.setRaw({ pingone_region: 'cache-region-fallback' }, { persist: false });
+    expect(c.getEffective('pingone_region')).toBe('cache-region-fallback');
+  });
+});
+
 describe('configStore FIELD_DEFS defaults reachable for UPPER keys', () => {
   test('getEffective(UPPER key) returns FIELD_DEFS default when nothing else set', async () => {
     // "nothing else set" must also mean no stale SQLite row from a sibling
