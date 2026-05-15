@@ -386,7 +386,7 @@ print_status_table() {
   service_status_line "Mortgage Service"    8082         "http://localhost:8082 (Phase 266 Path A backend)"
   service_status_line "Agent Service"       3006         "http://localhost:3006 (internal)"
   service_status_line "HITL Service"        3009         "http://localhost:3009 (internal)"
-  service_status_line "LangChain Agent"     8888         "http://localhost:8888 (uvicorn main); :8889 (chat WS); :8890 (health)"
+  service_status_line "LangChain Agent"     8890         "ws://localhost:8889 (chat WS); http://localhost:8890 (health/inspector)"
   if port_listening ${UI_PORT}; then
     printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
   else
@@ -803,21 +803,23 @@ if [[ -d "$BASEDIR/banking_mortgage_service" ]]; then
   echo $! > "$PID_MORTGAGE"
 fi
 
-# ── LangChain Agent on :8888 ─────────────────────────────────────────────────
-if [[ -f "$BASEDIR/langchain_agent/main.py" ]] || [[ -f "$BASEDIR/langchain_agent/server.py" ]]; then
-  ENTRY="main"
-  [[ -f "$BASEDIR/langchain_agent/server.py" ]] && ENTRY="server"
-  echo "[CHAIN] Starting LangChain Agent on :8888 (HTTPS if certs available)..."
+# ── LangChain Agent (chat WS :8889 + health :8890) ───────────────────────────
+# Entry point is src/main.py, run as a module (`python -m src.main`) — it is an
+# asyncio app that manages its own websockets server (8889) and health server
+# (8890); it is NOT a uvicorn ASGI app and there is no :8888 listener. It reads
+# its own langchain_agent/.env via python-dotenv. The venv is `.venv`.
+if [[ -f "$BASEDIR/langchain_agent/src/main.py" ]]; then
+  echo "[CHAIN] Starting LangChain Agent (chat WS :8889, health :8890)..."
   (
     cd "$BASEDIR/langchain_agent"
-    [[ -d venv ]] && source venv/bin/activate
-    if [[ -f "${CERT_FILE}" ]] && [[ -f "${KEY_FILE}" ]]; then
-      python3 -m uvicorn "${ENTRY}:app" --port 8888 \
-        --ssl-keyfile "${KEY_FILE}" --ssl-certfile "${CERT_FILE}" \
-        > /tmp/bank-langchain-agent.log 2>&1
+    if [[ -x ".venv/bin/python" ]]; then
+      PY=".venv/bin/python"
+    elif [[ -x "venv/bin/python" ]]; then
+      PY="venv/bin/python"
     else
-      python3 -m uvicorn "${ENTRY}:app" --port 8888 > /tmp/bank-langchain-agent.log 2>&1
+      PY="python3"
     fi
+    "$PY" -m src.main > /tmp/bank-langchain-agent.log 2>&1
   ) &
   echo $! > "$PID_AGENT"
 fi

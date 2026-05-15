@@ -118,6 +118,79 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-15 — Tier-3 INFO batch across gateway + BFF LangGraph + agent-service
+
+**Files changed:**
+- `banking_mcp_gateway/src/boundedTokenCache.ts` (new), `tokenExchange.ts`, `auth/McpTokenExchangeClient.ts` — IN-03: extracted the duplicated FIFO-eviction into one shared helper so the two token caches cannot drift.
+- `banking_mcp_gateway/src/index.ts`, `tests/adminConfig-safeview.test.ts` (new) — IN-01: GET /admin/config now reuses the single `adminConfigSafeView`; test asserts no secret key/value leaks.
+- `banking_mcp_gateway/src/vault.ts` — IN-02: self-describing error when `banking_api_server/lib/vault` is not co-located (was bare MODULE_NOT_FOUND).
+- `banking_mcp_gateway/src/server/GatewayServer.ts`, `index.ts` — IN-05: anchored `MCP_ACCEPTED_ORIGINS` regex `^(?:...)$` at all 3 sites; IN-06: filtered SSE passthrough headers to mirror the POST allow-list; IN-04: documented the intentional no-pooling per-call model.
+- `banking_api_server/services/agentMcpTokenService.js` — IN-01: normalized the `buildTokenEvent` status JSDoc (doc-only; status values unchanged — SPA NarrativePanel switches on them).
+- `banking_api_server/routes/bankingAgentNl.js` — IN-02: redacted OLLAMA_BASE_URL/OLLAMA_MODEL for anonymous `nl/status` callers.
+- `banking_api_server/services/mcpTrafficLogger.js` — IN-03: added `redactPayload()` defence-in-depth (no raw-token path exists today; prevents a future regression to disk / `/api/mcp/traffic`).
+- `banking_api_server/services/bankingAgentLangGraphService.js` — IN-04: gated verbose message preview/prompt logging behind `LOG_FULL_PROMPTS` (fingerprint otherwise); IN-06: removed the disallowed lock emoji from the sensitive-details HITL string.
+- `banking_api_server/services/mcpToolAuditStore.js` — IN-05: documented in-process-only limitation (not a compliance audit trail).
+- `banking_agent_service/src/config.ts`, `tests/config.test.ts` — IN-01: fail-fast on invalid `LLM_PROVIDER` at startup, with tests.
+- `banking_agent_service/src/prompts/default.json` — IN-03: reworded the token-secrecy prompt line as a secondary safeguard deferring to the code-level control.
+
+**What was broken:** No user-visible bug. Deep-review INFO findings: maintainability (duplicated cache eviction, drifting safe-config projections), defence-in-depth gaps (unanchored origin regex, unfiltered SSE headers, no redaction helper, anonymous Ollama topology leak, PII-equivalent chat content logged unconditionally), one disallowed emoji, and a fail-late LLM_PROVIDER typo.
+
+**What was fixed:** Each INFO item addressed as a real minimal improvement or a clarifying comment where doc-only. No CRITICAL/WARNING (Phase 1-3 / Tier 1/2) touched. BFF WR-01/WR-02 left alone (resolved by ADR-0003 R1; `agentMcpScopePolicy.js` not recreated). IN-01 (BFF token-chain) intentionally kept doc-only — normalizing the status string would change observable SPA `NarrativePanel.dotClass` styling, out of scope for INFO. agent-service IN-02 was already resolved by a prior phase (`config` typed, not `any`) — verified, no change.
+
+**Verify:**
+- Gateway: `cd banking_mcp_gateway && npm run build` (exit 0) + `npx jest` → 11 suites / 115 passing (incl. new adminConfig-safeview).
+- BFF: `cd banking_api_server && npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration hitlGateway.regression hitlGateway.integration` → 48/48.
+- agent-service: `cd banking_agent_service && npx jest` → 3 suites / 18 passing (incl. new IN-01 LLM_PROVIDER cases).
+
+Commits: gateway `7edb211e`, BFF `380b46bf`, agent-service `1912c3d1`.
+
+### 2026-05-15 — Tier-3 langchain_agent batch (WR-08/WR-13 + IN-01/02/03/04/05/06/07)
+
+**Files changed:**
+- `langchain_agent/src/main.py` — WR-08: construct `OAuthAuthenticationManager(..., auto_register=False)` so `__aenter__` no longer also registers; the single explicit `register_client(additional_scopes=["ai_agent"])` is now the only DCR registration per startup.
+- `langchain_agent/requirements.txt` — WR-13: removed unused `langchain-{openai,groq,anthropic,google-genai}` and `openai` (Ollama-only design; zero imports — verified by grep).
+- `langchain_agent/src/config/settings.py` — WR-13: dropped the misleading `OPENAI_API_KEY` line from the config-template required block (it was already made optional in 905d1a36); IN-05: filter+trim `MCP_SERVER_*_CAPABILITIES` so unset/blank yields `[]` not `[""]`.
+- `langchain_agent/src/agent/langchain_mcp_agent.py` — IN-01: removed dead `max(matches, key=len)` branch in `_detect_authorization_code` (now `re.search`+`group(1)`); IN-02: guarded user-lookup tool resolution with a WARNING listing registered tools when the expected tool is absent.
+- `langchain_agent/src/mcp/tool_registry.py` — IN-03: declared `MCPClientManager._session_challenges` as a real `__init__` attribute (was monkey-patched onto the instance); documented why process-singleton is correct (session-keyed, deleted on consume).
+- `langchain_agent/src/agent/llm_factory.py` — IN-04: forward `streaming` to `ChatOllama` (was an accepted-but-dead param).
+- `langchain_agent/src/authentication/oauth_manager.py`, `interfaces.py` — IN-06: `handle_authorization_callback` `session_id` is now a required positional arg; missing/empty is rejected, `validate_state` always runs (was opt-in CSRF protection on a public API).
+- `langchain_agent/src/security/encryption.py` — IN-07: memoise PBKDF2 key derivation on `(master_key, salt)` via `functools.lru_cache` so 100k iterations run once per unique key across the multiple `EncryptionManager` instances.
+- `langchain_agent/tests/test_tier3_fixes.py` (new, 15 tests), `tests/test_oauth_manager.py`, `tests/test_oauth_manager_pkce.py` — coverage + updated the three isolation tests that exercised the now-closed IN-06 no-session path.
+
+**What was broken:** WR-08 double-registered the OAuth client on every startup, orphaning the first (undeletable) client in PingOne and accumulating toward the tenant client cap on restarts. WR-13 forced an `OPENAI_API_KEY`-style multi-LLM footprint despite the Ollama-only refactor (dead 80MB deps). IN-06 left BL-03 session-binding validation opt-in, so any caller omitting `session_id` got zero CSRF protection on the OAuth callback. The IN-01..05/07 items were dead code, silent-failure, encapsulation, and a redundant ~50ms KDF re-derivation per `EncryptionManager`.
+
+**What was fixed:** Single idempotent registration; Ollama-only deps; mandatory session-bound callback; dead-branch/streaming/capabilities cleanup; memoised KDF. Commits: WR-08 `50a66efc`, WR-13+IN-05 `6aafdfc9`, IN-01/02/03/04 `9ceb9ea6`, IN-06+IN-07 `7b947196`.
+
+**Verify:** `cd langchain_agent && python3 -m pytest tests/test_tier3_fixes.py` → 15 passed. Scoped stash-diff (per touched file, before/after) across `test_oauth_manager*`, `test_encryption`, `test_config_settings`, `test_mcp_tool_provider`, `test_tier1_warning_fixes` shows an identical pre-existing baseline failure set (oauth env-credential artifacts, encryption salt-warning env artifact, WR-12 session-binding interaction, obsolete mcp_tool_provider set) with these changes stashed vs applied — ZERO new failures.
+
+**Do not break:** `handle_authorization_callback(auth_code, state, session_id)` — `session_id` is REQUIRED and a missing/empty value MUST raise `ValueError` before any state lookup (IN-06; do not reintroduce the `Optional[str] = None` default). Startup must call `register_client` exactly once with `additional_scopes=["ai_agent"]` and construct the manager `auto_register=False` (WR-08).
+
+### 2026-05-15 — Service-config recovery: vault bootstrap + run-bank.sh langchain launch/status fixes
+
+**Trigger:** MCP Gateway (3005), Agent Service (3006), LangChain (8889/8890) all down. Same root incident as the "data:import wiped .env" entry (below): `banking_api_server/.env` had been reduced to a bootstrap stub and `secrets.vault` had never been created, so vault-aware services (`MCP_GW_CLIENT_ID`/`AGENT_CLIENT_ID` "Missing required env var") refused to start. LangChain was independently broken by `run-bank.sh`.
+
+**What was broken:**
+- **No vault.** The repo's intended precedence is Vault > SQLite > .env (configStore `BOOTSTRAP_ALLOWLIST` is implemented), but `secrets.vault` was never built, so the by-design stripped `.env` left gateway/agent secrets nowhere. `scripts/vault-migrate.js` `ALLOWED_ENV_VARS` was also missing `PINGONE_USER_CLIENT_SECRET` (+ 6 BFF `public:false` secrets), so a `.env` re-strip would have lost langchain's user secret.
+- **`run-bank.sh` langchain launch (lines ~806-823, pre-fix):** guarded on `langchain_agent/main.py`/`server.py` (neither exists — entry is `src/main.py`), ran `python3 -m uvicorn main:app --port 8888` (not an ASGI app; no :8888 listener; wrong venv name `venv` vs `.venv`). LangChain was silently never started for the entire life of this guard. Status line (`service_status_line "LangChain Agent" 8888`) probed the nonexistent :8888, so even a healthy langchain showed `[ERROR] not yet ready`.
+- **`langchain_agent/.env` did not exist.** It reads its own `.env` via python-dotenv; needs `PINGONE_BASE_URL`/endpoints + `ENCRYPTION_MASTER_KEY`/`ENCRYPTION_SALT` (no vault integration — pure `os.environ`). `development` env mode rejects real PingOne URLs (localhost/ForgeRock only); `staging` is the correct mode for a real-PingOne dev machine.
+- **`config.db` decryption failing** (SQLite tier): secret values were written under a prior `SESSION_SECRET` that got churned during the .env-wipe incident. Investigated: file is valid SQLite, 30 rows, 27 are `TASK3_TEST_KEY_*` junk; the 2 undecryptable secrets (`PINGONE_ADMIN_CLIENT_SECRET`, `HELIX_API_KEY`) exist authoritatively in `.env`/vault or are unused. Nothing irreplaceable — BFF runs correctly on `.env`/vault fallback. Rebuild deferred (cosmetic 2-line startup log noise only; `CREATE TABLE IF NOT EXISTS` auto-recreates on next clean restart).
+
+**What was fixed:**
+- Built `secrets.vault` (repo root, mode 0600): `npm run vault:create` then `vault:migrate-from-env` → 8 secrets (`MCP_GW_CLIENT_SECRET`, `AGENT_CLIENT_SECRET`, `PINGONE_USER_CLIENT_SECRET`, `PINGONE_ADMIN_CLIENT_SECRET`, `PINGONE_AI_AGENT_CLIENT_SECRET`, `MCP_GW_CLIENT_ID`, `AGENT_CLIENT_ID`, `SESSION_SECRET`). This is the durable artifact — it survives the `.env` wipes.
+- `scripts/vault-migrate.js` `ALLOWED_ENV_VARS`: appended `PINGONE_USER_CLIENT_SECRET` + `PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET`, `PINGONE_MANAGEMENT_CLIENT_SECRET`, `PINGONE_MGMT_CLIENT_SECRET`, `PINGONE_SESSION_SECRET`, `PINGONE_INTROSPECTION_CLIENT_SECRET`, `POSTHOG_API_KEY` (all `public:false`/`SECRET_KEYS` in configStore; closed-allowlist + LD_PRELOAD/PATH guard unchanged; names-only).
+- `run-bank.sh` langchain block rewritten: guard on `langchain_agent/src/main.py`; prefer `.venv/bin/python` (fallback `venv/bin/python` → `python3`); run `python -m src.main` (it manages its own 8889 chat-WS + 8890 health servers; no uvicorn/:8888/cert logic). Status line now probes **8890** (health). `SVC_LIST` untouched (langchain is not in it; architecture-diagram completeness test unaffected).
+- Created `langchain_agent/.env` (mode 0600): PingOne endpoints derived from BFF `PINGONE_ENVIRONMENT_ID`+`PINGONE_REGION`, `ENVIRONMENT=staging`, freshly generated `ENCRYPTION_MASTER_KEY`/`ENCRYPTION_SALT`.
+
+**Verify:** `VAULT_PASSWORD=… ./run-bank.sh restart` then `./run-bank.sh status` → all 9 services `[OK]` incl. `LangChain Agent :8890`; `curl -sk localhost:8890/health` → `{"status":"healthy"}`; gateway/agent logs show no "Missing required env var". `VAULT_PASSWORD` must be **exported** before `run-bank.sh` (the pre-flight gate checks the shell env, not `.env` — by design, secret hygiene T-269-27).
+
+**Do not break:** `secrets.vault` is now the source of truth for the 8 migrated secrets — do not delete it without re-running `vault:migrate-from-env` from a full `.env`. `run-bank.sh` langchain block must keep `python -m src.main` + `.venv` preference (reverting to `uvicorn main:app`/:8888 silently un-starts langchain). The vault pre-flight gate's shell-env (not `.env`) check is intentional — do not "fix" it to read `.env`.
+
+**Latent code bugs found during the audit (NOT fixed — documented for follow-up):**
+- **LangChain (HIGH):** `src/models/mcp.py:74-75` rejects `endpoint="local://…"` at registration, but `src/mcp/connection.py:656` handles `local://`. The built-in `user_management` MCP server (`src/main.py:191`) fails registration; `main.py:202-203` swallows the exception (agent runs degraded, no built-in user-mgmt tools). Fix: add `local://` to the validator's allowed schemes.
+- **Gateway (MEDIUM):** `src/index.ts` tools/list advertises stale tool name `special_offers` (Phase 267 renamed to `show_mortgage` in router.ts) — calling it routes to OLB and fails. Also a latent unsafe `credential.authorization || \`Bearer ${token}\`` fallback (RFC 8707 audience-binding footgun if a refactor drops the exchange).
+- **Agent Service (HIGH):** unhandled `axios.post` in `agentOrchestrator.ts` LLM calls (API key in error/stack), missing empty-`AGENT_CLIENT_SECRET` validation in non-PKI mode (cryptic 401), unhandled `readFileSync` in PKI mode. None block startup; all are runtime-path robustness/secret-hygiene issues.
+- **§1 security invariants verified INTACT** across all three (CR-06 one-reader demux, WR-11 random auth-challenge state, CR-05 PKCE S256, BL-04/WR-01 session-from-metadata, token sig+exp+aud validation, secret masking, gateway D-05/BL-02/BL-03).
+
 ### 2026-05-15 — Architecture-note R1: removed redundant local MCP tool-authz decision (T-2); resolves BFF WR-01 + WR-02
 
 **Files changed:**
