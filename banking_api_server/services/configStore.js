@@ -391,7 +391,33 @@ class ConfigStore {
   constructor() {
     /** @type {Record<string, string>} plaintext in-memory cache */
     this._cache = {};
+    /** @type {Record<string, 'vault'|'sqlite'>} which tier set each cache key */
+    this._provenance = {};
     this._initPromise = null;
+  }
+
+  /**
+   * Write into the in-memory cache with tier provenance.
+   * Vault (persist:false at startup) outranks SQLite: once a key is
+   * vault-owned, a later SQLite write updates the stored cache value but
+   * MUST NOT change provenance, and getEffective() prefers the vault value.
+   *
+   * @param {Record<string,string>} data
+   * @param {'vault'|'sqlite'} tier
+   */
+  _setCache(data, tier) {
+    for (const [k, v] of Object.entries(data)) {
+      const key = String(k).toLowerCase();
+      const owner = this._provenance[key];
+      if (owner === 'vault' && tier === 'sqlite') {
+        // Vault already owns this key — keep the vault value authoritative.
+        // (We deliberately do NOT overwrite this._cache[key] here so a later
+        //  vault re-unlock isn't needed to "win"; the vault value stays put.)
+        continue;
+      }
+      this._cache[key] = v;
+      this._provenance[key] = tier;
+    }
   }
 
   /**
@@ -419,9 +445,11 @@ class ConfigStore {
   _loadFromSQLite() {
     const db   = _getSQLite();
     const rows = db.prepare('SELECT key, value FROM config').all();
+    const decoded = {};
     for (const row of rows) {
-      this._cache[row.key] = SECRET_KEYS.has(row.key) ? _decrypt(row.value) : row.value;
+      decoded[row.key] = SECRET_KEYS.has(row.key) ? _decrypt(row.value) : row.value;
     }
+    this._setCache(decoded, 'sqlite');
   }
 
   // -------------------------------------------------------------------------
@@ -487,7 +515,8 @@ class ConfigStore {
     }
 
     // Update cache last, so failures above leave cache consistent
-    Object.assign(this._cache, cacheUpdates);
+    // setConfig persists to SQLite — provenance is 'sqlite'.
+    this._setCache(cacheUpdates, 'sqlite');
   }
 
   /**
@@ -523,7 +552,9 @@ class ConfigStore {
       }
     }
     // Update cache regardless of SQLite outcome (or skip)
-    Object.assign(this._cache, data);
+    // persist:false is the vault loader's path → provenance 'vault';
+    // persist:true (or default) is a SQLite-backed write → 'sqlite'.
+    this._setCache(data, shouldPersist ? 'sqlite' : 'vault');
   }
 
 
