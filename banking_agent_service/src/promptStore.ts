@@ -68,5 +68,15 @@ export function getPrompt(useCase: string): PromptDefinition {
     return def;
   }
 
+  // Neither the requested prompt nor default.json resolved. This usually means
+  // src/prompts/ was not copied into dist/ at build time — the agent then runs
+  // without the curated system prompt (incl. its "never reveal raw token
+  // values" guardrail). Surface loudly rather than failing silently.
+  console.error(
+    `[promptStore] ⚠️  No prompt file found at ${PROMPTS_DIR} (looked for ` +
+      `${useCase}.json and default.json). Falling back to a minimal inline ` +
+      `prompt WITHOUT the curated guardrails — check that 'npm run build' ` +
+      `copied src/prompts into dist/.`,
+  );
   return { system: 'You are a helpful banking assistant.' };
 }

@@ -55,7 +55,10 @@ try {
 }
 
 const app = express();
-app.use(express.json());
+// Bounded body: every POST /api/agent/task triggers an outbound PingOne RFC 8693
+// exchange. Requests are small (a JWT + a short message); cap the body so an
+// oversized payload can't be used to amplify load before the HI-04 shape check.
+app.use(express.json({ limit: '16kb' }));
 
 // ---------------------------------------------------------------------------
 // Auth middleware — extract user Bearer token
@@ -64,8 +67,9 @@ app.use(express.json());
 /**
  * HI-04: cheap local subject_token validation. Without this, any caller could
  * submit a malformed value and trigger a PingOne RFC 8693 round trip (free
- * DoS vector against our tenant). Decoding here is base64 only — signature
- * verification is still done at the PingOne /as/token endpoint.
+ * DoS vector against our tenant). Decoding here is an unverified base64url
+ * decode of the JWT payload only — signature verification is still done at
+ * the PingOne /as/token endpoint.
  */
 function _validateSubjectTokenShape(token: string): { ok: true } | { ok: false; reason: string } {
   const parts = token.split('.');
@@ -147,6 +151,12 @@ app.get('/health', (_req, res) => {
 
 app.listen(config.port, config.host, () => {
   console.log(`[Agent] banking-agent-service running on ${config!.host}:${config!.port}`);
+  if (config!.host === '0.0.0.0') {
+    console.warn(
+      `[Agent] ⚠️  Bound to ALL interfaces (0.0.0.0). :3006 is loopback-only per ` +
+        `REGRESSION_PLAN §3 — set HOST=127.0.0.1 unless this deploy is firewalled.`,
+    );
+  }
   console.log(`[Agent] LLM provider: ${config!.llmProvider} / model: ${config!.llmModel}`);
   console.log(`[Agent] MCP Gateway: ${config!.mcpGatewayWsUrl}`);
   console.log(`[Agent] PKI creds: ${config!.usePkiCreds ? 'enabled' : 'disabled (client_secret)'}`);

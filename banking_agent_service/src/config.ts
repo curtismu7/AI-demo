@@ -50,7 +50,10 @@ function resolveTokenEndpoint(): string {
 export function loadConfig(): AgentConfig {
   return {
     port: parseInt(process.env.PORT || '3006', 10),
-    host: process.env.HOST || '0.0.0.0',
+    // :3006 is loopback-only per REGRESSION_PLAN §3. Default to 127.0.0.1 so a
+    // misconfigured deploy can't expose the token-exchange endpoint on all
+    // interfaces; staging/prod can still bind 0.0.0.0 via an explicit HOST env.
+    host: process.env.HOST || '127.0.0.1',
     clientId: required('AGENT_CLIENT_ID'),
     clientSecret: optional('AGENT_CLIENT_SECRET', ''),
     tokenEndpoint: resolveTokenEndpoint(),
