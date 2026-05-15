@@ -835,7 +835,7 @@ class ConfigStore {
       /* optional file missing */
     }
 
-    return FIELD_DEFS[key]?.default || '';
+    return (FIELD_DEFS[key] ?? FIELD_DEFS[String(key).toUpperCase()])?.default || '';
   }
 
   /** Config is always writable (SQLite). */
