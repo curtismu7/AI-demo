@@ -407,7 +407,7 @@ class ConfigStore {
    */
   _setCache(data, tier) {
     for (const [k, v] of Object.entries(data)) {
-      const key = String(k).toLowerCase();
+      const key = String(k).toUpperCase();
       const owner = this._provenance[key];
       if (owner === 'vault' && tier === 'sqlite') {
         // Vault already owns this key — keep the vault value authoritative.
@@ -461,7 +461,7 @@ class ConfigStore {
    * Always call ensureInitialized() before the first get().
    */
   get(key) {
-    const v = this._cache[key];
+    const v = this._cache[String(key).toUpperCase()];
     return (v !== undefined && v !== '') ? v : null;
   }
 
@@ -507,7 +507,7 @@ class ConfigStore {
       const now = new Date().toISOString();
       db.transaction(() => {
         for (const [key, value] of Object.entries(updates)) {
-          upsert.run(key, value, now);
+          upsert.run(String(key).toUpperCase(), value, now);
         }
       })();
     } catch (err) {
@@ -544,7 +544,7 @@ class ConfigStore {
         const now = new Date().toISOString();
         db.transaction(() => {
           for (const [key, value] of Object.entries(data)) {
-            upsert.run(key, String(value), now);
+            upsert.run(String(key).toUpperCase(), String(value), now);
           }
         })();
       } catch (err) {
@@ -676,6 +676,13 @@ class ConfigStore {
       agent_gateway_audience:             ['AGENT_GATEWAY_AUDIENCE', 'PINGONE_RESOURCE_AGENT_GATEWAY_URI'],
       ai_agent_intermediate_audience:  ['AI_AGENT_INTERMEDIATE_AUDIENCE'],
       pingone_resource_mcp_gateway_uri: ['PINGONE_RESOURCE_MCP_GATEWAY_URI', 'MCP_GATEWAY_AUDIENCE'],
+      // RFC 8707: single-resource scope for the 2-exchange actor CC tokens.
+      // MUST stay in sync with pingoneProvisionService.js Steps 37a/37b grants —
+      // the AI Agent / MCP Exchanger apps are granted scopes on >1 resource, so
+      // the CC request needs an explicit single-resource scope or PingOne
+      // rejects with invalid_scope: "May not request scopes for multiple resources".
+      agent_gateway_cc_scope: ['AGENT_GATEWAY_CC_SCOPE'],
+      mcp_gateway_cc_scope:   ['MCP_GATEWAY_CC_SCOPE'],
       pingone_resource_two_exchange_uri: ['PINGONE_RESOURCE_TWO_EXCHANGE_URI', 'MCP_RESOURCE_URI_TWO_EXCHANGE'],
       marketing_customer_login_mode: ['MARKETING_CUSTOMER_LOGIN_MODE'],
       marketing_demo_username_hint: ['MARKETING_DEMO_USERNAME_HINT'],
@@ -868,9 +875,9 @@ class ConfigStore {
       throw new Error('clearOAuthClientSecret: invalid key');
     }
     await this.ensureInitialized();
-    delete this._cache[key];
+    delete this._cache[String(key).toUpperCase()];
     const db = _getSQLite();
-    db.prepare('DELETE FROM config WHERE key = ?').run(key);
+    db.prepare('DELETE FROM config WHERE key = ?').run(String(key).toUpperCase());
   }
 
   /** Wipe stored config (SQLite). */

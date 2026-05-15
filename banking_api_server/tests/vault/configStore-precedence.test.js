@@ -44,3 +44,30 @@ describe('configStore provenance — vault is not clobbered by SQLite', () => {
     expect(c.getEffective(key)).toBe('http://sqlite-only:11434');
   });
 });
+
+describe('configStore key casing — UPPER-canonical regardless of caller/storage case', () => {
+  test('setConfig with an UPPER FIELD_DEFS key is readable via getEffective (both cases)', async () => {
+    const c = freshConfigStore();
+    await c.ensureInitialized();
+    delete process.env.PINGONE_ENVIRONMENT_ID;
+    await c.setConfig({ PINGONE_ENVIRONMENT_ID: 'cfg-env-id' });
+    expect(c.getEffective('PINGONE_ENVIRONMENT_ID')).toBe('cfg-env-id');
+    expect(c.getEffective('pingone_environment_id')).toBe('cfg-env-id');
+  });
+
+  test('get() resolves regardless of the case the caller passes', async () => {
+    const c = freshConfigStore();
+    await c.ensureInitialized();
+    await c.setRaw({ ff_authorize_fail_open: 'true' }, { persist: false });
+    expect(c.get('ff_authorize_fail_open')).toBe('true');
+    expect(c.get('FF_AUTHORIZE_FAIL_OPEN')).toBe('true');
+  });
+
+  test('vault value still outranks a later SQLite write (provenance preserved) with UPPER keys', async () => {
+    const c = freshConfigStore();
+    await c.ensureInitialized();
+    await c.setRaw({ Pingone_Region: 'vault-region' }, { persist: false });
+    await c.setRaw({ pingone_region: 'sqlite-region' }, { persist: true });
+    expect(c.get('PINGONE_REGION')).toBe('vault-region');
+  });
+});
