@@ -2327,6 +2327,8 @@ Plans:
 
 **Captured context (2026-05-14):**
 
+> **SUPERSEDED (2026-05-15):** The "Concrete work" list below describes the OLD same-port-flip + `MCP_SERVER_URL` default-change approach. It is **superseded by CONTEXT.md locked decisions D-01..D-06** (split ports: WS stays on 8080 unchanged, new h2c listener on 8083; h2 is opt-in via `MCP_HTTP2_PORT` / `MCP_SERVER_HTTP2_URL`; WS remains the default transport). Do NOT follow the steps below — see 999.1-CONTEXT.md and the 999.1-0X-PLAN.md files. Original text retained for history.
+
 Concrete work:
 1. Switch `banking_mcp_server/src/server/BankingMCPServer.ts` (line ~108) from `http.createServer` to `http2.createServer({ allowHTTP1: true })` — h2c, plaintext, matches existing `http://localhost:8080`. No cert needed.
 2. Verify WebSocket clients still upgrade through the shared port on the current Node version. h2 has no `'upgrade'` event, so this hinges on `ws.Server` attaching via the http/1.1 ALPN path. Affected clients: langchain_agent, banking_agent_service, the existing BFF WS path.
