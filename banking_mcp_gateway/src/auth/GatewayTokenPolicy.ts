@@ -45,11 +45,25 @@ export class GatewayTokenPolicy {
       }
     }
 
-    // Anti-bypass (D-05): upstream MCP-server audiences must NEVER appear
-    // in the token's aud. A client must obtain a gateway-targeted token first;
-    // only the gateway may then exchange it for the next-hop audience.
+    // Anti-bypass (D-05): upstream audiences must NEVER appear in the token's
+    // aud. A client must obtain a gateway-targeted token first; only the
+    // gateway may then exchange it for the next-hop audience.
+    //
+    // The blacklist must cover *every* downstream the gateway can route
+    // toward, not just the two MCP servers. Phase 266 added
+    // `bankingResourceServerResourceUri` (the RS audience used by
+    // credentialSwap for the dualtoken/bankingdata dispositions). A
+    // multi-aud token [gatewayResourceUri, bankingResourceServerResourceUri]
+    // passes the inbound aud check but would be force-forwarded with the RS
+    // audience already present — exactly the bypass shape D-05 exists to
+    // stop. None of these URIs is ever a valid *inbound* aud, so
+    // blacklisting them is safe (the gateway's own URI is excluded).
     const audList = Array.isArray(decoded.aud) ? decoded.aud : [decoded.aud];
-    const upstreamAuds = [config.mcpOlbResourceUri, config.mcpInvestResourceUri];
+    const upstreamAuds = [
+      config.mcpOlbResourceUri,
+      config.mcpInvestResourceUri,
+      config.bankingResourceServerResourceUri,
+    ].filter((a) => a && a !== config.gatewayResourceUri);
     for (const ua of upstreamAuds) {
       if (ua && audList.includes(ua)) {
         throw new GatewayTokenPolicyError(

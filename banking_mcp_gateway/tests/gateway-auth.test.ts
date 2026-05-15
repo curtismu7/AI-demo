@@ -149,6 +149,23 @@ describe('GatewayTokenPolicy', () => {
     const decoded = decodedToken({ aud: INVEST_AUD });
     expect(() => GatewayTokenPolicy.validate(decoded, stubConfig)).toThrow(GatewayTokenPolicyError);
   });
+
+  it('rejects a multi-aud token carrying the Phase 266 RS audience (anti-bypass: D-05)', () => {
+    // [gatewayResourceUri, bankingResourceServerResourceUri] passes the
+    // inbound aud check but must be rejected by D-05 so it cannot be
+    // force-forwarded with the RS audience already present.
+    const decoded = decodedToken({
+      aud: [GATEWAY_AUD, stubConfig.bankingResourceServerResourceUri],
+    });
+    expect(() => GatewayTokenPolicy.validate(decoded, stubConfig)).toThrow(
+      GatewayTokenPolicyError,
+    );
+  });
+
+  it('still accepts a normal gateway-aud token after the D-05 set widened', () => {
+    const decoded = decodedToken({ aud: GATEWAY_AUD });
+    expect(() => GatewayTokenPolicy.validate(decoded, stubConfig)).not.toThrow();
+  });
 });
 
 // ---------------------------------------------------------------------------
