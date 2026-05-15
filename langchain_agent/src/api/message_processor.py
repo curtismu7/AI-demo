@@ -3,8 +3,8 @@ Message processor for coordinating between chat interface and agent.
 """
 import asyncio
 import logging
-from typing import Dict, Any, Optional, Callable
-from datetime import datetime, timezone
+from typing import Dict, Any, Optional, Callable, Tuple
+from datetime import datetime, timezone, timedelta
 import uuid
 
 from models.chat import ChatMessage, ChatSession
@@ -45,9 +45,13 @@ class MessageProcessor:
         self.session_manager = session_manager
         self.websocket_handler = websocket_handler
         
-        # Pending authorization requests: state -> session_id
-        self._pending_auth_requests: Dict[str, str] = {}
-        
+        # Pending authorization requests: state -> (session_id, created_at).
+        # Tuple form lets us TTL-evict abandoned states whose user never
+        # returned the auth code. Without TTL the dict grew unbounded
+        # (one entry per abandoned login).
+        self._pending_auth_requests: Dict[str, Tuple[str, datetime]] = {}
+        self._pending_auth_ttl = timedelta(minutes=15)
+
         # Authorization callbacks: session_id -> callback
         self._auth_callbacks: Dict[str, Callable] = {}
         
@@ -123,6 +127,10 @@ class MessageProcessor:
             state: The state parameter
         """
         try:
+            # Evict expired pending requests before validating, so a slow-but-valid
+            # response still works but truly-abandoned states don't leak.
+            self._sweep_pending_auth_requests()
+
             # Validate state parameter
             if state not in self._pending_auth_requests:
                 logger.warning(f"Received auth response with unknown state {state}")
@@ -131,9 +139,9 @@ class MessageProcessor:
                     "Invalid authorization state. Please try again."
                 )
                 return
-            
+
             # Validate session matches
-            expected_session_id = self._pending_auth_requests[state]
+            expected_session_id = self._pending_auth_requests[state][0]
             if session_id != expected_session_id:
                 logger.warning(f"Session ID mismatch for auth response: expected {expected_session_id}, got {session_id}")
                 await self._send_error_response(
@@ -186,8 +194,8 @@ class MessageProcessor:
             # Generate state parameter
             state = str(uuid.uuid4())
             
-            # Store pending request
-            self._pending_auth_requests[state] = session_id
+            # Store pending request with timestamp for TTL eviction.
+            self._pending_auth_requests[state] = (session_id, datetime.now(timezone.utc))
             
             # Send authorization request to user
             success = await self.websocket_handler.send_auth_request(session_id, auth_url, state)
@@ -207,7 +215,8 @@ class MessageProcessor:
     async def _process_message_queue(self) -> None:
         """Background task for processing queued messages."""
         logger.info("Started message queue processing")
-        
+
+        idle_ticks = 0
         while not self._shutdown_event.is_set():
             try:
                 # Wait for message or shutdown
@@ -217,6 +226,12 @@ class MessageProcessor:
                         timeout=1.0
                     )
                 except asyncio.TimeoutError:
+                    # Sweep abandoned pending auth requests every ~60 idle
+                    # ticks (≈1 minute). Cheap when the dict is empty.
+                    idle_ticks += 1
+                    if idle_ticks >= 60:
+                        idle_ticks = 0
+                        self._sweep_pending_auth_requests()
                     continue  # Check shutdown event
                 
                 # Process the message
@@ -460,6 +475,26 @@ class MessageProcessor:
         except Exception as e:
             logger.warning(f"Could not pre-identify user {user_id} for session {session_id}: {e}")
 
+    def _sweep_pending_auth_requests(self) -> int:
+        """Evict pending auth requests older than _pending_auth_ttl.
+
+        Called on every auth_response receipt and at queue-loop idle ticks.
+        Returns the number of entries evicted.
+        """
+        cutoff = datetime.now(timezone.utc) - self._pending_auth_ttl
+        expired_states = [
+            state
+            for state, (_sid, created_at) in self._pending_auth_requests.items()
+            if created_at < cutoff
+        ]
+        for state in expired_states:
+            del self._pending_auth_requests[state]
+        if expired_states:
+            logger.info(
+                "Evicted %d expired pending auth request(s)", len(expired_states)
+            )
+        return len(expired_states)
+
     async def clear_session_data(self, session_id: str) -> None:
         """
         Clear all processor data for a session.
@@ -473,7 +508,7 @@ class MessageProcessor:
         
         # Remove pending auth requests for this session
         states_to_remove = [
-            state for state, sid in self._pending_auth_requests.items()
+            state for state, (sid, _ts) in self._pending_auth_requests.items()
             if sid == session_id
         ]
         for state in states_to_remove:
