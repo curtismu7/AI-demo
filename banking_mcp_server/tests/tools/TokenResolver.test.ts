@@ -98,20 +98,20 @@ describe('TokenResolver', () => {
     expect(res.source).toBe('user-rfc8693-exchange');
   });
 
-  it('user-passthrough-devtest: passes user token directly when no exchange service in test env', async () => {
+  it('user-passthrough-noexchange: passes user token directly when no exchange service in test env', async () => {
     process.env.NODE_ENV = 'test';
     const r = new TokenResolver({ authManager, tokenExchangeService: undefined, logger });
     const res = await r.resolve(makeSession(), baseTool, undefined);
     expect(res.token).toBe('user-tok');
-    expect(res.source).toBe('user-passthrough-devtest');
+    expect(res.source).toBe('user-passthrough-noexchange');
   });
 
-  it('user-passthrough-devtest: passes user token directly when no exchange service in production', async () => {
+  it('user-passthrough-noexchange: passes user token directly when no exchange service in production (no prod throw)', async () => {
     process.env.NODE_ENV = 'production';
     const r = new TokenResolver({ authManager, tokenExchangeService: undefined, logger });
     const res = await r.resolve(makeSession(), baseTool, undefined);
     expect(res.token).toBe('user-tok');
-    expect(res.source).toBe('user-passthrough-devtest');
+    expect(res.source).toBe('user-passthrough-noexchange');
   });
 
   it('throws AuthenticationError when no user token has required scopes', async () => {

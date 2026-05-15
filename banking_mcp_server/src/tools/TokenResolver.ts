@@ -3,8 +3,11 @@
  * Four resolution paths (TokenResolution.source):
  *   agent-passthrough        — agentToken present, no BANKING_API_RESOURCE_URI configured
  *   agent-step9-exchange     — agentToken present, exchange service + resource URI configured
- *   user-rfc8693-exchange    — no agentToken, exchange service configured
- *   user-passthrough-devtest — no agentToken, no exchange service, unconditional passthrough (backward compat)
+ *   user-rfc8693-exchange     — no agentToken, exchange service configured
+ *   user-passthrough-noexchange — no agentToken, no exchange service; unconditional passthrough
+ *                                 in ALL environments (backward compat / ff_skip_token_exchange).
+ *                                 NOTE: this path does NOT throw in production — the name describes
+ *                                 the absence of a token-exchange service, not an env guard.
  *
  * Extracted verbatim from BankingToolProvider.executeSpecificTool token-selection block and
  * getUserTokenForScopes. Behavior is identical to the originals.
@@ -27,7 +30,7 @@ export interface TokenResolverDeps {
 
 export interface TokenResolution {
   token: string;
-  source: 'agent-passthrough' | 'agent-step9-exchange' | 'user-rfc8693-exchange' | 'user-passthrough-devtest';
+  source: 'agent-passthrough' | 'agent-step9-exchange' | 'user-rfc8693-exchange' | 'user-passthrough-noexchange';
 }
 
 export class TokenResolver {
@@ -144,7 +147,7 @@ export class TokenResolver {
         // No token exchange service — direct pass-through (backward compat / ff_skip_token_exchange)
         token = userToken.accessToken;
         this.deps.logger.debug(`[BankingToolProvider] Using session user token for ${tool.name} (no token exchange service)`);
-        return { token, source: 'user-passthrough-devtest' };
+        return { token, source: 'user-passthrough-noexchange' };
       }
     }
   }
