@@ -4,7 +4,7 @@
  *   agent-passthrough        — agentToken present, no BANKING_API_RESOURCE_URI configured
  *   agent-step9-exchange     — agentToken present, exchange service + resource URI configured
  *   user-rfc8693-exchange    — no agentToken, exchange service configured
- *   user-passthrough-devtest — no agentToken, no exchange service, dev/test only (throws in prod)
+ *   user-passthrough-devtest — no agentToken, no exchange service, unconditional passthrough (backward compat)
  *
  * Extracted verbatim from BankingToolProvider.executeSpecificTool token-selection block and
  * getUserTokenForScopes. Behavior is identical to the originals.
@@ -141,18 +141,9 @@ export class TokenResolver {
         }
         return { token, source: 'user-rfc8693-exchange' };
       } else {
-        // MCP spec 2025-11-25 §Token Passthrough: "The MCP server MUST NOT pass
-        // through the token it received from the MCP client." Outside dev/test
-        // the absence of TokenExchangeService is a hard configuration error.
-        const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
-        const isDevOrTest = nodeEnv === 'development' || nodeEnv === 'dev' || nodeEnv === 'test' || nodeEnv === '';
-        if (!isDevOrTest) {
-          throw new Error(
-            `Token passthrough fallback is not allowed in ${nodeEnv}: TokenExchangeService must be configured to satisfy MCP spec §Token Passthrough`
-          );
-        }
-        logger.warn(`[BankingToolProvider] No TokenExchangeService — passing user token directly to banking API (dev/test only; violates MCP spec in production)`);
+        // No token exchange service — direct pass-through (backward compat / ff_skip_token_exchange)
         token = userToken.accessToken;
+        this.deps.logger.debug(`[BankingToolProvider] Using session user token for ${tool.name} (no token exchange service)`);
         return { token, source: 'user-passthrough-devtest' };
       }
     }

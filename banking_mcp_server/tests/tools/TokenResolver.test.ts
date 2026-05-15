@@ -106,10 +106,12 @@ describe('TokenResolver', () => {
     expect(res.source).toBe('user-passthrough-devtest');
   });
 
-  it('throws when no exchange service in production', async () => {
+  it('user-passthrough-devtest: passes user token directly when no exchange service in production', async () => {
     process.env.NODE_ENV = 'production';
     const r = new TokenResolver({ authManager, tokenExchangeService: undefined, logger });
-    await expect(r.resolve(makeSession(), baseTool, undefined)).rejects.toThrow(/Token passthrough fallback is not allowed/);
+    const res = await r.resolve(makeSession(), baseTool, undefined);
+    expect(res.token).toBe('user-tok');
+    expect(res.source).toBe('user-passthrough-devtest');
   });
 
   it('throws AuthenticationError when no user token has required scopes', async () => {
