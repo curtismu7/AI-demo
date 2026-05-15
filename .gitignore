@@ -59,6 +59,11 @@ banking_api_server/data/persistent/config.db-wal
 banking_api_server/data/persistent/agentIdentityMappings.json
 banking_api_server/data/logs/
 
+# Express session store (local SQLite — live session data, never commit)
+banking_api_server/data/sessions.db
+banking_api_server/data/sessions.db-shm
+banking_api_server/data/sessions.db-wal
+
 # Portable encrypted credential vault (Phase 269) — encrypted at rest but
 # NEVER commit. Vault password is required to decrypt and lives only in
 # the operator's head / 1Password / direnv. Encrypted-at-rest means an
