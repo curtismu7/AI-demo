@@ -47,16 +47,39 @@ function resolveTokenEndpoint(): string {
   return required('PINGONE_TOKEN_ENDPOINT');
 }
 
+const VALID_LLM_PROVIDERS: ReadonlyArray<AgentConfig['llmProvider']> = [
+  'openai',
+  'anthropic',
+  'none',
+];
+
 export function loadConfig(): AgentConfig {
+  // IN-01: fail fast at startup on a typo'd LLM_PROVIDER (e.g. "Anthropic")
+  // rather than silently mis-routing and only throwing "Unknown LLM
+  // provider" deep in runAgentTask at request time.
+  const llmProviderRaw = optional('LLM_PROVIDER', 'none');
+  if (!VALID_LLM_PROVIDERS.includes(llmProviderRaw as AgentConfig['llmProvider'])) {
+    throw new Error(
+      `Invalid LLM_PROVIDER: "${llmProviderRaw}" — must be one of ${VALID_LLM_PROVIDERS.join(' | ')}`,
+    );
+  }
   return {
     port: parseInt(process.env.PORT || '3006', 10),
-    host: process.env.HOST || '0.0.0.0',
-    clientId: required('AGENT_CLIENT_ID'),
+    // :3006 is loopback-only per REGRESSION_PLAN §3. Default to 127.0.0.1 so a
+    // misconfigured deploy can't expose the token-exchange endpoint on all
+    // interfaces; staging/prod can still bind 0.0.0.0 via an explicit HOST env.
+    host: process.env.HOST || '127.0.0.1',
+    // :3006 is reasoning-only (Phase 2 agent consolidation). The BFF keeps
+    // token custody, so the agent no longer performs its own RFC 8693
+    // exchange. AGENT_CLIENT_ID / MCP_GW_RESOURCE_URI are only consumed by the
+    // now-unwired token/MCP-gateway path — relaxed to optional so the service
+    // starts without them.
+    clientId: optional('AGENT_CLIENT_ID', ''),
     clientSecret: optional('AGENT_CLIENT_SECRET', ''),
     tokenEndpoint: resolveTokenEndpoint(),
     mcpGatewayWsUrl: optional('MCP_GATEWAY_WS_URL', 'ws://localhost:3005'),
-    mcpGatewayResourceUri: required('MCP_GW_RESOURCE_URI'),
-    llmProvider: (optional('LLM_PROVIDER', 'none') as AgentConfig['llmProvider']),
+    mcpGatewayResourceUri: optional('MCP_GW_RESOURCE_URI', ''),
+    llmProvider: llmProviderRaw as AgentConfig['llmProvider'],
     llmApiKey: optional('LLM_API_KEY', ''),
     llmModel: optional('LLM_MODEL', 'claude-sonnet-4.6'),
     usePkiCreds: optional('USE_PKI_AGENT_CREDS', 'false') === 'true',

@@ -5,6 +5,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-05-15 — banking_agent_service: loopback default, body cap, prompt shipping (commit `03ec8e0e`)
+
+**Symptoms**: Three Important findings from a security review of `banking_agent_service`. (1) `HOST` defaulted to `0.0.0.0` although `:3006` is documented loopback-only (REGRESSION_PLAN §3) — a misconfigured deploy exposes the token-exchange endpoint on all interfaces. (2) `express.json()` had no size limit, so an oversized body could amplify load before the cheap HI-04 subject-token shape check. (3) `tsc` did not copy `src/prompts/` into `dist/`, so the compiled service silently fell back to a minimal inline system prompt — dropping the curated `default.json` guardrail ("never reveal raw token values").
+
+**Root cause**: (1) host default predated the loopback-only port policy. (2) `express.json()` used the framework default with no explicit cap for this small-payload, exchange-triggering endpoint. (3) `build` was bare `tsc`, which does not copy non-TS assets; `PROMPTS_DIR = join(__dirname, 'prompts')` resolves to an empty `dist/prompts/` at runtime, hitting the weak inline fallback.
+
+**Fix**: `HOST` default `0.0.0.0` → `127.0.0.1` (explicit `HOST` still overrides for staging/prod; startup warns when bound to ALL interfaces — mirrors the MCP-server precedent in REGRESSION_PLAN §3070). `express.json({ limit: '16kb' })`. `build` → `tsc && npm run copy:assets` (`cp -R src/prompts dist/prompts`); the no-prompt-file path now logs loudly via `console.error` instead of degrading silently. Also corrected a stale HI-04 doc comment that claimed "base64 only" — the code already decodes the JWT payload as base64url (no logic change).
+
+**Tests**: `banking_agent_service/tests/config.test.ts` — loopback default + explicit-HOST override + port default. `banking_agent_service/tests/promptStore.test.ts` — curated `default.json` loads (not the inline fallback) + CR-01 path-traversal allowlist. Full package suite: 3 suites / 15 tests green; pre-existing `vault.test.ts` unaffected.
+
+---
+
 ## 2026-05-07 — Helix LLM service: answer read from POST response, not poll
 
 **Symptoms**: Helix responses never returned — service polled a GET endpoint indefinitely. The real Helix API returns the completed answer synchronously in the `POST /messages` response body (`message_class=complete`).

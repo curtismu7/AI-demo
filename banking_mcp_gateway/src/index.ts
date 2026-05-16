@@ -22,7 +22,7 @@ import { join } from 'node:path';
 import * as crypto from 'node:crypto';
 import WebSocket from 'ws';
 import axios from 'axios';
-import { loadConfig, GatewayConfig, assertProductionSecrets } from './config';
+import { loadConfig, GatewayConfig, assertProductionSecrets, isInternalSecretUsable } from './config';
 import { validateInboundToken, extractBearerToken, TokenValidationError } from './tokenValidator';
 import { routeTool, backendWsUrl, backendResourceUri, backendHttpUrl } from './router';
 import { exchangeTokenForBackend } from './tokenExchange';
@@ -36,6 +36,11 @@ import { getScopesForGatewayTool, getChallengeTypeForTool } from './auth/toolSco
 import { GatewayIntrospectionClient } from './auth/GatewayIntrospectionClient';
 import { runMcpAuthorizationPipeline } from './auth/authorizeMcpRequestCore';
 import { loadVaultIntoEnv } from './vault';
+import {
+  applyAdminConfigUpdate,
+  ADMIN_CONFIG_ALLOWED_KEYS,
+  adminConfigSafeView,
+} from './adminConfig';
 
 // Phase 269 Plan 04: load encrypted vault entries into process.env BEFORE
 // loadConfig() runs. The vault populates MCP_GW_*, PROVIDER_*, HELIX_*, and
@@ -90,6 +95,18 @@ const wsIntrospectionClient = new GatewayIntrospectionClient(config);
 // ---------------------------------------------------------------------------
 
 function requireInternalSecret(req: IncomingMessage, res: ServerResponse, cfg: GatewayConfig): boolean {
+  // WR-07: an empty (or near-empty) secret makes timingSafeEqual on two
+  // zero-length buffers return true for a header-less request — turning the
+  // admin surface into an unauthenticated control plane. Refuse to compare
+  // against a weak/empty secret; never treat that as a valid authorization.
+  // This must be explicit at the gate, not an emergent property of
+  // optional()'s `||` fallback (see isInternalSecretUsable in config.ts).
+  if (!isInternalSecretUsable(cfg.bffInternalSecret)) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'misconfigured' }));
+    return false;
+  }
+
   const presented = req.headers['x-internal-gateway-secret'];
   const expectedBuf = Buffer.from(cfg.bffInternalSecret);
   const presentedStr = typeof presented === 'string' ? presented : '';
@@ -190,50 +207,23 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
     req.on('data', (chunk) => { body += chunk; });
     req.on('end', () => {
       try {
-        const updates: Partial<Record<string, string | boolean>> = JSON.parse(body || '{}');
+        const updates: Partial<Record<string, unknown>> = JSON.parse(body || '{}');
 
-        // BL-01: refuse devBypass mutations in production.
-        if (
-          process.env.NODE_ENV === 'production' &&
-          'devBypass' in updates &&
-          updates.devBypass === true
-        ) {
-          res.writeHead(403, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            error: 'forbidden',
-            message: 'devBypass=true is not permitted when NODE_ENV=production',
-          }));
-          return;
+        // Phase 3 CR-02: devBypass anti-bypass hardening (A + D + belt) lives
+        // in applyAdminConfigUpdate so it is unit-testable. A rejects non-boolean
+        // devBypass (400); D hard-refuses any truthy devBypass in production
+        // (403); the assignment loop coerces devBypass to a strict boolean.
+        const result = applyAdminConfigUpdate(config, updates, process.env.NODE_ENV);
+        if (result.mutated) {
+          console.log(
+            '[GW] /admin/config updated:',
+            Object.keys(updates).filter((k) =>
+              ADMIN_CONFIG_ALLOWED_KEYS.includes(k as keyof typeof config),
+            ),
+          );
         }
-
-        const allowed: Array<keyof typeof config> = [
-          'gatewayResourceUri',
-          'mcpOlbWsUrl', 'mcpInvestWsUrl',
-          'mcpOlbResourceUri', 'mcpInvestResourceUri',
-          'pingAuthorizeEndpoint', 'pingAuthorizeWorkerId',
-          'hitlServiceUrl',
-          'devBypass',
-        ];
-        for (const key of allowed) {
-          if (key in updates) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (config as any)[key] = updates[key as string];
-          }
-        }
-        console.log('[GW] /admin/config updated:', Object.keys(updates).filter(k => allowed.includes(k as keyof typeof config)));
-        const safe = {
-          gatewayResourceUri:    config.gatewayResourceUri,
-          mcpOlbWsUrl:           config.mcpOlbWsUrl,
-          mcpInvestWsUrl:        config.mcpInvestWsUrl,
-          mcpOlbResourceUri:     config.mcpOlbResourceUri,
-          mcpInvestResourceUri:  config.mcpInvestResourceUri,
-          pingAuthorizeEndpoint: config.pingAuthorizeEndpoint,
-          pingAuthorizeWorkerId: config.pingAuthorizeWorkerId,
-          hitlServiceUrl:        config.hitlServiceUrl,
-          devBypass:             config.devBypass,
-        };
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, config: safe }));
+        res.writeHead(result.status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result.body));
       } catch {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Invalid JSON body' }));
@@ -248,17 +238,10 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
   // are useful reconnaissance for an attacker.
   if (url === '/admin/config' && req.method === 'GET') {
     if (!requireInternalSecret(req, res, config)) return;
-    const safe = {
-      gatewayResourceUri:    config.gatewayResourceUri,
-      mcpOlbWsUrl:           config.mcpOlbWsUrl,
-      mcpInvestWsUrl:        config.mcpInvestWsUrl,
-      mcpOlbResourceUri:     config.mcpOlbResourceUri,
-      mcpInvestResourceUri:  config.mcpInvestResourceUri,
-      pingAuthorizeEndpoint: config.pingAuthorizeEndpoint,
-      pingAuthorizeWorkerId: config.pingAuthorizeWorkerId,
-      hitlServiceUrl:        config.hitlServiceUrl,
-      devBypass:             config.devBypass,
-    };
+    // IN-01: reuse the single safe-config projection from adminConfig.ts
+    // (also used by the POST echo) so the two views cannot drift and a
+    // future allowed-key addition cannot leak a secret here independently.
+    const safe = adminConfigSafeView(config);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(safe));
     return;
@@ -500,7 +483,9 @@ async function handleMessage(
       }
     }
 
-    const authz = await guardToolCall(toolName, decoded, config);
+    // WR-02: forward the same transaction params the HTTP path sends so an
+    // amount-conditioned PingAuthorize policy fires identically on WS.
+    const authz = await guardToolCall(toolName, decoded, config, toolArgs);
     if (!authz.permitted) {
       if (authz.reason === 'HITL_REQUIRED') {
         // Create a challenge in HITL service and return the challengeId to the agent
@@ -575,9 +560,94 @@ async function handleMessage(
         return;
       }
 
-      // ----- api_key (Path A) — Gateway-only marker, no backend call -----
-      // synthesized tokenEvents so the Token Chain renders a multi-segment swap/attach narrative.
+      // ----- api_key (Path A) -----
       if (target === 'apikey') {
+        // Scope enforcement is an Authorize-layer decision, NOT a dispatch
+        // concern. banking:mortgage:read is enforced upstream by guardToolCall
+        // (WS) / PingOneAuthorizeClient.evaluate (HTTP) — by the PingAuthorize
+        // policy when configured, or the local TOOL_SCOPES baseline when not.
+        // By the time we reach here the scope check has already passed.
+
+        // Phase 267: if this apikey tool maps to a real backend URL, dispatch
+        // to it via X-API-Key (the OAuth bearer is dropped at the gateway —
+        // the swap IS the demo). Otherwise fall through to the Phase 266
+        // Gateway-only marker behavior below (unchanged).
+        const mortgageUrl = backendHttpUrl(target, toolName, config);
+        if (mortgageUrl) {
+          let mResp;
+          try {
+            mResp = await axios.get(mortgageUrl, {
+              headers: {
+                'X-API-Key': config.mortgageServiceApiKey,
+                'X-User-Sub': decoded.sub,
+              },
+              timeout: 5000,
+              validateStatus: (s: number) => s < 500,
+            });
+          } catch (err) {
+            send(jsonRpcError(id, -32500, 'Mortgage backend unreachable', { credentialPath: 'api_key' }));
+            return;
+          }
+          if (mResp.status === 401) {
+            send(jsonRpcError(id, -32401, 'Mortgage backend rejected the service API key', { credentialPath: 'api_key' }));
+            return;
+          }
+          if (mResp.status >= 400) {
+            send(jsonRpcError(id, -32500, `Mortgage backend returned ${mResp.status}`, { credentialPath: 'api_key' }));
+            return;
+          }
+          const last4 = credential.apiKeyMaskedLast4 || 'XXXX';
+          send(JSON.stringify({
+            jsonrpc: '2.0', id,
+            result: {
+              content: [{ type: 'text', text: JSON.stringify(mResp.data) }],
+              _meta: {
+                credentialPath: 'api_key',
+                apiKeyMaskedLast4: last4,
+                maskedApiKey: `xxxx${last4}`,
+                backend: 'banking_mortgage_service',
+                infoPageHint: '/path/mortgage',
+                note: 'Gateway dropped your OAuth bearer, attached a service API key, and called banking_mortgage_service (X-API-Key + X-User-Sub).',
+                tokenEvents: [
+                  {
+                    id: 'evt-inbound',
+                    label: 'Inbound user bearer received (aud=AI-agent-resource, sub=user)',
+                    tokenType: 'access_token',
+                    credentialPath: 'api_key',
+                    status: 'ok',
+                    specRef: 'RFC 6750 §3',
+                  },
+                  {
+                    id: 'evt-scope',
+                    label: `Authorize PERMIT: ${getScopesForGatewayTool(toolName).join(', ')} present on the user bearer (scope decision before credential swap)`,
+                    tokenType: 'access_token',
+                    credentialPath: 'api_key',
+                    status: 'ok',
+                  },
+                  {
+                    id: 'evt-swap',
+                    label: 'Gateway swap: OAuth bearer dropped, service API key attached',
+                    tokenType: 'api_key',
+                    maskedValue: `...${last4}`,
+                    credentialPath: 'api_key',
+                    status: 'ok',
+                  },
+                  {
+                    id: 'evt-backend',
+                    label: 'Outbound GET banking_mortgage_service /mortgage (X-API-Key + X-User-Sub, no OAuth)',
+                    tokenType: 'api_key',
+                    credentialPath: 'api_key',
+                    status: 'ok',
+                  },
+                ],
+              },
+            },
+          }));
+          return;
+        }
+
+        // ----- Gateway-only marker (Phase 266, unchanged) — no backend call -----
+        // synthesized tokenEvents so the Token Chain renders a multi-segment swap/attach narrative.
         send(JSON.stringify({
           jsonrpc: '2.0', id,
           result: {
@@ -833,7 +903,9 @@ const httpServer = gatewayServer.httpServer;
 // the same defenses the HTTP transport has via GatewayServer.validateCors.
 // Without these, a 100 MB JSON-RPC frame can hang Node parsing it and
 // any cross-origin browser can open the WS.
-const _wsAcceptedOriginsRe = new RegExp(process.env.MCP_ACCEPTED_ORIGINS ?? '.*');
+// IN-05: anchored with ^(?:...)$ so a tightened MCP_ACCEPTED_ORIGINS matches
+// the full Origin, not a substring (parity with GatewayServer.validateCors).
+const _wsAcceptedOriginsRe = new RegExp(`^(?:${process.env.MCP_ACCEPTED_ORIGINS ?? '.*'})$`);
 const WS_MAX_PAYLOAD_BYTES = Number(process.env.MCP_WS_MAX_PAYLOAD_BYTES ?? 1024 * 1024); // 1 MB default
 
 const wss = new WebSocket.Server({
@@ -881,6 +953,14 @@ httpServer.listen(config.port, config.host, () => {
   console.log(`[GW] RFC 9728 + HTTP MCP ingress — POST /mcp  http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${config.port}/.well-known/oauth-protected-resource`);
 });
 
-process.on('SIGINT', () => { httpServer.close(); process.exit(0); });
-process.on('SIGTERM', () => { httpServer.close(); process.exit(0); });
+// WR-05: graceful drain. httpServer.close() is async — exiting on the next
+// line killed in-flight tool calls (a create_transfer mid-flight is an
+// ambiguous financial outcome). Exit from the close callback, with an
+// unref'd hard-kill safety timer so a stalled drain still terminates.
+function shutdown(): void {
+  httpServer.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 10_000).unref();
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 })();

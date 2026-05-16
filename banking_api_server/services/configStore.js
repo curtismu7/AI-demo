@@ -24,8 +24,10 @@ const fs     = require('fs');
 // Constants
 // ---------------------------------------------------------------------------
 
-// Fields that must be encrypted at rest
-const SECRET_KEYS = new Set([
+// Fields that must be encrypted at rest. Listed verbatim for reviewability;
+// some entries are UPPER (PingOne app secrets) and some lowercase (FIELD_DEFS
+// keys), matching how each is written by callers.
+const _SECRET_KEYS_RAW = [
   'PINGONE_ADMIN_CLIENT_SECRET',
   'PINGONE_USER_CLIENT_SECRET',
   'PINGONE_SESSION_SECRET',
@@ -37,6 +39,32 @@ const SECRET_KEYS = new Set([
   'pingone_introspection_client_secret',
   'posthog_api_key',
   'demo_password',
+  'demo_admin_password',
+  'mcp_gw_client_secret',
+];
+// Membership is UPPER-canonical: config keys are stored UPPER everywhere
+// (in-memory cache + SQLite rows), so secret detection must match regardless
+// of the case a caller or FIELD_DEFS uses, otherwise encrypt-on-write and
+// decrypt-on-load become asymmetric and lowercase secrets reload as
+// ciphertext. See REGRESSION_PLAN §4 (SECRET_KEYS casing).
+const SECRET_KEYS = new Set(_SECRET_KEYS_RAW.map((k) => k.toUpperCase()));
+
+// ---------------------------------------------------------------------------
+// Bootstrap allowlist — keys read BEFORE the vault can be unlocked / before
+// configStore can decrypt SQLite. For these, .env (process.env) MUST stay
+// authoritative even when a vault/SQLite value exists, or the app cannot
+// reach the point where the vault could be opened. Lowercase — getEffective
+// has already lowercased `key` before the membership test. See
+// REGRESSION_PLAN §1 "Config UI / configStore" + §4.
+const BOOTSTRAP_ALLOWLIST = new Set([
+  'session_secret',
+  'config_encryption_key',
+  'vault_password',
+  'vault_path',
+  'node_env',
+  'port',
+  'pingone_environment_id',
+  'pingone_region',
 ]);
 
 // All known config keys with their defaults and whether they are public
@@ -143,6 +171,12 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // audience before forwarding to the MCP server (act claim identifies the Backend-for-Frontend (BFF)).
   PINGONE_RESOURCE_MCP_SERVER_URI:        { public: true,  default: '' },
 
+  // RFC 8693 Token Exchange — langchain chat agent resource URI (Path A).
+  // The BFF chat-WS proxy requests a token-exchange to this audience before
+  // delivering the token to langchain in session_init. langchain validates
+  // `aud` against this value (T-5: per-hop audience, no cascade).
+  PINGONE_RESOURCE_LANGCHAIN_AGENT_URI:   { public: true,  default: 'https://banking-langchain-agent.banking-demo.com' },
+
   // Demo Data — persistent demo accounts (JSON string, ignored for local SQLite)
   demo_accounts:              { public: false, default: '' },
 
@@ -180,8 +214,16 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   UI_INDUSTRY_PRESET: { public: true, default: 'bx_finance' },
 
   /**
-   * Space-separated OAuth scopes allowed for RFC 8693 exchange to MCP (agent capability).
-   * Subset of KNOWN scopes in agentMcpScopePolicy.js — disabling a scope blocks matching MCP tools.
+   * Space-separated OAuth scopes the demo presenter selects for the agent on the
+   * Application Configuration page ("Agent MCP scopes"). Advisory/catalog config
+   * only — it does NOT make an authorization decision in the BFF.
+   *
+   * Architecture-note R1 (2026-05-15) / T-2: the former local
+   * `agentMcpScopePolicy` veto that consumed this value to block tool calls has
+   * been removed. Whether an MCP tool call is permitted is decided solely by
+   * PingAuthorize (`mcpToolAuthorizationService.evaluateMcpFirstToolGate`). To
+   * demo a read-only agent (e.g. disable transfers), restrict the scopes in the
+   * PingOne Authorize / token-exchange policy — not via this local key.
    */
   agent_mcp_allowed_scopes: {
     public: true,
@@ -295,6 +337,18 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // Demo credentials (local only)
   demo_username:                         { public: true,  default: '' },
   demo_password:                         { public: false, default: '' },
+  demo_admin_username:                   { public: true,  default: '' },
+  demo_admin_password:                   { public: false, default: '' },
+
+  // MCP Gateway delegated-exchange app credentials
+  mcp_gw_client_id:                      { public: true,  default: '' },
+  mcp_gw_client_secret:                  { public: false, default: '' },
+  mcp_gw_resource_uri:                   { public: true,  default: '' },
+  mcp_gw_token_endpoint_auth_method:     { public: true,  default: '' },
+
+  // Admin token lifetimes (seconds)
+  admin_token_lifetime:                  { public: true,  default: '' },
+  admin_refresh_token_lifetime:          { public: true,  default: '' },
 
   // Phase 266 — Path A demo: service API key the gateway swaps in (masked last-4 shown on info page)
   demo_apikey_backend_service_key:       { public: false, default: 'demo-api-key-0000' },
@@ -385,7 +439,33 @@ class ConfigStore {
   constructor() {
     /** @type {Record<string, string>} plaintext in-memory cache */
     this._cache = {};
+    /** @type {Record<string, 'vault'|'sqlite'>} which tier set each cache key */
+    this._provenance = {};
     this._initPromise = null;
+  }
+
+  /**
+   * Write into the in-memory cache with tier provenance.
+   * Vault (persist:false at startup) outranks SQLite: once a key is
+   * vault-owned, a later SQLite write updates the stored cache value but
+   * MUST NOT change provenance, and getEffective() prefers the vault value.
+   *
+   * @param {Record<string,string>} data
+   * @param {'vault'|'sqlite'} tier
+   */
+  _setCache(data, tier) {
+    for (const [k, v] of Object.entries(data)) {
+      const key = String(k).toUpperCase();
+      const owner = this._provenance[key];
+      if (owner === 'vault' && tier === 'sqlite') {
+        // Vault already owns this key — keep the vault value authoritative.
+        // (We deliberately do NOT overwrite this._cache[key] here so a later
+        //  vault re-unlock isn't needed to "win"; the vault value stays put.)
+        continue;
+      }
+      this._cache[key] = v;
+      this._provenance[key] = tier;
+    }
   }
 
   /**
@@ -413,9 +493,11 @@ class ConfigStore {
   _loadFromSQLite() {
     const db   = _getSQLite();
     const rows = db.prepare('SELECT key, value FROM config').all();
+    const decoded = {};
     for (const row of rows) {
-      this._cache[row.key] = SECRET_KEYS.has(row.key) ? _decrypt(row.value) : row.value;
+      decoded[row.key] = SECRET_KEYS.has(String(row.key).toUpperCase()) ? _decrypt(row.value) : row.value;
     }
+    this._setCache(decoded, 'sqlite');
   }
 
   // -------------------------------------------------------------------------
@@ -427,7 +509,7 @@ class ConfigStore {
    * Always call ensureInitialized() before the first get().
    */
   get(key) {
-    const v = this._cache[key];
+    const v = this._cache[String(key).toUpperCase()];
     return (v !== undefined && v !== '') ? v : null;
   }
 
@@ -458,7 +540,7 @@ class ConfigStore {
       if (value === null || value === undefined) continue;
       if (value === '' && !allowEmptyStringKeys.has(key)) continue;
       // Value is a non-empty string
-      const stored = SECRET_KEYS.has(key) ? _encrypt(value) : value;
+      const stored = SECRET_KEYS.has(String(key).toUpperCase()) ? _encrypt(value) : value;
       updates[key]      = stored;
       cacheUpdates[key] = value;
     }
@@ -473,7 +555,7 @@ class ConfigStore {
       const now = new Date().toISOString();
       db.transaction(() => {
         for (const [key, value] of Object.entries(updates)) {
-          upsert.run(key, value, now);
+          upsert.run(String(key).toUpperCase(), value, now);
         }
       })();
     } catch (err) {
@@ -481,7 +563,8 @@ class ConfigStore {
     }
 
     // Update cache last, so failures above leave cache consistent
-    Object.assign(this._cache, cacheUpdates);
+    // setConfig persists to SQLite — provenance is 'sqlite'.
+    this._setCache(cacheUpdates, 'sqlite');
   }
 
   /**
@@ -509,7 +592,7 @@ class ConfigStore {
         const now = new Date().toISOString();
         db.transaction(() => {
           for (const [key, value] of Object.entries(data)) {
-            upsert.run(key, String(value), now);
+            upsert.run(String(key).toUpperCase(), String(value), now);
           }
         })();
       } catch (err) {
@@ -517,7 +600,9 @@ class ConfigStore {
       }
     }
     // Update cache regardless of SQLite outcome (or skip)
-    Object.assign(this._cache, data);
+    // persist:false is the vault loader's path → provenance 'vault';
+    // persist:true (or default) is a SQLite-backed write → 'sqlite'.
+    this._setCache(data, shouldPersist ? 'sqlite' : 'vault');
   }
 
 
@@ -529,7 +614,7 @@ class ConfigStore {
   getMasked() {
     const result = {};
     for (const key of Object.keys(FIELD_DEFS)) {
-      if (SECRET_KEYS.has(key)) {
+      if (SECRET_KEYS.has(String(key).toUpperCase())) {
         const isSet = String(this.getEffective(key) || '').trim() !== '';
         result[key] = isSet ? '••••••••' : '';
         result[`${key}_set`] = isSet;
@@ -616,6 +701,7 @@ class ConfigStore {
       public_app_url:         ['PUBLIC_APP_URL'],
       mcp_server_url:                   ['MCP_SERVER_URL'],
       pingone_resource_mcp_server_uri:  ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI'],
+      pingone_resource_langchain_agent_uri: ['PINGONE_RESOURCE_LANGCHAIN_AGENT_URI'],
       authorize_decision_endpoint_id:   ['PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID'],
       authorize_mcp_decision_endpoint_id: ['PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID'],
       debug_oauth:                      ['DEBUG_OAUTH'],
@@ -628,16 +714,29 @@ class ConfigStore {
       agent_mcp_allowed_scopes: ['AGENT_MCP_ALLOWED_SCOPES'],
       ff_two_exchange_delegation:      ['FF_TWO_EXCHANGE_DELEGATION'],
       ff_heuristic_enabled:            ['FF_HEURISTIC_ENABLED'],
-      pingone_ai_agent_client_id:       ['PINGONE_AI_AGENT_CLIENT_ID', 'AI_AGENT_CLIENT_ID'],
-      pingone_ai_agent_client_secret:    ['PINGONE_AI_AGENT_CLIENT_SECRET', 'AI_AGENT_CLIENT_SECRET'],
+      pingone_ai_agent_client_id:       ['PINGONE_AI_AGENT_CLIENT_ID', 'AI_AGENT_CLIENT_ID', 'AGENT_CLIENT_ID'],
+      pingone_ai_agent_client_secret:    ['PINGONE_AI_AGENT_CLIENT_SECRET', 'AI_AGENT_CLIENT_SECRET', 'AGENT_CLIENT_SECRET'],
       pingone_worker_client_id:                    ['PINGONE_AUTHORIZE_WORKER_CLIENT_ID'],
-      pingone_mcp_token_exchanger_client_id:     ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID', 'AGENT_OAUTH_CLIENT_ID'],
-      pingone_mcp_token_exchanger_client_secret: ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET', 'AGENT_OAUTH_CLIENT_SECRET'],
+      pingone_mcp_token_exchanger_client_id:     ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID', 'PINGONE_MCP_EXCHANGER_CLIENT_ID', 'AGENT_OAUTH_CLIENT_ID'],
+      pingone_mcp_token_exchanger_client_secret: ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET', 'PINGONE_MCP_EXCHANGER_CLIENT_SECRET', 'AGENT_OAUTH_CLIENT_SECRET'],
       pingone_mcp_token_exchanger_client_scopes: ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SCOPES', 'AGENT_OAUTH_CLIENT_SCOPES'],
       pingone_resource_agent_gateway_uri: ['PINGONE_RESOURCE_AGENT_GATEWAY_URI', 'AGENT_GATEWAY_AUDIENCE'],
       agent_gateway_audience:             ['AGENT_GATEWAY_AUDIENCE', 'PINGONE_RESOURCE_AGENT_GATEWAY_URI'],
       ai_agent_intermediate_audience:  ['AI_AGENT_INTERMEDIATE_AUDIENCE'],
-      pingone_resource_mcp_gateway_uri: ['PINGONE_RESOURCE_MCP_GATEWAY_URI', 'MCP_GATEWAY_AUDIENCE'],
+      pingone_resource_mcp_gateway_uri: ['PINGONE_RESOURCE_MCP_GATEWAY_URI', 'MCP_GATEWAY_AUDIENCE', 'MCP_GW_RESOURCE_URI'],
+      // MCP Gateway delegated-exchange app credentials (direct MCP_GW_* names —
+      // previously only read via direct process.env in gateway token glue)
+      mcp_gw_client_id:                 ['MCP_GW_CLIENT_ID'],
+      mcp_gw_client_secret:             ['MCP_GW_CLIENT_SECRET'],
+      mcp_gw_resource_uri:              ['MCP_GW_RESOURCE_URI', 'PINGONE_RESOURCE_MCP_GATEWAY_URI'],
+      mcp_gw_token_endpoint_auth_method: ['MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD'],
+      // RFC 8707: single-resource scope for the 2-exchange actor CC tokens.
+      // MUST stay in sync with pingoneProvisionService.js Steps 37a/37b grants —
+      // the AI Agent / MCP Exchanger apps are granted scopes on >1 resource, so
+      // the CC request needs an explicit single-resource scope or PingOne
+      // rejects with invalid_scope: "May not request scopes for multiple resources".
+      agent_gateway_cc_scope: ['AGENT_GATEWAY_CC_SCOPE'],
+      mcp_gateway_cc_scope:   ['MCP_GATEWAY_CC_SCOPE'],
       pingone_resource_two_exchange_uri: ['PINGONE_RESOURCE_TWO_EXCHANGE_URI', 'MCP_RESOURCE_URI_TWO_EXCHANGE'],
       marketing_customer_login_mode: ['MARKETING_CUSTOMER_LOGIN_MODE'],
       marketing_demo_username_hint: ['MARKETING_DEMO_USERNAME_HINT'],
@@ -718,8 +817,14 @@ class ConfigStore {
       default_user_type:                    ['DEFAULT_USER_TYPE'],
 
       // Demo credentials
-      demo_username:                        ['USERNAME'],
-      demo_password:                        ['PASSWORD'],
+      demo_username:                        ['USERNAME', 'DEMO_USER_USERNAME'],
+      demo_password:                        ['PASSWORD', 'DEMO_USER_PASSWORD'],
+      demo_admin_username:                  ['DEMO_ADMIN_USERNAME'],
+      demo_admin_password:                  ['DEMO_ADMIN_PASSWORD'],
+
+      // Admin token lifetimes (docs-only env reads, now configStore-routable)
+      admin_token_lifetime:                 ['ADMIN_TOKEN_LIFETIME'],
+      admin_refresh_token_lifetime:         ['ADMIN_REFRESH_TOKEN_LIFETIME'],
 
       // MCP gateway HTTP URL
       mcp_gateway_http_url:                 ['MCP_GATEWAY_HTTP_URL'],
@@ -735,8 +840,8 @@ class ConfigStore {
       pingone_authorize_worker_client_secret: ['PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET'],
 
       // Worker token client (management API)
-      pingone_worker_token_client_id:       ['PINGONE_WORKER_TOKEN_CLIENT_ID'],
-      pingone_worker_token_client_secret:   ['PINGONE_WORKER_TOKEN_CLIENT_SECRET'],
+      pingone_worker_token_client_id:       ['PINGONE_WORKER_TOKEN_CLIENT_ID', 'PINGONE_WORKER_CLIENT_ID'],
+      pingone_worker_token_client_secret:   ['PINGONE_WORKER_TOKEN_CLIENT_SECRET', 'PINGONE_WORKER_CLIENT_SECRET'],
       pingone_worker_token_auth_method:     ['PINGONE_WORKER_TOKEN_AUTH_METHOD'],
 
       // Ollama
@@ -748,15 +853,30 @@ class ConfigStore {
     };
 
     const envVars = envFallbackMap[key] || [];
-    for (const envKey of envVars) {
-      const v = process.env[envKey];
-      if (v) return v.trim();
-    }
+    const readEnv = () => {
+      for (const envKey of envVars) {
+        const v = process.env[envKey];
+        if (v) return v.trim();
+      }
+      return null;
+    };
 
-    // SQLite stored config — after env vars so env vars always win.
-    {
+    if (BOOTSTRAP_ALLOWLIST.has(key)) {
+      // Bootstrap keys: .env is authoritative (read before vault unlock).
+      const envVal = readEnv();
+      if (envVal) return envVal;
       const stored = this.get(key);
       if (stored) return stored;
+    } else {
+      // Everything else: Vault > SQLite > .env. this.get(key) reads the
+      // cache, which holds BOTH vault (provenance 'vault') and SQLite
+      // ('sqlite') values; Task 1's _setCache provenance guarantees a
+      // vault-owned key keeps its vault value, so a single this.get()
+      // already encodes "vault, then sqlite". .env is the fallback.
+      const stored = this.get(key);
+      if (stored) return stored;
+      const envVal = readEnv();
+      if (envVal) return envVal;
     }
 
     // Helix agent API key: when nothing above has it, look for a per-agent
@@ -790,7 +910,7 @@ class ConfigStore {
       /* optional file missing */
     }
 
-    return FIELD_DEFS[key]?.default || '';
+    return (FIELD_DEFS[key] ?? FIELD_DEFS[String(key).toUpperCase()])?.default || '';
   }
 
   /** Config is always writable (SQLite). */
@@ -830,9 +950,9 @@ class ConfigStore {
       throw new Error('clearOAuthClientSecret: invalid key');
     }
     await this.ensureInitialized();
-    delete this._cache[key];
+    delete this._cache[String(key).toUpperCase()];
     const db = _getSQLite();
-    db.prepare('DELETE FROM config WHERE key = ?').run(key);
+    db.prepare('DELETE FROM config WHERE key = ?').run(String(key).toUpperCase());
   }
 
   /** Wipe stored config (SQLite). */

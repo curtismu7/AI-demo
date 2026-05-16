@@ -14,6 +14,8 @@
 import axios from 'axios';
 import { DecodedGatewayToken } from './tokenValidator';
 import { GatewayConfig } from './config';
+import { buildAuthorizeParameters, ToolArgs } from './auth/PingOneAuthorizeClient';
+import { evaluateScopeDecisionLocally } from './auth/toolScopes';
 
 export interface AuthzDecision {
   permitted: boolean;
@@ -59,22 +61,32 @@ export async function guardToolCall(
   toolName: string,
   decoded: DecodedGatewayToken,
   config: GatewayConfig,
+  toolArgs?: ToolArgs,
 ): Promise<AuthzDecision> {
+  // No PingAuthorize configured — apply the local scope decision so the WS
+  // transport behaves IDENTICALLY to the HTTP transport
+  // (PingOneAuthorizeClient.evaluate) and to a wired PingOne Authorize policy.
   if (!config.pingAuthorizeEndpoint || !config.pingAuthorizeWorkerId) {
+    const local = evaluateScopeDecisionLocally(toolName, decoded.scope);
+    if (local.decision === 'DENY') {
+      return { permitted: false, reason: local.reason };
+    }
     return { permitted: true };
   }
 
   try {
-    const tokenScopes = (decoded.scope || '').split(' ').filter(Boolean);
+    // WR-02: use the shared param-builder so the WS transport sends the SAME
+    // PingAuthorize inputs (TransactionAmount/TransactionType/ToAccountId,
+    // McpMethod) as the HTTP transport. An amount-conditioned policy now
+    // fires identically regardless of transport (T-2 parity).
     const body = {
-      parameters: {
-        DecisionContext: 'McpToolCall',
-        ClientId: decoded.sub,
-        ActClientId: decoded.act?.sub || '',
-        ToolName: toolName,
-        TokenScopes: tokenScopes.join(' '),
-        TokenAudience: config.gatewayResourceUri,
-      },
+      parameters: buildAuthorizeParameters(
+        decoded,
+        'tools/call',
+        config.gatewayResourceUri,
+        toolName,
+        toolArgs,
+      ),
     };
 
     const response = await axios.post(

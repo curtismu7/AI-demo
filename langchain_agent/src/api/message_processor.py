@@ -18,6 +18,34 @@ from config.settings import get_config
 logger = logging.getLogger(__name__)
 
 
+class _SessionWorker:
+    """One ordered processing path for a single chat session (WR-02 Option A).
+
+    Owns its own ``asyncio.Queue`` and exactly ONE worker ``asyncio.Task``.
+    A single sequential consumer task is what guarantees the load-bearing
+    property: messages for THIS session are processed in strict arrival
+    order (conversation turns must never reorder). Concurrency across
+    sessions is achieved by having one of these PER session — different
+    sessions are different tasks and interleave on the event loop.
+
+    The worker task is the context in which ``_handle_queued_message`` runs,
+    which is why WR-06's ``_current_tracer`` ContextVar stays leak-proof
+    under real concurrency: ``set_tracer()`` (inside the agent call) and the
+    tool-path ``_current_tracer.get()`` both execute inside THIS task's
+    context, and ``asyncio.create_task`` copy-on-create isolates it from
+    every other session's worker.
+    """
+
+    __slots__ = ("session_id", "queue", "task", "last_activity", "closing")
+
+    def __init__(self, session_id: str):
+        self.session_id = session_id
+        self.queue: asyncio.Queue = asyncio.Queue()
+        self.task: Optional[asyncio.Task] = None
+        self.last_activity: datetime = datetime.now(timezone.utc)
+        self.closing: bool = False
+
+
 class MessageProcessor:
     """
     Coordinates message processing between chat interface and LangChain agent.
@@ -55,30 +83,80 @@ class MessageProcessor:
         # Authorization callbacks: session_id -> callback
         self._auth_callbacks: Dict[str, Callable] = {}
         
-        # Processing queue for messages
+        # Ingress queue (compat surface). process_chat_message /
+        # process_auth_response enqueue here; a single dispatcher task drains
+        # it and FANS each item OUT to the owning session's worker. The
+        # dispatcher does no real work — it only routes — so it never blocks
+        # on an LLM turn. Real processing happens in per-session workers
+        # (WR-02 Option A): different sessions run concurrently, turns within
+        # one session stay strictly ordered.
         self._message_queue: asyncio.Queue = asyncio.Queue()
         self._processing_task: Optional[asyncio.Task] = None
         self._shutdown_event = asyncio.Event()
-        
-        logger.info("Initialized MessageProcessor")
-    
+
+        # WR-02 Option A: per-session worker pool.
+        # session_id -> _SessionWorker (own asyncio.Queue + own worker Task).
+        self._session_workers: Dict[str, "_SessionWorker"] = {}
+        self._workers_lock = asyncio.Lock()
+        self._max_session_workers = self.config.chat.max_session_workers
+        self._session_worker_idle_ttl = timedelta(
+            seconds=self.config.chat.session_worker_idle_ttl_seconds
+        )
+        self._reap_interval_seconds = (
+            self.config.chat.session_worker_reap_interval_seconds
+        )
+        # CR-01-class guard: this reaper MUST be started at app init (see
+        # MessageProcessor.start(), called from main.py). A cleanup loop that
+        # is wired but never started is the exact CR-01 bug.
+        self._reaper_task: Optional[asyncio.Task] = None
+
+        logger.info(
+            "Initialized MessageProcessor (per-session workers; cap=%d, "
+            "idle_ttl=%ss)",
+            self._max_session_workers,
+            self.config.chat.session_worker_idle_ttl_seconds,
+        )
+
     async def start(self) -> None:
-        """Start the message processor and background processing task."""
+        """Start the dispatcher and the per-session-worker idle reaper.
+
+        CR-01-class invariant: the reaper is started HERE. main.py calls
+        MessageProcessor.start() during app init alongside
+        SessionManager.start() / ConversationMemory.start_cleanup_task().
+        """
         if self._processing_task is None or self._processing_task.done():
             self._processing_task = asyncio.create_task(self._process_message_queue())
-            logger.info("Started message processing task")
-    
+            logger.info("Started message dispatcher task")
+        if self._reaper_task is None or self._reaper_task.done():
+            self._reaper_task = asyncio.create_task(self._reap_idle_workers_loop())
+            logger.info("Started per-session worker idle reaper task")
+
     async def stop(self) -> None:
-        """Stop the message processor and processing task."""
+        """Stop the dispatcher, reaper, and all per-session workers."""
         self._shutdown_event.set()
-        
+
         if self._processing_task and not self._processing_task.done():
             try:
                 await asyncio.wait_for(self._processing_task, timeout=5.0)
             except asyncio.TimeoutError:
-                logger.warning("Message processing task did not stop gracefully")
+                logger.warning("Message dispatcher task did not stop gracefully")
                 self._processing_task.cancel()
-        
+
+        if self._reaper_task and not self._reaper_task.done():
+            try:
+                await asyncio.wait_for(self._reaper_task, timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.warning("Worker reaper task did not stop gracefully")
+                self._reaper_task.cancel()
+
+        # Tear down every per-session worker (cancel + await — no orphans).
+        async with self._workers_lock:
+            session_ids = list(self._session_workers.keys())
+        for session_id in session_ids:
+            await self._teardown_session_worker(
+                session_id, reason="processor shutdown"
+            )
+
         logger.info("Stopped MessageProcessor")
     
     async def process_chat_message(self, chat_message: ChatMessage) -> None:
@@ -216,14 +294,29 @@ class MessageProcessor:
             logger.error(f"Error requesting user authorization for session {session_id}: {e}")
             raise
     
+    @staticmethod
+    def _session_id_of(message_data: Dict[str, Any]) -> Optional[str]:
+        """Extract the owning session_id from an ingress queue item."""
+        if message_data.get("type") == "chat_message":
+            msg = message_data.get("message")
+            return getattr(msg, "session_id", None)
+        return message_data.get("session_id")
+
     async def _process_message_queue(self) -> None:
-        """Background task for processing queued messages."""
-        logger.info("Started message queue processing")
+        """Dispatcher: drain the ingress queue, FAN OUT to per-session workers.
+
+        This task does NO real work. It only routes — so a slow LLM turn in
+        one session never blocks dispatch for another (the head-of-line
+        blocking WR-02 was about). Strict per-session ordering is preserved
+        because each session's items are appended to that ONE session's
+        worker queue in dispatch order, and the dispatcher pulls the ingress
+        queue FIFO.
+        """
+        logger.info("Started message dispatcher")
 
         idle_ticks = 0
         while not self._shutdown_event.is_set():
             try:
-                # Wait for message or shutdown
                 try:
                     message_data = await asyncio.wait_for(
                         self._message_queue.get(),
@@ -237,14 +330,178 @@ class MessageProcessor:
                         idle_ticks = 0
                         self._sweep_pending_auth_requests()
                     continue  # Check shutdown event
-                
-                # Process the message
-                await self._handle_queued_message(message_data)
-                
+
+                session_id = self._session_id_of(message_data)
+                if not session_id:
+                    logger.warning(
+                        "Dispatcher dropped item with no session_id: type=%s",
+                        message_data.get("type"),
+                    )
+                    continue
+
+                worker = await self._get_or_create_session_worker(session_id)
+                if worker is None:
+                    # Cap reached — apply backpressure (do NOT silently drop).
+                    logger.warning(
+                        "Per-session worker cap (%d) reached — rejecting "
+                        "message for session %s",
+                        self._max_session_workers,
+                        session_id,
+                    )
+                    await self._send_error_response(
+                        session_id,
+                        "The assistant is at capacity right now. Please retry "
+                        "in a few seconds.",
+                    )
+                    continue
+
+                worker.last_activity = datetime.now(timezone.utc)
+                await worker.queue.put(message_data)
+
             except Exception as e:
-                logger.error(f"Error in message queue processing: {e}")
-        
-        logger.info("Message queue processing stopped")
+                logger.error(f"Error in message dispatcher: {e}")
+
+        logger.info("Message dispatcher stopped")
+
+    async def _get_or_create_session_worker(
+        self, session_id: str
+    ) -> Optional["_SessionWorker"]:
+        """Return the session's worker, lazily creating it (capped).
+
+        Returns None when the concurrent-worker cap is hit (caller must
+        apply backpressure). Worker creation is serialized by
+        ``_workers_lock`` so two back-to-back messages for a NEW session
+        cannot spawn two workers (which would break intra-session ordering).
+        """
+        async with self._workers_lock:
+            worker = self._session_workers.get(session_id)
+            if worker is not None and not worker.closing:
+                return worker
+
+            if len(self._session_workers) >= self._max_session_workers:
+                return None
+
+            worker = _SessionWorker(session_id)
+            worker.task = asyncio.create_task(self._session_worker_loop(worker))
+            self._session_workers[session_id] = worker
+            logger.info(
+                "Created per-session worker for %s (active workers=%d)",
+                session_id,
+                len(self._session_workers),
+            )
+            return worker
+
+    async def _session_worker_loop(self, worker: "_SessionWorker") -> None:
+        """The single ordered consumer for ONE session.
+
+        Strictly sequential: it awaits each message to completion before
+        pulling the next, so conversation turns for this session never
+        reorder. Running ``_handle_queued_message`` HERE is also what keeps
+        WR-06's ``_current_tracer`` ContextVar isolated per session under
+        real concurrency (set + read both happen inside this task).
+        """
+        session_id = worker.session_id
+        logger.debug("Session worker started for %s", session_id)
+        try:
+            while not self._shutdown_event.is_set() and not worker.closing:
+                try:
+                    message_data = await asyncio.wait_for(
+                        worker.queue.get(), timeout=1.0
+                    )
+                except asyncio.TimeoutError:
+                    continue
+                worker.last_activity = datetime.now(timezone.utc)
+                await self._handle_queued_message(message_data)
+                worker.last_activity = datetime.now(timezone.utc)
+        except asyncio.CancelledError:
+            logger.debug("Session worker for %s cancelled", session_id)
+            raise
+        except Exception as e:
+            logger.error(
+                "Session worker for %s crashed: %s", session_id, e
+            )
+        finally:
+            logger.debug("Session worker stopped for %s", session_id)
+
+    async def _teardown_session_worker(
+        self, session_id: str, reason: str
+    ) -> None:
+        """Deterministically tear down a session's worker.
+
+        Cancels + awaits the worker task (no orphans) and discards any
+        still-queued messages for the now-dead session with a logged reason
+        — they are NOT processed against a closed session.
+        """
+        async with self._workers_lock:
+            worker = self._session_workers.pop(session_id, None)
+        if worker is None:
+            return
+
+        worker.closing = True
+        pending = worker.queue.qsize()
+        if pending:
+            logger.info(
+                "Discarding %d pending message(s) for session %s (%s)",
+                pending,
+                session_id,
+                reason,
+            )
+        if worker.task and not worker.task.done():
+            worker.task.cancel()
+            try:
+                await worker.task
+            except (asyncio.CancelledError, Exception):
+                pass
+        logger.info(
+            "Tore down per-session worker for %s (%s)", session_id, reason
+        )
+
+    async def _reap_idle_workers_loop(self) -> None:
+        """Reap per-session workers idle past TTL.
+
+        Mirrors SessionManager._cleanup_loop / ConversationMemory._cleanup_loop:
+        a wait-for(shutdown, timeout=interval) tick loop that exits promptly
+        on shutdown. CR-01-class invariant: this loop is only useful if it is
+        actually STARTED — MessageProcessor.start() schedules it at app init.
+        """
+        logger.info(
+            "Started per-session worker reaper (idle_ttl=%ss, interval=%ss)",
+            self._session_worker_idle_ttl.total_seconds(),
+            self._reap_interval_seconds,
+        )
+        while not self._shutdown_event.is_set():
+            try:
+                await asyncio.wait_for(
+                    self._shutdown_event.wait(),
+                    timeout=self._reap_interval_seconds,
+                )
+                break  # shutdown requested
+            except asyncio.TimeoutError:
+                pass  # interval elapsed — run a reap pass
+
+            try:
+                await self._reap_idle_workers_once()
+            except Exception as e:
+                logger.error(f"Error during worker reap pass: {e}")
+
+        logger.info("Per-session worker reaper stopped")
+
+    async def _reap_idle_workers_once(self) -> int:
+        """Tear down workers idle (no messages, empty queue) past TTL."""
+        cutoff = datetime.now(timezone.utc) - self._session_worker_idle_ttl
+        async with self._workers_lock:
+            idle = [
+                sid
+                for sid, w in self._session_workers.items()
+                if w.queue.empty() and w.last_activity < cutoff
+            ]
+        for session_id in idle:
+            await self._teardown_session_worker(
+                session_id, reason="idle TTL expired"
+            )
+        if idle:
+            logger.info("Reaped %d idle session worker(s)", len(idle))
+        return len(idle)
     
     async def _handle_queued_message(self, message_data: Dict[str, Any]) -> None:
         """
@@ -447,37 +704,38 @@ class MessageProcessor:
             "pending_auth_requests": len(self._pending_auth_requests),
             "active_auth_callbacks": len(self._auth_callbacks),
             "processing_task_running": (
-                self._processing_task is not None and 
+                self._processing_task is not None and
                 not self._processing_task.done()
-            )
+            ),
+            "active_session_workers": len(self._session_workers),
+            "max_session_workers": self._max_session_workers,
+            "reaper_running": (
+                self._reaper_task is not None
+                and not self._reaper_task.done()
+            ),
         }
     
-    async def process_session_init_with_email(self, session_id: str, user_email: str, user_id: str = None) -> None:
+    async def process_session_init_with_token(self, session_id: str, user_token: str) -> None:
         """
-        Pre-identify user directly from their email address.
-        No API call needed — email came from the authenticated frontend session.
-        """
-        try:
-            await self.agent.initialize_session_with_email(session_id, user_email, user_id)
-            logger.info(f"Pre-identified user '{user_email}' for session {session_id}")
-        except Exception as e:
-            logger.warning(f"Email pre-identification failed for session {session_id}: {e}")
+        Pre-identify the user STRICTLY from a validated PingOne access token
+        delivered by the BFF proxy in `session_init` (Path A, CR-02/CR-04).
 
-    async def process_session_init_with_user_id(self, session_id: str, user_id: str) -> None:
-        """
-        Pre-identify user from their user_id (received in session_init message).
-        Looks up the user via the banking API using the agent's service credentials.
-        
+        Identity is derived only from validated token claims. Any failure is
+        propagated so the WebSocket handler can refuse the session — there is
+        no fallback to a client-supplied id/email (the CR-02 spoof primitive
+        has been removed).
+
         Args:
             session_id: The chat session ID
-            user_id: The user ID from the widget's session_init message
+            user_token: PingOne access token resolved server-side by the BFF.
+
+        Raises:
+            TokenValidationError: token absent / invalid / expired / wrong aud.
         """
-        try:
-            logger.info(f"Pre-identifying user {user_id} for session {session_id}")
-            await self.agent.initialize_session_with_user_id(session_id, user_id)
-            logger.info(f"Successfully pre-identified user {user_id} for session {session_id}")
-        except Exception as e:
-            logger.warning(f"Could not pre-identify user {user_id} for session {session_id}: {e}")
+        await self.agent.initialize_session_with_token(session_id, user_token)
+        logger.info(
+            "Token-bound identity established for session %s (Path A)", session_id
+        )
 
     def _sweep_pending_auth_requests(self) -> int:
         """Evict pending auth requests older than _pending_auth_ttl.
@@ -517,7 +775,15 @@ class MessageProcessor:
         ]
         for state in states_to_remove:
             del self._pending_auth_requests[state]
-        
+
+        # WR-02 Option A: deterministic per-session worker teardown on close
+        # (WS disconnect / session_close). Pending messages for the now-dead
+        # session are discarded with a logged reason — never processed
+        # against a closed session.
+        await self._teardown_session_worker(
+            session_id, reason="session closed"
+        )
+
         logger.debug(f"Cleared processor data for session {session_id}")
     
     async def shutdown(self) -> None:

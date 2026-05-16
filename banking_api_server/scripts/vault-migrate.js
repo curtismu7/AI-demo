@@ -53,9 +53,23 @@ const ALLOWED_ENV_VARS = Object.freeze([
   'PINGONE_AI_AGENT_CLIENT_SECRET',
   'PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET',
   'MCP_GW_CLIENT_SECRET',
+  'MCP_GW_CLIENT_ID',
+  'AGENT_CLIENT_ID',
+  'AGENT_CLIENT_SECRET',
   'BFF_INTERNAL_SECRET',
   'CONFIG_ENCRYPTION_KEY',
   'SESSION_SECRET',
+  // Added 2026-05-15 (vault-bootstrap audit): secrets classified public:false
+  // in configStore SECRET_KEYS but previously absent from this allowlist, so
+  // they could never reach the vault and a .env re-strip would lose them.
+  // Names only — closed-allowlist + LD_PRELOAD/PATH guard unchanged.
+  'PINGONE_USER_CLIENT_SECRET',
+  'PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET',
+  'PINGONE_MANAGEMENT_CLIENT_SECRET',
+  'PINGONE_MGMT_CLIENT_SECRET',
+  'PINGONE_SESSION_SECRET',
+  'PINGONE_INTROSPECTION_CLIENT_SECRET',
+  'POSTHOG_API_KEY',
 ]);
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');

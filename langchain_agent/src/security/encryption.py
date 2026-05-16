@@ -3,6 +3,7 @@
 import os
 import base64
 import logging
+from functools import lru_cache
 from typing import Union, Optional
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -12,6 +13,31 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 class EncryptionError(Exception):
     """Exception raised for encryption/decryption errors."""
     pass
+
+
+@lru_cache(maxsize=None)
+def _derive_fernet_key(master_key: str, salt: bytes) -> bytes:
+    """Derive (and cache) the Fernet key for a (master_key, salt) pair.
+
+    IN-07: PBKDF2-HMAC-SHA256 at 100k iterations is ~50ms per call. Multiple
+    parts of the codebase construct their own EncryptionManager
+    (SecureStorage(encryption_manager=None) makes one too), so the same
+    derivation ran repeatedly on identical inputs at startup. Memoising on
+    (master_key, salt) collapses repeats to a single derivation while keeping
+    each EncryptionManager a distinct object with unchanged behavior — and
+    keeps tests that use distinct keys / independent manager instances correct
+    (different keys → different cache entries). Iteration count is left at
+    100k deliberately: deduplicating the multiplicity is the cheaper, lower-
+    risk lever than a 6x OWASP-2023 bump given the salt-file format is
+    unchanged.
+    """
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+    )
+    return base64.urlsafe_b64encode(kdf.derive(master_key.encode()))
 
 
 class EncryptionManager:
@@ -34,14 +60,8 @@ class EncryptionManager:
         # Generate a salt for key derivation
         salt = self._get_or_generate_salt()
         
-        # Derive encryption key from master key using PBKDF2
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=salt,
-            iterations=100000,
-        )
-        key = base64.urlsafe_b64encode(kdf.derive(master_key.encode()))
+        # Derive encryption key from master key using PBKDF2 (memoised — IN-07)
+        key = _derive_fernet_key(master_key, salt)
         return Fernet(key)
     
     def _get_master_key_from_env(self) -> str:

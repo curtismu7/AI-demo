@@ -19,6 +19,7 @@
 import axios from 'axios';
 import type { DecodedGatewayToken } from '../tokenValidator';
 import type { GatewayConfig } from '../config';
+import { evaluateScopeDecisionLocally } from './toolScopes';
 
 export type AuthzDecisionOutcome = 'PERMIT' | 'DENY' | 'INDETERMINATE';
 
@@ -42,6 +43,39 @@ export interface ToolArgs {
   [key: string]: unknown;
 }
 
+/**
+ * Build the PingAuthorize decision `parameters` block.
+ *
+ * Single source of truth for the policy-input shape so the HTTP transport
+ * (PingOneAuthorizeClient.evaluate) and the WS transport
+ * (pingAuthorizeGuard.guardToolCall) send IDENTICAL inputs for the same
+ * logical tool call. Without this, an amount-conditioned policy
+ * (`TransactionAmount > 500`) fired on HTTP but silently not on WS — the
+ * path real agents use for create_transfer (T-2 parity gap, WR-02).
+ */
+export function buildAuthorizeParameters(
+  decoded: DecodedGatewayToken,
+  method: string,
+  gatewayResourceUri: string,
+  toolName?: string,
+  toolArgs?: ToolArgs,
+): Record<string, string> {
+  const decisionContext = method === 'tools/call' ? 'McpToolCall' : 'McpRequest';
+  const tokenScopes = (decoded.scope ?? '').split(' ').filter(Boolean);
+  return {
+    DecisionContext: decisionContext,
+    McpMethod: method,
+    ToolName: toolName ?? '',
+    ClientId: decoded.sub,
+    ActClientId: decoded.act?.sub ?? '',
+    TokenScopes: tokenScopes.join(' '),
+    TokenAudience: gatewayResourceUri,
+    TransactionAmount: toolArgs?.amount !== undefined ? String(toolArgs.amount) : '',
+    TransactionType: toolArgs?.transaction_type ?? toolName ?? '',
+    ToAccountId: toolArgs?.to_account_id ?? '',
+  };
+}
+
 export class PingOneAuthorizeClient {
   constructor(private readonly config: GatewayConfig) {}
 
@@ -58,27 +92,26 @@ export class PingOneAuthorizeClient {
     toolName?: string,
     toolArgs?: ToolArgs,
   ): Promise<AuthzDecision> {
-    // No PingAuthorize configured — permit all (dev/no-authz mode)
+    // No PingAuthorize configured — apply the local scope decision so the
+    // gateway behaves the SAME as it would with a PingOne Authorize policy
+    // wired (scope-based PERMIT/DENY). Identity/transaction policy still
+    // requires PA; only the scope rule has a local equivalent.
     if (!this.config.pingAuthorizeEndpoint || !this.config.pingAuthorizeWorkerId) {
-      return { decision: 'PERMIT', reason: 'PingAuthorize not configured — permit all' };
+      const local = evaluateScopeDecisionLocally(toolName ?? '', decoded.scope);
+      if (local.decision === 'DENY') {
+        return { decision: 'DENY', reason: local.reason };
+      }
+      return { decision: 'PERMIT', reason: 'PingAuthorize not configured — local scope decision: PERMIT' };
     }
 
-    const decisionContext = method === 'tools/call' ? 'McpToolCall' : 'McpRequest';
-    const tokenScopes = (decoded.scope ?? '').split(' ').filter(Boolean);
-
     const body = {
-      parameters: {
-        DecisionContext: decisionContext,
-        McpMethod: method,
-        ToolName: toolName ?? '',
-        ClientId: decoded.sub,
-        ActClientId: decoded.act?.sub ?? '',
-        TokenScopes: tokenScopes.join(' '),
-        TokenAudience: this.config.gatewayResourceUri,
-        TransactionAmount: toolArgs?.amount !== undefined ? String(toolArgs.amount) : '',
-        TransactionType: toolArgs?.transaction_type ?? toolName ?? '',
-        ToAccountId: toolArgs?.to_account_id ?? '',
-      },
+      parameters: buildAuthorizeParameters(
+        decoded,
+        method,
+        this.config.gatewayResourceUri,
+        toolName,
+        toolArgs,
+      ),
     };
 
     try {

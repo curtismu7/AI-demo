@@ -64,11 +64,21 @@ class LangChainMCPApplication:
             
             # Initialize OAuth manager
             logger.info("Initializing OAuth authentication manager...")
-            self.oauth_manager = OAuthAuthenticationManager(self.config)
+            # WR-08: auto_register=False so __aenter__ does NOT call
+            # register_client() with no scopes. We want exactly ONE
+            # registration, and it must carry additional_scopes=["ai_agent"].
+            # The prior default (auto_register=True) double-registered on every
+            # startup: __aenter__'s scopeless register_client() then this
+            # explicit one — under DCR that orphans the first client in
+            # PingOne (no registration_access_token retained → undeletable),
+            # accumulating toward the tenant client cap on every restart.
+            self.oauth_manager = OAuthAuthenticationManager(
+                self.config, auto_register=False
+            )
             await self.oauth_manager.__aenter__()
             self.health_server.update_status("oauth_manager", "initializing")
-            
-            # Register OAuth client with ai_agent scope
+
+            # Register OAuth client with ai_agent scope (the single registration)
             logger.info("Registering OAuth client with ai_agent scope...")
             await self.oauth_manager.register_client(additional_scopes=["ai_agent"])
             self.health_server.update_status("oauth_manager", "ready")
@@ -126,7 +136,13 @@ class LangChainMCPApplication:
             self.websocket_handler.set_message_processor(self.message_processor)
             self.websocket_handler.set_session_manager(self.session_manager)
             
-            # Start message processor
+            # Start message processor. WR-02 Option A: start() schedules BOTH
+            # the ingress dispatcher AND the per-session-worker idle reaper.
+            # CR-01-class guard: the reaper is wired but inert unless started
+            # here at app init (exactly the CR-01 class of bug — a cleanup
+            # loop that exists but is never started). This call sits next to
+            # SessionManager.start() / ConversationMemory.start_cleanup_task()
+            # above for the same reason.
             await self.message_processor.start()
             self.health_server.update_status("message_processor", "ready")
 

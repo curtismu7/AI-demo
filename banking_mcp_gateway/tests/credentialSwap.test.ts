@@ -34,6 +34,8 @@ const BASE_CONFIG: GatewayConfig = {
   introspectionEndpoint: '',
   devBypass: false,
   demoApiKeyServiceKey: 'demo-api-key-1234',
+  mortgageServiceBaseUrl: 'http://localhost:8082',
+  mortgageServiceApiKey: 'demo-mortgage-key-0000',
   bffInternalIdTokenUrl: 'http://localhost:3001/internal/id-token',
   bffInternalSecret: 'dev-shared-secret-change-me',
   bankingResourceServerBaseUrl: 'http://localhost:3001',
@@ -50,7 +52,7 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 // Test 1: api_key disposition — Gateway-only marker
 // ---------------------------------------------------------------------------
-test('Test 1: special_offers returns api_key disposition with masked last4, never calls exchange', async () => {
+test('Test 1: apikey target returns api_key disposition with masked last4, never calls exchange', async () => {
   const result = await selectCredentialForBackend('apikey', SUBJECT_TOKEN, ID_TOKEN, BASE_CONFIG);
 
   expect(result.kind).toBe('api_key');
@@ -119,7 +121,7 @@ test('Test 4: bankingdata target returns oauth_bearer disposition with exchanged
 // Test 5: routeTool returns correct targets
 // ---------------------------------------------------------------------------
 test('Test 5: routeTool returns correct targets for each tool name', () => {
-  expect(routeTool('special_offers')).toBe('apikey');
+  expect(routeTool('show_mortgage')).toBe('apikey');
   expect(routeTool('user_profile_card')).toBe('dualtoken');
   expect(routeTool('demo_show_accounts')).toBe('bankingdata');
   expect(routeTool('get_my_accounts')).toBe('olb');
@@ -137,7 +139,11 @@ test('Test 6: backendHttpUrl returns correct URLs for each target/tool', () => {
     .toBe('http://localhost:3001/api/resource-server/identity');
   expect(backendHttpUrl('olb', 'get_my_accounts', BASE_CONFIG)).toBe('');
   expect(backendHttpUrl('invest', 'get_investment_balance', BASE_CONFIG)).toBe('');
-  expect(backendHttpUrl('apikey', 'special_offers', BASE_CONFIG)).toBe('');
+  // Phase 267: show_mortgage is the first apikey tool with a real backend.
+  expect(backendHttpUrl('apikey', 'show_mortgage', BASE_CONFIG))
+    .toBe('http://localhost:8082/mortgage');
+  // Any other apikey tool stays Gateway-only (empty → static marker).
+  expect(backendHttpUrl('apikey', 'some_other_marker_tool', BASE_CONFIG)).toBe('');
 });
 
 // ---------------------------------------------------------------------------
@@ -183,7 +189,7 @@ test('Test 10: McpTokenExchangeClient uses backendResourceUri which returns empt
   // Verifying that routeTool + backendResourceUri for the new Phase 266 tools
   // return empty string audience — this would be caught before McpTokenExchangeClient
   // is called in the new dispatch path.
-  const target = routeTool('special_offers');
+  const target = routeTool('show_mortgage');
   expect(backendResourceUri(target, BASE_CONFIG)).toBe('');
 
   const dualTarget = routeTool('user_profile_card');

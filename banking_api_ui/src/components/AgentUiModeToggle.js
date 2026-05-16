@@ -1,10 +1,10 @@
 // banking_api_ui/src/components/AgentUiModeToggle.js
-import React, { useCallback } from 'react';
-import { notifyInfo, notifyWarning } from '../utils/appToast';
-import { useAgentUiMode } from '../context/AgentUiModeContext';
-import { persistBankingAgentUi } from '../services/demoScenarioService';
-import { setDashboardLayout } from '../utils/dashboardLayout';
-import './AgentUiModeToggle.css';
+import React, { useCallback } from "react";
+import { notifyInfo, notifyWarning } from "../utils/appToast";
+import { useAgentUiMode } from "../context/AgentUiModeContext";
+import { persistBankingAgentUi } from "../services/demoScenarioService";
+import { setDashboardLayout } from "../utils/dashboardLayout";
+import "./AgentUiModeToggle.css";
 
 /**
  * Middle / Bottom / Float + optional FAB when embedded.
@@ -14,7 +14,11 @@ import './AgentUiModeToggle.css';
  * @param {string} [props.className]
  * @param {string} [props.ariaLabel]
  */
-export default function AgentUiModeToggle({ variant = 'config', className = '', ariaLabel }) {
+export default function AgentUiModeToggle({
+  variant = "config",
+  className = "",
+  ariaLabel,
+}) {
   const { placement, fab, setAgentUi } = useAgentUiMode();
   const idPrefix = `agent-ui-${variant}`;
 
@@ -24,67 +28,69 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
         // Write to localStorage only — do NOT update React context state here.
         // Updating context would move the FAB/dock immediately on screen (visual jump)
         // before the page reloads. The reload will re-init context from localStorage.
-        try { localStorage.setItem('banking_agent_ui_v2', JSON.stringify(next)); } catch (_) {}
+        try {
+          localStorage.setItem("banking_agent_ui_v2", JSON.stringify(next));
+        } catch (_) {}
       } else {
         setAgentUi(next);
       }
       const saved = await persistBankingAgentUi(next);
       if (!saved) {
         notifyWarning(
-          'Agent layout could not be saved on the server yet. It stays in this browser; refresh may revert if the server still has the old value.',
-          { autoClose: 4500 }
+          "Agent layout could not be saved on the server yet. It stays in this browser; refresh may revert if the server still has the old value.",
+          { autoClose: 4500 },
         );
       }
-      notifyInfo('Applying agent layout…', { autoClose: 1200 });
+      notifyInfo("Applying agent layout…", { autoClose: 1200 });
       if (opts.reload) {
         window.setTimeout(() => {
           window.location.reload();
         }, 350);
       }
     },
-    [setAgentUi]
+    [setAgentUi],
   );
 
   const handlePlacement = useCallback(
     async (p) => {
       if (p === placement) return;
-      if (p === 'middle') {
-        setDashboardLayout('split3');
-        await applyAndReload({ placement: 'middle', fab }, { reload: false });
+      if (p === "middle") {
+        setDashboardLayout("split3");
+        await applyAndReload({ placement: "middle", fab }, { reload: false });
         return;
       }
-      if (p === 'bottom') {
-        setDashboardLayout('classic');
-        await applyAndReload({ placement: 'bottom', fab }, { reload: true });
+      if (p === "bottom") {
+        setDashboardLayout("classic");
+        await applyAndReload({ placement: "bottom", fab }, { reload: true });
         return;
       }
-      if (p === 'right-dock') {
-        setDashboardLayout('split3');
+      if (p === "right-dock") {
+        setDashboardLayout("split3");
         await applyAndReload({ placement: p, fab }, { reload: true });
         return;
       }
-      await applyAndReload({ placement: 'none', fab: true }, { reload: true });
+      await applyAndReload({ placement: "none", fab: true }, { reload: true });
     },
-    [placement, fab, applyAndReload]
+    [placement, fab, applyAndReload],
   );
 
   const handleFabToggle = useCallback(
     async (e) => {
       const checked = e.target.checked;
-      if (placement === 'none') return;
+      if (placement === "none") return;
       await applyAndReload({ placement, fab: checked }, { reload: true });
     },
-    [placement, applyAndReload]
+    [placement, applyAndReload],
   );
 
   const label =
-    variant === 'landing'
-      ? 'Agent'
-      : variant === 'eduBar'
-        ? 'Agent UI'
-        : 'Choose layout';
+    variant === "landing"
+      ? "Agent"
+      : variant === "eduBar"
+        ? "Agent UI"
+        : "Choose layout";
 
-  const isLandingNav = variant === 'landing';
+  const isLandingNav = variant === "landing";
 
   return (
     <div
@@ -93,58 +99,81 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
       aria-label={
         ariaLabel ||
         (isLandingNav
-          ? 'AI banking agent: bottom dock or float'
-          : 'AI banking agent: middle column, right dock, bottom dock, or float; optional FAB')
+          ? "AI banking agent: bottom dock or float"
+          : "AI banking agent: middle column, right dock, bottom dock, or float; optional FAB")
       }
     >
       <span className="agent-ui-mode-toggle__label" id={`${idPrefix}-legend`}>
         {label}
       </span>
-      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', maxWidth: variant === 'config' ? '560px' : 'none' }}>
-        <div className="agent-ui-mode-toggle__segmented" role="toolbar" aria-labelledby={`${idPrefix}-legend`}>
-        {!isLandingNav && (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          width: "100%",
+          maxWidth: variant === "config" ? "560px" : "none",
+        }}
+      >
+        <div
+          className="agent-ui-mode-toggle__segmented"
+          role="toolbar"
+          aria-labelledby={`${idPrefix}-legend`}
+        >
+          {!isLandingNav && (
+            <button
+              type="button"
+              className={`agent-ui-mode-toggle__btn${placement === "middle" ? " agent-ui-mode-toggle__btn--active" : ""}`}
+              onClick={() => void handlePlacement("middle")}
+              aria-pressed={placement === "middle"}
+              title="Assistant in the middle column (Split dashboard: token | agent | banking)"
+            >
+              Middle
+            </button>
+          )}
+
           <button
             type="button"
-            className={`agent-ui-mode-toggle__btn${placement === 'middle' ? ' agent-ui-mode-toggle__btn--active' : ''}`}
-            onClick={() => void handlePlacement('middle')}
-            aria-pressed={placement === 'middle'}
-            title="Assistant in the middle column (Split dashboard: token | agent | banking)"
+            className={`agent-ui-mode-toggle__btn${placement === "bottom" ? " agent-ui-mode-toggle__btn--active" : ""}`}
+            onClick={() => void handlePlacement("bottom")}
+            aria-pressed={placement === "bottom"}
+            title="Bottom dock on home, dashboard, and config (Classic layout)"
           >
-            Middle
+            Bottom
           </button>
+          <button
+            type="button"
+            className={`agent-ui-mode-toggle__btn${placement === "none" ? " agent-ui-mode-toggle__btn--active" : ""}`}
+            onClick={() => void handlePlacement("none")}
+            aria-pressed={placement === "none"}
+            title="Floating FAB only (no embedded assistant)"
+          >
+            Float
+          </button>
+        </div>
+        {placement !== "none" && (
+          <label
+            className="agent-ui-mode-toggle__fab"
+            style={{
+              marginLeft: "12px",
+              display: "flex",
+              alignItems: "center",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={fab}
+              onChange={(e) => void handleFabToggle(e)}
+              aria-label="Always show float agent"
+            />
+            <span style={{ marginLeft: "6px" }}>Always float</span>
+          </label>
         )}
-
-        <button
-          type="button"
-          className={`agent-ui-mode-toggle__btn${placement === 'bottom' ? ' agent-ui-mode-toggle__btn--active' : ''}`}
-          onClick={() => void handlePlacement('bottom')}
-          aria-pressed={placement === 'bottom'}
-          title="Bottom dock on home, dashboard, and config (Classic layout)"
-        >
-          Bottom
-        </button>
-        <button
-          type="button"
-          className={`agent-ui-mode-toggle__btn${placement === 'none' ? ' agent-ui-mode-toggle__btn--active' : ''}`}
-          onClick={() => void handlePlacement('none')}
-          aria-pressed={placement === 'none'}
-          title="Floating FAB only (no embedded assistant)"
-        >
-          Float
-        </button>
       </div>
-      {placement !== 'none' && (
-        <label className="agent-ui-mode-toggle__fab" style={{ marginLeft: '12px', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
-          <input
-            type="checkbox"
-            checked={fab}
-            onChange={(e) => void handleFabToggle(e)}
-            aria-label="Always show float agent"
-          />
-          <span style={{ marginLeft: '6px' }}>Always float</span>
-        </label>
-      )}
-      </div>
+      <p className="agent-ui-mode-toggle__label" style={{ marginTop: "6px" }}>
+        These are layouts of one agent — not different agents.
+      </p>
     </div>
   );
 }

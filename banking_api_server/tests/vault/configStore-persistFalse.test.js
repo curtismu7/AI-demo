@@ -45,7 +45,8 @@ describe('configStore.setRaw — persist option', () => {
       Database = require('node:sqlite').DatabaseSync;
     }
     const db = new Database(dbPath);
-    const row = db.prepare('SELECT value FROM config WHERE key = ?').get(key);
+    // configStore stores keys UPPER-canonical (Phase: config key normalization)
+    const row = db.prepare('SELECT value FROM config WHERE key = ?').get(key.toUpperCase());
     db.close();
     expect(row).toBeDefined();
     expect(row.value).toBe('value-default');
@@ -69,7 +70,7 @@ describe('configStore.setRaw — persist option', () => {
     const fs = require('node:fs');
     if (fs.existsSync(dbPath)) {
       const db = new Database(dbPath);
-      const row = db.prepare('SELECT value FROM config WHERE key = ?').get(key);
+      const row = db.prepare('SELECT value FROM config WHERE key = ?').get(key.toUpperCase());
       db.close();
       expect(row).toBeUndefined();
     }
@@ -90,7 +91,7 @@ describe('configStore.setRaw — persist option', () => {
       Database = require('node:sqlite').DatabaseSync;
     }
     const db = new Database(dbPath);
-    const row = db.prepare('SELECT value FROM config WHERE key = ?').get(key);
+    const row = db.prepare('SELECT value FROM config WHERE key = ?').get(key.toUpperCase());
     db.close();
     expect(row).toBeDefined();
     expect(row.value).toBe('value-explicit-true');
@@ -136,7 +137,7 @@ describe('configStore.setRaw — persist option', () => {
     const fs = require('node:fs');
     if (fs.existsSync(dbPath)) {
       const db = new Database(dbPath);
-      const rows = db.prepare('SELECT value FROM config WHERE key = ?').all(key);
+      const rows = db.prepare('SELECT value FROM config WHERE key = ?').all(key.toUpperCase());
       db.close();
       expect(rows).toHaveLength(0);
     }

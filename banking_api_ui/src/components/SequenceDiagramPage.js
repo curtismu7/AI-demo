@@ -171,7 +171,12 @@ function OneFlowCard({ token }) {
 // Default-open for "Why" so the most-important context is always visible
 // without a click; everything else is default-closed to keep the column
 // scrollable. Tone: muted gray header, accent bar on the left when open.
-function StepDetailSection({ title, accent = "#3b82f6", defaultOpen = false, children }) {
+function StepDetailSection({
+  title,
+  accent = "#3b82f6",
+  defaultOpen = false,
+  children,
+}) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div
@@ -230,17 +235,28 @@ function HttpDetailGrid({ entries }) {
     <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
       {entries.map(([k, v]) => (
         <div key={k} style={{ display: "flex", gap: "0.4rem" }}>
-          <div style={{ fontWeight: 600, color: "#64748b", minWidth: "3.5rem", flexShrink: 0 }}>
+          <div
+            style={{
+              fontWeight: 600,
+              color: "#64748b",
+              minWidth: "3.5rem",
+              flexShrink: 0,
+            }}
+          >
             {k}
           </div>
-          <div style={{
-            color: "#0f172a",
-            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-            fontSize: "0.65rem",
-            wordBreak: "break-word",
-            whiteSpace: "pre-wrap",
-          }}>
-            {typeof v === "string" || typeof v === "number" ? String(v) : JSON.stringify(v, null, 2)}
+          <div
+            style={{
+              color: "#0f172a",
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              fontSize: "0.65rem",
+              wordBreak: "break-word",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {typeof v === "string" || typeof v === "number"
+              ? String(v)
+              : JSON.stringify(v, null, 2)}
           </div>
         </div>
       ))}
@@ -472,7 +488,11 @@ function StepInfoPanel({
             everything else is collapsed so the column stays scrollable. Sections
             self-hide when the step doesn't define that field. */}
         {activeStep.why && (
-          <StepDetailSection title="Why this step matters" accent="#0f766e" defaultOpen={true}>
+          <StepDetailSection
+            title="Why this step matters"
+            accent="#0f766e"
+            defaultOpen={true}
+          >
             {activeStep.why}
           </StepDetailSection>
         )}
@@ -480,7 +500,9 @@ function StepInfoPanel({
         {activeStep.request && (
           <StepDetailSection title="Request" accent="#1d4ed8">
             <HttpDetailGrid
-              entries={Object.entries(activeStep.request).filter(([_, v]) => v != null && v !== "")}
+              entries={Object.entries(activeStep.request).filter(
+                ([_, v]) => v != null && v !== "",
+              )}
             />
           </StepDetailSection>
         )}
@@ -488,22 +510,50 @@ function StepInfoPanel({
         {activeStep.response && (
           <StepDetailSection title="Response" accent="#15803d">
             <HttpDetailGrid
-              entries={Object.entries(activeStep.response).filter(([_, v]) => v != null && v !== "")}
+              entries={Object.entries(activeStep.response).filter(
+                ([_, v]) => v != null && v !== "",
+              )}
             />
           </StepDetailSection>
         )}
 
         {activeStep.rulesEvaluated && activeStep.rulesEvaluated.length > 0 && (
-          <StepDetailSection title="Policy rules checked" accent="#7c3aed" defaultOpen={true}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+          <StepDetailSection
+            title="Policy rules checked"
+            accent="#7c3aed"
+            defaultOpen={true}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.4rem",
+              }}
+            >
               {activeStep.rulesEvaluated.map((r, i) => {
                 // Colour-code by result: green = PASS, red = FAIL, gray = N/A.
                 // Show the rule on its own line, then a smaller detail line beneath.
-                const palette = r.result === "PASS"
-                  ? { bg: "#ecfdf5", border: "#a7f3d0", badgeBg: "#10b981", badgeFg: "#fff" }
-                  : r.result === "FAIL"
-                  ? { bg: "#fef2f2", border: "#fecaca", badgeBg: "#dc2626", badgeFg: "#fff" }
-                  : { bg: "#f8fafc", border: "#e2e8f0", badgeBg: "#94a3b8", badgeFg: "#fff" };
+                const palette =
+                  r.result === "PASS"
+                    ? {
+                        bg: "#ecfdf5",
+                        border: "#a7f3d0",
+                        badgeBg: "#10b981",
+                        badgeFg: "#fff",
+                      }
+                    : r.result === "FAIL"
+                      ? {
+                          bg: "#fef2f2",
+                          border: "#fecaca",
+                          badgeBg: "#dc2626",
+                          badgeFg: "#fff",
+                        }
+                      : {
+                          bg: "#f8fafc",
+                          border: "#e2e8f0",
+                          badgeBg: "#94a3b8",
+                          badgeFg: "#fff",
+                        };
                 return (
                   <div
                     key={i}
@@ -514,32 +564,49 @@ function StepInfoPanel({
                       padding: "0.4rem 0.5rem",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: "0.4rem" }}>
-                      <span style={{
-                        background: palette.badgeBg,
-                        color: palette.badgeFg,
-                        fontWeight: 700,
-                        fontSize: "0.6rem",
-                        padding: "0.1rem 0.35rem",
-                        borderRadius: 3,
-                        flexShrink: 0,
-                        marginTop: "0.05rem",
-                      }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "0.4rem",
+                      }}
+                    >
+                      <span
+                        style={{
+                          background: palette.badgeBg,
+                          color: palette.badgeFg,
+                          fontWeight: 700,
+                          fontSize: "0.6rem",
+                          padding: "0.1rem 0.35rem",
+                          borderRadius: 3,
+                          flexShrink: 0,
+                          marginTop: "0.05rem",
+                        }}
+                      >
                         {r.result}
                       </span>
-                      <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.7rem" }}>
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          color: "#0f172a",
+                          fontSize: "0.7rem",
+                        }}
+                      >
                         {r.rule}
                       </span>
                     </div>
                     {r.detail ? (
-                      <div style={{
-                        marginLeft: "2.25rem",
-                        marginTop: "0.2rem",
-                        fontSize: "0.65rem",
-                        color: "#475569",
-                        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                        wordBreak: "break-word",
-                      }}>
+                      <div
+                        style={{
+                          marginLeft: "2.25rem",
+                          marginTop: "0.2rem",
+                          fontSize: "0.65rem",
+                          color: "#475569",
+                          fontFamily:
+                            "ui-monospace, SFMono-Regular, Menlo, monospace",
+                          wordBreak: "break-word",
+                        }}
+                      >
                         {r.detail}
                       </div>
                     ) : null}
@@ -555,7 +622,9 @@ function StepInfoPanel({
             {Array.isArray(activeStep.onError) ? (
               <ul style={{ paddingLeft: "1rem", margin: 0 }}>
                 {activeStep.onError.map((line, i) => (
-                  <li key={i} style={{ marginBottom: "0.25rem" }}>{line}</li>
+                  <li key={i} style={{ marginBottom: "0.25rem" }}>
+                    {line}
+                  </li>
                 ))}
               </ul>
             ) : (
@@ -764,7 +833,10 @@ const ALL_STEPS = [
     },
     response: {
       status: 200,
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
       body: {
         access_token: "eyJhbGciOi...AgentCCToken...",
         token_type: "Bearer",
@@ -857,7 +929,9 @@ const ALL_STEPS = [
       body: {
         jsonrpc: "2.0",
         id: 1,
-        result: { tools: ["check_balance", "list_transactions", "transfer_funds"] },
+        result: {
+          tools: ["check_balance", "list_transactions", "transfer_funds"],
+        },
       },
     },
     onError: [
@@ -891,14 +965,37 @@ const ALL_STEPS = [
     response: {
       status: 200,
       headers: { "Content-Type": "application/json" },
-      body: { decision: "PERMIT", obligations: { filter_tools_by: "agent_scope" } },
+      body: {
+        decision: "PERMIT",
+        obligations: { filter_tools_by: "agent_scope" },
+      },
     },
     rulesEvaluated: [
-      { rule: "Agent identity is a registered agent app", result: "PASS", detail: "client_id={AGENT_CLIENT_ID} matches registered AI_AGENT app" },
-      { rule: "Agent token has tools.list scope", result: "PASS", detail: "scope='tools.list'" },
-      { rule: "Token audience matches agent gateway", result: "PASS", detail: "aud='agent-gateway'" },
-      { rule: "Token not expired", result: "PASS", detail: "exp=1778003600 > now" },
-      { rule: "Agent persona permits tool discovery", result: "PASS", detail: "role=banking_assistant; discovery=allowed" },
+      {
+        rule: "Agent identity is a registered agent app",
+        result: "PASS",
+        detail: "client_id={AGENT_CLIENT_ID} matches registered AI_AGENT app",
+      },
+      {
+        rule: "Agent token has tools.list scope",
+        result: "PASS",
+        detail: "scope='tools.list'",
+      },
+      {
+        rule: "Token audience matches agent gateway",
+        result: "PASS",
+        detail: "aud='agent-gateway'",
+      },
+      {
+        rule: "Token not expired",
+        result: "PASS",
+        detail: "exp=1778003600 > now",
+      },
+      {
+        rule: "Agent persona permits tool discovery",
+        result: "PASS",
+        detail: "role=banking_assistant; discovery=allowed",
+      },
     ],
     onError: [
       "401 from Ping Authorize — gateway's own service credentials are wrong",
@@ -984,11 +1081,33 @@ const ALL_STEPS = [
     description: "Fine-grained policy evaluation",
     why: "Different agents may have access to different tool sets. Ping Authorize trims the catalog down to exactly what this agent's identity and scopes permit — least privilege, enforced centrally.",
     rulesEvaluated: [
-      { rule: "Per-tool agent allowlist", result: "PASS", detail: "agent1 allowed: check_balance, list_transactions, transfer_funds; denied: admin_close_account, freeze_user" },
-      { rule: "Subject-less tools available without user context", result: "N/A", detail: "no educational/public tools registered for this catalog" },
-      { rule: "Risk tier of each tool vs agent's risk authorization", result: "PASS", detail: "agent risk_tier=medium; included tools tier <= medium" },
-      { rule: "Tenant-level tool feature flags", result: "PASS", detail: "tenant=bxf; flags allow read+transfer tools" },
-      { rule: "Scope reduction filter — drop tools requiring missing scopes", result: "PASS", detail: "agent has tools.list; tools requiring banking:admin filtered out" },
+      {
+        rule: "Per-tool agent allowlist",
+        result: "PASS",
+        detail:
+          "agent1 allowed: check_balance, list_transactions, transfer_funds; denied: admin_close_account, freeze_user",
+      },
+      {
+        rule: "Subject-less tools available without user context",
+        result: "N/A",
+        detail: "no educational/public tools registered for this catalog",
+      },
+      {
+        rule: "Risk tier of each tool vs agent's risk authorization",
+        result: "PASS",
+        detail: "agent risk_tier=medium; included tools tier <= medium",
+      },
+      {
+        rule: "Tenant-level tool feature flags",
+        result: "PASS",
+        detail: "tenant=bxf; flags allow read+transfer tools",
+      },
+      {
+        rule: "Scope reduction filter — drop tools requiring missing scopes",
+        result: "PASS",
+        detail:
+          "agent has tools.list; tools requiring banking:admin filtered out",
+      },
     ],
     onError: [
       "Policy returns the full catalog by mistake — agent ends up with tools it shouldn't see",
@@ -1014,15 +1133,39 @@ const ALL_STEPS = [
       headers: { "Content-Type": "application/json" },
       body: {
         decision: "PERMIT",
-        permitted_tools: ["check_balance", "list_transactions", "transfer_funds"],
+        permitted_tools: [
+          "check_balance",
+          "list_transactions",
+          "transfer_funds",
+        ],
       },
     },
     rulesEvaluated: [
-      { rule: "Per-tool agent allowlist applied", result: "PASS", detail: "returned 3 of 5 catalog tools after allowlist filter" },
-      { rule: "Subject-less mode tools", result: "N/A", detail: "no public tools registered" },
-      { rule: "Risk tier filter applied", result: "PASS", detail: "all returned tools <= agent risk_tier (medium)" },
-      { rule: "Tenant feature flags applied", result: "PASS", detail: "tenant=bxf flags honored" },
-      { rule: "Scope reduction filter applied", result: "PASS", detail: "tools needing scopes outside agent grant removed" },
+      {
+        rule: "Per-tool agent allowlist applied",
+        result: "PASS",
+        detail: "returned 3 of 5 catalog tools after allowlist filter",
+      },
+      {
+        rule: "Subject-less mode tools",
+        result: "N/A",
+        detail: "no public tools registered",
+      },
+      {
+        rule: "Risk tier filter applied",
+        result: "PASS",
+        detail: "all returned tools <= agent risk_tier (medium)",
+      },
+      {
+        rule: "Tenant feature flags applied",
+        result: "PASS",
+        detail: "tenant=bxf flags honored",
+      },
+      {
+        rule: "Scope reduction filter applied",
+        result: "PASS",
+        detail: "tools needing scopes outside agent grant removed",
+      },
     ],
     onError: [
       "Decision body missing permitted_tools — gateway should fail closed and return an empty list",
@@ -1050,9 +1193,18 @@ const ALL_STEPS = [
         id: 1,
         result: {
           tools: [
-            { name: "check_balance", description: "Get current account balance" },
-            { name: "list_transactions", description: "List recent transactions" },
-            { name: "transfer_funds", description: "Transfer money between accounts" },
+            {
+              name: "check_balance",
+              description: "Get current account balance",
+            },
+            {
+              name: "list_transactions",
+              description: "List recent transactions",
+            },
+            {
+              name: "transfer_funds",
+              description: "Transfer money between accounts",
+            },
           ],
         },
       },
@@ -1082,7 +1234,11 @@ const ALL_STEPS = [
       body: {
         agentRequestId: "agent_req_01HXYZ...",
         prompt: "What is my current account balance and recent transactions?",
-        availableTools: ["check_balance", "list_transactions", "transfer_funds"],
+        availableTools: [
+          "check_balance",
+          "list_transactions",
+          "transfer_funds",
+        ],
       },
     },
     response: {
@@ -1117,11 +1273,21 @@ const ALL_STEPS = [
         model: "claude-opus-4-7",
         max_tokens: 1024,
         tools: [
-          { name: "check_balance", input_schema: { type: "object", properties: {} } },
-          { name: "list_transactions", input_schema: { type: "object", properties: {} } },
+          {
+            name: "check_balance",
+            input_schema: { type: "object", properties: {} },
+          },
+          {
+            name: "list_transactions",
+            input_schema: { type: "object", properties: {} },
+          },
         ],
         messages: [
-          { role: "user", content: "What is my current account balance and recent transactions?" },
+          {
+            role: "user",
+            content:
+              "What is my current account balance and recent transactions?",
+          },
         ],
       },
     },
@@ -1154,7 +1320,12 @@ const ALL_STEPS = [
       headers: { "Content-Type": "application/json" },
       body: {
         content: [
-          { type: "tool_use", id: "tool_use_01ABC", name: "check_balance", input: {} },
+          {
+            type: "tool_use",
+            id: "tool_use_01ABC",
+            name: "check_balance",
+            input: {},
+          },
         ],
         stop_reason: "tool_use",
       },
@@ -1203,7 +1374,11 @@ const ALL_STEPS = [
     response: {
       status: 403,
       headers: { "Content-Type": "application/json" },
-      body: { jsonrpc: "2.0", id: 2, error: { code: -32001, message: "insufficient_scope" } },
+      body: {
+        jsonrpc: "2.0",
+        id: 2,
+        error: { code: -32001, message: "insufficient_scope" },
+      },
     },
     onError: [
       "Agent forgets it has no user token and assumes success — wrap tool calls in error handling",
@@ -1231,19 +1406,43 @@ const ALL_STEPS = [
         action: "tools/call",
         tool: "check_balance",
         subject: { token: "eyJhbGciOi...AgentCCToken..." },
-        resource: { type: "mcp.tool", id: "check_balance", required_scope: "banking:read" },
+        resource: {
+          type: "mcp.tool",
+          id: "check_balance",
+          required_scope: "banking:read",
+        },
       },
     },
     response: {
       status: 200,
       headers: { "Content-Type": "application/json" },
-      body: { decision: "DENY", reason: "insufficient_scope:balance, no_subject_token" },
+      body: {
+        decision: "DENY",
+        reason: "insufficient_scope:balance, no_subject_token",
+      },
     },
     rulesEvaluated: [
-      { rule: "subject_token present for user-context tools", result: "FAIL", detail: "subject_token=null; check_balance requires user identity" },
-      { rule: "Tool's requires_user_context flag", result: "FAIL", detail: "check_balance.requires_user_context=true; no user supplied" },
-      { rule: "Agent client_credentials scope sufficient for user-specific data", result: "FAIL", detail: "CC token has only 'tools.list'; missing banking:read for user resource" },
-      { rule: "Audience match for MCP gateway", result: "PASS", detail: "aud='agent-gateway' (correct gateway)" },
+      {
+        rule: "subject_token present for user-context tools",
+        result: "FAIL",
+        detail: "subject_token=null; check_balance requires user identity",
+      },
+      {
+        rule: "Tool's requires_user_context flag",
+        result: "FAIL",
+        detail: "check_balance.requires_user_context=true; no user supplied",
+      },
+      {
+        rule: "Agent client_credentials scope sufficient for user-specific data",
+        result: "FAIL",
+        detail:
+          "CC token has only 'tools.list'; missing banking:read for user resource",
+      },
+      {
+        rule: "Audience match for MCP gateway",
+        result: "PASS",
+        detail: "aud='agent-gateway' (correct gateway)",
+      },
     ],
     onError: [
       "PA returns PERMIT despite missing subject — policy gap; banking data could leak",
@@ -1275,9 +1474,22 @@ const ALL_STEPS = [
       },
     },
     rulesEvaluated: [
-      { rule: "requires_user_context=true AND subject_token=null triggers DENY", result: "FAIL", detail: "tool=check_balance; requires_user_context=true; subject_token=null" },
-      { rule: "Policy requires act.sub != null AND sub != client_id", result: "FAIL", detail: "sub=client_id ({AGENT_CLIENT_ID}); no act delegation present" },
-      { rule: "Required scope banking:read present on subject token", result: "FAIL", detail: "no subject token → no banking:read scope available" },
+      {
+        rule: "requires_user_context=true AND subject_token=null triggers DENY",
+        result: "FAIL",
+        detail:
+          "tool=check_balance; requires_user_context=true; subject_token=null",
+      },
+      {
+        rule: "Policy requires act.sub != null AND sub != client_id",
+        result: "FAIL",
+        detail: "sub=client_id ({AGENT_CLIENT_ID}); no act delegation present",
+      },
+      {
+        rule: "Required scope banking:read present on subject token",
+        result: "FAIL",
+        detail: "no subject token → no banking:read scope available",
+      },
     ],
   },
   // AG-->>A: HTTP 403 Forbidden (insufficient_scope: balance, no subject token)
@@ -1297,7 +1509,8 @@ const ALL_STEPS = [
       status: 403,
       headers: {
         "Content-Type": "application/json",
-        "WWW-Authenticate": 'Bearer error="insufficient_scope", scope="banking:read", resource="agent1"',
+        "WWW-Authenticate":
+          'Bearer error="insufficient_scope", scope="banking:read", resource="agent1"',
       },
       body: {
         jsonrpc: "2.0",
@@ -1432,7 +1645,8 @@ const ALL_STEPS = [
       headers: {
         Location:
           "https://api.ping.demo:4000/callback?code={AUTH_CODE}&state={STATE}",
-        "Set-Cookie": "ST={PINGONE_SESSION}; Path=/; Secure; HttpOnly; SameSite=None",
+        "Set-Cookie":
+          "ST={PINGONE_SESSION}; Path=/; Secure; HttpOnly; SameSite=None",
       },
     },
     onError: [
@@ -1459,7 +1673,8 @@ const ALL_STEPS = [
       status: 302,
       headers: {
         Location: "https://api.ping.demo:4000/chat?resume=replay_01XYZ",
-        "Set-Cookie": "connect.sid=s%3A{SESSION_ID}.{SIG}; Path=/; HttpOnly; Secure; SameSite=Lax",
+        "Set-Cookie":
+          "connect.sid=s%3A{SESSION_ID}.{SIG}; Path=/; HttpOnly; Secure; SameSite=Lax",
       },
     },
     onError: [
@@ -1549,7 +1764,10 @@ const ALL_STEPS = [
     },
     response: {
       status: 200,
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
       body: {
         access_token: "eyJhbGciOi...SubjectToken...",
         token_type: "Bearer",
@@ -1701,11 +1919,17 @@ const ALL_STEPS = [
     why: "PingOne returns the first exchanged token. The act claim is the cryptographic proof that the agent is operating on the user's behalf — downstream services can see both who and on-whose-behalf in one token.",
     request: {
       frame: "token-exchange-response",
-      payload: { grant_type: "urn:ietf:params:oauth:grant-type:token-exchange", resource: "mcp-gw" },
+      payload: {
+        grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+        resource: "mcp-gw",
+      },
     },
     response: {
       status: 200,
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
       body: {
         access_token: "eyJhbGciOi...TxTokenGW...",
         issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
@@ -1827,13 +2051,43 @@ const ALL_STEPS = [
       body: { decision: "PERMIT" },
     },
     rulesEvaluated: [
-      { rule: "Subject token valid (user not revoked, not expired)", result: "PASS", detail: "sub=user_jane_doe; active=true; exp in future" },
-      { rule: "Actor token valid (agent client active)", result: "PASS", detail: "act.sub=agent1-cc-client; client status=active" },
-      { rule: "may_act claim lists this agent as permitted actor", result: "PASS", detail: "may_act.sub=agent1-cc-client matches act.sub" },
-      { rule: "Resource indicator (aud) matches MCP gateway", result: "PASS", detail: "aud='mcp-gw'" },
-      { rule: "Requested scope is subset of user's granted scopes", result: "PASS", detail: "requested=banking:read; user granted=banking:read banking:write" },
-      { rule: "High-value transaction threshold (>$500 requires step-up)", result: "N/A", detail: "tool=check_balance (read-only, non-monetary)" },
-      { rule: "Tool-specific business rules (account ownership, consent)", result: "PASS", detail: "check_balance on user's own account; no consent gate triggered" },
+      {
+        rule: "Subject token valid (user not revoked, not expired)",
+        result: "PASS",
+        detail: "sub=user_jane_doe; active=true; exp in future",
+      },
+      {
+        rule: "Actor token valid (agent client active)",
+        result: "PASS",
+        detail: "act.sub=agent1-cc-client; client status=active",
+      },
+      {
+        rule: "may_act claim lists this agent as permitted actor",
+        result: "PASS",
+        detail: "may_act.sub=agent1-cc-client matches act.sub",
+      },
+      {
+        rule: "Resource indicator (aud) matches MCP gateway",
+        result: "PASS",
+        detail: "aud='mcp-gw'",
+      },
+      {
+        rule: "Requested scope is subset of user's granted scopes",
+        result: "PASS",
+        detail:
+          "requested=banking:read; user granted=banking:read banking:write",
+      },
+      {
+        rule: "High-value transaction threshold (>$500 requires step-up)",
+        result: "N/A",
+        detail: "tool=check_balance (read-only, non-monetary)",
+      },
+      {
+        rule: "Tool-specific business rules (account ownership, consent)",
+        result: "PASS",
+        detail:
+          "check_balance on user's own account; no consent gate triggered",
+      },
     ],
     onError: [
       "PA returns DENY despite a valid token — check the act-claim policy attribute mapping in PA",
@@ -1916,10 +2170,26 @@ const ALL_STEPS = [
     description: "Validate policy",
     why: "PA enforces the full constraint set in one place: token audience matches the gateway, scope covers the requested action, agent is one of the allowed actors, and the tool itself is approved for this user. Centralized policy beats scattered per-service if-statements.",
     rulesEvaluated: [
-      { rule: "Token aud matches gateway", result: "PASS", detail: "aud='mcp-gw'" },
-      { rule: "Scope covers requested action", result: "PASS", detail: "scope='banking:read' satisfies check_balance" },
-      { rule: "Agent is in user's may_act allowlist", result: "PASS", detail: "may_act.sub=agent1-cc-client" },
-      { rule: "Tool approved for this user", result: "PASS", detail: "user_jane_doe entitled to check_balance" },
+      {
+        rule: "Token aud matches gateway",
+        result: "PASS",
+        detail: "aud='mcp-gw'",
+      },
+      {
+        rule: "Scope covers requested action",
+        result: "PASS",
+        detail: "scope='banking:read' satisfies check_balance",
+      },
+      {
+        rule: "Agent is in user's may_act allowlist",
+        result: "PASS",
+        detail: "may_act.sub=agent1-cc-client",
+      },
+      {
+        rule: "Tool approved for this user",
+        result: "PASS",
+        detail: "user_jane_doe entitled to check_balance",
+      },
     ],
     onError: [
       "Policy allows aud mismatch — fundamental authz bug; must always check aud",
@@ -1946,9 +2216,22 @@ const ALL_STEPS = [
       body: { decision: "PERMIT", obligations: { log_audit_event: true } },
     },
     rulesEvaluated: [
-      { rule: "All sub/act/aud/scope/may_act checks passed", result: "PASS", detail: "sub=user_jane_doe, act=agent1-cc-client, aud=mcp-gw, scope=banking:read, may_act match" },
-      { rule: "Transaction amount under high-value threshold OR step-up satisfied", result: "PASS", detail: "tool=check_balance (no monetary value); threshold N/A" },
-      { rule: "No fraud/risk signals flagged on session", result: "PASS", detail: "risk_score=low; no anomaly flags on session_id" },
+      {
+        rule: "All sub/act/aud/scope/may_act checks passed",
+        result: "PASS",
+        detail:
+          "sub=user_jane_doe, act=agent1-cc-client, aud=mcp-gw, scope=banking:read, may_act match",
+      },
+      {
+        rule: "Transaction amount under high-value threshold OR step-up satisfied",
+        result: "PASS",
+        detail: "tool=check_balance (no monetary value); threshold N/A",
+      },
+      {
+        rule: "No fraud/risk signals flagged on session",
+        result: "PASS",
+        detail: "risk_score=low; no anomaly flags on session_id",
+      },
     ],
     onError: [
       "PERMIT returned but obligations dropped — gateway must enforce obligations (e.g., audit logging)",
@@ -2030,7 +2313,10 @@ const ALL_STEPS = [
     },
     response: {
       status: 200,
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
       body: {
         access_token: "eyJhbGciOi...McpToken...",
         issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
@@ -2161,7 +2447,10 @@ const ALL_STEPS = [
     },
     response: {
       status: 200,
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
       body: {
         access_token: "eyJhbGciOi...RsToken...",
         issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
@@ -2314,7 +2603,11 @@ const ALL_STEPS = [
         currency: "USD",
         recentTransactions: [
           { date: "2026-05-09", description: "Starbucks", amount: -5.42 },
-          { date: "2026-05-07", description: "Employer Payroll", amount: 2500.0 },
+          {
+            date: "2026-05-07",
+            description: "Employer Payroll",
+            amount: 2500.0,
+          },
         ],
       },
     },
@@ -2404,15 +2697,30 @@ const ALL_STEPS = [
         model: "claude-opus-4-7",
         max_tokens: 1024,
         messages: [
-          { role: "user", content: "What is my current account balance and recent transactions?" },
-          { role: "assistant", content: [{ type: "tool_use", id: "tool_use_01ABC", name: "check_balance", input: {} }] },
+          {
+            role: "user",
+            content:
+              "What is my current account balance and recent transactions?",
+          },
+          {
+            role: "assistant",
+            content: [
+              {
+                type: "tool_use",
+                id: "tool_use_01ABC",
+                name: "check_balance",
+                input: {},
+              },
+            ],
+          },
           {
             role: "user",
             content: [
               {
                 type: "tool_result",
                 tool_use_id: "tool_use_01ABC",
-                content: '{"balance":2450.32,"currency":"USD","recentTransactions":[...]}',
+                content:
+                  '{"balance":2450.32,"currency":"USD","recentTransactions":[...]}',
               },
             ],
           },
@@ -2626,40 +2934,61 @@ const SCENARIOS = {
     {
       type: "note",
       participants: ["U", "CB"],
-      text: "API-KEY PATH: no backend call\nGateway-terminating credential swap",
-      description: "Path A: the gateway swaps the OAuth bearer for a service API key and terminates — no backend is called.",
-      why: "Demonstrates credential swap pattern: user token never reaches the backend; only the API key is forwarded.",
+      text: "API-KEY PATH: scope gate + credential swap\nGateway calls banking_mortgage_service",
+      description:
+        "Path A: the gateway verifies banking:mortgage:read, swaps the OAuth bearer for a service API key, and calls banking_mortgage_service :8082.",
+      why: "Demonstrates credential swap pattern: the user token never reaches the backend; only the API key + X-User-Sub are forwarded.",
     },
     {
       type: "arrow",
       from: "U",
       to: "CB",
-      label: "User: 'show special offers'",
-      description: "User triggers the api_key demo prompt via natural language.",
-      token: { type: "NL prompt", credentialPath: "api_key", tool: "special_offers" },
+      label: "User: 'show mortgage data'",
+      description:
+        "User triggers the api_key demo prompt via natural language.",
+      token: {
+        type: "NL prompt",
+        credentialPath: "api_key",
+        tool: "show_mortgage",
+      },
     },
     {
       type: "arrow",
       from: "CB",
       to: "AG",
-      label: "tools/call special_offers (OAuth bearer)",
-      description: "Agent forwards the tool call to the MCP gateway with the user OAuth bearer.",
+      label: "tools/call show_mortgage (OAuth bearer)",
+      description:
+        "Agent forwards the tool call to the MCP gateway with the user OAuth bearer.",
       token: { type: "OAuth Bearer (inbound)", credentialPath: "oauth_bearer" },
     },
     {
       type: "note",
       participants: ["AG"],
-      text: "API-KEY PATH: no backend call\nGateway swaps bearer for X-API-Key\ncredentialPath = api_key",
-      description: "The gateway recognizes special_offers as an api_key-disposition tool. The OAuth bearer is dropped; X-API-Key is injected. No RFC 8693 exchange on this path.",
-      why: "API-KEY PATH distinguishes this from oauth_bearer (RFC 8693 exchange) and dual_token (id_token forward).",
+      text: "API-KEY PATH: enforce banking:mortgage:read\nGateway drops bearer, attaches X-API-Key + X-User-Sub\ncredentialPath = api_key",
+      description:
+        "The gateway recognizes show_mortgage as an api_key-disposition tool, enforces banking:mortgage:read on the user bearer (local scope gate, before swap), then drops the OAuth bearer and injects X-API-Key + X-User-Sub. No RFC 8693 exchange on this path.",
+      why: "API-KEY PATH distinguishes this from oauth_bearer (RFC 8693 exchange) and dual_token (id_token forward). The scope gate is the consent step before the credential swap.",
+    },
+    {
+      type: "note",
+      participants: ["AG"],
+      text: "GET banking_mortgage_service :8082 /mortgage\nX-API-Key + X-User-Sub (no user token)",
+      description:
+        "The gateway calls banking_mortgage_service with the service API key and X-User-Sub. The backend validates the API key (constant-time compare) and returns the mortgage record.",
+      why: "The backend never sees the user's OAuth token — possession of the API key is the trust boundary (demo-grade).",
     },
     {
       type: "arrow",
       from: "AG",
       to: "CB",
-      label: "Marker response: credentialPath=api_key",
-      description: "Gateway returns a marker response. The SPA routes to /path/apikey-info.",
-      token: { type: "Marker response", credentialPath: "api_key", destination: "/path/apikey-info" },
+      label: "Mortgage record + _meta.maskedApiKey",
+      description:
+        "Gateway returns the mortgage payload with the masked API key (last-4). The SPA routes to /path/mortgage with the payload.",
+      token: {
+        type: "Mortgage payload",
+        credentialPath: "api_key",
+        destination: "/path/mortgage",
+      },
     },
   ],
 
@@ -2668,7 +2997,8 @@ const SCENARIOS = {
       type: "note",
       participants: ["U", "CB"],
       text: "DUAL-TOKEN PATH: /api/resource-server/identity\nbearer validated + id_token decoded server-side",
-      description: "Path B: gateway forwards the OAuth bearer AND id_token to banking_resource_server /identity.",
+      description:
+        "Path B: gateway forwards the OAuth bearer AND id_token to banking_resource_server /identity.",
       why: "Demonstrates dual-credential forwarding: access token proves authorization; id_token provides identity claims. Both decoded server-side — no raw JWT crosses any boundary.",
     },
     {
@@ -2677,7 +3007,11 @@ const SCENARIOS = {
       to: "CB",
       label: "User: 'show my profile card'",
       description: "User triggers the dual_token demo prompt.",
-      token: { type: "NL prompt", credentialPath: "dual_token", tool: "user_profile_card" },
+      token: {
+        type: "NL prompt",
+        credentialPath: "dual_token",
+        tool: "user_profile_card",
+      },
     },
     {
       type: "arrow",
@@ -2691,7 +3025,8 @@ const SCENARIOS = {
       type: "note",
       participants: ["AG"],
       text: "DUAL-TOKEN PATH: /api/resource-server/identity\nGateway fetches id_token from BFF session\nForwards: bearer (Authorization header) + id_token (params.idToken body)",
-      description: "Gateway performs a server-to-server call to BFF /internal/id-token to retrieve the id_token, then POSTs both to banking_resource_server /identity in a JSON-RPC envelope.",
+      description:
+        "Gateway performs a server-to-server call to BFF /internal/id-token to retrieve the id_token, then POSTs both to banking_resource_server /identity in a JSON-RPC envelope.",
       why: "id_token lives only in the BFF session (OIDC Core §3.1.3.7). The SPA never sees the raw JWT.",
     },
     {
@@ -2699,14 +3034,20 @@ const SCENARIOS = {
       from: "AG",
       to: "RS",
       label: "POST /api/resource-server/identity (Bearer + id_token)",
-      description: "Gateway sends JSON-RPC envelope to banking_resource_server /identity. Bearer in Authorization header; id_token in params.idToken.",
-      token: { type: "Bearer + id_token", credentialPath: "dual_token", route: "/api/resource-server/identity" },
+      description:
+        "Gateway sends JSON-RPC envelope to banking_resource_server /identity. Bearer in Authorization header; id_token in params.idToken.",
+      token: {
+        type: "Bearer + id_token",
+        credentialPath: "dual_token",
+        route: "/api/resource-server/identity",
+      },
     },
     {
       type: "note",
       participants: ["RS"],
       text: "banking_resource_server validates bearer (RFC 6750)\ndecodes id_token server-side (OIDC Core)\nreturns claims only — no raw JWT",
-      description: "authenticateToken middleware validates the access token signature/exp/aud. id_token sub is verified against bearer sub. Claims decoded server-side via decodeJwtClaims. scrubRawJwts walker applied before response.",
+      description:
+        "authenticateToken middleware validates the access token signature/exp/aud. id_token sub is verified against bearer sub. Claims decoded server-side via decodeJwtClaims. scrubRawJwts walker applied before response.",
       why: "Token custody rule: raw JWTs never cross the server boundary. Only sanitized claims are returned.",
     },
     {
@@ -2714,8 +3055,13 @@ const SCENARIOS = {
       from: "RS",
       to: "CB",
       label: "200 OK: accessTokenClaims + idTokenClaims",
-      description: "banking_resource_server returns decoded claims only. SPA routes to /path/dualtoken-info.",
-      token: { type: "Claims response (identity)", credentialPath: "dual_token", destination: "/path/dualtoken-info" },
+      description:
+        "banking_resource_server returns decoded claims only. SPA routes to /path/dualtoken-info.",
+      token: {
+        type: "Claims response (identity)",
+        credentialPath: "dual_token",
+        destination: "/path/dualtoken-info",
+      },
     },
   ],
 
@@ -2724,7 +3070,8 @@ const SCENARIOS = {
       type: "note",
       participants: ["U", "CB"],
       text: "OAUTH BEARER PATH: /api/resource-server/accounts | /transactions\nRFC 8693 exchange + SQLite-backed banking data",
-      description: "Path C: gateway performs RFC 8693 token exchange, then forwards the backend-scoped bearer to banking_resource_server /accounts or /transactions.",
+      description:
+        "Path C: gateway performs RFC 8693 token exchange, then forwards the backend-scoped bearer to banking_resource_server /accounts or /transactions.",
       why: "Demonstrates the standard OAuth 2.0 resource-server pattern: RFC 8693 narrows audience to banking_resource_server; bank data served from SQLite seeded at boot.",
     },
     {
@@ -2733,7 +3080,11 @@ const SCENARIOS = {
       to: "CB",
       label: "User: 'show my accounts'",
       description: "User triggers the oauth_bearer banking-data prompt.",
-      token: { type: "NL prompt", credentialPath: "oauth_bearer", tool: "demo_show_accounts" },
+      token: {
+        type: "NL prompt",
+        credentialPath: "oauth_bearer",
+        tool: "demo_show_accounts",
+      },
     },
     {
       type: "arrow",
@@ -2747,7 +3098,8 @@ const SCENARIOS = {
       type: "note",
       participants: ["AG", "PID"],
       text: "OAUTH BEARER PATH: RFC 8693 token exchange\naud narrowed to banking_resource_server (RFC 8707)\nact chain preserved",
-      description: "RFC 8693 token exchange: subject_token = user bearer; audience = banking_resource_server resource URI (RFC 8707). Resulting token has aud=banking_resource_server and act claim for audit trail.",
+      description:
+        "RFC 8693 token exchange: subject_token = user bearer; audience = banking_resource_server resource URI (RFC 8707). Resulting token has aud=banking_resource_server and act claim for audit trail.",
       why: "RFC 8693 §3: the inbound user bearer (aud=AI-agent-resource) is rejected by the RS per RFC 6750/8707. Exchange is mandatory.",
     },
     {
@@ -2755,14 +3107,21 @@ const SCENARIOS = {
       from: "AG",
       to: "RS",
       label: "GET /api/resource-server/accounts (exchanged Bearer)",
-      description: "Gateway forwards the backend-scoped bearer to banking_resource_server /accounts (or /transactions).",
-      token: { type: "Exchanged Bearer", credentialPath: "oauth_bearer", route: "/api/resource-server/accounts", aud: "banking_resource_server" },
+      description:
+        "Gateway forwards the backend-scoped bearer to banking_resource_server /accounts (or /transactions).",
+      token: {
+        type: "Exchanged Bearer",
+        credentialPath: "oauth_bearer",
+        route: "/api/resource-server/accounts",
+        aud: "banking_resource_server",
+      },
     },
     {
       type: "note",
       participants: ["RS"],
       text: "banking_resource_server validates bearer (RFC 6750)\nqueries banking-resource-server.db (SQLite)\nreturns accounts/transactions",
-      description: "authenticateToken validates the exchanged bearer. bankingDb.getAccountsByUserId queries the SQLite file seeded from data/store.js at first BFF boot.",
+      description:
+        "authenticateToken validates the exchanged bearer. bankingDb.getAccountsByUserId queries the SQLite file seeded from data/store.js at first BFF boot.",
       why: "SQLite persistence: bank data survives BFF restarts; idempotent seed from in-memory store on first boot.",
     },
     {
@@ -2770,8 +3129,13 @@ const SCENARIOS = {
       from: "RS",
       to: "CB",
       label: "200 OK: accounts (SQLite-backed)",
-      description: "banking_resource_server returns accounts or transactions. ResourceServerPage renders with OAUTH BEARER PATH badge.",
-      token: { type: "Banking data response", credentialPath: "oauth_bearer", data_source: "banking-resource-server.db" },
+      description:
+        "banking_resource_server returns accounts or transactions. ResourceServerPage renders with OAUTH BEARER PATH badge.",
+      token: {
+        type: "Banking data response",
+        credentialPath: "oauth_bearer",
+        data_source: "banking-resource-server.db",
+      },
     },
   ],
 };
@@ -2984,7 +3348,9 @@ export default function SequenceDiagramPage() {
             <option value="data-return">Data Return (RS → Results)</option>
             <option value="api-key-path">API-Key Path (Path A)</option>
             <option value="dual-token-path">Dual-Token Path (Path B)</option>
-            <option value="oauth-bearer-path">OAuth Bearer Path (Path C)</option>
+            <option value="oauth-bearer-path">
+              OAuth Bearer Path (Path C)
+            </option>
           </select>
         </div>
         <div

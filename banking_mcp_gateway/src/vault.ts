@@ -33,8 +33,25 @@ import { resolve, join } from 'node:path';
 // The vault library is CommonJS over in banking_api_server. We require it via
 // a relative path. No TS types exist for it. Using `require()` with an
 // eslint disable + cast keeps the diff small and avoids a .d.ts file.
-// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any
-const vaultLib: any = require('../../banking_api_server/lib/vault');
+//
+// IN-02: this hard relative path couples the gateway's dist/ depth to the
+// BFF source layout. A containerized deploy that does NOT co-locate both
+// services would otherwise fail startup with a bare MODULE_NOT_FOUND. Wrap
+// the require so the failure is self-describing instead of opaque.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let vaultLib: any;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  vaultLib = require('../../banking_api_server/lib/vault');
+} catch (err) {
+  throw new Error(
+    "[GW vault] cannot load banking_api_server/lib/vault (expected at " +
+      "<repo-root>/banking_api_server/lib/vault relative to this module). " +
+      "The gateway must be deployed alongside banking_api_server, or this " +
+      "module must be vendored into the gateway build. Underlying error: " +
+      (err instanceof Error ? err.message : String(err)),
+  );
+}
 
 // REPO_ROOT resolves up from this file:
 //   compiled: banking_mcp_gateway/dist/vault.js  → ../.. → repo root

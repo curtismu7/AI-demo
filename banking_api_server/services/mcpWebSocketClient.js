@@ -24,10 +24,21 @@ function getMcpProtocolVersion() {
 /** Versions this client can interoperate with — disconnect on mismatch (spec SHOULD). */
 const SUPPORTED_PROTOCOL_VERSIONS = new Set(['2025-11-25', '2024-11-05']);
 
-/** Scopes requested for RFC 8693 token exchange per MCP tool (must match BankingToolRegistry names).
- *  Each tool lists [specific, broad] so either the precise scope OR the umbrella scope is sufficient.
+/** CATALOG (not an authorization gate): scopes the RFC 8693 token exchange
+ *  REQUESTS per MCP tool, and the requiredScopesHint surfaced by the MCP
+ *  Inspector. Each tool lists [specific, broad] so either the precise scope OR
+ *  the umbrella scope is sufficient.
  *  banking:read  = view own data (accounts, balances, transactions)
- *  banking:write = mutate data (transfer, deposit, withdrawal) */
+ *  banking:write = mutate data (transfer, deposit, withdrawal)
+ *
+ *  Architecture-note R1 (2026-05-15) / T-2: this map is NOT an authorization
+ *  oracle. Whether an MCP tool call is permitted is decided solely by
+ *  PingAuthorize (`mcpToolAuthorizationService.evaluateMcpFirstToolGate`,
+ *  server.js). Do not reintroduce a local authz decision keyed off this map.
+ *  Because it is no longer a security boundary, drift from BankingToolRegistry
+ *  (BFF review WR-01) is a request-scope/advertisement accuracy concern, not a
+ *  security gap — keep names aligned for correct exchange scopes, not for
+ *  enforcement. Names should still match BankingToolRegistry. */
 const MCP_TOOL_SCOPES = {
   // Read tools — flat scope per Phase 146
   get_my_accounts:             ['banking:read'],
@@ -121,15 +132,23 @@ function releaseMcpWsSlot() {
  * @param {string} [correlationId] - Optional correlation ID for distributed tracing
  */
 function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) {
-  return new Promise((resolve, reject) => {
-    let released = false;
-    const safeRelease = () => {
-      if (!released) {
-        released = true;
-        releaseMcpWsSlot();
-      }
-    };
+  // WR-06: hold the pooled WS slot until the ENTIRE RPC promise settles.
+  // Previously safeRelease() ran inside the message handler before
+  // resolve()/reject() returned, so releaseMcpWsSlot() synchronously woke the
+  // next queued waiter — which constructed a new WebSocket while this one was
+  // still closing and this promise had not yet settled (response cross-talk /
+  // slot-exhaustion race). The slot is now released in a single .finally()
+  // after the promise resolves OR rejects. Pool size/topology unchanged —
+  // only the release TIMING moved.
+  let released = false;
+  const safeRelease = () => {
+    if (!released) {
+      released = true;
+      releaseMcpWsSlot();
+    }
+  };
 
+  const rpcPromise = new Promise((resolve, reject) => {
     const INIT_REQUEST_ID = 1;
     const FOLLOW_REQUEST_ID = 2;
 
@@ -144,13 +163,11 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
 
         const timeout = setTimeout(() => {
           ws.terminate();
-          safeRelease();
           reject(new Error('MCP call timed out'));
         }, 15000);
 
         ws.on('error', (err) => {
           clearTimeout(timeout);
-          safeRelease();
           reject(err);
         });
 
@@ -179,7 +196,6 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
             msg = JSON.parse(raw.toString());
           } catch {
             clearTimeout(timeout);
-            safeRelease();
             reject(new Error('MCP invalid JSON response'));
             return;
           }
@@ -187,14 +203,12 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
           if (phase === 'awaiting_init') {
             if (!jsonRpcIdsMatch(msg.id, INIT_REQUEST_ID)) {
               clearTimeout(timeout);
-              safeRelease();
               reject(new Error(`MCP unexpected response id (expected initialize ${INIT_REQUEST_ID})`));
               return;
             }
             if (msg.error) {
               clearTimeout(timeout);
               ws.close();
-              safeRelease();
               reject(new Error(msg.error.message || JSON.stringify(msg.error)));
               return;
             }
@@ -203,7 +217,6 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
             if (!SUPPORTED_PROTOCOL_VERSIONS.has(negotiatedVersion)) {
               clearTimeout(timeout);
               ws.close();
-              safeRelease();
               reject(new Error(`MCP server negotiated unsupported protocol version: ${negotiatedVersion}`));
               return;
             }
@@ -243,14 +256,12 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
           if (phase === 'awaiting_follow') {
             if (!jsonRpcIdsMatch(msg.id, FOLLOW_REQUEST_ID)) {
               clearTimeout(timeout);
-              safeRelease();
               reject(new Error(`MCP unexpected response id (expected ${followMethod} ${FOLLOW_REQUEST_ID})`));
               return;
             }
             clearTimeout(timeout);
             ws.close();
             if (msg.error) {
-              safeRelease();
               const mcpErr = new Error(msg.error.message || JSON.stringify(msg.error));
               if (msg.error.code === -32005) {
                 mcpErr.code = 'mcp_insufficient_scope';
@@ -269,7 +280,6 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
               });
               reject(mcpErr);
             } else {
-              safeRelease();
               writeMcpTrafficEntry({
                 dir: 'MCP→BFF',
                 type: 'rpc_response',
@@ -287,10 +297,13 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
         });
       })
       .catch((err) => {
-        safeRelease();
         reject(err);
       });
   });
+
+  // WR-06: slot held until the promise fully settles, regardless of which
+  // code path (success, MCP error, timeout, transport error) completed.
+  return rpcPromise.finally(safeRelease);
 }
 
 function mcpListTools(agentToken, userSub, correlationId) {

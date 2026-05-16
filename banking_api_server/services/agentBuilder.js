@@ -17,6 +17,16 @@ const { Annotation } = require('@langchain/langgraph');
 const { createMcpToolRegistry } = require('../utils/mcpToolRegistry');
 const { resolveMcpAccessTokenWithEvents } = require('./agentMcpTokenService');
 
+/**
+ * WR-03: Hard cap on LangGraph node steps (agent ⇄ tools loop). Without this,
+ * an LLM that keeps emitting tool_calls (some local Ollama models do this when
+ * a tool returns an unexpected format) loops tools→agent→tools forever — only
+ * the upstream HTTP timeout terminates it. Value mirrors
+ * banking_agent_service/src/agentOrchestrator.ts MAX_TOOL_ITERATIONS = 10 for
+ * cross-stack consistency. Passed to graph.invoke({ recursionLimit }).
+ */
+const MAX_TOOL_ITERATIONS = 10;
+
 // Default models per provider
 const DEFAULT_MODELS = {
   ollama:    'llama3.2',
@@ -147,9 +157,10 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       console.log('[agentBuilder] tokenEvents count after adding:', tokenEvents.length);
     }
 
-        // Initialize LLM provider (Helix, Ollama, or others)
+        // Initialize LLM provider — resolution is centralized (T-3).
     let model;
-    const provider = langchainConfig?.provider || 'helix';
+    const { resolveLlmProvider } = require('./llmProviderResolver');
+    const { provider } = resolveLlmProvider(langchainConfig);
     const selectedModel = langchainConfig?.model || DEFAULT_MODELS[provider];
 
     if (provider === 'helix') {
@@ -319,7 +330,20 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
   }
 }
 
+/**
+ * Phase 2 (agent consolidation): expose the SAME tool list `createBankingAgent`
+ * uses internally (line `const tools = createMcpToolRegistry()`), as a pure
+ * getter that builds and executes NOTHING. The BFF reason-loop path
+ * (bankingAgentLangGraphService) derives tool SCHEMAS for :3006 from this and
+ * executes the SAME tool executors locally — no duplicate tool definitions.
+ */
+function getBankingToolDefinitions() {
+  return createMcpToolRegistry();
+}
+
 module.exports = {
   createBankingAgent,
+  getBankingToolDefinitions,
   BANKING_AGENT_SYSTEM_PROMPT,
+  MAX_TOOL_ITERATIONS,
 };

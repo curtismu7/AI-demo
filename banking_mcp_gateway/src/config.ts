@@ -34,6 +34,12 @@ export interface GatewayConfig {
   devBypass: boolean;
   // Phase 266: Path A — service API key for the api_key credential disposition (demo only)
   demoApiKeyServiceKey: string;
+  // Phase 267: Path A backend — base URL of banking_mortgage_service (e.g. http://localhost:8082)
+  mortgageServiceBaseUrl: string;
+  // Phase 267: Path A backend — X-API-Key the gateway presents to banking_mortgage_service.
+  // MUST match MORTGAGE_SERVICE_API_KEY on the mortgage service side. Demo-grade shared
+  // secret; the full value never crosses the browser (only _meta.maskedApiKey last-4).
+  mortgageServiceApiKey: string;
   // Phase 266: Path B — BFF-internal id_token retrieval endpoint (server-to-server)
   bffInternalIdTokenUrl: string;
   // Phase 266: shared secret for BFF /internal/id-token requests
@@ -51,6 +57,18 @@ const DEV_BYPASS = process.env.MCP_GW_DEV_BYPASS === 'true';
 // Phase 266 — must match the literal used as the optional() fallback for BFF_INTERNAL_SECRET below.
 // Production startup refuses this exact value to prevent shipping the dev fallback.
 const DEFAULT_BFF_INTERNAL_SECRET = 'dev-shared-secret-change-me';
+
+// WR-07: minimum acceptable length for the internal shared secret at the
+// admin-surface gate. Below this, an empty/whitespace secret makes
+// timingSafeEqual(Buffer.alloc(0), ...) accept a header-less request,
+// turning /admin/config into an unauthenticated control plane. Exported
+// pure predicate so the gate and its test share one definition (the
+// index.ts IIFE is not directly unit-testable).
+export const MIN_INTERNAL_SECRET_LEN = 16;
+
+export function isInternalSecretUsable(secret: string | undefined | null): boolean {
+  return (secret ?? '').trim().length >= MIN_INTERNAL_SECRET_LEN;
+}
 
 function required(name: string, stub = 'dev-bypass-placeholder'): string {
   const v = process.env[name];
@@ -109,6 +127,10 @@ export function loadConfig(): GatewayConfig {
     devBypass: DEV_BYPASS,
     // Phase 266 fields
     demoApiKeyServiceKey: optional('DEMO_APIKEY_SERVICE_KEY', 'demo-api-key-0000'),
+    // Phase 267 fields — dedicated mortgage backend (kept separate from the
+    // Phase 266 marker key so the Gateway-only apikey tools are unaffected)
+    mortgageServiceBaseUrl: optional('MORTGAGE_SERVICE_URL', 'http://localhost:8082'),
+    mortgageServiceApiKey: optional('DEMO_MORTGAGE_SERVICE_KEY', 'demo-mortgage-key-0000'),
     bffInternalIdTokenUrl: optional('BFF_INTERNAL_ID_TOKEN_URL', 'http://localhost:3001/internal/id-token'),
     bffInternalSecret: optional('BFF_INTERNAL_SECRET', DEFAULT_BFF_INTERNAL_SECRET),
     bankingResourceServerBaseUrl: optional('BANKING_RESOURCE_SERVER_BASE_URL', 'http://localhost:3001'),
@@ -134,6 +156,20 @@ export function assertProductionSecrets(cfg: GatewayConfig): void {
       '[GW] FATAL: BFF_INTERNAL_SECRET is set to the committed dev default ' +
       `('${DEFAULT_BFF_INTERNAL_SECRET}') and NODE_ENV=production. ` +
       'Refusing to start. Set BFF_INTERNAL_SECRET to a unique 32+ byte secret.',
+    );
+    process.exit(1);
+  }
+  // WR-07: a whitespace / too-short BFF_INTERNAL_SECRET is NOT the default
+  // literal and is NOT empty-falsy, so it slips past the check above and
+  // optional()'s `||` fallback. A 1-byte secret is trivially brute-forced
+  // and an empty one defeats the timing-safe compare entirely. Refuse to
+  // start unless the secret is at least 32 bytes in production.
+  if (cfg.bffInternalSecret.trim().length < 32) {
+    // eslint-disable-next-line no-console
+    console.error(
+      '[GW] FATAL: BFF_INTERNAL_SECRET is too short (< 32 bytes after trim) ' +
+      'and NODE_ENV=production. Refusing to start. Set BFF_INTERNAL_SECRET ' +
+      'to a unique 32+ byte secret.',
     );
     process.exit(1);
   }

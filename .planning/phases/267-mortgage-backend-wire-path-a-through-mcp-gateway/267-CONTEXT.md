@@ -1,8 +1,24 @@
 # Phase 267: Mortgage backend service — wire Path A end-to-end through MCP Gateway
 
 **Gathered:** 2026-05-10 (initial), 2026-05-11 (revised after Phase 266 shipped)
-**Status:** Ready for planning. Phase 266 complete; gray areas resolved.
+**Status:** IMPLEMENTED 2026-05-15. Phase 266 complete; gray areas resolved.
 **Source:** Two discuss-phase passes — initial scoping (2026-05-10) + post-266 reconciliation (2026-05-11)
+
+> **Correction (2026-05-15, during implementation):** This CONTEXT assumed the
+> gateway's `guardToolCall()` verifies `banking:mortgage:read` on the user
+> bearer before `selectCredentialForBackend()`. It does **not** — when PingOne
+> Authorize is configured, `guardToolCall` / `PingOneAuthorizeClient.evaluate`
+> delegate the decision to the PA policy (which receives `TokenScopes` +
+> `ToolName`); when PA is **not** configured they previously blanket-PERMITed.
+> **As built:** scope enforcement is an **Authorize-layer** decision, not a
+> dispatch concern. The no-PA branch of BOTH transports
+> (`PingOneAuthorizeClient.evaluate` HTTP, `pingAuthorizeGuard.guardToolCall`
+> WS) now calls `evaluateScopeDecisionLocally()` (in `auth/toolScopes.ts`),
+> which returns the same PERMIT / DENY-insufficient_scope outcome a PA policy
+> would. Result: the gateway behaves identically with or without PingOne
+> Authorize wired, and identically across HTTP and WS. No scope logic was
+> added to `index.ts` dispatch. See REGRESSION_PLAN.md §4 (2026-05-15 Phase
+> 267 entry) "Do not break".
 
 ---
 

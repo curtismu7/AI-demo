@@ -386,7 +386,7 @@ print_status_table() {
   service_status_line "Mortgage Service"    8082         "http://localhost:8082 (Phase 266 Path A backend)"
   service_status_line "Agent Service"       3006         "http://localhost:3006 (internal)"
   service_status_line "HITL Service"        3009         "http://localhost:3009 (internal)"
-  service_status_line "LangChain Agent"     8888         "http://localhost:8888 (uvicorn main); :8889 (chat WS); :8890 (health)"
+  service_status_line "LangChain Agent"     8890         "ws://localhost:8889 (chat WS); http://localhost:8890 (health/inspector)"
   if port_listening ${UI_PORT}; then
     printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
   else
@@ -660,6 +660,28 @@ else
   echo "[WARN] mkcert root CA not found at expected path. Run \`mkcert -install\` once if BFF→MCP Gateway HTTPS probes fail."
 fi
 
+# ── Vault preflight (Phase 269 / agent vault-awareness follow-up) ────────────
+# The BFF, MCP Gateway, and Agent Service each load secrets from the encrypted
+# secrets.vault at startup and FAIL FAST if the vault file exists but
+# VAULT_PASSWORD is unset (REGRESSION_PLAN §1 "Vault BFF startup" /
+# "Vault Agent startup"). Without this preflight the operator would instead get
+# three separate cryptic "refusing to start" failures in three log files.
+# When no vault file exists, this is a transparent no-op — behavior is
+# byte-identical to before (the common dev case on machines with no vault).
+# Secret hygiene (T-269-27): VAULT_PASSWORD is only ever passed via the
+# subshell environment, never as a CLI arg, and is never echoed.
+VAULT_FILE="${VAULT_PATH:-$BASEDIR/secrets.vault}"
+if [[ -f "$VAULT_FILE" ]]; then
+  if [[ -z "${VAULT_PASSWORD:-}" ]]; then
+    echo "[ERROR] secrets.vault present at ${VAULT_FILE} but VAULT_PASSWORD is not set."
+    echo "        The BFF, MCP Gateway, and Agent Service will refuse to start."
+    echo "        Fix: export VAULT_PASSWORD=... before ./run-bank.sh"
+    echo "        (or remove/rename ${VAULT_FILE} to fall back to .env / process.env)."
+    exit 1
+  fi
+  echo "[VAULT] secrets.vault detected — passing VAULT_PASSWORD to vault-aware services."
+fi
+
 echo "[LAUNCH] Starting Banking API Server on ${API_HOST}:${API_PORT}..."
 (
   cd "$BASEDIR/banking_api_server"
@@ -669,6 +691,8 @@ echo "[LAUNCH] Starting Banking API Server on ${API_HOST}:${API_PORT}..."
   FRONTEND_ADMIN_URL=${CLIENT_URL}/admin \
   FRONTEND_DASHBOARD_URL=${CLIENT_URL}/dashboard \
   MCP_GATEWAY_HTTP_URL="${MCP_GATEWAY_HTTP_URL:-https://api.ping.demo:3005}" \
+  VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
+  VAULT_PATH="${VAULT_PATH:-}" \
   npm start > /tmp/bank-api-server.log 2>&1
 ) &
 echo $! > "$PID_API"
@@ -722,6 +746,8 @@ if [[ -d "$BASEDIR/banking_mcp_gateway" ]]; then
   ensure_service_env banking_mcp_gateway
   (
     cd "$BASEDIR/banking_mcp_gateway"
+    VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
+    VAULT_PATH="${VAULT_PATH:-}" \
     npm start > "${LOG_GW}" 2>&1
   ) &
   echo $! > "$PID_GW"
@@ -745,7 +771,10 @@ if [[ -d "$BASEDIR/banking_agent_service" ]]; then
   ensure_service_env banking_agent_service
   (
     cd "$BASEDIR/banking_agent_service"
-    PORT=3006 npm start > "${LOG_AGENT_SVC}" 2>&1
+    PORT=3006 \
+    VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
+    VAULT_PATH="${VAULT_PATH:-}" \
+    npm start > "${LOG_AGENT_SVC}" 2>&1
   ) &
   echo $! > "$PID_AGENT_SVC"
 fi
@@ -774,21 +803,23 @@ if [[ -d "$BASEDIR/banking_mortgage_service" ]]; then
   echo $! > "$PID_MORTGAGE"
 fi
 
-# ── LangChain Agent on :8888 ─────────────────────────────────────────────────
-if [[ -f "$BASEDIR/langchain_agent/main.py" ]] || [[ -f "$BASEDIR/langchain_agent/server.py" ]]; then
-  ENTRY="main"
-  [[ -f "$BASEDIR/langchain_agent/server.py" ]] && ENTRY="server"
-  echo "[CHAIN] Starting LangChain Agent on :8888 (HTTPS if certs available)..."
+# ── LangChain Agent (chat WS :8889 + health :8890) ───────────────────────────
+# Entry point is src/main.py, run as a module (`python -m src.main`) — it is an
+# asyncio app that manages its own websockets server (8889) and health server
+# (8890); it is NOT a uvicorn ASGI app and there is no :8888 listener. It reads
+# its own langchain_agent/.env via python-dotenv. The venv is `.venv`.
+if [[ -f "$BASEDIR/langchain_agent/src/main.py" ]]; then
+  echo "[CHAIN] Starting LangChain Agent (chat WS :8889, health :8890)..."
   (
     cd "$BASEDIR/langchain_agent"
-    [[ -d venv ]] && source venv/bin/activate
-    if [[ -f "${CERT_FILE}" ]] && [[ -f "${KEY_FILE}" ]]; then
-      python3 -m uvicorn "${ENTRY}:app" --port 8888 \
-        --ssl-keyfile "${KEY_FILE}" --ssl-certfile "${CERT_FILE}" \
-        > /tmp/bank-langchain-agent.log 2>&1
+    if [[ -x ".venv/bin/python" ]]; then
+      PY=".venv/bin/python"
+    elif [[ -x "venv/bin/python" ]]; then
+      PY="venv/bin/python"
     else
-      python3 -m uvicorn "${ENTRY}:app" --port 8888 > /tmp/bank-langchain-agent.log 2>&1
+      PY="python3"
     fi
+    "$PY" -m src.main > /tmp/bank-langchain-agent.log 2>&1
   ) &
   echo $! > "$PID_AGENT"
 fi

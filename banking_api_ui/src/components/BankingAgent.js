@@ -3158,7 +3158,12 @@ export default function BankingAgent({
       handleLoginAction("login_user");
       return;
     }
-    const { skipUserLabel = false, isRefire = false } = opts;
+    // nlSource: when this action was reached via the NL pipeline, the routing
+    // engine ("heuristic" | "helix" | "ollama" | ...) is threaded here so the
+    // assistant result carries the same source pill the conversational
+    // answers already render (see msg.source label, ~line 8300).
+    const { skipUserLabel = false, isRefire = false, nlSource = null } = opts;
+    const resultExtra = nlSource ? { source: nlSource } : {};
     const label = ACTIONS.find((a) => a.id === actionId)?.label || actionId;
     if (!skipUserLabel) {
       addMessage("user", label);
@@ -3197,24 +3202,77 @@ export default function BankingAgent({
           toast.update(toastId, { render: " Calling get_my_accounts…" });
           response = await getMyAccounts();
           break;
-        case "mortgage_demo":
-          // Phase 266 / Phase 267 Path A — the agent's intended behavior is:
-          //   1. Call gateway MCP tool 'show_mortgage' (api_key disposition)
-          //   2. Gateway swaps user's OAuth bearer for service API key
-          //   3. Gateway calls banking_mortgage_service (X-API-Key, no OAuth)
-          //   4. Gateway returns the mortgage payload + _meta.credentialPath
+        case "mortgage_demo": {
+          // Phase 267 Path A — api_key disposition, end-to-end:
+          //   1. Call gateway MCP tool 'show_mortgage' (apikey disposition)
+          //   2. Gateway enforces banking:mortgage:read on the user bearer
+          //   3. Gateway drops the OAuth bearer, attaches the service API key
+          //   4. Gateway calls banking_mortgage_service (X-API-Key + X-User-Sub)
           //   5. Navigate to /path/mortgage with the payload in location.state
-          //
-          // Until Plan 01 of Phase 266 + Phase 267 ship the gateway's api_key
-          // disposition end-to-end, this dispatch just navigates to the page;
-          // the page renders an empty-state explaining what's required.
-          // Once the gateway routing is implemented, replace the navigate()
-          // call with: callMcpTool('show_mortgage') → navigate with payload.
-          toast.update(toastId, { render: " Routing to mortgage path (API-key — Phase 267 will wire the gateway)…" });
+          // Destination route is hard-coded (T-266-04-01: no open-redirect).
+          toast.update(toastId, {
+            render:
+              " Routing to mortgage path (gateway swaps OAuth bearer for service API key)…",
+          });
+          let mortgageResp;
+          try {
+            mortgageResp = await callMcpTool("show_mortgage", {});
+          } catch (e) {
+            console.error(
+              "[BankingAgent] mortgage_demo dispatch failed:",
+              e?.message,
+            );
+            toast.dismiss(toastId);
+            setLoading(false);
+            toolProgressIdRef.current = null;
+            addMessage(
+              "assistant",
+              `Could not load mortgage data: ${e?.message || "gateway call failed"}.`,
+              actionId,
+              resultExtra,
+            );
+            return;
+          }
+          const mortgageMcp = mortgageResp?.result;
+          const mortgageNorm = normalizeAgentToolResult(mortgageMcp);
+          // Scope gate / backend error → JSON-RPC error surfaces as { error, message }.
+          if (isAgentToolErrorResult(mortgageNorm)) {
+            toast.dismiss(toastId);
+            setLoading(false);
+            toolProgressIdRef.current = null;
+            const insufficient =
+              mortgageNorm.error === "insufficient_scope" ||
+              /scope/i.test(mortgageNorm.message || "");
+            addMessage(
+              "assistant",
+              insufficient
+                ? `The agent's access token does not carry the banking:mortgage:read scope, so the gateway refused to swap it for the mortgage service API key. Sign out and sign back in to consent to mortgage access, then try "show mortgage data" again.`
+                : `Could not load mortgage data: ${mortgageNorm.message || "backend error"}.`,
+              actionId,
+              resultExtra,
+            );
+            return;
+          }
+          const mortgageMeta = mortgageMcp?._meta || {};
+          const mortgagePayload = {
+            mortgage: mortgageNorm.mortgage,
+            apiKeyMaskedLast4: mortgageMeta.apiKeyMaskedLast4,
+            message: mortgageNorm.note || mortgageMeta.note,
+            backend: {
+              source: mortgageNorm.source,
+              authMechanism: mortgageNorm.authMechanism,
+              note: mortgageNorm.note,
+            },
+          };
+          if (tokenChain && Array.isArray(mortgageResp?.tokenEvents)) {
+            tokenChain.setTokenEvents(actionId, mortgageResp.tokenEvents);
+          }
+          toast.dismiss(toastId);
           setLoading(false);
           toolProgressIdRef.current = null;
-          navigate("/path/mortgage");
+          navigate("/path/mortgage", { state: { mortgagePayload } });
           return;
+        }
         case "transactions":
           toast.update(toastId, { render: " Calling get_my_transactions…" });
           response = await getMyTransactions();
@@ -4063,15 +4121,24 @@ export default function BankingAgent({
           });
           break;
         case "api_key_demo": {
-          // Phase 266 Path A: exercise the gateway API-key credential swap.
-          // Tool name 'special_offers' is defined ONLY by Phase 266-01 gateway router.
-          // Gateway swaps OAuth bearer for service API key, records swap in _meta.tokenEvents.
+          // Phase 266/267 Path A: exercise the gateway API-key credential swap.
+          // Tool name 'show_mortgage' is the canonical apikey-disposition tool
+          // (Phase 267 replaced the Phase 266 'special_offers' stub). Gateway
+          // swaps OAuth bearer for service API key, records swap in
+          // _meta.tokenEvents. This chip only demonstrates the swap and routes
+          // to the info page (it does NOT render the mortgage payload — that's
+          // the 'mortgage_demo' chip / "show mortgage data").
           // Destination route is hard-coded (T-266-04-01: no open-redirect via infoPageHint).
-          toast.update(toastId, { render: "Routing to API-key credential path…" });
+          toast.update(toastId, {
+            render: "Routing to API-key credential path…",
+          });
           try {
-            await callMcpTool("special_offers", {});
+            await callMcpTool("show_mortgage", {});
           } catch (e) {
-            console.error("[BankingAgent] api_key_demo dispatch failed:", e?.message);
+            console.error(
+              "[BankingAgent] api_key_demo dispatch failed:",
+              e?.message,
+            );
           }
           setLoading(false);
           toolProgressIdRef.current = null;
@@ -4083,11 +4150,16 @@ export default function BankingAgent({
           // Tool name 'user_profile_card' is defined ONLY by Phase 266-01 gateway router.
           // R2: gateway forwards to /api/resource-server/identity; SPA page fetches it directly.
           // Destination route is hard-coded (T-266-04-01: no open-redirect via infoPageHint).
-          toast.update(toastId, { render: "Routing to access + id-token credential path…" });
+          toast.update(toastId, {
+            render: "Routing to access + id-token credential path…",
+          });
           try {
             await callMcpTool("user_profile_card", {});
           } catch (e) {
-            console.error("[BankingAgent] dual_token_demo dispatch failed:", e?.message);
+            console.error(
+              "[BankingAgent] dual_token_demo dispatch failed:",
+              e?.message,
+            );
           }
           setLoading(false);
           toolProgressIdRef.current = null;
@@ -4283,7 +4355,12 @@ export default function BankingAgent({
           setLoading(false);
           return;
         } else {
-          addMessage("assistant", formatResult(response.result), actionId);
+          addMessage(
+            "assistant",
+            formatResult(response.result),
+            actionId,
+            resultExtra,
+          );
           toast.dismiss(toastId);
           const isTransactionAction = [
             "transfer",
@@ -4532,7 +4609,12 @@ export default function BankingAgent({
       // Always add the result to the chat, including accounts/transactions/balance
       // that also display in the side panel. This ensures the response is visible
       // in the main agent conversation flow.
-      addMessage("assistant", formatResult(response.result), actionId);
+      addMessage(
+        "assistant",
+        formatResult(response.result),
+        actionId,
+        resultExtra,
+      );
 
       // Append HTTP trace (banking API call detail) as a token-event so it
       // shares the RFC-info checkbox gate at the render filter (line ~8120).
@@ -5130,16 +5212,27 @@ export default function BankingAgent({
   // Returns merged params on success, or null when we couldn't extract
   // anything useful (the caller re-asks once before giving up).
   function parseClarificationReply(action, text, partialParams) {
-    const t = String(text || "").toLowerCase().trim();
+    const t = String(text || "")
+      .toLowerCase()
+      .trim();
     if (!t) return null;
 
     // Extract account-type mentions. Accepts bare "checking" / "savings",
     // or phrases like "my checking account" / "from savings".
-    const accountTypes = ["checking", "savings", "credit", "credit card", "loan", "mortgage"];
+    const accountTypes = [
+      "checking",
+      "savings",
+      "credit",
+      "credit card",
+      "loan",
+      "mortgage",
+    ];
     const matchedTypes = accountTypes.filter((kind) => t.includes(kind));
 
     // Extract dollar amount. Accepts "$200", "200 dollars", "200".
-    const amountMatch = t.match(/\$?\s*(\d+(?:\.\d{1,2})?)\s*(?:dollars?|usd)?/);
+    const amountMatch = t.match(
+      /\$?\s*(\d+(?:\.\d{1,2})?)\s*(?:dollars?|usd)?/,
+    );
     const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
 
     // Extract direction prepositions for transfers: "from X to Y".
@@ -5206,14 +5299,15 @@ export default function BankingAgent({
       // would type ("checking", "$50 to savings", "200 from checking
       // to savings"). Anything we can't parse falls back to one more
       // round of clarification.
-      const merged = parseClarificationReply(pc.action, text, pc.partialParams || {});
+      const merged = parseClarificationReply(
+        pc.action,
+        text,
+        pc.partialParams || {},
+      );
       if (!merged) {
         // Couldn't extract — re-ask once. After that, give up and let
         // the parser try a normal interpretation.
-        addMessage(
-          "assistant",
-          `Sorry, I didn't catch that. ${pc.asked}`,
-        );
+        addMessage("assistant", `Sorry, I didn't catch that. ${pc.asked}`);
         setPendingClarification(pc);
         return;
       }
@@ -5221,8 +5315,14 @@ export default function BankingAgent({
       // Build a synthetic NL result that mirrors what the server would
       // have produced, and dispatch through the same path. source='clarify'
       // so the token-chain panel can label it correctly.
-      const syntheticResult = { kind: "action", action: pc.action, params: merged };
-      dispatchNlResult(syntheticResult, "clarify", text).catch((err) => reportNlFailure(err));
+      const syntheticResult = {
+        kind: "action",
+        action: pc.action,
+        params: merged,
+      };
+      dispatchNlResult(syntheticResult, "clarify", text).catch((err) =>
+        reportNlFailure(err),
+      );
       return;
     }
 
@@ -5359,10 +5459,11 @@ export default function BankingAgent({
   /**
    * Shared NL dispatch: education panels, banking tools, or fallback hint.
    * @param {object} result - NL routing result from server
-   * @param {string} _source - routing source tag (unused)
+   * @param {string} _source - routing source tag ("heuristic" | "helix" |
+   *   "ollama" | ...). Threaded into runAction via opts.nlSource so the
+   *   assistant result renders the same source pill as conversational answers.
    * @param {string} nlUserText - original user text for post-auth replay
    */
-  // eslint-disable-next-line no-unused-vars
   async function dispatchNlResult(
     result,
     _source = "heuristic",
@@ -5447,7 +5548,11 @@ export default function BankingAgent({
       }
       const p = normalizeBankingParams(params);
       if (action === "mcp_tools") {
-        await runAction("mcp_tools", {}, { skipUserLabel: true });
+        await runAction(
+          "mcp_tools",
+          {},
+          { skipUserLabel: true, nlSource: _source },
+        );
         return;
       }
       if (action === "biggest_purchase" || action === "spending_summary") {
@@ -5514,7 +5619,7 @@ export default function BankingAgent({
         return;
       }
       if (action === "accounts" || action === "transactions") {
-        await runAction(action, {}, { skipUserLabel: true });
+        await runAction(action, {}, { skipUserLabel: true, nlSource: _source });
       } else if (action === "balance" && (p.accountId || p.accountType)) {
         let resolvedId = p.accountId;
         if (!resolvedId && p.accountType) {
@@ -5527,7 +5632,7 @@ export default function BankingAgent({
           await runAction(
             "balance",
             { accountId: resolvedId },
-            { skipUserLabel: true },
+            { skipUserLabel: true, nlSource: _source },
           );
         } else {
           addMessage(
@@ -5549,7 +5654,7 @@ export default function BankingAgent({
         await runAction(
           "transfer",
           { ...p, fromId: resolveAcct(p.fromId), toId: resolveAcct(p.toId) },
-          { skipUserLabel: true },
+          { skipUserLabel: true, nlSource: _source },
         );
       } else if (action === "deposit" && p.amount) {
         const depAcct = liveAccounts.find(
@@ -5558,7 +5663,7 @@ export default function BankingAgent({
         await runAction(
           "deposit",
           { ...p, accountId: p.accountId || (depAcct ? depAcct.id : p.toId) },
-          { skipUserLabel: true },
+          { skipUserLabel: true, nlSource: _source },
         );
       } else if (action === "withdraw" && p.amount) {
         const wdAcct = liveAccounts.find(
@@ -5568,7 +5673,7 @@ export default function BankingAgent({
         await runAction(
           "withdraw",
           { ...p, accountId: p.accountId || (wdAcct ? wdAcct.id : p.fromId) },
-          { skipUserLabel: true },
+          { skipUserLabel: true, nlSource: _source },
         );
       } else if (
         ["balance", "transfer", "deposit", "withdraw"].includes(action)
@@ -5593,7 +5698,7 @@ export default function BankingAgent({
           asked: questions[action],
         });
       } else {
-        await runAction(action, p, { skipUserLabel: true });
+        await runAction(action, p, { skipUserLabel: true, nlSource: _source });
       }
       return;
     }

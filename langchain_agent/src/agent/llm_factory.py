@@ -62,9 +62,13 @@ def get_llm(
 
     from langchain_ollama import ChatOllama
 
+    # IN-04: forward `streaming` to ChatOllama. Without this the parameter was
+    # dead — token-level streaming callbacks attached by
+    # _maybe_attach_websocket_streaming never fired on Ollama token deltas.
     return ChatOllama(
         model=resolved_model,
         temperature=temperature,
         num_predict=max_tokens,
         base_url=ollama_base_url,
+        streaming=streaming,
     )

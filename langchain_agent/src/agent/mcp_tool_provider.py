@@ -2,6 +2,8 @@
 MCP Tool Provider for LangChain integration.
 """
 import asyncio
+import contextvars
+import json
 import logging
 from typing import Dict, Any, List, Optional, Type
 from datetime import datetime
@@ -17,8 +19,59 @@ from models.mcp import AuthChallenge
 
 logger = logging.getLogger(__name__)
 
-# Global tracer reference for MCP tool execution tracing
-_current_tracer = None
+# WR-06: the "current tracer" must be scoped to the async context/task that
+# set it, NOT shared process-wide. A module-level global was only safe while
+# WR-02's single global message-queue worker serialized all session
+# processing; the moment per-session concurrency is introduced, session A's
+# tracer would receive session B's log_step calls (cross-session trace bleed).
+# A ContextVar is the correct construct: asyncio.create_task copies the
+# context at creation time, so each concurrent task sees its OWN tracer.
+# Setter ordering is verified safe — set_tracer() runs BEFORE the tool
+# execution (agent_executor.ainvoke / tool.arun) that reads it, so the value
+# is captured into any child tasks the executor spawns (copy-on-create).
+_current_tracer: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar(
+    "mcp_current_tracer", default=None
+)
+
+
+# WR-05: the auth-popup block was previously assembled with bare f-string
+# interpolation of values that originate from an MCP server's authChallenge
+# payload (authorizationUrl, scope, expiresAt, ...). A value containing a
+# double-quote or brace could break out of the hand-rolled "JSON" and inject
+# arbitrary keys the UI then trusts (e.g. redirect the popup elsewhere).
+# Build a real dict and json.dumps() it so every value is correctly escaped.
+def build_auth_popup_message(
+    *,
+    auth_url: str,
+    popup_width: Any,
+    popup_height: Any,
+    popup_title: str,
+    status_endpoint: str,
+    session_id: str,
+    scope: str,
+    expires_at: str,
+) -> str:
+    """Return the SYSTEM_AUTH_POPUP_REQUEST envelope with an injection-safe
+    JSON body. Shared by the tool provider and the agent so all three former
+    f-string sites have one correct implementation."""
+    payload = {
+        "authorizationUrl": auth_url,
+        "popupWidth": popup_width,
+        "popupHeight": popup_height,
+        "popupTitle": popup_title,
+        "statusEndpoint": status_endpoint,
+        "sessionId": session_id,
+        "scope": scope,
+        "expiresAt": expires_at,
+    }
+    return (
+        "SYSTEM_AUTH_POPUP_REQUEST_START\n"
+        + json.dumps(payload, indent=2)
+        + "\nSYSTEM_AUTH_POPUP_REQUEST_END\n\n"
+        + "Authorization Required: I need your permission to access your "
+        + "banking data. I'll open a secure popup window for you to "
+        + "complete the authorization process."
+    )
 
 
 class MCPToolInput(BaseModel):
@@ -285,9 +338,9 @@ class MCPTool(BaseTool):
             logger.debug(f"Tool execution details - Server: {self.tool_info.server_name}, Tool: {self.tool_info.name}, Session: {self._current_session_id}")
             
             # Log MCP tool execution start with detailed payload
-            global _current_tracer
-            if _current_tracer:
-                _current_tracer.log_step("mcp_tool_request", f"MCP Server: {self.tool_info.server_name}", {
+            tracer = _current_tracer.get()
+            if tracer:
+                tracer.log_step("mcp_tool_request", f"MCP Server: {self.tool_info.server_name}", {
                     "tool_name": self.tool_info.name,
                     "server_name": self.tool_info.server_name,
                     "input_parameters": parameters,
@@ -314,8 +367,9 @@ class MCPTool(BaseTool):
             logger.info(f"Has authChallenge: {'authChallenge' in result if isinstance(result, dict) else False}")
             
             # Log MCP tool execution response with detailed payload
-            if _current_tracer:
-                _current_tracer.log_step("mcp_tool_response", f"MCP Server: {self.tool_info.server_name}", {
+            tracer = _current_tracer.get()
+            if tracer:
+                tracer.log_step("mcp_tool_response", f"MCP Server: {self.tool_info.server_name}", {
                     "tool_name": self.tool_info.name,
                     "server_name": self.tool_info.server_name,
                     "result": result,
@@ -373,21 +427,17 @@ class MCPTool(BaseTool):
                     popup_height = ui_hints.get("popupHeight", 650)
                     popup_title = ui_hints.get("popupTitle", "Authorization Required")
                     
-                    # Use a format that the LLM won't try to rewrite
-                    formatted_message = f"""SYSTEM_AUTH_POPUP_REQUEST_START
-{{
-  "authorizationUrl": "{auth_url}",
-  "popupWidth": {popup_width},
-  "popupHeight": {popup_height},
-  "popupTitle": "{popup_title}",
-  "statusEndpoint": "{status_endpoint}",
-  "sessionId": "{auth_challenge.get('sessionId', '')}",
-  "scope": "{scope}",
-  "expiresAt": "{expires_at}"
-}}
-SYSTEM_AUTH_POPUP_REQUEST_END
-
-Authorization Required: I need your permission to access your banking data. I'll open a secure popup window for you to complete the authorization process."""
+                    # WR-05: injection-safe JSON via shared helper.
+                    formatted_message = build_auth_popup_message(
+                        auth_url=auth_url,
+                        popup_width=popup_width,
+                        popup_height=popup_height,
+                        popup_title=popup_title,
+                        status_endpoint=status_endpoint,
+                        session_id=auth_challenge.get('sessionId', ''),
+                        scope=scope,
+                        expires_at=expires_at,
+                    )
                     
                     logger.info("Returning popup authorization challenge message to user")
                     return formatted_message
@@ -461,9 +511,10 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
             logger.error(f"Full traceback: {traceback.format_exc()}")
             
             # Log MCP tool execution error with detailed information
-            if _current_tracer:
+            tracer = _current_tracer.get()
+            if tracer:
                 execution_time_ms = int((datetime.now() - start_time).total_seconds() * 1000) if 'start_time' in locals() else 0
-                _current_tracer.log_step("mcp_tool_error", f"MCP Server: {self.tool_info.server_name}", {
+                tracer.log_step("mcp_tool_error", f"MCP Server: {self.tool_info.server_name}", {
                     "tool_name": self.tool_info.name,
                     "server_name": self.tool_info.server_name,
                     "error": str(e),
@@ -803,9 +854,15 @@ class MCPToolProvider:
         logger.info("Initialized MCP tool provider")
     
     def set_tracer(self, tracer):
-        """Set the current tracer for MCP tool execution logging."""
-        global _current_tracer
-        _current_tracer = tracer
+        """Set the current tracer for MCP tool execution logging.
+
+        WR-06: scoped to the calling async context (ContextVar), not a
+        process-wide global. Called once per agent turn BEFORE tool execution
+        in that turn — the value propagates (copy-on-create) into any child
+        tasks the agent executor spawns, so concurrent sessions never see
+        each other's tracer.
+        """
+        _current_tracer.set(tracer)
     
     async def get_langchain_tools(self) -> List[BaseTool]:
         """

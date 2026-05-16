@@ -4,7 +4,9 @@
  * Priority: heuristic regex (instant, zero-cost) → LangGraph LLM (when regex returns kind:'none')
  */
 
-const { createBankingAgent } = require('./agentBuilder');
+const { getBankingToolDefinitions, MAX_TOOL_ITERATIONS } = require('./agentBuilder');
+const { resolveMcpAccessTokenWithEvents } = require('./agentMcpTokenService');
+const z = require('zod');
 const appEventService = require('./appEventService');
 const { parseHeuristic } = require('./nlIntentParser');
 const dataStore = require('../data/store');
@@ -12,6 +14,40 @@ const axios = require('axios');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+
+/**
+ * IN-04: agent chat content is PII-equivalent in a banking context. The
+ * verbose per-message preview/length console logs and the full-prompt
+ * appEventService entry are gated behind LOG_FULL_PROMPTS (off by default).
+ * When off, only a short non-reversible fingerprint is logged so the flow is
+ * still traceable without persisting the user's message text.
+ */
+const LOG_FULL_PROMPTS = process.env.LOG_FULL_PROMPTS === 'true';
+function _messageFingerprint(msg) {
+  const s = typeof msg === 'string' ? msg : String(msg ?? '');
+  const len = s.length;
+  const h = crypto.createHash('sha1').update(s).digest('hex').slice(0, 8);
+  return `len=${len} sha1=${h}`;
+}
+
+/**
+ * WR-07(b): Sanitize an account identifier before it lands in a transaction
+ * `description` string. accountType is user-controlled (set at account
+ * creation) and flows unsanitized into the audit log + Token Chain
+ * explanation strings. Strip control chars and template/markup-injection-ish
+ * characters, collapse whitespace, and bound the length. Not a
+ * code-execution vector — defence-in-depth so a hostile account label can't
+ * inject into logged/persisted free text.
+ */
+function sanitizeAccountLabel(value) {
+  return String(value == null ? '' : value)
+    .replace(/[\u0000-\u001f\u007f]/g, '') // control chars
+    .replace(/[`$<>{}\\]/g, '')            // template / markup injection chars
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 64) || 'account';
+}
 
 /**
  * POST to /api/transactions via internal HTTP, going through all auth/HITL gates.
@@ -163,7 +199,9 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
           toAccountId: toAcct.id,
           amount,
           type: 'transfer',
-          description: params.description || `Transfer from ${fromAcct.accountType} to ${toAcct.accountType}`,
+          // WR-07(b): sanitize account labels before they land in the
+          // transaction description (flows to audit log + Token Chain text).
+          description: params.description || `Transfer from ${sanitizeAccountLabel(fromAcct.accountType)} to ${sanitizeAccountLabel(toAcct.accountType)}`,
         }, userToken);
         if (txRes.status === 428) {
           const body = txRes.data;
@@ -179,7 +217,8 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
         }
         return { reply: `Transferred **$${amount.toFixed(2)}** from ${fromAcct.accountType} to ${toAcct.accountType}.`, success: true, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       } catch (err) {
-        return { reply: `Transfer failed: ${err.message}`, success: false, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        // WR-07(a): non-Error throws have no .message — surface the real value.
+        return { reply: `Transfer failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
     }
 
@@ -222,7 +261,8 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
         }
         return { reply: `Deposited **$${amount.toFixed(2)}** into ${toAcct.accountType}.`, success: true, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       } catch (err) {
-        return { reply: `Deposit failed: ${err.message}`, success: false, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        // WR-07(a): non-Error throws have no .message — surface the real value.
+        return { reply: `Deposit failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
     }
 
@@ -268,7 +308,8 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
         }
         return { reply: `Withdrew **$${amount.toFixed(2)}** from ${fromAcct.accountType}.`, success: true, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       } catch (err) {
-        return { reply: `Withdrawal failed: ${err.message}`, success: false, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        // WR-07(a): non-Error throws have no .message — surface the real value.
+        return { reply: `Withdrawal failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
     }
 
@@ -287,7 +328,7 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
       }
       const result = await get_sensitive_account_details({}, userId, effectiveReq);
       if (result.error === 'hitl_required' || result.hitl_required) {
-        return { reply: '🔒 Viewing sensitive account details requires your approval. Please confirm in the consent modal to continue.', success: false, toolsCalled: ['get_sensitive_account_details'], tokensUsed: 0, requiresConsent: true, agentConfigured: true, tokenEvents: [], error: 'hitl_required', hitl: { type: 'consent' }, hitl_threshold_usd: 0 };
+        return { reply: 'Viewing sensitive account details requires your approval. Please confirm in the consent modal to continue.', success: false, toolsCalled: ['get_sensitive_account_details'], tokensUsed: 0, requiresConsent: true, agentConfigured: true, tokenEvents: [], error: 'hitl_required', hitl: { type: 'consent' }, hitl_threshold_usd: 0 };
       }
       if (!result.ok) {
         return { reply: `❌ ${result.error || 'Could not retrieve sensitive account details.'}`, success: false, toolsCalled: ['get_sensitive_account_details'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
@@ -315,9 +356,119 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
       };
     }
   } catch (err) {
-    console.warn('[heuristicBanking] Error executing action:', action, err.message);
+    // WR-07(a): non-Error throws (string, MCP-error object without .message)
+    // previously logged `undefined` and were swallowed — the function then
+    // returned null, so the caller fell through to the LLM path which could
+    // RE-EXECUTE a write tool (transfer/deposit/withdraw) a second time.
+    // Log the real value, and re-throw for write actions so a partially
+    // executed mutation is surfaced instead of silently double-run.
+    const detail = (err && err.message) ? err.message : String(err);
+    console.warn('[heuristicBanking] Error executing action:', action, detail);
+    if (['transfer', 'deposit', 'withdraw'].includes(action)) {
+      throw (err instanceof Error) ? err : new Error(`[heuristicBanking] ${action} failed: ${detail}`);
+    }
   }
   return null;
+}
+
+/**
+ * Phase 2 (agent consolidation) reason-loop helpers.
+ *
+ * Split "schema" from "execute": :3006 reasons over tool SCHEMAS only; the BFF
+ * still EXECUTES tools locally via the SAME executors `createBankingAgent`'s
+ * tool node used. Token custody + HITL enforcement stay BFF-side.
+ */
+
+/**
+ * Tool SCHEMAS for :3006 — derived from the SAME tool list agentBuilder builds
+ * (`getBankingToolDefinitions()` → `createMcpToolRegistry()`), with executors
+ * stripped. Zod `schema` → JSON Schema so :3006's helixToolAdapter can read
+ * `.properties`. No hand-duplicated schemas.
+ */
+function buildToolSchemasForAgent() {
+  const tools = getBankingToolDefinitions();
+  return tools.map((tool) => {
+    let inputSchema;
+    try {
+      inputSchema = tool.schema ? z.toJSONSchema(tool.schema) : { type: 'object', properties: {} };
+    } catch (_e) {
+      inputSchema = { type: 'object', properties: {} };
+    }
+    return {
+      name: tool.name,
+      description: tool.description || '',
+      inputSchema,
+    };
+  });
+}
+
+/**
+ * Execute a tool the SAME way agentBuilder's tool node did:
+ * `tool.invoke(args, { configurable: { agentContext: { agentToken, userId, tokenEvents } } })`.
+ * Token custody stays BFF-side — the MCP/agent token is resolved HERE via
+ * `resolveMcpAccessTokenWithEvents` (the same call `createBankingAgent` made
+ * before invoking tools), never on :3006.
+ *
+ * HITL/consent note: real transfer-consent enforcement is the deterministic
+ * heuristic, which runs and returns BEFORE this LLM/reason path
+ * (ARCHITECTURE-TRUTHS T-3) and is unchanged. On THIS LLM/tool path a
+ * HITL/consent denial from a tool surfaces as a generic error (same as the
+ * pre-consolidation in-process graph path — it never produced a clean 428
+ * here either). Do NOT assume the LLM path yields a 428; do NOT remove the
+ * heuristic floor believing it does.
+ */
+async function executeBffTool({ name, args, userId, userToken, req = null, tokenEvents = [], sessionId = '' }) {
+  const tools = getBankingToolDefinitions();
+  const tool = tools.find((t) => t.name === name);
+  if (!tool) {
+    return JSON.stringify({ error: `Unknown tool: ${name}` });
+  }
+
+  // Token custody: resolve the MCP/agent access token BFF-side, exactly as
+  // createBankingAgent did before tool invocation. Mirrors agentBuilder's
+  // mockReq shape so the resolver finds the user's access token + session.
+  const mockReq = {
+    session: { oauthTokens: { accessToken: userToken }, id: sessionId },
+    sessionID: sessionId,
+  };
+  const { token: agentToken, tokenEvents: exchangeEvents } =
+    await resolveMcpAccessTokenWithEvents(mockReq, 'banking_agent');
+  if (exchangeEvents && exchangeEvents.length > 0 && Array.isArray(tokenEvents)) {
+    tokenEvents.push(...exchangeEvents);
+  }
+
+  // SAME invoke shape + agentContext as agentBuilder's tool node. HITL/consent
+  // note: the deterministic heuristic enforces transfer consent and returns
+  // BEFORE this LLM/tool path (ARCHITECTURE-TRUTHS T-3); on THIS path a
+  // HITL/consent denial surfaces as a generic error (same as the
+  // pre-consolidation in-process graph path — never a clean 428 here). Do NOT
+  // assume the LLM path yields a 428; do NOT remove the heuristic floor.
+  const result = await tool.invoke(args, {
+    configurable: {
+      agentContext: {
+        agentToken,
+        userId,
+        tokenEvents,
+      },
+    },
+  });
+  return typeof result === 'string' ? result : JSON.stringify(result);
+}
+
+/**
+ * Same `{ helix_base_url, helix_api_key, helix_environment_id,
+ * helix_agent_id, helix_prompt_field_id }` object literal agentBuilder.js
+ * builds (~lines 173-179), read from langchainConfig.
+ */
+function extractHelixConfig(langchainConfig = {}) {
+  const cfg = langchainConfig || {};
+  return {
+    helix_base_url: cfg.helix_base_url,
+    helix_api_key: cfg.helix_api_key,
+    helix_environment_id: cfg.helix_environment_id,
+    helix_agent_id: cfg.helix_agent_id,
+    helix_prompt_field_id: cfg.helix_prompt_field_id,
+  };
 }
 
 /**
@@ -327,12 +478,18 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
   try {
     console.log('[processAgentMessage] Starting');
     appEventService.logEvent('agent', 'info', 'Agent processing message…', { tag: 'agent/message' });
-    console.log('[processAgentMessage] userId:', userId);
-    console.log('[processAgentMessage] userToken present:', !!userToken);
-    console.log('[processAgentMessage] userToken length:', userToken?.length || 0);
-    console.log('[processAgentMessage] sessionId:', sessionId);
-    console.log('[processAgentMessage] tokenEvents count:', tokenEvents?.length || 0);
-    console.log('[processAgentMessage] message length:', message?.length || 0);
+    // IN-04: non-reversible fingerprint by default; full detail only under
+    // LOG_FULL_PROMPTS (treat chat content as PII in a banking context).
+    if (LOG_FULL_PROMPTS) {
+      console.log('[processAgentMessage] userId:', userId);
+      console.log('[processAgentMessage] userToken present:', !!userToken);
+      console.log('[processAgentMessage] userToken length:', userToken?.length || 0);
+      console.log('[processAgentMessage] sessionId:', sessionId);
+      console.log('[processAgentMessage] tokenEvents count:', tokenEvents?.length || 0);
+      console.log('[processAgentMessage] message length:', message?.length || 0);
+    } else {
+      console.log('[processAgentMessage] message', _messageFingerprint(message));
+    }
 
     // Extract subject token from request (Phase 3: user has authorized)
     const subjectToken = req?.body?.subjectToken;
@@ -347,6 +504,11 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 
     // ── Heuristic first: handle known banking intents without LLM ──
     // Falls through to LangGraph/LLM only if heuristic doesn't match or if disabled.
+    // The heuristic returns IMMEDIATELY on a match (precedence unchanged,
+    // ARCHITECTURE-TRUTHS T-3). There is no "fell through with a result" case,
+    // so on the LLM-fallback path heuristicFallbackResult stays null and the
+    // reasoning_unavailable branch uses the generic message.
+    let heuristicFallbackResult = null;
     const heuristicEnabled = require('../services/configStore').getEffective('ff_heuristic_enabled') !== 'false';
 
     if (heuristicEnabled) {
@@ -371,53 +533,97 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 
     // Note: Ollama (default) needs no API key. Cloud LLMs need keys added via /llm-config.
 
-    console.log('[processAgentMessage] Creating banking agent...');
-    appEventService.logEvent('agent', 'info', 'Initializing LangGraph agent', { tag: 'agent/init' });
-    const { graph, initialState } = await createBankingAgent({
-      userId,
-      userToken,
-      sessionId,
-      tokenEvents,
-      langchainConfig,
-      subjectToken,
-      req,
-    });
-    console.log('[processAgentMessage] Agent created successfully');
-
-    // Invoke the LangGraph with the user message
-    console.log('[processAgentMessage] Invoking LangGraph agent...');
+    // Phase 2 (agent consolidation): the LLM fallback no longer builds an
+    // in-process LangGraph. Instead the BFF drives the reason loop against
+    // :3006 (which reasons over tool SCHEMAS only) and EXECUTES the SAME tool
+    // executors locally — token custody + HITL enforcement stay BFF-side. The
+    // agent⇄tools loop bound (WR-03) is now enforced in runReasonLoop's
+    // for(i < maxIterations) cap, still using MAX_TOOL_ITERATIONS.
+    console.log('[processAgentMessage] Driving :3006 reason loop...');
+    appEventService.logEvent('agent', 'info', 'Initializing reasoning agent', { tag: 'agent/init' });
     appEventService.logEvent('agent', 'info', 'LLM reasoning…', { tag: 'agent/invoke' });
-    appEventService.logEvent('agent_prompt', 'info', `LLM prompt: ${String(message)}`,
-      { tag: 'agent_prompt/llm_invoke', metadata: { userId, sessionId, messageLength: message?.length || 0, prompt: String(message), systemPrompt: langchainConfig?.systemPrompt || undefined, model: langchainConfig?.model || undefined, toolsAvailable: initialState?.tools?.map(t => t.name || t) || undefined } });
-    let finalState;
-    try {
-      finalState = await graph.invoke({
-        ...initialState,
-        messages: [{ role: 'user', content: message }],
-      });
-    } catch (invokeErr) {
-      throw invokeErr;
+    // IN-04: only emit the raw prompt into the admin events feed under
+    // LOG_FULL_PROMPTS; otherwise log a non-reversible fingerprint.
+    if (LOG_FULL_PROMPTS) {
+      appEventService.logEvent('agent_prompt', 'info', `LLM prompt: ${String(message)}`,
+        { tag: 'agent_prompt/llm_invoke', metadata: { userId, sessionId, messageLength: message?.length || 0, prompt: String(message), systemPrompt: langchainConfig?.systemPrompt || undefined, model: langchainConfig?.model || undefined } });
+    } else {
+      appEventService.logEvent('agent_prompt', 'info', `LLM prompt (${_messageFingerprint(message)})`,
+        { tag: 'agent_prompt/llm_invoke', metadata: { userId, sessionId, messageLength: message?.length || 0, promptFingerprint: _messageFingerprint(message), model: langchainConfig?.model || undefined } });
     }
-    console.log('[processAgentMessage] Agent invoke completed');
+
+    const { resolveLlmProvider } = require('./llmProviderResolver');
+    const { runReasonLoop } = require('./agentReasoningClient');
+    const { provider, model } = resolveLlmProvider(langchainConfig);
+
+    const toolSchemas = buildToolSchemasForAgent();
+    // HITL/consent note: real transfer-consent enforcement is the deterministic
+    // heuristic, which runs and returns BEFORE this LLM/reason path
+    // (ARCHITECTURE-TRUTHS T-3) and is unchanged. On THIS LLM/tool path a
+    // HITL/consent denial from a tool surfaces as a generic error (same as the
+    // pre-consolidation in-process graph path — it never produced a clean 428
+    // here either). Do NOT assume the LLM path yields a 428; do NOT remove the
+    // heuristic floor believing it does.
+    const loopResult = await runReasonLoop({
+      messages: [{ role: 'user', content: message }],
+      tools: toolSchemas,
+      provider,
+      model,
+      helixConfig: extractHelixConfig(langchainConfig),
+      ollamaBaseUrl: langchainConfig && langchainConfig.ollama_base_url,
+      maxIterations: MAX_TOOL_ITERATIONS,
+      executeTool: async (name, args) =>
+        executeBffTool({ name, args, userId, userToken, req, tokenEvents, sessionId }),
+    });
+
+    console.log('[processAgentMessage] Reason loop completed');
     appEventService.logEvent('agent', 'info', 'Agent response ready', { tag: 'agent/complete' });
-    appEventService.logEvent('agent_prompt', 'info', `LLM response: ${String(finalState?.messages?.[finalState.messages.length - 1]?.content || '')}`,
-      { tag: 'agent_prompt/llm_complete', metadata: { userId, messageCount: finalState?.messages?.length || 0, response: String(finalState?.messages?.[finalState.messages.length - 1]?.content || ''), model: langchainConfig?.model || undefined } });
-    console.log('[processAgentMessage] Final state keys:', Object.keys(finalState || {}));
-    console.log('[processAgentMessage] Final messages count:', finalState?.messages?.length || 0);
-    console.log('[processAgentMessage] Token events count:', finalState?.tokenEvents?.length || 0);
 
-    // Extract the last message from the agent response
-    const lastMessage = finalState.messages[finalState.messages.length - 1];
-    const responseContent = lastMessage?.content || lastMessage?.text || 'No response from agent';
-
-    return {
-      reply: responseContent,
-      success: true,
+    if (loopResult.ok) {
+      appEventService.logEvent('agent_prompt', 'info', `LLM response: ${String(loopResult.answer || '')}`,
+        { tag: 'agent_prompt/llm_complete', metadata: { userId, response: String(loopResult.answer || ''), model: model || undefined } });
+      return {
+        reply: loopResult.answer,
+        success: true,
+        toolsCalled: [],
+        tokensUsed: 0,
+        requiresConsent: false,
+        agentConfigured: true,
+        tokenEvents: tokenEvents || [],
+      };
+    }
+    if (loopResult.reason === 'max_iterations') {
+      // WR-03 preserved: bounded loop → graceful "maximum tool iteration
+      // limit" response (shape matches this file's other returns). The bound
+      // is now enforced BFF-side by runReasonLoop instead of LangGraph's
+      // GraphRecursionError, still using MAX_TOOL_ITERATIONS.
+      console.warn('[processAgentMessage] Max tool iteration limit reached:', MAX_TOOL_ITERATIONS);
+      appEventService.logEvent('agent', 'warning',
+        `Agent reached maximum tool iteration limit (${MAX_TOOL_ITERATIONS})`,
+        { tag: 'agent/recursion_limit' });
+      return {
+        reply: 'Agent reached maximum tool iteration limit. Please rephrase your request or try a simpler query.',
+        success: false,
+        toolsCalled: [],
+        tokensUsed: 0,
+        requiresConsent: false,
+        agentConfigured: true,
+        tokenEvents: tokenEvents || [],
+        error: 'max_tool_iterations',
+      };
+    }
+    // reasoning_unavailable: prefer the heuristic's output if one exists for
+    // this path (none does today — heuristic returns immediately on match), else
+    // the generic message. ARCHITECTURE-TRUTHS T-3 deterministic floor.
+    return heuristicFallbackResult || {
+      reply: 'Advanced reasoning is temporarily unavailable. Please try a simpler request.',
+      success: false,
       toolsCalled: [],
       tokensUsed: 0,
       requiresConsent: false,
       agentConfigured: true,
-      tokenEvents: finalState?.tokenEvents || []
+      tokenEvents: tokenEvents || [],
+      error: 'reasoning_unavailable',
     };
   } catch (error) {
     // TOKEN_INACTIVE must propagate so the route can return 401 + need_auth

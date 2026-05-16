@@ -239,7 +239,6 @@ function AppWithAuth() {
   const [sessionReauth, setSessionReauth] =
     useState(null); /** Missing credentials modal state */
   const [credentialsModal, setCredentialsModal] = useState(null);
-  const pendingUserEmailRef = useRef(null);
   /** Servers that were down on startup — null = not yet checked, [] = all ok */
   const [downServers, setDownServers] = useState(null);
   /** Avoid userAuthenticated ↔ checkOAuthSession dispatch loops; reset when user clears. */
@@ -331,29 +330,16 @@ function AppWithAuth() {
     if (main) main.scrollTop = 0;
   }, [pathname]);
 
-  const injectEmailIntoNextSessionInit = useCallback((email) => {
-    pendingUserEmailRef.current = email;
-    const _origSend = WebSocket.prototype.send;
-    WebSocket.prototype.send = function (data) {
-      try {
-        const msg = JSON.parse(data);
-        if (msg && msg.type === "session_init" && pendingUserEmailRef.current) {
-          msg.userEmail = pendingUserEmailRef.current;
-          pendingUserEmailRef.current = null;
-          data = JSON.stringify(msg);
-        }
-      } catch (e) {
-        // Ignore JSON parse errors
-      }
-      return _origSend.call(this, data);
-    };
-  }, []);
+  // Path A (CR-02/CR-04): the langchain chat session identity is now derived
+  // SERVER-SIDE from a PingOne token the BFF proxy attaches to session_init.
+  // The old `WebSocket.prototype.send` monkey-patch that injected `userEmail`
+  // into session_init has been removed — a client-supplied email is no longer
+  // trusted for identity (it was the CR-02 spoof primitive) and would be
+  // stripped by the BFF proxy anyway.
 
   const checkOAuthSession = useCallback(async () => {
     const applyUser = (u) => {
       setUser(u);
-      const userEmail = u?.email;
-      if (userEmail) injectEmailIntoNextSessionInit(userEmail);
       if (!sessionEstablishedRef.current) {
         sessionEstablishedRef.current = true;
         window.dispatchEvent(new CustomEvent("userAuthenticated"));
@@ -387,7 +373,7 @@ function AppWithAuth() {
       setLoading(false);
       return false;
     }
-  }, [injectEmailIntoNextSessionInit]);
+  }, []);
 
   // Public config → IndexedDB when not in logout handoff (f8393a7 pattern).
   useEffect(() => {

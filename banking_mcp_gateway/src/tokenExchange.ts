@@ -10,12 +10,15 @@
 
 import axios from 'axios';
 import { GatewayConfig } from './config';
+import { cacheInsertWithEviction } from './boundedTokenCache';
 
 // Simple in-memory cache: gatewayToken+targetAud → { token, expiresAt }
 // HI-06: previously this Map grew without bound. Under load (many distinct
 // tokens × many distinct audiences), memory grew monotonically until
 // process restart. Cap to TOKEN_EXCHANGE_CACHE_MAX entries; when at cap,
 // sweep expired entries first, then FIFO-evict the oldest insertion.
+// IN-03: eviction logic lives in ./boundedTokenCache (shared with
+// auth/McpTokenExchangeClient.ts) so the two parallel caches cannot drift.
 const _cache = new Map<string, { token: string; expiresAt: number }>();
 const TOKEN_EXCHANGE_CACHE_MAX = 1000;
 
@@ -28,18 +31,7 @@ function cacheKey(subjectToken: string, targetAud: string): string {
 }
 
 function _cacheInsertWithEviction(key: string, value: { token: string; expiresAt: number }): void {
-  if (_cache.size >= TOKEN_EXCHANGE_CACHE_MAX) {
-    const now = Date.now();
-    for (const [k, v] of _cache) {
-      if (v.expiresAt <= now) _cache.delete(k);
-    }
-    while (_cache.size >= TOKEN_EXCHANGE_CACHE_MAX) {
-      const oldestKey = _cache.keys().next().value;
-      if (oldestKey === undefined) break;
-      _cache.delete(oldestKey);
-    }
-  }
-  _cache.set(key, value);
+  cacheInsertWithEviction(_cache, key, value, TOKEN_EXCHANGE_CACHE_MAX);
 }
 
 export async function exchangeTokenForBackend(

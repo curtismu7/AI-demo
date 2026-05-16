@@ -1,8 +1,8 @@
 # BankingToolProvider Split — Design
 
 **Date:** 2026-05-14
-**Status:** Draft — awaiting spec review
-**Scope:** Refactor `banking_mcp_server/src/tools/BankingToolProvider.ts` (1124 lines) into a thin orchestrator (~250 lines) plus focused peer modules. No behavior change.
+**Status:** Implemented (2026-05-15) — shipped across 7 commits `ff17d581`→`d15d54dd` on branch `refactor/mcp-provider-split`. Spec-vs-implementation audit passed: zero behavior drift, build 0, 110/110 tests green.
+**Scope:** Refactor `banking_mcp_server/src/tools/BankingToolProvider.ts` (1124 lines) into a thin orchestrator (~355 lines as built; original target ~250 — see "New BankingToolProvider shape" for why the boundary lands higher) plus focused peer modules. No behavior change.
 **Out of scope:** `BankingToolRegistry.ts` merge (Approach C — deferred to a follow-up spec); all other oversized files in the repo.
 
 ---
@@ -84,7 +84,7 @@ export interface TokenResolverDeps {
 
 export interface TokenResolution {
   token: string;
-  source: 'agent-passthrough' | 'agent-step9-exchange' | 'user-rfc8693-exchange' | 'user-passthrough-devtest';
+  source: 'agent-passthrough' | 'agent-step9-exchange' | 'user-rfc8693-exchange' | 'user-passthrough-noexchange';
 }
 
 export class TokenResolver {
@@ -97,7 +97,7 @@ The four `source` values map 1:1 to the four paths in today's code:
 - `agent-passthrough` — `agentToken` present, no `BANKING_API_RESOURCE_URI` configured (backward-compat path, today's line 431-432)
 - `agent-step9-exchange` — `agentToken` present, `tokenExchangeService` and `BANKING_API_RESOURCE_URI` configured (today's Step-9 block, lines 400-428)
 - `user-rfc8693-exchange` — no `agentToken`, `tokenExchangeService` configured (today's lines 446-495)
-- `user-passthrough-devtest` — no `agentToken`, no `tokenExchangeService`, `NODE_ENV` is dev/test (today's lines 496-509). Throws in prod.
+- `user-passthrough-noexchange` — no `agentToken`, no `tokenExchangeService` (today's lines 496-509). **Unconditional passthrough of the session user token in ALL environments — it does NOT throw in production.** Verified against pre-refactor source (`git show ff17d581~1:BankingToolProvider.ts` lines 496-500): the original code had no `NODE_ENV` guard. The `source` value is named `-noexchange` (not `-devtest`) to reflect that the discriminator is the absence of a token-exchange service, not an env check. (An earlier draft of this spec incorrectly described this path as dev/test-gated with a prod throw; the Non-goal "do not promote the dev/test passthrough fallback to a hard error" is the correct intent and is preserved.)
 
 The `tokenCache` import moves from `BankingToolProvider` into `TokenResolver` (the cache is part of "resolving a token"). The `getUserTokenForScopes` helper (today's lines 1101-1124) moves in as a private method. Throws `AuthenticationError` and `Error` exactly as today — no exception type changes.
 
@@ -221,6 +221,15 @@ Each tool's current `private async executeX(token, params)` method becomes a top
 ---
 
 ## New `BankingToolProvider` shape
+
+> **As-built note (2026-05-15):** the provider landed at **355 lines**, not the ~250 estimate. The
+> ~105-line delta is legitimately orchestration and was always intended to stay per the
+> "Methods that stay on the provider" table below: `handleExecutionError` (~38 lines, the extracted
+> `catch` block — error-shape decisions + trace attachment are orchestration concerns),
+> `handleAuthorizationCode`, the `tools/list` methods, and per-method JSDoc. The audit confirmed no
+> handler/resolver/verifier/audit logic leaked back in — `executeSpecificTool` delegates cleanly to
+> `tokenResolver` / `jwtVerifier` / `handlerMap`. The ~250 estimate was optimistic; the boundary is
+> correct.
 
 ### Constructor (signature unchanged)
 
@@ -413,6 +422,25 @@ After each commit: `npm run build` must exit 0 and the integration test must pas
 
 ## Next steps
 
-1. User review of this written spec.
-2. On approval: invoke `superpowers:writing-plans` to produce the commit-by-commit implementation plan.
-3. Implementation follows the 7-commit rollout.
+**Done.** The 7-commit rollout shipped on branch `refactor/mcp-provider-split`:
+
+| Commit | Rollout step |
+|---|---|
+| `ff17d581` | refactor(mcp): extract TransactionErrorMapper from BankingToolProvider |
+| `8a234a52` | refactor(mcp): remove dead HITL_THRESHOLD_USD from BankingToolProvider |
+| `4165d65e` | refactor(mcp): extract TokenResolver from BankingToolProvider |
+| `13be50fd` | refactor(mcp): extract JwtClaimVerifier from BankingToolProvider |
+| `f13909f9` | refactor(mcp): extract TokenChainAuditor from BankingToolProvider |
+| `5594c43b` | refactor(mcp): extract per-tool handlers into handlers/ |
+| `d15d54dd` | refactor(mcp): final cleanup of BankingToolProvider |
+
+Spec-vs-implementation audit (2026-05-15): all module contracts and the 7 behavioral guarantees
+verified against pre-refactor source; `npm run build` exits 0; 110/110 tests pass (incl. the
+`mcp-protocol.integration` primary regression signal). Three documentation inaccuracies in this spec
+were corrected post-audit (status header, the `user-passthrough-noexchange` contract row, the
+~250→355 line target); the `source` enum value was renamed `user-passthrough-devtest` →
+`user-passthrough-noexchange` in code + tests so the label no longer implies a prod guard that
+never existed.
+
+Follow-up (unchanged, still deferred): Approach C — merge `BankingToolRegistry.ts` with handlers —
+remains a separate future spec.

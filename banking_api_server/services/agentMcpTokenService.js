@@ -35,12 +35,13 @@ const configStore = require('./configStore');
 const oauthService = require('./oauthService');
 const { writeExchangeEvent } = require('./exchangeAuditStore');
 const { createTokenExchangeError, RFC8693_ERRORS } = require('./rfcCompliantErrorHandler');
-const {
-  parseAllowedScopesFromConfig,
-  isToolPermittedByAgentPolicy,
-  missingAgentPolicyScopes,
-  scopesAreCatalogOnly,
-} = require('./agentMcpScopePolicy');
+// Architecture-note R1 (2026-05-15) / T-2: the BFF no longer makes a local
+// authorization DECISION about whether a tool call is permitted. PingAuthorize
+// (`mcpToolAuthorizationService.evaluateMcpFirstToolGate`, server.js — runs
+// unconditionally on every MCP tool call after token resolution) is the SOLE
+// authoritative tool-call gate. The former local `agentMcpScopePolicy` scope-
+// allow-list veto was a redundant second authz layer and has been deleted; do
+// not reintroduce a local scope-permit decision here.
 const { MCP_TOOL_SCOPES, getSessionBearerForMcp } = require('./mcpWebSocketClient');
 const adminTokenService = require('./adminTokenService');
 const { writeMcpTrafficEntry } = require('./mcpTrafficLogger');
@@ -130,7 +131,17 @@ function sanitizeClaims(claims) {
  * Build a token event object for the frontend Token Chain panel.
  * @param {string}  id
  * @param {string}  label
- * @param {string}  status  'active' | 'acquiring' | 'exchanged' | 'failed' | 'skipped'
+ * @param {string}  status  Token-chain status vocabulary. The SPA's
+ *   NarrativePanel.dotClass (banking_api_ui/src/components/NarrativePanel.js)
+ *   only styles a subset — 'success'/'acquired' (green), 'error' (red),
+ *   'active'/'pending' (amber) — and silently buckets any other value to the
+ *   default dot. The event SHAPE { id,label,status,timestamp,claims,
+ *   explanation,... } is the stable contract the SPA depends on; the status
+ *   STRING is presentation-only and intentionally NOT normalized to avoid
+ *   changing observable UI styling. Full set actually emitted across call
+ *   sites (kept here as the single source of truth so this doc cannot drift):
+ *   'active' | 'acquiring' | 'exchanged' | 'waiting' | 'success' | 'failed' |
+ *   'skipped' | 'warning' | 'degraded' | 'permit' | 'deny' | 'indeterminate'
  * @param {object|null} decoded  { header, claims } from decodeJwtClaims
  * @param {string}  explanation  Human-readable description of what happened and why
  * @param {object}  [extra]  Extra fields (exchangeDetails, error, rfc, etc.)
@@ -897,9 +908,10 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // ─────────────────────────────────────────────────────────────────────────
 
   const mcpResourceUri = configStore.getEffective('pingone_resource_mcp_server_uri');
+  // CATALOG (not an authz oracle): MCP_TOOL_SCOPES maps a tool → the OAuth
+  // scopes the RFC 8693 exchange should request for it. It drives scope
+  // resolution below; it does NOT decide whether the call is allowed.
   const toolCandidateScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];
-  const agentAllowedRaw = configStore.getEffective('agent_mcp_allowed_scopes');
-  const agentAllowedSet = parseAllowedScopesFromConfig(agentAllowedRaw);
 
   // Classify tool as high-risk (write) so the UI can label the Token Chain accordingly.
   const isHighRiskTool = toolCandidateScopes.some(
@@ -907,30 +919,14 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   );
   const toolTrigger = isHighRiskTool ? 'high_risk' : 'read_only';
 
-  if (
-    scopesAreCatalogOnly(toolCandidateScopes) &&
-    !isToolPermittedByAgentPolicy(toolCandidateScopes, agentAllowedSet)
-  ) {
-    const missing = missingAgentPolicyScopes(toolCandidateScopes, agentAllowedSet);
-    tokenEvents.push(buildTokenEvent(
-      'agent-scope-denied',
-      'Agent MCP scope policy — action blocked',
-      'failed',
-      null,
-      `Application Configuration does not allow the OAuth scopes required for this tool: ${missing.join(', ')}. ` +
-        'Enable the matching options under **Agent MCP scopes** on the config page. RFC 8693 token exchange was not started.',
-      {
-        missingScopes: missing,
-        agentPolicyAllows: [...agentAllowedSet].join(' '),
-      }
-    ));
-    throwTokenResolutionError(
-      tokenEvents,
-      'agent_mcp_scope_denied',
-      `Agent MCP scopes exclude: ${missing.join(', ')}. Enable them in Application Configuration → Agent MCP scopes, then try again.`,
-      403
-    );
-  }
+  // Architecture-note R1 (2026-05-15) / T-2: the former local
+  // `agentMcpScopePolicy` scope-allow-list veto used to throw
+  // `agent_mcp_scope_denied` (403) here, deciding tool authorization in the
+  // BFF. That was a redundant SECOND authorization layer. It has been removed:
+  // whether a tool call is permitted is now decided ONLY by PingAuthorize via
+  // `mcpToolAuthorizationService.evaluateMcpFirstToolGate` (server.js — runs
+  // unconditionally on every MCP tool call after this token resolves). Do not
+  // reintroduce a local scope-permit decision in this function.
 
   // ── Scope resolution: no fallbacks (RFC 8693 §2.1 + RFC 8707) ────────────
   // Two explicit paths — no silent fallbacks, no hard-coded defaults:
@@ -1611,7 +1607,14 @@ async function _performTwoExchangeDelegation(
 
   let agentActorToken;
   try {
-    agentActorToken = await oauthService.getClientCredentialsTokenAs(aiAgentClientId, aiAgentClientSecret, agentGatewayAud, aiAgentAuthMethod);
+    // RFC 8707: the AI Agent app is granted scopes on two resources (Agent
+    // Gateway + Two-Exchange Intermediate). PingOne rejects a CC request that
+    // has `audience` but no `scope` with `invalid_scope: "May not request
+    // scopes for multiple resources"`. Name the single Agent-Gateway scope
+    // explicitly so PingOne narrows to one resource. Default matches the
+    // provisioner grant (pingoneProvisionService.js Step 37a: banking:agent:invoke).
+    const agentGatewayScope = configStore.getEffective('agent_gateway_cc_scope') || 'banking:agent:invoke';
+    agentActorToken = await oauthService.getClientCredentialsTokenAs(aiAgentClientId, aiAgentClientSecret, agentGatewayAud, aiAgentAuthMethod, agentGatewayScope);
     const agentActorDecoded = decodeJwtClaims(agentActorToken);
     const actorIdx = tokenEvents.findIndex(e => e.id === 'two-ex-agent-actor-acquiring');
     if (actorIdx !== -1) tokenEvents.splice(actorIdx, 1);
@@ -1732,7 +1735,13 @@ async function _performTwoExchangeDelegation(
 
   let mcpActorToken;
   try {
-    mcpActorToken = await oauthService.getClientCredentialsTokenAs(mcpExchangerClient, mcpExchangerSecret, mcpGatewayAud, mcpExchangerAuthMethod);
+    // RFC 8707: the MCP Exchanger app is granted scopes on multiple resources
+    // (MCP Gateway + Two-Exchange Final + MCP Server). Same multi-resource
+    // invalid_scope trap as the AI Agent actor token above — name the single
+    // MCP-Gateway scope explicitly. Default matches the provisioner grant
+    // (pingoneProvisionService.js Step 37b: banking:mcp:invoke).
+    const mcpGatewayScope = configStore.getEffective('mcp_gateway_cc_scope') || 'banking:mcp:invoke';
+    mcpActorToken = await oauthService.getClientCredentialsTokenAs(mcpExchangerClient, mcpExchangerSecret, mcpGatewayAud, mcpExchangerAuthMethod, mcpGatewayScope);
     const mcpActorDecoded = decodeJwtClaims(mcpActorToken);
     const mcpActorIdx = tokenEvents.findIndex(e => e.id === 'two-ex-mcp-actor-acquiring');
     if (mcpActorIdx !== -1) tokenEvents.splice(mcpActorIdx, 1);

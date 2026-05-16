@@ -185,26 +185,60 @@ class ChatWebSocketHandler:
         try:
             # Validate required fields
             content = message.get("content")
-            session_id = message.get("session_id")
-            
+
             if not content or not isinstance(content, str):
                 await self._send_error(websocket, "invalid_content", "Message content is required")
                 return
-            
-            if not session_id or not isinstance(session_id, str):
-                await self._send_error(websocket, "invalid_session", "Session ID is required")
+
+            # WR-01: the authenticated session for this connection comes ONLY
+            # from the connection metadata bound during _handle_session_init.
+            # NEVER trust the session_id field carried in the message body —
+            # a client could put any session_id in a chat_message body and
+            # hijack/redirect session routing (poisoning the metadata that
+            # BL-04's _handle_auth_response then reads). This mirrors the exact
+            # BL-04 guard already applied to _handle_auth_response.
+            connection_session_id = None
+            if connection_id in self._connection_metadata:
+                connection_session_id = self._connection_metadata[connection_id].get("session_id")
+
+            if not connection_session_id:
+                logger.warning(
+                    f"Chat message received on connection {connection_id} "
+                    f"with no bound session_id — rejecting"
+                )
+                await self._send_error(
+                    websocket,
+                    "invalid_session",
+                    "WebSocket has no authenticated session — call session_init first",
+                )
                 return
-            
-            # Validate message length
-            if len(content) > self.config.chat.max_message_length:
-                await self._send_error(websocket, "message_too_long", 
+
+            # If the client carried a session_id in the body, it MUST match the
+            # connection-bound one. Mismatch is a tampering signal — refuse.
+            body_session_id = message.get("session_id")
+            if body_session_id is not None and body_session_id != connection_session_id:
+                logger.warning(
+                    f"Chat message session_id mismatch on connection {connection_id}: "
+                    f"body={body_session_id!r} bound={connection_session_id!r}"
+                )
+                await self._send_error(
+                    websocket,
+                    "session_id_mismatch",
+                    "session_id in message body does not match the WebSocket's authenticated session",
+                )
+                return
+
+            session_id = connection_session_id
+
+            # Validate message length. WR-12: measure UTF-8 BYTES, not code
+            # points. The WS server caps frames at a byte limit; a multi-byte
+            # payload (e.g. 4-byte emoji) under the char count can still blow
+            # past the byte frame cap, so a char-based check let oversize
+            # payloads through. Byte length is consistent with the wire limit.
+            if len(content.encode("utf-8")) > self.config.chat.max_message_length:
+                await self._send_error(websocket, "message_too_long",
                                      f"Message exceeds maximum length of {self.config.chat.max_message_length}")
                 return
-            
-            # Update connection metadata
-            if connection_id in self._connection_metadata:
-                self._connection_metadata[connection_id]["session_id"] = session_id
-                self._session_connections[session_id] = connection_id
             
             # Create chat message
             chat_message = ChatMessage.create_user_message(
@@ -247,10 +281,17 @@ class ChatWebSocketHandler:
             return
         
         try:
-            # Get or create session ID
+            # Get or create session ID.
+            #
+            # Path A (CR-02/CR-04): identity is derived ONLY from a validated,
+            # PingOne-issued access token delivered by the BFF proxy in this
+            # message. Client-supplied `user_id` / `userEmail` are NO LONGER
+            # trusted for identity — the spoof primitive has been removed.
+            # `user_id` is still accepted purely as a non-privileged session
+            # label (it grants nothing; identity comes from the token).
             session_id = message.get("session_id")
-            user_id = message.get("user_id")
-            user_email = message.get("userEmail")  # Injected by App.js WebSocket interceptor
+            session_label = message.get("user_id")
+            user_token = message.get("auth_token") or message.get("authToken")
 
             # Create session in session manager if we have one
             if self._session_manager:
@@ -259,46 +300,79 @@ class ChatWebSocketHandler:
                     existing_session = await self._session_manager.get_session(session_id)
                     if not existing_session:
                         # Session doesn't exist, create new one with provided ID
-                        session = await self._session_manager.create_session(user_id=user_id, session_id=session_id)
+                        session = await self._session_manager.create_session(user_id=session_label, session_id=session_id)
                         logger.info(f"Created new session with provided ID: {session_id}")
                 else:
                     # Create new session
-                    session = await self._session_manager.create_session(user_id=user_id)
+                    session = await self._session_manager.create_session(user_id=session_label)
                     session_id = session.session_id
             else:
                 # Fallback: generate session ID if no session manager
                 if not session_id:
                     session_id = str(uuid.uuid4())
-            
+
             # Update connection metadata
             if connection_id in self._connection_metadata:
                 self._connection_metadata[connection_id]["session_id"] = session_id
-                self._connection_metadata[connection_id]["user_id"] = user_id
+                self._connection_metadata[connection_id]["user_id"] = session_label
+                self._connection_metadata[connection_id]["user_token"] = user_token
                 self._session_connections[session_id] = connection_id
-            
-            # Send session initialization response
+
+            # Token-derived identity (Path A). The BFF proxy is the ONLY
+            # supported source of this token; the browser never holds one.
+            # No token / invalid token / rejected aud => refuse the session.
+            if not user_token:
+                logger.warning(
+                    f"session_init for {session_id} carried no auth token — "
+                    f"refusing (Path A: identity must be token-derived)"
+                )
+                await self._send_error(
+                    websocket,
+                    "auth_required",
+                    "This chat requires an authenticated session. Connect via the "
+                    "banking app (the server attaches your identity token).",
+                )
+                await self._cleanup_connection(connection_id)
+                return
+
+            if hasattr(self, '_message_processor') and self._message_processor:
+                try:
+                    await self._message_processor.process_session_init_with_token(
+                        session_id, user_token
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Token identity binding failed for session {session_id}: {e}"
+                    )
+                    await self._send_error(
+                        websocket,
+                        "auth_invalid",
+                        "Could not validate your identity token. The session was refused.",
+                    )
+                    await self._cleanup_connection(connection_id)
+                    return
+            else:
+                logger.error(
+                    f"No message processor — cannot validate token for session {session_id}"
+                )
+                await self._send_error(
+                    websocket,
+                    "session_error",
+                    "Server not ready to authenticate the session",
+                )
+                await self._cleanup_connection(connection_id)
+                return
+
+            # Identity is bound. Acknowledge the session. We deliberately do
+            # NOT echo any user identifier back to the browser.
             await self._send_message(websocket, {
                 "type": "session_initialized",
                 "session_id": session_id,
-                "user_id": user_id,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             })
-            
-            # If we have the user's email, pre-identify them directly — no API call needed
-            if user_email and hasattr(self, '_message_processor') and self._message_processor:
-                try:
-                    await self._message_processor.process_session_init_with_email(session_id, user_email, user_id)
-                    logger.info(f"Pre-identified user '{user_email}' for session {session_id}")
-                except Exception as e:
-                    logger.warning(f"Email pre-identification failed for session {session_id}: {e}")
-            elif user_id and hasattr(self, '_message_processor') and self._message_processor:
-                try:
-                    await self._message_processor.process_session_init_with_user_id(session_id, user_id)
-                except Exception as e:
-                    logger.warning(f"User_id pre-identification failed for session {session_id}: {e}")
 
             logger.info(f"Initialized session {session_id} for connection {connection_id}")
-            
+
         except Exception as e:
             logger.error(f"Error handling session init: {e}")
             await self._send_error(websocket, "session_error", "Failed to initialize session")
@@ -317,11 +391,23 @@ class ChatWebSocketHandler:
             return
         
         try:
-            session_id = message.get("session_id")
-            
+            # WR-01/BL-04 discipline: the session being closed is the one
+            # bound to THIS connection's metadata, never a body-supplied id.
+            bound_session_id = None
+            if connection_id in self._connection_metadata:
+                bound_session_id = self._connection_metadata[connection_id].get("session_id")
+            session_id = bound_session_id
+
             if session_id and session_id in self._session_connections:
                 del self._session_connections[session_id]
-            
+
+            # WR-02 Option A: deterministically tear down the session's
+            # per-session worker + queue on explicit close. Pending messages
+            # for the closed session are discarded (logged), not run against
+            # a dead session.
+            if session_id:
+                await self._teardown_session_worker(session_id)
+
             # Update connection metadata
             if connection_id in self._connection_metadata:
                 self._connection_metadata[connection_id]["session_id"] = None
@@ -552,13 +638,37 @@ class ChatWebSocketHandler:
                 session_id = self._connection_metadata[connection_id].get("session_id")
                 if session_id and session_id in self._session_connections:
                     del self._session_connections[session_id]
+                # WR-02 Option A: WS disconnect must also tear down the
+                # session's per-session worker so its task is cancelled +
+                # awaited (no orphans) and queued messages for the now-dead
+                # session are discarded with a logged reason.
+                if session_id:
+                    await self._teardown_session_worker(session_id)
                 del self._connection_metadata[connection_id]
-            
+
             logger.debug(f"Cleaned up connection {connection_id}")
             
         except Exception as e:
             logger.error(f"Error cleaning up connection {connection_id}: {e}")
     
+    async def _teardown_session_worker(self, session_id: str) -> None:
+        """Ask the message processor to deterministically tear down a session.
+
+        Delegates to MessageProcessor.clear_session_data, which (WR-02
+        Option A) cancels + awaits that session's per-session worker task
+        and discards any still-queued messages with a logged reason. Best
+        effort: a teardown failure must not break connection cleanup.
+        """
+        processor = getattr(self, "_message_processor", None)
+        if not processor:
+            return
+        try:
+            await processor.clear_session_data(session_id)
+        except Exception as e:
+            logger.error(
+                f"Error tearing down session worker for {session_id}: {e}"
+            )
+
     def set_message_processor(self, message_processor) -> None:
         """
         Set the message processor for handling messages.

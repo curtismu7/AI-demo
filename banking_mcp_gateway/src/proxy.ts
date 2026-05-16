@@ -45,9 +45,15 @@ export function proxyJsonRpc(
     });
 
     let initialized = false;
+    // WR-04: capture the handshake timer so it can be cleared on every
+    // settle path. Without this, each proxied call leaves a dangling 10s
+    // timer + closure over ws/reject alive until it fires (resource leak
+    // proportional to request volume; avoidable late-terminate race).
+    let handshakeTimer: ReturnType<typeof setTimeout> | undefined;
 
     ws.on('error', (err) => {
       clearTimeout(timer);
+      clearTimeout(handshakeTimer);
       reject(err);
     });
 
@@ -66,7 +72,7 @@ export function proxyJsonRpc(
       ws.send(JSON.stringify(initMsg));
 
       // Handshake timeout guard
-      setTimeout(() => {
+      handshakeTimer = setTimeout(() => {
         if (!initialized) {
           ws.terminate();
           reject(new Error('MCP handshake timeout'));
@@ -93,6 +99,7 @@ export function proxyJsonRpc(
       // Step 2: match the real request's id
       if (msg.id === request.id) {
         clearTimeout(timer);
+        clearTimeout(handshakeTimer);
         ws.close();
         resolve(msg);
       }
@@ -100,6 +107,7 @@ export function proxyJsonRpc(
 
     ws.on('close', () => {
       clearTimeout(timer);
+      clearTimeout(handshakeTimer);
     });
   });
 }

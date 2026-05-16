@@ -42,6 +42,8 @@ const stubConfig: GatewayConfig = {
   introspectionEndpoint: '',
   devBypass: false,
   demoApiKeyServiceKey: 'demo-api-key-0000',
+  mortgageServiceBaseUrl: 'http://localhost:8082',
+  mortgageServiceApiKey: 'demo-mortgage-key-0000',
   bffInternalIdTokenUrl: 'http://localhost:3001/internal/id-token',
   bffInternalSecret: 'dev-shared-secret-change-me',
   bankingResourceServerBaseUrl: 'http://localhost:3001',

@@ -37,13 +37,29 @@ router.post('/nl', async (req, res) => {
   }
 });
 
-/** GET /api/banking-agent/nl/status — which LLM backends are configured (no secrets returned). */
+/** GET /api/banking-agent/nl/status — which LLM backends are configured.
+ * IN-02: OLLAMA_BASE_URL / OLLAMA_MODEL can reveal internal network topology
+ * (e.g. http://10.0.0.5:11434) on a hosted/tenant deploy. The SPA only needs
+ * to know the provider is configured (BankingAgent.js reads nlMeta for
+ * groqConfigured, never ollamaBaseUrl). So: anonymous callers get a redacted
+ * response (no host, no exact model); authenticated callers still get the
+ * full detail for the Config/diagnostics surfaces. */
 router.get('/nl/status', (req, res) => {
   const ollamaBase = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+  const ollamaModel = process.env.OLLAMA_MODEL || 'llama3.2';
+  const isAuthed = Boolean(req.session?.user);
+  if (!isAuthed) {
+    return res.json({
+      activeProvider: 'ollama',
+      ollamaConfigured: true,
+      heuristicAlwaysAvailable: true,
+    });
+  }
   return res.json({
     activeProvider: 'ollama',
+    ollamaConfigured: true,
     ollamaBaseUrl: ollamaBase,
-    ollamaModel: process.env.OLLAMA_MODEL || 'llama3.2',
+    ollamaModel,
     heuristicAlwaysAvailable: true,
   });
 });

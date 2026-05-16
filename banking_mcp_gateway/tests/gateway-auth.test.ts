@@ -16,6 +16,7 @@
 import axios from 'axios';
 import { GatewayTokenPolicy, GatewayTokenPolicyError } from '../src/auth/GatewayTokenPolicy';
 import { PingOneAuthorizeClient } from '../src/auth/PingOneAuthorizeClient';
+import { guardToolCall } from '../src/pingAuthorizeGuard';
 import { McpTokenExchangeClient } from '../src/auth/McpTokenExchangeClient';
 import { buildAuthorizeMcpRequest } from '../src/middleware/authorizeMcpRequest';
 import type { GatewayConfig } from '../src/config';
@@ -63,6 +64,8 @@ const stubConfig: GatewayConfig = {
   devBypass: false,
   // Phase 266 fields
   demoApiKeyServiceKey: 'demo-api-key-0000',
+  mortgageServiceBaseUrl: 'http://localhost:8082',
+  mortgageServiceApiKey: 'demo-mortgage-key-0000',
   bffInternalIdTokenUrl: 'http://localhost:3001/internal/id-token',
   bffInternalSecret: 'dev-shared-secret-change-me',
   bankingResourceServerBaseUrl: 'http://localhost:3001',
@@ -149,6 +152,23 @@ describe('GatewayTokenPolicy', () => {
     const decoded = decodedToken({ aud: INVEST_AUD });
     expect(() => GatewayTokenPolicy.validate(decoded, stubConfig)).toThrow(GatewayTokenPolicyError);
   });
+
+  it('rejects a multi-aud token carrying the Phase 266 RS audience (anti-bypass: D-05)', () => {
+    // [gatewayResourceUri, bankingResourceServerResourceUri] passes the
+    // inbound aud check but must be rejected by D-05 so it cannot be
+    // force-forwarded with the RS audience already present.
+    const decoded = decodedToken({
+      aud: [GATEWAY_AUD, stubConfig.bankingResourceServerResourceUri],
+    });
+    expect(() => GatewayTokenPolicy.validate(decoded, stubConfig)).toThrow(
+      GatewayTokenPolicyError,
+    );
+  });
+
+  it('still accepts a normal gateway-aud token after the D-05 set widened', () => {
+    const decoded = decodedToken({ aud: GATEWAY_AUD });
+    expect(() => GatewayTokenPolicy.validate(decoded, stubConfig)).not.toThrow();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -192,6 +212,36 @@ describe('PingOneAuthorizeClient', () => {
     const result = await client.evaluate(decodedToken(), 'tools/list');
     expect(result.decision).toBe('PERMIT');
     expect(mockedAxios.post).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Section 2b: WS-vs-HTTP PingAuthorize parity (WR-02)
+// ---------------------------------------------------------------------------
+
+describe('PingAuthorize WS/HTTP parity (WR-02)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('guardToolCall (WS) sends the SAME request body as evaluate (HTTP) for an over-threshold create_transfer', async () => {
+    const decoded = decodedToken({ scope: 'banking:read banking:write' });
+    const toolArgs = { amount: 750, transaction_type: 'transfer', to_account_id: 'acct-999' };
+
+    // HTTP path
+    mockedAxios.post.mockResolvedValueOnce({ data: { decision: 'PERMIT' } });
+    const client = new PingOneAuthorizeClient(stubConfig);
+    await client.evaluate(decoded, 'tools/call', 'create_transfer', toolArgs);
+    const httpBody = mockedAxios.post.mock.calls[0][1];
+
+    mockedAxios.post.mockClear();
+
+    // WS path
+    mockedAxios.post.mockResolvedValueOnce({ data: { decision: 'PERMIT' } });
+    await guardToolCall('create_transfer', decoded, stubConfig, toolArgs);
+    const wsBody = mockedAxios.post.mock.calls[0][1];
+
+    expect(wsBody).toEqual(httpBody);
+    expect((wsBody as { parameters: Record<string, string> }).parameters.TransactionAmount).toBe('750');
+    expect((wsBody as { parameters: Record<string, string> }).parameters.McpMethod).toBe('tools/call');
   });
 });
 
@@ -297,6 +347,39 @@ describe('buildAuthorizeMcpRequest middleware', () => {
     const [calledWithToken] = forwardSpy.mock.calls[0];
     expect(calledWithToken).toBe('exchanged-olb-token');
     expect(calledWithToken).not.toBe(bearerToken);
+  });
+
+  it('WR-03: strips _hitl_challenge_id from arguments before forwarding on the HTTP path', async () => {
+    mockedAxios.post.mockResolvedValueOnce({ data: { decision: 'PERMIT' } });
+    mockedAxios.post.mockResolvedValueOnce({
+      data: { access_token: 'exchanged-olb-token', expires_in: 300 },
+    });
+
+    const body = Buffer.from(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+          name: 'create_transfer',
+          arguments: { amount: 10, _hitl_challenge_id: 'chal-abc', to_account_id: 'a1' },
+        },
+      }),
+    );
+
+    await middleware(
+      VALID_BEARER,
+      body,
+      req as IncomingMessage,
+      res as ServerResponse,
+      forwardSpy,
+    );
+
+    expect(forwardSpy).toHaveBeenCalledTimes(1);
+    const forwardedBody = forwardSpy.mock.calls[0][1] as Buffer;
+    const forwarded = JSON.parse(forwardedBody.toString('utf-8'));
+    expect(forwarded.params.arguments).not.toHaveProperty('_hitl_challenge_id');
+    expect(forwarded.params.arguments).toEqual({ amount: 10, to_account_id: 'a1' });
   });
 
   it('deny from PingAuthorize → returns 403 and does NOT call forward', async () => {

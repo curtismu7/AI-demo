@@ -174,6 +174,19 @@ class AuthorizationCode:
         delta = self.expires_at - datetime.now(timezone.utc)
         return int(delta.total_seconds())
 
+    # WR-03: the raw `code` is a single-use OAuth authorization code. Mirror
+    # the AccessToken BL-01 mask so any f-string / %s / repr log line (e.g.
+    # tool_registry.py "Calling tool ...: {tool_call}") can never emit it.
+    # Non-sensitive correlation fields (state, session_id) stay visible.
+    def __repr__(self) -> str:  # pragma: no cover - trivial
+        return (
+            f"AuthorizationCode(state={self.state!r}, "
+            f"session_id={self.session_id!r}, code=***masked***)"
+        )
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return self.__repr__()
+
 
 @dataclass
 class AgentTokenContext:

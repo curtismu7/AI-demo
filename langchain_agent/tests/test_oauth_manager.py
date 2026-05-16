@@ -530,9 +530,11 @@ class TestUserAuthorizationFacilitator:
         query_params = parse_qs(parsed_url.query)
         state = query_params["state"][0]
         
-        # Handle callback
-        auth_data = facilitator.handle_authorization_callback("test-auth-code", state)
-        
+        # Handle callback (IN-06: session_id now required)
+        auth_data = facilitator.handle_authorization_callback(
+            "test-auth-code", state, session_id="session-123"
+        )
+
         assert auth_data["authorization_code"] == "test-auth-code"
         assert auth_data["state"] == state
         assert auth_data["session_id"] == "session-123"
@@ -544,8 +546,12 @@ class TestUserAuthorizationFacilitator:
         """Test handling authorization callback with invalid state."""
         facilitator = UserAuthorizationFacilitator(mock_config)
         
-        with pytest.raises(ValueError, match="Invalid or expired state parameter"):
-            facilitator.handle_authorization_callback("test-auth-code", "invalid-state")
+        # IN-06: session_id is required; with a session present, an unknown
+        # state still fails the state check (this is what the test asserts).
+        with pytest.raises(ValueError, match="Invalid, expired, or session-mismatched state parameter"):
+            facilitator.handle_authorization_callback(
+                "test-auth-code", "invalid-state", session_id="session-x"
+            )
     
     def test_validate_state_success(self, mock_config):
         """Test successful state validation."""

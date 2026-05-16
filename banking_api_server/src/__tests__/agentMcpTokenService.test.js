@@ -209,34 +209,69 @@ describe('resolveMcpAccessTokenWithEvents — PINGONE_RESOURCE_MCP_SERVER_URI un
   });
 });
 
-describe('resolveMcpAccessTokenWithEvents — agent MCP scope policy', () => {
+// ── Architecture-note R1 (2026-05-15) / T-2 ───────────────────────────────
+// The BFF no longer makes a local authorization decision in
+// resolveMcpAccessTokenWithEvents. The former agentMcpScopePolicy veto that
+// threw `agent_mcp_scope_denied` (403) when `agent_mcp_allowed_scopes`
+// excluded a tool's scope has been REMOVED. Whether a tool call is permitted
+// is decided solely by PingAuthorize via
+// mcpToolAuthorizationService.evaluateMcpFirstToolGate (server.js — a separate,
+// unconditional code path exercised by the hitlGateway/oauthStatus/hitlRoute
+// suites). These tests pin the new behavior: the local allow-list no longer
+// vetoes the exchange.
+describe('resolveMcpAccessTokenWithEvents — R1: local scope allow-list no longer vetoes (T-2)', () => {
+  // User token DOES carry banking:write so the RFC 8693 user-token-scope guard
+  // (a separate, legitimate check kept by R1) passes. The variable under test
+  // is purely the removed local `agent_mcp_allowed_scopes` admin-config veto:
+  // it excludes banking:write below, which pre-R1 made the veto throw
+  // agent_mcp_scope_denied before any exchange.
+  const userTokenWithWrite = makeJwt({
+    sub: USER_SUB,
+    aud: 'banking_enduser',
+    scope: 'openid profile email offline_access banking:read banking:write',
+    iss: 'https://auth.pingone.com/test-env/as',
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    iat: Math.floor(Date.now() / 1000),
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     configStore.getEffective.mockImplementation((key) => {
       if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      // Pre-R1 this config (banking:write absent) made the local veto throw
+      // agent_mcp_scope_denied for create_transfer. Post-R1 it is inert.
       if (key === 'agent_mcp_allowed_scopes') {
-        return 'banking:read banking:read';
+        return 'banking:read';
       }
       return null;
     });
+    mockPerformTokenExchange.mockResolvedValue(sampleJwtMcpAccessToken);
   });
 
-  it('throws agent_mcp_scope_denied when transfer scope is disabled in config', async () => {
-    await expect(
-      resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'create_transfer')
-    ).rejects.toMatchObject({
-      code: 'agent_mcp_scope_denied',
-      httpStatus: 403,
-    });
+  it('does NOT throw agent_mcp_scope_denied even when the old local map would have blocked the tool', async () => {
+    // Pre-R1 this rejected with agent_mcp_scope_denied/403 (the local veto).
+    // Post-R1 the veto is gone — the exchange proceeds; PingAuthorize
+    // (server.js gate) is the only thing that can deny.
+    const { token } = await resolveMcpAccessTokenWithEvents(
+      makeReq(userTokenWithWrite),
+      'create_transfer'
+    );
+    expect(token).toBe(sampleJwtMcpAccessToken);
   });
 
-  it('does not call performTokenExchange when policy blocks the tool', async () => {
-    try {
-      await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'create_transfer');
-    } catch {
-      /* expected */
-    }
-    expect(mockPerformTokenExchange).not.toHaveBeenCalled();
+  it('emits no agent-scope-denied token event (the local authz event was removed)', async () => {
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(
+      makeReq(userTokenWithWrite),
+      'create_transfer'
+    );
+    expect(tokenEvents.find((e) => e.id === 'agent-scope-denied')).toBeUndefined();
+  });
+
+  it('proceeds to the RFC 8693 exchange instead of short-circuiting on the local allow-list', async () => {
+    await resolveMcpAccessTokenWithEvents(makeReq(userTokenWithWrite), 'create_transfer');
+    // Pre-R1 the veto threw before any exchange call. Post-R1 the exchange runs;
+    // authorization is delegated to PingAuthorize downstream (server.js gate).
+    expect(mockPerformTokenExchange).toHaveBeenCalled();
   });
 });
 
@@ -528,35 +563,40 @@ describe('resolveMcpAccessTokenWithEvents — banking:read broad scope in token'
   });
 });
 
-describe('resolveMcpAccessTokenWithEvents — OR policy: broad scope enables tool', () => {
+describe('resolveMcpAccessTokenWithEvents — R1: agent_mcp_allowed_scopes is inert config (T-2)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     delete process.env.AGENT_OAUTH_CLIENT_ID;
     configStore.getEffective.mockImplementation((key) => {
       if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
-      // Admin allows broad scope but NOT the specific scope
       if (key === 'agent_mcp_allowed_scopes') return 'banking:read banking:write ai_agent';
       return null;
     });
     mockPerformTokenExchange.mockResolvedValue(sampleJwtMcpAccessToken);
   });
 
-  it('does NOT deny get_my_accounts when banking:read is in allowed set (OR policy)', async () => {
+  it('resolves get_my_accounts when the scope is in the allowed set (happy path unchanged)', async () => {
     const { token } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessBroadRead), 'get_my_accounts');
     expect(token).toBe(sampleJwtMcpAccessToken);
     expect(mockPerformTokenExchange).toHaveBeenCalledTimes(1);
   });
 
-  it('denies create_transfer when neither banking:write nor banking:write is allowed', async () => {
+  it('R1: still resolves create_transfer even when agent_mcp_allowed_scopes excludes banking:write', async () => {
+    // Pre-R1 this configuration made the local veto throw agent_mcp_scope_denied
+    // and skip the exchange. Post-R1 the local allow-list is inert advisory
+    // config: the exchange proceeds and authorization is PingAuthorize's call
+    // (server.js evaluateMcpFirstToolGate — exercised by the gate test suites).
     configStore.getEffective.mockImplementation((key) => {
       if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       if (key === 'agent_mcp_allowed_scopes') return 'banking:read ai_agent'; // write intentionally excluded
       return null;
     });
-    await expect(
-      resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessBroadRead), 'create_transfer')
-    ).rejects.toMatchObject({ code: 'agent_mcp_scope_denied' });
-    expect(mockPerformTokenExchange).not.toHaveBeenCalled();
+    const { token } = await resolveMcpAccessTokenWithEvents(
+      makeReq(sampleJwtUserAccessBroadRead),
+      'create_transfer'
+    );
+    expect(token).toBe(sampleJwtMcpAccessToken);
+    expect(mockPerformTokenExchange).toHaveBeenCalledTimes(1);
   });
 });
 

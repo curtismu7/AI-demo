@@ -181,6 +181,22 @@ class MCPToolCall:
         if self.user_auth_code is not None:
             self.user_auth_code.validate()
     
+    # WR-03: the default dataclass repr embeds `parameters` (may carry account
+    # numbers / amounts / free-text) and the nested credential objects. Emit a
+    # redacted form: tool + session + arg *keys* only, never arg values; the
+    # nested AccessToken / AuthorizationCode reprs are themselves masked.
+    def __repr__(self) -> str:  # pragma: no cover - trivial
+        param_keys = sorted(self.parameters.keys()) if isinstance(self.parameters, dict) else "***"
+        return (
+            f"MCPToolCall(tool_name={self.tool_name!r}, "
+            f"session_id={self.session_id!r}, param_keys={param_keys!r}, "
+            f"agent_token=***masked***, "
+            f"user_auth_code={self.user_auth_code!r})"
+        )
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return self.__repr__()
+
     def has_user_authorization(self) -> bool:
         """Check if tool call has user authorization code"""
         return self.user_auth_code is not None

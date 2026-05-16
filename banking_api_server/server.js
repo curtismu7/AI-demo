@@ -334,7 +334,13 @@ app.use(morgan('combined', {
   skip: (req) => POLL_ROUTES.has(req.path),
 }));
 
-app.use(session({
+// Capture the session middleware instance so the langchain chat-WS proxy
+// (attached after .listen()) can authenticate the WebSocket upgrade with the
+// SAME express-session cookie logic as HTTP requests. This does not change
+// session registration order, the secret resolver, store priority, or cookie
+// attributes — it only keeps a reference to the existing middleware. (§1
+// Session persistence: read-only reuse, no new session writes.)
+const sessionMiddleware = session({
     secret: (() => {
         const s = process.env.SESSION_SECRET;
         if (!s || s === 'dev-session-secret-change-in-production') {
@@ -357,7 +363,8 @@ app.use(session({
         sameSite: isProduction ? 'none' : 'lax',
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
-}));
+});
+app.use(sessionMiddleware);
 
 // Body parsing middleware
 app.use(express.json());
@@ -2099,6 +2106,16 @@ if (require.main === module) {
                   console.warn('   → Enable it at /admin/config (ff_hitl_enabled: true) or set FF_HITL_ENABLED=true.\n');
                 }
             });
+        }
+
+        // Path A (CR-02/CR-04): attach the BFF ↔ langchain chat-WS proxy so the
+        // browser never holds a PingOne token. Cookie-authenticated upgrade,
+        // server-side token resolution, frames piped to ws://localhost:8889.
+        try {
+            const { attachLangchainChatProxy } = require('./services/langchainChatProxy');
+            attachLangchainChatProxy(server, sessionMiddleware);
+        } catch (err) {
+            console.error('[langchain-proxy] failed to attach chat-WS proxy:', err.message);
         }
 
         process.on('SIGTERM', () => {
