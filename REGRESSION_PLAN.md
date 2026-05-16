@@ -120,6 +120,24 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-16 — Bug #2: delegation_action audit floods on telemetry, misleading `actor:null`, no agent-path attribution
+
+**Files changed:**
+- `banking_api_server/middleware/delegationAuditLogger.js` — (A) added an `isTelemetryEndpoint` check evaluated FIRST and AND-ed into `isSensitiveOperation` (excludes `/app-events`, `/mcp/tool/events`, `/token-chain`, `/api/health`, `/health`); genuine triggers (mutations, `/accounts`, `/transactions`, `/transfer`, `/mcp/tool`) unchanged. Order guarantees `/mcp/tool/events` is excluded before the `/mcp/tool` `includes()` could re-add it. (B) `extractDelegationChain` now sets `chain.actorSource` (`'act_claim'` when `claims.act` present, else `'session_token_no_act'`); `buildAuditEvent` adds `actorSource` and, only when `actor===null && actorSource==='session_token_no_act'`, a one-line `_note`. Existing `actor`/`actorType` fields untouched. (C) `buildAuditEvent` adds `agentPath: req.agentPath || req.headers['x-agent-path'] || null`; `buildAuditEvent` now exported.
+- `banking_api_server/services/bankingAgentLangGraphService.js` — `processAgentMessage`: `req.agentPath = 'heuristic'` set inside the `if (heuristicResult)` block right before the heuristic returns; `req.agentPath = 'reason_loop_3006'` set right before `buildToolSchemasForAgent()` / the `runReasonLoop` call. Both guarded by `if (req)` — null-req call sites skip silently. No restructuring.
+- `banking_api_server/tests/delegationAuditLogger.regression.test.js` — new TDD regression test (red before fix, green after).
+
+**What was broken:** (A) `delegationAuditMiddleware` (global, server.js:382) treated EVERY non-GET as sensitive, so the UI's continuous `POST /api/admin/app-events` telemetry flooded the audit log and buried real delegation signal. (B) `actor` was derived from `claims.act` on the session user token, which structurally never has an `act` claim — the audit always emitted `actor:null`, falsely implying "no delegation" when the real actor is established downstream in the RFC 8693 exchange. (C) Nothing recorded which agent path (heuristic / in-process LLM / :3006 reason-loop) initiated a tool call, so logs could not answer "was it the LLM?".
+
+**What was fixed:** Telemetry/event-sink endpoints are excluded from delegation auditing while real ops still audit; the event is now honest about why `actor` is null via `actorSource` + an explanatory `_note` (legacy `actor`/`actorType` preserved for downstream consumers); best-effort `agentPath` attribution lands in the audit event, set at the heuristic-return and reason-loop seams (null when a tool is invoked outside the agent — correct).
+
+**Verify:**
+- `cd banking_api_server && OLLAMA_BASE_URL= npx jest delegationAuditLogger.regression` → 1 suite / 8 passed (red before fix).
+- `cd banking_api_server && OLLAMA_BASE_URL= npx jest oauthStatus hitlRoute delegationAuditLogger apiKeyToolExchange` → 6 suites / 48 passed (no regression).
+- `/api/mcp/tool/events` → telemetry-excluded (NOT audited); `/api/mcp/tool` → audited; `/api/admin/app-events` → telemetry-excluded.
+
+**Do not break:** The telemetry exclusion must be AND-ed (`!isTelemetryEndpoint && (...)`) and evaluated before `/mcp/tool` so real tool calls stay audited while `/mcp/tool/events` does not. Keep legacy `actor`/`actorType` fields. `req.agentPath` writes must stay `if (req)`-guarded.
+
 ### 2026-05-16 — Bug: `show_mortgage` 502 "Delegation chain validation failed" — BFF ran RFC 8693 for an api_key-disposition tool
 
 **Files changed:**
