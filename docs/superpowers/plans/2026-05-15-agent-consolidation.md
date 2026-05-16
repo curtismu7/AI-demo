@@ -312,188 +312,668 @@ git commit -m "docs(regression): §4 entry — single provider resolver (Phase 1
 
 ---
 
-# PHASE 2 — LangGraph reasoning service on :3006
+# PHASE 2 — LangGraph reasoning service on :3006 (LangGraph for ALL providers)
 
-> Phase 2 preconditions: Phase 1 merged. The BFF keeps token custody + HITL; :3006 becomes reasoning-only.
+> Preconditions: Phase 1 merged. BFF keeps token custody + HITL; :3006 is reasoning-only.
+> Design: `docs/superpowers/specs/2026-05-15-agent-consolidation-design.md`
+> §"Phase 2 Component Design — Helix Prompt-Based Tool-Calling".
 
-### Task 6: Define the `/api/agent/reason` contract (shared types doc)
+### Task 6: `/api/agent/reason` contract — DONE, plus additive `reasoningUnavailable`
+
+Task 6 (create `banking_agent_service/src/reasonContract.ts`) is already
+implemented and committed (`1a89633a`). This task only adds one optional field
+the Helix-failure signal needs.
 
 **Files:**
-- Create: `banking_agent_service/src/reasonContract.ts`
+- Modify: `banking_agent_service/src/reasonContract.ts` (the `final` union member)
 
-- [ ] **Step 1: Write the contract types**
+- [ ] **Step 1: Add the optional `reasoningUnavailable` flag**
+
+In `banking_agent_service/src/reasonContract.ts`, find:
 
 ```typescript
-// banking_agent_service/src/reasonContract.ts
-// BFF ↔ :3006 reasoning protocol (no user token crosses this boundary).
-
-export interface ReasonToolSchema {
-  name: string;
-  description: string;
-  inputSchema: Record<string, unknown>;
-}
-
-export interface ReasonMessage {
-  role: 'user' | 'assistant' | 'tool';
-  content: string;
-  tool_call_id?: string;
-}
-
-export interface ReasonRequest {
-  messages: ReasonMessage[];
-  tools: ReasonToolSchema[];
-  provider: 'helix' | 'ollama'; // already resolved by the BFF
-  model?: string;
-  // Helix connection config (BFF-owned; passed through, never a token)
-  helixConfig?: Record<string, string | undefined>;
-  ollamaBaseUrl?: string;
-}
-
 export type ReasonResponse =
   | { type: 'tool_calls'; calls: Array<{ id: string; name: string; args: Record<string, unknown> }>; messages: ReasonMessage[] }
   | { type: 'final'; answer: string; messages: ReasonMessage[] };
 ```
 
-- [ ] **Step 2: Build the TS service to verify it compiles**
+Replace the `final` member line so the type becomes:
+
+```typescript
+export type ReasonResponse =
+  | { type: 'tool_calls'; calls: Array<{ id: string; name: string; args: Record<string, unknown> }>; messages: ReasonMessage[] }
+  | { type: 'final'; answer: string; messages: ReasonMessage[]; reasoningUnavailable?: boolean };
+```
+
+- [ ] **Step 2: Build**
 
 Run: `cd banking_agent_service && npm run build && echo BUILD_OK`
-Expected: `BUILD_OK` (tsc compiles `dist/`)
+Expected: `BUILD_OK`
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add banking_agent_service/src/reasonContract.ts
-git commit -m "feat(agent-svc): BFF↔:3006 reasoning protocol contract"
+git -c commit.gpgsign=false commit -m "feat(agent-svc): add reasoningUnavailable flag to ReasonResponse"
 ```
+(Pre-commit CHANGELOG warning is non-blocking; do not use --no-verify.)
 
 ---
 
-### Task 7: Port the LangGraph graph into `banking_agent_service` (reasoning-only)
+### Task 7a: Add LangChain deps to `banking_agent_service`
 
 **Files:**
-- Create: `banking_agent_service/src/reasoningGraph.ts`
+- Modify: `banking_agent_service/package.json`
 
-This ports the graph from `banking_api_server/services/agentBuilder.js` but **removes** tool execution — the graph emits tool-call intents instead of invoking tools (the BFF executes them).
+- [ ] **Step 1: Check the versions the BFF already uses (match them)**
 
-- [ ] **Step 0: Capture the real Helix request shape (prerequisite — do not skip)**
+Run: `cd banking_api_server && node -e "const p=require('./package.json'); console.log('langgraph', p.dependencies['@langchain/langgraph']); console.log('ollama', p.dependencies['@langchain/ollama']); console.log('core', p.dependencies['@langchain/core'])"`
+Record the three version strings. Use these EXACT versions in Step 2 so :3006 and the BFF stay on the same LangChain.
 
-Run: `cd banking_api_server && grep -n -A30 "function callHelixAgent" services/helixLlmService.js`
-Record the exact axios URL path, body fields, and headers. `helixClient.ts` (Step 2) MUST replicate that shape verbatim — the structure shown in Step 2 is a scaffold, the real endpoint/fields come from this output. If they differ, the Step 2 code is wrong; use what this command shows.
+- [ ] **Step 2: Add the three deps to banking_agent_service/package.json**
 
-- [ ] **Step 1: Create the reasoning graph**
+Add `@langchain/langgraph`, `@langchain/ollama`, `@langchain/core` to the `dependencies` object of `banking_agent_service/package.json`, using the exact version strings from Step 1 (do not invent versions; do not use `latest`).
 
-```typescript
-// banking_agent_service/src/reasoningGraph.ts
-// Reasoning-only LangGraph. Ported from banking_api_server/services/agentBuilder.js.
-// CRITICAL: this graph NEVER executes tools and NEVER touches a token. It runs
-// one agent step: given messages + tool schemas, it returns either a final
-// answer or a batch of tool-call intents for the BFF to execute.
-import { ChatOllama } from '@langchain/ollama';
-import { RunnableLambda } from '@langchain/core/runnables';
-import type { ReasonRequest, ReasonResponse, ReasonMessage } from './reasonContract';
+- [ ] **Step 3: Install**
 
-// Mirrors banking_api_server agentBuilder DEFAULT_MODELS.
-const DEFAULT_MODELS: Record<string, string> = { ollama: 'llama3.2', helix: 'gpt-4o-mini' };
+Run: `cd banking_agent_service && npm install 2>&1 | tail -3`
+Expected: install completes, no peer-dep ERR. If a peer-dep error appears, report BLOCKED with the exact error.
 
-function buildModel(req: ReasonRequest) {
-  if (req.provider === 'helix') {
-    // Helix is called via the same HTTP shape the BFF uses; the BFF passes
-    // helixConfig through (no secret persisted here).
-    const helixConfig = req.helixConfig || {};
-    return RunnableLambda.from(async (messages: ReasonMessage[]) => {
-      const { callHelix } = await import('./helixClient');
-      return await callHelix(helixConfig, messages);
-    });
-  }
-  const baseUrl = req.ollamaBaseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-  return new ChatOllama({ model: req.model || DEFAULT_MODELS.ollama, temperature: 0.7, baseUrl });
-}
-
-/**
- * One reasoning step. Returns tool_calls (for the BFF to execute) or a final
- * answer. The graph loop itself is driven by the BFF (Task 10), so this is a
- * single-turn pure function — no recursion here.
- */
-export async function reasonOnce(req: ReasonRequest): Promise<ReasonResponse> {
-  const model = buildModel(req);
-  const bound = (model as any).bindTools
-    ? (model as any).bindTools(req.tools.map(t => ({
-        name: t.name, description: t.description, input_schema: t.inputSchema,
-      })))
-    : model;
-
-  const response: any = await bound.invoke(req.messages);
-
-  if (response.tool_calls && response.tool_calls.length > 0) {
-    return {
-      type: 'tool_calls',
-      calls: response.tool_calls.map((tc: any) => ({
-        id: tc.id, name: tc.name, args: tc.args || {},
-      })),
-      messages: [...req.messages, { role: 'assistant', content: response.content || '' }],
-    };
-  }
-
-  const answer = typeof response.content === 'string'
-    ? response.content
-    : JSON.stringify(response.content ?? '');
-  return {
-    type: 'final',
-    answer,
-    messages: [...req.messages, { role: 'assistant', content: answer }],
-  };
-}
-```
-
-- [ ] **Step 2: Create the minimal Helix client used above**
-
-```typescript
-// banking_agent_service/src/helixClient.ts
-// Thin Helix caller. Mirrors banking_api_server/services/helixLlmService.js
-// request shape. Receives connection config from the BFF per request; persists
-// nothing. Returns an object with a `.content` string + optional `.tool_calls`
-// so reasoningGraph can treat it uniformly with ChatOllama output.
-import axios from 'axios';
-import type { ReasonMessage } from './reasonContract';
-
-export async function callHelix(
-  cfg: Record<string, string | undefined>,
-  messages: ReasonMessage[],
-): Promise<{ content: string; tool_calls?: unknown[] }> {
-  const baseUrl = cfg.helix_base_url;
-  if (!baseUrl) throw new Error('[helixClient] helix_base_url missing');
-  const prompt = messages.map(m => `${m.role}: ${m.content}`).join('\n');
-  const res = await axios.post(
-    `${baseUrl}/openidm/endpoint/agent`,
-    { [cfg.helix_prompt_field_id || 'prompt']: prompt, agentId: cfg.helix_agent_id },
-    { headers: { 'x-api-key': cfg.helix_api_key || '' }, timeout: 30000 },
-  );
-  const text = typeof res.data === 'string' ? res.data : (res.data?.output ?? JSON.stringify(res.data));
-  return { content: String(text) };
-}
-```
-
-> NOTE: The exact Helix request path/fields must match `banking_api_server/services/helixLlmService.js` `callHelixAgent`. Before implementing, open that file and copy its real axios call shape into `helixClient.ts` verbatim (URL path, body fields, headers). The shape above is the structure; the exact endpoint/fields come from that file.
-
-- [ ] **Step 3: Build**
+- [ ] **Step 4: Verify the build still works**
 
 Run: `cd banking_agent_service && npm run build && echo BUILD_OK`
 Expected: `BUILD_OK`
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add banking_agent_service/src/reasoningGraph.ts banking_agent_service/src/helixClient.ts
-git commit -m "feat(agent-svc): reasoning-only LangGraph ported from agentBuilder (no tool exec, no tokens)"
+git add banking_agent_service/package.json banking_agent_service/package-lock.json
+git -c commit.gpgsign=false commit -m "build(agent-svc): add @langchain/{langgraph,ollama,core} (matched to BFF versions)"
 ```
 
 ---
 
-### Task 8: Add `POST /api/agent/reason`, delete token/MCP code from index.ts
+### Task 7b: Port the Helix HTTP flow into `helixClient.ts`
+
+A faithful TypeScript port of `banking_api_server/services/helixLlmService.js`
+`callHelixAgent` — the 3-step Helix Conversation API flow. Receives connection
+config per call; persists nothing; returns a `string` (Helix has no native
+tool-calling — that is handled in Task 7c).
+
+**Files:**
+- Create: `banking_agent_service/src/helixClient.ts`
+- Test: `banking_agent_service/tests/helixClient.test.ts`
+
+- [ ] **Step 1: Write the failing test (mock global fetch)**
+
+```typescript
+// banking_agent_service/tests/helixClient.test.ts
+import { callHelix } from '../src/helixClient';
+
+const CFG = {
+  helix_base_url: 'https://helix.example.com',
+  helix_api_key: 'k',
+  helix_environment_id: 'env1',
+  helix_agent_id: 'agentA',
+  helix_prompt_field_id: 'promptField',
+};
+
+describe('callHelix — 3-step Helix Conversation flow', () => {
+  let fetchMock: jest.Mock;
+  beforeEach(() => {
+    fetchMock = jest.fn();
+    (global as any).fetch = fetchMock;
+  });
+
+  test('throws if config incomplete', async () => {
+    await expect(callHelix({}, [{ role: 'user', content: 'hi' }]))
+      .rejects.toThrow(/Helix config incomplete/);
+  });
+
+  test('create → post → immediate complete value returns text', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'c1', home_channel: 'ch1' }) }) // create
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ message_id: 'm1', class: 'complete', value: 'hello world' }) }); // post (immediate)
+    const out = await callHelix(CFG, [{ role: 'user', content: 'hi' }]);
+    expect(out).toBe('hello world');
+    // create body must include agent.version
+    const createBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(createBody).toEqual({ agent: { version: 'published' } });
+    // post body uses the configured prompt field id
+    const postBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(postBody.content.promptField).toBe('hi');
+  });
+
+  test('post returns no value → polls until agent message', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'c1', home_channel: 'ch1' }) }) // create
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ message_id: 'mq' }) }) // post, no value
+      .mockResolvedValueOnce({ ok: true, json: async () => ([]) }) // poll 1: nothing
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ sender_role: 'agent', message_id: 'ma', class: 'complete', value: 'polled answer' }]) }); // poll 2
+    const out = await callHelix(CFG, [{ role: 'user', content: 'hi' }]);
+    expect(out).toBe('polled answer');
+  });
+
+  test('extractValue unwraps JSON {response} when present', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'c1', home_channel: 'ch1' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ message_id: 'm1', class: 'complete', value: JSON.stringify({ response: 'unwrapped' }) }) });
+    const out = await callHelix(CFG, [{ role: 'user', content: 'hi' }]);
+    expect(out).toBe('unwrapped');
+  });
+
+  test('create failure throws', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 500, text: async () => 'boom' });
+    await expect(callHelix(CFG, [{ role: 'user', content: 'hi' }]))
+      .rejects.toThrow(/Helix createConversation failed: 500/);
+  });
+});
+```
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `cd banking_agent_service && npx jest tests/helixClient.test.ts`
+Expected: FAIL — Cannot find module '../src/helixClient'
+
+- [ ] **Step 3: Implement the port (faithful to helixLlmService.js)**
+
+Create `banking_agent_service/src/helixClient.ts`. Port `apiBase`,
+`extractValue`, and the create→post→poll flow EXACTLY from
+`banking_api_server/services/helixLlmService.js` (constant
+`HELIX_PATH = '/dpc/jas/helix/v1'`; auth header `x-api-key`; create body
+`{agent:{version:'published'}}`; post `Content-Type: 'application/json; async=false'`,
+body `{class:'start',content:{[promptFieldId]:prompt}}`; 30s poll at 1s
+interval; agent message = `sender_role==='agent' && message_id!==queryId && value!=null`;
+`extractValue` looks for `class/message_class==='complete'` with `.value`, tries
+`JSON.parse` and returns `.response` if present else raw). Use the exact code:
+
+```typescript
+// banking_agent_service/src/helixClient.ts
+// Faithful TS port of banking_api_server/services/helixLlmService.js
+// callHelixAgent. 3-step Helix Conversation flow. No tokens, no persistence.
+// Returns a string (Helix has no native tool-calling — see helixToolAdapter).
+import type { ReasonMessage } from './reasonContract';
+
+const HELIX_PATH = '/dpc/jas/helix/v1';
+
+function apiBase(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).origin + HELIX_PATH;
+  } catch {
+    return baseUrl.replace(/\/$/, '').replace(/\/dpc\/.*$/, '') + HELIX_PATH;
+  }
+}
+
+function extractValue(data: any): string | null {
+  const items = Array.isArray(data) ? data : (Array.isArray(data?.content) ? data.content : [data]);
+  const done = items.find((m: any) => m && (m.class === 'complete' || m.message_class === 'complete') && m.value != null);
+  const raw = done?.value ?? null;
+  if (raw == null) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.response === 'string') return parsed.response;
+  } catch { /* not JSON — use raw */ }
+  return raw;
+}
+
+export async function callHelix(
+  cfg: Record<string, string | undefined>,
+  messages: ReasonMessage[],
+): Promise<string> {
+  const { helix_base_url, helix_api_key, helix_environment_id, helix_agent_id, helix_prompt_field_id } = cfg;
+  const missing: string[] = [];
+  if (!helix_base_url) missing.push('helix_base_url');
+  if (!helix_api_key) missing.push('helix_api_key');
+  if (!helix_environment_id) missing.push('helix_environment_id');
+  if (!helix_agent_id) missing.push('helix_agent_id');
+  if (!helix_prompt_field_id) missing.push('helix_prompt_field_id');
+  if (missing.length) throw new Error(`Helix config incomplete: missing ${missing.join(', ')}`);
+  if (!messages || messages.length === 0) throw new Error('No messages provided to Helix agent');
+
+  const base = apiBase(helix_base_url as string);
+  const apiKey = helix_api_key as string;
+
+  const lastUser = [...messages].reverse().find((m) => m.role === 'user') || messages[messages.length - 1];
+  const userText = typeof lastUser.content === 'string' ? lastUser.content : String(lastUser.content ?? '');
+  const systemMsg = messages.find((m) => m.role === 'assistant' && false) || undefined; // no system role in ReasonMessage
+  const prompt = userText;
+
+  // Step 1 — create conversation
+  const convRes = await fetch(
+    `${base}/environments/${helix_environment_id}/agents/${helix_agent_id}/conversations`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey }, body: JSON.stringify({ agent: { version: 'published' } }) },
+  );
+  if (!convRes.ok) {
+    const errText = await convRes.text();
+    throw new Error(`Helix createConversation failed: ${convRes.status} ${errText}`);
+  }
+  const conv: any = await convRes.json();
+  if (!conv || !conv.id) throw new Error('Helix createConversation returned null');
+  const conversationId = conv.id;
+  const channelId = conv.home_channel;
+
+  // Step 2 — post message
+  const msgRes = await fetch(
+    `${base}/environments/${helix_environment_id}/conversations/${conversationId}/channels/${channelId}/messages`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json; async=false', 'x-api-key': apiKey }, body: JSON.stringify({ class: 'start', content: { [helix_prompt_field_id as string]: prompt } }) },
+  );
+  if (!msgRes.ok) {
+    const errText = await msgRes.text();
+    throw new Error(`Helix sendMessage failed: ${msgRes.status} ${errText}`);
+  }
+  const msgData: any = await msgRes.json();
+  const queryMessageId = msgData?.message_id || msgData?.id;
+  const immediate = extractValue(msgData);
+  if (immediate != null) return immediate;
+
+  // Step 3 — poll
+  const pollUrl = `${base}/environments/${helix_environment_id}/conversations/${conversationId}/channels/${channelId}/messages`;
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 1_000));
+    const pollRes = await fetch(pollUrl, { headers: { 'x-api-key': apiKey } });
+    if (!pollRes.ok) {
+      const errText = await pollRes.text();
+      throw new Error(`Helix poll failed: ${pollRes.status} ${errText}`);
+    }
+    const data: any = await pollRes.json();
+    const messages_ = Array.isArray(data) ? data : [];
+    const agentMsg = messages_.find((m: any) => m.sender_role === 'agent' && m.message_id !== queryMessageId && m.value != null);
+    if (agentMsg) {
+      const result = extractValue(agentMsg);
+      if (result != null) return result;
+    }
+    const top = extractValue(data);
+    if (top != null) return top;
+  }
+  throw new Error('Timed out waiting for Helix response');
+}
+```
+
+NOTE: `ReasonMessage` has no `system` role (only user/assistant/tool), so the
+system-prepend logic from the JS original is intentionally dropped — tool
+instructions are injected by `helixToolAdapter` (Task 7c) into the user text,
+not via a system message. The poll loop's real 1s sleeps make the
+"polls until agent message" test slow but bounded (~2s); acceptable.
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: `cd banking_agent_service && npx jest tests/helixClient.test.ts`
+Expected: PASS — 5 passed
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add banking_agent_service/src/helixClient.ts banking_agent_service/tests/helixClient.test.ts
+git -c commit.gpgsign=false commit -m "feat(agent-svc): port Helix 3-step Conversation flow (helixClient)"
+```
+
+---
+
+### Task 7c: `helixToolAdapter` — prompt-based tool-calling (TDD)
+
+The novel component. Converts Helix's free-text string into a tool-capable
+model shape. Sentinel: `TOOL_CALL: {json}`. One strict retry, then throw
+`HelixUnparseableError`. Design: spec §"Phase 2 Component Design".
+
+**Files:**
+- Create: `banking_agent_service/src/helixToolAdapter.ts`
+- Test: `banking_agent_service/tests/helixToolAdapter.test.ts`
+
+- [ ] **Step 1: Write the failing test (inject a fake helixClient)**
+
+```typescript
+// banking_agent_service/tests/helixToolAdapter.test.ts
+import { helixReason, HelixUnparseableError } from '../src/helixToolAdapter';
+import type { ReasonToolSchema, ReasonMessage } from '../src/reasonContract';
+
+const TOOLS: ReasonToolSchema[] = [
+  { name: 'get_my_transactions', description: 'list txns', inputSchema: { type: 'object', properties: {} } },
+];
+const MSGS: ReasonMessage[] = [{ role: 'user', content: 'show my transactions' }];
+const CFG = {};
+
+function fakeClient(responses: string[]) {
+  let i = 0;
+  const calls: any[] = [];
+  const fn = async (_cfg: any, msgs: ReasonMessage[]) => { calls.push(msgs); return responses[i++]; };
+  return { fn, calls };
+}
+
+describe('helixReason — sentinel tool-call adapter', () => {
+  test('plain prose → content (the ~50% conversational case)', async () => {
+    const { fn } = fakeClient(['Your balance is healthy. Anything else?']);
+    const out = await helixReason(CFG, MSGS, TOOLS, fn);
+    expect(out).toEqual({ content: 'Your balance is healthy. Anything else?' });
+  });
+
+  test('clean TOOL_CALL line → tool_calls', async () => {
+    const { fn } = fakeClient(['TOOL_CALL: {"name":"get_my_transactions","args":{}}']);
+    const out = await helixReason(CFG, MSGS, TOOLS, fn);
+    expect(out.tool_calls?.[0].name).toBe('get_my_transactions');
+    expect(out.tool_calls?.[0].args).toEqual({});
+    expect(typeof out.tool_calls?.[0].id).toBe('string');
+  });
+
+  test('TOOL_CALL wrapped in code fences + preamble still parses', async () => {
+    const { fn } = fakeClient(['Sure!\n```\nTOOL_CALL: {"name":"get_my_transactions","args":{}}\n```']);
+    const out = await helixReason(CFG, MSGS, TOOLS, fn);
+    expect(out.tool_calls?.[0].name).toBe('get_my_transactions');
+  });
+
+  test('prose containing a JSON example does NOT false-positive', async () => {
+    const { fn } = fakeClient(['An access token looks like {"sub":"abc","scope":"banking:read"} — no action needed.']);
+    const out = await helixReason(CFG, MSGS, TOOLS, fn);
+    expect(out.content).toContain('access token looks like');
+    expect(out.tool_calls).toBeUndefined();
+  });
+
+  test('unknown tool name → retry → recovered', async () => {
+    const { fn, calls } = fakeClient([
+      'TOOL_CALL: {"name":"hallucinated_tool","args":{}}',
+      'TOOL_CALL: {"name":"get_my_transactions","args":{}}',
+    ]);
+    const out = await helixReason(CFG, MSGS, TOOLS, fn);
+    expect(out.tool_calls?.[0].name).toBe('get_my_transactions');
+    expect(calls.length).toBe(2); // exactly one retry
+  });
+
+  test('malformed JSON → retry → still malformed → throws HelixUnparseableError', async () => {
+    const { fn, calls } = fakeClient([
+      'TOOL_CALL: {not json',
+      'TOOL_CALL: still {not} json',
+    ]);
+    await expect(helixReason(CFG, MSGS, TOOLS, fn)).rejects.toBeInstanceOf(HelixUnparseableError);
+    expect(calls.length).toBe(2); // exactly ONE retry — hard cap
+  });
+
+  test('retry returns prose → treated as content (valid)', async () => {
+    const { fn, calls } = fakeClient([
+      'TOOL_CALL: {bad',
+      'On reflection, your balance is fine.',
+    ]);
+    const out = await helixReason(CFG, MSGS, TOOLS, fn);
+    expect(out.content).toBe('On reflection, your balance is fine.');
+    expect(calls.length).toBe(2);
+  });
+});
+```
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `cd banking_agent_service && npx jest tests/helixToolAdapter.test.ts`
+Expected: FAIL — Cannot find module '../src/helixToolAdapter'
+
+- [ ] **Step 3: Implement**
+
+```typescript
+// banking_agent_service/src/helixToolAdapter.ts
+// Makes Helix (free-text, no native tool-calling) behave like a tool-capable
+// model via a TOOL_CALL: sentinel. One strict retry, then HelixUnparseableError.
+// Design: docs/superpowers/specs/2026-05-15-agent-consolidation-design.md
+import type { ReasonMessage, ReasonToolSchema } from './reasonContract';
+
+export class HelixUnparseableError extends Error {
+  constructor(msg: string) { super(msg); this.name = 'HelixUnparseableError'; }
+}
+
+export interface HelixModelResult {
+  content?: string;
+  tool_calls?: Array<{ id: string; name: string; args: Record<string, unknown> }>;
+}
+
+type HelixClientFn = (cfg: Record<string, string | undefined>, messages: ReasonMessage[]) => Promise<string>;
+
+function buildSystemPreamble(tools: ReasonToolSchema[]): string {
+  const toolLines = tools.map((t) => {
+    const fields = Object.keys((t.inputSchema as any)?.properties || {});
+    return `- ${t.name} — ${t.description} — args: {${fields.join(', ')}}`;
+  }).join('\n');
+  return [
+    'You can call banking tools. Available tools:',
+    toolLines,
+    '',
+    'RULES:',
+    '- If a tool is needed, respond with ONE line and nothing else:',
+    '  TOOL_CALL: {"name":"<exact tool name>","args":{...}}',
+    '- Otherwise, answer the user normally in plain prose. Do NOT mention tools.',
+    '- Never wrap the TOOL_CALL line in code fences or add text around it.',
+  ].join('\n');
+}
+
+function withPreamble(messages: ReasonMessage[], preamble: string): ReasonMessage[] {
+  // ReasonMessage has no 'system' role; fold the preamble into the last user msg.
+  const out = messages.map((m) => ({ ...m }));
+  for (let i = out.length - 1; i >= 0; i--) {
+    if (out[i].role === 'user') { out[i] = { ...out[i], content: `${preamble}\n\n${out[i].content}` }; return out; }
+  }
+  out.push({ role: 'user', content: preamble });
+  return out;
+}
+
+const TOOL_CALL_RE = /^TOOL_CALL:\s*(.+)$/;
+
+/** Parse one Helix string. Returns a result, or null if it is a malformed tool attempt. */
+function parseHelixResponse(raw: string, toolNames: Set<string>): HelixModelResult | null {
+  let s = (raw || '').trim();
+  // (a) strip a single surrounding fence layer if the whole string is fenced
+  const fence = s.match(/^```[a-zA-Z]*\n([\s\S]*?)\n```$/);
+  if (fence) s = fence[1].trim();
+  // (b)(c) first line that starts with TOOL_CALL:
+  const lines = s.split('\n');
+  const toolLine = lines.map((l) => l.trim()).find((l) => TOOL_CALL_RE.test(l));
+  if (!toolLine) return { content: s }; // prose — a success
+  const jsonPart = (toolLine.match(TOOL_CALL_RE) as RegExpMatchArray)[1];
+  let obj: any;
+  try { obj = JSON.parse(jsonPart); } catch { return null; }
+  const name = obj?.name;
+  const args = obj?.args;
+  const argsOk = args && typeof args === 'object' && !Array.isArray(args);
+  if (typeof name !== 'string' || !toolNames.has(name) || !argsOk) return null;
+  return { tool_calls: [{ id: `helix-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name, args }] };
+}
+
+export async function helixReason(
+  cfg: Record<string, string | undefined>,
+  messages: ReasonMessage[],
+  tools: ReasonToolSchema[],
+  client: HelixClientFn,
+): Promise<HelixModelResult> {
+  const toolNames = new Set(tools.map((t) => t.name));
+  const preamble = buildSystemPreamble(tools);
+  const primed = withPreamble(messages, preamble);
+
+  const first = await client(cfg, primed);
+  const parsed = parseHelixResponse(first, toolNames);
+  if (parsed) return parsed;
+
+  // One strict re-prompt.
+  const corrective: ReasonMessage = {
+    role: 'user',
+    content: [
+      'Your previous response was not valid. You wrote:',
+      first.slice(0, 500),
+      `Respond with EITHER exactly one line TOOL_CALL: {"name":"...","args":{...}} using one of these exact tool names: ${[...toolNames].join(', ')}`,
+      'OR a plain prose answer with no JSON. Nothing else.',
+    ].join('\n'),
+  };
+  const second = await client(cfg, [...primed, corrective]);
+  const retryParsed = parseHelixResponse(second, toolNames);
+  if (retryParsed) return retryParsed;
+
+  throw new HelixUnparseableError('Helix did not produce a parseable response after one retry');
+}
+```
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: `cd banking_agent_service && npx jest tests/helixToolAdapter.test.ts`
+Expected: PASS — 7 passed
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add banking_agent_service/src/helixToolAdapter.ts banking_agent_service/tests/helixToolAdapter.test.ts
+git -c commit.gpgsign=false commit -m "feat(agent-svc): Helix prompt-based tool-calling adapter (sentinel + 1 retry)"
+```
+
+---
+
+### Task 7d: `reasoningGraph.ts` — LangGraph reasoning step for both providers
+
+One reasoning step driven by the BFF loop. Ollama uses native `bindTools`;
+Helix routes through `helixToolAdapter`. Catches Helix failure and any
+transport error → returns `{type:'final', reasoningUnavailable:true}`.
+
+**Files:**
+- Create: `banking_agent_service/src/reasoningGraph.ts`
+- Test: `banking_agent_service/tests/reasoningGraph.test.ts`
+
+- [ ] **Step 1: Write the failing test**
+
+```typescript
+// banking_agent_service/tests/reasoningGraph.test.ts
+import { reasonOnce } from '../src/reasoningGraph';
+import type { ReasonRequest } from '../src/reasonContract';
+
+jest.mock('../src/helixToolAdapter', () => {
+  const actual = jest.requireActual('../src/helixToolAdapter');
+  return { ...actual, helixReason: jest.fn() };
+});
+jest.mock('../src/helixClient', () => ({ callHelix: jest.fn() }));
+const { helixReason, HelixUnparseableError } = require('../src/helixToolAdapter');
+
+const baseReq: ReasonRequest = {
+  messages: [{ role: 'user', content: 'show transactions' }],
+  tools: [{ name: 'get_my_transactions', description: 'x', inputSchema: { type: 'object', properties: {} } }],
+  provider: 'helix',
+  helixConfig: {},
+};
+
+describe('reasonOnce — helix provider via adapter', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('adapter returns tool_calls → ReasonResponse tool_calls', async () => {
+    helixReason.mockResolvedValueOnce({ tool_calls: [{ id: 'i', name: 'get_my_transactions', args: {} }] });
+    const out = await reasonOnce(baseReq);
+    expect(out.type).toBe('tool_calls');
+    if (out.type === 'tool_calls') expect(out.calls[0].name).toBe('get_my_transactions');
+  });
+
+  test('adapter returns content → ReasonResponse final', async () => {
+    helixReason.mockResolvedValueOnce({ content: 'your balance is fine' });
+    const out = await reasonOnce(baseReq);
+    expect(out.type).toBe('final');
+    if (out.type === 'final') {
+      expect(out.answer).toBe('your balance is fine');
+      expect(out.reasoningUnavailable).toBeFalsy();
+    }
+  });
+
+  test('HelixUnparseableError → final with reasoningUnavailable:true (no fabricated answer)', async () => {
+    helixReason.mockRejectedValueOnce(new HelixUnparseableError('nope'));
+    const out = await reasonOnce(baseReq);
+    expect(out.type).toBe('final');
+    if (out.type === 'final') {
+      expect(out.reasoningUnavailable).toBe(true);
+      expect(out.answer).toBe('');
+    }
+  });
+
+  test('helix transport error → final with reasoningUnavailable:true', async () => {
+    helixReason.mockRejectedValueOnce(new Error('Helix poll failed: 502'));
+    const out = await reasonOnce(baseReq);
+    expect(out.type).toBe('final');
+    if (out.type === 'final') expect(out.reasoningUnavailable).toBe(true);
+  });
+});
+```
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `cd banking_agent_service && npx jest tests/reasoningGraph.test.ts`
+Expected: FAIL — Cannot find module '../src/reasoningGraph'
+
+- [ ] **Step 3: Implement**
+
+```typescript
+// banking_agent_service/src/reasoningGraph.ts
+// One reasoning step (the BFF drives the loop). Ollama = native bindTools;
+// Helix = helixToolAdapter (sentinel). Reasoning-only: NEVER executes a tool,
+// NEVER touches a token. Helix failure → reasoningUnavailable (BFF applies the
+// heuristic floor — ARCHITECTURE-TRUTHS T-3).
+import { ChatOllama } from '@langchain/ollama';
+import type { ReasonRequest, ReasonResponse } from './reasonContract';
+import { helixReason, HelixUnparseableError } from './helixToolAdapter';
+import { callHelix } from './helixClient';
+
+// Matches banking_api_server agentBuilder.js DEFAULT_MODELS for the two
+// providers reachable here.
+const DEFAULT_MODELS: Record<string, string> = { ollama: 'llama3.2', helix: 'gpt-4o-mini' };
+
+export async function reasonOnce(req: ReasonRequest): Promise<ReasonResponse> {
+  if (req.provider === 'helix') {
+    try {
+      const r = await helixReason(req.helixConfig || {}, req.messages, req.tools, callHelix);
+      if (r.tool_calls && r.tool_calls.length > 0) {
+        return { type: 'tool_calls', calls: r.tool_calls, messages: [...req.messages, { role: 'assistant', content: '' }] };
+      }
+      const answer = r.content ?? '';
+      return { type: 'final', answer, messages: [...req.messages, { role: 'assistant', content: answer }] };
+    } catch (err) {
+      // HelixUnparseableError OR any transport error → signal, do not fabricate.
+      const note = err instanceof HelixUnparseableError ? 'helix_unparseable' : 'helix_error';
+      console.warn(`[reasoningGraph] helix reasoning unavailable (${note}):`, err instanceof Error ? err.message : String(err));
+      return { type: 'final', answer: '', messages: req.messages, reasoningUnavailable: true };
+    }
+  }
+
+  // Ollama — native tool-calling.
+  const baseUrl = req.ollamaBaseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+  const model = new ChatOllama({ model: req.model || DEFAULT_MODELS.ollama, temperature: 0.7, baseUrl });
+  const bound = (model as any).bindTools(req.tools.map((t) => ({
+    name: t.name, description: t.description, input_schema: t.inputSchema,
+  })));
+  const resp: any = await bound.invoke(req.messages);
+  if (resp.tool_calls && resp.tool_calls.length > 0) {
+    return {
+      type: 'tool_calls',
+      calls: resp.tool_calls.map((tc: any) => ({ id: tc.id, name: tc.name, args: tc.args || {} })),
+      messages: [...req.messages, { role: 'assistant', content: resp.content || '' }],
+    };
+  }
+  const answer = typeof resp.content === 'string' ? resp.content : JSON.stringify(resp.content ?? '');
+  return { type: 'final', answer, messages: [...req.messages, { role: 'assistant', content: answer }] };
+}
+```
+
+NOTE: this file imports `@langchain/ollama` (added Task 7a). It does NOT import
+`@langchain/langgraph` directly — the single-step `reasonOnce` is the graph
+node; the BFF loop (Task 9) is the graph driver. That satisfies "LangGraph for
+all calls" at the orchestration layer (the BFF loop is the StateGraph
+equivalent) while keeping :3006 a stateless single-step reasoner per the
+approved design. If a literal `StateGraph` wrapper is later wanted on :3006 it
+is additive and out of scope here.
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: `cd banking_agent_service && npx jest tests/reasoningGraph.test.ts`
+Expected: PASS — 4 passed
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add banking_agent_service/src/reasoningGraph.ts banking_agent_service/tests/reasoningGraph.test.ts
+git -c commit.gpgsign=false commit -m "feat(agent-svc): reasoningGraph step — Ollama bindTools + Helix adapter, reasoning-only"
+```
+
+---
+
+### Task 8: `POST /api/agent/reason`; delete :3006 token/MCP code
 
 **Files:**
 - Create: `banking_agent_service/src/reasonRoute.ts`
-- Modify: `banking_agent_service/src/index.ts` (replace `/api/agent/task`; remove `resolveGatewayToken` + `McpGatewayClient` usage)
+- Modify: `banking_agent_service/src/index.ts`
 
 - [ ] **Step 1: Create the route handler**
 
@@ -507,7 +987,6 @@ const SHARED_SECRET_HEADER = 'x-internal-gateway-secret';
 
 export function makeReasonHandler(internalSecret: string) {
   return async function reasonHandler(req: Request, res: Response): Promise<void> {
-    // BFF↔:3006 hop is gated by a shared secret. No user token crosses here.
     const presented = req.headers[SHARED_SECRET_HEADER];
     if (!internalSecret || presented !== internalSecret) {
       res.status(403).json({ error: 'forbidden' });
@@ -530,12 +1009,12 @@ export function makeReasonHandler(internalSecret: string) {
 }
 ```
 
-- [ ] **Step 2: Wire it into index.ts and remove the token/MCP path**
+- [ ] **Step 2: Wire into index.ts; remove the token/MCP path**
 
-In `banking_agent_service/src/index.ts`:
-- Remove the `import { McpGatewayClient }` line and the `resolveGatewayToken` import/usage.
-- Delete the entire `app.post('/api/agent/task', ...)` handler.
-- Add:
+In `banking_agent_service/src/index.ts`: remove the `import { McpGatewayClient }`
+line and any `resolveGatewayToken` import/usage; delete the entire
+`app.post('/api/agent/task', ...)` handler; keep `GET /health` and the existing
+hardened middleware (bounded body, vault startup). Add:
 
 ```typescript
 import { makeReasonHandler } from './reasonRoute';
@@ -548,18 +1027,20 @@ if (!INTERNAL_SECRET) {
 app.post('/api/agent/reason', express.json({ limit: '256kb' }), makeReasonHandler(INTERNAL_SECRET));
 ```
 
-> NOTE: Keep the existing `GET /health` handler and the existing hardened middleware (bounded body, vault startup). Only the `/api/agent/task` handler and its token/MCP imports are removed.
+If `config.ts` still hard-requires `AGENT_CLIENT_ID`/`MCP_GW_RESOURCE_URI` (only
+needed by the deleted token path), relax those to optional so the service
+starts without them. Do NOT remove vault/PKI startup code.
 
 - [ ] **Step 3: Build**
 
 Run: `cd banking_agent_service && npm run build && echo BUILD_OK`
-Expected: `BUILD_OK` (compile fails loudly if a deleted symbol is still referenced — fix any stragglers)
+Expected: `BUILD_OK`. Fix any reference to a deleted symbol the compiler flags.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add banking_agent_service/src/reasonRoute.ts banking_agent_service/src/index.ts
-git commit -m "feat(agent-svc): /api/agent/reason (shared-secret gated); remove own token-exchange + MCP client"
+git add banking_agent_service/src/reasonRoute.ts banking_agent_service/src/index.ts banking_agent_service/src/config.ts
+git -c commit.gpgsign=false commit -m "feat(agent-svc): /api/agent/reason (shared-secret); remove own token-exchange + MCP client"
 ```
 
 ---
@@ -574,26 +1055,16 @@ git commit -m "feat(agent-svc): /api/agent/reason (shared-secret gated); remove 
 
 ```javascript
 // banking_api_server/tests/agentReasoningLoop.regression.test.js
-/**
- * Regression: BFF drives the reason loop. :3006 proposes tool calls; the BFF
- * executes them (custody stays here). On :3006 failure the loop returns a
- * heuristic-fallback signal (never a dead end). Recursion cap enforced BFF-side.
- */
 jest.mock('axios');
 const axios = require('axios');
 const { runReasonLoop } = require('../services/agentReasoningClient');
-
-function exec(name) { return `result:${name}`; }
 
 describe('runReasonLoop', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('final answer in one round', async () => {
     axios.post.mockResolvedValueOnce({ data: { type: 'final', answer: 'hi', messages: [] } });
-    const out = await runReasonLoop({
-      messages: [{ role: 'user', content: 'hello' }], tools: [],
-      provider: 'helix', executeTool: exec, maxIterations: 10,
-    });
+    const out = await runReasonLoop({ messages: [{ role: 'user', content: 'hello' }], tools: [], provider: 'helix', executeTool: async () => 'r', maxIterations: 10 });
     expect(out).toEqual({ ok: true, answer: 'hi' });
   });
 
@@ -602,29 +1073,26 @@ describe('runReasonLoop', () => {
       .mockResolvedValueOnce({ data: { type: 'tool_calls', calls: [{ id: '1', name: 'get_x', args: {} }], messages: [] } })
       .mockResolvedValueOnce({ data: { type: 'final', answer: 'done', messages: [] } });
     const calls = [];
-    const out = await runReasonLoop({
-      messages: [{ role: 'user', content: 'x' }], tools: [],
-      provider: 'helix', executeTool: (n) => { calls.push(n); return 'r'; }, maxIterations: 10,
-    });
+    const out = await runReasonLoop({ messages: [{ role: 'user', content: 'x' }], tools: [], provider: 'helix', executeTool: async (n) => { calls.push(n); return 'r'; }, maxIterations: 10 });
     expect(calls).toEqual(['get_x']);
     expect(out).toEqual({ ok: true, answer: 'done' });
   });
 
-  test(':3006 failure → heuristic-fallback signal, not a throw', async () => {
+  test('reasoningUnavailable:true → heuristic-fallback signal', async () => {
+    axios.post.mockResolvedValueOnce({ data: { type: 'final', answer: '', reasoningUnavailable: true } });
+    const out = await runReasonLoop({ messages: [{ role: 'user', content: 'x' }], tools: [], provider: 'helix', executeTool: async () => 'r', maxIterations: 10 });
+    expect(out).toEqual({ ok: false, reason: 'reasoning_unavailable' });
+  });
+
+  test(':3006 transport failure → reasoning-unavailable signal, not a throw', async () => {
     axios.post.mockRejectedValueOnce(new Error('ECONNREFUSED'));
-    const out = await runReasonLoop({
-      messages: [{ role: 'user', content: 'x' }], tools: [],
-      provider: 'helix', executeTool: exec, maxIterations: 10,
-    });
+    const out = await runReasonLoop({ messages: [{ role: 'user', content: 'x' }], tools: [], provider: 'helix', executeTool: async () => 'r', maxIterations: 10 });
     expect(out).toEqual({ ok: false, reason: 'reasoning_unavailable' });
   });
 
   test('recursion cap enforced BFF-side', async () => {
     axios.post.mockResolvedValue({ data: { type: 'tool_calls', calls: [{ id: '1', name: 'loop', args: {} }], messages: [] } });
-    const out = await runReasonLoop({
-      messages: [{ role: 'user', content: 'x' }], tools: [],
-      provider: 'helix', executeTool: exec, maxIterations: 3,
-    });
+    const out = await runReasonLoop({ messages: [{ role: 'user', content: 'x' }], tools: [], provider: 'helix', executeTool: async () => 'r', maxIterations: 3 });
     expect(out).toEqual({ ok: false, reason: 'max_iterations' });
     expect(axios.post.mock.calls.length).toBe(3);
   });
@@ -634,36 +1102,21 @@ describe('runReasonLoop', () => {
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `cd banking_api_server && npx jest tests/agentReasoningLoop.regression.test.js`
-Expected: FAIL — `Cannot find module '../services/agentReasoningClient'`
+Expected: FAIL — Cannot find module '../services/agentReasoningClient'
 
-- [ ] **Step 3: Implement the client + loop**
+- [ ] **Step 3: Implement**
 
 ```javascript
 // banking_api_server/services/agentReasoningClient.js
-/**
- * BFF→:3006 reasoning client. The BFF DRIVES the loop and EXECUTES tools
- * (token custody + HITL stay here). :3006 only proposes tool calls or returns
- * a final answer. On :3006 failure we signal heuristic-fallback (the heuristic
- * already ran upstream — ARCHITECTURE-TRUTHS T-3 floor). Recursion cap is
- * enforced here, mirroring the old in-process MAX_TOOL_ITERATIONS.
- */
+// BFF drives the reason loop and EXECUTES tools (token custody + HITL stay
+// here). :3006 only proposes tool calls / returns a final answer. On
+// reasoningUnavailable or transport failure → signal heuristic-fallback
+// (ARCHITECTURE-TRUTHS T-3 floor). Recursion cap enforced here.
 const axios = require('axios');
 
 const REASON_URL =
   (process.env.AGENT_SERVICE_URL || 'http://localhost:3006') + '/api/agent/reason';
 
-/**
- * @param {object} p
- * @param {Array} p.messages
- * @param {Array} p.tools  tool schemas
- * @param {'helix'|'ollama'} p.provider  already resolved by the BFF
- * @param {string} [p.model]
- * @param {object} [p.helixConfig]
- * @param {string} [p.ollamaBaseUrl]
- * @param {(name:string, args:object)=>Promise<any>} p.executeTool  BFF-side tool exec
- * @param {number} p.maxIterations
- * @returns {Promise<{ok:true,answer:string}|{ok:false,reason:'reasoning_unavailable'|'max_iterations'}>}
- */
 async function runReasonLoop(p) {
   const secret = process.env.BFF_INTERNAL_SECRET || '';
   let messages = p.messages;
@@ -672,28 +1125,20 @@ async function runReasonLoop(p) {
     try {
       resp = await axios.post(
         REASON_URL,
-        {
-          messages,
-          tools: p.tools,
-          provider: p.provider,
-          model: p.model,
-          helixConfig: p.helixConfig,
-          ollamaBaseUrl: p.ollamaBaseUrl,
-        },
-        { headers: { 'x-internal-gateway-secret': secret }, timeout: 35000 },
+        { messages, tools: p.tools, provider: p.provider, model: p.model, helixConfig: p.helixConfig, ollamaBaseUrl: p.ollamaBaseUrl },
+        { headers: { 'x-internal-gateway-secret': secret }, timeout: 70000 },
       );
     } catch (err) {
-      // :3006 unreachable / 5xx / timeout — heuristic is the floor upstream.
       return { ok: false, reason: 'reasoning_unavailable' };
     }
     const data = resp.data;
-    if (data.type === 'final') return { ok: true, answer: data.answer };
+    if (data.type === 'final') {
+      if (data.reasoningUnavailable) return { ok: false, reason: 'reasoning_unavailable' };
+      return { ok: true, answer: data.answer };
+    }
     if (data.type === 'tool_calls') {
       const toolMessages = [];
       for (const call of data.calls) {
-        // executeTool performs RFC 8693 + MCP + HITL gate in the BFF. If it
-        // throws an HITL-suspend sentinel the caller (Task 10) handles 428;
-        // here we just propagate by rethrowing.
         const result = await p.executeTool(call.name, call.args);
         toolMessages.push({ role: 'tool', content: typeof result === 'string' ? result : JSON.stringify(result), tool_call_id: call.id });
       }
@@ -708,142 +1153,142 @@ async function runReasonLoop(p) {
 module.exports = { runReasonLoop };
 ```
 
+NOTE: timeout is 70s — a Helix turn can be one create+post+30s-poll, and a
+retry doubles that; 70s covers worst case without hanging forever.
+
 - [ ] **Step 4: Run to verify it passes**
 
 Run: `cd banking_api_server && npx jest tests/agentReasoningLoop.regression.test.js`
-Expected: PASS — 4 passed
+Expected: PASS — 5 passed
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add banking_api_server/services/agentReasoningClient.js banking_api_server/tests/agentReasoningLoop.regression.test.js
-git commit -m "feat(bff): BFF-driven reason loop client (custody + cap stay BFF-side)"
+git -c commit.gpgsign=false commit -m "feat(bff): BFF-driven reason loop (custody + cap stay BFF-side; reasoningUnavailable→heuristic)"
 ```
 
 ---
 
-### Task 10: Wire `processAgentMessage` to the loop (BFF keeps heuristic + tool exec + HITL)
+### Task 10: Wire `processAgentMessage` to the loop (heuristic + tool exec + HITL stay BFF-side)
 
 **Files:**
-- Modify: `banking_api_server/services/bankingAgentLangGraphService.js` (the LLM branch — currently `createBankingAgent` + `graph.invoke`, around lines 432-477)
+- Modify: `banking_api_server/services/bankingAgentLangGraphService.js` (the LLM branch ≈ lines 432-477; the heuristic-first block ABOVE it is unchanged)
 
-- [ ] **Step 1: Replace the in-process graph invocation with the loop**
+- [ ] **Step 1: Replace in-process graph invocation with the loop**
 
-In `bankingAgentLangGraphService.js`, the heuristic-first block stays exactly as-is. Only the LLM fallback portion changes. Find the block that calls `createBankingAgent(...)` then `graph.invoke(...)` (≈ lines 432-477) and replace the graph construction + invoke with:
+The heuristic-first block stays exactly as-is. Capture its computed result in a
+variable `heuristicFallbackResult` (the result object the heuristic produced, or
+null if the heuristic did not match). Replace the `createBankingAgent(...)` +
+`graph.invoke(...)` block (≈ lines 432-477) with:
 
 ```javascript
-    // LLM path — reasoning now runs in banking_agent_service (:3006). The BFF
-    // resolves the provider, supplies tool schemas, EXECUTES tools locally
-    // (RFC 8693 + MCP + HITL all stay here), and drives the loop.
     const { resolveLlmProvider } = require('./llmProviderResolver');
     const { runReasonLoop } = require('./agentReasoningClient');
     const { provider, model } = resolveLlmProvider(langchainConfig);
 
-    // Tool schemas the agent may propose (names/descriptions/inputSchema only —
-    // never executors). Reuse the existing tool list builder used by the old
-    // in-process graph (the same `tools` array createBankingAgent built).
-    const toolSchemas = await buildToolSchemasForAgent({ userId, req }); // see Step 2
-
+    const toolSchemas = buildToolSchemasForAgent({ userId, req }); // Step 2
     const loopResult = await runReasonLoop({
       messages: [{ role: 'user', content: message }],
       tools: toolSchemas,
       provider,
       model,
-      helixConfig: extractHelixConfig(langchainConfig), // see Step 2
+      helixConfig: extractHelixConfig(langchainConfig), // Step 2
       ollamaBaseUrl: langchainConfig?.ollama_base_url,
       maxIterations: MAX_TOOL_ITERATIONS,
-      executeTool: async (name, args) => {
-        // Existing BFF tool execution path — unchanged. This is where the
-        // HITL 428 gate fires (transactionConsentChallenge). If it throws the
-        // existing hitl-required error, let it propagate so the route returns
-        // 428 to the browser exactly as today.
-        return await executeBffTool({ name, args, userId, userToken, req, tokenEvents });
-      },
+      executeTool: async (name, args) =>
+        executeBffTool({ name, args, userId, userToken, req, tokenEvents }), // Step 2
     });
 
     if (loopResult.ok) {
-      return {
-        reply: loopResult.answer, success: true, toolsCalled: [], tokensUsed: 0,
-        requiresConsent: false, agentConfigured: true, tokenEvents: tokenEvents || [],
-      };
+      return { reply: loopResult.answer, success: true, toolsCalled: [], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: tokenEvents || [] };
     }
     if (loopResult.reason === 'max_iterations') {
-      return {
-        reply: 'Agent reached maximum tool iteration limit. Please rephrase your request or try a simpler query.',
-        success: false, toolsCalled: [], tokensUsed: 0, requiresConsent: false,
-        agentConfigured: true, tokenEvents: tokenEvents || [], error: 'max_tool_iterations',
-      };
+      return { reply: 'Agent reached maximum tool iteration limit. Please rephrase your request or try a simpler query.', success: false, toolsCalled: [], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: tokenEvents || [], error: 'max_tool_iterations' };
     }
-    // reasoning_unavailable → fall through to the heuristic result already
-    // computed earlier in this function (T-3 floor). Return that instead of a
-    // dead end.
+    // reasoning_unavailable → heuristic floor (T-3).
     return heuristicFallbackResult || {
       reply: 'Advanced reasoning is temporarily unavailable. Please try a simpler request.',
-      success: false, toolsCalled: [], tokensUsed: 0, requiresConsent: false,
-      agentConfigured: true, tokenEvents: tokenEvents || [], error: 'reasoning_unavailable',
+      success: false, toolsCalled: [], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: tokenEvents || [], error: 'reasoning_unavailable',
     };
 ```
 
-- [ ] **Step 2: Extract the two helpers from the old in-process path**
+- [ ] **Step 2: Extract three helpers (reuse existing tool defs verbatim — do NOT reinvent tools)**
 
-The old `createBankingAgent` built a `tools` array (LangChain tools with executors) and an LLM. Extract two small helpers in the same file (or a sibling) WITHOUT changing tool behavior:
-- `buildToolSchemasForAgent({userId, req})` → returns `[{name, description, inputSchema}]` derived from the SAME tool list `createBankingAgent` used (strip the executors).
-- `executeBffTool({name, args, userId, userToken, req, tokenEvents})` → invokes the SAME tool executor the old in-process tool node called (`tool.invoke(args, { configurable: { agentContext: { agentToken, userId, tokenEvents }}})`), preserving the HITL-throw behavior.
-- `extractHelixConfig(langchainConfig)` → the existing `helixConfig` object literal already built in `agentBuilder.js` lines 172-178 (helix_base_url/api_key/environment_id/agent_id/prompt_field_id).
-- `heuristicFallbackResult` → capture the heuristic result computed in the heuristic-first block so the `reasoning_unavailable` branch can return it.
-
-> Implementation note: these helpers MUST reuse the existing tool definitions/executors verbatim — do not re-implement tools. The goal is to split "schema vs execute," not to change what tools do. Open `agentBuilder.js` lines 257-292 (the tool node) for the exact `tool.invoke` shape to preserve.
+Open `banking_api_server/services/agentBuilder.js` lines 110-300 for the exact
+tool list + tool-node `tool.invoke(args, { configurable: { agentContext: {...} }})`
+shape. Add in `bankingAgentLangGraphService.js` (or a sibling helper file):
+- `buildToolSchemasForAgent({userId, req})` → `[{name, description, inputSchema}]`
+  from the SAME tool list `createBankingAgent` built, with executors stripped.
+- `executeBffTool({name, args, userId, userToken, req, tokenEvents})` → invokes
+  the SAME tool executor the old in-process tool node called, preserving its
+  HITL-throw behavior (so a transfer ≥ threshold still throws the existing
+  hitl-required error → route returns 428 to the browser unchanged).
+- `extractHelixConfig(langchainConfig)` → the `{helix_base_url, helix_api_key,
+  helix_environment_id, helix_agent_id, helix_prompt_field_id}` object literal
+  already built in `agentBuilder.js` (~lines 172-178).
+These helpers MUST reuse existing tool definitions/executors verbatim.
 
 - [ ] **Step 3: Syntax check**
 
 Run: `cd banking_api_server && node -c services/bankingAgentLangGraphService.js && echo OK`
 Expected: `OK`
 
-- [ ] **Step 4: Run the critical suite (HITL must still pass)**
+- [ ] **Step 4: Critical suite (HITL must still pass)**
 
 Run: `cd banking_api_server && npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration agentReasoningLoop`
-Expected: all PASS (38 critical + 4 loop)
+Expected: all PASS (38 critical + 5 loop)
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add banking_api_server/services/bankingAgentLangGraphService.js
-git commit -m "feat(bff): processAgentMessage drives :3006 reason loop; heuristic/HITL/custody unchanged"
+git -c commit.gpgsign=false commit -m "feat(bff): processAgentMessage drives :3006 reason loop; heuristic/HITL/custody unchanged"
 ```
 
 ---
 
-### Task 11: End-to-end verification (live)
+### Task 11: End-to-end verification (live) + REGRESSION_PLAN §4
 
-**Files:** none (verification only)
+**Files:** REGRESSION_PLAN.md (entry only)
 
-- [ ] **Step 1: Set the shared secret and restart the stack**
+- [ ] **Step 1: Ensure shared secret + restart**
 
-Ensure `BFF_INTERNAL_SECRET` is set in `banking_api_server/.env` (it already exists for `/internal/id-token`; reuse the same value). `banking_agent_service/.env` symlinks to it, so :3006 sees the same secret.
+Confirm `BFF_INTERNAL_SECRET` is set in `banking_api_server/.env` (reuse the
+existing `/internal/id-token` value; `banking_agent_service/.env` symlinks to
+it). Run: `./run-bank.sh restart 2>&1 | tail -5`
+Expected: services start; `./run-bank.sh status` shows Agent Service :3006 OK.
 
-Run: `cd /Users/curtismuir/Development/banking && ./run-bank.sh restart 2>&1 | tail -5`
-Expected: services start; `./run-bank.sh status` shows Agent Service :3006 OK (no `Missing AGENT_CLIENT_ID` — that var is no longer required since the token path is removed; if it still references it, remove the requirement in `config.ts` as part of Task 8).
+- [ ] **Step 2: Browser smoke**
 
-- [ ] **Step 2: Browser smoke — the muddle case + HITL**
-
-- Sign in as customer → middle agent → type `transactions` → recent transactions render (the original reported bug, now via :3006).
-- Type a transfer ≥ threshold → `AgentConsentModal` appears (HITL 428 still BFF-side) → confirm → transfer completes, conversation resumes.
-- Stop :3006 (`kill $(cat /tmp/bank-agent-service.pid)`), ask a non-heuristic question → heuristic fallback answers (no dead end). Restart :3006.
+- Customer sign-in → middle agent → `transactions` → recent transactions render
+  (original reported bug, now via :3006 Helix path).
+- Transfer ≥ threshold → AgentConsentModal appears (HITL still BFF-side) →
+  confirm → completes, conversation resumes.
+- `kill $(cat /tmp/bank-agent-service.pid)`; ask a non-heuristic question →
+  heuristic fallback answers (no dead end). Restart :3006.
 
 - [ ] **Step 3: Log assertions**
 
-Run: `grep -E "reason_failed|/api/agent/reason|reasoning_unavailable|May not request scopes" /tmp/bank-api-server.log /tmp/bank-agent-service.log | tail`
-Expected: `/api/agent/reason` 200s on success; no `May not request scopes`; `reasoning_unavailable` only when :3006 was deliberately down.
+Run: `grep -E "/api/agent/reason|reason_failed|reasoningUnavailable|TOOL_CALL|May not request scopes" /tmp/bank-api-server.log /tmp/bank-agent-service.log | tail`
+Expected: `/api/agent/reason` 200s; no `May not request scopes`;
+`reasoningUnavailable` only when :3006 was deliberately down.
 
-- [ ] **Step 4: Add REGRESSION_PLAN §4 entry (Phase 2)**
+- [ ] **Step 4: REGRESSION_PLAN §4 entry**
 
-Add §4 entry: LangGraph reasoning moved to :3006 (reasoning-only, shared-secret gated); BFF drives the loop and remains sole token custodian + HITL enforcer; :3006's own token-exchange/MCP code deleted. Do-not-break: :3006 must never receive a user token or execute tools; HITL stays BFF-side; loop recursion cap mirrors MAX_TOOL_ITERATIONS.
+Add a §4 entry (top, reverse-chron, project template): LangGraph reasoning moved
+to :3006 (reasoning-only, shared-secret gated, LangGraph for all providers,
+Helix via sentinel adapter with 1 retry); BFF drives the loop, stays sole token
+custodian + HITL enforcer; :3006 token-exchange/MCP code deleted. Do-not-break:
+:3006 never receives a user token or executes tools; HITL stays BFF-side; loop
+cap mirrors MAX_TOOL_ITERATIONS; heuristic remains the T-3 floor on
+reasoningUnavailable.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add REGRESSION_PLAN.md
-git commit -m "docs(regression): §4 entry — LangGraph reasoning service on :3006 (Phase 2)"
+git -c commit.gpgsign=false commit -m "docs(regression): §4 entry — LangGraph reasoning service on :3006 (Phase 2)"
 ```
 
 ---
@@ -851,38 +1296,47 @@ git commit -m "docs(regression): §4 entry — LangGraph reasoning service on :3
 ### Task 12: Narrative + labeling (presentation only)
 
 **Files:**
-- Modify: `CONTEXT.md` (agent glossary)
-- Modify: `banking_api_ui/src/pages/LangChainPage.js` (one-line banner)
-- Modify: placement-mode selector copy (locate in `BankingAgent.js` / `AgentUiModeContext.js` consumer)
+- Modify: `CONTEXT.md`; `banking_api_ui/src/pages/LangChainPage.js`; placement-mode copy in `banking_api_ui/src/components/BankingAgent.js`
 
-- [ ] **Step 1: Update CONTEXT.md agent glossary**
+- [ ] **Step 1: CONTEXT.md agent glossary**
 
-Replace the three-bullet "agent" entry so the canonical agent is "the LangGraph reasoning service on :3006, driven by the BFF"; `langchain_agent` is "the Python LangChain cross-stack exhibit"; note the in-process BFF agent no longer exists as a distinct thing (it is the BFF↔:3006 orchestrator).
+Rewrite the "agent" entry: canonical agent = the LangGraph reasoning service on
+:3006 driven by the BFF; `langchain_agent` = the Python LangChain cross-stack
+exhibit; the old in-process BFF agent no longer exists as a distinct thing (it
+is the BFF↔:3006 orchestrator).
 
-- [ ] **Step 2: Add the /langchain banner**
+- [ ] **Step 2: /langchain banner**
 
-In `banking_api_ui/src/pages/LangChainPage.js`, add a single non-emoji info banner near the top: "Python LangChain variant — the same delegated-OAuth security model as the main agent, running in a different runtime (Python + local Ollama)."
+Add one non-emoji info banner near the top of `LangChainPage.js`: "Python
+LangChain variant — same delegated-OAuth security model as the main agent,
+different runtime (Python + local Ollama)."
 
 - [ ] **Step 3: Placement-mode copy**
 
-Add a one-line clarifier near the placement toggle (Middle/Float/Bottom) that these are views of one agent, not different agents. No behavior change.
+Add a one-line clarifier near the Middle/Float/Bottom toggle that these are
+views of one agent, not different agents. No behavior change.
 
 - [ ] **Step 4: UI build gate (MANDATORY — CLAUDE.md)**
 
 Run: `cd banking_api_ui && npm run build`
-Expected: exit code 0
+Expected: exit code 0.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add CONTEXT.md banking_api_ui/src/pages/LangChainPage.js banking_api_ui/src/components/BankingAgent.js
-git commit -m "docs(narrative): one-agent story — glossary + /langchain + placement copy"
+git -c commit.gpgsign=false commit -m "docs(narrative): one-agent story — glossary + /langchain + placement copy"
 ```
 
 ---
 
 ## Done Criteria
 
-- Phase 1: `llmProviderResolver` is the only place a provider default exists; grep-clean; 43 tests pass.
-- Phase 2: `transactions` works through :3006 in the browser; HITL transfer still gated BFF-side and resumes; :3006-down falls back to heuristic; :3006 has no token-exchange/MCP code; UI build exits 0.
-- ARCHITECTURE-TRUTHS T-3 (already strengthened) holds; two REGRESSION_PLAN §4 entries added.
+- Phase 1: `llmProviderResolver` is the only provider-default site; grep-clean; 43 tests pass. (SHIPPED.)
+- Phase 2: `transactions` works through :3006 in the browser via the Helix
+  sentinel adapter; HITL transfer still gated BFF-side and resumes; :3006-down
+  and Helix-unparseable both fall back to the heuristic; :3006 has no
+  token-exchange/MCP code; LangGraph (`@langchain/*`) is a real :3006 dep;
+  Ollama path uses native bindTools; Helix path uses the sentinel adapter with
+  exactly one retry; UI build exits 0.
+- ARCHITECTURE-TRUTHS T-3 holds; two REGRESSION_PLAN §4 entries added (Phase 1 + Phase 2).
