@@ -20,6 +20,7 @@
     "test:mcp-inspector": "jest --testPathPattern=mcp-inspector --forceExit --verbose",
     "test:bff-tokens": "jest --testPathPattern='redisWireUrl|bffSessionGating' --forceExit --verbose",
     "test:session": "jest --testPathPattern='authSession|authStateCookie|bffSessionGating|session-store-resilience|oauth-e2e-integration' --forceExit",
+    "test:chips": "jest --testPathPattern='extractChips|allChips.pipeline.integration' --forceExit",
     "verify:token-exchange": "node scripts/verify-token-exchange.js",
     "verify:scopes": "node scripts/verify-scope-configuration.js",
     "verify:scopes:fix": "node scripts/verify-scope-configuration.js --fix",
