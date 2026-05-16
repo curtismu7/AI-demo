@@ -11,6 +11,7 @@
 import axios from 'axios';
 import { GatewayConfig } from './config';
 import { cacheInsertWithEviction } from './boundedTokenCache';
+import { teachLog } from './teachLogger';
 
 // Simple in-memory cache: gatewayToken+targetAud → { token, expiresAt }
 // HI-06: previously this Map grew without bound. Under load (many distinct
@@ -56,6 +57,8 @@ export async function exchangeTokenForBackend(
 
   const credentials = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64');
 
+  teachLog.step(1, 2, 'RFC 8693 exchange (gateway) REQUEST', { subject_aud: subjectToken, target_aud: targetAudience });
+
   const response = await axios.post(config.tokenEndpoint, params.toString(), {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -66,6 +69,8 @@ export async function exchangeTokenForBackend(
 
   const { access_token, expires_in } = response.data;
   if (!access_token) throw new Error('Token exchange response missing access_token');
+
+  teachLog.step(2, 2, 'RFC 8693 exchange (gateway) RESPONSE', { token_type: response.data.token_type, expires_in, access_token });
 
   _cacheInsertWithEviction(key, {
     token: access_token,

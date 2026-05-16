@@ -24,6 +24,7 @@
 import { GatewayConfig } from './config';
 import { exchangeTokenForBackend } from './tokenExchange';
 import type { BackendTarget } from './router';
+import { teachLog } from './teachLogger';
 
 export type CredentialKind = 'oauth_bearer' | 'api_key' | 'dual_token';
 export type CredentialPath = 'oauth_bearer' | 'api_key' | 'dual_token';
@@ -68,6 +69,7 @@ export async function selectCredentialForBackend(
   if (target === 'apikey') {
     const key = config.demoApiKeyServiceKey || '';
     const last4 = key.length >= 4 ? key.slice(-4) : 'XXXX';
+    teachLog.step(1, 1, 'gateway credential disposition selected', { disposition: target });
     return { kind: 'api_key', credentialPath: 'api_key', apiKeyMaskedLast4: last4 };
   }
 
@@ -86,6 +88,7 @@ export async function selectCredentialForBackend(
       config.bankingResourceServerResourceUri,
       config,
     );
+    teachLog.step(1, 1, 'gateway credential disposition selected', { disposition: target, backend_aud: config.bankingResourceServerResourceUri });
     return {
       kind: 'dual_token',
       credentialPath: 'dual_token',
@@ -101,6 +104,7 @@ export async function selectCredentialForBackend(
     config.bankingResourceServerResourceUri,
     config,
   );
+  teachLog.step(1, 1, 'gateway credential disposition selected', { disposition: target, backend_aud: config.bankingResourceServerResourceUri });
   return {
     kind: 'oauth_bearer',
     credentialPath: 'oauth_bearer',
