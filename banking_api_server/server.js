@@ -1142,6 +1142,7 @@ const {
     introspectToken
 } = require('./middleware/tokenIntrospection');
 const mcpFlowSseHub = require('./services/mcpFlowSseHub');
+const { buildSsePayload } = require('./services/sseCorrelation');
 const http2McpBridge = require("./services/http2McpBridge");
 const mcpGatewayClient = require('./services/mcpGatewayClient');
 const mcpPingOneStdioAdapter = require('./services/mcpPingOneStdioAdapter');
@@ -1189,10 +1190,7 @@ function publishTokenEventsToSse(flowTraceId, tokenEvents) {
   if (!flowTraceId || !Array.isArray(tokenEvents)) return;
   for (const event of tokenEvents) {
     if (event && typeof event === 'object') {
-      mcpFlowSseHub.publish(flowTraceId, {
-        type: 'token-event',
-        ...event
-      });
+      mcpFlowSseHub.publish(flowTraceId, buildSsePayload('token-event', event));
     }
   }
 }
@@ -1209,8 +1207,7 @@ function publishMcpResultToSse(flowTraceId, { tool, result, durationMs, isDelega
     ? result.content.slice(0, 10)          // cap size for SSE payload
     : (result ? { text: String(result).slice(0, 500) } : null);
   const toolResultSummary = success ? `${tool} completed` : `${tool} failed`;
-  mcpFlowSseHub.publish(flowTraceId, {
-    type: 'mcp-result',
+  mcpFlowSseHub.publish(flowTraceId, buildSsePayload('mcp-result', {
     toolName: tool,
     status: success ? 'success' : 'failure',
     duration: durationMs ?? 0,
@@ -1218,7 +1215,7 @@ function publishMcpResultToSse(flowTraceId, { tool, result, durationMs, isDelega
     resultSummary: toolResultSummary,
     resultJson: toolResultJson,
     timestamp: new Date().toISOString(),
-  });
+  }));
 }
 
 // POST /api/mcp/tool — call a banking MCP tool
