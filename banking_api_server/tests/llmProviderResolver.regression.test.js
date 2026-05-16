@@ -5,12 +5,13 @@
  * When consulted: explicit choice honored; else Helix; Ollama ONLY if
  * explicitly selected AND configured, else fall back to Helix.
  */
-jest.mock('../services/configStore', () => ({
-  getEffective: jest.fn(() => ''),
-}));
 const { resolveLlmProvider } = require('../services/llmProviderResolver');
 
 describe('resolveLlmProvider', () => {
+  let savedOllamaEnv;
+  beforeEach(() => { savedOllamaEnv = process.env.OLLAMA_BASE_URL; delete process.env.OLLAMA_BASE_URL; });
+  afterEach(() => { if (savedOllamaEnv === undefined) delete process.env.OLLAMA_BASE_URL; else process.env.OLLAMA_BASE_URL = savedOllamaEnv; });
+
   test('defaults to helix when no provider set', () => {
     expect(resolveLlmProvider({})).toEqual({ provider: 'helix', model: undefined });
   });
