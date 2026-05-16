@@ -71,3 +71,36 @@ describe('all-chips — Heuristics-only routing (CI, deterministic)', () => {
     }
   });
 });
+
+// --- appended to allChips.pipeline.integration.test.js ---
+
+describe('pipeline hard-fail — no user token (CI, deterministic)', () => {
+  function buildMcpAppNoSession() {
+    // Mount ONLY requireSession + a sentinel handler that must never run.
+    const { requireSession } = require('../../middleware/auth');
+    const app = express();
+    app.use(express.json());
+    // No session.user is ever set.
+    let pipelineEntered = false;
+    app.post('/api/mcp/tool', express.json(), requireSession, (req, res) => {
+      pipelineEntered = true;
+      res.json({ result: 'SHOULD_NOT_REACH' });
+    });
+    app.get('/__entered', (req, res) => res.json({ pipelineEntered }));
+    return app;
+  }
+
+  test('POST /api/mcp/tool with no session → 401 unauthenticated, pipeline never entered', async () => {
+    const app = buildMcpAppNoSession();
+    const res = await request(app)
+      .post('/api/mcp/tool')
+      .send({ tool: 'get_my_accounts', params: {} });
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('unauthenticated');
+    expect(res.body.message).toBe('A valid session is required. Please sign in.');
+
+    const probe = await request(app).get('/__entered');
+    expect(probe.body.pipelineEntered).toBe(false);
+  });
+});
