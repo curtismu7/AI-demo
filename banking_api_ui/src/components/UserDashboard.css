@@ -131,6 +131,11 @@
   border-radius: 8px;
 }
 
+/* No-banking variant: hide the third (banking) track — token rail | agent only */
+.ud-body.ud-body--dashboard-split3.ud-body--dashboard-split3--no-banking {
+  grid-template-columns: minmax(240px, 260px) 1fr;
+}
+
 /* In split3 page-mode the grid fills the flex remainder — height:0 lets flex control it */
 .user-dashboard--split3 .ud-body.ud-body--dashboard-split3 {
   flex: 1 1 0%;
@@ -253,6 +258,10 @@
 @media (max-width: 1280px) {
   .ud-body.ud-body--dashboard-split3 {
     grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .ud-body.ud-body--dashboard-split3.ud-body--dashboard-split3--no-banking {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
