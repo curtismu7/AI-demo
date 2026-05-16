@@ -58,9 +58,16 @@ const app = express();
 // a misconfigured deploy can't expose an open reasoning endpoint.
 // ---------------------------------------------------------------------------
 
-const INTERNAL_SECRET = process.env.BFF_INTERNAL_SECRET || '';
-if (!INTERNAL_SECRET) {
-  console.error('[Agent] FATAL: BFF_INTERNAL_SECRET unset — /api/agent/reason would be open. Refusing to start.');
+// Shared secret for the BFF↔:3006 hop. Mirrors banking_api_server/routes/
+// agentIdToken.js (/internal/id-token) and must match
+// banking_mcp_gateway/src/config.ts DEFAULT_BFF_INTERNAL_SECRET.
+const DEFAULT_INTERNAL_SECRET = 'dev-shared-secret-change-me';
+const INTERNAL_SECRET = process.env.BFF_INTERNAL_SECRET || DEFAULT_INTERNAL_SECRET;
+if (process.env.NODE_ENV === 'production' && INTERNAL_SECRET === DEFAULT_INTERNAL_SECRET) {
+  console.error(
+    "[Agent] FATAL: BFF_INTERNAL_SECRET is the committed dev default ('dev-shared-secret-change-me') " +
+    'and NODE_ENV=production. Refusing to start. Set BFF_INTERNAL_SECRET to a unique 32+ byte secret.',
+  );
   process.exit(1);
 }
 app.post('/api/agent/reason', express.json({ limit: '256kb' }), makeReasonHandler(INTERNAL_SECRET));
