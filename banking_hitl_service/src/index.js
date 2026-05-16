@@ -25,12 +25,14 @@ require('dotenv').config();
 const express = require('express');
 const challengeRoutes = require('./routes/challenges');
 const { teachLog } = require('./teachLogger');
+const { correlationMiddleware } = require('./correlationMiddleware');
 
 const PORT = parseInt(process.env.PORT || '3009', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 
 const app = express();
 app.use(express.json());
+app.use(correlationMiddleware);
 
 // CORS — allow OLB dashboard and MCP Gateway
 const ALLOWED_ORIGINS = (process.env.HITL_ALLOWED_ORIGINS || '')

@@ -10,6 +10,7 @@
  */
 
 import axios from 'axios';
+import { getCorrelationId } from './correlationContext';
 
 export interface HitlChallenge {
   challengeId: string;
@@ -37,10 +38,18 @@ export async function createHitlChallenge(
     context?: Record<string, unknown>;
   },
 ): Promise<HitlChallenge> {
-  const response = await axios.post(`${hitlServiceUrl}/challenges`, payload, {
-    timeout: 5_000,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  const _cid = getCorrelationId();
+  const response = await axios.post(
+    `${hitlServiceUrl}/challenges`,
+    { ...payload, ...(_cid ? { correlationId: _cid } : {}) },
+    {
+      timeout: 5_000,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(_cid ? { 'X-Correlation-ID': _cid } : {}),
+      },
+    },
+  );
   return response.data as HitlChallenge;
 }
 
