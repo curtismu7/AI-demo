@@ -3152,6 +3152,15 @@ body > .banking-agent-float-root .banking-agent-panel {
   font-weight: 500;
 }
 
+.ba-degraded-banner {
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 6px 12px;
+  background: #fff4e5;
+  color: #8a5300;
+  border-top: 1px solid #f0d9b5;
+}
+
 .ba-header-session {
   flex: 1 1 0;
   min-width: 0;
