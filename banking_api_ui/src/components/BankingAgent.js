@@ -1691,6 +1691,11 @@ export default function BankingAgent({
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
   const [selectedLlmProvider] = useState("helix");
+  // Degraded-mode banner: true when the user selected an LLM provider (Helix)
+  // but routing fell back to the heuristic parser (Helix unreachable / not
+  // configured). Drives a persistent banner in the panel header. Cleared as
+  // soon as a Helix-sourced answer comes back.
+  const [helixDegraded, setHelixDegraded] = useState(false);
   // Single-slot conversation state for clarification follow-ups.
   // Set when we asked "Which account?"/"How much?" and we're waiting on
   // the user's next message to fill that slot. Shape: { action, slot, asked }.
@@ -5469,6 +5474,14 @@ export default function BankingAgent({
     _source = "heuristic",
     nlUserText = "",
   ) {
+    // Degraded-mode detection: a real Helix->heuristic fallback is "Helix was
+    // the selected provider but the answer came back from the heuristic".
+    // A Helix-sourced answer (helix / helix_fallback) clears the banner.
+    if (_source === "helix" || _source === "helix_fallback") {
+      setHelixDegraded(false);
+    } else if (selectedLlmProvider === "helix" && _source === "heuristic") {
+      setHelixDegraded(true);
+    }
     if (result.kind === "education" && result.ciba) {
       openEducationCommand({ ciba: true, tab: result.tab });
       setIsOpen(false);
@@ -6357,6 +6370,12 @@ export default function BankingAgent({
                   </div>
                 </div>
               </div>
+              {helixDegraded && (
+                <div className="ba-degraded-banner" role="status">
+                  ⚠️ AI reasoning offline — running rule-based responses. Some
+                  questions may not be understood.
+                </div>
+              )}
               {splitChrome &&
                 isLoggedIn &&
                 (effectiveUser?.id || effectiveUser?.username) && (

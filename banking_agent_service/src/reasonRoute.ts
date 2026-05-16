@@ -3,6 +3,8 @@ import type { Request, Response } from 'express';
 import * as crypto from 'crypto';
 import { reasonOnce } from './reasoningGraph';
 import type { ReasonRequest } from './reasonContract';
+import { runWithCorrelation } from './correlationContext';
+import { teachLog } from './teachLogger';
 
 const SHARED_SECRET_HEADER = 'x-internal-gateway-secret';
 
@@ -27,13 +29,22 @@ export function makeReasonHandler(internalSecret: string) {
       res.status(400).json({ error: 'messages[] and tools[] required' });
       return;
     }
-    try {
-      const out = await reasonOnce(body);
-      res.json(out);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[Agent] reason error:', msg);
-      res.status(500).json({ error: 'reason_failed', detail: msg });
-    }
+    // Resolve correlation id: inbound header → body field → generated.
+    // Secret check and body validation are intentionally BEFORE this scope.
+    const inboundHeader = req.headers['x-correlation-id'];
+    const correlationId =
+      (typeof inboundHeader === 'string' ? inboundHeader : undefined) ??
+      (typeof (body as any).correlationId === 'string' ? (body as any).correlationId : undefined) ??
+      crypto.randomUUID();
+    await runWithCorrelation(correlationId, async () => {
+      try {
+        const out = await reasonOnce(body);
+        res.json(out);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        teachLog.error('reason failed', err, { operation: 'reasonRoute' });
+        res.status(500).json({ error: 'reason_failed', detail: msg });
+      }
+    });
   };
 }

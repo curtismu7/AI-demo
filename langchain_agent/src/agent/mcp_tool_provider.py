@@ -610,14 +610,14 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
         logger.debug(f"Setting session context for tool {self.name}")
         logger.debug(f"Previous session ID: {self._current_session_id}")
         logger.debug(f"New session ID: {session_id}")
-        logger.debug(f"Previous agent token: {self._current_agent_token}")
-        logger.debug(f"New agent token: {agent_token}")
+        logger.debug(f"Previous agent token: {self._current_agent_token.masked_fingerprint() if self._current_agent_token else 'none'}")
+        logger.debug(f"New agent token: {agent_token.masked_fingerprint() if agent_token else 'none'}")
         
         self._current_session_id = session_id
         self._current_agent_token = agent_token
         
         logger.info(f"Set session context for tool {self.name}: session={session_id}, token_provided={agent_token is not None}")
-        logger.debug(f"Tool {self.name} now has session_id={self._current_session_id}, token={self._current_agent_token}")
+        logger.debug(f"Tool {self.name} now has session_id={self._current_session_id}, token={self._current_agent_token.masked_fingerprint() if self._current_agent_token else 'none'}")
 
     def _format_json_response(self, content: str) -> str:
         """
@@ -979,7 +979,7 @@ class MCPToolProvider:
                 additional_scopes=["ai_agent"]
             )
             logger.info(f"Successfully obtained agent token with ai_agent scope for session {session_id}")
-            logger.debug(f"Agent token details: {self._current_agent_token}")
+            logger.debug(f"Agent token details: {self._current_agent_token.masked_fingerprint() if self._current_agent_token else 'none'}")
         except Exception as e:
             logger.error(f"Failed to get agent token for session {session_id}: {e}")
             logger.error(f"Exception type: {type(e)}")

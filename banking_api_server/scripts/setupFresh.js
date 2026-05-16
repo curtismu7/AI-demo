@@ -728,6 +728,44 @@ async function configureHelix() {
     return;
   }
 
+  // Keyfile fast-path: if the user dropped the downloaded <agentName>.json
+  // (e.g. LLM2.json) in the repo root / ~/Documents / ~/Downloads, migrate
+  // its key into the vault + SQLite once and skip the 5-field prompt. Falls
+  // through to the existing prompt flow when no keyfile is found. Idempotent
+  // (no-op if a key is already configured) and best-effort (a failure here
+  // never aborts setup — the prompt flow still runs).
+  try {
+    const configStore = require('../services/configStore');
+    await configStore.ensureInitialized();
+    const { loadAgentKey } = require('../services/helixAgentKeyLoader');
+    const agentName = process.env.HELIX_AGENT_ID
+      || configStore.get('helix_agent_id') || 'LLM2';
+    if (loadAgentKey(agentName)) {
+      const { migrateHelixKey } = require('../services/helixKeyMigration');
+      const vaultPassword = SKIP_VAULT
+        ? undefined
+        : (VAULT_PASSWORD_ARG || process.env.VAULT_PASSWORD);
+      const path = require('path');
+      const vaultPath = VAULT_PATH_ARG
+        || process.env.VAULT_PATH
+        || path.join(path.resolve(__dirname, '..', '..'), 'secrets.vault');
+      const m = await migrateHelixKey({ agentName, vaultPath, vaultPassword });
+      if (m.migrated) {
+        await configStore.setConfig({ provider: 'helix' });
+        ok(`Helix key migrated from ${agentName}.json `
+          + `(vault=${m.vaultWritten}, sqlite=${m.sqliteWritten}, provider=helix)`);
+        return;
+      }
+      if (m.reason === 'already_present') {
+        skip('Helix key already configured — leaving as-is (keyfile not re-imported)');
+        return;
+      }
+    }
+  } catch (err) {
+    fail(`Helix keyfile migration skipped: ${err.message}`);
+    console.log('  (Setup continues with the normal Helix prompt flow.)');
+  }
+
   // Non-interactive (no TTY, no --helix): auto-configure if HELIX_* env vars
   // are present, otherwise skip silently. Mirrors PINGONE_BOOTSTRAP_*.
   const interactive = isInteractiveStdin();

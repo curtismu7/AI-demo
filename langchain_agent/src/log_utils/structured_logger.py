@@ -326,8 +326,6 @@ def setup_logging(level: str = "INFO", format_type: str = "structured") -> None:
     import logging
     import sys
     from pathlib import Path
-    from .secure_logger import SensitiveDataFilter
-
     # Create logs directory if it doesn't exist
     logs_dir = Path("logs")
     logs_dir.mkdir(exist_ok=True)
@@ -360,18 +358,10 @@ def setup_logging(level: str = "INFO", format_type: str = "structured") -> None:
     console_handler.setFormatter(formatter)
     file_handler.setFormatter(formatter)
 
-    # BL-02: attach SensitiveDataFilter to BOTH handlers. Without this, every
-    # module-level `logging.getLogger(__name__)` produces records that bypass
-    # the filter entirely — module loggers inherit handlers from root but
-    # filters attached on a *logger* don't apply to inherited handlers. The
-    # reliable place is the handler itself.
-    redaction_filter = SensitiveDataFilter()
-    console_handler.addFilter(redaction_filter)
-    file_handler.addFilter(redaction_filter)
-
-    # Belt-and-braces: also attach to the root logger so any future handler
-    # added by third-party code inherits the filter at logger-level.
-    root_logger.addFilter(redaction_filter)
+    # Teaching demo: tokens/claims are an intentional educational surface
+    # (see docs/superpowers/specs/2026-05-15-logging-as-teaching-surface-design.md).
+    # SensitiveDataFilter is deliberately NOT attached so logs show the full
+    # OAuth/RFC 8693 story. REGRESSION_PLAN §4 entry: logging-phase1-unredact.
 
     # Add handlers
     root_logger.addHandler(console_handler)

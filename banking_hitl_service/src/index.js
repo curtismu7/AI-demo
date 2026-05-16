@@ -24,12 +24,15 @@ require('dotenv').config();
 
 const express = require('express');
 const challengeRoutes = require('./routes/challenges');
+const { teachLog } = require('./teachLogger');
+const { correlationMiddleware } = require('./correlationMiddleware');
 
 const PORT = parseInt(process.env.PORT || '3009', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 
 const app = express();
 app.use(express.json());
+app.use(correlationMiddleware);
 
 // CORS — allow OLB dashboard and MCP Gateway
 const ALLOWED_ORIGINS = (process.env.HITL_ALLOWED_ORIGINS || '')
@@ -61,14 +64,17 @@ app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
 // Error handler
 app.use((err, _req, res, _next) => {
-  console.error('[HITL] Unhandled error:', err.message);
+  teachLog.error('unhandled error', err, { message: err.message });
   res.status(500).json({ error: 'Internal server error' });
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`[HITL] banking-hitl-service running on ${HOST}:${PORT}`);
-  console.log(`[HITL] Notify mode: ${process.env.HITL_NOTIFY_MODE || 'log'}`);
-  console.log(`[HITL] Dashboard URL: ${process.env.HITL_DASHBOARD_URL || 'http://localhost:3000/dashboard/approve'}`);
+  teachLog.info('hitl service listening', {
+    host: HOST,
+    port: PORT,
+    notifyMode: process.env.HITL_NOTIFY_MODE || 'log',
+    dashboardUrl: process.env.HITL_DASHBOARD_URL || 'http://localhost:3000/dashboard/approve',
+  });
 });
 
 process.on('SIGINT', () => process.exit(0));

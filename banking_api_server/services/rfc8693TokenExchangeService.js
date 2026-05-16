@@ -9,6 +9,7 @@
 const axios = require('axios');
 const oauthConfig = require('../config/oauth');
 const { decodeJwt } = require('../utils/tokenUtils');
+const { teachLog } = require('../utils/teachLogger');
 
 /**
  * Perform RFC 8693 token exchange
@@ -101,6 +102,16 @@ async function exchangeTokens(req, params) {
 
     console.log('[rfc8693TokenExchangeService] Exchanging tokens for audience:', audience);
 
+    teachLog.step(4, 9, 'RFC 8693 subject+actor exchange REQUEST', {
+      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+      subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      actor_token_type: actorToken ? 'urn:ietf:params:oauth:token-type:access_token' : undefined,
+      resource: audience,
+      scope,
+      subject_token: subjectToken,
+      actor_token: actorToken,
+    });
+
     // Perform token exchange with PingOne
     const tokenResponse = await axios.post(oauthConfig.tokenEndpoint, body.toString(), {
       headers,
@@ -109,9 +120,16 @@ async function exchangeTokens(req, params) {
 
     const tokenData = tokenResponse.data;
 
+    teachLog.step(5, 9, 'RFC 8693 exchange RESPONSE', {
+      token_type: tokenData && tokenData.token_type,
+      expires_in: tokenData && tokenData.expires_in,
+      access_token: tokenData && tokenData.access_token,
+    });
+
     // Decode token to extract claims, especially the act claim
     let claims;
     let actClaim;
+    let subjectClaims;
     try {
       const decoded = decodeJwt(tokenData.access_token);
       claims = decoded?.claims || {};
@@ -120,6 +138,20 @@ async function exchangeTokens(req, params) {
       console.warn('[rfc8693TokenExchangeService] Could not decode token claims:', decodeErr.message);
       claims = {};
     }
+
+    try {
+      const decodedSubject = decodeJwt(subjectToken);
+      subjectClaims = decodedSubject?.claims || {};
+    } catch (_e) {
+      subjectClaims = {};
+      teachLog.debug('subject token undecodable — claims-delta "before" will be empty', { subject_token: subjectToken });
+    }
+
+    teachLog.step(6, 9, 'claims delta (delegation)', {
+      before: { aud: subjectClaims.aud, scope: subjectClaims.scope, sub: subjectClaims.sub },
+      after: { aud: claims.aud, scope: claims.scope, sub: claims.sub, act: claims.act },
+      why: 'audience narrowed to resource; act added = agent acting on behalf of user',
+    });
 
     // Log token event with act claim info
     if (req?.recordTokenEvent) {

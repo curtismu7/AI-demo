@@ -15,6 +15,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { logDelegationEvent } = require('../middleware/delegationAuditLogger');
 
 /**
  * IN-04: agent chat content is PII-equivalent in a banking context. The
@@ -516,6 +517,19 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       if (heuristic && heuristic.kind === 'banking') {
         const heuristicResult = await executeHeuristicBanking(heuristic, userId, userToken, req, subjectToken);
         if (heuristicResult) {
+          // Best-effort agent-path attribution for the delegation audit log
+          // (see delegationAuditLogger.buildAuditEvent agentPath). req may be
+          // null on non-HTTP call sites — skip silently if so.
+          if (req) req.agentPath = 'heuristic';
+          if (req) {
+            try {
+              logDelegationEvent(req, 'delegation_action', {
+                agentPath: 'heuristic',
+                agentAction: heuristic?.banking?.action || null,
+                note: 'Tool/answer produced by the deterministic heuristic path (no LLM).',
+              });
+            } catch (e) { /* audit must never break the request path */ }
+          }
           console.log('[processAgentMessage] Heuristic matched:', heuristic.banking?.action, '— skipping LLM');
           appEventService.logEvent('agent', 'info', `Heuristic: ${heuristic.banking?.action}`, { tag: 'agent/heuristic' });
           appEventService.logEvent('agent_prompt', 'info', `Heuristic tool dispatch: ${heuristic.banking?.action}`,
@@ -555,6 +569,18 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     const { resolveLlmProvider } = require('./llmProviderResolver');
     const { runReasonLoop } = require('./agentReasoningClient');
     const { provider, model } = resolveLlmProvider(langchainConfig);
+
+    // Best-effort agent-path attribution: any tool the reason loop drives via
+    // executeBffTool → /api/mcp/tool will carry this in the delegation audit.
+    if (req) req.agentPath = 'reason_loop_3006';
+    if (req) {
+      try {
+        logDelegationEvent(req, 'delegation_action', {
+          agentPath: 'reason_loop_3006',
+          note: 'Reasoning delegated to banking_agent_service (:3006); BFF drives the tool loop and retains token custody.',
+        });
+      } catch (e) { /* audit must never break the request path */ }
+    }
 
     const toolSchemas = buildToolSchemasForAgent();
     // HITL/consent note: real transfer-consent enforcement is the deterministic

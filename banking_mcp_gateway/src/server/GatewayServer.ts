@@ -33,6 +33,8 @@ import { resolve } from 'path';
 import axios, { AxiosError } from 'axios';
 import { GatewayConfig } from '../config';
 import { extractBearerToken, validateInboundToken, TokenValidationError } from '../tokenValidator';
+import { extractCorrelationId } from '../correlationId';
+import { runWithCorrelation } from '../correlationContext';
 
 const MCP_SESSION_HEADER = 'mcp-session-id';
 const MCP_PROTO_HEADER = 'mcp-protocol-version';
@@ -417,17 +419,24 @@ export class GatewayServer {
       return;
     }
 
+    // Correlation: extract id from inbound request, bind to ALS for this request.
+    let parsedRpc: { id?: unknown; params?: { correlationId?: unknown } } = {};
+    try { parsedRpc = JSON.parse(body.toString('utf-8')); } catch { /* already validated above */ }
+    const correlationId = extractCorrelationId(req.headers as Record<string, unknown>, parsedRpc);
+
     // Middleware (Plan 243-02 will inject authorize + exchange here).
     // Default: pass through with the caller's bearer token.
-    await this.middleware(
-      bearerToken,
-      body,
-      req,
-      res,
-      async (upstreamToken, upstreamBody) => {
-        await this.forwardToUpstream(req, res, upstreamToken, upstreamBody);
-      },
-    );
+    await runWithCorrelation(correlationId, async () => {
+      await this.middleware(
+        bearerToken,
+        body,
+        req,
+        res,
+        async (upstreamToken, upstreamBody) => {
+          await this.forwardToUpstream(req, res, upstreamToken, upstreamBody);
+        },
+      );
+    });
   }
 
   // ---------------------------------------------------------------------------

@@ -40,6 +40,10 @@ function extractDelegationChain(claims) {
     userEmail: claims.email || null,
     actor: null,
     actorType: null,
+    // Why is actor what it is? Distinguishes "no delegation occurred" from
+    // "delegation actor is established downstream (RFC 8693) and not visible at
+    // this request layer". Set below.
+    actorSource: claims.act ? 'act_claim' : 'session_token_no_act',
     delegationChain: [],
   };
 
@@ -98,17 +102,35 @@ function buildAuditEvent(req, delegationChain) {
     // Actor identity (who is acting on behalf of the user)
     actor: delegationChain?.actor || null,
     actorType: delegationChain?.actorType || null,
-    
+    // Why actor is what it is (honest about the request layer's limits):
+    //  - 'act_claim'             actor came from a token act claim
+    //  - 'session_token_no_act'  session user token structurally carries no act;
+    //                            delegation actor is established downstream
+    actorSource: delegationChain?.actorSource || 'unknown',
+
+    // Which agent path initiated this (best-effort): 'heuristic',
+    // 'reason_loop_3006', null when not an agent-driven call.
+    agentPath: req.agentPath || req.headers['x-agent-path'] || null,
+
     // Full delegation chain
     delegationChain: delegationChain?.delegationChain || [],
-    
+
     // Request metadata
     ip: req.ip || req.connection?.remoteAddress || null,
     userAgent: req.headers['user-agent'] || null,
-    
+
     // Session metadata
     sessionId: req.sessionID || null,
   };
+
+  // Explain a null actor only when it is null *because* the request-layer token
+  // cannot carry act — not when delegation genuinely did not happen.
+  if (event.actor === null && event.actorSource === 'session_token_no_act') {
+    event._note =
+      'actor null at request layer: session user token carries no act claim; ' +
+      'delegation actor is established downstream in the RFC 8693 exchange ' +
+      '(see token chain / agentMcpTokenService)';
+  }
 
   return event;
 }
@@ -131,13 +153,25 @@ function delegationAuditMiddleware(req, res, next) {
   // Attach delegation chain to request for downstream use
   req.delegationChain = delegationChain;
 
+  // Pure-telemetry / event-sink endpoints: high-volume, not security-relevant.
+  // Auditing these floods the log and buries real delegation signal. Checked
+  // FIRST so /mcp/tool/events is excluded before the /mcp/tool include() below
+  // could re-add it (real tool calls hit /api/mcp/tool, NOT .../events).
+  const isTelemetryEndpoint =
+    req.path.includes('/app-events') ||
+    req.path.includes('/mcp/tool/events') ||
+    req.path.includes('/token-chain') ||
+    req.path === '/api/health' || req.path === '/health';
+
   // Log audit event for sensitive operations
-  const isSensitiveOperation = 
-    req.method !== 'GET' || // All mutations
-    req.path.includes('/accounts') || // Account access
-    req.path.includes('/transactions') || // Transaction access
-    req.path.includes('/transfer') || // Money movement
-    req.path.includes('/mcp/tool'); // MCP tool invocations
+  const isSensitiveOperation =
+    !isTelemetryEndpoint && (
+      req.method !== 'GET' || // All mutations
+      req.path.includes('/accounts') || // Account access
+      req.path.includes('/transactions') || // Transaction access
+      req.path.includes('/transfer') || // Money movement
+      req.path.includes('/mcp/tool') // MCP tool invocations
+    );
 
   if (isSensitiveOperation && delegationChain) {
     const auditEvent = buildAuditEvent(req, delegationChain);
@@ -179,5 +213,6 @@ module.exports = {
   delegationAuditMiddleware,
   logDelegationEvent,
   extractDelegationChain,
+  buildAuditEvent,
   decodeJwtClaims,
 };

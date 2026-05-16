@@ -17,6 +17,7 @@ import { createPrivateKey } from 'node:crypto';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import { AgentConfig } from './config';
+import { teachLog } from './teachLogger';
 
 let _cachedActorToken: { token: string; expiresAt: number } | null = null;
 // HI-01: in-flight promise cache. The first cold-start caller fires the CC
@@ -48,6 +49,8 @@ async function _acquireViaClientSecret(config: AgentConfig): Promise<string> {
     scope: 'ai_agent',
   });
 
+  teachLog.step(1, 2, 'client_credentials actor token requested', { client_id: config.clientId, scope: 'ai_agent', auth_method: 'client_secret_basic' });
+
   // HI-03: scrub axios error before it bubbles up — the default error carries
   // the request body and Basic credentials via `err.config`.
   let response;
@@ -69,6 +72,7 @@ async function _acquireViaClientSecret(config: AgentConfig): Promise<string> {
   if (!access_token) throw new Error('client_credentials response missing access_token');
 
   _cachedActorToken = { token: access_token, expiresAt: Date.now() + (expires_in || 300) * 1000 };
+  teachLog.step(2, 2, 'actor token acquired', { token_type: response.data.token_type, expires_in, access_token });
   return access_token;
 }
 
@@ -104,6 +108,8 @@ async function _acquireViaPrivateKeyJwt(config: AgentConfig): Promise<string> {
     client_id: config.clientId,
   });
 
+  teachLog.step(1, 2, 'client_credentials actor token requested', { client_id: config.clientId, scope: 'ai_agent', auth_method: 'private_key_jwt' });
+
   // HI-03: scrub axios error — body carries the signed client_assertion.
   let response;
   try {
@@ -121,6 +127,7 @@ async function _acquireViaPrivateKeyJwt(config: AgentConfig): Promise<string> {
   if (!access_token) throw new Error('private_key_jwt client_credentials response missing access_token');
 
   _cachedActorToken = { token: access_token, expiresAt: Date.now() + (expires_in || 300) * 1000 };
+  teachLog.step(2, 2, 'actor token acquired', { token_type: response.data.token_type, expires_in, access_token });
   return access_token;
 }
 
