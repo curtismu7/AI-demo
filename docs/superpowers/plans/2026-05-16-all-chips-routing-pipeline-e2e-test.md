@@ -42,7 +42,7 @@ All `LLM_CHIPS` messages (e.g. "What's my biggest purchase?", "How much did I sp
 ## File Structure
 
 - `banking_api_server/scripts/extractChips.js` — **Create.** Pure Node module: regex-extracts `HEURISTIC_CHIPS` + `LLM_CHIPS` entries from `BankingChips.jsx` and exports `{ heuristicChips, llmChips, allChips }` (flat `{id,label,message}[]`). Single source of truth for both deliverables. No JSX execution.
-- `banking_api_server/scripts/__tests__/extractChips.test.js` — **Create.** Unit test for the extractor.
+- `banking_api_server/src/__tests__/extractChips.test.js` — **Create.** Unit test for the extractor.
 - `banking_api_server/tests/routes/allChips.pipeline.integration.test.js` — **Create.** CI suite: Heuristics-only routing for every chip + no-token 401 hard-fail. supertest.
 - `banking_api_ui/tests/e2e/all-chips-pipeline.real.spec.js` — **Create.** Playwright real spec: 3 routing conditions × all chips, dual-session skip-proof.
 - `banking_api_ui/tests/e2e/helpers/chipPipeline.js` — **Create.** Shared helper used by the real spec: drive one chip (nl → mcp/tool), assert the 4-stage trail, snapshot/diff token-chain.
@@ -55,12 +55,12 @@ No production files modified. No `banking_api_ui` source change → UI build gat
 
 **Files:**
 - Create: `banking_api_server/scripts/extractChips.js`
-- Test: `banking_api_server/scripts/__tests__/extractChips.test.js`
+- Test: `banking_api_server/src/__tests__/extractChips.test.js`
 
 - [ ] **Step 1: Write the failing test**
 
 ```js
-// banking_api_server/scripts/__tests__/extractChips.test.js
+// banking_api_server/src/__tests__/extractChips.test.js
 'use strict';
 const { heuristicChips, llmChips, allChips } = require('../extractChips');
 
@@ -103,7 +103,7 @@ describe('extractChips', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd banking_api_server && npx jest scripts/__tests__/extractChips.test.js`
+Run: `cd banking_api_server && npx jest extractChips`
 Expected: FAIL — `Cannot find module '../extractChips'`.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -205,13 +205,13 @@ module.exports.extract = extract;
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd banking_api_server && npx jest scripts/__tests__/extractChips.test.js`
+Run: `cd banking_api_server && npx jest extractChips`
 Expected: PASS (3 tests).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add banking_api_server/scripts/extractChips.js banking_api_server/scripts/__tests__/extractChips.test.js
+git add banking_api_server/scripts/extractChips.js banking_api_server/src/__tests__/extractChips.test.js
 git commit -m "test(chips): chip extractor — single source of truth from BankingChips.jsx
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
@@ -761,14 +761,14 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 - [ ] **Step 1: Confirm the CI suite runs under the existing aggregate**
 
-Run: `cd banking_api_server && npx jest tests/routes/allChips.pipeline.integration.test.js scripts/__tests__/extractChips.test.js`
+Run: `cd banking_api_server && npx jest tests/routes/allChips.pipeline.integration.test.js extractChips`
 Expected: all green.
 
 - [ ] **Step 2: Add a focused npm script (convenience only)**
 
 In `banking_api_server/package.json` `scripts`, add:
 ```json
-"test:chips": "jest scripts/__tests__/extractChips.test.js tests/routes/allChips.pipeline.integration.test.js"
+"test:chips": "jest extractChips tests/routes/allChips.pipeline.integration.test.js"
 ```
 
 - [ ] **Step 3: Verify the alias**

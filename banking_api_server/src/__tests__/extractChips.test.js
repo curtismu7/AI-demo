@@ -1,6 +1,6 @@
 // banking_api_server/scripts/__tests__/extractChips.test.js
 'use strict';
-const { heuristicChips, llmChips, allChips } = require('../extractChips');
+const { heuristicChips, llmChips, allChips } = require('../../scripts/extractChips');
 
 describe('extractChips', () => {
   test('heuristicChips contains the 6 known built-in chips with exact messages', () => {
