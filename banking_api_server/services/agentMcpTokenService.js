@@ -44,7 +44,6 @@ const { createTokenExchangeError, RFC8693_ERRORS } = require('./rfcCompliantErro
 // not reintroduce a local scope-permit decision here.
 const { MCP_TOOL_SCOPES, getSessionBearerForMcp } = require('./mcpWebSocketClient');
 const adminTokenService = require('./adminTokenService');
-const { isApiKeyTool } = require('./apiKeyTools');
 const { writeMcpTrafficEntry } = require('./mcpTrafficLogger');
 const { trackTokenEvent } = require('./tokenChainService');
 const { trackToken } = require('./apiCallTrackerService');
@@ -641,35 +640,6 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     console.log('[AGENT_MCP] oauthTokens keys:', req.session?.oauthTokens ? Object.keys(req.session.oauthTokens) : 'none');
     return { token: null, tokenEvents, userSub: null, need_auth: true, exchange_mode: '1-token' };
   }
-
-  // ── api_key-disposition tools — skip RFC 8693 entirely ───────────────────
-  // These tools (mirrored from banking_mcp_gateway APIKEY_TOOLS) are dispatched
-  // by the GATEWAY to a backend via X-API-Key (Phase 266 Path A / Phase 267).
-  // They have NO RFC 8693 delegation chain, so the BFF must NOT attempt any
-  // token exchange (nor admin-token substitution, introspection, or scope
-  // resolution). Forward the PLAIN user token; the gateway authorizes on it
-  // and then swaps to X-API-Key for the backend call.
-  if (isApiKeyTool(tool)) {
-    const apiKeyUserSub = decodeJwtClaims(userToken)?.claims?.sub;
-    tokenEvents.push(buildTokenEvent(
-      'api-key-passthrough',
-      `Tool '${tool}' — api_key credential disposition (Phase 266 Path A)`,
-      'skipped',
-      null,
-      `Tool '${tool}' uses the api_key credential disposition (Phase 266 Path A). ` +
-      `No RFC 8693 delegation — the MCP Gateway dispatches this to the backend via X-API-Key. ` +
-      `The user token is forwarded for gateway authorization only.`,
-      { apiKeyTool: true, exchange_mode: 'api_key_passthrough' }
-    ));
-    return {
-      token: userToken,
-      tokenEvents,
-      userSub: apiKeyUserSub != null ? String(apiKeyUserSub) : null,
-      exchange_mode: 'api_key_passthrough',
-      apiKeyTool: true,
-    };
-  }
-  // ─────────────────────────────────────────────────────────────────────────
 
   // ── Admin Token Detection ────────────────────────────────────────────────
   // Check if this is an admin session and use admin token as subject token

@@ -120,6 +120,22 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-16 — REVERT: api_key tools must NOT skip RFC 8693 (84896c04 was architecturally wrong)
+
+**Files changed:**
+- `banking_api_server/services/agentMcpTokenService.js` — removed the `const { isApiKeyTool } = require('./apiKeyTools');` import and the entire `if (isApiKeyTool(tool)) { ... }` early-return block in `resolveMcpAccessTokenWithEvents`. The no-user-token guard now falls straight through to the normal `// ── Admin Token Detection ──` / RFC 8693 flow exactly as it did before 84896c04.
+- `banking_api_server/services/apiKeyTools.js` — **deleted** (only consumer was the reverted block).
+- `banking_api_server/tests/apiKeyToolExchange.regression.test.js` — **deleted** (asserted the now-reverted skip behavior).
+- `banking_api_server/tests/apiKeyTools.test.js` — **deleted** (unit test for the removed module).
+
+**What was broken:** 84896c04 special-cased api_key-disposition tools (`show_mortgage`) to skip RFC 8693 delegation and forward the plain user token to the gateway. This was architecturally wrong: per the system design, ALL tools use the same full agent+user delegation; the gateway checks the delegated token against PingAuthorize (aud/scopes), then performs its OWN token exchange to reach the MCP server; the MCP server fetches the backend API key from Vault. The "api_key" concern is exclusively the MCP-server→backend leg. 84896c04 also caused a gateway 401 (`gateway_auth_failed`) because the gateway's mandatory introspection rejects a non-gateway-audience token (Phase 266: the inbound user bearer is never forwarded as-is).
+
+**What was fixed:** Reverted the special-casing — removed `apiKeyTools.js`, the `isApiKeyTool` early-return in `agentMcpTokenService.resolveMcpAccessTokenWithEvents`, and the two associated test files. `show_mortgage` now flows through the identical full-delegation path as every other tool. (The underlying `delegation_chain_broken` Exchange #2 failure that 84896c04 was masking is a SEPARATE, still-open issue being diagnosed independently — it is NOT fixed by this revert; this revert just stops hiding it behind a wrong special-case.)
+
+**Verify:** `grep -rn isApiKeyTool banking_api_server --include='*.js' | grep -v node_modules` → no matches outside removed files; `cd banking_api_server && OLLAMA_BASE_URL= npx jest oauthStatus hitlRoute delegationAuditLogger agentPathAudit` → all pass.
+
+**Do not break:** Never reintroduce per-tool delegation-skip special-casing in the BFF. ALL tools use full RFC 8693 delegation; api_key is a downstream MCP-server→backend (Vault) concern only.
+
 ### 2026-05-16 — Helix keyfile auto-migration (vault + SQLite) + agent degraded-mode banner
 
 **Files changed:**
