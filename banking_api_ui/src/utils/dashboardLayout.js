@@ -32,3 +32,17 @@ export function setDashboardLayout(mode) {
     /* ignore */
   }
 }
+
+/**
+ * CSS class(es) for the middle-agent split3 grid container.
+ * When the banking column is hidden, append the modifier that collapses
+ * the grid from 3 tracks (token | agent | banking) to 2 (token | agent).
+ *
+ * @param {boolean} showBankingInMiddle
+ * @returns {string}
+ */
+export function splitGridClass(showBankingInMiddle) {
+  return showBankingInMiddle
+    ? 'ud-body--dashboard-split3'
+    : 'ud-body--dashboard-split3 ud-body--dashboard-split3--no-banking';
+}
