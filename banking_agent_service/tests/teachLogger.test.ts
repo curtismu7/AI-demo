@@ -1,5 +1,6 @@
 import { Writable } from 'stream';
 import { createTeachLogger } from '../src/teachLogger';
+import { runWithCorrelation } from '../src/correlationContext';
 
 function capture() {
   const lines: any[] = [];
@@ -44,5 +45,28 @@ describe('teachLogger (agent-service)', () => {
     expect(lines[0].service).toBe('agent-service');
     expect(typeof lines[0].level).toBe('number');
     expect(lines[0].field_level).toBe('X');
+  });
+  it('auto-injects correlation_id from ALS on every line', async () => {
+    const { lines, stream } = capture();
+    const log = createTeachLogger({ service: 'agent-service', level: 'debug', stream });
+    await runWithCorrelation('corr-xyz', async () => {
+      log.info('a');
+      log.step(1, 2, 'b');
+      log.error('c', new Error('e'));
+    });
+    log.info('outside');
+    expect(lines[0].correlation_id).toBe('corr-xyz');
+    expect(lines[1].correlation_id).toBe('corr-xyz');
+    expect(lines[2].correlation_id).toBe('corr-xyz');
+    expect(lines[3].correlation_id).toBeUndefined();
+  });
+  it('caller field cannot clobber correlation_id', async () => {
+    const { lines, stream } = capture();
+    const log = createTeachLogger({ service: 'agent-service', level: 'debug', stream });
+    await runWithCorrelation('real-id', async () => {
+      log.info('m', { correlation_id: 'FAKE' });
+    });
+    expect(lines[0].correlation_id).toBe('real-id');
+    expect(lines[0].field_correlation_id).toBe('FAKE');
   });
 });

@@ -27,6 +27,8 @@ import { BankingToolRegistry } from '../tools/BankingToolRegistry';
 import pkg from '../../package.json';
 import { AuditLogger } from '../utils/AuditLogger';
 import { Logger, createDefaultLoggerConfig } from '../utils/Logger';
+import { correlationFromMessage } from './correlationFromMessage';
+import { runWithCorrelation } from '../utils/correlationContext';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -477,41 +479,46 @@ export class HttpMCPTransport {
     const bankingSession = (await this.sessionManager.getSession(httpSession.bankingSessionId)) ?? undefined;
     const context = this.makeContext(mcpSessionId, bankingSession, httpSession.agentToken);
 
-    // 7. Route message
-    const mcpResponse = await this.messageHandler.handleMessage(message, context);
+    // 7. Route message — wrapped in ALS correlation scope so all downstream
+    // teachLog.step calls (TokenIntrospector etc.) inherit correlation_id automatically.
+    const correlationId = correlationFromMessage(message as any);
+    // Correlation scope begins here: pre-route bearer/JWKS validation, gateway-contract and protocol-version checks (steps 1-6 above) run before the correlation id is bound. The RFC 7662 introspection that the teaching trace cares about runs inside handleMessage (within this scope) on both transports.
+    await runWithCorrelation(correlationId, async () => {
+      const mcpResponse = await this.messageHandler.handleMessage(message, context);
 
-    // Capture negotiated protocol version from initialize response
-    if (isInitialize && mcpResponse?.result?.['protocolVersion']) {
-      httpSession.protocolVersion = mcpResponse.result['protocolVersion'] as string;
-    }
+      // Capture negotiated protocol version from initialize response
+      if (isInitialize && mcpResponse?.result?.['protocolVersion']) {
+        httpSession.protocolVersion = mcpResponse.result['protocolVersion'] as string;
+      }
 
-    // Notifications produce null responses
-    if (mcpResponse === null) {
-      res.writeHead(202);
-      res.end();
-      return;
-    }
-
-    // 8. Detect auth-challenge in tool call result and promote to HTTP 403 with scope hint.
-    // An auth challenge in the content means the token lacks a specific scope — we can
-    // return 403 + WWW-Authenticate so the client knows which scope to request.
-    if (message.method === 'tools/call' && mcpResponse.result) {
-      const content = mcpResponse.result['content'] as Array<any> | undefined;
-      const authChallenge = content?.[0]?.authChallenge;
-      if (authChallenge?.scope) {
-        this.sendInsufficientScope(res, authChallenge.scope.split(' ').filter(Boolean));
+      // Notifications produce null responses
+      if (mcpResponse === null) {
+        res.writeHead(202);
+        res.end();
         return;
       }
-    }
 
-    // 9. Send JSON-RPC response with MCP-Session-Id header
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      [MCP_SESSION_HEADER]: mcpSessionId,
-    };
+      // 8. Detect auth-challenge in tool call result and promote to HTTP 403 with scope hint.
+      // An auth challenge in the content means the token lacks a specific scope — we can
+      // return 403 + WWW-Authenticate so the client knows which scope to request.
+      if (message.method === 'tools/call' && mcpResponse.result) {
+        const content = mcpResponse.result['content'] as Array<any> | undefined;
+        const authChallenge = content?.[0]?.authChallenge;
+        if (authChallenge?.scope) {
+          this.sendInsufficientScope(res, authChallenge.scope.split(' ').filter(Boolean));
+          return;
+        }
+      }
 
-    res.writeHead(200, headers);
-    res.end(JSON.stringify({ jsonrpc: '2.0', ...mcpResponse }));
+      // 9. Send JSON-RPC response with MCP-Session-Id header
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        [MCP_SESSION_HEADER]: mcpSessionId,
+      };
+
+      res.writeHead(200, headers);
+      res.end(JSON.stringify({ jsonrpc: '2.0', ...mcpResponse }));
+    });
   }
 
   // -------------------------------------------------------------------------

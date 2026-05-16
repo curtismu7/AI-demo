@@ -10,6 +10,7 @@
  */
 
 const axios = require('axios');
+const { teachLog } = require('./teachLogger');
 
 const NOTIFY_MODE = process.env.HITL_NOTIFY_MODE || 'log';
 const CIBA_ENDPOINT = process.env.PINGONE_CIBA_ENDPOINT || '';
@@ -34,9 +35,12 @@ async function notifyUser(challenge, userEmail) {
   }
 
   // log mode (default for dev)
-  console.log(`[HITL] Approval needed — challengeId: ${challenge.id}`);
-  console.log(`[HITL] Tool: ${challenge.tool}, User: ${userEmail}`);
-  console.log(`[HITL] Approval URL: ${approvalUrl}`);
+  teachLog.info('approval needed', {
+    challengeId: challenge.id,
+    tool: challenge.tool,
+    userEmail,
+    approvalUrl,
+  });
 }
 
 function _buildMessage(challenge, approvalUrl) {
@@ -48,8 +52,7 @@ function _buildMessage(challenge, approvalUrl) {
 
 async function _notifyViaCiba(challenge, userEmail, message) {
   if (!CIBA_ENDPOINT || !CIBA_CLIENT_ID) {
-    console.warn('[HITL] CIBA not configured — falling back to log');
-    console.log('[HITL] Approval needed:', challenge.id, 'for', userEmail);
+    teachLog.warn('ciba not configured — falling back to log', { challengeId: challenge.id, userEmail });
     return;
   }
 
@@ -68,9 +71,9 @@ async function _notifyViaCiba(challenge, userEmail, message) {
       },
       timeout: 10_000,
     });
-    console.log(`[HITL] CIBA notification sent for challenge ${challenge.id}`);
+    teachLog.info('ciba notification sent', { challengeId: challenge.id });
   } catch (err) {
-    console.error('[HITL] CIBA notification failed:', err.message);
+    teachLog.error('ciba notification failed', err, { challengeId: challenge.id });
     throw err;
   }
 }
@@ -84,7 +87,7 @@ async function _notifyViaEmail(_challenge, userEmail, _message, approvalUrl) {
       approvalUrl,
     }, { timeout: 10_000 });
   } catch (err) {
-    console.error('[HITL] Email notification failed:', err.message);
+    teachLog.error('email notification failed', err, { userEmail });
     throw err;
   }
 }

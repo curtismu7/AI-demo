@@ -64,6 +64,6 @@ function createTeachLogger(opts) {
   return wrap(p);
 }
 
-const teachLog = createTeachLogger({ service: 'api-server' });
+const teachLog = createTeachLogger({ service: 'hitl-service' });
 
 module.exports = { createTeachLogger, teachLog };

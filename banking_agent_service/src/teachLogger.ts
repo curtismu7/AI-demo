@@ -1,5 +1,6 @@
 import pino, { Logger } from 'pino';
 import { Writable } from 'stream';
+import { getCorrelationId } from './correlationContext';
 
 export interface TeachLoggerOptions {
   service: string;
@@ -17,7 +18,7 @@ export interface TeachLogger {
   child(bindings: Record<string, unknown>): TeachLogger;
 }
 
-const RESERVED = new Set(['level', 'time', 'msg', 'service', 'pid', 'hostname']);
+const RESERVED = new Set(['level', 'time', 'msg', 'service', 'pid', 'hostname', 'correlation_id']);
 function safeFields(fields?: Record<string, unknown>): Record<string, unknown> {
   if (!fields) return {};
   const out: Record<string, unknown> = {};
@@ -31,13 +32,18 @@ function resolveLevel(opt?: string): string {
   return opt || process.env.LOG_LEVEL || 'debug';
 }
 
+function withCorrelation(obj: Record<string, unknown>): Record<string, unknown> {
+  const cid = getCorrelationId();
+  return cid ? { ...obj, correlation_id: cid } : obj;
+}
+
 function wrap(p: Logger): TeachLogger {
   return {
-    info: (msg, fields) => p.info(safeFields(fields), msg),
-    warn: (msg, fields) => p.warn(safeFields(fields), msg),
-    debug: (msg, fields) => p.debug(safeFields(fields), msg),
+    info: (msg, fields) => p.info(withCorrelation(safeFields(fields)), msg),
+    warn: (msg, fields) => p.warn(withCorrelation(safeFields(fields)), msg),
+    debug: (msg, fields) => p.debug(withCorrelation(safeFields(fields)), msg),
     error: (msg, err, fields) => {
-      const base: Record<string, unknown> = { ...safeFields(fields) };
+      const base: Record<string, unknown> = withCorrelation(safeFields(fields));
       if (err instanceof Error) {
         base.err = err;
       } else if (err !== undefined) {
@@ -46,7 +52,7 @@ function wrap(p: Logger): TeachLogger {
       p.error(base, msg);
     },
     step: (n, total, msg, fields) =>
-      p.info({ ...safeFields(fields), teach: true }, `[TEACH] step ${n}/${total}: ${msg}`),
+      p.info(withCorrelation({ ...safeFields(fields), teach: true }), `[TEACH] step ${n}/${total}: ${msg}`),
     child: (bindings) => wrap(p.child(bindings)),
   };
 }
