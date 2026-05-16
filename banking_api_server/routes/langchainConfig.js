@@ -49,7 +49,8 @@ function setLangchainConfig(req, updates) {
 router.get('/config/status', (req, res) => {
   try {
     const cfg = getLangchainConfig(req);
-    const provider = cfg.provider || 'helix';
+    const { resolveLlmProvider } = require('../services/llmProviderResolver');
+    const provider = resolveLlmProvider(cfg).provider;
     const model = cfg.model || DEFAULT_MODELS[provider] || DEFAULT_MODELS.ollama;
 
     // Load Helix credentials from SQLite if not in session (e.g., after tab switch)
