@@ -1,5 +1,4 @@
 import { Writable } from 'stream';
-import pino from 'pino';
 
 import { createTeachLogger } from '../../src/utils/teachLogger';
 
@@ -55,5 +54,66 @@ describe('teachLogger', () => {
     const infoLog = createTeachLogger({ service: 's', level: 'info', stream: c2.stream });
     infoLog.debug('d');
     expect(c2.lines).toHaveLength(0);
+  });
+
+  it('child() binds fields and carries both bound + per-call fields, inheriting level', () => {
+    const { lines, stream } = capture();
+    const log = createTeachLogger({ service: 'mcp-server', level: 'debug', stream });
+    const child = log.child({ operation: 'rfc8693' });
+    child.info('child msg', { extra: 'data' });
+    expect(lines).toHaveLength(1);
+    expect(lines[0].msg).toBe('child msg');
+    expect(lines[0].operation).toBe('rfc8693');
+    expect(lines[0].extra).toBe('data');
+    expect(lines[0].service).toBe('mcp-server');
+    // child inherits debug level — debug messages should appear
+    child.debug('child debug');
+    expect(lines).toHaveLength(2);
+  });
+
+  it('resolveLevel reads process.env.LOG_LEVEL when no level option is set', () => {
+    const savedLevel = process.env.LOG_LEVEL;
+    try {
+      process.env.LOG_LEVEL = 'warn';
+      const { lines, stream } = capture();
+      // No level option — resolveLevel should pick up LOG_LEVEL='warn'
+      const log = createTeachLogger({ service: 'mcp-server', stream });
+      log.info('should be filtered');
+      expect(lines).toHaveLength(0);
+      log.warn('should appear');
+      expect(lines).toHaveLength(1);
+      expect(lines[0].msg).toBe('should appear');
+      expect(lines[0].level).toBe(40);
+    } finally {
+      if (savedLevel === undefined) {
+        delete process.env.LOG_LEVEL;
+      } else {
+        process.env.LOG_LEVEL = savedLevel;
+      }
+    }
+  });
+
+  it('error() with a non-Error value puts it under err', () => {
+    const { lines, stream } = capture();
+    const log = createTeachLogger({ service: 'mcp-server', level: 'debug', stream });
+    log.error('something failed', 'string error value');
+    expect(lines).toHaveLength(1);
+    expect(lines[0].err).toBe('string error value');
+  });
+
+  it('field-collision: caller fields with reserved keys are prefixed with field_', () => {
+    const { lines, stream } = capture();
+    const log = createTeachLogger({ service: 'mcp-server', level: 'debug', stream });
+    log.info('collision test', { level: 'X', service: 'Y', msg: 'Z', operation: 'safe' });
+    expect(lines).toHaveLength(1);
+    // pino's real numeric level must survive
+    expect(lines[0].level).toBe(30);
+    // pino's real service from base must survive
+    expect(lines[0].service).toBe('mcp-server');
+    // caller values appear under prefixed keys
+    expect(lines[0].field_level).toBe('X');
+    expect(lines[0].field_service).toBe('Y');
+    // non-reserved fields pass through normally
+    expect(lines[0].operation).toBe('safe');
   });
 });
