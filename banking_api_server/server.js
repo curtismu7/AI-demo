@@ -2063,6 +2063,13 @@ if (require.main === module) {
     // The express() app + session middleware + all route mounts above are byte-for-byte
     // unchanged — only the .listen call is now inside an async startup wrapper.
     (async () => {
+        // Capture VAULT_PASSWORD BEFORE loadVaultIntoConfigStore runs — that
+        // loader deletes process.env.VAULT_PASSWORD in its finally (Phase 269
+        // /proc leak-window shrink). The Helix keyfile migration below needs
+        // the password to write the encrypted vault entry, so we hold it in
+        // this block scope only (never module scope) for the duration of
+        // startup and let it go out of scope when the IIFE returns.
+        const _vaultPwForMigration = process.env.VAULT_PASSWORD;
         try {
             const result = await loadVaultIntoConfigStore({});
             if (result.loaded) {
@@ -2071,6 +2078,29 @@ if (require.main === module) {
         } catch (err) {
             console.error('[vault] startup load failed; refusing to start.', err.message);
             process.exit(1);
+        }
+
+        // One-time Helix key migration: lift the downloaded <agentName>.json
+        // keyfile into the encrypted vault + SQLite so the agent "just works"
+        // and survives restarts. Idempotent and best-effort — a failure here
+        // must NEVER block startup (the helixAgentKeyLoader runtime fallback
+        // still resolves the key for the current process).
+        try {
+            const { migrateHelixKey } = require('./services/helixKeyMigration');
+            const { DEFAULT_VAULT_PATH } = require('./services/vaultLoader');
+            const agentName = process.env.HELIX_AGENT_ID
+                || configStore.get('helix_agent_id') || 'LLM2';
+            const m = await migrateHelixKey({
+                agentName,
+                vaultPath: process.env.VAULT_PATH || DEFAULT_VAULT_PATH,
+                vaultPassword: _vaultPwForMigration,
+            });
+            if (m.migrated) {
+                console.log(`[startup] Helix key migrated from ${agentName}.json `
+                    + `(vault=${m.vaultWritten}, sqlite=${m.sqliteWritten})`);
+            }
+        } catch (e) {
+            console.warn('[startup] Helix key migration skipped:', e.message);
         }
 
         const fs = require('fs');
