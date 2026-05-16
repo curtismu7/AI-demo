@@ -198,3 +198,60 @@ Presentation-only changes (no behavior):
 - Shared-secret mechanism for the BFF↔:3006 hop (reuse an existing internal-secret pattern, e.g. the `/internal/id-token` shared-secret convention).
 - Whether the ported graph lives as TS in `banking_agent_service/src/` (matches that service's TS build) vs. a shared package — likely TS port, since `agentBuilder.js` is JS and :3006 is TS.
 - Test strategy: regression pair for the new loop (heuristic fallback on :3006 down; HITL suspend/resume across the boundary).
+
+---
+
+## Phase 2 Re-Spec Required (2026-05-15 — execution paused after Task 6)
+
+**Status:** Phase 1 (Tasks 1–5) shipped and clean. Phase 2 (Tasks 7–12) PAUSED.
+Task 6 (`reasonContract.ts`) landed. Task 7 hit a foundational plan error and
+the user chose to re-spec Phase 2 rather than patch it mid-execution.
+
+**Verified findings that invalidate the original Phase 2 plan:**
+
+1. **`banking_agent_service` has NO `@langchain/*` dependencies.** Its deps are
+   `axios, dotenv, express, jsonwebtoken, ws` only. The original plan's Task 7
+   assumed `import { ChatOllama } from '@langchain/ollama'` / `@langchain/core`
+   — those packages are absent. The plan was wrong to assume a verbatim
+   LangChain graph port.
+
+2. **Helix never used LangChain tool-binding.** In the in-process
+   `agentBuilder.js`, the Helix provider is a bare
+   `RunnableLambda.from(callHelixAgent)` with **no `bindTools`** (only the
+   Ollama branch calls `model.bindTools(tools)`). Helix returns a plain string
+   and cannot emit `tool_calls`. "Port the LangGraph graph including Helix
+   tool-calling" was never a real capability.
+
+3. **`callHelixAgent` is a 3-step `fetch` Helix Conversation API flow**, not a
+   single axios call (create conversation → post message → poll up to 30s).
+   Auth is `x-api-key` (not Bearer). Path base `/dpc/jas/helix/v1`. The Task 7
+   scaffold's "single axios call" was structurally wrong.
+
+4. **`banking_agent_service` already has a working axios-based agent loop**
+   (`src/agentOrchestrator.ts`): Anthropic/OpenAI providers, MCP-gateway tool
+   loop, no LangChain. The service already demonstrates the no-LangChain
+   pattern the reasoning service should follow.
+
+5. `agentBuilder.js` `DEFAULT_MODELS` has 6 entries (ollama, openai, anthropic,
+   groq, google, helix), not the 2 in the scaffold — values for ollama/helix
+   happen to match but the re-spec should use the real map.
+
+**Re-spec direction (decided): no-LangChain port.** Implement the reasoning
+step in plain `axios`/`fetch` inside `banking_agent_service`:
+- Ollama via its REST API directly (no `ChatOllama`).
+- Helix via a faithful port of `helixLlmService.js`'s 3-step Conversation flow
+  (the existing `helixClient.ts` scaffold's throw must be replaced with that
+  real flow).
+- No new dependencies added to `banking_agent_service`.
+- Tool-calling: only the Ollama path can propose tool_calls (mirrors current
+  BFF behavior); Helix returns a final answer string. The reasoning-only
+  contract (`reasonContract.ts`, already committed) is unaffected and stays.
+- Everything else in the design (Approach A, BFF-driven loop, HITL stays
+  BFF-side, single provider resolver, narrative) remains valid — only the
+  *implementation mechanism* of the reasoning step changes from
+  "LangChain graph port" to "axios/fetch reasoning step."
+
+**Next action when resumed:** rewrite Phase 2 tasks (7–12) in the
+implementation plan against this no-LangChain approach, then resume
+subagent-driven execution. `reasonContract.ts` (Task 6) is correct as-is and
+needs no change.
