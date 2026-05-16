@@ -13,6 +13,7 @@ const express = require('express');
 const router = express.Router();
 const store = require('../store/challengeStore');
 const { notifyUser } = require('../notifier');
+const { teachLog } = require('../teachLogger');
 
 // POST /challenges
 // Body: { tool, userId, agentId, userEmail?, context? }
@@ -34,7 +35,7 @@ router.post('/', async (req, res) => {
   // Fire-and-forget notification — don't block the response
   if (userEmail) {
     notifyUser(challenge, userEmail).catch((err) =>
-      console.error('[HITL] Notification error:', err.message),
+      teachLog.error('notification error', err, { challengeId: challenge.id, userEmail }),
     );
   }
 
