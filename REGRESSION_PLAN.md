@@ -120,6 +120,27 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-16 — Agent consolidation Phase 2: LangGraph reasoning runs as a separate :3006 service (BFF keeps custody + HITL)
+
+**Files changed:**
+- `banking_agent_service/` — new reasoning-only surface: `src/reasonContract.ts` (BFF↔:3006 protocol + `reasoningUnavailable` flag), `src/helixClient.ts` (faithful port of the 3-step Helix Conversation flow), `src/helixToolAdapter.ts` (Helix has no native tool-calling → `TOOL_CALL:` sentinel + one strict retry + `HelixUnparseableError`), `src/reasoningGraph.ts` (`reasonOnce` — Ollama native bindTools, Helix via adapter; reasoning-only), `src/reasonRoute.ts` (`POST /api/agent/reason`, constant-time shared-secret gate), `src/index.ts` (route wired; **deleted** the old `/api/agent/task` + its own RFC 8693 token-exchange + MCP-gateway client; internal-secret handling aligned to `agentIdToken.js` convention). Added `@langchain/{langgraph,ollama,core}` deps (matched to BFF versions). Deleted now-orphaned `src/{mcpGatewayClient,tokenResolver,agentOrchestrator}.ts`.
+- `banking_api_server/services/agentReasoningClient.js` — new BFF-driven turn loop; the BFF posts to :3006, EXECUTES tools locally (token custody + HITL stay BFF-side), enforces the recursion cap, and on `reasoningUnavailable`/transport failure signals heuristic-fallback.
+- `banking_api_server/services/bankingAgentLangGraphService.js` — `processAgentMessage` LLM fallback now drives the :3006 loop instead of an in-process LangGraph; heuristic-first block byte-for-byte unchanged. (WR-03 cap mechanism migration documented in the separate prior §4 entry.)
+- `banking_api_server/services/agentBuilder.js` — added pure `getBankingToolDefinitions()` export (tool enumeration; builds/executes nothing).
+- `banking_api_server/.env` — added `BFF_INTERNAL_SECRET` (32-byte hex) for the BFF↔:3006 hop.
+
+**What was broken:** Three confusable "agents" (in-process BFF LangGraph, standalone :3006 with its own token exchange, Python langchain_agent) muddled the demo narrative; the standalone :3006 was a second token custodian (architectural outlier). The original Phase 2 plan also wrongly assumed :3006 already had LangChain deps.
+
+**What was fixed:** One LangGraph reasoning service on :3006, reasoning-only. The BFF remains the sole token custodian and HITL enforcer and drives the tool loop; :3006 never receives a user token, never executes a tool, never calls PingOne/MCP. Helix (no native tool-calling) is made tool-capable via a sentinel adapter with a bounded one-retry then a `reasoningUnavailable` signal that makes the BFF fall back to the deterministic heuristic (ARCHITECTURE-TRUTHS T-3). Provider resolution stays single-sourced (Phase 1 resolver).
+
+**Verify:**
+- `cd banking_agent_service && npx jest` → 6 suites / 35 passed.
+- `cd banking_api_server && npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration agentReasoningLoop tests/llmProviderResolver.regression.test.js` → 48 passed.
+- `cd banking_api_server && npx jest tests/services/bankingAgentRecursion` → 4 passed (WR-03 invariant via the new seam).
+- Live (manual, requires VAULT_PASSWORD + browser): customer → middle agent → "transactions" renders via :3006; transfer ≥ threshold → consent modal (heuristic path); kill :3006 → non-heuristic query falls back to heuristic (no dead end); `grep /api/agent/reason /tmp/bank-api-server.log` shows 200s, no "May not request scopes".
+
+**Do not break:** :3006 must never receive a user token or execute a tool — it only proposes tool calls. Token custody + HITL stay BFF-side. The deterministic heuristic is the real transfer-consent floor and must return before the LLM path (T-3); do NOT remove it believing the LLM/tool path enforces consent via a 428 (it does not — it surfaces HITL as a generic error, same as the pre-consolidation in-process path). `BFF_INTERNAL_SECRET` gates the BFF↔:3006 hop; the dev default only works when NODE_ENV!=production (mirrors agentIdToken.js).
+
 ### 2026-05-15 — processAgentMessage LLM fallback drives :3006 reason loop (Phase 2 of agent consolidation)
 
 **Files changed:**
