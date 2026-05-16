@@ -23,8 +23,8 @@ export async function reasonOnce(req: ReasonRequest): Promise<ReasonResponse> {
     } catch (err) {
       // HelixUnparseableError OR any transport error → signal, do not fabricate.
       const note = err instanceof HelixUnparseableError ? 'helix_unparseable' : 'helix_error';
-      teachLog.error('reasoning step failed', err instanceof Error ? err : undefined, { operation: 'reasonOnce' });
-      teachLog.info('reasoning unavailable — BFF heuristic floor will apply', { reason: 'helix_unparseable_or_error' });
+      teachLog.error('reasoning step failed', err, { operation: 'reasonOnce' });
+      teachLog.info('reasoning unavailable — BFF heuristic floor will apply', { reason: note });
       return { type: 'final', answer: '', messages: req.messages, reasoningUnavailable: true };
     }
   }
