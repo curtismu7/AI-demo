@@ -11,6 +11,7 @@ export interface ReasonMessage {
   role: 'user' | 'assistant' | 'tool';
   content: string;
   tool_call_id?: string;
+  tool_calls?: Array<{ id: string; name: string; args: Record<string, unknown> }>;
 }
 
 export interface ReasonRequest {

@@ -64,6 +64,34 @@ function parseHelixResponse(raw: string, toolNames: Set<string>): HelixModelResu
   return { tool_calls: [{ id: `helix-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name, args }] };
 }
 
+/**
+ * Helix is stateless per call and helixClient collapses to the last user
+ * message. To make multi-turn tool loops work, fold any tool-result messages
+ * (and the assistant tool-call that requested them) into a single synthetic
+ * user turn that restates the original question plus the tool outputs.
+ */
+function foldToolResultsForHelix(messages: ReasonMessage[]): ReasonMessage[] {
+  const toolMsgs = messages.filter((m) => m.role === 'tool');
+  if (toolMsgs.length === 0) return messages;
+  // The original user question is the FIRST user message (the task); later
+  // synthetic turns must not lose it.
+  const firstUser = messages.find((m) => m.role === 'user');
+  const originalQuestion = firstUser ? firstUser.content : (messages[messages.length - 1]?.content ?? '');
+  const toolBlock = toolMsgs
+    .map((m) => `TOOL RESULT${m.tool_call_id ? ` (${m.tool_call_id})` : ''}: ${m.content}`)
+    .join('\n');
+  const synthetic: ReasonMessage = {
+    role: 'user',
+    content:
+      `${originalQuestion}\n\n` +
+      `The following tool result(s) are now available — use them to answer. ` +
+      `Do NOT call the same tool again unless genuinely more data is needed:\n${toolBlock}`,
+  };
+  // Keeping any non-tool, non-assistant-empty context before the synthetic turn
+  // is unnecessary for stateless Helix; a single user turn is what callHelix uses.
+  return [synthetic];
+}
+
 export async function helixReason(
   cfg: Record<string, string | undefined>,
   messages: ReasonMessage[],
@@ -72,7 +100,8 @@ export async function helixReason(
 ): Promise<HelixModelResult> {
   const toolNames = new Set(tools.map((t) => t.name));
   const preamble = buildSystemPreamble(tools);
-  const primed = withPreamble(messages, preamble);
+  const folded = foldToolResultsForHelix(messages);
+  const primed = withPreamble(folded, preamble);
 
   const first = await client(cfg, primed);
   const parsed = parseHelixResponse(first, toolNames);

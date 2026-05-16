@@ -15,7 +15,7 @@ export async function reasonOnce(req: ReasonRequest): Promise<ReasonResponse> {
     try {
       const r = await helixReason(req.helixConfig || {}, req.messages, req.tools, callHelix);
       if (r.tool_calls && r.tool_calls.length > 0) {
-        return { type: 'tool_calls', calls: r.tool_calls, messages: [...req.messages, { role: 'assistant', content: '' }] };
+        return { type: 'tool_calls', calls: r.tool_calls, messages: [...req.messages, { role: 'assistant', content: '', tool_calls: r.tool_calls }] };
       }
       const answer = r.content ?? '';
       return { type: 'final', answer, messages: [...req.messages, { role: 'assistant', content: answer }] };
@@ -38,7 +38,7 @@ export async function reasonOnce(req: ReasonRequest): Promise<ReasonResponse> {
     return {
       type: 'tool_calls',
       calls: resp.tool_calls.map((tc: any) => ({ id: tc.id, name: tc.name, args: tc.args || {} })),
-      messages: [...req.messages, { role: 'assistant', content: resp.content || '' }],
+      messages: [...req.messages, { role: 'assistant', content: resp.content || '', tool_calls: resp.tool_calls.map((tc: any) => ({ id: tc.id, name: tc.name, args: tc.args || {} })) }],
     };
   }
   const answer = typeof resp.content === 'string' ? resp.content : JSON.stringify(resp.content ?? '');
