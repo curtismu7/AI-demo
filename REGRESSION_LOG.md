@@ -5,6 +5,24 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-05-16 — Token Chain blank/unfaithful (review C1–C3, H1–H5, M1–M5)
+
+**Symptoms**: The Token Chain diagnostic panel did not faithfully reflect the agent flow. Most damaging: on an RFC 8693 exchange failure the panel went completely blank; failed/denied steps rendered with benign amber styling (looked "in progress"); the gateway's second token exchange for real banking tools was invisible; a panel refresh after a failure showed a corrupted/empty chain; a failed call left the previous call's chain on screen labelled "live".
+
+**Root causes**:
+- **C1**: the single-exchange catch built the `exchange-failed` event into a local array then `throw err` without `err.tokenEvents = tokenEvents`. Every caller reads the chain off the thrown error, so the chain was lost exactly on failure.
+- **C2**: `buildSessionPreviewTokenEvents` is `async`; called without `await`, so `(Promise).tokenEvents` was `undefined` → `[]`.
+- **C3**: the gateway OLB/invest WS path returned the raw backend result with no `_meta.tokenEvents`.
+- **H2**: the SPA `StatusBadge`/row/History only knew 7 statuses; everything else (incl. `failed`/`error`/`denied`/`expired`) fell through to the benign "waiting" bucket.
+- **H4**: NL-path persistence wrote `eventType: event.status` (wrong domain) and `token: ''` (wiped claims); `getTokenChain` sorted DESC, reversing the live order.
+- Others: H1/H3/H5/M1–M5 per REGRESSION_PLAN.md §4 (2026-05-16).
+
+**Fix**: Attach `err.tokenEvents` on the failure throw; add the missing `await`; inject synthesized `_meta.tokenEvents` (cache-aware) on the gateway WS path; `resolveStatusVisual()` maps every status to a visual bucket with unknown/negative → red `failed`; fix the persistence eventType domain + claim fallback + ascending sort; bound the audit fetch with `AbortSignal.timeout`; scrub token-chain routes; add MCP request/response, resource-server, and agent-reasoning steps; clear stale chain + per-user history isolation.
+
+**Tests**: `banking_api_server/src/__tests__/tokenChainService.regression.test.js` (NEW — H4 claim fallback, ascending order, H5 unverified marker, M1 graceful degradation; module had zero prior coverage). `agentMcpTokenService.test.js` — added C1 (failure attaches `exchange-failed` to `err.tokenEvents`) and M4 (no raw JWT in `tokenEvents`) cases. Full: `npx jest tokenChainService.regression agentMcpTokenService` → 90 pass; `oauthStatus.* hitlRoute.*` → 38 pass (no regression).
+
+---
+
 ## 2026-05-15 — banking_agent_service: loopback default, body cap, prompt shipping (commit `03ec8e0e`)
 
 **Symptoms**: Three Important findings from a security review of `banking_agent_service`. (1) `HOST` defaulted to `0.0.0.0` although `:3006` is documented loopback-only (REGRESSION_PLAN §3) — a misconfigured deploy exposes the token-exchange endpoint on all interfaces. (2) `express.json()` had no size limit, so an oversized body could amplify load before the cheap HI-04 subject-token shape check. (3) `tsc` did not copy `src/prompts/` into `dist/`, so the compiled service silently fell back to a minimal inline system prompt — dropping the curated `default.json` guardrail ("never reveal raw token values").

@@ -76,25 +76,63 @@ function RfcRef({ rfc, className = "tcd-edu-ref" }) {
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
+// Every status the BFF + gateway can emit, mapped to one of the four existing
+// visual buckets (active/exchanged/skipped/failed/waiting). The critical
+// invariant: any negative/terminal-failure status MUST resolve to the red
+// "failed" bucket — previously unmapped statuses (success, failure, error,
+// denied, expired, timeout, unreachable, deny, degraded, indeterminate,
+// unconfigured) all fell through to the benign amber "waiting", rendering a
+// failed exchange or a denied authorize decision as if it were still in
+// progress. Keys are lower-cased before lookup.
+const STATUS_VISUAL = {
+  // success-ish
+  active: { bucket: "active", label: "Active" },
+  acquired: { bucket: "active", label: "Active" },
+  success: { bucket: "active", label: "Success" },
+  ok: { bucket: "active", label: "OK" },
+  permit: { bucket: "active", label: "Permit" },
+  // exchange-ish
+  exchanged: { bucket: "exchanged", label: "Exchanged" },
+  cached: { bucket: "exchanged", label: "Cached (no round-trip)" },
+  // in-progress
+  acquiring: { bucket: "acquiring", label: "Acquiring…" },
+  pending: { bucket: "acquiring", label: "Pending…" },
+  waiting: { bucket: "waiting", label: "Waiting" },
+  // neutral / not-applicable
+  skipped: { bucket: "skipped", label: "Skipped" },
+  synthesized: { bucket: "skipped", label: "Synthesized (not verified)" },
+  // failures — all must be red
+  failed: { bucket: "failed", label: "Failed" },
+  failure: { bucket: "failed", label: "Failed" },
+  error: { bucket: "failed", label: "Error" },
+  denied: { bucket: "failed", label: "Denied" },
+  deny: { bucket: "failed", label: "Denied" },
+  expired: { bucket: "failed", label: "Expired" },
+  timeout: { bucket: "failed", label: "Timed out" },
+  unreachable: { bucket: "failed", label: "Unreachable" },
+  unconfigured: { bucket: "failed", label: "Not configured" },
+  // ambiguous-but-not-success → treat as a warning failure, never green
+  degraded: { bucket: "failed", label: "Degraded" },
+  warning: { bucket: "failed", label: "Warning" },
+  indeterminate: { bucket: "failed", label: "Indeterminate" },
+};
+
+// Resolve any status string to a known visual bucket. Unknown → "failed"
+// (fail loud, never silently benign) so a new server status can't masquerade
+// as success.
+function resolveStatusVisual(status) {
+  const key = typeof status === "string" ? status.toLowerCase().trim() : "";
+  if (STATUS_VISUAL[key]) return STATUS_VISUAL[key];
+  return { bucket: "failed", label: status ? String(status) : "Unknown" };
+}
+
 function StatusBadge({ status }) {
-  const map = {
-    active: { cls: "tcd-badge--active", label: "Active" },
-    acquired: { cls: "tcd-badge--active", label: "Active" },
-    exchanged: { cls: "tcd-badge--exchanged", label: "Exchanged" },
-    acquiring: { cls: "tcd-badge--acquiring", label: "Acquiring…" },
-    skipped: { cls: "tcd-badge--skipped", label: "Skipped" },
-    failed: { cls: "tcd-badge--failed", label: "Failed" },
-    waiting: { cls: "tcd-badge--waiting", label: "Waiting" },
-  };
-  const s = map[status] || {
-    cls: "tcd-badge--waiting",
-    label: status || "Unknown",
-  };
-  const spinning = status === "acquiring";
+  const { bucket, label } = resolveStatusVisual(status);
+  const spinning = bucket === "acquiring";
   return (
-    <span className={`tcd-badge ${s.cls}`}>
+    <span className={`tcd-badge tcd-badge--${bucket}`}>
       {spinning ? <span className="tcd-spinner"></span> : null}
-      {s.label}
+      {label}
     </span>
   );
 }
@@ -1971,14 +2009,16 @@ function NlRoutingCard({ event }) {
  */
 function SpecRefPill({ specRef }) {
   const [expanded, setExpanded] = React.useState(false);
-  const refs = specRef.split(' + ');
+  const refs = specRef.split(" + ");
   return (
     <span className="tcd-specref-group">
       {refs.map((r) => {
         const entry = SPEC_GUIDE[r] || SPEC_GUIDE[specRef] || null;
         if (!entry) {
           return (
-            <span key={r} className="tcd-specref-pill tcd-specref-unknown">{r}</span>
+            <span key={r} className="tcd-specref-pill tcd-specref-unknown">
+              {r}
+            </span>
           );
         }
         return (
@@ -1990,11 +2030,16 @@ function SpecRefPill({ specRef }) {
             rel="noopener noreferrer"
             onMouseEnter={() => setExpanded(true)}
             onMouseLeave={() => setExpanded(false)}
-            onClick={(e) => { e.preventDefault(); setExpanded((v) => !v); }}
+            onClick={(e) => {
+              e.preventDefault();
+              setExpanded((v) => !v);
+            }}
             title={entry.title}
           >
             {r}
-            <span className="tcd-specref-link-icon" aria-hidden="true">{'↗'}</span>
+            <span className="tcd-specref-link-icon" aria-hidden="true">
+              {"↗"}
+            </span>
           </a>
         );
       })}
@@ -2004,9 +2049,9 @@ function SpecRefPill({ specRef }) {
             const entry = SPEC_GUIDE[r] || SPEC_GUIDE[specRef] || null;
             return entry ? (
               <div key={r} className="tcd-specref-explainer-row">
-                <strong>{entry.title}:</strong> {entry.summary}{' '}
+                <strong>{entry.title}:</strong> {entry.summary}{" "}
                 <a href={entry.url} target="_blank" rel="noopener noreferrer">
-                  read spec {'↗'}
+                  read spec {"↗"}
                 </a>
               </div>
             ) : null;
@@ -2018,8 +2063,73 @@ function SpecRefPill({ specRef }) {
 }
 
 /** Renders one step in the token chain. The inspect icon (right side) opens the floating inspector panel. */
+// Compute what THIS token differs from the previous step's token — so each
+// card can show, at a glance, what the exchange actually changed (the user
+// asked for this: "highlight the changes so the user can easily see what
+// happened in each card"). Compares audience, scope set, and the delegation
+// (act) chain between consecutive events that carry claims.
+function diffFromPrev(event, prevEvent) {
+  const cur = event?.claims;
+  const prev = prevEvent?.claims;
+  if (!cur || !prev) return [];
+  const changes = [];
+
+  const audStr = (a) => (Array.isArray(a) ? a.join(" ") : a || "");
+  if (audStr(cur.aud) !== audStr(prev.aud) && (cur.aud || prev.aud)) {
+    changes.push({
+      kind: "aud",
+      label: "Audience narrowed",
+      from: audStr(prev.aud) || "(none)",
+      to: audStr(cur.aud) || "(none)",
+    });
+  }
+
+  const toScopeSet = (s) =>
+    new Set(
+      (typeof s === "string"
+        ? s.split(/\s+/)
+        : Array.isArray(s)
+          ? s
+          : []
+      ).filter(Boolean),
+    );
+  const curScopes = toScopeSet(cur.scope);
+  const prevScopes = toScopeSet(prev.scope);
+  const removed = [...prevScopes].filter((s) => !curScopes.has(s));
+  const added = [...curScopes].filter((s) => !prevScopes.has(s));
+  if (removed.length || added.length) {
+    changes.push({
+      kind: "scope",
+      label:
+        removed.length && !added.length
+          ? "Scopes narrowed"
+          : added.length && !removed.length
+            ? "Scopes added"
+            : "Scopes changed",
+      removed,
+      added,
+    });
+  }
+
+  const actSub = (c) =>
+    c?.act?.sub || (typeof c?.act === "string" ? c.act : null);
+  if (actSub(cur) !== actSub(prev)) {
+    changes.push({
+      kind: "act",
+      label: actSub(prev)
+        ? "Delegation actor changed"
+        : "Delegation (act) added",
+      from: actSub(prev) || "(none)",
+      to: actSub(cur) || "(none)",
+    });
+  }
+
+  return changes;
+}
+
 function EventRow({
   event,
+  prevEvent,
   isLast,
   nextEvent,
   idTokenMode,
@@ -2027,6 +2137,7 @@ function EventRow({
   hints,
   validationMode,
 }) {
+  const changeDiff = diffFromPrev(event, prevEvent);
   const inspectBtnRef = useRef(null);
   const hasDetail =
     event.claims ||
@@ -2123,19 +2234,26 @@ function EventRow({
       : null;
 
   // Phase 266 — credentialPath visual identity per chain segment
-  const credPath = event.credentialPath || 'oauth_bearer';
+  const credPath = event.credentialPath || "oauth_bearer";
   const credPathBadgeText =
-    credPath === 'api_key'
-      ? 'API-KEY PATH'
-      : credPath === 'dual_token'
-        ? 'ACCESS + ID-TOKEN PATH'
-        : 'OAUTH BEARER PATH';
+    credPath === "api_key"
+      ? "API-KEY PATH"
+      : credPath === "dual_token"
+        ? "ACCESS + ID-TOKEN PATH"
+        : "OAUTH BEARER PATH";
 
   return (
-    <div className={`tcd-event-wrap tcd-path-${credPath}`} data-credential-path={credPath}>
+    <div
+      className={`tcd-event-wrap tcd-path-${credPath}`}
+      data-credential-path={credPath}
+    >
       {/* Phase 266 path badge — plain text, no emoji (REGRESSION_PLAN §0) */}
       <span className="tcd-path-badge">{credPathBadgeText}</span>
-      <div className={`tcd-event ${event.status}`}>
+      {/* Left-border color must reflect the resolved status bucket, not the raw
+          status string — otherwise a server status without a matching CSS rule
+          (error/failure/denied/expired/timeout/degraded) renders with no
+          failure styling, indistinguishable from success. */}
+      <div className={`tcd-event ${resolveStatusVisual(event.status).bucket}`}>
         <div className="tcd-event-content">
           <div className="tcd-event-title-row">
             <TokenColorDot
@@ -2223,6 +2341,39 @@ function EventRow({
             )}
             <StatusBadge status={event.status} />
           </div>
+          {changeDiff.length > 0 && (
+            <div className="tcd-event-diff" aria-label="What this step changed">
+              <span className="tcd-event-diff-title">What changed</span>
+              {changeDiff.map((c, ci) => (
+                <div
+                  key={ci}
+                  className={`tcd-event-diff-row tcd-event-diff-row--${c.kind}`}
+                >
+                  <span className="tcd-event-diff-label">{c.label}</span>
+                  {c.kind === "scope" ? (
+                    <span className="tcd-event-diff-detail">
+                      {c.removed.length > 0 && (
+                        <span className="tcd-diff-removed">
+                          − {c.removed.join(", ")}
+                        </span>
+                      )}
+                      {c.added.length > 0 && (
+                        <span className="tcd-diff-added">
+                          + {c.added.join(", ")}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="tcd-event-diff-detail">
+                      <span className="tcd-diff-removed">{c.from}</span>
+                      <span className="tcd-diff-arrow"> → </span>
+                      <span className="tcd-diff-added">{c.to}</span>
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           {(triggerHint ||
             mayActHint ||
             actHint ||
@@ -2385,8 +2536,18 @@ function HistoryEntry({ entry }) {
   const [expanded, setExpanded] = React.useState(false);
   const ts = new Date(entry.timestamp).toLocaleTimeString();
   const total = entry.events.length;
-  const errors = entry.events.filter((e) => e.status === "error").length;
-  const successes = entry.events.filter((e) => e.status === "success").length;
+  // Use the resolved visual bucket, not raw === "error"/"success". The chain
+  // emits failed/failure/denied/expired/timeout (all "failed" bucket) and
+  // active/success/exchanged (success-ish) — keying off two literal strings
+  // classified a run full of `failed` steps as "partial" (grey ~), hiding
+  // past failures in History.
+  const isFailBucket = (s) => resolveStatusVisual(s).bucket === "failed";
+  const isOkBucket = (s) => {
+    const b = resolveStatusVisual(s).bucket;
+    return b === "active" || b === "exchanged";
+  };
+  const errors = entry.events.filter((e) => isFailBucket(e.status)).length;
+  const successes = entry.events.filter((e) => isOkBucket(e.status)).length;
   const statusClass =
     errors > 0
       ? "error"
@@ -2433,16 +2594,17 @@ function HistoryEntry({ entry }) {
             </span>
           ) : (
             entry.events.map((ev, i) => {
+              const evBucket = resolveStatusVisual(ev.status).bucket;
               const evStatus =
-                ev.status === "error"
+                evBucket === "failed"
                   ? "✗"
-                  : ev.status === "success"
+                  : evBucket === "active" || evBucket === "exchanged"
                     ? "✓"
                     : "~";
               const evColor =
-                ev.status === "error"
+                evBucket === "failed"
                   ? "#dc2626"
-                  : ev.status === "success"
+                  : evBucket === "active" || evBucket === "exchanged"
                     ? "#16a34a"
                     : "#64748b";
               const scopeSummary = ev.claims?.scope
@@ -2988,8 +3150,12 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
                 sessionPreviewFetched) &&
                 currentEventsWithCc.map((ev, i) => (
                   <EventRow
-                    key={ev.id}
+                    // Include index — event ids are NOT guaranteed unique
+                    // (2-exchange paths can emit repeated ids); keying on id
+                    // alone would collapse/drop a real step via React reconcile.
+                    key={`${ev.id}-${i}`}
                     event={ev}
+                    prevEvent={currentEventsWithCc[i - 1]}
                     isLast={i === currentEventsWithCc.length - 1}
                     nextEvent={currentEventsWithCc[i + 1]}
                     idTokenMode={idTokenMode}

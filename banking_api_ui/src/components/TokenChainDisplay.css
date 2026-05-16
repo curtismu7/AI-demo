@@ -2036,9 +2036,15 @@ pre.tcd-jwt-dump {
   border-radius: 2px;
   color: #fff;
 }
-.tcd-path-oauth_bearer > .tcd-path-badge { background: #004687; }
-.tcd-path-api_key      > .tcd-path-badge { background: #ca8a04; }
-.tcd-path-dual_token   > .tcd-path-badge { background: #0d9488; }
+.tcd-path-oauth_bearer > .tcd-path-badge {
+  background: #004687;
+}
+.tcd-path-api_key > .tcd-path-badge {
+  background: #ca8a04;
+}
+.tcd-path-dual_token > .tcd-path-badge {
+  background: #0d9488;
+}
 
 /* ─── Phase 266 R3 — spec-citation pills on each token chain segment ─────── */
 .tcd-specref-group {
@@ -2063,7 +2069,9 @@ pre.tcd-jwt-dump {
   text-decoration: none;
   cursor: pointer;
 }
-.tcd-specref-pill:hover { background: #e0e7ff; }
+.tcd-specref-pill:hover {
+  background: #e0e7ff;
+}
 .tcd-specref-unknown {
   background: #fef3c7;
   color: #92400e;
@@ -2093,4 +2101,52 @@ pre.tcd-jwt-dump {
 }
 .tcd-specref-explainer-row:last-child {
   margin-bottom: 0;
+}
+
+/* ── Per-card "What changed" diff strip ──────────────────────────────────────
+   Makes the effect of each exchange/step legible at a glance: audience
+   narrowing, scope add/remove, and delegation (act) changes vs the previous
+   step's token. */
+.tcd-event-diff {
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #2563eb;
+  background: #f8fafc;
+  border-radius: 4px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tcd-event-diff-title {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+}
+.tcd-event-diff-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.78rem;
+}
+.tcd-event-diff-label {
+  font-weight: 600;
+  color: #1e293b;
+}
+.tcd-event-diff-detail {
+  font-family: var(--font-family-mono);
+  word-break: break-all;
+}
+.tcd-diff-removed {
+  color: #b91c1c;
+  text-decoration: line-through;
+  margin-right: 6px;
+}
+.tcd-diff-added {
+  color: #15803d;
+}
+.tcd-diff-arrow {
+  color: #64748b;
 }

@@ -19,6 +19,9 @@ import { postAppEvent } from "../services/appEventClient";
 const TokenChainContext = createContext(null);
 
 const TOKEN_CHAIN_HISTORY_KEY = "tokenChainHistory";
+// Tracks which principal (user sub) owns the persisted history, so a
+// different user logging in on the same browser cannot see stale history.
+const TOKEN_CHAIN_HISTORY_OWNER_KEY = "tokenChainHistoryOwner";
 
 export function TokenChainProvider({ children, activePath = "" }) {
   // Array of token event objects — latest tool call only (replaced on each call)
@@ -70,6 +73,14 @@ export function TokenChainProvider({ children, activePath = "" }) {
   const setTokenEvents = useCallback(
     (tool, newEvents) => {
       if (!Array.isArray(newEvents) || newEvents.length === 0) {
+        // A real tool call that produced no events (e.g. failed before any
+        // step). Do NOT keep the previous call's chain on screen with the
+        // live dot — that misrepresents stale data as the current call. Clear
+        // the live view; skip the empty history entry (nothing to record).
+        if (isTokenChainRoute(activePath)) {
+          setEvents([]);
+          setSessionTokenEvent(null);
+        }
         return;
       }
       // Always persist to history so it's available when the user navigates to a token-chain page.
@@ -111,6 +122,7 @@ export function TokenChainProvider({ children, activePath = "" }) {
     setMCPToolCalls([]);
     try {
       localStorage.removeItem(TOKEN_CHAIN_HISTORY_KEY);
+      localStorage.removeItem(TOKEN_CHAIN_HISTORY_OWNER_KEY);
     } catch {}
   }, []);
 
@@ -188,27 +200,48 @@ export function TokenChainProvider({ children, activePath = "" }) {
     };
   }, [activePath]);
 
-  // Real-time MCP result updates via SSE — prepend new result immediately so the
-  // MCP Results tab updates without waiting for the 15-second poll cycle.
+  // Real-time MCP result updates via SSE — APPEND new result so live order
+  // matches the server's chronological (oldest-first) order. Previously this
+  // prepended newest-first while the 15s poll replaced the list oldest-first,
+  // so the displayed call order flipped depending on data source. We also no
+  // longer fabricate chainIndex from array length (collides/skips vs the
+  // server ordinal) nor assert scopes:[] / isDelegated:false (which positively
+  // misstated a delegated, scoped call as "Direct user token, no scopes" until
+  // the next poll). Unknown fields are left undefined so the UI can render
+  // "pending poll" rather than a false negative.
   useEffect(() => {
     const handler = (e) => {
       const data = e.detail;
       if (!data || !data.toolName) return;
-      setMCPToolCalls((prev) => [
-        {
-          id: `sse-${Date.now()}`,
-          timestamp: data.timestamp || new Date().toISOString(),
-          toolName: data.toolName,
-          status: data.status || "success",
-          duration: data.duration || 0,
-          chainIndex: prev.length,
-          isDelegated: !!data.isDelegated,
-          scopes: [],
-          resultJson: data.resultJson || null,
-          resultSummary: data.resultSummary || null,
-        },
-        ...prev,
-      ]);
+      setMCPToolCalls((prev) => {
+        const lastIdx = prev.reduce(
+          (max, c) =>
+            typeof c.chainIndex === "number" && c.chainIndex > max
+              ? c.chainIndex
+              : max,
+          -1,
+        );
+        return [
+          ...prev,
+          {
+            id: `sse-${Date.now()}`,
+            timestamp: data.timestamp || new Date().toISOString(),
+            toolName: data.toolName,
+            status: data.status || "success",
+            duration: data.duration || 0,
+            chainIndex: lastIdx + 1,
+            // Unknown until the authoritative poll arrives — do not assert.
+            isDelegated:
+              typeof data.isDelegated === "boolean"
+                ? data.isDelegated
+                : undefined,
+            scopes: Array.isArray(data.scopes) ? data.scopes : undefined,
+            pendingServerSync: true,
+            resultJson: data.resultJson || null,
+            resultSummary: data.resultSummary || null,
+          },
+        ];
+      });
     };
     window.addEventListener("mcp-tool-result-sse", handler);
     return () => window.removeEventListener("mcp-tool-result-sse", handler);
@@ -284,6 +317,38 @@ export function TokenChainProvider({ children, activePath = "" }) {
   useEffect(() => {
     void loadResolvedIdentity();
   }, [loadResolvedIdentity]);
+
+  // Identity-ownership guard: token-chain history is per-principal. If the
+  // resolved current user differs from the principal that owns the persisted
+  // history (e.g. user A logged out without a clean clearHistory — tab close,
+  // session-expiry redirect — then user B logged in on the same browser),
+  // wipe the stale history so user B never sees user A's tool calls and
+  // decoded sub/scope claims. Owner sub is tracked in its own localStorage key
+  // (the history payload itself is never trusted for ownership).
+  useEffect(() => {
+    const sub = resolvedIdentity?.currentUser?.sub || null;
+    if (!sub) return; // unauthenticated / not yet resolved — leave as-is
+    let owner = null;
+    try {
+      owner = localStorage.getItem(TOKEN_CHAIN_HISTORY_OWNER_KEY);
+    } catch {}
+    if (owner && owner !== sub) {
+      // Different principal — clear everything tied to the previous user.
+      setHistory([]);
+      setEvents([]);
+      setNlRoutingEventState(null);
+      setSessionTokenEvent(null);
+      setMCPToolCalls([]);
+      try {
+        localStorage.removeItem(TOKEN_CHAIN_HISTORY_KEY);
+      } catch {}
+    }
+    if (owner !== sub) {
+      try {
+        localStorage.setItem(TOKEN_CHAIN_HISTORY_OWNER_KEY, sub);
+      } catch {}
+    }
+  }, [resolvedIdentity]);
 
   // Re-fetch identity after login (e.g., session expiry re-auth)
   useEffect(() => {

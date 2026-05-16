@@ -89,8 +89,15 @@ async function trackTokenEvent(eventData) {
 
   console.log('[tokenChain] Recording event:', { eventType, userId, description });
 
-  const claims = extractJwtClaims(token);
-  const tokenType = classifyTokenType(token, additionalData);
+  // Prefer claims decoded from a raw token; fall back to pre-decoded claims
+  // supplied in additionalData (the NL/agent path has only sanitized claims,
+  // not the raw token — passing token:'' here would otherwise wipe
+  // sub/scope/aud/expiry from the persisted record).
+  const claims = (token ? extractJwtClaims(token) : null) || additionalData.claims || {};
+  const tokenType = token
+    ? classifyTokenType(token, additionalData)
+    : (additionalData.tokenType
+        || (claims.sub && claims.act ? 'exchanged_token' : (claims.sub ? 'user_token' : 'unknown')));
 
   const event = {
     id: crypto.randomUUID(),
@@ -160,10 +167,13 @@ async function getTokenChain(userId = null) {
     for (const [uid, events] of tokenEvents.entries()) {
       allEvents.push(...events.map(e => ({ ...e, userId: uid })));
     }
-    return allEvents.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    // Ascending (chronological) — the live per-call response is forward-ordered
+    // (push order = real sequence); the persisted chain must match so a panel
+    // refresh shows the same order, not a reversed one.
+    return allEvents.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   }
-  
-  return (tokenEvents.get(userId) || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  return (tokenEvents.get(userId) || []).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 }
 
 // Helper function to get current active tokens for a user
@@ -208,10 +218,16 @@ function synthesizeFromSession(accessToken) {
       audience: Array.isArray(claims.aud) ? claims.aud.join(' ') : (claims.aud || ''),
       issuer: claims.iss || '',
       expiry: claims.exp ? new Date(claims.exp * 1000).toISOString() : null,
-      description: 'User session token (synthesized — server restarted or cold start)',
+      description: 'User session token (synthesized after server restart / cold start — '
+        + 'decoded from the session only; signature NOT verified, NOT introspected, '
+        + 'expiry NOT enforced)',
       exchangeSteps: [],
       userId: claims.sub,
       _synthetic: true,
+      // Make the unverified nature explicit so the UI cannot present this as a
+      // normal validated auth step. Distinct from a real getTokenChain row.
+      verified: false,
+      status: 'synthesized',
     }];
   } catch (_e) { return []; }
 }
@@ -228,8 +244,12 @@ async function getMCPToolCalls(userId) {
     const mcpHttpBase = mcpWsUrl.replace(/^ws(s?):/, 'http$1:');
     const agentToken = process.env.MCP_AGENT_TOKEN || '';
     const url = `${mcpHttpBase}/audit?eventType=token_chain`;
+    // Bounded fetch — /api/token-chain awaits this inline. A hung (half-open)
+    // audit socket would otherwise block the whole token-chain request
+    // indefinitely (panel spins forever, no 500). Timeout → caught below → [].
     const response = await fetch(url, {
-      headers: agentToken ? { 'Authorization': `Bearer ${agentToken}` } : {}
+      headers: agentToken ? { 'Authorization': `Bearer ${agentToken}` } : {},
+      signal: AbortSignal.timeout(5000)
     });
 
     if (!response.ok) {

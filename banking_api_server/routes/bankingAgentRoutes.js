@@ -237,7 +237,11 @@ router.post('/message', async (req, res) => {
         if (resolvedTokenEvents.length === 0) {
           try {
             const { buildSessionPreviewTokenEvents } = require('../services/agentMcpTokenService');
-            resolvedTokenEvents = buildSessionPreviewTokenEvents(req).tokenEvents || [];
+            // buildSessionPreviewTokenEvents is async — without await this resolved
+            // to (Promise).tokenEvents === undefined → [], emptying the chain on the
+            // exact failure-fallback path it exists to populate.
+            const preview = await buildSessionPreviewTokenEvents(req);
+            resolvedTokenEvents = preview.tokenEvents || [];
           } catch (_) { /* non-fatal */ }
         }
         console.log('[banking-agent/message] Token event generation failed (%s), using %d fallback events',
@@ -250,16 +254,22 @@ router.post('/message', async (req, res) => {
     if (resolvedTokenEvents && resolvedTokenEvents.length > 0 && userId) {
       try {
         for (const event of resolvedTokenEvents) {
+          // eventType is the token-chain domain (auth|exchange|refresh|revoke),
+          // NOT the per-step UI status. trackTokenEvent + getCurrentTokens filter
+          // on eventType; passing event.status here ('acquiring'/'failed'/...)
+          // produced nonsense types and silently excluded most steps from
+          // /api/token-chain/current. An exchanged token carries both sub+act.
+          const isExchanged = !!(event.claims?.sub && event.claims?.act);
           await trackTokenEvent({
-            eventType: event.status || 'exchange',
-            token: '', // We don't have the raw token here, just the metadata
+            eventType: isExchanged ? 'exchange' : 'auth',
+            token: '', // raw token not available here — claims passed via additionalData
             description: `${event.label}: ${event.explanation || ''}`,
             userId: userId,
             additionalData: {
               tokenLabel: event.label,
               status: event.status,
               claims: event.claims,
-              tokenType: event.claims?.aud ? 'mcp_token' : 'user_token'
+              tokenType: isExchanged ? 'exchanged_token' : 'user_token'
             }
           });
         }
