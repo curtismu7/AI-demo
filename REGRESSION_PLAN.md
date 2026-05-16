@@ -120,6 +120,26 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-16 — Standardize on client_secret_post for all PingOne connections (ARCHITECTURE TRUTH T-9)
+
+**Files changed:**
+- `banking_api_server/services/agentMcpTokenService.js` — `aiAgentAuthMethod` + `mcpExchangerAuthMethod` resolver defaults `'basic'` → `'post'` (non-worker).
+- `banking_api_server/services/pingoneProvisionService.js` — `createApplication` `desiredAuthMethod` is now `type === 'WORKER' ? 'CLIENT_SECRET_BASIC' : 'CLIENT_SECRET_POST'` (was hardcoded BASIC); 5 per-app `updateApplication` sites flipped to `client_secret_post` (MCP Server, MCP Exchanger, MCP Gateway, Agent, AI Agent); **Worker app stays `client_secret_basic`** (Step 19 — the single T-9 exception); fresh-`.env` template now writes `MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD=post` and `PINGONE_INTROSPECTION_AUTH_METHOD=post`; stale BASIC comments corrected.
+- `banking_api_server/.env` — `MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD`, `PINGONE_INTROSPECTION_AUTH_METHOD` → `post`; added `PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD=post`.
+- `docs/ARCHITECTURE-TRUTHS.md` — added **T-9** (the invariant + the worker exception + the naive misreading it corrects).
+
+**What was broken:** Auth methods were inconsistent per-connection. The MCP Exchanger / gateway / introspection paths defaulted to `client_secret_basic` while PingOne apps (or the BFF) expected `post` (or vice-versa), producing `invalid_client: "Unsupported authentication method"` → `delegation_chain_broken` / `actor_token_invalid` → **502 on every chip's `/api/mcp/tool`**, and `session_persist_failed` on admin login. `pingoneProvisionService.createApplication` hardcoded `CLIENT_SECRET_BASIC`, so `setup:fresh`/bootstrap *provisioned* the inconsistency for fresh installs.
+
+**What was fixed:** One rule everywhere — every non-worker PingOne client uses `client_secret_post`; only the Worker Token CC app (Management API) uses `client_secret_basic`. Code defaults, the `.env`, and the provisioner all assert this, so fresh installs + idempotent drift-correction converge on T-9 (the drift path now auto-PATCHes an existing app off BASIC).
+
+**Verify:**
+- `cd banking_api_server && OLLAMA_BASE_URL= npx jest --testPathPattern="oauthStatus|hitlRoute|tokenExchange|token-structure|helixKeyMigration|allChips.pipeline|extractChips"` → 10 suites / 150 passed (no regression).
+- BFF log on a chip call: `[McpExchangerToken] Attempting client credentials: { method: 'post' }` then a successful exchange (no `Unsupported authentication method`), `/api/mcp/tool` returns 200 with a non-empty RFC 8693 `tokenEvents` trail.
+- Worker path unbroken: admin login still reaches `/admin`; no `invalid_client` for the worker app.
+
+**Do not break:** The Worker Token CC client (`PINGONE_WORKER_TOKEN_*`, `oauthService.getAgentClientCredentialsToken[WithExpiry]`, provisioner Step 19) MUST stay `client_secret_basic` — it is the sole T-9 exception. Every other PingOne client connection MUST be `client_secret_post`; code resolver defaults for non-worker paths MUST default `'post'`. See `docs/ARCHITECTURE-TRUTHS.md` T-9.
+**Known follow-up (external, not code):** an EXISTING PingOne MCP Exchanger app (`52a6ff1d-…`) provisioned before this change is still `CLIENT_SECRET_BASIC` in the tenant; the next `pingone:bootstrap` drift-correction (or a console change to Client Secret Post) aligns it. The live chip e2e suite stays blocked until that one tenant field matches.
+
 ### 2026-05-16 — REVERT: api_key tools must NOT skip RFC 8693 (84896c04 was architecturally wrong)
 
 **Files changed:**

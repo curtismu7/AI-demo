@@ -319,6 +319,40 @@ concurrency-safe — or it converts dormant defects into live ones.
 
 ---
 
+## T-9 — Every PingOne client connection authenticates with `client_secret_post`; the Worker Token CC client is the only `basic` exception
+
+All confidential-client calls to PingOne — the Authorization Code token
+exchange, RFC 8693 token exchange (MCP exchanger), the AI-agent CC token, the
+MCP-gateway token endpoint, and token introspection (which authenticates with
+the **user** token, not the worker) — send credentials as
+`client_secret_post` (`client_id` + `client_secret` in the form body). There
+is exactly **one** exception: the **Worker Token CC client**
+(`PINGONE_WORKER_TOKEN_*` — the PingOne "Super Banking Worker Token" app used
+for Management API calls and redirect-uri/app-config reads), which
+authenticates with `client_secret_basic`.
+
+Mismatched auth methods are *the* recurring failure mode: PingOne rejects with
+`invalid_client: "Unsupported authentication method"`, surfacing downstream as
+`delegation_chain_broken` / `actor_token_invalid` / 502 on `/api/mcp/tool` and
+`session_persist_failed` on admin login. Standardizing removes the entire
+class. Code reflects the truth as the **default**: non-worker auth-method
+resolvers default to `'post'`; only the worker CC resolvers default to
+`'basic'`. New connections inherit `post` automatically.
+
+**Naive reading that is wrong:** "auth method is per-app, set it however each
+PingOne app happens to be configured" — that is exactly what produced the
+inconsistent `basic`/`post` mix that broke token exchange this session. The
+invariant is the other way round: the *code and config* assert `post`
+everywhere, and PingOne apps are configured to match; the single deliberate
+deviation (worker CC = `basic`) is explicit, commented, and isolated to the
+`getAgentClientCredentialsToken*` functions.
+
+- Code: `banking_api_server/services/agentMcpTokenService.js` (`aiAgentAuthMethod`, `mcpExchangerAuthMethod` — default `'post'`), `banking_api_server/services/oauthService.js` `getAgentClientCredentialsToken[WithExpiry]` (worker CC — default `'basic'`, the exception), `banking_api_server/.env` (`MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD`, `PINGONE_INTROSPECTION_AUTH_METHOD`, `PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD` = `post`)
+- Related: T-4 (PingOne performs the token exchange — this is how the request authenticates to it)
+- Glossary: [CONTEXT.md](../CONTEXT.md) "token custody", [oauth-pingone/SKILL.md](../.claude/skills/oauth-pingone/SKILL.md) (client auth methods)
+
+---
+
 ## How to extend this file
 
 Add a `T-N` entry only when **all** of these hold:

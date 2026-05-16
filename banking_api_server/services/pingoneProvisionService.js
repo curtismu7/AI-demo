@@ -449,7 +449,12 @@ class PingOneProvisionService {
       return String(g).toUpperCase();
     };
     const desiredGrants = new Set((grantTypes || []).map(normalizeGrant));
-    const desiredAuthMethod = 'CLIENT_SECRET_BASIC';
+    // ARCHITECTURE TRUTH T-9: every PingOne client connection uses
+    // client_secret_post; the ONLY exception is the Worker Token CC client
+    // (type WORKER, used for the Management API). Provisioning must bake this
+    // in so fresh installs + drift-correction never reintroduce the
+    // inconsistent BASIC/POST mix that broke RFC 8693 token exchange.
+    const desiredAuthMethod = type === 'WORKER' ? 'CLIENT_SECRET_BASIC' : 'CLIENT_SECRET_POST';
 
     const existing = await this.findResourceByName('application', name);
 
@@ -1032,7 +1037,7 @@ class PingOneProvisionService {
       `MCP_GW_CLIENT_ID=${provisioned.mcpGwApp?.clientId || ''}`,
       `MCP_GW_CLIENT_SECRET=${provisioned.mcpGwApp?.clientSecret || '<set-in-pingone-console>'}`,
       `MCP_GW_RESOURCE_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcp-gw.bxf.com'}`,
-      'MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD=basic',
+      'MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD=post',
       '',
       '# Agent Service (banking_agent_service on :3006)',
       `AGENT_CLIENT_ID=${provisioned.agentApp?.clientId || ''}`,
@@ -1063,14 +1068,15 @@ class PingOneProvisionService {
       `ADMIN_TOKEN_LIFETIME=7200`,
       `ADMIN_REFRESH_TOKEN_LIFETIME=86400`,
       '',
-      '# Token-endpoint auth methods — must match the PingOne app settings written',
-      '# above. Admin App is provisioned as CLIENT_SECRET_POST; the BFF\'s default',
-      '# for oauthService refresh is `basic`, which would mismatch and produce',
-      '# 401 invalid_client on refresh. Worker Token (used for introspection) is',
-      '# CLIENT_SECRET_BASIC; the BFF\'s tokenIntrospectionService defaults to',
-      '# `post`, which would 401. These two env vars align both ends.',
+      '# Token-endpoint auth methods — ARCHITECTURE TRUTH T-9: every PingOne',
+      '# client connection uses client_secret_post. The ONLY exception is the',
+      '# Worker Token CC client (type WORKER, Management API), which stays',
+      '# client_secret_basic. Provisioning now creates every non-worker app as',
+      '# CLIENT_SECRET_POST (createApplication, drift-corrected), and the BFF',
+      '# code defaults to `post` for all non-worker resolvers. Introspection',
+      '# authenticates with the USER token (not the worker), so it is `post`.',
       `PINGONE_ADMIN_TOKEN_ENDPOINT_AUTH=post`,
-      `PINGONE_INTROSPECTION_AUTH_METHOD=basic`,
+      `PINGONE_INTROSPECTION_AUTH_METHOD=post`,
       '',
       '# Demo Users',
       `DEMO_USER_USERNAME=bankuser`,
@@ -1585,7 +1591,7 @@ class PingOneProvisionService {
         onStep(steps[steps.length - 1]);
         
         await this.updateApplication(mcpAppResult.application.id, {
-          tokenEndpointAuthMethod: 'client_secret_basic'
+          tokenEndpointAuthMethod: 'client_secret_post'
         });
         
         steps.push({ step: 'mcp-config', icon: '✅', message: 'MCP Server application configured' });
@@ -1699,12 +1705,15 @@ class PingOneProvisionService {
       // WEB_APP requires redirectUris on create; we set a placeholder because
       // this app never actually runs the authorization_code redirect flow —
       // it's only used for CC + token-exchange. tokenEndpointAuthMethod is
-      // CLIENT_SECRET_BASIC because that's what oauthService default for the
-      // actor-CC mint uses (see agentMcpTokenService.js line ~1735).
+      // CLIENT_SECRET_POST per ARCHITECTURE TRUTH T-9 (every non-worker
+      // PingOne client uses client_secret_post; only the Worker CC app is
+      // basic). The BFF code defaults match (agentMcpTokenService.js,
+      // oauthService.js MCP-exchanger CC mint).
       if (!mcpExchangerResult.exists) {
+        // T-9: non-worker app (CC + RFC 8693 token exchange) → client_secret_post.
         await this.updateApplication(mcpExchangerResult.application.id, {
           redirectUris: [`${config.publicAppUrl}/api/auth/oauth/mcp-exchanger-placeholder-callback`],
-          tokenEndpointAuthMethod: 'client_secret_basic',
+          tokenEndpointAuthMethod: 'client_secret_post',
         });
       }
 
@@ -1827,12 +1836,12 @@ class PingOneProvisionService {
       pushAppResultStep(steps, 'mcp-gw-app', 'MCP Gateway application', mcpGwAppResult);
       onStep(steps[steps.length - 1]);
 
-      // Step 28: Configure MCP Gateway app (client_secret_basic — matches MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD default)
+      // Step 28: Configure MCP Gateway app (client_secret_post per T-9 — matches MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD=post)
       if (!mcpGwAppResult.exists) {
         steps.push({ step: 'mcp-gw-config', icon: '⚙️', message: 'Configuring MCP Gateway application...' });
         onStep(steps[steps.length - 1]);
         await this.updateApplication(mcpGwAppResult.application.id, {
-          tokenEndpointAuthMethod: 'client_secret_basic'
+          tokenEndpointAuthMethod: 'client_secret_post'
         });
         steps.push({ step: 'mcp-gw-config', icon: '✅', message: 'MCP Gateway application configured' });
         onStep(steps[steps.length - 1]);
@@ -1872,7 +1881,7 @@ class PingOneProvisionService {
         steps.push({ step: 'agent-config', icon: '⚙️', message: 'Configuring Agent application...' });
         onStep(steps[steps.length - 1]);
         await this.updateApplication(agentAppResult.application.id, {
-          tokenEndpointAuthMethod: 'client_secret_basic'
+          tokenEndpointAuthMethod: 'client_secret_post'
         });
         steps.push({ step: 'agent-config', icon: '✅', message: 'Agent application configured' });
         onStep(steps[steps.length - 1]);
@@ -2013,7 +2022,7 @@ class PingOneProvisionService {
         onStep(steps[steps.length - 1]);
         await this.updateApplication(aiAgentAppResult.application.id, {
           redirectUris: [`${config.publicAppUrl}/api/auth/oauth/ai-agent-placeholder-callback`],
-          tokenEndpointAuthMethod: 'client_secret_basic',
+          tokenEndpointAuthMethod: 'client_secret_post',
         });
         steps.push({ step: 'ai-agent-config', icon: '✅', message: 'AI Agent application configured' });
         onStep(steps[steps.length - 1]);
