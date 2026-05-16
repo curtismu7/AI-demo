@@ -47,8 +47,11 @@ the environment must have WhatsApp messaging provisioned.
 
 ## Activate
 
+PingOne documents activate as **`POST`** (banking's SMS helper uses `PUT` for
+the same endpoint — either works; see device-sms.md note):
+
 ```
-PUT {apiBase}/users/{userId}/devices/{deviceId}
+POST {apiBase}/users/{userId}/devices/{deviceId}
 Content-Type: application/vnd.pingidentity.device.activate+json
 Authorization: Bearer <workerToken>
 

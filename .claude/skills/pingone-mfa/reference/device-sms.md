@@ -2,10 +2,13 @@
 
 **Banking status:** ✅ **Wired** in `banking_api_server/services/mfaService.js`
 (`enrollSmsDevice`, `completeSmsEnrollment`). Routes:
-`POST /api/auth/mfa/enroll/sms-init`, `POST /api/auth/mfa/enroll/sms-complete`,
-plus the step-up shim `POST /api/auth/mfa/sms` + `/sms/verify` in
-`routes/mfaStepUp.js`. `MOBILE_PHONE` devices are treated as SMS at challenge
-time.
+`POST /api/auth/mfa/enroll/sms-init`, `POST /api/auth/mfa/enroll/sms-complete`.
+`MOBILE_PHONE` devices are treated as SMS at challenge time.
+
+> ⚠️ `routes/mfaStepUp.js` exists in the tree but is **dead code** — it is not
+> `require`d or mounted anywhere in `banking_api_server`. Do not treat its
+> `/sms` + `/sms/verify` handlers as a live step-up path; SMS step-up goes
+> through the challenge-time path below.
 
 ---
 
@@ -54,6 +57,13 @@ Authorization: Bearer <workerToken>
 
 { "otp": "123456" }
 ```
+
+> ⚠️ Verb divergence (real, in banking code). `completeSmsEnrollment` uses
+> **`PUT`** (shown above — this doc mirrors the actual implementation). But
+> PingOne's own docs and banking's `completeFido2Registration` use **`POST`**
+> for the *identical* `device.activate+json` endpoint. Both are accepted by
+> PingOne; match the verb the existing helper uses rather than "fixing" one to
+> the other.
 
 `completeSmsEnrollment(userId, deviceId, otp)` uses the **worker token** here.
 On success status → `ACTIVE`.

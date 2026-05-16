@@ -29,12 +29,15 @@ Authorization: Bearer <workerToken>
 { "type": "FIDO2", "nickname": "My Passkey" }
 ```
 
-Response carries `id` (deviceId) and `publicKeyCredentialCreationOptions` —
-**a JSON string** of a standard WebAuthn `PublicKeyCredentialCreationOptions`.
-`initFido2Registration` returns `{ deviceId, publicKeyCredentialCreationOptions, _debug }`.
+Response carries `id` (deviceId) and `publicKeyCredentialCreationOptions`, a
+standard WebAuthn `PublicKeyCredentialCreationOptions`. PingOne may return it as
+a **JSON string or an already-parsed object**; `initFido2Registration` accepts
+both (`typeof rawCreationOpts === 'string' ? JSON.parse(...) : rawCreationOpts`)
+and returns the raw value through as
+`{ deviceId, publicKeyCredentialCreationOptions, _debug }`.
 
 Frontend must:
-1. `JSON.parse` the options string.
+1. Parse only if it's a string (`typeof opts === 'string' ? JSON.parse(opts) : opts`).
 2. Convert byte arrays to `Uint8Array`: `challenge`, `user.id`,
    `excludeCredentials[].id`.
 3. Call `navigator.credentials.create({ publicKey: opts })`.

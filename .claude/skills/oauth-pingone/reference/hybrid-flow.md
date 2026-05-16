@@ -16,14 +16,21 @@ PingOne supports the three OIDC hybrid `response_type` combinations:
 
 | `response_type` | Front-channel returns | Back-channel (code exchange) returns | Nonce |
 |---|---|---|---|
-| `code id_token` | `code`, `id_token` | `access_token`, `refresh_token`, `id_token` | Required |
-| `code token` | `code`, `access_token` | `access_token`, `refresh_token` | Optional |
-| `code id_token token` | `code`, `id_token`, `access_token` | `access_token`, `refresh_token`, `id_token` | Required |
+| `code id_token` | `code`, `id_token` | `access_token`, `refresh_token`*, `id_token` | Required |
+| `code token` | `code`, `access_token` | `access_token`, `refresh_token`* | N/A (no id_token) |
+| `code id_token token` | `code`, `id_token`, `access_token` | `access_token`, `refresh_token`*, `id_token` | Required |
+
+\* `refresh_token` is **not** an intrinsic property of the hybrid
+`response_type`. It is issued only when the refresh-token grant is enabled on
+the PingOne app and `offline_access` is granted (RFC 6749 §1.5; OIDC Core §11) —
+same as plain Authorization Code. Nonce validation is defined against the
+`id_token`, so it does not apply to `code token` (OIDC Core §3.3.2.11).
 
 - The front-channel `id_token` lets the client verify user identity
   **immediately**, before the code exchange round-trip completes.
-- The authorization `code` is still exchanged for a refresh token over the
-  back channel — refresh tokens never travel in the fragment.
+- The authorization `code` is still exchanged over the back channel; any
+  refresh token (when issued) arrives there — refresh tokens never travel in
+  the fragment.
 
 ## PingOne application configuration
 

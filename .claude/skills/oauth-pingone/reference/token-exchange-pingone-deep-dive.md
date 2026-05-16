@@ -6,7 +6,12 @@
 > below are documented so you understand *why* the exchange behaves as it does
 > and what is **not** supported. Source: Ping-internal RFC 8693 spec note
 > ("OAuth 2.0 Token Exchange — info for selected customers", rev. Nov 14 2025).
-> Phase 1 targeted PingOne delivery ~2026 Q1.
+>
+> ⚠️ These are **forward-looking Phase-1 constraints** from that note (Ping
+> targeted Phase 1 delivery ~2026 Q1). Treat them as the documented Phase-1
+> contract, not a guaranteed description of what every PingOne environment
+> enforces today — verify against your environment before relying on an edge
+> (especially `requested_token_type=id_token` and the SPEL `context.*` surface).
 
 This complements `SKILL.md` §7 — read that first for the request shapes and
 `act`/`may_act` validation.

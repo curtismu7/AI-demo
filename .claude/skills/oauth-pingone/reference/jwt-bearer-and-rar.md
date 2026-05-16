@@ -28,9 +28,10 @@ POST https://auth.pingone.{tld}/{envId}/as/token
 | Token endpoint auth | `PRIVATE_KEY_JWT` (the app holds the private key) |
 | Signing | RS256/ES256 JWK registered in the PingOne app |
 
-Contrast with `private_key_jwt` **client authentication** (RFC 7521): there the
-JWT authenticates the *client* on an otherwise normal grant; here the JWT
-assertion *is* the grant.
+Contrast with `private_key_jwt` **client authentication** (RFC 7523 §2.2,
+within the RFC 7521 assertion framework; OIDC Core §9): there the JWT
+authenticates the *client* on an otherwise normal grant; here the JWT
+assertion *is* the grant (RFC 7523 §2.1).
 
 ## 2. RAR — Rich Authorization Requests (RFC 9396)
 

@@ -176,7 +176,7 @@ PingOne content-types at challenge time (used in `mfaService.js`):
 | Code | Role |
 |---|---|
 | `banking_api_server/services/mfaService.js` | All device + deviceAuthentications calls. Worker token, default policy cache, RFC 8693 device-auth exchange, `_debug` request/response capture |
-| `banking_api_server/routes/mfa.js` | `POST /challenge`, `PUT /challenge/:daId`, `GET /challenge/:daId/status`, `GET/DELETE/PATCH /devices`, `POST /enroll/{sms-init,sms-complete,email,fido2-init,fido2-complete}` |
+| `banking_api_server/routes/mfa.js` | `POST /challenge`, `PUT /challenge/:daId`, `GET /challenge/:daId/status`, `POST /test/otp-verify`, `GET /devices`, `DELETE /devices/:deviceId`, `PATCH /devices/:deviceId/nickname`, `POST /enroll/{sms-init,sms-complete,email,fido2-init,fido2-complete}` |
 | `banking_api_server/routes/mfaStepUp.js` | `POST /sms`, `POST /sms/verify` — step-up shim |
 | `banking_api_server/routes/mfaTest.js` | `/integration/*` teaching harness exercising the full lifecycle with `_debug` surfaced to the UI |
 
@@ -196,8 +196,9 @@ Service contract notes:
   teaching UI / Token Chain can render the exact PingOne round-trip. Keep this
   when adding methods.
 - `_wrapError` maps PingOne `401 → code:'token_expired'`,
-  `404|410 → code:'challenge_expired'`; routes use these to drive a one-shot
-  refresh + retry (`_tryRefresh` in `routes/mfa.js`).
+  `404|410 → code:'challenge_expired'`; these drive a one-shot
+  refresh + retry via `_tryRefresh` (defined in `mfaService.js`, called from
+  `routes/mfa.js`).
 - New Management-API device operations go on `mfaService.js` — do not fork a
   parallel service in a route file (`pingone-api-calls` rule).
 

@@ -23,20 +23,25 @@ PingOne docs: <https://docs.pingidentity.com/pingone/applications/p1_response_mo
 
 ## Request / response shape
 
+The initial request is the **standard authorization request** (the usual
+`GET /as/authorize`, or `POST` if you push via PAR) with one extra parameter:
+`response_mode=pi.flow`. It is `pi.flow` that makes PingOne return a flow object
+instead of redirecting — not a different HTTP verb.
+
 ```
-POST https://auth.pingone.{tld}/{envId}/as/authorize
-  response_type=code
-  &response_mode=pi.flow
+GET https://auth.pingone.{tld}/{envId}/as/authorize
+  ?response_type=code
+  &response_mode=pi.flow                       # the redirectless switch
   &client_id={clientId}
-  &redirect_uri=urn:pingidentity:redirectless
+  &redirect_uri=urn:pingidentity:redirectless  # sent where a redirect_uri is otherwise required
   &scope=openid profile email
   &code_challenge={S256(verifier)}
   &code_challenge_method=S256
 ```
 
 PingOne responds with a **flow object** (JSON) describing the next required
-interaction (e.g. username/password, MFA) instead of a `302`. The client
-submits each step to the Flow API. On completion PingOne returns the
+interaction (e.g. username/password, MFA) instead of a `302`. The client then
+submits each subsequent *flow step* as a `POST` to the Flow API. On completion PingOne returns the
 authorization `code` / tokens in a JSON body — no front-channel redirect ever
 occurs.
 

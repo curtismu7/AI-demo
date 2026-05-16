@@ -5,8 +5,10 @@
 TOTP activation helper and no `/enroll/totp*` route. PingOne *does* report TOTP
 devices at challenge time (`initiateDeviceAuth` logs `TOTP → time-based OTP`),
 so a TOTP device enrolled out-of-band participates in step-up. To add TOTP
-enrollment, follow the pattern of `enrollEmailDevice` + a PUT activate helper.
-Verify against `mfaService.js` before wiring.
+enrollment, follow the pattern of `enrollEmailDevice` + an activate helper
+(PingOne documents activate as **`POST`** `.../devices/{deviceId}` with
+`device.activate+json`; banking's existing SMS helper uses `PUT` for the same
+endpoint — either works). Verify against `mfaService.js` before wiring.
 
 ---
 
@@ -71,7 +73,7 @@ of logs.
 ## Activate (6-digit code from the app)
 
 ```
-PUT {apiBase}/users/{userId}/devices/{deviceId}
+POST {apiBase}/users/{userId}/devices/{deviceId}
 Content-Type: application/vnd.pingidentity.device.activate+json
 Authorization: Bearer <workerToken>
 

@@ -39,10 +39,12 @@ may come back `ACTIVE`; with a user token PingOne returns
 
 ## Activate
 
-Same activation contract as the generic spine:
+Same activation contract as the generic spine (PingOne documents this as
+**`POST`**; banking's `completeSmsEnrollment` uses `PUT` for the same endpoint —
+both work, see device-sms.md note):
 
 ```
-PUT {apiBase}/users/{userId}/devices/{deviceId}
+POST {apiBase}/users/{userId}/devices/{deviceId}
 Content-Type: application/vnd.pingidentity.device.activate+json
 Authorization: Bearer <workerToken>
 
