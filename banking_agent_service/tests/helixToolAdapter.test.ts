@@ -36,6 +36,15 @@ describe('helixReason — sentinel tool-call adapter', () => {
     expect(out.tool_calls?.[0].name).toBe('get_my_transactions');
   });
 
+  test('```json fence closed on the same line as JSON parses on first try (no retry)', async () => {
+    const { fn, calls } = fakeClient([
+      '```json\nTOOL_CALL: {"name":"get_my_transactions","args":{}}```',
+    ]);
+    const out = await helixReason(CFG, MSGS, TOOLS, fn);
+    expect(out.tool_calls?.[0].name).toBe('get_my_transactions');
+    expect(calls.length).toBe(1); // parsed first attempt — NO retry
+  });
+
   test('prose containing a JSON example does NOT false-positive', async () => {
     const { fn } = fakeClient(['An access token looks like {"sub":"abc","scope":"banking:read"} — no action needed.']);
     const out = await helixReason(CFG, MSGS, TOOLS, fn);

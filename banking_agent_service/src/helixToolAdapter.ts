@@ -50,7 +50,11 @@ function parseHelixResponse(raw: string, toolNames: Set<string>): HelixModelResu
   const lines = s.split('\n');
   const toolLine = lines.map((l) => l.trim()).find((l) => TOOL_CALL_RE.test(l));
   if (!toolLine) return { content: s };
-  const jsonPart = (toolLine.match(TOOL_CALL_RE) as RegExpMatchArray)[1];
+  let jsonPart = (toolLine.match(TOOL_CALL_RE) as RegExpMatchArray)[1].trim();
+  // Helix often closes a ```json fence on the same line as the JSON; strip any
+  // trailing backtick-fence so the common fenced shape parses on the first try
+  // (otherwise it is wrongly treated as malformed and forced into a retry).
+  jsonPart = jsonPart.replace(/\s*`+\s*$/, '').trim();
   let obj: any;
   try { obj = JSON.parse(jsonPart); } catch { return null; }
   const name = obj?.name;
