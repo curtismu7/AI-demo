@@ -268,6 +268,24 @@ const FLAG_REGISTRY = [
     defaultValue: true,
   },
 
+  // ── UI / Dashboard ─────────────────────────────────────────────────────────
+  {
+    id:           'ff_show_banking_in_middle_agent',
+    name:         'Dashboard — Show Banking Column With Centered Agent',
+    category:     'UI / Dashboard',
+    description:
+      'Controls the customer dashboard layout **only when the AI agent is placed in the center column**. ' +
+      'When **OFF** (default), the banking-info column is hidden so the dashboard stays clean — ' +
+      'balances and account details come from the agent response or its pop-out instead. ' +
+      'When **ON**, the banking-info column is shown alongside the centered agent (legacy layout). ' +
+      'The floating (corner FAB) and bottom-dock agent placements always show the banking column and are not affected by this flag.',
+    impact:
+      'OFF (default) = cleaner dashboard; with a centered agent only the Token Chain and the agent are shown, banking info via the agent / pop-out. ' +
+      'ON = banking column also shown next to the centered agent.',
+    type:         'boolean',
+    defaultValue: false,
+  },
+
 ];
 
 // ---------------------------------------------------------------------------
