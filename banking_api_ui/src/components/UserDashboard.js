@@ -2657,6 +2657,10 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             ref={agentColumnRef}
             aria-label="AI banking assistant"
             style={{ height: middleHeight, maxHeight: middleHeight }}
+            {...(!showBankingInMiddle && {
+              id: "main-dashboard-content",
+              tabIndex: -1,
+            })}
           >
             <div className="embedded-banking-agent ud-dashboard-inline-agent">
               <BankingAgent
