@@ -1,6 +1,7 @@
 'use strict';
 
 const { v4: uuidv4 } = require('uuid');
+const { runWithCorrelation } = require('../utils/correlationContext');
 
 /**
  * Correlation ID middleware.
@@ -15,7 +16,7 @@ function correlationIdMiddleware(req, res, next) {
   req.correlationId = id; // Also set correlationId for consistency
   res.setHeader('X-Request-ID', id);
   res.setHeader('X-Correlation-ID', id); // Echo both headers
-  next();
+  return runWithCorrelation(id, () => next());
 }
 
 module.exports = { correlationIdMiddleware };
