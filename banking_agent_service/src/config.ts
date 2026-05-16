@@ -69,11 +69,16 @@ export function loadConfig(): AgentConfig {
     // misconfigured deploy can't expose the token-exchange endpoint on all
     // interfaces; staging/prod can still bind 0.0.0.0 via an explicit HOST env.
     host: process.env.HOST || '127.0.0.1',
-    clientId: required('AGENT_CLIENT_ID'),
+    // :3006 is reasoning-only (Phase 2 agent consolidation). The BFF keeps
+    // token custody, so the agent no longer performs its own RFC 8693
+    // exchange. AGENT_CLIENT_ID / MCP_GW_RESOURCE_URI are only consumed by the
+    // now-unwired token/MCP-gateway path — relaxed to optional so the service
+    // starts without them.
+    clientId: optional('AGENT_CLIENT_ID', ''),
     clientSecret: optional('AGENT_CLIENT_SECRET', ''),
     tokenEndpoint: resolveTokenEndpoint(),
     mcpGatewayWsUrl: optional('MCP_GATEWAY_WS_URL', 'ws://localhost:3005'),
-    mcpGatewayResourceUri: required('MCP_GW_RESOURCE_URI'),
+    mcpGatewayResourceUri: optional('MCP_GW_RESOURCE_URI', ''),
     llmProvider: llmProviderRaw as AgentConfig['llmProvider'],
     llmApiKey: optional('LLM_API_KEY', ''),
     llmModel: optional('LLM_MODEL', 'claude-sonnet-4.6'),
