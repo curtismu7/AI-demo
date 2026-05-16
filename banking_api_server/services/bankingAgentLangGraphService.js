@@ -4,8 +4,9 @@
  * Priority: heuristic regex (instant, zero-cost) → LangGraph LLM (when regex returns kind:'none')
  */
 
-const { createBankingAgent, MAX_TOOL_ITERATIONS } = require('./agentBuilder');
-const { GraphRecursionError } = require('@langchain/langgraph');
+const { getBankingToolDefinitions, MAX_TOOL_ITERATIONS } = require('./agentBuilder');
+const { resolveMcpAccessTokenWithEvents } = require('./agentMcpTokenService');
+const z = require('zod');
 const appEventService = require('./appEventService');
 const { parseHeuristic } = require('./nlIntentParser');
 const dataStore = require('../data/store');
@@ -371,6 +372,96 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
 }
 
 /**
+ * Phase 2 (agent consolidation) reason-loop helpers.
+ *
+ * Split "schema" from "execute": :3006 reasons over tool SCHEMAS only; the BFF
+ * still EXECUTES tools locally via the SAME executors `createBankingAgent`'s
+ * tool node used. Token custody + HITL enforcement stay BFF-side.
+ */
+
+/**
+ * Tool SCHEMAS for :3006 — derived from the SAME tool list agentBuilder builds
+ * (`getBankingToolDefinitions()` → `createMcpToolRegistry()`), with executors
+ * stripped. Zod `schema` → JSON Schema so :3006's helixToolAdapter can read
+ * `.properties`. No hand-duplicated schemas.
+ */
+function buildToolSchemasForAgent({ userId, req } = {}) {
+  const tools = getBankingToolDefinitions();
+  return tools.map((tool) => {
+    let inputSchema;
+    try {
+      inputSchema = tool.schema ? z.toJSONSchema(tool.schema) : { type: 'object', properties: {} };
+    } catch (_e) {
+      inputSchema = { type: 'object', properties: {} };
+    }
+    return {
+      name: tool.name,
+      description: tool.description || '',
+      inputSchema,
+    };
+  });
+}
+
+/**
+ * Execute a tool the SAME way agentBuilder's tool node did:
+ * `tool.invoke(args, { configurable: { agentContext: { agentToken, userId, tokenEvents } } })`.
+ * Token custody stays BFF-side — the MCP/agent token is resolved HERE via
+ * `resolveMcpAccessTokenWithEvents` (the same call `createBankingAgent` made
+ * before invoking tools), never on :3006. A thrown HITL/consent error is NOT
+ * caught here so it propagates to processAgentMessage's outer try/catch and
+ * the route returns 428.
+ */
+async function executeBffTool({ name, args, userId, userToken, req = null, tokenEvents = [], sessionId = '' }) {
+  const tools = getBankingToolDefinitions();
+  const tool = tools.find((t) => t.name === name);
+  if (!tool) {
+    return JSON.stringify({ error: `Unknown tool: ${name}` });
+  }
+
+  // Token custody: resolve the MCP/agent access token BFF-side, exactly as
+  // createBankingAgent did before tool invocation. Mirrors agentBuilder's
+  // mockReq shape so the resolver finds the user's access token + session.
+  const mockReq = {
+    session: { oauthTokens: { accessToken: userToken }, id: sessionId },
+    sessionID: sessionId,
+  };
+  const { token: agentToken, tokenEvents: exchangeEvents } =
+    await resolveMcpAccessTokenWithEvents(mockReq, 'banking_agent');
+  if (exchangeEvents && exchangeEvents.length > 0 && Array.isArray(tokenEvents)) {
+    tokenEvents.push(...exchangeEvents);
+  }
+
+  // SAME invoke shape + agentContext as agentBuilder's tool node. No try/catch
+  // here: a HITL/consent throw must reach the route as a 428.
+  const result = await tool.invoke(args, {
+    configurable: {
+      agentContext: {
+        agentToken,
+        userId,
+        tokenEvents,
+      },
+    },
+  });
+  return typeof result === 'string' ? result : JSON.stringify(result);
+}
+
+/**
+ * Same `{ helix_base_url, helix_api_key, helix_environment_id,
+ * helix_agent_id, helix_prompt_field_id }` object literal agentBuilder.js
+ * builds (~lines 173-179), read from langchainConfig.
+ */
+function extractHelixConfig(langchainConfig = {}) {
+  const cfg = langchainConfig || {};
+  return {
+    helix_base_url: cfg.helix_base_url,
+    helix_api_key: cfg.helix_api_key,
+    helix_environment_id: cfg.helix_environment_id,
+    helix_agent_id: cfg.helix_agent_id,
+    helix_prompt_field_id: cfg.helix_prompt_field_id,
+  };
+}
+
+/**
  * Process incoming user message through the agent
  */
 async function processAgentMessage({ message, userId, userToken, sessionId, tokenEvents = [], langchainConfig = {}, req = null }) {
@@ -403,6 +494,11 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 
     // ── Heuristic first: handle known banking intents without LLM ──
     // Falls through to LangGraph/LLM only if heuristic doesn't match or if disabled.
+    // The heuristic returns IMMEDIATELY on a match (precedence unchanged,
+    // ARCHITECTURE-TRUTHS T-3). There is no "fell through with a result" case,
+    // so on the LLM-fallback path heuristicFallbackResult stays null and the
+    // reasoning_unavailable branch uses the generic message.
+    let heuristicFallbackResult = null;
     const heuristicEnabled = require('../services/configStore').getEffective('ff_heuristic_enabled') !== 'false';
 
     if (heuristicEnabled) {
@@ -427,82 +523,94 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 
     // Note: Ollama (default) needs no API key. Cloud LLMs need keys added via /llm-config.
 
-    console.log('[processAgentMessage] Creating banking agent...');
-    appEventService.logEvent('agent', 'info', 'Initializing LangGraph agent', { tag: 'agent/init' });
-    const { graph, initialState } = await createBankingAgent({
-      userId,
-      userToken,
-      sessionId,
-      tokenEvents,
-      langchainConfig,
-      subjectToken,
-      req,
-    });
-    console.log('[processAgentMessage] Agent created successfully');
-
-    // Invoke the LangGraph with the user message
-    console.log('[processAgentMessage] Invoking LangGraph agent...');
+    // Phase 2 (agent consolidation): the LLM fallback no longer builds an
+    // in-process LangGraph. Instead the BFF drives the reason loop against
+    // :3006 (which reasons over tool SCHEMAS only) and EXECUTES the SAME tool
+    // executors locally — token custody + HITL enforcement stay BFF-side. The
+    // agent⇄tools loop bound (WR-03) is now enforced in runReasonLoop's
+    // for(i < maxIterations) cap, still using MAX_TOOL_ITERATIONS.
+    console.log('[processAgentMessage] Driving :3006 reason loop...');
+    appEventService.logEvent('agent', 'info', 'Initializing reasoning agent', { tag: 'agent/init' });
     appEventService.logEvent('agent', 'info', 'LLM reasoning…', { tag: 'agent/invoke' });
     // IN-04: only emit the raw prompt into the admin events feed under
     // LOG_FULL_PROMPTS; otherwise log a non-reversible fingerprint.
     if (LOG_FULL_PROMPTS) {
       appEventService.logEvent('agent_prompt', 'info', `LLM prompt: ${String(message)}`,
-        { tag: 'agent_prompt/llm_invoke', metadata: { userId, sessionId, messageLength: message?.length || 0, prompt: String(message), systemPrompt: langchainConfig?.systemPrompt || undefined, model: langchainConfig?.model || undefined, toolsAvailable: initialState?.tools?.map(t => t.name || t) || undefined } });
+        { tag: 'agent_prompt/llm_invoke', metadata: { userId, sessionId, messageLength: message?.length || 0, prompt: String(message), systemPrompt: langchainConfig?.systemPrompt || undefined, model: langchainConfig?.model || undefined } });
     } else {
       appEventService.logEvent('agent_prompt', 'info', `LLM prompt (${_messageFingerprint(message)})`,
-        { tag: 'agent_prompt/llm_invoke', metadata: { userId, sessionId, messageLength: message?.length || 0, promptFingerprint: _messageFingerprint(message), model: langchainConfig?.model || undefined, toolsAvailable: initialState?.tools?.map(t => t.name || t) || undefined } });
+        { tag: 'agent_prompt/llm_invoke', metadata: { userId, sessionId, messageLength: message?.length || 0, promptFingerprint: _messageFingerprint(message), model: langchainConfig?.model || undefined } });
     }
-    let finalState;
-    try {
-      // WR-03: cap the agent⇄tools loop. recursionLimit counts every node
-      // step; MAX_TOOL_ITERATIONS mirrors the agent_service orchestrator.
-      finalState = await graph.invoke({
-        ...initialState,
-        messages: [{ role: 'user', content: message }],
-      }, { recursionLimit: MAX_TOOL_ITERATIONS });
-    } catch (invokeErr) {
-      // WR-03: LangGraph throws GraphRecursionError when the cap is hit
-      // (LLM kept emitting tool_calls). Stop the loop and return a clear
-      // limit response instead of letting it surface as a generic error /
-      // upstream timeout. Shape matches this file's other return objects.
-      if (invokeErr instanceof GraphRecursionError) {
-        console.warn('[processAgentMessage] Max tool iteration limit reached:', MAX_TOOL_ITERATIONS);
-        appEventService.logEvent('agent', 'warning',
-          `Agent reached maximum tool iteration limit (${MAX_TOOL_ITERATIONS})`,
-          { tag: 'agent/recursion_limit' });
-        return {
-          reply: 'Agent reached maximum tool iteration limit. Please rephrase your request or try a simpler query.',
-          success: false,
-          toolsCalled: [],
-          tokensUsed: 0,
-          requiresConsent: false,
-          agentConfigured: true,
-          tokenEvents: tokenEvents || [],
-          error: 'max_tool_iterations',
-        };
-      }
-      throw invokeErr;
-    }
-    console.log('[processAgentMessage] Agent invoke completed');
+
+    const { resolveLlmProvider } = require('./llmProviderResolver');
+    const { runReasonLoop } = require('./agentReasoningClient');
+    const { provider, model } = resolveLlmProvider(langchainConfig);
+
+    const toolSchemas = buildToolSchemasForAgent({ userId, req });
+    // No try/catch around runReasonLoop here: a HITL/consent error thrown by
+    // executeBffTool (transfer ≥ threshold etc.) is awaited (not caught) inside
+    // runReasonLoop and must propagate to the outer catch so the route returns
+    // 428. Do NOT wrap this so as to swallow that throw.
+    const loopResult = await runReasonLoop({
+      messages: [{ role: 'user', content: message }],
+      tools: toolSchemas,
+      provider,
+      model,
+      helixConfig: extractHelixConfig(langchainConfig),
+      ollamaBaseUrl: langchainConfig && langchainConfig.ollama_base_url,
+      maxIterations: MAX_TOOL_ITERATIONS,
+      executeTool: async (name, args) =>
+        executeBffTool({ name, args, userId, userToken, req, tokenEvents, sessionId }),
+    });
+
+    console.log('[processAgentMessage] Reason loop completed');
     appEventService.logEvent('agent', 'info', 'Agent response ready', { tag: 'agent/complete' });
-    appEventService.logEvent('agent_prompt', 'info', `LLM response: ${String(finalState?.messages?.[finalState.messages.length - 1]?.content || '')}`,
-      { tag: 'agent_prompt/llm_complete', metadata: { userId, messageCount: finalState?.messages?.length || 0, response: String(finalState?.messages?.[finalState.messages.length - 1]?.content || ''), model: langchainConfig?.model || undefined } });
-    console.log('[processAgentMessage] Final state keys:', Object.keys(finalState || {}));
-    console.log('[processAgentMessage] Final messages count:', finalState?.messages?.length || 0);
-    console.log('[processAgentMessage] Token events count:', finalState?.tokenEvents?.length || 0);
 
-    // Extract the last message from the agent response
-    const lastMessage = finalState.messages[finalState.messages.length - 1];
-    const responseContent = lastMessage?.content || lastMessage?.text || 'No response from agent';
-
-    return {
-      reply: responseContent,
-      success: true,
+    if (loopResult.ok) {
+      appEventService.logEvent('agent_prompt', 'info', `LLM response: ${String(loopResult.answer || '')}`,
+        { tag: 'agent_prompt/llm_complete', metadata: { userId, response: String(loopResult.answer || ''), model: model || undefined } });
+      return {
+        reply: loopResult.answer,
+        success: true,
+        toolsCalled: [],
+        tokensUsed: 0,
+        requiresConsent: false,
+        agentConfigured: true,
+        tokenEvents: tokenEvents || [],
+      };
+    }
+    if (loopResult.reason === 'max_iterations') {
+      // WR-03 preserved: bounded loop → graceful "maximum tool iteration
+      // limit" response (shape matches this file's other returns). The bound
+      // is now enforced BFF-side by runReasonLoop instead of LangGraph's
+      // GraphRecursionError, still using MAX_TOOL_ITERATIONS.
+      console.warn('[processAgentMessage] Max tool iteration limit reached:', MAX_TOOL_ITERATIONS);
+      appEventService.logEvent('agent', 'warning',
+        `Agent reached maximum tool iteration limit (${MAX_TOOL_ITERATIONS})`,
+        { tag: 'agent/recursion_limit' });
+      return {
+        reply: 'Agent reached maximum tool iteration limit. Please rephrase your request or try a simpler query.',
+        success: false,
+        toolsCalled: [],
+        tokensUsed: 0,
+        requiresConsent: false,
+        agentConfigured: true,
+        tokenEvents: tokenEvents || [],
+        error: 'max_tool_iterations',
+      };
+    }
+    // reasoning_unavailable: prefer the heuristic's output if one exists for
+    // this path (none does today — heuristic returns immediately on match), else
+    // the generic message. ARCHITECTURE-TRUTHS T-3 deterministic floor.
+    return heuristicFallbackResult || {
+      reply: 'Advanced reasoning is temporarily unavailable. Please try a simpler request.',
+      success: false,
       toolsCalled: [],
       tokensUsed: 0,
       requiresConsent: false,
       agentConfigured: true,
-      tokenEvents: finalState?.tokenEvents || []
+      tokenEvents: tokenEvents || [],
+      error: 'reasoning_unavailable',
     };
   } catch (error) {
     // TOKEN_INACTIVE must propagate so the route can return 401 + need_auth

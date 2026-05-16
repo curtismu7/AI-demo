@@ -5,16 +5,19 @@
  *
  * Integration counterpart to bankingAgentRecursion.regression.test.js. Uses
  * the REAL configStore (reading whatever .env / runtime values exist on the
- * host) but still mocks the agent builder so the test can run in CI without
- * Ollama / PingOne. Forces the LLM path by passing a message the heuristic
- * parser will not match, rather than mocking ff_heuristic_enabled.
+ * host) but still mocks the reason-loop client so the test can run in CI
+ * without :3006 / Ollama / PingOne. Forces the LLM path by passing a message
+ * the heuristic parser will not match, rather than mocking ff_heuristic_enabled.
+ *
+ * Phase 2 (agent consolidation): the bound is enforced BFF-side in
+ * agentReasoningClient.runReasonLoop's for(i < maxIterations) cap (still
+ * MAX_TOOL_ITERATIONS). This confirms the recursion cap holds when wired
+ * through the live configStore singleton.
  *
  * Per CLAUDE.md "Test patterns: Regression vs. Integration": the regression
  * test asserts logic in isolation against TEST_CONFIG; this confirms the
- * recursion cap holds when wired through the live configStore singleton.
+ * cap holds when wired through the live configStore singleton.
  */
-
-const { GraphRecursionError } = require('@langchain/langgraph');
 
 // configStore is NOT mocked — it reads real .env values.
 
@@ -22,36 +25,27 @@ jest.mock('../../services/appEventService', () => ({
   logEvent: jest.fn(),
 }));
 
-const mockInvoke = jest.fn();
-jest.mock('../../services/agentBuilder', () => {
-  const actual = jest.requireActual('../../services/agentBuilder');
-  return {
-    ...actual,
-    createBankingAgent: jest.fn(async () => ({
-      graph: { invoke: mockInvoke },
-      initialState: { messages: [], tokenEvents: [] },
-    })),
-  };
-});
+const mockRunReasonLoop = jest.fn();
+jest.mock('../../services/agentReasoningClient', () => ({
+  runReasonLoop: (...args) => mockRunReasonLoop(...args),
+}));
 
 const { MAX_TOOL_ITERATIONS } = require('../../services/agentBuilder');
 const { processAgentMessage } = require('../../services/bankingAgentLangGraphService');
 
-describe('WR-03 — LangGraph max-iterations termination (integration, real configStore)', () => {
+describe('WR-03 — agent max-iterations termination (integration, real configStore)', () => {
   beforeEach(() => {
-    mockInvoke.mockReset();
+    mockRunReasonLoop.mockReset();
   });
 
   test('runaway tool loop terminates with the limit response via live configStore', async () => {
-    mockInvoke.mockImplementation(async (_state, opts) => {
-      expect(opts.recursionLimit).toBe(MAX_TOOL_ITERATIONS);
-      throw new GraphRecursionError(
-        `Recursion limit of ${opts.recursionLimit} reached.`
-      );
+    mockRunReasonLoop.mockImplementation(async (p) => {
+      expect(p.maxIterations).toBe(MAX_TOOL_ITERATIONS);
+      return { ok: false, reason: 'max_iterations' };
     });
 
     // A free-form question the heuristic parser will not classify as a
-    // banking action — forces the LangGraph path without mocking the flag.
+    // banking action — forces the LLM/reasoning path without mocking the flag.
     const result = await processAgentMessage({
       message: 'please ponder the meaning of recursion indefinitely',
       userId: 'integration-user-1',
@@ -62,6 +56,6 @@ describe('WR-03 — LangGraph max-iterations termination (integration, real conf
     expect(result.success).toBe(false);
     expect(result.error).toBe('max_tool_iterations');
     expect(result.reply).toMatch(/maximum tool iteration limit/i);
-    expect(mockInvoke).toHaveBeenCalledTimes(1);
+    expect(mockRunReasonLoop).toHaveBeenCalledTimes(1);
   });
 });

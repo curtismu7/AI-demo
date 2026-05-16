@@ -120,6 +120,24 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-15 — processAgentMessage LLM fallback drives :3006 reason loop (Phase 2 of agent consolidation)
+
+**Files changed:**
+- `banking_api_server/services/bankingAgentLangGraphService.js` — replaced the in-process `createBankingAgent()` + `graph.invoke({ recursionLimit })` + `GraphRecursionError` block in `processAgentMessage` with a BFF-driven reason loop: `resolveLlmProvider()` → `runReasonLoop()` against :3006 over tool SCHEMAS, with the BFF executing the SAME tool executors locally. Added 3 helpers: `buildToolSchemasForAgent` (Zod `schema` → JSON Schema via `z.toJSONSchema`, executors stripped), `executeBffTool` (resolves the MCP/agent token BFF-side via `resolveMcpAccessTokenWithEvents`, then `tool.invoke(args, { configurable: { agentContext: { agentToken, userId, tokenEvents } } })` — SAME shape as agentBuilder's tool node), `extractHelixConfig`. Removed now-unused `createBankingAgent`/`GraphRecursionError` imports; added `getBankingToolDefinitions`/`zod`/`resolveMcpAccessTokenWithEvents`. Heuristic-first block byte-for-byte unchanged (only a `let heuristicFallbackResult = null;` declaration + comment added before it).
+- `banking_api_server/services/agentBuilder.js` — added one pure named export `getBankingToolDefinitions()` returning the SAME `createMcpToolRegistry()` list `createBankingAgent` uses (builds/executes nothing). No tool schemas duplicated.
+- `banking_api_server/tests/services/bankingAgentRecursion.{regression,integration}.test.js` — retargeted from the removed `createBankingAgent`/`graph.invoke`/`GraphRecursionError` seam to the new `runReasonLoop` seam. They assert the SAME WR-03 invariant (bounded loop → graceful `max_tool_iterations` response; generic failures don't masquerade as a cap hit; happy path returns the reply).
+
+**What was broken:** Not a user-visible bug — Phase 2 of the agent consolidation. The LLM fallback built an in-process LangGraph in the BFF; consolidation moves reasoning to :3006 while keeping token custody + HITL enforcement BFF-side.
+
+**What was fixed:** `processAgentMessage` now reasons via :3006 (schemas only) and executes tools locally. Token resolution stays BFF-side inside `executeBffTool`. HITL/consent throws from the tool executor are NOT caught around `runReasonLoop`, so a transfer ≥ threshold still throws → outer catch → route returns 428 (unchanged). WR-03 invariant preserved: the agent⇄tools bound is now enforced BFF-side by `runReasonLoop`'s `for (i < maxIterations)` cap (still `MAX_TOOL_ITERATIONS`), surfaced via the unchanged `max_tool_iterations` response shape — replacing LangGraph's `GraphRecursionError`.
+
+**Verify:**
+- `cd banking_api_server && node -c services/bankingAgentLangGraphService.js && node -c services/agentBuilder.js` → OK.
+- `npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration agentReasoningLoop` → 43 passed.
+- `npx jest bankingAgentRecursion heuristicBankingWr07 mcpWsSlotRelease` → 13 passed.
+
+**Do not break:** Heuristic still runs FIRST and returns immediately on `kind === 'banking'` match (ARCHITECTURE-TRUTHS T-3). Never wrap `runReasonLoop`/`executeBffTool` in a try/catch that swallows a HITL/consent throw — that throw must reach the route as a 428. The MCP/agent token MUST be resolved inside `executeBffTool` (BFF-side), never delegated to :3006. Tool schemas/executors MUST come from `getBankingToolDefinitions()` (agentBuilder) — never re-declare them. The WR-03 bound stays `MAX_TOOL_ITERATIONS`, passed as `runReasonLoop`'s `maxIterations`.
+
 ### 2026-05-15 — LLM provider resolution unified into a single resolver (Phase 1 of agent consolidation)
 
 **Files changed:**

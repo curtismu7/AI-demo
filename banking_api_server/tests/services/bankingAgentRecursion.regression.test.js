@@ -3,25 +3,27 @@
 /**
  * WR-03 — bankingAgentRecursion.regression.test.js
  *
- * Mocked-dependency suite proving the LangGraph agent⇄tools loop terminates
- * at a hard cap instead of running unbounded. Before WR-03 there was no
- * recursion limit / step counter — an LLM that always emits tool_calls would
- * loop tools→agent→tools until the upstream HTTP timeout (~60s).
+ * Mocked-dependency suite proving the agent⇄tools loop terminates at a hard
+ * cap instead of running unbounded. Before WR-03 there was no recursion limit
+ * / step counter — an LLM that always emits tool_calls would loop
+ * tools→agent→tools until the upstream HTTP timeout (~60s).
+ *
+ * Phase 2 (agent consolidation): the LLM fallback no longer builds an
+ * in-process LangGraph. The BFF drives the reason loop against :3006 and the
+ * bound is enforced BFF-side in agentReasoningClient.runReasonLoop's
+ * for(i < maxIterations) cap (still MAX_TOOL_ITERATIONS). This suite now
+ * asserts the SAME WR-03 invariant through the new seam: runReasonLoop is
+ * mocked, and we verify processAgentMessage RESOLVES with a clean
+ * "maximum tool iteration limit" response (not a throw, not a hang).
  *
  * Test pattern follows CLAUDE.md "Test patterns: Regression vs. Integration":
  *   - configStore is mocked with TEST_CONFIG constants
- *   - agentBuilder.createBankingAgent is mocked so we can inject a graph whose
- *     .invoke() simulates a runaway loop (an LLM that always returns a tool
- *     call) by throwing the real GraphRecursionError once recursionLimit is
- *     exceeded.
- *   - We assert processAgentMessage RESOLVES with a clean "maximum tool
- *     iteration limit" response (not a throw, not a hang).
+ *   - agentReasoningClient.runReasonLoop is mocked so we can simulate the
+ *     three terminal outcomes (max_iterations, generic failure, ok).
  */
 
-const { GraphRecursionError } = require('@langchain/langgraph');
-
 const TEST_CONFIG = {
-  ff_heuristic_enabled: 'false', // force the LLM/LangGraph path
+  ff_heuristic_enabled: 'false', // force the LLM/reasoning path
 };
 
 jest.mock('../../services/configStore', () => ({
@@ -32,38 +34,25 @@ jest.mock('../../services/appEventService', () => ({
   logEvent: jest.fn(),
 }));
 
-// Mock the agent builder: build a graph whose invoke() honours recursionLimit
-// the same way LangGraph does — an "LLM" that always returns a tool call will
-// blow past the limit and throw GraphRecursionError.
-const mockInvoke = jest.fn();
-jest.mock('../../services/agentBuilder', () => {
-  const actual = jest.requireActual('../../services/agentBuilder');
-  return {
-    ...actual,
-    createBankingAgent: jest.fn(async () => ({
-      graph: { invoke: mockInvoke },
-      initialState: { messages: [], tokenEvents: [] },
-    })),
-  };
-});
+// Mock the reason-loop client: the BFF-side recursion cap lives here now.
+const mockRunReasonLoop = jest.fn();
+jest.mock('../../services/agentReasoningClient', () => ({
+  runReasonLoop: (...args) => mockRunReasonLoop(...args),
+}));
 
 const { MAX_TOOL_ITERATIONS } = require('../../services/agentBuilder');
 const { processAgentMessage } = require('../../services/bankingAgentLangGraphService');
 
-describe('WR-03 — LangGraph max-iterations termination (regression)', () => {
+describe('WR-03 — agent max-iterations termination (regression)', () => {
   beforeEach(() => {
-    mockInvoke.mockReset();
+    mockRunReasonLoop.mockReset();
   });
 
-  test('an LLM that always returns a tool call terminates at the cap', async () => {
-    // Simulate LangGraph's own behaviour: a graph whose agent node keeps
-    // emitting tool_calls exceeds recursionLimit and throws GraphRecursionError.
-    mockInvoke.mockImplementation(async (_state, opts) => {
-      expect(opts).toBeDefined();
-      expect(opts.recursionLimit).toBe(MAX_TOOL_ITERATIONS);
-      throw new GraphRecursionError(
-        `Recursion limit of ${opts.recursionLimit} reached without hitting a stop condition.`
-      );
+  test('a loop that always returns a tool call terminates at the cap', async () => {
+    mockRunReasonLoop.mockImplementation(async (p) => {
+      // MAX_TOOL_ITERATIONS is still the cap, now passed as maxIterations.
+      expect(p.maxIterations).toBe(MAX_TOOL_ITERATIONS);
+      return { ok: false, reason: 'max_iterations' };
     });
 
     const result = await processAgentMessage({
@@ -78,11 +67,11 @@ describe('WR-03 — LangGraph max-iterations termination (regression)', () => {
     expect(result.reply).toMatch(/maximum tool iteration limit/i);
     expect(result.agentConfigured).toBe(true);
     expect(Array.isArray(result.tokenEvents)).toBe(true);
-    expect(mockInvoke).toHaveBeenCalledTimes(1);
+    expect(mockRunReasonLoop).toHaveBeenCalledTimes(1);
   });
 
-  test('non-recursion invoke errors still propagate (not swallowed as a cap hit)', async () => {
-    mockInvoke.mockImplementation(async () => {
+  test('a thrown error inside the loop still propagates (not swallowed as a cap hit)', async () => {
+    mockRunReasonLoop.mockImplementation(async () => {
       throw new Error('some other LLM failure');
     });
 
@@ -99,11 +88,8 @@ describe('WR-03 — LangGraph max-iterations termination (regression)', () => {
     expect(result.reply).not.toMatch(/maximum tool iteration limit/i);
   });
 
-  test('happy path (no tool loop) returns the agent reply unchanged', async () => {
-    mockInvoke.mockResolvedValue({
-      messages: [{ role: 'assistant', content: 'Here are your accounts.' }],
-      tokenEvents: [],
-    });
+  test('happy path (final answer) returns the agent reply unchanged', async () => {
+    mockRunReasonLoop.mockResolvedValue({ ok: true, answer: 'Here are your accounts.' });
 
     const result = await processAgentMessage({
       message: 'show my accounts',

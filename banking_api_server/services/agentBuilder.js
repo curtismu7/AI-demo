@@ -330,8 +330,20 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
   }
 }
 
+/**
+ * Phase 2 (agent consolidation): expose the SAME tool list `createBankingAgent`
+ * uses internally (line `const tools = createMcpToolRegistry()`), as a pure
+ * getter that builds and executes NOTHING. The BFF reason-loop path
+ * (bankingAgentLangGraphService) derives tool SCHEMAS for :3006 from this and
+ * executes the SAME tool executors locally — no duplicate tool definitions.
+ */
+function getBankingToolDefinitions() {
+  return createMcpToolRegistry();
+}
+
 module.exports = {
   createBankingAgent,
+  getBankingToolDefinitions,
   BANKING_AGENT_SYSTEM_PROMPT,
   MAX_TOOL_ITERATIONS,
 };
