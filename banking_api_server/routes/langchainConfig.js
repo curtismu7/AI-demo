@@ -162,7 +162,8 @@ router.post('/config', async (req, res) => {
   }
 
   const cfg = getLangchainConfig(req);
-  const activeProvider = cfg.provider || 'ollama';
+  const { resolveLlmProvider } = require('../services/llmProviderResolver');
+  const activeProvider = resolveLlmProvider(cfg).provider;
 
   // Log Helix config for debugging
   if (key_type === 'helix' || provider === 'helix') {
