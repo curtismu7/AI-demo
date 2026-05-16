@@ -291,3 +291,104 @@ provider resolver, narrative) is mechanical and already designed.
 **Next action:** brainstorm the Helix prompt-based-tool-calling component
 specifically, then rewrite Phase 2 plan Tasks 7–12 against this LangGraph-
 everywhere approach, then resume subagent execution. Phase 1 + Task 6 unaffected.
+
+---
+
+## Phase 2 Component Design — Helix Prompt-Based Tool-Calling (2026-05-15, approved)
+
+LangGraph wraps ALL providers in the :3006 reasoning service. Ollama uses
+native `bindTools` (unchanged). Helix has no native tool-calling, so a new
+component makes its free-text output behave like a tool-capable model.
+
+### Ordering (ARCHITECTURE-TRUTHS T-3 — confirmed)
+
+Heuristic → (if no match) Helix → (if Helix fails) Heuristic again as the
+floor. The heuristic is BFF-side and involved twice; Helix sits in the middle:
+
+1. **Heuristic first** (BFF, always, unchanged). Match → return; :3006 never
+   called. (~50% of banking actions are heuristic hits and never reach Helix.)
+2. **Helix second** (only on heuristic miss): BFF resolves provider
+   (llmProviderResolver → Helix default), calls :3006 `/api/agent/reason`.
+3. **Heuristic as floor**: if Helix ultimately fails, BFF substitutes the
+   heuristic result it already computed in step 1. Never a dead end.
+
+### Component: `helixToolAdapter` (in banking_agent_service)
+
+Single responsibility: convert "Helix string ↔ tool-call shape." Dependency
+direction: `reasoningGraph.ts` → `helixToolAdapter` → `helixClient` (the
+ported 3-step Helix Conversation flow). The graph stays provider-agnostic —
+it never branches on "is this Helix"; the adapter returns the same shape the
+graph already expects (`{ content }` or `{ tool_calls:[...] }`). Swapping the
+sentinel scheme later touches only this file + its unit tests.
+
+### Prompt contract (Approach A — single-line JSON sentinel)
+
+System preamble prepended by the adapter (Helix collapses to system+last-user):
+
+```
+You can call banking tools. Available tools:
+<name — description — args: {inputSchema field names}>
+
+RULES:
+- If a tool is needed, respond with ONE line and nothing else:
+  TOOL_CALL: {"name":"<exact tool name>","args":{...}}
+- Otherwise, answer the user normally in plain prose. Do NOT mention tools.
+- Never wrap the TOOL_CALL line in code fences or add text around it.
+```
+
+### Parse logic (deterministic — the testable core)
+
+1. `trim()` Helix's returned string.
+2. Tolerant extraction: strip surrounding ```/```json fences; find the first
+   line whose trimmed form starts with `TOOL_CALL:` (anywhere, not only pos 0).
+3. No `TOOL_CALL:` line → conversational answer → `{ content: <trimmed string> }`
+   (~50% case; a SUCCESS, not a failure).
+4. `TOOL_CALL:` found → `JSON.parse` the substring after the marker:
+   - Parse OK AND `name` ∈ known tool-name set AND `args` is a plain object →
+     `{ tool_calls:[{ id:<generated>, name, args }] }`.
+   - Else → malformed → retry.
+
+Tool-name validation against the real tool list turns a Helix hallucination
+into "malformed → retry", not a bad tool name reaching the BFF executor.
+
+### Retry & failure signaling
+
+- Malformed → exactly ONE strict re-prompt (corrective system line quoting the
+  offending output ≤500 chars + exact format + valid tool-name list), then
+  re-run the same parse logic. Outcomes: valid tool call → return it; prose →
+  `{ content }`; still malformed → throw typed `HelixUnparseableError`.
+- `reasoningGraph.ts` catches `HelixUnparseableError` and any `helixClient`
+  transport error → returns `{ type:'final', answer:'', reasoningUnavailable:true }`.
+  No fabricated answer; no raw malformed text leaks to the user.
+- BFF reason loop sees `reasoningUnavailable:true` → substitutes the heuristic
+  result from step 1 (T-3 floor).
+- **Contract addition:** `ReasonResponse` `final` variant gains optional
+  `reasoningUnavailable?: boolean` (small additive change to `reasonContract.ts`).
+- **Hard latency cap:** worst case = 2 Helix round-trips (original + 1 retry).
+  No unbounded loops.
+
+### Testing
+
+Unit (pure, mock `helixClient`): prose→content; clean TOOL_CALL→tool_calls;
+fenced/preambled TOOL_CALL still parses; prose-containing-JSON-example does NOT
+false-positive (the OAuth-demo hazard); unknown tool → retry → recover;
+malformed → retry → throws; exactly ONE retry (mock called exactly 2× in
+give-up path). Contract test: `HelixUnparseableError` →
+`{type:'final',reasoningUnavailable:true}`. BFF: extend Task 9 loop test with
+one `reasoningUnavailable` case (no new file). `helixClient` injected for
+mockability.
+
+Out of scope (YAGNI): streaming, multi-tool-call-per-turn for Helix (one per
+turn; BFF loop iterates for multi-step like Ollama), Helix conversation
+caching, Helix model tuning.
+
+### Impact on Phase 2 plan (Tasks 7–12 to be rewritten)
+
+- Add `@langchain/langgraph`, `@langchain/ollama`, `@langchain/core` deps to
+  `banking_agent_service` (approved deliberate addition).
+- Task 7 splits: (7a) port `reasoningGraph.ts` with LangGraph for both
+  providers; (7b) `helixClient.ts` = faithful port of `helixLlmService.js`
+  3-step flow; (7c) `helixToolAdapter.ts` + its unit tests (this design).
+- `reasonContract.ts` (Task 6, committed) gains `reasoningUnavailable?: boolean`
+  — a small additive edit, not a rewrite.
+- Tasks 8–12 unchanged in intent (route, BFF loop, wiring, e2e, narrative).
