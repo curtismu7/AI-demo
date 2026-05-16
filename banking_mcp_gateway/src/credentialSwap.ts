@@ -67,15 +67,19 @@ export async function selectCredentialForBackend(
   // The full API key stays in config.demoApiKeyServiceKey and is never serialized.
   // The SPA only ever sees the masked last4 via _meta.apiKeyMaskedLast4.
   if (target === 'apikey') {
+    teachLog.info('gateway credential disposition selected', { disposition: target });
     const key = config.demoApiKeyServiceKey || '';
     const last4 = key.length >= 4 ? key.slice(-4) : 'XXXX';
-    teachLog.step(1, 1, 'gateway credential disposition selected', { disposition: target });
     return { kind: 'api_key', credentialPath: 'api_key', apiKeyMaskedLast4: last4 };
   }
 
   // Path B: dual_token — RFC 8693 token exchange + id_token forwarded in JSON-RPC body.
   if (target === 'dualtoken') {
-    if (!idToken) throw new IdTokenMissingError();
+    teachLog.info('gateway credential disposition selected', { disposition: target, backend_aud: config.bankingResourceServerResourceUri });
+    if (!idToken) {
+      teachLog.warn('gateway dual_token disposition aborted — id_token absent from session', { disposition: target });
+      throw new IdTokenMissingError();
+    }
 
     // SPEC COMPLIANCE — exchange the user's bearer so the outbound token's `aud` matches
     // banking_resource_server. Forwarding the inbound user bearer unchanged would fail
@@ -88,7 +92,6 @@ export async function selectCredentialForBackend(
       config.bankingResourceServerResourceUri,
       config,
     );
-    teachLog.step(1, 1, 'gateway credential disposition selected', { disposition: target, backend_aud: config.bankingResourceServerResourceUri });
     return {
       kind: 'dual_token',
       credentialPath: 'dual_token',
@@ -99,12 +102,12 @@ export async function selectCredentialForBackend(
 
   // Path C: oauth_bearer — RFC 8693 exchange; exchanged bearer forwarded to
   // banking_resource_server /accounts or /transactions.
+  teachLog.info('gateway credential disposition selected', { disposition: target, backend_aud: config.bankingResourceServerResourceUri });
   const exchangedToken = await exchangeTokenForBackend(
     subjectToken,
     config.bankingResourceServerResourceUri,
     config,
   );
-  teachLog.step(1, 1, 'gateway credential disposition selected', { disposition: target, backend_aud: config.bankingResourceServerResourceUri });
   return {
     kind: 'oauth_bearer',
     credentialPath: 'oauth_bearer',

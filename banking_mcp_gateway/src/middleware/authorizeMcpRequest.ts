@@ -204,7 +204,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       exchangeResult = await exchangeClient.exchange(bearerToken, toolName);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      teachLog.error('[authorizeMcpRequest] Token exchange failed', err instanceof Error ? err : undefined, { detail: msg });
+      teachLog.error('[authorizeMcpRequest] Token exchange failed', err, { detail: msg });
       setAuditHeader(res);
       res.writeHead(502, { 'Content-Type': 'application/json' });
       res.end(

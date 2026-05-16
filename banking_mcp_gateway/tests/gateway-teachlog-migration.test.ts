@@ -14,9 +14,9 @@ describe('gateway priority-1 console migration', () => {
     expect(src.match(/console\s*\.\s*(log|error|warn|debug|info|trace)\s*\(/g) || []).toEqual([]);
   });
 
-  it('credentialSwap narrates the disposition with teachLog.step', () => {
+  it('credentialSwap narrates the disposition with teachLog.info', () => {
     const src = readFileSync(join(__dirname, '../src/credentialSwap.ts'), 'utf8');
-    expect(src).toMatch(/teachLog\.step\(/);
+    expect(src).toMatch(/teachLog\.info\('gateway credential disposition selected'/);
   });
 
   it('tokenExchange narrates the RFC 8693 exchange', () => {
