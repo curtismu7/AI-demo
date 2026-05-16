@@ -141,3 +141,6 @@ banking-export-*.tar.gz.tmp.*
 
 # Local archive folder for old/superseded artifacts
 /.archive/
+
+# Stale vault backups (encrypted secrets — never commit)
+secrets.vault.stale-*.bak

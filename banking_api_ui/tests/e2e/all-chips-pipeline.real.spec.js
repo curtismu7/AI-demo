@@ -38,14 +38,20 @@ test.describe('all-chips routing + non-skippable pipeline (real)', () => {
   let helixConfigured = false;
 
   test.beforeAll(async ({ browser }) => {
+    // ignoreHTTPSErrors: the local stack serves https://api.ping.demo via a
+    // mkcert cert. Chromium trusts the mkcert CA, but Playwright's
+    // APIRequestContext (ctx.request, used by runChip) is a separate Node TLS
+    // client that does not — without this it rejects with "self-signed
+    // certificate in certificate chain". Scoped to this spec; the strict
+    // config default stays for Vercel/production targets.
     // Customer session
-    customerCtx = await browser.newContext();
+    customerCtx = await browser.newContext({ ignoreHTTPSErrors: true });
     const cPage = await customerCtx.newPage();
     await loginAsCustomer(cPage);
     customerApi = customerCtx.request;
 
     // Admin session
-    adminCtx = await browser.newContext();
+    adminCtx = await browser.newContext({ ignoreHTTPSErrors: true });
     const aPage = await adminCtx.newPage();
     await loginAsAdmin(aPage);
     adminApi = adminCtx.request;
@@ -169,7 +175,7 @@ test.describe('all-chips routing + non-skippable pipeline (real)', () => {
 
   // ── Negative: no-token hard-fail (fresh, unauthenticated context) ──────────
   test('No user token — pipeline hard-fails 401 before any exchange/gateway/authorize', async ({ browser }) => {
-    const anonCtx = await browser.newContext();
+    const anonCtx = await browser.newContext({ ignoreHTTPSErrors: true });
     const anon = anonCtx.request;
     const res = await anon.post(`${BASE}/api/mcp/tool`, {
       data: { tool: 'get_my_accounts', params: {} },
