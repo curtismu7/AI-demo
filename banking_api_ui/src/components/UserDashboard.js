@@ -25,6 +25,7 @@ import { navigateToCustomerOAuthLogin } from "../utils/authUi";
 import {
   getDashboardLayout,
   setDashboardLayout,
+  splitGridClass,
 } from "../utils/dashboardLayout";
 import { toastCustomerError } from "../utils/dashboardToast";
 import AgentUiModeToggle from "./AgentUiModeToggle";
@@ -148,6 +149,32 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [middleAgentOpen, setMiddleAgentOpen] = useState(
     () => agentPlacement === "middle",
   );
+
+  // ff_show_banking_in_middle_agent — when false (default) the banking column
+  // is hidden in the middle-agent layout (banking info comes from the agent /
+  // pop-out). Floating + bottom modes are unaffected. Mirrors the cookie-
+  // credentialed read BankingAgent.js uses for ff_heuristic_enabled.
+  const [showBankingInMiddle, setShowBankingInMiddle] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/feature-flags", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        const flag = data?.flags?.find(
+          (f) => f.id === "ff_show_banking_in_middle_agent",
+        );
+        if (flag != null) setShowBankingInMiddle(Boolean(flag.value));
+      })
+      .catch(() => {
+        /* fail to the clean default (column hidden) */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [middleHeight, setMiddleHeight] = useState(() =>
     typeof window !== "undefined"
       ? readStoredMiddleHeight()
@@ -2613,7 +2640,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
       {/* ── Token | (split: agent + banking columns) | classic: banking + float reserve ── */}
       {agentPlacement === "middle" && middleAgentOpen ? (
-        <div className="dashboard-content ud-body ud-body--2026 ud-body--dashboard-split3">
+        <div
+          className={`dashboard-content ud-body ud-body--2026 ${splitGridClass(
+            showBankingInMiddle,
+          )}`}
+        >
           <aside className="ud-token-rail" aria-label="Token chain">
             <div className="section ud-token-rail__inner">
               <ExchangeModeToggle />
@@ -2656,13 +2687,15 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             </button>
           </section>
 
-          <main
-            className="ud-center ud-banking-column"
-            id="main-dashboard-content"
-            tabIndex={-1}
-          >
-            {renderBankingMain()}
-          </main>
+          {showBankingInMiddle && (
+            <main
+              className="ud-center ud-banking-column"
+              id="main-dashboard-content"
+              tabIndex={-1}
+            >
+              {renderBankingMain()}
+            </main>
+          )}
         </div>
       ) : (
         // Bottom-dock or float mode: 3-column grid + optional full-width agent row below
