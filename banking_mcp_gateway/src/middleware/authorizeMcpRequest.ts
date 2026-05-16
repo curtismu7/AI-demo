@@ -30,6 +30,7 @@ import { runMcpAuthorizationPipeline } from '../auth/authorizeMcpRequestCore';
 import type { McpRequestMiddleware } from '../server/GatewayServer';
 import type { GatewayConfig } from '../config';
 import { getScopesForGatewayTool } from '../auth/toolScopes';
+import { teachLog } from '../teachLogger';
 
 // ---------------------------------------------------------------------------
 // Body parsing helper — extract method and tool name from JSON-RPC body
@@ -79,7 +80,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
     // original bearer token directly to the upstream MCP server.
     // The gateway still handles routing and observability; auth is bypassed.
     if (config.devBypass) {
-      console.log('[GW] Dev bypass: forwarding request without auth pipeline');
+      teachLog.info('[GW] Dev bypass: forwarding request without auth pipeline');
       await forward(bearerToken, body);
       return;
     }
@@ -203,7 +204,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       exchangeResult = await exchangeClient.exchange(bearerToken, toolName);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error('[authorizeMcpRequest] Token exchange failed:', msg);
+      teachLog.error('[authorizeMcpRequest] Token exchange failed', err, { detail: msg });
       setAuditHeader(res);
       res.writeHead(502, { 'Content-Type': 'application/json' });
       res.end(

@@ -7,6 +7,7 @@ import { ChatOllama } from '@langchain/ollama';
 import type { ReasonRequest, ReasonResponse } from './reasonContract';
 import { helixReason, HelixUnparseableError } from './helixToolAdapter';
 import { callHelix } from './helixClient';
+import { teachLog } from './teachLogger';
 
 const DEFAULT_MODELS: Record<string, string> = { ollama: 'llama3.2', helix: 'gpt-4o-mini' };
 
@@ -22,7 +23,8 @@ export async function reasonOnce(req: ReasonRequest): Promise<ReasonResponse> {
     } catch (err) {
       // HelixUnparseableError OR any transport error → signal, do not fabricate.
       const note = err instanceof HelixUnparseableError ? 'helix_unparseable' : 'helix_error';
-      console.warn(`[reasoningGraph] helix reasoning unavailable (${note}):`, err instanceof Error ? err.message : String(err));
+      teachLog.error('reasoning step failed', err, { operation: 'reasonOnce' });
+      teachLog.info('reasoning unavailable — BFF heuristic floor will apply', { reason: note });
       return { type: 'final', answer: '', messages: req.messages, reasoningUnavailable: true };
     }
   }

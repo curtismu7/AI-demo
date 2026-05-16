@@ -7,6 +7,7 @@ import { createHash } from 'crypto';
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { PingOneConfig, TokenInfo, AgentTokenInfo, AuthenticationError, AuthErrorCodes } from '../interfaces/auth';
 import { detectTokenMode, enrichAgentTokenInfo } from '../services/tokenValidationService';
+import { teachLog } from '../utils/teachLogger';
 
 export class TokenIntrospector {
   private httpClient: AxiosInstance;
@@ -29,8 +30,7 @@ export class TokenIntrospector {
    */
   async introspectToken(token: string): Promise<TokenInfo> {
     try {
-      console.log(`[TokenIntrospector] Calling introspection endpoint: ${this.config.tokenIntrospectionEndpoint}`);
-      console.log(`[TokenIntrospector] Using client_id: ${this.config.clientId}`);
+      teachLog.step(1, 3, 'RFC 7662 introspection request', { client_id: this.config.clientId, endpoint: this.config.tokenIntrospectionEndpoint });
       
       const response = await this.httpClient.post(
         this.config.tokenIntrospectionEndpoint,
@@ -41,8 +41,7 @@ export class TokenIntrospector {
         }).toString()
       );
 
-      console.log(`[TokenIntrospector] Introspection response status: ${response.status}`);
-      console.log(`[TokenIntrospector] Introspection response data:`, response.data);
+      teachLog.step(2, 3, 'RFC 7662 introspection response', { status: response.status, introspection: response.data });
 
       return response.data as TokenInfo;
     } catch (error) {
@@ -69,15 +68,15 @@ export class TokenIntrospector {
    * Validate agent token and extract token information
    */
   async validateAgentToken(token: string): Promise<AgentTokenInfo> {
-    console.log(`[TokenIntrospector] Validating agent token...`);
+    teachLog.info('validating agent token');
     const tokenInfo = await this.introspectToken(token);
     
-    console.log(`[TokenIntrospector] Token introspection result:`, {
+    teachLog.step(3, 3, 'introspection result evaluated', {
       active: tokenInfo.active,
-      client_id: tokenInfo.client_id,
       scope: tokenInfo.scope,
+      aud: tokenInfo.aud,
       exp: tokenInfo.exp,
-      token_type: tokenInfo.token_type
+      may_act: (tokenInfo as any).may_act,
     });
 
     if (!tokenInfo.active) {
@@ -94,15 +93,15 @@ export class TokenIntrospector {
       // aud may be a space-separated list or a single value
       const audList = audStr.includes(' ') ? audStr.split(' ') : [audStr];
       if (!audList.includes(resourceUri)) {
-        console.error(`[TokenIntrospector] Audience mismatch: token aud=${audStr}, expected ${resourceUri}`);
+        teachLog.error('aud validation failed', undefined, { operation: 'aud_validation', token_aud: audStr, expected: resourceUri });
         throw new AuthenticationError(
           'Token audience does not match MCP server resource URI',
           AuthErrorCodes.INVALID_AGENT_TOKEN
         );
       }
-      console.log(`[TokenIntrospector] Token audience validated against resource URI: ${resourceUri}`);
+      teachLog.info('token audience validated', { resource_uri: resourceUri });
     } else if (resourceUri && !tokenInfo.aud) {
-      console.warn(`[TokenIntrospector] MCP_SERVER_RESOURCE_URI is set but token has no aud claim — skipping aud check`);
+      teachLog.warn('MCP_SERVER_RESOURCE_URI is set but token has no aud claim — skipping aud check');
     }
 
     // RFC 8693 §4.2 — enforce may_act when BFF_CLIENT_ID + REQUIRE_MAY_ACT are configured.
@@ -112,13 +111,13 @@ export class TokenIntrospector {
     if (requireMayAct && bffClientId) {
       const mayAct = (tokenInfo as any).may_act;
       if (!mayAct || mayAct.client_id !== bffClientId) {
-        console.error(`[TokenIntrospector] may_act enforcement failed: expected client_id=${bffClientId}, got ${mayAct?.client_id || 'none'}`);
+        teachLog.error('may_act enforcement failed', undefined, { operation: 'may_act_enforcement', expected_client_id: bffClientId, actual: mayAct?.client_id || 'none' });
         throw new AuthenticationError(
           'Token missing valid may_act claim for Backend-for-Frontend (BFF) client',
           AuthErrorCodes.INVALID_AGENT_TOKEN
         );
       }
-      console.log(`[TokenIntrospector] may_act validated: actor=${mayAct.client_id}`);
+      teachLog.info('may_act validated', { actor: mayAct.client_id });
     }
 
     // Optional defense-in-depth: match reference architecture checks for act.sub, act.client_id,
@@ -130,37 +129,37 @@ export class TokenIntrospector {
       const act = tokenInfo.act;
       const got = act?.sub ? String(act.sub) : '';
       if (got !== expectedActSub) {
-        console.error(`[TokenIntrospector] act.sub mismatch: expected ${expectedActSub}, got ${got || '(empty)'}`);
+        teachLog.error('act.sub mismatch', undefined, { operation: 'act_sub_validation', expected: expectedActSub, actual: got || '(empty)' });
         throw new AuthenticationError(
           'Token act.sub does not match MCP_EXPECTED_ACT_SUB',
           AuthErrorCodes.INVALID_AGENT_TOKEN
         );
       }
-      console.log(`[TokenIntrospector] act.sub validated against MCP_EXPECTED_ACT_SUB`);
+      teachLog.info('act.sub validated against MCP_EXPECTED_ACT_SUB');
     }
     if (expectedActClientId) {
       const act = tokenInfo.act;
       const got = act?.client_id ? String(act.client_id) : '';
       if (got !== expectedActClientId) {
-        console.error(`[TokenIntrospector] act.client_id mismatch: expected ${expectedActClientId}, got ${got || '(empty)'}`);
+        teachLog.error('act.client_id mismatch', undefined, { operation: 'act_client_id_validation', expected: expectedActClientId, actual: got || '(empty)' });
         throw new AuthenticationError(
           'Token act.client_id does not match MCP_EXPECTED_ACT_CLIENT_ID',
           AuthErrorCodes.INVALID_AGENT_TOKEN
         );
       }
-      console.log(`[TokenIntrospector] act.client_id validated against MCP_EXPECTED_ACT_CLIENT_ID`);
+      teachLog.info('act.client_id validated against MCP_EXPECTED_ACT_CLIENT_ID');
     }
     if (expectedActActSub) {
       const nested = tokenInfo.act?.act;
       const got = nested && typeof nested === 'object' ? String(nested.sub || '') : '';
       if (got !== expectedActActSub) {
-        console.error(`[TokenIntrospector] act.act.sub mismatch: expected ${expectedActActSub}, got ${got || '(empty)'}`);
+        teachLog.error('act.act.sub mismatch', undefined, { operation: 'act_act_sub_validation', expected: expectedActActSub, actual: got || '(empty)' });
         throw new AuthenticationError(
           'Token act.act.sub does not match MCP_EXPECTED_ACT_ACT_SUB',
           AuthErrorCodes.INVALID_AGENT_TOKEN
         );
       }
-      console.log(`[TokenIntrospector] act.act.sub validated against MCP_EXPECTED_ACT_ACT_SUB`);
+      teachLog.info('act.act.sub validated against MCP_EXPECTED_ACT_ACT_SUB');
     }
 
     // Check if token is expired
@@ -179,9 +178,9 @@ export class TokenIntrospector {
     // actor (Backend-for-Frontend (BFF) or AI agent) that performed the exchange on behalf of `sub`.
     const actorClientId = tokenInfo.act?.client_id;
     if (actorClientId) {
-      console.log(`[TokenIntrospector] Delegated token — actor: ${actorClientId}, subject: ${tokenInfo.sub}`);
+      teachLog.info('delegated token (RFC 8693 act claim present)', { actor: actorClientId, subject: tokenInfo.sub });
     } else {
-      console.log(`[TokenIntrospector] Direct token — subject: ${tokenInfo.sub} (no act claim)`);
+      teachLog.info('direct token (no act claim)', { subject: tokenInfo.sub });
     }
 
     const baseTokenInfo: AgentTokenInfo = {
