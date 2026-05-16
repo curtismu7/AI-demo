@@ -255,3 +255,39 @@ step in plain `axios`/`fetch` inside `banking_agent_service`:
 implementation plan against this no-LangChain approach, then resume
 subagent-driven execution. `reasonContract.ts` (Task 6) is correct as-is and
 needs no change.
+
+---
+
+## Phase 2 Re-Spec — Decision (2026-05-15)
+
+**User directive:** Use LangChain/LangGraph as the agent framework for ALL
+LLM calls (consistent framework everywhere; matches the BFF; supports the
+"LangChain agent" demo narrative).
+
+**Implications (supersedes the "no-LangChain port" direction above):**
+
+1. **Add `@langchain/*` deps to `banking_agent_service`** (`@langchain/langgraph`,
+   `@langchain/ollama`, `@langchain/core` — match what `agentBuilder.js` uses).
+   Deliberate, approved dependency addition (the original plan wrongly assumed
+   these were already present; they are not — now added on purpose).
+2. **Port the LangGraph graph** from `agentBuilder.js` into the :3006 reasoning
+   service. Reasoning-only contract unchanged (no tool execution, no tokens;
+   `reasonContract.ts` from Task 6 still valid).
+3. **Ollama path:** native tool-calling via `bindTools` (as today).
+4. **Helix path — NEW capability:** prompt-based tool-calling. Helix has no
+   native tool-calling (today it is a bare `RunnableLambda` returning a
+   string). The reasoning service will prompt Helix to emit tool intents in a
+   structured format, parse them, and surface them as the same `tool_calls`
+   shape the BFF loop consumes. This is new behavior Helix never had.
+
+**Highest-risk component:** the Helix prompt-based tool-calling. It requires
+Helix to follow an output convention it was not designed for; parsing must be
+robust to malformed/partial/no-JSON responses; there is no existing
+implementation to port. This needs its own design treatment (prompt contract,
+parse strategy, malformed-response fallback, regression test) — NOT a one-line
+task. The rest of Phase 2 (LangGraph port, BFF-driven loop, HITL-stays-BFF,
+provider resolver, narrative) is mechanical and already designed.
+
+**Next action:** brainstorm the Helix prompt-based-tool-calling component
+specifically, then rewrite Phase 2 plan Tasks 7–12 against this LangGraph-
+everywhere approach, then resume subagent execution. Phase 1 + Task 6 unaffected.
