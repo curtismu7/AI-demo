@@ -339,8 +339,11 @@ RULES:
 ### Parse logic (deterministic — the testable core)
 
 1. `trim()` Helix's returned string.
-2. Tolerant extraction: strip surrounding ```/```json fences; find the first
-   line whose trimmed form starts with `TOOL_CALL:` (anywhere, not only pos 0).
+2. Tolerant extraction, in this order: (a) strip a single layer of surrounding
+   ```/```json fences if the whole trimmed string is fenced; (b) split into
+   lines; (c) find the FIRST line whose trimmed form starts with `TOOL_CALL:`
+   (scan all lines, not only line 0 — Helix may add a preamble despite the
+   instruction). If multiple such lines exist, use the first; ignore the rest.
 3. No `TOOL_CALL:` line → conversational answer → `{ content: <trimmed string> }`
    (~50% case; a SUCCESS, not a failure).
 4. `TOOL_CALL:` found → `JSON.parse` the substring after the marker:
