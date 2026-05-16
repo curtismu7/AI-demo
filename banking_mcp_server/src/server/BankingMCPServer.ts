@@ -13,6 +13,8 @@ import { BankingSessionManager } from '../storage/BankingSessionManager';
 import { BankingToolProvider } from '../tools/BankingToolProvider';
 import { MCPMessageHandler, MessageHandlerContext } from './MCPMessageHandler';
 import { HttpMCPTransport } from './HttpMCPTransport';
+import { correlationFromMessage } from './correlationFromMessage';
+import { runWithCorrelation } from '../utils/correlationContext';
 
 export interface ServerConfig {
   host: string;
@@ -282,46 +284,49 @@ export class BankingMCPServer extends EventEmitter {
         return;
       }
 
-      // Handle frontend session_init (non-MCP) — captures userEmail for CIBA.
-      // This is injected by App.js before the MCP handshake.
-      if ((message as any).type === 'session_init') {
-        const email = (message as any).userEmail as string | undefined;
-        if (email && typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          connection.userEmail = email;
-          // Also persist to session if one already exists
-          if (connection.sessionId) {
-            this.sessionManager.setSessionEmail(connection.sessionId, email);
+      const correlationId = correlationFromMessage(message as any);
+      await runWithCorrelation(correlationId, async () => {
+        // Handle frontend session_init (non-MCP) — captures userEmail for CIBA.
+        // This is injected by App.js before the MCP handshake.
+        if ((message as any).type === 'session_init') {
+          const email = (message as any).userEmail as string | undefined;
+          if (email && typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            connection.userEmail = email;
+            // Also persist to session if one already exists
+            if (connection.sessionId) {
+              this.sessionManager.setSessionEmail(connection.sessionId, email);
+            }
+            console.log(`[BankingMCPServer] session_init: stored email for connection ${connectionId}`);
           }
-          console.log(`[BankingMCPServer] session_init: stored email for connection ${connectionId}`);
+          // No response expected for session_init
+          return;
         }
-        // No response expected for session_init
-        return;
-      }
 
-      // Validate message structure
-      if (!this.isValidMCPMessage(message)) {
-        const messageId = (message as any)?.id ?? 'unknown';
-        await this.sendError(connectionId, messageId, -32600, 'Invalid Request: Missing required fields');
-        return;
-      }
+        // Validate message structure
+        if (!this.isValidMCPMessage(message)) {
+          const messageId = (message as any)?.id ?? 'unknown';
+          await this.sendError(connectionId, messageId, -32600, 'Invalid Request: Missing required fields');
+          return;
+        }
 
-      if (this.config.enableLogging) {
-        console.log(`[BankingMCPServer] Processing message from ${connectionId}: ${message.method}`);
-      }
+        if (this.config.enableLogging) {
+          console.log(`[BankingMCPServer] Processing message from ${connectionId}: ${message.method}`);
+        }
 
-      // Route message to appropriate handler
-      const response = await this.routeMessage(connectionId, message);
-      
-      // Only send response for requests (JSON-RPC notifications have no id)
-      if (response !== null && response !== undefined && message.id !== undefined && message.id !== null) {
-        await this.sendResponse(connectionId, response);
-      }
+        // Route message to appropriate handler
+        const response = await this.routeMessage(connectionId, message);
 
-      this.emit('messageProcessed', {
-        connectionId,
-        method: message.method,
-        messageId: message.id,
-        timestamp: new Date()
+        // Only send response for requests (JSON-RPC notifications have no id)
+        if (response !== null && response !== undefined && message.id !== undefined && message.id !== null) {
+          await this.sendResponse(connectionId, response);
+        }
+
+        this.emit('messageProcessed', {
+          connectionId,
+          method: message.method,
+          messageId: message.id,
+          timestamp: new Date()
+        });
       });
 
     } catch (error) {
