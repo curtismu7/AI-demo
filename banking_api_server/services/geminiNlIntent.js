@@ -231,7 +231,7 @@ async function parseWithOllama(userMessage, context = {}) {
 /**
  * @param {string} message
  * @param {{ role?: string, firstName?: string }} [context] - user context for role-aware routing
- * @param {string} [provider='auto'] - 'auto' (heuristic→ollama), 'ollama' (skip heuristic), 'helix', etc.
+ * @param {string} [provider='auto'] - 'auto' (heuristic→helix), 'ollama' (skip heuristic, requires Ollama configured), 'helix'. See llmProviderResolver.
  * @returns {Promise<{ source: 'ollama'|'heuristic'|'helix'|'helix_fallback', result: object }>}
  */
 async function parseNaturalLanguage(message, context = {}, provider = 'auto', langchainConfig = {}) {
@@ -247,7 +247,10 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
 
   // 2. FALLBACK TO LLM — when heuristic doesn't recognize the input
   // Use configured provider (Helix, Ollama, etc.) based on langchainConfig
-  const selectedProvider = provider === 'auto' ? (langchainConfig?.provider || configStore.get('provider') || 'helix') : provider;
+  const { resolveLlmProvider } = require('./llmProviderResolver');
+  const selectedProvider = provider === 'auto'
+    ? resolveLlmProvider(langchainConfig).provider
+    : provider;
 
   // Try selected provider first for NL intent routing
   if (selectedProvider === 'helix') {
