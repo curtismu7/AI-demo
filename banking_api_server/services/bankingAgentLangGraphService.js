@@ -385,7 +385,7 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
  * stripped. Zod `schema` → JSON Schema so :3006's helixToolAdapter can read
  * `.properties`. No hand-duplicated schemas.
  */
-function buildToolSchemasForAgent({ userId, req } = {}) {
+function buildToolSchemasForAgent() {
   const tools = getBankingToolDefinitions();
   return tools.map((tool) => {
     let inputSchema;
@@ -407,9 +407,15 @@ function buildToolSchemasForAgent({ userId, req } = {}) {
  * `tool.invoke(args, { configurable: { agentContext: { agentToken, userId, tokenEvents } } })`.
  * Token custody stays BFF-side — the MCP/agent token is resolved HERE via
  * `resolveMcpAccessTokenWithEvents` (the same call `createBankingAgent` made
- * before invoking tools), never on :3006. A thrown HITL/consent error is NOT
- * caught here so it propagates to processAgentMessage's outer try/catch and
- * the route returns 428.
+ * before invoking tools), never on :3006.
+ *
+ * HITL/consent note: real transfer-consent enforcement is the deterministic
+ * heuristic, which runs and returns BEFORE this LLM/reason path
+ * (ARCHITECTURE-TRUTHS T-3) and is unchanged. On THIS LLM/tool path a
+ * HITL/consent denial from a tool surfaces as a generic error (same as the
+ * pre-consolidation in-process graph path — it never produced a clean 428
+ * here either). Do NOT assume the LLM path yields a 428; do NOT remove the
+ * heuristic floor believing it does.
  */
 async function executeBffTool({ name, args, userId, userToken, req = null, tokenEvents = [], sessionId = '' }) {
   const tools = getBankingToolDefinitions();
@@ -431,8 +437,12 @@ async function executeBffTool({ name, args, userId, userToken, req = null, token
     tokenEvents.push(...exchangeEvents);
   }
 
-  // SAME invoke shape + agentContext as agentBuilder's tool node. No try/catch
-  // here: a HITL/consent throw must reach the route as a 428.
+  // SAME invoke shape + agentContext as agentBuilder's tool node. HITL/consent
+  // note: the deterministic heuristic enforces transfer consent and returns
+  // BEFORE this LLM/tool path (ARCHITECTURE-TRUTHS T-3); on THIS path a
+  // HITL/consent denial surfaces as a generic error (same as the
+  // pre-consolidation in-process graph path — never a clean 428 here). Do NOT
+  // assume the LLM path yields a 428; do NOT remove the heuristic floor.
   const result = await tool.invoke(args, {
     configurable: {
       agentContext: {
@@ -546,11 +556,14 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     const { runReasonLoop } = require('./agentReasoningClient');
     const { provider, model } = resolveLlmProvider(langchainConfig);
 
-    const toolSchemas = buildToolSchemasForAgent({ userId, req });
-    // No try/catch around runReasonLoop here: a HITL/consent error thrown by
-    // executeBffTool (transfer ≥ threshold etc.) is awaited (not caught) inside
-    // runReasonLoop and must propagate to the outer catch so the route returns
-    // 428. Do NOT wrap this so as to swallow that throw.
+    const toolSchemas = buildToolSchemasForAgent();
+    // HITL/consent note: real transfer-consent enforcement is the deterministic
+    // heuristic, which runs and returns BEFORE this LLM/reason path
+    // (ARCHITECTURE-TRUTHS T-3) and is unchanged. On THIS LLM/tool path a
+    // HITL/consent denial from a tool surfaces as a generic error (same as the
+    // pre-consolidation in-process graph path — it never produced a clean 428
+    // here either). Do NOT assume the LLM path yields a 428; do NOT remove the
+    // heuristic floor believing it does.
     const loopResult = await runReasonLoop({
       messages: [{ role: 'user', content: message }],
       tools: toolSchemas,
