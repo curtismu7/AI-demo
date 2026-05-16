@@ -25,4 +25,4 @@ export interface ReasonRequest {
 
 export type ReasonResponse =
   | { type: 'tool_calls'; calls: Array<{ id: string; name: string; args: Record<string, unknown> }>; messages: ReasonMessage[] }
-  | { type: 'final'; answer: string; messages: ReasonMessage[] };
+  | { type: 'final'; answer: string; messages: ReasonMessage[]; reasoningUnavailable?: boolean };
