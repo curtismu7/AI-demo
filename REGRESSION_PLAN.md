@@ -120,6 +120,27 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-16 — Helix keyfile auto-migration (vault + SQLite) + agent degraded-mode banner
+
+**Files changed:**
+- `banking_api_server/services/helixKeyMigration.js` — **new.** Pure, dependency-injected `migrateHelixKey({ agentName, vaultPath, vaultPassword, configStore, vaultLib, keyLoader, logger })`. Idempotent: returns `already_present` (no write) when `configStore.get('helix_api_key')` is already truthy — never overwrites an operator-set key. Discovers the key via the EXISTING `helixAgentKeyLoader` (repo root / ~/Documents / ~/Downloads, first match). Writes the encrypted vault entry `HELIX_API_KEY` only when a vault password + path are present (`vault.set`/`save`, `vault.close()` in `finally`), and ALWAYS writes SQLite via `configStore.setConfig({ helix_api_key })`. Vault and SQLite are independent targets (vault loads `persist:false`).
+- `banking_api_server/src/__tests__/helixKeyMigration.test.js` — **new.** 5 TDD unit tests (no-keyfile, idempotent, vault+sqlite, sqlite-only, `vault.close()` on throw).
+- `banking_api_server/server.js` — startup IIFE: captures `process.env.VAULT_PASSWORD` into a block-scoped `const` BEFORE `loadVaultIntoConfigStore` (which deletes it in its `finally`), then calls `migrateHelixKey` AFTER the loader resolves. Purely additive; the vault loader's `persist:false` / `vault.close()`-in-finally / `delete process.env.VAULT_PASSWORD` are unchanged. Migration failure is a `console.warn`, never fatal.
+- `banking_api_server/scripts/setupFresh.js` — `configureHelix()`: keyfile fast-path before the 5-field prompt. If `<agentName>.json` exists, migrate + set `provider:'helix'` + return; if `already_present`, skip; if no keyfile, fall through to the existing prompt flow unchanged. Honors `--skip-helix` / `--skip-vault` / `--vault-password` / `--vault-path`.
+- `banking_api_ui/src/components/BankingAgent.js` — new `helixDegraded` state set in `dispatchNlResult` (the single convergence point for ALL NL/chip routing paths): `true` when `selectedLlmProvider==='helix'` and `_source==='heuristic'`; cleared on `helix`/`helix_fallback`. Persistent `⚠️` banner rendered after `.ba-header-top`.
+- `banking_api_ui/src/components/BankingAgent.css` — new `.ba-degraded-banner` rule (subtle warning bar).
+
+**What this adds:** The downloaded Helix agent keyfile (`LLM2.json` etc.) is migrated once into the encrypted vault AND SQLite so the agent works across restarts without re-running `/setup`; when Helix is unreachable and routing falls back to the heuristic parser, the agent panel shows a persistent degraded-mode banner instead of silently degrading.
+
+**Verify:**
+- `cd banking_api_server && npx jest helixKeyMigration` → 1 suite / 5 passed.
+- `cd banking_api_server && npx jest helixKeyMigration vault` → migration + existing vault tests green (Row 72/73 intact).
+- Vault success-path probe: after `loadVaultIntoConfigStore` resolves, runtime `process.env.VAULT_PASSWORD === undefined` (Row 73 preserved; `ps eww` shows the kernel exec snapshot, not runtime env — not a violation).
+- `cd banking_api_ui && npm run build` → exit 0, no new warnings referencing BankingAgent.js.
+- Local BFF restart log: `[startup] Helix key migrated from LLM2.json (vault=true, sqlite=true)`; vault loader's own log lines unchanged.
+
+**Do not break:** `migrateHelixKey` MUST stay idempotent (`already_present` guard) — never overwrite an operator-set key. The `server.js` password capture MUST stay block-scoped (never module scope) and MUST NOT alter the vault loader's `delete process.env.VAULT_PASSWORD` (§1 Row 73). No change to configStore resolution order (§1 Row 47) or vault crypto/format/loader (§1 Row 72). The banner must be additive only — no change to `liveAccounts`, the consent gate, `hitlPendingIntent`, FAB visibility, resize caps, or `mcp_hitl_required`/`consent_challenge_required` handlers (§1 BankingAgent rows 41/50/51/58/60/63).
+
 ### 2026-05-16 — Bug #2: delegation_action audit floods on telemetry, misleading `actor:null`, no agent-path attribution
 
 **Files changed:**
