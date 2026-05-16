@@ -353,6 +353,49 @@ deviation (worker CC = `basic`) is explicit, commented, and isolated to the
 
 ---
 
+## T-10 — A PingOne token request is single-resource: every scope asked for must live on the one target audience's resource
+
+PingOne's `/as/token` endpoint (client_credentials AND RFC 8693 token
+exchange) rejects any request whose requested scopes span **more than one
+resource server**, with `invalid_scope: "May not request scopes for multiple
+resources"`. A token is minted for exactly one audience; every scope in that
+request must be a scope **defined on that audience's resource**. This is not
+a bug to work around — it is how PingOne resource-scoping works.
+
+Two concrete traps this caused (cost most of a debugging session):
+
+- **Empty scope ≠ "no constraint".** A CC request that omits `scope`
+  entirely makes PingOne default to *all* the app's granted scopes. If the
+  app is granted scopes across two resources, the default-all request
+  immediately violates the single-resource rule. The MCP Exchanger actor-CC
+  mint must therefore request an *explicit single-resource* scope
+  (`pingone_mcp_token_exchanger_client_scopes` default `banking:mcp:invoke`),
+  never empty.
+- **Appending a "policy-required" scope after audience validation
+  re-introduces a cross-resource scope.** `agentMcpTokenService` validates
+  `finalScopes` against the target audience (RFC 8707) and then *unconditionally
+  adds* `banking:mcp:invoke` because the MCP Gateway policy requires it. That
+  scope is only valid if it **also exists on the exchange's target resource**
+  (`aud=mcp-server.bxf.com`). The fix is not to drop the scope (the gateway
+  needs it) — it is to ensure `banking:mcp:invoke` is **provisioned onto the
+  MCP-server resource itself** (mirroring what was already done for the
+  Two-Exchange resources), so one single-audience token can legitimately
+  carry both the tool scope and `banking:mcp:invoke`.
+
+**Naive reading that is wrong:** "the token just needs the scopes the tool
+requires; PingOne will sort out the resources." It will not — it rejects the
+whole request. Designing an RFC 8693 hop means first asking *which single
+resource is this token's audience, and does every scope I request exist on
+that resource?* If a scope must travel through multiple hops, it must be
+provisioned (mirrored) onto every resource that is an exchange audience along
+the way. Scope vocabularies are per-resource and do not cascade.
+
+- Code: `banking_api_server/services/agentMcpTokenService.js` (`exchangeTokenRfc8693`, the `banking:mcp:invoke` append ~line 1015), `banking_api_server/services/oauthService.js` `getMcpExchangerToken` (explicit single-resource scope), `banking_api_server/services/pingoneProvisionService.js` (`mcpScopes` — `banking:mcp:invoke` mirrored onto the MCP-server resource; Two-Exchange resources do the same "for exchange compatibility"), `configStore.js` (`pingone_mcp_token_exchanger_client_scopes` default `banking:mcp:invoke`)
+- Related: T-4 (PingOne performs the exchange), T-5 (every hop validates `aud` independently — this is the scope-side counterpart: every hop's scopes must match that hop's resource), T-9 (the auth-method invariant on the same token requests)
+- Skill: [pingone-api-calls/SKILL.md](../.claude/skills/pingone-api-calls/SKILL.md) (PUT-not-PATCH + this single-resource scope rule)
+
+---
+
 ## How to extend this file
 
 Add a `T-N` entry only when **all** of these hold:

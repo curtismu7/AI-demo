@@ -450,11 +450,14 @@ class PingOneProvisionService {
     };
     const desiredGrants = new Set((grantTypes || []).map(normalizeGrant));
     // ARCHITECTURE TRUTH T-9: every PingOne client connection uses
-    // client_secret_post; the ONLY exception is the Worker Token CC client
-    // (type WORKER, used for the Management API). Provisioning must bake this
-    // in so fresh installs + drift-correction never reintroduce the
-    // inconsistent BASIC/POST mix that broke RFC 8693 token exchange.
-    const desiredAuthMethod = type === 'WORKER' ? 'CLIENT_SECRET_BASIC' : 'CLIENT_SECRET_POST';
+    // client_secret_post. The ONLY exception is the Management-API Worker
+    // Token CC client, identified by NAME ("Super Banking Worker") — NOT by
+    // PingOne type===WORKER. Several apps are type WORKER (MCP Server, MCP
+    // Gateway, Agent) yet the BFF authenticates them with client_secret_post
+    // ([CC-As] method=post); only the single Management worker stays basic.
+    // Keying off type would wrongly force those three back to basic.
+    const isMgmtWorkerApp = String(name || '').trim() === 'Super Banking Worker';
+    const desiredAuthMethod = isMgmtWorkerApp ? 'CLIENT_SECRET_BASIC' : 'CLIENT_SECRET_POST';
 
     const existing = await this.findResourceByName('application', name);
 
@@ -1183,7 +1186,17 @@ class PingOneProvisionService {
         // Phase 267 — mortgage scope must exist on the MCP-server resource too
         // so the user's inbound token can carry it; the gateway then re-exchanges
         // (RFC 8693) it for the backend-scoped token used to call mortgage service.
-        { name: 'banking:mortgage:read', description: 'Read mortgage account data (Path A api-key disposition)' }
+        { name: 'banking:mortgage:read', description: 'Read mortgage account data (Path A api-key disposition)' },
+        // banking:mcp:invoke MUST exist on the MCP-server resource. Every MCP
+        // tool call's RFC 8693 exchange targets aud=mcp-server.bxf.com and the
+        // BFF appends banking:mcp:invoke (MCP Gateway policy requirement,
+        // agentMcpTokenService.js ~1015). Without this scope ON THIS resource,
+        // PingOne rejects the single-audience request with invalid_scope
+        // "May not request scopes for multiple resources" (the scope would
+        // otherwise only live on the Gateway/Two-Exchange resources) → 502 on
+        // every chip. Mirrors the same mirroring done for the Two-Exchange
+        // resources (see Steps ~33/34 "mirrored for exchange compatibility").
+        { name: 'banking:mcp:invoke', description: 'Invoke MCP tools via the gateway (mirrored onto MCP-server resource for single-audience RFC 8693 exchange)' }
       ];
       
       const mcpScopeResults = await this.createScopes(mcpResourceResult.resource.id, mcpScopes);

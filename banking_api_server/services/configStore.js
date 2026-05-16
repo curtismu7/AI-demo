@@ -290,6 +290,14 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // Token exchange auth methods
   pingone_token_exchange_auth_method:    { public: true,  default: 'post' },
   pingone_mcp_token_exchanger_cc_auth_method: { public: true, default: 'post' },
+  // Actor-CC token scope for the MCP Exchanger app. MUST be a SINGLE
+  // PingOne resource's scope: PingOne's CC token endpoint rejects a request
+  // whose scopes span >1 resource ("invalid_scope: May not request scopes
+  // for multiple resources"). Empty here meant "no scope param" → PingOne
+  // defaulted to ALL the app's grants (which span 2 resources) → 502 on
+  // every chip. banking:mcp:invoke is the MCP/gateway resource scope the
+  // actor token targets (matches the working [CC-As] actor mint).
+  pingone_mcp_token_exchanger_client_scopes: { public: true, default: 'banking:mcp:invoke' },
 
   // Introspection (RFC 7662)
   pingone_introspection_endpoint:        { public: true,  default: '' },
