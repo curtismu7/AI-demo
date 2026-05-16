@@ -120,6 +120,22 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-16 — Bug: `show_mortgage` 502 "Delegation chain validation failed" — BFF ran RFC 8693 for an api_key-disposition tool
+
+**Files changed:**
+- `banking_api_server/services/apiKeyTools.js` — new module: single source of truth `API_KEY_TOOLS = new Set(['show_mortgage'])` + `isApiKeyTool(tool)`. MUST stay in sync with `banking_mcp_gateway/src/router.ts` `APIKEY_TOOLS`.
+- `banking_api_server/services/agentMcpTokenService.js` — `resolveMcpAccessTokenWithEvents`: added an early-return for api_key tools placed immediately AFTER the `!userToken` guard and BEFORE the Admin Token Detection block. Returns the PLAIN user token with `{ apiKeyTool: true, exchange_mode: 'api_key_passthrough', userSub }` and one `api-key-passthrough` token event. No exchange / no admin substitution / no introspection on this path. Added top-of-file `require('./apiKeyTools')`.
+- `banking_api_server/tests/apiKeyToolExchange.regression.test.js`, `banking_api_server/tests/apiKeyTools.test.js` — new tests (TDD; failed before fix, pass after).
+
+**What was broken:** `show_mortgage` is an api_key-disposition tool — the MCP Gateway dispatches it to `banking_mortgage_service` via X-API-Key (Phase 266 Path A / Phase 267) with NO OAuth delegation. The BFF unconditionally ran the RFC 8693 two-exchange delegation for every tool. `_performTwoExchangeDelegation` failed for `show_mortgage` (no valid delegation chain) → `mcpAccessToken` was null → BFF fell into the `callToolLocal` branch → no local handler for `show_mortgage` → 502 "Could not load mortgage data: Delegation chain validation failed."
+
+**What was fixed:** For api_key-disposition tools the BFF now skips RFC 8693 entirely and forwards the plain user token. With a truthy `mcpAccessToken`, server.js skips the `!mcpAccessToken`/`callToolLocal` branch and proceeds to the normal `callToolViaGateway` path; the gateway's existing `APIKEY_TOOLS` X-API-Key dispatch handles the backend call. Gateway unchanged; no token-less transport introduced; the general two-exchange path for non-api_key tools is untouched.
+
+**Verify:**
+- `cd banking_api_server && OLLAMA_BASE_URL= npx jest apiKeyToolExchange apiKeyTools` → 2 suites / 6 passed (regression test red before fix, green after).
+- `cd banking_api_server && OLLAMA_BASE_URL= npx jest oauthStatus hitlRoute agentReasoningLoop apiKeyToolExchange` → 6 suites / 45 passed (no regression).
+- Follow-up risk (not in scope): if `MCP_GATEWAY_HTTP_URL` is unset, `show_mortgage` would fall to the direct MCP path which has no handler — api_key tools inherently require the gateway; pre-existing, unrelated to this bug.
+
 ### 2026-05-16 — Agent consolidation Phase 2: LangGraph reasoning runs as a separate :3006 service (BFF keeps custody + HITL)
 
 **Files changed:**
