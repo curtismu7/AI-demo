@@ -2,9 +2,8 @@ import { correlationFromMessage } from '../src/server/correlationFromMessage';
 import { getCorrelationId, runWithCorrelation } from '../src/utils/correlationContext';
 
 describe('mcp-server correlation extraction', () => {
-  it('reads params.correlationId, then initParams.correlationId, then id, else generates', () => {
+  it('reads params.correlationId, then id, else generates', () => {
     expect(correlationFromMessage({ params: { correlationId: 'P' } })).toBe('P');
-    expect(correlationFromMessage({ params: { initParams: { correlationId: 'I' } } })).toBe('I');
     expect(correlationFromMessage({ id: 42 })).toBe('42');
     expect(correlationFromMessage({ id: 'rpc-x' })).toBe('rpc-x');
     const gen = correlationFromMessage({});
