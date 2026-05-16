@@ -35,16 +35,30 @@ function _cacheInsertWithEviction(key: string, value: { token: string; expiresAt
   cacheInsertWithEviction(_cache, key, value, TOKEN_EXCHANGE_CACHE_MAX);
 }
 
+/**
+ * Out-channel describing what exchangeTokenForBackend actually did this call,
+ * so the Token Chain can faithfully show "fresh RFC 8693 exchange" vs
+ * "served from gateway cache (no PingOne round-trip this call)" instead of
+ * unconditionally implying a fresh exchange happened.
+ */
+export interface ExchangeInfo {
+  cacheHit: boolean;
+  targetAudience: string;
+}
+
 export async function exchangeTokenForBackend(
   subjectToken: string,
   targetAudience: string,
   config: GatewayConfig,
+  info?: ExchangeInfo,
 ): Promise<string> {
   const key = cacheKey(subjectToken, targetAudience);
   const cached = _cache.get(key);
   if (cached && cached.expiresAt > Date.now() + 5000) {
+    if (info) { info.cacheHit = true; info.targetAudience = targetAudience; }
     return cached.token;
   }
+  if (info) { info.cacheHit = false; info.targetAudience = targetAudience; }
 
   const params = new URLSearchParams({
     grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',

@@ -15,7 +15,7 @@ const { ChatOllama } = require('@langchain/ollama');
 const { ToolMessage } = require('@langchain/core/messages');
 const { Annotation } = require('@langchain/langgraph');
 const { createMcpToolRegistry } = require('../utils/mcpToolRegistry');
-const { resolveMcpAccessTokenWithEvents } = require('./agentMcpTokenService');
+const { resolveMcpAccessTokenWithEvents, buildTokenEvent } = require('./agentMcpTokenService');
 
 /**
  * WR-03: Hard cap on LangGraph node steps (agent ⇄ tools loop). Without this,
@@ -232,6 +232,27 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       // surfaced as "Too many requests."). If a real fallback model is
       // desired in future, declare it above and re-introduce the branch.
       const response = await model.bindTools(tools).invoke(messages, config);
+
+      // M3: the agent's reasoning / tool-selection step. The LLM deciding
+      // WHICH tool(s) to call (or none) is a core part of "everything that is
+      // going on" and previously had no chain representation — only the
+      // downstream tool execution did. Record it into the same by-reference
+      // tokenEvents array that reaches the Token Chain. No prompt/PII content,
+      // just the decision.
+      try {
+        const selected = (response.tool_calls || []).map((tc) => tc.name);
+        tokenEvents.push(buildTokenEvent(
+          'agent-reasoning',
+          'Agent Reasoning — LLM Tool Selection',
+          selected.length > 0 ? 'success' : 'skipped',
+          null,
+          selected.length > 0
+            ? `The agent model evaluated the request and selected ${selected.length} tool${selected.length === 1 ? '' : 's'}: ${selected.join(', ')}.`
+            : 'The agent model answered directly without selecting any banking tool.',
+          { rfc: 'Agent (LLM)', selectedTools: selected }
+        ));
+      } catch (_reasonEvtErr) { /* non-fatal — never block the agent on chain bookkeeping */ }
+
       // Handle LangChain response format - it may have tool_calls or content as array
       let messageContent;
       if (response.tool_calls && response.tool_calls.length > 0) {

@@ -147,10 +147,13 @@ function sanitizeClaims(claims) {
  * @param {object}  [extra]  Extra fields (exchangeDetails, error, rfc, etc.)
  */
 function buildTokenEvent(id, label, status, decoded, explanation, extra = {}) {
-  /** Full JWT decode (header + payload) for Token Chain JSON dump — never includes the raw token string. */
+  /** Full JWT decode (header + sanitized payload) for Token Chain JSON dump — never
+   *  includes the raw token string. claims run through the same sanitizeClaims
+   *  whitelist as the `claims` field above so an unexpected PII/credential claim
+   *  embedded in a token cannot surface verbatim in the JSON dump. */
   const jwtFullDecode =
     decoded?.claims != null
-      ? { header: decoded.header ?? null, claims: decoded.claims }
+      ? { header: decoded.header ?? null, claims: sanitizeClaims(decoded.claims) }
       : null;
   return {
     id,
@@ -1455,6 +1458,13 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       mayActPresent: !!userAccessTokenClaims?.may_act,
       rfc: 'RFC 8693',
     });
+
+    // Attach the accumulated chain (incl. the exchange-failed event just pushed)
+    // to the thrown error so callers can render WHERE the flow broke. Without this
+    // the Token Chain goes blank exactly on an exchange failure — the one moment
+    // the diagnostic view matters most. Mirrors the err.tokenEvents attachment at
+    // the throwTokenResolutionError / user-token-invalid throw sites above.
+    err.tokenEvents = tokenEvents;
 
     // D-04: Hard fail — no subject-only fallback when actor exchange fails.
     // A token without an act claim would be rejected by the banking API's requireDelegation check

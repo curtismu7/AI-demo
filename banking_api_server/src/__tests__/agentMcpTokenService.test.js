@@ -359,6 +359,46 @@ describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange, subject-only (P
     expect(mcpTokEv.jwtFullDecode.claims.aud).toBe('mcp-resource-uri');
     expect(mcpTokEv.jwtFullDecode.claims.act).toEqual({ client_id: 'bff-client-id' });
   });
+
+  // ── C1 regression: failure path must attach the chain to the thrown error ──
+  // Before the fix, the catch block at agentMcpTokenService.js built the
+  // exchange-failed event into the local tokenEvents array then `throw err`
+  // WITHOUT err.tokenEvents = tokenEvents, so the Token Chain went blank
+  // exactly on an exchange failure — the one moment it matters most. Every
+  // caller reads the chain off err.tokenEvents.
+  it('C1: on RFC 8693 exchange failure, err.tokenEvents carries the exchange-failed step', async () => {
+    const boom = new Error('PingOne rejected: invalid_grant');
+    boom.httpStatus = 400;
+    boom.pingoneError = 'invalid_grant';
+    mockPerformTokenExchange.mockRejectedValueOnce(boom);
+
+    let caught;
+    try {
+      await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeDefined();
+    expect(Array.isArray(caught.tokenEvents)).toBe(true);
+    expect(caught.tokenEvents.length).toBeGreaterThan(0);
+    const failed = caught.tokenEvents.find(e => e.id === 'exchange-failed');
+    expect(failed).toBeDefined();
+    expect(failed.status).toBe('failed');
+    // The preceding user-token step must also survive so the chain shows
+    // WHERE it broke, not just THAT it broke.
+    expect(caught.tokenEvents.find(e => e.id === 'user-token')).toBeDefined();
+  });
+
+  // ── Leak guard: no raw JWT / signature anywhere in the chain ───────────────
+  it('M4: tokenEvents never contain a raw JWT string or a signature segment', async () => {
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    const serialized = JSON.stringify(tokenEvents);
+    // Raw compact tokens used in this suite end with ".sig"; the chain must
+    // carry decoded claims only, never the raw 3-segment string.
+    expect(serialized).not.toContain(sampleJwtUserAccessToken);
+    expect(serialized).not.toContain(sampleJwtMcpAccessToken);
+    expect(serialized).not.toMatch(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
+  });
 });
 
 describe('resolveMcpAccessTokenWithEvents — on_behalf_of (PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID set)', () => {

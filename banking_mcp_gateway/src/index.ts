@@ -25,7 +25,7 @@ import axios from 'axios';
 import { loadConfig, GatewayConfig, assertProductionSecrets, isInternalSecretUsable } from './config';
 import { validateInboundToken, extractBearerToken, TokenValidationError } from './tokenValidator';
 import { routeTool, backendWsUrl, backendResourceUri, backendHttpUrl } from './router';
-import { exchangeTokenForBackend } from './tokenExchange';
+import { exchangeTokenForBackend, ExchangeInfo } from './tokenExchange';
 import { selectCredentialForBackend } from './credentialSwap';
 import { proxyJsonRpc, JsonRpcRequest, JsonRpcResponse } from './proxy';
 import { guardToolsList, guardToolCall } from './pingAuthorizeGuard';
@@ -835,12 +835,32 @@ async function handleMessage(
     const wsUrl = backendWsUrl(target, config);
 
     let backendToken: string;
+    const exchInfo: ExchangeInfo = { cacheHit: false, targetAudience: backendUri };
     try {
-      backendToken = await exchangeTokenForBackend(token, backendUri, config);
+      backendToken = await exchangeTokenForBackend(token, backendUri, config, exchInfo);
     } catch (err) {
       const msg2 = err instanceof Error ? err.message : String(err);
       console.error(`[GW] Token re-exchange failed for ${toolName}:`, msg2);
-      send(jsonRpcError(id, -32500, 'Token exchange failed'));
+      // C1-parity: surface WHERE it broke into the chain instead of a bare error.
+      send(JSON.stringify({
+        jsonrpc: '2.0', id,
+        error: { code: -32500, message: 'Token exchange failed', data: { credentialPath: 'oauth_bearer' } },
+        result: {
+          _meta: {
+            credentialPath: 'oauth_bearer',
+            tokenEvents: [
+              {
+                id: 'gw-exchange-failed',
+                label: `Gateway RFC 8693 re-exchange FAILED (target aud=${backendUri}): ${msg2}`,
+                tokenType: 'access_token',
+                credentialPath: 'oauth_bearer',
+                status: 'failed',
+                specRef: 'RFC 8693 §2.2.2',
+              },
+            ],
+          },
+        },
+      }));
       return;
     }
 
@@ -852,6 +872,67 @@ async function handleMessage(
       console.error(`[GW] Proxy error for ${toolName}:`, msg2);
       send(jsonRpcError(id, -32500, 'Backend error'));
       return;
+    }
+
+    // C3 + H1: the gateway's second RFC 8693 exchange (user→gateway→backend,
+    // swapping aud=mcp-gw → aud=mcp-olb/mcp-invest) is the single most
+    // important token-exchange hop in the main flow and was previously
+    // invisible — the raw backend result was returned with no _meta.
+    // Synthesize tokenEvents mirroring the dual_token block, and reflect
+    // whether a fresh PingOne exchange actually happened or the gateway cache
+    // served the token (no round-trip this call) so the chain cannot falsely
+    // imply a fresh exchange on every cached call.
+    const gwExchangeEvent = exchInfo.cacheHit
+      ? {
+          id: 'gw-exchange',
+          label: `Gateway token reused from cache (no PingOne round-trip this call) → aud=${backendUri}, act chain preserved`,
+          tokenType: 'access_token',
+          credentialPath: 'oauth_bearer',
+          status: 'cached',
+          specRef: 'RFC 8693 (cached result)',
+        }
+      : {
+          id: 'gw-exchange',
+          label: `Gateway RFC 8693 exchange: subject_token=inbound user-bearer (aud=mcp-gw) + actor=gateway-creds → fresh token aud=${backendUri}, act.client_id=gateway, prior act chain preserved`,
+          tokenType: 'access_token',
+          credentialPath: 'oauth_bearer',
+          status: 'exchanged',
+          specRef: 'RFC 8693 + draft-ietf-oauth-identity-chaining',
+        };
+
+    const gwTokenEvents = [
+      {
+        id: 'gw-inbound',
+        label: 'Gateway received delegated user bearer (aud=mcp-gw, sub=user, act=upstream-agent)',
+        tokenType: 'access_token',
+        credentialPath: 'oauth_bearer',
+        status: 'ok',
+        specRef: 'RFC 6750 §3',
+      },
+      gwExchangeEvent,
+      {
+        id: 'gw-proxy',
+        label: `Gateway proxied JSON-RPC over WebSocket to backend MCP (${target}) with the backend-scoped token`,
+        tokenType: 'access_token',
+        credentialPath: 'oauth_bearer',
+        status: 'ok',
+        specRef: 'JSON-RPC 2.0 + RFC 6750 §3.1',
+      },
+    ];
+
+    // Merge into result.result._meta without disturbing the backend payload.
+    if (result && typeof result.result === 'object' && result.result !== null) {
+      const r = result.result as Record<string, unknown>;
+      const existingMeta = (typeof r._meta === 'object' && r._meta !== null)
+        ? (r._meta as Record<string, unknown>)
+        : {};
+      r._meta = {
+        ...existingMeta,
+        credentialPath: 'oauth_bearer',
+        backendTransport: 'websocket',
+        tokenExchangeCached: exchInfo.cacheHit,
+        tokenEvents: gwTokenEvents,
+      };
     }
 
     send(JSON.stringify(result));

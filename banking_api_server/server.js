@@ -18,6 +18,7 @@ const { loadVaultIntoConfigStore } = require('./services/vaultLoader');
 // ConfigStore must be required early so oauth config module getters are ready
 const configStore = require('./services/configStore');
 const appEventService = require('./services/appEventService');
+const { scrubRawJwts } = require('./services/jwtScrubber');
 const {
     mcpNoBearerResponse
 } = require('./services/bffSessionGating');
@@ -1220,6 +1221,14 @@ function publishMcpResultToSse(flowTraceId, { tool, result, durationMs, isDelega
 
 // POST /api/mcp/tool — call a banking MCP tool
 app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next) => {
+  // Defense-in-depth: scrub any JWT-shaped string from EVERY json response on
+  // this route (tokenEvents success + all error/expiry paths) without editing
+  // each res.json call site — keeps the §1-protected gate/branch logic byte-for-
+  // byte unchanged. No raw token flows here today (tokenEvents carry decoded,
+  // sanitized claims only); this matches the documented /identity+/accounts+
+  // /transactions scrub contract.
+  const _origJson = res.json.bind(res);
+  res.json = (body) => _origJson(scrubRawJwts(body));
   try {
     // Log incoming request details for debugging 400 errors
     const startTime = Date.now();
@@ -1794,6 +1803,61 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             }
         }
         
+        // M2a: surface the actual MCP call + response as chain steps. These
+        // previously lived only in the mcpTrafficLogger NDJSON file and never
+        // reached the Token Chain panel, so "MCP calls and responses" — an
+        // explicit requirement of the chain — was a blind spot. Params and
+        // result summaries only (no raw token; scrubRawJwts wraps res.json on
+        // this route as a backstop).
+        try {
+            const _mcpDur = Date.now() - startTime;
+            const _isErr = !!result?.isError;
+            const _contentLen = result?.content ? JSON.stringify(result.content).length : 0;
+            tokenEvents.push(buildTokenEvent(
+                'mcp-request',
+                `MCP Tool Call → ${tool}`,
+                'active',
+                null,
+                `JSON-RPC tools/call sent to the MCP server${useGateway ? ' via the gateway' : ' directly'} with params: ${JSON.stringify(params || {})}`,
+                { rfc: 'JSON-RPC 2.0', tool, transport: useGateway ? 'gateway' : (useHttp2 ? 'http2' : 'websocket') }
+            ));
+            tokenEvents.push(buildTokenEvent(
+                'mcp-response',
+                `MCP Tool Response ← ${tool}`,
+                _isErr ? 'failed' : 'success',
+                null,
+                _isErr
+                    ? `MCP server returned an error for ${tool} after ${_mcpDur}ms`
+                    : `MCP server returned ${_contentLen} bytes for ${tool} in ${_mcpDur}ms`,
+                { rfc: 'JSON-RPC 2.0', tool, durationMs: _mcpDur, contentBytes: _contentLen }
+            ));
+            // M2b: the resource-server hop. The MCP server's BankingToolProvider
+            // calls back into banking_api_server /api/... via BankingAPIClient
+            // to actually fetch/mutate banking data — an explicit chain step
+            // the user asked for ("Resource server") that had no representation.
+            // We don't re-plumb the MCP server; a successful tool result proves
+            // the RS call occurred, and the tool→endpoint mapping is stable.
+            const RS_ENDPOINT_BY_TOOL = {
+                get_my_accounts: 'GET /api/accounts/my',
+                get_account_balance: 'GET /api/accounts/:id/balance',
+                get_my_transactions: 'GET /api/transactions/my',
+                create_transfer: 'POST /api/transactions',
+                create_deposit: 'POST /api/transactions',
+                create_withdrawal: 'POST /api/transactions',
+            };
+            const _rsEndpoint = RS_ENDPOINT_BY_TOOL[tool];
+            if (_rsEndpoint && !_isErr) {
+                tokenEvents.push(buildTokenEvent(
+                    'resource-server',
+                    `Resource Server ← ${tool}`,
+                    'success',
+                    null,
+                    `MCP server's BankingToolProvider called the banking resource server (${_rsEndpoint}) with the exchanged token; the response above is derived from that call.`,
+                    { rfc: 'RFC 6750 §2.1', tool, backendRoute: _rsEndpoint }
+                ));
+            }
+        } catch (_mcpEvtErr) { /* non-fatal — never block the tool result on chain bookkeeping */ }
+
         // Log the actual MCP result so it's queryable via /api/app-events
         if (result) {
           const resultMeta = {
