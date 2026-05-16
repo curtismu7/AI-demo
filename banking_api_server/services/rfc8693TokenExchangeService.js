@@ -144,6 +144,7 @@ async function exchangeTokens(req, params) {
       subjectClaims = decodedSubject?.claims || {};
     } catch (_e) {
       subjectClaims = {};
+      teachLog.debug('subject token undecodable — claims-delta "before" will be empty', { subject_token: subjectToken });
     }
 
     teachLog.step(6, 9, 'claims delta (delegation)', {
