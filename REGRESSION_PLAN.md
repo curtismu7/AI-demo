@@ -120,6 +120,26 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-15 — LLM provider resolution unified into a single resolver (Phase 1 of agent consolidation)
+
+**Files changed:**
+- `banking_api_server/services/llmProviderResolver.js` — new single canonical resolver: Heuristic runs upstream (not here); when consulted, explicit provider honored, else Helix; Ollama only if explicitly selected AND configured, else fall back to Helix.
+- `banking_api_server/services/agentBuilder.js` — replaced inline `langchainConfig?.provider || 'helix'` with `resolveLlmProvider()`.
+- `banking_api_server/services/geminiNlIntent.js` — replaced inline `langchainConfig?.provider || configStore.get('provider') || 'helix'` (the configStore middle term was provably dead config — no key, no .env mapping, no writers) with `resolveLlmProvider()`; fixed a stale JSDoc that claimed `heuristic→ollama` (truth: `heuristic→helix`).
+- `banking_api_server/routes/langchainConfig.js` — two sites converged onto the resolver: the POST handler that defaulted to `'ollama'` (a real bug — wrong default), and a second `/config/status` site that inline-defaulted to `'helix'`.
+- `banking_api_server/tests/llmProviderResolver.regression.test.js` — 5 hermetic regression tests.
+
+**What was broken:** LLM provider resolution had three different inline defaults across the app. `routes/langchainConfig.js` POST defaulted to Ollama, contradicting ARCHITECTURE-TRUTHS T-3 (Helix is the default; Ollama is opt-in only if configured). A JSDoc in geminiNlIntent.js also wrongly documented `heuristic→ollama`. Drift between these sites is the "keeps getting messed up" provider-muddle.
+
+**What was fixed:** One canonical `resolveLlmProvider()` (BFF-side). Every provider-resolution site calls it; no module inlines a provider default. ARCHITECTURE-TRUTHS T-3's single-resolver-enforcement clause is now actually enforced.
+
+**Verify:**
+- `cd banking_api_server && npx jest tests/llmProviderResolver.regression.test.js` → 5 passed.
+- `npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration` → 38 passed.
+- `grep -rnE "\|\|\s*'(ollama|helix)'" services/agentBuilder.js services/geminiNlIntent.js routes/langchainConfig.js` → no output (clean).
+
+**Do not break:** No module may reintroduce an inline `|| 'helix'` / `|| 'ollama'` provider default — all resolution goes through `llmProviderResolver.js`. Known residual tracked for Phase 2: `geminiNlIntent.js:363` still has a direct `langchainConfig?.provider === 'helix'` equality check (not a default — out of scope here, revisited when the LangGraph reasoning moves to :3006). Pre-existing unrelated failures in `geminiNlIntent.llmOnly.test.js` (3) predate this work and are not caused by it.
+
 ### 2026-05-15 — langchain WR-02 Option A: per-session message workers (head-of-line blocking removed)
 
 **Files changed:**
