@@ -41,6 +41,8 @@ import {
   ADMIN_CONFIG_ALLOWED_KEYS,
   adminConfigSafeView,
 } from './adminConfig';
+import { extractCorrelationId } from './correlationId';
+import { runWithCorrelation } from './correlationContext';
 
 // Phase 269 Plan 04: load encrypted vault entries into process.env BEFORE
 // loadConfig() runs. The vault populates MCP_GW_*, PROVIDER_*, HELIX_*, and
@@ -932,13 +934,19 @@ wss.on('connection', (ws, req) => {
   }
 
   ws.on('message', (raw) => {
-    handleMessage(raw.toString(), token, (s) => {
-      if (ws.readyState === WebSocket.OPEN) ws.send(s);
-    }).catch((err) => {
-      console.error('[GW] Unhandled message error:', err);
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(jsonRpcError(null, -32603, 'Internal error'));
-      }
+    const rawStr = raw.toString();
+    let parsedForCid: { id?: unknown; params?: { correlationId?: unknown } } = {};
+    try { parsedForCid = JSON.parse(rawStr); } catch { /* parse error handled inside handleMessage */ }
+    const wsCid = extractCorrelationId(req.headers as Record<string, unknown>, parsedForCid);
+    runWithCorrelation(wsCid, () => {
+      handleMessage(rawStr, token, (s) => {
+        if (ws.readyState === WebSocket.OPEN) ws.send(s);
+      }).catch((err) => {
+        console.error('[GW] Unhandled message error:', err);
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(jsonRpcError(null, -32603, 'Internal error'));
+        }
+      });
     });
   });
 

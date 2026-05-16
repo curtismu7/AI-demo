@@ -10,6 +10,7 @@
  */
 
 import WebSocket from 'ws';
+import { getCorrelationId } from './correlationContext';
 
 const MCP_PROTOCOL_VERSION = '2025-11-25';
 const HANDSHAKE_TIMEOUT_MS = 10_000;
@@ -59,15 +60,18 @@ export function proxyJsonRpc(
 
     ws.on('open', () => {
       // MCP handshake: initialize
+      const _cid = getCorrelationId();
+      const initParams: Record<string, unknown> = {
+        protocolVersion: MCP_PROTOCOL_VERSION,
+        capabilities: {},
+        clientInfo: { name: 'banking-mcp-gateway', version: '1.0.0' },
+      };
+      if (_cid) initParams.correlationId = _cid;
       const initMsg = {
         jsonrpc: '2.0',
         id: 'gw-init',
         method: 'initialize',
-        params: {
-          protocolVersion: MCP_PROTOCOL_VERSION,
-          capabilities: {},
-          clientInfo: { name: 'banking-mcp-gateway', version: '1.0.0' },
-        },
+        params: initParams,
       };
       ws.send(JSON.stringify(initMsg));
 
@@ -92,7 +96,17 @@ export function proxyJsonRpc(
       if (!initialized && msg.id === 'gw-init') {
         initialized = true;
         ws.send(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} }));
-        ws.send(JSON.stringify(request));
+        const _cid2 = getCorrelationId();
+        let outRequest: JsonRpcRequest = request;
+        if (_cid2 && request.params !== undefined) {
+          const existingParams = request.params as Record<string, unknown>;
+          if (!existingParams.correlationId) {
+            outRequest = { ...request, params: { ...existingParams, correlationId: _cid2 } };
+          }
+        } else if (_cid2 && request.params === undefined) {
+          outRequest = { ...request, params: { correlationId: _cid2 } as unknown };
+        }
+        ws.send(JSON.stringify(outRequest));
         return;
       }
 

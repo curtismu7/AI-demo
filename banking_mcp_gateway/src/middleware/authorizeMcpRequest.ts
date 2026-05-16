@@ -111,6 +111,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
 
     if (pipelineResult.kind === 'introspection_failed') {
       setAuditHeader(res);
+      teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
       res.writeHead(401, {
         'Content-Type': 'application/json',
         'WWW-Authenticate': `Bearer realm="PingOne", resource_metadata="${config.gatewayResourceUri}/.well-known/mcp-server", error="invalid_token", error_description="Token is revoked or no longer active"`,
@@ -126,6 +127,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
 
     if (pipelineResult.kind === 'policy_violation') {
       setAuditHeader(res);
+      teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
       res.writeHead(401, {
         'Content-Type': 'application/json',
         'WWW-Authenticate': `Bearer realm="PingOne", resource_metadata="${config.gatewayResourceUri}/.well-known/mcp-server", error="${pipelineResult.code}", error_description="${pipelineResult.message}"`,
@@ -171,6 +173,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
 
     if (authzDecision.decision !== 'PERMIT') {
       setAuditHeader(res);
+      teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
       const statusCode = authzDecision.decision === 'INDETERMINATE' ? 403 : 403;
       res.writeHead(statusCode, {
         'Content-Type': 'application/json',
@@ -206,6 +209,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       const msg = err instanceof Error ? err.message : String(err);
       teachLog.error('[authorizeMcpRequest] Token exchange failed', err, { detail: msg });
       setAuditHeader(res);
+      teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
       res.writeHead(502, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({
@@ -220,6 +224,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
     // ── Step 5: Forward with exchanged token (D-04: original bearer stays at gateway) ──
     // WR-03: outBody has `_hitl_challenge_id` stripped (or === body if absent).
     setAuditHeader(res);
+    teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
     await forward(exchangeResult.token, outBody);
   };
 }
