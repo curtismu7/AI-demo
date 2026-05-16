@@ -157,9 +157,10 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       console.log('[agentBuilder] tokenEvents count after adding:', tokenEvents.length);
     }
 
-        // Initialize LLM provider (Helix, Ollama, or others)
+        // Initialize LLM provider — resolution is centralized (T-3).
     let model;
-    const provider = langchainConfig?.provider || 'helix';
+    const { resolveLlmProvider } = require('./llmProviderResolver');
+    const { provider } = resolveLlmProvider(langchainConfig);
     const selectedModel = langchainConfig?.model || DEFAULT_MODELS[provider];
 
     if (provider === 'helix') {
