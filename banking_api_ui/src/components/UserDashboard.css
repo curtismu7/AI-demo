@@ -133,8 +133,12 @@
 
 /* No-banking variant: hide the third (banking) track. Stretch the grid to
    the full row width and split the freed space — a wider token rail plus the
-   agent absorbing the rest — so there is no empty gap on the right. */
-.ud-body.ud-body--dashboard-split3.ud-body--dashboard-split3--no-banking {
+   agent absorbing the rest — so there is no empty gap on the right.
+   The `.ud-body--2026` class is included so this beats the later
+   `.ud-body.ud-body--2026.ud-body--dashboard-split3 { grid-template-columns:
+   1fr 1fr 1fr }` rule (equal-specificity, later in source) on the actual
+   rendered container `ud-body ud-body--2026 ud-body--dashboard-split3`. */
+.ud-body.ud-body--2026.ud-body--dashboard-split3.ud-body--dashboard-split3--no-banking {
   width: 100%;
   grid-template-columns: minmax(280px, 0.9fr) 2fr;
 }
@@ -263,7 +267,7 @@
     grid-template-columns: 1fr 1fr 1fr;
   }
 
-  .ud-body.ud-body--dashboard-split3.ud-body--dashboard-split3--no-banking {
+  .ud-body.ud-body--2026.ud-body--dashboard-split3.ud-body--dashboard-split3--no-banking {
     grid-template-columns: 1fr 1fr;
   }
 }
