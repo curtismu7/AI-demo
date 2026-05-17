@@ -1666,11 +1666,26 @@ async function _performTwoExchangeDelegation(
   // scopes for multiple resources". Exchange #1's job is only to mint the
   // agent-exchanged token bound to the intermediate audience; the real tool
   // scopes are (re)requested at Exchange #2 against the final audience. So
-  // request ONLY the scope unique to the Intermediate resource — mirrors the
-  // single-scope pattern already used for the two actor-CC steps
-  // (agent_gateway_cc_scope / mcp_gateway_cc_scope).
+  // request ONLY a single scope that belongs to the Intermediate resource AND
+  // that the AI Agent app is actually GRANTED there — mirrors the single-scope
+  // pattern already used for the two actor-CC steps (agent_gateway_cc_scope /
+  // mcp_gateway_cc_scope).
+  //
+  // T-10 follow-up (2026-05-16, see REGRESSION_PLAN §4): the original default
+  // `banking:two-exchange:intermediate` is *defined* on the Intermediate
+  // resource by the provisioner but is NOT in the AI Agent app's resource
+  // grant (pingoneProvisionService.js Step 37a grants the app
+  // ['banking:read','banking:write','banking:mcp:invoke','banking:ai:agent:read',
+  // 'banking:mortgage:read'] on the Intermediate resource — a scope merely
+  // existing on a resource is not the same as the requesting client being
+  // granted it). PingOne therefore rejected Exchange #1 with
+  // `invalid_scope: "At least one scope must be granted"`. Default to
+  // `banking:mcp:invoke`: it is in that grant list and is a single scope on
+  // the single Intermediate resource (satisfies RFC 8707). Exchange #1 only
+  // mints the agent-exchanged token bound to the intermediate audience; the
+  // real tool scopes are (re)requested at Exchange #2.
   const intermediateExchangeScope =
-    configStore.getEffective('two_exchange_intermediate_scope') || 'banking:two-exchange:intermediate';
+    configStore.getEffective('two_exchange_intermediate_scope') || 'banking:mcp:invoke';
   const exchange1Scopes = [intermediateExchangeScope];
   tokenEvents.push(buildTokenEvent(
     'two-ex-exchange1-in-progress',

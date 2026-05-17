@@ -749,9 +749,12 @@ class ConfigStore {
       // single-resource rule as the two cc_scope entries above: PingOne
       // rejects an exchange to intermediateAud whose scopes span >1 resource.
       // The tool scopes (effectiveToolScopes) flow at Exchange #2 to the
-      // final audience; Exchange #1 only needs the scope unique to the
-      // Intermediate resource (banking:two-exchange:intermediate —
-      // pingoneProvisionService.js "Exchange #1 final-token scope").
+      // final audience; Exchange #1 only needs ONE scope that the AI Agent
+      // app is actually granted on the Intermediate resource. Code default
+      // is `banking:mcp:invoke` (in pingoneProvisionService.js Step 37a's
+      // AI Agent grant). NOTE: `banking:two-exchange:intermediate` is only
+      // *defined* on the resource, NOT granted to the app — do not default
+      // to it (see REGRESSION_PLAN §4 2026-05-16 T-10 follow-up).
       two_exchange_intermediate_scope: ['TWO_EXCHANGE_INTERMEDIATE_SCOPE'],
       pingone_resource_two_exchange_uri: ['PINGONE_RESOURCE_TWO_EXCHANGE_URI', 'MCP_RESOURCE_URI_TWO_EXCHANGE'],
       marketing_customer_login_mode: ['MARKETING_CUSTOMER_LOGIN_MODE'],
