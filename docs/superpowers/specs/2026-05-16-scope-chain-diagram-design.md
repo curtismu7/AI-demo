@@ -27,21 +27,36 @@ All scope strings below were extracted from code/config, not approximated.
 
 ### Server path — 1-exchange
 
-| Step | Token | aud | Scopes | Source |
+| Step | Token | aud | Scopes carried | Source |
 |---|---|---|---|---|
 | Login | User subject token | banking-api | `banking:read banking:write` (subset of login grant) | `configStore.js:231` |
-| RFC 8693 exchange | MCP token | `PINGONE_RESOURCE_MCP_SERVER_URI` | `banking:read banking:write banking:mcp:invoke` | `configStore.js:1141-1145`; default `mcp_token_exchange_scopes` `configStore.js:288` |
+| RFC 8693 exchange | MCP token | `PINGONE_RESOURCE_MCP_SERVER_URI` | `banking:read banking:write banking:mcp:invoke` (default `mcp_token_exchange_scopes`) | `configStore.js:288`; allowlisted at `configStore.js:1141-1145` |
 | Tool gate | validated at MCP server | — | per-tool `requiredScopes` (e.g. `banking:read`; `banking:write`; `banking:read banking:sensitive:read`) | `BankingToolRegistry.ts:28,65,103,171` |
 
 ### Agent path — 2-exchange delegation
 
-| Step | Token | aud | Scopes | Source |
+| Step | Token | aud | Scopes carried | Source |
 |---|---|---|---|---|
 | Subject token | User | agent-gateway | `banking:read banking:write` | `configStore.js:231` |
-| Actor CC (Exchange #1 actor) | Agent gateway CC | agent-gateway | `banking:ai:agent ai_agent` | `configStore.js:1113-1116` |
+| Actor CC (Exchange #1 actor) | Agent gateway CC | agent-gateway | `banking:ai:agent` (single CC scope; `agent_gateway_cc_scope`) | `agentMcpTokenService.js` (agent_gateway_cc_scope), allowlisted at `configStore.js:1125-1128` |
 | Exchange #1 (RFC 8693) | Agent exchanged token | AI-Agent intermediate | `banking:mcp:invoke` only — RFC 8707 single-resource rule (T-10) | `agentMcpTokenService.js:1687-1689` |
-| Exchange #2 (RFC 8693) | MCP/RS token | two-exchange resource server | `banking:read banking:write banking:mcp:invoke`, `act:{sub:agent}` chain preserved | `configStore.js:1151-1155` |
+| Exchange #2 (RFC 8693) | MCP/RS token | two-exchange resource server | `banking:read banking:write banking:mcp:invoke`, `act:{sub:agent}` chain preserved | `agentMcpTokenService.js` (final scopes); allowlisted at `configStore.js:1151-1155` |
 | Tool gate | validated downstream | — | per-tool `requiredScopes` | `BankingToolRegistry.ts` |
+
+> **Allowlist vs. token contents.** `buildAllowedScopesByAudience()` in
+> `configStore.js` defines the RFC 8707 *validation allowlist* (which scopes
+> *may* be requested against an audience), NOT what each minted token actually
+> carries. The "Scopes carried" column above reflects what each token actually
+> carries; the diagram teaches token contents, with the allowlist mentioned
+> only as the gate that validates each request.
+>
+> **`ai_agent` (bare, unprefixed) is excluded.** It appears in the login grant
+> string (`configStore.js:231`) and the agent-gateway allowlist
+> (`configStore.js:1127`) and is configurable via `ai_agent_scope`
+> (`configStore.js:286`), but it is never requested or enforced by
+> `agentMcpTokenService.js`. It is treated as a legacy alias / unused scope and
+> is NOT taught in the diagram (decision 2026-05-17). Flagged as tech debt to
+> remove separately — out of scope for this diagram.
 
 ### Key teaching point
 
