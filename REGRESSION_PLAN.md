@@ -470,6 +470,20 @@ Commits: gateway `7edb211e`, BFF `380b46bf`, agent-service `1912c3d1`.
 
 **Do not break:** The AI Agent / MCP Exchanger apps must keep their multi-resource grants (provisioner Steps 37a/37b) — those are required for the exchange steps. The fix is the explicit per-audience scope, NOT removing grants. If you change a gateway scope in the provisioner, change the matching configStore default (`agent_gateway_cc_scope` / `mcp_gateway_cc_scope`) too — the SYNC comments mark both ends. Do not revert `getClientCredentialsTokenAs` to omit `scope`.
 
+#### 2026-05-16 follow-up (T-10) — same root cause, third leg: Exchange #1 subject→intermediate scope
+
+**Files changed:**
+- `banking_api_server/services/agentMcpTokenService.js` — `_performTwoExchangeDelegation()` Exchange #1 (subject token → agent-exchanged token, audience = intermediate) now requests an explicit single-resource scope instead of `effectiveToolScopes`. Tool scopes still flow at Exchange #2 against the final audience.
+- `banking_api_server/services/configStore.js` — registered `two_exchange_intermediate_scope` env-fallback key (`TWO_EXCHANGE_INTERMEDIATE_SCOPE`, default `banking:two-exchange:intermediate`).
+
+**What was broken:** The 2026-05-15 fix above corrected the two *actor CC* tokens (Steps 1 & 3). Exchange #1 itself still passed `effectiveToolScopes` (e.g. `banking:read` + `banking:mcp:invoke`) as the requested scope when exchanging the subject token to the **intermediate** audience. Those tool scopes span more than one PingOne resource, so PingOne rejected Exchange #1 with the same `400 invalid_scope: "May not request scopes for multiple resources"` — a third instance of the §1 single-resource rule, on the subject-token leg this time.
+
+**What was fixed:** Exchange #1 now requests only the scope unique to the Intermediate resource (`two_exchange_intermediate_scope`, default `banking:two-exchange:intermediate` — matches the provisioner's "Exchange #1 final-token scope" grant). Exchange #1's sole job is minting the agent-exchanged token bound to the intermediate audience; the real tool scopes are (re)requested at Exchange #2 against the final audience, so narrowing Exchange #1 to one resource loses nothing.
+
+**Verify (confirmed):** Two-exchange delegation flow completes without `invalid_scope` on Exchange #1; `ff_two_exchange_delegation=true` MCP tool calls succeed; Token Chain shows `2-Exchange #1` succeeding with the single intermediate scope.
+
+**Do not break:** Same principle as above — **every leg** of the two-exchange flow (the two actor CC tokens AND the subject-token Exchange #1) must request scopes for exactly one resource. Do not revert Exchange #1 to pass `effectiveToolScopes`. If you change the provisioner's Exchange #1 / Intermediate-resource scope, update the `two_exchange_intermediate_scope` configStore default to match. Tool scopes belong at Exchange #2, never Exchange #1.
+
 ### 2026-05-15 — Login/agent buttons redirect to /config; logout returns raw `{"message":"Missing Authentication Token"}`
 
 **One-liner:** A `data:import` / migration run at 08:39:41 overwrote `banking_api_server/.env`, reducing it from 38 keys (all `PINGONE_*` creds + the real `SESSION_SECRET`) to a 47-byte stub holding only a placeholder `SESSION_SECRET=test-...`; with no PingOne client IDs readable, `configStore.isConfigured()` returned false so every login/agent click `302 → /config?error=not_configured` (by design in `routes/oauth.js:48` / `routes/oauthUser.js:175`) and logout couldn't build the PingOne signoff URL and fell through to the infra catch-all JSON. **No code was at fault — this was env-data loss.**

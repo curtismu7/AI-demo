@@ -404,6 +404,38 @@ const body = new URLSearchParams({
 // T3: sub = user sub, act = { sub: <agent-sub>, client_id: <agent-id> }
 ```
 
+### 7b-1. PingOne single-resource-per-request rule (RFC 8707) — load-bearing
+
+**PingOne rejects any token request whose requested scopes span more than one
+resource server with `400 invalid_scope: "May not request scopes for multiple
+resources"`.** This applies to every token endpoint call, not just exchanges:
+`/authorize` with `&resource=`, `client_credentials`, and **each individual leg
+of a multi-step RFC 8693 chain**.
+
+Rules of thumb for this codebase:
+
+- **Never set `audience` and omit `scope` on a `client_credentials` request** if
+  the worker app is granted scopes on >1 resource. PingOne then tries every
+  entitled scope, they span resources, and it 400s. Always pass an explicit
+  single-resource `scope` (see `getClientCredentialsTokenAs(..., scope)`).
+- **In a two-exchange delegation chain, each exchange requests scopes for ONE
+  resource only.** The intermediate-audience exchange (Exchange #1) requests
+  only the scope unique to the Intermediate resource
+  (`two_exchange_intermediate_scope`, default `banking:two-exchange:intermediate`);
+  the actor-CC tokens use `agent_gateway_cc_scope` / `mcp_gateway_cc_scope`. The
+  real tool scopes (`banking:read` + `banking:mcp:invoke`, which span resources)
+  belong **only** at the final exchange against the final audience — never at an
+  intermediate leg.
+- A worker/AI-agent app *should* still be granted scopes across multiple
+  resources (each leg needs its own). The fix for the multi-resource error is
+  always "request one resource's scope per call", never "remove grants".
+- configStore CC/exchange scope defaults are kept in SYNC with the provisioner's
+  granted scopes — change one end, change the other (SYNC comments mark both).
+
+This rule has bitten three distinct code paths (`/authorize`, the two actor-CC
+tokens, and Exchange #1's subject leg). See REGRESSION_PLAN.md §1 row "PingOne
+authorize `resource` + mixed scopes" and the 2026-05-15 / 2026-05-16 §4 entries.
+
 ### 7c. act / may_act Claims (RFC 8693 §4.1)
 
 ```javascript
