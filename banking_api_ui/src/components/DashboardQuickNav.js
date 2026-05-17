@@ -98,6 +98,15 @@ export default function DashboardQuickNav({ user }) {
           Config
         </Link>
       )}
+      {!isAdmin && (
+        <Link
+          to="/configure?tab=feature-flags"
+          className={`dashboard-quick-nav__btn${pathname === '/configure' ? ' dashboard-quick-nav__btn--active' : ''}`}
+          title="Demo settings — toggle feature flags (e.g. dashboard banking column)"
+        >
+          Settings
+        </Link>
+      )}
       <button type="button" className="dashboard-quick-nav__btn" onClick={openApiPopout} title="Open API traffic in a new window">
         API
       </button>
