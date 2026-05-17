@@ -120,6 +120,78 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-17 — Anti-drift guard for InteractiveArchDiagram live-view topology (+ accidental-revert recovery)
+
+**Files changed:**
+- `banking_api_ui/src/components/__tests__/ArchitectureDiagram.completeness.test.js` — added a `describe("Live InteractiveArchDiagram topology (anti-drift)")` block. Same **pure file-read** approach as the rest of this enforcer (reads `InteractiveArchDiagram.js` as text via `loadInteractiveArchDiagramSource()` — no React import, so it cannot break `ArchitectureTabsPanel.anon.test.js`, per this file's WHY-A-PURE-FILE-READ-TEST note). Asserts the component still references `banking_mcp_gateway`, `banking_mcp_server`, `banking_mcp_invest`, that a `gateway:` NODES key exists, and that gateway port `:3005` is present. Anchored on stable service identifiers (not display labels) so honest re-wording does not false-fail; only a structural revert to the pre-gateway model does. 5 new tests (31 → 36 in the combined run).
+- `banking_api_ui/src/components/education/InteractiveArchDiagram.js` — **re-applied** the 2026-05-16 8-node corrected model (see prior entry) after it was accidentally reverted (see below); also corrected the stale top-of-file docstring (still said "5-node … User, BFF, PingOne, LLM, MCP") to describe the real topology and reference the new guard.
+
+**What was broken:** The 2026-05-16 live-view fix was correct but **uncommitted**. While negative-testing the new guard (simulating a revert, then `git checkout -- InteractiveArchDiagram.js` to restore), the checkout restored the *committed* version — which was the OLD pre-gateway 5-node model — silently discarding the uncommitted fix. Net effect mid-session: the component was back to the structurally-false model and the new guard (correctly) failed against it.
+
+**What was fixed:** Re-applied the corrected 8-node model verbatim (User/PingOne → BFF+LLM → MCP Gateway → OLB/Invest/Mortgage), updated the stale docstring, and re-ran the full guard. The anti-drift guard was confirmed effective by the negative test: stripping `banking_mcp_gateway`/`banking_mcp_invest`/`:3005` made exactly the topology tests fail with the "regressed to a pre-gateway model" message; restoring made them pass.
+
+**Lesson (process):** Never `git checkout -- <file>` to "undo a temporary edit" when that file has uncommitted work — `checkout` restores HEAD, not the in-progress state, so it destroys unsaved changes. For negative-testing a guard, snapshot the file to a temp path (or use an in-memory string fixture) and restore from that, not from git.
+
+**Verify:**
+- `cd banking_api_ui && CI=true npx react-scripts test --watchAll=false --testPathPattern='ArchitectureDiagram.completeness|ArchitectureTabsPanel.anon'` → 2 suites / **36 pass**.
+- `cd banking_api_ui && npm run build` → exit 0.
+- Negative check (manual, not committed): removing the gateway refs from `InteractiveArchDiagram.js` fails the 5 topology tests with an actionable message; `git checkout` restores green.
+
+**Do not break:** The new topology guard is a `.mmd`-style pure file-read test — keep it import-free so `ArchitectureTabsPanel.anon.test.js` stays unaffected. Keep the guard's assertions anchored on service identifiers (`banking_mcp_*`, `:3005`), not display strings, so labels can still be reworded. `InteractiveArchDiagram.js` must keep the `gateway` node + backend services and the `TokenChainContext` highlighting (Phase 270 retention). The §1 "Architecture diagram completeness" (line 80) and `/architecture/*` anon-safety (line 1226) invariants still hold — no `.mmd`/PNG edits, no admin fetch added.
+
+### 2026-05-16 — `/architecture/system`: live-view model corrected + full-diagram zoom
+
+**Files changed:**
+- `banking_api_ui/src/components/education/InteractiveArchDiagram.js` — rebuilt the NODES/ARROWS model. Was a structurally-false 5-node graph (User, BFF, PingOne, LLM, MCP) implying a direct BFF→MCP edge with no gateway. Now 8 nodes across 4 columns reflecting the real default path: User/PingOne → BFF+LLM → **MCP Gateway** → backend MCP servers (OLB :8080, Invest :8081) + api_key-disposition Mortgage svc :8082. Three arrows now describe the real hops (PKCE+RFC 8693 login; agent→gateway JSON-RPC; gateway→backends routed per credential disposition). `TokenChainContext` live highlighting preserved (acquired MCP token now lights gateway+OLB). Exchange banner + legend updated.
+- `banking_api_ui/src/components/education/InteractiveArchDiagram.css` — legibility: subtitle/sublabel/arrow-label/claim colors darkened (`#64748b`/`#374151`/`#6b7280` → `#475569`/`#1e293b`/`#0f172a`) and font sizes bumped (node label 0.76→0.82rem, sublabel 0.62→0.68rem, arrow label 0.63→0.72rem +600 weight, claim 0.6→0.66rem).
+- `banking_api_ui/src/components/ArchitectureTabsPanel.jsx` — `SystemArchitectureView` Full-diagram view now has zoom controls (75/100/150/200/300%, default **150%** — legible on a laptop) inside a scroll/pan container with `maxHeight`, an "Open image in new tab" link, and a "this diagram is dense — zoom" hint. Reuses the existing `secondaryBtnStyle`. No large-monitor-only gating (works on both).
+
+**What was broken:** The "Live token highlights (simplified)" view (`InteractiveArchDiagram`) still depicted a pre-gateway architecture — wrong vs Phase 266/267/270 (no MCP Gateway, no backend MCP servers, false BFF→MCP-direct edge). The Full diagram (`overview2.png`) was rendered at fit-to-width with no zoom, leaving it unreadable on a laptop.
+
+**What was fixed:** Live view model corrected to the real topology while keeping the `TokenChainContext` highlighting that was the Phase 270 reason for retention (correction, not deletion — consistent with the Phase 270 §4 entry). Full diagram is now zoomable with a laptop-readable 150% default. Per user decision, the PNG/`.mmd` itself was NOT regenerated ("Just zoom for now") — baked-in font size/color unchanged; zoom is the legibility lever.
+
+**Verify:**
+- `cd banking_api_ui && npm run build` → exit 0.
+- `cd banking_api_ui && CI=true npx react-scripts test --watchAll=false --testPathPattern='ArchitectureDiagram.completeness|ArchitectureTabsPanel.anon'` → 2 suites / 31 pass.
+- `/architecture/system` → "Live token highlights" shows User→BFF→Gateway→OLB/Invest/Mortgage with darker/larger labels; "Full diagram" has working zoom (default 150%).
+
+**Do not break:** `InteractiveArchDiagram.js` remains RETAINED (Phase 270 decision) — its `TokenChainContext` live highlighting must keep working; do not delete it. The completeness Jest enforcer (`ArchitectureDiagram.completeness.test.js`) is a `.mmd`-only file-read test and was not touched; this component is not a `.mmd` source so its node set is not governed by that test (the `.mmd` sources remain the drift-tracked authority). No `.mmd`/PNG edits, no admin fetch added — `/architecture/*` anon-safety (§1 line 1226) and "Architecture diagram completeness" (§1 line 80) both still hold.
+
+### 2026-05-16 — `/sequence-diagram` readability + "View Mermaid source" (no step-content changes)
+
+**Files changed:**
+- `banking_api_ui/src/components/SequenceDiagramPage.js` — readability: Token-Changes box recolored (`#fef08a`/`#92400e` → `#fef9c3` bg / `#451a03` text / `#d97706` border, +line-height); SVG note band recolored + heightened (24→26px, `#fef3c7`/`#b45309` italic → `#fef9c3`/`#451a03` bold, dropped italic so labels read at 11px) so amber notes no longer obscure their own text; faint step-message line darkened (`#64748b` 0.7rem → `#334155` 0.78rem). Feature: `mermaidFromSteps()` generator + `MermaidSourceModal` (two tabs — canonical `i4ai-ref-arch.mmd` fetched from the static asset, and a generated-from-ALL_STEPS view — each with Copy), opened by a new "View Mermaid source" toolbar button. No `ALL_STEPS`/`PARTICIPANTS`/scenario/token-card data changed.
+- `scripts/build-diagrams.sh` — `render_one` now `cp`s each `.mmd` source next to its rendered PNG in `banking_api_ui/public/architecture/`, so the canonical source is published as a static asset (single source of truth; auto-synced on every diagram rebuild).
+- `banking_api_ui/public/architecture/i4ai-ref-arch.mmd` — added (copy of repo-root source so the feature works without a full diagram rebuild; future rebuilds keep it in sync via the script change above).
+
+**What was broken:** `/sequence-diagram` had bright-yellow note bands (`#fef08a` / `#fef3c7`) with low-contrast amber italic text that obscured/clipped its own labels, plus a too-faint slate-500 step-message line. There was no way to see the Mermaid source the page mirrors.
+
+**What was fixed:** Higher-contrast amber palette (darker text, stronger border, taller band, non-italic) so note text is legible and not covered; darkened the faint step line. Added a "View Mermaid source" modal showing both the canonical `i4ai-ref-arch.mmd` (static asset — no admin route, so the public Architecture group stays anon-safe per the §1 row at line 1226) and a live generated-from-steps version, each copyable. Step content was explicitly out of scope (user decision: "Readability + Mermaid only") — no accuracy re-audit performed.
+
+**Verify:**
+- `cd banking_api_ui && npm run build` → exit 0 (static `.mmd` bundled into `build/architecture/`).
+- `cd banking_api_ui && CI=true npx react-scripts test --watchAll=false --testPathPattern='educationalPath|SequenceDiagram|ArchitectureDiagram.completeness'` → 2 suites / 41 pass (public-safety + completeness enforcer not regressed).
+- `/sequence-diagram` → note bands legible (no covered text); "View Mermaid source" opens a modal with Canonical + Generated tabs and a working Copy.
+
+**Do not break:** `SequenceDiagramPage.js` `ALL_STEPS`/`PARTICIPANTS` stay 1:1 with `i4ai-ref-arch.mmd` (header comment at the `ALL_STEPS` definition — this change did not touch them). No admin-only mount-time fetch was added to this page or any `/architecture/*` component (the modal reads a public static asset) — the §1 anon-safety invariant (line 1226) still holds. The completeness Jest enforcer and `scripts/build-diagrams.sh` source→PNG map are unchanged except the additive `.mmd` publish step; do not hand-edit a PNG or the published `.mmd` (regenerate via the script). `i4ai-ref-arch.mmd` remains §1-governed under "Architecture diagram completeness" (line 80).
+
+### 2026-05-16 — `/architecture/system` showed the partial 5-node InteractiveArchDiagram as its default
+
+**Files changed:**
+- `banking_api_ui/src/components/ArchitectureTabsPanel.jsx` — new `SystemArchitectureView` component renders the authoritative full diagram (`/architecture/overview2.png`, the detailed render of `architecture.mmd`) by default, with a "Full diagram" / "Live token highlights (simplified)" toggle. The `architecture` tab body now renders `SystemArchitectureView` instead of `InteractiveArchDiagram` directly. `InteractiveArchDiagram` is still imported and reachable via the toggle (Phase 270 retention decision honored — not deleted).
+
+**What was broken:** The System Architecture tab at `/architecture/system` rendered `InteractiveArchDiagram` directly. That component is intentionally PARTIAL (its own docstring: 5 of 14 nodes — User, BFF, PingOne, LLM, MCP) and is not the authoritative architecture view. Viewers saw a system picture missing the MCP gateway, the three backend MCP servers (OLB/invest/mortgage), HITL service, agent service, and langchain — and a false BFF→MCP-direct edge instead of the real BFF→gateway→backend flow. The user reported the page as out of date.
+
+**What was fixed:** The tab now defaults to `overview2.png`, which is rendered from `architecture.mmd` and verified to cover all 8 `run-bank.sh` SVC_LIST services + langchain (PNG mtime newer than its `.mmd` source; rendered 2026-05-16). The retained live-highlighting component stays available behind an explicit toggle, so accuracy is the default without losing the `TokenChainContext` behavior Phase 270 chose to keep.
+
+**Verify:**
+- `cd banking_api_ui && CI=true npx react-scripts test --watchAll=false --testPathPattern='ArchitectureTabsPanel.anon'` → 3/3 pass (anon gating not regressed).
+- `cd banking_api_ui && CI=true npx react-scripts test --watchAll=false --testPathPattern='ArchitectureDiagram.completeness'` → 28/28 pass (drift enforcer untouched).
+- `cd banking_api_ui && npm run build` → exit 0.
+- `/architecture/system` → System Architecture tab shows the full rendered diagram by default; toggle switches to the simplified live view.
+
+**Do not break:** The completeness enforcer (`ArchitectureDiagram.completeness.test.js`) and `ArchitectureTabsPanel.anon.test.js` stay as-is. `InteractiveArchDiagram.js` MUST NOT be deleted (Phase 270 user decision — retained for live `TokenChainContext` highlighting). No `.mmd`/PNG edits were needed; if `architecture.mmd` is later edited, regenerate `overview2.png` and confirm its mtime is newer (REGRESSION_PLAN §1 "Architecture diagram completeness").
+
 ### 2026-05-16 — Standardize on client_secret_post for all PingOne connections (ARCHITECTURE TRUTH T-9)
 
 **Files changed:**
@@ -483,6 +555,53 @@ Commits: gateway `7edb211e`, BFF `380b46bf`, agent-service `1912c3d1`.
 **Verify (confirmed):** Two-exchange delegation flow completes without `invalid_scope` on Exchange #1; `ff_two_exchange_delegation=true` MCP tool calls succeed; Token Chain shows `2-Exchange #1` succeeding with the single intermediate scope.
 
 **Do not break:** Same principle as above — **every leg** of the two-exchange flow (the two actor CC tokens AND the subject-token Exchange #1) must request scopes for exactly one resource. Do not revert Exchange #1 to pass `effectiveToolScopes`. If you change the provisioner's Exchange #1 / Intermediate-resource scope, update the `two_exchange_intermediate_scope` configStore default to match. Tool scopes belong at Exchange #2, never Exchange #1.
+
+#### 2026-05-16 follow-up #2 (T-10) — chips still broken: Exchange #1 requested a scope the AI Agent app is NOT granted
+
+**Files changed:**
+- `banking_api_server/services/agentMcpTokenService.js` — `_performTwoExchangeDelegation()` Exchange #1 default scope changed `banking:two-exchange:intermediate` → `banking:mcp:invoke`. Expanded the inline comment with the grant-vs-define distinction.
+- `banking_api_server/services/configStore.js` — corrected the `two_exchange_intermediate_scope` comment (the old one repeated the wrong "matches the provisioner grant" claim).
+- `banking_api_server/src/__tests__/agentMcpTokenService.test.js` — new regression: asserts Exchange #1 requests exactly `['banking:mcp:invoke']` and never `banking:two-exchange:intermediate`. Verified red without the fix, green with it.
+
+**What was broken:** The follow-up #1 fix above set Exchange #1's default scope to `banking:two-exchange:intermediate` on the claim that it "matches the provisioner's Exchange #1 final-token scope grant." **That claim was false.** The provisioner *defines* the scope `banking:two-exchange:intermediate` on the Two-Exchange Intermediate resource server (`pingoneProvisionService.js` ~line 1973) but the AI Agent application's resource **grant** on that resource (Step 37a, ~line 2070) is `['banking:read','banking:write','banking:mcp:invoke','banking:ai:agent:read','banking:mortgage:read']` — it does **not** include `banking:two-exchange:intermediate`. A scope existing on a resource is not the same as the requesting client being granted it. PingOne resolved zero grantable scopes for the AI Agent client + Intermediate resource and rejected Exchange #1 with `400 invalid_scope: "At least one scope must be granted"`. The BFF surfaced this to the user as the generic `[MCP Proxy] Token resolution failed ... The provided authorization grant ... is invalid, expired, revoked ...` and `POST /api/mcp/tool` 502 — so **every chip / MCP tool call failed** the entire time follow-up #1 was "confirmed." (The earlier "Verify (confirmed)" note was incorrect; the live `/tmp/bank-api-server.log` showed continuous `[Exchange-As] Failed: invalid_scope` from `8e4ea442` onward.)
+
+**What was fixed:** Default Exchange #1 to `banking:mcp:invoke` — a single scope, on the single Intermediate resource (satisfies RFC 8707), and **actually in the AI Agent app's grant list**. No PingOne mutation required; works against the already-provisioned environment. Tool scopes still flow at Exchange #2.
+
+**Verify:**
+- `cd banking_api_server && npx jest agentMcpTokenService --silent --forceExit` → 82 passed (incl. the new Exchange #1 scope regression).
+- Browser: sign in as customer → click a banking chip (e.g. "My Accounts") → result renders; Token Chain shows `2-Exchange #1 — Agent Exchanged Token ✔️`; `/tmp/bank-api-server.log` shows NO `[Exchange-As] Failed` and NO `invalid_scope: At least one scope must be granted`.
+
+**Do not break:** Exchange #1's scope must be one the **AI Agent application is granted** on the Intermediate resource — not merely a scope *defined* there. `banking:two-exchange:intermediate` is define-only; do not default to it. If you change provisioner Step 37a's AI Agent Intermediate grant, keep `banking:mcp:invoke` in it (or update the `two_exchange_intermediate_scope` default to another granted single scope). When asserting a provisioner/runtime contract, verify the **grant**, not the scope definition.
+
+#### 2026-05-16 follow-up #3 (T-10) — fourth leg: Exchange #2 (agent-exchanged→final) requested multi-resource scopes
+
+**Files changed:**
+- `banking_api_server/services/agentMcpTokenService.js` — `_performTwoExchangeDelegation()` Exchange #2 (Step 4) now requests a single-resource scope (`two_exchange_final_scope`, default `banking:mcp:invoke`) instead of `effectiveToolScopes`. Updated the in-progress event message + the success event's `scopeNarrowed` metadata to report the actual requested scope.
+- `banking_api_server/services/configStore.js` — registered `two_exchange_final_scope` env-fallback key (`TWO_EXCHANGE_FINAL_SCOPE`).
+- `banking_api_server/src/__tests__/agentMcpTokenService.test.js` — new regression asserting Exchange #2 requests exactly `['banking:mcp:invoke']`.
+
+**What was broken:** Fixing Exchange #1 (follow-up #2) let the flow advance to Exchange #2, which had its own pre-existing failure (masked behind #1 the whole time — REGRESSION_PLAN §1 line ~188 already flagged this `delegation_chain_broken` Exchange #2 issue as separate/open). Exchange #2 passed `effectiveToolScopes` (`banking:read` + `banking:mcp:invoke`) when exchanging the agent-exchanged token to the **Final** audience. Those scope names are also defined on the main banking / MCP Gateway / MCP Server resources, so PingOne's scope resolver mapped the set across multiple resources and rejected with `400 invalid_scope: "May not request scopes for multiple resources"` → `[MCP Proxy] Token resolution failed ... Delegation chain validation failed` → `POST /api/mcp/tool` 502 → chips still failed. Fourth instance of the single-resource rule (Steps 1 & 3 CC, Exchange #1, now Exchange #2).
+
+**What was fixed:** Exchange #2 requests one scope the MCP Exchanger app is **granted** on the Final resource (`banking:mcp:invoke`, provisioner Step 37b grant list). Tool-level authorization is enforced by the always-on Authorize gate on `POST /api/mcp/tool` (§1 "MCP Authorize gate"), NOT by the exchanged token's scope breadth — so narrowing Exchange #2 to one scope removes no security boundary.
+
+**Verify:**
+- `cd banking_api_server && npx jest agentMcpTokenService --silent --forceExit` → 83 passed (incl. both Exchange #1 and Exchange #2 scope regressions).
+- Browser: sign in as customer → click a banking chip → result renders; Token Chain shows `2-Exchange: Final MCP Token ✔️`; `/tmp/bank-api-server.log` shows NO `[Exchange-As] Failed` and NO `invalid_scope` on either leg.
+
+**Do not break:** **Every leg** of the two-exchange flow (2 actor-CC + Exchange #1 + Exchange #2) must request scopes for exactly one resource AND scopes the requesting client is *granted* (not merely defined) on that resource. Do not revert Exchange #2 to `effectiveToolScopes`. `banking:two-exchange:final` is define-only on the Final resource — do not default to it. Tool authorization lives in the Authorize gate, never in the exchanged-token scope set.
+
+---
+
+#### T-10 — CANONICAL REFERENCE (read before touching any token-exchange scope; stop re-fixing this)
+
+**This rule has now bitten 4 times (2 actor-CC, Exchange #1, Exchange #2). It is not a bug — it is documented PingOne behavior. Do not "discover" it a 5th time.**
+
+- **Authoritative PingOne doc:** <https://docs.pingidentity.com/pingone/applications/p1_resource_scopes.html>
+- **What the doc says:** multi-custom-resource scope requests are *configurable* via the application option **"Request scopes to access multiple resources"**; with it OFF, PingOne returns `"May not request scopes for multiple custom resources"`. The doc covers **authorization requests only**.
+- **The exchange-path caveat (verified empirically here, NOT in the doc):** the doc is **silent on RFC 8693 token exchange**. Our `/as/token` **token-exchange** requests fail with `invalid_scope: "May not request scopes for multiple resources"` across all 4 legs **regardless** of that app option. **For any token-exchange leg, treat single-resource as a hard invariant the multi-resource app setting does NOT lift.**
+- **The rule, once:** a PingOne token is minted for exactly one audience; every scope in that request must be (a) defined on that audience's resource AND (b) granted to the requesting client on it. If a scope must survive multiple hops, it must be *mirrored-provisioned* onto every resource that is an exchange audience along the path. Scope vocabularies are per-resource; they do not cascade.
+- **Before adding/changing any exchange scope, ask:** which single resource is this token's audience, and is every requested scope both defined-on and granted-on that one resource? If not → it WILL 400.
+- **Canonical truth:** [docs/ARCHITECTURE-TRUTHS.md](docs/ARCHITECTURE-TRUTHS.md) T-10. **Do not design any flow (incl. future incremental/ledger up-scoping) that depends on the multi-resource app option applying to token exchange until a test proves it does.**
 
 ### 2026-05-15 — Login/agent buttons redirect to /config; logout returns raw `{"message":"Missing Authentication Token"}`
 

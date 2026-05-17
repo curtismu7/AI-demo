@@ -390,6 +390,21 @@ that resource?* If a scope must travel through multiple hops, it must be
 provisioned (mirrored) onto every resource that is an exchange audience along
 the way. Scope vocabularies are per-resource and do not cascade.
 
+**Authoritative source + the exchange-path nuance (verified 2026-05-17):**
+PingOne docs —
+<https://docs.pingidentity.com/pingone/applications/p1_resource_scopes.html>.
+The doc states multi-custom-resource requests are *configurable* via the
+application option **"Request scopes to access multiple resources"**, and that
+the error for the disabled case is `"May not request scopes for multiple
+custom resources"`. **Critical caveat:** that doc covers *authorization
+requests* and is **silent on RFC 8693 token exchange**. Empirically (this T-10
+plus three §4 incidents 2026-05-15/16) our **token-exchange** requests fail
+with `"May not request scopes for multiple resources"` *regardless of that app
+option* — so for the exchange path, treat single-resource as a hard
+invariant the app setting does **not** lift. Do not design an exchange flow
+that depends on the multi-resource option until/unless a test proves it
+applies to `grant_type=urn:...:token-exchange`.
+
 - Code: `banking_api_server/services/agentMcpTokenService.js` (`exchangeTokenRfc8693`, the `banking:mcp:invoke` append ~line 1015), `banking_api_server/services/oauthService.js` `getMcpExchangerToken` (explicit single-resource scope), `banking_api_server/services/pingoneProvisionService.js` (`mcpScopes` — `banking:mcp:invoke` mirrored onto the MCP-server resource; Two-Exchange resources do the same "for exchange compatibility"), `configStore.js` (`pingone_mcp_token_exchanger_client_scopes` default `banking:mcp:invoke`)
 - Related: T-4 (PingOne performs the exchange), T-5 (every hop validates `aud` independently — this is the scope-side counterpart: every hop's scopes must match that hop's resource), T-9 (the auth-method invariant on the same token requests)
 - Skill: [pingone-api-calls/SKILL.md](../.claude/skills/pingone-api-calls/SKILL.md) (PUT-not-PATCH + this single-resource scope rule)

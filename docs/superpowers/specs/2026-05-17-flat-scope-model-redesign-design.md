@@ -1,13 +1,81 @@
 # Scope Model Redesign (SoT + Hybrid + Per-Server, Phased) — Design
 
-**Date:** 2026-05-17
-**Status:** Approved (pending user spec review)
+**Date:** 2026-05-17 (rev 2 — post tri-expert review)
+**Status:** Revised after AI-security + OAuth + staff-eng review; pending re-review
 **Author:** Curtis Muir (with Claude)
 
-**Supersedes:** `docs/superpowers/specs/2026-05-16-scope-chain-diagram-design.md`
-(the `ai_agent`-removal + scope-chain-diagram spec). That work is now folded in:
-`ai_agent` removal is one sub-case of the flattening; the scope-chain diagram
-is the final part, drawn against the new model.
+**Supersedes:** `docs/superpowers/specs/2026-05-16-scope-chain-diagram-design.md`.
+
+## Rev 2 — Critical fixes from tri-expert review (2026-05-17)
+
+Three independent reviews (AI-security, OAuth/RFC, staff-eng) against live
+code returned **No / With-major-fixes**. Disqualifying findings, now fixed in
+this revision:
+
+- **SEC-C1 / OAuth-I2 — agent identity must NOT fold into a scope.** The human
+  customer app *is* granted MCP-invoke (`pingoneProvisionService.js:1402`), so
+  keying `clientType==='ai_agent'` off `banking:mcp:invoke` would mis-type
+  **every customer as the agent** and expose the agent-only PII route
+  `GET /api/users/query/by-email/:email` (`routes/users.js:27`,
+  `requireAIAgent` `auth.js:957`) — an IDOR-class disclosure. **Fix:** agent
+  identity is derived from the **RFC 8693 `act` claim** (`auth.js:658` already
+  computes `isDelegated: !!decoded.act`), never from a scope. `banking:mcp:
+  invoke` is *only* invocation authorization, not identity. (§Part A rewritten;
+  P4 redesign target named explicitly.)
+- **OAuth-C1 — P6 ledger reworked to per-(sub, resource).** Basis verified
+  against the PingOne doc *and* our §4 history (the reviewer cited only code +
+  RFC; user challenged this — confirmed below):
+  - PingOne doc (https://docs.pingidentity.com/pingone/applications/p1_resource_scopes.html):
+    multi-custom-resource requests are **configurable** via the app setting
+    *"Request scopes to access multiple resources"* — the rule is **not
+    absolute**. The doc is **silent on RFC 8693 token exchange**.
+  - REGRESSION_PLAN §4 T-10 (3 documented instances, lines 525-551): our
+    **token-exchange** requests spanning resources fail
+    `400 invalid_scope: "May not request scopes for multiple resources"`
+    *repeatedly*, in our actual environment, regardless of that app setting.
+    Empirically the multi-resource setting does **not** rescue the exchange
+    path.
+  - **Therefore:** the ledger is keyed by `(sub, resource/audience)`; up-scoping
+    emits **one RFC 8693 exchange per resource** with a non-empty delta. This
+    is justified by the §4 empirical evidence (not an overstated absolute
+    rule), and the spec explicitly records that PingOne's multi-resource app
+    option does not lift the constraint for token exchange. If a future test
+    proves the setting *does* apply to exchange, the per-resource split can be
+    revisited — but the demo must not depend on undocumented behavior.
+- **STAFF-C1 — P1 split; behavioral gates, not string-diff.** `config/scopes
+  .js` does not hold 23 scopes; the real consumers are
+  `buildAllowedScopesByAudience` (6 per-audience allowlists) and ~12 mirrored
+  provisioner grant lists. A string-diff gate cannot catch a resource silently
+  losing a mirrored scope. **Fix:** P1 → P1a–P1d, each with a *behavioral*
+  gate (fresh-bootstrap resource/scope/grant graph identical against a recorded
+  PingOne fixture). SoT schema gains `audiences[]` + `mirroredOnResources[]`
+  (OAuth-I1).
+- **STAFF-C2 — cross-package generator made concrete.** No `scopes.json`,
+  generator, or cross-package drift test exists today. **Fix:** checked-in
+  `scopes.json`, `npm run gen:scopes` wired as `prebuild`/`pretest` in **both**
+  `banking_api_server` and `banking_mcp_server`; TS artifacts import a generated
+  `.ts`; `mcp-olb.openapi.json` generated; drift test is a **root-level**
+  CI script across all 8 services + UI + docs + Python.
+- **STAFF-C3 — honest dependency graph.** True graph:
+  `P1 → {P2,P3,P4} → P5 → {P7,P8,P9}`; only P6 is standalone (still imports
+  SoT). "Ships green alone" column corrected to "ships green given stated deps."
+- **SEC-I3 / OAuth-I3 — `validateScopeAudience` fail-open closed.** Unknown
+  audience currently returns all scopes unfiltered (`configStore.js:1199-1209`)
+  — an RFC 8707 bypass if the P5 owner→audience map misses a key. **Fix:** P5
+  changes that branch to **fail-closed** and asserts every exchange audience is
+  a present key.
+- **SEC-I4 — admin honesty.** `admin:write` post-merge is a destructive-capable
+  catch-all (covers delete/user-manage); the "least-privilege for destructive
+  ops" claim was false. **Fix:** either keep `admin:delete` separately enforced
+  *or* drop the least-privilege claim. (Decision needed — flagged in §Part A.)
+- **SEC-I5 / OAuth-I5 — ledger invalidation set.** Logout/expiry is
+  insufficient; HITL consent denial, step-up re-mint, exchange-mode change, and
+  scope-dropping re-login must each invalidate. (§P6.)
+
+Confirmed accurate by reviewers (kept): the P2-dormant→P3-prune sequencing;
+C2/C3 verified facts; the api_key invariant (OAuth bearer **is** dropped at the
+gateway — `banking_mcp_gateway/src/index.ts:581-588`); SoT-not-vault; no
+runtime sync service.
 
 ## Problem
 
@@ -92,8 +160,9 @@ are **out of scope** — they cannot be mixed with custom scopes anyway.
 | `admin:write` | 2 | Admin (PingOne admin app) | `admin:delete`, `users:read`, `users:manage`, `banking:admin` | admin modify/delete/manage users |
 
 **Deleted entirely:** `banking:two-exchange:intermediate`,
-`banking:two-exchange:final`, `ai_agent`, and the standalone agent-identity
-scope (folded into `banking:mcp:invoke` — see note).
+`banking:two-exchange:final`, `ai_agent`, `banking:ai:agent`,
+`banking:ai:agent:read`, `banking:agent:invoke`. **Agent identity is NOT
+folded into any scope** (see rationale) — it moves to the `act` claim.
 
 **Per-server ownership** (documented in `config/scopes.js` + generated
 `SCOPES.md`; PingAuthorize owns none — it is a policy decision point that
@@ -111,15 +180,31 @@ Rationale for the debated calls (user decisions, 2026-05-17):
 - **Hybrid depth**: 3-part only where a server needs an isolated scope
   (`banking:mortgage:read`, `banking:mcp:invoke`); 2-part for everything
   cross-cutting. Max 3, never 4.
-- **Admin split kept** (`admin:read` / `admin:write`, not one `banking:admin`):
-  least-privilege for destructive ops.
-- **Agent identity folded into `banking:mcp:invoke`**: the delegated agent is
-  exactly "the caller permitted to invoke MCP". This fold is **not safe as a
-  bare rename** — `banking:ai:agent:read` is today the load-bearing delegation
-  trigger for 1-exchange Path B (verified C3). **P4 redesigns Path A/B and
-  `clientType` derivation to key off a stable concept first**; only then (P5)
-  does the literal scope get renamed/removed. The "no separate identity scope"
-  end state is reached *after* P4 proves no authorization decision flips.
+- **Admin honesty (SEC-I4 — DECISION NEEDED).** Merging `admin:delete` +
+  `users:manage` into `admin:write` makes `admin:write` a destructive-capable
+  catch-all (covers user deletion). Live code already gates admin off the
+  `banking:admin` catch-all (`auth.js:218,879`), so the merge matches current
+  behavior — but the earlier "least-privilege for destructive ops"
+  justification was **false**. Two honest options, user to choose: **(a)** keep
+  `admin:delete` as a distinct scope and wire `requireAdmin`/`ROUTE_SCOPE_MAP`
+  to enforce it on `DELETE /api/admin/*` (real least-privilege, 8 scopes); or
+  **(b)** accept `admin:write` as a documented destructive catch-all and drop
+  the least-privilege claim (7 scopes). The spec must not claim (a) while
+  shipping (b).
+- **Agent identity moves to the `act` claim, NOT a scope (SEC-C1 / OAuth-I2).**
+  The delegated agent is identified by the **RFC 8693 `act` / `may_act`
+  claim**, which `auth.js:658` already computes as `isDelegated: !!decoded.act`
+  and `requireAgentDelegation` (`auth.js:966+`) already uses. `banking:mcp:
+  invoke` is **only** invocation *authorization* (a *what*), never identity (a
+  *who*) — conflating them is the SEC-C1 priv-esc bug, because the human
+  customer also carries `banking:mcp:invoke` (`pingoneProvisionService.js:1402`
+  → post-flatten). **P4** repoints `determineClientType` / `requireAIAgent` /
+  `requireEndUser` and `DELEGATION_ONLY_SCOPES`/Path A/B to derive
+  agent-ness from `act`/`may_act` presence (and/or app `client_id`/type),
+  **never** from a shared scope, on *current* scope names — with an explicit
+  test that a normal customer session does **not** satisfy `requireAIAgent` on
+  `GET /api/users/query/by-email/:email`. Only after P4 proves zero decision
+  flips does P5 do the mechanical rename.
 
 ## Delivery model — independently-shippable phases (no big-bang)
 
