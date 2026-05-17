@@ -3169,7 +3169,10 @@ function mermaidFromSteps() {
       continue;
     }
     const arrow = s.type === "response" ? "-->>" : "->>";
-    const label = String(s.label || s.description || "").replace(/\n/g, "<br/>");
+    const label = String(s.label || s.description || "").replace(
+      /\n/g,
+      "<br/>",
+    );
     lines.push(`    ${s.from}${arrow}${s.to}: ${label}`);
   }
   return lines.join("\n");
