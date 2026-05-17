@@ -1,8 +1,13 @@
 # Scope Chain Diagram + `ai_agent` Scope Remediation — Design
 
 **Date:** 2026-05-16 (remediation added 2026-05-17)
-**Status:** Approved
+**Status:** SUPERSEDED by `docs/superpowers/specs/2026-05-17-flat-scope-model-redesign-design.md`
 **Author:** Curtis Muir (with Claude)
+
+> **Superseded 2026-05-17.** The `ai_agent` removal here is now one sub-case of
+> a full flat-scope-model redesign, and the scope-chain diagram is the final
+> part of that spec. See the successor spec for the authoritative plan. This
+> file is retained for the decision-path history.
 
 This spec covers two logically-separate workstreams, delivered as one plan:
 
