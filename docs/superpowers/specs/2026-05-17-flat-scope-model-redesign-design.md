@@ -145,6 +145,36 @@ Resolution: **phase the work so each phase ships green on its own**, the one
 unavoidable cutover is mechanical-only and isolated, and the load-bearing logic
 change is verified *before* the cutover.
 
+## Anti-drift: build-time generation, NOT a sync service
+
+Scopes are used across the whole app (configStore, provisioner, setup script,
+enforcement, token-chain labels, docs, diagrams, monitoring). The instinct is
+"a central service that keeps them in sync." **Rejected as too heavy and
+self-defeating:** a runtime sync service is itself a moving part that can
+drift, fail, or desync — "a service that keeps things in sync" is deferred
+drift with extra steps, plus new infra in a demo.
+
+**The correct weight is build-time generation from the SoT** (industry norm:
+codegen from a schema, not a daemon). Nothing "stays in sync" because nothing
+is duplicated to begin with:
+
+```
+config/scopes.js  ← THE fact (the only place a scope string is written)
+   │  generator (build step, CI-enforced by the drift test)
+   ├─► configStore defaults + buildAllowedScopesByAudience
+   ├─► pingoneProvisionService created-scopes + 12 grant lists
+   ├─► setup script (npm run setup:fresh / pingone:bootstrap path)
+   ├─► generated scopes.json  → consumed by the 3 TS/JSON artifacts
+   ├─► docs/SCOPES.md   (human reference)
+   ├─► token-chain scope labels (BFF tokenEvents)
+   └─► architecture diagrams + monitoring views (P7/P8/P9)
+```
+
+The **CI drift test fails the build** if any of these contains a scope literal
+not sourced from the SoT. Drift becomes *structurally impossible*, not
+*monitored*. This generator is part of P1 and every consumer is wired to it in
+the phase that touches that consumer.
+
 **Definition of done, every phase:** UI/TS builds exit 0; the **full ~20-file
 scope test corpus** passes (`src/__tests__` scope/oauth/provision/auth suites),
 not just targeted runs; `REGRESSION_PLAN.md` §4 entry; phase success criteria
@@ -154,13 +184,15 @@ provisioning).
 
 | Phase | Goal | Ships green alone? |
 |---|---|---|
-| **P1 — SoT, no renames** | Rewrite `config/scopes.js` to define **all 23 current scopes** as authoritative data (`{name, description, owner, parts}`) + helper exports, preserving `PINGONE_OIDC_DEFAULT_SCOPES_SPACE` (M1) and a migrated `ROUTE_SCOPE_MAP`/`USER_TYPE_SCOPES`. Wire `configStore.js` (scope defaults + `buildAllowedScopesByAudience`) and `pingoneProvisionService.js` (created-scopes + 12 grant lists) and `auth.js`/`transactions.js` to **read from it**. Add generated `docs/SCOPES.md` + grep-based CI **drift test** (explicit exclusion list: generated artifacts + named test dirs — I4). **Zero scope-string changes; behavior identical.** | ✅ pure refactor |
+| **P1 — SoT + generator, no renames** | Rewrite `config/scopes.js` to define **all 23 current scopes** as authoritative data (`{name, description, owner, parts}`) + helper exports, preserving `PINGONE_OIDC_DEFAULT_SCOPES_SPACE` (M1) and a migrated `ROUTE_SCOPE_MAP`/`USER_TYPE_SCOPES`. Build the **generator** (build step): emits `scopes.json` + `docs/SCOPES.md` from the SoT. Wire `configStore.js` (scope defaults + `buildAllowedScopesByAudience`), `pingoneProvisionService.js` (created-scopes + 12 grant lists), the **setup script** (`setup:fresh`/`pingone:bootstrap` path), `auth.js`/`transactions.js`, and the **token-chain scope labels** to **read from the SoT/generated artifacts**. Add grep-based CI **drift test** (explicit exclusion list: generated artifacts + named test dirs — I4). **Zero scope-string changes; behavior identical.** | ✅ pure refactor |
 | **P2 — provisioner reconcile (dormant)** | Add a scope-reconcile capability to the provisioner: per resource, PUT app grants to the SoT set **first**, then DELETE resource scopes not in the SoT (respecting PingOne "scope in use" ordering). Ships with reconcile list = current 23 → **deletes nothing** (proven inert). | ✅ no-op until P5 |
 | **P3 — delete verified-dead scopes** | Remove only the never-granted scopes: `ai_agent`, `banking:two-exchange:intermediate`, `banking:two-exchange:final` (define-only, confirmed). Update SoT; reconcile (P2) now actually prunes them on re-provision. No flatten, no Path A/B change. | ✅ dead-code removal |
 | **P4 — Path A/B redesign** | Decouple the 1-exchange delegation trigger from a soon-to-be-renamed scope: redesign `DELEGATION_ONLY_SCOPES` + Path A/B (`agentMcpTokenService.js:934-999`) and `clientType` derivation (`auth.js:31/58/388`, `AI_AGENT_SCOPE`, `configStore ai_agent_scope`) so delegation/identity keys off a stable concept, not the literal `banking:ai:agent:read`. Ships on **current** scope names — pure logic change, fully testable pre-rename. Enumerate every `clientType`/`requireAIAgent`/`requireEndUser` consumer; prove no decision flips (I5). | ✅ logic change, verified |
 | **P5 — mechanical rename + cutover** | Flatten 23→7 in the SoT (Part A) + the **three** TS/JSON artifacts (`BankingToolRegistry.ts`, `toolScopeMap.ts`, `mcp-olb.openapi.json`) via a generated checked-in `scopes.json` + build copy + drift test (C5); reconcile `banking:sensitive:read`→`banking:sensitive`. Fix `oauthAuthorizeResource.js` filter to be `banking:`/`admin:` aware (I2). Specify the explicit SoT-owner→audience-env-var map for `buildAllowedScopesByAudience` (I3). **Offline window**: deploy all services in dependency order → `npm run pingone:bootstrap` (reconcile from P2 makes it truthful) → invalidate session store → smoke test. Purely mechanical because P4 de-risked the logic. | ❌ the one accepted cutover |
 | **P6 — incremental up-scope ledger** | BFF-side per-session granted-scope ledger keyed by `sub`: request only the missing scope delta, union returned scopes back, invalidate on logout/expiry. Cold ledger = full request (correctness independent — enforcement still reads real token claims). Respects HITL/step-up narrowing and the RFC 8707 single-resource rule (delta must not span resources — assert). | ✅ independent optimization |
 | **P7 — scope chain diagram** | Standalone zoomable `/architecture/scopes` from a new `scope-chain.mmd` via `scripts/build-diagrams.sh`, routed in `App.js` (reuse `/architecture/overview` pattern). Teaches token contents (not the allowlist) + the P6 ledger. Drawn against the now-consistent system. | ✅ docs only |
+| **P8 — regenerate all diagrams** | Not just the new scope-chain diagram: every architecture diagram that names a scope (`architecture.mmd`, `i4ai-ref-arch.mmd`, `mcp-security-gateway.mmd`, etc.) regenerated so no rendered PNG shows a legacy scope. Scope labels in diagrams sourced from the generated artifact where feasible; otherwise a P8 check greps rendered `.mmd` sources for legacy scope strings and fails if any remain. | ✅ docs only |
+| **P9 — monitoring refresh** | Every app under **Monitoring** in the side-nav reflects the new scopes (per-service monitoring views, scope displays, any scope filters/labels). Audit each Monitoring sub-view for hardcoded legacy scope strings; route them through the generated artifact or fix inline. | ✅ UI/docs only |
 
 ### The cutover sequence (P5 only — answers "without breaking everything")
 
@@ -209,6 +241,41 @@ P6 carry **no** cutover. P5's window is minimized to:
   (`[McpExchangerToken]` logs); cold ledger still works; HITL-narrowed session
   does not over-grant; delta never spans two resources.
 - **P7:** `/architecture/scopes` loads; every scope string matches the SoT.
+- **P8:** very-thorough grep of every `.mmd` source + rendered diagram asset →
+  **zero** legacy scope strings; all diagrams regenerated.
+- **P9:** every Monitoring side-nav sub-view audited → zero hardcoded legacy
+  scope strings; UI build 0.
+
+### Hard gate — NO legacy scopes (post-P5)
+
+This is a blocking gate, not advisory. After P5 (and re-verified at P8/P9), a
+single very-thorough search across the **entire repo** (all 8 services, UI,
+docs, diagrams, tests-except-the-named-migration-fixtures) must return **zero**
+legacy scope literals: `ai_agent`, `banking:accounts`, `banking:accounts:read`,
+`banking:transactions:read`, `banking:transactions:write`,
+`banking:ai:agent`, `banking:ai:agent:read`, `banking:agent:invoke`,
+`banking:two-exchange:*`, `banking:admin`, `admin:delete`, `users:read`,
+`users:manage`, `banking:sensitive:read`. Any hit fails the phase. The CI
+drift test encodes this list as the denylist.
+
+### ARCHITECTURE-TRUTHS deliverables
+
+`ARCHITECTURE-TRUTHS.md` gains two entries (added in P1 for the api_key
+invariant — it is true today and independent of the scope work; and updated in
+P5 with the scopes pointer once the model is final):
+
+1. **api_key disposition (P1):** "Credential disposition
+   (api_key/dual_token/oauth_bearer) lives in the **MCP Gateway**
+   (`credentialSwap.ts`, `router.ts`). The **MCP server never originates
+   backend credentials**. On the api_key path the user OAuth bearer is
+   **dropped at the gateway**; the mortgage backend authenticates via
+   `X-API-Key` + `X-User-Sub` (Phase 266/267). Moving api_key into the MCP
+   server is a security regression (separation of duties; single egress audit
+   point)."
+2. **Scopes pointer (P5):** a TRUTH line pointing at `config/scopes.js` (SoT)
+   + `docs/SCOPES.md` (generated reference) as the authoritative scope source;
+   "no scope literal exists outside the SoT + generated artifacts (CI drift
+   test enforced)."
 
 ## Out of scope
 
