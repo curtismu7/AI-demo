@@ -745,6 +745,14 @@ class ConfigStore {
       // rejects with invalid_scope: "May not request scopes for multiple resources".
       agent_gateway_cc_scope: ['AGENT_GATEWAY_CC_SCOPE'],
       mcp_gateway_cc_scope:   ['MCP_GATEWAY_CC_SCOPE'],
+      // Exchange #1 (subject→intermediate) of the two-exchange flow. Same
+      // single-resource rule as the two cc_scope entries above: PingOne
+      // rejects an exchange to intermediateAud whose scopes span >1 resource.
+      // The tool scopes (effectiveToolScopes) flow at Exchange #2 to the
+      // final audience; Exchange #1 only needs the scope unique to the
+      // Intermediate resource (banking:two-exchange:intermediate —
+      // pingoneProvisionService.js "Exchange #1 final-token scope").
+      two_exchange_intermediate_scope: ['TWO_EXCHANGE_INTERMEDIATE_SCOPE'],
       pingone_resource_two_exchange_uri: ['PINGONE_RESOURCE_TWO_EXCHANGE_URI', 'MCP_RESOURCE_URI_TWO_EXCHANGE'],
       marketing_customer_login_mode: ['MARKETING_CUSTOMER_LOGIN_MODE'],
       marketing_demo_username_hint: ['MARKETING_DEMO_USERNAME_HINT'],

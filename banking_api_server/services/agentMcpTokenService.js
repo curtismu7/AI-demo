@@ -1659,6 +1659,19 @@ async function _performTwoExchangeDelegation(
   }
 
   // ─ Step 2: Exchange #1 — Subject Token + Agent Actor Token → Agent Exchanged Token ─────
+  // RFC 8707 single-resource rule (T-10): the exchange to intermediateAud must
+  // request scopes that all belong to the Intermediate resource. The tool
+  // scopes (effectiveToolScopes, e.g. banking:read + banking:mcp:invoke) span
+  // multiple resources → PingOne rejects with invalid_scope "May not request
+  // scopes for multiple resources". Exchange #1's job is only to mint the
+  // agent-exchanged token bound to the intermediate audience; the real tool
+  // scopes are (re)requested at Exchange #2 against the final audience. So
+  // request ONLY the scope unique to the Intermediate resource — mirrors the
+  // single-scope pattern already used for the two actor-CC steps
+  // (agent_gateway_cc_scope / mcp_gateway_cc_scope).
+  const intermediateExchangeScope =
+    configStore.getEffective('two_exchange_intermediate_scope') || 'banking:two-exchange:intermediate';
+  const exchange1Scopes = [intermediateExchangeScope];
   tokenEvents.push(buildTokenEvent(
     'two-ex-exchange1-in-progress',
     '2-Exchange #1 — Subject Token → Agent Exchanged Token',
@@ -1666,15 +1679,16 @@ async function _performTwoExchangeDelegation(
     null,
     `Exchange #1 (RFC 8693): exchanger=${aiAgentClientId}, ` +
       `subject=Subject Token (may_act.sub must equal actor_token.aud[0]=${aiAgentClientId}), ` +
-      `audience=${intermediateAud}, scope="${effectiveToolScopes.join(' ')}".`,
+      `audience=${intermediateAud}, scope="${exchange1Scopes.join(' ')}" ` +
+      `(single-resource Intermediate scope; tool scopes flow at Exchange #2).`,
     { rfc: 'RFC 8693', exchangeStep: '1-exchange',
-      exchangeRequest: { exchanger: aiAgentClientId, audience: intermediateAud, scope: effectiveToolScopes.join(' ') } }
+      exchangeRequest: { exchanger: aiAgentClientId, audience: intermediateAud, scope: exchange1Scopes.join(' ') } }
   ));
 
   let agentExchangedToken;
   try {
     agentExchangedToken = await oauthService.performTokenExchangeAs(
-      userToken, agentActorToken, aiAgentClientId, aiAgentClientSecret, intermediateAud, effectiveToolScopes, aiAgentAuthMethod
+      userToken, agentActorToken, aiAgentClientId, aiAgentClientSecret, intermediateAud, exchange1Scopes, aiAgentAuthMethod
     );
     const agentExchangedDecoded = decodeJwtClaims(agentExchangedToken);
     const agentExchangedClaims = agentExchangedDecoded?.claims;
