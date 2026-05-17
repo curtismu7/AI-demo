@@ -1,10 +1,72 @@
-# Scope Chain Diagram — Design
+# Scope Chain Diagram + `ai_agent` Scope Remediation — Design
 
-**Date:** 2026-05-16
+**Date:** 2026-05-16 (remediation added 2026-05-17)
 **Status:** Approved
 **Author:** Curtis Muir (with Claude)
 
-## Problem
+This spec covers two logically-separate workstreams, delivered as one plan:
+
+1. **`ai_agent` scope remediation** (prerequisite) — fix a created-but-never-
+   granted scope so the system is consistent before we draw it.
+2. **Scope chain diagram** — the original standalone scope-narrowing diagram,
+   drawn against the now-consistent system.
+
+---
+
+## Part 1 — `ai_agent` scope remediation (prerequisite)
+
+### Problem
+
+The bare, unprefixed OAuth scope `ai_agent` is **created** on the banking
+resource (`pingoneProvisionService.js:1223`) and is **required** to call the
+`query_user_by_email` MCP tool (`mcpWebSocketClient.js:52`,
+`mcp-olb.openapi.json:120,122`) and the `/api/users/query/by-email/:email`
+REST route (`routes/users.js:27` via `requireAIAgent`, whose `clientType`
+derives from the `ai_agent` scope at `middleware/auth.js:58`). But **no
+application is ever granted `ai_agent`** — all 12 `grantScopesToApplication`
+calls grant prefixed scopes (`banking:ai:agent:read`, `banking:read/write`,
+`banking:mcp:invoke`, `banking:agent:invoke`), never bare `ai_agent`. Net
+effect: no real PingOne-issued token can carry `ai_agent`, so the tool/route
+enforcement is an unreachable dead-end, and the diagram cannot truthfully show
+this scope.
+
+### Decision
+
+The tool is intended for the delegated agent, which **is** granted
+`banking:ai:agent:read`. Delete the dead `ai_agent` scope and consolidate the
+two consumers + `clientType` derivation onto the already-granted, prefixed
+`banking:ai:agent:read`.
+
+### Changes (minimal, scoped)
+
+| File | Change |
+|---|---|
+| `pingoneProvisionService.js:1223` | Remove `{ name: 'ai_agent', ... }` from created scopes |
+| `services/mcpWebSocketClient.js:52` | `query_user_by_email: ['ai_agent']` → `['banking:ai:agent:read']` |
+| `banking_mcp_server/openapi/mcp-olb.openapi.json:120,122` | `["ai_agent"]` → `["banking:ai:agent:read"]` (security + x-required-scopes) |
+| `middleware/auth.js:31,58,~70/96,388` | Derive `clientType==='ai_agent'` from `banking:ai:agent:read` instead of bare `ai_agent`; `requireAIAgent` (:957) logic unchanged |
+| `utils/oauthAuthorizeResource.js:29` | Drop `\|\| s === 'ai_agent'` (redundant — `banking:ai:agent:read` matches `startsWith('banking:')`) |
+| `config/scopes.js:15,39,81,83` | Remove `AI_AGENT_IDENTITY: 'ai_agent'` + uses; fix legacy comment |
+| `services/configStore.js:231,286,1127` | Remove dead `ai_agent_scope` key; drop bare `ai_agent` from grant string + agent-gateway allowlist |
+| `REGRESSION_PLAN.md §4` | Bug Fix Log entry per regression-guard template |
+
+### Verification
+
+- Targeted tests pass: `npx jest auth users query_user_by_email` (nearest
+  existing suites).
+- `cd banking_mcp_server && npm run build` exits 0.
+- Very-thorough re-search: zero bare `ai_agent` *scope* references remain
+  (unrelated `AI_AGENT` app-type / `loginType` strings are out of scope).
+- A token with `banking:ai:agent:read` still yields `clientType==='ai_agent'`
+  and reaches `query_user_by_email` + the by-email route.
+- `REGRESSION_PLAN.md` §0–1 read first; "what I will not break" stated before
+  touching `middleware/auth.js` and provisioning.
+
+---
+
+## Part 2 — Scope chain diagram
+
+### Problem
 
 The Architecture section has a System Architecture diagram and a Token Exchange
 Flow sequence diagram. The sequence diagram mentions scopes inline at various
@@ -31,7 +93,7 @@ All scope strings below were extracted from code/config, not approximated.
 |---|---|---|---|---|
 | Login | User subject token | banking-api | `banking:read banking:write` (subset of login grant) | `configStore.js:231` |
 | RFC 8693 exchange | MCP token | `PINGONE_RESOURCE_MCP_SERVER_URI` | `banking:read banking:write banking:mcp:invoke` (default `mcp_token_exchange_scopes`) | `configStore.js:288`; allowlisted at `configStore.js:1141-1145` |
-| Tool gate | validated at MCP server | — | per-tool `requiredScopes` (e.g. `banking:read`; `banking:write`; `banking:read banking:sensitive:read`) | `BankingToolRegistry.ts:28,65,103,171` |
+| Tool gate | validated at MCP server | — | per-tool `requiredScopes` (e.g. `banking:read`; `banking:write`; `banking:read banking:sensitive:read`; `query_user_by_email` → `banking:ai:agent:read` post-Part-1) | `BankingToolRegistry.ts:28,65,103,171`; `mcpWebSocketClient.js:52` |
 
 ### Agent path — 2-exchange delegation
 
@@ -50,13 +112,13 @@ All scope strings below were extracted from code/config, not approximated.
 > carries; the diagram teaches token contents, with the allowlist mentioned
 > only as the gate that validates each request.
 >
-> **`ai_agent` (bare, unprefixed) is excluded.** It appears in the login grant
-> string (`configStore.js:231`) and the agent-gateway allowlist
-> (`configStore.js:1127`) and is configurable via `ai_agent_scope`
-> (`configStore.js:286`), but it is never requested or enforced by
-> `agentMcpTokenService.js`. It is treated as a legacy alias / unused scope and
-> is NOT taught in the diagram (decision 2026-05-17). Flagged as tech debt to
-> remove separately — out of scope for this diagram.
+> **`ai_agent` (bare, unprefixed) is removed, not hidden.** Part 1 of this
+> spec deletes the dead `ai_agent` scope and consolidates its only enforcement
+> consumers (`query_user_by_email`, the by-email route, `clientType`
+> derivation) onto the already-granted `banking:ai:agent:read`. The diagram is
+> drawn against that consistent end state — `ai_agent` appears nowhere, and the
+> `query_user_by_email` gate shows `banking:ai:agent:read`. The scope tables
+> above already reflect the post-Part-1 system.
 
 ### Key teaching point
 
