@@ -144,20 +144,47 @@ keeping the common capabilities flat.
   (this is the real constraint the T-10 marker scopes were working around).
   Reference: https://docs.pingidentity.com/pingone/applications/p1_resource_scopes.html
 
-## Part A — The hybrid scope set (7 scopes) + per-server ownership
+## Part A — The scope set (9 active + 1 reserved) + per-server ownership
 
-`p1:read:user` / `p1:update:user` are PingOne-API scopes (Worker app only) and
-are **out of scope** — they cannot be mixed with custom scopes anyway.
+Model (user decision 2026-05-17): **per-operation least-privilege**, not a
+generic `read/write/delete`. Money-movement operations are *separate scopes*
+(a deposit-only token must not be able to transfer money out). `read` covers
+all reads; `sensitive` is an orthogonal data-tier; MCP is a *capability*
+scope (not CRUD); `admin` keeps read/write/delete split. `p1:read:user` /
+`p1:update:user` are PingOne-API scopes (Worker app only) and are **out of
+scope** — cannot be mixed with custom scopes anyway.
 
-| Scope | Parts | Owning server / resource | Replaces (merged/deleted) | Meaning |
+| Scope | Parts | Owning resource | Replaces (merged/deleted) | Meaning |
 |---|---|---|---|---|
-| `banking:read` | 2 | Banking API (BFF data) | `banking:accounts:read`, `banking:transactions:read`, `banking:accounts` | read banking data |
-| `banking:write` | 2 | Banking API (BFF data) | `banking:transactions:write` | mutate banking data |
-| `banking:sensitive` | 2 | Banking API (BFF data) | `banking:sensitive:read` | full PAN / routing numbers |
-| `banking:mortgage:read` | 3 | **Mortgage server (:8082, not in PingOne)** | (kept, 3-part for server isolation) | read mortgage data (Path A api-key swap) |
-| `banking:mcp:invoke` | 3 | **MCP gateway + MCP server** | `banking:ai:agent`, `banking:ai:agent:read`, `ai_agent`, `banking:agent:invoke` | invoke MCP tools via gateway |
-| `admin:read` | 2 | Admin (PingOne admin app) | (kept) | admin list/view/audit/status |
-| `admin:write` | 2 | Admin (PingOne admin app) | `admin:delete`, `users:read`, `users:manage`, `banking:admin` | admin modify/delete/manage users |
+| `banking:read` | 2 | Banking API | `banking:accounts:read`, `banking:transactions:read`, `banking:accounts` | all banking reads |
+| `banking:transfer` | 2 | Banking API | (from `banking:write`) | `create_transfer` only (money out) |
+| `banking:deposit` | 2 | Banking API | (from `banking:write`) | `create_deposit` only (money in) |
+| `banking:withdraw` | 2 | Banking API | (from `banking:write`) | `create_withdrawal` only (money out) |
+| `banking:sensitive` | 2 | Banking API | `banking:sensitive:read` | full PAN / routing (data-sensitivity tier, orthogonal to verbs) |
+| `banking:mortgage:read` | 3 | Mortgage server (:8082, not in PingOne) | (kept) | read mortgage data (Path A api-key swap) |
+| `banking:mcp:invoke` | 3 | MCP gateway + MCP server | `banking:ai:agent`, `banking:ai:agent:read`, `ai_agent`, `banking:agent:invoke` | **capability** — may invoke MCP tools (NOT a CRUD verb) |
+| `admin:read` | 2 | Admin app | `users:read` | admin list/view/audit/status |
+| `admin:write` | 2 | Admin app | `users:manage`, `banking:admin` (non-destructive) | admin modify/manage (NOT delete) |
+| `admin:delete` | 2 | Admin app | (kept, now enforced) | destructive admin (delete user/resource) |
+| `banking:delete` | 2 | Banking API | — | **RESERVED — SoT-only.** `status:'reserved'`: NOT created in PingOne, NOT granted, NOT enforced, **excluded from the drift denylist as intentionally-unprovisioned**. `SCOPES.md` lists it "reserved (not yet implemented)". Added only when a real banking-delete operation exists — so no dead scope ships. |
+
+**9 active scopes + 1 reserved.** Key model decisions (user, 2026-05-17):
+- **Per-operation money scopes** (`banking:transfer` / `:deposit` /
+  `:withdraw`) replace the single `banking:write` — stronger least-privilege;
+  the 3 `banking:write` MCP tools (`create_transfer` `:171`,
+  `create_withdrawal` `:219`, `create_deposit` `:267` in
+  `BankingToolRegistry.ts`) each map to exactly one.
+- **`admin:delete` distinct & enforced** (SEC-I4 → option a): `requireAdmin` /
+  `ROUTE_SCOPE_MAP` wired so `DELETE /api/admin/*` + user-delete require
+  `admin:delete` (which `admin:read`/`admin:write` do NOT grant). A deliberate
+  *tightening* vs today's `banking:admin` catch-all (`auth.js:218,879`) — P4
+  verifies a non-`admin:delete` admin token is now refused on delete.
+- **`banking:mcp:invoke` is a capability, not CRUD** — `read/write/delete`
+  deliberately do not apply (tool-level read-vs-write is governed by the
+  tool's own `banking:read`/operation scope, not the gateway).
+- **`banking:sensitive` is a sensitivity tier**, orthogonal to the verb axis —
+  kept as its own scope (folding into `banking:read` would expose PAN to all
+  readers — a security downgrade).
 
 **Deleted entirely:** `banking:two-exchange:intermediate`,
 `banking:two-exchange:final`, `ai_agent`, `banking:ai:agent`,
@@ -170,27 +197,37 @@ folded into any scope** (see rationale) — it moves to the `act` claim.
 
 | Server / resource | In PingOne? | Owns |
 |---|---|---|
-| Banking API (BFF data) | yes (banking resource) | `banking:read`, `banking:write`, `banking:sensitive` |
+| Banking API (BFF data) | yes (banking resource) | `banking:read`, `banking:transfer`, `banking:deposit`, `banking:withdraw`, `banking:sensitive` (+ `banking:delete` reserved, not provisioned) |
 | Mortgage server (:8082) | no | `banking:mortgage:read` |
 | MCP gateway + MCP server | yes (mcp resources) | `banking:mcp:invoke` |
-| Admin (PingOne admin app) | yes | `admin:read`, `admin:write` |
+| Admin (PingOne admin app) | yes | `admin:read`, `admin:write`, `admin:delete` |
 | PingAuthorize | no | none — consumes/evaluates the above |
 
+> **SoT schema (STAFF-C1 / OAuth-I1).** `owner` alone is insufficient — the
+> provisioner mirrors scopes onto multiple resources for exchange
+> compatibility (`banking:mcp:invoke` on MCP-server AND Intermediate AND Final
+> AND Gateway), and `buildAllowedScopesByAudience` needs per-audience
+> membership. Each SoT record is therefore:
+> `{ name, parts, description, owner, audiences:[...], mirroredOnResources:[...], grantedToApps:[...] }`.
+> P2/P5 reconcile preserves `mirroredOnResources` (must NOT prune a mirror —
+> doing so reproduces the §4 T-10 follow-up #2 `"At least one scope must be
+> granted"` failure).
+
 Rationale for the debated calls (user decisions, 2026-05-17):
-- **Hybrid depth**: 3-part only where a server needs an isolated scope
-  (`banking:mortgage:read`, `banking:mcp:invoke`); 2-part for everything
-  cross-cutting. Max 3, never 4.
-- **Admin honesty (SEC-I4 — DECISION NEEDED).** Merging `admin:delete` +
-  `users:manage` into `admin:write` makes `admin:write` a destructive-capable
-  catch-all (covers user deletion). Live code already gates admin off the
-  `banking:admin` catch-all (`auth.js:218,879`), so the merge matches current
-  behavior — but the earlier "least-privilege for destructive ops"
-  justification was **false**. Two honest options, user to choose: **(a)** keep
-  `admin:delete` as a distinct scope and wire `requireAdmin`/`ROUTE_SCOPE_MAP`
-  to enforce it on `DELETE /api/admin/*` (real least-privilege, 8 scopes); or
-  **(b)** accept `admin:write` as a documented destructive catch-all and drop
-  the least-privilege claim (7 scopes). The spec must not claim (a) while
-  shipping (b).
+- **Hybrid depth — naming convenience, NOT the isolation mechanism
+  (OAuth-I4).** `banking:mortgage:read` / `banking:mcp:invoke` keep 3 parts as
+  a *readability* aid only. Server isolation is enforced by **RFC 8707 resource
+  indicators / `aud` + the Authorize gate** (`agentMcpTokenService.js:1830-1832`
+  comment states verbatim that `banking:mcp:invoke` is enforced by the Authorize
+  gate, not scope breadth), exactly as the mortgage api_key path is isolated by
+  the gateway's disposition + audience, not scope depth. The spec must NOT
+  present 3-part depth as conveying routing/isolation — that teaches the wrong
+  OAuth model. Max 3, never 4.
+- **Admin honesty (SEC-I4 — RESOLVED option a).** `admin:delete` stays a
+  **distinct, enforced** scope; P4 wires `requireAdmin`/`ROUTE_SCOPE_MAP` so
+  `DELETE /api/admin/*` + user-delete require `admin:delete` (which
+  `admin:read`/`admin:write` do NOT grant) — a deliberate **tightening** vs
+  today's `banking:admin` catch-all (`auth.js:218,879`), verified in P4.
 - **Agent identity moves to the `act` claim, NOT a scope (SEC-C1 / OAuth-I2).**
   The delegated agent is identified by the **RFC 8693 `act` / `may_act`
   claim**, which `auth.js:658` already computes as `isDelegated: !!decoded.act`
@@ -260,24 +297,36 @@ not sourced from the SoT. Drift becomes *structurally impossible*, not
 *monitored*. This generator is part of P1 and every consumer is wired to it in
 the phase that touches that consumer.
 
-**Definition of done, every phase:** UI/TS builds exit 0; the **full ~20-file
-scope test corpus** passes (`src/__tests__` scope/oauth/provision/auth suites),
-not just targeted runs; `REGRESSION_PLAN.md` §4 entry; phase success criteria
-met; `REGRESSION_PLAN.md` §0–1 read and "what I will not break" stated before
-editing any §1 file (`middleware/auth.js`, `agentMcpTokenService.js`,
-provisioning).
+**Definition of done, every phase:** UI/TS builds exit 0; the relevant scope
+test suites pass — and the spec **budgets test rewrites explicitly** (I-1):
+~62 `src/__tests__` files contain target scope literals; the drift denylist
+excludes a **named, enumerated** migration-fixture allowlist (NOT the whole
+`__tests__` tree), and P3/P4/P5 each carry a "rewrite N scope test files" line
+item; `REGRESSION_PLAN.md` §4 entry; `REGRESSION_PLAN.md` §0–1 read and "what I
+will not break" stated before editing any §1 file.
 
-| Phase | Goal | Ships green alone? |
+### Dependency graph (honest — STAFF-C3)
+
+`P1a → P1b → P1c → P1d → {P2, P3, P4} → P5 → {P6*, P7, P8(+P7), P9}`
+
+Only **P6** is *logically* standalone but still imports the SoT (so wants P1).
+P3/P4 edit the SoT (need P1). P7/P8/P9 are **post-cutover** (before P5 the live
+system legitimately uses old names — a diagram showing them is *correct* until
+P5). The "ships green" column means "given its stated deps merged."
+
+| Phase | Goal | Ships green (given deps) |
 |---|---|---|
-| **P1 — SoT + generator, no renames** | Rewrite `config/scopes.js` to define **all 23 current scopes** as authoritative data (`{name, description, owner, parts}`) + helper exports, preserving `PINGONE_OIDC_DEFAULT_SCOPES_SPACE` (M1) and a migrated `ROUTE_SCOPE_MAP`/`USER_TYPE_SCOPES`. Build the **generator** (build step): emits `scopes.json` + `docs/SCOPES.md` from the SoT. Wire `configStore.js` (scope defaults + `buildAllowedScopesByAudience`), `pingoneProvisionService.js` (created-scopes + 12 grant lists), the **setup script** (`setup:fresh`/`pingone:bootstrap` path), `auth.js`/`transactions.js`, and the **token-chain scope labels** to **read from the SoT/generated artifacts**. Add grep-based CI **drift test** (explicit exclusion list: generated artifacts + named test dirs — I4). **Zero scope-string changes; behavior identical.** | ✅ pure refactor |
-| **P2 — provisioner reconcile (dormant)** | Add a scope-reconcile capability to the provisioner: per resource, PUT app grants to the SoT set **first**, then DELETE resource scopes not in the SoT (respecting PingOne "scope in use" ordering). Ships with reconcile list = current 23 → **deletes nothing** (proven inert). | ✅ no-op until P5 |
-| **P3 — delete verified-dead scopes** | Remove only the never-granted scopes: `ai_agent`, `banking:two-exchange:intermediate`, `banking:two-exchange:final` (define-only, confirmed). Update SoT; reconcile (P2) now actually prunes them on re-provision. No flatten, no Path A/B change. | ✅ dead-code removal |
-| **P4 — Path A/B redesign** | Decouple the 1-exchange delegation trigger from a soon-to-be-renamed scope: redesign `DELEGATION_ONLY_SCOPES` + Path A/B (`agentMcpTokenService.js:934-999`) and `clientType` derivation (`auth.js:31/58/388`, `AI_AGENT_SCOPE`, `configStore ai_agent_scope`) so delegation/identity keys off a stable concept, not the literal `banking:ai:agent:read`. Ships on **current** scope names — pure logic change, fully testable pre-rename. Enumerate every `clientType`/`requireAIAgent`/`requireEndUser` consumer; prove no decision flips (I5). | ✅ logic change, verified |
-| **P5 — mechanical rename + cutover** | Flatten 23→7 in the SoT (Part A) + the **three** TS/JSON artifacts (`BankingToolRegistry.ts`, `toolScopeMap.ts`, `mcp-olb.openapi.json`) via a generated checked-in `scopes.json` + build copy + drift test (C5); reconcile `banking:sensitive:read`→`banking:sensitive`. Fix `oauthAuthorizeResource.js` filter to be `banking:`/`admin:` aware (I2). Specify the explicit SoT-owner→audience-env-var map for `buildAllowedScopesByAudience` (I3). **Offline window**: deploy all services in dependency order → `npm run pingone:bootstrap` (reconcile from P2 makes it truthful) → invalidate session store → smoke test. Purely mechanical because P4 de-risked the logic. | ❌ the one accepted cutover |
-| **P6 — incremental up-scope ledger** | BFF-side per-session granted-scope ledger keyed by `sub`: request only the missing scope delta, union returned scopes back, invalidate on logout/expiry. Cold ledger = full request (correctness independent — enforcement still reads real token claims). Respects HITL/step-up narrowing and the RFC 8707 single-resource rule (delta must not span resources — assert). | ✅ independent optimization |
-| **P7 — scope chain diagram** | Standalone zoomable `/architecture/scopes` from a new `scope-chain.mmd` via `scripts/build-diagrams.sh`, routed in `App.js` (reuse `/architecture/overview` pattern). Teaches token contents (not the allowlist) + the P6 ledger. Drawn against the now-consistent system. | ✅ docs only |
-| **P8 — regenerate all diagrams** | Not just the new scope-chain diagram: every architecture diagram that names a scope (`architecture.mmd`, `i4ai-ref-arch.mmd`, `mcp-security-gateway.mmd`, etc.) regenerated so no rendered PNG shows a legacy scope. Scope labels in diagrams sourced from the generated artifact where feasible; otherwise a P8 check greps rendered `.mmd` sources for legacy scope strings and fails if any remain. | ✅ docs only |
-| **P9 — monitoring refresh** | Every app under **Monitoring** in the side-nav reflects the new scopes (per-service monitoring views, scope displays, any scope filters/labels). Audit each Monitoring sub-view for hardcoded legacy scope strings; route them through the generated artifact or fix inline. | ✅ UI/docs only |
+| **P1a — SoT data + generator + drift test** | Rewrite `config/scopes.js` as authoritative data: each scope `{ name, parts, description, owner, audiences:[], mirroredOnResources:[], grantedToApps:[] }` for **all current scopes**, preserve `PINGONE_OIDC_DEFAULT_SCOPES_SPACE` (M1) + migrate `ROUTE_SCOPE_MAP`/`USER_TYPE_SCOPES`. Build `gen:scopes` → checked-in `scopes.json` + generated `scopes.ts` + `docs/SCOPES.md`. Wire as `prebuild`/`pretest` in **both** `banking_api_server` and `banking_mcp_server` (STAFF-C2). **Root-level** drift test across all 8 services + UI + docs + Python (named-fixture denylist). Wire only the **mechanical** importers: `auth.js`, `transactions.js`, CIBA. | ✅ data+tooling only |
+| **P1b — wire configStore defaults** | Point `configStore.js` scope-default keys at the SoT. Gate: every default string byte-identical pre/post (recorded snapshot test). | ✅ given P1a |
+| **P1c — wire `buildAllowedScopesByAudience`** | Re-derive the 6 per-audience allowlists from the SoT `audiences[]` field (the I3 owner→audience-env-var map is pulled **forward to here**, not deferred to P5). Gate: `buildAllowedScopesByAudience` output **byte-identical** for every live audience (snapshot test), AND every audience the exchange paths pass is a present key. | ✅ given P1a |
+| **P1d — wire provisioner create+grant** | Provisioner's per-resource create lists + 12 grant lists read from SoT `mirroredOnResources[]`/`grantedToApps[]`. **Behavioral gate (not string-diff):** fresh `pingone:bootstrap` against a recorded PingOne fixture produces a **byte-identical resource/scope/grant graph** pre/post (STAFF-C1 — a string-diff cannot catch a dropped mirror). Also wires the **setup script** + **token-chain labels** *(token-chain touch is §1-protected `agentMcpTokenService.js` — own micro-step, §1 pre-read, Token-Chain smoke gate; I-2)*. | ✅ given P1a |
+| **P2 — provisioner reconcile (dormant)** | Per resource: PUT app grants to the SoT set **first**, then DELETE resource scopes not in the SoT — but **preserve `mirroredOnResources`** (OAuth-I1: pruning a mirror reproduces §4 T-10 follow-up #2). Ships with reconcile = current set → deletes nothing (unit test proves inert + a fixture test proves it *would* prune an orphan and re-PUTs grants first). | ✅ given P1d, no-op until P5 |
+| **P3 — delete verified-dead scopes** | Remove never-granted scopes: `ai_agent`, `banking:two-exchange:intermediate`, `banking:two-exchange:final`. Update SoT; reconcile prunes them. Move the `oauthAuthorizeResource.js` `s === 'ai_agent'` removal **here** (not P5 — SEC-M6: no phase should ship a filter naming a deleted scope). Rewrite the N test files asserting these strings. | ✅ given P1+P2 |
+| **P4 — delegation/identity off the `act` claim** | Repoint `DELEGATION_ONLY_SCOPES` + Path A/B (`agentMcpTokenService.js:~930-1000`) and `determineClientType`/`requireAIAgent`/`requireEndUser` (`auth.js:~31/58/388`, `AI_AGENT_SCOPE`, `configStore ai_agent_scope`) to derive agent-ness from the **`act`/`may_act` claim** (`auth.js:658` `isDelegated`), **never a scope** (SEC-C1/OAuth-I2). On **current** scope names. Spec/plan must contain the *enumerated* list of every `clientType`/`requireAIAgent`/`requireEndUser` consumer + a test asserting a normal customer session does NOT pass `requireAIAgent` on `GET /api/users/query/by-email/:email`, AND `DELEGATION_ONLY_SCOPES` still excludes delegation markers from exchangeable scopes (SEC-M7), AND the `:1015` force-append interaction (OAuth-I2). Also wire `admin:delete` enforcement on `DELETE /api/admin/*` (SEC-I4 tightening — verify a non-`admin:delete` admin token is now refused). | ✅ logic, on current names |
+| **P5 — mechanical rename + cutover** | Flatten to the **9 active scopes** (Part A; `banking:delete` reserved, NOT provisioned) in the SoT + the **three** TS/JSON artifacts via the P1a `scopes.json`/`scopes.ts` (already wired — P5 is now genuinely mechanical). The 3 `banking:write` tools split to `banking:transfer`/`:deposit`/`:withdraw` (one each — `BankingToolRegistry.ts:171/219/267`). `banking:sensitive:read`→`banking:sensitive` **with a grant-set diff proving the post-fold `banking:sensitive` grantee set == pre-fold `banking:sensitive:read` grantee set** (SEC-C2 over-grant check) + a test that `get_sensitive_account_details` stays unreachable for a customer token. Change `validateScopeAudience` unknown-audience branch to **fail-closed** (SEC-I3/OAuth-I3). **Offline window**: deploy in dependency order → `pingone:bootstrap` (P2 reconcile) → PingOne API check **exactly the 9 active scopes, zero legacy, zero `banking:delete`, mirrors intact** → invalidate session store → smoke. | ❌ the one accepted cutover |
+| **P6 — per-(sub, resource) up-scope ledger** | BFF-side ledger keyed by **`(sub, resource/audience)`** (OAuth-C1 — NOT a single union). Up-scoping emits **one RFC 8693 exchange per resource** with a non-empty delta; never assembles a cross-resource set (would reproduce T-10). Cold ledger = full request (correctness independent — enforcement re-reads real token claims at the Authorize gate). **Invalidate on: logout, token expiry, HITL consent denial, step-up re-mint, exchange-mode change, scope-dropping re-login** (SEC-I5/OAuth-I5 — logout/expiry alone is insufficient). Test: HITL-narrowed session must re-exchange, not serve from ledger. | ✅ given P1 (post-P5 for new names) |
+| **P7+P8 — diagrams (merged, post-cutover)** | (Merged per STAFF-I4 — same prereq/tooling/verification.) New zoomable `/architecture/scopes` from `scope-chain.mmd` (teaches token contents + that **delegation lives in the `act` claim, not a scope** — OAuth-M3) **and** regenerate every scope-naming diagram. Grep all `.mmd` + rendered assets → zero legacy scope strings. | ✅ docs only, post-P5 |
+| **P9 — monitoring refresh (post-cutover)** | Every app under **Monitoring** in the side-nav reflects new scopes; audit each sub-view for hardcoded legacy strings; route through the generated artifact or fix inline. Python services included in the denylist tooling (STAFF-M3). | ✅ UI/docs, post-P5 |
 
 ### The cutover sequence (P5 only — answers "without breaking everything")
 
@@ -337,11 +386,18 @@ This is a blocking gate, not advisory. After P5 (and re-verified at P8/P9), a
 single very-thorough search across the **entire repo** (all 8 services, UI,
 docs, diagrams, tests-except-the-named-migration-fixtures) must return **zero**
 legacy scope literals: `ai_agent`, `banking:accounts`, `banking:accounts:read`,
-`banking:transactions:read`, `banking:transactions:write`,
+`banking:transactions:read`, `banking:transactions:write`, `banking:write`,
 `banking:ai:agent`, `banking:ai:agent:read`, `banking:agent:invoke`,
-`banking:two-exchange:*`, `banking:admin`, `admin:delete`, `users:read`,
-`users:manage`, `banking:sensitive:read`. Any hit fails the phase. The CI
-drift test encodes this list as the denylist.
+`banking:two-exchange:intermediate`, `banking:two-exchange:final`,
+`banking:admin`, `users:read`, `users:manage`, `banking:sensitive:read`. Any
+hit fails the phase. The CI drift test encodes this list as the denylist.
+
+**Note — NOT legacy (kept active scopes; must NOT be in the denylist):**
+`banking:read`, `banking:transfer`, `banking:deposit`, `banking:withdraw`,
+`banking:sensitive`, `banking:mortgage:read`, `banking:mcp:invoke`,
+`admin:read`, `admin:write`, `admin:delete`. **`banking:delete`** is reserved
+(SoT-only, `status:'reserved'`) — also NOT in the denylist, but a CI check
+asserts it is never *provisioned/granted/enforced* until promoted.
 
 ### ARCHITECTURE-TRUTHS deliverables
 
