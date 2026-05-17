@@ -1,6 +1,6 @@
 .iad-root { padding: 20px 16px; overflow-x: auto; overflow-y: auto; font-family: var(--font-sans, sans-serif); }
 .iad-title { font-size: 1rem; font-weight: 700; color: var(--brand-navy, #1a365d); margin-bottom: 4px; }
-.iad-subtitle { font-size: 0.78rem; color: #64748b; margin-bottom: 20px; }
+.iad-subtitle { font-size: 0.82rem; color: #475569; margin-bottom: 20px; }
 
 .iad-canvas { display: flex; align-items: center; gap: 0; min-width: 900px; }
 .iad-col { display: flex; flex-direction: column; align-items: center; gap: 12px; }
@@ -9,8 +9,8 @@
 .iad-arrow { display: flex; flex-direction: column; align-items: center; width: 100%; }
 .iad-arrow-line { width: 100%; height: 2px; background: #94a3b8; }
 .iad-arrow-head { font-size: 1rem; color: #94a3b8; line-height: 1; margin-top: -2px; }
-.iad-arrow-label { font-size: 0.63rem; color: #374151; text-align: center; max-width: 110px; line-height: 1.3; margin-top: 4px; }
-.iad-arrow-claim { font-size: 0.6rem; font-family: inherit; color: #6b7280; display: block; }
+.iad-arrow-label { font-size: 0.72rem; font-weight: 600; color: #1e293b; text-align: center; max-width: 130px; line-height: 1.35; margin-top: 4px; }
+.iad-arrow-claim { font-size: 0.66rem; font-weight: 400; font-family: inherit; color: #475569; display: block; }
 .iad-arrow--active .iad-arrow-line { background: #2563eb; }
 .iad-arrow--active .iad-arrow-head { color: #2563eb; }
 
@@ -26,9 +26,9 @@
 .iad-node--llm     { border-color: #f472b6; background: #fdf2f8; }
 .iad-node--mcp     { border-color: #2dd4bf; background: #f0fdfa; }
 .iad-node--api     { border-color: #94a3b8; background: #f8fafc; }
-.iad-node-icon     { font-size: 1.3rem; margin-bottom: 4px; }
-.iad-node-label    { font-size: 0.76rem; font-weight: 700; color: #1e293b; }
-.iad-node-sublabel { font-size: 0.62rem; color: #64748b; margin-top: 2px; }
+.iad-node-icon     { font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+.iad-node-label    { font-size: 0.82rem; font-weight: 700; color: #0f172a; }
+.iad-node-sublabel { font-size: 0.68rem; color: #475569; margin-top: 3px; }
 
 .iad-exchange-banner { margin-top: 20px; padding: 10px 14px; background: #eff6ff; border-radius: 8px; font-size: 0.78rem; border-left: 3px solid #2563eb; }
 

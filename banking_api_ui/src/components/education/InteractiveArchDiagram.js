@@ -1,10 +1,13 @@
 /**
- * InteractiveArchDiagram — 5-node simplified diagram driven by TokenChainContext.
+ * InteractiveArchDiagram — simplified live diagram driven by TokenChainContext.
  *
- * NOTE (Phase 270): This component is intentionally PARTIAL. It renders only 5 of the
- * 14 distinct nodes the system actually runs (User, BFF, PingOne, LLM, MCP) so the
- * inline "live highlighting" stays compact when token-chain events fire. It is NOT
- * the authoritative architecture view.
+ * NOTE: This component is intentionally a SIMPLIFICATION. It renders the core
+ * default path (User, PingOne, BFF/Agent, LLM, MCP Gateway, OLB, Invest,
+ * Mortgage) so the inline "live highlighting" stays compact when token-chain
+ * events fire. It is NOT the authoritative architecture view. The 2026-05-16
+ * §4 fix corrected this from a false pre-gateway 5-node model to the real
+ * BFF -> Gateway -> backends topology; that topology is pinned by
+ * ArchitectureDiagram.completeness.test.js (anti-drift guard).
  *
  * For the COMPLETE system picture, see:
  *   - Mermaid source:  architecture-simple.mmd  (repo root)
@@ -28,9 +31,18 @@ import { useTokenChainOptional } from "../../context/TokenChainContext";
 import RfcLink from "../shared/RfcLink";
 import "./InteractiveArchDiagram.css";
 
-// Real architecture nodes — three parties: Identity, BFF+Agent, and downstream services
+// Real architecture nodes. Corrected 2026-05-16: the prior 5-node model
+// (User, BFF, PingOne, LLM, MCP) implied a false BFF->MCP-direct edge and
+// omitted the MCP Gateway + backend MCP servers. The real default path is
+// User -> BFF/Agent -> MCP Gateway -> backend MCP servers (OLB / Invest)
+// and the api_key-disposition mortgage service, with PingOne issuing the
+// RFC 8693 token and the LLM doing tool selection. The Gateway hop is
+// env-conditional (MCP_GATEWAY_HTTP_URL) but is the documented default in
+// the architecture sources, so we depict it. Topology is pinned by
+// ArchitectureDiagram.completeness.test.js (anti-drift) — do not revert to
+// the pre-gateway 5-node model without updating that guard.
 const NODES = {
-  user: { icon: "USR", label: "User / Browser", sub: "End user", type: "user" },
+  user: { icon: "USR", label: "User / Browser", sub: "SPA, cookie session", type: "user" },
   bff: {
     icon: "BFF",
     label: "BFF / AI Agent",
@@ -46,14 +58,32 @@ const NODES = {
   llm: {
     icon: "LLM",
     label: "LLM Provider",
-    sub: "OpenAI, Anthropic, Groq, Gemini, Helix",
+    sub: "OpenAI / Anthropic / Groq / Gemini / Helix",
     type: "llm",
   },
+  gateway: {
+    icon: "GW",
+    label: "MCP Gateway",
+    sub: "banking_mcp_gateway :3005",
+    type: "agent",
+  },
   mcp: {
-    icon: "MCP",
-    label: "banking_mcp_server",
-    sub: "TypeScript MCP ws://:8080",
+    icon: "OLB",
+    label: "MCP OLB",
+    sub: "banking_mcp_server :8080",
     type: "mcp",
+  },
+  invest: {
+    icon: "INV",
+    label: "MCP Invest",
+    sub: "banking_mcp_invest :8081",
+    type: "mcp",
+  },
+  mortgage: {
+    icon: "MTG",
+    label: "Mortgage Svc",
+    sub: "api_key disposition :8082",
+    type: "api",
   },
 };
 
@@ -68,13 +98,22 @@ const ARROWS = [
     rfc: "RFC_7636",
   },
   {
-    id: "agent_calls",
-    label: "LLM inference + MCP tools",
+    id: "agent_to_gw",
+    label: "tools/list + tools/call",
     claims: {
-      llm: "Tool selection / inference",
-      mcp: "tools/call (WebSocket)",
+      transport: "JSON-RPC (HTTP /mcp or WS)",
+      token: "RFC 8693 exchanged access token",
     },
     rfc: "MCP_SPEC",
+  },
+  {
+    id: "gw_to_backends",
+    label: "Routed per credential disposition",
+    claims: {
+      oauth_bearer: "Bearer (new aud) -> OLB / Invest",
+      api_key: "X-API-Key + X-User-Sub -> Mortgage",
+    },
+    rfc: "RFC_8693",
   },
 ];
 
@@ -145,7 +184,12 @@ export default function InteractiveArchDiagram() {
   if (events.some((ev) => ev.id?.includes("agent") || ev.id?.includes("cc"))) {
     activeNodes.add("idp");
   }
+  // An acquired MCP-scoped token means the request flowed through the
+  // Gateway to a backend MCP server — light the gateway + OLB (default tool
+  // surface). Invest/Mortgage stay un-highlighted unless a future token
+  // event distinguishes them.
   if (events.some((ev) => ev.id?.includes("mcp") && ev.status === "acquired")) {
+    activeNodes.add("gateway");
     activeNodes.add("mcp");
   }
 
@@ -176,23 +220,44 @@ export default function InteractiveArchDiagram() {
 
         <Arrow arrow={ARROWS[0]} isActive={activeNodes.has("bff")} />
 
-        {/* Col 2: BFF (Express :3001) — also hosts the LangGraph AI agent */}
+        {/* Col 2: BFF (Express :3001, hosts LangGraph agent) + LLM */}
         <div className="iad-col">
           <Node
             nodeKey="bff"
             isActive={activeNodes.has("bff")}
             onClick={setSelectedNode}
           />
+          <Node nodeKey="llm" isActive={false} onClick={setSelectedNode} />
         </div>
 
-        <Arrow arrow={ARROWS[1]} isActive={activeNodes.has("mcp")} />
+        <Arrow arrow={ARROWS[1]} isActive={activeNodes.has("gateway")} />
 
-        {/* Col 3: LLM Provider + MCP Server */}
+        {/* Col 3: MCP Gateway — central router (env-conditional default) */}
         <div className="iad-col">
-          <Node nodeKey="llm" isActive={false} onClick={setSelectedNode} />
+          <Node
+            nodeKey="gateway"
+            isActive={activeNodes.has("gateway")}
+            onClick={setSelectedNode}
+          />
+        </div>
+
+        <Arrow arrow={ARROWS[2]} isActive={activeNodes.has("mcp")} />
+
+        {/* Col 4: Backend MCP servers + api_key mortgage service */}
+        <div className="iad-col">
           <Node
             nodeKey="mcp"
             isActive={activeNodes.has("mcp")}
+            onClick={setSelectedNode}
+          />
+          <Node
+            nodeKey="invest"
+            isActive={activeNodes.has("invest")}
+            onClick={setSelectedNode}
+          />
+          <Node
+            nodeKey="mortgage"
+            isActive={activeNodes.has("mortgage")}
             onClick={setSelectedNode}
           />
         </div>
@@ -201,19 +266,23 @@ export default function InteractiveArchDiagram() {
       {hasExchange && (
         <div className="iad-exchange-banner">
           <strong>RFC 8693 Exchange Flow:</strong> BFF sends user token + agent
-          CC token to PingOne, which issues an MCP-scoped token (aud:
-          banking_mcp_server, act: bff-client-id). Subject identity is preserved
-          throughout. <RfcLink rfc="RFC_8693" section="§4" />
+          CC token to PingOne, which issues a narrowed access token. The MCP
+          Gateway routes each tool call per its credential disposition
+          (oauth_bearer / dual_token to OLB &amp; Invest; api_key to the
+          mortgage service). Subject identity is preserved throughout.{" "}
+          <RfcLink rfc="RFC_8693" section="§4" />
         </div>
       )}
 
       <div className="iad-legend">
         {[
-          ["#60a5fa", "User/Browser"],
+          ["#60a5fa", "User / Browser"],
           ["#34d399", "BFF / AI Agent"],
-          ["#f59e0b", "Identity Provider (PingOne)"],
+          ["#f59e0b", "PingOne (OAuth AS)"],
           ["#f472b6", "LLM Provider"],
-          ["#2dd4bf", "MCP Server"],
+          ["#a78bfa", "MCP Gateway"],
+          ["#2dd4bf", "MCP servers (OLB / Invest)"],
+          ["#94a3b8", "Mortgage svc (api_key)"],
         ].map(([color, label]) => (
           <div key={label} className="iad-legend-item">
             <div className="iad-legend-dot" style={{ background: color }} />

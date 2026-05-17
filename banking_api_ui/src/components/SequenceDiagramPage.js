@@ -388,9 +388,9 @@ function StepInfoPanel({
         )}
         <div
           style={{
-            fontSize: "0.7rem",
-            color: "#64748b",
-            lineHeight: 1.4,
+            fontSize: "0.78rem",
+            color: "#334155",
+            lineHeight: 1.5,
             marginBottom: "0.5rem",
           }}
         >
@@ -468,13 +468,14 @@ function StepInfoPanel({
                 <div
                   key={`${activeStep.step}-${change}`}
                   style={{
-                    fontSize: "0.7rem",
-                    color: "#92400e",
-                    fontWeight: 500,
-                    background: "#fef08a",
-                    padding: "0.35rem 0.5rem",
-                    borderRadius: 3,
-                    border: "1px solid #fcd34d",
+                    fontSize: "0.74rem",
+                    color: "#451a03",
+                    fontWeight: 600,
+                    background: "#fef9c3",
+                    padding: "0.4rem 0.55rem",
+                    borderRadius: 4,
+                    border: "1px solid #d97706",
+                    lineHeight: 1.45,
                   }}
                 >
                   • {change}
@@ -3140,9 +3141,228 @@ const SCENARIOS = {
   ],
 };
 
+// ─── Mermaid source ────────────────────────────────────────────────────────
+
+/**
+ * mermaidFromSteps — emit a Mermaid `sequenceDiagram` from this page's own
+ * PARTICIPANTS + ALL_STEPS arrays, so the "Generated from steps" view exactly
+ * matches what the page renders. ALL_STEPS is maintained 1:1 with
+ * i4ai-ref-arch.mmd (see the header comment on ALL_STEPS), so this generated
+ * source should track the canonical .mmd closely; showing both side by side
+ * lets a viewer confirm that.
+ *
+ * Multi-line labels use Mermaid's <br/> convention; we map literal "\n" in the
+ * step label to <br/>. Notes become `Note over A,B:` lines.
+ */
+function mermaidFromSteps() {
+  const lines = ["sequenceDiagram", "    autonumber"];
+  for (const p of PARTICIPANTS) {
+    const keyword = p.id === "U" ? "actor" : "participant";
+    lines.push(`    ${keyword} ${p.id} as ${p.label}`);
+  }
+  lines.push("");
+  for (const s of ALL_STEPS) {
+    if (s.type === "note") {
+      const span = (s.participants || []).join(",");
+      const text = String(s.text || "").replace(/\n/g, "<br/>");
+      lines.push(`    Note over ${span}: ${text}`);
+      continue;
+    }
+    const arrow = s.type === "response" ? "-->>" : "->>";
+    const label = String(s.label || s.description || "").replace(/\n/g, "<br/>");
+    lines.push(`    ${s.from}${arrow}${s.to}: ${label}`);
+  }
+  return lines.join("\n");
+}
+
+/**
+ * MermaidSourceModal — overlay showing the Mermaid source two ways:
+ *  - "Canonical (i4ai-ref-arch.mmd)": the repo-root source that also renders
+ *    token-flow.png; fetched as a static asset from /architecture/ (no admin
+ *    route — keeps /sequence-diagram anon-safe per REGRESSION_PLAN).
+ *  - "Generated from this page's steps": emitted from ALL_STEPS at runtime so
+ *    it always matches what's drawn here.
+ * Each view has a Copy button.
+ */
+function MermaidSourceModal({ onClose }) {
+  const [tab, setTab] = useState("canonical");
+  const [canonical, setCanonical] = useState(null);
+  const [canonicalErr, setCanonicalErr] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/architecture/i4ai-ref-arch.mmd")
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.text();
+      })
+      .then((t) => {
+        if (alive) setCanonical(t);
+      })
+      .catch((e) => {
+        if (alive) setCanonicalErr(e.message);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const generated = mermaidFromSteps();
+  const shown =
+    tab === "canonical" ? (canonical ?? canonicalErr ?? "Loading…") : generated;
+
+  const copy = () => {
+    navigator.clipboard?.writeText(shown).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      },
+      () => {},
+    );
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Mermaid source"
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15,23,42,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        padding: "2rem",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#fff",
+          borderRadius: 10,
+          maxWidth: 900,
+          width: "100%",
+          maxHeight: "85vh",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.35)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+            padding: "0.85rem 1rem",
+            borderBottom: "1px solid #e2e8f0",
+          }}
+        >
+          <strong style={{ fontSize: "0.95rem", color: "#0f172a" }}>
+            Mermaid source
+          </strong>
+          <button
+            type="button"
+            onClick={() => setTab("canonical")}
+            style={mermaidTabStyle(tab === "canonical")}
+          >
+            Canonical (i4ai-ref-arch.mmd)
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("generated")}
+            style={mermaidTabStyle(tab === "generated")}
+          >
+            Generated from this page
+          </button>
+          <div style={{ flex: 1 }} />
+          <button
+            type="button"
+            onClick={copy}
+            style={{
+              padding: "0.35rem 0.7rem",
+              borderRadius: 5,
+              border: "1px solid #cbd5e1",
+              background: "#fff",
+              color: "#0f172a",
+              fontSize: "0.8rem",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              padding: "0.35rem 0.6rem",
+              borderRadius: 5,
+              border: "1px solid #cbd5e1",
+              background: "#fff",
+              color: "#0f172a",
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        <div
+          style={{
+            padding: "0.5rem 0.75rem 0.25rem",
+            fontSize: "0.75rem",
+            color: "#475569",
+            lineHeight: 1.5,
+          }}
+        >
+          {tab === "canonical"
+            ? "The repo-root sequenceDiagram source that also renders token-flow.png. This page is maintained 1:1 with it."
+            : "Emitted live from this page's step data — paste into mermaid.live to render."}
+        </div>
+        <pre
+          style={{
+            margin: 0,
+            overflow: "auto",
+            padding: "0.75rem 1rem 1rem",
+            fontSize: "0.74rem",
+            lineHeight: 1.5,
+            fontFamily: "ui-monospace, Menlo, Consolas, monospace",
+            color: "#0f172a",
+            background: "#f8fafc",
+            whiteSpace: "pre",
+            flex: 1,
+          }}
+        >
+          {shown}
+        </pre>
+      </div>
+    </div>
+  );
+}
+
+function mermaidTabStyle(active) {
+  return {
+    padding: "0.35rem 0.7rem",
+    borderRadius: 5,
+    border: active ? "2px solid #004687" : "1px solid #cbd5e1",
+    background: active ? "#dbeafe" : "#fff",
+    color: active ? "#004687" : "#475569",
+    fontSize: "0.78rem",
+    fontWeight: 600,
+    cursor: "pointer",
+  };
+}
+
 // ─── Main Component ────────────────────────────────────────────────────────
 
 export default function SequenceDiagramPage() {
+  const [showMermaid, setShowMermaid] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState("full-flow");
   const [authScenario, setAuthScenario] = useState("authenticated"); // 'authenticated' or 'not-authenticated'
   const [simulateMode, setSimulateMode] = useState("auto"); // 'auto' or 'step'
@@ -3290,6 +3510,9 @@ export default function SequenceDiagramPage() {
 
   return (
     <div style={{ padding: "1rem", background: "#fff" }}>
+      {showMermaid && (
+        <MermaidSourceModal onClose={() => setShowMermaid(false)} />
+      )}
       {/* Toolbar */}
       <div
         style={{
@@ -3310,6 +3533,22 @@ export default function SequenceDiagramPage() {
         >
           Sequence Diagram — i4ai Token Exchange Flow
         </h2>
+        <button
+          type="button"
+          onClick={() => setShowMermaid(true)}
+          style={{
+            padding: "0.4rem 0.8rem",
+            borderRadius: 6,
+            fontSize: "0.78rem",
+            fontWeight: 600,
+            border: "1px solid #cbd5e1",
+            background: "#fff",
+            color: "#1e293b",
+            cursor: "pointer",
+          }}
+        >
+          View Mermaid source
+        </button>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <label
             htmlFor="scenario-select"
@@ -3848,22 +4087,21 @@ export default function SequenceDiagramPage() {
                     <g key={noteKey}>
                       <rect
                         x={minX}
-                        y={y - 12}
+                        y={y - 13}
                         width={maxX - minX}
-                        height={24}
-                        rx={7}
-                        fill="#fef3c7"
-                        stroke="#fbbf24"
+                        height={26}
+                        rx={6}
+                        fill="#fef9c3"
+                        stroke="#d97706"
                         strokeWidth="1.5"
                       />
                       <text
                         x={(minX + maxX) / 2}
-                        y={y + 3}
+                        y={y + 4}
                         textAnchor="middle"
                         fontSize="11"
-                        fontStyle="italic"
-                        fill="#b45309"
-                        fontWeight="600"
+                        fill="#451a03"
+                        fontWeight="700"
                       >
                         {step.text}
                       </text>

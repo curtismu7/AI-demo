@@ -53,6 +53,27 @@ function loadAllMmdContent() {
   });
 }
 
+// InteractiveArchDiagram.js is the hand-built "Live token highlights" view on
+// /architecture/system. Unlike the .mmd sources it is NOT covered by the
+// SVC_LIST enforcer above, so it silently drifted to a pre-gateway 5-node
+// model (User->BFF->MCP, no gateway, false direct edge) — the 2026-05-16 §4
+// fix. This loads it as TEXT (no React import — importing the component would
+// pull transitive deps heavy enough to break ArchitectureTabsPanel.anon.test.js,
+// per the WHY-A-PURE-FILE-READ-TEST note above) so we can pin its topology.
+const IAD_PATH = path.resolve(
+  __dirname,
+  "..",
+  "education",
+  "InteractiveArchDiagram.js",
+);
+
+function loadInteractiveArchDiagramSource() {
+  if (!fs.existsSync(IAD_PATH)) {
+    throw new Error(`InteractiveArchDiagram.js missing at ${IAD_PATH}`);
+  }
+  return fs.readFileSync(IAD_PATH, "utf8");
+}
+
 describe("Architecture diagram completeness", () => {
   const services = getServiceList();
   const mmds = loadAllMmdContent();
@@ -195,6 +216,43 @@ describe("Architecture diagram completeness", () => {
       const synthetic = 'node["⭐ test label"]';
       const matches = synthetic.match(EMOJI_RE) || [];
       expect(matches.length).toBeGreaterThan(0);
+    });
+  });
+
+  // Live-view topology guard (2026-05-16 §4 fix). The "Live token highlights"
+  // diagram is hand-maintained and unprotected by the SVC_LIST enforcer; it
+  // had reverted to a false pre-gateway 5-node model. These assertions pin
+  // the corrected topology against silent re-drift. We anchor on stable
+  // service identifiers (port + banking_mcp_* names), NOT display labels,
+  // so honest re-wording does not false-fail — only a structural revert does.
+  describe("Live InteractiveArchDiagram topology (anti-drift)", () => {
+    const src = loadInteractiveArchDiagramSource();
+
+    test.each([
+      ["banking_mcp_gateway", "MCP Gateway node"],
+      ["banking_mcp_server", "MCP OLB backend node"],
+      ["banking_mcp_invest", "MCP Invest backend node"],
+    ])('NODES references "%s" (%s)', (svc) => {
+      if (!src.includes(svc)) {
+        throw new Error(
+          `InteractiveArchDiagram.js no longer references "${svc}". ` +
+            `The live /architecture/system view appears to have regressed to a ` +
+            `pre-gateway model. Restore the User->BFF->Gateway->backends topology ` +
+            `(see REGRESSION_PLAN §4 2026-05-16 "live-view model corrected").`,
+        );
+      }
+      expect(src).toContain(svc);
+    });
+
+    test("a 'gateway' node key exists (no false direct BFF->MCP edge)", () => {
+      // The core bug was a missing gateway hop. The corrected model defines a
+      // `gateway:` key in the NODES map. Its absence means the gateway was
+      // removed and the BFF->MCP edge is direct again.
+      expect(src).toMatch(/\bgateway\s*:\s*{/);
+    });
+
+    test("gateway port :3005 is present (identifies the gateway, not OLB)", () => {
+      expect(src).toContain(":3005");
     });
   });
 });
