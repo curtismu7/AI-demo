@@ -42,7 +42,12 @@ import "./InteractiveArchDiagram.css";
 // ArchitectureDiagram.completeness.test.js (anti-drift) — do not revert to
 // the pre-gateway 5-node model without updating that guard.
 const NODES = {
-  user: { icon: "USR", label: "User / Browser", sub: "SPA, cookie session", type: "user" },
+  user: {
+    icon: "USR",
+    label: "User / Browser",
+    sub: "SPA, cookie session",
+    type: "user",
+  },
   bff: {
     icon: "BFF",
     label: "BFF / AI Agent",
