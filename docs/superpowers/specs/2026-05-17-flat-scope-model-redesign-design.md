@@ -1,4 +1,4 @@
-# Scope Model Redesign (SoT + Hybrid + Per-Server) — Design
+# Scope Model Redesign (SoT + Hybrid + Per-Server, Phased) — Design
 
 **Date:** 2026-05-17
 **Status:** Approved (pending user spec review)
@@ -114,111 +114,110 @@ Rationale for the debated calls (user decisions, 2026-05-17):
 - **Admin split kept** (`admin:read` / `admin:write`, not one `banking:admin`):
   least-privilege for destructive ops.
 - **Agent identity folded into `banking:mcp:invoke`**: the delegated agent is
-  exactly "the caller permitted to invoke MCP". `clientType` detection, the MCP
-  gateway gate, and `query_user_by_email` reachability all key off
-  `banking:mcp:invoke` — no separate identity scope needed.
+  exactly "the caller permitted to invoke MCP". This fold is **not safe as a
+  bare rename** — `banking:ai:agent:read` is today the load-bearing delegation
+  trigger for 1-exchange Path B (verified C3). **P4 redesigns Path A/B and
+  `clientType` derivation to key off a stable concept first**; only then (P5)
+  does the literal scope get renamed/removed. The "no separate identity scope"
+  end state is reached *after* P4 proves no authorization decision flips.
 
-## Part B — Remove intermediate marker scopes
+## Delivery model — independently-shippable phases (no big-bang)
 
-`banking:two-exchange:intermediate` / `:final` exist only as Token-Chain-UI
-audience markers; they are never granted. Post-T-10, both RFC 8693 exchanges
-already request a single real scope. New behavior: **both exchanges request
-`banking:mcp:invoke`** (single scope, single MCP resource — satisfies PingOne's
-no-multiple-custom-resources rule with a real scope, not a synthetic marker).
-The Token Chain UI reads the real `aud` from the returned token, not a scope.
+A code review (superpowers, 2026-05-17) found the original single-cutover plan
+mis-stated the starting point on its highest-risk surfaces. Verified facts:
 
-## Part C — Incremental up-scoping + agent scope memory
+- **C2 (verified):** `pingoneProvisionService.createScopes` (`:396-424`) only
+  GET→reuse→POST. **No scope DELETE path exists.** Re-running bootstrap *adds*
+  new scopes alongside old — "PingOne holds only new scopes" is false without
+  new reconcile code.
+- **C3 (verified):** `banking:ai:agent:read` is the **delegation trigger** for
+  1-exchange Path B (`agentMcpTokenService.js:937-999`,
+  `DELEGATION_ONLY_SCOPES` `:946`); granted to the user app (`:1402`) and MCP
+  server app (`:1625`) so real tokens carry it. Folding/deleting it is a
+  load-bearing logic redesign, not a string swap.
+- **C1 (verified):** `configStore.js` and `pingoneProvisionService.js` hardcode
+  scope literals today; neither imports `config/scopes.js`. The SoT is a
+  rewrite + wiring project, not an "extend". Current `config/scopes.js` also
+  defines scopes the target deletes (`banking:admin`, `ai_agent`) and is
+  consumed by `auth.js`/`transactions.js`/CIBA via `ROUTE_SCOPE_MAP` etc.
 
-Textbook incremental authorization. Current state: introspection is cached
-per-session (`agentMcpTokenService.js`), but **no scope-delta memory exists** —
-this is net-new.
+Resolution: **phase the work so each phase ships green on its own**, the one
+unavoidable cutover is mechanical-only and isolated, and the load-bearing logic
+change is verified *before* the cutover.
 
-**Design — per-session granted-scope ledger (BFF-side):**
+**Definition of done, every phase:** UI/TS builds exit 0; the **full ~20-file
+scope test corpus** passes (`src/__tests__` scope/oauth/provision/auth suites),
+not just targeted runs; `REGRESSION_PLAN.md` §4 entry; phase success criteria
+met; `REGRESSION_PLAN.md` §0–1 read and "what I will not break" stated before
+editing any §1 file (`middleware/auth.js`, `agentMcpTokenService.js`,
+provisioning).
 
-- A ledger keyed by session `sub`, held BFF-side (token-custody rule: agent and
-  browser never see tokens or the ledger).
-- On a tool call needing scope set `S`:
-  1. Compute `missing = S \ ledger[sub]`.
-  2. If `missing` is empty → reuse cached token for those scopes (no exchange).
-  3. Else perform RFC 8693 exchange requesting `missing` (the delta), e.g.
-     holding `banking:read`, a `banking:write` tool requests only
-     `banking:write`.
-  4. Union the returned token's scopes back into `ledger[sub]`.
-- **Invalidation:** logout or token expiry — reuse the existing session-token
-  expiry signal; no new lifecycle.
-- **Correctness independent of the ledger:** a cold/empty ledger simply
-  requests the full scope set. The ledger is a pure optimization layer; it can
-  never grant access the token doesn't actually carry (enforcement still reads
-  real token claims downstream).
+| Phase | Goal | Ships green alone? |
+|---|---|---|
+| **P1 — SoT, no renames** | Rewrite `config/scopes.js` to define **all 23 current scopes** as authoritative data (`{name, description, owner, parts}`) + helper exports, preserving `PINGONE_OIDC_DEFAULT_SCOPES_SPACE` (M1) and a migrated `ROUTE_SCOPE_MAP`/`USER_TYPE_SCOPES`. Wire `configStore.js` (scope defaults + `buildAllowedScopesByAudience`) and `pingoneProvisionService.js` (created-scopes + 12 grant lists) and `auth.js`/`transactions.js` to **read from it**. Add generated `docs/SCOPES.md` + grep-based CI **drift test** (explicit exclusion list: generated artifacts + named test dirs — I4). **Zero scope-string changes; behavior identical.** | ✅ pure refactor |
+| **P2 — provisioner reconcile (dormant)** | Add a scope-reconcile capability to the provisioner: per resource, PUT app grants to the SoT set **first**, then DELETE resource scopes not in the SoT (respecting PingOne "scope in use" ordering). Ships with reconcile list = current 23 → **deletes nothing** (proven inert). | ✅ no-op until P5 |
+| **P3 — delete verified-dead scopes** | Remove only the never-granted scopes: `ai_agent`, `banking:two-exchange:intermediate`, `banking:two-exchange:final` (define-only, confirmed). Update SoT; reconcile (P2) now actually prunes them on re-provision. No flatten, no Path A/B change. | ✅ dead-code removal |
+| **P4 — Path A/B redesign** | Decouple the 1-exchange delegation trigger from a soon-to-be-renamed scope: redesign `DELEGATION_ONLY_SCOPES` + Path A/B (`agentMcpTokenService.js:934-999`) and `clientType` derivation (`auth.js:31/58/388`, `AI_AGENT_SCOPE`, `configStore ai_agent_scope`) so delegation/identity keys off a stable concept, not the literal `banking:ai:agent:read`. Ships on **current** scope names — pure logic change, fully testable pre-rename. Enumerate every `clientType`/`requireAIAgent`/`requireEndUser` consumer; prove no decision flips (I5). | ✅ logic change, verified |
+| **P5 — mechanical rename + cutover** | Flatten 23→7 in the SoT (Part A) + the **three** TS/JSON artifacts (`BankingToolRegistry.ts`, `toolScopeMap.ts`, `mcp-olb.openapi.json`) via a generated checked-in `scopes.json` + build copy + drift test (C5); reconcile `banking:sensitive:read`→`banking:sensitive`. Fix `oauthAuthorizeResource.js` filter to be `banking:`/`admin:` aware (I2). Specify the explicit SoT-owner→audience-env-var map for `buildAllowedScopesByAudience` (I3). **Offline window**: deploy all services in dependency order → `npm run pingone:bootstrap` (reconcile from P2 makes it truthful) → invalidate session store → smoke test. Purely mechanical because P4 de-risked the logic. | ❌ the one accepted cutover |
+| **P6 — incremental up-scope ledger** | BFF-side per-session granted-scope ledger keyed by `sub`: request only the missing scope delta, union returned scopes back, invalidate on logout/expiry. Cold ledger = full request (correctness independent — enforcement still reads real token claims). Respects HITL/step-up narrowing and the RFC 8707 single-resource rule (delta must not span resources — assert). | ✅ independent optimization |
+| **P7 — scope chain diagram** | Standalone zoomable `/architecture/scopes` from a new `scope-chain.mmd` via `scripts/build-diagrams.sh`, routed in `App.js` (reuse `/architecture/overview` pattern). Teaches token contents (not the allowlist) + the P6 ledger. Drawn against the now-consistent system. | ✅ docs only |
 
-## Part D — Scope chain diagram
+### The cutover sequence (P5 only — answers "without breaking everything")
 
-After Parts A–C land and the system is consistent, add the standalone,
-zoomable scope-narrowing diagram (server 1-exchange vs agent 2-exchange) at
-`/architecture/scopes`, rendered from a new `scope-chain.mmd` via
-`scripts/build-diagrams.sh`, routed in `banking_api_ui/src/App.js` reusing the
-`/architecture/overview` zoomable-image pattern. The diagram teaches **token
-contents** (not the validation allowlist) and the incremental up-scope ledger.
+A zero-break cutover is impossible (name-based enforcement + old tokens carry
+deleted names → every session re-logs in; accepted for a demo). P1–P4 and
+P6 carry **no** cutover. P5's window is minimized to:
 
-## Migration — hard cutover + re-provision (user decision)
+1. Land P5 code (rename in SoT + 3 TS/JSON artifacts) on a branch; both TS
+   packages build 0; full scope corpus green on new names.
+2. Confirm P2 reconcile is active (not dormant) for the new SoT set.
+3. Brief offline window (no rolling option without the compat alias the user
+   rejected).
+4. Deploy in dependency order: `banking_api_server` → `banking_mcp_server` +
+   `banking_mcp_gateway` (rebuild `dist/`) → `banking_agent_service` →
+   `langchain_agent`. Mortgage service has no scope logic (gateway enforces
+   `banking:mortgage:read` upstream) — order-independent.
+5. `npm run pingone:bootstrap` with P2 reconcile → verify via PingOne API that
+   exactly the target set exists per resource, no legacy scope remains (this is
+   what makes `SCOPES.md` + P7 diagram truthful).
+6. Invalidate the session store (SQLite/Redis/Upstash) — don't wait for natural
+   expiry.
+7. Smoke: admin→`/admin`; customer→`/dashboard`; one chip → Token Chain shows
+   new names + real `aud`; transfer (HITL); `show_mortgage` (api_key path);
+   2-exchange path; logs show no "multiple resources" / no
+   `missing_exchange_scopes` (the C3 regression signature).
+8. Drift test + `SCOPES.md` regen in CI: zero legacy literals outside allowlist.
 
-Demo context: re-bootstrap is one command. Delete old scopes, re-run the
-provisioner (idempotent) so PingOne holds only the new scopes (6 custom scopes
-created in PingOne — `banking:mortgage:read` is owned by the non-PingOne
-mortgage server but is still defined as a banking-resource scope so the token
-can carry it; all 7 are in the SoT). Old tokens become invalid; users re-login.
-No alias/compat layer (no transition cruft). `npm run pingone:bootstrap` after
-deploy.
+## Per-phase verification / success criteria
 
-## Change surface
-
-| File | Change |
-|---|---|
-| **`config/scopes.js` (SoT — do this first)** | Rewrite as the authoritative module: the 7 scopes with `{ name, description, owner }`, helper exports (list, by-owner, validation set). Remove `AI_AGENT_IDENTITY` + old taxonomy. Everything below reads from this; no scope literal copied elsewhere. |
-| `services/configStore.js` | `mcp_token_exchange_scopes`, `agent_mcp_allowed_scopes`, login grant (~:231), `agent_gateway_cc_scope`, `mcp_gateway_cc_scope`, `two_exchange_*_scope`, `pingone_mcp_token_exchanger_client_scopes` → **derive from `config/scopes.js`** (not literal strings); delete dead `ai_agent_scope`; rewrite `buildAllowedScopesByAudience` from the SoT owner map |
-| `pingoneProvisionService.js` | Created-scopes arrays (banking ~1214, mcp-server ~1183, gateway, agent-gw, two-ex) + all 12 `grantScopesToApplication` lists → **read from `config/scopes.js`**; delete 4-part + `ai_agent` |
-| `services/agentMcpTokenService.js` | Exchange scope strings from SoT; **add per-session granted-scope ledger** + delta-request logic; both exchanges request `banking:mcp:invoke` |
-| `banking_mcp_server/src/tools/BankingToolRegistry.ts` | Per-tool `requiredScopes` → new names (TS side: mirror constants from SoT or a shared JSON the build copies; no hand-typed literals) |
-| `services/mcpWebSocketClient.js` | `MCP_TOOL_SCOPES` map → SoT names (`query_user_by_email` → `banking:mcp:invoke`) |
-| `middleware/auth.js` | `clientType==='ai_agent'` derived from presence of `banking:mcp:invoke`; `requireScopes` unaffected (admin role + `ff_oidc_only_authorize` bypasses preserved) |
-| `utils/oauthAuthorizeResource.js` | Drop `\|\| s === 'ai_agent'` (redundant under `startsWith('banking:')`) |
-| `banking_mcp_server/openapi/mcp-olb.openapi.json` | `ai_agent` → `banking:mcp:invoke` (security + x-required-scopes) |
-| **`docs/SCOPES.md` + generator** | Build step generates `SCOPES.md` from `config/scopes.js` (scope, parts, owner, description, who-uses-it). Human reference; regenerated, never hand-edited. |
-| **drift test (CI)** | Grep-based test asserting no scope literal exists outside `config/scopes.js` (+ generated artifacts) — enforces the SoT property |
-| `scripts/build-diagrams.sh`, `scope-chain.mmd`, `banking_api_ui/src/App.js` | Part D diagram + route |
-| `REGRESSION_PLAN.md §4` | Bug Fix Log entry per regression-guard template; note hard-cutover re-provision requirement + new SoT invariant in §1 |
-
-## Verification / success criteria
-
-- `REGRESSION_PLAN.md` §0–1 read first; "what I will not break" stated before
-  editing `middleware/auth.js`, `agentMcpTokenService.js`, provisioning.
-- Targeted tests pass: `npx jest auth users agentMcpTokenService` + MCP suites.
-- `cd banking_mcp_server && npm run build` exits 0; `cd banking_api_ui &&
-  npm run build` exits 0.
-- **SoT enforced:** the drift test passes — no scope literal exists outside
-  `config/scopes.js` and its generated artifacts. Changing a scope in
-  `config/scopes.js` alone propagates to configStore, provisioner, enforcement,
-  and `docs/SCOPES.md`.
-- `docs/SCOPES.md` is generated, lists all 7 scopes with parts + owner +
-  description, and matches `config/scopes.js` exactly.
-- Very-thorough re-search: only the 7 new scopes (+ `p1:*`) appear as literals
-  *only inside `config/scopes.js`*; zero `ai_agent`, `banking:*:read` legacy
-  3-part (`accounts`/`transactions`), `:accounts`, `two-exchange`,
-  `banking:ai:agent*`, `banking:agent:invoke`.
-- Fresh `npm run pingone:bootstrap` provisions exactly the 6 PingOne custom
-  scopes; full agent flow (1-exchange + 2-exchange) works end-to-end; Token
-  Chain shows real `aud` and new scope names.
-- Ledger: second tool call needing an already-held scope performs **no**
-  redundant exchange (observable in `[McpExchangerToken]` logs); cold ledger
-  still works (requests full set).
-- Diagram: `/architecture/scopes` loads; every scope string matches the SoT.
+- **P1:** drift test passes; `SCOPES.md` generated & matches `config/scopes.js`;
+  full scope corpus green; **a diff proves zero scope-string changes** (P1 is a
+  refactor); `buildAllowedScopesByAudience` output byte-identical pre/post.
+- **P2:** unit test proves reconcile with list=current deletes nothing; a
+  fixture test proves it *would* delete an orphan and re-PUTs grants first.
+- **P3:** very-thorough search → zero `ai_agent` / `two-exchange:*`; re-provision
+  prunes them; full corpus green.
+- **P4:** every `clientType`/`requireAIAgent`/`requireEndUser` consumer
+  enumerated with a test asserting no authorization decision flips; 1-exchange
+  Path A and Path B both still resolve on current scope names; `MIN_USER_SCOPES_
+  FOR_MCP` guard still satisfied (I1).
+- **P5:** fresh `npm run pingone:bootstrap` → exactly the target scopes per
+  resource, **no legacy scope remains** (PingOne API check); full agent flow
+  (1+2 exchange) end-to-end; Token Chain shows new names + real `aud`; both TS
+  builds 0; UI build 0.
+- **P6:** second call for an already-held scope → **no** redundant exchange
+  (`[McpExchangerToken]` logs); cold ledger still works; HITL-narrowed session
+  does not over-grant; delta never spans two resources.
+- **P7:** `/architecture/scopes` loads; every scope string matches the SoT.
 
 ## Out of scope
 
-- `p1:read:user` / `p1:update:user` (PingOne-API, Worker-only).
-- Any change to the RFC 8693 exchange topology (still 1-exchange and
-  2-exchange; only scope strings + ledger change).
+- `p1:read:user` / `p1:update:user` (PingOne-API, Worker-only; cannot mix with
+  custom scopes anyway).
+- Any change to RFC 8693 exchange **topology** (still 1- and 2-exchange).
 - Marketing pages.
+- A compat/alias layer (user explicitly rejected; this is why P5 has an offline
+  window rather than zero-downtime).
 
 ## Research appendix — current 23-scope inventory (pre-redesign)
 
