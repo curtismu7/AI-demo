@@ -131,9 +131,12 @@
   border-radius: 8px;
 }
 
-/* No-banking variant: hide the third (banking) track — token rail | agent only */
+/* No-banking variant: hide the third (banking) track. Stretch the grid to
+   the full row width and split the freed space — a wider token rail plus the
+   agent absorbing the rest — so there is no empty gap on the right. */
 .ud-body.ud-body--dashboard-split3.ud-body--dashboard-split3--no-banking {
-  grid-template-columns: minmax(240px, 260px) 1fr;
+  width: 100%;
+  grid-template-columns: minmax(280px, 0.9fr) 2fr;
 }
 
 /* In split3 page-mode the grid fills the flex remainder — height:0 lets flex control it */
