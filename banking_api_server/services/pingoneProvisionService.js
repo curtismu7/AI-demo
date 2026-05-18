@@ -11,6 +11,28 @@ const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');
 const { getTokenEndpoint } = require('./oauthEndpointResolver');
+const scopeTopology = require('./scopeTopology');
+
+// scope-topology.json (v2) is the SINGLE SOURCE OF TRUTH for which scopes
+// exist on each PingOne resource server and which scopes each app is granted.
+// These helpers convert topology scope-name lists into the {name,description}
+// shape createScopes() expects (descriptions come from scopeTopology.scopeMeta
+// so the doc, policy engine, and provisioning never drift apart). Editing the
+// manifest is the ONLY place scope membership changes — bootstrap derives.
+
+/** {name,description}[] for every scope (native + RFC 8693 mirrored) a
+ *  resource server must carry, per the topology. */
+function topologyResourceScopeObjects(resourceName) {
+  return scopeTopology.resourceScopes(resourceName).map((name) => {
+    const meta = scopeTopology.scopeMeta(name);
+    return { name, description: (meta && meta.description) || `Scope: ${name}` };
+  });
+}
+
+/** Scope-name[] an app is granted, per the topology. */
+function topologyAppGrantedScopes(appName) {
+  return scopeTopology.appGrantedScopes(appName);
+}
 
 // Standard demo password for the bankuser / bankadmin accounts. Same value
 // shipped in setup-config.md and the demo's docs — the demo is intentionally
@@ -1233,31 +1255,12 @@ class PingOneProvisionService {
       steps.push({ step: 'mcp-scopes', icon: '🎯', message: 'Creating MCP-specific scopes...' });
       onStep(steps[steps.length - 1]);
       
-      const mcpScopes = [
-        { name: 'admin:read', description: 'Read administrative data and system status' },
-        { name: 'admin:write', description: 'Modify administrative settings and configurations' },
-        { name: 'admin:delete', description: 'Delete users and administrative resources' },
-        { name: 'users:read', description: 'Read user profiles and account information' },
-        { name: 'users:manage', description: 'Manage user accounts and permissions' },
-        { name: 'banking:read', description: 'Read banking data and transaction history' },
-        { name: 'banking:write', description: 'Perform banking operations and transfers' },
-        { name: 'banking:ai:agent:read', description: 'Agent invocation permission' },
-        // Phase 267 — mortgage scope must exist on the MCP-server resource too
-        // so the user's inbound token can carry it; the gateway then re-exchanges
-        // (RFC 8693) it for the backend-scoped token used to call mortgage service.
-        { name: 'banking:mortgage:read', description: 'Read mortgage account data (Path A api-key disposition)' },
-        // banking:mcp:invoke MUST exist on the MCP-server resource. Every MCP
-        // tool call's RFC 8693 exchange targets aud=mcp-server.bxf.com and the
-        // BFF appends banking:mcp:invoke (MCP Gateway policy requirement,
-        // agentMcpTokenService.js ~1015). Without this scope ON THIS resource,
-        // PingOne rejects the single-audience request with invalid_scope
-        // "May not request scopes for multiple resources" (the scope would
-        // otherwise only live on the Gateway/Two-Exchange resources) → 502 on
-        // every chip. Mirrors the same mirroring done for the Two-Exchange
-        // resources (see Steps ~33/34 "mirrored for exchange compatibility").
-        { name: 'banking:mcp:invoke', description: 'Invoke MCP tools via the gateway (mirrored onto MCP-server resource for single-audience RFC 8693 exchange)' }
-      ];
-      
+      // Derived from scope-topology.json "Super Banking MCP Server" — native
+      // scope banking:mcp:invoke plus the RFC 8693 mirrored banking/admin/users
+      // scopes (T-10). Edit the manifest's resources["Super Banking MCP Server"]
+      // to change this; bootstrap never hand-maintains the list.
+      const mcpScopes = topologyResourceScopeObjects('Super Banking MCP Server');
+
       const mcpScopeResults = await this.createScopes(mcpResourceResult.resource.id, mcpScopes);
       pushScopeResultStep(steps, 'mcp-scopes', 'MCP scopes', mcpScopeResults);
       onStep(steps[steps.length - 1]);
@@ -1270,25 +1273,13 @@ class PingOneProvisionService {
       // the p1:* prefix for its own scopes and rejects custom-resource
       // creation with INVALID_VALUE. Worker apps that need PingOne management
       // API access get those rights through ROLE assignments, not scope grants.
-      const scopes = [
-        { name: 'banking:read', description: 'Read access to banking data' },
-        { name: 'banking:write', description: 'Write access to banking operations' },
-        { name: 'banking:transfer', description: 'Execute fund transfers (elevated scope; gateway-enforced for create_transfer)' },
-        { name: 'banking:accounts:read', description: 'Read account information and balances' },
-        { name: 'banking:transactions:read', description: 'Read transaction history and details' },
-        { name: 'banking:mortgage:read', description: 'Read mortgage account data (Phase 267 — Path A api-key disposition)' },
-        { name: 'banking:accounts', description: 'Account access and management' },
-        { name: 'banking:admin', description: 'Administrative access' },
-        { name: 'banking:ai:agent:read', description: 'Agent invocation permission' },
-        { name: 'ai_agent', description: 'AI agent identity' },
-        // Admin-specific scopes
-        { name: 'admin:read', description: 'Read administrative data and system status' },
-        { name: 'admin:write', description: 'Modify administrative settings and configurations' },
-        { name: 'admin:delete', description: 'Delete users and administrative resources' },
-        { name: 'users:read', description: 'Read user profiles and account information' },
-        { name: 'users:manage', description: 'Manage user accounts and permissions' }
-      ];
-      
+      //
+      // Derived from scope-topology.json "Super Banking API" (the enduser
+      // resource server). Edit the manifest to change membership; bootstrap
+      // never hand-maintains this list. (Legacy banking:accounts / banking:admin
+      // are intentionally NOT in the manifest — no tool/app references them.)
+      const scopes = topologyResourceScopeObjects('Super Banking API');
+
       const scopeResults = await this.createScopes(resourceResult.resource.id, scopes);
       pushScopeResultStep(steps, 'scopes', 'Banking scopes', scopeResults);
       onStep(steps[steps.length - 1]);
@@ -1914,12 +1905,29 @@ class PingOneProvisionService {
       onStep(steps[steps.length - 1]);
       provisioned.mcpGwResourceServer = mcpGwResourceResult.resource;
 
-      // Step 26: Create MCP Gateway scope (banking:mcp:invoke)
+      // Step 26: Create MCP Gateway scopes.
+      //
+      // banking:mcp:invoke is the gateway's own scope. The banking:* tool
+      // scopes MUST also be mirrored here: the BFF's RFC 8693 exchange #1
+      // audiences the user token to THIS resource (resolveExchangeAudience →
+      // pingone_resource_mcp_gateway_uri), and the gateway gates inbound
+      // requests on the per-tool required scopes derived from
+      // scope-topology.json (getScopesForGatewayTool: banking:read /
+      // banking:write / banking:transfer / banking:mortgage:read). Per
+      // ARCHITECTURE-TRUTHS T-10, scope vocabularies are per-resource and do
+      // NOT cascade — a scope that travels through an exchange hop must exist
+      // on that hop's audience resource or PingOne silently drops it and the
+      // gateway then denies with insufficient_scope. Mirror exactly the
+      // gateway-surface tool scopes (same pattern already used for the MCP
+      // Server and Two-Exchange resources).
       steps.push({ step: 'mcp-gw-scopes', icon: '🎯', message: 'Creating MCP Gateway scopes...' });
       onStep(steps[steps.length - 1]);
-      const mcpGwScopes = [
-        { name: 'banking:mcp:invoke', description: 'Invoke MCP tools via the gateway' }
-      ];
+      // Derived from scope-topology.json "Super Banking MCP Gateway": native
+      // banking:mcp:invoke + the RFC 8693 mirroredScopes (banking:read /
+      // banking:write / banking:transfer / banking:mortgage:read). The mirror
+      // is mandatory — see the manifest's servers.banking_mcp_gateway note and
+      // ARCHITECTURE-TRUTHS T-10. Edit the manifest, not this list.
+      const mcpGwScopes = topologyResourceScopeObjects('Super Banking MCP Gateway');
       const mcpGwScopeResults = await this.createScopes(mcpGwResourceResult.resource.id, mcpGwScopes);
       pushScopeResultStep(steps, 'mcp-gw-scopes', 'MCP Gateway scopes', mcpGwScopeResults);
       onStep(steps[steps.length - 1]);
@@ -2054,9 +2062,11 @@ class PingOneProvisionService {
       // and POSTing it to a CUSTOM resource fails with INVALID_DATA, leaving the
       // resource scope-less). Any custom name satisfies the "at least one scope
       // per resource" requirement; we pick a name that reads in the Token Chain UI.
-      const agentGwScopeResults = await this.createScopes(agentGwResourceResult.resource.id, [
-        { name: 'banking:agent:invoke', description: 'AI Agent invocation scope (Two-Exchange Step 1 audience marker)' },
-      ]);
+      // Derived from scope-topology.json "Super Banking Agent Gateway".
+      const agentGwScopeResults = await this.createScopes(
+        agentGwResourceResult.resource.id,
+        topologyResourceScopeObjects('Super Banking Agent Gateway'),
+      );
       pushScopeResultStep(steps, 'agent-gw-scopes', 'Agent Gateway scopes', agentGwScopeResults);
       onStep(steps[steps.length - 1]);
 
@@ -2140,15 +2150,22 @@ class PingOneProvisionService {
       steps.push({ step: 'mcp-exchanger-grants', icon: '🔑', message: 'Granting scopes to MCP Exchanger application (MCP Gateway + MCP Server)...' });
       onStep(steps[steps.length - 1]);
       try {
+        // The MCP Exchanger mints the BFF RFC 8693 exchange #1 token, so it
+        // must be granted EVERY scope a gateway-surface tool can require on
+        // the gateway resource — otherwise PingOne silently drops the
+        // unrequestable scope from the exchanged token and the gateway denies
+        // with insufficient_scope. That set == the gateway resource's full
+        // topology scope list (native + RFC 8693 mirrored). Same reasoning
+        // for the MCP-server resource. Derived from scope-topology.json.
         const mcpExGwGrant = await this.grantScopesToApplication(
           mcpExchangerResult.application.id,
           mcpGwResourceResult.resource.id,
-          ['banking:read', 'banking:write', 'banking:mcp:invoke'],
+          scopeTopology.resourceScopes('Super Banking MCP Gateway'),
         );
         const mcpExServerGrant = await this.grantScopesToApplication(
           mcpExchangerResult.application.id,
           mcpResourceResult.resource.id,
-          ['banking:ai:agent:read', 'banking:mortgage:read'],
+          scopeTopology.resourceScopes('Super Banking MCP Server'),
         );
         pushGrantResultStep(steps, 'mcp-exchanger-grants', 'MCP Exchanger scope grants', [mcpExGwGrant, mcpExServerGrant]);
       } catch (e) {

@@ -75,7 +75,12 @@ describe('MCP_TOOL_SCOPES derives from manifest', () => {
   });
 });
 
-describe('pingoneProvisionService scope arrays match manifest', () => {
+describe('pingoneProvisionService derives resource scopes from the manifest', () => {
+  // v2 SSOT refactor: pingoneProvisionService no longer hand-maintains
+  // scope arrays — it calls topologyResourceScopeObjects(resourceName) which
+  // derives {name,description}[] from scope-topology.json (native +
+  // RFC 8693 mirrored). These guards assert the *derivation* invariant
+  // (which cannot drift) instead of scraping hardcoded source literals.
   const fs = require('fs');
   const path = require('path');
   const src = fs.readFileSync(
@@ -84,8 +89,22 @@ describe('pingoneProvisionService scope arrays match manifest', () => {
   );
   const topo = require('../../services/scopeTopology');
 
-  test('main Super Banking API resource declares banking:transfer scope', () => {
-    expect(src).toMatch(/name:\s*'banking:transfer'/);
+  test('provision derives resource scopes from topology (no hardcoded scope array)', () => {
+    expect(src).toMatch(/topologyResourceScopeObjects\('Super Banking API'\)/);
+    expect(src).toMatch(/topologyResourceScopeObjects\('Super Banking MCP Server'\)/);
+    expect(src).toMatch(/topologyResourceScopeObjects\('Super Banking MCP Gateway'\)/);
+  });
+
+  test('enduser resource scope set (derived) includes banking:transfer', () => {
+    expect(topo.resourceScopes('Super Banking API')).toContain('banking:transfer');
+  });
+
+  test('MCP Gateway resource carries the RFC 8693 mirrored banking scopes (T-10)', () => {
+    const gw = topo.resourceScopes('Super Banking MCP Gateway');
+    for (const s of ['banking:read', 'banking:write', 'banking:transfer', 'banking:mortgage:read']) {
+      expect(gw).toContain(s);
+    }
+    expect(topo.resourceMirroredScopes('Super Banking MCP Gateway')).toContain('banking:read');
   });
 
   test('User App grant array contains every Super Banking User App manifest scope', () => {
@@ -116,21 +135,25 @@ describe('scopePolicyEngine + scopeAuditService derive from manifest', () => {
       .toEqual(expect.arrayContaining(['banking:transfer']));
   });
 
-  test('every BANKING-FAMILY engine scope derives from the manifest (admin/users are local by design)', () => {
+  test('every engine scope derives from the manifest (v2: admin/users now modelled with category:admin)', () => {
     const engine = require('../../services/scopePolicyEngine');
     const manifestScopes = new Set(Object.keys(topo._manifest().scopes));
     const engineScopes = engine.getAllScopes().map(x => (typeof x === 'string' ? x : x.scope));
-    // Banking-family scopes MUST come from the SSOT. Non-manifest admin/users
-    // scopes (admin:*, users:*, banking:transactions:write) are intentionally
-    // engine-local (NON_MANIFEST_TAXONOMY) — they are exchange-only, not topology.
-    const NON_MANIFEST = new Set(['admin:read','admin:write','admin:delete','users:read','users:manage','banking:transactions:write']);
+    // v2 SSOT: admin:*/users: ARE in the manifest now (category:'admin').
+    // Only banking:transactions:write remains engine-local — no
+    // tool/app/resource references it, so it stays out of the topology.
+    const NON_MANIFEST = new Set(['banking:transactions:write']);
     for (const s of engineScopes) {
       if (NON_MANIFEST.has(s)) continue;
       expect(manifestScopes.has(s)).toBe(true);
     }
-    // And every manifest scope MUST be present in the engine (single-source guarantee).
+    // Every manifest scope MUST be present in the engine (single-source guarantee).
     for (const s of manifestScopes) {
       expect(engineScopes).toContain(s);
+    }
+    // admin/users derive category:'admin' FROM the manifest (not the old overlay).
+    for (const s of ['admin:read', 'admin:delete', 'users:manage']) {
+      expect(topo.scopeMeta(s).category).toBe('admin');
     }
   });
 });

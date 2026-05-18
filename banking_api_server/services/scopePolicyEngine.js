@@ -30,11 +30,12 @@ const SCOPE_OPS_OVERLAY = {
 
 const { writeExchangeEvent } = require('./exchangeAuditStore');
 
-// Non-manifest scopes the policy engine governs but the topology SSOT
-// deliberately excludes: admin/users scopes are exchange-only (not banking
-// topology — see scope-topology.json scope boundary). Their risk/category/ops
-// stay local here, single-sourced for the engine. Transcribed verbatim from
-// the pre-SSOT SCOPE_TAXONOMY so admin privilege/risk policy is preserved.
+// Non-manifest scopes the policy engine governs that the topology SSOT does
+// not model. As of the v2 SSOT refactor, admin:*/users: scopes ARE in the
+// manifest (with category:'admin' + their risk levels), so they derive from
+// it like everything else. Only banking:transactions:write remains
+// engine-local — no tool/app/resource references it, so it is intentionally
+// absent from scope-topology.json.
 const NON_MANIFEST_TAXONOMY = {
   'banking:transactions:write': {
     description: 'Create and modify transactions',
@@ -43,41 +44,17 @@ const NON_MANIFEST_TAXONOMY = {
     category: 'banking',
     requires_user_context: true,
   },
-  'admin:read': {
-    description: 'Read access to administrative data',
-    operations: ['GET /admin/*', 'GET /users/*', 'GET /audit/*'],
-    risk_level: 'medium',
-    category: 'admin',
-    requires_user_context: false,
-  },
-  'admin:write': {
-    description: 'Write access to administrative operations',
-    operations: ['POST /admin/*', 'PUT /users/*', 'DELETE /users/*'],
-    risk_level: 'high',
-    category: 'admin',
-    requires_user_context: false,
-  },
-  'admin:delete': {
-    description: 'Delete operations for administrative tasks',
-    operations: ['DELETE /users/*', 'DELETE /admin/*'],
-    risk_level: 'critical',
-    category: 'admin',
-    requires_user_context: false,
-  },
-  'users:read': {
-    description: 'Read access to user management data',
-    operations: ['GET /users/*'],
-    risk_level: 'medium',
-    category: 'admin',
-    requires_user_context: false,
-  },
-  'users:manage': {
-    description: 'Full user management capabilities',
-    operations: ['POST /users/*', 'PUT /users/*', 'DELETE /users/*'],
-    risk_level: 'high',
-    category: 'admin',
-    requires_user_context: false,
-  },
+};
+
+// Operations + user-context overlay for admin/users scopes. The manifest is
+// authoritative for their identity/risk/category (v2); only the operation
+// list + requires_user_context stay here (not modelled by the topology).
+const ADMIN_OPS_OVERLAY = {
+  'admin:read':   { operations: ['GET /admin/*', 'GET /users/*', 'GET /audit/*'], requires_user_context: false, category: 'admin' },
+  'admin:write':  { operations: ['POST /admin/*', 'PUT /users/*', 'DELETE /users/*'], requires_user_context: false, category: 'admin' },
+  'admin:delete': { operations: ['DELETE /users/*', 'DELETE /admin/*'], requires_user_context: false, category: 'admin' },
+  'users:read':   { operations: ['GET /users/*'], requires_user_context: false, category: 'admin' },
+  'users:manage': { operations: ['POST /users/*', 'PUT /users/*', 'DELETE /users/*'], requires_user_context: false, category: 'admin' },
 };
 
 /**
@@ -92,11 +69,13 @@ const SCOPE_TAXONOMY = {
   ...NON_MANIFEST_TAXONOMY,
   ...Object.keys(scopeTopology._manifest().scopes).reduce((acc, name) => {
     const meta = scopeTopology.scopeMeta(name);
-    const overlay = SCOPE_OPS_OVERLAY[name] || { operations: [], requires_user_context: true };
+    const overlay = SCOPE_OPS_OVERLAY[name] || ADMIN_OPS_OVERLAY[name] || { operations: [], requires_user_context: true };
     acc[name] = {
       description: meta.description,
       risk_level: meta.riskLevel,
-      category: overlay.category || 'banking',
+      // Manifest is authoritative for category (v2 `category` field);
+      // overlay is a fallback for any scope that predates the field.
+      category: meta.category || overlay.category || 'banking',
       operations: overlay.operations,
       requires_user_context: overlay.requires_user_context,
     };

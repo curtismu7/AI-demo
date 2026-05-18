@@ -31,7 +31,22 @@ function render() {
   for (const [name, r] of Object.entries(m.resources)) {
     lines.push(`### ${name}`);
     lines.push('');
-    lines.push(r.scopes.map(s => `\`${s}\``).join(', '));
+    if (r.uri) { lines.push(`Audience: \`${r.uri}\``); lines.push(''); }
+    lines.push(`Native scopes: ${(r.scopes || []).map(s => `\`${s}\``).join(', ') || '—'}`);
+    lines.push('');
+    if (r.mirroredScopes && r.mirroredScopes.length) {
+      lines.push(`Mirrored scopes (RFC 8693 exchange-hop, ARCHITECTURE-TRUTHS T-10): ${r.mirroredScopes.map(s => `\`${s}\``).join(', ')}`);
+      lines.push('');
+    }
+  }
+  if (m.servers && Object.keys(m.servers).length) {
+    lines.push('## Servers');
+    lines.push('');
+    lines.push('| Service | Resource | Validates aud | Gates on tool scopes | Notes |');
+    lines.push('|---|---|---|---|---|');
+    for (const [name, sv] of Object.entries(m.servers)) {
+      lines.push(`| \`${name}\` | ${sv.resource} | \`${sv.validatesAudience || '—'}\` | ${sv.gatesOnToolScopes ? 'yes' : 'no'} | ${sv.description || ''} |`);
+    }
     lines.push('');
   }
   lines.push('## App Grants');
@@ -39,7 +54,10 @@ function render() {
   for (const [name, a] of Object.entries(m.apps)) {
     lines.push(`### ${name}`);
     lines.push('');
-    lines.push(a.grantedScopes.map(s => `\`${s}\``).join(', '));
+    if (a.type) lines.push(`Type: \`${a.type}\`${a.grantTypes ? `  ·  Grants: ${a.grantTypes.map(g => `\`${g}\``).join(', ')}` : ''}`);
+    if (a.type) lines.push('');
+    if (a.isResourceServer) { lines.push(`Is resource server: \`${a.isResourceServer}\``); lines.push(''); }
+    lines.push(`Granted scopes: ${(a.grantedScopes || []).map(s => `\`${s}\``).join(', ') || '— (none; resource-server or worker app)'}`);
     lines.push('');
   }
   lines.push('## Tool → Scope Dependencies');

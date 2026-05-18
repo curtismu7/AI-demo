@@ -123,6 +123,30 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — scope-topology.json is now the complete v2 SSOT; bootstrap derives from it
+
+**Files changed:**
+- `scope-topology.schema.json` — v2: `version` enum [1,2]; optional `resources.*.uri`/`mirroredScopes`, `apps.*.{type,grantTypes,isResourceServer}`, top-level `servers`, `scopes.*.category`; `riskLevel` enum gains `critical`.
+- `scope-topology.json` — rewritten as v2: all 4 Super Banking resources (native + RFC 8693 `mirroredScopes`), all apps with type/grants, `servers` block, every scope tagged `category`. **The MCP Gateway resource now declares the mirrored `banking:read/write/transfer/mortgage:read` (T-10).**
+- `banking_api_server/services/scopeTopology.js` — loader accepts v1+v2; `resourceScopes()` returns native+mirrored union; new accessors (`resourceNativeScopes`, `resourceMirroredScopes`, `resourceUri`, `appEntry`, `serverEntry`, `allResources`, `allApps`).
+- `banking_api_server/services/pingoneProvisionService.js` — resource-scope creation (Super Banking API / MCP Server / MCP Gateway / Agent Gateway) and the MCP-Exchanger→gateway/server grants now **derive from the topology** (`topologyResourceScopeObjects` / `scopeTopology.resourceScopes`) instead of hardcoded arrays.
+- `banking_api_server/services/scopePolicyEngine.js` — derives scope `category` from the manifest (`meta.category`); admin/users scopes moved out of `NON_MANIFEST_TAXONOMY` (only `banking:transactions:write` stays engine-local).
+- `banking_api_server/scripts/generate-scope-doc.js` — renders v2 (uri, mirrored scopes, servers, app type/grants).
+- `banking_api_server/src/__tests__/scopeTopology.regression.test.js` — guards updated: assert provision *derives* from topology + gateway carries the T-10 mirror + admin/users category derives from manifest.
+- `docs/scope-topology.md` — regenerated (`npm run scopes:doc`).
+
+**What was broken:** `scope-topology.json` claimed to be the SSOT but modelled only 2 of ~5 resources, omitted RFC 8693 exchange-mirroring, and bootstrap never read it (hardcoded every scope/grant array). Topology and bootstrap drifted independently — the root cause of the duplicate resource server, the missing gateway scopes, and the mortgage-scope saga. Concretely the MCP Gateway resource carried only `banking:mcp:invoke`, so the BFF RFC 8693 exchange #1 (aud=mcp-gw.bxf.com) could not mint `banking:read` and the gateway denied every tool with `insufficient_scope`.
+
+**What was fixed:** The manifest is now the complete authoritative model (resources, native+mirrored scopes, app grants, servers, scope category). Bootstrap derives resource scopes and the MCP-Exchanger resource grants from it, so a clean re-bootstrap wires the full RFC 8693 mirror in one consistent pass (verified: "MCP Exchanger scope grants: 11 created"; exchanged tokens now carry the correct per-tool scopes; `get_my_accounts`/`get_account_balance` reach the MCP server).
+
+**Verify:**
+- `cd banking_api_server && npx jest scopeTopology.regression scopePolicyEngine scopeAudit` → 83 passing.
+- `cd banking_mcp_gateway && npm run build` → exit 0 (TS consumer unaffected).
+- After re-bootstrap, BFF log shows `RETURNED token.scope` containing the tool's required banking scope for `aud=mcp-gw.bxf.com` (not just `banking:mcp:invoke`).
+- `npm run scopes:doc` produces no diff (doc in sync).
+
+**Do not break:** scope membership per resource/app is now edited **only** in `scope-topology.json`. Never re-introduce hardcoded scope arrays in `pingoneProvisionService.js` — they will drift from the SSOT (the exact failure class this fixes). The MCP Gateway resource MUST keep its `mirroredScopes` (every gateway-surface tool scope) or RFC 8693 exchange #1 silently drops them and the gateway 403s every chip (ARCHITECTURE-TRUTHS T-10). Known follow-ups (NOT fixed here, separate issues surfaced once the exchange worked): (1) the BFF exchange omits `banking:transfer` for `create_transfer` (finalScopes mapping, not topology); (2) `show_mortgage` is not registered as an MCP-server tool ("Unknown tool" — gateway/MCP tool registration, not scope).
+
 ### 2026-05-18 — Bootstrap MCP-app create crash + user-app mortgage scope
 
 **Files changed:**

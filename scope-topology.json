@@ -1,28 +1,112 @@
 {
   "$schema": "./scope-topology.schema.json",
-  "version": 1,
+  "version": 2,
   "scopes": {
-    "banking:read":          { "description": "Read accounts, balances, transactions", "riskLevel": "low",    "resource": "Super Banking API" },
-    "banking:write":         { "description": "Write banking operations (deposit/withdrawal)", "riskLevel": "high", "resource": "Super Banking API" },
-    "banking:transfer":      { "description": "Execute fund transfers", "riskLevel": "high", "resource": "Super Banking API" },
-    "banking:accounts:read": { "description": "Read account information and balances", "riskLevel": "low", "resource": "Super Banking API" },
-    "banking:transactions:read": { "description": "Read transaction history and details", "riskLevel": "low", "resource": "Super Banking API" },
-    "banking:mortgage:read": { "description": "Read mortgage account data (Phase 267 Path A api-key disposition)", "riskLevel": "low", "resource": "Super Banking API" },
-    "banking:ai:agent:read": { "description": "Agent invocation permission", "riskLevel": "medium", "resource": "Super Banking API" },
-    "banking:mcp:invoke":    { "description": "Invoke MCP tools via the gateway (RFC 8693 exchange)", "riskLevel": "medium", "resource": "Super Banking MCP Server" },
-    "ai_agent":              { "description": "AI agent identity", "riskLevel": "medium", "resource": "Super Banking API" }
+    "banking:read":          { "description": "Read accounts, balances, transactions", "riskLevel": "low",    "resource": "Super Banking API", "category": "banking" },
+    "banking:write":         { "description": "Write banking operations (deposit/withdrawal)", "riskLevel": "high", "resource": "Super Banking API", "category": "banking" },
+    "banking:transfer":      { "description": "Execute fund transfers", "riskLevel": "high", "resource": "Super Banking API", "category": "banking" },
+    "banking:accounts:read": { "description": "Read account information and balances", "riskLevel": "low", "resource": "Super Banking API", "category": "banking" },
+    "banking:transactions:read": { "description": "Read transaction history and details", "riskLevel": "low", "resource": "Super Banking API", "category": "banking" },
+    "banking:mortgage:read": { "description": "Read mortgage account data (Phase 267 Path A api-key disposition)", "riskLevel": "low", "resource": "Super Banking API", "category": "banking" },
+    "banking:ai:agent:read": { "description": "Agent invocation permission", "riskLevel": "medium", "resource": "Super Banking API", "category": "banking" },
+    "banking:mcp:invoke":    { "description": "Invoke MCP tools via the gateway (RFC 8693 exchange)", "riskLevel": "medium", "resource": "Super Banking MCP Server", "category": "banking" },
+    "banking:agent:invoke":  { "description": "Invoke the Agent Gateway (Two-Exchange Step 1 audience)", "riskLevel": "medium", "resource": "Super Banking Agent Gateway", "category": "banking" },
+    "ai_agent":              { "description": "AI agent identity", "riskLevel": "medium", "resource": "Super Banking API", "category": "ai" },
+    "admin:read":            { "description": "Read access to administrative data", "riskLevel": "medium", "resource": "Super Banking API", "category": "admin" },
+    "admin:write":           { "description": "Write access to administrative operations", "riskLevel": "high", "resource": "Super Banking API", "category": "admin" },
+    "admin:delete":          { "description": "Delete operations for administrative tasks", "riskLevel": "critical", "resource": "Super Banking API", "category": "admin" },
+    "users:read":            { "description": "Read access to user management data", "riskLevel": "medium", "resource": "Super Banking API", "category": "admin" },
+    "users:manage":          { "description": "Full user management capabilities", "riskLevel": "high", "resource": "Super Banking API", "category": "admin" }
   },
   "resources": {
     "Super Banking API": {
-      "scopes": ["banking:read", "banking:write", "banking:transfer", "banking:accounts:read", "banking:transactions:read", "banking:mortgage:read", "banking:ai:agent:read", "ai_agent"]
+      "uri": "banking_api_enduser",
+      "scopes": ["banking:read", "banking:write", "banking:transfer", "banking:accounts:read", "banking:transactions:read", "banking:mortgage:read", "banking:ai:agent:read", "ai_agent", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
     },
     "Super Banking MCP Server": {
-      "scopes": ["banking:mcp:invoke"]
+      "uri": "mcp-server.bxf.com",
+      "scopes": ["banking:mcp:invoke"],
+      "mirroredScopes": ["banking:read", "banking:write", "banking:mortgage:read", "banking:ai:agent:read", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
+    },
+    "Super Banking MCP Gateway": {
+      "uri": "mcp-gw.bxf.com",
+      "scopes": ["banking:mcp:invoke"],
+      "mirroredScopes": ["banking:read", "banking:write", "banking:transfer", "banking:mortgage:read"]
+    },
+    "Super Banking Agent Gateway": {
+      "uri": "agent-gateway.bxf.com",
+      "scopes": ["banking:agent:invoke"]
     }
   },
   "apps": {
-    "Super Banking User App":  { "grantedScopes": ["banking:ai:agent:read", "banking:read", "banking:write", "banking:transfer", "banking:mortgage:read"] },
-    "Super Banking Admin App": { "grantedScopes": ["banking:read", "banking:write", "banking:transfer", "banking:accounts:read", "banking:transactions:read", "banking:mortgage:read", "banking:ai:agent:read", "ai_agent"] }
+    "Super Banking User App": {
+      "type": "WEB_APP",
+      "grantTypes": ["authorization_code", "refresh_token", "token_exchange"],
+      "grantedScopes": ["banking:ai:agent:read", "banking:read", "banking:write", "banking:transfer", "banking:mortgage:read"]
+    },
+    "Super Banking Admin App": {
+      "type": "WEB_APP",
+      "grantTypes": ["authorization_code", "refresh_token", "token_exchange"],
+      "grantedScopes": ["banking:read", "banking:write", "banking:transfer", "banking:accounts:read", "banking:transactions:read", "banking:mortgage:read", "banking:ai:agent:read", "ai_agent", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
+    },
+    "Super Banking MCP Server": {
+      "type": "WEB_APP",
+      "grantTypes": ["client_credentials"],
+      "isResourceServer": "Super Banking MCP Server",
+      "grantedScopes": []
+    },
+    "Super Banking MCP Gateway": {
+      "type": "WEB_APP",
+      "grantTypes": ["client_credentials", "token_exchange"],
+      "isResourceServer": "Super Banking MCP Gateway",
+      "grantedScopes": []
+    },
+    "Super Banking MCP Exchanger": {
+      "type": "WEB_APP",
+      "grantTypes": ["token_exchange"],
+      "grantedScopes": ["banking:read", "banking:write", "banking:mcp:invoke"]
+    },
+    "Super Banking AI Agent": {
+      "type": "WEB_APP",
+      "grantTypes": ["client_credentials", "token_exchange"],
+      "grantedScopes": ["banking:agent:invoke"]
+    },
+    "Super Banking Agent": {
+      "type": "WORKER",
+      "grantTypes": ["client_credentials"],
+      "grantedScopes": []
+    },
+    "Super Banking Worker": {
+      "type": "WORKER",
+      "grantTypes": ["client_credentials"],
+      "grantedScopes": []
+    }
+  },
+  "servers": {
+    "banking_api_server": {
+      "resource": "Super Banking API",
+      "validatesAudience": "banking_api_enduser",
+      "gatesOnToolScopes": false,
+      "description": "BFF / token custodian. Performs RFC 8693 exchange #1 (user token -> mcp-gw.bxf.com audience)."
+    },
+    "banking_mcp_gateway": {
+      "resource": "Super Banking MCP Gateway",
+      "validatesAudience": "mcp-gw.bxf.com",
+      "gatesOnToolScopes": true,
+      "description": "MCP Gateway. Validates inbound aud === mcp-gw.bxf.com and enforces per-tool requiredScopes (getScopesForGatewayTool) on the inbound bearer BEFORE credential swap. Therefore every gateway-surface tool scope MUST be mirrored onto the Super Banking MCP Gateway resource (ARCHITECTURE-TRUTHS T-10)."
+    },
+    "banking_mcp_server": {
+      "resource": "Super Banking MCP Server",
+      "validatesAudience": "mcp-server.bxf.com",
+      "gatesOnToolScopes": true,
+      "description": "Backend MCP tool server. Receives the gateway re-exchanged token (aud === mcp-server.bxf.com); banking tool scopes are mirrored here for exchange hop #3."
+    },
+    "banking_agent_service": {
+      "resource": "Super Banking Agent Gateway",
+      "validatesAudience": "agent-gateway.bxf.com",
+      "gatesOnToolScopes": false,
+      "description": "Agent Gateway (Two-Exchange Step 1 audience for the AI Agent client-credentials token)."
+    }
   },
   "tools": {
     "get_my_accounts":              { "requiredScopes": ["banking:read"], "surface": "gateway" },
