@@ -373,3 +373,85 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
     expect(deps.callToolLocal).not.toHaveBeenCalled(); // policy denial does NOT fall back to local
   });
 });
+
+// REGRESSION (transfer HTTP-code consistency, 2026-05-18): a transfer that
+// needs human approval must surface as HTTP 428 regardless of WHICH internal
+// path produced the signal. Before this, the local-fallback path and the
+// gateway-result-content path returned HTTP 200 with the hitl signal buried
+// in the tool body, while the simulated-Authorize gate returned 428 — same
+// outcome, three wire shapes. Phase 170: ALL transfers require consent.
+describe('runMcpToolPipeline — HITL/step-up surfaces as 428 on every path (REGRESSION_PLAN §1)', () => {
+  test('local-fallback result with error:hitl_required → kind:block httpStatus:428', async () => {
+    const scopeErr = Object.assign(new Error('At least one scope must be granted'), { httpStatus: 400 });
+    const deps = makeDeps({
+      resolveMcpAccessTokenWithEvents: jest.fn(async () => { throw scopeErr; }),
+      callToolLocal: jest.fn(async () => ({
+        error: 'hitl_required',
+        hitl: { type: 'consent' },
+        message: 'Confirm this transfer on the dashboard.',
+        hitl_threshold_usd: 250,
+      })),
+    });
+    const out = await runMcpToolPipeline(makeCtx({ tool: 'create_transfer', deps }));
+    expect(out.kind).toBe('block');
+    expect(out.httpStatus).toBe(428);
+    expect(out.body.error).toBe('mcp_hitl_required');
+    expect(out.body.hitl).toEqual({ type: 'consent' });
+    expect(out.body.error_description).toMatch(/dashboard/i);
+  });
+
+  test('local-fallback result with error:step_up_required → 428 mcp_step_up_required', async () => {
+    const scopeErr = Object.assign(new Error('scope'), { httpStatus: 400 });
+    const deps = makeDeps({
+      resolveMcpAccessTokenWithEvents: jest.fn(async () => { throw scopeErr; }),
+      callToolLocal: jest.fn(async () => ({ error: 'step_up_required', hitl: { type: 'step_up' } })),
+    });
+    const out = await runMcpToolPipeline(makeCtx({ tool: 'create_transfer', deps }));
+    expect(out.kind).toBe('block');
+    expect(out.httpStatus).toBe(428);
+    expect(out.body.error).toBe('mcp_step_up_required');
+  });
+
+  test('gateway success whose result CONTENT is a hitl_required JSON → 428 (not 200)', async () => {
+    const deps = makeDeps({
+      config: { ...makeDeps().config, useGateway: true, gatewayHttpUrl: 'http://gw' },
+      callToolViaGateway: jest.fn(async () => ({
+        result: {
+          isError: false,
+          content: [{ type: 'text', text: JSON.stringify({ error: 'hitl_required', hitl: { type: 'consent' }, amount: 100, type: 'transfer' }) }],
+        },
+        gwAuditTrail: null,
+      })),
+    });
+    const out = await runMcpToolPipeline(makeCtx({ tool: 'create_transfer', deps }));
+    expect(out.kind).toBe('block');
+    expect(out.httpStatus).toBe(428);
+    expect(out.body.error).toBe('mcp_hitl_required');
+    expect(out.body._hitlFromResultContent).toBe(true);
+  });
+
+  test('NON-HITL local fallback still returns kind:result httpStatus:200 (no false-positive)', async () => {
+    const scopeErr = Object.assign(new Error('scope'), { httpStatus: 400 });
+    const deps = makeDeps({
+      resolveMcpAccessTokenWithEvents: jest.fn(async () => { throw scopeErr; }),
+      callToolLocal: jest.fn(async () => ({ content: [{ text: 'ordinary-ok' }] })),
+    });
+    const out = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(out.kind).toBe('result');
+    expect(out.httpStatus).toBe(200);
+    expect(out.body._localFallback).toBe(true);
+  });
+
+  test('gateway success with ordinary content is NOT misclassified as HITL', async () => {
+    const deps = makeDeps({
+      config: { ...makeDeps().config, useGateway: true, gatewayHttpUrl: 'http://gw' },
+      callToolViaGateway: jest.fn(async () => ({
+        result: { isError: false, content: [{ type: 'text', text: JSON.stringify({ balance: 4250 }) }] },
+        gwAuditTrail: null,
+      })),
+    });
+    const out = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(out.kind).toBe('result');
+    expect(out.httpStatus).toBe(200);
+  });
+});

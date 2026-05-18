@@ -15,6 +15,88 @@
  * the SSE publish — never derive it from `body` (ADR-0004; verbatim mirror of
  * the pre-extraction wire shape, so it must not be "normalized").
  */
+/**
+ * Map a local-handler (callToolLocal) result to the correct pipeline Outcome.
+ *
+ * The local handler signals human-in-the-loop / step-up by RETURNING a result
+ * object with `error: 'hitl_required' | 'step_up_required'` (not by throwing).
+ * Before this, both local-fallback sites wrapped that as
+ * `{ kind:'result', httpStatus:200, body:{ result } }` — so a transfer that
+ * needs approval came back HTTP 200 with the signal buried in the tool text,
+ * while the simulated-Authorize gate for the same logical outcome returns
+ * HTTP 428. Same meaning, two wire shapes. This normalises the local path to
+ * the proper 428 with an actionable message + the consent/step-up kind, so
+ * callers (UI, agent, tests) get one consistent contract regardless of which
+ * internal path produced it (REGRESSION_PLAN §1 — 428 enforcement).
+ *
+ * Non-HITL results (success, or ordinary tool errors) keep the existing
+ * `kind:'result', httpStatus:200` envelope unchanged.
+ */
+function localResultOutcome(result, tokenEvents, extraBodyFields) {
+  const errCode = result && result.error;
+  const isHitl = errCode === 'hitl_required';
+  const isStepUp = errCode === 'step_up_required';
+  if (isHitl || isStepUp) {
+    const hitlType = (result.hitl && result.hitl.type)
+      || (isStepUp ? 'step_up' : 'consent');
+    return {
+      kind: 'block',
+      httpStatus: 428,
+      tokenEvents,
+      body: {
+        error: isStepUp ? 'mcp_step_up_required' : 'mcp_hitl_required',
+        error_description: result.message
+          || (isStepUp
+            ? 'This transaction requires step-up authentication (MFA). Approve it on the dashboard to continue.'
+            : 'This transaction requires human approval. Confirm it on the dashboard to continue.'),
+        hitl: { type: hitlType },
+        ...(typeof result.hitl_threshold_usd !== 'undefined'
+          ? { hitl_threshold_usd: result.hitl_threshold_usd }
+          : {}),
+        authorize_engine: 'local',
+        tokenEvents,
+        ...extraBodyFields,
+      },
+    };
+  }
+  return {
+    kind: 'result',
+    httpStatus: 200,
+    tokenEvents,
+    body: { result, tokenEvents, ...extraBodyFields },
+  };
+}
+
+/**
+ * Detect a HITL / step-up signal embedded in an MCP tool RESULT's content.
+ *
+ * The gateway→backend path can return `isError:false, success:true` while the
+ * tool's `content[0].text` is itself a JSON string like
+ * `{"error":"hitl_required","hitl":{"type":"consent"},"amount":100,...}`.
+ * Phase 170: ALL transfers require consent — so this is a legitimate gate,
+ * but it was reaching the client as HTTP 200 with the signal buried in tool
+ * text, while the simulated-Authorize path returns 428 for the same outcome.
+ * Returns the parsed HITL object ({ error, hitl, message, hitl_threshold_usd })
+ * so the caller can normalise it via localResultOutcome → 428. Returns null
+ * when the result is an ordinary success.
+ */
+function hitlSignalInResultContent(result) {
+  const content = result && Array.isArray(result.content) ? result.content : null;
+  if (!content) return null;
+  for (const c of content) {
+    if (!c || typeof c.text !== 'string') continue;
+    const txt = c.text.trim();
+    if (txt[0] !== '{' || !/hitl_required|step_up_required/.test(txt)) continue;
+    try {
+      const parsed = JSON.parse(txt);
+      if (parsed && (parsed.error === 'hitl_required' || parsed.error === 'step_up_required')) {
+        return parsed;
+      }
+    } catch { /* not JSON — ignore */ }
+  }
+  return null;
+}
+
 async function runMcpToolPipeline(ctx) {
   const { tool, params, req, deps } = ctx;
   const { config } = deps;
@@ -139,12 +221,10 @@ async function runMcpToolPipeline(ctx) {
                 const _efDuration = Date.now() - startTime;
                 deps.publishMcpResultToSse(flowTraceId, { tool, result, durationMs: _efDuration, isDelegated: false, userId: effectiveUserId });
                 deps.recordMcpToolCall({ userId: effectiveUserId, toolName: tool, success: !result?.error, duration: _efDuration, resultSummary: result?.error ? `${tool} failed` : `${tool} completed` });
-                return { kind: 'result', httpStatus: 200, tokenEvents: fallbackEvents, body: {
-                    result,
-                    tokenEvents: fallbackEvents,
+                return localResultOutcome(result, fallbackEvents, {
                     _localFallback: true,
-                    _exchangeFailed: true
-                } };
+                    _exchangeFailed: true,
+                });
             } catch (localErr) {
                 console.error(
                     '[MCP Local] %s — callToolLocal THREW after exchange failure: %s stack=%s',
@@ -197,11 +277,7 @@ async function runMcpToolPipeline(ctx) {
                     path: 'no_bearer'
                 });
                 deps.publishTokenEventsToSse(flowTraceId, tokenEvents);
-                return { kind: 'result', httpStatus: 200, tokenEvents, body: {
-                    result,
-                    tokenEvents,
-                    _localFallback: true
-                } };
+                return localResultOutcome(result, tokenEvents, { _localFallback: true });
             } catch (localErr) {
                 console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
                 deps.emit({
@@ -536,7 +612,7 @@ async function runMcpToolPipeline(ctx) {
                     const _acDuration = Date.now() - startTime;
                     deps.publishMcpResultToSse(flowTraceId, { tool, result: localResult, durationMs: _acDuration, isDelegated: false, userId: effectiveUserId });
                     deps.recordMcpToolCall({ userId: effectiveUserId, toolName: tool, success: !localResult?.error, duration: _acDuration, resultSummary: localResult?.error ? `${tool} failed` : `${tool} completed` });
-                    return { kind: 'result', httpStatus: 200, tokenEvents, body: { result: localResult, tokenEvents, _localFallback: true } };
+                    return localResultOutcome(localResult, tokenEvents, { _localFallback: true });
                 } catch (localErr) {
                     console.error(`[MCP Local] ${tool} — auth-challenge fallback failed:`, localErr.message);
                     deps.emit({ phase: 'local_tool_error', path: 'auth_challenge_fallback' });
@@ -549,6 +625,17 @@ async function runMcpToolPipeline(ctx) {
         const activeProvider = langchainConfig.provider || 'helix';
         const activeModel = langchainConfig.model || 'gpt-4o-mini';
         console.log(`[/api/mcp/tool] ${tool} — using LLM: ${activeProvider}/${activeModel}`);
+
+        // A successful gateway/backend tool result whose CONTENT is a
+        // hitl_required / step_up_required signal must surface as HTTP 428
+        // (consistent with the simulated-Authorize gate and the local-handler
+        // path), not HTTP 200 with the signal buried in tool text
+        // (REGRESSION_PLAN §1 — 428 enforcement; Phase 170 all-transfers-consent).
+        const contentHitl = hitlSignalInResultContent(result);
+        if (contentHitl) {
+            deps.emit({ phase: 'mcp_result_hitl_required' });
+            return localResultOutcome(contentHitl, tokenEvents, { _hitlFromResultContent: true });
+        }
 
         const out = {
             result,

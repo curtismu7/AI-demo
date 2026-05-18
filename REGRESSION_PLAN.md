@@ -123,6 +123,22 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — Transfer HITL returned HTTP 200-with-buried-signal on 2 of 3 paths (428 inconsistency)
+
+**Files changed:**
+- `banking_api_server/services/mcpToolPipeline.js` — added `localResultOutcome()` (maps a local-handler `error:'hitl_required'|'step_up_required'` result to `kind:'block', httpStatus:428` with a clean `error`/`error_description`/`hitl` body) and `hitlSignalInResultContent()` (detects a HITL/step-up JSON embedded in a `success:true` gateway/backend tool result's `content[0].text`). Applied at all 3 `callToolLocal` fallback returns + the gateway-success return.
+- `banking_api_server/src/__tests__/mcpToolPipeline.characterization.test.js` — regression block: every HITL/step-up path → 428; non-HITL paths still 200 (false-positive guard).
+
+**What was broken:** A transfer that needs human approval surfaced with **three different wire shapes** depending on which internal path handled it: the simulated-Authorize gate returned HTTP **428** `mcp_hitl_required`/`mcp_step_up_required` (correct), but the **local-handler fallback** path and the **gateway→backend result-content** path returned HTTP **200** with the hitl signal buried in the tool-result text (`{"error":"hitl_required",...}` inside `content[0].text`, envelope `success:true`). Investigation: a $100 transfer (Phase 170 — ALL transfers require consent) came back 200, while $251/$501 came back 428. Same logical outcome, inconsistent HTTP contract — violates "return proper error codes + a message telling what to do" and could let a caller treat an unapproved transfer as success.
+
+**What was fixed:** All three paths now normalise through `localResultOutcome` → `kind:'block', httpStatus:428` with `error: mcp_hitl_required | mcp_step_up_required`, an actionable `error_description`, `hitl.type`, and `authorize_engine:'local'`. Non-HITL results keep the existing `kind:'result', httpStatus:200` envelope (verified by false-positive guard tests). Verified live: $100/$251/$501/$600 transfers ALL return 428 with a clean error body, no silent success.
+
+**Verify:**
+- `cd banking_api_server && npx jest mcpToolPipeline.characterization` → 36 passing incl. the HITL-428 regression block.
+- Live: logged-in customer `POST /api/mcp/tool create_transfer` at $100/$251/$501/$600 → every one HTTP **428**, body has `error` + `error_description`, no `"Transfer completed successfully"`.
+
+**Do not break:** every HITL/step-up exit of `runMcpToolPipeline` MUST be `kind:'block', httpStatus:428` (never 200-with-error-body). New `callToolLocal` call sites or new gateway result handling MUST route through `localResultOutcome` / check `hitlSignalInResultContent` — a `success:true` envelope whose tool content is a HITL JSON is NOT a success. Phase 170 (all transfers require consent) is unchanged; this only fixed the HTTP status mapping. Note (message-quality, not correctness): when the backend supplies `message:"hitl_required"` the 428 `error_description` echoes that terse string instead of the friendlier default — acceptable, flagged for later polish.
+
 ### 2026-05-18 — SECURITY: high-value transfer executed with NO consent (fail-open) — §1 Transfer HITL
 
 **Files changed:**
