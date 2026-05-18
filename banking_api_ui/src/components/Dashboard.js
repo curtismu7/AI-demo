@@ -455,8 +455,8 @@ const Dashboard = ({ user, onLogout }) => {
 
   if (loading) {
     return (
-      <div className="loading">
-        <div>Loading dashboard...</div>
+      <div className="loading" role="status" aria-live="polite">
+        <div>Loading dashboard…</div>
       </div>
     );
   }
@@ -506,7 +506,7 @@ const Dashboard = ({ user, onLogout }) => {
                 className="app-page-toolbar-btn"
                 title="View API calls history"
               >
-                📡 API Calls
+                API Calls
               </button>
               <ThresholdControls />
               <button
@@ -550,7 +550,7 @@ const Dashboard = ({ user, onLogout }) => {
                 className="app-page-toolbar-btn"
                 title="Reset all OAuth demo accounts to $5,000 starting balance"
               >
-                {resettingDemo ? "Resetting…" : "↺ Reset Demo"}
+                {resettingDemo ? "Resetting…" : "Reset Demo"}
               </button>
               <AgentUiModeToggle variant="config" />
             </div>
@@ -1198,6 +1198,8 @@ const Dashboard = ({ user, onLogout }) => {
                   OAuth Token Information
                 </h3>
                 <button
+                  type="button"
+                  aria-label="Close token information"
                   onClick={() => setShowTokenModal(false)}
                   style={{
                     background: "none",
