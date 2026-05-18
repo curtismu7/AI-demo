@@ -66,4 +66,94 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
     expect(deps.stdioAdapter.callToolViaStdio).toHaveBeenCalledWith('list_applications', {}, '', 'u1', 'c1');
     expect(deps.resolveMcpAccessTokenWithEvents).not.toHaveBeenCalled(); // bypasses exchange
   });
+
+  test('token resolve success → proceeds (no early Outcome from this phase)', async () => {
+    const deps = makeDeps();
+    deps.evaluateMcpFirstToolGate = jest.fn(async () => ({ ran: false, reason: 'no_token' }));
+    deps.mcpCallTool = jest.fn(async () => ({ content: [{ text: 'remote-ok' }] }));
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome.kind).toBe('result');
+    expect(deps.resolveMcpAccessTokenWithEvents).toHaveBeenCalled();
+  });
+
+  test('missing_exchange_scopes → block 403 with structured config-fix body', async () => {
+    const err = Object.assign(new Error('need write'), {
+      code: 'missing_exchange_scopes', missingScopes: ['banking:write'],
+      userScopes: 'banking:read', requiredScopes: 'banking:write', tokenEvents: [{ id: 'x' }],
+    });
+    const deps = makeDeps({ resolveMcpAccessTokenWithEvents: jest.fn(async () => { throw err; }) });
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome).toMatchObject({
+      kind: 'block', httpStatus: 403,
+      body: { error: 'missing_exchange_scopes', message: 'need write',
+              missingScopes: ['banking:write'], userScopes: 'banking:read',
+              requiredScopes: 'banking:write', tokenEvents: [{ id: 'x' }] },
+    });
+  });
+
+  test('exchange-scope-error (httpStatus 400) + session user → local fallback result, flags set', async () => {
+    const err = Object.assign(new Error('At least one scope must be granted'), { httpStatus: 400 });
+    const deps = makeDeps({
+      resolveMcpAccessTokenWithEvents: jest.fn(async () => { throw err; }),
+      callToolLocal: jest.fn(async () => ({ content: [{ text: 'local' }] })),
+    });
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome.kind).toBe('result');
+    expect(outcome.httpStatus).toBe(200);
+    expect(outcome.body._localFallback).toBe(true);
+    expect(outcome.body._exchangeFailed).toBe(true);
+    expect(deps.callToolLocal).toHaveBeenCalledWith('get_my_accounts', {}, 'u1', expect.any(Object));
+  });
+
+  test('pingoneError 401 IS an exchange-scope error (local fallback), session-guard 401 is NOT', async () => {
+    const pingoneErr = Object.assign(new Error('Unsupported authentication method'), { httpStatus: 401, pingoneError: 'invalid_client' });
+    const depsP = makeDeps({ resolveMcpAccessTokenWithEvents: jest.fn(async () => { throw pingoneErr; }) });
+    const outP = await runMcpToolPipeline(makeCtx({ deps: depsP }));
+    expect(outP.kind).toBe('result');
+    expect(outP.body._localFallback).toBe(true);
+
+    const guardErr = Object.assign(new Error('no session'), { httpStatus: 401 }); // no .pingoneError
+    const depsG = makeDeps({ resolveMcpAccessTokenWithEvents: jest.fn(async () => { throw guardErr; }) });
+    const outG = await runMcpToolPipeline(makeCtx({ deps: depsG }));
+    expect(outG.kind).toBe('error');
+    expect(outG.httpStatus).toBe(401);
+    expect(depsG.callToolLocal).not.toHaveBeenCalled();
+  });
+
+  test('TOKEN_INACTIVE → error 401 need_auth, no local fallback', async () => {
+    const err = Object.assign(new Error('inactive'), { code: 'TOKEN_INACTIVE', tokenEvents: [{ id: 'e' }] });
+    const deps = makeDeps({ resolveMcpAccessTokenWithEvents: jest.fn(async () => { throw err; }) });
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome).toMatchObject({
+      kind: 'error', httpStatus: 401,
+      body: { error: 'Session expired', need_auth: true, agentInitRequired: true, tokenEvents: [{ id: 'e' }] },
+    });
+  });
+
+  test('generic exchange failure → error with err.httpStatus||502 and errCode mapping', async () => {
+    const err = Object.assign(new Error('actor token invalid'), { httpStatus: 502, code: 'actor_token_invalid', tokenEvents: [] });
+    const deps = makeDeps({ resolveMcpAccessTokenWithEvents: jest.fn(async () => { throw err; }) });
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome).toMatchObject({
+      kind: 'error', httpStatus: 502,
+      body: { error: 'actor_token_invalid', message: 'actor token invalid', tokenEvents: [] },
+    });
+  });
+
+  test('no bearer token + session user → local fallback result _localFallback', async () => {
+    const deps = makeDeps({ resolveMcpAccessTokenWithEvents: jest.fn(async () => ({ token: null, tokenEvents: [], userSub: null })) });
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome.kind).toBe('result');
+    expect(outcome.body._localFallback).toBe(true);
+  });
+
+  test('no bearer token + NO session user → block from mcpNoBearerResponse', async () => {
+    const deps = makeDeps({
+      resolveMcpAccessTokenWithEvents: jest.fn(async () => ({ token: null, tokenEvents: [], userSub: null })),
+      mcpNoBearerResponse: jest.fn(() => ({ status: 401, body: { error: 'no_bearer' } })),
+    });
+    const ctx = makeCtx({ deps, req: { session: { user: null }, correlationId: 'c1' } });
+    const outcome = await runMcpToolPipeline(ctx);
+    expect(outcome).toMatchObject({ kind: 'block', httpStatus: 401, body: { error: 'no_bearer' } });
+  });
 });
