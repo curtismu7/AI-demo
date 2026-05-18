@@ -74,7 +74,7 @@ import {
 import { getColdStartRetryDelays } from "../services/apiErrorHandler";
 import APP_CONFIG from "../services/appConfig";
 import { useCustomChips } from "../hooks/useCustomChips";
-import { claimPendingNl } from "./bankingAgentSafety";
+import { claimPendingNl, makeReentrancyGuard } from "./bankingAgentSafety";
 
 // Phase 266 H2 audit: TokenChain credentialPath stamping origins per setTokenEvents call:
 //   line 3433 (scopeTestRes.tokenEvents)  — origin: scope-test path via callMcpTool; credentialPath: oauth_bearer (default; stamped by bankingAgentService)
@@ -1707,6 +1707,8 @@ export default function BankingAgent({
   const [pendingClarification, setPendingClarification] = useState(null);
   /** Set when returning from PingOne with a pending banking NL line to run after session exists. */
   const [nlResumeAfterAuth, setNlResumeAfterAuth] = useState(null);
+  const nlSendGuardRef = useRef(null);
+  if (!nlSendGuardRef.current) nlSendGuardRef.current = makeReentrancyGuard();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   /** null = loading; which OAuth flows have client IDs + environment */
@@ -5284,8 +5286,11 @@ export default function BankingAgent({
     return null;
   }
 
-  // Sends text through the full NL pipeline (same path as typing in the chat box).
-  function sendAsNl(text) {
+  // Inner body of sendAsNl — called only after the guard is acquired.
+  // Contains all 3 original release sites (explicit release before no-merge
+  // return; .finally on the clarification dispatch chain; .finally on the
+  // rAF fetch chain). Do NOT add a fourth release here.
+  function sendAsNlInner(text) {
     // Clarification-follow-up path: if our previous turn asked "Which
     // account?"/"How much?", treat this message as the missing slot
     // instead of re-parsing it as a brand-new intent. This is what was
@@ -5314,6 +5319,7 @@ export default function BankingAgent({
         // the parser try a normal interpretation.
         addMessage("assistant", `Sorry, I didn't catch that. ${pc.asked}`);
         setPendingClarification(pc);
+        nlSendGuardRef.current.release();
         return;
       }
 
@@ -5325,9 +5331,9 @@ export default function BankingAgent({
         action: pc.action,
         params: merged,
       };
-      dispatchNlResult(syntheticResult, "clarify", text).catch((err) =>
-        reportNlFailure(err),
-      );
+      dispatchNlResult(syntheticResult, "clarify", text)
+        .catch((err) => reportNlFailure(err))
+        .finally(() => nlSendGuardRef.current.release());
       return;
     }
 
@@ -5363,8 +5369,25 @@ export default function BankingAgent({
           return dispatchNlResult(result, source || "heuristic", text);
         })
         .catch((err) => reportNlFailure(err))
-        .finally(() => setNlLoading(false));
+        .finally(() => {
+          setNlLoading(false);
+          nlSendGuardRef.current.release();
+        });
     });
+  }
+
+  // Sends text through the full NL pipeline (same path as typing in the chat box).
+  function sendAsNl(text) {
+    if (!nlSendGuardRef.current.tryAcquire()) return;
+    try {
+      sendAsNlInner(text);
+    } catch (e) {
+      // Synchronous failure before any async release path ran — free the
+      // guard so the send box doesn't stay locked. (Parity with
+      // handleNaturalLanguage's try/finally.)
+      nlSendGuardRef.current.release();
+      throw e;
+    }
   }
 
   function handleActionClick(actionId) {
@@ -5791,6 +5814,17 @@ export default function BankingAgent({
   async function handleNaturalLanguage() {
     const text = nlInput.trim();
     if (!text) return;
+    // Synchronous single-flight: wins the same-tick double-submit race that
+    // disabled={nlLoading} (async state) cannot. Released in the finally below.
+    if (!nlSendGuardRef.current.tryAcquire()) return;
+    try {
+      return await handleNaturalLanguageInner(text);
+    } finally {
+      nlSendGuardRef.current.release();
+    }
+  }
+
+  async function handleNaturalLanguageInner(text) {
     if (!isLoggedIn && !marketingGuestChatEnabled) return;
     if (isAgentBlockedByConsentDecline()) {
       addMessage("assistant", AGENT_CONSENT_BLOCK_USER_MESSAGE);

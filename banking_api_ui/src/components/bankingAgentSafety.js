@@ -42,3 +42,22 @@ export function clampPanelPosition(pos, panel, viewport, margin = 48) {
     y: Math.min(maxY, Math.max(minY, pos.y)),
   };
 }
+
+/**
+ * A synchronous (non-async-state) single-flight guard.
+ * Back this with a useRef so the flag updates immediately and wins the
+ * same-tick double-submit race that `disabled={nlLoading}` cannot.
+ */
+export function makeReentrancyGuard() {
+  let held = false;
+  return {
+    tryAcquire() {
+      if (held) return false;
+      held = true;
+      return true;
+    },
+    release() {
+      held = false;
+    },
+  };
+}

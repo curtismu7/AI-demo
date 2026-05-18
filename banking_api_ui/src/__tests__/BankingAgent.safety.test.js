@@ -7,6 +7,7 @@
 import {
   claimPendingNl,
   clampPanelPosition,
+  makeReentrancyGuard,
 } from "../components/bankingAgentSafety";
 
 describe("claimPendingNl — atomic single-fire post-OAuth replay (Task 1)", () => {
@@ -84,5 +85,35 @@ describe("clampPanelPosition — off-screen recovery bounds", () => {
     const r = clampPanelPosition({ x: 1000, y: 700 }, panel, small);
     expect(r.x).toBe(360 - 48);
     expect(r.y).toBe(640 - 48);
+  });
+});
+
+describe("makeReentrancyGuard — single in-flight send (Task 2)", () => {
+  test("second acquire while held returns false", () => {
+    const g = makeReentrancyGuard();
+    expect(g.tryAcquire()).toBe(true);
+    expect(g.tryAcquire()).toBe(false);
+    g.release();
+    expect(g.tryAcquire()).toBe(true);
+  });
+
+  test("release is idempotent and safe when not held", () => {
+    const g = makeReentrancyGuard();
+    expect(() => g.release()).not.toThrow();
+    expect(g.tryAcquire()).toBe(true);
+  });
+
+  test("guard is released even when the guarded fn throws", async () => {
+    const g = makeReentrancyGuard();
+    const run = async () => {
+      if (!g.tryAcquire()) return "blocked";
+      try {
+        return await Promise.reject(new Error("boom"));
+      } finally {
+        g.release();
+      }
+    };
+    await expect(run()).rejects.toThrow("boom");
+    expect(g.tryAcquire()).toBe(true); // not stuck held
   });
 });
