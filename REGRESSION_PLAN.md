@@ -123,6 +123,24 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — Phase 4b: bottom dock is a portal host of the single BankingAgent instance
+
+**Files changed:**
+- `banking_api_ui/src/context/AgentUiModeContext.js` — added `surfaceHostEl` state + `setSurfaceHostEl` (defaults, provider state, memoized value+deps). Placement/fab/storage unchanged.
+- `banking_api_ui/src/components/EmbeddedAgentDock.js` — no longer renders its own `<BankingAgent>`; renders an always-mounted host `<div className="embedded-agent-dock-host" ref={hostRefCb}>` and registers it via a stable `useCallback` ref + a guarded publish/cleanup effect (`setSurfaceHostEl(cur => cur===hostEl?null:cur)` so a late unmount of one dock cannot clobber another's host). Host div stays mounted (CSS-hidden) when collapsed so the portaled agent's React subtree + chat state survive collapse/expand. Dead `onLogout` prop removed (dock no longer renders an agent).
+- `banking_api_ui/src/App.css` — `.global-embedded-agent-dock-wrap .embedded-agent-dock--collapsed { display:none }`.
+- `banking_api_ui/src/components/BankingAgent.js` — Phase 4a's `surfaceHostRef` replaced by a `surfaceHostEl` PROP (a ref+effect could not drive a render-time portal target — portal would stick on document.body). End-return is now `if (surfaceHostEl) createPortal(floatShell, surfaceHostEl); if (isInline) <>{floatShell}</>; createPortal(floatShell, document.body);`.
+- `banking_api_ui/src/App.js` — single `<BankingAgent>` mount gate broadened to `showFloatingAgent || hasEmbeddedDockLayout`, passed `surfaceHostEl={surfaceHostEl}` + `{...singleAgentSurfaceProps}` where `singleAgentSurfaceProps = hasEmbeddedDockLayout ? { mode:"inline", embeddedDockBottom:true } : {}` so the single instance wears the old dock chrome when portaled into the dock. Dead `onLogout` on the App-level `<EmbeddedAgentDock>` removed. `showFloatingAgent`/`hasEmbeddedDockLayout` definitions NOT simplified (deferred to Phase 4d).
+- `banking_api_ui/src/components/UserDashboard.js` — dead `onLogout` pass-through to the dock removed (the pre-existing in-flight `ud-agent-column` working-tree edit was deliberately NOT included).
+
+**What was broken:** With `placement=bottom` + `fab`, App mounted TWO `<BankingAgent>` instances (dock + float) → split-brain conversation, dual Token-Chain writers, 2× session polling.
+
+**What was fixed:** The bottom dock now hosts the SINGLE App-level instance via a React portal; no second instance for the bottom case. Conversation/Token-Chain unify for bottom.
+
+**Verify:** `grep -rn surfaceHostRef banking_api_ui/src` → empty. `cd banking_api_ui && npm run build` exit 0. Full agent suite 114/114 (`BankingAgent.test`/`.safety`/`.integration`/`.chipRouting` + `AgentUiModeContext`). Manual: `placement=bottom`+`fab` on a dock route → exactly one agent, in the dock, dock chrome; collapse/expand preserves the conversation; float (`placement=none`) unchanged.
+
+**Do not break:** Exactly one in-app `<BankingAgent>` for the bottom case (the `/agent` route page is a separate, intentional mount). Surfaces are portal HOSTS — never reintroduce a per-surface `<BankingAgent>`. The dock host div MUST stay mounted across collapse (CSS-hidden, not unmounted) or chat state is lost. The guarded `setSurfaceHostEl` cleanup (`cur===hostEl?null:cur`) MUST stay — it prevents the dual-dock host race. Middle column is still its own instance until Phase 4c.
+
 ### 2026-05-18 — DESIGN CONTRACT (target truths, NOT YET IMPLEMENTED) — mortgage/api-key MFA + error-code/education
 
 This is a forward-looking specification, recorded so the contract is unambiguous for the implementation round. **These are NOT yet enforced** — do not treat as a passing invariant until a follow-up entry says "implemented + verified". Stated here verbatim from the product owner so it cannot drift.
