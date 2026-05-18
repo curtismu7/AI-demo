@@ -79,6 +79,7 @@ banking_api_server/data/sessions.db-wal
 secrets.vault
 secrets.vault.tmp
 secrets.vault.audit.log
+secrets.vault.pre-rebootstrap-*
 
 # Temporary test scripts
 banking_api_server/_test_*.js
