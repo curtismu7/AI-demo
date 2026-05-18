@@ -154,3 +154,13 @@ secrets.vault.stale-*.bak
 
 # Local vault-password wrapper for run-bank.sh (no secret stored here; reads .env)
 run-bank-local.sh
+
+# Ad-hoc PingOne worker-credential scratch files — plaintext env/client IDs,
+# never commit (use secrets.vault / .env for real config)
+worker creds
+worker creds.txt
+worker creds*
+
+# banking_mcp_server local dev-data — runtime-generated session/storage state,
+# not source (mirrors the tests/storage/** exclusion above)
+banking_mcp_server/dev-data/
