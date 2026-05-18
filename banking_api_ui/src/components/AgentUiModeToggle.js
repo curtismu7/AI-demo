@@ -64,11 +64,6 @@ export default function AgentUiModeToggle({
         await applyAndReload({ placement: "bottom", fab }, { reload: true });
         return;
       }
-      if (p === "right-dock") {
-        setDashboardLayout("split3");
-        await applyAndReload({ placement: p, fab }, { reload: true });
-        return;
-      }
       await applyAndReload({ placement: "none", fab: true }, { reload: true });
     },
     [placement, fab, applyAndReload],
@@ -100,7 +95,7 @@ export default function AgentUiModeToggle({
         ariaLabel ||
         (isLandingNav
           ? "AI banking agent: bottom dock or float"
-          : "AI banking agent: middle column, right dock, bottom dock, or float; optional FAB")
+          : "AI banking agent: middle column, bottom dock, or float; optional FAB")
       }
     >
       <span className="agent-ui-mode-toggle__label" id={`${idPrefix}-legend`}>

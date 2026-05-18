@@ -3644,21 +3644,6 @@ html[data-theme="dark"] .token-modal {
   grid-template-columns: 380px minmax(0, 1fr);
 }
 
-/* ── Right dock active: FAB on left side so it does not overlap the right inline column ── */
-/* Applied when user-dashboard--right-dock-active class is on the outer wrapper */
-.user-dashboard--right-dock-active .banking-agent-fab {
-  right: auto !important;
-  left: var(--float-edge, 28px);
-}
-
-.user-dashboard--right-dock-active .banking-agent-panel:not(.ba-mode-inline) {
-  right: auto !important;
-  left: 16px;
-}
-
-/* ── SideAgentDock (admin + non-dashboard pages) with right dock: FAB on left ── */
-/* html.app-has-side-dock-right--open is set by SideAgentDock.js */
-
 /* ── Modern Transaction Feed ─────────────────────────────────────────────── */
 .tx-feed {
   display: flex;

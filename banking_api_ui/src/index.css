@@ -29,7 +29,7 @@ tt {
 
 /* App-wide primary actions: red fill, white label (floating FABs use their own classes). */
 :root {
-  /* TopNav height — used by SideAgentDock and other fixed-position elements */
+  /* TopNav height — used by fixed-position elements */
   --topnav-height: 60px;
   --app-primary-red: #b91c1c;
   --app-primary-red-hover: #991b1b;

@@ -123,6 +123,24 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — Dead agent-UI code removed (SideAgentDock/ResponsiveAgentDock/right-dock/left-dock/useChatWidget/dead CustomEvent)
+
+**Files changed:**
+- Deleted `banking_api_ui/src/components/SideAgentDock.js` `.css`, `banking_api_ui/src/components/agent/ResponsiveAgentDock.js`, `banking_api_ui/src/hooks/useChatWidget.js` — all had zero live references / were hardcoded no-ops.
+- `banking_api_ui/src/context/AgentUiModeContext.js` — removed `right-dock`/`left-dock` placement (typedef, `syncLegacyString` branches, `readState`); a stored unknown/removed placement now falls back to `bottom` (or `readLegacyMode()` for truly-unknown values) instead of a no-agent state; deleted the dead `banking-agent-ui-mode` CustomEvent dispatch (no listeners existed).
+- `banking_api_ui/src/components/AgentUiModeToggle.js` — removed the unreachable `right-dock` branch in `handlePlacement`; aria-label dropped "right dock".
+- `banking_api_ui/src/components/UserDashboard.js` — removed the dead `useChatWidget` import + no-op call (§1 file: no state/effect/handler/route/control-flow changed; the pre-existing in-flight `ud-agent-column` working-tree edit was deliberately NOT included).
+- `banking_api_ui/src/components/UserDashboard.css` / `BankingAgent.css` / `index.css` — removed dead `.user-dashboard--right-dock-active` / `app-has-side-dock-right` CSS and reworded a stale SideAgentDock comment.
+- `banking_api_ui/src/context/__tests__/AgentUiModeContext.test.js` — removed dead-mode tests; added a `right-dock → bottom` fallback regression test.
+
+**What was broken:** `right-dock`/`left-dock` were selectable/persistable placements that no component rendered, so a user/scenario persisting them reached a state with no agent UI. `SideAgentDock`/`ResponsiveAgentDock`/`useChatWidget`/the `banking-agent-ui-mode` event were dead weight (no references / hardcoded-false guard / no listeners).
+
+**What was fixed:** Dead files/code deleted; removed placements degrade to `bottom`; truly-unknown placements degrade via `readLegacyMode()` to a visible agent.
+
+**Verify:** `grep -rn 'SideAgentDock\|ResponsiveAgentDock\|useChatWidget\|right-dock\|left-dock\|banking-agent-ui-mode' banking_api_ui/src` → only the intentional fallback code + its test. `cd banking_api_ui && npm run build` exit 0. AgentUiModeContext suite green incl. the right-dock→bottom fallback test.
+
+**Do not break:** A stale/unknown persisted placement MUST fall back to a rendering mode, never pass through to a no-agent state. Do not reintroduce a `banking-agent-ui-mode` listener contract or the localhost `useChatWidget` bridge — hosted builds use the React `BankingAgent`.
+
 ### 2026-05-18 — BankingAgent: post-OAuth double-execute, send re-entrancy, float off-screen recovery
 
 **Files changed:**

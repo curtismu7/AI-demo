@@ -10,7 +10,6 @@ import React, {
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAgentUiMode } from "../context/AgentUiModeContext";
 import { useEducationUI } from "../context/EducationUIContext";
-import useChatWidget from "../hooks/useChatWidget";
 import { useCurrentUserTokenEvent } from "../hooks/useCurrentUserTokenEvent";
 import apiClient from "../services/apiClient";
 import { getCachedJson } from "../services/cachedStatusService";
@@ -511,9 +510,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       return next;
     });
   }, []);
-
-  // Initialize chat widget (configuration is handled in index.html)
-  useChatWidget();
 
   // Function to decode JWT token
   // eslint-disable-next-line no-unused-vars
