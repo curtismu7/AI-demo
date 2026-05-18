@@ -34,21 +34,27 @@ Four sequential phases. Each phase: implement (TDD where a pure helper exists), 
 - `banking_api_ui/src/components/SideAgentDock.js`, `SideAgentDock.css`, `ResponsiveAgentDock.js` — zero references outside their own files (`grep` confirmed).
 - `right-dock` / `left-dock` placements — referenced only in `banking_api_ui/src/context/AgentUiModeContext.js` (JSDoc typedef line ~9; two `syncLegacyString` branches lines ~48/~52; `readState` validation lines ~73/~82) and `AgentUiModeContext.test.js` ("left-dock and right-dock placements" describe ~line 95). No component renders them — a user/scenario persisting `right-dock` reaches a state where no agent renders.
 
+### Also dead (verified, folded into Phase 1 per decision)
+
+- `banking-agent-ui-mode` CustomEvent — dispatched once at `AgentUiModeContext.js:139`, **zero listeners** anywhere in `src`. Pure dead emission.
+- `useChatWidget` (`banking_api_ui/src/hooks/useChatWidget.js`) — `isLocalhost` is hardcoded `false /* always use api.ping.demo */`, so the hook unconditionally early-returns `setIsInitialized(true)`; the entire widget-control body is unreachable. Imported + called at `UserDashboard.js:13` / `:516` where it does nothing.
+
 ### Approach
 
 - Delete the 3 orphan files (`SideAgentDock.js`, `SideAgentDock.css`, `ResponsiveAgentDock.js`).
-- `AgentUiModeContext.js`: remove `'right-dock' | 'left-dock'` from the typedef; delete the two `if (state.placement === 'right-dock'/'left-dock')` branches in `syncLegacyString`; tighten `readState` so an unknown/removed placement (including a stale `'right-dock'` from storage) falls back to the safe default `'bottom'` rather than passing through.
-- `AgentUiModeContext.test.js`: remove the "left-dock and right-dock placements" describe block (tests deleted behavior); add one test asserting a stored `{placement:'right-dock'}` is read back as the safe default (`bottom`), proving the no-render dead-end is closed.
+- `AgentUiModeContext.js`: remove `'right-dock' | 'left-dock'` from the typedef; delete the two `if (state.placement === 'right-dock'/'left-dock')` branches in `syncLegacyString`; tighten `readState` so an unknown/removed placement (including a stale `'right-dock'` from storage) falls back to the safe default `'bottom'`; delete the dead `new CustomEvent('banking-agent-ui-mode', …)` dispatch (~line 139) since nothing listens.
+- Delete `banking_api_ui/src/hooks/useChatWidget.js`; remove its `import` (`UserDashboard.js:13`) and its no-op call (`:516`). This is a no-behavior change (the hook does nothing) but `UserDashboard.js` is §1 — see §1/§4 below.
+- `AgentUiModeContext.test.js`: remove the "left-dock and right-dock placements" describe block (tests deleted behavior); add one test asserting a stored `{placement:'right-dock'}` is read back as the safe default (`bottom`), proving the no-render dead-end is closed. If any test references the `banking-agent-ui-mode` event, remove that assertion.
 
 ### Success criteria
 
-- `grep -rn 'SideAgentDock\|ResponsiveAgentDock\|right-dock\|left-dock' banking_api_ui/src` returns nothing (excluding this spec / REGRESSION_PLAN history).
+- `grep -rn 'SideAgentDock\|ResponsiveAgentDock\|right-dock\|left-dock\|banking-agent-ui-mode\|useChatWidget' banking_api_ui/src` returns nothing (excluding this spec / REGRESSION_PLAN history).
 - Build exit 0; full agent suite green; `AgentUiModeContext` tests green incl. the new fallback test.
-- No behavior change for `middle`/`bottom`/`none` users.
+- No behavior change for `middle`/`bottom`/`none` users (the CustomEvent had no listeners; `useChatWidget` was a no-op).
 
 ### §1 / §4
 
-No §1 file changed (context + dead files only). A §4 entry is still warranted (removes a reachable no-agent state) — short entry, "Do not break: stale unknown placement must fall back to a rendering mode."
+`UserDashboard.js` is §1 (REAUTH_KEY, `middleAgentOpen` init, `fetchUserData` 401, FAB/dock/consent). The only change there is removing a dead import + a no-op hook call — no state, effect, handler, route, or control-flow line touched. The plan must state these preserved invariants before editing `UserDashboard.js`. `AgentUiModeContext.js` is not §1 but is load-bearing for placement. A §4 entry is warranted (removes a reachable no-agent state + dead emission + dead hook) — "Do not break: stale/unknown placement must fall back to a rendering mode; do not reintroduce a `banking-agent-ui-mode` listener contract or the localhost chat-widget bridge (hosted builds use the React `BankingAgent`)."
 
 ---
 
@@ -165,5 +171,6 @@ After each phase: `cd banking_api_ui && npm run build` (exit 0) + `CI=true npx r
 ## Out of scope
 
 - The `useState`→`useReducer` decomposition of the auth-challenge/HITL clusters (separate, larger refactor; not a correctness defect).
-- The dead `banking-agent-ui-mode` CustomEvent emission and dead `useChatWidget.js` (could fold into Phase 1 if trivial, but flagged separately to keep Phase 1's diff reviewable — decide at plan time).
 - Any change to the safety-fix behavior shipped in `d6992bf1`/`2a28f6ac`/`e47038fa`.
+
+(The dead `banking-agent-ui-mode` CustomEvent and dead `useChatWidget.js` were folded into Phase 1 per decision — see "Also dead" above.)
