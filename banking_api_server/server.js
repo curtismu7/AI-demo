@@ -18,6 +18,10 @@ const { loadVaultIntoConfigStore } = require('./services/vaultLoader');
 // ConfigStore must be required early so oauth config module getters are ready
 const configStore = require('./services/configStore');
 const appEventService = require('./services/appEventService');
+// Observability only: scoped axios interceptor that records literal PingOne
+// HTTP request/response into the Token Chain "PingOne API Call" teaching
+// section. No auth/exchange/validation behavior — pure capture.
+require('./services/pingOneApiCapture').installInterceptor();
 const {
     mcpNoBearerResponse
 } = require('./services/bffSessionGating');
@@ -397,6 +401,32 @@ migrateAccounts().catch(err => {
     console.error('[server] Demo accounts migration failed:', err.message);
 });
 
+// Seed runtimeSettings from persisted feature flags that declare a runtimeKey.
+// runtimeSettings is in-memory and seeded from env at module load; without this,
+// a flag toggled OFF via /api/admin/feature-flags (persisted to configStore)
+// would silently revert to its hardcoded default on the next restart.
+// Done after ensureInitialized() so the configStore cache is populated first.
+(async () => {
+    try {
+        await configStore.ensureInitialized();
+        const runtimeSettings = require('./config/runtimeSettings');
+        const { FLAG_REGISTRY } = require('./routes/featureFlags');
+        const seed = {};
+        for (const flag of FLAG_REGISTRY) {
+            if (!flag.runtimeKey) continue;
+            const raw = configStore.get(flag.id);
+            if (raw === null || raw === undefined) continue; // keep env-seeded default
+            seed[flag.runtimeKey] =
+                flag.type === 'boolean' ? (raw === true || raw === 'true') : raw;
+        }
+        if (Object.keys(seed).length > 0) {
+            runtimeSettings.update(seed, 'boot-seed-from-configStore');
+        }
+    } catch (err) {
+        console.warn('[server] runtimeSettings boot-seed from configStore failed:', err.message);
+    }
+})();
+
 // Non-blocking OIDC discovery — populates endpoint cache when oauth_discovery_enabled=true
 initializeDiscovery().catch(err => {
     console.warn('[server] OIDC discovery initialization failed:', err.message);
@@ -576,6 +606,18 @@ app.get('/api/auth/logout', async (req, res) => {
         const mcpWsUrl = process.env.MCP_SERVER_URL || 'ws://localhost:8080';
         const mcpHttpBase = mcpWsUrl.replace(/^ws(s?):/, 'http$1:');
         fetch(`${mcpHttpBase}/audit`, { method: 'DELETE', signal: AbortSignal.timeout(1500) }).catch(() => {});
+        // Flush the MCP gateway's in-memory token-exchange + introspection
+        // caches so a freshly-revoked token cannot be replayed from there
+        // within its TTL. Fire-and-forget; gated by the shared internal secret.
+        const gwBase = require('./services/mcpGatewayClient').getMcpGatewayHttpUrl();
+        const gwSecret = process.env.BFF_INTERNAL_SECRET || '';
+        if (gwBase && gwSecret) {
+            fetch(`${gwBase}/admin/clear-token-cache`, {
+                method: 'POST',
+                headers: { 'x-internal-gateway-secret': gwSecret },
+                signal: AbortSignal.timeout(1500),
+            }).catch(() => {});
+        }
     } catch (_) {}
 
     req.session.destroy((err) => {
@@ -733,9 +775,15 @@ app.get('/api/auth/debug', async (req, res) => {
 // authenticateToken middleware that guards the broader /api/admin/* prefix.
 app.use('/api/admin/config', adminConfigRoutes);
 
-// Feature flags — admin-authenticated; registered before the broader /api/admin/* guard
-// so the route path is unambiguous.
-// Feature flags: GET is public (read-only). PATCH enforces admin check inside route handler.
+// Feature flags — registered before the broader /api/admin/* guard so this
+// more-specific path matches first (Express prefix order) and is NOT subjected
+// to the authenticateToken middleware on /api/admin.
+// INTENTIONALLY UNAUTHENTICATED (commit a1047b03): both GET and PATCH are open.
+// This is a deliberate demo-ergonomics choice so flags can be toggled without an
+// admin session. Trade-off: any caller can flip security-relevant flags
+// (ff_hitl_enabled, step_up_enabled, ff_skip_token_exchange, ff_inject_*).
+// See REGRESSION_PLAN.md §1 "configStore / Config UI" — do not silently add an
+// auth gate here without updating that entry and the demo docs.
 app.use('/api/admin/feature-flags', featureFlagsRoutes);
 app.use('/api/admin/scope-audit', authenticateToken, require('./routes/scopeAudit'));
 app.use('/api/admin/token-compliance', authenticateToken, require('./routes/tokenCompliance'));
@@ -1147,10 +1195,6 @@ const http2McpBridge = require("./services/http2McpBridge");
 const mcpGatewayClient = require('./services/mcpGatewayClient');
 const mcpPingOneStdioAdapter = require('./services/mcpPingOneStdioAdapter');
 const { recordToolCall: recordMcpToolCall } = require('./services/mcpToolAuditStore');
-
-// Session-scoped exchange mode toggle (GET/POST /api/mcp/exchange-mode)
-const mcpExchangeMode = require('./routes/mcpExchangeMode');
-app.use('/api/mcp', mcpExchangeMode);
 
 // GET /api/mcp/tool/events?trace=<uuid> — Server-Sent Events for live MCP tool pipeline phases
 app.get('/api/mcp/tool/events', (req, res) => {
