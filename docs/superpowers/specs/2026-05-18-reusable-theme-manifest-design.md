@@ -278,10 +278,21 @@ carries no scopes/auth/policy (Section 2 constraint).
 - Result: looks/talks like a Best Buy shopping assistant, banking plumbing
   underneath. Demo-safe, zero pipeline risk.
 
-**Phase 2 — real retail MCP tools (OUT of this spec; next spec):**
+**Tool-returned data is NOT themed in Phase 1 (decided 2026-05-18):**
+SQLite-backed accounts/transactions (`data/store.js`:
+`Checking`/`Savings`/`Deposit`) and the hardcoded mortgage / api_key
+`show_mortgage` payload (`banking_mortgage_service`, `$425,000 / 6.125%`)
+keep returning banking data under any theme. The retail experience is
+carried by `<RetailDashboard>` manifest mock data + chip labels + greeting.
+This is the deliberate presentation-vs-data line; relabeling returned data
+is Phase 2.
+
+**Phase 2 — real retail MCP tools + retail data (OUT of this spec; next spec):**
 - New retail tools (catalog/cart/orders) registered through the **same**
-  gateway + token exchange + Authorize, with their own scopes.
-  `systemPromptFlavor` is consumed then. Started only after Phase 1 is tested.
+  gateway + token exchange + Authorize, with their own scopes; real
+  retail-shaped data replacing the banking store / mortgage payload for
+  retail themes. `systemPromptFlavor` is consumed then. Started only after
+  Phase 1 is tested.
 
 ---
 
