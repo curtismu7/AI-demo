@@ -62,6 +62,7 @@ jest.mock('../../services/apiCallTrackerService', () => ({
 // Mock auth middleware so test requests are not blocked
 const _authOverride = { user: null };
 jest.mock('../../middleware/auth', () => ({
+  requireNotBankDelegate: () => (req, res, next) => next(),
   authenticateToken: (req, _res, next) => {
     if (_authOverride.user) {
       req.user = _authOverride.user;

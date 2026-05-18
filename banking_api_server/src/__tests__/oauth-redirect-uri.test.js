@@ -194,15 +194,15 @@ describe('oauthRedirectUris', () => {
     expect(paths).toContain('/api/auth/oauth/user/callback');
   });
 
-  it('getOAuthRedirectDebugInfo includes reference sets for localhost and api.pingdeme.org', () => {
+  it('getOAuthRedirectDebugInfo includes reference sets for api.ping.demo and a custom host', () => {
     const info = getOAuthRedirectDebugInfo(mockReq('localhost:3001'));
     expect(Array.isArray(info.referenceRedirectSets)).toBe(true);
     expect(info.referenceRedirectSets.length).toBeGreaterThanOrEqual(2);
-    const local = info.referenceRedirectSets.find((r) => r.id === 'localhost');
-    const pingdeme = info.referenceRedirectSets.find((r) => r.id === 'api-pingdeme');
-    expect(local.adminRedirectUri).toContain('localhost:3001');
-    expect(pingdeme.adminRedirectUri).toBe('https://api.pingdeme.org/api/auth/oauth/callback');
-    expect(pingdeme.userRedirectUri).toBe('https://api.pingdeme.org/api/auth/oauth/user/callback');
+    const apiPingDemo = info.referenceRedirectSets.find((r) => r.id === 'api-ping-demo');
+    const customHost = info.referenceRedirectSets.find((r) => r.id === 'custom-host');
+    expect(apiPingDemo.adminRedirectUri).toBe('https://api.ping.demo:4000/api/auth/oauth/callback');
+    expect(customHost.adminRedirectUri).toBe('https://api.pingdeme.org/api/auth/oauth/callback');
+    expect(customHost.userRedirectUri).toBe('https://api.pingdeme.org/api/auth/oauth/user/callback');
     expect(REFERENCE_REDIRECT_SETS).toBe(info.referenceRedirectSets);
   });
 });

@@ -31,6 +31,7 @@ const request = require('supertest');
 // are recreated on each fresh require() after resetModules.
 
 jest.mock('../../middleware/auth', () => ({
+  requireNotBankDelegate: () => (req, res, next) => next(),
   requireAdmin: jest.fn((_req, _res, next) => next()),
   authenticateToken: jest.fn((_req, _res, next) => next()),
 }));

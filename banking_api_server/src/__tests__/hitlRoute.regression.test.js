@@ -19,6 +19,7 @@ const request = require('supertest');
 
 // Mock auth middleware BEFORE requiring routes
 jest.mock('../../middleware/auth', () => ({
+  requireNotBankDelegate: () => (req, res, next) => next(),
   authenticateToken: (req, res, next) => next(),
   requireSession: (req, res, next) => next(),
   requireScopes: () => (req, res, next) => next(),

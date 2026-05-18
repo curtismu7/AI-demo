@@ -14,6 +14,7 @@ const express = require('express');
 
 // ── Mock auth middleware before any require() of the route ────────────────────
 jest.mock('../../middleware/auth', () => ({
+  requireNotBankDelegate: () => (req, res, next) => next(),
   authenticateToken: (req, _res, next) => {
     const header = req.headers['x-test-user'];
     if (!header) return _res.status(401).json({ error: 'authentication_required' });

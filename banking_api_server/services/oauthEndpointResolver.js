@@ -72,8 +72,17 @@ function getDiscoveryEndpoint() {
   if (explicit) return explicit;
   const region = configStore.getEffective('pingone_region') || 'com';
   const envId  = configStore.getEffective('pingone_environment_id');
-  if (!envId) return '';
-  return `https://auth.pingone.${region}/${envId}/as/.well-known/openid-configuration`;
+  if (envId) {
+    return `https://auth.pingone.${region}/${envId}/as/.well-known/openid-configuration`;
+  }
+  // Standard OIDC / RFC 8414 fallback: derive discovery from the configured
+  // issuer (non-PingOne IdPs, e.g. PingFederate). Without this, OAUTH_ISSUER
+  // alone could never drive discovery.
+  const issuer = configStore.getEffective('oauth_issuer');
+  if (issuer) {
+    return `${issuer.replace(/\/+$/, '')}/.well-known/openid-configuration`;
+  }
+  return '';
 }
 
 function getOAuthEndpoints() {

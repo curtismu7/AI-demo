@@ -14,6 +14,7 @@ const request = require('supertest');
 
 // ─── Mock authenticateToken ───────────────────────────────────────────────────
 jest.mock('../../middleware/auth', () => ({
+  requireNotBankDelegate: () => (req, res, next) => next(),
   authenticateToken: (req, res, next) => {
     const auth = req.headers['authorization'];
     if (!auth || !auth.startsWith('Bearer ')) {

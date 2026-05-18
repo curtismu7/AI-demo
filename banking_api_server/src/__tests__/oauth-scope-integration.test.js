@@ -18,6 +18,7 @@ process.env.SKIP_TOKEN_SIGNATURE_VALIDATION = 'true';
 
 // Mock auth middleware — test tokens are base64-encoded but not JWK-signed.
 jest.mock('../../middleware/auth', () => ({
+  requireNotBankDelegate: () => (req, res, next) => next(),
   authenticateToken: (req, res, next) => {
     const authHeader = req.headers['authorization'];
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

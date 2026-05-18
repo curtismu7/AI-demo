@@ -44,6 +44,7 @@ jest.mock('../../services/configStore', () => ({
 }));
 
 jest.mock('../../middleware/auth', () => ({
+  requireNotBankDelegate: () => (req, res, next) => next(),
   authenticateToken: (req, res, next) => {
     const h = req.headers['x-test-user'];
     if (!h) return res.status(401).json({ error: 'authentication_required' });

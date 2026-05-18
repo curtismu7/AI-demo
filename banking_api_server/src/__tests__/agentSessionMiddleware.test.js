@@ -196,7 +196,12 @@ describe('agentSessionMiddleware', () => {
     expect(req.tokenEvents[0].timestamp).toBeDefined();
   });
 
-  it('falls back to user.id when oauthId is absent', async () => {
+  // T-6 (commit 71fbf0ac, REGRESSION_PLAN.md §"resolve user identity from
+  // PingOne sub only"): identity resolves from oauthId||sub ONLY. When neither
+  // is present the middleware fails closed with a 401 — it must NOT fall back
+  // to the legacy numeric session.user.id. (This test previously asserted the
+  // removed legacy-fallback behavior; updated to the hardened contract.)
+  it('fails closed with 401 when PingOne sub (oauthId/sub) is absent — no legacy id fallback', async () => {
     const req = makeReq({
       session: {
         id: 'sess-123',
@@ -213,7 +218,9 @@ describe('agentSessionMiddleware', () => {
 
     await agentSessionMiddleware(req, res, next);
 
-    expect(next).toHaveBeenCalled();
-    expect(req.agentContext.userId).toBe('local-user-42');
+    expect(next).not.toHaveBeenCalled();
+    expect(res._status).toBe(401);
+    expect(res._json).toMatchObject({ need_auth: true, agentInitRequired: true });
+    expect(req.agentContext).toBeUndefined();
   });
 });
