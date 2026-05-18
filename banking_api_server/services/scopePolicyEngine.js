@@ -30,23 +30,79 @@ const SCOPE_OPS_OVERLAY = {
 
 const { writeExchangeEvent } = require('./exchangeAuditStore');
 
+// Non-manifest scopes the policy engine governs but the topology SSOT
+// deliberately excludes: admin/users scopes are exchange-only (not banking
+// topology — see scope-topology.json scope boundary). Their risk/category/ops
+// stay local here, single-sourced for the engine. Transcribed verbatim from
+// the pre-SSOT SCOPE_TAXONOMY so admin privilege/risk policy is preserved.
+const NON_MANIFEST_TAXONOMY = {
+  'banking:transactions:write': {
+    description: 'Create and modify transactions',
+    operations: ['POST /transactions/*'],
+    risk_level: 'high',
+    category: 'banking',
+    requires_user_context: true,
+  },
+  'admin:read': {
+    description: 'Read access to administrative data',
+    operations: ['GET /admin/*', 'GET /users/*', 'GET /audit/*'],
+    risk_level: 'medium',
+    category: 'admin',
+    requires_user_context: false,
+  },
+  'admin:write': {
+    description: 'Write access to administrative operations',
+    operations: ['POST /admin/*', 'PUT /users/*', 'DELETE /users/*'],
+    risk_level: 'high',
+    category: 'admin',
+    requires_user_context: false,
+  },
+  'admin:delete': {
+    description: 'Delete operations for administrative tasks',
+    operations: ['DELETE /users/*', 'DELETE /admin/*'],
+    risk_level: 'critical',
+    category: 'admin',
+    requires_user_context: false,
+  },
+  'users:read': {
+    description: 'Read access to user management data',
+    operations: ['GET /users/*'],
+    risk_level: 'medium',
+    category: 'admin',
+    requires_user_context: false,
+  },
+  'users:manage': {
+    description: 'Full user management capabilities',
+    operations: ['POST /users/*', 'PUT /users/*', 'DELETE /users/*'],
+    risk_level: 'high',
+    category: 'admin',
+    requires_user_context: false,
+  },
+};
+
 /**
  * Scope taxonomy and risk levels
  * Using existing MCP tool scopes structure
  */
-// SCOPE_TAXONOMY derives identity + risk from the manifest; ops from the overlay.
-const SCOPE_TAXONOMY = Object.keys(scopeTopology._manifest().scopes).reduce((acc, name) => {
-  const meta = scopeTopology.scopeMeta(name);
-  const overlay = SCOPE_OPS_OVERLAY[name] || { operations: [], requires_user_context: true };
-  acc[name] = {
-    description: meta.description,
-    risk_level: meta.riskLevel,
-    category: 'banking',
-    operations: overlay.operations,
-    requires_user_context: overlay.requires_user_context,
-  };
-  return acc;
-}, {});
+// SCOPE_TAXONOMY: banking-family scopes derive identity+risk from the manifest
+// (single source of truth); ops from the overlay. Non-manifest admin/users
+// scopes come from NON_MANIFEST_TAXONOMY. Manifest is authoritative for the
+// scopes it owns; the local registry covers only what the SSOT excludes.
+const SCOPE_TAXONOMY = {
+  ...NON_MANIFEST_TAXONOMY,
+  ...Object.keys(scopeTopology._manifest().scopes).reduce((acc, name) => {
+    const meta = scopeTopology.scopeMeta(name);
+    const overlay = SCOPE_OPS_OVERLAY[name] || { operations: [], requires_user_context: true };
+    acc[name] = {
+      description: meta.description,
+      risk_level: meta.riskLevel,
+      category: 'banking',
+      operations: overlay.operations,
+      requires_user_context: overlay.requires_user_context,
+    };
+    return acc;
+  }, {}),
+};
 
 /**
  * Risk level weights for scoring

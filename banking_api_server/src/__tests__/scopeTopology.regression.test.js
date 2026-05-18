@@ -116,11 +116,21 @@ describe('scopePolicyEngine + scopeAuditService derive from manifest', () => {
       .toEqual(expect.arrayContaining(['banking:transfer']));
   });
 
-  test('SCOPE_OPS_OVERLAY has no keys absent from the manifest', () => {
+  test('every BANKING-FAMILY engine scope derives from the manifest (admin/users are local by design)', () => {
     const engine = require('../../services/scopePolicyEngine');
     const manifestScopes = new Set(Object.keys(topo._manifest().scopes));
-    for (const s of engine.getAllScopes().map(x => (typeof x === 'string' ? x : x.scope))) {
+    const engineScopes = engine.getAllScopes().map(x => (typeof x === 'string' ? x : x.scope));
+    // Banking-family scopes MUST come from the SSOT. Non-manifest admin/users
+    // scopes (admin:*, users:*, banking:transactions:write) are intentionally
+    // engine-local (NON_MANIFEST_TAXONOMY) — they are exchange-only, not topology.
+    const NON_MANIFEST = new Set(['admin:read','admin:write','admin:delete','users:read','users:manage','banking:transactions:write']);
+    for (const s of engineScopes) {
+      if (NON_MANIFEST.has(s)) continue;
       expect(manifestScopes.has(s)).toBe(true);
+    }
+    // And every manifest scope MUST be present in the engine (single-source guarantee).
+    for (const s of manifestScopes) {
+      expect(engineScopes).toContain(s);
     }
   });
 });
