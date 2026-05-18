@@ -523,13 +523,29 @@ describe('Simulated Authorize response shape (no credentials needed)', () => {
     expect(result.obligations).toEqual([]);
   });
 
+  // Documented simulated-policy ladder: confirm ≥$250, step-up ≥$500,
+  // DENY >$2,000 (defaults; see getConfirm/StepUp/DenyAmountUsd). The
+  // step-up band is $500–$2,000, so $1,000 → PERMIT + IDENTITY_REQUIREMENT.
+  // (This test previously used $20,000, which is > the $2,000 deny ceiling
+  // — that ceiling has existed since 2026-05-05, predating the obligation-
+  // classifier refactor; $20k correctly DENYs, covered by the test below.)
   it('step-up response includes IDENTITY_REQUIREMENT obligation', async () => {
+    const result = await svc.evaluate({
+      parameters: { transactionAmount: 1000, userId: 'test-user', transactionType: 'transfer' },
+    });
+    expect(result.status).toBe('SUCCESS');
+    expect(result.result.decision).toBe('PERMIT');
+    expect(result.obligations.length).toBeGreaterThan(0);
+    expect(result.obligations[0]).toMatchObject({ type: 'IDENTITY_REQUIREMENT' });
+  });
+
+  it('amount over the $2,000 deny ceiling is DENIED (documented policy)', async () => {
     const result = await svc.evaluate({
       parameters: { transactionAmount: 20000, userId: 'test-user', transactionType: 'transfer' },
     });
     expect(result.status).toBe('SUCCESS');
-    expect(result.obligations.length).toBeGreaterThan(0);
-    expect(result.obligations[0]).toMatchObject({ type: 'IDENTITY_REQUIREMENT' });
+    expect(result.result.decision).toBe('DENY');
+    expect(result.obligations).toEqual([]);
   });
 });
 
