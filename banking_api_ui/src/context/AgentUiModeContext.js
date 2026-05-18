@@ -86,6 +86,8 @@ const AgentUiModeContext = createContext({
   setAgentUi: () => {},
   webMcpLastResult: null,
   setWebMcpLastResult: () => {},
+  surfaceHostEl: null,
+  setSurfaceHostEl: () => {},
 });
 
 /**
@@ -97,6 +99,7 @@ const AgentUiModeContext = createContext({
 export function AgentUiModeProvider({ children }) {
   const [state, setState] = useState(() => readState());
   const [webMcpLastResult, setWebMcpLastResult] = useState(null);
+  const [surfaceHostEl, setSurfaceHostEl] = useState(null);
 
   useEffect(() => {
     try {
@@ -151,8 +154,18 @@ export function AgentUiModeProvider({ children }) {
       setAgentUi,
       webMcpLastResult,
       setWebMcpLastResult,
+      surfaceHostEl,
+      setSurfaceHostEl,
     }),
-    [state.placement, state.fab, setAgentUi, webMcpLastResult, setWebMcpLastResult]
+    [
+      state.placement,
+      state.fab,
+      setAgentUi,
+      webMcpLastResult,
+      setWebMcpLastResult,
+      surfaceHostEl,
+      setSurfaceHostEl,
+    ]
   );
 
   return (

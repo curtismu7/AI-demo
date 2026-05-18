@@ -1,7 +1,7 @@
 // banking_api_ui/src/components/EmbeddedAgentDock.js
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import BankingAgent from './BankingAgent';
+import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { isEmbeddedAgentDockRoute } from '../utils/embeddedAgentFabVisibility';
 import { resolveEmbeddedFocus } from './bankingAgentSafety';
 
@@ -32,8 +32,17 @@ function readStoredCollapsed() {
 /**
  * Bottom embedded AI agent: content-width strip, collapsible, vertically resizable.
  */
-export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
+export default function EmbeddedAgentDock({ user, agentPlacement }) {
   const { pathname } = useLocation();
+  const { setSurfaceHostEl } = useAgentUiMode();
+  const [hostEl, setHostEl] = useState(null);
+  const hostRefCb = useCallback((el) => setHostEl(el), []);
+  useEffect(() => {
+    setSurfaceHostEl(hostEl);
+    return () => {
+      setSurfaceHostEl((cur) => (cur === hostEl ? null : cur));
+    };
+  }, [hostEl, setSurfaceHostEl]);
   const [collapsed, setCollapsed] = useState(readStoredCollapsed);
   const [dockHeight, setDockHeight] = useState(() =>
     typeof window !== 'undefined' ? readStoredHeight() : DEFAULT_HEIGHT
@@ -152,21 +161,21 @@ export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
         </button>
       </div>
 
-      {!collapsed && (
+      {/* Host div is ALWAYS mounted so the BankingAgent portal target / its
+          React subtree (in-flight chat state) never unmounts on collapse.
+          When collapsed it is hidden via CSS (display:none) while staying in
+          the DOM — React keeps the portaled subtree mounted regardless. */}
+      <div
+        className={`embedded-agent-dock embedded-banking-agent embedded-banking-agent--bottom${
+          collapsed ? ' embedded-agent-dock--collapsed' : ''
+        }`}
+        style={{ '--embedded-dock-height': `${Math.round(dockHeight)}px` }}
+      >
         <div
-          className="embedded-agent-dock embedded-banking-agent embedded-banking-agent--bottom"
-          style={{ '--embedded-dock-height': `${Math.round(dockHeight)}px` }}
-        >
-          <BankingAgent
-            user={user}
-            onLogout={onLogout}
-            mode="inline"
-            embeddedDockBottom
-            embeddedFocus={isConfigPage ? 'config' : 'banking'}
-            distinctFloatingChrome
-          />
-        </div>
-      )}
+          className="embedded-agent-dock-host"
+          ref={hostRefCb}
+        />
+      </div>
     </div>
   );
 

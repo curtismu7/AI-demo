@@ -143,6 +143,13 @@
   padding-top: 0;
 }
 
+/* Collapsed: host stays mounted (portal target / agent React subtree
+   preserved) but is hidden. React keeps the portaled subtree mounted
+   regardless of CSS, so in-flight chat state survives collapse/expand. */
+.global-embedded-agent-dock-wrap .embedded-agent-dock--collapsed {
+  display: none;
+}
+
 /* Collapse / expand toggle */
 .embedded-dock-collapse-btn {
   background: transparent;

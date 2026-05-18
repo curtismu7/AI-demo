@@ -2743,7 +2743,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           {agentPlacement === "bottom" && (
             <EmbeddedAgentDock
               user={user}
-              onLogout={onLogout}
               agentPlacement={agentPlacement}
             />
           )}
