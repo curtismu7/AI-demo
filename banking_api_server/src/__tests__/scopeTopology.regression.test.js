@@ -59,3 +59,18 @@ describe('BFF scopeTopology loader', () => {
     expect(topo.resourceScopes('Super Banking API')).toContain('banking:transfer');
   });
 });
+
+describe('MCP_TOOL_SCOPES derives from manifest', () => {
+  const { MCP_TOOL_SCOPES } = require('../../services/mcpWebSocketClient');
+  const topo = require('../../services/scopeTopology');
+
+  test('create_transfer now requests banking:transfer', () => {
+    expect(MCP_TOOL_SCOPES.create_transfer).toEqual(['banking:write', 'banking:transfer']);
+  });
+
+  test('every manifest tool is present in MCP_TOOL_SCOPES with matching scopes', () => {
+    for (const name of topo.allTools()) {
+      expect(MCP_TOOL_SCOPES[name]).toEqual(topo.toolScopes(name));
+    }
+  });
+});
