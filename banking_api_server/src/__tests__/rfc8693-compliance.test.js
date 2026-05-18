@@ -470,9 +470,12 @@ describe('RFC 8693 Token Exchange Compliance', () => {
       
       const endTime = Date.now();
       const duration = endTime - startTime;
-      
-      // Should complete 50 validations in under 50ms
-      expect(duration).toBeLessThan(50);
+
+      // 50 validations should be fast. A generous wall-clock budget: the
+      // intent is to catch a pathological regression (I/O added, O(n^2)),
+      // not scheduler jitter — a tight 50ms budget flaked under parallel
+      // CI load (e.g. 53ms) despite the logic being unchanged.
+      expect(duration).toBeLessThan(500);
     });
   });
 

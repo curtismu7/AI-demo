@@ -22,6 +22,7 @@ const request = require('supertest');
 
 // ─── Mock auth ────────────────────────────────────────────────────────────────
 jest.mock('../../middleware/auth', () => ({
+  requireNotBankDelegate: () => (req, res, next) => next(),
   authenticateToken: (req, res, next) => {
     const h = req.headers['x-test-user'];
     if (!h) {

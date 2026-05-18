@@ -13,6 +13,18 @@ const path = require('path');
 
 const SERVER_PATH = path.join(__dirname, '../../server.js');
 const BASE_SESSION_ENV = { SESSION_SECRET: 'test-session-secret-minimum-32-ch' };
+// Dummy PingOne creds so the production env-var preflight passes and the
+// process reaches the STAB-03 SKIP_TOKEN_SIGNATURE_VALIDATION guard this
+// suite is actually testing. Without these, the newer required-env
+// preflight exits(1) first (to stdout), masking the guard under test.
+const BASE_PROD_PINGONE_ENV = {
+  PINGONE_ENVIRONMENT_ID: '00000000-0000-0000-0000-000000000000',
+  PINGONE_ADMIN_CLIENT_ID: 'dummy-admin-client-id',
+  PINGONE_ADMIN_CLIENT_SECRET: 'dummy-admin-client-secret',
+  PINGONE_USER_CLIENT_ID: 'dummy-user-client-id',
+  PINGONE_USER_CLIENT_SECRET: 'dummy-user-client-secret',
+  PUBLIC_APP_URL: 'https://example.test',
+};
 
 describe('production safety guard (STAB-03)', () => {
   it('exits 1 with fatal message when SKIP_TOKEN_SIGNATURE_VALIDATION=true and NODE_ENV=production', () => {
@@ -20,6 +32,7 @@ describe('production safety guard (STAB-03)', () => {
       env: {
         ...process.env,
         ...BASE_SESSION_ENV,
+        ...BASE_PROD_PINGONE_ENV,
         SKIP_TOKEN_SIGNATURE_VALIDATION: 'true',
         NODE_ENV: 'production',
         // Ensure VERCEL / REPL_ID are absent so we rely on NODE_ENV=production alone

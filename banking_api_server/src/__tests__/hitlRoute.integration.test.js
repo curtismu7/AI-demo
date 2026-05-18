@@ -16,6 +16,7 @@ const request = require('supertest');
 
 // Mock only the data store and auth middleware—use REAL configStore from .env
 jest.mock('../../middleware/auth', () => ({
+  requireNotBankDelegate: () => (req, res, next) => next(),
   authenticateToken: (req, res, next) => {
     const userHeader = req.headers['x-test-user'];
     if (userHeader) {

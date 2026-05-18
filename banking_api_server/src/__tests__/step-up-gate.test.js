@@ -17,6 +17,7 @@ const request = require('supertest');
 
 // ─── Mock the auth middleware BEFORE requiring the server ──────────────────────
 jest.mock('../../middleware/auth', () => ({
+  requireNotBankDelegate: () => (req, res, next) => next(),
   authenticateToken: (req, res, next) => {
     const userHeader = req.headers['x-test-user'];
     if (!userHeader) {

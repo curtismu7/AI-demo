@@ -20,6 +20,7 @@ process.env.SKIP_TOKEN_SIGNATURE_VALIDATION = 'true';
 // requireSession is bypassed; authenticateToken decodes fake JWTs from the
 // Authorization header and populates req.user with claims.
 jest.mock('../../middleware/auth', () => ({
+  requireNotBankDelegate: () => (req, res, next) => next(),
   authenticateToken: (req, res, next) => {
     const authHeader = req.headers['authorization'];
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

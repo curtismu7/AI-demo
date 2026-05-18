@@ -1,4 +1,5 @@
 jest.mock('../../middleware/auth', () => ({
+  requireNotBankDelegate: () => (req, res, next) => next(),
   authenticateToken: (req, res, next) => {
     if (!req.session) req.session = {};
     if (!req.session.user) {
