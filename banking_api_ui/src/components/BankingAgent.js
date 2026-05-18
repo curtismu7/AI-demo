@@ -74,6 +74,7 @@ import {
 import { getColdStartRetryDelays } from "../services/apiErrorHandler";
 import APP_CONFIG from "../services/appConfig";
 import { useCustomChips } from "../hooks/useCustomChips";
+import { claimPendingNl } from "./bankingAgentSafety";
 
 // Phase 266 H2 audit: TokenChain credentialPath stamping origins per setTokenEvents call:
 //   line 3433 (scopeTestRes.tokenEvents)  — origin: scope-test path via callMcpTool; credentialPath: oauth_bearer (default; stamped by bankingAgentService)
@@ -2287,10 +2288,12 @@ export default function BankingAgent({
   // Auto-open when redirected back from OAuth login (?oauth=success in URL)
   useEffect(() => {
     if (searchParams.get("oauth") === "success") {
-      let pendingNl = null;
-      try {
-        pendingNl = sessionStorage.getItem(BX_AGENT_PENDING_NL_KEY);
-      } catch (_) {}
+      // Atomically claim the pending NL command BEFORE any retry timer fires.
+      // This guarantees exactly one instance/retry replays it (prevents
+      // double-execute of a banking command; REGRESSION_PLAN §4 2026-05-18).
+      // Claimed on effect entry: if session hydration never succeeds the
+      // command is intentionally dropped, not retained for a later page load.
+      const pendingNl = claimPendingNl(BX_AGENT_PENDING_NL_KEY);
 
       setIsOpen(true);
       // Strip oauth params from URL so they don't re-trigger on navigation
@@ -2317,11 +2320,8 @@ export default function BankingAgent({
           if (found) {
             setCookieOnlyBffSession(cookieOnly);
             setSessionUser(found);
-            if (pendingNl && String(pendingNl).trim()) {
-              try {
-                sessionStorage.removeItem(BX_AGENT_PENDING_NL_KEY);
-              } catch (_) {}
-              setNlResumeAfterAuth(String(pendingNl).trim());
+            if (pendingNl) {
+              setNlResumeAfterAuth(pendingNl);
             }
             setMessages((prev) => {
               if (prev.length > 0) return prev;
