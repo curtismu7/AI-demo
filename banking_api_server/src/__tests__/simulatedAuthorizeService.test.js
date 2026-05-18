@@ -236,11 +236,40 @@ describe('simulatedAuthorizeService', () => {
   });
 
   describe('isSimulatedModeEnabled', () => {
-    it('returns true when configStore has ff_authorize_simulated true', () => {
+    it('returns true when configStore.get has ff_authorize_simulated true (no getEffective)', () => {
       expect(isSimulatedModeEnabled({ get: (k) => (k === 'ff_authorize_simulated' ? 'true' : null) })).toBe(true);
     });
-    it('returns false when flag absent', () => {
+    it('returns false on a get-only stub when the flag is absent (fallback path)', () => {
+      // Stub with only .get and no value → falls back to .get → false.
       expect(isSimulatedModeEnabled({ get: () => null })).toBe(false);
+    });
+
+    // REGRESSION (high-value transfer fail-open incident, 2026-05-18):
+    // a corrupt/empty config.db makes the real configStore's .get() return
+    // null for everything while .getEffective() still applies field
+    // defaults. ff_authorize_simulated defaults to 'true' and the simulated
+    // path is what enforces the amount-based step-up / HITL gate. The old
+    // code used .get() → null → false → the gate silently DISABLED and a
+    // $750 transfer executed with NO consent. isSimulatedModeEnabled must
+    // resolve via .getEffective so an unreadable config FAILS SAFE (gate on).
+    it('prefers getEffective: null .get but default-true .getEffective → ENABLED (fail-safe)', () => {
+      const corruptConfigDbStore = {
+        get: () => null, // SQLite init failed → raw cache empty
+        getEffective: (k) => (k === 'ff_authorize_simulated' ? 'true' : null), // default applied
+      };
+      expect(isSimulatedModeEnabled(corruptConfigDbStore)).toBe(true);
+    });
+
+    it('explicit getEffective "false" stays DISABLED (operator opt-out respected)', () => {
+      expect(
+        isSimulatedModeEnabled({ get: () => 'true', getEffective: () => 'false' }),
+      ).toBe(false);
+    });
+
+    it('getEffective boolean true is honored', () => {
+      expect(
+        isSimulatedModeEnabled({ get: () => null, getEffective: () => true }),
+      ).toBe(true);
     });
   });
 });

@@ -123,6 +123,23 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — SECURITY: high-value transfer executed with NO consent (fail-open) — §1 Transfer HITL
+
+**Files changed:**
+- `banking_api_server/services/simulatedAuthorizeService.js` — `isSimulatedModeEnabled()` resolves `ff_authorize_simulated` via `configStore.getEffective` (default-aware), not `configStore.get` (raw cache read, null on miss).
+- `banking_api_server/src/__tests__/simulatedAuthorizeService.test.js` — regression tests: null `.get` + default-true `.getEffective` → ENABLED (fail-safe); explicit `false` stays disabled.
+- Removed corrupt 0-byte `banking_api_server/data/config.db` (untracked runtime artifact; configStore recreates it — it was forcing the SQLite "file is not a database" in-memory fallback every boot).
+
+**What was broken:** An agent-initiated `create_transfer` of **$750** (well over the $250 confirm / step-up threshold) **executed successfully with no human consent** — `{"success":true,"message":"Transfer completed successfully"}`. This violates REGRESSION_PLAN §1 "Transfer HITL enforcement". Root cause chain: (1) `data/config.db` was a corrupt 0-byte file → configStore SQLite init failed → in-memory cache empty → `configStore.get(key)` returned `null` for everything. (2) `isSimulatedModeEnabled()` used `configStore.get('ff_authorize_simulated')` (raw, no default-fill) → got `null` → `null === 'true'` is false → `USE_SIMULATED = false`. (3) With simulated mode off, `mcpToolAuthorizationService` fell to the live-PingOne MCP gate, which is unconfigured (`authorize_mcp_decision_endpoint_id` missing after the re-bootstrap) → `return { ran: false }`; `ff_authorize_fail_open` is effectively on → the transfer **failed open**. The simulated path (which DOES enforce the amount-based step-up/HITL) was never reached.
+
+**What was fixed:** `isSimulatedModeEnabled` now reads via `getEffective`, which applies the `ff_authorize_simulated` default of `'true'`. An unreadable/empty config now **fails safe** (simulated gate ON), so high-value transfers are blocked pending step-up. An operator who *explicitly* sets `ff_authorize_simulated=false` still gets false (opt-out respected). Verified live: $750 `create_transfer` → `HTTP 428 mcp_step_up_required` (not silent success).
+
+**Verify:**
+- `cd banking_api_server && npx jest simulatedAuthorizeService` → 25 passing incl. the fail-safe regression block.
+- Live: logged-in customer `POST /api/mcp/tool {tool:"create_transfer", amount:750}` → **HTTP 428** `mcp_step_up_required`, body does NOT contain "Transfer completed successfully".
+
+**Do not break:** any code deciding a SECURITY gate from configStore MUST use `getEffective` (default-aware), never `get` (returns null on cache miss / corrupt config.db) — a security default must fail safe toward enforcement, never silently disable. The amount-based transfer step-up/HITL has two engines: live PingOne Authorize (needs `authorize_mcp_decision_endpoint_id`) and Simulated (`ff_authorize_simulated`, default true). At least one MUST be active; the simulated default is the safety net when the live endpoint is absent. Separately tracked: `ff_authorize_fail_open` defaulting open is the deeper latent risk — when neither engine can run, a high-value transfer still fails open. Not changed here (larger blast radius); flagged for a follow-up to fail closed for step_up tools.
+
 ### 2026-05-18 — show_mortgage "Unknown tool" — HTTP/WS transport-parity gap (BL-02)
 
 **Files changed:**

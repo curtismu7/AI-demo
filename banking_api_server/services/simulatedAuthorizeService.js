@@ -596,10 +596,20 @@ async function evaluate({ parameters = {} } = {}) {
 // configStore is injected rather than imported at module top so callers (e.g. mcpToolAuthorizationService)
 // can pass a fresh reference. This avoids a circular-require when the module is loaded early in the chain.
 function isSimulatedModeEnabled(configStore) {
-  const sim =
-    configStore.get('ff_authorize_simulated') === true ||
-    configStore.get('ff_authorize_simulated') === 'true';
-  return !!sim;
+  // SECURITY-CRITICAL DEFAULT: use getEffective (default-aware), NOT get
+  // (raw cache read). ff_authorize_simulated defaults to 'true' — the
+  // simulated path is what enforces the amount-based step-up / HITL gate
+  // when a live PingOne Authorize decision endpoint is not configured.
+  // configStore.get() returns null on a cache miss (e.g. a corrupt/empty
+  // config.db where SQLite init failed) — with the old code that null made
+  // this return false, silently DISABLING the high-value-transfer consent
+  // gate (fail-open). getEffective applies the 'true' default so an
+  // unreadable/unset config fails SAFE toward enforcing the gate. An
+  // operator who explicitly sets it to 'false' still gets false.
+  const v = configStore.getEffective
+    ? configStore.getEffective('ff_authorize_simulated')
+    : configStore.get('ff_authorize_simulated');
+  return v === true || v === 'true';
 }
 
 module.exports = {
