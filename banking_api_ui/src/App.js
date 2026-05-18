@@ -53,7 +53,6 @@ import DelegatedAccessPage from "./components/DelegatedAccessPage";
 import DelegationPage from "./components/DelegationPage";
 import DemoServerCheckModal from "./components/DemoServerCheckModal";
 import DevToolsDashboard from "./components/DevToolsDashboard";
-import EmbeddedAgentDock from "./components/EmbeddedAgentDock";
 import EducationPanelsHost from "./components/education/EducationPanelsHost";
 import FeatureFlagsPage from "./components/FeatureFlagsPage";
 import Footer from "./components/Footer";
@@ -120,7 +119,6 @@ import { notifyInfo, notifyWarning } from "./utils/appToast";
 import { SESSION_REAUTH_EVENT } from "./utils/authUi";
 import {
   isBankingAgentDashboardRoute,
-  isEmbeddedAgentDockRoute,
   isPublicMarketingAgentPath,
   isMonitoringRoute,
 } from "./utils/embeddedAgentFabVisibility";
@@ -232,7 +230,7 @@ function AppWithAuth() {
     pathNorm === "/api-traffic" ||
     pathNorm === "/logs" ||
     pathNorm === "/agent";
-  const { placement: agentPlacement, fab: agentFab, surfaceHostEl } = useAgentUiMode();
+  const { placement: agentPlacement, surfaceHostEl } = useAgentUiMode();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
@@ -542,11 +540,10 @@ function AppWithAuth() {
   /** Nav rail / layout flags — computed declaratively so React className is always in sync. */
   const isOnDashboard = pathname === "/dashboard";
 
-  /** Floating agent: dashboard homes only. Embedded dock: those routes plus `/config` (setup-focused assistant). */
+  /** Floating agent: dashboard homes only. */
   const onDashboardAgentRoute = isBankingAgentDashboardRoute(pathname);
-  const onEmbeddedDockRoute = isEmbeddedAgentDockRoute(pathname);
 
-  // Routes where UserDashboard is rendered (handles its own middle FAB + split layout and its own bottom dock).
+  // Routes where UserDashboard is rendered (handles its own middle FAB + split layout).
   // Admin uses Dashboard.js on /admin — those routes need the global float/dock from App.
   // / now renders LandingPage for non-admin logged-in users; UserDashboard lives at /dashboard.
   const onUserDashboardRoute = Boolean(user) && pathname === "/dashboard";
@@ -554,10 +551,6 @@ function AppWithAuth() {
   // Landing home (/): show floating agent even when signed out.
   // Suppress float on signed-in / only when UserDashboard owns middle placement.
   const marketingAgentSurface = isPublicMarketingAgentPath(pathname) && !user;
-
-  // Landing /: always show float agent, never bottom dock.
-  const hasEmbeddedDockLayout =
-    Boolean(user) && agentPlacement === "bottom" && onEmbeddedDockRoute;
 
   // Middle placement on /dashboard: UserDashboard renders the middle column
   // and registers its host element; the single agent portals into it (4c).
@@ -571,9 +564,6 @@ function AppWithAuth() {
   const showFloatingAgent =
     !agentDisabled &&
     !isApiTrafficOnlyPage &&
-    (!hasEmbeddedDockLayout ||
-      onMonitoringRoute ||
-      (Boolean(user) && agentFab && onDashboardAgentRoute)) &&
     (marketingAgentSurface ||
       (Boolean(user) && agentPlacement === "none") ||
       (Boolean(user) && onMonitoringRoute) ||
@@ -582,19 +572,15 @@ function AppWithAuth() {
         onDashboardAgentRoute &&
         !(agentPlacement === "middle" && onUserDashboardRoute)));
 
-  /** Single <BankingAgent> portals into the bottom dock host element when present; falls back to document.body otherwise. */
-  const shouldMountSingleAgent =
-    showFloatingAgent || hasEmbeddedDockLayout || hasMiddleLayout;
+  /** Single <BankingAgent> portals into the middle host element when present; falls back to document.body otherwise. */
+  const shouldMountSingleAgent = showFloatingAgent || hasMiddleLayout;
 
-  // When the single agent is portaled into the bottom dock host it must wear
-  // the dock's inline chrome (no floating frame/drag), exactly as the old
-  // per-dock <BankingAgent mode="inline" embeddedDockBottom> did. Float and
-  // all other surfaces keep the default floating chrome.
-  const singleAgentSurfaceProps = hasEmbeddedDockLayout
-    ? { mode: "inline", embeddedDockBottom: true }
-    : hasMiddleLayout
-      ? { mode: "inline", splitColumnChrome: true, showPopOut: true }
-      : {};
+  // When the single agent is portaled into the middle column host it wears the
+  // split-column inline chrome (no floating frame/drag). Float and all other
+  // surfaces keep the default floating chrome.
+  const singleAgentSurfaceProps = hasMiddleLayout
+    ? { mode: "inline", splitColumnChrome: true, showPopOut: true }
+    : {};
 
   /** Slower default dismiss on public landing so OAuth/agent messages are readable (signed-in routes stay 4s). */
   const toastContainerAutoCloseMs =
@@ -630,7 +616,7 @@ function AppWithAuth() {
             ]}
           />
           <div
-            className={`App end-user-nano${isOnDashboard ? " App--on-dashboard" : ""}${hasEmbeddedDockLayout ? " App--has-embedded-dock" : ""}${sessionReauth ? " App--session-reauth" : ""}`}
+            className={`App end-user-nano${isOnDashboard ? " App--on-dashboard" : ""}${sessionReauth ? " App--session-reauth" : ""}`}
           >
             <ToastContainer
               position="top-right"
@@ -1435,17 +1421,6 @@ function AppWithAuth() {
               onClose={() => setLogViewerOpen(false)}
               categoryFilter={appFlags.logFilterCategories}
             />
-            {/* UserDashboard renders EmbeddedAgentDock inside its layout. App-level dock sits in document
-              order directly above the footer on non-dashboard routes.
-              Guest landing (/) always uses float agent — no bottom dock. */}
-            {!loading &&
-              !onUserDashboardRoute &&
-              !(!user && isPublicMarketingAgentPath(pathname)) && (
-                <EmbeddedAgentDock
-                  user={user}
-                  agentPlacement={agentPlacement}
-                />
-              )}
             {!isApiTrafficOnlyPage && <Footer user={user} />}
             <ServerRestartModal />
             {downServers && downServers.length > 0 && (

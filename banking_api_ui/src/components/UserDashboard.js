@@ -29,7 +29,6 @@ import {
 import { toastCustomerError } from "../utils/dashboardToast";
 import AgentUiModeToggle from "./AgentUiModeToggle";
 import ThresholdControls from "./ThresholdControls";
-import EmbeddedAgentDock from "./EmbeddedAgentDock";
 import ExchangeModeToggle from "./ExchangeModeToggle";
 import { EDU } from "./education/educationIds";
 import Fido2Challenge from "./Fido2Challenge";
@@ -150,7 +149,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
   // ff_show_banking_in_middle_agent — when false (default) the banking column
   // is hidden in the middle-agent layout (banking info comes from the agent /
-  // pop-out). Floating + bottom modes are unaffected. Mirrors the cookie-
+  // pop-out). Floating mode is unaffected. Mirrors the cookie-
   // credentialed read BankingAgent.js uses for ff_heuristic_enabled.
   const [showBankingInMiddle, setShowBankingInMiddle] = useState(false);
 
@@ -426,15 +425,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchUserData identity is stable; adding it would re-register on every render
   }, []);
 
-  /** Keep localStorage layout aligned with Agent UI (Middle → split, Bottom → classic). */
+  /** Keep localStorage layout aligned with Agent UI (Middle → split3). */
   useEffect(() => {
     if (agentPlacement === "middle") {
       setMiddleAgentOpen(true);
       setDashboardLayoutState("split3");
       setDashboardLayout("split3");
-    } else if (agentPlacement === "bottom") {
-      setDashboardLayoutState("classic");
-      setDashboardLayout("classic");
     }
 
     // Refresh account data on layout change to prevent account loss (todo #11).
@@ -2395,7 +2391,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         {(() => {
           const sorted = [...transactions]
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-            .slice(0, agentPlacement === "bottom" ? 8 : 20);
+            .slice(0, 20);
 
           if (sorted.length === 0) {
             return (
@@ -2528,10 +2524,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   return (
     <div
       className={`user-dashboard user-dashboard--2026${
-        agentPlacement === "bottom" && dashboardLayout === "classic"
-          ? " user-dashboard--embed-agent"
-          : ""
-      }${
         agentPlacement === "middle"
           ? " user-dashboard--split3"
           : ""
@@ -2725,14 +2717,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           )}
         </div>
       ) : (
-        // Bottom-dock or float mode: 3-column grid + optional full-width agent row below
-        // Float mode ('none'): 2-column layout — token rail + content; FAB is a fixed overlay from App.js
-        <div
-          className={`ud-body-outer${agentPlacement === "bottom" ? " ud-body-outer--with-bottom-agent" : ""}`}
-        >
-          <div
-            className={`dashboard-content ud-body ud-body--2026 ud-body--floating${agentPlacement === "none" ? " ud-body--float-mode" : " ud-body--design-3col"}`}
-          >
+        // Float mode ('none'): 2-column layout — token rail + content; FAB is a
+        // fixed overlay from App.js. (Bottom dock removed in Phase 4d; only
+        // 'none' reaches this else-branch now.)
+        <div className="ud-body-outer">
+          <div className="dashboard-content ud-body ud-body--2026 ud-body--floating ud-body--float-mode">
             <aside className="ud-token-rail" aria-label="Token chain">
               <div className="section ud-token-rail__inner">
                 <ExchangeModeToggle />
@@ -2748,29 +2737,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               {renderBankingMain()}
             </main>
 
-            {/* Float-reserve column: hidden in bottom mode (agent spans full width) and float mode (FAB is fixed overlay) */}
-            {agentPlacement !== "bottom" && agentPlacement !== "none" && (
-              <aside className="ud-float-reserve" aria-hidden="true">
-                <div className="ud-float-reserve__card">
-                  <span className="ud-float-reserve__label">
-                    Floating assistant
-                  </span>
-                  <p className="ud-float-reserve__hint">
-                    The corner FAB and panel stay in this zone so your balances
-                    and token flow stay readable.
-                  </p>
-                </div>
-              </aside>
-            )}
+            {/* Float mode: no reserve column — the FAB is a fixed overlay from App.js. */}
           </div>
-
-          {/* Agent dock spans full content width — no App-level gap */}
-          {agentPlacement === "bottom" && (
-            <EmbeddedAgentDock
-              user={user}
-              agentPlacement={agentPlacement}
-            />
-          )}
         </div>
       )}
 

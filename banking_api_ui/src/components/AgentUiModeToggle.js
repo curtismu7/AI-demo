@@ -7,7 +7,7 @@ import { setDashboardLayout } from "../utils/dashboardLayout";
 import "./AgentUiModeToggle.css";
 
 /**
- * Middle / Bottom / Float + optional FAB when embedded.
+ * Middle / Float + optional FAB when embedded.
  * Persists to demo scenario when signed in; always updates localStorage via context.
  *
  * @param {'landing' | 'eduBar' | 'config'} props.variant
@@ -59,11 +59,6 @@ export default function AgentUiModeToggle({
         await applyAndReload({ placement: "middle", fab }, { reload: false });
         return;
       }
-      if (p === "bottom") {
-        setDashboardLayout("classic");
-        await applyAndReload({ placement: "bottom", fab }, { reload: true });
-        return;
-      }
       await applyAndReload({ placement: "none", fab: true }, { reload: true });
     },
     [placement, fab, applyAndReload],
@@ -94,8 +89,8 @@ export default function AgentUiModeToggle({
       aria-label={
         ariaLabel ||
         (isLandingNav
-          ? "AI banking agent: bottom dock or float"
-          : "AI banking agent: middle column, bottom dock, or float; optional FAB")
+          ? "AI banking agent: float"
+          : "AI banking agent: middle column or float; optional FAB")
       }
     >
       <span className="agent-ui-mode-toggle__label" id={`${idPrefix}-legend`}>
@@ -127,15 +122,6 @@ export default function AgentUiModeToggle({
             </button>
           )}
 
-          <button
-            type="button"
-            className={`agent-ui-mode-toggle__btn${placement === "bottom" ? " agent-ui-mode-toggle__btn--active" : ""}`}
-            onClick={() => void handlePlacement("bottom")}
-            aria-pressed={placement === "bottom"}
-            title="Bottom dock on home, dashboard, and config (Classic layout)"
-          >
-            Bottom
-          </button>
           <button
             type="button"
             className={`agent-ui-mode-toggle__btn${placement === "none" ? " agent-ui-mode-toggle__btn--active" : ""}`}

@@ -6,7 +6,7 @@ const STORAGE_KEY_V2 = 'banking_agent_ui_v2';
 
 /**
  * @typedef {object} AgentUiState
- * @property {'middle' | 'bottom' | 'none'} placement — Middle = split column agent; Bottom = dock; none = float-only.
+ * @property {'middle' | 'none'} placement — Middle = split-column agent host; none = float-only.
  * @property {boolean} fab — Also show floating FAB on dashboard routes (invalid with placement none unless true).
  */
 
@@ -18,8 +18,8 @@ const defaultState = /** @type {AgentUiState} */ ({
 function readLegacyMode() {
   try {
     const m = localStorage.getItem(STORAGE_KEY_LEGACY);
-    if (m === 'embedded') return { placement: 'bottom', fab: false };
-    if (m === 'both') return { placement: 'bottom', fab: true };
+    if (m === 'embedded') return { placement: 'middle', fab: false };
+    if (m === 'both') return { placement: 'middle', fab: true };
     return { placement: 'middle', fab: true };
   } catch {
     return { ...defaultState };
@@ -31,14 +31,6 @@ function syncLegacyString(state) {
   try {
     if (state.placement === 'none') {
       localStorage.setItem(STORAGE_KEY_LEGACY, 'floating');
-      return;
-    }
-    if (state.placement === 'bottom' && !state.fab) {
-      localStorage.setItem(STORAGE_KEY_LEGACY, 'embedded');
-      return;
-    }
-    if (state.placement === 'bottom' && state.fab) {
-      localStorage.setItem(STORAGE_KEY_LEGACY, 'both');
       return;
     }
     if (state.placement === 'middle' && !state.fab) {
@@ -61,17 +53,19 @@ function readState() {
       const o = JSON.parse(raw);
       const p = o?.placement;
       const fab = o?.fab;
-      if ((p === 'middle' || p === 'bottom' || p === 'none') && typeof fab === 'boolean') {
+      if ((p === 'middle' || p === 'none') && typeof fab === 'boolean') {
         if (p === 'none' && !fab) {
           return { placement: 'none', fab: true };
         }
         return { placement: p, fab };
       }
-      // Removed dock placements — coerce to bottom so a persisted value never
-      // yields a no-agent state. Other unknown placements fall through to
+      // Any persisted placement outside the valid {middle, none} set —
+      // including the archived 'bottom' dock and the older 'right-dock' /
+      // 'left-dock' — coerces to middle so a persisted value never yields a
+      // no-agent state. Other unknown placements fall through to
       // readLegacyMode() below.
-      if (p === 'right-dock' || p === 'left-dock') {
-        return { placement: 'bottom', fab: typeof fab === 'boolean' ? fab : true };
+      if (p === 'bottom' || p === 'right-dock' || p === 'left-dock') {
+        return { placement: 'middle', fab: typeof fab === 'boolean' ? fab : true };
       }
     }
   } catch {
@@ -92,9 +86,8 @@ const AgentUiModeContext = createContext({
 
 /**
  * Middle — embedded assistant in dashboard split column (token | agent | banking).
- * Bottom — full-width bottom dock on dashboard routes (+ /config).
  * Float — corner FAB only (no embedded chrome); fab is always true.
- * fab — when Middle or Bottom, also show the floating FAB (Middle+Float or Bottom+Float; never Middle+Bottom).
+ * fab — when Middle, also show the floating FAB (Middle+Float).
  */
 export function AgentUiModeProvider({ children }) {
   const [state, setState] = useState(() => readState());

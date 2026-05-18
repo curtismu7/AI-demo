@@ -15,9 +15,9 @@ function ModeProbe() {
 			<span data-testid="fab">{fab ? "1" : "0"}</span>
 			<button
 				type="button"
-				onClick={() => setAgentUi({ placement: "bottom", fab: false })}
+				onClick={() => setAgentUi({ placement: "middle", fab: false })}
 			>
-				set bottom
+				set middle
 			</button>
 			<button
 				type="button"
@@ -44,14 +44,14 @@ describe("AgentUiModeProvider", () => {
 		expect(screen.getByTestId("fab")).toHaveTextContent("1");
 	});
 
-	it("initializes bottom from legacy embedded key", () => {
+	it("migrates legacy embedded key to middle (Phase 4d: bottom removed)", () => {
 		localStorage.setItem(STORAGE_KEY_LEGACY, "embedded");
 		render(
 			<AgentUiModeProvider>
 				<ModeProbe />
 			</AgentUiModeProvider>,
 		);
-		expect(screen.getByTestId("placement")).toHaveTextContent("bottom");
+		expect(screen.getByTestId("placement")).toHaveTextContent("middle");
 		expect(screen.getByTestId("fab")).toHaveTextContent("0");
 	});
 
@@ -61,11 +61,11 @@ describe("AgentUiModeProvider", () => {
 				<ModeProbe />
 			</AgentUiModeProvider>,
 		);
-		fireEvent.click(screen.getByRole("button", { name: /set bottom/i }));
-		expect(screen.getByTestId("placement")).toHaveTextContent("bottom");
+		fireEvent.click(screen.getByRole("button", { name: /set middle/i }));
+		expect(screen.getByTestId("placement")).toHaveTextContent("middle");
 		const raw = localStorage.getItem(STORAGE_KEY_V2);
 		expect(raw).toBeTruthy();
-		expect(JSON.parse(raw)).toEqual({ placement: "bottom", fab: false });
+		expect(JSON.parse(raw)).toEqual({ placement: "middle", fab: false });
 	});
 
 	it("syncs from storage events (other tab) on v2 key", () => {
@@ -92,11 +92,11 @@ describe("AgentUiModeProvider", () => {
 	});
 });
 
-describe("removed dock placements fall back safely", () => {
+describe("removed dock placements coerce to middle", () => {
 	beforeEach(() => {
 		localStorage.clear();
 	});
-	it("a stored right-dock placement reads back as bottom (never a no-agent state)", () => {
+	it("a stored right-dock placement reads back as middle (never a no-agent state)", () => {
 		localStorage.setItem(
 			STORAGE_KEY_V2,
 			JSON.stringify({ placement: "right-dock", fab: true }),
@@ -106,6 +106,20 @@ describe("removed dock placements fall back safely", () => {
 				<ModeProbe />
 			</AgentUiModeProvider>,
 		);
-		expect(screen.getByTestId("placement")).toHaveTextContent("bottom");
+		expect(screen.getByTestId("placement")).toHaveTextContent("middle");
+	});
+
+	it("a persisted archived 'bottom' placement coerces to middle (Phase 4d)", () => {
+		localStorage.setItem(
+			STORAGE_KEY_V2,
+			JSON.stringify({ placement: "bottom", fab: true }),
+		);
+		render(
+			<AgentUiModeProvider>
+				<ModeProbe />
+			</AgentUiModeProvider>,
+		);
+		expect(screen.getByTestId("placement")).toHaveTextContent("middle");
+		expect(screen.getByTestId("fab")).toHaveTextContent("1");
 	});
 });

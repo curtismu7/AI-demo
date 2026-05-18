@@ -123,6 +123,27 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — Phase 4c+4d: single BankingAgent instance complete; "bottom" placement retired (archived)
+
+**Phase 4c — middle column = portal host (collapse-safe):**
+- `banking_api_ui/src/components/UserDashboard.js` — the middle split3 grid + an always-mounted host `<div className="ud-dashboard-inline-agent-host" ref={middleHostRefCb}>` now render whenever `agentPlacement === "middle"` (the ternary is no longer gated by `middleAgentOpen`; the outer `user-dashboard--split3` flex-parent class likewise). `middleAgentOpen` is a CSS modifier (`.ud-middle-collapsed`) that `display:none`-hides the agent column so the portaled `<BankingAgent>` React subtree (chat state) survives collapse/expand. Stable `useCallback` ref + guarded publish/cleanup effect (`setSurfaceHostEl(cur => cur===middleHostEl?null:cur)`) — same dual-host-race guard as the bottom dock had. The per-surface `<BankingAgent>` is gone (portaled from App).
+- `banking_api_ui/src/components/UserDashboard.css` — `.ud-middle-collapsed` re-flows the SAME split3 grid minus the hidden agent track; collapsed templates copied verbatim from the OPEN split3 rules: **2-col default** (token | agent; banking is FF-gated by `ff_show_banking_in_middle_agent`) and **3-col** when the FF is on. No `design-3col` dependency.
+- `banking_api_ui/src/App.js` — `hasMiddleLayout`; `shouldMountSingleAgent` includes it; `singleAgentSurfaceProps` carries `{mode:"inline",splitColumnChrome:true,showPopOut:true}` for middle. Commit `aea24b87`.
+
+**Phase 4d — "bottom" placement removed from the UI (archived in place):**
+- `banking_api_ui/src/components/AgentUiModeToggle.js` — Bottom button + `handlePlacement` bottom branch + "bottom" aria/comment text removed; toggle now offers Middle + Float only.
+- `banking_api_ui/src/context/AgentUiModeContext.js` — placement typedef `{'middle' | 'none'}`; default `middle`; legacy `'embedded'`/`'both'` → `{placement:'middle',...}`; `readState` valid set `{middle,none}` and any persisted/legacy `bottom`/`right-dock`/`left-dock` coerces to `{placement:'middle', fab:<bool|true>}`; dead `syncLegacyString` bottom branches removed.
+- `banking_api_ui/src/App.js` — `EmbeddedAgentDock` import + App-level render removed; `hasEmbeddedDockLayout`/`onEmbeddedDockRoute`/`isEmbeddedAgentDockRoute`/`agentFab`/`App--has-embedded-dock` removed; `showFloatingAgent` simplified (the always-true dock-suppression disjunction dropped — behavior-preserving since `hasEmbeddedDockLayout` was constant-false once bottom is gone; the `!(middle && onUserDashboardRoute)` suppression clause preserved).
+- `banking_api_ui/src/components/UserDashboard.js` — the `{agentPlacement === "bottom" && <EmbeddedAgentDock/>}` render removed; else-branch (now only `none`/float) simplified; 3 now-dead `agentPlacement === "bottom"` conditionals constant-folded.
+- `banking_api_ui/src/context/__tests__/AgentUiModeContext.test.js` — assertions updated to prove the NEW contract (legacy/persisted/unknown → `middle`; set `{middle,none}`) with exact equality, plus a new `{placement:'bottom'} → middle` coercion test.
+- **`banking_api_ui/src/components/EmbeddedAgentDock.js` is intentionally LEFT ON DISK, unreferenced (archived, recoverable) — NOT deleted.** No dedicated `EmbeddedAgentDock.css` exists.
+
+**What was broken / fixed:** Pre-4c the middle column rendered its own `<BankingAgent>` (split-brain vs the float instance) and collapsing it lost chat state. The "bottom" dock placement "did not work well" (product decision to retire it). Now exactly ONE `<BankingAgent>` exists per session (plus the separate `/agent` route page), portaled into the middle host or floating to `document.body`; collapse preserves state; only Middle + Float are selectable, default Middle.
+
+**Verify:** `cd banking_api_ui && npm run build` exit 0; full agent suite 115/115 (`BankingAgent.test`/`.safety`/`.integration`/`.chipRouting` + `AgentUiModeContext`). `grep -rn 'agentPlacement === "bottom"' banking_api_ui/src/App.js banking_api_ui/src/components/UserDashboard.js banking_api_ui/src/components/AgentUiModeToggle.js` → empty. New user / persisted `bottom` / legacy `embedded`/`both` → `middle`. Toggle shows Middle + Float. `EmbeddedAgentDock.js` still present on disk, zero importers.
+
+**Do not break:** Exactly ONE in-app `<BankingAgent>` (the `/agent` route page is the only other, separate, mount); surfaces are portal HOSTS — never reintroduce a per-surface `<BankingAgent>`. The middle host div MUST stay mounted across `middleAgentOpen` collapse (CSS `display:none`, not unmount) or chat state is lost. The guarded `setSurfaceHostEl` cleanup MUST stay. Placement set is `{middle,none}` — any other persisted value MUST coerce to `middle` (never pass through, never `bottom`). `EmbeddedAgentDock.js` is archived dead code — do not delete it (revival path) and do not re-wire it without a new decision. Known pre-existing follow-up (NOT introduced here, out of scope): the cross-tab `storage` handler in `AgentUiModeContext.js` `setState`s `e.newValue` without re-running the `{middle,none}` coercion — a hand-crafted cross-tab `{placement:'bottom'}` could bypass coercion in the receiving tab; tracked separately.
+
 ### 2026-05-18 — Phase 4b: bottom dock is a portal host of the single BankingAgent instance
 
 **Files changed:**
