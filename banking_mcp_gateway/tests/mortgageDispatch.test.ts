@@ -13,6 +13,7 @@
  *      (pingAuthorizeGuard.guardToolCall) reach the SAME PERMIT/DENY outcome.
  */
 
+import axios from 'axios';
 import { routeTool, backendHttpUrl } from '../src/router';
 import {
   evaluateScopeDecisionLocally,
@@ -20,8 +21,12 @@ import {
 } from '../src/auth/toolScopes';
 import { PingOneAuthorizeClient } from '../src/auth/PingOneAuthorizeClient';
 import { guardToolCall } from '../src/pingAuthorizeGuard';
+import { buildApiKeyToolResult } from '../src/apiKeyDispatch';
 import type { GatewayConfig } from '../src/config';
 import type { DecodedGatewayToken } from '../src/tokenValidator';
+
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 const CONFIG = {
   mortgageServiceBaseUrl: 'http://localhost:8082',
@@ -131,5 +136,65 @@ describe('Phase 267 — HTTP and WS transports behave identically (no-PA mode)',
 
     expect(http.decision).toBe('PERMIT');
     expect(ws.permitted).toBe(true);
+  });
+});
+
+// REGRESSION: the api_key dispatch is a SINGLE shared function
+// (buildApiKeyToolResult) called by BOTH transports. Before this, the
+// dispatch was inlined in the WS handler only; HTTP POST /mcp raw-proxied
+// show_mortgage to the OLB upstream → "Unknown tool". This block proves the
+// shared dispatch reaches banking_mortgage_service and shapes the result —
+// the exact behaviour both index.ts (WS) and authorizeMcpRequest.ts (HTTP)
+// now depend on (BL-02 transport parity).
+describe('Phase 267 — shared api_key dispatch (buildApiKeyToolResult, BL-02)', () => {
+  beforeEach(() => mockedAxios.get.mockReset());
+
+  test('show_mortgage → calls mortgage service with X-API-Key + X-User-Sub, no OAuth', async () => {
+    mockedAxios.get.mockResolvedValue({ status: 200, data: { mortgage: { id: 'mtg-001' } } });
+
+    const out = await buildApiKeyToolResult('show_mortgage', 'user-1', 'AB12', CONFIG);
+
+    expect(out.ok).toBe(true);
+    expect(mockedAxios.get).toHaveBeenCalledWith(
+      'http://localhost:8082/mortgage',
+      expect.objectContaining({
+        headers: { 'X-API-Key': 'demo-mortgage-key-0000', 'X-User-Sub': 'user-1' },
+      }),
+    );
+    if (out.ok) {
+      const r = out.result as { content: Array<{ text: string }>; _meta: Record<string, unknown> };
+      expect(JSON.parse(r.content[0].text)).toEqual({ mortgage: { id: 'mtg-001' } });
+      expect(r._meta.backend).toBe('banking_mortgage_service');
+      expect(r._meta.credentialPath).toBe('api_key');
+    }
+    // No Authorization header anywhere — the OAuth bearer is dropped at the gateway.
+    const callOpts = mockedAxios.get.mock.calls[0][1] as { headers: Record<string, string> };
+    expect(callOpts.headers).not.toHaveProperty('Authorization');
+  });
+
+  test('mortgage backend 401 → JSON-RPC error -32401 (api-key rejected)', async () => {
+    mockedAxios.get.mockResolvedValue({ status: 401, data: {} });
+    const out = await buildApiKeyToolResult('show_mortgage', 'user-1', 'AB12', CONFIG);
+    expect(out).toEqual(
+      expect.objectContaining({ ok: false, code: -32401 }),
+    );
+  });
+
+  test('mortgage backend unreachable → JSON-RPC error -32500', async () => {
+    mockedAxios.get.mockRejectedValue(new Error('ECONNREFUSED'));
+    const out = await buildApiKeyToolResult('show_mortgage', 'user-1', 'AB12', CONFIG);
+    expect(out).toEqual(
+      expect.objectContaining({ ok: false, code: -32500 }),
+    );
+  });
+
+  test('apikey tool with no real backend → Phase 266 Gateway-only marker (no axios call)', async () => {
+    const out = await buildApiKeyToolResult('user_profile_card', 'user-1', 'AB12', CONFIG);
+    expect(out.ok).toBe(true);
+    expect(mockedAxios.get).not.toHaveBeenCalled();
+    if (out.ok) {
+      const r = out.result as { content: Array<{ text: string }> };
+      expect(r.content[0].text).toBe('API_KEY_PATH_MARKER');
+    }
   });
 });

@@ -123,6 +123,24 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — show_mortgage "Unknown tool" — HTTP/WS transport-parity gap (BL-02)
+
+**Files changed:**
+- `banking_mcp_gateway/src/apiKeyDispatch.ts` — NEW. `buildApiKeyToolResult()` — the single shared source of the Phase 267 api_key disposition (transport-agnostic: returns a JSON-RPC outcome object).
+- `banking_mcp_gateway/src/middleware/authorizeMcpRequest.ts` — HTTP `POST /mcp` path: new Step 3.5 — for a `tools/call` whose `routeTool(toolName) === 'apikey'`, dispatch via `buildApiKeyToolResult` and write the response, instead of RFC 8693-exchanging and forwarding to the OLB upstream.
+- `banking_mcp_gateway/src/index.ts` — WS handler: the inlined ~115-line api_key block replaced by a call to the shared `buildApiKeyToolResult` (behaviour identical; one source now).
+- `banking_mcp_gateway/tests/mortgageDispatch.test.ts` — regression block exercising `buildApiKeyToolResult` (mortgage success / 401 / unreachable / Phase 266 marker).
+
+**What was broken:** `show_mortgage` (and any api_key-disposition tool) returned `Unknown tool: "show_mortgage". Available tools: get_my_accounts, …` whenever called through the BFF. Root cause — a BL-02 transport-parity violation: the gateway's 3-disposition dispatch (`router.ts` apikey/dualtoken/bankingdata) was implemented **only in the WebSocket handler** (`index.ts handleMessage`). The HTTP `POST /mcp` ingress (`GatewayServer.forwardToUpstream`, used by the BFF's `mcpGatewayClient`) ran the auth pipeline then **raw-proxied every tool to the single OLB upstream** (banking_mcp_server), which has no `show_mortgage` tool. So `show_mortgage` worked over WS but not over the HTTP transport the BFF actually uses.
+
+**What was fixed:** The api_key disposition is now a single shared function (`buildApiKeyToolResult`) called by both transports. The HTTP middleware intercepts `tools/call` for apikey-routed tools before the OLB exchange/forward and runs the same dispatch the WS path does (Phase 267: drop the OAuth bearer, call `banking_mortgage_service` with `X-API-Key` + `X-User-Sub`; Phase 266: Gateway-only marker). Verified live: `POST /api/mcp/tool {tool:"show_mortgage"}` returns banking_mortgage_service data (`source: banking_mortgage_service`, `authMechanism: X-API-Key`); `get_my_accounts` still works via OLB (no regression).
+
+**Verify:**
+- `cd banking_mcp_gateway && npm test` → 141 passing (incl. the new `buildApiKeyToolResult` regression block); `npm run build` exit 0.
+- Live: logged-in customer `POST /api/mcp/tool` with `show_mortgage` → JSON body contains `banking_mortgage_service`, NOT `Unknown tool`; with `get_my_accounts` → normal OLB result.
+
+**Do not break:** the api_key disposition has exactly ONE source (`apiKeyDispatch.buildApiKeyToolResult`) — never re-inline it per-transport. Any new `router.ts` disposition (dualtoken/bankingdata or future) MUST be wired into BOTH `index.ts` (WS) and `authorizeMcpRequest.ts` (HTTP) or it silently regresses to OLB-raw-proxy on the HTTP path (BL-02). `dualtoken`/`bankingdata` are still WS-only (not exercised over HTTP by the BFF today) — documented gap; extend the same shared-helper pattern when an HTTP caller needs them.
+
 ### 2026-05-18 — create_transfer 403 (missing banking:transfer) + foolproof anti-drift guard
 
 **Files changed:**

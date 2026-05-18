@@ -25,7 +25,9 @@ import axios from 'axios';
 import { loadConfig, GatewayConfig, assertProductionSecrets, isInternalSecretUsable } from './config';
 import { validateInboundToken, extractBearerToken, TokenValidationError } from './tokenValidator';
 import { routeTool, backendWsUrl, backendResourceUri, backendHttpUrl } from './router';
-import { exchangeTokenForBackend } from './tokenExchange';
+import { buildApiKeyToolResult } from './apiKeyDispatch';
+import { exchangeTokenForBackend, clearTokenCache } from './tokenExchange';
+import { McpTokenExchangeClient } from './auth/McpTokenExchangeClient';
 import { selectCredentialForBackend } from './credentialSwap';
 import { proxyJsonRpc, JsonRpcRequest, JsonRpcResponse } from './proxy';
 import { guardToolsList, guardToolCall } from './pingAuthorizeGuard';
@@ -202,6 +204,28 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
   // is 'production'. Dev bypass is a localhost-only debugging affordance and
   // must never be flippable on a production deploy.
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // POST /admin/clear-token-cache — flush the gateway's in-memory token caches.
+  // Called fire-and-forget by the BFF on user logout so a "start demo over"
+  // cannot replay a previously-exchanged backend token within its TTL window.
+  // The BFF already revokes the subject token at PingOne (RFC 7009); this
+  // closes the gap where the *exchanged* token stayed cached here.
+  //
+  // Gated behind the same internal secret as /admin/config — the caches are
+  // not user-keyed, so a clear is global; that is acceptable for a single-user
+  // demo and the worst case is a few extra token exchanges after a logout.
+  // ---------------------------------------------------------------------------
+  if (url === '/admin/clear-token-cache' && req.method === 'POST') {
+    if (!requireInternalSecret(req, res, config)) return;
+    clearTokenCache();
+    McpTokenExchangeClient.clearCache();
+    GatewayIntrospectionClient.clearCache();
+    console.log('[GW] token caches cleared (logout)');
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
   if (url === '/admin/config' && req.method === 'POST') {
     if (!requireInternalSecret(req, res, config)) return;
 
@@ -565,120 +589,23 @@ async function handleMessage(
       // ----- api_key (Path A) -----
       if (target === 'apikey') {
         // Scope enforcement is an Authorize-layer decision, NOT a dispatch
-        // concern. banking:mortgage:read is enforced upstream by guardToolCall
-        // (WS) / PingOneAuthorizeClient.evaluate (HTTP) — by the PingAuthorize
-        // policy when configured, or the local TOOL_SCOPES baseline when not.
-        // By the time we reach here the scope check has already passed.
-
-        // Phase 267: if this apikey tool maps to a real backend URL, dispatch
-        // to it via X-API-Key (the OAuth bearer is dropped at the gateway —
-        // the swap IS the demo). Otherwise fall through to the Phase 266
-        // Gateway-only marker behavior below (unchanged).
-        const mortgageUrl = backendHttpUrl(target, toolName, config);
-        if (mortgageUrl) {
-          let mResp;
-          try {
-            mResp = await axios.get(mortgageUrl, {
-              headers: {
-                'X-API-Key': config.mortgageServiceApiKey,
-                'X-User-Sub': decoded.sub,
-              },
-              timeout: 5000,
-              validateStatus: (s: number) => s < 500,
-            });
-          } catch (err) {
-            send(jsonRpcError(id, -32500, 'Mortgage backend unreachable', { credentialPath: 'api_key' }));
-            return;
-          }
-          if (mResp.status === 401) {
-            send(jsonRpcError(id, -32401, 'Mortgage backend rejected the service API key', { credentialPath: 'api_key' }));
-            return;
-          }
-          if (mResp.status >= 400) {
-            send(jsonRpcError(id, -32500, `Mortgage backend returned ${mResp.status}`, { credentialPath: 'api_key' }));
-            return;
-          }
-          const last4 = credential.apiKeyMaskedLast4 || 'XXXX';
-          send(JSON.stringify({
-            jsonrpc: '2.0', id,
-            result: {
-              content: [{ type: 'text', text: JSON.stringify(mResp.data) }],
-              _meta: {
-                credentialPath: 'api_key',
-                apiKeyMaskedLast4: last4,
-                maskedApiKey: `xxxx${last4}`,
-                backend: 'banking_mortgage_service',
-                infoPageHint: '/path/mortgage',
-                note: 'Gateway dropped your OAuth bearer, attached a service API key, and called banking_mortgage_service (X-API-Key + X-User-Sub).',
-                tokenEvents: [
-                  {
-                    id: 'evt-inbound',
-                    label: 'Inbound user bearer received (aud=AI-agent-resource, sub=user)',
-                    tokenType: 'access_token',
-                    credentialPath: 'api_key',
-                    status: 'ok',
-                    specRef: 'RFC 6750 §3',
-                  },
-                  {
-                    id: 'evt-scope',
-                    label: `Authorize PERMIT: ${getScopesForGatewayTool(toolName).join(', ')} present on the user bearer (scope decision before credential swap)`,
-                    tokenType: 'access_token',
-                    credentialPath: 'api_key',
-                    status: 'ok',
-                  },
-                  {
-                    id: 'evt-swap',
-                    label: 'Gateway swap: OAuth bearer dropped, service API key attached',
-                    tokenType: 'api_key',
-                    maskedValue: `...${last4}`,
-                    credentialPath: 'api_key',
-                    status: 'ok',
-                  },
-                  {
-                    id: 'evt-backend',
-                    label: 'Outbound GET banking_mortgage_service /mortgage (X-API-Key + X-User-Sub, no OAuth)',
-                    tokenType: 'api_key',
-                    credentialPath: 'api_key',
-                    status: 'ok',
-                  },
-                ],
-              },
-            },
-          }));
-          return;
+        // concern — it already ran (guardToolCall) before we got here.
+        //
+        // Shared with the HTTP path via apiKeyDispatch.buildApiKeyToolResult
+        // (BL-02 transport parity — one source of the Phase 267 api_key
+        // dispatch). Phase 267: real backend (show_mortgage →
+        // banking_mortgage_service via X-API-Key); else Phase 266 marker.
+        const outcome = await buildApiKeyToolResult(
+          toolName,
+          decoded.sub,
+          credential.apiKeyMaskedLast4,
+          config,
+        );
+        if (outcome.ok) {
+          send(JSON.stringify({ jsonrpc: '2.0', id, result: outcome.result }));
+        } else {
+          send(jsonRpcError(id, outcome.code, outcome.message, outcome.data));
         }
-
-        // ----- Gateway-only marker (Phase 266, unchanged) — no backend call -----
-        // synthesized tokenEvents so the Token Chain renders a multi-segment swap/attach narrative.
-        send(JSON.stringify({
-          jsonrpc: '2.0', id,
-          result: {
-            content: [{ type: 'text', text: 'API_KEY_PATH_MARKER' }],
-            _meta: {
-              credentialPath: 'api_key',
-              apiKeyMaskedLast4: credential.apiKeyMaskedLast4,
-              infoPageHint: '/path/apikey-info',
-              note: 'Gateway swapped your OAuth token for a service API key. No backend was called.',
-              tokenEvents: [
-                {
-                  id: 'evt-inbound',
-                  label: 'Inbound user bearer received',
-                  tokenType: 'access_token',
-                  credentialPath: 'api_key',
-                  status: 'ok',
-                },
-                {
-                  id: 'evt-swap',
-                  label: 'Gateway swap: OAuth bearer dropped, service API key attached',
-                  tokenType: 'api_key',
-                  maskedValue: `...${credential.apiKeyMaskedLast4 || 'XXXX'}`,
-                  credentialPath: 'api_key',
-                  status: 'ok',
-                },
-              ],
-            },
-          },
-        }));
         return;
       }
 
