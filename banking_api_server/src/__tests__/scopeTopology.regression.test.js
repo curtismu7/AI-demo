@@ -38,3 +38,24 @@ describe('scope-topology manifest', () => {
     expect(missing).toEqual([]);
   });
 });
+
+describe('BFF scopeTopology loader', () => {
+  const topo = require('../../services/scopeTopology');
+
+  test('toolScopes(name) returns requiredScopes from manifest', () => {
+    expect(topo.toolScopes('create_transfer')).toEqual(['banking:write', 'banking:transfer']);
+    expect(topo.toolScopes('get_my_accounts')).toEqual(['banking:read']);
+  });
+
+  test('toolScopes(unknown) falls back to [banking:read]', () => {
+    expect(topo.toolScopes('no_such_tool')).toEqual(['banking:read']);
+  });
+
+  test('appGrantedScopes returns manifest grants', () => {
+    expect(topo.appGrantedScopes('Super Banking User App')).toContain('banking:transfer');
+  });
+
+  test('resourceScopes returns manifest resource scope list', () => {
+    expect(topo.resourceScopes('Super Banking API')).toContain('banking:transfer');
+  });
+});
