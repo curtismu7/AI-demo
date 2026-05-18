@@ -285,10 +285,16 @@ This converts "what would we lose" from a risk into the teaching material.
 
 ## 8. Open Questions for Implementation Plan
 
+**Build progress:** Slice **A** shipped (`llmProviderResolver` openai/anthropic
+pass-through; commit `7bf1595f`). Slice **B3** shipped — dev-token stage prop
+`banking_api_server/scripts/mint-gateway-token.js`: mints a real
+gateway-audience RFC 8693 token and prints ChatGPT Responses API + Claude
+`mcp_connector` snippets. Remaining: B1, C, the annotation overlay.
+
 - Which provider first for A — Anthropic direct, OpenAI direct, or both?
-- Which token bridge to *build* first for the live B demo — B1 (BFF-minted,
-  best teaching value) is the likely first; B3 is the quickest stage prop.
-  All three are documented (§4a); the question is build order, not inclusion.
+  (A is provider-agnostic at the resolver; this is now a UI-selection question.)
+- B1 (BFF-minted per-call handoff with degraded-mode annotation) is the next
+  natural B step now that B3 proves the gateway-survives-swap claim.
 - Claude.ai connector (Option C / §4b Path 2): documented-only for the first
   pass, or stand up the DCR-front / Anthropic-held-credentials registration?
 - Where the "Token Chain goes dark / annotation" overlay lives — reuse the
