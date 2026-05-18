@@ -123,6 +123,20 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — DESIGN CONTRACT (target truths, NOT YET IMPLEMENTED) — mortgage/api-key MFA + error-code/education
+
+This is a forward-looking specification, recorded so the contract is unambiguous for the implementation round. **These are NOT yet enforced** — do not treat as a passing invariant until a follow-up entry says "implemented + verified". Stated here verbatim from the product owner so it cannot drift.
+
+**Investigation context (verified 2026-05-18):** chip routing works in all 3 modes (Heuristics-only, Helix-only, both: 6 heuristic "special" chips route 100% heuristic, 24 LLM chips split heuristic/Helix) — 30/30 functional in every mode. The full `all-chips-pipeline.real.spec.js` fails ONLY on an admin-audit observability assertion (`assertAdminPipelineEvents` expects an `authorize`-category app-event per chip; not emitted on read-tool chips post-rebootstrap with the live PingOne Authorize endpoint unconfigured) — chips themselves execute. Transfer thresholds: $251→consent, $501/$600→step-up (MFA) all correctly 428 after the fix below.
+
+**Target truths to implement:**
+1. **Mortgage requires MFA unconditionally.** `show_mortgage` (and any mortgage-data tool) MUST require step-up/MFA regardless of routing (heuristic or Helix), amount, or transport. Today `scope-topology.json` gives `show_mortgage` NO `challengeType` → it returns data with no challenge. Target: add `challengeType: "step_up"` (or a dedicated mortgage MFA gate) so it always 428s for step-up until MFA satisfied.
+2. **API-key path requires MFA the same way.** Any tool dispatched via the Phase 266/267 api_key disposition MUST also require step-up/MFA before the credential swap. Today no api-key-tool MFA rule exists.
+3. **On step-up required, the response MUST carry an MFA-page target** so the UI can take the user to the MFA page (e.g. a `mfa_redirect`/`step_up_url` field in the 428 body). Today NO MFA-page redirect mechanism exists anywhere — the 428 bodies carry an error + message but no navigation target.
+4. **Proper HTTP error codes + actionable message + optional education info on every gated path.** 401 (unauthenticated / token inactive), 403 (Authorize DENY / scope), 428 (consent or step-up required), with `error`, `error_description` (what the user must DO), and an optional `education`/teaching field. The 428 transfer paths now conform (see next entry); mortgage/api-key must conform when implemented.
+
+**Where these get enforced when implemented:** `scope-topology.json` (`challengeType` per tool — the SSOT), `banking_mcp_gateway` `pingAuthorizeGuard.ts`/`apiKeyDispatch.ts` (api-key MFA gate), `banking_api_server` `mcpToolPipeline.js` (428 shape — `localResultOutcome` is the single normalizer; extend its body with `mfa_redirect`), and a §1 row added once verified. Until then: do NOT add a §1 row claiming these are enforced.
+
 ### 2026-05-18 — Transfer HITL returned HTTP 200-with-buried-signal on 2 of 3 paths (428 inconsistency)
 
 **Files changed:**
