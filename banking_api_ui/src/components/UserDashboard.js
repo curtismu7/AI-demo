@@ -273,7 +273,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       notifyInfo(`Demo mode — ${reason}. Sign in to see your real accounts.`, {
         toastId: "demo-mode", // deduplicate across refreshes
         autoClose: 6000,
-        icon: "🏦",
       });
     },
     [user, setAccounts, setTransactions],
@@ -806,7 +805,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       await apiClient.post("/api/auth/mfa/enroll/email");
       setEnrollModalOpen(false);
       setEnrolling(false);
-      notifySuccess("Email OTP device enrolled — starting MFA challenge...");
+      notifySuccess("Email OTP device enrolled — starting MFA challenge…");
       handleInitiateOtpRef.current && handleInitiateOtpRef.current();
     } catch (err) {
       setEnrollError(
@@ -852,7 +851,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       });
       setEnrollModalOpen(false);
       setEnrolling(false);
-      notifySuccess("Passkey registered — starting MFA challenge...");
+      notifySuccess("Passkey registered — starting MFA challenge…");
       handleInitiateOtpRef.current && handleInitiateOtpRef.current();
     } catch (err) {
       setEnrollError(
@@ -2510,7 +2509,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   if (loading) {
     return (
       <div className="user-dashboard">
-        <div className="loading">Loading your account information...</div>
+        <div className="loading" role="status" aria-live="polite">
+          Loading your account information…
+        </div>
       </div>
     );
   }
@@ -2559,7 +2560,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             title="Reset demo: clear agent history and token chain"
             onClick={() => setShowResetModal(true)}
           >
-            🔄 Reset Demo
+            Reset Demo
           </button>
           {user ? (
             <span
@@ -2905,9 +2906,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="otp-step-up-modal__header">
-              <h3 className="otp-step-up-modal__title">
-                🔐 Verify Your Identity
-              </h3>
+              <h3 className="otp-step-up-modal__title">Verify Your Identity</h3>
               <button
                 className="otp-step-up-modal__close"
                 onClick={() => {
@@ -3008,9 +3007,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="otp-step-up-modal__header">
-              <h3 className="otp-step-up-modal__title">
-                🔐 Verify Your Identity
-              </h3>
+              <h3 className="otp-step-up-modal__title">Verify Your Identity</h3>
               <button
                 className="otp-step-up-modal__close"
                 onClick={() => {
@@ -3086,7 +3083,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           >
             <div className="otp-step-up-modal__header">
               <h3 className="otp-step-up-modal__title">
-                🔐 Choose Verification Method
+                Choose Verification Method
               </h3>
               <button
                 className="otp-step-up-modal__close"
@@ -3115,11 +3112,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                     style={{ textAlign: "left" }}
                     onClick={() => handleDevicePick(device)}
                   >
-                    {device.type === "EMAIL" && "📧 "}
-                    {device.type === "SMS" && "📱 "}
-                    {device.type === "TOTP" && "🔑 "}
-                    {device.type === "MOBILE" && "📲 "}
-                    {device.type === "FIDO2" && "🔐 "}
                     {device.type === "EMAIL"
                       ? "Email code"
                       : device.type === "SMS"
@@ -3143,7 +3135,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         <div className="otp-step-up-overlay">
           <div className="otp-step-up-modal otp-step-up-modal--push">
             <div className="otp-step-up-modal__header">
-              <h3 className="otp-step-up-modal__title">📲 Check Your Device</h3>
+              <h3 className="otp-step-up-modal__title">Check Your Device</h3>
             </div>
             <div
               className="otp-step-up-modal__body"
@@ -3223,7 +3215,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             >
               <div className="otp-step-up-modal__header">
                 <h3 className="otp-step-up-modal__title">
-                  🔐 MFA Session Expired
+                  MFA Session Expired
                 </h3>
                 <button
                   className="otp-step-up-modal__close"
@@ -3276,7 +3268,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="otp-step-up-modal__header">
-              <h3 className="otp-step-up-modal__title">🔑 Set Up MFA</h3>
+              <h3 className="otp-step-up-modal__title">Set Up MFA</h3>
               <button
                 className="otp-step-up-modal__close"
                 onClick={() => setEnrollModalOpen(false)}
@@ -3304,7 +3296,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                   disabled={enrolling}
                   onClick={handleEnrollEmail}
                 >
-                  {enrolling ? "Setting up…" : "📧 Set up Email OTP"}
+                  {enrolling ? "Setting up…" : "Set up Email OTP"}
                 </button>
                 <button
                   type="button"
@@ -3312,7 +3304,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                   disabled={enrolling}
                   onClick={handleEnrollFido2}
                 >
-                  {enrolling ? "Setting up…" : "🔐 Register a Passkey"}
+                  {enrolling ? "Setting up…" : "Register a Passkey"}
                 </button>
               </div>
               <p className="otp-step-up-modal__hint">
