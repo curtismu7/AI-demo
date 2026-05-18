@@ -74,7 +74,7 @@ import {
 import { getColdStartRetryDelays } from "../services/apiErrorHandler";
 import APP_CONFIG from "../services/appConfig";
 import { useCustomChips } from "../hooks/useCustomChips";
-import { claimPendingNl, makeReentrancyGuard } from "./bankingAgentSafety";
+import { claimPendingNl, clampPanelPosition, makeReentrancyGuard } from "./bankingAgentSafety";
 
 // Phase 266 H2 audit: TokenChain credentialPath stamping origins per setTokenEvents call:
 //   line 3433 (scopeTestRes.tokenEvents)  — origin: scope-test path via callMcpTool; credentialPath: oauth_bearer (default; stamped by bankingAgentService)
@@ -1717,6 +1717,10 @@ export default function BankingAgent({
   const [dragPos, setDragPos] = useState(null);
   /** Panel dimensions for resizing — floating default is large enough for header, chips, and two-column body */
   const [panelSize, setPanelSize] = useState({ width: 620, height: 540 });
+  const panelSizeRef = useRef(panelSize);
+  useEffect(() => {
+    panelSizeRef.current = panelSize;
+  }, [panelSize]);
   /** Side panel showing rich results next to the agent */
   const [resultPanel, setResultPanel] = useState(null);
   const resultPanelRef = useRef(null);
@@ -2769,6 +2773,16 @@ export default function BankingAgent({
     setMcpStatus({ toolCount: ACTIONS.length, connected: true });
   }, [isOpen, isLoggedIn]);
 
+  // Clamp a floating-panel position into the current viewport using the
+  // latest panel size (read via ref so listeners needn't resubscribe).
+  const clampDragPosToViewport = useCallback((prev) => {
+    if (!prev) return prev;
+    return clampPanelPosition(prev, panelSizeRef.current, {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
+  }, []);
+
   // ── Drag-to-move ──────────────────────────────────────────────────────────
   // Uses pointer capture so dragging continues off-screen onto a second monitor.
   const handleDragStart = useCallback((e) => {
@@ -2806,6 +2820,9 @@ export default function BankingAgent({
     function onUp() {
       isDraggingRef.current = false;
       document.body.style.userSelect = "";
+      // Drag itself is unclamped (second-monitor drag is intentional); on
+      // RELEASE, pull the panel back so the header strip stays reachable.
+      setDragPos(clampDragPosToViewport);
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
       document.removeEventListener("pointercancel", onUp);
@@ -2813,7 +2830,7 @@ export default function BankingAgent({
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
     document.addEventListener("pointercancel", onUp);
-  }, []);
+  }, [clampDragPosToViewport]);
 
   // (drag listeners now attached inline in handleDragStart via pointer capture)
   useEffect(() => {
@@ -2981,6 +2998,17 @@ export default function BankingAgent({
         height: rect.height,
       });
   }, [dragPos]);
+
+  // Recover the floating panel if the viewport shrinks (or rotates) while the
+  // panel was dragged near/over an edge. Float mode only — inline uses CSS.
+  useEffect(() => {
+    if (isInline) return;
+    function onResize() {
+      setDragPos(clampDragPosToViewport);
+    }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [isInline, clampDragPosToViewport]);
 
   const resultsPanelStyle = useMemo(() => {
     const gap = 12;
