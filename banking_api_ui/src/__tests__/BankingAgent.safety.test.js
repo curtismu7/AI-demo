@@ -9,6 +9,8 @@ import {
   clampPanelPosition,
   makeReentrancyGuard,
   resolveEmbeddedFocus,
+  isAbortError,
+  anySignal,
 } from "../components/bankingAgentSafety";
 
 describe("claimPendingNl — atomic single-fire post-OAuth replay (Task 1)", () => {
@@ -137,5 +139,54 @@ describe("resolveEmbeddedFocus — route → agent persona parity (Phase 2)", ()
   test("query/hash are not stripped — parity with the legacy predicate", () => {
     expect(resolveEmbeddedFocus("/config?x=1")).toBe("banking");
     expect(resolveEmbeddedFocus("/config#h")).toBe("banking");
+  });
+});
+
+describe("isAbortError — silent-cancel classification (Phase 3)", () => {
+  test("DOMException AbortError is recognized", () => {
+    const e = new DOMException("aborted", "AbortError");
+    expect(isAbortError(e)).toBe(true);
+  });
+  test("a plain error named AbortError is recognized", () => {
+    const e = new Error("x");
+    e.name = "AbortError";
+    expect(isAbortError(e)).toBe(true);
+  });
+  test("an ordinary error is not an abort", () => {
+    expect(isAbortError(new Error("network"))).toBe(false);
+    expect(isAbortError(null)).toBe(false);
+  });
+});
+
+describe("abort wiring contract (Phase 3)", () => {
+  test("a fetch given an aborted signal rejects with AbortError and isAbortError catches it", async () => {
+    const ctrl = new AbortController();
+    ctrl.abort();
+    const err = await fetch("/never", { signal: ctrl.signal }).catch((e) => e);
+    expect(isAbortError(err)).toBe(true);
+  });
+  test("anySignal aborts when either input aborts", () => {
+    const a = new AbortController();
+    const b = new AbortController();
+    const any = anySignal([a.signal, b.signal]);
+    expect(any.aborted).toBe(false);
+    b.abort();
+    expect(any.aborted).toBe(true);
+  });
+  test("anySignal aborts immediately if an input is already aborted", () => {
+    const a = new AbortController();
+    a.abort();
+    const b = new AbortController();
+    const any = anySignal([a.signal, b.signal]);
+    expect(any.aborted).toBe(true);
+  });
+  test("anySignal still aborts via the short signal when a never-aborted lifecycle signal is composed", async () => {
+    const live = new AbortController(); // never aborted
+    const short = new AbortController(); // stands in for AbortSignal.timeout(10) — jsdom lacks AbortSignal.timeout
+    const any = anySignal([short.signal, live.signal]);
+    expect(any.aborted).toBe(false);
+    short.abort(); // simulate the timeout firing
+    expect(any.aborted).toBe(true);
+    expect(live.signal.aborted).toBe(false); // lifecycle signal untouched
   });
 });

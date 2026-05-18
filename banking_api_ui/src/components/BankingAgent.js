@@ -74,7 +74,7 @@ import {
 import { getColdStartRetryDelays } from "../services/apiErrorHandler";
 import APP_CONFIG from "../services/appConfig";
 import { useCustomChips } from "../hooks/useCustomChips";
-import { claimPendingNl, clampPanelPosition, makeReentrancyGuard } from "./bankingAgentSafety";
+import { claimPendingNl, clampPanelPosition, makeReentrancyGuard, isAbortError, anySignal } from "./bankingAgentSafety";
 
 // Phase 266 H2 audit: TokenChain credentialPath stamping origins per setTokenEvents call:
 //   line 3433 (scopeTestRes.tokenEvents)  — origin: scope-test path via callMcpTool; credentialPath: oauth_bearer (default; stamped by bankingAgentService)
@@ -1709,6 +1709,7 @@ export default function BankingAgent({
   const [nlResumeAfterAuth, setNlResumeAfterAuth] = useState(null);
   const nlSendGuardRef = useRef(null);
   if (!nlSendGuardRef.current) nlSendGuardRef.current = makeReentrancyGuard();
+  const sendAbortRef = useRef(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   /** null = loading; which OAuth flows have client IDs + environment */
@@ -2772,6 +2773,20 @@ export default function BankingAgent({
     if (!isOpen || !isLoggedIn) return;
     setMcpStatus({ toolCount: ACTIONS.length, connected: true });
   }, [isOpen, isLoggedIn]);
+
+  // Cancel any previous in-flight send, create a fresh AbortController, and
+  // return the new signal. Called once at the top of every real send path.
+  const beginAbortableSend = useCallback(() => {
+    // Abort any prior in-flight send. Load-bearing: the nlResumeAfterAuth
+    // effect is NOT reentrancy-guard-protected, so it can supersede a
+    // guarded send's I/O — cancel it rather than let it race.
+    if (sendAbortRef.current) {
+      try { sendAbortRef.current.abort(); } catch (_) {}
+    }
+    const c = new AbortController();
+    sendAbortRef.current = c;
+    return c.signal;
+  }, []);
 
   // Clamp a floating-panel position into the current viewport using the
   // latest panel size (read via ref so listeners needn't resubscribe).
@@ -5319,6 +5334,8 @@ export default function BankingAgent({
   // return; .finally on the clarification dispatch chain; .finally on the
   // rAF fetch chain). Do NOT add a fourth release here.
   function sendAsNlInner(text) {
+    const signal = beginAbortableSend();
+
     // Clarification-follow-up path: if our previous turn asked "Which
     // account?"/"How much?", treat this message as the missing slot
     // instead of re-parsing it as a brand-new intent. This is what was
@@ -5360,7 +5377,7 @@ export default function BankingAgent({
         params: merged,
       };
       dispatchNlResult(syntheticResult, "clarify", text)
-        .catch((err) => reportNlFailure(err))
+        .catch((err) => { if (!isAbortError(err)) reportNlFailure(err); })
         .finally(() => nlSendGuardRef.current.release());
       return;
     }
@@ -5379,7 +5396,7 @@ export default function BankingAgent({
           message: text,
           provider: selectedLlmProvider,
         }),
-        signal: AbortSignal.timeout(15000),
+        signal: anySignal([AbortSignal.timeout(15000), signal]),
       })
         .then((r) =>
           r.json().catch(() => ({
@@ -5396,7 +5413,7 @@ export default function BankingAgent({
           });
           return dispatchNlResult(result, source || "heuristic", text);
         })
-        .catch((err) => reportNlFailure(err))
+        .catch((err) => { if (!isAbortError(err)) reportNlFailure(err); })
         .finally(() => {
           setNlLoading(false);
           nlSendGuardRef.current.release();
@@ -5859,6 +5876,8 @@ export default function BankingAgent({
       return;
     }
 
+    const signal = beginAbortableSend();
+
     // Sequential thinking trigger: "think: [query]" or "reason: [query]"
     const thinkMatch = text.match(/^(?:think|reason):\s*(.+)/i);
     if (thinkMatch) {
@@ -5873,7 +5892,7 @@ export default function BankingAgent({
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tool: "sequential_think", params: { query } }),
-          signal: AbortSignal.timeout(15000),
+          signal: anySignal([AbortSignal.timeout(15000), signal]),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
@@ -5891,8 +5910,9 @@ export default function BankingAgent({
           steps = parsed.steps || [];
           conclusion = parsed.conclusion || "";
         } catch (_) {}
-        addMessage("reasoning", "", null, { steps, conclusion });
+        if (!signal.aborted) addMessage("reasoning", "", null, { steps, conclusion });
       } catch (err) {
+        if (isAbortError(err)) return;
         addMessage("error", `Sequential thinking failed: ${err.message}`);
       } finally {
         setNlLoading(false);
@@ -6000,7 +6020,7 @@ export default function BankingAgent({
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, provider: selectedLlmProvider }),
-        signal: AbortSignal.timeout(15000),
+        signal: anySignal([AbortSignal.timeout(15000), signal]),
       });
       const { result: _nlResult, source: _nlSource } = await _nlRes
         .json()
@@ -6021,6 +6041,7 @@ export default function BankingAgent({
       });
       await dispatchNlResult(_nlResult, _nlSource || "heuristic", text);
     } catch (err) {
+      if (isAbortError(err)) return;
       reportNlFailure(err);
     } finally {
       setNlLoading(false);
@@ -6035,11 +6056,12 @@ export default function BankingAgent({
     let cancelled = false;
     const timer = setTimeout(async () => {
       if (cancelled) return;
+      const signal = beginAbortableSend();
       addMessage("user", text);
       setNlLoading(true);
       try {
-        const response = await sendAgentMessage(text);
-        if (!cancelled) {
+        const response = await sendAgentMessage(text, null, { signal });
+        if (!cancelled && !signal.aborted) {
           if (response.error || !response.success) {
             reportNlFailure({ code: response.error || "unknown" });
           } else {
@@ -6053,6 +6075,7 @@ export default function BankingAgent({
           }
         }
       } catch (e) {
+        if (isAbortError(e)) return;
         if (!cancelled) reportNlFailure(e);
       } finally {
         if (!cancelled) setNlLoading(false);
@@ -6064,6 +6087,18 @@ export default function BankingAgent({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot replay when nlResumeAfterAuth is set after OAuth
   }, [nlResumeAfterAuth, isLoggedIn]);
+
+  // Cancel any in-flight agent request when this instance unmounts OR the
+  // route changes away from where it was issued — prevents state updates on
+  // a dead/wrong instance and mis-attributed Token Chain events.
+  useEffect(() => {
+    return () => {
+      if (sendAbortRef.current) {
+        try { sendAbortRef.current.abort(); } catch (_) {}
+        sendAbortRef.current = null;
+      }
+    };
+  }, [location.pathname]);
 
   // Keep resultPanelRef current so the refresh handler below can read it without stale closure.
   useEffect(() => {

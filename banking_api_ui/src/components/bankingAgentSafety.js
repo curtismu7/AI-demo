@@ -71,3 +71,30 @@ export function resolveEmbeddedFocus(pathname) {
   const p = typeof pathname === "string" ? pathname.replace(/\/$/, "") : "";
   return p === "/config" ? "config" : "banking";
 }
+
+/**
+ * True for fetch/AbortController cancellation. Such errors are intentional
+ * (component unmounted / route changed / superseded send) and must be
+ * swallowed silently — never surfaced as a user-facing failure.
+ */
+export function isAbortError(err) {
+  return Boolean(err) && err.name === "AbortError";
+}
+
+/**
+ * Minimal stand-in for AbortSignal.any() for our short-lived two-signal call
+ * sites (jsdom lacks AbortSignal.any). Listeners are {once:true}; do not pass
+ * long-lived signals expecting eager listener cleanup.
+ */
+export function anySignal(signals) {
+  const c = new AbortController();
+  const onAbort = () => { c.abort(); };
+  for (const s of signals) {
+    if (s.aborted) {
+      c.abort();
+      break;
+    }
+    s.addEventListener("abort", onAbort, { once: true });
+  }
+  return c.signal;
+}

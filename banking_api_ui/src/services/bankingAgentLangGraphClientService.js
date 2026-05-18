@@ -34,7 +34,7 @@ export async function initAgent() {
  * @param {string} consentId - Optional consent ID for resuming after approval
  * @returns {Promise<{success, message?, hitlRequired?, consentId?, reason?, operation?, error?}>}
  */
-export async function sendMessage(message, consentId = null) {
+export async function sendMessage(message, consentId = null, { signal } = {}) {
   try {
     const body = { message };
     if (consentId) {
@@ -46,6 +46,7 @@ export async function sendMessage(message, consentId = null) {
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal,
     });
 
     // 428 = HITL consent required

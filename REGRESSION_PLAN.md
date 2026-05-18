@@ -123,6 +123,22 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — AbortController on the agent send pipeline (no state-on-dead-instance / mis-attributed Token Chain)
+
+**Files changed:**
+- `banking_api_ui/src/components/bankingAgentSafety.js` — `isAbortError(err)` (true iff `err && err.name === 'AbortError'`); `anySignal(signals)` shim (jsdom lacks `AbortSignal.any`; `{ once: true }` listeners; JSDoc scoped to short-lived two-signal call sites).
+- `banking_api_ui/src/services/bankingAgentService.js` — `callMcpTool` and `sendAgentMessage` accept an optional `{ signal }`; `callMcpTool` threads it into both `fetch("/api/mcp/tool", fetchOpts)` calls (incl. the 401-retry); `sendAgentMessage` composes `anySignal([AbortSignal.timeout(30000), signal])` so the 30s server timeout is preserved alongside the lifecycle signal across its whole retry ladder.
+- `banking_api_ui/src/services/bankingAgentLangGraphClientService.js` — `sendMessage` accepts `{ signal }` forwarded to fetch.
+- `banking_api_ui/src/components/BankingAgent.js` — per-send `AbortController` via `sendAbortRef` + `beginAbortableSend()` (aborts the prior, returns a fresh signal); the four send paths (sendAsNlInner, handleNaturalLanguageInner, its sequential-thinking branch, the nlResumeAfterAuth resume effect) thread the signal (inline fetches via `anySignal([AbortSignal.timeout(15000), signal])`); `AbortError` swallowed silently (never `reportNlFailure`); `addMessage`/token-event writes stay guarded behind `!signal.aborted`/`!cancelled` but `setNlLoading(false)` and the reentrancy-guard `release()` are unconditional (Phase-4-safe: a superseded/aborted send can never leave the input disabled); a `useEffect` with `[location.pathname]` deps aborts on unmount AND route-change.
+
+**What was broken:** In-flight NL/MCP calls had no cancellation. On unmount/route-change their handlers ran `setMessages`/`setNlLoading`/`appendTokenEvents` on a dead/wrong instance → React warnings + Token Chain events attributed to a destroyed instance.
+
+**What was fixed:** One AbortController per send, aborted on unmount + route change; `AbortError` is silent; UI/Token-Chain writes guarded on the signal; `setNlLoading(false)`/`release()` always run so the input never locks.
+
+**Verify:** safety suite green incl. `isAbortError`/`anySignal`/abort-wiring tests; `cd banking_api_ui && npm run build` exit 0; manual: fire a command then navigate away → no unmounted-state-update warning, no late Token Chain event.
+
+**Do not break:** `AbortError` MUST stay silent (never `reportNlFailure`). `setNlLoading(false)` and the reentrancy-guard `release()` MUST stay unconditional on abort (input-lockout otherwise, esp. once the agent instance is long-lived). The drag-handler / FAB / float resize caps / `liveAccounts` / consent gating were NOT touched. Abort scope is unmount + route-change (the route-change cleanup is load-bearing once the instance is single + long-lived).
+
 ### 2026-05-18 — embeddedFocus route-parity across all 3 agent modes
 
 **Files changed:**
