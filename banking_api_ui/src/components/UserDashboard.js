@@ -29,7 +29,6 @@ import {
 import { toastCustomerError } from "../utils/dashboardToast";
 import AgentUiModeToggle from "./AgentUiModeToggle";
 import ThresholdControls from "./ThresholdControls";
-import BankingAgent from "./BankingAgent";
 import EmbeddedAgentDock from "./EmbeddedAgentDock";
 import ExchangeModeToggle from "./ExchangeModeToggle";
 import { EDU } from "./education/educationIds";
@@ -40,7 +39,6 @@ import TransactionConsentModal from "./TransactionConsentModal";
 import FloatingPanel from "./FloatingPanel";
 import "./UserDashboard.css";
 import DashboardHeader from "./DashboardHeader";
-import { resolveEmbeddedFocus } from "./bankingAgentSafety";
 
 /** Format a number as USD currency — $1,234.56 */
 const fmt = (n) =>
@@ -143,7 +141,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { open } = useEducationUI();
-  const { placement: agentPlacement } = useAgentUiMode();
+  const { placement: agentPlacement, setSurfaceHostEl } = useAgentUiMode();
   useCurrentUserTokenEvent(); // Seed the token chain with current user's session token on mount
   /** Middle layout: auto-opens when placement is 'middle'; collapses via FAB click. */
   const [middleAgentOpen, setMiddleAgentOpen] = useState(
@@ -1327,6 +1325,20 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
   const accountsAnchorRef = useRef(null);
   const agentColumnRef = useRef(null);
+
+  // Middle column = portal host for the single App-level banking agent.
+  // Mirrors EmbeddedAgentDock's bottom-dock pattern (4b): a stable ref
+  // callback publishes the host element into AgentUiModeContext; the App
+  // single instance portals its floatShell into it. Guarded cleanup avoids a
+  // middle/bottom host race (only clears if still pointing at our element).
+  const [middleHostEl, setMiddleHostEl] = useState(null);
+  const middleHostRefCb = useCallback((el) => setMiddleHostEl(el), []);
+  useEffect(() => {
+    setSurfaceHostEl(middleHostEl);
+    return () => {
+      setSurfaceHostEl((cur) => (cur === middleHostEl ? null : cur));
+    };
+  }, [middleHostEl, setSurfaceHostEl]);
 
   const handleScrollToAccounts = useCallback(() => {
     accountsAnchorRef.current?.scrollIntoView({
@@ -2520,7 +2532,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           ? " user-dashboard--embed-agent"
           : ""
       }${
-        agentPlacement === "middle" && middleAgentOpen
+        agentPlacement === "middle"
           ? " user-dashboard--split3"
           : ""
       }${agentPlacement === "none" ? " user-dashboard--float-fab-left" : ""}`}
@@ -2637,11 +2649,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       </div>
 
       {/* ── Token | (split: agent + banking columns) | classic: banking + float reserve ── */}
-      {agentPlacement === "middle" && middleAgentOpen ? (
+      {agentPlacement === "middle" ? (
         <div
           className={`dashboard-content ud-body ud-body--2026 ${splitGridClass(
             showBankingInMiddle,
-          )}`}
+          )}${middleAgentOpen ? "" : " ud-middle-collapsed"}`}
         >
           <aside className="ud-token-rail" aria-label="Token chain">
             <div className="section ud-token-rail__inner">
@@ -2661,14 +2673,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             })}
           >
             <div className="embedded-banking-agent ud-dashboard-inline-agent">
-              <BankingAgent
-                user={user}
-                onLogout={onLogout}
-                mode="inline"
-                embeddedFocus={resolveEmbeddedFocus(location.pathname)}
-                splitColumnChrome
-                distinctFloatingChrome
-                showPopOut
+              <div
+                className="ud-dashboard-inline-agent-host"
+                ref={middleHostRefCb}
               />
             </div>
             <button
@@ -2697,6 +2704,24 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             >
               {renderBankingMain()}
             </main>
+          )}
+
+          {/* Collapsed middle: agent column is CSS-hidden (host stays mounted so
+              the portaled BankingAgent keeps its chat state); surface the same
+              float-reserve affordance the else-branch shows so the collapsed
+              visual matches today. */}
+          {!middleAgentOpen && (
+            <aside className="ud-float-reserve" aria-hidden="true">
+              <div className="ud-float-reserve__card">
+                <span className="ud-float-reserve__label">
+                  Floating assistant
+                </span>
+                <p className="ud-float-reserve__hint">
+                  The corner FAB and panel stay in this zone so your balances
+                  and token flow stay readable.
+                </p>
+              </div>
+            </aside>
           )}
         </div>
       ) : (

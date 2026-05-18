@@ -155,6 +155,76 @@
   border-top: 1px solid var(--brand-medium-gray);
 }
 
+/* ── Option A: collapsed middle ───────────────────────────────────────
+   placement=middle keeps the split3 grid (and the inline agent host)
+   mounted whenever placement is middle, so collapsing the FAB does NOT
+   unmount the portaled <BankingAgent> (chat state preserved). When
+   collapsed, .ud-middle-collapsed is added to the grid container.
+
+   Collapsed = the SAME split3 grid with the hidden agent track. The
+   templates below are copied verbatim from the OPEN split3 rules
+   above — no design-3col, no invented pixel math:
+   - default (ff_show_banking_in_middle_agent OFF → `--no-banking`,
+     2-col token | agent): the agent column is display:none and the
+     in-grid float-reserve card takes the freed 2nd track. Template =
+     the open 2-col `--no-banking` values (`minmax(280px,0.9fr) 2fr`);
+   - FF ON (3-col token | banking | agent): the agent is the 3rd
+     track; with the column display:none the float-reserve card
+     (rendered after it) lands in that 3rd track. Template = the open
+     3-col values (`minmax(240px,260px) 1fr minmax(360px,420px)`) so
+     no gap appears — the float-reserve simply occupies track 3.
+   The split3 viewport-flex/height/overflow lock is neutralized so the
+   collapsed state flows normally (load-bearing — kept). */
+.ud-body.ud-body--2026.ud-body--dashboard-split3.ud-middle-collapsed {
+  /* Open 3-col split3 template (UserDashboard.css line ~121), agent
+     track now occupied by the float-reserve card (column display:none). */
+  grid-template-columns: minmax(240px, 260px) 1fr minmax(360px, 420px);
+  grid-template-rows: 1fr;
+  /* Undo the split3 viewport-flex lock so collapsed flows normally */
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  border: 1px solid var(--brand-medium-gray);
+  border-radius: 8px;
+}
+
+/* Host stays mounted; column is hidden so the user sees the same
+   collapsed affordance (float-reserve card + open FAB) as today. The
+   resize handle is a child of .ud-agent-column, so this hides it too. */
+.ud-middle-collapsed .ud-agent-column {
+  display: none;
+}
+
+/* Default (FF off) no-banking + collapsed: token rail + float-reserve
+   only (no banking track, agent hidden). Template = the open 2-col
+   `--no-banking` values (UserDashboard.css line ~142) verbatim — the
+   float-reserve card occupies the slot the agent track held. */
+.ud-body.ud-body--2026.ud-body--dashboard-split3.ud-body--dashboard-split3--no-banking.ud-middle-collapsed {
+  grid-template-columns: minmax(280px, 0.9fr) 2fr;
+}
+
+/* Mirror the open split3 @media 1280px override (UserDashboard.css
+   line ~331): 3-col → 1fr 1fr 1fr; no-banking → 1fr 1fr. */
+@media (max-width: 1280px) {
+  .ud-body.ud-body--2026.ud-body--dashboard-split3.ud-middle-collapsed {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .ud-body.ud-body--2026.ud-body--dashboard-split3.ud-body--dashboard-split3--no-banking.ud-middle-collapsed {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Mirror the open split3 @media 1024px override (UserDashboard.css
+   line ~341): collapse to a single column and relax the height lock. */
+@media (max-width: 1024px) {
+  .ud-body.ud-body--2026.ud-body--dashboard-split3.ud-middle-collapsed {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+}
+
 /* Right-dock variant: token | banking | agent (agent on right) */
 .ud-body.ud-body--dashboard-split3-right {
   /* Token rail | Banking | Agent (on right) */

@@ -559,6 +559,11 @@ function AppWithAuth() {
   const hasEmbeddedDockLayout =
     Boolean(user) && agentPlacement === "bottom" && onEmbeddedDockRoute;
 
+  // Middle placement on /dashboard: UserDashboard renders the middle column
+  // and registers its host element; the single agent portals into it (4c).
+  const hasMiddleLayout =
+    Boolean(user) && agentPlacement === "middle" && onUserDashboardRoute;
+
   const onMonitoringRoute = isMonitoringRoute(pathname);
 
   const agentDisabled = appFlags.agentUiMode === "disabled";
@@ -578,7 +583,8 @@ function AppWithAuth() {
         !(agentPlacement === "middle" && onUserDashboardRoute)));
 
   /** Single <BankingAgent> portals into the bottom dock host element when present; falls back to document.body otherwise. */
-  const shouldMountSingleAgent = showFloatingAgent || hasEmbeddedDockLayout;
+  const shouldMountSingleAgent =
+    showFloatingAgent || hasEmbeddedDockLayout || hasMiddleLayout;
 
   // When the single agent is portaled into the bottom dock host it must wear
   // the dock's inline chrome (no floating frame/drag), exactly as the old
@@ -586,7 +592,9 @@ function AppWithAuth() {
   // all other surfaces keep the default floating chrome.
   const singleAgentSurfaceProps = hasEmbeddedDockLayout
     ? { mode: "inline", embeddedDockBottom: true }
-    : {};
+    : hasMiddleLayout
+      ? { mode: "inline", splitColumnChrome: true, showPopOut: true }
+      : {};
 
   /** Slower default dismiss on public landing so OAuth/agent messages are readable (signed-in routes stay 4s). */
   const toastContainerAutoCloseMs =
