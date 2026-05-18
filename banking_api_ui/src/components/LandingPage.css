@@ -62,7 +62,7 @@
   align-items: flex-start;
   flex-shrink: 0;
 }
-.landing-logo h1 {
+.landing-logo .landing-logo-title {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
@@ -70,7 +70,7 @@
   line-height: 1.2;
   letter-spacing: -0.02em;
 }
-.landing-logo p {
+.landing-logo p:not(.landing-logo-title) {
   margin: 2px 0 0;
   font-size: 11px;
   color: var(--lp-text-secondary);
@@ -113,6 +113,10 @@
   background: var(--lp-accent-hover);
   border-color: var(--lp-accent-hover);
   box-shadow: var(--lp-shadow-sm);
+}
+.landing-header-actions .btn-primary:focus-visible {
+  outline: 2px solid var(--lp-accent);
+  outline-offset: 2px;
 }
 .landing-header-actions .btn-secondary {
   background: transparent;
@@ -214,6 +218,11 @@
 .hero-cta-secondary:hover {
   background: var(--lp-muted);
   border-color: #cbd5e1;
+}
+.hero-cta-primary:focus-visible,
+.hero-cta-secondary:focus-visible {
+  outline: 2px solid var(--lp-accent);
+  outline-offset: 2px;
 }
 
 /* ========== Feature Grid ========== */
@@ -474,4 +483,18 @@ html[data-theme="dark"] .landing-feature-icon {
 }
 html[data-theme="dark"] .hero-cta-primary {
   color: #0f172a;
+}
+
+/* Respect user reduced-motion preference: drop transitions and hover transforms */
+@media (prefers-reduced-motion: reduce) {
+  .landing-page *,
+  .landing-page *::before,
+  .landing-page *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .landing-feature-card:hover {
+    transform: none;
+  }
 }
