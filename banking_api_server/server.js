@@ -1224,8 +1224,11 @@ const { createPendingDecision: _createPendingDecision } = require('./routes/mcpD
 /**
  * Render a pipeline Outcome to the Express response. The ONLY res.* site for
  * the MCP tool route (ADR-0004). HTTP/2 streaming is the one special case.
- * `outcome.tokenEvents` (top-level) is the SSE side-channel mirror per the
- * runMcpToolPipeline contract — publish that, do NOT derive from body.
+ * Note: the pipeline already self-publishes token events to the SSE hub
+ * internally (live Token Chain). `outcome.tokenEvents` is a read-only mirror
+ * for inspection/debugging — this shell must NOT re-publish it (doing so
+ * double-emits to the live Token Chain). renderOutcome only writes the HTTP
+ * response body; SSE side-channel ownership stays in runMcpToolPipeline.
  */
 function renderOutcome(res, outcome) {
   if (outcome.kind === 'result' && outcome.stream) {
