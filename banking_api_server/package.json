@@ -37,6 +37,7 @@
     "data:preflight": "node scripts/importMigrationBundle.js --preflight-only",
     "pingone:bootstrap": "node scripts/bootstrapPingOne.js",
     "pingone:bootstrap:ci": "node scripts/bootstrapPingOne.js --non-interactive",
+    "scopes:doc": "node scripts/generate-scope-doc.js",
     "setup:fresh": "node scripts/setupFresh.js",
     "vault:create": "node scripts/vault.js create",
     "vault:get": "node scripts/vault.js get",

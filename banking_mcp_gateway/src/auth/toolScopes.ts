@@ -15,7 +15,7 @@ import { gatewayToolNames, toolRequiredScopes, toolChallengeType } from './scope
  * Canonical tool→scope map for the MCP gateway, DERIVED from
  * scope-topology.json (the SSOT). Do not hand-edit — edit the manifest.
  * Only gateway-surface tools appear here (exchange-only/legacy tools are
- * BFF-side concerns). scopeTopology.regression.test.js guards drift.
+ * BFF-side concerns). scopeTopology.test.ts guards drift.
  */
 export const TOOL_SCOPES: Record<string, string[]> = Object.freeze(
   gatewayToolNames().reduce<Record<string, string[]>>((acc, name) => {
