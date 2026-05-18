@@ -123,6 +123,24 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — BankingAgent: post-OAuth double-execute, send re-entrancy, float off-screen recovery
+
+**Files changed:**
+- `banking_api_ui/src/components/bankingAgentSafety.js` — NEW dependency-free pure helpers: `claimPendingNl` (atomic sessionStorage read-and-delete), `clampPanelPosition` (keep ≥48px of the panel header on-screen), `makeReentrancyGuard` (synchronous single-flight). Commits `d6992bf1` / `2a28f6ac`.
+- `banking_api_ui/src/components/BankingAgent.js` — (1) the post-`?oauth=success` effect now claims the pending NL command via `claimPendingNl` once, synchronously, before the cold-start retry timers (was: read into a closure then `removeItem` later, racing across mounted instances/retries). (2) `handleNaturalLanguage` and `sendAsNl` are split into guarded wrappers + `*Inner` bodies; a `useRef` single-flight guard (`nlSendGuardRef`) rejects same-tick / direct-call double submits on BOTH the textbox path and the chip/clarification path; `sendAsNl` also releases on a synchronous throw (parity with `handleNaturalLanguage`'s try/finally). (3) drag-END `onUp` and a new float-only window-`resize` effect reclamp `dragPos` via `clampDragPosToViewport` (reads `panelSize` through a ref so the listener subscribes once per mount). Commits `d6992bf1` / `2a28f6ac` / `e47038fa`.
+- `banking_api_ui/src/__tests__/BankingAgent.safety.test.js` — NEW regression tests: `claimPendingNl` (3), `clampPanelPosition` (5), `makeReentrancyGuard` (3, incl. release-on-throw). 11 total, all green; baseline `BankingAgent.test.js` 24/24 unaffected.
+
+**What was broken:** On `?oauth=success`, multiple mounted BankingAgent instances each captured the shared `sessionStorage` pending-NL value before any removed it, so a banking command (e.g. a transfer) could replay/execute **twice**. The NL send pipeline had no synchronous re-entrancy guard — `disabled={nlLoading}` is async React state and loses the same-tick race, and the chip/`sendAsNl` path bypassed the disabled input entirely — so rapid/double submit interleaved requests and corrupted the shared Token Chain. In float mode the panel could be dragged off-screen and, with the FAB hidden while the panel is open, become unrecoverable when the window shrank.
+
+**What was fixed:** The atomic claim makes the documented marketing-OAuth replay (this §4 log, prior "anonymous NL → login → replay" entry) fire **exactly once** across all instances/retries — the replay flow itself is unchanged (value still set on redirect, still replayed once after return). A `useRef` single-flight guard makes both send paths strictly one-at-a-time and self-releasing on every exit including synchronous throw. Drag-end + window-resize reclamp keeps ≥48px of the header on-screen without changing the intentional during-drag second-monitor behavior (`onMove` is still unclamped).
+
+**Verify:**
+- `cd banking_api_ui && npm run build` exits 0.
+- `cd banking_api_ui && CI=true npx react-scripts test src/__tests__/BankingAgent.safety.test.js src/__tests__/BankingAgent.test.js --watchAll=false` — 35/35 green.
+- Manual: float mode, drag the panel header past the right edge and release → it snaps back, header grabbable; shrink the window with the panel near an edge → it reclamps inward. Marketing-guest NL → login → return: the queued command runs exactly once. Rapid double-Enter / double chip-click → only one request fires.
+
+**Do not break:** `claimPendingNl` must stay an atomic read-then-delete (a peek re-opens the double-execute). `nlSendGuardRef` must be a `useRef` (React state loses the same-tick race) and both `handleNaturalLanguage` and `sendAsNl` must keep acquiring it and releasing on every exit path. The drag handler must NOT clamp during `onMove` — only on `onUp` and the window-`resize` effect (second-monitor drag is intentional; see `BankingAgent.js` "No clamping — allow drag to second screen"). REGRESSION_PLAN §1 BankingAgent rows (FAB, float resize caps, `liveAccounts`) are unaffected — these changes are additive guards + a clamp, no change to FAB visibility, resize 90% caps, or account-ID hydration.
+
 ### 2026-05-18 — Setup-page / control-button threshold edits never reached the simulated Authorize server (silent key-namespace mismatch)
 
 **Files changed:**
