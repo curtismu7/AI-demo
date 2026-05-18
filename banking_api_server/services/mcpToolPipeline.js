@@ -6,6 +6,14 @@
  * Built up path-by-path under characterization tests.
  * @param {object} ctx { tool, params, flowTraceId, startTime, req, deps }
  * @returns {Promise<object>} Outcome { kind:'result'|'block'|'error', httpStatus, body, tokenEvents? }
+ *
+ * `tokenEvents?` (top-level) is the SSE side-channel mirror, NOT a copy of
+ * `body`. Rule: present on every `result` and on `block` returns whose wire
+ * `body` already carried events; intentionally absent on `error` and on the
+ * `mcpNoBearerResponse` / `mcp_scope_denied` passthroughs whose original
+ * server.js body sent none. The route shell must read the top-level field for
+ * the SSE publish — never derive it from `body` (ADR-0004; verbatim mirror of
+ * the pre-extraction wire shape, so it must not be "normalized").
  */
 async function runMcpToolPipeline(ctx) {
   const { tool, params, req, deps } = ctx;
