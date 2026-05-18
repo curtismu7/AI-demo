@@ -35,10 +35,9 @@ async function runMcpToolPipeline(ctx) {
         deps.emit({
             phase: 'resolving_access_token'
         });
-        // BFF performs the single canonical RFC 8693 exchange (user subject +
-        // agent actor -> MCP-gateway-audienced token); the gateway and MCP
-        // server re-exchange downstream. The mcpWriteToken session cache is
-        // bypassed so every tool call produces the complete token chain.
+        // Always run the full two-exchange delegation (12-step mandate).
+        // The mcpWriteToken session cache is bypassed so every tool call produces
+        // the complete token chain (user-token → Exchange #1 → Exchange #2).
         const resolved = await deps.resolveMcpAccessTokenWithEvents(req, tool);
         mcpAccessToken = resolved.token;
         tokenEvents = resolved.tokenEvents;

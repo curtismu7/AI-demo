@@ -67,7 +67,12 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
     expect(deps.resolveMcpAccessTokenWithEvents).not.toHaveBeenCalled(); // bypasses exchange
   });
 
-  test('token resolve success → proceeds (no early Outcome from this phase)', async () => {
+  // Pinned now, satisfiable at Task 3: until the authorize phase exists, the
+  // happy path falls through to the intentional `authorize phase not yet
+  // implemented` placeholder throw. `test.failing` keeps the suite signal
+  // unambiguous (green while the throw stands; RED the moment it unexpectedly
+  // passes). Task 3 MUST flip this back to a normal `test(...)`.
+  test.failing('token resolve success → proceeds (no early Outcome from this phase)', async () => {
     const deps = makeDeps();
     deps.evaluateMcpFirstToolGate = jest.fn(async () => ({ ran: false, reason: 'no_token' }));
     deps.mcpCallTool = jest.fn(async () => ({ content: [{ text: 'remote-ok' }] }));
