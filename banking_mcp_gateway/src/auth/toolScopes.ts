@@ -9,33 +9,20 @@
  * Write/transfer tools also drive `challenge_type: 'step_up'` in HITL errors.
  */
 
-export const TOOL_SCOPES: Record<string, string[]> = {
-  // OLB read tools
-  get_my_accounts:              ['banking:read'],
-  get_account_balance:          ['banking:read'],
-  get_sensitive_account_details:['banking:read'],
-  get_my_transactions:          ['banking:read'],
-  query_user_by_email:          ['banking:read'],
-  sequential_think:             ['banking:read'],
+import { gatewayToolNames, toolRequiredScopes, toolChallengeType } from './scopeTopology';
 
-  // OLB write/transfer tools
-  create_deposit:               ['banking:write'],
-  create_withdrawal:            ['banking:write'],
-  create_transfer:              ['banking:write', 'banking:transfer'],
-
-  // Invest read tools
-  get_investment_balance:       ['banking:read'],
-  get_investment_accounts:      ['banking:read'],
-  get_portfolio_summary:        ['banking:read'],
-
-  // Phase 267 — Path A (api_key disposition) tool.
-  // The gateway will swap the user's OAuth bearer for an X-API-Key when calling
-  // banking_mortgage_service. The scope check below runs BEFORE the swap, so
-  // the user MUST hold banking:mortgage:read on their MCP-side bearer for the
-  // dispatch to proceed. This is the principal-consent gate before service-to-
-  // service credential transformation.
-  show_mortgage:                ['banking:mortgage:read'],
-};
+/**
+ * Canonical tool→scope map for the MCP gateway, DERIVED from
+ * scope-topology.json (the SSOT). Do not hand-edit — edit the manifest.
+ * Only gateway-surface tools appear here (exchange-only/legacy tools are
+ * BFF-side concerns). scopeTopology.regression.test.js guards drift.
+ */
+export const TOOL_SCOPES: Record<string, string[]> = Object.freeze(
+  gatewayToolNames().reduce<Record<string, string[]>>((acc, name) => {
+    acc[name] = toolRequiredScopes(name) as string[];
+    return acc;
+  }, {}),
+) as Record<string, string[]>;
 
 /** Scopes required by a given tool. Falls back to ['banking:read'] for unknown tools. */
 export function getScopesForGatewayTool(toolName: string): string[] {
@@ -79,7 +66,9 @@ export function evaluateScopeDecisionLocally(
   };
 }
 
-const STEP_UP_TOOLS = new Set(['create_deposit', 'create_withdrawal', 'create_transfer']);
+const STEP_UP_TOOLS = new Set<string>(
+  gatewayToolNames().filter((n) => toolChallengeType(n) === 'step_up'),
+);
 
 /**
  * Returns 'step_up' for write/transfer tools that carry financial risk.
