@@ -17,15 +17,15 @@ const scopeTopology = require('./scopeTopology');
 // live here. scopeTopology.regression.test.js asserts every key below exists in
 // the manifest (no orphans).
 const SCOPE_OPS_OVERLAY = {
-  'banking:read':          { operations: ['GET /accounts/*', 'GET /transactions/*', 'GET /balances/*'], requires_user_context: true },
-  'banking:write':         { operations: ['POST /transactions', 'POST /transfers'], requires_user_context: true },
-  'banking:transfer':      { operations: ['POST /transfers'], requires_user_context: true },
-  'banking:accounts:read': { operations: ['GET /accounts/*', 'GET /balances/*'], requires_user_context: true },
-  'banking:transactions:read': { operations: ['GET /transactions/*'], requires_user_context: true },
-  'banking:mortgage:read': { operations: ['GET /mortgage'], requires_user_context: true },
-  'banking:ai:agent:read': { operations: ['agent:invoke'], requires_user_context: true },
-  'banking:mcp:invoke':    { operations: ['mcp:tools/call'], requires_user_context: true },
-  'ai_agent':              { operations: ['agent:identity'], requires_user_context: false },
+  'banking:read':          { operations: ['GET /accounts/*', 'GET /transactions/*', 'GET /balances/*'], requires_user_context: true, category: 'banking' },
+  'banking:write':         { operations: ['POST /transactions', 'POST /transfers'], requires_user_context: true, category: 'banking' },
+  'banking:transfer':      { operations: ['POST /transfers'], requires_user_context: true, category: 'banking' },
+  'banking:accounts:read': { operations: ['GET /accounts/*', 'GET /balances/*'], requires_user_context: true, category: 'banking' },
+  'banking:transactions:read': { operations: ['GET /transactions/*'], requires_user_context: true, category: 'banking' },
+  'banking:mortgage:read': { operations: ['GET /mortgage'], requires_user_context: true, category: 'banking' },
+  'banking:ai:agent:read': { operations: ['agent:invoke'], requires_user_context: true, category: 'banking' },
+  'banking:mcp:invoke':    { operations: ['mcp:tools/call'], requires_user_context: true, category: 'banking' },
+  'ai_agent':              { operations: ['agent:identity'], requires_user_context: false, category: 'ai' },
 };
 
 const { writeExchangeEvent } = require('./exchangeAuditStore');
@@ -96,7 +96,7 @@ const SCOPE_TAXONOMY = {
     acc[name] = {
       description: meta.description,
       risk_level: meta.riskLevel,
-      category: 'banking',
+      category: overlay.category || 'banking',
       operations: overlay.operations,
       requires_user_context: overlay.requires_user_context,
     };

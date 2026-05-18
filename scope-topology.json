@@ -3,7 +3,7 @@
   "version": 1,
   "scopes": {
     "banking:read":          { "description": "Read accounts, balances, transactions", "riskLevel": "low",    "resource": "Super Banking API" },
-    "banking:write":         { "description": "Write banking operations (deposit/withdrawal)", "riskLevel": "medium", "resource": "Super Banking API" },
+    "banking:write":         { "description": "Write banking operations (deposit/withdrawal)", "riskLevel": "high", "resource": "Super Banking API" },
     "banking:transfer":      { "description": "Execute fund transfers", "riskLevel": "high", "resource": "Super Banking API" },
     "banking:accounts:read": { "description": "Read account information and balances", "riskLevel": "low", "resource": "Super Banking API" },
     "banking:transactions:read": { "description": "Read transaction history and details", "riskLevel": "low", "resource": "Super Banking API" },
