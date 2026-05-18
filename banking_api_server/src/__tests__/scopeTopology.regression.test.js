@@ -74,3 +74,26 @@ describe('MCP_TOOL_SCOPES derives from manifest', () => {
     }
   });
 });
+
+describe('pingoneProvisionService scope arrays match manifest', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(
+    path.join(__dirname, '../../services/pingoneProvisionService.js'),
+    'utf8'
+  );
+  const topo = require('../../services/scopeTopology');
+
+  test('main Super Banking API resource declares banking:transfer scope', () => {
+    expect(src).toMatch(/name:\s*'banking:transfer'/);
+  });
+
+  test('User App grant array contains every Super Banking User App manifest scope', () => {
+    const m = src.match(/userGrantResult\s*=\s*await this\.grantScopesToApplication\([\s\S]*?\[([\s\S]*?)\]/);
+    expect(m).not.toBeNull();
+    const granted = m[1].split(',').map(s => s.trim().replace(/['"]/g, '')).filter(Boolean);
+    for (const s of topo.appGrantedScopes('Super Banking User App')) {
+      expect(granted).toContain(s);
+    }
+  });
+});

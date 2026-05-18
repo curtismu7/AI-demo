@@ -1266,6 +1266,7 @@ class PingOneProvisionService {
       const scopes = [
         { name: 'banking:read', description: 'Read access to banking data' },
         { name: 'banking:write', description: 'Write access to banking operations' },
+        { name: 'banking:transfer', description: 'Execute fund transfers (elevated scope; gateway-enforced for create_transfer)' },
         { name: 'banking:accounts:read', description: 'Read account information and balances' },
         { name: 'banking:transactions:read', description: 'Read transaction history and details' },
         { name: 'banking:mortgage:read', description: 'Read mortgage account data (Phase 267 — Path A api-key disposition)' },
@@ -1472,7 +1473,7 @@ class PingOneProvisionService {
       const userGrantResult = await this.grantScopesToApplication(
         userAppResult.application.id,
         resourceResult.resource.id,
-        ['banking:ai:agent:read', 'banking:read', 'banking:write', 'banking:mortgage:read']
+        ['banking:ai:agent:read', 'banking:read', 'banking:write', 'banking:transfer', 'banking:mortgage:read']
       );
       
       pushGrantResultStep(steps, 'user-grants', 'User scope grants', userGrantResult);
