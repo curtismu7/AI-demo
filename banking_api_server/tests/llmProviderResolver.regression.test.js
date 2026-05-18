@@ -35,4 +35,14 @@ describe('resolveLlmProvider', () => {
     expect(resolveLlmProvider({ provider: 'gpt5' }))
       .toEqual({ provider: 'helix', model: undefined });
   });
+
+  test('honors explicit openai (pass-through; :3006 enforces creds)', () => {
+    expect(resolveLlmProvider({ provider: 'openai', model: 'gpt-4o' }))
+      .toEqual({ provider: 'openai', model: 'gpt-4o' });
+  });
+
+  test('honors explicit anthropic (pass-through; :3006 enforces creds)', () => {
+    expect(resolveLlmProvider({ provider: 'anthropic', model: 'claude-sonnet-4-6' }))
+      .toEqual({ provider: 'anthropic', model: 'claude-sonnet-4-6' });
+  });
 });
