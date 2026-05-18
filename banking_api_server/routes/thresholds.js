@@ -40,6 +40,14 @@ router.post('/', async (req, res) => {
       const n = Number(confirm_threshold_usd);
       if (isNaN(n) || n <= 0) return res.status(400).json({ error: 'invalid_confirm_threshold', message: 'confirm_threshold_usd must be a positive number' });
       update.confirm_threshold_usd = String(n);
+      // Mirror into the simulated Authorize server's CANONICAL input key so a
+      // Setup-page / control-button edit actually changes AS decisions. The AS
+      // (simulatedAuthorizeService.getConfirmAmountUsd) reads ONLY
+      // SIMULATED_AUTHORIZE_CONFIRM_AMOUNT — without this mirror, this surface
+      // wrote a key the AS never read and threshold edits were silently inert.
+      // Single user input → both consumer namespaces (HITL consent reads
+      // confirm_threshold_usd; simulated AS reads SIMULATED_AUTHORIZE_*).
+      update.SIMULATED_AUTHORIZE_CONFIRM_AMOUNT = String(n);
     }
     if (mfa_threshold_usd !== undefined) {
       const n = Number(mfa_threshold_usd);
@@ -47,6 +55,9 @@ router.post('/', async (req, res) => {
       update.mfa_threshold_usd = String(n);
       // Sync to the key that transactions.js reads as configStore fallback
       update.step_up_amount_threshold = String(n);
+      // Mirror into the simulated Authorize server's CANONICAL step-up key
+      // (same rationale as confirm above — AS reads only this key).
+      update.SIMULATED_AUTHORIZE_STEPUP_AMOUNT = String(n);
       // Also update live runtimeSettings so the step-up gate takes effect immediately
       runtimeSettings.update({ stepUpAmountThreshold: n }, 'thresholds-api');
     }
