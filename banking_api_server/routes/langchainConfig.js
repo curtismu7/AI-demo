@@ -94,7 +94,22 @@ router.get('/config/status', (req, res) => {
       helix_environment_id,
       helix_agent_id,
       helix_prompt_field_id,
-      key_set: { ollama: true },
+      // Honest credential presence so UIs can disable unconfigured
+      // providers (teaching spec 2026-05-18-chatgpt-claude-as-agent,
+      // "disable unconfigured" UX). ollama is local (always available);
+      // openai/anthropic are enforced for real at banking_agent_service
+      // (:3006), which reads OPENAI_API_KEY / ANTHROPIC_API_KEY — mirror
+      // that source here (session key OR configStore OR that env var).
+      key_set: {
+        ollama: true,
+        helix: !!(helix_api_key && helix_base_url),
+        openai: !!(cfg.openai_api_key ||
+          configStore.getEffective('openai_api_key') ||
+          process.env.OPENAI_API_KEY),
+        anthropic: !!(cfg.anthropic_api_key ||
+          configStore.getEffective('anthropic_api_key') ||
+          process.env.ANTHROPIC_API_KEY),
+      },
       provider_models: PROVIDER_MODELS,
       default_models: DEFAULT_MODELS,
     });

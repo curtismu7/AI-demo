@@ -530,9 +530,24 @@ function LangChainAgentConfig() {
 
   const PROVIDERS = [
     {
+      id: "helix",
+      label: "Helix (Claude via wrapper)",
+      placeholder: "(set Helix base URL + API key below)",
+    },
+    {
       id: "ollama",
       label: "Ollama (Local LLM)",
       placeholder: "(local — no key needed)",
+    },
+    {
+      id: "openai",
+      label: "OpenAI (ChatGPT)",
+      placeholder: "(needs OPENAI_API_KEY on the agent service)",
+    },
+    {
+      id: "anthropic",
+      label: "Anthropic (Claude)",
+      placeholder: "(needs ANTHROPIC_API_KEY on the agent service)",
     },
   ];
 
@@ -655,11 +670,19 @@ function LangChainAgentConfig() {
             minWidth: 180,
           }}
         >
-          {PROVIDERS.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
-            </option>
-          ))}
+          {PROVIDERS.map((p) => {
+            // Honest key_set from the server: disable a provider until
+            // its credential exists (the agent service fails closed at
+            // request time anyway — this just makes it discoverable).
+            const configured =
+              (status.key_set || { ollama: true })[p.id] === true;
+            return (
+              <option key={p.id} value={p.id} disabled={!configured}>
+                {p.label}
+                {configured ? "" : " — not configured"}
+              </option>
+            );
+          })}
         </select>
       </div>
 
@@ -2842,8 +2865,8 @@ export default function Config() {
                           🖥️ Path B: Run on localhost
                         </h3>
                         <p className="config-page__path-desc">
-                          Default API server uses <code>api.ping.demo</code>{" "}
-                          as the host.
+                          Default API server uses <code>api.ping.demo</code> as
+                          the host.
                         </p>
                         <ol className="config-page__path-steps">
                           <li>Clone the repo</li>
@@ -2854,8 +2877,8 @@ export default function Config() {
                           </li>
                           <li>
                             By default the API server listens on{" "}
-                            <code>api.ping.demo</code> — add that to your
-                            local hosts file, or change <code>PORT</code>/
+                            <code>api.ping.demo</code> — add that to your local
+                            hosts file, or change <code>PORT</code>/
                             <code>HOST</code> in <code>.env</code>
                           </li>
                           <li>
