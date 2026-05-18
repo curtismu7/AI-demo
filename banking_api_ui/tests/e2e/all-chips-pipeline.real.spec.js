@@ -66,14 +66,21 @@ test.describe('all-chips routing + non-skippable pipeline (real)', () => {
       process.env.HELIX_BASE_URL ||
       'https://openam-helix.forgeblocks.com';
 
-    // Helix precondition probe. Helix creds are NOT vault-sourced; they come
-    // from configStore/HELIX_API_KEY/LLM2.json/builtin defaults. If Helix is
-    // unconfigured the router falls back to heuristic and Condition 2 would
-    // FALSELY pass. Probe with a phrase the heuristic CANNOT resolve, forcing
-    // the LLM path: a Helix-sourced answer proves Helix is live.
+    // Helix precondition probe. Helix creds resolve from configStore — which
+    // includes the vault-sourced HELIX_API_KEY (vaultLoader → configStore;
+    // NOT process.env, Phase 269 allowlist), HELIX_* env, LLM2.json, or
+    // builtin FIELD_DEFS defaults. If Helix is unconfigured the router falls
+    // back to heuristic and Condition 2 would FALSELY pass — so the probe
+    // MUST use a phrase the heuristic genuinely cannot resolve, forcing the
+    // LLM path. NOTE: "what is the capital of France?" is NOT safe — the
+    // current heuristic classifies it as a banking web_search intent and
+    // returns source:'heuristic' before Helix is ever consulted (T-3:
+    // heuristic always runs first and short-circuits), which falsely fails
+    // this precondition even when Helix is fully configured. The phrase below
+    // is empirically verified to return parseHeuristic() === none.
     const probe = await customerApi.post('/api/banking-agent/nl', {
       data: {
-        message: 'In one short sentence, what is the capital of France?',
+        message: 'Reply with exactly the single word: persimmon',
         provider: 'helix',
       },
     });
