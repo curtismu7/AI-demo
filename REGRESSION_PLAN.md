@@ -123,6 +123,29 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — create_transfer 403 (missing banking:transfer) + foolproof anti-drift guard
+
+**Files changed:**
+- `banking_api_server/config/oauthUser.js` — added `'banking:transfer'` to the `enduserAudience`-branch `/authorize` scope list.
+- `banking_api_server/src/__tests__/scopeTopology.regression.test.js` — new `describe('GUARD: OAuth /authorize requested scopes match topology app grants')` that fails CI if any banking-family scope the topology grants an app is not requested at `/authorize`.
+
+**What was broken:** `create_transfer` was gateway-denied `403 insufficient_scope: missing banking:transfer`. Root cause — and the important part — **there are three independent producers of "what scopes a user gets", and the v2 SSOT refactor only wired one of them:**
+
+1. `pingoneProvisionService.js` — scopes *created on* PingOne resources + *granted to* apps. ✅ Derives from `scope-topology.json` (v2 refactor).
+2. `config/oauthUser.js` `scopes` getter — scopes the BFF *requests at `/authorize`* (what the user token actually carries). ❌ Hardcoded literal, never wired to the SSOT.
+3. `config/scopes.js` `USER_TYPE_SCOPES` — the fallback list `oauthUser.js`/`oauth.js` use when `ENDUSER_AUDIENCE` is unset. ❌ Hardcoded, zero topology references.
+
+PingOne *granted* the User App `banking:transfer` (topology-derived, correct), but the BFF never *requested* it at `/authorize` (hardcoded list missing it) → user token lacked it → the RFC 8693 `direct-intersection` (`finalScopes = toolCandidates ∩ userScopes`) dropped `banking:transfer` → gateway 403. No test tied producer #2/#3 to the SSOT, so they could drift from #1 with zero CI failure. (The admin side `config/oauth.js` → `getScopesForUserType('admin')` has the same latent divergence — its hardcoded list is a 5-scope subset of the topology's 13-scope Admin App grant.)
+
+**What was fixed:** (1) `banking:transfer` added to the user `/authorize` request — verified single-resource-safe: all User App banking grants map to the one "Super Banking API" resource in the topology, so PingOne does not reject with `invalid_scope: multiple resources` (REGRESSION_PLAN §1). (2) **Foolproof guard:** a regression test now asserts the `/authorize` requested scopes ⊇ the topology's app grant (banking-family, with the documented `banking:ai:agent:read`↔`banking:ai:agent` alias reconciled). Proven to go RED when `banking:transfer` is removed and GREEN with the fix. Future drift between the topology and the authorize list is now impossible to ship silently.
+
+**Verify:**
+- `cd banking_api_server && npx jest scopeTopology.regression` → 21 passing incl. the GUARD describe.
+- `curl -skL https://api.ping.demo:3001/api/auth/oauth/user/login` resolves to PingOne signon (no `invalid_scope`); authorize `scope` param contains `banking:transfer`. Stable across repeats.
+- Negative proof: deleting `'banking:transfer'` from `oauthUser.js` makes the GUARD test fail with a `{ appName, missing: ['banking:transfer'] }` diff.
+
+**Do not break:** the GUARD test is the anti-drift backstop — never `.skip` it or weaken the `assertAuthorizeCoversGrant` comparison. Adding a banking scope to an app's `grantedScopes` in `scope-topology.json` now REQUIRES also adding it to that app's `/authorize` list (`config/oauthUser.js` for the User App), or the build goes red — by design. If a second scope-spelling alias is ever needed, add it CONSCIOUSLY to the test's `ALIAS` map (do not broaden the matcher). Open follow-up: `config/oauthUser.js`/`oauth.js`/`config/scopes.js` still hardcode the authorize list (the guard enforces correctness but the lists are not yet *derived* from the SSOT — a deriving refactor is blocked on reconciling the `banking:ai:agent` vs `banking:ai:agent:read` spelling without regressing the working agent flow). Also still open from the prior entry: `show_mortgage` is not registered as an MCP-server tool ("Unknown tool").
+
 ### 2026-05-18 — scope-topology.json is now the complete v2 SSOT; bootstrap derives from it
 
 **Files changed:**

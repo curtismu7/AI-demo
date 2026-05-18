@@ -201,3 +201,57 @@ describe('generated scope doc is in sync', () => {
     expect(onDisk).toBe(rendered);
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// FOOLPROOF GUARD (added after the banking:transfer drift incident, 2026-05-18)
+//
+// Root cause of that incident: scope-topology.json is the SSOT for what
+// PingOne *grants* an app (pingoneProvisionService derives from it), but the
+// *OAuth /authorize request* is built by a SEPARATE hardcoded list in
+// config/oauthUser.js (+ config/oauth.js for admin). Nothing tied the two
+// together, so PingOne granted the User App banking:transfer while the BFF
+// never requested it → user token lacked it → RFC 8693 intersection dropped
+// it → gateway 403'd create_transfer.
+//
+// This guard makes that drift impossible to ship silently: every banking-
+// family scope the topology grants an app MUST be in that app's /authorize
+// request (with the one documented spelling alias reconciled). Edit the
+// topology OR the authorize list out of sync and this test goes red.
+// ───────────────────────────────────────────────────────────────────────────
+describe('GUARD: OAuth /authorize requested scopes match topology app grants', () => {
+  const topo = require('../../services/scopeTopology');
+
+  // The single known, intentional spelling alias: the topology models the
+  // agent scope as `banking:ai:agent:read`; the OAuth layer historically
+  // requests `banking:ai:agent` (the working agent flow depends on this
+  // spelling). Normalise both sides so the guard compares semantics, not
+  // spelling. If a SECOND alias ever appears, add it here CONSCIOUSLY.
+  const ALIAS = { 'banking:ai:agent:read': 'banking:ai:agent' };
+  const norm = (s) => ALIAS[s] || s;
+  const bankingFamily = (s) => s.startsWith('banking:') || s === 'ai_agent';
+
+  function assertAuthorizeCoversGrant(appName, requestedScopes) {
+    const granted = topo.appGrantedScopes(appName).filter(bankingFamily).map(norm);
+    const requested = new Set(requestedScopes.filter(bankingFamily).map(norm));
+    const missing = granted.filter((s) => !requested.has(s));
+    // If this fails: `missing` lists scopes granted in scope-topology.json but
+    // NOT requested at /authorize. Either add them to the authorize scope list
+    // (config/oauthUser.js / config/oauth.js) or remove the grant from the
+    // manifest. Silent drift here = a gateway insufficient_scope 403.
+    expect({ appName, missing }).toEqual({ appName, missing: [] });
+  }
+
+  test('Super Banking User App: oauthUser.js authorize scopes ⊇ topology grant', () => {
+    const prevEnv = process.env.ENDUSER_AUDIENCE;
+    process.env.ENDUSER_AUDIENCE = 'banking_api_enduser';
+    jest.resetModules();
+    try {
+      const userOauth = require('../../config/oauthUser');
+      assertAuthorizeCoversGrant('Super Banking User App', userOauth.scopes);
+    } finally {
+      if (prevEnv === undefined) delete process.env.ENDUSER_AUDIENCE;
+      else process.env.ENDUSER_AUDIENCE = prevEnv;
+      jest.resetModules();
+    }
+  });
+});
