@@ -134,3 +134,31 @@ describe('scopePolicyEngine + scopeAuditService derive from manifest', () => {
     }
   });
 });
+
+describe('cross-consumer scope equality (the guard)', () => {
+  const topo = require('../../services/scopeTopology');
+  const { MCP_TOOL_SCOPES } = require('../../services/mcpWebSocketClient');
+
+  test('every gateway-surface tool: BFF MCP_TOOL_SCOPES == manifest requiredScopes', () => {
+    for (const name of topo.allTools()) {
+      if (topo.toolSurface(name) === 'gateway') {
+        expect(MCP_TOOL_SCOPES[name]).toEqual(topo.toolScopes(name));
+      }
+    }
+  });
+
+  test('NEGATIVE PROOF: reverting create_transfer to [banking:write] would fail this guard', () => {
+    const buggy = { ...MCP_TOOL_SCOPES, create_transfer: ['banking:write'] };
+    let caught = false;
+    try {
+      expect(buggy.create_transfer).toEqual(topo.toolScopes('create_transfer'));
+    } catch (_) {
+      caught = true;
+    }
+    expect(caught).toBe(true);
+  });
+
+  test('manifest tool count is non-trivial (sanity: at least 20 tools)', () => {
+    expect(topo.allTools().length).toBeGreaterThanOrEqual(20);
+  });
+});
