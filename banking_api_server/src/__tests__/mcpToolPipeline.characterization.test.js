@@ -16,6 +16,7 @@ function makeDeps(over = {}) {
   return {
     resolveMcpAccessTokenWithEvents: jest.fn(async () => ({ token: 't', tokenEvents: [], userSub: 'u1' })),
     evaluateMcpFirstToolGate: jest.fn(async () => ({ ran: true, permit: true, evaluation: { decision: 'PERMIT' } })),
+    getSessionAccessToken: jest.fn(() => 'sess-tok'),
     introspectToken: jest.fn(async () => ({ active: true, sub: 'u1', scope: 'banking:read', exp: 9999999999 })),
     callToolLocal: jest.fn(async () => ({ content: [{ text: 'local-ok' }] })),
     mcpCallTool: jest.fn(async () => ({ content: [{ text: 'remote-ok' }] })),
@@ -35,6 +36,7 @@ function makeDeps(over = {}) {
       useGateway: false,
       gatewayHttpUrl: '',
       mcpUrl: 'ws://localhost:8080',
+      mcpServerUrlEnv: undefined,
       useHttp2: false,
       pingoneAdminEnabled: false,
       pingoneAdminTools: new Set(['list_applications']),
@@ -69,8 +71,7 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
     expect(deps.resolveMcpAccessTokenWithEvents).not.toHaveBeenCalled(); // bypasses exchange
   });
 
-  // Pinned now, satisfiable at Task 4 (remote phase). Task 4 flips back.
-  test.failing('token resolve success → proceeds (no early Outcome from this phase)', async () => {
+  test('token resolve success → proceeds (no early Outcome from this phase)', async () => {
     const deps = makeDeps();
     deps.evaluateMcpFirstToolGate = jest.fn(async () => ({ ran: false, reason: 'no_token' }));
     deps.mcpCallTool = jest.fn(async () => ({ content: [{ text: 'remote-ok' }] }));
@@ -160,8 +161,7 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
     expect(outcome).toMatchObject({ kind: 'block', httpStatus: 401, body: { error: 'no_bearer' } });
   });
 
-  // Pinned now, satisfiable at Task 4 (remote phase). Task 4 flips back.
-  test.failing('Authorize gate runs BEFORE the remote call on the permit path (ADR-0003/T-2)', async () => {
+  test('Authorize gate runs BEFORE the remote call on the permit path (ADR-0003/T-2)', async () => {
     const order = [];
     const deps = makeDeps();
     deps.evaluateMcpFirstToolGate = jest.fn(async () => { order.push('gate'); return { ran: true, permit: true, evaluation: { decision: 'PERMIT' } }; });
@@ -209,5 +209,99 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
     deps.evaluateMcpFirstToolGate = jest.fn(async () => { throw new Error('gate exploded'); });
     const outcome = await runMcpToolPipeline(makeCtx({ deps }));
     expect(outcome).toMatchObject({ kind: 'error', httpStatus: 500, body: { error: 'mcp_authorize_internal' } });
+  });
+
+  test('introspection not configured → skipped event, proceeds to remote success', async () => {
+    const deps = makeDeps();
+    deps.mcpCallTool = jest.fn(async () => ({ content: [{ text: 'remote-ok' }] }));
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome.kind).toBe('result');
+    expect(outcome.body.result).toEqual({ content: [{ text: 'remote-ok' }] });
+    expect(outcome.body.tokenEvents.some(e => e.id === 'session-token-introspection')).toBe(true);
+  });
+
+  test('introspection active=false → error 401 token_inactive', async () => {
+    const deps = makeDeps({
+      introspectToken: jest.fn(async () => ({ active: false, sub: 'u1' })),
+      config: { ...makeDeps().config, introspectionConfigured: true },
+    });
+    deps.getSessionAccessToken = jest.fn(() => 'sess-tok');
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome).toMatchObject({ kind: 'error', httpStatus: 401, body: { error: 'token_inactive', need_auth: true } });
+  });
+
+  test('remote success via gateway with gwAuditTrail → 3 gw token events appended', async () => {
+    const deps = makeDeps();
+    deps.config = { ...deps.config, useGateway: true, gatewayHttpUrl: 'http://gw' };
+    deps.callToolViaGateway = jest.fn(async () => ({
+      result: { content: [{ text: 'gw-ok' }] },
+      gwAuditTrail: { introspection: { active: true, sub: 'u1' }, authorize: { decision: 'PERMIT' }, exchange: { targetAud: 'mcp-server.bxf.com' } },
+    }));
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    const ids = outcome.body.tokenEvents.map(e => e.id);
+    expect(ids).toEqual(expect.arrayContaining(['gw-introspection', 'gw-authorize', 'gw-exchange']));
+  });
+
+  test('mcp_insufficient_scope thrown by remote → block 403 mcp_scope_denied, NO local fallback', async () => {
+    const deps = makeDeps();
+    deps.mcpCallTool = jest.fn(async () => { throw Object.assign(new Error('scope'), { code: 'mcp_insufficient_scope', mcpErrorData: { missingScopes: ['banking:write'] } }); });
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome).toMatchObject({ kind: 'block', httpStatus: 403, body: { error: 'mcp_scope_denied' } });
+    expect(deps.callToolLocal).not.toHaveBeenCalled();
+  });
+
+  test('gateway_policy_denied hitl_required → block 428 step_up_required', async () => {
+    const deps = makeDeps();
+    deps.mcpCallTool = jest.fn(async () => { throw Object.assign(new Error('policy'), { code: 'gateway_policy_denied', gatewayErrorCode: 'hitl_required' }); });
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome).toMatchObject({ kind: 'block', httpStatus: 428, body: { error: 'step_up_required' } });
+  });
+
+  test('connection error + session user → remote_fallback local result', async () => {
+    const deps = makeDeps();
+    deps.mcpCallTool = jest.fn(async () => { throw Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' }); });
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome.kind).toBe('result');
+    expect(outcome.body._localFallback).toBe(true);
+  });
+
+  test('non-connection remote error → error 502 mcp_error, NO fallback', async () => {
+    const deps = makeDeps();
+    deps.mcpCallTool = jest.fn(async () => { throw new Error('unexpected boom'); });
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome).toMatchObject({ kind: 'error', httpStatus: 502, body: { error: 'mcp_error' } });
+    expect(deps.callToolLocal).not.toHaveBeenCalled();
+  });
+
+  test('remote success default path → result body has activeModel/activeProvider + mcpAuthorizeEvaluation when set', async () => {
+    const deps = makeDeps();
+    deps.evaluateMcpFirstToolGate = jest.fn(async () => ({ ran: true, permit: true, evaluation: { decision: 'PERMIT', decisionId: 'dz' } }));
+    deps.mcpCallTool = jest.fn(async () => ({ content: [{ text: 'ok' }] }));
+    const ctx = makeCtx({ deps });
+    ctx.req.session.langchain_config = { provider: 'helix', model: 'gpt-4o-mini' };
+    const outcome = await runMcpToolPipeline(ctx);
+    expect(outcome.body.activeProvider).toBe('helix');
+    expect(outcome.body.activeModel).toBe('gpt-4o-mini');
+    expect(outcome.body.mcpAuthorizeEvaluation).toEqual({ decision: 'PERMIT', decisionId: 'dz' });
+  });
+
+  test('HTTP/2 transport → result Outcome carries stream:true marker', async () => {
+    const deps = makeDeps();
+    deps.config = { ...deps.config, useHttp2: true, mcpUrl: 'http://localhost:8080' };
+    deps.http2Bridge = { createHttp2Session: jest.fn(() => ({})), forwardToolCall: jest.fn(async () => ({ content: [{ text: 'h2' }] })) };
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome.kind).toBe('result');
+    expect(outcome.stream).toBe(true);
+    expect(outcome.body.result).toEqual({ content: [{ text: 'h2' }] });
+  });
+
+  test('connection error + NO session user → block from mcpNoBearerResponse (remote-fallback no-user)', async () => {
+    const deps = makeDeps({
+      mcpCallTool: jest.fn(async () => { throw Object.assign(new Error('ECONNREFUSED'), { code: 'ECONNREFUSED' }); }),
+      mcpNoBearerResponse: jest.fn(() => ({ status: 401, body: { error: 'no_bearer' } })),
+    });
+    const ctx = makeCtx({ deps, req: { session: { user: null }, correlationId: 'c1' } });
+    const outcome = await runMcpToolPipeline(ctx);
+    expect(outcome).toMatchObject({ kind: 'block', httpStatus: 401, body: { error: 'no_bearer' } });
   });
 });

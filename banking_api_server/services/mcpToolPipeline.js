@@ -310,11 +310,362 @@ async function runMcpToolPipeline(ctx) {
         } };
     }
 
-  ctx._mcpAccessToken = mcpAccessToken;
-  ctx._userSub = userSub;
-  ctx._tokenEvents = tokenEvents;
-  ctx._mcpAuthorizeEvaluation = mcpAuthorizeEvaluationThisRequest;
-  throw new Error('runMcpToolPipeline: introspection+remote phase not yet implemented');
+    // Introspect session token for zero-trust validation (RFC 7662)
+    const sessionAccessToken = deps.getSessionAccessToken(req);
+    const introspectionConfigured = deps.config.introspectionConfigured;
+    if (introspectionConfigured) {
+        deps.emit({
+            phase: 'introspection_begin'
+        });
+        if (!sessionAccessToken || sessionAccessToken === '_cookie_session') {
+            deps.emit({
+                phase: 'introspection_skipped_no_session_token'
+            });
+            const r = deps.mcpNoBearerResponse(req, tokenEvents);
+            return { kind: 'block', httpStatus: r.status, body: r.body };
+        }
+        try {
+            const introspectionResult = await deps.introspectToken(sessionAccessToken);
+            if (!introspectionResult.active) {
+                deps.emit({
+                    phase: 'introspection_inactive'
+                });
+                tokenEvents.push(deps.buildTokenEvent(
+                    'session-token-introspection',
+                    'Session Token — PingOne Introspection (RFC 7662)',
+                    'failed',
+                    null,
+                    'PingOne returned active=false for the session token. The tool call cannot proceed with an inactive session.',
+                    {
+                        rfc: 'RFC 7662',
+                        introspectionResult: {
+                            active: false,
+                            sub: introspectionResult.sub,
+                            scope: introspectionResult.scope,
+                            exp: introspectionResult.exp,
+                        },
+                    }
+                ));
+                console.warn(`[MCP Proxy] Session token introspection failed: token inactive for tool ${tool}`);
+                return { kind: 'error', httpStatus: 401, body: {
+                    error: 'token_inactive',
+                    need_auth: true,
+                    agentInitRequired: true,
+                    message: 'Session token is no longer active. Please sign in again.',
+                    tokenEvents,
+                } };
+            }
+            deps.emit({
+                phase: 'introspection_active_ok'
+            });
+            tokenEvents.push(deps.buildTokenEvent(
+                'session-token-introspection',
+                'Session Token — PingOne Introspection (RFC 7662)',
+                'active',
+                // Pass claims so the UI Claims tab shows real PingOne data
+                {
+                    header: null,
+                    claims: {
+                        sub:    introspectionResult.sub   || null,
+                        active: true,
+                        scope:  introspectionResult.scope || null,
+                        exp:    introspectionResult.exp   || null,
+                        aud:    introspectionResult.aud   || null,
+                        client_id: introspectionResult.client_id || null,
+                    },
+                },
+                `PingOne confirmed the session token is active. sub=${introspectionResult.sub || '—'} scope="${introspectionResult.scope || ''}"`,
+                {
+                    rfc: 'RFC 7662',
+                    introspectionResult: {
+                        active: true,
+                        sub: introspectionResult.sub,
+                        scope: introspectionResult.scope,
+                        exp: introspectionResult.exp,
+                    },
+                }
+            ));
+        } catch (err) {
+            deps.emit({
+                phase: 'introspection_error_degraded'
+            });
+            tokenEvents.push(deps.buildTokenEvent(
+                'session-token-introspection',
+                'Session Token — PingOne Introspection (RFC 7662)',
+                'degraded',
+                null,
+                `Introspection endpoint error — continuing in degraded mode. ${err.message}`,
+                { rfc: 'RFC 7662' }
+            ));
+            console.error(`[MCP Proxy] Session token introspection error for tool ${tool}:`, err.message);
+            // Continue on introspection failure (graceful degradation) but log the error
+        }
+    } else {
+        deps.emit({
+            phase: 'introspection_not_configured'
+        });
+        tokenEvents.push(deps.buildTokenEvent(
+            'session-token-introspection',
+            'Session Token — PingOne Introspection (RFC 7662)',
+            'skipped',
+            null,
+            'PINGONE_INTROSPECTION_ENDPOINT is not configured. Session token liveness is not verified on this tool call.',
+            { rfc: 'RFC 7662' }
+        ));
+    }
+
+    // ── Try remote MCP server first; fall back to local handler if unreachable ──
+    // When MCP_GATEWAY_HTTP_URL is set, route through the banking-mcp-gateway (Phase 243).
+    // The gateway owns RFC 9728 metadata, runs PingOne Authorize policy evaluation, and
+    // performs RFC 8693 token exchange to the upstream MCP server — the mcpAccessToken
+    // must already be scoped to the gateway audience (MCP_GW_RESOURCE_URI).
+    // Graceful fallback: if MCP_GATEWAY_HTTP_URL is not set, use the previous direct path.
+    const gatewayHttpUrl = deps.config.gatewayHttpUrl;
+    const useGateway = deps.config.useGateway;
+    const mcpUrl = deps.config.mcpUrl;
+    const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !deps.config.mcpServerUrlEnv;
+    const useHttp2 = deps.config.useHttp2;
+
+    try {
+        deps.emit({
+            phase: 'mcp_remote_begin'
+        });
+        deps.appEventLog('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, gatewayUrl: useGateway ? gatewayHttpUrl : mcpUrl, via: useGateway ? 'gateway' : 'direct' } });
+        let result;
+        let gwAuditTrail = null;
+        if (useGateway) {
+            ({ result, gwAuditTrail } = await deps.callToolViaGateway(gatewayHttpUrl, mcpAccessToken, tool, params || {}, { correlationId: req.correlationId }));
+        } else if (useHttp2) {
+            const h2Session = deps.http2Bridge.createHttp2Session(mcpUrl, mcpAccessToken);
+            result = await deps.http2Bridge.forwardToolCall(h2Session, tool, params || {}, mcpAccessToken, userSub, req.correlationId);
+        } else {
+            result = await deps.mcpCallTool(tool, params || {}, mcpAccessToken, userSub, req.correlationId);
+        }
+        deps.appEventLog('mcp', 'info', `MCP tool done ← ${tool} (${Date.now() - startTime}ms)`, { tag: 'mcp/tool', metadata: { tool, durationMs: Date.now() - startTime } });
+
+        // Build token events from gateway audit trail if present (Phase 259)
+        if (gwAuditTrail) {
+            if (gwAuditTrail.introspection) {
+                const introspRes = gwAuditTrail.introspection;
+                const status = introspRes.skipped ? 'skipped' : (introspRes.active ? 'valid' : 'revoked');
+                const desc = introspRes.skipped
+                    ? 'Gateway introspection skipped (endpoint not configured)'
+                    : (introspRes.active ? 'Token verified active at gateway' : 'Token is revoked or no longer active');
+                tokenEvents.push(deps.buildTokenEvent(
+                    'gw-introspection',
+                    'Gateway — RFC 7662 Introspection',
+                    status,
+                    null,
+                    desc,
+                    { rfc: 'RFC 7662', sub: introspRes.sub, exp: introspRes.exp }
+                ));
+            }
+            if (gwAuditTrail.authorize) {
+                const authzRes = gwAuditTrail.authorize;
+                const decision = authzRes.decision; // PERMIT, DENY, INDETERMINATE
+                const status = decision === 'PERMIT' ? 'permit' : (decision === 'INDETERMINATE' ? 'indeterminate' : 'deny');
+                const desc = `PingOne Authorize policy evaluation: ${decision}${authzRes.reason ? ` (${authzRes.reason})` : ''}`;
+                tokenEvents.push(deps.buildTokenEvent(
+                    'gw-authorize',
+                    'Gateway — PingOne Authorize Decision',
+                    status,
+                    null,
+                    desc,
+                    { decision }
+                ));
+            }
+            if (gwAuditTrail.exchange) {
+                const exchangeRes = gwAuditTrail.exchange;
+                tokenEvents.push(deps.buildTokenEvent(
+                    'gw-exchange',
+                    'Gateway — RFC 8693 Token Exchange',
+                    'exchanged',
+                    null,
+                    `Token exchanged to MCP resource audience: ${exchangeRes.targetAud}`,
+                    { targetAud: exchangeRes.targetAud }
+                ));
+            }
+        }
+
+        // Log the actual MCP result so it's queryable via /api/app-events
+        if (result) {
+          const resultMeta = {
+            tool,
+            durationMs: Date.now() - startTime,
+            hasContent: !!result.content,
+            contentLength: result.content ? JSON.stringify(result.content).length : 0,
+            contentType: result.isError ? 'error' : 'success'
+          };
+          deps.appEventLog('mcp', 'info', `MCP result: ${tool} → ${result.isError ? 'error' : 'success'} (${resultMeta.contentLength} bytes)`, { tag: 'mcp/result', metadata: resultMeta });
+        }
+
+        // Publish MCP result via SSE so Token Chain MCP Results tab updates immediately
+        const _durationMs = Date.now() - startTime;
+        deps.publishMcpResultToSse(flowTraceId, { tool, result, durationMs: _durationMs, isDelegated: !!mcpAccessToken, userId: userSub });
+        // Also record in local audit store (covers BFF-proxied calls)
+        deps.recordMcpToolCall({ userId: userSub || 'unknown', toolName: tool, success: !result?.isError, duration: _durationMs, resultSummary: result?.isError ? `${tool} failed` : `${tool} completed`, isDelegated: !!mcpAccessToken });
+
+        deps.emit({
+            phase: 'mcp_remote_done'
+        });
+
+        // Detect auth challenge from MCP server — fall back to local handler
+        // instead of surfacing the redirect challenge to the client. The BFF
+        // already has the user's session so local execution is preferred.
+        const mcpContent = result?.content;
+        const hasAuthChallenge = Array.isArray(mcpContent)
+            && mcpContent.some(c => c && c.authChallenge);
+        if (hasAuthChallenge) {
+            deps.emit({ phase: 'mcp_auth_challenge_intercepted' });
+            console.log(`[MCP Proxy] ${tool} — MCP server returned auth challenge, using local fallback`);
+            const sessionUser = req.session?.user;
+            if (sessionUser?.id) {
+                try {
+                    const effectiveUserId = sessionUser.oauthId || sessionUser.id;
+                    deps.emit({ phase: 'local_tool_start', path: 'auth_challenge_fallback' });
+                    const localResult = await deps.callToolLocal(tool, params || {}, effectiveUserId, req);
+                    deps.emit({ phase: 'local_tool_done', path: 'auth_challenge_fallback' });
+                    const _acDuration = Date.now() - startTime;
+                    deps.publishMcpResultToSse(flowTraceId, { tool, result: localResult, durationMs: _acDuration, isDelegated: false, userId: effectiveUserId });
+                    deps.recordMcpToolCall({ userId: effectiveUserId, toolName: tool, success: !localResult?.error, duration: _acDuration, resultSummary: localResult?.error ? `${tool} failed` : `${tool} completed` });
+                    return { kind: 'result', httpStatus: 200, tokenEvents, body: { result: localResult, tokenEvents, _localFallback: true } };
+                } catch (localErr) {
+                    console.error(`[MCP Local] ${tool} — auth-challenge fallback failed:`, localErr.message);
+                    deps.emit({ phase: 'local_tool_error', path: 'auth_challenge_fallback' });
+                }
+            }
+        }
+
+        // Get active LLM model for logging and client display
+        const langchainConfig = req.session?.langchain_config || {};
+        const activeProvider = langchainConfig.provider || 'helix';
+        const activeModel = langchainConfig.model || 'gpt-4o-mini';
+        console.log(`[/api/mcp/tool] ${tool} — using LLM: ${activeProvider}/${activeModel}`);
+
+        const out = {
+            result,
+            tokenEvents,
+            activeModel,
+            activeProvider
+        };
+        if (mcpAuthorizeEvaluationThisRequest) {
+            out.mcpAuthorizeEvaluation = mcpAuthorizeEvaluationThisRequest;
+        }
+
+        // Stream response when using HTTP/2 transport (client detects via Content-Type)
+        if (useHttp2) {
+            return { kind: 'result', httpStatus: 200, stream: true, tokenEvents, body: { result, tokenEvents } };
+        }
+        return { kind: 'result', httpStatus: 200, tokenEvents, body: out };
+    } catch (err) {
+        // Scope denial: MCP server returned -32005 (valid token, wrong scope).
+        // Return 403 — do NOT fall back to the local tool handler.
+        if (err.code === 'mcp_insufficient_scope') {
+            const d = err.mcpErrorData || {};
+            console.warn(`[/api/mcp/tool] Scope denied for tool '${tool}': missing [${(d.missingScopes || []).join(', ')}]`);
+            return { kind: 'block', httpStatus: 403, body: {
+                error: 'mcp_scope_denied',
+                tool,
+                requiredScopes: d.requiredScopes || [],
+                missingScopes: d.missingScopes || [],
+                availableScopes: d.availableScopes || [],
+            } };
+        }
+
+        // Gateway policy denial — propagate structured error to the UI for educational display.
+        // Do NOT fall back to the local handler: the gateway denied for a policy reason
+        // (audience mismatch, expired token, origin restriction) that local execution cannot bypass.
+        if (err.code === 'gateway_policy_denied' || err.code === 'gateway_auth_failed') {
+            console.warn(`[/api/mcp/tool] Gateway denied tool '${tool}': ${err.gatewayErrorCode || err.code} — ${err.message}`);
+            deps.emit({ phase: 'gateway_policy_denied', gatewayErrorCode: err.gatewayErrorCode });
+
+            // HTTP 428 Precondition Required: step-up auth needed (INDETERMINATE decision)
+            if (err.gatewayErrorCode === 'hitl_required') {
+                deps.emit({ phase: 'gateway_step_up_required' });
+                return { kind: 'block', httpStatus: 428, tokenEvents, body: {
+                    error: 'step_up_required',
+                    tool,
+                    message: 'Transaction requires additional authentication (step-up MFA)',
+                    tokenEvents,
+                } };
+            }
+
+            return { kind: 'block', httpStatus: 403, tokenEvents, body: {
+                error: 'gateway_policy_denied',
+                tool,
+                gatewayErrorCode: err.gatewayErrorCode || err.code,
+                message: err.message,
+                tokenEvents,
+            } };
+        }
+
+        const isConnErr =
+            err.useLocal ||
+            err.message.includes('ECONNREFUSED') ||
+            err.message.includes('ENETUNREACH') ||
+            err.message.includes('timed out') ||
+            err.message.includes('connect ETIMEDOUT') ||
+            (err.code && ['ECONNREFUSED', 'ENETUNREACH', 'ETIMEDOUT'].includes(err.code));
+
+        if (!isConnErr) {
+            deps.emit({
+                phase: 'mcp_remote_tool_error'
+            });
+            console.error(`[MCP Proxy] Error calling ${tool}:`, err.message);
+            return { kind: 'error', httpStatus: 502, body: {
+                error: 'mcp_error',
+                message: err.message,
+                tokenEvents
+            } };
+        }
+
+        deps.emit({
+            phase: 'mcp_remote_unreachable'
+        });
+        // ── Local fallback ──────────────────────────────────────────────────────
+        const sessionUser = req.session ?.user;
+        if (!sessionUser ?.id) {
+            deps.emit({
+                phase: 'local_fallback_blocked_no_user'
+            });
+            const r = deps.mcpNoBearerResponse(req, tokenEvents);
+            return { kind: 'block', httpStatus: r.status, body: r.body };
+        }
+
+        console.log(`[MCP Local] ${tool} — MCP server unreachable (${mcpUrl}), using local handler`);
+        try {
+            deps.emit({
+                phase: 'local_tool_start',
+                path: 'remote_fallback'
+            });
+            // Use oauthId (PingOne sub/UUID) — accounts are keyed by UUID (same as authenticateToken / REST routes).
+            const effectiveUserId = sessionUser.oauthId || sessionUser.id;
+            const result = await deps.callToolLocal(tool, params || {}, effectiveUserId, req);
+            deps.emit({
+                phase: 'local_tool_done',
+                path: 'remote_fallback'
+            });
+            const _rfDuration = Date.now() - startTime;
+            deps.publishMcpResultToSse(flowTraceId, { tool, result, durationMs: _rfDuration, isDelegated: false, userId: effectiveUserId });
+            deps.recordMcpToolCall({ userId: effectiveUserId, toolName: tool, success: !result?.error, duration: _rfDuration, resultSummary: result?.error ? `${tool} failed` : `${tool} completed` });
+            return { kind: 'result', httpStatus: 200, tokenEvents, body: {
+                result,
+                tokenEvents,
+                _localFallback: true
+            } };
+        } catch (localErr) {
+            deps.emit({
+                phase: 'local_tool_error',
+                path: 'remote_fallback'
+            });
+            console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
+            return { kind: 'error', httpStatus: 502, body: {
+                error: 'mcp_error',
+                message: localErr.message,
+                tokenEvents
+            } };
+        }
+    }
 }
 
 module.exports = { runMcpToolPipeline };
