@@ -8,6 +8,7 @@ import {
   claimPendingNl,
   clampPanelPosition,
   makeReentrancyGuard,
+  resolveEmbeddedFocus,
 } from "../components/bankingAgentSafety";
 
 describe("claimPendingNl — atomic single-fire post-OAuth replay (Task 1)", () => {
@@ -115,5 +116,26 @@ describe("makeReentrancyGuard — single in-flight send (Task 2)", () => {
     };
     await expect(run()).rejects.toThrow("boom");
     expect(g.tryAcquire()).toBe(true); // not stuck held
+  });
+});
+
+describe("resolveEmbeddedFocus — route → agent persona parity (Phase 2)", () => {
+  test("config route resolves to 'config'", () => {
+    expect(resolveEmbeddedFocus("/config")).toBe("config");
+    expect(resolveEmbeddedFocus("/config/")).toBe("config");
+  });
+  test("dashboard and other routes resolve to 'banking'", () => {
+    expect(resolveEmbeddedFocus("/dashboard")).toBe("banking");
+    expect(resolveEmbeddedFocus("/")).toBe("banking");
+    expect(resolveEmbeddedFocus("/admin")).toBe("banking");
+    expect(resolveEmbeddedFocus("/monitoring/api-traffic")).toBe("banking");
+  });
+  test("non-string input falls back to 'banking' (guard, never throws)", () => {
+    expect(resolveEmbeddedFocus(undefined)).toBe("banking");
+    expect(resolveEmbeddedFocus(null)).toBe("banking");
+  });
+  test("query/hash are not stripped — parity with the legacy predicate", () => {
+    expect(resolveEmbeddedFocus("/config?x=1")).toBe("banking");
+    expect(resolveEmbeddedFocus("/config#h")).toBe("banking");
   });
 });

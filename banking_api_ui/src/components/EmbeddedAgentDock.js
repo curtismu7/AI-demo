@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import BankingAgent from './BankingAgent';
 import { isEmbeddedAgentDockRoute } from '../utils/embeddedAgentFabVisibility';
+import { resolveEmbeddedFocus } from './bankingAgentSafety';
 
 const HEIGHT_KEY = 'embedded_agent_dock_height_px';
 const COLLAPSE_KEY = 'embedded_agent_dock_collapsed';
@@ -100,7 +101,7 @@ export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
     return null;
   }
 
-  const isConfigPage = pathname.replace(/\/$/, '') === '/config';
+  const isConfigPage = resolveEmbeddedFocus(pathname) === 'config';
 
   const dockNode = (
     <div

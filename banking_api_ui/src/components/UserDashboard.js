@@ -40,6 +40,7 @@ import TransactionConsentModal from "./TransactionConsentModal";
 import FloatingPanel from "./FloatingPanel";
 import "./UserDashboard.css";
 import DashboardHeader from "./DashboardHeader";
+import { resolveEmbeddedFocus } from "./bankingAgentSafety";
 
 /** Format a number as USD currency — $1,234.56 */
 const fmt = (n) =>
@@ -2664,7 +2665,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                 user={user}
                 onLogout={onLogout}
                 mode="inline"
-                embeddedFocus="banking"
+                embeddedFocus={resolveEmbeddedFocus(location.pathname)}
                 splitColumnChrome
                 distinctFloatingChrome
                 showPopOut

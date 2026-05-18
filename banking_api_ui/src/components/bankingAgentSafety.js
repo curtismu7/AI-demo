@@ -61,3 +61,13 @@ export function makeReentrancyGuard() {
     },
   };
 }
+
+/**
+ * Map a route to the agent's embeddedFocus persona. This is a verbatim port
+ * of EmbeddedAgentDock's historical isConfigPage predicate so the bottom
+ * dock's behavior is provably unchanged; middle/float now match it.
+ */
+export function resolveEmbeddedFocus(pathname) {
+  const p = typeof pathname === "string" ? pathname.replace(/\/$/, "") : "";
+  return p === "/config" ? "config" : "banking";
+}

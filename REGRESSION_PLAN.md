@@ -123,6 +123,22 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — embeddedFocus route-parity across all 3 agent modes
+
+**Files changed:**
+- `banking_api_ui/src/components/bankingAgentSafety.js` — new pure `resolveEmbeddedFocus(pathname)` (verbatim port of EmbeddedAgentDock's `pathname.replace(/\/$/, '') === '/config'` predicate, with a non-string guard that falls back to `banking`).
+- `banking_api_ui/src/components/EmbeddedAgentDock.js` — `isConfigPage` derived from the helper; the `<BankingAgent>` `embeddedFocus` prop uses the already-computed `isConfigPage` (no double call); aria-label/title behavior unchanged.
+- `banking_api_ui/src/components/UserDashboard.js` (middle) and `banking_api_ui/src/App.js` (float) — `embeddedFocus` now route-derived via the helper instead of hardcoded `banking` / omitted. (UserDashboard.js is §1; only the import + the one `embeddedFocus` prop changed — the pre-existing in-flight `ud-agent-column` working-tree edit was deliberately NOT included in this commit.)
+- `banking_api_ui/src/__tests__/BankingAgent.safety.test.js` — 4 helper tests (config + trailing slash → config; dashboard/other → banking; non-string guard; query/hash parity with the legacy predicate).
+
+**What was broken:** On `/config`, only the bottom dock showed the setup-assistant persona; the middle and float mounts hardcoded/omitted `embeddedFocus` so they showed the banking persona — the wrong assistant on the setup page.
+
+**What was fixed:** All three mounts derive `embeddedFocus` from one shared predicate; the bottom dock's behavior is provably unchanged (verbatim port).
+
+**Verify:** safety suite green incl. the 4 `resolveEmbeddedFocus` tests; `cd banking_api_ui && npm run build` exit 0; on `/config` all three modes present the config persona.
+
+**Do not break:** `resolveEmbeddedFocus` MUST mirror EmbeddedAgentDock's route predicate (`pathname.replace(/\/$/, '') === '/config'`). If the config route changes, change it only in the helper. Do not reintroduce a hardcoded `embeddedFocus` at any mount.
+
 ### 2026-05-18 — Dead agent-UI code removed (SideAgentDock/ResponsiveAgentDock/right-dock/left-dock/useChatWidget/dead CustomEvent)
 
 **Files changed:**
