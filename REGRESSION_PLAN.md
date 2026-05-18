@@ -123,6 +123,22 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — Bootstrap MCP-app create crash + user-app mortgage scope
+
+**Files changed:**
+- `banking_api_server/services/pingoneProvisionService.js` — `createApplication()` create path: gate `responseTypes:['CODE']` / `pkceEnforcement` / `refreshToken` on `desiredGrants.has('AUTHORIZATION_CODE')`, not just `type !== 'WORKER'`.
+- `banking_api_server/config/oauthUser.js` — `scopes` getter `enduserAudience` branch: add `COMPOUND_SCOPES.MORTGAGE_READ` to the requested scope list (import added).
+
+**What was broken:** (1) `npm run pingone:bootstrap` crashed at "Creating MCP Server application" with `HTTP 400 INVALID_DATA — responseTypes contain CODE, so grantTypes must contain AUTHORIZATION_CODE`. The MCP Server app is a client-credentials-only `WEB_APP`; the create path unconditionally set `responseTypes:['CODE']` for any non-WORKER, which PingOne rejects when `AUTHORIZATION_CODE` is absent. Bootstrap died before Step ⑦ (write `.env`), so every re-bootstrap silently left `.env` unchanged. (2) The user-login app did not request `banking:mortgage:read`, so `show_mortgage` (Path A mortgage chips) failed the RFC 8693 exchange with missing scope.
+
+**What was fixed:** (1) Code-flow fields are only sent when the app actually uses the auth-code grant, so CC-only non-WORKER apps provision cleanly and bootstrap completes all 93 steps. (2) After a clean wipe + re-provision, `banking:mortgage:read` is co-resident with the other banking scopes on the single enduser resource server (`Super Banking API` / `banking_api_enduser`), so adding it to the user `/authorize` request stays single-resource and no longer trips `invalid_scope: Attribute mappings must match between all requested resources`.
+
+**Verify:**
+- `cd banking_api_server && node scripts/bootstrapPingOne.js --non-interactive` (cache-fed creds) reaches `▶ ⑦ Write .env` and `🎉 Setup complete`.
+- User login: `curl -skL https://api.ping.demo:3001/api/auth/oauth/user/login` resolves to `apps.pingone.com/.../signon` (HTTP 200), never `?error=invalid_scope`. Authorize `scope` param includes `banking:mortgage:read`. Stable across repeated attempts (4/4, 0 invalid_scope).
+
+**Do not break:** `oauthUser.js` must keep the user `/authorize` request single-resource. `banking:mortgage:read` may ONLY be added here while it is co-resident with `banking:read`/`banking:write`/`banking:ai:agent` on the enduser resource server — which is true only after a clean (non-drifted) bootstrap. If `ENDUSER_AUDIENCE` ever points at a resource server lacking `banking:mortgage:read`, this reintroduces an intermittent total-login outage (REGRESSION_PLAN §1 "PingOne authorize `resource` + mixed scopes"). Known follow-up (not fixed here): the MCP RFC 8693 exchange targets `aud=mcp-gw.bxf.com` requesting `banking:read`, but the MCP Gateway resource server intentionally carries only `banking:mcp:invoke` — chip pipeline tools are gateway-denied `missing banking:read` on a clean topology. Tracked separately.
+
 ### 2026-05-18 — Phase 4a: surfaceHostRef portal indirection (behavioral no-op, prep for single-instance agent)
 
 **Files changed:** `banking_api_ui/src/components/BankingAgent.js` — added optional `surfaceHostRef = undefined` prop; the float portal now targets `surfaceHostRef?.current ?? document.body` instead of hardcoded `document.body`.

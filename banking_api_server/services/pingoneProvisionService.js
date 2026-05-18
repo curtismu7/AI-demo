@@ -534,7 +534,14 @@ class PingOneProvisionService {
 
     // WEB_APP / NATIVE_APP / SINGLE_PAGE_APP need responseTypes + redirectUris
     // setup later via updateApplication. WORKER doesn't.
-    if (type !== 'WORKER') {
+    //
+    // responseTypes:['CODE'] is only valid when the app actually uses the
+    // authorization-code flow — PingOne rejects (HTTP 400 INVALID_DATA) a
+    // create where responseTypes contains CODE but grantTypes lacks
+    // AUTHORIZATION_CODE (e.g. a client-credentials-only WEB_APP like the
+    // MCP Server app). Gate the code-flow fields on the grant actually
+    // being requested so CC-only non-WORKER apps provision cleanly.
+    if (type !== 'WORKER' && desiredGrants.has('AUTHORIZATION_CODE')) {
       data.responseTypes = ['CODE'];
       data.pkceEnforcement = 'S256_REQUIRED';
       data.refreshToken = { rotating: true, reuseTokens: false };

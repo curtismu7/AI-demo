@@ -6,7 +6,7 @@
 
 'use strict';
 const configStore = require('../services/configStore');
-const { getScopesForUserType, BANKING_SCOPES } = require('./scopes');
+const { getScopesForUserType, BANKING_SCOPES, COMPOUND_SCOPES } = require('./scopes');
 const endpointResolver = require('../services/oauthEndpointResolver');
 
 const config = {
@@ -47,7 +47,11 @@ const config = {
     if (enduserAudience) {
       // All banking scopes are on the same resource server (enduserAudience),
       // so PingOne will not reject with "May not request scopes for multiple resources".
-      return ['openid', 'profile', 'email', 'offline_access', 'banking:read', 'banking:write', BANKING_SCOPES.AI_AGENT];
+      // banking:mortgage:read (Phase 267 Path A) is provisioned on this same
+      // resource server ("Super Banking API" / banking_api_enduser), so
+      // requesting it here stays single-resource and unblocks show_mortgage's
+      // RFC 8693 exchange.
+      return ['openid', 'profile', 'email', 'offline_access', 'banking:read', 'banking:write', BANKING_SCOPES.AI_AGENT, COMPOUND_SCOPES.MORTGAGE_READ];
     }
     const role = configStore.getEffective('user_role') || 'customer';
     const banking = getScopesForUserType(role);
