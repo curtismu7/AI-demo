@@ -12,6 +12,11 @@
  */
 
 const path = require('node:path');
+const { ensureValidConfigDb } = require('./_ensureValidConfigDb');
+
+// Full-suite pollution guard: another suite can leave a non-SQLite stub at
+// data/persistent/config.db; remove it so configStore recreates a valid DB.
+beforeAll(() => ensureValidConfigDb());
 
 function freshConfigStore() {
   const id = require.resolve('../../services/configStore');

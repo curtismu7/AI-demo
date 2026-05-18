@@ -84,7 +84,15 @@ const configStore = require('../../services/configStore');
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-describe('configStore env coverage', () => {
+// Environmental: this suite validates a developer's real banking_api_server/.env
+// (≥30 vars, each resolvable via configStore). CI checks out a fresh tree with
+// no populated .env, so there is nothing meaningful to assert — skip rather
+// than fail. Developers with a real .env still run it (incl. the pre-commit hook).
+const _envKeysProbe = parseEnvKeys(ENV_FILE).filter(k => !IGNORED_VARS.has(k));
+const HAS_REAL_ENV = [...new Set(_envKeysProbe)].length > 30;
+const describeEnv = HAS_REAL_ENV ? describe : describe.skip;
+
+describeEnv('configStore env coverage', () => {
   const envKeys = parseEnvKeys(ENV_FILE).filter(k => !IGNORED_VARS.has(k));
 
   // Deduplicate (PINGONE_MFA_POLICY_ID appears twice in file)
