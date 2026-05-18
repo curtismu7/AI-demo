@@ -304,4 +304,72 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
     const outcome = await runMcpToolPipeline(ctx);
     expect(outcome).toMatchObject({ kind: 'block', httpStatus: 401, body: { error: 'no_bearer' } });
   });
+
+  // ── Coverage gaps closed (final-review follow-up) ──────────────────────────
+
+  test('PingOne admin tool stdio throws → error 502 pingone_mcp_error', async () => {
+    const deps = makeDeps({ config: { ...makeDeps().config, pingoneAdminEnabled: true } });
+    deps.stdioAdapter = { callToolViaStdio: jest.fn(async () => { throw new Error('stdio boom'); }) };
+    const outcome = await runMcpToolPipeline(makeCtx({ tool: 'list_applications', deps }));
+    expect(outcome).toMatchObject({
+      kind: 'error', httpStatus: 502,
+      body: { error: 'pingone_mcp_error', message: 'stdio boom' },
+    });
+  });
+
+  test('introspection configured but session token is _cookie_session → block from mcpNoBearerResponse', async () => {
+    const deps = makeDeps({ config: { ...makeDeps().config, introspectionConfigured: true } });
+    deps.getSessionAccessToken = jest.fn(() => '_cookie_session');
+    deps.mcpNoBearerResponse = jest.fn(() => ({ status: 401, body: { error: 'no_bearer', cookieOnly: true } }));
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome).toMatchObject({ kind: 'block', httpStatus: 401, body: { error: 'no_bearer', cookieOnly: true } });
+    expect(deps.introspectToken).not.toHaveBeenCalled(); // skipped before introspectToken
+  });
+
+  test('introspection configured but session token absent → block from mcpNoBearerResponse', async () => {
+    const deps = makeDeps({ config: { ...makeDeps().config, introspectionConfigured: true } });
+    deps.getSessionAccessToken = jest.fn(() => null);
+    deps.mcpNoBearerResponse = jest.fn(() => ({ status: 401, body: { error: 'no_bearer' } }));
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome).toMatchObject({ kind: 'block', httpStatus: 401, body: { error: 'no_bearer' } });
+    expect(deps.introspectToken).not.toHaveBeenCalled();
+  });
+
+  test('introspection endpoint throws → degraded (graceful), proceeds to remote success', async () => {
+    const deps = makeDeps({ config: { ...makeDeps().config, introspectionConfigured: true } });
+    deps.getSessionAccessToken = jest.fn(() => 'sess-tok');
+    deps.introspectToken = jest.fn(async () => { throw new Error('introspect endpoint 503'); });
+    deps.mcpCallTool = jest.fn(async () => ({ content: [{ text: 'remote-ok' }] }));
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome.kind).toBe('result');
+    expect(outcome.httpStatus).toBe(200);
+    expect(outcome.body.result).toEqual({ content: [{ text: 'remote-ok' }] });
+    // a 'degraded' session-token-introspection event was pushed (graceful degradation, not a hard fail)
+    expect(outcome.body.tokenEvents.some(e => e.id === 'session-token-introspection' && e.status === 'degraded')).toBe(true);
+  });
+
+  test('MCP server returns authChallenge content + session user → local-fallback result', async () => {
+    const deps = makeDeps();
+    deps.mcpCallTool = jest.fn(async () => ({ content: [{ authChallenge: { type: 'redirect', url: 'https://idp/authorize' } }] }));
+    deps.callToolLocal = jest.fn(async () => ({ content: [{ text: 'local-after-challenge' }] }));
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome.kind).toBe('result');
+    expect(outcome.httpStatus).toBe(200);
+    expect(outcome.body._localFallback).toBe(true);
+    expect(outcome.body.result).toEqual({ content: [{ text: 'local-after-challenge' }] });
+    expect(deps.callToolLocal).toHaveBeenCalledWith('get_my_accounts', {}, 'u1', expect.any(Object));
+  });
+
+  test('gateway_policy_denied WITHOUT hitl_required → block 403 gateway_policy_denied (not 428)', async () => {
+    const deps = makeDeps();
+    deps.mcpCallTool = jest.fn(async () => { throw Object.assign(new Error('audience mismatch'), { code: 'gateway_policy_denied', gatewayErrorCode: 'aud_invalid' }); });
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome.kind).toBe('block');
+    expect(outcome.httpStatus).toBe(403);
+    expect(outcome.body).toMatchObject({
+      error: 'gateway_policy_denied', tool: 'get_my_accounts',
+      gatewayErrorCode: 'aud_invalid', message: 'audience mismatch',
+    });
+    expect(deps.callToolLocal).not.toHaveBeenCalled(); // policy denial does NOT fall back to local
+  });
 });
