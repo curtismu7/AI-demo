@@ -1631,6 +1631,7 @@ export default function BankingAgent({
   splitColumnChrome = false,
   showPopOut = false,
   onPopout,
+  surfaceHostRef = undefined,
 }) {
   const isInline = mode === "inline";
   const isBottomDock = isInline && embeddedDockBottom;
@@ -8814,5 +8815,9 @@ export default function BankingAgent({
   // Inline/embed stays in React tree; float mounts on body so position:fixed is never trapped
   // by .App / shell overflow or theme transforms, and works the same on /logs and app routes.
   if (isInline) return <>{floatShell}</>;
-  return createPortal(floatShell, document.body);
+  const portalHost =
+    surfaceHostRef && surfaceHostRef.current
+      ? surfaceHostRef.current
+      : document.body;
+  return createPortal(floatShell, portalHost);
 }

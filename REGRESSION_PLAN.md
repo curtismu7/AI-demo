@@ -123,6 +123,16 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — Phase 4a: surfaceHostRef portal indirection (behavioral no-op, prep for single-instance agent)
+
+**Files changed:** `banking_api_ui/src/components/BankingAgent.js` — added optional `surfaceHostRef = undefined` prop; the float portal now targets `surfaceHostRef?.current ?? document.body` instead of hardcoded `document.body`.
+
+**What/why:** First of four staged steps (4a→4b→4c→4d) toward a single `<BankingAgent>` instance whose `floatShell` portals into the active surface (dock/middle/float). 4a is strictly inert: NO caller passes `surfaceHostRef`, so the portal target is always `document.body` — byte-identical behavior. Proves the lift mechanism with zero user-visible change. See the 4d entry for the completed single-instance invariant.
+
+**Verify:** `grep -rn surfaceHostRef banking_api_ui/src` → only the BankingAgent.js prop+usage (no caller). Build exit 0. Full agent suite 114/114 — identical to the pre-4a baseline (delta would mean it is not inert).
+
+**Do not break:** Until 4b–4d land, `surfaceHostRef` must remain unpassed (the portal must resolve to `document.body`). The `if (isInline) return <>{floatShell}</>;` early-return is unchanged.
+
 ### 2026-05-18 — AbortController on the agent send pipeline (no state-on-dead-instance / mis-attributed Token Chain)
 
 **Files changed:**
