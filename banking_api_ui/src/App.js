@@ -232,7 +232,7 @@ function AppWithAuth() {
     pathNorm === "/api-traffic" ||
     pathNorm === "/logs" ||
     pathNorm === "/agent";
-  const { placement: agentPlacement, fab: agentFab } = useAgentUiMode();
+  const { placement: agentPlacement, fab: agentFab, surfaceHostEl } = useAgentUiMode();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
@@ -576,6 +576,17 @@ function AppWithAuth() {
         agentPlacement !== "none" &&
         onDashboardAgentRoute &&
         !(agentPlacement === "middle" && onUserDashboardRoute)));
+
+  /** Single <BankingAgent> portals into the bottom dock host element when present; falls back to document.body otherwise. */
+  const shouldMountSingleAgent = showFloatingAgent || hasEmbeddedDockLayout;
+
+  // When the single agent is portaled into the bottom dock host it must wear
+  // the dock's inline chrome (no floating frame/drag), exactly as the old
+  // per-dock <BankingAgent mode="inline" embeddedDockBottom> did. Float and
+  // all other surfaces keep the default floating chrome.
+  const singleAgentSurfaceProps = hasEmbeddedDockLayout
+    ? { mode: "inline", embeddedDockBottom: true }
+    : {};
 
   /** Slower default dismiss on public landing so OAuth/agent messages are readable (signed-in routes stay 4s). */
   const toastContainerAutoCloseMs =
@@ -1395,12 +1406,14 @@ function AppWithAuth() {
                 }
               />
             </Routes>
-            {showFloatingAgent && (
+            {shouldMountSingleAgent && (
               <BankingAgent
                 user={user}
                 onLogout={logout}
                 embeddedFocus={resolveEmbeddedFocus(pathname)}
                 distinctFloatingChrome
+                surfaceHostEl={surfaceHostEl}
+                {...singleAgentSurfaceProps}
               />
             )}
             {!isApiTrafficOnlyPage && appFlags.showEducationPanel && (
@@ -1422,7 +1435,6 @@ function AppWithAuth() {
               !(!user && isPublicMarketingAgentPath(pathname)) && (
                 <EmbeddedAgentDock
                   user={user}
-                  onLogout={logout}
                   agentPlacement={agentPlacement}
                 />
               )}
