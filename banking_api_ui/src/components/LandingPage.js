@@ -107,7 +107,7 @@ export default function LandingPage({ user, hasTopNav }) {
         <header className="landing-header">
           <div className="landing-header-content">
             <div className="landing-logo">
-              <h1>PingOne Identity</h1>
+              <p className="landing-logo-title">PingOne Identity</p>
               <p>AI-Powered Banking Demo</p>
             </div>
             <div className="landing-header-actions">
@@ -137,127 +137,129 @@ export default function LandingPage({ user, hasTopNav }) {
         </header>
       )}
 
-      {/* Hero Section */}
-      <section className="landing-hero" aria-label="Hero section">
-        <div className="landing-hero-content">
-          <h1 className="landing-hero-headline">
-            Secure Identity for AI-Powered Applications
-          </h1>
-          <p className="landing-hero-subheadline">
-            A live reference implementation of PingOne OAuth 2.0, RFC 8693 token
-            delegation, and MCP-secured AI agents — built for enterprise demos
-            and developer exploration.
-          </p>
-          <div className="landing-hero-actions">
-            <button
-              type="button"
-              onClick={handleAdminDashboard}
-              className="hero-cta hero-cta-primary"
-            >
-              Admin Dashboard
-            </button>
-            <button
-              type="button"
-              onClick={handleCustomerDashboard}
-              className="hero-cta hero-cta-secondary"
-            >
-              Customer Dashboard
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/configure")}
-              className="hero-cta hero-cta-secondary"
-            >
-              Setup
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="landing-features">
-        <div className="landing-features-heading">
-          <h2>Core Capabilities</h2>
-          <p>
-            See how PingOne secures every layer of an AI-powered banking
-            application
-          </p>
-        </div>
-        <ul className="landing-features-grid">
-          {/* Feature 1: Auth Flows */}
-          <li className="landing-feature-card">
-            <div className="landing-feature-icon">
-              <IconShield />
+      <main className="landing-main">
+        {/* Hero Section */}
+        <section className="landing-hero" aria-label="Hero section">
+          <div className="landing-hero-content">
+            <h1 className="landing-hero-headline">
+              Secure Identity for AI-Powered Applications
+            </h1>
+            <p className="landing-hero-subheadline">
+              A live reference implementation of PingOne OAuth 2.0, RFC 8693
+              token delegation, and MCP-secured AI agents — built for enterprise
+              demos and developer exploration.
+            </p>
+            <div className="landing-hero-actions">
+              <button
+                type="button"
+                onClick={handleAdminDashboard}
+                className="hero-cta hero-cta-primary"
+              >
+                Admin Dashboard
+              </button>
+              <button
+                type="button"
+                onClick={handleCustomerDashboard}
+                className="hero-cta hero-cta-secondary"
+              >
+                Customer Dashboard
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/configure")}
+                className="hero-cta hero-cta-secondary"
+              >
+                Setup
+              </button>
             </div>
-            <h3 className="landing-feature-title">3 Auth Flows</h3>
-            <p className="landing-feature-description">
-              Experience OIDC, CIBA push auth, and in-flight step-up challenges
-              — all protecting banking operations
-            </p>
-          </li>
-
-          {/* Feature 2: RFC 8693 */}
-          <li className="landing-feature-card">
-            <div className="landing-feature-icon">
-              <IconTokenExchange />
-            </div>
-            <h3 className="landing-feature-title">RFC 8693 Token Exchange</h3>
-            <p className="landing-feature-description">
-              Watch secure delegation in action: user tokens transformed to
-              agent tokens with act claims
-            </p>
-          </li>
-
-          {/* Feature 3: MCP Integration */}
-          <li className="landing-feature-card">
-            <div className="landing-feature-icon">
-              <IconConnect />
-            </div>
-            <h3 className="landing-feature-title">MCP Spec Integration</h3>
-            <p className="landing-feature-description">
-              See how AI agents connect to banking APIs via the Model Context
-              Protocol with full auth context
-            </p>
-          </li>
-
-          {/* Feature 4: AI Agent */}
-          <li className="landing-feature-card">
-            <div className="landing-feature-icon">
-              <IconAgent />
-            </div>
-            <h3 className="landing-feature-title">AI Agent Banking</h3>
-            <p className="landing-feature-description">
-              Observe real-time agent operations: transfers, balance checks,
-              transaction analysis — all secured by tokens
-            </p>
-          </li>
-        </ul>
-      </section>
-
-      {/* Dev Tools Dashboard — only for unauthenticated visitors; logged-in users get it via UserDashboard */}
-      {!user && (
-        <section
-          className="landing-token-chain"
-          aria-label="Dev tools dashboard"
-        >
-          <div className="landing-token-chain-heading">
-            <h2>Dev Tools Dashboard</h2>
-            <p>
-              Live Token Chain, Agent &amp; Token Flow Inspector, and MCP
-              Traffic — all in one draggable, resizable panel. Hit ↗ to pop out
-              to a second screen.
-            </p>
-          </div>
-          <div className="landing-panels-row">
-            <DevToolsDashboard
-              defaultWidth={1100}
-              defaultHeight={580}
-              defaultCollapsed
-              bottomDock
-            />
           </div>
         </section>
-      )}
+
+        {/* Features Section */}
+        <section className="landing-features">
+          <div className="landing-features-heading">
+            <h2>Core Capabilities</h2>
+            <p>
+              See how PingOne secures every layer of an AI-powered banking
+              application
+            </p>
+          </div>
+          <ul className="landing-features-grid">
+            {/* Feature 1: Auth Flows */}
+            <li className="landing-feature-card">
+              <div className="landing-feature-icon">
+                <IconShield />
+              </div>
+              <h3 className="landing-feature-title">3 Auth Flows</h3>
+              <p className="landing-feature-description">
+                Experience OIDC, CIBA push auth, and in-flight step-up
+                challenges — all protecting banking operations
+              </p>
+            </li>
+
+            {/* Feature 2: RFC 8693 */}
+            <li className="landing-feature-card">
+              <div className="landing-feature-icon">
+                <IconTokenExchange />
+              </div>
+              <h3 className="landing-feature-title">RFC 8693 Token Exchange</h3>
+              <p className="landing-feature-description">
+                Watch secure delegation in action: user tokens transformed to
+                agent tokens with act claims
+              </p>
+            </li>
+
+            {/* Feature 3: MCP Integration */}
+            <li className="landing-feature-card">
+              <div className="landing-feature-icon">
+                <IconConnect />
+              </div>
+              <h3 className="landing-feature-title">MCP Spec Integration</h3>
+              <p className="landing-feature-description">
+                See how AI agents connect to banking APIs via the Model Context
+                Protocol with full auth context
+              </p>
+            </li>
+
+            {/* Feature 4: AI Agent */}
+            <li className="landing-feature-card">
+              <div className="landing-feature-icon">
+                <IconAgent />
+              </div>
+              <h3 className="landing-feature-title">AI Agent Banking</h3>
+              <p className="landing-feature-description">
+                Observe real-time agent operations: transfers, balance checks,
+                transaction analysis — all secured by tokens
+              </p>
+            </li>
+          </ul>
+        </section>
+
+        {/* Dev Tools Dashboard — only for unauthenticated visitors; logged-in users get it via UserDashboard */}
+        {!user && (
+          <section
+            className="landing-token-chain"
+            aria-label="Dev tools dashboard"
+          >
+            <div className="landing-token-chain-heading">
+              <h2>Dev Tools Dashboard</h2>
+              <p>
+                Live Token Chain, Agent &amp; Token Flow Inspector, and MCP
+                Traffic — all in one draggable, resizable panel. Hit ↗ to pop
+                out to a second screen.
+              </p>
+            </div>
+            <div className="landing-panels-row">
+              <DevToolsDashboard
+                defaultWidth={1100}
+                defaultHeight={580}
+                defaultCollapsed
+                bottomDock
+              />
+            </div>
+          </section>
+        )}
+      </main>
     </div>
   );
 }
