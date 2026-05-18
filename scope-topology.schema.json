@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Scope Topology",
+  "type": "object",
+  "required": ["version", "scopes", "resources", "apps", "tools"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "integer", "const": 1 },
+    "scopes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["description", "riskLevel", "resource"],
+        "additionalProperties": false,
+        "properties": {
+          "description": { "type": "string", "minLength": 1 },
+          "riskLevel": { "enum": ["low", "medium", "high"] },
+          "resource": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["scopes"],
+        "additionalProperties": false,
+        "properties": {
+          "uri": { "type": "string" },
+          "scopes": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "apps": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["grantedScopes"],
+        "additionalProperties": false,
+        "properties": {
+          "grantedScopes": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["requiredScopes", "surface"],
+        "additionalProperties": false,
+        "properties": {
+          "requiredScopes": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+          "surface": { "enum": ["gateway", "exchange-only", "legacy-alias"] },
+          "challengeType": { "enum": ["step_up", "consent"] }
+        }
+      }
+    }
+  }
+}
