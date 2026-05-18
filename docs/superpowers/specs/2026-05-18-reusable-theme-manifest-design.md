@@ -167,8 +167,18 @@ Decisions baked in:
 - **API** — routes in `routes/verticalConfig.js` stay.
   `GET /api/config/vertical` returns the full v2 manifest **additively**
   (old fields still present, so anything reading the old shape keeps working
-  during migration). `PUT /api/config/vertical` (admin-auth) still flips
-  `active_vertical` + `ui_industry_preset` via `setActiveVertical`.
+  during migration). `PUT /api/config/vertical` flips `active_vertical` +
+  `ui_industry_preset` via `setActiveVertical`.
+- **Route auth relaxed (deliberate, documented):** `PUT /api/config/vertical`
+  is changed from admin-only to **any authenticated session**. This is what
+  lets the user-facing dashboard ThemePicker (Section 3a) work for a
+  customer-persona demo. Bounded and safe because the manifest is
+  presentation-only (the load-bearing constraint below — no scopes/auth/
+  secrets), the action is fully reversible, and it does not touch the AI
+  pipeline. This loosening is recorded in the REGRESSION_PLAN §1 theme-contract
+  note so it is not mistaken for an accidental authz regression. The change
+  remains **server-wide**: whoever switches changes the live theme for all
+  sessions (single source of truth — no per-user/per-browser override path).
 - **Constraint (load-bearing):** the manifest never carries secrets,
   scopes-as-policy, or auth config. `scopes`/`demoUsers` stay banking-fixed and
   are explicitly **out** of the reusable theme contract. This is the line that
@@ -218,7 +228,36 @@ Today there are three consumers: `VerticalContext` (fetches
 
 Net deletions: `ff_retail_mode` flag + `RetailModeBanner`, `retailMockData.js`,
 `isRetail` branches, duplicate retail color defs / dead `industryPresets`
-entries. Net additions: `ThemeProvider`, `<RetailDashboard>`.
+entries. Net additions: `ThemeProvider`, `<RetailDashboard>`, `<ThemePicker>`.
+
+---
+
+## Section 3a — Dashboard theme picker (user-facing)
+
+The approved model is server-authoritative and admin-switchable via the Config
+UI. This adds a **second entry point to the same model** so a presenter driving
+the customer persona can switch themes without going to the admin Config page.
+
+- **`<ThemePicker variant="toolbar" />`** rendered in the existing
+  `dashboard-toolbar` row in `UserDashboard.js` (currently holds
+  `AgentUiModeToggle`, `ThresholdControls`, "Token Info", "Reset Demo"),
+  near the top of the dashboard as requested.
+- Lists themes from `GET /api/config/verticals/list`; on selection calls
+  `PUT /api/config/vertical` — **the exact same server-authoritative path the
+  admin Config UI uses**. There is no local override and no second resolution
+  path: single source of truth preserved.
+- The switch is **server-wide**: whoever picks changes the live theme for all
+  sessions. This matches the approved model (Section 2).
+- After the PUT succeeds, `useTheme()` re-fetches the manifest and the app
+  reskins (identical flow to the admin path). Control is a compact
+  `<select>`-style element styled to match the existing toolbar buttons; the
+  current active theme is the selected value.
+- Auth: relies on the Section 2 route-auth relaxation (`PUT
+  /api/config/vertical` → any authenticated session). The picker renders for
+  any logged-in user (customer or admin).
+- A second `<ThemePicker variant="config" />` is what the admin Config UI
+  renders (Section 3, Config UI repoint) — same component, same endpoint,
+  different chrome. One component, no duplicated switch logic.
 
 ---
 
@@ -267,14 +306,24 @@ carries no scopes/auth/policy (Section 2 constraint).
    `dashboard.kind`, read `mockData` from manifest. Delete `retailMockData.js`.
 6. **Retire `ff_retail_mode`** — delete flag, `RetailModeBanner`,
    `isRetail` branches; repoint Config UI picker to `/api/config/vertical`.
-7. **Cleanup** — delete dead `industryPresets` retail/duplicate color defs once
+7. **Theme picker surfaces** — relax `PUT /api/config/vertical` to any
+   authenticated session; build `<ThemePicker>` (one component, `toolbar` +
+   `config` variants); mount `variant="toolbar"` in the `UserDashboard`
+   toolbar row and `variant="config"` in the Config UI (replacing the
+   step-6 repoint's bespoke control).
+8. **Cleanup** — delete dead `industryPresets` retail/duplicate color defs once
    unreferenced; remove the `IndustryBrandingContext` shim.
 
 ### Regression safety (REGRESSION_PLAN discipline)
 
 - §1 pre-read required before touching `configStore.js`, `UserDashboard.js`,
-  `Config.js`, `BankingAgent.js`, `BankingChips.jsx`. `oauth*.js` is **not
-  touched** — the manifest carries no auth.
+  `Config.js`, `BankingAgent.js`, `BankingChips.jsx`,
+  `routes/verticalConfig.js`. `oauth*.js` is **not touched** — the manifest
+  carries no auth.
+- The `PUT /api/config/vertical` auth relaxation (admin → any authenticated
+  session) is a **deliberate, demo-scoped** change, not a regression: it is
+  bounded by the presentation-only manifest constraint and recorded in the
+  REGRESSION_PLAN §1 theme-contract note with that rationale.
 - State-what-I-won't-break per protected file; minimal diff; no emoji except
   the three permitted (`⚠️ ✅ ❌`); `cd banking_api_ui && npm run build` exit 0
   after every UI step; targeted `npm test` for `verticalConfigService` +
@@ -288,6 +337,9 @@ carries no scopes/auth/policy (Section 2 constraint).
   (blue/yellow), dashboard shows product/cart/orders from manifest, agent
   greets as "Shopping Assistant", document/header title update — on one page
   reload, server-authoritative.
+- A customer-persona (non-admin) logged-in user can switch theme from the
+  `<ThemePicker>` in the dashboard toolbar near the top, and the whole app
+  reskins server-wide on reload — without visiting the admin Config page.
 - Switching back to banking fully restores banking UI.
 - **Regression proof:** banking with no manifest changes renders
   byte-identically to today (visual + DOM string check on
@@ -318,3 +370,9 @@ carries no scopes/auth/policy (Section 2 constraint).
   current effective `:root` + `bx_finance` preset values; step 3 visual diff.
 - **Two contexts collapsing** may have hidden consumers. Mitigation: shim
   keeps old imports working until call sites migrate; shim removed last.
+- **Relaxed `PUT /api/config/vertical` auth** — any authenticated user can
+  change the live theme for everyone. Accepted: demo-scoped, presentation-only
+  (no auth/data/pipeline impact per Section 2 constraint), fully reversible,
+  and explicitly documented in REGRESSION_PLAN §1 so a future reviewer does
+  not "fix" it as an authz regression. Not mitigated further — it is the
+  intended behavior for the customer-persona demo flow.
