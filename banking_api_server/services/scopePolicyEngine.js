@@ -9,103 +9,44 @@
 'use strict';
 
 const { MCP_TOOL_SCOPES } = require('./mcpWebSocketClient');
+const scopeTopology = require('./scopeTopology');
+
+// Policy-engine-local metadata that is NOT topology (operations a scope maps to,
+// whether it needs user context). Keyed by canonical manifest scope name. The
+// scope SET is single-sourced from the manifest; only these behavioral overlays
+// live here. scopeTopology.regression.test.js asserts every key below exists in
+// the manifest (no orphans).
+const SCOPE_OPS_OVERLAY = {
+  'banking:read':          { operations: ['GET /accounts/*', 'GET /transactions/*', 'GET /balances/*'], requires_user_context: true },
+  'banking:write':         { operations: ['POST /transactions', 'POST /transfers'], requires_user_context: true },
+  'banking:transfer':      { operations: ['POST /transfers'], requires_user_context: true },
+  'banking:accounts:read': { operations: ['GET /accounts/*', 'GET /balances/*'], requires_user_context: true },
+  'banking:transactions:read': { operations: ['GET /transactions/*'], requires_user_context: true },
+  'banking:mortgage:read': { operations: ['GET /mortgage'], requires_user_context: true },
+  'banking:ai:agent:read': { operations: ['agent:invoke'], requires_user_context: true },
+  'banking:mcp:invoke':    { operations: ['mcp:tools/call'], requires_user_context: true },
+  'ai_agent':              { operations: ['agent:identity'], requires_user_context: false },
+};
+
 const { writeExchangeEvent } = require('./exchangeAuditStore');
 
 /**
  * Scope taxonomy and risk levels
  * Using existing MCP tool scopes structure
  */
-const SCOPE_TAXONOMY = {
-  // Banking operations scopes
-  'banking:read': {
-    description: 'Read access to banking data (accounts, balances, transactions)',
-    operations: ['GET /accounts/*', 'GET /transactions/*', 'GET /balances/*'],
-    risk_level: 'low',
+// SCOPE_TAXONOMY derives identity + risk from the manifest; ops from the overlay.
+const SCOPE_TAXONOMY = Object.keys(scopeTopology._manifest().scopes).reduce((acc, name) => {
+  const meta = scopeTopology.scopeMeta(name);
+  const overlay = SCOPE_OPS_OVERLAY[name] || { operations: [], requires_user_context: true };
+  acc[name] = {
+    description: meta.description,
+    risk_level: meta.riskLevel,
     category: 'banking',
-    requires_user_context: true
-  },
-  'banking:accounts:read': {
-    description: 'Read access to account information',
-    operations: ['GET /accounts/*', 'GET /balances/*'],
-    risk_level: 'low',
-    category: 'banking',
-    requires_user_context: true
-  },
-  'banking:transactions:read': {
-    description: 'Read access to transaction history',
-    operations: ['GET /transactions/*'],
-    risk_level: 'low',
-    category: 'banking',
-    requires_user_context: true
-  },
-  'banking:mortgage:read': {
-    description: 'Read access to mortgage account data (Phase 267 — Path A api-key disposition)',
-    operations: ['GET /mortgage (via gateway api_key swap to banking_mortgage_service)'],
-    risk_level: 'low',
-    category: 'banking',
-    requires_user_context: true
-  },
-  'banking:write': {
-    description: 'Write access to banking operations (transfers, deposits)',
-    operations: ['POST /transactions/*', 'PUT /accounts/*'],
-    risk_level: 'high',
-    category: 'banking',
-    requires_user_context: true
-  },
-  'banking:transactions:write': {
-    description: 'Create and modify transactions',
-    operations: ['POST /transactions/*'],
-    risk_level: 'high',
-    category: 'banking',
-    requires_user_context: true
-  },
-
-  // AI agent scopes
-  'ai_agent': {
-    description: 'General AI agent capabilities and operations',
-    operations: ['POST /api/mcp/tool', 'GET /api/agent/*'],
-    risk_level: 'medium',
-    category: 'ai',
-    requires_user_context: true
-  },
-
-  // Administrative scopes
-  'admin:read': {
-    description: 'Read access to administrative data',
-    operations: ['GET /admin/*', 'GET /users/*', 'GET /audit/*'],
-    risk_level: 'medium',
-    category: 'admin',
-    requires_user_context: false
-  },
-  'admin:write': {
-    description: 'Write access to administrative operations',
-    operations: ['POST /admin/*', 'PUT /users/*', 'DELETE /users/*'],
-    risk_level: 'high',
-    category: 'admin',
-    requires_user_context: false
-  },
-  'admin:delete': {
-    description: 'Delete operations for administrative tasks',
-    operations: ['DELETE /users/*', 'DELETE /admin/*'],
-    risk_level: 'critical',
-    category: 'admin',
-    requires_user_context: false
-  },
-  'users:read': {
-    description: 'Read access to user management data',
-    operations: ['GET /users/*'],
-    risk_level: 'medium',
-    category: 'admin',
-    requires_user_context: false
-  },
-  'users:manage': {
-    description: 'Full user management capabilities',
-    operations: ['POST /users/*', 'PUT /users/*', 'DELETE /users/*'],
-    risk_level: 'high',
-    category: 'admin',
-    requires_user_context: false
-  }
-};
+    operations: overlay.operations,
+    requires_user_context: overlay.requires_user_context,
+  };
+  return acc;
+}, {});
 
 /**
  * Risk level weights for scoring

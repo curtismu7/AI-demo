@@ -193,7 +193,7 @@ describe('Scope Policy Engine', () => {
       const result = validateScopesForTool(toolName, requestedScopes);
 
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Tool create_transfer requires one of: banking:write');
+      expect(result.errors).toContain('Tool create_transfer requires one of: banking:write, banking:transfer');
     });
 
     test('should validate admin tools with admin scopes', () => {

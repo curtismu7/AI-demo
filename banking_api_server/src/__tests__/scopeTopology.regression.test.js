@@ -97,3 +97,30 @@ describe('pingoneProvisionService scope arrays match manifest', () => {
     }
   });
 });
+
+describe('scopePolicyEngine + scopeAuditService derive from manifest', () => {
+  const topo = require('../../services/scopeTopology');
+
+  test('scopePolicyEngine SCOPE_TAXONOMY covers every manifest banking scope', () => {
+    const engine = require('../../services/scopePolicyEngine');
+    const all = engine.getAllScopes();
+    const names = new Set(all.map(s => (typeof s === 'string' ? s : s.scope)));
+    for (const scope of Object.keys(topo._manifest().scopes)) {
+      expect(names.has(scope)).toBe(true);
+    }
+  });
+
+  test('scopeAuditService SCOPE_REFERENCE_TABLE reflects manifest app grants', () => {
+    const { SCOPE_REFERENCE_TABLE } = require('../../services/scopeAuditService');
+    expect(SCOPE_REFERENCE_TABLE['Super Banking User App'])
+      .toEqual(expect.arrayContaining(['banking:transfer']));
+  });
+
+  test('SCOPE_OPS_OVERLAY has no keys absent from the manifest', () => {
+    const engine = require('../../services/scopePolicyEngine');
+    const manifestScopes = new Set(Object.keys(topo._manifest().scopes));
+    for (const s of engine.getAllScopes().map(x => (typeof x === 'string' ? x : x.scope))) {
+      expect(manifestScopes.has(s)).toBe(true);
+    }
+  });
+});

@@ -211,18 +211,20 @@ describe('Scope Audit Service', () => {
       expect(aiAgentScopes).toContain('banking:agent:invoke');
     });
 
-    it('should have correct scopes for MCP Server', () => {
-      // Consolidated scope model: fine-grained scopes replaced by banking:read/write
-      const mcpScopes = SCOPE_REFERENCE_TABLE['Super Banking MCP Server'];
-      expect(mcpScopes).toContain('banking:read');
-      expect(mcpScopes).toContain('banking:write');
+    it('should have correct scopes for User App', () => {
+      // Manifest-derived scope model: SCOPE_REFERENCE_TABLE is sourced from
+      // scope-topology.json app grants (replaces stale 'Super Banking MCP Server').
+      const userAppScopes = SCOPE_REFERENCE_TABLE['Super Banking User App'];
+      expect(userAppScopes).toContain('banking:read');
+      expect(userAppScopes).toContain('banking:write');
     });
 
-    it('should have correct scopes for Banking API', () => {
-      // Consolidated scope model: fine-grained scopes replaced by banking:read/write
-      const bankingApiScopes = SCOPE_REFERENCE_TABLE['Super Banking Banking API'];
-      expect(bankingApiScopes).toContain('banking:read');
-      expect(bankingApiScopes).toContain('banking:write');
+    it('should have correct scopes for Admin App', () => {
+      // Manifest-derived scope model: SCOPE_REFERENCE_TABLE is sourced from
+      // scope-topology.json app grants (replaces stale 'Super Banking Banking API').
+      const adminAppScopes = SCOPE_REFERENCE_TABLE['Super Banking Admin App'];
+      expect(adminAppScopes).toContain('banking:read');
+      expect(adminAppScopes).toContain('banking:write');
     });
 
     it('should have correct scopes for Agent Gateway', () => {
