@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { loadConfiguration, validateConfiguration, ConfigurationError } from './config';
+import { loadVaultIntoEnv } from './vault';
 import { BankingMCPServerConfig } from './interfaces';
 import { BankingMCPServer } from './server/BankingMCPServer';
 import { BankingAuthenticationManager } from './auth/BankingAuthenticationManager';
@@ -45,7 +46,26 @@ let server: BankingMCPServer | null = null;
 async function main(): Promise<void> {
   try {
     console.log('Banking MCP Server starting...');
-    
+
+    // Load allowlisted secrets from the encrypted vault into process.env
+    // BEFORE loadConfiguration() reads it. No-op (logs + continues) when
+    // secrets.vault is absent — dev machines without a vault are unchanged.
+    // The vault supplies MCP_GW_CLIENT_ID/SECRET, which environments.ts
+    // resolves as the RFC 7662 introspection client (must equal the
+    // gateway's RFC 8693 exchange client — REGRESSION_PLAN.md §4 2026-05-18).
+    try {
+      const vaultResult = await loadVaultIntoEnv();
+      if (vaultResult.loaded) {
+        console.log(`[MCP vault] loaded ${vaultResult.entries} entries into process.env`);
+      }
+    } catch (err) {
+      console.error(
+        '[MCP vault] startup load failed; refusing to start.',
+        err instanceof Error ? err.message : err,
+      );
+      process.exit(1);
+    }
+
     // Load and validate configuration
     const config: BankingMCPServerConfig = loadConfiguration();
     validateConfiguration(config);

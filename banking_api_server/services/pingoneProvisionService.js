@@ -995,6 +995,62 @@ class PingOneProvisionService {
   }
 
   /**
+   * Durably wire the MCP server's RFC 7662 introspection identity.
+   *
+   * banking_mcp_server reads banking_mcp_server/.env.development (run-bank.sh
+   * ensure_service_env copies it over .env each restart). It is NOT the BFF
+   * .env writeEnvFile() generates, and it is gitignored/untracked — so a
+   * fresh `setup:fresh` on a no-vault machine would otherwise leave the MCP
+   * server pointing at a stale/absent introspection client and every
+   * gateway->MCP tool call would 401.
+   *
+   * PingOne binds introspection to the token's REQUESTING client; the
+   * gateway performs the downstream RFC 8693 exchange as the MCP Gateway
+   * app, so the MCP server MUST introspect as THAT app. We therefore write
+   * the gateway app's clientId/secret as the MCP server's PINGONE_CLIENT_*
+   * (the no-vault fallback; the vault's MCP_GW_* still wins when present —
+   * environments.ts resolves MCP_GW_* || PINGONE_*). MCP_SERVER_RESOURCE_URI
+   * is set to the MCP server's OWN resource (the aud the gateway's exchange
+   * targets). See REGRESSION_PLAN.md §4 2026-05-18.
+   *
+   * Surgical: only the 3 introspection-identity lines are rewritten; every
+   * other MCP-specific key in .env.development is preserved. If the file is
+   * absent (clean clone before first run-bank), this is a no-op — run-bank's
+   * ensure_service_env will materialise .env from the (shipped) template and
+   * the vault path covers the identity.
+   */
+  async writeMcpServerIntrospectionIdentity(provisioned) {
+    const devEnvPath = path.resolve(
+      __dirname, '..', '..', 'banking_mcp_server', '.env.development',
+    );
+    let content;
+    try {
+      content = await fs.readFile(devEnvPath, 'utf8');
+    } catch (_e) {
+      return null; // no file — vault path / run-bank template covers it
+    }
+
+    const gwId = provisioned.mcpGwApp?.clientId;
+    const gwSecret = provisioned.mcpGwApp?.clientSecret;
+    const mcpAud = provisioned.mcpResourceServer?.audience?.[0];
+    if (!gwId || !gwSecret || !mcpAud) {
+      return null; // gateway app / mcp resource not provisioned — leave as-is
+    }
+
+    const setLine = (text, key, value) => {
+      const re = new RegExp(`^${key}=.*$`, 'm');
+      const line = `${key}=${value}`;
+      return re.test(text) ? text.replace(re, line) : `${text}\n${line}`;
+    };
+    content = setLine(content, 'PINGONE_CLIENT_ID', gwId);
+    content = setLine(content, 'PINGONE_CLIENT_SECRET', `"${gwSecret}"`);
+    content = setLine(content, 'MCP_SERVER_RESOURCE_URI', mcpAud);
+
+    await fs.writeFile(devEnvPath, content, 'utf8');
+    return devEnvPath;
+  }
+
+  /**
    * Generate .env file content.
    * `preserved` carries SESSION_SECRET / CONFIG_ENCRYPTION_KEY values that must
    * survive the rewrite — see writeEnvFile() for the rationale.
@@ -1046,23 +1102,19 @@ class PingOneProvisionService {
       `AGENT_CLIENT_ID=${provisioned.agentApp?.clientId || ''}`,
       `AGENT_CLIENT_SECRET=${provisioned.agentApp?.clientSecret || '<set-in-pingone-console>'}`,
       '',
-      '# ─── Two-Exchange Delegation (RFC 8693 §2.1) ───────────────────────────',
-      '# Phase 268. Enables nested actor-token delegation:',
-      '#   Step 1: AI Agent → CC token (aud = AGENT_GATEWAY_URI)',
-      '#   Step 2: Exchange #1 — user token + AI Agent actor → token (aud = INTERMEDIATE_AUDIENCE)',
-      '#   Step 3: MCP Exchanger → CC token (aud = MCP_GATEWAY_URI)',
-      '#   Step 4: Exchange #2 — exchanged token + MCP Exchanger actor → final (aud = TWO_EXCHANGE_URI)',
-      '# When ff_two_exchange_delegation=true the BFF will validate ALL of these.',
-      `FF_TWO_EXCHANGE_DELEGATION=true`,
+      '# ─── RFC 8693 Single-Exchange Delegation ───────────────────────────────',
+      '# The BFF performs ONE token exchange: user (subject) + AI Agent (actor)',
+      '# -> token audienced to the MCP Gateway. The gateway re-exchanges to the',
+      '# MCP server, and the MCP server re-exchanges to the resource server. The',
+      '# >=2-exchange security property is satisfied chain-wide (BFF + gateway +',
+      '# MCP server), so the BFF never performs a second exchange itself.',
       `PINGONE_AI_AGENT_CLIENT_ID=${provisioned.aiAgentApp?.clientId || ''}`,
       `PINGONE_AI_AGENT_CLIENT_SECRET=${provisioned.aiAgentApp?.clientSecret || '<set-in-pingone-console>'}`,
       `PINGONE_RESOURCE_AGENT_GATEWAY_URI=${provisioned.agentGwResourceServer?.audience?.[0] || 'agent-gateway.bxf.com'}`,
       `PINGONE_RESOURCE_MCP_GATEWAY_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcp-gw.bxf.com'}`,
-      `AI_AGENT_INTERMEDIATE_AUDIENCE=${provisioned.twoExIntermediateResourceServer?.audience?.[0] || 'intermediate.2x.bxf.com'}`,
-      `PINGONE_RESOURCE_TWO_EXCHANGE_URI=${provisioned.twoExFinalResourceServer?.audience?.[0] || 'final.2x.bxf.com'}`,
       '# AGENT_OAUTH_CLIENT_ID/SECRET aliases — same MCP Token Exchanger app as',
-      '# PINGONE_MCP_EXCHANGER_*, but the validateTwoExchangeConfig() function',
-      '# reads them under these names. Keep both in sync.',
+      '# PINGONE_MCP_EXCHANGER_*; some callers read them under these names.',
+      '# Keep both in sync.',
       `AGENT_OAUTH_CLIENT_ID=${provisioned.mcpExchangerApp?.clientId || ''}`,
       `AGENT_OAUTH_CLIENT_SECRET=${provisioned.mcpExchangerApp?.clientSecret || '<set-in-pingone-console>'}`,
       '',
@@ -1256,6 +1308,11 @@ class PingOneProvisionService {
         
         await this.updateApplication(adminAppResult.application.id, {
           redirectUris: [`${config.publicAppUrl}/api/auth/oauth/callback`],
+          // The BFF logout (routes/oauth.js) sends post_logout_redirect_uri =
+          // `${getFrontendOrigin}/logout`. PingOne validates it against the
+          // app's registered Signoff URLs exactly like login redirect URIs —
+          // without this, logout fails "Invalid post logout redirect URI".
+          postLogoutRedirectUris: [`${config.publicAppUrl}/logout`],
           pkceMethod: 'S256',
           tokenEndpointAuthMethod: 'client_secret_post',
           grantTypes: ['authorization_code', 'refresh_token', 'urn:ietf:params:oauth:grant-type:token-exchange'],
@@ -1285,16 +1342,20 @@ class PingOneProvisionService {
         // existing app created with only ['authorization_code','refresh_token']
         // gets upgraded to the full grant set that fresh-install adds at line ~1242.
         const targetUri = `${config.publicAppUrl}/api/auth/oauth/callback`;
+        const targetLogoutUri = `${config.publicAppUrl}/logout`;
         const requiredGrants = ['AUTHORIZATION_CODE', 'REFRESH_TOKEN', 'TOKEN_EXCHANGE'];
         const currentUris = adminAppResult.application.redirectUris || [];
+        const currentLogoutUris = adminAppResult.application.postLogoutRedirectUris || [];
         const currentAuthMethod = String(adminAppResult.application.tokenEndpointAuthMethod || '').toUpperCase();
         const currentGrants = new Set((adminAppResult.application.grantTypes || []).map(g => String(g).toUpperCase()));
         const needsUriUpdate = !currentUris.includes(targetUri);
+        const needsLogoutUriUpdate = !currentLogoutUris.includes(targetLogoutUri);
         const needsAuthMethodUpdate = currentAuthMethod !== 'CLIENT_SECRET_POST';
         const needsGrantsUpdate = requiredGrants.some(g => !currentGrants.has(g));
-        if (needsUriUpdate || needsAuthMethodUpdate || needsGrantsUpdate) {
+        if (needsUriUpdate || needsLogoutUriUpdate || needsAuthMethodUpdate || needsGrantsUpdate) {
           const drifts = [
             needsUriUpdate ? `redirect URI → ${targetUri}` : null,
+            needsLogoutUriUpdate ? `post-logout URI → ${targetLogoutUri}` : null,
             needsAuthMethodUpdate ? `auth method (${currentAuthMethod || 'unset'} → CLIENT_SECRET_POST)` : null,
             needsGrantsUpdate ? `grants → [${requiredGrants.join(',')}]` : null,
           ].filter(Boolean).join(', ');
@@ -1302,6 +1363,8 @@ class PingOneProvisionService {
           onStep(steps[steps.length - 1]);
           const patch = {};
           if (needsUriUpdate) patch.redirectUris = [targetUri];
+          // Additive: keep any existing signoff URLs (e.g. legacy hosts), add canonical.
+          if (needsLogoutUriUpdate) patch.postLogoutRedirectUris = Array.from(new Set([...currentLogoutUris, targetLogoutUri]));
           if (needsAuthMethodUpdate) patch.tokenEndpointAuthMethod = 'client_secret_post';
           if (needsGrantsUpdate) patch.grantTypes = requiredGrants;
           await this.updateApplication(adminAppResult.application.id, patch);
@@ -1353,12 +1416,17 @@ class PingOneProvisionService {
       // un-suffixed /api/auth/oauth/callback). Mismatching this caused PingOne
       // to reject the callback and the SPA to redirect to /config?error.
       const userRedirectUri = `${config.publicAppUrl}/api/auth/oauth/user/callback`;
+      const userLogoutUri = `${config.publicAppUrl}/logout`;
       if (!userAppResult.exists) {
         steps.push({ step: 'user-config', icon: '⚙️', message: 'Configuring user application...' });
         onStep(steps[steps.length - 1]);
 
         await this.updateApplication(userAppResult.application.id, {
           redirectUris: [userRedirectUri],
+          // BFF logout (routes/oauthUser.js) sends post_logout_redirect_uri =
+          // `${getFrontendOrigin}/logout`; PingOne validates it against the
+          // app's Signoff URLs or logout fails "Invalid post logout redirect URI".
+          postLogoutRedirectUris: [userLogoutUri],
           pkceMethod: 'S256',
           tokenEndpointAuthMethod: 'client_secret_post'
         });
@@ -1373,18 +1441,23 @@ class PingOneProvisionService {
         // "invalid_client — Unsupported authentication method" and the user can't log in.
         // Reconciling auth method on idempotent reruns prevents this.
         const currentUris = userAppResult.application.redirectUris || [];
+        const currentLogoutUris = userAppResult.application.postLogoutRedirectUris || [];
         const currentAuthMethod = String(userAppResult.application.tokenEndpointAuthMethod || '').toUpperCase();
         const needsUriUpdate = !currentUris.includes(userRedirectUri);
+        const needsLogoutUriUpdate = !currentLogoutUris.includes(userLogoutUri);
         const needsAuthMethodUpdate = currentAuthMethod !== 'CLIENT_SECRET_POST';
-        if (needsUriUpdate || needsAuthMethodUpdate) {
+        if (needsUriUpdate || needsLogoutUriUpdate || needsAuthMethodUpdate) {
           const drifts = [
             needsUriUpdate ? 'redirect URI' : null,
+            needsLogoutUriUpdate ? `post-logout URI → ${userLogoutUri}` : null,
             needsAuthMethodUpdate ? `auth method (${currentAuthMethod || 'unset'} → CLIENT_SECRET_POST)` : null,
           ].filter(Boolean).join(', ');
           steps.push({ step: 'user-config', icon: '🔁', message: `Refreshing user app: ${drifts}` });
           onStep(steps[steps.length - 1]);
           const patch = {};
           if (needsUriUpdate) patch.redirectUris = [userRedirectUri];
+          // Additive: preserve existing signoff URLs, add canonical.
+          if (needsLogoutUriUpdate) patch.postLogoutRedirectUris = Array.from(new Set([...currentLogoutUris, userLogoutUri]));
           if (needsAuthMethodUpdate) patch.tokenEndpointAuthMethod = 'client_secret_post';
           await this.updateApplication(userAppResult.application.id, patch);
           steps.push({ step: 'user-config', icon: '✅', message: 'User application reconciled' });
@@ -1586,10 +1659,18 @@ class PingOneProvisionService {
       steps.push({ step: 'mcp-app', icon: '🤖', message: 'Creating MCP Server application...' });
       onStep(steps[steps.length - 1]);
       
+      // App-type truth: only "Super Banking Worker Token" may be type WORKER.
+      // The MCP Server app introspects gateway-exchanged tokens
+      // (aud=mcp-server) via RFC 7662. PingOne forbids resource-scope grants
+      // on WORKER apps (see grantScopesToApplication), so a WORKER MCP Server
+      // app silently has zero grants and PingOne returns active:false for
+      // every introspection — breaking every gateway->MCP tool call. Must be
+      // WEB_APP/client_credentials so it can hold the grant on the MCP Server
+      // resource. See REGRESSION_PLAN §4.
       const mcpAppResult = await this.createApplication(
         'Super Banking MCP Server',
         'MCP server for client credentials and PingOne API access',
-        'WORKER',
+        'WEB_APP',
         ['client_credentials']
       );
       
@@ -1618,11 +1699,14 @@ class PingOneProvisionService {
       // Grant scopes for client credentials (Step 6 in documentation).
       // MCP Server is the token-exchange CLIENT — it needs every scope it
       // might re-request during exchange. Phase 267 adds banking:mortgage:read
-      // for the Path A (api-key disposition) flow.
+      // for the Path A (api-key disposition) flow. banking:mcp:invoke is
+      // required so introspection of gateway-exchanged tokens (which carry
+      // banking:mcp:invoke) resolves active:true — without it PingOne scopes
+      // the introspection to the wrong resource. See REGRESSION_PLAN §4.
       const mcpAppGrantResult = await this.grantScopesToApplication(
         mcpAppResult.application.id,
         resourceResult.resource.id,
-        ['banking:read', 'banking:ai:agent:read', 'banking:mortgage:read']
+        ['banking:read', 'banking:mcp:invoke', 'banking:ai:agent:read', 'banking:mortgage:read']
       );
       
       pushGrantResultStep(steps, 'mcp-grants', 'MCP Server scope grants', mcpAppGrantResult);
@@ -1832,16 +1916,26 @@ class PingOneProvisionService {
       pushScopeResultStep(steps, 'mcp-gw-scopes', 'MCP Gateway scopes', mcpGwScopeResults);
       onStep(steps[steps.length - 1]);
 
-      // Step 27: Create MCP Gateway WORKER application (for re-exchange to backend MCP servers)
+      // Step 27: Create MCP Gateway application (for re-exchange to backend MCP servers).
       // banking_mcp_gateway requires MCP_GW_CLIENT_ID / MCP_GW_CLIENT_SECRET; without them
       // the service exits at startup. Token-exchange grant is needed because the gateway
       // re-exchanges incoming user tokens for backend-aud-narrowed tokens.
+      //
+      // MUST be WEB_APP, NOT WORKER. The gateway is an RFC 8693 participant
+      // (exchange #2: mcp-gw token -> mcp-server aud) with exactly the same
+      // role as the MCP Exchanger (which is documented "NOT a WORKER"). PingOne
+      // forbids resource access grants on WORKER apps, so grantScopesToApplication
+      // silently no-ops on a WORKER — leaving the gateway client with zero
+      // resource grants and PingOne refusing its token-exchange with
+      // "Token exchange can only be used to issue tokens for custom resources".
+      // WORKER is for the PingOne Management API only (Super Banking Worker
+      // Token), never for the AI / token-exchange flow.
       steps.push({ step: 'mcp-gw-app', icon: '🚪', message: 'Creating MCP Gateway application...' });
       onStep(steps[steps.length - 1]);
       const mcpGwAppResult = await this.createApplication(
         'Super Banking MCP Gateway',
-        'Worker application for the MCP Gateway (re-exchanges tokens for backend MCP servers)',
-        'WORKER',
+        'Web application for the MCP Gateway (RFC 8693 re-exchange to backend MCP servers). NOT a WORKER — WORKER apps cannot hold resource grants.',
+        'WEB_APP',
         ['client_credentials', 'urn:ietf:params:oauth:grant-type:token-exchange']
       );
       provisioned.mcpGwApp = mcpGwAppResult.application;
@@ -1860,15 +1954,22 @@ class PingOneProvisionService {
         onStep(steps[steps.length - 1]);
       }
 
-      // Step 29: Grant scopes to MCP Gateway app (it acts as the actor in token-exchange).
-      // Phase 267: gateway also needs banking:mortgage:read so the api_key disposition
-      // can request that scope when exchanging the user bearer for the api-key swap.
+      // Step 29: Grant scopes to MCP Gateway app (it is the RFC 8693 client for
+      // exchange #2: it re-exchanges the inbound mcp-gw-audienced token for a
+      // token audienced to the BACKEND MCP SERVER). PingOne checks the
+      // exchanging client's grants against the TARGET resource, so the grant
+      // MUST be on the MCP Server resource (mcpResourceResult — aud
+      // mcp-server.*, what backendResourceUri()/mcpOlbResourceUri resolves to),
+      // NOT the Super Banking API resource. banking:mortgage:read is included
+      // for the Phase 267 api_key disposition. (Previously this granted on
+      // resourceResult/WORKER — both wrong: WORKER apps can't hold grants and
+      // the API resource is not the exchange #2 target.)
       steps.push({ step: 'mcp-gw-grants', icon: '🔑', message: 'Granting scopes to MCP Gateway application...' });
       onStep(steps[steps.length - 1]);
       const mcpGwGrantResult = await this.grantScopesToApplication(
         mcpGwAppResult.application.id,
-        resourceResult.resource.id,
-        ['banking:read', 'banking:write', 'banking:mortgage:read']
+        mcpResourceResult.resource.id,
+        ['banking:read', 'banking:write', 'banking:mcp:invoke', 'banking:mortgage:read']
       );
       pushGrantResultStep(steps, 'mcp-gw-grants', 'MCP Gateway scope grants', mcpGwGrantResult);
       onStep(steps[steps.length - 1]);
@@ -1951,61 +2052,6 @@ class PingOneProvisionService {
       pushScopeResultStep(steps, 'agent-gw-scopes', 'Agent Gateway scopes', agentGwScopeResults);
       onStep(steps[steps.length - 1]);
 
-      // Step 34: Create Two-Exchange Intermediate resource server (Step 2 audience).
-      steps.push({ step: 'twoex-intermediate-resource', icon: '🛡️', message: 'Creating Two-Exchange Intermediate resource server (Step 2)...' });
-      onStep(steps[steps.length - 1]);
-      const twoExIntAud = config.twoExchangeIntermediateAudience || 'intermediate.2x.bxf.com';
-      const twoExIntResourceResult = await this.createResourceServer(
-        'Super Banking Two-Exchange Intermediate',
-        'Two-Exchange Step 2 audience — Exchange #1 final token target (delegation handoff)',
-        twoExIntAud
-      );
-      provisioned.twoExIntermediateResourceServer = twoExIntResourceResult.resource;
-      steps.push({ step: 'twoex-intermediate-resource', icon: '✅', message: `Two-Exchange Intermediate resource ${twoExIntResourceResult.exists ? 'reused' : 'created'} (aud: ${twoExIntAud})` });
-      onStep(steps[steps.length - 1]);
-      // The Intermediate resource needs to be able to ISSUE tokens carrying the
-      // user's banking scopes — PingOne refuses RFC 8693 exchanges that target
-      // a resource whose scope list doesn't include the requested scopes (the
-      // error message "Token exchange can only be used to issue tokens for
-      // custom resources" is misleading; the actual gate is the scope match).
-      // Mirror the scope vocabulary present on the working MCP Server resource.
-      const twoExIntScopeResults = await this.createScopes(twoExIntResourceResult.resource.id, [
-        { name: 'banking:two-exchange:intermediate', description: 'Exchange #1 final-token scope (Step 2 audience marker)' },
-        { name: 'banking:read', description: 'Read banking data (mirrored for exchange compatibility)' },
-        { name: 'banking:write', description: 'Perform banking operations (mirrored for exchange compatibility)' },
-        { name: 'banking:mcp:invoke', description: 'MCP tool invocation (mirrored for exchange compatibility)' },
-        { name: 'banking:ai:agent:read', description: 'Agent invocation permission (mirrored)' },
-        { name: 'banking:mortgage:read', description: 'Mortgage account data (mirrored)' },
-      ]);
-      pushScopeResultStep(steps, 'twoex-intermediate-scopes', 'Two-Exchange Intermediate scopes', twoExIntScopeResults);
-      onStep(steps[steps.length - 1]);
-
-      // Step 35: Create Two-Exchange Final resource server (Step 4 audience).
-      steps.push({ step: 'twoex-final-resource', icon: '🛡️', message: 'Creating Two-Exchange Final resource server (Step 4)...' });
-      onStep(steps[steps.length - 1]);
-      const twoExFinalAud = config.twoExchangeFinalAudience || 'final.2x.bxf.com';
-      const twoExFinalResourceResult = await this.createResourceServer(
-        'Super Banking Two-Exchange Final',
-        'Two-Exchange Step 4 audience — Exchange #2 final token target (downstream MCP)',
-        twoExFinalAud
-      );
-      provisioned.twoExFinalResourceServer = twoExFinalResourceResult.resource;
-      steps.push({ step: 'twoex-final-resource', icon: '✅', message: `Two-Exchange Final resource ${twoExFinalResourceResult.exists ? 'reused' : 'created'} (aud: ${twoExFinalAud})` });
-      onStep(steps[steps.length - 1]);
-      // Same scope-vocabulary requirement as Intermediate (see comment above).
-      const twoExFinalScopeResults = await this.createScopes(twoExFinalResourceResult.resource.id, [
-        { name: 'banking:two-exchange:final', description: 'Exchange #2 final-token scope (Step 4 audience marker — downstream MCP)' },
-        { name: 'banking:read', description: 'Read banking data (mirrored for exchange compatibility)' },
-        { name: 'banking:write', description: 'Perform banking operations (mirrored for exchange compatibility)' },
-        { name: 'banking:mcp:invoke', description: 'MCP tool invocation (mirrored for exchange compatibility)' },
-        { name: 'banking:ai:agent:read', description: 'Agent invocation permission (mirrored)' },
-        { name: 'banking:mortgage:read', description: 'Mortgage account data (mirrored)' },
-      ]);
-      pushScopeResultStep(steps, 'twoex-final-scopes', 'Two-Exchange Final scopes', twoExFinalScopeResults);
-      onStep(steps[steps.length - 1]);
-
-      // (Step 35.5 may_act wiring relocated below Step 37 — it references
-      // provisioned.aiAgentApp which the AI Agent app step creates next.)
 
       // Step 36: Create AI Agent application (the LLM identity in Two-Exchange).
       //
@@ -2041,71 +2087,62 @@ class PingOneProvisionService {
         onStep(steps[steps.length - 1]);
       }
 
-      // Step 37a: Grant scopes on resources the AI Agent needs to act on.
+      // Step 37a: Grant scopes the AI Agent needs as the RFC 8693 ACTOR.
       //
-      // Two-Exchange Step 1: AI Agent mints CC token bound to Agent Gateway aud
-      //   → needs banking:agent:invoke on Agent Gateway resource
-      // Two-Exchange Step 2: AI Agent exchanges user token → Intermediate aud,
-      //   issuing the new token with the user's banking scopes
-      //   → needs banking:read, banking:write, banking:mcp:invoke etc. ON THE
-      //     INTERMEDIATE RESOURCE (PingOne checks the exchanging client's grants
-      //     against the target resource — without these, PingOne refuses with
-      //     'invalid_scope: At least one scope must be granted')
-      steps.push({ step: 'ai-agent-grants', icon: '🔑', message: 'Granting scopes to AI Agent application (Agent Gateway + Intermediate)...' });
+      // Canonical chain: the AI Agent mints a client-credentials actor token
+      // bound to the Agent Gateway audience; the BFF uses it as actor_token in
+      // its single subject+actor exchange. The AI Agent does NOT itself perform
+      // an exchange, so it only needs banking:agent:invoke on the Agent Gateway
+      // resource.
+      steps.push({ step: 'ai-agent-grants', icon: '🔑', message: 'Granting scopes to AI Agent application (Agent Gateway actor)...' });
       onStep(steps[steps.length - 1]);
       // SYNC: the Agent-Gateway scope below is what the AI Agent actor CC
-      // token requests at runtime. If you change it, also update
-      // configStore default `agent_gateway_cc_scope`
-      // (used by agentMcpTokenService._performTwoExchangeDelegation Step 1).
-      // They MUST match or PingOne rejects the CC request with invalid_scope.
+      // token requests at runtime. If you change it, also update configStore
+      // default `agent_gateway_cc_scope`. They MUST match or PingOne rejects
+      // the CC request with invalid_scope.
       try {
         const aiAgentGwGrant = await this.grantScopesToApplication(
           aiAgentAppResult.application.id,
           agentGwResourceResult.resource.id,
           ['banking:agent:invoke'],
         );
-        const aiAgentIntGrant = await this.grantScopesToApplication(
-          aiAgentAppResult.application.id,
-          twoExIntResourceResult.resource.id,
-          ['banking:read', 'banking:write', 'banking:mcp:invoke', 'banking:ai:agent:read', 'banking:mortgage:read'],
-        );
-        pushGrantResultStep(steps, 'ai-agent-grants', 'AI Agent scope grants', [aiAgentGwGrant, aiAgentIntGrant]);
+        pushGrantResultStep(steps, 'ai-agent-grants', 'AI Agent scope grants', [aiAgentGwGrant]);
       } catch (e) {
         steps.push({ step: 'ai-agent-grants', icon: '⚠️', message: `AI Agent grant skipped: ${e.message}` });
       }
       onStep(steps[steps.length - 1]);
 
-      // Step 37b: Grant scopes on resources the MCP Exchanger needs to act on.
+      // Step 37b: Grant scopes the MCP Exchanger needs for the single
+      // subject+actor RFC 8693 exchange.
       //
-      // Two-Exchange Step 3: MCP Exchanger mints CC token bound to MCP Gateway aud
-      //   → needs banking:mcp:invoke on MCP Gateway resource
-      // Two-Exchange Step 4: MCP Exchanger exchanges intermediate token → Final aud
-      //   → needs banking:read, banking:write etc. on Two-Exchange Final resource
-      // Single-Exchange path: MCP Exchanger also targets the MCP Server resource
-      //   → needs banking:read, banking:write etc. on MCP Server resource too
-      steps.push({ step: 'mcp-exchanger-grants', icon: '🔑', message: 'Granting scopes to MCP Exchanger application (MCP Gateway + Final + MCP Server)...' });
+      // Canonical chain: the BFF's ONE exchange (authenticated by the MCP
+      // Exchanger client) is audienced to the MCP GATEWAY and requests the
+      // tool scopes (banking:read / banking:write) plus banking:mcp:invoke.
+      // PingOne checks the exchanging client's grants against the target
+      // resource, so banking:read/write/mcp:invoke MUST be granted on the MCP
+      // Gateway resource. PingOne enforces ONE scope-name per app across all
+      // its grants — so these names live ONLY here (granted FIRST so the
+      // cross-resource one-name filter in grantScopesToApplication keeps them
+      // on the Gateway resource, not a later one). The MCP Server resource
+      // grant keeps only the names not already claimed by the Gateway grant
+      // (the gateway re-exchanges to mcp-server with its OWN client).
+      // SYNC: the MCP-Gateway scopes below are what the MCP Exchanger actor CC
+      // token + the BFF single exchange request at runtime — keep in sync with
+      // configStore defaults `mcp_gateway_cc_scope` / mcp_token_exchange_scopes.
+      steps.push({ step: 'mcp-exchanger-grants', icon: '🔑', message: 'Granting scopes to MCP Exchanger application (MCP Gateway + MCP Server)...' });
       onStep(steps[steps.length - 1]);
-      // SYNC: the MCP-Gateway scope below is what the MCP Exchanger actor CC
-      // token requests at runtime. If you change it, also update
-      // configStore default `mcp_gateway_cc_scope`
-      // (used by agentMcpTokenService._performTwoExchangeDelegation Step 3).
       try {
         const mcpExGwGrant = await this.grantScopesToApplication(
           mcpExchangerResult.application.id,
           mcpGwResourceResult.resource.id,
-          ['banking:mcp:invoke'],
-        );
-        const mcpExFinalGrant = await this.grantScopesToApplication(
-          mcpExchangerResult.application.id,
-          twoExFinalResourceResult.resource.id,
-          ['banking:read', 'banking:write', 'banking:mcp:invoke', 'banking:ai:agent:read', 'banking:mortgage:read'],
+          ['banking:read', 'banking:write', 'banking:mcp:invoke'],
         );
         const mcpExServerGrant = await this.grantScopesToApplication(
           mcpExchangerResult.application.id,
           mcpResourceResult.resource.id,
-          ['banking:read', 'banking:write', 'banking:ai:agent:read', 'banking:mortgage:read'],
+          ['banking:ai:agent:read', 'banking:mortgage:read'],
         );
-        pushGrantResultStep(steps, 'mcp-exchanger-grants', 'MCP Exchanger scope grants', [mcpExGwGrant, mcpExFinalGrant, mcpExServerGrant]);
+        pushGrantResultStep(steps, 'mcp-exchanger-grants', 'MCP Exchanger scope grants', [mcpExGwGrant, mcpExServerGrant]);
       } catch (e) {
         steps.push({ step: 'mcp-exchanger-grants', icon: '⚠️', message: `MCP Exchanger grant skipped: ${e.message}` });
       }
@@ -2120,47 +2157,6 @@ class PingOneProvisionService {
       // for this resource"), that's done in Phase B via the resource server's
       // token-exchange policy — not at provisioning time here.
 
-      // Step 38 (formerly 35.5): Wire may_act claims on the 2 exchange-target resources.
-      // MUST run AFTER Step 36 (AI Agent app create) so provisioned.aiAgentApp is set.
-      // Without this, PingOne rejects token-exchange against these audiences with
-      //   "Token exchange can only be used to issue tokens for custom resources"
-      // even though the resources ARE typed CUSTOM — the missing piece is the
-      // resource attribute that declares which client_id may act on behalf of
-      // the user. (Mirrors Step 23.5 above where the same wiring is applied to
-      // the main banking + MCP resources for the single-exchange flow.)
-      //
-      // - Intermediate audience  ← actor is the AI Agent app (Exchange #1 actor)
-      // - Final audience         ← actor is the MCP Token Exchanger (Exchange #2 actor)
-      // - Agent Gateway audience ← NO may_act needed (Step 1 is a CC token, not an exchange)
-      steps.push({ step: 'twoex-may-act', icon: '🔧', message: 'Wiring may_act on Two-Exchange resources...' });
-      onStep(steps[steps.length - 1]);
-      try {
-        const aiAgentClientId = provisioned.aiAgentApp?.clientId;
-        const mcpExchangerClientId = provisioned.mcpExchangerApp?.clientId;
-        if (aiAgentClientId && twoExIntResourceResult.resource?.id) {
-          await this._setResourceAttribute(
-            twoExIntResourceResult.resource.id,
-            'may_act',
-            JSON.stringify({ sub: aiAgentClientId }),
-          );
-        }
-        if (mcpExchangerClientId && twoExFinalResourceResult.resource?.id) {
-          await this._setResourceAttribute(
-            twoExFinalResourceResult.resource.id,
-            'may_act',
-            JSON.stringify({ sub: mcpExchangerClientId }),
-          );
-        }
-        const wired = [
-          aiAgentClientId ? `Intermediate ← AI Agent (${aiAgentClientId.slice(0, 8)})` : null,
-          mcpExchangerClientId ? `Final ← MCP Exchanger (${mcpExchangerClientId.slice(0, 8)})` : null,
-        ].filter(Boolean).join(', ');
-        steps.push({ step: 'twoex-may-act', icon: '✅', message: `may_act wired on Two-Exchange resources: ${wired || '(skipped — both client IDs missing)'}` });
-      } catch (mayActErr) {
-        steps.push({ step: 'twoex-may-act', icon: '⚠️', message: `Two-Exchange may_act step: ${mayActErr.message}` });
-      }
-      onStep(steps[steps.length - 1]);
-
       // Step 33: Write configuration
       steps.push({ step: 'config', icon: '📝', message: 'Writing .env file...' });
       onStep(steps[steps.length - 1]);
@@ -2168,6 +2164,22 @@ class PingOneProvisionService {
       {
         const envPath = await this.writeEnvFile(config, provisioned);
         steps.push({ step: 'config', icon: '✅', message: `.env file written to ${envPath}` });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Step 33b: Durably wire the MCP server's introspection identity into
+      // banking_mcp_server/.env.development (the file run-bank.sh copies over
+      // its .env). Without this a fresh no-vault setup:fresh reintroduces the
+      // gateway->MCP 401 (REGRESSION_PLAN §4 2026-05-18).
+      {
+        const mcpDevPath = await this.writeMcpServerIntrospectionIdentity(provisioned);
+        steps.push({
+          step: 'config',
+          icon: mcpDevPath ? '✅' : '⚠️',
+          message: mcpDevPath
+            ? `MCP server introspection identity written to ${mcpDevPath}`
+            : 'MCP server .env.development not patched (absent or gateway app unprovisioned) — vault/template covers it',
+        });
       }
       onStep(steps[steps.length - 1]);
 
