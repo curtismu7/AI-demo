@@ -123,6 +123,27 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-18 — Setup-page / control-button threshold edits never reached the simulated Authorize server (silent key-namespace mismatch)
+
+**Files changed:**
+- `banking_api_server/routes/thresholds.js` — POST /api/config/thresholds now mirror-writes `SIMULATED_AUTHORIZE_CONFIRM_AMOUNT` (alongside `confirm_threshold_usd`) and `SIMULATED_AUTHORIZE_STEPUP_AMOUNT` (alongside `mfa_threshold_usd` / `step_up_amount_threshold`), so one user input fans into BOTH consumer namespaces (HITL consent reads the `*_threshold_usd` keys; the simulated AS reads the `SIMULATED_AUTHORIZE_*` keys).
+- `banking_api_server/services/simulatedAuthorizeService.js` — `getConfirmAmountUsd` / `getStepUpAmountUsd` comments only: documented that `SIMULATED_AUTHORIZE_*` are the AS's canonical input keys, why raw `get()` (not `getEffective()`, which masks unset keys with the FIELD_DEFS default and would make the env fallback dead). No logic change to the getters.
+- `banking_api_server/src/__tests__/thresholdsToSimulatedAuthorize.regression.test.js` — NEW. Proves a threshold write moves the AS getters AND an actual `evaluateMcpFirstTool` decision; includes a guard test asserting that writing ONLY the legacy UI key does NOT move the AS (locks the mirror-write so a future refactor that drops it fails loudly).
+
+**What was broken:** The Setup page / Demo Controls control button POSTs `confirm_threshold_usd` / `mfa_threshold_usd` (routes/thresholds.js). The simulated Authorize server reads ONLY `SIMULATED_AUTHORIZE_CONFIRM_AMOUNT` / `SIMULATED_AUTHORIZE_STEPUP_AMOUNT`. These are different key NAMES (configStore case-normalization bridges case, not different names), and `simulatedAuthorizeService` uses raw `configStore.get()` which does not consult the `getEffective` env-fallback map. Net effect: a user changing dollar thresholds in the UI saw no change in simulated authorization decisions — the AS always used its defaults (confirm 250 / step-up 500 / deny 2000). A separate admin surface (routes/authorizeConfig.js) already wrote the correct `SIMULATED_AUTHORIZE_*` keys, so the two surfaces silently disagreed.
+
+**What was fixed:** thresholds.js mirror-writes the AS canonical keys. Both admin surfaces now push a user-entered value into the single key the AS actually reads, and all runtime decisions flow from the AS response. There is no PingOne Authorize API to push a scalar dollar threshold — PingAuthorize thresholds live inside a Trust Framework policy/authorization-version (changed by versioning+republishing the policy via the Management API, not a scalar setter); pingOneAuthorizeService only evaluates/provisions decision endpoints, by design. So the simulated AS is the only engine where a UI threshold takes effect, and it now does. Deny threshold left out of scope (no UI field exposes it; unchanged).
+
+**Security note / Do not break:** This does not change the gate DECISION logic (§1 row 57 highest-gate-wins, `acrLooksStrong` confirm-suppression, the H2 shared classifier all intact) — only which stored key a user's threshold lands in. `SIMULATED_AUTHORIZE_CONFIRM_AMOUNT` / `SIMULATED_AUTHORIZE_STEPUP_AMOUNT` are the AS's canonical input keys; any admin surface that edits simulated thresholds MUST write those exact (case-sensitive in `setConfig`'s FIELD_DEFS check) keys. Do not "simplify" simulatedAuthorizeService to `getEffective()` on the `*_threshold_usd` keys — `getEffective` never returns null (returns the FIELD_DEFS default), which would mask the env fallback and silently couple the AS to the HITL key namespace. Keep the regression test's "legacy-key-only does NOT move the AS" assertion.
+
+**Verify:**
+```bash
+cd banking_api_server && npx jest thresholdsToSimulatedAuthorize.regression simulatedAuthorizeService
+# 26 tests pass. The regression suite asserts a $900 transfer is confirm-only
+# (not step-up) after raising thresholds to confirm 800 / step-up 1200.
+```
+Pre-existing, unrelated: `thresholds.route.test.js` (full-app supertest) currently fails to LOAD due to `requireNotBankDelegate is not a function` in `routes/users.js:160` via `server.js` — a circular-require/load-order issue in the dirty worktree, present with these changes stashed, not caused by this fix.
+
 ### 2026-05-18 — `create_transfer` 403 `insufficient_scope: missing banking:transfer` — scope topology had no single source of truth
 
 **Files changed:**
@@ -151,6 +172,26 @@ Real banking applications use professional typography. Emojis break the enterpri
 cd banking_api_server && npx jest scopeTopology.regression scopePolicyEngine.test scopeAudit
 # all passing — incl. the create_transfer negative-proof test (fails if reverted to ['banking:write'])
 cd banking_mcp_gateway && npm run build   # tsc exit 0 (TOOL_SCOPES derives from manifest)
+```
+
+### 2026-05-18 — Shared obligation classifier: simulated AS and PingOne AS no longer drift on obligation→flag mapping (H2)
+
+**Files changed:**
+- `banking_api_server/services/authorizeObligations.js` — NEW. Single source of truth mapping a normalized obligation array → `{ stepUpRequired, hitlRequired, consentRequired }` with mutually-exclusive classification (HITL_CONSENT → consent, not also HITL) and highest-gate-wins precedence (STEP_UP > consent > HITL). Returns an informational `classified` breakdown for education (not enforcement).
+- `banking_api_server/services/pingOneAuthorizeService.js` — replaced the three regex extractors (`_extractStepUpRequired` / `_extractHitlRequired` / `_extractConsentRequired`) with one `_classifyRawObligations(raw)` that owns ONLY the PingOne source merge (raw.obligations + raw.advice + raw.details.*) then delegates the type→flag mapping to the shared classifier. Both call sites (Phase 2 decision endpoint + legacy PDP) updated.
+- `banking_api_server/services/simulatedAuthorizeService.js` — `evaluateTransaction` and the `evaluateMcpFirstTool` amount branch now build a candidate obligation list and derive the winning flag through the shared classifier instead of hand-rolled boolean logic.
+- `banking_api_server/src/__tests__/authorizeObligations.test.js` — NEW. Locks the H2 invariants (consent-wins, highest-gate-wins, classified breakdown).
+
+**What was broken:** The obligation-type→flag mapping was duplicated. PingOne's `_extractHitlRequired` regex `/HITL|HUMAN_APPROVAL/` also matched `HITL_CONSENT`, so a live `HITL_CONSENT` obligation set BOTH `hitlRequired` and `consentRequired`, while the simulated path set only one. Same policy intent, different boolean tuples between the two engines — a parity defect for a teaching tool where simulated and live must agree. Separately, `evaluateTransaction` STACKED obligations (could return `consentRequired` AND `stepUpRequired`), inconsistent with the MCP path's documented "highest gate wins".
+
+**What was fixed:** Both engines now classify through one shared function. Classification is mutually exclusive (most-specific match wins) and the returned flags enforce highest-gate-wins (STEP_UP dominates) across the whole list. `evaluateTransaction` is now single-winner like the MCP path. The full obligation list is still recorded in `raw.obligations` (+ a new `raw.enforced` field) so the education UI can show every rule that fired even though only the highest gate is enforced.
+
+**Security note / Do not break:** This is a classification consolidation only — it introduces NO new authorization decision, scope veto, or may_act change; `evaluateMcpFirstToolGate` remains the SOLE authoritative BFF tool gate (§1 row 57). The shared classifier MUST stay the only place the obligation-type→flag mapping lives — never re-introduce a parallel regex/boolean mapping in either AS. Highest-gate-wins (STEP_UP > consent/HITL) is a security invariant: a step-up obligation must never be downgraded to mere confirm. **Intentional, documented divergence (not drift):** the MCP first-tool path surfaces a classifier `consentRequired` win as `hitlRequired:true` because its wire contract is `mcp_hitl_required` (drives the BankingAgent HITL approval flow, §1 row 64) — the security-relevant precedence is shared; only the per-path flag label differs to match each caller. Do not "unify" the label without also updating `mcpToolAuthorizationService` and its 22 tests.
+
+**Verify:**
+```bash
+cd banking_api_server && npx jest authorizeObligations simulatedAuthorizeService transactionAuthorizationService pingOneAuthorize
+# 38 tests, all passing — incl. "$600 transfer returns stepUpRequired only (not hitlRequired)"
 ```
 
 ### 2026-05-18 — Feature-flags audit: step_up_enabled toggle was a no-op + missing FIELD_DEFS + misleading unauth comment

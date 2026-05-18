@@ -39,6 +39,7 @@
 
 const crypto = require('crypto');
 const configStore = require('./configStore');
+const { classifyObligations } = require('./authorizeObligations');
 
 /** Stable names — idempotent GET list + create if missing */
 const DEMO_TX_ENDPOINT_NAME = 'Super Banking Demo — Transactions';
@@ -174,9 +175,7 @@ async function _postDecisionEndpoint(endpointId, parameters) {
 
   const raw = await response.json();
   const decision = raw.decision || raw.status || 'INDETERMINATE';
-  const stepUpRequired = _extractStepUpRequired(raw);
-  const hitlRequired = _extractHitlRequired(raw);
-  const consentRequired = _extractConsentRequired(raw);
+  const { stepUpRequired, hitlRequired, consentRequired } = _classifyRawObligations(raw);
 
   const decisionId = raw.id || raw.decisionId || null;
 
@@ -319,7 +318,7 @@ async function _evaluateViaPdp({ policyId, userId, amount, type, acr, context = 
 
   const raw = await response.json();
   const decision = raw.decision || 'INDETERMINATE';
-  const stepUpRequired = _extractStepUpRequired(raw);
+  const { stepUpRequired } = _classifyRawObligations(raw);
 
   return { decision, stepUpRequired, raw, decisionId: null, path: 'pdp-legacy' };
 }
@@ -630,52 +629,27 @@ function isMcpDelegationDecisionReady() {
 // ---------------------------------------------------------------------------
 
 /**
- * Extract step-up requirement from a PingOne Authorize raw response.
- * Policies can signal step-up via an obligation with type 'STEP_UP' or via
- * an advice attribute. Returns true if any such signal is found.
+ * Classify a PingOne Authorize raw response into the three enforcement flags.
+ *
+ * This function owns ONLY the PingOne-specific source merge — a PA response
+ * can carry signals under raw.obligations, raw.advice, raw.details.obligations
+ * and raw.details.advice. Those are flattened into one normalized list, then
+ * the shared classifier (services/authorizeObligations.js) applies the single
+ * type -> flag mapping + highest-gate-wins precedence. The simulated AS uses
+ * the SAME classifier on its own flat obligations array, so the two engines
+ * can no longer disagree on what a given obligation type means (H2).
+ *
+ * @param {object} raw PingOne Authorize response body
+ * @returns {{ stepUpRequired: boolean, hitlRequired: boolean, consentRequired: boolean, classified: object }}
  */
-function _extractStepUpRequired(raw) {
-  const obligations = raw.obligations || raw.details?.obligations || [];
-  if (obligations.some((o) => (o.type || o.id || '').toUpperCase().includes('STEP_UP'))) {
-    return true;
-  }
-  const advice = raw.advice || raw.details?.advice || [];
-  if (advice.some((a) => (a.type || a.id || '').toUpperCase().includes('STEP_UP'))) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Detect HITL (Human-in-the-Loop) approval requirement from PA obligations.
- * PA policies can signal HITL via obligation type containing 'HITL' or 'HUMAN_APPROVAL'.
- */
-function _extractHitlRequired(raw) {
-  const obligations = raw.obligations || raw.details?.obligations || [];
-  if (obligations.some((o) => /(HITL|HUMAN_APPROVAL)/i.test(o.type || o.id || ''))) {
-    return true;
-  }
-  const advice = raw.advice || raw.details?.advice || [];
-  if (advice.some((a) => /(HITL|HUMAN_APPROVAL)/i.test(a.type || a.id || ''))) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Detect consent (explicit approval) requirement from PA obligations.
- * PA policies signal consent via HITL_CONSENT obligation type.
- */
-function _extractConsentRequired(raw) {
-  const obligations = raw.obligations || raw.details?.obligations || [];
-  if (obligations.some((o) => /HITL_CONSENT/i.test(o.type || o.id || ''))) {
-    return true;
-  }
-  const advice = raw.advice || raw.details?.advice || [];
-  if (advice.some((a) => /HITL_CONSENT/i.test(a.type || a.id || ''))) {
-    return true;
-  }
-  return false;
+function _classifyRawObligations(raw) {
+  const merged = [
+    ...(raw.obligations || []),
+    ...(raw.advice || []),
+    ...(raw.details?.obligations || []),
+    ...(raw.details?.advice || []),
+  ];
+  return classifyObligations(merged);
 }
 
 module.exports = {

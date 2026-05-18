@@ -20,6 +20,7 @@
 'use strict';
 
 const configStore = require('./configStore');
+const { classifyObligations } = require('./authorizeObligations');
 
 // Guard: prevent accidental use in production without an explicit opt-in.
 // The feature-flag check (ff_authorize_simulated) at the caller layer is the primary gate,
@@ -40,7 +41,19 @@ function getDenyAmountUsd() {
   );
 }
 
-/** Confirm threshold (USD) — requires explicit consent only (no MFA). */
+/**
+ * Confirm threshold (USD) — requires explicit consent only (no MFA).
+ *
+ * `SIMULATED_AUTHORIZE_CONFIRM_AMOUNT` is the AS's CANONICAL input key. Both
+ * admin surfaces fan a user-entered value into it: the dedicated Authorize
+ * config (routes/authorizeConfig.js, writes it directly) AND the Setup page /
+ * Demo Controls control button (routes/thresholds.js mirror-writes it
+ * alongside the HITL `confirm_threshold_usd` key the consent path reads). So
+ * editing EITHER surface changes this getter, and all runtime decisions flow
+ * from the AS response only. `get()` (raw cache) is used deliberately — not
+ * `getEffective()`, which would mask an unset key with the FIELD_DEFS default
+ * and make the env fallback dead code.
+ */
 function getConfirmAmountUsd() {
   return parseFloat(
     configStore.get('SIMULATED_AUTHORIZE_CONFIRM_AMOUNT') ||
@@ -49,7 +62,14 @@ function getConfirmAmountUsd() {
   );
 }
 
-/** Step-up threshold (USD) — requires consent + MFA. */
+/**
+ * Step-up threshold (USD) — requires consent + MFA.
+ *
+ * `SIMULATED_AUTHORIZE_STEPUP_AMOUNT` is the AS's CANONICAL input key. Both
+ * admin surfaces fan into it (authorizeConfig.js direct; thresholds.js
+ * mirror-writes it next to the HITL `mfa_threshold_usd` key). Same
+ * single-source-of-truth + raw-`get()` rationale as getConfirmAmountUsd.
+ */
 function getStepUpAmountUsd() {
   return parseFloat(
     configStore.get('SIMULATED_AUTHORIZE_STEPUP_AMOUNT') ||
@@ -193,12 +213,12 @@ async function evaluateMcpFirstTool({
 
   // ── Audience-match guard (highest-priority deny — runs before tool-name checks).
   //
-  // The bearer token's `aud` MUST equal the expected aud for the active flow:
-  //   Single-Exchange → mcp_resource_uri (e.g. mcp-server.bxf.com)
-  //   Two-Exchange    → pingone_resource_two_exchange_uri (e.g. final.2x.bxf.com)
-  // Caller (mcpToolAuthorizationService) picks the right one and passes it as
-  // `mcpResourceUri`. If the token aud doesn't match, an attacker may have
-  // sent an intermediate-step token directly to MCP (skipping a step).
+  // The bearer token's `aud` MUST equal the audience the BFF's single RFC 8693
+  // exchange minted (the MCP-gateway URI when the gateway is the egress, else
+  // the MCP-server URI). Caller (mcpToolAuthorizationService) resolves it via
+  // the shared resolveExchangeAudience() and passes it as `mcpResourceUri`. If
+  // the token aud doesn't match, an attacker may have sent an intermediate
+  // (e.g. actor-CC) token directly to MCP (skipping the gateway hop).
   //
   // Both the simulated AS (this file) and the PingOne PingAuthorize policy
   // enforce this rule — they receive the same inputs and must agree on the
@@ -276,27 +296,47 @@ async function evaluateMcpFirstTool({
         raw: { ...rawBase, decision: 'DENY', reason: `Amount $${amount} exceeds deny limit $${denyAmount}.` },
       };
     } else {
-      // Highest applicable gate only
-      const needsStepUp = amount >= stepUpAmount && !acrLooksStrong(acr);
-      const needsConfirm = !needsStepUp && amount >= confirmAmount && !acrLooksStrong(acr);
+      // Build candidate obligations from the amount thresholds, then let the
+      // SHARED classifier pick the single winning gate (highest-gate-wins:
+      // STEP_UP > HITL_CONSENT). This is the same classifier the PingOne path
+      // and evaluateTransaction use, so the precedence rule (the H2 drift
+      // point) cannot diverge between engines.
+      //
+      // Contract note (intentional, not drift): the classifier's canonical
+      // flag for a HITL_CONSENT obligation is `consentRequired`. The MCP
+      // first-tool gate's wire contract is `hitlRequired` (caller
+      // mcpToolAuthorizationService returns `mcp_hitl_required`, driving the
+      // BankingAgent HITL approval flow — §1 row 64). So on THIS path a
+      // classifier `consentRequired` win is surfaced as `hitlRequired`. The
+      // security-relevant invariant (which gate wins) is shared; only the
+      // per-path flag label differs, matching each caller's expectation.
+      const acrStrong = acrLooksStrong(acr);
+      const mcpCandidates = [];
+      if (amount >= confirmAmount && !acrStrong) {
+        mcpCandidates.push({ type: 'HITL_CONSENT', detail: 'Confirmation required.' });
+      }
+      if (amount >= stepUpAmount && !acrStrong) {
+        mcpCandidates.push({ type: 'STEP_UP', detail: 'MFA required — amount exceeds step-up threshold.' });
+      }
+      const mcpFlags = classifyObligations(mcpCandidates);
 
-      if (needsStepUp) {
+      if (mcpFlags.stepUpRequired) {
         out = {
           decision: 'INDETERMINATE',
           stepUpRequired: true,
           hitlRequired: false,
           path: 'simulated',
           decisionId,
-          raw: { ...rawBase, decision: 'INDETERMINATE', obligations: [{ type: 'STEP_UP', detail: 'MFA required — amount exceeds step-up threshold.' }], reason: `Amount $${amount} >= step-up threshold $${stepUpAmount}.` },
+          raw: { ...rawBase, decision: 'INDETERMINATE', obligations: mcpCandidates, enforced: 'STEP_UP', reason: `Amount $${amount} >= step-up threshold $${stepUpAmount}.` },
         };
-      } else if (needsConfirm) {
+      } else if (mcpFlags.consentRequired) {
         out = {
           decision: 'INDETERMINATE',
           stepUpRequired: false,
           hitlRequired: true,
           path: 'simulated',
           decisionId,
-          raw: { ...rawBase, decision: 'INDETERMINATE', obligations: [{ type: 'HITL_CONSENT', detail: 'Confirmation required.' }], reason: `Amount $${amount} >= confirm threshold $${confirmAmount}.` },
+          raw: { ...rawBase, decision: 'INDETERMINATE', obligations: mcpCandidates, enforced: 'HITL_CONSENT', reason: `Amount $${amount} >= confirm threshold $${confirmAmount}.` },
         };
       } else {
         out = {
@@ -389,15 +429,16 @@ async function evaluateTransaction({ userId, amount, type, acr }) {
   const consentTypes = getConsentTypes();
   const stepUpTypes = getStepUpTypes();
 
-  var obligations;
   var reasonParts;
   var reason;
   var typeRequiresConsent;
   var typeRequiresStepUp;
   var amountRequiresStepUp;
   var amountRequiresConsent;
-  var consentRequired;
-  var stepUpRequired;
+  var consentApplies;
+  var stepUpApplies;
+  var candidateObligations;
+  var flags;
 
   // DENY: amounts exceeding deny threshold (always checked first)
   if (amt > denyAmount) {
@@ -422,21 +463,29 @@ async function evaluateTransaction({ userId, amount, type, acr }) {
     amountRequiresStepUp = amt >= stepUpAmount && !acrLooksStrong(acr);
     amountRequiresConsent = amt >= confirmAmount;
 
-    // Combine type-based and amount-based requirements
-    consentRequired = typeRequiresConsent || amountRequiresConsent;
-    stepUpRequired = typeRequiresStepUp || amountRequiresStepUp;
+    // Which obligations the rules produce (may be more than one — e.g. a
+    // $600 transfer matches both consent and step-up thresholds).
+    consentApplies = typeRequiresConsent || amountRequiresConsent;
+    stepUpApplies = typeRequiresStepUp || amountRequiresStepUp;
 
-    if (consentRequired || stepUpRequired) {
-      // Build obligations list
-      obligations = [];
-      if (consentRequired) {
-        obligations.push({ type: 'HITL_CONSENT', detail: 'Human approval required.' });
-      }
-      if (stepUpRequired) {
-        obligations.push({ type: 'STEP_UP', detail: 'Elevated authentication (MFA) required.' });
-      }
+    // Build the full candidate obligation list (recorded in raw for
+    // education), then let the shared classifier pick the single winning
+    // enforcement flag (highest-gate-wins: STEP_UP > HITL_CONSENT). This is
+    // the SAME classifier the PingOne path uses — the two engines can no
+    // longer disagree on what a given obligation means or which one wins.
+    candidateObligations = [];
+    if (consentApplies) {
+      candidateObligations.push({ type: 'HITL_CONSENT', detail: 'Human approval required.' });
+    }
+    if (stepUpApplies) {
+      candidateObligations.push({ type: 'STEP_UP', detail: 'Elevated authentication (MFA) required.' });
+    }
 
-      // Build reason message
+    flags = classifyObligations(candidateObligations);
+
+    if (flags.stepUpRequired || flags.consentRequired) {
+      // Build reason message — describes every rule that fired, even though
+      // only the highest gate is enforced (educational transparency).
       reasonParts = [];
       if (typeRequiresConsent) reasonParts.push('transaction type requires consent');
       if (typeRequiresStepUp) reasonParts.push('transaction type requires step-up');
@@ -446,14 +495,15 @@ async function evaluateTransaction({ userId, amount, type, acr }) {
 
       out = {
         decision: 'INDETERMINATE',
-        stepUpRequired: stepUpRequired,
-        consentRequired: consentRequired,
+        stepUpRequired: flags.stepUpRequired,
+        consentRequired: flags.consentRequired,
         path: 'simulated',
         decisionId,
         raw: {
           engine: 'simulated',
           decision: 'INDETERMINATE',
-          obligations: obligations,
+          obligations: candidateObligations,
+          enforced: flags.stepUpRequired ? 'STEP_UP' : 'HITL_CONSENT',
           reason: reason,
         },
       };
