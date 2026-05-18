@@ -216,10 +216,105 @@ async function runMcpToolPipeline(ctx) {
         return { kind: 'block', httpStatus: r.status, body: r.body };
     }
 
+    // PingOne Authorize (or simulated) on every MCP tool call — docs/PINGONE_AUTHORIZE_PLAN.md §7
+    /** @type {object|undefined} */
+    let mcpAuthorizeEvaluationThisRequest;
+    try {
+        deps.emit({
+            phase: 'authorize_gate_begin'
+        });
+        const mcpAuthz = await deps.evaluateMcpFirstToolGate({
+            req,
+            tool,
+            agentToken: mcpAccessToken, // RFC 8693: pass as agentToken for backward compat
+            userSub,
+            userAcr: req.session ?.user ?.acr,
+            toolParams: params,
+        });
+        if (mcpAuthz.ran && mcpAuthz.block) {
+            deps.emit({
+                phase: 'authorize_denied',
+                status: mcpAuthz.block.status
+            });
+            // HITL: create pending decision so the agent UI can poll and approve/deny
+            let hitlTaskId = null;
+            if (mcpAuthz.block.body.error === 'mcp_hitl_required') {
+                deps.emit({ phase: 'authorize_denied_hitl', challenge_type: 'hitl' });
+                const hitl = deps.createPendingDecision(
+                    userSub,
+                    {
+                        tool,
+                        decisionId: mcpAuthz.block.body.decisionId,
+                        decisionContext: mcpAuthz.block.body.decisionContext,
+                        reason: mcpAuthz.block.body.error_description,
+                    },
+                );
+                hitlTaskId = hitl.taskId;
+            }
+            return { kind: 'block', httpStatus: mcpAuthz.block.status, tokenEvents, body: {
+                ...mcpAuthz.block.body,
+                ...(hitlTaskId ? { taskId: hitlTaskId } : {}),
+                tokenEvents,
+                mcpAuthorizeEvaluation: {
+                    decisionContext: mcpAuthz.block.body.decisionContext,
+                    decisionId: mcpAuthz.block.body.decisionId,
+                },
+            } };
+        }
+        if (mcpAuthz.ran && mcpAuthz.simulatedError) {
+            deps.emit({
+                phase: 'authorize_simulated_error'
+            });
+            console.error(`[MCP Authorize][Simulated] unexpected error: ${mcpAuthz.simulatedError.message}`);
+            return { kind: 'error', httpStatus: 500, body: {
+                error: 'mcp_authorize_error',
+                error_description: 'Simulated MCP authorization evaluation failed unexpectedly.',
+                tokenEvents,
+            } };
+        }
+        if (mcpAuthz.ran && mcpAuthz.pingoneError) {
+            deps.emit({
+                phase: 'authorize_unavailable'
+            });
+            console.error(`[MCP Authorize] PingOne error — failing closed: ${mcpAuthz.pingoneError.message}`);
+            return { kind: 'error', httpStatus: 503, body: {
+                error: 'mcp_authorize_unavailable',
+                error_description: 'PingOne Authorize is unavailable for MCP tool access.',
+                tokenEvents,
+            } };
+        }
+        if (mcpAuthz.ran && mcpAuthz.permit) {
+            deps.emit({
+                phase: 'authorize_permitted'
+            });
+            mcpAuthorizeEvaluationThisRequest = mcpAuthz.evaluation;
+        }
+        if (!mcpAuthz.ran) {
+            deps.emit({
+                phase: 'authorize_gate_skipped',
+                reason: mcpAuthz.reason,
+            });
+            deps.appEventLog('authorize', 'info',
+                `Authorize gate skipped — ${mcpAuthz.reason || 'unknown'}`,
+                { tag: 'authorize/gate-skipped', metadata: { reason: mcpAuthz.reason } });
+        }
+    } catch (mcpAuthzErr) {
+        deps.emit({
+            phase: 'authorize_internal_error'
+        });
+        console.error('[MCP Authorize] Unexpected error in gate:', mcpAuthzErr.message);
+        return { kind: 'error', httpStatus: 500, body: {
+            error: 'mcp_authorize_internal',
+            message: mcpAuthzErr.message,
+            tokenEvents,
+        } };
+    }
+
   ctx._mcpAccessToken = mcpAccessToken;
   ctx._userSub = userSub;
   ctx._tokenEvents = tokenEvents;
-  throw new Error('runMcpToolPipeline: authorize phase not yet implemented');
+  ctx._mcpAuthorizeEvaluation = mcpAuthorizeEvaluationThisRequest;
+  throw new Error('runMcpToolPipeline: introspection+remote phase not yet implemented');
 }
 
 module.exports = { runMcpToolPipeline };

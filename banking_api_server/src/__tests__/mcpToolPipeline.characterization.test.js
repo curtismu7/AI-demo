@@ -25,6 +25,8 @@ function makeDeps(over = {}) {
     mcpNoBearerResponse: jest.fn(() => ({ status: 401, body: { error: 'no_bearer' } })),
     stdioAdapter: { callToolViaStdio: jest.fn(async () => ({ content: [{ text: 'p1-ok' }] })) },
     recordMcpToolCall: jest.fn(),
+    createPendingDecision: jest.fn(() => ({ taskId: 't' })),
+    appEventLog: jest.fn(),
     publishMcpResultToSse: jest.fn(),
     publishTokenEventsToSse: jest.fn(),
     emit: jest.fn(),
@@ -67,11 +69,7 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
     expect(deps.resolveMcpAccessTokenWithEvents).not.toHaveBeenCalled(); // bypasses exchange
   });
 
-  // Pinned now, satisfiable at Task 3: until the authorize phase exists, the
-  // happy path falls through to the intentional `authorize phase not yet
-  // implemented` placeholder throw. `test.failing` keeps the suite signal
-  // unambiguous (green while the throw stands; RED the moment it unexpectedly
-  // passes). Task 3 MUST flip this back to a normal `test(...)`.
+  // Pinned now, satisfiable at Task 4 (remote phase). Task 4 flips back.
   test.failing('token resolve success → proceeds (no early Outcome from this phase)', async () => {
     const deps = makeDeps();
     deps.evaluateMcpFirstToolGate = jest.fn(async () => ({ ran: false, reason: 'no_token' }));
@@ -160,5 +158,56 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
     const ctx = makeCtx({ deps, req: { session: { user: null }, correlationId: 'c1' } });
     const outcome = await runMcpToolPipeline(ctx);
     expect(outcome).toMatchObject({ kind: 'block', httpStatus: 401, body: { error: 'no_bearer' } });
+  });
+
+  // Pinned now, satisfiable at Task 4 (remote phase). Task 4 flips back.
+  test.failing('Authorize gate runs BEFORE the remote call on the permit path (ADR-0003/T-2)', async () => {
+    const order = [];
+    const deps = makeDeps();
+    deps.evaluateMcpFirstToolGate = jest.fn(async () => { order.push('gate'); return { ran: true, permit: true, evaluation: { decision: 'PERMIT' } }; });
+    deps.mcpCallTool = jest.fn(async () => { order.push('remote'); return { content: [{ text: 'ok' }] }; });
+    await runMcpToolPipeline(makeCtx({ deps }));
+    expect(order).toEqual(['gate', 'remote']);
+  });
+
+  test('gate block 403 deny → block Outcome with tokenEvents + mcpAuthorizeEvaluation', async () => {
+    const deps = makeDeps();
+    deps.evaluateMcpFirstToolGate = jest.fn(async () => ({ ran: true, block: { status: 403, body: { error: 'mcp_authorization_denied', decisionId: 'd1', decisionContext: { x: 1 } } } }));
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome.kind).toBe('block');
+    expect(outcome.httpStatus).toBe(403);
+    expect(outcome.body.error).toBe('mcp_authorization_denied');
+    expect(outcome.body.mcpAuthorizeEvaluation).toEqual({ decisionContext: { x: 1 }, decisionId: 'd1' });
+  });
+
+  test('gate block 428 mcp_hitl_required → block + pending decision created, taskId in body', async () => {
+    const deps = makeDeps();
+    deps.createPendingDecision = jest.fn(() => ({ taskId: 'task-9' }));
+    deps.evaluateMcpFirstToolGate = jest.fn(async () => ({ ran: true, block: { status: 428, body: { error: 'mcp_hitl_required', decisionId: 'd2', decisionContext: { c: 2 }, error_description: 'needs human' } } }));
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome.httpStatus).toBe(428);
+    expect(deps.createPendingDecision).toHaveBeenCalledWith('u1', expect.objectContaining({ tool: 'get_my_accounts', decisionId: 'd2' }));
+    expect(outcome.body.taskId).toBe('task-9');
+  });
+
+  test('gate simulatedError → error 500 mcp_authorize_error', async () => {
+    const deps = makeDeps();
+    deps.evaluateMcpFirstToolGate = jest.fn(async () => ({ ran: true, simulatedError: new Error('sim boom') }));
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome).toMatchObject({ kind: 'error', httpStatus: 500, body: { error: 'mcp_authorize_error' } });
+  });
+
+  test('gate pingoneError → error 503 mcp_authorize_unavailable (fail closed)', async () => {
+    const deps = makeDeps();
+    deps.evaluateMcpFirstToolGate = jest.fn(async () => ({ ran: true, pingoneError: new Error('p1 down') }));
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome).toMatchObject({ kind: 'error', httpStatus: 503, body: { error: 'mcp_authorize_unavailable' } });
+  });
+
+  test('gate internal throw → error 500 mcp_authorize_internal', async () => {
+    const deps = makeDeps();
+    deps.evaluateMcpFirstToolGate = jest.fn(async () => { throw new Error('gate exploded'); });
+    const outcome = await runMcpToolPipeline(makeCtx({ deps }));
+    expect(outcome).toMatchObject({ kind: 'error', httpStatus: 500, body: { error: 'mcp_authorize_internal' } });
   });
 });
