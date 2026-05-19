@@ -17,7 +17,7 @@ import { useCallback, useEffect, useState } from "react";
 // The four providers we expose in the UI. groq/google exist server-side
 // but are intentionally not surfaced (out of scope for this spec).
 export const PROVIDER_OPTIONS = [
-  { id: "helix", label: "Helix (Claude via wrapper)" },
+  { id: "helix", label: "Helix (model-agnostic wrapper)" },
   { id: "ollama", label: "Ollama (local)" },
   { id: "openai", label: "OpenAI (ChatGPT)" },
   { id: "anthropic", label: "Anthropic (Claude)" },
@@ -48,6 +48,9 @@ export default function useLangchainProvider() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [mode, setModeState] = useState("heuristics_helix");
+  const [externalWiring, setExternalWiringState] = useState("bff");
+  const [modeOptions, setModeOptions] = useState([]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -60,6 +63,9 @@ export default function useLangchainProvider() {
       setModel(d.model);
       setKeySet(d.key_set || { ollama: true });
       setDefaultModels(d.default_models || {});
+      setModeState(d.agent_mode || "heuristics_helix");
+      setExternalWiringState(d.external_wiring || "bff");
+      setModeOptions(d.agent_modes || []);
     } catch (e) {
       setError(e.message || "Failed to load provider");
     } finally {
@@ -100,6 +106,27 @@ export default function useLangchainProvider() {
     [provider, defaultModels],
   );
 
+  const setMode = useCallback(async (id, wiring) => {
+    setSaving(true); setError(null);
+    try {
+      const res = await fetch(SAVE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ agent_mode: id, external_wiring: wiring }),
+      });
+      if (!res.ok) throw new Error(`save ${res.status}`);
+      const d = await res.json();
+      setModeState(d.agent_mode || id);
+      setExternalWiringState(d.external_wiring || "bff");
+    } catch (e) {
+      setError(e.message || "Failed to save mode");
+    } finally { setSaving(false); }
+  }, []);
+
+  const setExternalWiring = useCallback(
+    (w) => setMode(mode, w), [setMode, mode]);
+
   return {
     provider,
     model,
@@ -111,5 +138,10 @@ export default function useLangchainProvider() {
     error,
     setProvider,
     refresh,
+    mode,
+    externalWiring,
+    modeOptions,
+    setMode,
+    setExternalWiring,
   };
 }
