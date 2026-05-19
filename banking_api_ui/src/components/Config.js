@@ -21,6 +21,7 @@ import WorkerAppConfigTab from "./WorkerAppConfigTab";
 import SetupWizardTab from "./SetupWizardTab";
 import ConfigTokenValidation from "./ConfigTokenValidation";
 import CustomChipsTab from "./CustomChipsTab";
+import AgentModeSelector from "./AgentModeSelector";
 import "../styles/appShellPages.css";
 import "./Config.css";
 import { useTheme } from "../context/ThemeContext";
@@ -558,28 +559,6 @@ function LangChainAgentConfig() {
       .catch(() => null);
   }, []);
 
-  const handleProviderSelect = async (provider) => {
-    try {
-      const r = await fetch("/api/langchain/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider,
-          model: status?.default_models?.[provider],
-        }),
-      });
-      if (r.ok) {
-        const d = await r.json();
-        setStatus((prev) => ({
-          ...prev,
-          provider: d.provider,
-          model: d.model,
-          key_set: d.key_set,
-        }));
-      }
-    } catch {}
-  };
-
   const handleSaveKey = async (keyType) => {
     const key = keyInputs[keyType] || "";
     if (!key.trim()) return;
@@ -647,44 +626,8 @@ function LangChainAgentConfig() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* Provider dropdown */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 4,
-        }}
-      >
-        <label style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>
-          LLM Provider:
-        </label>
-        <select
-          value={activeProvider}
-          onChange={(e) => handleProviderSelect(e.target.value)}
-          style={{
-            fontSize: 14,
-            padding: "6px 12px",
-            borderRadius: 6,
-            border: "1px solid #ccc",
-            minWidth: 180,
-          }}
-        >
-          {PROVIDERS.map((p) => {
-            // Honest key_set from the server: disable a provider until
-            // its credential exists (the agent service fails closed at
-            // request time anyway — this just makes it discoverable).
-            const configured =
-              (status.key_set || { ollama: true })[p.id] === true;
-            return (
-              <option key={p.id} value={p.id} disabled={!configured}>
-                {p.label}
-                {configured ? "" : " — not configured"}
-              </option>
-            );
-          })}
-        </select>
-      </div>
+      {/* Provider selector */}
+      <AgentModeSelector />
 
       {/* Model dropdown */}
       <div

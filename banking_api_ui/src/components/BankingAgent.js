@@ -74,7 +74,7 @@ import {
 import { getColdStartRetryDelays } from "../services/apiErrorHandler";
 import APP_CONFIG from "../services/appConfig";
 import { useCustomChips } from "../hooks/useCustomChips";
-import useLangchainProvider from "../hooks/useLangchainProvider";
+import AgentModeSelector from "./AgentModeSelector";
 import { claimPendingNl, clampPanelPosition, makeReentrancyGuard, isAbortError, anySignal } from "./bankingAgentSafety";
 
 // Phase 266 H2 audit: TokenChain credentialPath stamping origins per setTokenEvents call:
@@ -1646,13 +1646,6 @@ export default function BankingAgent({
   const edu = useEducationUIOptional();
   const tokenChain = useTokenChainOptional();
   const { chips: customChips, groups: customGroups } = useCustomChips();
-  const {
-    provider: llmProvider,
-    options: llmProviderOptions,
-    isConfigured: isLlmProviderConfigured,
-    saving: llmProviderSaving,
-    setProvider: setLlmProvider,
-  } = useLangchainProvider();
   const {
     theme: appTheme,
     toggleTheme,
@@ -6523,37 +6516,8 @@ export default function BankingAgent({
                   />
                   LLM only
                 </label>
-                {/* LLM provider picker — shared SSOT with /config and the
-                    dashboard (useLangchainProvider). Unconfigured providers
-                    are disabled (the agent service :3006 fails closed at
-                    request time; this just makes it discoverable). */}
-                <label
-                  className="ba-rfc-toggle-label ba-llm-provider-label"
-                  title="Which LLM the agent reasons with. Providers without configured credentials are disabled."
-                >
-                  LLM
-                  <select
-                    value={llmProvider}
-                    disabled={llmProviderSaving}
-                    onChange={(e) => setLlmProvider(e.target.value)}
-                    className="ba-llm-provider-select"
-                    aria-label="Agent LLM provider"
-                  >
-                    {llmProviderOptions.map((p) => {
-                      const configured = isLlmProviderConfigured(p.id);
-                      return (
-                        <option
-                          key={p.id}
-                          value={p.id}
-                          disabled={!configured}
-                        >
-                          {p.label}
-                          {configured ? "" : " — not configured"}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
+                {/* Five-mode agent provider selector — shared SSOT with /config */}
+                <AgentModeSelector compact />
                 {/* Compliance 12-step toggle */}
                 <button
                   type="button"
