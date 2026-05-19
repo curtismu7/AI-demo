@@ -38,6 +38,9 @@ import TransactionConsentModal from "./TransactionConsentModal";
 import FloatingPanel from "./FloatingPanel";
 import "./UserDashboard.css";
 import DashboardHeader from "./DashboardHeader";
+import { useTheme } from "../context/ThemeContext";
+import RetailDashboard from "./RetailDashboard";
+import ThemePicker from "./ThemePicker";
 
 /** Format a number as USD currency — $1,234.56 */
 const fmt = (n) =>
@@ -141,6 +144,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const location = useLocation();
   const { open } = useEducationUI();
   const { placement: agentPlacement, setSurfaceHostEl } = useAgentUiMode();
+  const { dashboard: themeDashboard } = useTheme();
+  const isRetailDashboard = themeDashboard && themeDashboard.kind === "retail";
   useCurrentUserTokenEvent(); // Seed the token chain with current user's session token on mount
   /** Middle layout: auto-opens when placement is 'middle'; collapses via FAB click. */
   const [middleAgentOpen, setMiddleAgentOpen] = useState(
@@ -2540,6 +2545,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           role="toolbar"
           aria-label="Dashboard actions"
         >
+          <ThemePicker variant="toolbar" />
           <AgentUiModeToggle variant="config" />
           <ThresholdControls />
           <button
@@ -2694,7 +2700,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               id="main-dashboard-content"
               tabIndex={-1}
             >
-              {renderBankingMain()}
+              {isRetailDashboard ? (
+                <RetailDashboard data={themeDashboard && themeDashboard.mockData} />
+              ) : (
+                renderBankingMain()
+              )}
             </main>
           )}
 
@@ -2734,7 +2744,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               id="main-dashboard-content"
               tabIndex={-1}
             >
-              {renderBankingMain()}
+              {isRetailDashboard ? (
+                <RetailDashboard data={themeDashboard && themeDashboard.mockData} />
+              ) : (
+                renderBankingMain()
+              )}
             </main>
 
             {/* Float mode: no reserve column — the FAB is a fixed overlay from App.js. */}

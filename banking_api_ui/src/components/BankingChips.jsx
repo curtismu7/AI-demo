@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import "./BankingChips.css";
+import { useTheme } from "../context/ThemeContext";
 
 const HEURISTIC_CHIPS = [
   { id: "balance", label: "Check Balance", message: "balance" },
@@ -20,6 +21,14 @@ const HEURISTIC_CHIPS = [
     message: "show mortgage data",
   },
 ];
+
+// Overlay manifest chip LABELS by key. id + message (routing keys) are never
+// changed — the chip→routing→MCP pipeline is invariant (skip-proof contract).
+export function applyChipLabels(chips, manifestChips) {
+  if (!Array.isArray(manifestChips)) return chips;
+  const byKey = new Map(manifestChips.map((c) => [c.key, c.label]));
+  return chips.map((c) => (byKey.has(c.id) ? { ...c, label: byKey.get(c.id) } : c));
+}
 
 const LLM_CHIPS = {
   "Time-Based": [
@@ -165,6 +174,8 @@ export default function BankingChips({
   customChips = [],
 }) {
   const [expandedCategory, setExpandedCategory] = useState(null);
+  const { dashboard } = useTheme();
+  const heuristicChips = applyChipLabels(HEURISTIC_CHIPS, dashboard && dashboard.chips);
 
   const customHeuristic = customChips.filter((c) => c.type === "heuristic");
   const customLlm = customChips.filter((c) => c.type === "llm");
@@ -185,7 +196,7 @@ export default function BankingChips({
       <div className="banking-chips-dropdown__section">
         <div className="banking-chips-dropdown__label">Quick Actions</div>
         <div className="banking-chips-dropdown__grid banking-chips-dropdown__grid--heuristic">
-          {HEURISTIC_CHIPS.map((chip) => (
+          {heuristicChips.map((chip) => (
             <button
               type="button"
               key={chip.id}

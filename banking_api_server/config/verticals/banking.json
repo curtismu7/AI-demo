@@ -1,11 +1,26 @@
 {
   "id": "banking",
-  "displayName": "Super Banking",
-  "tagline": "AI-Powered Banking Demo",
+  "schemaVersion": 2,
+  "identity": {
+    "displayName": "Super Banking",
+    "headerTitle": "Super Banking",
+    "documentTitle": "Super Banking · PingOne AI IAM Core",
+    "logoAlt": "Super Banking logo",
+    "tagline": "AI-Powered Banking Demo",
+    "logoPath": "/super-bank-icon.png"
+  },
   "theme": {
-    "primary": "#1e3a8a",
-    "accent": "#2563eb",
-    "gradient": "linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #3b82f6 100%)"
+    "cssVars": {
+      "--app-primary-red": "#b91c1c",
+      "--app-primary-red-hover": "#991b1b",
+      "--app-primary-red-mid": "#dc2626",
+      "--app-primary-red-border": "#7f1d1d",
+      "--brand-dashboard-header-start": "#1d4ed8",
+      "--brand-dashboard-header-end": "#1d4ed8",
+      "--brand-app-shell-hero-start": "#1d4ed8",
+      "--brand-app-shell-hero-end": "#1d4ed8",
+      "--theme-accent": "#2563eb"
+    }
   },
   "terminology": {
     "account": "Account",
@@ -16,10 +31,24 @@
     "transactionTypes": ["Deposit", "Withdrawal", "Transfer"],
     "balance": "Balance",
     "agent": "Banking Agent",
-    "agentGreeting": "Hi! I'm your Banking Agent. I can help you check balances, view transactions, or make transfers.",
     "dashboard": "Dashboard",
     "highValueAction": "Transfer",
     "highValueLabel": "High-value transfer"
+  },
+  "agent": {
+    "persona": "Banking Agent",
+    "greeting": "Hi {name}! I can check your balances, move money between accounts, and explain the OAuth flows happening behind the scenes. What would you like to do?",
+    "systemPromptFlavor": ""
+  },
+  "dashboard": {
+    "kind": "banking",
+    "chips": [
+      { "key": "balance", "label": "Check Balance" },
+      { "key": "accounts", "label": "My Accounts" },
+      { "key": "transactions", "label": "Transactions" },
+      { "key": "transfer", "label": "Transfer Funds" }
+    ],
+    "mockData": null
   },
   "scopes": {
     "read": "banking:read",
