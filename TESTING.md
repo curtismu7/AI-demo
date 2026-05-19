@@ -463,3 +463,257 @@ No E2E spec exercises the PingOne test page UI (token fetch buttons, asset verif
 
 ### Pre-existing failing suites (§1.5)
 `integration/completeFlow.test.js`, `mcpToolAuthorizationService.test.js`, `nlIntentParser.test.js`, `rfc9728-documentation-verification.test.js`, `mfaService.test.js` — these were failing before any recent changes and represent debt, not regressions.
+
+---
+
+## 5. TypeScript service tests (MCP server, gateway, agent, invest)
+
+These four services use TypeScript Jest and share a common test architecture. Each is built and tested independently.
+
+### 5.1 How to run all services from repo root
+
+```bash
+# Run all root-level test commands in one pass
+npm test
+
+# Or individual service test suites
+npm run test:api-server              # Banking API server (§1)
+npm run test:mcp-server              # MCP server (TypeScript)
+npm run test:mcp-server:integration  # MCP server integration tests only
+npm run test:ui                      # Banking UI (§2)
+npm run test:agent                   # LangChain agent (Python)
+npm run test:agent:full              # LangChain agent (full suite)
+npm run test:agent-ui                # LangChain agent frontend (React)
+npm run test:mcp-inspector           # API server MCP inspector routes
+npm run test:bff-tokens              # API server Redis/session tests
+npm run test:session                 # API server session store tests
+npm run test:e2e:ui                  # UI E2E (Playwright)
+npm run test:e2e:ui:smoke            # UI E2E smoke tests
+```
+
+### 5.2 MCP server tests (`banking_mcp_server/`)
+
+**Test runner:** Jest with `ts-jest` preset (TypeScript)  
+**Config:** `jest.config.js` with preset `ts-jest`, testEnvironment `node`  
+**Run from:** `banking_mcp_server/` or use `npm run test:mcp-server` from root
+
+```bash
+# From banking_mcp_server/
+npm run test:unit              # Unit tests (excludes integration)
+npm run test:integration       # Integration tests only
+npm test                       # All (unit + integration)
+npm run test:watch             # Watch mode
+npm run test:coverage          # Coverage report (text, lcov, html)
+npm run test:ci                # CI mode (coverage, no watch)
+```
+
+**Notable mocking patterns:**
+- ESM-only packages (`uuid`, `jose`) mapped to CJS shims in `jest.config.js`
+- `uuid` shim: RFC 4122 v4 via Node `crypto`
+- `jose` shim: stub functions (tests mock actual token operations)
+- Test environment: `node` (not browser)
+
+**Coverage:** Collected from `src/**/*.ts` (excluding `.d.ts`), reports in `coverage/` dir
+
+### 5.3 MCP gateway tests (`banking_mcp_gateway/`)
+
+**Test runner:** Jest with `ts-jest` preset (TypeScript)  
+**Config:** Inline `jest` field in `package.json`  
+**Run from:** `banking_mcp_gateway/` or use root npm scripts (not yet wired at root level)
+
+```bash
+# From banking_mcp_gateway/
+npm test                  # All tests with --forceExit
+npm run test:watch       # Watch mode
+```
+
+**Notable details:**
+- `testMatch`: `**/tests/**/*.test.ts` (all test files live in `tests/` directory)
+- `forceExit: true` by default (required for server-style async cleanup)
+- Includes `tdd-guard-jest` reporter for test structure validation
+
+### 5.4 Agent service tests (`banking_agent_service/`)
+
+**Test runner:** Jest with `ts-jest` preset (TypeScript)  
+**Config:** Inline `jest` field in `package.json`  
+**Run from:** `banking_agent_service/` or use root npm scripts (not yet wired at root level)
+
+```bash
+# From banking_agent_service/
+npm test                  # All tests with --forceExit
+```
+
+**Notable details:**
+- `testMatch`: `**/tests/**/*.test.ts`
+- `forceExit: true` by default (async/await cleanup)
+- Includes `tdd-guard-jest` reporter for regression tracking
+- No `test:watch` or `test:coverage` scripts (minimal setup for agent orchestrator)
+
+### 5.5 Invest service (no tests)
+
+**Status:** `banking_mcp_invest/` has no test suite defined in `package.json`  
+**Reason:** Pure MCP tool server; testing delegated to integration tests via MCP gateway
+
+---
+
+## 6. Test reporters and CI integration
+
+### 6.1 TDD Guard Jest reporter
+
+All active Jest suites are configured with the `tdd-guard-jest` reporter to track test structure quality and catch common anti-patterns:
+
+```javascript
+reporters: [
+  'default',
+  ['tdd-guard-jest', { projectRoot: '/Users/curtismuir/Development/banking' }]
+]
+```
+
+**Services using TDD Guard:**
+- `banking_api_server` (via `jest.config.js`)
+- `banking_mcp_server` (via `jest.config.js`)
+- `banking_mcp_gateway` (via `package.json` jest field)
+- `banking_agent_service` (via `package.json` jest field)
+- `banking_mortgage_service` (via `package.json` jest field)
+- `banking_hitl_service` (via `package.json` jest field)
+
+**What it validates:**
+- Test nesting and organization
+- Assertion patterns (avoid empty test bodies)
+- Anti-patterns in test structure
+- Regression flag tracking
+
+### 6.2 Jest version: 30.4.2 across all services
+
+**Unified upgrade completed** — all Node services now run Jest `^30.4.2`:
+
+| Service | Jest version |
+|---------|--------------|
+| `banking_api_server` | (inherits from devDependencies at root) |
+| `banking_api_ui` | Via CRA (embedded version) |
+| `banking_mcp_server` | `^30.4.2` |
+| `banking_mcp_gateway` | `^30.4.2` |
+| `banking_agent_service` | `^30.4.2` |
+| `banking_mortgage_service` | `^30.4.2` |
+| `banking_hitl_service` | `^30.4.2` |
+| `langchain_agent` | N/A (Python pytest) |
+
+**No known Jest 30 compatibility issues** in the test suite. All builds are clean (`npm run build` exits 0).
+
+---
+
+## 7. Running the full test suite from root
+
+The authoritative test runner is `/scripts/run-all-tests.sh`, wired as `npm test` in root `package.json`:
+
+```bash
+npm test
+```
+
+**This script runs sequentially:**
+1. `banking_api_server`: `npm test -- --forceExit` (~2000 tests, ~2-3 min)
+2. `banking_mcp_server`: `npm run test:unit` (TypeScript, unit only; ~30-60 sec)
+3. `banking_api_ui`: `npm run test:unit` (React, non-interactive; ~1-2 min)
+4. `langchain_agent`: Python pytest (if Python 3.12 or 3 available; ~1-2 min)
+5. `langchain_agent/frontend`: `npm run test:ci` (React, stable subset; ~30-45 sec)
+
+**Total runtime:** ~5-8 minutes (all services, full coverage)
+
+**Environment variables set by script:**
+- `NODE_ENV=test` (global for all steps)
+- `CI=true` (global; triggers non-interactive mode)
+
+**Failure handling:**
+- Script exits with code 1 if ANY service fails
+- Each service runs independently; failure in one does not stop the others
+- Final summary shows which steps passed/failed
+
+**Skips:**
+- `langchain_agent` pytest is skipped if Python is not found (logged as warning, but counts as FAILED in exit code)
+- Other services are always run (Node is a hard requirement)
+
+---
+
+## 8. Coverage thresholds and reporting
+
+### 8.1 API server coverage
+
+**Configured in:** `banking_api_server/jest.config.js`  
+**Thresholds:** Not explicitly set; defaults to no minimum  
+**Reports:** Markdown report auto-written to `banking_api_server/test-results/YYYY-MM-DD-HH-MM-SS-test-results.md`
+
+To view coverage:
+```bash
+cd banking_api_server
+npm run test:coverage
+# Opens coverage/index.html in browser (run: `open coverage/index.html`)
+```
+
+### 8.2 MCP server coverage
+
+**Configured in:** `banking_mcp_server/jest.config.js`  
+**Thresholds:** Not explicitly set  
+**Reporters:** `text`, `lcov`, `html` (standard Jest defaults)  
+**Directory:** `banking_mcp_server/coverage/`
+
+To view:
+```bash
+cd banking_mcp_server
+npm run test:coverage
+open coverage/index.html
+```
+
+### 8.3 UI coverage
+
+**Configured via:** Create React App defaults (CRA manages Jest config)  
+**Thresholds:** None enforced in CI  
+**Reports:** Standard CRA test output (no markdown report like API server)
+
+---
+
+## 9. Debugging and troubleshooting
+
+### 9.1 TypeScript compilation errors in service tests
+
+MCP server, gateway, and agent service use `ts-jest` to compile `.ts` files at test time. If you see `Cannot find module` or `Unknown syntax` errors:
+
+```bash
+# Verify TypeScript is installed
+npm list typescript
+
+# Rebuild to catch compile errors early
+npm run build
+
+# Run with verbose output
+NODE_ENV=test npx jest --verbose
+```
+
+### 9.2 Jest timeout or "forceExit" warnings
+
+The `--forceExit` flag is necessary for server-style tests (open ports, WebSocket listeners). Do NOT remove it from service tests. If a test hangs:
+
+```bash
+# Run with explicit timeout (default 5000 ms)
+npx jest --testTimeout=10000
+
+# Check for unclosed handles
+npm run test -- --detectOpenHandles
+```
+
+### 9.3 Module resolution (uuid, jose shims)
+
+MCP server remaps ESM-only packages to CJS shims. If you see `Cannot find module 'uuid'`:
+
+1. Verify `jest.config.js` has `moduleNameMapper` for `uuid` and `jose`
+2. Check that shim files exist: `src/__mocks__/uuid-cjs.js`, `src/__mocks__/jose-cjs.js`
+3. Run tests with `NODE_ENV=test` explicitly set
+
+### 9.4 TDD Guard reporter warnings
+
+The `tdd-guard-jest` reporter flags anti-patterns like empty test bodies or deep nesting. If you see warnings:
+
+- Review the flagged test file (line number is in the warning)
+- Common fixes: add actual assertions, flatten nesting, or rename to clarify intent
+- These are warnings only; they do not cause test failure
+
+---

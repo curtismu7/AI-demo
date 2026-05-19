@@ -12,10 +12,15 @@ This is a **completely standalone** project — it can be handed to anyone and r
 
 | Component | Port | Description |
 |---|---|---|
-| `banking_api_ui` | 3000 | React frontend (admin + end-user dashboards) |
+| `banking_api_ui` | 4000 | React frontend (admin + end-user dashboards) |
 | `banking_api_server` | 3001 | Express REST API — **Backend-for-Frontend (BFF)** with PingOne OAuth; tokens stay server-side |
-| `banking_mcp_server` | 8080 | MCP tool server for the AI agent |
-| `langchain_agent` | 8000 | LangChain + OpenAI AI banking agent |
+| `banking_mcp_server` | 8080 | TypeScript MCP tool server for the AI agent |
+| `banking_mcp_gateway` | 3005 | MCP Security Gateway — enforces policies and performs token exchange |
+| `banking_agent_service` | 3006 | LangGraph reasoning service for the canonical agent (driven by BFF) |
+| `banking_hitl_service` | 3009 | Human-in-the-Loop consent challenge service |
+| `banking_mcp_invest` | 8081 | Specialized MCP server for investment tools |
+| `banking_mortgage_service` | 8082 | Mortgage service backend |
+| `langchain_agent` | 8888 | Python LangChain + OpenAI demo agent (separate cross-stack exhibit) |
 
 ## New Machine Setup
 
@@ -288,6 +293,7 @@ disconnected network), here's the full set — all seven Node services need
 # Plain JS — install only
 cd banking_api_server   && npm install                       && cd ..
 cd banking_hitl_service && npm install                       && cd ..
+cd banking_mortgage_service && npm install                   && cd ..
 
 # React app (CRA) — install with --legacy-peer-deps; build is handled at runtime
 cd banking_api_ui       && npm install --legacy-peer-deps    && cd ..
@@ -435,7 +441,46 @@ See **[docs/RFC-STANDARDS.md](docs/RFC-STANDARDS.md)** — every RFC and standar
 
 See **[docs/SETUP.md](docs/SETUP.md)** (§ 2 — PingOne Application Configuration and § 3 — Environment Variables) for the full configuration reference, including all required env vars and their PingOne source.
 
+## Testing
+
+Run the full test suite across all services:
+
+```bash
+npm test                                   # all tests
+npm run test:api-server                    # BFF tests only
+npm run test:mcp-server                    # MCP unit tests
+npm run test:mcp-server:integration        # MCP integration tests
+npm run test:ui                            # React component tests (CI mode)
+npm run test:agent                         # LangChain agent tests (Python)
+npm run test:agent-ui                      # Agent frontend tests
+npm run test:e2e:ui:smoke                  # Fast E2E smoke test
+npm run test:e2e:ui                        # Full E2E UI test suite
+npm run test:session                       # Session + BFF token tests
 ```
+
+From within `banking_api_server/`, you can run targeted test suites:
+
+```bash
+cd banking_api_server
+npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration
+npx jest --testPathPattern='step-up-gate|authorize-gate'
+```
+
+**Test framework:** Jest (Node/Express services), Vitest (some TypeScript packages), React Testing Library (UI components), pytest (Python agent).
+
+## Development & Contributing
+
+All development must follow the patterns documented in **[CLAUDE.md](CLAUDE.md)** — the canonical agent instructions for this repository. Read § 1 (**Critical Do-Not-Break Areas**) in **[REGRESSION_PLAN.md](REGRESSION_PLAN.md)** before editing protected files like `routes/oauth.js`, `middleware/auth.js`, or session/token logic.
+
+**Key development conventions:**
+- **Minimal diff discipline** — touch only what the task requires; no while-I'm-here cleanup
+- **Read REGRESSION_PLAN.md § 0–1** before editing files listed there
+- **UI build required** — `cd banking_api_ui && npm run build` must exit 0 after any UI change
+- **Token custody rule** — the BFF (banking_api_server) is the sole token custodian; tokens never reach the browser
+- **Quote secrets in .env** — special characters like `~`, `-`, `.` break shell parsing if unquoted
+- **No hardcoded localhost** — all OAuth redirect URIs use the configured host (`api.ping.demo` by default), never hardcoded `localhost:3001` / `localhost:4000`
+
+See **[CONTEXT.md](CONTEXT.md)** for glossary of terms (BFF, gateway, agent, consent, delegation); **[ARCHITECTURE.md](ARCHITECTURE.md)** for standards and architecture decisions; and **[docs/adr/](docs/adr/)** for architectural decision records.
 
 ## Architecture
 
@@ -443,7 +488,7 @@ See **[docs/SETUP.md](docs/SETUP.md)** (§ 2 — PingOne Application Configurati
 ┌─────────────────────────────────────────────────────────┐
 │              Banking Digital Assistant                    │
 │                                                           │
-│  banking_api_ui (:3000)   ←→   banking_api_server (:3001) │
+│  banking_api_ui (:4000)   ←→   banking_api_server (:3001) │
 │       React UI                  Express banking API        │
 │                                    ↑ JWT validation        │
 │                                    │ via PingOne JWKS      │
@@ -486,10 +531,15 @@ See **[README (mermaid).md](README%20(mermaid).md)** for detailed token operatio
 
 | Service | Port | Description |
 |---|---|---|
-| `banking_api_server` | 3001 | Express REST API — banking accounts, transactions, admin |
-| `banking_api_ui` | 3000 | React frontend for admin/customer portal |
+| `banking_api_server` | 3001 | Express REST API — banking accounts, transactions, admin; **sole token custodian** |
+| `banking_api_ui` | 4000 | React frontend for admin/customer portal |
 | `banking_mcp_server` | 8080 | TypeScript MCP server — exposes banking tools to AI agents |
-| `langchain_agent` | 8888 | LangChain agent + WebSocket frontend |
+| `banking_mcp_gateway` | 3005 | MCP Security Gateway — enforces policies, re-exchanges tokens, routes to MCP servers |
+| `banking_agent_service` | 3006 | LangGraph reasoning service for the canonical agent |
+| `banking_hitl_service` | 3009 | Human-in-the-Loop consent challenge service |
+| `banking_mcp_invest` | 8081 | Specialized MCP server for investment tools |
+| `banking_mortgage_service` | 8082 | Mortgage service backend |
+| `langchain_agent` | 8888 | Python LangChain + OpenAI demo agent (cross-stack exhibit) |
 
 ## Token Exchange Flow (RFC 8693)
 
@@ -594,19 +644,15 @@ The app is deployed to Vercel as a single serverless function (`api/handler.js`)
 
 ### Quick Vercel Setup
 
-Run the interactive setup wizard — it detects conflicts, validates Upstash connectivity, generates a session secret, and optionally pushes values to Vercel via the CLI:
+Set environment variables manually via **Vercel Dashboard → Project → Settings → Environment Variables**. Use the table below as your reference for required variables. You can also use the Vercel CLI:
 
 ```bash
-npm run setup:vercel
+vercel env add UPSTASH_REDIS_REST_URL
+vercel env add SESSION_SECRET
+# ... add each variable from the table below
 ```
 
-To check your current config without making changes:
-
-```bash
-npm run setup:vercel:check
-```
-
-The wizard writes a `.env.vercel.local` file (gitignored). Copy these values to **Vercel Dashboard → Project → Settings → Environment Variables**.
+Create a local `.env.vercel.local` file (gitignored) to track your Vercel environment values locally. Copy these values to **Vercel Dashboard → Project → Settings → Environment Variables**.
 
 ### Required Environment Variables
 
@@ -673,8 +719,7 @@ Add these to your PingOne application after getting your Vercel URL:
 
 | File | Purpose |
 |---|---|
-| `.env.vercel.example` | Template for all Vercel environment variables |
-| `.env.vercel.local` | Your local copy (gitignored) — generated by `npm run setup:vercel` |
+| `.env.vercel.local` | Your local copy (gitignored) — create manually; see Vercel Deployment section above |
 | `banking_api_server/.env` | Local dev config (PingOne credentials, port) |
 | `banking_mcp_server/.env.development` | MCP server config (copy to `.env` before running) |
 | `langchain_agent/.env` | Agent config (OpenAI key, PingOne endpoints) |
