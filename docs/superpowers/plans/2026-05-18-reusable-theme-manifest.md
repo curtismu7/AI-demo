@@ -10,6 +10,20 @@
 
 **Data-scope note (decided 2026-05-18):** Phase 1 is presentation-only. Real tool data is **intentionally NOT themed**: `banking_api_server/data/store.js` SQLite accounts/transactions still return `"Checking"/"Savings"/"Deposit"`, and `banking_mortgage_service/mortgageServer.js` (api_key disposition via `show_mortgage`) still returns the hardcoded `$425,000 / 6.125%` mortgage payload. Under Best Buy the agent's tool calls return banking data; the retail experience is carried by `<RetailDashboard>`'s manifest mock data + chip labels + greeting. Relabeling returned data / real retail responses is the **Phase 2 boundary** — do not touch `store.js`, the mortgage service, the gateway, or MCP in this plan.
 
+**TASK 17 DESCOPED (decided 2026-05-19, user-approved):** The original
+Task 17 (delete `IndustryBrandingContext`/`VerticalContext` shims +
+`industryPresets.js` + `VerticalSwitcher`, migrating all consumers to
+`useTheme()`) requires touching **18 non-test files** (login, nav, footer,
+dashboard, agent, modals). The shims already correctly delegate to
+`useTheme()` — deletion is pure cosmetic churn with zero functional benefit
+and real regression risk across core surfaces, and the plan's success
+criteria are already met without it. Task 17 is descoped to: **verify the
+shims correctly delegate + mark them an intentional permanent compatibility
+layer** (header comment changed from "removed in cleanup task" to
+"permanent compatibility layer"). The 18-file migration is NOT done. The
+single-source-of-truth goal is achieved: all theme state flows from the one
+`ThemeContext`; the shims are thin pass-throughs to it.
+
 **PLAN DEFECT + CORRECTION (discovered 2026-05-19 during Task 5 execution):**
 The plan's research **missed** that `banking_api_ui/src/context/ThemeContext.js`
 **already exists** as the light/dark-mode switcher, is mounted as
