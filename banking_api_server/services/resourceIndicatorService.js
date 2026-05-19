@@ -237,7 +237,7 @@ function validateResourceSelection(clientId, selectedResources) {
  */
 function validateScopeResourceCompatibility(scopes, resources) {
   const resourceScopeMap = {
-    'https://banking-api.ping.demo/': ['banking:', 'transactions:', 'accounts:'],
+    'https://banking-api.ping.demo/': ['read', 'write', 'transfer', 'transactions:', 'accounts:', 'mortgage:', 'ai:', 'admin:', 'users:'],
     'https://mcp-server.pingdemo.com/': ['ai:', 'agent:', 'mcp:'],
     'https://admin-api.ping.demo/': ['admin:', 'users:', 'config:'],
     'https://config-api.ping.demo/': ['config:', 'settings:']
