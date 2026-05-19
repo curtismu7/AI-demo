@@ -224,8 +224,8 @@ export class AuthorizationRequestGenerator {
       'banking:accounts:read',
       'banking:transactions:read',
       'banking:transactions:write',
-      'banking:read',
-      'banking:write',
+      'read',
+      'write',
       'openid',
       'profile',
       'email'
