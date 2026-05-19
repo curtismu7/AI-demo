@@ -142,12 +142,13 @@ router.post('/', requireAdminOrUnconfigured, async (req, res) => {
       return res.status(400).json({ error: 'invalid_body', message: 'JSON body required.' });
     }
 
-    // Validate: only accept known keys
+    // Validate: only accept known keys (case-insensitive — UI sends lowercase, FIELD_DEFS keys are UPPER)
+    const dataLower = Object.fromEntries(Object.entries(data).map(([k, v]) => [k.toLowerCase(), v]));
     const filtered = {};
     for (const key of Object.keys(FIELD_DEFS)) {
-      if (data[key] !== undefined) {
-        const val = String(data[key]).trim();
-        filtered[key] = val; // empty string = "leave unchanged" (setConfig skips empty)
+      const val = dataLower[key.toLowerCase()];
+      if (val !== undefined) {
+        filtered[key] = String(val).trim(); // empty string = "leave unchanged" (setConfig skips empty)
       }
     }
 

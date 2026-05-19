@@ -13,6 +13,7 @@ import {
   savePublicConfig,
   loadPublicConfig,
 } from "../../services/configService";
+import bffAxios from "../../services/bffAxios";
 import { useAgentUiMode } from "../../context/AgentUiModeContext";
 import { useEducationUI } from "../../context/EducationUIContext";
 import { useIndustryBranding } from "../../context/IndustryBrandingContext";
@@ -1854,7 +1855,10 @@ const UnifiedConfigurationPage: FC<{
         setState((prevState) => ({
           ...prevState,
           pingoneRegion: (cfg.pingone_region as string) || "com",
-          pingoneEnvironmentId: (cfg.pingone_environment_id as string) || process.env.REACT_APP_PINGONE_ENVIRONMENT_ID || "",
+          pingoneEnvironmentId:
+            (cfg.pingone_environment_id as string) ||
+            process.env.REACT_APP_PINGONE_ENVIRONMENT_ID ||
+            "",
           adminClientId: (cfg.admin_client_id as string) || "",
           adminClientSecret: (cfg.admin_client_secret as string) || "",
           adminAuthMethod:
@@ -2032,18 +2036,18 @@ const UnifiedConfigurationPage: FC<{
           admin_client_id: state.adminClientId,
         }),
       });
-      const data = (await res.json()) as { success: boolean; message: string };
+      const data = (await res.json()) as { ok: boolean; message: string };
       const msg =
         data.message ||
-        (data.success
+        (data.ok
           ? "PingOne environment reached successfully."
           : "Connection failed");
       setState((prev) => ({
         ...prev,
-        connectionTestStatus: data.success ? "success" : "error",
+        connectionTestStatus: data.ok ? "success" : "error",
         connectionTestMessage: msg,
       }));
-      if (data.success) notifySuccess(msg);
+      if (data.ok) notifySuccess(msg);
       else notifyError(msg);
     } catch (_e) {
       setState((prev) => ({
@@ -2098,27 +2102,25 @@ const UnifiedConfigurationPage: FC<{
   const saveConfiguration = useCallback(async () => {
     setState((prev) => ({ ...prev, saveStatus: "saving" }));
     try {
-      await savePublicConfig({
-        ...state,
-        pingone_region: state.pingoneRegion,
-        pingone_environment_id: state.pingoneEnvironmentId,
-        admin_client_id: state.adminClientId,
-        admin_client_secret: state.adminClientSecret,
-        admin_token_endpoint_auth_method: state.adminAuthMethod,
-        admin_redirect_uri: state.adminRedirectUri,
-        user_client_id: state.userClientId,
-        user_client_secret: state.userClientSecret,
-        user_redirect_uri: state.userRedirectUri,
-        pingone_mfa_policy_id: state.mfaPolicyId,
+      const payload = {
+        PINGONE_REGION: state.pingoneRegion,
+        PINGONE_ENVIRONMENT_ID: state.pingoneEnvironmentId,
+        PINGONE_ADMIN_CLIENT_ID: state.adminClientId,
+        PINGONE_ADMIN_CLIENT_SECRET: state.adminClientSecret,
+        PINGONE_ADMIN_TOKEN_ENDPOINT_AUTH_METHOD: state.adminAuthMethod,
+        PINGONE_ADMIN_REDIRECT_URI: state.adminRedirectUri,
+        PINGONE_USER_CLIENT_ID: state.userClientId,
+        PINGONE_USER_CLIENT_SECRET: state.userClientSecret,
+        PINGONE_USER_REDIRECT_URI: state.userRedirectUri,
+        STEP_UP_AMOUNT_THRESHOLD: state.mfaStepUpThreshold,
         step_up_amount_threshold: state.mfaStepUpThreshold,
-        mfa_step_up_threshold: state.mfaStepUpThreshold,
         agent_transaction_count_limit: state.agentTransactionCountLimit,
         agent_transaction_value_limit: state.agentTransactionValueLimit,
-        ciba_enabled: state.cibaEnabled,
-        mcp_server_url: state.mcpServerUrl,
-        mcp_resource_uri: state.mcpResourceUri,
-        authorize_worker_client_id: state.workerClientId,
-        pingone_admin_token_endpoint_auth_method: state.workerAuthMethod,
+        CIBA_ENABLED: state.cibaEnabled,
+        PINGONE_MCP_SERVER_URL: state.mcpServerUrl,
+        PINGONE_RESOURCE_MCP_SERVER_URI: state.mcpResourceUri,
+        PINGONE_AUTHORIZE_WORKER_CLIENT_ID: state.workerClientId,
+        PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET: state.workerClientSecret,
         demo_scenario: state.demoScenario,
         industry_id: state.industryId,
         agent_ui_mode: state.agentUiMode,
@@ -2130,12 +2132,13 @@ const UnifiedConfigurationPage: FC<{
         transaction_preset: state.transactionPreset,
         agent_mode: state.agentMode,
         vercel_deploy_url: state.vercelDeployUrl,
-        authorize_worker_client_secret: state.workerClientSecret,
         log_level: state.logLevel,
         debug_show_token_details: state.debugShowTokenDetails,
         debug_show_api_calls: state.debugShowApiCalls,
         log_filter_categories: state.logFilterCategories,
-      });
+      };
+      await bffAxios.post("/api/admin/config", payload);
+      await savePublicConfig(payload);
 
       if (isAdminUser) {
         try {
@@ -2384,7 +2387,7 @@ const UnifiedConfigurationPage: FC<{
           <div className="cfg-test-connection">
             <button
               type="button"
-              className="btn btn-secondary"
+              className={`btn ${state.connectionTestStatus === "success" ? "btn-success" : "btn-secondary"}`}
               onClick={testConnection}
               disabled={
                 state.connectionTestStatus === "testing" ||

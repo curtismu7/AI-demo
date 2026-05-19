@@ -65,7 +65,11 @@ function pollDemoStatus(onAllUp, onStatus, intervalMs = 5000) {
   };
 }
 
-export default function DemoServerCheckModal({ downServers, onAllUp, onDismiss }) {
+export default function DemoServerCheckModal({
+  downServers,
+  onAllUp,
+  onDismiss,
+}) {
   const [servers, setServers] = useState(downServers || []);
   const [copied, setCopied] = useState(null);
   const cleanupRef = useRef(null);
