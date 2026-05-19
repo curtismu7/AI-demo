@@ -3,9 +3,9 @@
 /**
  * RFC 8693 token re-exchange for MCP Gateway.
  *
- * The gateway receives a delegated token from agent1 (aud: mcp-gw.bxf.com, sub: user, act: agent1).
+ * The gateway receives a delegated token from agent1 (aud: api.ping.demo, sub: user, act: agent1).
  * It re-exchanges that token against PingOne to get a backend-scoped token
- * (aud: mcp-olb.bxf.com or mcp-invest.bxf.com) with the full act chain preserved.
+ * (aud: api.ping.demo or mcp-invest.bxf.com) with the full act chain preserved.
  */
 
 import axios from 'axios';

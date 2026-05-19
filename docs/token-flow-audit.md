@@ -59,10 +59,10 @@ Tokens that appear in the chip-click flow, in mint order:
 
 | Property | Expected | Observed |
 |---|---|---|
-| Minted by | PingOne `/as/token` (client_credentials grant) with `audience=mcp-gw.bxf.com` | ditto |
+| Minted by | PingOne `/as/token` (client_credentials grant) with `audience=api.ping.demo` | ditto |
 | Issuing app | Super Banking MCP Exchanger — `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` / `AGENT_OAUTH_CLIENT_ID` | ditto |
 | App type | something that respects `audience` on CC requests | **`WORKER`** ← wrong |
-| `aud` | `["mcp-gw.bxf.com"]` (the MCP Gateway custom resource) | **`["https://api.pingone.com"]`** ← system Management API resource |
+| `aud` | `["api.ping.demo"]` (the MCP Gateway custom resource) | **`["https://api.pingone.com"]`** ← system Management API resource |
 | Used as | `actor_token` in Exchange #2 | breaks Exchange #2 |
 
 **Status: ❌ Same problem as T2.** Source: provisionService line 1642-1647 creates `Super Banking MCP Exchanger` with `'WORKER'`.
@@ -131,7 +131,7 @@ Every `getClientCredentialsToken*` call in the chip path:
 | File:line | Function | App used | Audience requested | Audience actually issued |
 |---|---|---|---|---|
 | `agentMcpTokenService.js:1614` | Step 1 actor mint | **AI Agent** (`PINGONE_AI_AGENT_CLIENT_ID`) | `agent-gateway.bxf.com` | `https://api.pingone.com` ❌ |
-| `agentMcpTokenService.js:1735` | Step 3 actor mint | **MCP Exchanger** (`PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID`) | `mcp-gw.bxf.com` | `https://api.pingone.com` ❌ |
+| `agentMcpTokenService.js:1735` | Step 3 actor mint | **MCP Exchanger** (`PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID`) | `api.ping.demo` | `https://api.pingone.com` ❌ |
 | `oauthService.js:474` `getAgentClientCredentialsToken()` | legacy path | Worker app | none | `https://api.pingone.com` ✅ (this is meant for Mgmt API calls) |
 | `agentCCTokenService.js:58` | various | MCP Exchanger | optional | varies — `WORKER`-type, same problem |
 

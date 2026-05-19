@@ -6,7 +6,7 @@
     "version": "1.0.0"
   },
   "servers": [
-    { "url": "https://mcp-olb.bxf.com", "description": "Production mcp-olb" },
+    { "url": "https://api.ping.demo", "description": "Production mcp-olb" },
     { "url": "http://localhost:8080", "description": "Local development" }
   ],
   "security": [

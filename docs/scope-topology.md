@@ -40,7 +40,7 @@ Mirrored scopes (RFC 8693 exchange-hop, ARCHITECTURE-TRUTHS T-10): `read`, `writ
 
 ### Super Banking MCP Gateway
 
-Audience: `mcp-gw.bxf.com`
+Audience: `api.ping.demo`
 
 Native scopes: `mcp:invoke`
 
@@ -56,8 +56,8 @@ Native scopes: `agent:invoke`
 
 | Service | Resource | Validates aud | Gates on tool scopes | Notes |
 |---|---|---|---|---|
-| `banking_api_server` | Super Banking API | `api.bxf.com` | no | BFF / token custodian. Performs RFC 8693 exchange #1 (user token -> mcp-gw.bxf.com audience). |
-| `banking_mcp_gateway` | Super Banking MCP Gateway | `mcp-gw.bxf.com` | yes | MCP Gateway. Validates inbound aud === mcp-gw.bxf.com and enforces per-tool requiredScopes (getScopesForGatewayTool) on the inbound bearer BEFORE credential swap. Therefore every gateway-surface tool scope MUST be mirrored onto the Super Banking MCP Gateway resource (ARCHITECTURE-TRUTHS T-10). |
+| `banking_api_server` | Super Banking API | `api.bxf.com` | no | BFF / token custodian. Performs RFC 8693 exchange #1 (user token -> api.ping.demo audience). |
+| `banking_mcp_gateway` | Super Banking MCP Gateway | `api.ping.demo` | yes | MCP Gateway. Validates inbound aud === api.ping.demo and enforces per-tool requiredScopes (getScopesForGatewayTool) on the inbound bearer BEFORE credential swap. Therefore every gateway-surface tool scope MUST be mirrored onto the Super Banking MCP Gateway resource (ARCHITECTURE-TRUTHS T-10). |
 | `banking_mcp_server` | Super Banking MCP Server | `mcp-server.bxf.com` | yes | Backend MCP tool server. Receives the gateway re-exchanged token (aud === mcp-server.bxf.com); banking tool scopes are mirrored here for exchange hop #3. |
 | `banking_agent_service` | Super Banking Agent Gateway | `agent-gateway.bxf.com` | no | Agent Gateway (Two-Exchange Step 1 audience for the AI Agent client-credentials token). |
 

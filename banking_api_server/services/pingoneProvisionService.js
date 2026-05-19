@@ -393,7 +393,7 @@ class PingOneProvisionService {
     //     produces "INVALID_VALUE for attribute audience" → INVALID_REQUEST.
     //   - audience is optional; omitting it defaults to `name`. We pass the
     //     caller-provided audience explicitly so callers can use a stable
-    //     loopback hostname like `mcp-gw.bxf.com`.
+    //     loopback hostname like `api.ping.demo`.
     const data = {
       name,
       description,
@@ -1139,7 +1139,7 @@ class PingOneProvisionService {
       '# MCP Gateway (banking_mcp_gateway on :3005)',
       `MCP_GW_CLIENT_ID=${provisioned.mcpGwApp?.clientId || ''}`,
       `MCP_GW_CLIENT_SECRET=${provisioned.mcpGwApp?.clientSecret || '<set-in-pingone-console>'}`,
-      `MCP_GW_RESOURCE_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcp-gw.bxf.com'}`,
+      `MCP_GW_RESOURCE_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'api.ping.demo'}`,
       'MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD=post',
       '',
       '# Agent Service (banking_agent_service on :3006)',
@@ -1155,7 +1155,7 @@ class PingOneProvisionService {
       `PINGONE_AI_AGENT_CLIENT_ID=${provisioned.aiAgentApp?.clientId || ''}`,
       `PINGONE_AI_AGENT_CLIENT_SECRET=${provisioned.aiAgentApp?.clientSecret || '<set-in-pingone-console>'}`,
       `PINGONE_RESOURCE_AGENT_GATEWAY_URI=${provisioned.agentGwResourceServer?.audience?.[0] || 'agent-gateway.bxf.com'}`,
-      `PINGONE_RESOURCE_MCP_GATEWAY_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcp-gw.bxf.com'}`,
+      `PINGONE_RESOURCE_MCP_GATEWAY_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'api.ping.demo'}`,
       '# AGENT_OAUTH_CLIENT_ID/SECRET aliases — same MCP Token Exchanger app as',
       '# PINGONE_MCP_EXCHANGER_*; some callers read them under these names.',
       '# Keep both in sync.',
@@ -1906,7 +1906,7 @@ class PingOneProvisionService {
       // them for backend-MCP audiences. See banking_mcp_gateway/src/config.ts.
       steps.push({ step: 'mcp-gw-resource', icon: '🛡️', message: 'Creating MCP Gateway resource server...' });
       onStep(steps[steps.length - 1]);
-      const mcpGwAudience = config.mcpGatewayAudience || 'mcp-gw.bxf.com';
+      const mcpGwAudience = config.mcpGatewayAudience || 'api.ping.demo';
       const mcpGwResourceResult = await this.createResourceServer(
         _provisioningResourceName('Super Banking MCP Gateway'),
         'Inbound resource server for the MCP Gateway (aud target for delegated tokens)',
