@@ -1462,11 +1462,7 @@ export default function App() {
           <Router
             future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
           >
-            <IndustryBrandingProvider>
-              <VerticalProvider>
-                <AppWithAuth />
-              </VerticalProvider>
-            </IndustryBrandingProvider>
+            <AppWithAuth />
           </Router>
         </ExchangeModeProvider>
       </AgentUiModeProvider>
