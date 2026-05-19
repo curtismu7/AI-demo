@@ -11,6 +11,7 @@
  */
 const express = require('express');
 const configStore = require('../services/configStore');
+const { resolveAgentMode, AGENT_MODES } = require('../services/agentModeResolver');
 const path = require('node:path');
 const fs = require('node:fs');
 
@@ -112,6 +113,9 @@ router.get('/config/status', (req, res) => {
       },
       provider_models: PROVIDER_MODELS,
       default_models: DEFAULT_MODELS,
+      agent_mode: configStore.getEffective('agent_mode') || 'heuristics_helix',
+      external_wiring: configStore.getEffective('agent_external_wiring') || 'bff',
+      agent_modes: AGENT_MODES.map((m) => ({ id: m.id, label: m.label, external: m.external })),
     });
   } catch (err) {
     console.error('[langchainConfig GET] Error:', err);
@@ -123,6 +127,7 @@ router.get('/config/status', (req, res) => {
 // Body: { provider, model, key_type, key, helix_api_key, helix_base_url, helix_environment_id, helix_agent_id, helix_prompt_field_id }
 router.post('/config', async (req, res) => {
   const { provider, model, key_type, key, helix_api_key, helix_base_url, helix_environment_id, helix_agent_id, helix_prompt_field_id } = req.body || {};
+  const { agent_mode, external_wiring } = req.body || {};
 
   const updates = {};
   const dbUpdates = {}; // updates for SQLite persistence
@@ -167,6 +172,19 @@ router.post('/config', async (req, res) => {
 
   setLangchainConfig(req, updates);
 
+  if (agent_mode !== undefined) {
+    const am = resolveAgentMode(agent_mode, external_wiring);
+    try {
+      await configStore.setConfig({
+        agent_mode: am.mode,
+        agent_external_wiring: am.externalWiring || '',
+      });
+    } catch (err) {
+      console.error('[langchainConfig POST] agent_mode persist failed:', err.message);
+    }
+    if (am.provider) setLangchainConfig(req, { provider: am.provider });
+  }
+
   // Persist Helix credentials to SQLite
   if (Object.keys(dbUpdates).length > 0) {
     try {
@@ -193,7 +211,18 @@ router.post('/config', async (req, res) => {
     });
   }
 
-  res.json({ ok: true, provider: activeProvider, model: cfg.model || DEFAULT_MODELS[activeProvider], key_set: { [activeProvider]: true } });
+  res.json({
+    ok: true,
+    provider: activeProvider,
+    model: cfg.model || DEFAULT_MODELS[activeProvider],
+    key_set: { [activeProvider]: true },
+    agent_mode: agent_mode !== undefined
+      ? resolveAgentMode(agent_mode, external_wiring).mode
+      : (configStore.getEffective('agent_mode') || null),
+    external_wiring: agent_mode !== undefined
+      ? resolveAgentMode(agent_mode, external_wiring).externalWiring
+      : (configStore.getEffective('agent_external_wiring') || null),
+  });
 });
 
 // DELETE /api/langchain/config/key/:keyType — clear Helix config from session + SQLite

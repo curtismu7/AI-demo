@@ -875,6 +875,10 @@ class ConfigStore {
 
       // Phase 266 — Path A demo API key
       demo_apikey_backend_service_key:      ['DEMO_APIKEY_SERVICE_KEY'],
+
+      // Agent mode (five-mode provider)
+      agent_mode:                           ['AGENT_MODE'],
+      agent_external_wiring:                ['AGENT_EXTERNAL_WIRING'],
     };
 
     const envVars = envFallbackMap[key] || [];
