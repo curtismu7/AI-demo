@@ -28,36 +28,35 @@ main.admin-dash-main--split {
   grid-template-columns: minmax(320px, 380px) 1fr;
   gap: 1rem;
   align-items: start;
-  height: calc(100vh - var(--toolbar-height, 56px));
-  overflow: hidden;
 }
 
-/* Token Chain: column 1, sticky so it stays in view while right side scrolls */
+/* Token Chain: column 1 — scrolls within its own height, sticks to viewport top */
 main.admin-dash-main--split .dash-shell-card--token {
   grid-column: 1;
   position: sticky;
   top: 0;
-  max-height: calc(100vh - var(--toolbar-height, 56px) - 2rem);
+  height: calc(100vh - 120px);
   overflow-y: auto;
 }
 
-/* All other admin sections: column 2 */
+/* All other admin sections: column 2 — scrollable independently */
 main.admin-dash-main--split .dash-shell-card:not(.dash-shell-card--token) {
   grid-column: 2;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
 }
 
 /* Responsive: single column below 1024px regardless of mode */
 @media (max-width: 1024px) {
   main.admin-dash-main--split {
     display: block;
-    height: auto;
-    overflow: visible;
   }
 
   main.admin-dash-main--split .dash-shell-card--token,
   main.admin-dash-main--split .dash-shell-card:not(.dash-shell-card--token) {
     grid-column: unset;
     position: static;
+    height: auto;
     max-height: none;
     overflow-y: visible;
   }
