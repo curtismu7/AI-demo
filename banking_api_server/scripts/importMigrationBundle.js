@@ -458,10 +458,51 @@ async function main() {
       copyTree(persistentSrc, DATA_PERSISTENT);
     }
 
-    // Write .env
+    // Write .env — MERGE strategy: existing keys win, archive fills gaps.
+    // A blind overwrite wipes the PingOne client IDs that are specific to
+    // this machine's bootstrap, breaking OAuth until manually restored.
     const envSrc = path.join(extractDir, '.env');
     if (manifest.hasEnv !== false && fs.existsSync(envSrc)) {
-      fs.copyFileSync(envSrc, ENV_FILE);
+      const parseEnvLines = (text) => {
+        const result = {};
+        for (const raw of text.split('\n')) {
+          const line = raw.trim();
+          if (!line || line.startsWith('#')) continue;
+          const eq = line.indexOf('=');
+          if (eq < 1) continue;
+          result[line.slice(0, eq).trim()] = line.slice(eq + 1);
+        }
+        return result;
+      };
+      const archiveEnv = parseEnvLines(fs.readFileSync(envSrc, 'utf8'));
+      const existingText = fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, 'utf8') : '';
+      const existingEnv = parseEnvLines(existingText);
+      // Credential keys that must never be overwritten by an archive.
+      const CREDENTIAL_KEYS = new Set([
+        'PINGONE_ADMIN_CLIENT_ID', 'PINGONE_ADMIN_CLIENT_SECRET',
+        'PINGONE_USER_CLIENT_ID', 'PINGONE_USER_CLIENT_SECRET',
+        'PINGONE_MCP_EXCHANGER_CLIENT_ID', 'PINGONE_MCP_EXCHANGER_CLIENT_SECRET',
+        'MCP_GW_CLIENT_ID', 'MCP_GW_CLIENT_SECRET',
+        'AGENT_CLIENT_ID', 'AGENT_CLIENT_SECRET',
+        'PINGONE_AI_AGENT_CLIENT_ID', 'PINGONE_AI_AGENT_CLIENT_SECRET',
+        'PINGONE_WORKER_CLIENT_ID', 'PINGONE_WORKER_CLIENT_SECRET',
+        'AGENT_OAUTH_CLIENT_ID', 'AGENT_OAUTH_CLIENT_SECRET',
+        'PINGONE_ADMIN_REDIRECT_URI', 'PINGONE_USER_REDIRECT_URI',
+        'SESSION_SECRET', 'CONFIG_ENCRYPTION_KEY',
+        'VAULT_PASSWORD', 'BFF_INTERNAL_SECRET',
+      ]);
+      // Start from archive lines; overwrite with existing values for protected keys.
+      const merged = { ...archiveEnv };
+      for (const key of CREDENTIAL_KEYS) {
+        if (existingEnv[key]) merged[key] = existingEnv[key];
+      }
+      // Also carry forward any existing key not present in the archive at all.
+      for (const [key, val] of Object.entries(existingEnv)) {
+        if (!(key in merged)) merged[key] = val;
+      }
+      const mergedText = Object.entries(merged).map(([k, v]) => `${k}=${v}`).join('\n') + '\n';
+      fs.writeFileSync(ENV_FILE, mergedText, 'utf8');
+      console.log('  .env merged (existing credentials preserved, archive filled gaps)');
     }
 
   } finally {

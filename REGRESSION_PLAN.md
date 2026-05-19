@@ -125,6 +125,14 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-19 — data:import wipes BFF .env credentials (merge strategy fix)
+
+**Root cause:** `importMigrationBundle.js` did a blind `copyFileSync(archiveSrc, ENV_FILE)` — the archive's `.env` (from another machine or a stale export) overwrote PingOne client IDs, redirect URIs, and `SESSION_SECRET` specific to this bootstrap. OAuth broke immediately: BFF had no `adminClientId`/`userClientId`, `/api/config?error=not_configured` on every login attempt.
+
+**Fix:** replaced blind overwrite with a merge strategy — archive fills in missing/new keys; the `CREDENTIAL_KEYS` set (all `*_CLIENT_ID`, `*_CLIENT_SECRET`, redirect URIs, `SESSION_SECRET`, `VAULT_PASSWORD`, `BFF_INTERNAL_SECRET`) is never overwritten if already present in the existing `.env`. Any key not in the archive is also carried forward. Existing `.env` always wins for credentials; archive wins for structural/config keys.
+
+**File:** `banking_api_server/scripts/importMigrationBundle.js` — `.env` write block (was line ~464).
+
 ### 2026-05-18 — Phase 4c+4d: single BankingAgent instance complete; "bottom" placement retired (archived)
 
 **Phase 4c — middle column = portal host (collapse-safe):**
