@@ -1091,7 +1091,7 @@ class PingOneProvisionService {
     try {
       content = await fs.readFile(devEnvPath, 'utf8');
     } catch (_e) {
-      return null; // no file — vault path / run-bank template covers it
+      content = ''; // create from scratch on clean clone
     }
 
     const gwId = provisioned.mcpGwApp?.clientId;
@@ -1101,14 +1101,30 @@ class PingOneProvisionService {
       return null; // gateway app / mcp resource not provisioned — leave as-is
     }
 
+    const envId = provisioned.envId || this.envId;
+    const region = provisioned.region || this.region || 'com';
+    const encKey = require('node:crypto').randomBytes(32).toString('hex');
+
     const setLine = (text, key, value) => {
       const re = new RegExp(`^${key}=.*$`, 'm');
       const line = `${key}=${value}`;
       return re.test(text) ? text.replace(re, line) : `${text}\n${line}`;
     };
+
+    // Introspection identity (3 keys — MCP_GW_* wins at runtime via environments.ts fallback)
     content = setLine(content, 'PINGONE_CLIENT_ID', gwId);
     content = setLine(content, 'PINGONE_CLIENT_SECRET', `"${gwSecret}"`);
     content = setLine(content, 'MCP_SERVER_RESOURCE_URI', mcpAud);
+
+    // Derived endpoint vars required by config validator (computed from envId+region)
+    content = setLine(content, 'PINGONE_BASE_URL', `https://api.pingone.${region}/v1/environments/${envId}`);
+    content = setLine(content, 'PINGONE_INTROSPECTION_ENDPOINT', `https://auth.pingone.${region}/${envId}/as/introspect`);
+    content = setLine(content, 'PINGONE_AUTHORIZATION_ENDPOINT', `https://auth.pingone.${region}/${envId}/as/authorize`);
+    content = setLine(content, 'PINGONE_TOKEN_ENDPOINT', `https://auth.pingone.${region}/${envId}/as/token`);
+    // Only write ENCRYPTION_KEY if not already set (preserve existing key across reruns)
+    if (!(/^ENCRYPTION_KEY=.+$/m).test(content)) {
+      content = setLine(content, 'ENCRYPTION_KEY', encKey);
+    }
 
     await fs.writeFile(devEnvPath, content, 'utf8');
     return devEnvPath;
