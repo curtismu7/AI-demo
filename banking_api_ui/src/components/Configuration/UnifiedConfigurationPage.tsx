@@ -2610,9 +2610,11 @@ const UnifiedConfigurationPage: FC<{
             help="The UUID identifying your PingOne environment. Find it in PingOne Admin → Environment → Properties → Environment ID. This value appears in all OAuth and API URLs."
           />
           <div className="cfg-next-step-hint">
-            <span>&#10003; Next:</span> Go to{" "}
-            <strong>PingOne Config &#8594; OAuth Flows</strong> to add client
-            credentials.
+            <span>&#10003; Next:</span>{" "}
+            <a href="/configure?tab=pingone-config&section=oauth-flows">
+              <strong>PingOne Config &#8594; OAuth Flows</strong>
+            </a>{" "}
+            to add client credentials.
           </div>
         </div>
       );
