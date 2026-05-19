@@ -107,10 +107,8 @@ import {
 import { DemoTourProvider } from "./context/DemoTourContext";
 import { EducationUIProvider } from "./context/EducationUIContext";
 import { ExchangeModeProvider } from "./context/ExchangeModeContext";
-import { IndustryBrandingProvider } from "./context/IndustryBrandingContext";
 import { SpinnerProvider } from "./context/SpinnerContext";
 import { TokenChainProvider } from "./context/TokenChainContext";
-import { VerticalProvider } from "./context/VerticalContext";
 import LangChainPage from "./pages/LangChainPage";
 import { monitorApiHealth } from "./services/bankingRestartNotificationService";
 import { getCachedJson } from "./services/cachedStatusService";

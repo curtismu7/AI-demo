@@ -7,7 +7,10 @@ beforeEach(() => {
   global.fetch = jest.fn((url, opts) => {
     if (url === '/api/config/verticals/list') {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({
-        verticals: [{ id: 'banking', displayName: 'Super Banking' }, { id: 'retail', displayName: 'Best Buy' }],
+        verticals: [
+          { id: 'banking', displayName: 'Super Banking', tagline: 'AI-Powered Banking Demo', theme: { cssVars: {} } },
+          { id: 'retail', displayName: 'Best Buy', tagline: 'AI-Powered Retail Demo', theme: { cssVars: {} } },
+        ],
       }) });
     }
     if (url === '/api/config/vertical' && (!opts || opts.method !== 'PUT')) {
@@ -23,6 +26,7 @@ test('lists themes and PUTs on change', async () => {
   render(<ThemeProvider><ThemePicker variant="toolbar" /></ThemeProvider>);
   await waitFor(() => expect(screen.getByRole('combobox')).toBeInTheDocument());
   expect(screen.getByText('Best Buy')).toBeInTheDocument();
+  expect(screen.getByText('Super Banking')).toBeInTheDocument();
   fireEvent.change(screen.getByRole('combobox'), { target: { value: 'retail' } });
   await waitFor(() =>
     expect(global.fetch).toHaveBeenCalledWith(

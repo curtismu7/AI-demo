@@ -49,8 +49,8 @@ function listVerticals() {
   const all = loadVerticals();
   return Object.values(all).map(v => ({
     id: v.id,
-    displayName: v.displayName,
-    tagline: v.tagline,
+    displayName: (v.identity && v.identity.displayName) || v.displayName,
+    tagline: (v.identity && v.identity.tagline) || v.tagline,
     theme: v.theme
   }));
 }
