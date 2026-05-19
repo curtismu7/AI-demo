@@ -356,8 +356,10 @@ class PingOneProvisionService {
   async findResourceByName(type, name) {
     try {
       const endpoint = type === 'application' ? '/applications' : '/resources';
-      const response = await this.makeRequest('GET', endpoint);
-      
+      // PingOne defaults to 20 items per page — use limit=100 to avoid
+      // missing an existing resource and triggering a duplicate-name 400.
+      const response = await this.makeRequest('GET', `${endpoint}?limit=100`);
+
       const resources = response.data._embedded?.[type === 'application' ? 'applications' : 'resources'] || [];
       return resources.find(resource => resource.name === name);
     } catch (error) {
@@ -401,7 +403,25 @@ class PingOneProvisionService {
       audience,
     };
 
-    const response = await this.makeRequest('POST', '/resources', data);
+    let response;
+    try {
+      response = await this.makeRequest('POST', '/resources', data);
+    } catch (postErr) {
+      // If PingOne rejects with "already exists" it means the resource exists
+      // under a different name (e.g. a previous bootstrap used a different
+      // resourceNames mapping). Fall back to matching by audience string so
+      // idempotent reruns don't fail.
+      if (postErr.pingone?.code === 'INVALID_DATA' && postErr.message.includes('already exists')) {
+        const listRes = await this.makeRequest('GET', '/resources?limit=100');
+        const all = listRes.data._embedded?.resources || [];
+        const byAudience = all.find(r => r.audience === audience || r.name === name);
+        if (byAudience) {
+          if (typeof byAudience.audience === 'string') byAudience.audience = [byAudience.audience];
+          return { exists: true, resource: byAudience, resourceKey: `resource:${byAudience.id}` };
+        }
+      }
+      throw postErr;
+    }
     // The response shape PingOne returns matches our previous expectations:
     // resource has an `audience` field (string), surfaced as a single-item
     // array `audience: [aud]` for backwards-compat — wrap it here so code that
