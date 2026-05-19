@@ -46,11 +46,16 @@ const EDU = {
 // (Heuristics-only) no-match reply derives from THIS — no second
 // hand-maintained list.
 const CAPABILITY_CATALOG = [
-  'balance — "show my checking balance"',
-  'accounts — "show my accounts"',
-  'transactions — "recent transactions"',
+  'balance — "show my checking balance" / "what\'s my savings balance"',
+  'accounts — "show my accounts" / "account details" / "routing number"',
+  'transactions — "recent transactions" / "account history" / "activity"',
   'transfer — "transfer $100 from checking to savings"',
-  'education — "explain token exchange" / "what is CIBA"',
+  'deposit — "deposit $50 into savings"',
+  'withdraw — "withdraw $200 from checking"',
+  'spending summary — "spending summary" / "how much did I spend" / "biggest purchase"',
+  'mortgage — "show my mortgage" / "home loan details"',
+  'MCP tools — "list available tools" / "show mcp tools"',
+  'education — "explain token exchange" / "what is CIBA" / "how does step-up work"',
 ];
 
 function buildCatalogMessage() {
