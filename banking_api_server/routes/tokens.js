@@ -127,13 +127,12 @@ async function buildTokenChain(req) {
         } catch (_) { return {}; }
       })();
       const userScopeStr = typeof userPayload.scope === 'string' ? userPayload.scope : '';
-      const bankingScopes = ['banking:read', 'banking:write', 'banking:accounts:read',
-        'banking:transactions:read', 'banking:transactions:write', 'banking:admin',
-        'banking:agent:invoke'];
+      const bankingScopes = ['read', 'write', 'accounts:read',
+        'transactions:read', 'mortgage:read', 'agent:invoke'];
       const exchangeScopes = bankingScopes.filter((s) => userScopeStr.split(' ').includes(s));
-      // Fall back to banking:read if the user token carries none of the above
+      // Fall back to read if the user token carries none of the above
       // (e.g. OIDC-only token) so there is always at least one scope to attempt.
-      const scopesForExchange = exchangeScopes.length > 0 ? exchangeScopes : ['banking:read'];
+      const scopesForExchange = exchangeScopes.length > 0 ? exchangeScopes : ['read'];
       const exchangedToken = await oauthService.performTokenExchange(
         sessionToken,
         mcpResourceUri,

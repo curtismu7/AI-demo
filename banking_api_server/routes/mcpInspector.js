@@ -227,7 +227,7 @@ router.post('/invoke', express.json(), async (req, res) => {
         durationMs,
         phases: ['local handler (in-process, no MCP WebSocket)'],
         tokenExchangeApplied: false,
-        requiredScopesHint: MCP_TOOL_SCOPES[tool] || ['banking:read'],
+        requiredScopesHint: MCP_TOOL_SCOPES[tool] || ['read'],
       },
     });
   };
@@ -276,7 +276,7 @@ router.post('/invoke', express.json(), async (req, res) => {
           durationMs,
           phases: ['initialize (WebSocket)', 'tools/call'],
           tokenExchangeApplied: !!configStore.getEffective('mcp_resource_uri'),
-          requiredScopesHint: MCP_TOOL_SCOPES[tool] || ['banking:read'],
+          requiredScopesHint: MCP_TOOL_SCOPES[tool] || ['read'],
         },
       });
     } catch (err) {

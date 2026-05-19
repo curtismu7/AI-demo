@@ -89,7 +89,7 @@ router.post('/run', requireAdmin, async (req, res) => {
             workerClientSecret,
             region: region || 'com',
             publicAppUrl: publicAppUrl || process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000',
-            audience: audience || 'banking_api_enduser',
+            audience: audience || 'api.bxf.com',
             stepUpAcrValue: stepUpAcrValue || 'Multi_factor'
         };
 
@@ -374,8 +374,8 @@ router.get('/config-template', requireAdmin, async (req, res) => {
                 label: 'Resource Server Audience',
                 type: 'string',
                 description: 'Audience for the resource server',
-                example: 'banking_api_enduser',
-                default: 'banking_api_enduser'
+                example: 'api.bxf.com',
+                default: 'api.bxf.com'
             }
         }
     };

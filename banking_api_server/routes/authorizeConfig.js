@@ -70,22 +70,22 @@ router.get('/config', authenticateToken, async (_req, res) => {
     const mcpResourceUri = configStore.get('PINGONE_RESOURCE_MCP_SERVER_URI') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI || '';
 
     const scopeDefinitions = {
-      'banking:read': {
+      'read': {
         label: 'Read Banking Data',
         description: 'List accounts and check balances',
         permissions: ['list_accounts', 'get_balance'],
       },
-      'banking:write': {
+      'write': {
         label: 'Write Banking Data',
         description: 'Initiate transfers, deposits, and withdrawals',
         permissions: ['transfer', 'deposit', 'withdraw'],
       },
-      'banking:mcp:invoke': {
+      'mcp:invoke': {
         label: 'Invoke MCP Tools',
         description: 'Call MCP banking tools via agent',
         permissions: ['invoke_mcp_tools'],
       },
-      'banking:mortgage:read': {
+      'mortgage:read': {
         label: 'Read Mortgage Data',
         description: 'Read mortgage account data via the api-key disposition (Phase 267)',
         permissions: ['read_mortgage'],
