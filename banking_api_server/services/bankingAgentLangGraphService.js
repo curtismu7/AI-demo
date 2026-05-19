@@ -510,7 +510,19 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     // so on the LLM-fallback path heuristicFallbackResult stays null and the
     // reasoning_unavailable branch uses the generic message.
     let heuristicFallbackResult = null;
-    const heuristicEnabled = require('../services/configStore').getEffective('ff_heuristic_enabled') !== 'false';
+    const { resolveAgentMode } = require('../services/agentModeResolver');
+    const cs = require('../services/configStore');
+    const _agentMode = resolveAgentMode(
+      cs.getEffective('agent_mode'),
+      cs.getEffective('agent_external_wiring'),
+    );
+    // ARCHITECTURE-TRUTHS T-3 (amended): heuristic ROUTING is mode-dependent.
+    // ff_heuristic_enabled is still honored when no explicit agent_mode is set
+    // (back-compat). agent_mode wins when present. Server-side transfer/HITL
+    // SAFETY enforcement is independent of this gate and is unchanged.
+    const heuristicEnabled = cs.getEffective('agent_mode')
+      ? _agentMode.heuristicRouting
+      : cs.getEffective('ff_heuristic_enabled') !== 'false';
 
     if (heuristicEnabled) {
       const heuristic = parseHeuristic(message);
@@ -537,6 +549,20 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
           return heuristicResult;
         }
         // Heuristic matched but couldn't execute (transfer/deposit/etc.) — fall through to LLM
+      }
+      // Mode 1 (Heuristics-only): NO LLM. An unrecognised query returns the
+      // deterministic capability catalog instead of falling through to an LLM.
+      if (_agentMode.mode === 'heuristics') {
+        if (req) req.agentPath = 'heuristic';
+        return {
+          reply: require('../services/nlIntentParser').buildCatalogMessage(),
+          success: true,
+          toolsCalled: [],
+          tokensUsed: 0,
+          requiresConsent: false,
+          agentConfigured: true,
+          tokenEvents: (req && req.tokenEvents) || [],
+        };
       }
     } else {
       console.log('[processAgentMessage] Heuristic disabled via ff_heuristic_enabled flag — using LLM for all queries');
