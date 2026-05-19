@@ -7,7 +7,12 @@ import "./AgentModeSelector.css";
 // `compact` = condensed variant for the BankingAgent header.
 export default function AgentModeSelector({ compact = false }) {
   const {
-    mode, externalWiring, modeOptions, saving, setMode, setExternalWiring,
+    mode,
+    externalWiring,
+    modeOptions,
+    saving,
+    setMode,
+    setExternalWiring,
   } = useLangchainProvider();
 
   const current = modeOptions.find((m) => m.id === mode);
@@ -22,11 +27,13 @@ export default function AgentModeSelector({ compact = false }) {
           aria-label="Agent mode"
           value={mode}
           disabled={saving}
-          onChange={(e) => setMode(e.target.value, externalWiring ?? "bff")}
+          onChange={(e) => setMode(e.target.value, externalWiring)}
           className="ams-select"
         >
           {modeOptions.map((m) => (
-            <option key={m.id} value={m.id}>{m.label}</option>
+            <option key={m.id} value={m.id}>
+              {m.label}
+            </option>
           ))}
         </select>
       </label>
@@ -36,7 +43,7 @@ export default function AgentModeSelector({ compact = false }) {
           Wiring
           <select
             aria-label="External wiring"
-            value={externalWiring || "bff"}
+            value={externalWiring}
             disabled={saving}
             onChange={(e) => setExternalWiring(e.target.value)}
             className="ams-select"
@@ -51,8 +58,8 @@ export default function AgentModeSelector({ compact = false }) {
         <p className="ams-degraded" role="status">
           ⚠️ Delegation lost here — a third party holds a broad gateway token.
           No per-tool RFC 8693 exchange, no <code>act</code> claim, Token Chain
-          dark before the gateway. The MCP Gateway + PingAuthorize still
-          enforce policy on every tool call.
+          dark before the gateway. The MCP Gateway + PingAuthorize still enforce
+          policy on every tool call.
         </p>
       )}
     </div>
