@@ -2409,8 +2409,10 @@ class PingOneProvisionService {
     // Users:            username in {bankuser, bankadmin, bankDelegate}.
     //
     // If you fork this demo and rename, update the constants here too.
-    const APP_PREFIX = 'Super Banking';
-    const RESOURCE_PREFIX = 'Super Banking';
+    const APP_PREFIXES = ['Super Banking', 'Demo'];
+    const RESOURCE_PREFIXES = ['Super Banking', 'Demo'];
+    const isOwnedApp = (name) => APP_PREFIXES.some(p => (name || '').startsWith(p));
+    const isOwnedResource = (name) => RESOURCE_PREFIXES.some(p => (name || '').startsWith(p));
     const DEMO_GROUPS = new Set(['BankDelegates']);
     const DEMO_ATTRS = new Set(['isDelegate']);
     const DEMO_USERS = new Set(['bankuser', 'bankadmin', 'bankDelegate']);
@@ -2426,8 +2428,8 @@ class PingOneProvisionService {
     } catch (err) {
       step('❌', `Could not list applications: ${err.message}`);
     }
-    const ownedApps = apps.filter(a => (a.name || '').startsWith(APP_PREFIX));
-    step('🗑️', `Found ${apps.length} application(s); ${ownedApps.length} match "${APP_PREFIX}*" — preserving worker (${config.workerClientId})`);
+    const ownedApps = apps.filter(a => isOwnedApp(a.name));
+    step('🗑️', `Found ${apps.length} application(s); ${ownedApps.length} match demo prefixes — preserving worker (${config.workerClientId})`);
     for (const app of apps) {
       // Always preserve the worker we're auth'd as — even if it has the prefix.
       if (app.id === config.workerClientId || app.clientId === config.workerClientId) {
@@ -2435,7 +2437,7 @@ class PingOneProvisionService {
         step('⏭️', `Kept worker app: ${app.name}`);
         continue;
       }
-      if (!(app.name || '').startsWith(APP_PREFIX)) {
+      if (!isOwnedApp(app.name)) {
         summary.skipped.apps++;
         // Don't spam a line per non-demo app; total skipped count surfaces in the summary.
         continue;
@@ -2459,7 +2461,7 @@ class PingOneProvisionService {
       step('❌', `Could not list resources: ${err.message}`);
     }
     for (const r of resources) {
-      if (!(r.name || '').startsWith(RESOURCE_PREFIX)) {
+      if (!isOwnedResource(r.name)) {
         summary.skipped.resources++;
         continue;
       }
