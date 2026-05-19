@@ -6717,7 +6717,7 @@ export default function BankingAgent({
                 {isLoggedIn && (
                   <BankingChips
                     customChips={customChips}
-                    onChipClick={(message) => {
+                    onChipClick={({ message, label }) => {
                       setShowDiscovery(false);
                       if (isAgentBlockedByConsentDecline()) {
                         addMessage(
@@ -6726,7 +6726,7 @@ export default function BankingAgent({
                         );
                         return;
                       }
-                      addMessage("user", message);
+                      addMessage("user", label || message);
                       setNlLoading(true);
                       (async () => {
                         try {

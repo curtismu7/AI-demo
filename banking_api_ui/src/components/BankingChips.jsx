@@ -182,7 +182,7 @@ export default function BankingChips({
 
   const handleChipClick = (chip) => {
     if (onChipClick) {
-      onChipClick(chip.message);
+      onChipClick({ message: chip.message, label: chip.label });
     }
   };
 
