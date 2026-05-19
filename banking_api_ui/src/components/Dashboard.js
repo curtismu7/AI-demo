@@ -18,6 +18,7 @@ import { useCurrentUserTokenEvent } from "../hooks/useCurrentUserTokenEvent";
 import { navigateToAdminOAuthLogin } from "../utils/authUi";
 import { toastAdminSessionError } from "../utils/dashboardToast";
 import "../styles/appShellPages.css";
+import "./Dashboard.css";
 import { useAgentUiMode } from "../context/AgentUiModeContext";
 
 import ApiCallsModal from "./ApiCallsModal";
@@ -568,6 +569,8 @@ const Dashboard = ({ user, onLogout }) => {
                 <TokenChainDisplay />
               </section>
 
+              {/* Col-2 wrapper: all right-column sections scroll together */}
+              <div className="admin-dash-col2">
               <section
                 className="dash-shell-card"
                 aria-labelledby="tx-lookup-heading"
@@ -1149,6 +1152,7 @@ const Dashboard = ({ user, onLogout }) => {
                   </div>
                 )}
               </div>
+              </div>{/* end admin-dash-col2 */}
             </main>
           </div>
         </div>

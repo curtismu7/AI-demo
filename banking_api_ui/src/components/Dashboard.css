@@ -44,11 +44,14 @@ main.admin-dash-main--split .dash-shell-card--token {
   overflow-y: auto;
 }
 
-/* All other admin sections: column 2 — scrollable independently */
-main.admin-dash-main--split .dash-shell-card:not(.dash-shell-card--token) {
+/* Col-2 wrapper: single scrollable cell so all right-column cards sit flush together */
+main.admin-dash-main--split .admin-dash-col2 {
   grid-column: 2;
   max-height: calc(100vh - 120px);
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 /* Responsive: single column below 1024px regardless of mode */
@@ -58,7 +61,7 @@ main.admin-dash-main--split .dash-shell-card:not(.dash-shell-card--token) {
   }
 
   main.admin-dash-main--split .dash-shell-card--token,
-  main.admin-dash-main--split .dash-shell-card:not(.dash-shell-card--token) {
+  main.admin-dash-main--split .admin-dash-col2 {
     grid-column: unset;
     max-height: none;
     overflow-y: visible;
