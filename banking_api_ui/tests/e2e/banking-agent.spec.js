@@ -1,27 +1,37 @@
 /**
  * @file banking-agent.spec.js
- * @description Playwright E2E regression tests for the BankingAgent FAB component.
+ * @description Playwright E2E regression tests for the single BankingAgent
+ *   (post-Phase-4 UX).
+ *
+ * Post-Phase-4 model under test:
+ *   - Customer /dashboard: middle placement is the default; the single agent
+ *     auto-renders INLINE (portaled into `.ud-dashboard-inline-agent-host`)
+ *     with `ba-mode-inline ba-split-column` chrome. There is NO floating FAB.
+ *   - Admin /admin: Dashboard.js has no inline host, so the agent stays in
+ *     floating chrome behind a `.banking-agent-fab`.
+ *   - Banking actions moved out of the old `.ba-left-col` into an Actions
+ *     popout: `button.ba-actions-trigger` opens `.ba-actions-popout`, whose
+ *     collapsed `.ba-popout-section` groups hold `button.ba-popout-list-item`
+ *     rows (label in `.ba-popout-item-name`).
  *
  * Covers:
  *   UNAUTHENTICATED LANDING
- *   - Floating agent FAB is not shown (agent only on dashboard home routes when signed in)
+ *   - Floating agent FAB is not shown on /
  *
  *   AUTHENTICATED (post-login)
- *   - On /dashboard and /admin the floating panel defaults collapsed; tests open via FAB
+ *   - Customer agent renders inline on /dashboard (no FAB); admin opens via FAB
  *   - Panel shows role badge in header subtitle (Admin / Customer)
- *   - Dashboard nav button shown in agent left column
- *   - Core Actions rows (My Accounts … Transfer) appear as .ba-action-item entries
- *   - "My Accounts" action triggers /api/mcp/tool call with tool=get_my_accounts
- *   - "Recent Transactions" action triggers /api/mcp/tool call
- *   - "Check Balance" uses Account select + Run; runs get_account_balance
- *   - "Deposit" shows form and submits create_deposit
- *   - "Withdraw" shows form and submits create_withdrawal
- *   - "Transfer" shows form and submits create_transfer
- *   - MCP error (502) shows user-friendly "MCP server not reachable" message
- *   - Cancel on a form hides the form without running the action
+ *   - Inline title is "Super Banking Assistant"; admin float title is
+ *     "Super Banking AI Agent"
+ *   - Dashboard nav button (`.ba-left-auth-btn.primary`) shows My/Admin Dashboard
+ *   - Core actions (My Accounts … Transfer) appear as popout list items
+ *   - "My Accounts" / "Recent Transactions" trigger /api/mcp/tool
+ *   - Check Balance / Deposit / Withdraw / Transfer pre-fill the NL input
+ *     (`input.ba-input`) — no inline form, not auto-sent
+ *   - MCP error (502) shows user-friendly "not reachable" message
  *   - Login action buttons NOT shown when authenticated
- *   - Admin user sees admin-specific suggestions
- *   - ?oauth=success URL param auto-opens the panel
+ *   - Admin-only actions reachable from the popout
+ *   - ?oauth=success URL param auto-renders / cleans the URL
  *
  * All API calls and OAuth status are intercepted — no live server required.
  */
@@ -167,35 +177,84 @@ async function mockMcpToolError(page) {
 }
 
 /**
- * Clicks a BankingAgent **Actions** row (`.ba-action-item`) — not suggestion chips (`ba-suggestion`),
- * which can also mention "Transfer" or "transactions".
+ * Post-Phase-4 the single BankingAgent renders inline on /dashboard (middle
+ * placement default) and floating (via FAB) on /admin. Banking actions moved
+ * out of the old `.ba-left-col` into an **Actions popout**: a header trigger
+ * (`button.ba-actions-trigger`, text "Actions ▾") opens `.ba-actions-popout`,
+ * whose `.ba-popout-section` groups (collapsed by default) hold
+ * `button.ba-popout-list-item` rows. This opens the popout idempotently,
+ * expands any collapsed section, and returns the matching action row.
+ *
+ * @returns {import('@playwright/test').Locator} the `.ba-popout-list-item`
+ *   whose `.ba-popout-item-name` matches `namePattern`.
  */
-function agentPanelButton(page, namePattern) {
-  return page
-    .locator('.banking-agent-panel .ba-left-col .ba-action-item')
-    .filter({ hasText: namePattern });
-}
-
-/** Collapse control in the floating panel header (avoid getByRole name matching the drag-handle header). */
-function collapseAgentButton(page) {
-  return page.locator('.banking-agent-panel .ba-header-tools button[aria-label="Collapse agent"]');
+async function agentPanelButton(page, namePattern) {
+  const popout = page.locator('.ba-actions-popout');
+  if (!(await popout.isVisible().catch(() => false))) {
+    await page
+      .locator('button.ba-actions-trigger', { hasText: /Actions/i })
+      .first()
+      .click();
+    await expect(popout).toBeVisible({ timeout: 10000 });
+  }
+  // Expand every collapsed section so the target row is in the DOM regardless
+  // of which group it lives in (Account / Transaction / etc.).
+  const sections = popout.locator('.ba-popout-section');
+  const sectionCount = await sections.count();
+  for (let i = 0; i < sectionCount; i++) {
+    const toggle = sections.nth(i).locator('.ba-popout-section-toggle');
+    if (await toggle.count()) {
+      const label = (await toggle.first().textContent()) || '';
+      if (label.trim().startsWith('▶')) {
+        await toggle.first().click();
+      }
+    }
+  }
+  return popout
+    .locator('button.ba-popout-list-item')
+    .filter({
+      has: page.locator('.ba-popout-item-name', { hasText: namePattern }),
+    });
 }
 
 /**
- * /dashboard and /admin default the floating agent to collapsed — open via FAB before action tests.
+ * Wait for the single BankingAgent panel to be ready.
+ *
+ * - Customer `/dashboard`: middle placement is the default — the agent
+ *   auto-renders inline (portaled into `.ud-dashboard-inline-agent-host`),
+ *   there is NO floating FAB to click.
+ * - Admin `/admin`: Dashboard.js has no inline host, so the agent stays in
+ *   floating chrome behind a `.banking-agent-fab`; click it if present.
  */
-async function openFloatingAgentPanel(page) {
-  await page.locator('.banking-agent-fab').click();
-  await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+async function ensureAgentReady(page) {
+  const panel = page.locator('.banking-agent-panel');
+  if (await panel.isVisible().catch(() => false)) return;
+  // Race the inline panel (customer /dashboard auto-renders) against the
+  // floating FAB (admin /admin needs a click). Whichever resolves first wins —
+  // /admin (Dashboard.js) is heavy, so the FAB can take several seconds to
+  // mount; waiting for it explicitly avoids the "no panel, no FAB yet" gap.
+  const fab = page.locator('.banking-agent-fab');
+  await Promise.race([
+    panel.waitFor({ state: 'visible', timeout: 25000 }).catch(() => {}),
+    fab.first().waitFor({ state: 'visible', timeout: 25000 }).catch(() => {}),
+  ]);
+  if (!(await panel.isVisible().catch(() => false)) && (await fab.count())) {
+    await fab.first().click();
+  }
+  await expect(panel).toBeVisible({ timeout: 20000 });
 }
 
 // ─── UNAUTHENTICATED LANDING (no floating agent) ───────────────────────────────
 
 test.describe('BankingAgent — unauthenticated landing', () => {
-  test('floating agent FAB is not shown on /', async ({ page }) => {
+  test('landing offers the guest agent FAB but does not auto-open a panel', async ({ page }) => {
     await mockUnauthenticated(page);
     await page.goto('/');
-    await expect(page.locator('.banking-agent-fab')).toHaveCount(0);
+    // Post-Phase-4 the public marketing landing surfaces a guest agent FAB
+    // (marketingAgentSurface), but the agent panel must NOT auto-render before
+    // any interaction — it stays unobtrusive until the visitor opens it.
+    await expect(page.locator('.banking-agent-fab')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('.banking-agent-panel')).toHaveCount(0);
   });
 });
 
@@ -203,55 +262,68 @@ test.describe('BankingAgent — unauthenticated landing', () => {
 
 test.describe('BankingAgent — Authenticated (customer logged in)', () => {
 
-  test('FAB is visible on the user dashboard', async ({ page }) => {
+  test('agent renders inline on the user dashboard (no floating FAB)', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await mockMcpTool(page, SAMPLE_ACCOUNTS);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-fab')).toBeVisible({ timeout: 20000 });
+    // Phase 4: middle placement is the default — the single agent auto-renders
+    // inline inside the dashboard's middle column. There is no floating FAB.
+    await expect(
+      page.locator('.ud-dashboard-inline-agent-host .banking-agent-panel.ba-mode-inline')
+    ).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('.banking-agent-fab')).toHaveCount(0);
   });
 
-  test('FAB opens the floating agent panel on /dashboard', async ({ page }) => {
+  test('inline agent panel uses split-column chrome on /dashboard', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-fab')).toBeVisible({ timeout: 20000 });
-    await openFloatingAgentPanel(page);
+    await ensureAgentReady(page);
+    const panel = page.locator('.banking-agent-panel');
+    await expect(panel).toHaveClass(/ba-mode-inline/);
+    await expect(panel).toHaveClass(/ba-split-column/);
   });
 
-  test('panel shows "Super Banking AI Agent" title on /dashboard', async ({ page }) => {
+  test('panel shows the inline assistant title on /dashboard', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    await expect(page.locator('.ba-title')).toHaveText('Super Banking AI Agent');
+    await ensureAgentReady(page);
+    // Inline split-column chrome renders "Super Banking Assistant" (the old
+    // floating chrome used "Super Banking AI Agent").
+    await expect(page.locator('.ba-title')).toHaveText('Super Banking Assistant');
   });
 
   test('subtitle shows customer role badge when logged in', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
+    await ensureAgentReady(page);
     await expect(page.locator('.ba-subtitle')).toContainText('Customer');
     await expect(page.locator('.ba-subtitle')).toContainText('Test');
   });
 
-  test('welcome message is shown in right column for logged-in user', async ({ page }) => {
+  test('welcome message area is shown for logged-in user', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
+    await ensureAgentReady(page);
     const messages = page.locator('.banking-agent-messages');
     await expect(messages).toBeVisible();
   });
 
-  test('dashboard nav button shows "My Dashboard" for customer', async ({ page }) => {
+  test('inline chrome surfaces a session sign-out control for the customer', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    await expect(page.locator('.ba-left-col')).toContainText('My Dashboard');
+    await ensureAgentReady(page);
+    // The old `.ba-left-col` "My Dashboard" nav button does not exist in inline
+    // split-column chrome (the agent IS the dashboard surface there). The
+    // equivalent signed-in affordance is the split-column header sign-out.
+    await expect(
+      page.locator('.banking-agent-panel .ba-header-signout', { hasText: 'Sign out' })
+    ).toBeVisible();
   });
 
-  test('panel lists core banking actions in the Actions section', async ({ page }) => {
+  test('panel lists core banking actions in the Actions popout', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    const panelActions = page.locator('.banking-agent-panel .ba-left-col .ba-action-item');
+    await ensureAgentReady(page);
     for (const label of [
       'My Accounts',
       'Recent Transactions',
@@ -260,15 +332,20 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
       'Withdraw',
       'Transfer',
     ]) {
-      await expect(panelActions.filter({ hasText: label })).toHaveCount(1);
+      const row = await agentPanelButton(page, new RegExp(`^${label}$`));
+      await expect(row).toHaveCount(1);
     }
   });
 
-  test('customer suggestions are shown in the left column', async ({ page }) => {
+  test('customer banking suggestions are reachable from the Actions popout', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    await expect(page.locator('.ba-left-col')).toContainText('Check my account balance');
+    await ensureAgentReady(page);
+    // The old static `.ba-left-col` suggestion list does not exist in inline
+    // split-column chrome (useActionsPopout is true). The equivalent
+    // customer-facing entry point is the "Check Balance" action in the popout.
+    const row = await agentPanelButton(page, /^Check Balance$/);
+    await expect(row).toHaveCount(1);
   });
 
   // ── Read-only actions ──
@@ -277,11 +354,12 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockAuthenticatedCustomer(page);
     await mockMcpTool(page, SAMPLE_ACCOUNTS);
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
+    await ensureAgentReady(page);
 
+    const myAccounts = await agentPanelButton(page, /^My Accounts$/);
     const [req] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/api/mcp/tool') && r.method() === 'POST'),
-      agentPanelButton(page, /My Accounts/i).click(),
+      myAccounts.click(),
     ]);
 
     const body = JSON.parse(req.postData() || '{}');
@@ -296,11 +374,12 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockAuthenticatedCustomer(page);
     await mockMcpTool(page, SAMPLE_TRANSACTIONS);
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
+    await ensureAgentReady(page);
 
+    const recentTx = await agentPanelButton(page, /^Recent Transactions$/);
     const [req] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/api/mcp/tool')),
-      agentPanelButton(page, /Recent Transactions/i).click(),
+      recentTx.click(),
     ]);
 
     const body = JSON.parse(req.postData() || '{}');
@@ -309,143 +388,61 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await expect(page.locator('.banking-agent-messages')).toContainText('Payroll');
   });
 
-  // ── Form-based actions ──
+  // ── Money-movement actions (Phase 4: NL-prefill, no inline form) ──
+  //
+  // Post-Phase-4 the inline split-column agent no longer renders a
+  // `.banking-agent-form` for Check Balance / Deposit / Withdraw / Transfer.
+  // Clicking the popout row closes the popout and pre-fills the natural-language
+  // input (`input.ba-input`) with a ready-to-send prompt, which the user then
+  // submits through the conversational pipeline. These tests assert that real
+  // shipped behaviour (the popout-action → NL-prefill contract), and that the
+  // prefilled prompt is NOT auto-sent (no /api/mcp/tool call until submit).
 
-  test('"Check Balance" shows Account selector form', async ({ page }) => {
+  test('"Check Balance" pre-fills the NL input with a balance prompt', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    await agentPanelButton(page, /Check Balance/i).click();
-    const form = page.locator('.banking-agent-form');
-    await expect(form).toBeVisible();
-    await expect(form.getByLabel(/Account/i)).toBeVisible();
-    await expect(page.locator('#field-accountId')).toBeVisible();
+    await ensureAgentReady(page);
+    const row = await agentPanelButton(page, /^Check Balance$/);
+    await row.click();
+    await expect(page.locator('.ba-actions-popout')).toBeHidden();
+    await expect(page.locator('.banking-agent-panel input.ba-input'))
+      .toHaveValue(/balance.*checking account/i);
   });
 
-  test('"Check Balance" submits get_account_balance and shows balance', async ({ page }) => {
-    await mockAuthenticatedCustomer(page);
-    await mockMcpTool(page, SAMPLE_BALANCE);
-    await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    await agentPanelButton(page, /Check Balance/i).click();
-
-    const accountId = await page.locator('#field-accountId').inputValue();
-
-    const [req] = await Promise.all([
-      page.waitForRequest((r) => r.url().includes('/api/mcp/tool')),
-      page.locator('.banking-agent-btn-primary').click(),
-    ]);
-
-    const body = JSON.parse(req.postData() || '{}');
-    expect(body.tool).toBe('get_account_balance');
-    expect(body.params.account_id).toBe(accountId);
-
-    await expect(page.locator('.banking-agent-messages')).toContainText('Balance: $1,500.00');
-  });
-
-  test('"Deposit" shows form with Account and Amount fields', async ({ page }) => {
+  test('"Deposit" pre-fills the NL input with a deposit prompt', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    await agentPanelButton(page, /Deposit/i).click();
-
-    const form = page.locator('.banking-agent-form');
-    await expect(form).toBeVisible();
-    await expect(form.getByLabel(/^Account$/)).toBeVisible();
-    await expect(form.getByLabel(/Amount \(\$\)/)).toBeVisible();
+    await ensureAgentReady(page);
+    const row = await agentPanelButton(page, /^Deposit$/);
+    await row.click();
+    await expect(page.locator('.ba-actions-popout')).toBeHidden();
+    await expect(page.locator('.banking-agent-panel input.ba-input'))
+      .toHaveValue(/deposit \$\d+ to my checking account/i);
   });
 
-  test('"Deposit" submits create_deposit with correct params', async ({ page }) => {
-    await mockAuthenticatedCustomer(page);
-    await mockMcpTool(page, { ...SAMPLE_TRANSACTION_CONFIRM, type: 'deposit', amount: 250 });
-    await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    await agentPanelButton(page, /Deposit/i).click();
-
-    const accountId = await page.locator('#field-accountId').inputValue();
-    await page.locator('#field-amount').fill('250');
-    await page.locator('#field-note').fill('Birthday money');
-
-    const [req] = await Promise.all([
-      page.waitForRequest((r) => r.url().includes('/api/mcp/tool')),
-      page.locator('.banking-agent-btn-primary').click(),
-    ]);
-
-    const body = JSON.parse(req.postData() || '{}');
-    expect(body.tool).toBe('create_deposit');
-    expect(body.params.account_id).toBe(accountId);
-    expect(body.params.amount).toBe(250);
-
-    await expect(page.locator('.banking-agent-messages')).toContainText('✅ Success');
-  });
-
-  test('"Withdraw" submits create_withdrawal with correct params', async ({ page }) => {
-    await mockAuthenticatedCustomer(page);
-    await mockMcpTool(page, { ...SAMPLE_TRANSACTION_CONFIRM, type: 'withdrawal', amount: 100 });
-    await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    await agentPanelButton(page, /Withdraw/i).click();
-
-    const accountId = await page.locator('#field-accountId').inputValue();
-    await page.locator('#field-amount').fill('100');
-    await page.locator('#field-note').fill('ATM');
-
-    const [req] = await Promise.all([
-      page.waitForRequest((r) => r.url().includes('/api/mcp/tool')),
-      page.locator('.banking-agent-btn-primary').click(),
-    ]);
-
-    const body = JSON.parse(req.postData() || '{}');
-    expect(body.tool).toBe('create_withdrawal');
-    expect(body.params.account_id).toBe(accountId);
-    expect(body.params.amount).toBe(100);
-
-    await expect(page.locator('.banking-agent-messages')).toContainText('✅ Success');
-  });
-
-  test('"Transfer" shows form with From, To, Amount and Note fields', async ({ page }) => {
+  test('"Withdraw" pre-fills the NL input with a withdrawal prompt', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    await agentPanelButton(page, /Transfer/i).click();
-
-    const form = page.locator('.banking-agent-form');
-    await expect(form).toBeVisible();
-    await expect(form.getByLabel(/From Account/i)).toBeVisible();
-    await expect(form.getByLabel(/To Account/i)).toBeVisible();
-    await expect(form.getByLabel(/Amount \(\$\)/)).toBeVisible();
-    await expect(form.getByLabel(/^Note$/)).toBeVisible();
+    await ensureAgentReady(page);
+    const row = await agentPanelButton(page, /^Withdraw$/);
+    await row.click();
+    await expect(page.locator('.ba-actions-popout')).toBeHidden();
+    await expect(page.locator('.banking-agent-panel input.ba-input'))
+      .toHaveValue(/withdraw \$\d+ from my checking account/i);
   });
 
-  test('"Transfer" submits create_transfer with correct params', async ({ page }) => {
+  test('"Transfer" pre-fills the NL input with a transfer prompt', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
-    await mockMcpTool(page, { ...SAMPLE_TRANSACTION_CONFIRM, type: 'transfer', amount: 500 });
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    await agentPanelButton(page, /Transfer/i).click();
-
-    const fromId = await page.locator('#field-fromId').inputValue();
-    const toId = await page.locator('#field-toId').inputValue();
-    await page.locator('#field-amount').fill('500');
-    await page.locator('#field-note').fill('Rent');
-
-    const [req] = await Promise.all([
-      page.waitForRequest((r) => r.url().includes('/api/mcp/tool')),
-      page.locator('.banking-agent-btn-primary').click(),
-    ]);
-
-    const body = JSON.parse(req.postData() || '{}');
-    expect(body.tool).toBe('create_transfer');
-    expect(body.params.from_account_id).toBe(fromId);
-    expect(body.params.to_account_id).toBe(toId);
-    expect(body.params.amount).toBe(500);
-
-    await expect(page.locator('.banking-agent-messages')).toContainText('✅ Success');
+    await ensureAgentReady(page);
+    const row = await agentPanelButton(page, /^Transfer$/);
+    await row.click();
+    await expect(page.locator('.ba-actions-popout')).toBeHidden();
+    await expect(page.locator('.banking-agent-panel input.ba-input'))
+      .toHaveValue(/transfer \$\d+ from checking to savings/i);
   });
 
-  // ── Cancel behaviour ──
-
-  test('Cancel on Withdraw form hides the form without API call', async ({ page }) => {
+  test('money-movement prefill does NOT auto-call /api/mcp/tool', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     let mcpCalled = false;
     await page.route('**/api/mcp/tool', (route) => {
@@ -454,35 +451,44 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     });
 
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    await agentPanelButton(page, /Withdraw/i).click();
-    await expect(page.locator('.banking-agent-form')).toBeVisible();
+    await ensureAgentReady(page);
+    const row = await agentPanelButton(page, /^Withdraw$/);
+    await row.click();
 
-    await page.locator('.banking-agent-btn-ghost').click();  // Cancel
-    await expect(page.locator('.banking-agent-form')).toHaveCount(0);
+    // The prompt is staged in the input but nothing is sent until the user submits.
+    await expect(page.locator('.banking-agent-panel input.ba-input'))
+      .toHaveValue(/withdraw/i);
     expect(mcpCalled).toBe(false);
   });
 
   // ── Error handling ──
 
-  test('MCP 502 error shows friendly "not reachable" message', async ({ page }) => {
+  test('MCP 502 surfaces a friendly "server unreachable" toast', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await mockMcpToolError(page);
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    await agentPanelButton(page, /My Accounts/i).click();
+    await ensureAgentReady(page);
+    const myAccounts = await agentPanelButton(page, /^My Accounts$/);
+    await myAccounts.click();
 
-    const messages = page.locator('.banking-agent-messages');
-    await expect(messages).toContainText(/unavailable|not reachable|mcp/i);
-    await expect(messages).not.toContainText('at Object.');
+    // Post-Phase-4 the conversation pane renders only user/assistant turns;
+    // connection failures surface as a react-toastify error toast, not chat
+    // text. Scope to the error variant (an in-progress info toast coexists).
+    const toast = page.locator('.Toastify__toast--error');
+    await expect(toast).toContainText(/unreachable|not reachable|server connection/i);
+    // No raw stack trace leaks into the user-facing message.
+    await expect(toast).not.toContainText('at Object.');
   });
 
   test('login action buttons are NOT shown when user is authenticated', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await openFloatingAgentPanel(page);
-    await expect(page.locator('.ba-left-col')).not.toContainText('Admin Sign In');
-    await expect(page.locator('.ba-left-col')).not.toContainText('Customer Sign In');
+    await ensureAgentReady(page);
+    // The popout / panel must not surface a sign-in affordance for an
+    // already-authenticated customer.
+    const panel = page.locator('.banking-agent-panel');
+    await expect(panel).not.toContainText('Admin Sign In');
+    await expect(panel).not.toContainText('Customer Sign In');
   });
 });
 
@@ -490,16 +496,23 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
 
 test.describe('BankingAgent — Authenticated (admin logged in)', () => {
 
-  test('panel auto-opens after admin login without FAB click', async ({ page }) => {
+  // Admin uses Dashboard.js (no inline middle host), so the single agent stays
+  // in floating chrome behind a `.banking-agent-fab`. ensureAgentReady() clicks
+  // the FAB when present, then waits for the panel.
+
+  test('agent panel opens from the FAB on /admin', async ({ page }) => {
     await mockAuthenticatedAdmin(page);
     await page.goto('/admin');
-    await openFloatingAgentPanel(page);
+    await expect(page.locator('.banking-agent-fab')).toBeVisible({ timeout: 20000 });
+    await ensureAgentReady(page);
+    // Admin float chrome keeps the original "AI Agent" title.
+    await expect(page.locator('.ba-title')).toHaveText('Super Banking AI Agent');
   });
 
   test('subtitle shows admin role badge for admin user', async ({ page }) => {
     await mockAuthenticatedAdmin(page);
     await page.goto('/admin');
-    await openFloatingAgentPanel(page);
+    await ensureAgentReady(page);
     await expect(page.locator('.ba-subtitle')).toContainText('Admin');
     await expect(page.locator('.ba-subtitle')).toContainText('Alice');
   });
@@ -507,15 +520,20 @@ test.describe('BankingAgent — Authenticated (admin logged in)', () => {
   test('dashboard nav button shows "Admin Dashboard" for admin', async ({ page }) => {
     await mockAuthenticatedAdmin(page);
     await page.goto('/admin');
-    await openFloatingAgentPanel(page);
-    await expect(page.locator('.ba-left-col')).toContainText('Admin Dashboard');
+    await ensureAgentReady(page);
+    await expect(
+      page.locator('.banking-agent-panel .ba-left-auth-btn.primary', { hasText: 'Admin Dashboard' })
+    ).toBeVisible();
   });
 
-  test('admin suggestions are shown (system-wide framing)', async ({ page }) => {
+  test('admin-only actions are present in the Actions popout', async ({ page }) => {
     await mockAuthenticatedAdmin(page);
     await page.goto('/admin');
-    await openFloatingAgentPanel(page);
-    await expect(page.locator('.ba-left-col')).toContainText('Show all customer accounts');
+    await ensureAgentReady(page);
+    // Old admin "suggestions" (e.g. "Show all customer accounts") were replaced
+    // by admin-scoped popout actions; assert an admin-only entry is reachable.
+    const row = await agentPanelButton(page, /Query User by Email/i);
+    await expect(row).toHaveCount(1);
   });
 });
 
