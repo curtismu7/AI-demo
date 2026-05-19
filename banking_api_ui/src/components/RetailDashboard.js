@@ -58,7 +58,7 @@ export default function RetailDashboard({ data }) {
         <ul className="retail-orders-list">
           {orders.map((o) => (
             <li key={o.id} className="retail-order-row">
-              <span>{o.sku}</span>
+              <span>{o.product}</span>
               <span>${o.amount}</span>
               <span className="retail-order-status">{o.status}</span>
               <span>{o.date}</span>

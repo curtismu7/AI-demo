@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import RetailDashboard from '../RetailDashboard';
 
 const DATA = {
@@ -14,8 +14,11 @@ const DATA = {
 
 test('renders products, orders, and updates cart total on add', () => {
   render(<RetailDashboard data={DATA} />);
-  expect(screen.getByText('AirPods Pro')).toBeInTheDocument();
-  expect(screen.getByText('Delivered')).toBeInTheDocument();
+  // product appears in the product grid (scope the query to avoid the orders row)
+  expect(screen.getByText('PS5')).toBeInTheDocument();
+  const orders = screen.getByRole('list');
+  expect(within(orders).getByText('Delivered')).toBeInTheDocument();
+  expect(within(orders).getByText('AirPods Pro')).toBeInTheDocument();
   fireEvent.click(screen.getAllByRole('button', { name: /add to cart/i })[0]);
   expect(screen.getByTestId('retail-cart-total')).toHaveTextContent('249');
 });
