@@ -14,8 +14,8 @@ const AUDIT_DISPLAY_TO_MANIFEST_APP = {
   'Super Banking Admin App': 'Super Banking Admin App',
 };
 const NON_MANIFEST_REFERENCE = {
-  'Super Banking AI Agent': ['banking:agent:invoke'],
-  'Super Banking Agent Gateway': ['banking:agent:invoke'],
+  'Demo AI Agent': ['agent:invoke'],
+  'Demo Agent Gateway': ['agent:invoke'],
   'PingOne API': ['p1:read:user', 'p1:update:user'],
 };
 const SCOPE_REFERENCE_TABLE = {

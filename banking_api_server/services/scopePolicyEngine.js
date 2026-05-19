@@ -17,14 +17,14 @@ const scopeTopology = require('./scopeTopology');
 // live here. scopeTopology.regression.test.js asserts every key below exists in
 // the manifest (no orphans).
 const SCOPE_OPS_OVERLAY = {
-  'banking:read':          { operations: ['GET /accounts/*', 'GET /transactions/*', 'GET /balances/*'], requires_user_context: true, category: 'banking' },
-  'banking:write':         { operations: ['POST /transactions', 'POST /transfers'], requires_user_context: true, category: 'banking' },
-  'banking:transfer':      { operations: ['POST /transfers'], requires_user_context: true, category: 'banking' },
-  'banking:accounts:read': { operations: ['GET /accounts/*', 'GET /balances/*'], requires_user_context: true, category: 'banking' },
-  'banking:transactions:read': { operations: ['GET /transactions/*'], requires_user_context: true, category: 'banking' },
-  'banking:mortgage:read': { operations: ['GET /mortgage'], requires_user_context: true, category: 'banking' },
-  'banking:ai:agent:read': { operations: ['agent:invoke'], requires_user_context: true, category: 'banking' },
-  'banking:mcp:invoke':    { operations: ['mcp:tools/call'], requires_user_context: true, category: 'banking' },
+  'read':                  { operations: ['GET /accounts/*', 'GET /transactions/*', 'GET /balances/*'], requires_user_context: true, category: 'banking' },
+  'write':                 { operations: ['POST /transactions', 'POST /transfers'], requires_user_context: true, category: 'banking' },
+  'transfer':              { operations: ['POST /transfers'], requires_user_context: true, category: 'banking' },
+  'accounts:read':         { operations: ['GET /accounts/*', 'GET /balances/*'], requires_user_context: true, category: 'banking' },
+  'transactions:read':     { operations: ['GET /transactions/*'], requires_user_context: true, category: 'banking' },
+  'mortgage:read':         { operations: ['GET /mortgage'], requires_user_context: true, category: 'banking' },
+  'ai:agent:read':         { operations: ['agent:invoke'], requires_user_context: true, category: 'banking' },
+  'mcp:invoke':            { operations: ['mcp:tools/call'], requires_user_context: true, category: 'banking' },
   'ai_agent':              { operations: ['agent:identity'], requires_user_context: false, category: 'ai' },
 };
 
@@ -37,7 +37,7 @@ const { writeExchangeEvent } = require('./exchangeAuditStore');
 // engine-local — no tool/app/resource references it, so it is intentionally
 // absent from scope-topology.json.
 const NON_MANIFEST_TAXONOMY = {
-  'banking:transactions:write': {
+  'transactions:write': {
     description: 'Create and modify transactions',
     operations: ['POST /transactions/*'],
     risk_level: 'high',
@@ -98,20 +98,20 @@ const RISK_WEIGHTS = {
  */
 const SCOPE_POLICIES = {
   // Banking policies
-  'banking:read': {
+  'read': {
     max_requests_per_hour: 1000,
     allowed_ip_ranges: ['*'], // Any IP for read operations
     requires_user_session: true,
     data_retention_days: 30
   },
-  'banking:write': {
+  'write': {
     max_requests_per_hour: 100,
     allowed_ip_ranges: ['*'],
     requires_user_session: true,
     requires_mfa: true,
     data_retention_days: 365
   },
-  'banking:transactions:write': {
+  'transactions:write': {
     max_requests_per_hour: 50,
     allowed_ip_ranges: ['*'],
     requires_user_session: true,

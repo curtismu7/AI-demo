@@ -15,7 +15,7 @@ const RESOURCE_DEFINITIONS = {
   'https://banking-api.ping.demo/': {
     name: 'Banking API',
     description: 'Core banking operations and account management',
-    scopes: ['banking:read', 'banking:write', 'transactions:read', 'accounts:read'],
+    scopes: ['read', 'write', 'transactions:read', 'accounts:read'],
     icon: '🏦',
     category: 'core',
     required: false
