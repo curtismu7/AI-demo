@@ -10,6 +10,27 @@
 
 **Data-scope note (decided 2026-05-18):** Phase 1 is presentation-only. Real tool data is **intentionally NOT themed**: `banking_api_server/data/store.js` SQLite accounts/transactions still return `"Checking"/"Savings"/"Deposit"`, and `banking_mortgage_service/mortgageServer.js` (api_key disposition via `show_mortgage`) still returns the hardcoded `$425,000 / 6.125%` mortgage payload. Under Best Buy the agent's tool calls return banking data; the retail experience is carried by `<RetailDashboard>`'s manifest mock data + chip labels + greeting. Relabeling returned data / real retail responses is the **Phase 2 boundary** — do not touch `store.js`, the mortgage service, the gateway, or MCP in this plan.
 
+**PLAN DEFECT + CORRECTION (discovered 2026-05-19 during Task 5 execution):**
+The plan's research **missed** that `banking_api_ui/src/context/ThemeContext.js`
+**already exists** as the light/dark-mode switcher, is mounted as
+`<ThemeProvider>` at the ROOT in `banking_api_ui/src/index.js:45`, and is
+consumed by 10+ files (`{ theme, toggleTheme, agentAppearance, ... }`).
+Corrections applied during execution:
+- **Task 5 (done):** `ThemeContext.js` was **merged** (light/dark API fully
+  preserved + manifest API added), NOT created fresh. Verified merge-safe:
+  all old fields retained, 7 consumers sampled OK, 7 tests pass. Commit
+  `2635bed4`.
+- **Task 6 (corrected):** Do **NOT** add a second `<ThemeProvider>` in
+  `App.js` — one is already mounted at root in `index.js`. Instead, in
+  `App.js` **remove** the `<IndustryBrandingProvider>`/`<VerticalProvider>`
+  wrappers (lines ~1465-1469) and make `IndustryBrandingContext`/
+  `VerticalContext` shims re-exporting from the already-root-mounted
+  `useTheme()`. Net effect = the plan's intended single context, achieved by
+  deletion of the redundant wrappers rather than adding a provider.
+- **Tasks 7/9 (note):** `BankingAgent.js` already imports `useTheme` from
+  `ThemeContext` for light/dark — when adding manifest reads, extend the
+  existing import/destructure; do not add a duplicate import.
+
 **Ground-truth note (verified 2026-05-18):** Phase 225's retail dashboard is **not wired** — `RetailModeBanner.js` and `retailMockData.js` are orphan files referenced by nothing; `UserDashboard.js`/`BankingAgent.js` contain no `ff_retail_mode`/`RETAIL_`/dashboard-`isRetail` code. The only retail coupling is one `isRetail` ternary at `BankingAgent.js:1555`. There is no `ff_retail_mode` server feature flag in `routes/featureFlags.js` to retire. Therefore `<RetailDashboard>` is **built new** (from `retailMockData.js`'s data shape), and "retire ff_retail_mode" is **orphan-file deletion**, not surgical removal.
 
 ---
