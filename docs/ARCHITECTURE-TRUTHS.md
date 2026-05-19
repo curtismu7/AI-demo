@@ -119,6 +119,57 @@ last-resort floor so chips and known phrases never produce a dead-end reply.
 - Default + env mapping: `banking_api_server/services/configStore.js` (`FF_HEURISTIC_ENABLED`, default `'true'`)
 - Agent definitions: [CONTEXT.md](../CONTEXT.md) "agent" (qualify which agent — three exist)
 
+**Amendment — 2026-05-19, five-mode model.** The original T-3 text above
+(preserved verbatim for history) stated the heuristic *always* runs as a
+deterministic floor. The **five-mode agent provider** feature
+(`docs/superpowers/specs/2026-05-18-five-mode-agent-provider-design.md`)
+amends this in **one narrow respect**: the heuristic **ROUTING fast-path** is
+now **mode-dependent**, resolved by
+`banking_api_server/services/agentModeResolver.js`:
+
+- **ON** for modes `heuristics` and `heuristics_helix`.
+- **OFF** for modes `helix_google`, `chatgpt`, and `claude` (these route
+  straight to the LLM/platform; no heuristic routing pre-empt).
+
+This amends **ONLY the routing-convenience role** (the ~200-300ms chip/known-
+phrase fast-path). The deterministic transfer / HITL / step-up **SAFETY
+enforcement was never the heuristic's authority** — it is server-side
+(`banking_api_server/services/mcpToolAuthorizationService.js`,
+`banking_api_server/services/transactionConsentChallenge.js`, and the Authorize
+gate; REGRESSION_PLAN §1 / Phase 170) and is **UNCHANGED and mode-independent**.
+No agent mode can relax it.
+
+`banking_api_server/services/llmProviderResolver.js` **remains the single
+low-level provider resolver** (`Heuristic → Helix → Ollama-only-if-configured`,
+plus the openai/anthropic pass-through). `agentModeResolver` does not replace
+it: it maps the user-facing mode onto `llmProviderResolver` and onto the
+heuristic-routing primitive `ff_heuristic_enabled`. No module may inline a
+mode→primitive mapping.
+
+**Back-compat:** when `agent_mode` is unset, behavior is **identical to before**
+— legacy `ff_heuristic_enabled` precedence applies exactly as the original T-3
+text describes.
+
+**Mode 1 (`heuristics`) has NO LLM.** An unrecognised query returns the
+deterministic `nlIntentParser.buildCatalogMessage()` capability catalog — never
+an LLM fallthrough. This is the one mode where the original "heuristic is the
+last-resort floor" guarantee is the *entire* path, not merely the floor.
+
+**Modes 4/5 (`chatgpt`/`claude`) carry an `external_wiring` sub-shape:**
+
+- `bff` — the BFF retains the RFC 8693 exchange + the full token chain
+  (per-tool exchange + `act` claim intact, surfaced in the Token Chain UI).
+- `platform` — the platform drives the agent loop via the MCP Gateway using a
+  BFF-minted gateway-audience token; the per-tool exchange and `act` claim are
+  **lost upstream** (an intentional educational "delegation lost" surface), but
+  the MCP Gateway D-05 invariant and PingAuthorize **STILL enforce** every tool
+  call. Implemented in `banking_api_server/services/platformAgentRuntime.js`.
+
+- Related: T-2 (the authorization decision is external and authoritative — the
+  reason the mode-dependent routing change is safe), T-4 (PingOne performs the
+  exchange the `bff` wiring retains).
+
+
 ---
 
 ## T-4 — PingOne performs token exchange; the Gateway, agents, and MCP servers only *request* it
