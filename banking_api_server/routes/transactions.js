@@ -401,14 +401,14 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // ── Scope validation ──────────────────────────────────────────────────────
     // Write operations (transfer, deposit, withdrawal) require write scope
-    // when the token carries any banking:* scopes (resource server is configured).
+    // when the token carries any data scopes (resource server is configured).
     // Standard PingOne browser-session tokens carry only openid/profile/email and
-    // have no banking:* scopes; scope enforcement is skipped for them — auth is
+    // have no data scopes; scope enforcement is skipped for them — auth is
     // handled by the session + ownership checks below.
     const userScopes = req.user.scopes || [];
     const writeOperations = ['transfer', 'deposit', 'withdrawal'];
     if (writeOperations.includes(type)) {
-      const hasBankingScopes = userScopes.some(s => s.startsWith('banking:'));
+      const hasBankingScopes = userScopes.some(s => s === 'read' || s === 'write');
       const hasWriteScope = userScopes.includes(BANKING_SCOPES.BANKING_WRITE);
       if (hasBankingScopes && !hasWriteScope) {
         console.log(`[Scopes] User ${req.user.id} missing ${BANKING_SCOPES.BANKING_WRITE} for ${type}`);
