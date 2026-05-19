@@ -9,7 +9,7 @@ import React, {
 
 export const TOUR_STEPS = [
   {
-    title: "Super Banking — AI Agent Security Demo",
+    title: "Demo — AI Agent Security Demo",
     body: "This tour walks through the key security patterns: Authorization Code + PKCE login, RFC 8693 token exchange with act claims, Human-in-the-Loop (HITL) consent, CIBA out-of-band approval, and MCP-based tool execution.",
     action: null,
   },
@@ -19,8 +19,8 @@ export const TOUR_STEPS = [
     action: { label: "Go to login", route: "/" },
   },
   {
-    title: "Dashboard — Banking Agent + Quick Chips",
-    body: "After login the dashboard shows the Banking Agent. Use the quick-action chips (My Accounts, Check Balance, Transfer) to trigger common commands. Simple queries take the heuristic fast path — no LLM call needed.",
+    title: "Dashboard — AI Agent + Quick Chips",
+    body: "After login the dashboard shows the AI Agent. Use the quick-action chips (My Accounts, Check Balance, Transfer) to trigger common commands. Simple queries take the heuristic fast path — no LLM call needed.",
     action: { label: "View dashboard", route: "/dashboard" },
   },
   {

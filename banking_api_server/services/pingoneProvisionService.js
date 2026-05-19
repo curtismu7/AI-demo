@@ -1256,7 +1256,7 @@ class PingOneProvisionService {
       
       const resourceResult = await this.createResourceServer(
         _provisioningResourceName('Super Banking API'),
-        'Banking API resource server for user and admin applications',
+        'Demo API resource server for user and admin applications',
         config.audience || 'api.bxf.com'
       );
       
@@ -1341,7 +1341,7 @@ class PingOneProvisionService {
       
       const adminAppResult = await this.createApplication(
         _provisioningAppName('Super Banking Admin App'),
-        'Admin application for Super Banking demo',
+        'Admin application for demo',
         'WEB_APP',
         ['authorization_code', 'refresh_token']
       );
@@ -1450,7 +1450,7 @@ class PingOneProvisionService {
       
       const userAppResult = await this.createApplication(
         _provisioningAppName('Super Banking User App'),
-        'User application for Super Banking demo',
+        'User application for demo',
         'WEB_APP',
         ['authorization_code', 'refresh_token']
       );
@@ -1536,11 +1536,11 @@ class PingOneProvisionService {
       onStep(steps[steps.length - 1]);
       try {
         const policyId = await this._ensurePasswordPolicy(
-          'Banking Demo',
+          'Demo Password Policy',
           'Demo-friendly: 8-char minimum, no character classes, no commonly-used check, no history beyond PingOne floor.'
         );
         await this._bindPopulationPolicy(this.populationId, policyId);
-        steps.push({ step: 'password-policy', icon: '✅', message: 'Banking Demo password policy bound to default population' });
+        steps.push({ step: 'password-policy', icon: '✅', message: 'Demo password policy bound to default population' });
       } catch (polErr) {
         steps.push({ step: 'password-policy', icon: '⚠️', message: `Password policy step: ${polErr.message}` });
       }
@@ -1811,7 +1811,7 @@ class PingOneProvisionService {
       steps.push({ step: 'schema-attr', icon: '🔧', message: 'Ensuring bankingPrincipalUserId user attribute...' });
       onStep(steps[steps.length - 1]);
       try {
-        await this._ensureUserSchemaAttribute('bankingPrincipalUserId', 'STRING', 'Banking Principal User ID');
+        await this._ensureUserSchemaAttribute('bankingPrincipalUserId', 'STRING', 'Principal User ID');
         steps.push({ step: 'schema-attr', icon: '✅', message: 'bankingPrincipalUserId user attribute present' });
       } catch (schemaErr) {
         steps.push({ step: 'schema-attr', icon: '⚠️', message: `Schema attribute step: ${schemaErr.message}` });
@@ -2403,7 +2403,7 @@ class PingOneProvisionService {
     // matches one of these patterns; everything else (PingOne system apps,
     // user-managed apps, shared infrastructure) is left alone.
     //
-    // Apps + resources: name starts with "Super Banking" (singular convention).
+    // Apps + resources: name starts with "Demo" (the provisioning prefix).
     // Groups:           name equals "BankDelegates".
     // Custom attrs:     name equals "isDelegate" (the only one we provision).
     // Users:            username in {bankuser, bankadmin, bankDelegate}.

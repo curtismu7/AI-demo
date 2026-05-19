@@ -194,7 +194,7 @@ const ACTION_GROUPS = {
     {
       id: "mcp_tools",
       label: "MCP Tools",
-      desc: "List all available MCP banking tools",
+      desc: "List all available MCP tools",
       rfcs: [],
     },
     {
@@ -736,7 +736,7 @@ function buildSessionNotHydratedChat(storeError, sessionStoreHealthy = null) {
   }
 
   const lines = [
-    "Your browser shows you as signed in, but the Banking Agent needs OAuth tokens on the server for MCP and NL.",
+    "Your browser shows you as signed in, but the AI Agent needs OAuth tokens on the server for MCP and NL.",
     secondLine,
     "",
     'Diagnose: use "Open session debug" (uses ?deep=1) — compares Redis row vs req.session; sessionStoreHealthy can be true while accessTokenStub is true.',
@@ -1606,14 +1606,14 @@ const TOPIC_MESSAGES = {
   "login-flow": `Authorization Code + PKCE Flow:\n\n1. App generates code_verifier (random 64 bytes) + code_challenge (SHA-256 hash)\n2. Browser redirects to PingOne /as/authorize with challenge\n3. User authenticates → PingOne redirects back with code\n4. Backend-for-Frontend (BFF) exchanges code + verifier for tokens (server-side only)\n5. Browser never sees the token — only a session cookie\n\nPKCE prevents interception: even if code is stolen, attacker can't exchange it without the verifier.`,
   "token-exchange": `RFC 8693 Token Exchange (User token → MCP token):\n\nWhy: The user token has broad scope. The MCP server needs a narrowly-scoped MCP token for least-privilege.\n\nHow:\n• Backend-for-Frontend (BFF) holds the User token (session access token)\n• Backend-for-Frontend (BFF) calls PingOne /as/token with grant_type=urn:ietf:params:oauth:grant-type:token-exchange\n• User token is subject_token; agent client credentials are actor_token\n• PingOne validates may_act on the User token and issues an MCP token\n• MCP token has: sub=user, act={client_id=agent}, narrow scope, MCP audience\n\nmay_act on the User token → act on the MCP token — proving delegation chain.`,
   "may-act": `may_act / act Claims (RFC 8693 §4.1):\n\nmay_act on the User token: "this client is allowed to act on my behalf"\n  { "sub": "user-uuid", "may_act": { "client_id": "bff-admin-client" } }\n\nact on the MCP token (exchanged token): "this action was delegated"\n  { "sub": "user-uuid", "act": { "client_id": "bff-admin-client" } }\n\nThe MCP server validates act to confirm the Backend-for-Frontend (BFF) is the authorized actor — not just any client that got a token.`,
-  "mcp-protocol": `Model Context Protocol (MCP):\n\nMCP is a JSON-RPC 2.0 protocol over WebSocket (or stdio/SSE) for AI tools.\n\nHandshake:\n  initialize → { protocolVersion, capabilities, serverInfo }\n  → notifications/initialized (client notification)\n\nDiscovery:\n  tools/list → [{ name, description, inputSchema }]\n\nExecution:\n  tools/call { name, arguments } → { content: [{ type, text }] }\n\nIn this demo:\n  Browser → Backend-for-Frontend (BFF) (/api/mcp/tool) → MCP Server (WebSocket) → Banking API\n\nToken flow: Backend-for-Frontend (BFF) performs RFC 8693 exchange before forwarding tool calls.`,
+  "mcp-protocol": `Model Context Protocol (MCP):\n\nMCP is a JSON-RPC 2.0 protocol over WebSocket (or stdio/SSE) for AI tools.\n\nHandshake:\n  initialize → { protocolVersion, capabilities, serverInfo }\n  → notifications/initialized (client notification)\n\nDiscovery:\n  tools/list → [{ name, description, inputSchema }]\n\nExecution:\n  tools/call { name, arguments } → { content: [{ type, text }] }\n\nIn this demo:\n  Browser → Backend-for-Frontend (BFF) (/api/mcp/tool) → MCP Server (WebSocket) → Demo API\n\nToken flow: Backend-for-Frontend (BFF) performs RFC 8693 exchange before forwarding tool calls.`,
   introspection: `RFC 7662 Token Introspection (BFF → PingOne):\n\nThe BFF (not the MCP server) calls PingOne introspection in two places:\n  1. At login — immediately after the OAuth callback to confirm the session is live\n  2. Before every MCP tool call — to catch revoked/expired sessions before token exchange\n\n  POST /as/introspect\n  { token: "...", token_type_hint: "access_token" }\n  → { active: true, sub, scope, exp, aud, client_id }\n\nWhy introspection for the user token specifically?\n• Catches revoked sessions in real time (JWKS cannot detect revocation)\n• The result is shown in the Token Chain as "user-token-introspection"\n\nAll other tokens (agent CC token, exchanged MCP tokens) use RFC 7515 JWKS\nsignature verification instead — local, fast, and tamper-evident.`,
   "step-up": `Step-Up Authentication (RFC 9470):\n\nTriggered when a high-value action requires stronger auth:\n• Transfer amount ≥ threshold (set in Security Settings) → require MFA\n• BFF returns HTTP 428 with WWW-Authenticate: Bearer scope="step_up"\n\nTwo methods:\n1. OTP / CIBA: PingOne sends code to registered device (out-of-band)\n2. Redirect: Browser → /api/auth/oauth/user/stepup?acr_values=Multi_Factor → PingOne MFA\n\nAfter the user completes MFA — PingOne (the AS) authorizes based on:\n  • Scope: confirms banking:transfer is allowed under this policy\n  • ACR: confirms MFA assurance level was achieved\n  • Threshold: token issued only after identity verification at required level\n\nPingOne issues a new elevated token:\n  { acr: "Multi_Factor", scope: "banking:transfer", sub: user }\nBFF receives it → introspects it (RFC 7662) to confirm active + acr claims\nBFF re-exchanges it for a narrowly-scoped MCP token (RFC 8693)\nExchanged token JWKS-verified (RFC 7515) before any tool call\nOriginal transaction retried automatically.`,
   "agent-gateway": `Agent Gateway / Resource Indicators (RFC 8707):\n\nRFC 8707: client specifies the resource URI when requesting a token\n  /as/token?resource=https://mcp.example.com\n  → token aud = "https://mcp.example.com"\n\nRFC 9728: Protected Resource Metadata\n  GET https://mcp.example.com/.well-known/oauth-protected-resource\n  → { resource, authorization_servers, scopes_supported }\n\nThis lets a dynamic AI agent discover what auth is needed before attempting a tool call — no hardcoded configuration.`,
   "pingone-authorize": `PingOne Authorize (DaVinci):\n\nPingOne Authorize evaluates access policies at runtime using DaVinci flows.\n\nIn this demo it drives:\n• Step-up MFA triggers (ACR values like "Multi_factor")\n• CIBA push notifications to the user's device\n• Dynamic consent for high-value transactions\n\nThe acr_values parameter in /as/authorize tells PingOne which DaVinci policy to run.`,
   cimd: `Client ID Metadata Document (CIMD / RFC 7591):\n\nTraditional OAuth: client_id is an opaque string, pre-registered in the AS.\nCIMD: client_id is a URL you control — it hosts the client's metadata.\n\nThe AS fetches the URL to discover:\n  { redirect_uris, grant_types, scope, client_name, logo_uri, … }\n\nBenefits:\n• No pre-registration — client registers itself\n• Client controls updates (change the hosted document)\n• Works across AS instances that support DCR/RFC 7591\n\nIn this demo: click "Simulate" in the CIMD panel to see PingOne dynamic client registration.`,
   langchain: `LangChain (LCEL + Ollama):\n\nLangChain 0.3.x modernises AI agent composition:\n• LCEL (LangChain Expression Language): chain = prompt | llm.bind_tools(tools)\n• Local inference via Ollama — no cloud API keys required\n• Security: all LLM calls stay on localhost — nothing leaves your network\n\nIn this demo: the Chat Widget badge shows the active Ollama model.\nDeep dive: open /langchain or click the badge → Learn more`,
-  "human-in-loop": `Human-in-the-loop (HITL) for the banking agent:\n\n• Over $500 the server issues a consent challenge in your session; after you confirm in the consent popup, POST /transactions must include matching consentChallengeId (one-time use).\n• The agent cannot complete that path without your browser session.\n• If you decline, this demo disables the assistant until you sign out and sign in again.\n• HITL differs from MITM (attack). Open the drawer: What is HITL · Patterns & best practices · This app and the agent · Declining and lockout.`,
+  "human-in-loop": `Human-in-the-loop (HITL) for the AI agent:\n\n• Over $500 the server issues a consent challenge in your session; after you confirm in the consent popup, POST /transactions must include matching consentChallengeId (one-time use).\n• The agent cannot complete that path without your browser session.\n• If you decline, this demo disables the assistant until you sign out and sign in again.\n• HITL differs from MITM (attack). Open the drawer: What is HITL · Patterns & best practices · This app and the agent · Declining and lockout.`,
 };
 
 // ─── Inline HITL consent card (middle / dock surfaces) ─────────────────
@@ -3467,7 +3467,7 @@ export default function BankingAgent({
           setShowMcpToolsModal(true);
           addMessage(
             "assistant",
-            ` MCP Banking Tools (${tools.length} available) — check the popup window`,
+            ` MCP Tools (${tools.length} available) — check the popup window`,
             "tools/list",
           );
           toast.update(toastId, {
@@ -4142,7 +4142,7 @@ export default function BankingAgent({
         case "ai_ask":
           toast.update(toastId, { render: "Reasoning…" });
           response = await callMcpTool("sequential_think", {
-            query: "What banking services can I help you with today?",
+            query: "What can I help you with today?",
           });
           break;
         case "ai_helix_demo":
@@ -4155,7 +4155,7 @@ export default function BankingAgent({
           toast.update(toastId, { render: "Reasoning…" });
           response = await callMcpTool("sequential_think", {
             query:
-              "Explain how OAuth 2.0 and RFC 8693 token exchange work in banking APIs",
+              "Explain how OAuth 2.0 and RFC 8693 token exchange work in this demo",
           });
           break;
         case "ai_helix_explain":
@@ -4167,7 +4167,7 @@ export default function BankingAgent({
         case "ai_analyze":
           toast.update(toastId, { render: "Reasoning…" });
           response = await callMcpTool("sequential_think", {
-            query: "Summarize how the MCP tool flow works in this banking demo",
+            query: "Summarize how the MCP tool flow works in this demo",
           });
           break;
         case "ai_advice":
@@ -5197,7 +5197,7 @@ export default function BankingAgent({
         addMessage(
           "error",
           isConnErr
-            ? "Banking Agent is unavailable.\n\nThe MCP server is not reachable.\n\nLocal: cd banking_mcp_server && npm run dev\nHosted: set MCP_SERVER_URL to your reachable MCP server URL (if your platform allows outbound WS)."
+            ? "AI Agent is unavailable.\n\nThe MCP server is not reachable.\n\nLocal: cd banking_mcp_server && npm run dev\nHosted: set MCP_SERVER_URL to your reachable MCP server URL (if your platform allows outbound WS)."
             : `Error: ${err.message}${authHint}`,
           actionId,
         );
@@ -5244,7 +5244,7 @@ export default function BankingAgent({
     transfer: "Transfer $100 from checking to savings",
     deposit: "Deposit $100 to my checking account",
     withdraw: "Withdraw $100 from my checking account",
-    mcp_tools: "List all available MCP banking tools",
+    mcp_tools: "List all available MCP tools",
     "sensitive-account-details": "Show my sensitive account details",
     biggest_purchase: "What is my biggest purchase?",
     spending_summary: "Give me a spending summary",
@@ -7031,7 +7031,7 @@ export default function BankingAgent({
                   <div className="ba-popout-status-bar">
                     <span
                       className="ba-server-chip"
-                      title="Banking Agent — always connected"
+                      title="AI Agent — always connected"
                     >
                       <span className="ba-chip-dot" />
                       Agent
@@ -8712,11 +8712,11 @@ export default function BankingAgent({
                   title={
                     isConfigEmbeddedFocus
                       ? "MCP tools (same server — use for discovery)"
-                      : "Banking AI tools service — connected"
+                      : "AI tools service — connected"
                   }
                 >
                   <span className="ba-chip-dot" />
-                  {isConfigEmbeddedFocus ? "MCP tools" : "Banking Tools"}
+                  {isConfigEmbeddedFocus ? "MCP tools" : "AI Tools"}
                   {mcpStatus.connected && mcpStatus.toolCount != null && (
                     <span className="ba-chip-count">
                       {mcpStatus.toolCount} actions

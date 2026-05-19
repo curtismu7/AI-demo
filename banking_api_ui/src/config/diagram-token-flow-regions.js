@@ -129,10 +129,10 @@ export const TOKEN_FLOW_REGIONS = [
   },
   {
     id: "oauth-rs",
-    label: "Resource Server / Banking API",
+    label: "Resource Server / Demo API",
     bounds: { xPct: 89, yPct: 1, wPct: 6.1, hPct: 98 },
     triggers: ["agent_prompt"],
     tags: ["agent_prompt/heuristic_tool"],
-    keywords: ["resource server", "banking api", "oauth rs", "rs"],
+    keywords: ["resource server", "demo api", "oauth rs", "rs"],
   },
 ];

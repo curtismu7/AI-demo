@@ -50,7 +50,7 @@ module.exports = function (app) {
           console.error('[proxy] Error forwarding', req.method, req.url, '->', target, ':', err.code || err.message);
           if (!res.headersSent) {
             res.writeHead(502, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'proxy_error', message: 'Banking API unreachable. Is the server running on port ' + apiPort + '?' }));
+            res.end(JSON.stringify({ error: 'proxy_error', message: 'Demo API unreachable. Is the server running on port ' + apiPort + '?' }));
           }
         }
       }

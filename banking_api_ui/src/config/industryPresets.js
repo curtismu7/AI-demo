@@ -10,11 +10,11 @@
 export const INDUSTRY_PRESETS = [
   {
     id: 'bx_finance',
-    label: 'Super Banking (default)',
-    shortName: 'Super Banking',
+    label: 'Demo (default)',
+    shortName: 'Demo',
     tagline: 'PingOne AI IAM Core',
     description:
-      'Default demo branding: crimson primary actions and blue dashboard header. Uses the new Super Banking logo.',
+      'Default demo branding: crimson primary actions and blue dashboard header.',
     logoPath: '/logo.png',
     cssVars: {
       '--app-primary-red': '#b91c1c',
@@ -29,10 +29,10 @@ export const INDUSTRY_PRESETS = [
   },
   {
     id: 'banking',
-    label: 'Banking & Finance',
-    shortName: 'Banking',
-    tagline: 'AI-Powered Banking Demo',
-    description: 'Banking & Finance branding with navy blue header and crimson actions.',
+    label: 'Finance',
+    shortName: 'Finance',
+    tagline: 'AI-Powered Finance Demo',
+    description: 'Finance branding with navy blue header and crimson actions.',
     logoPath: '/logo.png',
     cssVars: {
       '--app-primary-red': '#b91c1c',

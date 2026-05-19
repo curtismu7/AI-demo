@@ -204,7 +204,7 @@ export default function BankingAdminOps({ user, onLogout }) {
 
   return (
     <div className="banking-admin-dashboard">
-      <PageNav user={user} onLogout={onLogout} title="Banking admin" />
+      <PageNav user={user} onLogout={onLogout} title="Admin" />
 
       {/* 3-column layout: Token Chain | Agent | Banking Admin Ops */}
       <div className="dashboard-content ud-body ud-body--2026 ud-body--dashboard-split3">
@@ -217,7 +217,7 @@ export default function BankingAdminOps({ user, onLogout }) {
         </aside>
 
         {/* Middle Column: Banking Agent */}
-        <section className="ud-agent-column" aria-label="AI banking assistant">
+        <section className="ud-agent-column" aria-label="AI assistant">
           <div className="embedded-banking-agent ud-dashboard-inline-agent">
             <BankingAgent
               user={user}
@@ -233,7 +233,7 @@ export default function BankingAdminOps({ user, onLogout }) {
         {/* Right Column: Banking Admin Operations */}
         <main
           className="ud-center ud-banking-column"
-          aria-label="Banking admin operations"
+          aria-label="Admin operations"
         >
           <h2
             style={{
@@ -243,7 +243,7 @@ export default function BankingAdminOps({ user, onLogout }) {
               fontWeight: 600,
             }}
           >
-            Banking Admin
+            Admin
           </h2>
 
           {/* PingOne Scopes Configuration Card */}

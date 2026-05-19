@@ -3,9 +3,8 @@
 /**
  * cleanupPingOneApps.js
  *
- * Deletes all 'Super Banking *' apps and resource servers from a PingOne
- * environment so that bootstrapPingOne.js can re-create them with generic
- * 'Demo *' names.
+ * Deletes all 'Demo *' apps and resource servers from a PingOne
+ * environment so that bootstrapPingOne.js can re-create them from scratch.
  *
  * Usage:
  *   node scripts/cleanupPingOneApps.js            # dry-run (prints what would be deleted)
@@ -39,7 +38,17 @@ if (!PINGONE_ENVIRONMENT_ID || !PINGONE_WORKER_CLIENT_ID || !PINGONE_WORKER_CLIE
 const API_BASE = `https://api.pingone.${PINGONE_REGION}/v1`;
 const ENV_PATH = `/environments/${PINGONE_ENVIRONMENT_ID}`;
 
-const SUPER_BANKING_APP_NAMES = [
+// Current provisioned names (Demo *) + legacy names (Super Banking *) for one-time migration
+const DEMO_APP_NAMES = [
+  'Demo Admin App',
+  'Demo User App',
+  'Demo MCP Server',
+  'Demo Worker',
+  'Demo MCP Exchanger',
+  'Demo MCP Gateway',
+  'Demo Agent',
+  'Demo AI Agent',
+  // Legacy names — present in PingOne envs provisioned before the rename
   'Super Banking Admin App',
   'Super Banking User App',
   'Super Banking MCP Server',
@@ -48,9 +57,15 @@ const SUPER_BANKING_APP_NAMES = [
   'Super Banking MCP Gateway',
   'Super Banking Agent',
   'Super Banking AI Agent',
+  'Super Banking Worker Token',
 ];
 
-const SUPER_BANKING_RESOURCE_NAMES = [
+const DEMO_RESOURCE_NAMES = [
+  'Demo API',
+  'Demo MCP Server',
+  'Demo MCP Gateway',
+  'Demo Agent Gateway',
+  // Legacy names
   'Super Banking API',
   'Super Banking MCP Server',
   'Super Banking MCP Gateway',
@@ -155,14 +170,14 @@ async function deleteResource(token, resource) {
 async function main() {
   console.log(DRY_RUN
     ? '\n[DRY RUN] No changes will be made. Pass --execute to actually delete.\n'
-    : '\n[EXECUTE] Deleting Super Banking apps and resource servers from PingOne...\n');
+    : '\n[EXECUTE] Deleting Demo apps and resource servers from PingOne...\n');
 
   const token = await getWorkerToken();
 
   // Delete apps first (they reference resource servers)
   console.log('--- Apps ---');
   const apps = await listApps(token);
-  const targetApps = apps.filter((a) => SUPER_BANKING_APP_NAMES.includes(a.name));
+  const targetApps = apps.filter((a) => DEMO_APP_NAMES.includes(a.name));
   if (targetApps.length === 0) {
     console.log('  No matching apps found.');
   }
@@ -173,7 +188,7 @@ async function main() {
   // Delete resource servers
   console.log('\n--- Resource Servers ---');
   const resources = await listResources(token);
-  const targetResources = resources.filter((r) => SUPER_BANKING_RESOURCE_NAMES.includes(r.name));
+  const targetResources = resources.filter((r) => DEMO_RESOURCE_NAMES.includes(r.name));
   if (targetResources.length === 0) {
     console.log('  No matching resource servers found.');
   }
