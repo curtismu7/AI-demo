@@ -136,11 +136,11 @@ T-3-amended):
 
 - **In:** resolver mapping, 5-mode UI selector + 4b/5b sub-toggle + degraded
   banner, T-3 amendment in ARCHITECTURE-TRUTHS + REGRESSION_PLAN, Config.js +
-  BankingAgent header surfaces.
+  BankingAgent header surfaces, Mode-1 no-match catalog message, **live
+  4b/5b platform-driven runtime** (OpenAI Responses API / Claude
+  `mcp_connector` loop against the gateway).
 - **Out (this pass):** UserDashboard §1-protected surface (deferred per prior
-  decision); building the *live* 4b/5b platform-driven runtime (Slice B
-  implementation) — this spec covers the *model + selector + safe path*;
-  4b/5b can ship the banner + documented wiring first, live runtime later.
+  decision).
 - **Non-goal:** weakening any server-side transfer/HITL/Authorize enforcement.
 
 ## 9. Constraints
@@ -153,13 +153,19 @@ T-3-amended):
 - UI build exit 0; no emojis except ⚠️ ✅ ❌; minimal diff.
 - Concurrency guard (commit `c2c1b5f6`) now protects commits.
 
-## 10. Open Questions
+## 10. Resolved Decisions
 
-1. Mode 1 ("Heuristics") with no LLM: should an unrecognised query return a
-   polite "I can only do X/Y/Z" message (deterministic catalog), or attempt
-   nothing? (Affects nlIntentParser no-match path.)
-2. 4b/5b: ship the **documented banner + safe path** now and the **live
-   platform runtime** as a follow-up, or build the live runtime in this pass?
+1. **Mode 1 ("Heuristics"), no LLM, unrecognised query → polite catalog
+   message.** When the heuristic returns no-match in mode 1, the agent replies
+   with a deterministic "I can help with: <capability list>" message rather
+   than silently doing nothing or erroring. The capability list is derived
+   from the heuristic's known intents (single source — no hand-maintained
+   second list). It must NOT fall through to any LLM (mode 1 = no LLM).
+2. **4b/5b live platform runtime is built in this same pass** (not deferred).
+   Modes 4 & 5 ship with both sub-shapes functional: via-BFF (Slice A, exists)
+   and platform-driven (Slice B, the OpenAI Responses API / Claude
+   `mcp_connector` loop against the gateway) plus the degraded-mode banner.
+   §8 "Out" line for the live 4b/5b runtime is hereby removed from scope-out.
 
 ---
 
