@@ -77,7 +77,7 @@ if (args.includes('--help') || args.includes('-h')) {
 
 Provisions a complete PingOne environment for the demo:
   - Resource servers: Demo API, Demo MCP Server, Demo MCP Gateway, Demo Agent Gateway
-  - Scopes:           banking:*, admin:*, users:*, p1:*, banking:mcp:invoke
+  - Scopes:           *, admin:*, users:*, p1:*, mcp:invoke
   - Applications:     Admin (WEB_APP), User (WEB_APP), MCP Server (WORKER),
                       Worker (WORKER), MCP Exchanger (WORKER), MCP Gateway (WORKER),
                       Agent (WORKER)
@@ -138,6 +138,9 @@ const WIPE_ENVIRONMENT = args.includes('--wipe-environment');
 // --reset-creds: ignore (and delete) the cached creds at ~/.banking-demo-creds.
 // Use when switching tenants or after rotating the worker secret.
 const RESET_CREDS = args.includes('--reset-creds');
+// --_retry: internal flag set when we re-exec after auto-clearing bad cached creds.
+// Prevents infinite loop: if the fresh creds also fail, we exit rather than re-exec again.
+const IS_RETRY = args.includes('--_retry');
 
 // Cached credentials live OUTSIDE the repo so they survive `npm run uninstall`
 // and are reachable from other clones on the same machine. Mode 0600 = only
@@ -1125,6 +1128,23 @@ async function main() {
     }
     process.exit(restartResult.status || 0);
   } catch (err) {
+    // If the worker credentials were rejected by PingOne and we used cached creds,
+    // clear the cache and re-exec so the user is prompted for fresh credentials.
+    // Guard with IS_RETRY so we only do this once — if the new creds also fail, exit.
+    if (err.pingone?.code === 'invalid_client' && !IS_RETRY) {
+      const hadCache = (() => { try { return require('fs').existsSync(CRED_CACHE_PATH); } catch (_) { return false; } })();
+      if (hadCache) {
+        console.error('');
+        console.error('  Worker credentials rejected (invalid_client). Cached credentials appear stale.');
+        console.error(`  Clearing cache at ${CRED_CACHE_PATH} and re-prompting for new credentials…`);
+        console.error('');
+        clearCredCache();
+        const { spawnSync } = require('child_process');
+        const result = spawnSync(process.execPath, [__filename, ...args, '--_retry'], { stdio: 'inherit' });
+        process.exit(result.status ?? 1);
+      }
+    }
+
     console.log('');
     console.log('═'.repeat(60));
     console.log('  Bootstrap failed');
