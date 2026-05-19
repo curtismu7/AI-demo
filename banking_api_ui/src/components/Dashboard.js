@@ -554,7 +554,11 @@ const Dashboard = ({ user, onLogout }) => {
               </button>
               <AgentUiModeToggle variant="config" />
             </div>
-            <main id="admin-dashboard-main" tabIndex={-1}>
+            <main
+              id="admin-dashboard-main"
+              tabIndex={-1}
+              className={agentPlacement === "middle" ? "admin-dash-main--split" : undefined}
+            >
               {/* Token chain — grouped card (TokenChainDisplay includes its own title) */}
               <section
                 className="dash-shell-card dash-shell-card--token"
