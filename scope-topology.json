@@ -1,53 +1,72 @@
 {
   "$schema": "./scope-topology.schema.json",
   "version": 2,
+  "provisioning": {
+    "appPrefix": "Demo",
+    "resourceNames": {
+      "Super Banking API":           "Demo API",
+      "Super Banking MCP Server":    "Demo MCP Server",
+      "Super Banking MCP Gateway":   "Demo MCP Gateway",
+      "Super Banking Agent Gateway": "Demo Agent Gateway"
+    },
+    "appNames": {
+      "Super Banking User App":      "Demo User App",
+      "Super Banking Admin App":     "Demo Admin App",
+      "Super Banking MCP Server":    "Demo MCP Server",
+      "Super Banking MCP Gateway":   "Demo MCP Gateway",
+      "Super Banking MCP Exchanger": "Demo MCP Exchanger",
+      "Super Banking AI Agent":      "Demo AI Agent",
+      "Super Banking Agent":         "Demo Agent",
+      "Super Banking Worker":        "Demo Worker"
+    }
+  },
   "scopes": {
-    "banking:read":          { "description": "Read accounts, balances, transactions", "riskLevel": "low",    "resource": "Super Banking API", "category": "banking" },
-    "banking:write":         { "description": "Write banking operations (deposit/withdrawal)", "riskLevel": "high", "resource": "Super Banking API", "category": "banking" },
-    "banking:transfer":      { "description": "Execute fund transfers", "riskLevel": "high", "resource": "Super Banking API", "category": "banking" },
-    "banking:accounts:read": { "description": "Read account information and balances", "riskLevel": "low", "resource": "Super Banking API", "category": "banking" },
-    "banking:transactions:read": { "description": "Read transaction history and details", "riskLevel": "low", "resource": "Super Banking API", "category": "banking" },
-    "banking:mortgage:read": { "description": "Read mortgage account data (Phase 267 Path A api-key disposition)", "riskLevel": "low", "resource": "Super Banking API", "category": "banking" },
-    "banking:ai:agent:read": { "description": "Agent invocation permission", "riskLevel": "medium", "resource": "Super Banking API", "category": "banking" },
-    "banking:mcp:invoke":    { "description": "Invoke MCP tools via the gateway (RFC 8693 exchange)", "riskLevel": "medium", "resource": "Super Banking MCP Server", "category": "banking" },
-    "banking:agent:invoke":  { "description": "Invoke the Agent Gateway (Two-Exchange Step 1 audience)", "riskLevel": "medium", "resource": "Super Banking Agent Gateway", "category": "banking" },
-    "ai_agent":              { "description": "AI agent identity", "riskLevel": "medium", "resource": "Super Banking API", "category": "ai" },
-    "admin:read":            { "description": "Read access to administrative data", "riskLevel": "medium", "resource": "Super Banking API", "category": "admin" },
-    "admin:write":           { "description": "Write access to administrative operations", "riskLevel": "high", "resource": "Super Banking API", "category": "admin" },
-    "admin:delete":          { "description": "Delete operations for administrative tasks", "riskLevel": "critical", "resource": "Super Banking API", "category": "admin" },
-    "users:read":            { "description": "Read access to user management data", "riskLevel": "medium", "resource": "Super Banking API", "category": "admin" },
-    "users:manage":          { "description": "Full user management capabilities", "riskLevel": "high", "resource": "Super Banking API", "category": "admin" }
+    "read":              { "description": "Read accounts, balances, transactions", "riskLevel": "low",    "resource": "Super Banking API", "category": "data" },
+    "write":             { "description": "Write operations (deposit/withdrawal/transfer)", "riskLevel": "high", "resource": "Super Banking API", "category": "data" },
+    "transfer":          { "description": "Execute fund transfers", "riskLevel": "high", "resource": "Super Banking API", "category": "data" },
+    "accounts:read":     { "description": "Read account information and balances", "riskLevel": "low", "resource": "Super Banking API", "category": "data" },
+    "transactions:read": { "description": "Read transaction history and details", "riskLevel": "low", "resource": "Super Banking API", "category": "data" },
+    "mortgage:read":     { "description": "Read mortgage/feature-specific data (banking vertical)", "riskLevel": "low", "resource": "Super Banking API", "category": "feature" },
+    "ai:agent:read":     { "description": "Agent invocation permission", "riskLevel": "medium", "resource": "Super Banking API", "category": "agent" },
+    "mcp:invoke":        { "description": "Invoke MCP tools via the gateway (RFC 8693 exchange)", "riskLevel": "medium", "resource": "Super Banking MCP Server", "category": "infra" },
+    "agent:invoke":      { "description": "Invoke the Agent Gateway (Two-Exchange Step 1 audience)", "riskLevel": "medium", "resource": "Super Banking Agent Gateway", "category": "infra" },
+    "ai_agent":          { "description": "AI agent identity", "riskLevel": "medium", "resource": "Super Banking API", "category": "ai" },
+    "admin:read":        { "description": "Read access to administrative data", "riskLevel": "medium", "resource": "Super Banking API", "category": "admin" },
+    "admin:write":       { "description": "Write access to administrative operations", "riskLevel": "high", "resource": "Super Banking API", "category": "admin" },
+    "admin:delete":      { "description": "Delete operations for administrative tasks", "riskLevel": "critical", "resource": "Super Banking API", "category": "admin" },
+    "users:read":        { "description": "Read access to user management data", "riskLevel": "medium", "resource": "Super Banking API", "category": "admin" },
+    "users:manage":      { "description": "Full user management capabilities", "riskLevel": "high", "resource": "Super Banking API", "category": "admin" }
   },
   "resources": {
     "Super Banking API": {
-      "uri": "banking_api_enduser",
-      "scopes": ["banking:read", "banking:write", "banking:transfer", "banking:accounts:read", "banking:transactions:read", "banking:mortgage:read", "banking:ai:agent:read", "ai_agent", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
+      "uri": "api.bxf.com",
+      "scopes": ["read", "write", "transfer", "accounts:read", "transactions:read", "mortgage:read", "ai:agent:read", "ai_agent", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
     },
     "Super Banking MCP Server": {
       "uri": "mcp-server.bxf.com",
-      "scopes": ["banking:mcp:invoke"],
-      "mirroredScopes": ["banking:read", "banking:write", "banking:mortgage:read", "banking:ai:agent:read", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
+      "scopes": ["mcp:invoke"],
+      "mirroredScopes": ["read", "write", "mortgage:read", "ai:agent:read", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
     },
     "Super Banking MCP Gateway": {
       "uri": "mcp-gw.bxf.com",
-      "scopes": ["banking:mcp:invoke"],
-      "mirroredScopes": ["banking:read", "banking:write", "banking:transfer", "banking:mortgage:read"]
+      "scopes": ["mcp:invoke"],
+      "mirroredScopes": ["read", "write", "transfer", "mortgage:read"]
     },
     "Super Banking Agent Gateway": {
       "uri": "agent-gateway.bxf.com",
-      "scopes": ["banking:agent:invoke"]
+      "scopes": ["agent:invoke"]
     }
   },
   "apps": {
     "Super Banking User App": {
       "type": "WEB_APP",
       "grantTypes": ["authorization_code", "refresh_token", "token_exchange"],
-      "grantedScopes": ["banking:ai:agent:read", "banking:read", "banking:write", "banking:transfer", "banking:mortgage:read"]
+      "grantedScopes": ["ai:agent:read", "read", "write", "transfer", "mortgage:read"]
     },
     "Super Banking Admin App": {
       "type": "WEB_APP",
       "grantTypes": ["authorization_code", "refresh_token", "token_exchange"],
-      "grantedScopes": ["banking:read", "banking:write", "banking:transfer", "banking:accounts:read", "banking:transactions:read", "banking:mortgage:read", "banking:ai:agent:read", "ai_agent", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
+      "grantedScopes": ["read", "write", "transfer", "accounts:read", "transactions:read", "mortgage:read", "ai:agent:read", "ai_agent", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
     },
     "Super Banking MCP Server": {
       "type": "WEB_APP",
@@ -64,12 +83,12 @@
     "Super Banking MCP Exchanger": {
       "type": "WEB_APP",
       "grantTypes": ["token_exchange"],
-      "grantedScopes": ["banking:read", "banking:write", "banking:mcp:invoke"]
+      "grantedScopes": ["read", "write", "mcp:invoke"]
     },
     "Super Banking AI Agent": {
       "type": "WEB_APP",
       "grantTypes": ["client_credentials", "token_exchange"],
-      "grantedScopes": ["banking:agent:invoke"]
+      "grantedScopes": ["agent:invoke"]
     },
     "Super Banking Agent": {
       "type": "WORKER",
@@ -85,7 +104,7 @@
   "servers": {
     "banking_api_server": {
       "resource": "Super Banking API",
-      "validatesAudience": "banking_api_enduser",
+      "validatesAudience": "api.bxf.com",
       "gatesOnToolScopes": false,
       "description": "BFF / token custodian. Performs RFC 8693 exchange #1 (user token -> mcp-gw.bxf.com audience)."
     },
@@ -109,31 +128,31 @@
     }
   },
   "tools": {
-    "get_my_accounts":              { "requiredScopes": ["banking:read"], "surface": "gateway" },
-    "get_account_balance":          { "requiredScopes": ["banking:read"], "surface": "gateway" },
-    "get_my_transactions":          { "requiredScopes": ["banking:read"], "surface": "gateway" },
-    "get_sensitive_account_details":{ "requiredScopes": ["banking:read"], "surface": "gateway" },
-    "sequential_think":             { "requiredScopes": ["banking:read"], "surface": "gateway" },
-    "get_investment_balance":       { "requiredScopes": ["banking:read"], "surface": "gateway" },
-    "get_investment_accounts":      { "requiredScopes": ["banking:read"], "surface": "gateway" },
-    "get_portfolio_summary":        { "requiredScopes": ["banking:read"], "surface": "gateway" },
-    "show_mortgage":                { "requiredScopes": ["banking:mortgage:read"], "surface": "gateway" },
-    "create_deposit":               { "requiredScopes": ["banking:write"], "surface": "gateway", "challengeType": "step_up" },
-    "create_withdrawal":            { "requiredScopes": ["banking:write"], "surface": "gateway", "challengeType": "step_up" },
-    "create_transfer":              { "requiredScopes": ["banking:write", "banking:transfer"], "surface": "gateway", "challengeType": "step_up" },
-    "query_user_by_email":          { "requiredScopes": ["ai_agent"], "surface": "exchange-only" },
-    "admin_list_all_users":         { "requiredScopes": ["admin:read", "users:read"], "surface": "exchange-only" },
-    "admin_get_user_details":       { "requiredScopes": ["admin:read", "users:read"], "surface": "exchange-only" },
-    "admin_delete_user":            { "requiredScopes": ["admin:write", "admin:delete", "users:manage"], "surface": "exchange-only" },
-    "admin_manage_accounts":        { "requiredScopes": ["admin:write", "users:manage"], "surface": "exchange-only" },
-    "admin_view_audit_logs":        { "requiredScopes": ["admin:read"], "surface": "exchange-only" },
-    "admin_system_status":          { "requiredScopes": ["admin:read"], "surface": "exchange-only" },
-    "list_accounts":                { "requiredScopes": ["banking:read"], "surface": "legacy-alias" },
-    "list_transactions":            { "requiredScopes": ["banking:read"], "surface": "legacy-alias" },
-    "transfer":                     { "requiredScopes": ["banking:write"], "surface": "legacy-alias" },
-    "deposit":                      { "requiredScopes": ["banking:write"], "surface": "legacy-alias" },
-    "withdraw":                     { "requiredScopes": ["banking:write"], "surface": "legacy-alias" },
-    "banking_get_account_balance":  { "requiredScopes": ["banking:read"], "surface": "legacy-alias" },
-    "banking_create_transfer":      { "requiredScopes": ["banking:write"], "surface": "legacy-alias" }
+    "get_my_accounts":               { "requiredScopes": ["read"], "surface": "gateway" },
+    "get_account_balance":           { "requiredScopes": ["read"], "surface": "gateway" },
+    "get_my_transactions":           { "requiredScopes": ["read"], "surface": "gateway" },
+    "get_sensitive_account_details": { "requiredScopes": ["read"], "surface": "gateway" },
+    "sequential_think":              { "requiredScopes": ["read"], "surface": "gateway" },
+    "get_investment_balance":        { "requiredScopes": ["read"], "surface": "gateway" },
+    "get_investment_accounts":       { "requiredScopes": ["read"], "surface": "gateway" },
+    "get_portfolio_summary":         { "requiredScopes": ["read"], "surface": "gateway" },
+    "show_mortgage":                 { "requiredScopes": ["mortgage:read"], "surface": "gateway" },
+    "create_deposit":                { "requiredScopes": ["write"], "surface": "gateway", "challengeType": "step_up" },
+    "create_withdrawal":             { "requiredScopes": ["write"], "surface": "gateway", "challengeType": "step_up" },
+    "create_transfer":               { "requiredScopes": ["write", "transfer"], "surface": "gateway", "challengeType": "step_up" },
+    "query_user_by_email":           { "requiredScopes": ["ai_agent"], "surface": "exchange-only" },
+    "admin_list_all_users":          { "requiredScopes": ["admin:read", "users:read"], "surface": "exchange-only" },
+    "admin_get_user_details":        { "requiredScopes": ["admin:read", "users:read"], "surface": "exchange-only" },
+    "admin_delete_user":             { "requiredScopes": ["admin:write", "admin:delete", "users:manage"], "surface": "exchange-only" },
+    "admin_manage_accounts":         { "requiredScopes": ["admin:write", "users:manage"], "surface": "exchange-only" },
+    "admin_view_audit_logs":         { "requiredScopes": ["admin:read"], "surface": "exchange-only" },
+    "admin_system_status":           { "requiredScopes": ["admin:read"], "surface": "exchange-only" },
+    "list_accounts":                 { "requiredScopes": ["read"], "surface": "legacy-alias" },
+    "list_transactions":             { "requiredScopes": ["read"], "surface": "legacy-alias" },
+    "transfer":                      { "requiredScopes": ["write"], "surface": "legacy-alias" },
+    "deposit":                       { "requiredScopes": ["write"], "surface": "legacy-alias" },
+    "withdraw":                      { "requiredScopes": ["write"], "surface": "legacy-alias" },
+    "banking_get_account_balance":   { "requiredScopes": ["read"], "surface": "legacy-alias" },
+    "banking_create_transfer":       { "requiredScopes": ["write"], "surface": "legacy-alias" }
   }
 }
