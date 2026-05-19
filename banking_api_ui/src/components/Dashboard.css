@@ -21,3 +21,44 @@
   cursor: pointer; padding: 0 4px; flex-shrink: 0; opacity: 0.7;
 }
 .dash-scope-injection-banner__close:hover { opacity: 1; }
+
+/* ── Admin dashboard: two-column layout in Middle mode ───────────────────── */
+main.admin-dash-main--split {
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) 1fr;
+  gap: 1rem;
+  align-items: start;
+  height: calc(100vh - var(--toolbar-height, 56px));
+  overflow: hidden;
+}
+
+/* Token Chain: column 1, sticky so it stays in view while right side scrolls */
+main.admin-dash-main--split .dash-shell-card--token {
+  grid-column: 1;
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - var(--toolbar-height, 56px) - 2rem);
+  overflow-y: auto;
+}
+
+/* All other admin sections: column 2 */
+main.admin-dash-main--split .dash-shell-card:not(.dash-shell-card--token) {
+  grid-column: 2;
+}
+
+/* Responsive: single column below 1024px regardless of mode */
+@media (max-width: 1024px) {
+  main.admin-dash-main--split {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+
+  main.admin-dash-main--split .dash-shell-card--token,
+  main.admin-dash-main--split .dash-shell-card:not(.dash-shell-card--token) {
+    grid-column: unset;
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+}
