@@ -65,7 +65,7 @@ function pollDemoStatus(onAllUp, onStatus, intervalMs = 5000) {
   };
 }
 
-export default function DemoServerCheckModal({ downServers, onAllUp }) {
+export default function DemoServerCheckModal({ downServers, onAllUp, onDismiss }) {
   const [servers, setServers] = useState(downServers || []);
   const [copied, setCopied] = useState(null);
   const cleanupRef = useRef(null);
@@ -105,6 +105,8 @@ export default function DemoServerCheckModal({ downServers, onAllUp }) {
       defaultHeight={480}
       storageKey="dsm-modal"
       zIndex={99999}
+      onClose={onDismiss}
+      noBackdrop
     >
       <div className="dsm-body">
         <p className="dsm-intro">

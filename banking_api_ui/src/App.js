@@ -1421,10 +1421,13 @@ function AppWithAuth() {
             />
             {!isApiTrafficOnlyPage && <Footer user={user} />}
             <ServerRestartModal />
-            {downServers && downServers.length > 0 && (
+            {downServers && downServers.length > 0 &&
+              !pathname.startsWith("/configure") &&
+              !pathname.startsWith("/setup") && (
               <DemoServerCheckModal
                 downServers={downServers}
                 onAllUp={() => setDownServers([])}
+                onDismiss={() => setDownServers([])}
               />
             )}
             {!isApiTrafficOnlyPage && <DemoTourModal />}
