@@ -28,15 +28,28 @@ const CONFIG_DB = path.join(
 );
 
 function isValidSqlite(file) {
+  // A header-only check (first 16 bytes === "SQLite format 3\0") is NOT
+  // sufficient: a truncated / partially-written placeholder can carry the
+  // valid magic header yet still be unreadable as a database. Some other
+  // suite in the full `npm test` run leaves exactly such a ~100-byte file
+  // here; better-sqlite3 then throws `SQLITE_NOTADB: file is not a database`
+  // when these vault suites try to query it. Validate the way the tests
+  // actually use it: open it with better-sqlite3 and run a trivial query.
+  let db;
   try {
-    const fd = fs.openSync(file, 'r');
-    const buf = Buffer.alloc(16);
-    fs.readSync(fd, buf, 0, 16, 0);
-    fs.closeSync(fd);
-    // Valid SQLite files start with the 16-byte header "SQLite format 3\0".
-    return buf.toString('utf8', 0, 16) === 'SQLite format 3\0';
+    // eslint-disable-next-line global-require
+    const Database = require('better-sqlite3');
+    db = new Database(file, { readonly: true });
+    db.prepare('SELECT 1 FROM sqlite_master LIMIT 1').get();
+    return true;
   } catch {
     return false;
+  } finally {
+    try {
+      if (db) db.close();
+    } catch {
+      /* ignore close errors on an already-broken handle */
+    }
   }
 }
 
