@@ -19,7 +19,8 @@
       "--brand-dashboard-header-end": "#1d4ed8",
       "--brand-app-shell-hero-start": "#1d4ed8",
       "--brand-app-shell-hero-end": "#1d4ed8",
-      "--theme-accent": "#2563eb"
+      "--theme-accent": "#2563eb",
+      "--brand-dashboard-header-text": "#ffffff"
     }
   },
   "terminology": {
@@ -51,10 +52,10 @@
     "mockData": null
   },
   "scopes": {
-    "read": "banking:read",
-    "write": "banking:write",
-    "transfer": "banking:transfer",
-    "admin": "banking:admin"
+    "read": "read",
+    "write": "write",
+    "transfer": "transfer",
+    "featureScope": "mortgage:read"
   },
   "demoUsers": {
     "customer": { "hint": "bankuser", "passwordHint": "Tigers7&" },
