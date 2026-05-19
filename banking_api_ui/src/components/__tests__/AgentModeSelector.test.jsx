@@ -54,3 +54,17 @@ test("external mode with bff wiring shows sub-toggle but NO degraded banner", ()
   expect(screen.getByLabelText(/external wiring/i)).toBeInTheDocument();
   expect(screen.queryByText(/delegation lost/i)).not.toBeInTheDocument();
 });
+
+test("changing wiring select calls setExternalWiring", () => {
+  mockHook.mode = "chatgpt"; mockHook.externalWiring = "bff";
+  render(<AgentModeSelector />);
+  fireEvent.change(screen.getByLabelText(/external wiring/i), { target: { value: "platform" } });
+  expect(mockHook.setExternalWiring).toHaveBeenCalledWith("platform");
+});
+
+test("compact mode: platform shows chip not full banner", () => {
+  mockHook.mode = "chatgpt"; mockHook.externalWiring = "platform";
+  render(<AgentModeSelector compact />);
+  expect(screen.getByText(/delegation lost/i)).toBeInTheDocument();      // chip text
+  expect(screen.queryByText(/per-tool RFC 8693/i)).not.toBeInTheDocument(); // full banner absent
+});

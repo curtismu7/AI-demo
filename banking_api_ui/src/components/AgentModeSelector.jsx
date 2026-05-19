@@ -11,9 +11,12 @@ export default function AgentModeSelector({ compact = false }) {
     externalWiring,
     modeOptions,
     saving,
+    loading,
     setMode,
     setExternalWiring,
   } = useLangchainProvider();
+
+  if (loading || modeOptions.length === 0) return null;
 
   const current = modeOptions.find((m) => m.id === mode);
   const isExternal = !!current && current.external;
@@ -54,13 +57,23 @@ export default function AgentModeSelector({ compact = false }) {
         </label>
       )}
 
-      {showDegraded && (
-        <p className="ams-degraded" role="status">
+      {showDegraded && !compact && (
+        <p className="ams-degraded" role="note">
           ⚠️ Delegation lost here — a third party holds a broad gateway token.
           No per-tool RFC 8693 exchange, no <code>act</code> claim, Token Chain
           dark before the gateway. The MCP Gateway + PingAuthorize still enforce
           policy on every tool call.
         </p>
+      )}
+
+      {showDegraded && compact && (
+        <span
+          className="ams-degraded-chip"
+          role="note"
+          title="Delegation lost — third party holds a broad gateway token. No per-tool RFC 8693 exchange, no act claim. Gateway + PingAuthorize still enforce."
+        >
+          ⚠️ delegation lost
+        </span>
       )}
     </div>
   );
