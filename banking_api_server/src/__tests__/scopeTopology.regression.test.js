@@ -43,20 +43,20 @@ describe('BFF scopeTopology loader', () => {
   const topo = require('../../services/scopeTopology');
 
   test('toolScopes(name) returns requiredScopes from manifest', () => {
-    expect(topo.toolScopes('create_transfer')).toEqual(['banking:write', 'banking:transfer']);
-    expect(topo.toolScopes('get_my_accounts')).toEqual(['banking:read']);
+    expect(topo.toolScopes('create_transfer')).toEqual(['write', 'transfer']);
+    expect(topo.toolScopes('get_my_accounts')).toEqual(['read']);
   });
 
-  test('toolScopes(unknown) falls back to [banking:read]', () => {
-    expect(topo.toolScopes('no_such_tool')).toEqual(['banking:read']);
+  test('toolScopes(unknown) falls back to [read]', () => {
+    expect(topo.toolScopes('no_such_tool')).toEqual(['read']);
   });
 
   test('appGrantedScopes returns manifest grants', () => {
-    expect(topo.appGrantedScopes('Super Banking User App')).toContain('banking:transfer');
+    expect(topo.appGrantedScopes('Super Banking User App')).toContain('transfer');
   });
 
   test('resourceScopes returns manifest resource scope list', () => {
-    expect(topo.resourceScopes('Super Banking API')).toContain('banking:transfer');
+    expect(topo.resourceScopes('Super Banking API')).toContain('transfer');
   });
 });
 
@@ -64,8 +64,8 @@ describe('MCP_TOOL_SCOPES derives from manifest', () => {
   const { MCP_TOOL_SCOPES } = require('../../services/mcpWebSocketClient');
   const topo = require('../../services/scopeTopology');
 
-  test('create_transfer now requests banking:transfer', () => {
-    expect(MCP_TOOL_SCOPES.create_transfer).toEqual(['banking:write', 'banking:transfer']);
+  test('create_transfer now requests transfer', () => {
+    expect(MCP_TOOL_SCOPES.create_transfer).toEqual(['write', 'transfer']);
   });
 
   test('every manifest tool is present in MCP_TOOL_SCOPES with matching scopes', () => {
@@ -95,16 +95,16 @@ describe('pingoneProvisionService derives resource scopes from the manifest', ()
     expect(src).toMatch(/topologyResourceScopeObjects\('Super Banking MCP Gateway'\)/);
   });
 
-  test('enduser resource scope set (derived) includes banking:transfer', () => {
-    expect(topo.resourceScopes('Super Banking API')).toContain('banking:transfer');
+  test('enduser resource scope set (derived) includes transfer', () => {
+    expect(topo.resourceScopes('Super Banking API')).toContain('transfer');
   });
 
   test('MCP Gateway resource carries the RFC 8693 mirrored banking scopes (T-10)', () => {
     const gw = topo.resourceScopes('Super Banking MCP Gateway');
-    for (const s of ['banking:read', 'banking:write', 'banking:transfer', 'banking:mortgage:read']) {
+    for (const s of ['read', 'write', 'transfer', 'mortgage:read']) {
       expect(gw).toContain(s);
     }
-    expect(topo.resourceMirroredScopes('Super Banking MCP Gateway')).toContain('banking:read');
+    expect(topo.resourceMirroredScopes('Super Banking MCP Gateway')).toContain('read');
   });
 
   test('User App grant array contains every Super Banking User App manifest scope', () => {
@@ -132,7 +132,7 @@ describe('scopePolicyEngine + scopeAuditService derive from manifest', () => {
   test('scopeAuditService SCOPE_REFERENCE_TABLE reflects manifest app grants', () => {
     const { SCOPE_REFERENCE_TABLE } = require('../../services/scopeAuditService');
     expect(SCOPE_REFERENCE_TABLE['Super Banking User App'])
-      .toEqual(expect.arrayContaining(['banking:transfer']));
+      .toEqual(expect.arrayContaining(['transfer']));
   });
 
   test('every engine scope derives from the manifest (v2: admin/users now modelled with category:admin)', () => {
@@ -142,7 +142,7 @@ describe('scopePolicyEngine + scopeAuditService derive from manifest', () => {
     // v2 SSOT: admin:*/users: ARE in the manifest now (category:'admin').
     // Only banking:transactions:write remains engine-local — no
     // tool/app/resource references it, so it stays out of the topology.
-    const NON_MANIFEST = new Set(['banking:transactions:write']);
+    const NON_MANIFEST = new Set(['transactions:write']);
     for (const s of engineScopes) {
       if (NON_MANIFEST.has(s)) continue;
       expect(manifestScopes.has(s)).toBe(true);
@@ -170,8 +170,8 @@ describe('cross-consumer scope equality (the guard)', () => {
     }
   });
 
-  test('NEGATIVE PROOF: reverting create_transfer to [banking:write] would fail this guard', () => {
-    const buggy = { ...MCP_TOOL_SCOPES, create_transfer: ['banking:write'] };
+  test('NEGATIVE PROOF: reverting create_transfer to [write] would fail this guard', () => {
+    const buggy = { ...MCP_TOOL_SCOPES, create_transfer: ['write'] };
     let caught = false;
     try {
       expect(buggy.create_transfer).toEqual(topo.toolScopes('create_transfer'));
@@ -222,11 +222,11 @@ describe('GUARD: OAuth /authorize requested scopes match topology app grants', (
   const topo = require('../../services/scopeTopology');
 
   // The single known, intentional spelling alias: the topology models the
-  // agent scope as `banking:ai:agent:read`; the OAuth layer historically
-  // requests `banking:ai:agent` (the working agent flow depends on this
+  // agent scope as `ai:agent:read`; the OAuth layer historically
+  // requests `ai:agent` (the working agent flow depends on this
   // spelling). Normalise both sides so the guard compares semantics, not
   // spelling. If a SECOND alias ever appears, add it here CONSCIOUSLY.
-  const ALIAS = { 'banking:ai:agent:read': 'banking:ai:agent' };
+  const ALIAS = { 'ai:agent:read': 'ai:agent' };
   const norm = (s) => ALIAS[s] || s;
   const bankingFamily = (s) => s.startsWith('banking:') || s === 'ai_agent';
 
@@ -243,7 +243,7 @@ describe('GUARD: OAuth /authorize requested scopes match topology app grants', (
 
   test('Super Banking User App: oauthUser.js authorize scopes ⊇ topology grant', () => {
     const prevEnv = process.env.ENDUSER_AUDIENCE;
-    process.env.ENDUSER_AUDIENCE = 'banking_api_enduser';
+    process.env.ENDUSER_AUDIENCE = 'api.bxf.com';
     jest.resetModules();
     try {
       const userOauth = require('../../config/oauthUser');

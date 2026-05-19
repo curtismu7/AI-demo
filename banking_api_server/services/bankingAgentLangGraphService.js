@@ -549,7 +549,7 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
           };
         }
         const gwToken = await oauthService.performTokenExchange(
-          userToken, gatewayAud, ['banking:mcp:invoke']);
+          userToken, gatewayAud, ['mcp:invoke']);
         const out = await runPlatformLoop(_agentMode.provider, {
           gatewayMcpUrl,
           gatewayToken: gwToken,

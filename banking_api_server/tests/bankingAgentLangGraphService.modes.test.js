@@ -90,7 +90,7 @@ describe('processAgentMessage — mode seams', () => {
     expect(subjectArg).toBe('session-access-token');
     expect(subjectArg).not.toBeUndefined();
     expect(audArg).toBe('https://gw.example');
-    expect(scopeArg).toEqual(['banking:mcp:invoke']);
+    expect(scopeArg).toEqual(['mcp:invoke']);
 
     // Platform loop ran with provider 'openai' (chatgpt → openai).
     expect(runPlatformLoop).toHaveBeenCalledTimes(1);

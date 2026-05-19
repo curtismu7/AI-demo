@@ -23,7 +23,7 @@ jest.mock('../../services/configStore', () => {
     pingone_resource_langchain_agent_uri:
       'https://banking-langchain-agent.banking-demo.com',
     pingone_resource_mcp_server_uri: 'https://banking-mcp-server.banking-demo.com',
-    mcp_token_exchange_scopes: 'banking:read banking:write',
+    mcp_token_exchange_scopes: 'read write',
     ff_langchain_audience_fallback: 'false',
   };
   return {
@@ -74,7 +74,7 @@ describe('resolveLangchainToken — Path A token custody', () => {
       oauthService.performTokenExchange.mock.calls[0];
     expect(subject).toBe('user.session.token');
     expect(audience).toBe('https://banking-langchain-agent.banking-demo.com');
-    expect(scopes).toEqual(['banking:read', 'banking:write']);
+    expect(scopes).toEqual(['read', 'write']);
   });
 
   test('dedicated-audience exchange fails, no fallback flag => throws (no cascade)', async () => {

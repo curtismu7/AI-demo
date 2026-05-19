@@ -23,7 +23,7 @@ jest.mock('../services/configStore', () => ({
         const values = {
             pingone_environment_id: 'env-abc',
             pingone_region: 'com',
-            mcp_scope: 'banking:mcp:invoke',
+            mcp_scope: 'mcp:invoke',
             mcp_gw_client_id: 'stored-client-id',
             mcp_gw_public_url: 'https://ig.example.com:8443',
             mcp_server_url: 'http://localhost:8000',
@@ -152,7 +152,7 @@ describe('GET /config — derived fields', () => {
         const app = buildApp();
         const res = await supertest(app).get('/config');
         expect(res.status).toBe(200);
-        expect(res.body.config.mcpScope).toBe('banking:mcp:invoke');
+        expect(res.body.config.mcpScope).toBe('mcp:invoke');
     });
 
     test('mcpScope defaults to "banking:mcp:invoke" when configStore has no value', async () => {
@@ -167,7 +167,7 @@ describe('GET /config — derived fields', () => {
         const app = buildApp();
         const res = await supertest(app).get('/config');
         expect(res.status).toBe(200);
-        expect(res.body.config.mcpScope).toBe('banking:mcp:invoke');
+        expect(res.body.config.mcpScope).toBe('mcp:invoke');
     });
 
     test('config has keys: pingOneResourceId, gatewayPublicUrl, upstreamMcpUrl', async () => {
@@ -221,7 +221,7 @@ describe('POST /config — allowlist', () => {
         const app = buildApp();
         const res = await supertest(app)
             .post('/config')
-            .send({ mcp_scope: 'banking:mcp:invoke' });
+            .send({ mcp_scope: 'mcp:invoke' });
         // Gateway is unreachable → 502, but NOT 400 (key is in allowlist)
         expect(res.status).not.toBe(400);
     });
@@ -268,7 +268,7 @@ describe('POST /config — setRaw persistence', () => {
             .send({
                 mcp_gw_client_id: 'test-client',
                 mcp_gw_public_url: 'https://ig.example.com:8443',
-                mcp_scope: 'banking:mcp:invoke',
+                mcp_scope: 'mcp:invoke',
             });
 
         expect(res.status).toBe(200);
@@ -276,7 +276,7 @@ describe('POST /config — setRaw persistence', () => {
             expect.objectContaining({
                 mcp_gw_client_id: 'test-client',
                 mcp_gw_public_url: 'https://ig.example.com:8443',
-                mcp_scope: 'banking:mcp:invoke',
+                mcp_scope: 'mcp:invoke',
             })
         );
     });

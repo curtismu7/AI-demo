@@ -202,7 +202,7 @@ router.get('/config', async (req, res) => {
         gatewayPublicUrl:  process.env.MCP_GW_RESOURCE_URI
             ? process.env.MCP_GW_RESOURCE_URI.replace(/\/mcp$/, '')
             : configStore.getEffective('mcp_gw_public_url') || 'https://ig.example.com:8443',
-        mcpScope: configStore.getEffective('mcp_scope') || 'banking:mcp:invoke',
+        mcpScope: configStore.getEffective('mcp_scope') || 'mcp:invoke',
     };
     cfg.introspectEndpoint = `${cfg.pingOneEnvUrl}/as/introspect`;
 

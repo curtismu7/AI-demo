@@ -119,9 +119,9 @@ function buildApp() {
   return app;
 }
 
-const adminHeader = () => JSON.stringify({ id: 'admin-1', role: 'admin', scopes: ['banking:read', 'banking:write'] });
-const userHeader  = () => JSON.stringify({ id: 'user-1',  role: 'user',  scopes: ['banking:read'] });
-const otherHeader = () => JSON.stringify({ id: 'user-2',  role: 'user',  scopes: ['banking:read'] });
+const adminHeader = () => JSON.stringify({ id: 'admin-1', role: 'admin', scopes: ['read', 'write'] });
+const userHeader  = () => JSON.stringify({ id: 'user-1',  role: 'user',  scopes: ['read'] });
+const otherHeader = () => JSON.stringify({ id: 'user-2',  role: 'user',  scopes: ['read'] });
 
 // ── GET / ─────────────────────────────────────────────────────────────────────
 
