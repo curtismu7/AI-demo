@@ -2,24 +2,26 @@
   "id": "retail",
   "schemaVersion": 2,
   "identity": {
-    "displayName": "Best Buy",
-    "headerTitle": "Best Buy",
-    "documentTitle": "Best Buy · PingOne AI IAM Core",
-    "logoAlt": "Best Buy logo",
+    "displayName": "Great Buy",
+    "headerTitle": "Great Buy",
+    "documentTitle": "Great Buy · PingOne AI IAM Core",
+    "logoAlt": "Great Buy logo",
     "tagline": "AI-Powered Retail Demo",
-    "logoPath": "/super-bank-icon.png"
+    "logoPath": "/branding/bestbuy-logo.svg"
   },
   "theme": {
     "cssVars": {
-      "--app-primary-red": "#0046BE",
-      "--app-primary-red-hover": "#003a9e",
-      "--app-primary-red-mid": "#1a5fd0",
-      "--app-primary-red-border": "#002d7a",
+      "--app-primary-red": "#FFE000",
+      "--app-primary-red-hover": "#FFCC00",
+      "--app-primary-red-mid": "#FFE933",
+      "--app-primary-red-border": "#E6CC00",
+      "--app-primary-btn-text": "#1D1D1B",
       "--brand-dashboard-header-start": "#0046BE",
-      "--brand-dashboard-header-end": "#0046BE",
+      "--brand-dashboard-header-end": "#003a9e",
       "--brand-app-shell-hero-start": "#0046BE",
-      "--brand-app-shell-hero-end": "#0046BE",
-      "--theme-accent": "#FFE000"
+      "--brand-app-shell-hero-end": "#003a9e",
+      "--theme-accent": "#FFE000",
+      "--brand-dashboard-header-text": "#ffffff"
     }
   },
   "terminology": {
@@ -38,13 +40,13 @@
   "agent": {
     "persona": "Shopping Assistant",
     "greeting": "Hi {name}! I can browse products, check prices, help with your cart, and explain the OAuth flows securing your checkout. What would you like to do?",
-    "systemPromptFlavor": "You are a Best Buy shopping assistant. The underlying tools are banking demo tools; keep responses retail-flavored."
+    "systemPromptFlavor": "You are a Great Buy shopping assistant. The underlying tools are banking demo tools; keep responses retail-flavored."
   },
   "dashboard": {
     "kind": "retail",
     "chips": [
       { "key": "balance", "label": "Rewards Points" },
-      { "key": "accounts", "label": "My Orders" },
+      { "key": "accounts", "label": "List My Orders" },
       { "key": "transactions", "label": "Purchase History" },
       { "key": "transfer", "label": "Checkout" }
     ],
@@ -69,10 +71,10 @@
     }
   },
   "scopes": {
-    "read": "banking:read",
-    "write": "banking:write",
-    "transfer": "banking:transfer",
-    "admin": "banking:admin"
+    "read": "read",
+    "write": "write",
+    "transfer": "transfer",
+    "featureScope": "largepurchase:read"
   },
   "demoUsers": {
     "customer": { "hint": "bankuser", "passwordHint": "Tigers7&" },

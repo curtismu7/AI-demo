@@ -67,6 +67,8 @@ function getActiveVertical() {
  * Also updates ui_industry_preset so IndustryBrandingContext picks up the styling.
  */
 async function setActiveVertical(verticalId) {
+  // Re-read from disk on every switch so JSON edits take effect without a server restart.
+  verticalCache = null;
   const all = loadVerticals();
   if (!all[verticalId]) {
     throw new Error(`Unknown vertical: "${verticalId}". Available: ${Object.keys(all).join(', ')}`);

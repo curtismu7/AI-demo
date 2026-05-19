@@ -311,7 +311,7 @@ Even when all code and configuration above is correct, the returned MCP token ma
    - OR verify if PingOne automatically emits `act` when `may_act.sub` matches the requesting client's `client_id`
 
 **Debugging token exchange failures:**
-- Check `/tmp/bank-api-server.log` for `[McpExchangerToken]` log entries
+- Check `/tmp/demo-api.log` for `[McpExchangerToken]` log entries
 - If `act absent` appears in Token Chain UI → PingOne policy may not emit `act` claims (expected behavior)
 - Verify PingOne app is type `AI_AGENT` and has correct scopes + authentication method
 - Verify actor token is obtained: log should show `[McpExchangerToken] ✅ Token obtained`
@@ -358,7 +358,7 @@ Even when all code and configuration above is correct, the returned MCP token ma
   - FAB visibility and agent sidebar in `/dashboard`
   - Click a banking tool (e.g., "🏦 My Accounts") → Token Chain panel shows token exchange events
   - Verify `act` claim is present: Token Chain shows `✅ act valid` (not `⚠️ act absent`)
-  - Check `/tmp/bank-api-server.log` for `[McpExchangerToken] ✅ Token obtained` (not ❌ Failed)
+  - Check `/tmp/demo-api.log` for `[McpExchangerToken] ✅ Token obtained` (not ❌ Failed)
   - **MCP results tracking:** Query `/api/app-events?category=mcp` to see tool calls, completions, AND results logged
   - If token is expired in Token Chain: MCP call fails before reaching server (fix: logout/login to get fresh token)
   - If HITL enabled: consent dialog appears before tool execution per `REGRESSION_PLAN.md`

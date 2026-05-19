@@ -125,6 +125,14 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-19 — Generic scope rename + log/pid file rename + audience URI update
+
+**What changed:** Dropped the `banking:` prefix from all OAuth scope strings (e.g. `banking:read` → `read`, `banking:write` → `write`, `banking:mcp:invoke` → `mcp:invoke`). Renamed all `/tmp/bank-*` log and PID files to `/tmp/demo-*` (e.g. `/tmp/bank-api-server.log` → `/tmp/demo-api.log`). Changed the resource URI audience from `banking_api_enduser` to `api.bxf.com`. Added a `provisioning` block to `scope-topology.json` and introduced `cleanupPingOneApps.js` to enable safe re-provisioning.
+
+**Files touched (key ones):** `scope-topology.json`, `scope-topology.schema.json`, `banking_api_server/config/scopes.js`, `banking_api_server/services/agentMcpTokenService.js`, `banking_api_server/services/pingoneProvisionService.js`, `banking_api_server/scripts/bootstrapPingOne.js`, `banking_api_server/scripts/cleanupPingOneApps.js` (new), `banking_mcp_server/src/tools/BankingToolRegistry.ts`, `run-bank.sh`
+
+**Regression guard:** After re-provisioning: Token Chain shows `read` and `mcp:invoke` (not `banking:read`, `banking:mcp:invoke`). Logs appear at `/tmp/demo-api.log`. `npm run pingone:cleanup -- --execute` required before next bootstrap.
+
 ### 2026-05-19 — data:import wipes BFF .env credentials (merge strategy fix)
 
 **Root cause:** `importMigrationBundle.js` did a blind `copyFileSync(archiveSrc, ENV_FILE)` — the archive's `.env` (from another machine or a stale export) overwrote PingOne client IDs, redirect URIs, and `SESSION_SECRET` specific to this bootstrap. OAuth broke immediately: BFF had no `adminClientId`/`userClientId`, `/api/config?error=not_configured` on every login attempt.
@@ -4396,6 +4404,20 @@ cd ..
 - **Files:** `.husky/pre-commit`, `REGRESSION_PLAN.md`.
 - **Not broken (verified):** Guard is additive at the top of the hook; the existing secret-scan / CHANGELOG / FEATURES / lint-staged / unit-test / env-coverage blocks are byte-unchanged and still run after lock acquisition. `bash -n` clean. Pre-existing stashes left by the (now-stopped) concurrent agent were **not** dropped — they are that agent's safety net, not mine.
 - **Tests:** 4 cases, all green: (1) `bash -n .husky/pre-commit` → syntax OK; (2) normal run → exit 0, lock dir absent afterward (trap released); (3) live-PID lock present → exit 1, "Another pre-commit is running (PID …) — refusing"; (4) dead-PID stale lock → "Removing stale pre-commit lock" → reclaim → exit 0, lock cleaned.
+
+### 2026-05-19 — validateTwoExchangeConfig missing from configStore exports; admin branding dropdown
+
+**Files changed:**
+- `banking_api_server/services/configStore.js` — implemented and exported `validateTwoExchangeConfig()` function
+- `banking_api_server/config/verticals/retail.json` — updated `logoPath` to `/branding/bestbuy-logo.svg`; renamed "My Orders" chip label to "List My Orders"
+- `banking_api_ui/public/branding/bestbuy-logo.svg` — created Best Buy SVG logo asset
+- `banking_api_ui/src/components/Admin.jsx` — added "Branding" tab with `ThemePicker` dropdown
+
+**What was broken:** `agentMcpTokenService.js` line 1583 calls `configStore.validateTwoExchangeConfig()` but the function was never implemented or exported from `configStore.js`, causing a `TypeError: configStore.validateTwoExchangeConfig is not a function` crash whenever an MCP agent tool call was attempted with the two-exchange delegation path. The admin page had no branding/vertical switcher, making it impossible to switch the demo to Best Buy (retail) branding from the admin UI.
+
+**What was fixed:** Implemented `validateTwoExchangeConfig()` in `configStore.js` — reads all required two-exchange env vars/config (AI agent client ID/secret, MCP exchanger client ID/secret, gateway and MCP audience URIs), collects ALL missing fields before throwing (not fail-fast), throws `code=TWO_EXCHANGE_CONFIG_INVALID, httpStatus=503` with remediation steps in the message, and warns (does not throw) when `intermediateAud === finalAud`. Added a "Branding" tab to `Admin.jsx` using the existing `ThemePicker` component; updated `retail.json` to use the new Best Buy SVG logo and "List My Orders" chip label.
+
+**Verify:** MCP agent tool calls no longer crash with "not a function". In admin `/admin` → Branding tab → select "Best Buy" → logo in header changes to Best Buy SVG; AI assistant chips show "List My Orders" instead of "My Accounts". `cd banking_api_ui && npm run build` → exit 0. `npx jest configStore-tokenExchange --no-coverage` → 27/28 pass (1 pre-existing failure in `buildAllowedScopesByAudience` key-count check, not introduced here).
 
 ### 2026-05-19 — Five-mode agent provider (Heuristics / Helix-Google / Heuristics+Helix / Just ChatGPT / Just Claude)
 

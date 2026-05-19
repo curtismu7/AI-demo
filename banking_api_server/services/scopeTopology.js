@@ -28,10 +28,10 @@ function load() {
   return _manifest;
 }
 
-/** Required scopes for a tool. Falls back to ['banking:read'] for unknown tools. */
+/** Required scopes for a tool. Falls back to ['read'] for unknown tools. */
 function toolScopes(toolName) {
   const t = load().tools[toolName];
-  return t ? t.requiredScopes.slice() : ['banking:read'];
+  return t ? t.requiredScopes.slice() : ['read'];
 }
 
 /** Tool surface class: 'gateway' | 'exchange-only' | 'legacy-alias' | undefined. */

@@ -69,7 +69,7 @@ async function saveTransactionSnapshot(userId) {
 }
 
 // Get all transactions (admin only)
-router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
+router.get('/', authenticateToken, requireScopes(['read']), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -99,9 +99,9 @@ router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, 
 
 
 // Get user's own transactions (end users)
-// No banking:* scope required — standard PingOne tokens without a custom resource server
+// No read scope required — standard PingOne tokens without a custom resource server
 // only carry openid/profile/email. Once a resource server is configured in PingOne and
-// ENDUSER_AUDIENCE is set, restore: requireScopes(['banking:transactions:read', 'banking:read'])
+// ENDUSER_AUDIENCE is set, restore: requireScopes(['transactions:read', 'read'])
 router.get('/my', authenticateToken, async (req, res) => {
   try {
     // Re-hydrate transactions from Redis snapshot in case this Lambda was cold-started.
@@ -156,7 +156,7 @@ router.get('/my', authenticateToken, async (req, res) => {
 });
 
 // Session-bound consent challenge for high-value transactions (HITL). Registered before /:id so "consent-challenge" is not captured as an id.
-// No banking:* scope required — same reasoning as POST /; session ownership is enforced inside txConsent.
+// No write scope required — same reasoning as POST /; session ownership is enforced inside txConsent.
 router.post(
   '/consent-challenge',
   authenticateToken,
@@ -247,7 +247,7 @@ router.get(
 );
 
 // Get transaction by ID (admin or transaction owner)
-router.get('/:id', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
+router.get('/:id', authenticateToken, requireScopes(['read']), async (req, res) => {
   try {
     const transaction = dataStore.getTransactionById(req.params.id);
     if (!transaction) {
@@ -267,9 +267,9 @@ router.get('/:id', authenticateToken, requireScopes(['banking:read']), async (re
 });
 
 // Create new transaction (admin or end user)
-// No banking:* scope required — standard PingOne tokens without a custom resource server
+// No write scope required — standard PingOne tokens without a custom resource server
 // only carry openid/profile/email. Once a resource server is configured in PingOne and
-// ENDUSER_AUDIENCE is set, restore requireScopes(['banking:transactions:write', 'banking:write']).
+// ENDUSER_AUDIENCE is set, restore requireScopes(['transactions:write', 'write']).
 // Ownership is enforced below (non-admin users can only act on their own accounts).
 router.post('/', authenticateToken, async (req, res) => {
   try {
@@ -400,15 +400,15 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     // ── Scope validation ──────────────────────────────────────────────────────
-    // Write operations (transfer, deposit, withdrawal) require banking:write scope
-    // when the token carries any banking:* scopes (resource server is configured).
+    // Write operations (transfer, deposit, withdrawal) require write scope
+    // when the token carries any data scopes (resource server is configured).
     // Standard PingOne browser-session tokens carry only openid/profile/email and
-    // have no banking:* scopes; scope enforcement is skipped for them — auth is
+    // have no data scopes; scope enforcement is skipped for them — auth is
     // handled by the session + ownership checks below.
     const userScopes = req.user.scopes || [];
     const writeOperations = ['transfer', 'deposit', 'withdrawal'];
     if (writeOperations.includes(type)) {
-      const hasBankingScopes = userScopes.some(s => s.startsWith('banking:'));
+      const hasBankingScopes = userScopes.some(s => s === 'read' || s === 'write');
       const hasWriteScope = userScopes.includes(BANKING_SCOPES.BANKING_WRITE);
       if (hasBankingScopes && !hasWriteScope) {
         console.log(`[Scopes] User ${req.user.id} missing ${BANKING_SCOPES.BANKING_WRITE} for ${type}`);
@@ -681,7 +681,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update transaction (admin only)
-router.put('/:id', blockInDemoMode('transaction update'), authenticateToken, requireScopes(['banking:write']), async (req, res) => {
+router.put('/:id', blockInDemoMode('transaction update'), authenticateToken, requireScopes(['write']), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -700,7 +700,7 @@ router.put('/:id', blockInDemoMode('transaction update'), authenticateToken, req
 });
 
 // Delete transaction (admin only)
-router.delete('/:id', blockInDemoMode('transaction deletion'), authenticateToken, requireScopes(['banking:write']), async (req, res) => {
+router.delete('/:id', blockInDemoMode('transaction deletion'), authenticateToken, requireScopes(['write']), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {

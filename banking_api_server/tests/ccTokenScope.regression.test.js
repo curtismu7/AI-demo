@@ -34,19 +34,19 @@ describe('getClientCredentialsTokenAs — RFC 8707 single-resource scope', () =>
 
   test('includes scope in the token request body when provided', async () => {
     await oauthService.getClientCredentialsTokenAs(
-      'agent-client', 'secret', 'agent-gateway.bxf.com', 'basic', 'banking:agent:invoke'
+      'agent-client', 'secret', 'agent-gateway.bxf.com', 'basic', 'agent:invoke'
     );
     const body = lastPostBody();
     expect(body.get('grant_type')).toBe('client_credentials');
     expect(body.get('audience')).toBe('agent-gateway.bxf.com');
-    expect(body.get('scope')).toBe('banking:agent:invoke');
+    expect(body.get('scope')).toBe('agent:invoke');
   });
 
   test('joins an array scope with spaces', async () => {
     await oauthService.getClientCredentialsTokenAs(
-      'mcp-client', 'secret', 'mcp-gateway.bxf.com', 'basic', ['banking:mcp:invoke', 'banking:read']
+      'mcp-client', 'secret', 'mcp-gateway.bxf.com', 'basic', ['mcp:invoke', 'read']
     );
-    expect(lastPostBody().get('scope')).toBe('banking:mcp:invoke banking:read');
+    expect(lastPostBody().get('scope')).toBe('mcp:invoke read');
   });
 
   test('omits scope param entirely when not provided (back-compat)', async () => {

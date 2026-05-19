@@ -22,8 +22,15 @@
 }
 .dash-scope-injection-banner__close:hover { opacity: 1; }
 
+/* ── Admin dashboard: override split-pane-layout to column so toolbar stacks above grid ── */
+.admin-dashboard-page .split-pane-layout {
+  flex-direction: column;
+  height: auto;
+}
+
 /* ── Admin dashboard: two-column layout in Middle mode ───────────────────── */
 main.admin-dash-main--split {
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: minmax(320px, 380px) 1fr;
   gap: 1rem;

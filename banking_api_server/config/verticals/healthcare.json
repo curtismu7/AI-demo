@@ -1,0 +1,64 @@
+{
+  "id": "healthcare",
+  "schemaVersion": 2,
+  "identity": {
+    "displayName": "CareConnect",
+    "headerTitle": "CareConnect",
+    "documentTitle": "CareConnect · PingOne AI IAM Core",
+    "logoAlt": "CareConnect logo",
+    "tagline": "AI-Powered Healthcare Demo",
+    "logoPath": "/branding/careconnect-logo.svg"
+  },
+  "theme": {
+    "cssVars": {
+      "--app-primary-red": "#0f766e",
+      "--app-primary-red-hover": "#0d6b64",
+      "--app-primary-red-mid": "#14b8a6",
+      "--app-primary-red-border": "#0d9488",
+      "--brand-dashboard-header-start": "#0f766e",
+      "--brand-dashboard-header-end": "#0d9488",
+      "--brand-app-shell-hero-start": "#0f766e",
+      "--brand-app-shell-hero-end": "#0d9488",
+      "--theme-accent": "#14b8a6",
+      "--brand-dashboard-header-text": "#ffffff"
+    }
+  },
+  "terminology": {
+    "account": "Patient Record",
+    "accounts": "Patient Records",
+    "accountTypes": ["Primary Care", "Specialist", "Mental Health"],
+    "transaction": "Appointment",
+    "transactions": "Appointments",
+    "transactionTypes": ["Check-in", "Consultation", "Records Release", "Referral"],
+    "balance": "Coverage",
+    "agent": "Care Assistant",
+    "dashboard": "My Health",
+    "highValueAction": "Records Release",
+    "highValueLabel": "High-sensitivity records release"
+  },
+  "agent": {
+    "persona": "Care Assistant",
+    "greeting": "Hi {name}! I can review your appointments, check coverage details, and help you manage records requests. I'll walk you through the consent flows as we go. What do you need?",
+    "systemPromptFlavor": "You are a CareConnect care assistant. The underlying tools are banking demo tools; keep responses healthcare-flavored — accounts are patient records, transactions are appointments, transfers are records releases."
+  },
+  "dashboard": {
+    "kind": "healthcare",
+    "chips": [
+      { "key": "balance", "label": "Check Coverage" },
+      { "key": "accounts", "label": "My Records" },
+      { "key": "transactions", "label": "Appointments" },
+      { "key": "transfer", "label": "Release Records" }
+    ],
+    "mockData": null
+  },
+  "scopes": {
+    "read": "read",
+    "write": "write",
+    "transfer": "transfer",
+    "featureScope": "records:read"
+  },
+  "demoUsers": {
+    "customer": { "hint": "bankuser", "passwordHint": "Tigers7&" },
+    "admin": { "hint": "bankadmin", "passwordHint": "Tigers7&" }
+  }
+}

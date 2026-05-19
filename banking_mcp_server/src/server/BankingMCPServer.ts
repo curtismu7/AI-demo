@@ -6,7 +6,7 @@
 import WebSocket from 'ws';
 import { createServer, Server as HttpServer } from 'http';
 import { EventEmitter } from 'events';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { MCPMessage, MCPResponse } from '../interfaces/mcp';
 import { BankingAuthenticationManager } from '../auth/BankingAuthenticationManager';
 import { BankingSessionManager } from '../storage/BankingSessionManager';
@@ -210,7 +210,7 @@ export class BankingMCPServer extends EventEmitter {
    * Handle new WebSocket connection
    */
   async handleConnection(ws: WebSocket, request: any): Promise<void> {
-    const connectionId = uuidv4();
+    const connectionId = randomUUID();
     const connectionInfo: ConnectionInfo = {
       id: connectionId,
       ws,

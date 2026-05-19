@@ -64,28 +64,28 @@ if [[ ! -f "${CERT_FILE}" ]] || [[ ! -f "${KEY_FILE}" ]]; then
 fi
 
 # PID files — separate from start.sh so both can coexist
-PID_API=/tmp/bank-api-server.pid
-PID_MCP=/tmp/bank-mcp-server.pid
-PID_AGENT=/tmp/bank-langchain-agent.pid
-PID_UI=/tmp/bank-ui.pid
+PID_API=/tmp/demo-api.pid
+PID_MCP=/tmp/demo-mcp.pid
+PID_AGENT=/tmp/demo-langchain.pid
+PID_UI=/tmp/demo-ui.pid
 
-LOG_API=/tmp/bank-api-server.log
-LOG_UI=/tmp/bank-ui.log
-LOG_MCP=/tmp/bank-mcp-server.log
-LOG_AGENT=/tmp/bank-langchain-agent.log
-LOG_MCP_TRAFFIC=/tmp/bank-mcp-traffic.log
-PID_GW=/tmp/bank-mcp-gateway.pid
-LOG_GW=/tmp/bank-mcp-gateway.log
-PID_HITL=/tmp/bank-hitl-service.pid
-LOG_HITL=/tmp/bank-hitl-service.log
-PID_AGENT_SVC=/tmp/bank-agent-service.pid
-LOG_AGENT_SVC=/tmp/bank-agent-service.log
-PID_INVEST=/tmp/bank-mcp-invest.pid
-LOG_INVEST=/tmp/bank-mcp-invest.log
-PID_MORTGAGE=/tmp/bank-mortgage-service.pid
-LOG_MORTGAGE=/tmp/bank-mortgage-service.log
-LOG_AUTH=/tmp/bank-authorize-server.log
-LOG_HELIX=/tmp/bank-helix.log
+LOG_API=/tmp/demo-api.log
+LOG_UI=/tmp/demo-ui.log
+LOG_MCP=/tmp/demo-mcp.log
+LOG_AGENT=/tmp/demo-langchain.log
+LOG_MCP_TRAFFIC=/tmp/demo-mcp-traffic.log
+PID_GW=/tmp/demo-mcp-gateway.pid
+LOG_GW=/tmp/demo-mcp-gateway.log
+PID_HITL=/tmp/demo-hitl.pid
+LOG_HITL=/tmp/demo-hitl.log
+PID_AGENT_SVC=/tmp/demo-agent.pid
+LOG_AGENT_SVC=/tmp/demo-agent.log
+PID_INVEST=/tmp/demo-invest.pid
+LOG_INVEST=/tmp/demo-invest.log
+PID_MORTGAGE=/tmp/demo-mortgage.pid
+LOG_MORTGAGE=/tmp/demo-mortgage.log
+LOG_AUTH=/tmp/demo-authorize.log
+LOG_HELIX=/tmp/demo-helix.log
 
 # Pre-create all log files so tail/log viewers work before services start.
 # We TRUNCATE here (not just touch) — services that get skipped or fail to relaunch
@@ -103,7 +103,7 @@ else
         "${LOG_HELIX}" 2>/dev/null || true
 fi
 
-# Terminal colors (global — used by banner, status, and tail_bank_logs)
+# Terminal colors (global — used by banner, status, and tail_demo_logs)
 BOLD='\033[1m'
 CYAN='\033[1;36m'
 GREEN='\033[1;32m'
@@ -221,8 +221,8 @@ preflight_checks() {
     ok "Ollama running on :11434 — model: ${ollama_model}"
   else
     echo -e "  ${CYAN}[SPIN]${RESET}  Starting Ollama (model: ${ollama_model})…"
-    ollama serve > /tmp/bank-ollama.log 2>&1 &
-    echo $! > /tmp/bank-ollama.pid
+    ollama serve > /tmp/demo-ollama.log 2>&1 &
+    echo $! > /tmp/demo-ollama.pid
     # Give it a moment to start
     local i=0
     while [[ $i -lt 8 ]]; do
@@ -232,7 +232,7 @@ preflight_checks() {
     if port_listening 11434; then
       ok "Ollama started on :11434 — model: ${ollama_model}"
     else
-      warn "Ollama did not start on :11434 — check /tmp/bank-ollama.log"
+      warn "Ollama did not start on :11434 — check /tmp/demo-ollama.log"
     fi
   fi
 
@@ -241,7 +241,7 @@ preflight_checks() {
 }
 
 # ── Tail logs (pick one by number, or all at once) ────────────────────────────
-tail_bank_logs() {
+tail_demo_logs() {
   local pre="${1:-}"
   [[ "${pre}" == "ALL" || "${pre}" == "All" ]] && pre="all"
   local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent" "MCP Traffic" "MCP Gateway" "HITL Service" "Agent Service" "MCP Invest" "Mortgage Service" "Authorize Server" "Helix LLM")
@@ -396,7 +396,7 @@ print_status_table() {
 
 # ── Subcommand: stop ─────────────────────────────────────────────────────────
 cmd_stop() {
-  echo "[STOP] Stopping Banking services (run-bank.sh)..."
+  echo "[STOP] Stopping Demo services (run-bank.sh)..."
   set +e
   for pid_file in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_MORTGAGE" "$PID_AGENT" "$PID_UI"; do
     if [[ -f "$pid_file" ]]; then
@@ -414,14 +414,14 @@ cmd_stop() {
   sleep 1
   force_kill_listeners_on_banking_ports
   set -euo pipefail
-  echo "[OK] All Banking listeners stopped (or none were running)."
+  echo "[OK] All Demo listeners stopped (or none were running)."
 }
 
 # ── Subcommand: test ─────────────────────────────────────────────────────────
 cmd_test() {
   echo ""
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-  echo -e "${CYAN}${BOLD}   [BANK]  SUPER BANK — TEST SUITE                                   ${RESET}"
+  echo -e "${CYAN}${BOLD}   [BANK]  DEMO — TEST SUITE                                          ${RESET}"
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
   echo ""
 
@@ -554,7 +554,7 @@ case "${COMMAND}" in
     exit 0
     ;;
   tail)
-    tail_bank_logs "${2:-}"
+    tail_demo_logs "${2:-}"
     exit 0
     ;;
   test)
@@ -693,7 +693,7 @@ echo "[LAUNCH] Starting Banking API Server on ${API_HOST}:${API_PORT}..."
   MCP_GATEWAY_HTTP_URL="${MCP_GATEWAY_HTTP_URL:-https://api.ping.demo:3005}" \
   VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
   VAULT_PATH="${VAULT_PATH:-}" \
-  npm start > /tmp/bank-api-server.log 2>&1
+  npm start > /tmp/demo-api.log 2>&1
 ) &
 echo $! > "$PID_API"
 
@@ -733,7 +733,7 @@ if [[ -d "$BASEDIR/banking_mcp_server" ]]; then
   ensure_service_env banking_mcp_server
   (
     cd "$BASEDIR/banking_mcp_server"
-    npm start > /tmp/bank-mcp-server.log 2>&1
+    npm start > /tmp/demo-mcp.log 2>&1
   ) &
   echo $! > "$PID_MCP"
 fi
@@ -819,7 +819,7 @@ if [[ -f "$BASEDIR/langchain_agent/src/main.py" ]]; then
     else
       PY="python3"
     fi
-    "$PY" -m src.main > /tmp/bank-langchain-agent.log 2>&1
+    "$PY" -m src.main > /tmp/demo-langchain.log 2>&1
   ) &
   echo $! > "$PID_AGENT"
 fi
@@ -843,7 +843,7 @@ echo "[WEB] Starting Banking UI on ${CLIENT_URL}..."
   REACT_APP_CLIENT_URL=${CLIENT_URL} \
   DANGEROUSLY_DISABLE_HOST_CHECK=true \
   WDS_SOCKET_PORT=0 \
-  npm start > /tmp/bank-ui.log 2>&1
+  npm start > /tmp/demo-ui.log 2>&1
 ) &
 echo $! > "$PID_UI"
 
@@ -908,4 +908,4 @@ echo ""
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
 
-tail_bank_logs
+tail_demo_logs

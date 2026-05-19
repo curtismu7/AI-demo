@@ -23,34 +23,40 @@ const PINGONE_OIDC_DEFAULT_SCOPES_SPACE = 'openid profile email offline_access';
 
 const BANKING_SCOPES = {
   // Core banking scopes — canonical names per D-02 (Phase 146)
-  BANKING_READ: 'banking:read',
-  BANKING_WRITE: 'banking:write',
-  
+  BANKING_READ: 'read',
+  BANKING_WRITE: 'write',
+
   // Administrative scope (consolidated from admin:full, admin:read, admin:write)
-  ADMIN: 'banking:admin',
-  
+  ADMIN: 'admin:read',
+
   // Sensitive data scope (consolidated from sensitive:read, sensitive:write)
-  SENSITIVE: 'banking:sensitive',
-  
+  SENSITIVE: 'sensitive:read',
+
   // AI Agent scope (consolidated from ai:agent:read, ai:agent:write, ai:agent:admin)
-  AI_AGENT: 'banking:ai:agent',
-  
+  AI_AGENT: 'ai:agent:read',
+
   // Agent identity marker
-  AI_AGENT_IDENTITY: 'ai_agent'
+  AI_AGENT_IDENTITY: 'ai_agent',
+
+  // MCP scope
+  MCP_INVOKE: 'mcp:invoke',
+
+  // Agent invoke scope
+  AGENT_INVOKE: 'agent:invoke'
 };
 
 // Compound scopes (backward compatibility — to be deprecated in a future phase)
 // See SCOPE_VOCABULARY.md § Deprecation Path
 const COMPOUND_SCOPES = {
-  ACCOUNTS_READ: 'banking:accounts:read',
-  TRANSACTIONS_READ: 'banking:transactions:read',
-  TRANSACTIONS_WRITE: 'banking:transactions:write',
+  ACCOUNTS_READ: 'accounts:read',
+  TRANSACTIONS_READ: 'transactions:read',
+  TRANSACTIONS_WRITE: 'transactions:write',
   // Phase 267 — domain-specific scope for the mortgage path.
   // Required for the api_key disposition that calls banking_mortgage_service.
   // The gateway verifies the user's token includes this scope before performing
   // the bearer→X-API-Key swap; the mortgage service itself does NOT check scope
   // (it gates on X-API-Key only — service-to-service trust).
-  MORTGAGE_READ: 'banking:mortgage:read'
+  MORTGAGE_READ: 'mortgage:read'
 };
 
 // User type to canonical scope mappings (reference: SCOPE_VOCABULARY.md § User Type Scope Assignments)

@@ -26,13 +26,13 @@ describe('Delegation Chain Validation Service', () => {
   describe('Chain Node Creation', () => {
     test('should create chain node with required properties', () => {
       const node = new ChainNode('user', 'user-12345', {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         audience: 'https://banking-api.ping.demo'
       });
 
       expect(node.type).toBe('user');
       expect(node.sub).toBe('user-12345');
-      expect(node.scopes).toEqual(['banking:read']);
+      expect(node.scopes).toEqual(['read']);
       expect(node.audience).toBe('https://banking-api.ping.demo');
       expect(node.timestamp).toBeDefined();
       expect(node.getIdentifier()).toBe('user:user-12345');
@@ -408,13 +408,13 @@ describe('Delegation Chain Validation Service', () => {
 
   describe('Scope Parsing', () => {
     test('should parse scopes from string', () => {
-      const scopes = service.parseScopes('banking:read banking:write');
-      expect(scopes).toEqual(['banking:read', 'banking:write']);
+      const scopes = service.parseScopes('read write');
+      expect(scopes).toEqual(['read', 'write']);
     });
 
     test('should parse scopes from array', () => {
-      const scopes = service.parseScopes(['banking:read', 'banking:write']);
-      expect(scopes).toEqual(['banking:read', 'banking:write']);
+      const scopes = service.parseScopes(['read', 'write']);
+      expect(scopes).toEqual(['read', 'write']);
     });
 
     test('should handle empty or null scopes', () => {
@@ -424,8 +424,8 @@ describe('Delegation Chain Validation Service', () => {
     });
 
     test('should handle malformed scopes', () => {
-      const scopes = service.parseScopes('  banking:read   banking:write  ');
-      expect(scopes).toEqual(['banking:read', 'banking:write']);
+      const scopes = service.parseScopes('  read   write  ');
+      expect(scopes).toEqual(['read', 'write']);
     });
   });
 

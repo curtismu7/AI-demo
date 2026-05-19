@@ -307,7 +307,7 @@ function appendUserTokenEvent(tokenEvents, userToken, req = null) {
     }
   } else {
     scopeDetails = '⚠️ No scope claim in JWT and no scope in token response. ' +
-      'Configure the PingOne customer app to include banking:read and banking:write scopes.';
+      'Configure the PingOne customer app to include read and write scopes.';
   }
 
   tokenEvents.push(buildTokenEvent(
@@ -850,9 +850,9 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       ? userAccessTokenClaims.scope.split(' ')
       : (userAccessTokenClaims.scope || []))
       .filter(Boolean);
-    const hasBankingScopes = existingScopes.some(s => s.startsWith('banking:'));
+    const hasBankingScopes = existingScopes.some(s => s === 'read' || s === 'write');
     if (!hasBankingScopes) {
-      const injectedScopeNames = ['banking:read', 'banking:write'];
+      const injectedScopeNames = ['read', 'write'];
       userAccessTokenClaims = {
         ...userAccessTokenClaims,
         scope: (userAccessTokenClaims.scope || '') + ' ' + injectedScopeNames.join(' '),
@@ -871,14 +871,14 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
         'Banking Scopes — BFF synthetic injection (Demo Mode)',
         'active',
         null,
-        `ff_inject_scopes is ON. The user access token had no banking:* scopes so the BFF has ` +
+        `ff_inject_scopes is ON. The user access token had no data scopes so the BFF has ` +
           `injected ${injectedScopeNames.join(', ')} in memory before attempting RFC 8693 token exchange. ` +
           'This is a demo/dev shortcut. In production, configure a PingOne custom resource server to issue tokens with banking scopes.',
         { synthetic: true, injectedScopes: injectedScopeNames }
       ));
       warnLog(
         `[SCOPE_INJECTION] Banking scopes injected: ${injectedScopeNames.join(', ')}. ` +
-        `User token had no banking scopes. ff_inject_scopes = true (demo mode).`
+        `User token had no data scopes. ff_inject_scopes = true (demo mode).`
       );
     }
   }
@@ -914,11 +914,11 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // CATALOG (not an authz oracle): MCP_TOOL_SCOPES maps a tool → the OAuth
   // scopes the RFC 8693 exchange should request for it. It drives scope
   // resolution below; it does NOT decide whether the call is allowed.
-  const toolCandidateScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];
+  const toolCandidateScopes = MCP_TOOL_SCOPES[tool] || ['read'];
 
   // Classify tool as high-risk (write) so the UI can label the Token Chain accordingly.
   const isHighRiskTool = toolCandidateScopes.some(
-    s => s.includes(':write') || s === 'banking:write'
+    s => s.includes(':write') || s === 'write'
   );
   const toolTrigger = isHighRiskTool ? 'high_risk' : 'read_only';
 
@@ -946,7 +946,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   //
   // DELEGATION_ONLY_SCOPES are NOT valid resource-access scopes on the MCP server
   // — they cannot be used as exchange scopes themselves.
-  const DELEGATION_ONLY_SCOPES = new Set(['banking:ai:agent:read', 'ai_agent']);
+  const DELEGATION_ONLY_SCOPES = new Set(['ai:agent:read', 'ai_agent']);
 
   const userTokenScopes = new Set(
     (typeof userAccessTokenClaims?.scope === 'string'
@@ -961,7 +961,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   );
 
   // Path B: user holds the delegation scope; PingOne policy decides
-  const userHasDelegationScope = userTokenScopes.has('banking:ai:agent:read');
+  const userHasDelegationScope = userTokenScopes.has('ai:agent:read');
 
   let finalScopes;
   let scopeResolutionPath;
@@ -988,7 +988,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   } else {
     // No path — fail fast, never silently downgrade
     const userScopesStr = [...userTokenScopes].join(' ') || '(none)';
-    const requiredBase = 'banking:ai:agent:read (delegation) or one of: ' + toolCandidateScopes.join(', ');
+    const requiredBase = 'ai:agent:read (delegation) or one of: ' + toolCandidateScopes.join(', ');
     const tokenSub = userAccessTokenClaims?.sub || '(unknown)';
     const tokenAud = Array.isArray(userAccessTokenClaims?.aud)
       ? userAccessTokenClaims.aud.join(', ')
@@ -1014,12 +1014,12 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   const scopeValidation = configStore.validateScopeAudience(finalScopes, mcpResourceUri);
   finalScopes = scopeValidation.scopes;
 
-  // Ensure banking:mcp:invoke is included in MCP tokens (required by MCP Gateway policy)
-  if (!finalScopes.includes('banking:mcp:invoke')) {
-    console.log('[TokenExchange:DEBUG] Adding banking:mcp:invoke to finalScopes. Before:', finalScopes.join(','), ' → After:', [...finalScopes, 'banking:mcp:invoke'].join(','));
-    finalScopes.push('banking:mcp:invoke');
+  // Ensure mcp:invoke is included in MCP tokens (required by MCP Gateway policy)
+  if (!finalScopes.includes('mcp:invoke')) {
+    console.log('[TokenExchange:DEBUG] Adding mcp:invoke to finalScopes. Before:', finalScopes.join(','), ' → After:', [...finalScopes, 'mcp:invoke'].join(','));
+    finalScopes.push('mcp:invoke');
   } else {
-    console.log('[TokenExchange:DEBUG] banking:mcp:invoke already in finalScopes:', finalScopes.join(','));
+    console.log('[TokenExchange:DEBUG] mcp:invoke already in finalScopes:', finalScopes.join(','));
   }
 
   void writeExchangeEvent({
@@ -1626,7 +1626,7 @@ async function _performTwoExchangeDelegation(
     // scopes for multiple resources"`. Name the single Agent-Gateway scope
     // explicitly so PingOne narrows to one resource. Default matches the
     // provisioner grant (pingoneProvisionService.js Step 37a: banking:agent:invoke).
-    const agentGatewayScope = configStore.getEffective('agent_gateway_cc_scope') || 'banking:agent:invoke';
+    const agentGatewayScope = configStore.getEffective('agent_gateway_cc_scope') || 'agent:invoke';
     agentActorToken = await oauthService.getClientCredentialsTokenAs(aiAgentClientId, aiAgentClientSecret, agentGatewayAud, aiAgentAuthMethod, agentGatewayScope);
     const agentActorDecoded = decodeJwtClaims(agentActorToken);
     const actorIdx = tokenEvents.findIndex(e => e.id === 'two-ex-agent-actor-acquiring');
@@ -1695,7 +1695,7 @@ async function _performTwoExchangeDelegation(
   // mints the agent-exchanged token bound to the intermediate audience; the
   // real tool scopes are (re)requested at Exchange #2.
   const intermediateExchangeScope =
-    configStore.getEffective('two_exchange_intermediate_scope') || 'banking:mcp:invoke';
+    configStore.getEffective('two_exchange_intermediate_scope') || 'mcp:invoke';
   const exchange1Scopes = [intermediateExchangeScope];
   tokenEvents.push(buildTokenEvent(
     'two-ex-exchange1-in-progress',
@@ -1782,7 +1782,7 @@ async function _performTwoExchangeDelegation(
     // invalid_scope trap as the AI Agent actor token above — name the single
     // MCP-Gateway scope explicitly. Default matches the provisioner grant
     // (pingoneProvisionService.js Step 37b: banking:mcp:invoke).
-    const mcpGatewayScope = configStore.getEffective('mcp_gateway_cc_scope') || 'banking:mcp:invoke';
+    const mcpGatewayScope = configStore.getEffective('mcp_gateway_cc_scope') || 'mcp:invoke';
     mcpActorToken = await oauthService.getClientCredentialsTokenAs(mcpExchangerClient, mcpExchangerSecret, mcpGatewayAud, mcpExchangerAuthMethod, mcpGatewayScope);
     const mcpActorDecoded = decodeJwtClaims(mcpActorToken);
     const mcpActorIdx = tokenEvents.findIndex(e => e.id === 'two-ex-mcp-actor-acquiring');

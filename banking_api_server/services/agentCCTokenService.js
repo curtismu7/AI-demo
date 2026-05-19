@@ -19,7 +19,7 @@ const { decodeJwt } = require('../utils/tokenUtils');
  * @param {object} options - Override defaults
  *   - clientId: agent OAuth client ID (default: PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID)
  *   - clientSecret: agent OAuth client secret
- *   - scope: scopes to request (default: ['banking:mcp:invoke'])
+ *   - scope: scopes to request (default: ['mcp:invoke'])
  *   - authMethod: 'basic' or 'post' (default: 'basic')
  * @returns {Promise<{
  *   access_token: string,
@@ -33,7 +33,7 @@ async function getAgentCCToken(req, options = {}) {
   const {
     clientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id'),
     clientSecret = configStore.getEffective('pingone_mcp_token_exchanger_client_secret'),
-    scope = ['banking:mcp:invoke'],
+    scope = ['mcp:invoke'],
     authMethod = configStore.getEffective('pingone_mcp_token_exchanger_cc_auth_method') || 'basic'
   } = options;
 

@@ -138,7 +138,7 @@ describe('Real-token availability (agentDelegation)', () => {
 
       oauthService.performTokenExchangeWithActor = jest
         .fn()
-        .mockResolvedValue(fakeDelegatedJwt(payload?.sub, 'banking:read banking:write'));
+        .mockResolvedValue(fakeDelegatedJwt(payload?.sub, 'read write'));
     });
 
     // ── Token structure sanity ────────────────────────────────────────────────
@@ -146,8 +146,8 @@ describe('Real-token availability (agentDelegation)', () => {
     it('real token metadata is sane before running tests', () => {
       expect(payload.sub).toBeTruthy();
       expect(payload.exp).toBeGreaterThan(Math.floor(Date.now() / 1000));
-      expect(payload.scope).toContain('banking:read');
-      expect(payload.scope).toContain('banking:write');
+      expect(payload.scope).toContain('read');
+      expect(payload.scope).toContain('write');
     });
 
     it('real token has may_act claim with sub (not client_id)', () => {
@@ -196,9 +196,9 @@ describe('Real-token availability (agentDelegation)', () => {
         .send({});
 
       const [, , , scopes] = oauthService.performTokenExchangeWithActor.mock.calls[0];
-      // Real token carries banking:read, banking:write, openid, profile, email, etc.
-      expect(scopes).toContain('banking:read');
-      expect(scopes).toContain('banking:write');
+      // Real token carries read, write, openid, profile, email, etc.
+      expect(scopes).toContain('read');
+      expect(scopes).toContain('write');
       expect(scopes).toContain('openid');
     });
 
@@ -207,22 +207,22 @@ describe('Real-token availability (agentDelegation)', () => {
       await request(app)
         .post('/api/agent/delegate')
         .set('Authorization', `Bearer ${token}`)
-        .send({ scope: 'banking:read nonexistent:scope' });
+        .send({ scope: 'read nonexistent:scope' });
 
       const [, , , scopes] = oauthService.performTokenExchangeWithActor.mock.calls[0];
-      expect(scopes).toEqual(['banking:read']);
+      expect(scopes).toEqual(['read']);
       expect(scopes).not.toContain('nonexistent:scope');
     });
 
-    it('narrows to banking:read only when only banking:read requested', async () => {
+    it('narrows to read only when only read requested', async () => {
       const app = buildApp();
       await request(app)
         .post('/api/agent/delegate')
         .set('Authorization', `Bearer ${token}`)
-        .send({ scope: 'banking:read' });
+        .send({ scope: 'read' });
 
       const [, , , scopes] = oauthService.performTokenExchangeWithActor.mock.calls[0];
-      expect(scopes).toEqual(['banking:read']);
+      expect(scopes).toEqual(['read']);
     });
 
     it('returns 400 invalid_scope when requested scope has no intersection with real token', async () => {

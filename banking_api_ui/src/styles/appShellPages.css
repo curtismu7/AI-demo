@@ -131,7 +131,7 @@
   font-weight: 600;
   font-family: inherit;
   line-height: 1.25;
-  color: #fff;
+  color: var(--app-primary-btn-text, #fff);
   background: linear-gradient(
     180deg,
     var(--app-primary-red-mid) 0%,
@@ -159,7 +159,7 @@
   );
   border-color: var(--app-primary-red-hover);
   box-shadow: 0 2px 8px rgba(127, 29, 29, 0.28);
-  color: #fff;
+  color: var(--app-primary-btn-text, #fff);
   transform: translateY(-1px);
 }
 
@@ -187,7 +187,7 @@
 .app-page-toolbar-btn--icon {
   padding: 9px 11px;
   min-width: 40px;
-  color: #fff;
+  color: var(--app-primary-btn-text, #fff);
 }
 
 .app-page-toolbar-btn--danger {

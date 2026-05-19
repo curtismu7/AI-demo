@@ -26,6 +26,7 @@ import DashboardHeader from "./DashboardHeader";
 import WebMcpPanel from "./WebMcpPanel";
 import ConfirmModal from "./ConfirmModal";
 import ThresholdControls from "./ThresholdControls";
+import ThemePicker from "./ThemePicker";
 
 const Dashboard = ({ user, onLogout }) => {
   // Fetch and display current user token in the token chain
@@ -508,6 +509,7 @@ const Dashboard = ({ user, onLogout }) => {
               >
                 API Calls
               </button>
+              <ThemePicker variant="toolbar" />
               <ThresholdControls />
               <button
                 type="button"
@@ -552,7 +554,6 @@ const Dashboard = ({ user, onLogout }) => {
               >
                 {resettingDemo ? "Resetting…" : "Reset Demo"}
               </button>
-
             </div>
             <main
               id="admin-dashboard-main"

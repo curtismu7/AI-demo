@@ -18,7 +18,7 @@
  */
 
 import { IncomingMessage, ServerResponse } from 'http';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { MCPMessage } from '../interfaces/mcp';
 import { MCPMessageHandler, MessageHandlerContext } from './MCPMessageHandler';
 import { BankingSessionManager } from '../storage/BankingSessionManager';
@@ -454,7 +454,7 @@ export class HttpMCPTransport {
     if (isInitialize) {
       // Create a new banking session and issue a fresh MCP-Session-Id
       const bankingSession = await this.sessionManager.createSession(bearerToken);
-      mcpSessionId = uuidv4();
+      mcpSessionId = randomUUID();
       httpSession = {
         bankingSessionId: bankingSession.sessionId,
         agentToken: bearerToken,

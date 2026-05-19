@@ -4,6 +4,7 @@ import { MdAccountBalance, MdSearch, MdLogin } from "react-icons/md";
 import UserMenu from "./UserMenu";
 import RunServersModal from "./RunServersModal";
 import { navigateToCustomerOAuthLogin } from "../utils/authUi";
+import { useTheme } from "../context/ThemeContext";
 import "./TopNav.css";
 
 export default function TopNav({ user, onLogout }) {
@@ -11,6 +12,8 @@ export default function TopNav({ user, onLogout }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [showRunServersModal, setShowRunServersModal] = useState(false);
   const location = useLocation();
+  const { identity } = useTheme();
+  const brandName = (identity && identity.displayName) || 'Super Bank';
 
   // Admin-only: detect whether currently in admin or customer view
   const isAdminView =
@@ -102,7 +105,7 @@ export default function TopNav({ user, onLogout }) {
             aria-label="Go to dashboard"
           >
             <MdAccountBalance className="topnav-brand-icon" />
-            <span className="topnav-brand-name">Super Bank</span>
+            <span className="topnav-brand-name">{brandName}</span>
           </button>
         </div>
 

@@ -25,7 +25,7 @@ export class BankingToolRegistry {
       title: 'My Bank Accounts',
       description: 'Retrieve the user\'s bank accounts with full account details including account type, name, masked account number, balance, currency, holder name, SWIFT/BIC code, IBAN, branch, and opening date. Use this for any request about account information, account details, or account overview. When the user asks about a specific account type (e.g. "my checking", "savings account", "car loan"), pass account_type to filter the results.',
       requiresUserAuth: true,
-      requiredScopes: ['banking:read'],
+      requiredScopes: ['read'],
       handler: 'executeGetMyAccounts',
       readOnly: true,
       icons: [
@@ -62,7 +62,7 @@ export class BankingToolRegistry {
       title: 'Account Balance',
       description: 'Get balance for a specific account. Use account ID (not account number) from get_my_accounts response.',
       requiresUserAuth: true,
-      requiredScopes: ['banking:read'],
+      requiredScopes: ['read'],
       handler: 'executeGetAccountBalance',
       readOnly: true,
       icons: [
@@ -100,7 +100,7 @@ export class BankingToolRegistry {
       title: 'Account Details (Sensitive)',
       description: 'Retrieve sensitive account details (full account number and routing number). Requires banking:sensitive:read scope and user consent — the UI will prompt the user to approve access before this data is released.',
       requiresUserAuth: true,
-      requiredScopes: ['banking:read', 'banking:sensitive:read'],
+      requiredScopes: ['read'],
       handler: 'executeGetSensitiveAccountDetails',
       readOnly: false,
       icons: [
@@ -131,7 +131,7 @@ export class BankingToolRegistry {
       title: 'Transaction History',
       description: 'Retrieve user\'s transaction history',
       requiresUserAuth: true,
-      requiredScopes: ['banking:read'],
+      requiredScopes: ['read'],
       handler: 'executeGetMyTransactions',
       readOnly: true,
       icons: [
@@ -168,7 +168,7 @@ export class BankingToolRegistry {
       title: 'Create Deposit',
       description: 'Create a deposit transaction to an account. Use account ID (not account number) from get_my_accounts response. Amounts over $250 require human consent on the web dashboard first (returns hitl_required if attempted without it).',
       requiresUserAuth: true,
-      requiredScopes: ['banking:write'],
+      requiredScopes: ['write'],
       handler: 'executeCreateDeposit',
       readOnly: false,
       icons: [
@@ -216,7 +216,7 @@ export class BankingToolRegistry {
       title: 'Create Withdrawal',
       description: 'Create a withdrawal transaction from an account. Use account ID (not account number) from get_my_accounts response. Amounts over $250 require human consent on the web dashboard first (returns hitl_required if attempted without it).',
       requiresUserAuth: true,
-      requiredScopes: ['banking:write'],
+      requiredScopes: ['write'],
       handler: 'executeCreateWithdrawal',
       readOnly: false,
       icons: [
@@ -264,7 +264,7 @@ export class BankingToolRegistry {
       title: 'Transfer Money',
       description: 'Transfer money between accounts. Use account IDs (not account numbers) from get_my_accounts response. Amounts over $250 require human consent on the web dashboard first (returns hitl_required if attempted without it).',
       requiresUserAuth: true,
-      requiredScopes: ['banking:write'],
+      requiredScopes: ['write'],
       handler: 'executeCreateTransfer',
       readOnly: false,
       icons: [

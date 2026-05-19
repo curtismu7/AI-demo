@@ -6,6 +6,15 @@
   "additionalProperties": false,
   "properties": {
     "$schema": { "type": "string" },
+    "provisioning": {
+      "type": "object",
+      "description": "Display names for PingOne-provisioned apps and resource servers. Keys are internal JS object keys; values are the names provisioned into PingOne.",
+      "properties": {
+        "appPrefix": { "type": "string" },
+        "resourceNames": { "type": "object", "additionalProperties": { "type": "string" } },
+        "appNames": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
     "version": { "type": "integer", "enum": [1, 2] },
     "scopes": {
       "type": "object",
@@ -18,7 +27,7 @@
           "riskLevel": { "enum": ["low", "medium", "high", "critical"] },
           "resource": { "type": "string", "minLength": 1 },
           "category": {
-            "enum": ["banking", "admin", "ai"],
+            "enum": ["banking", "admin", "ai", "data", "feature", "agent", "infra"],
             "description": "v2: policy-engine scope family. Authoritative for scopePolicyEngine categorization (admin/users -> admin; ai_agent -> ai; default banking)."
           }
         }
