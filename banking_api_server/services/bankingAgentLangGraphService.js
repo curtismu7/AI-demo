@@ -8,7 +8,9 @@ const { getBankingToolDefinitions, MAX_TOOL_ITERATIONS } = require('./agentBuild
 const { resolveMcpAccessTokenWithEvents } = require('./agentMcpTokenService');
 const z = require('zod');
 const appEventService = require('./appEventService');
-const { parseHeuristic } = require('./nlIntentParser');
+const { parseHeuristic, buildCatalogMessage } = require('./nlIntentParser');
+const { resolveAgentMode } = require('./agentModeResolver');
+const configStore = require('./configStore');
 const dataStore = require('../data/store');
 const axios = require('axios');
 const https = require('https');
@@ -510,7 +512,81 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     // so on the LLM-fallback path heuristicFallbackResult stays null and the
     // reasoning_unavailable branch uses the generic message.
     let heuristicFallbackResult = null;
-    const heuristicEnabled = require('../services/configStore').getEffective('ff_heuristic_enabled') !== 'false';
+    const rawMode = configStore.getEffective('agent_mode');
+    const _agentMode = rawMode
+      ? resolveAgentMode(
+          rawMode, configStore.getEffective('agent_external_wiring'))
+      : null;
+    // Modes 4b/5b: platform-driven. The external platform (OpenAI/Anthropic)
+    // drives the tool loop against the gateway with a BFF-minted gateway
+    // token. Educational "delegation lost" path — see spec §5. The gateway
+    // (D-05 + PingAuthorize) still enforces; only per-tool exchange + act
+    // are lost. Token custody stays here (BFF mints the gateway token).
+    if (_agentMode && _agentMode.externalWiring === 'platform' && _agentMode.provider) {
+      const { runPlatformLoop } = require('./platformAgentRuntime');
+      const oauthService = require('./oauthService');
+      const gatewayAud = configStore.getEffective('pingone_resource_mcp_gateway_uri');
+      const gatewayMcpUrl =
+        (process.env.MCP_GATEWAY_HTTP_URL || 'http://localhost:3005').replace(/\/$/, '') + '/mcp';
+      try {
+        // I-1: the RFC 8693 subject MUST be the user's session access token
+        // (same source the working BFF path exchanges — resolveMcpAccessToken-
+        // WithEvents → getSessionBearerForMcp → session oauthTokens.accessToken,
+        // which executeBffTool seeds from this same `userToken` param). The SPA
+        // never sends a token (token-custody rule), so req.body.subjectToken is
+        // always undefined here; using it 401s every platform request.
+        if (!userToken) {
+          return {
+            reply: 'Platform agent error: no user token in session',
+            success: false,
+            toolsCalled: [],
+            tokensUsed: 0,
+            requiresConsent: false,
+            agentConfigured: true,
+            tokenEvents: (req && req.tokenEvents) || [],
+            degradedDelegation: true,
+            error: 'platform_runtime_error',
+          };
+        }
+        const gwToken = await oauthService.performTokenExchange(
+          userToken, gatewayAud, ['banking:mcp:invoke']);
+        const out = await runPlatformLoop(_agentMode.provider, {
+          gatewayMcpUrl,
+          gatewayToken: gwToken,
+          userMessage: message,
+          model: configStore.getEffective('langchain_model') || undefined,
+        });
+        return {
+          reply: typeof out.data === 'string' ? out.data : JSON.stringify(out.data),
+          success: out.ok,
+          toolsCalled: [],
+          tokensUsed: 0,
+          requiresConsent: false,
+          agentConfigured: true,
+          tokenEvents: (req && req.tokenEvents) || [],
+          degradedDelegation: true,
+        };
+      } catch (e) {
+        return {
+          reply: `Platform agent error: ${e.message}`,
+          success: false,
+          toolsCalled: [],
+          tokensUsed: 0,
+          requiresConsent: false,
+          agentConfigured: true,
+          tokenEvents: (req && req.tokenEvents) || [],
+          degradedDelegation: true,
+          error: 'platform_runtime_error',
+        };
+      }
+    }
+    // ARCHITECTURE-TRUTHS T-3 (amended): heuristic ROUTING is mode-dependent.
+    // ff_heuristic_enabled is still honored when no explicit agent_mode is set
+    // (back-compat). agent_mode wins when present. Server-side transfer/HITL
+    // SAFETY enforcement is independent of this gate and is unchanged.
+    const heuristicEnabled = rawMode
+      ? _agentMode.heuristicRouting
+      : configStore.getEffective('ff_heuristic_enabled') !== 'false';
 
     if (heuristicEnabled) {
       const heuristic = parseHeuristic(message);
@@ -537,6 +613,20 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
           return heuristicResult;
         }
         // Heuristic matched but couldn't execute (transfer/deposit/etc.) — fall through to LLM
+      }
+      // Mode 1 (Heuristics-only): NO LLM. An unrecognised query returns the
+      // deterministic capability catalog instead of falling through to an LLM.
+      if (_agentMode && _agentMode.mode === 'heuristics') {
+        if (req) req.agentPath = 'heuristic';
+        return {
+          reply: buildCatalogMessage(),
+          success: true,
+          toolsCalled: [],
+          tokensUsed: 0,
+          requiresConsent: false,
+          agentConfigured: true,
+          tokenEvents: (req && req.tokenEvents) || [],
+        };
       }
     } else {
       console.log('[processAgentMessage] Heuristic disabled via ff_heuristic_enabled flag — using LLM for all queries');

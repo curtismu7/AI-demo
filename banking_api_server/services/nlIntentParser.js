@@ -42,6 +42,31 @@ const EDU = {
   ID_JAG: 'id-jag',
 };
 
+// Single source for the deterministic capability list. The Mode-1
+// (Heuristics-only) no-match reply derives from THIS — no second
+// hand-maintained list.
+const CAPABILITY_CATALOG = [
+  'balance — "show my checking balance" / "what\'s my savings balance"',
+  'accounts — "show my accounts" / "account details" / "routing number"',
+  'transactions — "recent transactions" / "account history" / "activity"',
+  'transfer — "transfer $100 from checking to savings"',
+  'deposit — "deposit $50 into savings"',
+  'withdraw — "withdraw $200 from checking"',
+  'spending summary — "spending summary" / "how much did I spend" / "biggest purchase"',
+  'mortgage — "show my mortgage" / "home loan details"',
+  'MCP tools — "list available tools" / "show mcp tools"',
+  'education — "explain token exchange" / "what is CIBA" / "how does step-up work"',
+];
+
+function buildCatalogMessage() {
+  return (
+    `I can help with:\n` +
+    CAPABILITY_CATALOG.map((c) => `  • ${c}`).join('\n') +
+    `\n\n(Heuristics-only mode — no LLM. Pick a different agent mode for ` +
+    `full natural-language understanding.)`
+  );
+}
+
 function norm(s) {
   return String(s || '')
     .toLowerCase()
@@ -322,20 +347,12 @@ function parseHeuristic(message) {
   const edu2 = parseEducation(t);
   if (edu2) return edu2;
 
-  return {
-    kind: 'none',
-    message:
-      `I didn't recognize that. Try one of:\n` +
-      `  • "balance" or "show my checking balance"\n` +
-      `  • "show my accounts"\n` +
-      `  • "recent transactions"\n` +
-      `  • "transfer $100 from checking to savings"\n` +
-      `  • "explain token exchange" / "what is CIBA"\n\n` +
-      `(No LLM is configured, so I'm running heuristics-only. If you want full natural-language understanding, configure Helix or Ollama in /admin/langchain-config.)`,
-  };
+  return { kind: 'none', message: buildCatalogMessage() };
 }
 
 module.exports = {
   parseHeuristic,
   EDU,
+  CAPABILITY_CATALOG,
+  buildCatalogMessage,
 };

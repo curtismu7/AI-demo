@@ -74,6 +74,7 @@ import {
 import { getColdStartRetryDelays } from "../services/apiErrorHandler";
 import APP_CONFIG from "../services/appConfig";
 import { useCustomChips } from "../hooks/useCustomChips";
+import AgentModeSelector from "./AgentModeSelector";
 
 // Phase 266 H2 audit: TokenChain credentialPath stamping origins per setTokenEvents call:
 //   line 3433 (scopeTestRes.tokenEvents)  — origin: scope-test path via callMcpTool; credentialPath: oauth_bearer (default; stamped by bankingAgentService)
@@ -6417,6 +6418,8 @@ export default function BankingAgent({
                   />
                   LLM only
                 </label>
+                {/* Five-mode agent provider selector — shared SSOT with /config */}
+                <AgentModeSelector compact />
                 {/* Compliance 12-step toggle */}
                 <button
                   type="button"

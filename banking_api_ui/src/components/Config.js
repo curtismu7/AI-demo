@@ -21,6 +21,7 @@ import WorkerAppConfigTab from "./WorkerAppConfigTab";
 import SetupWizardTab from "./SetupWizardTab";
 import ConfigTokenValidation from "./ConfigTokenValidation";
 import CustomChipsTab from "./CustomChipsTab";
+import AgentModeSelector from "./AgentModeSelector";
 import "../styles/appShellPages.css";
 import "./Config.css";
 import { useTheme } from "../context/ThemeContext";
@@ -530,40 +531,37 @@ function LangChainAgentConfig() {
 
   const PROVIDERS = [
     {
+      id: "helix",
+      label: "Helix (Claude via wrapper)",
+      placeholder: "(set Helix base URL + API key below)",
+    },
+    {
       id: "ollama",
       label: "Ollama (Local LLM)",
       placeholder: "(local — no key needed)",
     },
+    {
+      id: "openai",
+      label: "OpenAI (ChatGPT)",
+      placeholder: "(needs OPENAI_API_KEY on the agent service)",
+    },
+    {
+      id: "anthropic",
+      label: "Anthropic (Claude)",
+      placeholder: "(needs ANTHROPIC_API_KEY on the agent service)",
+    },
   ];
 
-  useEffect(() => {
+  const loadStatus = useCallback(() => {
     fetch("/api/langchain/config/status")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setStatus(d))
       .catch(() => null);
   }, []);
 
-  const handleProviderSelect = async (provider) => {
-    try {
-      const r = await fetch("/api/langchain/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider,
-          model: status?.default_models?.[provider],
-        }),
-      });
-      if (r.ok) {
-        const d = await r.json();
-        setStatus((prev) => ({
-          ...prev,
-          provider: d.provider,
-          model: d.model,
-          key_set: d.key_set,
-        }));
-      }
-    } catch {}
-  };
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
 
   const handleSaveKey = async (keyType) => {
     const key = keyInputs[keyType] || "";
@@ -632,36 +630,8 @@ function LangChainAgentConfig() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* Provider dropdown */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 4,
-        }}
-      >
-        <label style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>
-          LLM Provider:
-        </label>
-        <select
-          value={activeProvider}
-          onChange={(e) => handleProviderSelect(e.target.value)}
-          style={{
-            fontSize: 14,
-            padding: "6px 12px",
-            borderRadius: 6,
-            border: "1px solid #ccc",
-            minWidth: 180,
-          }}
-        >
-          {PROVIDERS.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Provider selector */}
+      <AgentModeSelector onChange={loadStatus} />
 
       {/* Model dropdown */}
       <div
@@ -2842,8 +2812,8 @@ export default function Config() {
                           🖥️ Path B: Run on localhost
                         </h3>
                         <p className="config-page__path-desc">
-                          Default API server uses <code>api.ping.demo</code>{" "}
-                          as the host.
+                          Default API server uses <code>api.ping.demo</code> as
+                          the host.
                         </p>
                         <ol className="config-page__path-steps">
                           <li>Clone the repo</li>
@@ -2854,8 +2824,8 @@ export default function Config() {
                           </li>
                           <li>
                             By default the API server listens on{" "}
-                            <code>api.ping.demo</code> — add that to your
-                            local hosts file, or change <code>PORT</code>/
+                            <code>api.ping.demo</code> — add that to your local
+                            hosts file, or change <code>PORT</code>/
                             <code>HOST</code> in <code>.env</code>
                           </li>
                           <li>

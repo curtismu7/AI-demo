@@ -10,10 +10,18 @@
  * 'ollama' is returned ONLY when explicitly selected AND configured
  * (an ollama_base_url is present, or OLLAMA_BASE_URL env is set). If
  * 'ollama' is selected but not configured, fall back to Helix — never a
- * dead Ollama call. No other module may inline a provider default.
+ * dead Ollama call.
+ *
+ * 'openai' and 'anthropic' are returned when explicitly selected
+ * (pass-through). banking_agent_service (:3006) validates LLM_PROVIDER
+ * and fails fast when creds are absent (config.ts VALID_LLM_PROVIDERS),
+ * so a credential gate here would be dead code — selection is honored
+ * and the agent service is the single point that enforces "configured".
+ *
+ * No other module may inline a provider default.
  *
  * @param {{ provider?: string, model?: string, ollama_base_url?: string }} langchainConfig
- * @returns {{ provider: 'helix'|'ollama', model: string|undefined }}
+ * @returns {{ provider: 'helix'|'ollama'|'openai'|'anthropic', model: string|undefined }}
  */
 function resolveLlmProvider(langchainConfig = {}) {
   const requested = langchainConfig && langchainConfig.provider;
@@ -25,6 +33,11 @@ function resolveLlmProvider(langchainConfig = {}) {
       !!process.env.OLLAMA_BASE_URL;
     if (configured) return { provider: 'ollama', model };
     return { provider: 'helix', model };
+  }
+
+  if (requested === 'openai' || requested === 'anthropic') {
+    // Pass-through: :3006 enforces credential presence and fails fast.
+    return { provider: requested, model };
   }
 
   if (requested === 'helix') return { provider: 'helix', model };
