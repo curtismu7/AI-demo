@@ -569,6 +569,8 @@ const Dashboard = ({ user, onLogout }) => {
                 <TokenChainDisplay />
               </section>
 
+              {/* Col-2 wrapper: all right-column sections scroll together */}
+              <div className="admin-dash-col2">
               <section
                 className="dash-shell-card"
                 aria-labelledby="tx-lookup-heading"
@@ -1150,6 +1152,7 @@ const Dashboard = ({ user, onLogout }) => {
                   </div>
                 )}
               </div>
+              </div>{/* end admin-dash-col2 */}
             </main>
           </div>
         </div>
