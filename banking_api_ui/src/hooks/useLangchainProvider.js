@@ -38,6 +38,11 @@ const SAVE_URL = "/api/langchain/config";
  *   error: string|null,
  *   setProvider: (id: string) => Promise<void>,
  *   refresh: () => Promise<void>,
+ *   mode: string,
+ *   externalWiring: string|null,
+ *   modeOptions: Array<{id:string,label:string,external:boolean}>,
+ *   setMode: (id: string, wiring?: string) => Promise<void>,
+ *   setExternalWiring: (w: string) => Promise<void>,
  * }}
  */
 export default function useLangchainProvider() {
@@ -49,7 +54,7 @@ export default function useLangchainProvider() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [mode, setModeState] = useState("heuristics_helix");
-  const [externalWiring, setExternalWiringState] = useState("bff");
+  const [externalWiring, setExternalWiringState] = useState(null);
   const [modeOptions, setModeOptions] = useState([]);
 
   const refresh = useCallback(async () => {
@@ -64,7 +69,7 @@ export default function useLangchainProvider() {
       setKeySet(d.key_set || { ollama: true });
       setDefaultModels(d.default_models || {});
       setModeState(d.agent_mode || "heuristics_helix");
-      setExternalWiringState(d.external_wiring || "bff");
+      setExternalWiringState(d.external_wiring || null);
       setModeOptions(d.agent_modes || []);
     } catch (e) {
       setError(e.message || "Failed to load provider");
@@ -107,7 +112,8 @@ export default function useLangchainProvider() {
   );
 
   const setMode = useCallback(async (id, wiring) => {
-    setSaving(true); setError(null);
+    setSaving(true);
+    setError(null);
     try {
       const res = await fetch(SAVE_URL, {
         method: "POST",
@@ -118,14 +124,18 @@ export default function useLangchainProvider() {
       if (!res.ok) throw new Error(`save ${res.status}`);
       const d = await res.json();
       setModeState(d.agent_mode || id);
-      setExternalWiringState(d.external_wiring || "bff");
+      setExternalWiringState(d.external_wiring ?? null);
     } catch (e) {
       setError(e.message || "Failed to save mode");
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   }, []);
 
   const setExternalWiring = useCallback(
-    (w) => setMode(mode, w), [setMode, mode]);
+    (w) => setMode(mode, w),
+    [setMode, mode],
+  );
 
   return {
     provider,
