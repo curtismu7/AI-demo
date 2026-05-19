@@ -517,6 +517,50 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       ? resolveAgentMode(
           rawMode, configStore.getEffective('agent_external_wiring'))
       : null;
+    // Modes 4b/5b: platform-driven. The external platform (OpenAI/Anthropic)
+    // drives the tool loop against the gateway with a BFF-minted gateway
+    // token. Educational "delegation lost" path — see spec §5. The gateway
+    // (D-05 + PingAuthorize) still enforces; only per-tool exchange + act
+    // are lost. Token custody stays here (BFF mints the gateway token).
+    if (_agentMode && _agentMode.externalWiring === 'platform' && _agentMode.provider) {
+      const { runPlatformLoop } = require('./platformAgentRuntime');
+      const oauthService = require('./oauthService');
+      const gatewayAud = configStore.getEffective('pingone_resource_mcp_gateway_uri');
+      const gatewayMcpUrl =
+        (process.env.MCP_GATEWAY_HTTP_URL || 'http://localhost:3005').replace(/\/$/, '') + '/mcp';
+      try {
+        const gwToken = await oauthService.performTokenExchange(
+          subjectToken, gatewayAud, ['banking:mcp:invoke']);
+        const out = await runPlatformLoop(_agentMode.provider, {
+          gatewayMcpUrl,
+          gatewayToken: gwToken,
+          userMessage: message,
+          model: configStore.getEffective('langchain_model') || undefined,
+        });
+        return {
+          reply: typeof out.data === 'string' ? out.data : JSON.stringify(out.data),
+          success: out.ok,
+          toolsCalled: [],
+          tokensUsed: 0,
+          requiresConsent: false,
+          agentConfigured: true,
+          tokenEvents: (req && req.tokenEvents) || [],
+          degradedDelegation: true,
+        };
+      } catch (e) {
+        return {
+          reply: `Platform agent error: ${e.message}`,
+          success: false,
+          toolsCalled: [],
+          tokensUsed: 0,
+          requiresConsent: false,
+          agentConfigured: true,
+          tokenEvents: (req && req.tokenEvents) || [],
+          degradedDelegation: true,
+          error: 'platform_runtime_error',
+        };
+      }
+    }
     // ARCHITECTURE-TRUTHS T-3 (amended): heuristic ROUTING is mode-dependent.
     // ff_heuristic_enabled is still honored when no explicit agent_mode is set
     // (back-compat). agent_mode wins when present. Server-side transfer/HITL
