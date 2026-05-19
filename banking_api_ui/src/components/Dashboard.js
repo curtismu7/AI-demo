@@ -21,7 +21,7 @@ import "../styles/appShellPages.css";
 import { useAgentUiMode } from "../context/AgentUiModeContext";
 
 import ApiCallsModal from "./ApiCallsModal";
-import AgentUiModeToggle from "./AgentUiModeToggle";
+
 import DashboardHeader from "./DashboardHeader";
 import WebMcpPanel from "./WebMcpPanel";
 import ConfirmModal from "./ConfirmModal";
@@ -552,12 +552,12 @@ const Dashboard = ({ user, onLogout }) => {
               >
                 {resettingDemo ? "Resetting…" : "Reset Demo"}
               </button>
-              <AgentUiModeToggle variant="config" />
+
             </div>
             <main
               id="admin-dashboard-main"
               tabIndex={-1}
-              className={agentPlacement === "middle" ? "admin-dash-main--split" : undefined}
+              className="admin-dash-main--split"
             >
               {/* Token chain — grouped card (TokenChainDisplay includes its own title) */}
               <section
