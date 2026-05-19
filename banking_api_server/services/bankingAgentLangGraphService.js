@@ -529,8 +529,27 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       const gatewayMcpUrl =
         (process.env.MCP_GATEWAY_HTTP_URL || 'http://localhost:3005').replace(/\/$/, '') + '/mcp';
       try {
+        // I-1: the RFC 8693 subject MUST be the user's session access token
+        // (same source the working BFF path exchanges — resolveMcpAccessToken-
+        // WithEvents → getSessionBearerForMcp → session oauthTokens.accessToken,
+        // which executeBffTool seeds from this same `userToken` param). The SPA
+        // never sends a token (token-custody rule), so req.body.subjectToken is
+        // always undefined here; using it 401s every platform request.
+        if (!userToken) {
+          return {
+            reply: 'Platform agent error: no user token in session',
+            success: false,
+            toolsCalled: [],
+            tokensUsed: 0,
+            requiresConsent: false,
+            agentConfigured: true,
+            tokenEvents: (req && req.tokenEvents) || [],
+            degradedDelegation: true,
+            error: 'platform_runtime_error',
+          };
+        }
         const gwToken = await oauthService.performTokenExchange(
-          subjectToken, gatewayAud, ['banking:mcp:invoke']);
+          userToken, gatewayAud, ['banking:mcp:invoke']);
         const out = await runPlatformLoop(_agentMode.provider, {
           gatewayMcpUrl,
           gatewayToken: gwToken,
