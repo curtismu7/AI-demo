@@ -11,7 +11,7 @@
  */
 const express = require('express');
 const configStore = require('../services/configStore');
-const { resolveAgentMode, AGENT_MODES } = require('../services/agentModeResolver');
+const { resolveAgentMode, AGENT_MODES, DEFAULT_MODE } = require('../services/agentModeResolver');
 const path = require('node:path');
 const fs = require('node:fs');
 
@@ -113,7 +113,7 @@ router.get('/config/status', (req, res) => {
       },
       provider_models: PROVIDER_MODELS,
       default_models: DEFAULT_MODELS,
-      agent_mode: configStore.getEffective('agent_mode') || 'heuristics_helix',
+      agent_mode: configStore.getEffective('agent_mode') || DEFAULT_MODE,
       external_wiring: configStore.getEffective('agent_external_wiring') || 'bff',
       agent_modes: AGENT_MODES.map((m) => ({ id: m.id, label: m.label, external: m.external })),
     });
@@ -172,8 +172,9 @@ router.post('/config', async (req, res) => {
 
   setLangchainConfig(req, updates);
 
+  let am = null;
   if (agent_mode !== undefined) {
-    const am = resolveAgentMode(agent_mode, external_wiring);
+    am = resolveAgentMode(agent_mode, external_wiring);
     try {
       await configStore.setConfig({
         agent_mode: am.mode,
@@ -216,12 +217,8 @@ router.post('/config', async (req, res) => {
     provider: activeProvider,
     model: cfg.model || DEFAULT_MODELS[activeProvider],
     key_set: { [activeProvider]: true },
-    agent_mode: agent_mode !== undefined
-      ? resolveAgentMode(agent_mode, external_wiring).mode
-      : (configStore.getEffective('agent_mode') || null),
-    external_wiring: agent_mode !== undefined
-      ? resolveAgentMode(agent_mode, external_wiring).externalWiring
-      : (configStore.getEffective('agent_external_wiring') || null),
+    agent_mode: am ? am.mode : (configStore.getEffective('agent_mode') || null),
+    external_wiring: am ? am.externalWiring : (configStore.getEffective('agent_external_wiring') || null),
   });
 });
 

@@ -15,6 +15,8 @@ describe('langchainConfig agent_mode', () => {
   let app;
   beforeEach(() => {
     jest.resetModules();
+    const cs = require('../services/configStore');
+    if (cs.__store) Object.keys(cs.__store).forEach((k) => delete cs.__store[k]);
     app = express();
     app.use(express.json());
     app.use((req, _r, n) => { req.session = {}; n(); });
@@ -29,6 +31,16 @@ describe('langchainConfig agent_mode', () => {
     expect(res.body.agent_mode).toBe('claude');
     expect(res.body.external_wiring).toBe('platform');
     expect(res.body.provider).toBe('anthropic');
+  });
+
+  test('external mode without external_wiring defaults to bff', async () => {
+    const res = await request(app)
+      .post('/api/langchain/config')
+      .send({ agent_mode: 'chatgpt' });
+    expect(res.status).toBe(200);
+    expect(res.body.agent_mode).toBe('chatgpt');
+    expect(res.body.external_wiring).toBe('bff');
+    expect(res.body.provider).toBe('openai');
   });
 
   test('GET status returns agent_mode + external_wiring + mode list', async () => {
