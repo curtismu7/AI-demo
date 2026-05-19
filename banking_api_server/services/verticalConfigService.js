@@ -18,8 +18,20 @@ function loadVerticals() {
     for (const file of files) {
       const raw = fs.readFileSync(path.join(VERTICALS_DIR, file), 'utf8');
       const config = JSON.parse(raw);
-      if (config.id) {
+      const valid =
+        config &&
+        config.id &&
+        config.schemaVersion === 2 &&
+        config.identity &&
+        config.identity.displayName &&
+        config.theme &&
+        config.theme.cssVars;
+      if (valid) {
         verticalCache[config.id] = config;
+      } else {
+        console.error(
+          `[verticalConfigService] Skipping invalid manifest "${file}" (must be schemaVersion 2 with identity.displayName + theme.cssVars)`
+        );
       }
     }
   } catch (err) {
@@ -93,11 +105,22 @@ function reloadVerticals() {
   return loadVerticals();
 }
 
+/**
+ * Return the full v2 manifest for the active vertical.
+ * Falls back to the banking manifest if the active id is missing/invalid.
+ */
+function getActiveManifest() {
+  const all = loadVerticals();
+  const activeId = getActiveVertical();
+  return all[activeId] || all.banking || null;
+}
+
 module.exports = {
   listVerticals,
   getActiveVertical,
   setActiveVertical,
   getVerticalConfig,
   mapTerm,
-  reloadVerticals
+  reloadVerticals,
+  getActiveManifest
 };
