@@ -18,6 +18,7 @@ import { useCurrentUserTokenEvent } from "../hooks/useCurrentUserTokenEvent";
 import { navigateToAdminOAuthLogin } from "../utils/authUi";
 import { toastAdminSessionError } from "../utils/dashboardToast";
 import "../styles/appShellPages.css";
+import "./Dashboard.css";
 import { useAgentUiMode } from "../context/AgentUiModeContext";
 
 import ApiCallsModal from "./ApiCallsModal";
