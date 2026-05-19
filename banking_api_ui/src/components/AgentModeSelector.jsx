@@ -1,11 +1,13 @@
 // banking_api_ui/src/components/AgentModeSelector.jsx
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import useLangchainProvider from "../hooks/useLangchainProvider";
 import "./AgentModeSelector.css";
 
 // Shared 5-mode agent selector (spec 2026-05-18-five-mode-agent-provider §6).
 // `compact` = condensed variant for the BankingAgent header.
-export default function AgentModeSelector({ compact = false }) {
+// `onChange` (optional) is notified { mode, provider } after a committed
+// mode/provider change so a co-located key UI can re-sync server state.
+export default function AgentModeSelector({ compact = false, onChange }) {
   const {
     mode,
     externalWiring,
@@ -14,7 +16,17 @@ export default function AgentModeSelector({ compact = false }) {
     loading,
     setMode,
     setExternalWiring,
+    provider,
   } = useLangchainProvider();
+
+  const didMount = useRef(false);
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+    if (typeof onChange === "function") onChange({ mode, provider });
+  }, [mode, provider, onChange]);
 
   if (loading || modeOptions.length === 0) return null;
 

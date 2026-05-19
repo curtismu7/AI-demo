@@ -552,12 +552,16 @@ function LangChainAgentConfig() {
     },
   ];
 
-  useEffect(() => {
+  const loadStatus = useCallback(() => {
     fetch("/api/langchain/config/status")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setStatus(d))
       .catch(() => null);
   }, []);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
 
   const handleSaveKey = async (keyType) => {
     const key = keyInputs[keyType] || "";
@@ -627,7 +631,7 @@ function LangChainAgentConfig() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Provider selector */}
-      <AgentModeSelector />
+      <AgentModeSelector onChange={loadStatus} />
 
       {/* Model dropdown */}
       <div
