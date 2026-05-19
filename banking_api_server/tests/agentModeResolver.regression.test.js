@@ -1,5 +1,5 @@
 // banking_api_server/tests/agentModeResolver.regression.test.js
-const { resolveAgentMode, AGENT_MODES } = require('../services/agentModeResolver');
+const { resolveAgentMode, AGENT_MODES, DEFAULT_MODE } = require('../services/agentModeResolver');
 
 describe('resolveAgentMode', () => {
   test('mode 1 heuristics: no provider, heuristic routing on', () => {
@@ -39,5 +39,16 @@ describe('resolveAgentMode', () => {
     expect(AGENT_MODES.map((m) => m.id)).toEqual([
       'heuristics', 'helix_google', 'heuristics_helix', 'chatgpt', 'claude',
     ]);
+  });
+  test('null/undefined/empty modeId falls back to default', () => {
+    expect(resolveAgentMode(null).mode).toBe('heuristics_helix');
+    expect(resolveAgentMode(undefined).mode).toBe('heuristics_helix');
+    expect(resolveAgentMode('').mode).toBe('heuristics_helix');
+  });
+  test('externalWiring is case-sensitive — "PLATFORM" is treated as bff', () => {
+    expect(resolveAgentMode('claude', 'PLATFORM').externalWiring).toBe('bff');
+  });
+  test('DEFAULT_MODE export is heuristics_helix', () => {
+    expect(DEFAULT_MODE).toBe('heuristics_helix');
   });
 });
