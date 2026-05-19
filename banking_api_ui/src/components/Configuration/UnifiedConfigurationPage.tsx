@@ -1854,7 +1854,7 @@ const UnifiedConfigurationPage: FC<{
         setState((prevState) => ({
           ...prevState,
           pingoneRegion: (cfg.pingone_region as string) || "com",
-          pingoneEnvironmentId: (cfg.pingone_environment_id as string) || "",
+          pingoneEnvironmentId: (cfg.pingone_environment_id as string) || process.env.REACT_APP_PINGONE_ENVIRONMENT_ID || "",
           adminClientId: (cfg.admin_client_id as string) || "",
           adminClientSecret: (cfg.admin_client_secret as string) || "",
           adminAuthMethod:
