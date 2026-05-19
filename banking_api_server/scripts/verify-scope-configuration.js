@@ -28,6 +28,7 @@
 require('dotenv').config();
 
 const https = require('https');
+const scopeTopology = require('../services/scopeTopology');
 
 // Color codes for output
 const COLORS = {
@@ -268,6 +269,168 @@ async function createScope(envId, resourceId, scopeName, description, token, reg
   });
 }
 
+async function listApplications(envId, token, region = 'com') {
+  return new Promise((resolve, reject) => {
+    const hostname = `api.pingone.${region}`;
+    const path = `/v1/environments/${envId}/applications`;
+
+    const options = {
+      hostname,
+      path,
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          resolve(json._embedded?.applications || json.data || []);
+        } catch (e) {
+          reject(new Error(`Failed to parse applications response: ${e.message}`));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+async function getApplicationGrants(envId, applicationId, token, region = 'com') {
+  return new Promise((resolve, reject) => {
+    const hostname = `api.pingone.${region}`;
+    const path = `/v1/environments/${envId}/applications/${applicationId}/grants`;
+
+    const options = {
+      hostname,
+      path,
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          resolve(json._embedded?.grants || json.data || []);
+        } catch (e) {
+          reject(new Error(`Failed to parse grants response: ${e.message}`));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// --manifest-diff: live PingOne vs scope-topology.json SSOT
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function manifestDiff(token) {
+  const envId = process.env.PINGONE_ENVIRONMENT_ID;
+  const region = process.env.PINGONE_REGION || 'com';
+  const m = scopeTopology._manifest();
+  let problems = 0;
+
+  logInfo('Diffing live PingOne environment against scope-topology.json...');
+  log('');
+
+  // ── Resources ──────────────────────────────────────────────────────────────
+  const liveResources = await listResources(envId, token, region);
+  // Map resource server display name → live object (mirrors the --fix name map).
+  const resourceByName = {};
+  for (const r of liveResources) {
+    if (r.name) resourceByName[r.name] = r;
+  }
+  // resourceId → live scope-name list, lazily fetched + cached for app diff reuse.
+  const liveScopesByResourceId = {};
+  async function liveScopesFor(resource) {
+    if (!liveScopesByResourceId[resource.id]) {
+      const scopes = await getResourceScopes(envId, resource.id, token, region);
+      liveScopesByResourceId[resource.id] = scopes;
+    }
+    return liveScopesByResourceId[resource.id];
+  }
+
+  for (const resName of Object.keys(m.resources)) {
+    const live = resourceByName[resName];
+    if (!live) {
+      log(`${COLORS.RED}✖ resource missing live: ${resName}${COLORS.RESET}`);
+      problems++;
+      continue;
+    }
+    const liveScopes = await liveScopesFor(live);
+    const liveScopeNames = liveScopes.map(s => s.name);
+    for (const scope of (m.resources[resName].scopes || [])) {
+      if (!liveScopeNames.includes(scope)) {
+        log(`${COLORS.RED}✖ ${resName} missing scope ${scope}${COLORS.RESET}`);
+        problems++;
+      }
+    }
+  }
+
+  // ── Apps ───────────────────────────────────────────────────────────────────
+  const liveApps = await listApplications(envId, token, region);
+  const appByName = {};
+  for (const a of liveApps) {
+    if (a.name) appByName[a.name] = a;
+  }
+
+  for (const appName of Object.keys(m.apps)) {
+    const liveApp = appByName[appName];
+    if (!liveApp) {
+      log(`${COLORS.RED}✖ application missing live: ${appName}${COLORS.RESET}`);
+      problems++;
+      continue;
+    }
+
+    const grants = await getApplicationGrants(envId, liveApp.id, token, region);
+    // Resolve each grant's scope IDs → names via the owning resource's scope
+    // list (PingOne grants carry resource.id + scopes[].id, not names).
+    const grantedScopeNames = new Set();
+    for (const g of grants) {
+      const resId = g.resource?.id;
+      if (!resId) continue;
+      let resScopes = liveScopesByResourceId[resId];
+      if (!resScopes) {
+        resScopes = await getResourceScopes(envId, resId, token, region);
+        liveScopesByResourceId[resId] = resScopes;
+      }
+      const idToName = new Map(resScopes.map(s => [s.id, s.name]));
+      for (const s of (g.scopes || [])) {
+        const n = idToName.get(s.id);
+        if (n) grantedScopeNames.add(n);
+      }
+    }
+
+    for (const scope of (m.apps[appName].grantedScopes || [])) {
+      if (!grantedScopeNames.has(scope)) {
+        log(`${COLORS.RED}✖ ${appName} not granted ${scope}${COLORS.RESET}`);
+        problems++;
+      }
+    }
+  }
+
+  if (problems === 0) {
+    log(`${COLORS.GREEN}✅ live PingOne matches scope-topology.json${COLORS.RESET}`);
+  }
+
+  return problems;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Verification Logic
 // ─────────────────────────────────────────────────────────────────────────────
@@ -303,6 +466,21 @@ async function main() {
   logInfo(`Environment: ${envId}`);
   logInfo(`Region: ${region}`);
   logInfo('');
+
+  // ── --manifest-diff: distinct mode, audits live PingOne vs SSOT, then exits ──
+  if (process.argv.includes('--manifest-diff')) {
+    try {
+      logInfo('Authenticating with PingOne Management API...');
+      const token = await getManagementToken(clientId, clientSecret, region, envId);
+      logSuccess('Authentication successful');
+      log('');
+      const n = await manifestDiff(token);
+      process.exit(n === 0 ? 0 : 1);
+    } catch (e) {
+      logError(`Fatal error: ${e.message}`);
+      process.exit(1);
+    }
+  }
 
   try {
     // Step 1: Get management token

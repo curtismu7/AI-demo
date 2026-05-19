@@ -16,6 +16,7 @@ import { agentFlowDiagram } from "./agentFlowDiagramService";
 import { openMcpFlowSse } from "./mcpFlowSseClient";
 import { addMilestone, updateMilestoneStatus } from "./milestonesStore";
 import { createLogger } from "./logger";
+import { anySignal } from "../components/bankingAgentSafety";
 
 const log = createLogger("callMcpTool");
 const streamLog = createLogger("parseStreamingResponse");
@@ -74,7 +75,7 @@ export async function refreshOAuthSession() {
  * @param {object} params - Tool parameters
  * @returns {Promise<{ result: any, tokenEvents: Array }>}
  */
-export async function callMcpTool(tool, params = {}) {
+export async function callMcpTool(tool, params = {}, { signal } = {}) {
   log.debug("=== MCP TOOL CALL START ===");
   log.debug("tool:", tool);
   log.debug("params:", JSON.stringify(params));
@@ -176,6 +177,7 @@ export async function callMcpTool(tool, params = {}) {
 
   const t0 = Date.now();
   try {
+    fetchOpts.signal = signal;
     let response = await fetch("/api/mcp/tool", fetchOpts);
 
     // 504 Server Unavailable — server is restarting
@@ -260,6 +262,7 @@ export async function callMcpTool(tool, params = {}) {
       if (!isStubToken) {
         const refreshed = await refreshOAuthSession();
         if (refreshed.ok) {
+          fetchOpts.signal = signal;
           response = await fetch("/api/mcp/tool", fetchOpts);
         }
       }
@@ -693,7 +696,7 @@ export function createWithdrawalWithConsent(
  *   _status?: number
  * }>}
  */
-export async function sendAgentMessage(message, consentId = null) {
+export async function sendAgentMessage(message, consentId = null, { signal } = {}) {
   const body = { message };
   if (consentId) body.consentId = consentId;
 
@@ -702,8 +705,10 @@ export async function sendAgentMessage(message, consentId = null) {
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30000),
   };
+  opts.signal = signal
+    ? anySignal([AbortSignal.timeout(30000), signal])
+    : AbortSignal.timeout(30000);
 
   let res = await fetch("/api/banking-agent/message", opts);
 

@@ -398,6 +398,32 @@ migrateAccounts().catch(err => {
     console.error('[server] Demo accounts migration failed:', err.message);
 });
 
+// Seed runtimeSettings from persisted feature flags that declare a runtimeKey.
+// runtimeSettings is in-memory and seeded from env at module load; without this,
+// a flag toggled OFF via /api/admin/feature-flags (persisted to configStore)
+// would silently revert to its hardcoded default on the next restart.
+// Done after ensureInitialized() so the configStore cache is populated first.
+(async () => {
+    try {
+        await configStore.ensureInitialized();
+        const runtimeSettings = require('./config/runtimeSettings');
+        const { FLAG_REGISTRY } = require('./routes/featureFlags');
+        const seed = {};
+        for (const flag of FLAG_REGISTRY) {
+            if (!flag.runtimeKey) continue;
+            const raw = configStore.get(flag.id);
+            if (raw === null || raw === undefined) continue; // keep env-seeded default
+            seed[flag.runtimeKey] =
+                flag.type === 'boolean' ? (raw === true || raw === 'true') : raw;
+        }
+        if (Object.keys(seed).length > 0) {
+            runtimeSettings.update(seed, 'boot-seed-from-configStore');
+        }
+    } catch (err) {
+        console.warn('[server] runtimeSettings boot-seed from configStore failed:', err.message);
+    }
+})();
+
 // Non-blocking OIDC discovery — populates endpoint cache when oauth_discovery_enabled=true
 initializeDiscovery().catch(err => {
     console.warn('[server] OIDC discovery initialization failed:', err.message);
@@ -577,6 +603,18 @@ app.get('/api/auth/logout', async (req, res) => {
         const mcpWsUrl = process.env.MCP_SERVER_URL || 'ws://localhost:8080';
         const mcpHttpBase = mcpWsUrl.replace(/^ws(s?):/, 'http$1:');
         fetch(`${mcpHttpBase}/audit`, { method: 'DELETE', signal: AbortSignal.timeout(1500) }).catch(() => {});
+        // Flush the MCP gateway's in-memory token-exchange + introspection
+        // caches so a freshly-revoked token cannot be replayed from there
+        // within its TTL. Fire-and-forget; gated by the shared internal secret.
+        const gwBase = require('./services/mcpGatewayClient').getMcpGatewayHttpUrl();
+        const gwSecret = process.env.BFF_INTERNAL_SECRET || '';
+        if (gwBase && gwSecret) {
+            fetch(`${gwBase}/admin/clear-token-cache`, {
+                method: 'POST',
+                headers: { 'x-internal-gateway-secret': gwSecret },
+                signal: AbortSignal.timeout(1500),
+            }).catch(() => {});
+        }
     } catch (_) {}
 
     req.session.destroy((err) => {
@@ -734,9 +772,15 @@ app.get('/api/auth/debug', async (req, res) => {
 // authenticateToken middleware that guards the broader /api/admin/* prefix.
 app.use('/api/admin/config', adminConfigRoutes);
 
-// Feature flags — admin-authenticated; registered before the broader /api/admin/* guard
-// so the route path is unambiguous.
-// Feature flags: GET is public (read-only). PATCH enforces admin check inside route handler.
+// Feature flags — registered before the broader /api/admin/* guard so this
+// more-specific path matches first (Express prefix order) and is NOT subjected
+// to the authenticateToken middleware on /api/admin.
+// INTENTIONALLY UNAUTHENTICATED (commit a1047b03): both GET and PATCH are open.
+// This is a deliberate demo-ergonomics choice so flags can be toggled without an
+// admin session. Trade-off: any caller can flip security-relevant flags
+// (ff_hitl_enabled, step_up_enabled, ff_skip_token_exchange, ff_inject_*).
+// See REGRESSION_PLAN.md §1 "configStore / Config UI" — do not silently add an
+// auth gate here without updating that entry and the demo docs.
 app.use('/api/admin/feature-flags', featureFlagsRoutes);
 app.use('/api/admin/scope-audit', authenticateToken, require('./routes/scopeAudit'));
 app.use('/api/admin/token-compliance', authenticateToken, require('./routes/tokenCompliance'));
@@ -1149,10 +1193,6 @@ const mcpGatewayClient = require('./services/mcpGatewayClient');
 const mcpPingOneStdioAdapter = require('./services/mcpPingOneStdioAdapter');
 const { recordToolCall: recordMcpToolCall } = require('./services/mcpToolAuditStore');
 
-// Session-scoped exchange mode toggle (GET/POST /api/mcp/exchange-mode)
-const mcpExchangeMode = require('./routes/mcpExchangeMode');
-app.use('/api/mcp', mcpExchangeMode);
-
 // GET /api/mcp/tool/events?trace=<uuid> — Server-Sent Events for live MCP tool pipeline phases
 app.get('/api/mcp/tool/events', (req, res) => {
     mcpFlowSseHub.handleSseGet(req, res);
@@ -1217,6 +1257,29 @@ function publishMcpResultToSse(flowTraceId, { tool, result, durationMs, isDelega
     resultJson: toolResultJson,
     timestamp: new Date().toISOString(),
   }));
+}
+
+const { runMcpToolPipeline } = require('./services/mcpToolPipeline');
+const { createPendingDecision: _createPendingDecision } = require('./routes/mcpDecisionPolling');
+
+/**
+ * Render a pipeline Outcome to the Express response. The ONLY res.* site for
+ * the MCP tool route (ADR-0004). HTTP/2 streaming is the one special case.
+ * Note: the pipeline already self-publishes token events to the SSE hub
+ * internally (live Token Chain). `outcome.tokenEvents` is a read-only mirror
+ * for inspection/debugging — this shell must NOT re-publish it (doing so
+ * double-emits to the live Token Chain). renderOutcome only writes the HTTP
+ * response body; SSE side-channel ownership stays in runMcpToolPipeline.
+ */
+function renderOutcome(res, outcome) {
+  if (outcome.kind === 'result' && outcome.stream) {
+    res.setHeader('Content-Type', 'application/stream+json; charset=utf-8');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.write(JSON.stringify({ type: 'result', data: outcome.body.result, tokenEvents: outcome.body.tokenEvents }) + '\n');
+    res.write(JSON.stringify({ type: 'stream_close', status: 'success' }) + '\n');
+    return res.end();
+  }
+  return res.status(outcome.httpStatus).json(outcome.body);
 }
 
 // POST /api/mcp/tool — call a banking MCP tool
@@ -1326,722 +1389,44 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         phase: 'request_accepted'
     });
 
-    // ── PingOne admin tool early-exit ──────────────────────────────────────────
-    // When mcp_use_pingone_server is ON and the tool is a PingOne management tool,
-    // route directly to pingone-mcp-server (stdio). Skips RFC 8693 token exchange —
-    // the binary manages its own PKCE auth via OS keychain.
-    if (configStore.get('mcp_use_pingone_server') === 'true' && PINGONE_ADMIN_TOOLS.has(tool)) {
-        emit({ phase: 'mcp_pingone_admin_tool' });
-        try {
-            const p1UserSub = (req.session?.user?.oauthId || req.session?.user?.id) || null;
-            const result = await mcpPingOneStdioAdapter.callToolViaStdio(tool, params || {}, '', p1UserSub, req.correlationId);
-            emit({ phase: 'mcp_remote_done' });
-            return res.json({ result, tokenEvents: [] });
-        } catch (err) {
-            emit({ phase: 'mcp_remote_error' });
-            console.error('[PingOne MCP] %s failed: %s', tool, err.message);
-            return res.status(502).json({ error: 'pingone_mcp_error', message: err.message });
-        }
-    }
+    const ctx = {
+      tool, params, flowTraceId, startTime, req,
+      deps: {
+        resolveMcpAccessTokenWithEvents,
+        evaluateMcpFirstToolGate: (a) => mcpToolAuthorizationService.evaluateMcpFirstToolGate(a),
+        introspectToken,
+        getSessionAccessToken,
+        callToolLocal,
+        mcpCallTool,
+        callToolViaGateway: (url, tok, t, p, o) => mcpGatewayClient.callToolViaGateway(url, tok, t, p, o),
+        http2Bridge: http2McpBridge,
+        stdioAdapter: mcpPingOneStdioAdapter,
+        buildTokenEvent,
+        mcpNoBearerResponse,
+        createPendingDecision: _createPendingDecision,
+        recordMcpToolCall,
+        publishMcpResultToSse: (id, a) => publishMcpResultToSse(id, a),
+        publishTokenEventsToSse: (id, evs) => publishTokenEventsToSse(id, evs),
+        appEventLog: (cat, lvl, msg, meta) => appEventService.logEvent(cat, lvl, msg, meta),
+        emit,
+        config: {
+          introspectionConfigured: !!process.env.PINGONE_INTROSPECTION_ENDPOINT,
+          useGateway: !!process.env.MCP_GATEWAY_HTTP_URL,
+          gatewayHttpUrl: mcpGatewayClient.getMcpGatewayHttpUrl(),
+          mcpUrl: getMcpServerUrl(),
+          mcpServerUrlEnv: process.env.MCP_SERVER_URL,
+          useHttp2: (() => {
+            const u = getMcpServerUrl();
+            return !process.env.MCP_GATEWAY_HTTP_URL && (u.startsWith('http://') || u.startsWith('https://'));
+          })(),
+          pingoneAdminEnabled: configStore.get('mcp_use_pingone_server') === 'true',
+          pingoneAdminTools: PINGONE_ADMIN_TOOLS,
+        },
+      },
+    };
 
-    let mcpAccessToken; // RFC 8693 §3.2: MCP-scoped access token (result of exchange)
-    let userSub = null;
-    let tokenEvents = [];
-    try {
-        emit({
-            phase: 'resolving_access_token'
-        });
-        // Always run the full two-exchange delegation (12-step mandate).
-        // The mcpWriteToken session cache is bypassed so every tool call produces
-        // the complete token chain (user-token \u2192 Exchange #1 \u2192 Exchange #2).
-        const resolved = await resolveMcpAccessTokenWithEvents(req, tool);
-        mcpAccessToken = resolved.token;
-        tokenEvents = resolved.tokenEvents;
-        userSub = resolved.userSub || null;
-        // Publish token events to SSE hub for real-time Token Chain display
-        publishTokenEventsToSse(flowTraceId, tokenEvents);
-        const evs = tokenEvents || [];
-        emit({
-            phase: 'access_token_ready',
-            hasUserToken: evs.some((e) => e && e.id === 'user-token'),
-            exchanged: evs.some((e) => e && e.id === 'exchanged-token'),
-            exchangeRequired: evs.some((e) => e && e.id === 'exchange-required'),
-        });
-    } catch (err) {
-        console.error(`[MCP Proxy] Token resolution failed for tool ${tool}:`, err.message);
-        emit({
-            phase: 'access_token_error',
-            code: err.code || 'token_exchange_failed'
-        });
-
-        // When the exchange fails because the subject token lacks the required scopes
-        // (e.g. ENDUSER_AUDIENCE login path only carries banking:agent:invoke, not
-        // banking:write), PingOne returns 400 "At least one scope must be granted".
-        // In that case, fall back to the local tool handler so the operation still
-        // completes — the UI receives _exchangeFailed:true so it can show a soft
-        // informational message instead of an error toast.
-        //
-        // PingOne also returns 401 for token-exchange policy rejections such as
-        // "Request denied: Unsupported authentication method" — this happens when the
-        // exchanger client (admin OAuth app) is a PKCE Web app whose token-exchange
-        // grant or auth method is not configured correctly in PingOne.  These are
-        // server-side config errors, not invalid user tokens, so local fallback is safe.
-        // We distinguish PingOne-origin 401s from session-guard 401s via err.pingoneError
-        // (only set when the 401 response body was parsed from the PingOne token endpoint).
-        // missing_exchange_scopes: the user's access token doesn't carry the required scopes.
-        // Return a structured 403 so the UI can display an actionable config-fix modal.
-        // Do NOT fall back to local tool execution — that would hide the misconfiguration.
-        if (err.code === 'missing_exchange_scopes') {
-            const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
-            publishTokenEventsToSse(flowTraceId, events);
-            return res.status(403).json({
-                error: 'missing_exchange_scopes',
-                message: err.message,
-                missingScopes: err.missingScopes || [],
-                userScopes: err.userScopes || '',
-                requiredScopes: err.requiredScopes || '',
-                tokenEvents: events,
-            });
-        }
-
-        const sessionUser = req.session ?.user;
-        const isExchangeScopeError =
-            err.httpStatus === 400 ||
-            err.code === 'token_exchange_failed' ||
-            (err.httpStatus === 401 && Boolean(err.pingoneError));
-        console.error(
-            '[MCP Fallback:DEBUG] tool=%s httpStatus=%s errCode=%s pingoneError=%s ' +
-            'sessionUser.id=%s sessionUser.oauthId=%s isExchangeScopeError=%s',
-            tool,
-            err.httpStatus ?? '(none)',
-            err.code ?? '(none)',
-            err.pingoneError ?? '(none)',
-            sessionUser ?.id ?? '(missing — fallback will NOT fire)',
-            sessionUser ?.oauthId ?? '(none)',
-            isExchangeScopeError
-        );
-        if (sessionUser ?.id && isExchangeScopeError) {
-            const fallbackEvents = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
-            publishTokenEventsToSse(flowTraceId, fallbackEvents);
-            const effectiveUserId = sessionUser.oauthId || sessionUser.id;
-            console.log(
-                '[MCP Local] %s — exchange failed (%s), falling back to local handler. effectiveUserId=%s',
-                tool, err.code ?? err.httpStatus, effectiveUserId
-            );
-            try {
-                emit({
-                    phase: 'local_tool_start',
-                    path: 'exchange_failed_fallback'
-                });
-                const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
-                emit({
-                    phase: 'local_tool_done',
-                    path: 'exchange_failed_fallback'
-                });
-                console.log('[MCP Local] %s — local fallback result keys=%s resultError=%s',
-                    tool,
-                    result ? Object.keys(result).join(',') : '(null)',
-                    result ?.error ?? '(none)'
-                );
-                const _efDuration = Date.now() - startTime;
-                publishMcpResultToSse(flowTraceId, { tool, result, durationMs: _efDuration, isDelegated: false, userId: effectiveUserId });
-                recordMcpToolCall({ userId: effectiveUserId, toolName: tool, success: !result?.error, duration: _efDuration, resultSummary: result?.error ? `${tool} failed` : `${tool} completed` });
-                return res.json({
-                    result,
-                    tokenEvents: fallbackEvents,
-                    _localFallback: true,
-                    _exchangeFailed: true
-                });
-            } catch (localErr) {
-                console.error(
-                    '[MCP Local] %s — callToolLocal THREW after exchange failure: %s stack=%s',
-                    tool, localErr.message, localErr.stack
-                );
-                // Fall through to original error response
-            }
-        }
-
-        // TOKEN_INACTIVE — user's PingOne session expired; signal UI to re-authenticate
-        if (err.code === 'TOKEN_INACTIVE') {
-            const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
-            publishTokenEventsToSse(flowTraceId, events);
-            return res.status(401).json({ error: 'Session expired', need_auth: true, agentInitRequired: true, tokenEvents: events });
-        }
-
-        const status = err.httpStatus || 502;
-        const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
-        publishTokenEventsToSse(flowTraceId, events);
-        const errCode = err.error || err.code;  // RFCCompliantError uses .error, not .code
-        const requiresLogin = false; // actor_token_invalid is a server config issue; user session expiry is caught by middleware before this
-        return res.status(status).json({
-            error: errCode || 'token_exchange_failed',
-            message: err.message,
-            tokenEvents: events,
-            ...(requiresLogin && { requiresLogin: true }),
-        });
-    }
-
-    if (!mcpAccessToken) {
-        emit({
-            phase: 'no_bearer_token_branch'
-        });
-        // No bearer token (cookie-only or degraded session) — use local handler if session user present.
-        // This lets the banking agent work for basic operations even without a fully-hydrated Redis session.
-        const sessionUser = req.session ?.user;
-        if (sessionUser ?.id) {
-            console.log(`[MCP Local] ${tool} — no bearer token (cookie-only session), using local handler`);
-            try {
-                emit({
-                    phase: 'local_tool_start',
-                    path: 'no_bearer'
-                });
-                // Use oauthId (PingOne sub/UUID) when available — accounts are stored under the UUID
-                // not the local sequential dataStore id, matching what authenticateToken sets on req.user.id.
-                const effectiveUserId = sessionUser.oauthId || sessionUser.id;
-                const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
-                emit({
-                    phase: 'local_tool_done',
-                    path: 'no_bearer'
-                });
-                publishTokenEventsToSse(flowTraceId, tokenEvents);
-                return res.json({
-                    result,
-                    tokenEvents,
-                    _localFallback: true
-                });
-            } catch (localErr) {
-                console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
-                emit({
-                    phase: 'local_tool_error',
-                    path: 'no_bearer'
-                });
-                publishTokenEventsToSse(flowTraceId, tokenEvents);
-                return res.status(502).json({
-                    error: 'mcp_error',
-                    message: localErr.message,
-                    tokenEvents
-                });
-            }
-        }
-        emit({
-            phase: 'no_bearer_no_user'
-        });
-        const r = mcpNoBearerResponse(req, tokenEvents);
-        publishTokenEventsToSse(flowTraceId, tokenEvents);
-        return res.status(r.status).json(r.body);
-    }
-
-    // PingOne Authorize (or simulated) on every MCP tool call — docs/PINGONE_AUTHORIZE_PLAN.md §7
-    /** @type {object|undefined} */
-    let mcpAuthorizeEvaluationThisRequest;
-    try {
-        emit({
-            phase: 'authorize_gate_begin'
-        });
-        const mcpAuthz = await mcpToolAuthorizationService.evaluateMcpFirstToolGate({
-            req,
-            tool,
-            agentToken: mcpAccessToken, // RFC 8693: pass as agentToken for backward compat
-            userSub,
-            userAcr: req.session ?.user ?.acr,
-            toolParams: params,
-        });
-        if (mcpAuthz.ran && mcpAuthz.block) {
-            emit({
-                phase: 'authorize_denied',
-                status: mcpAuthz.block.status
-            });
-            // HITL: create pending decision so the agent UI can poll and approve/deny
-            let hitlTaskId = null;
-            if (mcpAuthz.block.body.error === 'mcp_hitl_required') {
-                emit({ phase: 'authorize_denied_hitl', challenge_type: 'hitl' });
-                const { createPendingDecision } = require('./routes/mcpDecisionPolling');
-                const hitl = createPendingDecision(
-                    userSub,
-                    {
-                        tool,
-                        decisionId: mcpAuthz.block.body.decisionId,
-                        decisionContext: mcpAuthz.block.body.decisionContext,
-                        reason: mcpAuthz.block.body.error_description,
-                    },
-                );
-                hitlTaskId = hitl.taskId;
-            }
-            return res.status(mcpAuthz.block.status).json({
-                ...mcpAuthz.block.body,
-                ...(hitlTaskId ? { taskId: hitlTaskId } : {}),
-                tokenEvents,
-                mcpAuthorizeEvaluation: {
-                    decisionContext: mcpAuthz.block.body.decisionContext,
-                    decisionId: mcpAuthz.block.body.decisionId,
-                },
-            });
-        }
-        if (mcpAuthz.ran && mcpAuthz.simulatedError) {
-            emit({
-                phase: 'authorize_simulated_error'
-            });
-            console.error(`[MCP Authorize][Simulated] unexpected error: ${mcpAuthz.simulatedError.message}`);
-            return res.status(500).json({
-                error: 'mcp_authorize_error',
-                error_description: 'Simulated MCP authorization evaluation failed unexpectedly.',
-                tokenEvents,
-            });
-        }
-        if (mcpAuthz.ran && mcpAuthz.pingoneError) {
-            emit({
-                phase: 'authorize_unavailable'
-            });
-            console.error(`[MCP Authorize] PingOne error — failing closed: ${mcpAuthz.pingoneError.message}`);
-            return res.status(503).json({
-                error: 'mcp_authorize_unavailable',
-                error_description: 'PingOne Authorize is unavailable for MCP tool access.',
-                tokenEvents,
-            });
-        }
-        if (mcpAuthz.ran && mcpAuthz.permit) {
-            emit({
-                phase: 'authorize_permitted'
-            });
-            mcpAuthorizeEvaluationThisRequest = mcpAuthz.evaluation;
-        }
-        if (!mcpAuthz.ran) {
-            emit({
-                phase: 'authorize_gate_skipped',
-                reason: mcpAuthz.reason,
-            });
-            appEventService.logEvent('authorize', 'info',
-                `Authorize gate skipped — ${mcpAuthz.reason || 'unknown'}`,
-                { tag: 'authorize/gate-skipped', metadata: { reason: mcpAuthz.reason } });
-        }
-    } catch (mcpAuthzErr) {
-        emit({
-            phase: 'authorize_internal_error'
-        });
-        console.error('[MCP Authorize] Unexpected error in gate:', mcpAuthzErr.message);
-        return res.status(500).json({
-            error: 'mcp_authorize_internal',
-            message: mcpAuthzErr.message,
-            tokenEvents,
-        });
-    }
-
-    // Introspect session token for zero-trust validation (RFC 7662)
-    const sessionAccessToken = getSessionAccessToken(req);
-    const introspectionConfigured = !!process.env.PINGONE_INTROSPECTION_ENDPOINT;
-    if (introspectionConfigured) {
-        emit({
-            phase: 'introspection_begin'
-        });
-        if (!sessionAccessToken || sessionAccessToken === '_cookie_session') {
-            emit({
-                phase: 'introspection_skipped_no_session_token'
-            });
-            const r = mcpNoBearerResponse(req, tokenEvents);
-            return res.status(r.status).json(r.body);
-        }
-        try {
-            const introspectionResult = await introspectToken(sessionAccessToken);
-            if (!introspectionResult.active) {
-                emit({
-                    phase: 'introspection_inactive'
-                });
-                tokenEvents.push(buildTokenEvent(
-                    'session-token-introspection',
-                    'Session Token — PingOne Introspection (RFC 7662)',
-                    'failed',
-                    null,
-                    'PingOne returned active=false for the session token. The tool call cannot proceed with an inactive session.',
-                    {
-                        rfc: 'RFC 7662',
-                        introspectionResult: {
-                            active: false,
-                            sub: introspectionResult.sub,
-                            scope: introspectionResult.scope,
-                            exp: introspectionResult.exp,
-                        },
-                    }
-                ));
-                console.warn(`[MCP Proxy] Session token introspection failed: token inactive for tool ${tool}`);
-                return res.status(401).json({
-                    error: 'token_inactive',
-                    need_auth: true,
-                    agentInitRequired: true,
-                    message: 'Session token is no longer active. Please sign in again.',
-                    tokenEvents,
-                });
-            }
-            emit({
-                phase: 'introspection_active_ok'
-            });
-            tokenEvents.push(buildTokenEvent(
-                'session-token-introspection',
-                'Session Token — PingOne Introspection (RFC 7662)',
-                'active',
-                // Pass claims so the UI Claims tab shows real PingOne data
-                {
-                    header: null,
-                    claims: {
-                        sub:    introspectionResult.sub   || null,
-                        active: true,
-                        scope:  introspectionResult.scope || null,
-                        exp:    introspectionResult.exp   || null,
-                        aud:    introspectionResult.aud   || null,
-                        client_id: introspectionResult.client_id || null,
-                    },
-                },
-                `PingOne confirmed the session token is active. sub=${introspectionResult.sub || '—'} scope="${introspectionResult.scope || ''}"`,
-                {
-                    rfc: 'RFC 7662',
-                    introspectionResult: {
-                        active: true,
-                        sub: introspectionResult.sub,
-                        scope: introspectionResult.scope,
-                        exp: introspectionResult.exp,
-                    },
-                }
-            ));
-        } catch (err) {
-            emit({
-                phase: 'introspection_error_degraded'
-            });
-            tokenEvents.push(buildTokenEvent(
-                'session-token-introspection',
-                'Session Token — PingOne Introspection (RFC 7662)',
-                'degraded',
-                null,
-                `Introspection endpoint error — continuing in degraded mode. ${err.message}`,
-                { rfc: 'RFC 7662' }
-            ));
-            console.error(`[MCP Proxy] Session token introspection error for tool ${tool}:`, err.message);
-            // Continue on introspection failure (graceful degradation) but log the error
-        }
-    } else {
-        emit({
-            phase: 'introspection_not_configured'
-        });
-        tokenEvents.push(buildTokenEvent(
-            'session-token-introspection',
-            'Session Token — PingOne Introspection (RFC 7662)',
-            'skipped',
-            null,
-            'PINGONE_INTROSPECTION_ENDPOINT is not configured. Session token liveness is not verified on this tool call.',
-            { rfc: 'RFC 7662' }
-        ));
-    }
-
-    // ── Try remote MCP server first; fall back to local handler if unreachable ──
-    // When MCP_GATEWAY_HTTP_URL is set, route through the banking-mcp-gateway (Phase 243).
-    // The gateway owns RFC 9728 metadata, runs PingOne Authorize policy evaluation, and
-    // performs RFC 8693 token exchange to the upstream MCP server — the mcpAccessToken
-    // must already be scoped to the gateway audience (MCP_GW_RESOURCE_URI).
-    // Graceful fallback: if MCP_GATEWAY_HTTP_URL is not set, use the previous direct path.
-    const gatewayHttpUrl = mcpGatewayClient.getMcpGatewayHttpUrl();
-    const useGateway = !!process.env.MCP_GATEWAY_HTTP_URL;
-    const mcpUrl = getMcpServerUrl();
-    const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;
-    const useHttp2 = !useGateway && (mcpUrl.startsWith("http://") || mcpUrl.startsWith("https://"));
-
-    try {
-        emit({
-            phase: 'mcp_remote_begin'
-        });
-        appEventService.logEvent('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, gatewayUrl: useGateway ? gatewayHttpUrl : mcpUrl, via: useGateway ? 'gateway' : 'direct' } });
-        let result;
-        let gwAuditTrail = null;
-        if (useGateway) {
-            ({ result, gwAuditTrail } = await mcpGatewayClient.callToolViaGateway(gatewayHttpUrl, mcpAccessToken, tool, params || {}, { correlationId: req.correlationId }));
-        } else if (useHttp2) {
-            const h2Session = http2McpBridge.createHttp2Session(mcpUrl, mcpAccessToken);
-            result = await http2McpBridge.forwardToolCall(h2Session, tool, params || {}, mcpAccessToken, userSub, req.correlationId);
-        } else {
-            result = await mcpCallTool(tool, params || {}, mcpAccessToken, userSub, req.correlationId);
-        }
-        appEventService.logEvent('mcp', 'info', `MCP tool done ← ${tool} (${Date.now() - startTime}ms)`, { tag: 'mcp/tool', metadata: { tool, durationMs: Date.now() - startTime } });
-        
-        // Build token events from gateway audit trail if present (Phase 259)
-        if (gwAuditTrail) {
-            if (gwAuditTrail.introspection) {
-                const introspRes = gwAuditTrail.introspection;
-                const status = introspRes.skipped ? 'skipped' : (introspRes.active ? 'valid' : 'revoked');
-                const desc = introspRes.skipped 
-                    ? 'Gateway introspection skipped (endpoint not configured)'
-                    : (introspRes.active ? 'Token verified active at gateway' : 'Token is revoked or no longer active');
-                tokenEvents.push(buildTokenEvent(
-                    'gw-introspection',
-                    'Gateway — RFC 7662 Introspection',
-                    status,
-                    null,
-                    desc,
-                    { rfc: 'RFC 7662', sub: introspRes.sub, exp: introspRes.exp }
-                ));
-            }
-            if (gwAuditTrail.authorize) {
-                const authzRes = gwAuditTrail.authorize;
-                const decision = authzRes.decision; // PERMIT, DENY, INDETERMINATE
-                const status = decision === 'PERMIT' ? 'permit' : (decision === 'INDETERMINATE' ? 'indeterminate' : 'deny');
-                const desc = `PingOne Authorize policy evaluation: ${decision}${authzRes.reason ? ` (${authzRes.reason})` : ''}`;
-                tokenEvents.push(buildTokenEvent(
-                    'gw-authorize',
-                    'Gateway — PingOne Authorize Decision',
-                    status,
-                    null,
-                    desc,
-                    { decision }
-                ));
-            }
-            if (gwAuditTrail.exchange) {
-                const exchangeRes = gwAuditTrail.exchange;
-                tokenEvents.push(buildTokenEvent(
-                    'gw-exchange',
-                    'Gateway — RFC 8693 Token Exchange',
-                    'exchanged',
-                    null,
-                    `Token exchanged to MCP resource audience: ${exchangeRes.targetAud}`,
-                    { targetAud: exchangeRes.targetAud }
-                ));
-            }
-        }
-        
-        // M2a: surface the actual MCP call + response as chain steps. These
-        // previously lived only in the mcpTrafficLogger NDJSON file and never
-        // reached the Token Chain panel, so "MCP calls and responses" — an
-        // explicit requirement of the chain — was a blind spot. Params and
-        // result summaries only (no raw token; scrubRawJwts wraps res.json on
-        // this route as a backstop).
-        try {
-            const _mcpDur = Date.now() - startTime;
-            const _isErr = !!result?.isError;
-            const _contentLen = result?.content ? JSON.stringify(result.content).length : 0;
-            tokenEvents.push(buildTokenEvent(
-                'mcp-request',
-                `MCP Tool Call → ${tool}`,
-                'active',
-                null,
-                `JSON-RPC tools/call sent to the MCP server${useGateway ? ' via the gateway' : ' directly'} with params: ${JSON.stringify(params || {})}`,
-                { rfc: 'JSON-RPC 2.0', tool, transport: useGateway ? 'gateway' : (useHttp2 ? 'http2' : 'websocket') }
-            ));
-            tokenEvents.push(buildTokenEvent(
-                'mcp-response',
-                `MCP Tool Response ← ${tool}`,
-                _isErr ? 'failed' : 'success',
-                null,
-                _isErr
-                    ? `MCP server returned an error for ${tool} after ${_mcpDur}ms`
-                    : `MCP server returned ${_contentLen} bytes for ${tool} in ${_mcpDur}ms`,
-                { rfc: 'JSON-RPC 2.0', tool, durationMs: _mcpDur, contentBytes: _contentLen }
-            ));
-            // M2b: the resource-server hop. The MCP server's BankingToolProvider
-            // calls back into banking_api_server /api/... via BankingAPIClient
-            // to actually fetch/mutate banking data — an explicit chain step
-            // the user asked for ("Resource server") that had no representation.
-            // We don't re-plumb the MCP server; a successful tool result proves
-            // the RS call occurred, and the tool→endpoint mapping is stable.
-            const RS_ENDPOINT_BY_TOOL = {
-                get_my_accounts: 'GET /api/accounts/my',
-                get_account_balance: 'GET /api/accounts/:id/balance',
-                get_my_transactions: 'GET /api/transactions/my',
-                create_transfer: 'POST /api/transactions',
-                create_deposit: 'POST /api/transactions',
-                create_withdrawal: 'POST /api/transactions',
-            };
-            const _rsEndpoint = RS_ENDPOINT_BY_TOOL[tool];
-            if (_rsEndpoint && !_isErr) {
-                tokenEvents.push(buildTokenEvent(
-                    'resource-server',
-                    `Resource Server ← ${tool}`,
-                    'success',
-                    null,
-                    `MCP server's BankingToolProvider called the banking resource server (${_rsEndpoint}) with the exchanged token; the response above is derived from that call.`,
-                    { rfc: 'RFC 6750 §2.1', tool, backendRoute: _rsEndpoint }
-                ));
-            }
-        } catch (_mcpEvtErr) { /* non-fatal — never block the tool result on chain bookkeeping */ }
-
-        // Log the actual MCP result so it's queryable via /api/app-events
-        if (result) {
-          const resultMeta = {
-            tool,
-            durationMs: Date.now() - startTime,
-            hasContent: !!result.content,
-            contentLength: result.content ? JSON.stringify(result.content).length : 0,
-            contentType: result.isError ? 'error' : 'success'
-          };
-          appEventService.logEvent('mcp', 'info', `MCP result: ${tool} → ${result.isError ? 'error' : 'success'} (${resultMeta.contentLength} bytes)`, { tag: 'mcp/result', metadata: resultMeta });
-        }
-
-        // Publish MCP result via SSE so Token Chain MCP Results tab updates immediately
-        const _durationMs = Date.now() - startTime;
-        publishMcpResultToSse(flowTraceId, { tool, result, durationMs: _durationMs, isDelegated: !!mcpAccessToken, userId: userSub });
-        // Also record in local audit store (covers BFF-proxied calls)
-        recordMcpToolCall({ userId: userSub || 'unknown', toolName: tool, success: !result?.isError, duration: _durationMs, resultSummary: result?.isError ? `${tool} failed` : `${tool} completed`, isDelegated: !!mcpAccessToken });
-
-        emit({
-            phase: 'mcp_remote_done'
-        });
-
-        // Detect auth challenge from MCP server — fall back to local handler
-        // instead of surfacing the redirect challenge to the client. The BFF
-        // already has the user's session so local execution is preferred.
-        const mcpContent = result?.content;
-        const hasAuthChallenge = Array.isArray(mcpContent)
-            && mcpContent.some(c => c && c.authChallenge);
-        if (hasAuthChallenge) {
-            emit({ phase: 'mcp_auth_challenge_intercepted' });
-            console.log(`[MCP Proxy] ${tool} — MCP server returned auth challenge, using local fallback`);
-            const sessionUser = req.session?.user;
-            if (sessionUser?.id) {
-                try {
-                    const effectiveUserId = sessionUser.oauthId || sessionUser.id;
-                    emit({ phase: 'local_tool_start', path: 'auth_challenge_fallback' });
-                    const localResult = await callToolLocal(tool, params || {}, effectiveUserId, req);
-                    emit({ phase: 'local_tool_done', path: 'auth_challenge_fallback' });
-                    const _acDuration = Date.now() - startTime;
-                    publishMcpResultToSse(flowTraceId, { tool, result: localResult, durationMs: _acDuration, isDelegated: false, userId: effectiveUserId });
-                    recordMcpToolCall({ userId: effectiveUserId, toolName: tool, success: !localResult?.error, duration: _acDuration, resultSummary: localResult?.error ? `${tool} failed` : `${tool} completed` });
-                    return res.json({ result: localResult, tokenEvents, _localFallback: true });
-                } catch (localErr) {
-                    console.error(`[MCP Local] ${tool} — auth-challenge fallback failed:`, localErr.message);
-                    emit({ phase: 'local_tool_error', path: 'auth_challenge_fallback' });
-                }
-            }
-        }
-
-        // Get active LLM model for logging and client display
-        const langchainConfig = req.session?.langchain_config || {};
-        const activeProvider = langchainConfig.provider || 'helix';
-        const activeModel = langchainConfig.model || 'gpt-4o-mini';
-        console.log(`[/api/mcp/tool] ${tool} — using LLM: ${activeProvider}/${activeModel}`);
-
-        const out = {
-            result,
-            tokenEvents,
-            activeModel,
-            activeProvider
-        };
-        if (mcpAuthorizeEvaluationThisRequest) {
-            out.mcpAuthorizeEvaluation = mcpAuthorizeEvaluationThisRequest;
-        }
-
-        // Stream response when using HTTP/2 transport (client detects via Content-Type)
-        if (useHttp2) {
-            res.setHeader('Content-Type', 'application/stream+json; charset=utf-8');
-            res.setHeader('Transfer-Encoding', 'chunked');
-            // Emit any pending flow events (already published to SSE hub, now also in response)
-            res.write(JSON.stringify({ type: 'result', data: result, tokenEvents }) + '\n');
-            res.write(JSON.stringify({ type: 'stream_close', status: 'success' }) + '\n');
-            return res.end();
-        }
-        return res.json(out);
-    } catch (err) {
-        // Scope denial: MCP server returned -32005 (valid token, wrong scope).
-        // Return 403 — do NOT fall back to the local tool handler.
-        if (err.code === 'mcp_insufficient_scope') {
-            const d = err.mcpErrorData || {};
-            console.warn(`[/api/mcp/tool] Scope denied for tool '${tool}': missing [${(d.missingScopes || []).join(', ')}]`);
-            return res.status(403).json({
-                error: 'mcp_scope_denied',
-                tool,
-                requiredScopes: d.requiredScopes || [],
-                missingScopes: d.missingScopes || [],
-                availableScopes: d.availableScopes || [],
-            });
-        }
-
-        // Gateway policy denial — propagate structured error to the UI for educational display.
-        // Do NOT fall back to the local handler: the gateway denied for a policy reason
-        // (audience mismatch, expired token, origin restriction) that local execution cannot bypass.
-        if (err.code === 'gateway_policy_denied' || err.code === 'gateway_auth_failed') {
-            console.warn(`[/api/mcp/tool] Gateway denied tool '${tool}': ${err.gatewayErrorCode || err.code} — ${err.message}`);
-            emit({ phase: 'gateway_policy_denied', gatewayErrorCode: err.gatewayErrorCode });
-            
-            // HTTP 428 Precondition Required: step-up auth needed (INDETERMINATE decision)
-            if (err.gatewayErrorCode === 'hitl_required') {
-                emit({ phase: 'gateway_step_up_required' });
-                return res.status(428).json({
-                    error: 'step_up_required',
-                    tool,
-                    message: 'Transaction requires additional authentication (step-up MFA)',
-                    tokenEvents,
-                });
-            }
-            
-            return res.status(403).json({
-                error: 'gateway_policy_denied',
-                tool,
-                gatewayErrorCode: err.gatewayErrorCode || err.code,
-                message: err.message,
-                tokenEvents,
-            });
-        }
-
-        const isConnErr =
-            err.useLocal ||
-            err.message.includes('ECONNREFUSED') ||
-            err.message.includes('ENETUNREACH') ||
-            err.message.includes('timed out') ||
-            err.message.includes('connect ETIMEDOUT') ||
-            (err.code && ['ECONNREFUSED', 'ENETUNREACH', 'ETIMEDOUT'].includes(err.code));
-
-        if (!isConnErr) {
-            emit({
-                phase: 'mcp_remote_tool_error'
-            });
-            console.error(`[MCP Proxy] Error calling ${tool}:`, err.message);
-            return res.status(502).json({
-                error: 'mcp_error',
-                message: err.message,
-                tokenEvents
-            });
-        }
-
-        emit({
-            phase: 'mcp_remote_unreachable'
-        });
-        // ── Local fallback ──────────────────────────────────────────────────────
-        const sessionUser = req.session ?.user;
-        if (!sessionUser ?.id) {
-            emit({
-                phase: 'local_fallback_blocked_no_user'
-            });
-            const r = mcpNoBearerResponse(req, tokenEvents);
-            return res.status(r.status).json(r.body);
-        }
-
-        console.log(`[MCP Local] ${tool} — MCP server unreachable (${mcpUrl}), using local handler`);
-        try {
-            emit({
-                phase: 'local_tool_start',
-                path: 'remote_fallback'
-            });
-            // Use oauthId (PingOne sub/UUID) — accounts are keyed by UUID (same as authenticateToken / REST routes).
-            const effectiveUserId = sessionUser.oauthId || sessionUser.id;
-            const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
-            emit({
-                phase: 'local_tool_done',
-                path: 'remote_fallback'
-            });
-            const _rfDuration = Date.now() - startTime;
-            publishMcpResultToSse(flowTraceId, { tool, result, durationMs: _rfDuration, isDelegated: false, userId: effectiveUserId });
-            recordMcpToolCall({ userId: effectiveUserId, toolName: tool, success: !result?.error, duration: _rfDuration, resultSummary: result?.error ? `${tool} failed` : `${tool} completed` });
-            return res.json({
-                result,
-                tokenEvents,
-                _localFallback: true
-            });
-        } catch (localErr) {
-            emit({
-                phase: 'local_tool_error',
-                path: 'remote_fallback'
-            });
-            console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
-            return res.status(502).json({
-                error: 'mcp_error',
-                message: localErr.message,
-                tokenEvents
-            });
-        }
-    }
+    const outcome = await runMcpToolPipeline(ctx);
+    return renderOutcome(res, outcome);
   } catch (err) {
     next(err);
   }

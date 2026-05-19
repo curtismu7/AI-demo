@@ -9,102 +9,78 @@
 'use strict';
 
 const { MCP_TOOL_SCOPES } = require('./mcpWebSocketClient');
+const scopeTopology = require('./scopeTopology');
+
+// Policy-engine-local metadata that is NOT topology (operations a scope maps to,
+// whether it needs user context). Keyed by canonical manifest scope name. The
+// scope SET is single-sourced from the manifest; only these behavioral overlays
+// live here. scopeTopology.regression.test.js asserts every key below exists in
+// the manifest (no orphans).
+const SCOPE_OPS_OVERLAY = {
+  'banking:read':          { operations: ['GET /accounts/*', 'GET /transactions/*', 'GET /balances/*'], requires_user_context: true, category: 'banking' },
+  'banking:write':         { operations: ['POST /transactions', 'POST /transfers'], requires_user_context: true, category: 'banking' },
+  'banking:transfer':      { operations: ['POST /transfers'], requires_user_context: true, category: 'banking' },
+  'banking:accounts:read': { operations: ['GET /accounts/*', 'GET /balances/*'], requires_user_context: true, category: 'banking' },
+  'banking:transactions:read': { operations: ['GET /transactions/*'], requires_user_context: true, category: 'banking' },
+  'banking:mortgage:read': { operations: ['GET /mortgage'], requires_user_context: true, category: 'banking' },
+  'banking:ai:agent:read': { operations: ['agent:invoke'], requires_user_context: true, category: 'banking' },
+  'banking:mcp:invoke':    { operations: ['mcp:tools/call'], requires_user_context: true, category: 'banking' },
+  'ai_agent':              { operations: ['agent:identity'], requires_user_context: false, category: 'ai' },
+};
+
 const { writeExchangeEvent } = require('./exchangeAuditStore');
 
-/**
- * Scope taxonomy and risk levels
- * Using existing MCP tool scopes structure
- */
-const SCOPE_TAXONOMY = {
-  // Banking operations scopes
-  'banking:read': {
-    description: 'Read access to banking data (accounts, balances, transactions)',
-    operations: ['GET /accounts/*', 'GET /transactions/*', 'GET /balances/*'],
-    risk_level: 'low',
-    category: 'banking',
-    requires_user_context: true
-  },
-  'banking:accounts:read': {
-    description: 'Read access to account information',
-    operations: ['GET /accounts/*', 'GET /balances/*'],
-    risk_level: 'low',
-    category: 'banking',
-    requires_user_context: true
-  },
-  'banking:transactions:read': {
-    description: 'Read access to transaction history',
-    operations: ['GET /transactions/*'],
-    risk_level: 'low',
-    category: 'banking',
-    requires_user_context: true
-  },
-  'banking:mortgage:read': {
-    description: 'Read access to mortgage account data (Phase 267 — Path A api-key disposition)',
-    operations: ['GET /mortgage (via gateway api_key swap to banking_mortgage_service)'],
-    risk_level: 'low',
-    category: 'banking',
-    requires_user_context: true
-  },
-  'banking:write': {
-    description: 'Write access to banking operations (transfers, deposits)',
-    operations: ['POST /transactions/*', 'PUT /accounts/*'],
-    risk_level: 'high',
-    category: 'banking',
-    requires_user_context: true
-  },
+// Non-manifest scopes the policy engine governs that the topology SSOT does
+// not model. As of the v2 SSOT refactor, admin:*/users: scopes ARE in the
+// manifest (with category:'admin' + their risk levels), so they derive from
+// it like everything else. Only banking:transactions:write remains
+// engine-local — no tool/app/resource references it, so it is intentionally
+// absent from scope-topology.json.
+const NON_MANIFEST_TAXONOMY = {
   'banking:transactions:write': {
     description: 'Create and modify transactions',
     operations: ['POST /transactions/*'],
     risk_level: 'high',
     category: 'banking',
-    requires_user_context: true
+    requires_user_context: true,
   },
+};
 
-  // AI agent scopes
-  'ai_agent': {
-    description: 'General AI agent capabilities and operations',
-    operations: ['POST /api/mcp/tool', 'GET /api/agent/*'],
-    risk_level: 'medium',
-    category: 'ai',
-    requires_user_context: true
-  },
+// Operations + user-context overlay for admin/users scopes. The manifest is
+// authoritative for their identity/risk/category (v2); only the operation
+// list + requires_user_context stay here (not modelled by the topology).
+const ADMIN_OPS_OVERLAY = {
+  'admin:read':   { operations: ['GET /admin/*', 'GET /users/*', 'GET /audit/*'], requires_user_context: false, category: 'admin' },
+  'admin:write':  { operations: ['POST /admin/*', 'PUT /users/*', 'DELETE /users/*'], requires_user_context: false, category: 'admin' },
+  'admin:delete': { operations: ['DELETE /users/*', 'DELETE /admin/*'], requires_user_context: false, category: 'admin' },
+  'users:read':   { operations: ['GET /users/*'], requires_user_context: false, category: 'admin' },
+  'users:manage': { operations: ['POST /users/*', 'PUT /users/*', 'DELETE /users/*'], requires_user_context: false, category: 'admin' },
+};
 
-  // Administrative scopes
-  'admin:read': {
-    description: 'Read access to administrative data',
-    operations: ['GET /admin/*', 'GET /users/*', 'GET /audit/*'],
-    risk_level: 'medium',
-    category: 'admin',
-    requires_user_context: false
-  },
-  'admin:write': {
-    description: 'Write access to administrative operations',
-    operations: ['POST /admin/*', 'PUT /users/*', 'DELETE /users/*'],
-    risk_level: 'high',
-    category: 'admin',
-    requires_user_context: false
-  },
-  'admin:delete': {
-    description: 'Delete operations for administrative tasks',
-    operations: ['DELETE /users/*', 'DELETE /admin/*'],
-    risk_level: 'critical',
-    category: 'admin',
-    requires_user_context: false
-  },
-  'users:read': {
-    description: 'Read access to user management data',
-    operations: ['GET /users/*'],
-    risk_level: 'medium',
-    category: 'admin',
-    requires_user_context: false
-  },
-  'users:manage': {
-    description: 'Full user management capabilities',
-    operations: ['POST /users/*', 'PUT /users/*', 'DELETE /users/*'],
-    risk_level: 'high',
-    category: 'admin',
-    requires_user_context: false
-  }
+/**
+ * Scope taxonomy and risk levels
+ * Using existing MCP tool scopes structure
+ */
+// SCOPE_TAXONOMY: banking-family scopes derive identity+risk from the manifest
+// (single source of truth); ops from the overlay. Non-manifest admin/users
+// scopes come from NON_MANIFEST_TAXONOMY. Manifest is authoritative for the
+// scopes it owns; the local registry covers only what the SSOT excludes.
+const SCOPE_TAXONOMY = {
+  ...NON_MANIFEST_TAXONOMY,
+  ...Object.keys(scopeTopology._manifest().scopes).reduce((acc, name) => {
+    const meta = scopeTopology.scopeMeta(name);
+    const overlay = SCOPE_OPS_OVERLAY[name] || ADMIN_OPS_OVERLAY[name] || { operations: [], requires_user_context: true };
+    acc[name] = {
+      description: meta.description,
+      risk_level: meta.riskLevel,
+      // Manifest is authoritative for category (v2 `category` field);
+      // overlay is a fallback for any scope that predates the field.
+      category: meta.category || overlay.category || 'banking',
+      operations: overlay.operations,
+      requires_user_context: overlay.requires_user_context,
+    };
+    return acc;
+  }, {}),
 };
 
 /**

@@ -40,6 +40,7 @@ import ApiTrafficPage from "./components/ApiTrafficPage";
 import AuditPage from "./components/AuditPage";
 import BankingAdminOps from "./components/BankingAdminOps";
 import BankingAgent from "./components/BankingAgent";
+import { resolveEmbeddedFocus } from "./components/bankingAgentSafety";
 import CIBAPanel from "./components/CIBAPanel";
 import CimdSimPanel from "./components/CimdSimPanel";
 import ClientCredentialsResourcePage from "./components/ClientCredentialsResourcePage";
@@ -52,7 +53,6 @@ import DelegatedAccessPage from "./components/DelegatedAccessPage";
 import DelegationPage from "./components/DelegationPage";
 import DemoServerCheckModal from "./components/DemoServerCheckModal";
 import DevToolsDashboard from "./components/DevToolsDashboard";
-import EmbeddedAgentDock from "./components/EmbeddedAgentDock";
 import EducationPanelsHost from "./components/education/EducationPanelsHost";
 import FeatureFlagsPage from "./components/FeatureFlagsPage";
 import Footer from "./components/Footer";
@@ -107,10 +107,8 @@ import {
 import { DemoTourProvider } from "./context/DemoTourContext";
 import { EducationUIProvider } from "./context/EducationUIContext";
 import { ExchangeModeProvider } from "./context/ExchangeModeContext";
-import { IndustryBrandingProvider } from "./context/IndustryBrandingContext";
 import { SpinnerProvider } from "./context/SpinnerContext";
 import { TokenChainProvider } from "./context/TokenChainContext";
-import { VerticalProvider } from "./context/VerticalContext";
 import LangChainPage from "./pages/LangChainPage";
 import { monitorApiHealth } from "./services/bankingRestartNotificationService";
 import { getCachedJson } from "./services/cachedStatusService";
@@ -119,7 +117,6 @@ import { notifyInfo, notifyWarning } from "./utils/appToast";
 import { SESSION_REAUTH_EVENT } from "./utils/authUi";
 import {
   isBankingAgentDashboardRoute,
-  isEmbeddedAgentDockRoute,
   isPublicMarketingAgentPath,
   isMonitoringRoute,
 } from "./utils/embeddedAgentFabVisibility";
@@ -231,7 +228,7 @@ function AppWithAuth() {
     pathNorm === "/api-traffic" ||
     pathNorm === "/logs" ||
     pathNorm === "/agent";
-  const { placement: agentPlacement, fab: agentFab } = useAgentUiMode();
+  const { placement: agentPlacement, surfaceHostEl } = useAgentUiMode();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
@@ -541,11 +538,10 @@ function AppWithAuth() {
   /** Nav rail / layout flags — computed declaratively so React className is always in sync. */
   const isOnDashboard = pathname === "/dashboard";
 
-  /** Floating agent: dashboard homes only. Embedded dock: those routes plus `/config` (setup-focused assistant). */
+  /** Floating agent: dashboard homes only. */
   const onDashboardAgentRoute = isBankingAgentDashboardRoute(pathname);
-  const onEmbeddedDockRoute = isEmbeddedAgentDockRoute(pathname);
 
-  // Routes where UserDashboard is rendered (handles its own middle FAB + split layout and its own bottom dock).
+  // Routes where UserDashboard is rendered (handles its own middle FAB + split layout).
   // Admin uses Dashboard.js on /admin — those routes need the global float/dock from App.
   // / now renders LandingPage for non-admin logged-in users; UserDashboard lives at /dashboard.
   const onUserDashboardRoute = Boolean(user) && pathname === "/dashboard";
@@ -554,9 +550,10 @@ function AppWithAuth() {
   // Suppress float on signed-in / only when UserDashboard owns middle placement.
   const marketingAgentSurface = isPublicMarketingAgentPath(pathname) && !user;
 
-  // Landing /: always show float agent, never bottom dock.
-  const hasEmbeddedDockLayout =
-    Boolean(user) && agentPlacement === "bottom" && onEmbeddedDockRoute;
+  // Middle placement on /dashboard: UserDashboard renders the middle column
+  // and registers its host element; the single agent portals into it (4c).
+  const hasMiddleLayout =
+    Boolean(user) && agentPlacement === "middle" && onUserDashboardRoute;
 
   const onMonitoringRoute = isMonitoringRoute(pathname);
 
@@ -565,9 +562,6 @@ function AppWithAuth() {
   const showFloatingAgent =
     !agentDisabled &&
     !isApiTrafficOnlyPage &&
-    (!hasEmbeddedDockLayout ||
-      onMonitoringRoute ||
-      (Boolean(user) && agentFab && onDashboardAgentRoute)) &&
     (marketingAgentSurface ||
       (Boolean(user) && agentPlacement === "none") ||
       (Boolean(user) && onMonitoringRoute) ||
@@ -575,6 +569,16 @@ function AppWithAuth() {
         agentPlacement !== "none" &&
         onDashboardAgentRoute &&
         !(agentPlacement === "middle" && onUserDashboardRoute)));
+
+  /** Single <BankingAgent> portals into the middle host element when present; falls back to document.body otherwise. */
+  const shouldMountSingleAgent = showFloatingAgent || hasMiddleLayout;
+
+  // When the single agent is portaled into the middle column host it wears the
+  // split-column inline chrome (no floating frame/drag). Float and all other
+  // surfaces keep the default floating chrome.
+  const singleAgentSurfaceProps = hasMiddleLayout
+    ? { mode: "inline", splitColumnChrome: true, showPopOut: true }
+    : {};
 
   /** Slower default dismiss on public landing so OAuth/agent messages are readable (signed-in routes stay 4s). */
   const toastContainerAutoCloseMs =
@@ -610,7 +614,7 @@ function AppWithAuth() {
             ]}
           />
           <div
-            className={`App end-user-nano${isOnDashboard ? " App--on-dashboard" : ""}${hasEmbeddedDockLayout ? " App--has-embedded-dock" : ""}${sessionReauth ? " App--session-reauth" : ""}`}
+            className={`App end-user-nano${isOnDashboard ? " App--on-dashboard" : ""}${sessionReauth ? " App--session-reauth" : ""}`}
           >
             <ToastContainer
               position="top-right"
@@ -1394,11 +1398,14 @@ function AppWithAuth() {
                 }
               />
             </Routes>
-            {showFloatingAgent && (
+            {shouldMountSingleAgent && (
               <BankingAgent
                 user={user}
                 onLogout={logout}
+                embeddedFocus={resolveEmbeddedFocus(pathname)}
                 distinctFloatingChrome
+                surfaceHostEl={surfaceHostEl}
+                {...singleAgentSurfaceProps}
               />
             )}
             {!isApiTrafficOnlyPage && appFlags.showEducationPanel && (
@@ -1412,18 +1419,6 @@ function AppWithAuth() {
               onClose={() => setLogViewerOpen(false)}
               categoryFilter={appFlags.logFilterCategories}
             />
-            {/* UserDashboard renders EmbeddedAgentDock inside its layout. App-level dock sits in document
-              order directly above the footer on non-dashboard routes.
-              Guest landing (/) always uses float agent — no bottom dock. */}
-            {!loading &&
-              !onUserDashboardRoute &&
-              !(!user && isPublicMarketingAgentPath(pathname)) && (
-                <EmbeddedAgentDock
-                  user={user}
-                  onLogout={logout}
-                  agentPlacement={agentPlacement}
-                />
-              )}
             {!isApiTrafficOnlyPage && <Footer user={user} />}
             <ServerRestartModal />
             {downServers && downServers.length > 0 && (
@@ -1465,11 +1460,7 @@ export default function App() {
           <Router
             future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
           >
-            <IndustryBrandingProvider>
-              <VerticalProvider>
-                <AppWithAuth />
-              </VerticalProvider>
-            </IndustryBrandingProvider>
+            <AppWithAuth />
           </Router>
         </ExchangeModeProvider>
       </AgentUiModeProvider>

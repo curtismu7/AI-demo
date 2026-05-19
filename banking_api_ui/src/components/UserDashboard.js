@@ -10,7 +10,6 @@ import React, {
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAgentUiMode } from "../context/AgentUiModeContext";
 import { useEducationUI } from "../context/EducationUIContext";
-import useChatWidget from "../hooks/useChatWidget";
 import { useCurrentUserTokenEvent } from "../hooks/useCurrentUserTokenEvent";
 import apiClient from "../services/apiClient";
 import { getCachedJson } from "../services/cachedStatusService";
@@ -25,12 +24,11 @@ import { navigateToCustomerOAuthLogin } from "../utils/authUi";
 import {
   getDashboardLayout,
   setDashboardLayout,
+  splitGridClass,
 } from "../utils/dashboardLayout";
 import { toastCustomerError } from "../utils/dashboardToast";
 import AgentUiModeToggle from "./AgentUiModeToggle";
 import ThresholdControls from "./ThresholdControls";
-import BankingAgent from "./BankingAgent";
-import EmbeddedAgentDock from "./EmbeddedAgentDock";
 import ExchangeModeToggle from "./ExchangeModeToggle";
 import { EDU } from "./education/educationIds";
 import Fido2Challenge from "./Fido2Challenge";
@@ -40,6 +38,9 @@ import TransactionConsentModal from "./TransactionConsentModal";
 import FloatingPanel from "./FloatingPanel";
 import "./UserDashboard.css";
 import DashboardHeader from "./DashboardHeader";
+import { useTheme } from "../context/ThemeContext";
+import RetailDashboard from "./RetailDashboard";
+import ThemePicker from "./ThemePicker";
 
 /** Format a number as USD currency — $1,234.56 */
 const fmt = (n) =>
@@ -142,12 +143,40 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { open } = useEducationUI();
-  const { placement: agentPlacement } = useAgentUiMode();
+  const { placement: agentPlacement, setSurfaceHostEl } = useAgentUiMode();
+  const { dashboard: themeDashboard } = useTheme();
+  const isRetailDashboard = themeDashboard && themeDashboard.kind === "retail";
   useCurrentUserTokenEvent(); // Seed the token chain with current user's session token on mount
   /** Middle layout: auto-opens when placement is 'middle'; collapses via FAB click. */
   const [middleAgentOpen, setMiddleAgentOpen] = useState(
     () => agentPlacement === "middle",
   );
+
+  // ff_show_banking_in_middle_agent — when false (default) the banking column
+  // is hidden in the middle-agent layout (banking info comes from the agent /
+  // pop-out). Floating mode is unaffected. Mirrors the cookie-
+  // credentialed read BankingAgent.js uses for ff_heuristic_enabled.
+  const [showBankingInMiddle, setShowBankingInMiddle] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/feature-flags", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        const flag = data?.flags?.find(
+          (f) => f.id === "ff_show_banking_in_middle_agent",
+        );
+        if (flag != null) setShowBankingInMiddle(Boolean(flag.value));
+      })
+      .catch(() => {
+        /* fail to the clean default (column hidden) */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [middleHeight, setMiddleHeight] = useState(() =>
     typeof window !== "undefined"
       ? readStoredMiddleHeight()
@@ -401,15 +430,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchUserData identity is stable; adding it would re-register on every render
   }, []);
 
-  /** Keep localStorage layout aligned with Agent UI (Middle → split, Bottom → classic). */
+  /** Keep localStorage layout aligned with Agent UI (Middle → split3). */
   useEffect(() => {
     if (agentPlacement === "middle") {
       setMiddleAgentOpen(true);
       setDashboardLayoutState("split3");
       setDashboardLayout("split3");
-    } else if (agentPlacement === "bottom") {
-      setDashboardLayoutState("classic");
-      setDashboardLayout("classic");
     }
 
     // Refresh account data on layout change to prevent account loss (todo #11).
@@ -484,9 +510,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       return next;
     });
   }, []);
-
-  // Initialize chat widget (configuration is handled in index.html)
-  useChatWidget();
 
   // Function to decode JWT token
   // eslint-disable-next-line no-unused-vars
@@ -1303,6 +1326,20 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
   const accountsAnchorRef = useRef(null);
   const agentColumnRef = useRef(null);
+
+  // Middle column = portal host for the single App-level banking agent.
+  // Mirrors EmbeddedAgentDock's bottom-dock pattern (4b): a stable ref
+  // callback publishes the host element into AgentUiModeContext; the App
+  // single instance portals its floatShell into it. Guarded cleanup avoids a
+  // middle/bottom host race (only clears if still pointing at our element).
+  const [middleHostEl, setMiddleHostEl] = useState(null);
+  const middleHostRefCb = useCallback((el) => setMiddleHostEl(el), []);
+  useEffect(() => {
+    setSurfaceHostEl(middleHostEl);
+    return () => {
+      setSurfaceHostEl((cur) => (cur === middleHostEl ? null : cur));
+    };
+  }, [middleHostEl, setSurfaceHostEl]);
 
   const handleScrollToAccounts = useCallback(() => {
     accountsAnchorRef.current?.scrollIntoView({
@@ -2359,7 +2396,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         {(() => {
           const sorted = [...transactions]
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-            .slice(0, agentPlacement === "bottom" ? 8 : 20);
+            .slice(0, 20);
 
           if (sorted.length === 0) {
             return (
@@ -2492,11 +2529,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   return (
     <div
       className={`user-dashboard user-dashboard--2026${
-        agentPlacement === "bottom" && dashboardLayout === "classic"
-          ? " user-dashboard--embed-agent"
-          : ""
-      }${
-        agentPlacement === "middle" && middleAgentOpen
+        agentPlacement === "middle"
           ? " user-dashboard--split3"
           : ""
       }${agentPlacement === "none" ? " user-dashboard--float-fab-left" : ""}`}
@@ -2512,6 +2545,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           role="toolbar"
           aria-label="Dashboard actions"
         >
+          <ThemePicker variant="toolbar" />
           <AgentUiModeToggle variant="config" />
           <ThresholdControls />
           <button
@@ -2613,8 +2647,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       </div>
 
       {/* ── Token | (split: agent + banking columns) | classic: banking + float reserve ── */}
-      {agentPlacement === "middle" && middleAgentOpen ? (
-        <div className="dashboard-content ud-body ud-body--2026 ud-body--dashboard-split3">
+      {agentPlacement === "middle" ? (
+        <div
+          className={`dashboard-content ud-body ud-body--2026 ${splitGridClass(
+            showBankingInMiddle,
+          )}${middleAgentOpen ? "" : " ud-middle-collapsed"}`}
+        >
           <aside className="ud-token-rail" aria-label="Token chain">
             <div className="section ud-token-rail__inner">
               <ExchangeModeToggle />
@@ -2627,16 +2665,15 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             ref={agentColumnRef}
             aria-label="AI banking assistant"
             style={{ height: middleHeight, maxHeight: middleHeight }}
+            {...(!showBankingInMiddle && {
+              id: "main-dashboard-content",
+              tabIndex: -1,
+            })}
           >
             <div className="embedded-banking-agent ud-dashboard-inline-agent">
-              <BankingAgent
-                user={user}
-                onLogout={onLogout}
-                mode="inline"
-                embeddedFocus="banking"
-                splitColumnChrome
-                distinctFloatingChrome
-                showPopOut
+              <div
+                className="ud-dashboard-inline-agent-host"
+                ref={middleHostRefCb}
               />
             </div>
             <button
@@ -2657,23 +2694,44 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             </button>
           </section>
 
-          <main
-            className="ud-center ud-banking-column"
-            id="main-dashboard-content"
-            tabIndex={-1}
-          >
-            {renderBankingMain()}
-          </main>
+          {showBankingInMiddle && (
+            <main
+              className="ud-center ud-banking-column"
+              id="main-dashboard-content"
+              tabIndex={-1}
+            >
+              {isRetailDashboard ? (
+                <RetailDashboard data={themeDashboard && themeDashboard.mockData} />
+              ) : (
+                renderBankingMain()
+              )}
+            </main>
+          )}
+
+          {/* Collapsed middle: agent column is CSS-hidden (host stays mounted so
+              the portaled BankingAgent keeps its chat state); surface the same
+              float-reserve affordance the else-branch shows so the collapsed
+              visual matches today. */}
+          {!middleAgentOpen && (
+            <aside className="ud-float-reserve" aria-hidden="true">
+              <div className="ud-float-reserve__card">
+                <span className="ud-float-reserve__label">
+                  Floating assistant
+                </span>
+                <p className="ud-float-reserve__hint">
+                  The corner FAB and panel stay in this zone so your balances
+                  and token flow stay readable.
+                </p>
+              </div>
+            </aside>
+          )}
         </div>
       ) : (
-        // Bottom-dock or float mode: 3-column grid + optional full-width agent row below
-        // Float mode ('none'): 2-column layout — token rail + content; FAB is a fixed overlay from App.js
-        <div
-          className={`ud-body-outer${agentPlacement === "bottom" ? " ud-body-outer--with-bottom-agent" : ""}`}
-        >
-          <div
-            className={`dashboard-content ud-body ud-body--2026 ud-body--floating${agentPlacement === "none" ? " ud-body--float-mode" : " ud-body--design-3col"}`}
-          >
+        // Float mode ('none'): 2-column layout — token rail + content; FAB is a
+        // fixed overlay from App.js. (Bottom dock removed in Phase 4d; only
+        // 'none' reaches this else-branch now.)
+        <div className="ud-body-outer">
+          <div className="dashboard-content ud-body ud-body--2026 ud-body--floating ud-body--float-mode">
             <aside className="ud-token-rail" aria-label="Token chain">
               <div className="section ud-token-rail__inner">
                 <ExchangeModeToggle />
@@ -2686,33 +2744,15 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               id="main-dashboard-content"
               tabIndex={-1}
             >
-              {renderBankingMain()}
+              {isRetailDashboard ? (
+                <RetailDashboard data={themeDashboard && themeDashboard.mockData} />
+              ) : (
+                renderBankingMain()
+              )}
             </main>
 
-            {/* Float-reserve column: hidden in bottom mode (agent spans full width) and float mode (FAB is fixed overlay) */}
-            {agentPlacement !== "bottom" && agentPlacement !== "none" && (
-              <aside className="ud-float-reserve" aria-hidden="true">
-                <div className="ud-float-reserve__card">
-                  <span className="ud-float-reserve__label">
-                    Floating assistant
-                  </span>
-                  <p className="ud-float-reserve__hint">
-                    The corner FAB and panel stay in this zone so your balances
-                    and token flow stay readable.
-                  </p>
-                </div>
-              </aside>
-            )}
+            {/* Float mode: no reserve column — the FAB is a fixed overlay from App.js. */}
           </div>
-
-          {/* Agent dock spans full content width — no App-level gap */}
-          {agentPlacement === "bottom" && (
-            <EmbeddedAgentDock
-              user={user}
-              onLogout={onLogout}
-              agentPlacement={agentPlacement}
-            />
-          )}
         </div>
       )}
 

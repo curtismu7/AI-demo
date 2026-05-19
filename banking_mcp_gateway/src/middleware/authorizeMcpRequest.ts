@@ -31,6 +31,8 @@ import type { McpRequestMiddleware } from '../server/GatewayServer';
 import type { GatewayConfig } from '../config';
 import { getScopesForGatewayTool } from '../auth/toolScopes';
 import { teachLog } from '../teachLogger';
+import { routeTool } from '../router';
+import { buildApiKeyToolResult } from '../apiKeyDispatch';
 
 // ---------------------------------------------------------------------------
 // Body parsing helper — extract method and tool name from JSON-RPC body
@@ -38,6 +40,7 @@ import { teachLog } from '../teachLogger';
 
 interface JsonRpcBody {
   method?: string;
+  id?: unknown;
     params?: {
       name?: string;
       arguments?: Record<string, unknown>;
@@ -198,6 +201,33 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
               },
         ),
       );
+      return;
+    }
+
+    // ── Step 3.5: Phase 266/267 disposition dispatch (BL-02 transport parity) ──────
+    // tools/call for an api_key-disposition tool must NOT be RFC 8693-exchanged
+    // and forwarded to the OLB upstream — the gateway drops the bearer and
+    // calls the api-key backend instead (Phase 267: show_mortgage →
+    // banking_mortgage_service). The WS handler (index.ts) has always done
+    // this; the HTTP path used to skip it and raw-proxy to OLB, producing
+    // "Unknown tool". Shared logic lives in apiKeyDispatch (one source, both
+    // transports). dualtoken/bankingdata remain WS-only for now (not exercised
+    // over HTTP by the BFF) — see REGRESSION_PLAN §4.
+    if (method === 'tools/call' && toolName && routeTool(toolName) === 'apikey') {
+      const rpcId = parsedBody.id ?? null;
+      const outcome = await buildApiKeyToolResult(toolName, decoded.sub, undefined, config);
+      setAuditHeader(res);
+      teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      if (outcome.ok) {
+        res.end(JSON.stringify({ jsonrpc: '2.0', id: rpcId, result: outcome.result }));
+      } else {
+        res.end(JSON.stringify({
+          jsonrpc: '2.0',
+          id: rpcId,
+          error: { code: outcome.code, message: outcome.message, data: outcome.data },
+        }));
+      }
       return;
     }
 

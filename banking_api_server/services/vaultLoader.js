@@ -51,7 +51,15 @@ let _unlocked = false;
 let _entriesLoaded = 0;
 
 async function loadVaultIntoConfigStore(opts = {}) {
-  const vaultPath  = opts.vaultPath   ?? process.env.VAULT_PATH ?? DEFAULT_VAULT_PATH;
+  // run-bank.sh exports VAULT_PATH="" (empty string) when the operator did not
+  // set it. `??` only falls through on null/undefined, so an empty string was
+  // treated as a real path → the vault at DEFAULT_VAULT_PATH was never loaded
+  // ("[vault] no vault file at  — skipping") and the BFF silently ran env-only.
+  // Treat empty/whitespace-only VAULT_PATH as unset. Behavior is otherwise
+  // unchanged (Row 73: persist:false load, close() in finally, delete
+  // VAULT_PASSWORD, Vercel bypass, fail-fast when vault present + no password).
+  const _envVaultPath = (process.env.VAULT_PATH || '').trim();
+  const vaultPath  = opts.vaultPath ?? (_envVaultPath || DEFAULT_VAULT_PATH);
   const password   = opts.password    ?? process.env.VAULT_PASSWORD;
   const configStore = opts.configStore ?? require('./configStore');
   const vaultLib    = opts.vaultLib    ?? require('../lib/vault');
@@ -137,7 +145,9 @@ async function loadVaultIntoConfigStore(opts = {}) {
  */
 async function unlockVaultAtRuntime(opts = {}) {
   const password    = opts.password;
-  const vaultPath   = opts.vaultPath   ?? process.env.VAULT_PATH ?? DEFAULT_VAULT_PATH;
+  // Same empty-string VAULT_PATH guard as loadVaultIntoConfigStore (above).
+  const _envVaultPathRT = (process.env.VAULT_PATH || '').trim();
+  const vaultPath   = opts.vaultPath ?? (_envVaultPathRT || DEFAULT_VAULT_PATH);
   const configStore = opts.configStore ?? require('./configStore');
   const vaultLib    = opts.vaultLib    ?? require('../lib/vault');
   const logger      = opts.logger      ?? console;

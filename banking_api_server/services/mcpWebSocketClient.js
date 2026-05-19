@@ -39,35 +39,16 @@ const SUPPORTED_PROTOCOL_VERSIONS = new Set(['2025-11-25', '2024-11-05']);
  *  (BFF review WR-01) is a request-scope/advertisement accuracy concern, not a
  *  security gap — keep names aligned for correct exchange scopes, not for
  *  enforcement. Names should still match BankingToolRegistry. */
-const MCP_TOOL_SCOPES = {
-  // Read tools — flat scope per Phase 146
-  get_my_accounts:             ['banking:read'],
-  get_account_balance:         ['banking:read'],
-  get_my_transactions:         ['banking:read'],
-  // Write tools — flat scope per Phase 146
-  create_transfer:             ['banking:write'],
-  create_deposit:              ['banking:write'],
-  create_withdrawal:           ['banking:write'],
-  // Query tool — agent identity lookup scope
-  query_user_by_email:         ['ai_agent'],
-  
-  // Admin-only tools — require admin scopes
-  admin_list_all_users:        ['admin:read', 'users:read'],
-  admin_get_user_details:       ['admin:read', 'users:read'],
-  admin_delete_user:           ['admin:write', 'admin:delete', 'users:manage'],
-  admin_manage_accounts:        ['admin:write', 'users:manage'],
-  admin_view_audit_logs:        ['admin:read'],
-  admin_system_status:          ['admin:read'],
-  
-  // Legacy aliases (if still used anywhere)
-  list_accounts:               ['banking:read'],
-  list_transactions:           ['banking:read'],
-  transfer:                    ['banking:write'],
-  deposit:                     ['banking:write'],
-  withdraw:                    ['banking:write'],
-  banking_get_account_balance: ['banking:read'],
-  banking_create_transfer:     ['banking:write'],
-};
+// MCP_TOOL_SCOPES is the BFF RFC 8693 exchange scope map. It now DERIVES from
+// scope-topology.json (the SSOT) — do not hand-edit tool→scope here; edit the
+// manifest. scopeTopology.regression.test.js fails if this drifts.
+const scopeTopology = require('./scopeTopology');
+const MCP_TOOL_SCOPES = Object.freeze(
+  scopeTopology.allTools().reduce((acc, name) => {
+    acc[name] = scopeTopology.toolScopes(name);
+    return acc;
+  }, {})
+);
 
 function getMcpServerUrl() {
   return configStore.getEffective('mcp_server_url') || 'ws://localhost:8080';

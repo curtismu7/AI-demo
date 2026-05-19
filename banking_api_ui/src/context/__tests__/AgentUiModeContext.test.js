@@ -15,9 +15,9 @@ function ModeProbe() {
 			<span data-testid="fab">{fab ? "1" : "0"}</span>
 			<button
 				type="button"
-				onClick={() => setAgentUi({ placement: "bottom", fab: false })}
+				onClick={() => setAgentUi({ placement: "middle", fab: false })}
 			>
-				set bottom
+				set middle
 			</button>
 			<button
 				type="button"
@@ -44,14 +44,14 @@ describe("AgentUiModeProvider", () => {
 		expect(screen.getByTestId("fab")).toHaveTextContent("1");
 	});
 
-	it("initializes bottom from legacy embedded key", () => {
+	it("migrates legacy embedded key to middle (Phase 4d: bottom removed)", () => {
 		localStorage.setItem(STORAGE_KEY_LEGACY, "embedded");
 		render(
 			<AgentUiModeProvider>
 				<ModeProbe />
 			</AgentUiModeProvider>,
 		);
-		expect(screen.getByTestId("placement")).toHaveTextContent("bottom");
+		expect(screen.getByTestId("placement")).toHaveTextContent("middle");
 		expect(screen.getByTestId("fab")).toHaveTextContent("0");
 	});
 
@@ -61,11 +61,11 @@ describe("AgentUiModeProvider", () => {
 				<ModeProbe />
 			</AgentUiModeProvider>,
 		);
-		fireEvent.click(screen.getByRole("button", { name: /set bottom/i }));
-		expect(screen.getByTestId("placement")).toHaveTextContent("bottom");
+		fireEvent.click(screen.getByRole("button", { name: /set middle/i }));
+		expect(screen.getByTestId("placement")).toHaveTextContent("middle");
 		const raw = localStorage.getItem(STORAGE_KEY_V2);
 		expect(raw).toBeTruthy();
-		expect(JSON.parse(raw)).toEqual({ placement: "bottom", fab: false });
+		expect(JSON.parse(raw)).toEqual({ placement: "middle", fab: false });
 	});
 
 	it("syncs from storage events (other tab) on v2 key", () => {
@@ -92,56 +92,28 @@ describe("AgentUiModeProvider", () => {
 	});
 });
 
-describe("left-dock and right-dock placements", () => {
+describe("removed dock placements coerce to middle", () => {
 	beforeEach(() => {
 		localStorage.clear();
 	});
-
-	it("reads left-dock + fab:true from v2 storage correctly", () => {
+	it("a stored right-dock placement reads back as middle (never a no-agent state)", () => {
 		localStorage.setItem(
 			STORAGE_KEY_V2,
-			JSON.stringify({ placement: "left-dock", fab: true }),
+			JSON.stringify({ placement: "right-dock", fab: true }),
 		);
 		render(
 			<AgentUiModeProvider>
 				<ModeProbe />
 			</AgentUiModeProvider>,
 		);
-		expect(screen.getByTestId("placement")).toHaveTextContent("left-dock");
-		expect(screen.getByTestId("fab")).toHaveTextContent("1");
+		expect(screen.getByTestId("placement")).toHaveTextContent("middle");
 	});
 
-	it("reads right-dock + fab:false from v2 storage correctly", () => {
+	it("a persisted archived 'bottom' placement coerces to middle (Phase 4d)", () => {
 		localStorage.setItem(
 			STORAGE_KEY_V2,
-			JSON.stringify({ placement: "right-dock", fab: false }),
+			JSON.stringify({ placement: "bottom", fab: true }),
 		);
-		render(
-			<AgentUiModeProvider>
-				<ModeProbe />
-			</AgentUiModeProvider>,
-		);
-		expect(screen.getByTestId("placement")).toHaveTextContent("right-dock");
-		expect(screen.getByTestId("fab")).toHaveTextContent("0");
-	});
-
-	it("defaults fab to true when left-dock has no boolean fab in storage", () => {
-		// JSON.stringify drops undefined; simulate a stored object with no fab key
-		localStorage.setItem(
-			STORAGE_KEY_V2,
-			JSON.stringify({ placement: "left-dock" }),
-		);
-		render(
-			<AgentUiModeProvider>
-				<ModeProbe />
-			</AgentUiModeProvider>,
-		);
-		expect(screen.getByTestId("placement")).toHaveTextContent("left-dock");
-		expect(screen.getByTestId("fab")).toHaveTextContent("1");
-	});
-
-	it('legacy "floating" value yields placement:middle fab:true (falls through to default)', () => {
-		localStorage.setItem(STORAGE_KEY_LEGACY, "floating");
 		render(
 			<AgentUiModeProvider>
 				<ModeProbe />
@@ -149,55 +121,5 @@ describe("left-dock and right-dock placements", () => {
 		);
 		expect(screen.getByTestId("placement")).toHaveTextContent("middle");
 		expect(screen.getByTestId("fab")).toHaveTextContent("1");
-	});
-
-	it('syncLegacyString writes "both" to legacy key when setAgentUi sets left-dock', () => {
-		function LeftRightProbe() {
-			const { placement, setAgentUi } = useAgentUiMode();
-			return (
-				<div>
-					<span data-testid="placement2">{placement}</span>
-					<button
-						type="button"
-						onClick={() => setAgentUi({ placement: "left-dock", fab: true })}
-					>
-						set left-dock
-					</button>
-				</div>
-			);
-		}
-		render(
-			<AgentUiModeProvider>
-				<LeftRightProbe />
-			</AgentUiModeProvider>,
-		);
-		fireEvent.click(screen.getByRole("button", { name: /set left-dock/i }));
-		expect(screen.getByTestId("placement2")).toHaveTextContent("left-dock");
-		expect(localStorage.getItem(STORAGE_KEY_LEGACY)).toBe("both");
-	});
-
-	it('syncLegacyString writes "both" to legacy key when setAgentUi sets right-dock', () => {
-		function LeftRightProbe2() {
-			const { placement, setAgentUi } = useAgentUiMode();
-			return (
-				<div>
-					<span data-testid="placement3">{placement}</span>
-					<button
-						type="button"
-						onClick={() => setAgentUi({ placement: "right-dock", fab: false })}
-					>
-						set right-dock
-					</button>
-				</div>
-			);
-		}
-		render(
-			<AgentUiModeProvider>
-				<LeftRightProbe2 />
-			</AgentUiModeProvider>,
-		);
-		fireEvent.click(screen.getByRole("button", { name: /set right-dock/i }));
-		expect(screen.getByTestId("placement3")).toHaveTextContent("right-dock");
-		expect(localStorage.getItem(STORAGE_KEY_LEGACY)).toBe("both");
 	});
 });

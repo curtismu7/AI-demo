@@ -6,7 +6,7 @@
 
 'use strict';
 const configStore = require('../services/configStore');
-const { getScopesForUserType, BANKING_SCOPES } = require('./scopes');
+const { getScopesForUserType, BANKING_SCOPES, COMPOUND_SCOPES } = require('./scopes');
 const endpointResolver = require('../services/oauthEndpointResolver');
 
 const config = {
@@ -45,9 +45,20 @@ const config = {
     // "May not request scopes for multiple resources".
     const enduserAudience = process.env.ENDUSER_AUDIENCE;
     if (enduserAudience) {
-      // All banking scopes are on the same resource server (enduserAudience),
-      // so PingOne will not reject with "May not request scopes for multiple resources".
-      return ['openid', 'profile', 'email', 'offline_access', 'banking:read', 'banking:write', BANKING_SCOPES.AI_AGENT];
+      // All banking scopes the Super Banking User App is granted live on ONE
+      // resource server ("Super Banking API" / banking_api_enduser) — verified
+      // against scope-topology.json (every User App grant maps to that
+      // resource), so requesting them together stays single-resource and
+      // PingOne will not reject with "May not request scopes for multiple
+      // resources" (REGRESSION_PLAN §1 "PingOne authorize resource + mixed
+      // scopes"). banking:transfer MUST be here: create_transfer requires
+      // [banking:write, banking:transfer]; without it on the user token the
+      // RFC 8693 intersection drops banking:transfer and the gateway 403s
+      // create_transfer with insufficient_scope. (banking:ai:agent spelling
+      // is intentionally kept as-is to match the working agent flow; the
+      // topology's banking:ai:agent:read naming reconciliation is a separate
+      // follow-up — see REGRESSION_PLAN §4.)
+      return ['openid', 'profile', 'email', 'offline_access', 'banking:read', 'banking:write', 'banking:transfer', BANKING_SCOPES.AI_AGENT, COMPOUND_SCOPES.MORTGAGE_READ];
     }
     const role = configStore.getEffective('user_role') || 'customer';
     const banking = getScopesForUserType(role);

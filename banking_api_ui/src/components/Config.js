@@ -7,10 +7,8 @@ import { savePublicConfig, loadPublicConfig } from "../services/configService";
 import { getHostname, setHostname } from "../services/configService";
 import { useAgentUiMode } from "../context/AgentUiModeContext";
 import { useIndustryBranding } from "../context/IndustryBrandingContext";
-import {
-  INDUSTRY_PRESETS,
-  DEFAULT_INDUSTRY_ID,
-} from "../config/industryPresets";
+import { DEFAULT_INDUSTRY_ID } from "../config/industryPresets";
+import ThemePicker from "./ThemePicker";
 import {
   AGENT_MCP_SCOPE_CATALOG,
   DEFAULT_AGENT_MCP_ALLOWED_SCOPES,
@@ -1682,56 +1680,11 @@ export default function Config() {
                   subtitle="White-label colors and logo — stored with configuration (public field)"
                   className="config-page__card--industry"
                 >
-                  <p
-                    style={{
-                      fontSize: "0.85rem",
-                      color: "#374151",
-                      marginBottom: "1rem",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    Choose a preset to change primary button colors, dashboard
-                    header gradient, and the logo shown across the app. The
-                    setup assistant on this page can explain these options. Save
-                    configuration to apply everywhere.
+                  <p className="config-help">
+                    Switch the active theme. This is server-wide and uses the same
+                    setting as the dashboard theme picker.
                   </p>
-                  <div className="config-page__industry-grid">
-                    {INDUSTRY_PRESETS.map((p) => (
-                      <label
-                        key={p.id}
-                        className={`config-page__industry-option${form.ui_industry_preset === p.id ? " config-page__industry-option--active" : ""}`}
-                      >
-                        <input
-                          type="radio"
-                          name="ui_industry_preset"
-                          value={p.id}
-                          checked={form.ui_industry_preset === p.id}
-                          onChange={() =>
-                            handleChange("ui_industry_preset", p.id)
-                          }
-                          disabled={readOnly}
-                          style={{ marginTop: "0.35rem", flexShrink: 0 }}
-                        />
-                        <span className="config-page__industry-option-body">
-                          <img
-                            src={p.logoPath}
-                            alt=""
-                            className="config-page__industry-logo"
-                            height={40}
-                            width={40}
-                          />
-                          <span className="config-page__industry-titles">
-                            <span className="config-page__industry-name">
-                              {p.shortName}
-                            </span>
-                            <span className="config-page__industry-desc">
-                              {p.description}
-                            </span>
-                          </span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
+                  <ThemePicker variant="config" />
                 </CollapsibleCard>
 
                 <CollapsibleCard

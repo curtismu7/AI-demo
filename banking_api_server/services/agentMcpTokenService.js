@@ -1601,8 +1601,11 @@ async function _performTwoExchangeDelegation(
   const twoExFinalAud         = await _resolveFinalMcpAudience(configResult.audiences.finalAud, mcpServerAudForFallback);
   const aiAgentClientSecret   = process.env.PINGONE_AI_AGENT_CLIENT_SECRET || process.env.AI_AGENT_CLIENT_SECRET;
   const mcpExchangerSecret    = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
-  const aiAgentAuthMethod     = (configStore.get('ai_agent_token_endpoint_auth_method') || process.env.AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
-  const mcpExchangerAuthMethod = (configStore.get('mcp_exchanger_token_endpoint_auth_method') || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD || process.env.PINGONE_MCP_TOKEN_EXCHANGER_AUTH_METHOD || process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
+  // ARCHITECTURE TRUTH: all PingOne client connections use client_secret_post.
+  // Only the Worker Token CC client (oauthService.getAgentClientCredentialsToken*)
+  // stays 'basic'. These are non-worker (AI agent / MCP exchanger) → default 'post'.
+  const aiAgentAuthMethod     = (configStore.get('ai_agent_token_endpoint_auth_method') || process.env.AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'post').toLowerCase();
+  const mcpExchangerAuthMethod = (configStore.get('mcp_exchanger_token_endpoint_auth_method') || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD || process.env.PINGONE_MCP_TOKEN_EXCHANGER_AUTH_METHOD || process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || 'post').toLowerCase();
 
   // ─ Step 1: AI Agent Actor Token (Client Credentials) ───────────────────────────
   tokenEvents.push(buildTokenEvent(
@@ -1666,6 +1669,34 @@ async function _performTwoExchangeDelegation(
   }
 
   // ─ Step 2: Exchange #1 — Subject Token + Agent Actor Token → Agent Exchanged Token ─────
+  // RFC 8707 single-resource rule (T-10): the exchange to intermediateAud must
+  // request scopes that all belong to the Intermediate resource. The tool
+  // scopes (effectiveToolScopes, e.g. banking:read + banking:mcp:invoke) span
+  // multiple resources → PingOne rejects with invalid_scope "May not request
+  // scopes for multiple resources". Exchange #1's job is only to mint the
+  // agent-exchanged token bound to the intermediate audience; the real tool
+  // scopes are (re)requested at Exchange #2 against the final audience. So
+  // request ONLY a single scope that belongs to the Intermediate resource AND
+  // that the AI Agent app is actually GRANTED there — mirrors the single-scope
+  // pattern already used for the two actor-CC steps (agent_gateway_cc_scope /
+  // mcp_gateway_cc_scope).
+  //
+  // T-10 follow-up (2026-05-16, see REGRESSION_PLAN §4): the original default
+  // `banking:two-exchange:intermediate` is *defined* on the Intermediate
+  // resource by the provisioner but is NOT in the AI Agent app's resource
+  // grant (pingoneProvisionService.js Step 37a grants the app
+  // ['banking:read','banking:write','banking:mcp:invoke','banking:ai:agent:read',
+  // 'banking:mortgage:read'] on the Intermediate resource — a scope merely
+  // existing on a resource is not the same as the requesting client being
+  // granted it). PingOne therefore rejected Exchange #1 with
+  // `invalid_scope: "At least one scope must be granted"`. Default to
+  // `banking:mcp:invoke`: it is in that grant list and is a single scope on
+  // the single Intermediate resource (satisfies RFC 8707). Exchange #1 only
+  // mints the agent-exchanged token bound to the intermediate audience; the
+  // real tool scopes are (re)requested at Exchange #2.
+  const intermediateExchangeScope =
+    configStore.getEffective('two_exchange_intermediate_scope') || 'banking:mcp:invoke';
+  const exchange1Scopes = [intermediateExchangeScope];
   tokenEvents.push(buildTokenEvent(
     'two-ex-exchange1-in-progress',
     '2-Exchange #1 — Subject Token → Agent Exchanged Token',
@@ -1673,15 +1704,16 @@ async function _performTwoExchangeDelegation(
     null,
     `Exchange #1 (RFC 8693): exchanger=${aiAgentClientId}, ` +
       `subject=Subject Token (may_act.sub must equal actor_token.aud[0]=${aiAgentClientId}), ` +
-      `audience=${intermediateAud}, scope="${effectiveToolScopes.join(' ')}".`,
+      `audience=${intermediateAud}, scope="${exchange1Scopes.join(' ')}" ` +
+      `(single-resource Intermediate scope; tool scopes flow at Exchange #2).`,
     { rfc: 'RFC 8693', exchangeStep: '1-exchange',
-      exchangeRequest: { exchanger: aiAgentClientId, audience: intermediateAud, scope: effectiveToolScopes.join(' ') } }
+      exchangeRequest: { exchanger: aiAgentClientId, audience: intermediateAud, scope: exchange1Scopes.join(' ') } }
   ));
 
   let agentExchangedToken;
   try {
     agentExchangedToken = await oauthService.performTokenExchangeAs(
-      userToken, agentActorToken, aiAgentClientId, aiAgentClientSecret, intermediateAud, effectiveToolScopes, aiAgentAuthMethod
+      userToken, agentActorToken, aiAgentClientId, aiAgentClientSecret, intermediateAud, exchange1Scopes, aiAgentAuthMethod
     );
     const agentExchangedDecoded = decodeJwtClaims(agentExchangedToken);
     const agentExchangedClaims = agentExchangedDecoded?.claims;

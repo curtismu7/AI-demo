@@ -3,13 +3,29 @@
 const axios = require('axios');
 const configStore = require('./configStore');
 
-// Flattened scope model: banking:read / banking:write replace granular scopes.
-const SCOPE_REFERENCE_TABLE = {
+const scopeTopology = require('./scopeTopology');
+
+// Pinned map: PingOne resource/app DISPLAY name (as audited via Management API)
+// -> manifest app key. Display names that are not in the manifest's apps{}
+// (worker/agent/PingOne-API resources outside this SSOT's correctness scope)
+// keep their explicit lists. The manifest is authoritative for the apps it owns.
+const AUDIT_DISPLAY_TO_MANIFEST_APP = {
+  'Super Banking User App': 'Super Banking User App',
+  'Super Banking Admin App': 'Super Banking Admin App',
+};
+const NON_MANIFEST_REFERENCE = {
   'Super Banking AI Agent': ['banking:agent:invoke'],
-  'Super Banking MCP Server': ['banking:read', 'banking:write'],
   'Super Banking Agent Gateway': ['banking:agent:invoke'],
-  'Super Banking Banking API': ['banking:read', 'banking:write'],
   'PingOne API': ['p1:read:user', 'p1:update:user'],
+};
+const SCOPE_REFERENCE_TABLE = {
+  ...NON_MANIFEST_REFERENCE,
+  ...Object.fromEntries(
+    Object.entries(AUDIT_DISPLAY_TO_MANIFEST_APP).map(([display, key]) => [
+      display,
+      scopeTopology.appGrantedScopes(key),
+    ])
+  ),
 };
 
 /**

@@ -75,6 +75,8 @@ import { getColdStartRetryDelays } from "../services/apiErrorHandler";
 import APP_CONFIG from "../services/appConfig";
 import { useCustomChips } from "../hooks/useCustomChips";
 import AgentModeSelector from "./AgentModeSelector";
+import useLangchainProvider from "../hooks/useLangchainProvider";
+import { claimPendingNl, clampPanelPosition, makeReentrancyGuard, isAbortError, anySignal } from "./bankingAgentSafety";
 
 // Phase 266 H2 audit: TokenChain credentialPath stamping origins per setTokenEvents call:
 //   line 3433 (scopeTestRes.tokenEvents)  — origin: scope-test path via callMcpTool; credentialPath: oauth_bearer (default; stamped by bankingAgentService)
@@ -1531,11 +1533,17 @@ function ResultsPanel({ panel, onClose, style }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
+export function buildCustomerGreeting(u, manifestGreeting) {
+  const name = (u && (u.firstName || (u.name && u.name.split(' ')[0]))) || 'there';
+  if (manifestGreeting) return manifestGreeting.replace('{name}', name);
+  return `Hi ${name}! I can check your balances, move money between accounts, and explain the OAuth flows happening behind the scenes. What would you like to do?`;
+}
+
 function welcomeMessage(
   u,
   focus = "banking",
   brandShortName = "Super Banking",
-  industryPresetId = "bx_finance",
+  customerGreetingOverride = null,
 ) {
   if (focus === "config") {
     if (!u) {
@@ -1552,10 +1560,7 @@ function welcomeMessage(
   if (u.role === "admin") {
     return `Welcome, ${name}! As an admin you can query accounts system-wide, view all transactions, manage users, and explore PingOne OAuth flows. What would you like to do?`;
   }
-  const isRetail = industryPresetId === "retail";
-  return isRetail
-    ? `Hi ${name}! I can browse products, check prices, help with your cart, and explain the OAuth flows securing your checkout. What would you like to do?`
-    : `Hi ${name}! I can check your balances, move money between accounts, and explain the OAuth flows happening behind the scenes. What would you like to do?`;
+  return buildCustomerGreeting(u, customerGreetingOverride);
 }
 
 function normalizeBankingParams(params) {
@@ -1631,6 +1636,7 @@ export default function BankingAgent({
   splitColumnChrome = false,
   showPopOut = false,
   onPopout,
+  surfaceHostEl = null,
 }) {
   const isInline = mode === "inline";
   const isBottomDock = isInline && embeddedDockBottom;
@@ -1645,11 +1651,19 @@ export default function BankingAgent({
   const tokenChain = useTokenChainOptional();
   const { chips: customChips, groups: customGroups } = useCustomChips();
   const {
+    provider: llmProvider,
+    options: llmProviderOptions,
+    isConfigured: isLlmProviderConfigured,
+    saving: llmProviderSaving,
+    setProvider: setLlmProvider,
+  } = useLangchainProvider();
+  const {
     theme: appTheme,
     toggleTheme,
     agentAppearance,
     setAgentAppearance,
     effectiveAgentTheme,
+    agent: themeAgent,
   } = useTheme();
   // Always start collapsed on page load — never restore open state from localStorage.
   const [isOpen, setIsOpen] = useState(false);
@@ -1707,6 +1721,9 @@ export default function BankingAgent({
   const [pendingClarification, setPendingClarification] = useState(null);
   /** Set when returning from PingOne with a pending banking NL line to run after session exists. */
   const [nlResumeAfterAuth, setNlResumeAfterAuth] = useState(null);
+  const nlSendGuardRef = useRef(null);
+  if (!nlSendGuardRef.current) nlSendGuardRef.current = makeReentrancyGuard();
+  const sendAbortRef = useRef(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   /** null = loading; which OAuth flows have client IDs + environment */
@@ -1715,6 +1732,10 @@ export default function BankingAgent({
   const [dragPos, setDragPos] = useState(null);
   /** Panel dimensions for resizing — floating default is large enough for header, chips, and two-column body */
   const [panelSize, setPanelSize] = useState({ width: 620, height: 540 });
+  const panelSizeRef = useRef(panelSize);
+  useEffect(() => {
+    panelSizeRef.current = panelSize;
+  }, [panelSize]);
   /** Side panel showing rich results next to the agent */
   const [resultPanel, setResultPanel] = useState(null);
   const resultPanelRef = useRef(null);
@@ -2271,7 +2292,7 @@ export default function BankingAgent({
                 currentUser,
                 embeddedFocus,
                 brandShortName,
-                industryPreset.id,
+                themeAgent && themeAgent.greeting,
               ),
             },
           ]
@@ -2288,10 +2309,12 @@ export default function BankingAgent({
   // Auto-open when redirected back from OAuth login (?oauth=success in URL)
   useEffect(() => {
     if (searchParams.get("oauth") === "success") {
-      let pendingNl = null;
-      try {
-        pendingNl = sessionStorage.getItem(BX_AGENT_PENDING_NL_KEY);
-      } catch (_) {}
+      // Atomically claim the pending NL command BEFORE any retry timer fires.
+      // This guarantees exactly one instance/retry replays it (prevents
+      // double-execute of a banking command; REGRESSION_PLAN §4 2026-05-18).
+      // Claimed on effect entry: if session hydration never succeeds the
+      // command is intentionally dropped, not retained for a later page load.
+      const pendingNl = claimPendingNl(BX_AGENT_PENDING_NL_KEY);
 
       setIsOpen(true);
       // Strip oauth params from URL so they don't re-trigger on navigation
@@ -2318,11 +2341,8 @@ export default function BankingAgent({
           if (found) {
             setCookieOnlyBffSession(cookieOnly);
             setSessionUser(found);
-            if (pendingNl && String(pendingNl).trim()) {
-              try {
-                sessionStorage.removeItem(BX_AGENT_PENDING_NL_KEY);
-              } catch (_) {}
-              setNlResumeAfterAuth(String(pendingNl).trim());
+            if (pendingNl) {
+              setNlResumeAfterAuth(pendingNl);
             }
             setMessages((prev) => {
               if (prev.length > 0) return prev;
@@ -2333,7 +2353,7 @@ export default function BankingAgent({
                   found,
                   embeddedFocus,
                   brandShortName,
-                  industryPreset.id,
+                  themeAgent && themeAgent.greeting,
                 ),
               };
               if (cookieOnly) {
@@ -2382,7 +2402,7 @@ export default function BankingAgent({
                 user,
                 embeddedFocus,
                 brandShortName,
-                industryPreset.id,
+                themeAgent && themeAgent.greeting,
               ),
             },
           ]
@@ -2589,7 +2609,7 @@ export default function BankingAgent({
             found,
             embeddedFocus,
             brandShortName,
-            industryPreset.id,
+            themeAgent && themeAgent.greeting,
           ),
         };
         if (cookieOnly) {
@@ -2635,7 +2655,7 @@ export default function BankingAgent({
                   user || sessionUserRef.current,
                   embeddedFocus,
                   brandShortName,
-                  industryPreset.id,
+                  themeAgent && themeAgent.greeting,
                 ),
               },
             ]
@@ -2768,6 +2788,30 @@ export default function BankingAgent({
     setMcpStatus({ toolCount: ACTIONS.length, connected: true });
   }, [isOpen, isLoggedIn]);
 
+  // Cancel any previous in-flight send, create a fresh AbortController, and
+  // return the new signal. Called once at the top of every real send path.
+  const beginAbortableSend = useCallback(() => {
+    // Abort any prior in-flight send. Load-bearing: the nlResumeAfterAuth
+    // effect is NOT reentrancy-guard-protected, so it can supersede a
+    // guarded send's I/O — cancel it rather than let it race.
+    if (sendAbortRef.current) {
+      try { sendAbortRef.current.abort(); } catch (_) {}
+    }
+    const c = new AbortController();
+    sendAbortRef.current = c;
+    return c.signal;
+  }, []);
+
+  // Clamp a floating-panel position into the current viewport using the
+  // latest panel size (read via ref so listeners needn't resubscribe).
+  const clampDragPosToViewport = useCallback((prev) => {
+    if (!prev) return prev;
+    return clampPanelPosition(prev, panelSizeRef.current, {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
+  }, []);
+
   // ── Drag-to-move ──────────────────────────────────────────────────────────
   // Uses pointer capture so dragging continues off-screen onto a second monitor.
   const handleDragStart = useCallback((e) => {
@@ -2805,6 +2849,9 @@ export default function BankingAgent({
     function onUp() {
       isDraggingRef.current = false;
       document.body.style.userSelect = "";
+      // Drag itself is unclamped (second-monitor drag is intentional); on
+      // RELEASE, pull the panel back so the header strip stays reachable.
+      setDragPos(clampDragPosToViewport);
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
       document.removeEventListener("pointercancel", onUp);
@@ -2812,7 +2859,7 @@ export default function BankingAgent({
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
     document.addEventListener("pointercancel", onUp);
-  }, []);
+  }, [clampDragPosToViewport]);
 
   // (drag listeners now attached inline in handleDragStart via pointer capture)
   useEffect(() => {
@@ -2980,6 +3027,17 @@ export default function BankingAgent({
         height: rect.height,
       });
   }, [dragPos]);
+
+  // Recover the floating panel if the viewport shrinks (or rotates) while the
+  // panel was dragged near/over an edge. Float mode only — inline uses CSS.
+  useEffect(() => {
+    if (isInline) return;
+    function onResize() {
+      setDragPos(clampDragPosToViewport);
+    }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [isInline, clampDragPosToViewport]);
 
   const resultsPanelStyle = useMemo(() => {
     const gap = 12;
@@ -5285,8 +5343,13 @@ export default function BankingAgent({
     return null;
   }
 
-  // Sends text through the full NL pipeline (same path as typing in the chat box).
-  function sendAsNl(text) {
+  // Inner body of sendAsNl — called only after the guard is acquired.
+  // Contains all 3 original release sites (explicit release before no-merge
+  // return; .finally on the clarification dispatch chain; .finally on the
+  // rAF fetch chain). Do NOT add a fourth release here.
+  function sendAsNlInner(text) {
+    const signal = beginAbortableSend();
+
     // Clarification-follow-up path: if our previous turn asked "Which
     // account?"/"How much?", treat this message as the missing slot
     // instead of re-parsing it as a brand-new intent. This is what was
@@ -5315,6 +5378,7 @@ export default function BankingAgent({
         // the parser try a normal interpretation.
         addMessage("assistant", `Sorry, I didn't catch that. ${pc.asked}`);
         setPendingClarification(pc);
+        nlSendGuardRef.current.release();
         return;
       }
 
@@ -5326,9 +5390,9 @@ export default function BankingAgent({
         action: pc.action,
         params: merged,
       };
-      dispatchNlResult(syntheticResult, "clarify", text).catch((err) =>
-        reportNlFailure(err),
-      );
+      dispatchNlResult(syntheticResult, "clarify", text)
+        .catch((err) => { if (!isAbortError(err)) reportNlFailure(err); })
+        .finally(() => nlSendGuardRef.current.release());
       return;
     }
 
@@ -5346,7 +5410,7 @@ export default function BankingAgent({
           message: text,
           provider: selectedLlmProvider,
         }),
-        signal: AbortSignal.timeout(15000),
+        signal: anySignal([AbortSignal.timeout(15000), signal]),
       })
         .then((r) =>
           r.json().catch(() => ({
@@ -5363,9 +5427,26 @@ export default function BankingAgent({
           });
           return dispatchNlResult(result, source || "heuristic", text);
         })
-        .catch((err) => reportNlFailure(err))
-        .finally(() => setNlLoading(false));
+        .catch((err) => { if (!isAbortError(err)) reportNlFailure(err); })
+        .finally(() => {
+          setNlLoading(false);
+          nlSendGuardRef.current.release();
+        });
     });
+  }
+
+  // Sends text through the full NL pipeline (same path as typing in the chat box).
+  function sendAsNl(text) {
+    if (!nlSendGuardRef.current.tryAcquire()) return;
+    try {
+      sendAsNlInner(text);
+    } catch (e) {
+      // Synchronous failure before any async release path ran — free the
+      // guard so the send box doesn't stay locked. (Parity with
+      // handleNaturalLanguage's try/finally.)
+      nlSendGuardRef.current.release();
+      throw e;
+    }
   }
 
   function handleActionClick(actionId) {
@@ -5792,11 +5873,24 @@ export default function BankingAgent({
   async function handleNaturalLanguage() {
     const text = nlInput.trim();
     if (!text) return;
+    // Synchronous single-flight: wins the same-tick double-submit race that
+    // disabled={nlLoading} (async state) cannot. Released in the finally below.
+    if (!nlSendGuardRef.current.tryAcquire()) return;
+    try {
+      return await handleNaturalLanguageInner(text);
+    } finally {
+      nlSendGuardRef.current.release();
+    }
+  }
+
+  async function handleNaturalLanguageInner(text) {
     if (!isLoggedIn && !marketingGuestChatEnabled) return;
     if (isAgentBlockedByConsentDecline()) {
       addMessage("assistant", AGENT_CONSENT_BLOCK_USER_MESSAGE);
       return;
     }
+
+    const signal = beginAbortableSend();
 
     // Sequential thinking trigger: "think: [query]" or "reason: [query]"
     const thinkMatch = text.match(/^(?:think|reason):\s*(.+)/i);
@@ -5812,7 +5906,7 @@ export default function BankingAgent({
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tool: "sequential_think", params: { query } }),
-          signal: AbortSignal.timeout(15000),
+          signal: anySignal([AbortSignal.timeout(15000), signal]),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
@@ -5830,8 +5924,9 @@ export default function BankingAgent({
           steps = parsed.steps || [];
           conclusion = parsed.conclusion || "";
         } catch (_) {}
-        addMessage("reasoning", "", null, { steps, conclusion });
+        if (!signal.aborted) addMessage("reasoning", "", null, { steps, conclusion });
       } catch (err) {
+        if (isAbortError(err)) return;
         addMessage("error", `Sequential thinking failed: ${err.message}`);
       } finally {
         setNlLoading(false);
@@ -5939,7 +6034,7 @@ export default function BankingAgent({
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, provider: selectedLlmProvider }),
-        signal: AbortSignal.timeout(15000),
+        signal: anySignal([AbortSignal.timeout(15000), signal]),
       });
       const { result: _nlResult, source: _nlSource } = await _nlRes
         .json()
@@ -5960,6 +6055,7 @@ export default function BankingAgent({
       });
       await dispatchNlResult(_nlResult, _nlSource || "heuristic", text);
     } catch (err) {
+      if (isAbortError(err)) return;
       reportNlFailure(err);
     } finally {
       setNlLoading(false);
@@ -5974,11 +6070,12 @@ export default function BankingAgent({
     let cancelled = false;
     const timer = setTimeout(async () => {
       if (cancelled) return;
+      const signal = beginAbortableSend();
       addMessage("user", text);
       setNlLoading(true);
       try {
-        const response = await sendAgentMessage(text);
-        if (!cancelled) {
+        const response = await sendAgentMessage(text, null, { signal });
+        if (!cancelled && !signal.aborted) {
           if (response.error || !response.success) {
             reportNlFailure({ code: response.error || "unknown" });
           } else {
@@ -5992,6 +6089,7 @@ export default function BankingAgent({
           }
         }
       } catch (e) {
+        if (isAbortError(e)) return;
         if (!cancelled) reportNlFailure(e);
       } finally {
         if (!cancelled) setNlLoading(false);
@@ -6003,6 +6101,18 @@ export default function BankingAgent({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot replay when nlResumeAfterAuth is set after OAuth
   }, [nlResumeAfterAuth, isLoggedIn]);
+
+  // Cancel any in-flight agent request when this instance unmounts OR the
+  // route changes away from where it was issued — prevents state updates on
+  // a dead/wrong instance and mis-attributed Token Chain events.
+  useEffect(() => {
+    return () => {
+      if (sendAbortRef.current) {
+        try { sendAbortRef.current.abort(); } catch (_) {}
+        sendAbortRef.current = null;
+      }
+    };
+  }, [location.pathname]);
 
   // Keep resultPanelRef current so the refresh handler below can read it without stale closure.
   useEffect(() => {
@@ -8719,6 +8829,7 @@ export default function BankingAgent({
 
   // Inline/embed stays in React tree; float mounts on body so position:fixed is never trapped
   // by .App / shell overflow or theme transforms, and works the same on /logs and app routes.
+  if (surfaceHostEl) return createPortal(floatShell, surfaceHostEl);
   if (isInline) return <>{floatShell}</>;
   return createPortal(floatShell, document.body);
 }

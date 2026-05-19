@@ -1,12 +1,7 @@
 // banking_api_ui/src/context/ThemeContext.js
 import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
+  createContext, useContext, useState, useEffect, useCallback, useMemo,
   useLayoutEffect,
-  useMemo,
-  useState,
 } from 'react';
 
 /** Keep in sync with inline script in `public/index.html` (first-paint theme). */
@@ -15,14 +10,11 @@ export const THEME_STORAGE_KEY = 'banking_ui_theme';
 /** Agent panel only: `auto` follows page theme; `light` / `dark` override. */
 export const AGENT_APPEARANCE_STORAGE_KEY = 'banking_agent_appearance';
 
-const ThemeContext = createContext({
-  theme: 'light',
-  setTheme: () => {},
-  toggleTheme: () => {},
-  agentAppearance: 'auto',
-  setAgentAppearance: () => {},
-  effectiveAgentTheme: 'auto',
-});
+const ThemeContext = createContext(null);
+
+// ---------------------------------------------------------------------------
+// Light / dark helpers (unchanged from original)
+// ---------------------------------------------------------------------------
 
 function readStoredTheme() {
   try {
@@ -82,12 +74,22 @@ function writeAgentAppearance(value) {
   }
 }
 
-/**
- * App-wide light / dark appearance. Persists to localStorage (+ sessionStorage
- * backup) so choice survives refresh; sets document.documentElement.dataset.theme
- * for CSS (see theme/globalTheme.css).
- */
+// ---------------------------------------------------------------------------
+// Manifest / vertical helpers
+// ---------------------------------------------------------------------------
+
+function applyCssVars(cssVars) {
+  if (!cssVars || typeof document === 'undefined') return;
+  const root = document.documentElement;
+  Object.entries(cssVars).forEach(([k, v]) => root.style.setProperty(k, v));
+}
+
+// ---------------------------------------------------------------------------
+// ThemeProvider — merges light/dark toggle + manifest fetch
+// ---------------------------------------------------------------------------
+
 export function ThemeProvider({ children }) {
+  // --- light / dark ---
   const [theme, setThemeState] = useState(readStoredTheme);
   const [agentAppearance, setAgentAppearanceState] = useState(readAgentAppearance);
 
@@ -153,23 +155,104 @@ export function ThemeProvider({ children }) {
     return theme;
   }, [agentAppearance, theme]);
 
-  const value = useMemo(
-    () => ({
-      theme,
-      setTheme,
-      toggleTheme,
-      agentAppearance,
-      setAgentAppearance,
-      effectiveAgentTheme,
-    }),
-    [theme, setTheme, toggleTheme, agentAppearance, setAgentAppearance, effectiveAgentTheme]
+  // --- manifest / vertical ---
+  const [manifest, setManifest] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchManifest = useCallback(async () => {
+    try {
+      const res = await fetch('/api/config/vertical', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        const m = data.manifest || null;
+        setManifest(m);
+        if (m) {
+          applyCssVars(m.theme && m.theme.cssVars);
+          if (m.identity && m.identity.documentTitle) {
+            document.title = m.identity.documentTitle;
+          }
+          if (m.id && typeof document !== 'undefined') {
+            document.documentElement.dataset.industry = m.id;
+          }
+        }
+      }
+    } catch (err) {
+      // Non-fatal: app renders with CSS defaults if manifest fetch fails.
+      console.warn('[ThemeContext] manifest fetch failed:', err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchManifest(); }, [fetchManifest]);
+
+  const switchTheme = useCallback(async (id) => {
+    const res = await fetch('/api/config/vertical', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ verticalId: id }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || `HTTP ${res.status}`);
+    }
+    await fetchManifest();
+  }, [fetchManifest]);
+
+  const mapTerm = useCallback(
+    (term) => (manifest && manifest.terminology && manifest.terminology[term]) || term,
+    [manifest],
   );
 
-  return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
-  );
+  const value = useMemo(() => ({
+    // light / dark fields (preserved)
+    theme,
+    setTheme,
+    toggleTheme,
+    agentAppearance,
+    setAgentAppearance,
+    effectiveAgentTheme,
+    // manifest / vertical fields (new)
+    loading,
+    themeId: manifest ? manifest.id : null,
+    identity: manifest ? manifest.identity : null,
+    cssVars: manifest && manifest.theme ? manifest.theme.cssVars : null,
+    terminology: manifest ? manifest.terminology : null,
+    agent: manifest ? manifest.agent : null,
+    dashboard: manifest ? manifest.dashboard : null,
+    mapTerm,
+    switchTheme,
+  }), [
+    theme, setTheme, toggleTheme, agentAppearance, setAgentAppearance, effectiveAgentTheme,
+    manifest, loading, mapTerm, switchTheme,
+  ]);
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {
-  return useContext(ThemeContext);
+  const ctx = useContext(ThemeContext);
+  if (!ctx) {
+    return {
+      // light / dark defaults
+      theme: 'light',
+      setTheme: () => {},
+      toggleTheme: () => {},
+      agentAppearance: 'auto',
+      setAgentAppearance: () => {},
+      effectiveAgentTheme: 'auto',
+      // manifest defaults
+      loading: false,
+      themeId: null,
+      identity: null,
+      cssVars: null,
+      terminology: null,
+      agent: null,
+      dashboard: null,
+      mapTerm: (t) => t,
+      switchTheme: async () => {},
+    };
+  }
+  return ctx;
 }

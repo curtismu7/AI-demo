@@ -149,22 +149,29 @@ const FIELD_DEFS = {
   ff_inject_scopes:        { public: true, default: 'false' }, // BFF-inject banking:read banking:write scopes when absent from user token (demo/dev — no PingOne change needed)
   ff_skip_token_exchange:  { public: true, default: 'false' }, // Skip RFC 8693 — pass user access token directly to MCP (demo mode; token exchange not required)
   ff_oidc_only_authorize:  { public: true, default: 'false' }, // Strip banking:* from user /authorize — fixes multi-resource error when scopes are on a PingOne Resource Server
-  ff_two_exchange_delegation: { public: true, default: 'true' }, // 2-Exchange pattern: Subject→(AI Agent exchange)→Agent Token→(MCP exchange)→Final Token with nested act.act claim (default ON — canonical agent path)
   mcp_use_legacy_protocol: { public: true, default: 'false' }, // When 'true', BFF uses protocolVersion 2024-11-05 in MCP initialize; default (false) = 2025-11-25
 ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic fast path for chips; when false, all queries go through LLM
+  // Feature-flag registry IDs that were missing from FIELD_DEFS — without an
+  // entry getEffective() can't resolve them and the env-override fallback below
+  // never applies. defaults MUST match routes/featureFlags.js FLAG_REGISTRY.
+  ff_authorize_mcp_first_tool:     { public: true, default: 'false' }, // Authorize first MCP tool call per session (DecisionContext=McpFirstTool)
+  ff_id_token_exchange:            { public: true, default: 'false' }, // RFC 8693 with ID token as subject_token (agent never holds access token)
+  mcp_use_pingone_server:          { public: true, default: 'false' }, // Spawn pingidentity/pingone-mcp-server stdio binary; bypass custom gateway
+  ff_show_banking_in_middle_agent: { public: true, default: 'false' }, // Show banking column alongside centered agent (legacy dashboard layout)
+  step_up_enabled:                 { public: true, default: 'true'  }, // Step-up MFA gate; mirrored into runtimeSettings.stepUpEnabled (runtimeKey)
 
   // Token endpoint auth method overrides (configurable at runtime from Demo Data page)
   // Fallback: env vars AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD / MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD
   ai_agent_token_endpoint_auth_method:      { public: true, default: '' },
   mcp_exchanger_token_endpoint_auth_method: { public: true, default: '' },
 
-  // 2-Exchange delegated chain — audiences and AI Agent App credentials
-  // Required only when FF_TWO_EXCHANGE_DELEGATION is ON
-  PINGONE_AI_AGENT_CLIENT_ID:             { public: true,  default: '' }, // Super Banking AI Agent App client ID — performs Exchange #1
-  PINGONE_RESOURCE_AGENT_GATEWAY_URI:     { public: true,  default: 'https://banking-agent-gateway.banking-demo.com' }, // Actor CC audience for Exchange #1
-  AI_AGENT_INTERMEDIATE_AUDIENCE:         { public: true,  default: '' }, // Exchange #1 result audience (Exchange #2 subject_token aud); defaults to banking-mcp-server.banking-demo.com
-  PINGONE_RESOURCE_MCP_GATEWAY_URI:       { public: true,  default: 'https://banking-mcp-gateway.banking-demo.com' },   // Actor CC audience for Exchange #2
-  PINGONE_RESOURCE_TWO_EXCHANGE_URI:       { public: true,  default: 'https://banking-resource-server.banking-demo.com' }, // Exchange #2 output audience (Super Banking Resource Server); must differ from PINGONE_RESOURCE_MCP_SERVER_URI (1-exchange)
+  // Canonical single-exchange chain — AI Agent App is the ACTOR; the BFF's one
+  // RFC 8693 exchange (user subject + AI Agent actor) is audienced to the MCP
+  // Gateway. (PINGONE_RESOURCE_AGENT_GATEWAY_URI = the AI Agent actor-CC
+  // audience.) The gateway re-exchanges downstream.
+  PINGONE_AI_AGENT_CLIENT_ID:             { public: true,  default: '' }, // Super Banking AI Agent App client ID — the RFC 8693 actor
+  PINGONE_RESOURCE_AGENT_GATEWAY_URI:     { public: true,  default: 'https://banking-agent-gateway.banking-demo.com' }, // AI Agent actor client-credentials audience
+  PINGONE_RESOURCE_MCP_GATEWAY_URI:       { public: true,  default: 'https://banking-mcp-gateway.banking-demo.com' },   // Single-exchange output audience (MCP Gateway)
 
   // RFC 8693 Token Exchange — MCP server resource URI
   // When set, the Backend-for-Frontend (BFF) exchanges user tokens for delegated tokens scoped to this
@@ -290,6 +297,14 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // Token exchange auth methods
   pingone_token_exchange_auth_method:    { public: true,  default: 'post' },
   pingone_mcp_token_exchanger_cc_auth_method: { public: true, default: 'post' },
+  // Actor-CC token scope for the MCP Exchanger app. MUST be a SINGLE
+  // PingOne resource's scope: PingOne's CC token endpoint rejects a request
+  // whose scopes span >1 resource ("invalid_scope: May not request scopes
+  // for multiple resources"). Empty here meant "no scope param" → PingOne
+  // defaulted to ALL the app's grants (which span 2 resources) → 502 on
+  // every chip. banking:mcp:invoke is the MCP/gateway resource scope the
+  // actor token targets (matches the working [CC-As] actor mint).
+  pingone_mcp_token_exchanger_client_scopes: { public: true, default: 'banking:mcp:invoke' },
 
   // Introspection (RFC 7662)
   pingone_introspection_endpoint:        { public: true,  default: '' },
@@ -695,12 +710,24 @@ class ConfigStore {
       admin_population_id:    ['ADMIN_POPULATION_ID'],
       admin_role_claim:       ['ADMIN_ROLE_CLAIM'],
       session_secret:         ['SESSION_SECRET'],
+      // Shared secret for BFF <-> MCP Gateway internal calls (x-internal-gateway-secret).
+      // Read directly via process.env in agentReasoningClient.js / routes/agentIdToken.js
+      // / server.js; mapped here so the env-coverage guard sees it resolve.
+      bff_internal_secret:    ['BFF_INTERNAL_SECRET'],
       frontend_url:           ['REACT_APP_CLIENT_URL', 'FRONTEND_ADMIN_URL'],
       frontend_admin_url:     ['FRONTEND_ADMIN_URL', 'REACT_APP_CLIENT_URL'],
       react_app_client_url:   ['REACT_APP_CLIENT_URL', 'FRONTEND_ADMIN_URL'],
       public_app_url:         ['PUBLIC_APP_URL'],
       mcp_server_url:                   ['MCP_SERVER_URL'],
       pingone_resource_mcp_server_uri:  ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI'],
+      // Alias of the line above. routes/tokens.js (Token Chain), routes/mcpInspector.js,
+      // and services/mcpToolAuthorizationService.js read getEffective('mcp_resource_uri'),
+      // while the real RFC 8693 exchange path (agentMcpTokenService.js) reads
+      // 'pingone_resource_mcp_server_uri'. Without this alias the former resolved
+      // to '' on .env-only setups (no Config-UI/SQLite value), making the Token
+      // Chain falsely report "MCP resource URI not configured" even though the
+      // exchange itself was fully configured. Same env vars — keeps both keys identical.
+      mcp_resource_uri:                 ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI'],
       pingone_resource_langchain_agent_uri: ['PINGONE_RESOURCE_LANGCHAIN_AGENT_URI'],
       authorize_decision_endpoint_id:   ['PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID'],
       authorize_mcp_decision_endpoint_id: ['PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID'],
@@ -712,7 +739,6 @@ class ConfigStore {
       mfa_threshold_usd:        ['MFA_THRESHOLD_USD'],
       pingone_mfa_policy_id:  ['PINGONE_MFA_POLICY_ID'],
       agent_mcp_allowed_scopes: ['AGENT_MCP_ALLOWED_SCOPES'],
-      ff_two_exchange_delegation:      ['FF_TWO_EXCHANGE_DELEGATION'],
       ff_heuristic_enabled:            ['FF_HEURISTIC_ENABLED'],
       pingone_ai_agent_client_id:       ['PINGONE_AI_AGENT_CLIENT_ID', 'AI_AGENT_CLIENT_ID', 'AGENT_CLIENT_ID'],
       pingone_ai_agent_client_secret:    ['PINGONE_AI_AGENT_CLIENT_SECRET', 'AI_AGENT_CLIENT_SECRET', 'AGENT_CLIENT_SECRET'],
@@ -722,7 +748,6 @@ class ConfigStore {
       pingone_mcp_token_exchanger_client_scopes: ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SCOPES', 'AGENT_OAUTH_CLIENT_SCOPES'],
       pingone_resource_agent_gateway_uri: ['PINGONE_RESOURCE_AGENT_GATEWAY_URI', 'AGENT_GATEWAY_AUDIENCE'],
       agent_gateway_audience:             ['AGENT_GATEWAY_AUDIENCE', 'PINGONE_RESOURCE_AGENT_GATEWAY_URI'],
-      ai_agent_intermediate_audience:  ['AI_AGENT_INTERMEDIATE_AUDIENCE'],
       pingone_resource_mcp_gateway_uri: ['PINGONE_RESOURCE_MCP_GATEWAY_URI', 'MCP_GATEWAY_AUDIENCE', 'MCP_GW_RESOURCE_URI'],
       // MCP Gateway delegated-exchange app credentials (direct MCP_GW_* names —
       // previously only read via direct process.env in gateway token glue)
@@ -730,14 +755,14 @@ class ConfigStore {
       mcp_gw_client_secret:             ['MCP_GW_CLIENT_SECRET'],
       mcp_gw_resource_uri:              ['MCP_GW_RESOURCE_URI', 'PINGONE_RESOURCE_MCP_GATEWAY_URI'],
       mcp_gw_token_endpoint_auth_method: ['MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD'],
-      // RFC 8707: single-resource scope for the 2-exchange actor CC tokens.
-      // MUST stay in sync with pingoneProvisionService.js Steps 37a/37b grants —
-      // the AI Agent / MCP Exchanger apps are granted scopes on >1 resource, so
-      // the CC request needs an explicit single-resource scope or PingOne
-      // rejects with invalid_scope: "May not request scopes for multiple resources".
+      // RFC 8707: single-resource scope for the actor client-credentials token
+      // used in the BFF's single subject+actor RFC 8693 exchange. MUST stay in
+      // sync with pingoneProvisionService.js grants — the AI Agent / MCP
+      // Exchanger apps are granted scopes on >1 resource, so the CC request
+      // needs an explicit single-resource scope or PingOne rejects with
+      // invalid_scope: "May not request scopes for multiple resources".
       agent_gateway_cc_scope: ['AGENT_GATEWAY_CC_SCOPE'],
       mcp_gateway_cc_scope:   ['MCP_GATEWAY_CC_SCOPE'],
-      pingone_resource_two_exchange_uri: ['PINGONE_RESOURCE_TWO_EXCHANGE_URI', 'MCP_RESOURCE_URI_TWO_EXCHANGE'],
       marketing_customer_login_mode: ['MARKETING_CUSTOMER_LOGIN_MODE'],
       marketing_demo_username_hint: ['MARKETING_DEMO_USERNAME_HINT'],
       marketing_demo_password_hint: ['MARKETING_DEMO_PASSWORD_HINT'],
@@ -969,102 +994,6 @@ class ConfigStore {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Two-Exchange Configuration Validation
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Validate two-exchange delegation configuration.
- * Called at startup and before first two-exchange attempt.
- * Enforces explicit configuration (no hard-coded defaults).
- * 
- * @throws {Error} with code 'TWO_EXCHANGE_CONFIG_INVALID' if validation fails
- * @returns {Object} Configuration details for audit logging
- */
-function validateTwoExchangeConfig() {
-  const errors = [];
-  const warnings = [];
-  const { logger } = require('../utils/logger');
-  
-  // Require explicit AI Agent credentials (no fallbacks)
-  const aiAgentClientId = configStore.get('PINGONE_AI_AGENT_CLIENT_ID') || process.env.PINGONE_AI_AGENT_CLIENT_ID || process.env.AI_AGENT_CLIENT_ID;
-  const aiAgentSecret = configStore.get('PINGONE_AI_AGENT_CLIENT_SECRET') || process.env.PINGONE_AI_AGENT_CLIENT_SECRET || process.env.AI_AGENT_CLIENT_SECRET;
-  if (!aiAgentClientId) errors.push('Missing: PINGONE_AI_AGENT_CLIENT_ID (or AI_AGENT_CLIENT_ID)');
-  if (!aiAgentSecret) errors.push('Missing: PINGONE_AI_AGENT_CLIENT_SECRET (or AI_AGENT_CLIENT_SECRET)');
-  
-  // Require explicit MCP Exchanger credentials — use configStore fallback chain
-  const mcpClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
-  const mcpSecret = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
-  if (!mcpClientId) errors.push('Missing: AGENT_OAUTH_CLIENT_ID (MCP Token Exchanger client ID)');
-  if (!mcpSecret) errors.push('Missing: AGENT_OAUTH_CLIENT_SECRET (MCP Token Exchanger client secret)');
-  
-  // Require explicit audiences (NO hard-coded pingdemo.com defaults)
-  // IMPORTANT: use lowercase keys — envFallbackMap keys are lowercase; uppercase skips the map.
-  const agentGatewayAud = configStore.getEffective('pingone_resource_agent_gateway_uri') || process.env.PINGONE_RESOURCE_AGENT_GATEWAY_URI;
-  const mcpGatewayAud = configStore.getEffective('pingone_resource_mcp_gateway_uri') || process.env.PINGONE_RESOURCE_MCP_GATEWAY_URI;
-  const intermediateAud = configStore.getEffective('ai_agent_intermediate_audience') || process.env.AI_AGENT_INTERMEDIATE_AUDIENCE;
-  const finalAud = configStore.getEffective('pingone_resource_two_exchange_uri') || process.env.PINGONE_RESOURCE_TWO_EXCHANGE_URI;
-  
-  if (!agentGatewayAud) errors.push('Missing: PINGONE_RESOURCE_AGENT_GATEWAY_URI (Step 1: audience for AI Agent token acquisition)');
-  if (!mcpGatewayAud) errors.push('Missing: PINGONE_RESOURCE_MCP_GATEWAY_URI (Step 3: audience for MCP token acquisition)');
-  if (!intermediateAud) errors.push('Missing: AI_AGENT_INTERMEDIATE_AUDIENCE (Step 2: exchange #1 target audience)');
-  if (!finalAud) errors.push('Missing: PINGONE_RESOURCE_TWO_EXCHANGE_URI (Step 4: exchange #2 final audience)');
-  
-  // Audience uniqueness warning
-  if (intermediateAud && finalAud && intermediateAud === finalAud) {
-    warnings.push('Audience mismatch: AI_AGENT_INTERMEDIATE_AUDIENCE === PINGONE_RESOURCE_TWO_EXCHANGE_URI. Verify this is intentional — usually they should differ for proper nested delegation.');
-  }
-  
-  // If validation fails, throw detailed error with remediation
-  if (errors.length > 0) {
-    const remediation = [
-      'Two-Exchange Configuration Validation Failed:',
-      '',
-      errors.map(e => '  ✗ ' + e).join('\n'),
-      '',
-      'Remediation Steps:',
-      '  1. Set missing environment variables (listed above), OR',
-      '  2. Configure via Admin UI → Config → Two-Exchange Settings',
-      '  3. Verify App Credentials:',
-      '     - AI_AGENT_CLIENT_ID/SECRET → Super Banking AI Agent App (or via PINGONE_AI_AGENT_CLIENT_*)',
-      '     - AGENT_OAUTH_CLIENT_ID/SECRET → Super Banking MCP Token Exchanger, OR',
-      '  4. For production: Ensure ff_two_exchange_delegation is enabled',
-      '  5. Verify PingOne token exchange policies on both resources allow delegation'
-    ].join('\n');
-    
-    const err = new Error(remediation);
-    err.code = 'TWO_EXCHANGE_CONFIG_INVALID';
-    err.httpStatus = 503;
-    err.isConfigError = true;
-    err.details = {
-      missing: errors,
-      config: { aiAgentClientId: !!aiAgentClientId, mcpClientId: !!mcpClientId }
-    };
-    throw err;
-  }
-  
-  // Log warnings if any
-  if (warnings.length > 0) {
-    warnings.forEach(w => {
-      if (logger.warn) logger.warn('[TwoExchange:Config] ' + w);
-    });
-  }
-  
-  return {
-    valid: true,
-    credentials: {
-      aiAgentClientId,
-      mcpClientId
-    },
-    audiences: {
-      agentGatewayAud,
-      mcpGatewayAud,
-      intermediateAud,
-      finalAud
-    }
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RFC 8707: Scope-Audience Mapping (Phase 56-04)
@@ -1101,39 +1030,23 @@ function buildAllowedScopesByAudience() {
     ];
   }
 
-  // AI Agent Intermediate (Step 2 exchange output) — 2-exchange delegation
-  const aiAgentAudience = configStore.get('AI_AGENT_INTERMEDIATE_AUDIENCE') || configStore.get('PINGONE_AUDIENCE_AI_AGENT') || 'https://banking-ai-agent.banking-demo.com';
-  if (aiAgentAudience) {
-    mapping[aiAgentAudience] = [
-      'banking:read',
-      'banking:write',
-      'banking:ai:agent',
-    ];
-  }
-
-  // MCP Gateway (Step 3 actor token) — 2-exchange only
+  // MCP Gateway — the BFF's single subject+actor RFC 8693 exchange is
+  // audienced here (canonical chain). Must allow the tool scopes the exchange
+  // requests (banking:read / banking:write) plus the actor/invoke scopes.
   const mcpGatewayUri = configStore.get('PINGONE_RESOURCE_MCP_GATEWAY_URI') || 'https://banking-mcp-gateway.banking-demo.com';
   if (mcpGatewayUri) {
     mapping[mcpGatewayUri] = [
+      'banking:read',
+      'banking:write',
       'banking:mcp:invoke',
       'banking:ai:agent',
     ];
   }
 
-  // MCP Resource Server (1-exchange final) — standard 1-exchange
+  // MCP Resource Server — the gateway re-exchanges to this audience downstream.
   const mcpServerUri = configStore.get('PINGONE_RESOURCE_MCP_SERVER_URI') || 'https://banking-mcp-server.banking-demo.com';
   if (mcpServerUri) {
     mapping[mcpServerUri] = [
-      'banking:read',
-      'banking:write',
-      'banking:mcp:invoke',
-    ];
-  }
-
-  // 2-Exchange final resource
-  const twoExchangeUri = configStore.get('PINGONE_RESOURCE_TWO_EXCHANGE_URI') || 'https://banking-resource-server.banking-demo.com';
-  if (twoExchangeUri) {
-    mapping[twoExchangeUri] = [
       'banking:read',
       'banking:write',
       'banking:mcp:invoke',
@@ -1374,7 +1287,6 @@ function mapErrorToCode(errorMessage, context = {}) {
 const configStore = new ConfigStore();
 module.exports = configStore;
 module.exports.FIELD_DEFS = FIELD_DEFS;
-module.exports.validateTwoExchangeConfig = validateTwoExchangeConfig;
 module.exports.SECRET_KEYS = SECRET_KEYS;
 module.exports.buildAllowedScopesByAudience = buildAllowedScopesByAudience;
 module.exports.validateScopeAudience = validateScopeAudience;

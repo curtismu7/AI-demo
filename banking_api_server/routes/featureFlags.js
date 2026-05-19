@@ -11,9 +11,10 @@
  * The FLAG_REGISTRY is the single source of truth for what flags exist.
  */
 
-const express     = require('express');
-const router      = express.Router();
-const configStore = require('../services/configStore');
+const express        = require('express');
+const router         = express.Router();
+const configStore    = require('../services/configStore');
+const runtimeSettings = require('../config/runtimeSettings');
 
 // ---------------------------------------------------------------------------
 // Flag registry — add new flags here; they appear automatically in the UI.
@@ -23,7 +24,11 @@ const configStore = require('../services/configStore');
  *   id: string, name: string, category: string,
  *   description: string, impact: string,
  *   type: 'boolean', defaultValue: boolean,
- *   envVar?: string, warnIfEnabled?: boolean
+ *   envVar?: string, warnIfEnabled?: boolean, warnIfDisabled?: boolean,
+ *   docsUrl?: string,
+ *   runtimeKey?: string  // when set, the flag is also mirrored into
+ *                        // config/runtimeSettings under this key (live toggle);
+ *                        // resolveFlag()/PATCH keep the two in sync.
  * }>} */
 const FLAG_REGISTRY = [
   // ── PingOne Authorize (ALWAYS ON — no toggle) ──────────────────────────────
@@ -72,7 +77,7 @@ const FLAG_REGISTRY = [
       'OFF = no extra Authorize round-trip for MCP (MCP server still introspects tokens). ON = first tool may return 403/428 from policy.',
     type:         'boolean',
     defaultValue: false,
-    docsUrl:      'https://docs.PingOneentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html',
+    docsUrl:      'https://docs.pingidentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html',
   },
 
   // ── Step-Up Auth ───────────────────────────────────────────────────────────
@@ -203,29 +208,6 @@ const FLAG_REGISTRY = [
     warnIfEnabled: true,
   },
   {
-    id:           'ff_two_exchange_delegation',
-    name:         'Token Exchange — 2-Exchange Delegated Chain (AI Agent + MCP)',
-    category:     'Token Exchange',
-    description:
-      'When ON, the BFF performs **two chained RFC 8693 exchanges** instead of one. ' +
-      'Exchange #1: Subject Token + AI Agent actor token → Agent Exchanged Token (act.sub = AI_AGENT_CLIENT_ID). ' +
-      'Exchange #2: Agent Exchanged Token + MCP actor token → Final Token with nested act claim ' +
-      '(act.sub = MCP_CLIENT_ID, act.act.sub = AI_AGENT_CLIENT_ID). ' +
-      'Requires: AI_AGENT_CLIENT_ID, AI_AGENT_CLIENT_SECRET, AGENT_GATEWAY_AUDIENCE, AI_AGENT_INTERMEDIATE_AUDIENCE, ' +
-      'MCP_GATEWAY_AUDIENCE, MCP_RESOURCE_URI_TWO_EXCHANGE env vars, and AGENT_OAUTH_CLIENT_ID / AGENT_OAUTH_CLIENT_SECRET for Exchange #2. ' +
-      'MCP_RESOURCE_URI_TWO_EXCHANGE must point to the Super Banking Resource Server (default: https://resource-server.pingdemo.com) — ' +
-      'NOT the same as the 1-exchange MCP_SERVER_RESOURCE_URI. Using the wrong audience causes Exchange #2 to fire the wrong `act` expression → invalid_grant. ' +
-      'Also requires mayAct.sub on user records to be set to AI_AGENT_CLIENT_ID ' +
-      '(not the Banking App client ID used in the 1-exchange pattern).',
-    impact:
-      'OFF (default) = 1-exchange pattern: Subject Token → MCP Token (act.sub = BFF client). ' +
-      'ON = 2-exchange pattern: Subject Token → Agent Exchanged Token → Final Token (act.sub = MCP, act.act.sub = AI Agent). ' +
-      'PAZ can enforce both act.sub and act.act.sub as named policy attributes.',
-    type:         'boolean',
-    defaultValue: false,
-    warnIfEnabled: false,
-  },
-  {
     id:           'ff_oidc_only_authorize',
     name:         'Login — OIDC-only authorize (no banking scopes)',
     category:     'Token Exchange',
@@ -268,6 +250,24 @@ const FLAG_REGISTRY = [
     defaultValue: true,
   },
 
+  // ── UI / Dashboard ─────────────────────────────────────────────────────────
+  {
+    id:           'ff_show_banking_in_middle_agent',
+    name:         'Dashboard — Show Banking Column With Centered Agent',
+    category:     'UI / Dashboard',
+    description:
+      'Controls the customer dashboard layout **only when the AI agent is placed in the center column**. ' +
+      'When **OFF** (default), the banking-info column is hidden so the dashboard stays clean — ' +
+      'balances and account details come from the agent response or its pop-out instead. ' +
+      'When **ON**, the banking-info column is shown alongside the centered agent (legacy layout). ' +
+      'The floating (corner FAB) and bottom-dock agent placements always show the banking column and are not affected by this flag.',
+    impact:
+      'OFF (default) = cleaner dashboard; with a centered agent only the Token Chain and the agent are shown, banking info via the agent / pop-out. ' +
+      'ON = banking column also shown next to the centered agent.',
+    type:         'boolean',
+    defaultValue: false,
+  },
+
 ];
 
 // ---------------------------------------------------------------------------
@@ -279,6 +279,16 @@ const FLAG_REGISTRY = [
  * Falls back to the registry's defaultValue if not set.
  */
 function resolveFlag(flag) {
+  // Flags with a runtimeKey are mirrored into runtimeSettings (in-memory, the
+  // source consumers actually read — e.g. mcpInspector / mcpLocalTools read
+  // runtimeSettings.get('stepUpEnabled')). Report the live runtime value so the
+  // GET response, the UI toggle, and the enforcement path never disagree.
+  if (flag.runtimeKey) {
+    const live = runtimeSettings.get(flag.runtimeKey);
+    if (live !== undefined) {
+      return flag.type === 'boolean' ? (live === true || live === 'true') : live;
+    }
+  }
   const raw = configStore.get(flag.id);
   if (raw === null || raw === undefined) return flag.defaultValue;
   if (flag.type === 'boolean') return raw === true || raw === 'true';
@@ -325,21 +335,34 @@ router.patch('/', async (req, res) => {
     return res.status(400).json({ error: 'Body must be { updates: { flagId: value } }' });
   }
 
-  const allowedIds = new Set(FLAG_REGISTRY.map(f => f.id));
+  const flagsById  = new Map(FLAG_REGISTRY.map(f => [f.id, f]));
   const toSave     = {};
+  const runtimeUpdates = {};
 
   for (const [id, value] of Object.entries(updates)) {
-    if (!allowedIds.has(id)) continue;
+    const flag = flagsById.get(id);
+    if (!flag) continue;
     // Normalise booleans to strings for configStore
     toSave[id] = typeof value === 'boolean' ? String(value) : value;
+    // Flags with a runtimeKey ALSO mirror into runtimeSettings so the toggle
+    // takes effect on the live process immediately (consumers read
+    // runtimeSettings, not configStore). configStore persists it across
+    // restarts; the boot seed in server.js re-applies it on next start.
+    if (flag.runtimeKey) {
+      runtimeUpdates[flag.runtimeKey] =
+        flag.type === 'boolean' ? (value === true || value === 'true') : value;
+    }
   }
 
   if (Object.keys(toSave).length === 0) {
-    return res.status(400).json({ error: 'No valid flag IDs provided', allowed: [...allowedIds] });
+    return res.status(400).json({ error: 'No valid flag IDs provided', allowed: [...flagsById.keys()] });
   }
 
   try {
     await configStore.setRaw(toSave);
+    if (Object.keys(runtimeUpdates).length > 0) {
+      runtimeSettings.update(runtimeUpdates, 'feature-flags-api');
+    }
     const updatedFlags = FLAG_REGISTRY.filter(f => f.id in toSave).map(serializeFlag);
     res.json({ updated: true, flags: updatedFlags });
   } catch (err) {
