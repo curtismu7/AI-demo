@@ -8,7 +8,9 @@ const { getBankingToolDefinitions, MAX_TOOL_ITERATIONS } = require('./agentBuild
 const { resolveMcpAccessTokenWithEvents } = require('./agentMcpTokenService');
 const z = require('zod');
 const appEventService = require('./appEventService');
-const { parseHeuristic } = require('./nlIntentParser');
+const { parseHeuristic, buildCatalogMessage } = require('./nlIntentParser');
+const { resolveAgentMode } = require('./agentModeResolver');
+const configStore = require('./configStore');
 const dataStore = require('../data/store');
 const axios = require('axios');
 const https = require('https');
@@ -510,19 +512,18 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     // so on the LLM-fallback path heuristicFallbackResult stays null and the
     // reasoning_unavailable branch uses the generic message.
     let heuristicFallbackResult = null;
-    const { resolveAgentMode } = require('../services/agentModeResolver');
-    const cs = require('../services/configStore');
-    const _agentMode = resolveAgentMode(
-      cs.getEffective('agent_mode'),
-      cs.getEffective('agent_external_wiring'),
-    );
+    const rawMode = configStore.getEffective('agent_mode');
+    const _agentMode = rawMode
+      ? resolveAgentMode(
+          rawMode, configStore.getEffective('agent_external_wiring'))
+      : null;
     // ARCHITECTURE-TRUTHS T-3 (amended): heuristic ROUTING is mode-dependent.
     // ff_heuristic_enabled is still honored when no explicit agent_mode is set
     // (back-compat). agent_mode wins when present. Server-side transfer/HITL
     // SAFETY enforcement is independent of this gate and is unchanged.
-    const heuristicEnabled = cs.getEffective('agent_mode')
+    const heuristicEnabled = rawMode
       ? _agentMode.heuristicRouting
-      : cs.getEffective('ff_heuristic_enabled') !== 'false';
+      : configStore.getEffective('ff_heuristic_enabled') !== 'false';
 
     if (heuristicEnabled) {
       const heuristic = parseHeuristic(message);
@@ -552,10 +553,10 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       }
       // Mode 1 (Heuristics-only): NO LLM. An unrecognised query returns the
       // deterministic capability catalog instead of falling through to an LLM.
-      if (_agentMode.mode === 'heuristics') {
+      if (_agentMode && _agentMode.mode === 'heuristics') {
         if (req) req.agentPath = 'heuristic';
         return {
-          reply: require('../services/nlIntentParser').buildCatalogMessage(),
+          reply: buildCatalogMessage(),
           success: true,
           toolsCalled: [],
           tokensUsed: 0,
