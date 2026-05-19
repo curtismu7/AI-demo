@@ -13,6 +13,17 @@ const path = require('path');
 const { getTokenEndpoint } = require('./oauthEndpointResolver');
 const scopeTopology = require('./scopeTopology');
 
+const _rawTopology = require('../../scope-topology.json');
+const _PROVISIONING = _rawTopology.provisioning || {};
+
+function _provisioningAppName(internalKey) {
+  return (_PROVISIONING.appNames || {})[internalKey] || internalKey;
+}
+
+function _provisioningResourceName(internalKey) {
+  return (_PROVISIONING.resourceNames || {})[internalKey] || internalKey;
+}
+
 // scope-topology.json (v2) is the SINGLE SOURCE OF TRUTH for which scopes
 // exist on each PingOne resource server and which scopes each app is granted.
 // These helpers convert topology scope-name lists into the {name,description}
@@ -473,12 +484,16 @@ class PingOneProvisionService {
     const desiredGrants = new Set((grantTypes || []).map(normalizeGrant));
     // ARCHITECTURE TRUTH T-9: every PingOne client connection uses
     // client_secret_post. The ONLY exception is the Management-API Worker
-    // Token CC client, identified by NAME ("Super Banking Worker") — NOT by
-    // PingOne type===WORKER. Several apps are type WORKER (MCP Server, MCP
-    // Gateway, Agent) yet the BFF authenticates them with client_secret_post
-    // ([CC-As] method=post); only the single Management worker stays basic.
-    // Keying off type would wrongly force those three back to basic.
-    const isMgmtWorkerApp = String(name || '').trim() === 'Super Banking Worker';
+    // Token CC client, identified by NAME — NOT by PingOne type===WORKER.
+    // Several apps are type WORKER (MCP Server, MCP Gateway, Agent) yet the
+    // BFF authenticates them with client_secret_post ([CC-As] method=post);
+    // only the single Management worker stays basic. Keying off type would
+    // wrongly force those three back to basic.
+    // Match against the provisioning display name (may be 'Demo Worker' or the
+    // legacy 'Super Banking Worker' depending on scope-topology.json).
+    const _mgmtWorkerDisplayName = _provisioningAppName('Super Banking Worker');
+    const isMgmtWorkerApp = String(name || '').trim() === _mgmtWorkerDisplayName ||
+                            String(name || '').trim() === 'Super Banking Worker';
     const desiredAuthMethod = isMgmtWorkerApp ? 'CLIENT_SECRET_BASIC' : 'CLIENT_SECRET_POST';
 
     const existing = await this.findResourceByName('application', name);
@@ -1204,9 +1219,9 @@ class PingOneProvisionService {
       onStep(steps[steps.length - 1]);
       
       const resourceResult = await this.createResourceServer(
-        'Super Banking API',
+        _provisioningResourceName('Super Banking API'),
         'Banking API resource server for user and admin applications',
-        config.audience || 'banking_api_enduser'
+        config.audience || 'api.bxf.com'
       );
       
       if (resourceResult.exists) {
@@ -1233,7 +1248,7 @@ class PingOneProvisionService {
       // which then either failed downstream audience checks or polluted
       // .env with the description string as MCP_RESOURCE_URI.
       const mcpResourceResult = await this.createResourceServer(
-        'Super Banking MCP Server',
+        _provisioningResourceName('Super Banking MCP Server'),
         'MCP server for admin tool execution and privileged operations',
         config.mcpResourceAudience || 'mcp-server.bxf.com'
       );
@@ -1289,7 +1304,7 @@ class PingOneProvisionService {
       onStep(steps[steps.length - 1]);
       
       const adminAppResult = await this.createApplication(
-        'Super Banking Admin App',
+        _provisioningAppName('Super Banking Admin App'),
         'Admin application for Super Banking demo',
         'WEB_APP',
         ['authorization_code', 'refresh_token']
@@ -1398,7 +1413,7 @@ class PingOneProvisionService {
       onStep(steps[steps.length - 1]);
       
       const userAppResult = await this.createApplication(
-        'Super Banking User App',
+        _provisioningAppName('Super Banking User App'),
         'User application for Super Banking demo',
         'WEB_APP',
         ['authorization_code', 'refresh_token']
@@ -1471,7 +1486,7 @@ class PingOneProvisionService {
       const userGrantResult = await this.grantScopesToApplication(
         userAppResult.application.id,
         resourceResult.resource.id,
-        ['banking:ai:agent:read', 'banking:read', 'banking:write', 'banking:transfer', 'banking:mortgage:read']
+        ['ai:agent:read', 'read', 'write', 'transfer', 'mortgage:read']
       );
       
       pushGrantResultStep(steps, 'user-grants', 'User scope grants', userGrantResult);
@@ -1667,7 +1682,7 @@ class PingOneProvisionService {
       // WEB_APP/client_credentials so it can hold the grant on the MCP Server
       // resource. See REGRESSION_PLAN §4.
       const mcpAppResult = await this.createApplication(
-        'Super Banking MCP Server',
+        _provisioningAppName('Super Banking MCP Server'),
         'MCP server for client credentials and PingOne API access',
         'WEB_APP',
         ['client_credentials']
@@ -1705,7 +1720,7 @@ class PingOneProvisionService {
       const mcpAppGrantResult = await this.grantScopesToApplication(
         mcpAppResult.application.id,
         resourceResult.resource.id,
-        ['banking:read', 'banking:mcp:invoke', 'banking:ai:agent:read', 'banking:mortgage:read']
+        ['read', 'mcp:invoke', 'ai:agent:read', 'mortgage:read']
       );
       
       pushGrantResultStep(steps, 'mcp-grants', 'MCP Server scope grants', mcpAppGrantResult);
@@ -1716,7 +1731,7 @@ class PingOneProvisionService {
       onStep(steps[steps.length - 1]);
       
       const workerAppResult = await this.createApplication(
-        'Super Banking Worker',
+        _provisioningAppName('Super Banking Worker'),
         'Worker application for PingOne Management API operations',
         'WORKER',
         ['client_credentials']
@@ -1787,7 +1802,7 @@ class PingOneProvisionService {
       steps.push({ step: 'mcp-exchanger-app', icon: '🔧', message: 'Creating MCP Exchanger application...' });
       onStep(steps[steps.length - 1]);
       mcpExchangerResult = await this.createApplication(
-        'Super Banking MCP Exchanger',
+        _provisioningAppName('Super Banking MCP Exchanger'),
         'Web application for on-behalf-of token exchange (RFC 8693 actor identity for MCP audience). NOT a WORKER — see docs/token-flow-audit.md.',
         'WEB_APP',
         ['authorization_code', 'client_credentials', 'token_exchange']
@@ -1893,7 +1908,7 @@ class PingOneProvisionService {
       onStep(steps[steps.length - 1]);
       const mcpGwAudience = config.mcpGatewayAudience || 'mcp-gw.bxf.com';
       const mcpGwResourceResult = await this.createResourceServer(
-        'Super Banking MCP Gateway',
+        _provisioningResourceName('Super Banking MCP Gateway'),
         'Inbound resource server for the MCP Gateway (aud target for delegated tokens)',
         mcpGwAudience
       );
@@ -1949,7 +1964,7 @@ class PingOneProvisionService {
       steps.push({ step: 'mcp-gw-app', icon: '🚪', message: 'Creating MCP Gateway application...' });
       onStep(steps[steps.length - 1]);
       const mcpGwAppResult = await this.createApplication(
-        'Super Banking MCP Gateway',
+        _provisioningAppName('Super Banking MCP Gateway'),
         'Web application for the MCP Gateway (RFC 8693 re-exchange to backend MCP servers). NOT a WORKER — WORKER apps cannot hold resource grants.',
         'WEB_APP',
         ['client_credentials', 'urn:ietf:params:oauth:grant-type:token-exchange']
@@ -1985,7 +2000,7 @@ class PingOneProvisionService {
       const mcpGwGrantResult = await this.grantScopesToApplication(
         mcpGwAppResult.application.id,
         mcpResourceResult.resource.id,
-        ['banking:read', 'banking:write', 'banking:mcp:invoke', 'banking:mortgage:read']
+        ['read', 'write', 'mcp:invoke', 'mortgage:read']
       );
       pushGrantResultStep(steps, 'mcp-gw-grants', 'MCP Gateway scope grants', mcpGwGrantResult);
       onStep(steps[steps.length - 1]);
@@ -1996,7 +2011,7 @@ class PingOneProvisionService {
       steps.push({ step: 'agent-app', icon: '🤝', message: 'Creating Agent application...' });
       onStep(steps[steps.length - 1]);
       const agentAppResult = await this.createApplication(
-        'Super Banking Agent',
+        _provisioningAppName('Super Banking Agent'),
         'Worker application for the agent service (actor in delegated token-exchange)',
         'WORKER',
         ['client_credentials']
@@ -2023,7 +2038,7 @@ class PingOneProvisionService {
       const agentGrantResult = await this.grantScopesToApplication(
         agentAppResult.application.id,
         mcpGwResourceResult.resource.id,
-        ['banking:mcp:invoke']
+        ['mcp:invoke']
       );
       pushGrantResultStep(steps, 'agent-grants', 'Agent scope grants', agentGrantResult);
       onStep(steps[steps.length - 1]);
@@ -2051,7 +2066,7 @@ class PingOneProvisionService {
       onStep(steps[steps.length - 1]);
       const agentGwAud = config.agentGatewayAudience || 'agent-gateway.bxf.com';
       const agentGwResourceResult = await this.createResourceServer(
-        'Super Banking Agent Gateway',
+        _provisioningResourceName('Super Banking Agent Gateway'),
         'Two-Exchange Step 1 audience — AI Agent client-credentials token target',
         agentGwAud
       );
@@ -2081,7 +2096,7 @@ class PingOneProvisionService {
       steps.push({ step: 'ai-agent-app', icon: '🤖', message: 'Creating Super Banking AI Agent application (Two-Exchange actor)...' });
       onStep(steps[steps.length - 1]);
       const aiAgentAppResult = await this.createApplication(
-        'Super Banking AI Agent',
+        _provisioningAppName('Super Banking AI Agent'),
         'AI Agent web application — actor identity in Two-Exchange Step 1 (act.sub on exchanged token). NOT a WORKER — see docs/token-flow-audit.md.',
         'WEB_APP',
         ['authorization_code', 'client_credentials', 'urn:ietf:params:oauth:grant-type:token-exchange']
@@ -2122,7 +2137,7 @@ class PingOneProvisionService {
         const aiAgentGwGrant = await this.grantScopesToApplication(
           aiAgentAppResult.application.id,
           agentGwResourceResult.resource.id,
-          ['banking:agent:invoke'],
+          ['agent:invoke'],
         );
         pushGrantResultStep(steps, 'ai-agent-grants', 'AI Agent scope grants', [aiAgentGwGrant]);
       } catch (e) {

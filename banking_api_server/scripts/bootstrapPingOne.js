@@ -92,7 +92,7 @@ Usage:
   node scripts/bootstrapPingOne.js                    Interactive (browser, terminal fallback)
   node scripts/bootstrapPingOne.js --no-browser       Force terminal prompts
   node scripts/bootstrapPingOne.js --non-interactive  Read creds from env vars
-  node scripts/bootstrapPingOne.js --recreate-apps    Delete existing 'Super Banking *'
+  node scripts/bootstrapPingOne.js --recreate-apps    Delete existing 'Demo *'
                                                        apps + resources before creating
   node scripts/bootstrapPingOne.js --wipe-environment NUCLEAR — delete EVERYTHING in the
                                                        PingOne env (apps, resources, groups,
@@ -110,7 +110,7 @@ Env vars (non-interactive mode):
   PINGONE_BOOTSTRAP_CLIENT_ID      Management worker client id
   PINGONE_BOOTSTRAP_CLIENT_SECRET  Management worker client secret
   PUBLIC_APP_URL                   App base URL              (default: https://api.ping.demo:4000)
-  PINGONE_BOOTSTRAP_AUDIENCE       Resource server audience  (default: banking_api_enduser)
+  PINGONE_BOOTSTRAP_AUDIENCE       Resource server audience  (default: api.bxf.com)
   MCP_GW_AUDIENCE                  Gateway audience          (default: mcp-gw.bxf.com)
 
 Exit codes:
@@ -528,7 +528,7 @@ async function gatherCredsViaBrowser() {
       workerClientId: cached.workerClientId,
       workerClientSecret: cached.workerClientSecret,
       publicAppUrl: cached.publicAppUrl || process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000',
-      audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'banking_api_enduser',
+      audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'api.bxf.com',
       mcpGatewayAudience: process.env.MCP_GW_AUDIENCE || 'mcp-gw.bxf.com',
     };
   }
@@ -539,7 +539,7 @@ async function gatherCredsViaBrowser() {
   const fromForm = await browserPrompt();
 
   const publicAppUrl = process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000';
-  const audience = process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'banking_api_enduser';
+  const audience = process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'api.bxf.com';
   const mcpGatewayAudience = process.env.MCP_GW_AUDIENCE || 'mcp-gw.bxf.com';
   const creds = { ...fromForm, publicAppUrl, audience, mcpGatewayAudience };
   writeCredCache(creds);
@@ -559,7 +559,7 @@ async function gatherCredsInteractive() {
       workerClientId: cached.workerClientId,
       workerClientSecret: cached.workerClientSecret,
       publicAppUrl: cached.publicAppUrl || process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000',
-      audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'banking_api_enduser',
+      audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'api.bxf.com',
       mcpGatewayAudience: process.env.MCP_GW_AUDIENCE || 'mcp-gw.bxf.com',
     };
   }
@@ -587,7 +587,7 @@ async function gatherCredsInteractive() {
       defaultValue: process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000',
     });
 
-    const audience = process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'banking_api_enduser';
+    const audience = process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'api.bxf.com';
     const mcpGatewayAudience = process.env.MCP_GW_AUDIENCE || 'mcp-gw.bxf.com';
 
     const creds = { envId, region, workerClientId, workerClientSecret, publicAppUrl, audience, mcpGatewayAudience };
@@ -619,7 +619,7 @@ function gatherCredsFromEnv() {
     workerClientId,
     workerClientSecret,
     publicAppUrl: process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000',
-    audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'banking_api_enduser',
+    audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'api.bxf.com',
     mcpGatewayAudience: process.env.MCP_GW_AUDIENCE || 'mcp-gw.bxf.com',
   };
 }
@@ -808,20 +808,22 @@ or via \`scripts/pingone-audit-249.js\` (see CLAUDE.md).
 // Idempotent: missing items are silently skipped. Errors per item don't abort
 // the wipe — we report a summary at the end.
 
-const PROVISIONED_APP_NAMES = [
-  'Super Banking Admin App',
-  'Super Banking User App',
-  'Super Banking MCP Server',
-  'Super Banking Worker',
-  'Super Banking MCP Exchanger',
-  'Super Banking MCP Gateway',
-  'Super Banking Agent',
+const KNOWN_APP_NAMES = [
+  'Demo Admin App',
+  'Demo User App',
+  'Demo MCP Server',
+  'Demo Worker',
+  'Demo MCP Exchanger',
+  'Demo MCP Gateway',
+  'Demo Agent',
+  'Demo AI Agent',
 ];
 
-const PROVISIONED_RESOURCE_NAMES = [
-  'Super Banking API',
-  'Super Banking MCP Server',
-  'Super Banking MCP Gateway',
+const KNOWN_RESOURCE_NAMES = [
+  'Demo API',
+  'Demo MCP Server',
+  'Demo MCP Gateway',
+  'Demo Agent Gateway',
 ];
 
 async function wipeExistingResources(creds) {
@@ -839,7 +841,7 @@ async function wipeExistingResources(creds) {
   // Delete applications first — resources can't be deleted while apps still
   // hold scope grants against them.
   const apps = (await svc.makeRequest('GET', '/applications')).data._embedded?.applications || [];
-  for (const name of PROVISIONED_APP_NAMES) {
+  for (const name of KNOWN_APP_NAMES) {
     const found = apps.find(a => a.name === name);
     if (!found) { appsMissing++; continue; }
     try {
@@ -853,7 +855,7 @@ async function wipeExistingResources(creds) {
   }
 
   const resources = (await svc.makeRequest('GET', '/resources')).data._embedded?.resources || [];
-  for (const name of PROVISIONED_RESOURCE_NAMES) {
+  for (const name of KNOWN_RESOURCE_NAMES) {
     const found = resources.find(r => r.name === name);
     if (!found) { resourcesMissing++; continue; }
     try {
@@ -867,8 +869,8 @@ async function wipeExistingResources(creds) {
   }
 
   console.log('');
-  console.log(`  Pre-wipe summary: ${appsDeleted}/${PROVISIONED_APP_NAMES.length} apps deleted, ` +
-              `${resourcesDeleted}/${PROVISIONED_RESOURCE_NAMES.length} resources deleted, ` +
+  console.log(`  Pre-wipe summary: ${appsDeleted}/${KNOWN_APP_NAMES.length} apps deleted, ` +
+              `${resourcesDeleted}/${KNOWN_RESOURCE_NAMES.length} resources deleted, ` +
               `${appsMissing + resourcesMissing} not found, ` +
               `${appsFailed + resourcesFailed} errors`);
   if (appsFailed + resourcesFailed > 0) {
