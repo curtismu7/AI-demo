@@ -20,7 +20,7 @@ const axios = require('axios');
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 
-function buildPlatformRequest(provider, opts) {
+function buildPlatformRequest(provider, opts = {}) {
   const { gatewayMcpUrl, gatewayToken, userMessage, model } = opts;
   if (provider === 'openai') {
     return {

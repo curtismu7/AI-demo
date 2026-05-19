@@ -22,4 +22,8 @@ describe('buildPlatformRequest', () => {
   test('unknown provider throws (no silent default)', () => {
     expect(() => buildPlatformRequest('mistral', {})).toThrow(/unsupported platform provider/i);
   });
+
+  test('unknown provider throws even when opts omitted (no destructure crash)', () => {
+    expect(() => buildPlatformRequest('mistral')).toThrow(/unsupported platform provider/i);
+  });
 });

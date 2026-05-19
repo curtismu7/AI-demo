@@ -279,6 +279,7 @@ router.post('/message', async (req, res) => {
       tokensUsed: response.tokensUsed,
       requiresConsent: response.requiresConsent,
       agentConfigured: response.agentConfigured,
+      degradedDelegation: response.degradedDelegation,
       error: response.error,
       tokenEvents: resolvedTokenEvents
     };
