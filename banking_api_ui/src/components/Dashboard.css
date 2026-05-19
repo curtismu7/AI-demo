@@ -30,12 +30,10 @@ main.admin-dash-main--split {
   align-items: start;
 }
 
-/* Token Chain: column 1 — scrolls within its own height, sticks to viewport top */
+/* Token Chain: column 1 — self-contained scroll box, max viewport height (64px nav + 56px toolbar) */
 main.admin-dash-main--split .dash-shell-card--token {
   grid-column: 1;
-  position: sticky;
-  top: 0;
-  height: calc(100vh - 120px);
+  max-height: calc(100vh - 120px);
   overflow-y: auto;
 }
 
@@ -55,8 +53,6 @@ main.admin-dash-main--split .dash-shell-card:not(.dash-shell-card--token) {
   main.admin-dash-main--split .dash-shell-card--token,
   main.admin-dash-main--split .dash-shell-card:not(.dash-shell-card--token) {
     grid-column: unset;
-    position: static;
-    height: auto;
     max-height: none;
     overflow-y: visible;
   }
