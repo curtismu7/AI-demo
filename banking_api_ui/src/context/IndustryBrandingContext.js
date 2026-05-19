@@ -1,6 +1,8 @@
 // banking_api_ui/src/context/IndustryBrandingContext.js
-// SHIM: superseded by ThemeContext. Kept so existing imports keep working
-// during incremental migration; removed in the cleanup task once unused.
+// COMPATIBILITY LAYER (permanent): delegates to ThemeContext/useTheme().
+// ThemeContext is the single source of truth for all theme state; this
+// thin adapter preserves the historical useIndustryBranding() API for its
+// many consumers. Intentionally retained — not slated for removal.
 import { useTheme } from './ThemeContext';
 
 export function IndustryBrandingProvider({ children }) {
