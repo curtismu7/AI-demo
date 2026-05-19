@@ -19,14 +19,18 @@ export default function AgentModeSelector({ compact = false, onChange }) {
     provider,
   } = useLangchainProvider();
 
-  const didMount = useRef(false);
+  const settledRef = useRef(null);
   useEffect(() => {
-    if (!didMount.current) {
-      didMount.current = true;
+    if (loading) return;
+    if (settledRef.current === null) {
+      settledRef.current = { mode, provider };
       return;
     }
-    if (typeof onChange === "function") onChange({ mode, provider });
-  }, [mode, provider, onChange]);
+    if (settledRef.current.mode !== mode || settledRef.current.provider !== provider) {
+      settledRef.current = { mode, provider };
+      if (typeof onChange === "function") onChange({ mode, provider });
+    }
+  }, [mode, provider, loading, onChange]);
 
   if (loading || modeOptions.length === 0) return null;
 

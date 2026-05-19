@@ -4,8 +4,10 @@ import AgentModeSelector from "../AgentModeSelector";
 
 const mockHook = {
   mode: "heuristics_helix",
+  provider: undefined,
   externalWiring: null,
   saving: false,
+  loading: false,
   modeOptions: [
     { id: "heuristics", label: "Heuristics only", external: false },
     { id: "heuristics_helix", label: "Heuristics + Helix", external: false },
@@ -21,7 +23,9 @@ jest.mock("../../hooks/useLangchainProvider", () => ({
 
 afterEach(() => {
   mockHook.mode = "heuristics_helix";
+  mockHook.provider = undefined;
   mockHook.externalWiring = null;
+  mockHook.loading = false;
   jest.clearAllMocks();
 });
 
@@ -67,4 +71,11 @@ test("compact mode: platform shows chip not full banner", () => {
   render(<AgentModeSelector compact />);
   expect(screen.getByText(/delegation lost/i)).toBeInTheDocument();      // chip text
   expect(screen.queryByText(/per-tool RFC 8693/i)).not.toBeInTheDocument(); // full banner absent
+});
+
+test("onChange not called on initial settled render (hydration suppression)", () => {
+  const onChange = jest.fn();
+  mockHook.mode = "heuristics_helix";
+  render(<AgentModeSelector onChange={onChange} />);
+  expect(onChange).not.toHaveBeenCalled();
 });
