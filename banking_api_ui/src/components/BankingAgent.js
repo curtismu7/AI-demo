@@ -1532,11 +1532,17 @@ function ResultsPanel({ panel, onClose, style }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
+export function buildCustomerGreeting(u, manifestGreeting) {
+  const name = (u && (u.firstName || (u.name && u.name.split(' ')[0]))) || 'there';
+  if (manifestGreeting) return manifestGreeting.replace('{name}', name);
+  return `Hi ${name}! I can check your balances, move money between accounts, and explain the OAuth flows happening behind the scenes. What would you like to do?`;
+}
+
 function welcomeMessage(
   u,
   focus = "banking",
   brandShortName = "Super Banking",
-  industryPresetId = "bx_finance",
+  customerGreetingOverride = null,
 ) {
   if (focus === "config") {
     if (!u) {
@@ -1553,10 +1559,7 @@ function welcomeMessage(
   if (u.role === "admin") {
     return `Welcome, ${name}! As an admin you can query accounts system-wide, view all transactions, manage users, and explore PingOne OAuth flows. What would you like to do?`;
   }
-  const isRetail = industryPresetId === "retail";
-  return isRetail
-    ? `Hi ${name}! I can browse products, check prices, help with your cart, and explain the OAuth flows securing your checkout. What would you like to do?`
-    : `Hi ${name}! I can check your balances, move money between accounts, and explain the OAuth flows happening behind the scenes. What would you like to do?`;
+  return buildCustomerGreeting(u, customerGreetingOverride);
 }
 
 function normalizeBankingParams(params) {
@@ -1659,6 +1662,7 @@ export default function BankingAgent({
     agentAppearance,
     setAgentAppearance,
     effectiveAgentTheme,
+    agent: themeAgent,
   } = useTheme();
   // Always start collapsed on page load — never restore open state from localStorage.
   const [isOpen, setIsOpen] = useState(false);
@@ -2287,7 +2291,7 @@ export default function BankingAgent({
                 currentUser,
                 embeddedFocus,
                 brandShortName,
-                industryPreset.id,
+                themeAgent && themeAgent.greeting,
               ),
             },
           ]
@@ -2348,7 +2352,7 @@ export default function BankingAgent({
                   found,
                   embeddedFocus,
                   brandShortName,
-                  industryPreset.id,
+                  themeAgent && themeAgent.greeting,
                 ),
               };
               if (cookieOnly) {
@@ -2397,7 +2401,7 @@ export default function BankingAgent({
                 user,
                 embeddedFocus,
                 brandShortName,
-                industryPreset.id,
+                themeAgent && themeAgent.greeting,
               ),
             },
           ]
@@ -2604,7 +2608,7 @@ export default function BankingAgent({
             found,
             embeddedFocus,
             brandShortName,
-            industryPreset.id,
+            themeAgent && themeAgent.greeting,
           ),
         };
         if (cookieOnly) {
@@ -2650,7 +2654,7 @@ export default function BankingAgent({
                   user || sessionUserRef.current,
                   embeddedFocus,
                   brandShortName,
-                  industryPreset.id,
+                  themeAgent && themeAgent.greeting,
                 ),
               },
             ]
