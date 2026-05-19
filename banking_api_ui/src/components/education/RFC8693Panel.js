@@ -217,7 +217,7 @@ Content-Type: application/json
           </p>
           <pre className="edu-code">{`{
   "sub":   "user-abc123",           // preserved from Hop 0
-  "aud":   "https://mcp-gw.bxf.com",  // narrowed to gateway audience
+  "aud":   "https://api.ping.demo",  // narrowed to gateway audience
   "iss":   "https://auth.pingone.com/...",
   "scope": "banking:read banking:write ai_agent",
   "act": {
@@ -234,7 +234,7 @@ Content-Type: application/json
           </p>
           <pre className="edu-code">{`{
   "sub":   "user-abc123",             // still the human user
-  "aud":   "https://mcp-olb.bxf.com", // narrowed to backend audience
+  "aud":   "https://api.ping.demo", // narrowed to backend audience
   "iss":   "https://auth.pingone.com/...",
   "scope": "banking:read banking:write",
   "act": {
