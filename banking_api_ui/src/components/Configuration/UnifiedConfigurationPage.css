@@ -73,13 +73,13 @@
 }
 
 .configuration-header__btn--secondary {
-  background: white;
+  background: var(--color-background-light, #f0f0f0);
   color: var(--color-text-secondary, #374151);
   border-color: var(--color-border, #dee2e6);
 }
 
 .configuration-header__btn--secondary:hover:not(:disabled) {
-  background: var(--color-background-light, #f8f9fa);
+  background: var(--color-border, #dee2e6);
   border-color: var(--color-border-dark, #adb5bd);
 }
 
@@ -264,7 +264,7 @@
   min-width: 0;
 }
 .idp-copy-btn {
-  background: none;
+  background: var(--color-background-light, #f0f0f0);
   border: 1px solid var(--color-border, #dee2e6);
   border-radius: 4px;
   padding: 0.2rem 0.5rem;
@@ -274,7 +274,7 @@
   color: var(--color-text-secondary, #374151);
 }
 .idp-copy-btn:hover {
-  background: var(--color-background, #fff);
+  background: var(--color-border, #dee2e6);
   border-color: var(--color-primary, #007bff);
   color: var(--color-primary, #007bff);
 }
