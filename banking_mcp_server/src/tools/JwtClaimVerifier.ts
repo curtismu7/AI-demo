@@ -8,10 +8,19 @@
  *
  * Extracted verbatim from BankingToolProvider (module-level jwks memo + getJwksKeySet,
  * SENSITIVE_HANDLERS, decodeJwtPayload, assertTokenClaims). Behavior is identical.
+ *
+ * jose v6+ is ESM-only; loaded via dynamic import() to stay compatible with CJS compilation.
  */
-import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { Logger } from '../utils/Logger';
 import { AuthenticationError, AuthErrorCodes } from '../interfaces/auth';
+
+// Lazy-loaded jose types — avoids top-level require() of an ESM-only package.
+type JoseModule = typeof import('jose');
+let josePromise: Promise<JoseModule> | null = null;
+function getJose(): Promise<JoseModule> {
+  if (!josePromise) josePromise = import('jose') as Promise<JoseModule>;
+  return josePromise;
+}
 
 const SENSITIVE_HANDLERS = new Set<string>([
   'executeGetSensitiveAccountDetails',
@@ -21,7 +30,8 @@ const SENSITIVE_HANDLERS = new Set<string>([
 ]);
 
 export class JwtClaimVerifier {
-  private jwksKeySet: ReturnType<typeof createRemoteJWKSet> | null = null;
+  // Memoised JWKS keyset — recreated lazily per instance.
+  private jwksKeySet: Awaited<ReturnType<JoseModule['createRemoteJWKSet']>> | null = null;
 
   constructor(private logger: Logger) {}
 
@@ -75,9 +85,10 @@ export class JwtClaimVerifier {
     // Verify the MCP token's RS256/ES256 signature using PingOne's published JWKS.
     // Fail-open: JWKS failures are logged but never block the tool call — the BFF
     // already performed JWKS verification before issuing this token to the MCP server.
-    const jwks = this.getJwksKeySet();
+    const jwks = await this.getJwksKeySet();
     if (jwks) {
       try {
+        const { jwtVerify } = await getJose();
         const verifyOpts: Parameters<typeof jwtVerify>[2] = {};
         if (expectedAud) verifyOpts.audience = expectedAud;
         if (iss) verifyOpts.issuer = iss;
@@ -100,7 +111,7 @@ export class JwtClaimVerifier {
     }
   }
 
-  private getJwksKeySet(): ReturnType<typeof createRemoteJWKSet> | null {
+  private async getJwksKeySet(): Promise<Awaited<ReturnType<JoseModule['createRemoteJWKSet']>> | null> {
     if (this.jwksKeySet) return this.jwksKeySet;
     const jwksUri =
       process.env.PINGONE_JWKS_URI ||
@@ -108,6 +119,7 @@ export class JwtClaimVerifier {
       (process.env.PINGONE_BASE_URL ? `${process.env.PINGONE_BASE_URL}/jwks` : null);
     if (!jwksUri) return null;
     try {
+      const { createRemoteJWKSet } = await getJose();
       this.jwksKeySet = createRemoteJWKSet(new URL(jwksUri));
       return this.jwksKeySet;
     } catch {
