@@ -125,6 +125,26 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-20 — E2E chip pipeline: fix MCP Gateway HTTPS URL + TOKEN_STORAGE_PATH crash + account pre-fetch + BFF-local audit merge
+
+**Root causes (4):**
+1. `MCP_GATEWAY_HTTP_URL=http://localhost:3005` — gateway runs HTTPS (mkcert TLS); the health probe in `agentMcpTokenService._resolveFinalMcpAudience()` got "socket hang up" → BFF returned 502 for all tool calls.
+2. `demo_mcp_server/.env.development` missing `TOKEN_STORAGE_PATH` — `NODE_ENV=production` (set in `npm start`) defaults `tokenStoragePath=/app/data/tokens`; the MCP server crashed on first HTTP tool call with `ENOENT: no such file or directory, mkdir '/app'` and the process exited, leaving port 8080 dead mid-test.
+3. `chipPipeline.js` only pre-fetched `account_id` for `get_account_balance` — `create_transfer`/`create_deposit`/`create_withdrawal` were sent without required account IDs, causing `BankingToolProvider` to return an error result before writing to the audit store (no MCP tool call record emitted).
+4. `show_mortgage` goes through the gateway → `banking_mortgage_service` via api-key disposition; it never reaches the MCP server's `/audit` endpoint. `tokenChainService.getMCPToolCalls()` only queried the MCP server, so the mortgage chip's tool call was never counted.
+
+**Fixes:**
+- `demo_api_server/.env`: `MCP_GATEWAY_HTTP_URL=https://api.ping.demo:3005` (HTTPS matches gateway TLS; `run.sh` exports `NODE_EXTRA_CA_CERTS` pointing at the mkcert root so Node trusts the cert).
+- `demo_mcp_server/.env.development`: Added `TOKEN_STORAGE_PATH=./data/tokens`, `AUDIT_LOG_PATH=./logs/audit.log`, `SECURITY_LOG_PATH=./logs/security.log`. Created `demo_mcp_server/data/tokens/` and `demo_mcp_server/logs/` dirs. Note: `.env.development` is the canonical source — `ensure_service_env` in `run.sh` copies it over `.env` on each restart; editing only `.env` is silently overwritten.
+- `demo_api_ui/tests/e2e/helpers/chipPipeline.js`: Pre-fetch accounts for all 4 tools that need IDs (`get_account_balance`, `create_transfer`, `create_deposit`, `create_withdrawal`); resolve `from_account_id`, `to_account_id`, `account_id` from `get_my_accounts` result before the main tool call. Use a distinct savings account for `create_transfer` (not the same as checking) to avoid same-account rejection.
+- `demo_api_server/services/tokenChainService.js`: `getMCPToolCalls()` now merges BFF-local `mcpToolAuditStore` events (api-key disposition tools) with MCP server audit events; deduplicates by `eventId` (remote wins); sorts by timestamp.
+
+**Files:** `demo_api_server/.env`, `demo_mcp_server/.env.development`, `demo_api_ui/tests/e2e/helpers/chipPipeline.js`, `demo_api_server/services/tokenChainService.js`
+
+**Verify:** `cd demo_api_ui && BASE_URL=https://api.ping.demo:3001 E2E_BASE_URL=https://api.ping.demo:3001 E2E_CUSTOMER_USERNAME=demoUser E2E_CUSTOMER_PASSWORD='2Federate!' E2E_ADMIN_USERNAME=demoAdmin E2E_ADMIN_PASSWORD='2Federate!' PLAYWRIGHT_SKIP_WEBSERVER=1 npx playwright test tests/e2e/all-chips-pipeline.real.spec.js --reporter=line --timeout=120000` → 5 passed.
+
+**Do not break:** `MCP_GATEWAY_HTTP_URL` must always use HTTPS when the gateway is TLS-enabled (default for local dev). `TOKEN_STORAGE_PATH` must stay in `.env.development` (not just `.env`) because `ensure_service_env` overwrites `.env` on restart. Internal gateway→MCP server call uses HTTP (no TLS needed — loopback only).
+
 ### 2026-05-19 — Generic scope rename + log/pid file rename + audience URI update
 
 **What changed:** Dropped the `banking:` prefix from all OAuth scope strings (e.g. `banking:read` → `read`, `banking:write` → `write`, `banking:mcp:invoke` → `mcp:invoke`). Renamed all `/tmp/bank-*` log and PID files to `/tmp/demo-*` (e.g. `/tmp/bank-api-server.log` → `/tmp/demo-api.log`). Changed the resource URI audience from `banking_api_enduser` to `api.bxf.com`. Added a `provisioning` block to `scope-topology.json` and introduced `cleanupPingOneApps.js` to enable safe re-provisioning.
@@ -4418,6 +4438,32 @@ cd ..
 **What was fixed:** Implemented `validateTwoExchangeConfig()` in `configStore.js` — reads all required two-exchange env vars/config (AI agent client ID/secret, MCP exchanger client ID/secret, gateway and MCP audience URIs), collects ALL missing fields before throwing (not fail-fast), throws `code=TWO_EXCHANGE_CONFIG_INVALID, httpStatus=503` with remediation steps in the message, and warns (does not throw) when `intermediateAud === finalAud`. Added a "Branding" tab to `Admin.jsx` using the existing `ThemePicker` component; updated `retail.json` to use the new Best Buy SVG logo and "List My Orders" chip label.
 
 **Verify:** MCP agent tool calls no longer crash with "not a function". In admin `/admin` → Branding tab → select "Best Buy" → logo in header changes to Best Buy SVG; AI assistant chips show "List My Orders" instead of "My Accounts". `cd banking_api_ui && npm run build` → exit 0. `npx jest configStore-tokenExchange --no-coverage` → 27/28 pass (1 pre-existing failure in `buildAllowedScopesByAudience` key-count check, not introduced here).
+
+### 2026-05-20 — PingOne securing-agents doc compliance: may_act hard-block + SSE transport
+
+**Files changed:**
+- `demo_api_server/services/configStore.js` — added `ff_require_may_act` feature flag (default `false`)
+- `demo_api_server/services/agentMcpTokenService.js` — added hard-block gate that throws `may_act_required` (HTTP 403) when `ff_require_may_act=true` and the user token lacks a `may_act` claim
+- `demo_mcp_server/src/server/HttpMCPTransport.ts` — implemented SSE transport on `GET /mcp`; wired `sendNotification` to push events to the open SSE stream
+
+**What was broken:** Two gaps vs the PingOne securing-agents doc.
+1. The consent-gate spec requires the RFC 8693 token exchange to be blocked when the user's token has no `may_act` claim — without it, the delegation chain (act claim) cannot be established and PingOne may reject the exchange silently. The BFF validated `may_act` for display only; exchange proceeded regardless (fail-open).
+2. The PingOne doc requires `streamingEnabled` (SSE) for MCP traffic. `GET /mcp` returned HTTP 405 with a "not yet supported" message, meaning server-initiated notifications (CIBA progress, tools/list_changed) could not be delivered to HTTP MCP clients.
+
+**What was fixed:**
+1. Added `ff_require_may_act` (default `false`, opt-in). When enabled: a new gate after the `mayActSupported` check throws `may_act_required` (HTTP 403) with a `tokenEvents` entry labeled "Token Exchange (RFC 8693) — Blocked: may_act required" before any exchange is attempted. Existing deployments without PingOne `may_act` token-policy support are unaffected until they opt in.
+2. Added `handleSse()` on `GET /mcp` in `HttpMCPTransport`. Opens a `text/event-stream` response with a 25-second keep-alive ping. Sessions are indexed by `MCP-Session-Id` (already managed for POST). `sendNotification` in `makeContext` is now wired to `publishSse()` when the session has an open SSE stream, delivering server-initiated events to HTTP MCP clients.
+
+**Do not break:**
+- `ff_require_may_act` default is `false` — never change this default; it would break existing deployments that don't yet have PingOne `may_act` configured.
+- The SSE stream requires a prior POST `initialize` — `GET /mcp` without a valid `MCP-Session-Id` returns 404, not a stream.
+- `ff_inject_may_act` synthetic injection still runs BEFORE this gate, so demo mode (inject + require) works end-to-end.
+
+**Verify:**
+- Enable `ff_require_may_act=true`, attempt an MCP tool call without `may_act` → Token Chain shows "Token Exchange (RFC 8693) — Blocked: may_act required", HTTP 403.
+- With `ff_inject_may_act=true` + `ff_require_may_act=true`: injection runs first, gate passes, exchange proceeds normally.
+- `GET /mcp` with a valid `MCP-Session-Id` after `POST initialize` → `200 text/event-stream`, keep-alive pings every 25s; client disconnect cleans up the stream.
+- `cd demo_mcp_server && npm run build` → exit 0.
 
 ### 2026-05-19 — Five-mode agent provider (Heuristics / Helix-Google / Heuristics+Helix / Just ChatGPT / Just Claude)
 
