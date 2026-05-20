@@ -63,6 +63,9 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
     if (opts.sessionId) {
         headers['mcp-session-id'] = opts.sessionId;
     }
+    if (opts.tratContextHeader) {
+        headers['X-TraT-Context'] = opts.tratContextHeader;
+    }
 
     const timeoutMs = parseInt(process.env.MCP_GATEWAY_TIMEOUT_MS || '', 10) || DEFAULT_TIMEOUT_MS;
 
