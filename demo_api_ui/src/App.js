@@ -124,6 +124,7 @@ import {
   showEndUserOAuthErrorToast,
   stripEndUserOAuthErrorParamsFromUrl,
 } from "./utils/endUserOAuthErrorToast";
+import { useAdminTheme } from "./hooks/useAdminTheme";
 import "./App.css";
 
 // Browser extension interference detection and handling
@@ -203,6 +204,7 @@ function AgentFlowPage() {
 function AdminRoute({ user, children }) {
   const toastedRef = useRef(false);
   const isAdmin = user?.role === "admin";
+  useAdminTheme();
 
   useEffect(() => {
     if (!isAdmin && !toastedRef.current) {
