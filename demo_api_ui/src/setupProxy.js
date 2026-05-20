@@ -4,11 +4,11 @@
  * Accept header does not include text/html. /api is proxied below; static UI
  * mocks live under public/design and are served first.
  *
- * Target is read from REACT_APP_API_PORT (default 3001) so run-bank.sh can
+ * Target is read from REACT_APP_API_PORT (default 3001) so run-demo.sh can
  * pass PORT=3002 without touching source files.
  *
  * Standard start:    API on :3001 HTTP  (REACT_APP_API_PORT unset / 3001)
- * run-bank.sh start: API on :3002 HTTPS (REACT_APP_API_PORT=3002, REACT_APP_API_HTTPS=true)
+ * run-demo.sh start: API on :3002 HTTPS (REACT_APP_API_PORT=3002, REACT_APP_API_HTTPS=true)
  *
  * Protocol selection: REACT_APP_API_HTTPS=true only enables HTTPS if the cert
  * file actually exists on disk (same check as server.js).  This prevents a

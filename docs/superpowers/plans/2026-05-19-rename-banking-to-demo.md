@@ -24,8 +24,8 @@
 
 ### Root-level files updated (path strings only)
 - `package.json` — `cd banking_*` and `banking_api_server/scripts/*` entries
-- `run-bank.sh` — `SVC_LIST`, `cd "$BASEDIR/banking_*"`, env checks
-- `run.sh` — same as run-bank.sh (symlink/copy)
+- `run-demo.sh` — `SVC_LIST`, `cd "$BASEDIR/banking_*"`, env checks
+- `run.sh` — same as run-demo.sh (symlink/copy)
 - `run-tests.sh` — `cd "$ROOT/banking_*"`
 - `start.sh` — `cd "$BASEDIR/banking_*"`
 - `scripts/run-all-tests.sh` — `cd "$ROOT/banking_*"`
@@ -127,14 +127,14 @@ git commit -m "refactor: update package.json paths banking_* → demo_*"
 
 ---
 
-## Task 3: Update `run-bank.sh` and `run.sh`
+## Task 3: Update `run-demo.sh` and `run.sh`
 
-**Files:** Modify `run-bank.sh`, `run.sh`
+**Files:** Modify `run-demo.sh`, `run.sh`
 
-- [ ] **Step 1: Apply sed to run-bank.sh**
+- [ ] **Step 1: Apply sed to run-demo.sh**
 
 ```bash
-sed -i '' 's|banking_api_server|demo_api_server|g; s|banking_api_ui|demo_api_ui|g; s|banking_mcp_server|demo_mcp_server|g; s|banking_mcp_gateway|demo_mcp_gateway|g; s|banking_hitl_service|demo_hitl_service|g; s|banking_agent_service|demo_agent_service|g; s|banking_mcp_invest|demo_mcp_invest|g; s|banking_mortgage_service|demo_mortgage_service|g' run-bank.sh
+sed -i '' 's|banking_api_server|demo_api_server|g; s|banking_api_ui|demo_api_ui|g; s|banking_mcp_server|demo_mcp_server|g; s|banking_mcp_gateway|demo_mcp_gateway|g; s|banking_hitl_service|demo_hitl_service|g; s|banking_agent_service|demo_agent_service|g; s|banking_mcp_invest|demo_mcp_invest|g; s|banking_mortgage_service|demo_mortgage_service|g' run-demo.sh
 ```
 
 - [ ] **Step 2: Apply sed to run.sh**
@@ -146,15 +146,15 @@ sed -i '' 's|banking_api_server|demo_api_server|g; s|banking_api_ui|demo_api_ui|
 - [ ] **Step 3: Verify no banking_ path refs remain in either file**
 
 ```bash
-grep "banking_" run-bank.sh run.sh
+grep "banking_" run-demo.sh run.sh
 ```
 
 Expected: no output (or only comment/string text that is not a path — none expected).
 
-- [ ] **Step 4: Confirm SVC_LIST looks correct in run-bank.sh**
+- [ ] **Step 4: Confirm SVC_LIST looks correct in run-demo.sh**
 
 ```bash
-grep "SVC_LIST" run-bank.sh
+grep "SVC_LIST" run-demo.sh
 ```
 
 Expected:
@@ -165,8 +165,8 @@ SVC_LIST=(demo_api_server demo_mcp_server demo_api_ui      demo_mcp_gateway demo
 - [ ] **Step 5: Commit**
 
 ```bash
-git add run-bank.sh run.sh
-git commit -m "refactor: update run-bank.sh + run.sh paths banking_* → demo_*"
+git add run-demo.sh run.sh
+git commit -m "refactor: update run-demo.sh + run.sh paths banking_* → demo_*"
 ```
 
 ---

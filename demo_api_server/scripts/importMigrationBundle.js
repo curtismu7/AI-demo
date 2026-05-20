@@ -334,7 +334,7 @@ async function main() {
   const serverStatus = await checkServer();
   if (serverStatus === 'up') {
     console.error('The server is running. Stop it before importing:');
-    console.error('  ./run-bank.sh stop   (or: npm stop)');
+    console.error('  ./run-demo.sh stop   (or: npm stop)');
     console.error('');
     console.error('Reason: better-sqlite3 holds an exclusive write lock.');
     console.error('Importing with the server running will corrupt config.db.');
@@ -681,13 +681,13 @@ async function main() {
     }
     console.log('');
   }
-  console.log(`  ${stepNum++}. Start the server:  ./run-bank.sh`);
+  console.log(`  ${stepNum++}. Start the server:  ./run-demo.sh`);
   if (needsBootstrap) {
     console.log(`  ${stepNum++}. Provision PingOne (creates apps, scopes, users; writes MCP_GW / AGENT creds):`);
     console.log('       Log in as admin, then visit:  https://api.ping.demo:4000/setup/wizard');
     console.log('       You will need PingOne management worker creds (env id, region, client id, secret).');
     console.log('       After provisioning, restart the server so the new .env vars take effect:');
-    console.log('         ./run-bank.sh restart');
+    console.log('         ./run-demo.sh restart');
     console.log('');
   }
   console.log(`  ${stepNum++}. Visit /configure   — page will show "Import verified" if config is OK`);

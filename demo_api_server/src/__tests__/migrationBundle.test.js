@@ -424,11 +424,11 @@ describeIfNode20('importMigrationBundle.js', () => {
     expect(result.stdout).toContain('rollback');
   });
 
-  test('stdout lists next steps including ./run-bank.sh', async () => {
+  test('stdout lists next steps including ./run-demo.sh', async () => {
     const archivePath = await buildTestArchive(workDir);
     const result = runScript('importMigrationBundle.js', [archivePath]);
 
-    expect(result.stdout).toContain('run-bank.sh');
+    expect(result.stdout).toContain('run-demo.sh');
     expect(result.stdout).toContain('/configure');
   });
 

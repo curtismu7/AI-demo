@@ -105,7 +105,7 @@ Copy `.env.example` to `.env` and configure the required environment variables:
 Connect your AI client to the Super Banking MCP server for tool-assisted banking demos.
 
 ### Prerequisites
-1. Start the banking demo stack: `./run-bank.sh` or `npm run start` in `banking_api_server/`
+1. Start the banking demo stack: `./run-demo.sh` or `npm run start` in `banking_api_server/`
 2. Start the MCP server: `npm run start` in `banking_mcp_server/`
 3. The MCP server runs at `http://localhost:8080` by default.
 

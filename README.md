@@ -38,7 +38,7 @@ The installer:
 2. Clones the repo (or pulls latest if it already exists).
 3. Runs `npm run setup:fresh` inside it — which prompts for PingOne worker creds via a localhost browser form, provisions all PingOne resources, and writes `banking_api_server/.env`.
 
-When done: `cd AI-demo && ./run-bank.sh`. That's it.
+When done: `cd AI-demo && ./run-demo.sh`. That's it.
 
 #### Where will it install?
 
@@ -98,7 +98,7 @@ npm run setup:fresh                              # brand-new install
 npm run setup:fresh -- /path/to/archive.tar.gz   # migration
 ```
 
-Both flows end at the same place: a working `.env`, restored data (if you imported one), provisioned PingOne resources, ready for `./run-bank.sh`. The sections below walk through the prerequisites and the full sequence.
+Both flows end at the same place: a working `.env`, restored data (if you imported one), provisioned PingOne resources, ready for `./run-demo.sh`. The sections below walk through the prerequisites and the full sequence.
 
 ### Defaults & presets — what each command does
 
@@ -175,8 +175,8 @@ What this runs end-to-end (it's `setup:fresh --clean --reset-pingone` under the 
 After it completes:
 
 ```bash
-./run-bank.sh                      # start everything against the new state
-./run-bank.sh status               # verify all 8 services are healthy
+./run-demo.sh                      # start everything against the new state
+./run-demo.sh status               # verify all 8 services are healthy
 ```
 
 If you want to import a known-good bundle as the final step instead of letting bootstrap re-provision, use `npm run reset:import -- /path/to/bundle.tar.gz` (same wipe + the bundle on top).
@@ -194,7 +194,7 @@ What it does (4 phases — each can be skipped via `--keep-*` flags):
 
 | Phase | What happens |
 |-------|--------------|
-| 1. Stop services | `./run-bank.sh stop` — gracefully stops API, UI, MCP server, MCP gateway, agent service, MCP invest, HITL, LangChain agent. |
+| 1. Stop services | `./run-demo.sh stop` — gracefully stops API, UI, MCP server, MCP gateway, agent service, MCP invest, HITL, LangChain agent. |
 | 2. Wipe PingOne env | Type-the-env-id confirmation, then deletes every Demo app, resource server, group, custom attribute, and demo user in your PingOne env. |
 | 3. Delete local state | Removes `banking_api_server/.env`, `data/persistent/`, `data/sessions.db*`, `data/backups/`, `certs/`, `setup.log`. |
 | 4. Delete node_modules | Removes `node_modules/` + `dist/` in all 7 Node services (~2 GB). |
@@ -273,12 +273,12 @@ mkcert -install          # installs the local CA into the system trust store
 echo '127.0.0.1  api.ping.demo' | sudo tee -a /etc/hosts
 ```
 
-#### 2. Clone — let `./run-bank.sh` do the rest
+#### 2. Clone — let `./run-demo.sh` do the rest
 
 ```bash
 git clone https://github.com/curtismu7/AI-demo.git
 cd AI-demo
-./run-bank.sh
+./run-demo.sh
 ```
 
 That's it. The script's dependency loop installs `node_modules` and runs the
@@ -309,14 +309,14 @@ cd banking_mcp_invest   && npm install && npm run build      && cd ..
 
 #### 3. Start all services
 
-> Run from the `AI-demo` repo root. `./run-bank.sh` is repo-local — `cd AI-demo` first if you opened a new terminal.
+> Run from the `AI-demo` repo root. `./run-demo.sh` is repo-local — `cd AI-demo` first if you opened a new terminal.
 
 ```bash
 cd /path/to/AI-demo   # if you're not already there
-./run-bank.sh
+./run-demo.sh
 ```
 
-`run-bank.sh` will:
+`run-demo.sh` will:
 
 - Source `~/.nvm/nvm.sh` and `nvm use 20` itself if nvm isn't yet loaded in the current shell (so it works from a fresh terminal that doesn't auto-load nvm)
 - Generate TLS certs automatically if mkcert is installed
@@ -352,7 +352,7 @@ The script is **idempotent** — re-running it on a fully-provisioned environmen
 - `npm run setup:fresh -- --no-browser` — terminal prompts only (SSH / headless boxes)
 - `cd banking_api_server && npm run pingone:bootstrap:ci` with `PINGONE_BOOTSTRAP_*` env vars set — non-interactive (CI / automation)
 
-**Prefer to enter credentials manually instead?** Open **[https://api.ping.demo:4000/configure](https://api.ping.demo:4000/configure)** in your browser after `./run-bank.sh` and enter your PingOne Environment ID and OAuth client credentials. The app saves them to `config.db` — no restart needed. Note: this manual path only sets the admin/user OAuth clients. The MCP gateway and agent service still need `MCP_GW_CLIENT_ID` / `AGENT_CLIENT_ID` in `.env`, which `setup:fresh` provides automatically.
+**Prefer to enter credentials manually instead?** Open **[https://api.ping.demo:4000/configure](https://api.ping.demo:4000/configure)** in your browser after `./run-demo.sh` and enter your PingOne Environment ID and OAuth client credentials. The app saves them to `config.db` — no restart needed. Note: this manual path only sets the admin/user OAuth clients. The MCP gateway and agent service still need `MCP_GW_CLIENT_ID` / `AGENT_CLIENT_ID` in `.env`, which `setup:fresh` provides automatically.
 
 See **[docs/SETUP.md](docs/SETUP.md)** for the full PingOne app configuration reference.
 
@@ -385,7 +385,7 @@ nvm use 20   # or: source ~/.zshrc && nvm use 20  (or use 22 / 24 — any LTS)
 brew install mkcert && mkcert -install
 echo '127.0.0.1  api.ping.demo' | sudo tee -a /etc/hosts
 
-# 3. Clone (run-bank.sh installs all deps for you on first start)
+# 3. Clone (run-demo.sh installs all deps for you on first start)
 git clone https://github.com/curtismu7/AI-demo.git
 cd AI-demo
 
@@ -396,7 +396,7 @@ npm run setup:fresh -- /path/to/banking-export-<timestamp>.tar.gz
 mkdir -p certs && cd certs && mkcert api.ping.demo localhost 127.0.0.1 && cd ..
 
 # 6. Start
-./run-bank.sh
+./run-demo.sh
 ```
 
 > Step 4 chains `data:import` then `pingone:bootstrap`. If your archive already has full PingOne config (a recent export with `MCP_GW_CLIENT_ID` / `AGENT_CLIENT_ID`), the bootstrap step is skipped automatically and the command exits at "import complete." If the archive is older or PingOne config is missing, the browser pops the worker-cred form so you can finish provisioning in one go.
@@ -421,13 +421,13 @@ Open **[https://api.ping.demo:4000/configure](https://api.ping.demo:4000/configu
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `zsh: command not found: nvm` | nvm isn't loaded in this shell — it's a shell function, not a binary on PATH | `export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"` (one-shot), then add those two lines to `~/.zshrc` (or `~/.bashrc`) so new terminals pick it up automatically. See Path A § 0. |
-| `zsh: no such file or directory: ./run-bank.sh` | You're not in the repo root — `./run-bank.sh` is repo-local | `cd /path/to/AI-demo` first, then `./run-bank.sh` |
+| `zsh: no such file or directory: ./run-demo.sh` | You're not in the repo root — `./run-demo.sh` is repo-local | `cd /path/to/AI-demo` first, then `./run-demo.sh` |
 | Export/import fails with `Node major 20 required, but this shell is using Node vX` | Wrong Node version active in this shell | `nvm use 20` (run nvm-load snippet above first if needed); see Path A § 0 |
 | Browser shows cert error | Certs not generated or CA not trusted | Run `mkcert -install` then `cd certs && mkcert api.ping.demo localhost 127.0.0.1` |
 | `api.ping.demo` doesn't resolve | `/etc/hosts` entry missing | `echo '127.0.0.1 api.ping.demo' \| sudo tee -a /etc/hosts` |
 | `/configure` shows all fields blank after import | `.env` encryption key mismatch | Re-import with the original archive; ensure `.env` from the source machine was included |
 | `better-sqlite3` binary error on start | Node version mismatch (binary built against a different Node major) | `nvm use 20 && cd banking_api_server && npm rebuild better-sqlite3` |
-| Import fails with "server is running" | Server must be stopped before import | `./run-bank.sh stop` then retry import |
+| Import fails with "server is running" | Server must be stopped before import | `./run-demo.sh stop` then retry import |
 | `npm install` in `banking_api_ui` fails with `ERESOLVE` (typescript / react-scripts) | CRA's `peerOptional` typescript range trips npm 7+ resolver | `npm install --legacy-peer-deps` (or restore `banking_api_ui/.npmrc` containing `legacy-peer-deps=true`) |
 
 ---

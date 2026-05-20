@@ -37,7 +37,7 @@ const { getSessionBearerForMcp } = require('./mcpWebSocketClient');
 const LANGCHAIN_WS_PATH = '/ws/langchain';
 
 function langchainUpstreamUrl() {
-  // Loopback only; mirrors run-bank.sh chat WS port (8889).
+  // Loopback only; mirrors run-demo.sh chat WS port (8889).
   return (
     configStore.getEffective('langchain_chat_ws_url') ||
     process.env.LANGCHAIN_CHAT_WS_URL ||

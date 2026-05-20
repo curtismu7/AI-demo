@@ -27,7 +27,7 @@
  *
  * Port layouts:
  *   Standard (start.sh)  → UI :3000, API :3001
- *   run-bank.sh          → UI :4000, API :3002
+ *   run-demo.sh          → UI :4000, API :3002
  *
  * The UI port is controlled by BANKING_UI_PORT (default 3000).
  * The API port is controlled by BANKING_API_BASE env var inside each spec.

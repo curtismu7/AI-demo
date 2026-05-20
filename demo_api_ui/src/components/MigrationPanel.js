@@ -172,7 +172,7 @@ export default function MigrationPanel() {
             <div className="migration-step-num">1</div>
             <div className="migration-step-body">
               <strong>Stop the server</strong>
-              <CodeBlock code="./run-bank.sh stop" />
+              <CodeBlock code="./run-demo.sh stop" />
               <p className="migration-step-note">
                 The import will exit with an error if the server is still
                 running — nothing will be changed.
@@ -217,7 +217,7 @@ export default function MigrationPanel() {
             <div className="migration-step-num">4</div>
             <div className="migration-step-body">
               <strong>Start the server</strong>
-              <CodeBlock code="./run-bank.sh" />
+              <CodeBlock code="./run-demo.sh" />
             </div>
           </div>
 

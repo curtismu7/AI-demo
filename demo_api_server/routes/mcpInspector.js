@@ -294,7 +294,7 @@ router.post('/invoke', express.json(), async (req, res) => {
 
 // GET /api/mcp/inspector/langchain-host — proxy to the LangChain agent health server
 // so the browser can reach it over HTTPS (BFF has TLS; port 8890 is plain HTTP).
-// 8890 default (not 8081) — 8081 is reserved for banking_mcp_invest in run-bank.sh.
+// 8890 default (not 8081) — 8081 is reserved for banking_mcp_invest in run-demo.sh.
 router.get('/langchain-host', async (req, res) => {
   const port = process.env.HEALTH_HTTP_PORT || '8890';
   const url = `http://localhost:${port}/inspector/mcp-host`;

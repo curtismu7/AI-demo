@@ -51,7 +51,7 @@ let _unlocked = false;
 let _entriesLoaded = 0;
 
 async function loadVaultIntoConfigStore(opts = {}) {
-  // run-bank.sh exports VAULT_PATH="" (empty string) when the operator did not
+  // run-demo.sh exports VAULT_PATH="" (empty string) when the operator did not
   // set it. `??` only falls through on null/undefined, so an empty string was
   // treated as a real path → the vault at DEFAULT_VAULT_PATH was never loaded
   // ("[vault] no vault file at  — skipping") and the BFF silently ran env-only.

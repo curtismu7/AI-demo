@@ -173,7 +173,7 @@ export default function PingOneSetupGuidePage() {
         <div style={cardStyle}>
           <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0' }}>Redirect URIs (replace with your public origin)</h2>
           <p style={{ margin: '0 0 0.75rem 0', color: '#4b5563', fontSize: '0.9375rem', lineHeight: 1.6 }}>
-            Register these on the <strong>correct</strong> PingOne application. Local dev often uses <code>http://localhost:PORT</code> or the HTTPS host from <code>./run-bank.sh</code> (see repo script comments).
+            Register these on the <strong>correct</strong> PingOne application. Local dev often uses <code>http://localhost:PORT</code> or the HTTPS host from <code>./run-demo.sh</code> (see repo script comments).
           </p>
           <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Admin OAuth callback (BFF)</p>
           <code style={codeBlock}>{'{PUBLIC_URL}'}/api/auth/oauth/callback</code>
@@ -191,13 +191,13 @@ export default function PingOneSetupGuidePage() {
             <button type="button" style={btnStyle} onClick={() => copy('npm run pingone:bootstrap:probe', 'probe')}>Copy: npm run pingone:bootstrap:probe</button>
             <button type="button" style={btnStyle} onClick={() => copy('npm run setup:vercel', 'setup:vercel')}>Copy: npm run setup:vercel</button>
             <button type="button" style={btnStyle} onClick={() => copy('npm run setup:vercel:check', 'setup:vercel:check')}>Copy: npm run setup:vercel:check</button>
-            <button type="button" style={btnStyle} onClick={() => copy(`cd ${REPO_ROOT}\n./run-bank.sh`, 'run-bank.sh')}>Copy: cd + ./run-bank.sh</button>
+            <button type="button" style={btnStyle} onClick={() => copy(`cd ${REPO_ROOT}\n./run-demo.sh`, 'run-demo.sh')}>Copy: cd + ./run-demo.sh</button>
           </div>
           <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#374151', fontSize: '0.875rem', lineHeight: 1.65 }}>
             <li><code>npm run pingone:bootstrap</code> — prints ordered steps from <code>config/pingone-bootstrap.manifest.example.json</code>.</li>
             <li><code>npm run pingone:bootstrap:probe</code> — same + tests Management API token (needs worker credentials in env/config).</li>
             <li><code>npm run setup:vercel</code> — interactive env wizard; see <code>.env.vercel.example</code> at repo root.</li>
-            <li><code>./run-bank.sh</code> — local HTTPS stack (API/UI ports documented in the script); requires one-time hosts + certs per script header.</li>
+            <li><code>./run-demo.sh</code> — local HTTPS stack (API/UI ports documented in the script); requires one-time hosts + certs per script header.</li>
             <li>Implementation file: <code>scripts/pingone-bootstrap.js</code>.</li>
           </ul>
         </div>

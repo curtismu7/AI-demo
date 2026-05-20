@@ -11,7 +11,7 @@
  * Skip-proof: customer asserts token-chain + tokenEvents (runChip);
  * admin context corroborates Authorize + gateway (assertAdminPipelineEvents).
  *
- * Requires: ./run-bank.sh stack up, real-login env vars set. Auto-skips otherwise.
+ * Requires: ./run-demo.sh stack up, real-login env vars set. Auto-skips otherwise.
  */
 const { test, expect, request } = require('@playwright/test');
 const {

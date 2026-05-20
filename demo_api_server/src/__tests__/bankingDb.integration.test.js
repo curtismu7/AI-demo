@@ -21,12 +21,19 @@ const os   = require('os');
 // On Node 18, better-sqlite3 native addon fails (NODE_MODULE_VERSION mismatch)
 // and node:sqlite does not exist. Skip the entire suite in that case.
 function hasSQLiteSupport() {
+  // The native addon error surfaces at new Database() time, not require() time.
+  let db;
   try {
-    require('better-sqlite3');
+    const Database = require('better-sqlite3');
+    db = new Database(':memory:');
+    db.prepare('SELECT 1').get();
     return true;
   } catch (_e1) {
+    try { if (db) db.close(); } catch { /* ignore */ }
     try {
-      require('node:sqlite');
+      const { DatabaseSync } = require('node:sqlite');
+      const db2 = new DatabaseSync(':memory:');
+      db2.exec('SELECT 1');
       return true;
     } catch (_e2) {
       return false;

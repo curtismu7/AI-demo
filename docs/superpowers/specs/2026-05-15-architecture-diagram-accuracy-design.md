@@ -15,7 +15,7 @@
 
 ## Context: this is the second pass on Phase 270
 
-REGRESSION_PLAN §4 (2026-05-14, Phase 270) already ran an "architecture diagram completeness audit" and added a Jest enforcer (`ArchitectureDiagram.completeness.test.js`) that parses `SVC_LIST` from `run-bank.sh` and asserts every service name appears in at least one `.mmd` source. **That test checks name *presence* only — not port correctness, not per-page completeness, not the conceptual model.** This pass closes the gaps the presence test cannot see.
+REGRESSION_PLAN §4 (2026-05-14, Phase 270) already ran an "architecture diagram completeness audit" and added a Jest enforcer (`ArchitectureDiagram.completeness.test.js`) that parses `SVC_LIST` from `run-demo.sh` and asserts every service name appears in at least one `.mmd` source. **That test checks name *presence* only — not port correctness, not per-page completeness, not the conceptual model.** This pass closes the gaps the presence test cannot see.
 
 §1 protected row ("Architecture diagram completeness", line 78) governs this work. **Invariants this change must not break:**
 - The completeness Jest test must still pass (all `SVC_LIST` services present in `.mmd` sources).

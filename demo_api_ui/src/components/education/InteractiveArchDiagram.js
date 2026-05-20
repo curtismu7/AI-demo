@@ -16,7 +16,7 @@
  *
  * The Jest sync test
  *   banking_api_ui/src/components/__tests__/ArchitectureDiagram.completeness.test.js
- * enforces "every service in run-bank.sh SVC_LIST appears in at least one .mmd source"
+ * enforces "every service in run-demo.sh SVC_LIST appears in at least one .mmd source"
  * — DO NOT add nodes here to satisfy that test; add them to the .mmd sources instead.
  *
  * Why this component was retained (Phase 270 user decision): it drives off

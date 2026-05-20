@@ -119,7 +119,7 @@ After running the cleanup script, all PingOne client IDs and secrets change. The
 1. `npm run pingone:cleanup -- --execute` — wipes all `Super Banking *` apps and resource servers
 2. `npm run pingone:bootstrap` — creates new `Demo *` apps, writes new credentials to `banking_api_server/.env`
 3. Rebuild vault: export `VAULT_PASSWORD`, run vault sync command
-4. `./run-bank.sh` — restart all services
+4. `./run-demo.sh` — restart all services
 
 The bootstrap already overwrites `.env` completely with new client IDs/secrets. No manual `.env` editing required. The only manual step is vault re-sync.
 
@@ -146,7 +146,7 @@ Existing `.env` files with `banking_api_enduser` continue to work until re-provi
 
 ---
 
-## `run-bank.sh` Genericization
+## `run-demo.sh` Genericization
 
 ### Log/PID file renames
 
@@ -241,7 +241,7 @@ Files with hardcoded `banking:*` scope strings that need updating:
 6. Create cleanup script — `scripts/cleanupPingOneApps.js`, add `pingone:cleanup` npm script
 7. Recompile TypeScript services — `banking_mcp_gateway`, `banking_mcp_server`, `banking_agent_service`
 8. Update tests — replace hardcoded `banking:*` strings
-9. Update `run-bank.sh` — log/pid renames, banner/heading text, `tail_demo_logs`
+9. Update `run-demo.sh` — log/pid renames, banner/heading text, `tail_demo_logs`
 10. Update docs — `CLAUDE.md`, `REGRESSION_PLAN.md`
 11. Run cleanup script + re-bootstrap PingOne + rebuild vault
 
@@ -256,5 +256,5 @@ Files with hardcoded `banking:*` scope strings that need updating:
 - `npm run pingone:cleanup -- --execute` deletes all `Super Banking *` apps and resource servers without error
 - `npm run pingone:bootstrap` creates all `Demo *` apps and resources, writes new `.env`
 - Banking vertical: login → `/dashboard` → agent tool call → Token Chain shows `read` and `mcp:invoke` scopes (not `banking:read`, `banking:mcp:invoke`)
-- Log files appear at `/tmp/demo-api.log`, `/tmp/demo-mcp.log` etc. after `./run-bank.sh`
+- Log files appear at `/tmp/demo-api.log`, `/tmp/demo-mcp.log` etc. after `./run-demo.sh`
 - No `banking:` scope strings appear in PingOne token claims after re-provisioning

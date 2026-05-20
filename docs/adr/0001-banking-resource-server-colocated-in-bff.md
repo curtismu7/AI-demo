@@ -1,6 +1,6 @@
 # banking_resource_server is co-located in the BFF, not a separate service
 
-Phase 266 introduced three credential dispositions in the MCP gateway (`api_key`, `dual_token`, `bankingdata`). The `bankingdata` path needed an OAuth-protected backend that the gateway could call with a re-exchanged token at a distinct audience (`banking-resource-server.ping.demo`). We chose to expose those endpoints (`/api/resource-server/*`, `/api/resource-server-cc/*`) inside the existing `banking_api_server` Express process rather than spinning up a separate Node service — same code, same deploy, but a different `aud` claim enforced per-route. This keeps Phase 266 demo runnable from a single `run-bank.sh` and avoids duplicating the banking data store across processes.
+Phase 266 introduced three credential dispositions in the MCP gateway (`api_key`, `dual_token`, `bankingdata`). The `bankingdata` path needed an OAuth-protected backend that the gateway could call with a re-exchanged token at a distinct audience (`banking-resource-server.ping.demo`). We chose to expose those endpoints (`/api/resource-server/*`, `/api/resource-server-cc/*`) inside the existing `banking_api_server` Express process rather than spinning up a separate Node service — same code, same deploy, but a different `aud` claim enforced per-route. This keeps Phase 266 demo runnable from a single `run-demo.sh` and avoids duplicating the banking data store across processes.
 
 **Status:** accepted
 

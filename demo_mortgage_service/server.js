@@ -26,7 +26,7 @@ const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '64kb' }));
 
-// Health — unauthenticated, used by run-bank.sh status checks.
+// Health — unauthenticated, used by run-demo.sh status checks.
 app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',

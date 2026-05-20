@@ -857,7 +857,7 @@ Expected: exit code 0. (No UI source changed, but this is the mandated gate; rec
 
 - [ ] **Step 2: Start the stack**
 
-Run: `cd /Users/curtismuir/Development/banking && ./run-bank.sh status 2>&1 | tail -5` then `./run-bank.sh` if not already up. Wait for BFF :3001 and UI :4000 healthy.
+Run: `cd /Users/curtismuir/Development/banking && ./run-demo.sh status 2>&1 | tail -5` then `./run-demo.sh` if not already up. Wait for BFF :3001 and UI :4000 healthy.
 
 - [ ] **Step 3: Live chip → 200 + non-empty tokenEvents (the gate)**
 

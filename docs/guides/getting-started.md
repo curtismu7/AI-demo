@@ -66,7 +66,7 @@ cd banking-demo
 ### 2. Start all services
 
 ```bash
-./run-bank.sh
+./run-demo.sh
 ```
 
 This will:
@@ -90,11 +90,11 @@ Accept the self-signed certificate warning (it's mkcert-issued and safe locally)
 
 ### Verify services are running
 
-In a new terminal, while `run-bank.sh` is still running:
+In a new terminal, while `run-demo.sh` is still running:
 
 ```bash
 cd /path/to/banking-demo
-./run-bank.sh status
+./run-demo.sh status
 ```
 
 You want to see all 8 services marked as **healthy** or **running**:
@@ -141,7 +141,7 @@ This will:
 
 If you prefer to configure manually via the UI:
 
-1. Run `./run-bank.sh` (all services start, but auth is not configured yet)
+1. Run `./run-demo.sh` (all services start, but auth is not configured yet)
 2. Open https://api.ping.demo:4000/configure
 3. Fill in your PingOne Environment ID and OAuth client credentials
 4. Click **Save** — the config is persisted and survives restarts
@@ -153,17 +153,17 @@ For full environment variable details, see the [Configuration guide](./configura
 | Issue | Cause | Fix |
 |-------|-------|-----|
 | `zsh: command not found: nvm` | nvm isn't loaded in this shell | Run: `export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"` Then add those lines to `~/.zshrc` |
-| `zsh: no such file or directory: ./run-bank.sh` | You're not in the repo root | `cd /path/to/banking-demo` first |
+| `zsh: no such file or directory: ./run-demo.sh` | You're not in the repo root | `cd /path/to/banking-demo` first |
 | `api.ping.demo` doesn't resolve | `/etc/hosts` entry missing | `echo '127.0.0.1 api.ping.demo' \| sudo tee -a /etc/hosts` |
 | Browser shows certificate error | Certs not generated or CA not trusted | Run `mkcert -install` and `mkdir -p certs && cd certs && mkcert api.ping.demo localhost 127.0.0.1` |
-| Services won't start (MODULE_NOT_FOUND) | Node version mismatch or missing build step | Verify `node --version` is v20+; try `./run-bank.sh stop && ./run-bank.sh` |
+| Services won't start (MODULE_NOT_FOUND) | Node version mismatch or missing build step | Verify `node --version` is v20+; try `./run-demo.sh stop && ./run-demo.sh` |
 | `/configure` shows blank fields after import | `.env` encryption key mismatch | Re-run `npm run setup:fresh` with the same archive |
 | `better-sqlite3` binary error | Node version mismatch (binaries built for different Node major) | `nvm use 20 && cd banking_api_server && npm rebuild better-sqlite3` |
 
 ## Stopping Services
 
 ```bash
-./run-bank.sh stop
+./run-demo.sh stop
 ```
 
 Gracefully stops all services and cleans up process IDs.

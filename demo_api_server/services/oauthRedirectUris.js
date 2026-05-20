@@ -43,7 +43,7 @@ function getConfiguredHostnameOrNull() {
 const REFERENCE_REDIRECT_SETS = [
   {
     id: 'api-ping-demo',
-    label: 'Local development (api.ping.demo via run-bank.sh, default)',
+    label: 'Local development (api.ping.demo via run-demo.sh, default)',
     adminRedirectUri: 'https://api.ping.demo:4000/api/auth/oauth/callback',
     userRedirectUri: 'https://api.ping.demo:4000/api/auth/oauth/user/callback',
     postLogoutExample: 'https://api.ping.demo:4000/logout',
@@ -62,7 +62,7 @@ const REFERENCE_REDIRECT_SETS = [
 /**
  * Frontend origin for redirects after login / config (no /api prefix).
  * REACT_APP_CLIENT_URL is the SPA origin (e.g. :4000). PUBLIC_APP_URL is the BFF
- * origin (e.g. :3001). These differ in run-bank.sh / pingdemo setups, so we must
+ * origin (e.g. :3001). These differ in run-demo.sh / pingdemo setups, so we must
  * prefer REACT_APP_CLIENT_URL here — not getCanonicalPublicOrigin() which returns
  * PUBLIC_APP_URL first.
  */

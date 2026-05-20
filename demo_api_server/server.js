@@ -1573,7 +1573,7 @@ if (require.main === module) {
         } else {
             server = app.listen(PORT, () => {
                 console.log(`Demo API server running on https://api.ping.demo:3001 (local port ${PORT})`);
-                console.log('Tip: run mkcert in Demo/certs/ to enable HTTPS (see run-bank.sh)');
+                console.log('Tip: run mkcert in Demo/certs/ to enable HTTPS (see run-demo.sh)');
                 // Check HITL status
                 const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
                 if (!hitlEnabled) {

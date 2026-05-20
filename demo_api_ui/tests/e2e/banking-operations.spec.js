@@ -43,7 +43,7 @@
  *
  * Prerequisites:
  *   banking_api_server must be running on http://localhost:3001 (default start)
- *   OR http://localhost:3002 (run-bank.sh layout).
+ *   OR http://localhost:3002 (run-demo.sh layout).
  *
  * This file auto-detects the running port. Run with:
  *   cd banking_api_ui && npm run test:e2e -- tests/e2e/banking-operations.spec.js
@@ -53,7 +53,7 @@ const { test, expect } = require('@playwright/test');
 
 // Port layout:
 //   Standard start.sh  → API on :3001  (set BANKING_API_BASE=http://localhost:3001)
-//   run-bank.sh         → API on :3002  (default)
+//   run-demo.sh         → API on :3002  (default)
 const API_BASE = process.env.BANKING_API_BASE || 'http://localhost:3002';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -149,7 +149,7 @@ test.describe('OAuth status endpoints', () => {
   test('REGRESSION: /api/auth/oauth/status must include authenticated field', async ({ request }) => {
     // ⚠️  This test documents the REQUIRED contract.
     // routes/oauth.js router.get('/status') must return `authenticated`.
-    // If this fails: restart the server with `bash run-bank.sh stop && bash run-bank.sh`
+    // If this fails: restart the server with `bash run-demo.sh stop && bash run-demo.sh`
     // to pick up the latest route code, then re-run.
     const res = await request.get(`${API_BASE}/api/auth/oauth/status`);
     const body = await res.json();

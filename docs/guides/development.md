@@ -25,10 +25,10 @@ npm run setup:fresh -- /path/to/archive.tar.gz
 ### Start all services
 
 ```bash
-./run-bank.sh                    # start all 8 Node services + Python agent
-./run-bank.sh status             # health check
-./run-bank.sh tail all           # follow all logs interleaved
-./run-bank.sh stop               # stop all services
+./run-demo.sh                    # start all 8 Node services + Python agent
+./run-demo.sh status             # health check
+./run-demo.sh tail all           # follow all logs interleaved
+./run-demo.sh stop               # stop all services
 ```
 
 **What starts:**
@@ -59,7 +59,7 @@ npm run test:ui                   # React component tests (CI mode)
 npm run test:e2e:ui:smoke         # UI end-to-end smoke tests
 
 # 5. Start services and verify in browser:
-./run-bank.sh
+./run-demo.sh
 # Visit https://api.ping.demo:4000 → login → test your feature
 ```
 
@@ -91,7 +91,7 @@ BX Finance is **not** a monorepo, but contains 8 Node.js services + 1 Python ser
 ### Python (Separate Virtual Environment)
 - **langchain_agent** — Async FastAPI + LangGraph agent
 - Requires `pip install -r requirements.txt` (Python 3.10+)
-- Run via `./run-bank.sh` (auto-handled by the start script)
+- Run via `./run-demo.sh` (auto-handled by the start script)
 
 ---
 
@@ -108,7 +108,7 @@ cd banking_mcp_invest && npm run build
 
 **Why:** TypeScript is compiled to `dist/index.js`. The launch script runs the compiled code unconditionally — if `dist/` is stale, the service will crash with `MODULE_NOT_FOUND` or stale function signatures.
 
-**Run-bank.sh auto-builds:** The `./run-bank.sh` startup script auto-detects and builds all TypeScript services in its dependency-check loop. If you're running `./run-bank.sh`, the builds are automatic.
+**Run-bank.sh auto-builds:** The `./run-demo.sh` startup script auto-detects and builds all TypeScript services in its dependency-check loop. If you're running `./run-demo.sh`, the builds are automatic.
 
 **When you launch services manually:** If you're running `npm start` directly inside a service directory (debugging), you must run `npm run build` first.
 
@@ -243,7 +243,7 @@ Example plan:
 2. Add RFC 8693 scope to PINGONE_RESOURCE_MCP_SERVER_URI (PingOne)
 3. Add authorization rule to simulatedAuthorizeService.js (BFF)
 4. Call tool from BankingAgent.js (UI)
-5. Test: npm run test:mcp-server, then ./run-bank.sh + smoke test in browser
+5. Test: npm run test:mcp-server, then ./run-demo.sh + smoke test in browser
 ```
 
 ### Step 2: Code
@@ -302,7 +302,7 @@ npx jest oauthStatus.regression oauthStatus.integration \
 
 **Manual verification:**
 ```bash
-./run-bank.sh                      # start all services
+./run-demo.sh                      # start all services
 # Visit https://api.ping.demo:4000 in browser
 # Log in as admin or user
 # Navigate to affected feature
@@ -371,8 +371,8 @@ All logs live in `/tmp/`:
 **View logs:**
 ```bash
 tail -f /tmp/bank-api-server.log        # follow BFF
-./run-bank.sh tail 1                    # view BFF log (numbered menu)
-./run-bank.sh tail all                  # all logs interleaved
+./run-demo.sh tail 1                    # view BFF log (numbered menu)
+./run-demo.sh tail all                  # all logs interleaved
 ```
 
 ### Common Patterns in Logs
@@ -395,7 +395,7 @@ grep "evaluate.*Tool" /tmp/bank-api-server.log                  # auth decisions
 ### Health Checks
 
 ```bash
-./run-bank.sh status
+./run-demo.sh status
 
 # Output shows:
 # ✅ BFF (3001) responsive
@@ -617,7 +617,7 @@ The pool is bounded: `MCP_WS_MAX_CONCURRENT` (default 10) prevents unbounded con
 **Fix:**
 ```bash
 cd <service> && npm run build
-./run-bank.sh restart
+./run-demo.sh restart
 ```
 
 ### "ECONNREFUSED localhost:3001" from UI
@@ -626,7 +626,7 @@ cd <service> && npm run build
 
 **Fix:**
 ```bash
-./run-bank.sh status           # check if BFF is running
+./run-demo.sh status           # check if BFF is running
 tail -f /tmp/bank-api-server.log
 # Look for: "listening on :3001"
 ```
@@ -695,5 +695,5 @@ grep "\[McpToolAuth\]\|\[McpExchange\]" /tmp/bank-api-server.log | tail -50
 - [REGRESSION_PLAN.md](../../REGRESSION_PLAN.md) — Do-not-break critical areas (mandatory read)
 - [Configuration Guide](./configuration.md) — Environment variable reference
 - [ARCHITECTURE-TRUTHS.md](../../docs/ARCHITECTURE-TRUTHS.md) — System invariants (token custody, routing, authorization)
-- [`run-bank.sh`](../../run-bank.sh) — Startup script (shows port layout, service list)
+- [`run-demo.sh`](../../run-demo.sh) — Startup script (shows port layout, service list)
 - [`.claude/skills/`](../../.claude/skills/) — Domain-specific developer skills (OAuth, MCP, BFF, etc.)

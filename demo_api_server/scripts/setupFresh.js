@@ -39,11 +39,11 @@
  *   npm run pingone:recreate                     Delete the demo apps + resources
  *                                                in PingOne, then create fresh
  *                                                ones. Less aggressive than wipe.
- *   ./run-bank.sh                                Start everything. Run after
+ *   ./run-demo.sh                                Start everything. Run after
  *                                                setup:fresh completes.
- *   ./run-bank.sh restart                        Pick up new .env values.
- *   ./run-bank.sh stop                           Stop everything.
- *   ./run-bank.sh status                         Health check.
+ *   ./run-demo.sh restart                        Pick up new .env values.
+ *   ./run-demo.sh stop                           Stop everything.
+ *   ./run-demo.sh status                         Health check.
  *
  * ─── Defaults this script applies (override with the listed flag) ───────────
  *
@@ -79,7 +79,7 @@
  *     across reruns.
  *
  * Exit codes:
- *   0  setup completed; ./run-bank.sh ready to start
+ *   0  setup completed; ./run-demo.sh ready to start
  *   1  fatal error (import failed, bootstrap failed, validation, etc.)
  *   2  user aborted at bootstrap confirmation
  */
@@ -132,7 +132,7 @@ Usage:
 
 Both paths converge on the same end state: a working banking_api_server/.env with
 all PingOne credentials, restored data files (if a tar was provided), and the
-demo ready for ./run-bank.sh.
+demo ready for ./run-demo.sh.
 
 What runs in each case:
   Without tar:  setupFresh -> bootstrapPingOne  (creates apps + writes .env)
@@ -150,9 +150,9 @@ Related commands (run from repo root):
   npm run pingone:wipe                      Type-to-confirm wipe of all Super
                                             Banking apps/resources/groups/users.
   npm run pingone:recreate                  Delete + recreate demo apps + resources.
-  ./run-bank.sh                             Start everything (after setup completes).
-  ./run-bank.sh restart                     Pick up new .env values.
-  ./run-bank.sh stop / status               Stop / health check.
+  ./run-demo.sh                             Start everything (after setup completes).
+  ./run-demo.sh restart                     Pick up new .env values.
+  ./run-demo.sh stop / status               Stop / health check.
 
 Defaults this script applies (override with the listed flag):
   Confirm install dir   ON       --yes / --from-installer to skip
@@ -232,7 +232,7 @@ Helix env vars (used by --helix in non-interactive contexts):
 
 Step 1 (you): Create a PingOne worker app with "Identity Data Admin" role.
 Step 2:       Run this command. The browser pops a form for your worker creds.
-Step 3:       ./run-bank.sh
+Step 3:       ./run-demo.sh
 
 Exit codes:
   0  Setup completed successfully
@@ -584,7 +584,7 @@ function ensureEnvForFreshInstall() {
 //   - existing config.db encrypted with an old key won't decrypt against a
 //     freshly generated SESSION_SECRET
 //   - certs from a prior hostname (api.pingdemo.com+2.pem) get picked up by
-//     run-bank.sh and confuse mkcert detection
+//     run-demo.sh and confuse mkcert detection
 //   - leftover sessions.db carries logged-in state from another tenant
 //
 // We detect those, list them to the user, and ask once whether to wipe before
@@ -643,7 +643,7 @@ async function offerCleanup() {
   console.log('Wiping these gives you a clean slate. Recommended if:');
   console.log('  - this is a re-run after a failed install');
   console.log('  - you changed the PingOne tenant since last setup');
-  console.log('  - run-bank.sh is reporting decrypt or hostname errors');
+  console.log('  - run-demo.sh is reporting decrypt or hostname errors');
   console.log('');
   console.log('Skip cleanup if you want to preserve current data and only re-run bootstrap.');
   console.log('');
@@ -964,8 +964,8 @@ async function configureVault(opts = {}) {
   }
 
   // Persist VAULT_PATH (but NEVER VAULT_PASSWORD) into banking_api_server/.env
-  // so run-bank.sh finds it next boot. banking_mcp_gateway/.env is typically a
-  // SYMLINK to this same file (created by run-bank.sh's ensure_service_env
+  // so run-demo.sh finds it next boot. banking_mcp_gateway/.env is typically a
+  // SYMLINK to this same file (created by run-demo.sh's ensure_service_env
   // helper — see Plan 04 SUMMARY), so the gateway sees the same VAULT_PATH
   // automatically.
   //
@@ -1473,7 +1473,7 @@ function printDone({ ranBootstrap, fromTar }) {
   if (fs.existsSync(certsDir) && fs.readdirSync(certsDir).filter(f => f.endsWith('.pem')).length > 0) {
     console.log(`    ✓ certs/                    TLS certificates present`);
   } else {
-    console.log(`    ○ certs/                    not yet generated (run-bank.sh will create on first start)`);
+    console.log(`    ○ certs/                    not yet generated (run-demo.sh will create on first start)`);
   }
   console.log('');
 
@@ -1501,7 +1501,7 @@ function printDone({ ranBootstrap, fromTar }) {
   console.log('');
   console.log(`  ${BOLD}1.  Start the demo${RESET} ${DIM}(copy this line):${RESET}`);
   console.log('');
-  console.log(`      ${GREEN}${BOLD}cd ${REPO_ROOT} && ./run-bank.sh${RESET}`);
+  console.log(`      ${GREEN}${BOLD}cd ${REPO_ROOT} && ./run-demo.sh${RESET}`);
   console.log('');
   console.log(`  ${BOLD}2.  Open in browser${RESET} ${DIM}(click or copy):${RESET}`);
   console.log('');

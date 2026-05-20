@@ -78,16 +78,21 @@ function ensureValidConfigDb() {
   }
 }
 
-// Probe whether better-sqlite3 native binary is loadable in this Node version.
-// If it was compiled for a different Node (NODE_MODULE_VERSION mismatch) it
-// throws at require() time. Tests that call better-sqlite3 directly should skip
+// Probe whether better-sqlite3 native binary works in this Node version.
+// The native addon error (NODE_MODULE_VERSION mismatch) surfaces at new Database()
+// time, not at require() time. Tests that call better-sqlite3 directly should skip
 // when this returns false rather than fail with a confusing native-addon error.
 function canUseSQLite() {
+  let db;
   try {
-    require('better-sqlite3');
+    const Database = require('better-sqlite3');
+    db = new Database(':memory:');
+    db.prepare('SELECT 1').get();
     return true;
   } catch {
     return false;
+  } finally {
+    try { if (db) db.close(); } catch { /* ignore */ }
   }
 }
 

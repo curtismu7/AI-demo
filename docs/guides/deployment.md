@@ -178,7 +178,7 @@ If you want to test Upstash-backed sessions locally (optional):
 ```bash
 export UPSTASH_REDIS_REST_URL="https://your-upstash-url"
 export UPSTASH_REDIS_REST_TOKEN="Bearer your-token"
-./run-bank.sh
+./run-demo.sh
 ```
 
 Check that login still works and sessions persist across restarts.

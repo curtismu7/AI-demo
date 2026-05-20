@@ -4,9 +4,9 @@
 
 **Goal:** Remove all `banking:` prefix branding from scope strings, PingOne app/resource names, resource URIs, and startup script labels so the platform is vertical-neutral.
 
-**Architecture:** `scope-topology.json` is the SSOT — update it first, then propagate outward in dependency order: topology → vertical configs → scopes constants → BFF services/routes → provisioner → TS services (recompile) → tests → run-bank.sh → docs. A new `cleanupPingOneApps.js` script wipes the old `Super Banking *` PingOne environment before re-bootstrap creates `Demo *` names.
+**Architecture:** `scope-topology.json` is the SSOT — update it first, then propagate outward in dependency order: topology → vertical configs → scopes constants → BFF services/routes → provisioner → TS services (recompile) → tests → run-demo.sh → docs. A new `cleanupPingOneApps.js` script wipes the old `Super Banking *` PingOne environment before re-bootstrap creates `Demo *` names.
 
-**Tech Stack:** Node.js (CommonJS BFF), TypeScript (MCP gateway/server/agent), React (UI — no scope string changes needed), Jest, bash (run-bank.sh), PingOne Management API.
+**Tech Stack:** Node.js (CommonJS BFF), TypeScript (MCP gateway/server/agent), React (UI — no scope string changes needed), Jest, bash (run-demo.sh), PingOne Management API.
 
 ---
 
@@ -47,7 +47,7 @@
 | `banking_api_server/tests/tokenUtils.test.js` | Modify | Scope strings |
 | `banking_api_server/tests/routes/langchainChatProxy.regression.test.js` | Modify | Scope strings |
 | `banking_api_server/tests/bankingAgentLangGraphService.modes.test.js` | Modify | Scope strings |
-| `run-bank.sh` | Modify | Log/pid variable values, banner/heading text, `tail_bank_logs` → `tail_demo_logs` |
+| `run-demo.sh` | Modify | Log/pid variable values, banner/heading text, `tail_bank_logs` → `tail_demo_logs` |
 | `CLAUDE.md` | Modify | `/tmp/bank-api-server.log` → `/tmp/demo-api.log` in verification checklist |
 | `REGRESSION_PLAN.md` | Modify | §4 migration entry; §1 audience string update |
 | `banking_api_server/package.json` | Modify | Add `pingone:cleanup` script |
@@ -1098,10 +1098,10 @@ git commit -m "test: update all test fixtures to generic scope names"
 
 ---
 
-## Task 11: Update `run-bank.sh`
+## Task 11: Update `run-demo.sh`
 
 **Files:**
-- Modify: `run-bank.sh`
+- Modify: `run-demo.sh`
 
 - [ ] **Step 1: Rename log/pid variables**
 
@@ -1140,7 +1140,7 @@ Replace every `bank-` prefix in `/tmp/` paths with `demo-`:
 echo -e "${CYAN}${BOLD}   [DEMO]  DEMO — TEST SUITE                                   ${RESET}"
 
 # Line ~399 — stop message:
-echo "[STOP] Stopping Demo services (run-bank.sh)..."
+echo "[STOP] Stopping Demo services (run-demo.sh)..."
 
 # Line ~417 — stop complete:
 echo "[OK] All Demo listeners stopped (or none were running)."
@@ -1165,7 +1165,7 @@ tail_demo_logs "${2:-}"
 - [ ] **Step 4: Verify no remaining `bank-` in `/tmp/` paths**
 
 ```bash
-grep -n "bank-" run-bank.sh
+grep -n "bank-" run-demo.sh
 ```
 
 The only remaining hits should be filesystem directory refs (`banking_api_server`, etc.) — not `/tmp/` paths.
@@ -1173,8 +1173,8 @@ The only remaining hits should be filesystem directory refs (`banking_api_server
 - [ ] **Step 5: Commit**
 
 ```bash
-git add run-bank.sh
-git commit -m "feat(scripts): rename run-bank.sh log/pid files and headings to demo-* naming"
+git add run-demo.sh
+git commit -m "feat(scripts): rename run-demo.sh log/pid files and headings to demo-* naming"
 ```
 
 ---
@@ -1198,7 +1198,7 @@ Find the quick verification checklist section. Update the log file reference:
 Add to §4 (Bug Fix Log) — use the existing entry template:
 
 ```markdown
-| 2026-05-19 | Generic scope rename | `scope-topology.json`, all consumers | Removed `banking:` prefix from all scope strings; renamed `banking_api_enduser` → `api.ping.demo`; PingOne apps renamed `Super Banking *` → `Demo *`; run-bank.sh logs renamed `bank-*` → `demo-*`. Re-bootstrap required: `npm run pingone:cleanup -- --execute` then `npm run pingone:bootstrap`. |
+| 2026-05-19 | Generic scope rename | `scope-topology.json`, all consumers | Removed `banking:` prefix from all scope strings; renamed `banking_api_enduser` → `api.ping.demo`; PingOne apps renamed `Super Banking *` → `Demo *`; run-demo.sh logs renamed `bank-*` → `demo-*`. Re-bootstrap required: `npm run pingone:cleanup -- --execute` then `npm run pingone:bootstrap`. |
 ```
 
 - [ ] **Step 3: Update §1 audience string reference**
@@ -1260,13 +1260,13 @@ export VAULT_PASSWORD=<your-vault-password>
 - [ ] **Step 5: Restart all services**
 
 ```bash
-./run-bank.sh
+./run-demo.sh
 ```
 
 - [ ] **Step 6: Verify**
 
 ```bash
-./run-bank.sh status
+./run-demo.sh status
 ```
 
 Then open `https://api.ping.demo:4000` in a browser:
@@ -1289,5 +1289,5 @@ ls /tmp/demo-*.log
 - `cd banking_api_server && npm test -- --passWithNoTests` → all pass
 - `node scripts/cleanupPingOneApps.js` (dry-run) → prints `Super Banking *` entities without error
 - After re-bootstrap: PingOne token claims show `read`, `write`, `mcp:invoke` (not `banking:*`)
-- Log files at `/tmp/demo-api.log` etc. after `./run-bank.sh`
+- Log files at `/tmp/demo-api.log` etc. after `./run-demo.sh`
 - No `banking:` scope strings in PingOne token claims

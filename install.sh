@@ -352,7 +352,7 @@ EOF
   ok "AI Demo installed at: $target"
   echo ""
   echo "Start it any time with:"
-  echo "  cd $target && ./run-bank.sh"
+  echo "  cd $target && ./run-demo.sh"
   echo ""
 }
 

@@ -1230,7 +1230,7 @@ Expected: all green, all builds exit 0.
 
 Run:
 ```bash
-cd /Users/curtismuir/Development/banking && export VAULT_PASSWORD="$VAULT_PASSWORD"; ./run-bank.sh restart && sleep 25 && ./run-bank.sh status
+cd /Users/curtismuir/Development/banking && export VAULT_PASSWORD="$VAULT_PASSWORD"; ./run-demo.sh restart && sleep 25 && ./run-demo.sh status
 ```
 Then trigger one agent tool call from `https://api.ping.demo:4000/dashboard` and:
 ```bash

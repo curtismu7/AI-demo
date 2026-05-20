@@ -1092,17 +1092,17 @@ async function main() {
     if (configPath) console.log(`    ${path.relative(process.cwd(), configPath).padEnd(30)}reference dump (resource IDs, demo creds, all non-secret config)`);
     console.log('');
 
-    // Offer to auto-run ./run-bank.sh restart so the running services pick up
+    // Offer to auto-run ./run-demo.sh restart so the running services pick up
     // the new .env. Skipped under --non-interactive (CI / scripted runs print
     // the instruction and exit). The repo root is two levels up from this
     // script: banking_api_server/scripts/bootstrapPingOne.js → repo root.
     const REPO_ROOT = path.resolve(__dirname, '..', '..');
-    const runBankSh = path.join(REPO_ROOT, 'run-bank.sh');
+    const runBankSh = path.join(REPO_ROOT, 'run-demo.sh');
     const runBankAvailable = require('fs').existsSync(runBankSh);
 
     if (NON_INTERACTIVE || !runBankAvailable) {
       console.log('  Restart services so they pick up the new .env values:');
-      console.log(`    cd ${REPO_ROOT} && ./run-bank.sh restart`);
+      console.log(`    cd ${REPO_ROOT} && ./run-demo.sh restart`);
       console.log('');
       process.exit(0);
     }
@@ -1119,7 +1119,7 @@ async function main() {
     if (!yes) {
       console.log('');
       console.log('  Skipping. Restart later with:');
-      console.log(`    cd ${REPO_ROOT} && ./run-bank.sh restart`);
+      console.log(`    cd ${REPO_ROOT} && ./run-demo.sh restart`);
       console.log('');
       process.exit(0);
     }
@@ -1133,8 +1133,8 @@ async function main() {
     });
     if (restartResult.error) {
       console.error('');
-      console.error(`  Failed to spawn run-bank.sh: ${restartResult.error.message}`);
-      console.error(`  Run it manually: cd ${REPO_ROOT} && ./run-bank.sh restart`);
+      console.error(`  Failed to spawn run-demo.sh: ${restartResult.error.message}`);
+      console.error(`  Run it manually: cd ${REPO_ROOT} && ./run-demo.sh restart`);
       process.exit(1);
     }
     process.exit(restartResult.status || 0);

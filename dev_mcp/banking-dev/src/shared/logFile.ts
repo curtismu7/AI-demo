@@ -58,7 +58,7 @@ export function readWithLineNumbers(
 }
 
 // Parse a leading ISO-8601 timestamp from a log line if present.
-// run-bank.sh prefixes lines with [ISO_TIME] but service loggers vary.
+// run-demo.sh prefixes lines with [ISO_TIME] but service loggers vary.
 const ISO_PREFIX_RE = /\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\]/;
 const ISO_LEADING_RE = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)/;
 

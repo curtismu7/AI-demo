@@ -7,7 +7,7 @@
  * to confirm the backend is alive before running more complex UI tests.
  *
  * Prerequisites:
- *   - banking_api_server running (default for run-bank.sh: http://localhost:3002;
+ *   - banking_api_server running (default for run-demo.sh: http://localhost:3002;
  *     standard start: http://localhost:3001). Override with BANKING_API_BASE.
  *
  * Run with:

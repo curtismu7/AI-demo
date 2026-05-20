@@ -23,7 +23,7 @@ const https = require('https');
 const _gatewayRejectUnauthorized = process.env.MCP_GATEWAY_REJECT_UNAUTHORIZED === '1';
 const _devHttpsAgent = new https.Agent({ rejectUnauthorized: _gatewayRejectUnauthorized });
 
-// Gateway runs as a sibling service (HTTP, loopback) per run-bank.sh.
+// Gateway runs as a sibling service (HTTP, loopback) per run-demo.sh.
 // Override via MCP_GATEWAY_HTTP_URL env var; default matches the gateway's listener (PORT=3005, HOST=0.0.0.0).
 const DEFAULT_GATEWAY_URL = process.env.MCP_GATEWAY_HTTP_URL || 'http://localhost:3005';
 const DEFAULT_TIMEOUT_MS  = 30_000;

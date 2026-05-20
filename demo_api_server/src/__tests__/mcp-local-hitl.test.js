@@ -5,6 +5,22 @@
  */
 const { callToolLocal } = require('../../services/mcpLocalTools');
 
+// Reset admin accounts before each test in the HITL group to ensure
+// sav-4 always has enough balance regardless of test run order or parallel execution.
+const dataStore = require('../../data/store');
+beforeEach(async () => {
+  const sav4 = dataStore.getAccountById('sav-4');
+  if (sav4) {
+    const deficit = 800 - sav4.balance; // restore to $800
+    if (deficit !== 0) await dataStore.updateAccountBalance('sav-4', deficit);
+  }
+  const chk4 = dataStore.getAccountById('chk-4');
+  if (chk4) {
+    const deficit = 4200 - chk4.balance; // restore to $4200
+    if (deficit !== 0) await dataStore.updateAccountBalance('chk-4', deficit);
+  }
+});
+
 describe('mcpLocalTools HITL (high-value writes)', () => {
   it('returns hitl_required for create_transfer over $500 (non-admin)', async () => {
     const r = await callToolLocal(
@@ -29,8 +45,7 @@ describe('mcpLocalTools HITL (high-value writes)', () => {
   });
 
   it('allows transfer over $500 for admin user', async () => {
-    // sav-4 has $5000 in runtimeData; chk-4 has $0. Transfer from savings so
-    // the balance check passes regardless of prior test runs mutating chk-4.
+    // beforeEach resets sav-4 to $800 so this $600 transfer always has enough balance.
     const r = await callToolLocal(
       'create_transfer',
       { from_account_id: 'sav-4', to_account_id: 'chk-4', amount: 600 },

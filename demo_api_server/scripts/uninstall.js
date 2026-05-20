@@ -9,7 +9,7 @@
  * the same machine, or to free disk before deleting the repo. Four phases,
  * any of which can be skipped via flags:
  *
- *   1. Stop services        ./run-bank.sh stop
+ *   1. Stop services        ./run-demo.sh stop
  *   2. Wipe PingOne env     bootstrapPingOne.js --wipe-environment
  *                           (y/N confirmation, idempotent)
  *   3. Delete local state   .env, data/persistent/, data/sessions.db,
@@ -70,7 +70,7 @@ Usage:
 
 What runs by default (override with --keep-* flags):
 
-  Phase 1   Stop services        ./run-bank.sh stop
+  Phase 1   Stop services        ./run-demo.sh stop
   Phase 2   Wipe PingOne env     bootstrapPingOne.js --wipe-environment
                                  (y/N confirmation, idempotent)
   Phase 3   Delete local state   .env, data/persistent/, data/sessions.db,
@@ -222,7 +222,7 @@ Other recipes you could run instead (Ctrl-C now and pick one):
        npm run pingone:wipe
 
   2) Just stop services
-       ./run-bank.sh stop
+       ./run-demo.sh stop
 
   3) Wipe local + PingOne, then re-provision (NOT delete — re-install)
        npm run reset
@@ -261,16 +261,16 @@ async function confirmRun() {
 
 // ── Phase 1: stop services ──────────────────────────────────────────────────
 async function phaseStopServices() {
-  const runBank = path.join(REPO_ROOT, 'run-bank.sh');
+  const runBank = path.join(REPO_ROOT, 'run-demo.sh');
   if (!fs.existsSync(runBank)) {
-    skip('run-bank.sh not found — assuming services are not running here');
+    skip('run-demo.sh not found — assuming services are not running here');
     return 0;
   }
   return new Promise((resolve) => {
     const child = spawn('bash', [runBank, 'stop'], { cwd: REPO_ROOT, stdio: 'inherit' });
     child.on('close', (code) => {
       if (code === 0) ok('All services stopped');
-      else            fail(`run-bank.sh stop exited ${code} — continuing anyway`);
+      else            fail(`run-demo.sh stop exited ${code} — continuing anyway`);
       // Don't fail the whole uninstall if stop returns non-zero; some services
       // may already be down. The next phases don't depend on a clean stop.
       resolve(0);
@@ -351,7 +351,7 @@ async function phaseDeleteNodeModules() {
       fail(`Could not remove ${svc}/node_modules: ${e.message}`);
     }
   }
-  // Also remove any dist/ build outputs the run-bank.sh dep loop generated.
+  // Also remove any dist/ build outputs the run-demo.sh dep loop generated.
   // These are tiny but their presence confuses a future fresh install.
   for (const svc of SERVICES) {
     const dist = path.join(REPO_ROOT, svc, 'dist');

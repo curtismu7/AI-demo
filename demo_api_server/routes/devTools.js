@@ -33,11 +33,11 @@ router.post('/run-servers', requireSession, runServersLimiter, (req, res) => {
   setTimeout(() => { activeLaunch = false; }, 60_000);
 
   // Use osascript to open a real Terminal window with a full GUI session.
-  // This gives run-bank.sh a TTY so CRA's npm start can open the browser,
-  // identical to running ./run-bank.sh restart in a terminal manually.
+  // This gives run-demo.sh a TTY so CRA's npm start can open the browser,
+  // identical to running ./run-demo.sh restart in a terminal manually.
   const osa = `tell application "Terminal"
     activate
-    do script "cd ${REPO_ROOT} && ./run-bank.sh restart"
+    do script "cd ${REPO_ROOT} && ./run-demo.sh restart"
   end tell`;
 
   const proc = spawn('osascript', ['-e', osa], {

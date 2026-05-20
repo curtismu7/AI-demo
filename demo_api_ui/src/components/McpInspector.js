@@ -326,7 +326,7 @@ const McpInspector = ({ user, onLogout }) => {
             <div className="mcp-inspector__tools">
               {toolsSourceInfo?.local && (
                 <p className="mcp-inspector__muted mcp-inspector__muted--block">
-                  Showing the <strong>static</strong> tool catalog — the API server or MCP server is not reachable right now. Start the server with <code>./run-bank.sh</code> and click Refresh. Invoke uses the local in-process handler. For a live <code>tools/list</code> from <code>banking_mcp_server</code>, sign in so the BFF holds a real OAuth token.
+                  Showing the <strong>static</strong> tool catalog — the API server or MCP server is not reachable right now. Start the server with <code>./run-demo.sh</code> and click Refresh. Invoke uses the local in-process handler. For a live <code>tools/list</code> from <code>banking_mcp_server</code>, sign in so the BFF holds a real OAuth token.
                   {toolsSourceInfo.reason ? (
                     <>
                       {' '}

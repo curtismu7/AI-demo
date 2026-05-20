@@ -39,8 +39,8 @@ Eight `git mv` calls, one per directory. `git mv` tracks the rename so per-file 
 | File | What changes |
 |---|---|
 | `package.json` | `cd banking_*` in all script entries |
-| `run-bank.sh` | `SVC_LIST` array, `BASEDIR/banking_*` checks, test block `cd` calls |
-| `run.sh` | Same pattern as `run-bank.sh` |
+| `run-demo.sh` | `SVC_LIST` array, `BASEDIR/banking_*` checks, test block `cd` calls |
+| `run.sh` | Same pattern as `run-demo.sh` |
 | `run-tests.sh` | `cd banking_*` |
 | `start.sh` | Any `banking_*` dir references |
 | `CLAUDE.md` | Service table (path column), commands section |
@@ -90,7 +90,7 @@ Strings like `'server: banking_mcp_server'`, `'source: banking_mortgage_service'
 ## Execution Order
 
 1. `git mv` all 8 directories (one commit or staged together).
-2. `sed` root-level files (package.json, run-bank.sh, run.sh, run-tests.sh, start.sh, CLAUDE.md, .env.example, .env.replit.example, .github/workflows/test.yml, scope-topology.json).
+2. `sed` root-level files (package.json, run-demo.sh, run.sh, run-tests.sh, start.sh, CLAUDE.md, .env.example, .env.replit.example, .github/workflows/test.yml, scope-topology.json).
 3. Update cross-service `require()` paths in the 3 vault files and the gateway index.
 4. Check `tests/naming-validation.test.js` — update expected values to `demo_*`.
 5. Run verification criteria above.

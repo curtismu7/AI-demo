@@ -394,7 +394,7 @@ async function main() {
   console.log('       cd ../certs && mkcert api.ping.demo localhost 127.0.0.1 && cd ..');
   console.log('');
   console.log('  5. Start the server:');
-  console.log('       ./run-bank.sh');
+  console.log('       ./run-demo.sh');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('');
   console.log('SECURITY: This archive contains your .env and all');
