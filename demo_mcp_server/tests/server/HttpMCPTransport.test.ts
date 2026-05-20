@@ -354,17 +354,17 @@ describe('HttpMCPTransport', () => {
   });
 
   // -------------------------------------------------------------------------
-  // GET /mcp — 405 (SSE not supported)
+  // GET /mcp — SSE stream (requires valid session; 404 when none)
   // -------------------------------------------------------------------------
 
   describe('GET /mcp', () => {
-    it('should return 405 with Allow header', async () => {
+    it('should return 404 when no valid session exists', async () => {
       const req = makeRequest({ method: 'GET', body: undefined });
       const mock = makeResponse();
 
       await transport.handleRequest(req, mock.res, '/mcp');
 
-      expect(mock.statusCode).toBe(405);
+      expect(mock.statusCode).toBe(404);
     });
   });
 
