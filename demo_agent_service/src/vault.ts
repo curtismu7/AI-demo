@@ -1,8 +1,8 @@
 'use strict';
 
 /**
- * banking-agent-service vault loader (architectural parity with
- * banking_mcp_gateway/src/vault.ts, Phase 269 Plan 04).
+ * demo-agent-service vault loader (architectural parity with
+ * demo_mcp_gateway/src/vault.ts, Phase 269 Plan 04).
  *
  * Reads selected entries from the BFF-side encrypted vault at `secrets.vault`
  * and copies them into `process.env` BEFORE the agent's existing loadConfig()
@@ -34,17 +34,17 @@
 import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
-// The vault library is CommonJS over in banking_api_server. We require it via
+// The vault library is CommonJS over in demo_api_server. We require it via
 // a relative path. No TS types exist for it. Using `require()` with an
 // eslint disable + cast keeps the diff small and avoids a .d.ts file.
-// banking_agent_service is a sibling of banking_api_server under the repo
+// demo_agent_service is a sibling of demo_api_server under the repo
 // root, identical to the gateway, so the relative path is the same.
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any
-const vaultLib: any = require('../../banking_api_server/lib/vault');
+const vaultLib: any = require('../../demo_api_server/lib/vault');
 
 // REPO_ROOT resolves up from this file:
-//   compiled: banking_agent_service/dist/vault.js  → ../.. → repo root
-//   source:   banking_agent_service/src/vault.ts   → ../.. → repo root
+//   compiled: demo_agent_service/dist/vault.js  → ../.. → repo root
+//   source:   demo_agent_service/src/vault.ts   → ../.. → repo root
 // Both layouts land on the same repo root (tsconfig outDir ./dist,
 // rootDir ./src — identical to the gateway).
 const REPO_ROOT = resolve(__dirname, '..', '..');
@@ -68,7 +68,7 @@ export interface VaultLoadOpts {
 /**
  * Load allowlisted vault entries into process.env. See module docstring above
  * for the allowlist, Vercel bypass, and VAULT_PASSWORD lifecycle rules.
- * Callers (banking_agent_service/src/index.ts) MUST await loadVaultIntoEnv
+ * Callers (demo_agent_service/src/index.ts) MUST await loadVaultIntoEnv
  * before invoking loadConfig().
  */
 export async function loadVaultIntoEnv(opts: VaultLoadOpts = {}): Promise<VaultLoadResult> {

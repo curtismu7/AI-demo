@@ -31,14 +31,14 @@
  * `delete process.env.VAULT_PASSWORD` to shrink the /proc/<pid>/environ
  * leak window from "process lifetime" to "first ~10ms of startup".
  *
- * This mirrors banking_mcp_gateway/src/vault.ts (the proven pattern); keep
+ * This mirrors demo_mcp_gateway/src/vault.ts (the proven pattern); keep
  * the two in sync when the vault library API changes.
  */
 
 import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
-// The vault library is CommonJS over in banking_api_server. We require it via
+// The vault library is CommonJS over in demo_api_server. We require it via
 // a relative path. No TS types exist for it. Using `require()` with an
 // eslint disable + cast keeps the diff small and avoids a .d.ts file.
 //
@@ -50,20 +50,20 @@ import { resolve, join } from 'node:path';
 let vaultLib: any;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  vaultLib = require('../../banking_api_server/lib/vault');
+  vaultLib = require('../../demo_api_server/lib/vault');
 } catch (err) {
   throw new Error(
-    '[MCP vault] cannot load banking_api_server/lib/vault (expected at ' +
-      '<repo-root>/banking_api_server/lib/vault relative to this module). ' +
-      'The MCP server must be deployed alongside banking_api_server, or this ' +
+    '[MCP vault] cannot load demo_api_server/lib/vault (expected at ' +
+      '<repo-root>/demo_api_server/lib/vault relative to this module). ' +
+      'The MCP server must be deployed alongside demo_api_server, or this ' +
       'module must be vendored into the MCP server build. Underlying error: ' +
       (err instanceof Error ? err.message : String(err)),
   );
 }
 
 // REPO_ROOT resolves up from this file:
-//   compiled: banking_mcp_server/dist/vault.js  → ../.. → repo root
-//   source:   banking_mcp_server/src/vault.ts   → ../.. → repo root
+//   compiled: demo_mcp_server/dist/vault.js  → ../.. → repo root
+//   source:   demo_mcp_server/src/vault.ts   → ../.. → repo root
 // Both layouts land on the same repo root.
 const REPO_ROOT = resolve(__dirname, '..', '..');
 const DEFAULT_VAULT_PATH = join(REPO_ROOT, 'secrets.vault');
@@ -86,7 +86,7 @@ export interface VaultLoadOpts {
 /**
  * Load allowlisted vault entries into process.env. See module docstring above
  * for the allowlist, Vercel bypass, and VAULT_PASSWORD lifecycle rules.
- * Callers (banking_mcp_server/src/index.ts) MUST await loadVaultIntoEnv
+ * Callers (demo_mcp_server/src/index.ts) MUST await loadVaultIntoEnv
  * before invoking loadConfiguration().
  */
 export async function loadVaultIntoEnv(opts: VaultLoadOpts = {}): Promise<VaultLoadResult> {

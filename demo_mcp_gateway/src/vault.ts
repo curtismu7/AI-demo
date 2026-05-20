@@ -30,7 +30,7 @@
 import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
-// The vault library is CommonJS over in banking_api_server. We require it via
+// The vault library is CommonJS over in demo_api_server. We require it via
 // a relative path. No TS types exist for it. Using `require()` with an
 // eslint disable + cast keeps the diff small and avoids a .d.ts file.
 //
@@ -42,20 +42,20 @@ import { resolve, join } from 'node:path';
 let vaultLib: any;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  vaultLib = require('../../banking_api_server/lib/vault');
+  vaultLib = require('../../demo_api_server/lib/vault');
 } catch (err) {
   throw new Error(
-    "[GW vault] cannot load banking_api_server/lib/vault (expected at " +
-      "<repo-root>/banking_api_server/lib/vault relative to this module). " +
-      "The gateway must be deployed alongside banking_api_server, or this " +
+    "[GW vault] cannot load demo_api_server/lib/vault (expected at " +
+      "<repo-root>/demo_api_server/lib/vault relative to this module). " +
+      "The gateway must be deployed alongside demo_api_server, or this " +
       "module must be vendored into the gateway build. Underlying error: " +
       (err instanceof Error ? err.message : String(err)),
   );
 }
 
 // REPO_ROOT resolves up from this file:
-//   compiled: banking_mcp_gateway/dist/vault.js  → ../.. → repo root
-//   source:   banking_mcp_gateway/src/vault.ts   → ../.. → repo root
+//   compiled: demo_mcp_gateway/dist/vault.js  → ../.. → repo root
+//   source:   demo_mcp_gateway/src/vault.ts   → ../.. → repo root
 // Both layouts land on the same repo root.
 const REPO_ROOT = resolve(__dirname, '..', '..');
 const DEFAULT_VAULT_PATH = join(REPO_ROOT, 'secrets.vault');
@@ -78,7 +78,7 @@ export interface VaultLoadOpts {
 /**
  * Load allowlisted vault entries into process.env. See module docstring above
  * for the allowlist, Vercel bypass, and VAULT_PASSWORD lifecycle rules.
- * Callers (banking_mcp_gateway/src/index.ts) MUST await loadVaultIntoEnv
+ * Callers (demo_mcp_gateway/src/index.ts) MUST await loadVaultIntoEnv
  * before invoking loadConfig().
  */
 export async function loadVaultIntoEnv(opts: VaultLoadOpts = {}): Promise<VaultLoadResult> {

@@ -172,14 +172,14 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
   }
 
   // Serve OpenAPI specs for PingAuthorize per-tool scope policy
-  // GET /openapi/mcp-olb  → banking_mcp_server OpenAPI spec
-  // GET /openapi/mcp-invest → banking_mcp_invest OpenAPI spec
+  // GET /openapi/mcp-olb  → demo_mcp_server OpenAPI spec
+  // GET /openapi/mcp-invest → demo_mcp_invest OpenAPI spec
   const openApiMatch = url.match(/^\/openapi\/(mcp-olb|mcp-invest)$/);
   if (openApiMatch && req.method === 'GET') {
     const server = openApiMatch[1];
     const specPaths: Record<string, string> = {
-      'mcp-olb':    join(__dirname, '../../banking_mcp_server/openapi/mcp-olb.openapi.json'),
-      'mcp-invest': join(__dirname, '../../banking_mcp_invest/openapi/mcp-invest.openapi.json'),
+      'mcp-olb':    join(__dirname, '../../demo_mcp_server/openapi/mcp-olb.openapi.json'),
+      'mcp-invest': join(__dirname, '../../demo_mcp_invest/openapi/mcp-invest.openapi.json'),
     };
     const specPath = specPaths[server];
     if (specPath && existsSync(specPath)) {
