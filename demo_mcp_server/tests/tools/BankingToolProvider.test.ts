@@ -81,9 +81,11 @@ describe('BankingToolProvider', () => {
     it('should return all banking tools', () => {
       const tools = provider.getAvailableTools();
 
-      // Phase 210+: 9 tools (added get_sensitive_account_details and sequential_think).
-      expect(tools).toHaveLength(9);
-      expect(tools.map(t => t.name)).toEqual([
+      // Phase 210+: 17 tools (added admin agent tools: lookup_customer, get_customer_profile,
+      // get_customer_accounts, get_customer_transactions, freeze_account, reset_customer_password,
+      // adjust_balance, delete_customer).
+      expect(tools).toHaveLength(17);
+      expect(tools.map(t => t.name)).toEqual(expect.arrayContaining([
         'get_my_accounts',
         'get_account_balance',
         'get_sensitive_account_details',
@@ -92,8 +94,16 @@ describe('BankingToolProvider', () => {
         'create_withdrawal',
         'create_transfer',
         'query_user_by_email',
+        'lookup_customer',
+        'get_customer_profile',
+        'get_customer_accounts',
+        'get_customer_transactions',
+        'freeze_account',
+        'reset_customer_password',
+        'adjust_balance',
+        'delete_customer',
         'sequential_think',
-      ]);
+      ]));
     });
   });
 

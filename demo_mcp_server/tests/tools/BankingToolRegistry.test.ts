@@ -14,6 +14,14 @@ describe('BankingToolRegistry', () => {
     'create_withdrawal',
     'create_transfer',
     'query_user_by_email',
+    'lookup_customer',
+    'get_customer_profile',
+    'get_customer_accounts',
+    'get_customer_transactions',
+    'freeze_account',
+    'reset_customer_password',
+    'adjust_balance',
+    'delete_customer',
     'sequential_think',
   ];
 

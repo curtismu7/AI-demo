@@ -358,6 +358,13 @@ export class BankingToolRegistry {
       requiredScopes: ['admin:read', 'users:read'],
       handler: 'executeLookupCustomer',
       readOnly: true,
+      icons: [
+        {
+          src: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%220055cc%22 d=%22M12 12c2.7 0 4-1.8 4-4s-1.3-4-4-4-4 1.8-4 4 1.3 4 4 4zm0 2c-4 0-7 2-7 4v1h14v-1c0-2-3-4-7-4z%22/%3E%3C/svg%3E',
+          mimeType: 'image/svg+xml',
+          sizes: ['16x16', '32x32']
+        }
+      ],
       annotations: { userFacing: { readable: true, destructive: false, idempotent: true, openWorld: false } },
       inputSchema: {
         type: 'object',
@@ -377,6 +384,13 @@ export class BankingToolRegistry {
       requiredScopes: ['admin:read', 'users:read'],
       handler: 'executeGetCustomerProfile',
       readOnly: true,
+      icons: [
+        {
+          src: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%220055cc%22 d=%22M12 12c2.7 0 4-1.8 4-4s-1.3-4-4-4-4 1.8-4 4 1.3 4 4 4zm0 2c-4 0-7 2-7 4v1h14v-1c0-2-3-4-7-4z%22/%3E%3C/svg%3E',
+          mimeType: 'image/svg+xml',
+          sizes: ['16x16', '32x32']
+        }
+      ],
       annotations: { userFacing: { readable: true, destructive: false, idempotent: true, openWorld: false } },
       inputSchema: {
         type: 'object',
@@ -396,6 +410,13 @@ export class BankingToolRegistry {
       requiredScopes: ['admin:read', 'users:read'],
       handler: 'executeGetCustomerAccounts',
       readOnly: true,
+      icons: [
+        {
+          src: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%220055cc%22 d=%22M12 12c2.7 0 4-1.8 4-4s-1.3-4-4-4-4 1.8-4 4 1.3 4 4 4zm0 2c-4 0-7 2-7 4v1h14v-1c0-2-3-4-7-4z%22/%3E%3C/svg%3E',
+          mimeType: 'image/svg+xml',
+          sizes: ['16x16', '32x32']
+        }
+      ],
       annotations: { userFacing: { readable: true, destructive: false, idempotent: true, openWorld: false } },
       inputSchema: {
         type: 'object',
@@ -415,6 +436,13 @@ export class BankingToolRegistry {
       requiredScopes: ['admin:read', 'users:read'],
       handler: 'executeGetCustomerTransactions',
       readOnly: true,
+      icons: [
+        {
+          src: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%220055cc%22 d=%22M12 12c2.7 0 4-1.8 4-4s-1.3-4-4-4-4 1.8-4 4 1.3 4 4 4zm0 2c-4 0-7 2-7 4v1h14v-1c0-2-3-4-7-4z%22/%3E%3C/svg%3E',
+          mimeType: 'image/svg+xml',
+          sizes: ['16x16', '32x32']
+        }
+      ],
       annotations: { userFacing: { readable: true, destructive: false, idempotent: true, openWorld: false } },
       inputSchema: {
         type: 'object',
@@ -435,6 +463,13 @@ export class BankingToolRegistry {
       requiredScopes: ['admin:write', 'users:manage'],
       handler: 'executeFreezeAccount',
       readOnly: false,
+      icons: [
+        {
+          src: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22cc5500%22 d=%22M12 12c2.7 0 4-1.8 4-4s-1.3-4-4-4-4 1.8-4 4 1.3 4 4 4zm0 2c-4 0-7 2-7 4v1h14v-1c0-2-3-4-7-4z%22/%3E%3C/svg%3E',
+          mimeType: 'image/svg+xml',
+          sizes: ['16x16', '32x32']
+        }
+      ],
       annotations: { userFacing: { readable: false, destructive: true, idempotent: true, openWorld: false } },
       inputSchema: {
         type: 'object',
@@ -455,6 +490,13 @@ export class BankingToolRegistry {
       requiredScopes: ['admin:write', 'users:manage'],
       handler: 'executeResetCustomerPassword',
       readOnly: false,
+      icons: [
+        {
+          src: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22cc5500%22 d=%22M12 12c2.7 0 4-1.8 4-4s-1.3-4-4-4-4 1.8-4 4 1.3 4 4 4zm0 2c-4 0-7 2-7 4v1h14v-1c0-2-3-4-7-4z%22/%3E%3C/svg%3E',
+          mimeType: 'image/svg+xml',
+          sizes: ['16x16', '32x32']
+        }
+      ],
       annotations: { userFacing: { readable: false, destructive: false, idempotent: true, openWorld: false } },
       inputSchema: {
         type: 'object',
@@ -474,6 +516,13 @@ export class BankingToolRegistry {
       requiredScopes: ['admin:write', 'users:manage'],
       handler: 'executeAdjustBalance',
       readOnly: false,
+      icons: [
+        {
+          src: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2020/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22cc5500%22 d=%22M12 12c2.7 0 4-1.8 4-4s-1.3-4-4-4-4 1.8-4 4 1.3 4 4 4zm0 2c-4 0-7 2-7 4v1h14v-1c0-2-3-4-7-4z%22/%3E%3C/svg%3E',
+          mimeType: 'image/svg+xml',
+          sizes: ['16x16', '32x32']
+        }
+      ],
       annotations: { userFacing: { readable: false, destructive: false, idempotent: false, openWorld: false } },
       inputSchema: {
         type: 'object',
@@ -495,6 +544,13 @@ export class BankingToolRegistry {
       requiredScopes: ['admin:write', 'admin:delete', 'users:manage'],
       handler: 'executeDeleteCustomer',
       readOnly: false,
+      icons: [
+        {
+          src: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22cc0000%22 d=%22M12 12c2.7 0 4-1.8 4-4s-1.3-4-4-4-4 1.8-4 4 1.3 4 4 4zm0 2c-4 0-7 2-7 4v1h14v-1c0-2-3-4-7-4z%22/%3E%3C/svg%3E',
+          mimeType: 'image/svg+xml',
+          sizes: ['16x16', '32x32']
+        }
+      ],
       annotations: { userFacing: { readable: false, destructive: true, idempotent: false, openWorld: false } },
       inputSchema: {
         type: 'object',

@@ -151,5 +151,3 @@ Granted scopes: — (none; resource-server or worker app)
 | `transfer` | legacy-alias | `write` | — |
 | `deposit` | legacy-alias | `write` | — |
 | `withdraw` | legacy-alias | `write` | — |
-| `banking_get_account_balance` | legacy-alias | `read` | — |
-| `banking_create_transfer` | legacy-alias | `write` | — |
