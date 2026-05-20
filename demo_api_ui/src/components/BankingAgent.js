@@ -6717,6 +6717,7 @@ export default function BankingAgent({
                 {isLoggedIn && (
                   <BankingChips
                     customChips={customChips}
+                    user={user}
                     onChipClick={({ message, label }) => {
                       setShowDiscovery(false);
                       if (isAgentBlockedByConsentDecline()) {

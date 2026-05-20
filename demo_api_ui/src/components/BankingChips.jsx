@@ -30,6 +30,17 @@ export function applyChipLabels(chips, manifestChips) {
   return chips.map((c) => (byKey.has(c.id) ? { ...c, label: byKey.get(c.id) } : c));
 }
 
+const ADMIN_CHIPS = [
+  { id: 'lookup_customer',           label: 'Look Up Customer',   message: 'look up a customer' },
+  { id: 'get_customer_transactions', label: 'View Transactions',  message: 'show last 5 transactions for this customer' },
+  { id: 'get_customer_profile',      label: 'View Profile',       message: 'show full profile for this customer' },
+  { id: 'get_customer_accounts',     label: 'View Accounts',      message: 'show all accounts for this customer' },
+  { id: 'freeze_account',            label: 'Freeze Account',     message: 'freeze this account' },
+  { id: 'adjust_balance',            label: 'Adjust Balance',     message: 'adjust account balance' },
+  { id: 'reset_customer_password',   label: 'Reset Password',     message: 'reset password for this customer' },
+  { id: 'delete_customer',           label: 'Delete Customer',    message: 'delete this customer' },
+];
+
 const LLM_CHIPS = {
   "Time-Based": [
     {
@@ -172,6 +183,7 @@ export default function BankingChips({
   onChipClick,
   isLoading,
   customChips = [],
+  user,
 }) {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const { dashboard } = useTheme();
@@ -192,6 +204,25 @@ export default function BankingChips({
 
   return (
     <div className="banking-chips-content">
+      {user?.role === 'admin' && (
+        <div className="banking-chips-dropdown__section">
+          <div className="banking-chips-dropdown__label">Admin Actions</div>
+          <div className="banking-chips-dropdown__grid banking-chips-dropdown__grid--heuristic">
+            {ADMIN_CHIPS.map((chip) => (
+              <button
+                type="button"
+                key={chip.id}
+                className="banking-chips-dropdown__button banking-chips-dropdown__button--heuristic"
+                onClick={() => handleChipClick(chip)}
+                disabled={isLoading}
+                title={chip.message}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {/* Heuristic Chips Section */}
       <div className="banking-chips-dropdown__section">
         <div className="banking-chips-dropdown__label">Quick Actions</div>
