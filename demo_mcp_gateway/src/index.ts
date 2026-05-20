@@ -888,9 +888,10 @@ async function handleMessage(
 }
 
 async function proxyToolsList(target: 'olb' | 'invest', inboundToken: string): Promise<JsonRpcResponse> {
-  const backendUri = backendResourceUri(target, config);
   const wsUrl = backendWsUrl(target, config);
-  const backendToken = await exchangeTokenForBackend(inboundToken, backendUri, config);
+  const backendToken = config.mcpServerPassthrough
+    ? inboundToken
+    : await exchangeTokenForBackend(inboundToken, backendResourceUri(target, config), config);
   return proxyJsonRpc(wsUrl, backendToken, {
     jsonrpc: '2.0',
     id: `gw-list-${target}`,
