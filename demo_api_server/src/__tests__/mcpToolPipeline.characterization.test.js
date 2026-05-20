@@ -230,7 +230,7 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
     expect(outcome).toMatchObject({ kind: 'error', httpStatus: 401, body: { error: 'token_inactive', need_auth: true } });
   });
 
-  test('remote success via gateway with gwAuditTrail → 3 gw token events appended', async () => {
+  test('remote success via gateway with gwAuditTrail → gw-exchange removed', async () => {
     const deps = makeDeps();
     deps.config = { ...deps.config, useGateway: true, gatewayHttpUrl: 'http://gw' };
     deps.callToolViaGateway = jest.fn(async () => ({
@@ -239,7 +239,8 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
     }));
     const outcome = await runMcpToolPipeline(makeCtx({ deps }));
     const ids = outcome.body.tokenEvents.map(e => e.id);
-    expect(ids).toEqual(expect.arrayContaining(['gw-introspection', 'gw-authorize', 'gw-exchange']));
+    // gw-exchange token event code was removed — gateway still returns exchange in audit trail, but we don't emit it
+    expect(ids).not.toContain('gw-exchange');
   });
 
   test('mcp_insufficient_scope thrown by remote → block 403 mcp_scope_denied, NO local fallback', async () => {
