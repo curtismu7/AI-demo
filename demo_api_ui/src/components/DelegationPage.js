@@ -252,7 +252,7 @@ function LiveTokenChainPanel() {
   return (
     <div style={S.card}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ ...S.sectionHeading, marginBottom: 0 }}>📡 Live Token Chain</h2>
+        <h2 style={{ ...S.sectionHeading, marginBottom: 0 }}>Live Token Chain</h2>
         <button
           onClick={load}
           disabled={loading}
@@ -272,7 +272,7 @@ function LiveTokenChainPanel() {
           borderRadius: 8, fontSize: 13, color: '#1e40af', display: 'flex',
           alignItems: 'center', gap: 10,
         }}>
-          <span style={{ fontSize: 18 }}>🔒</span>
+          <span style={{ fontSize: 18 }}>[!]</span>
           <span>
             <strong>Sign in required</strong> — the token chain is only available for
             authenticated sessions.{' '}
@@ -400,7 +400,7 @@ function DemoTalkTrackPanel() {
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
         onClick={() => setOpen(o => !o)}
       >
-        <h2 style={{ ...S.sectionHeading, marginBottom: 0 }}>🎤 Demo Talk Track</h2>
+        <h2 style={{ ...S.sectionHeading, marginBottom: 0 }}>Demo Talk Track</h2>
         <span style={{ fontSize: 20, color: '#374151' }}>{open ? '▲' : '▼'}</span>
       </div>
       {open && (

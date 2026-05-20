@@ -30,7 +30,7 @@ function HeaderSessionTimer({ user }) {
       className={`header-session-timer${expiringSoon ? ' header-session-timer--expiring' : ''}`}
       title={`Session expires in ${label}`}
     >
-      ⏰ {label}
+      {label}
     </span>
   );
 }
@@ -119,13 +119,13 @@ const Header = ({ user, onLogout }) => {
                   to="/config" 
                   className={`nav-link ${location.pathname === '/config' ? 'active' : ''}`}
                 >
-                  ⚙️ Config
+                  Config
                 </NavLink>
                 <NavLink 
                   to="/postman" 
                   className={`nav-link ${location.pathname === '/postman' ? 'active' : ''}`}
                 >
-                  📮 Postman
+                  Postman
                 </NavLink>
               </>
             ) : (

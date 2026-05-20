@@ -1,6 +1,6 @@
 // banking_api_ui/src/components/dashboard/AccountSummary.js
 import React, { useState, useMemo } from 'react';
-import { useVerticalContext } from '../context/VerticalContext';
+import { useVertical } from '../../context/VerticalContext';
 import './AccountSummary.css';
 
 /** Format a number as USD currency — $1,234.56 */
@@ -13,7 +13,7 @@ const fmt = (n) =>
 const DEBT_TYPES = new Set(['car_loan', 'mortgage', 'credit']);
 
 const AccountSummary = ({ accounts, isDemoMode, onNavigateToLogin, expandedAccounts, onToggleAccount }) => {
-  const { currentVertical } = useVerticalContext();
+  const { vertical: currentVertical } = useVertical();
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
 

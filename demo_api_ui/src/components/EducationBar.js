@@ -135,7 +135,7 @@ export default function EducationBar() {
                 close();
               }}
             >
-              🗺 Guided Demo Tour (5 min)
+              Guided Demo Tour (5 min)
             </button>
           </div>
 
@@ -148,7 +148,7 @@ export default function EducationBar() {
                 close();
               }}
             >
-              ⭐ AI Agent Best Practices
+              AI Agent Best Practices
             </button>
           </div>
 
@@ -363,7 +363,7 @@ export default function EducationBar() {
               onClick={openApiTraffic}
               title="Open API Traffic Viewer in new window"
             >
-              🌐 API
+              API
             </button>
             <button
               type="button"
