@@ -17,11 +17,13 @@ export interface ReasonMessage {
 export interface ReasonRequest {
   messages: ReasonMessage[];
   tools: ReasonToolSchema[];
-  provider: 'helix' | 'ollama'; // already resolved by the BFF
+  provider: 'helix' | 'ollama' | 'anthropic'; // already resolved by the BFF
   model?: string;
   // Helix connection config (BFF-owned; passed through, never a token)
   helixConfig?: Record<string, string | undefined>;
   ollamaBaseUrl?: string;
+  // Anthropic — API key passed from BFF env; never a user token
+  anthropicApiKey?: string;
 }
 
 export type ReasonResponse =

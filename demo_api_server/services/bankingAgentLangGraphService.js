@@ -687,6 +687,7 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       model,
       helixConfig: extractHelixConfig(langchainConfig),
       ollamaBaseUrl: langchainConfig && langchainConfig.ollama_base_url,
+      anthropicApiKey: process.env.ANTHROPIC_API_KEY,
       maxIterations: MAX_TOOL_ITERATIONS,
       executeTool: async (name, args) =>
         executeBffTool({ name, args, userId, userToken, req, tokenEvents, sessionId }),

@@ -16,7 +16,12 @@ async function runReasonLoop(p) {
     try {
       resp = await axios.post(
         REASON_URL,
-        { messages, tools: p.tools, provider: p.provider, model: p.model, helixConfig: p.helixConfig, ollamaBaseUrl: p.ollamaBaseUrl },
+        {
+          messages, tools: p.tools, provider: p.provider, model: p.model,
+          helixConfig: p.helixConfig, ollamaBaseUrl: p.ollamaBaseUrl,
+          // Anthropic API key forwarded from BFF env; never a user token
+          anthropicApiKey: p.anthropicApiKey,
+        },
         { headers: { 'x-internal-gateway-secret': secret }, timeout: 70000 },
       );
     } catch (err) {
