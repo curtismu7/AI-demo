@@ -43,6 +43,33 @@ export interface ToolArgs {
   [key: string]: unknown;
 }
 
+export interface TratClaims {
+  reqctx: { tool: string; session_id: string; correlation_id: string };
+  purp: string;
+  azd: { sub: string; act?: string; gateway?: string };
+  rctx: { ip: string; user_agent: string; timestamp: string };
+  trat_sim?: boolean;
+}
+
+function extractTratClaimsLocal(xTratContext: string | undefined): TratClaims | null {
+  if (!xTratContext) return null;
+  try {
+    const parsed = JSON.parse(xTratContext);
+    if (typeof parsed.purp === 'string' && typeof parsed.reqctx?.tool === 'string' && parsed.azd && parsed.rctx) {
+      return {
+        reqctx: parsed.reqctx,
+        purp: parsed.purp,
+        azd: parsed.azd,
+        rctx: parsed.rctx,
+        trat_sim: parsed.trat_sim ?? true,
+      };
+    }
+  } catch {
+    // malformed header
+  }
+  return null;
+}
+
 /**
  * Build the PingAuthorize decision `parameters` block.
  *
@@ -59,10 +86,11 @@ export function buildAuthorizeParameters(
   gatewayResourceUri: string,
   toolName?: string,
   toolArgs?: ToolArgs,
+  tratClaims?: TratClaims | null,
 ): Record<string, string> {
   const decisionContext = method === 'tools/call' ? 'McpToolCall' : 'McpRequest';
   const tokenScopes = (decoded.scope ?? '').split(' ').filter(Boolean);
-  return {
+  const base: Record<string, string> = {
     DecisionContext: decisionContext,
     McpMethod: method,
     ToolName: toolName ?? '',
@@ -74,6 +102,16 @@ export function buildAuthorizeParameters(
     TransactionType: toolArgs?.transaction_type ?? toolName ?? '',
     ToAccountId: toolArgs?.to_account_id ?? '',
   };
+
+  if (tratClaims) {
+    base['TratPurp'] = tratClaims.purp;
+    base['TratAzdAct'] = tratClaims.azd.act ?? '';
+    base['TratSessionId'] = tratClaims.reqctx.session_id;
+    base['TratTool'] = tratClaims.reqctx.tool;
+    base['TratSim'] = String(tratClaims.trat_sim ?? false);
+  }
+
+  return base;
 }
 
 export class PingOneAuthorizeClient {

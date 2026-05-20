@@ -14,7 +14,7 @@
 import axios from 'axios';
 import { DecodedGatewayToken } from './tokenValidator';
 import { GatewayConfig } from './config';
-import { buildAuthorizeParameters, ToolArgs } from './auth/PingOneAuthorizeClient';
+import { buildAuthorizeParameters, ToolArgs, TratClaims } from './auth/PingOneAuthorizeClient';
 import { evaluateScopeDecisionLocally } from './auth/toolScopes';
 
 export interface AuthzDecision {
@@ -62,7 +62,19 @@ export async function guardToolCall(
   decoded: DecodedGatewayToken,
   config: GatewayConfig,
   toolArgs?: ToolArgs,
+  xTratContext?: string,
 ): Promise<AuthzDecision> {
+  // Extract TraT claims from X-TraT-Context header for Authorize enrichment
+  let tratClaims: TratClaims | null = null;
+  if (xTratContext) {
+    try {
+      const parsed = JSON.parse(xTratContext);
+      if (typeof parsed.purp === 'string' && typeof parsed.reqctx?.tool === 'string' && parsed.azd && parsed.rctx) {
+        tratClaims = { reqctx: parsed.reqctx, purp: parsed.purp, azd: parsed.azd, rctx: parsed.rctx, trat_sim: parsed.trat_sim ?? true };
+      }
+    } catch { /* malformed */ }
+  }
+
   // No PingAuthorize configured — apply the local scope decision so the WS
   // transport behaves IDENTICALLY to the HTTP transport
   // (PingOneAuthorizeClient.evaluate) and to a wired PingOne Authorize policy.
@@ -86,6 +98,7 @@ export async function guardToolCall(
         config.gatewayResourceUri,
         toolName,
         toolArgs,
+        tratClaims,
       ),
     };
 
