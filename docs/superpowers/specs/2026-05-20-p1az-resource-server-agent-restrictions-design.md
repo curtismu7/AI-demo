@@ -68,18 +68,22 @@ Config UI helper text: _"Requires agentRestrictions custom attribute on PingOne 
 
 **File:** `demo_api_server/middleware/agentRestrictionsGate.js`
 
-**Wiring:** `app.use(['/api/accounts', '/api/transactions'], agentRestrictionsGate)` in `demo_api_server/server.js`, inserted before the existing `authenticateToken` middleware mounts on those paths. One block, covers both banking route groups automatically.
+**Wiring:** `app.use(['/api/accounts', '/api/transactions', '/api/investment'], agentRestrictionsGate)` in `demo_api_server/server.js`, inserted before the existing `authenticateToken` middleware mounts on those paths. One block, covers all three resource route groups automatically.
+
+Note: `/api/mortgage` is excluded — the mortgage service runs as a separate process with its own API key auth, not routed through the BFF. `/api/admin/*` is excluded — agent tools do not call admin routes.
 
 **Agent call detection:** Presence of `X-Agent-Sub` header. If absent → direct user call → `next()` immediately (no check).
 
 **Capability tier map (static, in middleware file):**
 
 ```
-GET  /api/accounts/*        → read
-GET  /api/transactions/*    → read
-POST /api/transactions       → write
-POST /api/transfers          → write
-PUT  /api/accounts/*         → write
+GET  /api/accounts/*                    → read
+GET  /api/transactions/*                → read
+POST /api/transactions                  → write
+POST /api/transfers                     → write
+PUT  /api/accounts/*                    → write
+GET  /api/investment/accounts/*         → read
+POST /api/investment/accounts/*/trade   → write
 ```
 
 Anything not in the map defaults to `read`.
