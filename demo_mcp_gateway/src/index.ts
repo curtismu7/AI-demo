@@ -4,7 +4,7 @@
  * banking-mcp-gateway — entry point
  *
  * Accepts JSON-RPC over WebSocket from agent1 (token aud: MCP_GW_RESOURCE_URI).
- * Re-exchanges token per target MCP server and proxies requests.
+ * Forwards original TX token per target MCP server and proxies requests.
  *
  * HTTP surfaces (same port):
  *   GET  /.well-known/oauth-protected-resource  — RFC 9728 metadata for the gateway
@@ -673,16 +673,16 @@ async function handleMessage(
                   specRef: 'OIDC Core §3.1.3.7',
                 },
                 {
-                  id: 'evt-exchange',
-                  label: 'RFC 8693 token exchange: subject_token=user-bearer + actor_token=gateway-creds → new aud=banking_resource_server, act.client_id=gateway',
+                  id: 'gw-passthrough',
+                  label: 'Gateway passthrough: TX token forwarded unchanged to banking_resource_server — no re-exchange (mTLS enforces gateway passage)',
                   tokenType: 'access_token',
                   credentialPath: 'dual_token',
                   status: 'ok',
-                  specRef: 'RFC 8693 + draft-ietf-oauth-identity-chaining',
+                  specRef: 'RFC 8693 — exchange skipped by design',
                 },
                 {
                   id: 'evt-forward',
-                  label: 'Outbound POST to banking_resource_server /identity: exchanged bearer (Authorization) + id_token (params.idToken)',
+                  label: 'Outbound POST to banking_resource_server /identity: original bearer (Authorization) + id_token (params.idToken)',
                   tokenType: 'access_token+id_token',
                   credentialPath: 'dual_token',
                   status: 'ok',
