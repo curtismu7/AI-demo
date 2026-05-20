@@ -1,6 +1,7 @@
 'use strict';
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const mcpToolAuditStore = require('./mcpToolAuditStore');
 
 // In-memory storage for token events (in production, this would be persisted)
 const tokenEvents = new Map();
@@ -237,6 +238,21 @@ function synthesizeFromSession(accessToken) {
  * Returns lightweight tool call events (no full token claims).
  * Per Phase 183 D-08, D-09: Show MCP delegation trail for users.
  */
+function normalizeMCPEvent(event) {
+  return {
+    id: event.eventId,
+    timestamp: event.timestamp,
+    toolName: event.details?.toolName || 'unknown',
+    status: event.details?.result?.success ? 'success' : 'failure',
+    duration: event.details?.result?.duration || 0,
+    chainIndex: event.details?.chainIndex || 0,
+    isDelegated: !!event.details?.exchangedToken,
+    scopes: event.details?.userToken?.scope || [],
+    resultJson: event.details?.result?.resultJson || null,
+    resultSummary: event.details?.result?.summary || null,
+  };
+}
+
 async function getMCPToolCalls(userId) {
   try {
     // Derive MCP server HTTP origin from MCP_SERVER_URL (ws://host:port → http://host:port)
@@ -258,30 +274,35 @@ async function getMCPToolCalls(userId) {
     }
 
     const data = await response.json();
-    const events = Array.isArray(data) ? data : (data.events || []);
+    const remoteEvents = Array.isArray(data) ? data : (data.events || []);
+
+    // Also pull BFF-local records (api-key / gateway-bypass tools like show_mortgage
+    // never reach the MCP server's audit endpoint, but are recorded by mcpToolAuditStore).
+    const localEvents = mcpToolAuditStore.getToolCalls(userId);
 
     // Filter to this user's events and extract lightweight view.
     // Include events with no userId set — BankingToolProvider stores userId: undefined
     // because the MCP session doesn't carry the sub claim. The MCP server is single-user
     // per connection so unattributed events belong to the current authenticated user.
-    return events
+    const remoteFiltered = remoteEvents
       .filter(event => !userId || !event.userId || event.userId === userId || event.details?.userToken?.sub === userId)
-      .map(event => ({
-        id: event.eventId,
-        timestamp: event.timestamp,
-        toolName: event.details?.toolName || 'unknown',
-        status: event.details?.result?.success ? 'success' : 'failure',
-        duration: event.details?.result?.duration || 0,
-        chainIndex: event.details?.chainIndex || 0,
-        isDelegated: !!event.details?.exchangedToken,
-        scopes: event.details?.userToken?.scope || [],
-        resultJson: event.details?.result?.resultJson || null,  // Full MCP tool response
-        resultSummary: event.details?.result?.summary || null
-      }))
-      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      .map(normalizeMCPEvent);
+    const localFiltered = localEvents.map(normalizeMCPEvent);
+
+    // Merge by eventId (remote wins for duplicates) and sort by timestamp.
+    const byId = new Map();
+    for (const e of localFiltered) byId.set(e.id, e);
+    for (const e of remoteFiltered) byId.set(e.id, e); // remote wins
+    return Array.from(byId.values()).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   } catch (error) {
     console.error('[tokenChainService] getMCPToolCalls error:', error.message);
-    return [];
+    // On MCP server error, fall back to BFF-local events only.
+    try {
+      const localEvents = mcpToolAuditStore.getToolCalls(userId);
+      return localEvents.map(normalizeMCPEvent).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    } catch {
+      return [];
+    }
   }
 }
 
