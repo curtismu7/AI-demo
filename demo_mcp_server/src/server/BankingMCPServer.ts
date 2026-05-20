@@ -5,6 +5,10 @@
 
 import WebSocket from 'ws';
 import { createServer, Server as HttpServer } from 'http';
+import * as https from 'https';
+import * as fs from 'fs';
+import * as tls from 'tls';
+import { generate as selfsignedGenerate } from 'selfsigned';
 import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
 import { MCPMessage, MCPResponse } from '../interfaces/mcp';
@@ -15,6 +19,7 @@ import { MCPMessageHandler, MessageHandlerContext } from './MCPMessageHandler';
 import { HttpMCPTransport } from './HttpMCPTransport';
 import { correlationFromMessage } from './correlationFromMessage';
 import { runWithCorrelation } from '../utils/correlationContext';
+import { createMtlsVerifier } from '../auth/mtlsMiddleware';
 
 export interface ServerConfig {
   host: string;
@@ -107,9 +112,48 @@ export class BankingMCPServer extends EventEmitter {
 
     try {
       // Create HTTP server for WebSocket upgrade and OAuth callbacks
-      this.httpServer = createServer((req, res) => {
-        this.handleHttpRequest(req, res);
-      });
+      const mtlsEnabled = process.env.MCP_MTLS_ENABLED === 'true';
+      const gatewayCertPath = process.env.MCP_MTLS_GATEWAY_CERT_PATH ?? '/tmp/gw-client.crt';
+
+      if (mtlsEnabled) {
+        const gatewayCertPem = fs.existsSync(gatewayCertPath)
+          ? fs.readFileSync(gatewayCertPath, 'utf-8')
+          : '';
+        const mtlsVerifier = createMtlsVerifier({ enabled: true, gatewayCertPem });
+
+        const notAfterDate = new Date();
+        notAfterDate.setDate(notAfterDate.getDate() + 1);
+        const serverPems = await selfsignedGenerate(
+          [{ name: 'commonName', value: 'banking-mcp-server' }],
+          { notAfterDate, keySize: 2048, algorithm: 'sha256' },
+        );
+
+        this.httpServer = https.createServer(
+          {
+            cert: serverPems.cert,
+            key: serverPems.private,
+            requestCert: true,
+            rejectUnauthorized: false,
+          },
+          (req, res) => {
+            const socket = req.socket as tls.TLSSocket;
+            try {
+              mtlsVerifier!(socket);
+            } catch (err) {
+              res.writeHead(403, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'mtls_required', message: (err as Error).message }));
+              return;
+            }
+            this.handleHttpRequest(req, res);
+          },
+        ) as unknown as HttpServer;
+
+        console.log('[BankingMCPServer] mTLS enabled — connections require gateway client cert');
+      } else {
+        this.httpServer = createServer((req, res) => {
+          this.handleHttpRequest(req, res);
+        });
+      }
       
       // Create WebSocket server
       this.server = new WebSocket.Server({
