@@ -159,8 +159,6 @@
     "list_transactions":             { "requiredScopes": ["read"], "surface": "legacy-alias" },
     "transfer":                      { "requiredScopes": ["write"], "surface": "legacy-alias" },
     "deposit":                       { "requiredScopes": ["write"], "surface": "legacy-alias" },
-    "withdraw":                      { "requiredScopes": ["write"], "surface": "legacy-alias" },
-    "banking_get_account_balance":   { "requiredScopes": ["read"], "surface": "legacy-alias" },
-    "banking_create_transfer":       { "requiredScopes": ["write"], "surface": "legacy-alias" }
+    "withdraw":                      { "requiredScopes": ["write"], "surface": "legacy-alias" }
   }
 }

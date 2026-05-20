@@ -10,10 +10,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Start all services
 ```bash
-./run-demo.sh               # start API (3001), UI (4000), MCP (8080), LangChain agent (8888)
-./run-demo.sh stop          # stop all
-./run-demo.sh status        # health check
-./run-demo.sh tail all      # tail all logs interleaved
+./run.sh               # start API (3001), UI (4000), MCP (8080), LangChain agent (8888)
+./run.sh stop          # stop all
+./run.sh status        # health check
+./run.sh tail all      # tail all logs interleaved
 ```
 
 ### Fresh install / migration (one-command)
@@ -55,15 +55,15 @@ failure modes in fresh shells:
    export NVM_DIR="$HOME/.nvm"
    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
    ```
-   `run-demo.sh` does this itself (see `ensure_node_runtime()`) and so will
+   `run.sh` does this itself (see `ensure_node_runtime()`) and so will
    self-recover. The migration scripts at
    [`demo_api_server/scripts/{export,import}MigrationBundle.js`](demo_api_server/scripts/)
    pre-flight `process.versions.node` and exit with the recovery snippet baked
    into their error.
 
-2. **`./run-demo.sh` is repo-local** — it must be invoked from the repo root.
+2. **`./run.sh` is repo-local** — it must be invoked from the repo root.
    When walking a user through setup, always include `cd /path/to/banking-demo`
-   before suggesting `./run-demo.sh`. The script itself uses `BASEDIR=$(cd "$(dirname "$0")" && pwd)`
+   before suggesting `./run.sh`. The script itself uses `BASEDIR=$(cd "$(dirname "$0")" && pwd)`
    to find its own files, so a different cwd doesn't matter once the script is
    running — but the *invocation* still needs the relative path or absolute path.
 
@@ -79,7 +79,7 @@ backend in Phase 267, wired behind the MCP Gateway's api_key disposition). The
 naive "run `npm install` in three of them" approach (which the README used to
 recommend) leaves the rest with missing `node_modules` or missing `dist/`,
 producing cryptic `MODULE_NOT_FOUND` and
-`Cannot find module '.../dist/index.js'` errors at startup. `run-demo.sh` now
+`Cannot find module '.../dist/index.js'` errors at startup. `run.sh` now
 auto-installs and auto-builds all eight via the `SVC_LIST` / `SVC_BUILD` /
 `SVC_INSTALL_FLAGS` parallel arrays in its dependency-check loop — keep that
 table in sync when adding a service.
@@ -96,7 +96,7 @@ table in sync when adding a service.
 | `demo_mortgage_service` | 8082 | Plain JS | `npm install` | — |
 | `langchain_agent`      | 8888 (uvicorn) + 8889 (chat WS) + 8890 (health/inspector) | Python | `pip install -r requirements.txt` (separate concern) | — |
 
-Two recurring failure modes to watch for when adding or modifying service launches in `run-demo.sh`:
+Two recurring failure modes to watch for when adding or modifying service launches in `run.sh`:
 
 - **Don't guard launches with `[[ -f dist/index.js ]]`** — if dist is missing the
   service silently never starts and the user has no idea why. Let the dependency
@@ -143,7 +143,7 @@ npm run test:e2e:admin
 | `.cursor/rules/regression-guard.mdc` | Cursor rule mirroring regression checks |
 | `.claude/skills/` | Domain skills (OAuth, MCP, Vercel, PingOne API, TypeScript) |
 
-**Ports** (authoritative — see `REGRESSION_PLAN.md` §3 and `run-demo.sh`):
+**Ports** (authoritative — see `REGRESSION_PLAN.md` §3 and `run.sh`):
 - **External (`api.ping.demo` HTTPS):** BFF `:3001`, UI `:4000`
 - **Loopback only:** MCP `:8080`, MCP Invest `:8081`, Mortgage `:8082`, LangChain `:8888` (+ `:8889` chat WS + `:8890` health/inspector), MCP Gateway `:3005`, Agent `:3006`, HITL `:3009`
 - `demo_api_ui/.env` `REACT_APP_API_PORT=3001` must match the BFF port.
