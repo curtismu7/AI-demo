@@ -16,6 +16,14 @@ const { validateTokenExchangeConfig } = require('./tokenExchangeConfigValidator'
 // Use existing MCP_TOOL_SCOPES for scope validation
 const { MCP_TOOL_SCOPES } = require('./mcpWebSocketClient');
 
+function timingSafeStringEqual(a, b) {
+  try {
+    return crypto.timingSafeEqual(Buffer.from(String(a), 'utf8'), Buffer.from(String(b), 'utf8'));
+  } catch {
+    return false; // different byte lengths — not equal
+  }
+}
+
 /**
  * Client registration validation rules
  */
@@ -507,7 +515,7 @@ function validateClientCredentials(clientId, clientSecret) {
     return { valid: false, error: 'Client is not active' };
   }
 
-  if (client.client_secret !== clientSecret) {
+  if (!timingSafeStringEqual(client.client_secret, clientSecret)) {
     return { valid: false, error: 'Invalid client secret' };
   }
 

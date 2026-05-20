@@ -164,6 +164,15 @@ router.delete('/users/:userId', requireAdmin, requireScopes(['admin:delete']), a
     const user = store.getUserById(req.params.userId);
     if (!user) return res.status(404).json({ error: 'user_not_found' });
 
+    const accounts = store.getAccountsByUserId(req.params.userId);
+    for (const account of accounts) {
+      const transactions = store.getTransactionsByAccountId(account.id);
+      for (const tx of transactions) {
+        await store.deleteTransaction(tx.id);
+      }
+      await store.deleteAccount(account.id);
+    }
+
     await store.deleteUser(req.params.userId);
 
     adminAuditService.logAdminUserManagement({
