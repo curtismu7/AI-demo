@@ -68,25 +68,19 @@ Config UI helper text: _"Requires agentRestrictions custom attribute on PingOne 
 
 **File:** `demo_api_server/middleware/agentRestrictionsGate.js`
 
-**Wiring:** `app.use(['/api/accounts', '/api/transactions', '/api/investment'], agentRestrictionsGate)` in `demo_api_server/server.js`, inserted before the existing `authenticateToken` middleware mounts on those paths. One block, covers all three resource route groups automatically.
-
-Note: `/api/mortgage` is excluded — the mortgage service runs as a separate process with its own API key auth, not routed through the BFF. `/api/admin/*` is excluded — agent tools do not call admin routes.
+**Wiring:** `app.use('/api', agentRestrictionsGate)` in `demo_api_server/server.js`, before the `authenticateToken` mounts. The middleware self-exits immediately (via `next()`) for any call that lacks `X-Agent-Sub`, so non-agent traffic is unaffected. Mortgage (`/api/mortgage`) is a separate service and never reaches this middleware. Admin routes are bypassed naturally — agent tools do not call `/api/admin/*`.
 
 **Agent call detection:** Presence of `X-Agent-Sub` header. If absent → direct user call → `next()` immediately (no check).
 
-**Capability tier map (static, in middleware file):**
+**Capability tier resolution — derived from `scope-topology.json` (SSOT):**
 
-```
-GET  /api/accounts/*                    → read
-GET  /api/transactions/*                → read
-POST /api/transactions                  → write
-POST /api/transfers                     → write
-PUT  /api/accounts/*                    → write
-GET  /api/investment/accounts/*         → read
-POST /api/investment/accounts/*/trade   → write
-```
+The middleware resolves the required tier from the tool name passed in `X-MCP-Tool`, using the existing scope manifest:
 
-Anything not in the map defaults to `read`.
+1. Look up the tool's required scopes in `scope-topology.json` (already loaded by the BFF via the existing scope reference table)
+2. Check the `riskLevel` of each required scope: `high` or `critical` → **write** tier; `low` or `medium` → **read** tier
+3. If any required scope is write-tier, the call is write-tier
+
+No hardcoded route map — the tier stays in sync automatically as tools and scopes evolve. If `X-MCP-Tool` is absent or unrecognised, defaults to `read` (fail open for unknown tools — agent restrictions only block known write operations).
 
 **Execution flow (when `ff_agent_restrictions=true` and `X-Agent-Sub` present):**
 
@@ -203,7 +197,7 @@ New panel in the education drawer, shown when `ff_agent_restrictions=true`. Foll
 |---|---|
 | `demo_api_server/middleware/agentRestrictionsGate.js` | New — core middleware |
 | `demo_api_server/services/configStore.js` | Add `ff_agent_restrictions` flag |
-| `demo_api_server/server.js` | Wire `app.use(['/api/accounts', '/api/transactions'], agentRestrictionsGate)` |
+| `demo_api_server/server.js` | Wire `app.use('/api', agentRestrictionsGate)` before `authenticateToken` mounts |
 | `demo_api_server/routes/adminManagement.js` | Add `PATCH /api/admin/users/:userId/agent-restrictions` |
 | `demo_api_server/scripts/bootstrapPingOne.js` | Provision attribute + default values |
 | `demo_mcp_server/src/tools/BankingAPIClient.ts` | Add `X-Agent-Sub` + `X-MCP-Tool` headers |
