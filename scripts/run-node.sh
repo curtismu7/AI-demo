@@ -10,7 +10,7 @@
 # kind of friction setup:fresh exists to eliminate.
 #
 # Usage (from a package.json script):
-#   "reset": "bash scripts/run-node.sh banking_api_server/scripts/setupFresh.js --clean --reset-pingone"
+#   "reset": "bash scripts/run-node.sh demo_api_server/scripts/setupFresh.js --clean --reset-pingone"
 #
 # Behavior:
 #   1. If current Node major >= 20, exec the script as-is.
