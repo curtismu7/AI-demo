@@ -39,7 +39,7 @@
  *   PINGONE_ADMIN_CLIENT_ID/SECRET, PINGONE_RESOURCE_MCP_GATEWAY_URI, …)
  *
  * Optional:
- *   GATEWAY_TOKEN_SCOPES   — space-separated (default: banking:mcp:invoke;
+ *   GATEWAY_TOKEN_SCOPES   — space-separated (default: mcp:invoke;
  *                            the gateway resource server intentionally
  *                            carries only this on a clean topology — see
  *                            REGRESSION_PLAN §1 single-resource note)
@@ -99,7 +99,7 @@ mint-gateway-token.js — B3 dev-token stage prop (no mocks).
     Emits a single JSON object { token, audience, scopes, expiresHint }
     for scripting; no snippets.
 
-  Env: GATEWAY_TOKEN_SCOPES (default "banking:mcp:invoke"),
+  Env: GATEWAY_TOKEN_SCOPES (default "mcp:invoke"),
        GATEWAY_PUBLIC_URL  (default http://localhost:3005)
 
 This is a STAGE PROP: one broad token, no actor/act, no per-tool
@@ -184,9 +184,9 @@ async function main() {
     process.exit(1);
   }
 
-  // Gateway resource server intentionally carries only banking:mcp:invoke
+  // Gateway resource server intentionally carries only mcp:invoke
   // on a clean topology (REGRESSION_PLAN §1 single-resource note).
-  const scopes = (process.env.GATEWAY_TOKEN_SCOPES || 'banking:mcp:invoke')
+  const scopes = (process.env.GATEWAY_TOKEN_SCOPES || 'mcp:invoke')
     .trim().split(/\s+/).filter(Boolean);
   const gatewayUrl = process.env.GATEWAY_PUBLIC_URL || 'http://localhost:3005';
 

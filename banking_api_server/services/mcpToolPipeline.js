@@ -150,8 +150,8 @@ async function runMcpToolPipeline(ctx) {
         });
 
         // When the exchange fails because the subject token lacks the required scopes
-        // (e.g. ENDUSER_AUDIENCE login path only carries banking:agent:invoke, not
-        // banking:write), PingOne returns 400 "At least one scope must be granted".
+        // (e.g. ENDUSER_AUDIENCE login path only carries agent:invoke, not
+        // write), PingOne returns 400 "At least one scope must be granted".
         // In that case, fall back to the local tool handler so the operation still
         // completes — the UI receives _exchangeFailed:true so it can show a soft
         // informational message instead of an error toast.

@@ -1221,11 +1221,11 @@ export default function Config() {
                       }}
                     >
                       <li>
-                        Create <code>banking:ai:agent:read</code> scope (Phase
+                        Create <code>ai:agent:read</code> scope (Phase
                         69.1 standard)
                       </li>
                       <li>
-                        Remove deprecated <code>banking:agent:invoke</code>{" "}
+                        Remove deprecated <code>agent:invoke</code>{" "}
                         scope
                       </li>
                       <li>Grant scopes to all applications</li>
@@ -1703,7 +1703,7 @@ export default function Config() {
                   >
                     Each scope maps to PingOne OAuth scopes on the delegated MCP
                     token. Unchecking <strong>Transfers &amp; movement</strong>{" "}
-                    removes <code>banking:transactions:write</code> (the
+                    removes <code>transactions:write</code> (the
                     transfer scope) so the agent cannot move money — read-only
                     demos. Save configuration to apply; the next tool call runs
                     a new token exchange with the selected scopes.

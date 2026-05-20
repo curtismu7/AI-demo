@@ -43,7 +43,7 @@ router.post('/sensitive-consent', async (req, res) => {
  * Returns sensitive fields (accountNumberFull, routingNumber) for the authenticated
  * user's accounts.
  *
- * Gate: scope(banking:sensitive:read OR banking:read) + PAZ + session consent token.
+ * Gate: scope(sensitive:read OR read) + PAZ + session consent token.
  *
  * On gate failure:
  *   - Missing scope / consent → { ok: false, consent_required: true, reason: 'sensitive_data_access' }

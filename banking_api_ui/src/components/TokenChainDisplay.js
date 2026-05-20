@@ -1933,16 +1933,16 @@ function intentLabel(intent) {
     const a = intent.banking.action;
     const p = intent.banking.params || {};
     if (a === "transfer")
-      return `banking:transfer  $${p.amount ?? "?"} ${p.fromId ?? "?"} → ${p.toId ?? "?"}`;
+      return `transfer  $${p.amount ?? "?"} ${p.fromId ?? "?"} → ${p.toId ?? "?"}`;
     if (a === "deposit")
-      return `banking:deposit  $${p.amount ?? "?"} → ${p.toId ?? "?"}`;
+      return `deposit  $${p.amount ?? "?"} → ${p.toId ?? "?"}`;
     if (a === "withdraw")
-      return `banking:withdraw  $${p.amount ?? "?"} from ${p.fromId ?? "?"}`;
+      return `withdraw  $${p.amount ?? "?"} from ${p.fromId ?? "?"}`;
     if (a === "balance")
-      return `banking:balance${p.accountId ? `  (${p.accountId})` : ""}`;
-    if (a === "accounts") return "banking:accounts";
-    if (a === "transactions") return "banking:transactions";
-    return `banking:${a}`;
+      return `balance${p.accountId ? `  (${p.accountId})` : ""}`;
+    if (a === "accounts") return "accounts";
+    if (a === "transactions") return "transactions";
+    return `${a}`;
   }
   if (intent.kind === "education") {
     const panel = intent.education?.panel ?? (intent.ciba ? "ciba" : null);

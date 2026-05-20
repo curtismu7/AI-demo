@@ -837,8 +837,8 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── ff_inject_scopes — Demo Scope Injection (Phase 146 — D-04) ───────────
-  // When ON and the user access token lacks banking:* scopes, the BFF injects
-  // banking:read and banking:write into the local claim snapshot. This lets the
+  // When ON and the user access token lacks * scopes, the BFF injects
+  // read and write into the local claim snapshot. This lets the
   // demo flow proceed without a PingOne custom resource server. All injections are
   // logged to tokenEvents with [BFF-INJECTED] labels (visible in Token Chain UI).
   // Pattern mirrors ff_inject_may_act and ff_inject_audience.
@@ -937,7 +937,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // Path A — Direct intersection: user token carries at least one tool scope
   //   → finalScopes = toolCandidateScopes ∩ userTokenScopes
   //
-  // Path B — Delegation: user token carries banking:ai:agent:read
+  // Path B — Delegation: user token carries ai:agent:read
   //   → PingOne token-exchange policy on the MCP resource decides whether to
   //     grant the tool's scopes from the delegation scope. Pass toolCandidateScopes
   //     directly and let PingOne adjudicate.
@@ -1625,7 +1625,7 @@ async function _performTwoExchangeDelegation(
     // has `audience` but no `scope` with `invalid_scope: "May not request
     // scopes for multiple resources"`. Name the single Agent-Gateway scope
     // explicitly so PingOne narrows to one resource. Default matches the
-    // provisioner grant (pingoneProvisionService.js Step 37a: banking:agent:invoke).
+    // provisioner grant (pingoneProvisionService.js Step 37a: agent:invoke).
     const agentGatewayScope = configStore.getEffective('agent_gateway_cc_scope') || 'agent:invoke';
     agentActorToken = await oauthService.getClientCredentialsTokenAs(aiAgentClientId, aiAgentClientSecret, agentGatewayAud, aiAgentAuthMethod, agentGatewayScope);
     const agentActorDecoded = decodeJwtClaims(agentActorToken);
@@ -1671,7 +1671,7 @@ async function _performTwoExchangeDelegation(
   // ─ Step 2: Exchange #1 — Subject Token + Agent Actor Token → Agent Exchanged Token ─────
   // RFC 8707 single-resource rule (T-10): the exchange to intermediateAud must
   // request scopes that all belong to the Intermediate resource. The tool
-  // scopes (effectiveToolScopes, e.g. banking:read + banking:mcp:invoke) span
+  // scopes (effectiveToolScopes, e.g. read + mcp:invoke) span
   // multiple resources → PingOne rejects with invalid_scope "May not request
   // scopes for multiple resources". Exchange #1's job is only to mint the
   // agent-exchanged token bound to the intermediate audience; the real tool
@@ -1682,15 +1682,15 @@ async function _performTwoExchangeDelegation(
   // mcp_gateway_cc_scope).
   //
   // T-10 follow-up (2026-05-16, see REGRESSION_PLAN §4): the original default
-  // `banking:two-exchange:intermediate` is *defined* on the Intermediate
+  // `two-exchange:intermediate` is *defined* on the Intermediate
   // resource by the provisioner but is NOT in the AI Agent app's resource
   // grant (pingoneProvisionService.js Step 37a grants the app
-  // ['banking:read','banking:write','banking:mcp:invoke','banking:ai:agent:read',
-  // 'banking:mortgage:read'] on the Intermediate resource — a scope merely
+  // ['read','write','mcp:invoke','ai:agent:read',
+  // 'mortgage:read'] on the Intermediate resource — a scope merely
   // existing on a resource is not the same as the requesting client being
   // granted it). PingOne therefore rejected Exchange #1 with
   // `invalid_scope: "At least one scope must be granted"`. Default to
-  // `banking:mcp:invoke`: it is in that grant list and is a single scope on
+  // `mcp:invoke`: it is in that grant list and is a single scope on
   // the single Intermediate resource (satisfies RFC 8707). Exchange #1 only
   // mints the agent-exchanged token bound to the intermediate audience; the
   // real tool scopes are (re)requested at Exchange #2.
@@ -1781,7 +1781,7 @@ async function _performTwoExchangeDelegation(
     // (MCP Gateway + Two-Exchange Final + MCP Server). Same multi-resource
     // invalid_scope trap as the AI Agent actor token above — name the single
     // MCP-Gateway scope explicitly. Default matches the provisioner grant
-    // (pingoneProvisionService.js Step 37b: banking:mcp:invoke).
+    // (pingoneProvisionService.js Step 37b: mcp:invoke).
     const mcpGatewayScope = configStore.getEffective('mcp_gateway_cc_scope') || 'mcp:invoke';
     mcpActorToken = await oauthService.getClientCredentialsTokenAs(mcpExchangerClient, mcpExchangerSecret, mcpGatewayAud, mcpExchangerAuthMethod, mcpGatewayScope);
     const mcpActorDecoded = decodeJwtClaims(mcpActorToken);

@@ -264,8 +264,8 @@ export default function BankingAdminOps({ user, onLogout }) {
                 }}
               >
                 Fix agent scope configuration in PingOne. Automatically creates{" "}
-                <code>banking:ai:agent:read</code> scope, removes deprecated{" "}
-                <code>banking:agent:invoke</code>, and grants to applications.
+                <code>ai:agent:read</code> scope, removes deprecated{" "}
+                <code>agent:invoke</code>, and grants to applications.
               </p>
             </div>
             <div className="card-body">

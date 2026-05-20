@@ -163,7 +163,7 @@ function validatePATToken(token, metadata = {}) {
   return {
     valid: true,
     pat: patRecord,
-    scopes: patRecord.scopes || ['banking:read', 'banking:write'],
+    scopes: patRecord.scopes || ['read', 'write'],
     clientId: patRecord.clientId || 'pat-user'
   };
 }
@@ -341,7 +341,7 @@ const migrationUtilities = {
       client_name: `Migrated from PAT - ${patUser.name || 'Unknown'}`,
       client_type: 'confidential',
       grant_types: ['client_credentials'],
-      scope: patUser.scopes || ['banking:read', 'banking:write'],
+      scope: patUser.scopes || ['read', 'write'],
       token_endpoint_auth_method: 'client_secret_basic'
     };
 

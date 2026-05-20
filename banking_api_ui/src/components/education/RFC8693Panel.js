@@ -114,7 +114,7 @@ Content-Type: application/json
   "access_token": "eyJhbGciOiJSUzI1NiIs...",
   "token_type": "Bearer",
   "expires_in": 3600,
-  "scope": "banking:accounts:read banking:transactions:read",
+  "scope": "accounts:read transactions:read",
   "issued_token_type": "urn:ietf:params:oauth:token-type:access_token"
 }`}</pre>
         </>
@@ -135,7 +135,7 @@ Content-Type: application/json
           <pre className="edu-code">{`{
   "sub": "user-123",
   "aud": "https://mcp-server.example.com",
-  "scope": "banking:accounts:read",
+  "scope": "accounts:read",
   "act": {
     "sub": "agent-client-456"
   }
@@ -204,7 +204,7 @@ Content-Type: application/json
   "sub":   "user-abc123",
   "aud":   "olb-resource.bxf.com",
   "iss":   "https://auth.pingone.com/...",
-  "scope": "banking:read banking:write",
+  "scope": "read write",
   "iat":   1714000000,
   "exp":   1714003600
   // No "act" claim — this is the raw user token
@@ -219,7 +219,7 @@ Content-Type: application/json
   "sub":   "user-abc123",           // preserved from Hop 0
   "aud":   "https://api.ping.demo",  // narrowed to gateway audience
   "iss":   "https://auth.pingone.com/...",
-  "scope": "banking:read banking:write ai_agent",
+  "scope": "read write ai_agent",
   "act": {
     "sub": "agent1-client-id"       // who is acting on behalf of the user
   },
@@ -236,7 +236,7 @@ Content-Type: application/json
   "sub":   "user-abc123",             // still the human user
   "aud":   "https://api.ping.demo", // narrowed to backend audience
   "iss":   "https://auth.pingone.com/...",
-  "scope": "banking:read banking:write",
+  "scope": "read write",
   "act": {
     "sub": "agent1-client-id"         // preserved from Hop 1
   },
@@ -333,7 +333,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &subject_token=eyJhbGciOiJSUzI1NiIs...
 &subject_token_type=urn:ietf:params:oauth:token-type:access_token
 &audience=https://mcp-server.example.com
-&scope=banking:accounts:read
+&scope=accounts:read
 &requested_token_type=urn:ietf:params:oauth:token-type:access_token
 
 // Response (no act claim - user acts directly)
@@ -341,7 +341,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
   "access_token": "eyJhbGciOiJSUzI1NiIs...",
   "token_type": "Bearer",
   "expires_in": 3600,
-  "scope": "banking:accounts:read"
+  "scope": "accounts:read"
 }`}</pre>
 
           <h4>2-Token Exchange (Agent Delegation)</h4>
@@ -358,7 +358,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &actor_token=eyJhbGciOiJSUzI1NiIs...
 &actor_token_type=urn:ietf:params:oauth:token-type:access_token
 &audience=https://mcp-server.example.com
-&scope=banking:accounts:read
+&scope=accounts:read
 &requested_token_type=urn:ietf:params:oauth:token-type:access_token
 
 // Response (with act claim - agent acts on behalf of user)
@@ -366,14 +366,14 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
   "access_token": "eyJhbGciOiJSUzI1NiIs...",
   "token_type": "Bearer", 
   "expires_in": 3600,
-  "scope": "banking:accounts:read"
+  "scope": "accounts:read"
 }
 
 // Decoded issued token
 {
   "sub": "user-123",
   "aud": "https://mcp-server.example.com",
-  "scope": "banking:accounts:read",
+  "scope": "accounts:read",
   "act": {
     "sub": "agent-client-456"
   }

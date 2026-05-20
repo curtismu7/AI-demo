@@ -197,7 +197,7 @@ async function runPingOneBootstrap(options = {}) {
   }
 
   result.manualSteps.push({
-    title: 'Resource server + banking:* scopes',
+    title: 'Resource server + * scopes',
     detail:
       'Not created by this API. Add a custom resource and scopes in PingOne if you need RFC 8707 / token-exchange demos.',
   });

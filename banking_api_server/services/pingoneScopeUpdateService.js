@@ -272,7 +272,7 @@ class PingOneScopeUpdateService {
 
   /**
    * Fix scope configuration (main update function)
-   * Handles: banking:agent:invoke → banking:ai:agent:read
+   * Handles: agent:invoke → ai:agent:read
    */
   async fixScopeConfiguration() {
     const steps = [];
@@ -314,8 +314,8 @@ class PingOneScopeUpdateService {
       });
       
       const scopes = await this.getResourceScopes(resource.id);
-      const hasOldScope = scopes.some(s => s.name === 'banking:agent:invoke');
-      const hasNewScope = scopes.some(s => s.name === 'banking:ai:agent:read');
+      const hasOldScope = scopes.some(s => s.name === 'agent:invoke');
+      const hasNewScope = scopes.some(s => s.name === 'ai:agent:read');
 
       if (!hasOldScope && hasNewScope) {
         steps.push({ 
@@ -333,7 +333,7 @@ class PingOneScopeUpdateService {
         
         const createResult = await this.createScope(
           resource.id, 
-          'banking:ai:agent:read', 
+          'ai:agent:read', 
           'Agent delegation scope (Phase 69.1 standardized)'
         );
         steps.push({ 
@@ -350,12 +350,12 @@ class PingOneScopeUpdateService {
         // Create new scope first
         steps.push({ 
           icon: '➕', 
-          message: 'Creating new scope banking:ai:agent:read...' 
+          message: 'Creating new scope ai:agent:read...' 
         });
         
         const createResult = await this.createScope(
           resource.id, 
-          'banking:ai:agent:read', 
+          'ai:agent:read', 
           'Agent delegation scope (Phase 69.1 standardized)'
         );
         steps.push({ 
@@ -366,10 +366,10 @@ class PingOneScopeUpdateService {
         // Delete old scope
         steps.push({ 
           icon: '🗑️', 
-          message: 'Removing old scope banking:agent:invoke...' 
+          message: 'Removing old scope agent:invoke...' 
         });
         
-        const deleteResult = await this.deleteScope(resource.id, 'banking:agent:invoke');
+        const deleteResult = await this.deleteScope(resource.id, 'agent:invoke');
         steps.push({ 
           icon: deleteResult.success ? '✅' : '⚠️', 
           message: deleteResult.message 
@@ -378,10 +378,10 @@ class PingOneScopeUpdateService {
         // Both exist - just remove old one
         steps.push({ 
           icon: '🗑️', 
-          message: 'Both scopes exist, removing old scope banking:agent:invoke...' 
+          message: 'Both scopes exist, removing old scope agent:invoke...' 
         });
         
-        const deleteResult = await this.deleteScope(resource.id, 'banking:agent:invoke');
+        const deleteResult = await this.deleteScope(resource.id, 'agent:invoke');
         steps.push({ 
           icon: deleteResult.success ? '✅' : '⚠️', 
           message: deleteResult.message 
@@ -408,13 +408,13 @@ class PingOneScopeUpdateService {
         const currentScopes = await this.getApplicationResourceScopes(app.id, resource.id);
         
         // Check if app has old scope
-        const hasOldAppScope = currentScopes.includes('banking:agent:invoke');
-        const hasNewAppScope = currentScopes.includes('banking:ai:agent:read');
+        const hasOldAppScope = currentScopes.includes('agent:invoke');
+        const hasNewAppScope = currentScopes.includes('ai:agent:read');
 
         if (hasOldAppScope || !hasNewAppScope) {
-          const scopesToGrant = currentScopes.filter(s => s !== 'banking:agent:invoke');
-          if (!scopesToGrant.includes('banking:ai:agent:read')) {
-            scopesToGrant.push('banking:ai:agent:read');
+          const scopesToGrant = currentScopes.filter(s => s !== 'agent:invoke');
+          if (!scopesToGrant.includes('ai:agent:read')) {
+            scopesToGrant.push('ai:agent:read');
           }
 
           const grantResult = await this.grantScopesToApplication(app.id, resource.id, scopesToGrant);

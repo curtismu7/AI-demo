@@ -47,7 +47,7 @@ function testScopeValidation() {
   console.log('\n🔍 Testing Scope Validation...');
   
   const validScopes = Object.values(BANKING_SCOPES);
-  const invalidScopes = ['invalid:scope', 'banking:invalid', 'admin:invalid'];
+  const invalidScopes = ['invalid:scope', 'invalid', 'admin:invalid'];
   
   // Test valid scopes
   validScopes.forEach(scope => {
@@ -153,13 +153,13 @@ function testScopeHierarchy() {
   
   console.log('  Scope Hierarchy Validation:');
   
-  // Admin should have banking:admin scope
+  // Admin should have admin scope
   const adminHasAdminScope = adminScopes.includes(BANKING_SCOPES.ADMIN);
-  console.log(`    Admin has banking:admin: ${adminHasAdminScope ? '✅ YES' : '❌ NO'}`);
+  console.log(`    Admin has admin: ${adminHasAdminScope ? '✅ YES' : '❌ NO'}`);
   
-  // Customer should not have banking:admin scope
+  // Customer should not have admin scope
   const customerHasAdminScope = customerScopes.includes(BANKING_SCOPES.ADMIN);
-  console.log(`    Customer lacks banking:admin: ${!customerHasAdminScope ? '✅ YES' : '❌ NO'}`);
+  console.log(`    Customer lacks admin: ${!customerHasAdminScope ? '✅ YES' : '❌ NO'}`);
   
   // Readonly should only have read scopes
   const readonlyHasWriteScopes = readonlyScopes.some(scope => 

@@ -25,7 +25,7 @@ function OverviewTab() {
 
       <h4>Token chain lifecycle</h4>
       <pre className="edu-code">{`1. User Login (Authorization Code + PKCE)
-   → access_token (sub=user, scopes=banking:read,write,transfer)
+   → access_token (sub=user, scopes=read,write,transfer)
    → refresh_token · id_token (nonce verified)
    ✓ RFC 7662 introspection — BFF asks PingOne "is this session still active?"
      Catches revoked tokens that are not yet expired.
@@ -180,7 +180,7 @@ function ExchangePathsTab() {
 ┌──────────────────┐
 │ T2: Delegated     │  sub=user, act={client_id:bff}
 │ Token             │  aud=mcp_server
-│                   │  scopes=banking:read
+│                   │  scopes=read
 └────────┬─────────┘
          │
          ▼
@@ -222,9 +222,9 @@ function ExchangePathsTab() {
         Each exchange can request fewer scopes than the original token. The authorization
         server will never grant more scopes than the subject token has.
       </p>
-      <pre className="edu-code">{`T1 scopes: banking:read banking:write banking:transfer banking:admin
-                    ↓ exchange requests only banking:read
-T2 scopes: banking:read
+      <pre className="edu-code">{`T1 scopes: read write transfer admin
+                    ↓ exchange requests only read
+T2 scopes: read
 // T2 can only read — even though T1 could write and transfer`}</pre>
     </div>
   );
@@ -238,7 +238,7 @@ function ExamplesTab() {
       <h4>Example 1: Check balance via AI agent</h4>
       <pre className="edu-code">{`Step 1: User logs in as "bankuser"
   Event: user_login
-  Token: access_token (sub=abc123, scopes=openid banking:read banking:write)
+  Token: access_token (sub=abc123, scopes=openid read write)
 
 Step 2: User asks agent "What's my balance?"
   Event: agent_request
@@ -248,7 +248,7 @@ Step 3: BFF exchanges user token for MCP token
   Event: token_exchange
   Input:  T1 (sub=abc123, may_act={client_id:bff})
   Output: T2 (sub=abc123, act={client_id:bff}, aud=mcp_server)
-  Scopes: banking:read (narrowed from banking:read,write)
+  Scopes: read (narrowed from read,write)
 
 Step 4: MCP server validates and executes
   Event: tool_call
@@ -272,7 +272,7 @@ Step 3: User completes MFA
 
 Step 4: BFF exchanges with elevated token
   Event: token_exchange
-  Scopes: banking:transfer (requires step-up)
+  Scopes: transfer (requires step-up)
 
 Step 5: Transfer executed
   Event: tool_call
@@ -352,7 +352,7 @@ function TransactionTokensTab() {
         <tbody>
           {[
             ['Design Intent', 'General-purpose delegation', 'Agent-specific delegation'],
-            ['Scope Granularity', 'Broad scopes (e.g., banking:read)', 'Per-operation (e.g., check_balance)'],
+            ['Scope Granularity', 'Broad scopes (e.g., read)', 'Per-operation (e.g., check_balance)'],
             ['Audit Trail', 'Agent ID only (act claim)', 'Transaction ID + scope + timestamp'],
             ['Replay Protection', 'TTL only', 'Transaction ID enables replay detection'],
             ['Key Claim', 'act (actor chain)', 'txn_id + txn_scope'],

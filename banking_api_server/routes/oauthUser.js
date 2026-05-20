@@ -376,7 +376,7 @@ router.get('/callback', async (req, res) => {
     let user = dataStore.getUserByUsername(oauthUser.username);
     
     // Resolve admin role using four signals (any one is sufficient):
-    //  1. admin_username allowlist  — permanent override (bankadmin, service accounts)
+    //  1. admin_username allowlist  — permanent override (demoAdmin, service accounts)
     //  2. PingOne population ID     — admin users live in a dedicated PingOne population
     //  3. PingOne custom claim      — attribute named by admin_role_claim matches admin_role value
     //  4. Existing dataStore record — preserve admin granted in a previous session

@@ -189,7 +189,7 @@ function AccountDetailsPanel({ accountData, initialPos, onClose }) {
             <span className="adp-rfc-label">🔐 Protected by</span>
             <span className="adp-rfc-item" title="OAuth 2.0 Step-Up Authentication Challenge Protocol — requires higher assurance (MFA) to access sensitive data">RFC 9470 Step-Up Auth</span>
             <span className="adp-rfc-sep">·</span>
-            <span className="adp-rfc-item" title="Scope parameter limits what an access token can do — this resource requires banking:sensitive scope">RFC 6749 §3.3 Scope</span>
+            <span className="adp-rfc-item" title="Scope parameter limits what an access token can do — this resource requires sensitive scope">RFC 6749 §3.3 Scope</span>
             <span className="adp-rfc-sep">·</span>
             <span className="adp-rfc-item" title="RFC 8693 Token Exchange — MCP token audience is narrowed to this resource server only">RFC 8693 Token Exchange</span>
           </div>

@@ -88,7 +88,7 @@ const SPECS = [
             <tr>
               <td>Scope Binding</td>
               <td>Audience only</td>
-              <td>✅ <code>scope: banking:read:txn-{'{txn_id}'}</code></td>
+              <td>✅ <code>scope: read:txn-{'{txn_id}'}</code></td>
             </tr>
             <tr>
               <td>Agent Attestation</td>

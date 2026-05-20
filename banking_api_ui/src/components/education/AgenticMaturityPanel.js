@@ -500,7 +500,7 @@ const exchanged = await pingoneTokenExchange({
   client_id:           AGENT_CLIENT_ID,
   client_secret:       AGENT_CLIENT_SECRET,
   audience:            MCP_SERVER_RESOURCE_URI,
-  scope:               toolScope,   // e.g. 'banking:read' only
+  scope:               toolScope,   // e.g. 'read' only
 });
 // exchanged.access_token carries:  act: { sub: "agent-client-id" }`}</pre>
         </LevelCard>

@@ -128,7 +128,7 @@ export default function McpGatewayConfig() {
 			setRouteForm({
 				pingOneResourceId: c.pingOneResourceId || "",
 				gatewayUrl: c.gatewayPublicUrl || "",
-				mcpScope: c.mcpScope || "banking:mcp:invoke",
+				mcpScope: c.mcpScope || "mcp:invoke",
 			});
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -448,8 +448,8 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.bxf.com
 										<input
 											type="text"
 											className="mgc-input"
-											placeholder="banking:mcp:invoke"
-											value={routeForm.mcpScope ?? "banking:mcp:invoke"}
+											placeholder="mcp:invoke"
+											value={routeForm.mcpScope ?? "mcp:invoke"}
 											onChange={(e) => setRouteForm((f) => ({ ...f, mcpScope: e.target.value }))}
 										/>
 										<span className="mgc-field-hint">OAuth 2.0 scope required for token exchange.</span>

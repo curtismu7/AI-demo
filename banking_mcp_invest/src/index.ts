@@ -31,7 +31,7 @@ const RESOURCE_NAME = process.env.MCP_SERVER_RESOURCE_NAME || 'Super Banking MCP
 const PINGONE_ENV_ID = process.env.PINGONE_ENVIRONMENT_ID || '';
 const PINGONE_REGION = process.env.PINGONE_REGION || 'com';
 
-const INVEST_SCOPES = ['banking:read', 'banking:write', 'banking:admin'];
+const INVEST_SCOPES = ['read', 'write', 'admin'];
 
 // ---------------------------------------------------------------------------
 // HTTP: RFC 9728 metadata + health
@@ -143,7 +143,7 @@ async function handleMessage(
 
     const scopes = extractScopes(decoded);
     const hasScopes = tool.requiredScopes.every(
-      (s) => scopes.includes(s) || scopes.includes('banking:*') || scopes.includes('*'),
+      (s) => scopes.includes(s) || scopes.includes('*') || scopes.includes('*'),
     );
     if (!hasScopes) {
       send(rpcError(id, -32005, `Insufficient scope for tool '${toolName}'`, {

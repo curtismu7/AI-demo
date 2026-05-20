@@ -467,15 +467,15 @@ class PingOneManagementService {
         audienceUri: 'https://ai-agent.pingdemo.com',
         scopes: [
           {
-            name: 'banking:agent:invoke',
+            name: 'agent:invoke',
             description: 'Allow AI agent to invoke banking operations'
           },
           {
-            name: 'banking:read',
+            name: 'read',
             description: 'Read access to banking data'
           },
           {
-            name: 'banking:write',
+            name: 'write',
             description: 'Write access to banking operations'
           }
         ],
@@ -495,7 +495,7 @@ class PingOneManagementService {
         audienceUri: 'https://resource-server.pingdemo.com',
         scopes: [
           {
-            name: 'banking:agent:invoke',
+            name: 'agent:invoke',
             description: 'Agent invocation scope for banking operations'
           },
           {

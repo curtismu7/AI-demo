@@ -6,7 +6,7 @@
  * 
  * Usage:
  *   router.post('/accounts/transfer', 
- *     scopeErrorMiddleware(['banking:write', 'banking:transfer']), 
+ *     scopeErrorMiddleware(['write', 'transfer']), 
  *     (req, res) => { ... })
  */
 

@@ -140,9 +140,9 @@ describe('generateAuthorizationUrl', () => {
     expect(parse(url).params.state).toBe('my-csrf-state');
   });
 
-  test('includes login_hint=bankadmin for admin authorize URL', () => {
+  test('includes login_hint=demoAdmin for admin authorize URL', () => {
     const url = svc.generateAuthorizationUrl('st', 'cv');
-    expect(parse(url).params.login_hint).toBe('bankadmin');
+    expect(parse(url).params.login_hint).toBe('demoAdmin');
   });
 
   test('includes response_type=code', () => {

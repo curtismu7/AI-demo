@@ -101,7 +101,7 @@ export default function AuthZenPanel({ isOpen, onClose, initialTabId }) {
           </p>
           <h3>Why static scopes are not enough for agents</h3>
           <p>
-            An OAuth access token with <code>banking:write</code> grants broad permission. But an
+            An OAuth access token with <code>write</code> grants broad permission. But an
             AI agent performing a transfer on a user's behalf needs fine-grained decisions: is this
             specific transfer, for this amount, to this recipient, at this time, within the user's
             authorized mandate? That is an authorization question — not an authentication question —

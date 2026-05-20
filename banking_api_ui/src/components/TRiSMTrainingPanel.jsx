@@ -92,7 +92,7 @@ const SLIDES = [
     howWeMeetIt: [
       { feature: 'Agent as Identity', component: 'PingOne', description: 'Registered as separate application with own Client ID in PingOne' },
       { feature: 'OAuth (Not Password)', component: 'Client Credentials', description: 'Agent uses client_id + client_secret — never user passwords' },
-      { feature: 'Scoped Tokens', component: 'Token validation', description: 'Agent limited to agent, mcp:* scopes — no profile, no banking:read' },
+      { feature: 'Scoped Tokens', component: 'Token validation', description: 'Agent limited to agent, mcp:* scopes — no profile, no read' },
       { feature: 'Delegation Proof', component: 'Token Exchange', description: 'act = who acts, sub = on whose behalf, aud = where it can be used' }
     ],
     liveDemo: 'identity'

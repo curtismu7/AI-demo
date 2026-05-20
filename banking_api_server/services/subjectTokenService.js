@@ -21,7 +21,7 @@ const { decodeJwt } = require('../utils/tokenUtils');
  *
  * @param {object} req - Express request (for token events, logging)
  * @param {string} userAccessToken - Current user's access token (from session)
- * @param {string} scope - Scope to request (e.g., 'banking:read')
+ * @param {string} scope - Scope to request (e.g., 'read')
  * @param {object} options - Override defaults
  *   - resource: Agent resource/audience (default: agent1)
  *   - agentClientId: Agent to delegate to (default: PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID)

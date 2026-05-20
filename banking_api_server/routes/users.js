@@ -69,7 +69,7 @@ router.get('/query/by-email/:email', authenticateToken, requireAIAgent, (req, re
 });
 
 // Get all users (admin only) — fetches live from PingOne
-router.get('/', authenticateToken, requireScopes(['banking:read']), requireAdmin, async (req, res) => {
+router.get('/', authenticateToken, requireScopes(['read']), requireAdmin, async (req, res) => {
   try {
     pingOneUserService.initialize();
     const { limit = 100 } = req.query;
@@ -83,7 +83,7 @@ router.get('/', authenticateToken, requireScopes(['banking:read']), requireAdmin
 });
 
 // Get user by ID
-router.get('/:userId', authenticateToken, requireScopes(['banking:read']), requireOwnershipOrAdmin, (req, res) => {
+router.get('/:userId', authenticateToken, requireScopes(['read']), requireOwnershipOrAdmin, (req, res) => {
   try {
     const { userId } = req.params;
     const user = dataStore.getUserById(userId);
@@ -104,7 +104,7 @@ router.get('/:userId', authenticateToken, requireScopes(['banking:read']), requi
 });
 
 // Create new user (admin only)
-router.post('/', blockInDemoMode('user creation'), authenticateToken, requireScopes(['banking:write']), requireAdmin, async (req, res) => {
+router.post('/', blockInDemoMode('user creation'), authenticateToken, requireScopes(['write']), requireAdmin, async (req, res) => {
   try {
     const { username, email, password, firstName, lastName, role } = req.body;
 
@@ -157,7 +157,7 @@ router.post('/', blockInDemoMode('user creation'), authenticateToken, requireSco
 });
 
 // Update user
-router.put('/:userId', authenticateToken, requireScopes(['banking:write']), requireOwnershipOrAdmin, requireNotBankDelegate('profile changes'), async (req, res) => {
+router.put('/:userId', authenticateToken, requireScopes(['write']), requireOwnershipOrAdmin, requireNotBankDelegate('profile changes'), async (req, res) => {
   try {
     const { userId } = req.params;
     const updates = req.body;
@@ -222,7 +222,7 @@ router.put('/:userId', authenticateToken, requireScopes(['banking:write']), requ
 });
 
 // Delete user (admin only)
-router.delete('/:userId', blockInDemoMode('user deletion'), authenticateToken, requireScopes(['banking:write']), requireAdmin, async (req, res) => {
+router.delete('/:userId', blockInDemoMode('user deletion'), authenticateToken, requireScopes(['write']), requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -250,7 +250,7 @@ router.delete('/:userId', blockInDemoMode('user deletion'), authenticateToken, r
 });
 
 // Search users (admin only) — fetches live from PingOne
-router.get('/search/:query', authenticateToken, requireScopes(['banking:read']), requireAdmin, async (req, res) => {
+router.get('/search/:query', authenticateToken, requireScopes(['read']), requireAdmin, async (req, res) => {
   try {
     const { query } = req.params;
     pingOneUserService.initialize();

@@ -16,7 +16,7 @@ const TOKEN_CHAIN_STEPS = [
     summary: 'User access token after Authorization Code + PKCE — stored in the Backend-for-Frontend (BFF) session (httpOnly cookie). Used for Banking REST calls.',
     payloadPreview: `{
   "sub": "user-uuid",
-  "scope": "openid banking:read banking:write",
+  "scope": "openid read write",
   "aud": "https://banking-api.example.com",
   "iss": "https://auth.pingone.com/...",
   "exp": 1710000000
@@ -30,7 +30,7 @@ const TOKEN_CHAIN_STEPS = [
     summary: 'Optional client-credentials or delegated token for the agent OAuth client when the LLM/MCP layer acts with its own client_id.',
     payloadPreview: `{
   "sub": "agent-service",
-  "scope": "ai_agent banking:read",
+  "scope": "ai_agent read",
   "aud": "https://mcp.example.com",
   "client_id": "agent-oauth-client"
 }`,
@@ -95,7 +95,7 @@ export default function TokenChainPanel() {
       ...step,
       payloadPreview: `{
   "sub": "${liveSub}",${liveName ? `\n  "name": "${liveName}",` : ''}
-  "scope": "openid banking:read banking:write",
+  "scope": "openid read write",
   "aud": "https://banking-api.example.com",
   "iss": "https://auth.pingone.com/...",
   "exp": 1710000000

@@ -38,9 +38,9 @@ const MCP_SESSION_HEADER = 'mcp-session-id';
 const MCP_PROTO_HEADER = 'mcp-protocol-version';
 
 const BANKING_SCOPES = [
-  'banking:accounts:read',
-  'banking:transactions:read',
-  'banking:transactions:write',
+  'accounts:read',
+  'transactions:read',
+  'transactions:write',
 ];
 
 // ---------------------------------------------------------------------------
@@ -292,10 +292,10 @@ export class HttpMCPTransport {
           process.env.PINGONE_ISSUER || this.config.authServerUrl,
         ],
         scopes: [
-          'banking:accounts:read',
-          'banking:transactions:read',
-          'banking:accounts:write',
-          'banking:sensitive:read',
+          'accounts:read',
+          'transactions:read',
+          'accounts:write',
+          'sensitive:read',
         ],
       },
       contact: {

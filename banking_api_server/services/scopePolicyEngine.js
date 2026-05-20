@@ -33,7 +33,7 @@ const { writeExchangeEvent } = require('./exchangeAuditStore');
 // Non-manifest scopes the policy engine governs that the topology SSOT does
 // not model. As of the v2 SSOT refactor, admin:*/users: scopes ARE in the
 // manifest (with category:'admin' + their risk levels), so they derive from
-// it like everything else. Only banking:transactions:write remains
+// it like everything else. Only transactions:write remains
 // engine-local — no tool/app/resource references it, so it is intentionally
 // absent from scope-topology.json.
 const NON_MANIFEST_TAXONOMY = {

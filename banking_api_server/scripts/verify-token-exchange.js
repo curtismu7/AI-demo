@@ -16,7 +16,7 @@
  *
  * Optional:
  *   VERIFY_TOKEN_EXCHANGE_WITH_ACTOR=true — also: client_credentials (agent) + subject+actor exchange
- *   MCP_TOKEN_EXCHANGE_SCOPES — space-separated scopes (default: banking:read banking:write)
+ *   MCP_TOKEN_EXCHANGE_SCOPES — space-separated scopes (default: read write)
  *   BANKING_API_BASE_URL — default http://localhost:3001
  *   SESSION_COOKIE — e.g. "connect.sid=s%3A..." ; if set, also GET /api/tokens/chain (server must be running)
  *
@@ -120,7 +120,7 @@ async function runExchangeAndOptionalActor() {
     process.exit(1);
   }
 
-  const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write').trim().split(/\s+/);
+  const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'read write').trim().split(/\s+/);
 
   console.log('PingOne token exchange (RFC 8693) — live verification');
   console.log('  environment:', envId);

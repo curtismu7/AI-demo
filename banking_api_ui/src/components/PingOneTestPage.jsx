@@ -20,9 +20,9 @@ const TEST_CONFIG = {
 			"openid",
 			"profile",
 			"email",
-			"banking:read",
-			"banking:write",
-			"banking:ai:agent",
+			"read",
+			"write",
+			"ai:agent",
 		],
 		audience: null,
 		spel: null,
@@ -32,11 +32,11 @@ const TEST_CONFIG = {
 		appType: "AI_AGENT",
 		requiredScopes: [
 			"openid",
-			"banking:read",
-			"banking:write",
-			"banking:admin",
-			"banking:sensitive",
-			"banking:ai:agent",
+			"read",
+			"write",
+			"admin",
+			"sensitive",
+			"ai:agent",
 		],
 		audience: null,
 		spel: null,
@@ -46,11 +46,11 @@ const TEST_CONFIG = {
 		appType: "AI_AGENT",
 		requiredScopes: [
 			"openid",
-			"banking:read",
-			"banking:write",
-			"banking:admin",
-			"banking:sensitive",
-			"banking:ai:agent",
+			"read",
+			"write",
+			"admin",
+			"sensitive",
+			"ai:agent",
 		],
 		audience: "https://mcp-server.pingdemo.com",
 		spel: "T1 (user token) → MCP token",
@@ -61,11 +61,11 @@ const TEST_CONFIG = {
 		appType: "AI_AGENT",
 		requiredScopes: [
 			"openid",
-			"banking:read",
-			"banking:write",
-			"banking:admin",
-			"banking:sensitive",
-			"banking:ai:agent",
+			"read",
+			"write",
+			"admin",
+			"sensitive",
+			"ai:agent",
 		],
 		audience: "https://mcp-gateway.pingdemo.com",
 		spel: "2-exchange (dual-token): Single POST — T1 (user) as subject + Agent CC as actor → MCP Gateway token with act claim",
@@ -88,7 +88,7 @@ const TEST_CONFIG = {
 	scopes: {
 		appName: "Super Banking MCP Server",
 		appType: "RESOURCE_SERVER",
-		requiredScopes: ["banking:read", "banking:write", "banking:mcp:invoke"],
+		requiredScopes: ["read", "write", "mcp:invoke"],
 		audience: "https://mcp-server.pingdemo.com",
 		spel: null,
 	},
@@ -109,11 +109,11 @@ const EXPECTED_APP_NAMES = [
 ];
 // Canonical flat scopes (per SCOPE_VOCABULARY.md)
 const EXPECTED_BANKING_SCOPES = [
-	"banking:read",
-	"banking:write",
-	"banking:admin",
-	"banking:sensitive",
-	"banking:ai:agent",
+	"read",
+	"write",
+	"admin",
+	"sensitive",
+	"ai:agent",
 ];
 
 // Metadata for each config/resource key: env var name, format hint, inline fix message
@@ -642,7 +642,7 @@ export default function PingOneTestPage() {
 					url: `${consoleBase}/foundation/Resource/list`,
 				},
 				"single-exchange": {
-					msg: 'PingOne error: "At least one scope must be granted" means the MCP Token Exchanger app is missing banking scopes. Fix: PingOne → Applications → Super Banking MCP Token Exchanger → Resources tab → add banking:read, banking:write, banking:admin, banking:sensitive, banking:ai:agent from the Banking resource server. Also enable Token Exchange grant type.',
+					msg: 'PingOne error: "At least one scope must be granted" means the MCP Token Exchanger app is missing banking scopes. Fix: PingOne → Applications → Super Banking MCP Token Exchanger → Resources tab → add read, write, admin, sensitive, ai:agent from the Banking resource server. Also enable Token Exchange grant type.',
 					url: `${consoleBase}/application/list`,
 				}, // legacy dispatch key — not user-facing; canonical: 1-exchange
 				"double-exchange": {
@@ -1733,7 +1733,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 							actor_token: "<agent_cc_token>",
 							actor_token_type: "urn:ietf:params:oauth:token-type:access_token",
 							audience: "<mcp_resource_uri>",
-							scope: "banking:read banking:write",
+							scope: "read write",
 						}}
 						docsUrl="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-token"
 						docsSectionTitle="RFC 8693 Token Exchange — swaps user access token + agent CC token for MCP-scoped token with act claim"
@@ -2062,9 +2062,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 									appName: "Super Banking MCP Token Exchanger",
 									appType: "AI_AGENT",
 									requiredScopes: [
-										"banking:read",
-										"banking:write",
-										"banking:mcp:invoke",
+										"read",
+										"write",
+										"mcp:invoke",
 									],
 									audience: "https://mcp-server.pingdemo.com",
 									spel: "MCP server returns 401 → BFF uses ID token (subject) + Agent CC token (actor) → RFC 8693 dual exchange → MCP Gateway token with act claim",
@@ -2152,9 +2152,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 									appName: "Super Banking AI Agent App",
 									appType: "AI_AGENT",
 									requiredScopes: [
-										"banking:read",
-										"banking:write",
-										"banking:mcp:invoke",
+										"read",
+										"write",
+										"mcp:invoke",
 									],
 									audience: "https://mcp-server.pingdemo.com",
 									spel: "User access token sent to MCP → MCP returns 401 → agent fetches CC token → RFC 8693 access token exchange → retry MCP with MCP token",

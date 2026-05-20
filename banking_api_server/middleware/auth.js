@@ -214,7 +214,7 @@ const hasRequiredScopes = (userScopes, requiredScopes, requireAll = false) => {
     return false;
   }
   
-  // Check for banking:admin scope - grants access to all endpoints
+  // Check for admin scope - grants access to all endpoints
   if (userScopes.includes(BANKING_SCOPES.ADMIN)) {
     if (DEBUG_TOKENS) {
     }
@@ -287,7 +287,7 @@ const requireScopes = (requiredScopes, requireAll = false) => {
       // Admin role bypass: users with role=admin are trusted as having all banking scopes.
       // This allows OAuth users whose PingOne token only carries standard OIDC scopes
       // (openid/profile/email) to still access admin-gated routes without requiring
-      // custom banking:* scopes to be provisioned in PingOne.
+      // custom * scopes to be provisioned in PingOne.
       if (req.user.role === 'admin') {
         logger.debug(LOG_CATEGORIES.AUTHORIZATION, 'Scope check bypassed — user has admin role', {
           ...requestContext,
@@ -297,7 +297,7 @@ const requireScopes = (requiredScopes, requireAll = false) => {
       }
 
       // Simplified-auth bypass: when ff_oidc_only_authorize is ON, the user token only carries
-      // OIDC scopes (no banking:*) because the authorize request was stripped down to avoid
+      // OIDC scopes (no *) because the authorize request was stripped down to avoid
       // PingOne's "May not request scopes for multiple resources" error. Scope gates on banking
       // routes relax to session-authenticated identity (same approach as admin role bypass).
       const oidcOnlyMode =
@@ -873,7 +873,7 @@ const requireAdmin = (req, res, next) => {
       token_type: req.user.tokenType
     });
     
-    // Check if user has admin role (from user object) OR banking:admin scope
+    // Check if user has admin role (from user object) OR admin scope
     const userScopes = req.user.scopes || [];
     const hasAdminRole = req.user.role === 'admin';
     const hasAdminScope = userScopes.includes(BANKING_SCOPES.ADMIN);
@@ -885,23 +885,23 @@ const requireAdmin = (req, res, next) => {
       has_admin_scope: hasAdminScope
     });
     
-    // Grant access if user has admin role OR banking:admin scope
+    // Grant access if user has admin role OR admin scope
     if (hasAdminRole || hasAdminScope) {
       logger.info(LOG_CATEGORIES.AUTHORIZATION, 'Admin access granted', {
         ...requestContext,
         username: req.user.username,
-        access_reason: hasAdminScope ? 'banking:admin scope' : 'admin role'
+        access_reason: hasAdminScope ? 'admin scope' : 'admin role'
       });
       
       next();
     } else {
       throw new OAuthError(
         OAUTH_ERROR_TYPES.INSUFFICIENT_SCOPE,
-        'Admin access required. User must have admin role or banking:admin scope.',
+        'Admin access required. User must have admin role or admin scope.',
         403,
         { 
           hint: 'Contact your administrator to grant admin privileges',
-          required_access: 'admin role or banking:admin scope'
+          required_access: 'admin role or admin scope'
         }
       );
     }
@@ -910,7 +910,7 @@ const requireAdmin = (req, res, next) => {
       ...requestContext,
       error_type: error.type || 'access_denied',
       error_message: error.message,
-      required_access: 'admin role or banking:admin scope',
+      required_access: 'admin role or admin scope',
       user_role: req.user?.role,
       user_scopes: req.user?.scopes || []
     });
@@ -1043,12 +1043,12 @@ const requireSession = (req, res, next) => {
 };
 
 /**
- * Block bankDelegate users from a route.
+ * Block demoDelegate users from a route.
  *
  * Reads req.user.isBankDelegate (set in authenticateToken from the
  * is_delegate / isDelegate token claim) and returns 403 when true.
  *
- * Demo policy: bankDelegate can read account details + balances and make
+ * Demo policy: demoDelegate can read account details + balances and make
  * deposits, but cannot transfer, pay bills, create or close accounts, or
  * change their own profile. Apply this middleware to the routes that
  * delegates aren't authorized for.

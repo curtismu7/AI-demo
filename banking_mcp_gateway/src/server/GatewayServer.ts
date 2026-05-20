@@ -40,10 +40,10 @@ const MCP_SESSION_HEADER = 'mcp-session-id';
 const MCP_PROTO_HEADER = 'mcp-protocol-version';
 
 const GATEWAY_SCOPES = [
-  'banking:read',
-  'banking:write',
-  'banking:admin',
-  'banking:mortgage:read',  // Phase 267 — Path A api_key disposition
+  'read',
+  'write',
+  'admin',
+  'mortgage:read',  // Phase 267 — Path A api_key disposition
   'ai_agent',
 ];
 

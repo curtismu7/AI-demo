@@ -77,7 +77,7 @@ async function runDemo() {
   );
   
   // Test 3: Insufficient Scopes
-  const tokenWithWrongScopes = createMockOAuthToken(['banking:transactions:read']);
+  const tokenWithWrongScopes = createMockOAuthToken(['transactions:read']);
   await testEndpoint(
     'Insufficient Scopes (has transactions:read, needs accounts:read)',
     '/api/accounts',
@@ -85,7 +85,7 @@ async function runDemo() {
   );
   
   // Test 4: Valid Token with Correct Scopes
-  const validToken = createMockOAuthToken(['banking:accounts:read']);
+  const validToken = createMockOAuthToken(['accounts:read']);
   await testEndpoint(
     'Valid Token with Correct Scopes',
     '/api/accounts/my',
@@ -93,7 +93,7 @@ async function runDemo() {
   );
   
   // Test 5: Admin Endpoint without Admin Scope
-  const userToken = createMockOAuthToken(['banking:read', 'banking:write']);
+  const userToken = createMockOAuthToken(['read', 'write']);
   await testEndpoint(
     'Admin Endpoint without Admin Scope',
     '/api/admin/stats',

@@ -8,7 +8,7 @@
  * POST /api/agent/delegate
  *   Authorization: Bearer <user_access_token>
  *   X-Agent-Client-ID: <optional platform identifier>
- *   Body (JSON, optional): { scope: "banking:read banking:write" }
+ *   Body (JSON, optional): { scope: "read write" }
  *
  * Returns: { access_token, token_type, expires_in, scope, act }
  */

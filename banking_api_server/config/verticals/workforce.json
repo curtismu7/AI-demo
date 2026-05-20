@@ -28,7 +28,7 @@
     "featureScope": "expense:read"
   },
   "demoUsers": {
-    "customer": { "hint": "bankuser", "passwordHint": "Tigers7&" },
-    "admin": { "hint": "bankadmin", "passwordHint": "Tigers7&" }
+    "customer": { "hint": "demoUser", "passwordHint": "Tigers7&" },
+    "admin": { "hint": "demoAdmin", "passwordHint": "Tigers7&" }
   }
 }

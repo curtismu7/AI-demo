@@ -119,7 +119,7 @@ async function buildTokenChain(req) {
     if (mcpResourceUri && sessionToken) {
       // Derive scopes from the user's actual token — PingOne can only narrow, not grant
       // scopes not present in the subject token. Avoids "At least one scope must be granted"
-      // when ENDUSER_AUDIENCE is configured and the login only carries banking:agent:invoke.
+      // when ENDUSER_AUDIENCE is configured and the login only carries agent:invoke.
       const userPayload = (() => {
         try {
           const parts = sessionToken.split('.');

@@ -18,7 +18,7 @@ const resourceApiService = {
           uri: 'https://banking-api.ping.demo/',
           name: 'Banking API',
           description: 'Core banking operations and account management',
-          scopes: ['banking:read', 'banking:write', 'transactions:read', 'accounts:read'],
+          scopes: ['read', 'write', 'transactions:read', 'accounts:read'],
           icon: '🏦',
           category: 'core',
           required: false
@@ -174,7 +174,7 @@ export const useResourceIndicators = (clientId) => {
 
     return scopes.filter(scope => {
       return resources.some(resource => {
-        if (resource.includes('banking-api') && scope.startsWith('banking:')) return true;
+        if (resource.includes('banking-api') && scope.startsWith('')) return true;
         if (resource.includes('mcp-server') && (scope.startsWith('ai:') || scope.startsWith('mcp:'))) return true;
         if (resource.includes('admin-api') && scope.startsWith('admin:')) return true;
         if (resource.includes('config-api') && scope.startsWith('config:')) return true;

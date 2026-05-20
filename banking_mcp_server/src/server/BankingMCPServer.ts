@@ -739,10 +739,10 @@ export class BankingMCPServer extends EventEmitter {
           ? `${process.env.PINGONE_AUTH_URL}/token`
           : undefined,
         scopes: [
-          'banking:accounts:read',
-          'banking:transactions:read',
-          'banking:transactions:write',
-          'banking:sensitive:read',
+          'accounts:read',
+          'transactions:read',
+          'transactions:write',
+          'sensitive:read',
         ],
       },
     };

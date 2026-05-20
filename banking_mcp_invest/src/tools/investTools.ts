@@ -23,7 +23,7 @@ export const INVEST_TOOLS: InvestTool[] = [
     name: 'get_investment_accounts',
     description: 'List all investment accounts for the authenticated user.',
     inputSchema: { type: 'object', properties: {}, required: [] },
-    requiredScopes: ['banking:read'],
+    requiredScopes: ['read'],
     readOnly: true,
   },
   {
@@ -39,7 +39,7 @@ export const INVEST_TOOLS: InvestTool[] = [
       },
       required: ['account_id'],
     },
-    requiredScopes: ['banking:read'],
+    requiredScopes: ['read'],
     readOnly: true,
   },
   {
@@ -60,7 +60,7 @@ export const INVEST_TOOLS: InvestTool[] = [
       },
       required: ['account_id'],
     },
-    requiredScopes: ['banking:read'],
+    requiredScopes: ['read'],
     readOnly: true,
   },
   {
@@ -74,13 +74,13 @@ export const INVEST_TOOLS: InvestTool[] = [
       },
       required: ['account_id'],
     },
-    requiredScopes: ['banking:read'],
+    requiredScopes: ['read'],
     readOnly: true,
   },
 ];
 
 export function filterByScopes(tools: InvestTool[], tokenScopes: string[]): InvestTool[] {
   if (tokenScopes.length === 0) return tools;
-  const has = (s: string) => tokenScopes.includes(s) || tokenScopes.includes('banking:*') || tokenScopes.includes('*');
+  const has = (s: string) => tokenScopes.includes(s) || tokenScopes.includes('*') || tokenScopes.includes('*');
   return tools.filter((t) => t.requiredScopes.every(has));
 }

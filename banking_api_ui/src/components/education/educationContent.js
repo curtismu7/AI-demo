@@ -23,7 +23,7 @@ import {
 
 const SEQUENCE_DIAGRAM = `
 1. App (server) ──POST /bc-authorize──▶ PingOne
-   { login_hint: "user@bank.com", scope: "openid banking:write",
+   { login_hint: "user@bank.com", scope: "openid write",
      binding_message: "Approve $500 transfer" }
 
 2. PingOne ◀─────────────────────────── auth_req_id returned
@@ -452,7 +452,7 @@ export function CibaMcpFlowContent() {
 7. Backend-for-Frontend (BFF) → POST /as/token  grant_type=token-exchange (RFC 8693)
        subject_token=<CIBA access token>
        audience=<MCP resource>
-       scope=banking:write
+       scope=write
 8. Backend-for-Frontend (BFF) receives MCP token (MCP-audience)
 9. Backend-for-Frontend (BFF) → MCP server tools/call create_transfer with MCP token as Bearer (transaction scope → often called Transaction token for transfers)
 10. MCP server → Banking API → confirms transfer
@@ -619,7 +619,7 @@ subject_token_type=urn:ietf:params:oauth:token-type:access_token
 actor_token=<agent client_credentials token> ← who is acting on behalf (agent)
 actor_token_type=urn:ietf:params:oauth:token-type:access_token
 audience=<MCP resource URI>
-scope=banking:read banking:write
+scope=read write
 
 ── Success — delegated token ──
 HTTP/1.1 200 OK
@@ -722,7 +722,7 @@ Content-Type: application/json
   "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
   "token_type": "Bearer",
   "expires_in": 3600,
-  "scope": "openid profile email banking:read",
+  "scope": "openid profile email read",
   "id_token": "eyJ...",
   "refresh_token": "...",
   "issued_token_type": "urn:ietf:params:oauth:token-type:access_token"
@@ -840,8 +840,8 @@ Authorization Code + PKCE (current best practice):
       <h3>Scope minimisation</h3>
       <p>
         Request only the scopes needed for the current flow. The Backend-for-Frontend (BFF) requests{' '}
-        <code>openid profile email</code> for login, and adds <code>banking:read</code> or{' '}
-        <code>banking:write</code> only when the session requires it. Wider scopes increase
+        <code>openid profile email</code> for login, and adds <code>read</code> or{' '}
+        <code>write</code> only when the session requires it. Wider scopes increase
         blast radius if tokens are ever compromised.
       </p>
 
@@ -1030,7 +1030,7 @@ Content-Type: application/json
   "aud": "https://api.example.com/",      ← resource server audience
   "iss": "https://auth.pingone.com/.../as",
   "client_id": "banking-bff-client-id",
-  "scope": "openid banking:read",
+  "scope": "openid read",
   "exp": 1712345678,
   "iat": 1712342078,
   "jti": "unique-token-id",
@@ -1307,7 +1307,7 @@ export function RFC9728Content() {
       </p>
 
       <h3>Response shape (RFC 9728 §3.2)</h3>
-      <pre className="edu-code">{`{\n  "resource":                 REQUIRED  -- this RS's canonical URL\n  "authorization_servers":    OPTIONAL  -- [PingOne issuer URI, ...]\n  "scopes_supported":         RECOMMENDED -- ["banking:read", ...]\n  "bearer_methods_supported": OPTIONAL  -- ["header"]\n  "resource_name":            OPTIONAL  -- human-readable display name\n}`}</pre>
+      <pre className="edu-code">{`{\n  "resource":                 REQUIRED  -- this RS's canonical URL\n  "authorization_servers":    OPTIONAL  -- [PingOne issuer URI, ...]\n  "scopes_supported":         RECOMMENDED -- ["read", ...]\n  "bearer_methods_supported": OPTIONAL  -- ["header"]\n  "resource_name":            OPTIONAL  -- human-readable display name\n}`}</pre>
 
       <h3>Security: resource identifier validation (RFC 9728 §3.3)</h3>
       <p>

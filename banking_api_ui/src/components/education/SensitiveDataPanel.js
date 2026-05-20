@@ -59,18 +59,18 @@ function LeastDataContent() {
 
       <Section title="Field-Level Scopes">
         <p style={{ color: '#475569', fontSize: '0.88rem', lineHeight: 1.6 }}>
-          Instead of one broad scope like <code>banking:read</code> that exposes everything, split at the
+          Instead of one broad scope like <code>read</code> that exposes everything, split at the
           data-tier level:
         </p>
         <Code>{`// Broad (avoid for agents)
-scope: "banking:read"  →  returns all fields incl. full account number
+scope: "read"  →  returns all fields incl. full account number
 
 // Granular (preferred)
-scope: "banking:accounts:read"  →  account name, masked number, balance
-scope: "banking:sensitive:read" →  full account number, routing number
+scope: "accounts:read"  →  account name, masked number, balance
+scope: "sensitive:read" →  full account number, routing number
      ↑ requires explicit user consent + PAZ policy check`}</Code>
         <p style={{ color: '#475569', fontSize: '0.88rem', marginTop: '0.4rem' }}>
-          The demo uses <code>banking:sensitive:read</code> as the gate for the
+          The demo uses <code>sensitive:read</code> as the gate for the
           <code> get_sensitive_account_details</code> MCP tool.
         </p>
       </Section>
@@ -85,7 +85,7 @@ scope: "banking:sensitive:read" →  full account number, routing number
   "routingNumber": null
 }
 
-// After banking:sensitive:read + PAZ policy + user consent:
+// After sensitive:read + PAZ policy + user consent:
 {
   "accountNumber": "****5678",
   "accountNumberFull": "010123456789",
@@ -110,9 +110,9 @@ scope: "banking:sensitive:read" →  full account number, routing number
 
       <Section title="This Demo">
         <Callout icon="🔒" color="#0d9488" bg="#f0fdfa" border="#0d9488">
-          The <strong>banking:sensitive:read</strong> scope is gated by three layers:
+          The <strong>sensitive:read</strong> scope is gated by three layers:
           <ol style={{ marginTop: '0.4rem', paddingLeft: '1.2rem', lineHeight: 1.7 }}>
-            <li>Scope check — token must carry <code>banking:sensitive:read</code> or <code>banking:read</code>.</li>
+            <li>Scope check — token must carry <code>sensitive:read</code> or <code>read</code>.</li>
             <li>PAZ policy — PingOne Authorize (or simulated) evaluates the request.</li>
             <li>User consent — an in-session consent banner asks the user to approve before the data is returned.</li>
           </ol>
@@ -135,13 +135,13 @@ function RarSelectiveContent() {
 
       <Section title="RAR in One Sentence">
         <Callout icon="📜" color="#0369a1" bg="#eff6ff" border="var(--brand-navy)">
-          Instead of <code>scope=banking:sensitive:read</code>, a client sends an{' '}
+          Instead of <code>scope=sensitive:read</code>, a client sends an{' '}
           <code>authorization_details</code> JSON array that says:{' '}
           <em>"I want read access to the full account number of account ABC, for the next 5 minutes."</em>
         </Callout>
       </Section>
 
-      <Section title="banking:sensitive:read as a RAR-Adjacent Pattern">
+      <Section title="sensitive:read as a RAR-Adjacent Pattern">
         <p style={{ color: '#475569', fontSize: '0.88rem', lineHeight: 1.6, marginBottom: '0.5rem' }}>
           This demo uses OAuth scopes as a simplified RAR-adjacent pattern. A full RFC 9396 implementation
           would pass <code>authorization_details</code> in the token request:
@@ -169,8 +169,8 @@ grant_type=authorization_code
 
       <Section title="Why This Matters">
         <p style={{ color: '#475569', fontSize: '0.88rem', lineHeight: 1.6 }}>
-          A blanket <code>banking:read</code> scope gives the agent access to everything in the
-          banking:read tier — forever (until the token expires). RAR makes each authorization
+          A blanket <code>read</code> scope gives the agent access to everything in the
+          read tier — forever (until the token expires). RAR makes each authorization
           decision auditable:
         </p>
         <ul style={{ color: '#475569', fontSize: '0.88rem', paddingLeft: '1.2rem', lineHeight: 1.7 }}>
@@ -184,7 +184,7 @@ grant_type=authorization_code
       <Section title="How This Demo Uses It">
         <Callout icon="🏦" color="#0d9488" bg="#f0fdfa" border="#0d9488">
           <p style={{ margin: 0, lineHeight: 1.6 }}>
-            The demo uses <strong>banking:sensitive:read</strong> as a simplified proxy for a RAR type.
+            The demo uses <strong>sensitive:read</strong> as a simplified proxy for a RAR type.
             Real PingOne Authorize integration would pass the account identifier in
             <code> authorization_details</code> and the PAZ policy would evaluate per-account
             decisions. The consent banner adds a user-approval layer on top of that policy.

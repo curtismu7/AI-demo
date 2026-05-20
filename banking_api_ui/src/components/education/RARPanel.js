@@ -25,7 +25,7 @@ export default function RARPanel({ isOpen, onClose, initialTabId }) {
             <em>exactly what they want to do</em> instead of relying on flat scope strings.
           </p>
           <p>
-            Classic OAuth uses strings like <code>banking:transfer</code>. RAR allows a structured
+            Classic OAuth uses strings like <code>transfer</code>. RAR allows a structured
             JSON object describing the specific operation, resource, amount, currency, and more:
           </p>
           <Code>{`authorization_details=[
@@ -139,7 +139,7 @@ export default function RARPanel({ isOpen, onClose, initialTabId }) {
 }`}</Code>
           <p>
             Compare this to a flat-scope token: the RS only knows the bearer has
-            <code>banking:transfer</code> — it cannot verify the amount or destination without a
+            <code>transfer</code> — it cannot verify the amount or destination without a
             side-channel database look-up.
           </p>
         </>

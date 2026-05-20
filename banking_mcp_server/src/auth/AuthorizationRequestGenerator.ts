@@ -221,9 +221,9 @@ export class AuthorizationRequestGenerator {
     }
 
     const validBankingScopes = [
-      'banking:accounts:read',
-      'banking:transactions:read',
-      'banking:transactions:write',
+      'accounts:read',
+      'transactions:read',
+      'transactions:write',
       'read',
       'write',
       'openid',

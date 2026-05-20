@@ -21,7 +21,7 @@ const FLAG_DESCRIPTIONS = {
   ff_hitl_enabled: 'Show a consent challenge before executing sensitive operations',
   ff_inject_may_act: 'Inject may_act claim into tokens to enable delegated agent access',
   ff_skip_token_exchange: 'Bypass RFC 8693 token exchange — also enables Inject Banking Scopes so MCP calls still work',
-  ff_inject_scopes: 'Add banking:read / banking:write scopes to the token (required when skipping token exchange)',
+  ff_inject_scopes: 'Add read / write scopes to the token (required when skipping token exchange)',
 };
 
 const IMPORTANT_FLAG_IDS = Object.keys(FLAG_LABELS);

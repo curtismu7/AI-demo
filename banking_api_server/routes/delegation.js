@@ -67,7 +67,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Admin routes (requireAdmin — must have admin role or banking:admin scope)
+// Admin routes (requireAdmin — must have admin role or admin scope)
 // ---------------------------------------------------------------------------
 
 // GET /api/delegation/admin/all — list all delegations across all users

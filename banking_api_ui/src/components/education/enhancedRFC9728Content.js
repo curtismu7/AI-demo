@@ -127,7 +127,7 @@ Host: api.bank.com
   "resource":              "https://api.bank.com/api",     // REQUIRED
   "authorization_servers": ["https://auth.pingone.com/…"], // RECOMMENDED
   "bearer_methods_supported": ["header"],                  // OPTIONAL
-  "scopes_supported": ["banking:read", "banking:write"],   // OPTIONAL
+  "scopes_supported": ["read", "write"],   // OPTIONAL
   "resource_name":         "Super Banking Banking API",    // OPTIONAL
   "resource_documentation": "https://…"                   // OPTIONAL
 }`}</pre>

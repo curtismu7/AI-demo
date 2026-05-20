@@ -4,14 +4,14 @@
 export const AGENT_MCP_SCOPE_CATALOG = [
   // ── Broad umbrella scopes (consolidated) ───────────────────────────────────
   {
-    scope: 'banking:general:read',
+    scope: 'general:read',
     label: 'Read (all data)',
     description:
       'View own accounts, balances, and transaction history. Satisfies any read tool without needing specific scopes.',
     group: 'broad',
   },
   {
-    scope: 'banking:general:write',
+    scope: 'general:write',
     label: 'Write (transfers & deposits)',
     description:
       'Transfer funds, make deposits, and withdrawals. Satisfies any write tool without needing specific scopes.',
@@ -19,13 +19,13 @@ export const AGENT_MCP_SCOPE_CATALOG = [
   },
   // ── Admin and sensitive scopes (consolidated) ───────────────────────────────
   {
-    scope: 'banking:admin',
+    scope: 'admin',
     label: 'Admin operations',
     description: 'Full administrative access including sensitive data operations.',
     group: 'admin',
   },
   {
-    scope: 'banking:sensitive',
+    scope: 'sensitive',
     label: 'Sensitive data access',
     description:
       'Access full account number and routing number. Requires explicit user consent each session. Used by get_sensitive_account_details.',
@@ -33,7 +33,7 @@ export const AGENT_MCP_SCOPE_CATALOG = [
   },
   // ── AI Agent scope (consolidated) ───────────────────────────────────────────
   {
-    scope: 'banking:ai:agent',
+    scope: 'ai:agent',
     label: 'User lookup (agent)',
     description: 'Resolve user by email for agent workflows (query_user_by_email).',
     group: 'specific',

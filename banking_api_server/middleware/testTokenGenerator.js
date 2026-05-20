@@ -25,7 +25,7 @@ function generateTestToken(options = {}) {
   const {
     sub = 'test-user-123',
     aud = 'https://mcp-server.banking-demo.com',
-    scope = ['banking:read', 'banking:write'],
+    scope = ['read', 'write'],
     act = undefined,
     exp = undefined,
     expiresIn = 3600
@@ -55,14 +55,14 @@ function generateTestToken(options = {}) {
 }
 
 /**
- * Generate user token with wrong scope (no mcp:* or banking:agent scopes)
+ * Generate user token with wrong scope (no mcp:* or agent scopes)
  * Scenario: User token lacks agent-required scopes
  */
 function generateWrongScopeToken() {
   return generateTestToken({
     sub: 'test-user-123',
     aud: 'https://mcp-server.banking-demo.com',
-    scope: ['profile', 'email', 'banking:read'],  // Missing mcp:* or banking:agent
+    scope: ['profile', 'email', 'read'],  // Missing mcp:* or agent
     expiresIn: 3600
   });
 }
@@ -75,7 +75,7 @@ function generateWrongAudToken() {
   return generateTestToken({
     sub: 'test-user-123',
     aud: 'https://banking-bff.banking-demo.com',  // Wrong audience (BFF instead of MCP)
-    scope: ['banking:read', 'banking:write', 'banking:agent'],
+    scope: ['read', 'write', 'agent'],
     expiresIn: 3600
   });
 }
@@ -88,7 +88,7 @@ function generateMissingActToken() {
   return generateTestToken({
     sub: 'test-user-123',
     aud: 'https://mcp-server.banking-demo.com',
-    scope: ['banking:read', 'banking:write', 'banking:agent'],
+    scope: ['read', 'write', 'agent'],
     act: undefined,  // Explicitly no act claim
     expiresIn: 3600
   });
@@ -102,7 +102,7 @@ function generateAgentToken() {
   return generateTestToken({
     sub: 'ai-agent-core-client',
     aud: 'https://mcp-server.banking-demo.com',
-    scope: ['banking:agent', 'banking:mcp:invoke'],  // Agent-only scopes
+    scope: ['agent', 'mcp:invoke'],  // Agent-only scopes
     act: {
       client_id: 'mcp-agent',
       sub: 'test-user-123'
@@ -120,7 +120,7 @@ function generateExpiredToken() {
   return generateTestToken({
     sub: 'test-user-123',
     aud: 'https://mcp-server.banking-demo.com',
-    scope: ['banking:read', 'banking:write', 'banking:agent'],
+    scope: ['read', 'write', 'agent'],
     exp: now - 900  // Expired 15 minutes ago
   });
 }

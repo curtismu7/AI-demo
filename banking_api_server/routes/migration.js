@@ -208,7 +208,7 @@ router.get('/guide', async (req, res) => {
           example: {
             name: 'My Banking Integration',
             description: 'Integration for account management',
-            scopes: ['banking:read', 'banking:write']
+            scopes: ['read', 'write']
           }
         },
         {
@@ -292,7 +292,7 @@ router.post('/validate', async (req, res) => {
     const validationResult = await migrationUtilities.validateOAuthSetup({
       clientId,
       clientSecret,
-      scopes: scopes || ['banking:read']
+      scopes: scopes || ['read']
     });
 
     await writeExchangeEvent({

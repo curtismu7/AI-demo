@@ -183,7 +183,7 @@ export default function TokenExchangeDiagram() {
             claims={[
               ['sub',      '<user-id>  ← never changes'],
               ['aud',      'https://ai-agent.pingdemo.com'],
-              ['scope',    'openid profile email offline_access banking:read banking:write banking:ai:agent'],
+              ['scope',    'openid profile email offline_access read write ai:agent'],
               ['may_act',  '{ "sub": "<ai-agent-client-id>" }  ← pre-approval for Exchange #1'],
             ]}
           />
@@ -225,7 +225,7 @@ export default function TokenExchangeDiagram() {
             claims={[
               ['sub',   '<user-id>  ← preserved'],
               ['aud',   'https://ai-agent.pingdemo.com'],
-              ['scope', 'banking:read  banking:write'],
+              ['scope', 'read  write'],
               ['act',   '{ "sub": "<ai-agent-client-id>" }  ← delegation fact recorded'],
             ]}
           />
@@ -253,7 +253,7 @@ export default function TokenExchangeDiagram() {
 
         <Row mt={4}>
           <Actor icon="🏦" label="BFF" sublabel="subject_token = Intermediate Token&#10;actor_token = MCP Exchanger CC Token" color={C.bff.bg} border={C.bff.border} width={170} />
-          <Arrow label="POST /as/token  RFC 8693" sublabel="scope narrowed to tool's scope  (e.g. banking:read)" color={C.ping.border} />
+          <Arrow label="POST /as/token  RFC 8693" sublabel="scope narrowed to tool's scope  (e.g. read)" color={C.ping.border} />
           <Actor icon="🔐" label="PingOne AS" sublabel="issues Final MCP Token with nested act chain" color={C.ping.bg} border={C.ping.border} />
         </Row>
 
@@ -267,7 +267,7 @@ export default function TokenExchangeDiagram() {
             claims={[
               ['sub',   '<user-id>  ← preserved end-to-end ✓'],
               ['aud',   'https://resource-server.pingdemo.com'],
-              ['scope', 'banking:read  (narrowed to one tool) ✓'],
+              ['scope', 'read  (narrowed to one tool) ✓'],
               ['act',   '{ "sub": "mcp-exchanger-id", "act": { "sub": "ai-agent-id" } }  ← full chain ✓'],
             ]}
           />

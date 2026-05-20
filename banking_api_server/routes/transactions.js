@@ -289,9 +289,9 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // Delegate-user gate: bankDelegate can deposit but cannot transfer,
+    // Delegate-user gate: demoDelegate can deposit but cannot transfer,
     // withdraw, or pay. Read-only ops (GET balances, GET account details)
-    // are unaffected by this — they're already gated by `banking:read` scope.
+    // are unaffected by this — they're already gated by `read` scope.
     if (req.user.isBankDelegate === true) {
       const requestedType = String(req.body.type || '').toLowerCase();
       const ALLOWED_FOR_DELEGATE = new Set(['deposit']);

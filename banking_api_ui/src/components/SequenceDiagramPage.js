@@ -1107,7 +1107,7 @@ const ALL_STEPS = [
         rule: "Scope reduction filter — drop tools requiring missing scopes",
         result: "PASS",
         detail:
-          "agent has tools.list; tools requiring banking:admin filtered out",
+          "agent has tools.list; tools requiring admin filtered out",
       },
     ],
     onError: [
@@ -1410,7 +1410,7 @@ const ALL_STEPS = [
         resource: {
           type: "mcp.tool",
           id: "check_balance",
-          required_scope: "banking:read",
+          required_scope: "read",
         },
       },
     },
@@ -1437,7 +1437,7 @@ const ALL_STEPS = [
         rule: "Agent client_credentials scope sufficient for user-specific data",
         result: "FAIL",
         detail:
-          "CC token has only 'tools.list'; missing banking:read for user resource",
+          "CC token has only 'tools.list'; missing read for user resource",
       },
       {
         rule: "Audience match for MCP gateway",
@@ -1470,7 +1470,7 @@ const ALL_STEPS = [
       body: {
         decision: "DENY",
         reason: "insufficient_scope:balance, no_subject_token",
-        required_scope: "banking:read",
+        required_scope: "read",
         required_resource: "agent1",
       },
     },
@@ -1487,9 +1487,9 @@ const ALL_STEPS = [
         detail: "sub=client_id ({AGENT_CLIENT_ID}); no act delegation present",
       },
       {
-        rule: "Required scope banking:read present on subject token",
+        rule: "Required scope read present on subject token",
         result: "FAIL",
-        detail: "no subject token → no banking:read scope available",
+        detail: "no subject token → no read scope available",
       },
     ],
   },
@@ -1511,7 +1511,7 @@ const ALL_STEPS = [
       headers: {
         "Content-Type": "application/json",
         "WWW-Authenticate":
-          'Bearer error="insufficient_scope", scope="banking:read", resource="agent1"',
+          'Bearer error="insufficient_scope", scope="read", resource="agent1"',
       },
       body: {
         jsonrpc: "2.0",
@@ -1519,7 +1519,7 @@ const ALL_STEPS = [
         error: {
           code: -32001,
           message: "insufficient_scope",
-          data: { required_scope: "banking:read", required_resource: "agent1" },
+          data: { required_scope: "read", required_resource: "agent1" },
         },
       },
     },
@@ -1542,7 +1542,7 @@ const ALL_STEPS = [
       headers: { "Content-Type": "application/json" },
       body: {
         status: "user_context_required",
-        required: { resource: "agent1", scope: "banking:read" },
+        required: { resource: "agent1", scope: "read" },
         prompt_replay_token: "replay_01XYZ",
       },
     },
@@ -1700,7 +1700,7 @@ const ALL_STEPS = [
         "Content-Type": "application/json",
         Cookie: "connect.sid=s%3A{SESSION_ID}.{SIG}",
       },
-      body: { resource: "agent1", scope: "banking:read" },
+      body: { resource: "agent1", scope: "read" },
     },
     response: {
       status: 200,
@@ -1721,7 +1721,7 @@ const ALL_STEPS = [
     label: "Token request (resource: agent1, scope: balance)",
     type: "request",
     description: "PingOne Token Request",
-    scopes: ["banking:read"],
+    scopes: ["read"],
     why: "The BFF talks to PingOne on the user's behalf to issue a subject token narrowly audienced to the agent. The resource indicator (RFC 8707) is what tells PingOne to embed aud=agent1 and may_act so this token can later be exchanged.",
     request: {
       method: "POST",
@@ -1739,7 +1739,7 @@ const ALL_STEPS = [
         access_token: "eyJhbGciOi...SubjectToken...",
         token_type: "Bearer",
         expires_in: 600,
-        scope: "banking:read",
+        scope: "read",
       },
     },
     onError: [
@@ -1757,7 +1757,7 @@ const ALL_STEPS = [
       "Subject token (sub: user, aud: agent1, may_act: {sub: agent1}, scope: balance)",
     type: "response",
     description: "Subject Token Issued",
-    scopes: ["banking:read"],
+    scopes: ["read"],
     why: "PingOne issues a token where the user is the subject and the agent is recorded as an allowed actor via may_act. That single claim is what unlocks safe RFC 8693 delegation downstream — it's the consent record.",
     request: {
       frame: "token-issuance-response",
@@ -1773,12 +1773,12 @@ const ALL_STEPS = [
         access_token: "eyJhbGciOi...SubjectToken...",
         token_type: "Bearer",
         expires_in: 600,
-        scope: "banking:read",
+        scope: "read",
         claims: {
           sub: "user_jane_doe",
           aud: "agent1",
           iss: "https://auth.pingone.com/{ENV_ID}",
-          scope: "banking:read",
+          scope: "read",
           may_act: { sub: "agent1-cc-client" },
           iat: 1778000000,
           exp: 1778000600,
@@ -1874,7 +1874,7 @@ const ALL_STEPS = [
     tokenChanges: [
       "Add act claim (agent1)",
       "Change aud to mcp-gw",
-      "Keep scope: banking:read",
+      "Keep scope: read",
     ],
     why: "The agent asks PingOne to mint a new token that says 'this is the user, being acted on by agent1, targeted at the gateway'. This is the core RFC 8693 'delegation' pattern — provable on-behalf-of with no impersonation.",
     request: {
@@ -1894,7 +1894,7 @@ const ALL_STEPS = [
         issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
         token_type: "Bearer",
         expires_in: 600,
-        scope: "banking:read",
+        scope: "read",
       },
     },
     onError: [
@@ -1915,7 +1915,7 @@ const ALL_STEPS = [
     tokenChanges: [
       "Add act claim (agent1)",
       "Change aud to mcp-gw",
-      "Keep scope: banking:read",
+      "Keep scope: read",
     ],
     why: "PingOne returns the first exchanged token. The act claim is the cryptographic proof that the agent is operating on the user's behalf — downstream services can see both who and on-whose-behalf in one token.",
     request: {
@@ -1936,12 +1936,12 @@ const ALL_STEPS = [
         issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
         token_type: "Bearer",
         expires_in: 600,
-        scope: "banking:read",
+        scope: "read",
         claims: {
           sub: "user_jane_doe",
           aud: "mcp-gw",
           iss: "https://auth.pingone.com/{ENV_ID}",
-          scope: "banking:read",
+          scope: "read",
           act: { sub: "agent1-cc-client", client_id: "{AGENT_CLIENT_ID}" },
           iat: 1778000000,
           exp: 1778000600,
@@ -2076,7 +2076,7 @@ const ALL_STEPS = [
         rule: "Requested scope is subset of user's granted scopes",
         result: "PASS",
         detail:
-          "requested=banking:read; user granted=banking:read banking:write",
+          "requested=read; user granted=read write",
       },
       {
         rule: "High-value transaction threshold (>$500 requires step-up)",
@@ -2121,7 +2121,7 @@ const ALL_STEPS = [
         active: true,
         sub: "user_jane_doe",
         aud: "mcp-gw",
-        scope: "banking:read",
+        scope: "read",
         act: { sub: "agent1-cc-client" },
       },
     },
@@ -2151,7 +2151,7 @@ const ALL_STEPS = [
         active: true,
         sub: "user_jane_doe",
         aud: "mcp-gw",
-        scope: "banking:read",
+        scope: "read",
         act: { sub: "agent1-cc-client", client_id: "{AGENT_CLIENT_ID}" },
         iss: "https://auth.pingone.com/{ENV_ID}",
         iat: 1778000000,
@@ -2179,7 +2179,7 @@ const ALL_STEPS = [
       {
         rule: "Scope covers requested action",
         result: "PASS",
-        detail: "scope='banking:read' satisfies check_balance",
+        detail: "scope='read' satisfies check_balance",
       },
       {
         rule: "Agent is in user's may_act allowlist",
@@ -2221,7 +2221,7 @@ const ALL_STEPS = [
         rule: "All sub/act/aud/scope/may_act checks passed",
         result: "PASS",
         detail:
-          "sub=user_jane_doe, act=agent1-cc-client, aud=mcp-gw, scope=banking:read, may_act match",
+          "sub=user_jane_doe, act=agent1-cc-client, aud=mcp-gw, scope=read, may_act match",
       },
       {
         rule: "Transaction amount under high-value threshold OR step-up satisfied",
@@ -2259,11 +2259,11 @@ const ALL_STEPS = [
     label: "Token exchange (TX token → aud: mcp)",
     type: "request",
     description: "RFC 8693 Exchange #2",
-    scopes: ["banking:mcp:invoke"],
+    scopes: ["mcp:invoke"],
     tokenChanges: [
       "Keep act claim (agent1)",
       "Change aud to mcp",
-      "Keep scope: banking:read",
+      "Keep scope: read",
     ],
     why: "Second RFC 8693 hop. The gateway uses its own credentials to ask PingOne to re-audience the token to mcp while keeping the act delegation chain intact. Each segment of the call gets a purpose-built token.",
     request: {
@@ -2283,7 +2283,7 @@ const ALL_STEPS = [
         issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
         token_type: "Bearer",
         expires_in: 600,
-        scope: "banking:read banking:mcp:invoke",
+        scope: "read mcp:invoke",
       },
     },
     onError: [
@@ -2301,11 +2301,11 @@ const ALL_STEPS = [
       "MCP token (sub: user, act: {sub: agent1}, aud: mcp, scope: balance)",
     type: "response",
     description: "MCP Token",
-    scopes: ["banking:mcp:invoke"],
+    scopes: ["mcp:invoke"],
     tokenChanges: [
       "Keep act claim (agent1)",
       "Change aud to mcp",
-      "Keep scope: banking:read",
+      "Keep scope: read",
     ],
     why: "PingOne returns the MCP-audienced token, still carrying sub=user and act=agent1. The gateway can now talk to MCP without ever giving up the user-identity context.",
     request: {
@@ -2323,12 +2323,12 @@ const ALL_STEPS = [
         issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
         token_type: "Bearer",
         expires_in: 600,
-        scope: "banking:read banking:mcp:invoke",
+        scope: "read mcp:invoke",
         claims: {
           sub: "user_jane_doe",
           aud: "mcp",
           iss: "https://auth.pingone.com/{ENV_ID}",
-          scope: "banking:read banking:mcp:invoke",
+          scope: "read mcp:invoke",
           act: { sub: "agent1-cc-client" },
           iat: 1778000000,
           exp: 1778000600,
@@ -2398,7 +2398,7 @@ const ALL_STEPS = [
     tokenChanges: [
       "Keep act claim (agent1)",
       "Change aud to resource-server",
-      "Keep scope: banking:read",
+      "Keep scope: read",
     ],
     why: "Third and final RFC 8693 hop. MCP uses its own credentials to mint a resource-server-audienced token, still carrying the same user subject and act chain.",
     request: {
@@ -2418,7 +2418,7 @@ const ALL_STEPS = [
         issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
         token_type: "Bearer",
         expires_in: 600,
-        scope: "banking:read",
+        scope: "read",
       },
     },
     onError: [
@@ -2439,9 +2439,9 @@ const ALL_STEPS = [
     tokenChanges: [
       "Keep act claim (agent1)",
       "Change aud to resource-server",
-      "Keep scope: banking:read",
+      "Keep scope: read",
     ],
-    why: "Final delegated token. By the time it lands at the resource server, the API can answer 'who is this for?' (the user), 'who is asking?' (the agent), 'what scope?' (banking:read), and 'is the audience me?' (yes) — all from one signed JWT.",
+    why: "Final delegated token. By the time it lands at the resource server, the API can answer 'who is this for?' (the user), 'who is asking?' (the agent), 'what scope?' (read), and 'is the audience me?' (yes) — all from one signed JWT.",
     request: {
       frame: "token-exchange-response",
       payload: { resource: "https://api.ping.demo" },
@@ -2457,12 +2457,12 @@ const ALL_STEPS = [
         issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
         token_type: "Bearer",
         expires_in: 600,
-        scope: "banking:read",
+        scope: "read",
         claims: {
           sub: "user_jane_doe",
           aud: "https://api.ping.demo",
           iss: "https://auth.pingone.com/{ENV_ID}",
-          scope: "banking:read",
+          scope: "read",
           act: { sub: "agent1-cc-client" },
           iat: 1778000000,
           exp: 1778000600,
@@ -2498,7 +2498,7 @@ const ALL_STEPS = [
     },
     onError: [
       "401 invalid_token — RS rejected aud or signature; check JWKS URL on RS",
-      "403 insufficient_scope — token's scope missing banking:read",
+      "403 insufficient_scope — token's scope missing read",
       "404 — accountId not found for this sub; data layer mismatch with PingOne user id",
     ],
   },
@@ -2527,7 +2527,7 @@ const ALL_STEPS = [
         active: true,
         sub: "user_jane_doe",
         aud: "https://api.ping.demo",
-        scope: "banking:read",
+        scope: "read",
         act: { sub: "agent1-cc-client" },
       },
     },
@@ -2557,7 +2557,7 @@ const ALL_STEPS = [
         active: true,
         sub: "user_jane_doe",
         aud: "https://api.ping.demo",
-        scope: "banking:read",
+        scope: "read",
         act: { sub: "agent1-cc-client", client_id: "{AGENT_CLIENT_ID}" },
         iss: "https://auth.pingone.com/{ENV_ID}",
         iat: 1778000000,
@@ -2937,7 +2937,7 @@ const SCENARIOS = {
       participants: ["U", "CB"],
       text: "API-KEY PATH: scope gate + credential swap\nGateway calls banking_mortgage_service",
       description:
-        "Path A: the gateway verifies banking:mortgage:read, swaps the OAuth bearer for a service API key, and calls banking_mortgage_service :8082.",
+        "Path A: the gateway verifies mortgage:read, swaps the OAuth bearer for a service API key, and calls banking_mortgage_service :8082.",
       why: "Demonstrates credential swap pattern: the user token never reaches the backend; only the API key + X-User-Sub are forwarded.",
     },
     {
@@ -2965,9 +2965,9 @@ const SCENARIOS = {
     {
       type: "note",
       participants: ["AG"],
-      text: "API-KEY PATH: enforce banking:mortgage:read\nGateway drops bearer, attaches X-API-Key + X-User-Sub\ncredentialPath = api_key",
+      text: "API-KEY PATH: enforce mortgage:read\nGateway drops bearer, attaches X-API-Key + X-User-Sub\ncredentialPath = api_key",
       description:
-        "The gateway recognizes show_mortgage as an api_key-disposition tool, enforces banking:mortgage:read on the user bearer (local scope gate, before swap), then drops the OAuth bearer and injects X-API-Key + X-User-Sub. No RFC 8693 exchange on this path.",
+        "The gateway recognizes show_mortgage as an api_key-disposition tool, enforces mortgage:read on the user bearer (local scope gate, before swap), then drops the OAuth bearer and injects X-API-Key + X-User-Sub. No RFC 8693 exchange on this path.",
       why: "API-KEY PATH distinguishes this from oauth_bearer (RFC 8693 exchange) and dual_token (id_token forward). The scope gate is the consent step before the credential swap.",
     },
     {

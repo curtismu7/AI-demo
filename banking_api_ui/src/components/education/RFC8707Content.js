@@ -48,7 +48,7 @@ export function RFC8707Content() {
   response_type=code&
   client_id={client_id}&
   redirect_uri={redirect_uri}&
-  scope=profile%20email%20banking:agent:invoke&
+  scope=profile%20email%20agent:invoke&
   resource=https://ai-agent.pingdemo.com&
   state={state}&
   code_challenge={code_challenge}&
@@ -61,7 +61,7 @@ export function RFC8707Content() {
   "access_token": "eyJ...",
   "token_type": "Bearer",
   "expires_in": 3600,
-  "scope": "profile email banking:agent:invoke",
+  "scope": "profile email agent:invoke",
   "aud": ["https://ai-agent.pingdemo.com"]
 }`}
       </pre>
@@ -85,7 +85,7 @@ export function RFC8707Content() {
         |
         | 3. Issue Access Token
         |    aud: ["https://ai-agent.pingdemo.com"]
-        |    scope: "profile email banking:agent:invoke"
+        |    scope: "profile email agent:invoke"
         v
     Client Receives Token
         |
@@ -165,8 +165,8 @@ Bad:
       <p>Different resource servers should have distinct scopes:</p>
       <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
         <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
-{`AI Agent Service: banking:agent:invoke
-MCP Server: banking:accounts:read, banking:transactions:read/write
+{`AI Agent Service: agent:invoke
+MCP Server: accounts:read, transactions:read/write
 PingOne API: p1:read:user, p1:update:user`}
         </pre>
       </div>
@@ -217,12 +217,12 @@ API Token (aud: api.pingone.com)`}
         <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
 {`AI Agent Service:
 - Audience: https://ai-agent.pingdemo.com
-- Scopes: banking:agent:invoke
+- Scopes: agent:invoke
 - Purpose: AI Agent service validation
 
 MCP Server:
 - Audience: https://mcp-server.pingdemo.com  
-- Scopes: banking:accounts:read, banking:transactions:read/write
+- Scopes: accounts:read, transactions:read/write
 - Purpose: MCP tool access validation
 
 Agent Gateway:
@@ -239,11 +239,11 @@ Agent Gateway:
         <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
 {`Super Banking User App:
 - Allowed Resources: Super Banking AI Agent Service
-- Allowed Scopes: profile, email, banking:agent:invoke
+- Allowed Scopes: profile, email, agent:invoke
 
 Super Banking Admin App:
 - Allowed Resources: Super Banking MCP Server
-- Allowed Scopes: banking:accounts:read, banking:transactions:read/write`}
+- Allowed Scopes: accounts:read, transactions:read/write`}
         </pre>
       </div>
 

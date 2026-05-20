@@ -122,7 +122,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       res.end(JSON.stringify({
         error: 'login_required',
         message: 'Token is revoked or no longer active (RFC 7662)',
-        required_scopes: ['banking:read'],
+        required_scopes: ['read'],
         login_required: true,
       }));
       return;
@@ -138,7 +138,7 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       res.end(JSON.stringify({
         error: pipelineResult.code,
         message: pipelineResult.message,
-        required_scopes: ['banking:read'],
+        required_scopes: ['read'],
         login_required: true,
       }));
       return;

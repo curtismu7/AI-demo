@@ -2,7 +2,7 @@
 /**
  * PingOne returns invalid_scope ("May not request scopes for multiple resources") when the
  * authorize request includes RFC 8707 `resource` together with scopes that span more than one
- * resource — notably standard OIDC scopes plus custom API scopes (e.g. banking:*).
+ * resource — notably standard OIDC scopes plus custom API scopes (e.g. *).
  *
  * ENDUSER_AUDIENCE is still used after token issuance (see middleware/auth.js); omit `resource`
  * on /authorize only when the scope list mixes OIDC and custom API scopes.
@@ -26,7 +26,7 @@ function buildPingOneAuthorizeResourceQueryParam(resourceAudience, scopes) {
 
   const hasOidc = list.some((s) => OIDC_SCOPE_NAMES.has(s));
   const hasCustomApi = list.some(
-    (s) => typeof s === 'string' && (s.startsWith('banking:') || s === 'ai_agent'),
+    (s) => typeof s === 'string' && (s.startsWith('') || s === 'ai_agent'),
   );
 
   if (hasOidc && hasCustomApi) return '';

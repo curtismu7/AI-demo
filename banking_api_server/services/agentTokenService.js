@@ -56,7 +56,7 @@ async function validateAgentActorToken(token, expectedAudience) {
       valid: true,
       actorId: 'placeholder-actor-id',
       subject: 'placeholder-user-id',
-      scopes: ['banking:read', 'banking:transfer']
+      scopes: ['read', 'transfer']
     };
     const _actorDecoded = decodeJwt(token);
     logAppEvent('token_exchange', 'info', 'Agent actor token validated successfully',
@@ -171,12 +171,12 @@ function getAgentActorContextString(decoded) {
  * (RFC 8693 §4.3: the claim that defines agent permissions).
  *
  * @param {Object} decoded - Decoded JWT token object
- * @param {string} requestedScope - Scope being requested (e.g., 'banking:transfer')
+ * @param {string} requestedScope - Scope being requested (e.g., 'transfer')
  * @returns {boolean} True if agent has permission for this scope via may_act claim
  *
  * @example
  * const decoded = jwt.decode(token);
- * if (canAgentActorPerformAction(decoded, 'banking:transfer')) {
+ * if (canAgentActorPerformAction(decoded, 'transfer')) {
  *   // Agent (actor) has permission to transfer
  * }
  */

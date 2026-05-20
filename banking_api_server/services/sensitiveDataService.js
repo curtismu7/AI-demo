@@ -4,7 +4,7 @@
  *
  * Authorization gate for sensitive account data:
  *  1. Session consent token (60s TTL, userId-bound) — grants access within the window
- *  2. Scope check (banking:sensitive:read or banking:read)
+ *  2. Scope check (sensitive:read or read)
  *  3. PAZ evaluation (FAIL_OPEN=false — deny if unreachable or unconfigured)
  */
 
@@ -84,7 +84,7 @@ async function evaluateSensitiveDataPaz(req) {
  *
  * Gate order:
  *  1. Session consent token present and valid (60s TTL, userId bound)
- *  2. Scope check: token must contain 'banking:sensitive:read' or 'banking:read'
+ *  2. Scope check: token must contain 'sensitive:read' or 'read'
  *     → If missing AND no session consent, return consent_required
  *  3. PAZ decision (FAIL_OPEN=false)
  *
@@ -115,8 +115,8 @@ async function checkSensitiveAccess(req) {
       (req.user.scope || req.user.scp || (Array.isArray(req.user.scopes) ? req.user.scopes.join(' ') : '') || '');
     const tokenScopes = String(rawScope).split(/\s+/);
     const hasScope =
-      tokenScopes.includes('banking:sensitive:read') ||
-      tokenScopes.includes('banking:read');
+      tokenScopes.includes('sensitive:read') ||
+      tokenScopes.includes('read');
     if (!hasScope) {
       return {
         allowed: false,

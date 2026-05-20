@@ -257,9 +257,9 @@ export class AuthorizationChallengeHandler {
    */
   private getScopeDescriptions(scopes: string[]): string[] {
     const scopeMap: Record<string, string> = {
-      'banking:accounts:read': 'View your bank accounts and balances',
-      'banking:transactions:read': 'View your transaction history',
-      'banking:transactions:write': 'Create deposits, withdrawals, and transfers'
+      'accounts:read': 'View your bank accounts and balances',
+      'transactions:read': 'View your transaction history',
+      'transactions:write': 'Create deposits, withdrawals, and transfers'
     };
 
     return scopes.map(scope => scopeMap[scope] || scope);

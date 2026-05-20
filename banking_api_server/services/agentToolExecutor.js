@@ -100,7 +100,7 @@ async function executeWithDelegatedToken(req, toolName, params, ccToken, subject
       req,
       subjectToken,
       ccToken,
-      'banking:read' // Default scope; could be parametrized
+      'read' // Default scope; could be parametrized
     );
 
     console.log(`[agentToolExecutor] Token exchange successful, got TX token`);

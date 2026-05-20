@@ -8,7 +8,7 @@
 const memory = new Map();
 
 function key(userId) {
-  return `banking:demo-scenario:${userId}`;
+  return `demo-scenario:${userId}`;
 }
 
 function isPersistenceConfigured() {

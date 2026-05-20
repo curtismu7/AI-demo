@@ -16,10 +16,10 @@ const stages = [
       { name: 'openid', kept: true },
       { name: 'profile', kept: false },
       { name: 'email', kept: false },
-      { name: 'banking:accounts:read', kept: true },
-      { name: 'banking:accounts:write', kept: false },
-      { name: 'banking:transfers', kept: true },
-      { name: 'banking:admin', kept: false },
+      { name: 'accounts:read', kept: true },
+      { name: 'accounts:write', kept: false },
+      { name: 'transfers', kept: true },
+      { name: 'admin', kept: false },
     ],
   },
   {
@@ -30,8 +30,8 @@ const stages = [
     borderColor: '#6ee7b7',
     scopes: [
       { name: 'openid', kept: true },
-      { name: 'banking:accounts:read', kept: true },
-      { name: 'banking:transfers', kept: false },
+      { name: 'accounts:read', kept: true },
+      { name: 'transfers', kept: false },
     ],
   },
   {
@@ -41,7 +41,7 @@ const stages = [
     bgColor: '#fef3c7',
     borderColor: '#fbbf24',
     scopes: [
-      { name: 'banking:accounts:read', kept: true },
+      { name: 'accounts:read', kept: true },
     ],
   },
 ];
@@ -246,7 +246,7 @@ export default function ScopeNarrowingVisualization() {
                 openid, accounts:read, and transfers. Admin and write scopes are dropped.</p>
               <p style={{ marginTop: '8px' }}><strong>Hop 2 (Agent → MCP Tool):</strong> When
                 the agent invokes a specific MCP tool (e.g., get_accounts), the scope is further narrowed to just
-                banking:accounts:read. The tool cannot access transfers or any other scope.</p>
+                accounts:read. The tool cannot access transfers or any other scope.</p>
             </div>
           )}
         </div>

@@ -437,7 +437,7 @@ const SETUP_STEPS = [
   {
     num: '1',
     title: 'Log in as admin',
-    detail: 'Sign in using the Admin login button. You need the banking:admin scope — seeded admin credentials are in the env config or sample data.',
+    detail: 'Sign in using the Admin login button. You need the admin scope — seeded admin credentials are in the env config or sample data.',
   },
   {
     num: '2',

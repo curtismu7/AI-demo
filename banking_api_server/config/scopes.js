@@ -8,10 +8,10 @@
  * per D-02 (Phase 146 Scope Vocabulary Alignment).
  *
  * Canonical scopes issued by PingOne resource server:
- * - banking:read — read access (accounts, transactions)
- * - banking:write — write access (deposits, withdrawals, transfers)
- * - banking:admin — full admin access
- * - banking:ai:agent — AI agent identification
+ * - read — read access (accounts, transactions)
+ * - write — write access (deposits, withdrawals, transfers)
+ * - admin — full admin access
+ * - ai:agent — AI agent identification
  * - ai_agent — identity marker for agent clients (legacy OIDC scope)
  */
 
@@ -246,10 +246,10 @@ const getOAuthProviderConfig = (provider = 'pingone_ai_core') => {
  * DEPRECATION NOTICE (Phase 146)
  *
  * Old scope naming:
- * - 'banking:general:read' → now 'banking:read'
- * - 'banking:general:write' → now 'banking:write'
+ * - 'general:read' → now 'read'
+ * - 'general:write' → now 'write'
  *
- * Compound scopes (banking:accounts:read, banking:transactions:read/write) are
+ * Compound scopes (accounts:read, transactions:read/write) are
  * kept for backward compatibility via COMPOUND_SCOPES but marked for deprecation.
  *
  * See SCOPE_VOCABULARY.md for full deprecation path.

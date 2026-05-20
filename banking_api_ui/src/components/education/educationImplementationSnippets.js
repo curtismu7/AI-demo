@@ -169,8 +169,8 @@ export const SNIP_STEP_UP_MOCK = `// Pattern: transaction routes read config (e.
 
 export const SNIP_AGENT_GATEWAY = `// mcpWebSocketClient.js — per-tool scopes for narrowed exchange
 const MCP_TOOL_SCOPES = {
-  get_my_accounts: ['banking:accounts:read', 'banking:read'],
-  create_transfer: ['banking:transactions:write', 'banking:write'],
+  get_my_accounts: ['accounts:read', 'read'],
+  create_transfer: ['transactions:write', 'write'],
   // …
 };
 // mcp_resource_uri (config) = MCP audience for RFC 8693; aligns with RFC 8707 resource binding.`;

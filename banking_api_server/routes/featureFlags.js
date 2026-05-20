@@ -181,7 +181,7 @@ const FLAG_REGISTRY = [
     category:     'OAuth Scopes',
     description:
       'When enabled and the user access token lacks banking scopes (most common when PingOne custom resource server is not configured), ' +
-      'the BFF injects `banking:read banking:write` scopes into the token claims before attempting MCP exchange. ' +
+      'the BFF injects `read write` scopes into the token claims before attempting MCP exchange. ' +
       'Injected scopes are marked with INJECTED labels in the Token Chain panel. This is **demo mode only** — not for production. ' +
       'In production, scopes come directly from PingOne via a properly configured resource server.',
     impact:
@@ -214,11 +214,11 @@ const FLAG_REGISTRY = [
     description:
       'When ON, the user login authorize request sends **only** `openid profile email offline_access` scopes. ' +
       'This fixes the PingOne **"May not request scopes for multiple resources"** error that occurs when ' +
-      '`banking:*` scopes are registered on a separate PingOne API Resource Server. ' +
+      '`*` scopes are registered on a separate PingOne API Resource Server. ' +
       'Banking routes relax to session-based authorization (identity gates only). ' +
       'Best used together with **ff_skip_token_exchange** ON so the agent forwards the OIDC token directly to MCP.',
     impact:
-      'OFF (default) = full scope list (OIDC + banking:*) in authorize — works when banking scopes are plain app custom scopes. ' +
+      'OFF (default) = full scope list (OIDC + *) in authorize — works when banking scopes are plain app custom scopes. ' +
       'ON = OIDC-only authorize → no "multiple resources" error; banking scope gates on API routes relax to authenticated-session.',
     type:         'boolean',
     defaultValue: false,

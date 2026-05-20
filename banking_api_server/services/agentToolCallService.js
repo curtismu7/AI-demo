@@ -205,18 +205,18 @@ async function callToolWithAgentToken(req, toolName, params, agentCCToken, optio
  */
 function parseAuthDenialError(errorCode, errorMessage, errorData = {}) {
   // Default values
-  let requiredScope = 'banking:read';
+  let requiredScope = 'read';
   let resource = 'agent1';
   let reason = 'insufficient_scope: no subject token';
   let userMessage = 'User context required to access this information.';
 
   // Extract from error message
   if (errorMessage.includes('balance')) {
-    requiredScope = 'banking:read';
+    requiredScope = 'read';
     userMessage = 'User context required to access account balance information.';
   }
   if (errorMessage.includes('transfer') || errorMessage.includes('write')) {
-    requiredScope = 'banking:write';
+    requiredScope = 'write';
     userMessage = 'User context required to perform this transaction.';
   }
 

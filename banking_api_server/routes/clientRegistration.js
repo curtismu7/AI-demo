@@ -25,7 +25,7 @@ const { PINGONE_OIDC_DEFAULT_SCOPES_SPACE } = require('../config/scopes');
 const cimdStore = new Map();
 
 // ── POST /api/clients/register ────────────────────────────────────────────────
-router.post('/register', requireAdmin, requireScopes(['banking:admin']), async (req, res) => {
+router.post('/register', requireAdmin, requireScopes(['admin']), async (req, res) => {
   try {
     const {
       client_name,
@@ -137,7 +137,7 @@ router.post('/register', requireAdmin, requireScopes(['banking:admin']), async (
 });
 
 // ── GET /api/clients ──────────────────────────────────────────────────────────
-router.get('/', requireAdmin, requireScopes(['banking:admin']), async (req, res) => {
+router.get('/', requireAdmin, requireScopes(['admin']), async (req, res) => {
   try {
     const apps = await pingOneClientService.listApplications();
     return res.json({ applications: apps });

@@ -15,7 +15,7 @@ function OverviewTab() {
       <h4>What PingGateway adds</h4>
       <ul>
         <li><strong>Token validation</strong> — every request's Bearer token is introspected or JWT-verified before reaching the MCP server</li>
-        <li><strong>Scope enforcement</strong> — maps MCP tool names to required OAuth scopes (e.g. <code>get_balance</code> → <code>banking:read</code>)</li>
+        <li><strong>Scope enforcement</strong> — maps MCP tool names to required OAuth scopes (e.g. <code>get_balance</code> → <code>read</code>)</li>
         <li><strong>Rate limiting</strong> — per-client, per-user, or per-tool call limits</li>
         <li><strong>Audit logging</strong> — centralized log of every tool invocation with caller identity</li>
         <li><strong>Content filtering</strong> — inspect request/response payloads for sensitive data leakage</li>
@@ -158,7 +158,7 @@ function ConfigTab() {
         {
           "type": "OAuth2ResourceServerFilter",
           "config": {
-            "scopes": ["banking:read"],
+            "scopes": ["read"],
             "accessTokenResolver": {
               "type": "StatelessAccessTokenResolver",
               "config": {
@@ -176,10 +176,10 @@ function ConfigTab() {
               "// Map MCP tool names to required scopes",
               "def toolName = request.entity.json?.params?.name",
               "def scopeMap = [",
-              "  'get_balance':    'banking:read',",
-              "  'get_transactions': 'banking:read',",
-              "  'transfer_funds': 'banking:transfer',",
-              "  'get_all_users':  'banking:admin'",
+              "  'get_balance':    'read',",
+              "  'get_transactions': 'read',",
+              "  'transfer_funds': 'transfer',",
+              "  'get_all_users':  'admin'",
               "]",
               "def required = scopeMap[toolName]",
               "if (required && !context.oauth2.scopes.contains(required)) {",

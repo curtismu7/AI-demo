@@ -35,7 +35,7 @@ function _getKvClient() {
 }
 
 function _kvKey(traceId) {
-  return 'banking:sse:events:' + traceId;
+  return 'sse:events:' + traceId;
 }
 
 async function kvPublish(traceId, payload) {

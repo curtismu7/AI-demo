@@ -32,7 +32,7 @@ const config = {
    * so RFC 8693 MCP exchange can narrow audience and scopes (see MIN_USER_SCOPES_FOR_MCP_EXCHANGE).
    *
    * When ff_oidc_only_authorize is ON, only OIDC scopes are requested to avoid PingOne
-   * "May not request scopes for multiple resources" when banking:* lives on a Resource Server.
+   * "May not request scopes for multiple resources" when * lives on a Resource Server.
    */
   get scopes() {
     const oidcOnly =
@@ -40,7 +40,7 @@ const config = {
       configStore.getEffective('ff_oidc_only_authorize') === 'true';
     const base = ['openid', 'profile', 'email', 'offline_access'];
     if (oidcOnly) return base;
-    // When a custom resource audience is configured the banking:* scopes all live on the
+    // When a custom resource audience is configured the * scopes all live on the
     // same resource server (enduserAudience), so PingOne will not reject with
     // "May not request scopes for multiple resources".
     const enduserAudience = process.env.ENDUSER_AUDIENCE;
@@ -51,14 +51,14 @@ const config = {
       // resource), so requesting them together stays single-resource and
       // PingOne will not reject with "May not request scopes for multiple
       // resources" (REGRESSION_PLAN §1 "PingOne authorize resource + mixed
-      // scopes"). banking:transfer MUST be here: create_transfer requires
-      // [banking:write, banking:transfer]; without it on the user token the
-      // RFC 8693 intersection drops banking:transfer and the gateway 403s
-      // create_transfer with insufficient_scope. (banking:ai:agent spelling
+      // scopes"). transfer MUST be here: create_transfer requires
+      // [write, transfer]; without it on the user token the
+      // RFC 8693 intersection drops transfer and the gateway 403s
+      // create_transfer with insufficient_scope. (ai:agent spelling
       // is intentionally kept as-is to match the working agent flow; the
-      // topology's banking:ai:agent:read naming reconciliation is a separate
+      // topology's ai:agent:read naming reconciliation is a separate
       // follow-up — see REGRESSION_PLAN §4.)
-      return ['openid', 'profile', 'email', 'offline_access', 'banking:read', 'banking:write', 'banking:transfer', BANKING_SCOPES.AI_AGENT, COMPOUND_SCOPES.MORTGAGE_READ];
+      return ['openid', 'profile', 'email', 'offline_access', 'read', 'write', 'transfer', BANKING_SCOPES.AI_AGENT, COMPOUND_SCOPES.MORTGAGE_READ];
     }
     const role = configStore.getEffective('user_role') || 'customer';
     const banking = getScopesForUserType(role);

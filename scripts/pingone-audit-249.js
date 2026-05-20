@@ -132,8 +132,8 @@ async function main() {
   console.log('\n1. MCP Token Exchanger (6380065f) — resource grants:');
   var needsMcpGw = !excAuds.includes('https://mcp-gateway.pingdemo.com');
   var hasMcpServer = excAuds.includes('https://mcp-server.pingdemo.com');
-  console.log('   mcp-gateway.pingdemo.com: ' + (needsMcpGw ? '❌ MISSING — needs banking:mcp:invoke banking:read banking:write' : '✓ ' + excScopesByAud['https://mcp-gateway.pingdemo.com'].join(' ')));
-  console.log('   mcp-server.pingdemo.com:  ' + (hasMcpServer ? '✓ ' + excScopesByAud['https://mcp-server.pingdemo.com'].join(' ') : '❌ MISSING — needs banking:read banking:write'));
+  console.log('   mcp-gateway.pingdemo.com: ' + (needsMcpGw ? '❌ MISSING — needs mcp:invoke read write' : '✓ ' + excScopesByAud['https://mcp-gateway.pingdemo.com'].join(' ')));
+  console.log('   mcp-server.pingdemo.com:  ' + (hasMcpServer ? '✓ ' + excScopesByAud['https://mcp-server.pingdemo.com'].join(' ') : '❌ MISSING — needs read write'));
 
   // Check AI Agent App
   var agentGrants = await getGrants('2533a614-fcb6-4ab9-82cc-9ab407f1dbda');
@@ -169,10 +169,10 @@ async function main() {
     var rid = (g.resource && g.resource.id) || (g.resourceServer && g.resourceServer.id);
     if (getAudienceForResourceId(rid) !== 'https://resource-server.pingdemo.com') return false;
     return (g.scopes || []).some(function(s) {
-      return scopeMap[s.id] && scopeMap[s.id].name === 'banking:ai:agent';
+      return scopeMap[s.id] && scopeMap[s.id].name === 'ai:agent';
     });
   });
-  console.log('   banking:ai:agent on resource-server: ' + (userHasAiAgent ? '✓' : '❌ MISSING — user token needs this to get may_act delegation'));
+  console.log('   ai:agent on resource-server: ' + (userHasAiAgent ? '✓' : '❌ MISSING — user token needs this to get may_act delegation'));
 
   // Check Admin App grants
   var adminGrants = await getGrants('14cefa5b-d9d6-4e51-8749-e938d4edd1c0');
@@ -186,15 +186,15 @@ async function main() {
     if (aud) console.log('   ' + aud + ': ' + snames.join(', '));
   }
 
-  // Scope cleanliness on mcp-server (should NOT have banking:mcp:invoke)
+  // Scope cleanliness on mcp-server (should NOT have mcp:invoke)
   var mcpServerRes = resources.find(function(r) { return r.audience === 'https://mcp-server.pingdemo.com'; });
   if (mcpServerRes) {
     var msd = await request(API_BASE + '/resources/' + mcpServerRes.id + '/scopes?limit=100', { headers: authHdr });
     var mscopes = (msd.body._embedded && msd.body._embedded.scopes) || msd.body.scopes || [];
     var mnames = mscopes.map(function(s) { return s.name; });
     console.log('\n5. mcp-server.pingdemo.com scopes: ' + mnames.join(', '));
-    if (mnames.includes('banking:mcp:invoke')) {
-      console.log('   ⚠️  banking:mcp:invoke is on mcp-server — should be mcp-gateway only');
+    if (mnames.includes('mcp:invoke')) {
+      console.log('   ⚠️  mcp:invoke is on mcp-server — should be mcp-gateway only');
     }
   }
 

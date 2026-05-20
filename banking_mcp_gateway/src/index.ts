@@ -149,10 +149,10 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
       resource: config.gatewayResourceUri,
       bearer_methods_supported: ['header'],
       scopes_supported: [
-        'banking:read',
-        'banking:write',
-        'banking:admin',
-        'banking:mortgage:read',  // Phase 267 — Path A api_key disposition
+        'read',
+        'write',
+        'admin',
+        'mortgage:read',  // Phase 267 — Path A api_key disposition
         'ai_agent',
       ],
       resource_name: 'Super Banking MCP Gateway',
@@ -308,7 +308,7 @@ async function runWsAuthorizationPipeline(
   if (result.kind === 'introspection_failed') {
     send(jsonRpcError(id, -32001, 'Token is revoked or no longer active (RFC 7662)', {
       error: 'login_required',
-      required_scopes: ['banking:read'],
+      required_scopes: ['read'],
       login_required: true,
     }));
     return false;
@@ -317,7 +317,7 @@ async function runWsAuthorizationPipeline(
   // policy_violation — includes the D-05 anti-bypass case
   send(jsonRpcError(id, -32001, result.message, {
     error: result.code,
-    required_scopes: ['banking:read'],
+    required_scopes: ['read'],
     login_required: true,
   }));
   return false;
@@ -452,7 +452,7 @@ async function handleMessage(
       const ve = err as TokenValidationError;
       send(jsonRpcError(id, -32001, ve.message, {
         error: 'login_required',
-        required_scopes: ['banking:read'],
+        required_scopes: ['read'],
         login_required: true,
       }));
       return;

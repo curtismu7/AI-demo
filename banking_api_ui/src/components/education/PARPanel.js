@@ -30,7 +30,7 @@ export default function PARPanel({ isOpen, onClose, initialTabId }) {
           <Code>{`GET /as/authorize
   ?client_id=myapp
   &response_type=code
-  &scope=openid banking:read
+  &scope=openid read
   &code_challenge=…
   &state=…`}</Code>
           <p>
@@ -40,7 +40,7 @@ export default function PARPanel({ isOpen, onClose, initialTabId }) {
 Content-Type: application/x-www-form-urlencoded
 Authorization: Basic <client credentials>
 
-client_id=myapp&response_type=code&scope=openid banking:read
+client_id=myapp&response_type=code&scope=openid read
   &code_challenge=…&state=…`}</Code>
           <p>
             The AS returns a <strong>request_uri</strong> — a short-lived opaque reference:

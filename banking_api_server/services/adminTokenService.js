@@ -21,8 +21,8 @@ const ADMIN_TOKEN_CONFIG = {
     'admin:delete',
     'users:read',
     'users:manage',
-    'banking:read',
-    'banking:write'
+    'read',
+    'write'
   ],
   // Admin client ID from environment
   adminClientId: process.env.PINGONE_ADMIN_CLIENT_ID,

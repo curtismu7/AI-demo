@@ -21,7 +21,7 @@ const MOCK_TOKENS = {
     sub: 'admin-user-123',
     preferred_username: 'admin@test.com',
     email: 'admin@test.com',
-    scope: 'openid profile email banking:admin banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write',
+    scope: 'openid profile email admin read write accounts:read transactions:read transactions:write',
     realm_access: {
       roles: ['admin']
     },
@@ -34,7 +34,7 @@ const MOCK_TOKENS = {
     sub: 'customer-user-456',
     preferred_username: 'customer@test.com',
     email: 'customer@test.com',
-    scope: 'openid profile email banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write',
+    scope: 'openid profile email read write accounts:read transactions:read transactions:write',
     realm_access: {
       roles: ['customer']
     },
@@ -47,7 +47,7 @@ const MOCK_TOKENS = {
     sub: 'readonly-user-789',
     preferred_username: 'readonly@test.com',
     email: 'readonly@test.com',
-    scope: 'openid profile email banking:read banking:accounts:read banking:transactions:read',
+    scope: 'openid profile email read accounts:read transactions:read',
     realm_access: {
       roles: ['user']
     },
@@ -59,7 +59,7 @@ const MOCK_TOKENS = {
   ai_agent: {
     sub: 'ai-agent-client-001',
     preferred_username: 'ai-agent',
-    scope: 'openid profile ai_agent banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write',
+    scope: 'openid profile ai_agent read write accounts:read transactions:read transactions:write',
     aud: 'banking_mcp_01_JK',
     iss: 'https://openam-dna.forgeblocks.com/am/oauth2/realms/root/realms/alpha',
     exp: Math.floor(Date.now() / 1000) + 3600
@@ -76,7 +76,7 @@ function testUserTypeScopes() {
     
     // Parse scopes from token
     const tokenScopes = tokenPayload.scope.split(' ').filter(scope => 
-      scope.startsWith('banking:') || scope === 'ai_agent'
+      scope.startsWith('') || scope === 'ai_agent'
     );
     
     // Get expected scopes for user type
@@ -112,7 +112,7 @@ function testSpecificScopeRequirements(userType, tokenScopes) {
   switch (userType) {
     case 'admin':
       const hasAdminScope = tokenScopes.includes(BANKING_SCOPES.ADMIN);
-      console.log(`      Has banking:admin: ${hasAdminScope ? '✅ YES' : '❌ NO'}`);
+      console.log(`      Has admin: ${hasAdminScope ? '✅ YES' : '❌ NO'}`);
       
       const hasAllBankingScopes = [
         BANKING_SCOPES.BANKING_READ,
@@ -201,16 +201,16 @@ function testRouteAccessByUserType() {
   console.log('\n🛣️ Testing Route Access by User Type...');
   
   const testRoutes = [
-    { method: 'GET', path: '/api/accounts', requiredScopes: ['banking:accounts:read', 'banking:read'] },
-    { method: 'POST', path: '/api/transactions', requiredScopes: ['banking:transactions:write', 'banking:write'] },
-    { method: 'GET', path: '/api/admin/users', requiredScopes: ['banking:admin'] }
+    { method: 'GET', path: '/api/accounts', requiredScopes: ['accounts:read', 'read'] },
+    { method: 'POST', path: '/api/transactions', requiredScopes: ['transactions:write', 'write'] },
+    { method: 'GET', path: '/api/admin/users', requiredScopes: ['admin'] }
   ];
   
   Object.entries(MOCK_TOKENS).forEach(([userType, tokenPayload]) => {
     console.log(`\n  User Type: ${userType}`);
     
     const userScopes = tokenPayload.scope.split(' ').filter(scope => 
-      scope.startsWith('banking:') || scope === 'ai_agent'
+      scope.startsWith('') || scope === 'ai_agent'
     );
     
     testRoutes.forEach(route => {

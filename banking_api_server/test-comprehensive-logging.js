@@ -68,7 +68,7 @@ const testScenarios = [
     name: 'Expired Token',
     description: 'Test authentication failure logging for expired token',
     endpoint: '/api/accounts',
-    headers: { Authorization: `Bearer ${createMockOAuthToken(['banking:read'], {}, true)}` },
+    headers: { Authorization: `Bearer ${createMockOAuthToken(['read'], {}, true)}` },
     expectedStatus: 401,
     expectedError: 'expired_token'
   },
@@ -76,7 +76,7 @@ const testScenarios = [
     name: 'Insufficient Scopes - Wrong Scope',
     description: 'Test scope validation failure logging',
     endpoint: '/api/accounts',
-    headers: { Authorization: `Bearer ${createMockOAuthToken(['banking:transactions:read'])}` },
+    headers: { Authorization: `Bearer ${createMockOAuthToken(['transactions:read'])}` },
     expectedStatus: 403,
     expectedError: 'insufficient_scope'
   },
@@ -92,7 +92,7 @@ const testScenarios = [
     name: 'Admin Access Without Admin Scope',
     description: 'Test admin authorization failure logging',
     endpoint: '/api/admin/stats',
-    headers: { Authorization: `Bearer ${createMockOAuthToken(['banking:read', 'banking:write'])}` },
+    headers: { Authorization: `Bearer ${createMockOAuthToken(['read', 'write'])}` },
     expectedStatus: 403,
     expectedError: 'insufficient_scope'
   },
@@ -100,7 +100,7 @@ const testScenarios = [
     name: 'Valid Token with Correct Scopes',
     description: 'Test successful authentication and authorization logging',
     endpoint: '/api/accounts/my',
-    headers: { Authorization: `Bearer ${createMockOAuthToken(['banking:accounts:read'])}` },
+    headers: { Authorization: `Bearer ${createMockOAuthToken(['accounts:read'])}` },
     expectedStatus: 200,
     expectedError: null
   },
@@ -108,7 +108,7 @@ const testScenarios = [
     name: 'Valid Admin Token',
     description: 'Test successful admin authentication and authorization logging',
     endpoint: '/api/admin/stats',
-    headers: { Authorization: `Bearer ${createMockOAuthToken(['banking:admin'], { roles: ['admin'] })}` },
+    headers: { Authorization: `Bearer ${createMockOAuthToken(['admin'], { roles: ['admin'] })}` },
     expectedStatus: 200,
     expectedError: null
   }

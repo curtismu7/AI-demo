@@ -68,7 +68,7 @@ function ScopesBadges({ scope, tokenLabel }) {
           This is your <strong>{tokenLabel || 'customer access token'}</strong> — the JWT stored server-side in the BFF session after PingOne login.
           RFC 6749 §3.3 — scopes are required for MCP tool calls.
           Sign out → sign in with the PingOne app that requests
-          <code>banking:read</code>, <code>banking:write</code> scopes.
+          <code>read</code>, <code>write</code> scopes.
         </span>
       </div>
     </div>
@@ -677,7 +677,7 @@ function OAuthInspectorSection({ selectedToken }) {
               <ScopesBadges scope={payload.scope} tokenLabel={displayedTokenId || 'customer access token (BFF session)'} />
             </div>
             {!payload.scope && (
-              <div className="utfi-rfc-inline-hint">RFC 6749 §3.3 — the <strong>customer access token</strong> (stored server-side in the BFF session after PingOne login) has no scope claim in its JWT payload. MCP tool calls require scoped tokens. Sign out and sign in with the PingOne <em>customer</em> app configured to request <code>banking:read</code> / <code>banking:write</code> scopes.</div>
+              <div className="utfi-rfc-inline-hint">RFC 6749 §3.3 — the <strong>customer access token</strong> (stored server-side in the BFF session after PingOne login) has no scope claim in its JWT payload. MCP tool calls require scoped tokens. Sign out and sign in with the PingOne <em>customer</em> app configured to request <code>read</code> / <code>write</code> scopes.</div>
             )}
             <ClaimRow label="Audience (aud)" value={Array.isArray(payload.aud) ? payload.aud.join(', ') : payload.aud} glossary={CLAIM_GLOSSARY.aud} />
             <ClaimRow label="Client ID" value={payload.client_id} glossary={CLAIM_GLOSSARY.client_id} />

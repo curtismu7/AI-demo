@@ -13,7 +13,7 @@ const TOOLS = [
   { name: 'get_account_balance', scopes: 'banking read', returns: 'Balance for one account', readOnly: true },
   { name: 'get_my_transactions', scopes: 'banking read', returns: 'Recent transactions', readOnly: true },
   { name: 'sequential_think', scopes: 'none', returns: 'Step-by-step reasoning chain', readOnly: true },
-  { name: 'get_sensitive_account_details', scopes: 'banking:sensitive:read', returns: 'Full account / routing numbers (PII)', readOnly: false },
+  { name: 'get_sensitive_account_details', scopes: 'sensitive:read', returns: 'Full account / routing numbers (PII)', readOnly: false },
   { name: 'create_deposit', scopes: 'banking write', returns: 'Deposit confirmation', readOnly: false },
   { name: 'create_withdrawal', scopes: 'banking write', returns: 'Withdrawal confirmation', readOnly: false },
   { name: 'create_transfer', scopes: 'banking write', returns: 'Transfer confirmation / ids', readOnly: false },

@@ -88,12 +88,12 @@ async function runWrongScopeScenario() {
     scenario_name: 'User Token (Wrong Scope)',
     error_code: 'SCOPE_MISMATCH',
     http_status: 403,
-    error_description: 'Token scope violation. This endpoint requires mcp:* or banking:agent scopes.',
-    teaching_message: 'User tokens can only authorize general account operations. This endpoint requires agent delegation scopes (mcp:invoke or banking:agent) that prove the user consented to agent delegation. Use RFC 8693 token exchange with both subject_token (user) and actor_token (agent) to generate a delegated token.',
+    error_description: 'Token scope violation. This endpoint requires mcp:* or agent scopes.',
+    teaching_message: 'User tokens can only authorize general account operations. This endpoint requires agent delegation scopes (mcp:invoke or agent) that prove the user consented to agent delegation. Use RFC 8693 token exchange with both subject_token (user) and actor_token (agent) to generate a delegated token.',
     request: {
       token_scopes: decoded.scope.split(' '),
       endpoint: '/api/mcp/tool',
-      expected_scopes: ['banking:agent', 'mcp:invoke']
+      expected_scopes: ['agent', 'mcp:invoke']
     },
     response: {
       status: 403,
@@ -191,13 +191,13 @@ async function runAgentTokenUserEndpointScenario() {
     scenario_name: 'Agent Token on User Endpoint',
     error_code: 'SCOPE_MISMATCH',
     http_status: 403,
-    error_description: `Token scope violation. Your token has scope: ${decoded.scope}. This endpoint requires: banking:read or banking:write`,
+    error_description: `Token scope violation. Your token has scope: ${decoded.scope}. This endpoint requires: read or write`,
     teaching_message: 'Agent tokens are restricted to MCP operations only and cannot be used to call banking APIs directly. To call banking APIs on behalf of users, the agent must first exchange its token using RFC 8693 token exchange with a user token as subject_token. The resulting delegated token will have both the agent\'s "act" claim and the user\'s scopes, allowing the agent to act with the user\'s authority.',
     request: {
       token_scopes: decoded.scope.split(' '),
       endpoint: '/api/accounts',
       token_type: 'agent_token',
-      required_scopes: ['banking:read', 'banking:write']
+      required_scopes: ['read', 'write']
     },
     response: {
       status: 403,
@@ -264,7 +264,7 @@ router.get('/scenarios', (req, res) => {
       {
         id: 'wrong-scope',
         name: 'User Token (Wrong Scope)',
-        description: 'User token lacks agent-required scopes (mcp:invoke, banking:agent)',
+        description: 'User token lacks agent-required scopes (mcp:invoke, agent)',
         error_code: 'SCOPE_MISMATCH',
         http_status: 403
       },

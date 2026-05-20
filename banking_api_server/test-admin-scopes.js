@@ -48,10 +48,10 @@ const createLocalJWT = (userInfo = {}) => {
 async function testAdminAccess() {
   console.log('🧪 Testing Admin Scope Authorization\n');
 
-  // Test 1: OAuth token with banking:admin scope
-  console.log('1. Testing OAuth token with banking:admin scope...');
+  // Test 1: OAuth token with admin scope
+  console.log('1. Testing OAuth token with admin scope...');
   try {
-    const token = createOAuthToken(['banking:admin'], { 
+    const token = createOAuthToken(['admin'], { 
       username: 'oauth-admin',
       roles: ['admin']
     });
@@ -60,16 +60,16 @@ async function testAdminAccess() {
       headers: { Authorization: `Bearer ${token}` }
     });
     
-    console.log('   ✅ SUCCESS: Admin access granted with banking:admin scope');
+    console.log('   ✅ SUCCESS: Admin access granted with admin scope');
     console.log(`   📊 Response: ${JSON.stringify(response.data.stats, null, 2)}`);
   } catch (error) {
     console.log('   ❌ FAILED:', error.response?.data || error.message);
   }
 
-  // Test 2: OAuth token without banking:admin scope
-  console.log('\n2. Testing OAuth token without banking:admin scope...');
+  // Test 2: OAuth token without admin scope
+  console.log('\n2. Testing OAuth token without admin scope...');
   try {
-    const token = createOAuthToken(['banking:read', 'banking:write'], { 
+    const token = createOAuthToken(['read', 'write'], { 
       username: 'oauth-user',
       roles: ['user']
     });
@@ -81,7 +81,7 @@ async function testAdminAccess() {
     console.log('   ❌ UNEXPECTED: Should have been denied access');
   } catch (error) {
     if (error.response?.status === 403 && error.response?.data?.error === 'insufficient_scope') {
-      console.log('   ✅ SUCCESS: Admin access correctly denied without banking:admin scope');
+      console.log('   ✅ SUCCESS: Admin access correctly denied without admin scope');
       console.log(`   🚫 Error: ${error.response.data.error_description}`);
       console.log(`   📋 Required: ${JSON.stringify(error.response.data.required_scopes)}`);
       console.log(`   📋 Provided: ${JSON.stringify(error.response.data.provided_scopes)}`);
@@ -130,12 +130,12 @@ async function testAdminAccess() {
     }
   }
 
-  // Test 5: OAuth token with admin role but no banking:admin scope
-  console.log('\n5. Testing OAuth token with admin role but no banking:admin scope...');
+  // Test 5: OAuth token with admin role but no admin scope
+  console.log('\n5. Testing OAuth token with admin role but no admin scope...');
   try {
-    const token = createOAuthToken(['banking:read'], { 
+    const token = createOAuthToken(['read'], { 
       username: 'oauth-admin-no-scope',
-      roles: ['admin'] // Has admin role but not banking:admin scope
+      roles: ['admin'] // Has admin role but not admin scope
     });
     
     await axios.get(`${BASE_URL}/api/admin/stats`, {
@@ -145,7 +145,7 @@ async function testAdminAccess() {
     console.log('   ❌ UNEXPECTED: Should have been denied access');
   } catch (error) {
     if (error.response?.status === 403 && error.response?.data?.error === 'insufficient_scope') {
-      console.log('   ✅ SUCCESS: Admin access correctly denied - OAuth tokens require banking:admin scope');
+      console.log('   ✅ SUCCESS: Admin access correctly denied - OAuth tokens require admin scope');
       console.log(`   🚫 Error: ${error.response.data.error_description}`);
     } else {
       console.log('   ❌ UNEXPECTED ERROR:', error.response?.data || error.message);

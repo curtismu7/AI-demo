@@ -112,7 +112,7 @@ export default function TokenFlowPanel({ isOpen, onClose, initialTabId }) {
 {`{
   "sub": "<user-sub>",
   "aud": "https://ai-agent.pingdemo.com",
-  "scope": "openid profile email offline_access banking:read banking:write banking:ai:agent",
+  "scope": "openid profile email offline_access read write ai:agent",
   "may_act": { "sub": "<ai-agent-client-id>" }
 }`}
           </pre>
@@ -156,7 +156,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 {`{
   "sub": "<user-sub>",              // preserved
   "aud": "https://ai-agent.pingdemo.com",
-  "scope": "banking:read banking:write",
+  "scope": "read write",
   "act": { "sub": "<ai-agent-client-id>" }
 }`}
           </pre>
@@ -180,7 +180,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &actor_token=<mcp-exchanger-cc-token>
 &actor_token_type=urn:ietf:params:oauth:token-type:access_token
 &audience=https://resource-server.pingdemo.com
-&scope=banking:read                  ← narrowed to this tool's required scope
+&scope=read                  ← narrowed to this tool's required scope
 &client_id=<MCP_TOKEN_EXCHANGER_CLIENT_ID>
 &client_secret=<MCP_TOKEN_EXCHANGER_CLIENT_SECRET>`}
           </pre>
@@ -190,7 +190,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 {`{
   "sub": "<user-sub>",              // preserved end-to-end
   "aud": "https://resource-server.pingdemo.com",
-  "scope": "banking:read",          // narrowed
+  "scope": "read",          // narrowed
   "act": {
     "sub": "<mcp-exchanger-client-id>",
     "act": { "sub": "<ai-agent-client-id>" }  // nested chain
@@ -241,9 +241,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
             </thead>
             <tbody>
               {[
-                ['banking:read', 'get_account_balance, get_transaction_history, get_investments, search_transactions', 'Read-only banking data'],
-                ['banking:write', 'transfer_funds, make_payment', 'Mutations — requires HITL consent'],
-                ['banking:ai:agent', 'query_ai (natural language)', 'AI query tool'],
+                ['read', 'get_account_balance, get_transaction_history, get_investments, search_transactions', 'Read-only banking data'],
+                ['write', 'transfer_funds, make_payment', 'Mutations — requires HITL consent'],
+                ['ai:agent', 'query_ai (natural language)', 'AI query tool'],
                 ['openid profile email', 'n/a', 'OIDC identity — on User AT only'],
                 ['offline_access', 'n/a', 'Refresh token — User AT only'],
                 ['admin:read admin:write users:read users:manage', 'admin tools', 'Worker app scopes — separate flow'],
@@ -279,7 +279,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 {
   "sub": "b8e9302a-user-id",           // ← always the original user
   "aud": "https://resource-server.pingdemo.com",
-  "scope": "banking:read",
+  "scope": "read",
 
   "act": {
     "sub": "mcp-exchanger-client-id",  // ← outermost actor (Exchange #2 actor)
@@ -361,7 +361,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
                     bg: '#1c1a0d',
                     rows: [
                       ['aud set →', 'https://ai-agent.pingdemo.com  (broad user-facing resource)'],
-                      ['scope set →', 'openid profile email offline_access banking:read banking:write banking:ai:agent'],
+                      ['scope set →', 'openid profile email offline_access read write ai:agent'],
                       ['may_act added →', '{ "sub": "<ai-agent-client-id>" }  — pre-approval for Exchange #1'],
                       ['act', '(absent — no delegation yet)'],
                       ['where it lives', 'BFF server session only — never sent to browser or LLM'],
@@ -387,7 +387,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
                     rows: [
                       ['sub', 'UNCHANGED — still <user-id>'],
                       ['aud', 'UNCHANGED — still https://ai-agent.pingdemo.com'],
-                      ['scope', 'NARROWED → banking:read  banking:write  (OIDC claims removed)'],
+                      ['scope', 'NARROWED → read  write  (OIDC claims removed)'],
                       ['may_act', 'REMOVED — no further prospective delegation'],
                       ['act added →', '{ "sub": "<ai-agent-client-id>" }  — delegation fact recorded'],
                     ],
@@ -400,7 +400,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
                     rows: [
                       ['subject_token', 'Intermediate Agent Token'],
                       ['actor_token', 'MCP Exchanger CC Token (proves MCP exchanger identity)'],
-                      ['scope requested →', 'banking:read  (narrowed to this specific tool)'],
+                      ['scope requested →', 'read  (narrowed to this specific tool)'],
                       ['audience requested →', 'https://resource-server.pingdemo.com'],
                       ['result', 'Final MCP Token (below)'],
                     ],
@@ -413,7 +413,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
                     rows: [
                       ['sub', 'UNCHANGED — still <user-id> end-to-end ✓'],
                       ['aud', 'CHANGED → https://resource-server.pingdemo.com  (MCP server audience)'],
-                      ['scope', 'NARROWED → banking:read  (single tool permission only) ✓'],
+                      ['scope', 'NARROWED → read  (single tool permission only) ✓'],
                       ['act', 'NESTED → { "sub": "mcp-exchanger-id", "act": { "sub": "ai-agent-id" } }'],
                       ['where it goes', 'Bearer header sent to MCP Server — the only token that leaves BFF'],
                     ],

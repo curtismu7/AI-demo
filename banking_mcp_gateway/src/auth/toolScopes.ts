@@ -24,9 +24,9 @@ export const TOOL_SCOPES: Record<string, string[]> = Object.freeze(
   }, {}),
 ) as Record<string, string[]>;
 
-/** Scopes required by a given tool. Falls back to ['banking:read'] for unknown tools. */
+/** Scopes required by a given tool. Falls back to ['read'] for unknown tools. */
 export function getScopesForGatewayTool(toolName: string): string[] {
-  return TOOL_SCOPES[toolName] ?? ['banking:read'];
+  return TOOL_SCOPES[toolName] ?? ['read'];
 }
 
 /**

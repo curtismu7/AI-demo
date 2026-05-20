@@ -89,7 +89,7 @@ async function addMissingLoanAccount(userId, existingAccounts) {
 }
 
 // Get all accounts (admin only)
-router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
+router.get('/', authenticateToken, requireScopes(['read']), async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied. Admin role required.' });
@@ -294,7 +294,7 @@ router.post('/reset-demo', authenticateToken, async (req, res) => {
 });
 
 // Admin: reset ALL demo-provisioned OAuth accounts back to $5,000 starting balances
-router.post('/reset-all-demo', authenticateToken, requireScopes(['banking:write']), async (req, res) => {
+router.post('/reset-all-demo', authenticateToken, requireScopes(['write']), async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Admin role required.' });
@@ -323,7 +323,7 @@ router.post('/reset-all-demo', authenticateToken, requireScopes(['banking:write'
 });
 
 // Get account by ID (admin only)
-router.get('/:id', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
+router.get('/:id', authenticateToken, requireScopes(['read']), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -342,7 +342,7 @@ router.get('/:id', authenticateToken, requireScopes(['banking:read']), async (re
 });
 
 // Get account balance (admin or account owner)
-router.get('/:id/balance', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
+router.get('/:id/balance', authenticateToken, requireScopes(['read']), async (req, res) => {
   try {
     let account = dataStore.getAccountById(req.params.id);
     // Fallback: resolve type-name IDs like "checking"/"savings" (UI uses these before liveAccounts loads)
@@ -372,7 +372,7 @@ router.get('/:id/balance', authenticateToken, requireScopes(['banking:read']), a
 });
 
 // Create new account (admin only)
-router.post('/', blockInDemoMode('account creation'), authenticateToken, requireScopes(['banking:write']), requireNotBankDelegate('account creation'), async (req, res) => {
+router.post('/', blockInDemoMode('account creation'), authenticateToken, requireScopes(['write']), requireNotBankDelegate('account creation'), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -390,7 +390,7 @@ router.post('/', blockInDemoMode('account creation'), authenticateToken, require
 });
 
 // Update account (admin only)
-router.put('/:id', blockInDemoMode('account update'), authenticateToken, requireScopes(['banking:write']), requireNotBankDelegate('account update'), async (req, res) => {
+router.put('/:id', blockInDemoMode('account update'), authenticateToken, requireScopes(['write']), requireNotBankDelegate('account update'), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -411,7 +411,7 @@ router.put('/:id', blockInDemoMode('account update'), authenticateToken, require
 });
 
 // Delete account (admin only)
-router.delete('/:id', blockInDemoMode('account deletion'), authenticateToken, requireScopes(['banking:write']), requireNotBankDelegate('account deletion'), async (req, res) => {
+router.delete('/:id', blockInDemoMode('account deletion'), authenticateToken, requireScopes(['write']), requireNotBankDelegate('account deletion'), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {

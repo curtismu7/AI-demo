@@ -57,7 +57,10 @@ const DEMO_APP_NAMES = [
   'Super Banking MCP Gateway',
   'Super Banking Agent',
   'Super Banking AI Agent',
-  'Super Banking Worker Token',
+  // NOTE: 'Super Banking Worker Token' is intentionally excluded — it is the
+  // manually-created management worker app (Identity Data Admin role) that
+  // bootstrap uses to authenticate. Deleting it breaks all provisioning.
+  // Recreate manually in PingOne console if needed.
 ];
 
 const DEMO_RESOURCE_NAMES = [

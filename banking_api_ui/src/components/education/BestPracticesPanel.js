@@ -313,14 +313,14 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 subject_token=<user access token>           // "on whose behalf"
 actor_token=<agent client_credentials JWT>  // "who is acting"
 audience=<mcp_resource_uri>
-scope=banking:accounts:read
+scope=accounts:read
 
 // Resulting MCP token claims:
 {
   "sub":    "user-abc123",          // human principal
   "act":    { "client_id": "bx-agent" },  // agent actor
   "aud":    "https://mcp.bxfinance.com",
-  "scope":  "banking:accounts:read"
+  "scope":  "accounts:read"
 }`}</pre>
 
           <h4>How Super Banking implements this</h4>
@@ -352,7 +352,7 @@ scope=banking:accounts:read
           </p>
 
           <PracticeCard icon="🎛️" title="Limit Agent Access — Scope Allow-List">
-            Every tool in the MCP catalog has a required scope set (e.g. <code>banking:accounts:read</code>).{' '}
+            Every tool in the MCP catalog has a required scope set (e.g. <code>accounts:read</code>).{' '}
             <code>agentMcpScopePolicy.js</code> checks the allow-list from <strong>Config UI → Agent MCP scopes</strong>{' '}
             before the token exchange runs. If the tool's scope is not enabled, the call is rejected
             at the BFF — PingOne never processes the exchange.
@@ -376,10 +376,10 @@ scope=banking:accounts:read
 
           <pre className="edu-code">{`// Per-tool scope map in mcpWebSocketClient.js
 MCP_TOOL_SCOPES = {
-  get_my_accounts:       ['banking:accounts:read'],
-  get_my_transactions:   ['banking:transactions:read'],
-  create_transfer:       ['banking:accounts:read', 'banking:transactions:write'],
-  get_account_balance:   ['banking:accounts:read'],
+  get_my_accounts:       ['accounts:read'],
+  get_my_transactions:   ['transactions:read'],
+  create_transfer:       ['accounts:read', 'transactions:write'],
+  get_account_balance:   ['accounts:read'],
 }
 
 // agentMcpScopePolicy.js — checked before token exchange

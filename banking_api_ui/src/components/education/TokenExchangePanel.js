@@ -142,7 +142,7 @@ function TokenFlowDiagram() {
           border="var(--brand-navy)"
           claims={[
             { key: 'aud', val: 'Backend-for-Frontend (BFF) / PingOne client', note: 'broad' },
-            { key: 'scope', val: 'openid email banking:*', note: 'broad' },
+            { key: 'scope', val: 'openid email *', note: 'broad' },
             { key: 'may_act', val: '{ "sub": "bff-client-id" }', note: 'prospective permission' },
             { key: 'act', val: '(absent)', note: '' },
             { key: 'stays in', val: 'Backend-for-Frontend (BFF) session only', note: '🔒 never forwarded' },
@@ -155,7 +155,7 @@ function TokenFlowDiagram() {
           border="#22c55e"
           claims={[
             { key: 'aud', val: 'mcp-server-resource-uri', note: 'narrowed ✓' },
-            { key: 'scope', val: 'banking:read banking:write', note: 'narrowed ✓' },
+            { key: 'scope', val: 'read write', note: 'narrowed ✓' },
             { key: 'may_act', val: '(removed)', note: '' },
             { key: 'act', val: '{ "sub": "bff-client-id" }', note: 'delegation fact ✓' },
             { key: 'sent to', val: 'MCP Server + Banking API', note: '✅' },
@@ -318,7 +318,7 @@ export default function TokenExchangePanel({ isOpen, onClose, initialTabId }) {
           <h3>Why Exchange Instead of Forwarding?</h3>
           <ul>
             <li><strong>Audience isolation</strong> — the User Token has a broad audience (Backend-for-Frontend (BFF) / PingOne). The MCP Server expects its own resource URI as audience. Forwarding the User Token would cause an <code>invalid_aud</code> rejection.</li>
-            <li><strong>Scope narrowing</strong> — the MCP Token carries only the scopes needed for the specific tool call (e.g. <code>banking:read</code>), not the user's full permissions.</li>
+            <li><strong>Scope narrowing</strong> — the MCP Token carries only the scopes needed for the specific tool call (e.g. <code>read</code>), not the user's full permissions.</li>
             <li><strong>Delegation audit trail</strong> — the <code>act</code> claim in the MCP Token records who is acting (the Backend-for-Frontend (BFF) / Agent). Without exchange there is no delegation record.</li>
             <li><strong>Least privilege</strong> — if the MCP Server or Banking API is compromised, the attacker only has the narrow MCP Token, not the user's full User Token.</li>
           </ul>
@@ -358,7 +358,7 @@ fetch(MCP_SERVER_URL, {
 subject_token=<User Token>
 subject_token_type=urn:ietf:params:oauth:token-type:access_token
 audience=<MCP Server Resource URI>
-scope=banking:read banking:write
+scope=read write
 # Optional — adds act claim identifying the agent:
 actor_token=<Agent Token>
 actor_token_type=urn:ietf:params:oauth:token-type:access_token`}</pre>
@@ -484,7 +484,7 @@ fetch(MCP_SERVER_URL, {
           <pre className="edu-code">{`PingOne → Applications → Resources → Add Resource
   Name: Banking MCP Server
   Audience (Resource URI): https://mcp.yourdomain.com
-  Scopes: banking:read, banking:write
+  Scopes: read, write
 
 → Copy the Audience URI`}</pre>
 

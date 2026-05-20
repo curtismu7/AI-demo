@@ -129,20 +129,20 @@ function requireScopes(requiredScopes, options = {}) {
  */
 const Scopes = {
   // Core banking access
-  READ: 'banking:read',
-  WRITE: 'banking:write',
+  READ: 'read',
+  WRITE: 'write',
 
   // Admin access
-  ADMIN: 'banking:admin',
+  ADMIN: 'admin',
 
   // Sensitive data
-  SENSITIVE: 'banking:sensitive',
+  SENSITIVE: 'sensitive',
 
   // AI agent delegation marker
-  AI_AGENT: 'banking:ai:agent',
+  AI_AGENT: 'ai:agent',
 
   // MCP tool invocation (on MCP resource server)
-  MCP_INVOKE: 'banking:mcp:invoke',
+  MCP_INVOKE: 'mcp:invoke',
 
   // OpenID scopes
   OPENID: 'openid',

@@ -134,7 +134,7 @@ async function getAvailableTools(req, agentCCToken, options = {}) {
       description: tool.description,
       inputSchema: tool.inputSchema || {},
       requiresUserAuth: tool.requiresUserAuth !== false, // Default true
-      requiredScopes: tool.requiredScopes || ['banking:read'],
+      requiredScopes: tool.requiredScopes || ['read'],
       readOnly: tool.readOnly ?? true,
     }));
 
@@ -182,7 +182,7 @@ function getLocalToolsCatalog() {
       description: 'Retrieve user bank accounts',
       inputSchema: { type: 'object', properties: {}, required: [] },
       requiresUserAuth: true,
-      requiredScopes: ['banking:read'],
+      requiredScopes: ['read'],
       readOnly: true,
     },
     {
@@ -194,7 +194,7 @@ function getLocalToolsCatalog() {
         required: ['account_id'],
       },
       requiresUserAuth: true,
-      requiredScopes: ['banking:read'],
+      requiredScopes: ['read'],
       readOnly: true,
     },
     {
@@ -202,7 +202,7 @@ function getLocalToolsCatalog() {
       description: 'Retrieve recent transactions',
       inputSchema: { type: 'object', properties: {}, required: [] },
       requiresUserAuth: true,
-      requiredScopes: ['banking:read'],
+      requiredScopes: ['read'],
       readOnly: true,
     },
     {
@@ -218,7 +218,7 @@ function getLocalToolsCatalog() {
         required: ['from_account_id', 'to_account_id', 'amount'],
       },
       requiresUserAuth: true,
-      requiredScopes: ['banking:write'],
+      requiredScopes: ['write'],
       readOnly: false,
     },
   ];

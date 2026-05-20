@@ -29,15 +29,15 @@ const sampleResponses = [
   // HTTP 403 Forbidden
   {
     error: 'insufficient_scope',
-    error_description: 'Token is missing required scope(s): banking:accounts:write',
+    error_description: 'Token is missing required scope(s): accounts:write',
     error_code: MCPErrorCode.INSUFFICIENT_SCOPE,
-    required_scope: 'banking:accounts:write',
+    required_scope: 'accounts:write',
     resource_metadata: 'https://mcp-server.pingdemo.com/.well-known/oauth-protected-resource',
     timestamp: '2025-04-07T17:00:00.000Z',
     request_id: 'req-456',
     data: {
       type: 'http',
-      details: { requiredScopes: ['banking:accounts:write'] },
+      details: { requiredScopes: ['accounts:write'] },
       timestamp: '2025-04-07T17:00:00.000Z',
       requestId: 'req-456',
       server: 'Super Banking MCP Server',

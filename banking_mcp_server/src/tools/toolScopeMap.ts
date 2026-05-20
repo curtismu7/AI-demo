@@ -39,7 +39,7 @@ export function getScopesForTool(toolName: string): string[] {
  * Filter a list of tool definitions to only those permitted by the given token scopes.
  *
  * Registry and token scopes both use the flat format (read, write),
- * so matching is a direct set membership check. Wildcards '*' and 'banking:*' grant all.
+ * so matching is a direct set membership check. Wildcards '*' and '*' grant all.
  * Tools with no requiredScopes (e.g. sequential_think) are always included.
  *
  * Called from the tools/list handler — no authz server call needed.
@@ -52,7 +52,7 @@ export function filterToolsByScope(
   // No scopes decoded yet — return full list; token validation already enforced auth.
   if (tokenScopes.length === 0) return tools;
 
-  const hasWildcard = tokenScopes.includes('*') || tokenScopes.includes('banking:*');
+  const hasWildcard = tokenScopes.includes('*') || tokenScopes.includes('*');
   if (hasWildcard) return tools;
 
   return tools.filter(tool =>

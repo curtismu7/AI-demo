@@ -1309,7 +1309,7 @@ export default function DemoDataPage({ user, onLogout }) {
                   </span>
                   Account Profile Fields{' '}
                   <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', fontWeight: 400, color: '#92400e', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 4, padding: '0.1rem 0.4rem' }}>
-                    Sensitive fields require banking:sensitive:read
+                    Sensitive fields require sensitive:read
                   </span>
                 </h2>
               </button>
@@ -1363,7 +1363,7 @@ export default function DemoDataPage({ user, onLogout }) {
                       ))}
                       <div style={{ border: '1px solid #fcd34d', borderRadius: 6, padding: '0.5rem 0.75rem', background: '#fffbeb', marginTop: '0.5rem' }}>
                         <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#92400e', marginBottom: '0.4rem' }}>
-                          Sensitive — requires banking:sensitive:read
+                          Sensitive — requires sensitive:read
                         </div>
                         <label className="demo-data-field demo-data-field--inline">
                           <span>Routing Number</span>
@@ -1424,9 +1424,9 @@ export default function DemoDataPage({ user, onLogout }) {
               <p className="demo-data-hint">
                 Controls which OAuth scopes are included in the RFC 8693 token exchange when the AI agent calls a tool.
                 <br />
-                <strong>banking:read</strong> — agent can view accounts, balances, and transactions.
-                <strong> banking:write</strong> — agent can transfer funds and make deposits.
-                Broad scopes (<em>banking:read</em>, <em>banking:write</em>) satisfy any matching tool;
+                <strong>read</strong> — agent can view accounts, balances, and transactions.
+                <strong> write</strong> — agent can transfer funds and make deposits.
+                Broad scopes (<em>read</em>, <em>write</em>) satisfy any matching tool;
                 specific scopes are finer-grained alternatives.
               </p>
               <div className="demo-data-scope-list">

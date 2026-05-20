@@ -12,7 +12,7 @@ const ResourceConsent = ({ resources, scopes = [], onProceed, onCancel, loading 
     // Filter scopes that are relevant to this resource
     return allScopes.filter(scope => {
       // Simple scope-to-resource mapping
-      if (resourceUri.includes('banking-api') && scope.startsWith('banking:')) return true;
+      if (resourceUri.includes('banking-api') && scope.startsWith('')) return true;
       if (resourceUri.includes('mcp-server') && (scope.startsWith('ai:') || scope.startsWith('mcp:'))) return true;
       if (resourceUri.includes('admin-api') && scope.startsWith('admin:')) return true;
       if (resourceUri.includes('config-api') && scope.startsWith('config:')) return true;
@@ -138,8 +138,8 @@ const ResourceConsent = ({ resources, scopes = [], onProceed, onCancel, loading 
 
 const getScopeDescription = (scope) => {
   const descriptions = {
-    'banking:read': 'Read banking data and account information',
-    'banking:write': 'Perform banking operations and transactions',
+    'read': 'Read banking data and account information',
+    'write': 'Perform banking operations and transactions',
     'transactions:read': 'View transaction history and details',
     'accounts:read': 'Access account information and balances',
     'ai:act': 'Perform AI agent actions and operations',

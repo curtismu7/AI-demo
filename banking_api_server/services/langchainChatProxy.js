@@ -75,7 +75,7 @@ async function resolveLangchainToken(req) {
 
   const scopes = (
     configStore.getEffective('mcp_token_exchange_scopes') ||
-    'banking:read banking:write'
+    'read write'
   )
     .split(/\s+/)
     .filter(Boolean);

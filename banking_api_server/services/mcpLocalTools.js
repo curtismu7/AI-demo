@@ -425,7 +425,7 @@ const LOCAL_INSPECTOR_TOOLS = [
     name: 'get_my_accounts',
     description: "Retrieve user's bank accounts",
     requiresUserAuth: true,
-    requiredScopes: ['banking:accounts:read'],
+    requiredScopes: ['accounts:read'],
     inputSchema: { type: 'object', properties: {}, required: [], additionalProperties: false },
   },
   {
@@ -433,7 +433,7 @@ const LOCAL_INSPECTOR_TOOLS = [
     description:
       'Get balance for a specific account. Use account ID (not account number) from get_my_accounts response.',
     requiresUserAuth: true,
-    requiredScopes: ['banking:accounts:read'],
+    requiredScopes: ['accounts:read'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -452,7 +452,7 @@ const LOCAL_INSPECTOR_TOOLS = [
     name: 'get_my_transactions',
     description: "Retrieve user's transaction history with optional filtering by date range and amount",
     requiresUserAuth: true,
-    requiredScopes: ['banking:transactions:read'],
+    requiredScopes: ['transactions:read'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -488,7 +488,7 @@ const LOCAL_INSPECTOR_TOOLS = [
     description:
       'Create a deposit transaction to an account. Use account ID (not account number) from get_my_accounts response. High-value amounts may require HITL consent (configurable threshold, not available via this tool); high-value amounts may also require MFA.',
     requiresUserAuth: true,
-    requiredScopes: ['banking:transactions:write'],
+    requiredScopes: ['transactions:write'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -510,7 +510,7 @@ const LOCAL_INSPECTOR_TOOLS = [
     description:
       'Create a withdrawal transaction from an account. Use account ID (not account number) from get_my_accounts response. High-value amounts require human consent (HITL) on the web dashboard (not available via this tool).',
     requiresUserAuth: true,
-    requiredScopes: ['banking:transactions:write'],
+    requiredScopes: ['transactions:write'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -532,7 +532,7 @@ const LOCAL_INSPECTOR_TOOLS = [
     description:
       'Transfer money between accounts. Use account IDs (not account numbers) from get_my_accounts response. All transfers require human consent (HITL) on the web dashboard (not available via this tool).',
     requiresUserAuth: true,
-    requiredScopes: ['banking:transactions:write'],
+    requiredScopes: ['transactions:write'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -557,9 +557,9 @@ const LOCAL_INSPECTOR_TOOLS = [
   },
   {
     name: 'get_sensitive_account_details',
-    description: 'Retrieve sensitive account details (full account number and routing number). Requires banking:sensitive:read scope and user consent.',
+    description: 'Retrieve sensitive account details (full account number and routing number). Requires sensitive:read scope and user consent.',
     requiresUserAuth: true,
-    requiredScopes: ['banking:accounts:read', 'banking:sensitive:read'],
+    requiredScopes: ['accounts:read', 'sensitive:read'],
     readOnly: false,
     inputSchema: { type: 'object', properties: {}, required: [], additionalProperties: false },
   },

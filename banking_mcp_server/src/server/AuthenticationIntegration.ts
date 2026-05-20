@@ -90,7 +90,7 @@ export class AuthenticationIntegration {
           authChallenge: error.authorizationUrl ? {
             authorizationUrl: error.authorizationUrl,
             state: 'agent-auth-required',
-            scope: 'banking:agent',
+            scope: 'agent',
             sessionId: 'pending',
             expiresAt: new Date(Date.now() + 300000) // 5 minutes
           } : undefined
@@ -238,7 +238,7 @@ export class AuthenticationIntegration {
       challenge_type: 'oauth_authorization_code',
       authorization_url: process.env.PINGONE_AUTHORIZATION_ENDPOINT ||
         `https://auth.pingone.${process.env.PINGONE_REGION || 'com'}/${process.env.PINGONE_ENVIRONMENT_ID || ''}/as/authorize`,
-      scope: 'banking:accounts:read banking:transactions:read banking:transactions:write'
+      scope: 'accounts:read transactions:read transactions:write'
     };
 
     if (authChallenge) {

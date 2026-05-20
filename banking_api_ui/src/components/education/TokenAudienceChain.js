@@ -56,7 +56,7 @@ export default function TokenAudienceChain({ compact = false }) {
           <div style={{ fontWeight: 600, color: '#7dd3fc' }}>User Token</div>
           <div style={CLAIM_STYLE}>sub: user-abc</div>
           <div style={CLAIM_STYLE}>aud: olb-resource.bxf.com</div>
-          {!compact && <div style={CLAIM_STYLE}>scope: banking:read write</div>}
+          {!compact && <div style={CLAIM_STYLE}>scope: read write</div>}
         </div>
 
         <ExchangeArrow label="Exchange #1" />

@@ -180,8 +180,8 @@ export default function IntentDelegationPanel({ isOpen, onClose, initialTabId })
           <p>
             When the AI agent calls a banking tool, the BFF performs an{' '}
             <strong>RFC 8693 token exchange</strong>. The user's broad access token is exchanged
-            for a narrower MCP token with a reduced scope (e.g. <code>banking:read</code> for
-            read operations, <code>banking:write</code> for writes) and a specific audience bound
+            for a narrower MCP token with a reduced scope (e.g. <code>read</code> for
+            read operations, <code>write</code> for writes) and a specific audience bound
             to the MCP server URI. This is constraint encoding in practice: the agent's effective
             authority is cryptographically narrowed at runtime to exactly what the current operation
             requires.
@@ -281,7 +281,7 @@ export default function IntentDelegationPanel({ isOpen, onClose, initialTabId })
                 ['Delegation chain proof', 'act claim in exchanged token'],
                 ['Delegated agent authority', 'may_act claim on user token'],
                 ['Rich intent in auth request', 'RAR (RFC 9396) authorization_details'],
-                ['Granular scopes', 'banking:read / banking:write / banking:mcp:invoke'],
+                ['Granular scopes', 'read / write / mcp:invoke'],
               ].map(([term, impl]) => (
                 <tr key={term} style={{ borderBottom: '1px solid var(--edu-border, #e2e8f0)' }}>
                   <td style={{ padding: '6px 8px' }}>{term}</td>

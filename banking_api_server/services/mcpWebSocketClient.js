@@ -28,8 +28,8 @@ const SUPPORTED_PROTOCOL_VERSIONS = new Set(['2025-11-25', '2024-11-05']);
  *  REQUESTS per MCP tool, and the requiredScopesHint surfaced by the MCP
  *  Inspector. Each tool lists [specific, broad] so either the precise scope OR
  *  the umbrella scope is sufficient.
- *  banking:read  = view own data (accounts, balances, transactions)
- *  banking:write = mutate data (transfer, deposit, withdrawal)
+ *  read  = view own data (accounts, balances, transactions)
+ *  write = mutate data (transfer, deposit, withdrawal)
  *
  *  Architecture-note R1 (2026-05-15) / T-2: this map is NOT an authorization
  *  oracle. Whether an MCP tool call is permitted is decided solely by

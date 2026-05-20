@@ -234,7 +234,7 @@ function sanitizeUserUpdates(raw) {
 }
 
 // Auth: server mounts this router with authenticateToken only (same pattern as GET /api/accounts/my).
-// No banking:* scope gate — Backend-for-Frontend (BFF) session users often lack those scopes in the PingOne access token.
+// No * scope gate — Backend-for-Frontend (BFF) session users often lack those scopes in the PingOne access token.
 router.get('/', async (req, res) => {
   try {
     let accounts = dataStore.getAccountsByUserId(req.user.id);

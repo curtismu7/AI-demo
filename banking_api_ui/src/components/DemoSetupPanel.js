@@ -730,7 +730,7 @@ export default function DemoSetupPanel() {
               <span style={{ fontSize: '1.2rem', minWidth: '1rem', display: 'inline-block' }}>{collapsedSections.accountProfile ? '▶' : '▼'}</span>
               Account Profile Fields{' '}
               <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', fontWeight: 400, color: '#92400e', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 4, padding: '0.1rem 0.4rem' }}>
-                🔒 Sensitive fields require banking:sensitive:read
+                🔒 Sensitive fields require sensitive:read
               </span>
             </h2>
           </button>
@@ -761,7 +761,7 @@ export default function DemoSetupPanel() {
                         </label>
                       ))}
                       <div style={{ border: '1px solid #fcd34d', borderRadius: 6, padding: '0.5rem 0.75rem', background: '#fffbeb', marginTop: '0.5rem' }}>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#92400e', marginBottom: '0.4rem' }}>🔒 Sensitive — requires banking:sensitive:read</div>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#92400e', marginBottom: '0.4rem' }}>🔒 Sensitive — requires sensitive:read</div>
                         <label className="demo-data-field demo-data-field--inline">
                           <span>Routing Number 🔒</span>
                           <input type="text" value={prof.routingNumber || ''} maxLength={50} onChange={(e) => setProf('routingNumber', e.target.value)} />
@@ -797,8 +797,8 @@ export default function DemoSetupPanel() {
           <h2 className="demo-data-section__heading" id="demo-setup-scope-heading">Agent scope permissions</h2>
           <p className="demo-data-hint">
             Controls which OAuth scopes are included in the RFC 8693 token exchange when the AI agent calls a tool.
-            <strong> banking:read</strong> — view accounts and transactions.
-            <strong> banking:write</strong> — transfer funds and make deposits.
+            <strong> read</strong> — view accounts and transactions.
+            <strong> write</strong> — transfer funds and make deposits.
           </p>
           <div className="demo-data-scope-list">
             {AGENT_MCP_SCOPE_CATALOG.map((row) => {

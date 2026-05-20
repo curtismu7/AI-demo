@@ -67,35 +67,35 @@ function logInfo(msg) {
 const EXPECTED_SCOPES = {
   'banking-api': {
     description: 'Super Banking Banking API (End-User)',
-    requiredScopes: ['banking:read', 'banking:write'],
+    requiredScopes: ['read', 'write'],
     optionalScopes: [
-      'banking:accounts:read',
-      'banking:transactions:read',
-      'banking:transactions:write',
-      'banking:read',
-      'banking:write',
+      'accounts:read',
+      'transactions:read',
+      'transactions:write',
+      'read',
+      'write',
     ],
   },
   'agent-gateway': {
     description: 'Super Banking Agent Gateway',
-    requiredScopes: ['banking:agent:invoke', 'ai_agent'],
+    requiredScopes: ['agent:invoke', 'ai_agent'],
     optionalScopes: [],
   },
   'ai-agent': {
     description: 'Super Banking AI Agent Service',
-    requiredScopes: ['banking:read', 'banking:write', 'banking:agent:invoke'],
+    requiredScopes: ['read', 'write', 'agent:invoke'],
     optionalScopes: [
-      'banking:accounts:read',
-      'banking:transactions:read',
-      'banking:transactions:write',
+      'accounts:read',
+      'transactions:read',
+      'transactions:write',
     ],
   },
   'mcp-gateway': {
     description: 'Super Banking MCP Gateway',
-    requiredScopes: ['banking:mcp:invoke', 'mcp_resource_access'],
+    requiredScopes: ['mcp:invoke', 'mcp_resource_access'],
     optionalScopes: [
-      'banking:ai:agent:read',
-      'banking:ai:agent:write',
+      'ai:agent:read',
+      'ai:agent:write',
     ],
   },
   'mcp-server': {
@@ -106,11 +106,11 @@ const EXPECTED_SCOPES = {
       'check:read',
     ],
     optionalScopes: [
-      'banking:accounts:read',
-      'banking:transactions:read',
-      'banking:transactions:write',
-      'banking:ai:agent:read',
-      'banking:ai:agent:write',
+      'accounts:read',
+      'transactions:read',
+      'transactions:write',
+      'ai:agent:read',
+      'ai:agent:write',
     ],
   },
 };

@@ -246,7 +246,7 @@ async function _tryRefresh(req) {
 /**
  * Resolve userId + accessToken for MFA test operations.
  * Prefers session credentials (logged-in user), falls back to worker token + test userId.
- * Test userId comes from: req.body.userId > MFA_TEST_USER_ID env > bankuser default.
+ * Test userId comes from: req.body.userId > MFA_TEST_USER_ID env > demoUser default.
  */
 const MFA_TEST_USER_ID = process.env.MFA_TEST_USER_ID || '6689a774-46af-4198-a6ff-38198dc341ac';
 

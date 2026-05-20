@@ -28,7 +28,7 @@ function requireSetupMasterKeyIfConfigured(req, res, next) {
 }
 
 // Get system statistics
-router.get('/stats', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/stats', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const users = dataStore.getAllUsers();
     const accounts = dataStore.getAllAccounts();
@@ -75,7 +75,7 @@ const TX_LOOKUP_LIMIT = 100;
  * POST body: { username, phoneLast4 } — verify last 4 digits against PingOne mobile and/or local phone,
  * return merged profile (PingOne where available), accounts with balances, and recent transactions.
  */
-router.post('/transactions/lookup', requireAdmin, requireScopes(['banking:admin']), async (req, res) => {
+router.post('/transactions/lookup', requireAdmin, requireScopes(['admin']), async (req, res) => {
   try {
     const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
     const phoneLast4 = typeof req.body.phoneLast4 === 'string' ? req.body.phoneLast4.trim() : '';
@@ -178,7 +178,7 @@ router.post('/transactions/lookup', requireAdmin, requireScopes(['banking:admin'
 });
 
 // Get all activity logs
-router.get('/activity', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/activity', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const { page = 1, limit = 50, username, action, startDate, endDate } = req.query;
     
@@ -232,7 +232,7 @@ router.get('/activity', requireAdmin, requireScopes(['banking:admin']), (req, re
 });
 
 // Get activity logs by username
-router.get('/activity/user/:username', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/activity/user/:username', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const { username } = req.params;
     const { page = 1, limit = 50 } = req.query;
@@ -266,7 +266,7 @@ router.get('/activity/user/:username', requireAdmin, requireScopes(['banking:adm
 });
 
 // Get activity logs by user ID
-router.get('/activity/userid/:userId', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/activity/userid/:userId', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const { userId } = req.params;
     const { page = 1, limit = 50 } = req.query;
@@ -300,7 +300,7 @@ router.get('/activity/userid/:userId', requireAdmin, requireScopes(['banking:adm
 });
 
 // Get recent activity (last 24 hours)
-router.get('/activity/recent', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/activity/recent', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const { hours = 24 } = req.query;
     const cutoffTime = new Date(Date.now() - (hours * 60 * 60 * 1000));
@@ -318,7 +318,7 @@ router.get('/activity/recent', requireAdmin, requireScopes(['banking:admin']), (
 });
 
 // Get activity summary by action type
-router.get('/activity/summary', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/activity/summary', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const logs = dataStore.getAllActivityLogs();
     
@@ -342,7 +342,7 @@ router.get('/activity/summary', requireAdmin, requireScopes(['banking:admin']), 
 });
 
 // Get user activity summary
-router.get('/activity/users/summary', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/activity/users/summary', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const logs = dataStore.getAllActivityLogs();
     
@@ -376,7 +376,7 @@ router.get('/activity/users/summary', requireAdmin, requireScopes(['banking:admi
 });
 
 // Clear old activity logs (older than specified days)
-router.delete('/activity/clear', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.delete('/activity/clear', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const { days = 30 } = req.query;
     const cutoffDate = new Date(Date.now() - (days * 24 * 60 * 60 * 1000));
@@ -404,7 +404,7 @@ router.delete('/activity/clear', requireAdmin, requireScopes(['banking:admin']),
 });
 
 // Export activity logs (CSV format)
-router.get('/activity/export', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/activity/export', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const logs = dataStore.getAllActivityLogs()
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -441,7 +441,7 @@ router.get('/activity/export', requireAdmin, requireScopes(['banking:admin']), (
 // ── Runtime Settings ─────────────────────────────────────────────────────────
 
 // GET /api/admin/settings — return current live settings
-router.get('/settings', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/settings', requireAdmin, requireScopes(['admin']), (req, res) => {
   res.json({
     settings: runtimeSettings.getAll(),
     history: runtimeSettings.getHistory(),
@@ -449,7 +449,7 @@ router.get('/settings', requireAdmin, requireScopes(['banking:admin']), (req, re
 });
 
 // PUT /api/admin/settings — update one or more settings at runtime
-router.put('/settings', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.put('/settings', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const changedBy = req.user?.email || req.user?.username || 'admin';
     const result = runtimeSettings.update(req.body, changedBy);
@@ -470,7 +470,7 @@ router.put('/settings', requireAdmin, requireScopes(['banking:admin']), (req, re
 
 const oauthVerboseLogStore = require('../services/oauthVerboseLogStore');
 
-router.get('/oauth-debug-log', requireAdmin, requireScopes(['banking:admin']), async (req, res) => {
+router.get('/oauth-debug-log', requireAdmin, requireScopes(['admin']), async (req, res) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 200, 1), oauthVerboseLogStore.MAX_LINES);
     const { lines, backend } = await oauthVerboseLogStore.getRecentLines(limit);
@@ -490,7 +490,7 @@ router.get('/oauth-debug-log', requireAdmin, requireScopes(['banking:admin']), a
   }
 });
 
-router.delete('/oauth-debug-log', requireAdmin, requireScopes(['banking:admin']), async (req, res) => {
+router.delete('/oauth-debug-log', requireAdmin, requireScopes(['admin']), async (req, res) => {
   try {
     await oauthVerboseLogStore.clear();
     res.json({ ok: true, message: 'OAuth verbose log cleared.' });
@@ -513,7 +513,7 @@ function buildSerializableBootstrapSnapshot() {
 /**
  * GET downloadable seed file for committing as data/bootstrapData.json.
  */
-router.get('/bootstrap/export', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/bootstrap/export', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const body = buildSerializableBootstrapSnapshot();
     const json = `${JSON.stringify(body, null, 2)}\n`;
@@ -529,7 +529,7 @@ router.get('/bootstrap/export', requireAdmin, requireScopes(['banking:admin']), 
 /**
  * POST writes seed file on disk (local dev only — never on Vercel).
  */
-router.post('/bootstrap/export', requireAdmin, requireScopes(['banking:admin']), async (req, res) => {
+router.post('/bootstrap/export', requireAdmin, requireScopes(['admin']), async (req, res) => {
   if (process.env.VERCEL) {
     return res.status(403).json({
       error: 'write_disabled',
@@ -567,7 +567,7 @@ router.post('/bootstrap/export', requireAdmin, requireScopes(['banking:admin']),
  * GET /banking/lookup?q= — find accounts whose number/id matches (substring + digit-only match).
  * Returns accounts and recent transactions touching those accounts (newest first).
  */
-router.get('/banking/lookup', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/banking/lookup', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const raw = String(req.query.q || '').trim();
     if (!raw) {
@@ -611,7 +611,7 @@ router.get('/banking/lookup', requireAdmin, requireScopes(['banking:admin']), (r
 /**
  * POST /banking/accounts/:accountId/seed-charges — add synthetic withdrawal rows (demo / QA).
  */
-router.post('/banking/accounts/:accountId/seed-charges', requireAdmin, requireScopes(['banking:admin']), async (req, res) => {
+router.post('/banking/accounts/:accountId/seed-charges', requireAdmin, requireScopes(['admin']), async (req, res) => {
   try {
     const account = dataStore.getAccountById(req.params.accountId);
     if (!account) {
@@ -708,7 +708,7 @@ module.exports = router;
  * 
  * PingOne scope configuration update.
  * Enhanced with silent worker token acquisition - no manual credentials required.
- * Handles: banking:agent:invoke -> banking:ai:agent:read (Phase 69.1)
+ * Handles: agent:invoke -> ai:agent:read (Phase 69.1)
  */
 router.post(
   '/pingone/update-scopes',
@@ -862,7 +862,7 @@ router.post(
 router.get(
   '/agent/:agentId/status',
   requireAdmin,
-  requireScopes(['banking:admin']),
+  requireScopes(['admin']),
   async (req, res) => {
     try {
       const { agentId } = req.params;
@@ -892,7 +892,7 @@ router.get(
 router.get(
   '/audit-trail',
   requireAdmin,
-  requireScopes(['banking:admin']),
+  requireScopes(['admin']),
   async (req, res) => {
     try {
       const { agentId, hours = 24, limit = 100 } = req.query;
@@ -933,7 +933,7 @@ router.get(
 router.get(
   '/audit-event/:auditId',
   requireAdmin,
-  requireScopes(['banking:admin']),
+  requireScopes(['admin']),
   async (req, res) => {
     try {
       const { auditId } = req.params;
@@ -1003,7 +1003,7 @@ router.post('/reset-demo', authenticateToken, async (req, res) => {
  * GET /api/admin/app-events — Get curated app events (OAuth, token exchange, session, JWKS)
  * Supports filtering by category, severity, limit, and time range
  */
-router.get('/app-events', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/app-events', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const { category, severity, limit = 100, since } = req.query;
     
@@ -1030,7 +1030,7 @@ router.get('/app-events', requireAdmin, requireScopes(['banking:admin']), (req, 
 /**
  * GET /api/admin/app-events/categories — Get summary of events by category
  */
-router.get('/app-events/categories', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/app-events/categories', requireAdmin, requireScopes(['admin']), (req, res) => {
   try {
     const categories = appEventService.getEventsByCategory();
     res.json({ categories });
@@ -1049,7 +1049,7 @@ router.get('/app-events/categories', requireAdmin, requireScopes(['banking:admin
  * Query params:
  *   ?category=<oauth|token_exchange|...>  — only emit events of this category
  */
-router.get('/app-events/stream', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+router.get('/app-events/stream', requireAdmin, requireScopes(['admin']), (req, res) => {
   const { category } = req.query;
 
   res.set({

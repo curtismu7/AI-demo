@@ -148,7 +148,7 @@ export default function PingOneSetupGuidePage() {
               </tr>
               <tr>
                 <td style={thtd}><strong>Resource + scopes</strong></td>
-                <td style={thtd}><code>banking:*</code> style API access</td>
+                <td style={thtd}><code>*</code> style API access</td>
                 <td style={thtd}>Create in PingOne and map scopes to the OIDC apps. Example list lives in <code>config/pingone-bootstrap.manifest.example.json</code> — still <strong>manual</strong> in PingOne today.</td>
               </tr>
               <tr>

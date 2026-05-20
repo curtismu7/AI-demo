@@ -37,7 +37,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
         displayName: 'Get My Accounts',
         description: 'List all bank accounts for the authenticated user. Returns account type, name, masked account number, current balance, currency, and status. Use get_sensitive_account_details to retrieve full account numbers, IBAN, SWIFT, and routing information.',
         requiresUserAuth: true,
-        requiredScopes: ['banking:accounts:read'],
+        requiredScopes: ['accounts:read'],
         readOnly: true,
         params: [],
         exampleResponse: `{
@@ -70,7 +70,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
         displayName: 'Get Account Balance',
         description: 'Get balance for a specific account using its account ID.',
         requiresUserAuth: true,
-        requiredScopes: ['banking:accounts:read'],
+        requiredScopes: ['accounts:read'],
         readOnly: true,
         params: [
           { name: 'account_id', type: 'string', description: 'Account ID (UUID format)', required: true }
@@ -86,7 +86,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
         displayName: 'Get My Transactions',
         description: 'Retrieve the user\'s transaction history across all accounts.',
         requiresUserAuth: true,
-        requiredScopes: ['banking:transactions:read'],
+        requiredScopes: ['transactions:read'],
         readOnly: true,
         params: [],
         exampleResponse: `{
@@ -149,7 +149,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
         displayName: 'Create Deposit',
         description: 'Create a deposit transaction to an account. Amounts over $500 require human consent on the web dashboard first.',
         requiresUserAuth: true,
-        requiredScopes: ['banking:transactions:write'],
+        requiredScopes: ['transactions:write'],
         readOnly: false,
         params: [
           { name: 'to_account_id', type: 'string', description: 'Account ID to deposit to', required: true },
@@ -183,7 +183,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
         displayName: 'Create Withdrawal',
         description: 'Create a withdrawal transaction from an account. Amounts over $500 require human consent on the web dashboard first.',
         requiresUserAuth: true,
-        requiredScopes: ['banking:transactions:write'],
+        requiredScopes: ['transactions:write'],
         readOnly: false,
         params: [
           { name: 'from_account_id', type: 'string', description: 'Account ID to withdraw from', required: true },
@@ -209,7 +209,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
         displayName: 'Create Transfer',
         description: 'Transfer money between accounts. Amounts over $500 require human consent on the web dashboard first.',
         requiresUserAuth: true,
-        requiredScopes: ['banking:transactions:write'],
+        requiredScopes: ['transactions:write'],
         readOnly: false,
         params: [
           { name: 'from_account_id', type: 'string', description: 'Source account ID', required: true },
@@ -236,7 +236,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
         displayName: 'Get Sensitive Account Details',
         description: 'Retrieve sensitive account details (full account number and routing number). The UI will prompt the user to approve access before this data is released.',
         requiresUserAuth: true,
-        requiredScopes: ['banking:sensitive:read'],
+        requiredScopes: ['sensitive:read'],
         readOnly: false,
         params: [],
         exampleResponse: `{

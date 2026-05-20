@@ -36,16 +36,16 @@ const createOAuthToken = (scopes, userInfo = {}) => {
 // Test scenarios
 const testScenarios = [
   {
-    name: 'Read transactions with banking:transactions:read scope',
-    token: createOAuthToken(['banking:transactions:read']),
+    name: 'Read transactions with transactions:read scope',
+    token: createOAuthToken(['transactions:read']),
     method: 'GET',
     endpoint: '/api/transactions/my',
     expectedStatus: 200,
     description: 'Should allow reading user transactions with specific transaction read scope'
   },
   {
-    name: 'Read transactions with banking:read scope',
-    token: createOAuthToken(['banking:read']),
+    name: 'Read transactions with read scope',
+    token: createOAuthToken(['read']),
     method: 'GET',
     endpoint: '/api/transactions/my',
     expectedStatus: 200,
@@ -53,15 +53,15 @@ const testScenarios = [
   },
   {
     name: 'Read transactions without required scopes',
-    token: createOAuthToken(['banking:write']),
+    token: createOAuthToken(['write']),
     method: 'GET',
     endpoint: '/api/transactions/my',
     expectedStatus: 403,
     description: 'Should deny reading transactions without read scopes'
   },
   {
-    name: 'Create transaction with banking:transactions:write scope',
-    token: createOAuthToken(['banking:transactions:write']),
+    name: 'Create transaction with transactions:write scope',
+    token: createOAuthToken(['transactions:write']),
     method: 'POST',
     endpoint: '/api/transactions',
     data: {
@@ -74,8 +74,8 @@ const testScenarios = [
     description: 'Should allow creating transactions with specific transaction write scope'
   },
   {
-    name: 'Create transaction with banking:write scope',
-    token: createOAuthToken(['banking:write']),
+    name: 'Create transaction with write scope',
+    token: createOAuthToken(['write']),
     method: 'POST',
     endpoint: '/api/transactions',
     data: {
@@ -89,7 +89,7 @@ const testScenarios = [
   },
   {
     name: 'Create transaction without required scopes',
-    token: createOAuthToken(['banking:read']),
+    token: createOAuthToken(['read']),
     method: 'POST',
     endpoint: '/api/transactions',
     data: {
@@ -102,8 +102,8 @@ const testScenarios = [
     description: 'Should deny creating transactions without write scopes'
   },
   {
-    name: 'Transfer with banking:transactions:write scope',
-    token: createOAuthToken(['banking:transactions:write']),
+    name: 'Transfer with transactions:write scope',
+    token: createOAuthToken(['transactions:write']),
     method: 'POST',
     endpoint: '/api/transactions',
     data: {
@@ -118,7 +118,7 @@ const testScenarios = [
   },
   {
     name: 'Transfer without required scopes',
-    token: createOAuthToken(['banking:transactions:read']),
+    token: createOAuthToken(['transactions:read']),
     method: 'POST',
     endpoint: '/api/transactions',
     data: {

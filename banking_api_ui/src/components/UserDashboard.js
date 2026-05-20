@@ -1505,7 +1505,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       } else if (error.response?.status === 403) {
         const scopeError = d?.error === "insufficient_scope";
         if (scopeError) {
-          const requiredScope = d?.required_scope || "banking:write";
+          const requiredScope = d?.required_scope || "write";
           const userScopes = d?.user_scopes || [];
           const userScopesStr =
             userScopes.length > 0 ? userScopes.join(", ") : "(none)";
@@ -1602,7 +1602,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       } else if (error.response?.status === 403) {
         const scopeError = d?.error === "insufficient_scope";
         if (scopeError) {
-          const requiredScope = d?.required_scope || "banking:write";
+          const requiredScope = d?.required_scope || "write";
           const userScopes = d?.user_scopes || [];
           const userScopesStr =
             userScopes.length > 0 ? userScopes.join(", ") : "(none)";
@@ -1704,7 +1704,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       } else if (error.response?.status === 403) {
         const scopeError = d?.error === "insufficient_scope";
         if (scopeError) {
-          const requiredScope = d?.required_scope || "banking:write";
+          const requiredScope = d?.required_scope || "write";
           const userScopes = d?.user_scopes || [];
           const userScopesStr =
             userScopes.length > 0 ? userScopes.join(", ") : "(none)";

@@ -207,7 +207,7 @@ export class BankingToolProvider {
 
   /**
    * Get tools permitted for the given token scopes (tools/list filtering).
-   * Uses flat scope matching: banking:read / banking:write.
+   * Uses flat scope matching: read / write.
    * No authz server call — pure token introspection.
    */
   getAvailableToolsForToken(tokenScopes: string[]): BankingToolDefinition[] {
