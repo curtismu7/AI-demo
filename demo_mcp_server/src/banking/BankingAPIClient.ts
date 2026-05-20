@@ -593,6 +593,30 @@ export class BankingAPIClient {
   }
 
   /**
+   * Generic authenticated GET request — used by admin tool handlers
+   */
+  async get(path: string, token: string): Promise<any> {
+    const response = await this.makeAuthenticatedRequest<any>('GET', path, token);
+    return response.data;
+  }
+
+  /**
+   * Generic authenticated POST request — used by admin tool handlers
+   */
+  async post(path: string, body: any, token: string): Promise<any> {
+    const response = await this.makeAuthenticatedRequest<any>('POST', path, token, body);
+    return response.data;
+  }
+
+  /**
+   * Generic authenticated DELETE request — used by admin tool handlers
+   */
+  async delete(path: string, body: any, token: string): Promise<any> {
+    const response = await this.makeAuthenticatedRequest<any>('DELETE', path, token, body);
+    return response.data;
+  }
+
+  /**
    * Get client configuration
    */
   getConfig(): BankingAPIConfig {

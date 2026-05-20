@@ -350,6 +350,163 @@ export class BankingToolRegistry {
       }
     },
 
+    lookup_customer: {
+      name: 'lookup_customer',
+      title: 'Look Up Customer',
+      description: 'Search for customers by name, email, or username. Returns matching user records.',
+      requiresUserAuth: true,
+      requiredScopes: ['admin:read', 'users:read'],
+      handler: 'executeLookupCustomer',
+      readOnly: true,
+      annotations: { userFacing: { readable: true, destructive: false, idempotent: true, openWorld: false } },
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Name, email, or username fragment to search for' }
+        },
+        required: ['query'],
+        additionalProperties: false
+      }
+    },
+
+    get_customer_profile: {
+      name: 'get_customer_profile',
+      title: 'Get Customer Profile',
+      description: 'Retrieve the full profile for a customer by userId.',
+      requiresUserAuth: true,
+      requiredScopes: ['admin:read', 'users:read'],
+      handler: 'executeGetCustomerProfile',
+      readOnly: true,
+      annotations: { userFacing: { readable: true, destructive: false, idempotent: true, openWorld: false } },
+      inputSchema: {
+        type: 'object',
+        properties: {
+          userId: { type: 'string', description: 'The user ID to retrieve' }
+        },
+        required: ['userId'],
+        additionalProperties: false
+      }
+    },
+
+    get_customer_accounts: {
+      name: 'get_customer_accounts',
+      title: 'Get Customer Accounts',
+      description: 'Retrieve all accounts for a customer by userId.',
+      requiresUserAuth: true,
+      requiredScopes: ['admin:read', 'users:read'],
+      handler: 'executeGetCustomerAccounts',
+      readOnly: true,
+      annotations: { userFacing: { readable: true, destructive: false, idempotent: true, openWorld: false } },
+      inputSchema: {
+        type: 'object',
+        properties: {
+          userId: { type: 'string', description: 'The user ID whose accounts to retrieve' }
+        },
+        required: ['userId'],
+        additionalProperties: false
+      }
+    },
+
+    get_customer_transactions: {
+      name: 'get_customer_transactions',
+      title: 'Get Customer Transactions',
+      description: 'Retrieve the last N transactions for a customer. Defaults to 5.',
+      requiresUserAuth: true,
+      requiredScopes: ['admin:read', 'users:read'],
+      handler: 'executeGetCustomerTransactions',
+      readOnly: true,
+      annotations: { userFacing: { readable: true, destructive: false, idempotent: true, openWorld: false } },
+      inputSchema: {
+        type: 'object',
+        properties: {
+          userId: { type: 'string', description: 'The user ID' },
+          limit: { type: 'number', description: 'Number of transactions to return (default 5, max 50)' }
+        },
+        required: ['userId'],
+        additionalProperties: false
+      }
+    },
+
+    freeze_account: {
+      name: 'freeze_account',
+      title: 'Freeze / Unfreeze Account',
+      description: 'Toggle the active status of a customer account. freeze: true disables it.',
+      requiresUserAuth: true,
+      requiredScopes: ['admin:write', 'users:manage'],
+      handler: 'executeFreezeAccount',
+      readOnly: false,
+      annotations: { userFacing: { readable: false, destructive: true, idempotent: true, openWorld: false } },
+      inputSchema: {
+        type: 'object',
+        properties: {
+          accountId: { type: 'string', description: 'The account ID to freeze or unfreeze' },
+          freeze: { type: 'boolean', description: 'true to freeze, false to unfreeze' }
+        },
+        required: ['accountId', 'freeze'],
+        additionalProperties: false
+      }
+    },
+
+    reset_customer_password: {
+      name: 'reset_customer_password',
+      title: 'Reset Customer Password',
+      description: 'Mark a customer account as requiring a password reset. They are prompted on next login.',
+      requiresUserAuth: true,
+      requiredScopes: ['admin:write', 'users:manage'],
+      handler: 'executeResetCustomerPassword',
+      readOnly: false,
+      annotations: { userFacing: { readable: false, destructive: false, idempotent: true, openWorld: false } },
+      inputSchema: {
+        type: 'object',
+        properties: {
+          userId: { type: 'string', description: 'The user ID to mark for password reset' }
+        },
+        required: ['userId'],
+        additionalProperties: false
+      }
+    },
+
+    adjust_balance: {
+      name: 'adjust_balance',
+      title: 'Adjust Account Balance',
+      description: 'Add or subtract from an account balance by seeding a transaction. Use positive amount to add, negative to subtract.',
+      requiresUserAuth: true,
+      requiredScopes: ['admin:write', 'users:manage'],
+      handler: 'executeAdjustBalance',
+      readOnly: false,
+      annotations: { userFacing: { readable: false, destructive: false, idempotent: false, openWorld: false } },
+      inputSchema: {
+        type: 'object',
+        properties: {
+          accountId: { type: 'string', description: 'The account ID to adjust' },
+          amount: { type: 'number', description: 'Amount to add (positive) or subtract (negative)' },
+          description: { type: 'string', description: 'Description for the seeded transaction' }
+        },
+        required: ['accountId', 'amount'],
+        additionalProperties: false
+      }
+    },
+
+    delete_customer: {
+      name: 'delete_customer',
+      title: 'Delete Customer',
+      description: 'Permanently delete a customer and all their accounts and transactions. Requires confirm: true.',
+      requiresUserAuth: true,
+      requiredScopes: ['admin:write', 'admin:delete', 'users:manage'],
+      handler: 'executeDeleteCustomer',
+      readOnly: false,
+      annotations: { userFacing: { readable: false, destructive: true, idempotent: false, openWorld: false } },
+      inputSchema: {
+        type: 'object',
+        properties: {
+          userId: { type: 'string', description: 'The user ID to delete' },
+          confirm: { type: 'boolean', description: 'Must be true — confirms the destructive action' }
+        },
+        required: ['userId', 'confirm'],
+        additionalProperties: false
+      }
+    },
+
     sequential_think: {
       name: 'sequential_think',
       title: 'Reason & Analyze',
