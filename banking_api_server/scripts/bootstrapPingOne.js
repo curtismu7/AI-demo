@@ -135,7 +135,7 @@ const RECREATE_APPS = args.includes('--recreate-apps');
 // does NOT continue to provisioning. Use when starting from a totally clean
 // slate or recovering from severe drift.
 const WIPE_ENVIRONMENT = args.includes('--wipe-environment');
-// --reset-creds: ignore (and delete) the cached creds at ~/.banking-demo-creds.
+// --reset-creds: ignore (and delete) the cached creds at ~/.ai-demo-creds.
 // Use when switching tenants or after rotating the worker secret.
 const RESET_CREDS = args.includes('--reset-creds');
 // --_retry: internal flag set when we re-exec after auto-clearing bad cached creds.
@@ -146,7 +146,18 @@ const IS_RETRY = args.includes('--_retry');
 // and are reachable from other clones on the same machine. Mode 0600 = only
 // this user can read/write. Cache is JSON; missing/corrupt = silently treated
 // as no cache.
-const CRED_CACHE_PATH = require('path').join(require('os').homedir(), '.banking-demo-creds');
+const CRED_CACHE_PATH     = require('path').join(require('os').homedir(), '.ai-demo-creds');
+const CRED_CACHE_PATH_OLD = require('path').join(require('os').homedir(), '.banking-demo-creds');
+
+// Migrate old cache file to new name on first run after rename.
+(() => {
+  const fs = require('fs');
+  if (!fs.existsSync(CRED_CACHE_PATH) && fs.existsSync(CRED_CACHE_PATH_OLD)) {
+    try {
+      fs.renameSync(CRED_CACHE_PATH_OLD, CRED_CACHE_PATH);
+    } catch (_e) { /* non-fatal — readCredCache will return null and re-prompt */ }
+  }
+})();
 
 function readCredCache() {
   if (RESET_CREDS) return null;
