@@ -145,6 +145,7 @@ const FIELD_DEFS = {
   ff_inject_may_act:       { public: true, default: 'false' }, // BFF-synthesise may_act when absent from user token (demo/dev — no PingOne change needed)
   // DEPRECATED: ff_inject_may_act. Use enableMayActSupport instead (RFC 8693 configuration-based approach).
   enableMayActSupport:     { public: true, default: 'true'  }, // Enable validation of RFC 8693 may_act claims from PingOne token policies (not synthetic injection)
+  ff_require_may_act:      { public: true, default: 'false' }, // Hard-block RFC 8693 exchange when may_act is absent from user token (PingOne doc §consent-gate compliance)
   ff_inject_audience:      { public: true, default: 'false' }, // BFF-add mcp_resource_uri to aud claim snapshot when absent (demo/dev — no PingOne change needed)
   ff_inject_scopes:        { public: true, default: 'false' }, // BFF-inject read write scopes when absent from user token (demo/dev — no PingOne change needed)
   ff_skip_token_exchange:  { public: true, default: 'false' }, // Skip RFC 8693 — pass user access token directly to MCP (demo mode; token exchange not required)

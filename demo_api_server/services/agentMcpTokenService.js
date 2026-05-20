@@ -834,6 +834,42 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // Validate RFC 8693-compliant may_act claims from PingOne token policies (not synthetic injection).
   const mayActSupported = configStore.getEffective('enableMayActSupport') === true ||
     configStore.getEffective('enableMayActSupport') === 'true';
+
+  // ── PingOne doc compliance: hard-block exchange when may_act is absent ────
+  // When ff_require_may_act=true the BFF enforces the PingOne securing-agents
+  // doc requirement that the user token MUST carry a may_act claim before the
+  // RFC 8693 exchange is attempted. Without may_act the delegated token cannot
+  // carry an act claim, breaking the delegation chain required by the consent
+  // agreement policy. Default false so existing deployments without PingOne
+  // token-policy may_act support are unaffected; enable once PingOne is
+  // configured to emit may_act (or set ff_inject_may_act=true for demo mode).
+  const ffRequireMayAct =
+    configStore.getEffective('ff_require_may_act') === true ||
+    configStore.getEffective('ff_require_may_act') === 'true';
+
+  if (ffRequireMayAct && !userAccessTokenClaims?.may_act) {
+    const err = new Error(
+      'RFC 8693 token exchange blocked: user access token is missing the may_act claim. ' +
+      'The PingOne securing-agents doc requires may_act to be present before token exchange ' +
+      'so the delegation chain (act claim) can be established. ' +
+      'Configure the PingOne token policy to emit may_act on user tokens, or disable ' +
+      'ff_require_may_act to allow exchange without it (weakens delegation audit trail).'
+    );
+    err.code = 'may_act_required';
+    err.httpStatus = 403;
+    err.tokenEvents = tokenEvents;
+    tokenEvents.push(buildTokenEvent(
+      'may-act-required-block',
+      'Token Exchange (RFC 8693) — Blocked: may_act required',
+      'error',
+      null,
+      'ff_require_may_act is ON and the user access token has no may_act claim. ' +
+        'Exchange is blocked per PingOne securing-agents doc compliance. ' +
+        'Configure PingOne to add may_act via a token policy attribute mapping, then retry.',
+      { rfc: 'RFC 8693 §4.1', blocked: true }
+    ));
+    throw err;
+  }
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── ff_inject_scopes — Demo Scope Injection (Phase 146 — D-04) ───────────
