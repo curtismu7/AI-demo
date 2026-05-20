@@ -357,19 +357,56 @@ At/above threshold (step-up):
   }
 }
 
-// Response
+// Success response
 {
   "jsonrpc": "2.0",
   "id": 3,
   "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "[{"accountId":"chk-001","balance":4823.50,...}]"
-      }
-    ]
+    "content": [{ "type": "text", "text": "[{...}]" }],
+    "isError": false
+  }
+}
+
+// Tool execution error (NOT a protocol error — still HTTP 200)
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [{ "type": "text", "text": "Insufficient funds" }],
+    "isError": true
   }
 }`}</pre>
+
+          <h4>Tool list change notification</h4>
+          <pre className="edu-code">{`// Server pushes when available tools change (e.g. after auth state change)
+{
+  "jsonrpc": "2.0",
+  "method": "notifications/tools/list_changed"
+}
+// Client should re-issue tools/list after receiving this`}</pre>
+
+          <h4>Streamable HTTP transport — key headers</h4>
+          <p style={{ fontSize: '0.82rem', marginBottom: 6 }}>
+            Modern MCP uses Streamable HTTP (POST + optional SSE) instead of a persistent WebSocket.
+          </p>
+          <pre className="edu-code">{`// Client must accept both JSON and SSE
+Accept: application/json, text/event-stream
+
+// Version negotiation header (per-request in modern MCP)
+MCP-Protocol-Version: 2025-11-25
+
+// Session tracking (server assigns on first response)
+Mcp-Session-Id: 1868a90c...
+
+// Resume a broken SSE stream
+GET /mcp HTTP/1.1
+Last-Event-ID: <last-seen-event-id>`}</pre>
+          <ul style={{ fontSize: '0.82rem' }}>
+            <li>Client POSTs every request; server replies with JSON or opens SSE stream</li>
+            <li><code>Mcp-Session-Id</code> must be echoed on all subsequent requests</li>
+            <li>Disconnection is NOT a cancellation — use <code>CancelledNotification</code> to cancel</li>
+            <li>Server returns <code>404</code> when session expires; client must re-initialize</li>
+          </ul>
 
           <div className="edu-info-box">
             The BFF performs the MCP handshake server-side and proxies tool calls via

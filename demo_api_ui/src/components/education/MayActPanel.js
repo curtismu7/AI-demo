@@ -134,6 +134,69 @@ export default function MayActPanel({ isOpen, onClose, initialTabId }) {
       ),
     },
     {
+      id: 'ai-agent-app',
+      label: 'AI Agent App type',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>PingOne AI Agent application type</h3>
+          <p>
+            PingOne has a dedicated <strong>AI Agent</strong> application type for registering AI systems
+            as first-class identity clients. Key difference from a standard app: the token endpoint
+            authentication method defaults to <strong>Client Secret Post</strong>, not Basic.
+          </p>
+
+          <h4>Supported grant types</h4>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', marginBottom: '1rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                <th style={{ padding: '6px 8px' }}>Grant type</th>
+                <th style={{ padding: '6px 8px' }}>Use case</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['Authorization Code', 'User-facing login (PKCE recommended)'],
+                ['Client Credentials', 'Machine-to-machine — the agent\'s own identity token'],
+                ['Token Exchange (RFC 8693)', 'Act on behalf of a user — produces act claim'],
+                ['CIBA', 'Out-of-band step-up / consent from a user device'],
+                ['Device Authorization', 'Limited-input device flows'],
+                ['Refresh Token', 'Keep agent sessions alive without re-auth'],
+                ['Implicit', 'Legacy — not recommended'],
+              ].map(([grant, use], i) => (
+                <tr key={grant} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 ? '#f9fafb' : 'white' }}>
+                  <td style={{ padding: '6px 8px' }}><code>{grant}</code></td>
+                  <td style={{ padding: '6px 8px' }}>{use}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h4>Token endpoint authentication methods</h4>
+          <ul style={{ fontSize: '0.82rem' }}>
+            <li><code>client_secret_post</code> — <strong>required for AI Agent apps in PingOne</strong>; credentials in POST body</li>
+            <li><code>client_secret_basic</code> — HTTP Authorization header; used by Worker/Management apps</li>
+            <li><code>client_secret_jwt</code> — signed assertion (stronger, no raw secret over wire)</li>
+            <li><code>private_key_jwt</code> — asymmetric assertion; strongest option</li>
+            <li><code>none</code> — public client (PKCE only, no secret)</li>
+          </ul>
+
+          <div style={{ background: 'rgba(99,102,241,0.08)', borderLeft: '3px solid #6366f1', padding: '8px 12px', borderRadius: 4, fontSize: '0.82rem', marginTop: '0.75rem' }}>
+            <strong>Why this matters:</strong> if you configure an AI Agent app in PingOne and call its
+            token endpoint with <code>Authorization: Basic …</code> (basic auth), PingOne returns{' '}
+            <code>invalid_client: "Unsupported authentication method"</code>. Always use{' '}
+            <code>client_secret_post</code> (credentials in the POST body) for AI Agent apps.
+          </div>
+
+          <p style={{ fontSize: '0.82rem', color: '#374151', marginTop: '1rem' }}>
+            Reference:{' '}
+            <a href="https://docs.pingidentity.com/pingone/ai_agents/p1_managing_ai_agents.html" target="_blank" rel="noopener noreferrer">
+              Managing AI agents | PingOne
+            </a>
+          </p>
+        </>
+      ),
+    },
+    {
       id: 'inrepo',
       label: 'In this repo',
       content: (
