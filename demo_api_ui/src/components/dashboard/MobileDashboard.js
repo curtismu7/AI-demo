@@ -1,7 +1,7 @@
 // banking_api_ui/src/components/dashboard/MobileDashboard.js
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { useVerticalContext } from '../context/VerticalContext';
+import { useVertical } from '../../context/VerticalContext';
 import DashboardHero from './DashboardHero';
 import AccountSummary from './AccountSummary';
 import ActionHub from './ActionHub';
@@ -18,7 +18,7 @@ const MobileDashboard = ({
   onOpenEducation 
 }) => {
   const { isAuthenticated } = useAuth();
-  const { currentVertical } = useVerticalContext();
+  const { vertical: currentVertical } = useVertical();
   const [activeTab, setActiveTab] = useState('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 

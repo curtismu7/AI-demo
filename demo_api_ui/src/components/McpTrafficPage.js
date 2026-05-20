@@ -380,7 +380,7 @@ function McpToolsPanel() {
     <div style={{ padding: '0 24px 12px', borderBottom: '2px solid var(--border-light,#e2e8f0)', maxHeight: '280px', overflowY: 'auto', flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
         <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary,#1e293b)' }}>
-          🛠 MCP Tools
+          MCP Tools
         </h2>
         {tools !== null && tools.length > 0 && (
           <span style={{ fontSize: '0.8rem', color: '#374151' }}>
@@ -461,12 +461,12 @@ function McpToolsPanel() {
                   flex: 1, padding: '10px', borderRadius: '8px',
                   border: '1px solid #3b82f6', background: '#eff6ff',
                   color: '#1d4ed8', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer',
-                }}>📧 Email</button>
+                }}>Email</button>
                 <button type="button" onClick={() => handleDeliveryMethodChosen('sms')} style={{
                   flex: 1, padding: '10px', borderRadius: '8px',
                   border: '1px solid #10b981', background: '#ecfdf5',
                   color: '#065f46', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer',
-                }}>📱 SMS</button>
+                }}>SMS</button>
               </div>
             )}
             <button type="button" onClick={() => setShowMethodPicker(false)} style={{
@@ -539,7 +539,7 @@ export default function McpTrafficPage() {
       <div style={{ padding: '16px 24px 10px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', marginBottom: '8px' }}>
           <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary,#1e293b)' }}>
-            🔌 MCP Traffic
+            MCP Traffic
           </h1>
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted,#64748b)', fontFamily: 'inherit' }}>
             {entries.length} entries{logFile ? ` · ${logFile}` : ''}
@@ -564,7 +564,7 @@ export default function McpTrafficPage() {
               padding: '6px 14px', borderRadius: '6px', border: '1px solid var(--border-light,#e2e8f0)',
               backgroundColor: 'var(--surface-1,#fff)', color: 'var(--text-secondary,#475569)',
               cursor: 'pointer', fontSize: '0.85rem',
-            }}>🗑 Clear</button>
+            }}>Clear</button>
           </div>
         </div>
         {live && (
@@ -575,7 +575,7 @@ export default function McpTrafficPage() {
         )}
         {error === 'unauthenticated' ? (
           <div style={{ padding: '24px', textAlign: 'center', color: '#374151' }}>
-            <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>🔒</div>
+            <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>[!]</div>
             <div style={{ fontWeight: 600, marginBottom: '4px' }}>Session expired</div>
             <div style={{ fontSize: '0.82rem', marginBottom: '12px' }}>Your session has expired. Please sign in again.</div>
             <button
@@ -583,7 +583,7 @@ export default function McpTrafficPage() {
               onClick={() => navigateToCustomerOAuthLogin()}
               style={{ padding: '6px 16px', borderRadius: '6px', border: 'none', background: '#1d4ed8', color: '#fff', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600 }}
             >
-              🔐 Sign In
+              Sign In
             </button>
           </div>
         ) : error ? (

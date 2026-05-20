@@ -1,4 +1,4 @@
-// banking_api_ui/tests/e2e/helpers/chipPipeline.js
+// demo_api_ui/tests/e2e/helpers/chipPipeline.js
 'use strict';
 /**
  * Drive a single chip through the real two-hop flow and assert it did NOT
@@ -68,21 +68,56 @@ async function runChip(api, chip, provider) {
   // not a real skip). We resolve the param via the same pipeline, so every
   // skip-proof assertion below stays strict (no weakening).
   let resolvedParams = result.banking.params || {};
-  if (tool === 'get_account_balance' && !resolvedParams.account_id) {
+  const needsAccountIds = (
+    (tool === 'get_account_balance' && !resolvedParams.account_id) ||
+    (tool === 'create_transfer' && (!resolvedParams.from_account_id || !resolvedParams.to_account_id)) ||
+    (tool === 'create_deposit' && !resolvedParams.to_account_id) ||
+    (tool === 'create_withdrawal' && !resolvedParams.from_account_id)
+  );
+  if (needsAccountIds) {
     const acctResp = await api.post('/api/mcp/tool', {
       data: { tool: 'get_my_accounts', params: {}, flowTraceId: `e2e-${chip.id}-acct-${Date.now()}` },
     });
     expect(acctResp.status(), `get_my_accounts (for ${chip.id} account_id) status`).not.toBe(401);
     const acctBody = await acctResp.json();
     const txt = acctBody?.result?.content?.[0]?.text;
-    let firstId;
+    let accounts;
     try {
-      firstId = txt ? JSON.parse(txt)?.accounts?.[0]?.id : undefined;
+      accounts = txt ? JSON.parse(txt)?.accounts : undefined;
     } catch {
-      firstId = undefined;
+      accounts = undefined;
     }
-    expect(firstId, `chip ${chip.id}: resolved an account_id from get_my_accounts`).toBeTruthy();
-    resolvedParams = { ...resolvedParams, account_id: firstId };
+    expect(accounts?.length, `chip ${chip.id}: resolved accounts from get_my_accounts`).toBeGreaterThan(0);
+    const checkingAcct = accounts?.find((a) => a.accountType === 'checking') || accounts?.[0];
+    // Use a different account than checkingAcct for the savings side of transfers; if no
+    // distinct savings account exists (single-account user) leave savingsAcct undefined so
+    // create_transfer skips account resolution and avoids a same-account rejection.
+    const distinctSavings = accounts?.find((a) => a.accountType === 'savings' && a.id !== checkingAcct?.id)
+                         || accounts?.find((a) => a.id !== checkingAcct?.id);
+    const savingsAcct = distinctSavings || null;
+
+    if (tool === 'get_account_balance') {
+      resolvedParams = { ...resolvedParams, account_id: checkingAcct?.id };
+    } else if (tool === 'create_transfer') {
+      resolvedParams = {
+        ...resolvedParams,
+        from_account_id: resolvedParams.from_account_id || checkingAcct?.id,
+        to_account_id:   resolvedParams.to_account_id   || savingsAcct?.id,
+        amount:          resolvedParams.amount           ?? 1,
+      };
+    } else if (tool === 'create_deposit') {
+      resolvedParams = {
+        ...resolvedParams,
+        to_account_id: resolvedParams.to_account_id || checkingAcct?.id,
+        amount:        resolvedParams.amount         ?? 1,
+      };
+    } else if (tool === 'create_withdrawal') {
+      resolvedParams = {
+        ...resolvedParams,
+        from_account_id: resolvedParams.from_account_id || checkingAcct?.id,
+        amount:          resolvedParams.amount           ?? 1,
+      };
+    }
   }
 
   const mcpResp = await api.post('/api/mcp/tool', {

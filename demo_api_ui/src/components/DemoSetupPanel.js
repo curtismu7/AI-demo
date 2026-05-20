@@ -32,13 +32,13 @@ function readStoredAgentAuthDemoMode() {
 }
 
 const ACCOUNT_TYPE_SLOTS = [
-  { type: 'checking',      label: 'Checking',             icon: '🏦', defaultName: 'Checking Account' },
-  { type: 'savings',       label: 'Savings',              icon: '💰', defaultName: 'Savings Account' },
-  { type: 'investment',    label: 'Investment',           icon: '📈', defaultName: 'Investment Account' },
-  { type: 'money_market',  label: 'Money market',         icon: '💵', defaultName: 'Money Market Account' },
-  { type: 'credit',        label: 'Credit card',          icon: '💳', defaultName: 'Credit Card' },
-  { type: 'car_loan',      label: 'Car loan',             icon: '🚗', defaultName: 'Car Loan' },
-  { type: 'mortgage',      label: 'Mortgage (home loan)', icon: '🏠', defaultName: 'Mortgage (Home Loan)' },
+  { type: 'checking',      label: 'Checking',             icon: 'CHK', defaultName: 'Checking Account' },
+  { type: 'savings',       label: 'Savings',              icon: 'SAV', defaultName: 'Savings Account' },
+  { type: 'investment',    label: 'Investment',           icon: 'INV', defaultName: 'Investment Account' },
+  { type: 'money_market',  label: 'Money market',         icon: 'MM',  defaultName: 'Money Market Account' },
+  { type: 'credit',        label: 'Credit card',          icon: 'CC',  defaultName: 'Credit Card' },
+  { type: 'car_loan',      label: 'Car loan',             icon: 'CAR', defaultName: 'Car Loan' },
+  { type: 'mortgage',      label: 'Mortgage (home loan)', icon: 'MTG', defaultName: 'Mortgage (Home Loan)' },
 ];
 
 function defaultTypeSlots(accountTypes = ACCOUNT_TYPE_SLOTS) {
@@ -74,7 +74,7 @@ export default function DemoSetupPanel() {
       return vertical.terminology.accountTypes.map((name, idx) => ({
         type: `type_${idx}`,
         label: name,
-        icon: '💳',
+        icon: 'CC',
         defaultName: name
       }));
     }
@@ -549,7 +549,7 @@ export default function DemoSetupPanel() {
 {/* ── Agent auth demo mode ────────────────────────────────────────────── */}
       <details>
         <summary style={{ cursor: 'pointer', padding: '0.6rem 0', fontWeight: 600, fontSize: '0.95rem', userSelect: 'none' }}>
-          🎓 Lesson: how can an AI reach your bank data?
+          Lesson: how can an AI reach your bank data?
         </summary>
         <section className="section demo-data-section demo-data-agent-auth-demo" aria-labelledby="demo-setup-agent-auth-heading" style={{ marginTop: '0.5rem' }}>
           <h2 id="demo-setup-agent-auth-heading">Learn: how can an AI reach your bank data?</h2>

@@ -192,26 +192,7 @@ function logAdminSecurityAction(event, req) {
  * @returns {Promise<Array>} - Array of audit events
  */
 async function getAdminAuditTrail(adminSub, options = {}) {
-  // This would integrate with your audit storage system
-  // For now, return a placeholder implementation
-  const {
-    limit = 100,
-    startDate,
-    endDate,
-    actionTypes = Object.values(ADMIN_ACTION_TYPES)
-  } = options;
-
-  console.log('[ADMIN_AUDIT] Query audit trail:', {
-    adminSub,
-    limit,
-    startDate,
-    endDate,
-    actionTypes
-  });
-
-  // TODO: Implement actual audit trail query
-  // This would query your audit database or log storage
-  return [];
+  throw new Error('getAdminAuditTrail is not implemented');
 }
 
 /**
@@ -252,24 +233,7 @@ async function generateAdminActivityReport(options = {}) {
  * @returns {object} - Permission validation result
  */
 function validateAdminActionPermissions(adminSub, action, resource) {
-  // TODO: Implement actual permission validation
-  // This would check admin roles, permissions, and policies
-  
-  const result = {
-    allowed: true,
-    reason: 'Permission granted',
-    requiredScopes: [],
-    missingScopes: []
-  };
-
-  console.log('[ADMIN_AUDIT] Permission validation:', {
-    adminSub,
-    action,
-    resource,
-    result: result.allowed
-  });
-
-  return result;
+  throw new Error('validateAdminActionPermissions is not implemented');
 }
 
 module.exports = {

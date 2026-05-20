@@ -111,7 +111,7 @@ export default function ClientCredentialsResourcePage() {
     return (
       <div className="ccrsp-container">
         <div className="ccrsp-auth-required">
-          <span className="ccrsp-lock-icon">🔑</span>
+          <span className="ccrsp-lock-icon">[K]</span>
           <h2>Admin Access Required</h2>
           <p>The Client Credentials Resource Server demo requires an admin session.</p>
           <Link to="/admin" className="ccrsp-login-btn">Go to Admin Dashboard</Link>
@@ -137,7 +137,7 @@ export default function ClientCredentialsResourcePage() {
       {/* Header — orange/amber gradient to visually contrast with OIDC blue */}
       <div className="ccrsp-header">
         <div className="ccrsp-header-content">
-          <h1>🔑 Client Credentials Resource Server</h1>
+          <h1>Client Credentials Resource Server</h1>
           <p className="ccrsp-subtitle">Service-to-Service · <code>client_id</code> / <code>client_secret</code> — No user context</p>
         </div>
         <Link to="/resource-server" className="ccrsp-oidc-link">
@@ -198,7 +198,7 @@ export default function ClientCredentialsResourcePage() {
           {/* CC Token Panel */}
           <div className="ccrsp-token-panel">
             <div className="ccrsp-panel-header">
-              <h3>🔑 Client Credentials Token Claims</h3>
+              <h3>Client Credentials Token Claims</h3>
               {timeRemaining && (
                 <span className={`ccrsp-expiry${timeRemaining === 'Expired' ? ' expired' : ''}`}>
                   {timeRemaining}
@@ -289,7 +289,7 @@ export default function ClientCredentialsResourcePage() {
 
               <div className="ccrsp-comparison-col ccrsp-comparison-cc">
                 <div className="ccrsp-comparison-header">
-                  🔑 {comparison.cc?.label}
+                  {comparison.cc?.label}
                 </div>
                 <ul className="ccrsp-comparison-list">
                   <li>❌ No user identity</li>

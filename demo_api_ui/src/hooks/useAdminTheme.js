@@ -14,15 +14,21 @@ const ADMIN_CSS_VARS = {
   '--brand-dashboard-header-text': '#f1f5f9',
 };
 
-export function useAdminTheme() {
+export function useAdminTheme(active = true) {
   const { cssVars } = useTheme();
 
   useEffect(() => {
+    if (!active) return;
+
     const root = document.documentElement;
     const previous = {};
 
-    // Stash current values
-    Object.keys(ADMIN_CSS_VARS).forEach((k) => {
+    // Save ADMIN_CSS_VARS keys plus any current manifest cssVars so both are restored on exit
+    const keysToSave = new Set([
+      ...Object.keys(ADMIN_CSS_VARS),
+      ...(cssVars ? Object.keys(cssVars) : []),
+    ]);
+    keysToSave.forEach((k) => {
       previous[k] = root.style.getPropertyValue(k);
     });
 
@@ -35,7 +41,7 @@ export function useAdminTheme() {
     root.dataset.industry = 'admin';
 
     return () => {
-      // Restore previous values
+      // Restore saved CSS vars
       Object.entries(previous).forEach(([k, v]) => {
         if (v) {
           root.style.setProperty(k, v);
@@ -43,8 +49,11 @@ export function useAdminTheme() {
           root.style.removeProperty(k);
         }
       });
-      root.dataset.industry = prevIndustry || '';
+      // Only restore industry if we're still the last writer (not overwritten by async manifest fetch)
+      if (root.dataset.industry === 'admin') {
+        root.dataset.industry = prevIndustry || '';
+      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [active]);
 }

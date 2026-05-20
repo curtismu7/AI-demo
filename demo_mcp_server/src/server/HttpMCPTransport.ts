@@ -75,6 +75,8 @@ interface HttpSession {
   /** Negotiated protocol version, filled after first initialize round-trip. */
   protocolVersion: string;
   createdAt: Date;
+  /** Active SSE response stream for server-initiated notifications, if the client opened GET /mcp. */
+  sseResponse?: ServerResponse;
 }
 
 // ---------------------------------------------------------------------------
@@ -216,14 +218,11 @@ export class HttpMCPTransport {
           this.handleDelete(req, res);
           break;
         case 'GET':
-          // GET /mcp is for server-initiated SSE streams, which we don't support yet.
-          // Return 405 so compliant clients fall back to normal POST polling.
-          res.writeHead(405, { Allow: 'POST, DELETE', 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'GET SSE streaming not yet supported; use POST' }));
+          await this.handleSse(req, res);
           break;
         default:
-          res.writeHead(405, { Allow: 'GET, POST, DELETE' });
-          res.end();
+          res.writeHead(405, { Allow: 'GET, POST, DELETE', 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Method not allowed; use GET (SSE), POST, or DELETE' }));
       }
       return;
     }
@@ -538,6 +537,76 @@ export class HttpMCPTransport {
   }
 
   // -------------------------------------------------------------------------
+  // GET /mcp  — server-initiated SSE stream (MCP spec §2.4 Streamable HTTP)
+  // -------------------------------------------------------------------------
+
+  private async handleSse(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    // SSE requires a valid, existing session — the client must have completed
+    // initialize via POST before opening the SSE channel.
+    const mcpSessionId = req.headers[MCP_SESSION_HEADER] as string | undefined;
+    if (!mcpSessionId || !this.sessions.has(mcpSessionId)) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unknown or missing MCP-Session-Id; complete POST initialize first' }));
+      return;
+    }
+
+    const httpSession = this.sessions.get(mcpSessionId)!;
+
+    // Only one SSE stream per session — close the old one if the client reconnects.
+    if (httpSession.sseResponse) {
+      try { httpSession.sseResponse.end(); } catch { /* ignore */ }
+    }
+
+    // Send SSE headers — keep-alive, no cache, CORS open for server-to-server.
+    res.writeHead(200, {
+      'Content-Type':                'text/event-stream',
+      'Cache-Control':               'no-cache, no-transform',
+      'Connection':                  'keep-alive',
+      'X-Accel-Buffering':           'no', // disable Nginx buffering
+      [MCP_SESSION_HEADER]:          mcpSessionId,
+      'Access-Control-Allow-Origin': req.headers.origin || '*',
+    });
+
+    // Initial comment keeps the connection alive and confirms the stream is open.
+    res.write(': MCP SSE stream established\n\n');
+
+    httpSession.sseResponse = res;
+    console.log(`[HttpMCPTransport] SSE stream opened for session ${mcpSessionId}`);
+
+    // Clean up when the client disconnects.
+    req.on('close', () => {
+      if (httpSession.sseResponse === res) {
+        httpSession.sseResponse = undefined;
+      }
+      console.log(`[HttpMCPTransport] SSE stream closed for session ${mcpSessionId}`);
+    });
+
+    // Keep-alive ping every 25 seconds so proxies/load-balancers don't drop the connection.
+    const pingInterval = setInterval(() => {
+      if (res.writableEnded) {
+        clearInterval(pingInterval);
+        return;
+      }
+      res.write(': ping\n\n');
+    }, 25_000);
+
+    req.on('close', () => clearInterval(pingInterval));
+  }
+
+  /**
+   * Push a JSON-RPC notification to the client's open SSE stream (if any).
+   * Called from makeContext's sendNotification callback so the message handler
+   * can deliver server-initiated events (e.g. CIBA progress, tools/list_changed).
+   */
+  private publishSse(mcpSessionId: string, notification: object): void {
+    const httpSession = this.sessions.get(mcpSessionId);
+    const res = httpSession?.sseResponse;
+    if (!res || res.writableEnded) return;
+    const data = JSON.stringify(notification);
+    res.write(`data: ${data}\n\n`);
+  }
+
+  // -------------------------------------------------------------------------
   // Internal helpers
   // -------------------------------------------------------------------------
 
@@ -546,13 +615,17 @@ export class HttpMCPTransport {
     bankingSession: any,
     agentToken?: string
   ): MessageHandlerContext {
+    // connectionId for HTTP sessions equals the MCP-Session-Id, so we can route
+    // server-initiated notifications to the client's open SSE stream (if any).
+    const sendNotification = this.sessions.has(connectionId)
+      ? (notification: object) => this.publishSse(connectionId, notification)
+      : undefined;
+
     return {
       connectionId,
       agentToken,
       session: bankingSession,
-      // HTTP does not support server-push notifications (no persistent channel).
-      // CIBA flow still works — it blocks the HTTP response until approved.
-      sendNotification: undefined,
+      sendNotification,
     };
   }
 

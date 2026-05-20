@@ -1,16 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const store = require('../data/store');
-
-function requireAdmin(req, res, next) {
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'admin_required', message: 'Admin role required' });
-  }
-  next();
-}
+const { requireAdmin, requireScopes } = require('../middleware/auth');
+const adminAuditService = require('../services/adminAuditService');
 
 // GET /api/admin/agent/lookup?q=
-router.get('/lookup', requireAdmin, async (req, res) => {
+router.get('/lookup', requireAdmin, requireScopes(['admin:read']), async (req, res) => {
   try {
     const q = (req.query.q || '').toLowerCase().trim();
     if (!q) return res.status(400).json({ error: 'missing_query', message: 'q is required' });
@@ -43,7 +38,7 @@ router.get('/lookup', requireAdmin, async (req, res) => {
 });
 
 // GET /api/admin/agent/users/:userId
-router.get('/users/:userId', requireAdmin, async (req, res) => {
+router.get('/users/:userId', requireAdmin, requireScopes(['admin:read']), async (req, res) => {
   try {
     const user = store.getUserById(req.params.userId);
     if (!user) return res.status(404).json({ error: 'user_not_found' });
@@ -56,7 +51,7 @@ router.get('/users/:userId', requireAdmin, async (req, res) => {
 });
 
 // GET /api/admin/agent/users/:userId/accounts
-router.get('/users/:userId/accounts', requireAdmin, async (req, res) => {
+router.get('/users/:userId/accounts', requireAdmin, requireScopes(['admin:read']), async (req, res) => {
   try {
     const accounts = store.getAccountsByUserId(req.params.userId);
     res.json({ accounts, count: accounts.length });
@@ -67,7 +62,7 @@ router.get('/users/:userId/accounts', requireAdmin, async (req, res) => {
 });
 
 // GET /api/admin/agent/users/:userId/transactions?limit=5
-router.get('/users/:userId/transactions', requireAdmin, async (req, res) => {
+router.get('/users/:userId/transactions', requireAdmin, requireScopes(['admin:read']), async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 5, 50);
     const allTx = store.getTransactionsByUserId(req.params.userId);
@@ -83,7 +78,7 @@ router.get('/users/:userId/transactions', requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/admin/agent/accounts/:accountId/freeze
-router.patch('/accounts/:accountId/freeze', requireAdmin, async (req, res) => {
+router.patch('/accounts/:accountId/freeze', requireAdmin, requireScopes(['admin:write']), async (req, res) => {
   try {
     const { freeze } = req.body;
     if (typeof freeze !== 'boolean') {
@@ -107,7 +102,7 @@ router.patch('/accounts/:accountId/freeze', requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/agent/users/:userId/reset-password
-router.post('/users/:userId/reset-password', requireAdmin, async (req, res) => {
+router.post('/users/:userId/reset-password', requireAdmin, requireScopes(['admin:write']), async (req, res) => {
   try {
     const user = store.getUserById(req.params.userId);
     if (!user) return res.status(404).json({ error: 'user_not_found' });
@@ -122,16 +117,23 @@ router.post('/users/:userId/reset-password', requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/agent/accounts/:accountId/adjust
-router.post('/accounts/:accountId/adjust', requireAdmin, async (req, res) => {
+router.post('/accounts/:accountId/adjust', requireAdmin, requireScopes(['admin:write']), async (req, res) => {
   try {
     const { amount, description } = req.body;
-    if (typeof amount !== 'number') {
-      return res.status(400).json({ error: 'invalid_body', message: 'amount (number) is required' });
+    if (typeof amount !== 'number' || !isFinite(amount)) {
+      return res.status(400).json({ error: 'invalid_body', message: 'amount must be a finite number' });
+    }
+    const MAX_ADJUSTMENT = 1_000_000;
+    if (Math.abs(amount) > MAX_ADJUSTMENT) {
+      return res.status(400).json({ error: 'invalid_body', message: `amount magnitude cannot exceed ${MAX_ADJUSTMENT}` });
     }
     const account = store.getAccountById(req.params.accountId);
     if (!account) return res.status(404).json({ error: 'account_not_found' });
 
     const newBalance = (account.balance || 0) + amount;
+    if (newBalance < 0) {
+      return res.status(400).json({ error: 'insufficient_funds', message: 'Adjustment would result in negative balance' });
+    }
     const updated = await store.updateAccount(req.params.accountId, { balance: newBalance });
 
     const tx = await store.createTransaction({
@@ -153,7 +155,7 @@ router.post('/accounts/:accountId/adjust', requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/admin/agent/users/:userId
-router.delete('/users/:userId', requireAdmin, async (req, res) => {
+router.delete('/users/:userId', requireAdmin, requireScopes(['admin:delete']), async (req, res) => {
   try {
     const { confirm } = req.body;
     if (confirm !== true) {
@@ -162,7 +164,25 @@ router.delete('/users/:userId', requireAdmin, async (req, res) => {
     const user = store.getUserById(req.params.userId);
     if (!user) return res.status(404).json({ error: 'user_not_found' });
 
+    const accounts = store.getAccountsByUserId(req.params.userId);
+    for (const account of accounts) {
+      const transactions = store.getTransactionsByAccountId(account.id);
+      for (const tx of transactions) {
+        await store.deleteTransaction(tx.id);
+      }
+      await store.deleteAccount(account.id);
+    }
+
     await store.deleteUser(req.params.userId);
+
+    adminAuditService.logAdminUserManagement({
+      adminSub: req.user?.sub || req.user?.id,
+      targetUserSub: req.params.userId,
+      action: 'delete',
+      resource: 'user',
+      result: 'success',
+      details: { confirm: true }
+    }, req);
 
     res.json({ success: true, deleted: { userId: req.params.userId } });
   } catch (err) {

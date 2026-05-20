@@ -232,10 +232,97 @@ function ConfigTab() {
   );
 }
 
+function OfficialFiltersTab() {
+  return (
+    <div>
+      <h3 style={{ marginTop: 0 }}>Official PingGateway MCP filters</h3>
+      <p>
+        PingGateway ships three dedicated MCP filters (as of 2025.11). They run as a chain
+        before the <code>ReverseProxyHandler</code> that forwards traffic to the MCP server.
+      </p>
+
+      <h4>Filter chain order</h4>
+      <pre className="edu-code">{`[McpAuditFilter] → [McpProtectionFilter] → [McpValidationFilter] → ReverseProxyHandler`}</pre>
+
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', marginBottom: '1rem' }}>
+        <thead>
+          <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+            <th style={{ padding: '8px' }}>Filter</th>
+            <th style={{ padding: '8px' }}>What it does</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            ['McpAuditFilter', 'Records all MCP request activity to audit/mcp.audit.json'],
+            ['McpProtectionFilter', 'OAuth 2.0 resource server validation for MCP — introspects or JWT-verifies the Bearer token'],
+            ['McpValidationFilter', 'Validates MCP protocol compliance (message shape, method names, JSON-RPC structure)'],
+          ].map(([name, desc], i) => (
+            <tr key={name} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 ? '#f9fafb' : 'white' }}>
+              <td style={{ padding: '8px' }}><code>{name}</code></td>
+              <td style={{ padding: '8px' }}>{desc}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h4>McpProtectionFilter key properties</h4>
+      <pre className="edu-code">{`{
+  "type": "McpProtectionFilter",
+  "config": {
+    "resourceId": "https://ig.example.com:8443/mcp",
+    "authorizationServerUri": "https://auth.pingone.com/{envId}/as",
+    "resourceIdPointer": "/audience",
+    "supportedScopes": ["read", "write", "mcp:invoke"]
+  }
+}`}</pre>
+      <ul style={{ fontSize: '0.82rem' }}>
+        <li><strong>resourceId</strong> — the gateway endpoint URI, used as the expected <code>aud</code> value</li>
+        <li><strong>resourceIdPointer</strong> — JSON pointer into the JWT where the audience is found (typically <code>/audience</code>)</li>
+        <li><strong>supportedScopes</strong> — scopes this resource accepts; requests with other scopes are rejected</li>
+      </ul>
+
+      <h4>admin.json: enable streaming</h4>
+      <p>
+        MCP relies on Server-Sent Events (SSE) for tool responses. Without this flag, SSE connections
+        are closed immediately and tool calls silently drop.
+      </p>
+      <pre className="edu-code">{`{
+  "streamingEnabled": true
+}`}</pre>
+
+      <h4>UriPathRewriteFilter + socket timeout</h4>
+      <p>
+        The gateway routes <code>/mcp</code> to the backend's <code>/</code> root, and sets a long
+        socket timeout to accommodate infrequent SSE heartbeats from AI agents.
+      </p>
+      <pre className="edu-code">{`{
+  "type": "UriPathRewriteFilter",
+  "config": { "mappings": { "/mcp": "/" } }
+}
+
+// ReverseProxyHandler with extended timeout
+{
+  "type": "ReverseProxyHandler",
+  "config": {
+    "soTimeout": "20 seconds"
+  }
+}`}</pre>
+
+      <p style={{ fontSize: '0.82rem', color: '#374151', marginTop: '1rem' }}>
+        Reference:{' '}
+        <a href="https://docs.pingidentity.com/pinggateway/2025.11/mcp/index.html" target="_blank" rel="noopener noreferrer">
+          MCP security gateway | PingGateway 2025.11
+        </a>
+      </p>
+    </div>
+  );
+}
+
 export default function PingGatewayMcpPanel({ isOpen, onClose, initialTabId }) {
   const tabs = [
     { id: 'overview', label: 'Overview', content: <OverviewTab /> },
     { id: 'architecture', label: 'Architecture', content: <ArchitectureTab /> },
+    { id: 'official-filters', label: 'MCP Filters', content: <OfficialFiltersTab /> },
     { id: 'comparison', label: 'Custom vs PingGateway', content: <ComparisonTab /> },
     { id: 'config', label: 'Configuration', content: <ConfigTab /> },
   ];

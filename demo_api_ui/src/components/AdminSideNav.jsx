@@ -120,11 +120,11 @@ export default function AdminSideNav({ user }) {
   // Main navigation items (some with submenus) — ALL ROUTES VERIFIED
   // Items with adminOnly: true are hidden for non-admin users
   const allNavItems = [
-    { label: "Home", path: "/", icon: "🏠" },
-    { label: "Dashboard", path: isAdmin ? "/admin" : "/dashboard", icon: "📊" },
+    { label: "Home", path: "/", icon: "~" },
+    { label: "Dashboard", path: isAdmin ? "/admin" : "/dashboard", icon: "≡" },
     {
       label: "Agent Demo Guide",
-      icon: "📚",
+      icon: "doc",
       action: () => {
         // Open agent first, then show demo guide
         window.dispatchEvent(new CustomEvent("banking-agent-open"));
@@ -137,42 +137,42 @@ export default function AdminSideNav({ user }) {
     {
       label: "Family Delegation",
       path: "/delegation",
-      icon: "👥",
+      icon: "usr",
       customerOnly: true,
     },
     {
       label: "Users & Accounts",
-      icon: "📑",
+      icon: "rpt",
       adminOnly: true,
       children: [
-        { label: "Users", path: "/users", icon: "👥" },
-        { label: "Accounts", path: "/accounts", icon: "🏦" },
-        { label: "Transactions", path: "/transactions", icon: "💳" },
+        { label: "Users", path: "/users", icon: "usr" },
+        { label: "Accounts", path: "/accounts", icon: "acc" },
+        { label: "Transactions", path: "/transactions", icon: "txn" },
       ],
     },
     {
       label: "Monitoring",
-      icon: "📋",
+      icon: "log",
       children: [
         {
           label: "Activity Logs",
           path: "/activity",
-          icon: "📝",
+          icon: "edt",
           adminOnly: true,
         },
-        { label: "Audit Trail", path: "/audit", icon: "🔍", adminOnly: true },
-        { label: "MCP Traffic", path: "/mcp-traffic", icon: "🔌" },
-        { label: "API Explorer", path: "/monitoring/api-explorer", icon: "📡" },
-        { label: "Token Chain", path: "/monitoring/token-chain", icon: "🔗" },
-        { label: "Token Diff", path: "/monitoring/token-diff", icon: "📊" },
+        { label: "Audit Trail", path: "/audit", icon: "srch", adminOnly: true },
+        { label: "MCP Traffic", path: "/mcp-traffic", icon: "mcp" },
+        { label: "API Explorer", path: "/monitoring/api-explorer", icon: "api" },
+        { label: "Token Chain", path: "/monitoring/token-chain", icon: "lnk" },
+        { label: "Token Diff", path: "/monitoring/token-diff", icon: "≡" },
         {
           label: "Flow Inspector",
           path: "/monitoring/flow-inspector",
-          icon: "🔬",
+          icon: "dbg",
         },
         {
           label: "Agent Request Flow",
-          icon: "🔀",
+          icon: "flw",
           action: () =>
             window.dispatchEvent(new CustomEvent("agent-flow-diagram-open")),
         },
@@ -180,90 +180,89 @@ export default function AdminSideNav({ user }) {
     },
     {
       label: "Architecture",
-      icon: "🗺️",
+      icon: "arc",
       children: [
         {
           label: "System Architecture",
           path: "/architecture/system",
-          icon: "🗺️",
+          icon: "arc",
         },
         {
           label: "Overview Diagram",
           path: "/architecture/overview",
-          icon: "🏗️",
+          icon: "bld",
         },
         {
           label: "Token Flow Diagram",
           path: "/architecture/token-flow",
-          icon: "🔗",
+          icon: "lnk",
         },
-        { label: "Interactive Flow", path: "/architecture/flow", icon: "⚡" },
+        { label: "Interactive Flow", path: "/architecture/flow", icon: ">" },
         {
           label: "Phase 266 — 3 Paths",
           path: "/architecture/phase-266",
-          icon: "🛣️",
+          icon: "rte",
         },
-        { label: "Sequence Diagram", path: "/sequence-diagram", icon: "📋" },
+        { label: "Sequence Diagram", path: "/sequence-diagram", icon: "log" },
       ],
     },
     {
       label: "OAuth & Security",
-      icon: "🔐",
+      icon: "sec",
       adminOnly: true,
       children: [
-        { label: "Security Settings", path: "/settings", icon: "⚙️" },
-        { label: "OAuth Debug", path: "/oauth-debug-logs", icon: "🔑" },
+        { label: "Security Settings", path: "/settings", icon: "cfg" },
+        { label: "OAuth Debug", path: "/oauth-debug-logs", icon: "key" },
         {
           label: "Client Registration",
           path: "/client-registration",
-          icon: "📝",
+          icon: "edt",
         },
-        { label: "Scope Audit", path: "/scope-audit", icon: "🔎" },
-        { label: "Scope Reference", path: "/scope-reference", icon: "📚" },
-        { label: "User Delegation", path: "/delegation", icon: "🤝" },
-        { label: "Error Audit Log", path: "/error-audit", icon: "📋" },
+        { label: "Scope Audit", path: "/scope-audit", icon: "find" },
+        { label: "Scope Reference", path: "/scope-reference", icon: "doc" },
+        { label: "User Delegation", path: "/delegation", icon: "dlg" },
+        { label: "Error Audit Log", path: "/error-audit", icon: "log" },
       ],
     },
     {
       label: "Configuration",
-      icon: "⚙",
+      icon: "cfg",
       adminOnly: true,
       children: [
-        { label: "Authorize Rules", path: "/authorize-config", icon: "⚖️" },
-        { label: "MCP Gateway", path: "/mcp-gateway", icon: "🛡️" },
+        { label: "Authorize Rules", path: "/authorize-config", icon: "pol" },
+        { label: "MCP Gateway", path: "/mcp-gateway", icon: "shld" },
       ],
     },
     {
       label: "System Tools",
-      icon: "⚙️",
+      icon: "cfg",
       adminOnly: true,
       children: [
         {
           label: "Feature Flags",
           path: "/configure?tab=feature-flags",
-          icon: "🚩",
+          icon: "flag",
         },
-        { label: "MCP Inspector", path: "/mcp-inspector", icon: "🔬" },
-        { label: "MCP Gateway", path: "/mcp-gateway", icon: "🛡️" },
-        { label: "MCP Tools", path: "/mcp-tools", icon: "🧰" },
-        { label: "LLM Config", path: "/llm-config", icon: "🤖" },
-        { label: "App Configuration", path: "/configure", icon: "🔧" },
-        { label: "Postman Collections", path: "/postman", icon: "📬" },
+        { label: "MCP Inspector", path: "/mcp-inspector", icon: "dbg" },
+        { label: "MCP Tools", path: "/mcp-tools", icon: "tool" },
+        { label: "LLM Config", path: "/llm-config", icon: "agt" },
+        { label: "App Configuration", path: "/configure", icon: "fix" },
+        { label: "Postman Collections", path: "/postman", icon: "msg" },
         { label: "Vault", path: "/admin/vault" },
       ],
     },
     {
       label: "Tests",
-      icon: "🧪",
+      icon: "tst",
       children: [
-        { label: "PingOne Test", path: "/pingone-test", icon: "🧪" },
-        { label: "MFA Test", path: "/mfa-test", icon: "🔒" },
-        { label: "Authz Test", path: "/authz-test", icon: "⚖️" },
-        { label: "OIDC Resource Server", path: "/resource-server", icon: "🔐" },
+        { label: "PingOne Test", path: "/pingone-test", icon: "tst" },
+        { label: "MFA Test", path: "/mfa-test", icon: "lck" },
+        { label: "Authz Test", path: "/authz-test", icon: "pol" },
+        { label: "OIDC Resource Server", path: "/resource-server", icon: "sec" },
         {
           label: "CC Resource Server",
           path: "/resource-server-cc",
-          icon: "🔑",
+          icon: "key",
         },
       ],
     },
@@ -277,32 +276,32 @@ export default function AdminSideNav({ user }) {
   // Learn & education expandable section
   const learnItems = [
     // ── Getting started ──────────────────────────────────
-    { label: "Guided Demo Tour", icon: "🗺", action: () => tour.start() },
+    { label: "Guided Demo Tour", icon: "arc", action: () => tour.start() },
     {
       label: "Best Practices",
-      icon: "⭐",
+      icon: "*",
       action: () => openEdu(EDU.BEST_PRACTICES, "overview"),
     },
     {
       label: "Agentic Maturity Model",
-      icon: "⭐",
+      icon: "*",
       action: () => openEdu(EDU.AGENTIC_MATURITY, "overview"),
     },
 
     // ── OAuth & Identity ──────────────────────────────────
     {
       label: "Auth Code + PKCE",
-      icon: "🔑",
+      icon: "key",
       action: () => openEdu(EDU.LOGIN_FLOW, "what"),
     },
     {
       label: "PKCE deep dive",
-      icon: "🔑",
+      icon: "key",
       action: () => openEdu(EDU.LOGIN_FLOW, "pkce"),
     },
     {
       label: "CIBA (OOB)",
-      icon: "📲",
+      icon: "mbl",
       action: () =>
         window.dispatchEvent(
           new CustomEvent("education-open-ciba", { detail: { tab: "what" } }),
@@ -310,52 +309,52 @@ export default function AdminSideNav({ user }) {
     },
     {
       label: "Token Exchange (RFC 8693)",
-      icon: "🔄",
+      icon: "syn",
       action: () => openEdu(EDU.TOKEN_EXCHANGE, "why"),
     },
     {
       label: "may_act / act claims",
-      icon: "🎭",
+      icon: "demo",
       action: () => openEdu(EDU.MAY_ACT, "what"),
     },
     {
       label: "Actor Token (Agent)",
-      icon: "🎭",
+      icon: "demo",
       action: () => openEdu(EDU.TOKEN_FLOW, "diagram"),
     },
     {
       label: "Step-up MFA",
-      icon: "🔒",
+      icon: "lck",
       action: () => openEdu(EDU.STEP_UP, "what"),
     },
     {
       label: "Introspection (RFC 7662)",
-      icon: "🔍",
+      icon: "srch",
       action: () => openEdu(EDU.INTROSPECTION, "why"),
     },
     {
       label: "PingOne Authorize",
-      icon: "⚖️",
+      icon: "pol",
       action: () => openEdu(EDU.PINGONE_AUTHORIZE, "what"),
     },
     {
       label: "PAR (RFC 9126)",
-      icon: "📋",
+      icon: "log",
       action: () => openEdu(EDU.PAR, "what"),
     },
     {
       label: "RAR (RFC 9396)",
-      icon: "📋",
+      icon: "log",
       action: () => openEdu(EDU.RAR, "what"),
     },
     {
       label: "JWT client auth (RFC 7523)",
-      icon: "🔐",
+      icon: "sec",
       action: () => openEdu(EDU.JWT_CLIENT_AUTH, "what"),
     },
     {
       label: "OAuth: CIMD",
-      icon: "📄",
+      icon: "file",
       action: () =>
         window.dispatchEvent(
           new CustomEvent("education-open-cimd", { detail: { tab: "what" } }),
@@ -365,123 +364,123 @@ export default function AdminSideNav({ user }) {
     // ── MCP & Agents ──────────────────────────────────────
     {
       label: "MCP Protocol",
-      icon: "🔬",
+      icon: "dbg",
       action: () => openEdu(EDU.MCP_PROTOCOL, "what"),
     },
     {
       label: "MCP server discovery",
-      icon: "🔬",
+      icon: "dbg",
       action: () => openEdu(EDU.MCP_PROTOCOL, "discovery"),
     },
     {
       label: "MCP: MFA gate on tools",
-      icon: "🔬",
+      icon: "dbg",
       action: () => openEdu(EDU.MCP_PROTOCOL, "mfa-gate"),
     },
     {
       label: "Agent Gateway",
-      icon: "🌐",
+      icon: "web",
       action: () => openEdu(EDU.AGENT_GATEWAY, "overview"),
     },
     {
       label: "Computer Use Agent (CUA)",
-      icon: "🖱️",
+      icon: "clk",
       action: () => openEdu(EDU.CUA, "what"),
     },
     {
       label: "Human-in-the-loop",
-      icon: "🤝",
+      icon: "dlg",
       action: () => openEdu(EDU.HUMAN_IN_LOOP, "what"),
     },
     {
       label: "MCP Gateway Security",
-      icon: "🛡️",
+      icon: "shld",
       action: () => openEdu(EDU.PINGGATEWAY_MCP, "overview"),
     },
 
     // ── Standards & Architecture ──────────────────────────
     {
       label: "RFC & Spec Index",
-      icon: "📚",
+      icon: "doc",
       action: () => openEdu(EDU.RFC_INDEX, "index"),
     },
     {
       label: "IETF Standards: Agentic",
-      icon: "⭐",
+      icon: "*",
       action: () => openEdu(EDU.IETF_STANDARDS, "overview"),
     },
     {
       label: "ID-JAG / Cross-App Access",
-      icon: "🔀",
+      icon: "flw",
       action: () => openEdu(EDU.ID_JAG, "overview"),
     },
     {
       label: "Architecture Diagram",
-      icon: "🏗️",
+      icon: "bld",
       action: () => openEdu(EDU.ARCHITECTURE_DIAGRAM, "context"),
     },
     {
       label: "Token Chain (edu)",
-      icon: "🔗",
+      icon: "lnk",
       action: () => openEdu(EDU.TOKEN_CHAIN, "overview"),
     },
     {
       label: "Sensitive Data & Disclosure",
-      icon: "🔒",
+      icon: "lck",
       action: () => openEdu(EDU.SENSITIVE_DATA, "least-data"),
     },
 
     // ── AI Ecosystem ──────────────────────────────────────
     {
       label: "LangChain (LCEL + Ollama)",
-      icon: "🔗",
+      icon: "lnk",
       action: () => openEdu(EDU.LANGCHAIN, "overview"),
     },
     {
       label: "Agent Builder Landscape",
-      icon: "🤖",
+      icon: "agt",
       action: () => openEdu(EDU.AGENT_BUILDER_LANDSCAPE, "langchain"),
     },
     {
       label: "LLM Landscape",
-      icon: "🧠",
+      icon: "ai",
       action: () => openEdu(EDU.LLM_LANDSCAPE, "commercial"),
     },
     {
       label: "AI Platform Landscape",
-      icon: "🌐",
+      icon: "web",
       action: () => openEdu(EDU.AI_PLATFORM_LANDSCAPE, "aws"),
     },
     {
       label: "AI Primer",
-      icon: "📘",
+      icon: "ref",
       action: () => openEdu(EDU.AI_PRIMER, "terminology"),
     },
 
     // ── Special ───────────────────────────────────────────
     {
       label: "Glean + PingOne",
-      icon: "🔗",
+      icon: "lnk",
       action: () => openEdu(EDU.GLEAN, "overview"),
     },
-    { label: "WebMCP (Google)", icon: "🌐", action: () => navigate("/webmcp") },
+    { label: "WebMCP (Google)", icon: "web", action: () => navigate("/webmcp") },
     {
       label: "AuthZEN",
-      icon: "⚖️",
+      icon: "pol",
       action: () => openEdu(EDU.AUTHZEN, "overview"),
     },
     {
       label: "Agentic Trust",
-      icon: "🛡️",
+      icon: "shld",
       action: () => navigate("/agentic-trust"),
     },
   ];
 
   // Agent UI placement options for the expandable dropdown
   const agentPlacementOptions = [
-    { key: "middle", label: "Middle column", icon: "┃" },
-    { key: "bottom", label: "Bottom dock", icon: "▁" },
-    { key: "none", label: "Float only", icon: "💬" },
+    { key: "middle", label: "Middle column", icon: "|" },
+    { key: "bottom", label: "Bottom dock", icon: "_" },
+    { key: "none", label: "Float only", icon: "chat" },
   ];
 
   // Action items (buttons, not navigation links)
@@ -491,15 +490,15 @@ export default function AdminSideNav({ user }) {
           {
             label: isAdmin ? "Customer View" : "Admin View",
             action: "switch-role",
-            icon: "⇄",
+            icon: "<>",
           },
         ]
       : []),
-    { label: "Dark Mode", action: "dark-mode", icon: "🌙" },
-    { label: "Reset Demo", action: "reset-demo", icon: "🔄" },
+    { label: "Dark Mode", action: "dark-mode", icon: "drk" },
+    { label: "Reset Demo", action: "reset-demo", icon: "syn" },
     ...(user
-      ? [{ label: "Log Out", action: "logout", icon: "🚪" }]
-      : [{ label: "Sign In", action: "sign-in", icon: "🔑" }]),
+      ? [{ label: "Log Out", action: "logout", icon: "out" }]
+      : [{ label: "Sign In", action: "sign-in", icon: "key" }]),
   ];
 
   const isActive = (path) => {
@@ -554,10 +553,11 @@ export default function AdminSideNav({ user }) {
       }
       case "dark-mode": {
         const currentTheme =
-          document.documentElement.getAttribute("data-theme");
+          localStorage.getItem("banking_ui_theme") || "light";
         const newTheme = currentTheme === "dark" ? "light" : "dark";
         document.documentElement.setAttribute("data-theme", newTheme);
-        localStorage.setItem("theme", newTheme);
+        localStorage.setItem("banking_ui_theme", newTheme);
+        sessionStorage.setItem("banking_ui_theme", newTheme);
         break;
       }
       case "logout":
@@ -827,7 +827,7 @@ export default function AdminSideNav({ user }) {
               onClick={() => toggleSection("agent-ui-placement")}
               title={collapsed ? "Agent UI Placement" : undefined}
             >
-              <span className="admin-side-nav__icon">🤖</span>
+              <span className="admin-side-nav__icon">agt</span>
               {!collapsed && (
                 <>
                   <span className="admin-side-nav__label">Agent UI</span>
@@ -881,7 +881,7 @@ export default function AdminSideNav({ user }) {
                 : "Stop agent (emergency control)"
             }
           >
-            <span className="admin-side-nav__icon">🛑</span>
+            <span className="admin-side-nav__icon">stp</span>
             {!collapsed && (
               <span className="admin-side-nav__label">
                 {agentRevoked ? "AGENT REVOKED" : "STOP AGENT"}
@@ -899,7 +899,7 @@ export default function AdminSideNav({ user }) {
               onClick={() => toggleSection("learn")}
               title={collapsed ? "Learn" : undefined}
             >
-              <span className="admin-side-nav__icon">📚</span>
+              <span className="admin-side-nav__icon">doc</span>
               {!collapsed && (
                 <>
                   <span className="admin-side-nav__label">Learn</span>

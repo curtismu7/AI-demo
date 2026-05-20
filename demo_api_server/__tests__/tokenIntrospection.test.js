@@ -36,7 +36,7 @@ describe('Token Introspection Service', () => {
       axios.post.mockResolvedValue({
         data: {
           active: true,
-          scope: 'banking:read transactions:write',
+          scope: 'read write',
           client_id: 'external-claude-001',
           sub: 'agent-123',
           exp: Math.floor(Date.now() / 1000) + 3600,
@@ -48,7 +48,7 @@ describe('Token Introspection Service', () => {
       const result = await introspectionService.validateToken('valid-token-jwt');
 
       expect(result.valid).toBe(true);
-      expect(result.scopes).toEqual(['banking:read', 'transactions:write']);
+      expect(result.scopes).toEqual(['read', 'write']);
       expect(result.client_id).toBe('external-claude-001');
       expect(result.sub).toBe('agent-123');
     });
@@ -57,7 +57,7 @@ describe('Token Introspection Service', () => {
       axios.post.mockResolvedValue({
         data: {
           active: true,
-          scope: 'banking:read',
+          scope: 'read',
           client_id: 'test-client',
           sub: 'user-456',
           exp: Math.floor(Date.now() / 1000) + 1800,
@@ -67,14 +67,14 @@ describe('Token Introspection Service', () => {
       const result = await introspectionService.validateToken('token-single-scope');
 
       expect(result.valid).toBe(true);
-      expect(result.scopes).toEqual(['banking:read']);
+      expect(result.scopes).toEqual(['read']);
     });
 
     test('should handle scopes with multiple spaces', async () => {
       axios.post.mockResolvedValue({
         data: {
           active: true,
-          scope: 'banking:read  transactions:write   transactions:validate',
+          scope: 'read  write   sensitive:read',
           client_id: 'test-client',
         },
       });
@@ -82,7 +82,7 @@ describe('Token Introspection Service', () => {
       const result = await introspectionService.validateToken('token-multi-space');
 
       expect(result.valid).toBe(true);
-      expect(result.scopes).toEqual(['banking:read', 'transactions:write', 'transactions:validate']);
+      expect(result.scopes).toEqual(['read', 'write', 'sensitive:read']);
     });
 
     test('should handle token with empty scope field', async () => {
@@ -177,7 +177,7 @@ describe('Token Introspection Service', () => {
       axios.post.mockResolvedValue({
         data: {
           active: true,
-          scope: 'banking:read',
+          scope: 'read',
           client_id: 'test-client',
         },
       });
@@ -195,7 +195,7 @@ describe('Token Introspection Service', () => {
       axios.post.mockResolvedValue({
         data: {
           active: true,
-          scope: 'banking:read transactions:write',
+          scope: 'read write',
           client_id: 'cached-client',
         },
       });
@@ -215,7 +215,7 @@ describe('Token Introspection Service', () => {
       axios.post.mockResolvedValue({
         data: {
           active: true,
-          scope: 'banking:read',
+          scope: 'read',
           exp: Math.floor(Date.now() / 1000) + expiresIn,
           client_id: 'expiring-client',
         },
@@ -232,7 +232,7 @@ describe('Token Introspection Service', () => {
       axios.post.mockResolvedValue({
         data: {
           active: true,
-          scope: 'banking:read',
+          scope: 'read',
           client_id: 'test-client',
         },
       });
@@ -297,17 +297,17 @@ describe('Token Introspection Service', () => {
 
   describe('Extract Scopes function', () => {
     test('should extract scopes from space-separated string', () => {
-      const response = { scope: 'banking:read transactions:write transactions:validate' };
+      const response = { scope: 'read write sensitive:read' };
       const scopes = introspectionService.extractScopes(response);
 
-      expect(scopes).toEqual(['banking:read', 'transactions:write', 'transactions:validate']);
+      expect(scopes).toEqual(['read', 'write', 'sensitive:read']);
     });
 
     test('should extract scopes from array', () => {
-      const response = { scope: ['banking:read', 'transactions:write'] };
+      const response = { scope: ['read', 'write'] };
       const scopes = introspectionService.extractScopes(response);
 
-      expect(scopes).toEqual(['banking:read', 'transactions:write']);
+      expect(scopes).toEqual(['read', 'write']);
     });
 
     test('should handle missing scope field', () => {
@@ -323,10 +323,10 @@ describe('Token Introspection Service', () => {
     });
 
     test('should filter empty strings from scope array', () => {
-      const response = { scope: ['banking:read', '', 'transactions:write', ''] };
+      const response = { scope: ['read', '', 'write', ''] };
       const scopes = introspectionService.extractScopes(response);
 
-      expect(scopes).toEqual(['banking:read', 'transactions:write']);
+      expect(scopes).toEqual(['read', 'write']);
     });
   });
 
@@ -337,7 +337,7 @@ describe('Token Introspection Service', () => {
       axios.post.mockResolvedValue({
         data: {
           active: true,
-          scope: 'banking:read banking:write',
+          scope: 'read write',
           client_id: 'external-client',
           sub: 'user-abc',
           exp: Math.floor(Date.now() / 1000) + 3600,
@@ -350,7 +350,7 @@ describe('Token Introspection Service', () => {
       const result = await introspectionService.validateToken('full-flow-token');
 
       expect(result.valid).toBe(true);
-      expect(result.scopes).toEqual(['banking:read', 'banking:write']);
+      expect(result.scopes).toEqual(['read', 'write']);
       expect(result.client_id).toBe('external-client');
       expect(result.sub).toBe('user-abc');
       expect(axios.post).toHaveBeenCalledWith(
@@ -367,7 +367,7 @@ describe('Token Introspection Service', () => {
       axios.post.mockResolvedValue({
         data: {
           active: true,
-          scope: 'banking:read',
+          scope: 'read',
           client_id: 'test-client',
         },
       });

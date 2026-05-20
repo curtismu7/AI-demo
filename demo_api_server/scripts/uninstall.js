@@ -112,13 +112,13 @@ const REPO_ROOT = path.resolve(SERVER_ROOT, '..');
 
 // Mirror setupFresh's seven Node services list — keep in sync if a service is added.
 const SERVICES = [
-  'banking_api_server',
-  'banking_mcp_server',
-  'banking_api_ui',
-  'banking_mcp_gateway',
-  'banking_hitl_service',
-  'banking_agent_service',
-  'banking_mcp_invest',
+  'demo_api_server',
+  'demo_mcp_server',
+  'demo_api_ui',
+  'demo_mcp_gateway',
+  'demo_hitl_service',
+  'demo_agent_service',
+  'demo_mcp_invest',
 ];
 
 // ── Phase definitions (data, not actions — used by both the table and main) ──
@@ -206,7 +206,7 @@ ${lines}
 What this will REMOVE:
   - Running banking-demo services on this machine
 ${!KEEP_PINGONE      ? '  - Every Super Banking app, resource, group, custom attr, and demo\n    user in your PingOne env (y/N confirmation required)\n' : ''}\
-${!KEEP_LOCAL        ? '  - banking_api_server/.env\n  - banking_api_server/data/persistent/  (config.db, banking.db, …)\n  - banking_api_server/data/sessions.db, data/backups/\n  - certs/*.pem\n  - setup.log\n' : ''}\
+${!KEEP_LOCAL        ? '  - demo_api_server/.env\n  - demo_api_server/data/persistent/  (config.db, banking.db, …)\n  - demo_api_server/data/sessions.db, data/backups/\n  - certs/*.pem\n  - setup.log\n' : ''}\
 ${!KEEP_NODE_MODULES ? `  - node_modules in all ${SERVICES.length} Node services (~2 GB)\n` : ''}\
 
 What this will NOT remove:

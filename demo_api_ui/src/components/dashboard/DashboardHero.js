@@ -1,12 +1,12 @@
 // banking_api_ui/src/components/dashboard/DashboardHero.js
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { useVerticalContext } from '../context/VerticalContext';
+import { useVertical } from '../../context/VerticalContext';
 import { useAgentConfig } from '../hooks/useAgentConfig';
 
 const DashboardHero = () => {
   const { user, isAuthenticated } = useAuth();
-  const { currentVertical } = useVerticalContext();
+  const { vertical: currentVertical } = useVertical();
   const { agentConfig } = useAgentConfig();
   
   const [greeting, setGreeting] = useState('');

@@ -701,8 +701,6 @@ router.post(
   }
 );
 
-module.exports = router;
-
 /**
  * POST /api/admin/pingone/update-scopes
  * 

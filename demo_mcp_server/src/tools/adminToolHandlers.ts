@@ -12,7 +12,8 @@ export async function executeLookupCustomer(
     const lines = data.users.map((u: any) =>
       `- ${u.firstName} ${u.lastName} (${u.email}) — ID: ${u.id} — role: ${u.role}`
     );
-    return createSuccessResult(`Found ${data.count} customer(s):\n${lines.join('\n')}`);
+    const count = data.count ?? (data.users?.length ?? 0);
+    return createSuccessResult(`Found ${count} customer(s):\n${lines.join('\n')}`);
   } catch (e: any) {
     return createErrorResult(`Lookup failed: ${e.message}`);
   }
@@ -23,6 +24,9 @@ export async function executeGetCustomerProfile(
 ): Promise<BankingToolResult> {
   try {
     const data = await deps.apiClient.get(`/api/admin/agent/users/${params.userId}`, token);
+    if (!data?.user) {
+      return createErrorResult(`User ${params.userId} not found`);
+    }
     const u = data.user;
     return createSuccessResult(
       `Profile for ${u.firstName} ${u.lastName}:\n` +
@@ -47,7 +51,8 @@ export async function executeGetCustomerAccounts(
     const lines = data.accounts.map((a: any) =>
       `- ${a.name} (${a.accountType}) — Balance: ${a.currency} ${a.balance?.toFixed(2)} — Active: ${a.isActive} — ID: ${a.id}`
     );
-    return createSuccessResult(`${data.count} account(s):\n${lines.join('\n')}`);
+    const count = data.count ?? (data.accounts?.length ?? 0);
+    return createSuccessResult(`${count} account(s):\n${lines.join('\n')}`);
   } catch (e: any) {
     return createErrorResult(`Get accounts failed: ${e.message}`);
   }
@@ -65,7 +70,8 @@ export async function executeGetCustomerTransactions(
     const lines = data.transactions.map((t: any) =>
       `- [${t.createdAt?.slice(0, 10)}] ${t.type} $${t.amount?.toFixed(2)} — ${t.description} (${t.status})`
     );
-    return createSuccessResult(`Last ${data.count} transaction(s):\n${lines.join('\n')}`);
+    const count = data.count ?? (data.transactions?.length ?? 0);
+    return createSuccessResult(`Last ${count} transaction(s):\n${lines.join('\n')}`);
   } catch (e: any) {
     return createErrorResult(`Get transactions failed: ${e.message}`);
   }
@@ -75,7 +81,7 @@ export async function executeFreezeAccount(
   deps: HandlerDeps, token: string, params: Record<string, any>
 ): Promise<BankingToolResult> {
   try {
-    const data = await deps.apiClient.post(
+    const data = await deps.apiClient.patch(
       `/api/admin/agent/accounts/${params.accountId}/freeze`,
       { freeze: params.freeze },
       token

@@ -171,10 +171,27 @@ Content-Type: application/json
   "client_id": "agent-client-456"
 }`}</pre>
 
-          <h4>Super Banking Implementation</h4>
+          <h4>PingOne: How act is gated during exchange</h4>
           <p>
-            In the Super Banking demo, the <code>act</code> claim is used to:
+            PingOne only sets the <code>act</code> claim when the actor's <code>client_id</code> matches the
+            subject token's <code>may_act.sub</code>. This is enforced via an Advanced Expression on the custom
+            resource's <code>act</code> attribute:
           </p>
+          <pre className="edu-code">{`(#root.context.requestData.subjectToken.may_act.sub
+  == #root.context.requestData.actorToken.client_id)
+  ? #root.context.requestData.subjectToken.may_act
+  : null`}</pre>
+          <p style={{ fontSize: '0.82rem', color: '#374151' }}>
+            If the IDs don't match, <code>act</code> is set to <code>null</code>. If the attribute is marked
+            required, the exchange fails outright. This is why "act absent" appears in the Token Chain when the
+            actor token's <code>client_id</code> doesn't match what's in <code>may_act</code>.
+          </p>
+          <p style={{ fontSize: '0.82rem', color: '#374151' }}>
+            For <code>client_credentials</code> grants (no user), the expression returns <code>"noActor"</code>
+            instead of null so the grant still succeeds.
+          </p>
+
+          <h4>In this demo</h4>
           <ul>
             <li>Identify the AI Agent that initiated the request</li>
             <li>Enable PingOne Authorize policies to check actor identity</li>

@@ -159,7 +159,7 @@ async function buildTokenChain(req) {
   }
 
   try {
-    const mcpServerToken = await agentMcpTokenService.resolveMcpAccessToken(req, 'banking_get_account_balance');
+    const mcpServerToken = await agentMcpTokenService.resolveMcpAccessToken(req, 'get_account_balance');
     if (mcpServerToken) {
       tokenChain['mcp-server-token'] = {
         status: 'active',
@@ -184,7 +184,7 @@ async function buildTokenChain(req) {
   try {
     const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
     if (mcpResourceUri && sessionToken) {
-      const finalToken = await agentMcpTokenService.resolveMcpAccessToken(req, 'banking_create_transfer');
+      const finalToken = await agentMcpTokenService.resolveMcpAccessToken(req, 'create_transfer');
       if (finalToken) {
         tokenChain['mcp-exchanged-token'] = {
           status: 'active',

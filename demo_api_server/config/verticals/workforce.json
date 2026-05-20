@@ -1,11 +1,27 @@
 {
   "id": "workforce",
-  "displayName": "WX Workforce",
-  "tagline": "AI-Powered HR & Workforce Demo",
+  "schemaVersion": 2,
+  "identity": {
+    "displayName": "WX Workforce",
+    "headerTitle": "WX Workforce",
+    "documentTitle": "WX Workforce · PingOne AI IAM Core",
+    "logoAlt": "WX Workforce logo",
+    "tagline": "AI-Powered HR & Workforce Demo",
+    "logoPath": "/branding/workforce-logo.svg"
+  },
   "theme": {
-    "primary": "#4c1d95",
-    "accent": "#7c3aed",
-    "gradient": "linear-gradient(135deg, #4c1d95 0%, #7c3aed 55%, #a78bfa 100%)"
+    "cssVars": {
+      "--app-primary-red": "#4c1d95",
+      "--app-primary-red-hover": "#3b0764",
+      "--app-primary-red-mid": "#7c3aed",
+      "--app-primary-red-border": "#6d28d9",
+      "--brand-dashboard-header-start": "#4c1d95",
+      "--brand-dashboard-header-end": "#7c3aed",
+      "--brand-app-shell-hero-start": "#4c1d95",
+      "--brand-app-shell-hero-end": "#7c3aed",
+      "--theme-accent": "#a78bfa",
+      "--brand-dashboard-header-text": "#ffffff"
+    }
   },
   "terminology": {
     "account": "Account",
@@ -16,10 +32,23 @@
     "transactionTypes": ["Time Off Request", "Expense Report", "Benefits Claim", "Reimbursement"],
     "balance": "Balance",
     "agent": "HR Assistant",
-    "agentGreeting": "Hi! I'm your HR Assistant. I can help you check PTO balance, submit expense reports, or review benefits.",
     "dashboard": "My Workspace",
     "highValueAction": "Expense Approval",
     "highValueLabel": "High-value expense"
+  },
+  "agent": {
+    "persona": "HR Assistant",
+    "greeting": "Hi {name}! I'm your HR Assistant. I can help you check PTO balance, submit expense reports, or review benefits. What would you like to do?",
+    "systemPromptFlavor": "You are a WX Workforce HR assistant. The underlying tools are demo tools; keep responses workforce/HR-flavored."
+  },
+  "dashboard": {
+    "kind": "workforce",
+    "chips": [
+      { "key": "balance", "label": "PTO Balance" },
+      { "key": "accounts", "label": "My Benefits" },
+      { "key": "transactions", "label": "Request History" },
+      { "key": "transfer", "label": "Submit Request" }
+    ]
   },
   "scopes": {
     "read": "read",

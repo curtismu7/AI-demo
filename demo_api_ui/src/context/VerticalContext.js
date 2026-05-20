@@ -12,7 +12,7 @@ export function VerticalProvider({ children }) {
 export function useVertical() {
   const t = useTheme();
   return {
-    vertical: t.terminology ? { terminology: t.terminology } : null,
+    vertical: t.terminology ? { id: t.themeId, terminology: t.terminology } : null,
     loading: t.loading,
     error: null,
     switchVertical: t.switchTheme,

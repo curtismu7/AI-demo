@@ -12,7 +12,7 @@ export const TOOL_SCOPES: Record<string, string[]> = {
   // Read-only tools
   get_my_accounts: ['read'],
   get_account_balance: ['read'],
-  get_sensitive_account_details: ['read'],
+  get_sensitive_account_details: ['sensitive:read'],
   get_my_transactions: ['read'],
 
   // Write tools
@@ -22,6 +22,16 @@ export const TOOL_SCOPES: Record<string, string[]> = {
 
   // Admin / user lookup tools
   query_user_by_email: ['read'],
+
+  // Admin tools
+  lookup_customer: ['admin:read'],
+  get_customer_profile: ['admin:read'],
+  get_customer_accounts: ['admin:read'],
+  get_customer_transactions: ['admin:read'],
+  freeze_account: ['admin:write'],
+  reset_customer_password: ['admin:write'],
+  adjust_balance: ['admin:write'],
+  delete_customer: ['admin:delete'],
 
   // Internal reasoning (no banking scope needed, but still requires delegation)
   sequential_think: ['read'],
@@ -49,10 +59,12 @@ export function filterToolsByScope(
   tools: BankingToolDefinition[],
   tokenScopes: string[],
 ): BankingToolDefinition[] {
-  // No scopes decoded yet — return full list; token validation already enforced auth.
-  if (tokenScopes.length === 0) return tools;
+  // Empty scope list means the token carried no scopes — return only tools that
+  // require no scopes. Advertising admin tools to zero-scope tokens violates
+  // least-privilege even though executeTool enforces scopes at call time.
+  if (tokenScopes.length === 0) return tools.filter(t => t.requiredScopes.length === 0);
 
-  const hasWildcard = tokenScopes.includes('*') || tokenScopes.includes('*');
+  const hasWildcard = tokenScopes.includes('*');
   if (hasWildcard) return tools;
 
   return tools.filter(tool =>
