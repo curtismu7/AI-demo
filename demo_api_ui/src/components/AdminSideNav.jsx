@@ -244,7 +244,6 @@ export default function AdminSideNav({ user }) {
           icon: "flag",
         },
         { label: "MCP Inspector", path: "/mcp-inspector", icon: "dbg" },
-        { label: "MCP Gateway", path: "/mcp-gateway", icon: "shld" },
         { label: "MCP Tools", path: "/mcp-tools", icon: "tool" },
         { label: "LLM Config", path: "/llm-config", icon: "agt" },
         { label: "App Configuration", path: "/configure", icon: "fix" },
