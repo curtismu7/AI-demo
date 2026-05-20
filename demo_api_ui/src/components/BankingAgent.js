@@ -1650,13 +1650,7 @@ export default function BankingAgent({
   const edu = useEducationUIOptional();
   const tokenChain = useTokenChainOptional();
   const { chips: customChips, groups: customGroups } = useCustomChips();
-  const {
-    provider: llmProvider,
-    options: llmProviderOptions,
-    isConfigured: isLlmProviderConfigured,
-    saving: llmProviderSaving,
-    setProvider: setLlmProvider,
-  } = useLangchainProvider();
+  useLangchainProvider();
   const {
     theme: appTheme,
     toggleTheme,
@@ -2304,7 +2298,7 @@ export default function BankingAgent({
     };
     window.addEventListener("demo-reset-complete", handler);
     return () => window.removeEventListener("demo-reset-complete", handler);
-  }, [user, sessionUser, embeddedFocus, brandShortName, industryPreset.id]);
+  }, [user, sessionUser, embeddedFocus, brandShortName, industryPreset.id, themeAgent]);
 
   // Auto-open when redirected back from OAuth login (?oauth=success in URL)
   useEffect(() => {
@@ -2408,7 +2402,7 @@ export default function BankingAgent({
           ]
         : prev,
     );
-  }, [user, embeddedFocus, brandShortName, industryPreset.id]);
+  }, [user, embeddedFocus, brandShortName, industryPreset.id, themeAgent]);
 
   // Effective user: prefer prop (App.js state), fall back to self-detected session
   const effectiveUser = user || sessionUser;
@@ -2671,6 +2665,7 @@ export default function BankingAgent({
     embeddedFocus,
     brandShortName,
     industryPreset.id,
+    themeAgent,
   ]);
 
   // Auto-retry after CIBA step-up approval

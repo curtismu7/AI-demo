@@ -82,7 +82,8 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally runs once on mount — pathname/shouldHide changes don't need to re-fetch
 
   // Calculate and update time remaining every 30 seconds
   const updateTimeRemaining = useCallback(() => {
