@@ -10,6 +10,9 @@ export default function StepUpPanel({ isOpen, onClose, initialTabId }) {
       label: 'What is step-up',
       content: (
         <>
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Step-up is the <strong>second gate</strong>, not the first. The sequence is: (1) policy decision — PingOne Authorize evaluates whether the action is permitted at all; (2) if permitted and it's a write operation, step-up authentication triggers to confirm the user's identity. A DENY from policy stops the flow before step-up is ever requested.
+          </p>
           <p>
             <strong>Step-up MFA</strong> requires a stronger authentication factor (or re-auth) before high-value or sensitive actions.
             In this demo, transfers and withdrawals at or above the configured threshold can trigger PingOne step-up (see Security Settings).
@@ -104,6 +107,9 @@ FIDO2/WebAuthn:
       label: 'CIBA (Backchannel)',
       content: (
         <>
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            The most common path: the user gets a push notification on their phone, reviews the transaction details, and taps <strong>Approve</strong>. The agent is waiting and retries the tool call automatically once approval arrives. The user never needs to return to the browser.
+          </p>
           <p>
             <strong>CIBA (Client-Initiated Backchannel Authentication)</strong> enables step-up without UI interaction.
             PingOne delivers approval requests out-of-band via email or push notifications.
