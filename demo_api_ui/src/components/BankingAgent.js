@@ -1143,7 +1143,7 @@ function ReasoningSteps({ steps, conclusion }) {
     return (
       <div className="ba-reasoning ba-reasoning--empty">
         <span className="ba-reasoning__icon" aria-hidden>
-          🧠
+          [R]
         </span>
         <span
           className="ba-reasoning__label"
@@ -1162,7 +1162,7 @@ function ReasoningSteps({ steps, conclusion }) {
     <details className="ba-reasoning" open>
       <summary className="ba-reasoning__summary">
         <span className="ba-reasoning__icon" aria-hidden>
-          🧠
+          [R]
         </span>
         <span className="ba-reasoning__label">
           Reasoning ({steps?.length ?? 0} steps)
@@ -1474,7 +1474,7 @@ function ResultsPanel({ panel, onClose, style }) {
           onClick={onClose}
           aria-label="Close results"
         >
-          ✕
+          x
         </button>
       </div>
       <div className="bar-rp-body">
@@ -3243,7 +3243,7 @@ export default function BankingAgent({
 
     // Toast: show in-progress indicator
     const toastId = `agent-${actionId}-${Date.now()}`;
-    toast.info(`⚙️ ${label}…`, { toastId, autoClose: false, isLoading: true });
+    toast.info(`${label}...`, { toastId, autoClose: false, isLoading: true });
 
     try {
       // Chips/tool-progress messages removed per user request (show only user + assistant messages)
@@ -3957,18 +3957,18 @@ export default function BankingAgent({
               `Attempting $${APP_CONFIG.THRESHOLDS.DEMO_HITL_TRANSFER} transfer from ${compFrom.name || compFrom.type} → ${compTo.name || compTo.type}`,
               "This scenario exercises all 12 compliance steps:",
               "",
-              "✓ Step 1: LLM intent reasoning (NL → transfer intent)",
-              "✓ Step 2: Token initialization (get user token)",
-              "✓ Step 3: Gateway scope mapping (write scope)",
-              "✓ Step 4: Scope-aware caching",
-              "✓ Step 5: Resource token exchange (RFC 8693)",
-              "✓ Step 6: Gateway denial metadata collection",
-              "✓ Step 7: HITL challenge type detection (>$250)",
-              "✓ Step 8: BFF response formatting with consent challenge",
-              "✓ Step 9: UI consent modal display",
-              "✓ Step 10: Auto-refire after user approves consent",
-              "✓ Step 11: Error propagation (if MFA needed)",
-              "✓ Step 12: Token claim diagnostics + MFA verification",
+              "- Step 1: LLM intent reasoning (NL → transfer intent)",
+              "- Step 2: Token initialization (get user token)",
+              "- Step 3: Gateway scope mapping (write scope)",
+              "- Step 4: Scope-aware caching",
+              "- Step 5: Resource token exchange (RFC 8693)",
+              "- Step 6: Gateway denial metadata collection",
+              "- Step 7: HITL challenge type detection (>$250)",
+              "- Step 8: BFF response formatting with consent challenge",
+              "- Step 9: UI consent modal display",
+              "- Step 10: Auto-refire after user approves consent",
+              "- Step 11: Error propagation (if MFA needed)",
+              "- Step 12: Token claim diagnostics + MFA verification",
               "",
               "Approve the consent modal → MFA step-up will be required → transfer completes",
             ].join("\n"),
@@ -7021,7 +7021,7 @@ export default function BankingAgent({
                           : "Page: switch to dark mode"
                       }
                     >
-                      {appTheme === "dark" ? "☀" : "☾"}
+                      {appTheme === "dark" ? "Day" : "Night"}
                     </button>
                   </div>
                   <div className="ba-popout-status-bar">
@@ -8383,7 +8383,7 @@ export default function BankingAgent({
                             className="banking-agent-msg-avatar banking-agent-msg-avatar--tool"
                             aria-hidden
                           >
-                            🧠
+                            [R]
                           </span>
                           <div className="banking-agent-msg-bubble banking-agent-msg-bubble--reasoning">
                             <ReasoningSteps
@@ -8404,7 +8404,7 @@ export default function BankingAgent({
                             className="banking-agent-msg-avatar banking-agent-msg-avatar--tool"
                             aria-hidden
                           >
-                            ⚙
+                            [T]
                           </span>
                           <div className="banking-agent-msg-bubble banking-agent-msg-bubble--toolsteps">
                             <ToolProgressChips steps={msg.steps} />
@@ -8504,7 +8504,7 @@ export default function BankingAgent({
                             <MessageContent text={msg.content} />
                             {msg.tool && (
                               <span className="banking-agent-tool-badge">
-                                ⚙ {msg.tool}
+                                {msg.tool}
                               </span>
                             )}
                           </div>
