@@ -1120,7 +1120,12 @@ class PingOneProvisionService {
 
     const gwId = provisioned.mcpGwApp?.clientId;
     const gwSecret = provisioned.mcpGwApp?.clientSecret;
-    const mcpAud = provisioned.mcpResourceServer?.audience?.[0];
+    // In passthrough mode the MCP server receives tokens audienced to the
+    // gateway (mcpgateway.ping.demo), not to itself. MCP_SERVER_RESOURCE_URI
+    // is the aud the server validates in TokenIntrospector.ts, so it must match
+    // the gateway audience — not the MCP server's own resource audience.
+    const mcpAud = provisioned.mcpGwResourceServer?.audience?.[0]
+      || provisioned.mcpResourceServer?.audience?.[0];
     if (!gwId || !gwSecret || !mcpAud) {
       return null; // gateway app / mcp resource not provisioned — leave as-is
     }
@@ -1189,8 +1194,12 @@ class PingOneProvisionService {
       '# Resource Server',
       `ENDUSER_AUDIENCE=${provisioned.resourceServer.audience[0]}`,
       '',
-      '# MCP Resource Server',
-      `MCP_RESOURCE_URI=${provisioned.mcpResourceServer?.audience?.[0] || 'https://mcp-server.pingdemo.com'}`,
+      '# MCP Resource URI — the audience the BFF exchanges user tokens into.',
+      '# In passthrough mode this is the MCP Gateway audience (mcpgateway.ping.demo)',
+      '# so the inbound token already carries the right aud for both the gateway',
+      '# and the MCP server (which trusts the gateway and skips re-exchange).',
+      `MCP_RESOURCE_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcpgateway.ping.demo'}`,
+      `MCP_SERVER_RESOURCE_URI=${provisioned.mcpResourceServer?.audience?.[0] || 'mcpserver.ping.demo'}`,
       '',
       '# MCP Exchanger (Token Exchange)',
       `PINGONE_MCP_EXCHANGER_CLIENT_ID=${provisioned.mcpExchangerApp?.clientId || ''}`,
@@ -1201,6 +1210,7 @@ class PingOneProvisionService {
       `MCP_GW_CLIENT_SECRET=${provisioned.mcpGwApp?.clientSecret || '<set-in-pingone-console>'}`,
       `MCP_GW_RESOURCE_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcpgateway.ping.demo'}`,
       'MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD=post',
+      'MCP_GW_PASSTHROUGH_TO_MCP_SERVER=true',
       '',
       '# Agent Service (banking_agent_service on :3006)',
       `AGENT_CLIENT_ID=${provisioned.agentApp?.clientId || ''}`,
