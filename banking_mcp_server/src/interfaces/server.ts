@@ -25,7 +25,7 @@ export interface MCPServerConfig {
     required: boolean;
     provider?: AuthenticationProvider;
   };
-   {
+  banking: {
     provider: BankingOperations;
   };
   logging: {

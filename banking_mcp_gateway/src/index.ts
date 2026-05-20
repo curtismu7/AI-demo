@@ -155,7 +155,7 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
         'mortgage:read',  // Phase 267 — Path A api_key disposition
         'ai_agent',
       ],
-      resource_name: 'Super Banking MCP Gateway',
+      resource_name: 'Demo MCP Gateway',
       resource_documentation: 'https://datatracker.ietf.org/doc/html/rfc9728',
     };
     if (asList.length) metadata.authorization_servers = asList;

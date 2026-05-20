@@ -84,7 +84,7 @@ The test chips are located in the **Actions** section of the Banking Agent. Here
 
 ```
 ┌─────────────────────────────────────┐
-│  AI Banking Assistant                │
+│  AI Demo Assistant                │
 ├─────────────────────────────────────┤
 │  [Messages area - scrollable]        │
 │                                      │
@@ -106,7 +106,7 @@ The test chips are located in the **Actions** section of the Banking Agent. Here
 When "Side panel" checked:
 
 ┌──────────────────────────────┐  ┌──────────────────┐
-│  AI Banking Assistant        │  │ MCP Compliance   │
+│  AI Demo Assistant        │  │ MCP Compliance   │
 ├──────────────────────────────┤  │ Checklist (modal)│
 │  [Messages area]             │  ├──────────────────┤
 │                              │  │ [Draggable!]     │

@@ -50,7 +50,7 @@ export class ErrorContextBuilder {
         sessionId: context?.sessionId,
         toolName: context?.toolName,
         requestPath: context?.requestPath,
-        server: 'Super Banking MCP Server',
+        server: 'Demo MCP Server',
         version: process.env.npm_package_version || '1.0.0'
       }
     };

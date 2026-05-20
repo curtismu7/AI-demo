@@ -189,7 +189,7 @@ export class GatewayServer {
       resource: this.config.gatewayResourceUri,
       bearer_methods_supported: ['header'],
       scopes_supported: GATEWAY_SCOPES,
-      resource_name: 'Super Banking MCP Gateway',
+      resource_name: 'Demo MCP Gateway',
       resource_documentation: 'https://datatracker.ietf.org/doc/html/rfc9728',
     };
 

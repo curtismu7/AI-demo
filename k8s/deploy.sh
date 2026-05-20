@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Super Banking Kubernetes Deployment Script
-# This script automates the deployment of all Super Banking components
+# AI Demo Kubernetes Deployment Script
+# This script automates the deployment of all AI Demo components
 
 set -e
 
@@ -169,7 +169,7 @@ test_deployment() {
 
 # Main deployment function
 main() {
-    print_status "Starting Super Banking Kubernetes deployment..."
+    print_status "Starting AI Demo Kubernetes deployment..."
     
     check_kubectl
     check_namespace
@@ -182,7 +182,7 @@ main() {
     show_status
     test_deployment
     
-    print_success "Super Banking deployment completed!"
+    print_success "AI Demo deployment completed!"
     echo
     print_status "Access the application:"
     if kubectl get ingress -n super-banking &> /dev/null; then
@@ -196,7 +196,7 @@ main() {
 
 # Cleanup function
 cleanup() {
-    print_status "Cleaning up Super Banking deployment..."
+    print_status "Cleaning up AI Demo deployment..."
     kubectl delete namespace super-banking
     print_success "Cleanup completed"
 }
@@ -217,8 +217,8 @@ case "${1:-deploy}" in
         ;;
     *)
         echo "Usage: $0 {deploy|cleanup|status|test}"
-        echo "  deploy  - Deploy all Super Banking components"
-        echo "  cleanup - Remove all Super Banking components"
+        echo "  deploy  - Deploy all AI Demo components"
+        echo "  cleanup - Remove all AI Demo components"
         echo "  status  - Show deployment status"
         echo "  test    - Test deployment health"
         exit 1
