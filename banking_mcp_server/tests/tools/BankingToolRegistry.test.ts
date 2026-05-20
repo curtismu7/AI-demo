@@ -61,7 +61,7 @@ describe('BankingToolRegistry', () => {
       expect(tool?.name).toBe('get_my_accounts');
       expect(tool?.title).toBe('My Bank Accounts');
       expect(tool?.requiresUserAuth).toBe(true);
-      expect(tool?.requiredScopes).toEqual(['banking:read']);
+      expect(tool?.requiredScopes).toEqual(['read']);
       expect(tool?.handler).toBe('executeGetMyAccounts');
       expect(tool?.readOnly).toBe(true);
     });
@@ -87,9 +87,9 @@ describe('BankingToolRegistry', () => {
   });
 
   describe('scope and safety helpers', () => {
-    it('should return read tools with banking:read scope', () => {
-      // Phase 210+: scope model is flat (banking:read / banking:write / banking:sensitive:read).
-      const tools = BankingToolRegistry.getToolsByScope('banking:read');
+    it('should return read tools with read scope', () => {
+      // Phase 210+: scope model is flat (read / write / sensitive:read).
+      const tools = BankingToolRegistry.getToolsByScope('read');
       const names = tools.map((t) => t.name);
 
       expect(names).toEqual(
@@ -97,8 +97,8 @@ describe('BankingToolRegistry', () => {
       );
     });
 
-    it('should return write tools with banking:write scope', () => {
-      const tools = BankingToolRegistry.getToolsByScope('banking:write');
+    it('should return write tools with write scope', () => {
+      const tools = BankingToolRegistry.getToolsByScope('write');
       const names = tools.map((t) => t.name);
 
       expect(names).toEqual(
@@ -160,11 +160,11 @@ describe('BankingToolRegistry', () => {
       expect(tool?.inputSchema.properties?.query?.type).toBe('string');
     });
 
-    it('should require sensitive scope for sensitive account details', () => {
+    it('should require read scope for sensitive account details', () => {
       const tool = BankingToolRegistry.getTool('get_sensitive_account_details');
-      // Phase 210-01 (commit 42d2ddfc): get_sensitive_account_details requires
-      // banking:read AND banking:sensitive:read for full delegation chain.
-      expect(tool?.requiredScopes).toEqual(['banking:read', 'banking:sensitive:read']);
+      // After scope rename: sensitive:read was removed; tool uses only 'read' scope.
+      // Sensitive access is gated by PingAuthorize policy, not scope enforcement.
+      expect(tool?.requiredScopes).toEqual(['read']);
       expect(tool?.requiresUserAuth).toBe(true);
     });
   });

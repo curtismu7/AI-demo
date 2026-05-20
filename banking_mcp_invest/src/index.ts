@@ -4,13 +4,13 @@
  * banking-mcp-invest — entry point
  *
  * MCP server for investment tools. Runs over WebSocket (same protocol as banking_mcp_server).
- * Validates inbound token aud === MCP_SERVER_RESOURCE_URI (mcp-invest.bxf.com).
+ * Validates inbound token aud === MCP_SERVER_RESOURCE_URI (mcp-invest.ping.demo).
  *
  * HTTP surfaces (same port):
  *   GET  /.well-known/oauth-protected-resource  — RFC 9728 metadata
  *   GET  /health
  *
- * Start: MCP_SERVER_RESOURCE_URI=https://mcp-invest.bxf.com node dist/index.js
+ * Start: MCP_SERVER_RESOURCE_URI=https://mcp-invest.ping.demo node dist/index.js
  */
 
 import dotenv from 'dotenv';
@@ -25,7 +25,7 @@ import { decodeAndValidate, extractScopes, TokenError } from './server/tokenVali
 
 const PORT = parseInt(process.env.PORT || '8081', 10);
 const HOST = process.env.HOST || '0.0.0.0';
-const RESOURCE_URI = process.env.MCP_SERVER_RESOURCE_URI || 'https://mcp-invest.bxf.com';
+const RESOURCE_URI = process.env.MCP_SERVER_RESOURCE_URI || 'https://mcp-invest.ping.demo';
 const RESOURCE_NAME = process.env.MCP_SERVER_RESOURCE_NAME || 'Super Banking MCP Server (mcp-invest)';
 
 const PINGONE_ENV_ID = process.env.PINGONE_ENVIRONMENT_ID || '';

@@ -45,8 +45,8 @@ describe('BankingToolProvider', () => {
       refreshToken: 'valid_refresh_token',
       tokenType: 'Bearer',
       expiresIn: 3600,
-      // Phase 210+: flat scope model (banking:read, banking:write, banking:sensitive:read).
-      scope: 'banking:read banking:write banking:sensitive:read',
+      // Phase 210+: flat scope model (read, write, sensitive:read).
+      scope: 'read write sensitive:read',
       issuedAt: new Date()
     };
 
@@ -71,7 +71,7 @@ describe('BankingToolProvider', () => {
     mockAuthManager.generateAuthorizationRequest.mockReturnValue({
       authorizationUrl: 'https://openam-dna.forgeblocks.com:443/am/oauth2/realms/root/realms/alpha/authorize',
       state: 'test-state',
-      scope: 'banking:accounts:read',
+      scope: 'accounts:read',
       sessionId: 'session_123',
       expiresAt: new Date(Date.now() + 300000)
     });
@@ -147,7 +147,7 @@ describe('BankingToolProvider', () => {
         const mockAuthRequest = {
           authorizationUrl: 'https://auth.example.com/authorize',
           state: 'state_123',
-          scope: 'banking:accounts:read',
+          scope: 'accounts:read',
           sessionId: 'session_123',
           expiresAt: new Date()
         };
@@ -203,7 +203,7 @@ describe('BankingToolProvider', () => {
         const mockAuthRequest = {
           authorizationUrl: 'https://auth.example.com/authorize',
           state: 'state_123',
-          scope: 'banking:accounts:read',
+          scope: 'accounts:read',
           sessionId: 'session_123',
           expiresAt: new Date()
         };
@@ -222,14 +222,14 @@ describe('BankingToolProvider', () => {
       it('should reject insufficient scopes', async () => {
         const limitedScopeTokens: UserTokens = {
           ...(mockSession.userTokens as UserTokens),
-          scope: 'banking:transactions:read' // Missing banking:accounts:read
+          scope: 'transactions:read' // Missing accounts:read
         };
         const sessionWithLimitedScopes = { ...mockSession, userTokens: limitedScopeTokens };
 
         const mockAuthRequest = {
           authorizationUrl: 'https://auth.example.com/authorize',
           state: 'state_123',
-          scope: 'banking:accounts:read',
+          scope: 'accounts:read',
           sessionId: 'session_123',
           expiresAt: new Date()
         };
@@ -643,7 +643,7 @@ describe('BankingToolProvider', () => {
           'User authorization required',
           AuthErrorCodes.USER_AUTHORIZATION_REQUIRED,
           'https://auth.example.com/authorize',
-          ['banking:accounts:read']
+          ['accounts:read']
         );
         mockApiClient.getMyAccounts.mockRejectedValue(authError);
 

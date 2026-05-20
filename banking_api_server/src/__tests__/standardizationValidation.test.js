@@ -88,14 +88,14 @@ const STANDARDIZATION_RULES = {
   // Scope naming rules — canonical Phase 146 flat names (D-02)
   scopes: {
     pattern: /^(banking:(read|write|admin|sensitive|ai:agent|mcp:invoke)|ai_agent|openid|profile|email|offline_access)$/,
-    description: 'Scopes must be canonical Phase 146 names: banking:read, banking:write, banking:admin, banking:sensitive, banking:ai:agent, banking:mcp:invoke, or OIDC built-ins',
+    description: 'Scopes must be canonical Phase 146 names: read, write, admin:read, sensitive:read, ai:agent:read, mcp:invoke, or OIDC built-ins',
     examples: [
-      'banking:read',
-      'banking:write',
-      'banking:admin',
-      'banking:sensitive',
-      'banking:ai:agent',
-      'banking:mcp:invoke'
+      'read',
+      'write',
+      'admin:read',
+      'sensitive:read',
+      'ai:agent:read',
+      'mcp:invoke'
     ]
   }
 };
@@ -557,24 +557,24 @@ class StandardizationValidator {
   suggestScope(currentScope) {
     // Map stale scope names to canonical Phase 146 equivalents
     const canonicalMap = {
-      'ai_agent': 'banking:ai:agent',
-      'banking:admin:full': 'banking:admin',
-      'banking:admin:users': 'banking:admin',
-      'banking:admin:audit': 'banking:admin',
-      'banking:accounts:read': 'banking:read',
-      'banking:accounts:write': 'banking:write',
-      'banking:transactions:read': 'banking:read',
-      'banking:transactions:write': 'banking:write',
-      'banking:ai:agent:read': 'banking:ai:agent',
-      'banking:agent:invoke': 'banking:ai:agent',
-      'banking:sensitive:read': 'banking:sensitive',
-      'banking:mcp:tools': 'banking:mcp:invoke',
+      'ai_agent': 'ai:agent:read',
+      'admin:read:full': 'admin:read',
+      'admin:read:users': 'admin:read',
+      'admin:read:audit': 'admin:read',
+      'accounts:read': 'read',
+      'write': 'write',
+      'transactions:read': 'read',
+      'transactions:write': 'write',
+      'ai:agent:read': 'ai:agent:read',
+      'agent:invoke': 'ai:agent:read',
+      'sensitive:read': 'sensitive:read',
+      'mcp:invoke': 'mcp:invoke',
     };
     if (canonicalMap[currentScope]) return canonicalMap[currentScope];
-    if (['banking:read','banking:write','banking:admin','banking:sensitive','banking:ai:agent','banking:mcp:invoke'].includes(currentScope)) {
+    if (['read','write','admin:read','sensitive:read','ai:agent:read','mcp:invoke'].includes(currentScope)) {
       return currentScope; // Already canonical
     }
-    return 'banking:read'; // Safe fallback
+    return 'read'; // Safe fallback
   }
 
   calculateComplianceScore(results) {

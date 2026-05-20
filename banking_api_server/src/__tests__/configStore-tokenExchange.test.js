@@ -259,13 +259,13 @@ describe('validateTwoExchangeConfig()', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('buildAllowedScopesByAudience()', () => {
-  it('returns mapping with 6 audience keys using defaults', () => {
+  it('returns mapping with 4 audience keys using defaults', () => {
     const { buildAllowedScopesByAudience } = loadConfigStore();
     const mapping = buildAllowedScopesByAudience();
 
-    // Should have entries for all 6 default audiences
+    // Should have entries for 4 default audiences
     const keys = Object.keys(mapping);
-    expect(keys.length).toBe(6);
+    expect(keys.length).toBe(4);
 
     // Each entry should be a non-empty array of scope strings
     keys.forEach(k => {
@@ -275,33 +275,34 @@ describe('buildAllowedScopesByAudience()', () => {
     });
   });
 
-  it('end-user audience includes banking:read and banking:write', () => {
+  it('end-user audience includes read and write', () => {
     const { buildAllowedScopesByAudience } = loadConfigStore();
     const mapping = buildAllowedScopesByAudience();
 
     // Default end-user audience
     const endUserAud = 'https://banking-api.banking-demo.com';
     expect(mapping[endUserAud]).toEqual(
-      expect.arrayContaining(['banking:read', 'banking:write'])
+      expect.arrayContaining(['read', 'write'])
     );
   });
 
-  it('agent gateway audience includes banking:ai:agent', () => {
+  it('agent gateway audience includes ai:agent scope', () => {
     const { buildAllowedScopesByAudience } = loadConfigStore();
     const mapping = buildAllowedScopesByAudience();
 
+    // After scope rename: agent gateway uses 'ai:agent' and 'ai_agent' (not 'ai:agent:read')
     const agentGw = 'https://banking-agent-gateway.banking-demo.com';
-    expect(mapping[agentGw]).toEqual(expect.arrayContaining(['banking:ai:agent']));
+    expect(mapping[agentGw]).toEqual(expect.arrayContaining(['ai:agent']));
   });
 
-  it('MCP audiences include banking:mcp:invoke', () => {
+  it('MCP audiences include mcp:invoke', () => {
     const { buildAllowedScopesByAudience } = loadConfigStore();
     const mapping = buildAllowedScopesByAudience();
 
     const mcpGw = 'https://banking-mcp-gateway.banking-demo.com';
     const mcpServer = 'https://banking-mcp-server.banking-demo.com';
-    expect(mapping[mcpGw]).toEqual(expect.arrayContaining(['banking:mcp:invoke']));
-    expect(mapping[mcpServer]).toEqual(expect.arrayContaining(['banking:mcp:invoke']));
+    expect(mapping[mcpGw]).toEqual(expect.arrayContaining(['mcp:invoke']));
+    expect(mapping[mcpServer]).toEqual(expect.arrayContaining(['mcp:invoke']));
   });
 
   it('respects configStore overrides for audience URIs', () => {
@@ -311,7 +312,7 @@ describe('buildAllowedScopesByAudience()', () => {
 
     expect(mapping['https://custom-banking.example.com']).toBeDefined();
     expect(mapping['https://custom-banking.example.com']).toEqual(
-      expect.arrayContaining(['banking:read'])
+      expect.arrayContaining(['read'])
     );
     // Clean up
     delete cs._cache['PINGONE_AUDIENCE_ENDUSER'];
@@ -325,15 +326,16 @@ describe('buildAllowedScopesByAudience()', () => {
 describe('validateScopeAudience()', () => {
   it('narrows scopes to those allowed for the audience', () => {
     const { validateScopeAudience } = loadConfigStore();
+    // After scope rename: end-user audience allows 'ai:agent' not 'ai:agent:read'
     const result = validateScopeAudience(
-      ['banking:read', 'banking:write', 'openid', 'banking:ai:agent'],
+      ['read', 'write', 'openid', 'ai:agent'],
       'https://banking-api.banking-demo.com'
     );
 
     expect(result.valid).toBe(true);
-    expect(result.scopes).toContain('banking:read');
-    expect(result.scopes).toContain('banking:write');
-    expect(result.scopes).toContain('banking:ai:agent');
+    expect(result.scopes).toContain('read');
+    expect(result.scopes).toContain('write');
+    expect(result.scopes).toContain('ai:agent');
     // openid should be stripped (not in allowed list for end-user audience)
     expect(result.scopes).not.toContain('openid');
     expect(result.narrowed).toBe(true);
@@ -369,12 +371,12 @@ describe('validateScopeAudience()', () => {
   it('gracefully degrades for unknown audiences (returns all scopes)', () => {
     const { validateScopeAudience } = loadConfigStore();
     const result = validateScopeAudience(
-      ['banking:read', 'banking:write'],
+      ['read', 'write'],
       'https://unknown-audience.example.com'
     );
 
     expect(result.valid).toBe(true);
-    expect(result.scopes).toEqual(['banking:read', 'banking:write']);
+    expect(result.scopes).toEqual(['read', 'write']);
     expect(result.narrowed).toBe(false);
     expect(result.note).toContain('Unknown audience');
   });
@@ -382,7 +384,7 @@ describe('validateScopeAudience()', () => {
   it('returns narrowed: false when all scopes are allowed', () => {
     const { validateScopeAudience } = loadConfigStore();
     const result = validateScopeAudience(
-      ['banking:read', 'banking:write'],
+      ['read', 'write'],
       'https://banking-api.banking-demo.com'
     );
 

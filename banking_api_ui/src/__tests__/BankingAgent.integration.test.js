@@ -247,7 +247,7 @@ describe('BankingAgent Test Chips Integration', () => {
         // {
         //   tool: "get_my_accounts",
         //   params: {},
-        //   _testScope: "banking:admin"  // Invalid scope
+        //   _testScope: "admin:read"  // Invalid scope
         // }
         expect(true).toBe(true); // Placeholder
       });

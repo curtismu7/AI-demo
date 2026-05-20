@@ -748,6 +748,11 @@ class ConfigStore {
       pingone_mcp_token_exchanger_client_scopes: ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SCOPES', 'AGENT_OAUTH_CLIENT_SCOPES'],
       pingone_resource_agent_gateway_uri: ['PINGONE_RESOURCE_AGENT_GATEWAY_URI', 'AGENT_GATEWAY_AUDIENCE'],
       agent_gateway_audience:             ['AGENT_GATEWAY_AUDIENCE', 'PINGONE_RESOURCE_AGENT_GATEWAY_URI'],
+      // Two-exchange audiences: intermediate (Exchange #1 result) and final (Exchange #2 result).
+      // Fall back to PINGONE_RESOURCE_AGENT_GATEWAY_URI / MCP_RESOURCE_URI when the explicit
+      // vars are absent — keeps single-resource deployments working without extra env config.
+      ai_agent_intermediate_audience:     ['AI_AGENT_INTERMEDIATE_AUDIENCE', 'PINGONE_RESOURCE_AGENT_GATEWAY_URI'],
+      pingone_resource_two_exchange_uri:  ['PINGONE_RESOURCE_TWO_EXCHANGE_URI', 'MCP_RESOURCE_URI', 'PINGONE_RESOURCE_MCP_SERVER_URI'],
       pingone_resource_mcp_gateway_uri: ['PINGONE_RESOURCE_MCP_GATEWAY_URI', 'MCP_GATEWAY_AUDIENCE', 'MCP_GW_RESOURCE_URI'],
       // MCP Gateway delegated-exchange app credentials (direct MCP_GW_* names —
       // previously only read via direct process.env in gateway token glue)
@@ -762,6 +767,7 @@ class ConfigStore {
       // needs an explicit single-resource scope or PingOne rejects with
       // invalid_scope: "May not request scopes for multiple resources".
       agent_gateway_cc_scope: ['AGENT_GATEWAY_CC_SCOPE'],
+      two_exchange_intermediate_scope: ['TWO_EXCHANGE_INTERMEDIATE_SCOPE'],
       mcp_gateway_cc_scope:   ['MCP_GATEWAY_CC_SCOPE'],
       marketing_customer_login_mode: ['MARKETING_CUSTOMER_LOGIN_MODE'],
       marketing_demo_username_hint: ['MARKETING_DEMO_USERNAME_HINT'],

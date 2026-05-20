@@ -51,7 +51,7 @@ describe('POST /api/agent/delegate', () => {
       fakeJwt({
         sub: 'user-123',
         aud: 'https://mcp.example.com',
-        scope: 'banking:read banking:write',
+        scope: 'read write',
         exp: Math.floor(Date.now() / 1000) + 3600,
         act: { sub: 'agent-client-id' },
       })
@@ -113,7 +113,7 @@ describe('POST /api/agent/delegate', () => {
     delete process.env.AGENT_OAUTH_CLIENT_ID;
     delete process.env.AGENT_OAUTH_CLIENT_SECRET;
 
-    const token = fakeJwt({ sub: 'user-123', scope: 'banking:read' });
+    const token = fakeJwt({ sub: 'user-123', scope: 'read' });
     const res = await request(app)
       .post('/api/agent/delegate')
       .set('Authorization', `Bearer ${token}`)
@@ -133,7 +133,7 @@ describe('POST /api/agent/delegate', () => {
       if (key === 'pingone_mcp_token_exchanger_client_secret') return 'csec';
       return null; // no audience
     });
-    const token = fakeJwt({ sub: 'user-123', scope: 'banking:read' });
+    const token = fakeJwt({ sub: 'user-123', scope: 'read' });
     const res = await request(app)
       .post('/api/agent/delegate')
       .set('Authorization', `Bearer ${token}`)
@@ -146,24 +146,24 @@ describe('POST /api/agent/delegate', () => {
   // ── Scope handling ──────────────────────────────────────
 
   it('intersects requested scopes with token scopes', async () => {
-    const token = fakeJwt({ sub: 'user-123', scope: 'banking:read banking:write openid' });
+    const token = fakeJwt({ sub: 'user-123', scope: 'read write openid' });
     const res = await request(app)
       .post('/api/agent/delegate')
       .set('Authorization', `Bearer ${token}`)
-      .send({ scope: 'banking:read admin:everything' });
+      .send({ scope: 'read admin:everything' });
 
     expect(res.status).toBe(200);
-    // Only banking:read should pass through (admin:everything is not on the token)
+    // Only read should pass through (admin:everything is not on the token)
     expect(oauthService.performTokenExchangeWithActor).toHaveBeenCalledWith(
       token,
       'actor-token-123',
       'https://mcp.example.com',
-      ['banking:read'] // intersected
+      ['read'] // intersected
     );
   });
 
   it('returns 400 when no requested scopes match token', async () => {
-    const token = fakeJwt({ sub: 'user-123', scope: 'banking:read' });
+    const token = fakeJwt({ sub: 'user-123', scope: 'read' });
     const res = await request(app)
       .post('/api/agent/delegate')
       .set('Authorization', `Bearer ${token}`)
@@ -174,7 +174,7 @@ describe('POST /api/agent/delegate', () => {
   });
 
   it('uses all token scopes when no scope requested', async () => {
-    const token = fakeJwt({ sub: 'user-123', scope: 'banking:read banking:write' });
+    const token = fakeJwt({ sub: 'user-123', scope: 'read write' });
     const res = await request(app)
       .post('/api/agent/delegate')
       .set('Authorization', `Bearer ${token}`)
@@ -185,14 +185,14 @@ describe('POST /api/agent/delegate', () => {
       token,
       'actor-token-123',
       'https://mcp.example.com',
-      ['banking:read', 'banking:write']
+      ['read', 'write']
     );
   });
 
   // ── Happy path ──────────────────────────────────────────
 
   it('returns delegated token on success', async () => {
-    const token = fakeJwt({ sub: 'user-123', scope: 'banking:read banking:write' });
+    const token = fakeJwt({ sub: 'user-123', scope: 'read write' });
     const res = await request(app)
       .post('/api/agent/delegate')
       .set('Authorization', `Bearer ${token}`)
@@ -207,7 +207,7 @@ describe('POST /api/agent/delegate', () => {
   });
 
   it('calls getClientCredentialsTokenAs with correct agent credentials', async () => {
-    const token = fakeJwt({ sub: 'user-123', scope: 'banking:read' });
+    const token = fakeJwt({ sub: 'user-123', scope: 'read' });
     await request(app)
       .post('/api/agent/delegate')
       .set('Authorization', `Bearer ${token}`)
@@ -225,7 +225,7 @@ describe('POST /api/agent/delegate', () => {
 
   it('returns 502 when actor token fetch fails', async () => {
     oauthService.getClientCredentialsTokenAs.mockRejectedValue(new Error('network error'));
-    const token = fakeJwt({ sub: 'user-123', scope: 'banking:read' });
+    const token = fakeJwt({ sub: 'user-123', scope: 'read' });
     const res = await request(app)
       .post('/api/agent/delegate')
       .set('Authorization', `Bearer ${token}`)
@@ -242,7 +242,7 @@ describe('POST /api/agent/delegate', () => {
     err.pingoneErrorDescription = 'The subject token has expired.';
     oauthService.performTokenExchangeWithActor.mockRejectedValue(err);
 
-    const token = fakeJwt({ sub: 'user-123', scope: 'banking:read' });
+    const token = fakeJwt({ sub: 'user-123', scope: 'read' });
     const res = await request(app)
       .post('/api/agent/delegate')
       .set('Authorization', `Bearer ${token}`)
@@ -256,7 +256,7 @@ describe('POST /api/agent/delegate', () => {
   it('defaults to 401 when exchange error has no httpStatus', async () => {
     oauthService.performTokenExchangeWithActor.mockRejectedValue(new Error('something failed'));
 
-    const token = fakeJwt({ sub: 'user-123', scope: 'banking:read' });
+    const token = fakeJwt({ sub: 'user-123', scope: 'read' });
     const res = await request(app)
       .post('/api/agent/delegate')
       .set('Authorization', `Bearer ${token}`)

@@ -137,7 +137,7 @@ const demoScenarioStore = require('../../services/demoScenarioStore');
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const userToken = () =>
-  JSON.stringify({ id: 'user-1', role: 'user', scopes: ['banking:write', 'banking:read'] });
+  JSON.stringify({ id: 'user-1', role: 'user', scopes: ['write', 'read'] });
 
 const TRANSFER_600 = {
   fromAccountId: 'savings-1',

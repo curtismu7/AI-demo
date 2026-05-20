@@ -107,8 +107,8 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
   // against the bearer token's `aud` to catch step-skipping (an attacker
   // sending an intermediate-step token directly to MCP). The expected aud
   // depends on which exchange flow is active:
-  //   Single-Exchange (FF off) → mcp_resource_uri (e.g. "mcp-server.bxf.com")
-  //   Two-Exchange (FF on)     → pingone_resource_two_exchange_uri (e.g. "final.2x.bxf.com")
+  //   Single-Exchange (FF off) → mcp_resource_uri (e.g. "mcpserver.ping.demo")
+  //   Two-Exchange (FF on)     → pingone_resource_two_exchange_uri (e.g. "final.2x.ping.demo")
   // Both authorization-server implementations (simulated + PingOne) receive
   // the same expected aud and must enforce the same audience-match rule.
   const twoExchangeOn = configStore.getEffective('ff_two_exchange_delegation') !== 'false';

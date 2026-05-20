@@ -48,7 +48,7 @@ describe('Scope Enforcement Middleware', () => {
 
   describe('checkScopes', () => {
     it('should allow access when all required scopes present (requireAll=true)', () => {
-      const tokenScopes = ['openid', 'profile', 'email', 'banking:read'];
+      const tokenScopes = ['openid', 'profile', 'email', 'read'];
       const requiredScopes = ['openid', 'profile'];
 
       const result = checkScopes(tokenScopes, requiredScopes, true);
@@ -69,22 +69,22 @@ describe('Scope Enforcement Middleware', () => {
 
     it('should allow access when any required scope present (requireAll=false)', () => {
       const tokenScopes = ['openid', 'profile'];
-      const requiredScopes = ['email', 'profile', 'banking:admin'];
+      const requiredScopes = ['email', 'profile', 'admin:read'];
 
       const result = checkScopes(tokenScopes, requiredScopes, false);
 
       expect(result.hasAccess).toBe(true);
-      expect(result.missing).toEqual(['email', 'banking:admin']);
+      expect(result.missing).toEqual(['email', 'admin:read']);
     });
 
     it('should deny access when no required scopes present (requireAll=false)', () => {
       const tokenScopes = ['openid', 'profile'];
-      const requiredScopes = ['banking:admin', 'banking:write'];
+      const requiredScopes = ['admin:read', 'write'];
 
       const result = checkScopes(tokenScopes, requiredScopes, false);
 
       expect(result.hasAccess).toBe(false);
-      expect(result.missing).toEqual(['banking:admin', 'banking:write']);
+      expect(result.missing).toEqual(['admin:read', 'write']);
     });
   });
 
@@ -93,12 +93,12 @@ describe('Scope Enforcement Middleware', () => {
       const mockToken = 'mock.jwt.token';
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'openid profile email banking:read'
+        scope: 'openid profile email read'
       });
 
       const result = extractScopesFromToken(mockToken);
 
-      expect(result).toEqual(['openid', 'profile', 'email', 'banking:read']);
+      expect(result).toEqual(['openid', 'profile', 'email', 'read']);
     });
 
     it('should return empty array if no scope claim', () => {
@@ -150,14 +150,14 @@ describe('Scope Enforcement Middleware', () => {
 
     it('should allow access with required scope', () => {
       jwt.decode.mockReturnValue({
-        scope: 'openid profile banking:read'
+        scope: 'openid profile read'
       });
 
-      const middleware = requireScopes('banking:read');
+      const middleware = requireScopes('read');
       middleware(req, res, next);
 
       expect(next).toHaveBeenCalled();
-      expect(req.tokenScopes).toEqual(['openid', 'profile', 'banking:read']);
+      expect(req.tokenScopes).toEqual(['openid', 'profile', 'read']);
     });
 
     it('should deny access without required scope', () => {
@@ -165,7 +165,7 @@ describe('Scope Enforcement Middleware', () => {
         scope: 'openid profile'
       });
 
-      const middleware = requireScopes('banking:write');
+      const middleware = requireScopes('write');
       middleware(req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(403);
@@ -181,7 +181,7 @@ describe('Scope Enforcement Middleware', () => {
     it('should deny access if no token provided', () => {
       req.headers.authorization = null;
 
-      const middleware = requireScopes('banking:read');
+      const middleware = requireScopes('read');
       middleware(req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(401);
@@ -195,10 +195,10 @@ describe('Scope Enforcement Middleware', () => {
 
     it('should handle array of required scopes (requireAll=true)', () => {
       jwt.decode.mockReturnValue({
-        scope: 'openid profile banking:read banking:write'
+        scope: 'openid profile read write'
       });
 
-      const middleware = requireScopes(['banking:read', 'banking:write'], { requireAll: true });
+      const middleware = requireScopes(['read', 'write'], { requireAll: true });
       middleware(req, res, next);
 
       expect(next).toHaveBeenCalled();
@@ -206,26 +206,26 @@ describe('Scope Enforcement Middleware', () => {
 
     it('should deny if missing any scope (requireAll=true)', () => {
       jwt.decode.mockReturnValue({
-        scope: 'openid profile banking:read'
+        scope: 'openid profile read'
       });
 
-      const middleware = requireScopes(['banking:read', 'banking:write'], { requireAll: true });
+      const middleware = requireScopes(['read', 'write'], { requireAll: true });
       middleware(req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          missing: ['banking:write']
+          missing: ['write']
         })
       );
     });
 
     it('should allow if any scope present (requireAll=false)', () => {
       jwt.decode.mockReturnValue({
-        scope: 'openid profile banking:admin'
+        scope: 'openid profile admin:read'
       });
 
-      const middleware = requireScopes(['banking:read', 'banking:admin'], { requireAll: false });
+      const middleware = requireScopes(['read', 'admin:read'], { requireAll: false });
       middleware(req, res, next);
 
       expect(next).toHaveBeenCalled();
@@ -234,7 +234,7 @@ describe('Scope Enforcement Middleware', () => {
     it('should handle malformed authorization header', () => {
       req.headers.authorization = 'InvalidFormat';
 
-      const middleware = requireScopes('banking:read');
+      const middleware = requireScopes('read');
       middleware(req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(401);
@@ -243,12 +243,12 @@ describe('Scope Enforcement Middleware', () => {
 
   describe('Scopes constants', () => {
     it('should have all expected scope definitions', () => {
-      expect(Scopes.READ).toBe('banking:read');
-      expect(Scopes.WRITE).toBe('banking:write');
-      expect(Scopes.ADMIN).toBe('banking:admin');
-      expect(Scopes.SENSITIVE).toBe('banking:sensitive');
-      expect(Scopes.AI_AGENT).toBe('banking:ai:agent');
-      expect(Scopes.MCP_INVOKE).toBe('banking:mcp:invoke');
+      expect(Scopes.READ).toBe('read');
+      expect(Scopes.WRITE).toBe('write');
+      expect(Scopes.ADMIN).toBe('admin');
+      expect(Scopes.SENSITIVE).toBe('sensitive');
+      expect(Scopes.AI_AGENT).toBe('ai:agent');
+      expect(Scopes.MCP_INVOKE).toBe('mcp:invoke');
     });
   });
 
@@ -271,7 +271,7 @@ describe('Scope Enforcement Middleware', () => {
 
     it('should have readAccounts middleware', () => {
       jwt.decode.mockReturnValue({
-        scope: 'banking:read'
+        scope: 'read'
       });
 
       ScopeMiddleware.readAccounts(req, res, next);
@@ -281,7 +281,7 @@ describe('Scope Enforcement Middleware', () => {
 
     it('should have writeAccounts middleware', () => {
       jwt.decode.mockReturnValue({
-        scope: 'banking:write'
+        scope: 'write'
       });
 
       ScopeMiddleware.writeAccounts(req, res, next);
@@ -291,7 +291,7 @@ describe('Scope Enforcement Middleware', () => {
 
     it('should have adminOnly middleware', () => {
       jwt.decode.mockReturnValue({
-        scope: 'banking:admin'
+        scope: 'admin'
       });
 
       ScopeMiddleware.adminOnly(req, res, next);
@@ -301,7 +301,7 @@ describe('Scope Enforcement Middleware', () => {
 
     it('should have mcpTools middleware', () => {
       jwt.decode.mockReturnValue({
-        scope: 'banking:mcp:invoke'
+        scope: 'mcp:invoke'
       });
 
       ScopeMiddleware.mcpTools(req, res, next);

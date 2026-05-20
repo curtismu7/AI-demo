@@ -643,7 +643,7 @@ Gate stays inside the seam per ADR-0003/T-2/T-7; injected so the
     deps.config = { ...deps.config, useGateway: true, gatewayHttpUrl: 'http://gw' };
     deps.callToolViaGateway = jest.fn(async () => ({
       result: { content: [{ text: 'gw-ok' }] },
-      gwAuditTrail: { introspection: { active: true, sub: 'u1' }, authorize: { decision: 'PERMIT' }, exchange: { targetAud: 'mcp-server.bxf.com' } },
+      gwAuditTrail: { introspection: { active: true, sub: 'u1' }, authorize: { decision: 'PERMIT' }, exchange: { targetAud: 'mcp-server.ping.demo' } },
     }));
     const outcome = await runMcpToolPipeline(makeCtx({ deps }));
     const ids = outcome.body.tokenEvents.map(e => e.id);

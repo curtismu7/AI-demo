@@ -117,12 +117,12 @@ describe('Agent token exchange flow integration', () => {
   it('validateScopeAudience narrows user scopes for MCP server', () => {
     configStore._cache['PINGONE_RESOURCE_MCP_SERVER_URI'] = 'https://test-mcp.example.com';
     const result = configStore.validateScopeAudience(
-      ['banking:read', 'banking:write', 'banking:mcp:invoke', 'openid'],
+      ['read', 'write', 'mcp:invoke', 'openid'],
       'https://test-mcp.example.com'
     );
     expect(result.valid).toBe(true);
-    expect(result.scopes).toContain('banking:read');
-    expect(result.scopes).toContain('banking:mcp:invoke');
+    expect(result.scopes).toContain('read');
+    expect(result.scopes).toContain('mcp:invoke');
     expect(result.scopes).not.toContain('openid');
     // Clean up
     delete configStore._cache['PINGONE_RESOURCE_MCP_SERVER_URI'];

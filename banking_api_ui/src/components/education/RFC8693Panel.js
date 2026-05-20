@@ -202,7 +202,7 @@ Content-Type: application/json
           <p>What your browser session holds after OIDC login. Audience is the BFF resource server.</p>
           <pre className="edu-code">{`{
   "sub":   "user-abc123",
-  "aud":   "olb-resource.bxf.com",
+  "aud":   "olb-resource.ping.demo",
   "iss":   "https://auth.pingone.com/...",
   "scope": "read write",
   "iat":   1714000000,

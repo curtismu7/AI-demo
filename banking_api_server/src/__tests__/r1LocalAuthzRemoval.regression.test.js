@@ -12,7 +12,7 @@
  *
  * These regression tests pin R1's intent:
  *   1. PingAuthorize is authoritative — a tool the OLD local scope map would
- *      have vetoed (create_transfer with banking:write absent from
+ *      have vetoed (create_transfer with write absent from
  *      agent_mcp_allowed_scopes) is now decided only by the gate:
  *        - simulated DENY  → still blocked (403)
  *        - simulated PERMIT → now allowed (the local veto no longer fires)
@@ -49,8 +49,8 @@ function jwtWithPayload(payload) {
   return `eyJhbGciOiJub25lIn0.${body}.x`;
 }
 
-// create_transfer requires banking:write. Under the OLD agentMcpScopePolicy
-// veto, a config of agent_mcp_allowed_scopes='banking:read' would have thrown
+// create_transfer requires write. Under the OLD agentMcpScopePolicy
+// veto, a config of agent_mcp_allowed_scopes='read' would have thrown
 // agent_mcp_scope_denied (403) BEFORE the exchange and BEFORE the gate. We
 // simulate that "old map would block" scenario and prove the verdict now comes
 // only from the authoritative gate.
@@ -150,8 +150,9 @@ describe('R1: the local authz module is deleted and unreferenced for authorizati
 
 describe('R1: surviving catalog role preserved (MCP_TOOL_SCOPES is data, not an authz oracle)', () => {
   it('still maps tools to their RFC 8693 / Inspector-hint scopes', () => {
-    expect(MCP_TOOL_SCOPES.get_my_accounts).toEqual(['banking:read']);
-    expect(MCP_TOOL_SCOPES.create_transfer).toEqual(['banking:write']);
+    expect(MCP_TOOL_SCOPES.get_my_accounts).toEqual(['read']);
+    // create_transfer requires write AND transfer (granular scope model)
+    expect(MCP_TOOL_SCOPES.create_transfer).toEqual(['write', 'transfer']);
   });
 
   it('the catalog has no duplicate scope entries for any tool (WR-02 cannot recur here)', () => {

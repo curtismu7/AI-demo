@@ -66,7 +66,7 @@ describe('GET /api/pingone/audit', () => {
     mockAuditResourceScopes.mockResolvedValueOnce({
       status: 'success',
       scopeAudit: [
-        { resourceName: 'Super Banking AI Agent', expectedScopes: ['banking:ai:agent'], currentScopes: ['banking:ai:agent'], status: 'OK' },
+        { resourceName: 'Super Banking AI Agent', expectedScopes: ['ai:agent:read'], currentScopes: ['ai:agent:read'], status: 'OK' },
       ],
     });
 
@@ -91,7 +91,7 @@ describe('GET /api/pingone/audit', () => {
     mockAuditResourceScopes.mockResolvedValueOnce({
       status: 'success',
       scopeAudit: [
-        { resourceName: 'Super Banking AI Agent', expectedScopes: ['banking:ai:agent'], currentScopes: ['banking:ai:agent'], status: 'OK' },
+        { resourceName: 'Super Banking AI Agent', expectedScopes: ['ai:agent:read'], currentScopes: ['ai:agent:read'], status: 'OK' },
       ],
     });
 
@@ -120,7 +120,7 @@ describe('GET /api/pingone/audit', () => {
     mockAuditResourceScopes.mockResolvedValueOnce({
       status: 'success',
       scopeAudit: [
-        { resourceName: 'Super Banking AI Agent', expectedScopes: ['banking:ai:agent'], currentScopes: ['banking:ai:agent'], status: 'OK' },
+        { resourceName: 'Super Banking AI Agent', expectedScopes: ['ai:agent:read'], currentScopes: ['ai:agent:read'], status: 'OK' },
       ],
     });
 

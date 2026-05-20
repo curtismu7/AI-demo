@@ -20,7 +20,8 @@ describe('verticalConfigService v2', () => {
     const m = svc.getVerticalConfig('retail');
     expect(m.id).toBe('retail');
     expect(m.schemaVersion).toBe(2);
-    expect(m.identity.displayName).toBe('Best Buy');
+    // Retail manifest uses 'Great Buy' as the display name
+    expect(m.identity.displayName).toBe('Great Buy');
     expect(m.dashboard.kind).toBe('retail');
     expect(m.dashboard.mockData.products.length).toBe(10);
   });

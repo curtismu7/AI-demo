@@ -26,14 +26,14 @@ jest.mock('../../middleware/auth', () => ({
     if (req.user.role === 'admin') return next();
     const userScopes = req.user.scopes || [];
     const arr = Array.isArray(requiredScopes) ? requiredScopes : [requiredScopes];
-    const ok = arr.some((s) => userScopes.includes(s)) || userScopes.includes('banking:admin');
+    const ok = arr.some((s) => userScopes.includes(s)) || userScopes.includes('admin:read');
     if (!ok) return res.status(403).json({ error: 'insufficient_scope' });
     return next();
   },
   requireAdmin: (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'authentication_required' });
     if (req.user.role === 'admin') return next();
-    return res.status(403).json({ error: 'insufficient_scope', required_access: 'admin role or banking:admin scope' });
+    return res.status(403).json({ error: 'insufficient_scope', required_access: 'admin role or admin:read scope' });
   },
   hasRequiredScopes: () => true,
     requireSession: (req, res, next) => next(),
@@ -66,8 +66,8 @@ function buildApp() {
   return app;
 }
 
-const ADMIN_HEADER = JSON.stringify({ id: 'admin-1', role: 'admin', scopes: ['banking:admin'] });
-const USER_HEADER  = JSON.stringify({ id: 'user-1',  role: 'customer', scopes: ['banking:read'] });
+const ADMIN_HEADER = JSON.stringify({ id: 'admin-1', role: 'admin', scopes: ['admin:read'] });
+const USER_HEADER  = JSON.stringify({ id: 'user-1',  role: 'customer', scopes: ['read'] });
 
 const VALID_BODY = {
   client_name:                 'Test Banking App',

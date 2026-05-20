@@ -1,0 +1,20 @@
+{
+  "doc_path": "docs/guides/deployment.md",
+  "claims_checked": 3,
+  "claims_passed": 1,
+  "claims_failed": 2,
+  "failures": [
+    {
+      "line": 130,
+      "claim": "api/handler.js",
+      "expected": "file exists",
+      "actual": "file not found at /Users/curtismuir/Development/banking/api/handler.js"
+    },
+    {
+      "line": 400,
+      "claim": "npm run setup:vercel",
+      "expected": "script 'setup:vercel' in package.json",
+      "actual": "script not found in package.json (only 'setup:fresh' is available)"
+    }
+  ]
+}

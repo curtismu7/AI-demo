@@ -31,6 +31,11 @@ describe('transactionAuthorizationService', () => {
         if (k === 'ff_authorize_simulated') return 'true';
         return null;
       });
+      // isSimulatedModeEnabled uses getEffective (default-aware) not get
+      configStore.getEffective.mockImplementation((k) => {
+        if (k === 'ff_authorize_simulated') return 'true';
+        return null;
+      });
       pingOneAuthorizeService.isConfigured.mockReturnValue(false);
       const s = getAuthorizationStatusSummary();
       expect(s.activeEngine).toBe('simulated');
@@ -44,6 +49,11 @@ describe('transactionAuthorizationService', () => {
         if (k === 'authorize_decision_endpoint_id') return 'ep-123';
         return null;
       });
+      // isSimulatedModeEnabled uses getEffective; return 'false' so simulated mode is off
+      configStore.getEffective.mockImplementation((k) => {
+        if (k === 'ff_authorize_simulated') return 'false';
+        return null;
+      });
       pingOneAuthorizeService.isConfigured.mockReturnValue(true);
       expect(getAuthorizationStatusSummary().activeEngine).toBe('pingone');
     });
@@ -51,6 +61,11 @@ describe('transactionAuthorizationService', () => {
     it('returns activeEngine pending_config when authorize on but not simulated and PingOne not ready', () => {
       configStore.get.mockImplementation((k) => {
         if (k === 'authorize_enabled') return 'true';
+        if (k === 'ff_authorize_simulated') return 'false';
+        return null;
+      });
+      // isSimulatedModeEnabled uses getEffective; return 'false' so simulated mode is off
+      configStore.getEffective.mockImplementation((k) => {
         if (k === 'ff_authorize_simulated') return 'false';
         return null;
       });

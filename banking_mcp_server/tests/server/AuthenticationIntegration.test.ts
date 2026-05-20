@@ -56,7 +56,7 @@ describe('AuthenticationIntegration', () => {
       const mockAgentTokenInfo: AgentTokenInfo = {
         tokenHash: 'test-hash',
         clientId: 'test-client',
-        scopes: ['banking:agent'],
+        scopes: ['agent:invoke'],
         expiresAt: new Date(Date.now() + 3600000),
         isValid: true
       };
@@ -93,7 +93,7 @@ describe('AuthenticationIntegration', () => {
       const mockAgentTokenInfo: AgentTokenInfo = {
         tokenHash: 'test-hash',
         clientId: 'test-client',
-        scopes: ['banking:agent'],
+        scopes: ['agent:invoke'],
         expiresAt: new Date(Date.now() + 3600000),
         isValid: true
       };
@@ -162,7 +162,7 @@ describe('AuthenticationIntegration', () => {
         refreshToken: 'refresh-token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read banking:transactions:read',
+        scope: 'accounts:read transactions:read',
         issuedAt: new Date()
       };
 
@@ -180,7 +180,7 @@ describe('AuthenticationIntegration', () => {
       mockAuthManager.validateBankingScopes.mockReturnValue(true);
       mockAuthManager.isTokenExpired.mockReturnValue(false);
 
-      const result = await authIntegration.checkUserAuthorization(mockSession, ['banking:accounts:read']);
+      const result = await authIntegration.checkUserAuthorization(mockSession, ['accounts:read']);
 
       expect(result.success).toBe(true);
       expect(result.session).toBe(mockSession);
@@ -196,14 +196,14 @@ describe('AuthenticationIntegration', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://openam-dna.forgeblocks.com:443/am/oauth2/realms/root/realms/alpha/authorize?client_id=test',
         state: 'test-state',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'test-session-1',
         expiresAt: new Date(Date.now() + 300000)
       };
 
       mockAuthManager.generateAuthorizationRequest.mockReturnValue(mockAuthRequest);
 
-      const result = await authIntegration.checkUserAuthorization(mockSession, ['banking:accounts:read']);
+      const result = await authIntegration.checkUserAuthorization(mockSession, ['accounts:read']);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('User authorization required');
@@ -216,7 +216,7 @@ describe('AuthenticationIntegration', () => {
         refreshToken: 'refresh-token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         issuedAt: new Date(Date.now() - 7200000) // 2 hours ago
       };
 
@@ -225,7 +225,7 @@ describe('AuthenticationIntegration', () => {
         refreshToken: 'new-refresh-token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         issuedAt: new Date()
       };
 
@@ -247,7 +247,7 @@ describe('AuthenticationIntegration', () => {
       mockAuthManager.refreshUserToken.mockResolvedValue(mockRefreshedTokens);
       mockSessionManager.associateUserTokens.mockResolvedValue();
 
-      const result = await authIntegration.checkUserAuthorization(mockSession, ['banking:accounts:read']);
+      const result = await authIntegration.checkUserAuthorization(mockSession, ['accounts:read']);
 
       expect(result.success).toBe(true);
       expect((result.session?.userTokens as UserTokens[])?.[0]).toBe(mockRefreshedTokens);
@@ -261,7 +261,7 @@ describe('AuthenticationIntegration', () => {
         refreshToken: 'refresh-token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         issuedAt: new Date(Date.now() - 7200000)
       };
 
@@ -284,14 +284,14 @@ describe('AuthenticationIntegration', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://test.pingone.com/authorize?client_id=test',
         state: 'test-state',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'test-session-1',
         expiresAt: new Date(Date.now() + 300000)
       };
 
       mockAuthManager.generateAuthorizationRequest.mockReturnValue(mockAuthRequest);
 
-      const result = await authIntegration.checkUserAuthorization(mockSession, ['banking:accounts:read']);
+      const result = await authIntegration.checkUserAuthorization(mockSession, ['accounts:read']);
 
       // Phase 198+: source returns insufficientScope/missingScopes/availableScopes
       // instead of an authChallenge for the insufficient-scope case. The caller
@@ -299,7 +299,7 @@ describe('AuthenticationIntegration', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('Insufficient scope');
       expect(result.insufficientScope).toBe(true);
-      expect(result.missingScopes).toEqual(['banking:accounts:read']);
+      expect(result.missingScopes).toEqual(['accounts:read']);
       expect(result.availableScopes).toEqual([]);
     });
 
@@ -309,7 +309,7 @@ describe('AuthenticationIntegration', () => {
         refreshToken: 'refresh-token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         issuedAt: new Date()
       };
 
@@ -331,21 +331,21 @@ describe('AuthenticationIntegration', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://test.pingone.com/authorize?client_id=test',
         state: 'test-state',
-        scope: 'banking:transactions:write',
+        scope: 'transactions:write',
         sessionId: 'test-session-1',
         expiresAt: new Date(Date.now() + 300000)
       };
 
       mockAuthManager.generateAuthorizationRequest.mockReturnValue(mockAuthRequest);
 
-      const result = await authIntegration.checkUserAuthorization(mockSession, ['banking:transactions:write']);
+      const result = await authIntegration.checkUserAuthorization(mockSession, ['transactions:write']);
 
       // Phase 198+: insufficient-scope path returns missingScopes/availableScopes,
-      // not authChallenge. Use flat scope 'banking:write' to match source.
+      // not authChallenge. Use flat scope 'write' to match source.
       expect(result.success).toBe(false);
       expect(result.error).toBe('Insufficient scope');
       expect(result.insufficientScope).toBe(true);
-      expect(result.missingScopes).toEqual(['banking:transactions:write']);
+      expect(result.missingScopes).toEqual(['transactions:write']);
       expect(result.availableScopes).toEqual([]);
     });
   });
@@ -355,7 +355,7 @@ describe('AuthenticationIntegration', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://test.pingone.com/authorize',
         state: 'test-state',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'test-session-1',
         expiresAt: new Date(Date.now() + 300000)
       };
@@ -365,7 +365,7 @@ describe('AuthenticationIntegration', () => {
         refreshToken: 'new-refresh-token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         issuedAt: new Date()
       };
 
@@ -418,7 +418,7 @@ describe('AuthenticationIntegration', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://test.pingone.com/authorize',
         state: 'test-state',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'different-session',
         expiresAt: new Date(Date.now() + 300000)
       };
@@ -441,7 +441,7 @@ describe('AuthenticationIntegration', () => {
       const mockAgentTokenInfo: AgentTokenInfo = {
         tokenHash: 'test-hash',
         clientId: 'test-client',
-        scopes: ['banking:agent'],
+        scopes: ['agent:invoke'],
         expiresAt: new Date(Date.now() + 3600000),
         isValid: true
       };
@@ -451,7 +451,7 @@ describe('AuthenticationIntegration', () => {
         refreshToken: 'refresh-token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         issuedAt: new Date()
       };
 
@@ -483,7 +483,7 @@ describe('AuthenticationIntegration', () => {
       const result = await authIntegration.validateToolAuthentication(
         undefined,
         'test-agent-token',
-        ['banking:accounts:read']
+        ['accounts:read']
       );
 
       expect(result.success).toBe(true);
@@ -498,7 +498,7 @@ describe('AuthenticationIntegration', () => {
         refreshToken: 'refresh-token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read banking:transactions:read',
+        scope: 'accounts:read transactions:read',
         issuedAt: new Date()
       };
 
@@ -517,7 +517,7 @@ describe('AuthenticationIntegration', () => {
         requiresUserAuth: false,
         session: mockSession
       });
-      mockSessionManager.getValidScopes.mockReturnValue(['banking:accounts:read', 'banking:transactions:read']);
+      mockSessionManager.getValidScopes.mockReturnValue(['accounts:read', 'transactions:read']);
       mockAuthManager.isTokenExpired.mockReturnValue(false);
       mockAuthManager.getTokenLifetime.mockReturnValue(3600);
 
@@ -526,7 +526,7 @@ describe('AuthenticationIntegration', () => {
       expect(status.hasValidSession).toBe(true);
       expect(status.hasUserTokens).toBe(true);
       expect(status.tokenExpired).toBe(false);
-      expect(status.availableScopes).toEqual(['banking:accounts:read', 'banking:transactions:read']);
+      expect(status.availableScopes).toEqual(['accounts:read', 'transactions:read']);
       expect(status.tokenExpiresIn).toBe(3600);
     });
 

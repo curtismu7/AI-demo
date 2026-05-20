@@ -110,8 +110,8 @@ Env vars (non-interactive mode):
   PINGONE_BOOTSTRAP_CLIENT_ID      Management worker client id
   PINGONE_BOOTSTRAP_CLIENT_SECRET  Management worker client secret
   PUBLIC_APP_URL                   App base URL              (default: https://api.ping.demo:4000)
-  PINGONE_BOOTSTRAP_AUDIENCE       Resource server audience  (default: api.bxf.com)
-  MCP_GW_AUDIENCE                  Gateway audience          (default: api.ping.demo)
+  PINGONE_BOOTSTRAP_AUDIENCE       Resource server audience  (default: enduser.ping.demo)
+  MCP_GW_AUDIENCE                  Gateway audience          (default: enduser.ping.demo)
 
 Exit codes:
   0  Provisioning succeeded (or idempotent re-run)
@@ -542,8 +542,8 @@ async function gatherCredsViaBrowser() {
       workerClientId: cached.workerClientId,
       workerClientSecret: cached.workerClientSecret,
       publicAppUrl: cached.publicAppUrl || process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000',
-      audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'api.bxf.com',
-      mcpGatewayAudience: process.env.MCP_GW_AUDIENCE || 'api.ping.demo',
+      audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'enduser.ping.demo',
+      mcpGatewayAudience: process.env.MCP_GW_AUDIENCE || 'mcpgateway.ping.demo',
     };
   }
 
@@ -553,8 +553,8 @@ async function gatherCredsViaBrowser() {
   const fromForm = await browserPrompt();
 
   const publicAppUrl = process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000';
-  const audience = process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'api.bxf.com';
-  const mcpGatewayAudience = process.env.MCP_GW_AUDIENCE || 'api.ping.demo';
+  const audience = process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'enduser.ping.demo';
+  const mcpGatewayAudience = process.env.MCP_GW_AUDIENCE || 'mcpgateway.ping.demo';
   const creds = { ...fromForm, publicAppUrl, audience, mcpGatewayAudience };
   writeCredCache(creds);
   console.log(`Saved creds to ${CRED_CACHE_PATH} (mode 0600). Future runs will skip these prompts.`);
@@ -573,8 +573,8 @@ async function gatherCredsInteractive() {
       workerClientId: cached.workerClientId,
       workerClientSecret: cached.workerClientSecret,
       publicAppUrl: cached.publicAppUrl || process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000',
-      audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'api.bxf.com',
-      mcpGatewayAudience: process.env.MCP_GW_AUDIENCE || 'api.ping.demo',
+      audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'enduser.ping.demo',
+      mcpGatewayAudience: process.env.MCP_GW_AUDIENCE || 'mcpgateway.ping.demo',
     };
   }
 
@@ -601,8 +601,8 @@ async function gatherCredsInteractive() {
       defaultValue: process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000',
     });
 
-    const audience = process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'api.bxf.com';
-    const mcpGatewayAudience = process.env.MCP_GW_AUDIENCE || 'api.ping.demo';
+    const audience = process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'enduser.ping.demo';
+    const mcpGatewayAudience = process.env.MCP_GW_AUDIENCE || 'mcpgateway.ping.demo';
 
     const creds = { envId, region, workerClientId, workerClientSecret, publicAppUrl, audience, mcpGatewayAudience };
     writeCredCache(creds);
@@ -633,8 +633,8 @@ function gatherCredsFromEnv() {
     workerClientId,
     workerClientSecret,
     publicAppUrl: process.env.PUBLIC_APP_URL || 'https://api.ping.demo:4000',
-    audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'api.bxf.com',
-    mcpGatewayAudience: process.env.MCP_GW_AUDIENCE || 'api.ping.demo',
+    audience: process.env.PINGONE_BOOTSTRAP_AUDIENCE || 'enduser.ping.demo',
+    mcpGatewayAudience: process.env.MCP_GW_AUDIENCE || 'mcpgateway.ping.demo',
   };
 }
 

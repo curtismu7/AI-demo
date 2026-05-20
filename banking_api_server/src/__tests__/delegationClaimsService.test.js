@@ -108,7 +108,7 @@ describe('Delegation Claims Service', () => {
           client_id: 'bff-client-id',
           sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
         },
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
 
       const userPreferences = {
@@ -128,7 +128,7 @@ describe('Delegation Claims Service', () => {
         iss: 'https://auth.pingone.com/123456/as',
         exp: 1640995200,
         iat: 1640991600,
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
 
       const result = validateUserTokenMayAct(userToken);
@@ -146,7 +146,7 @@ describe('Delegation Claims Service', () => {
         may_act: {
           sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
         },
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
 
       const result = validateUserTokenMayAct(userToken);
@@ -163,7 +163,7 @@ describe('Delegation Claims Service', () => {
         exp: 1640995200,
         iat: 1640991600,
         may_act: 'invalid-string',
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
 
       const result = validateUserTokenMayAct(userToken);
@@ -182,7 +182,7 @@ describe('Delegation Claims Service', () => {
         may_act: {
           sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
         },
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
 
       const result = validateUserTokenMayAct(userToken);
@@ -202,7 +202,7 @@ describe('Delegation Claims Service', () => {
           client_id: 'bff-client-id',
           sub: 'legacy-agent'
         },
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
 
       const userPreferences = {
@@ -227,7 +227,7 @@ describe('Delegation Claims Service', () => {
           client_id: 'bff-client-id',
           sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
         },
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
 
       const userPreferences = {
@@ -250,7 +250,7 @@ describe('Delegation Claims Service', () => {
         may_act: {
           sub: 'https://banking-agent.pingdemo.com/agent/unauthorized-agent'
         },
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
 
       const userPreferences = {
@@ -273,7 +273,7 @@ describe('Delegation Claims Service', () => {
         may_act: {
           sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
         },
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
 
       const userPreferences = {
@@ -302,7 +302,7 @@ describe('Delegation Claims Service', () => {
             sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
           }
         },
-        scope: 'banking:read banking:ai:agent'
+        scope: 'read ai:agent:read'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -318,7 +318,7 @@ describe('Delegation Claims Service', () => {
         iss: 'https://auth.pingone.com/123456/as',
         exp: 1640993400,
         iat: 1640991700,
-        scope: 'banking:read banking:ai:agent'
+        scope: 'read ai:agent:read'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -336,7 +336,7 @@ describe('Delegation Claims Service', () => {
         act: {
           sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp'
         },
-        scope: 'banking:read banking:ai:agent'
+        scope: 'read ai:agent:read'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -353,7 +353,7 @@ describe('Delegation Claims Service', () => {
         exp: 1640993400,
         iat: 1640991700,
         act: 'invalid-string',
-        scope: 'banking:read banking:ai:agent'
+        scope: 'read ai:agent:read'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -374,7 +374,7 @@ describe('Delegation Claims Service', () => {
             sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
           }
         },
-        scope: 'banking:read banking:ai:agent'
+        scope: 'read ai:agent:read'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -396,7 +396,7 @@ describe('Delegation Claims Service', () => {
             sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
           }
         },
-        scope: 'banking:read banking:ai:agent'
+        scope: 'read ai:agent:read'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -419,7 +419,7 @@ describe('Delegation Claims Service', () => {
             sub: 'legacy-agent'
           }
         },
-        scope: 'banking:read banking:ai:agent'
+        scope: 'read ai:agent:read'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -592,7 +592,7 @@ describe('Delegation Claims Service', () => {
           client_id: 'bff-client-id',
           sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
         },
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
 
       const userPreferences = {
@@ -618,7 +618,7 @@ describe('Delegation Claims Service', () => {
             sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
           }
         },
-        scope: 'banking:read banking:ai:agent'
+        scope: 'read ai:agent:read'
       };
 
       const result = validateDelegationClaims(token, 'exchanged');
@@ -631,7 +631,7 @@ describe('Delegation Claims Service', () => {
       const token = {
         sub: 'user-12345',
         aud: ['banking-api'],
-        scope: 'banking:read'
+        scope: 'read'
       };
 
       const result = validateDelegationClaims(token, 'unknown');

@@ -82,7 +82,7 @@ function buildApp({ acr = 'Multi_Factor' } = {}) {
 
 // Helpers
 const userWithAcr = (acr) =>
-  JSON.stringify({ id: 'user-1', sub: 'user-1', role: 'user', scopes: ['banking:read'], acr });
+  JSON.stringify({ id: 'user-1', sub: 'user-1', role: 'user', scopes: ['read'], acr });
 
 beforeEach(() => {
   mockGrantConsent.mockReset();

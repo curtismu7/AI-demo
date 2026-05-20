@@ -26,8 +26,8 @@ jest.mock('../../middleware/auth', () => ({
       }
       const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
       const scopes = payload.scope ? payload.scope.split(' ') : [];
-      // Role derives from banking:admin scope, NOT from realm_access.roles (Keycloak claim ignored)
-      const isAdmin = scopes.includes('banking:admin');
+      // Role derives from admin:read scope, NOT from realm_access.roles (Keycloak claim ignored)
+      const isAdmin = scopes.includes('admin:read');
       req.user = {
         id: payload.sub,
         username: payload.preferred_username || payload.sub,
@@ -48,14 +48,14 @@ jest.mock('../../middleware/auth', () => ({
     if (!req.user) return res.status(401).json({ error: 'authentication_required', error_description: 'Access token is required' });
     const userScopes = req.user.scopes || [];
     const arr = Array.isArray(requiredScopes) ? requiredScopes : [requiredScopes];
-    const ok = arr.some((s) => userScopes.includes(s)) || userScopes.includes('banking:admin');
+    const ok = arr.some((s) => userScopes.includes(s)) || userScopes.includes('admin:read');
     if (!ok) return res.status(403).json({ error: 'insufficient_scope', requiredScopes: arr, providedScopes: userScopes });
     return next();
   },
   requireAdmin: (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'authentication_required' });
-    if (req.user.role === 'admin' || (req.user.scopes || []).includes('banking:admin')) return next();
-    return res.status(403).json({ error: 'insufficient_scope', error_description: 'Admin access required', required_access: 'admin role or banking:admin scope' });
+    if (req.user.role === 'admin' || (req.user.scopes || []).includes('admin:read')) return next();
+    return res.status(403).json({ error: 'insufficient_scope', error_description: 'Admin access required', required_access: 'admin role or admin:read scope' });
   },
   requireSession: (req, res, next) => next(),
   hasRequiredScopes: (userScopes, required) => required.some((s) => userScopes.includes(s)),
@@ -117,8 +117,8 @@ describe('Scope-based Authorization Integration Tests', () => {
 
 
   describe('User Routes Scope Authorization', () => {
-    it('should allow access to GET /api/users with banking:read scope', async () => {
-      const token = createOAuthToken(['banking:read']);
+    it('should allow access to GET /api/users with read scope', async () => {
+      const token = createOAuthToken(['read']);
       
       const response = await request(app)
         .get('/api/users')
@@ -127,13 +127,13 @@ describe('Scope-based Authorization Integration Tests', () => {
       // requireAdmin fires first — it returns required_access, not requiredScopes/providedScopes
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.required_access).toBe('admin role or banking:admin scope');
+      expect(response.body.required_access).toBe('admin role or admin:read scope');
     });
 
-    it('should deny access to GET /api/users without banking:read scope', async () => {
+    it('should deny access to GET /api/users without read scope', async () => {
       // realm_access.roles is a Keycloak claim that is ignored; role derives from azp claim only.
-      // Token has banking:write but NOT banking:read; requireScopes(['banking:read']) fires first.
-      const token = createOAuthToken(['banking:write'], { roles: ['admin'] });
+      // Token has write but NOT read; requireScopes(['read']) fires first.
+      const token = createOAuthToken(['write'], { roles: ['admin'] });
       
       const response = await request(app)
         .get('/api/users')
@@ -142,11 +142,11 @@ describe('Scope-based Authorization Integration Tests', () => {
       // requireScopes fires before requireAdmin on this route → standard scope error shape
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toContain('banking:read');
+      expect(response.body.requiredScopes).toContain('read');
     });
 
-    it('should allow access to POST /api/users with banking:write scope', async () => {
-      const token = createOAuthToken(['banking:write']);
+    it('should allow access to POST /api/users with write scope', async () => {
+      const token = createOAuthToken(['write']);
       
       const response = await request(app)
         .post('/api/users')
@@ -162,11 +162,11 @@ describe('Scope-based Authorization Integration Tests', () => {
       // requireAdmin fires first — returns required_access, not requiredScopes/providedScopes
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.required_access).toBe('admin role or banking:admin scope');
+      expect(response.body.required_access).toBe('admin role or admin:read scope');
     });
 
-    it('should deny access to POST /api/users without banking:write scope', async () => {
-      const token = createOAuthToken(['banking:read'], { roles: ['admin'] });
+    it('should deny access to POST /api/users without write scope', async () => {
+      const token = createOAuthToken(['read'], { roles: ['admin'] });
       
       const response = await request(app)
         .post('/api/users')
@@ -181,13 +181,13 @@ describe('Scope-based Authorization Integration Tests', () => {
       
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toContain('banking:write');
+      expect(response.body.requiredScopes).toContain('write');
     });
   });
 
   describe('Account Routes Scope Authorization', () => {
-    it('should allow access to GET /api/accounts with banking:read scope', async () => {
-      const token = createOAuthToken(['banking:read']);
+    it('should allow access to GET /api/accounts with read scope', async () => {
+      const token = createOAuthToken(['read']);
       
       const response = await request(app)
         .get('/api/accounts')
@@ -199,8 +199,8 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body.error).not.toBe('insufficient_scope');
     });
 
-    it('should allow access to GET /api/accounts with banking:read scope', async () => {
-      const token = createOAuthToken(['banking:read']);
+    it('should allow access to GET /api/accounts with read scope', async () => {
+      const token = createOAuthToken(['read']);
       
       const response = await request(app)
         .get('/api/accounts')
@@ -213,7 +213,7 @@ describe('Scope-based Authorization Integration Tests', () => {
     });
 
     it('should deny access to GET /api/accounts without required scopes', async () => {
-      const token = createOAuthToken(['banking:write'], { roles: ['admin'] });
+      const token = createOAuthToken(['write'], { roles: ['admin'] });
       
       const response = await request(app)
         .get('/api/accounts')
@@ -221,11 +221,11 @@ describe('Scope-based Authorization Integration Tests', () => {
       
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:read']);
+      expect(response.body.requiredScopes).toEqual(['read']);
     });
 
-    it('should allow access to GET /api/accounts/my with banking:read scope', async () => {
-      const token = createOAuthToken(['banking:read']);
+    it('should allow access to GET /api/accounts/my with read scope', async () => {
+      const token = createOAuthToken(['read']);
       
       const response = await request(app)
         .get('/api/accounts/my')
@@ -237,8 +237,8 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(Array.isArray(response.body.accounts)).toBe(true);
     });
 
-    it('should allow access to GET /api/accounts/my with banking:read scope', async () => {
-      const token = createOAuthToken(['banking:read']);
+    it('should allow access to GET /api/accounts/my with read scope', async () => {
+      const token = createOAuthToken(['read']);
       
       const response = await request(app)
         .get('/api/accounts/my')
@@ -249,8 +249,8 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body).toHaveProperty('accounts');
     });
 
-    it('should deny access to POST /api/accounts without banking:write scope', async () => {
-      const token = createOAuthToken(['banking:read'], { roles: ['admin'] });
+    it('should deny access to POST /api/accounts without write scope', async () => {
+      const token = createOAuthToken(['read'], { roles: ['admin'] });
       
       const response = await request(app)
         .post('/api/accounts')
@@ -263,11 +263,11 @@ describe('Scope-based Authorization Integration Tests', () => {
       
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toContain('banking:write');
+      expect(response.body.requiredScopes).toContain('write');
     });
 
-    it('should allow access to POST /api/accounts with banking:write scope', async () => {
-      const token = createOAuthToken(['banking:write']);
+    it('should allow access to POST /api/accounts with write scope', async () => {
+      const token = createOAuthToken(['write']);
       
       const response = await request(app)
         .post('/api/accounts')
@@ -303,7 +303,7 @@ describe('Scope-based Authorization Integration Tests', () => {
     });
 
     it('should return detailed error information for insufficient scopes', async () => {
-      // Token without banking:read — should be denied by requireScopes on GET /api/accounts
+      // Token without read — should be denied by requireScopes on GET /api/accounts
       const token = createOAuthToken(['openid', 'profile']);
       
       const response = await request(app)
@@ -313,7 +313,7 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.status).toBe(403);
       expect(response.body).toMatchObject({
         error: 'insufficient_scope',
-        requiredScopes: ['banking:read'],
+        requiredScopes: ['read'],
         providedScopes: ['openid', 'profile'],
       });
     });
@@ -335,8 +335,8 @@ describe('Scope-based Authorization Integration Tests', () => {
   });
 
   describe('Transaction Routes Scope Authorization', () => {
-    it('should allow access to GET /api/transactions with banking:read scope', async () => {
-      const token = createOAuthToken(['banking:read']);
+    it('should allow access to GET /api/transactions with read scope', async () => {
+      const token = createOAuthToken(['read']);
       
       const response = await request(app)
         .get('/api/transactions')
@@ -348,8 +348,8 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body.error).not.toBe('insufficient_scope');
     });
 
-    it('should allow access to GET /api/transactions with banking:read scope', async () => {
-      const token = createOAuthToken(['banking:read']);
+    it('should allow access to GET /api/transactions with read scope', async () => {
+      const token = createOAuthToken(['read']);
       
       const response = await request(app)
         .get('/api/transactions')
@@ -362,7 +362,7 @@ describe('Scope-based Authorization Integration Tests', () => {
     });
 
     it('should deny access to GET /api/transactions without required scopes', async () => {
-      const token = createOAuthToken(['banking:write'], { roles: ['admin'] });
+      const token = createOAuthToken(['write'], { roles: ['admin'] });
       
       const response = await request(app)
         .get('/api/transactions')
@@ -370,11 +370,11 @@ describe('Scope-based Authorization Integration Tests', () => {
       
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:read']);
+      expect(response.body.requiredScopes).toEqual(['read']);
     });
 
-    it('should allow access to GET /api/transactions/my with banking:read scope', async () => {
-      const token = createOAuthToken(['banking:read']);
+    it('should allow access to GET /api/transactions/my with read scope', async () => {
+      const token = createOAuthToken(['read']);
       
       const response = await request(app)
         .get('/api/transactions/my')
@@ -386,8 +386,8 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(Array.isArray(response.body.transactions)).toBe(true);
     });
 
-    it('should allow access to GET /api/transactions/my with banking:read scope', async () => {
-      const token = createOAuthToken(['banking:read']);
+    it('should allow access to GET /api/transactions/my with read scope', async () => {
+      const token = createOAuthToken(['read']);
       
       const response = await request(app)
         .get('/api/transactions/my')
@@ -403,7 +403,7 @@ describe('Scope-based Authorization Integration Tests', () => {
       // PingOne tokens without a custom resource server only carry openid/profile/email.
       // Any authenticated user can read their own transactions; row-level ownership is
       // enforced inside the handler (returns only the caller’s rows).
-      const token = createOAuthToken(['banking:write']);
+      const token = createOAuthToken(['write']);
       const response = await request(app)
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${token}`);
@@ -411,8 +411,8 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body).toHaveProperty('transactions');
     });
 
-    it('should allow access to POST /api/transactions with banking:write scope', async () => {
-      const token = createOAuthToken(['banking:write']);
+    it('should allow access to POST /api/transactions with write scope', async () => {
+      const token = createOAuthToken(['write']);
       
       const response = await request(app)
         .post('/api/transactions')
@@ -430,8 +430,8 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body.error).not.toBe('insufficient_scope');
     });
 
-    it('should allow access to POST /api/transactions with banking:write scope', async () => {
-      const token = createOAuthToken(['banking:write']);
+    it('should allow access to POST /api/transactions with write scope', async () => {
+      const token = createOAuthToken(['write']);
       
       const response = await request(app)
         .post('/api/transactions')
@@ -452,7 +452,7 @@ describe('Scope-based Authorization Integration Tests', () => {
     it('POST /api/transactions proceeds past auth regardless of scope (no banking:* write scope required)', async () => {
       // The POST /transactions endpoint intentionally omits requireScopes() — see route comment.
       // The request reaches the data layer and fails at account lookup (not scope check).
-      const token = createOAuthToken(['banking:read']);
+      const token = createOAuthToken(['read']);
       
       const response = await request(app)
         .post('/api/transactions')
@@ -469,8 +469,8 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body.error).not.toBe('insufficient_scope');
     });
 
-    it('should test transfer operations with banking:write scope', async () => {
-      const token = createOAuthToken(['banking:write']);
+    it('should test transfer operations with write scope', async () => {
+      const token = createOAuthToken(['write']);
       
       const response = await request(app)
         .post('/api/transactions')
@@ -490,9 +490,9 @@ describe('Scope-based Authorization Integration Tests', () => {
     });
 
     it('POST /api/transactions transfer proceeds to data layer regardless of read-only scope', async () => {
-      // No banking:transaction:write scope required — see route comment.
+      // No transactions:write scope required — see route comment.
       // Request reaches handler and fails at account lookup, not at scope check.
-      const token = createOAuthToken(['banking:read']);
+      const token = createOAuthToken(['read']);
       
       const response = await request(app)
         .post('/api/transactions')
@@ -509,8 +509,8 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body.error).not.toBe('insufficient_scope');
     });
 
-    it('should allow access to PUT /api/transactions/:id with banking:write scope', async () => {
-      const token = createOAuthToken(['banking:write']);
+    it('should allow access to PUT /api/transactions/:id with write scope', async () => {
+      const token = createOAuthToken(['write']);
       
       const response = await request(app)
         .put('/api/transactions/test-transaction-123')
@@ -526,7 +526,7 @@ describe('Scope-based Authorization Integration Tests', () => {
     });
 
     it('should deny access to PUT /api/transactions/:id without required scopes', async () => {
-      const token = createOAuthToken(['banking:read'], { roles: ['admin'] });
+      const token = createOAuthToken(['read'], { roles: ['admin'] });
       
       const response = await request(app)
         .put('/api/transactions/test-transaction-123')
@@ -537,11 +537,11 @@ describe('Scope-based Authorization Integration Tests', () => {
       
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:write']);
+      expect(response.body.requiredScopes).toEqual(['write']);
     });
 
-    it('should allow access to DELETE /api/transactions/:id with banking:write scope', async () => {
-      const token = createOAuthToken(['banking:write']);
+    it('should allow access to DELETE /api/transactions/:id with write scope', async () => {
+      const token = createOAuthToken(['write']);
       
       const response = await request(app)
         .delete('/api/transactions/test-transaction-123')
@@ -554,7 +554,7 @@ describe('Scope-based Authorization Integration Tests', () => {
     });
 
     it('should deny access to DELETE /api/transactions/:id without required scopes', async () => {
-      const token = createOAuthToken(['banking:read'], { roles: ['admin'] });
+      const token = createOAuthToken(['read'], { roles: ['admin'] });
       
       const response = await request(app)
         .delete('/api/transactions/test-transaction-123')
@@ -562,13 +562,13 @@ describe('Scope-based Authorization Integration Tests', () => {
       
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:write']);
+      expect(response.body.requiredScopes).toEqual(['write']);
     });
   });
 
   describe('Multiple Scopes Scenarios', () => {
     it('should allow access when user has multiple scopes including required ones', async () => {
-      const token = createOAuthToken(['banking:read', 'banking:write', 'banking:admin']);
+      const token = createOAuthToken(['read', 'write', 'admin:read']);
       
       const response = await request(app)
         .get('/api/accounts/my')
@@ -579,7 +579,7 @@ describe('Scope-based Authorization Integration Tests', () => {
     });
 
     it('should work with granular scopes', async () => {
-      const token = createOAuthToken(['banking:read', 'banking:write']);
+      const token = createOAuthToken(['read', 'write']);
       
       // Should allow account read access
       const accountResponse = await request(app)
@@ -588,8 +588,8 @@ describe('Scope-based Authorization Integration Tests', () => {
       
       expect(accountResponse.status).toBe(200);
       
-      // Token has banking:read + banking:write; user is owner of test-user-123.
-      // requireScopes(['banking:read']) passes, requireOwnershipOrAdmin passes (ownership).
+      // Token has read + write; user is owner of test-user-123.
+      // requireScopes(['read']) passes, requireOwnershipOrAdmin passes (ownership).
       // Route returns 404 because the user doesn't exist in data store.
       const userResponse = await request(app)
         .get('/api/users/test-user-123')
@@ -599,7 +599,7 @@ describe('Scope-based Authorization Integration Tests', () => {
     });
 
     it('should allow transaction operations with specific transaction scopes', async () => {
-      const token = createOAuthToken(['banking:read', 'banking:write']);
+      const token = createOAuthToken(['read', 'write']);
       
       // Should allow transaction read access
       const readResponse = await request(app)
@@ -628,8 +628,8 @@ describe('Scope-based Authorization Integration Tests', () => {
 
   describe('Admin Scope Authorization', () => {
     describe('OAuth tokens', () => {
-      it('should allow access to admin routes with banking:admin scope', async () => {
-        const token = createOAuthToken(['banking:admin'], { 
+      it('should allow access to admin routes with admin:read scope', async () => {
+        const token = createOAuthToken(['admin:read'], { 
           username: 'admin-user',
           roles: ['admin']
         });
@@ -642,8 +642,8 @@ describe('Scope-based Authorization Integration Tests', () => {
         expect(response.body).toHaveProperty('stats');
       });
 
-      it('should deny access to admin routes without banking:admin scope', async () => {
-        const token = createOAuthToken(['banking:read', 'banking:write'], { 
+      it('should deny access to admin routes without admin:read scope', async () => {
+        const token = createOAuthToken(['read', 'write'], { 
           username: 'regular-user',
           roles: ['user']
         });
@@ -654,7 +654,7 @@ describe('Scope-based Authorization Integration Tests', () => {
         
         expect(response.status).toBe(403);
         expect(response.body.error).toBe('insufficient_scope');
-        expect(response.body.required_access).toBe('admin role or banking:admin scope');
+        expect(response.body.required_access).toBe('admin role or admin:read scope');
       });
 
       it('should deny access to admin routes with no scopes', async () => {
@@ -669,11 +669,11 @@ describe('Scope-based Authorization Integration Tests', () => {
         
         expect(response.status).toBe(403);
         expect(response.body.error).toBe('insufficient_scope');
-        expect(response.body.required_access).toBe('admin role or banking:admin scope');
+        expect(response.body.required_access).toBe('admin role or admin:read scope');
       });
 
-      it('should allow access to all admin endpoints with banking:admin scope', async () => {
-        const token = createOAuthToken(['banking:admin'], { 
+      it('should allow access to all admin endpoints with admin:read scope', async () => {
+        const token = createOAuthToken(['admin:read'], { 
           username: 'admin-user',
           roles: ['admin']
         });
@@ -695,8 +695,8 @@ describe('Scope-based Authorization Integration Tests', () => {
         }
       });
 
-      it('should deny access to DELETE admin endpoints without banking:admin scope', async () => {
-        const token = createOAuthToken(['banking:read'], { 
+      it('should deny access to DELETE admin endpoints without admin:read scope', async () => {
+        const token = createOAuthToken(['read'], { 
           username: 'read-only-user',
           roles: ['user']
         });
@@ -707,17 +707,17 @@ describe('Scope-based Authorization Integration Tests', () => {
         
         expect(response.status).toBe(403);
         expect(response.body.error).toBe('insufficient_scope');
-        expect(response.body.required_access).toBe('admin role or banking:admin scope');
+        expect(response.body.required_access).toBe('admin role or admin:read scope');
       });
     });
 
 
 
     describe('Mixed token scenarios', () => {
-      it('should handle OAuth token with admin role but no banking:admin scope', async () => {
-        const token = createOAuthToken(['banking:read'], { 
+      it('should handle OAuth token with admin role but no admin:read scope', async () => {
+        const token = createOAuthToken(['read'], { 
           username: 'admin-without-scope',
-          roles: ['admin'] // Has admin role but not banking:admin scope
+          roles: ['admin'] // Has admin role but not admin:read scope
         });
         
         const response = await request(app)
@@ -728,13 +728,13 @@ describe('Scope-based Authorization Integration Tests', () => {
         expect(response.status).toBe(403);
         expect(response.body.error).toBe('insufficient_scope');
         expect(response.body.error_description).toContain('Admin access required');
-        expect(response.body.required_access).toBe('admin role or banking:admin scope');
+        expect(response.body.required_access).toBe('admin role or admin:read scope');
       });
 
-      it('should handle OAuth token with banking:admin scope but no admin role', async () => {
-        const token = createOAuthToken(['banking:admin'], { 
+      it('should handle OAuth token with admin:read scope but no admin role', async () => {
+        const token = createOAuthToken(['admin:read'], { 
           username: 'scope-without-role',
-          roles: ['user'] // Has banking:admin scope but not admin role
+          roles: ['user'] // Has admin:read scope but not admin role
         });
         
         const response = await request(app)

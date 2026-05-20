@@ -115,7 +115,7 @@ global.testHelpers = {
     refresh_token: 'test-refresh-token',
     expires_in: 3600,
     token_type: 'Bearer',
-    scope: 'banking:read banking:write',
+    scope: 'read write',
     ...overrides
   }),
   

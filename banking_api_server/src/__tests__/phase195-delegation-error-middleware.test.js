@@ -184,7 +184,7 @@ describe('Phase 195: Real delegationErrorMiddleware (T-01)', () => {
 
   describe('T-01f: Fallback removal verification', () => {
     test('subject-only token is NOT accepted (no fallback)', async () => {
-      const token = makeToken({ sub: 'user-123', scope: 'banking:read banking:write' });
+      const token = makeToken({ sub: 'user-123', scope: 'read write' });
 
       const response = await request(app)
         .post('/api/mcp/tools/call')
@@ -199,7 +199,7 @@ describe('Phase 195: Real delegationErrorMiddleware (T-01)', () => {
       const token = makeToken({
         sub: 'user-123',
         act: { sub: 'agent-456', client_id: 'mcp-gw' },
-        scope: 'banking:read banking:write',
+        scope: 'read write',
       });
 
       const response = await request(app)

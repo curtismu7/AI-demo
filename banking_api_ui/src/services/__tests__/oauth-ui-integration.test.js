@@ -234,8 +234,8 @@ describe.skip('UI OAuth Integration Tests (legacy)', () => {
           data: {
             error: 'insufficient_scope',
             error_description: 'Insufficient permissions',
-            required_scopes: ['banking:admin'],
-            provided_scopes: ['banking:read']
+            required_scopes: ['admin:read'],
+            provided_scopes: ['read']
           }
         }
       };
@@ -259,8 +259,8 @@ describe.skip('UI OAuth Integration Tests (legacy)', () => {
         fail('Should have thrown an error');
       } catch (error) {
         expect(error.message).toBe('Insufficient permissions for this operation');
-        expect(error.requiredScopes).toEqual(['banking:admin']);
-        expect(error.providedScopes).toEqual(['banking:read']);
+        expect(error.requiredScopes).toEqual(['admin:read']);
+        expect(error.providedScopes).toEqual(['read']);
       }
     });
   });
@@ -411,10 +411,10 @@ describe.skip('UI OAuth Integration Tests (legacy)', () => {
           status: 403,
           data: {
             error: 'insufficient_scope',
-            error_description: 'Access denied. At least one of the following scopes is required: banking:admin',
-            required_scopes: ['banking:admin'],
-            provided_scopes: ['banking:read'],
-            missing_scopes: ['banking:admin'],
+            error_description: 'Access denied. At least one of the following scopes is required: admin:read',
+            required_scopes: ['admin:read'],
+            provided_scopes: ['read'],
+            missing_scopes: ['admin:read'],
             hint: 'Contact your administrator to request additional permissions'
           }
         }
@@ -440,8 +440,8 @@ describe.skip('UI OAuth Integration Tests (legacy)', () => {
       } catch (error) {
         expect(error.message).toBe('Insufficient permissions for this operation');
         expect(error.response.data.error).toBe('insufficient_scope');
-        expect(error.requiredScopes).toEqual(['banking:admin']);
-        expect(error.providedScopes).toEqual(['banking:read']);
+        expect(error.requiredScopes).toEqual(['admin:read']);
+        expect(error.providedScopes).toEqual(['read']);
       }
     });
 

@@ -370,7 +370,7 @@ Tests to add in Phase 264 execution:
 
 WWW-Authenticate header format:
 ```
-Bearer realm="PingOne", resource_metadata="https://mcp-gw.bxf.com/.well-known/mcp-server"
+Bearer realm="PingOne", resource_metadata="https://mcp-gw.ping.demo/.well-known/mcp-server"
 ```
 
 (Only in mock gateway responses; BFF responses unchanged)

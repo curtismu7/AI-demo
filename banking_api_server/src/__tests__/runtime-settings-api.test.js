@@ -7,7 +7,7 @@
  *   PUT  /api/admin/settings  — updates one or more settings at runtime
  *
  * Security requirements:
- *   - Both routes require banking:admin scope (or admin role)
+ *   - Both routes require admin:read scope (or admin role)
  *   - Non-admin requests should receive 403
  *   - Unknown keys in PUT body are silently ignored
  *   - Numeric fields are type-coerced and validated
@@ -40,7 +40,7 @@ jest.mock('../../middleware/auth', () => ({
     if (req.user.role === 'admin') return next();
     const userScopes = req.user.scopes || [];
     const arr = Array.isArray(requiredScopes) ? requiredScopes : [requiredScopes];
-    const ok = arr.some((s) => userScopes.includes(s)) || userScopes.includes('banking:admin');
+    const ok = arr.some((s) => userScopes.includes(s)) || userScopes.includes('admin:read');
     if (!ok) return res.status(403).json({ error: 'insufficient_scope' });
     return next();
   },
@@ -79,7 +79,7 @@ const adminUser = () =>
     username: 'admin',
     email: 'admin@bank.com',
     role: 'admin',
-    scopes: ['banking:admin'],
+    scopes: ['admin:read'],
     acr: 'Multi_factor',
   });
 
@@ -89,7 +89,7 @@ const customerUser = () =>
     username: 'customer',
     email: 'c@bank.com',
     role: 'user',
-    scopes: ['banking:read'],
+    scopes: ['read'],
     acr: null,
   });
 

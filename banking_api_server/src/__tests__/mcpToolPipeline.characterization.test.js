@@ -17,7 +17,7 @@ function makeDeps(over = {}) {
     resolveMcpAccessTokenWithEvents: jest.fn(async () => ({ token: 't', tokenEvents: [], userSub: 'u1' })),
     evaluateMcpFirstToolGate: jest.fn(async () => ({ ran: true, permit: true, evaluation: { decision: 'PERMIT' } })),
     getSessionAccessToken: jest.fn(() => 'sess-tok'),
-    introspectToken: jest.fn(async () => ({ active: true, sub: 'u1', scope: 'banking:read', exp: 9999999999 })),
+    introspectToken: jest.fn(async () => ({ active: true, sub: 'u1', scope: 'read', exp: 9999999999 })),
     callToolLocal: jest.fn(async () => ({ content: [{ text: 'local-ok' }] })),
     mcpCallTool: jest.fn(async () => ({ content: [{ text: 'remote-ok' }] })),
     callToolViaGateway: jest.fn(async () => ({ result: { content: [{ text: 'gw-ok' }] }, gwAuditTrail: null })),
@@ -82,16 +82,16 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
 
   test('missing_exchange_scopes → block 403 with structured config-fix body', async () => {
     const err = Object.assign(new Error('need write'), {
-      code: 'missing_exchange_scopes', missingScopes: ['banking:write'],
-      userScopes: 'banking:read', requiredScopes: 'banking:write', tokenEvents: [{ id: 'x' }],
+      code: 'missing_exchange_scopes', missingScopes: ['write'],
+      userScopes: 'read', requiredScopes: 'write', tokenEvents: [{ id: 'x' }],
     });
     const deps = makeDeps({ resolveMcpAccessTokenWithEvents: jest.fn(async () => { throw err; }) });
     const outcome = await runMcpToolPipeline(makeCtx({ deps }));
     expect(outcome).toMatchObject({
       kind: 'block', httpStatus: 403,
       body: { error: 'missing_exchange_scopes', message: 'need write',
-              missingScopes: ['banking:write'], userScopes: 'banking:read',
-              requiredScopes: 'banking:write', tokenEvents: [{ id: 'x' }] },
+              missingScopes: ['write'], userScopes: 'read',
+              requiredScopes: 'write', tokenEvents: [{ id: 'x' }] },
     });
   });
 
@@ -235,7 +235,7 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
     deps.config = { ...deps.config, useGateway: true, gatewayHttpUrl: 'http://gw' };
     deps.callToolViaGateway = jest.fn(async () => ({
       result: { content: [{ text: 'gw-ok' }] },
-      gwAuditTrail: { introspection: { active: true, sub: 'u1' }, authorize: { decision: 'PERMIT' }, exchange: { targetAud: 'mcp-server.bxf.com' } },
+      gwAuditTrail: { introspection: { active: true, sub: 'u1' }, authorize: { decision: 'PERMIT' }, exchange: { targetAud: 'mcpserver.ping.demo' } },
     }));
     const outcome = await runMcpToolPipeline(makeCtx({ deps }));
     const ids = outcome.body.tokenEvents.map(e => e.id);
@@ -244,7 +244,7 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
 
   test('mcp_insufficient_scope thrown by remote → block 403 mcp_scope_denied, NO local fallback', async () => {
     const deps = makeDeps();
-    deps.mcpCallTool = jest.fn(async () => { throw Object.assign(new Error('scope'), { code: 'mcp_insufficient_scope', mcpErrorData: { missingScopes: ['banking:write'] } }); });
+    deps.mcpCallTool = jest.fn(async () => { throw Object.assign(new Error('scope'), { code: 'mcp_insufficient_scope', mcpErrorData: { missingScopes: ['write'] } }); });
     const outcome = await runMcpToolPipeline(makeCtx({ deps }));
     expect(outcome).toMatchObject({ kind: 'block', httpStatus: 403, body: { error: 'mcp_scope_denied' } });
     expect(deps.callToolLocal).not.toHaveBeenCalled();

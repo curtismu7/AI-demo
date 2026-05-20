@@ -135,9 +135,9 @@ describe('GET /api/admin/authorize/config', () => {
 
   it('scopeDefinitions contains all three banking scopes', async () => {
     const res = await request(buildApp()).get('/api/admin/authorize/config');
-    expect(res.body.scopeDefinitions).toHaveProperty('banking:read');
-    expect(res.body.scopeDefinitions).toHaveProperty('banking:write');
-    expect(res.body.scopeDefinitions).toHaveProperty('banking:mcp:invoke');
+    expect(res.body.scopeDefinitions).toHaveProperty('read');
+    expect(res.body.scopeDefinitions).toHaveProperty('write');
+    expect(res.body.scopeDefinitions).toHaveProperty('mcp:invoke');
   });
 
   it('flags section reflects configStore boolean values', async () => {

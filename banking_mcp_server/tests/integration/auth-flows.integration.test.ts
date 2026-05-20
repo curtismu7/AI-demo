@@ -80,7 +80,7 @@ describe('Authentication Flows Integration Tests', () => {
         data: {
           active: true,
           client_id: 'test-client-id',
-          scope: 'banking:read banking:write',
+          scope: 'read write',
           exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
         }
       };
@@ -94,7 +94,7 @@ describe('Authentication Flows Integration Tests', () => {
       // Assert
       expect(agentTokenInfo).toMatchObject({
         clientId: 'test-client-id',
-        scopes: ['banking:read', 'banking:write'],
+        scopes: ['read', 'write'],
         isValid: true
       });
       expect(agentTokenInfo.tokenHash).toBeDefined();
@@ -141,7 +141,7 @@ describe('Authentication Flows Integration Tests', () => {
         data: {
           active: true,
           client_id: 'test-client-id',
-          scope: 'banking:read',
+          scope: 'read',
           exp: Math.floor(Date.now() / 1000) - 3600 // 1 hour ago (expired)
         }
       };
@@ -161,7 +161,7 @@ describe('Authentication Flows Integration Tests', () => {
         data: {
           active: true,
           client_id: 'test-client-id',
-          scope: 'banking:read banking:accounts:read',
+          scope: 'read accounts:read',
           exp: Math.floor(Date.now() / 1000) + 3600
         }
       };
@@ -169,13 +169,13 @@ describe('Authentication Flows Integration Tests', () => {
       mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
 
       // Act & Assert
-      const hasReadScope = await authManager.validateTokenScopes(testAgentToken, ['banking:read']);
+      const hasReadScope = await authManager.validateTokenScopes(testAgentToken, ['read']);
       expect(hasReadScope).toBe(true);
 
       // Reset mock for second call
       mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
       
-      const hasWriteScope = await authManager.validateTokenScopes(testAgentToken, ['banking:write']);
+      const hasWriteScope = await authManager.validateTokenScopes(testAgentToken, ['write']);
       expect(hasWriteScope).toBe(false);
 
       // Reset mock for third call
@@ -183,7 +183,7 @@ describe('Authentication Flows Integration Tests', () => {
       
       const hasMultipleScopes = await authManager.validateTokenScopes(
         testAgentToken, 
-        ['banking:read', 'banking:accounts:read']
+        ['read', 'accounts:read']
       );
       expect(hasMultipleScopes).toBe(true);
     });
@@ -200,7 +200,7 @@ describe('Authentication Flows Integration Tests', () => {
         data: {
           active: true,
           client_id: 'test-client-id',
-          scope: 'banking:read banking:write',
+          scope: 'read write',
           exp: Math.floor(Date.now() / 1000) + 3600
         }
       };
@@ -214,7 +214,7 @@ describe('Authentication Flows Integration Tests', () => {
       // Arrange
       const authOptions = {
         sessionId: testSession.sessionId,
-        scopes: ['banking:accounts:read', 'banking:transactions:read'],
+        scopes: ['accounts:read', 'transactions:read'],
         redirectUri: 'http://localhost:3000/callback'
       };
 
@@ -225,7 +225,7 @@ describe('Authentication Flows Integration Tests', () => {
       expect(authRequest).toMatchObject({
         authorizationUrl: expect.stringContaining(testConfig.baseUrl + testConfig.authorizationEndpoint),
         state: expect.any(String),
-        scope: 'banking:accounts:read banking:transactions:read',
+        scope: 'accounts:read transactions:read',
         sessionId: testSession.sessionId,
         expiresAt: expect.any(Date)
       });
@@ -234,7 +234,7 @@ describe('Authentication Flows Integration Tests', () => {
       expect(authRequest.authorizationUrl).toContain('response_type=code');
       expect(authRequest.authorizationUrl).toContain('state=' + authRequest.state);
       const scopeFromUrl = new URL(authRequest.authorizationUrl).searchParams.get('scope');
-      expect(scopeFromUrl).toBe('banking:accounts:read banking:transactions:read');
+      expect(scopeFromUrl).toBe('accounts:read transactions:read');
     });
 
     it('should exchange authorization code for user tokens successfully', async () => {
@@ -247,7 +247,7 @@ describe('Authentication Flows Integration Tests', () => {
         refreshToken: 'user-refresh-token-12345',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read banking:transactions:read',
+        scope: 'accounts:read transactions:read',
         issuedAt: new Date()
       };
 
@@ -272,7 +272,7 @@ describe('Authentication Flows Integration Tests', () => {
         refreshToken: mockUserTokens.refreshToken,
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read banking:transactions:read',
+        scope: 'accounts:read transactions:read',
         issuedAt: expect.any(Date)
       });
 
@@ -313,7 +313,7 @@ describe('Authentication Flows Integration Tests', () => {
           refresh_token: 'new-user-refresh-token',
           token_type: 'Bearer',
           expires_in: 3600,
-          scope: 'banking:accounts:read banking:transactions:read'
+          scope: 'accounts:read transactions:read'
         }
       };
 
@@ -328,7 +328,7 @@ describe('Authentication Flows Integration Tests', () => {
         refreshToken: 'new-user-refresh-token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read banking:transactions:read',
+        scope: 'accounts:read transactions:read',
         issuedAt: expect.any(Date)
       });
 
@@ -352,7 +352,7 @@ describe('Authentication Flows Integration Tests', () => {
         data: {
           active: true,
           client_id: 'test-client-id',
-          scope: 'banking:read banking:write',
+          scope: 'read write',
           exp: Math.floor(Date.now() / 1000) + 3600
         }
       };
@@ -367,7 +367,7 @@ describe('Authentication Flows Integration Tests', () => {
         refreshToken: 'correlated-user-refresh-token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read banking:transactions:read',
+        scope: 'accounts:read transactions:read',
         issuedAt: new Date()
       };
     });
@@ -450,7 +450,7 @@ describe('Authentication Flows Integration Tests', () => {
       // Arrange - Generate authorization request
       const authOptions = {
         sessionId: testSession.sessionId,
-        scopes: ['banking:accounts:read'],
+        scopes: ['accounts:read'],
         redirectUri: 'http://localhost:3000/callback'
       };
 
@@ -583,7 +583,7 @@ describe('Authentication Flows Integration Tests', () => {
         data: {
           active: true,
           client_id: 'test-client-id',
-          scope: 'banking:read banking:write',
+          scope: 'read write',
           exp: Math.floor(Date.now() / 1000) + 3600
         }
       });
@@ -596,7 +596,7 @@ describe('Authentication Flows Integration Tests', () => {
         refreshToken: 'valid-refresh-token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:read',
+        scope: 'read',
         issuedAt: new Date()
       } as UserTokens;
 
@@ -619,7 +619,7 @@ describe('Authentication Flows Integration Tests', () => {
           data: {
             active: true,
             client_id: 'test-client-id',
-            scope: 'banking:read banking:write',
+            scope: 'read write',
             exp: Math.floor(Date.now() / 1000) + 3600
           }
         });
@@ -663,7 +663,7 @@ describe('Authentication Flows Integration Tests', () => {
         data: {
           active: true,
           client_id: 'test-client-id',
-          scope: 'banking:read banking:write',
+          scope: 'read write',
           exp: Math.floor(Date.now() / 1000) + 3600
         }
       };
@@ -677,7 +677,7 @@ describe('Authentication Flows Integration Tests', () => {
         refreshToken: 'concurrent-user-refresh-token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         issuedAt: new Date()
       };
 

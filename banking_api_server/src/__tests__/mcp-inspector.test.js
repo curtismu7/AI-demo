@@ -59,7 +59,7 @@ const app = require('../../server');
 const configStore = require('../../services/configStore');
 
 /** Builds a JWT-shaped string that passes decode-only validation in tests. */
-function bearerToken(scopes = ['banking:read']) {
+function bearerToken(scopes = ['read']) {
   const payload = {
     sub: 'inspector-test-user',
     preferred_username: 'inspector',
@@ -99,6 +99,8 @@ describe('MCP Inspector routes', () => {
     });
     origGetEffective = configStore.getEffective.bind(configStore);
     getEffectiveSpy = jest.spyOn(configStore, 'getEffective').mockImplementation((key) => {
+      // Inspector context route checks 'mcp_resource_uri' for tokenExchangeEnabled
+      if (key === 'mcp_resource_uri') return '';
       if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return '';
       return origGetEffective(key);
     });
@@ -170,7 +172,7 @@ describe('MCP Inspector routes', () => {
   });
 
   it('POST /api/mcp/inspector/invoke calls mcpCallTool with session token when exchange off', async () => {
-    const token = bearerToken(['banking:read', 'banking:read']);
+    const token = bearerToken(['read', 'read']);
 
     const res = await request(app)
       .post('/api/mcp/inspector/invoke')
@@ -194,7 +196,7 @@ describe('MCP Inspector routes', () => {
     // Configure resolveMcpAccessTokenWithEvents to call the exchange mock so the test
     // can verify the RFC 8693 exchange path without executing the real service.
     mockResolveMcpAccessTokenWithEvents.mockImplementation(async (_req, _tool) => {
-      const exchanged = await mockPerformTokenExchange(token, 'https://mcp-resource.example/aud', ['banking:read']);
+      const exchanged = await mockPerformTokenExchange(token, 'https://mcp-resource.example/aud', ['read']);
       return { token: exchanged, userSub: 'inspector-test-user' };
     });
 
@@ -207,7 +209,7 @@ describe('MCP Inspector routes', () => {
     expect(mockPerformTokenExchange).toHaveBeenCalledWith(
       token,
       'https://mcp-resource.example/aud',
-      ['banking:read']
+      ['read']
     );
     expect(mockCall).toHaveBeenCalledWith('get_my_accounts', {}, `exchanged:${token}`, 'inspector-test-user');
   });

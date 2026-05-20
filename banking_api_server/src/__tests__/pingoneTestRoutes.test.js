@@ -67,7 +67,7 @@ jest.mock('../../middleware/auth', () => ({
     if (_authOverride.user) {
       req.user = _authOverride.user;
     } else {
-      req.user = { id: 'test-admin-id', username: 'admin', role: 'admin', scopes: ['banking:admin'] };
+      req.user = { id: 'test-admin-id', username: 'admin', role: 'admin', scopes: ['admin:read'] };
     }
     req.session = req.session || {};
     req.session.user = req.user;
@@ -106,17 +106,18 @@ const MOCK_APPS = [
 ];
 
 const MOCK_RS = [
-  { id: 'rs-1', name: 'Super Banking AI Agent', audience: 'https://ai-agent.pingdemo.com' },
+  // Audience must match DEFAULT_CONFIG.pingone_audience_enduser so the route can find the RS
+  { id: 'rs-1', name: 'Super Banking Resource Server', audience: 'https://ai-agent.pingdemo.com' },
   { id: 'rs-2', name: 'Super Banking MCP Server', audience: 'https://mcp-server.pingdemo.com' },
 ];
 
 const BANKING_SCOPES = [
-  { name: 'banking:read' }, { name: 'banking:write' },
-  { name: 'banking:admin' }, { name: 'banking:sensitive' }, { name: 'banking:ai:agent' },
+  { name: 'read' }, { name: 'write' },
+  { name: 'admin' }, { name: 'sensitive' }, { name: 'ai:agent' },
 ];
 
 const MCP_SCOPES = [
-  { name: 'banking:read' }, { name: 'banking:write' }, { name: 'banking:mcp:invoke' },
+  { name: 'read' }, { name: 'write' }, { name: 'mcp:invoke' },
 ];
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -131,7 +132,7 @@ describe('pingoneTestRoutes — new Phase 151 endpoints', () => {
     configStore.ensureInitialized.mockResolvedValue(undefined);
     configStore.getEffective.mockImplementation(key => DEFAULT_CONFIG[key] || null);
     mockAxios.patch.mockResolvedValue({ data: {} });
-    process.env.MCP_TOKEN_EXCHANGE_SCOPES = 'banking:read banking:write banking:mcp:invoke';
+    process.env.MCP_TOKEN_EXCHANGE_SCOPES = 'read write mcp:invoke';
   });
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -258,9 +259,9 @@ describe('pingoneTestRoutes — new Phase 151 endpoints', () => {
 
     it('adds only missing scopes when RS exists but some scopes absent', async () => {
       managementService.getResourceServers.mockResolvedValue({ resourceServers: MOCK_RS });
-      // banking RS missing banking:admin and banking:sensitive
+      // banking RS missing admin and sensitive
       managementService.getScopes
-        .mockResolvedValueOnce({ scopes: [{ name: 'banking:read' }, { name: 'banking:write' }, { name: 'banking:ai:agent' }] })
+        .mockResolvedValueOnce({ scopes: [{ name: 'read' }, { name: 'write' }, { name: 'ai:agent' }] })
         .mockResolvedValueOnce({ scopes: MCP_SCOPES });
       managementService.createScopes.mockResolvedValue([{ success: true }]);
 
@@ -327,9 +328,9 @@ describe('pingoneTestRoutes — new Phase 151 endpoints', () => {
 
     it('adds only missing canonical scopes (non-destructive)', async () => {
       managementService.getResourceServers.mockResolvedValue({ resourceServers: MOCK_RS });
-      // banking RS has only banking:read
+      // banking RS has only read
       managementService.getScopes
-        .mockResolvedValueOnce({ scopes: [{ name: 'banking:read' }] })
+        .mockResolvedValueOnce({ scopes: [{ name: 'read' }] })
         .mockResolvedValueOnce({ scopes: MCP_SCOPES });
       managementService.createScopes.mockResolvedValue([{ success: true }]);
 
@@ -337,11 +338,11 @@ describe('pingoneTestRoutes — new Phase 151 endpoints', () => {
       expect(res.status).toBe(200);
 
       const bankingResult = res.body.results.find(r => r.rs && r.rs.toLowerCase().includes('banking'));
-      expect(bankingResult.added).toContain('banking:write');
-      expect(bankingResult.added).toContain('banking:admin');
-      expect(bankingResult.added).toContain('banking:sensitive');
-      expect(bankingResult.added).toContain('banking:ai:agent');
-      expect(bankingResult.added).not.toContain('banking:read'); // already present
+      expect(bankingResult.added).toContain('write');
+      expect(bankingResult.added).toContain('admin');
+      expect(bankingResult.added).toContain('sensitive');
+      expect(bankingResult.added).toContain('ai:agent');
+      expect(bankingResult.added).not.toContain('read'); // already present
 
       // createScopes called 4 times for the 4 missing banking scopes
       expect(managementService.createScopes).toHaveBeenCalledTimes(4);
@@ -483,7 +484,7 @@ describe('pingoneTestRoutes — new Phase 151 endpoints', () => {
 
     it('returns error when no user ID is available (no session, no body)', async () => {
       // Override auth to provide user with no ID
-      _authOverride.user = { username: 'noid', role: 'admin', scopes: ['banking:admin'] };
+      _authOverride.user = { username: 'noid', role: 'admin', scopes: ['admin:read'] };
 
       const res = await request(app)
         .post('/api/pingone-test/update-user-spel')
@@ -655,7 +656,7 @@ describe('pingoneTestRoutes — new Phase 151 endpoints', () => {
       managementService.getScopes.mockResolvedValue({ scopes: MCP_SCOPES });
       managementService.getApplications.mockResolvedValue({ success: true, applications: MOCK_APPS });
       managementService.getApplicationGrants.mockResolvedValue({
-        grants: [{ resourceId: 'rs-2', scopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'] }],
+        grants: [{ resourceId: 'rs-2', scopes: ['read', 'write', 'mcp:invoke'] }],
       });
 
       const res = await request(app).get('/api/pingone-test/diagnose-mcp-exchange');
@@ -685,7 +686,7 @@ describe('pingoneTestRoutes — new Phase 151 endpoints', () => {
       managementService.getScopes.mockResolvedValue({ scopes: MCP_SCOPES });
       managementService.getApplications.mockResolvedValue({ success: true, applications: MOCK_APPS });
       managementService.getApplicationGrants.mockResolvedValue({
-        grants: [{ resourceId: 'rs-2', scopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'] }],
+        grants: [{ resourceId: 'rs-2', scopes: ['read', 'write', 'mcp:invoke'] }],
       });
 
       const res = await request(app).get('/api/pingone-test/diagnose-mcp-exchange');
@@ -721,7 +722,7 @@ describe('pingoneTestRoutes — new Phase 151 endpoints', () => {
       expect(managementService.enableResourceServer).toHaveBeenCalledWith(
         'app-3', // PingOne application id (not the oidcOptions.clientId 'mcp-cid')
         'rs-2',  // MCP RS id
-        expect.arrayContaining(['banking:read', 'banking:write', 'banking:mcp:invoke'])
+        expect.arrayContaining(['read', 'write', 'mcp:invoke'])
       );
 
       const assignStep = res.body.steps.find(s => s.step === 'assign-to-exchanger-app');

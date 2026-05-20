@@ -45,7 +45,7 @@ function cfgWith(secret: string): GatewayConfig {
     bffInternalIdTokenUrl: 'http://localhost:3001/internal/id-token',
     bffInternalSecret: secret,
     bankingResourceServerBaseUrl: 'http://localhost:3001',
-    bankingResourceServerResourceUri: 'https://banking-resource-server.bxf.com',
+    bankingResourceServerResourceUri: 'https://banking-resource-server.ping.demo',
   } as GatewayConfig;
 }
 

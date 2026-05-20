@@ -128,7 +128,7 @@ describe('Banking Operations Integration Tests', () => {
       refreshToken: 'test-user-refresh-token',
       tokenType: 'Bearer',
       expiresIn: 3600,
-      scope: 'banking:read banking:write banking:sensitive:read',
+      scope: 'read write sensitive:read',
       issuedAt: new Date()
     };
   });
@@ -160,7 +160,7 @@ describe('Banking Operations Integration Tests', () => {
       data: {
         active: true,
         client_id: 'test-client-id',
-        scope: 'banking:read banking:write',
+        scope: 'read write',
         exp: Math.floor(Date.now() / 1000) + 3600
       }
     });
@@ -605,7 +605,7 @@ describe('Banking Operations Integration Tests', () => {
         data: {
           active: true,
           client_id: 'test-client-id',
-          scope: 'banking:read banking:write',
+          scope: 'read write',
           exp: Math.floor(Date.now() / 1000) + 3600
         }
       });
@@ -684,7 +684,7 @@ describe('Banking Operations Integration Tests', () => {
           refresh_token: 'new-user-refresh-token',
           token_type: 'Bearer',
           expires_in: 3600,
-          scope: 'banking:read banking:write banking:sensitive:read'
+          scope: 'read write sensitive:read'
         }
       };
 
@@ -693,7 +693,7 @@ describe('Banking Operations Integration Tests', () => {
       // Create a pending authorization request — Phase 210+ flat scope model.
       const authRequest = authManager.generateAuthorizationRequest({
         sessionId: testSession.sessionId,
-        scopes: ['banking:read'],
+        scopes: ['read'],
         redirectUri: 'http://localhost:3000/callback'
       });
 
@@ -846,7 +846,7 @@ describe('Banking Operations Integration Tests', () => {
         data: {
           active: true,
           client_id: 'test-client-id',
-          scope: 'banking:read banking:write',
+          scope: 'read write',
           exp: Math.floor(Date.now() / 1000) + 3600
         }
       });

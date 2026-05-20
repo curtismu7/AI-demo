@@ -140,7 +140,7 @@ describe('scopePolicyEngine + scopeAuditService derive from manifest', () => {
     const manifestScopes = new Set(Object.keys(topo._manifest().scopes));
     const engineScopes = engine.getAllScopes().map(x => (typeof x === 'string' ? x : x.scope));
     // v2 SSOT: admin:*/users: ARE in the manifest now (category:'admin').
-    // Only banking:transactions:write remains engine-local — no
+    // Only transactions:write remains engine-local — no
     // tool/app/resource references it, so it stays out of the topology.
     const NON_MANIFEST = new Set(['transactions:write']);
     for (const s of engineScopes) {
@@ -203,13 +203,13 @@ describe('generated scope doc is in sync', () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// FOOLPROOF GUARD (added after the banking:transfer drift incident, 2026-05-18)
+// FOOLPROOF GUARD (added after the write drift incident, 2026-05-18)
 //
 // Root cause of that incident: scope-topology.json is the SSOT for what
 // PingOne *grants* an app (pingoneProvisionService derives from it), but the
 // *OAuth /authorize request* is built by a SEPARATE hardcoded list in
 // config/oauthUser.js (+ config/oauth.js for admin). Nothing tied the two
-// together, so PingOne granted the User App banking:transfer while the BFF
+// together, so PingOne granted the User App write while the BFF
 // never requested it → user token lacked it → RFC 8693 intersection dropped
 // it → gateway 403'd create_transfer.
 //
@@ -243,7 +243,7 @@ describe('GUARD: OAuth /authorize requested scopes match topology app grants', (
 
   test('Super Banking User App: oauthUser.js authorize scopes ⊇ topology grant', () => {
     const prevEnv = process.env.ENDUSER_AUDIENCE;
-    process.env.ENDUSER_AUDIENCE = 'api.bxf.com';
+    process.env.ENDUSER_AUDIENCE = 'enduser.ping.demo';
     jest.resetModules();
     try {
       const userOauth = require('../../config/oauthUser');

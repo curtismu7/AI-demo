@@ -48,7 +48,7 @@ describe('AuthorizationManager', () => {
         token_type: 'Bearer',
         expires_in: 3600,
         refresh_token: 'refresh-token-123',
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
 
       mockAxiosInstance.post.mockResolvedValue({ data: mockTokenResponse });
@@ -60,7 +60,7 @@ describe('AuthorizationManager', () => {
         refreshToken: 'refresh-token-123',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       });
       expect(result.issuedAt).toBeInstanceOf(Date);
 
@@ -152,7 +152,7 @@ describe('AuthorizationManager', () => {
         token_type: 'Bearer',
         expires_in: 3600,
         refresh_token: 'new-refresh-token-123',
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
 
       mockAxiosInstance.post.mockResolvedValue({ data: mockTokenResponse });
@@ -164,7 +164,7 @@ describe('AuthorizationManager', () => {
         refreshToken: 'new-refresh-token-123',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       });
       expect(result.issuedAt).toBeInstanceOf(Date);
 
@@ -239,11 +239,11 @@ describe('AuthorizationManager', () => {
         refreshToken: 'refresh',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:read banking:write admin:users',
+        scope: 'read write admin:users',
         issuedAt: new Date()
       };
 
-      const result = authorizationManager.validateBankingScopes(userTokens, ['banking:read', 'banking:write']);
+      const result = authorizationManager.validateBankingScopes(userTokens, ['read', 'write']);
 
       expect(result).toBe(true);
     });
@@ -254,11 +254,11 @@ describe('AuthorizationManager', () => {
         refreshToken: 'refresh',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:read',
+        scope: 'read',
         issuedAt: new Date()
       };
 
-      const result = authorizationManager.validateBankingScopes(userTokens, ['banking:read', 'banking:write']);
+      const result = authorizationManager.validateBankingScopes(userTokens, ['read', 'write']);
 
       expect(result).toBe(false);
     });
@@ -273,7 +273,7 @@ describe('AuthorizationManager', () => {
         issuedAt: new Date()
       };
 
-      const result = authorizationManager.validateBankingScopes(userTokens, ['banking:read']);
+      const result = authorizationManager.validateBankingScopes(userTokens, ['read']);
 
       expect(result).toBe(false);
     });
@@ -286,7 +286,7 @@ describe('AuthorizationManager', () => {
         refreshToken: 'refresh',
         tokenType: 'Bearer',
         expiresIn: 3600, // 1 hour
-        scope: 'banking:read',
+        scope: 'read',
         issuedAt: new Date() // Just issued
       };
 
@@ -301,7 +301,7 @@ describe('AuthorizationManager', () => {
         refreshToken: 'refresh',
         tokenType: 'Bearer',
         expiresIn: 3600, // 1 hour
-        scope: 'banking:read',
+        scope: 'read',
         issuedAt: new Date(Date.now() - 2 * 60 * 60 * 1000) // Issued 2 hours ago
       };
 
@@ -316,7 +316,7 @@ describe('AuthorizationManager', () => {
         refreshToken: 'refresh',
         tokenType: 'Bearer',
         expiresIn: 300, // 5 minutes
-        scope: 'banking:read',
+        scope: 'read',
         issuedAt: new Date(Date.now() - 2 * 60 * 1000) // Issued 2 minutes ago (3 minutes left)
       };
 
@@ -333,7 +333,7 @@ describe('AuthorizationManager', () => {
         refreshToken: 'refresh',
         tokenType: 'Bearer',
         expiresIn: 3600, // 1 hour
-        scope: 'banking:read',
+        scope: 'read',
         issuedAt: new Date(Date.now() - 10 * 60 * 1000) // Issued 10 minutes ago
       };
 
@@ -349,7 +349,7 @@ describe('AuthorizationManager', () => {
         refreshToken: 'refresh',
         tokenType: 'Bearer',
         expiresIn: 3600, // 1 hour
-        scope: 'banking:read',
+        scope: 'read',
         issuedAt: new Date(Date.now() - 2 * 60 * 60 * 1000) // Issued 2 hours ago
       };
 

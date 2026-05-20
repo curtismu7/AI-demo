@@ -112,7 +112,7 @@ describe('RFC 9728 Educational Content Verification', () => {
         ok: true,
         json: async () => ({
           resource: 'https://dev-api.example.com/api',
-          scopes_supported: ['banking:read', 'banking:write'],
+          scopes_supported: ['read', 'write'],
           authorization_servers: ['https://dev-auth.example.com']
         })
       });
@@ -137,7 +137,7 @@ describe('RFC 9728 Educational Content Verification', () => {
         ok: true,
         json: async () => ({
           resource: 'https://api.example.com/api',
-          scopes_supported: ['banking:read', 'banking:write'],
+          scopes_supported: ['read', 'write'],
           authorization_servers: ['https://auth.example.com']
         })
       });
@@ -211,12 +211,12 @@ describe('RFC 9728 Educational Content Verification', () => {
           resource: 'https://banking-api.ping.demo/api',
           authorization_servers: ['https://auth.pingone.com/123456/as'],
           scopes_supported: [
-            'banking:read',
-            'banking:write',
-            'banking:admin',
-            'banking:read',
-            'banking:read',
-            'banking:write'
+            'read',
+            'write',
+            'admin:read',
+            'read',
+            'read',
+            'write'
           ],
           bearer_methods_supported: ['header'],
           resource_name: 'Super Banking Banking API',
@@ -229,8 +229,8 @@ describe('RFC 9728 Educational Content Verification', () => {
 
       // Verify educational content matches actual implementation
       expect(actualMetadata.resource).toBe('https://banking-api.ping.demo/api');
-      expect(actualMetadata.scopes_supported).toContain('banking:read');
-      expect(actualMetadata.scopes_supported).toContain('banking:write');
+      expect(actualMetadata.scopes_supported).toContain('read');
+      expect(actualMetadata.scopes_supported).toContain('write');
       expect(actualMetadata.bearer_methods_supported).toEqual(['header']);
       expect(actualMetadata.resource_name).toBe('Super Banking Banking API');
     });
@@ -242,7 +242,7 @@ describe('RFC 9728 Educational Content Verification', () => {
         json: async () => ({
           resource: 'https://banking-api.ping.demo/api',
           authorization_servers: ['https://auth.pingone.com/123456/as'],
-          scopes_supported: ['banking:read', 'banking:write']
+          scopes_supported: ['read', 'write']
         })
       });
 
@@ -268,7 +268,7 @@ describe('RFC 9728 Educational Content Verification', () => {
         json: async () => ({
           resource: 'https://banking-api.ping.demo/api',
           authorization_servers: ['https://auth.pingone.com/123456/as'],
-          scopes_supported: ['banking:read', 'banking:write']
+          scopes_supported: ['read', 'write']
         })
       });
 

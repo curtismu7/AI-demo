@@ -119,9 +119,9 @@ beforeAll(() => {
   runtimeSettings.update({ stepUpEnabled: false, authorizeEnabled: false });
 });
 
-const adminUser  = () => JSON.stringify({ id: 'admin-1', role: 'admin',  scopes: ['banking:write', 'banking:read'] });
-const ownerUser  = () => JSON.stringify({ id: 'user-1',  role: 'user',   scopes: ['banking:write', 'banking:read'], acr: 'Multi_factor' });
-const otherUser  = () => JSON.stringify({ id: 'user-2',  role: 'user',   scopes: ['banking:write', 'banking:read'], acr: 'Multi_factor' });
+const adminUser  = () => JSON.stringify({ id: 'admin-1', role: 'admin',  scopes: ['write', 'read'] });
+const ownerUser  = () => JSON.stringify({ id: 'user-1',  role: 'user',   scopes: ['write', 'read'], acr: 'Multi_factor' });
+const otherUser  = () => JSON.stringify({ id: 'user-2',  role: 'user',   scopes: ['write', 'read'], acr: 'Multi_factor' });
 
 // ── GET /:id ──────────────────────────────────────────────────────────────────
 

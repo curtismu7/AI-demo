@@ -88,7 +88,7 @@ beforeEach(() => {
 // A valid-looking JWT: header.payload.sig (base64url-encoded JSON parts)
 const STUB_TOKEN = [
   Buffer.from(JSON.stringify({ alg: 'RS256' })).toString('base64url'),
-  Buffer.from(JSON.stringify({ sub: 'u1', scope: 'banking:read' })).toString('base64url'),
+  Buffer.from(JSON.stringify({ sub: 'u1', scope: 'read' })).toString('base64url'),
   'stub-sig',
 ].join('.');
 
@@ -167,7 +167,7 @@ describe('GET /authz-token — SSE side-effects', () => {
 
     const call = sseHub.publishToken.mock.calls[0][1];
     expect(call.decoded).toBeDefined();
-    expect(call.decoded.payload).toMatchObject({ sub: 'u1', scope: 'banking:read' });
+    expect(call.decoded.payload).toMatchObject({ sub: 'u1', scope: 'read' });
   });
 });
 

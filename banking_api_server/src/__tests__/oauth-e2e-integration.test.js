@@ -62,14 +62,14 @@ jest.mock('../../middleware/auth', () => ({
     if (req.user.role === 'admin') return next();
     const userScopes = req.user.scopes || [];
     const arr = Array.isArray(requiredScopes) ? requiredScopes : [requiredScopes];
-    const ok = arr.some((s) => userScopes.includes(s)) || userScopes.includes('banking:admin');
+    const ok = arr.some((s) => userScopes.includes(s)) || userScopes.includes('admin:read');
     if (!ok) return res.status(403).json({ error: 'insufficient_scope', requiredScopes: arr, providedScopes: userScopes });
     return next();
   },
   requireAdmin: (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'authentication_required' });
-    if (req.user.role === 'admin' || (req.user.scopes || []).includes('banking:admin')) return next();
-    return res.status(403).json({ error: 'insufficient_scope', error_description: 'Admin access required', required_access: 'admin role or banking:admin scope' });
+    if (req.user.role === 'admin' || (req.user.scopes || []).includes('admin:read')) return next();
+    return res.status(403).json({ error: 'insufficient_scope', error_description: 'Admin access required', required_access: 'admin role or admin:read scope' });
   },
   requireSession: (req, res, next) => next(),
   hasRequiredScopes: (userScopes, required) => required.some((s) => userScopes.includes(s)),
@@ -166,7 +166,7 @@ describe('End-to-End OAuth Integration Tests', () => {
       refresh_token: 'oauth-refresh-token-456',
       expires_in: 3600,
       token_type: 'Bearer',
-      scope: 'banking:read banking:write'
+      scope: 'read write'
     };
     const mockUserInfo = {
       sub: 'test-user-123',
@@ -236,7 +236,7 @@ describe('End-to-End OAuth Integration Tests', () => {
       expect(statusResponse.body.jwtToken).toBeUndefined();
       expect(statusResponse.body.token).toBeUndefined();
 
-      // Step 4: Access API with OAuth token (should work with banking:read scope)
+      // Step 4: Access API with OAuth token (should work with read scope)
       const apiResponse = await agent
         .get('/api/accounts/my')
         .expect(200);
@@ -254,7 +254,7 @@ describe('End-to-End OAuth Integration Tests', () => {
         refresh_token: 'admin-refresh-token-101',
         expires_in: 3600,
         token_type: 'Bearer',
-        scope: 'banking:admin banking:read banking:write'
+        scope: 'admin:read read write'
       });
 
       mockOAuthService.getUserInfo.mockResolvedValue({
@@ -313,8 +313,8 @@ describe('End-to-End OAuth Integration Tests', () => {
     it('should allow /api/transactions/my for any authenticated token (no banking:* scope required)', async () => {
       // /transactions/my intentionally has no requireScopes() — standard PingOne tokens
       // without a custom resource server only carry openid/profile/email, not banking:* scopes.
-      // /api/transactions (collection) still requires banking:read | banking:read.
-      const writeOnlyToken = createOAuthToken(['banking:write']);
+      // /api/transactions (collection) still requires read | read.
+      const writeOnlyToken = createOAuthToken(['write']);
 
       const accountsMyResponse = await agent
         .get('/api/accounts/my')
@@ -329,7 +329,7 @@ describe('End-to-End OAuth Integration Tests', () => {
         .expect(200);
       expect(transactionsMyResponse.body).toHaveProperty('transactions');
 
-      // Collection endpoint still enforces banking:read | banking:read
+      // Collection endpoint still enforces read | read
       const allTransactionsResponse = await agent
         .get('/api/transactions')
         .set('Authorization', `Bearer ${writeOnlyToken}`)
@@ -353,7 +353,7 @@ describe('End-to-End OAuth Integration Tests', () => {
 
     it('should allow write requests on open routes and enforce scopes on scoped routes', async () => {
       // Test with read-only token
-      const readOnlyToken = createOAuthToken(['banking:read']);
+      const readOnlyToken = createOAuthToken(['read']);
 
       // Read operations work
       const accountsResponse = await agent
@@ -388,7 +388,7 @@ describe('End-to-End OAuth Integration Tests', () => {
 
     it('should enforce admin scope requirements throughout the flow', async () => {
       // Test with read/write but no admin scope
-      const noAdminToken = createOAuthToken(['banking:read', 'banking:write']);
+      const noAdminToken = createOAuthToken(['read', 'write']);
 
       // Regular operations should work
       const accountsResponse = await agent
@@ -407,7 +407,7 @@ describe('End-to-End OAuth Integration Tests', () => {
       // requireAdmin fires before requireScopes on admin routes — uses required_access field
       expect(adminStatsResponse.body).toMatchObject({
         error: 'insufficient_scope',
-        required_access: 'admin role or banking:admin scope',
+        required_access: 'admin role or admin:read scope',
       });
 
       const userManagementResponse = await agent
@@ -458,8 +458,8 @@ describe('End-to-End OAuth Integration Tests', () => {
 
     it('should provide detailed error information for scoped endpoints (collection, not /my)', async () => {
       // /transactions/my has no scope gate — returns 200 for any authenticated token.
-      // /transactions (collection GET) requires banking:read scope AND admin role.
-      const limitedToken = createOAuthToken(['banking:read']);
+      // /transactions (collection GET) requires read scope AND admin role.
+      const limitedToken = createOAuthToken(['read']);
 
       // /transactions/my is open
       const myResponse = await agent

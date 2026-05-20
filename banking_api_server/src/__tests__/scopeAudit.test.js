@@ -30,37 +30,36 @@ describe('Scope Audit Service', () => {
         data: { access_token: mockToken }
       });
 
-      // Mock getting scopes for each resource
+      // Use names present in SCOPE_REFERENCE_TABLE (renamed from 'Super Banking *')
       const mockValidatedResources = [
         {
           resourceId: 'res-1',
-          name: 'Super Banking AI Agent',
+          name: 'Demo AI Agent',
           status: 'CORRECT',
           audience: 'https://ai-agent.pingdemo.com'
         },
         {
           resourceId: 'res-2',
-          name: 'Super Banking Banking API',
+          name: 'PingOne API',
           status: 'CORRECT',
-          audience: 'https://banking-api.ping.demo'
+          audience: 'https://api.pingone.com'
         }
       ];
 
-      // Mock scope API responses
+      // Mock scope API responses matching SCOPE_REFERENCE_TABLE expectations
       axios.get
         .mockResolvedValueOnce({
           data: {
             scopes: [
-              { name: 'banking:agent:invoke' }
+              { name: 'agent:invoke' }
             ]
           }
         })
         .mockResolvedValueOnce({
           data: {
             scopes: [
-              { name: 'banking:accounts:read' },
-              { name: 'banking:transactions:read' },
-              { name: 'banking:transactions:write' }
+              { name: 'p1:read:user' },
+              { name: 'p1:update:user' }
             ]
           }
         });
@@ -70,7 +69,7 @@ describe('Scope Audit Service', () => {
       expect(result.status).toBe('success');
       expect(result.scopeAudit).toHaveLength(2);
       expect(result.scopeAudit[0].status).toBe('CORRECT');
-      expect(result.scopeAudit[0].name).toBe('Super Banking AI Agent');
+      expect(result.scopeAudit[0].name).toBe('Demo AI Agent');
     });
 
     it('should detect MISMATCH when scopes differ', async () => {
@@ -81,13 +80,13 @@ describe('Scope Audit Service', () => {
       const mockValidatedResources = [
         {
           resourceId: 'res-1',
-          name: 'Super Banking AI Agent',
+          name: 'Demo AI Agent',
           status: 'CORRECT',
           audience: 'https://ai-agent.pingdemo.com'
         }
       ];
 
-      // Mock scope with wrong scopes
+      // Mock scope with wrong scopes (expected: ['agent:invoke'], got: ['wrong:scope'])
       axios.get.mockResolvedValueOnce({
         data: {
           scopes: [
@@ -99,7 +98,7 @@ describe('Scope Audit Service', () => {
       const result = await auditResourceScopes(mockValidatedResources);
 
       expect(result.status).toBe('success');
-      const mismatch = result.scopeAudit.find(r => r.name === 'Super Banking AI Agent');
+      const mismatch = result.scopeAudit.find(r => r.name === 'Demo AI Agent');
       expect(mismatch.status).toBe('MISMATCH');
       expect(mismatch.mismatches).toBeDefined();
     });
@@ -112,7 +111,7 @@ describe('Scope Audit Service', () => {
       const mockValidatedResources = [
         {
           resourceId: 'res-1',
-          name: 'Super Banking AI Agent',
+          name: 'Demo AI Agent',
           status: 'CORRECT',
           audience: 'https://ai-agent.pingdemo.com'
         },
@@ -127,7 +126,7 @@ describe('Scope Audit Service', () => {
       axios.get.mockResolvedValueOnce({
         data: {
           scopes: [
-            { name: 'banking:agent:invoke' }
+            { name: 'agent:invoke' }
           ]
         }
       });
@@ -137,7 +136,7 @@ describe('Scope Audit Service', () => {
       expect(result.status).toBe('success');
       // Should only audit the non-MISSING resource
       expect(result.scopeAudit).toHaveLength(1);
-      expect(result.scopeAudit[0].name).toBe('Super Banking AI Agent');
+      expect(result.scopeAudit[0].name).toBe('Demo AI Agent');
     });
 
     it('should handle empty scope lists (mismatch when expected scopes absent from API)', async () => {
@@ -145,16 +144,17 @@ describe('Scope Audit Service', () => {
         data: { access_token: mockToken }
       });
 
+      // Use 'Demo Agent Gateway' — the current name in SCOPE_REFERENCE_TABLE
       const mockValidatedResources = [
         {
           resourceId: 'res-1',
-          name: 'Super Banking Agent Gateway',
+          name: 'Demo Agent Gateway',
           status: 'CORRECT',
           audience: 'https://agent-gateway.pingdemo.com'
         }
       ];
 
-      // API returns no scopes, but SCOPE_REFERENCE_TABLE expects banking:agent:invoke → MISMATCH
+      // API returns no scopes, but SCOPE_REFERENCE_TABLE expects agent:invoke → MISMATCH
       axios.get.mockResolvedValueOnce({
         data: { scopes: [] }
       });
@@ -174,7 +174,7 @@ describe('Scope Audit Service', () => {
       const mockValidatedResources = [
         {
           resourceId: 'res-1',
-          name: 'Super Banking AI Agent',
+          name: 'Demo AI Agent',
           status: 'CORRECT',
           audience: 'https://ai-agent.pingdemo.com'
         }
@@ -207,29 +207,31 @@ describe('Scope Audit Service', () => {
     });
 
     it('should have correct scopes for AI Agent', () => {
-      const aiAgentScopes = SCOPE_REFERENCE_TABLE['Super Banking AI Agent'];
-      expect(aiAgentScopes).toContain('banking:agent:invoke');
+      // Production SCOPE_REFERENCE_TABLE uses 'Demo AI Agent' (renamed from 'Super Banking AI Agent')
+      const aiAgentScopes = SCOPE_REFERENCE_TABLE['Demo AI Agent'];
+      expect(aiAgentScopes).toContain('agent:invoke');
     });
 
     it('should have correct scopes for User App', () => {
       // Manifest-derived scope model: SCOPE_REFERENCE_TABLE is sourced from
       // scope-topology.json app grants (replaces stale 'Super Banking MCP Server').
       const userAppScopes = SCOPE_REFERENCE_TABLE['Super Banking User App'];
-      expect(userAppScopes).toContain('banking:read');
-      expect(userAppScopes).toContain('banking:write');
+      expect(userAppScopes).toContain('read');
+      expect(userAppScopes).toContain('write');
     });
 
     it('should have correct scopes for Admin App', () => {
       // Manifest-derived scope model: SCOPE_REFERENCE_TABLE is sourced from
       // scope-topology.json app grants (replaces stale 'Super Banking Banking API').
       const adminAppScopes = SCOPE_REFERENCE_TABLE['Super Banking Admin App'];
-      expect(adminAppScopes).toContain('banking:read');
-      expect(adminAppScopes).toContain('banking:write');
+      expect(adminAppScopes).toContain('read');
+      expect(adminAppScopes).toContain('write');
     });
 
     it('should have correct scopes for Agent Gateway', () => {
-      const gatewayScopes = SCOPE_REFERENCE_TABLE['Super Banking Agent Gateway'];
-      expect(gatewayScopes).toContain('banking:agent:invoke');
+      // Production SCOPE_REFERENCE_TABLE uses 'Demo Agent Gateway' (renamed from 'Super Banking Agent Gateway')
+      const gatewayScopes = SCOPE_REFERENCE_TABLE['Demo Agent Gateway'];
+      expect(gatewayScopes).toContain('agent:invoke');
     });
 
     it('should have correct scopes for PingOne API', () => {

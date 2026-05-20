@@ -95,8 +95,9 @@ describe('mcpFlowSseHub KV bridge (STAB-01)', () => {
       await Promise.resolve();
       // kvPublish is a no-op so rpush is not called, but endTrace
       // directly calls kv.expire for cleanup.
+      // Production key prefix is 'sse:events:' (banking: prefix was removed in scope rename)
       expect(mockKv.expire).toHaveBeenCalledWith(
-        expect.stringContaining('banking:sse:events:'),
+        expect.stringContaining('sse:events:'),
         30
       );
     });

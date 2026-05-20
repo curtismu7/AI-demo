@@ -19,7 +19,7 @@ describe('RFC 8693 Token Exchange Compliance', () => {
         subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
         requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
         audience: 'https://resource-server.pingdemo.com',
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
       
       expect(exchangeRequest.grant_type).toBe('urn:ietf:params:oauth:grant-type:token-exchange');
@@ -66,9 +66,9 @@ describe('RFC 8693 Token Exchange Compliance', () => {
 
     test('scope must be space-separated list', () => {
       const validScopes = [
-        'banking:read',
-        'banking:read banking:write',
-        'banking:read banking:write banking:admin'
+        'read',
+        'read write',
+        'read write admin:read'
       ];
       
       validScopes.forEach(scope => {
@@ -132,25 +132,25 @@ describe('RFC 8693 Token Exchange Compliance', () => {
 
   describe('Scope Management Compliance', () => {
     test('scope narrowing is enforced', () => {
-      const requestedScopes = ['banking:read', 'banking:write', 'banking:admin'];
-      const userScopes = ['banking:read', 'banking:write'];
+      const requestedScopes = ['read', 'write', 'admin:read'];
+      const userScopes = ['read', 'write'];
       
       // Effective scopes should be intersection
       const effectiveScopes = requestedScopes.filter(scope => userScopes.includes(scope));
-      expect(effectiveScopes).toEqual(['banking:read', 'banking:write']);
+      expect(effectiveScopes).toEqual(['read', 'write']);
       expect(effectiveScopes.length).toBeLessThanOrEqual(requestedScopes.length);
     });
 
     test('minimum scope requirements are enforced', () => {
       const minUserScopes = 1;
-      const userScopes = ['banking:read'];
+      const userScopes = ['read'];
       
       expect(userScopes.length).toBeGreaterThanOrEqual(minUserScopes);
     });
 
     test('scope insufficiency is detected', () => {
-      const requestedScopes = ['banking:admin'];
-      const userScopes = ['banking:read'];
+      const requestedScopes = ['admin:read'];
+      const userScopes = ['read'];
       
       const hasSufficientScopes = requestedScopes.some(scope => userScopes.includes(scope));
       expect(hasSufficientScopes).toBe(false);
@@ -163,7 +163,7 @@ describe('RFC 8693 Token Exchange Compliance', () => {
         type: 'access_token',
         client_id: 'agent-client-id',
         audience: ['https://agent-gateway.pingdemo.com'],
-        scope: 'banking:read banking:write'
+        scope: 'read write'
       };
       
       expect(actorToken.type).toBe('access_token');
@@ -380,7 +380,7 @@ describe('RFC 8693 Token Exchange Compliance', () => {
           step: '1-exchange',
           actorPresent: true,
           audience: 'https://resource-server.pingdemo.com',
-          scopes: ['banking:read']
+          scopes: ['read']
         },
         error: {
           code: 'invalid_grant',
@@ -416,7 +416,7 @@ describe('RFC 8693 Token Exchange Compliance', () => {
       };
       
       const mockTool = {
-        trigger: 'banking:read',
+        trigger: 'read',
         description: 'Read banking data'
       };
       

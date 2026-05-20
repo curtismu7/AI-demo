@@ -129,12 +129,12 @@ The bootstrap already overwrites `.env` completely with new client IDs/secrets. 
 
 | Old URI | New URI |
 |---------|---------|
-| `banking_api_enduser` | `api.bxf.com` |
-| `mcp-server.bxf.com` | unchanged |
+| `banking_api_enduser` | `api.ping.demo` |
+| `mcp-server.ping.demo` | unchanged |
 | `api.ping.demo` | unchanged |
-| `agent-gateway.bxf.com` | unchanged |
+| `agent-gateway.ping.demo` | unchanged |
 
-**Propagation of `api.bxf.com`:**
+**Propagation of `api.ping.demo`:**
 
 - `scope-topology.json` `servers.banking_api_server.validatesAudience`
 - `banking_api_server/middleware/auth.js` — JWT `aud` validation default
@@ -142,7 +142,7 @@ The bootstrap already overwrites `.env` completely with new client IDs/secrets. 
 - `bootstrapPingOne.js` — `PINGONE_BOOTSTRAP_AUDIENCE` default
 - `.env` — `PINGONE_RESOURCE_SERVER_URI` (or equivalent key) default value
 
-Existing `.env` files with `banking_api_enduser` continue to work until re-provisioned. After cleanup + bootstrap, PingOne issues tokens with `aud: api.bxf.com`.
+Existing `.env` files with `banking_api_enduser` continue to work until re-provisioned. After cleanup + bootstrap, PingOne issues tokens with `aud: api.ping.demo`.
 
 ---
 
@@ -227,13 +227,13 @@ Files with hardcoded `banking:*` scope strings that need updating:
 ### Documentation
 
 - `CLAUDE.md` quick verification checklist: `/tmp/bank-api-server.log` → `/tmp/demo-api.log`
-- `REGRESSION_PLAN.md`: add §4 migration entry; update §1 audience string reference from `banking_api_enduser` to `api.bxf.com`
+- `REGRESSION_PLAN.md`: add §4 migration entry; update §1 audience string reference from `banking_api_enduser` to `api.ping.demo`
 
 ---
 
 ## Execution Order
 
-1. Update `scope-topology.json` — new scope strings, `provisioning` block, `api.bxf.com` URI, vertical `featureScope` in `resources`
+1. Update `scope-topology.json` — new scope strings, `provisioning` block, `api.ping.demo` URI, vertical `featureScope` in `resources`
 2. Update vertical configs — `banking.json`, `retail.json`, `workforce.json` `scopes` blocks
 3. Update `banking_api_server/config/scopes.js` — constant values
 4. Update BFF services — `agentMcpTokenService.js` and other hardcoded `banking:` references

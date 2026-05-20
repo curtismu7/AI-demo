@@ -98,7 +98,7 @@ describe('BankingSessionManager', () => {
       refreshToken: 'refresh-token-456',
       tokenType: 'Bearer',
       expiresIn: 3600,
-      scope: 'banking:accounts:read banking:transactions:read',
+      scope: 'accounts:read transactions:read',
       issuedAt: new Date()
     };
 
@@ -182,7 +182,7 @@ describe('BankingSessionManager', () => {
         refreshToken: 'refresh-token-456',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         issuedAt: new Date()
       };
       
@@ -205,7 +205,7 @@ describe('BankingSessionManager', () => {
         refreshToken: 'refresh-token-456',
         tokenType: 'Bearer',
         expiresIn: 1, // 1 second
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         issuedAt: new Date(Date.now() - 2000) // 2 seconds ago
       };
       
@@ -370,7 +370,7 @@ describe('BankingSessionManager', () => {
         refreshToken: 'refresh-token-456',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         issuedAt: new Date()
       };
       await bankingSessionManager.associateUserTokens(session1.sessionId, userTokens);

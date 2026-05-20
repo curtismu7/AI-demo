@@ -26,7 +26,7 @@ jest.mock('../../../utils/logger', () => {
 
 // Mock tokenIntrospectionService so tests control active/inactive outcomes
 // without real PingOne credentials. Individual tests override this mock.
-const mockValidateToken = jest.fn().mockResolvedValue({ valid: true, sub: 'user123', scopes: 'banking:read' });
+const mockValidateToken = jest.fn().mockResolvedValue({ valid: true, sub: 'user123', scopes: 'read' });
 jest.mock('../../../services/tokenIntrospectionService', () => ({
   validateToken: (...args) => mockValidateToken(...args),
   clearCache: jest.fn(),
@@ -99,7 +99,7 @@ describe('Complete Flow Integration Tests', () => {
       // Mock token decode
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'openid profile banking:read',
+        scope: 'openid profile read',
         act: {
           client_id: 'bff-client',
           iss: 'https://auth.pingone.com'
@@ -124,7 +124,7 @@ describe('Complete Flow Integration Tests', () => {
     it('should enforce scopes and reject insufficient permissions', async () => {
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'openid profile' // Missing banking:read
+        scope: 'openid profile' // Missing read
       });
 
       await request(app)
@@ -136,7 +136,7 @@ describe('Complete Flow Integration Tests', () => {
     it('should validate delegation chain and attach to request', async () => {
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:read',
+        scope: 'read',
         act: { client_id: 'bff-client' }
       });
 
@@ -151,7 +151,7 @@ describe('Complete Flow Integration Tests', () => {
     it('should generate correlation ID if not provided', async () => {
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:read'
+        scope: 'read'
       });
 
       const response = await request(app)
@@ -165,11 +165,11 @@ describe('Complete Flow Integration Tests', () => {
 
     it('should perform introspection when enabled', async () => {
       process.env.ENABLE_TOKEN_INTROSPECTION = 'true';
-      mockValidateToken.mockResolvedValue({ valid: true, sub: 'user123', scopes: 'banking:read' });
+      mockValidateToken.mockResolvedValue({ valid: true, sub: 'user123', scopes: 'read' });
 
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:read'
+        scope: 'read'
       });
 
       await request(app)
@@ -186,7 +186,7 @@ describe('Complete Flow Integration Tests', () => {
 
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:read'
+        scope: 'read'
       });
 
       await request(app)
@@ -219,7 +219,7 @@ describe('Complete Flow Integration Tests', () => {
 
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:read'
+        scope: 'read'
       });
 
       // Make request that should trigger refresh
@@ -234,7 +234,7 @@ describe('Complete Flow Integration Tests', () => {
     it('should handle write operations with delegation', async () => {
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:write',
+        scope: 'write',
         act: { client_id: 'bff-client' }
       });
 
@@ -250,7 +250,7 @@ describe('Complete Flow Integration Tests', () => {
     it('should reject write with read-only scope', async () => {
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:read' // No write scope
+        scope: 'read' // No write scope
       });
 
       await request(app)
@@ -300,7 +300,7 @@ describe('Complete Flow Integration Tests', () => {
     it('should log all requests with delegation info', async () => {
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:read',
+        scope: 'read',
         act: { client_id: 'bff-client' }
       });
 

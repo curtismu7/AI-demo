@@ -14,7 +14,7 @@ function makeValidToken(overrides = {}) {
     aud: 'https://mcp-server.pingdemo.com',
     act: 'agent-456',
     exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
-    scope: 'banking:read banking:write',
+    scope: 'read write',
     ...overrides,
   };
 }
@@ -25,7 +25,7 @@ describe('validateTokenStructure', () => {
       const token = makeValidToken();
       const result = validateTokenStructure(token, {
         expectedAudience: 'https://mcp-server.pingdemo.com',
-        expectedScopes: ['banking:read'],
+        expectedScopes: ['read'],
         isDelegationFlow: true,
       });
       expect(result.valid).toBe(true);
@@ -155,18 +155,18 @@ describe('validateTokenStructure', () => {
 
   describe('scope validation', () => {
     it('fails when required scopes are missing', () => {
-      const token = makeValidToken({ scope: 'banking:read' });
+      const token = makeValidToken({ scope: 'read' });
       const result = validateTokenStructure(token, {
-        expectedScopes: ['banking:read', 'banking:write'],
+        expectedScopes: ['read', 'write'],
       });
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('missing required scope(s): banking:write'))).toBe(true);
+      expect(result.errors.some(e => e.includes('missing required scope(s): write'))).toBe(true);
     });
 
     it('passes when all required scopes are present', () => {
-      const token = makeValidToken({ scope: 'banking:read banking:write banking:mcp:invoke' });
+      const token = makeValidToken({ scope: 'read write mcp:invoke' });
       const result = validateTokenStructure(token, {
-        expectedScopes: ['banking:read', 'banking:write'],
+        expectedScopes: ['read', 'write'],
       });
       expect(result.errors.filter(e => e.includes('scope'))).toHaveLength(0);
     });

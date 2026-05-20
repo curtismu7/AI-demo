@@ -51,7 +51,7 @@ jest.mock("axios", () => {
 		get: jest.fn(() =>
 			Promise.resolve({
 				data: {
-					agent_mcp_allowed_scopes: "banking:read banking:write ai_agent",
+					agent_mcp_allowed_scopes: "read write ai_agent",
 				},
 			}),
 		),
@@ -261,7 +261,7 @@ describe("DemoDataPage — scope permissions section", () => {
 			userData: {},
 		});
 		axiosMock.get.mockResolvedValue({
-			data: { agent_mcp_allowed_scopes: "banking:read banking:write ai_agent" },
+			data: { agent_mcp_allowed_scopes: "read write ai_agent" },
 		});
 		axiosMock.post.mockResolvedValue({ data: {} });
 	});
@@ -277,9 +277,9 @@ describe("DemoDataPage — scope permissions section", () => {
 		renderPage();
 		await screen.findByRole("heading", { name: /agent scope permissions/i });
 		// Each scope has a <code> element with its exact value
-		const bankingReadCodes = screen.getAllByText("banking:read");
+		const bankingReadCodes = screen.getAllByText("read");
 		expect(bankingReadCodes.length).toBeGreaterThanOrEqual(1);
-		const bankingWriteCodes = screen.getAllByText("banking:write");
+		const bankingWriteCodes = screen.getAllByText("write");
 		expect(bankingWriteCodes.length).toBeGreaterThanOrEqual(1);
 		// The scope section renders checkboxes (one per catalog entry)
 		const scopeCheckboxes = screen.getAllByRole("checkbox");
@@ -296,7 +296,7 @@ describe("DemoDataPage — scope permissions section", () => {
 
 	it("loads feature flags for non-admin and shows PingOne Authorize demo toggles", async () => {
 		axiosMock.get.mockResolvedValue({
-			data: { agent_mcp_allowed_scopes: "banking:read banking:write ai_agent" },
+			data: { agent_mcp_allowed_scopes: "read write ai_agent" },
 		});
 		renderPage();
 		await screen.findByRole("heading", { name: /accounts/i });
@@ -356,7 +356,7 @@ describe("DemoDataPage — PingOne Authorize toggles (admin)", () => {
 				});
 			}
 			return Promise.resolve({
-				data: { agent_mcp_allowed_scopes: "banking:read" },
+				data: { agent_mcp_allowed_scopes: "read" },
 			});
 		});
 	});
@@ -384,7 +384,7 @@ describe("DemoDataPage — may_act status seeded from session on mount", () => {
 	beforeEach(() => {
 		fetchDemoScenario.mockResolvedValue(defaultScenarioPayload);
 		axiosMock.get.mockResolvedValue({
-			data: { agent_mcp_allowed_scopes: "banking:read" },
+			data: { agent_mcp_allowed_scopes: "read" },
 		});
 	});
 	afterEach(() => {
@@ -502,7 +502,7 @@ describe("DemoDataPage — ff_inject_audience toggle (admin)", () => {
 				});
 			}
 			return Promise.resolve({
-				data: { agent_mcp_allowed_scopes: "banking:read" },
+				data: { agent_mcp_allowed_scopes: "read" },
 			});
 		});
 	});
@@ -593,7 +593,7 @@ describe("DemoDataPage — agent authentication demo story", () => {
 			userData: {},
 		});
 		axiosMock.get.mockResolvedValue({
-			data: { agent_mcp_allowed_scopes: "banking:read banking:write ai_agent" },
+			data: { agent_mcp_allowed_scopes: "read write ai_agent" },
 		});
 		try {
 			localStorage.clear();

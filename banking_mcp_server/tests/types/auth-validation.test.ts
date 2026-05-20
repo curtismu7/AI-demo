@@ -18,7 +18,7 @@ describe('Authentication Model Validation', () => {
     const validAgentTokenInfo: AgentTokenInfo = {
       tokenHash: 'abc123hash',
       clientId: 'client-123',
-      scopes: ['banking:read', 'banking:write'],
+      scopes: ['read', 'write'],
       expiresAt: new Date(Date.now() + 3600000), // 1 hour from now
       isValid: true
     };
@@ -71,7 +71,7 @@ describe('Authentication Model Validation', () => {
       refreshToken: 'refresh-token-123',
       tokenType: 'Bearer',
       expiresIn: 3600,
-      scope: 'banking:read banking:write',
+      scope: 'read write',
       issuedAt: new Date()
     };
 
@@ -120,7 +120,7 @@ describe('Authentication Model Validation', () => {
     const validAuthRequest: AuthorizationRequest = {
       authorizationUrl: 'https://auth.example.com/oauth/authorize?client_id=123&scope=banking',
       state: 'random-state-123',
-      scope: 'banking:read banking:write',
+      scope: 'read write',
       sessionId: '550e8400-e29b-41d4-a716-446655440000',
       expiresAt: new Date(Date.now() + 600000) // 10 minutes from now
     };
@@ -201,10 +201,10 @@ describe('Authentication Model Validation', () => {
 
   describe('validateScopeFormat', () => {
     it('should validate correct scope formats', () => {
-      expect(validateScopeFormat('banking:read')).toBe(true);
-      expect(validateScopeFormat('banking:read banking:write')).toBe(true);
+      expect(validateScopeFormat('read')).toBe(true);
+      expect(validateScopeFormat('read write')).toBe(true);
       expect(validateScopeFormat('scope1 scope2 scope3')).toBe(true);
-      expect(validateScopeFormat('banking:accounts:read')).toBe(true);
+      expect(validateScopeFormat('accounts:read')).toBe(true);
       expect(validateScopeFormat('banking_read')).toBe(true);
       expect(validateScopeFormat('banking-read')).toBe(true);
     });

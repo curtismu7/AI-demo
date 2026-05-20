@@ -64,7 +64,7 @@ describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', ()
     const subject = process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN;
     const mcpUri = configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI');
     expect(mcpUri).toBeTruthy();
-    const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write')
+    const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'read write')
       .trim()
       .split(/\s+/);
     const mcpToken = await oauthService.performTokenExchange(subject, mcpUri, scopes);
@@ -100,7 +100,7 @@ describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', ()
     }
     const mcpUri = configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI');
     expect(mcpUri).toBeTruthy();
-    const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write').trim().split(/\s+/);
+    const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'read write').trim().split(/\s+/);
     const mcpToken = await oauthService.performTokenExchangeWithActor(subject, actor, mcpUri, scopes);
     expect(typeof mcpToken).toBe('string');
     expect(mcpToken.split('.')).toHaveLength(3);

@@ -131,9 +131,9 @@ $ MCP_GW_DEV_BYPASS=true PORT=33305 node dist/index.js
 [GW vault] no vault file at /Users/.../secrets.vault — using process.env only
 [GatewayServer] TLS enabled — cert: /Users/.../certs/api.ping.demo+2.pem
 [GW] banking-mcp-gateway running on 0.0.0.0:33305
-[GW] Gateway resource URI: mcp-gw.bxf.com
-[GW] mcp-olb backend: ws://localhost:8080 (aud: mcp-server.bxf.com)
-[GW] mcp-invest backend: ws://localhost:8081 (aud: mcp-invest.bxf.com)
+[GW] Gateway resource URI: mcp-gw.ping.demo
+[GW] mcp-olb backend: ws://localhost:8080 (aud: mcp-server.ping.demo)
+[GW] mcp-invest backend: ws://localhost:8081 (aud: mcp-invest.ping.demo)
 [GW] RFC 9728 + HTTP MCP ingress — POST /mcp ...
 ```
 
@@ -156,7 +156,7 @@ $ MCP_GW_DEV_BYPASS=true VAULT_PATH=/tmp/gw-vault-task2.vault VAULT_PASSWORD=smo
 [GW vault] loaded 1 entries into process.env
 [GatewayServer] TLS enabled — cert: ...
 [GW] banking-mcp-gateway running on 0.0.0.0:33306
-[GW] Gateway resource URI: mcp-gw.bxf.com
+[GW] Gateway resource URI: mcp-gw.ping.demo
 ...
 ```
 

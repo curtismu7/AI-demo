@@ -20,7 +20,7 @@ class OAuthTestClient {
     this.baseURL = config.baseURL || 'http://localhost:3001';
     this.clientId = config.clientId;
     this.clientSecret = config.clientSecret;
-    this.scopes = config.scopes || ['banking:read'];
+    this.scopes = config.scopes || ['read'];
     this.accessToken = null;
     this.tokenExpiry = null;
   }
@@ -408,7 +408,7 @@ class OAuthSecurityTester {
 
     try {
       // Test with valid scopes
-      this.client.scopes = ['banking:read'];
+      this.client.scopes = ['read'];
       const validResponse = await this.client.makeAuthenticatedRequest('/api/accounts/my');
       results.validScopes = {
         success: validResponse.ok,
@@ -432,7 +432,7 @@ class OAuthSecurityTester {
       }
 
       // Test with insufficient scopes (if endpoint requires more)
-      this.client.scopes = ['banking:read'];
+      this.client.scopes = ['read'];
       this.client.accessToken = null; // Force new token
       try {
         const insufficientResponse = await this.client.makeAuthenticatedRequest('/api/admin/users');
@@ -490,7 +490,7 @@ class OAuthComplianceTester {
         },
         body: new URLSearchParams({
           grant_type: 'client_credentials',
-          scope: 'banking:read'
+          scope: 'read'
         })
       });
 
@@ -646,7 +646,7 @@ class OAuthTestRunner {
       baseURL: config.baseURL || 'http://localhost:3001',
       clientId: config.clientId,
       clientSecret: config.clientSecret,
-      scopes: config.scopes || ['banking:read'],
+      scopes: config.scopes || ['read'],
       patToken: config.patToken,
       iterations: config.iterations || 50
     };

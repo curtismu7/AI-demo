@@ -549,7 +549,7 @@ describe('token exchange — client authentication method', () => {
   describe('performTokenExchange — admin client auth', () => {
     it('basic: Authorization header sent, no client_secret in body', async () => {
       const svc = makeService({ tokenEndpointAuthMethod: 'basic' });
-      await svc.performTokenExchange('user.token', 'https://mcp', ['banking:read']);
+      await svc.performTokenExchange('user.token', 'https://mcp', ['read']);
       const { params, headers } = lastPostCall();
       expect(params.get('client_secret')).toBeNull();
       expect(headers.Authorization).toMatch(/^Basic /);
@@ -558,7 +558,7 @@ describe('token exchange — client authentication method', () => {
 
     it('post: client_secret in body, no Authorization header', async () => {
       const svc = makeService({ tokenEndpointAuthMethod: 'post' });
-      await svc.performTokenExchange('user.token', 'https://mcp', ['banking:read']);
+      await svc.performTokenExchange('user.token', 'https://mcp', ['read']);
       const { params, headers } = lastPostCall();
       expect(params.get('client_secret')).toBe('test-admin-client-secret');
       expect(headers.Authorization).toBeUndefined();
@@ -576,7 +576,7 @@ describe('token exchange — client authentication method', () => {
   describe('performTokenExchangeWithActor — admin client auth', () => {
     it('basic: Authorization header sent, no client_secret in body', async () => {
       const svc = makeService({ tokenEndpointAuthMethod: 'basic' });
-      await svc.performTokenExchangeWithActor('user.token', 'agent.token', 'https://mcp', ['banking:read']);
+      await svc.performTokenExchangeWithActor('user.token', 'agent.token', 'https://mcp', ['read']);
       const { params, headers } = lastPostCall();
       expect(params.get('client_secret')).toBeNull();
       expect(headers.Authorization).toMatch(/^Basic /);
@@ -585,7 +585,7 @@ describe('token exchange — client authentication method', () => {
 
     it('post: client_secret in body, no Authorization header', async () => {
       const svc = makeService({ tokenEndpointAuthMethod: 'post' });
-      await svc.performTokenExchangeWithActor('user.token', 'agent.token', 'https://mcp', ['banking:read']);
+      await svc.performTokenExchangeWithActor('user.token', 'agent.token', 'https://mcp', ['read']);
       const { params, headers } = lastPostCall();
       expect(params.get('client_secret')).toBe('test-admin-client-secret');
       expect(headers.Authorization).toBeUndefined();

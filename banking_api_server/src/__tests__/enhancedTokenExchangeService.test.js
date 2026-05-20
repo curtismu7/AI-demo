@@ -34,7 +34,7 @@ describe('Enhanced Token Exchange Service', () => {
     test('should perform enhanced token exchange successfully', async () => {
       const subjectToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMzQ1IiwibWF5X2FjdCI6eyJzdWIiOiJodHRwczovL2JhbmtpbmctYWdlbnQucGluZ2RlbW8uY29tL2FnZW50L3Rlc3QtYWdlbnQifX0.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
       const audience = 'https://mcp-server.pingdemo.com';
-      const scopes = ['banking:read', 'banking:write'];
+      const scopes = ['read', 'write'];
       
       const exchangedToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMzQ1IiwiYWN0Ijp7InN1YiI6Imh0dHBzOi8vbWNwLXNlcnZlci5waW5nZGVtby5jb20vbWNwL3Rlc3QtbWNwIn19.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
       
@@ -79,7 +79,7 @@ describe('Enhanced Token Exchange Service', () => {
       const subjectToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMzQ1IiwibWF5X2FjdCI6eyJzdWIiOiJodHRwczovL2JhbmtpbmctYWdlbnQucGluZ2RlbW8uY29tL2FnZW50L3Rlc3QtYWdlbnQifX0.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
       const actorToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfaWQiOiJhZ2VudC1jbGllbnQiLCJzdWIiOiJhZ2VudC1jbGllbnQifQ.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
       const audience = 'https://mcp-server.pingdemo.com';
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
       
       const exchangedToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMzQ1IiwiYWN0Ijp7InN1YiI6Imh0dHBzOi8vbWNwLXNlcnZlci5waW5nZGVtby5jb20vbWNwL3Rlc3QtbWNwIiwiYWN0Ijp7InN1YiI6Imh0dHBzOi8vYWdlbnQtZ2F0ZXdheS5waW5nZGVtby5jb20vYWdlbnQvYWdlbnQtY2xpZW50In19fQ.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
       
@@ -125,7 +125,7 @@ describe('Enhanced Token Exchange Service', () => {
     test('should reject token exchange when subject is not preserved', async () => {
       const subjectToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMzQ1IiwibWF5X2FjdCI6eyJzdWIiOiJodHRwczovL2JhbmtpbmctYWdlbnQucGluZ2RlbW8uY29tL2FnZW50L3Rlc3QtYWdlbnQifX0.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
       const audience = 'https://mcp-server.pingdemo.com';
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
       
       // Token with different subject (not preserved)
       const exchangedToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWZmZXJlbnQtdXNlciIsImFjdCI6eyJzdWIiOiJodHRwczovL21jcC1zZXJ2ZXIucGluZ2RlbW8uY29tL21jcC90ZXN0LW1jcCJ9fQ.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
@@ -143,7 +143,7 @@ describe('Enhanced Token Exchange Service', () => {
     test('should handle token exchange validation errors', async () => {
       const subjectToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMzQ1IiwibWF5X2FjdCI6eyJzdWIiOiJodHRwczovL2JhbmtpbmctYWdlbnQucGluZ2RlbW8uY29tL2FnZW50L3Rlc3QtYWdlbnQifX0.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
       const audience = 'https://mcp-server.pingdemo.com';
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
       
       const exchangedToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMzQ1IiwiYWN0Ijp7InN1YiI6Imh0dHBzOi8vbWNwLXNlcnZlci5waW5nZGVtby5jb20vbWNwL3Rlc3QtbWNwIn19.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
       
@@ -256,7 +256,7 @@ describe('Enhanced Token Exchange Service', () => {
       const mcpClientId = 'mcp-client-456';
       const mcpClientSecret = 'mcp-secret';
       const mcpResourceUri = 'https://mcp-server.pingdemo.com';
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
 
       // Mock token responses
       const agentActorToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfaWQiOiJhZ2VudC1jbGllbnQtMTIzIn0.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
@@ -315,7 +315,7 @@ describe('Enhanced Token Exchange Service', () => {
         'mcp-client',
         'mcp-secret',
         'https://mcp-server.pingdemo.com',
-        ['banking:read']
+        ['read']
       )).rejects.toThrow('Agent client credentials failed');
     });
   });
@@ -454,7 +454,7 @@ describe('Enhanced Token Exchange Service', () => {
     test('should handle OAuth service errors', async () => {
       const subjectToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMzQ1IiwibWF5X2FjdCI6eyJzdWIiOiJodHRwczovL2JhbmtpbmctYWdlbnQucGluZ2RlbW8uY29tL2FnZW50L3Rlc3QtYWdlbnQifX0.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
       const audience = 'https://mcp-server.pingdemo.com';
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
       
       mockOAuthService.performTokenExchange.mockRejectedValue(
         new Error('OAuth service error')
@@ -470,7 +470,7 @@ describe('Enhanced Token Exchange Service', () => {
     test('should handle invalid subject token', async () => {
       const invalidToken = 'invalid.token';
       const audience = 'https://mcp-server.pingdemo.com';
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
 
       await expect(enhancedService.performEnhancedTokenExchange(
         invalidToken,
@@ -482,7 +482,7 @@ describe('Enhanced Token Exchange Service', () => {
     test('should handle validation errors gracefully', async () => {
       const subjectToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMzQ1IiwibWF5X2FjdCI6eyJzdWIiOiJodHRwczovL2JhbmtpbmctYWdlbnQucGluZ2RlbW8uY29tL2FnZW50L3Rlc3QtYWdlbnQifX0.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
       const audience = 'https://mcp-server.pingdemo.com';
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
       
       const exchangedToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMzQ1IiwiYWN0Ijp7InN1YiI6Imh0dHBzOi8vbWNwLXNlcnZlci5waW5nZGVtby5jb20vbWNwL3Rlc3QtbWNwIn19.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
       

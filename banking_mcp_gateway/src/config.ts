@@ -116,9 +116,9 @@ export function loadConfig(): GatewayConfig {
     // writes ENDUSER_AUDIENCE and MCP_RESOURCE_URI; we accept either the
     // service-specific var or those fallbacks.
     mcpOlbResourceUri: optional('MCP_OLB_RESOURCE_URI',
-      optional('MCP_RESOURCE_URI', 'mcp-server.bxf.com')),
+      optional('MCP_RESOURCE_URI', 'mcpserver.ping.demo')),
     mcpInvestResourceUri: optional('MCP_INVEST_RESOURCE_URI',
-      optional('MCP_INVEST_AUDIENCE', 'mcp-invest.bxf.com')),
+      optional('MCP_INVEST_AUDIENCE', 'mcp-invest.ping.demo')),
     pingAuthorizeEndpoint: optional('PINGAUTHORIZE_ENDPOINT', ''),
     pingAuthorizeWorkerId: optional('PINGAUTHORIZE_WORKER_ID', ''),
     hitlServiceUrl: optional('HITL_SERVICE_URL', ''),
@@ -134,7 +134,7 @@ export function loadConfig(): GatewayConfig {
     bffInternalIdTokenUrl: optional('BFF_INTERNAL_ID_TOKEN_URL', 'http://localhost:3001/internal/id-token'),
     bffInternalSecret: optional('BFF_INTERNAL_SECRET', DEFAULT_BFF_INTERNAL_SECRET),
     bankingResourceServerBaseUrl: optional('BANKING_RESOURCE_SERVER_BASE_URL', 'http://localhost:3001'),
-    bankingResourceServerResourceUri: optional('BANKING_RESOURCE_SERVER_RESOURCE_URI', 'https://banking-resource-server.bxf.com'),
+    bankingResourceServerResourceUri: optional('BANKING_RESOURCE_SERVER_RESOURCE_URI', 'https://banking-resource-server.ping.demo'),
   };
 }
 

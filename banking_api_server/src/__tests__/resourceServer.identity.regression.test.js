@@ -110,7 +110,7 @@ describe('resourceServer /identity — regression tests', () => {
   it('Test 3: POST /identity with valid bearer + wire idToken (matching sub) → 200 claims-only', async () => {
     const sub = 'user-abc';
     const idTokenJwt = makeJwt({ sub, email: 'test@test.com', aud: 'resource-server' });
-    const accessJwt  = makeJwt({ sub, aud: 'resource-server', scope: 'banking:read' });
+    const accessJwt  = makeJwt({ sub, aud: 'resource-server', scope: 'read' });
 
     // Build app with session injected via middleware (session data must be pre-set)
     const app = express();

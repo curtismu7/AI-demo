@@ -37,7 +37,7 @@ describe('tokenChainService — Token Chain correctness regression', () => {
   test('H4: trackTokenEvent uses additionalData.claims when token is empty', async () => {
     const claims = {
       sub: 'user-xyz',
-      scope: 'banking:read banking:write',
+      scope: 'read write',
       aud: 'mcp-server',
       exp: Math.floor(Date.now() / 1000) + 3600,
       act: { sub: 'agent-1' },
@@ -54,7 +54,7 @@ describe('tokenChainService — Token Chain correctness regression', () => {
     expect(chain).toHaveLength(1);
     // Previously token:'' → extractJwtClaims('') → {} wiped all of these.
     expect(chain[0].tokenSub).toBe('user-xyz');
-    expect(chain[0].scopes).toEqual(['banking:read', 'banking:write']);
+    expect(chain[0].scopes).toEqual(['read', 'write']);
     expect(chain[0].audience).toBe('mcp-server');
     expect(chain[0].tokenType).toBe('exchanged_token');
     expect(chain[0].expiry).not.toBeNull();
@@ -96,7 +96,7 @@ describe('tokenChainService — Token Chain correctness regression', () => {
   test('H5: synthesizeFromSession marks event unverified and synthetic', () => {
     const token = makeJwt({
       sub: 'cold-start-sub',
-      scope: 'openid banking:read',
+      scope: 'openid read',
       aud: 'banking',
       exp: Math.floor(Date.now() / 1000) + 3600,
     });

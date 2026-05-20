@@ -84,7 +84,7 @@ describe('Token Test Scenarios - Token Generator', () => {
       
       expect(scopes).toContain('profile');
       expect(scopes).toContain('email');
-      expect(scopes).not.toContain('banking:agent');
+      expect(scopes).not.toContain('agent:invoke');
       expect(scopes).not.toContain('mcp:invoke');
     });
 
@@ -110,9 +110,10 @@ describe('Token Test Scenarios - Token Generator', () => {
     it('should have correct scopes but wrong audience', () => {
       const token = generateWrongAudToken();
       const decoded = decodeTestToken(token);
-      
+
       const scopes = decoded.scope.split(' ');
-      expect(scopes).toContain('banking:agent');
+      // generateWrongAudToken uses ['read', 'write', 'agent'] — 'agent' not 'agent:invoke'
+      expect(scopes).toContain('agent');
       expect(decoded.aud).not.toMatch(/mcp/i);
     });
   });
@@ -139,11 +140,13 @@ describe('Token Test Scenarios - Token Generator', () => {
     it('should generate token with agent-only scopes', () => {
       const token = generateAgentToken();
       const decoded = decodeTestToken(token);
-      
+
       const scopes = decoded.scope.split(' ');
-      expect(scopes).toContain('banking:agent');
-      expect(scopes).not.toContain('banking:read');
-      expect(scopes).not.toContain('banking:write');
+      // generateAgentToken uses ['agent', 'mcp:invoke'] — 'agent' not 'agent:invoke'
+      expect(scopes).toContain('agent');
+      expect(scopes).toContain('mcp:invoke');
+      expect(scopes).not.toContain('read');
+      expect(scopes).not.toContain('write');
     });
 
     it('should include act claim with agent delegation', () => {

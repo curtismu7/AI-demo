@@ -69,7 +69,7 @@ const { PINGONE_OIDC_DEFAULT_SCOPES_SPACE } = require('../../config/scopes');
 // ── Auth headers ──────────────────────────────────────────────────────────────
 
 const USER_HDR  = JSON.stringify({ id: 'u1', role: 'customer', email: 'alice@example.com',  scopes: ['openid', 'profile', 'email'] });
-const ADMIN_HDR = JSON.stringify({ id: 'a1', role: 'admin',    email: 'admin@example.com',  scopes: ['banking:admin'] });
+const ADMIN_HDR = JSON.stringify({ id: 'a1', role: 'admin',    email: 'admin@example.com',  scopes: ['admin:read'] });
 const NO_EMAIL  = JSON.stringify({ id: 'u2', role: 'customer',                              scopes: ['openid'] });
 
 // ── Simulated OTP / token response ───────────────────────────────────────────
@@ -277,7 +277,7 @@ describe('POST /api/auth/ciba/initiate', () => {
       .post('/api/auth/ciba/initiate')
       .set('x-test-user', USER_HDR)
       .send({
-        scope:           'openid profile email banking:write',
+        scope:           'openid profile email write',
         acr_values:      'Multi_factor',
         binding_message: 'High-value transfer',
       });
@@ -285,7 +285,7 @@ describe('POST /api/auth/ciba/initiate', () => {
     expect(cibaService.initiateBackchannelAuth).toHaveBeenCalledWith(
       'alice@example.com',
       'High-value transfer',
-      'openid profile email banking:write',
+      'openid profile email write',
       'Multi_factor',
     );
   });

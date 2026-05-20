@@ -98,7 +98,7 @@ describe('MCPMessageHandler', () => {
       const mockAgentTokenInfo: AgentTokenInfo = {
         tokenHash: 'test-hash',
         clientId: 'test-client',
-        scopes: ['banking:read'],
+        scopes: ['read'],
         expiresAt: new Date(Date.now() + 3600000),
         isValid: true
       };
@@ -182,7 +182,7 @@ describe('MCPMessageHandler', () => {
             required: []
           },
           requiresUserAuth: true,
-          requiredScopes: ['banking:accounts:read'],
+          requiredScopes: ['accounts:read'],
           readOnly: true,
           handler: 'executeGetMyAccounts'
         },
@@ -197,7 +197,7 @@ describe('MCPMessageHandler', () => {
             required: ['account_id']
           },
           requiresUserAuth: true,
-          requiredScopes: ['banking:accounts:read'],
+          requiredScopes: ['accounts:read'],
           readOnly: true,
           handler: 'executeGetAccountBalance'
         }
@@ -229,7 +229,7 @@ describe('MCPMessageHandler', () => {
           description: 'Get user accounts',
           inputSchema: { type: 'object', properties: {}, required: [] },
           requiresUserAuth: true,
-          requiredScopes: ['banking:accounts:read'],
+          requiredScopes: ['accounts:read'],
           readOnly: true,
           handler: 'executeGetMyAccounts',
           icons: [{ src: 'data:image/svg+xml,test', mimeType: 'image/svg+xml' }],
@@ -351,7 +351,7 @@ describe('MCPMessageHandler', () => {
       const mockAgentTokenInfo: AgentTokenInfo = {
         tokenHash: 'test-hash',
         clientId: 'test-client',
-        scopes: ['banking:read'],
+        scopes: ['read'],
         expiresAt: new Date(Date.now() + 3600000),
         isValid: true
       };
@@ -487,7 +487,7 @@ describe('MCPMessageHandler', () => {
       const mockAuthRequest = {
         authorizationUrl: 'https://test.pingone.com/authorize',
         state: 'state-456',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'test-session-1',
         expiresAt: new Date(Date.now() + 300000)
       };
@@ -497,7 +497,7 @@ describe('MCPMessageHandler', () => {
         refreshToken: 'new-refresh-token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         issuedAt: new Date()
       };
 

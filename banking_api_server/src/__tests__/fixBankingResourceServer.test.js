@@ -64,7 +64,8 @@ const pingoneTestRouter = require('../../routes/pingoneTestRoutes');
 
 // ─── Test helpers ────────────────────────────────────────────────────────────
 
-const CANONICAL_SCOPES = ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'];
+// Must match the CANONICAL_BANKING_SCOPES defined in routes/pingoneTestRoutes.js
+const CANONICAL_SCOPES = ['read', 'write', 'admin', 'sensitive', 'ai:agent'];
 
 /** Build a fake resource server list response with the given RS entries. */
 function mockRSList(servers) {
@@ -112,9 +113,9 @@ describe('POST /api/pingone-test/fix-banking-resource-server', () => {
       managementService.getResourceServers.mockResolvedValue(
         mockRSList([{ id: 'rs-existing-id', name: 'Super Banking Resource Server', audience: 'https://ai-agent.pingdemo.com' }])
       );
-      // Only 3 of 5 scopes present → banking:admin and banking:ai:agent are missing
+      // Only 3 of 5 canonical scopes present → 'sensitive' and 'ai:agent' are missing
       managementService.getScopes.mockResolvedValue(
-        mockScopeList(['banking:read', 'banking:write', 'banking:sensitive'])
+        mockScopeList(['read', 'write', 'admin'])
       );
       stubCreateScopesSuccess();
     });
@@ -134,8 +135,8 @@ describe('POST /api/pingone-test/fix-banking-resource-server', () => {
 
       expect(managementService.createScopes).toHaveBeenCalledTimes(2);
       const calledWith = managementService.createScopes.mock.calls.map(c => c[1][0].name);
-      expect(calledWith).toContain('banking:admin');
-      expect(calledWith).toContain('banking:ai:agent');
+      expect(calledWith).toContain('sensitive');
+      expect(calledWith).toContain('ai:agent');
     });
 
     it('should include scopeResults with success:true for each', async () => {

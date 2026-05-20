@@ -30,7 +30,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Test MCP Server',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read', 'banking:write'],
+        scope: ['read', 'write'],
         token_endpoint_auth_method: 'client_secret_basic'
       };
 
@@ -45,7 +45,7 @@ describe('OAuth Client Registry Service', () => {
       expect(client).toHaveProperty('registration_access_token');
       expect(client.client_id).toMatch(/^mcp-client-/);
       expect(client.client_secret).toMatch(/^[a-f0-9]{64}$/);
-      expect(client.scope).toBe('banking:read banking:write');
+      expect(client.scope).toBe('read write');
     });
 
     test('should reject registration with invalid client name', async () => {
@@ -53,7 +53,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: '', // Empty name
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       };
 
       await expect(registerOAuthClient(request))
@@ -65,7 +65,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Test Client',
         client_type: 'public', // Not allowed
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       };
 
       await expect(registerOAuthClient(request))
@@ -77,7 +77,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Test Client',
         client_type: 'confidential',
         grant_types: ['authorization_code'], // Not allowed
-        scope: ['banking:read']
+        scope: ['read']
       };
 
       await expect(registerOAuthClient(request))
@@ -102,14 +102,14 @@ describe('OAuth Client Registry Service', () => {
         client_type: 'confidential',
         grant_types: ['client_credentials'],
         scope: [
-          'banking:read',
-          'banking:write',
+          'read',
+          'write',
           'ai_agent'
         ]
       };
 
       const client = await registerOAuthClient(request);
-      expect(client.scope).toBe('banking:read banking:write ai_agent');
+      expect(client.scope).toBe('read write ai_agent');
     });
 
     test('should handle registration with admin scopes', async () => {
@@ -129,7 +129,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Test Client',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read'],
+        scope: ['read'],
         redirect_uris: ['invalid-url'] // Invalid URI
       };
 
@@ -142,7 +142,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Test Client',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read'],
+        scope: ['read'],
         redirect_uris: ['https://example.com/callback']
       };
 
@@ -159,7 +159,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Test Client',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
       clientId = client.client_id;
     });
@@ -188,7 +188,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Test Client',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
       clientId = client.client_id;
     });
@@ -205,10 +205,10 @@ describe('OAuth Client Registry Service', () => {
     });
 
     test('should update client scopes successfully', () => {
-      const updates = { scope: 'banking:read banking:write' };
+      const updates = { scope: 'read write' };
       const client = updateClient(clientId, updates);
 
-      expect(client.scope).toEqual(['banking:read', 'banking:write']);
+      expect(client.scope).toEqual(['read', 'write']);
     });
 
     test('should reject update with invalid scopes', () => {
@@ -232,7 +232,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Test Client',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
       clientId = client.client_id;
     });
@@ -262,7 +262,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Test Client',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
       clientId = client.client_id;
       originalSecret = client.client_secret;
@@ -302,14 +302,14 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Client 1',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
 
       await registerOAuthClient({
         client_name: 'Client 2',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read', 'banking:write']
+        scope: ['read', 'write']
       });
     });
 
@@ -341,7 +341,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Test Client',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
       clientId = client.client_id;
       clientSecret = client.client_secret;
@@ -385,7 +385,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Banking Client',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read', 'banking:write']
+        scope: ['read', 'write']
       });
 
       await registerOAuthClient({
@@ -399,7 +399,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'AI Agent Client',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['ai_agent', 'banking:read']
+        scope: ['ai_agent', 'read']
       });
     });
 
@@ -423,8 +423,8 @@ describe('OAuth Client Registry Service', () => {
     test('should count scope usage correctly', () => {
       const stats = getClientStatistics();
       
-      expect(stats.scope_usage['banking:read']).toBe(2);
-      expect(stats.scope_usage['banking:write']).toBe(1);
+      expect(stats.scope_usage['read']).toBe(2);
+      expect(stats.scope_usage['write']).toBe(1);
       expect(stats.scope_usage['admin:read']).toBe(1);
       expect(stats.scope_usage['ai_agent']).toBe(1);
     });
@@ -436,14 +436,14 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Client 1',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
 
       const client2 = await registerOAuthClient({
         client_name: 'Client 2',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
 
       // Client IDs should be unique
@@ -459,7 +459,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Test Client',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
 
       // Client secret should be 64 hex characters (32 bytes)
@@ -472,7 +472,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Test Client',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
 
       // Registration access token should be 64 hex characters
@@ -489,7 +489,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: longName,
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
 
       expect(client).toHaveProperty('client_id');
@@ -502,7 +502,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: tooLongName,
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       })).rejects.toThrow('Client registration validation failed');
     });
 
@@ -513,7 +513,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: shortName,
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
 
       expect(client).toHaveProperty('client_id');
@@ -526,7 +526,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: tooShortName,
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       })).rejects.toThrow('Client registration validation failed');
     });
 
@@ -537,7 +537,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: specialName,
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
 
       expect(client).toHaveProperty('client_id');
@@ -550,7 +550,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: invalidName,
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       })).rejects.toThrow('Client registration validation failed');
     });
   });
@@ -564,7 +564,7 @@ describe('OAuth Client Registry Service', () => {
           client_name: `Client ${i}`,
           client_type: 'confidential',
           grant_types: ['client_credentials'],
-          scope: ['banking:read']
+          scope: ['read']
         }));
       }
 
@@ -582,7 +582,7 @@ describe('OAuth Client Registry Service', () => {
         client_name: 'Test Client',
         client_type: 'confidential',
         grant_types: ['client_credentials'],
-        scope: ['banking:read']
+        scope: ['read']
       });
 
       const startTime = Date.now();

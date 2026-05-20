@@ -1199,7 +1199,7 @@ class PingOneProvisionService {
       '# MCP Gateway (banking_mcp_gateway on :3005)',
       `MCP_GW_CLIENT_ID=${provisioned.mcpGwApp?.clientId || ''}`,
       `MCP_GW_CLIENT_SECRET=${provisioned.mcpGwApp?.clientSecret || '<set-in-pingone-console>'}`,
-      `MCP_GW_RESOURCE_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'api.ping.demo'}`,
+      `MCP_GW_RESOURCE_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcpgateway.ping.demo'}`,
       'MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD=post',
       '',
       '# Agent Service (banking_agent_service on :3006)',
@@ -1214,8 +1214,13 @@ class PingOneProvisionService {
       '# MCP server), so the BFF never performs a second exchange itself.',
       `PINGONE_AI_AGENT_CLIENT_ID=${provisioned.aiAgentApp?.clientId || ''}`,
       `PINGONE_AI_AGENT_CLIENT_SECRET=${provisioned.aiAgentApp?.clientSecret || '<set-in-pingone-console>'}`,
-      `PINGONE_RESOURCE_AGENT_GATEWAY_URI=${provisioned.agentGwResourceServer?.audience?.[0] || 'agent-gateway.bxf.com'}`,
-      `PINGONE_RESOURCE_MCP_GATEWAY_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'api.ping.demo'}`,
+      `PINGONE_RESOURCE_AGENT_GATEWAY_URI=${provisioned.agentGwResourceServer?.audience?.[0] || 'agentgateway.ping.demo'}`,
+      `PINGONE_RESOURCE_MCP_GATEWAY_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcpgateway.ping.demo'}`,
+      `# Two-Exchange Delegation audiences (Exchange #1 intermediate + Exchange #2 final)`,
+      `AI_AGENT_INTERMEDIATE_AUDIENCE=${provisioned.agentGwResourceServer?.audience?.[0] || 'agentgateway.ping.demo'}`,
+      `PINGONE_RESOURCE_TWO_EXCHANGE_URI=${provisioned.mcpResourceServer?.audience?.[0] || 'https://mcp-server.pingdemo.com'}`,
+      `# Exchange #1 scope — must match the scope granted to AI Agent on the Agent Gateway resource`,
+      `TWO_EXCHANGE_INTERMEDIATE_SCOPE=agent:invoke`,
       '# AGENT_OAUTH_CLIENT_ID/SECRET aliases — same MCP Token Exchanger app as',
       '# PINGONE_MCP_EXCHANGER_*; some callers read them under these names.',
       '# Keep both in sync.',
@@ -1281,7 +1286,7 @@ class PingOneProvisionService {
       const resourceResult = await this.createResourceServer(
         _provisioningResourceName('Super Banking API'),
         'Demo API resource server for user and admin applications',
-        config.audience || 'api.bxf.com'
+        config.audience || 'enduser.ping.demo'
       );
       
       if (resourceResult.exists) {
@@ -1310,7 +1315,7 @@ class PingOneProvisionService {
       const mcpResourceResult = await this.createResourceServer(
         _provisioningResourceName('Super Banking MCP Server'),
         'MCP server for admin tool execution and privileged operations',
-        config.mcpResourceAudience || 'mcp-server.bxf.com'
+        config.mcpResourceAudience || 'mcpserver.ping.demo'
       );
       
       if (mcpResourceResult.exists) {
@@ -1930,7 +1935,7 @@ class PingOneProvisionService {
       // them for backend-MCP audiences. See banking_mcp_gateway/src/config.ts.
       steps.push({ step: 'mcp-gw-resource', icon: '🛡️', message: 'Creating MCP Gateway resource server...' });
       onStep(steps[steps.length - 1]);
-      const mcpGwAudience = config.mcpGatewayAudience || 'api.ping.demo';
+      const mcpGwAudience = config.mcpGatewayAudience || 'mcpgateway.ping.demo';
       const mcpGwResourceResult = await this.createResourceServer(
         _provisioningResourceName('Super Banking MCP Gateway'),
         'Inbound resource server for the MCP Gateway (aud target for delegated tokens)',
@@ -2088,7 +2093,7 @@ class PingOneProvisionService {
       // Token Chain UI a labelled scope to display.
       steps.push({ step: 'agent-gw-resource', icon: '🛡️', message: 'Creating Agent Gateway resource server (Two-Exchange Step 1)...' });
       onStep(steps[steps.length - 1]);
-      const agentGwAud = config.agentGatewayAudience || 'agent-gateway.bxf.com';
+      const agentGwAud = config.agentGatewayAudience || 'agentgateway.ping.demo';
       const agentGwResourceResult = await this.createResourceServer(
         _provisioningResourceName('Super Banking Agent Gateway'),
         'Two-Exchange Step 1 audience — AI Agent client-credentials token target',

@@ -14,13 +14,13 @@ describe('OAuth Error Handling', () => {
         OAUTH_ERROR_TYPES.INSUFFICIENT_SCOPE,
         'Access denied',
         403,
-        { requiredScopes: ['banking:admin'], providedScopes: ['banking:read'] }
+        { requiredScopes: ['admin:read'], providedScopes: ['read'] }
       );
 
       expect(error.type).toBe(OAUTH_ERROR_TYPES.INSUFFICIENT_SCOPE);
       expect(error.message).toBe('Access denied');
       expect(error.statusCode).toBe(403);
-      expect(error.additionalData.requiredScopes).toEqual(['banking:admin']);
+      expect(error.additionalData.requiredScopes).toEqual(['admin:read']);
     });
 
     it('should format OAuth error response correctly', () => {
@@ -29,8 +29,8 @@ describe('OAuth Error Handling', () => {
         'Access denied',
         403,
         { 
-          requiredScopes: ['banking:admin'], 
-          providedScopes: ['banking:read'],
+          requiredScopes: ['admin:read'], 
+          providedScopes: ['read'],
           hint: 'Request additional scopes'
         }
       );
@@ -39,8 +39,8 @@ describe('OAuth Error Handling', () => {
       expect(json).toEqual({
         error: OAUTH_ERROR_TYPES.INSUFFICIENT_SCOPE,
         error_description: 'Access denied',
-        required_scopes: ['banking:admin'],
-        provided_scopes: ['banking:read'],
+        required_scopes: ['admin:read'],
+        provided_scopes: ['read'],
         error_hint: 'Request additional scopes'
       });
     });
@@ -49,42 +49,42 @@ describe('OAuth Error Handling', () => {
   describe('Scope Validation Error Handling', () => {
     it('should throw detailed error for insufficient scopes (OR logic)', () => {
       expect(() => {
-        validateScopesWithErrorHandling(['banking:read'], ['banking:admin', 'banking:write'], false);
+        validateScopesWithErrorHandling(['read'], ['admin:read', 'write'], false);
       }).toThrow();
 
       try {
-        validateScopesWithErrorHandling(['banking:read'], ['banking:admin', 'banking:write'], false);
+        validateScopesWithErrorHandling(['read'], ['admin:read', 'write'], false);
       } catch (error) {
         expect(error.type).toBe(OAUTH_ERROR_TYPES.INSUFFICIENT_SCOPE);
-        expect(error.additionalData.requiredScopes).toEqual(['banking:admin', 'banking:write']);
-        expect(error.additionalData.providedScopes).toEqual(['banking:read']);
+        expect(error.additionalData.requiredScopes).toEqual(['admin:read', 'write']);
+        expect(error.additionalData.providedScopes).toEqual(['read']);
         expect(error.additionalData.validationMode).toBe('any_required');
       }
     });
 
     it('should throw detailed error for insufficient scopes (AND logic)', () => {
       expect(() => {
-        validateScopesWithErrorHandling(['banking:read'], ['banking:read', 'banking:write'], true);
+        validateScopesWithErrorHandling(['read'], ['read', 'write'], true);
       }).toThrow();
 
       try {
-        validateScopesWithErrorHandling(['banking:read'], ['banking:read', 'banking:write'], true);
+        validateScopesWithErrorHandling(['read'], ['read', 'write'], true);
       } catch (error) {
         expect(error.type).toBe(OAUTH_ERROR_TYPES.INSUFFICIENT_SCOPE);
-        expect(error.additionalData.requiredScopes).toEqual(['banking:read', 'banking:write']);
-        expect(error.additionalData.providedScopes).toEqual(['banking:read']);
+        expect(error.additionalData.requiredScopes).toEqual(['read', 'write']);
+        expect(error.additionalData.providedScopes).toEqual(['read']);
         expect(error.additionalData.validationMode).toBe('all_required');
-        expect(error.additionalData.missingScopes).toEqual(['banking:write']);
+        expect(error.additionalData.missingScopes).toEqual(['write']);
       }
     });
 
     it('should pass validation when user has required scopes', () => {
       expect(() => {
-        validateScopesWithErrorHandling(['banking:admin'], ['banking:admin'], false);
+        validateScopesWithErrorHandling(['admin:read'], ['admin:read'], false);
       }).not.toThrow();
 
       expect(() => {
-        validateScopesWithErrorHandling(['banking:read', 'banking:write'], ['banking:read', 'banking:write'], true);
+        validateScopesWithErrorHandling(['read', 'write'], ['read', 'write'], true);
       }).not.toThrow();
     });
   });
@@ -136,7 +136,7 @@ describe('OAuth Error Handling', () => {
         },
         user: {
           tokenType: 'oauth',
-          scopes: ['banking:read']
+          scopes: ['read']
         }
       };
       const mockRes = {
@@ -146,7 +146,7 @@ describe('OAuth Error Handling', () => {
       const mockNext = jest.fn();
 
       const { requireScopes } = require('../../middleware/auth');
-      const middleware = requireScopes(['banking:admin']);
+      const middleware = requireScopes(['admin:read']);
       
       middleware(mockReq, mockRes, mockNext);
 
@@ -154,8 +154,8 @@ describe('OAuth Error Handling', () => {
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
           error: OAUTH_ERROR_TYPES.INSUFFICIENT_SCOPE,
-          requiredScopes: ['banking:admin'],
-          providedScopes: ['banking:read']
+          requiredScopes: ['admin:read'],
+          providedScopes: ['read']
         })
       );
     });

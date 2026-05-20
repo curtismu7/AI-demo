@@ -107,7 +107,8 @@ describe('PingOneProvisionService — regression suite', () => {
         type: 'WEB_APP',
         enabled: true,
         grantTypes: ['AUTHORIZATION_CODE', 'REFRESH_TOKEN', 'TOKEN_EXCHANGE'],
-        tokenEndpointAuthMethod: 'CLIENT_SECRET_BASIC',
+        // Must match desiredAuthMethod ('CLIENT_SECRET_POST' for non-worker apps)
+        tokenEndpointAuthMethod: 'CLIENT_SECRET_POST',
       };
       svc.findResourceByName = jest.fn().mockResolvedValue(existing);
       svc.makeRequest = jest.fn().mockResolvedValue({ data: existing });
@@ -150,7 +151,7 @@ describe('PingOneProvisionService — regression suite', () => {
 
       const results = await svc.createScopes('resource-id-123', [
         { name: 'banking:two-exchange:final', description: 'Step 4 marker' },
-        { name: 'banking:read', description: 'Read' },
+        { name: 'read', description: 'Read' },
       ]);
 
       // Each scope POST should have happened with the exact custom name.
@@ -159,7 +160,7 @@ describe('PingOneProvisionService — regression suite', () => {
         .map(([, , body]) => body.name);
       expect(postedNames).toEqual(expect.arrayContaining([
         'banking:two-exchange:final',
-        'banking:read',
+        'read',
       ]));
       // No 'openid' should ever be POSTed (it's reserved on CUSTOM resources).
       expect(postedNames).not.toContain('openid');
@@ -244,7 +245,8 @@ describe('PingOneProvisionService — regression suite', () => {
         'utf8',
       );
       const aiAgentCreateIdx = src.indexOf("'Super Banking AI Agent'");
-      const mayActWiringIdx = src.indexOf('Wiring may_act on Two-Exchange resources');
+      // Search for the actual string used in production (renamed from 'Wiring may_act on Two-Exchange resources')
+      const mayActWiringIdx = src.indexOf('Wiring may_act token claim');
       expect(aiAgentCreateIdx).toBeGreaterThan(-1);
       expect(mayActWiringIdx).toBeGreaterThan(-1);
       // The wiring step must appear LATER in the file (so it runs LATER at runtime).

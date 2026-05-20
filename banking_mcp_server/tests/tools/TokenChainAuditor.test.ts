@@ -10,7 +10,7 @@ const baseTool: BankingToolDefinition = {
   name: 'get_my_accounts',
   description: 'x',
   inputSchema: { type: 'object', properties: {} },
-  requiredScopes: ['banking:read'],
+  requiredScopes: ['read'],
   requiresUserAuth: true,
   handler: 'executeGetMyAccounts',
   readOnly: true,

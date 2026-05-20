@@ -28,7 +28,7 @@ describe('AuthorizationChallengeHandler', () => {
       refreshToken: 'valid_refresh_token',
       tokenType: 'Bearer',
       expiresIn: 3600,
-      scope: 'banking:accounts:read banking:transactions:read banking:transactions:write',
+      scope: 'accounts:read transactions:read transactions:write',
       issuedAt: new Date()
     };
 
@@ -52,7 +52,7 @@ describe('AuthorizationChallengeHandler', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://auth.example.com/authorize?state=abc123',
         state: 'abc123',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'session_123',
         expiresAt: new Date(Date.now() + 600000)
       };
@@ -61,7 +61,7 @@ describe('AuthorizationChallengeHandler', () => {
 
       const result = await handler.detectAuthorizationChallenge(
         sessionWithoutTokens,
-        ['banking:accounts:read']
+        ['accounts:read']
       );
 
       expect(result.challengeNeeded).toBe(true);
@@ -91,7 +91,7 @@ describe('AuthorizationChallengeHandler', () => {
 
       const result = await handler.detectAuthorizationChallenge(
         sessionWithExpiredTokens,
-        ['banking:accounts:read']
+        ['accounts:read']
       );
 
       expect(result.challengeNeeded).toBe(false);
@@ -109,7 +109,7 @@ describe('AuthorizationChallengeHandler', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://auth.example.com/authorize?state=def456',
         state: 'def456',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'session_123',
         expiresAt: new Date(Date.now() + 600000)
       };
@@ -120,7 +120,7 @@ describe('AuthorizationChallengeHandler', () => {
 
       const result = await handler.detectAuthorizationChallenge(
         sessionWithExpiredTokens,
-        ['banking:accounts:read']
+        ['accounts:read']
       );
 
       expect(result.challengeNeeded).toBe(true);
@@ -131,14 +131,14 @@ describe('AuthorizationChallengeHandler', () => {
     it('should require challenge when insufficient scopes', async () => {
       const limitedScopeTokens: UserTokens = {
         ...(mockSession.userTokens as UserTokens),
-        scope: 'banking:transactions:read' // Missing banking:accounts:read
+        scope: 'transactions:read' // Missing accounts:read
       };
       const sessionWithLimitedScopes = { ...mockSession, userTokens: limitedScopeTokens };
 
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://auth.example.com/authorize?state=ghi789',
         state: 'ghi789',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'session_123',
         expiresAt: new Date(Date.now() + 600000)
       };
@@ -149,7 +149,7 @@ describe('AuthorizationChallengeHandler', () => {
 
       const result = await handler.detectAuthorizationChallenge(
         sessionWithLimitedScopes,
-        ['banking:accounts:read']
+        ['accounts:read']
       );
 
       expect(result.challengeNeeded).toBe(true);
@@ -162,7 +162,7 @@ describe('AuthorizationChallengeHandler', () => {
 
       const result = await handler.detectAuthorizationChallenge(
         mockSession,
-        ['banking:accounts:read']
+        ['accounts:read']
       );
 
       expect(result.challengeNeeded).toBe(false);
@@ -175,7 +175,7 @@ describe('AuthorizationChallengeHandler', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://auth.example.com/authorize?state=xyz123',
         state: 'xyz123',
-        scope: 'banking:accounts:read banking:transactions:write',
+        scope: 'accounts:read transactions:write',
         sessionId: 'session_123',
         expiresAt: new Date(Date.now() + 600000)
       };
@@ -184,7 +184,7 @@ describe('AuthorizationChallengeHandler', () => {
 
       const challenge = await handler.generateAuthorizationChallenge(
         'session_123',
-        ['banking:accounts:read', 'banking:transactions:write']
+        ['accounts:read', 'transactions:write']
       );
 
       expect(challenge.type).toBe('oauth_authorization_required');
@@ -203,7 +203,7 @@ describe('AuthorizationChallengeHandler', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://auth.example.com/authorize',
         state: 'valid_state',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'session_123',
         expiresAt: new Date(Date.now() + 600000)
       };
@@ -213,7 +213,7 @@ describe('AuthorizationChallengeHandler', () => {
         refreshToken: 'new_refresh_token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         issuedAt: new Date()
       };
 
@@ -254,7 +254,7 @@ describe('AuthorizationChallengeHandler', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://auth.example.com/authorize',
         state: 'valid_state',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'different_session',
         expiresAt: new Date(Date.now() + 600000)
       };
@@ -276,7 +276,7 @@ describe('AuthorizationChallengeHandler', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://auth.example.com/authorize',
         state: 'valid_state',
-        scope: 'banking:accounts:read banking:transactions:write',
+        scope: 'accounts:read transactions:write',
         sessionId: 'session_123',
         expiresAt: new Date(Date.now() + 600000)
       };
@@ -286,7 +286,7 @@ describe('AuthorizationChallengeHandler', () => {
         refreshToken: 'new_refresh_token',
         tokenType: 'Bearer',
         expiresIn: 3600,
-        scope: 'banking:accounts:read', // Missing banking:transactions:write
+        scope: 'accounts:read', // Missing transactions:write
         issuedAt: new Date()
       };
 
@@ -309,7 +309,7 @@ describe('AuthorizationChallengeHandler', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://auth.example.com/authorize',
         state: 'valid_state',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'session_123',
         expiresAt: new Date(Date.now() + 600000)
       };
@@ -340,7 +340,7 @@ describe('AuthorizationChallengeHandler', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://auth.example.com/authorize',
         state: 'valid_state',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'session_123',
         expiresAt: new Date(Date.now() + 600000)
       };
@@ -367,7 +367,7 @@ describe('AuthorizationChallengeHandler', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://auth.example.com/authorize',
         state: 'valid_state',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'different_session',
         expiresAt: new Date(Date.now() + 600000)
       };
@@ -384,7 +384,7 @@ describe('AuthorizationChallengeHandler', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://auth.example.com/authorize',
         state: 'valid_state',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'session_123',
         expiresAt: new Date(Date.now() - 60000) // Expired 1 minute ago
       };
@@ -404,7 +404,7 @@ describe('AuthorizationChallengeHandler', () => {
       const mockAuthRequest: AuthorizationRequest = {
         authorizationUrl: 'https://auth.example.com/authorize',
         state: 'abc123',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'session_123',
         expiresAt: new Date(Date.now() + 600000)
       };
@@ -413,7 +413,7 @@ describe('AuthorizationChallengeHandler', () => {
 
       const result = await handler.checkReauthorizationNeeded(
         sessionWithoutTokens,
-        ['banking:accounts:read']
+        ['accounts:read']
       );
 
       expect(result).toBe(true);
@@ -425,7 +425,7 @@ describe('AuthorizationChallengeHandler', () => {
 
       const result = await handler.checkReauthorizationNeeded(
         mockSession,
-        ['banking:accounts:read']
+        ['accounts:read']
       );
 
       expect(result).toBe(false);
@@ -438,7 +438,7 @@ describe('AuthorizationChallengeHandler', () => {
         type: 'oauth_authorization_required' as const,
         authorizationUrl: 'https://auth.example.com/authorize',
         state: 'abc123',
-        scope: 'banking:accounts:read',
+        scope: 'accounts:read',
         sessionId: 'session_123',
         expiresAt: new Date(),
         instructions: 'Please authorize access to your banking data.'

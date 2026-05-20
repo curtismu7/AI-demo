@@ -234,13 +234,13 @@ describe('Audit Logger Service', () => {
 
   describe('logTokenExchange', () => {
     it('should log token exchange with act claim', () => {
-      logTokenExchange(mockReq, 'https://mcp-server.com', 'banking:read', true);
+      logTokenExchange(mockReq, 'https://mcp-server.com', 'read', true);
 
       expect(true).toBe(true);
     });
 
     it('should log token exchange without act claim', () => {
-      logTokenExchange(mockReq, 'https://mcp-server.com', 'banking:read', false);
+      logTokenExchange(mockReq, 'https://mcp-server.com', 'read', false);
 
       expect(true).toBe(true);
     });

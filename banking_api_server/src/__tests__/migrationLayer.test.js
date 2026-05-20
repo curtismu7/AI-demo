@@ -160,9 +160,9 @@ describe('Migration Layer', () => {
         valid: true,
         payload: {
           client_id: 'test-client',
-          scope: 'banking:read banking:write'
+          scope: 'read write'
         },
-        tokenScopes: ['banking:read', 'banking:write']
+        tokenScopes: ['read', 'write']
       });
     });
 
@@ -171,7 +171,7 @@ describe('Migration Layer', () => {
 
       expect(validateAccessToken).toHaveBeenCalledWith('valid-oauth-token', expect.any(Object));
       expect(mockReq.oauthToken).toBeDefined();
-      expect(mockReq.oauthTokenScopes).toEqual(['banking:read', 'banking:write']);
+      expect(mockReq.oauthTokenScopes).toEqual(['read', 'write']);
       expect(mockReq.authType).toBe('oauth');
       expect(mockNext).toHaveBeenCalled();
       expect(migrationStats.oauth_requests).toBe(1);
@@ -221,7 +221,7 @@ describe('Migration Layer', () => {
       patStore.set('valid-pat-token', {
         id: 'pat-123',
         name: 'Test PAT',
-        scopes: ['banking:read', 'banking:write'],
+        scopes: ['read', 'write'],
         createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days ago
         usageCount: 100
       });
@@ -267,7 +267,7 @@ describe('Migration Layer', () => {
       const patUser = {
         id: 'pat-123',
         name: 'Test User',
-        scopes: ['banking:read', 'banking:write'],
+        scopes: ['read', 'write'],
         createdAt: Date.now() - 60 * 24 * 60 * 60 * 1000 // 60 days ago
       };
 
@@ -285,7 +285,7 @@ describe('Migration Layer', () => {
       const eligibleUser = {
         id: 'pat-123',
         name: 'Good User',
-        scopes: ['banking:read'],
+        scopes: ['read'],
         usageCount: 100,
         createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000 // 30 days ago
       };
@@ -317,7 +317,7 @@ describe('Migration Layer', () => {
       const patUser = {
         id: 'pat-123',
         name: 'Test User',
-        scopes: ['banking:read', 'banking:write']
+        scopes: ['read', 'write']
       };
 
       const plan = migrationUtilities.createMigrationPlan(patUser);
@@ -465,7 +465,7 @@ describe('Migration Layer', () => {
       const patUser = {
         id: 'pat-123',
         name: 'Audit Test User',
-        scopes: ['banking:read']
+        scopes: ['read']
       };
 
       const metadata = {
@@ -504,7 +504,7 @@ describe('Migration Layer', () => {
       validateAccessToken.mockReturnValue({
         valid: true,
         payload: { client_id: 'test' },
-        tokenScopes: ['banking:read']
+        tokenScopes: ['read']
       });
 
       const startTime = Date.now();
@@ -675,9 +675,9 @@ describe('Migration Layer', () => {
         valid: true,
         payload: {
           client_id: 'integration-client',
-          scope: 'banking:read banking:write ai_agent'
+          scope: 'read write ai_agent'
         },
-        tokenScopes: ['banking:read', 'banking:write', 'ai_agent']
+        tokenScopes: ['read', 'write', 'ai_agent']
       });
 
       authenticateRequest(mockReq, mockRes, mockNext);
@@ -714,7 +714,7 @@ describe('Migration Layer', () => {
       validateAccessToken.mockReturnValue({
         valid: true,
         payload: { client_id: 'test' },
-        tokenScopes: ['banking:read']
+        tokenScopes: ['read']
       });
 
       authenticateRequest(oauthReq, mockRes, mockNext);

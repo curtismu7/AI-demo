@@ -39,7 +39,7 @@ jest.mock('../../middleware/auth', () => ({
     if (req.user.role === 'admin') return next();
     const userScopes = req.user.scopes || [];
     const arr = Array.isArray(requiredScopes) ? requiredScopes : [requiredScopes];
-    const ok = arr.some((s) => userScopes.includes(s)) || userScopes.includes('banking:admin');
+    const ok = arr.some((s) => userScopes.includes(s)) || userScopes.includes('admin:read');
     if (!ok) return res.status(403).json({ error: 'insufficient_scope' });
     return next();
   },
@@ -136,7 +136,7 @@ const customerUser = (overrides = {}) =>
     username: 'customer',
     email: 'customer@bank.com',
     role: 'user',
-    scopes: ['banking:write', 'banking:read'],
+    scopes: ['write', 'read'],
     acr: 'Multi_factor', // satisfy step-up gate so it doesn't interfere
     ...overrides,
   });
@@ -147,7 +147,7 @@ const adminUser = () =>
     username: 'admin',
     email: 'admin@bank.com',
     role: 'admin',
-    scopes: ['banking:admin', 'banking:write'],
+    scopes: ['admin:read', 'write'],
     acr: 'Multi_factor',
   });
 

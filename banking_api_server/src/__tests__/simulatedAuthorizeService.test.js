@@ -189,8 +189,8 @@ describe('simulatedAuthorizeService', () => {
       const r = await evaluateMcpFirstTool({
         userId: 'u-mcp',
         toolName: 'get_my_accounts',
-        tokenAudience: 'intermediate.2x.bxf.com',  // attacker sends Step 2 (intermediate) token
-        mcpResourceUri: 'final.2x.bxf.com',        // policy expects Step 4 (final) token
+        tokenAudience: 'intermediate.2x.ping.demo',  // attacker sends Step 2 (intermediate) token
+        mcpResourceUri: 'final.2x.ping.demo',        // policy expects Step 4 (final) token
         actClientId: 'agent',
       });
       expect(r.decision).toBe('DENY');
@@ -202,8 +202,8 @@ describe('simulatedAuthorizeService', () => {
       const r = await evaluateMcpFirstTool({
         userId: 'u-mcp',
         toolName: 'get_my_accounts',
-        tokenAudience: 'final.2x.bxf.com',
-        mcpResourceUri: 'final.2x.bxf.com',
+        tokenAudience: 'final.2x.ping.demo',
+        mcpResourceUri: 'final.2x.ping.demo',
         actClientId: 'agent',
       });
       expect(r.decision).toBe('PERMIT');
@@ -214,8 +214,8 @@ describe('simulatedAuthorizeService', () => {
       const r = await evaluateMcpFirstTool({
         userId: 'u-mcp',
         toolName: 'get_my_accounts',
-        tokenAudience: 'foo.example.com final.2x.bxf.com bar.example.com',
-        mcpResourceUri: 'final.2x.bxf.com',
+        tokenAudience: 'foo.example.com final.2x.ping.demo bar.example.com',
+        mcpResourceUri: 'final.2x.ping.demo',
         actClientId: 'agent',
       });
       expect(r.decision).toBe('PERMIT');

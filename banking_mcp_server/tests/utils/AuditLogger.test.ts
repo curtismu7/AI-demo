@@ -173,7 +173,7 @@ describe('AuditLogger', () => {
         },
         {
           tokenType: 'agent',
-          scopes: ['banking:read', 'banking:write'],
+          scopes: ['read', 'write'],
           clientId: 'client123'
         }
       );
@@ -189,7 +189,7 @@ describe('AuditLogger', () => {
             resourceType: 'token',
             details: expect.objectContaining({
               tokenType: 'agent',
-              scopes: ['banking:read', 'banking:write'],
+              scopes: ['read', 'write'],
               clientId: 'client123'
             })
           })
@@ -210,7 +210,7 @@ describe('AuditLogger', () => {
         {
           tokenType: 'user',
           grantType: 'authorization_code',
-          scopes: ['banking:accounts:read', 'banking:transactions:read']
+          scopes: ['accounts:read', 'transactions:read']
         }
       );
 
@@ -218,7 +218,7 @@ describe('AuditLogger', () => {
       const auditEvent = getAuditEvent(call);
 
       expect(auditEvent?.details.grantType).toBe('authorization_code');
-      expect(auditEvent?.details.scopes).toEqual(['banking:accounts:read', 'banking:transactions:read']);
+      expect(auditEvent?.details.scopes).toEqual(['accounts:read', 'transactions:read']);
     });
 
     it('should log failed authentication attempts', async () => {
@@ -256,8 +256,8 @@ describe('AuditLogger', () => {
           sessionId: 'session789'
         },
         {
-          requiredScopes: ['banking:accounts:read'],
-          grantedScopes: ['banking:accounts:read', 'banking:transactions:read'],
+          requiredScopes: ['accounts:read'],
+          grantedScopes: ['accounts:read', 'transactions:read'],
           resourceRequested: 'accounts',
           decision: 'allow',
           reason: 'User has sufficient permissions'
@@ -269,8 +269,8 @@ describe('AuditLogger', () => {
 
       expect(auditEvent?.eventType).toBe('authorization');
       expect(auditEvent?.details.decision).toBe('allow');
-      expect(auditEvent?.details.requiredScopes).toEqual(['banking:accounts:read']);
-      expect(auditEvent?.details.grantedScopes).toEqual(['banking:accounts:read', 'banking:transactions:read']);
+      expect(auditEvent?.details.requiredScopes).toEqual(['accounts:read']);
+      expect(auditEvent?.details.grantedScopes).toEqual(['accounts:read', 'transactions:read']);
     });
 
     it('should log authorization denials', async () => {
@@ -283,8 +283,8 @@ describe('AuditLogger', () => {
           sessionId: 'session789'
         },
         {
-          requiredScopes: ['banking:transactions:write'],
-          grantedScopes: ['banking:accounts:read'],
+          requiredScopes: ['transactions:write'],
+          grantedScopes: ['accounts:read'],
           resourceRequested: 'transactions',
           decision: 'deny',
           reason: 'Insufficient permissions for write operations'

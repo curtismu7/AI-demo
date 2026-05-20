@@ -88,7 +88,7 @@ describe('tokenIntrospectionService — per-issuer credential matching', () => {
     ['agent',         'agent-cid',         'agent-secret'],
     ['ai agent',      'ai-agent-cid',      'ai-agent-secret'],
   ])('uses %s credentials when token client_id matches', async (_label, cid, secret) => {
-    axios.post.mockResolvedValue({ data: { active: true, scope: 'banking:read', client_id: cid } });
+    axios.post.mockResolvedValue({ data: { active: true, scope: 'read', client_id: cid } });
 
     const token = buildJwt({ client_id: cid, sub: 'subject-1' });
     const result = await introspectionService.validateToken(token);
@@ -98,7 +98,7 @@ describe('tokenIntrospectionService — per-issuer credential matching', () => {
   });
 
   test('falls back to azp claim when client_id is missing', async () => {
-    axios.post.mockResolvedValue({ data: { active: true, scope: 'banking:read', client_id: 'user-cid' } });
+    axios.post.mockResolvedValue({ data: { active: true, scope: 'read', client_id: 'user-cid' } });
 
     const token = buildJwt({ azp: 'user-cid', sub: 'subject-2' });
     await introspectionService.validateToken(token);
@@ -107,7 +107,7 @@ describe('tokenIntrospectionService — per-issuer credential matching', () => {
   });
 
   test('falls back to worker credentials when token client_id is unknown', async () => {
-    axios.post.mockResolvedValue({ data: { active: true, scope: 'banking:read', client_id: 'external-cid' } });
+    axios.post.mockResolvedValue({ data: { active: true, scope: 'read', client_id: 'external-cid' } });
 
     const token = buildJwt({ client_id: 'external-cid', sub: 'external-subject' });
     await introspectionService.validateToken(token);
@@ -116,7 +116,7 @@ describe('tokenIntrospectionService — per-issuer credential matching', () => {
   });
 
   test('falls back to worker credentials when token is opaque (not a JWT)', async () => {
-    axios.post.mockResolvedValue({ data: { active: true, scope: 'banking:read', client_id: 'opaque' } });
+    axios.post.mockResolvedValue({ data: { active: true, scope: 'read', client_id: 'opaque' } });
 
     await introspectionService.validateToken('opaque-bearer-token');
 
@@ -129,7 +129,7 @@ describe('tokenIntrospectionService — per-issuer credential matching', () => {
     process.env.PINGONE_MCP_EXCHANGER_CLIENT_ID = 'alias-mcp-cid';
     process.env.PINGONE_MCP_EXCHANGER_CLIENT_SECRET = 'alias-mcp-secret';
 
-    axios.post.mockResolvedValue({ data: { active: true, scope: 'banking:mcp:invoke', client_id: 'alias-mcp-cid' } });
+    axios.post.mockResolvedValue({ data: { active: true, scope: 'mcp:invoke', client_id: 'alias-mcp-cid' } });
 
     const token = buildJwt({ client_id: 'alias-mcp-cid' });
     await introspectionService.validateToken(token);
@@ -143,7 +143,7 @@ describe('tokenIntrospectionService — per-issuer credential matching', () => {
     process.env.AGENT_CLIENT_ID = 'alias-agent-cid';
     process.env.AGENT_CLIENT_SECRET = 'alias-agent-secret';
 
-    axios.post.mockResolvedValue({ data: { active: true, scope: 'banking:read', client_id: 'alias-agent-cid' } });
+    axios.post.mockResolvedValue({ data: { active: true, scope: 'read', client_id: 'alias-agent-cid' } });
 
     const token = buildJwt({ client_id: 'alias-agent-cid' });
     await introspectionService.validateToken(token);
@@ -152,7 +152,7 @@ describe('tokenIntrospectionService — per-issuer credential matching', () => {
   });
 
   test('uses post auth method (credentials in body, no Authorization header)', async () => {
-    axios.post.mockResolvedValue({ data: { active: true, scope: 'banking:read', client_id: 'user-cid' } });
+    axios.post.mockResolvedValue({ data: { active: true, scope: 'read', client_id: 'user-cid' } });
 
     const token = buildJwt({ client_id: 'user-cid' });
     await introspectionService.validateToken(token);

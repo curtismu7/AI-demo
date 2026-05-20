@@ -16,14 +16,14 @@ The diagrams describe five independently-runnable services plus two external pol
 | 2 | **agent1** | AI orchestrator; calls MCP GW; holds LLM + Prompts + PKI Creds | `client_id: agent1` |
 | 3 | **MCP Gateway** | Token-scoping router; prevents agent from calling MCP directly | `client_id: mcp-gw` → `aud: api.ping.demo` |
 | 4 | **mcp-olb** | MCP server for OLB tools (balance, transfer, accounts) | `aud: api.ping.demo` |
-| 5 | **mcp-invest** | MCP server for investments (balance only) | `aud: mcp-invest.bxf.com` |
+| 5 | **mcp-invest** | MCP server for investments (balance only) | `aud: mcp-invest.ping.demo` |
 | — | **PingAuthorize** | External; guards `tools/list` (client-cred check) + `tools/call` (1:1 tool→scope via OpenAPI) | — |
 | — | **PingOne / PF / AIC** | External; token exchange, CIBA, orchestration | — |
 
 ### Token chain (Page 1 simplified)
 
 ```
-User token        aud: olb-resource.bxf.com
+User token        aud: olb-resource.ping.demo
    ↓ RFC 8693 TX (subject=user, actor=agent1 cred token)
 GW token          aud: api.ping.demo   act: { sub: agent1 }
    ↓ RFC 8693 TX (MCP GW re-exchanges to narrow aud)
@@ -105,7 +105,7 @@ Validate `aud === api.ping.demo` on every inbound token.
 
 ### Service 5: mcp-invest (`banking_mcp_invest/` — new TypeScript)
 New MCP server with investment-account tools (at minimum: `get_investment_balance`).  
-Own `package.json`. Validates `aud === mcp-invest.bxf.com`.  
+Own `package.json`. Validates `aud === mcp-invest.ping.demo`.  
 Add: `/.well-known/oauth-protected-resource` serving invest metadata.
 
 ---
@@ -147,7 +147,7 @@ banking_mcp_gateway/
 **B-2: Token re-exchange in gateway**
 - Accept inbound JSON-RPC with Bearer token (aud: api.ping.demo).
 - Validate token locally (JWT verify or introspect).
-- Call PingOne `/as/token` with `grant_type=urn:ietf:params:oauth:grant-type:token-exchange` to narrow aud to target MCP server (`api.ping.demo` or `mcp-invest.bxf.com`).
+- Call PingOne `/as/token` with `grant_type=urn:ietf:params:oauth:grant-type:token-exchange` to narrow aud to target MCP server (`api.ping.demo` or `mcp-invest.ping.demo`).
 - Forward JSON-RPC to target MCP server with new Bearer token.
 - Return response to agent.
 
@@ -204,7 +204,7 @@ banking_agent_service/
 **D-1: Scaffold `banking_mcp_invest/`**
 - Clone `banking_mcp_server/` structure.
 - Keep only investment-relevant tools (start with `get_investment_balance`).
-- Set `MCP_INVEST_RESOURCE_URI=https://mcp-invest.bxf.com`.
+- Set `MCP_INVEST_RESOURCE_URI=https://mcp-invest.ping.demo`.
 - Serve `/.well-known/oauth-protected-resource` with invest scopes.
 
 ---

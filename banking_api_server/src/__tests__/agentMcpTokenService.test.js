@@ -220,10 +220,10 @@ describe('resolveMcpAccessTokenWithEvents — PINGONE_RESOURCE_MCP_SERVER_URI un
 // suites). These tests pin the new behavior: the local allow-list no longer
 // vetoes the exchange.
 describe('resolveMcpAccessTokenWithEvents — R1: local scope allow-list no longer vetoes (T-2)', () => {
-  // User token DOES carry banking:write so the RFC 8693 user-token-scope guard
+  // User token DOES carry write so the RFC 8693 user-token-scope guard
   // (a separate, legitimate check kept by R1) passes. The variable under test
   // is purely the removed local `agent_mcp_allowed_scopes` admin-config veto:
-  // it excludes banking:write below, which pre-R1 made the veto throw
+  // it excludes write below, which pre-R1 made the veto throw
   // agent_mcp_scope_denied before any exchange.
   const userTokenWithWrite = makeJwt({
     sub: USER_SUB,
@@ -545,9 +545,9 @@ describe('buildSessionPreviewTokenEvents', () => {
   });
 });
 
-// ── Broad scope (banking:read / banking:write) support ───────────────────────
+// ── Broad scope (read / write) support ───────────────────────
 
-/** User token that has banking:read but NOT banking:read */
+/** User token that has read but NOT read */
 const sampleJwtUserAccessBroadRead = makeJwt({
   sub: USER_SUB,
   aud: 'banking_enduser',
@@ -621,7 +621,7 @@ describe('resolveMcpAccessTokenWithEvents — R1: agent_mcp_allowed_scopes is in
     expect(mockPerformTokenExchange).toHaveBeenCalledTimes(1);
   });
 
-  it('R1: still resolves create_transfer even when agent_mcp_allowed_scopes excludes banking:write', async () => {
+  it('R1: still resolves create_transfer even when agent_mcp_allowed_scopes excludes write', async () => {
     // Pre-R1 this configuration made the local veto throw agent_mcp_scope_denied
     // and skip the exchange. Post-R1 the local allow-list is inert advisory
     // config: the exchange proceeds and authorization is PingAuthorize's call
@@ -640,23 +640,23 @@ describe('resolveMcpAccessTokenWithEvents — R1: agent_mcp_allowed_scopes is in
   });
 });
 
-// ─── ENDUSER_AUDIENCE delegation-scope-only token (banking:ai:agent) ────
-// Regression: when ENDUSER_AUDIENCE restricts login to only banking:ai:agent,
-// the fallback must NOT use banking:ai:agent as the exchange scope (it lives
+// ─── ENDUSER_AUDIENCE delegation-scope-only token (ai:agent:read) ────
+// Regression: when ENDUSER_AUDIENCE restricts login to only ai:agent:read,
+// the fallback must NOT use ai:agent:read as the exchange scope (it lives
 // on the enduser resource, not the MCP resource).  The exchange should be attempted
 // with the tool's actual scopes so PingOne can evaluate its exchange policy.
 
 /** User token that carries ONLY the delegation scope (ENDUSER_AUDIENCE login path) */
 const sampleJwtAgentInvokeOnly = makeJwt({
   sub: USER_SUB,
-  aud: 'api.bxf.com',
+  aud: 'enduser.ping.demo',
   scope: 'profile email offline_access ai:agent:read',
   iss: 'https://auth.pingone.com/test-env/as',
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
 });
 
-describe('resolveMcpAccessTokenWithEvents — ENDUSER_AUDIENCE banking:ai:agent only token', () => {
+describe('resolveMcpAccessTokenWithEvents — ENDUSER_AUDIENCE ai:agent:read only token', () => {
   const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
 
   beforeEach(() => {
@@ -676,7 +676,7 @@ describe('resolveMcpAccessTokenWithEvents — ENDUSER_AUDIENCE banking:ai:agent 
     else delete process.env.AGENT_OAUTH_CLIENT_ID;
   });
 
-  it('uses tool candidate scopes (not banking:ai:agent:read) for write tool exchange', async () => {
+  it('uses tool candidate scopes (not ai:agent:read) for write tool exchange', async () => {
     await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtAgentInvokeOnly), 'create_transfer');
     const callArgs = mockPerformTokenExchange.mock.calls[0][2];
     // Must request actual MCP resource scopes, not the delegation scope

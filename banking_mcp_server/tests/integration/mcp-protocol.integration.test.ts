@@ -219,7 +219,7 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         data: {
           active: true,
           client_id: 'test-client-id',
-          scope: 'banking:read banking:write',
+          scope: 'read write',
           exp: Math.floor(Date.now() / 1000) + 3600
         }
       });
@@ -337,7 +337,7 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         data: {
           active: true,
           client_id: 'test-client-id',
-          scope: 'banking:read banking:write',
+          scope: 'read write',
           exp: Math.floor(Date.now() / 1000) + 3600
         }
       });
@@ -398,7 +398,7 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         description: expect.any(String),
         inputSchema: expect.any(Object),
         requiresUserAuth: true,
-        requiredScopes: expect.arrayContaining(['banking:read'])
+        requiredScopes: expect.arrayContaining(['read'])
       });
     });
 
@@ -448,7 +448,7 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         data: {
           active: true,
           client_id: 'test-client-id',
-          scope: 'banking:read banking:write',
+          scope: 'read write',
           exp: Math.floor(Date.now() / 1000) + 3600
         }
       });
@@ -667,7 +667,7 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
           data: {
             active: true,
             client_id: 'test-client-id',
-            scope: 'banking:read banking:write',
+            scope: 'read write',
             exp: Math.floor(Date.now() / 1000) + 3600
           }
         });
@@ -729,7 +729,7 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
           data: {
             active: true,
             client_id: 'test-client-id',
-            scope: 'banking:read banking:write',
+            scope: 'read write',
             exp: Math.floor(Date.now() / 1000) + 3600
           }
         });
@@ -1001,7 +1001,7 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         refresh_token: `user-refresh-token-${index}`,
         token_type: 'Bearer',
         expires_in: 3600,
-        scope: 'banking:read banking:write banking:sensitive:read'
+        scope: 'read write sensitive:read'
       }
     });
 

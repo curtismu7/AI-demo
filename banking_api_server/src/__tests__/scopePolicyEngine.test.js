@@ -29,7 +29,7 @@ describe('Scope Policy Engine', () => {
 
   describe('Scope Format Validation', () => {
     test('should validate valid scopes array', () => {
-      const scopes = ['banking:read', 'banking:write'];
+      const scopes = ['read', 'write'];
       const context = { clientId: 'test', sourceIP: '127.0.0.1', userSession: true, mfaVerified: true };
       const result = validateScopes(scopes, context);
 
@@ -39,13 +39,13 @@ describe('Scope Policy Engine', () => {
     });
 
     test('should reject non-array scopes', () => {
-      const scopes = 'banking:read'; // String instead of array
+      const scopes = 'read'; // String instead of array
       // validateScopes passes non-array to sub-functions that call forEach, causing TypeError
       expect(() => validateScopes(scopes)).toThrow();
     });
 
     test('should reject invalid scope types', () => {
-      const scopes = ['banking:read', 123, null]; // Mixed types
+      const scopes = ['read', 123, null]; // Mixed types
       const result = validateScopes(scopes);
 
       expect(result.valid).toBe(false);
@@ -54,7 +54,7 @@ describe('Scope Policy Engine', () => {
     });
 
     test('should reject unknown scopes', () => {
-      const scopes = ['banking:read', 'unknown:scope'];
+      const scopes = ['read', 'unknown:scope'];
       const result = validateScopes(scopes);
 
       expect(result.valid).toBe(false);
@@ -73,13 +73,14 @@ describe('Scope Policy Engine', () => {
 
   describe('Scope Compatibility Validation', () => {
     test('should validate compatible banking scopes', () => {
-      const scopes = ['banking:read', 'banking:write'];
+      const scopes = ['read', 'write'];
       const result = validateScopes(scopes);
 
       expect(result.results.compatibility.valid).toBe(true);
       expect(result.results.compatibility.errors).toHaveLength(0);
-      expect(result.results.compatibility.categories).toHaveProperty('banking');
-      expect(result.results.compatibility.categories.banking).toEqual(scopes);
+      // Scope category is 'data' (from manifest), not 'banking'
+      expect(result.results.compatibility.categories).toHaveProperty('data');
+      expect(result.results.compatibility.categories.data).toEqual(scopes);
     });
 
     test('should validate compatible admin scopes', () => {
@@ -100,24 +101,25 @@ describe('Scope Policy Engine', () => {
     });
 
     test('should validate mixed category scopes', () => {
-      const scopes = ['banking:read', 'ai_agent'];
+      const scopes = ['read', 'ai_agent'];
       const result = validateScopes(scopes);
 
       expect(result.results.compatibility.valid).toBe(true);
-      expect(result.results.compatibility.categories).toHaveProperty('banking');
+      // 'read' is category 'data' (from manifest); 'ai_agent' is category 'ai'
+      expect(result.results.compatibility.categories).toHaveProperty('data');
       expect(result.results.compatibility.categories).toHaveProperty('ai');
     });
   });
 
   describe('Risk Score Calculation', () => {
     test('should calculate low risk score for read operations', () => {
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
       const result = calculateRiskScore(scopes);
 
       expect(result.total_score).toBe(1);
       expect(result.risk_level).toBe('low');
-      expect(result.breakdown).toHaveProperty('banking:read');
-      expect(result.breakdown['banking:read'].risk_level).toBe('low');
+      expect(result.breakdown).toHaveProperty('read');
+      expect(result.breakdown['read'].risk_level).toBe('low');
     });
 
     test('should calculate medium risk score for AI operations', () => {
@@ -130,12 +132,12 @@ describe('Scope Policy Engine', () => {
     });
 
     test('should calculate high risk score for write operations', () => {
-      const scopes = ['banking:write'];
+      const scopes = ['write'];
       const result = calculateRiskScore(scopes);
 
       expect(result.total_score).toBe(5);
       expect(result.risk_level).toBe('high');
-      expect(result.breakdown['banking:write'].risk_level).toBe('high');
+      expect(result.breakdown['write'].risk_level).toBe('high');
     });
 
     test('should calculate critical risk score for delete operations', () => {
@@ -148,7 +150,7 @@ describe('Scope Policy Engine', () => {
     });
 
     test('should aggregate risk scores for multiple scopes', () => {
-      const scopes = ['banking:read', 'banking:write', 'ai_agent'];
+      const scopes = ['read', 'write', 'ai_agent'];
       const result = calculateRiskScore(scopes);
 
       expect(result.total_score).toBe(1 + 5 + 3); // 9
@@ -160,27 +162,27 @@ describe('Scope Policy Engine', () => {
   describe('Tool Scope Validation', () => {
     test('should validate scopes for known tools', () => {
       const toolName = 'get_my_accounts';
-      const requestedScopes = ['banking:read'];
+      const requestedScopes = ['read'];
       const result = validateScopesForTool(toolName, requestedScopes);
 
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
-      expect(result.requiredScopes).toContain('banking:read');
-      expect(result.matchedScopes).toContain('banking:read');
+      expect(result.requiredScopes).toContain('read');
+      expect(result.matchedScopes).toContain('read');
     });
 
     test('should validate scopes with broad alternatives', () => {
       const toolName = 'get_my_accounts';
-      const requestedScopes = ['banking:read']; // Broad scope
+      const requestedScopes = ['read']; // Broad scope
       const result = validateScopesForTool(toolName, requestedScopes);
 
       expect(result.valid).toBe(true);
-      expect(result.matchedScopes).toContain('banking:read');
+      expect(result.matchedScopes).toContain('read');
     });
 
     test('should reject scopes for unknown tools', () => {
       const toolName = 'unknown_tool';
-      const requestedScopes = ['banking:read'];
+      const requestedScopes = ['read'];
       const result = validateScopesForTool(toolName, requestedScopes);
 
       expect(result.valid).toBe(false);
@@ -189,11 +191,11 @@ describe('Scope Policy Engine', () => {
 
     test('should reject insufficient scopes for tools', () => {
       const toolName = 'create_transfer';
-      const requestedScopes = ['banking:read']; // Insufficient
+      const requestedScopes = ['read']; // Insufficient
       const result = validateScopesForTool(toolName, requestedScopes);
 
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Tool create_transfer requires one of: banking:write, banking:transfer');
+      expect(result.errors).toContain('Tool create_transfer requires one of: write, transfer');
     });
 
     test('should validate admin tools with admin scopes', () => {
@@ -208,7 +210,7 @@ describe('Scope Policy Engine', () => {
 
   describe('Policy Enforcement', () => {
     test('should enforce policies for valid request', () => {
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
       const requestContext = {
         clientId: 'test-client',
         sourceIP: '127.0.0.1',
@@ -220,11 +222,11 @@ describe('Scope Policy Engine', () => {
       expect(result.allowed).toBe(true);
       expect(result.violations).toHaveLength(0);
       expect(result.enforcedPolicies).toHaveLength(1);
-      expect(result.enforcedPolicies[0].scope).toBe('banking:read');
+      expect(result.enforcedPolicies[0].scope).toBe('read');
     });
 
     test('should enforce rate limiting', () => {
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
       const requestContext = {
         clientId: 'test-client',
         sourceIP: '127.0.0.1'
@@ -238,7 +240,7 @@ describe('Scope Policy Engine', () => {
     });
 
     test('should require user session for banking operations', () => {
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
       const requestContext = {
         clientId: 'test-client',
         sourceIP: '127.0.0.1'
@@ -269,7 +271,7 @@ describe('Scope Policy Engine', () => {
     });
 
     test('should require MFA for high-risk operations', () => {
-      const scopes = ['banking:write'];
+      const scopes = ['write'];
       const requestContext = {
         clientId: 'test-client',
         sourceIP: '127.0.0.1',
@@ -287,7 +289,7 @@ describe('Scope Policy Engine', () => {
 
   describe('Scope Usage Tracking', () => {
     test('should update scope usage', () => {
-      const scopes = ['banking:read', 'banking:write'];
+      const scopes = ['read', 'write'];
       const clientId = 'test-client';
 
       updateScopeUsage(scopes, clientId);
@@ -314,13 +316,14 @@ describe('Scope Policy Engine', () => {
 
   describe('Scope Information', () => {
     test('should get scope information', () => {
-      const scope = 'banking:read';
+      const scope = 'read';
       const info = getScopeInformation(scope);
 
       expect(info).toHaveProperty('scope', scope);
       expect(info).toHaveProperty('taxonomy');
       expect(info).toHaveProperty('risk_level', 'low');
-      expect(info).toHaveProperty('category', 'banking');
+      // 'read' scope category is 'data' per manifest (single source of truth)
+      expect(info).toHaveProperty('category', 'data');
       expect(info).toHaveProperty('description');
       expect(info).toHaveProperty('operations');
     });
@@ -348,7 +351,7 @@ describe('Scope Policy Engine', () => {
 
   describe('Comprehensive Scope Validation', () => {
     test('should pass comprehensive validation for valid request', () => {
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
       const context = {
         clientId: 'test-client',
         sourceIP: '127.0.0.1',
@@ -381,7 +384,7 @@ describe('Scope Policy Engine', () => {
     });
 
     test('should provide detailed error information', () => {
-      const scopes = ['unknown:scope', 'banking:write'];
+      const scopes = ['unknown:scope', 'write'];
       const context = {
         clientId: 'test-client',
         sourceIP: '127.0.0.1'
@@ -391,7 +394,7 @@ describe('Scope Policy Engine', () => {
 
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Unknown scope: unknown:scope');
-      // Should also have session_required violation for banking:write
+      // Should also have session_required violation for write
     });
   });
 
@@ -407,22 +410,22 @@ describe('Scope Policy Engine', () => {
     });
 
     test('should enforce least privilege principle', () => {
-      const readScopes = ['banking:read'];
-      const writeScopes = ['banking:write'];
+      const readScopes = ['read'];
+      const writeScopes = ['write'];
       const adminScopes = ['admin:read'];
 
       const readRisk = calculateRiskScore(readScopes);
       const writeRisk = calculateRiskScore(writeScopes);
       const adminRisk = calculateRiskScore(adminScopes);
 
-      // banking:read=low(1), banking:write=high(5), admin:read=medium(3)
+      // read=low(1), write=high(5), admin:read=medium(3)
       expect(readRisk.total_score).toBeLessThan(writeRisk.total_score);
       expect(adminRisk.total_score).toBeLessThan(writeRisk.total_score);
     });
 
     test('should validate scope hierarchy', () => {
-      const specificScopes = ['banking:read'];
-      const broadScopes = ['banking:read'];
+      const specificScopes = ['read'];
+      const broadScopes = ['read'];
 
       const specificRisk = calculateRiskScore(specificScopes);
       const broadRisk = calculateRiskScore(broadScopes);
@@ -434,7 +437,7 @@ describe('Scope Policy Engine', () => {
 
   describe('Performance Tests', () => {
     test('should handle large scope arrays efficiently', () => {
-      const scopes = Array.from({ length: 50 }, (_, i) => `banking:read`); // Duplicate scopes
+      const scopes = Array.from({ length: 50 }, (_, i) => `read`); // Duplicate scopes
       const startTime = Date.now();
 
       const result = validateScopes(scopes);
@@ -443,11 +446,11 @@ describe('Scope Policy Engine', () => {
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(50); // Should complete in under 50ms
-      expect(result.results.format.validScopes).toEqual(['banking:read']); // Deduplicated
+      expect(result.results.format.validScopes).toEqual(['read']); // Deduplicated
     });
 
     test('should handle rapid policy enforcement', () => {
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
       const context = {
         clientId: 'test-client',
         sourceIP: '127.0.0.1',
@@ -470,7 +473,7 @@ describe('Scope Policy Engine', () => {
       const startTime = Date.now();
 
       for (let i = 0; i < 50; i++) {
-        getScopeInformation('banking:read');
+        getScopeInformation('read');
       }
 
       const endTime = Date.now();
@@ -491,7 +494,7 @@ describe('Scope Policy Engine', () => {
     });
 
     test('should handle single scope array', () => {
-      const scopes = ['banking:read'];
+      const scopes = ['read'];
       const context = { clientId: 'test', sourceIP: '127.0.0.1', userSession: true };
       const result = validateScopes(scopes, context);
 
@@ -514,13 +517,13 @@ describe('Scope Policy Engine', () => {
         userSession: true
       };
 
-      const result = validateScopes(['banking:read'], context);
+      const result = validateScopes(['read'], context);
 
       expect(result.valid).toBe(true);
     });
 
     test('should handle malformed scope names gracefully', () => {
-      const scopes = ['', '   ', 'banking:read', 'banking:write'];
+      const scopes = ['', '   ', 'read', 'write'];
       const result = validateScopes(scopes);
 
       expect(result.valid).toBe(false);
@@ -546,8 +549,8 @@ describe('Scope Policy Engine', () => {
 
     test('should validate tool-specific scope requirements', () => {
       const testCases = [
-        { tool: 'get_my_accounts', scopes: ['banking:read'] },
-        { tool: 'create_transfer', scopes: ['banking:write'] },
+        { tool: 'get_my_accounts', scopes: ['read'] },
+        { tool: 'create_transfer', scopes: ['write'] },
         { tool: 'query_user_by_email', scopes: ['ai_agent'] },
         { tool: 'admin_list_all_users', scopes: ['admin:read'] }
       ];
@@ -561,18 +564,18 @@ describe('Scope Policy Engine', () => {
 
     test('should handle scope alternatives for tools', () => {
       const tool = 'get_my_accounts';
-      const alternativeScopes = ['banking:read']; // Broad alternative
+      const alternativeScopes = ['read']; // Broad alternative
       
       const result = validateScopesForTool(tool, alternativeScopes);
       expect(result.valid).toBe(true);
-      expect(result.matchedScopes).toContain('banking:read');
+      expect(result.matchedScopes).toContain('read');
     });
   });
 
   describe('Policy Configuration Tests', () => {
     test('should have proper policy configurations', () => {
-      expect(SCOPE_POLICIES).toHaveProperty('banking:read');
-      expect(SCOPE_POLICIES).toHaveProperty('banking:write');
+      expect(SCOPE_POLICIES).toHaveProperty('read');
+      expect(SCOPE_POLICIES).toHaveProperty('write');
       expect(SCOPE_POLICIES).toHaveProperty('ai_agent');
       expect(SCOPE_POLICIES).toHaveProperty('admin:read');
 
@@ -585,8 +588,8 @@ describe('Scope Policy Engine', () => {
     });
 
     test('should enforce rate limits according to risk level', () => {
-      const readPolicy = SCOPE_POLICIES['banking:read'];
-      const writePolicy = SCOPE_POLICIES['banking:write'];
+      const readPolicy = SCOPE_POLICIES['read'];
+      const writePolicy = SCOPE_POLICIES['write'];
       const adminPolicy = SCOPE_POLICIES['admin:write'];
 
       // Lower risk should have higher rate limits
@@ -595,8 +598,8 @@ describe('Scope Policy Engine', () => {
     });
 
     test('should require stronger authentication for higher risk scopes', () => {
-      const readPolicy = SCOPE_POLICIES['banking:read'];
-      const writePolicy = SCOPE_POLICIES['banking:write'];
+      const readPolicy = SCOPE_POLICIES['read'];
+      const writePolicy = SCOPE_POLICIES['write'];
       const adminPolicy = SCOPE_POLICIES['admin:write'];
 
       expect(readPolicy.requires_user_session).toBe(true);

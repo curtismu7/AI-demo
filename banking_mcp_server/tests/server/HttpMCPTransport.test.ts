@@ -438,7 +438,7 @@ describe('HttpMCPTransport', () => {
       mockHandler.handleMessage = jest.fn().mockResolvedValue({
         id: 'tc-scope',
         result: {
-          content: [{ type: 'text', text: 'auth_challenge', authChallenge: { scope: 'banking:write' } }],
+          content: [{ type: 'text', text: 'auth_challenge', authChallenge: { scope: 'write' } }],
           isError: false,
         },
       });
@@ -460,7 +460,7 @@ describe('HttpMCPTransport', () => {
       mockHandler.handleMessage = jest.fn().mockResolvedValue({
         id: 'tc-scope',
         result: {
-          content: [{ type: 'text', text: 'need more scope', authChallenge: { scope: 'banking:write' } }],
+          content: [{ type: 'text', text: 'need more scope', authChallenge: { scope: 'write' } }],
           isError: false,
         },
       });
@@ -480,7 +480,7 @@ describe('HttpMCPTransport', () => {
       expect(toolMock.statusCode).toBe(403);
       const wwwAuth = toolMock.headers['www-authenticate'];
       expect(wwwAuth).toMatch(/insufficient_scope/);
-      expect(wwwAuth).toMatch(/banking:write/);
+      expect(wwwAuth).toMatch(/write/);
     });
   });
 

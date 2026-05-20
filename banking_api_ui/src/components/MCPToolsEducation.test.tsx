@@ -49,8 +49,8 @@ describe('MCPToolsEducation', () => {
 
   it('displays required scopes as badges', () => {
     render(<MCPToolsEducation />);
-    expect(screen.getAllByText('banking:transactions:write').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('banking:sensitive:read')).toBeInTheDocument();
+    expect(screen.getAllByText('transactions:write').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('sensitive:read')).toBeInTheDocument();
   });
 
   it('shows No scopes required for tools without scopes', () => {

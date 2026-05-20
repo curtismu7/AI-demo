@@ -45,7 +45,7 @@ describe('TokenIntrospector', () => {
     it('should successfully introspect an active token', async () => {
       const mockTokenInfo: TokenInfo = {
         active: true,
-        scope: 'banking:read banking:write',
+        scope: 'read write',
         client_id: 'test-client',
         username: 'test-user',
         token_type: 'Bearer',
@@ -123,7 +123,7 @@ describe('TokenIntrospector', () => {
     it('should validate an active token with scopes', async () => {
       const mockTokenInfo: TokenInfo = {
         active: true,
-        scope: 'banking:read banking:write',
+        scope: 'read write',
         client_id: 'test-client',
         exp: Math.floor(Date.now() / 1000) + 3600,
         iat: Math.floor(Date.now() / 1000)
@@ -135,7 +135,7 @@ describe('TokenIntrospector', () => {
 
       expect(result).toMatchObject({
         clientId: 'test-client',
-        scopes: ['banking:read', 'banking:write'],
+        scopes: ['read', 'write'],
         isValid: true
       });
       expect(result.tokenHash).toHaveLength(16);
@@ -340,14 +340,14 @@ describe('TokenIntrospector', () => {
     it('should return true when token has all required scopes', async () => {
       const mockTokenInfo: TokenInfo = {
         active: true,
-        scope: 'banking:read banking:write admin:users',
+        scope: 'read write admin:users',
         client_id: 'test-client',
         exp: Math.floor(Date.now() / 1000) + 3600
       };
 
       mockAxiosInstance.post.mockResolvedValue({ data: mockTokenInfo });
 
-      const result = await tokenIntrospector.validateTokenScopes('valid-token', ['banking:read', 'banking:write']);
+      const result = await tokenIntrospector.validateTokenScopes('valid-token', ['read', 'write']);
 
       expect(result).toBe(true);
     });
@@ -355,14 +355,14 @@ describe('TokenIntrospector', () => {
     it('should return false when token is missing required scopes', async () => {
       const mockTokenInfo: TokenInfo = {
         active: true,
-        scope: 'banking:read',
+        scope: 'read',
         client_id: 'test-client',
         exp: Math.floor(Date.now() / 1000) + 3600
       };
 
       mockAxiosInstance.post.mockResolvedValue({ data: mockTokenInfo });
 
-      const result = await tokenIntrospector.validateTokenScopes('limited-token', ['banking:read', 'banking:write']);
+      const result = await tokenIntrospector.validateTokenScopes('limited-token', ['read', 'write']);
 
       expect(result).toBe(false);
     });
@@ -373,7 +373,7 @@ describe('TokenIntrospector', () => {
         response: { status: 401 }
       });
 
-      const result = await tokenIntrospector.validateTokenScopes('invalid-token', ['banking:read']);
+      const result = await tokenIntrospector.validateTokenScopes('invalid-token', ['read']);
 
       expect(result).toBe(false);
     });
@@ -381,7 +381,7 @@ describe('TokenIntrospector', () => {
     it('should throw error for non-authentication errors', async () => {
       mockAxiosInstance.post.mockRejectedValue(new Error('Network error'));
 
-      await expect(tokenIntrospector.validateTokenScopes('token', ['banking:read']))
+      await expect(tokenIntrospector.validateTokenScopes('token', ['read']))
         .rejects.toThrow('Network error');
     });
   });

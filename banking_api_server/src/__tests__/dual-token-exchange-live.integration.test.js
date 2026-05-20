@@ -177,7 +177,7 @@ describe('JWT decode helper', () => {
     const tokens = await headlessPingOneLogin({
       envId, region, clientId: userClientId, clientSecret: userClientSecret,
       redirectUri, username, password,
-      scopes: 'openid profile email banking:read banking:write',
+      scopes: 'openid profile email read write',
       authMethod: 'post', // user client uses client_secret_post
     });
 
@@ -270,7 +270,7 @@ describe('JWT decode helper', () => {
     const mcpUri = process.env.PINGONE_RESOURCE_MCP_SERVER_URI;
     expect(mcpUri).toBeTruthy();
 
-    const mcpToken = await oauthService.performTokenExchange(userToken, mcpUri, ['banking:read', 'banking:write']);
+    const mcpToken = await oauthService.performTokenExchange(userToken, mcpUri, ['read', 'write']);
     expect(mcpToken).toBeTruthy();
     expect(mcpToken.split('.')).toHaveLength(3);
 
@@ -290,7 +290,7 @@ describe('JWT decode helper', () => {
     const mcpUri = process.env.PINGONE_RESOURCE_MCP_SERVER_URI;
 
     const mcpToken = await oauthService.performTokenExchangeWithActor(
-      userToken, agentToken, mcpUri, ['banking:read', 'banking:write']
+      userToken, agentToken, mcpUri, ['read', 'write']
     );
     expect(mcpToken).toBeTruthy();
     expect(mcpToken.split('.')).toHaveLength(3);
@@ -318,7 +318,7 @@ describe('JWT decode helper', () => {
 
     try {
       const mcpToken = await oauthService.performTokenExchangeFromIdToken(
-        idToken, mcpUri, ['banking:read']
+        idToken, mcpUri, ['read']
       );
       expect(mcpToken).toBeTruthy();
       const { payload } = decodeJwt(mcpToken);
@@ -342,7 +342,7 @@ describe('JWT decode helper', () => {
 
     try {
       const mcpToken = await oauthService.performTokenExchangeWithActorIdToken(
-        idToken, agentToken, mcpUri, ['banking:read']
+        idToken, agentToken, mcpUri, ['read']
       );
       expect(mcpToken).toBeTruthy();
       const { payload } = decodeJwt(mcpToken);
@@ -395,7 +395,7 @@ describe('JWT decode helper', () => {
       subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
       requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
       audience: mcpResourceUri,
-      scope: 'banking:read banking:write',
+      scope: 'read write',
       client_id: adminClientId,
     });
 
@@ -432,7 +432,7 @@ describe('JWT decode helper', () => {
       actor_token_type: 'urn:ietf:params:oauth:token-type:access_token',
       requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
       audience: mcpResourceUri,
-      scope: 'banking:read banking:write',
+      scope: 'read write',
       client_id: adminClientId,
     });
 

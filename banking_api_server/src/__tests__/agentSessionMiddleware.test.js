@@ -187,7 +187,7 @@ describe('agentSessionMiddleware', () => {
     await agentSessionMiddleware(req, res, next);
 
     req.recordTokenEvent('exchange_start', { audience: 'https://mcp.example.com' });
-    req.recordTokenEvent('exchange_complete', { scopes: ['banking:read'] });
+    req.recordTokenEvent('exchange_complete', { scopes: ['read'] });
 
     expect(req.tokenEvents.length).toBe(2);
     expect(req.tokenEvents[0].type).toBe('exchange_start');

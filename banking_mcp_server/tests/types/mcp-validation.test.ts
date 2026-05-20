@@ -172,7 +172,7 @@ describe('MCP Protocol Model Validation', () => {
         required: ['account_id']
       },
       requiresUserAuth: true,
-      requiredScopes: ['banking:read']
+      requiredScopes: ['read']
     };
 
     it('should validate a correct ToolDefinition', () => {

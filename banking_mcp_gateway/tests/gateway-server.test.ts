@@ -50,7 +50,7 @@ const stubConfig: GatewayConfig = {
   bffInternalIdTokenUrl: 'http://localhost:3001/internal/id-token',
   bffInternalSecret: 'dev-shared-secret-change-me',
   bankingResourceServerBaseUrl: 'http://localhost:3001',
-  bankingResourceServerResourceUri: 'https://banking-resource-server.bxf.com',
+  bankingResourceServerResourceUri: 'https://banking-resource-server.ping.demo',
 };
 
 // ---------------------------------------------------------------------------

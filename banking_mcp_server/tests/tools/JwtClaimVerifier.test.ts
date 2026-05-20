@@ -30,7 +30,7 @@ describe('JwtClaimVerifier', () => {
 
   it('decodePayload returns claims for valid JWT', () => {
     const v = new JwtClaimVerifier(logger);
-    expect(v.decodePayload(makeJwt({ sub: 'u123', scope: 'banking:read' }))).toEqual({ sub: 'u123', scope: 'banking:read' });
+    expect(v.decodePayload(makeJwt({ sub: 'u123', scope: 'read' }))).toEqual({ sub: 'u123', scope: 'read' });
   });
 
   it('decodePayload returns null for opaque token', () => {

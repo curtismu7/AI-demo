@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# run-bank.sh — Primary startup script for the Banking Digital Assistant.
+# run-bank.sh — Primary startup script for the AI Demo.
 # Runs on api.ping.demo (HTTPS).
 #
 # Port layout:
-#   Banking API Server  → https://api.ping.demo:3001
-#   Banking UI          → https://api.ping.demo:4000
-#   Banking MCP Server  → localhost:8080
+#   Demo API Server  → https://api.ping.demo:3001
+#   Demo UI          → https://api.ping.demo:4000
+#   Demo MCP Server  → localhost:8080
 #   LangChain Agent     → localhost:8888 (uvicorn) + 8889 (chat WS) + 8890 (health/inspector)
 #
 # One-time setup (run once each, requires sudo for /etc/hosts):
@@ -64,28 +64,28 @@ if [[ ! -f "${CERT_FILE}" ]] || [[ ! -f "${KEY_FILE}" ]]; then
 fi
 
 # PID files — separate from start.sh so both can coexist
-PID_API=/tmp/bank-api-server.pid
-PID_MCP=/tmp/bank-mcp-server.pid
-PID_AGENT=/tmp/bank-langchain-agent.pid
-PID_UI=/tmp/bank-ui.pid
+PID_API=/tmp/demo-api.pid
+PID_MCP=/tmp/demo-mcp.pid
+PID_AGENT=/tmp/demo-langchain.pid
+PID_UI=/tmp/demo-ui.pid
 
-LOG_API=/tmp/bank-api-server.log
-LOG_UI=/tmp/bank-ui.log
-LOG_MCP=/tmp/bank-mcp-server.log
-LOG_AGENT=/tmp/bank-langchain-agent.log
-LOG_MCP_TRAFFIC=/tmp/bank-mcp-traffic.log
-PID_GW=/tmp/bank-mcp-gateway.pid
-LOG_GW=/tmp/bank-mcp-gateway.log
-PID_HITL=/tmp/bank-hitl-service.pid
-LOG_HITL=/tmp/bank-hitl-service.log
-PID_AGENT_SVC=/tmp/bank-agent-service.pid
-LOG_AGENT_SVC=/tmp/bank-agent-service.log
-PID_INVEST=/tmp/bank-mcp-invest.pid
-LOG_INVEST=/tmp/bank-mcp-invest.log
-PID_MORTGAGE=/tmp/bank-mortgage-service.pid
-LOG_MORTGAGE=/tmp/bank-mortgage-service.log
-LOG_AUTH=/tmp/bank-authorize-server.log
-LOG_HELIX=/tmp/bank-helix.log
+LOG_API=/tmp/demo-api.log
+LOG_UI=/tmp/demo-ui.log
+LOG_MCP=/tmp/demo-mcp.log
+LOG_AGENT=/tmp/demo-langchain.log
+LOG_MCP_TRAFFIC=/tmp/demo-mcp-traffic.log
+PID_GW=/tmp/demo-mcp-gateway.pid
+LOG_GW=/tmp/demo-mcp-gateway.log
+PID_HITL=/tmp/demo-hitl.pid
+LOG_HITL=/tmp/demo-hitl.log
+PID_AGENT_SVC=/tmp/demo-agent.pid
+LOG_AGENT_SVC=/tmp/demo-agent.log
+PID_INVEST=/tmp/demo-invest.pid
+LOG_INVEST=/tmp/demo-invest.log
+PID_MORTGAGE=/tmp/demo-mortgage.pid
+LOG_MORTGAGE=/tmp/demo-mortgage.log
+LOG_AUTH=/tmp/demo-authorize.log
+LOG_HELIX=/tmp/demo-helix.log
 
 # Pre-create all log files so tail/log viewers work before services start.
 # We TRUNCATE here (not just touch) — services that get skipped or fail to relaunch
@@ -103,7 +103,7 @@ else
         "${LOG_HELIX}" 2>/dev/null || true
 fi
 
-# Terminal colors (global — used by banner, status, and tail_bank_logs)
+# Terminal colors (global — used by banner, status, and tail_demo_logs)
 BOLD='\033[1m'
 CYAN='\033[1;36m'
 GREEN='\033[1;32m'
@@ -221,8 +221,8 @@ preflight_checks() {
     ok "Ollama running on :11434 — model: ${ollama_model}"
   else
     echo -e "  ${CYAN}[SPIN]${RESET}  Starting Ollama (model: ${ollama_model})…"
-    ollama serve > /tmp/bank-ollama.log 2>&1 &
-    echo $! > /tmp/bank-ollama.pid
+    ollama serve > /tmp/demo-ollama.log 2>&1 &
+    echo $! > /tmp/demo-ollama.pid
     # Give it a moment to start
     local i=0
     while [[ $i -lt 8 ]]; do
@@ -232,7 +232,7 @@ preflight_checks() {
     if port_listening 11434; then
       ok "Ollama started on :11434 — model: ${ollama_model}"
     else
-      warn "Ollama did not start on :11434 — check /tmp/bank-ollama.log"
+      warn "Ollama did not start on :11434 — check /tmp/demo-ollama.log"
     fi
   fi
 
@@ -241,10 +241,10 @@ preflight_checks() {
 }
 
 # ── Tail logs (pick one by number, or all at once) ────────────────────────────
-tail_bank_logs() {
+tail_demo_logs() {
   local pre="${1:-}"
   [[ "${pre}" == "ALL" || "${pre}" == "All" ]] && pre="all"
-  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent" "MCP Traffic" "MCP Gateway" "HITL Service" "Agent Service" "MCP Invest" "Mortgage Service" "Authorize Server" "Helix LLM")
+  local names=("Demo API" "Demo UI" "MCP Server" "LangChain Agent" "MCP Traffic" "MCP Gateway" "HITL Service" "Agent Service" "MCP Invest" "Demo Mortgage" "Authorize Server" "Helix LLM")
   local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}" "${LOG_GW}" "${LOG_HITL}" "${LOG_AGENT_SVC}" "${LOG_INVEST}" "${LOG_MORTGAGE}" "${LOG_AUTH}" "${LOG_HELIX}")
   local count=${#names[@]}
   local all_opt=$((count + 1))
@@ -379,8 +379,8 @@ service_status_line() {
 # Print the full status table (used by both 'start' and 'status' subcommands)
 print_status_table() {
   echo -e "${WHITE}${BOLD}  SERVICES${RESET}"
-  service_status_line "Banking API Server"  ${API_PORT}  "${API_URL}"
-  service_status_line "Banking MCP Server"  8080         "ws://localhost:8080 (internal)"
+  service_status_line "Demo API Server"      ${API_PORT}  "${API_URL}"
+  service_status_line "Demo MCP Server"     8080         "ws://localhost:8080 (internal)"
   service_status_line "MCP Gateway"          3005         "http://localhost:3005 (internal)"
   service_status_line "MCP Invest Server"   8081         "ws://localhost:8081 (internal)"
   service_status_line "Mortgage Service"    8082         "http://localhost:8082 (Phase 266 Path A backend)"
@@ -388,15 +388,15 @@ print_status_table() {
   service_status_line "HITL Service"        3009         "http://localhost:3009 (internal)"
   service_status_line "LangChain Agent"     8890         "ws://localhost:8889 (chat WS); http://localhost:8890 (health/inspector)"
   if port_listening ${UI_PORT}; then
-    printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
+    printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "Demo UI (React)" "${UI_PORT}" "${CLIENT_URL}"
   else
-    printf "  ${YELLOW}  [WAIT]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}compiling… %s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
+    printf "  ${YELLOW}  [WAIT]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}compiling… %s${RESET}\n" "Demo UI (React)" "${UI_PORT}" "${CLIENT_URL}"
   fi
 }
 
 # ── Subcommand: stop ─────────────────────────────────────────────────────────
 cmd_stop() {
-  echo "[STOP] Stopping Banking services (run-bank.sh)..."
+  echo "[STOP] Stopping Demo services (run-bank.sh)..."
   set +e
   for pid_file in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_MORTGAGE" "$PID_AGENT" "$PID_UI"; do
     if [[ -f "$pid_file" ]]; then
@@ -414,14 +414,14 @@ cmd_stop() {
   sleep 1
   force_kill_listeners_on_banking_ports
   set -euo pipefail
-  echo "[OK] All Banking listeners stopped (or none were running)."
+  echo "[OK] All Demo listeners stopped (or none were running)."
 }
 
 # ── Subcommand: test ─────────────────────────────────────────────────────────
 cmd_test() {
   echo ""
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-  echo -e "${CYAN}${BOLD}   [BANK]  SUPER BANK — TEST SUITE                                   ${RESET}"
+  echo -e "${CYAN}${BOLD}   [BANK]  DEMO — TEST SUITE                                          ${RESET}"
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
   echo ""
 
@@ -475,7 +475,7 @@ cmd_test() {
 cmd_help() {
   echo ""
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-  echo -e "${CYAN}${BOLD}   [BANK]  SUPER BANK BANKING DEMO — run-bank.sh                      ${RESET}"
+  echo -e "${CYAN}${BOLD}   [BANK]  AI DEMO — run-bank.sh                      ${RESET}"
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
   echo ""
   echo -e "${WHITE}${BOLD}  Usage:${RESET} ./run-bank.sh <command>"
@@ -491,9 +491,9 @@ cmd_help() {
   echo "    help       Show this message"
   echo ""
   echo -e "${WHITE}${BOLD}  Port Layout:${RESET}"
-  echo "    Banking API Server   :${API_PORT}  (HTTPS)"
-  echo "    Banking UI (React)   :${UI_PORT}  (HTTPS)"
-  echo "    Banking MCP Server   :8080
+  echo "    Demo API Server      :${API_PORT}  (HTTPS)"
+  echo "    Demo UI              :${UI_PORT}  (HTTPS)"
+  echo "    Demo MCP Server      :8080
     MCP Gateway          :3005"
   echo "    LangChain Agent      :8888"
   echo ""
@@ -531,7 +531,7 @@ case "${COMMAND}" in
   status)
     echo ""
     echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-    echo -e "${CYAN}${BOLD}   [BANK]  SUPER BANK — SERVICE STATUS                                ${RESET}"
+    echo -e "${CYAN}${BOLD}   [BANK]  AI DEMO — SERVICE STATUS                                ${RESET}"
     echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
     print_status_table
@@ -554,7 +554,7 @@ case "${COMMAND}" in
     exit 0
     ;;
   tail)
-    tail_bank_logs "${2:-}"
+    tail_demo_logs "${2:-}"
     exit 0
     ;;
   test)
@@ -590,7 +590,7 @@ for _chk_port in ${API_PORT} ${UI_PORT} 8080 8888; do
   fi
 done
 if [[ "$_any_running" == "true" ]]; then
-  echo -e "${YELLOW}  [SPIN]  Stopping existing Banking services…${RESET}"
+  echo -e "${YELLOW}  [SPIN]  Stopping existing Demo services…${RESET}"
   set +e
   for _pf in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_AGENT" "$PID_UI"; do
     if [[ -f "$_pf" ]]; then
@@ -640,7 +640,7 @@ for i in "${!SVC_LIST[@]}"; do
   fi
 done
 
-# ── Banking API Server (Express) on :3001 ────────────────────────────────────
+# ── Demo API Server (Express) on :3001 ────────────────────────────────────
 # NODE_EXTRA_CA_CERTS points Node at mkcert's root CA so BFF→MCP-Gateway
 # HTTPS probes can validate the gateway's mkcert-issued cert. Without this
 # they fail with UNABLE_TO_VERIFY_LEAF_SIGNATURE and the agent UI surfaces
@@ -682,7 +682,7 @@ if [[ -f "$VAULT_FILE" ]]; then
   echo "[VAULT] secrets.vault detected — passing VAULT_PASSWORD to vault-aware services."
 fi
 
-echo "[LAUNCH] Starting Banking API Server on ${API_HOST}:${API_PORT}..."
+echo "[LAUNCH] Starting Demo API Server on ${API_HOST}:${API_PORT}..."
 (
   cd "$BASEDIR/banking_api_server"
   PORT=${API_PORT} \
@@ -693,7 +693,7 @@ echo "[LAUNCH] Starting Banking API Server on ${API_HOST}:${API_PORT}..."
   MCP_GATEWAY_HTTP_URL="${MCP_GATEWAY_HTTP_URL:-https://api.ping.demo:3005}" \
   VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
   VAULT_PATH="${VAULT_PATH:-}" \
-  npm start > /tmp/bank-api-server.log 2>&1
+  npm start > /tmp/demo-api.log 2>&1
 ) &
 echo $! > "$PID_API"
 
@@ -727,13 +727,13 @@ ensure_service_env() {
   fi
 }
 
-# ── Banking MCP Server on :8080 ──────────────────────────────────────────────
+# ── Demo MCP Server on :8080 ──────────────────────────────────────────────
 if [[ -d "$BASEDIR/banking_mcp_server" ]]; then
-  echo "[BOT] Starting Banking MCP Server on :8080..."
+  echo "[BOT] Starting Demo MCP Server on :8080..."
   ensure_service_env banking_mcp_server
   (
     cd "$BASEDIR/banking_mcp_server"
-    npm start > /tmp/bank-mcp-server.log 2>&1
+    npm start > /tmp/demo-mcp.log 2>&1
   ) &
   echo $! > "$PID_MCP"
 fi
@@ -819,17 +819,17 @@ if [[ -f "$BASEDIR/langchain_agent/src/main.py" ]]; then
     else
       PY="python3"
     fi
-    "$PY" -m src.main > /tmp/bank-langchain-agent.log 2>&1
+    "$PY" -m src.main > /tmp/demo-langchain.log 2>&1
   ) &
   echo $! > "$PID_AGENT"
 fi
 
-# ── Banking UI (CRA) on :4000 ────────────────────────────────────────────────
+# ── Demo UI (CRA) on :4000 ────────────────────────────────────────────────
 # REACT_APP_API_PORT  → picked up by src/setupProxy.js to proxy /api/* to :3001
 # REACT_APP_API_URL   → used by apiClient.js for absolute axios calls
 # HOST                → binds CRA dev server to 0.0.0.0 so api.ping.demo resolves
 # DANGEROUSLY_DISABLE_HOST_CHECK → allows non-localhost hostnames in CRA dev
-echo "[WEB] Starting Banking UI on ${CLIENT_URL}..."
+echo "[WEB] Starting Demo UI on ${CLIENT_URL}..."
 (
   cd "$BASEDIR/banking_api_ui"
   HOST=0.0.0.0 \
@@ -843,26 +843,26 @@ echo "[WEB] Starting Banking UI on ${CLIENT_URL}..."
   REACT_APP_CLIENT_URL=${CLIENT_URL} \
   DANGEROUSLY_DISABLE_HOST_CHECK=true \
   WDS_SOCKET_PORT=0 \
-  npm start > /tmp/bank-ui.log 2>&1
+  npm start > /tmp/demo-ui.log 2>&1
 ) &
 echo $! > "$PID_UI"
 
 # ── Banner + health check ────────────────────────────────────────────────────
 echo ""
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo -e "${CYAN}${BOLD}   [BANK]  SUPER BANK BANKING DEMO — STARTING                         ${RESET}"
+echo -e "${CYAN}${BOLD}   [DEMO]  AI DEMO — STARTING                                          ${RESET}"
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
 echo -e "${DIM}  Waiting for services to come up (this can take 30-60 seconds on first start)…${RESET}"
 
-wait_for_port "${API_PORT}" 25 "Banking API Server" >/dev/null
-wait_for_port 8080         25 "Banking MCP Server" >/dev/null
+wait_for_port "${API_PORT}" 25 "Demo API Server"    >/dev/null
+wait_for_port 8080         25 "Demo MCP Server"    >/dev/null
 wait_for_port 3005         15 "MCP Gateway"        >/dev/null
 wait_for_port 3009         15 "HITL Service"       >/dev/null
 wait_for_port 3006         15 "Agent Service"      >/dev/null
 wait_for_port 8081         15 "MCP Invest Server"  >/dev/null
-wait_for_port 8082         10 "Mortgage Service"   >/dev/null
-wait_for_port "${UI_PORT}" 60 "Banking UI (React)" >/dev/null
+wait_for_port 8082         10 "Demo Mortgage"      >/dev/null
+wait_for_port "${UI_PORT}" 60 "Demo UI"            >/dev/null
 sleep 1   # give LangChain agent a moment too
 
 echo -e "${GREEN}${BOLD}  [CLEAR]  DEMO STATE CLEARED${RESET} — all in-memory state reset on startup:"
@@ -870,15 +870,15 @@ echo -e "${DIM}      Token chain · App events · MCP audit · Pending consents$
 
 echo ""
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo -e "${CYAN}${BOLD}   [BANK]  SUPER BANK BANKING DEMO — STATUS                           ${RESET}"
+echo -e "${CYAN}${BOLD}   [BANK]  AI DEMO — STATUS                           ${RESET}"
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
 print_status_table
 echo ""
 echo -e "${MAGENTA}${BOLD}  ┌─ PORTS ─────────────────────────────────────────────────────┐${RESET}"
-echo -e "${MAGENTA}${BOLD}  │${RESET}  [PORT]  Banking API Server        :${API_PORT}  ${YELLOW}(HTTPS)${RESET}"
-echo -e "${MAGENTA}${BOLD}  │${RESET}  [WEB]  Banking UI (React)        :${UI_PORT}  ${YELLOW}(HTTPS)${RESET}"
-echo -e "${MAGENTA}${BOLD}  │${RESET}  [BOT]  Banking MCP Server        :8080  ${YELLOW}(WebSocket)${RESET}"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  [PORT]  Demo API Server           :${API_PORT}  ${YELLOW}(HTTPS)${RESET}"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  [WEB]  Demo UI (React)        :${UI_PORT}  ${YELLOW}(HTTPS)${RESET}"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  [BOT]  Demo MCP Server           :8080  ${YELLOW}(WebSocket)${RESET}"
 echo -e "${MAGENTA}${BOLD}  │${RESET}  [CHAIN]  LangChain Agent           :8888  ${YELLOW}(HTTP/HTTPS)${RESET}"
 echo -e "${MAGENTA}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
 echo ""
@@ -892,7 +892,7 @@ echo ""
 echo -e "${MAGENTA}${BOLD}  ┌─ QUICK START ───────────────────────────────────────────────┐${RESET}"
 echo -e "${MAGENTA}${BOLD}  │${RESET}  1. Open ${YELLOW}${CLIENT_URL}/config${RESET} → enter PingOne credentials"
 echo -e "${MAGENTA}${BOLD}  │${RESET}  2. Open ${YELLOW}${CLIENT_URL}${RESET} → click ${WHITE}${BOLD}Login${RESET} to start an OAuth flow"
-echo -e "${MAGENTA}${BOLD}  │${RESET}  3. After login: use the [BOT] FAB (bottom-right) for BankingAgent"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  3. After login: use the [BOT] FAB (bottom-right) for the Demo Agent"
 echo -e "${MAGENTA}${BOLD}  │${RESET}     Ask: balance, accounts, transactions, transfer, withdraw"
 echo -e "${MAGENTA}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
 echo ""
@@ -908,4 +908,4 @@ echo ""
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
 
-tail_bank_logs
+tail_demo_logs

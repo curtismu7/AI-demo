@@ -45,7 +45,7 @@ describe('Client Credentials Token Service', () => {
       client_name: 'Test Client',
       client_type: 'confidential',
       grant_types: ['client_credentials'],
-      scope: ['banking:read', 'banking:write'],
+      scope: ['read', 'write'],
       token_endpoint_auth_method: 'client_secret_basic',
       registration_metadata: {
         registered_at: '2026-04-06T10:00:00.000Z',
@@ -64,7 +64,7 @@ describe('Client Credentials Token Service', () => {
     test('should process valid client credentials grant successfully', async () => {
       const request = {
         grant_type: 'client_credentials',
-        scope: 'banking:read',
+        scope: 'read',
         client_id: 'test-client-123',
         client_secret: 'test-secret-456'
       };
@@ -80,7 +80,7 @@ describe('Client Credentials Token Service', () => {
       expect(response).toHaveProperty('access_token');
       expect(response).toHaveProperty('token_type', 'Bearer');
       expect(response).toHaveProperty('expires_in', 1800); // 30 minutes
-      expect(response).toHaveProperty('scope', 'banking:read');
+      expect(response).toHaveProperty('scope', 'read');
       expect(response.access_token).toMatch(/^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/); // JWT format
     });
 
@@ -121,7 +121,7 @@ describe('Client Credentials Token Service', () => {
 
       const response = await processClientCredentialsGrant(request);
 
-      expect(response.scope).toBe('banking:read banking:write'); // Client's registered scopes
+      expect(response.scope).toBe('read write'); // Client's registered scopes
     });
 
     test('should reject requested scopes not allowed for client', async () => {
@@ -139,14 +139,14 @@ describe('Client Credentials Token Service', () => {
     test('should accept subset of client scopes', async () => {
       const request = {
         grant_type: 'client_credentials',
-        scope: 'banking:read', // Subset of client's scopes
+        scope: 'read', // Subset of client's scopes
         client_id: 'test-client-123',
         client_secret: 'test-secret-456'
       };
 
       const response = await processClientCredentialsGrant(request);
 
-      expect(response.scope).toBe('banking:read');
+      expect(response.scope).toBe('read');
     });
 
     test('should generate tokens with correct TTL', async () => {
@@ -252,7 +252,7 @@ describe('Client Credentials Token Service', () => {
     beforeEach(async () => {
       const request = {
         grant_type: 'client_credentials',
-        scope: 'banking:read banking:write',
+        scope: 'read write',
         client_id: 'test-client-123',
         client_secret: 'test-secret-456'
       };
@@ -266,7 +266,7 @@ describe('Client Credentials Token Service', () => {
 
       expect(introspection).toHaveProperty('active', true);
       expect(introspection).toHaveProperty('client_id', 'test-client-123');
-      expect(introspection).toHaveProperty('scope', 'banking:read banking:write');
+      expect(introspection).toHaveProperty('scope', 'read write');
       expect(introspection).toHaveProperty('token_type', 'Bearer');
       expect(introspection).toHaveProperty('exp');
       expect(introspection).toHaveProperty('iat');
@@ -388,7 +388,7 @@ describe('Client Credentials Token Service', () => {
     beforeEach(async () => {
       const request = {
         grant_type: 'client_credentials',
-        scope: 'banking:read banking:write',
+        scope: 'read write',
         client_id: 'test-client-123',
         client_secret: 'test-secret-456'
       };
@@ -408,7 +408,7 @@ describe('Client Credentials Token Service', () => {
       expect(validation.valid).toBe(true);
       expect(validation).toHaveProperty('payload');
       expect(validation).toHaveProperty('tokenScopes');
-      expect(validation.tokenScopes).toEqual(['banking:read', 'banking:write']);
+      expect(validation.tokenScopes).toEqual(['read', 'write']);
     });
 
     test('should validate token for API access with required scopes', () => {
@@ -417,10 +417,10 @@ describe('Client Credentials Token Service', () => {
         userAgent: 'test-agent'
       };
 
-      const validation = validateTokenForApi(validToken, ['banking:read'], metadata);
+      const validation = validateTokenForApi(validToken, ['read'], metadata);
 
       expect(validation.valid).toBe(true);
-      expect(validation.tokenScopes).toEqual(['banking:read', 'banking:write']);
+      expect(validation.tokenScopes).toEqual(['read', 'write']);
     });
 
     test('should reject token for API access with insufficient scopes', () => {
@@ -584,19 +584,19 @@ describe('Client Credentials Token Service', () => {
       };
 
       const response = await processClientCredentialsGrant(request);
-      expect(response.scope).toBe('banking:read banking:write'); // Default to client scopes
+      expect(response.scope).toBe('read write'); // Default to client scopes
     });
 
     test('should handle scope request with extra spaces', async () => {
       const request = {
         grant_type: 'client_credentials',
-        scope: '  banking:read  banking:write  ', // Extra spaces
+        scope: '  read  write  ', // Extra spaces
         client_id: 'test-client-123',
         client_secret: 'test-secret-456'
       };
 
       const response = await processClientCredentialsGrant(request);
-      expect(response.scope).toBe('banking:read banking:write'); // Spaces trimmed
+      expect(response.scope).toBe('read write'); // Spaces trimmed
     });
 
     test('should handle very long scope strings', async () => {
@@ -640,7 +640,7 @@ describe('Client Credentials Token Service', () => {
     test('should comply with RFC 6749 §4.4 client credentials grant', async () => {
       const request = {
         grant_type: 'client_credentials',
-        scope: 'banking:read',
+        scope: 'read',
         client_id: 'test-client-123',
         client_secret: 'test-secret-456'
       };

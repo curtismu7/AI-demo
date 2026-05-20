@@ -55,7 +55,7 @@ export default function TokenAudienceChain({ compact = false }) {
         <div style={NODE_STYLE}>
           <div style={{ fontWeight: 600, color: '#7dd3fc' }}>User Token</div>
           <div style={CLAIM_STYLE}>sub: user-abc</div>
-          <div style={CLAIM_STYLE}>aud: olb-resource.bxf.com</div>
+          <div style={CLAIM_STYLE}>aud: olb-resource.ping.demo</div>
           {!compact && <div style={CLAIM_STYLE}>scope: read write</div>}
         </div>
 
@@ -65,7 +65,7 @@ export default function TokenAudienceChain({ compact = false }) {
         <div style={NODE_STYLE}>
           <div style={{ fontWeight: 600, color: '#86efac' }}>GW Token</div>
           <div style={CLAIM_STYLE}>sub: user-abc</div>
-          <div style={CLAIM_STYLE}>aud: api.ping.demo</div>
+          <div style={CLAIM_STYLE}>aud: mcpgateway.ping.demo</div>
           <div style={{ ...CLAIM_STYLE, color: '#fbbf24' }}>act: &#123;sub: agent1&#125;</div>
         </div>
 
@@ -75,7 +75,7 @@ export default function TokenAudienceChain({ compact = false }) {
         <div style={NODE_STYLE}>
           <div style={{ fontWeight: 600, color: '#f9a8d4' }}>Backend Token</div>
           <div style={CLAIM_STYLE}>sub: user-abc</div>
-          <div style={CLAIM_STYLE}>aud: api.ping.demo</div>
+          <div style={CLAIM_STYLE}>aud: mcpgateway.ping.demo</div>
           <div style={{ ...CLAIM_STYLE, color: '#fbbf24' }}>act: &#123;sub: agent1&#125;</div>
         </div>
 

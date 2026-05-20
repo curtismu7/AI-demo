@@ -41,7 +41,7 @@ describe('Security Monitoring Service', () => {
       const tokenData = {
         jti: 'token-1',
         client_id: 'test-client',
-        scope: 'banking:read'
+        scope: 'read'
       };
 
       expect(() => {
@@ -53,7 +53,7 @@ describe('Security Monitoring Service', () => {
       const tokenData = {
         jti: 'token-hr',
         client_id: 'test-client',
-        scope: 'admin:delete banking:write'
+        scope: 'admin:delete write'
       };
 
       monitorTokenUsage(tokenData, {}, { sourceIP: '192.168.1.100' });
@@ -314,7 +314,7 @@ describe('Security Monitoring Service', () => {
       
       for (let i = 0; i < 100; i++) {
         monitorTokenUsage(
-          { jti: `t${i}`, client_id: `client${i % 10}`, scope: 'banking:read' },
+          { jti: `t${i}`, client_id: `client${i % 10}`, scope: 'read' },
           {},
           { sourceIP: `192.168.1.${i % 255}`, userAgent: 'Test-Agent/1.0' }
         );

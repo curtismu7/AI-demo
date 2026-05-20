@@ -86,7 +86,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
     describe('403 Forbidden/Insufficient Scope', () => {
       test('should return 403 when token lacks required scope', async () => {
         // Mock token with only read scope, trying to access write operation
-        const readOnlyToken = await getMockToken(['banking:accounts:read']);
+        const readOnlyToken = await getMockToken(['accounts:read']);
         
         const response = await request(app)
           .post('/mcp')
@@ -105,7 +105,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
       });
 
       test('should specify required scopes in response', async () => {
-        const readOnlyToken = await getMockToken(['banking:accounts:read']);
+        const readOnlyToken = await getMockToken(['accounts:read']);
         
         const response = await request(app)
           .post('/mcp')
@@ -118,12 +118,12 @@ describe('MCP Spec Error Code Compliance Tests', () => {
           })
           .expect(403);
         
-        expect(response.body.required_scope).toContain('banking:accounts:write');
+        expect(response.body.required_scope).toContain('write');
         expect(response.body.error_description).toContain('required scope(s)');
       });
 
       test('should include proper WWW-Authenticate format', async () => {
-        const readOnlyToken = await getMockToken(['banking:accounts:read']);
+        const readOnlyToken = await getMockToken(['accounts:read']);
         
         const response = await request(app)
           .post('/mcp')
@@ -169,7 +169,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
       });
 
       test('should return method not found for unknown method', async () => {
-        const token = await getMockToken(['banking:accounts:read']);
+        const token = await getMockToken(['accounts:read']);
         
         const response = await request(app)
           .post('/mcp')
@@ -182,7 +182,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
       });
 
       test('should return invalid params for missing parameters', async () => {
-        const token = await getMockToken(['banking:accounts:read']);
+        const token = await getMockToken(['accounts:read']);
         
         const response = await request(app)
           .post('/mcp')
@@ -197,7 +197,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
 
     describe('MCP-Specific Errors', () => {
       test('should return tool not found for unknown tool', async () => {
-        const token = await getMockToken(['banking:accounts:read']);
+        const token = await getMockToken(['accounts:read']);
         
         const response = await request(app)
           .post('/mcp')
@@ -215,7 +215,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
       });
 
       test('should return token expired for expired token', async () => {
-        const expiredToken = await getMockToken(['banking:accounts:read'], true); // expired
+        const expiredToken = await getMockToken(['accounts:read'], true); // expired
         
         const response = await request(app)
           .post('/mcp')
@@ -236,7 +236,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
 
   describe('Banking-Specific Errors', () => {
     test('should return account not found for invalid account', async () => {
-      const token = await getMockToken(['banking:accounts:read']);
+      const token = await getMockToken(['accounts:read']);
       
       const response = await request(app)
         .post('/mcp')
@@ -257,7 +257,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
     });
 
     test('should return insufficient funds for overdraft attempt', async () => {
-      const token = await getMockToken(['banking:accounts:write']);
+      const token = await getMockToken(['write']);
       
       const response = await request(app)
         .post('/mcp')
@@ -281,7 +281,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
     });
 
     test('should return invalid amount for negative amounts', async () => {
-      const token = await getMockToken(['banking:accounts:write']);
+      const token = await getMockToken(['write']);
       
       const response = await request(app)
         .post('/mcp')
@@ -354,7 +354,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
     });
 
     test('should map method not found to 404', async () => {
-      const token = await getMockToken(['banking:accounts:read']);
+      const token = await getMockToken(['accounts:read']);
       
       const response = await request(app)
         .post('/mcp')
@@ -367,7 +367,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
     });
 
     test('should map insufficient scope to 403', async () => {
-      const readOnlyToken = await getMockToken(['banking:accounts:read']);
+      const readOnlyToken = await getMockToken(['accounts:read']);
       
       const response = await request(app)
         .post('/mcp')
@@ -413,7 +413,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
     });
 
     test('should include error parameter in 403 response', async () => {
-      const readOnlyToken = await getMockToken(['banking:accounts:read']);
+      const readOnlyToken = await getMockToken(['accounts:read']);
       
       const response = await request(app)
         .post('/mcp')
@@ -462,7 +462,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
  * Helper Functions
  */
 
-async function getMockToken(scopes = ['banking:accounts:read'], expired = false) {
+async function getMockToken(scopes = ['accounts:read'], expired = false) {
   // Mock token generation for testing
   const payload = {
     sub: 'test-user',
@@ -519,7 +519,7 @@ async function calculateComplianceScore() {
     }
     
     try {
-      const readOnlyToken = await getMockToken(['banking:accounts:read']);
+      const readOnlyToken = await getMockToken(['accounts:read']);
       await request(app)
         .post('/mcp')
         .set('Authorization', `Bearer ${readOnlyToken}`)

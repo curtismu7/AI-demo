@@ -6,7 +6,7 @@
  *   - JWKS signature verification succeeds against the live PingOne JWKS endpoint
  *   - The real token's aud (https://resource-server.pingdemo.com) passes audience validation
  *   - Real scope strings from PingOne (space-separated in `scope` claim) parse correctly
- *   - banking:write and banking:read from a live token control route access correctly
+ *   - write and read from a live token control route access correctly
  *   - A request with NO token gets 401 from the real middleware (not a mock)
  *
  * Skips automatically when no valid token is found in sessions.db.
@@ -116,7 +116,7 @@ const bearer = (token) => `Bearer ${token}`;
     it('token metadata is sane before running tests', () => {
       expect(payload.sub).toBeTruthy();
       expect(payload.exp).toBeGreaterThan(Math.floor(Date.now() / 1000));
-      expect(payload.scope).toContain('banking:read');
+      expect(payload.scope).toContain('read');
       expect(payload.aud).toContain('https://resource-server.pingdemo.com');
     });
 
@@ -134,9 +134,9 @@ const bearer = (token) => `Bearer ${token}`;
       expect(res.status).toBe(401);
     });
 
-    // ── banking:read — GET routes the real token can access ───────────────────
+    // ── read — GET routes the real token can access ───────────────────
 
-    it('GET /api/transactions/my → 200 with real token (banking:read)', async () => {
+    it('GET /api/transactions/my → 200 with real token (read)', async () => {
       const res = await request(app)
         .get('/api/transactions/my')
         .set('Authorization', bearer(token));
@@ -153,7 +153,7 @@ const bearer = (token) => `Bearer ${token}`;
       expect(Array.isArray(res.body.accounts)).toBe(true);
     });
 
-    // ── Admin-only routes: real token has no banking:admin → 403 ─────────────
+    // ── Admin-only routes: real token has no admin:read → 403 ─────────────
 
     it('GET /api/transactions → 403 with real token (no admin role)', async () => {
       const res = await request(app)
@@ -169,7 +169,7 @@ const bearer = (token) => `Bearer ${token}`;
       expect(res.status).toBe(403);
     });
 
-    // ── banking:write — POST that the real token can reach ────────────────────
+    // ── write — POST that the real token can reach ────────────────────
 
     it('POST /api/transactions deposit → reaches business logic with real token', async () => {
       // We expect 201 (success) OR a business-logic error (400), NOT a 401/403.

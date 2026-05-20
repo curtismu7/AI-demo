@@ -38,14 +38,14 @@ describe('AuthorizationRequestGenerator', () => {
   describe('generateAuthorizationRequest', () => {
     it('should generate authorization request with valid banking scopes', () => {
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read', 'banking:write'],
+        scopes: ['read', 'write'],
         sessionId: 'session-123'
       };
 
       const result = generator.generateAuthorizationRequest(options);
 
       expect(result).toMatchObject({
-        scope: 'banking:read banking:write',
+        scope: 'read write',
         sessionId: 'session-123'
       });
       expect(result.state).toBeDefined();
@@ -53,14 +53,15 @@ describe('AuthorizationRequestGenerator', () => {
       expect(result.authorizationUrl).toContain('https://openam-dna.forgeblocks.com:443/am/oauth2/realms/root/realms/alpha/authorize');
       expect(result.authorizationUrl).toContain('response_type=code');
       expect(result.authorizationUrl).toContain('client_id=test-client-id');
-      expect(result.authorizationUrl).toContain('scope=banking%3Aread+banking%3Awrite');
+      // After scope rename: 'banking:read' → 'read', 'banking:write' → 'write'
+      expect(result.authorizationUrl).toContain('scope=read+write');
       expect(result.expiresAt).toBeInstanceOf(Date);
       expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now());
     });
 
     it('should include redirect_uri when provided', () => {
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-123',
         redirectUri: 'https://example.com/callback'
       };
@@ -73,7 +74,7 @@ describe('AuthorizationRequestGenerator', () => {
     it('should use custom state when provided', () => {
       const customState = 'custom-state-123';
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-123',
         state: customState
       };
@@ -86,7 +87,7 @@ describe('AuthorizationRequestGenerator', () => {
 
     it('should include PKCE parameters in authorization URL', () => {
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-123'
       };
 
@@ -98,7 +99,7 @@ describe('AuthorizationRequestGenerator', () => {
 
     it('should set custom expiration time', () => {
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-123',
         expirationMinutes: 5
       };
@@ -131,11 +132,11 @@ describe('AuthorizationRequestGenerator', () => {
 
     it('should accept valid banking scopes', () => {
       const validScopes = [
-        'banking:accounts:read',
-        'banking:transactions:read',
-        'banking:transactions:write',
-        'banking:read',
-        'banking:write',
+        'accounts:read',
+        'transactions:read',
+        'transactions:write',
+        'read',
+        'write',
         'openid',
         'profile',
         'email'
@@ -154,7 +155,7 @@ describe('AuthorizationRequestGenerator', () => {
   describe('validateAuthorizationState', () => {
     it('should validate and return valid authorization request', () => {
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-123'
       };
 
@@ -172,7 +173,7 @@ describe('AuthorizationRequestGenerator', () => {
 
     it('should return null for expired request', async () => {
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-123',
         expirationMinutes: 0 // Expire immediately
       };
@@ -190,7 +191,7 @@ describe('AuthorizationRequestGenerator', () => {
   describe('completeAuthorizationRequest', () => {
     it('should remove authorization request from pending', () => {
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-123'
       };
 
@@ -216,12 +217,12 @@ describe('AuthorizationRequestGenerator', () => {
   describe('getPendingRequestsForSession', () => {
     it('should return pending requests for specific session', () => {
       const session1Options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-1'
       };
 
       const session2Options: AuthorizationRequestOptions = {
-        scopes: ['banking:write'],
+        scopes: ['write'],
         sessionId: 'session-2'
       };
 
@@ -240,7 +241,7 @@ describe('AuthorizationRequestGenerator', () => {
 
     it('should not return expired requests', async () => {
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-123',
         expirationMinutes: 0 // Expire immediately
       };
@@ -257,7 +258,7 @@ describe('AuthorizationRequestGenerator', () => {
   describe('cleanupExpiredRequests', () => {
     it('should remove expired requests and return count', async () => {
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-123',
         expirationMinutes: 0 // Expire immediately
       };
@@ -273,7 +274,7 @@ describe('AuthorizationRequestGenerator', () => {
 
     it('should not remove valid requests', () => {
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-123',
         expirationMinutes: 10
       };
@@ -289,7 +290,7 @@ describe('AuthorizationRequestGenerator', () => {
   describe('getStatistics', () => {
     it('should return correct statistics', () => {
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-123'
       };
 
@@ -313,7 +314,7 @@ describe('AuthorizationRequestGenerator', () => {
 
       const generatorWithSlash = new AuthorizationRequestGenerator(configWithSlash, false);
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-123'
       };
 
@@ -331,7 +332,7 @@ describe('AuthorizationRequestGenerator', () => {
 
       const generatorWithoutSlash = new AuthorizationRequestGenerator(configWithoutSlash, false);
       const options: AuthorizationRequestOptions = {
-        scopes: ['banking:read'],
+        scopes: ['read'],
         sessionId: 'session-123'
       };
 

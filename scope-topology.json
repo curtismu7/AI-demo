@@ -39,21 +39,21 @@
   },
   "resources": {
     "Super Banking API": {
-      "uri": "api.bxf.com",
+      "uri": "enduser.ping.demo",
       "scopes": ["read", "write", "transfer", "accounts:read", "transactions:read", "mortgage:read", "ai:agent:read", "ai_agent", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
     },
     "Super Banking MCP Server": {
-      "uri": "mcp-server.bxf.com",
+      "uri": "mcpserver.ping.demo",
       "scopes": ["mcp:invoke"],
       "mirroredScopes": ["read", "write", "mortgage:read", "ai:agent:read", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
     },
     "Super Banking MCP Gateway": {
-      "uri": "api.ping.demo",
+      "uri": "mcpgateway.ping.demo",
       "scopes": ["mcp:invoke"],
       "mirroredScopes": ["read", "write", "transfer", "mortgage:read"]
     },
     "Super Banking Agent Gateway": {
-      "uri": "agent-gateway.bxf.com",
+      "uri": "agentgateway.ping.demo",
       "scopes": ["agent:invoke"]
     }
   },
@@ -104,25 +104,25 @@
   "servers": {
     "banking_api_server": {
       "resource": "Super Banking API",
-      "validatesAudience": "api.bxf.com",
+      "validatesAudience": "enduser.ping.demo",
       "gatesOnToolScopes": false,
-      "description": "BFF / token custodian. Performs RFC 8693 exchange #1 (user token -> api.ping.demo audience)."
+      "description": "BFF / token custodian. Performs RFC 8693 two-exchange delegation (user token -> mcpgateway.ping.demo)."
     },
     "banking_mcp_gateway": {
       "resource": "Super Banking MCP Gateway",
-      "validatesAudience": "api.ping.demo",
+      "validatesAudience": "mcpgateway.ping.demo",
       "gatesOnToolScopes": true,
-      "description": "MCP Gateway. Validates inbound aud === api.ping.demo and enforces per-tool requiredScopes (getScopesForGatewayTool) on the inbound bearer BEFORE credential swap. Therefore every gateway-surface tool scope MUST be mirrored onto the Super Banking MCP Gateway resource (ARCHITECTURE-TRUTHS T-10)."
+      "description": "MCP Gateway. Validates inbound aud === mcpgateway.ping.demo and enforces per-tool requiredScopes (getScopesForGatewayTool) on the inbound bearer BEFORE credential swap. Therefore every gateway-surface tool scope MUST be mirrored onto the Super Banking MCP Gateway resource (ARCHITECTURE-TRUTHS T-10)."
     },
     "banking_mcp_server": {
       "resource": "Super Banking MCP Server",
-      "validatesAudience": "mcp-server.bxf.com",
+      "validatesAudience": "mcpserver.ping.demo",
       "gatesOnToolScopes": true,
-      "description": "Backend MCP tool server. Receives the gateway re-exchanged token (aud === mcp-server.bxf.com); banking tool scopes are mirrored here for exchange hop #3."
+      "description": "Backend MCP tool server. Receives the gateway re-exchanged token (aud === mcpserver.ping.demo); banking tool scopes are mirrored here for exchange hop #3."
     },
     "banking_agent_service": {
       "resource": "Super Banking Agent Gateway",
-      "validatesAudience": "agent-gateway.bxf.com",
+      "validatesAudience": "agentgateway.ping.demo",
       "gatesOnToolScopes": false,
       "description": "Agent Gateway (Two-Exchange Step 1 audience for the AI Agent client-credentials token)."
     }

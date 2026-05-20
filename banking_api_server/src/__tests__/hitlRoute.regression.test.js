@@ -120,8 +120,8 @@ function buildApp() {
       username: 'test_user',
       email: 'test@example.com',
       role: userRole,
-      // Required for inline scope check in transactions route (banking:write for write ops)
-      scopes: ['banking:read', 'banking:write'],
+      // Required for inline scope check in transactions route (write for write ops)
+      scopes: ['read', 'write'],
     };
     req.session = req.session || {};
     req.session.user = req.user;

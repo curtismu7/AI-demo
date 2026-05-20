@@ -290,7 +290,7 @@ describe('RFC9728ComplianceAuditService', () => {
             json: jest.fn().mockResolvedValue({
               resource: 'https://banking-api.ping.demo/api',
               authorization_servers: ['https://auth.pingone.com/123456/as'],
-              scopes_supported: ['banking:read', 'banking:write'],
+              scopes_supported: ['read', 'write'],
               bearer_methods_supported: ['header'],
               resource_name: 'Super Banking Banking API',
               resource_documentation: 'https://datatracker.ietf.org/doc/html/rfc9728'

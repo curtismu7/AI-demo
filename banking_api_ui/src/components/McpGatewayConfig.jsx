@@ -272,9 +272,9 @@ export default function McpGatewayConfig() {
 						<p>The gateway starts automatically with <code>./run-bank.sh</code>. Ensure these files exist:</p>
 						<pre className="mgc-pre">{`# banking_mcp_gateway/.env.development
 MCP_GW_DEV_BYPASS=true
-MCP_GW_RESOURCE_URI=https://mcp-gw.bxf.com
-MCP_OLB_RESOURCE_URI=https://mcp-olb.bxf.com
-MCP_INVEST_RESOURCE_URI=https://mcp-invest.bxf.com
+MCP_GW_RESOURCE_URI=https://mcpgateway.ping.demo
+MCP_OLB_RESOURCE_URI=https://mcp-olb.ping.demo
+MCP_INVEST_RESOURCE_URI=https://mcp-invest.ping.demo
 # ... (stubs pre-filled in .env.development)`}</pre>
 						<p>
 							BFF routes through gateway when{" "}
@@ -305,11 +305,11 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.bxf.com
 					<p>Update the running mock gateway without restart. Changes are in-memory only.</p>
 					<div className="mgc-push-form">
 						{[
-							{ key: "gatewayResourceUri", label: "Gateway Resource URI", placeholder: "https://mcp-gw.bxf.com", hint: "MCP_GW_RESOURCE_URI — the PingOne resource URI registered for this gateway (used as the 'aud' in token exchange)" },
+							{ key: "gatewayResourceUri", label: "Gateway Resource URI", placeholder: "https://mcpgateway.ping.demo", hint: "MCP_GW_RESOURCE_URI — the PingOne resource URI registered for this gateway (used as the 'aud' in token exchange)" },
 							{ key: "mcpOlbWsUrl", label: "OLB WebSocket URL", placeholder: "ws://localhost:8080", hint: "MCP_OLB_WS_URL — WebSocket address of the Online Banking MCP server the gateway proxies to" },
-							{ key: "mcpOlbResourceUri", label: "OLB Resource URI", placeholder: "https://mcp-olb.bxf.com", hint: "MCP_OLB_RESOURCE_URI — PingOne resource URI for the OLB MCP server (used to scope token exchange)" },
+							{ key: "mcpOlbResourceUri", label: "OLB Resource URI", placeholder: "https://mcp-olb.ping.demo", hint: "MCP_OLB_RESOURCE_URI — PingOne resource URI for the OLB MCP server (used to scope token exchange)" },
 							{ key: "mcpInvestWsUrl", label: "Invest WebSocket URL", placeholder: "ws://localhost:8081", hint: "MCP_INVEST_WS_URL — WebSocket address of the Investments MCP server" },
-							{ key: "mcpInvestResourceUri", label: "Invest Resource URI", placeholder: "https://mcp-invest.bxf.com", hint: "MCP_INVEST_RESOURCE_URI — PingOne resource URI for the Investments MCP server" },
+							{ key: "mcpInvestResourceUri", label: "Invest Resource URI", placeholder: "https://mcp-invest.ping.demo", hint: "MCP_INVEST_RESOURCE_URI — PingOne resource URI for the Investments MCP server" },
 							{ key: "pingAuthorizeEndpoint", label: "PingAuthorize Endpoint", placeholder: "(blank = permit-all)", hint: "PINGAUTHORIZE_ENDPOINT — optional PingOne Authorize policy URL; leave blank to skip per-call policy evaluation (permit-all)" },
 							{ key: "hitlServiceUrl", label: "HITL Service URL", placeholder: "(blank = disabled)", hint: "HITL_SERVICE_URL — optional Human-in-the-Loop approval service; leave blank to disable step-up consent flow" },
 						].map(({ key, label, placeholder, hint }) => (

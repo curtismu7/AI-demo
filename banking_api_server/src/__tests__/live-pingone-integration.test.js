@@ -325,7 +325,7 @@ function restoreRealEnv() {
 
       // Step 1b: Exchange user token + actor → intermediate
       const exchangeMethod = (process.env.PINGONE_TOKEN_EXCHANGE_AUTH_METHOD || 'post').toLowerCase();
-      const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write').split(/\s+/);
+      const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'read write').split(/\s+/);
       const intermediateToken = await oauthService.performTokenExchangeAs(
         subjectToken(), actorToken,
         aiAgentCid, aiAgentSecret,
@@ -344,7 +344,7 @@ function restoreRealEnv() {
       const intermediateAud = process.env.AI_AGENT_INTERMEDIATE_AUDIENCE || process.env.ENDUSER_AUDIENCE;
       const aiAuthMethod = (process.env.AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'post').toLowerCase();
       const exchangeMethod = (process.env.PINGONE_TOKEN_EXCHANGE_AUTH_METHOD || 'post').toLowerCase();
-      const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write').split(/\s+/);
+      const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'read write').split(/\s+/);
 
       // Exchange #1: user → intermediate
       const actorToken1 = await oauthService.getClientCredentialsTokenAs(
@@ -435,7 +435,7 @@ function restoreRealEnv() {
   ];
 
   const EXPECTED_BANKING_SCOPES = [
-    'banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent',
+    'read', 'write', 'admin:read', 'sensitive:read', 'ai:agent:read',
   ];
 
   beforeAll(async () => {
@@ -494,9 +494,9 @@ function restoreRealEnv() {
 
       const scopeResult = await managementService.getScopes(mcpRS.id);
       const scopeNames = scopeResult.scopes.map(s => s.name);
-      expect(scopeNames).toContain('banking:read');
-      expect(scopeNames).toContain('banking:write');
-      expect(scopeNames).toContain('banking:mcp:invoke');
+      expect(scopeNames).toContain('read');
+      expect(scopeNames).toContain('write');
+      expect(scopeNames).toContain('mcp:invoke');
     });
 
     it('Super Banking AI Agent Service has banking scopes', async () => {
@@ -524,17 +524,17 @@ function restoreRealEnv() {
       expect(payload.sub || payload.client_id).toBeTruthy();
     });
 
-    it('MCP Exchanger CC token contains banking:read and banking:write scopes', async () => {
+    it('MCP Exchanger CC token contains read and write scopes', async () => {
       const mcpExchangerToken = await oauthService.getMcpExchangerToken();
       const payload = decodeJwt(mcpExchangerToken);
       const scopes = (payload.scope || '').split(' ');
       // getMcpExchangerToken requests PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SCOPES;
-      // banking:mcp:invoke goes on the exchange *result*, not the actor CC token itself.
-      expect(scopes).toContain('banking:read');
-      expect(scopes).toContain('banking:write');
+      // mcp:invoke goes on the exchange *result*, not the actor CC token itself.
+      expect(scopes).toContain('read');
+      expect(scopes).toContain('write');
     });
 
-    it('AI Agent CC token contains banking:ai:agent scope', async () => {
+    it('AI Agent CC token contains ai:agent:read scope', async () => {
       const clientId = process.env.PINGONE_AI_AGENT_CLIENT_ID;
       const clientSecret = process.env.PINGONE_AI_AGENT_CLIENT_SECRET;
       const audience = process.env.AI_AGENT_INTERMEDIATE_AUDIENCE || process.env.ENDUSER_AUDIENCE;
@@ -544,7 +544,7 @@ function restoreRealEnv() {
       );
       const payload = decodeJwt(token);
       const scopes = (payload.scope || '').split(' ');
-      expect(scopes).toContain('banking:ai:agent');
+      expect(scopes).toContain('ai:agent:read');
     });
   });
 });
@@ -596,7 +596,7 @@ function restoreRealEnv() {
     const fakeToken = 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJmYWtlIiwiZXhwIjoxfQ.invalid';
 
     const err = await oauthService.performTokenExchangeAs(
-      fakeToken, null, cid, secret, audience, ['banking:read'], 'post'
+      fakeToken, null, cid, secret, audience, ['read'], 'post'
     ).catch(e => e);
     expect(err).toBeInstanceOf(Error);
     expect(err.httpStatus).toBeGreaterThanOrEqual(400);
