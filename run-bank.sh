@@ -200,10 +200,10 @@ preflight_checks() {
   ok "npm $(npm --version)"
 
   # .env files
-  if [[ ! -f "${BASEDIR}/banking_api_server/.env" ]]; then
-    warn "banking_api_server/.env not found — copy env.example and fill in PingOne credentials"
+  if [[ ! -f "${BASEDIR}/demo_api_server/.env" ]]; then
+    warn "demo_api_server/.env not found — copy env.example and fill in PingOne credentials"
   else
-    ok "banking_api_server/.env exists"
+    ok "demo_api_server/.env exists"
   fi
 
   # Port conflicts (check for non-Banking listeners)
@@ -427,35 +427,35 @@ cmd_test() {
 
   local failed=0
 
-  if [[ -d "${BASEDIR}/banking_api_server" ]]; then
-    echo -e "  ${CYAN}→${RESET}  Running banking_api_server tests..."
-    if (cd "${BASEDIR}/banking_api_server" && npm test -- --passWithNoTests 2>&1); then
-      ok "banking_api_server tests passed"
+  if [[ -d "${BASEDIR}/demo_api_server" ]]; then
+    echo -e "  ${CYAN}→${RESET}  Running demo_api_server tests..."
+    if (cd "${BASEDIR}/demo_api_server" && npm test -- --passWithNoTests 2>&1); then
+      ok "demo_api_server tests passed"
     else
-      err "banking_api_server tests FAILED"
+      err "demo_api_server tests FAILED"
       failed=$((failed + 1))
     fi
   fi
 
-  if [[ -d "${BASEDIR}/banking_api_ui" ]]; then
-    if grep -q '"test"' "${BASEDIR}/banking_api_ui/package.json" 2>/dev/null; then
-      echo -e "  ${CYAN}→${RESET}  Running banking_api_ui tests..."
-      if (cd "${BASEDIR}/banking_api_ui" && CI=true npm test -- --watchAll=false --passWithNoTests 2>&1); then
-        ok "banking_api_ui tests passed"
+  if [[ -d "${BASEDIR}/demo_api_ui" ]]; then
+    if grep -q '"test"' "${BASEDIR}/demo_api_ui/package.json" 2>/dev/null; then
+      echo -e "  ${CYAN}→${RESET}  Running demo_api_ui tests..."
+      if (cd "${BASEDIR}/demo_api_ui" && CI=true npm test -- --watchAll=false --passWithNoTests 2>&1); then
+        ok "demo_api_ui tests passed"
       else
-        err "banking_api_ui tests FAILED"
+        err "demo_api_ui tests FAILED"
         failed=$((failed + 1))
       fi
     fi
   fi
 
-  if [[ -d "${BASEDIR}/banking_mcp_server" ]]; then
-    if grep -q '"test"' "${BASEDIR}/banking_mcp_server/package.json" 2>/dev/null; then
-      echo -e "  ${CYAN}→${RESET}  Running banking_mcp_server tests..."
-      if (cd "${BASEDIR}/banking_mcp_server" && npm test -- --passWithNoTests 2>&1); then
-        ok "banking_mcp_server tests passed"
+  if [[ -d "${BASEDIR}/demo_mcp_server" ]]; then
+    if grep -q '"test"' "${BASEDIR}/demo_mcp_server/package.json" 2>/dev/null; then
+      echo -e "  ${CYAN}→${RESET}  Running demo_mcp_server tests..."
+      if (cd "${BASEDIR}/demo_mcp_server" && npm test -- --passWithNoTests 2>&1); then
+        ok "demo_mcp_server tests passed"
       else
-        err "banking_mcp_server tests FAILED"
+        err "demo_mcp_server tests FAILED"
         failed=$((failed + 1))
       fi
     fi
@@ -610,10 +610,10 @@ fi
 # ── Dependency check (all Node services, not just the obvious three) ─────────
 # Parallel arrays — keep indices aligned. SVC_BUILD="ts" means run `npm run build`
 # (tsc) when dist/index.js is missing. SVC_INSTALL_FLAGS handles services that
-# need extra `npm install` flags (banking_api_ui needs --legacy-peer-deps for
+# need extra `npm install` flags (demo_api_ui needs --legacy-peer-deps for
 # CRA/typescript peerOptional). Loud failure on any error — silent skips here
 # are exactly how we got cryptic MODULE_NOT_FOUND in service logs.
-SVC_LIST=(banking_api_server banking_mcp_server banking_api_ui      banking_mcp_gateway banking_hitl_service banking_agent_service banking_mcp_invest banking_mortgage_service)
+SVC_LIST=(demo_api_server demo_mcp_server demo_api_ui      demo_mcp_gateway demo_hitl_service demo_agent_service demo_mcp_invest demo_mortgage_service)
 SVC_BUILD=(""                "ts"               ""                  "ts"                ""                   "ts"                  "ts"               "")
 SVC_INSTALL_FLAGS=(""        ""                 "--legacy-peer-deps" ""                  ""                   ""                    ""                 "")
 
@@ -684,7 +684,7 @@ fi
 
 echo "[LAUNCH] Starting Demo API Server on ${API_HOST}:${API_PORT}..."
 (
-  cd "$BASEDIR/banking_api_server"
+  cd "$BASEDIR/demo_api_server"
   PORT=${API_PORT} \
   NODE_EXTRA_CA_CERTS="${NODE_EXTRA_CA_CERTS:-}" \
   REACT_APP_CLIENT_URL=${CLIENT_URL} \
@@ -702,18 +702,18 @@ sleep 1
 # Helper: ensure a sibling Node service has a .env that points at the API
 # server's .env. Without this, services that do `dotenv.config()` find no
 # .env and fail with "Missing required env var" even though every key they
-# need exists upstairs in banking_api_server/.env.
+# need exists upstairs in demo_api_server/.env.
 #
 # Symlink instead of copy so any future bootstrap rewrite is picked up
 # immediately by all services on next restart — no chance of one service
 # running against a stale snapshot.
 ensure_service_env() {
   local svc_dir="$1"
-  local api_env="${BASEDIR}/banking_api_server/.env"
+  local api_env="${BASEDIR}/demo_api_server/.env"
   local svc_env="${BASEDIR}/${svc_dir}/.env"
 
   # If the service has its own .env.development, preserve the existing
-  # behavior (legacy path used by banking_mcp_server / hitl).
+  # behavior (legacy path used by demo_mcp_server / hitl).
   if [[ -f "${BASEDIR}/${svc_dir}/.env.development" ]]; then
     cp "${BASEDIR}/${svc_dir}/.env.development" "${svc_env}" 2>/dev/null || true
     return
@@ -728,11 +728,11 @@ ensure_service_env() {
 }
 
 # ── Demo MCP Server on :8080 ──────────────────────────────────────────────
-if [[ -d "$BASEDIR/banking_mcp_server" ]]; then
+if [[ -d "$BASEDIR/demo_mcp_server" ]]; then
   echo "[BOT] Starting Demo MCP Server on :8080..."
-  ensure_service_env banking_mcp_server
+  ensure_service_env demo_mcp_server
   (
-    cd "$BASEDIR/banking_mcp_server"
+    cd "$BASEDIR/demo_mcp_server"
     npm start > /tmp/demo-mcp.log 2>&1
   ) &
   echo $! > "$PID_MCP"
@@ -741,11 +741,11 @@ fi
 # ── MCP Gateway on :3005 (Phase 243) ────────────────────────────────────────────
 # Build is handled by the dependency check loop above — don't re-run it here,
 # and don't swallow its errors silently (that's how MODULE_NOT_FOUND happens).
-if [[ -d "$BASEDIR/banking_mcp_gateway" ]]; then
+if [[ -d "$BASEDIR/demo_mcp_gateway" ]]; then
   echo "[SHIELD]  Starting MCP Gateway on :3005..."
-  ensure_service_env banking_mcp_gateway
+  ensure_service_env demo_mcp_gateway
   (
-    cd "$BASEDIR/banking_mcp_gateway"
+    cd "$BASEDIR/demo_mcp_gateway"
     VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
     VAULT_PATH="${VAULT_PATH:-}" \
     npm start > "${LOG_GW}" 2>&1
@@ -754,11 +754,11 @@ if [[ -d "$BASEDIR/banking_mcp_gateway" ]]; then
 fi
 
 # ── HITL Service on :3009 ───────────────────────────────────────────────────
-if [[ -d "$BASEDIR/banking_hitl_service" ]]; then
+if [[ -d "$BASEDIR/demo_hitl_service" ]]; then
   echo "[ALERT] Starting HITL Service on :3009..."
-  ensure_service_env banking_hitl_service
+  ensure_service_env demo_hitl_service
   (
-    cd "$BASEDIR/banking_hitl_service"
+    cd "$BASEDIR/demo_hitl_service"
     PORT=3009 npm start > "${LOG_HITL}" 2>&1
   ) &
   echo $! > "$PID_HITL"
@@ -766,11 +766,11 @@ fi
 
 # ── Agent Service on :3006 ──────────────────────────────────────────────────
 # dist/ is guaranteed by the dependency check loop above (it builds or aborts).
-if [[ -d "$BASEDIR/banking_agent_service" ]]; then
+if [[ -d "$BASEDIR/demo_agent_service" ]]; then
   echo "[CONNECT] Starting Agent Service on :3006..."
-  ensure_service_env banking_agent_service
+  ensure_service_env demo_agent_service
   (
-    cd "$BASEDIR/banking_agent_service"
+    cd "$BASEDIR/demo_agent_service"
     PORT=3006 \
     VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
     VAULT_PATH="${VAULT_PATH:-}" \
@@ -780,11 +780,11 @@ if [[ -d "$BASEDIR/banking_agent_service" ]]; then
 fi
 
 # ── MCP Invest Server on :8081 ──────────────────────────────────────────────
-if [[ -d "$BASEDIR/banking_mcp_invest" ]]; then
+if [[ -d "$BASEDIR/demo_mcp_invest" ]]; then
   echo "[INVEST] Starting MCP Invest Server on :8081..."
-  ensure_service_env banking_mcp_invest
+  ensure_service_env demo_mcp_invest
   (
-    cd "$BASEDIR/banking_mcp_invest"
+    cd "$BASEDIR/demo_mcp_invest"
     PORT=8081 npm start > "${LOG_INVEST}" 2>&1
   ) &
   echo $! > "$PID_INVEST"
@@ -794,10 +794,10 @@ fi
 # API-key-gated. Gateway swaps the user's OAuth bearer for X-API-Key and calls
 # this service on the api_key disposition. Single GET /mortgage route returns
 # a dummy mortgage record.
-if [[ -d "$BASEDIR/banking_mortgage_service" ]]; then
+if [[ -d "$BASEDIR/demo_mortgage_service" ]]; then
   echo "[MORTGAGE] Starting Mortgage Service on :8082..."
   (
-    cd "$BASEDIR/banking_mortgage_service"
+    cd "$BASEDIR/demo_mortgage_service"
     MORTGAGE_SERVICE_PORT=8082 npm start > "${LOG_MORTGAGE}" 2>&1
   ) &
   echo $! > "$PID_MORTGAGE"
@@ -831,7 +831,7 @@ fi
 # DANGEROUSLY_DISABLE_HOST_CHECK → allows non-localhost hostnames in CRA dev
 echo "[WEB] Starting Demo UI on ${CLIENT_URL}..."
 (
-  cd "$BASEDIR/banking_api_ui"
+  cd "$BASEDIR/demo_api_ui"
   HOST=0.0.0.0 \
   PORT=${UI_PORT} \
   HTTPS=true \
