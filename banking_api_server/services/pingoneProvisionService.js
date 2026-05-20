@@ -254,18 +254,42 @@ class PingOneProvisionService {
       const desc = data?.error_description || '';
       if (code === 'access_denied' && /role assignment/i.test(desc)) {
         lines.push('');
-        lines.push('  Likely fix: PingOne Admin Console → Applications → your worker app →');
-        lines.push('  Roles tab → Grant Roles → "Identity Data Admin" scoped to the environment');
-        lines.push(`  (${envId}). Wait ~30s after granting and retry.`);
+        lines.push('  What happened: PingOne accepted the credentials but the worker app has no');
+        lines.push('  admin role, so it cannot call the Management API.');
+        lines.push('');
+        lines.push('  Fix (takes ~2 minutes):');
+        lines.push('    1. Open https://console.pingone.com → your environment');
+        lines.push('    2. Applications → find your worker app (Client ID shown above)');
+        lines.push('    3. Click the Roles tab → Grant Roles');
+        lines.push('    4. Add "Identity Data Admin" — scope it to this environment:');
+        lines.push(`       ${envId}`);
+        lines.push('    5. Save, wait 30 seconds, then re-run:  npm run pingone:bootstrap');
+        lines.push('       (your credentials are cached — it will not ask again)');
       } else if (code === 'invalid_client') {
         lines.push('');
-        lines.push('  Likely fix: verify the secret was pasted without trailing whitespace, the');
-        lines.push('  worker app is enabled, and the region (' + region + ') matches the environment.');
-        lines.push('  If you regenerated the client secret recently, paste the new one.');
+        lines.push('  What happened: PingOne rejected the Client ID or Client Secret.');
+        lines.push('  The credentials are wrong, expired, or the app has been disabled.');
+        lines.push('');
+        lines.push('  Fix:');
+        lines.push('    1. Open https://console.pingone.com → Applications → find your worker app');
+        lines.push('    2. Confirm the app is Enabled (toggle on the Overview tab)');
+        lines.push(`    3. Confirm the region is correct — currently set to: ${region}`);
+        lines.push('       (should match your console URL: console.pingone.com → com,');
+        lines.push('        console.pingone.eu → eu, console.pingone.ca → ca, etc.)');
+        lines.push('    4. If you recently regenerated the secret, paste the new one');
+        lines.push('    5. Re-run:  npm run pingone:bootstrap --reset-creds');
+        lines.push('       (--reset-creds clears the cache so you are prompted for new values)');
       } else if (code === 'invalid_grant' || /grant.*type/i.test(desc)) {
         lines.push('');
-        lines.push('  Likely fix: PingOne Admin Console → Applications → your worker app →');
-        lines.push('  Configuration tab → Grant Type → enable "Client Credentials".');
+        lines.push('  What happened: the worker app exists and authenticated, but it is not');
+        lines.push('  configured to use the Client Credentials grant type.');
+        lines.push('');
+        lines.push('  Fix:');
+        lines.push('    1. Open https://console.pingone.com → Applications → find your worker app');
+        lines.push('    2. Click the Configuration tab → Grant Type section');
+        lines.push('    3. Enable "Client Credentials"');
+        lines.push('    4. Save, then re-run:  npm run pingone:bootstrap');
+        lines.push('       (your credentials are cached — it will not ask again)');
       }
 
       const err = new Error(lines.join('\n'));
@@ -1307,7 +1331,7 @@ class PingOneProvisionService {
       onStep(steps[steps.length - 1]);
       
       // Derived from scope-topology.json "Super Banking MCP Server" — native
-      // scope banking:mcp:invoke plus the RFC 8693 mirrored banking/admin/users
+      // scope mcp:invoke plus the RFC 8693 mirrored banking/admin/users
       // scopes (T-10). Edit the manifest's resources["Super Banking MCP Server"]
       // to change this; bootstrap never hand-maintains the list.
       const mcpScopes = topologyResourceScopeObjects('Super Banking MCP Server');
@@ -1327,7 +1351,7 @@ class PingOneProvisionService {
       //
       // Derived from scope-topology.json "Super Banking API" (the enduser
       // resource server). Edit the manifest to change membership; bootstrap
-      // never hand-maintains this list. (Legacy banking:accounts / banking:admin
+      // never hand-maintains this list. (Legacy accounts / admin
       // are intentionally NOT in the manifest — no tool/app references them.)
       const scopes = topologyResourceScopeObjects('Super Banking API');
 
@@ -1748,10 +1772,10 @@ class PingOneProvisionService {
       
       // Grant scopes for client credentials (Step 6 in documentation).
       // MCP Server is the token-exchange CLIENT — it needs every scope it
-      // might re-request during exchange. Phase 267 adds banking:mortgage:read
-      // for the Path A (api-key disposition) flow. banking:mcp:invoke is
+      // might re-request during exchange. Phase 267 adds mortgage:read
+      // for the Path A (api-key disposition) flow. mcp:invoke is
       // required so introspection of gateway-exchanged tokens (which carry
-      // banking:mcp:invoke) resolves active:true — without it PingOne scopes
+      // mcp:invoke) resolves active:true — without it PingOne scopes
       // the introspection to the wrong resource. See REGRESSION_PLAN §4.
       const mcpAppGrantResult = await this.grantScopesToApplication(
         mcpAppResult.application.id,
@@ -1958,13 +1982,13 @@ class PingOneProvisionService {
 
       // Step 26: Create MCP Gateway scopes.
       //
-      // banking:mcp:invoke is the gateway's own scope. The banking:* tool
+      // mcp:invoke is the gateway's own scope. The * tool
       // scopes MUST also be mirrored here: the BFF's RFC 8693 exchange #1
       // audiences the user token to THIS resource (resolveExchangeAudience →
       // pingone_resource_mcp_gateway_uri), and the gateway gates inbound
       // requests on the per-tool required scopes derived from
-      // scope-topology.json (getScopesForGatewayTool: banking:read /
-      // banking:write / banking:transfer / banking:mortgage:read). Per
+      // scope-topology.json (getScopesForGatewayTool: read /
+      // write / transfer / mortgage:read). Per
       // ARCHITECTURE-TRUTHS T-10, scope vocabularies are per-resource and do
       // NOT cascade — a scope that travels through an exchange hop must exist
       // on that hop's audience resource or PingOne silently drops it and the
@@ -1974,8 +1998,8 @@ class PingOneProvisionService {
       steps.push({ step: 'mcp-gw-scopes', icon: '🎯', message: 'Creating MCP Gateway scopes...' });
       onStep(steps[steps.length - 1]);
       // Derived from scope-topology.json "Super Banking MCP Gateway": native
-      // banking:mcp:invoke + the RFC 8693 mirroredScopes (banking:read /
-      // banking:write / banking:transfer / banking:mortgage:read). The mirror
+      // mcp:invoke + the RFC 8693 mirroredScopes (read /
+      // write / transfer / mortgage:read). The mirror
       // is mandatory — see the manifest's servers.banking_mcp_gateway note and
       // ARCHITECTURE-TRUTHS T-10. Edit the manifest, not this list.
       const mcpGwScopes = topologyResourceScopeObjects('Super Banking MCP Gateway');
@@ -2027,7 +2051,7 @@ class PingOneProvisionService {
       // exchanging client's grants against the TARGET resource, so the grant
       // MUST be on the MCP Server resource (mcpResourceResult — aud
       // mcp-server.*, what backendResourceUri()/mcpOlbResourceUri resolves to),
-      // NOT the Super Banking API resource. banking:mortgage:read is included
+      // NOT the Super Banking API resource. mortgage:read is included
       // for the Phase 267 api_key disposition. (Previously this granted on
       // resourceResult/WORKER — both wrong: WORKER apps can't hold grants and
       // the API resource is not the exchange #2 target.)
@@ -2161,7 +2185,7 @@ class PingOneProvisionService {
       // Canonical chain: the AI Agent mints a client-credentials actor token
       // bound to the Agent Gateway audience; the BFF uses it as actor_token in
       // its single subject+actor exchange. The AI Agent does NOT itself perform
-      // an exchange, so it only needs banking:agent:invoke on the Agent Gateway
+      // an exchange, so it only needs agent:invoke on the Agent Gateway
       // resource.
       steps.push({ step: 'ai-agent-grants', icon: '🔑', message: 'Granting scopes to AI Agent application (Agent Gateway actor)...' });
       onStep(steps[steps.length - 1]);
@@ -2186,9 +2210,9 @@ class PingOneProvisionService {
       //
       // Canonical chain: the BFF's ONE exchange (authenticated by the MCP
       // Exchanger client) is audienced to the MCP GATEWAY and requests the
-      // tool scopes (banking:read / banking:write) plus banking:mcp:invoke.
+      // tool scopes (read / write) plus mcp:invoke.
       // PingOne checks the exchanging client's grants against the target
-      // resource, so banking:read/write/mcp:invoke MUST be granted on the MCP
+      // resource, so read/write/mcp:invoke MUST be granted on the MCP
       // Gateway resource. PingOne enforces ONE scope-name per app across all
       // its grants — so these names live ONLY here (granted FIRST so the
       // cross-resource one-name filter in grantScopesToApplication keeps them
