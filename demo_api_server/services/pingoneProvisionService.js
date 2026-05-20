@@ -1923,6 +1923,43 @@ class PingOneProvisionService {
       }
       onStep(steps[steps.length - 1]);
 
+      // agentRestrictions schema attribute (always provisioned regardless of ff_agent_restrictions)
+      steps.push({ step: 'agentRestrictions-schema', icon: '·', message: 'Ensuring agentRestrictions user schema attribute...' });
+      onStep(steps[steps.length - 1]);
+      try {
+        await this._ensureUserSchemaAttribute('agentRestrictions', 'STRING', 'Agent Restrictions');
+        steps.push({ step: 'agentRestrictions-schema', icon: '✅', message: 'agentRestrictions attribute → created (or already exists)' });
+      } catch (err) {
+        steps.push({ step: 'agentRestrictions-schema', icon: '⚠️', message: `agentRestrictions schema attribute failed: ${err.message}` });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Set agentRestrictions default on demoUser
+      if (provisioned.demoUser?.id) {
+        steps.push({ step: 'agentRestrictions-user', icon: '·', message: 'Setting agentRestrictions default on demo user...' });
+        onStep(steps[steps.length - 1]);
+        try {
+          await this.makeRequest('PATCH', `/users/${provisioned.demoUser.id}`, { agentRestrictions: 'write' });
+          steps.push({ step: 'agentRestrictions-user', icon: '✅', message: 'agentRestrictions: demo user → write' });
+        } catch (err) {
+          steps.push({ step: 'agentRestrictions-user', icon: '⚠️', message: `agentRestrictions: demo user set failed (non-fatal): ${err.message}` });
+        }
+        onStep(steps[steps.length - 1]);
+      }
+
+      // Set agentRestrictions default on demoAdmin
+      if (provisioned.demoAdmin?.id) {
+        steps.push({ step: 'agentRestrictions-admin', icon: '·', message: 'Setting agentRestrictions default on demo admin...' });
+        onStep(steps[steps.length - 1]);
+        try {
+          await this.makeRequest('PATCH', `/users/${provisioned.demoAdmin.id}`, { agentRestrictions: 'write' });
+          steps.push({ step: 'agentRestrictions-admin', icon: '✅', message: 'agentRestrictions: demo admin → write' });
+        } catch (err) {
+          steps.push({ step: 'agentRestrictions-admin', icon: '⚠️', message: `agentRestrictions: demo admin set failed (non-fatal): ${err.message}` });
+        }
+        onStep(steps[steps.length - 1]);
+      }
+
       // Step 24: Add bankingPrincipalUserId SPEL token claim on user app
       steps.push({ step: 'spel-claim', icon: '🔧', message: 'Adding SPEL token claim on User application...' });
       onStep(steps[steps.length - 1]);
