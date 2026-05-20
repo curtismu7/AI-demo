@@ -160,6 +160,7 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   mcp_use_pingone_server:          { public: true, default: 'false' }, // Spawn pingidentity/pingone-mcp-server stdio binary; bypass custom gateway
   ff_show_banking_in_middle_agent: { public: true, default: 'false' }, // Show banking column alongside centered agent (legacy dashboard layout)
   step_up_enabled:                 { public: true, default: 'true'  }, // Step-up MFA gate; mirrored into runtimeSettings.stepUpEnabled (runtimeKey)
+  ff_trat_mode:                    { public: true, default: 'false' }, // Enrich RFC 8693 exchange with Transaction Token (TraT) claims — draft-oauth-transaction-tokens-for-agents-00
 
   // Token endpoint auth method overrides (configurable at runtime from Demo Data page)
   // Fallback: env vars AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD / MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD
