@@ -12,6 +12,7 @@ const Users = ({ user, onLogout }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [agentRestrictionsUpdating, setAgentRestrictionsUpdating] = useState({});
 
   useEffect(() => {
     fetchUsers();
@@ -94,6 +95,22 @@ const Users = ({ user, onLogout }) => {
       } else {
         notifyError('Failed to update user status');
       }
+    }
+  };
+
+  const updateAgentRestrictions = async (userId, value) => {
+    setAgentRestrictionsUpdating((prev) => ({ ...prev, [userId]: true }));
+    try {
+      await bffAxios.patch(`/api/admin/management/users/${userId}/agent-restrictions`, {
+        agentRestrictions: value,
+      });
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, agentRestrictions: value } : u))
+      );
+    } catch (err) {
+      console.error('Failed to update agentRestrictions:', err);
+    } finally {
+      setAgentRestrictionsUpdating((prev) => ({ ...prev, [userId]: false }));
     }
   };
 
@@ -206,22 +223,48 @@ const Users = ({ user, onLogout }) => {
                     </td>
                     <td>{format(new Date(user.createdAt), 'MMM dd, yyyy')}</td>
                     <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          onClick={() => toggleUserStatus(user.id, user.isActive)}
-                          className={`btn ${user.isActive ? 'btn-danger' : 'btn-success'}`}
-                          style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-                        >
-                          {user.isActive ? 'Deactivate' : 'Activate'}
-                        </button>
-                        <button
-                          onClick={() => deleteUser(user.id, `${user.firstName} ${user.lastName}`)}
-                          className="btn btn-danger"
-                          style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-                          title="Delete user"
-                        >
-                          Delete
-                        </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <label style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Agent access:</label>
+                          <select
+                            value={user.agentRestrictions || 'write'}
+                            disabled={agentRestrictionsUpdating[user.id]}
+                            onChange={(e) => updateAgentRestrictions(user.id, e.target.value)}
+                            style={{
+                              fontSize: '0.72rem',
+                              padding: '0.15rem 0.3rem',
+                              borderRadius: '4px',
+                              border: '1px solid var(--border-color)',
+                              background: 'var(--surface-bg)',
+                              color: 'var(--text-primary)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <option value="write">write (full)</option>
+                            <option value="read">read only</option>
+                            <option value="none">none (blocked)</option>
+                          </select>
+                          {agentRestrictionsUpdating[user.id] && (
+                            <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>saving...</span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            onClick={() => toggleUserStatus(user.id, user.isActive)}
+                            className={`btn ${user.isActive ? 'btn-danger' : 'btn-success'}`}
+                            style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                          >
+                            {user.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button
+                            onClick={() => deleteUser(user.id, `${user.firstName} ${user.lastName}`)}
+                            className="btn btn-danger"
+                            style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                            title="Delete user"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     </td>
                   </tr>
