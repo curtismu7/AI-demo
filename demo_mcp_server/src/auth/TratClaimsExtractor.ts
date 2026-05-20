@@ -1,5 +1,3 @@
-'use strict';
-
 export interface TratClaims {
   reqctx: { tool: string; session_id: string; correlation_id: string };
   purp: string;
@@ -26,7 +24,7 @@ export function extractTratClaims(
     const parts = bearerToken.split('.');
     if (parts.length >= 2) {
       const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-      if (payload.reqctx && payload.purp && payload.azd && payload.rctx) {
+      if (typeof payload.purp === 'string' && typeof payload.reqctx?.tool === 'string' && payload.azd && payload.rctx) {
         return {
           reqctx: payload.reqctx,
           purp: payload.purp,
@@ -44,7 +42,7 @@ export function extractTratClaims(
   if (xTratContextHeader) {
     try {
       const parsed = JSON.parse(xTratContextHeader);
-      if (parsed.reqctx && parsed.purp && parsed.azd && parsed.rctx) {
+      if (typeof parsed.purp === 'string' && typeof parsed.reqctx?.tool === 'string' && parsed.azd && parsed.rctx) {
         return {
           reqctx: parsed.reqctx,
           purp: parsed.purp,
