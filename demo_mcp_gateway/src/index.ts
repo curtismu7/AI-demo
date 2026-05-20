@@ -43,6 +43,8 @@ import {
 } from './adminConfig';
 import { extractCorrelationId } from './correlationId';
 import { runWithCorrelation } from './correlationContext';
+import { generateGatewayCerts, GatewayCerts } from './mtls';
+import type { MtlsOptions } from './proxy';
 
 // Phase 269 Plan 04: load encrypted vault entries into process.env BEFORE
 // loadConfig() runs. The vault populates MCP_GW_*, PROVIDER_*, HELIX_*, and
@@ -80,6 +82,14 @@ try {
 
 // BL-03: refuse the committed dev fallback secret in production.
 assertProductionSecrets(config);
+
+let gatewayCerts: GatewayCerts | null = null;
+if (config.mtlsEnabled) {
+  gatewayCerts = await generateGatewayCerts({ writeCertTo: config.mtlsCertPath });
+  console.log(`[GW] mTLS enabled — client cert written to ${config.mtlsCertPath}`);
+} else {
+  console.log('[GW] mTLS disabled (set MCP_MTLS_ENABLED=true to enforce)');
+}
 
 // BL-02: single introspection client shared between the HTTP middleware
 // (built later via buildAuthorizeMcpRequest) and the WebSocket handler.
@@ -753,9 +763,13 @@ async function handleMessage(
     // Gateway forwards the original TX token unchanged — no RFC 8693 re-exchange.
     const backendToken: string = token;
 
+    const tlsOpts: MtlsOptions | undefined = gatewayCerts
+      ? { cert: gatewayCerts.clientCert, key: gatewayCerts.clientKey }
+      : undefined;
+
     let result: JsonRpcResponse;
     try {
-      result = await proxyJsonRpc(wsUrl, backendToken, msg);
+      result = await proxyJsonRpc(wsUrl, backendToken, msg, undefined, tlsOpts);
     } catch (err) {
       const msg2 = err instanceof Error ? err.message : String(err);
       console.error(`[GW] Proxy error for ${toolName}:`, msg2);
@@ -837,12 +851,15 @@ async function handleMessage(
 async function proxyToolsList(target: 'olb' | 'invest', inboundToken: string): Promise<JsonRpcResponse> {
   const wsUrl = backendWsUrl(target, config);
   // Gateway forwards the original TX token unchanged — no RFC 8693 re-exchange.
+  const tlsOpts: MtlsOptions | undefined = gatewayCerts
+    ? { cert: gatewayCerts.clientCert, key: gatewayCerts.clientKey }
+    : undefined;
   return proxyJsonRpc(wsUrl, inboundToken, {
     jsonrpc: '2.0',
     id: `gw-list-${target}`,
     method: 'tools/list',
     params: {},
-  });
+  }, undefined, tlsOpts);
 }
 
 // ---------------------------------------------------------------------------

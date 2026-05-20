@@ -41,6 +41,8 @@ function makeConfig(passthrough: boolean): GatewayConfig {
     bffInternalSecret: 'dev-shared-secret-change-me',
     bankingResourceServerBaseUrl: 'http://localhost:3001',
     bankingResourceServerResourceUri: 'https://banking-resource-server.ping.demo',
+    mtlsEnabled: false,
+    mtlsCertPath: '/tmp/gw-client.crt',
   };
 }
 

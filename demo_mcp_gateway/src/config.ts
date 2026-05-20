@@ -54,6 +54,8 @@ export interface GatewayConfig {
   // on the backend; used as the `audience` parameter in RFC 8693 token exchange.
   // Per RFC 8707 + RFC 9068: audience values are logical URIs, not network addresses.
   bankingResourceServerResourceUri: string;
+  mtlsEnabled: boolean;
+  mtlsCertPath: string;
 }
 
 const DEV_BYPASS = process.env.MCP_GW_DEV_BYPASS === 'true';
@@ -140,6 +142,8 @@ export function loadConfig(): GatewayConfig {
     bffInternalSecret: optional('BFF_INTERNAL_SECRET', DEFAULT_BFF_INTERNAL_SECRET),
     bankingResourceServerBaseUrl: optional('BANKING_RESOURCE_SERVER_BASE_URL', 'http://localhost:3001'),
     bankingResourceServerResourceUri: optional('BANKING_RESOURCE_SERVER_RESOURCE_URI', 'https://banking-resource-server.ping.demo'),
+    mtlsEnabled: process.env.MCP_MTLS_ENABLED === 'true',
+    mtlsCertPath: process.env.MCP_MTLS_GATEWAY_CERT_PATH ?? '/tmp/gw-client.crt',
   };
 }
 

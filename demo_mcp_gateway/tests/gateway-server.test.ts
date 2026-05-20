@@ -52,6 +52,8 @@ const stubConfig: GatewayConfig = {
   bankingResourceServerBaseUrl: 'http://localhost:3001',
   bankingResourceServerResourceUri: 'https://banking-resource-server.ping.demo',
   mcpServerPassthrough: false,
+  mtlsEnabled: false,
+  mtlsCertPath: '/tmp/gw-client.crt',
 };
 
 // ---------------------------------------------------------------------------
