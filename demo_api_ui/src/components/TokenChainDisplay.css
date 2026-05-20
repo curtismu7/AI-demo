@@ -2150,3 +2150,138 @@ pre.tcd-jwt-dump {
 .tcd-diff-arrow {
   color: #64748b;
 }
+
+/* ── TLS Security Card ──────────────────────────────────────────────────────── */
+.tcd-tls-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-left: 3px solid #16a34a;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  font-family: inherit;
+}
+
+.tcd-tls-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.tcd-tls-card__badge {
+  background: #16a34a;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.tcd-tls-card__title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #14532d;
+  flex: 1;
+}
+
+.tcd-tls-card__toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #16a34a;
+  font-size: 0.85rem;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tcd-tls-card__summary {
+  font-size: 0.74rem;
+  color: #166534;
+  margin: 0 0 0 0;
+  line-height: 1.45;
+}
+
+.tcd-tls-card__hops {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tcd-tls-hop {
+  background: #fff;
+  border: 1px solid #d1fae5;
+  border-radius: 5px;
+  padding: 8px 10px;
+}
+
+.tcd-tls-hop--internal {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  opacity: 0.85;
+}
+
+.tcd-tls-hop__route {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.tcd-tls-hop__from,
+.tcd-tls-hop__to {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.tcd-tls-hop__arrow {
+  font-size: 0.73rem;
+  color: #94a3b8;
+}
+
+.tcd-tls-hop__host {
+  font-size: 0.68rem;
+  background: #f1f5f9;
+  color: #374151;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--font-family-mono);
+}
+
+.tcd-tls-hop__proto {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.tcd-tls-hop__proto--https {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.tcd-tls-hop__proto--http {
+  background: #fef9c3;
+  color: #a16207;
+}
+
+.tcd-tls-hop__cert {
+  font-size: 0.68rem;
+  color: #64748b;
+  margin-bottom: 3px;
+}
+
+.tcd-tls-hop__note {
+  font-size: 0.7rem;
+  color: #475569;
+  line-height: 1.4;
+}

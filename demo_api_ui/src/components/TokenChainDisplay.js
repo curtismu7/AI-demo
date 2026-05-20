@@ -1999,6 +1999,113 @@ function NlRoutingCard({ event }) {
   );
 }
 
+// ─── TLS Security Card ───────────────────────────────────────────────────────
+
+/**
+ * Standalone card explaining which hops in the token-exchange flow are
+ * protected by TLS certificates. Always rendered in the "Current call" tab
+ * so the demo makes the transport security layer explicit — tokens are
+ * protected in transit, not just at rest in the BFF session.
+ *
+ * Connections shown:
+ *   Browser → BFF         (mkcert — api.ping.demo:3001  HTTPS)
+ *   Browser → UI          (mkcert — api.ping.demo:4000  HTTPS)
+ *   BFF → PingOne AS      (public CA — auth.pingone.com  HTTPS)
+ *   BFF → MCP Gateway     (mkcert — api.ping.demo:3005  HTTPS)
+ *   Gateway → MCP Server  (HTTP — loopback only; no token leaves the host)
+ */
+
+const TLS_HOPS = [
+  {
+    from: "Browser",
+    to: "BFF",
+    host: "api.ping.demo:3001",
+    protocol: "HTTPS",
+    cert: "mkcert (dev CA)",
+    note: "All API calls from the SPA go over TLS. The user's session cookie and any response data are encrypted in transit.",
+  },
+  {
+    from: "Browser",
+    to: "UI Server",
+    host: "api.ping.demo:4000",
+    protocol: "HTTPS",
+    cert: "mkcert (dev CA)",
+    note: "React app served over TLS — prevents page-load MITM that could inject scripts.",
+  },
+  {
+    from: "BFF",
+    to: "PingOne AS",
+    host: "auth.pingone.com",
+    protocol: "HTTPS",
+    cert: "Public CA (DigiCert)",
+    note: "Token endpoint, introspection, and PKCE callback use publicly-trusted TLS. Tokens are never sent in plaintext.",
+  },
+  {
+    from: "BFF",
+    to: "MCP Gateway",
+    host: "api.ping.demo:3005",
+    protocol: "HTTPS",
+    cert: "mkcert (dev CA)",
+    note: "The gateway health probe and all delegated tool calls from the BFF use HTTPS. The exchanged MCP token is protected in transit.",
+  },
+  {
+    from: "Gateway",
+    to: "MCP Server",
+    host: "localhost:8080",
+    protocol: "HTTP",
+    cert: "None (loopback)",
+    note: "Internal loopback only — traffic never leaves the host. No certificate needed; network-level isolation is the control.",
+    internal: true,
+  },
+];
+
+function TlsSecurityCard() {
+  const [expanded, setExpanded] = React.useState(false);
+  return (
+    <div className="tcd-tls-card">
+      <div className="tcd-tls-card__header">
+        <span className="tcd-tls-card__badge">TLS</span>
+        <span className="tcd-tls-card__title">Transport Security — Certificate-protected hops</span>
+        <button
+          type="button"
+          className="tcd-tls-card__toggle"
+          onClick={() => setExpanded(e => !e)}
+          aria-expanded={expanded}
+          aria-label={expanded ? "Collapse TLS details" : "Expand TLS details"}
+        >
+          {expanded ? "▾" : "▸"}
+        </button>
+      </div>
+      <p className="tcd-tls-card__summary">
+        Every hop that carries a token is TLS-encrypted. The BFF is the sole token
+        custodian — no token is ever sent over plaintext or exposed to the browser.
+      </p>
+      {expanded && (
+        <div className="tcd-tls-card__hops">
+          {TLS_HOPS.map((hop) => (
+            <div
+              key={hop.host}
+              className={`tcd-tls-hop${hop.internal ? " tcd-tls-hop--internal" : ""}`}
+            >
+              <div className="tcd-tls-hop__route">
+                <span className="tcd-tls-hop__from">{hop.from}</span>
+                <span className="tcd-tls-hop__arrow">→</span>
+                <span className="tcd-tls-hop__to">{hop.to}</span>
+                <code className="tcd-tls-hop__host">{hop.host}</code>
+                <span className={`tcd-tls-hop__proto tcd-tls-hop__proto--${hop.protocol.toLowerCase()}`}>
+                  {hop.protocol}
+                </span>
+              </div>
+              <div className="tcd-tls-hop__cert">{hop.cert}</div>
+              <div className="tcd-tls-hop__note">{hop.note}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Phase 266 R3: spec-citation pills ───────────────────────────────────────
 
 /**
@@ -3145,6 +3252,7 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
               {isLive && ctx?.nlRoutingEvent && (
                 <NlRoutingCard event={ctx.nlRoutingEvent} />
               )}
+              <TlsSecurityCard />
               {(!isPlaceholder ||
                 !identityHints?.currentUser ||
                 sessionPreviewFetched) &&
