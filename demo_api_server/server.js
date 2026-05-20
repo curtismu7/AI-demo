@@ -76,6 +76,7 @@ const sensitiveBankingRoutes = require('./routes/sensitiveBanking');
 const transactionRoutes = require('./routes/transactions');
 const demoScenarioRoutes = require('./routes/demoScenario');
 const adminRoutes = require('./routes/admin');
+const adminAgentToolsRoutes = require('./routes/adminAgentTools');
 const adminConfigRoutes = require('./routes/adminConfig');
 const adminManagementRoutes = require('./routes/adminManagement');
 const cibaRoutes = require('./routes/ciba');
@@ -945,6 +946,7 @@ app.get('/api/demo-scenario', (req, res, next) => {
     });
 });
 app.use('/api/demo-scenario', authenticateToken, demoScenarioRoutes);
+app.use('/api/admin/agent', authenticateToken, adminAgentToolsRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/admin/management', adminManagementRoutes);
 app.use('/api/admin/setup', setupWizardRoutes);
