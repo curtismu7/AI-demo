@@ -178,7 +178,17 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
             onClick={() => navigate("/")}
             aria-label="Go to home"
           >
-            <span className="banking-header__logo-icon">🏦</span>
+            <span className="banking-header__logo-icon">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M4 10h3v7H4zM10.5 10h3v7h-3zM2 19h20v3H2zM17 10h3v7h-3zM12 1 2 6v2h20V6z" />
+                </svg>
+              </span>
             <span className="banking-header__logo-text">Super Bank</span>
           </button>
           {userInfo && (

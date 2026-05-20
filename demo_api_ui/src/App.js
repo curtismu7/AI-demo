@@ -191,7 +191,7 @@ function AgentFlowPage() {
       }}
     >
       <h2 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>
-        🔀 Agent Request Flow
+        Agent Request Flow
       </h2>
       <p>
         Use the AI Agent to trigger a tool call — the request flow panel
@@ -204,7 +204,7 @@ function AgentFlowPage() {
 function AdminRoute({ user, children }) {
   const toastedRef = useRef(false);
   const isAdmin = user?.role === "admin";
-  useAdminTheme();
+  useAdminTheme(isAdmin);
 
   useEffect(() => {
     if (!isAdmin && !toastedRef.current) {
