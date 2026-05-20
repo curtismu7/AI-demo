@@ -14,7 +14,7 @@ export function useIndustryBranding() {
   const id = t.themeId || 'bx_finance';
   return {
     industryId: id,
-    preset: { id, shortName: t.identity ? t.identity.displayName : 'Super Banking', logoPath: t.identity ? t.identity.logoPath : '/super-bank-icon.png' },
+    preset: { id, shortName: t.identity ? t.identity.displayName : 'AI Demo', logoPath: t.identity ? t.identity.logoPath : '/super-bank-icon.png' },
     setIndustryId: () => {},
     applyIndustryId: () => {},
   };

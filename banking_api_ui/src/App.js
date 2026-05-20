@@ -193,7 +193,7 @@ function AgentFlowPage() {
         🔀 Agent Request Flow
       </h2>
       <p>
-        Use the Banking Agent to trigger a tool call — the request flow panel
+        Use the AI Agent to trigger a tool call — the request flow panel
         will appear automatically.
       </p>
     </div>

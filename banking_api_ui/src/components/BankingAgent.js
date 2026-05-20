@@ -1542,7 +1542,7 @@ export function buildCustomerGreeting(u, manifestGreeting) {
 function welcomeMessage(
   u,
   focus = "banking",
-  brandShortName = "Super Banking",
+  brandShortName = "AI Demo",
   customerGreetingOverride = null,
 ) {
   if (focus === "config") {
@@ -1608,7 +1608,7 @@ const TOPIC_MESSAGES = {
   "may-act": `may_act / act Claims (RFC 8693 §4.1):\n\nmay_act on the User token: "this client is allowed to act on my behalf"\n  { "sub": "user-uuid", "may_act": { "client_id": "bff-admin-client" } }\n\nact on the MCP token (exchanged token): "this action was delegated"\n  { "sub": "user-uuid", "act": { "client_id": "bff-admin-client" } }\n\nThe MCP server validates act to confirm the Backend-for-Frontend (BFF) is the authorized actor — not just any client that got a token.`,
   "mcp-protocol": `Model Context Protocol (MCP):\n\nMCP is a JSON-RPC 2.0 protocol over WebSocket (or stdio/SSE) for AI tools.\n\nHandshake:\n  initialize → { protocolVersion, capabilities, serverInfo }\n  → notifications/initialized (client notification)\n\nDiscovery:\n  tools/list → [{ name, description, inputSchema }]\n\nExecution:\n  tools/call { name, arguments } → { content: [{ type, text }] }\n\nIn this demo:\n  Browser → Backend-for-Frontend (BFF) (/api/mcp/tool) → MCP Server (WebSocket) → Demo API\n\nToken flow: Backend-for-Frontend (BFF) performs RFC 8693 exchange before forwarding tool calls.`,
   introspection: `RFC 7662 Token Introspection (BFF → PingOne):\n\nThe BFF (not the MCP server) calls PingOne introspection in two places:\n  1. At login — immediately after the OAuth callback to confirm the session is live\n  2. Before every MCP tool call — to catch revoked/expired sessions before token exchange\n\n  POST /as/introspect\n  { token: "...", token_type_hint: "access_token" }\n  → { active: true, sub, scope, exp, aud, client_id }\n\nWhy introspection for the user token specifically?\n• Catches revoked sessions in real time (JWKS cannot detect revocation)\n• The result is shown in the Token Chain as "user-token-introspection"\n\nAll other tokens (agent CC token, exchanged MCP tokens) use RFC 7515 JWKS\nsignature verification instead — local, fast, and tamper-evident.`,
-  "step-up": `Step-Up Authentication (RFC 9470):\n\nTriggered when a high-value action requires stronger auth:\n• Transfer amount ≥ threshold (set in Security Settings) → require MFA\n• BFF returns HTTP 428 with WWW-Authenticate: Bearer scope="step_up"\n\nTwo methods:\n1. OTP / CIBA: PingOne sends code to registered device (out-of-band)\n2. Redirect: Browser → /api/auth/oauth/user/stepup?acr_values=Multi_Factor → PingOne MFA\n\nAfter the user completes MFA — PingOne (the AS) authorizes based on:\n  • Scope: confirms banking:transfer is allowed under this policy\n  • ACR: confirms MFA assurance level was achieved\n  • Threshold: token issued only after identity verification at required level\n\nPingOne issues a new elevated token:\n  { acr: "Multi_Factor", scope: "banking:transfer", sub: user }\nBFF receives it → introspects it (RFC 7662) to confirm active + acr claims\nBFF re-exchanges it for a narrowly-scoped MCP token (RFC 8693)\nExchanged token JWKS-verified (RFC 7515) before any tool call\nOriginal transaction retried automatically.`,
+  "step-up": `Step-Up Authentication (RFC 9470):\n\nTriggered when a high-value action requires stronger auth:\n• Transfer amount ≥ threshold (set in Security Settings) → require MFA\n• BFF returns HTTP 428 with WWW-Authenticate: Bearer scope="step_up"\n\nTwo methods:\n1. OTP / CIBA: PingOne sends code to registered device (out-of-band)\n2. Redirect: Browser → /api/auth/oauth/user/stepup?acr_values=Multi_Factor → PingOne MFA\n\nAfter the user completes MFA — PingOne (the AS) authorizes based on:\n  • Scope: confirms transfer is allowed under this policy\n  • ACR: confirms MFA assurance level was achieved\n  • Threshold: token issued only after identity verification at required level\n\nPingOne issues a new elevated token:\n  { acr: "Multi_Factor", scope: "transfer", sub: user }\nBFF receives it → introspects it (RFC 7662) to confirm active + acr claims\nBFF re-exchanges it for a narrowly-scoped MCP token (RFC 8693)\nExchanged token JWKS-verified (RFC 7515) before any tool call\nOriginal transaction retried automatically.`,
   "agent-gateway": `Agent Gateway / Resource Indicators (RFC 8707):\n\nRFC 8707: client specifies the resource URI when requesting a token\n  /as/token?resource=https://mcp.example.com\n  → token aud = "https://mcp.example.com"\n\nRFC 9728: Protected Resource Metadata\n  GET https://mcp.example.com/.well-known/oauth-protected-resource\n  → { resource, authorization_servers, scopes_supported }\n\nThis lets a dynamic AI agent discover what auth is needed before attempting a tool call — no hardcoded configuration.`,
   "pingone-authorize": `PingOne Authorize (DaVinci):\n\nPingOne Authorize evaluates access policies at runtime using DaVinci flows.\n\nIn this demo it drives:\n• Step-up MFA triggers (ACR values like "Multi_factor")\n• CIBA push notifications to the user's device\n• Dynamic consent for high-value transactions\n\nThe acr_values parameter in /as/authorize tells PingOne which DaVinci policy to run.`,
   cimd: `Client ID Metadata Document (CIMD / RFC 7591):\n\nTraditional OAuth: client_id is an opaque string, pre-registered in the AS.\nCIMD: client_id is a URL you control — it hosts the client's metadata.\n\nThe AS fetches the URL to discover:\n  { redirect_uris, grant_types, scope, client_name, logo_uri, … }\n\nBenefits:\n• No pre-registration — client registers itself\n• Client controls updates (change the hosted document)\n• Works across AS instances that support DCR/RFC 7591\n\nIn this demo: click "Simulate" in the CIMD panel to see PingOne dynamic client registration.`,
@@ -3269,7 +3269,7 @@ export default function BankingAgent({
         case "mortgage_demo": {
           // Phase 267 Path A — api_key disposition, end-to-end:
           //   1. Call gateway MCP tool 'show_mortgage' (apikey disposition)
-          //   2. Gateway enforces banking:mortgage:read on the user bearer
+          //   2. Gateway enforces mortgage:read on the user bearer
           //   3. Gateway drops the OAuth bearer, attaches the service API key
           //   4. Gateway calls banking_mortgage_service (X-API-Key + X-User-Sub)
           //   5. Navigate to /path/mortgage with the payload in location.state
@@ -3310,7 +3310,7 @@ export default function BankingAgent({
             addMessage(
               "assistant",
               insufficient
-                ? `The agent's access token does not carry the banking:mortgage:read scope, so the gateway refused to swap it for the mortgage service API key. Sign out and sign back in to consent to mortgage access, then try "show mortgage data" again.`
+                ? `The agent's access token does not carry the mortgage:read scope, so the gateway refused to swap it for the mortgage service API key. Sign out and sign back in to consent to mortgage access, then try "show mortgage data" again.`
                 : `Could not load mortgage data: ${mortgageNorm.message || "backend error"}.`,
               actionId,
               resultExtra,
@@ -3883,7 +3883,7 @@ export default function BankingAgent({
               `Attempting transfer of $99,999.99 from ${intentFrom.name || intentFrom.type} → ${intentTo.name || intentTo.type}`,
               "",
               "RFC 8693 Token Exchange — The agent's MCP token is scope- and audience-constrained",
-              "   (banking:write scope, MCP server audience) — the delegated intent is encoded in the token.",
+              "   (write scope, MCP server audience) — the delegated intent is encoded in the token.",
               "HITL Consent Gate — Transfer exceeds threshold; agent is paused pending your explicit approval.",
               "   This enforces the spend constraint and delegates only what was authorized.",
             ].join("\n"),
@@ -3964,7 +3964,7 @@ export default function BankingAgent({
               "",
               "✓ Step 1: LLM intent reasoning (NL → transfer intent)",
               "✓ Step 2: Token initialization (get user token)",
-              "✓ Step 3: Gateway scope mapping (banking:write scope)",
+              "✓ Step 3: Gateway scope mapping (write scope)",
               "✓ Step 4: Scope-aware caching",
               "✓ Step 5: Resource token exchange (RFC 8693)",
               "✓ Step 6: Gateway denial metadata collection",
@@ -4552,7 +4552,7 @@ export default function BankingAgent({
             `   ${badScopes.explanation || "Need at least 5 OAuth scopes on the user token"}`,
             "",
             "Fix: Sign out → sign in again with a PingOne app that requests more scopes",
-            "(openid, profile, email + banking scopes like banking:read, banking:accounts:read).",
+            "(openid, profile, email + banking scopes like read, accounts:read).",
           ].join("\n");
           notifyError(
             "❌ Sign in again with broader scopes (at least 5) for MCP token exchange",
@@ -4568,7 +4568,7 @@ export default function BankingAgent({
               "   The banking operation completed successfully using the local handler.",
               "",
               "   To enable full RFC 8693 exchange, ensure the user token carries",
-              "   banking:read / banking:write scopes (not just banking:ai:agent:read).",
+              "   read / write scopes (not just ai:agent:read).",
             ].join("\n");
             // No error toast — the tool result handled it as a success
           } else {
@@ -4704,7 +4704,7 @@ export default function BankingAgent({
               `✅ ${label} complete — what just happened:`,
               "",
               exchanged
-                ? `RFC 8693 Token Exchange — MCP token scoped to \`${exchanged.audienceNarrowed || "mcp-server"}\`, scope \`${exchanged.scopeNarrowed || "banking:write"}\``
+                ? `RFC 8693 Token Exchange — MCP token scoped to \`${exchanged.audienceNarrowed || "mcp-server"}\`, scope \`${exchanged.scopeNarrowed || "write"}\``
                 : `Local handler — RFC 8693 token exchange not configured or skipped`,
               `HITL gate (RFC 8693 §2.1) — Transfers over the threshold require your explicit consent before the agent proceeds. The agent cannot self-approve: enforcement is server-side, before tool execution.`,
               "",
@@ -4717,8 +4717,8 @@ export default function BankingAgent({
           addMessage(
             "token-event",
             [
-              ` Authorized by scope ${exchanged.scopeNarrowed || "banking:read"} · · audience ${exchanged.audienceNarrowed || "mcp-server"}`,
-              `   RFC 6749 §3.3 — every MCP call requires a scoped token; read operations use banking:read, writes require banking:write.`,
+              ` Authorized by scope ${exchanged.scopeNarrowed || "read"} · · audience ${exchanged.audienceNarrowed || "mcp-server"}`,
+              `   RFC 6749 §3.3 — every MCP call requires a scoped token; read operations use read, writes require write.`,
               `   RFC 8707 — the resource indicator binds the token to this specific audience and prevents it being accepted elsewhere.`,
             ].join("\n"),
             actionId,
@@ -4935,7 +4935,7 @@ export default function BankingAgent({
           "token-event",
           [
             "❌ RFC 6749 §3.3 — Scope Error: missing required scopes",
-            `   Token lacks: \`${(err.missingScopes || []).join(", ") || "banking:write"}`,
+            `   Token lacks: \`${(err.missingScopes || []).join(", ") || "write"}`,
             "   RFC 6749 §3.3: access tokens carry a scope claim; resource servers MUST reject tokens missing required scopes.",
             "   RFC 8693 §2.1: token exchange cannot expand scopes — the MCP token can only carry scopes already on the user token.",
             "",
@@ -4955,7 +4955,7 @@ export default function BankingAgent({
         addMessage(
           "token-event",
           [
-            "⚠️ OAuth 2.0 §3.3 — Scope Gate: banking:write required",
+            "⚠️ OAuth 2.0 §3.3 — Scope Gate: write required",
             `   Tool ${err.tool || actionId} requires: ${(err.requiredScopes || []).join(", ")}`,
             `   Your MCP token is missing: \`${(err.missingScopes || []).join(", ")}`,
             "   The MCP server returned JSON-RPC -32005 (INSUFFICIENT_SCOPE).",
@@ -6303,7 +6303,7 @@ export default function BankingAgent({
     );
     addMessage(
       "token-event",
-      " Scope upgrade approved — exchanging token for banking:write access (RFC 8693)…",
+      " Scope upgrade approved — exchanging token for write access (RFC 8693)…",
       "scope_upgrade",
     );
     try {
@@ -6344,7 +6344,7 @@ export default function BankingAgent({
         [
           " RFC 8693 Token Exchange — Scope Upgrade",
           "   Subject token: user access token (from BFF session)",
-          "   Requested scope: banking:write (added to MCP token)",
+          "   Requested scope: write (added to MCP token)",
           "   Result: write-scoped MCP access token stored in session",
           "   RFC 8693 §2.1: token exchange cannot expand beyond subject token scopes.",
           "   RFC 8693 §4.2: `act` claim on result identifies BFF as actor.",
@@ -7208,7 +7208,7 @@ export default function BankingAgent({
                                   fmt += `\u2022 Status: ${acc.status}\n`;
                                 });
                                 fmt +=
-                                  "\n---\n_Protected by HITL consent \u00B7 scope: `banking:sensitive`_";
+                                  "\n---\n_Protected by HITL consent \u00B7 scope: `sensitive`_";
                                 detailsMsg = fmt;
                               }
                               addMessage(
@@ -7300,7 +7300,7 @@ export default function BankingAgent({
                             formattedDetails += `\u2022 Status: ${acc.status}\n`;
                           });
                           formattedDetails +=
-                            "\n---\n_Protected by HITL consent \u00B7 scope: `banking:sensitive`_";
+                            "\n---\n_Protected by HITL consent \u00B7 scope: `sensitive`_";
                           detailsMessage = formattedDetails;
                         }
                         addMessage(
@@ -7504,7 +7504,7 @@ export default function BankingAgent({
                             borderRadius: "4px",
                           }}
                         >
-                          banking:write
+                          write
                         </code>
                         {"  "}scope. Your current MCP token does not include it.
                         You can approve a scope upgrade — the BFF will exchange
@@ -7526,7 +7526,7 @@ export default function BankingAgent({
                           {(scopeErrorModal.missingScopes &&
                           scopeErrorModal.missingScopes.length
                             ? scopeErrorModal.missingScopes
-                            : ["banking:write"]
+                            : ["write"]
                           ).map((s) => (
                             <code
                               key={s}
@@ -7659,7 +7659,7 @@ export default function BankingAgent({
                             borderRadius: "4px",
                           }}
                         >
-                          banking:write
+                          write
                         </code>{" "}
                         access for this session. This allows the agent to
                         complete{"  "}
@@ -7753,7 +7753,7 @@ export default function BankingAgent({
                       <p style={{ margin: 0, fontSize: "14px", opacity: 0.8 }}>
                         Performing RFC 8693 token exchange to obtain a{" "}
                         <code style={{ padding: "1px 5px" }}>
-                          banking:write
+                          write
                         </code>
                         {"-scoped MCP token."}
                       </p>
@@ -8215,7 +8215,7 @@ export default function BankingAgent({
                     {/* Enhanced unauthenticated agent chip group with login prompt */}
                     <div className="ba-left-guest-chips">
                       <div className="ba-left-label">
-                        Get started with AI Banking:
+                        Get started with AI Demo:
                       </div>
 
                       {/* Primary login chip - more prominent */}

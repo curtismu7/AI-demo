@@ -34,7 +34,7 @@ const STATIC_LOCAL_TOOLS = [
   { name: 'get_my_accounts',            description: 'List all bank accounts with balances and status.',            inputSchema: { type:'object', properties:{}, required:[] } },
   { name: 'get_account_balance',         description: 'Get current balance for a specific account by ID.',          inputSchema: { type:'object', properties:{ account_id:{type:'string'} }, required:['account_id'] } },
   { name: 'get_my_transactions',         description: 'Retrieve transaction history for the authenticated user.',   inputSchema: { type:'object', properties:{}, required:[] } },
-  { name: 'get_sensitive_account_details', description: 'Retrieve full account number and routing number (requires banking:sensitive:read + consent).', inputSchema: { type:'object', properties:{}, required:[] } },
+  { name: 'get_sensitive_account_details', description: 'Retrieve full account number and routing number (requires sensitive:read + consent).', inputSchema: { type:'object', properties:{}, required:[] } },
   { name: 'create_deposit',              description: 'Deposit funds into an account. Amounts over $500 require HITL consent.', inputSchema: { type:'object', properties:{ to_account_id:{type:'string'}, amount:{type:'number'}, description:{type:'string'} }, required:['to_account_id','amount'] } },
   { name: 'create_withdrawal',           description: 'Withdraw funds from an account. Amounts over $500 require HITL consent.', inputSchema: { type:'object', properties:{ from_account_id:{type:'string'}, amount:{type:'number'}, description:{type:'string'} }, required:['from_account_id','amount'] } },
   { name: 'create_transfer',             description: 'Transfer money between accounts. Amounts over $500 require HITL consent.', inputSchema: { type:'object', properties:{ from_account_id:{type:'string'}, to_account_id:{type:'string'}, amount:{type:'number'}, description:{type:'string'} }, required:['from_account_id','to_account_id','amount'] } },
@@ -192,7 +192,7 @@ const McpInspector = ({ user, onLogout }) => {
             </div>
             {mcpHistory.length === 0 ? (
               <p className="mcp-inspector__muted mcp-history__empty">
-                No MCP tool calls yet this session. Use the Banking Agent or the <em>Invoke</em> panel below to make a <code>tools/call</code>.
+                No MCP tool calls yet this session. Use the AI Agent or the <em>Invoke</em> panel below to make a <code>tools/call</code>.
               </p>
             ) : (
               <ol className="mcp-history__list">

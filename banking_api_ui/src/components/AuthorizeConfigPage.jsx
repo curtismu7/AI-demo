@@ -373,10 +373,10 @@ export default function AuthorizeConfigPage() {
             <h4>PingOne Authorize Export</h4>
             <p className="azc-description">
               Download this pre-built PingOne Authorize export and import it
-              into your PingOne environment to provision the Super Banking
+              into your PingOne environment to provision the Demo
               policies, rules, conditions, and attributes. Includes the{" "}
-              <strong>Super Banking Transaction Authorization</strong> and{" "}
-              <strong>Super Banking MCP Delegation Authorization</strong>{" "}
+              <strong>Demo Transaction Authorization</strong> and{" "}
+              <strong>Demo MCP Delegation Authorization</strong>{" "}
               policies, wired to the correct Trust Framework parameters (
               <code>UserId</code>, <code>Amount</code>,{" "}
               <code>TransactionType</code>, <code>Acr</code>,{" "}

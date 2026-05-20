@@ -298,8 +298,8 @@ export function TokenChainProvider({ children, activePath = "" }) {
       }
       if (configData) {
         const clientLabels = {
-          adminClientId: "Super Banking BFF (Admin)",
-          userClientId: "Super Banking BFF (User)",
+          adminClientId: "AI Demo BFF (Admin)",
+          userClientId: "AI Demo BFF (User)",
           mcpTokenExchangerClientId: "MCP Token Exchanger",
           aiAgentClientId: "AI Agent",
         };
