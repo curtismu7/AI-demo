@@ -12,6 +12,15 @@
 import WebSocket from 'ws';
 import { getCorrelationId } from './correlationContext';
 
+export function buildUpstreamHeaders(
+  backendToken: string,
+  xTratContext: string | undefined,
+): Record<string, string> {
+  const headers: Record<string, string> = { Authorization: `Bearer ${backendToken}` };
+  if (xTratContext) headers['X-TraT-Context'] = xTratContext;
+  return headers;
+}
+
 const MCP_PROTOCOL_VERSION = '2025-11-25';
 const HANDSHAKE_TIMEOUT_MS = 10_000;
 const CALL_TIMEOUT_MS = parseInt(process.env.GW_TOOL_CALL_TIMEOUT_MS || '30000', 10);
@@ -34,6 +43,7 @@ export function proxyJsonRpc(
   backendWsUrl: string,
   backendToken: string,
   request: JsonRpcRequest,
+  xTratContext?: string,
 ): Promise<JsonRpcResponse> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -42,7 +52,7 @@ export function proxyJsonRpc(
     }, CALL_TIMEOUT_MS);
 
     const ws = new WebSocket(backendWsUrl, {
-      headers: { Authorization: `Bearer ${backendToken}` },
+      headers: buildUpstreamHeaders(backendToken, xTratContext),
     });
 
     let initialized = false;
