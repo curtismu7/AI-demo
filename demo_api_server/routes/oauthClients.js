@@ -20,6 +20,7 @@ const {
   validateClientCredentials,
   getClientStatistics
 } = require('../services/oauthClientRegistry');
+const { requireAdmin } = require('../middleware/auth');
 
 /**
  * Middleware to extract request metadata for audit logging
@@ -33,41 +34,12 @@ function extractRequestMetadata(req, res, next) {
   next();
 }
 
-/**
- * Middleware to validate admin access for sensitive operations
- */
-function requireAdminAccess(req, res, next) {
-  // For now, check if user has admin scopes
-  // In production, this should validate against proper admin permissions
-  const token = req.session?.oauthTokens;
-  if (!token) {
-    return res.status(401).json({
-      error: 'unauthorized',
-      error_description: 'Authentication required'
-    });
-  }
-
-  const userScopes = token.scope ? token.scope.split(' ') : [];
-  const hasAdminScope = userScopes.some(scope => 
-    scope.startsWith('admin:') || scope === 'users:manage'
-  );
-
-  if (!hasAdminScope) {
-    return res.status(403).json({
-      error: 'insufficient_scope',
-      error_description: 'Admin access required for this operation'
-    });
-  }
-
-  req.metadata.registeredBy = token.sub || 'unknown';
-  next();
-}
 
 /**
  * POST /api/oauth/clients/register
  * Register a new OAuth client
  */
-router.post('/register', extractRequestMetadata, requireAdminAccess, async (req, res, next) => {
+router.post('/register', extractRequestMetadata, requireAdmin, async (req, res, next) => {
   try {
     const clientRequest = {
       client_name: req.body.client_name,
@@ -108,7 +80,7 @@ router.post('/register', extractRequestMetadata, requireAdminAccess, async (req,
  * GET /api/oauth/clients
  * List all clients (admin only)
  */
-router.get('/', extractRequestMetadata, requireAdminAccess, async (req, res, next) => {
+router.get('/', extractRequestMetadata, requireAdmin, async (req, res, next) => {
   try {
     const filter = {
       status: req.query.status,
@@ -136,7 +108,7 @@ router.get('/', extractRequestMetadata, requireAdminAccess, async (req, res, nex
  * GET /api/oauth/clients/statistics
  * Get client registry statistics (admin only)
  */
-router.get('/statistics', extractRequestMetadata, requireAdminAccess, async (req, res, next) => {
+router.get('/statistics', extractRequestMetadata, requireAdmin, async (req, res, next) => {
   try {
     const stats = getClientStatistics();
     res.json(stats);
@@ -149,7 +121,7 @@ router.get('/statistics', extractRequestMetadata, requireAdminAccess, async (req
  * GET /api/oauth/clients/:clientId
  * Get client information
  */
-router.get('/:clientId', extractRequestMetadata, requireAdminAccess, async (req, res, next) => {
+router.get('/:clientId', extractRequestMetadata, requireAdmin, async (req, res, next) => {
   try {
     const client = getClient(req.params.clientId);
     res.json(client);
@@ -168,7 +140,7 @@ router.get('/:clientId', extractRequestMetadata, requireAdminAccess, async (req,
  * PUT /api/oauth/clients/:clientId
  * Update client information
  */
-router.put('/:clientId', extractRequestMetadata, requireAdminAccess, async (req, res, next) => {
+router.put('/:clientId', extractRequestMetadata, requireAdmin, async (req, res, next) => {
   try {
     const updates = {
       client_name: req.body.client_name,
@@ -202,7 +174,7 @@ router.put('/:clientId', extractRequestMetadata, requireAdminAccess, async (req,
  * DELETE /api/oauth/clients/:clientId
  * Delete client
  */
-router.delete('/:clientId', extractRequestMetadata, requireAdminAccess, async (req, res, next) => {
+router.delete('/:clientId', extractRequestMetadata, requireAdmin, async (req, res, next) => {
   try {
     deleteClient(req.params.clientId, req.metadata);
     res.status(204).send();
@@ -218,35 +190,13 @@ router.delete('/:clientId', extractRequestMetadata, requireAdminAccess, async (r
 });
 
 /**
- * POST /api/oauth/clients/:clientId/rotate-secret
- * Rotate client secret
- */
-router.post('/:clientId/rotate-secret', extractRequestMetadata, requireAdminAccess, async (req, res, next) => {
-  try {
-    const result = rotateClientSecret(req.params.clientId, {
-      ...req.metadata,
-      reason: req.body.reason || 'manual'
-    });
-    res.json(result);
-  } catch (err) {
-    if (err.status) {
-      return res.status(err.status).json({
-        error: 'invalid_client',
-        error_description: err.message
-      });
-    }
-    next(err);
-  }
-});
-
-/**
  * POST /api/oauth/clients/validate
  * Validate client credentials (internal use)
  */
-router.post('/validate', extractRequestMetadata, async (req, res, next) => {
+router.post('/validate', extractRequestMetadata, requireAdmin, async (req, res, next) => {
   try {
     const { client_id, client_secret } = req.body;
-    
+
     if (!client_id || !client_secret) {
       return res.status(400).json({
         error: 'invalid_request',
@@ -255,7 +205,7 @@ router.post('/validate', extractRequestMetadata, async (req, res, next) => {
     }
 
     const validation = validateClientCredentials(client_id, client_secret);
-    
+
     if (!validation.valid) {
       return res.status(401).json({
         error: 'invalid_client',
@@ -271,6 +221,28 @@ router.post('/validate', extractRequestMetadata, async (req, res, next) => {
       token_endpoint_auth_method: validation.client.token_endpoint_auth_method
     });
   } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/oauth/clients/:clientId/rotate-secret
+ * Rotate client secret
+ */
+router.post('/:clientId/rotate-secret', extractRequestMetadata, requireAdmin, async (req, res, next) => {
+  try {
+    const result = rotateClientSecret(req.params.clientId, {
+      ...req.metadata,
+      reason: req.body.reason || 'manual'
+    });
+    res.json(result);
+  } catch (err) {
+    if (err.status) {
+      return res.status(err.status).json({
+        error: 'invalid_client',
+        error_description: err.message
+      });
+    }
     next(err);
   }
 });
