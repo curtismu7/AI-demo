@@ -914,7 +914,25 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // CATALOG (not an authz oracle): MCP_TOOL_SCOPES maps a tool → the OAuth
   // scopes the RFC 8693 exchange should request for it. It drives scope
   // resolution below; it does NOT decide whether the call is allowed.
-  const toolCandidateScopes = MCP_TOOL_SCOPES[tool] || ['read'];
+  // Shallow-copy so admin scope injection below never mutates the shared MCP_TOOL_SCOPES map.
+  const toolCandidateScopes = (MCP_TOOL_SCOPES[tool] || ['read']).slice();
+
+  // ── Admin scope injection ────────────────────────────────────────────────
+  // When the admin token has been substituted as the subject token (shouldUseAdmin
+  // is true), the exchanged token must carry admin-specific scopes. These scopes
+  // are not in MCP_TOOL_SCOPES (which only covers banking tools) and may not be
+  // present in toolCandidateScopes, so we inject them here. We check whether the
+  // user token already carries any admin:* scope as the signal — if the admin
+  // token was substituted it will have admin:read at minimum.
+  // Injection is additive — existing candidateScopes are preserved.
+  if (shouldUseAdmin) {
+    const adminScopes = ['admin:read', 'admin:write', 'admin:delete', 'users:read', 'users:manage'];
+    adminScopes.forEach((s) => {
+      if (!toolCandidateScopes.includes(s)) toolCandidateScopes.push(s);
+    });
+    console.log('[TokenExchange:DEBUG] Admin session — injected admin scopes into toolCandidateScopes:', toolCandidateScopes.join(','));
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Classify tool as high-risk (write) so the UI can label the Token Chain accordingly.
   const isHighRiskTool = toolCandidateScopes.some(
