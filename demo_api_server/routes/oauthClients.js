@@ -67,7 +67,7 @@ function requireAdminAccess(req, res, next) {
  * POST /api/oauth/clients/register
  * Register a new OAuth client
  */
-router.post('/register', extractRequestMetadata, async (req, res, next) => {
+router.post('/register', extractRequestMetadata, requireAdminAccess, async (req, res, next) => {
   try {
     const clientRequest = {
       client_name: req.body.client_name,
@@ -105,10 +105,51 @@ router.post('/register', extractRequestMetadata, async (req, res, next) => {
 });
 
 /**
+ * GET /api/oauth/clients
+ * List all clients (admin only)
+ */
+router.get('/', extractRequestMetadata, requireAdminAccess, async (req, res, next) => {
+  try {
+    const filter = {
+      status: req.query.status,
+      client_type: req.query.client_type
+    };
+
+    // Remove undefined filters
+    Object.keys(filter).forEach(key => {
+      if (filter[key] === undefined) {
+        delete filter[key];
+      }
+    });
+
+    const clients = listClients(filter);
+    res.json({
+      clients,
+      total: clients.length
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/oauth/clients/statistics
+ * Get client registry statistics (admin only)
+ */
+router.get('/statistics', extractRequestMetadata, requireAdminAccess, async (req, res, next) => {
+  try {
+    const stats = getClientStatistics();
+    res.json(stats);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /api/oauth/clients/:clientId
  * Get client information
  */
-router.get('/:clientId', extractRequestMetadata, async (req, res, next) => {
+router.get('/:clientId', extractRequestMetadata, requireAdminAccess, async (req, res, next) => {
   try {
     const client = getClient(req.params.clientId);
     res.json(client);
@@ -194,47 +235,6 @@ router.post('/:clientId/rotate-secret', extractRequestMetadata, requireAdminAcce
         error_description: err.message
       });
     }
-    next(err);
-  }
-});
-
-/**
- * GET /api/oauth/clients
- * List all clients (admin only)
- */
-router.get('/', extractRequestMetadata, requireAdminAccess, async (req, res, next) => {
-  try {
-    const filter = {
-      status: req.query.status,
-      client_type: req.query.client_type
-    };
-
-    // Remove undefined filters
-    Object.keys(filter).forEach(key => {
-      if (filter[key] === undefined) {
-        delete filter[key];
-      }
-    });
-
-    const clients = listClients(filter);
-    res.json({
-      clients,
-      total: clients.length
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-/**
- * GET /api/oauth/clients/statistics
- * Get client registry statistics (admin only)
- */
-router.get('/statistics', extractRequestMetadata, requireAdminAccess, async (req, res, next) => {
-  try {
-    const stats = getClientStatistics();
-    res.json(stats);
-  } catch (err) {
     next(err);
   }
 });
