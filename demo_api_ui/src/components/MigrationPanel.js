@@ -79,7 +79,7 @@ export default function MigrationPanel() {
             <div className="migration-step-num">2</div>
             <div className="migration-step-body">
               <strong>Run the export command</strong>
-              <CodeBlock code="cd banking_api_server && npm run data:export" />
+              <CodeBlock code="cd demo_api_server && npm run data:export" />
               <p className="migration-step-note">
                 By default the archive is written to{" "}
                 <code>banking-export-&lt;timestamp&gt;.tar.gz</code> in the
@@ -184,7 +184,7 @@ export default function MigrationPanel() {
             <div className="migration-step-num">2</div>
             <div className="migration-step-body">
               <strong>Install dependencies (first time only)</strong>
-              <CodeBlock code="cd banking_api_server && npm install" />
+              <CodeBlock code="cd demo_api_server && npm install" />
             </div>
           </div>
 

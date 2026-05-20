@@ -21,7 +21,7 @@ const {
   requireAdminLoginEnv,
 } = require('./helpers/realLogin');
 const { runChip, assertAdminPipelineEvents } = require('./helpers/chipPipeline');
-const { heuristicChips, allChips } = require('../../../banking_api_server/scripts/extractChips');
+const { heuristicChips, allChips } = require('../../../demo_api_server/scripts/extractChips');
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000';
 

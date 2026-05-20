@@ -3271,7 +3271,7 @@ export default function BankingAgent({
           //   1. Call gateway MCP tool 'show_mortgage' (apikey disposition)
           //   2. Gateway enforces mortgage:read on the user bearer
           //   3. Gateway drops the OAuth bearer, attaches the service API key
-          //   4. Gateway calls banking_mortgage_service (X-API-Key + X-User-Sub)
+          //   4. Gateway calls demo_mortgage_service (X-API-Key + X-User-Sub)
           //   5. Navigate to /path/mortgage with the payload in location.state
           // Destination route is hard-coded (T-266-04-01: no open-redirect).
           toast.update(toastId, {
@@ -4537,8 +4537,8 @@ export default function BankingAgent({
             "   Tools ran via local fallback — the user access token was NOT sent to the MCP server.",
             "",
             "To enable full RFC 8693 exchange:",
-            '   1. Create a PingOne Resource Server  audience: "banking_mcp_server"',
-            "   2. Set MCP_RESOURCE_URI=banking_mcp_server  (Config UI or Vercel env)",
+            '   1. Create a PingOne Resource Server  audience: "demo_mcp_server"',
+            "   2. Set MCP_RESOURCE_URI=demo_mcp_server  (Config UI or Vercel env)",
             "   3. Enable Token Exchange grant on the Admin OAuth app in PingOne",
             "   4. Sign out and sign in again",
           ].join("\n");
@@ -4576,7 +4576,7 @@ export default function BankingAgent({
               `❌ Token Exchange (RFC 8693) failed: ${failed.error || "unknown error"}`,
               "",
               userTokEv?.mayActPresent
-                ? '   may_act was present — check that:\n   • PingOne has Token Exchange grant enabled on the admin OAuth app\n   • Audience policy allows "banking_mcp_server"\n   • may_act.client_id matches the BFF client'
+                ? '   may_act was present — check that:\n   • PingOne has Token Exchange grant enabled on the admin OAuth app\n   • Audience policy allows "demo_mcp_server"\n   • may_act.client_id matches the BFF client'
                 : "   may_act was absent — this is likely the cause.\n   Go to /demo-data → Enable may_act → sign out and sign in again.",
             ].join("\n");
             notifyError(
@@ -5197,7 +5197,7 @@ export default function BankingAgent({
         addMessage(
           "error",
           isConnErr
-            ? "AI Agent is unavailable.\n\nThe MCP server is not reachable.\n\nLocal: cd banking_mcp_server && npm run dev\nHosted: set MCP_SERVER_URL to your reachable MCP server URL (if your platform allows outbound WS)."
+            ? "AI Agent is unavailable.\n\nThe MCP server is not reachable.\n\nLocal: cd demo_mcp_server && npm run dev\nHosted: set MCP_SERVER_URL to your reachable MCP server URL (if your platform allows outbound WS)."
             : `Error: ${err.message}${authHint}`,
           actionId,
         );

@@ -1,4 +1,4 @@
-// banking_api_ui/src/components/SetupPage.js
+// demo_api_ui/src/components/SetupPage.js
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -8,7 +8,7 @@ import "./SetupPage.css";
 import McpGatewayConfig from "./McpGatewayConfig";
 
 const REPO_ROOT_CMD =
-  "cd path/to/Banking   # repository root (parent of banking_api_ui/)";
+  "cd path/to/Banking   # repository root (parent of demo_api_ui/)";
 
 const SUITES = [
   { key: "bff:unit", label: "BFF — unit tests" },
@@ -296,7 +296,7 @@ export default function SetupPage() {
               <code>npm run setup:vercel</code> is defined in the{" "}
               <strong>repository root</strong> <code>package.json</code> (the
               folder that contains <code>scripts/setup-vercel-env.js</code>),
-              not inside <code>banking_api_ui/</code>. Clone the repo, run{" "}
+              not inside <code>demo_api_ui/</code>. Clone the repo, run{" "}
               <code>npm install</code> at the root, link your Vercel project (
               <code>vercel link</code>), then use the buttons below to copy
               commands into your terminal.

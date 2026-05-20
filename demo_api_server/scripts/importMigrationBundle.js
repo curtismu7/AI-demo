@@ -58,7 +58,7 @@ try {
   tar = require('tar');
 } catch (_e) {
   console.error('Required package "tar" is not installed.');
-  console.error('Run:  cd banking_api_server && npm install');
+  console.error('Run:  cd demo_api_server && npm install');
   console.error('Then retry the import.');
   process.exit(1);
 }
@@ -111,10 +111,10 @@ function checkSqliteDriver() {
 
   if (loadMsg === 'binary mismatch') {
     console.error('better-sqlite3 binary mismatch and node:sqlite unavailable.');
-    console.error('Run:  cd banking_api_server && npm rebuild better-sqlite3');
+    console.error('Run:  cd demo_api_server && npm rebuild better-sqlite3');
   } else {
     console.error(`Neither better-sqlite3 nor node:sqlite is available. ${loadMsg}`);
-    console.error('Run:  cd banking_api_server && npm install && npm rebuild better-sqlite3');
+    console.error('Run:  cd demo_api_server && npm install && npm rebuild better-sqlite3');
   }
   process.exit(1);
 }
@@ -374,7 +374,7 @@ async function main() {
   if (manifest.hasEnv === false) {
     console.warn('');
     console.warn('WARNING: This archive does not contain a .env file.');
-    console.warn('         After import completes, copy your .env manually to banking_api_server/.env');
+    console.warn('         After import completes, copy your .env manually to demo_api_server/.env');
     console.warn('         making sure CONFIG_ENCRYPTION_KEY or SESSION_SECRET matches the source machine.');
     console.warn('         Without it, config.db will be unreadable and the app will not start correctly.');
     console.warn('');
@@ -639,8 +639,8 @@ async function main() {
 
   // Check sibling packages — running app needs all three. CRA peerOptional quirk on UI.
   const SIBLINGS = [
-    { dir: 'banking_api_ui', flags: ' --legacy-peer-deps' },
-    { dir: 'banking_mcp_server', flags: '' },
+    { dir: 'demo_api_ui', flags: ' --legacy-peer-deps' },
+    { dir: 'demo_mcp_server', flags: '' },
   ];
   const siblingsMissingDeps = SIBLINGS.filter(({ dir }) =>
     !fs.existsSync(path.join(REPO_ROOT, dir, 'node_modules'))

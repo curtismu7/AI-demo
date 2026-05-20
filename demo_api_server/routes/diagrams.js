@@ -149,7 +149,7 @@ router.get('/status', requireAdmin, (req, res) => {
 // stale.
 const fs = require('fs');
 router.get('/list', requireAdmin, (req, res) => {
-  const out = path.join(REPO_ROOT, 'banking_api_ui', 'public', 'architecture');
+  const out = path.join(REPO_ROOT, 'demo_api_ui', 'public', 'architecture');
   // Must match scripts/build-diagrams.sh ENTRIES.
   const entries = [
     { name: 'overview',       source: 'architecture-simple.mmd',  png: 'overview.png' },

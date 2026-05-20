@@ -29,9 +29,11 @@ describe('mcpLocalTools HITL (high-value writes)', () => {
   });
 
   it('allows transfer over $500 for admin user', async () => {
+    // sav-4 has $5000 in runtimeData; chk-4 has $0. Transfer from savings so
+    // the balance check passes regardless of prior test runs mutating chk-4.
     const r = await callToolLocal(
       'create_transfer',
-      { from_account_id: 'chk-4', to_account_id: 'sav-4', amount: 600 },
+      { from_account_id: 'sav-4', to_account_id: 'chk-4', amount: 600 },
       '4',
     );
     expect(r.success).toBe(true);

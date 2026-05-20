@@ -5,7 +5,7 @@
  * Tests resource validation, binding, and security features.
  */
 
-const resourceIndicatorService = require('../../banking_api_server/services/resourceIndicatorService');
+const resourceIndicatorService = require('../../demo_api_server/services/resourceIndicatorService');
 
 describe('Resource Indicator Validation', () => {
   describe('Resource Format Validation', () => {

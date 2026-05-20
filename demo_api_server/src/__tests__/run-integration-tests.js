@@ -19,7 +19,7 @@ const testFiles = [
 ];
 
 const uiTestFiles = [
-  '../../../banking_api_ui/src/services/__tests__/oauth-ui-integration.test.js'
+  '../../../demo_api_ui/src/services/__tests__/oauth-ui-integration.test.js'
 ];
 
 console.log('🚀 Running OAuth Scope-based Authorization Integration Tests\n');
@@ -37,7 +37,7 @@ function runTestFile(testFile, isUITest = false) {
   
   try {
     const command = isUITest 
-      ? `cd banking_api_ui && npm test -- --testPathPattern=${testFile} --verbose --passWithNoTests`
+      ? `cd demo_api_ui && npm test -- --testPathPattern=${testFile} --verbose --passWithNoTests`
       : `npx jest ${testPath} --verbose --passWithNoTests`;
     
     const output = execSync(command, { 

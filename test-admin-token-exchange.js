@@ -7,8 +7,8 @@
  * Tests admin session detection, token exchange, security measures, and performance.
  */
 
-const adminTokenService = require('./banking_api_server/services/adminTokenService');
-const { resolveMcpAccessTokenWithEvents } = require('./banking_api_server/services/agentMcpTokenService');
+const adminTokenService = require('./demo_api_server/services/adminTokenService');
+const { resolveMcpAccessTokenWithEvents } = require('./demo_api_server/services/agentMcpTokenService');
 
 // Mock session data for testing
 const mockAdminSession = {

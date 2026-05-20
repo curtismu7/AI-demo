@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * vault.test.ts — Phase 269 Plan 04 TDD tests for banking_mcp_gateway/src/vault.ts.
+ * vault.test.ts — Phase 269 Plan 04 TDD tests for demo_mcp_gateway/src/vault.ts.
  *
  * Covers the seven behavior bullets from 269-04-PLAN.md:
  *   1. Vercel bypass — does NOT touch process.env, returns {loaded:false, reason:'vercel'}
@@ -16,9 +16,9 @@
  *   6. Lowercase entry name (`mcp_gw_client_secret`) — skipped by allowlist regex
  *   7. (Implicit in 4) Bypass restores process.env state after each test
  *
- * Uses the real Plan 01 vault library via `../../banking_api_server/lib/vault`.
- * argon2 native module resolution: walks up from banking_api_server/lib/vault →
- * banking_api_server/node_modules/argon2. No argon2 install needed in this package.
+ * Uses the real Plan 01 vault library via `../../demo_api_server/lib/vault`.
+ * argon2 native module resolution: walks up from demo_api_server/lib/vault →
+ * demo_api_server/node_modules/argon2. No argon2 install needed in this package.
  */
 
 import { mkdtempSync, rmSync, existsSync } from 'node:fs';
@@ -26,7 +26,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const vaultLib = require('../../banking_api_server/lib/vault');
+const vaultLib = require('../../demo_api_server/lib/vault');
 
 import { loadVaultIntoEnv } from '../src/vault';
 
@@ -108,7 +108,7 @@ function mockLogger() {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('loadVaultIntoEnv (banking_mcp_gateway)', () => {
+describe('loadVaultIntoEnv (demo_mcp_gateway)', () => {
   test('Vercel bypass — returns vercel reason, never touches process.env', async () => {
     const logger = mockLogger();
     // Build a real vault file so that ONLY the Vercel short-circuit prevents reading it.

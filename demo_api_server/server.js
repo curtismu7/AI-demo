@@ -1,4 +1,4 @@
-// Load environment variables — local dev: root .env takes precedence over banking_api_server/.env
+// Load environment variables — local dev: root .env takes precedence over demo_api_server/.env
 const path = require('path');
 require('dotenv').config({
     path: path.resolve(__dirname, '../.env'),
@@ -1151,7 +1151,7 @@ const {
 } = require('./middleware/oauthErrorHandler');
 
 // ─── Banking MCP Proxy ────────────────────────────────────────────────────────
-// Proxies tool calls from the React UI to the banking_mcp_server WebSocket.
+// Proxies tool calls from the React UI to the demo_mcp_server WebSocket.
 // Shared client: services/mcpWebSocketClient.js. Inspector: routes/mcpInspector.js.
 //
 // When MCP_SERVER_RESOURCE_URI is configured, the Backend-for-Frontend (BFF) performs an RFC 8693
@@ -1435,7 +1435,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
 // ── Static file serving ──────────────────────────────────────────────────────
 // Express serves the React build directly.
 {
-    const buildPath = path.join(__dirname, '..', 'banking_api_ui', 'build');
+    const buildPath = path.join(__dirname, '..', 'demo_api_ui', 'build');
     const docsPath = path.join(__dirname, '..', 'docs');
     const fs = require('fs');
 
@@ -1455,7 +1455,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         });
         console.log('[static] Serving React build from', buildPath);
     } else {
-        console.warn('[static] React build not found at', buildPath, '— run: cd banking_api_ui && npm run build');
+        console.warn('[static] React build not found at', buildPath, '— run: cd demo_api_ui && npm run build');
         // Friendly message for unbuilt frontend
         app.get('*', (req, res) => {
             if (req.path.startsWith('/api')) return res.status(404).json({
@@ -1464,8 +1464,8 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
             res.status(503).send(`
         <html><body style="font-family:sans-serif;padding:2rem">
           <h2>Frontend not built</h2>
-          <p>Run <code>cd banking_api_ui && npm run build</code> then restart the server.</p>
-          <p>Or run the dev server: <code>cd banking_api_ui && npm start</code> (port 3000)</p>
+          <p>Run <code>cd demo_api_ui && npm run build</code> then restart the server.</p>
+          <p>Or run the dev server: <code>cd demo_api_ui && npm start</code> (port 3000)</p>
         </body></html>
       `);
         });

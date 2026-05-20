@@ -43,7 +43,7 @@ try {
   tar = require('tar');
 } catch (_e) {
   console.error('Required package "tar" is not installed.');
-  console.error('Run:  cd banking_api_server && npm install');
+  console.error('Run:  cd demo_api_server && npm install');
   console.error('Then retry the export.');
   process.exit(1);
 }
@@ -102,10 +102,10 @@ function loadSqliteDriver() {
 
   if (loadMsg === 'binary mismatch') {
     console.error('better-sqlite3 binary mismatch and node:sqlite unavailable.');
-    console.error('Run:  cd banking_api_server && npm rebuild better-sqlite3');
+    console.error('Run:  cd demo_api_server && npm rebuild better-sqlite3');
   } else {
     console.error(`Neither better-sqlite3 nor node:sqlite is available. ${loadMsg}`);
-    console.error('Run:  cd banking_api_server && npm install && npm rebuild better-sqlite3');
+    console.error('Run:  cd demo_api_server && npm install && npm rebuild better-sqlite3');
   }
   process.exit(1);
 }
@@ -382,12 +382,12 @@ async function main() {
   console.log('');
   console.log('  2. On the target machine, clone the repo and install all packages:');
   console.log('       git clone https://github.com/curtismu7/AI-demo.git && cd AI-demo');
-  console.log('       cd banking_api_server && npm install && cd ..');
-  console.log('       cd banking_mcp_server  && npm install && cd ..');
-  console.log('       cd banking_api_ui      && npm install --legacy-peer-deps && cd ..');
+  console.log('       cd demo_api_server && npm install && cd ..');
+  console.log('       cd demo_mcp_server  && npm install && cd ..');
+  console.log('       cd demo_api_ui      && npm install --legacy-peer-deps && cd ..');
   console.log('');
   console.log('  3. Import the archive:');
-  console.log('       cd banking_api_server');
+  console.log('       cd demo_api_server');
   console.log(`       npm run data:import -- ~/${archiveName}`);
   console.log('');
   console.log('  4. Generate TLS certs (machine-bound — not in archive):');

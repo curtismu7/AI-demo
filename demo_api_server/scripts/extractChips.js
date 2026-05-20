@@ -18,7 +18,7 @@ const path = require('path');
 
 const CHIPS_FILE = path.resolve(
   __dirname,
-  '../../banking_api_ui/src/components/BankingChips.jsx',
+  '../../demo_api_ui/src/components/BankingChips.jsx',
 );
 
 function readSource() {

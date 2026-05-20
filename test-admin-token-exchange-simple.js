@@ -7,7 +7,7 @@
  * Tests that admin tokens are used as subject tokens in standard flow.
  */
 
-const adminTokenService = require('./banking_api_server/services/adminTokenService');
+const adminTokenService = require('./demo_api_server/services/adminTokenService');
 
 // Mock session data for testing
 const mockAdminSession = {

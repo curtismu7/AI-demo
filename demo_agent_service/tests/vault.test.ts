@@ -1,9 +1,9 @@
 'use strict';
 
 /**
- * vault.test.ts — tests for banking_agent_service/src/vault.ts.
+ * vault.test.ts — tests for demo_agent_service/src/vault.ts.
  *
- * Ported from banking_mcp_gateway/tests/vault.test.ts (the agent's vault loader
+ * Ported from demo_mcp_gateway/tests/vault.test.ts (the agent's vault loader
  * is a near-verbatim copy of the gateway's). The ONE behavioral delta is the
  * allowlist regex, which gains the `AGENT_` prefix:
  *   /^(AGENT_|MCP_GW_|PROVIDER_|HELIX_|BFF_INTERNAL_)[A-Z0-9_]+$/
@@ -22,7 +22,7 @@
  *   6. Allowlist regex — AGENT_ prefix matched; lowercase / injection rejected
  *   7. VAULT_PASSWORD env-var path — deleted on success (T-269-06)
  *
- * Uses the real Plan 01 vault library via `../../banking_api_server/lib/vault`.
+ * Uses the real Plan 01 vault library via `../../demo_api_server/lib/vault`.
  */
 
 import { mkdtempSync, rmSync, existsSync } from 'node:fs';
@@ -30,7 +30,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const vaultLib = require('../../banking_api_server/lib/vault');
+const vaultLib = require('../../demo_api_server/lib/vault');
 
 import { loadVaultIntoEnv } from '../src/vault';
 
@@ -113,7 +113,7 @@ function mockLogger() {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('loadVaultIntoEnv (banking_agent_service)', () => {
+describe('loadVaultIntoEnv (demo_agent_service)', () => {
   test('Vercel bypass — returns vercel reason, never touches process.env', async () => {
     const logger = mockLogger();
     const vaultPath = await buildVaultWithEntries({ AGENT_CLIENT_SECRET: 'should-not-load' });
@@ -210,7 +210,7 @@ describe('loadVaultIntoEnv (banking_agent_service)', () => {
   });
 
   test('Allowlist regex — AGENT_ prefix matched; lowercase / injection rejected', async () => {
-    // Mirrors banking_agent_service/src/vault.ts DEFAULT_ALLOWED exactly.
+    // Mirrors demo_agent_service/src/vault.ts DEFAULT_ALLOWED exactly.
     const ALLOW = /^(AGENT_|MCP_GW_|PROVIDER_|HELIX_|BFF_INTERNAL_)[A-Z0-9_]+$/;
     // The AGENT_ delta vs the gateway:
     expect(ALLOW.test('AGENT_CLIENT_ID')).toBe(true);

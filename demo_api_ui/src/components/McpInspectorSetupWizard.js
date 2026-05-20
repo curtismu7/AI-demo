@@ -1,4 +1,4 @@
-// banking_api_ui/src/components/McpInspectorSetupWizard.js
+// demo_api_ui/src/components/McpInspectorSetupWizard.js
 // Questionnaire that generates env snippets and commands for MCP Inspector (browser + official npm).
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -72,14 +72,14 @@ export default function McpInspectorSetupWizard({ appBaseUrl, mcpAgentUrl, stora
 # Banking UI + API origin (same host as the React app in this demo)
 BANKING_API_BASE_URL=${baseUrl || 'https://api.ping.demo:4000'}
 
-# MCP server WebSocket (banking_mcp_server — default listen)
+# MCP server WebSocket (demo_mcp_server — default listen)
 MCP_SERVER_URL=${mcpWsUrl}
 
 # LangChain agent WebSocket (optional; only if you use the chat widget)
 ${mcpAgentUrl ? `MCP_AGENT_URL=${mcpAgentUrl}` : '# MCP_AGENT_URL=http://localhost:8000'}
 `;
 
-  const startMcpServer = `cd banking_mcp_server
+  const startMcpServer = `cd demo_mcp_server
 npm install
 npm run build
 npm start
@@ -91,7 +91,7 @@ npx ${INSPECTOR_NPM}@latest
 # Upstream docs and transport options:
 # ${INSPECTOR_REPO}
 
-# This repo’s banking_mcp_server speaks WebSocket MCP, not stdio. The in-app
+# This repo’s demo_mcp_server speaks WebSocket MCP, not stdio. The in-app
 # inspector at /mcp-inspector proxies through the Backend-for-Frontend (BFF) with your session cookie.
 # For the npm package, follow the inspector README for connecting to your transport.`;
 
@@ -172,7 +172,7 @@ npx ${INSPECTOR_NPM}@latest
                 placeholder="ws://localhost:8080"
               />
               <p style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.35rem' }}>
-                Default for <code>banking_mcp_server</code>. LangChain uses this MCP server; not the same as the agent chat WebSocket URL.
+                Default for <code>demo_mcp_server</code>. LangChain uses this MCP server; not the same as the agent chat WebSocket URL.
               </p>
               <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setStep(2)}>Back</button>

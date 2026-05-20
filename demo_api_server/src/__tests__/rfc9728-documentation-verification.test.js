@@ -64,7 +64,7 @@ describe('RFC 9728 Documentation Verification Tests', () => {
     });
 
     test('should have accurate RFC 9728 implementation documentation', () => {
-      const protectedResourceMetadataPath = path.join(projectRoot, 'banking_api_server/routes/protectedResourceMetadata.js');
+      const protectedResourceMetadataPath = path.join(projectRoot, 'demo_api_server/routes/protectedResourceMetadata.js');
       expect(fs.existsSync(protectedResourceMetadataPath)).toBe(true);
 
       const implementation = fs.readFileSync(protectedResourceMetadataPath, 'utf8');
@@ -209,7 +209,7 @@ describe('RFC 9728 Documentation Verification Tests', () => {
   describe('RFC9728-04: Assess educational content effectiveness', () => {
     // Helper to load the content file (avoids repeating path construction)
     function loadContent() {
-      const enhancedContentPath = path.join(projectRoot, 'banking_api_ui/src/components/education/enhancedRFC9728Content.js');
+      const enhancedContentPath = path.join(projectRoot, 'demo_api_ui/src/components/education/enhancedRFC9728Content.js');
       expect(fs.existsSync(enhancedContentPath)).toBe(true);
       return fs.readFileSync(enhancedContentPath, 'utf8');
     }

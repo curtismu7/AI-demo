@@ -48,7 +48,7 @@
     "vault:rotate": "node scripts/vault.js rotate",
     "vault:migrate-from-env": "node scripts/vault-migrate.js",
     "build": "echo 'API server - no build required'",
-    "install-client": "cd ../banking_api_ui && npm install",
+    "install-client": "cd ../demo_api_ui && npm install",
     "heroku-postbuild": "npm run install-client && npm run build"
   },
   "dependencies": {

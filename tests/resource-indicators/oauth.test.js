@@ -6,8 +6,8 @@
  */
 
 const request = require('supertest');
-const app = require('../../banking_api_server/server');
-const resourceIndicatorService = require('../../banking_api_server/services/resourceIndicatorService');
+const app = require('../../demo_api_server/server');
+const resourceIndicatorService = require('../../demo_api_server/services/resourceIndicatorService');
 
 describe('OAuth Flow with Resource Indicators', () => {
   let testClient;

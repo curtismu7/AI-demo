@@ -256,7 +256,7 @@ async function main() {
   if (!isServerRunning) {
     console.log('❌ Banking API server is not running!');
     console.log('Please start the server first:');
-    console.log('  cd banking_api_server && npm start');
+    console.log('  cd demo_api_server && npm start');
     process.exit(1);
   }
   

@@ -372,6 +372,9 @@ async function runMcpToolPipeline(ctx) {
                 phase: 'authorize_permitted'
             });
             mcpAuthorizeEvaluationThisRequest = mcpAuthz.evaluation;
+            deps.appEventLog('authorize', 'info',
+                `Authorize gate permitted — ${tool}`,
+                { tag: 'authorize/gate-permitted', metadata: { tool } });
         }
         if (!mcpAuthz.ran) {
             deps.emit({
