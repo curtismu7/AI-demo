@@ -810,32 +810,32 @@ const KNOWN_SCOPES: { scope: string; description: string; category: string }[] =
     },
     // Banking API — flattened scope model
     {
-      scope: "banking:read",
+      scope: "read",
       description: "Read accounts, balances, and transactions",
       category: "Banking",
     },
     {
-      scope: "banking:write",
+      scope: "write",
       description: "Submit transactions, transfers, and updates",
       category: "Banking",
     },
     {
-      scope: "banking:sensitive",
+      scope: "sensitive",
       description: "Access sensitive data (account numbers, PII)",
       category: "Banking",
     },
     {
-      scope: "banking:admin",
+      scope: "admin",
       description: "Admin-level banking operations",
       category: "Banking",
     },
     {
-      scope: "banking:agent:invoke",
+      scope: "agent:invoke",
       description: "Authorize AI agent to act on behalf of user",
       category: "Banking",
     },
     {
-      scope: "banking:mcp:invoke",
+      scope: "mcp:invoke",
       description: "Invoke MCP tools through the MCP gateway",
       category: "Banking",
     },
@@ -1457,7 +1457,7 @@ const IdpSetupGuide: FC<{
                   borderRadius: 3,
                 }}
               >
-                banking:*
+                *
               </code>{" "}
               scopes assigned to Customer App + AI Agent App
             </div>
@@ -1499,12 +1499,12 @@ const IdpSetupGuide: FC<{
               "openid",
               "profile",
               "email",
-              "banking:read",
-              "banking:write",
-              "banking:mcp:invoke",
+              "read",
+              "write",
+              "mcp:invoke",
             ]}
             configKey="User Client ID / User Redirect URI"
-            notes="Used for end-user banking login at /. No client secret needed — PKCE only. Assign the banking:* scopes after creating the MCP Server Resource (see Resources & Scopes tab)."
+            notes="Used for end-user banking login at /. No client secret needed — PKCE only. Assign the * scopes after creating the MCP Server Resource (see Resources & Scopes tab)."
           />
           <AppCard
             num="3"
@@ -1520,7 +1520,7 @@ const IdpSetupGuide: FC<{
             title="AI Agent App (Token Exchange)"
             type="Worker / AI Agent"
             grant="Client Credentials"
-            scopes={["banking:read", "banking:write", "banking:mcp:invoke"]}
+            scopes={["read", "write", "mcp:invoke"]}
             configKey="PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID + SECRET in .env"
             notes="Used by the BFF to exchange user tokens for narrowly-scoped MCP tokens (RFC 8693 delegation). Token endpoint auth method must be Client Secret POST. Set PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID and PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET in your .env file. Use type AI_AGENT in PingOne if available."
           />
@@ -1684,15 +1684,15 @@ const IdpSetupGuide: FC<{
               <div style={{ marginTop: 6 }}>
                 {[
                   {
-                    scope: "banking:read",
+                    scope: "read",
                     desc: "Read account balances and transaction history",
                   },
                   {
-                    scope: "banking:write",
+                    scope: "write",
                     desc: "Initiate transfers and payment actions",
                   },
                   {
-                    scope: "banking:mcp:invoke",
+                    scope: "mcp:invoke",
                     desc: "Invoke MCP tools via the AI agent (required for token exchange)",
                   },
                 ].map(({ scope, desc }) => (
@@ -1735,11 +1735,11 @@ const IdpSetupGuide: FC<{
             apps and assign all three scopes:
             <ul style={{ margin: "6px 0 0 18px", lineHeight: 1.8 }}>
               <li>
-                Customer Web Application (so users can consent to banking:*
+                Customer Web Application (so users can consent to *
                 access)
               </li>
               <li>
-                AI Agent App (so it can request banking:* during token exchange)
+                AI Agent App (so it can request * during token exchange)
               </li>
             </ul>
           </div>
@@ -2632,7 +2632,7 @@ const UnifiedConfigurationPage: FC<{
             consent (HITL), and transaction flows behave.
             <ul style={{ marginLeft: "1.5em", marginTop: "0.75rem" }}>
               <li>
-                <strong>Default Banking Demo:</strong> Balanced mix of checking,
+                <strong>Default Demo:</strong> Balanced mix of checking,
                 savings, and investment accounts.{" "}
                 <em>Most transfers do NOT trigger MFA or consent.</em> <br />
                 <span style={{ color: "#374151" }}>
@@ -2686,7 +2686,7 @@ const UnifiedConfigurationPage: FC<{
               }))
             }
             options={[
-              { value: "default", label: "Default Banking Demo" },
+              { value: "default", label: "Default Demo" },
               {
                 value: "high-value",
                 label: "High-Value Transactions (triggers MFA)",
@@ -2717,7 +2717,7 @@ const UnifiedConfigurationPage: FC<{
             {[
               {
                 id: "banking",
-                label: "Banking & Finance",
+                label: "Finance",
                 icon: "\uD83C\uDFE6",
               },
               { id: "healthcare", label: "Healthcare", icon: "\u2695\uFE0F" },
@@ -2769,7 +2769,7 @@ const UnifiedConfigurationPage: FC<{
               [
                 {
                   value: "default",
-                  label: "Default Banking Demo",
+                  label: "Default Demo",
                   icon: "🏦",
                   thresholds: "MFA step-up: $500 · Max transfers: $2,000",
                   behavior:

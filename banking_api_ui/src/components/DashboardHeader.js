@@ -12,8 +12,8 @@ const DashboardHeader = ({ variant = 'customer' }) => {
   const { identity } = useTheme();
   const isAdmin = variant === 'admin';
   const label = isAdmin ? 'Admin Dashboard' : 'Customer Dashboard';
-  const title = (identity && identity.headerTitle) || 'Super Banking';
-  const logoAlt = (identity && identity.logoAlt) || 'Super Banking logo';
+  const title = (identity && identity.headerTitle) || 'AI Demo';
+  const logoAlt = (identity && identity.logoAlt) || 'Demo logo';
   const logoSrc = (identity && identity.logoPath) || '/super-bank-icon.png';
 
   return (

@@ -7,7 +7,7 @@ import './PostmanCollectionsPage.css';
 const POSTMAN_COLLECTIONS = [
   {
     filename: 'Super-Banking-First-Token-Exchange.postman_collection.json',
-    title: 'Super Banking - First Token Exchange (App Flow)',
+    title: 'Demo - First Token Exchange (App Flow)',
     description: 'Happy-path collection matching the app exactly. Step 1: user token via PKCE pi.flow. Step 2: agent CC token. Step 3: RFC 8693 exchange → delegated MCP token with act claim.',
     audience: 'Demo Runner',
     features: ['PKCE pi.flow (headless)', 'RFC 8693 subject + actor', 'MCP delegated token', 'JWT decode + act validation'],
@@ -15,7 +15,7 @@ const POSTMAN_COLLECTIONS = [
   },
   {
     filename: 'Super-Banking-1-Exchange-Step-by-Step.postman_collection.json',
-    title: 'Super Banking - 1-Exchange Step-by-Step',
+    title: 'Demo - 1-Exchange Step-by-Step',
     description: 'Learn OAuth 2.0 token exchange with detailed, individual steps. Perfect for understanding each RFC 8693 operation.',
     audience: 'Learner',
     features: ['Individual OAuth steps', 'Token inspection utilities', 'Educational comments'],
@@ -23,7 +23,7 @@ const POSTMAN_COLLECTIONS = [
   },
   {
     filename: 'Super Banking — 1-Exchange Delegated Chain — pi.flow.postman_collection.json',
-    title: 'Super Banking - 1-Exchange Delegated Chain',
+    title: 'Demo - 1-Exchange Delegated Chain',
     description: 'Complete 1-exchange flow for quick demos. Runs the full RFC 8693 token exchange sequence.',
     audience: 'Demo Runner',
     features: ['Full flow automation', 'pi.flow authorization', 'Token exchange'],
@@ -31,7 +31,7 @@ const POSTMAN_COLLECTIONS = [
   },
   {
     filename: 'Super Banking — 2-Exchange Delegated Chain — pi.flow.postman_collection.json',
-    title: 'Super Banking - 2-Exchange Delegated Chain',
+    title: 'Demo - 2-Exchange Delegated Chain',
     description: 'Advanced 2-exchange (nested delegation) flow. Shows agent-to-MCP delegation patterns.',
     audience: 'Demo Runner',
     features: ['Nested delegation', 'Agent-to-MCP flow', 'Advanced patterns'],
@@ -39,7 +39,7 @@ const POSTMAN_COLLECTIONS = [
   },
   {
     filename: 'Super-Banking-MCP-Tools.postman_collection.json',
-    title: 'Super Banking - MCP Tools',
+    title: 'Demo - MCP Tools',
     description: 'Direct MCP server tool testing. Includes all banking operations via the MCP protocol.',
     audience: 'Developer',
     features: ['MCP protocol tools', 'Banking operations', 'Error testing'],
@@ -47,7 +47,7 @@ const POSTMAN_COLLECTIONS = [
   },
   {
     filename: 'Super-Banking-MCP-Tools-Vercel.postman_collection.json',
-    title: 'Super Banking - MCP Tools (Vercel)',
+    title: 'Demo - MCP Tools (Vercel)',
     description: 'MCP server tool testing configured for Vercel deployment. Uses production MCP server URLs.',
     audience: 'Developer',
     features: ['MCP protocol tools', 'Vercel deployment', 'Production URLs'],
@@ -55,7 +55,7 @@ const POSTMAN_COLLECTIONS = [
   },
   {
     filename: 'Super-Banking-BFF-API.postman_collection.json',
-    title: 'Super Banking - BFF API',
+    title: 'Demo - BFF API',
     description: 'Backend-for-Frontend API endpoints. Test the banking API server directly.',
     audience: 'Developer',
     features: ['BFF endpoints', 'Account operations', 'Transaction testing'],
@@ -63,7 +63,7 @@ const POSTMAN_COLLECTIONS = [
   },
   {
     filename: 'Super-Banking-BFF-API-Vercel.postman_collection.json',
-    title: 'Super Banking - BFF API (Vercel)',
+    title: 'Demo - BFF API (Vercel)',
     description: 'BFF API endpoints configured for Vercel deployment. Uses production banking API URLs.',
     audience: 'Developer',
     features: ['BFF endpoints', 'Vercel deployment', 'Production URLs'],
@@ -71,7 +71,7 @@ const POSTMAN_COLLECTIONS = [
   },
   {
     filename: 'Super-Banking-Advanced-Utilities.postman_collection.json',
-    title: 'Super Banking - Advanced Utilities',
+    title: 'Demo - Advanced Utilities',
     description: 'Advanced utilities for PAZ policies, token revocation, and administrative operations.',
     audience: 'Engineer',
     features: ['PAZ policy testing', 'Token revocation', 'Admin utilities'],
@@ -106,21 +106,21 @@ const POSTMAN_COLLECTIONS = [
 const ENVIRONMENT_FILES = [
   {
     filename: 'Super-Banking-Shared.postman_environment.json',
-    title: 'Super Banking - Shared Environment',
+    title: 'Demo - Shared Environment',
     description: 'Shared environment for local development. Contains variables for localhost endpoints, credentials, and configuration.',
     required: true,
     variant: 'Local'
   },
   {
     filename: 'Super-Banking-Vercel.postman_environment.json',
-    title: 'Super Banking - Vercel Environment',
+    title: 'Demo - Vercel Environment',
     description: 'Environment for Vercel-deployed instances. Points to production banking API and MCP server URLs.',
     required: false,
     variant: 'Vercel'
   },
   {
     filename: 'Super-Banking-First-Token-Exchange.postman_environment.json',
-    title: 'Super Banking - First Token Exchange (Local)',
+    title: 'Demo - First Token Exchange (Local)',
     description: 'Pre-filled environment for the First Token Exchange collection. All client IDs, secrets, audiences, and test credentials are populated from the local .env file.',
     required: false,
     variant: 'Local'
@@ -189,7 +189,7 @@ export default function PostmanCollectionsPage({ user, onLogout }) {
         <div className="postman-page__header">
           <h1>Postman Collections</h1>
           <p className="postman-page__subtitle">
-            Ready-to-use Postman collections for testing the Super Banking API and OAuth flows. 
+            Ready-to-use Postman collections for testing the Demo API and OAuth flows.
             Each collection includes detailed descriptions and pre-configured requests.
           </p>
         </div>

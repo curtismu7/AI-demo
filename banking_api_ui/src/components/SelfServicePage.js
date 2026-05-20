@@ -244,7 +244,7 @@ const SelfServicePage = () => {
       <div className="ssp-container">
         <header className="ssp-header">
           <h1>Self-Service User Provisioning</h1>
-          <p>Create your Super Banking account or manage your existing profile</p>
+          <p>Create your Demo account or manage your existing profile</p>
         </header>
 
         {/* Error Banner */}
@@ -296,7 +296,7 @@ const SelfServicePage = () => {
                   <ol>
                     <li>Use your email and password to log in</li>
                     <li>Complete your profile setup</li>
-                    <li>Start using Super Banking features</li>
+                    <li>Start using Demo features</li>
                   </ol>
                 </div>
                 <button

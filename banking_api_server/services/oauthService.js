@@ -133,7 +133,7 @@ class OAuthService {
       state: state,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
-      login_hint: 'bankadmin'
+      login_hint: 'demoAdmin'
     });
 
     if (usePiFlow) {

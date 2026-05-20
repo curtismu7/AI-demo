@@ -47,7 +47,7 @@ const ADMIN_NAV = [
       { to: "/accounts", label: "Accounts", icon: "MdAccountBalance" },
       {
         to: "/admin/banking",
-        label: "Banking admin",
+        label: "Demo admin",
         icon: "MdAccountBalance",
       },
       { to: "/transactions", label: "Transactions", icon: "MdSwapHoriz" },

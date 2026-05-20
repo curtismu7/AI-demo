@@ -46,10 +46,10 @@
     },
     {
       "id": "5",
-      "username": "bankuser",
-      "email": "bankuser@example.com",
+      "username": "demoUser",
+      "email": "demoUser@example.com",
       "firstName": "Demo",
-      "lastName": "Bankuser",
+      "lastName": "User",
       "password": "$2a$10$v9MUO.i8Xc6KL41VFbgu..BRDONABYsX5MuzXYYikToQ527VqUBqG",
       "role": "customer",
       "phone": "+15551231586",

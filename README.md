@@ -168,7 +168,7 @@ What this runs end-to-end (it's `setup:fresh --clean --reset-pingone` under the 
 | 2. Cleanup prior state | `--clean` → deletes `.env`, `data/persistent/`, `data/sessions.db`, `data/backups/`, `certs/*.pem`. `.env` is backed up to `.env.pre-cleanup-<timestamp>` first. |
 | 3. Install dependencies | `npm install` if `node_modules/` is missing. |
 | 4. `/etc/hosts` check | Confirms `127.0.0.1 api.ping.demo` is present. |
-| 5. PingOne wipe | `--reset-pingone` → opens the cred form, then asks you to type the env id to confirm. Deletes every `Super Banking *` app, resource server, group, custom attribute, and demo user (the worker you authenticated with is preserved). |
+| 5. PingOne wipe | `--reset-pingone` → opens the cred form, then asks you to type the env id to confirm. Deletes every `Demo *` app, resource server, group, custom attribute, and demo user (the worker you authenticated with is preserved). |
 | 6. Bootstrap PingOne | Re-creates everything from scratch and writes a fresh `.env`. |
 | 7. Helix LLM config | Prompts (default Yes); collects 5 fields, persists encrypted to `config.db`. |
 
@@ -195,7 +195,7 @@ What it does (4 phases — each can be skipped via `--keep-*` flags):
 | Phase | What happens |
 |-------|--------------|
 | 1. Stop services | `./run-bank.sh stop` — gracefully stops API, UI, MCP server, MCP gateway, agent service, MCP invest, HITL, LangChain agent. |
-| 2. Wipe PingOne env | Type-the-env-id confirmation, then deletes every Super Banking app, resource server, group, custom attribute, and demo user in your PingOne env. |
+| 2. Wipe PingOne env | Type-the-env-id confirmation, then deletes every Demo app, resource server, group, custom attribute, and demo user in your PingOne env. |
 | 3. Delete local state | Removes `banking_api_server/.env`, `data/persistent/`, `data/sessions.db*`, `data/backups/`, `certs/`, `setup.log`. |
 | 4. Delete node_modules | Removes `node_modules/` + `dist/` in all 7 Node services (~2 GB). |
 
@@ -227,7 +227,7 @@ npm run import -- archive.tar.gz   # restore .env + data from a tar (no PingOne 
 npm run export                     # create a banking-export-<timestamp>.tar.gz
 
 # Destructive (require confirmation prompts)
-npm run pingone:recreate           # delete 'Super Banking *' apps and recreate
+npm run pingone:recreate           # delete 'Demo *' apps and recreate
 npm run pingone:wipe               # NUCLEAR: delete every app/resource/group/user in the PingOne env
 npm run reset                      # full wipe + start blank: local state + PingOne + re-provision
 npm run reset:import -- archive.tar.gz
@@ -339,7 +339,7 @@ npm run setup:fresh
 
 The browser pops a form. Submit your four worker creds. The script:
 
-1. Provisions resource servers (`Super Banking API`, `Super Banking MCP Server`, `Super Banking MCP Gateway`)
+1. Provisions resource servers (`Demo API`, `Demo MCP Server`, `Demo MCP Gateway`)
 2. Creates ~25 scopes (`banking:*`, `admin:*`, `users:*`, `p1:*`, `banking:mcp:invoke`)
 3. Creates **7 applications** (Admin, User, MCP Server, Worker, MCP Exchanger, MCP Gateway, Agent)
 4. Creates two demo users with generated passwords (`bankuser`, `bankadmin`)
@@ -579,7 +579,7 @@ Required in PingOne: enable the token-exchange grant type on the Backend-for-Fro
 
 In your PingOne environment (`b9817c16-9910-4415-b67e-4ac687da74d9`), you need:
 
-1. **Super Banking Worker Token App** (client_credentials, type: `WORKER`) — PingOne Management API access
+1. **Demo Worker Token App** (client_credentials, type: `WORKER`) — PingOne Management API access
    - Already configured: `66a4686b-9222-4ad2-91b6-03113711c9aa`
 
 2. **Web Application** (auth_code + PKCE) — for user login

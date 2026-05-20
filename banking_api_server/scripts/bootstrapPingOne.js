@@ -81,7 +81,7 @@ Provisions a complete PingOne environment for the demo:
   - Applications:     Admin (WEB_APP), User (WEB_APP), MCP Server (WORKER),
                       Worker (WORKER), MCP Exchanger (WORKER), MCP Gateway (WORKER),
                       Agent (WORKER)
-  - Users:            bankuser, bankadmin, bankDelegate (all with password '2Federate!')
+  - Users:            demoUser, demoAdmin, demoDelegate (all with password '2Federate!')
   - Schema attribute: bankingPrincipalUserId
   - Token claims:     bankingPrincipalUserId on User app, may_act on Admin app
 
@@ -733,9 +733,9 @@ ${appBlock('Agent service', p.agentApp)}
 
 > Login through the app UI — passwords intentionally included for demo use.
 
-- **bankuser** \`${p.bankUser?.password || '_(password not captured — user pre-existed)_'}\`
-- **bankadmin** \`${p.bankAdmin?.password || '_(password not captured — user pre-existed)_'}\`
-- **bankDelegate** \`${p.bankDelegate?.password || '_(password not captured — user pre-existed)_'}\`  _(delegated user; isDelegate=true; member of BankDelegates group)_
+- **demoUser** \`${p.demoUser?.password || '_(password not captured — user pre-existed)_'}\`
+- **demoAdmin** \`${p.demoAdmin?.password || '_(password not captured — user pre-existed)_'}\`
+- **demoDelegate** \`${p.demoDelegate?.password || '_(password not captured — user pre-existed)_'}\`  _(delegated user; isDelegate=true; member of BankDelegates group)_
 
 ## Audiences (RFC 8707 resource indicators)
 
@@ -1005,7 +1005,7 @@ async function main() {
     { label: '③ Scopes',                  keys: ['scopes', 'mcp-scopes', 'mcp-gw-scopes'] },
     { label: '④ Applications',            keys: ['admin-app', 'admin-config', 'user-app', 'user-config', 'mcp-app', 'mcp-config', 'worker-app', 'mcp-exchanger-app', 'mcp-gw-app', 'mcp-gw-config', 'agent-app', 'agent-config'] },
     { label: '⑤ Scope grants',            keys: ['admin-grants', 'user-grants', 'mcp-grants', 'mcp-gw-grants', 'agent-grants', 'password-policy'] },
-    { label: '⑥ Demo users + claims',     keys: ['bankuser', 'bankuser-password', 'bankadmin', 'bankadmin-password', 'bankDelegate', 'bankDelegate-password', 'isDelegate-schema', 'bankDelegate-flag', 'bankDelegates-group', 'schema-attr', 'spel-claim', 'may-act-claim', 'is-delegate-claim'] },
+    { label: '⑥ Demo users + claims',     keys: ['demoUser', 'demoUser-password', 'demoAdmin', 'demoAdmin-password', 'demoDelegate', 'demoDelegate-password', 'isDelegate-schema', 'demoDelegate-flag', 'bankDelegates-group', 'schema-attr', 'spel-claim', 'may-act-claim', 'is-delegate-claim'] },
     { label: '⑦ Write .env',              keys: ['config'] },
   ];
   const phaseSeen = new Set();
@@ -1061,18 +1061,18 @@ async function main() {
     if (counters.failed > 0) console.log(`    ❌  ${counters.failed} failed (see lines above)`);
     console.log('');
 
-    if (result?.provisioned?.bankUser?.password ||
-        result?.provisioned?.bankAdmin?.password ||
-        result?.provisioned?.bankDelegate?.password) {
+    if (result?.provisioned?.demoUser?.password ||
+        result?.provisioned?.demoAdmin?.password ||
+        result?.provisioned?.demoDelegate?.password) {
       console.log('  Demo credentials (also saved in banking_api_server/.env):');
-      if (result.provisioned.bankUser?.password) {
-        console.log(`    bankuser      ${result.provisioned.bankUser.password}`);
+      if (result.provisioned.demoUser?.password) {
+        console.log(`    demoUser      ${result.provisioned.demoUser.password}`);
       }
-      if (result.provisioned.bankAdmin?.password) {
-        console.log(`    bankadmin     ${result.provisioned.bankAdmin.password}`);
+      if (result.provisioned.demoAdmin?.password) {
+        console.log(`    demoAdmin     ${result.provisioned.demoAdmin.password}`);
       }
-      if (result.provisioned.bankDelegate?.password) {
-        console.log(`    bankDelegate  ${result.provisioned.bankDelegate.password}  (delegated user)`);
+      if (result.provisioned.demoDelegate?.password) {
+        console.log(`    demoDelegate  ${result.provisioned.demoDelegate.password}  (delegated user)`);
       }
       console.log('');
     }

@@ -301,8 +301,8 @@ router.get('/status', requireAdmin, async (req, res) => {
             mcpExchangerApp: await service.findResourceByName('application', 'Super Banking MCP Exchanger'),
             mcpGwApp: await service.findResourceByName('application', 'Super Banking MCP Gateway'),
             agentApp: await service.findResourceByName('application', 'Super Banking Agent'),
-            bankUser: await service.findUserByUsername('bankuser'),
-            bankAdmin: await service.findUserByUsername('bankadmin')
+            demoUser: await service.findUserByUsername('demoUser'),
+            demoAdmin: await service.findUserByUsername('demoAdmin')
         };
 
         const status = {

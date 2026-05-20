@@ -97,7 +97,7 @@ class OAuthUserService {
       state: state,
       code_challenge: this.generateCodeChallenge(codeVerifier),
       code_challenge_method: 'S256',
-      login_hint: options.login_hint || 'bankuser'
+      login_hint: options.login_hint || 'demoUser'
     });
 
     if (usePiFlow) {

@@ -1512,9 +1512,9 @@ function printDone({ ranBootstrap, fromTar }) {
   console.log(`  ${BOLD}3.  Sign in with one of these demo users${RESET} ${DIM}(username / password — role):${RESET}`);
   console.log('');
   console.log(`      ${BOLD}Username${RESET}        ${BOLD}Password${RESET}        ${BOLD}Role${RESET}`);
-  console.log(`      ${GREEN}${BOLD}bankuser${RESET}        ${GREEN}${BOLD}2Federate!${RESET}      ${DIM}End-user dashboard (customer)${RESET}`);
-  console.log(`      ${GREEN}${BOLD}bankadmin${RESET}       ${GREEN}${BOLD}2Federate!${RESET}      ${DIM}Admin portal (staff)${RESET}`);
-  console.log(`      ${GREEN}${BOLD}bankDelegate${RESET}    ${GREEN}${BOLD}2Federate!${RESET}      ${DIM}Delegated user (read + deposit only)${RESET}`);
+  console.log(`      ${GREEN}${BOLD}demoUser${RESET}        ${GREEN}${BOLD}2Federate!${RESET}      ${DIM}End-user dashboard (customer)${RESET}`);
+  console.log(`      ${GREEN}${BOLD}demoAdmin${RESET}       ${GREEN}${BOLD}2Federate!${RESET}      ${DIM}Admin portal (staff)${RESET}`);
+  console.log(`      ${GREEN}${BOLD}demoDelegate${RESET}    ${GREEN}${BOLD}2Federate!${RESET}      ${DIM}Delegated user (read + deposit only)${RESET}`);
   console.log('');
   console.log(`${BOLD}${CYAN}${HR}${RESET}`);
   console.log('');

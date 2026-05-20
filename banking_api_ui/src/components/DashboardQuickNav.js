@@ -84,7 +84,7 @@ export default function DashboardQuickNav({ user }) {
         <Link
           to="/admin/banking"
           className={`dashboard-quick-nav__btn${bankingAdminActive ? ' dashboard-quick-nav__btn--active' : ''}`}
-          title="Banking admin — lookup accounts, seed demo charges"
+          title="Demo admin — lookup accounts, seed demo charges"
         >
           Banking
         </Link>

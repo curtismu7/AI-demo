@@ -108,7 +108,7 @@ export default function LandingPage({ user, hasTopNav }) {
           <div className="landing-header-content">
             <div className="landing-logo">
               <p className="landing-logo-title">PingOne Identity</p>
-              <p>AI-Powered Banking Demo</p>
+              <p>AI-Powered Demo</p>
             </div>
             <div className="landing-header-actions">
               <button
@@ -226,7 +226,7 @@ export default function LandingPage({ user, hasTopNav }) {
               <div className="landing-feature-icon">
                 <IconAgent />
               </div>
-              <h3 className="landing-feature-title">AI Agent Banking</h3>
+              <h3 className="landing-feature-title">AI Agent Demo</h3>
               <p className="landing-feature-description">
                 Observe real-time agent operations: transfers, balance checks,
                 transaction analysis — all secured by tokens

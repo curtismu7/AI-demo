@@ -558,7 +558,7 @@ export default function SetupWizard() {
 
   return (
     <div className="setup-wizard">
-      <h1 className="setup-wizard-title">Super Banking — PingOne Setup</h1>
+      <h1 className="setup-wizard-title">AI Demo — PingOne Setup</h1>
       {STEPS.map((step, idx) => (
         <div className="wizard-step" key={step.stepKey}>
           {renderStepHeader(step, idx)}

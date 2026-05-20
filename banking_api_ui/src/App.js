@@ -298,7 +298,7 @@ function AppWithAuth() {
         // BFF itself unreachable — show both as down
         setDownServers([
           {
-            name: "Banking API Server",
+            name: "Demo API Server",
             key: "api_server",
             up: false,
             startCmd: "cd banking_api_server && npm start",
@@ -306,7 +306,7 @@ function AppWithAuth() {
             port: 3001,
           },
           {
-            name: "Banking MCP Server",
+            name: "Demo MCP Server",
             key: "mcp_server",
             up: false,
             startCmd: "cd banking_mcp_server && npm run dev",

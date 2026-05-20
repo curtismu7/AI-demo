@@ -45,7 +45,7 @@ function topologyAppGrantedScopes(appName) {
   return scopeTopology.appGrantedScopes(appName);
 }
 
-// Standard demo password for the bankuser / bankadmin accounts. Same value
+// Standard demo password for the demoUser / demoAdmin accounts. Same value
 // shipped in setup-config.md and the demo's docs — the demo is intentionally
 // not security-sensitive, and a known-good password makes onboarding /
 // regression testing trivial.
@@ -55,7 +55,7 @@ const DEMO_PASSWORD = '2Federate!';
  * Derive a well-formed email domain from the public app URL.
  *
  * Strips the scheme AND port — PingOne's email validator rejects
- * 'bankuser@api.ping.demo:4000' because the colon+port isn't a valid email
+ * 'demoUser@api.ping.demo:4000' because the colon+port isn't a valid email
  * domain (RFC 5321). It also rejects single-label domains like 'localhost',
  * so we fall back to a plausible synthetic domain in that case.
  *
@@ -1238,10 +1238,10 @@ class PingOneProvisionService {
       `PINGONE_INTROSPECTION_AUTH_METHOD=post`,
       '',
       '# Demo Users',
-      `DEMO_USER_USERNAME=bankuser`,
-      `DEMO_USER_PASSWORD=${provisioned.bankUser.password}`,
-      `DEMO_ADMIN_USERNAME=bankadmin`,
-      `DEMO_ADMIN_PASSWORD=${provisioned.bankAdmin.password}`,
+      `DEMO_USER_USERNAME=demoUser`,
+      `DEMO_USER_PASSWORD=${provisioned.demoUser.password}`,
+      `DEMO_ADMIN_USERNAME=demoAdmin`,
+      `DEMO_ADMIN_PASSWORD=${provisioned.demoAdmin.password}`,
       '',
       '# Worker Credentials (for future management)',
       `PINGONE_WORKER_CLIENT_ID=${config.workerClientId}`,
@@ -1570,93 +1570,93 @@ class PingOneProvisionService {
       }
       onStep(steps[steps.length - 1]);
 
-      // Step 11: Create demo user bankuser
-      steps.push({ step: 'bankuser', icon: '👨', message: 'Creating demo user: bankuser...' });
+      // Step 11: Create demo user demoUser
+      steps.push({ step: 'demoUser', icon: '👨', message: 'Creating demo user: demoUser...' });
       onStep(steps[steps.length - 1]);
       
       const bankUserResult = await this.createUser(
-        'bankuser',
+        'demoUser',
         'Demo',
         'User',
-        `bankuser@${demoEmailDomain(config.publicAppUrl)}`
+        `demoUser@${demoEmailDomain(config.publicAppUrl)}`
       );
       
       if (bankUserResult.exists) {
         steps.push({ 
-          step: 'bankuser', 
+          step: 'demoUser', 
           icon: '✅',
-          message: 'User bankuser already exists (reused)',
+          message: 'User demoUser already exists (reused)',
           resourceKey: bankUserResult.resourceKey
         });
       } else {
-        steps.push({ step: 'bankuser', icon: '✅', message: 'User bankuser created' });
+        steps.push({ step: 'demoUser', icon: '✅', message: 'User demoUser created' });
       }
       onStep(steps[steps.length - 1]);
 
-      // Step 12: Set bankuser password — always run, even on rerun, so the
+      // Step 12: Set demoUser password — always run, even on rerun, so the
       // documented demo password is guaranteed to work even after manual
       // PingOne admin changes or older partial-runs that wrote a different one.
       {
         const bankUserPassword = DEMO_PASSWORD;
-        steps.push({ step: 'bankuser-password', icon: '🔒', message: 'Setting bankuser password...' });
+        steps.push({ step: 'demoUser-password', icon: '🔒', message: 'Setting demoUser password...' });
         onStep(steps[steps.length - 1]);
         try {
           const r = await this.setUserPassword(bankUserResult.user.id, bankUserPassword);
           if (r.changed === false && r.skipped === 'password_policy_history') {
-            steps.push({ step: 'bankuser-password', icon: '✅', message: `Bankuser password unchanged (already '${bankUserPassword}')` });
+            steps.push({ step: 'demoUser-password', icon: '✅', message: `DemoUser password unchanged (already '${bankUserPassword}')` });
           } else {
-            steps.push({ step: 'bankuser-password', icon: '✅', message: `Bankuser password set to '${bankUserPassword}'` });
+            steps.push({ step: 'demoUser-password', icon: '✅', message: `DemoUser password set to '${bankUserPassword}'` });
           }
         } catch (err) {
-          steps.push({ step: 'bankuser-password', icon: '⚠️', message: `Password set failed (continuing): ${err.message}` });
+          steps.push({ step: 'demoUser-password', icon: '⚠️', message: `Password set failed (continuing): ${err.message}` });
         }
-        provisioned.bankUser = { ...bankUserResult.user, password: bankUserPassword };
+        provisioned.demoUser = { ...bankUserResult.user, password: bankUserPassword };
         onStep(steps[steps.length - 1]);
       }
 
-      // Step 13: Create demo user bankadmin
-      steps.push({ step: 'bankadmin', icon: '👨‍💼', message: 'Creating demo user: bankadmin...' });
+      // Step 13: Create demo user demoAdmin
+      steps.push({ step: 'demoAdmin', icon: '👨‍💼', message: 'Creating demo user: demoAdmin...' });
       onStep(steps[steps.length - 1]);
       
       const bankAdminResult = await this.createUser(
-        'bankadmin',
+        'demoAdmin',
         'Demo',
         'Admin',
-        `bankadmin@${demoEmailDomain(config.publicAppUrl)}`
+        `demoAdmin@${demoEmailDomain(config.publicAppUrl)}`
       );
       
       if (bankAdminResult.exists) {
         steps.push({ 
-          step: 'bankadmin', 
+          step: 'demoAdmin', 
           icon: '✅',
-          message: 'User bankadmin already exists (reused)',
+          message: 'User demoAdmin already exists (reused)',
           resourceKey: bankAdminResult.resourceKey
         });
       } else {
-        steps.push({ step: 'bankadmin', icon: '✅', message: 'User bankadmin created' });
+        steps.push({ step: 'demoAdmin', icon: '✅', message: 'User demoAdmin created' });
       }
       onStep(steps[steps.length - 1]);
 
-      // Step 14: Set bankadmin password — always run (see bankuser step above).
+      // Step 14: Set demoAdmin password — always run (see demoUser step above).
       {
         const bankAdminPassword = DEMO_PASSWORD;
-        steps.push({ step: 'bankadmin-password', icon: '🔒', message: 'Setting bankadmin password...' });
+        steps.push({ step: 'demoAdmin-password', icon: '🔒', message: 'Setting demoAdmin password...' });
         onStep(steps[steps.length - 1]);
         try {
           const r = await this.setUserPassword(bankAdminResult.user.id, bankAdminPassword);
           if (r.changed === false && r.skipped === 'password_policy_history') {
-            steps.push({ step: 'bankadmin-password', icon: '✅', message: `Bankadmin password unchanged (already '${bankAdminPassword}')` });
+            steps.push({ step: 'demoAdmin-password', icon: '✅', message: `DemoAdmin password unchanged (already '${bankAdminPassword}')` });
           } else {
-            steps.push({ step: 'bankadmin-password', icon: '✅', message: `Bankadmin password set to '${bankAdminPassword}'` });
+            steps.push({ step: 'demoAdmin-password', icon: '✅', message: `DemoAdmin password set to '${bankAdminPassword}'` });
           }
         } catch (err) {
-          steps.push({ step: 'bankadmin-password', icon: '⚠️', message: `Password set failed (continuing): ${err.message}` });
+          steps.push({ step: 'demoAdmin-password', icon: '⚠️', message: `Password set failed (continuing): ${err.message}` });
         }
-        provisioned.bankAdmin = { ...bankAdminResult.user, password: bankAdminPassword };
+        provisioned.demoAdmin = { ...bankAdminResult.user, password: bankAdminPassword };
         onStep(steps[steps.length - 1]);
       }
 
-      // Step 14.5: Create demo user bankDelegate + delegation markers.
+      // Step 14.5: Create demo user demoDelegate + delegation markers.
       // Three artifacts wire delegation:
       //   - User attribute `isDelegate` = "true" (CUSTOM STRING; PingOne user
       //     attributes can't be BOOLEAN, so we store the string "true"/"false").
@@ -1664,36 +1664,36 @@ class PingOneProvisionService {
       //   - Token claim `is_delegate` emitted on the Super Banking API resource
       //     via SPEL value `${user.isDelegate}`. Apps that want delegation
       //     status read it from the access token without an extra API call.
-      steps.push({ step: 'bankDelegate', icon: '🤝', message: 'Creating demo user: bankDelegate...' });
+      steps.push({ step: 'demoDelegate', icon: '🤝', message: 'Creating demo user: demoDelegate...' });
       onStep(steps[steps.length - 1]);
 
       const bankDelegateResult = await this.createUser(
-        'bankDelegate',
+        'demoDelegate',
         'Demo',
         'Delegate',
-        `bankDelegate@${demoEmailDomain(config.publicAppUrl)}`
+        `demoDelegate@${demoEmailDomain(config.publicAppUrl)}`
       );
       if (bankDelegateResult.exists) {
-        steps.push({ step: 'bankDelegate', icon: '✅', message: 'User bankDelegate already exists (reused)', resourceKey: bankDelegateResult.resourceKey });
+        steps.push({ step: 'demoDelegate', icon: '✅', message: 'User demoDelegate already exists (reused)', resourceKey: bankDelegateResult.resourceKey });
       } else {
-        steps.push({ step: 'bankDelegate', icon: '✅', message: 'User bankDelegate created' });
+        steps.push({ step: 'demoDelegate', icon: '✅', message: 'User demoDelegate created' });
       }
       onStep(steps[steps.length - 1]);
 
       // Set password (always)
-      steps.push({ step: 'bankDelegate-password', icon: '🔒', message: 'Setting bankDelegate password...' });
+      steps.push({ step: 'demoDelegate-password', icon: '🔒', message: 'Setting demoDelegate password...' });
       onStep(steps[steps.length - 1]);
       try {
         const r = await this.setUserPassword(bankDelegateResult.user.id, DEMO_PASSWORD);
         if (r.changed === false && r.skipped === 'password_policy_history') {
-          steps.push({ step: 'bankDelegate-password', icon: '✅', message: `bankDelegate password unchanged (already '${DEMO_PASSWORD}')` });
+          steps.push({ step: 'demoDelegate-password', icon: '✅', message: `demoDelegate password unchanged (already '${DEMO_PASSWORD}')` });
         } else {
-          steps.push({ step: 'bankDelegate-password', icon: '✅', message: `bankDelegate password set to '${DEMO_PASSWORD}'` });
+          steps.push({ step: 'demoDelegate-password', icon: '✅', message: `demoDelegate password set to '${DEMO_PASSWORD}'` });
         }
       } catch (err) {
-        steps.push({ step: 'bankDelegate-password', icon: '⚠️', message: `Password set failed (continuing): ${err.message}` });
+        steps.push({ step: 'demoDelegate-password', icon: '⚠️', message: `Password set failed (continuing): ${err.message}` });
       }
-      provisioned.bankDelegate = { ...bankDelegateResult.user, password: DEMO_PASSWORD };
+      provisioned.demoDelegate = { ...bankDelegateResult.user, password: DEMO_PASSWORD };
       onStep(steps[steps.length - 1]);
 
       // Ensure the isDelegate user-schema attribute exists (CUSTOM STRING).
@@ -1707,23 +1707,23 @@ class PingOneProvisionService {
       }
       onStep(steps[steps.length - 1]);
 
-      // Set isDelegate=true on bankDelegate (PATCH user). Uses partial-update
+      // Set isDelegate=true on demoDelegate (PATCH user). Uses partial-update
       // semantics — we only send the changed field.
       try {
         await this.makeRequest('PATCH', `/users/${bankDelegateResult.user.id}`, { isDelegate: 'true' });
-        steps.push({ step: 'bankDelegate-flag', icon: '✅', message: 'bankDelegate.isDelegate = true' });
+        steps.push({ step: 'demoDelegate-flag', icon: '✅', message: 'demoDelegate.isDelegate = true' });
       } catch (err) {
-        steps.push({ step: 'bankDelegate-flag', icon: '⚠️', message: `Could not set isDelegate flag: ${err.message}` });
+        steps.push({ step: 'demoDelegate-flag', icon: '⚠️', message: `Could not set isDelegate flag: ${err.message}` });
       }
       onStep(steps[steps.length - 1]);
 
-      // Create BankDelegates group + add bankDelegate as member (idempotent).
+      // Create BankDelegates group + add demoDelegate as member (idempotent).
       steps.push({ step: 'bankDelegates-group', icon: '👥', message: 'Ensuring BankDelegates group...' });
       onStep(steps[steps.length - 1]);
       try {
         const groupId = await this._ensureGroup('BankDelegates', 'Users authorized as delegated agents (demo)');
         await this._ensureUserInGroup(bankDelegateResult.user.id, groupId);
-        steps.push({ step: 'bankDelegates-group', icon: '✅', message: 'bankDelegate added to BankDelegates group' });
+        steps.push({ step: 'bankDelegates-group', icon: '✅', message: 'demoDelegate added to BankDelegates group' });
       } catch (err) {
         steps.push({ step: 'bankDelegates-group', icon: '⚠️', message: `Group step: ${err.message}` });
       }
@@ -1892,8 +1892,8 @@ class PingOneProvisionService {
       // Step 23.6: Wire `is_delegate` token claim. SPEL `${user.isDelegate}`
       // resolves at token-issue time to the user's stored attribute, so apps
       // can read delegation status from the access token without an extra
-      // /v1/users API call. bankDelegate has isDelegate="true"; bankuser/
-      // bankadmin don't, so the claim is empty/false for them.
+      // /v1/users API call. demoDelegate has isDelegate="true"; demoUser/
+      // demoAdmin don't, so the claim is empty/false for them.
       steps.push({ step: 'is-delegate-claim', icon: '🔧', message: 'Wiring is_delegate token claim → ${user.isDelegate}...' });
       onStep(steps[steps.length - 1]);
       try {
@@ -2394,7 +2394,7 @@ class PingOneProvisionService {
     // Apps + resources: name starts with "Demo" (the provisioning prefix).
     // Groups:           name equals "BankDelegates".
     // Custom attrs:     name equals "isDelegate" (the only one we provision).
-    // Users:            username in {bankuser, bankadmin, bankDelegate}.
+    // Users:            username in {demoUser, demoAdmin, demoDelegate}.
     //
     // If you fork this demo and rename, update the constants here too.
     const APP_PREFIXES = ['Super Banking', 'Demo'];
@@ -2403,7 +2403,7 @@ class PingOneProvisionService {
     const isOwnedResource = (name) => RESOURCE_PREFIXES.some(p => (name || '').startsWith(p));
     const DEMO_GROUPS = new Set(['BankDelegates']);
     const DEMO_ATTRS = new Set(['isDelegate']);
-    const DEMO_USERS = new Set(['bankuser', 'bankadmin', 'bankDelegate']);
+    const DEMO_USERS = new Set(['demoUser', 'demoAdmin', 'demoDelegate']);
 
     step('💣', `Wiping banking-demo resources in PingOne env ${config.envId} (region: ${config.region})`);
     step('🛡️', `Only items matching banking-demo naming will be deleted; everything else is preserved.`);
@@ -2520,7 +2520,7 @@ class PingOneProvisionService {
     // Only delete demo accounts. PingOne paginates; loop until we've checked
     // a full page that has no demo users in it (we don't blindly drain — we
     // just need to find the 3 demo users by username).
-    step('🔍', 'Deleting demo users (bankuser, bankadmin, bankDelegate)…');
+    step('🔍', 'Deleting demo users (demoUser, demoAdmin, demoDelegate)…');
     for (const username of DEMO_USERS) {
       try {
         const q = encodeURIComponent(`username eq "${username}"`);

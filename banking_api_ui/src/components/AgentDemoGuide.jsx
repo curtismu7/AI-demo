@@ -74,10 +74,10 @@ const DEMO_SCENARIOS = [
         action: "Click test chip:",
         prompt: '" My Accounts" (Banking group)',
         explanation:
-          "Agent: (1) Recognizes banking:read intent. (2) Gets your user token (banking:read scope). (3) Calls BFF /api/accounts/my. (4) No token exchange needed—scope is sufficient. (5) Returns account list.",
+          "Agent: (1) Recognizes read intent. (2) Gets your user token (read scope). (3) Calls BFF /api/accounts/my. (4) No token exchange needed—scope is sufficient. (5) Returns account list.",
         watch: [
           " Compliance: Steps 1-4 complete (no exchange needed)",
-          "Token Chain: Shows 1 user token (banking:read)",
+          "Token Chain: Shows 1 user token (read)",
           'Notice: No "exchange-required" event',
           "Agent response displays accounts immediately",
         ],
@@ -101,10 +101,10 @@ const DEMO_SCENARIOS = [
         action: "Click test chip:",
         prompt: '" Test Wrong Scope" (Testing group)',
         explanation:
-          "Deliberately tests scope denial path. Makes request with banking:admin scope (not authorized). Gateway returns 403 with required_scopes metadata.",
+          "Deliberately tests scope denial path. Makes request with admin scope (not authorized). Gateway returns 403 with required_scopes metadata.",
         watch: [
           " Compliance: Steps 1-2, then denial via step 6",
-          "Error shows: required_scopes=[banking:write]",
+          "Error shows: required_scopes=[write]",
           "Token Chain: Denial event with metadata",
           "Compliance panel: Shows steps 1-2 only (stops at denial)",
           "Notice: RFC 6749 §3.3 scope enforcement in action",
@@ -140,7 +140,7 @@ const DEMO_SCENARIOS = [
         action: "Then click test chip:",
         prompt: '" Test Wrong Scope" (Testing group)',
         explanation:
-          "Agent: (1) Makes request with banking:admin scope. (2) Gateway rejects: 403. (3) Agent initiates RFC 8693 exchange. (4) New token issued with banking:write scope. (5) Agent retries with new token. (6) Operation succeeds.",
+          "Agent: (1) Makes request with admin scope. (2) Gateway rejects: 403. (3) Agent initiates RFC 8693 exchange. (4) New token issued with write scope. (5) Agent retries with new token. (6) Operation succeeds.",
         watch: [
           " Compliance: All 9 steps exercised",
           "Token Chain: 3 events (user token → exchange request → new MCP token)",
@@ -585,7 +585,7 @@ export default function AgentDemoGuide({
     <DraggableModal
       isOpen={true}
       onClose={onClose}
-      title="Banking Agent Demo Guide"
+      title="Agent Demo Guide"
       footer={null}
       defaultWidth={1000}
       defaultHeight={750}
