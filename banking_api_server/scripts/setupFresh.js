@@ -1036,11 +1036,11 @@ async function confirmInstallDirectory() {
     console.log('');
     console.log('Aborted. To install elsewhere:');
     console.log('  1. cd to the directory you want');
-    console.log('  2. git clone https://github.com/curtismu7/banking-demo.git');
-    console.log('  3. cd banking-demo && npm run setup:fresh');
+    console.log('  2. git clone https://github.com/curtismu7/AI-demo.git');
+    console.log('  3. cd AI-demo && npm run setup:fresh');
     console.log('');
     console.log('Or use the standalone installer:');
-    console.log('  curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash');
+    console.log('  curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-demo/main/install.sh | bash');
     process.exit(2);
   }
   return true;

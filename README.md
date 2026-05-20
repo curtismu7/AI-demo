@@ -29,31 +29,31 @@ This is a **completely standalone** project — it can be handed to anyone and r
 If you have **Node 20+** (Node 20, 22, or 24 — any modern LTS works) and **git** already, this is all you need:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-demo/main/install.sh | bash
 ```
 
 The installer:
 
-1. Confirms the install directory (defaults to `./banking-demo` in your current dir; you can hit Enter or abort).
+1. Confirms the install directory (defaults to `./AI-demo` in your current dir; you can hit Enter or abort).
 2. Clones the repo (or pulls latest if it already exists).
 3. Runs `npm run setup:fresh` inside it — which prompts for PingOne worker creds via a localhost browser form, provisions all PingOne resources, and writes `banking_api_server/.env`.
 
-When done: `cd banking-demo && ./run-bank.sh`. That's it.
+When done: `cd AI-demo && ./run-bank.sh`. That's it.
 
 #### Where will it install?
 
-The installer creates `banking-demo/` **in your current working directory**. Pick where you want it before you run the curl line:
+The installer creates `AI-demo/` **in your current working directory**. Pick where you want it before you run the curl line:
 
 ```bash
 # Suggested: install under your home directory
 cd ~
-curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash
-# → /Users/you/banking-demo/
+curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-demo/main/install.sh | bash
+# → /Users/you/AI-demo/
 
 # Or somewhere temporary
 cd /tmp
-curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash
-# → /tmp/banking-demo/
+curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-demo/main/install.sh | bash
+# → /tmp/AI-demo/
 ```
 
 The installer prints the absolute target path **before** doing anything and asks `Proceed? [Y/n]`. Press `n` to abort if the path is wrong, then re-run from a different `cwd`.
@@ -61,16 +61,16 @@ The installer prints the absolute target path **before** doing anything and asks
 #### Override the install path
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | INSTALL_DIR=~/work/banking-demo bash
+curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-demo/main/install.sh | INSTALL_DIR=~/work/AI-demo bash
 ```
 
 Other env-var overrides (mostly for testing/CI):
 
 | Variable | Default | Effect |
 |---|---|---|
-| `INSTALL_DIR` | `$PWD/banking-demo` | Target install path (absolute or relative). |
+| `INSTALL_DIR` | `$PWD/AI-demo` | Target install path (absolute or relative). |
 | `BANKING_BRANCH` | `main` | Branch to check out. |
-| `REPO_URL` | github.com/curtismu7/banking-demo | Override the git remote. |
+| `REPO_URL` | github.com/curtismu7/AI-demo | Override the git remote. |
 | `ASSUME_YES=1` | (unset) | Skip the confirmation prompt. |
 | `DRY_RUN=1` | (unset) | Print every command without executing. Useful to preview what will happen. |
 
@@ -79,21 +79,21 @@ Other env-var overrides (mostly for testing/CI):
 Pass the tar archive as an argument:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash -s -- /path/to/banking-export-<timestamp>.tar.gz
+curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-demo/main/install.sh | bash -s -- /path/to/banking-export-<timestamp>.tar.gz
 ```
 
 `bash -s --` is the standard pattern for forwarding arguments through a curl-pipe. The installer chains import → bootstrap automatically; if the archive is older than the `MCP_GW` / `AGENT` apps were added, bootstrap fills the gap.
 
 #### Re-running the installer
 
-Safe. If `banking-demo/` already exists with a git checkout, the installer does `git pull --ff-only` instead of `git clone`, then re-runs setup:fresh. PingOne provisioning is idempotent — already-existing resources are detected and reused; redirect URIs on existing apps are refreshed if they don't match.
+Safe. If `AI-demo/` already exists with a git checkout, the installer does `git pull --ff-only` instead of `git clone`, then re-runs setup:fresh. PingOne provisioning is idempotent — already-existing resources are detected and reused; redirect URIs on existing apps are refreshed if they don't match.
 
 ### If you already cloned the repo
 
 Run the inner command directly — same flow, skips the clone:
 
 ```bash
-cd banking-demo
+cd AI-demo
 npm run setup:fresh                              # brand-new install
 npm run setup:fresh -- /path/to/archive.tar.gz   # migration
 ```
@@ -156,7 +156,7 @@ npm run import -- --preflight-only ~/banking-export-2026-XX-XX.tar.gz
 When something has drifted (`.env` got mangled, PingOne apps don't match the local state, you're testing a fresh-install path against a tenant you've already provisioned) the cleanest reset is one command:
 
 ```bash
-cd banking-demo
+cd AI-demo
 npm run reset
 ```
 
@@ -186,7 +186,7 @@ If you want to import a known-good bundle as the final step instead of letting b
 When you're done with the demo on this machine and want to free disk / leave the PingOne tenant clean:
 
 ```bash
-cd banking-demo
+cd AI-demo
 npm run uninstall
 ```
 
@@ -210,7 +210,7 @@ npm run uninstall -- --keep-local          # only stop services + wipe PingOne
 
 What `uninstall` does **NOT** remove (you do these by hand):
 
-- The repo directory itself — `rm -rf banking-demo` after the script runs
+- The repo directory itself — `rm -rf AI-demo` after the script runs
 - Source code (it's all in the git tree; not deleted)
 - Your shell's nvm bootstrap (`~/.zshrc` / `~/.bashrc` lines)
 - `mkcert` root CA (machine-wide; affects other apps)
@@ -276,8 +276,8 @@ echo '127.0.0.1  api.ping.demo' | sudo tee -a /etc/hosts
 #### 2. Clone — let `./run-bank.sh` do the rest
 
 ```bash
-git clone https://github.com/curtismu7/banking-demo.git
-cd banking-demo
+git clone https://github.com/curtismu7/AI-demo.git
+cd AI-demo
 ./run-bank.sh
 ```
 
@@ -309,10 +309,10 @@ cd banking_mcp_invest   && npm install && npm run build      && cd ..
 
 #### 3. Start all services
 
-> Run from the `banking-demo` repo root. `./run-bank.sh` is repo-local — `cd banking-demo` first if you opened a new terminal.
+> Run from the `AI-demo` repo root. `./run-bank.sh` is repo-local — `cd AI-demo` first if you opened a new terminal.
 
 ```bash
-cd /path/to/banking-demo   # if you're not already there
+cd /path/to/AI-demo   # if you're not already there
 ./run-bank.sh
 ```
 
@@ -386,8 +386,8 @@ brew install mkcert && mkcert -install
 echo '127.0.0.1  api.ping.demo' | sudo tee -a /etc/hosts
 
 # 3. Clone (run-bank.sh installs all deps for you on first start)
-git clone https://github.com/curtismu7/banking-demo.git
-cd banking-demo
+git clone https://github.com/curtismu7/AI-demo.git
+cd AI-demo
 
 # 4. Copy the archive from Machine A, then import + provision in one step
 npm run setup:fresh -- /path/to/banking-export-<timestamp>.tar.gz
@@ -421,7 +421,7 @@ Open **[https://api.ping.demo:4000/configure](https://api.ping.demo:4000/configu
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `zsh: command not found: nvm` | nvm isn't loaded in this shell — it's a shell function, not a binary on PATH | `export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"` (one-shot), then add those two lines to `~/.zshrc` (or `~/.bashrc`) so new terminals pick it up automatically. See Path A § 0. |
-| `zsh: no such file or directory: ./run-bank.sh` | You're not in the repo root — `./run-bank.sh` is repo-local | `cd /path/to/banking-demo` first, then `./run-bank.sh` |
+| `zsh: no such file or directory: ./run-bank.sh` | You're not in the repo root — `./run-bank.sh` is repo-local | `cd /path/to/AI-demo` first, then `./run-bank.sh` |
 | Export/import fails with `Node major 20 required, but this shell is using Node vX` | Wrong Node version active in this shell | `nvm use 20` (run nvm-load snippet above first if needed); see Path A § 0 |
 | Browser shows cert error | Certs not generated or CA not trusted | Run `mkcert -install` then `cd certs && mkcert api.ping.demo localhost 127.0.0.1` |
 | `api.ping.demo` doesn't resolve | `/etc/hosts` entry missing | `echo '127.0.0.1 api.ping.demo' \| sudo tee -a /etc/hosts` |

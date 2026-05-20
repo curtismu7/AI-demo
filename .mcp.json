@@ -30,7 +30,7 @@
     },
     "banking-dev": {
       "command": "node",
-      "args": ["/Users/curtismuir/Development/banking/dev_mcp/banking-dev/dist/index.js"]
+      "args": ["/Users/curtismuir/Development/AI-Demo/dev_mcp/banking-dev/dist/index.js"]
     }
   }
 }
