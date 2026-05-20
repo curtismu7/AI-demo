@@ -51,24 +51,6 @@ export interface TratClaims {
   trat_sim?: boolean;
 }
 
-function extractTratClaimsLocal(xTratContext: string | undefined): TratClaims | null {
-  if (!xTratContext) return null;
-  try {
-    const parsed = JSON.parse(xTratContext);
-    if (typeof parsed.purp === 'string' && typeof parsed.reqctx?.tool === 'string' && parsed.azd && parsed.rctx) {
-      return {
-        reqctx: parsed.reqctx,
-        purp: parsed.purp,
-        azd: parsed.azd,
-        rctx: parsed.rctx,
-        trat_sim: parsed.trat_sim ?? true,
-      };
-    }
-  } catch {
-    // malformed header
-  }
-  return null;
-}
 
 /**
  * Build the PingAuthorize decision `parameters` block.

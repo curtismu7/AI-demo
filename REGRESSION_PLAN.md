@@ -125,6 +125,38 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-20 — Feature: Transaction Tokens (TraT) context binding + mTLS gateway↔MCP
+
+**Files changed:**
+- `demo_mcp_gateway/src/config.ts` — Added `mtlsEnabled` and `mtlsCertPath` fields to `GatewayConfig`; loaded from `MCP_MTLS_ENABLED` and `MCP_MTLS_GATEWAY_CERT_PATH`.
+- `demo_mcp_gateway/src/mtls.ts` (new) — `generateGatewayCerts()` generates ephemeral self-signed client cert via `selfsigned`; writes PEM to `mtlsCertPath` so MCP servers can pin it.
+- `demo_mcp_gateway/src/proxy.ts` — `proxyJsonRpc()` accepts optional `MtlsOptions`; when enabled, attaches the gateway client cert to outbound HTTPS requests and sets `X-TraT-Context` header from decoded token claims.
+- `demo_mcp_gateway/src/index.ts` — Generates gateway certs at startup when `mtlsEnabled=true`; passes `tlsOpts` to all `proxyJsonRpc` call sites.
+- `demo_mcp_gateway/src/middleware/authorizeMcpRequest.ts` — Added `mtls` field to `GwAuditTrail`; populated before final `forward()` call.
+- `demo_mcp_server/src/auth/mtlsMiddleware.ts` (new) — `createMtlsVerifier()` pins the gateway cert by SHA-256 fingerprint; returns null when disabled.
+- `demo_mcp_server/src/server/BankingMCPServer.ts` — When `MCP_MTLS_ENABLED=true`, starts HTTPS server with `requestCert: true`; validates client cert fingerprint per request.
+- `demo_api_server/services/mcpToolPipeline.js` — Reads `gwAuditTrail.mtls`; emits `gw-mtls` Token Chain event.
+- `demo_api_ui/src/components/TokenChainDisplay.js` — Added `TratContextEduBox` and `GwMtlsEduBox` inline education boxes for `trat-context` and `gw-mtls` events.
+- `demo_api_ui/src/components/TokenChainDisplay.css` — Added `.tcd-trat-badge`, `.tcd-mtls-badge` styles.
+- `demo_api_ui/src/components/education/TransactionTokensPanel.js` (new) — 6-tab education panel covering TraT claims, mTLS, IETF draft status, and this demo's simulation.
+- `demo_api_ui/src/components/education/educationIds.js` — Added `TRANSACTION_TOKENS` constant.
+- `demo_api_ui/src/components/education/EducationPanelsHost.js` — Registered `TransactionTokensPanel`.
+- `demo_api_server/scripts/setupTratClaims.js` (new) — Standalone script; logs TraT claim guidance for the exchanger app in PingOne Console.
+- `demo_api_server/package.json` — Added `pingone:setup:trat` script.
+- `demo_api_server/scripts/bootstrapPingOne.js` — Calls `setupTratClaims.js` non-fatally after bootstrap.
+
+**What this adds:** TraT context binding so the gateway can verify an MCP tool call was originated by the right agent session (simulated via `X-TraT-Context` header when `ff_trat_mode=true`). mTLS (self-signed, dev-only) between the gateway and MCP servers prevents a client with a valid TX token (`aud: ping.demo`) from bypassing the PingAuthorize check by calling MCP servers directly. Both features are off by default (`ff_trat_mode=false`, `MCP_MTLS_ENABLED=false`).
+
+**Verify:**
+1. `ff_trat_mode=false`, `MCP_MTLS_ENABLED=false` (default) — zero behavior change; all tool calls work; Token Chain shows `trat-context` and `gw-mtls` events with `skipped` status
+2. `ff_trat_mode=true` — Token Chain shows `trat-context` event with `simulated` badge; `X-TraT-Context` header visible in gateway logs
+3. `MCP_MTLS_ENABLED=true` — gateway logs `[GW] mTLS enabled — client cert written to ...`; MCP server starts HTTPS; Token Chain `gw-mtls` event shows `active`
+4. mTLS bypass test: direct call to MCP server (bypassing gateway) with a valid TX token → TLS handshake rejected (no client cert)
+
+**Do not break:** TX token (`aud: ping.demo`) is forwarded unchanged by the gateway — no RFC 8693 re-exchange. The `ff_trat_mode=false` default means all TraT simulation is a no-op. `MCP_MTLS_ENABLED=false` default means MCP servers run plain HTTP (preserving existing behaviour). Token Chain event order: `trat-context` → `gw-introspect` → `gw-authorize` → `gw-mtls`.
+
+---
+
 ### 2026-05-20 — Feature: P1AZ at Resource Server + AgentRestrictions (ff_agent_restrictions)
 
 **Files changed:**
