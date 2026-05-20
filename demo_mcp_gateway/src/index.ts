@@ -24,11 +24,9 @@ import WebSocket from 'ws';
 import axios from 'axios';
 import { loadConfig, GatewayConfig, assertProductionSecrets, isInternalSecretUsable } from './config';
 import { validateInboundToken, extractBearerToken, TokenValidationError } from './tokenValidator';
-import { routeTool, backendWsUrl, backendResourceUri, backendHttpUrl } from './router';
+import { routeTool, backendWsUrl, backendHttpUrl } from './router';
 import { buildApiKeyToolResult } from './apiKeyDispatch';
-import { exchangeTokenForBackend, ExchangeInfo, clearTokenCache } from './tokenExchange';
 import { McpTokenExchangeClient } from './auth/McpTokenExchangeClient';
-import { selectCredentialForBackend } from './credentialSwap';
 import { proxyJsonRpc, JsonRpcRequest, JsonRpcResponse } from './proxy';
 import { guardToolsList, guardToolCall } from './pingAuthorizeGuard';
 import { createHitlChallenge, getHitlChallengeStatus, verifyHitlReceipt } from './hitlClient';
@@ -217,7 +215,6 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
   // ---------------------------------------------------------------------------
   if (url === '/admin/clear-token-cache' && req.method === 'POST') {
     if (!requireInternalSecret(req, res, config)) return;
-    clearTokenCache();
     McpTokenExchangeClient.clearCache();
     GatewayIntrospectionClient.clearCache();
     console.log('[GW] token caches cleared (logout)');
@@ -571,20 +568,11 @@ async function handleMessage(
         }
       }
 
-      let credential;
-      try {
-        credential = await selectCredentialForBackend(target, token, idToken, config);
-      } catch (err) {
-        if ((err as { code?: string }).code === 'id_token_missing') {
-          send(jsonRpcError(id, -32412, 'id_token missing — sign in again with openid scope', {
-            credentialPath: 'dual_token',
-            error: 'id_token_missing',
-          }));
-        } else {
-          send(jsonRpcError(id, -32500, 'Credential selection failed'));
-        }
-        return;
-      }
+      // Derive the API-key last4 inline (no credentialSwap needed for apikey path).
+      const apiKeyLast4 = (() => {
+        const k = config.demoApiKeyServiceKey || '';
+        return k.length >= 4 ? k.slice(-4) : 'XXXX';
+      })();
 
       // ----- api_key (Path A) -----
       if (target === 'apikey') {
@@ -598,7 +586,7 @@ async function handleMessage(
         const outcome = await buildApiKeyToolResult(
           toolName,
           decoded.sub,
-          credential.apiKeyMaskedLast4,
+          apiKeyLast4,
           config,
         );
         if (outcome.ok) {
@@ -610,14 +598,16 @@ async function handleMessage(
       }
 
       // ----- dual_token (Path B) — POST to /api/resource-server/identity with id_token in params -----
-      // SPEC COMPLIANCE:
-      //   * RFC 8693 exchange happened inside selectCredentialForBackend above —
-      //     credential.authorization is the EXCHANGED token (aud=banking_resource_server).
-      //   * RFC 8707 + RFC 9068: aud of exchanged token MUST match the RS's expected audience.
-      //   * MCP 2025-11-25: gateway MUST exchange tokens when forwarding to downstream RS.
-      //   * draft-ietf-oauth-identity-chaining: act.client_id = gateway-client (audit trail).
-      //   * id_token travels separately in JSON-RPC body — NOT subject to RFC 8693 exchange.
+      // Gateway forwards the original TX token unchanged (no re-exchange).
+      // id_token travels separately in JSON-RPC body.
       if (target === 'dualtoken') {
+        if (!idToken) {
+          send(jsonRpcError(id, -32412, 'id_token missing — sign in again with openid scope', {
+            credentialPath: 'dual_token',
+            error: 'id_token_missing',
+          }));
+          return;
+        }
         const url = backendHttpUrl(target, toolName, config);
         let identityResp;
         try {
@@ -626,12 +616,12 @@ async function handleMessage(
             {
               jsonrpc: '2.0',
               method: 'identity.show',
-              params: { idToken: credential.idToken },
+              params: { idToken },
               id: 1,
             },
             {
               headers: {
-                Authorization: credential.authorization,
+                Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json',
               },
               timeout: 5000,
@@ -727,7 +717,7 @@ async function handleMessage(
         let resp;
         try {
           resp = await axios.get(url, {
-            headers: { Authorization: credential.authorization || `Bearer ${token}` },
+            headers: { Authorization: `Bearer ${token}` },
             timeout: 5000,
             validateStatus: (s: number) => s < 500,
           });
@@ -758,46 +748,10 @@ async function handleMessage(
     }
 
     // ----- Existing olb/invest path — WebSocket proxy -----
-    const backendUri = backendResourceUri(target, config);
     const wsUrl = backendWsUrl(target, config);
 
-    let backendToken: string;
-    const exchInfo: ExchangeInfo = { cacheHit: false, targetAudience: backendUri };
-
-    if (config.mcpServerPassthrough) {
-      // Passthrough mode: gateway has already validated + authorized the inbound
-      // token. Forward it unchanged — no RFC 8693 re-exchange.
-      backendToken = token;
-      exchInfo.cacheHit = false;
-    } else {
-      try {
-        backendToken = await exchangeTokenForBackend(token, backendUri, config, exchInfo);
-      } catch (err) {
-        const msg2 = err instanceof Error ? err.message : String(err);
-        console.error(`[GW] Token re-exchange failed for ${toolName}:`, msg2);
-        // C1-parity: surface WHERE it broke into the chain instead of a bare error.
-        send(JSON.stringify({
-          jsonrpc: '2.0', id,
-          error: { code: -32500, message: 'Token exchange failed', data: { credentialPath: 'oauth_bearer' } },
-          result: {
-            _meta: {
-              credentialPath: 'oauth_bearer',
-              tokenEvents: [
-                {
-                  id: 'gw-exchange-failed',
-                  label: `Gateway RFC 8693 re-exchange FAILED (target aud=${backendUri}): ${msg2}`,
-                  tokenType: 'access_token',
-                  credentialPath: 'oauth_bearer',
-                  status: 'failed',
-                  specRef: 'RFC 8693 §2.2.2',
-                },
-              ],
-            },
-          },
-        }));
-        return;
-      }
-    }
+    // Gateway forwards the original TX token unchanged — no RFC 8693 re-exchange.
+    const backendToken: string = token;
 
     let result: JsonRpcResponse;
     try {
@@ -809,40 +763,16 @@ async function handleMessage(
       return;
     }
 
-    // C3 + H1: the gateway's second RFC 8693 exchange (user→gateway→backend,
-    // swapping aud=mcp-gw → aud=mcp-olb/mcp-invest) is the single most
-    // important token-exchange hop in the main flow and was previously
-    // invisible — the raw backend result was returned with no _meta.
-    // Synthesize tokenEvents mirroring the dual_token block, and reflect
-    // whether a fresh PingOne exchange actually happened or the gateway cache
-    // served the token (no round-trip this call) so the chain cannot falsely
-    // imply a fresh exchange on every cached call.
-    const gwExchangeEvent = config.mcpServerPassthrough
-      ? {
-          id: 'gw-passthrough',
-          label: `Gateway passthrough: inbound token forwarded unchanged (aud=${config.gatewayResourceUri}) — no re-exchange. MCP Server trusts gateway enforcement.`,
-          tokenType: 'access_token',
-          credentialPath: 'oauth_bearer',
-          status: 'ok',
-          specRef: 'RFC 8693 — exchange skipped by design (passthrough mode)',
-        }
-      : exchInfo.cacheHit
-      ? {
-          id: 'gw-exchange',
-          label: `Gateway token reused from cache (no PingOne round-trip this call) → aud=${backendUri}, act chain preserved`,
-          tokenType: 'access_token',
-          credentialPath: 'oauth_bearer',
-          status: 'cached',
-          specRef: 'RFC 8693 (cached result)',
-        }
-      : {
-          id: 'gw-exchange',
-          label: `Gateway RFC 8693 exchange: subject_token=inbound user-bearer (aud=mcp-gw) + actor=gateway-creds → fresh token aud=${backendUri}, act.client_id=gateway, prior act chain preserved`,
-          tokenType: 'access_token',
-          credentialPath: 'oauth_bearer',
-          status: 'exchanged',
-          specRef: 'RFC 8693 + draft-ietf-oauth-identity-chaining',
-        };
+    // C3 + H1: synthesize tokenEvents for the Token Chain UI showing that the
+    // gateway forwarded the TX token unchanged to the backend MCP server.
+    const gwExchangeEvent = {
+      id: 'gw-passthrough',
+      label: `Gateway passthrough: inbound TX token forwarded unchanged to backend (${target}) — no re-exchange.`,
+      tokenType: 'access_token',
+      credentialPath: 'oauth_bearer',
+      status: 'ok',
+      specRef: 'RFC 8693 — exchange skipped by design (passthrough mode)',
+    };
 
     const gwTokenEvents = [
       {
@@ -874,7 +804,7 @@ async function handleMessage(
         ...existingMeta,
         credentialPath: 'oauth_bearer',
         backendTransport: 'websocket',
-        tokenExchangeCached: config.mcpServerPassthrough ? null : exchInfo.cacheHit,
+        tokenExchangeCached: null,
         tokenEvents: gwTokenEvents,
       };
     }
@@ -906,10 +836,8 @@ async function handleMessage(
 
 async function proxyToolsList(target: 'olb' | 'invest', inboundToken: string): Promise<JsonRpcResponse> {
   const wsUrl = backendWsUrl(target, config);
-  const backendToken = config.mcpServerPassthrough
-    ? inboundToken
-    : await exchangeTokenForBackend(inboundToken, backendResourceUri(target, config), config);
-  return proxyJsonRpc(wsUrl, backendToken, {
+  // Gateway forwards the original TX token unchanged — no RFC 8693 re-exchange.
+  return proxyJsonRpc(wsUrl, inboundToken, {
     jsonrpc: '2.0',
     id: `gw-list-${target}`,
     method: 'tools/list',
