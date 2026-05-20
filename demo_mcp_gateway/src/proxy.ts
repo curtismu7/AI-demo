@@ -9,8 +9,14 @@
  * Protocol: MCP 2025-11-25 handshake (initialize → notifications/initialized → method → close).
  */
 
+import * as https from 'https';
 import WebSocket from 'ws';
 import { getCorrelationId } from './correlationContext';
+
+export interface MtlsOptions {
+  cert: string; // PEM client certificate
+  key: string;  // PEM client private key
+}
 
 export function buildUpstreamHeaders(
   backendToken: string,
@@ -44,6 +50,7 @@ export function proxyJsonRpc(
   backendToken: string,
   request: JsonRpcRequest,
   xTratContext?: string,
+  tlsOptions?: MtlsOptions,
 ): Promise<JsonRpcResponse> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -51,9 +58,17 @@ export function proxyJsonRpc(
       reject(new Error(`Proxy timeout after ${CALL_TIMEOUT_MS}ms for ${request.method}`));
     }, CALL_TIMEOUT_MS);
 
-    const ws = new WebSocket(backendWsUrl, {
+    const wsOptions: WebSocket.ClientOptions = {
       headers: buildUpstreamHeaders(backendToken, xTratContext),
-    });
+    };
+    if (tlsOptions) {
+      wsOptions.agent = new https.Agent({
+        cert: tlsOptions.cert,
+        key: tlsOptions.key,
+        rejectUnauthorized: false, // dev-only: accept self-signed server cert
+      });
+    }
+    const ws = new WebSocket(backendWsUrl, wsOptions);
 
     let initialized = false;
     // WR-04: capture the handshake timer so it can be cleared on every
