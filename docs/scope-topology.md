@@ -56,10 +56,10 @@ Native scopes: `agent:invoke`
 
 | Service | Resource | Validates aud | Gates on tool scopes | Notes |
 |---|---|---|---|---|
-| `banking_api_server` | Super Banking API | `enduser.ping.demo` | no | BFF / token custodian. Performs RFC 8693 two-exchange delegation (user token -> mcpgateway.ping.demo). |
-| `banking_mcp_gateway` | Super Banking MCP Gateway | `mcpgateway.ping.demo` | yes | MCP Gateway. Validates inbound aud === mcpgateway.ping.demo and enforces per-tool requiredScopes (getScopesForGatewayTool) on the inbound bearer BEFORE credential swap. Therefore every gateway-surface tool scope MUST be mirrored onto the Super Banking MCP Gateway resource (ARCHITECTURE-TRUTHS T-10). |
-| `banking_mcp_server` | Super Banking MCP Server | `mcpserver.ping.demo` | yes | Backend MCP tool server. Receives the gateway re-exchanged token (aud === mcpserver.ping.demo); banking tool scopes are mirrored here for exchange hop #3. |
-| `banking_agent_service` | Super Banking Agent Gateway | `agentgateway.ping.demo` | no | Agent Gateway (Two-Exchange Step 1 audience for the AI Agent client-credentials token). |
+| `demo_api_server` | Super Banking API | `enduser.ping.demo` | no | BFF / token custodian. Performs RFC 8693 two-exchange delegation (user token -> mcpgateway.ping.demo). |
+| `demo_mcp_gateway` | Super Banking MCP Gateway | `mcpgateway.ping.demo` | yes | MCP Gateway. Validates inbound aud === mcpgateway.ping.demo and enforces per-tool requiredScopes (getScopesForGatewayTool) on the inbound bearer BEFORE credential swap. Therefore every gateway-surface tool scope MUST be mirrored onto the Super Banking MCP Gateway resource (ARCHITECTURE-TRUTHS T-10). |
+| `demo_mcp_server` | Super Banking MCP Server | `mcpserver.ping.demo` | yes | Backend MCP tool server. Receives the gateway re-exchanged token (aud === mcpserver.ping.demo); banking tool scopes are mirrored here for exchange hop #3. |
+| `demo_agent_service` | Super Banking Agent Gateway | `agentgateway.ping.demo` | no | Agent Gateway (Two-Exchange Step 1 audience for the AI Agent client-credentials token). |
 
 ## App Grants
 
@@ -138,6 +138,14 @@ Granted scopes: — (none; resource-server or worker app)
 | `admin_manage_accounts` | exchange-only | `admin:write` `users:manage` | — |
 | `admin_view_audit_logs` | exchange-only | `admin:read` | — |
 | `admin_system_status` | exchange-only | `admin:read` | — |
+| `lookup_customer` | exchange-only | `admin:read` `users:read` | — |
+| `get_customer_profile` | exchange-only | `admin:read` `users:read` | — |
+| `get_customer_accounts` | exchange-only | `admin:read` `users:read` | — |
+| `get_customer_transactions` | exchange-only | `admin:read` `users:read` | — |
+| `freeze_account` | exchange-only | `admin:write` `users:manage` | — |
+| `reset_customer_password` | exchange-only | `admin:write` `users:manage` | — |
+| `adjust_balance` | exchange-only | `admin:write` `users:manage` | — |
+| `delete_customer` | exchange-only | `admin:write` `admin:delete` `users:manage` | — |
 | `list_accounts` | legacy-alias | `read` | — |
 | `list_transactions` | legacy-alias | `read` | — |
 | `transfer` | legacy-alias | `write` | — |

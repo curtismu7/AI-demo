@@ -17,6 +17,24 @@ const fs   = require('fs');
 const path = require('path');
 const os   = require('os');
 
+// bankingDb requires better-sqlite3 (or node:sqlite on Node 22.5+).
+// On Node 18, better-sqlite3 native addon fails (NODE_MODULE_VERSION mismatch)
+// and node:sqlite does not exist. Skip the entire suite in that case.
+function hasSQLiteSupport() {
+  try {
+    require('better-sqlite3');
+    return true;
+  } catch (_e1) {
+    try {
+      require('node:sqlite');
+      return true;
+    } catch (_e2) {
+      return false;
+    }
+  }
+}
+const describeSQLite = hasSQLiteSupport() ? describe : describe.skip;
+
 // ─── Seed data fixture ──────────────────────────────────────────────────────
 const DEMO_USER = 'demo-user';
 const DEMO_ACCOUNTS = [
@@ -70,7 +88,7 @@ afterEach(() => {
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
-describe('bankingDb — integration tests', () => {
+describeSQLite('bankingDb — integration tests', () => {
   // Test 8: Two consecutive initBankingDb() calls leave row count unchanged (idempotency)
   it('Test 8: two consecutive initBankingDb() calls leave accounts row count unchanged', () => {
     bankingDb.initBankingDb();

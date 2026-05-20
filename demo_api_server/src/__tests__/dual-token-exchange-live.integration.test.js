@@ -19,6 +19,10 @@ const live =
   process.env.RUN_PINGONE_TOKEN_EXCHANGE === 'true' ||
   process.env.RUN_PINGONE_TOKEN_INTEGRATION === 'true';
 
+// Headless login requires both USERNAME and PASSWORD env vars (not set in CI or
+// normal development — only when a developer explicitly exports them).
+const hasHeadlessCredentials = !!(process.env.USERNAME && process.env.PASSWORD);
+
 // ── Helpers ──────────────────────────────────────────────────────────
 
 function decodeJwt(token) {
@@ -152,7 +156,7 @@ describe('JWT decode helper', () => {
 // Phase 1: Obtain tokens
 // ────────────────────────────────────────────────────────────────────
 
-(live ? describe : describe.skip)('Live PingOne: Headless login', () => {
+(live && hasHeadlessCredentials ? describe : describe.skip)('Live PingOne: Headless login', () => {
   jest.setTimeout(TIMEOUT);
 
   let envId, region, userClientId, userClientSecret, username, password, redirectUri;

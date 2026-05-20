@@ -12,8 +12,17 @@
 const path = require('node:path');
 const os = require('node:os');
 const fs = require('node:fs');
-const { configureVault, envHas } = require('../../scripts/setupFresh');
-const { openVault, createVault } = require('../../lib/vault');
+
+// setupFresh.js requires Node 20+ and calls process.exit(1) at require() time
+// under Node 18. Guard the entire suite so the worker process does not crash.
+const nodeMajor = parseInt(String(process.versions.node || '').split('.')[0], 10);
+const node20Plus = nodeMajor >= 20;
+
+let configureVault, envHas, openVault, createVault;
+if (node20Plus) {
+  ({ configureVault, envHas } = require('../../scripts/setupFresh'));
+  ({ openVault, createVault } = require('../../lib/vault'));
+}
 
 function uniqPaths() {
   const ts = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
@@ -47,7 +56,7 @@ function fakes() {
   };
 }
 
-describe('configureVault (Phase 269 Plan 05 Task 3)', () => {
+(node20Plus ? describe : describe.skip)('configureVault (Phase 269 Plan 05 Task 3)', () => {
   let paths;
 
   beforeEach(() => {
@@ -343,7 +352,7 @@ describe('configureVault (Phase 269 Plan 05 Task 3)', () => {
 });
 
 // WR-04: envHas must treat regex metacharacters in `key` as literal text.
-describe('envHas (WR-04 regex escaping)', () => {
+(node20Plus ? describe : describe.skip)('envHas (WR-04 regex escaping)', () => {
   test('matches a present key with non-whitespace value', () => {
     expect(envHas('FOO=bar\n', 'FOO')).toBe(true);
   });

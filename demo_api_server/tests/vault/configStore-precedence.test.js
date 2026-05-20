@@ -12,11 +12,15 @@
  */
 
 const path = require('node:path');
-const { ensureValidConfigDb } = require('./_ensureValidConfigDb');
+const { ensureValidConfigDb, canUseSQLite } = require('./_ensureValidConfigDb');
+
+// Skip entire suite when better-sqlite3 native addon is incompatible with this
+// Node version (e.g. compiled for Node 20 but running under Node 18).
+const describeSQLite = canUseSQLite() ? describe : describe.skip;
 
 // Full-suite pollution guard: another suite can leave a non-SQLite stub at
 // data/persistent/config.db; remove it so configStore recreates a valid DB.
-beforeAll(() => ensureValidConfigDb());
+beforeAll(() => { if (canUseSQLite()) ensureValidConfigDb(); });
 
 function freshConfigStore() {
   const id = require.resolve('../../services/configStore');
@@ -25,7 +29,7 @@ function freshConfigStore() {
   return require('../../services/configStore');
 }
 
-describe('configStore provenance — vault is not clobbered by SQLite', () => {
+describeSQLite('configStore provenance — vault is not clobbered by SQLite', () => {
   test('SQLite write of a vault-owned key does NOT overwrite the vault value', async () => {
     const c = freshConfigStore();
     await c.ensureInitialized();
@@ -50,7 +54,7 @@ describe('configStore provenance — vault is not clobbered by SQLite', () => {
   });
 });
 
-describe('configStore key casing — UPPER-canonical regardless of caller/storage case', () => {
+describeSQLite('configStore key casing — UPPER-canonical regardless of caller/storage case', () => {
   test('setConfig with an UPPER FIELD_DEFS key is readable via getEffective (both cases)', async () => {
     const c = freshConfigStore();
     await c.ensureInitialized();
@@ -77,7 +81,7 @@ describe('configStore key casing — UPPER-canonical regardless of caller/storag
   });
 });
 
-describe('configStore secret encrypt/decrypt round-trips regardless of key casing', () => {
+describeSQLite('configStore secret encrypt/decrypt round-trips regardless of key casing', () => {
   const SECRET_CASES = [
     'mcp_gw_client_secret',     // new lowercase secret (Task 1.5)
     'demo_password',            // pre-existing lowercase secret (regressed by UPPER-case change)
@@ -135,7 +139,7 @@ describe('configStore secret encrypt/decrypt round-trips regardless of key casin
   }
 });
 
-describe('getEffective precedence — Vault > SQLite > .env with bootstrap allowlist', () => {
+describeSQLite('getEffective precedence — Vault > SQLite > .env with bootstrap allowlist', () => {
   const SAVED = {};
   const ENVV = ['OLLAMA_MODEL', 'OLLAMA_BASE_URL', 'PINGONE_REGION', 'PINGONE_ENVIRONMENT_ID'];
   beforeEach(() => { for (const k of ENVV) SAVED[k] = process.env[k]; });
@@ -231,7 +235,7 @@ describe('getEffective precedence — Vault > SQLite > .env with bootstrap allow
   });
 });
 
-describe('configStore FIELD_DEFS defaults reachable for UPPER keys', () => {
+describeSQLite('configStore FIELD_DEFS defaults reachable for UPPER keys', () => {
   test('getEffective(UPPER key) returns FIELD_DEFS default when nothing else set', async () => {
     // "nothing else set" must also mean no stale SQLite row from a sibling
     // test (freshConfigStore resets the module cache, not the shared

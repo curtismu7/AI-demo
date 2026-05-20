@@ -194,7 +194,7 @@ describe('generated scope doc is in sync', () => {
   test('docs/scope-topology.md matches a fresh render of the manifest', () => {
     const ROOT = path.resolve(__dirname, '../../../');
     const docPath = path.join(ROOT, 'docs/scope-topology.md');
-    const rendered = execSync('node banking_api_server/scripts/generate-scope-doc.js --stdout', {
+    const rendered = execSync('node demo_api_server/scripts/generate-scope-doc.js --stdout', {
       cwd: ROOT,
     }).toString();
     const onDisk = fs.readFileSync(docPath, 'utf8');

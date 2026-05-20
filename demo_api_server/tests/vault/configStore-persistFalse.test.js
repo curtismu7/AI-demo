@@ -17,11 +17,13 @@
  */
 
 const path = require('node:path');
-const { ensureValidConfigDb } = require('./_ensureValidConfigDb');
+const { ensureValidConfigDb, canUseSQLite } = require('./_ensureValidConfigDb');
+
+const describeSQLite = canUseSQLite() ? describe : describe.skip;
 
 // Full-suite pollution guard: another suite can leave a non-SQLite stub at
 // data/persistent/config.db; remove it so configStore recreates a valid DB.
-beforeAll(() => ensureValidConfigDb());
+beforeAll(() => { if (canUseSQLite()) ensureValidConfigDb(); });
 
 // Reset module cache so we get a fresh configStore each test (the require cache
 // holds onto the SQLite handle otherwise).
@@ -32,7 +34,7 @@ function freshConfigStore() {
   return require('../../services/configStore');
 }
 
-describe('configStore.setRaw — persist option', () => {
+describeSQLite('configStore.setRaw — persist option', () => {
   test('setRaw({k:v}) with no opts persists to SQLite (existing behavior)', async () => {
     const c = freshConfigStore();
     await c.ensureInitialized();

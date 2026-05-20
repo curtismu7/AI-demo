@@ -78,4 +78,17 @@ function ensureValidConfigDb() {
   }
 }
 
-module.exports = { ensureValidConfigDb, CONFIG_DB };
+// Probe whether better-sqlite3 native binary is loadable in this Node version.
+// If it was compiled for a different Node (NODE_MODULE_VERSION mismatch) it
+// throws at require() time. Tests that call better-sqlite3 directly should skip
+// when this returns false rather than fail with a confusing native-addon error.
+function canUseSQLite() {
+  try {
+    require('better-sqlite3');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+module.exports = { ensureValidConfigDb, CONFIG_DB, canUseSQLite };

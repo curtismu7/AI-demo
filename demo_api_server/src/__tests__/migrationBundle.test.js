@@ -11,6 +11,12 @@ const os = require('node:os');
 const http = require('node:http');
 const { execSync, spawnSync } = require('node:child_process');
 
+// The migration scripts require Node 20+ (they call checkNodeVersion() internally
+// and exit 1 if the runtime is older). Skip the whole suite under Node 18.
+const nodeMajor = parseInt(String(process.versions.node || '').split('.')[0], 10);
+const node20Plus = nodeMajor >= 20;
+const describeIfNode20 = node20Plus ? describe : describe.skip;
+
 const SCRIPTS_DIR = path.resolve(__dirname, '../../scripts');
 const SERVER_ROOT = path.resolve(__dirname, '../..');
 
@@ -121,7 +127,7 @@ function startFakeServer(port) {
 
 // ── Export script tests ───────────────────────────────────────────────────────
 
-describe('exportMigrationBundle.js', () => {
+describeIfNode20('exportMigrationBundle.js', () => {
   let outDir;
   let extractDir;
   beforeEach(() => { outDir = tmpDir(); extractDir = null; });
@@ -248,7 +254,7 @@ describe('exportMigrationBundle.js', () => {
 
 // ── Import script tests ───────────────────────────────────────────────────────
 
-describe('importMigrationBundle.js', () => {
+describeIfNode20('importMigrationBundle.js', () => {
   let workDir;
   beforeEach(() => { workDir = tmpDir(); });
   afterEach(() => { fs.rmSync(workDir, { recursive: true, force: true }); });
