@@ -237,20 +237,22 @@ describe('PingOneProvisionService — regression suite', () => {
   // AI Agent app create, this fails.
   // ──────────────────────────────────────────────────────────────────────
   describe('source: Two-Exchange may_act wiring placement', () => {
-    it('the may_act wiring block appears AFTER the AI Agent app create', () => {
+    it('the may_act wiring block appears AFTER the MCP Exchanger app create', () => {
       const fs = require('fs');
       const path = require('path');
       const src = fs.readFileSync(
         path.resolve(__dirname, '../../services/pingoneProvisionService.js'),
         'utf8',
       );
-      const aiAgentCreateIdx = src.indexOf("'Super Banking AI Agent'");
-      // Search for the actual string used in production (renamed from 'Wiring may_act on Two-Exchange resources')
+      // may_act wiring uses provisioned.mcpExchangerApp?.clientId, so it must
+      // come AFTER the MCP Exchanger app is created (not after AI Agent).
+      const mcpExchangerCreateIdx = src.indexOf("'Super Banking MCP Exchanger'");
+      // Search for the actual wiring step string in production
       const mayActWiringIdx = src.indexOf('Wiring may_act token claim');
-      expect(aiAgentCreateIdx).toBeGreaterThan(-1);
+      expect(mcpExchangerCreateIdx).toBeGreaterThan(-1);
       expect(mayActWiringIdx).toBeGreaterThan(-1);
       // The wiring step must appear LATER in the file (so it runs LATER at runtime).
-      expect(mayActWiringIdx).toBeGreaterThan(aiAgentCreateIdx);
+      expect(mayActWiringIdx).toBeGreaterThan(mcpExchangerCreateIdx);
     });
   });
 

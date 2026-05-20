@@ -465,9 +465,10 @@ describe("DemoDataPage — may_act status seeded from session on mount", () => {
 				<DemoDataPage user={{ role: "customer" }} onLogout={jest.fn()} />
 			</BrowserRouter>,
 		);
-		// Non-ok response → setMayActEnabled not called → stays 'Checking…' (null state renders Checking)
-		// Allow time for async completion
-		await new Promise((r) => setTimeout(r, 50));
+		// Non-ok response → setMayActEnabled not called → stays 'Checking…' (null state renders Checking).
+		// Wait for the page to finish loading (loading=false reveals the may_act section)
+		// before asserting the null-state "Checking…" label is present.
+		await screen.findByRole("heading", { name: /token exchange.*may_act/i });
 		expect(screen.getByText(/checking…/i)).toBeInTheDocument();
 	});
 });

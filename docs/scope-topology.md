@@ -26,13 +26,13 @@
 
 ### Super Banking API
 
-Audience: `api.ping.demo`
+Audience: `enduser.ping.demo`
 
 Native scopes: `read`, `write`, `transfer`, `accounts:read`, `transactions:read`, `mortgage:read`, `ai:agent:read`, `ai_agent`, `admin:read`, `admin:write`, `admin:delete`, `users:read`, `users:manage`
 
 ### Super Banking MCP Server
 
-Audience: `mcp-server.ping.demo`
+Audience: `mcpserver.ping.demo`
 
 Native scopes: `mcp:invoke`
 
@@ -40,7 +40,7 @@ Mirrored scopes (RFC 8693 exchange-hop, ARCHITECTURE-TRUTHS T-10): `read`, `writ
 
 ### Super Banking MCP Gateway
 
-Audience: `api.ping.demo`
+Audience: `mcpgateway.ping.demo`
 
 Native scopes: `mcp:invoke`
 
@@ -48,7 +48,7 @@ Mirrored scopes (RFC 8693 exchange-hop, ARCHITECTURE-TRUTHS T-10): `read`, `writ
 
 ### Super Banking Agent Gateway
 
-Audience: `agent-gateway.ping.demo`
+Audience: `agentgateway.ping.demo`
 
 Native scopes: `agent:invoke`
 
@@ -56,10 +56,10 @@ Native scopes: `agent:invoke`
 
 | Service | Resource | Validates aud | Gates on tool scopes | Notes |
 |---|---|---|---|---|
-| `banking_api_server` | Super Banking API | `api.ping.demo` | no | BFF / token custodian. Performs RFC 8693 exchange #1 (user token -> api.ping.demo audience). |
-| `banking_mcp_gateway` | Super Banking MCP Gateway | `api.ping.demo` | yes | MCP Gateway. Validates inbound aud === api.ping.demo and enforces per-tool requiredScopes (getScopesForGatewayTool) on the inbound bearer BEFORE credential swap. Therefore every gateway-surface tool scope MUST be mirrored onto the Super Banking MCP Gateway resource (ARCHITECTURE-TRUTHS T-10). |
-| `banking_mcp_server` | Super Banking MCP Server | `mcp-server.ping.demo` | yes | Backend MCP tool server. Receives the gateway re-exchanged token (aud === mcp-server.ping.demo); banking tool scopes are mirrored here for exchange hop #3. |
-| `banking_agent_service` | Super Banking Agent Gateway | `agent-gateway.ping.demo` | no | Agent Gateway (Two-Exchange Step 1 audience for the AI Agent client-credentials token). |
+| `banking_api_server` | Super Banking API | `enduser.ping.demo` | no | BFF / token custodian. Performs RFC 8693 two-exchange delegation (user token -> mcpgateway.ping.demo). |
+| `banking_mcp_gateway` | Super Banking MCP Gateway | `mcpgateway.ping.demo` | yes | MCP Gateway. Validates inbound aud === mcpgateway.ping.demo and enforces per-tool requiredScopes (getScopesForGatewayTool) on the inbound bearer BEFORE credential swap. Therefore every gateway-surface tool scope MUST be mirrored onto the Super Banking MCP Gateway resource (ARCHITECTURE-TRUTHS T-10). |
+| `banking_mcp_server` | Super Banking MCP Server | `mcpserver.ping.demo` | yes | Backend MCP tool server. Receives the gateway re-exchanged token (aud === mcpserver.ping.demo); banking tool scopes are mirrored here for exchange hop #3. |
+| `banking_agent_service` | Super Banking Agent Gateway | `agentgateway.ping.demo` | no | Agent Gateway (Two-Exchange Step 1 audience for the AI Agent client-credentials token). |
 
 ## App Grants
 

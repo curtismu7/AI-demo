@@ -8,7 +8,7 @@
 //
 // See banking_api_ui/src/utils/educationalPages.js for the path list.
 
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { useAgentCCTokenPrefetch } from '../useAgentCCTokenPrefetch';
 
 // Stub the TokenChain context so the hook has a non-null context to act on.
@@ -22,8 +22,8 @@ jest.mock('../../context/TokenChainContext', () => ({
 }));
 
 describe('useAgentCCTokenPrefetch — path gating', () => {
-  const originalLocation = window.location;
   let fetchMock;
+  let locationSpy;
 
   beforeEach(() => {
     fetchMock = jest.fn(() =>
@@ -33,21 +33,16 @@ describe('useAgentCCTokenPrefetch — path gating', () => {
       }),
     );
     global.fetch = fetchMock;
+    locationSpy = jest.spyOn(window, 'location', 'get');
   });
 
   afterEach(() => {
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: originalLocation,
-    });
+    locationSpy.mockRestore();
     delete global.fetch;
   });
 
   function setPath(pathname) {
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: { ...originalLocation, pathname },
-    });
+    locationSpy.mockReturnValue({ pathname });
   }
 
   it.each([
@@ -57,9 +52,11 @@ describe('useAgentCCTokenPrefetch — path gating', () => {
     '/architecture/flow',
     '/architecture/token-flow',
     '/architecture/overview',
-  ])('does NOT call /api/tokens/agent-cc-preview when on %s', (path) => {
+  ])('does NOT call /api/tokens/agent-cc-preview when on %s', async (path) => {
     setPath(path);
-    renderHook(() => useAgentCCTokenPrefetch());
+    await act(async () => {
+      renderHook(() => useAgentCCTokenPrefetch());
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -68,9 +65,11 @@ describe('useAgentCCTokenPrefetch — path gating', () => {
     '/admin',
     '/monitoring/token-chain',
     '/agent',
-  ])('DOES call /api/tokens/agent-cc-preview when on %s', (path) => {
+  ])('DOES call /api/tokens/agent-cc-preview when on %s', async (path) => {
     setPath(path);
-    renderHook(() => useAgentCCTokenPrefetch());
+    await act(async () => {
+      renderHook(() => useAgentCCTokenPrefetch());
+    });
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/tokens/agent-cc-preview',
       expect.objectContaining({ credentials: 'include' }),

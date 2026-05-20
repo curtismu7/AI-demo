@@ -65,19 +65,20 @@ describe('isEducationalPath', () => {
   });
 
   describe('defaults to window.location.pathname when no argument is given', () => {
-    const originalLocation = window.location;
+    // Spy on window.location.pathname so each test gets full control without
+    // JSDOM descriptor conflicts.
+    let locationSpy;
+
+    beforeEach(() => {
+      locationSpy = jest.spyOn(window, 'location', 'get');
+    });
+
     afterEach(() => {
-      Object.defineProperty(window, 'location', {
-        configurable: true,
-        value: originalLocation,
-      });
+      locationSpy.mockRestore();
     });
 
     function setPath(pathname) {
-      Object.defineProperty(window, 'location', {
-        configurable: true,
-        value: { ...originalLocation, pathname },
-      });
+      locationSpy.mockReturnValue({ pathname });
     }
 
     it('returns true when window pathname is educational', () => {
