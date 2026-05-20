@@ -50,6 +50,9 @@ export default function LoginFlowPanel({ isOpen, onClose, initialTabId }) {
               tokens are never exposed to the browser.
             </li>
           </ol>
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            All client applications redirect to the <strong>same centralized PingOne sign-on UI</strong> — the app never renders its own login form. This means any change to authentication policy (new MFA requirement, new SSO provider, branding update) propagates automatically to every connected app without code changes.
+          </p>
         </>
       ),
     },
@@ -110,6 +113,9 @@ export default function LoginFlowPanel({ isOpen, onClose, initialTabId }) {
             PingOne returns a <code>code</code> to the BFF callback; the server exchanges it with <code>code_verifier</code> (PKCE).
           </EduImplIntro>
           <pre className="edu-code">{SNIP_USER_LOGIN_EXCHANGE}</pre>
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            The redirect callback page (<code className="edu-code">/callback</code>) is intentionally minimal — static HTML with no JavaScript beyond the OAuth code exchange. Avoid rendering frameworks or lazy-loaded bundles on this page; delayed JavaScript execution can cause the auth code to expire before it&apos;s exchanged, producing silent login failures.
+          </p>
         </>
       ),
     },
