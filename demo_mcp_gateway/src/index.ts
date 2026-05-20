@@ -874,7 +874,7 @@ async function handleMessage(
         ...existingMeta,
         credentialPath: 'oauth_bearer',
         backendTransport: 'websocket',
-        tokenExchangeCached: exchInfo.cacheHit,
+        tokenExchangeCached: config.mcpServerPassthrough ? null : exchInfo.cacheHit,
         tokenEvents: gwTokenEvents,
       };
     }
