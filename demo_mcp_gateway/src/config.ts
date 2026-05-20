@@ -32,6 +32,10 @@ export interface GatewayConfig {
   introspectionEndpoint: string;
   // Dev/mock bypass — when true, skip required-var guards and make auth pipeline passthrough.
   devBypass: boolean;
+  // When true, skip RFC 8693 re-exchange on olb/invest WebSocket legs.
+  // The inbound token (aud=gatewayResourceUri) is forwarded unchanged.
+  // MCP_SERVER_RESOURCE_URI on the MCP server must equal MCP_GW_RESOURCE_URI.
+  mcpServerPassthrough: boolean;
   // Phase 266: Path A — service API key for the api_key credential disposition (demo only)
   demoApiKeyServiceKey: string;
   // Phase 267: Path A backend — base URL of banking_mortgage_service (e.g. http://localhost:8082)
@@ -125,6 +129,7 @@ export function loadConfig(): GatewayConfig {
     introspectionEndpoint: optional('GW_INTROSPECTION_ENDPOINT',
       optional('PINGONE_INTROSPECTION_ENDPOINT', '')),
     devBypass: DEV_BYPASS,
+    mcpServerPassthrough: process.env.MCP_GW_PASSTHROUGH_TO_MCP_SERVER === 'true',
     // Phase 266 fields
     demoApiKeyServiceKey: optional('DEMO_APIKEY_SERVICE_KEY', 'demo-api-key-0000'),
     // Phase 267 fields — dedicated mortgage backend (kept separate from the
