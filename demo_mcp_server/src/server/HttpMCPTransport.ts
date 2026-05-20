@@ -29,6 +29,7 @@ import { AuditLogger } from '../utils/AuditLogger';
 import { Logger, createDefaultLoggerConfig } from '../utils/Logger';
 import { correlationFromMessage } from './correlationFromMessage';
 import { runWithCorrelation } from '../utils/correlationContext';
+import { extractTratClaims } from '../auth/TratClaimsExtractor';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -416,6 +417,18 @@ export class HttpMCPTransport {
     } catch {
       this.sendUnauthorized(res, 'Invalid or expired token');
       return;
+    }
+
+    // 3a. TraT claim extraction — when MCP_TRAT_MODE_ENABLED is set, extract and log TraT context
+    const tratMode = process.env.MCP_TRAT_MODE_ENABLED === 'true';
+    if (tratMode) {
+      const xTratContext = req.headers['x-trat-context'] as string | undefined;
+      const tratClaims = extractTratClaims(bearerToken, xTratContext, true);
+      if (tratClaims) {
+        console.log(`[HttpMCPTransport][TraT] Claims extracted — tool=${tratClaims.reqctx.tool} purp=${tratClaims.purp} sim=${tratClaims.trat_sim ?? false}`);
+      } else {
+        console.warn('[HttpMCPTransport][TraT] MCP_TRAT_MODE_ENABLED but no TraT claims found');
+      }
     }
 
     // 3b. Gateway mode: enforce next-hop upstream contract (D-05, Phase 243)
