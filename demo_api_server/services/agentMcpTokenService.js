@@ -1473,60 +1473,64 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       });
     }
 
-  // ── TraT Mode: build context and emit trat token event ───────────────────
-  const ffTratMode =
-    configStore.getEffective('ff_trat_mode') === true ||
-    configStore.getEffective('ff_trat_mode') === 'true';
+    let tratContextHeader = null;
 
-  let tratContextHeader = null;
+    // ── TraT Mode: build context and emit trat token event ───────────────────
+    try {
+      const _tratRaw = configStore.getEffective('ff_trat_mode');
+      const ffTratMode = _tratRaw === true || _tratRaw === 'true';
 
-  if (ffTratMode && exchangedToken) {
-    const agentClientId =
-      configStore.getEffective('pingone_mcp_token_exchanger_client_id') ||
-      process.env.AGENT_OAUTH_CLIENT_ID || '';
-    const gatewayClientId =
-      configStore.getEffective('pingone_ai_agent_client_id') ||
-      process.env.PINGONE_AI_AGENT_CLIENT_ID || '';
+      if (ffTratMode && exchangedToken) {
+        const agentClientId =
+          configStore.getEffective('pingone_mcp_token_exchanger_client_id') ||
+          process.env.AGENT_OAUTH_CLIENT_ID || '';
+        const gatewayClientId =
+          configStore.getEffective('pingone_ai_agent_client_id') ||
+          process.env.PINGONE_AI_AGENT_CLIENT_ID || '';
 
-    const tratCtx = buildTratContext(req, tool, userSub, agentClientId, gatewayClientId);
+        const tratCtx = buildTratContext(req, tool, userSub, agentClientId, gatewayClientId);
 
-    // Check if PingOne emitted reqctx natively in the exchanged token
-    const exchangedDecoded = decodeJwtClaims(exchangedToken);
-    const hasNativeReqctx = !!(exchangedDecoded?.claims?.reqctx);
+        // Check if PingOne emitted reqctx natively in the exchanged token
+        const exchangedDecoded = decodeJwtClaims(exchangedToken);
+        const hasNativeReqctx = !!(exchangedDecoded?.claims?.reqctx);
 
-    const isSim = !hasNativeReqctx;
-    if (isSim) {
-      tratContextHeader = JSON.stringify({ ...tratCtx, trat_sim: true });
-    }
+        const isSim = !hasNativeReqctx;
+        if (isSim) {
+          tratContextHeader = JSON.stringify({ ...tratCtx, trat_sim: true });
+        }
 
-    tokenEvents.push(buildTokenEvent(
-      'trat-context',
-      isSim
-        ? 'Transaction Token (TraT) — Simulation Mode'
-        : 'Transaction Token (TraT) — PingOne Native',
-      isSim ? 'active' : 'success',
-      null,
-      isSim
-        ? 'ff_trat_mode is ON. PingOne did not emit reqctx in the exchanged token — activating simulation shim. ' +
-          'TraT context will be forwarded as X-TraT-Context header to the MCP server. ' +
-          'trat_sim: true marks this as a simulation. ' +
-          'To get native TraT claims, run `npm run pingone:setup:trat` to configure the PingOne token policy.'
-        : 'ff_trat_mode is ON. PingOne emitted reqctx natively in the exchanged token. ' +
-          'TraT claims are embedded in the bearer token — no simulation header needed.',
-      {
-        rfc: 'draft-oauth-transaction-tokens-for-agents-00',
-        tratContext: {
-          reqctx: tratCtx.reqctx,
-          purp: tratCtx.purp,
-          azd: tratCtx.azd,
-          rctx: tratCtx.rctx,
-        },
-        trat_sim: isSim,
-        nativeClaims: !isSim,
+        tokenEvents.push(buildTokenEvent(
+          'trat-context',
+          isSim
+            ? 'Transaction Token (TraT) — Simulation Mode'
+            : 'Transaction Token (TraT) — PingOne Native',
+          isSim ? 'active' : 'success',
+          null,
+          isSim
+            ? 'ff_trat_mode is ON. PingOne did not emit reqctx in the exchanged token — activating simulation shim. ' +
+              'TraT context will be forwarded as X-TraT-Context header to the MCP server. ' +
+              'trat_sim: true marks this as a simulation. ' +
+              'To get native TraT claims, run `npm run pingone:setup:trat` to configure the PingOne token policy.'
+            : 'ff_trat_mode is ON. PingOne emitted reqctx natively in the exchanged token. ' +
+              'TraT claims are embedded in the bearer token — no simulation header needed.',
+          {
+            rfc: 'draft-oauth-transaction-tokens-for-agents-00',
+            tratContext: {
+              reqctx: tratCtx.reqctx,
+              purp: tratCtx.purp,
+              azd: tratCtx.azd,
+              rctx: tratCtx.rctx,
+            },
+            trat_sim: isSim,
+            nativeClaims: !isSim,
+          }
+        ));
       }
-    ));
-  }
-  // ─────────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────────────────────────────────
+    } catch (tratErr) {
+      console.warn('[TraT] Failed to build TraT context, continuing without it:', tratErr.message);
+      tratContextHeader = null;
+    }
 
     return { token: exchangedToken, tokenEvents, userSub, tratContextHeader };
 
