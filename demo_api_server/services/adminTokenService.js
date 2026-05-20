@@ -206,12 +206,14 @@ function getAdminTokenInfo(adminToken) {
 function toolRequiresAdminPrivileges(toolName) {
   // Define admin-only tools
   const adminOnlyTools = [
-    'admin_list_all_users',
-    'admin_get_user_details',
-    'admin_delete_user',
-    'admin_manage_accounts',
-    'admin_view_audit_logs',
-    'admin_system_status'
+    'lookup_customer',
+    'get_customer_profile',
+    'get_customer_accounts',
+    'get_customer_transactions',
+    'freeze_account',
+    'reset_customer_password',
+    'adjust_balance',
+    'delete_customer'
   ];
 
   return adminOnlyTools.includes(toolName);

@@ -120,13 +120,20 @@ router.post('/users/:userId/reset-password', requireAdmin, requireScopes(['admin
 router.post('/accounts/:accountId/adjust', requireAdmin, requireScopes(['admin:write']), async (req, res) => {
   try {
     const { amount, description } = req.body;
-    if (typeof amount !== 'number') {
-      return res.status(400).json({ error: 'invalid_body', message: 'amount (number) is required' });
+    if (typeof amount !== 'number' || !isFinite(amount)) {
+      return res.status(400).json({ error: 'invalid_body', message: 'amount must be a finite number' });
+    }
+    const MAX_ADJUSTMENT = 1_000_000;
+    if (Math.abs(amount) > MAX_ADJUSTMENT) {
+      return res.status(400).json({ error: 'invalid_body', message: `amount magnitude cannot exceed ${MAX_ADJUSTMENT}` });
     }
     const account = store.getAccountById(req.params.accountId);
     if (!account) return res.status(404).json({ error: 'account_not_found' });
 
     const newBalance = (account.balance || 0) + amount;
+    if (newBalance < 0) {
+      return res.status(400).json({ error: 'insufficient_funds', message: 'Adjustment would result in negative balance' });
+    }
     const updated = await store.updateAccount(req.params.accountId, { balance: newBalance });
 
     const tx = await store.createTransaction({
