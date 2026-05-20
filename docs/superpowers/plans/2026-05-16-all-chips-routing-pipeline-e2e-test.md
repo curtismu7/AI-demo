@@ -560,7 +560,7 @@ Runs under `playwright.real.config.js` (`npm run test:e2e:real` / `:real:local`)
  * Skip-proof: customer asserts token-chain + tokenEvents (runChip);
  * admin context corroborates Authorize + gateway (assertAdminPipelineEvents).
  *
- * Requires: ./run-bank.sh stack up, real-login env vars set. Auto-skips otherwise.
+ * Requires: ./run-demo.sh stack up, real-login env vars set. Auto-skips otherwise.
  */
 const { test, expect, request } = require('@playwright/test');
 const {
@@ -738,9 +738,9 @@ Expected: spec listed; tests show as skipped when `requireRealLoginEnv()` is fal
 
 - [ ] **Step 3: Run for real against the local stack (manual gate)**
 
-Pre: `./run-bank.sh status` all healthy; export `E2E_BASE_URL=http://localhost:3000`, `E2E_CUSTOMER_USERNAME=bankuser`, `E2E_CUSTOMER_PASSWORD=2Federate!`, `E2E_ADMIN_USERNAME=bankadmin`, `E2E_ADMIN_PASSWORD=2Federate!` (or values from `tests/e2e/.env.e2e`).
+Pre: `./run-demo.sh status` all healthy; export `E2E_BASE_URL=http://localhost:3000`, `E2E_CUSTOMER_USERNAME=bankuser`, `E2E_CUSTOMER_PASSWORD=2Federate!`, `E2E_ADMIN_USERNAME=bankadmin`, `E2E_ADMIN_PASSWORD=2Federate!` (or values from `tests/e2e/.env.e2e`).
 Run: `cd banking_api_ui && npm run test:e2e:real -- all-chips-pipeline.real.spec.js`
-Expected: Conditions 1 & 3 green for heuristic chips with full trail; Condition 2 chips resolve+execute; no-token → 401. On any chip showing a result without a trail → that is a real "skip" finding; STOP and report (do not weaken assertions). Confirm afterAll restored `helix_base_url` (`./run-bank.sh tail all` shows no lingering `127.0.0.1:9` Helix errors).
+Expected: Conditions 1 & 3 green for heuristic chips with full trail; Condition 2 chips resolve+execute; no-token → 401. On any chip showing a result without a trail → that is a real "skip" finding; STOP and report (do not weaken assertions). Confirm afterAll restored `helix_base_url` (`./run-demo.sh tail all` shows no lingering `127.0.0.1:9` Helix errors).
 
 - [ ] **Step 4: Commit**
 

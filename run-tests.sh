@@ -10,8 +10,8 @@
 #   ./run-tests.sh all       # Run everything
 #
 # Prerequisites:
-#   npm install  (in banking_api_server/ and banking_api_ui/)
-#   npx playwright install chromium  (in banking_api_ui/, one-time setup)
+#   npm install  (in demo_api_server/ and demo_api_ui/)
+#   npx playwright install chromium  (in demo_api_ui/, one-time setup)
 # =============================================================================
 
 set -e
@@ -39,7 +39,7 @@ fail() { echo -e "${RED}✗ $1${NC}"; exit 1; }
 
 run_api_tests() {
   banner "API Server Tests (Jest)"
-  cd "$ROOT/banking_api_server"
+  cd "$ROOT/demo_api_server"
 
   if [[ ! -d node_modules ]]; then
     warn "node_modules not found — running npm install first"
@@ -61,7 +61,7 @@ run_api_tests() {
 
 run_e2e_tests() {
   banner "Playwright E2E UI Tests"
-  cd "$ROOT/banking_api_ui"
+  cd "$ROOT/demo_api_ui"
 
   if [[ ! -d node_modules ]]; then
     warn "node_modules not found — running npm install first"
@@ -75,11 +75,11 @@ run_e2e_tests() {
   fi
 
   echo ""
-  echo -e "${YELLOW}NOTE: E2E tests require the banking_api_server running on port 3001.${NC}"
+  echo -e "${YELLOW}NOTE: E2E tests require the demo_api_server running on port 3001.${NC}"
   echo -e "${YELLOW}      The webServer config will start the React dev server automatically.${NC}"
   echo ""
   echo "  To start the API server manually:"
-  echo "    cd banking_api_server && node server.js &"
+  echo "    cd demo_api_server && node server.js &"
   echo ""
 
   # Check if API server is running
@@ -89,7 +89,7 @@ run_e2e_tests() {
     ok "Playwright E2E tests completed"
   else
     warn "API server not running on :3001 — skipping E2E tests"
-    echo "  Start it with: cd banking_api_server && node server.js"
+    echo "  Start it with: cd demo_api_server && node server.js"
     echo "  Then re-run:   ./run-tests.sh e2e"
     return 0
   fi
@@ -110,7 +110,7 @@ case "$MODE" in
     run_api_tests
     echo ""
     echo -e "${YELLOW}To run Playwright E2E tests:${NC}"
-    echo "  Start API server:  cd banking_api_server && node server.js"
+    echo "  Start API server:  cd demo_api_server && node server.js"
     echo "  Then run:          ./run-tests.sh e2e"
     ;;
   e2e)

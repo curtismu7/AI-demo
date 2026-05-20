@@ -18,7 +18,7 @@ Canonical terminology for the Super Banking demo. Use these terms exactly as def
 
 The **banking_api_server** on port 3001. The **sole token custodian** in the system — the only service that holds PingOne access/refresh tokens. Everything outbound that needs a token flows through here.
 
-**Not to be confused with**: the "banking resource server" referenced in gateway env vars (`BANKING_RESOURCE_SERVER_BASE_URL`, `BANKING_RESOURCE_SERVER_RESOURCE_URI`) and in Phase 266 paths. That is **the same BFF Express process wearing a different OAuth audience hat** — specifically `routes/resourceServer.js` + `routes/resourceServerCC.js`, called by the gateway with a token re-exchanged to audience `banking-resource-server.bxf.com`. There is no separate `banking_resource_server` codebase.
+**Not to be confused with**: the "banking resource server" referenced in gateway env vars (`BANKING_RESOURCE_SERVER_BASE_URL`, `BANKING_RESOURCE_SERVER_RESOURCE_URI`) and in Phase 266 paths. That is **the same BFF Express process wearing a different OAuth audience hat** — specifically `routes/resourceServer.js` + `routes/resourceServerCC.js`, called by the gateway with a token re-exchanged to audience `banking-resource-server.ping.demo`. There is no separate `banking_resource_server` codebase.
 
 ### gateway
 

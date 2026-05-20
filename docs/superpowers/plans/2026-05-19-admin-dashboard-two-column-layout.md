@@ -126,7 +126,7 @@ This is a visual change — confirm it works in the running app.
 - [ ] **Step 1: Start the app (if not already running)**
 
 ```bash
-./run-bank.sh
+./run-demo.sh
 ```
 
 Wait for `API ready` and `UI ready` in the output.

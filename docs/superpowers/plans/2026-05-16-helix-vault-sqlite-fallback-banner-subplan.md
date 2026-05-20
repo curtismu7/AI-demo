@@ -233,7 +233,7 @@ try {
 }
 ```
 
-- [ ] **Step 3:** Verify startup is unaffected when no keyfile / no vault: `./run-bank.sh stop && ./run-bank.sh && ./run-bank.sh status` (all healthy); log shows the migration line or a benign skip; NO change to the vault loader's own log lines. NEVER hold `_vaultPwForMigration` beyond this block (it goes out of scope; do not assign to module scope).
+- [ ] **Step 3:** Verify startup is unaffected when no keyfile / no vault: `./run-demo.sh stop && ./run-demo.sh && ./run-demo.sh status` (all healthy); log shows the migration line or a benign skip; NO change to the vault loader's own log lines. NEVER hold `_vaultPwForMigration` beyond this block (it goes out of scope; do not assign to module scope).
 - [ ] **Step 4: Commit** `feat(startup): migrate Helix keyfile into vault+SQLite after vault load`.
 
 ## Task C: Wire migration into `setup:fresh`
@@ -282,7 +282,7 @@ try {
 ## Task E: REGRESSION_PLAN §4 entry + verification
 
 - [ ] **Step 1:** Add a §4 Bug Fix Log entry (template per regression-guard): the keyfile→vault+SQLite migration + degraded banner, files touched, the §1 no-break statements above, how verified.
-- [ ] **Step 2:** Full verification: `cd banking_api_server && npx jest helixKeyMigration vault` (migration + existing vault tests green — proves Row 72/73 intact); `cd banking_api_ui && npm run build` exit 0; `./run-bank.sh status` healthy; manual banner toggle.
+- [ ] **Step 2:** Full verification: `cd banking_api_server && npx jest helixKeyMigration vault` (migration + existing vault tests green — proves Row 72/73 intact); `cd banking_api_ui && npm run build` exit 0; `./run-demo.sh status` healthy; manual banner toggle.
 - [ ] **Step 3: Commit** `docs(regression): §4 — Helix keyfile migration + degraded banner`.
 
 ## Definition of done (sub-plan)

@@ -148,7 +148,7 @@ banking/
 ```typescript
 // Source: banking_mcp_invest/src/index.ts (verified pattern, lines 22-211)
 const PORT = parseInt(process.env.PORT || '8082', 10);   // new variants pick 8082, 8083
-const RESOURCE_URI = process.env.MCP_SERVER_RESOURCE_URI || 'https://mcp-apikey.bxf.com';
+const RESOURCE_URI = process.env.MCP_SERVER_RESOURCE_URI || 'https://mcp-apikey.ping.demo';
 
 function handleHttp(req, res) {
   if (req.url === '/.well-known/oauth-protected-resource') { /* RFC 9728 metadata */ }
@@ -247,7 +247,7 @@ export async function selectCredentialForBackend(
 | Category | Items Found | Action Required |
 |----------|-------------|------------------|
 | Stored data | **None — verified.** No existing data is renamed or migrated. New backends will store their own demo data in-memory (mirror `banking_mcp_invest` which has no persistent store). | none |
-| Live service config | **One item — PingOne app + resource server provisioning.** New aud values (`mcp-apikey.bxf.com`, `mcp-userinfo.bxf.com`) need PingOne resource-server registrations so the gateway's RFC 8693 re-exchange can target them. Currently provisioned via `npm run pingone:bootstrap` from a static list. | Add two new entries to the bootstrap config (`banking_api_server/scripts/pingone-bootstrap.js`) so `npm run setup:fresh` provisions them. Tag as a separate plan. |
+| Live service config | **One item — PingOne app + resource server provisioning.** New aud values (`mcp-apikey.ping.demo`, `mcp-userinfo.ping.demo`) need PingOne resource-server registrations so the gateway's RFC 8693 re-exchange can target them. Currently provisioned via `npm run pingone:bootstrap` from a static list. | Add two new entries to the bootstrap config (`banking_api_server/scripts/pingone-bootstrap.js`) so `npm run setup:fresh` provisions them. Tag as a separate plan. |
 | OS-registered state | **None — verified.** No Task Scheduler / launchd / pm2 entries reference these new services. `run-bank.sh` handles process lifecycle. | Update `SVC_LIST` array in `run-bank.sh:612` to include `banking_demo_apikey_backend` + `banking_demo_userinfo_backend`. Update the table in CLAUDE.md "Node services and what each needs to start". |
 | Secrets / env vars | **One new secret + several new config keys.** `DEMO_APIKEY_BACKEND_SERVICE_KEY` (the API key the gateway swaps in) — random opaque string, NOT a JWT. New env vars for ports/audiences/WS URLs (`MCP_APIKEY_WS_URL`, `MCP_APIKEY_RESOURCE_URI`, `MCP_USERINFO_WS_URL`, `MCP_USERINFO_RESOURCE_URI`). | Add the secret to `configStore.js` with `public: false` (same pattern as `helix_api_key`). Add the URI/URL configs to `gateway/src/config.ts` `loadConfig()`. Update `.env.example` files at repo root and `banking_mcp_gateway/`. |
 | Build artifacts | **None pre-existing.** Two new `dist/` directories will be created on first build. | `.gitignore` already excludes `dist/`. No action. |
@@ -296,7 +296,7 @@ export async function selectCredentialForBackend(
 **What goes wrong:** Gateway calls `exchangeTokenForBackend()` for the API-key backend, even though the API-key backend doesn't validate `aud` (it expects `X-API-Key` instead). The exchange is wasted at best, or fails at worst because no PingOne resource server is registered for that aud.
 **Why it happens:** Existing pattern in `router.ts:33` always returns a `BackendTarget` and the index.ts always re-exchanges (line 318).
 **How to avoid:** Refactor `index.ts:312-324` so the credential decision happens **before** the exchange: `selectCredentialForBackend()` returns the descriptor, and only the `oauth_bearer` and `dual_token` paths trigger `exchangeTokenForBackend`. The `api_key` path skips PingOne entirely.
-**Warning signs:** A plan that registers a PingOne resource server for `mcp-apikey.bxf.com` — it shouldn't need one; the gateway speaks API-key out, not OAuth.
+**Warning signs:** A plan that registers a PingOne resource server for `mcp-apikey.ping.demo` — it shouldn't need one; the gateway speaks API-key out, not OAuth.
 
 ---
 
@@ -317,7 +317,7 @@ import { dispatchTool } from './tools/apiKeyToolHandler';
 import { decodeAndValidate, extractScopes, TokenError } from './server/tokenValidator';
 
 const PORT = parseInt(process.env.PORT || '8082', 10);
-const RESOURCE_URI = process.env.MCP_SERVER_RESOURCE_URI || 'https://mcp-apikey.bxf.com';
+const RESOURCE_URI = process.env.MCP_SERVER_RESOURCE_URI || 'https://mcp-apikey.ping.demo';
 // IMPORTANT: this backend validates the gateway's INBOUND access token (so the gateway
 // has done a real RFC 8693 re-exchange for aud=mcp-apikey). The OUTBOUND credential to
 // "the real API-key API" is the X-API-Key the gateway already attached as a header.
@@ -572,7 +572,7 @@ Run-bank.sh-managed dev environment is the target. The new backends require:
 - **R1 — Diagram regen tooling friction.** `npm run build:diagrams` needs Puppeteer/Chromium (~150 MB on first run). Plan must include manual fallback (`https://mermaid.live`).
 - **R2 — `BankingAgent.js` is 8503 LOC.** Editing the `runAction` switch + `ACTION_GROUPS` is a needle in a haystack; do it surgically with grep-anchored Edits (no Write rewrites).
 - **R3 — `ResourceServerPage.jsx` has §0 emoji violations.** The new pages must NOT inherit them. Static CI grep recommended (see Validation §266-R3).
-- **R4 — PingOne resource-server provisioning lag.** Adding `mcp-userinfo.bxf.com` to the bootstrap requires the team to re-run `npm run pingone:bootstrap` once (or `npm run setup:fresh`). API-key backend does NOT need PingOne provisioning (it speaks API-key, not OAuth) — that's a feature, not a bug.
+- **R4 — PingOne resource-server provisioning lag.** Adding `mcp-userinfo.ping.demo` to the bootstrap requires the team to re-run `npm run pingone:bootstrap` once (or `npm run setup:fresh`). API-key backend does NOT need PingOne provisioning (it speaks API-key, not OAuth) — that's a feature, not a bug.
 - **R5 — Cookie size pressure.** The `_auth` signed cookie already carries `idToken` (line 594 of `oauthUser.js`). It's tight but works. No new cookie fields needed for Phase 266.
 - **R6 — Two new services double the install surface.** Update fresh-install docs (CLAUDE.md table at "Node services and what each needs to start" — 7 rows → 9 rows). Update README service count if it appears anywhere.
 - **R7 — `npm run build` (banking_api_ui) is the gating test.** Every plan that touches `banking_api_ui/src/` must end with a confirmed-zero-exit-code build.

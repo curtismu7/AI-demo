@@ -19,7 +19,7 @@ The standard configuration flow is:
 ```bash
 cp banking_api_server/.env.example banking_api_server/.env
 # Fill in required secrets (PingOne client IDs/secrets, session secret)
-./run-bank.sh
+./run-demo.sh
 ```
 
 **For production (Vercel):**
@@ -297,7 +297,7 @@ PINGONE_ADMIN_CLIENT_SECRET="x6Ee...8u0_w8F9a.qA9-j47z"
 
 ### MCP Gateway (banking_mcp_gateway)
 
-The gateway typically symlinks to the BFF's `.env` (created by `run-bank.sh`). Additional gateway-specific vars:
+The gateway typically symlinks to the BFF's `.env` (created by `run-demo.sh`). Additional gateway-specific vars:
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
@@ -455,7 +455,7 @@ mv api.ping.demo.pem banking_api_ui/
 mv api.ping.demo-key.pem banking_api_ui/
 ```
 
-Then `run-bank.sh` launches the UI with HTTPS on port 4000.
+Then `run-demo.sh` launches the UI with HTTPS on port 4000.
 
 ### Overriding the Default Host
 
@@ -518,7 +518,7 @@ Feature flags are toggled at runtime via `/config` UI or environment variables:
 1. Check that `banking_api_server/.env` exists and is not empty
 2. Verify `PINGONE_ENVIRONMENT_ID`, `PINGONE_ADMIN_CLIENT_ID`, `PINGONE_ADMIN_CLIENT_SECRET` are set
 3. If using vault: check `VAULT_PASSWORD` is correct and `secrets.vault` exists
-4. Restart the BFF: `./run-bank.sh stop && ./run-bank.sh`
+4. Restart the BFF: `./run-demo.sh stop && ./run-demo.sh`
 
 ### Token Exchange Failures
 
@@ -570,7 +570,7 @@ Feature flags are toggled at runtime via `/config` UI or environment variables:
 - ✅ `banking_api_server/services/configStore.js` — Config loading logic and FIELD_DEFS
 - ✅ `banking_api_server/services/vaultLoader.js` — Vault unlock at startup
 - ✅ `secrets.vault` — Encrypted secrets (Phase 269; optional)
-- ✅ `banking_mcp_gateway/.env` — Symlink to BFF's `.env` (created by run-bank.sh)
+- ✅ `banking_mcp_gateway/.env` — Symlink to BFF's `.env` (created by run-demo.sh)
 - ✅ `banking_mcp_server/.env.development` — MCP-specific vars (typically copied from BFF `.env`)
 - ✅ `banking_mortgage_service/.env.example` — Mortgage service config template
 

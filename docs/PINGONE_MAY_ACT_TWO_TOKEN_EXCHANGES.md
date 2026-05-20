@@ -627,7 +627,7 @@ Open (or create) the end-user OIDC application:
 | **Token endpoint auth method** | `CLIENT_SECRET_POST` |
 | **Redirect URIs** | `https://banking-demo-puce.vercel.app/api/auth/oauthuser/callback` (production) |
 | | `http://localhost:3000/api/auth/oauthuser/callback` (local dev) |
-| | `http://localhost:4000/api/auth/oauthuser/callback` (local dev — `run-bank.sh` port) |
+| | `http://localhost:4000/api/auth/oauthuser/callback` (local dev — `run-demo.sh` port) |
 
 > **Note:** PingOne allows multiple redirect URIs per app. Add all environments you intend to use. The URI sent in the authorize request must exactly match one of the registered values.
 

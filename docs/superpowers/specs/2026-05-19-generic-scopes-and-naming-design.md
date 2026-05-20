@@ -119,7 +119,7 @@ After running the cleanup script, all PingOne client IDs and secrets change. The
 1. `npm run pingone:cleanup -- --execute` — wipes all `Super Banking *` apps and resource servers
 2. `npm run pingone:bootstrap` — creates new `Demo *` apps, writes new credentials to `banking_api_server/.env`
 3. Rebuild vault: export `VAULT_PASSWORD`, run vault sync command
-4. `./run-bank.sh` — restart all services
+4. `./run-demo.sh` — restart all services
 
 The bootstrap already overwrites `.env` completely with new client IDs/secrets. No manual `.env` editing required. The only manual step is vault re-sync.
 
@@ -129,12 +129,12 @@ The bootstrap already overwrites `.env` completely with new client IDs/secrets. 
 
 | Old URI | New URI |
 |---------|---------|
-| `banking_api_enduser` | `api.bxf.com` |
-| `mcp-server.bxf.com` | unchanged |
+| `banking_api_enduser` | `api.ping.demo` |
+| `mcp-server.ping.demo` | unchanged |
 | `api.ping.demo` | unchanged |
-| `agent-gateway.bxf.com` | unchanged |
+| `agent-gateway.ping.demo` | unchanged |
 
-**Propagation of `api.bxf.com`:**
+**Propagation of `api.ping.demo`:**
 
 - `scope-topology.json` `servers.banking_api_server.validatesAudience`
 - `banking_api_server/middleware/auth.js` — JWT `aud` validation default
@@ -142,11 +142,11 @@ The bootstrap already overwrites `.env` completely with new client IDs/secrets. 
 - `bootstrapPingOne.js` — `PINGONE_BOOTSTRAP_AUDIENCE` default
 - `.env` — `PINGONE_RESOURCE_SERVER_URI` (or equivalent key) default value
 
-Existing `.env` files with `banking_api_enduser` continue to work until re-provisioned. After cleanup + bootstrap, PingOne issues tokens with `aud: api.bxf.com`.
+Existing `.env` files with `banking_api_enduser` continue to work until re-provisioned. After cleanup + bootstrap, PingOne issues tokens with `aud: api.ping.demo`.
 
 ---
 
-## `run-bank.sh` Genericization
+## `run-demo.sh` Genericization
 
 ### Log/PID file renames
 
@@ -227,13 +227,13 @@ Files with hardcoded `banking:*` scope strings that need updating:
 ### Documentation
 
 - `CLAUDE.md` quick verification checklist: `/tmp/bank-api-server.log` → `/tmp/demo-api.log`
-- `REGRESSION_PLAN.md`: add §4 migration entry; update §1 audience string reference from `banking_api_enduser` to `api.bxf.com`
+- `REGRESSION_PLAN.md`: add §4 migration entry; update §1 audience string reference from `banking_api_enduser` to `api.ping.demo`
 
 ---
 
 ## Execution Order
 
-1. Update `scope-topology.json` — new scope strings, `provisioning` block, `api.bxf.com` URI, vertical `featureScope` in `resources`
+1. Update `scope-topology.json` — new scope strings, `provisioning` block, `api.ping.demo` URI, vertical `featureScope` in `resources`
 2. Update vertical configs — `banking.json`, `retail.json`, `workforce.json` `scopes` blocks
 3. Update `banking_api_server/config/scopes.js` — constant values
 4. Update BFF services — `agentMcpTokenService.js` and other hardcoded `banking:` references
@@ -241,7 +241,7 @@ Files with hardcoded `banking:*` scope strings that need updating:
 6. Create cleanup script — `scripts/cleanupPingOneApps.js`, add `pingone:cleanup` npm script
 7. Recompile TypeScript services — `banking_mcp_gateway`, `banking_mcp_server`, `banking_agent_service`
 8. Update tests — replace hardcoded `banking:*` strings
-9. Update `run-bank.sh` — log/pid renames, banner/heading text, `tail_demo_logs`
+9. Update `run-demo.sh` — log/pid renames, banner/heading text, `tail_demo_logs`
 10. Update docs — `CLAUDE.md`, `REGRESSION_PLAN.md`
 11. Run cleanup script + re-bootstrap PingOne + rebuild vault
 
@@ -256,5 +256,5 @@ Files with hardcoded `banking:*` scope strings that need updating:
 - `npm run pingone:cleanup -- --execute` deletes all `Super Banking *` apps and resource servers without error
 - `npm run pingone:bootstrap` creates all `Demo *` apps and resources, writes new `.env`
 - Banking vertical: login → `/dashboard` → agent tool call → Token Chain shows `read` and `mcp:invoke` scopes (not `banking:read`, `banking:mcp:invoke`)
-- Log files appear at `/tmp/demo-api.log`, `/tmp/demo-mcp.log` etc. after `./run-bank.sh`
+- Log files appear at `/tmp/demo-api.log`, `/tmp/demo-mcp.log` etc. after `./run-demo.sh`
 - No `banking:` scope strings appear in PingOne token claims after re-provisioning

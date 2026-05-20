@@ -2,9 +2,9 @@
 /**
  * Quick test script to trigger MCP token exchange and see what fails
  */
-require('dotenv').config({ path: './banking_api_server/.env' });
+require('dotenv').config({ path: './demo_api_server/.env' });
 
-const oauthService = require('./banking_api_server/services/oauthService');
+const oauthService = require('./demo_api_server/services/oauthService');
 
 async function test() {
   try {

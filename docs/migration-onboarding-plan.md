@@ -34,7 +34,7 @@ OAuth calls fail with no obvious error
 **Create:** `banking_api_server/scripts/init-env.js`  
 **Add to `package.json`:** `"prestart": "node scripts/init-env.js"`
 
-This runs automatically before every `npm start` and `npm run dev`. It is also called by `run-bank.sh` before launching the API server.
+This runs automatically before every `npm start` and `npm run dev`. It is also called by `run-demo.sh` before launching the API server.
 
 ```js
 // Pseudocode — see scripts/init-env.js for implementation
@@ -53,7 +53,7 @@ console.log('Add PingOne credentials at http://localhost:4000/configure after th
 
 **What this achieves on a fresh clone:**
 
-1. `./run-bank.sh` (or `npm start`) triggers `prestart`
+1. `./run-demo.sh` (or `npm start`) triggers `prestart`
 2. `.env` is created with a real, stable `SESSION_SECRET`
 3. Server starts — `check-env.js` still warns about missing PingOne vars (expected)
 4. `config.db` is initialized with the generated key
@@ -61,9 +61,9 @@ console.log('Add PingOne credentials at http://localhost:4000/configure after th
 6. User enters credentials on the setup page → saved to `config.db` with the stable key
 7. No restart needed — credentials persist correctly on every subsequent restart
 
-**What `run-bank.sh` already does (and does not need changing):**
+**What `run-demo.sh` already does (and does not need changing):**
 
-`run-bank.sh` already checks if `.env` exists and warns if missing (line 144-148). It does NOT create one. After `init-env.js` is added as a `prestart` hook, `npm start` (called inside `run-bank.sh`) will trigger it automatically. No change to `run-bank.sh` needed.
+`run-demo.sh` already checks if `.env` exists and warns if missing (line 144-148). It does NOT create one. After `init-env.js` is added as a `prestart` hook, `npm start` (called inside `run-demo.sh`) will trigger it automatically. No change to `run-demo.sh` needed.
 
 ### Updated "What is actually new" table
 
@@ -397,7 +397,7 @@ The UI is a 3-step guide with copy buttons:
 │  better-sqlite3 holds an exclusive write lock —             │
 │  importing with the server running will corrupt the DB.      │
 │                                                              │
-│  > ./run-bank.sh stop                    [Copy]             │
+│  > ./run-demo.sh stop                    [Copy]             │
 ├──────────────────────────────────────────────────────────────┤
 │  Step 2: Run the import                                      │
 │                                                              │
@@ -415,7 +415,7 @@ The UI is a 3-step guide with copy buttons:
 ├──────────────────────────────────────────────────────────────┤
 │  Step 3: Restart and verify                                  │
 │                                                              │
-│  > ./run-bank.sh                         [Copy]             │
+│  > ./run-demo.sh                         [Copy]             │
 │                                                              │
 │  Then return here — this page will show                     │
 │  "Import verified" when credentials are loaded.             │
@@ -510,7 +510,7 @@ Step 0 must go first — every other step assumes the server can start cleanly o
 
 | Failure | Where it surfaces | Mitigation |
 | ------- | ----------------- | ---------- |
-| Server starts before `init-env.js` runs | Only possible if `prestart` hook is removed | `prestart` is in `package.json`; `run-bank.sh` also calls it |
+| Server starts before `init-env.js` runs | Only possible if `prestart` hook is removed | `prestart` is in `package.json`; `run-demo.sh` also calls it |
 | User manually deletes `.env` mid-session | Config decryption fails on next restart | `init-env.js` generates a NEW `SESSION_SECRET` — all saved config is lost; user must re-enter via setup page |
 | Double-save race on group buttons | Frontend save buttons | Disable button while request is in-flight |
 | IndexedDB out of sync after save | After credential saves | `savePublicConfig()` called after every successful save |

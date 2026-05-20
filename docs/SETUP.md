@@ -194,12 +194,12 @@ The React UI reads `REACT_APP_*` vars from the **root** `.env` or from its own `
 
 ```bash
 # From repo root
-./run-bank.sh
+./run-demo.sh
 ```
 
-`run-bank.sh` starts all services concurrently using HTTPS via mkcert and requires a `/etc/hosts` entry (`127.0.0.1 api.pingdemo.com`).
+`run-demo.sh` starts all services concurrently using HTTPS via mkcert and requires a `/etc/hosts` entry (`127.0.0.1 api.pingdemo.com`).
 
-**Ports used by `run-bank.sh`:**
+**Ports used by `run-demo.sh`:**
 
 | Service | Port | URL |
 |---------|------|-----|
@@ -209,9 +209,9 @@ The React UI reads `REACT_APP_*` vars from the **root** `.env` or from its own `
 
 Ensure `banking_api_ui/.env` has `REACT_APP_API_PORT=3002`.
 
-Commands: `./run-bank.sh start`, `./run-bank.sh stop`, `./run-bank.sh status`, `./run-bank.sh tail`
+Commands: `./run-demo.sh start`, `./run-demo.sh stop`, `./run-demo.sh status`, `./run-demo.sh tail`
 
-> **Port summary:** `run-bank.sh` = ports 4000/3002 (HTTPS, requires mkcert + hosts entry); `start.sh` / manual = ports 3000/3001 (HTTP, no setup required).
+> **Port summary:** `run-demo.sh` = ports 4000/3002 (HTTPS, requires mkcert + hosts entry); `start.sh` / manual = ports 3000/3001 (HTTP, no setup required).
 
 ### Option B — Start services individually
 
@@ -324,7 +324,7 @@ curl -X POST http://localhost:3001/api/admin/app-config/fix-logout-urls \
   -d '{"publicAppUrl": "http://localhost:3000"}'
 ```
 
-**run-bank.sh development (UI on port 4000, API on port 3002):**
+**run-demo.sh development (UI on port 4000, API on port 3002):**
 ```bash
 curl -X POST http://localhost:3002/api/admin/app-config/fix-logout-urls \
   -H "Content-Type: application/json" \

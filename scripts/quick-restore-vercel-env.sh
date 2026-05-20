@@ -9,7 +9,7 @@ echo "🚨 Quick Restore: Critical Vercel Environment Variables"
 echo "📁 Working directory: $(pwd)"
 
 # Check if we're in the right directory
-if [ ! -f "banking_api_server/server.js" ]; then
+if [ ! -f "demo_api_server/server.js" ]; then
     echo "❌ Error: Please run from project root directory"
     exit 1
 fi
@@ -33,16 +33,16 @@ echo ""
 echo "🔐 Adding Critical PingOne Variables..."
 
 # Read from local .env if it exists
-if [ -f "banking_api_server/.env" ]; then
+if [ -f "demo_api_server/.env" ]; then
     echo "📖 Reading from local .env file..."
     
     # Extract critical variables
-    PINGONE_ENVIRONMENT_ID=$(grep "^PINGONE_ENVIRONMENT_ID=" banking_api_server/.env | cut -d'=' -f2- | tr -d '\r' || echo "")
-    PINGONE_CORE_CLIENT_ID=$(grep "^PINGONE_CORE_CLIENT_ID=" banking_api_server/.env | cut -d'=' -f2- | tr -d '\r' || echo "")
-    PINGONE_CORE_CLIENT_SECRET=$(grep "^PINGONE_CORE_CLIENT_SECRET=" banking_api_server/.env | cut -d'=' -f2- | tr -d '\r' || echo "")
-    PINGONE_CORE_USER_CLIENT_ID=$(grep "^PINGONE_CORE_USER_CLIENT_ID=" banking_api_server/.env | cut -d'=' -f2- | tr -d '\r' || echo "")
-    PINGONE_CORE_USER_CLIENT_SECRET=$(grep "^PINGONE_CORE_USER_CLIENT_SECRET=" banking_api_server/.env | cut -d'=' -f2- | tr -d '\r' || echo "")
-    SESSION_SECRET=$(grep "^SESSION_SECRET=" banking_api_server/.env | cut -d'=' -f2- | tr -d '\r' || echo "")
+    PINGONE_ENVIRONMENT_ID=$(grep "^PINGONE_ENVIRONMENT_ID=" demo_api_server/.env | cut -d'=' -f2- | tr -d '\r' || echo "")
+    PINGONE_CORE_CLIENT_ID=$(grep "^PINGONE_CORE_CLIENT_ID=" demo_api_server/.env | cut -d'=' -f2- | tr -d '\r' || echo "")
+    PINGONE_CORE_CLIENT_SECRET=$(grep "^PINGONE_CORE_CLIENT_SECRET=" demo_api_server/.env | cut -d'=' -f2- | tr -d '\r' || echo "")
+    PINGONE_CORE_USER_CLIENT_ID=$(grep "^PINGONE_CORE_USER_CLIENT_ID=" demo_api_server/.env | cut -d'=' -f2- | tr -d '\r' || echo "")
+    PINGONE_CORE_USER_CLIENT_SECRET=$(grep "^PINGONE_CORE_USER_CLIENT_SECRET=" demo_api_server/.env | cut -d'=' -f2- | tr -d '\r' || echo "")
+    SESSION_SECRET=$(grep "^SESSION_SECRET=" demo_api_server/.env | cut -d'=' -f2- | tr -d '\r' || echo "")
     
     # Add variables if found
     [ -n "$PINGONE_ENVIRONMENT_ID" ] && add_env_var "PINGONE_ENVIRONMENT_ID" "$PINGONE_ENVIRONMENT_ID" "plain"

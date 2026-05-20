@@ -17,7 +17,7 @@
 set -euo pipefail
 
 BASEDIR="$(cd "$(dirname "$0")/.." && pwd)"
-OUT_DIR="${BASEDIR}/banking_api_ui/public/architecture"
+OUT_DIR="${BASEDIR}/demo_api_ui/public/architecture"
 
 mkdir -p "${OUT_DIR}"
 
