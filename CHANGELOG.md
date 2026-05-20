@@ -18,6 +18,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **`setupTratClaims.js` — idempotent TraT claim provisioning script** — new `demo_api_server/scripts/setupTratClaims.js` checks the MCP Token Exchanger app in PingOne and logs guidance for configuring `reqctx`, `purp`, `azd`, `rctx` passthrough claim mappings. Gracefully skips when creds are absent (local dev). Integrated as a non-fatal post-step in `bootstrapPingOne.js`. Callable standalone via `npm run pingone:setup:trat`.
 - **`ff_agent_restrictions` feature flag + `agentRestrictionsService`** — registers `ff_agent_restrictions` in configStore FIELD_DEFS (default `false`); new `agentRestrictionsService.js` derives read/write capability tier from `scope-topology.json` riskLevel at load time and exposes `getRequiredTier(toolName)` + `isAgentRestricted(agentRestrictions, requiredTier)` for the P1AZ agent-restrictions gate. Foundation for Task 1 of the agent-restrictions middleware chain.
 
 ### Fixed
