@@ -68,7 +68,7 @@ Pattern list is a **hardcoded constant array** in the module — not configurabl
 
 ### Integration point
 
-Called in `demo_api_server/routes/bankingAgentRoutes.js` on the `POST /api/banking-agent/message` handler, **before** the message is forwarded to the agent service.
+Called in `demo_api_server/routes/bankingAgentRoutes.js` on the `POST /api/banking-agent/message` handler — **after** auth middleware (so `req.user.sub` is available for logging) and **before** the message is forwarded to the agent service.
 
 **If blocked:**
 - HTTP 400

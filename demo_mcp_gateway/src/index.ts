@@ -850,7 +850,6 @@ async function handleMessage(
 
 async function proxyToolsList(target: 'olb' | 'invest', inboundToken: string): Promise<JsonRpcResponse> {
   const wsUrl = backendWsUrl(target, config);
-  // Gateway forwards the original TX token unchanged — no RFC 8693 re-exchange.
   const tlsOpts: MtlsOptions | undefined = gatewayCerts
     ? { cert: gatewayCerts.clientCert, key: gatewayCerts.clientKey }
     : undefined;
