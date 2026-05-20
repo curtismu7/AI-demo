@@ -128,6 +128,29 @@ export class BankingToolProvider {
         this.logger.debug(`[BankingToolProvider] Tool ${toolName} does not require user authorization, skipping auth check`);
       }
 
+      // Extract act.sub from agent token for X-Agent-Sub header
+      let agentSub: string | undefined;
+      if (agentToken) {
+        try {
+          const parts = agentToken.split('.');
+          if (parts.length === 3) {
+            const claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+            agentSub = claims?.act?.sub || claims?.act?.client_id || undefined;
+          }
+        } catch {
+          // Malformed token — proceed without agentSub
+        }
+      }
+
+      // Create call-scoped API client with agent identity headers when available.
+      // This forwards X-Agent-Sub and X-MCP-Tool to the BFF for per-call policy enforcement.
+      const callClient = agentSub
+        ? new BankingAPIClient({ ...this.apiClient.getConfig(), agentSub, mcpTool: toolName })
+        : this.apiClient;
+      const callHandlerDeps = agentSub
+        ? { ...this.handlerDeps, apiClient: callClient }
+        : this.handlerDeps;
+
       // Execute the specific tool
       const sanitizedParams = paramValidation.sanitizedParams!;
       const context: ToolExecutionContext = {
@@ -137,9 +160,11 @@ export class BankingToolProvider {
       };
 
       this.logger.debug(`[BankingToolProvider] Executing tool handler: ${tool.handler}`);
-      this.apiClient.startTrace();
-      const result = await this.executeSpecificTool(tool, context, agentToken);
-      result.httpTrace = this.apiClient.stopTrace();
+      this.apiClient.startTrace();  // keep started for error path in handleExecutionError
+      callClient.startTrace();      // actual trace for this call
+      const result = await this.executeSpecificTool(tool, context, agentToken, callHandlerDeps);
+      result.httpTrace = callClient.stopTrace();
+      this.apiClient.stopTrace();   // clean up the base client's empty trace when callClient !== apiClient
 
       const executionTime = Date.now() - startTime;
       this.logger.info(`[BankingToolProvider] Tool execution completed: ${toolName} (${executionTime}ms) - Success: ${result.success}`);
@@ -266,8 +291,11 @@ export class BankingToolProvider {
   private async executeSpecificTool(
     tool: BankingToolDefinition,
     context: ToolExecutionContext,
-    agentToken?: string
+    agentToken?: string,
+    deps?: HandlerDeps
   ): Promise<BankingToolResult> {
+    const handlerDeps = deps ?? this.handlerDeps;
+
     // Tools that do not require user auth — dispatch directly without token resolution
     if (!tool.requiresUserAuth) {
       if (tool.handler === 'executeQueryUserByEmail') {
@@ -283,14 +311,14 @@ export class BankingToolProvider {
         if (!handler) {
           return this.createErrorResult(`Unknown non-auth tool handler: ${tool.handler}`, context.params);
         }
-        return await handler(this.handlerDeps, agentToken, context.params);
+        return await handler(handlerDeps, agentToken, context.params);
       }
 
       const handler = handlerMap[tool.handler];
       if (!handler) {
         return this.createErrorResult(`Unknown non-auth tool handler: ${tool.handler}`, context.params);
       }
-      return await handler(this.handlerDeps, '', context.params);
+      return await handler(handlerDeps, '', context.params);
     }
 
     // Token selection: prefer the BFF-issued delegated token (RFC 8693 agentToken) when
@@ -309,7 +337,7 @@ export class BankingToolProvider {
     if (!handler) {
       return this.createErrorResult(`Unknown tool handler: ${tool.handler}`, context.params);
     }
-    return await handler(this.handlerDeps, token, context.params);
+    return await handler(handlerDeps, token, context.params);
   }
 
   /**

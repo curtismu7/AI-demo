@@ -21,6 +21,8 @@ import { RetryManager, RetryConfig, RetryError } from '../utils/RetryManager';
 export interface BankingAPIClientOptions extends Partial<BankingAPIConfig> {
   circuitBreakerConfig?: Partial<CircuitBreakerConfig>;
   retryConfig?: Partial<RetryConfig>;
+  agentSub?: string;  // act.sub from the MCP token — forwarded as X-Agent-Sub
+  mcpTool?: string;   // current tool name — forwarded as X-MCP-Tool
 }
 
 /** One captured HTTP call made to the banking API */
@@ -84,7 +86,9 @@ export class BankingAPIClient {
       timeout: this.config.timeout,
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        ...(options.agentSub ? { 'X-Agent-Sub': options.agentSub } : {}),
+        ...(options.mcpTool ? { 'X-MCP-Tool': options.mcpTool } : {}),
       },
       ...(devHttpsAgent && { httpsAgent: devHttpsAgent }),
     });
