@@ -59,8 +59,10 @@ export function filterToolsByScope(
   tools: BankingToolDefinition[],
   tokenScopes: string[],
 ): BankingToolDefinition[] {
-  // No scopes decoded yet — return full list; token validation already enforced auth.
-  if (tokenScopes.length === 0) return tools;
+  // Empty scope list means the token carried no scopes — return only tools that
+  // require no scopes. Advertising admin tools to zero-scope tokens violates
+  // least-privilege even though executeTool enforces scopes at call time.
+  if (tokenScopes.length === 0) return tools.filter(t => t.requiredScopes.length === 0);
 
   const hasWildcard = tokenScopes.includes('*');
   if (hasWildcard) return tools;
