@@ -1199,7 +1199,7 @@ app.get('/api/mcp/tool/events', (req, res) => {
 });
 
 
-// POST /api/mcp/scope-upgrade — RFC 8693 token exchange for banking:write scope.
+// POST /api/mcp/scope-upgrade — RFC 8693 token exchange for write scope.
 // Called by the UI consent modal after the user approves a scope upgrade.
 // Stores the resulting write-scoped token in session.mcpWriteToken for subsequent tool calls.
 app.post('/api/mcp/scope-upgrade', express.json(), requireSession, async (req, res) => {
@@ -1561,7 +1561,7 @@ if (require.main === module) {
                 key: fs.readFileSync(keyFile),
                 cert: fs.readFileSync(certFile),
             }, app).listen(PORT, () => {
-                console.log(`Banking API server (HTTPS) running on https://api.ping.demo:${PORT}`);
+                console.log(`Demo API server (HTTPS) running on https://api.ping.demo:${PORT}`);
                 // Check HITL status
                 const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
                 if (!hitlEnabled) {
@@ -1572,8 +1572,8 @@ if (require.main === module) {
             });
         } else {
             server = app.listen(PORT, () => {
-                console.log(`Banking API server running on https://api.ping.demo:3001 (local port ${PORT})`);
-                console.log('Tip: run mkcert in Banking/certs/ to enable HTTPS (see run-bank.sh)');
+                console.log(`Demo API server running on https://api.ping.demo:3001 (local port ${PORT})`);
+                console.log('Tip: run mkcert in Demo/certs/ to enable HTTPS (see run-bank.sh)');
                 // Check HITL status
                 const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
                 if (!hitlEnabled) {

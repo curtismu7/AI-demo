@@ -131,7 +131,7 @@ function checkEnv() {
   const line = '═'.repeat(66);
   emit('');
   emit(`${CYAN}${BOLD}╔${line}╗${RESET}`);
-  emit(`${CYAN}${BOLD}║${RESET}${BOLD}          BANKING APP — STARTUP CONFIGURATION REPORT            ${RESET}${CYAN}${BOLD}║${RESET}`);
+  emit(`${CYAN}${BOLD}║${RESET}${BOLD}           DEMO APP — STARTUP CONFIGURATION REPORT             ${RESET}${CYAN}${BOLD}║${RESET}`);
   emit(`${CYAN}${BOLD}╚${line}╝${RESET}`);
   emit('');
 
