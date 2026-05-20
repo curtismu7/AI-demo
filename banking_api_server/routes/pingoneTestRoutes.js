@@ -3,8 +3,8 @@
  * @description Routes for PingOne test page - comprehensive testing of PingOne integration
  *
  * Canonical scope vocabulary: see SCOPE_VOCABULARY.md
- * - banking:read, banking:write — canonical application scopes
- * - banking:accounts:read, banking:transactions:read/write — compound (PingOne resource-level, deprecated)
+ * - read, write — canonical application scopes
+ * - accounts:read, transactions:read/write — compound (PingOne resource-level, deprecated)
  * - Token exchange endpoints use MCP_TOKEN_EXCHANGE_SCOPES env var; fallback is compound scopes
  *   until PingOne resource servers are migrated to canonical names.
  */
@@ -291,11 +291,11 @@ router.get('/verify-assets', async (req, res) => {
     ];
     // Canonical flat scopes (per SCOPE_VOCABULARY.md)
     const EXPECTED_BANKING_SCOPES = [
-      'banking:read',
-      'banking:write',
-      'banking:admin',
-      'banking:sensitive',
-      'banking:ai:agent'
+      'read',
+      'write',
+      'admin',
+      'sensitive',
+      'ai:agent'
     ];
 
     // Get all assets in parallel (including token policies for SPEL education)
@@ -328,7 +328,7 @@ router.get('/verify-assets', async (req, res) => {
     appGrantResults.forEach(r => { appGrantsMap[r.appId] = r.grants; });
 
     // Get scopes for the BANKING resource server (identified by name/audience — not array index)
-    const CANONICAL_BANKING_SCOPES = ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'];
+    const CANONICAL_BANKING_SCOPES = ['read', 'write', 'admin', 'sensitive', 'ai:agent'];
     let scopesAsset = { status: 'failed', count: 0, error: 'No resource servers available', data: [], isBankingRS: false, resourceServerName: null };
     let missingCanonicalScopes = [...CANONICAL_BANKING_SCOPES];
     if (resourcesResult.success && resourcesResult.resourceServers && resourcesResult.resourceServers.length > 0) {
@@ -390,10 +390,10 @@ router.get('/verify-assets', async (req, res) => {
     // MCP Token Exchanger needs full banking scopes including mcp:invoke for RFC 8693.
     // Admin App and User App need their specific subsets.
     const REQUIRED_SCOPES_PER_APP = {
-      'Super Banking Admin App':           ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
-      'Super Banking User App':            ['banking:read', 'banking:write', 'banking:ai:agent'],
-      'Super Banking MCP Token Exchanger': ['banking:read', 'banking:write', 'banking:mcp:invoke'],
-      'Super Banking AI Agent App':        ['banking:read', 'banking:write', 'banking:ai:agent'],
+      'Super Banking Admin App':           ['read', 'write', 'admin', 'sensitive', 'ai:agent'],
+      'Super Banking User App':            ['read', 'write', 'ai:agent'],
+      'Super Banking MCP Token Exchanger': ['read', 'write', 'mcp:invoke'],
+      'Super Banking AI Agent App':        ['read', 'write', 'ai:agent'],
     };
     // Only check expected Super Banking apps — not every app in the environment
     apps.filter(app => EXPECTED_APP_NAMES.includes(app.name)).forEach(app => {
@@ -508,9 +508,9 @@ router.get('/authz-token', async (req, res) => {
     const sessionClientType = req.session.clientType || null;
     const scopes = (decoded?.payload?.scope || '').split(' ');
     let loginType;
-    if (scopes.includes('banking:admin')) {
+    if (scopes.includes('admin')) {
       loginType = 'admin';
-    } else if (sessionClientType === 'ai_agent' || scopes.includes('banking:ai:agent')) {
+    } else if (sessionClientType === 'ai_agent' || scopes.includes('ai:agent')) {
       loginType = 'ai_agent';
     } else {
       loginType = 'customer';
@@ -605,7 +605,7 @@ router.get('/exchange-user-to-mcp', async (req, res) => {
 
     await configStore.ensureInitialized();
 
-    const mcpScopes1 = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
+    const mcpScopes1 = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'read write mcp:invoke').trim().split(/\s+/);
     const subjectDecoded1 = decodeJwtForDisplay(oauthTokens.accessToken);
     console.log('[PingOneTest] Exchange1 subject scope:', subjectDecoded1?.payload?.scope);
     console.log('[PingOneTest] Exchange1 requesting mcp scopes:', mcpScopes1.join(' '));
@@ -695,7 +695,7 @@ router.get('/exchange-id-token-to-mcp', async (req, res) => {
 
     await configStore.ensureInitialized();
     const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri');
-    const mcpScopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
+    const mcpScopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'read write mcp:invoke').trim().split(/\s+/);
 
     const subjectDecoded = decodeJwtForDisplay(oauthTokens.idToken);
     console.log('[PingOneTest] ID Token exchange subject claims:', subjectDecoded?.payload?.sub, 'scope:', subjectDecoded?.payload?.scope);
@@ -760,7 +760,7 @@ router.get('/exchange-idtoken-agent-to-mcp', async (req, res) => {
     // Get actor token using MCP Token Exchanger client
     const agentToken = await oauthService.getMcpExchangerToken();
 
-    const mcpScopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
+    const mcpScopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'read write mcp:invoke').trim().split(/\s+/);
 
     const subjectDecoded = decodeJwtForDisplay(oauthTokens.idToken);
     const actorDecoded   = decodeJwtForDisplay(agentToken);
@@ -843,7 +843,7 @@ router.get('/exchange-user-agent-to-mcp', async (req, res) => {
     const agentToken = await oauthService.getMcpExchangerToken();
 
     // Perform token exchange with both user and agent tokens
-    const mcpScopes2 = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
+    const mcpScopes2 = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'read write mcp:invoke').trim().split(/\s+/);
 
     const subjectDecoded2 = decodeJwtForDisplay(oauthTokens.accessToken);
     const actorDecoded2   = decodeJwtForDisplay(agentToken);
@@ -920,11 +920,11 @@ router.get('/exchange-user-to-agent-to-mcp', async (req, res) => {
     const agentToken = await oauthService.performTokenExchange(
       oauthTokens.accessToken,
       configStore.getEffective('pingone_resource_agent_gateway_uri'),
-      ['banking:ai:agent']
+      ['ai:agent']
     );
 
     // Step 2: Use both user token and agent token to exchange for MCP token
-    const mcpScopes3 = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
+    const mcpScopes3 = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'read write mcp:invoke').trim().split(/\s+/);
     const mcpExchangerClientId3 = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
     const mcpExchangerSecret3   = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
     const mcpExchangerAuthMethod3 = (configStore.getEffective('pingone_token_exchange_auth_method') || process.env.PINGONE_TOKEN_EXCHANGE_AUTH_METHOD || 'post').toLowerCase();
@@ -1084,7 +1084,7 @@ router.post('/token-exchange', async (req, res) => {
     const normalizedMode = mode === 'double' ? 'dual' : mode;
     const mcpServerUri = configStore.getEffective('pingone_resource_mcp_server_uri');
     const mcpGatewayUri = configStore.getEffective('pingone_resource_mcp_gateway_uri') || mcpServerUri;
-    const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
+    const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'read write mcp:invoke').trim().split(/\s+/);
     
     let result;
     if (normalizedMode === 'single') {
@@ -1348,7 +1348,7 @@ router.post('/fix-banking-resource-server', async (req, res) => {
     }
     managementService.initialize(workerToken);
 
-    const CANONICAL_BANKING_SCOPES = ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'];
+    const CANONICAL_BANKING_SCOPES = ['read', 'write', 'admin', 'sensitive', 'ai:agent'];
     const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'https://ai-agent.pingdemo.com';
 
     // Find or create the banking resource server
@@ -1591,7 +1591,7 @@ router.post('/fix-mcp-exchange', async (req, res) => {
 
     const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI;
     const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID;
-    const requestedScopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/).filter(Boolean);
+    const requestedScopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'read write mcp:invoke').trim().split(/\s+/).filter(Boolean);
 
     const steps = [];
 
@@ -1796,7 +1796,7 @@ router.get('/ai-agent-apps', async (req, res) => {
 /**
  * POST /api/pingone-test/update-resources
  * Idempotently ensure both resource servers exist with correct audiences:
- *   - Banking RS  (ENDUSER_AUDIENCE) with canonical banking:* scopes
+ *   - Banking RS  (ENDUSER_AUDIENCE) with canonical * scopes
  *   - MCP RS      (PINGONE_RESOURCE_MCP_SERVER_URI) with MCP scopes
  */
 router.post('/update-resources', async (req, res) => {
@@ -1812,9 +1812,9 @@ router.post('/update-resources', async (req, res) => {
 
     const RS_TARGETS = [
       { key: 'banking', name: 'Super Banking AI Agent', audience: audienceEnduser,
-        scopes: ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'] },
+        scopes: ['read', 'write', 'admin', 'sensitive', 'ai:agent'] },
       { key: 'mcp',     name: 'Super Banking MCP Server', audience: mcpUri,
-        scopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'] },
+        scopes: ['read', 'write', 'mcp:invoke'] },
     ];
 
     const rsResult = await managementService.getResourceServers();
@@ -1876,8 +1876,8 @@ router.post('/update-scopes', async (req, res) => {
     const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'https://ai-agent.pingdemo.com';
     const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI || 'https://mcp-server.pingdemo.com';
     const SCOPE_MAP = {
-      banking: { audience: audienceEnduser, scopes: ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'] },
-      mcp:     { audience: mcpUri,         scopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'] },
+      enduser: { audience: audienceEnduser, scopes: ['read', 'write', 'admin', 'sensitive', 'ai:agent'] },
+      mcp:     { audience: mcpUri,         scopes: ['read', 'write', 'mcp:invoke'] },
     };
 
     const rsResult = await managementService.getResourceServers();
@@ -1924,14 +1924,14 @@ router.post('/update-apps', async (req, res) => {
     managementService.initialize(workerToken);
 
     const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'https://ai-agent.pingdemo.com';
-    const CANONICAL_BANKING_SCOPES = ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'];
+    const CANONICAL_BANKING_SCOPES = ['read', 'write', 'admin', 'sensitive', 'ai:agent'];
 
     // App name → required banking scope subset
     const APP_SCOPE_REQUIREMENTS = {
-      'Super Banking Admin App':          ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
-      'Super Banking User App':           ['banking:read', 'banking:write', 'banking:ai:agent'],
-      'Super Banking MCP Token Exchanger':['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
-      'Super Banking AI Agent App':       ['banking:read', 'banking:write', 'banking:ai:agent'],
+      'Super Banking Admin App':          ['read', 'write', 'admin', 'sensitive', 'ai:agent'],
+      'Super Banking User App':           ['read', 'write', 'ai:agent'],
+      'Super Banking MCP Token Exchanger':['read', 'write', 'admin', 'sensitive', 'ai:agent'],
+      'Super Banking AI Agent App':       ['read', 'write', 'ai:agent'],
     };
 
     // Find banking RS
@@ -2271,7 +2271,7 @@ router.get('/exchange-1token-401-flow', async (req, res) => {
     // Step 3: 1-token exchange (user access token → MCP token)
     const mcpResourceUri = configStore.getEffective('mcp_resource_uri')
       || configStore.getEffective('pingone_resource_mcp_gateway_uri');
-    const mcpScopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
+    const mcpScopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'read write mcp:invoke').trim().split(/\s+/);
     let mcpToken = null;
     let exchangeError = null;
     try {
