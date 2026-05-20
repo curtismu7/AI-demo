@@ -612,6 +612,23 @@ function isSimulatedModeEnabled(configStore) {
   return v === true || v === 'true';
 }
 
+/**
+ * Simulated P1AZ evaluation for AgentRestrictions gate.
+ * Mirrors the policy rule: DENY if none, DENY if read+write, PERMIT otherwise.
+ */
+function evaluateAgentRestrictions({ agentRestrictions, requiredTier, userId, agentSub, tool }) {
+  const decisionId = `sim-ar-${Date.now()}`;
+  const path = 'simulated';
+
+  if (agentRestrictions === 'none') {
+    return { decision: 'DENY', reason: 'agent_restrictions_none', path, decisionId };
+  }
+  if (agentRestrictions === 'read' && requiredTier === 'write') {
+    return { decision: 'DENY', reason: 'agent_restrictions_write_blocked', path, decisionId };
+  }
+  return { decision: 'PERMIT', reason: 'agent_restrictions_permitted', path, decisionId };
+}
+
 module.exports = {
   evaluate,
   evaluateTransaction,
@@ -624,6 +641,7 @@ module.exports = {
   getConfirmAmountUsd,
   getConsentTypes,
   getStepUpTypes,
+  evaluateAgentRestrictions,
   // Constant aliases for tests — read defaults so test assertions use the same values as the service.
   get SIMULATED_DENY_AMOUNT_USD() { return getDenyAmountUsd(); },
   get SIMULATED_POLICY_STEPUP_USD() { return getStepUpAmountUsd(); },

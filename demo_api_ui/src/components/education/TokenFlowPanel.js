@@ -47,6 +47,10 @@ export default function TokenFlowPanel({ isOpen, onClose, initialTabId }) {
             </li>
           </ol>
 
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            In multi-service deployments, this pattern extends naturally — a separate exchange produces a token scoped to each backend service, with its own <code className="edu-code">aud</code> and minimal <code className="edu-code">scope</code>. Each service sees only the token meant for it.
+          </p>
+
           <h4>End-to-end Guarantees</h4>
           <ul>
             <li><strong>Identity preservation:</strong> <code>sub</code> = user's ID throughout all tokens</li>
@@ -101,6 +105,10 @@ export default function TokenFlowPanel({ isOpen, onClose, initialTabId }) {
               ))}
             </tbody>
           </table>
+
+          <p style={{ color: "#374151", marginBottom: "1rem", marginTop: "0.5rem" }}>
+            The live demo surfaces the full decoded token set in the Token Chain panel — you can inspect <code className="edu-code">sub</code>, <code className="edu-code">aud</code>, <code className="edu-code">scope</code>, <code className="edu-code">act</code>, and <code className="edu-code">may_act</code> for each token after a tool call.
+          </p>
 
           <h4 style={{ marginTop: 20 }}>Key claim on User AT: <code>may_act</code></h4>
           <p>
@@ -229,6 +237,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
               ))}
             </tbody>
           </table>
+
+          <p style={{ color: "#374151", marginBottom: "1rem", marginTop: "0.5rem" }}>
+            Each route or service enforces its own audience and scope independently. A token valid for the MCP server resource is not valid at the banking API resource, even if both are in the same PingOne environment. The gateway enforces this boundary at each route.
+          </p>
 
           <h3 style={{ marginTop: 20 }}>Scope Definitions</h3>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

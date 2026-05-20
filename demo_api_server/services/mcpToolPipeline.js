@@ -133,6 +133,7 @@ async function runMcpToolPipeline(ctx) {
         mcpAccessToken = resolved.token;
         tokenEvents = resolved.tokenEvents;
         userSub = resolved.userSub || null;
+        const tratContextHeader = resolved.tratContextHeader || null;
         // Publish token events to SSE hub for real-time Token Chain display
         deps.publishTokenEventsToSse(flowTraceId, tokenEvents);
         const evs = tokenEvents || [];
@@ -521,7 +522,7 @@ async function runMcpToolPipeline(ctx) {
         let result;
         let gwAuditTrail = null;
         if (useGateway) {
-            ({ result, gwAuditTrail } = await deps.callToolViaGateway(gatewayHttpUrl, mcpAccessToken, tool, params || {}, { correlationId: req.correlationId }));
+            ({ result, gwAuditTrail } = await deps.callToolViaGateway(gatewayHttpUrl, mcpAccessToken, tool, params || {}, { correlationId: req.correlationId, tratContextHeader }));
         } else if (useHttp2) {
             const h2Session = deps.http2Bridge.createHttp2Session(mcpUrl, mcpAccessToken);
             result = await deps.http2Bridge.forwardToolCall(h2Session, tool, params || {}, mcpAccessToken, userSub, req.correlationId);
@@ -559,17 +560,6 @@ async function runMcpToolPipeline(ctx) {
                     null,
                     desc,
                     { decision }
-                ));
-            }
-            if (gwAuditTrail.exchange) {
-                const exchangeRes = gwAuditTrail.exchange;
-                tokenEvents.push(deps.buildTokenEvent(
-                    'gw-exchange',
-                    'Gateway — RFC 8693 Token Exchange',
-                    'exchanged',
-                    null,
-                    `Token exchanged to MCP resource audience: ${exchangeRes.targetAud}`,
-                    { targetAud: exchangeRes.targetAud }
                 ));
             }
         }

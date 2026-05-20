@@ -62,4 +62,8 @@ export const EDU = {
   AUTHZEN: "authzen",
   /** WebMCP — Browser-native MCP tool access via BFF proxy; tokens stay server-side */
   WEB_MCP: "web-mcp",
+  /** MCP Elicitation — server-to-client requests for user input during tool calls (form mode + URL mode) */
+  MCP_ELICITATION: "mcp-elicitation",
+  /** AgentRestrictions — P1AZ at the resource server, per-user agent capability control */
+  AGENT_RESTRICTIONS: "agent-restrictions",
 };

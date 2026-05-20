@@ -5,6 +5,9 @@ import EducationDrawer from '../shared/EducationDrawer';
 function OverviewTab() {
   return (
     <div>
+      <p style={{ color: "#374151", marginBottom: "1rem" }}>
+        <strong>MCP servers contain no security logic.</strong> Token validation, scope enforcement, protocol compliance, rate limiting, and audit all live in the gateway. The MCP server trusts that whatever reaches it has already been authorized — it focuses entirely on tool execution.
+      </p>
       <h3 style={{ marginTop: 0 }}>Why secure MCP with a gateway?</h3>
       <p>
         MCP servers expose <strong>tools</strong> that perform real actions — account reads, transfers,
@@ -81,6 +84,30 @@ function ArchitectureTab() {
         <li>If <code>active: true</code> and scopes match → forward to MCP server</li>
         <li>If invalid → return <code>401 Unauthorized</code> before MCP server is reached</li>
       </ol>
+
+      <h4 style={{ color: "#1e293b", marginBottom: "0.5rem", marginTop: "1.5rem" }}>Route-level enforcement example</h4>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "1rem" }}>
+        <thead>
+          <tr style={{ backgroundColor: "#1e293b" }}>
+            <th style={{ padding: "0.5rem", textAlign: "left", color: "#e2e8f0" }}>Route</th>
+            <th style={{ padding: "0.5rem", textAlign: "left", color: "#e2e8f0" }}>Required scope</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            { route: "/ecommerce", scope: "read, write" },
+            { route: "/crm", scope: "crm:read, crm:write" },
+          ].map(({ route, scope }) => (
+            <tr key={route} style={{ borderBottom: "1px solid #334155" }}>
+              <td style={{ padding: "0.5rem", color: "#374151" }}><code className="edu-code">{route}</code></td>
+              <td style={{ padding: "0.5rem", color: "#374151" }}><code className="edu-code">{scope}</code></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p style={{ color: "#374151", marginBottom: "1rem" }}>
+        Each route is independently configured — a token scoped for <code className="edu-code">/ecommerce</code> is rejected at <code className="edu-code">/crm</code>.
+      </p>
 
       <h4>WebSocket upgrade</h4>
       <p>
@@ -253,7 +280,7 @@ function OfficialFiltersTab() {
         </thead>
         <tbody>
           {[
-            ['McpAuditFilter', 'Records all MCP request activity to audit/mcp.audit.json'],
+            ['McpAuditFilter', <>Records all MCP request activity to audit/mcp.audit.json<br />Audit log entries include user email (from <code className="edu-code">sub</code> claim resolution), agent <code className="edu-code">client_id</code> (from <code className="edu-code">act.sub</code>), the full delegation chain (<code className="edu-code">act</code> nesting), the target service, and request latency — giving complete attribution for every tool invocation.</>],
             ['McpProtectionFilter', 'OAuth 2.0 resource server validation for MCP — introspects or JWT-verifies the Bearer token'],
             ['McpValidationFilter', 'Validates MCP protocol compliance (message shape, method names, JSON-RPC structure)'],
           ].map(([name, desc], i) => (

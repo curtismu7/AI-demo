@@ -1,30 +1,27 @@
 'use strict';
 
 /**
- * authorizeMcpRequest — the gateway's McpRequestMiddleware pipeline (D-03, D-05, D-06).
+ * authorizeMcpRequest — the gateway's McpRequestMiddleware pipeline (D-05, D-06).
  *
- * Composes GatewayTokenPolicy + PingOneAuthorizeClient + McpTokenExchangeClient
- * into the McpRequestMiddleware hook that GatewayServer accepts.
+ * Composes GatewayTokenPolicy + PingOneAuthorizeClient into the McpRequestMiddleware
+ * hook that GatewayServer accepts.
  *
  * Pipeline per request:
  *   1. GatewayTokenPolicy.validate(decoded)             — claim invariants (sub, act, anti-bypass)
  *   2. PingOneAuthorizeClient.evaluate(...)             — PingOne Authorize policy decision (D-06)
- *   3. McpTokenExchangeClient.exchange(...)             — RFC 8693 next-hop token exchange (D-03)
- *   4. forward(exchangedToken, body)                    — proxy to upstream MCP server
+ *   3. forward(bearerToken, body)                       — proxy to upstream MCP server (TX token forwarded unchanged)
  *
  * Failure modes:
  *   - Policy violation (claim validation)  → 401 via sendUnauthorized (handled upstream)
  *   - Authorize DENY or unavailable        → 403 Forbidden
- *   - Exchange failure                     → 502 Bad Gateway
  *
- * D-04 (no tokens to LLM): the exchanged upstream token is only used for the
- * gateway→upstream hop. It is never returned to the caller, logged to stdout
- * in a caller-visible way, or included in any LLM context.
+ * The TX token issued by the BFF (aud: ping.demo) is valid at both the gateway
+ * and downstream MCP servers — no re-exchange is needed. The original bearer
+ * token is forwarded unchanged to the upstream MCP server.
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
 import { PingOneAuthorizeClient } from '../auth/PingOneAuthorizeClient';
-import { McpTokenExchangeClient } from '../auth/McpTokenExchangeClient';
 import { GatewayIntrospectionClient } from '../auth/GatewayIntrospectionClient';
 import { runMcpAuthorizationPipeline } from '../auth/authorizeMcpRequestCore';
 import type { McpRequestMiddleware } from '../server/GatewayServer';
@@ -51,7 +48,17 @@ interface GwAuditTrail {
   introspection: { active: boolean; skipped?: boolean; sub?: string; exp?: number; error?: string } | null;
   policy: { passed: boolean; error?: string } | null;
   authorize: { decision: string; reason?: string } | null;
-  exchange: { targetAud: string } | null;
+}
+
+/**
+ * Injectable dependencies for `buildAuthorizeMcpRequest`.
+ * When provided (e.g. in tests), the production introspection + authorize
+ * pipeline is bypassed and these functions are used instead.
+ */
+export interface AuthorizeMcpRequestDeps {
+  introspect: (token: string) => Promise<{ active: boolean; sub?: string; exp?: number }>;
+  authorize: (decoded: any, method: string, toolName?: string, toolArgs?: any) =>
+    Promise<{ decision: 'PERMIT' | 'DENY' | 'INDETERMINATE'; reason?: string }>;
 }
 
 function parseJsonRpcBody(body: Buffer): JsonRpcBody {
@@ -66,10 +73,12 @@ function parseJsonRpcBody(body: Buffer): JsonRpcBody {
 // Factory — returns the McpRequestMiddleware for injection into GatewayServer
 // ---------------------------------------------------------------------------
 
-export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddleware {
+export function buildAuthorizeMcpRequest(
+  config: GatewayConfig,
+  deps?: AuthorizeMcpRequestDeps,
+): McpRequestMiddleware {
   const introspectionClient = new GatewayIntrospectionClient(config);
   const authorizeClient = new PingOneAuthorizeClient(config);
-  const exchangeClient = new McpTokenExchangeClient(config);
 
   return async (
     bearerToken: string,
@@ -79,8 +88,8 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
     forward: (upstreamToken: string, body: Buffer) => Promise<void>,
   ): Promise<void> => {
     // ── Dev bypass: passthrough mode (MCP_GW_DEV_BYPASS=true) ───────────────────────
-    // Skip all validation, policy eval, and token exchange. Forward the
-    // original bearer token directly to the upstream MCP server.
+    // Skip all validation and policy eval. Forward the original bearer token
+    // directly to the upstream MCP server.
     // The gateway still handles routing and observability; auth is bypassed.
     if (config.devBypass) {
       teachLog.info('[GW] Dev bypass: forwarding request without auth pipeline');
@@ -92,7 +101,6 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       introspection: null,
       policy: null,
       authorize: null,
-      exchange: null,
     };
 
     // Helper: set the audit trail header on any response path
@@ -104,47 +112,78 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       }
     };
 
-    // ── Steps 0 + 1: transport-agnostic pipeline (introspection + policy) ─────
-    // Delegated to authorizeMcpRequestCore so the same checks run on the WS
-    // transport path (BL-02). HTTP-specific rendering (writeHead, WWW-Authenticate,
-    // JSON body shape) stays here; the core only returns a tagged decision.
-    const pipelineResult = await runMcpAuthorizationPipeline(bearerToken, introspectionClient, config);
-    auditTrail.introspection = pipelineResult.audit.introspection;
-    auditTrail.policy = pipelineResult.audit.policy;
+    // ── Steps 0 + 1: introspection + policy ─────────────────────────────────────────
+    // When injectable deps are provided (tests), use them directly and skip the
+    // production pipeline. In production, delegate to authorizeMcpRequestCore so
+    // the same checks run on the WS transport path (BL-02).
+    let decoded: any;
+    if (deps) {
+      // Test path: use injected introspect + authorize stubs
+      const introspResult = await deps.introspect(bearerToken);
+      auditTrail.introspection = {
+        active: introspResult.active,
+        sub: introspResult.sub,
+        exp: introspResult.exp,
+      };
+      if (!introspResult.active) {
+        setAuditHeader(res);
+        teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
+        res.writeHead(401, {
+          'Content-Type': 'application/json',
+          'WWW-Authenticate': `Bearer realm="PingOne", resource_metadata="${config.gatewayResourceUri}/.well-known/mcp-server", error="invalid_token", error_description="Token is revoked or no longer active"`,
+        });
+        res.end(JSON.stringify({
+          error: 'login_required',
+          message: 'Token is revoked or no longer active (RFC 7662)',
+          required_scopes: ['read'],
+          login_required: true,
+        }));
+        return;
+      }
+      auditTrail.policy = { passed: true };
+      decoded = { sub: introspResult.sub };
+    } else {
+      // Production path: transport-agnostic pipeline (introspection + policy)
+      // HTTP-specific rendering (writeHead, WWW-Authenticate, JSON body shape)
+      // stays here; the core only returns a tagged decision.
+      const pipelineResult = await runMcpAuthorizationPipeline(bearerToken, introspectionClient, config);
+      auditTrail.introspection = pipelineResult.audit.introspection;
+      auditTrail.policy = pipelineResult.audit.policy;
 
-    if (pipelineResult.kind === 'introspection_failed') {
-      setAuditHeader(res);
-      teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
-      res.writeHead(401, {
-        'Content-Type': 'application/json',
-        'WWW-Authenticate': `Bearer realm="PingOne", resource_metadata="${config.gatewayResourceUri}/.well-known/mcp-server", error="invalid_token", error_description="Token is revoked or no longer active"`,
-      });
-      res.end(JSON.stringify({
-        error: 'login_required',
-        message: 'Token is revoked or no longer active (RFC 7662)',
-        required_scopes: ['read'],
-        login_required: true,
-      }));
-      return;
+      if (pipelineResult.kind === 'introspection_failed') {
+        setAuditHeader(res);
+        teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
+        res.writeHead(401, {
+          'Content-Type': 'application/json',
+          'WWW-Authenticate': `Bearer realm="PingOne", resource_metadata="${config.gatewayResourceUri}/.well-known/mcp-server", error="invalid_token", error_description="Token is revoked or no longer active"`,
+        });
+        res.end(JSON.stringify({
+          error: 'login_required',
+          message: 'Token is revoked or no longer active (RFC 7662)',
+          required_scopes: ['read'],
+          login_required: true,
+        }));
+        return;
+      }
+
+      if (pipelineResult.kind === 'policy_violation') {
+        setAuditHeader(res);
+        teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
+        res.writeHead(401, {
+          'Content-Type': 'application/json',
+          'WWW-Authenticate': `Bearer realm="PingOne", resource_metadata="${config.gatewayResourceUri}/.well-known/mcp-server", error="${pipelineResult.code}", error_description="${pipelineResult.message}"`,
+        });
+        res.end(JSON.stringify({
+          error: pipelineResult.code,
+          message: pipelineResult.message,
+          required_scopes: ['read'],
+          login_required: true,
+        }));
+        return;
+      }
+
+      decoded = pipelineResult.decoded;
     }
-
-    if (pipelineResult.kind === 'policy_violation') {
-      setAuditHeader(res);
-      teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
-      res.writeHead(401, {
-        'Content-Type': 'application/json',
-        'WWW-Authenticate': `Bearer realm="PingOne", resource_metadata="${config.gatewayResourceUri}/.well-known/mcp-server", error="${pipelineResult.code}", error_description="${pipelineResult.message}"`,
-      });
-      res.end(JSON.stringify({
-        error: pipelineResult.code,
-        message: pipelineResult.message,
-        required_scopes: ['read'],
-        login_required: true,
-      }));
-      return;
-    }
-
-    const decoded = pipelineResult.decoded;
 
     // ── Step 2: Parse JSON-RPC to get method, tool name, and transaction args ──────
     const parsedBody = parseJsonRpcBody(body);
@@ -168,7 +207,11 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
     // ── Step 3: PingOne Authorize evaluation (D-06) ───────────────────────────────
     let authzDecision;
     try {
-      authzDecision = await authorizeClient.evaluate(decoded, method, toolName, toolArgs as any);
+      if (deps) {
+        authzDecision = await deps.authorize(decoded, method, toolName, toolArgs);
+      } else {
+        authzDecision = await authorizeClient.evaluate(decoded, method, toolName, toolArgs as any);
+      }
     } catch {
       authzDecision = { decision: 'DENY' as const, reason: 'Authorization service unavailable' };
     }
@@ -205,14 +248,12 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
     }
 
     // ── Step 3.5: Phase 266/267 disposition dispatch (BL-02 transport parity) ──────
-    // tools/call for an api_key-disposition tool must NOT be RFC 8693-exchanged
-    // and forwarded to the OLB upstream — the gateway drops the bearer and
-    // calls the api-key backend instead (Phase 267: show_mortgage →
-    // banking_mortgage_service). The WS handler (index.ts) has always done
-    // this; the HTTP path used to skip it and raw-proxy to OLB, producing
-    // "Unknown tool". Shared logic lives in apiKeyDispatch (one source, both
-    // transports). dualtoken/bankingdata remain WS-only for now (not exercised
-    // over HTTP by the BFF) — see REGRESSION_PLAN §4.
+    // tools/call for an api_key-disposition tool bypasses upstream forwarding —
+    // the gateway calls the api-key backend directly (Phase 267: show_mortgage →
+    // banking_mortgage_service). The WS handler (index.ts) has always done this;
+    // the HTTP path used to skip it and raw-proxy to OLB, producing "Unknown tool".
+    // Shared logic lives in apiKeyDispatch (one source, both transports).
+    // dualtoken/bankingdata remain WS-only for now — see REGRESSION_PLAN §4.
     if (method === 'tools/call' && toolName && routeTool(toolName) === 'apikey') {
       const rpcId = parsedBody.id ?? null;
       const outcome = await buildApiKeyToolResult(toolName, decoded.sub, undefined, config);
@@ -231,30 +272,13 @@ export function buildAuthorizeMcpRequest(config: GatewayConfig): McpRequestMiddl
       return;
     }
 
-    // ── Step 4: RFC 8693 token exchange for next-hop audience (D-03, D-05) ─────────
-    let exchangeResult;
-    try {
-      exchangeResult = await exchangeClient.exchange(bearerToken, toolName);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      teachLog.error('[authorizeMcpRequest] Token exchange failed', err, { detail: msg });
-      setAuditHeader(res);
-      teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
-      res.writeHead(502, { 'Content-Type': 'application/json' });
-      res.end(
-        JSON.stringify({
-          error: 'token_exchange_failed',
-          message: 'Could not obtain upstream token — try again',
-        }),
-      );
-      return;
-    }
-    auditTrail.exchange = { targetAud: exchangeResult.targetAud };
-
-    // ── Step 5: Forward with exchanged token (D-04: original bearer stays at gateway) ──
+    // ── Step 4: Forward with original TX token (unchanged) ───────────────────────────
+    // The TX token (aud: ping.demo) is valid at both the gateway and the downstream
+    // MCP server — no RFC 8693 re-exchange is needed. The original bearer token is
+    // forwarded unchanged.
     // WR-03: outBody has `_hitl_challenge_id` stripped (or === body if absent).
     setAuditHeader(res);
     teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
-    await forward(exchangeResult.token, outBody);
+    await forward(bearerToken, outBody);
   };
 }

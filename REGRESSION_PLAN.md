@@ -125,6 +125,53 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-20 — Feature: P1AZ at Resource Server + AgentRestrictions (ff_agent_restrictions)
+
+**Files changed:**
+- `demo_api_server/middleware/agentRestrictionsGate.js` (new) — Express middleware mounted at `app.use(['/api/accounts', '/api/transactions'], agentRestrictionsGate)`. Detects agent calls via `X-Agent-Sub` header, fetches `agentRestrictions` attribute from PingOne (5s TTL cache), derives tier from `scope-topology.json` riskLevel, calls P1AZ (or simulated), creates HITL task on DENY. No-op for non-agent calls and when flag is off.
+- `demo_api_server/middleware/agentRestrictionsCache.js` (new) — In-memory 5s TTL cache for PingOne user attribute fetches. Invalidated on admin update.
+- `demo_api_server/services/agentRestrictionsService.js` (new) — `getRequiredTier(toolName)` derives tier from `scope-topology.json` riskLevel (high/critical → write, low/medium → read). `isAgentRestricted(agentRestrictions, requiredTier)` implements the policy decision.
+- `demo_api_server/services/configStore.js` — Added `ff_agent_restrictions` flag (`public: true`, default `false`).
+- `demo_api_server/services/simulatedAuthorizeService.js` — Added `evaluateAgentRestrictions()` simulated P1AZ path.
+- `demo_api_server/routes/adminManagement.js` — Added `PATCH /api/admin/management/users/:userId/agent-restrictions` (validates write/read/none, calls PingOne Management API, invalidates cache).
+- `demo_api_server/services/pingoneProvisionService.js` + `scripts/bootstrapPingOne.js` — Provision `agentRestrictions` schema attribute + default `write` on demo users. Always runs regardless of flag state.
+- `demo_mcp_server/src/banking/BankingAPIClient.ts` — Added `agentSub?` + `mcpTool?` options; sets `X-Agent-Sub` + `X-MCP-Tool` headers when present.
+- `demo_mcp_server/src/tools/BankingToolProvider.ts` — Extracts `act.sub` from agent JWT, creates call-scoped client with agent headers for each tool invocation.
+- `demo_api_ui/src/components/Users.js` — Added per-user `agentRestrictions` dropdown (write/read/none) in admin user management.
+- `demo_api_ui/src/components/education/AgentRestrictionsPanel.js` (new) — Education panel: P1AZ at resource server, live attribute, mid-session change flow.
+- `demo_api_ui/src/components/education/educationIds.js` + `EducationPanelsHost.js` — Registered `AGENT_RESTRICTIONS` panel.
+
+**What this adds:** P1AZ enforcement at the BFF banking API routes (resource server layer). The `agentRestrictions` custom PingOne user attribute (read/write/none) is fetched live at evaluation time — changes propagate within 5 seconds without token re-issue. On DENY, the existing HITL flow triggers. Gated by `ff_agent_restrictions` (default off).
+
+**Verify:**
+1. `ff_agent_restrictions=false` (default) — all banking API calls work normally, middleware is a no-op
+2. `ff_agent_restrictions=true`, user `agentRestrictions=write` — agent tool calls proceed normally
+3. `ff_agent_restrictions=true`, user `agentRestrictions=read`, agent calls `create_transfer` — BFF returns 428 `agent_restrictions_hitl` with a `taskId`
+4. Admin panel Users → change a user's agent access dropdown → next agent write call blocked within 5s
+5. Bootstrap (`npm run pingone:bootstrap`) includes `agentRestrictions-schema`, `agentRestrictions-user`, `agentRestrictions-admin` steps in Phase ⑥
+
+**Do not break:** The gate must remain a no-op when `ff_agent_restrictions !== 'true'` or `X-Agent-Sub` header is absent. All error paths fail open (next()) to avoid blocking non-agent traffic on unexpected errors. The existing MCP Authorize gate (§1 row 57) is unchanged and still runs independently.
+
+---
+
+### 2026-05-20 — SECURITY: Audience validation now always-on, fail-closed in BFF and MCP server
+
+**Files changed:**
+- `demo_api_server/middleware/auth.js` — Replaced optional OR-gate audience check (accepted tokens for any of 5 resource URIs) with a single fail-closed check against `BFF_RESOURCE_URI` (`PINGONE_RESOURCE_BFF_URI` || `ENDUSER_AUDIENCE`). Tokens with a missing or mismatched `aud` are rejected 401. Added `PINGONE_DEFAULT_AUD` guard for unconfigured deployments.
+- `demo_mcp_server/src/tools/JwtClaimVerifier.ts` — Fixed wrong env var (`BANKING_API_RESOURCE_URI`, never set) → `PINGONE_RESOURCE_MCP_SERVER_URI` as primary. Changed aud mismatch/missing from `logger.warn` (fail-open) to `throw AuthenticationError` (fail-closed) for sensitive tools.
+- `demo_api_server/.env.example` — Documented `ENDUSER_AUDIENCE` and `PINGONE_RESOURCE_BFF_URI` under the token exchange resources section.
+
+**What was broken:** BFF `middleware/auth.js` accepted tokens whose `aud` matched any of 5 different resource URIs (enduser, ai_agent, MCP, banking API, gateway), meaning an MCP or gateway token could be replayed at the BFF. MCP server `JwtClaimVerifier.ts` was reading `BANKING_API_RESOURCE_URI` (an unset var) for the MCP audience check, so the aud check never ran, and when it did run (via legacy alias) mismatches only produced a warning rather than rejecting the call.
+
+**What was fixed:** BFF now accepts only tokens issued for its own resource URI (`ENDUSER_AUDIENCE` / `PINGONE_RESOURCE_BFF_URI`). MCP server now reads `PINGONE_RESOURCE_MCP_SERVER_URI` (the correct var, set to `mcpserver.ping.demo`) and hard-rejects on aud mismatch or absent aud for sensitive tools.
+
+**Verify:**
+1. Login → BFF accepts token normally (token `aud` = `enduser.ping.demo`)
+2. Attempt to replay an MCP token (aud = `mcpserver.ping.demo`) against the BFF → 401 "Token audience does not match"
+3. MCP sensitive tool call with correct token → ✅ succeeds; with wrong-audience token → ❌ `AuthenticationError`
+
+**Do not break:** `BFF_RESOURCE_URI` must always be sourced from `PINGONE_RESOURCE_BFF_URI` || `ENDUSER_AUDIENCE` (in that priority). Never widen it back to OR across multiple resource URIs.
+
 ### 2026-05-20 — E2E chip pipeline: fix MCP Gateway HTTPS URL + TOKEN_STORAGE_PATH crash + account pre-fetch + BFF-local audit merge
 
 **Root causes (4):**

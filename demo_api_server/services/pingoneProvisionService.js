@@ -1085,7 +1085,7 @@ class PingOneProvisionService {
   /**
    * Durably wire the MCP server's RFC 7662 introspection identity.
    *
-   * banking_mcp_server reads banking_mcp_server/.env.development (run-demo.sh
+   * demo_mcp_server reads demo_mcp_server/.env.development (run-demo.sh
    * ensure_service_env copies it over .env each restart). It is NOT the BFF
    * .env writeEnvFile() generates, and it is gitignored/untracked — so a
    * fresh `setup:fresh` on a no-vault machine would otherwise leave the MCP
@@ -1109,7 +1109,7 @@ class PingOneProvisionService {
    */
   async writeMcpServerIntrospectionIdentity(provisioned) {
     const devEnvPath = path.resolve(
-      __dirname, '..', '..', 'banking_mcp_server', '.env.development',
+      __dirname, '..', '..', 'demo_mcp_server', '.env.development',
     );
     let content;
     try {
@@ -1120,7 +1120,12 @@ class PingOneProvisionService {
 
     const gwId = provisioned.mcpGwApp?.clientId;
     const gwSecret = provisioned.mcpGwApp?.clientSecret;
-    const mcpAud = provisioned.mcpResourceServer?.audience?.[0];
+    // In passthrough mode the MCP server receives tokens audienced to the
+    // gateway (mcpgateway.ping.demo), not to itself. MCP_SERVER_RESOURCE_URI
+    // is the aud the server validates in TokenIntrospector.ts, so it must match
+    // the gateway audience — not the MCP server's own resource audience.
+    const mcpAud = provisioned.mcpGwResourceServer?.audience?.[0]
+      || provisioned.mcpResourceServer?.audience?.[0];
     if (!gwId || !gwSecret || !mcpAud) {
       return null; // gateway app / mcp resource not provisioned — leave as-is
     }
@@ -1189,8 +1194,12 @@ class PingOneProvisionService {
       '# Resource Server',
       `ENDUSER_AUDIENCE=${provisioned.resourceServer.audience[0]}`,
       '',
-      '# MCP Resource Server',
-      `MCP_RESOURCE_URI=${provisioned.mcpResourceServer?.audience?.[0] || 'https://mcp-server.pingdemo.com'}`,
+      '# MCP Resource URI — the audience the BFF exchanges user tokens into.',
+      '# In passthrough mode this is the MCP Gateway audience (mcpgateway.ping.demo)',
+      '# so the inbound token already carries the right aud for both the gateway',
+      '# and the MCP server (which trusts the gateway and skips re-exchange).',
+      `MCP_RESOURCE_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcpgateway.ping.demo'}`,
+      `MCP_SERVER_RESOURCE_URI=${provisioned.mcpResourceServer?.audience?.[0] || 'mcpserver.ping.demo'}`,
       '',
       '# MCP Exchanger (Token Exchange)',
       `PINGONE_MCP_EXCHANGER_CLIENT_ID=${provisioned.mcpExchangerApp?.clientId || ''}`,
@@ -1201,6 +1210,7 @@ class PingOneProvisionService {
       `MCP_GW_CLIENT_SECRET=${provisioned.mcpGwApp?.clientSecret || '<set-in-pingone-console>'}`,
       `MCP_GW_RESOURCE_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcpgateway.ping.demo'}`,
       'MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD=post',
+      'MCP_GW_PASSTHROUGH_TO_MCP_SERVER=true',
       '',
       '# Agent Service (banking_agent_service on :3006)',
       `AGENT_CLIENT_ID=${provisioned.agentApp?.clientId || ''}`,
@@ -1913,6 +1923,43 @@ class PingOneProvisionService {
       }
       onStep(steps[steps.length - 1]);
 
+      // agentRestrictions schema attribute (always provisioned regardless of ff_agent_restrictions)
+      steps.push({ step: 'agentRestrictions-schema', icon: '·', message: 'Ensuring agentRestrictions user schema attribute...' });
+      onStep(steps[steps.length - 1]);
+      try {
+        await this._ensureUserSchemaAttribute('agentRestrictions', 'STRING', 'Agent Restrictions');
+        steps.push({ step: 'agentRestrictions-schema', icon: '✅', message: 'agentRestrictions attribute → created (or already exists)' });
+      } catch (err) {
+        steps.push({ step: 'agentRestrictions-schema', icon: '⚠️', message: `agentRestrictions schema attribute failed: ${err.message}` });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Set agentRestrictions default on demoUser
+      if (provisioned.demoUser?.id) {
+        steps.push({ step: 'agentRestrictions-user', icon: '·', message: 'Setting agentRestrictions default on demo user...' });
+        onStep(steps[steps.length - 1]);
+        try {
+          await this.makeRequest('PATCH', `/users/${provisioned.demoUser.id}`, { agentRestrictions: 'write' });
+          steps.push({ step: 'agentRestrictions-user', icon: '✅', message: 'agentRestrictions: demo user → write' });
+        } catch (err) {
+          steps.push({ step: 'agentRestrictions-user', icon: '⚠️', message: `agentRestrictions: demo user set failed (non-fatal): ${err.message}` });
+        }
+        onStep(steps[steps.length - 1]);
+      }
+
+      // Set agentRestrictions default on demoAdmin
+      if (provisioned.demoAdmin?.id) {
+        steps.push({ step: 'agentRestrictions-admin', icon: '·', message: 'Setting agentRestrictions default on demo admin...' });
+        onStep(steps[steps.length - 1]);
+        try {
+          await this.makeRequest('PATCH', `/users/${provisioned.demoAdmin.id}`, { agentRestrictions: 'write' });
+          steps.push({ step: 'agentRestrictions-admin', icon: '✅', message: 'agentRestrictions: demo admin → write' });
+        } catch (err) {
+          steps.push({ step: 'agentRestrictions-admin', icon: '⚠️', message: `agentRestrictions: demo admin set failed (non-fatal): ${err.message}` });
+        }
+        onStep(steps[steps.length - 1]);
+      }
+
       // Step 24: Add bankingPrincipalUserId SPEL token claim on user app
       steps.push({ step: 'spel-claim', icon: '🔧', message: 'Adding SPEL token claim on User application...' });
       onStep(steps[steps.length - 1]);
@@ -2237,7 +2284,7 @@ class PingOneProvisionService {
       onStep(steps[steps.length - 1]);
 
       // Step 33b: Durably wire the MCP server's introspection identity into
-      // banking_mcp_server/.env.development (the file run-demo.sh copies over
+      // demo_mcp_server/.env.development (the file run-demo.sh copies over
       // its .env). Without this a fresh no-vault setup:fresh reintroduces the
       // gateway->MCP 401 (REGRESSION_PLAN §4 2026-05-18).
       {

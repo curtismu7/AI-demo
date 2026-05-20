@@ -38,6 +38,8 @@ import GleanPanel from "./GleanPanel";
 import IntentDelegationPanel from "./IntentDelegationPanel";
 import AuthZenPanel from "./AuthZenPanel";
 import WebMcpEduPanel from "./WebMcpEduPanel";
+import ElicitationPanel from "./ElicitationPanel";
+import AgentRestrictionsPanel from "./AgentRestrictionsPanel";
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -219,6 +221,8 @@ export default function EducationPanelsHost() {
         onClose={close}
         initialTabId={tab}
       />
+      <ElicitationPanel isOpen={panel === EDU.MCP_ELICITATION} onClose={close} initialTabId={tab} />
+      <AgentRestrictionsPanel isOpen={panel === EDU.AGENT_RESTRICTIONS} onClose={close} initialTabId={tab} />
     </>
   );
 }

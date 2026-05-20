@@ -70,15 +70,37 @@ export class JwtClaimVerifier {
       this.logger.warn(`[BankingToolProvider] Token for sensitive tool '${toolName}' has no iss claim`);
     }
 
-    const expectedAud = process.env.BANKING_API_RESOURCE_URI;
-    if (expectedAud && aud) {
-      const audArray: string[] = Array.isArray(aud) ? (aud as string[]) : [aud as string];
-      if (!audArray.includes(expectedAud)) {
-        this.logger.warn(
-          `[BankingToolProvider] Token aud [${audArray.join(', ')}] does not include ` +
-          `expected audience '${expectedAud}' for '${toolName}'`
+    // MCP server resource URI — tokens arriving here must be issued for this service.
+    // Reads PINGONE_RESOURCE_MCP_SERVER_URI (set by bootstrapPingOne) or the legacy
+    // MCP_RESOURCE_URI alias. When configured the check is mandatory and fail-hard:
+    // a mismatched or absent aud on a sensitive-tool token is an authentication error,
+    // not just a warning, because it could indicate token replay from another service.
+    const expectedAud =
+      process.env.PINGONE_RESOURCE_MCP_SERVER_URI ||
+      process.env.MCP_RESOURCE_URI ||
+      process.env.BANKING_API_RESOURCE_URI || // legacy alias kept for backwards compat
+      null;
+
+    if (expectedAud) {
+      const audArray: string[] = aud
+        ? (Array.isArray(aud) ? (aud as string[]) : [aud as string])
+        : [];
+
+      if (audArray.length === 0) {
+        throw new AuthenticationError(
+          `Token for sensitive tool '${toolName}' is missing the aud claim (expected '${expectedAud}')`,
+          AuthErrorCodes.INVALID_TOKEN
         );
       }
+
+      if (!audArray.includes(expectedAud)) {
+        throw new AuthenticationError(
+          `Token aud [${audArray.join(', ')}] does not match MCP server audience '${expectedAud}' for '${toolName}'`,
+          AuthErrorCodes.INVALID_TOKEN
+        );
+      }
+
+      this.logger.debug(`[BankingToolProvider] Audience check passed for '${toolName}': aud includes '${expectedAud}'`);
     }
 
     // ── JWKS Cryptographic Signature Verification (RFC 7515) ──────────────────

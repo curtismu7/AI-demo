@@ -161,6 +161,7 @@ const {
     refreshIfExpiring
 } = require('./middleware/tokenRefresh');
 const audValidationMiddleware = require('./middleware/audValidationMiddleware');
+const { agentRestrictionsGate } = require('./middleware/agentRestrictionsGate');
 
 const app = express();
 
@@ -915,6 +916,9 @@ app.get('/api/tokens/agent-cc-preview', requireSession, tokenRoutes.agentCcPrevi
 app.use('/api/tokens', authenticateToken, tokenRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/self-service/users', authenticateToken, selfServiceUsersRoutes);
+// Agent restrictions gate — fires only on agent-originated calls (X-Agent-Sub present)
+// when ff_agent_restrictions=true. No-op for all direct user calls.
+app.use(['/api/accounts', '/api/transactions'], agentRestrictionsGate);
 app.use('/api/accounts', authenticateToken, accountRoutes);
 app.use('/api/accounts', authenticateToken, sensitiveBankingRoutes);
 app.use('/api/resource-server', authenticateToken, resourceServerRoutes);

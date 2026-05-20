@@ -70,6 +70,7 @@ const stubConfig: GatewayConfig = {
   bffInternalSecret: 'dev-shared-secret-change-me',
   bankingResourceServerBaseUrl: 'http://localhost:3001',
   bankingResourceServerResourceUri: 'https://banking-resource-server.ping.demo',
+  mcpServerPassthrough: false,
 };
 
 const stubConfigNoAuthz: GatewayConfig = {
@@ -323,16 +324,13 @@ describe('buildAuthorizeMcpRequest middleware', () => {
     res = mocks.res;
   });
 
-  it('permit + exchange → calls forward with exchanged token (not original bearer)', async () => {
+  it('permit → calls forward with the original bearer token unchanged (no re-exchange)', async () => {
     // PingAuthorize: PERMIT
     mockedAxios.post.mockResolvedValueOnce({ data: { decision: 'PERMIT' } });
-    // Token exchange: OLB token
-    mockedAxios.post.mockResolvedValueOnce({
-      data: { access_token: 'exchanged-olb-token', expires_in: 300 },
-    });
+    // No token exchange mock needed — the gateway now forwards the TX token unchanged.
 
     const body = mcpBody('tools/call', 'get_my_accounts');
-    const bearerToken = VALID_BEARER; // must be a valid JWT; exchange verifies D-04: exchanged != original
+    const bearerToken = VALID_BEARER;
 
     await middleware(
       bearerToken,
@@ -343,17 +341,14 @@ describe('buildAuthorizeMcpRequest middleware', () => {
     );
 
     expect(forwardSpy).toHaveBeenCalledTimes(1);
-    // Must NOT forward the original bearer — must use exchanged token (D-04: no token to LLM)
+    // The TX token (aud: ping.demo) is forwarded unchanged — no re-exchange at the gateway.
     const [calledWithToken] = forwardSpy.mock.calls[0];
-    expect(calledWithToken).toBe('exchanged-olb-token');
-    expect(calledWithToken).not.toBe(bearerToken);
+    expect(calledWithToken).toBe(bearerToken);
   });
 
   it('WR-03: strips _hitl_challenge_id from arguments before forwarding on the HTTP path', async () => {
     mockedAxios.post.mockResolvedValueOnce({ data: { decision: 'PERMIT' } });
-    mockedAxios.post.mockResolvedValueOnce({
-      data: { access_token: 'exchanged-olb-token', expires_in: 300 },
-    });
+    // No exchange mock needed — bearer token is forwarded unchanged.
 
     const body = Buffer.from(
       JSON.stringify({
@@ -415,31 +410,8 @@ describe('buildAuthorizeMcpRequest middleware', () => {
     expect(res.writeHead).toHaveBeenCalledWith(403, expect.anything());
   });
 
-  it('token exchange failure → 502, no forward', async () => {
-    // PingAuthorize: PERMIT
-    mockedAxios.post.mockResolvedValueOnce({ data: { decision: 'PERMIT' } });
-    // Token exchange: fails
-    mockedAxios.post.mockRejectedValueOnce(new Error('token endpoint down'));
-
-    const body = mcpBody('tools/call', 'get_my_accounts');
-    await middleware(
-      VALID_BEARER,
-      body,
-      req as IncomingMessage,
-      res as ServerResponse,
-      forwardSpy,
-    );
-
-    expect(forwardSpy).not.toHaveBeenCalled();
-    expect(res.writeHead).toHaveBeenCalledWith(502, expect.anything());
-  });
-
-  it('no-authz config → permit all, token is still exchanged before forwarding', async () => {
-    // No PingAuthorize configured — token exchange only
-    mockedAxios.post.mockResolvedValueOnce({
-      data: { access_token: 'no-authz-exchanged-token', expires_in: 300 },
-    });
-
+  it('no-authz config → permit all, forwards original bearer token unchanged', async () => {
+    // No PingAuthorize configured — no exchange, bearer forwarded as-is.
     McpTokenExchangeClient.clearCache();
     const NO_AUTHZ_BEARER = makeToken('user-123', GATEWAY_AUD);
     const noAuthzMiddleware = buildAuthorizeMcpRequest(stubConfigNoAuthz);
@@ -455,8 +427,8 @@ describe('buildAuthorizeMcpRequest middleware', () => {
     );
 
     expect(forward2).toHaveBeenCalledTimes(1);
-    expect(forward2.mock.calls[0][0]).toBe('no-authz-exchanged-token');
-    expect(forward2.mock.calls[0][0]).not.toBe(NO_AUTHZ_BEARER);
+    // TX token forwarded unchanged — no re-exchange at the gateway.
+    expect(forward2.mock.calls[0][0]).toBe(NO_AUTHZ_BEARER);
   });
 });
 

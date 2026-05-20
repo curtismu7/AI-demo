@@ -10,6 +10,9 @@ export default function MayActPanel({ isOpen, onClose, initialTabId }) {
       label: 'Plain English',
       content: (
         <>
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            The delegation lifecycle starts with explicit user consent. If you haven't authorized the agent, PingOne will not issue a delegated token — no consent means no delegation.
+          </p>
           <p>
             When you sign in, PingOne can include a small note inside your security pass that says:{' '}
             <strong>"The AI assistant is allowed to act on your behalf."</strong>
@@ -60,6 +63,9 @@ export default function MayActPanel({ isOpen, onClose, initialTabId }) {
                   resource-specific service token. Useful when different scopes are needed per resource.
                 </li>
               </ul>
+              <p style={{ color: "#374151", marginBottom: "0.5rem", marginTop: "0.5rem" }}>
+                The actor token in Exchange #1 is the agent&apos;s own identity proof — it&apos;s obtained via client credentials and proves the agent app is who it claims to be, independent of the user&apos;s token.
+              </p>
             </li>
             <li>
               <strong>PingOne issues the AI&apos;s pass</strong> — it includes:
@@ -88,9 +94,12 @@ export default function MayActPanel({ isOpen, onClose, initialTabId }) {
           <h3>What stops bad actors</h3>
           <ol>
             <li>
-              <strong>A rogue app tries to steal your pass and act as the AI</strong> — rejected:
-              PingOne checks that the requesting app&apos;s ID matches the one listed in <code>may_act</code>.
-              Any other app gets a &quot;permission denied&quot;.
+              <p style={{ color: "#374151", marginBottom: "0.5rem" }}>
+                <strong>Rogue app protection:</strong> PingOne validates the <code className="edu-code">actor_token.sub</code> against the <code className="edu-code">may_act.sub</code> claim in the subject token before issuing the exchanged token.
+              </p>
+              <p style={{ color: "#374151", marginBottom: "0.5rem" }}>
+                Example: Agent A&apos;s <code className="edu-code">client_id</code> is <code className="edu-code">abc-123</code>. Your access token has <code className="edu-code">may_act: {"{"} sub: 'abc-123' {"}"}</code>. Rogue agent B (<code className="edu-code">client_id: xyz-999</code>) attempts the exchange using your token as the subject. PingOne checks that the presenting <code className="edu-code">actor_token.sub</code> (<code className="edu-code">xyz-999</code>) matches <code className="edu-code">may_act.sub</code> (<code className="edu-code">abc-123</code>) — it doesn&apos;t, so PingOne returns <code className="edu-code">invalid_grant</code> and the exchange is rejected.
+              </p>
             </li>
             <li>
               <strong>Someone tries to exchange a pass that has no approval note</strong> — rejected:

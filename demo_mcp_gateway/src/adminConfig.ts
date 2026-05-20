@@ -55,6 +55,7 @@ function safeView(config: GatewayConfig): Record<string, unknown> {
     pingAuthorizeWorkerId: config.pingAuthorizeWorkerId,
     hitlServiceUrl:        config.hitlServiceUrl,
     devBypass:             config.devBypass,
+    mcpServerPassthrough:  config.mcpServerPassthrough,
   };
 }
 

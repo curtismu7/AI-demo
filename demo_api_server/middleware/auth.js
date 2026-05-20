@@ -18,13 +18,22 @@ const {
 // Environment configuration
 const SKIP_TOKEN_SIGNATURE_VALIDATION = process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true';
 const DEBUG_TOKENS = process.env.DEBUG_TOKENS === 'true';
-// Audience values — read from env only; no hardcoded fallbacks.
-// When not set, audience validation is skipped (tokens are still JWKS-verified).
-// Set ENDUSER_AUDIENCE and AI_AGENT_AUDIENCE in your deployment env to enforce
-// that tokens were issued for this specific resource server.
-// PINGONE_RESOURCE_MCP_SERVER_URI is the audience for BFF-exchanged MCP delegated tokens (RFC 8693).
-const ENDUSER_AUDIENCE  = process.env.ENDUSER_AUDIENCE  || null;
+
+// BFF resource URI — tokens arriving at this service must be issued for this audience.
+// Reads ENDUSER_AUDIENCE (set by bootstrapPingOne) or the explicit override
+// PINGONE_RESOURCE_BFF_URI. When configured, audience validation is mandatory and
+// fail-closed: tokens with a missing or mismatched aud are rejected with 401.
+const BFF_RESOURCE_URI =
+  process.env.PINGONE_RESOURCE_BFF_URI ||
+  process.env.ENDUSER_AUDIENCE ||
+  null;
+
+// Secondary audience values used only for client-type detection (not for acceptance gating).
+// A token must STILL match BFF_RESOURCE_URI to be accepted; these values are only used
+// to label the token as enduser/ai_agent after it has already passed the aud check.
+const ENDUSER_AUDIENCE  = process.env.ENDUSER_AUDIENCE  || BFF_RESOURCE_URI;
 const AI_AGENT_AUDIENCE = process.env.AI_AGENT_AUDIENCE || null;
+// MCP / gateway resource URIs — for reference only (these tokens never arrive at the BFF).
 const MCP_RESOURCE_URI  = process.env.PINGONE_RESOURCE_MCP_SERVER_URI || process.env.MCP_RESOURCE_URI || null;
 const BANKING_API_RESOURCE_URI = process.env.BANKING_API_RESOURCE_URI || null;
 const MCP_GATEWAY_RESOURCE_URI = process.env.PINGONE_RESOURCE_MCP_GATEWAY_URI || null;
@@ -501,21 +510,70 @@ const validatePingOneCoreToken = async (token, requestContext = {}) => {
       issuer: oauthConfig.issuer,
     });
 
-    // Audience validation: only enforced when ENDUSER_AUDIENCE or AI_AGENT_AUDIENCE
-    // are explicitly set in the deployment environment.
-    // Tokens from PingOne without a custom resource server have aud='https://api.pingone.com'
-    // which is always accepted as a valid PingOne-issued token.
+    // ── Audience validation (always-on when BFF_RESOURCE_URI is configured) ────
+    // Tokens arriving at the BFF must be targeted at this service's resource URI.
+    // Fail-closed by default: a missing aud claim is rejected when we know our
+    // own audience, preventing tokens issued for other resource servers (MCP,
+    // gateway, etc.) from being accepted here.
+    //
+    // PingOne default fallback: when no custom resource server is configured,
+    // PingOne issues tokens with aud='https://api.pingone.com'. Accept this only
+    // when BFF_RESOURCE_URI is NOT set (i.e. the operator has not provisioned a
+    // dedicated resource server yet).
     const PINGONE_DEFAULT_AUD = 'https://api.pingone.com';
-    const knownAudiences = [ENDUSER_AUDIENCE, AI_AGENT_AUDIENCE, MCP_RESOURCE_URI, BANKING_API_RESOURCE_URI, MCP_GATEWAY_RESOURCE_URI].filter(Boolean);
-    if (knownAudiences.length > 0 && payload.aud) {
-      const tokenAuds = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-      // Accept tokens issued for a configured custom resource server OR for the
-      // default PingOne API audience (no custom resource server configured).
-      const hasMatch =
-        knownAudiences.some((a) => tokenAuds.includes(a)) ||
-        tokenAuds.includes(PINGONE_DEFAULT_AUD);
+    if (BFF_RESOURCE_URI) {
+      const tokenAuds = payload.aud
+        ? (Array.isArray(payload.aud) ? payload.aud : [payload.aud])
+        : [];
+
+      if (tokenAuds.length === 0) {
+        logger.warn(LOG_CATEGORIES.OAUTH_VALIDATION, 'Token has no aud claim — rejecting (BFF_RESOURCE_URI is configured)', {
+          method, path,
+          bff_resource_uri: BFF_RESOURCE_URI,
+        });
+        throw new OAuthError(
+          OAUTH_ERROR_TYPES.INVALID_TOKEN,
+          'Token is missing the aud claim. Tokens must be issued for this service.',
+          401
+        );
+      }
+
+      const hasMatch = tokenAuds.includes(BFF_RESOURCE_URI);
       if (!hasMatch) {
-        throw new Error(`Token audience [${tokenAuds.join(', ')}] does not match any known audience for this service.`);
+        logger.warn(LOG_CATEGORIES.OAUTH_VALIDATION, 'Token audience mismatch — rejecting', {
+          method, path,
+          token_aud: tokenAuds,
+          expected: BFF_RESOURCE_URI,
+        });
+        throw new OAuthError(
+          OAUTH_ERROR_TYPES.INVALID_TOKEN,
+          `Token audience [${tokenAuds.join(', ')}] does not match this service's audience '${BFF_RESOURCE_URI}'.`,
+          401
+        );
+      }
+
+      logger.debug(LOG_CATEGORIES.OAUTH_VALIDATION, 'Audience check passed', {
+        method, path,
+        token_aud: tokenAuds,
+        bff_resource_uri: BFF_RESOURCE_URI,
+      });
+    } else if (payload.aud) {
+      // No BFF_RESOURCE_URI configured — accept only the PingOne default audience
+      // so tokens from other resource servers still can't be replayed here.
+      const tokenAuds = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+      const hasDefault = tokenAuds.includes(PINGONE_DEFAULT_AUD);
+      if (!hasDefault) {
+        logger.warn(LOG_CATEGORIES.OAUTH_VALIDATION, 'Token has custom aud but BFF_RESOURCE_URI not set — rejecting', {
+          method, path,
+          token_aud: tokenAuds,
+          hint: 'Set ENDUSER_AUDIENCE or PINGONE_RESOURCE_BFF_URI to the BFF resource URI in .env',
+        });
+        throw new OAuthError(
+          OAUTH_ERROR_TYPES.INVALID_TOKEN,
+          `Token audience [${tokenAuds.join(', ')}] does not match the default PingOne audience. ` +
+          `Configure ENDUSER_AUDIENCE or PINGONE_RESOURCE_BFF_URI to accept custom resource server tokens.`,
+          401
+        );
       }
     }
 

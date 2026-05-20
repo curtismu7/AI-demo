@@ -18,6 +18,9 @@ export default function HumanInLoopPanel({ isOpen, onClose, initialTabId }) {
             explicitly approve a sensitive action before the system completes it. The automation (including an
             AI agent) cannot silently execute that action on its own.
           </p>
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            The simplest rule: <strong>reads can proceed if policy permits; writes require explicit approval.</strong> Querying account balances doesn&apos;t need a human in the loop. Transferring funds does. No consent, no delegation — the agent cannot complete a write operation without an explicit human approval signal.
+          </p>
           <p>
             This is different from <strong>man-in-the-middle (MITM)</strong>, which describes an attacker
             intercepting traffic. HITL is a <strong>safety and governance</strong> pattern: the human stays
@@ -58,6 +61,9 @@ export default function HumanInLoopPanel({ isOpen, onClose, initialTabId }) {
             <li>
               <strong>Reduce traceability</strong> — if no one explicitly approved, audits and accountability
               suffer.
+            </li>
+            <li style={{ marginBottom: "0.5rem" }}>
+              <strong>Blur the read/write line</strong> — agents that treat reads and writes identically apply unnecessary friction to harmless queries while potentially under-protecting mutations. Distinguishing the two makes approval flows proportionate.
             </li>
           </ul>
           <p>

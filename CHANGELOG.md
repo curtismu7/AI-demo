@@ -16,6 +16,10 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ## [Unreleased]
 
+### Added
+
+- **`ff_agent_restrictions` feature flag + `agentRestrictionsService`** — registers `ff_agent_restrictions` in configStore FIELD_DEFS (default `false`); new `agentRestrictionsService.js` derives read/write capability tier from `scope-topology.json` riskLevel at load time and exposes `getRequiredTier(toolName)` + `isAgentRestricted(agentRestrictions, requiredTier)` for the P1AZ agent-restrictions gate. Foundation for Task 1 of the agent-restrictions middleware chain.
+
 ### Fixed
 
 - **Token Chain — faithful + complete diagnostic view** — a multi-agent correctness review found the Token Chain misrepresented or omitted steps. Now: an RFC 8693 exchange failure renders the failed step (the chain no longer goes blank exactly when it matters); failed/denied/expired statuses render red instead of a benign "in progress" amber (badge, row, History); the MCP gateway's second token exchange for real banking tools is shown (cache-aware — "cached, no round-trip" vs "fresh exchange"); the persisted chain queried on refresh is no longer corrupted/reversed; cold-start synthetic events are labelled "not verified"; a failed call no longer leaves the previous call's chain on screen as "live"; per-user history isolation on shared browsers. Also added the previously-missing MCP request/response, resource-server, and agent-reasoning steps, and a per-card "What changed" strip (audience/scope/delegation diff vs the previous step). Event shape + status strings unchanged (UI maps them). See REGRESSION_PLAN §4 / REGRESSION_LOG (2026-05-16).

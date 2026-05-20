@@ -406,6 +406,13 @@ export default function PingOneAuthorizePanel({ isOpen, onClose, initialTabId })
               Decision Endpoints API
             </a>
           </p>
+          <h4 style={{ color: "#1e293b", marginBottom: "0.5rem", marginTop: "1.5rem" }}>Policy example</h4>
+          <p style={{ color: "#374151", marginBottom: "0.75rem" }}>
+            A customer on the basic tier requests an upgrade to Platinum. PingOne Authorize evaluates: <code className="edu-code">tool=upgrade_tier</code>, <code className="edu-code">targetField=tier</code>, <code className="edu-code">targetValue=Platinum</code>, <code className="edu-code">customerTier=basic</code> → <strong>DENY</strong>. The policy returns a denial with the matched rule visible in the Recent Decisions view. The agent receives the denial and can explain to the user why the upgrade isn't available.
+          </p>
+          <p style={{ color: "#374151", marginBottom: "0.75rem" }}>
+            The policy logic lives centrally in PingOne Authorize — not in the agent, the MCP server, or the gateway. Any of those components changing doesn't affect the policy. New tools automatically get evaluated against the same rules without code changes.
+          </p>
         </>
       ),
     },
@@ -828,7 +835,14 @@ POST /v1/environments/{envId}/decisionEndpoints/{endpointId}
     {
       id: 'recent',
       label: '🔍 Recent Decisions',
-      content: <RecentDecisionsViewer />,
+      content: (
+        <>
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            The PingOne Authorize console Recent Decisions view shows which rule fired, the full input parameters evaluated, and the decision output — useful for diagnosing unexpected PERMIT or DENY results during a demo.
+          </p>
+          <RecentDecisionsViewer />
+        </>
+      ),
     },
   ];
 

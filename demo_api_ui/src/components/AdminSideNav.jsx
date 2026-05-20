@@ -377,6 +377,7 @@ export default function AdminSideNav({ user }) {
       icon: "dbg",
       action: () => openEdu(EDU.MCP_PROTOCOL, "mfa-gate"),
     },
+    { label: "MCP Elicitation", icon: "dbg", action: () => openEdu(EDU.MCP_ELICITATION, "what") },
     {
       label: "Agent Gateway",
       icon: "web",

@@ -428,4 +428,40 @@ router.post('/validate-connection', requireAdmin, async (req, res) => {
   }
 });
 
+const { cache: attrCache } = require('../middleware/agentRestrictionsCache');
+
+const VALID_AGENT_RESTRICTIONS = new Set(['write', 'read', 'none']);
+
+/**
+ * PATCH /api/admin/management/users/:userId/agent-restrictions
+ * Update a user's agentRestrictions attribute in PingOne.
+ * Also invalidates the local BFF attribute cache so the change takes effect within 5s.
+ */
+router.patch('/users/:userId/agent-restrictions', requireAdmin, async (req, res) => {
+  const { agentRestrictions } = req.body;
+  const { userId } = req.params;
+
+  if (!VALID_AGENT_RESTRICTIONS.has(agentRestrictions)) {
+    return res.status(400).json({
+      error: 'invalid_value',
+      message: `agentRestrictions must be one of: ${[...VALID_AGENT_RESTRICTIONS].join(', ')}`,
+    });
+  }
+
+  try {
+    managementService.initialize();
+    const axios = require('axios');
+    await axios.patch(
+      `${managementService.baseURL}/users/${userId}`,
+      { agentRestrictions },
+      { headers: managementService.getHeaders() }
+    );
+    attrCache.invalidate(userId);
+    return res.json({ userId, agentRestrictions, updated: true });
+  } catch (error) {
+    console.error('[adminManagement] PATCH /users/:userId/agent-restrictions error:', error.message);
+    return res.status(500).json({ error: 'update_failed', message: error.message });
+  }
+});
+
 module.exports = router;
