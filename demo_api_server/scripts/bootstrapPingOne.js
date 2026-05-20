@@ -85,7 +85,7 @@ Provisions a complete PingOne environment for the demo:
   - Schema attribute: bankingPrincipalUserId
   - Token claims:     bankingPrincipalUserId on User app, may_act on Admin app
 
-Writes credentials to banking_api_server/.env (overwrites existing).
+Writes credentials to demo_api_server/.env (overwrites existing).
 Idempotent — rerunning produces "exists" rows and exits 0.
 
 Usage:
@@ -657,7 +657,7 @@ function printPlan(creds) {
   console.log('  3 resource servers, ~25 scopes, 7 applications, 2 users (with passwords),');
   console.log('  1 schema attribute, 2 token claims, scope mappings.');
   console.log('');
-  console.log('Will overwrite banking_api_server/.env with provisioned credentials.');
+  console.log('Will overwrite demo_api_server/.env with provisioned credentials.');
   console.log('');
 }
 
@@ -756,7 +756,7 @@ ${appBlock('Agent service', p.agentApp)}
 
 ## .env file
 
-The full .env is at \`banking_api_server/.env\`. Key groups present:
+The full .env is at \`demo_api_server/.env\`. Key groups present:
 
 \`\`\`
 PINGONE_ENVIRONMENT_ID
@@ -1075,7 +1075,7 @@ async function main() {
     if (result?.provisioned?.demoUser?.password ||
         result?.provisioned?.demoAdmin?.password ||
         result?.provisioned?.demoDelegate?.password) {
-      console.log('  Demo credentials (also saved in banking_api_server/.env):');
+      console.log('  Demo credentials (also saved in demo_api_server/.env):');
       if (result.provisioned.demoUser?.password) {
         console.log(`    demoUser      ${result.provisioned.demoUser.password}`);
       }
@@ -1088,21 +1088,21 @@ async function main() {
       console.log('');
     }
     console.log('  Files written:');
-    console.log('    banking_api_server/.env       all PingOne credentials');
+    console.log('    demo_api_server/.env          all PingOne credentials');
     if (configPath) console.log(`    ${path.relative(process.cwd(), configPath).padEnd(30)}reference dump (resource IDs, demo creds, all non-secret config)`);
     console.log('');
 
-    // Offer to auto-run ./run-demo.sh restart so the running services pick up
+    // Offer to auto-run ./run.sh restart so the running services pick up
     // the new .env. Skipped under --non-interactive (CI / scripted runs print
     // the instruction and exit). The repo root is two levels up from this
-    // script: banking_api_server/scripts/bootstrapPingOne.js → repo root.
+    // script: demo_api_server/scripts/bootstrapPingOne.js → repo root.
     const REPO_ROOT = path.resolve(__dirname, '..', '..');
-    const runBankSh = path.join(REPO_ROOT, 'run-demo.sh');
+    const runBankSh = path.join(REPO_ROOT, 'run.sh');
     const runBankAvailable = require('fs').existsSync(runBankSh);
 
     if (NON_INTERACTIVE || !runBankAvailable) {
       console.log('  Restart services so they pick up the new .env values:');
-      console.log(`    cd ${REPO_ROOT} && ./run-demo.sh restart`);
+      console.log(`    cd ${REPO_ROOT} && ./run.sh restart`);
       console.log('');
       process.exit(0);
     }
@@ -1119,7 +1119,7 @@ async function main() {
     if (!yes) {
       console.log('');
       console.log('  Skipping. Restart later with:');
-      console.log(`    cd ${REPO_ROOT} && ./run-demo.sh restart`);
+      console.log(`    cd ${REPO_ROOT} && ./run.sh restart`);
       console.log('');
       process.exit(0);
     }
@@ -1133,8 +1133,8 @@ async function main() {
     });
     if (restartResult.error) {
       console.error('');
-      console.error(`  Failed to spawn run-demo.sh: ${restartResult.error.message}`);
-      console.error(`  Run it manually: cd ${REPO_ROOT} && ./run-demo.sh restart`);
+      console.error(`  Failed to spawn run.sh: ${restartResult.error.message}`);
+      console.error(`  Run it manually: cd ${REPO_ROOT} && ./run.sh restart`);
       process.exit(1);
     }
     process.exit(restartResult.status || 0);
