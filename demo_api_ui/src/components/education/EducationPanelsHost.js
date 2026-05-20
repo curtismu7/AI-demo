@@ -40,6 +40,7 @@ import AuthZenPanel from "./AuthZenPanel";
 import WebMcpEduPanel from "./WebMcpEduPanel";
 import ElicitationPanel from "./ElicitationPanel";
 import AgentRestrictionsPanel from "./AgentRestrictionsPanel";
+import TransactionTokensPanel from "./TransactionTokensPanel";
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -223,6 +224,11 @@ export default function EducationPanelsHost() {
       />
       <ElicitationPanel isOpen={panel === EDU.MCP_ELICITATION} onClose={close} initialTabId={tab} />
       <AgentRestrictionsPanel isOpen={panel === EDU.AGENT_RESTRICTIONS} onClose={close} initialTabId={tab} />
+      <TransactionTokensPanel
+        isOpen={panel === EDU.TRANSACTION_TOKENS}
+        onClose={close}
+        initialTabId={tab}
+      />
     </>
   );
 }

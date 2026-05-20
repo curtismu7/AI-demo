@@ -66,4 +66,6 @@ export const EDU = {
   MCP_ELICITATION: "mcp-elicitation",
   /** AgentRestrictions — P1AZ at the resource server, per-user agent capability control */
   AGENT_RESTRICTIONS: "agent-restrictions",
+  /** TransactionTokens — TraT context binding + mTLS gateway enforcement */
+  TRANSACTION_TOKENS: "transaction-tokens",
 };

@@ -37,6 +37,7 @@
     "data:preflight": "node scripts/importMigrationBundle.js --preflight-only",
     "pingone:bootstrap": "node scripts/bootstrapPingOne.js",
     "pingone:bootstrap:ci": "node scripts/bootstrapPingOne.js --non-interactive",
+    "pingone:setup:trat": "node scripts/setupTratClaims.js",
     "pingone:cleanup": "node scripts/cleanupPingOneApps.js",
     "scopes:doc": "node scripts/generate-scope-doc.js",
     "setup:fresh": "node scripts/setupFresh.js",

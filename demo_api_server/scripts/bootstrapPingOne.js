@@ -1092,6 +1092,14 @@ async function main() {
     if (configPath) console.log(`    ${path.relative(process.cwd(), configPath).padEnd(30)}reference dump (resource IDs, demo creds, all non-secret config)`);
     console.log('');
 
+    // TraT claims setup — non-fatal, runs after provisioning is complete.
+    try {
+      const { execSync } = require('child_process');
+      execSync('node scripts/setupTratClaims.js', { stdio: 'inherit', cwd: path.resolve(__dirname, '..') });
+    } catch (err) {
+      console.warn('[Bootstrap] TraT claims setup failed (non-fatal):', err.message);
+    }
+
     // Offer to auto-run ./run.sh restart so the running services pick up
     // the new .env. Skipped under --non-interactive (CI / scripted runs print
     // the instruction and exit). The repo root is two levels up from this
