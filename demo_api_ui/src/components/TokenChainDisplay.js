@@ -1224,6 +1224,74 @@ function ExchangeCheckList({ event }) {
   );
 }
 
+// ─── TraT Context educational box ─────────────────────────────────────────────
+
+function TratContextEduBox({ event }) {
+  const [expanded, setExpanded] = React.useState(false);
+  if (event.id !== "trat-context") return null;
+  const ctx = event.metadata?.tratContext || {};
+  const isSimulated = !!ctx.trat_sim;
+  return (
+    <div className={`tcd-edu-box ${isSimulated ? "tcd-edu-box--warn" : "tcd-edu-box--ok"}`}>
+      <div className="tcd-edu-box-hd">
+        <span className="tcd-edu-icon">{isSimulated ? "⚠️" : "✅"}</span>
+        <strong>Transaction Token (TraT) Context</strong>
+      </div>
+      <div className="tcd-edu-body">
+        <span className={`tcd-trat-badge ${isSimulated ? "simulated" : "native"}`}>
+          {isSimulated ? "TraT (simulated)" : "TraT"}
+        </span>
+        <p style={{ marginTop: 8 }}>
+          {isSimulated
+            ? "TraT context forwarded as X-TraT-Context header (simulation shim). PingOne does not yet emit reqctx natively."
+            : "PingOne emitted reqctx natively in the exchanged token."}
+        </p>
+        {Object.keys(ctx).length > 0 && (
+          <>
+            <button
+              type="button"
+              style={{ cursor: "pointer", fontSize: "0.75rem", marginTop: 4 }}
+              onClick={() => setExpanded((e) => !e)}
+            >
+              {expanded ? "Hide claims" : "Show claims"}
+            </button>
+            {expanded && (
+              <pre className="tcd-trat-claims-detail">
+                {JSON.stringify(ctx, null, 2)}
+              </pre>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Gateway mTLS educational box ─────────────────────────────────────────────
+
+function GwMtlsEduBox({ event }) {
+  if (event.id !== "gw-mtls") return null;
+  const enabled = event.metadata?.mtlsEnabled ?? event.status === "active";
+  return (
+    <div className={`tcd-edu-box ${enabled ? "tcd-edu-box--ok" : "tcd-edu-box--neutral"}`}>
+      <div className="tcd-edu-box-hd">
+        <span className="tcd-edu-icon">{enabled ? "✅" : "⚠️"}</span>
+        <strong>Gateway → MCP Server mTLS</strong>
+      </div>
+      <div className="tcd-edu-body">
+        <span className={`tcd-mtls-badge ${enabled ? "active" : "skipped"}`}>
+          {enabled ? "mTLS active" : "mTLS disabled"}
+        </span>
+        <p style={{ marginTop: 8 }}>
+          {event.description || (enabled
+            ? "MCP server verified gateway client cert at TLS handshake."
+            : "Set MCP_MTLS_ENABLED=true to enforce mTLS between gateway and MCP server.")}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Authorize Decision educational box ───────────────────────────────────────
 
 function AuthorizeDecisionEduBox({ event }) {
@@ -1411,6 +1479,20 @@ function EventDetail({ event }) {
           title="Introspection Denied — active: false"
           event={event}
           Component={IntrospectionDeniedEduBox}
+        />
+      )}
+      {event.id === "trat-context" && (
+        <CollapsibleEdu
+          title="Transaction Token (TraT) Context"
+          event={event}
+          Component={TratContextEduBox}
+        />
+      )}
+      {event.id === "gw-mtls" && (
+        <CollapsibleEdu
+          title="Gateway mTLS Enforcement"
+          event={event}
+          Component={GwMtlsEduBox}
         />
       )}
       {event.explanation && (
@@ -1721,6 +1803,9 @@ const CLAIMS_STRIP_IDS = new Set([
   "gw-introspection",
   "gw-authorize",
   "gw-exchange",
+  // TraT context + mTLS status badges (Phase 10)
+  "gw-mtls",
+  "trat-context",
 ]);
 
 function fmtSub(sub, hints) {

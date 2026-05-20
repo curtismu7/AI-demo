@@ -2285,3 +2285,50 @@ pre.tcd-jwt-dump {
   color: #475569;
   line-height: 1.4;
 }
+.tcd-trat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.tcd-trat-badge.simulated {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+}
+.tcd-trat-badge.native {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #34d399;
+}
+.tcd-mtls-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.tcd-mtls-badge.active {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #34d399;
+}
+.tcd-mtls-badge.skipped {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+}
+.tcd-trat-claims-detail {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+}
