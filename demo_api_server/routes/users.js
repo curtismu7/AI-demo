@@ -20,6 +20,7 @@ function normalizePingOneUser(u) {
     createdAt: u.createdAt || new Date().toISOString(),
     updatedAt: u.updatedAt,
     population: u.population,
+    agentRestrictions: u.agentRestrictions ?? 'write',
   };
 }
 

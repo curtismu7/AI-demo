@@ -142,6 +142,10 @@ export class BankingToolProvider {
         }
       }
 
+      if (!agentSub) {
+        console.debug('[BankingToolProvider] act.sub absent from token — X-Agent-Sub not forwarded; agentRestrictions gate will not fire');
+      }
+
       // Create call-scoped API client with agent identity headers when available.
       // This forwards X-Agent-Sub and X-MCP-Tool to the BFF for per-call policy enforcement.
       const callClient = agentSub

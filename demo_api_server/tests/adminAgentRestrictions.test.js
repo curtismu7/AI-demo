@@ -8,8 +8,13 @@ jest.mock('../middleware/auth', () => ({
 jest.mock('../services/pingoneManagementService', () => ({
   managementService: {
     initialize: jest.fn(),
-    makeRequest: jest.fn().mockResolvedValue({ data: { agentRestrictions: 'read' } }),
+    baseURL: 'https://api.pingone.com/v1/environments/test-env',
+    getHeaders: jest.fn(() => ({ Authorization: 'Bearer worker-token' })),
   },
+}));
+
+jest.mock('axios', () => ({
+  patch: jest.fn().mockResolvedValue({ data: { agentRestrictions: 'read' } }),
 }));
 
 jest.mock('../middleware/agentRestrictionsCache', () => ({
@@ -32,8 +37,9 @@ beforeEach(() => {
   app.use('/api/admin/management', adminManagementRoutes);
 
   // Restore mock implementations
-  require('../services/pingoneManagementService').managementService.makeRequest
-    .mockResolvedValue({ data: { agentRestrictions: 'read' } });
+  require('axios').patch.mockResolvedValue({ data: { agentRestrictions: 'read' } });
+  require('../services/pingoneManagementService').managementService.getHeaders
+    .mockReturnValue({ Authorization: 'Bearer worker-token' });
   require('../middleware/agentRestrictionsCache').cache.invalidate.mockImplementation(() => {});
 });
 
@@ -46,13 +52,16 @@ describe('PATCH /users/:userId/agent-restrictions', () => {
   });
 
   test('returns 200 and calls PingOne PATCH for valid value', async () => {
+    const axios = require('axios');
     const { managementService } = require('../services/pingoneManagementService');
     const res = await request(app)
       .patch('/api/admin/management/users/user-1/agent-restrictions')
       .send({ agentRestrictions: 'read' });
     expect(res.status).toBe(200);
-    expect(managementService.makeRequest).toHaveBeenCalledWith(
-      'PATCH', '/users/user-1', { agentRestrictions: 'read' }
+    expect(axios.patch).toHaveBeenCalledWith(
+      `${managementService.baseURL}/users/user-1`,
+      { agentRestrictions: 'read' },
+      { headers: managementService.getHeaders() }
     );
   });
 

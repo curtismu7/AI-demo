@@ -81,10 +81,25 @@ async function agentRestrictionsGate(req, res, next) {
   if (!agentSub) return next();
 
   const toolName = req.headers['x-mcp-tool'] || '';
-  const userId = req.session?.user?.oauthId || req.session?.user?.id;
+
+  // Prefer session user (browser flows); fall back to decoding Bearer JWT (MCP→BFF flows)
+  let userId = req.session?.user?.oauthId || req.session?.user?.id;
+  if (!userId) {
+    const authHeader = req.headers.authorization || '';
+    const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (bearerToken) {
+      try {
+        const [, payloadB64] = bearerToken.split('.');
+        const decoded = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+        userId = decoded.sub;
+      } catch (_) {
+        // malformed JWT — skip gate
+      }
+    }
+  }
 
   if (!userId) {
-    logger.warn('[agentRestrictionsGate] No userId in session, skipping gate');
+    logger.warn('[agentRestrictionsGate] No userId resolvable, skipping gate');
     return next();
   }
 
@@ -126,7 +141,7 @@ async function agentRestrictionsGate(req, res, next) {
     if (authzResult.decision === 'PERMIT') return next();
 
     const { taskId } = createPendingDecision(
-      req.session.user.oauthId || req.session.user.id,
+      userId,
       {
         tool: toolName,
         decisionContext: 'AgentRestrictions',

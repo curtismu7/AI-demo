@@ -99,3 +99,29 @@ test('calls next() when agentRestrictions permits', async () => {
   await agentRestrictionsGate(makeReq(), mockRes, mockNext);
   expect(mockNext).toHaveBeenCalled();
 });
+
+test('resolves userId from Bearer JWT when session has no user', async () => {
+  // A minimal JWT payload: base64url-encode { sub: 'bearer-user-id' }
+  const payload = Buffer.from(JSON.stringify({ sub: 'bearer-user-id' })).toString('base64url');
+  const fakeJwt = `header.${payload}.sig`;
+
+  require('../services/configStore').get.mockImplementation(
+    (key) => key === 'ff_agent_restrictions' ? 'true' : null
+  );
+  const { isAgentRestricted } = require('../services/agentRestrictionsService');
+  isAgentRestricted.mockReturnValue(false);
+  const attrCache = require('../middleware/agentRestrictionsCache').cache;
+  attrCache.get.mockReturnValue('write');
+
+  const req = {
+    headers: { 'x-agent-sub': 'some-agent', 'authorization': `Bearer ${fakeJwt}` },
+    session: {},   // no session.user
+  };
+  const next = jest.fn();
+
+  await agentRestrictionsGate(req, mockRes, next);
+
+  expect(next).toHaveBeenCalled();
+  // The gate should have fetched agentRestrictions for 'bearer-user-id' (not skipped)
+  expect(attrCache.get).toHaveBeenCalledWith('bearer-user-id');
+});

@@ -450,11 +450,13 @@ router.patch('/users/:userId/agent-restrictions', requireAdmin, async (req, res)
 
   try {
     managementService.initialize();
-    await managementService.makeRequest('PATCH', `/users/${userId}`, { agentRestrictions });
-
-    // Invalidate BFF attribute cache so the change takes effect within 5s
+    const axios = require('axios');
+    await axios.patch(
+      `${managementService.baseURL}/users/${userId}`,
+      { agentRestrictions },
+      { headers: managementService.getHeaders() }
+    );
     attrCache.invalidate(userId);
-
     return res.json({ userId, agentRestrictions, updated: true });
   } catch (error) {
     console.error('[adminManagement] PATCH /users/:userId/agent-restrictions error:', error.message);
