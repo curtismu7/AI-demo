@@ -75,7 +75,7 @@ export async function executeFreezeAccount(
   deps: HandlerDeps, token: string, params: Record<string, any>
 ): Promise<BankingToolResult> {
   try {
-    const data = await deps.apiClient.post(
+    const data = await deps.apiClient.patch(
       `/api/admin/agent/accounts/${params.accountId}/freeze`,
       { freeze: params.freeze },
       token

@@ -617,6 +617,14 @@ export class BankingAPIClient {
   }
 
   /**
+   * Generic authenticated PATCH request — used by admin tool handlers
+   */
+  async patch(path: string, body: any, token: string): Promise<any> {
+    const response = await this.makeAuthenticatedRequest<any>('PATCH', path, token, body);
+    return response.data;
+  }
+
+  /**
    * Get client configuration
    */
   getConfig(): BankingAPIConfig {
