@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const store = require('../data/store');
 const { requireAdmin, requireScopes } = require('../middleware/auth');
+const adminAuditService = require('../services/adminAuditService');
 
 // GET /api/admin/agent/lookup?q=
 router.get('/lookup', requireAdmin, requireScopes(['admin:read']), async (req, res) => {
@@ -157,6 +158,15 @@ router.delete('/users/:userId', requireAdmin, requireScopes(['admin:delete']), a
     if (!user) return res.status(404).json({ error: 'user_not_found' });
 
     await store.deleteUser(req.params.userId);
+
+    adminAuditService.logAdminUserManagement({
+      adminSub: req.user?.sub || req.user?.id,
+      targetUserSub: req.params.userId,
+      action: 'delete',
+      resource: 'user',
+      result: 'success',
+      details: { confirm: true }
+    }, req);
 
     res.json({ success: true, deleted: { userId: req.params.userId } });
   } catch (err) {

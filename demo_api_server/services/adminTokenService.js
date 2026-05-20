@@ -64,8 +64,8 @@ function shouldUseAdminToken(req) {
     return false;
   }
 
-  // Check if this is an admin session
-  return isAdminSession(req.session);
+  // Use req.user.role set by authenticateToken from the verified JWT
+  return req.user?.role === 'admin';
 }
 
 /**
@@ -230,7 +230,7 @@ function shouldUseAdminTokenForTool(req, toolName) {
   // 3. Tool requires admin privileges OR admin is explicitly requested
   
   const adminEnabled = shouldUseAdminToken(req);
-  const isAdmin = isAdminSession(req.session);
+  const isAdmin = req.user?.role === 'admin';
   const toolRequiresAdmin = toolRequiresAdminPrivileges(toolName);
 
   return adminEnabled && isAdmin && (toolRequiresAdmin || (req.useAdminToken === true));
