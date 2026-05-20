@@ -554,10 +554,11 @@ export default function AdminSideNav({ user }) {
       }
       case "dark-mode": {
         const currentTheme =
-          document.documentElement.getAttribute("data-theme");
+          localStorage.getItem("banking_ui_theme") || "light";
         const newTheme = currentTheme === "dark" ? "light" : "dark";
         document.documentElement.setAttribute("data-theme", newTheme);
-        localStorage.setItem("theme", newTheme);
+        localStorage.setItem("banking_ui_theme", newTheme);
+        sessionStorage.setItem("banking_ui_theme", newTheme);
         break;
       }
       case "logout":

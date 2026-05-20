@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import bffAxios from "../services/bffAxios";
 import { isEducationalPath } from "../utils/educationalPages";
+import { useTheme } from "../context/ThemeContext";
 import "./SessionExpiryTimer.css";
 
 /**
@@ -13,6 +14,7 @@ import "./SessionExpiryTimer.css";
 export default function SessionExpiryTimer({ hideOnPaths = [] }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { identity } = useTheme();
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [isExpired, setIsExpired] = useState(false);
   const [expiresAt, setExpiresAt] = useState(null);
@@ -151,7 +153,7 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
                   <path d="M4 10h3v7H4zM10.5 10h3v7h-3zM2 19h20v3H2zM17 10h3v7h-3zM12 1 2 6v2h20V6z" />
                 </svg>
               </span>
-              <span className="banking-header__logo-text">Super Bank</span>
+              <span className="banking-header__logo-text">{identity?.logoText || 'AI Demo'}</span>
             </button>
           </div>
           <div className="banking-header__right" />
