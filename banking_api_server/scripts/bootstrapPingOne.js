@@ -1003,8 +1003,8 @@ async function main() {
     { label: '① Validate worker creds',  keys: ['validate', 'population'] },
     { label: '② Resource servers',        keys: ['resource-server', 'mcp-resource-server', 'mcp-gw-resource'] },
     { label: '③ Scopes',                  keys: ['scopes', 'mcp-scopes', 'mcp-gw-scopes'] },
-    { label: '④ Applications',            keys: ['admin-app', 'admin-config', 'user-app', 'user-config', 'mcp-app', 'mcp-config', 'worker-app', 'worker-config', 'mcp-exchanger-app', 'mcp-gw-app', 'mcp-gw-config', 'agent-app', 'agent-config'] },
-    { label: '⑤ Scope grants',            keys: ['admin-grants', 'user-grants', 'mcp-grants', 'worker-grants', 'mcp-gw-grants', 'agent-grants', 'password-policy'] },
+    { label: '④ Applications',            keys: ['admin-app', 'admin-config', 'user-app', 'user-config', 'mcp-app', 'mcp-config', 'worker-app', 'mcp-exchanger-app', 'mcp-gw-app', 'mcp-gw-config', 'agent-app', 'agent-config'] },
+    { label: '⑤ Scope grants',            keys: ['admin-grants', 'user-grants', 'mcp-grants', 'mcp-gw-grants', 'agent-grants', 'password-policy'] },
     { label: '⑥ Demo users + claims',     keys: ['bankuser', 'bankuser-password', 'bankadmin', 'bankadmin-password', 'bankDelegate', 'bankDelegate-password', 'isDelegate-schema', 'bankDelegate-flag', 'bankDelegates-group', 'schema-attr', 'spel-claim', 'may-act-claim', 'is-delegate-claim'] },
     { label: '⑦ Write .env',              keys: ['config'] },
   ];

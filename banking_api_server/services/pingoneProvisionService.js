@@ -1786,47 +1786,11 @@ class PingOneProvisionService {
       pushGrantResultStep(steps, 'mcp-grants', 'MCP Server scope grants', mcpAppGrantResult);
       onStep(steps[steps.length - 1]);
 
-      // Step 18: Create Worker Application
-      steps.push({ step: 'worker-app', icon: '🔧', message: 'Creating Worker application...' });
-      onStep(steps[steps.length - 1]);
-      
-      const workerAppResult = await this.createApplication(
-        _provisioningAppName('Super Banking Worker'),
-        'Worker application for PingOne Management API operations',
-        'WORKER',
-        ['client_credentials']
-      );
-      
-      pushAppResultStep(steps, 'worker-app', 'Worker application', workerAppResult);
-      onStep(steps[steps.length - 1]);
-      provisioned.workerApp = workerAppResult.application;
-      provisioned.workerApp.clientSecret = await this.getApplicationSecret(workerAppResult.application.id);
-
-      // Step 19: Configure Worker Application
-      if (!workerAppResult.exists) {
-        steps.push({ step: 'worker-config', icon: '⚙️', message: 'Configuring Worker application...' });
-        onStep(steps[steps.length - 1]);
-        
-        await this.updateApplication(workerAppResult.application.id, {
-          tokenEndpointAuthMethod: 'client_secret_basic'
-        });
-        
-        steps.push({ step: 'worker-config', icon: '✅', message: 'Worker application configured' });
-        onStep(steps[steps.length - 1]);
-      }
-
-      // Step 20: Grant scopes to Worker Application
-      steps.push({ step: 'worker-grants', icon: '🔑', message: 'Granting scopes to Worker application...' });
-      onStep(steps[steps.length - 1]);
-      
-      // Grant PingOne Management API scopes (Step 6 in documentation)
-      const workerAppGrantResult = await this.grantScopesToApplication(
-        workerAppResult.application.id,
-        resourceResult.resource.id,
-        ['p1:read:user', 'p1:update:user']
-      );
-      
-      pushGrantResultStep(steps, 'worker-grants', 'Worker scope grants', workerAppGrantResult);
+      // Step 18: Worker app — reuse the bootstrap credentials (no separate app created).
+      // The bootstrap worker app entered by the user IS the worker; its client ID/secret
+      // are written to .env as PINGONE_WORKER_CLIENT_ID/SECRET. Creating a second app
+      // here would produce a duplicate with no role assignment.
+      steps.push({ step: 'worker-app', icon: '✅', message: 'Worker application — using bootstrap credentials (no duplicate created)' });
       onStep(steps[steps.length - 1]);
 
       // Step 22: Ensure bankingPrincipalUserId user-schema attribute exists.
