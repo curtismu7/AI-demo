@@ -125,6 +125,24 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-20 — SECURITY: Audience validation now always-on, fail-closed in BFF and MCP server
+
+**Files changed:**
+- `demo_api_server/middleware/auth.js` — Replaced optional OR-gate audience check (accepted tokens for any of 5 resource URIs) with a single fail-closed check against `BFF_RESOURCE_URI` (`PINGONE_RESOURCE_BFF_URI` || `ENDUSER_AUDIENCE`). Tokens with a missing or mismatched `aud` are rejected 401. Added `PINGONE_DEFAULT_AUD` guard for unconfigured deployments.
+- `demo_mcp_server/src/tools/JwtClaimVerifier.ts` — Fixed wrong env var (`BANKING_API_RESOURCE_URI`, never set) → `PINGONE_RESOURCE_MCP_SERVER_URI` as primary. Changed aud mismatch/missing from `logger.warn` (fail-open) to `throw AuthenticationError` (fail-closed) for sensitive tools.
+- `demo_api_server/.env.example` — Documented `ENDUSER_AUDIENCE` and `PINGONE_RESOURCE_BFF_URI` under the token exchange resources section.
+
+**What was broken:** BFF `middleware/auth.js` accepted tokens whose `aud` matched any of 5 different resource URIs (enduser, ai_agent, MCP, banking API, gateway), meaning an MCP or gateway token could be replayed at the BFF. MCP server `JwtClaimVerifier.ts` was reading `BANKING_API_RESOURCE_URI` (an unset var) for the MCP audience check, so the aud check never ran, and when it did run (via legacy alias) mismatches only produced a warning rather than rejecting the call.
+
+**What was fixed:** BFF now accepts only tokens issued for its own resource URI (`ENDUSER_AUDIENCE` / `PINGONE_RESOURCE_BFF_URI`). MCP server now reads `PINGONE_RESOURCE_MCP_SERVER_URI` (the correct var, set to `mcpserver.ping.demo`) and hard-rejects on aud mismatch or absent aud for sensitive tools.
+
+**Verify:**
+1. Login → BFF accepts token normally (token `aud` = `enduser.ping.demo`)
+2. Attempt to replay an MCP token (aud = `mcpserver.ping.demo`) against the BFF → 401 "Token audience does not match"
+3. MCP sensitive tool call with correct token → ✅ succeeds; with wrong-audience token → ❌ `AuthenticationError`
+
+**Do not break:** `BFF_RESOURCE_URI` must always be sourced from `PINGONE_RESOURCE_BFF_URI` || `ENDUSER_AUDIENCE` (in that priority). Never widen it back to OR across multiple resource URIs.
+
 ### 2026-05-20 — E2E chip pipeline: fix MCP Gateway HTTPS URL + TOKEN_STORAGE_PATH crash + account pre-fetch + BFF-local audit merge
 
 **Root causes (4):**
