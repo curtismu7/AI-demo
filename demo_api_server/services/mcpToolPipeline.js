@@ -562,6 +562,21 @@ async function runMcpToolPipeline(ctx) {
                     { decision }
                 ));
             }
+            if (gwAuditTrail.mtls) {
+                const mtlsRes = gwAuditTrail.mtls;
+                const status = mtlsRes.enabled ? 'active' : 'skipped';
+                const desc = mtlsRes.enabled
+                    ? `Gateway → MCP server mTLS verified. Client cert subject: ${mtlsRes.subject || 'banking-mcp-gateway'}`
+                    : 'mTLS not enforced between gateway and MCP server (MCP_MTLS_ENABLED=false). Set MCP_MTLS_ENABLED=true to enforce.';
+                tokenEvents.push(deps.buildTokenEvent(
+                    'gw-mtls',
+                    'Gateway → MCP Server mTLS',
+                    status,
+                    null,
+                    desc,
+                    { mtlsEnabled: mtlsRes.enabled, subject: mtlsRes.subject }
+                ));
+            }
         }
 
         // Log the actual MCP result so it's queryable via /api/app-events

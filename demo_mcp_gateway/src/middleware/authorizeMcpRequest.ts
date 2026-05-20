@@ -48,6 +48,7 @@ interface GwAuditTrail {
   introspection: { active: boolean; skipped?: boolean; sub?: string; exp?: number; error?: string } | null;
   policy: { passed: boolean; error?: string } | null;
   authorize: { decision: string; reason?: string } | null;
+  mtls: { enabled: boolean; subject?: string } | null;
 }
 
 /**
@@ -101,6 +102,7 @@ export function buildAuthorizeMcpRequest(
       introspection: null,
       policy: null,
       authorize: null,
+      mtls: null,
     };
 
     // Helper: set the audit trail header on any response path
@@ -277,6 +279,9 @@ export function buildAuthorizeMcpRequest(
     // MCP server — no RFC 8693 re-exchange is needed. The original bearer token is
     // forwarded unchanged.
     // WR-03: outBody has `_hitl_challenge_id` stripped (or === body if absent).
+    auditTrail.mtls = config.mtlsEnabled
+      ? { enabled: true, subject: 'banking-mcp-gateway' }
+      : { enabled: false };
     setAuditHeader(res);
     teachLog.info('gateway audit trail', { gw_audit_trail: auditTrail });
     await forward(bearerToken, outBody);
