@@ -757,38 +757,46 @@ async function handleMessage(
       }
     }
 
-    // ----- Existing olb/invest path — WebSocket proxy (unchanged) -----
+    // ----- Existing olb/invest path — WebSocket proxy -----
     const backendUri = backendResourceUri(target, config);
     const wsUrl = backendWsUrl(target, config);
 
     let backendToken: string;
     const exchInfo: ExchangeInfo = { cacheHit: false, targetAudience: backendUri };
-    try {
-      backendToken = await exchangeTokenForBackend(token, backendUri, config, exchInfo);
-    } catch (err) {
-      const msg2 = err instanceof Error ? err.message : String(err);
-      console.error(`[GW] Token re-exchange failed for ${toolName}:`, msg2);
-      // C1-parity: surface WHERE it broke into the chain instead of a bare error.
-      send(JSON.stringify({
-        jsonrpc: '2.0', id,
-        error: { code: -32500, message: 'Token exchange failed', data: { credentialPath: 'oauth_bearer' } },
-        result: {
-          _meta: {
-            credentialPath: 'oauth_bearer',
-            tokenEvents: [
-              {
-                id: 'gw-exchange-failed',
-                label: `Gateway RFC 8693 re-exchange FAILED (target aud=${backendUri}): ${msg2}`,
-                tokenType: 'access_token',
-                credentialPath: 'oauth_bearer',
-                status: 'failed',
-                specRef: 'RFC 8693 §2.2.2',
-              },
-            ],
+
+    if (config.mcpServerPassthrough) {
+      // Passthrough mode: gateway has already validated + authorized the inbound
+      // token. Forward it unchanged — no RFC 8693 re-exchange.
+      backendToken = token;
+      exchInfo.cacheHit = false;
+    } else {
+      try {
+        backendToken = await exchangeTokenForBackend(token, backendUri, config, exchInfo);
+      } catch (err) {
+        const msg2 = err instanceof Error ? err.message : String(err);
+        console.error(`[GW] Token re-exchange failed for ${toolName}:`, msg2);
+        // C1-parity: surface WHERE it broke into the chain instead of a bare error.
+        send(JSON.stringify({
+          jsonrpc: '2.0', id,
+          error: { code: -32500, message: 'Token exchange failed', data: { credentialPath: 'oauth_bearer' } },
+          result: {
+            _meta: {
+              credentialPath: 'oauth_bearer',
+              tokenEvents: [
+                {
+                  id: 'gw-exchange-failed',
+                  label: `Gateway RFC 8693 re-exchange FAILED (target aud=${backendUri}): ${msg2}`,
+                  tokenType: 'access_token',
+                  credentialPath: 'oauth_bearer',
+                  status: 'failed',
+                  specRef: 'RFC 8693 §2.2.2',
+                },
+              ],
+            },
           },
-        },
-      }));
-      return;
+        }));
+        return;
+      }
     }
 
     let result: JsonRpcResponse;
@@ -809,7 +817,16 @@ async function handleMessage(
     // whether a fresh PingOne exchange actually happened or the gateway cache
     // served the token (no round-trip this call) so the chain cannot falsely
     // imply a fresh exchange on every cached call.
-    const gwExchangeEvent = exchInfo.cacheHit
+    const gwExchangeEvent = config.mcpServerPassthrough
+      ? {
+          id: 'gw-passthrough',
+          label: `Gateway passthrough: inbound token forwarded unchanged (aud=${config.gatewayResourceUri}) — no re-exchange. MCP Server trusts gateway enforcement.`,
+          tokenType: 'access_token',
+          credentialPath: 'oauth_bearer',
+          status: 'ok',
+          specRef: 'RFC 8693 — exchange skipped by design (passthrough mode)',
+        }
+      : exchInfo.cacheHit
       ? {
           id: 'gw-exchange',
           label: `Gateway token reused from cache (no PingOne round-trip this call) → aud=${backendUri}, act chain preserved`,
