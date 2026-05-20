@@ -40,6 +40,10 @@ const IGNORED_VARS = new Set([
   // both circular and contradicts the deliberate scrub. Pure infra/bootstrap
   // secret — same category as NODE_ENV, not a config-coverage gap.
   'VAULT_PASSWORD',
+  // MCP_GW_PASSTHROUGH_TO_MCP_SERVER is a provisioning-output-only flag written
+  // into .env by pingoneProvisionService.js for operator reference. No feature
+  // code calls getEffective() for it — it is never consumed via configStore.
+  'MCP_GW_PASSTHROUGH_TO_MCP_SERVER',
 ]);
 
 // Alias-prefix normalizations: maps a .env var prefix to the configStore key
@@ -59,7 +63,13 @@ const ALIAS_PREFIXES = [
 
 // Exact-name remaps for vars whose alias is not a clean prefix substitution.
 const ALIAS_EXACT = {
-  mcp_resource_uri: 'pingone_resource_mcp_server_uri',
+  mcp_resource_uri:        'pingone_resource_mcp_server_uri',
+  // MCP_SERVER_RESOURCE_URI is aliased in configStore under
+  // pingone_resource_mcp_server_uri → ['PINGONE_RESOURCE_MCP_SERVER_URI',
+  // 'MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI']. The lowercased key
+  // mcp_server_resource_uri is not itself a top-level configStore key, so the
+  // auto-derive step misses it — register the explicit redirect here.
+  mcp_server_resource_uri: 'pingone_resource_mcp_server_uri',
 };
 
 // ── Build the envFallbackMap by requiring configStore internals ───────────────
