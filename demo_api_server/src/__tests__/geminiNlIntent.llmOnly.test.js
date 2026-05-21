@@ -102,23 +102,20 @@ describe('geminiNlIntent — LLM-only mode (ff_heuristic_enabled=false)', () => 
     expect(ollamaCalls).toHaveLength(0);
   });
 
-  // KNOWN-ISSUE (tracked in REGRESSION_PLAN §4, 2026-05-18 — CI-green #3):
-  // These 3 tests expect parseNaturalLanguage to surface answerWithHelix's
-  // result as `source:'helix_fallback'`. Tracing the live code shows it calls
-  // callHelixAgent 3x (Helix IS invoked + returns content) but still returns
-  // `{source:'heuristic', result:{kind:'none'}}` — the Helix answer is
-  // computed then discarded. This is NOT a 762c72d0 regression (that commit
-  // never touched NL-routing source) and fails identically on the
-  // pre-762c72d0 test file. It is either a real NL-routing defect (Helix
-  // answer dropped) or a deliberate design these tests over-specify —
-  // resolving it requires a planned NL-routing investigation (ARCHITECTURE-
-  // TRUTHS T-3), not a CI-green test edit. Skipped (not deleted, not
-  // asserted-to-current-behavior) so the defect stays visible and tracked.
-  it.skip('falls through to answerWithHelix when JSON router returns kind:none', async () => {
+  // RESOLVED (supersedes the prior "Helix answer discarded" known-issue):
+  // Root cause was a stale TEST, not a product defect. The LLM-only path
+  // calls callHelixAgent THREE times — (1) JSON router, (2) retry-on-refusal
+  // nudge added in commit 68c1396f, (3) conversational answerWithHelix. These
+  // tests predated 68c1396f and mocked only 2 returns, so the 3rd call
+  // (answerWithHelix's) got undefined → answerWithHelix returned null →
+  // source fell back to 'heuristic'. The product code's helix_fallback path
+  // (documented in geminiNlIntent.js:235) is correct. Fix = mock all 3 calls.
+  it('falls through to answerWithHelix when JSON router returns kind:none', async () => {
     setLlmOnlyMode();
     callHelixAgent
-      .mockResolvedValueOnce('{"kind":"none","message":"I cannot route this"}') // router
-      .mockResolvedValueOnce('Here is my conversational answer'); // answerWithHelix
+      .mockResolvedValueOnce('{"kind":"none","message":"I cannot route this"}') // 1: router → kind:none
+      .mockResolvedValueOnce('still not json') // 2: refusal-retry → non-JSON, falls through
+      .mockResolvedValueOnce('Here is my conversational answer'); // 3: answerWithHelix
 
     const r = await parseNaturalLanguage('what is my biggest purchase', {}, 'auto', {});
 
@@ -128,12 +125,13 @@ describe('geminiNlIntent — LLM-only mode (ff_heuristic_enabled=false)', () => 
     expect(r.result.message).toBe('Here is my conversational answer');
   });
 
-  // KNOWN-ISSUE: see the block above (REGRESSION_PLAN §4 2026-05-18 #3).
-  it.skip('falls through to answerWithHelix when JSON router parse fails', async () => {
+  it('falls through to answerWithHelix when JSON router parse fails', async () => {
     setLlmOnlyMode();
+    // 3 calls: router (non-JSON) → refusal-retry (non-JSON) → answerWithHelix.
     callHelixAgent
-      .mockResolvedValueOnce('not valid json') // router — parse fails
-      .mockResolvedValueOnce('Fallback answer');
+      .mockResolvedValueOnce('not valid json') // 1: router — parse fails
+      .mockResolvedValueOnce('still not json') // 2: refusal-retry — parse fails
+      .mockResolvedValueOnce('Fallback answer'); // 3: answerWithHelix
 
     const r = await parseNaturalLanguage('something unclear', {}, 'auto', {});
 
@@ -193,15 +191,16 @@ describe('geminiNlIntent — LLM-only mode (ff_heuristic_enabled=false)', () => 
 });
 
 describe('geminiNlIntent — heuristic mode kind:none fallthrough', () => {
-  // KNOWN-ISSUE: see the block above (REGRESSION_PLAN §4 2026-05-18 #3).
-  it.skip('in normal mode, kind:none from helix router falls through to answerWithHelix after Ollama', async () => {
+  it('in normal mode, kind:none from helix router falls through to answerWithHelix after Ollama', async () => {
     setHeuristicMode();
     parseHeuristic.mockReturnValue({ kind: 'none', message: '' });
 
-    // Helix router → kind:none; Ollama unavailable; answerWithHelix succeeds
+    // 3 calls: router (kind:none) → refusal-retry (non-JSON) → Ollama
+    // unavailable (global.fetch rejects) → answerWithHelix fallback.
     callHelixAgent
-      .mockResolvedValueOnce('{"kind":"none","message":"unknown"}') // router
-      .mockResolvedValueOnce('General knowledge answer'); // answerWithHelix fallback
+      .mockResolvedValueOnce('{"kind":"none","message":"unknown"}') // 1: router → kind:none
+      .mockResolvedValueOnce('still not json') // 2: refusal-retry — parse fails
+      .mockResolvedValueOnce('General knowledge answer'); // 3: answerWithHelix fallback
 
     const r = await parseNaturalLanguage('random open question', {}, 'auto', {});
 
