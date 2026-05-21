@@ -221,9 +221,9 @@ router.post(
   authenticateToken,
   async (req, res) => {
     const challengeId = req.params.challengeId;
-    const ch = req.session?.txConsentChallenges?.[challengeId];
+    const path = txConsent.getChallengePath(req, challengeId);
     let result;
-    if (ch?.mfaPath) {
+    if (path === 'mfa') {
       const { deviceId, otp, fido2Assertion } = req.body || {};
       const origin = `${req.protocol}://${req.get('host')}`;
       result = await txConsent.verifyMfa(req, challengeId, { deviceId, otp, fido2Assertion }, origin);
@@ -252,7 +252,7 @@ router.post(
     if (!result.ok) return res.status(result.status).json(result.json);
     req.session.save((saveErr) => {
       if (saveErr) console.error('[ConsentChallenge] session save error (select-device):', saveErr);
-      return res.status(200).json({ otpSent: true });
+      return res.status(200).json({ otpSent: true, otpExpiresAt: result.otpExpiresAt });
     });
   },
 );

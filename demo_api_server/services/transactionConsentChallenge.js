@@ -508,6 +508,7 @@ async function selectMfaDevice(req, challengeId, deviceId) {
     return { ok: false, status: 400, json: { error: 'invalid_challenge', message: 'challengeId is required.' } };
   }
   const st = store(req.session);
+  pruneExpired(st);
   const ch = st[challengeId];
   if (!ch || ch.userId !== req.user.id) {
     return { ok: false, status: 404, json: { error: 'challenge_not_found', message: 'Unknown or expired consent challenge.' } };
@@ -518,11 +519,17 @@ async function selectMfaDevice(req, challengeId, deviceId) {
   if (ch.status !== 'otp_pending') {
     return { ok: false, status: 409, json: { error: 'otp_not_expected', message: 'No OTP is pending for this challenge.' } };
   }
+  if (Date.now() > ch.otpExpiresAt) {
+    ch.status = 'expired';
+    return { ok: false, status: 410, json: { error: 'otp_expired', message: 'The verification code has expired. Start the transaction again.' } };
+  }
   const userAccessToken = req.session?.oauthTokens?.accessToken;
   try {
     await mfaService.selectDevice(ch.daId, deviceId, userAccessToken);
-    return { ok: true };
+    ch.otpExpiresAt = Date.now() + OTP_TTL_MS;
+    return { ok: true, otpExpiresAt: ch.otpExpiresAt };
   } catch (err) {
+    console.warn(`[ConsentChallenge] selectDevice failed: ${err.message}`);
     return { ok: false, status: err.status || 502, json: { error: err.code || 'mfa_select_failed', message: err.message } };
   }
 }
@@ -567,6 +574,24 @@ function verifyAndConsumeChallenge(req, challengeId, postBody) {
   return { ok: true };
 }
 
+/**
+ * getChallengePath — returns 'mfa' or 'otp' based on the challenge's mfaPath flag,
+ * or null if the challenge does not exist or does not belong to the authenticated user.
+ * Used by route handlers to avoid direct session shape access.
+ *
+ * @param {import('express').Request} req
+ * @param {string} challengeId
+ * @returns {'mfa' | 'otp' | null}
+ */
+function getChallengePath(req, challengeId) {
+  if (!challengeId) return null;
+  const st = req.session?.txConsentChallenges;
+  if (!st || typeof st !== 'object') return null;
+  const ch = st[challengeId];
+  if (!ch || ch.userId !== req.user?.id) return null;
+  return ch.mfaPath ? 'mfa' : 'otp';
+}
+
 module.exports = {
   get HIGH_VALUE_CONSENT_USD() { return getConfirmThreshold(); },
   CHALLENGE_TTL_MS,
@@ -581,5 +606,6 @@ module.exports = {
   verifyOtp,
   verifyMfa,
   selectMfaDevice,
+  getChallengePath,
   verifyAndConsumeChallenge,
 };
