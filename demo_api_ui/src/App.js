@@ -1364,11 +1364,23 @@ function AppWithAuth() {
                           {/* User-friendly self-service routes */}
                           <Route
                             path="/profile"
-                            element={<Profile user={user} />}
+                            element={
+                              user ? (
+                                <Profile user={user} />
+                              ) : (
+                                <Navigate to="/" replace />
+                              )
+                            }
                           />
                           <Route
                             path="/security"
-                            element={<SecurityCenter user={user} />}
+                            element={
+                              user ? (
+                                <SecurityCenter user={user} />
+                              ) : (
+                                <Navigate to="/" replace />
+                              )
+                            }
                           />
                           {/* Catch-all: unknown routes redirect to dashboard instead of blank/404 */}
                           <Route
