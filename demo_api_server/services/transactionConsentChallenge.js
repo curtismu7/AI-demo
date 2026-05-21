@@ -304,8 +304,8 @@ async function confirmChallenge(req, challengeId, opts = {}) {
     let daId, devices;
     try {
       const initiated = await mfaService.initiateDeviceAuth(req.user.id, userAccessToken);
-      daId = initiated.daId;
-      devices = initiated.devices || [];
+      daId = initiated.id;
+      devices = initiated._embedded?.devices || [];
     } catch (err) {
       console.warn(`[ConsentChallenge] initiateDeviceAuth failed: ${err.message}`);
       return { ok: false, status: 502, json: { error: 'mfa_init_failed', message: 'Could not start MFA challenge. Try again.' } };

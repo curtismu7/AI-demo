@@ -220,8 +220,9 @@ describe('confirmChallenge — PingOne MFA branch', () => {
   test('flag on + amount >= 500 — calls initiateDeviceAuth and returns mfaRequired:true', async () => {
     const { txConsentFresh, mfaServiceFresh, configStoreFresh } = freshRequires();
     mfaServiceFresh.initiateDeviceAuth.mockResolvedValue({
-      daId: 'da-new-001',
-      devices: [{ id: 'dev-1', type: 'EMAIL', email: 'u@example.com' }],
+      id: 'da-new-001',
+      status: 'DEVICE_SELECTION_REQUIRED',
+      _embedded: { devices: [{ id: 'dev-1', type: 'EMAIL', email: 'u@example.com' }] },
     });
     const req = makeReq({ session: { txConsentChallenges: {
       [CHALLENGE_ID]: {
