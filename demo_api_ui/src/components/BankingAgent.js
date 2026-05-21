@@ -1694,6 +1694,31 @@ export default function BankingAgent({
     }
   }, [showDiscovery]);
 
+  // Position the actions popout as fixed so it escapes panel overflow:hidden clipping.
+  useEffect(() => {
+    if (!showDiscovery || !actionsPopoutRef.current || !discoveryTriggerRef.current) return;
+    const reposition = () => {
+      const trigger = discoveryTriggerRef.current;
+      const popout = actionsPopoutRef.current;
+      if (!trigger || !popout) return;
+      const rect = trigger.getBoundingClientRect();
+      const popoutWidth = 320;
+      // Align right edge of popout with right edge of trigger; clamp to viewport
+      let left = rect.right - popoutWidth;
+      if (left < 8) left = 8;
+      if (left + popoutWidth > window.innerWidth - 8) left = window.innerWidth - 8 - popoutWidth;
+      popout.style.left = `${left}px`;
+      popout.style.top = `${rect.bottom + 4}px`;
+    };
+    reposition();
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+    return () => {
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+    };
+  }, [showDiscovery]);
+
   const [nlInput, setNlInput] = useState("");
   const [inputHistory, setInputHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);

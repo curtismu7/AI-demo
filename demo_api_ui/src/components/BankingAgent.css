@@ -150,7 +150,8 @@ body > .banking-agent-float-root .banking-agent-panel {
   right: 16px;
   z-index: 10059;
   width: 380px;
-  height: 480px;
+  height: calc(100vh - var(--agent-panel-bottom, 24px) - 24px);
+  max-height: 820px;
   min-width: 280px;
   min-height: 220px;
   display: flex;
@@ -4582,9 +4583,8 @@ html[data-theme="dark"]
 
 /* Popout overlay — anchored to .ba-header (position:relative), opens below header */
 .ba-actions-popout {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 14px;
+  position: fixed;
+  /* top/left set dynamically by JS — escapes panel overflow:hidden */
   width: 320px;
   max-height: 380px;
   overflow-y: auto;
