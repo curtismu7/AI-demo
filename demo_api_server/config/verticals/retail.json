@@ -16,12 +16,15 @@
       "--app-primary-red-mid": "#FFE933",
       "--app-primary-red-border": "#E6CC00",
       "--app-primary-btn-text": "#1D1D1B",
-      "--brand-dashboard-header-start": "#0046BE",
-      "--brand-dashboard-header-end": "#003a9e",
-      "--brand-app-shell-hero-start": "#0046BE",
-      "--brand-app-shell-hero-end": "#003a9e",
+      "--brand-dashboard-header-start": "#1D1D1B",
+      "--brand-dashboard-header-end": "#2d2d2b",
+      "--brand-app-shell-hero-start": "#1D1D1B",
+      "--brand-app-shell-hero-end": "#2d2d2b",
       "--theme-accent": "#FFE000",
-      "--brand-dashboard-header-text": "#ffffff"
+      "--brand-dashboard-header-text": "#FFE000",
+      "--brand-topnav-bg-start": "#1D1D1B",
+      "--brand-topnav-bg-end": "#2d2d2b",
+      "--brand-topnav-text": "#FFE000"
     }
   },
   "terminology": {
