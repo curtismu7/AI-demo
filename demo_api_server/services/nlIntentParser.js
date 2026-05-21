@@ -322,7 +322,65 @@ function parseBanking(t) {
   return null;
 }
 
-function parseHeuristic(message) {
+// Theme-aware vocabulary maps — keyed by vertical id.
+// Each entry maps a regex to the banking action it should route to.
+const THEME_VOCAB = {
+  admin: [
+    { re: /\b(look\s*up|find|search\s*for)\s*(customer|user)\b|\blookup\s*customer\b/, action: 'accounts' },
+    { re: /\bview\s*(transactions?|activity)\b|\bcustomer\s*(transactions?|activity)\b/, action: 'transactions' },
+    { re: /\bview\s*profile\b|\bcustomer\s*profile\b|\baccount\s*details\b/, action: 'accounts' },
+    { re: /\b(freeze|suspend|lock)\s*(the\s*)?(account|user)\b/, action: 'transfer' },
+    { re: /\badjust\s*balance\b|\bchange\s*balance\b/, action: 'transfer' },
+    { re: /\bget\s*customer\s*accounts?\b|\bview\s*accounts?\b/, action: 'accounts' },
+  ],
+  healthcare: [
+    { re: /\b(release|share|send)\s*(my\s*)?records?\b/, action: 'transfer' },
+    { re: /\b(my\s*)?(patient\s*)?records?\b|\bshow\s*(my\s*)?records?\b/, action: 'accounts' },
+    { re: /\b(check\s*|my\s*|view\s*)?coverage\b|\binsurance\s*(coverage|details)\b/, action: 'balance' },
+    { re: /\b(my\s*|show\s*|view\s*|upcoming\s*)?appointments?\b|\bvisit\s*(history|list)\b|\brecent\s*visits?\b/, action: 'transactions' },
+    { re: /\b(total\s*costs?|what.*paid|my\s*costs?)\b/, action: 'spending_summary' },
+  ],
+  retail: [
+    { re: /\b(my\s*|check\s*|view\s*)?rewards?\s*points?\b|\bhow\s*many\s*points\b|\bpoint\s*balance\b/, action: 'balance' },
+    { re: /\b(my\s*|list\s*|show\s*)?orders?\b|\border\s*(history|status|list)\b/, action: 'accounts' },
+    { re: /\b(purchase|buying|order)\s*history\b|\bwhat.*(?:buy|bought|purchased)\b|\brecent\s*purchases?\b/, action: 'transactions' },
+    { re: /\bcheckout\b|\bplace\s*(an?\s*)?order\b|\bbuy\s*now\b/, action: 'transfer' },
+    { re: /\b(return|refund)\s*(history|list)?\b|\bmy\s*returns?\b/, action: 'transactions' },
+    { re: /\bhow\s*much.*spent\b|\btotal\s*purchases?\b|\bspending\s*breakdown\b/, action: 'spending_summary' },
+    { re: /\b(biggest|most\s*expensive|highest)\s*(purchase|order|spend)\b/, action: 'biggest_purchase' },
+  ],
+  'sporting-goods': [
+    // Most-specific first: "place order / checkout" before generic "orders"
+    // Most-specific first: biggest_purchase and place-order before generic purchases/orders
+    { re: /\b(biggest|most\s*expensive|highest)\s*(purchase|order|spend)\b/, action: 'biggest_purchase' },
+    { re: /\bplace\s*(an?\s*)?order\b|\bcheckout\b|\bbuy\s*now\b/, action: 'transfer' },
+    { re: /\b(my\s*|check\s*|view\s*)?reward\s*points?\b|\bhow\s*many\s*points\b|\bpoint\s*balance\b/, action: 'balance' },
+    { re: /\b(my\s*|list\s*|show\s*)?gear\b|\bmy\s*equipment\b|\bmy\s*loyalty\s*account\b/, action: 'accounts' },
+    { re: /\b(purchase|buying)\s*history\b|\bwhat.*(?:buy|bought|purchased)\b|\brecent\s*purchases?\b/, action: 'transactions' },
+    { re: /\b(my\s*|show\s*)?purchases?\b|\bpurchase\s*list\b/, action: 'transactions' },
+    { re: /\b(return|refund)\s*(history|list)?\b|\bmy\s*returns?\b/, action: 'transactions' },
+    { re: /\bhow\s*much.*spent\b|\btotal\s*purchases?\b|\bspending\s*breakdown\b/, action: 'spending_summary' },
+  ],
+};
+
+function parseTheme(t, vertical) {
+  const vocab = THEME_VOCAB[vertical];
+  if (!vocab) return null;
+  for (const { re, action } of vocab) {
+    if (re.test(t)) {
+      // Extract amount for transfer actions where a dollar figure is present
+      if (action === 'transfer') {
+        const amountMatch = t.match(/\$?\s*(\d+(?:\.\d+)?)/);
+        const params = amountMatch ? { fromId: 'checking', toId: 'savings', amount: parseFloat(amountMatch[1]) } : {};
+        return { kind: 'banking', banking: { action, params } };
+      }
+      return { kind: 'banking', banking: { action } };
+    }
+  }
+  return null;
+}
+
+function parseHeuristic(message, vertical = 'banking') {
   const t = norm(message);
   if (!t) {
     return { kind: 'none', message: 'Say what you want to do or which topic to learn.' };
@@ -333,6 +391,13 @@ function parseHeuristic(message) {
   // "list of mcp tools" are never swallowed by the broad \bmcp\b education regex.
   if (/\b(list|show|get|what).*(mcp.*tools?|tools?.*available|available.*tools?)\b|\btools?\s*(list|available)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'mcp_tools' } };
+  }
+
+  // Theme-aware vocabulary — runs before banking/education so themed phrases
+  // route correctly regardless of which LLM is active.
+  if (vertical !== 'banking') {
+    const themed = parseTheme(t, vertical);
+    if (themed) return themed;
   }
 
   // Prefer education if user explicitly asks to explain / learn
@@ -352,6 +417,7 @@ function parseHeuristic(message) {
 
 module.exports = {
   parseHeuristic,
+  parseTheme,
   EDU,
   CAPABILITY_CATALOG,
   buildCatalogMessage,

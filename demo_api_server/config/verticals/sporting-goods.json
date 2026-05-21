@@ -1,0 +1,64 @@
+{
+  "id": "sporting-goods",
+  "schemaVersion": 2,
+  "identity": {
+    "displayName": "Super Sports",
+    "headerTitle": "Super Sports",
+    "documentTitle": "Super Sports · PingOne AI IAM Core",
+    "logoAlt": "Super Sports logo",
+    "tagline": "AI-Powered Sporting Goods Demo",
+    "logoPath": null
+  },
+  "theme": {
+    "cssVars": {
+      "--app-primary-red": "#b91c1c",
+      "--app-primary-red-hover": "#991b1b",
+      "--app-primary-red-mid": "#ef4444",
+      "--app-primary-red-border": "#dc2626",
+      "--brand-dashboard-header-start": "#b91c1c",
+      "--brand-dashboard-header-end": "#dc2626",
+      "--brand-app-shell-hero-start": "#b91c1c",
+      "--brand-app-shell-hero-end": "#ef4444",
+      "--theme-accent": "#f97316",
+      "--brand-dashboard-header-text": "#ffffff"
+    }
+  },
+  "terminology": {
+    "account": "Loyalty Account",
+    "accounts": "Loyalty Accounts",
+    "accountTypes": ["Pro Member", "Elite Member", "Team Account"],
+    "transaction": "Purchase",
+    "transactions": "Purchases",
+    "transactionTypes": ["In-Store", "Online", "Team Order", "Return"],
+    "balance": "Reward Points",
+    "agent": "Sports Assistant",
+    "dashboard": "My Gear",
+    "highValueAction": "Team Order",
+    "highValueLabel": "High-value team order requires confirmation"
+  },
+  "agent": {
+    "persona": "Sports Assistant",
+    "greeting": "Hi {name}! I can check your reward points, browse your purchase history, and help you place orders. What do you need?",
+    "systemPromptFlavor": "You are a Super Sports assistant. The underlying tools are banking demo tools; keep responses sporting-goods-flavored — accounts are loyalty accounts, transactions are purchases, balance is reward points, transfers are orders."
+  },
+  "dashboard": {
+    "kind": "sporting-goods",
+    "chips": [
+      { "key": "balance",      "label": "Reward Points" },
+      { "key": "accounts",     "label": "My Gear" },
+      { "key": "transactions", "label": "Purchase History" },
+      { "key": "transfer",     "label": "Place Order" }
+    ],
+    "mockData": null
+  },
+  "scopes": {
+    "read":         "read",
+    "write":        "write",
+    "transfer":     "transfer",
+    "featureScope": "gear:read"
+  },
+  "demoUsers": {
+    "customer": { "hint": "demoUser",  "passwordHint": "Tigers7&" },
+    "admin":    { "hint": "demoAdmin", "passwordHint": "Tigers7&" }
+  }
+}

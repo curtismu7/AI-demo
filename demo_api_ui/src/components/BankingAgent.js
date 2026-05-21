@@ -2442,52 +2442,6 @@ export default function BankingAgent({
     };
   }, [isLoggedIn]);
 
-  // Auto-show accounts and recent transactions in chat once per browser session.
-  // Uses sessionStorage so a reset-demo + reload starts blank (reset clears the key).
-  const AGENT_AUTO_LOADED_KEY = "_agent_auto_loaded";
-  const autoLoadedRef = useRef(false);
-  const runActionRef = useRef(null);
-  runActionRef.current = runAction;
-  const addMessageRef = useRef(null);
-  addMessageRef.current = addMessage;
-  useEffect(() => {
-    if (!isLoggedIn || liveAccounts.length === 0 || autoLoadedRef.current)
-      return;
-    if (sessionStorage.getItem(AGENT_AUTO_LOADED_KEY)) return;
-    autoLoadedRef.current = true;
-    sessionStorage.setItem(AGENT_AUTO_LOADED_KEY, "1");
-    // Show accounts summary directly from already-fetched liveAccounts
-    const acctLines = liveAccounts
-      .map((a) => `${a.name}: ${formatCurrency(a.balance)}`)
-      .join("\n");
-    addMessageRef.current(
-      "assistant",
-      ` Your Accounts\n\n${acctLines}`,
-      "accounts",
-    );
-    // Fetch and show recent transactions from REST API (no MCP dependency)
-    window.setTimeout(() => {
-      fetch("/api/transactions/my?limit=5", { credentials: "include" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (!data?.transactions?.length) return;
-          const txLines = data.transactions
-            .slice(0, 5)
-            .map(
-              (t) =>
-                `${t.type || "Transaction"}: ${formatCurrency(t.amount)} — ${t.description || t.note || ""}`,
-            )
-            .join("\n");
-          addMessageRef.current(
-            "assistant",
-            ` Recent Transactions\n\n${txLines}`,
-            "transactions",
-          );
-        })
-        .catch(() => {});
-    }, 400);
-  }, [isLoggedIn, liveAccounts]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const suggestionList = useMemo(() => {
     if (isConfigEmbeddedFocus) {
       return effectiveUser?.role === "admin"
