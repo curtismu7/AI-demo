@@ -1,0 +1,85 @@
+---
+title: HITL Consent Challenge — All Paths
+---
+sequenceDiagram
+    participant B as Browser
+    participant BFF as BFF<br/>(demo_api_server)
+    participant TC as transactionConsentChallenge.js
+    participant HITL as demo_hitl_service
+    participant P1 as PingOne MFA
+
+    %% ── PATH 1: $250–$499 consent-only (homegrown OTP) ───────────────────────
+    rect rgb(232, 245, 233)
+        Note over B,HITL: PATH 1 — $250–$499 consent-only (homegrown OTP, flag on or off)
+        B->>BFF: POST /api/transactions (amount $250–$499)
+        BFF-->>B: 428 hitl_required { type: "consent" }
+        B->>BFF: POST /consent-challenge { type, amount, ... }
+        BFF->>TC: createChallenge()
+        BFF-->>B: 201 { challengeId, expiresAt, snapshot }
+        Note over B: User reviews details and ticks consent checkbox
+        B->>BFF: POST /consent-challenge/:id/confirm
+        BFF->>TC: confirmChallenge() → generates OTP, stores otpHash
+        BFF->>HITL: sendOtpEmail(userId, otpCode)
+        BFF-->>B: 200 { otpSent: true, otpExpiresAt }
+        Note over B: User enters 6-digit OTP from email
+        B->>BFF: POST /consent-challenge/:id/verify-otp { otpCode }
+        BFF->>TC: verifyOtp() → status = "confirmed"
+        BFF-->>B: 200 { challengeId, confirmExpiresAt }
+        B->>BFF: POST /api/transactions { consentChallengeId }
+        BFF->>TC: verifyAndConsumeChallenge() → snapshot match, one-time use
+        BFF-->>B: 200 transaction result
+    end
+
+    %% ── PATH 2: $500+ flag OFF (homegrown step-up OTP) ──────────────────────
+    rect rgb(255, 243, 224)
+        Note over B,HITL: PATH 2 — $500+ step-up, ff_hitl_pingone_mfa_enabled = false (homegrown OTP)
+        B->>BFF: POST /api/transactions (amount ≥ $500)
+        BFF-->>B: 428 hitl_required { type: "consent" }
+        B->>BFF: POST /consent-challenge { type, amount, ... }
+        BFF->>TC: createChallenge()
+        BFF-->>B: 201 { challengeId, expiresAt, snapshot }
+        Note over B: User reviews details and ticks consent checkbox
+        B->>BFF: POST /consent-challenge/:id/confirm
+        BFF->>TC: confirmChallenge() → flag off → generates OTP, stores otpHash
+        BFF->>HITL: sendOtpEmail(userId, otpCode)
+        BFF-->>B: 200 { otpSent: true, otpExpiresAt }
+        Note over B: User enters 6-digit OTP from email
+        B->>BFF: POST /consent-challenge/:id/verify-otp { otpCode }
+        BFF->>TC: verifyOtp() → status = "confirmed"
+        BFF-->>B: 200 { challengeId, confirmExpiresAt }
+        B->>BFF: POST /api/transactions { consentChallengeId }
+        BFF->>TC: verifyAndConsumeChallenge() → snapshot match, one-time use
+        BFF-->>B: 200 transaction result
+    end
+
+    %% ── PATH 3: $500+ flag ON (PingOne MFA) ──────────────────────────────────
+    rect rgb(227, 242, 253)
+        Note over B,P1: PATH 3 — $500+ step-up, ff_hitl_pingone_mfa_enabled = true (PingOne MFA)
+        B->>BFF: POST /api/transactions (amount ≥ $500)
+        BFF-->>B: 428 hitl_required { type: "consent" }
+        B->>BFF: POST /consent-challenge { type, amount, ... }
+        BFF->>TC: createChallenge()
+        BFF-->>B: 201 { challengeId, expiresAt, snapshot }
+        Note over B: User reviews details and ticks consent checkbox
+        B->>BFF: POST /consent-challenge/:id/confirm
+        BFF->>TC: confirmChallenge() → flag on + amount ≥ $500 → mfaService.initiateDeviceAuth()
+        BFF->>P1: POST /environments/{envId}/users/{userId}/deviceAuthentications
+        P1-->>BFF: { daId, devices: [EMAIL, SMS, FIDO2_KEY, ...] }
+        BFF->>TC: stores daId + devices in session (mfaPath: true)
+        BFF-->>B: 200 { mfaRequired: true, devices: [...] }
+        Note over B: User sees device picker — selects enrolled device
+        B->>BFF: POST /consent-challenge/:id/select-device { deviceId }
+        BFF->>P1: mfaService.selectDevice(daId, deviceId, userToken)
+        P1-->>B: OTP sent to selected device (out-of-band: email / SMS)
+        BFF-->>B: 200 { otpSent: true }
+        Note over B: User enters OTP received on device (or completes FIDO2 gesture)
+        B->>BFF: POST /consent-challenge/:id/verify-otp { deviceId, otp }
+        BFF->>TC: verifyMfa() → reads daId from session
+        BFF->>P1: mfaService.submitOtp(daId, deviceId, otp, userToken)
+        P1-->>BFF: 200 verified
+        BFF->>TC: status = "confirmed"
+        BFF-->>B: 200 { challengeId, confirmExpiresAt }
+        B->>BFF: POST /api/transactions { consentChallengeId }
+        BFF->>TC: verifyAndConsumeChallenge() → snapshot match, one-time use
+        BFF-->>B: 200 transaction result
+    end
