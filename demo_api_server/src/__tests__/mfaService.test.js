@@ -258,24 +258,27 @@ describe('selectDevice', () => {
 });
 
 // ─── submitOtp ────────────────────────────────────────────────────────────────
-// submitOtp uses the user access token directly (no worker token) and axios.post.
+// submitOtp uses a worker token (not user token) per pingone-mfa skill §3 token rules.
+// First axios.post call = worker token grant; second = otp.check.
 
 describe('submitOtp', () => {
   it('sends POST with otp coerced to string', async () => {
     setupEnv();
+    mockWorkerTokenSuccess('worker-tok');
     axios.post.mockResolvedValueOnce({ data: { id: 'da-1', status: 'COMPLETED' } });
 
-    const result = await mfaService.submitOtp('da-1', 'dev-1', 123456, 'user-token');
+    const result = await mfaService.submitOtp('da-1', 'dev-1', 123456, null);
 
     expect(result.status).toBe('COMPLETED');
-    const [, body] = axios.post.mock.calls[0];
+    const [, body] = axios.post.mock.calls[1]; // calls[0] = worker token grant
     expect(body.otp).toBe('123456');
   });
 
   it('wraps 401 as token_expired', async () => {
     setupEnv();
+    mockWorkerTokenSuccess('worker-tok');
     axios.post.mockRejectedValueOnce(pingoneError(401, 'TOKEN_EXPIRED'));
-    const err = await mfaService.submitOtp('da-1', 'dev-1', '000000', 'bad-token').catch(e => e);
+    const err = await mfaService.submitOtp('da-1', 'dev-1', '000000', null).catch(e => e);
     expect(err.code).toBe('token_expired');
   });
 });
