@@ -40,6 +40,8 @@ const SAMPLE_TRANSACTIONS = {
   ],
 };
 
+const EMPTY_TOKEN_EVENTS = { tokenEvents: [] };
+
 /**
  * Installs mocks for a signed-in customer: OAuth status, accounts/my, transactions/my, config, token preview.
  * @param {import('@playwright/test').Page} page
@@ -97,11 +99,11 @@ async function mockCustomerDashboard(page, opts = {}) {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ tokenEvents: [] }),
+      body: JSON.stringify(EMPTY_TOKEN_EVENTS),
     }),
   );
 
-  // Fallback for /api/auth/session (used by BankingAgent and TokenChainContext)
+  // BankingAgent and TokenChainContext call /api/auth/session independently of the OAuth status endpoints
   await page.route('**/api/auth/session', (route) =>
     route.fulfill({
       status: 200,
@@ -114,19 +116,21 @@ async function mockCustomerDashboard(page, opts = {}) {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ tokenEvents: [] }),
+      body: JSON.stringify(EMPTY_TOKEN_EVENTS),
     }),
   );
 
+  // Fire-and-forget POST from the UI; real endpoint returns 201
   await page.route('**/api/admin/app-events**', (route) =>
     route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
   );
 
+  // PingOne connectivity indicator — returns empty config when unconfigured
   await page.route('**/api/pingone-test/config**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) }),
   );
 
-  // Enable banking column in split3 layout (ff_show_banking_in_middle_agent)
+  // UserDashboard only renders the banking column when this flag is true (split3 layout)
   await page.route('**/api/admin/feature-flags**', (route) =>
     route.fulfill({
       status: 200,

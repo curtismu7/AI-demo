@@ -22,9 +22,9 @@ test.beforeEach(async ({ page }) => {
 async function dismissBankingAgentPanel(page) {
   try {
     const collapse = page.getByRole('button', { name: 'Collapse agent' });
-    await collapse.click({ timeout: 4000 });
+    await collapse.click({ timeout: 1500 });
   } catch (_) {
-    /* panel already collapsed or not floating */
+    /* panel already collapsed or not present */
   }
 }
 
@@ -36,8 +36,9 @@ test.describe('Customer dashboard (UserDashboard)', () => {
 
     await expect(page.getByRole('heading', { name: 'Your Accounts' })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('Primary Checking')).toBeVisible();
-    // Account number is masked in collapsed card (e.g. "CHE •••• -001"); balance uses toLocaleString
+    // Balance uses toLocaleString; account number is masked in the collapsed card
     await expect(page.getByText('$1,500.00')).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard/);
   });
 
   test('shows Recent Transactions from API when /transactions/my returns 200', async ({ page }) => {
@@ -50,7 +51,7 @@ test.describe('Customer dashboard (UserDashboard)', () => {
     await expect(page.getByText('ATM')).toBeVisible();
   });
 
-  test('when /transactions/my returns 403, dashboard still loads accounts and shows sample activity', async ({
+  test('when /transactions/my returns 403, dashboard still renders Your Accounts heading', async ({
     page,
   }) => {
     await mockCustomerDashboard(page, {
@@ -64,18 +65,9 @@ test.describe('Customer dashboard (UserDashboard)', () => {
     await page.goto('/dashboard');
     await dismissBankingAgentPanel(page);
 
-    // When transactions 403, Promise.all rejects — app shows permission error toast/banner
-    // and falls back to demo data (accounts not from API mock).
+    // Promise.all rejects on any error — accounts are not set from the API mock,
+    // but the page skeleton (including the heading) still renders.
     await expect(page.getByRole('heading', { name: 'Your Accounts' })).toBeVisible({ timeout: 15000 });
-  });
-
-  test('/dashboard route renders the customer dashboard', async ({ page }) => {
-    await mockCustomerDashboard(page);
-    await page.goto('/dashboard');
-    await dismissBankingAgentPanel(page);
-
-    await expect(page.getByRole('heading', { name: 'Your Accounts' })).toBeVisible({ timeout: 15000 });
-    await expect(page).toHaveURL(/\/dashboard/);
   });
 
   test('Log Out button navigates to unified /api/auth/logout', async ({ page }) => {
@@ -86,7 +78,6 @@ test.describe('Customer dashboard (UserDashboard)', () => {
 
     await page.goto('/dashboard');
     await dismissBankingAgentPanel(page);
-    // Logout button lives in AdminSideNav (shared nav wrapper at /dashboard)
     const logoutBtn = page.getByRole('button', { name: 'Log Out' });
     await expect(logoutBtn).toBeVisible({ timeout: 15000 });
 
@@ -94,7 +85,7 @@ test.describe('Customer dashboard (UserDashboard)', () => {
       (r) => r.url().includes('/api/auth/logout') && r.method() === 'GET',
       { timeout: 15000 },
     );
-    await logoutBtn.evaluate((el) => el.click());
+    await logoutBtn.click();
     const req = await logoutReq;
     expect(req.url()).toMatch(/\/api\/auth\/logout/);
   });
@@ -127,7 +118,7 @@ test.describe('Customer dashboard (UserDashboard)', () => {
         body: JSON.stringify({ tools: [], _source: 'local_catalog' }),
       }),
     );
-    // /mcp-inspector is accessible to all users (not admin-gated); sidebar link is hidden for customers
+    // Route is open to all users; the sidebar link is hidden for customers but the page is accessible
     await page.goto('/mcp-inspector');
     await expect(page).toHaveURL(/\/mcp-inspector/, { timeout: 15000 });
     await expect(page.getByRole('heading', { name: 'MCP Inspector' })).toBeVisible({ timeout: 15000 });
