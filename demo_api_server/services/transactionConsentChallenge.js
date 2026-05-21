@@ -496,6 +496,38 @@ async function verifyMfa(req, challengeId, params, origin) {
 }
 
 /**
+ * selectMfaDevice — user selects a device to receive the OTP on the PingOne MFA path.
+ * Calls mfaService.selectDevice() to dispatch the OTP to the chosen device.
+ *
+ * @param {import('express').Request} req
+ * @param {string} challengeId
+ * @param {string} deviceId
+ */
+async function selectMfaDevice(req, challengeId, deviceId) {
+  if (!challengeId) {
+    return { ok: false, status: 400, json: { error: 'invalid_challenge', message: 'challengeId is required.' } };
+  }
+  const st = store(req.session);
+  const ch = st[challengeId];
+  if (!ch || ch.userId !== req.user.id) {
+    return { ok: false, status: 404, json: { error: 'challenge_not_found', message: 'Unknown or expired consent challenge.' } };
+  }
+  if (!ch.mfaPath) {
+    return { ok: false, status: 409, json: { error: 'not_mfa_path', message: 'This challenge does not use PingOne MFA.' } };
+  }
+  if (ch.status !== 'otp_pending') {
+    return { ok: false, status: 409, json: { error: 'otp_not_expected', message: 'No OTP is pending for this challenge.' } };
+  }
+  const userAccessToken = req.session?.oauthTokens?.accessToken;
+  try {
+    await mfaService.selectDevice(ch.daId, deviceId, userAccessToken);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, status: err.status || 502, json: { error: err.code || 'mfa_select_failed', message: err.message } };
+  }
+}
+
+/**
  * Verifies confirmed challenge matches POST body, then removes it (one-time use).
  * @returns {{ ok: true } | { ok: false, status: number, json: object }}
  */
@@ -548,5 +580,6 @@ module.exports = {
   confirmChallenge,
   verifyOtp,
   verifyMfa,
+  selectMfaDevice,
   verifyAndConsumeChallenge,
 };
