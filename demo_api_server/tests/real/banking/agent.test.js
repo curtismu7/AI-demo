@@ -24,11 +24,6 @@ describe(`Agent delegation — ${VERTICAL} vertical (real)`, () => {
       console.warn('[agent.test] Cannot get token claims — skipping delegation test');
       return;
     }
-    const sessionR = await client.get('/api/auth/oauth/status');
-    if (!sessionR.data?.authenticated) {
-      console.warn('[agent.test] Not authenticated — skipping delegation test');
-      return;
-    }
     const rawToken = claims.data.payload?.accessToken;
     if (!rawToken) {
       console.warn('[agent.test] No raw token accessible — skipping delegation sub-test (expected in strict BFF mode)');

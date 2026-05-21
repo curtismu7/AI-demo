@@ -1,16 +1,15 @@
 'use strict';
 
-const https = require('https');
 const axios = require('axios');
 const fs    = require('fs');
 const path  = require('path');
 
+const { BFF_BASE, httpsAgent } = require('./constants');
+
 const SESSION_CACHE  = path.resolve(__dirname, '../../../.test-session.json');
 const FIXTURES_CACHE = path.resolve(__dirname, '../../../.test-fixtures.json');
-const BFF_BASE       = 'https://api.ping.demo:3001';
-const httpsAgent     = new https.Agent({ rejectUnauthorized: false });
 
-let _previousVertical = 'banking';
+const verticalStack = [];
 
 function loadSession(persona = 'enduser') {
   if (!fs.existsSync(SESSION_CACHE)) throw new Error('No .test-session.json — run globalSetup first');
@@ -26,18 +25,19 @@ function createBffClient(persona = 'enduser') {
     baseURL: BFF_BASE,
     httpsAgent,
     headers: { Cookie: cookie },
-    validateStatus: () => true, // let tests assert status codes
+    validateStatus: () => true,
   });
 }
 
 async function setVertical(client, verticalId) {
   const current = await client.get('/api/config/vertical');
-  _previousVertical = current.data?.activeVertical || 'banking';
+  verticalStack.push(current.data?.activeVertical || 'banking');
   await client.put('/api/config/vertical', { verticalId });
 }
 
 async function restoreVertical(client) {
-  await client.put('/api/config/vertical', { verticalId: _previousVertical });
+  const prev = verticalStack.pop() || 'banking';
+  await client.put('/api/config/vertical', { verticalId: prev });
 }
 
 function loadFixtures() {

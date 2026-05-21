@@ -35,17 +35,15 @@ module.exports = async function globalSetup() {
 
   const adminClient = createBffClient('admin');
 
-  const fixtures = {};
-  for (const v of VERTICALS) {
-    try {
-      fixtures[v] = await bootstrapFixtures(adminClient, v);
-      console.log(`[globalSetup] Fixtures ready: ${v}`);
-    } catch (e) {
-      console.error(`[globalSetup] Fixture bootstrap failed for ${v}: ${e.message}`);
-      fixtures[v] = { error: e.message };
-    }
-  }
+  const results = await Promise.all(
+    VERTICALS.map(v =>
+      bootstrapFixtures(adminClient, v)
+        .then(f => { console.log(`[globalSetup] Fixtures ready: ${v}`); return [v, f]; })
+        .catch(e => { console.error(`[globalSetup] Fixture bootstrap failed for ${v}: ${e.message}`); return [v, { error: e.message }]; })
+    )
+  );
 
+  const fixtures = Object.fromEntries(results);
   fs.writeFileSync(FIXTURES_CACHE, JSON.stringify(fixtures, null, 2));
   console.log('[globalSetup] Done.');
 };

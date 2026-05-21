@@ -1,7 +1,11 @@
 'use strict';
 
-const fs   = require('fs');
-const path = require('path');
+const fs    = require('fs');
+const path  = require('path');
+const https = require('https');
+const axios = require('axios');
+
+const { BFF_BASE } = require('./constants');
 
 const SESSION_CACHE  = path.resolve(__dirname, '../../../.test-session.json');
 const FIXTURES_CACHE = path.resolve(__dirname, '../../../.test-fixtures.json');
@@ -11,15 +15,12 @@ module.exports = async function globalTeardown() {
 
   // Restore banking vertical (in case a suite crashed without afterAll running)
   try {
-    const https      = require('https');
-    const axios      = require('axios');
-    const httpsAgent = new https.Agent({ rejectUnauthorized: false });
-
     if (fs.existsSync(SESSION_CACHE)) {
       const cache  = JSON.parse(fs.readFileSync(SESSION_CACHE, 'utf8'));
       const cookie = cache.enduser;
       if (cookie && cookie !== 'skip') {
-        await axios.put('https://api.ping.demo:3001/api/config/vertical',
+        const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+        await axios.put(`${BFF_BASE}/api/config/vertical`,
           { verticalId: 'banking' },
           { httpsAgent, headers: { Cookie: cookie }, validateStatus: () => true });
       }
