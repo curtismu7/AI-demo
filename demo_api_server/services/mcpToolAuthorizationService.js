@@ -178,6 +178,8 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
               authorize_engine: 'simulated',
               decisionContext: 'McpFirstTool',
               decisionId: r.decisionId,
+              deny_reason: r.raw?.reason || null,
+              deny_parameters: r.raw?.parameters || null,
             },
           },
         };
@@ -262,6 +264,8 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
             authorize_engine: 'pingone',
             decisionContext: 'McpFirstTool',
             decisionId: r.decisionId,
+            deny_reason: r.raw?.reason || null,
+            deny_parameters: r.raw?.parameters || null,
           },
         },
       };

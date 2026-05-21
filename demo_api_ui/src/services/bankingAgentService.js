@@ -348,6 +348,22 @@ export async function callMcpTool(tool, params = {}, { signal } = {}) {
           },
         );
       }
+      // MCP authorization denied — surface deny_reason + deny_parameters for diagnostic display.
+      if (err.error === "mcp_authorization_denied") {
+        throw Object.assign(
+          new Error(err.error_description || "MCP tool access was denied by authorization policy"),
+          {
+            code: "mcp_authorization_denied",
+            statusCode: 403,
+            tool: tool,
+            authorizeEngine: err.authorize_engine || "unknown",
+            denyReason: err.deny_reason || null,
+            denyParameters: err.deny_parameters || null,
+            decisionId: err.decisionId || null,
+            tokenEvents: allTokenEvents,
+          },
+        );
+      }
       // Gateway policy denial — surface structured fields for the educational side panel card.
       if (err.error === "gateway_policy_denied") {
         throw Object.assign(
