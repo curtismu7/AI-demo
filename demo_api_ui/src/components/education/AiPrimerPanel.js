@@ -1,5 +1,4 @@
 // banking_api_ui/src/components/education/AiPrimerPanel.js
-import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 
 /* ─── Reusable primitives ─────────────────────────────────────────────────── */
@@ -50,7 +49,7 @@ function Note({ children }) {
 function StepList({ steps }) {
   return (
     <ol style={{ margin: '0.5rem 0 0', paddingLeft: '1.4rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.7 }}>
-      {steps.map((s, i) => <li key={i}>{s}</li>)}
+      {steps.map((s) => <li key={s}>{s}</li>)}
     </ol>
   );
 }
@@ -386,15 +385,15 @@ simplistic and lack detail.`}</pre>
 
 /* ─── Exported panel ─────────────────────────────────────────────────────── */
 
-export default function AiPrimerPanel({ isOpen, onClose, initialTabId }) {
-  const tabs = [
-    { id: 'terminology', label: 'Terminology',  content: <TerminologyContent /> },
-    { id: 'foundations', label: 'Foundations',  content: <FoundationsContent /> },
-    { id: 'prompts',     label: 'Prompts',       content: <PromptsContent /> },
-    { id: 'workflow',    label: 'Workflow',       content: <WorkflowContent /> },
-    { id: 'about',       label: 'About / Prompts used', content: <AboutContent /> },
-  ];
+const tabs = [
+  { id: 'terminology', label: 'Terminology',  content: <TerminologyContent /> },
+  { id: 'foundations', label: 'Foundations',  content: <FoundationsContent /> },
+  { id: 'prompts',     label: 'Prompts',       content: <PromptsContent /> },
+  { id: 'workflow',    label: 'Workflow',       content: <WorkflowContent /> },
+  { id: 'about',       label: 'About / Prompts used', content: <AboutContent /> },
+];
 
+export default function AiPrimerPanel({ isOpen, onClose, initialTabId }) {
   return (
     <EducationDrawer
       isOpen={isOpen}

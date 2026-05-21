@@ -1,5 +1,4 @@
 // banking_api_ui/src/components/education/StepUpPanel.js
-import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 import { EduImplIntro, SNIP_STEP_UP_MOCK } from './educationImplementationSnippets';
 

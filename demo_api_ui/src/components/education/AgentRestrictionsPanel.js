@@ -1,10 +1,9 @@
 // banking_api_ui/src/components/education/AgentRestrictionsPanel.js
-import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 
 function OverviewTab() {
   return (
-    <div>
+    <>
       <p style={{ color: '#374151', marginBottom: '1rem' }}>
         <strong>P1AZ as the Resource Server Control Plane.</strong> PingOne Authorize makes a policy decision on every banking API call the agent triggers — not just at the gateway or the BFF tool-call layer.
       </p>
@@ -29,7 +28,7 @@ function OverviewTab() {
       → P1AZ: DENY or PERMIT
       → HITL task if DENY
   → authenticateToken → banking route handler`}</pre>
-    </div>
+    </>
   );
 }
 
@@ -95,13 +94,13 @@ PERMIT otherwise`}</pre>
   );
 }
 
-export default function AgentRestrictionsPanel({ isOpen, onClose, initialTabId }) {
-  const tabs = [
-    { id: 'overview', label: 'Overview', content: <OverviewTab /> },
-    { id: 'flow', label: 'Mid-Session Change', content: <FlowTab /> },
-    { id: 'implementation', label: 'Implementation', content: <ImplementationTab /> },
-  ];
+const tabs = [
+  { id: 'overview', label: 'Overview', content: <OverviewTab /> },
+  { id: 'flow', label: 'Mid-Session Change', content: <FlowTab /> },
+  { id: 'implementation', label: 'Implementation', content: <ImplementationTab /> },
+];
 
+export default function AgentRestrictionsPanel({ isOpen, onClose, initialTabId }) {
   return (
     <EducationDrawer
       isOpen={isOpen}

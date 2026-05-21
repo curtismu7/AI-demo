@@ -1,4 +1,3 @@
-import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -211,11 +210,12 @@ grant_type=authorization_code
 
 // ── Main panel ─────────────────────────────────────────────────────────────
 
+const tabs = [
+  { id: 'least-data',    label: 'Least-Data Principle', content: <LeastDataContent /> },
+  { id: 'rar-selective', label: 'RAR / RFC 9396',       content: <RarSelectiveContent /> },
+];
+
 export default function SensitiveDataPanel({ isOpen, onClose, initialTabId }) {
-  const tabs = [
-    { id: 'least-data',    label: 'Least-Data Principle', content: <LeastDataContent /> },
-    { id: 'rar-selective', label: 'RAR / RFC 9396',       content: <RarSelectiveContent /> },
-  ];
   return (
     <EducationDrawer
       isOpen={isOpen}

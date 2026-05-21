@@ -1,8 +1,6 @@
-import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 
-export default function AuthZenPanel({ isOpen, onClose, initialTabId }) {
-  const tabs = [
+const tabs = [
     {
       id: 'overview',
       label: 'Overview',
@@ -170,13 +168,14 @@ export default function AuthZenPanel({ isOpen, onClose, initialTabId }) {
     },
   ];
 
+export default function AuthZenPanel({ isOpen, onClose, initialTabId }) {
   return (
     <EducationDrawer
       isOpen={isOpen}
       onClose={onClose}
       title="AuthZEN — Standardized Authorization API"
       tabs={tabs}
-      initialTabId={initialTabId || 'overview'}
+      initialTabId={initialTabId}
     />
   );
 }

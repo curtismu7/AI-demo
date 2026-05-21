@@ -1,5 +1,4 @@
 // banking_api_ui/src/components/education/IntentDelegationPanel.js
-import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 import { useEducationUI } from '../../context/EducationUIContext';
 import { EDU } from './educationIds';

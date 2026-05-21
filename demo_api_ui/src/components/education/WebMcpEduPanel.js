@@ -1,8 +1,7 @@
 // banking_api_ui/src/components/education/WebMcpEduPanel.js
-import React from "react";
 import EducationDrawer from "../shared/EducationDrawer";
-import { useEducationUI } from "../../context/EducationUIContext";
 import { EDU } from "./educationIds";
+import { useEducationUI } from "../../context/EducationUIContext";
 
 function OverviewContent() {
   return (
@@ -260,7 +259,7 @@ function InRepoContent() {
           ["MCP Protocol", () => open(EDU.MCP_PROTOCOL, "what")],
           ["Token Exchange (RFC 8693)", () => open(EDU.TOKEN_EXCHANGE, "why")],
           ["Agent Gateway", () => open(EDU.AGENT_GATEWAY, "overview")],
-          ["Token Flow", () => open(EDU.TOKEN_FLOW)],
+          ["Token Flow", () => open(EDU.TOKEN_FLOW, 'diagram')],
         ].map(([label, handler]) => (
           <button
             key={label}

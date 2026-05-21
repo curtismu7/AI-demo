@@ -1,5 +1,4 @@
 // banking_api_ui/src/components/education/PingGatewayMcpPanel.js
-import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 
 function OverviewTab() {
@@ -345,15 +344,15 @@ function OfficialFiltersTab() {
   );
 }
 
-export default function PingGatewayMcpPanel({ isOpen, onClose, initialTabId }) {
-  const tabs = [
-    { id: 'overview', label: 'Overview', content: <OverviewTab /> },
-    { id: 'architecture', label: 'Architecture', content: <ArchitectureTab /> },
-    { id: 'official-filters', label: 'MCP Filters', content: <OfficialFiltersTab /> },
-    { id: 'comparison', label: 'Custom vs PingGateway', content: <ComparisonTab /> },
-    { id: 'config', label: 'Configuration', content: <ConfigTab /> },
-  ];
+const tabs = [
+  { id: 'overview', label: 'Overview', content: <OverviewTab /> },
+  { id: 'architecture', label: 'Architecture', content: <ArchitectureTab /> },
+  { id: 'official-filters', label: 'MCP Filters', content: <OfficialFiltersTab /> },
+  { id: 'comparison', label: 'Custom vs PingGateway', content: <ComparisonTab /> },
+  { id: 'config', label: 'Configuration', content: <ConfigTab /> },
+];
 
+export default function PingGatewayMcpPanel({ isOpen, onClose, initialTabId }) {
   return (
     <EducationDrawer
       isOpen={isOpen}
