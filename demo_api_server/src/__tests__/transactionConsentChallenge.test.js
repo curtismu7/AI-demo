@@ -111,6 +111,9 @@ jest.mock('../../services/mfaService', () => ({
   selectDevice: jest.fn(),
   submitOtp: jest.fn(),
   submitFido2Assertion: jest.fn(),
+  initiateOneTimeOtp: jest.fn(),
+  verifyOneTimeOtp: jest.fn(),
+  getPingOneUserContact: jest.fn(),
 }));
 
 const mfaService = require('../../services/mfaService');
@@ -181,5 +184,356 @@ describe('verifyMfa', () => {
     expect(result.ok).toBe(false);
     expect(result.status).toBe(400);
     expect(result.json.error).toBe('otp_incorrect');
+  });
+});
+
+describe('confirmChallenge — PingOne MFA branch', () => {
+  const CHALLENGE_ID = 'confirm-mfa-test';
+
+  // jest.resetModules() runs in afterEach (setup.js), so each test must re-require
+  // modules fresh to ensure spies on configStore reach the same instance that
+  // transactionConsentChallenge.js holds internally.
+  function freshRequires() {
+    jest.mock('../../services/mfaService', () => ({
+      initiateDeviceAuth: jest.fn(),
+      selectDevice: jest.fn(),
+      submitOtp: jest.fn(),
+      submitFido2Assertion: jest.fn(),
+      initiateOneTimeOtp: jest.fn(),
+      verifyOneTimeOtp: jest.fn(),
+      getPingOneUserContact: jest.fn(),
+    }));
+    jest.mock('../../data/store', () => ({
+      getAccountById: jest.fn((id) => {
+        const accounts = {
+          'acc1': { id: 'acc1', userId: '5', balance: 10000 },
+          'acc2': { id: 'acc2', userId: '5', balance: 5000 },
+        };
+        return accounts[id] || null;
+      }),
+      getAccountsByUserId: jest.fn(() => [
+        { id: 'acc1', userId: '5', balance: 10000 },
+        { id: 'acc2', userId: '5', balance: 5000 },
+      ]),
+      getUserById: jest.fn(() => null),
+    }));
+    const txConsentFresh = require('../../services/transactionConsentChallenge');
+    const mfaServiceFresh = require('../../services/mfaService');
+    const configStoreFresh = require('../../services/configStore');
+    return { txConsentFresh, mfaServiceFresh, configStoreFresh };
+  }
+
+  test('device_picker mode + amount >= 500 — calls initiateDeviceAuth and returns mfaRequired:true', async () => {
+    const { txConsentFresh, mfaServiceFresh, configStoreFresh } = freshRequires();
+    mfaServiceFresh.initiateDeviceAuth.mockResolvedValue({
+      id: 'da-new-001',
+      status: 'DEVICE_SELECTION_REQUIRED',
+      _embedded: { devices: [{ id: 'dev-1', type: 'EMAIL', email: 'u@example.com' }] },
+    });
+    const req = makeReq({ session: { txConsentChallenges: {
+      [CHALLENGE_ID]: {
+        userId: '5', snapshot: { type: 'withdrawal', amount: 600, fromAccountId: 'acc1', toAccountId: null, description: '' },
+        status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 600_000,
+      },
+    }, oauthTokens: { accessToken: 'user-token-abc' } }});
+    const spy = jest.spyOn(configStoreFresh, 'getEffective').mockImplementation((key) => {
+      if (key === 'hitl_consent_mfa_mode') return 'device_picker';
+      if (key === 'confirm_stepup_threshold_usd') return '500';
+      if (key === 'confirm_threshold_usd') return '250';
+      return null;
+    });
+    const result = await txConsentFresh.confirmChallenge(req, CHALLENGE_ID);
+    spy.mockRestore();
+    expect(mfaServiceFresh.initiateDeviceAuth).toHaveBeenCalledWith('5', 'user-token-abc');
+    expect(result.ok).toBe(true);
+    expect(result.mfaRequired).toBe(true);
+    expect(result.devices).toEqual([{ id: 'dev-1', type: 'EMAIL', email: 'u@example.com' }]);
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].mfaPath).toBe(true);
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].daId).toBe('da-new-001');
+  });
+
+  test('device_picker mode but amount < 500 — homegrown OTP path taken', async () => {
+    const { txConsentFresh, mfaServiceFresh, configStoreFresh } = freshRequires();
+    const spy = jest.spyOn(configStoreFresh, 'getEffective').mockImplementation((key) => {
+      if (key === 'hitl_consent_mfa_mode') return 'device_picker';
+      if (key === 'confirm_stepup_threshold_usd') return '500';
+      if (key === 'confirm_threshold_usd') return '250';
+      return null;
+    });
+    const req = makeReq({ session: { txConsentChallenges: {
+      [`${CHALLENGE_ID}-low`]: {
+        userId: '5', snapshot: { type: 'withdrawal', amount: 300, fromAccountId: 'acc1', toAccountId: null, description: '' },
+        status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 600_000,
+      },
+    }}});
+    const result = await txConsentFresh.confirmChallenge(req, `${CHALLENGE_ID}-low`);
+    spy.mockRestore();
+    expect(mfaServiceFresh.initiateDeviceAuth).not.toHaveBeenCalled();
+    expect(result.ok).toBe(true);
+    expect(result.mfaRequired).toBeUndefined();
+  });
+
+  test('homegrown mode — homegrown OTP path taken regardless of amount', async () => {
+    const { txConsentFresh, mfaServiceFresh, configStoreFresh } = freshRequires();
+    const spy = jest.spyOn(configStoreFresh, 'getEffective').mockImplementation((key) => {
+      if (key === 'hitl_consent_mfa_mode') return 'homegrown';
+      if (key === 'confirm_stepup_threshold_usd') return '500';
+      if (key === 'confirm_threshold_usd') return '250';
+      return null;
+    });
+    const req = makeReq({ session: { txConsentChallenges: {
+      [`${CHALLENGE_ID}-homegrown`]: {
+        userId: '5', snapshot: { type: 'withdrawal', amount: 600, fromAccountId: 'acc1', toAccountId: null, description: '' },
+        status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 600_000,
+      },
+    }}});
+    const result = await txConsentFresh.confirmChallenge(req, `${CHALLENGE_ID}-homegrown`);
+    spy.mockRestore();
+    expect(mfaServiceFresh.initiateDeviceAuth).not.toHaveBeenCalled();
+    expect(result.ok).toBe(true);
+    expect(result.mfaRequired).toBeUndefined();
+  });
+});
+
+// ── One-time OTP path tests ──────────────────────────────────────────────────
+
+describe('confirmChallenge — one-time OTP branch (hitl_consent_mfa_mode=onetime)', () => {
+  const CHALLENGE_ID = 'onetime-test';
+
+  function freshRequires() {
+    jest.mock('../../services/mfaService', () => ({
+      initiateDeviceAuth: jest.fn(),
+      selectDevice: jest.fn(),
+      submitOtp: jest.fn(),
+      submitFido2Assertion: jest.fn(),
+      initiateOneTimeOtp: jest.fn(),
+      verifyOneTimeOtp: jest.fn(),
+      getPingOneUserContact: jest.fn(),
+    }));
+    jest.mock('../../data/store', () => ({
+      getAccountById: jest.fn((id) => {
+        const accounts = {
+          'acc1': { id: 'acc1', userId: '5', balance: 10000 },
+          'acc2': { id: 'acc2', userId: '5', balance: 5000 },
+        };
+        return accounts[id] || null;
+      }),
+      getAccountsByUserId: jest.fn(() => [
+        { id: 'acc1', userId: '5', balance: 10000 },
+        { id: 'acc2', userId: '5', balance: 5000 },
+      ]),
+      getUserById: jest.fn(() => null),
+    }));
+    const txConsentFresh = require('../../services/transactionConsentChallenge');
+    const mfaServiceFresh = require('../../services/mfaService');
+    const configStoreFresh = require('../../services/configStore');
+    return { txConsentFresh, mfaServiceFresh, configStoreFresh };
+  }
+
+  test('onetime mode — calls getPingOneUserContact + initiateOneTimeOtp, returns otpSent + maskedContact', async () => {
+    const { txConsentFresh, mfaServiceFresh, configStoreFresh } = freshRequires();
+    mfaServiceFresh.getPingOneUserContact.mockResolvedValue({ email: 'user@example.com', mobilePhone: null });
+    mfaServiceFresh.initiateOneTimeOtp.mockResolvedValue({
+      id: 'da-onetime-001',
+      status: 'OTP_REQUIRED',
+      _embedded: { devices: [{ type: 'EMAIL', email: 'us**@example.com' }] },
+    });
+    const spy = jest.spyOn(configStoreFresh, 'getEffective').mockImplementation((key) => {
+      if (key === 'hitl_consent_mfa_mode') return 'onetime';
+      if (key === 'confirm_stepup_threshold_usd') return '500';
+      if (key === 'confirm_threshold_usd') return '250';
+      return null;
+    });
+    const req = makeReq({ session: { txConsentChallenges: {
+      [CHALLENGE_ID]: {
+        userId: '5', snapshot: { type: 'withdrawal', amount: 600, fromAccountId: 'acc1', toAccountId: null, description: '' },
+        status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 600_000,
+      },
+    }, oauthTokens: { accessToken: 'user-token-abc' } }});
+    const result = await txConsentFresh.confirmChallenge(req, CHALLENGE_ID);
+    spy.mockRestore();
+    expect(mfaServiceFresh.getPingOneUserContact).toHaveBeenCalledWith('5');
+    expect(mfaServiceFresh.initiateOneTimeOtp).toHaveBeenCalledWith('5', 'EMAIL', 'user@example.com', 'user-token-abc');
+    expect(mfaServiceFresh.initiateDeviceAuth).not.toHaveBeenCalled();
+    expect(result.ok).toBe(true);
+    expect(result.otpSent).toBe(true);
+    expect(result.maskedContact).toBe('us**@example.com');
+    expect(result.mfaRequired).toBeUndefined();
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].oneTimePath).toBe(true);
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].daId).toBe('da-onetime-001');
+  });
+
+  test('onetime mode ignores stepup threshold — always uses one-time OTP even for large amounts', async () => {
+    const { txConsentFresh, mfaServiceFresh, configStoreFresh } = freshRequires();
+    mfaServiceFresh.getPingOneUserContact.mockResolvedValue({ email: 'user@example.com', mobilePhone: null });
+    mfaServiceFresh.initiateOneTimeOtp.mockResolvedValue({
+      id: 'da-onetime-002',
+      status: 'OTP_REQUIRED',
+      _embedded: { devices: [{ type: 'EMAIL', email: 'us**@example.com' }] },
+    });
+    const spy = jest.spyOn(configStoreFresh, 'getEffective').mockImplementation((key) => {
+      if (key === 'hitl_consent_mfa_mode') return 'onetime';
+      if (key === 'confirm_stepup_threshold_usd') return '500';
+      if (key === 'confirm_threshold_usd') return '250';
+      return null;
+    });
+    const req = makeReq({ session: { txConsentChallenges: {
+      [`${CHALLENGE_ID}-large`]: {
+        userId: '5', snapshot: { type: 'withdrawal', amount: 9999, fromAccountId: 'acc1', toAccountId: null, description: '' },
+        status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 600_000,
+      },
+    }, oauthTokens: { accessToken: 'user-token-abc' } }});
+    const result = await txConsentFresh.confirmChallenge(req, `${CHALLENGE_ID}-large`);
+    spy.mockRestore();
+    expect(mfaServiceFresh.initiateDeviceAuth).not.toHaveBeenCalled();
+    expect(mfaServiceFresh.initiateOneTimeOtp).toHaveBeenCalled();
+    expect(result.otpSent).toBe(true);
+  });
+
+  test('no email or phone returns needsContact:true so UI can collect it', async () => {
+    const { txConsentFresh, mfaServiceFresh, configStoreFresh } = freshRequires();
+    mfaServiceFresh.getPingOneUserContact.mockResolvedValue({ email: null, mobilePhone: null });
+    const spy = jest.spyOn(configStoreFresh, 'getEffective').mockImplementation((key) => {
+      if (key === 'hitl_consent_mfa_mode') return 'onetime';
+      if (key === 'confirm_stepup_threshold_usd') return '500';
+      if (key === 'confirm_threshold_usd') return '250';
+      return null;
+    });
+    const req = makeReq({ session: { txConsentChallenges: {
+      [`${CHALLENGE_ID}-nocontact`]: {
+        userId: '5', snapshot: { type: 'withdrawal', amount: 600, fromAccountId: 'acc1', toAccountId: null, description: '' },
+        status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 600_000,
+      },
+    }, oauthTokens: { accessToken: 'user-token-abc' } }});
+    const result = await txConsentFresh.confirmChallenge(req, `${CHALLENGE_ID}-nocontact`);
+    spy.mockRestore();
+    expect(result.ok).toBe(true);
+    expect(result.needsContact).toBe(true);
+    expect(mfaServiceFresh.initiateOneTimeOtp).not.toHaveBeenCalled();
+    // challenge stays pending so confirmOnetimeContact can proceed
+    expect(req.session.txConsentChallenges[`${CHALLENGE_ID}-nocontact`].status).toBe('pending');
+    expect(req.session.txConsentChallenges[`${CHALLENGE_ID}-nocontact`].oneTimePath).toBe(true);
+    expect(req.session.txConsentChallenges[`${CHALLENGE_ID}-nocontact`].pendingContact).toBe(true);
+  });
+});
+
+describe('verifyMfa — one-time OTP path', () => {
+  const CHALLENGE_ID = 'onetime-verify-test';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  function makeReqWithOnetimeChallenge(challengeId) {
+    const ch = {
+      userId: '5',
+      snapshot: { type: 'withdrawal', amount: 600, fromAccountId: 'acc1', toAccountId: null, description: '' },
+      status: 'otp_pending',
+      oneTimePath: true,
+      daId: 'da-onetime-001',
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 600_000,
+      otpAttempts: 0,
+      otpExpiresAt: Date.now() + 300_000,
+    };
+    return { user: { id: '5', role: 'customer' }, session: { txConsentChallenges: { [challengeId]: ch } } };
+  }
+
+  test('verifyMfa with oneTimePath calls verifyOneTimeOtp (no deviceId needed)', async () => {
+    mfaService.verifyOneTimeOtp = jest.fn().mockResolvedValue({ status: 'COMPLETED' });
+    const req = makeReqWithOnetimeChallenge(CHALLENGE_ID);
+    const result = await txConsent.verifyMfa(req, CHALLENGE_ID, { otp: '654321' });
+    expect(mfaService.verifyOneTimeOtp).toHaveBeenCalledWith('da-onetime-001', '654321');
+    expect(result.ok).toBe(true);
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].status).toBe('confirmed');
+  });
+
+  test('demo bypass 123123 on oneTimePath promotes to confirmed without calling PingOne', async () => {
+    mfaService.verifyOneTimeOtp = jest.fn();
+    const req = makeReqWithOnetimeChallenge(CHALLENGE_ID);
+    const result = await txConsent.verifyMfa(req, CHALLENGE_ID, { otp: '123123' });
+    expect(mfaService.verifyOneTimeOtp).not.toHaveBeenCalled();
+    expect(result.ok).toBe(true);
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].status).toBe('confirmed');
+  });
+
+  test('missing otp on oneTimePath returns 400 missing_credential', async () => {
+    mfaService.verifyOneTimeOtp = jest.fn();
+    const req = makeReqWithOnetimeChallenge(CHALLENGE_ID);
+    const result = await txConsent.verifyMfa(req, CHALLENGE_ID, { otp: undefined });
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(400);
+    expect(result.json.error).toBe('missing_credential');
+  });
+
+  test('getChallengePath returns onetime for oneTimePath challenges', () => {
+    const req = makeReqWithOnetimeChallenge(CHALLENGE_ID);
+    expect(txConsent.getChallengePath(req, CHALLENGE_ID)).toBe('onetime');
+  });
+
+  test('verifyOtp rejects oneTimePath challenges with not_mfa_path', () => {
+    const req = makeReqWithOnetimeChallenge(CHALLENGE_ID);
+    const result = txConsent.verifyOtp(req, CHALLENGE_ID, '654321');
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(409);
+    expect(result.json.error).toBe('not_mfa_path');
+  });
+});
+
+describe('confirmOnetimeContact', () => {
+  const CHALLENGE_ID = 'onetime-contact-test';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  function makeReqWithPendingContact(challengeId) {
+    const ch = {
+      userId: '5',
+      snapshot: { type: 'withdrawal', amount: 600, fromAccountId: 'acc1', toAccountId: null, description: '' },
+      status: 'pending',
+      oneTimePath: true,
+      pendingContact: true,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 600_000,
+    };
+    return {
+      user: { id: '5', role: 'customer' },
+      session: { txConsentChallenges: { [challengeId]: ch }, oauthTokens: { accessToken: 'user-tok' } },
+    };
+  }
+
+  test('valid email — calls initiateOneTimeOtp and transitions to otp_pending', async () => {
+    mfaService.initiateOneTimeOtp = jest.fn().mockResolvedValue({
+      id: 'da-contact-001',
+      status: 'OTP_REQUIRED',
+      _embedded: { devices: [{ type: 'EMAIL', email: 'us**@test.com' }] },
+    });
+    const req = makeReqWithPendingContact(CHALLENGE_ID);
+    const result = await txConsent.confirmOnetimeContact(req, CHALLENGE_ID, { email: 'user@test.com' });
+    expect(mfaService.initiateOneTimeOtp).toHaveBeenCalledWith('5', 'EMAIL', 'user@test.com', 'user-tok');
+    expect(result.ok).toBe(true);
+    expect(result.otpSent).toBe(true);
+    expect(result.maskedContact).toBe('us**@test.com');
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].status).toBe('otp_pending');
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].daId).toBe('da-contact-001');
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].pendingContact).toBe(false);
+  });
+
+  test('invalid contact returns 400', async () => {
+    const req = makeReqWithPendingContact(CHALLENGE_ID);
+    const result = await txConsent.confirmOnetimeContact(req, CHALLENGE_ID, { email: 'not-an-email' });
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(400);
+    expect(result.json.error).toBe('invalid_contact');
+  });
+
+  test('challenge not in pendingContact state returns 409', async () => {
+    const req = makeReqWithPendingContact(CHALLENGE_ID);
+    req.session.txConsentChallenges[CHALLENGE_ID].pendingContact = false;
+    const result = await txConsent.confirmOnetimeContact(req, CHALLENGE_ID, { email: 'a@b.com' });
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(409);
+    expect(result.json.error).toBe('contact_not_needed');
   });
 });

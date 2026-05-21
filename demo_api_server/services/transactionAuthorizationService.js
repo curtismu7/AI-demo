@@ -13,6 +13,7 @@
 const configStore = require('./configStore');
 const pingOneAuthorizeService = require('./pingOneAuthorizeService');
 const simulatedAuthorizeService = require('./simulatedAuthorizeService');
+const { logEvent, EVENT_CATEGORIES } = require('./appEventService');
 
 /**
  * Build 428/403 bodies shared between engines (Feature Flags + Config labels).
@@ -97,21 +98,17 @@ async function evaluateTransactionPolicy({
     return { ran: false, reason: 'authorize_disabled' };
   }
   if (userRole === 'admin') {
-    console.log('[AuthZ] Skipping admin user');
     return { ran: false, reason: 'admin_role_exempt' };
   }
   if (!AUTHORIZE_TYPES.includes(type)) {
-    console.log(`[AuthZ] Type ${type} not in scope`);
     return { ran: false, reason: 'type_not_in_scope' };
   }
   if (!USE_SIMULATED && !PINGONE_READY) {
-    console.log(`[AuthZ] Not configured: USE_SIMULATED=${USE_SIMULATED}, PINGONE_READY=${PINGONE_READY}`);
     return { ran: false, reason: 'not_configured' };
   }
 
   try {
     if (USE_SIMULATED) {
-      console.log(`[AuthZ] Running simulated for ${type} $${amount}`);
       const r = await simulatedAuthorizeService.evaluateTransaction({
         userId,
         amount,
@@ -119,7 +116,9 @@ async function evaluateTransactionPolicy({
         acr,
       });
 
-      console.log(`[AuthZ] Result: decision=${r.decision}, consentRequired=${r.consentRequired}, stepUpRequired=${r.stepUpRequired}`);
+      logEvent(EVENT_CATEGORIES.AUTHORIZE, 'info',
+        `Authorize simulated — ${type} $${amount} — decision=${r.decision} consent=${r.consentRequired} stepUp=${r.stepUpRequired}`,
+        { tag: 'authorize/simulated-result', metadata: { type, amount, userId, decision: r.decision, consentRequired: r.consentRequired, stepUpRequired: r.stepUpRequired } });
 
       // Check stepUpRequired before consentRequired: step-up is the stronger gate
       // and must not be bypassed by the ff_hitl_enabled=false consent-skip path.
@@ -139,7 +138,9 @@ async function evaluateTransactionPolicy({
       }
 
       if (r.consentRequired) {
-        console.log(`[AuthZ] Blocking with HITL_CONSENT`);
+        logEvent(EVENT_CATEGORIES.HITL, 'info',
+          `HITL consent required — ${type} $${amount}`,
+          { tag: 'hitl/consent-required-authz', metadata: { type, amount, userId } });
         return { ran: true, block: { status: 428, body: buildConsentBody() } };
       }
 

@@ -115,6 +115,8 @@ jest.mock('../../services/transactionConsentChallenge', () => ({
   createChallenge: jest.fn(),
   confirmChallenge: jest.fn(),
   verifyOtp: jest.fn(),
+  verifyMfa: jest.fn(),
+  selectMfaDevice: jest.fn(),
   getChallenge: jest.fn(),
   verifyAndConsumeChallenge: jest.fn(() => ({ ok: true, challengeId: 'ch-1' })),
 }));
@@ -125,7 +127,10 @@ jest.mock('../../services/emailService', () => ({
 
 jest.mock('../../services/posthog', () => ({ capture: jest.fn() }));
 
-jest.mock('../../services/appEventService', () => ({ logEvent: jest.fn() }));
+jest.mock('../../services/appEventService', () => ({
+  logEvent: jest.fn(),
+  EVENT_CATEGORIES: { AUTHORIZE: 'authorize', HITL: 'hitl', THRESHOLD: 'threshold' },
+}));
 
 // ── Module-level references (stable across jest.resetModules() in setup.js) ───
 

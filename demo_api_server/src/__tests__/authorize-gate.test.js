@@ -125,9 +125,17 @@ jest.mock('../../services/pingOneAuthorizeService', () => ({
   isMcpDelegationDecisionReady: jest.fn(() => false),
 }));
 
+// ─── Mock consent challenge service ───────────────────────────────────────────
+// Default: verifyAndConsumeChallenge succeeds. Tests override per-case.
+jest.mock('../../services/transactionConsentChallenge', () => ({
+  HIGH_VALUE_CONSENT_USD: 500,
+  verifyAndConsumeChallenge: jest.fn(() => ({ ok: true })),
+}));
+
 const app = require('../../server');
 const runtimeSettings = require('../../config/runtimeSettings');
 const { evaluateTransaction } = require('../../services/pingOneAuthorizeService');
+const { verifyAndConsumeChallenge } = require('../../services/transactionConsentChallenge');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const customerUser = (overrides = {}) =>
@@ -163,12 +171,7 @@ let originalSettings;
 
 beforeAll(() => {
   originalSettings = runtimeSettings.getAll();
-  // Disable step-up so it doesn't block before authorize gate
-  runtimeSettings.update({
-    stepUpEnabled: false,
-    authorizeEnabled: false,
-    authorizePolicyId: '',
-  }, 'test-setup');
+  // afterEach resets to this state before every test; no initial update needed
 });
 
 afterEach(() => {
@@ -371,5 +374,91 @@ describe('PingOne Authorize Gate — POST /api/transactions', () => {
       expect(evaluateTransaction).not.toHaveBeenCalled();
       expect(res.status).toBe(201);
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HITL / consent path via PingOne Authorize
+// When PingOne returns consentRequired=true the gate must 428 and the route
+// must verify+consume a consentChallengeId before proceeding.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('PingOne Authorize Gate — HITL consent path', () => {
+  beforeEach(() => {
+    runtimeSettings.update({ authorizeEnabled: true, authorizePolicyId: 'test-policy-id', stepUpEnabled: false }, 'hitl-test-setup');
+    jest.clearAllMocks();
+  });
+
+  it('returns 428 hitl_required when PingOne signals consentRequired', async () => {
+    evaluateTransaction.mockResolvedValueOnce({ decision: 'PERMIT', consentRequired: true, raw: {} });
+
+    const res = await request(app)
+      .post('/api/transactions')
+      .set('x-test-user', customerUser())
+      .send(withdrawalBody);
+
+    expect(res.status).toBe(428);
+    expect(res.body.error).toBe('hitl_required');
+    expect(res.body.hitl.type).toBe('consent');
+  });
+
+  it('proceeds when consentRequired + valid consentChallengeId provided', async () => {
+    evaluateTransaction.mockResolvedValueOnce({ decision: 'PERMIT', consentRequired: true, raw: {} });
+    verifyAndConsumeChallenge.mockReturnValueOnce({ ok: true });
+
+    const res = await request(app)
+      .post('/api/transactions')
+      .set('x-test-user', customerUser())
+      .send({ ...withdrawalBody, consentChallengeId: 'challenge-abc' });
+
+    expect(res.status).not.toBe(428);
+    expect(verifyAndConsumeChallenge).toHaveBeenCalledWith(
+      expect.anything(),
+      'challenge-abc',
+      expect.objectContaining({ consentChallengeId: 'challenge-abc' })
+    );
+  });
+
+  it('returns 403 when consentChallengeId is rejected by challenge service', async () => {
+    evaluateTransaction.mockResolvedValueOnce({ decision: 'PERMIT', consentRequired: true, raw: {} });
+    verifyAndConsumeChallenge.mockReturnValueOnce({
+      ok: false,
+      status: 403,
+      json: { error: 'consent_already_used', error_description: 'Challenge already consumed.' },
+    });
+
+    const res = await request(app)
+      .post('/api/transactions')
+      .set('x-test-user', customerUser())
+      .send({ ...withdrawalBody, consentChallengeId: 'stale-challenge' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('consent_already_used');
+  });
+
+  it('returns 428 step_up_required when PingOne signals stepUpRequired', async () => {
+    evaluateTransaction.mockResolvedValueOnce({ decision: 'PERMIT', stepUpRequired: true, raw: {} });
+
+    const res = await request(app)
+      .post('/api/transactions')
+      .set('x-test-user', customerUser())
+      .send(withdrawalBody);
+
+    expect(res.status).toBe(428);
+    expect(res.body.error).toBe('step_up_required');
+    expect(res.body.hitl.type).toBe('step_up');
+  });
+
+  it('consent takes priority over step_up in the PingOne engine path', async () => {
+    // In the PingOne engine, transactionAuthorizationService checks consentRequired
+    // before stepUpRequired (simulated engine is the reverse — step_up wins there).
+    evaluateTransaction.mockResolvedValueOnce({ decision: 'PERMIT', stepUpRequired: true, consentRequired: true, raw: {} });
+
+    const res = await request(app)
+      .post('/api/transactions')
+      .set('x-test-user', customerUser())
+      .send(withdrawalBody);
+
+    expect(res.status).toBe(428);
+    expect(res.body.error).toBe('hitl_required');
   });
 });

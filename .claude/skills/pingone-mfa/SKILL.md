@@ -20,6 +20,26 @@ argument-hint: 'Describe the MFA device operation (e.g. enroll SMS device, list 
 
 ---
 
+## Which MFA flow to use
+
+| Scenario | `mfaService.js` methods | Prerequisite | Reference |
+|---|---|---|---|
+| **One-time OTP** (default step-up) — user may not have enrolled devices | `initiateOneTimeOtp` → `verifyOneTimeOtp` | User's `email` or `mobilePhone` from PingOne user record | [reference/onetime-otp-flow.md](reference/onetime-otp-flow.md) |
+| **Full PingOne MFA** — user has enrolled devices, show device picker | `initiateDeviceAuth` → `selectDevice` → `submitOtp` | User must have ACTIVE enrolled device(s) + MFA policy | [reference/device-authentications-api.md](reference/device-authentications-api.md) |
+| **FIDO2 / push** — enrolled FIDO2 or mobile push device | `initiateDeviceAuth` → `selectDevice` → `submitFido2Assertion` / poll `getDeviceAuthStatus` | Enrolled FIDO2/MOBILE device | [reference/device-fido2.md](reference/device-fido2.md), [reference/device-mobile-push.md](reference/device-mobile-push.md) |
+
+**Default choice:** one-time OTP. No enrollment friction, works for any user as long as they have an email or phone on their PingOne record.
+
+**Shared across all flows:**
+- Same two endpoints: `POST {authBase}/{envId}/deviceAuthentications` (initiate) and `POST/{daId}` (verify)
+- Same token rule: **user token to initiate, worker token to verify**
+- Same `_wrapError` / `_tryRefresh` error handling
+- Same `_debug` pattern on every service method
+
+---
+
+---
+
 ## 0. Two API surfaces — don't confuse them
 
 PingOne MFA spans **two different base URLs**. `mfaService.js` has separate
@@ -268,6 +288,9 @@ return `_debug` request/response for the UI.
 | [reference/device-whatsapp.md](reference/device-whatsapp.md) | reference only | WhatsApp device (two-route), OTP delivery |
 | [reference/device-mobile-push.md](reference/device-mobile-push.md) | reference only | Mobile push SDK pairing, device order, push vs OTP fallback |
 | [reference/policy-and-scopes.md](reference/policy-and-scopes.md) | partial | Device-auth-policy templates, full scope matrix, pairing flags |
+| [reference/device-authentications-api.md](reference/device-authentications-api.md) | ✅ wired | **Implementation cheatsheet** — one-time SMS/Email OTP (no device registration): full request/response examples, token rules (user vs worker per step), flow states, error codes, test mode, user lookup pattern |
+| [reference/devices-api.md](reference/devices-api.md) | ✅ wired | Full Platform API device lifecycle: all types + properties, create/activate/delete/order/lock/block, custom pairing notifications |
+| [reference/onetime-otp-flow.md](reference/onetime-otp-flow.md) | ✅ wired | **One-time OTP skill** — default MFA path (no device registration): full two-call flow, JS code for `mfaService.js` methods, route shape, session storage, error handling, polling notes |
 
 ---
 

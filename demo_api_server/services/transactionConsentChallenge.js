@@ -23,6 +23,12 @@ function getConfirmThreshold() {
   const n = Number(v);
   return (v && !isNaN(n) && n > 0) ? n : HIGH_VALUE_CONSENT_USD_DEFAULT;
 }
+const STEP_UP_THRESHOLD_DEFAULT = 500;
+function getStepUpThreshold() {
+  const v = configStore.getEffective('confirm_stepup_threshold_usd');
+  const n = Number(v);
+  return (v && !isNaN(n) && n > 0) ? n : STEP_UP_THRESHOLD_DEFAULT;
+}
 const CHALLENGE_TTL_MS = 10 * 60 * 1000;
 const CONFIRMED_TTL_MS = 5 * 60 * 1000;
 const MAX_PENDING_PER_SESSION = 8;
@@ -288,6 +294,52 @@ async function confirmChallenge(req, challengeId, opts = {}) {
     return { ok: false, status: 410, json: { error: 'challenge_expired', message: 'Consent challenge expired. Start again from the dashboard.' } };
   }
 
+  const mfaMode = configStore.getEffective('hitl_consent_mfa_mode') || 'onetime';
+  const userAccessToken = req.session?.oauthTokens?.accessToken;
+
+  if (mfaMode === 'device_picker' && ch.snapshot.amount >= getStepUpThreshold()) {
+    let daId, devices;
+    try {
+      const initiated = await mfaService.initiateDeviceAuth(req.user.id, userAccessToken);
+      daId = initiated.id;
+      devices = initiated._embedded?.devices || [];
+    } catch (err) {
+      console.warn(`[ConsentChallenge] initiateDeviceAuth failed: ${err.message}`);
+      return { ok: false, status: 502, json: { error: 'mfa_init_failed', message: 'Could not start MFA challenge. Try again.' } };
+    }
+
+    ch.mfaPath      = true;
+    ch.daId         = daId;
+    ch.devices      = devices;
+    ch.otpAttempts  = 0;
+    ch.otpExpiresAt = now + OTP_TTL_MS;
+    ch.status       = 'otp_pending';
+
+    console.log(`[ConsentChallenge] PingOne MFA initiated challenge=${challengeId.slice(0, 8)}… daId=${daId} user=${req.user.id}`);
+    return { ok: true, challengeId, mfaRequired: true, devices };
+
+  } else if (mfaMode === 'onetime') {
+    let contact, deliveryType;
+    try {
+      const { email, mobilePhone } = await mfaService.getPingOneUserContact(req.user.id);
+      if (email) { deliveryType = 'EMAIL'; contact = email; }
+      else if (mobilePhone) { deliveryType = 'SMS'; contact = mobilePhone; }
+    } catch (err) {
+      console.warn(`[ConsentChallenge] getPingOneUserContact failed: ${err.message}`);
+      return { ok: false, status: 502, json: { error: 'mfa_contact_lookup_failed', message: 'Could not look up MFA contact. Try again.' } };
+    }
+
+    if (!contact) {
+      console.log(`[ConsentChallenge] one-time OTP: no contact for user=${req.user.id} — requesting from UI`);
+      ch.oneTimePath    = true;
+      ch.pendingContact = true;
+      return { ok: true, challengeId, needsContact: true };
+    }
+
+    return _initiateOnetimeOtp(ch, challengeId, deliveryType, contact, userAccessToken, req.user.id, now);
+  }
+
+  // homegrown: BFF-generated OTP delivered via emailService
   // Generate OTP and store its hash
   const otpPlain = generateOtp();
   const otpSalt  = crypto.randomBytes(16).toString('hex');
@@ -328,6 +380,73 @@ async function confirmChallenge(req, challengeId, opts = {}) {
 }
 
 /**
+ * Shared helper — initiates one-time OTP once contact is known and mutates the challenge.
+ * Called by both confirmChallenge (auto-resolved contact) and confirmOnetimeContact (user-supplied).
+ */
+async function _initiateOnetimeOtp(ch, challengeId, deliveryType, contact, userAccessToken, userId, now) {
+  let daId, maskedContact;
+  try {
+    const initiated = await mfaService.initiateOneTimeOtp(userId, deliveryType, contact, userAccessToken);
+    daId = initiated.id;
+    maskedContact = initiated._embedded?.devices?.[0]?.[deliveryType.toLowerCase()] || null;
+  } catch (err) {
+    console.warn(`[ConsentChallenge] initiateOneTimeOtp failed: ${err.message}`);
+    return { ok: false, status: 502, json: { error: 'mfa_init_failed', message: 'Could not start MFA challenge. Try again.' } };
+  }
+
+  ch.oneTimePath    = true;
+  ch.pendingContact = false;
+  ch.daId           = daId;
+  ch.otpAttempts    = 0;
+  ch.otpExpiresAt   = now + OTP_TTL_MS;
+  ch.status         = 'otp_pending';
+
+  console.log(`[ConsentChallenge] PingOne one-time OTP initiated challenge=${challengeId.slice(0, 8)}… daId=${daId} user=${userId} via=${deliveryType}`);
+  return { ok: true, challengeId, otpSent: true, otpExpiresAt: ch.otpExpiresAt, maskedContact };
+}
+
+/**
+ * confirmOnetimeContact — user supplies their email/phone when none was found on their PingOne record.
+ * Validates that the challenge is in oneTimePath+pendingContact state, then initiates the OTP.
+ *
+ * @param {import('express').Request} req
+ * @param {string} challengeId
+ * @param {{ email?: string, phone?: string }} contact
+ */
+async function confirmOnetimeContact(req, challengeId, contact) {
+  if (!challengeId || typeof challengeId !== 'string') {
+    return { ok: false, status: 400, json: { error: 'invalid_challenge', message: 'challengeId is required.' } };
+  }
+  const st = store(req.session);
+  pruneExpired(st);
+  const ch = st[challengeId];
+  if (!ch || ch.userId !== req.user.id) {
+    return { ok: false, status: 404, json: { error: 'challenge_not_found', message: 'Unknown or expired consent challenge.' } };
+  }
+  if (!ch.oneTimePath || !ch.pendingContact) {
+    return { ok: false, status: 409, json: { error: 'contact_not_needed', message: 'This challenge does not require contact input.' } };
+  }
+  if (ch.status !== 'pending') {
+    return { ok: false, status: 409, json: { error: 'challenge_not_pending', message: 'Challenge already confirmed or consumed.' } };
+  }
+
+  const { email, phone } = contact || {};
+  let deliveryType, contactValue;
+  if (email && typeof email === 'string' && email.includes('@')) {
+    deliveryType = 'EMAIL';
+    contactValue = email.trim().toLowerCase();
+  } else if (phone && typeof phone === 'string' && phone.trim()) {
+    deliveryType = 'SMS';
+    contactValue = phone.trim();
+  } else {
+    return { ok: false, status: 400, json: { error: 'invalid_contact', message: 'Provide a valid email address or phone number.' } };
+  }
+
+  const userAccessToken = req.session?.oauthTokens?.accessToken;
+  return _initiateOnetimeOtp(ch, challengeId, deliveryType, contactValue, userAccessToken, req.user.id, Date.now());
+}
+
+/**
  * verifyOtp — user submits the 6-digit code received by email.
  * On success, challenge moves to status 'confirmed' (ready for verifyAndConsumeChallenge).
  *
@@ -347,6 +466,9 @@ function verifyOtp(req, challengeId, otpCode) {
   }
   if (ch.status !== 'otp_pending') {
     return { ok: false, status: 409, json: { error: 'otp_not_expected', message: 'No OTP is pending for this challenge.' } };
+  }
+  if (ch.mfaPath || ch.oneTimePath) {
+    return { ok: false, status: 409, json: { error: 'not_mfa_path', message: 'Use verifyMfa for PingOne MFA challenges.' } };
   }
   if (Date.now() > ch.otpExpiresAt) {
     ch.status = 'expired';
@@ -408,7 +530,7 @@ async function verifyMfa(req, challengeId, params, origin) {
   if (!ch || ch.userId !== req.user.id) {
     return { ok: false, status: 404, json: { error: 'challenge_not_found', message: 'Unknown or expired consent challenge.' } };
   }
-  if (!ch.mfaPath) {
+  if (!ch.mfaPath && !ch.oneTimePath) {
     return { ok: false, status: 409, json: { error: 'not_mfa_path', message: 'This challenge does not use PingOne MFA.' } };
   }
   if (ch.status !== 'otp_pending') {
@@ -427,7 +549,11 @@ async function verifyMfa(req, challengeId, params, origin) {
     console.log(`[ConsentChallenge] MFA demo bypass accepted challenge=${challengeId.slice(0, 8)}… user=${req.user.id}`);
   } else {
     try {
-      if (fido2Assertion) {
+      if (ch.oneTimePath) {
+        // One-time OTP path: no device selection, just verify the OTP
+        if (!otp) return { ok: false, status: 400, json: { error: 'missing_credential', message: 'Provide otp.' } };
+        await mfaService.verifyOneTimeOtp(ch.daId, otp);
+      } else if (fido2Assertion) {
         await mfaService.submitFido2Assertion(ch.daId, fido2Assertion, userAccessToken, origin);
       } else if (otp) {
         await mfaService.submitOtp(ch.daId, deviceId, otp, userAccessToken);
@@ -455,6 +581,45 @@ async function verifyMfa(req, challengeId, params, origin) {
 
   console.log(`[ConsentChallenge] MFA verified challenge=${challengeId.slice(0, 8)}… user=${req.user.id}`);
   return { ok: true, challengeId, confirmExpiresAt: ch.confirmExpiresAt };
+}
+
+/**
+ * selectMfaDevice — user selects a device to receive the OTP on the PingOne MFA path.
+ * Calls mfaService.selectDevice() to dispatch the OTP to the chosen device.
+ *
+ * @param {import('express').Request} req
+ * @param {string} challengeId
+ * @param {string} deviceId
+ */
+async function selectMfaDevice(req, challengeId, deviceId) {
+  if (!challengeId) {
+    return { ok: false, status: 400, json: { error: 'invalid_challenge', message: 'challengeId is required.' } };
+  }
+  const st = store(req.session);
+  pruneExpired(st);
+  const ch = st[challengeId];
+  if (!ch || ch.userId !== req.user.id) {
+    return { ok: false, status: 404, json: { error: 'challenge_not_found', message: 'Unknown or expired consent challenge.' } };
+  }
+  if (!ch.mfaPath) {
+    return { ok: false, status: 409, json: { error: 'not_mfa_path', message: 'This challenge does not use PingOne MFA.' } };
+  }
+  if (ch.status !== 'otp_pending') {
+    return { ok: false, status: 409, json: { error: 'otp_not_expected', message: 'No OTP is pending for this challenge.' } };
+  }
+  if (Date.now() > ch.otpExpiresAt) {
+    ch.status = 'expired';
+    return { ok: false, status: 410, json: { error: 'otp_expired', message: 'The verification code has expired. Start the transaction again.' } };
+  }
+  const userAccessToken = req.session?.oauthTokens?.accessToken;
+  try {
+    await mfaService.selectDevice(ch.daId, deviceId, userAccessToken);
+    ch.otpExpiresAt = Date.now() + OTP_TTL_MS;
+    return { ok: true, otpExpiresAt: ch.otpExpiresAt };
+  } catch (err) {
+    console.warn(`[ConsentChallenge] selectDevice failed: ${err.message}`);
+    return { ok: false, status: err.status || 502, json: { error: err.code || 'mfa_select_failed', message: err.message } };
+  }
 }
 
 /**
@@ -497,6 +662,26 @@ function verifyAndConsumeChallenge(req, challengeId, postBody) {
   return { ok: true };
 }
 
+/**
+ * getChallengePath — returns 'mfa' or 'otp' based on the challenge's mfaPath flag,
+ * or null if the challenge does not exist or does not belong to the authenticated user.
+ * Used by route handlers to avoid direct session shape access.
+ *
+ * @param {import('express').Request} req
+ * @param {string} challengeId
+ * @returns {'mfa' | 'otp' | null}
+ */
+function getChallengePath(req, challengeId) {
+  if (!challengeId) return null;
+  const st = req.session?.txConsentChallenges;
+  if (!st || typeof st !== 'object') return null;
+  const ch = st[challengeId];
+  if (!ch || ch.userId !== req.user?.id) return null;
+  if (ch.mfaPath) return 'mfa';
+  if (ch.oneTimePath) return 'onetime';
+  return 'otp';
+}
+
 module.exports = {
   get HIGH_VALUE_CONSENT_USD() { return getConfirmThreshold(); },
   CHALLENGE_TTL_MS,
@@ -508,7 +693,10 @@ module.exports = {
   createChallenge,
   getChallenge,
   confirmChallenge,
+  confirmOnetimeContact,
   verifyOtp,
   verifyMfa,
+  selectMfaDevice,
+  getChallengePath,
   verifyAndConsumeChallenge,
 };

@@ -10,7 +10,7 @@ const { sendTransactionConfirmation } = require('../services/emailService');
 const txConsent = require('../services/transactionConsentChallenge');
 const demoScenarioStore = require('../services/demoScenarioStore');
 const { resolveAccountId } = require('../utils/accountUtils');
-const { logEvent: logAppEvent } = require('../services/appEventService');
+const { logEvent: logAppEvent, EVENT_CATEGORIES } = require('../services/appEventService');
 const posthog = require('../services/posthog');
 const { BANKING_SCOPES } = require('../config/scopes');
 
@@ -203,11 +203,39 @@ router.post(
         event: 'consent_challenge_confirmed',
         properties: { challenge_id: result.challengeId, otp_sent: result.otpSent },
       });
+      let responseBody;
+      if (result.mfaRequired) {
+        responseBody = { challengeId: result.challengeId, mfaRequired: true, devices: result.devices };
+      } else if (result.needsContact) {
+        responseBody = { challengeId: result.challengeId, needsContact: true };
+      } else {
+        responseBody = {
+          challengeId: result.challengeId,
+          otpSent: result.otpSent,
+          otpExpiresAt: result.otpExpiresAt,
+          ...(result.maskedContact ? { maskedContact: result.maskedContact } : {}),
+          ...(result.otpCodeFallback ? { otpCodeFallback: result.otpCodeFallback } : {}),
+        };
+      }
+      return res.status(200).json(responseBody);
+    });
+  },
+);
+
+router.post(
+  '/consent-challenge/:challengeId/confirm-contact',
+  authenticateToken,
+  async (req, res) => {
+    const { email, phone } = req.body || {};
+    const result = await txConsent.confirmOnetimeContact(req, req.params.challengeId, { email, phone });
+    if (!result.ok) return res.status(result.status).json(result.json);
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('[ConsentChallenge] session save error (confirm-contact):', saveErr);
       return res.status(200).json({
         challengeId: result.challengeId,
         otpSent: result.otpSent,
         otpExpiresAt: result.otpExpiresAt,
-        ...(result.otpCodeFallback ? { otpCodeFallback: result.otpCodeFallback } : {}),
+        ...(result.maskedContact ? { maskedContact: result.maskedContact } : {}),
       });
     });
   },
@@ -216,9 +244,18 @@ router.post(
 router.post(
   '/consent-challenge/:challengeId/verify-otp',
   authenticateToken,
-  (req, res) => {
-    const { otpCode } = req.body || {};
-    const result = txConsent.verifyOtp(req, req.params.challengeId, otpCode);
+  async (req, res) => {
+    const challengeId = req.params.challengeId;
+    const path = txConsent.getChallengePath(req, challengeId);
+    let result;
+    if (path === 'mfa' || path === 'onetime') {
+      const { deviceId, otp, fido2Assertion } = req.body || {};
+      const origin = `${req.protocol}://${req.get('host')}`;
+      result = await txConsent.verifyMfa(req, challengeId, { deviceId, otp, fido2Assertion }, origin);
+    } else {
+      const { otpCode } = req.body || {};
+      result = txConsent.verifyOtp(req, challengeId, otpCode);
+    }
     if (!result.ok) return res.status(result.status).json(result.json);
     req.session.save((saveErr) => {
       if (saveErr) console.error('[ConsentChallenge] session save error (verify-otp):', saveErr);
@@ -226,6 +263,21 @@ router.post(
         challengeId: result.challengeId,
         confirmExpiresAt: result.confirmExpiresAt,
       });
+    });
+  },
+);
+
+router.post(
+  '/consent-challenge/:challengeId/select-device',
+  authenticateToken,
+  async (req, res) => {
+    const { deviceId } = req.body || {};
+    if (!deviceId) return res.status(400).json({ error: 'missing_device_id', message: 'deviceId is required.' });
+    const result = await txConsent.selectMfaDevice(req, req.params.challengeId, deviceId);
+    if (!result.ok) return res.status(result.status).json(result.json);
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('[ConsentChallenge] session save error (select-device):', saveErr);
+      return res.status(200).json({ otpSent: true, otpExpiresAt: result.otpExpiresAt });
     });
   },
 );
@@ -457,17 +509,18 @@ router.post('/', authenticateToken, async (req, res) => {
       acr: req.user.acr,
     });
 
-    console.log(`[DEBUG-TXN] authz result: ran=${authz.ran}, block=${!!authz.block}, permit=${authz.permit}, reason=${authz.reason}`);
-    if (authz.block) console.log(`[DEBUG-TXN] authz.block: status=${authz.block.status}, error=${authz.block.body?.error}`);
-
     if (authz.ran) {
       if (authz.block) {
         const { body } = authz.block;
         if (body.error === 'hitl_required' && body.hitl && body.hitl.type === 'consent') {
           if (!hitlEnabled) {
-            console.log('[HITL] ff_hitl_enabled=false — consent enforcement skipped by feature flag');
+            logAppEvent(EVENT_CATEGORIES.HITL, 'info',
+              `HITL consent skipped — ff_hitl_enabled=false`,
+              { tag: 'hitl/flag-disabled', metadata: { type, amount: hitlAmount, userId: req.user?.id } });
           } else if (!req.body.consentChallengeId) {
-            console.log(`[HITL] Consent required for ${type} $${hitlAmount} — no challengeId provided`);
+            logAppEvent(EVENT_CATEGORIES.HITL, 'warning',
+              `HITL consent required — no challengeId provided (${type} $${hitlAmount})`,
+              { tag: 'hitl/consent-required', metadata: { type, amount: hitlAmount, userId: req.user?.id } });
             return res.status(428).json({
               ...body,
               fromAccountId: fromAccountId || null,
@@ -476,20 +529,25 @@ router.post('/', authenticateToken, async (req, res) => {
               type,
             });
           } else {
-            console.log(`[HITL] Verifying consentChallengeId: ${req.body.consentChallengeId}`);
             const consumed = txConsent.verifyAndConsumeChallenge(req, req.body.consentChallengeId, req.body);
             if (!consumed.ok) {
-              console.log(`[HITL] Consent verification failed: ${consumed.status} ${consumed.json.error}`);
+              logAppEvent(EVENT_CATEGORIES.HITL, 'warning',
+                `HITL consent verification failed — ${consumed.json.error}`,
+                { tag: 'hitl/consent-rejected', metadata: { type, amount: hitlAmount, userId: req.user?.id, error: consumed.json.error } });
               return res.status(consumed.status).json(consumed.json);
             }
-            console.log(`[HITL] ${type} $${hitlAmount} consent verified — proceeding`);
+            logAppEvent(EVENT_CATEGORIES.HITL, 'info',
+              `HITL consent verified — ${type} $${hitlAmount} proceeding`,
+              { tag: 'hitl/consent-verified', metadata: { type, amount: hitlAmount, userId: req.user?.id } });
           }
         } else {
           return res.status(authz.block.status).json(body);
         }
       }
       if (authz.simulatedError) {
-        console.error(`[Authorize][Simulated] unexpected error: ${authz.simulatedError.message}`);
+        logAppEvent(EVENT_CATEGORIES.AUTHORIZE, 'error',
+          `Authorize simulated error — ${authz.simulatedError.message}`,
+          { tag: 'authorize/simulated-error', metadata: { type, userId: req.user?.id } });
         return res.status(500).json({
           error: 'simulated_authorize_error',
           error_description: 'Simulated policy evaluation failed unexpectedly.',
@@ -497,9 +555,13 @@ router.post('/', authenticateToken, async (req, res) => {
       }
       if (authz.pingoneError) {
         if (AUTHORIZE_FAIL_OPEN) {
-          console.warn(`[Authorize] Policy evaluation error — failing open (ff_authorize_fail_open=true): ${authz.pingoneError.message}`);
+          logAppEvent(EVENT_CATEGORIES.AUTHORIZE, 'warning',
+            `Authorize error — failing open: ${authz.pingoneError.message}`,
+            { tag: 'authorize/fail-open', metadata: { type, userId: req.user?.id } });
         } else {
-          console.error(`[Authorize] Policy evaluation error — failing closed (ff_authorize_fail_open=false): ${authz.pingoneError.message}`);
+          logAppEvent(EVENT_CATEGORIES.AUTHORIZE, 'error',
+            `Authorize error — failing closed: ${authz.pingoneError.message}`,
+            { tag: 'authorize/fail-closed', metadata: { type, userId: req.user?.id } });
           return res.status(503).json({
             error: 'authorize_unavailable',
             error_description: 'Transaction policy evaluation failed and fail-open is disabled. Try again or contact an administrator.',
@@ -509,19 +571,12 @@ router.post('/', authenticateToken, async (req, res) => {
       if (authz.permit && authz.evaluation) {
         authorizeEvaluation = authz.evaluation;
         const ev = authz.evaluation;
-        if (ev.engine === 'simulated') {
-          console.log(
-            `[Authorize][Simulated] ${ev.path} — user ${req.user.id} — type ${type} — decision: ${ev.decision}${ev.decisionId ? ` — decisionId: ${ev.decisionId}` : ''}`
-          );
-        } else {
-          const ref = ev.authorizeRef || '';
-          console.log(
-            `[Authorize] ${ev.path} ${ref} — user ${req.user.id} — type ${type} — decision: ${ev.decision}${ev.decisionId ? ` — decisionId: ${ev.decisionId}` : ''}`
-          );
-        }
+        logAppEvent(EVENT_CATEGORIES.AUTHORIZE, 'info',
+          `Authorize ${ev.engine} PERMIT — ${type} $${parseFloat(amount)} user ${req.user.id}`,
+          { tag: 'authorize/permit', metadata: { engine: ev.engine, type, amount: parseFloat(amount), userId: req.user.id, decisionId: ev.decisionId || null } });
       }
     } else {
-      logAppEvent('authorize', 'info',
+      logAppEvent(EVENT_CATEGORIES.AUTHORIZE, 'info',
         `Authorize gate skipped — ${authz.reason || 'unknown'}`,
         { tag: 'authorize/gate-skipped', metadata: { reason: authz.reason, type, userId: req.user?.id } });
     }

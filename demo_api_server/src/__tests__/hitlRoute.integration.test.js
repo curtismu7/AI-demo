@@ -80,7 +80,8 @@ jest.mock('../../services/demoScenarioStore', () => ({
 }));
 
 jest.mock('../../services/appEventService', () => ({
-  logEvent: jest.fn(() => Promise.resolve()),
+  logEvent: jest.fn(),
+  EVENT_CATEGORIES: { AUTHORIZE: 'authorize', HITL: 'hitl', THRESHOLD: 'threshold' },
 }));
 
 jest.mock('../../services/transactionAuthorizationService', () => ({

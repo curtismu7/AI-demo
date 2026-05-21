@@ -13,7 +13,7 @@ import { useEducationUI } from "../context/EducationUIContext";
 import { EDU } from "./education/educationIds";
 import { useIndustryBranding } from "../context/IndustryBrandingContext";
 import { useDraggablePanel } from "../hooks/useDraggablePanel";
-import DeviceSelector from "./DeviceSelector";
+import DeviceSelector, { type Device } from "./DeviceSelector";
 import "../styles/draggablePanel.css";
 import "./TransactionConsentPage.css";
 
@@ -84,12 +84,16 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
   const [otpError, setOtpError] = useState("");
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(null);
-  const [otpEmail, setOtpEmail] = useState<string | null>(null);
   const otpInputRef = useRef<HTMLInputElement>(null);
 
   const [mfaStep, setMfaStep] = useState(false);
-  const [mfaDevices, setMfaDevices] = useState([]);
+  const [mfaDevices, setMfaDevices] = useState<Device[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+
+  const [contactStep, setContactStep] = useState(false);
+  const [contactInput, setContactInput] = useState("");
+  const [contactError, setContactError] = useState("");
+  const [maskedContact, setMaskedContact] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -105,10 +109,13 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
       setOtpError("");
       setOtpVerifying(false);
       setOtpExpiresAt(null);
-      setOtpEmail(null);
       setMfaStep(false);
       setMfaDevices([]);
       setSelectedDeviceId(null);
+      setContactStep(false);
+      setContactInput("");
+      setContactError("");
+      setMaskedContact(null);
     }
   }, [open]);
 
@@ -247,9 +254,17 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
       const { data } = await bffAxios.post(
         `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/confirm`,
       );
-      setOtpExpiresAt(data.otpExpiresAt || null);
-      setOtpSent(data.otpSent || false);
-      setOtpStep(true);
+      if (data.mfaRequired) {
+        setMfaDevices(data.devices || []);
+        setMfaStep(true);
+      } else if (data.needsContact) {
+        setContactStep(true);
+      } else {
+        setOtpExpiresAt(data.otpExpiresAt || null);
+        setOtpSent(data.otpSent || false);
+        setMaskedContact(data.maskedContact || null);
+        setOtpStep(true);
+      }
     } catch (e: any) {
       const d = e.response?.data;
       const status = e.response?.status;
@@ -272,27 +287,17 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
   };
 
   const handleSelectDevice = async (deviceId: string) => {
-    if (!selectedDeviceId && selectedDeviceId !== deviceId) {
-      setSelectedDeviceId(deviceId);
-    }
+    setSelectedDeviceId(deviceId);
     setSubmitting(true);
     try {
       const { data } = await bffAxios.post(
-        `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/select-device`,
+        `/api/transactions/consent-challenge/${encodeURIComponent(challengeId as string)}/select-device`,
         { deviceId },
       );
-      if (data.method === "otp") {
-        setOtpStep(true);
-        setMfaStep(false);
-      } else if (data.method === "fido2") {
-        notifyWarning("FIDO2 challenge not yet implemented in this UI.");
-        setMfaStep(true);
-      } else if (data.method === "push") {
-        notifyWarning(
-          "Push notification method not yet implemented in this UI.",
-        );
-        setMfaStep(true);
-      }
+      setOtpExpiresAt(data.otpExpiresAt || null);
+      setOtpSent(data.otpSent || false);
+      setOtpStep(true);
+      setMfaStep(false);
     } catch (e: any) {
       const d = e.response?.data;
       notifyError(
@@ -308,15 +313,48 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
     }
   };
 
+  const handleSubmitContact = async () => {
+    const val = contactInput.trim();
+    if (!val) {
+      setContactError("Enter an email address or phone number.");
+      return;
+    }
+    setContactError("");
+    setSubmitting(true);
+    try {
+      const isPhone = /^\+?\d[\d\s\-().]{6,}$/.test(val);
+      const body = isPhone ? { phone: val } : { email: val };
+      const { data } = await bffAxios.post(
+        `/api/transactions/consent-challenge/${encodeURIComponent(challengeId as string)}/confirm-contact`,
+        body,
+      );
+      setOtpExpiresAt(data.otpExpiresAt || null);
+      setOtpSent(data.otpSent || false);
+      setMaskedContact(data.maskedContact || val);
+      setContactStep(false);
+      setOtpStep(true);
+    } catch (e: any) {
+      const d = e.response?.data;
+      setContactError(
+        d?.message || d?.error || e.message || "Could not send verification code.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleVerifyOtp = async () => {
     if (!otpCode || otpVerifying || !challengeId || !user?.id || !snapshot)
       return;
     setOtpError("");
     setOtpVerifying(true);
     try {
+      const verifyBody = selectedDeviceId
+        ? { deviceId: selectedDeviceId, otp: otpCode }
+        : { otpCode };
       await bffAxios.post(
         `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/verify-otp`,
-        { otpCode },
+        verifyBody,
       );
       setAgentBlockedByConsentDecline(false);
       notifySuccess("Consent verified. Proceeding with transaction...");
@@ -408,7 +446,9 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
               ? "Enter verification code"
               : mfaStep
                 ? "Select verification method"
-                : "Approve high-value transaction"}
+                : contactStep
+                  ? "Where should we send the code?"
+                  : "Approve high-value transaction"}
           </h2>
         </div>
 
@@ -476,27 +516,61 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
             }}
             disabled={submitting}
           />
+        ) : contactStep && !otpStep ? (
+          <div className="tx-otp-panel">
+            <p className="tx-otp-panel__lead">
+              No email or phone was found on your account. Enter the address
+              where you would like to receive your one-time verification code.
+            </p>
+            <div className="tx-otp-panel__input-row">
+              <input
+                className={`tx-otp-panel__input${contactError ? " tx-otp-panel__input--error" : ""}`}
+                type="text"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="your@email.com"
+                value={contactInput}
+                onChange={(e) => {
+                  setContactError("");
+                  setContactInput(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && contactInput.trim()) handleSubmitContact();
+                }}
+                disabled={submitting}
+                aria-label="Email address or phone number"
+              />
+              <button
+                type="button"
+                className="transaction-consent-btn transaction-consent-btn--primary tx-otp-panel__verify-btn"
+                onClick={handleSubmitContact}
+                disabled={!contactInput.trim() || submitting}
+              >
+                {submitting ? "Sending…" : "Send code"}
+              </button>
+            </div>
+            {contactError && (
+              <p className="tx-otp-panel__error" role="alert">
+                {contactError}
+              </p>
+            )}
+            <button
+              type="button"
+              className="tx-otp-panel__back-btn"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+          </div>
         ) : otpStep ? (
           <div className="tx-otp-panel">
             {otpSent ? (
-              <>
-                <p className="tx-otp-panel__lead">
-                  Enter your 6-digit verification code to authorise this
-                  transaction.
-                </p>
-                {otpEmail && (
-                  <p
-                    className="tx-otp-panel__email"
-                    style={{
-                      fontSize: "0.875rem",
-                      color: "#64748b",
-                      marginTop: "0.5rem",
-                    }}
-                  >
-                    Email: <strong>{otpEmail}</strong>
-                  </p>
-                )}
-              </>
+              <p className="tx-otp-panel__lead">
+                {maskedContact
+                  ? `A 6-digit verification code was sent to ${maskedContact}.`
+                  : "Enter your 6-digit verification code to authorise this transaction."}
+              </p>
             ) : (
               <p className="tx-otp-panel__lead tx-otp-panel__lead--warn">
                 Email delivery unavailable. Check server logs for the OTP code.

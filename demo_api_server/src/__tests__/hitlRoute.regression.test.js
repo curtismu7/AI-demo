@@ -44,6 +44,12 @@ jest.mock('../../data/store', () => ({
 
 jest.mock('../../services/transactionConsentChallenge', () => ({
   HIGH_VALUE_CONSENT_USD: 500,
+  createChallenge: jest.fn(),
+  confirmChallenge: jest.fn(),
+  verifyOtp: jest.fn(),
+  verifyMfa: jest.fn(),
+  selectMfaDevice: jest.fn(),
+  getChallenge: jest.fn(),
   verifyAndConsumeChallenge: jest.fn(() => ({ ok: true })),
 }));
 
@@ -53,7 +59,8 @@ jest.mock('../../services/demoScenarioStore', () => ({
 }));
 
 jest.mock('../../services/appEventService', () => ({
-  logEvent: jest.fn(() => Promise.resolve()),
+  logEvent: jest.fn(),
+  EVENT_CATEGORIES: { AUTHORIZE: 'authorize', HITL: 'hitl', THRESHOLD: 'threshold' },
 }));
 
 // evaluateTransactionPolicy returns a HITL consent block for transfers (always) and large deposits.
