@@ -10,6 +10,9 @@ module.exports = {
   runInBand: true,
   forceExit: true,
   verbose: true,
+  silent: false,
   testPathIgnorePatterns: ['/node_modules/', '/\\.claude/worktrees/', '/\\.kilo/worktrees/'],
-  moduleNameMapper: { '^uuid$': '<rootDir>/src/__tests__/__mocks__/uuid-cjs.js' },
+  moduleNameMapper: {
+    '^uuid$': '<rootDir>/src/__tests__/__mocks__/uuid-cjs.js',
+  },
 };
