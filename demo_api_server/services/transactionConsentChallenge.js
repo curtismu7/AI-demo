@@ -23,6 +23,12 @@ function getConfirmThreshold() {
   const n = Number(v);
   return (v && !isNaN(n) && n > 0) ? n : HIGH_VALUE_CONSENT_USD_DEFAULT;
 }
+const STEP_UP_THRESHOLD_DEFAULT = 500;
+function getStepUpThreshold() {
+  const v = configStore.getEffective('confirm_stepup_threshold_usd');
+  const n = Number(v);
+  return (v && !isNaN(n) && n > 0) ? n : STEP_UP_THRESHOLD_DEFAULT;
+}
 const CHALLENGE_TTL_MS = 10 * 60 * 1000;
 const CONFIRMED_TTL_MS = 5 * 60 * 1000;
 const MAX_PENDING_PER_SESSION = 8;
@@ -287,6 +293,36 @@ async function confirmChallenge(req, challengeId, opts = {}) {
     delete st[challengeId];
     return { ok: false, status: 410, json: { error: 'challenge_expired', message: 'Consent challenge expired. Start again from the dashboard.' } };
   }
+
+  // ── PingOne MFA branch ────────────────────────────────────────────────────
+  const pingoneMfaEnabled = configStore.getEffective('ff_hitl_pingone_mfa_enabled') === 'true';
+  const stepUpThreshold = getStepUpThreshold();
+  const challengeAmount = ch.snapshot.amount;
+
+  if (pingoneMfaEnabled && challengeAmount >= stepUpThreshold) {
+    const userAccessToken = req.session?.oauthTokens?.accessToken;
+    const mfaService = require('./mfaService');
+    let daId, devices;
+    try {
+      const initiated = await mfaService.initiateDeviceAuth(req.user.id, userAccessToken);
+      daId = initiated.daId;
+      devices = initiated.devices || [];
+    } catch (err) {
+      console.warn(`[ConsentChallenge] initiateDeviceAuth failed: ${err.message}`);
+      return { ok: false, status: 502, json: { error: 'mfa_init_failed', message: 'Could not start MFA challenge. Try again.' } };
+    }
+
+    ch.mfaPath      = true;
+    ch.daId         = daId;
+    ch.devices      = devices;
+    ch.otpAttempts  = 0;
+    ch.otpExpiresAt = now + OTP_TTL_MS;
+    ch.status       = 'otp_pending';
+
+    console.log(`[ConsentChallenge] PingOne MFA initiated challenge=${challengeId.slice(0, 8)}… daId=${daId} user=${req.user.id}`);
+    return { ok: true, challengeId, mfaRequired: true, devices };
+  }
+  // ── End PingOne MFA branch ───────────────────────────────────────────────
 
   // Generate OTP and store its hash
   const otpPlain = generateOtp();

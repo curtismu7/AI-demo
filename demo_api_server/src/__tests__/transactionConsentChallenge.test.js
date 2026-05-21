@@ -183,3 +183,107 @@ describe('verifyMfa', () => {
     expect(result.json.error).toBe('otp_incorrect');
   });
 });
+
+describe('confirmChallenge — PingOne MFA branch', () => {
+  const CHALLENGE_ID = 'confirm-mfa-test';
+
+  // jest.resetModules() runs in afterEach (setup.js), so each test must re-require
+  // modules fresh to ensure spies on configStore reach the same instance that
+  // transactionConsentChallenge.js holds internally.
+  function freshRequires() {
+    jest.mock('../../services/mfaService', () => ({
+      initiateDeviceAuth: jest.fn(),
+      selectDevice: jest.fn(),
+      submitOtp: jest.fn(),
+      submitFido2Assertion: jest.fn(),
+    }));
+    jest.mock('../../data/store', () => ({
+      getAccountById: jest.fn((id) => {
+        const accounts = {
+          'acc1': { id: 'acc1', userId: '5', balance: 10000 },
+          'acc2': { id: 'acc2', userId: '5', balance: 5000 },
+        };
+        return accounts[id] || null;
+      }),
+      getAccountsByUserId: jest.fn(() => [
+        { id: 'acc1', userId: '5', balance: 10000 },
+        { id: 'acc2', userId: '5', balance: 5000 },
+      ]),
+      getUserById: jest.fn(() => null),
+    }));
+    const txConsentFresh = require('../../services/transactionConsentChallenge');
+    const mfaServiceFresh = require('../../services/mfaService');
+    const configStoreFresh = require('../../services/configStore');
+    return { txConsentFresh, mfaServiceFresh, configStoreFresh };
+  }
+
+  test('flag on + amount >= 500 — calls initiateDeviceAuth and returns mfaRequired:true', async () => {
+    const { txConsentFresh, mfaServiceFresh, configStoreFresh } = freshRequires();
+    mfaServiceFresh.initiateDeviceAuth.mockResolvedValue({
+      daId: 'da-new-001',
+      devices: [{ id: 'dev-1', type: 'EMAIL', email: 'u@example.com' }],
+    });
+    const req = makeReq({ session: { txConsentChallenges: {
+      [CHALLENGE_ID]: {
+        userId: '5', snapshot: { type: 'withdrawal', amount: 600, fromAccountId: 'acc1', toAccountId: null, description: '' },
+        status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 600_000,
+      },
+    }, oauthTokens: { accessToken: 'user-token-abc' } }});
+    const spy = jest.spyOn(configStoreFresh, 'getEffective').mockImplementation((key) => {
+      if (key === 'ff_hitl_pingone_mfa_enabled') return 'true';
+      if (key === 'confirm_stepup_threshold_usd') return '500';
+      if (key === 'confirm_threshold_usd') return '250';
+      return null;
+    });
+    const result = await txConsentFresh.confirmChallenge(req, CHALLENGE_ID);
+    spy.mockRestore();
+    expect(mfaServiceFresh.initiateDeviceAuth).toHaveBeenCalledWith('5', 'user-token-abc');
+    expect(result.ok).toBe(true);
+    expect(result.mfaRequired).toBe(true);
+    expect(result.devices).toEqual([{ id: 'dev-1', type: 'EMAIL', email: 'u@example.com' }]);
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].mfaPath).toBe(true);
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].daId).toBe('da-new-001');
+  });
+
+  test('flag on but amount < 500 — homegrown OTP path taken', async () => {
+    const { txConsentFresh, mfaServiceFresh, configStoreFresh } = freshRequires();
+    const spy = jest.spyOn(configStoreFresh, 'getEffective').mockImplementation((key) => {
+      if (key === 'ff_hitl_pingone_mfa_enabled') return 'true';
+      if (key === 'confirm_stepup_threshold_usd') return '500';
+      if (key === 'confirm_threshold_usd') return '250';
+      return null;
+    });
+    const req = makeReq({ session: { txConsentChallenges: {
+      [`${CHALLENGE_ID}-low`]: {
+        userId: '5', snapshot: { type: 'withdrawal', amount: 300, fromAccountId: 'acc1', toAccountId: null, description: '' },
+        status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 600_000,
+      },
+    }}});
+    const result = await txConsentFresh.confirmChallenge(req, `${CHALLENGE_ID}-low`);
+    spy.mockRestore();
+    expect(mfaServiceFresh.initiateDeviceAuth).not.toHaveBeenCalled();
+    expect(result.ok).toBe(true);
+    expect(result.mfaRequired).toBeUndefined();
+  });
+
+  test('flag off — homegrown OTP path taken regardless of amount', async () => {
+    const { txConsentFresh, mfaServiceFresh, configStoreFresh } = freshRequires();
+    const spy = jest.spyOn(configStoreFresh, 'getEffective').mockImplementation((key) => {
+      if (key === 'ff_hitl_pingone_mfa_enabled') return 'false';
+      if (key === 'confirm_stepup_threshold_usd') return '500';
+      if (key === 'confirm_threshold_usd') return '250';
+      return null;
+    });
+    const req = makeReq({ session: { txConsentChallenges: {
+      [`${CHALLENGE_ID}-flagoff`]: {
+        userId: '5', snapshot: { type: 'withdrawal', amount: 600, fromAccountId: 'acc1', toAccountId: null, description: '' },
+        status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 600_000,
+      },
+    }}});
+    const result = await txConsentFresh.confirmChallenge(req, `${CHALLENGE_ID}-flagoff`);
+    spy.mockRestore();
+    expect(mfaServiceFresh.initiateDeviceAuth).not.toHaveBeenCalled();
+    expect(result.ok).toBe(true);
+    expect(result.mfaRequired).toBeUndefined();
+  });
+});
