@@ -247,9 +247,14 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
       const { data } = await bffAxios.post(
         `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/confirm`,
       );
-      setOtpExpiresAt(data.otpExpiresAt || null);
-      setOtpSent(data.otpSent || false);
-      setOtpStep(true);
+      if (data.mfaRequired) {
+        setMfaDevices(data.devices || []);
+        setMfaStep(true);
+      } else {
+        setOtpExpiresAt(data.otpExpiresAt || null);
+        setOtpSent(data.otpSent || false);
+        setOtpStep(true);
+      }
     } catch (e: any) {
       const d = e.response?.data;
       const status = e.response?.status;
@@ -272,27 +277,17 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
   };
 
   const handleSelectDevice = async (deviceId: string) => {
-    if (!selectedDeviceId && selectedDeviceId !== deviceId) {
-      setSelectedDeviceId(deviceId);
-    }
+    setSelectedDeviceId(deviceId);
     setSubmitting(true);
     try {
       const { data } = await bffAxios.post(
-        `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/select-device`,
+        `/api/transactions/consent-challenge/${encodeURIComponent(challengeId as string)}/select-device`,
         { deviceId },
       );
-      if (data.method === "otp") {
-        setOtpStep(true);
-        setMfaStep(false);
-      } else if (data.method === "fido2") {
-        notifyWarning("FIDO2 challenge not yet implemented in this UI.");
-        setMfaStep(true);
-      } else if (data.method === "push") {
-        notifyWarning(
-          "Push notification method not yet implemented in this UI.",
-        );
-        setMfaStep(true);
-      }
+      setOtpExpiresAt(data.otpExpiresAt || null);
+      setOtpSent(data.otpSent || false);
+      setOtpStep(true);
+      setMfaStep(false);
     } catch (e: any) {
       const d = e.response?.data;
       notifyError(
@@ -314,9 +309,12 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
     setOtpError("");
     setOtpVerifying(true);
     try {
+      const verifyBody = selectedDeviceId
+        ? { deviceId: selectedDeviceId, otp: otpCode }
+        : { otpCode };
       await bffAxios.post(
         `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/verify-otp`,
-        { otpCode },
+        verifyBody,
       );
       setAgentBlockedByConsentDecline(false);
       notifySuccess("Consent verified. Proceeding with transaction...");
