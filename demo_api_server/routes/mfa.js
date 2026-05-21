@@ -371,8 +371,8 @@ router.post('/enroll/sms-complete', authenticateToken, async (req, res) => {
 // Returns { deviceId, type, email }
 router.post('/enroll/email', authenticateToken, async (req, res) => {
   try {
-    const userId = req.session.user?.id;
-    const email = req.session.user?.email;
+    const userId = req.session.user?.oauthId || req.session.user?.id;
+    const email = req.body.email || req.session.user?.email;
     if (!userId || !email) {
       return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
     }
@@ -382,6 +382,29 @@ router.post('/enroll/email', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('[MFA route] POST /enroll/email failed:', err.message);
     res.status(err.status || 500).json({ error: 'enroll_failed', message: err.message, pingError: err.pingError });
+  }
+});
+
+// POST /api/auth/mfa/enroll/email/verify
+// Activate an email OTP device by submitting the OTP sent to the enrolled address.
+// Body: { deviceId, otp }
+// Returns { deviceId, status }
+router.post('/enroll/email/verify', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.session.user?.oauthId || req.session.user?.id;
+    const { deviceId, otp } = req.body;
+    if (!userId) {
+      return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
+    }
+    if (!deviceId || !otp) {
+      return res.status(400).json({ error: 'invalid_body', message: 'deviceId and otp are required.' });
+    }
+    const result = await mfaService.completeEmailEnrollment(userId, deviceId, otp);
+    res.json({ deviceId: result.id, status: result.status });
+  } catch (err) {
+    console.error('[MFA route] POST /enroll/email/verify failed:', err.message);
+    const status = err.status || (err.pingError?.code === 'INVALID_OTP' ? 422 : 500);
+    res.status(status).json({ error: 'verify_failed', message: err.message, pingError: err.pingError });
   }
 });
 
