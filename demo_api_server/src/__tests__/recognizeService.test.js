@@ -45,10 +45,13 @@ describe('recognizeService', () => {
     });
 
     test('throws with message containing RECOGNIZE_API_KEY when configStore returns null for that key', async () => {
-      const configStore = require('../../services/configStore');
-      configStore.getEffective.mockImplementation(() => null);
+      // Re-require both modules after possible resetModules() in afterEach so both share the same mock
+      jest.resetModules();
+      jest.mock('../../services/configStore', () => ({ getEffective: jest.fn(() => null) }));
+      jest.mock('axios');
+      const freshService = require('../../services/recognizeService');
 
-      await expect(recognizeService.initiateSession('user-123')).rejects.toThrow('RECOGNIZE_API_KEY');
+      await expect(freshService.initiateSession('user-123')).rejects.toThrow('RECOGNIZE_API_KEY');
     });
   });
 
