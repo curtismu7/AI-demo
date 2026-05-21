@@ -101,6 +101,40 @@ async function mockCustomerDashboard(page, opts = {}) {
     }),
   );
 
+  // Fallback for /api/auth/session (used by BankingAgent and TokenChainContext)
+  await page.route('**/api/auth/session', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ authenticated: true, user }),
+    }),
+  );
+
+  await page.route('**/api/token-chain**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ tokenEvents: [] }),
+    }),
+  );
+
+  await page.route('**/api/admin/app-events**', (route) =>
+    route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
+  );
+
+  await page.route('**/api/pingone-test/config**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) }),
+  );
+
+  // Enable banking column in split3 layout (ff_show_banking_in_middle_agent)
+  await page.route('**/api/admin/feature-flags**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ flags: [{ id: 'ff_show_banking_in_middle_agent', value: true }] }),
+    }),
+  );
+
   await page.route('**/ws**', (route) => route.abort());
 }
 

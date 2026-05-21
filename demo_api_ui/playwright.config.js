@@ -88,6 +88,9 @@ module.exports = defineConfig({
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
 
+    // Trust mkcert local certs (api.ping.demo uses self-signed cert for local HTTPS)
+    ignoreHTTPSErrors: true,
+
     // API requests that hit the backend directly
     extraHTTPHeaders: {
       Accept: 'application/json',
