@@ -268,6 +268,38 @@ router.post(
 );
 
 router.post(
+  '/consent-challenge/:challengeId/verify-recognize',
+  authenticateToken,
+  express.json(),
+  async (req, res) => {
+    const { challengeId } = req.params;
+    const result = await txConsent.verifyRecognize(req, challengeId, req.body.result || req.body);
+    if (!result.ok) {
+      return res.status(result.status || 400).json({ ...result.json, fallback: result.fallback || false });
+    }
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('[ConsentChallenge] session save error (verify-recognize):', saveErr);
+      return res.json({ ok: true });
+    });
+  },
+);
+
+router.post(
+  '/consent-challenge/:challengeId/recognize-fallback',
+  authenticateToken,
+  express.json(),
+  async (req, res) => {
+    const { challengeId } = req.params;
+    const result = await txConsent.recognizeFallback(req, challengeId);
+    if (!result.ok) return res.status(result.status || 400).json(result.json);
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('[ConsentChallenge] session save error (recognize-fallback):', saveErr);
+      return res.json(result);
+    });
+  },
+);
+
+router.post(
   '/consent-challenge/:challengeId/select-device',
   authenticateToken,
   async (req, res) => {

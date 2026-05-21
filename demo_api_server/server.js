@@ -81,6 +81,7 @@ const adminConfigRoutes = require('./routes/adminConfig');
 const adminManagementRoutes = require('./routes/adminManagement');
 const cibaRoutes = require('./routes/ciba');
 const mfaRoutes = require('./routes/mfa');
+const recognizeRoutes = require('./routes/recognize');
 const mfaTestRoutes = require('./routes/mfaTest');
 const authorizeRoutes = require('./routes/authorize');
 const authorizeConfigRoutes = require('./routes/authorizeConfig');
@@ -183,10 +184,10 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"], // CRA requires unsafe-inline in prod build
+            scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.keyless.technology'], // CRA requires unsafe-inline in prod build
             styleSrc: ["'self'", "'unsafe-inline'", "https://assets.pingone.com"],
             imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'", 'https://*.pingone.com', 'https://*.pingidentity.com', 'wss:'],
+            connectSrc: ["'self'", 'https://*.pingone.com', 'https://*.pingidentity.com', 'wss:', 'https://*.keyless.technology'],
             fontSrc: ["'self'", 'data:'],
             frameAncestors: ["'none'"],
         },
@@ -806,6 +807,7 @@ app.use('/api/auth/oauth/user', oauthUserRoutes);
 registerCallbacks(app, oauthRoutes, oauthUserRoutes, authLimiter);
 app.use('/api/auth/ciba', cibaRoutes);
 app.use('/api/auth/mfa', mfaRoutes);
+app.use('/api/recognize', recognizeRoutes);
 app.use('/api/mfa/test', mfaTestRoutes);
 app.use('/api/agent', agentIdentityRoutes);
 app.use('/api/agent', agentDelegationRoutes);
