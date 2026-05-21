@@ -437,8 +437,9 @@ async function verifyMfa(req, challengeId, params, origin) {
     } catch (err) {
       const code = err.code || 'mfa_failed';
       const msg = err.message || 'MFA verification failed.';
+      const httpStatus = err.status || 400;
       console.warn(`[ConsentChallenge] MFA verify failed challenge=${challengeId.slice(0, 8)}… code=${code}`);
-      return { ok: false, status: 400, json: { error: code, message: msg } };
+      return { ok: false, status: httpStatus, json: { error: code, message: msg } };
     }
   }
 
@@ -447,6 +448,8 @@ async function verifyMfa(req, challengeId, params, origin) {
   ch.status           = 'confirmed';
   ch.confirmedAt      = now;
   ch.confirmExpiresAt = now + CONFIRMED_TTL_MS;
+  delete ch.otpHash;
+  delete ch.otpSalt;
   delete ch.otpExpiresAt;
   delete ch.otpAttempts;
 
