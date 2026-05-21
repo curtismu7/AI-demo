@@ -92,6 +92,14 @@ const FEATURE_GROUPS = [
       { name: 'OLLAMA_MODEL',    desc: 'Model name (e.g. mistral, llama3)' },
     ],
   },
+  {
+    tag: 'RECOGNIZE',
+    label: 'PingOne Recognize (face auth)',
+    vars: [
+      { name: 'RECOGNIZE_API_KEY',    desc: 'Recognize tenant secret API key' },
+      { name: 'RECOGNIZE_TENANT_NAME', desc: 'Recognize customer/tenant name (e.g. ping_us)' },
+    ],
+  },
 ];
 
 // Strip ANSI escape codes for plain-text log file output
