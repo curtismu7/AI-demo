@@ -9,7 +9,7 @@ const { parseHeuristic } = require('./nlIntentParser');
 
 const VALID_BANKING_ACTIONS = new Set([
   'accounts', 'transactions', 'balance', 'deposit', 'withdraw', 'transfer', 'logout', 'mcp_tools',
-  'mortgage_demo',  // Phase 267 — Path A (api-key disposition via banking_mortgage_service)
+  'mortgage_demo', 'biggest_purchase', 'spending_summary', 'web_search',
 ]);
 
 const VALID_EDU_PANELS = new Set([

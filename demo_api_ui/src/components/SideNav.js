@@ -217,9 +217,6 @@ export default function SideNav({ user, onLogout }) {
       try {
         localStorage.removeItem("api-traffic-store");
       } catch (_) {}
-      try {
-        sessionStorage.removeItem("_agent_auto_loaded");
-      } catch (_) {}
       navigate(isAdmin ? "/admin" : "/dashboard", {
         replace: true,
         state: { resetDemo: true },

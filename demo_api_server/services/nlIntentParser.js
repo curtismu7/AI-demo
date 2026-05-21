@@ -341,20 +341,18 @@ const THEME_VOCAB = {
     { re: /\b(total\s*costs?|what.*paid|my\s*costs?)\b/, action: 'spending_summary' },
   ],
   retail: [
+    { re: /\b(biggest|most\s*expensive|highest)\s*(purchase|order|spend)\b/, action: 'biggest_purchase' },
     { re: /\b(my\s*|check\s*|view\s*)?rewards?\s*points?\b|\bhow\s*many\s*points\b|\bpoint\s*balance\b/, action: 'balance' },
     { re: /\b(my\s*|list\s*|show\s*)?orders?\b|\border\s*(history|status|list)\b/, action: 'accounts' },
     { re: /\b(purchase|buying|order)\s*history\b|\bwhat.*(?:buy|bought|purchased)\b|\brecent\s*purchases?\b/, action: 'transactions' },
     { re: /\bcheckout\b|\bplace\s*(an?\s*)?order\b|\bbuy\s*now\b/, action: 'transfer' },
     { re: /\b(return|refund)\s*(history|list)?\b|\bmy\s*returns?\b/, action: 'transactions' },
     { re: /\bhow\s*much.*spent\b|\btotal\s*purchases?\b|\bspending\s*breakdown\b/, action: 'spending_summary' },
-    { re: /\b(biggest|most\s*expensive|highest)\s*(purchase|order|spend)\b/, action: 'biggest_purchase' },
   ],
   'sporting-goods': [
-    // Most-specific first: "place order / checkout" before generic "orders"
-    // Most-specific first: biggest_purchase and place-order before generic purchases/orders
     { re: /\b(biggest|most\s*expensive|highest)\s*(purchase|order|spend)\b/, action: 'biggest_purchase' },
     { re: /\bplace\s*(an?\s*)?order\b|\bcheckout\b|\bbuy\s*now\b/, action: 'transfer' },
-    { re: /\b(my\s*|check\s*|view\s*)?reward\s*points?\b|\bhow\s*many\s*points\b|\bpoint\s*balance\b/, action: 'balance' },
+    { re: /\b(my\s*|check\s*|view\s*)?rewards?\s*points?\b|\bhow\s*many\s*points\b|\bpoint\s*balance\b/, action: 'balance' },
     { re: /\b(my\s*|list\s*|show\s*)?gear\b|\bmy\s*equipment\b|\bmy\s*loyalty\s*account\b/, action: 'accounts' },
     { re: /\b(purchase|buying)\s*history\b|\bwhat.*(?:buy|bought|purchased)\b|\brecent\s*purchases?\b/, action: 'transactions' },
     { re: /\b(my\s*|show\s*)?purchases?\b|\bpurchase\s*list\b/, action: 'transactions' },

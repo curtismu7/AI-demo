@@ -291,7 +291,6 @@ export default function DemoDataPage({ user, onLogout }) {
     try { await axios.post('/api/admin/reset-demo'); } catch (_) {}
     try { localStorage.removeItem('tokenChainHistory'); } catch (_) {}
     try { localStorage.removeItem('api-traffic-store'); } catch (_) {}
-    try { sessionStorage.removeItem('_agent_auto_loaded'); } catch (_) {}
     window.location.reload();
   }, []);
 

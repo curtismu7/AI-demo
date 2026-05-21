@@ -2885,9 +2885,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           try {
             localStorage.removeItem("api-traffic-store");
           } catch (_) {}
-          try {
-            sessionStorage.removeItem("_agent_auto_loaded");
-          } catch (_) {}
           navigate("/dashboard", { replace: true, state: { resetDemo: true } });
         }}
         onCancel={() => setShowResetModal(false)}

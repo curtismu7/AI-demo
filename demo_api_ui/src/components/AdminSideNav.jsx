@@ -590,9 +590,6 @@ export default function AdminSideNav({ user }) {
     try {
       localStorage.removeItem("api-traffic-store");
     } catch (_) {}
-    try {
-      sessionStorage.removeItem("_agent_auto_loaded");
-    } catch (_) {}
     window.dispatchEvent(new CustomEvent("demo-reset-complete"));
     navigate(location.pathname, {
       replace: true,
