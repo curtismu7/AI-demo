@@ -87,12 +87,12 @@ function LcelContent() {
   );
 }
 
-export default function LangChainPanel({ isOpen, onClose, initialTabId }) {
-  const tabs = [
-    { id: 'overview', label: 'Overview', content: <OverviewContent /> },
-    { id: 'lcel',     label: 'LCEL pattern', content: <LcelContent /> },
-  ];
+const tabs = [
+  { id: 'overview', label: 'Overview', content: <OverviewContent /> },
+  { id: 'lcel',     label: 'LCEL pattern', content: <LcelContent /> },
+];
 
+export default function LangChainPanel({ isOpen, onClose, initialTabId }) {
   return (
     <EducationDrawer
       isOpen={isOpen}

@@ -879,18 +879,18 @@ function ComparisonContent() {
 
 /* ── Panel ──────────────────────────────────────────────────────────────── */
 
+const tabs = [
+  { id: "langchain", label: "LangChain", content: <LangChainContent /> },
+  { id: "opensource", label: "Open-Source", content: <OpenSourceContent /> },
+  { id: "commercial", label: "Commercial", content: <CommercialContent /> },
+  { id: "comparison", label: "Comparison", content: <ComparisonContent /> },
+];
+
 export default function AgentBuilderLandscapePanel({
   isOpen,
   onClose,
   initialTabId,
 }) {
-  const tabs = [
-    { id: "langchain", label: "LangChain", content: <LangChainContent /> },
-    { id: "opensource", label: "Open-Source", content: <OpenSourceContent /> },
-    { id: "commercial", label: "Commercial", content: <CommercialContent /> },
-    { id: "comparison", label: "Comparison", content: <ComparisonContent /> },
-  ];
-
   return (
     <EducationDrawer
       isOpen={isOpen}

@@ -1,5 +1,4 @@
 // banking_api_ui/src/components/education/IdJagPanel.js
-import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 
 /* ─── Primitives ──────────────────────────────────────────────────────────── */
@@ -95,7 +94,7 @@ function CompareRow({ feature, rfc8693, idjag }) {
 
 function OverviewContent() {
   return (
-    <div>
+    <>
       <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         <strong style={{ color: '#1e293b' }}>ID-JAG</strong> is the technical acronym for the{' '}
         <strong>Identity Assertion JWT Authorization Grant</strong>, an emerging IETF standard.
@@ -162,7 +161,7 @@ function OverviewContent() {
           The API or service that will accept the new token issued by the target AS. It never sees the original assertion JWT.
         </Term>
       </Section>
-    </div>
+    </>
   );
 }
 
@@ -170,7 +169,7 @@ function OverviewContent() {
 
 function HowItWorksContent() {
   return (
-    <div>
+    <>
       <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         ID-JAG uses the existing OAuth 2.0 token endpoint with a special grant type. The assertion JWT is presented directly — no browser involvement.
       </p>
@@ -259,7 +258,7 @@ grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer
           {'  '}serves response — knows the token's user identity
         </div>
       </Section>
-    </div>
+    </>
   );
 }
 
@@ -267,7 +266,7 @@ grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer
 
 function PingOneContent() {
   return (
-    <div>
+    <>
       <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         PingOne's SSO capabilities map partially to the ID-JAG/XAA model. Some building blocks are present; native end-to-end ID-JAG is not yet a shipped product feature.
       </p>
@@ -340,7 +339,7 @@ function PingOneContent() {
           </table>
         </div>
       </Section>
-    </div>
+    </>
   );
 }
 
@@ -348,7 +347,7 @@ function PingOneContent() {
 
 function LimitationsContent() {
   return (
-    <div>
+    <>
       <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         ID-JAG is an <strong>active IETF draft</strong> — not yet an RFC. These limitations fall into three buckets: standard gaps, PingOne product gaps, and this demo's gaps.
       </p>
@@ -400,7 +399,7 @@ function LimitationsContent() {
           <strong>Roadmap note:</strong> A future phase could add a minimal ID-JAG simulation: configure a second PingOne application as "App B", add a <code style={{ fontSize: '0.82rem' }}>/.well-known/jwks.json</code> route to the BFF, and demonstrate the assertion JWT token endpoint call. This would require DaVinci or a custom PingOne policy to evaluate the assertion on the receiving side.
         </Note>
       </Section>
-    </div>
+    </>
   );
 }
 
@@ -408,7 +407,7 @@ function LimitationsContent() {
 
 function ComparisonContent() {
   return (
-    <div>
+    <>
       <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
         ID-JAG and RFC 8693 Token Exchange are complementary but distinct. Understanding the difference is critical for recommending the right solution.
       </p>
@@ -521,20 +520,21 @@ function ComparisonContent() {
           OID4IDA defines structured claims for verified identity. ID-JAG assertions may carry OID4IDA-structured claims so the receiving AS can make trust decisions based on the level and method of identity verification at the asserting party.
         </Term>
       </Section>
-    </div>
+    </>
   );
 }
 
 /* ─── Exported panel ─────────────────────────────────────────────────────── */
 
+const tabs = [
+  { id: 'overview',     label: 'What is ID-JAG',  content: <OverviewContent /> },
+  { id: 'how-it-works', label: 'How It Works',     content: <HowItWorksContent /> },
+  { id: 'pingone',      label: 'PingOne SSO',      content: <PingOneContent /> },
+  { id: 'limitations',  label: '⚠️ Limitations',   content: <LimitationsContent /> },
+  { id: 'vs-rfc8693',   label: 'vs RFC 8693',      content: <ComparisonContent /> },
+];
+
 export default function IdJagPanel({ isOpen, onClose, initialTabId }) {
-  const tabs = [
-    { id: 'overview',     label: 'What is ID-JAG',  content: <OverviewContent /> },
-    { id: 'how-it-works', label: 'How It Works',     content: <HowItWorksContent /> },
-    { id: 'pingone',      label: 'PingOne SSO',      content: <PingOneContent /> },
-    { id: 'limitations',  label: '⚠️ Limitations',   content: <LimitationsContent /> },
-    { id: 'vs-rfc8693',   label: 'vs RFC 8693',      content: <ComparisonContent /> },
-  ];
 
   return (
     <EducationDrawer
