@@ -6,34 +6,53 @@ import './FeatureFlagsPage.css';
 // ─── Flag toggle card ─────────────────────────────────────────────────────────
 
 function FlagCard({ flag, onToggle, saving }) {
-  const isOn     = flag.value === true;
+  const isEnum   = flag.type === 'enum';
+  const isOn     = !isEnum && flag.value === true;
   const isSaving = saving === flag.id;
-  const showWarn = (!isOn && flag.warnIfDisabled) || (isOn && flag.warnIfEnabled);
+  const showWarn = !isEnum && ((!isOn && flag.warnIfDisabled) || (isOn && flag.warnIfEnabled));
   const warnMsg  = flag.warnIfDisabled
     ? 'Disabling this flag may break transactions or reduce security.'
     : 'Enabling this flag may reduce security. Use with care.';
 
   return (
-    <div className={`ff-card${isOn ? ' ff-card--on' : ''}${isSaving ? ' ff-card--saving' : ''}`}>
+    <div className={`ff-card${!isEnum && isOn ? ' ff-card--on' : ''}${isSaving ? ' ff-card--saving' : ''}`}>
       <div className="ff-card__header">
         <div className="ff-card__meta">
-          <span className={`ff-badge ${isOn ? 'ff-badge--on' : 'ff-badge--off'}`}>
-            {isOn ? 'ENABLED' : 'DISABLED'}
-          </span>
+          {isEnum ? (
+            <span className="ff-badge ff-badge--enum">{String(flag.value).toUpperCase()}</span>
+          ) : (
+            <span className={`ff-badge ${isOn ? 'ff-badge--on' : 'ff-badge--off'}`}>
+              {isOn ? 'ENABLED' : 'DISABLED'}
+            </span>
+          )}
           <h3 className="ff-card__name">{flag.name}</h3>
           <code className="ff-card__id">{flag.id}</code>
         </div>
 
-        <button
-          type="button"
-          className={`ff-toggle${isOn ? ' ff-toggle--on' : ''}${isSaving ? ' ff-toggle--saving' : ''}`}
-          onClick={() => onToggle(flag.id, !isOn)}
-          disabled={isSaving}
-          aria-label={`${isOn ? 'Disable' : 'Enable'} ${flag.name}`}
-          aria-pressed={isOn}
-        >
-          <span className="ff-toggle__thumb" />
-        </button>
+        {isEnum ? (
+          <select
+            className={`ff-enum-select${isSaving ? ' ff-enum-select--saving' : ''}`}
+            value={flag.value}
+            onChange={e => onToggle(flag.id, e.target.value)}
+            disabled={isSaving}
+            aria-label={`Select mode for ${flag.name}`}
+          >
+            {(flag.options || []).map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        ) : (
+          <button
+            type="button"
+            className={`ff-toggle${isOn ? ' ff-toggle--on' : ''}${isSaving ? ' ff-toggle--saving' : ''}`}
+            onClick={() => onToggle(flag.id, !isOn)}
+            disabled={isSaving}
+            aria-label={`${isOn ? 'Disable' : 'Enable'} ${flag.name}`}
+            aria-pressed={isOn}
+          >
+            <span className="ff-toggle__thumb" />
+          </button>
+        )}
       </div>
 
       <p className="ff-card__desc">{flag.description}</p>
@@ -127,8 +146,9 @@ export default function FeatureFlagsPage() {
   }, []);
 
   const groupedFlags  = categories.map(cat => ({ category: cat, flags: flags.filter(f => f.category === cat) }));
-  const enabledCount  = flags.filter(f => f.value === true).length;
-  const disabledCount = flags.filter(f => f.value === false).length;
+  const boolFlags     = flags.filter(f => f.type !== 'enum');
+  const enabledCount  = boolFlags.filter(f => f.value === true).length;
+  const disabledCount = boolFlags.filter(f => f.value === false).length;
 
   return (
     <div className="app-page">

@@ -180,6 +180,42 @@
   background: rgba(100, 116, 139, 0.1);
   color: #999999;
 }
+.ff-badge--enum {
+  background: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+}
+
+/* ── Enum select ─────────────────────────────────────────────────────────── */
+
+.ff-enum-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 6px 28px 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+.ff-enum-select:hover {
+  border-color: #7c3aed;
+}
+.ff-enum-select:focus {
+  outline: none;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+.ff-enum-select--saving {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .ff-card__name {
   margin: 0;
@@ -418,4 +454,20 @@ html[data-theme="dark"] .ff-card__impact-inline {
 
 html[data-theme="dark"] .ff-card--saving {
   opacity: 0.6;
+}
+
+html[data-theme="dark"] .ff-badge--enum {
+  background: rgba(124, 58, 237, 0.18);
+  color: #c4b5fd;
+}
+
+html[data-theme="dark"] .ff-enum-select {
+  background-color: var(--dash-surface-2, #1a2230);
+  border-color: var(--dash-border, rgb(148 163 184 / 0.18));
+  color: var(--dash-text, #e8edf5);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23cbd5e1' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+html[data-theme="dark"] .ff-enum-select:hover,
+html[data-theme="dark"] .ff-enum-select:focus {
+  border-color: #a78bfa;
 }

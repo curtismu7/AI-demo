@@ -103,6 +103,23 @@ const FLAG_REGISTRY = [
     defaultValue: true,
     warnIfDisabled: true,
   },
+  {
+    id:           'hitl_consent_mfa_mode',
+    name:         'HITL — Consent MFA mode',
+    category:     'HITL / Agent Consent',
+    description:
+      'Controls how the one-time verification code is delivered after the user approves the consent challenge. ' +
+      '**onetime** (default) — PingOne sends the OTP directly to the user\'s registered email or phone; no device enrollment required. ' +
+      '**device_picker** — full PingOne MFA with device selection (requires enrolled devices + MFA policy). ' +
+      '**homegrown** — BFF-generated OTP delivered via the app\'s own email service (no PingOne MFA).',
+    impact:
+      'onetime (default) = PingOne one-time OTP, works for any user with an email or phone on record. ' +
+      'device_picker = enrolled-device flow with amount step-up threshold (confirm_stepup_threshold_usd). ' +
+      'homegrown = legacy BFF email OTP.',
+    type:         'enum',
+    options:      ['onetime', 'device_picker', 'homegrown'],
+    defaultValue: 'onetime',
+  },
 
   // ── MCP Server ─────────────────────────────────────────────────────────────
   {
@@ -306,6 +323,7 @@ function serializeFlag(flag) {
     type:           flag.type,
     defaultValue:   flag.defaultValue,
     value:          resolveFlag(flag),
+    ...(flag.options      && { options:      flag.options }),
     ...(flag.docsUrl      && { docsUrl:      flag.docsUrl }),
     ...(flag.warnIfDisabled && { warnIfDisabled: flag.warnIfDisabled }),
     ...(flag.warnIfEnabled  && { warnIfEnabled:  flag.warnIfEnabled }),

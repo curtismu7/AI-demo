@@ -203,15 +203,40 @@ router.post(
         event: 'consent_challenge_confirmed',
         properties: { challenge_id: result.challengeId, otp_sent: result.otpSent },
       });
-      const responseBody = result.mfaRequired
-        ? { challengeId: result.challengeId, mfaRequired: true, devices: result.devices }
-        : {
-            challengeId: result.challengeId,
-            otpSent: result.otpSent,
-            otpExpiresAt: result.otpExpiresAt,
-            ...(result.otpCodeFallback ? { otpCodeFallback: result.otpCodeFallback } : {}),
-          };
+      let responseBody;
+      if (result.mfaRequired) {
+        responseBody = { challengeId: result.challengeId, mfaRequired: true, devices: result.devices };
+      } else if (result.needsContact) {
+        responseBody = { challengeId: result.challengeId, needsContact: true };
+      } else {
+        responseBody = {
+          challengeId: result.challengeId,
+          otpSent: result.otpSent,
+          otpExpiresAt: result.otpExpiresAt,
+          ...(result.maskedContact ? { maskedContact: result.maskedContact } : {}),
+          ...(result.otpCodeFallback ? { otpCodeFallback: result.otpCodeFallback } : {}),
+        };
+      }
       return res.status(200).json(responseBody);
+    });
+  },
+);
+
+router.post(
+  '/consent-challenge/:challengeId/confirm-contact',
+  authenticateToken,
+  async (req, res) => {
+    const { email, phone } = req.body || {};
+    const result = await txConsent.confirmOnetimeContact(req, req.params.challengeId, { email, phone });
+    if (!result.ok) return res.status(result.status).json(result.json);
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('[ConsentChallenge] session save error (confirm-contact):', saveErr);
+      return res.status(200).json({
+        challengeId: result.challengeId,
+        otpSent: result.otpSent,
+        otpExpiresAt: result.otpExpiresAt,
+        ...(result.maskedContact ? { maskedContact: result.maskedContact } : {}),
+      });
     });
   },
 );
@@ -223,7 +248,7 @@ router.post(
     const challengeId = req.params.challengeId;
     const path = txConsent.getChallengePath(req, challengeId);
     let result;
-    if (path === 'mfa') {
+    if (path === 'mfa' || path === 'onetime') {
       const { deviceId, otp, fido2Assertion } = req.body || {};
       const origin = `${req.protocol}://${req.get('host')}`;
       result = await txConsent.verifyMfa(req, challengeId, { deviceId, otp, fido2Assertion }, origin);
