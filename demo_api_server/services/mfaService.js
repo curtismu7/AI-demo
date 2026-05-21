@@ -602,6 +602,49 @@ async function completeSmsEnrollment(userId, deviceId, otp) {
 }
 
 /**
+ * Complete email OTP device enrollment by submitting the OTP sent to the address.
+ * @param {string} userId
+ * @param {string} deviceId - from enrollEmailDevice
+ * @param {string} otp      - 6-digit code emailed to the user
+ * Returns { id, type, status }
+ */
+async function completeEmailEnrollment(userId, deviceId, otp) {
+	try {
+		const workerToken = await _getWorkerToken();
+		const url = `${_apiBaseUrl()}/users/${userId}/devices/${deviceId}`;
+		const reqBody = { otp };
+		const debugRequest = {
+			method: "PUT",
+			url,
+			body: reqBody,
+			contentType: "application/vnd.pingidentity.device.activate+json",
+			headers: _debugHeaders(workerToken, "application/vnd.pingidentity.device.activate+json"),
+		};
+		let data;
+		try {
+			const resp = await axios.put(url, reqBody, {
+				headers: {
+					Authorization: `Bearer ${workerToken}`,
+					"Content-Type": "application/vnd.pingidentity.device.activate+json",
+				},
+				timeout: 10000,
+			});
+			data = resp.data;
+		} catch (err) {
+			err._debug = { request: debugRequest, response: err.response?.data || null };
+			throw err;
+		}
+		console.log(
+			"[MFA] completed email enrollment userId=%s deviceId=%s status=%s",
+			userId, data.id, data.status,
+		);
+		return { ...data, _debug: { request: debugRequest, response: data } };
+	} catch (err) {
+		throw _wrapError("completeEmailEnrollment", err);
+	}
+}
+
+/**
  * Initiate FIDO2/passkey device registration for a user via Management API.
  * Returns { deviceId, publicKeyCredentialCreationOptions, _debug }
  */
@@ -898,6 +941,7 @@ module.exports = {
 	enrollEmailDevice,
 	enrollSmsDevice,
 	completeSmsEnrollment,
+	completeEmailEnrollment,
 	initFido2Registration,
 	completeFido2Registration,
 	deleteDevice,

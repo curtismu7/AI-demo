@@ -414,3 +414,36 @@ describe('completeFido2Registration', () => {
     expect(err.status).toBe(400);
   });
 });
+
+// ─── completeEmailEnrollment ──────────────────────────────────────────────────
+
+describe('completeEmailEnrollment', () => {
+  it('PUTs otp to /users/{userId}/devices/{deviceId} with activate content-type', async () => {
+    mockWorkerTokenSuccess();
+    axios.put.mockResolvedValueOnce({
+      data: { id: 'dev-abc', type: 'EMAIL', status: 'ACTIVE' },
+    });
+    const result = await mfaService.completeEmailEnrollment('user-1', 'dev-abc', '123456');
+    expect(axios.put).toHaveBeenCalledWith(
+      expect.stringContaining('/users/user-1/devices/dev-abc'),
+      { otp: '123456' },
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Content-Type': 'application/vnd.pingidentity.device.activate+json',
+        }),
+      }),
+    );
+    expect(result.status).toBe('ACTIVE');
+  });
+
+  it('throws a wrapped error when PingOne returns 400', async () => {
+    mockWorkerTokenSuccess();
+    axios.put.mockRejectedValueOnce(
+      Object.assign(new Error('Bad OTP'), { response: { status: 400, data: { code: 'INVALID_OTP', message: 'Invalid OTP provided' } } }),
+    );
+    const err = await mfaService.completeEmailEnrollment('user-1', 'dev-abc', '000000').catch(e => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.status).toBe(400);
+    expect(err.message).toBe('Invalid OTP provided');
+  });
+});
