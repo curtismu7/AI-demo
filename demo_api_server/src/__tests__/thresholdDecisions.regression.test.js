@@ -48,7 +48,7 @@ beforeAll(async () => {
  * Helper: write thresholds the same way POST /api/config/thresholds does.
  * Mirrors the mirror-write contract from routes/thresholds.js.
  */
-async function setThresholds({ confirm, mfa } = {}) {
+async function setThresholds({ confirm, mfa, deny } = {}) {
   const update = {};
   if (confirm !== undefined) {
     update.confirm_threshold_usd = String(confirm);
@@ -60,12 +60,15 @@ async function setThresholds({ confirm, mfa } = {}) {
     update.SIMULATED_AUTHORIZE_STEPUP_AMOUNT = String(mfa);
     runtimeSettings.update({ stepUpAmountThreshold: Number(mfa) }, 'test-helper');
   }
+  if (deny !== undefined) {
+    update.SIMULATED_AUTHORIZE_DENY_AMOUNT = String(deny);
+  }
   await configStore.setConfig(update);
 }
 
 afterAll(async () => {
   // Restore defaults so other test files that share the process are not polluted
-  await setThresholds({ confirm: 250, mfa: 500 });
+  await setThresholds({ confirm: 250, mfa: 500, deny: 2000 });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -267,6 +270,86 @@ describe('Setting both thresholds together', () => {
   it('above $300 always step-up only (not consent)', async () => {
     const r = await sim.evaluateTransaction({ userId: 'u1', amount: 999, type: 'withdrawal' });
     expect(r.stepUpRequired).toBe(true);
+    expect(r.consentRequired).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. HARD DENY — $2000+ is not allowed for ANY action
+//    The deny gate is the first check and applies to all transaction types.
+//    No consent, no MFA — just a hard DENY. This is enforced by the
+//    simulated service before any obligation logic runs.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Hard DENY — over $2000 is not allowed for any action (default deny threshold)', () => {
+  beforeAll(() => setThresholds({ confirm: 250, mfa: 500, deny: 2000 }));
+
+  it('getDenyAmountUsd default is $2000', () => {
+    expect(sim.getDenyAmountUsd()).toBe(2000);
+  });
+
+  it('$2000 withdrawal → step-up only (exactly at threshold is NOT denied — deny is >2000)', async () => {
+    const r = await sim.evaluateTransaction({ userId: 'u1', amount: 2000, type: 'withdrawal' });
+    expect(r.decision).not.toBe('DENY');
+    expect(r.stepUpRequired).toBe(true);
+  });
+
+  it('$2001 withdrawal → DENY', async () => {
+    const r = await sim.evaluateTransaction({ userId: 'u1', amount: 2001, type: 'withdrawal' });
+    expect(r.decision).toBe('DENY');
+    expect(r.stepUpRequired).toBe(false);
+    expect(r.consentRequired).toBe(false);
+  });
+
+  it('$2001 deposit → DENY (deny applies to all types)', async () => {
+    const r = await sim.evaluateTransaction({ userId: 'u1', amount: 2001, type: 'deposit' });
+    expect(r.decision).toBe('DENY');
+    expect(r.stepUpRequired).toBe(false);
+    expect(r.consentRequired).toBe(false);
+  });
+
+  it('$2001 transfer → DENY (transfer type rule overridden by deny gate)', async () => {
+    const r = await sim.evaluateTransaction({ userId: 'u1', amount: 2001, type: 'transfer' });
+    expect(r.decision).toBe('DENY');
+    expect(r.stepUpRequired).toBe(false);
+    expect(r.consentRequired).toBe(false);
+  });
+
+  const denyCases = [2001, 5000, 9999, 100000];
+  for (const amount of denyCases) {
+    it(`$${amount} → DENY (any amount over $2000)`, async () => {
+      const r = await sim.evaluateTransaction({ userId: 'u1', amount, type: 'withdrawal' });
+      expect(r.decision).toBe('DENY');
+      expect(r.stepUpRequired).toBe(false);
+      expect(r.consentRequired).toBe(false);
+    });
+  }
+});
+
+describe('Configurable deny threshold — can be raised or lowered', () => {
+  beforeAll(() => setThresholds({ confirm: 250, mfa: 500, deny: 1000 }));
+  afterAll(() => setThresholds({ confirm: 250, mfa: 500, deny: 2000 }));
+
+  it('getDenyAmountUsd reflects new threshold of $1000', () => {
+    expect(sim.getDenyAmountUsd()).toBe(1000);
+  });
+
+  it('$999 withdrawal → step-up only (below new $1000 deny)', async () => {
+    const r = await sim.evaluateTransaction({ userId: 'u1', amount: 999, type: 'withdrawal' });
+    expect(r.decision).not.toBe('DENY');
+    expect(r.stepUpRequired).toBe(true);
+  });
+
+  it('$1001 withdrawal → DENY (over new $1000 threshold)', async () => {
+    const r = await sim.evaluateTransaction({ userId: 'u1', amount: 1001, type: 'withdrawal' });
+    expect(r.decision).toBe('DENY');
+    expect(r.stepUpRequired).toBe(false);
+    expect(r.consentRequired).toBe(false);
+  });
+
+  it('$1001 transfer → DENY (deny gate runs before type-based consent rule)', async () => {
+    const r = await sim.evaluateTransaction({ userId: 'u1', amount: 1001, type: 'transfer' });
+    expect(r.decision).toBe('DENY');
+    expect(r.stepUpRequired).toBe(false);
     expect(r.consentRequired).toBe(false);
   });
 });
