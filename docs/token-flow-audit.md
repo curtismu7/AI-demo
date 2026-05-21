@@ -46,10 +46,10 @@ Tokens that appear in the chip-click flow, in mint order:
 
 | Property | Expected | Observed |
 |---|---|---|
-| Minted by | PingOne `/as/token` (client_credentials grant) with `audience=agent-gateway.bxf.com` | ditto |
+| Minted by | PingOne `/as/token` (client_credentials grant) with `audience=agent-gateway.ping.demo` | ditto |
 | Issuing app | Super Banking AI Agent — `PINGONE_AI_AGENT_CLIENT_ID` | ditto |
 | App type | something that respects `audience` on CC requests | **`WORKER`** ← wrong |
-| `aud` | `["agent-gateway.bxf.com"]` (the Agent Gateway custom resource) | **`["https://api.pingone.com"]`** ← system Management API resource |
+| `aud` | `["agent-gateway.ping.demo"]` (the Agent Gateway custom resource) | **`["https://api.pingone.com"]`** ← system Management API resource |
 | `scope` | n/a for CC; binding is via audience | n/a |
 | Used as | `actor_token` in Exchange #1 | breaks Exchange #1 |
 
@@ -59,10 +59,10 @@ Tokens that appear in the chip-click flow, in mint order:
 
 | Property | Expected | Observed |
 |---|---|---|
-| Minted by | PingOne `/as/token` (client_credentials grant) with `audience=mcp-gw.bxf.com` | ditto |
+| Minted by | PingOne `/as/token` (client_credentials grant) with `audience=api.ping.demo` | ditto |
 | Issuing app | Super Banking MCP Exchanger — `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` / `AGENT_OAUTH_CLIENT_ID` | ditto |
 | App type | something that respects `audience` on CC requests | **`WORKER`** ← wrong |
-| `aud` | `["mcp-gw.bxf.com"]` (the MCP Gateway custom resource) | **`["https://api.pingone.com"]`** ← system Management API resource |
+| `aud` | `["api.ping.demo"]` (the MCP Gateway custom resource) | **`["https://api.pingone.com"]`** ← system Management API resource |
 | Used as | `actor_token` in Exchange #2 | breaks Exchange #2 |
 
 **Status: ❌ Same problem as T2.** Source: provisionService line 1642-1647 creates `Super Banking MCP Exchanger` with `'WORKER'`.
@@ -72,7 +72,7 @@ Tokens that appear in the chip-click flow, in mint order:
 | Property | Expected |
 |---|---|
 | Minted by | PingOne `/as/token` (token-exchange grant), subject=T1, actor=T2 |
-| `aud` | `["intermediate.2x.bxf.com"]` (Two-Exchange Intermediate custom resource) |
+| `aud` | `["intermediate.2x.ping.demo"]` (Two-Exchange Intermediate custom resource) |
 | `act.sub` | AI Agent client_id (Super Banking AI Agent) |
 | `act.act` | absent (Step 1 is the first exchange) |
 | `may_act` | inherited from T1 → MCP Exchanger client_id (allows it to do Exchange #2) |
@@ -85,7 +85,7 @@ Tokens that appear in the chip-click flow, in mint order:
 | Property | Expected |
 |---|---|
 | Minted by | PingOne `/as/token` (token-exchange grant), subject=T4, actor=T3 |
-| `aud` | `["final.2x.bxf.com"]` (Two-Exchange Final custom resource) |
+| `aud` | `["final.2x.ping.demo"]` (Two-Exchange Final custom resource) |
 | `act.sub` | MCP Exchanger client_id |
 | `act.act.sub` | AI Agent client_id ← **the nested-delegation proof point** |
 | `scope` | narrowed per tool requirements (e.g. `banking:read banking:mcp:invoke`) |
@@ -99,7 +99,7 @@ Tokens that appear in the chip-click flow, in mint order:
 |---|---|
 | Minted by | PingOne `/as/token` (token-exchange grant), subject=T1, actor=Admin app CC |
 | Issuing exchanger | Admin App (`PINGONE_ADMIN_CLIENT_ID`) per `oauthService.performTokenExchange` line 253 |
-| `aud` | `["mcp-server.bxf.com"]` (MCP Server custom resource) |
+| `aud` | `["mcp-server.ping.demo"]` (MCP Server custom resource) |
 | `act.sub` | Admin App client_id |
 | Used as | Bearer in MCP Gateway HTTP / WebSocket call |
 | Trigger | when `ff_two_exchange_delegation=false` |
@@ -130,8 +130,8 @@ Every `getClientCredentialsToken*` call in the chip path:
 
 | File:line | Function | App used | Audience requested | Audience actually issued |
 |---|---|---|---|---|
-| `agentMcpTokenService.js:1614` | Step 1 actor mint | **AI Agent** (`PINGONE_AI_AGENT_CLIENT_ID`) | `agent-gateway.bxf.com` | `https://api.pingone.com` ❌ |
-| `agentMcpTokenService.js:1735` | Step 3 actor mint | **MCP Exchanger** (`PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID`) | `mcp-gw.bxf.com` | `https://api.pingone.com` ❌ |
+| `agentMcpTokenService.js:1614` | Step 1 actor mint | **AI Agent** (`PINGONE_AI_AGENT_CLIENT_ID`) | `agent-gateway.ping.demo` | `https://api.pingone.com` ❌ |
+| `agentMcpTokenService.js:1735` | Step 3 actor mint | **MCP Exchanger** (`PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID`) | `api.ping.demo` | `https://api.pingone.com` ❌ |
 | `oauthService.js:474` `getAgentClientCredentialsToken()` | legacy path | Worker app | none | `https://api.pingone.com` ✅ (this is meant for Mgmt API calls) |
 | `agentCCTokenService.js:58` | various | MCP Exchanger | optional | varies — `WORKER`-type, same problem |
 
@@ -147,12 +147,12 @@ The full delegation chain for a Two-Exchange chip click should produce:
 T1 user token         may_act = { sub: <MCP Exchanger client_id> }
                                       ↓
 T4 Exchange-#1 token  sub = <user>
-                      aud = intermediate.2x.bxf.com
+                      aud = intermediate.2x.ping.demo
                       act = { sub: <AI Agent client_id> }       ← Agent acted on user
                       may_act = { sub: <MCP Exchanger client_id> } (inherited)
                                       ↓
 T5 Exchange-#2 token  sub = <user>
-                      aud = final.2x.bxf.com
+                      aud = final.2x.ping.demo
                       act = { sub: <MCP Exchanger client_id>,    ← MCP Exchanger acted on
                               act: { sub: <AI Agent client_id> } } ← (Agent who acted on user)
 ```

@@ -96,7 +96,7 @@ Two existing, real observability surfaces, two sessions:
 
 ### A. Live E2E script — `scripts/test-all-chips-e2e.js`
 
-Run against the running `./run-bank.sh` stack.
+Run against the running `./run-demo.sh` stack.
 
 - Logs in **two** sessions: customer (drives chips) + admin (reads app-events).
 - Parses chip list directly from `BankingChips.jsx` (`HEURISTIC_CHIPS` +

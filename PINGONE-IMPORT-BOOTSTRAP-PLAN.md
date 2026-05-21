@@ -18,7 +18,7 @@ The existing [`banking_api_server/services/pingoneBootstrapService.js`](banking_
 
 - After `npm run data:import -- archive.tar.gz` completes, a user with valid PingOne management worker credentials can run a single command (or answer a single prompt) to fully provision PingOne for the demo: apps, users, resource server, scopes, mappings.
 - Idempotent: re-running on an already-bootstrapped environment is safe and reports `skipped` for existing resources.
-- All client IDs and secrets created during bootstrap are **automatically written into `banking_api_server/.env`**, so `./run-bank.sh` works without manual env editing.
+- All client IDs and secrets created during bootstrap are **automatically written into `banking_api_server/.env`**, so `./run-demo.sh` works without manual env editing.
 - Failure modes produce actionable errors, not partial state with no recovery hint.
 
 ## 3. Non-goals (this iteration)
@@ -31,7 +31,7 @@ The existing [`banking_api_server/services/pingoneBootstrapService.js`](banking_
 
 ## 4. UX flow (browser-based — revised per direction 2026-05-09)
 
-The CLI does not prompt. After `data:import` and `./run-bank.sh`, the user opens a browser page served by `banking_api_server`. **Only the four PingOne management worker credentials are entered**; everything else (resource server, scopes, apps, mappings, users, passwords) is created automatically server-side.
+The CLI does not prompt. After `data:import` and `./run-demo.sh`, the user opens a browser page served by `banking_api_server`. **Only the four PingOne management worker credentials are entered**; everything else (resource server, scopes, apps, mappings, users, passwords) is created automatically server-side.
 
 ### 4.1 The flow
 
@@ -40,10 +40,10 @@ $ npm run data:import -- ~/banking-export-2026-05-09T13-47-18Z.tar.gz
 … restores data files + .env …
 
 Import complete. Next step:
-  Start services:        ./run-bank.sh
+  Start services:        ./run-demo.sh
   Then open in browser:  https://api.pingdemo.com:4000/setup/bootstrap
 
-$ ./run-bank.sh
+$ ./run-demo.sh
 … services come up …
 ```
 
@@ -92,7 +92,7 @@ Created:    1 resource server, 4 scopes, 5 applications, 2 users, 6 scope mappin
             MCP_GW_CLIENT_ID, MCP_GW_CLIENT_SECRET,
             AGENT_CLIENT_ID, AGENT_CLIENT_SECRET
 
-→ Restart services so the new env vars take effect:  ./run-bank.sh restart
+→ Restart services so the new env vars take effect:  ./run-demo.sh restart
 ```
 
 On any `fatal` or `step_done { action: 'failed' }`, UI surfaces the error inline with the partial-resource list (§ 9 rollback hint shown verbatim) and a **Retry** button (re-runs from where it failed, leveraging idempotency).

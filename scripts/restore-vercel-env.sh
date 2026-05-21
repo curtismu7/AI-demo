@@ -14,7 +14,7 @@ echo "🔧 Restoring Vercel environment variables for: $ENVIRONMENT"
 echo "📁 Project root: $PROJECT_ROOT"
 
 # Check if we're in the right directory
-if [ ! -f "$PROJECT_ROOT/banking_api_server/.env.example" ]; then
+if [ ! -f "$PROJECT_ROOT/demo_api_server/.env.example" ]; then
     echo "❌ Error: .env.example not found. Please run from project root."
     exit 1
 fi
@@ -44,8 +44,8 @@ get_env_value() {
     local default_value="$3"
     
     # Try to read from local .env file first
-    if [ -f "$PROJECT_ROOT/banking_api_server/.env" ]; then
-        local value=$(grep "^$var_name=" "$PROJECT_ROOT/banking_api_server/.env" | cut -d'=' -f2- | tr -d '\r')
+    if [ -f "$PROJECT_ROOT/demo_api_server/.env" ]; then
+        local value=$(grep "^$var_name=" "$PROJECT_ROOT/demo_api_server/.env" | cut -d'=' -f2- | tr -d '\r')
         if [ -n "$value" ]; then
             echo "$value"
             return

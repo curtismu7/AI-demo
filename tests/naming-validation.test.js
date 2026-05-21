@@ -157,10 +157,10 @@ describe('PingOne Naming Consistency Validation', () => {
 
   test('should have consistent PingOne terminology in authentication flows', () => {
     const authFiles = [
-      'banking_api_server/routes/oauth.js',
-      'banking_api_server/services/oauthService.js',
-      'banking_api_ui/src/components/auth/LoginFlow.js',
-      'banking_api_ui/src/services/authService.js'
+      'demo_api_server/routes/oauth.js',
+      'demo_api_server/services/oauthService.js',
+      'demo_api_ui/src/components/auth/LoginFlow.js',
+      'demo_api_ui/src/services/authService.js'
     ];
     
     for (const file of authFiles) {
@@ -177,7 +177,7 @@ describe('PingOne Naming Consistency Validation', () => {
   });
 
   test('should have consistent PingOne terminology in education components', () => {
-    const educationDir = 'banking_api_ui/src/components/education';
+    const educationDir = 'demo_api_ui/src/components/education';
     
     if (fs.existsSync(educationDir)) {
       const educationFiles = fs.readdirSync(educationDir)

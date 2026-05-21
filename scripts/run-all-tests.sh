@@ -19,14 +19,14 @@ step() {
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }
 
-step "banking_api_server — Jest (unit + integration under src/__tests__)"
-( cd "$ROOT/banking_api_server" && npm test -- --forceExit ) || FAILED=1
+step "demo_api_server — Jest (unit + integration under src/__tests__)"
+( cd "$ROOT/demo_api_server" && npm test -- --forceExit ) || FAILED=1
 
-step "banking_mcp_server — Jest (unit; integration: npm run test:integration in that package)"
-( cd "$ROOT/banking_mcp_server" && npm run test:unit ) || FAILED=1
+step "demo_mcp_server — Jest (unit; integration: npm run test:integration in that package)"
+( cd "$ROOT/demo_mcp_server" && npm run test:unit ) || FAILED=1
 
-step "banking_api_ui — CRA Jest (non-interactive)"
-( cd "$ROOT/banking_api_ui" && CI=true npm test -- --watchAll=false --passWithNoTests ) || FAILED=1
+step "demo_api_ui — CRA Jest (non-interactive)"
+( cd "$ROOT/demo_api_ui" && CI=true npm test -- --watchAll=false --passWithNoTests ) || FAILED=1
 
 step "langchain_agent — pytest (see langchain_agent/scripts/run-pytest.sh)"
 if command -v python3.12 >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1; then

@@ -169,6 +169,8 @@ last-resort floor" guarantee is the *entire* path, not merely the floor.
   reason the mode-dependent routing change is safe), T-4 (PingOne performs the
   exchange the `bff` wiring retains).
 
+
+
 ---
 
 ## T-4 — PingOne performs token exchange; the Gateway, agents, and MCP servers only *request* it
@@ -426,7 +428,7 @@ Two concrete traps this caused (cost most of a debugging session):
   `finalScopes` against the target audience (RFC 8707) and then *unconditionally
   adds* `banking:mcp:invoke` because the MCP Gateway policy requires it. That
   scope is only valid if it **also exists on the exchange's target resource**
-  (`aud=mcp-server.bxf.com`). The fix is not to drop the scope (the gateway
+  (`aud=mcp-server.ping.demo`). The fix is not to drop the scope (the gateway
   needs it) — it is to ensure `banking:mcp:invoke` is **provisioned onto the
   MCP-server resource itself** (mirroring what was already done for the
   Two-Exchange resources), so one single-audience token can legitimately

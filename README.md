@@ -12,10 +12,15 @@ This is a **completely standalone** project — it can be handed to anyone and r
 
 | Component | Port | Description |
 |---|---|---|
-| `banking_api_ui` | 3000 | React frontend (admin + end-user dashboards) |
+| `banking_api_ui` | 4000 | React frontend (admin + end-user dashboards) |
 | `banking_api_server` | 3001 | Express REST API — **Backend-for-Frontend (BFF)** with PingOne OAuth; tokens stay server-side |
-| `banking_mcp_server` | 8080 | MCP tool server for the AI agent |
-| `langchain_agent` | 8000 | LangChain + OpenAI AI banking agent |
+| `banking_mcp_server` | 8080 | TypeScript MCP tool server for the AI agent |
+| `banking_mcp_gateway` | 3005 | MCP Security Gateway — enforces policies and performs token exchange |
+| `banking_agent_service` | 3006 | LangGraph reasoning service for the canonical agent (driven by BFF) |
+| `banking_hitl_service` | 3009 | Human-in-the-Loop consent challenge service |
+| `banking_mcp_invest` | 8081 | Specialized MCP server for investment tools |
+| `banking_mortgage_service` | 8082 | Mortgage service backend |
+| `langchain_agent` | 8888 | Python LangChain + OpenAI demo agent (separate cross-stack exhibit) |
 
 ## New Machine Setup
 
@@ -24,31 +29,31 @@ This is a **completely standalone** project — it can be handed to anyone and r
 If you have **Node 20+** (Node 20, 22, or 24 — any modern LTS works) and **git** already, this is all you need:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-demo/main/install.sh | bash
 ```
 
 The installer:
 
-1. Confirms the install directory (defaults to `./banking-demo` in your current dir; you can hit Enter or abort).
+1. Confirms the install directory (defaults to `./AI-demo` in your current dir; you can hit Enter or abort).
 2. Clones the repo (or pulls latest if it already exists).
 3. Runs `npm run setup:fresh` inside it — which prompts for PingOne worker creds via a localhost browser form, provisions all PingOne resources, and writes `banking_api_server/.env`.
 
-When done: `cd banking-demo && ./run-bank.sh`. That's it.
+When done: `cd AI-demo && ./run-demo.sh`. That's it.
 
 #### Where will it install?
 
-The installer creates `banking-demo/` **in your current working directory**. Pick where you want it before you run the curl line:
+The installer creates `AI-demo/` **in your current working directory**. Pick where you want it before you run the curl line:
 
 ```bash
 # Suggested: install under your home directory
 cd ~
-curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash
-# → /Users/you/banking-demo/
+curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-demo/main/install.sh | bash
+# → /Users/you/AI-demo/
 
 # Or somewhere temporary
 cd /tmp
-curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash
-# → /tmp/banking-demo/
+curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-demo/main/install.sh | bash
+# → /tmp/AI-demo/
 ```
 
 The installer prints the absolute target path **before** doing anything and asks `Proceed? [Y/n]`. Press `n` to abort if the path is wrong, then re-run from a different `cwd`.
@@ -56,16 +61,16 @@ The installer prints the absolute target path **before** doing anything and asks
 #### Override the install path
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | INSTALL_DIR=~/work/banking-demo bash
+curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-demo/main/install.sh | INSTALL_DIR=~/work/AI-demo bash
 ```
 
 Other env-var overrides (mostly for testing/CI):
 
 | Variable | Default | Effect |
 |---|---|---|
-| `INSTALL_DIR` | `$PWD/banking-demo` | Target install path (absolute or relative). |
+| `INSTALL_DIR` | `$PWD/AI-demo` | Target install path (absolute or relative). |
 | `BANKING_BRANCH` | `main` | Branch to check out. |
-| `REPO_URL` | github.com/curtismu7/banking-demo | Override the git remote. |
+| `REPO_URL` | github.com/curtismu7/AI-demo | Override the git remote. |
 | `ASSUME_YES=1` | (unset) | Skip the confirmation prompt. |
 | `DRY_RUN=1` | (unset) | Print every command without executing. Useful to preview what will happen. |
 
@@ -74,26 +79,26 @@ Other env-var overrides (mostly for testing/CI):
 Pass the tar archive as an argument:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash -s -- /path/to/banking-export-<timestamp>.tar.gz
+curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-demo/main/install.sh | bash -s -- /path/to/banking-export-<timestamp>.tar.gz
 ```
 
 `bash -s --` is the standard pattern for forwarding arguments through a curl-pipe. The installer chains import → bootstrap automatically; if the archive is older than the `MCP_GW` / `AGENT` apps were added, bootstrap fills the gap.
 
 #### Re-running the installer
 
-Safe. If `banking-demo/` already exists with a git checkout, the installer does `git pull --ff-only` instead of `git clone`, then re-runs setup:fresh. PingOne provisioning is idempotent — already-existing resources are detected and reused; redirect URIs on existing apps are refreshed if they don't match.
+Safe. If `AI-demo/` already exists with a git checkout, the installer does `git pull --ff-only` instead of `git clone`, then re-runs setup:fresh. PingOne provisioning is idempotent — already-existing resources are detected and reused; redirect URIs on existing apps are refreshed if they don't match.
 
 ### If you already cloned the repo
 
 Run the inner command directly — same flow, skips the clone:
 
 ```bash
-cd banking-demo
+cd AI-demo
 npm run setup:fresh                              # brand-new install
 npm run setup:fresh -- /path/to/archive.tar.gz   # migration
 ```
 
-Both flows end at the same place: a working `.env`, restored data (if you imported one), provisioned PingOne resources, ready for `./run-bank.sh`. The sections below walk through the prerequisites and the full sequence.
+Both flows end at the same place: a working `.env`, restored data (if you imported one), provisioned PingOne resources, ready for `./run-demo.sh`. The sections below walk through the prerequisites and the full sequence.
 
 ### Defaults & presets — what each command does
 
@@ -151,7 +156,7 @@ npm run import -- --preflight-only ~/banking-export-2026-XX-XX.tar.gz
 When something has drifted (`.env` got mangled, PingOne apps don't match the local state, you're testing a fresh-install path against a tenant you've already provisioned) the cleanest reset is one command:
 
 ```bash
-cd banking-demo
+cd AI-demo
 npm run reset
 ```
 
@@ -163,15 +168,15 @@ What this runs end-to-end (it's `setup:fresh --clean --reset-pingone` under the 
 | 2. Cleanup prior state | `--clean` → deletes `.env`, `data/persistent/`, `data/sessions.db`, `data/backups/`, `certs/*.pem`. `.env` is backed up to `.env.pre-cleanup-<timestamp>` first. |
 | 3. Install dependencies | `npm install` if `node_modules/` is missing. |
 | 4. `/etc/hosts` check | Confirms `127.0.0.1 api.ping.demo` is present. |
-| 5. PingOne wipe | `--reset-pingone` → opens the cred form, then asks you to type the env id to confirm. Deletes every `Super Banking *` app, resource server, group, custom attribute, and demo user (the worker you authenticated with is preserved). |
+| 5. PingOne wipe | `--reset-pingone` → opens the cred form, then asks you to type the env id to confirm. Deletes every `Demo *` app, resource server, group, custom attribute, and demo user (the worker you authenticated with is preserved). |
 | 6. Bootstrap PingOne | Re-creates everything from scratch and writes a fresh `.env`. |
 | 7. Helix LLM config | Prompts (default Yes); collects 5 fields, persists encrypted to `config.db`. |
 
 After it completes:
 
 ```bash
-./run-bank.sh                      # start everything against the new state
-./run-bank.sh status               # verify all 8 services are healthy
+./run-demo.sh                      # start everything against the new state
+./run-demo.sh status               # verify all 8 services are healthy
 ```
 
 If you want to import a known-good bundle as the final step instead of letting bootstrap re-provision, use `npm run reset:import -- /path/to/bundle.tar.gz` (same wipe + the bundle on top).
@@ -181,7 +186,7 @@ If you want to import a known-good bundle as the final step instead of letting b
 When you're done with the demo on this machine and want to free disk / leave the PingOne tenant clean:
 
 ```bash
-cd banking-demo
+cd AI-demo
 npm run uninstall
 ```
 
@@ -189,8 +194,8 @@ What it does (4 phases — each can be skipped via `--keep-*` flags):
 
 | Phase | What happens |
 |-------|--------------|
-| 1. Stop services | `./run-bank.sh stop` — gracefully stops API, UI, MCP server, MCP gateway, agent service, MCP invest, HITL, LangChain agent. |
-| 2. Wipe PingOne env | Type-the-env-id confirmation, then deletes every Super Banking app, resource server, group, custom attribute, and demo user in your PingOne env. |
+| 1. Stop services | `./run-demo.sh stop` — gracefully stops API, UI, MCP server, MCP gateway, agent service, MCP invest, HITL, LangChain agent. |
+| 2. Wipe PingOne env | Type-the-env-id confirmation, then deletes every Demo app, resource server, group, custom attribute, and demo user in your PingOne env. |
 | 3. Delete local state | Removes `banking_api_server/.env`, `data/persistent/`, `data/sessions.db*`, `data/backups/`, `certs/`, `setup.log`. |
 | 4. Delete node_modules | Removes `node_modules/` + `dist/` in all 7 Node services (~2 GB). |
 
@@ -205,7 +210,7 @@ npm run uninstall -- --keep-local          # only stop services + wipe PingOne
 
 What `uninstall` does **NOT** remove (you do these by hand):
 
-- The repo directory itself — `rm -rf banking-demo` after the script runs
+- The repo directory itself — `rm -rf AI-demo` after the script runs
 - Source code (it's all in the git tree; not deleted)
 - Your shell's nvm bootstrap (`~/.zshrc` / `~/.bashrc` lines)
 - `mkcert` root CA (machine-wide; affects other apps)
@@ -222,7 +227,7 @@ npm run import -- archive.tar.gz   # restore .env + data from a tar (no PingOne 
 npm run export                     # create a banking-export-<timestamp>.tar.gz
 
 # Destructive (require confirmation prompts)
-npm run pingone:recreate           # delete 'Super Banking *' apps and recreate
+npm run pingone:recreate           # delete 'Demo *' apps and recreate
 npm run pingone:wipe               # NUCLEAR: delete every app/resource/group/user in the PingOne env
 npm run reset                      # full wipe + start blank: local state + PingOne + re-provision
 npm run reset:import -- archive.tar.gz
@@ -268,12 +273,12 @@ mkcert -install          # installs the local CA into the system trust store
 echo '127.0.0.1  api.ping.demo' | sudo tee -a /etc/hosts
 ```
 
-#### 2. Clone — let `./run-bank.sh` do the rest
+#### 2. Clone — let `./run-demo.sh` do the rest
 
 ```bash
-git clone https://github.com/curtismu7/banking-demo.git
-cd banking-demo
-./run-bank.sh
+git clone https://github.com/curtismu7/AI-demo.git
+cd AI-demo
+./run-demo.sh
 ```
 
 That's it. The script's dependency loop installs `node_modules` and runs the
@@ -288,6 +293,7 @@ disconnected network), here's the full set — all seven Node services need
 # Plain JS — install only
 cd banking_api_server   && npm install                       && cd ..
 cd banking_hitl_service && npm install                       && cd ..
+cd banking_mortgage_service && npm install                   && cd ..
 
 # React app (CRA) — install with --legacy-peer-deps; build is handled at runtime
 cd banking_api_ui       && npm install --legacy-peer-deps    && cd ..
@@ -303,14 +309,14 @@ cd banking_mcp_invest   && npm install && npm run build      && cd ..
 
 #### 3. Start all services
 
-> Run from the `banking-demo` repo root. `./run-bank.sh` is repo-local — `cd banking-demo` first if you opened a new terminal.
+> Run from the `AI-demo` repo root. `./run-demo.sh` is repo-local — `cd AI-demo` first if you opened a new terminal.
 
 ```bash
-cd /path/to/banking-demo   # if you're not already there
-./run-bank.sh
+cd /path/to/AI-demo   # if you're not already there
+./run-demo.sh
 ```
 
-`run-bank.sh` will:
+`run-demo.sh` will:
 
 - Source `~/.nvm/nvm.sh` and `nvm use 20` itself if nvm isn't yet loaded in the current shell (so it works from a fresh terminal that doesn't auto-load nvm)
 - Generate TLS certs automatically if mkcert is installed
@@ -333,7 +339,7 @@ npm run setup:fresh
 
 The browser pops a form. Submit your four worker creds. The script:
 
-1. Provisions resource servers (`Super Banking API`, `Super Banking MCP Server`, `Super Banking MCP Gateway`)
+1. Provisions resource servers (`Demo API`, `Demo MCP Server`, `Demo MCP Gateway`)
 2. Creates ~25 scopes (`banking:*`, `admin:*`, `users:*`, `p1:*`, `banking:mcp:invoke`)
 3. Creates **7 applications** (Admin, User, MCP Server, Worker, MCP Exchanger, MCP Gateway, Agent)
 4. Creates two demo users with generated passwords (`bankuser`, `bankadmin`)
@@ -346,7 +352,7 @@ The script is **idempotent** — re-running it on a fully-provisioned environmen
 - `npm run setup:fresh -- --no-browser` — terminal prompts only (SSH / headless boxes)
 - `cd banking_api_server && npm run pingone:bootstrap:ci` with `PINGONE_BOOTSTRAP_*` env vars set — non-interactive (CI / automation)
 
-**Prefer to enter credentials manually instead?** Open **[https://api.ping.demo:4000/configure](https://api.ping.demo:4000/configure)** in your browser after `./run-bank.sh` and enter your PingOne Environment ID and OAuth client credentials. The app saves them to `config.db` — no restart needed. Note: this manual path only sets the admin/user OAuth clients. The MCP gateway and agent service still need `MCP_GW_CLIENT_ID` / `AGENT_CLIENT_ID` in `.env`, which `setup:fresh` provides automatically.
+**Prefer to enter credentials manually instead?** Open **[https://api.ping.demo:4000/configure](https://api.ping.demo:4000/configure)** in your browser after `./run-demo.sh` and enter your PingOne Environment ID and OAuth client credentials. The app saves them to `config.db` — no restart needed. Note: this manual path only sets the admin/user OAuth clients. The MCP gateway and agent service still need `MCP_GW_CLIENT_ID` / `AGENT_CLIENT_ID` in `.env`, which `setup:fresh` provides automatically.
 
 See **[docs/SETUP.md](docs/SETUP.md)** for the full PingOne app configuration reference.
 
@@ -379,9 +385,9 @@ nvm use 20   # or: source ~/.zshrc && nvm use 20  (or use 22 / 24 — any LTS)
 brew install mkcert && mkcert -install
 echo '127.0.0.1  api.ping.demo' | sudo tee -a /etc/hosts
 
-# 3. Clone (run-bank.sh installs all deps for you on first start)
-git clone https://github.com/curtismu7/banking-demo.git
-cd banking-demo
+# 3. Clone (run-demo.sh installs all deps for you on first start)
+git clone https://github.com/curtismu7/AI-demo.git
+cd AI-demo
 
 # 4. Copy the archive from Machine A, then import + provision in one step
 npm run setup:fresh -- /path/to/banking-export-<timestamp>.tar.gz
@@ -390,7 +396,7 @@ npm run setup:fresh -- /path/to/banking-export-<timestamp>.tar.gz
 mkdir -p certs && cd certs && mkcert api.ping.demo localhost 127.0.0.1 && cd ..
 
 # 6. Start
-./run-bank.sh
+./run-demo.sh
 ```
 
 > Step 4 chains `data:import` then `pingone:bootstrap`. If your archive already has full PingOne config (a recent export with `MCP_GW_CLIENT_ID` / `AGENT_CLIENT_ID`), the bootstrap step is skipped automatically and the command exits at "import complete." If the archive is older or PingOne config is missing, the browser pops the worker-cred form so you can finish provisioning in one go.
@@ -415,13 +421,13 @@ Open **[https://api.ping.demo:4000/configure](https://api.ping.demo:4000/configu
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `zsh: command not found: nvm` | nvm isn't loaded in this shell — it's a shell function, not a binary on PATH | `export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"` (one-shot), then add those two lines to `~/.zshrc` (or `~/.bashrc`) so new terminals pick it up automatically. See Path A § 0. |
-| `zsh: no such file or directory: ./run-bank.sh` | You're not in the repo root — `./run-bank.sh` is repo-local | `cd /path/to/banking-demo` first, then `./run-bank.sh` |
+| `zsh: no such file or directory: ./run-demo.sh` | You're not in the repo root — `./run-demo.sh` is repo-local | `cd /path/to/AI-demo` first, then `./run-demo.sh` |
 | Export/import fails with `Node major 20 required, but this shell is using Node vX` | Wrong Node version active in this shell | `nvm use 20` (run nvm-load snippet above first if needed); see Path A § 0 |
 | Browser shows cert error | Certs not generated or CA not trusted | Run `mkcert -install` then `cd certs && mkcert api.ping.demo localhost 127.0.0.1` |
 | `api.ping.demo` doesn't resolve | `/etc/hosts` entry missing | `echo '127.0.0.1 api.ping.demo' \| sudo tee -a /etc/hosts` |
 | `/configure` shows all fields blank after import | `.env` encryption key mismatch | Re-import with the original archive; ensure `.env` from the source machine was included |
 | `better-sqlite3` binary error on start | Node version mismatch (binary built against a different Node major) | `nvm use 20 && cd banking_api_server && npm rebuild better-sqlite3` |
-| Import fails with "server is running" | Server must be stopped before import | `./run-bank.sh stop` then retry import |
+| Import fails with "server is running" | Server must be stopped before import | `./run-demo.sh stop` then retry import |
 | `npm install` in `banking_api_ui` fails with `ERESOLVE` (typescript / react-scripts) | CRA's `peerOptional` typescript range trips npm 7+ resolver | `npm install --legacy-peer-deps` (or restore `banking_api_ui/.npmrc` containing `legacy-peer-deps=true`) |
 
 ---
@@ -435,7 +441,46 @@ See **[docs/RFC-STANDARDS.md](docs/RFC-STANDARDS.md)** — every RFC and standar
 
 See **[docs/SETUP.md](docs/SETUP.md)** (§ 2 — PingOne Application Configuration and § 3 — Environment Variables) for the full configuration reference, including all required env vars and their PingOne source.
 
+## Testing
+
+Run the full test suite across all services:
+
+```bash
+npm test                                   # all tests
+npm run test:api-server                    # BFF tests only
+npm run test:mcp-server                    # MCP unit tests
+npm run test:mcp-server:integration        # MCP integration tests
+npm run test:ui                            # React component tests (CI mode)
+npm run test:agent                         # LangChain agent tests (Python)
+npm run test:agent-ui                      # Agent frontend tests
+npm run test:e2e:ui:smoke                  # Fast E2E smoke test
+npm run test:e2e:ui                        # Full E2E UI test suite
+npm run test:session                       # Session + BFF token tests
 ```
+
+From within `banking_api_server/`, you can run targeted test suites:
+
+```bash
+cd banking_api_server
+npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration
+npx jest --testPathPattern='step-up-gate|authorize-gate'
+```
+
+**Test framework:** Jest (Node/Express services), Vitest (some TypeScript packages), React Testing Library (UI components), pytest (Python agent).
+
+## Development & Contributing
+
+All development must follow the patterns documented in **[CLAUDE.md](CLAUDE.md)** — the canonical agent instructions for this repository. Read § 1 (**Critical Do-Not-Break Areas**) in **[REGRESSION_PLAN.md](REGRESSION_PLAN.md)** before editing protected files like `routes/oauth.js`, `middleware/auth.js`, or session/token logic.
+
+**Key development conventions:**
+- **Minimal diff discipline** — touch only what the task requires; no while-I'm-here cleanup
+- **Read REGRESSION_PLAN.md § 0–1** before editing files listed there
+- **UI build required** — `cd banking_api_ui && npm run build` must exit 0 after any UI change
+- **Token custody rule** — the BFF (banking_api_server) is the sole token custodian; tokens never reach the browser
+- **Quote secrets in .env** — special characters like `~`, `-`, `.` break shell parsing if unquoted
+- **No hardcoded localhost** — all OAuth redirect URIs use the configured host (`api.ping.demo` by default), never hardcoded `localhost:3001` / `localhost:4000`
+
+See **[CONTEXT.md](CONTEXT.md)** for glossary of terms (BFF, gateway, agent, consent, delegation); **[ARCHITECTURE.md](ARCHITECTURE.md)** for standards and architecture decisions; and **[docs/adr/](docs/adr/)** for architectural decision records.
 
 ## Architecture
 
@@ -443,7 +488,7 @@ See **[docs/SETUP.md](docs/SETUP.md)** (§ 2 — PingOne Application Configurati
 ┌─────────────────────────────────────────────────────────┐
 │              Banking Digital Assistant                    │
 │                                                           │
-│  banking_api_ui (:3000)   ←→   banking_api_server (:3001) │
+│  banking_api_ui (:4000)   ←→   banking_api_server (:3001) │
 │       React UI                  Express banking API        │
 │                                    ↑ JWT validation        │
 │                                    │ via PingOne JWKS      │
@@ -486,10 +531,15 @@ See **[README (mermaid).md](README%20(mermaid).md)** for detailed token operatio
 
 | Service | Port | Description |
 |---|---|---|
-| `banking_api_server` | 3001 | Express REST API — banking accounts, transactions, admin |
-| `banking_api_ui` | 3000 | React frontend for admin/customer portal |
+| `banking_api_server` | 3001 | Express REST API — banking accounts, transactions, admin; **sole token custodian** |
+| `banking_api_ui` | 4000 | React frontend for admin/customer portal |
 | `banking_mcp_server` | 8080 | TypeScript MCP server — exposes banking tools to AI agents |
-| `langchain_agent` | 8888 | LangChain agent + WebSocket frontend |
+| `banking_mcp_gateway` | 3005 | MCP Security Gateway — enforces policies, re-exchanges tokens, routes to MCP servers |
+| `banking_agent_service` | 3006 | LangGraph reasoning service for the canonical agent |
+| `banking_hitl_service` | 3009 | Human-in-the-Loop consent challenge service |
+| `banking_mcp_invest` | 8081 | Specialized MCP server for investment tools |
+| `banking_mortgage_service` | 8082 | Mortgage service backend |
+| `langchain_agent` | 8888 | Python LangChain + OpenAI demo agent (cross-stack exhibit) |
 
 ## Token Exchange Flow (RFC 8693)
 
@@ -529,7 +579,7 @@ Required in PingOne: enable the token-exchange grant type on the Backend-for-Fro
 
 In your PingOne environment (`b9817c16-9910-4415-b67e-4ac687da74d9`), you need:
 
-1. **Super Banking Worker Token App** (client_credentials, type: `WORKER`) — PingOne Management API access
+1. **Demo Worker Token App** (client_credentials, type: `WORKER`) — PingOne Management API access
    - Already configured: `66a4686b-9222-4ad2-91b6-03113711c9aa`
 
 2. **Web Application** (auth_code + PKCE) — for user login
@@ -594,19 +644,15 @@ The app is deployed to Vercel as a single serverless function (`api/handler.js`)
 
 ### Quick Vercel Setup
 
-Run the interactive setup wizard — it detects conflicts, validates Upstash connectivity, generates a session secret, and optionally pushes values to Vercel via the CLI:
+Set environment variables manually via **Vercel Dashboard → Project → Settings → Environment Variables**. Use the table below as your reference for required variables. You can also use the Vercel CLI:
 
 ```bash
-npm run setup:vercel
+vercel env add UPSTASH_REDIS_REST_URL
+vercel env add SESSION_SECRET
+# ... add each variable from the table below
 ```
 
-To check your current config without making changes:
-
-```bash
-npm run setup:vercel:check
-```
-
-The wizard writes a `.env.vercel.local` file (gitignored). Copy these values to **Vercel Dashboard → Project → Settings → Environment Variables**.
+Create a local `.env.vercel.local` file (gitignored) to track your Vercel environment values locally. Copy these values to **Vercel Dashboard → Project → Settings → Environment Variables**.
 
 ### Required Environment Variables
 
@@ -673,8 +719,7 @@ Add these to your PingOne application after getting your Vercel URL:
 
 | File | Purpose |
 |---|---|
-| `.env.vercel.example` | Template for all Vercel environment variables |
-| `.env.vercel.local` | Your local copy (gitignored) — generated by `npm run setup:vercel` |
+| `.env.vercel.local` | Your local copy (gitignored) — create manually; see Vercel Deployment section above |
 | `banking_api_server/.env` | Local dev config (PingOne credentials, port) |
 | `banking_mcp_server/.env.development` | MCP server config (copy to `.env` before running) |
 | `langchain_agent/.env` | Agent config (OpenAI key, PingOne endpoints) |

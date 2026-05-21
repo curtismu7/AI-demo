@@ -57,7 +57,7 @@ All UI copy, toggle labels, and panel headings must use these exact names.
 
 ### Plan 03 — Token chain: live RFC annotations + hop labels
 - `TokenChainDisplay.js`: add RFC badge (e.g. "RFC 8693 §4") at each exchange step, linking to the spec section
-- Label each token node with its audience value (e.g. `aud: mcp-gw.bxf.com`)
+- Label each token node with its audience value (e.g. `aud: mcp-gw.ping.demo`)
 - Show the `act` claim propagation visually (arrow or annotation between hops)
 - The token chain header toggle must use canonical flow names: "2-Token Exchange" / "ID Token 2-Token Exchange"
 - Claims panel: highlight `act`, `aud`, `sub` with tooltips explaining the RFC role of each claim

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# install.sh — Standalone bootstrapper for the Banking demo.
+# install.sh — Standalone bootstrapper for the AI Demo.
 #
 # Designed to be curl-piped:
-#   curl -fsSL https://raw.githubusercontent.com/curtismu7/banking-demo/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-demo/main/install.sh | bash
 #
 # What it does:
-#   1. Confirms the install directory (default: $PWD/banking-demo).
+#   1. Confirms the install directory (default: $PWD/AI-demo).
 #   2. Verifies prerequisites (git, Node 20).
 #   3. Clones the repo if the target dir doesn't already contain it.
 #   4. Hands off to `npm run setup:fresh -- --from-installer`, which runs
@@ -15,7 +15,7 @@
 # the latest main and re-runs setup:fresh (idempotent).
 #
 # Env-var overrides (mostly for testing / CI):
-#   INSTALL_DIR       Override the install path (default: ./banking-demo)
+#   INSTALL_DIR       Override the install path (default: ./AI-demo)
 #   REPO_URL          Override the git repo URL
 #   BANKING_BRANCH    Branch to check out (default: main)
 #   DRY_RUN           Set to 1 to print commands without executing
@@ -25,9 +25,9 @@ set -euo pipefail
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-REPO_URL="${REPO_URL:-https://github.com/curtismu7/banking-demo.git}"
+REPO_URL="${REPO_URL:-https://github.com/curtismu7/AI-demo.git}"
 BRANCH="${BANKING_BRANCH:-main}"
-DEFAULT_DIR_NAME="banking-demo"
+DEFAULT_DIR_NAME="AI-demo"
 NODE_REQUIRED_MAJOR="20"
 
 # ── Style ─────────────────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ confirm_dir() {
   local exists="$2"
 
   echo ""
-  echo "${BOLD}Banking demo install${RESET}"
+  echo "${BOLD}AI Demo install${RESET}"
   echo "────────────────────"
   echo "  Repo:        ${REPO_URL}"
   echo "  Branch:      ${BRANCH}"
@@ -251,7 +251,7 @@ run_setup() {
 
 main() {
   echo ""
-  echo "${BOLD}Banking demo bootstrapper${RESET}"
+  echo "${BOLD}AI Demo bootstrapper${RESET}"
   echo ""
 
   # Pre-flight
@@ -260,11 +260,11 @@ main() {
 
   # Resolve target. We have to be defensive across three cases:
   #   1. INSTALL_DIR set (absolute or relative) → use it.
-  #   2. INSTALL_DIR unset, $PWD valid          → $PWD/banking-demo.
+  #   2. INSTALL_DIR unset, $PWD valid          → $PWD/AI-demo.
   #   3. INSTALL_DIR unset, $PWD empty/missing  → fall back to `pwd` builtin.
   #
   # The previous implementation did `cd "$(dirname "$target")" && pwd` which
-  # returned "/" when dirname produced "/", giving us "//banking-demo".
+  # returned "/" when dirname produced "/", giving us "//AI-demo".
   local cwd="${PWD:-$(pwd 2>/dev/null)}"
   cwd="${cwd:-$HOME}"           # last-resort fallback if both PWD and pwd fail
   local target="${INSTALL_DIR:-${cwd}/${DEFAULT_DIR_NAME}}"
@@ -295,7 +295,7 @@ main() {
       err "\$HOME is unset — cannot suggest an alternate path."
       echo "" >&2
       echo "  Set INSTALL_DIR explicitly and re-run:" >&2
-      echo "    curl -fsSL ${REPO_URL%.git}/raw/main/install.sh | INSTALL_DIR=/path/to/banking-demo bash" >&2
+      echo "    curl -fsSL ${REPO_URL%.git}/raw/main/install.sh | INSTALL_DIR=/path/to/AI-demo bash" >&2
       exit 1
     fi
     local suggested="${HOME%/}/${DEFAULT_DIR_NAME}"
@@ -313,7 +313,7 @@ main() {
       info "Aborted. cd into a writable directory and re-run:"
       echo "  cd ~ && curl -fsSL ${REPO_URL%.git}/raw/main/install.sh | bash"
       echo "  # or pick another path explicitly:"
-      echo "  curl -fsSL ${REPO_URL%.git}/raw/main/install.sh | INSTALL_DIR=/path/to/banking-demo bash"
+      echo "  curl -fsSL ${REPO_URL%.git}/raw/main/install.sh | INSTALL_DIR=/path/to/AI-demo bash"
       exit 0
     fi
   fi
@@ -325,7 +325,7 @@ main() {
   The installer needs write permission on the parent of the install path so it
   can create '${DEFAULT_DIR_NAME}/' there. Either:
 
-    1. Pick a path you can write to:    INSTALL_DIR=~/banking-demo
+    1. Pick a path you can write to:    INSTALL_DIR=~/AI-demo
     2. Fix permissions on ${parent}    (typically: chmod u+w "${parent}")
 
 EOF
@@ -349,10 +349,10 @@ EOF
   run_setup "$target"
 
   echo ""
-  ok "Banking demo installed at: $target"
+  ok "AI Demo installed at: $target"
   echo ""
   echo "Start it any time with:"
-  echo "  cd $target && ./run-bank.sh"
+  echo "  cd $target && ./run-demo.sh"
   echo ""
 }
 

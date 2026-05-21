@@ -6,15 +6,15 @@
 
 | Scope | Risk | Resource | Description |
 |---|---|---|---|
-| `banking:read` | low | Super Banking API | Read accounts, balances, transactions |
-| `banking:write` | high | Super Banking API | Write banking operations (deposit/withdrawal) |
-| `banking:transfer` | high | Super Banking API | Execute fund transfers |
-| `banking:accounts:read` | low | Super Banking API | Read account information and balances |
-| `banking:transactions:read` | low | Super Banking API | Read transaction history and details |
-| `banking:mortgage:read` | low | Super Banking API | Read mortgage account data (Phase 267 Path A api-key disposition) |
-| `banking:ai:agent:read` | medium | Super Banking API | Agent invocation permission |
-| `banking:mcp:invoke` | medium | Super Banking MCP Server | Invoke MCP tools via the gateway (RFC 8693 exchange) |
-| `banking:agent:invoke` | medium | Super Banking Agent Gateway | Invoke the Agent Gateway (Two-Exchange Step 1 audience) |
+| `read` | low | Super Banking API | Read accounts, balances, transactions |
+| `write` | high | Super Banking API | Write operations (deposit/withdrawal/transfer) |
+| `transfer` | high | Super Banking API | Execute fund transfers |
+| `accounts:read` | low | Super Banking API | Read account information and balances |
+| `transactions:read` | low | Super Banking API | Read transaction history and details |
+| `mortgage:read` | low | Super Banking API | Read mortgage/feature-specific data (banking vertical) |
+| `ai:agent:read` | medium | Super Banking API | Agent invocation permission |
+| `mcp:invoke` | medium | Super Banking MCP Server | Invoke MCP tools via the gateway (RFC 8693 exchange) |
+| `agent:invoke` | medium | Super Banking Agent Gateway | Invoke the Agent Gateway (Two-Exchange Step 1 audience) |
 | `ai_agent` | medium | Super Banking API | AI agent identity |
 | `admin:read` | medium | Super Banking API | Read access to administrative data |
 | `admin:write` | high | Super Banking API | Write access to administrative operations |
@@ -26,40 +26,40 @@
 
 ### Super Banking API
 
-Audience: `banking_api_enduser`
+Audience: `enduser.ping.demo`
 
-Native scopes: `banking:read`, `banking:write`, `banking:transfer`, `banking:accounts:read`, `banking:transactions:read`, `banking:mortgage:read`, `banking:ai:agent:read`, `ai_agent`, `admin:read`, `admin:write`, `admin:delete`, `users:read`, `users:manage`
+Native scopes: `read`, `write`, `transfer`, `accounts:read`, `transactions:read`, `mortgage:read`, `ai:agent:read`, `ai_agent`, `admin:read`, `admin:write`, `admin:delete`, `users:read`, `users:manage`
 
 ### Super Banking MCP Server
 
-Audience: `mcp-server.bxf.com`
+Audience: `mcpserver.ping.demo`
 
-Native scopes: `banking:mcp:invoke`
+Native scopes: `mcp:invoke`
 
-Mirrored scopes (RFC 8693 exchange-hop, ARCHITECTURE-TRUTHS T-10): `banking:read`, `banking:write`, `banking:mortgage:read`, `banking:ai:agent:read`, `admin:read`, `admin:write`, `admin:delete`, `users:read`, `users:manage`
+Mirrored scopes (RFC 8693 exchange-hop, ARCHITECTURE-TRUTHS T-10): `read`, `write`, `mortgage:read`, `ai:agent:read`, `admin:read`, `admin:write`, `admin:delete`, `users:read`, `users:manage`
 
 ### Super Banking MCP Gateway
 
-Audience: `mcp-gw.bxf.com`
+Audience: `mcpgateway.ping.demo`
 
-Native scopes: `banking:mcp:invoke`
+Native scopes: `mcp:invoke`
 
-Mirrored scopes (RFC 8693 exchange-hop, ARCHITECTURE-TRUTHS T-10): `banking:read`, `banking:write`, `banking:transfer`, `banking:mortgage:read`
+Mirrored scopes (RFC 8693 exchange-hop, ARCHITECTURE-TRUTHS T-10): `read`, `write`, `transfer`, `mortgage:read`
 
 ### Super Banking Agent Gateway
 
-Audience: `agent-gateway.bxf.com`
+Audience: `agentgateway.ping.demo`
 
-Native scopes: `banking:agent:invoke`
+Native scopes: `agent:invoke`
 
 ## Servers
 
 | Service | Resource | Validates aud | Gates on tool scopes | Notes |
 |---|---|---|---|---|
-| `banking_api_server` | Super Banking API | `banking_api_enduser` | no | BFF / token custodian. Performs RFC 8693 exchange #1 (user token -> mcp-gw.bxf.com audience). |
-| `banking_mcp_gateway` | Super Banking MCP Gateway | `mcp-gw.bxf.com` | yes | MCP Gateway. Validates inbound aud === mcp-gw.bxf.com and enforces per-tool requiredScopes (getScopesForGatewayTool) on the inbound bearer BEFORE credential swap. Therefore every gateway-surface tool scope MUST be mirrored onto the Super Banking MCP Gateway resource (ARCHITECTURE-TRUTHS T-10). |
-| `banking_mcp_server` | Super Banking MCP Server | `mcp-server.bxf.com` | yes | Backend MCP tool server. Receives the gateway re-exchanged token (aud === mcp-server.bxf.com); banking tool scopes are mirrored here for exchange hop #3. |
-| `banking_agent_service` | Super Banking Agent Gateway | `agent-gateway.bxf.com` | no | Agent Gateway (Two-Exchange Step 1 audience for the AI Agent client-credentials token). |
+| `demo_api_server` | Super Banking API | `enduser.ping.demo` | no | BFF / token custodian. Performs RFC 8693 two-exchange delegation (user token -> mcpgateway.ping.demo). |
+| `demo_mcp_gateway` | Super Banking MCP Gateway | `mcpgateway.ping.demo` | yes | MCP Gateway. Validates inbound aud === mcpgateway.ping.demo and enforces per-tool requiredScopes (getScopesForGatewayTool) on the inbound bearer BEFORE credential swap. Therefore every gateway-surface tool scope MUST be mirrored onto the Super Banking MCP Gateway resource (ARCHITECTURE-TRUTHS T-10). |
+| `demo_mcp_server` | Super Banking MCP Server | `mcpserver.ping.demo` | yes | Backend MCP tool server. Receives the gateway re-exchanged token (aud === mcpserver.ping.demo); banking tool scopes are mirrored here for exchange hop #3. |
+| `demo_agent_service` | Super Banking Agent Gateway | `agentgateway.ping.demo` | no | Agent Gateway (Two-Exchange Step 1 audience for the AI Agent client-credentials token). |
 
 ## App Grants
 
@@ -67,13 +67,13 @@ Native scopes: `banking:agent:invoke`
 
 Type: `WEB_APP`  ·  Grants: `authorization_code`, `refresh_token`, `token_exchange`
 
-Granted scopes: `banking:ai:agent:read`, `banking:read`, `banking:write`, `banking:transfer`, `banking:mortgage:read`
+Granted scopes: `ai:agent:read`, `read`, `write`, `transfer`, `mortgage:read`
 
 ### Super Banking Admin App
 
 Type: `WEB_APP`  ·  Grants: `authorization_code`, `refresh_token`, `token_exchange`
 
-Granted scopes: `banking:read`, `banking:write`, `banking:transfer`, `banking:accounts:read`, `banking:transactions:read`, `banking:mortgage:read`, `banking:ai:agent:read`, `ai_agent`, `admin:read`, `admin:write`, `admin:delete`, `users:read`, `users:manage`
+Granted scopes: `read`, `write`, `transfer`, `accounts:read`, `transactions:read`, `mortgage:read`, `ai:agent:read`, `ai_agent`, `admin:read`, `admin:write`, `admin:delete`, `users:read`, `users:manage`
 
 ### Super Banking MCP Server
 
@@ -95,13 +95,13 @@ Granted scopes: — (none; resource-server or worker app)
 
 Type: `WEB_APP`  ·  Grants: `token_exchange`
 
-Granted scopes: `banking:read`, `banking:write`, `banking:mcp:invoke`
+Granted scopes: `read`, `write`, `mcp:invoke`
 
 ### Super Banking AI Agent
 
 Type: `WEB_APP`  ·  Grants: `client_credentials`, `token_exchange`
 
-Granted scopes: `banking:agent:invoke`
+Granted scopes: `agent:invoke`
 
 ### Super Banking Agent
 
@@ -119,18 +119,18 @@ Granted scopes: — (none; resource-server or worker app)
 
 | Tool | Surface | Required Scopes | Challenge |
 |---|---|---|---|
-| `get_my_accounts` | gateway | `banking:read` | — |
-| `get_account_balance` | gateway | `banking:read` | — |
-| `get_my_transactions` | gateway | `banking:read` | — |
-| `get_sensitive_account_details` | gateway | `banking:read` | — |
-| `sequential_think` | gateway | `banking:read` | — |
-| `get_investment_balance` | gateway | `banking:read` | — |
-| `get_investment_accounts` | gateway | `banking:read` | — |
-| `get_portfolio_summary` | gateway | `banking:read` | — |
-| `show_mortgage` | gateway | `banking:mortgage:read` | — |
-| `create_deposit` | gateway | `banking:write` | step_up |
-| `create_withdrawal` | gateway | `banking:write` | step_up |
-| `create_transfer` | gateway | `banking:write` `banking:transfer` | step_up |
+| `get_my_accounts` | gateway | `read` | — |
+| `get_account_balance` | gateway | `read` | — |
+| `get_my_transactions` | gateway | `read` | — |
+| `get_sensitive_account_details` | gateway | `read` | — |
+| `sequential_think` | gateway | `read` | — |
+| `get_investment_balance` | gateway | `read` | — |
+| `get_investment_accounts` | gateway | `read` | — |
+| `get_portfolio_summary` | gateway | `read` | — |
+| `show_mortgage` | gateway | `mortgage:read` | — |
+| `create_deposit` | gateway | `write` | step_up |
+| `create_withdrawal` | gateway | `write` | step_up |
+| `create_transfer` | gateway | `write` `transfer` | step_up |
 | `query_user_by_email` | exchange-only | `ai_agent` | — |
 | `admin_list_all_users` | exchange-only | `admin:read` `users:read` | — |
 | `admin_get_user_details` | exchange-only | `admin:read` `users:read` | — |
@@ -138,10 +138,16 @@ Granted scopes: — (none; resource-server or worker app)
 | `admin_manage_accounts` | exchange-only | `admin:write` `users:manage` | — |
 | `admin_view_audit_logs` | exchange-only | `admin:read` | — |
 | `admin_system_status` | exchange-only | `admin:read` | — |
-| `list_accounts` | legacy-alias | `banking:read` | — |
-| `list_transactions` | legacy-alias | `banking:read` | — |
-| `transfer` | legacy-alias | `banking:write` | — |
-| `deposit` | legacy-alias | `banking:write` | — |
-| `withdraw` | legacy-alias | `banking:write` | — |
-| `banking_get_account_balance` | legacy-alias | `banking:read` | — |
-| `banking_create_transfer` | legacy-alias | `banking:write` | — |
+| `lookup_customer` | exchange-only | `admin:read` `users:read` | — |
+| `get_customer_profile` | exchange-only | `admin:read` `users:read` | — |
+| `get_customer_accounts` | exchange-only | `admin:read` `users:read` | — |
+| `get_customer_transactions` | exchange-only | `admin:read` `users:read` | — |
+| `freeze_account` | exchange-only | `admin:write` `users:manage` | — |
+| `reset_customer_password` | exchange-only | `admin:write` `users:manage` | — |
+| `adjust_balance` | exchange-only | `admin:write` `users:manage` | — |
+| `delete_customer` | exchange-only | `admin:write` `admin:delete` `users:manage` | — |
+| `list_accounts` | legacy-alias | `read` | — |
+| `list_transactions` | legacy-alias | `read` | — |
+| `transfer` | legacy-alias | `write` | — |
+| `deposit` | legacy-alias | `write` | — |
+| `withdraw` | legacy-alias | `write` | — |

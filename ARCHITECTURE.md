@@ -213,21 +213,21 @@ Benefits:
 ### AI Agent Token Exchange (LangChain → MCP)
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  LangChain Agent (Python)                           │
-│                                                     │
-│  Has: CIBA token T_ciba for user123                 │
-│       (obtained via /bc-authorize + poll)           │
-│                                                     │
-│  POST /token (Token Exchange)                       │
-│  ┌─────────────────────────────────────────┐        │
-│  │ grant_type    = token-exchange           │        │
-│  │ subject_token = T_ciba                  │        │
-│  │ actor_token   = ai_agent_client_creds   │        │ ← AI agent's own identity
-│  │ audience      = mcp-server-uri          │        │
+┌─────────────────────────────────────────────────┐
+│  LangChain Agent (Python)                       │
+│                                                 │
+│  Has: CIBA token T_ciba for user123            │
+│       (obtained via /bc-authorize + poll)       │
+│                                                 │
+│  POST /token (Token Exchange)                   │
+│  ┌─────────────────────────────────────┐        │
+│  │ grant_type    = token-exchange      │        │
+│  │ subject_token = T_ciba              │        │
+│  │ actor_token   = ai_agent_client_creds│        │ ← AI agent's own identity
+│  │ audience      = mcp-server-uri      │        │
 │  │ scope         = banking:transactions:read│        │
-│  └─────────────────────────────────────────┘        │
-└───────────────────────┬─────────────────────────────┘
+│  └─────────────────────────────────────┘        │
+└───────────────────────┬─────────────────────────┘
                         │
                ┌────────▼────────┐
                │    PingOne      │
@@ -384,6 +384,7 @@ Browser                   Backend-for-Frontend (BFF) (3001)               PingOn
    │  GET /api/auth/oauth/    │                       │
    │       user/login         │                       │
    │ ────────────────────►   │                       │
+   │                          │                       │
    │                          │  Generate state,      │
    │                          │  PKCE verifier,       │
    │                          │  redirect_uri (from   │
@@ -516,7 +517,7 @@ User Email              LangChain Agent          MCP Server (8080)      Backend-
     │                        │                         │ ─────────────────►│                  │
     │                        │                         │                    │  Validate token   │
     │                        │                         │                    │  Check scopes     │
-    │                        │                         │  [ accounts data ] │                  │
+    │                        │  [ accounts data ]      │                    │                  │
     │                        │                         │ ◄─────────────────│                  │
     │                        │                         │                    │                  │
     │                        │  tool result            │                    │                  │
@@ -645,7 +646,110 @@ Backend-for-Frontend (BFF) / MCP Server                   PingOne               
 
 ---
 
-## 8. Implementation Priority
+## 8. Directory Structure & Service Organization
+
+The project consists of **eight Node/Python services** organized by concern:
+
+### Frontend & User-Facing Backends
+- **`banking_api_ui/`** (React SPA, port 4000) — Customer dashboard, agent chat interface, admin console
+- **`banking_api_server/`** (Express BFF, port 3001) — Token custodian, session manager, OAuth orchestrator, HITL consent gate, banking resource server
+
+### MCP & Tool Infrastructure
+- **`banking_mcp_server/`** (TypeScript MCP, port 8080) — Online banking (OLB) tools: list_accounts, transfer, deposit, withdraw. Validates tokens via introspection.
+- **`banking_mcp_invest/`** (TypeScript MCP, port 8081) — Investment tools: get_investment_*. Skips introspection (read-only acceptable risk per ADR-0002).
+- **`banking_mcp_gateway/`** (TypeScript RFC 9728 proxy, port 3005) — Routes requests to MCP servers, performs token introspection, RFC 8693 re-exchange for narrowed scopes, PingAuthorize policy enforcement, HITL escalation. Phase 266 credential disposition (api_key, dual_token, bankingdata).
+
+### AI Agent & Consent
+- **`banking_agent_service/`** (Node LangGraph, port 3006) — Reasoning service decoupled from BFF. Driven by BFF for token custody + conversation state. Node agent (canonical agent), separate from langchain_agent.
+- **`banking_hitl_service/`** (Node, port 3009) — Human-in-the-Loop consent service. Manages transaction approval challenges, generates one-time passwords, integrates with PingOne CIBA for backchannel approval.
+- **`langchain_agent/`** (Python, port 8888/8889/8890) — Cross-stack exhibit: LangChain + Ollama agent (deliberately separate from canonical agent). Same RFC 8693 delegation security model.
+
+### Specialized Backends
+- **`banking_mortgage_service/`** (Node, port 8082) — Mortgage demo backend. Consumes api_key credential disposition from gateway (Phase 266).
+
+**Shared concerns:**
+- Token custody, OAuth, sessions → BFF only
+- Configuration via `configStore` singleton (SQLite, in-memory cache, AES-256 encryption for secrets)
+- Secrets vault (Phase 269) → process memory deletion after startup
+- Correlation IDs for request tracing across service boundaries
+- Teach logger for educational debugging output
+
+---
+
+## 9. Key Abstractions & Design Patterns
+
+### Configuration: `configStore` Singleton
+
+**File:** `banking_api_server/services/configStore.js`
+
+The authoritative runtime configuration store — persists app state across restarts. Uses SQLite (`data/config.db`) with in-memory cache layer and encryption for sensitive keys.
+
+**Pattern:**
+- `configStore.get(key)` → read from cache (sync)
+- `configStore.getEffective(key)` → env var (bootstrap) → cache → default value (priority order)
+- Secrets (PingOne client secrets, session keys) are AES-256-GCM encrypted at rest, plaintext in cache
+- Cannot reload from disk without restart; use `jest.isolateModules` for test isolation
+
+**Must read before editing:** `REGRESSION_PLAN.md` §1 "Config UI / configStore" for secret rotation + encryption key changes.
+
+### Credential Disposition: `credentialSwap` (Phase 266)
+
+**File:** `banking_mcp_gateway/src/credentialSwap.ts`
+
+The gateway's credential-swapping layer — converts a user bearer token into the appropriate credential for each backend:
+
+- **`api_key`** — swaps to shared X-API-Key (banking_mortgage_service)
+- **`dual_token`** — RFC 8693 exchanges + posts `id_token` as assertion in MCP body
+- **`bankingdata`** — RFC 8693 exchanges for banking-resource-server audience
+
+**Not in the MCP server** (security boundary: exchange lives in gateway, not in the MCP logic). ADR-0001 clarifies the banking resource server is co-located in the BFF, not separate.
+
+### Tool Registry: `BankingToolRegistry`
+
+**File:** `banking_mcp_server/src/tools/BankingToolRegistry.ts`
+
+Static map of all available tools with their schemas, required scopes, and handlers. Serves as the single source of truth for tool definitions.
+
+**Pattern:**
+- Each tool maps name → { schema, scopes[], handler }
+- `BankingToolProvider.executeTool()` validates params against schema + checks `req.user.scopes`
+- Scope enforcement is **not** a gateway decision; it's local to the MCP server (ADR-0003 does not apply to OLB tools, only to tool calls routed via PingAuthorize)
+
+### Consent State Machine: `transactionConsentChallenge`
+
+**File:** `banking_api_server/services/transactionConsentChallenge.js`
+
+Manages HITL (Human-in-the-Loop) consent for high-value transactions. Generates challenge IDs, persists state in memory, integrates with `banking_hitl_service` for OTP + user notifications.
+
+**Phase 170 enforcement:** POST /api/transactions/* returns 428 Precondition Required if no `consentChallengeId` is present and the transaction exceeds the threshold.
+
+### Scope Topology
+
+Scopes are organized by resource server + domain:
+- **`banking:accounts:read`** → read account list / balance
+- **`banking:accounts:write`** → account operations
+- **`banking:transactions:read`** → transaction history
+- **`banking:transactions:write`** → transfer, deposit, withdraw
+- **`banking:mortgage:read`** → mortgage data
+- **`banking:mortgage:write`** → mortgage operations (api_key disposition via gateway)
+- **Investment scopes** → separate domain in banking_mcp_invest
+
+**Source of truth:** Embedded in PingOne app configuration; provisioned via `npm run pingone:bootstrap`.
+
+### Vault (Phase 269)
+
+**Files:** `banking_api_server/services/vault.js`, gateway + agent services have their own vault loaders
+
+Encrypted secrets store (AES-256) with password deleted from process memory after startup.
+- `VAULT_PATH` → file on disk
+- `VAULT_PASSWORD` → env var at startup, then deleted
+- Allowlist regex prevents `LD_PRELOAD`-style injection
+
+**Boot sequence:** vault load → copy to process.env (allowlist applied) → delete password from process.env.
+
+---
+
+## 10. Implementation Priority
 
 ```
 Phase 1 — Token correctness (no user-facing change)

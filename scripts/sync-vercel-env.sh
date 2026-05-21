@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================================
 # sync-vercel-env.sh — Add missing Vercel environment variables
-# Generated 2026-04-15 from banking_api_server/.env
+# Generated 2026-04-15 from demo_api_server/.env
 #
 # Review each variable below, then run:
 #   bash scripts/sync-vercel-env.sh

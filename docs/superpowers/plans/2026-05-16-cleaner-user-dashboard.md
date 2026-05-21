@@ -304,7 +304,7 @@ git commit -m "feat(dashboard): hide banking column in middle-agent layout behin
 **Files:**
 - Modify: `CHANGELOG.md` (one line under `[Unreleased]`, category `Added`)
 
-- [ ] **Step 1: Manual smoke (services running via `./run-bank.sh`)**
+- [ ] **Step 1: Manual smoke (services running via `./run-demo.sh`)**
 
 Log in as a customer → `/dashboard`. With the agent placement set to **middle** and the agent opened:
 - FF off (default): only the Token Chain rail + agent column are visible; **no** banking column; the agent answers a balance question and the pop-out works.

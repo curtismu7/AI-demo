@@ -701,3 +701,4 @@ deprecated ones) *reject* them. Detailed bundled docs:
 - [reference/jwt-bearer-and-rar.md](reference/jwt-bearer-and-rar.md) — JWT-bearer assertion + RAR `authorization_details` (demo/teaching reference, not wired)
 - [reference/deprecated-flows.md](reference/deprecated-flows.md) — Implicit & ROPC documented as anti-patterns (never wired)
 - [reference/token-exchange-pingone-deep-dive.md](reference/token-exchange-pingone-deep-dive.md) — Ping-internal RFC 8693 constraints (same-environment-only, no refresh token, SPEL attribute mapping)
+- [PingOne: Securing AI Agents (official)](https://developer.pingidentity.com/identity-for-ai/identity/idai-securing-agents-pingone.html) — authoritative PingOne guide: act/may_act SPEL expression, three-token RFC 8693 chain, PingGateway MCP filters (McpProtectionFilter, McpAuditFilter, streamingEnabled), Agent-Consent-Login policy

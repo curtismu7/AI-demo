@@ -122,7 +122,7 @@ ENV_RELEVANT=$(echo "$STAGED" | grep -E \
 
 if [ -n "$ENV_RELEVANT" ]; then
   echo "Env or configStore changed — running coverage check..."
-  (cd banking_api_server && npx jest --testPathPattern='configStore.envCoverage' --no-coverage --forceExit --silent 2>/dev/null)
+  (cd demo_api_server && npx jest --testPathPatterns='configStore.envCoverage' --no-coverage --forceExit --silent 2>/dev/null)
   if [ $? -ne 0 ]; then
     error "configStore env coverage check failed!"
     info "A variable in banking_api_server/.env is not mapped in configStore.getEffective()."

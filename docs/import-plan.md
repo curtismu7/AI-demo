@@ -258,7 +258,7 @@ Step 2 — Check server is stopped
   GET http://localhost:${process.env.PORT || 3001}/api/health/live
     200 → exit 1:
       "The server is running. Stop it before importing:
-         ./run-bank.sh stop   (or: npm stop)
+         ./run-demo.sh stop   (or: npm stop)
        Reason: better-sqlite3 holds an exclusive write lock.
        Importing with the server running will corrupt config.db."
     Connection refused → proceed
@@ -369,7 +369,7 @@ Step 8 — Print completion summary
   Config status:   OK / PARTIAL / INCOMPLETE
   
   Next steps:
-    1. Start the server:  ./run-bank.sh
+    1. Start the server:  ./run-demo.sh
     2. Visit /configure   — page will show "Import verified" if config is OK
   
   To rollback:

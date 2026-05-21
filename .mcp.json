@@ -30,7 +30,12 @@
     },
     "banking-dev": {
       "command": "node",
-      "args": ["/Users/curtismuir/Development/banking/dev_mcp/banking-dev/dist/index.js"]
+      "args": ["/Users/curtismuir/Development/AI-Demo/dev_mcp/banking-dev/dist/index.js"]
+    },
+    "banking-gateway": {
+      "type": "http",
+      "url": "https://api.ping.demo:3005/mcp",
+      "note": "Claude Code as MCP client (Option B/C). The gateway validates the bearer token from Claude Code's Authorization header against PingOne. Requires the gateway to be running (./run.sh) and a valid access token in CLAUDE_BEARER_TOKEN env or set via Claude Code MCP auth."
     }
   }
 }

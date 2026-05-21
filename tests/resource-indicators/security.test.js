@@ -5,7 +5,7 @@
  * Tests security vulnerabilities, injection attacks, and cross-resource prevention.
  */
 
-const resourceIndicatorService = require('../../banking_api_server/services/resourceIndicatorService');
+const resourceIndicatorService = require('../../demo_api_server/services/resourceIndicatorService');
 
 describe('Resource Indicator Security', () => {
   describe('Resource Injection Prevention', () => {
