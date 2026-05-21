@@ -1,0 +1,14 @@
+{
+  "doc_path": "docs/guides/configuration.md",
+  "claims_checked": 47,
+  "claims_passed": 46,
+  "claims_failed": 1,
+  "failures": [
+    {
+      "line": 127,
+      "claim": "PINGONE_MCP_SERVER_URL default is ws://localhost:8080",
+      "expected": "configStore.js FIELD_DEFS has default matching doc default",
+      "actual": "configStore.js FIELD_DEFS line 122 has default 'http://localhost:8000', not 'ws://localhost:8080'"
+    }
+  ]
+}

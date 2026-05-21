@@ -42,7 +42,7 @@ Or as a structured rule:
 
 ## Why this matters
 
-**Catches step-skipping attacks.** Without this rule, an attacker who obtains an intermediate-step exchange token (e.g. `aud=intermediate.2x.bxf.com` from Two-Exchange Step 2) could send it directly to the MCP server and bypass Step 4's narrowing.
+**Catches step-skipping attacks.** Without this rule, an attacker who obtains an intermediate-step exchange token (e.g. `aud=intermediate.2x.ping.demo` from Two-Exchange Step 2) could send it directly to the MCP server and bypass Step 4's narrowing.
 
 The simulated AS enforces this. PingAuthorize must match — otherwise switching `ff_authorize_simulated` from `true` to `false` silently loosens the policy.
 
@@ -58,7 +58,7 @@ After adding the rule to PingAuthorize policy:
    grep "PingOne Authorize.*decision" /tmp/bank-api-server.log
    ```
    should show `decision: PERMIT` for normal chip clicks.
-5. Manual negative test — synthesize a Step 2 token (audience `intermediate.2x.bxf.com`) and call `POST /api/mcp/tool` with it. PingAuthorize should `DENY` with the audience-mismatch reason.
+5. Manual negative test — synthesize a Step 2 token (audience `intermediate.2x.ping.demo`) and call `POST /api/mcp/tool` with it. PingAuthorize should `DENY` with the audience-mismatch reason.
 6. Compare against simulated — flip FF to `true`, repeat steps 4-5. The decision strings should match.
 
 ## Open question

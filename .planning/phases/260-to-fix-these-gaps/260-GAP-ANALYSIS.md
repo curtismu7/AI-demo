@@ -82,7 +82,7 @@
 
 ### Gap 5 — MCP server does NOT do a second token exchange for Resource (step 9)
 
-**Diagram steps 9/9a:** `mcp-olb.bxf.com` is supposed to perform another RFC 8693 exchange to obtain a token targeted at `olb-resource.bxf.com` before calling the banking API. The final token reaching the resource has the full delegation chain: `sub: user1, aud: olb-resource, act: agent1`. For the invest MCP server, it uses a vault to fetch an API key instead (step 9a).
+**Diagram steps 9/9a:** `mcp-olb.ping.demo` is supposed to perform another RFC 8693 exchange to obtain a token targeted at `olb-resource.ping.demo` before calling the banking API. The final token reaching the resource has the full delegation chain: `sub: user1, aud: olb-resource, act: agent1`. For the invest MCP server, it uses a vault to fetch an API key instead (step 9a).
 
 **Current code:** `banking_mcp_server/BankingToolProvider.ts` calls the banking API directly using the token it receives from the gateway. There is no second token exchange step. The 3-hop token chain (`gateway → mcp → resource`) shown in the diagram is only 2 hops in practice (`gateway → mcp`).
 

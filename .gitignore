@@ -8,6 +8,13 @@ build/
 **/dist/
 **/build/
 
+# Plaintext vault password — never commit (secrets.vault is the encrypted store;
+# vault.txt / vault password files hold the decryption key in cleartext)
+vault.txt
+**/vault.txt
+vault-password*
+.vault-password
+
 # Environment files — never commit secrets (templates named *.example are tracked)
 .env
 .env.local
@@ -72,6 +79,7 @@ banking_api_server/data/sessions.db-wal
 secrets.vault
 secrets.vault.tmp
 secrets.vault.audit.log
+secrets.vault.pre-rebootstrap-*
 
 # Temporary test scripts
 banking_api_server/_test_*.js
@@ -141,3 +149,19 @@ banking-export-*.tar.gz.tmp.*
 
 # Local archive folder for old/superseded artifacts
 /.archive/
+
+# Stale vault backups (encrypted secrets — never commit)
+secrets.vault.stale-*.bak
+
+# Local vault-password wrapper for run-bank.sh (no secret stored here; reads .env)
+run-bank-local.sh
+
+# Ad-hoc PingOne worker-credential scratch files — plaintext env/client IDs,
+# never commit (use secrets.vault / .env for real config)
+worker creds
+worker creds.txt
+worker creds*
+
+# banking_mcp_server local dev-data — runtime-generated session/storage state,
+# not source (mirrors the tests/storage/** exclusion above)
+banking_mcp_server/dev-data/

@@ -289,7 +289,7 @@ procedure:
      `SESSION_SECRET` invalidates the encrypted `config.db` at rest —
      you'll need to re-run `setupFresh` or manually re-enter the
      PingOne config.
-3. Restart all services (`./run-bank.sh restart`) so the new vault is
+3. Restart all services (`./run-demo.sh restart`) so the new vault is
    read on next BFF startup.
 
 The CLI prints this warning before any operation that can change the
@@ -689,7 +689,7 @@ gateway restart it WILL fail to open the vault with
 2. Update `VAULT_PASSWORD` in every BFF env AND every gateway env
    — see the "After rotating: update VAULT_PASSWORD before next
    restart" checklist below.
-3. Restart the MCP Gateway: `./run-bank.sh stop && ./run-bank.sh`
+3. Restart the MCP Gateway: `./run-demo.sh stop && ./run-demo.sh`
    (or just the gateway service if you have selective restart wired up).
 
 The gateway does **not** have a `/admin/vault` equivalent in this
@@ -722,7 +722,7 @@ After a successful rotate, update `VAULT_PASSWORD` in every place that
 might run the BFF or MCP Gateway:
 
 1. **`banking_api_server/.env`** (or wherever your shell sources from
-   when you run `./run-bank.sh`).
+   when you run `./run-demo.sh`).
 2. **Your pm2 ecosystem file** (`ecosystem.config.js` env block) if
    you use pm2 for service management.
 3. **Your secret manager** (1Password, SOPS, direnv `.envrc`,

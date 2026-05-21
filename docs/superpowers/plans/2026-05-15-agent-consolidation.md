@@ -1256,8 +1256,8 @@ git -c commit.gpgsign=false commit -m "feat(bff): processAgentMessage drives :30
 
 Confirm `BFF_INTERNAL_SECRET` is set in `banking_api_server/.env` (reuse the
 existing `/internal/id-token` value; `banking_agent_service/.env` symlinks to
-it). Run: `./run-bank.sh restart 2>&1 | tail -5`
-Expected: services start; `./run-bank.sh status` shows Agent Service :3006 OK.
+it). Run: `./run-demo.sh restart 2>&1 | tail -5`
+Expected: services start; `./run-demo.sh status` shows Agent Service :3006 OK.
 
 - [ ] **Step 2: Browser smoke**
 

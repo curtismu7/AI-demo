@@ -14,22 +14,22 @@ The diagrams describe five independently-runnable services plus two external pol
 |---|---------|----------|----------------|
 | 1 | **OLB Application** (BFF + UI) | User-facing; holds user session | `client_id: olb-app` |
 | 2 | **agent1** | AI orchestrator; calls MCP GW; holds LLM + Prompts + PKI Creds | `client_id: agent1` |
-| 3 | **MCP Gateway** | Token-scoping router; prevents agent from calling MCP directly | `client_id: mcp-gw` → `aud: mcp-gw.bxf.com` |
-| 4 | **mcp-olb** | MCP server for OLB tools (balance, transfer, accounts) | `aud: mcp-olb.bxf.com` |
-| 5 | **mcp-invest** | MCP server for investments (balance only) | `aud: mcp-invest.bxf.com` |
+| 3 | **MCP Gateway** | Token-scoping router; prevents agent from calling MCP directly | `client_id: mcp-gw` → `aud: api.ping.demo` |
+| 4 | **mcp-olb** | MCP server for OLB tools (balance, transfer, accounts) | `aud: api.ping.demo` |
+| 5 | **mcp-invest** | MCP server for investments (balance only) | `aud: mcp-invest.ping.demo` |
 | — | **PingAuthorize** | External; guards `tools/list` (client-cred check) + `tools/call` (1:1 tool→scope via OpenAPI) | — |
 | — | **PingOne / PF / AIC** | External; token exchange, CIBA, orchestration | — |
 
 ### Token chain (Page 1 simplified)
 
 ```
-User token        aud: olb-resource.bxf.com
+User token        aud: olb-resource.ping.demo
    ↓ RFC 8693 TX (subject=user, actor=agent1 cred token)
-GW token          aud: mcp-gw.bxf.com   act: { sub: agent1 }
+GW token          aud: api.ping.demo   act: { sub: agent1 }
    ↓ RFC 8693 TX (MCP GW re-exchanges to narrow aud)
-OLB token         aud: mcp-olb.bxf.com  act: { sub: agent1 }  sub: user
+OLB token         aud: api.ping.demo  act: { sub: agent1 }  sub: user
    ↓ Bearer on JSON-RPC
-mcp-olb verifies aud === mcp-olb.bxf.com
+mcp-olb verifies aud === api.ping.demo
 ```
 
 Agent **never holds** the final `mcp-olb` / `mcp-invest` scoped token — MCP Gateway acquires it and forwards requests.
@@ -94,18 +94,18 @@ Responsibilities: receive task request from OLB App → call PingOne to exchange
 
 ### Service 3: MCP Gateway (`banking_mcp_gateway/` — new)
 New lightweight Express + WS proxy.  
-Needs own `package.json`, own `MCP_GW_CLIENT_ID` (client credentials for `aud: mcp-gw.bxf.com`).  
+Needs own `package.json`, own `MCP_GW_CLIENT_ID` (client credentials for `aud: api.ping.demo`).  
 Responsibilities: receive JSON-RPC from agent1 → re-exchange token to target MCP server aud → forward to mcp-olb or mcp-invest → return response.
 
 ### Service 4: mcp-olb (`banking_mcp_server` — rename/refocus)
 Existing `banking_mcp_server/` becomes mcp-olb.  
 Tools: `get_my_accounts`, `get_account_balance`, `get_sensitive_account_details`, `get_my_transactions`, `create_deposit`, `create_withdrawal`, `create_transfer`, `sequential_think`.  
-Add: `/.well-known/oauth-protected-resource` endpoint serving `aud: mcp-olb.bxf.com` + `scopes_supported`.  
-Validate `aud === mcp-olb.bxf.com` on every inbound token.
+Add: `/.well-known/oauth-protected-resource` endpoint serving `aud: api.ping.demo` + `scopes_supported`.  
+Validate `aud === api.ping.demo` on every inbound token.
 
 ### Service 5: mcp-invest (`banking_mcp_invest/` — new TypeScript)
 New MCP server with investment-account tools (at minimum: `get_investment_balance`).  
-Own `package.json`. Validates `aud === mcp-invest.bxf.com`.  
+Own `package.json`. Validates `aud === mcp-invest.ping.demo`.  
 Add: `/.well-known/oauth-protected-resource` serving invest metadata.
 
 ---
@@ -116,7 +116,7 @@ Add: `/.well-known/oauth-protected-resource` serving invest metadata.
 
 **A-1: RFC 9728 on mcp-olb (banking_mcp_server)**
 - Add HTTP endpoint `GET /.well-known/oauth-protected-resource` served alongside the WebSocket port.
-- Document responds with `resource`, `authorization_servers`, `scopes_supported` for `mcp-olb.bxf.com`.
+- Document responds with `resource`, `authorization_servers`, `scopes_supported` for `api.ping.demo`.
 - Add `aud` validation on every inbound `tools/call` token — reject if `aud !== MCP_OLB_RESOURCE_URI`.
 - Env vars needed: `MCP_OLB_RESOURCE_URI`, `PINGONE_ENVIRONMENT_ID`.
 
@@ -145,9 +145,9 @@ banking_mcp_gateway/
 ```
 
 **B-2: Token re-exchange in gateway**
-- Accept inbound JSON-RPC with Bearer token (aud: mcp-gw.bxf.com).
+- Accept inbound JSON-RPC with Bearer token (aud: api.ping.demo).
 - Validate token locally (JWT verify or introspect).
-- Call PingOne `/as/token` with `grant_type=urn:ietf:params:oauth:grant-type:token-exchange` to narrow aud to target MCP server (`mcp-olb.bxf.com` or `mcp-invest.bxf.com`).
+- Call PingOne `/as/token` with `grant_type=urn:ietf:params:oauth:grant-type:token-exchange` to narrow aud to target MCP server (`api.ping.demo` or `mcp-invest.ping.demo`).
 - Forward JSON-RPC to target MCP server with new Bearer token.
 - Return response to agent.
 
@@ -184,7 +184,7 @@ banking_agent_service/
 
 **C-2: Token flow in agent1**
 1. Receive task request with user's access token (from OLB App, forwarded in Authorization header).
-2. Call PingOne token exchange: `subject_token=user_token`, `actor_token=agent_cc_token`, `audience=mcp-gw.bxf.com` → get GW-scoped delegated token.
+2. Call PingOne token exchange: `subject_token=user_token`, `actor_token=agent_cc_token`, `audience=api.ping.demo` → get GW-scoped delegated token.
 3. POST JSON-RPC to MCP Gateway with GW-scoped token.
 4. Stream results to OLB App.
 
@@ -204,7 +204,7 @@ banking_agent_service/
 **D-1: Scaffold `banking_mcp_invest/`**
 - Clone `banking_mcp_server/` structure.
 - Keep only investment-relevant tools (start with `get_investment_balance`).
-- Set `MCP_INVEST_RESOURCE_URI=https://mcp-invest.bxf.com`.
+- Set `MCP_INVEST_RESOURCE_URI=https://mcp-invest.ping.demo`.
 - Serve `/.well-known/oauth-protected-resource` with invest scopes.
 
 ---

@@ -132,7 +132,7 @@ TOKEN_EXCHANGE_AUDIT_ENABLED=true       # Log transaction events
 
 2. **Restart BFF:**
    ```bash
-   ./run-bank.sh
+   ./run-demo.sh
    ```
 
 3. **Verify in UI:**
@@ -181,7 +181,7 @@ sed -i '' 's/^TOKEN_EXCHANGE_MODE=transaction-tokens/# TOKEN_EXCHANGE_MODE=trans
 banking_api_server/.env
 
 # Restart
-./run-bank.sh
+./run-demo.sh
 ```
 
 ### Local Component Reference

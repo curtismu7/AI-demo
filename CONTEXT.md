@@ -8,6 +8,7 @@ Canonical terminology for the Super Banking demo. Use these terms exactly as def
 - [ADR-0001](docs/adr/0001-banking-resource-server-colocated-in-bff.md) — banking_resource_server is co-located in the BFF, not a separate service
 - [ADR-0002](docs/adr/0002-mcp-invest-skips-token-introspection.md) — banking_mcp_invest skips token introspection (read-only acceptable risk)
 - [ADR-0003](docs/adr/0003-pingauthorize-is-sole-bff-tool-gate.md) — PingAuthorize is the sole authoritative MCP tool gate in the BFF; no local scope-policy decision (R1)
+- [ADR-0004](docs/adr/0004-bff-mcp-tool-invocation-pipeline-seam.md) — the BFF [[MCP tool-invocation pipeline]] is one deep module returning an outcome; the route only renders
 
 ---
 
@@ -17,7 +18,7 @@ Canonical terminology for the Super Banking demo. Use these terms exactly as def
 
 The **banking_api_server** on port 3001. The **sole token custodian** in the system — the only service that holds PingOne access/refresh tokens. Everything outbound that needs a token flows through here.
 
-**Not to be confused with**: the "banking resource server" referenced in gateway env vars (`BANKING_RESOURCE_SERVER_BASE_URL`, `BANKING_RESOURCE_SERVER_RESOURCE_URI`) and in Phase 266 paths. That is **the same BFF Express process wearing a different OAuth audience hat** — specifically `routes/resourceServer.js` + `routes/resourceServerCC.js`, called by the gateway with a token re-exchanged to audience `banking-resource-server.bxf.com`. There is no separate `banking_resource_server` codebase.
+**Not to be confused with**: the "banking resource server" referenced in gateway env vars (`BANKING_RESOURCE_SERVER_BASE_URL`, `BANKING_RESOURCE_SERVER_RESOURCE_URI`) and in Phase 266 paths. That is **the same BFF Express process wearing a different OAuth audience hat** — specifically `routes/resourceServer.js` + `routes/resourceServerCC.js`, called by the gateway with a token re-exchanged to audience `banking-resource-server.ping.demo`. There is no separate `banking_resource_server` codebase.
 
 ### gateway
 
@@ -56,6 +57,23 @@ The legacy `AgentConsentModal` posts to `/api/auth/oauth/user/consent` (a confus
 The hard rule: **only the BFF holds tokens**. The SPA never holds, never receives, never sees an access/refresh token. The SPA carries only the `connect.sid` session cookie. All PingOne, MCP, and downstream calls are made from the BFF using tokens it resolves from session state.
 
 Violations break the project's security posture and would require explicit ADR override.
+
+### MCP tool-invocation pipeline
+
+The single deep module behind `POST /api/mcp/tool` in `banking_api_server` —
+`runMcpToolPipeline`. It owns the BFF agent's full tool-call sequence (RFC 8693
+token resolution → the sole authoritative Authorize gate → RFC 7662 session
+introspection → remote MCP call + gateway audit-trail merge, plus the three
+local-fallback hatches). It is the BFF direct path of ARCHITECTURE-TRUTHS T-7
+(the agent that does **not** route through the gateway). The pipeline is pure
+orchestration: it returns a discriminated `Outcome` and never touches Express;
+the route shell renders the outcome and owns the SSE `flowTrace` lifecycle.
+
+**Not** the gateway's routing/disposition path (that is Phase 266, a different
+codebase). **Not** an authorization decision — the Authorize gate inside it
+stays the sole authoritative gate per ADR-0003 / T-2; the pipeline only
+orchestrates the call. Seam rules and the do-not-break verification order:
+[ADR-0004](docs/adr/0004-bff-mcp-tool-invocation-pipeline-seam.md).
 
 ### Phase 266
 

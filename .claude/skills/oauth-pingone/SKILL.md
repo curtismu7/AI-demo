@@ -1,6 +1,6 @@
 ---
 name: oauth-pingone
-description: 'Authoritative PingOne OAuth 2.0 / OIDC guide for ALL grant types. USE FOR: authentication, login, logout, Authorization Code + PKCE, Client Credentials, CIBA backchannel auth, Token Exchange, Device Authorization, refresh token, revocation, introspection, PAR, nonce, state, CSRF, id_token validation, act/may_act claims, scope enforcement, session management, DaVinci, PingOne app config checklist, OAuth error codes. DO NOT USE FOR: calling PingOne Management API to manage users or MFA (use pingone-api-calls); MCP server tool registration (use mcp-server).'
+description: 'Authoritative PingOne OAuth 2.0 / OIDC guide for ALL grant types. USE FOR: authentication, login, logout, Authorization Code + PKCE, Client Credentials, CIBA backchannel auth, Token Exchange, Device Authorization, refresh token, revocation, introspection, PAR, nonce, state, CSRF, id_token validation, act/may_act claims, scope enforcement, session management, DaVinci, PingOne app config checklist, OAuth error codes, hybrid, implicit, ROPC, redirectless, pi.flow, RAR, authorization_details, jwt-bearer. DO NOT USE FOR: calling PingOne Management API to manage users or MFA (use pingone-api-calls); MCP server tool registration (use mcp-server).'
 argument-hint: 'Describe the OAuth flow or token operation you need to implement'
 ---
 
@@ -28,6 +28,12 @@ argument-hint: 'Describe the OAuth flow or token operation you need to implement
 | Revoke token on logout | RFC 7009 `/revoke` | Logout route (`oauthService.revokeToken()`) |
 | Zero-trust token validation | RFC 7662 introspection | `middleware/tokenIntrospection.js` |
 | Reduce redirect round-trip in high-security flows | PAR (`/par`) | Optional — PingOne supports, not yet implemented |
+| Front-channel token + code combined | Hybrid (`code id_token` / `code token` / `code id_token token`) | Demo/teaching reference only — NOT wired in banking (violates token custody). See `reference/hybrid-flow.md` |
+| Embedded login, no browser redirect | Redirectless (`response_mode=pi.flow`, `urn:pingidentity:redirectless`) | Demo/teaching reference only — NOT wired in banking. See `reference/redirectless-pi-flow.md` |
+| Signed-JWT assertion in place of secret/user | JWT-bearer (`urn:ietf:params:oauth:grant-type:jwt-bearer`) | Demo/teaching reference only — NOT wired in banking. See `reference/jwt-bearer-and-rar.md` |
+| Fine-grained structured permissions | RAR (`authorization_details`, RFC 9396) | Demo/teaching reference only — NOT wired in banking (HITL consent used instead). See `reference/jwt-bearer-and-rar.md` |
+| Legacy SPA token-in-fragment | Implicit (`token` / `id_token token`) | ⚠️ Anti-pattern — NEVER wired in banking. See `reference/deprecated-flows.md` |
+| App collects raw username/password | ROPC (`password`) | ⚠️ Anti-pattern — NEVER wired in banking. See `reference/deprecated-flows.md` |
 
 ---
 
@@ -398,6 +404,38 @@ const body = new URLSearchParams({
 // T3: sub = user sub, act = { sub: <agent-sub>, client_id: <agent-id> }
 ```
 
+### 7b-1. PingOne single-resource-per-request rule (RFC 8707) — load-bearing
+
+**PingOne rejects any token request whose requested scopes span more than one
+resource server with `400 invalid_scope: "May not request scopes for multiple
+resources"`.** This applies to every token endpoint call, not just exchanges:
+`/authorize` with `&resource=`, `client_credentials`, and **each individual leg
+of a multi-step RFC 8693 chain**.
+
+Rules of thumb for this codebase:
+
+- **Never set `audience` and omit `scope` on a `client_credentials` request** if
+  the worker app is granted scopes on >1 resource. PingOne then tries every
+  entitled scope, they span resources, and it 400s. Always pass an explicit
+  single-resource `scope` (see `getClientCredentialsTokenAs(..., scope)`).
+- **In a two-exchange delegation chain, each exchange requests scopes for ONE
+  resource only.** The intermediate-audience exchange (Exchange #1) requests
+  only the scope unique to the Intermediate resource
+  (`two_exchange_intermediate_scope`, default `banking:two-exchange:intermediate`);
+  the actor-CC tokens use `agent_gateway_cc_scope` / `mcp_gateway_cc_scope`. The
+  real tool scopes (`banking:read` + `banking:mcp:invoke`, which span resources)
+  belong **only** at the final exchange against the final audience — never at an
+  intermediate leg.
+- A worker/AI-agent app *should* still be granted scopes across multiple
+  resources (each leg needs its own). The fix for the multi-resource error is
+  always "request one resource's scope per call", never "remove grants".
+- configStore CC/exchange scope defaults are kept in SYNC with the provisioner's
+  granted scopes — change one end, change the other (SYNC comments mark both).
+
+This rule has bitten three distinct code paths (`/authorize`, the two actor-CC
+tokens, and Exchange #1's subject leg). See REGRESSION_PLAN.md §1 row "PingOne
+authorize `resource` + mixed scopes" and the 2026-05-15 / 2026-05-16 §4 entries.
+
 ### 7c. act / may_act Claims (RFC 8693 §4.1)
 
 ```javascript
@@ -616,6 +654,38 @@ res.redirect(`${AUTH_BASE}/authorize?client_id=${CLIENT_ID}&request_uri=${encode
 
 ---
 
+## 18. Extended Grant Types (reference index)
+
+The flows below are **demo/teaching reference only — none are wired into the
+banking app.** They exist so an agent can recognize, explain, and (for the
+deprecated ones) *reject* them. Detailed bundled docs:
+
+| Flow | Reference file | Wired in banking? |
+|---|---|---|
+| OIDC Hybrid (`code id_token` / `code token` / `code id_token token`) | `reference/hybrid-flow.md` | ❌ No (violates token custody) |
+| Redirectless (`response_mode=pi.flow`) | `reference/redirectless-pi-flow.md` | ❌ No |
+| JWT-bearer assertion + RAR (`authorization_details`) | `reference/jwt-bearer-and-rar.md` | ❌ No (HITL consent used instead) |
+| Implicit + ROPC (anti-patterns) | `reference/deprecated-flows.md` | ❌ Never |
+| RFC 8693 PingOne deep dive | `reference/token-exchange-pingone-deep-dive.md` | ✅ Basic exchange is (§7) |
+
+### ⚠️ Critical PingOne constraints (read before designing with these)
+
+- **Token Exchange is same-environment-only.** `subject_token` /
+  `actor_token` MUST be an access or ID token previously issued by the
+  **same PingOne environment**. A token from another environment (even the
+  same organization) or any external AS is **not supported**.
+- **Token Exchange returns NO refresh token.** PingOne never includes a
+  `refresh_token` in a token-exchange response — re-run the exchange to mint
+  a fresh scoped token; never try to "refresh" a T2/T3.
+- **Token Exchange is opt-in per app** and requested scopes must be added to
+  the exchanging application (same processing as an authorization request).
+- **Hybrid / Implicit expose tokens to the browser** — incompatible with the
+  BFF token-custody rule; reference only, never adopt in `routes/oauth*.js`.
+- **ROPC puts the raw password in the app** — bypasses MFA / DaVinci / SSO;
+  anti-pattern, never adopt.
+
+---
+
 ## See Also
 
 - [.cursor/rules/oauth-references/python-java.md](../../.cursor/rules/oauth-references/python-java.md) — Python Flask + Java Spring Security examples
@@ -626,3 +696,9 @@ res.redirect(`${AUTH_BASE}/authorize?client_id=${CLIENT_ID}&request_uri=${encode
 - [regression-guard skill](../regression-guard/SKILL.md) — REGRESSION_PLAN §1 OAuth-protected files; never hardcode `localhost` in callbacks
 - [typescript-banking skill](../typescript-banking/SKILL.md) — TS/JS style for OAuth handlers and services
 - [mcp-server skill](../mcp-server/SKILL.md) — MCP tool auth challenge, token chain
+- [reference/hybrid-flow.md](reference/hybrid-flow.md) — OIDC Hybrid response types (demo/teaching reference, not wired)
+- [reference/redirectless-pi-flow.md](reference/redirectless-pi-flow.md) — PingOne `response_mode=pi.flow` (demo/teaching reference, not wired)
+- [reference/jwt-bearer-and-rar.md](reference/jwt-bearer-and-rar.md) — JWT-bearer assertion + RAR `authorization_details` (demo/teaching reference, not wired)
+- [reference/deprecated-flows.md](reference/deprecated-flows.md) — Implicit & ROPC documented as anti-patterns (never wired)
+- [reference/token-exchange-pingone-deep-dive.md](reference/token-exchange-pingone-deep-dive.md) — Ping-internal RFC 8693 constraints (same-environment-only, no refresh token, SPEL attribute mapping)
+- [PingOne: Securing AI Agents (official)](https://developer.pingidentity.com/identity-for-ai/identity/idai-securing-agents-pingone.html) — authoritative PingOne guide: act/may_act SPEL expression, three-token RFC 8693 chain, PingGateway MCP filters (McpProtectionFilter, McpAuditFilter, streamingEnabled), Agent-Consent-Login policy

@@ -119,6 +119,57 @@ last-resort floor so chips and known phrases never produce a dead-end reply.
 - Default + env mapping: `banking_api_server/services/configStore.js` (`FF_HEURISTIC_ENABLED`, default `'true'`)
 - Agent definitions: [CONTEXT.md](../CONTEXT.md) "agent" (qualify which agent — three exist)
 
+**Amendment — 2026-05-19, five-mode model.** The original T-3 text above
+(preserved verbatim for history) stated the heuristic *always* runs as a
+deterministic floor. The **five-mode agent provider** feature
+(`docs/superpowers/specs/2026-05-18-five-mode-agent-provider-design.md`)
+amends this in **one narrow respect**: the heuristic **ROUTING fast-path** is
+now **mode-dependent**, resolved by
+`banking_api_server/services/agentModeResolver.js`:
+
+- **ON** for modes `heuristics` and `heuristics_helix`.
+- **OFF** for modes `helix_google`, `chatgpt`, and `claude` (these route
+  straight to the LLM/platform; no heuristic routing pre-empt).
+
+This amends **ONLY the routing-convenience role** (the ~200-300ms chip/known-
+phrase fast-path). The deterministic transfer / HITL / step-up **SAFETY
+enforcement was never the heuristic's authority** — it is server-side
+(`banking_api_server/services/mcpToolAuthorizationService.js`,
+`banking_api_server/services/transactionConsentChallenge.js`, and the Authorize
+gate; REGRESSION_PLAN §1 / Phase 170) and is **UNCHANGED and mode-independent**.
+No agent mode can relax it.
+
+`banking_api_server/services/llmProviderResolver.js` **remains the single
+low-level provider resolver** (`Heuristic → Helix → Ollama-only-if-configured`,
+plus the openai/anthropic pass-through). `agentModeResolver` does not replace
+it: it maps the user-facing mode onto `llmProviderResolver` and onto the
+heuristic-routing primitive `ff_heuristic_enabled`. No module may inline a
+mode→primitive mapping.
+
+**Back-compat:** when `agent_mode` is unset, behavior is **identical to before**
+— legacy `ff_heuristic_enabled` precedence applies exactly as the original T-3
+text describes.
+
+**Mode 1 (`heuristics`) has NO LLM.** An unrecognised query returns the
+deterministic `nlIntentParser.buildCatalogMessage()` capability catalog — never
+an LLM fallthrough. This is the one mode where the original "heuristic is the
+last-resort floor" guarantee is the *entire* path, not merely the floor.
+
+**Modes 4/5 (`chatgpt`/`claude`) carry an `external_wiring` sub-shape:**
+
+- `bff` — the BFF retains the RFC 8693 exchange + the full token chain
+  (per-tool exchange + `act` claim intact, surfaced in the Token Chain UI).
+- `platform` — the platform drives the agent loop via the MCP Gateway using a
+  BFF-minted gateway-audience token; the per-tool exchange and `act` claim are
+  **lost upstream** (an intentional educational "delegation lost" surface), but
+  the MCP Gateway D-05 invariant and PingAuthorize **STILL enforce** every tool
+  call. Implemented in `banking_api_server/services/platformAgentRuntime.js`.
+
+- Related: T-2 (the authorization decision is external and authoritative — the
+  reason the mode-dependent routing change is safe), T-4 (PingOne performs the
+  exchange the `bff` wiring retains).
+
+
 ---
 
 ## T-4 — PingOne performs token exchange; the Gateway, agents, and MCP servers only *request* it
@@ -316,6 +367,98 @@ concurrency-safe — or it converts dormant defects into live ones.
 - Where: [langchain-agent/SKILL.md](../.claude/skills/langchain-agent/SKILL.md) (per-session worker model), code-review fix reports under `.planning/REVIEW-FIX-*`
 - Code: `langchain_agent/src/api/message_processor.py` (per-session `_SessionWorker`), `src/mcp/connection.py` (CR-06 reader/demux), `src/agent/mcp_tool_provider.py` (WR-06 ContextVar tracer), `src/api/websocket_handler.py` (WR-01 BL-04 session-trust)
 - Enforced as do-not-break: `REGRESSION_PLAN.md` §1 ("per-session message ordering must never reorder a conversation's turns"; "per-session worker reaper must be started at init")
+
+---
+
+## T-9 — Every PingOne client connection authenticates with `client_secret_post`; the Worker Token CC client is the only `basic` exception
+
+All confidential-client calls to PingOne — the Authorization Code token
+exchange, RFC 8693 token exchange (MCP exchanger), the AI-agent CC token, the
+MCP-gateway token endpoint, and token introspection (which authenticates with
+the **user** token, not the worker) — send credentials as
+`client_secret_post` (`client_id` + `client_secret` in the form body). There
+is exactly **one** exception: the **Worker Token CC client**
+(`PINGONE_WORKER_TOKEN_*` — the PingOne "Super Banking Worker Token" app used
+for Management API calls and redirect-uri/app-config reads), which
+authenticates with `client_secret_basic`.
+
+Mismatched auth methods are *the* recurring failure mode: PingOne rejects with
+`invalid_client: "Unsupported authentication method"`, surfacing downstream as
+`delegation_chain_broken` / `actor_token_invalid` / 502 on `/api/mcp/tool` and
+`session_persist_failed` on admin login. Standardizing removes the entire
+class. Code reflects the truth as the **default**: non-worker auth-method
+resolvers default to `'post'`; only the worker CC resolvers default to
+`'basic'`. New connections inherit `post` automatically.
+
+**Naive reading that is wrong:** "auth method is per-app, set it however each
+PingOne app happens to be configured" — that is exactly what produced the
+inconsistent `basic`/`post` mix that broke token exchange this session. The
+invariant is the other way round: the *code and config* assert `post`
+everywhere, and PingOne apps are configured to match; the single deliberate
+deviation (worker CC = `basic`) is explicit, commented, and isolated to the
+`getAgentClientCredentialsToken*` functions.
+
+- Code: `banking_api_server/services/agentMcpTokenService.js` (`aiAgentAuthMethod`, `mcpExchangerAuthMethod` — default `'post'`), `banking_api_server/services/oauthService.js` `getAgentClientCredentialsToken[WithExpiry]` (worker CC — default `'basic'`, the exception), `banking_api_server/.env` (`MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD`, `PINGONE_INTROSPECTION_AUTH_METHOD`, `PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD` = `post`)
+- Related: T-4 (PingOne performs the token exchange — this is how the request authenticates to it)
+- Glossary: [CONTEXT.md](../CONTEXT.md) "token custody", [oauth-pingone/SKILL.md](../.claude/skills/oauth-pingone/SKILL.md) (client auth methods)
+
+---
+
+## T-10 — A PingOne token request is single-resource: every scope asked for must live on the one target audience's resource
+
+PingOne's `/as/token` endpoint (client_credentials AND RFC 8693 token
+exchange) rejects any request whose requested scopes span **more than one
+resource server**, with `invalid_scope: "May not request scopes for multiple
+resources"`. A token is minted for exactly one audience; every scope in that
+request must be a scope **defined on that audience's resource**. This is not
+a bug to work around — it is how PingOne resource-scoping works.
+
+Two concrete traps this caused (cost most of a debugging session):
+
+- **Empty scope ≠ "no constraint".** A CC request that omits `scope`
+  entirely makes PingOne default to *all* the app's granted scopes. If the
+  app is granted scopes across two resources, the default-all request
+  immediately violates the single-resource rule. The MCP Exchanger actor-CC
+  mint must therefore request an *explicit single-resource* scope
+  (`pingone_mcp_token_exchanger_client_scopes` default `banking:mcp:invoke`),
+  never empty.
+- **Appending a "policy-required" scope after audience validation
+  re-introduces a cross-resource scope.** `agentMcpTokenService` validates
+  `finalScopes` against the target audience (RFC 8707) and then *unconditionally
+  adds* `banking:mcp:invoke` because the MCP Gateway policy requires it. That
+  scope is only valid if it **also exists on the exchange's target resource**
+  (`aud=mcp-server.ping.demo`). The fix is not to drop the scope (the gateway
+  needs it) — it is to ensure `banking:mcp:invoke` is **provisioned onto the
+  MCP-server resource itself** (mirroring what was already done for the
+  Two-Exchange resources), so one single-audience token can legitimately
+  carry both the tool scope and `banking:mcp:invoke`.
+
+**Naive reading that is wrong:** "the token just needs the scopes the tool
+requires; PingOne will sort out the resources." It will not — it rejects the
+whole request. Designing an RFC 8693 hop means first asking *which single
+resource is this token's audience, and does every scope I request exist on
+that resource?* If a scope must travel through multiple hops, it must be
+provisioned (mirrored) onto every resource that is an exchange audience along
+the way. Scope vocabularies are per-resource and do not cascade.
+
+**Authoritative source + the exchange-path nuance (verified 2026-05-17):**
+PingOne docs —
+<https://docs.pingidentity.com/pingone/applications/p1_resource_scopes.html>.
+The doc states multi-custom-resource requests are *configurable* via the
+application option **"Request scopes to access multiple resources"**, and that
+the error for the disabled case is `"May not request scopes for multiple
+custom resources"`. **Critical caveat:** that doc covers *authorization
+requests* and is **silent on RFC 8693 token exchange**. Empirically (this T-10
+plus three §4 incidents 2026-05-15/16) our **token-exchange** requests fail
+with `"May not request scopes for multiple resources"` *regardless of that app
+option* — so for the exchange path, treat single-resource as a hard
+invariant the app setting does **not** lift. Do not design an exchange flow
+that depends on the multi-resource option until/unless a test proves it
+applies to `grant_type=urn:...:token-exchange`.
+
+- Code: `banking_api_server/services/agentMcpTokenService.js` (`exchangeTokenRfc8693`, the `banking:mcp:invoke` append ~line 1015), `banking_api_server/services/oauthService.js` `getMcpExchangerToken` (explicit single-resource scope), `banking_api_server/services/pingoneProvisionService.js` (`mcpScopes` — `banking:mcp:invoke` mirrored onto the MCP-server resource; Two-Exchange resources do the same "for exchange compatibility"), `configStore.js` (`pingone_mcp_token_exchanger_client_scopes` default `banking:mcp:invoke`)
+- Related: T-4 (PingOne performs the exchange), T-5 (every hop validates `aud` independently — this is the scope-side counterpart: every hop's scopes must match that hop's resource), T-9 (the auth-method invariant on the same token requests)
+- Skill: [pingone-api-calls/SKILL.md](../.claude/skills/pingone-api-calls/SKILL.md) (PUT-not-PATCH + this single-resource scope rule)
 
 ---
 

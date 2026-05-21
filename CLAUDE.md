@@ -10,10 +10,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Start all services
 ```bash
-./run-bank.sh               # start API (3001), UI (4000), MCP (8080), LangChain agent (8888)
-./run-bank.sh stop          # stop all
-./run-bank.sh status        # health check
-./run-bank.sh tail all      # tail all logs interleaved
+./run.sh               # start API (3001), UI (4000), MCP (8080), LangChain agent (8888)
+./run.sh stop          # stop all
+./run.sh status        # health check
+./run.sh tail all      # tail all logs interleaved
 ```
 
 ### Fresh install / migration (one-command)
@@ -23,12 +23,12 @@ npm run setup:fresh                              # brand-new install
 npm run setup:fresh -- /path/to/archive.tar.gz   # migrate from another machine
 ```
 
-`setup:fresh` chains: optional `data:import` (when tar passed), then `bootstrapPingOne`. The bootstrap step pops a localhost form for PingOne worker creds (or `--no-browser` for terminal). It provisions all 7 apps, 3 resource servers, ~25 scopes, 2 demo users with passwords, and writes credentials to `banking_api_server/.env` while preserving `SESSION_SECRET` so `config.db` stays decryptable. Idempotent — re-running is safe.
+`setup:fresh` chains: optional `data:import` (when tar passed), then `bootstrapPingOne`. The bootstrap step pops a localhost form for PingOne worker creds (or `--no-browser` for terminal). It provisions all 7 apps, 3 resource servers, ~25 scopes, 2 demo users with passwords, and writes credentials to `demo_api_server/.env` while preserving `SESSION_SECRET` so `config.db` stays decryptable. Idempotent — re-running is safe.
 
 Underlying scripts (still callable independently):
 
 ```bash
-cd banking_api_server
+cd demo_api_server
 npm run data:import -- archive.tar.gz   # import only, no bootstrap
 npm run pingone:bootstrap               # bootstrap only, browser form
 npm run pingone:bootstrap:ci            # bootstrap from PINGONE_BOOTSTRAP_* env vars
@@ -55,15 +55,15 @@ failure modes in fresh shells:
    export NVM_DIR="$HOME/.nvm"
    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
    ```
-   `run-bank.sh` does this itself (see `ensure_node_runtime()`) and so will
+   `run.sh` does this itself (see `ensure_node_runtime()`) and so will
    self-recover. The migration scripts at
-   [`banking_api_server/scripts/{export,import}MigrationBundle.js`](banking_api_server/scripts/)
+   [`demo_api_server/scripts/{export,import}MigrationBundle.js`](demo_api_server/scripts/)
    pre-flight `process.versions.node` and exit with the recovery snippet baked
    into their error.
 
-2. **`./run-bank.sh` is repo-local** — it must be invoked from the repo root.
+2. **`./run.sh` is repo-local** — it must be invoked from the repo root.
    When walking a user through setup, always include `cd /path/to/banking-demo`
-   before suggesting `./run-bank.sh`. The script itself uses `BASEDIR=$(cd "$(dirname "$0")" && pwd)`
+   before suggesting `./run.sh`. The script itself uses `BASEDIR=$(cd "$(dirname "$0")" && pwd)`
    to find its own files, so a different cwd doesn't matter once the script is
    running — but the *invocation* still needs the relative path or absolute path.
 
@@ -74,29 +74,29 @@ creates the same `wrong major in this shell` confusion later.
 
 ### Node services and what each needs to start
 
-There are **eight** Node services (`banking_mortgage_service` became a live
+There are **eight** Node services (`demo_mortgage_service` became a live
 backend in Phase 267, wired behind the MCP Gateway's api_key disposition). The
 naive "run `npm install` in three of them" approach (which the README used to
 recommend) leaves the rest with missing `node_modules` or missing `dist/`,
 producing cryptic `MODULE_NOT_FOUND` and
-`Cannot find module '.../dist/index.js'` errors at startup. `run-bank.sh` now
+`Cannot find module '.../dist/index.js'` errors at startup. `run.sh` now
 auto-installs and auto-builds all eight via the `SVC_LIST` / `SVC_BUILD` /
 `SVC_INSTALL_FLAGS` parallel arrays in its dependency-check loop — keep that
 table in sync when adding a service.
 
 | Service | Port | Type | Install needs | Build needs (`tsc`) |
 |---|---|---|---|---|
-| `banking_api_server`   | 3001 | Plain JS    | `npm install` | — |
-| `banking_mcp_server`   | 8080 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
-| `banking_api_ui`       | 4000 | React (CRA) | `npm install --legacy-peer-deps` | — (CRA dev server) |
-| `banking_mcp_gateway`  | 3005 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
-| `banking_hitl_service` | 3009 | Plain JS    | `npm install` | — |
-| `banking_agent_service`| 3006 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
-| `banking_mcp_invest`   | 8081 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
-| `banking_mortgage_service` | 8082 | Plain JS | `npm install` | — |
+| `demo_api_server`   | 3001 | Plain JS    | `npm install` | — |
+| `demo_mcp_server`   | 8080 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
+| `demo_api_ui`       | 4000 | React (CRA) | `npm install --legacy-peer-deps` | — (CRA dev server) |
+| `demo_mcp_gateway`  | 3005 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
+| `demo_hitl_service` | 3009 | Plain JS    | `npm install` | — |
+| `demo_agent_service`| 3006 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
+| `demo_mcp_invest`   | 8081 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
+| `demo_mortgage_service` | 8082 | Plain JS | `npm install` | — |
 | `langchain_agent`      | 8888 (uvicorn) + 8889 (chat WS) + 8890 (health/inspector) | Python | `pip install -r requirements.txt` (separate concern) | — |
 
-Two recurring failure modes to watch for when adding or modifying service launches in `run-bank.sh`:
+Two recurring failure modes to watch for when adding or modifying service launches in `run.sh`:
 
 - **Don't guard launches with `[[ -f dist/index.js ]]`** — if dist is missing the
   service silently never starts and the user has no idea why. Let the dependency
@@ -107,8 +107,8 @@ Two recurring failure modes to watch for when adding or modifying service launch
 
 ### Build
 ```bash
-cd banking_api_ui && npm run build        # required after any UI change — exit must be 0
-cd banking_mcp_server && npm run build    # tsc compile; required after any MCP server change
+cd demo_api_ui && npm run build        # required after any UI change — exit must be 0
+cd demo_mcp_server && npm run build    # tsc compile; required after any MCP server change
 ```
 
 ### Tests
@@ -119,12 +119,12 @@ npm run test:api-server                    # BFF tests only
 npm run test:mcp-server                    # MCP unit tests
 npm run test:ui                            # React component tests (CI mode)
 
-# Inside banking_api_server/ — useful for targeted runs:
+# Inside demo_api_server/ — useful for targeted runs:
 npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration
 npx jest --testPathPattern='step-up-gate|authorize-gate'
 npm run test:session
 
-# E2E (from banking_api_ui/):
+# E2E (from demo_api_ui/):
 npm run test:e2e:ui:smoke     # fast smoke — customer dashboard + landing
 npm run test:e2e:admin
 ```
@@ -135,56 +135,56 @@ npm run test:e2e:admin
 
 | Path | Role |
 |------|------|
-| `banking_api_ui/` | React SPA (CRA); BFF calls via proxy to API |
-| `banking_api_server/` | Express BFF — PingOne OAuth, sessions, banking APIs |
-| `banking_mcp_server/` | MCP tool server (WebSocket); not deployed on Vercel |
+| `demo_api_ui/` | React SPA (CRA); BFF calls via proxy to API |
+| `demo_api_server/` | Express BFF — PingOne OAuth, sessions, banking APIs |
+| `demo_mcp_server/` | MCP tool server (WebSocket); not deployed on Vercel |
 | `langchain_agent/` | Optional LangChain agent |
 | `REGRESSION_PLAN.md` | **Authoritative** do-not-break list + bug fix log |
 | `.cursor/rules/regression-guard.mdc` | Cursor rule mirroring regression checks |
 | `.claude/skills/` | Domain skills (OAuth, MCP, Vercel, PingOne API, TypeScript) |
 
-**Ports** (authoritative — see `REGRESSION_PLAN.md` §3 and `run-bank.sh`):
+**Ports** (authoritative — see `REGRESSION_PLAN.md` §3 and `run.sh`):
 - **External (`api.ping.demo` HTTPS):** BFF `:3001`, UI `:4000`
 - **Loopback only:** MCP `:8080`, MCP Invest `:8081`, Mortgage `:8082`, LangChain `:8888` (+ `:8889` chat WS + `:8890` health/inspector), MCP Gateway `:3005`, Agent `:3006`, HITL `:3009`
-- `banking_api_ui/.env` `REACT_APP_API_PORT=3001` must match the BFF port.
+- `demo_api_ui/.env` `REACT_APP_API_PORT=3001` must match the BFF port.
 
 ---
 
 ## Architecture
 
 ### Token custody rule
-Tokens are **never exposed to the browser**. The BFF (`banking_api_server`) is the sole token custodian. The React SPA holds only an httpOnly session cookie (`connect.sid`). Every BFF call uses `bffAxios` (cookie-based, no `Authorization` header from the browser).
+Tokens are **never exposed to the browser**. The BFF (`demo_api_server`) is the sole token custodian. The React SPA holds only an httpOnly session cookie (`connect.sid`). Every BFF call uses `bffAxios` (cookie-based, no `Authorization` header from the browser).
 
 ### Request flow: MCP tool call
 ```text
 Browser → (cookie) → BFF (agentMcpTokenService.js)
   → RFC 8693 Token Exchange with PingOne
-  → WebSocket ws:// → banking_mcp_server
+  → WebSocket ws:// → demo_mcp_server
       → BankingToolProvider.executeTool()
-      → BankingAPIClient → banking_api_server /api/...
+      → BankingAPIClient → demo_api_server /api/...
 ```
 
 ### Key service files
 | File | Role |
 |------|------|
-| `banking_api_server/services/configStore.js` | Singleton runtime config — `getEffective(key)` resolves env → KV/SQLite. Never read env vars directly in route handlers. |
-| `banking_api_server/middleware/auth.js` | JWT/session token validation; sets `req.user`. |
-| `banking_api_server/services/agentMcpTokenService.js` | Resolves MCP access token via RFC 8693 exchange; attaches `tokenEvents` for UI Token Chain. |
-| `banking_api_server/services/mcpWebSocketClient.js` | BFF ↔ MCP WebSocket connection. |
-| `banking_mcp_server/src/tools/BankingToolRegistry.ts` | Static map of all tool names → definitions (schema, scopes, handler). Add tools here. |
-| `banking_mcp_server/src/tools/BankingToolProvider.ts` | Executes tools: validates params, checks scopes, calls `BankingAPIClient`. |
-| `banking_api_ui/src/services/bffAxios.js` | Axios instance for BFF calls — import this instead of plain `axios`. |
-| `banking_api_server/data/store.js` | In-memory banking data store (users, accounts, transactions). |
+| `demo_api_server/services/configStore.js` | Singleton runtime config — `getEffective(key)` resolves env → KV/SQLite. Never read env vars directly in route handlers. |
+| `demo_api_server/middleware/auth.js` | JWT/session token validation; sets `req.user`. |
+| `demo_api_server/services/agentMcpTokenService.js` | Resolves MCP access token via RFC 8693 exchange; attaches `tokenEvents` for UI Token Chain. |
+| `demo_api_server/services/mcpWebSocketClient.js` | BFF ↔ MCP WebSocket connection. |
+| `demo_mcp_server/src/tools/BankingToolRegistry.ts` | Static map of all tool names → definitions (schema, scopes, handler). Add tools here. |
+| `demo_mcp_server/src/tools/BankingToolProvider.ts` | Executes tools: validates params, checks scopes, calls `BankingAPIClient`. |
+| `demo_api_ui/src/services/bffAxios.js` | Axios instance for BFF calls — import this instead of plain `axios`. |
+| `demo_api_server/data/store.js` | In-memory banking data store (users, accounts, transactions). |
 
 ### Module system by package
-- `banking_api_server/`: CommonJS (`require`/`module.exports`)
-- `banking_api_ui/src/`: ES modules + JSX in `.js` files (CRA)
-- `banking_mcp_server/src/`: TypeScript 5 strict, compiled to `dist/`
+- `demo_api_server/`: CommonJS (`require`/`module.exports`)
+- `demo_api_ui/src/`: ES modules + JSX in `.js` files (CRA)
+- `demo_mcp_server/src/`: TypeScript 5 strict, compiled to `dist/`
 
 ### Vercel deployment
-- `api/handler.js` — one-liner that re-exports `banking_api_server/server.js`; all `/api/*` routes rewrite here via `vercel.json`
-- React build served from `banking_api_ui/build/` as static; SPA fallback to `index.html`
-- `banking_mcp_server` is **not** on Vercel — runs separately (Docker/Railway)
+- `api/handler.js` — one-liner that re-exports `demo_api_server/server.js`; all `/api/*` routes rewrite here via `vercel.json`
+- React build served from `demo_api_ui/build/` as static; SPA fallback to `index.html`
+- `demo_mcp_server` is **not** on Vercel — runs separately (Docker/Railway)
 - Session store: Upstash REST KV on Vercel; TCP Redis locally; SQLite fallback
 
 ---
@@ -193,7 +193,7 @@ Browser → (cookie) → BFF (agentMcpTokenService.js)
 
 1. **Read** [REGRESSION_PLAN.md](REGRESSION_PLAN.md) §0–1 before editing listed files. State what you will **not** break.
 2. **Minimal diff** — name the component/element; do not refactor unrelated code.
-3. **After any `banking_api_ui` UI edit:** run `npm run build` in `banking_api_ui/`; exit code must be **0**.
+3. **After any `demo_api_ui` UI edit:** run `npm run build` in `demo_api_ui/`; exit code must be **0**.
 4. **Emoji rule.** Banking apps are professional. The **only** emojis permitted anywhere — UI text, docs, skills, code, comments — are `⚠️` (warning), `✅` (green check), `❌` (red X). Remove any other emoji you encounter in button labels, status text, headers, and descriptions. CSS icons / semantic HTML only for everything else. See [REGRESSION_PLAN.md §0](REGRESSION_PLAN.md#0-ui-style-guidelines).
 5. **Default host:** `api.ping.demo` is the canonical local host (BFF `https://api.ping.demo:3001`, UI `https://api.ping.demo:4000`, HTTPS via `mkcert`). Use it in all skills, docs, examples, and PingOne app Redirect URIs. Users can override via the `/setup` page (writes configStore) or `.env` (`PUBLIC_APP_URL`, `REACT_APP_CLIENT_URL`, `CORS_ORIGIN`). Code **must not** hardcode `localhost:3001` / `localhost:4000` in `routes/oauth*.js` — read the configured host (REGRESSION_PLAN §1 "OAuth redirect origin").
 6. **Bug fixes:** add an entry to `REGRESSION_PLAN.md` §4 (Bug Fix Log) per the template in the regression-guard rule.
@@ -311,7 +311,7 @@ Even when all code and configuration above is correct, the returned MCP token ma
    - OR verify if PingOne automatically emits `act` when `may_act.sub` matches the requesting client's `client_id`
 
 **Debugging token exchange failures:**
-- Check `/tmp/bank-api-server.log` for `[McpExchangerToken]` log entries
+- Check `/tmp/demo-api.log` for `[McpExchangerToken]` log entries
 - If `act absent` appears in Token Chain UI → PingOne policy may not emit `act` claims (expected behavior)
 - Verify PingOne app is type `AI_AGENT` and has correct scopes + authentication method
 - Verify actor token is obtained: log should show `[McpExchangerToken] ✅ Token obtained`
@@ -351,14 +351,14 @@ Even when all code and configuration above is correct, the returned MCP token ma
 
 ## Quick verification checklist (UI + API)
 
-- `cd banking_api_ui && npm run build` → **0**
+- `cd demo_api_ui && npm run build` → **0**
 - No new unhandled rejections / noisy `console.error` in flows you changed
 - If OAuth touched: admin login → `/admin`; user login → `/dashboard`; callbacks resolve to `https://api.ping.demo:4000` (the configured default) — never a hardcoded `localhost`
 - If agent/MCP touched:
   - FAB visibility and agent sidebar in `/dashboard`
   - Click a banking tool (e.g., "🏦 My Accounts") → Token Chain panel shows token exchange events
   - Verify `act` claim is present: Token Chain shows `✅ act valid` (not `⚠️ act absent`)
-  - Check `/tmp/bank-api-server.log` for `[McpExchangerToken] ✅ Token obtained` (not ❌ Failed)
+  - Check `/tmp/demo-api.log` for `[McpExchangerToken] ✅ Token obtained` (not ❌ Failed)
   - **MCP results tracking:** Query `/api/app-events?category=mcp` to see tool calls, completions, AND results logged
   - If token is expired in Token Chain: MCP call fails before reaching server (fix: logout/login to get fresh token)
   - If HITL enabled: consent dialog appears before tool execution per `REGRESSION_PLAN.md`

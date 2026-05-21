@@ -1,6 +1,6 @@
 ---
 name: pingone-api-calls
-description: 'Patterns for calling PingOne Management API from banking_api_server. USE FOR: read user, update user attributes, p1:read:user, p1:update:user, list users, create user, delete user, MFA device enrollment, enable/disable MFA, PingOne Management API /v1/environments, /users endpoint, worker app token calls, admin PingOne REST API, new service file, new route calling PingOne, error handling for PingOne responses, existing services (mfaService.js, pingoneManagementService.js, pingoneUserService.js, pingoneBootstrapService.js). DO NOT USE FOR: OAuth login, token exchange, or session flows (use oauth-pingone); MCP server tools (use mcp-server); session/cookie patterns (use bff-sessions); HITL/consent (use hitl-consent).'
+description: 'Patterns for calling PingOne Management API from banking_api_server. USE FOR: read user, update user attributes, p1:read:user, p1:update:user, list users, create user, delete user, PingOne Management API /v1/environments, /users endpoint, worker app token calls, admin PingOne REST API, new service file, new route calling PingOne, error handling for PingOne responses, existing services (mfaService.js, pingoneManagementService.js, pingoneUserService.js, pingoneBootstrapService.js). DO NOT USE FOR: OAuth login, token exchange, or session flows (use oauth-pingone); MFA device lifecycle (use pingone-mfa); MCP server tools (use mcp-server); session/cookie patterns (use bff-sessions); HITL/consent (use hitl-consent).'
 argument-hint: 'Describe the PingOne API call you need to make (e.g. read user, update MFA)'
 ---
 
@@ -97,6 +97,30 @@ async function callPingOneManagementApi(path) {
   return data;
 }
 ```
+
+> **Official docs:** [PingOne API — Before You Begin / Introduction](https://developer.pingidentity.com/pingone-api/before-you-begin/introduction.html). Read this before adding any new Management API call (base URLs, auth model, request/response envelope, error shape).
+
+### Updating an existing application — PUT (full replace), NOT PATCH
+
+Hard-won (cost a full debugging session): **PingOne `/v1/environments/{envId}/applications/{id}` does not support PATCH.** A `PATCH` (partial update) is rejected with a **misleading 403**:
+
+```
+403 { "message": "Invalid key=value pair (missing equal-sign) in
+      Authorization header (hashed with SHA-256 and encoded with Base64): '…'." }
+```
+
+This error mentions the Authorization header but the token is fine — it is PingOne's confusing way of saying *this method/shape is not accepted on this endpoint*. The same Bearer token works for `GET` and `PUT` on the same URL. To change one field you must **read-modify-write with PUT**:
+
+1. `GET /applications/{id}` → current app object
+2. Merge your change onto it (e.g. `{ ...current, tokenEndpointAuthMethod: 'CLIENT_SECRET_POST' }`)
+3. Strip read-only/HATEOAS fields: `_links`, `environment`, `id`, `createdAt`, `updatedAt`, `clientId`, `signing`
+4. `PUT /applications/{id}` with the merged body (a partial PUT fails on required fields like `protocol` with `INVALID_DATA`)
+
+`pingoneProvisionService.updateApplication(appId, updates)` already does exactly this — **use it; never hand-roll a PATCH.** Its `createApplication(name, …)` also runs idempotent drift-correction (GET → diff → PUT) so re-running `npm run pingone:bootstrap` realigns existing apps.
+
+### Token-endpoint auth method (ARCHITECTURE TRUTH T-9)
+
+Every PingOne **client connection authenticates with `client_secret_post`**. The single exception is the Management-API Worker Token CC client (the app literally named **"Super Banking Worker"** / `PINGONE_WORKER_TOKEN_*`), which stays `client_secret_basic`. This is keyed by **app name, not PingOne `type`** — several apps are `type: WORKER` yet must use `client_secret_post` (MCP Server, MCP Gateway, Agent). A `client_secret_basic`↔`post` mismatch surfaces as `invalid_client: "Unsupported authentication method"` → `delegation_chain_broken` / `actor_token_invalid` → 502 on `/api/mcp/tool`. See [ARCHITECTURE-TRUTHS.md](../../../docs/ARCHITECTURE-TRUTHS.md) T-9.
 
 ---
 
@@ -251,6 +275,8 @@ router.post('/my-route', authenticateToken, async (req, res) => {
 
 ## PingOne API Reference
 
+**Authoritative external docs:** [PingOne API — Before You Begin / Introduction](https://developer.pingidentity.com/pingone-api/before-you-begin/introduction.html) (base URLs, auth, regions, request/response + error envelope). Consult this first for anything not covered below.
+
 ### Auth Server (AS) — `https://auth.pingone.{region}/{envId}/as/`
 
 | Endpoint | Use |
@@ -314,6 +340,7 @@ When you add a new Management API operation, add it as a method on the appropria
 
 ## See Also
 
+- [PingOne API — Before You Begin (official docs)](https://developer.pingidentity.com/pingone-api/before-you-begin/introduction.html) — base URLs, auth model, regions, error envelope; read before any new Management API call
 - [oauth-pingone skill](../oauth-pingone/SKILL.md) — auth-server calls (login, token exchange, refresh, revoke, introspection)
 - [bff-sessions skill](../bff-sessions/SKILL.md) — session/token custody, `configStore` lookup pattern
 - [mcp-server skill](../mcp-server/SKILL.md) — when the PingOne call originates from an agent/MCP tool

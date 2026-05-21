@@ -1,0 +1,64 @@
+/* banking_api_ui/src/components/AgentModeSelector.css */
+.ams {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ams--compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+.ams-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.ams--compact .ams-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+.ams-select {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+.ams-select:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.ams-wiring {
+  margin-top: 2px;
+}
+.ams-degraded {
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+}
+.ams-degraded code {
+  background: #fef3c7;
+  padding: 0 3px;
+  border-radius: 3px;
+}
+.ams-degraded-chip {
+  font-size: 11px;
+  font-weight: 600;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}

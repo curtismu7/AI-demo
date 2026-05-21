@@ -7,8 +7,8 @@
  * Tests admin session detection, token exchange, security measures, and performance.
  */
 
-const adminTokenService = require('./banking_api_server/services/adminTokenService');
-const { resolveMcpAccessTokenWithEvents } = require('./banking_api_server/services/agentMcpTokenService');
+const adminTokenService = require('./demo_api_server/services/adminTokenService');
+const { resolveMcpAccessTokenWithEvents } = require('./demo_api_server/services/agentMcpTokenService');
 
 // Mock session data for testing
 const mockAdminSession = {
@@ -19,7 +19,7 @@ const mockAdminSession = {
     expiresAt: Date.now() + 3600000, // 1 hour from now
     tokenType: 'Bearer',
     clientId: process.env.PINGONE_ADMIN_CLIENT_ID || 'mock_admin_client_id',
-    scope: 'admin:read admin:write users:read users:manage banking:read banking:write'
+    scope: 'admin:read admin:write users:read users:manage read write'
   }
 };
 
@@ -31,7 +31,7 @@ const mockUserSession = {
     expiresAt: Date.now() + 3600000,
     tokenType: 'Bearer',
     clientId: process.env.PINGONE_USER_CLIENT_ID || 'mock_user_client_id',
-    scope: 'banking:read banking:write openid profile email'
+    scope: 'read write openid profile email'
   }
 };
 

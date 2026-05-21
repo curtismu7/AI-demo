@@ -100,7 +100,7 @@ if (!parsedBody.tool && req.readableLength > 0) {
 
 1. **Restart the server** to apply the fix:
    ```bash
-   ./run-bank.sh
+   ./run-demo.sh
    ```
 
 2. **Monitor memory usage** after startup:

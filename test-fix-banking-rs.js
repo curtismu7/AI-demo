@@ -10,7 +10,7 @@
  *   BASE_URL=https://your-vercel-app.vercel.app node test-fix-banking-rs.js
  * 
  * Prerequisites:
- *   - banking_api_server running (npm start or run-bank.sh)
+ *   - banking_api_server running (npm start or run-demo.sh)
  *   - Valid PingOne credentials in .env (PINGONE_WORKER_CLIENT_ID, etc.)
  *   - A browser session cookie OR run after logging in (the fix endpoint
  *     uses worker creds server-side, so no user cookie is required)
@@ -24,7 +24,7 @@ const https = require('https');
 const BASE_URL = process.argv[2] || process.env.BASE_URL || 'http://localhost:3001';
 const ENDPOINT = `${BASE_URL}/api/pingone-test/fix-banking-resource-server?sessionId=cli-test`;
 
-const CANONICAL_SCOPES = ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'];
+const CANONICAL_SCOPES = ['read', 'write', 'admin', 'sensitive', 'ai:agent'];
 
 // ─── Simple HTTP POST (no external deps) ────────────────────────────────────
 

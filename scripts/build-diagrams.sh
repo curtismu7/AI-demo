@@ -17,7 +17,7 @@
 set -euo pipefail
 
 BASEDIR="$(cd "$(dirname "$0")/.." && pwd)"
-OUT_DIR="${BASEDIR}/banking_api_ui/public/architecture"
+OUT_DIR="${BASEDIR}/demo_api_ui/public/architecture"
 
 mkdir -p "${OUT_DIR}"
 
@@ -53,7 +53,12 @@ render_one() {
     echo "            click Actions -> Download PNG, save as $(basename "${out}")." >&2
     return 1
   fi
-  echo "    [ok]    $(basename "${out}") ($(du -h "${out}" | cut -f1))"
+  # Publish the .mmd next to its PNG so the UI can show the exact Mermaid
+  # source without a second copy of the file living in the repo. Single
+  # source of truth: the repo-root .mmd. Static asset (no admin route) so
+  # /sequence-diagram and the public Architecture group stay anon-safe.
+  cp "${src}" "${OUT_DIR}/${src_rel}"
+  echo "    [ok]    $(basename "${out}") ($(du -h "${out}" | cut -f1)) + ${src_rel}"
 }
 
 echo ""

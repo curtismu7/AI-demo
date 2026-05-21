@@ -18,7 +18,7 @@ After `npm run setup:fresh`, all custom scopes are defined on three resource ser
 |-------------------------|-----------------------|--------------------------|
 | `Super Banking API`      | `banking_api_enduser` | banking + admin + users + ai_agent |
 | `Super Banking MCP Server` | `https://mcp-server.pingdemo.com` | admin + users + banking (subset) |
-| `Super Banking MCP Gateway` | `mcp-gw.bxf.com` | banking:mcp:invoke |
+| `Super Banking MCP Gateway` | `api.ping.demo` | banking:mcp:invoke |
 
 Scope grants are wired to the OIDC apps as part of provisioning (see `setup-config.md`
 after a run for the per-app grant inventory).
@@ -97,7 +97,7 @@ can only deposit, not transfer/withdraw/etc. See [bankDelegate restrictions](#de
 **Customer apps assigned this scope:** `Super Banking MCP Server`, `Super Banking User App`.
 
 ### `banking:mcp:invoke`
-**What it unlocks:** permission to invoke MCP tools through the gateway. Lives on the `Super Banking MCP Gateway` resource (audience `mcp-gw.bxf.com`).
+**What it unlocks:** permission to invoke MCP tools through the gateway. Lives on the `Super Banking MCP Gateway` resource (audience `api.ping.demo`).
 
 **Used by:** the agent service in its RFC 8693 token-exchange call. Audience-narrowed: only the MCP Gateway accepts tokens with this scope.
 

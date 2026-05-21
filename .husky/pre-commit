@@ -12,6 +12,42 @@ warn() { echo -e "${YELLOW}⚠  $1${RESET}"; }
 info() { echo -e "${CYAN}   $1${RESET}"; }
 error() { echo -e "${RED}✖  $1${RESET}"; }
 
+# ── CONCURRENCY GUARD ──────────────────────────────────────────────────────
+# Root cause of a real contamination incident: two agents/processes mutating
+# one shared git index/worktree at once. lint-staged stash/pop (below)
+# interleaved with a concurrent process's stash + branch-switch and restored
+# foreign changes into the staged commit. lint-staged itself was not at
+# fault — simultaneous index mutation was. This advisory lock makes that
+# class of failure impossible: only one pre-commit may hold it.
+#
+# mkdir is atomic on POSIX (portable; macOS has no flock). The lock is
+# released via an EXIT trap (normal exit, error, or signal). A crashed
+# hook is recovered by a PID-liveness check so a single crash cannot
+# permanently block commits.
+GIT_DIR_PATH=$(git rev-parse --git-dir)
+LOCK_DIR="${GIT_DIR_PATH}/superbank-precommit.lock"
+
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  LOCK_PID=$(cat "${LOCK_DIR}/pid" 2>/dev/null || echo "")
+  if [ -n "$LOCK_PID" ] && kill -0 "$LOCK_PID" 2>/dev/null; then
+    error "Another pre-commit is running (PID ${LOCK_PID}) — refusing to commit."
+    info "Concurrent commits on one worktree caused a known contamination bug."
+    info "Wait for the other commit to finish, or stop the other agent/process."
+    exit 1
+  fi
+  # Stale lock (holder is dead) — reclaim it.
+  warn "Removing stale pre-commit lock (PID ${LOCK_PID:-unknown} not running)."
+  rm -rf "$LOCK_DIR"
+  if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    error "Could not acquire pre-commit lock after reclaiming stale lock."
+    exit 1
+  fi
+fi
+echo "$$" > "${LOCK_DIR}/pid"
+echo "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" > "${LOCK_DIR}/branch"
+# shellcheck disable=SC2064
+trap "rm -rf '$LOCK_DIR'" EXIT
+
 STAGED=$(git diff --cached --name-only)
 
 # ── SECRET SCAN — block on known secret patterns ───────────────────────────
@@ -86,7 +122,7 @@ ENV_RELEVANT=$(echo "$STAGED" | grep -E \
 
 if [ -n "$ENV_RELEVANT" ]; then
   echo "Env or configStore changed — running coverage check..."
-  (cd banking_api_server && npx jest --testPathPattern='configStore.envCoverage' --no-coverage --forceExit --silent 2>/dev/null)
+  (cd demo_api_server && npx jest --testPathPatterns='configStore.envCoverage' --no-coverage --forceExit --silent 2>/dev/null)
   if [ $? -ne 0 ]; then
     error "configStore env coverage check failed!"
     info "A variable in banking_api_server/.env is not mapped in configStore.getEffective()."

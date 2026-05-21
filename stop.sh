@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # stop.sh — Stop all banking digital assistant services
-# Works with PIDs from both run.sh (.pids/) and run-bank.sh (/tmp/bank-*)
+# Works with PIDs from both run.sh (.pids/) and run-demo.sh (/tmp/bank-*)
 # Also sweeps common ports to catch orphaned processes.
 
 set -euo pipefail
@@ -34,7 +34,7 @@ kill_process_tree() {
 
 set +e
 
-# Stop via PID files — both run.sh and run-bank.sh locations
+# Stop via PID files — both run.sh and run-demo.sh locations
 for pid_file in \
   "${BASEDIR}/.pids/api.pid" "${BASEDIR}/.pids/ui.pid" "${BASEDIR}/.pids/mcp.pid" "${BASEDIR}/.pids/agent.pid" \
   /tmp/bank-api-server.pid /tmp/bank-mcp-server.pid /tmp/bank-langchain-agent.pid /tmp/bank-ui.pid \

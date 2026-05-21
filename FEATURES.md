@@ -103,6 +103,7 @@ git checkout <last-version-tag> -- <key-file>
 
 | Feature | Status | Key files | Test file |
 |---|---|---|---|
+| `ff_agent_restrictions` feature flag + tier-resolution service — derives read/write capability tier from `scope-topology.json` riskLevel; `isAgentRestricted()` evaluates user agentRestrictions attribute (read/write/none) against required tier | experimental | `demo_api_server/services/agentRestrictionsService.js`, `demo_api_server/services/configStore.js` | `demo_api_server/tests/agentRestrictionsService.test.js` |
 | Agent UI placement — Middle / Bottom / Float + optional FAB | active | `banking_api_ui/src/context/AgentUiModeContext.js`, `banking_api_ui/src/components/AgentUiModeToggle.js` | `u:context/__tests__/AgentUiModeContext.test.js`, `u:utils/__tests__/embeddedAgentFabVisibility.test.js` |
 | Floating agent FAB (Float placement) | active | `banking_api_ui/src/components/BankingAgent.js` | `u:utils/__tests__/embeddedAgentFabVisibility.test.js` |
 | Bottom embedded dock — integrated, drag-to-resize, flush to content | active | `banking_api_ui/src/components/EmbeddedAgentDock.js` | `u:context/__tests__/AgentUiModeContext.test.js` |
@@ -111,6 +112,7 @@ git checkout <last-version-tag> -- <key-file>
 | Agent layout preference persisted to server | active | `banking_api_ui/src/services/demoScenarioService.js`, `banking_api_server/routes/demoScenario.js` | `s:demo-scenario-api.test.js` |
 | Agent chip groups — collapsible sections with count badges, collapse-all toolbar, "⊞ All actions" discovery popout with live search (Phase 231) | active | `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/components/BankingAgent.css` | `u:components/__tests__/BankingAgent.chips.test.js` |
 | LLM provider selector chips (anthropic/groq/google/ollama/openai) | removed | — | — |
+| Agent LLM provider resolution (helix default / ollama gated / openai+anthropic pass-through) — single canonical resolver; explicit selection honored, credential enforcement delegated to `banking_agent_service` (:3006) | active | `banking_api_server/services/llmProviderResolver.js` | `s:llmProviderResolver.regression.test.js` |
 | Banking Chips UI — heuristic and LLM banking commands (4 quick-action chips + 20+ advanced analysis chips grouped by category) | active | `banking_api_ui/src/components/BankingChips.jsx`, `banking_api_ui/src/components/BankingChips.css` | — |
 | Agent modern dark theme (Phase 264) — dark gradient backgrounds, blue/purple accents, glass-effect surfaces, gradient user bubbles, translucent assistant bubbles; 16 CSS custom properties cascade via `.banking-agent-panel` override block | active | `banking_api_ui/src/components/BankingAgent.css` | — |
 | RFC annotation card — transfer-complete token-event messages render as a structured card: alternating-row entry table, bold blue RFC names, code-span RFC numbers, styled footer with link | active | `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/components/BankingAgent.css` | — |

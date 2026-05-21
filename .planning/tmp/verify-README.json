@@ -1,0 +1,26 @@
+{
+  "doc_path": "README.md",
+  "claims_checked": 34,
+  "claims_passed": 31,
+  "claims_failed": 3,
+  "failures": [
+    {
+      "line": 649,
+      "claim": "npm run setup:vercel",
+      "expected": "script 'setup:vercel' in package.json",
+      "actual": "script not found in package.json"
+    },
+    {
+      "line": 656,
+      "claim": "npm run setup:vercel:check",
+      "expected": "script 'setup:vercel:check' in package.json",
+      "actual": "script not found in package.json"
+    },
+    {
+      "line": 726,
+      "claim": ".env.vercel.example",
+      "expected": "file exists",
+      "actual": "file not found at /Users/curtismuir/Development/banking/.env.vercel.example"
+    }
+  ]
+}

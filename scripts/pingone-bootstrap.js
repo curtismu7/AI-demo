@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // scripts/pingone-bootstrap.js
-// Load banking_api_server/.env for probe; print planned steps from manifest.
+// Load demo_api_server/.env for probe; print planned steps from manifest.
 //
 // Usage:
 //   npm run pingone:bootstrap
@@ -12,21 +12,21 @@
 const path = require('path');
 const fs = require('fs');
 
-// Load API server .env via banking_api_server's dotenv (root package has no dotenv dependency).
+// Load API server .env via demo_api_server's dotenv (root package has no dotenv dependency).
 try {
-  require(path.join(__dirname, '../banking_api_server/node_modules/dotenv')).config({
-    path: path.join(__dirname, '../banking_api_server/.env'),
+  require(path.join(__dirname, '../demo_api_server/node_modules/dotenv')).config({
+    path: path.join(__dirname, '../demo_api_server/.env'),
   });
 } catch (_) {
   /* optional — probe relies on shell env if dotenv missing */
 }
 
-const configStore = require('../banking_api_server/services/configStore');
+const configStore = require('../demo_api_server/services/configStore');
 const {
   planStepsFromManifest,
   probeManagementApiAccess,
   getExampleManifestPath,
-} = require('../banking_api_server/services/pingoneBootstrapService');
+} = require('../demo_api_server/services/pingoneBootstrapService');
 
 async function main() {
   const args = process.argv.slice(2);
