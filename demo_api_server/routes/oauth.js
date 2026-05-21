@@ -256,11 +256,11 @@ router.get('/callback', async (req, res) => {
         password: null // OAuth users don't have passwords
       });
     } else {
-      // Update existing user with OAuth data
+      // Preserve stored profile fields if userinfo omits them (PingOne may drop given_name/family_name on some flows)
       user = await dataStore.updateUser(user.id, {
-        email: oauthUser.email,
-        firstName: oauthUser.firstName,
-        lastName: oauthUser.lastName,
+        ...(oauthUser.email ? { email: oauthUser.email } : {}),
+        ...(oauthUser.firstName ? { firstName: oauthUser.firstName } : {}),
+        ...(oauthUser.lastName ? { lastName: oauthUser.lastName } : {}),
         role: oauthUser.role,
         oauthProvider: oauthUser.oauthProvider,
         oauthId: oauthUser.oauthId
