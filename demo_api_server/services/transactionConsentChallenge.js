@@ -16,6 +16,7 @@ const dataStore = require('../data/store');
 const configStore = require('./configStore');
 const { resolveAccountId } = require('../utils/accountUtils');
 const mfaService = require('./mfaService');
+const recognizeService = require('./recognizeService');
 
 const HIGH_VALUE_CONSENT_USD_DEFAULT = 250;
 function getConfirmThreshold() {
@@ -337,6 +338,39 @@ async function confirmChallenge(req, challengeId, opts = {}) {
     }
 
     return _initiateOnetimeOtp(ch, challengeId, deliveryType, contact, userAccessToken, req.user.id, now);
+
+  } else if (mfaMode === 'recognize') {
+    // ── PingOne Recognize: face auth branch ───────────────────────────────
+    try {
+      const { sessionToken, sessionId } = await recognizeService.initiateSession(req.user.id);
+      ch.recognizePath      = true;
+      ch.recognizeSessionId = sessionId;
+      ch.status             = 'recognize_pending';
+      ch.otpExpiresAt       = now + OTP_TTL_MS;
+      console.log(`[ConsentChallenge] Recognize session initiated challenge=${challengeId.slice(0, 8)}… sessionId=${sessionId} user=${req.user.id}`);
+      return { ok: true, challengeId, mode: 'recognize', sessionToken, sessionId };
+    } catch (err) {
+      console.warn(`[ConsentChallenge] Recognize init failed, falling back to onetime OTP: ${err.message}`);
+    }
+
+    // Fallback: one-time OTP when Recognize is unavailable
+    let contact, deliveryType;
+    try {
+      const p = await mfaService.getPingOneUserContact(req.user.id);
+      if (p.email) { deliveryType = 'EMAIL'; contact = p.email; }
+      else if (p.mobilePhone) { deliveryType = 'SMS'; contact = p.mobilePhone; }
+    } catch (err) {
+      console.warn(`[ConsentChallenge] recognize fallback: getPingOneUserContact failed: ${err.message}`);
+      return { ok: false, status: 502, json: { error: 'mfa_init_failed', message: 'Face ID unavailable and could not start backup verification. Try again.' } };
+    }
+    if (!contact) {
+      ch.oneTimePath    = true;
+      ch.pendingContact = true;
+      return { ok: true, challengeId, mode: 'onetime_fallback', needsContact: true };
+    }
+    const otpResult = await _initiateOnetimeOtp(ch, challengeId, deliveryType, contact, req.session?.oauthTokens?.accessToken, req.user.id, now);
+    if (!otpResult.ok) return otpResult;
+    return { ...otpResult, mode: 'onetime_fallback' };
   }
 
   // homegrown: BFF-generated OTP delivered via emailService
@@ -623,6 +657,91 @@ async function selectMfaDevice(req, challengeId, deviceId) {
 }
 
 /**
+ * verifyRecognize — validates the Recognize SDK result returned by the UI.
+ * On success advances challenge to 'confirmed'. On failure signals fallback:true.
+ */
+async function verifyRecognize(req, challengeId, sdkResult) {
+  if (!challengeId || typeof challengeId !== 'string') {
+    return { ok: false, status: 400, json: { error: 'invalid_challenge', message: 'challengeId is required.' } };
+  }
+  const st = store(req.session);
+  pruneExpired(st);
+  const ch = st[challengeId];
+  if (!ch || ch.userId !== req.user.id) {
+    return { ok: false, status: 404, json: { error: 'challenge_not_found', message: 'Unknown or expired consent challenge.' } };
+  }
+  if (ch.status !== 'recognize_pending') {
+    return { ok: false, status: 409, json: { error: 'recognize_not_expected', message: 'No face auth is pending for this challenge.' } };
+  }
+  if (Date.now() > ch.otpExpiresAt) {
+    ch.status = 'expired';
+    return { ok: false, status: 410, json: { error: 'recognize_expired', message: 'Face auth session expired. Start the transaction again.' } };
+  }
+
+  let accepted;
+  try {
+    accepted = await recognizeService.verifySession(ch.recognizeSessionId, sdkResult);
+  } catch (err) {
+    console.warn(`[ConsentChallenge] verifyRecognize error: ${err.message}`);
+    accepted = false;
+  }
+
+  if (!accepted) {
+    console.warn(`[ConsentChallenge] Recognize rejected challenge=${challengeId.slice(0, 8)}… user=${req.user.id}`);
+    return { ok: false, status: 401, fallback: true, json: { error: 'recognize_verify_failed', message: 'Face verification failed.' } };
+  }
+
+  ch.status           = 'confirmed';
+  ch.confirmedAt      = Date.now();
+  ch.confirmExpiresAt = Date.now() + CONFIRMED_TTL_MS;
+  console.log(`[ConsentChallenge] Recognize verified challenge=${challengeId.slice(0, 8)}… user=${req.user.id}`);
+  return { ok: true };
+}
+
+/**
+ * recognizeFallback — called when the UI signals the Recognize SDK failed.
+ * Pivots a recognize_pending challenge to the one-time OTP path.
+ */
+async function recognizeFallback(req, challengeId) {
+  if (!challengeId || typeof challengeId !== 'string') {
+    return { ok: false, status: 400, json: { error: 'invalid_challenge', message: 'challengeId is required.' } };
+  }
+  const st = store(req.session);
+  pruneExpired(st);
+  const ch = st[challengeId];
+  if (!ch || ch.userId !== req.user.id) {
+    return { ok: false, status: 404, json: { error: 'challenge_not_found', message: 'Unknown or expired consent challenge.' } };
+  }
+  if (ch.status !== 'recognize_pending') {
+    return { ok: false, status: 409, json: { error: 'recognize_not_pending', message: 'Challenge is not in recognize state.' } };
+  }
+
+  // Reset to pending so the onetime path can re-use it
+  ch.status        = 'pending';
+  ch.recognizePath = false;
+
+  let contact, deliveryType;
+  try {
+    const p = await mfaService.getPingOneUserContact(req.user.id);
+    if (p.email) { deliveryType = 'EMAIL'; contact = p.email; }
+    else if (p.mobilePhone) { deliveryType = 'SMS'; contact = p.mobilePhone; }
+  } catch (err) {
+    console.warn(`[ConsentChallenge] recognizeFallback contact lookup failed: ${err.message}`);
+    return { ok: false, status: 502, json: { error: 'mfa_init_failed', message: 'Face ID unavailable and could not start backup verification. Try again.' } };
+  }
+
+  if (!contact) {
+    ch.oneTimePath    = true;
+    ch.pendingContact = true;
+    return { ok: true, challengeId, mode: 'onetime_fallback', needsContact: true };
+  }
+
+  const otpResult = await _initiateOnetimeOtp(ch, challengeId, deliveryType, contact, req.session?.oauthTokens?.accessToken, req.user.id, Date.now());
+  if (!otpResult.ok) return otpResult;
+  return { ...otpResult, mode: 'onetime_fallback' };
+}
+
+/**
  * Verifies confirmed challenge matches POST body, then removes it (one-time use).
  * @returns {{ ok: true } | { ok: false, status: number, json: object }}
  */
@@ -696,6 +815,8 @@ module.exports = {
   confirmOnetimeContact,
   verifyOtp,
   verifyMfa,
+  verifyRecognize,
+  recognizeFallback,
   selectMfaDevice,
   getChallengePath,
   verifyAndConsumeChallenge,
