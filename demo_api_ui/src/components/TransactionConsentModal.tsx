@@ -13,7 +13,7 @@ import { useEducationUI } from "../context/EducationUIContext";
 import { EDU } from "./education/educationIds";
 import { useIndustryBranding } from "../context/IndustryBrandingContext";
 import { useDraggablePanel } from "../hooks/useDraggablePanel";
-import DeviceSelector from "./DeviceSelector";
+import DeviceSelector, { type Device } from "./DeviceSelector";
 import "../styles/draggablePanel.css";
 import "./TransactionConsentPage.css";
 
@@ -88,7 +88,7 @@ const TransactionConsentModal: FC<TransactionConsentModalProps> = ({
   const otpInputRef = useRef<HTMLInputElement>(null);
 
   const [mfaStep, setMfaStep] = useState(false);
-  const [mfaDevices, setMfaDevices] = useState([]);
+  const [mfaDevices, setMfaDevices] = useState<Device[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
   useEffect(() => {

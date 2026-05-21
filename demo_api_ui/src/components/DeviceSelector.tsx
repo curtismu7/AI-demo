@@ -1,7 +1,7 @@
 import React, { FC } from "react";
 import "./DeviceSelector.css";
 
-interface Device {
+export interface Device {
   id: string;
   type: string;
   phone?: string;
