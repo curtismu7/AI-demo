@@ -103,3 +103,83 @@ describe('Phase 170 — Transfer HITL enforcement', () => {
     });
   });
 });
+
+// ── verifyMfa tests ──────────────────────────────────────────────────────────
+
+jest.mock('../../services/mfaService', () => ({
+  initiateDeviceAuth: jest.fn(),
+  selectDevice: jest.fn(),
+  submitOtp: jest.fn(),
+  submitFido2Assertion: jest.fn(),
+}));
+
+const mfaService = require('../../services/mfaService');
+
+function makeReqWithMfaChallenge(challengeId, overrides = {}) {
+  const ch = {
+    userId: '5',
+    snapshot: { type: 'withdrawal', amount: 600, fromAccountId: 'acc1', toAccountId: null, description: '' },
+    status: 'otp_pending',
+    mfaPath: true,
+    daId: 'da-test-001',
+    devices: [{ id: 'dev-1', type: 'EMAIL' }],
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 600_000,
+    otpAttempts: 0,
+    otpExpiresAt: Date.now() + 300_000,
+  };
+  const session = { txConsentChallenges: { [challengeId]: { ...ch, ...overrides.challenge } } };
+  return { user: { id: '5', role: 'customer' }, session };
+}
+
+describe('verifyMfa', () => {
+  const CHALLENGE_ID = 'mfa-challenge-abc';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('rejects if challenge has no mfaPath flag', async () => {
+    const req = makeReqWithMfaChallenge(CHALLENGE_ID, { challenge: { mfaPath: false } });
+    const result = await txConsent.verifyMfa(req, CHALLENGE_ID, { deviceId: 'dev-1', otp: '123456' });
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(409);
+    expect(result.json.error).toBe('not_mfa_path');
+  });
+
+  test('OTP path — calls submitOtp, promotes to confirmed', async () => {
+    mfaService.submitOtp.mockResolvedValue({ status: 'COMPLETED' });
+    const req = makeReqWithMfaChallenge(CHALLENGE_ID);
+    const result = await txConsent.verifyMfa(req, CHALLENGE_ID, { deviceId: 'dev-1', otp: '654321' });
+    expect(mfaService.submitOtp).toHaveBeenCalledWith('da-test-001', 'dev-1', '654321', undefined);
+    expect(result.ok).toBe(true);
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].status).toBe('confirmed');
+  });
+
+  test('demo bypass OTP 123123 promotes to confirmed without calling submitOtp', async () => {
+    const req = makeReqWithMfaChallenge(CHALLENGE_ID);
+    const result = await txConsent.verifyMfa(req, CHALLENGE_ID, { deviceId: 'dev-1', otp: '123123' });
+    expect(mfaService.submitOtp).not.toHaveBeenCalled();
+    expect(result.ok).toBe(true);
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].status).toBe('confirmed');
+  });
+
+  test('FIDO2 path — calls submitFido2Assertion, promotes to confirmed', async () => {
+    mfaService.submitFido2Assertion.mockResolvedValue({ status: 'COMPLETED' });
+    const assertion = { id: 'cred-id', type: 'public-key' };
+    const req = makeReqWithMfaChallenge(CHALLENGE_ID);
+    const result = await txConsent.verifyMfa(req, CHALLENGE_ID, { deviceId: 'dev-1', fido2Assertion: assertion }, 'https://api.ping.demo:4000');
+    expect(mfaService.submitFido2Assertion).toHaveBeenCalledWith('da-test-001', assertion, undefined, 'https://api.ping.demo:4000');
+    expect(result.ok).toBe(true);
+    expect(req.session.txConsentChallenges[CHALLENGE_ID].status).toBe('confirmed');
+  });
+
+  test('PingOne OTP failure returns 400 otp_incorrect', async () => {
+    mfaService.submitOtp.mockRejectedValue(Object.assign(new Error('wrong'), { code: 'otp_incorrect' }));
+    const req = makeReqWithMfaChallenge(CHALLENGE_ID);
+    const result = await txConsent.verifyMfa(req, CHALLENGE_ID, { deviceId: 'dev-1', otp: '000000' });
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(400);
+    expect(result.json.error).toBe('otp_incorrect');
+  });
+});

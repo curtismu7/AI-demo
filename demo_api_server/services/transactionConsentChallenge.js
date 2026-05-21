@@ -15,6 +15,7 @@ const crypto = require('crypto');
 const dataStore = require('../data/store');
 const configStore = require('./configStore');
 const { resolveAccountId } = require('../utils/accountUtils');
+const mfaService = require('./mfaService');
 
 const HIGH_VALUE_CONSENT_USD_DEFAULT = 250;
 function getConfirmThreshold() {
@@ -388,6 +389,72 @@ function verifyOtp(req, challengeId, otpCode) {
 }
 
 /**
+ * verifyMfa — PingOne MFA path for HITL consent challenges.
+ * Called when challenge.mfaPath === true (ff_hitl_pingone_mfa_enabled + amount >= threshold).
+ * Delegates OTP or FIDO2 assertion to mfaService; on success promotes to 'confirmed'.
+ *
+ * @param {import('express').Request} req
+ * @param {string} challengeId
+ * @param {{ deviceId: string, otp?: string, fido2Assertion?: object }} params
+ * @param {string} [origin]  Required for FIDO2 assertion (browser origin)
+ */
+async function verifyMfa(req, challengeId, params, origin) {
+  if (!challengeId || typeof challengeId !== 'string') {
+    return { ok: false, status: 400, json: { error: 'invalid_challenge', message: 'challengeId is required.' } };
+  }
+  const st = store(req.session);
+  pruneExpired(st);
+  const ch = st[challengeId];
+  if (!ch || ch.userId !== req.user.id) {
+    return { ok: false, status: 404, json: { error: 'challenge_not_found', message: 'Unknown or expired consent challenge.' } };
+  }
+  if (!ch.mfaPath) {
+    return { ok: false, status: 409, json: { error: 'not_mfa_path', message: 'This challenge does not use PingOne MFA.' } };
+  }
+  if (ch.status !== 'otp_pending') {
+    return { ok: false, status: 409, json: { error: 'otp_not_expected', message: 'No MFA challenge is pending for this challenge.' } };
+  }
+  if (Date.now() > ch.otpExpiresAt) {
+    ch.status = 'expired';
+    return { ok: false, status: 410, json: { error: 'otp_expired', message: 'The MFA challenge has expired. Start the transaction again.' } };
+  }
+
+  const { deviceId, otp, fido2Assertion } = params || {};
+  const userAccessToken = req.session?.oauthTokens?.accessToken;
+
+  // Demo bypass — accept without calling PingOne
+  if (otp && String(otp).trim() === '123123') {
+    console.log(`[ConsentChallenge] MFA demo bypass accepted challenge=${challengeId.slice(0, 8)}… user=${req.user.id}`);
+  } else {
+    try {
+      if (fido2Assertion) {
+        await mfaService.submitFido2Assertion(ch.daId, fido2Assertion, userAccessToken, origin);
+      } else if (otp) {
+        await mfaService.submitOtp(ch.daId, deviceId, otp, userAccessToken);
+      } else {
+        return { ok: false, status: 400, json: { error: 'missing_credential', message: 'Provide otp or fido2Assertion.' } };
+      }
+    } catch (err) {
+      const code = err.code || 'mfa_failed';
+      const msg = err.message || 'MFA verification failed.';
+      console.warn(`[ConsentChallenge] MFA verify failed challenge=${challengeId.slice(0, 8)}… code=${code}`);
+      return { ok: false, status: 400, json: { error: code, message: msg } };
+    }
+  }
+
+  // Promote to confirmed
+  const now = Date.now();
+  ch.status           = 'confirmed';
+  ch.confirmedAt      = now;
+  ch.confirmExpiresAt = now + CONFIRMED_TTL_MS;
+  delete ch.otpExpiresAt;
+  delete ch.otpAttempts;
+
+  console.log(`[ConsentChallenge] MFA verified challenge=${challengeId.slice(0, 8)}… user=${req.user.id}`);
+  return { ok: true, challengeId, confirmExpiresAt: ch.confirmExpiresAt };
+}
+
+/**
  * Verifies confirmed challenge matches POST body, then removes it (one-time use).
  * @returns {{ ok: true } | { ok: false, status: number, json: object }}
  */
@@ -439,5 +506,6 @@ module.exports = {
   getChallenge,
   confirmChallenge,
   verifyOtp,
+  verifyMfa,
   verifyAndConsumeChallenge,
 };
