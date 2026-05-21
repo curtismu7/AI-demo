@@ -301,7 +301,6 @@ async function confirmChallenge(req, challengeId, opts = {}) {
 
   if (pingoneMfaEnabled && challengeAmount >= stepUpThreshold) {
     const userAccessToken = req.session?.oauthTokens?.accessToken;
-    const mfaService = require('./mfaService');
     let daId, devices;
     try {
       const initiated = await mfaService.initiateDeviceAuth(req.user.id, userAccessToken);
@@ -383,6 +382,9 @@ function verifyOtp(req, challengeId, otpCode) {
   }
   if (ch.status !== 'otp_pending') {
     return { ok: false, status: 409, json: { error: 'otp_not_expected', message: 'No OTP is pending for this challenge.' } };
+  }
+  if (ch.mfaPath) {
+    return { ok: false, status: 409, json: { error: 'not_mfa_path', message: 'Use verifyMfa for PingOne MFA challenges.' } };
   }
   if (Date.now() > ch.otpExpiresAt) {
     ch.status = 'expired';
