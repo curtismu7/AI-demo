@@ -36,6 +36,9 @@ tt {
   --app-primary-red-mid: #dc2626;
   --app-primary-red-border: #7f1d1d;
   --app-primary-btn-text: #ffffff;
+  --brand-topnav-bg-start: #1e293b;
+  --brand-topnav-bg-end: #334155;
+  --brand-topnav-text: #ffffff;
   --app-primary-blue: var(--brand-navy);
   --app-primary-blue-hover: var(--brand-navy);
   --app-primary-blue-mid: var(--brand-navy);
