@@ -33,6 +33,7 @@ import SequenceDiagramPage from "./components/SequenceDiagramPage";
 import ArchitectureTabsPanel from "./components/ArchitectureTabsPanel";
 import ArchitectureTokenFlowPage from "./components/ArchitectureTokenFlowPage";
 import Phase266ArchitecturePage from "./components/Phase266ArchitecturePage";
+import HitlSequencePage from "./components/HitlSequencePage";
 import MortgagePathPage from "./components/MortgagePathPage";
 import ApiKeyPathPage from "./components/ApiKeyPathPage";
 import AccessIdTokenPathPage from "./components/AccessIdTokenPathPage";
@@ -800,6 +801,10 @@ function AppWithAuth() {
                         <Route
                           path="phase-266"
                           element={<Phase266ArchitecturePage />}
+                        />
+                        <Route
+                          path="hitl"
+                          element={<HitlSequencePage />}
                         />
                       </Routes>
                     </main>

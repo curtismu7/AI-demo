@@ -179,7 +179,7 @@ export default function AdminSideNav({ user }) {
       ],
     },
     {
-      label: "Architecture",
+      label: "Diagrams",
       icon: "arc",
       children: [
         {
@@ -204,6 +204,11 @@ export default function AdminSideNav({ user }) {
           icon: "rte",
         },
         { label: "Sequence Diagram", path: "/sequence-diagram", icon: "log" },
+        {
+          label: "HITL Consent Flow",
+          path: "/architecture/hitl",
+          icon: "log",
+        },
       ],
     },
     {
