@@ -170,7 +170,7 @@ export default function BestPracticesPanel({ isOpen, onClose, initialTabId }) {
     // ── Know Your Agents ────────────────────────────────────────────────────
     {
       id: 'know',
-      label: '🤖 Know Your Agents',
+      label: 'Know Your Agents',
       content: (
         <>
           <h3>Know Your Agents</h3>
@@ -219,7 +219,7 @@ export default function BestPracticesPanel({ isOpen, onClose, initialTabId }) {
     // ── Detect Agents ───────────────────────────────────────────────────────
     {
       id: 'detect',
-      label: '🔍 Detect Agents',
+      label: 'Detect Agents',
       content: (
         <>
           <h3>Detect Agents</h3>
@@ -275,7 +275,7 @@ ws.initialize({
     // ── Use Delegation, Not Impersonation ───────────────────────────────────
     {
       id: 'delegate',
-      label: '🔗 Delegation',
+      label: 'Delegation',
       content: (
         <>
           <h3>Use Delegation, Not Impersonation</h3>
@@ -341,7 +341,7 @@ scope=accounts:read
     // ── Enforce Least Privilege ─────────────────────────────────────────────
     {
       id: 'privilege',
-      label: '🔒 Least Privilege',
+      label: 'Least Privilege',
       content: (
         <>
           <h3>Enforce Least Privilege</h3>
@@ -407,7 +407,7 @@ if (!isToolPermittedByAgentPolicy(toolScopes, agentAllowedSet)) {
     // ── Human in the Loop ───────────────────────────────────────────────────
     {
       id: 'hitl',
-      label: '👤 Human in the Loop',
+      label: 'Human in the Loop',
       content: (
         <>
           <h3>Human in the Loop</h3>
@@ -490,7 +490,7 @@ POST /token { grant_type: urn:openid:params:grant-type:ciba, auth_req_id }
     },
     {
       id: 'standards',
-      label: '📖 IETF Standards',
+      label: 'IETF Standards',
       content: (
         <>
           <h3 style={{ marginTop: 0 }}>IETF Standards Behind These Practices</h3>

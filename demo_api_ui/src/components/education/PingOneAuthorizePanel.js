@@ -1,5 +1,5 @@
 // banking_api_ui/src/components/education/PingOneAuthorizePanel.js
-import React, { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 import { EduImplIntro, SNIP_AUTHORIZE_GATE } from './educationImplementationSnippets';
 
@@ -239,15 +239,14 @@ function RecentDecisionsViewer() {
                 overflow: 'hidden',
               }}
             >
-              <div
+              <button
+                type="button"
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '8px 12px', background: '#f9fafb', cursor: 'pointer',
+                  width: '100%', border: 'none', textAlign: 'left',
                 }}
                 onClick={() => setExpanded(expanded === i ? null : i)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && setExpanded(expanded === i ? null : i)}
               >
                 <DecisionBadge decision={row.decision} />
                 <span style={{ fontSize: '0.8rem', color: '#374151', flex: 1 }}>
@@ -256,7 +255,7 @@ function RecentDecisionsViewer() {
                 </span>
                 <span style={{ fontSize: '0.75rem', color: '#374151' }}>{fmtTime(row.time)}</span>
                 <span style={{ color: '#374151', fontSize: '0.8rem' }}>{expanded === i ? '▲' : '▼'}</span>
-              </div>
+              </button>
               {expanded === i && (
                 <pre style={{
                   margin: 0, padding: '10px 14px',
@@ -834,7 +833,7 @@ POST /v1/environments/{envId}/decisionEndpoints/{endpointId}
     // ── Recent decisions ─────────────────────────────────────────────────
     {
       id: 'recent',
-      label: '🔍 Recent Decisions',
+      label: 'Recent Decisions',
       content: (
         <>
           <p style={{ color: "#374151", marginBottom: "1rem" }}>

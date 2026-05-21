@@ -3,8 +3,7 @@ import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 import TokenExchangeDiagram from './TokenExchangeDiagram';
 
-export default function TokenFlowPanel({ isOpen, onClose, initialTabId }) {
-  const tabs = [
+const tabs = [
     {
       id: 'diagram',
       label: 'Diagram',
@@ -527,8 +526,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
         </>
       ),
     },
-  ];
+];
 
+export default function TokenFlowPanel({ isOpen, onClose, initialTabId }) {
   return (
     <EducationDrawer
       isOpen={isOpen}
