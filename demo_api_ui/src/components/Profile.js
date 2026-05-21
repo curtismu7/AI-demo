@@ -55,6 +55,12 @@ export default function Profile({ user }) {
   const [devicesLoading, setDevicesLoading] = useState(true);
   const [removingId, setRemovingId] = useState(null);
 
+  const [enrollStep, setEnrollStep] = useState(null); // null | 'email' | 'otp' | 'done'
+  const [enrollEmail, setEnrollEmail] = useState('');
+  const [enrollDeviceId, setEnrollDeviceId] = useState('');
+  const [enrollOtp, setEnrollOtp] = useState('');
+  const [enrollBusy, setEnrollBusy] = useState(false);
+
   const loadDevices = useCallback(async () => {
     setDevicesLoading(true);
     try {
@@ -108,6 +114,46 @@ export default function Profile({ user }) {
       toast.error(err.response?.data?.message || 'Failed to remove device');
     } finally {
       setRemovingId(null);
+    }
+  };
+
+  const handleOpenEnroll = () => {
+    setEnrollEmail(user?.email || '');
+    setEnrollOtp('');
+    setEnrollDeviceId('');
+    setEnrollStep('email');
+  };
+
+  const handleEnrollSendOtp = async (e) => {
+    e.preventDefault();
+    if (!enrollEmail.trim()) return;
+    setEnrollBusy(true);
+    try {
+      const res = await bffAxios.post('/api/auth/mfa/enroll/email', { email: enrollEmail.trim() });
+      setEnrollDeviceId(res.data.deviceId);
+      setEnrollStep('otp');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send OTP');
+    } finally {
+      setEnrollBusy(false);
+    }
+  };
+
+  const handleEnrollVerifyOtp = async (e) => {
+    e.preventDefault();
+    if (!enrollOtp.trim()) return;
+    setEnrollBusy(true);
+    try {
+      await bffAxios.post('/api/auth/mfa/enroll/email/verify', {
+        deviceId: enrollDeviceId,
+        otp: enrollOtp.trim(),
+      });
+      setEnrollStep('done');
+      await loadDevices();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Invalid OTP — please try again');
+    } finally {
+      setEnrollBusy(false);
     }
   };
 
@@ -248,7 +294,7 @@ export default function Profile({ user }) {
           <div className="up-manage-panel">
             <span className="up-manage-panel__label">Manage Devices</span>
             <p className="up-manage-panel__desc">Add a new MFA device to your account</p>
-            <button type="button" className="up-btn up-btn--add" onClick={() => toast.info('Device enrollment coming soon')}>
+            <button type="button" className="up-btn up-btn--add" onClick={handleOpenEnroll}>
               + Add New Device
             </button>
             <button type="button" className="up-btn up-btn--refresh" onClick={loadDevices} disabled={devicesLoading}>
@@ -257,6 +303,92 @@ export default function Profile({ user }) {
           </div>
         </div>
       </div>
+
+      {enrollStep !== null && (
+        <div className="up-modal-backdrop">
+          <div
+            className="up-modal"
+            role="dialog"
+            aria-modal="true"
+          >
+            {enrollStep === 'email' && (
+              <>
+                <div className="up-modal__header">
+                  <span className="up-modal__title">Add Email OTP Device</span>
+                  <button type="button" className="up-modal__close" onClick={() => setEnrollStep(null)} disabled={enrollBusy}>✕</button>
+                </div>
+                <form onSubmit={handleEnrollSendOtp} className="up-modal__body">
+                  <p className="up-modal__desc">We'll send a one-time code to this address to verify it.</p>
+                  <div className="up-form__field">
+                    <label htmlFor="enroll-email">EMAIL</label>
+                    <input
+                      id="enroll-email"
+                      type="email"
+                      value={enrollEmail}
+                      onChange={e => setEnrollEmail(e.target.value)}
+                      required
+                      disabled={enrollBusy}
+                    />
+                  </div>
+                  <div className="up-modal__actions">
+                    <button type="button" className="up-btn up-btn--secondary" onClick={() => setEnrollStep(null)} disabled={enrollBusy}>Cancel</button>
+                    <button type="submit" className="up-btn up-btn--edit" disabled={enrollBusy}>
+                      {enrollBusy ? 'Sending…' : 'Send OTP'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+
+            {enrollStep === 'otp' && (
+              <>
+                <div className="up-modal__header">
+                  <span className="up-modal__title">Enter Verification Code</span>
+                  <button type="button" className="up-modal__close" onClick={() => setEnrollStep(null)} disabled={enrollBusy}>✕</button>
+                </div>
+                <form onSubmit={handleEnrollVerifyOtp} className="up-modal__body">
+                  <p className="up-modal__desc">Code sent to <strong>{enrollEmail}</strong>. Enter it below.</p>
+                  <div className="up-form__field">
+                    <label htmlFor="enroll-otp">VERIFICATION CODE</label>
+                    <input
+                      id="enroll-otp"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={8}
+                      value={enrollOtp}
+                      onChange={e => setEnrollOtp(e.target.value.replace(/\D/g, ''))}
+                      required
+                      disabled={enrollBusy}
+                      placeholder="123456"
+                    />
+                  </div>
+                  <div className="up-modal__actions">
+                    <button type="button" className="up-btn up-btn--secondary" onClick={() => setEnrollStep('email')} disabled={enrollBusy}>Back</button>
+                    <button type="submit" className="up-btn up-btn--edit" disabled={enrollBusy}>
+                      {enrollBusy ? 'Verifying…' : 'Verify'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+
+            {enrollStep === 'done' && (
+              <>
+                <div className="up-modal__header">
+                  <span className="up-modal__title">Device Added</span>
+                </div>
+                <div className="up-modal__body">
+                  <p className="up-modal__desc">✅ Email OTP device enrolled successfully.</p>
+                  <div className="up-modal__actions">
+                    <button type="button" className="up-btn up-btn--edit" onClick={() => setEnrollStep(null)}>Done</button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
