@@ -294,14 +294,10 @@ async function confirmChallenge(req, challengeId, opts = {}) {
     return { ok: false, status: 410, json: { error: 'challenge_expired', message: 'Consent challenge expired. Start again from the dashboard.' } };
   }
 
-  // ── MFA mode dispatch ─────────────────────────────────────────────────────
   const mfaMode = configStore.getEffective('hitl_consent_mfa_mode') || 'onetime';
-  const stepUpThreshold = getStepUpThreshold();
-  const challengeAmount = ch.snapshot.amount;
+  const userAccessToken = req.session?.oauthTokens?.accessToken;
 
-  // device_picker: full PingOne MFA with device selection (amount >= step-up threshold only)
-  if (mfaMode === 'device_picker' && challengeAmount >= stepUpThreshold) {
-    const userAccessToken = req.session?.oauthTokens?.accessToken;
+  if (mfaMode === 'device_picker' && ch.snapshot.amount >= getStepUpThreshold()) {
     let daId, devices;
     try {
       const initiated = await mfaService.initiateDeviceAuth(req.user.id, userAccessToken);
@@ -321,42 +317,29 @@ async function confirmChallenge(req, challengeId, opts = {}) {
 
     console.log(`[ConsentChallenge] PingOne MFA initiated challenge=${challengeId.slice(0, 8)}… daId=${daId} user=${req.user.id}`);
     return { ok: true, challengeId, mfaRequired: true, devices };
-  }
-  // ── End PingOne MFA: device picker branch ────────────────────────────────
 
-  // ── PingOne MFA: one-time OTP branch ─────────────────────────────────────
-  if (mfaMode === 'onetime') {
-    const userAccessToken = req.session?.oauthTokens?.accessToken;
-    let contact, deliveryType, autoResolved = false;
+  } else if (mfaMode === 'onetime') {
+    let contact, deliveryType;
     try {
       const { email, mobilePhone } = await mfaService.getPingOneUserContact(req.user.id);
-      if (email) {
-        deliveryType = 'EMAIL';
-        contact = email;
-        autoResolved = true;
-      } else if (mobilePhone) {
-        deliveryType = 'SMS';
-        contact = mobilePhone;
-        autoResolved = true;
-      }
+      if (email) { deliveryType = 'EMAIL'; contact = email; }
+      else if (mobilePhone) { deliveryType = 'SMS'; contact = mobilePhone; }
     } catch (err) {
       console.warn(`[ConsentChallenge] getPingOneUserContact failed: ${err.message}`);
       return { ok: false, status: 502, json: { error: 'mfa_contact_lookup_failed', message: 'Could not look up MFA contact. Try again.' } };
     }
 
-    // No contact on record — ask the user to supply one
-    if (!autoResolved) {
+    if (!contact) {
       console.log(`[ConsentChallenge] one-time OTP: no contact for user=${req.user.id} — requesting from UI`);
       ch.oneTimePath    = true;
       ch.pendingContact = true;
-      // status stays 'pending' until user supplies contact
       return { ok: true, challengeId, needsContact: true };
     }
 
     return _initiateOnetimeOtp(ch, challengeId, deliveryType, contact, userAccessToken, req.user.id, now);
   }
-  // ── End PingOne MFA: one-time OTP branch ─────────────────────────────────
 
+  // homegrown: BFF-generated OTP delivered via emailService
   // Generate OTP and store its hash
   const otpPlain = generateOtp();
   const otpSalt  = crypto.randomBytes(16).toString('hex');

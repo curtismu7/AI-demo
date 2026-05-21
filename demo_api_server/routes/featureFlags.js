@@ -111,13 +111,15 @@ const FLAG_REGISTRY = [
       'Controls how the one-time verification code is delivered after the user approves the consent challenge. ' +
       '**onetime** (default) — PingOne sends the OTP directly to the user\'s registered email or phone; no device enrollment required. ' +
       '**device_picker** — full PingOne MFA with device selection (requires enrolled devices + MFA policy). ' +
-      '**homegrown** — BFF-generated OTP delivered via the app\'s own email service (no PingOne MFA).',
+      '**homegrown** — BFF-generated OTP delivered via the app\'s own email service (no PingOne MFA). ' +
+      '**recognize** — PingOne Recognize biometric / device-intelligence verification (requires RECOGNIZE_API_KEY + RECOGNIZE_TENANT_NAME on the Feature Flags page).',
     impact:
       'onetime (default) = PingOne one-time OTP, works for any user with an email or phone on record. ' +
       'device_picker = enrolled-device flow with amount step-up threshold (confirm_stepup_threshold_usd). ' +
-      'homegrown = legacy BFF email OTP.',
+      'homegrown = legacy BFF email OTP. ' +
+      'recognize = PingOne Recognize biometric challenge; set credentials in the Recognize Configuration section below.',
     type:         'enum',
-    options:      ['onetime', 'device_picker', 'homegrown'],
+    options:      ['onetime', 'device_picker', 'homegrown', 'recognize'],
     defaultValue: 'onetime',
   },
 

@@ -893,6 +893,79 @@ async function wipeExistingResources(creds) {
   }
 }
 
+// ── PingOne Recognize optional setup ─────────────────────────────────────────
+//
+// Called after .env is written. In non-interactive / CI mode it reads
+// RECOGNIZE_API_KEY + RECOGNIZE_TENANT_NAME from the environment and writes
+// them to .env if present; silently skips if absent.
+// In interactive mode it prompts the user; skips if the key is left blank.
+
+async function promptRecognize() {
+  const fs = require('fs');
+  const ENV_PATH = path.resolve(__dirname, '..', '.env');
+
+  // Helper: upsert a KEY=value line in .env.
+  // If the key already exists, replaces the line; otherwise appends it.
+  function upsertEnvVar(filePath, key, value) {
+    let content = '';
+    try { content = fs.readFileSync(filePath, 'utf8'); } catch (_e) { /* file may not exist yet */ }
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`^${escapedKey}=.*$`, 'm');
+    const line = `${key}=${value}`;
+    if (re.test(content)) {
+      content = content.replace(re, line);
+    } else {
+      content = content.endsWith('\n') ? `${content}${line}\n` : `${content}\n${line}\n`;
+    }
+    fs.writeFileSync(filePath, content, 'utf8');
+  }
+
+  if (NON_INTERACTIVE) {
+    // CI path — write if both vars are present, skip silently otherwise.
+    const apiKey = process.env.RECOGNIZE_API_KEY || '';
+    const tenantName = process.env.RECOGNIZE_TENANT_NAME || '';
+    if (apiKey && tenantName) {
+      upsertEnvVar(ENV_PATH, 'RECOGNIZE_API_KEY', apiKey);
+      upsertEnvVar(ENV_PATH, 'RECOGNIZE_TENANT_NAME', tenantName);
+      console.log('  Recognize credentials written to .env.');
+    }
+    // Absent or partial — skip silently (no error).
+    return;
+  }
+
+  // Interactive path.
+  console.log('');
+  console.log('─────────────────────────────────────────────');
+  console.log('PingOne Recognize (optional — biometric face auth)');
+  console.log('─────────────────────────────────────────────');
+  console.log('Get your API key from: https://sdk-customer-dashboard.eks.core-production.saas-us-east.keyless.technology/');
+  console.log('Access Control → Secret API Key → Create Secret API Key');
+  console.log('');
+
+  const tty = getInteractiveInput();
+  const rl = readline.createInterface({ input: tty.stream, output: process.stdout, terminal: true });
+  try {
+    const apiKey = await prompt(rl, 'RECOGNIZE_API_KEY (leave blank to skip)', { secret: true });
+    if (!apiKey) {
+      console.log('Recognize not configured (skipped). Set RECOGNIZE_API_KEY in .env to enable.');
+      return;
+    }
+
+    const tenantName = await prompt(rl, 'RECOGNIZE_TENANT_NAME (e.g. ping_us)');
+    if (!tenantName) {
+      console.log('Recognize not configured (skipped). Set RECOGNIZE_TENANT_NAME in .env to enable.');
+      return;
+    }
+
+    upsertEnvVar(ENV_PATH, 'RECOGNIZE_API_KEY', apiKey);
+    upsertEnvVar(ENV_PATH, 'RECOGNIZE_TENANT_NAME', tenantName);
+    console.log('  Recognize credentials written to .env.');
+  } finally {
+    rl.close();
+    if (tty.opened) try { tty.stream.destroy(); } catch (_e) {}
+  }
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -1099,6 +1172,12 @@ async function main() {
     } catch (err) {
       console.warn('[Bootstrap] TraT claims setup failed (non-fatal):', err.message);
     }
+
+    // ── PingOne Recognize (optional) ──────────────────────────────────────
+    // Prompt for Recognize API key + tenant name after .env is written.
+    // In CI/non-interactive mode: read from env vars if present, skip silently
+    // if absent. Interactive: prompt after the success banner.
+    await promptRecognize();
 
     // Offer to auto-run ./run.sh restart so the running services pick up
     // the new .env. Skipped under --non-interactive (CI / scripted runs print

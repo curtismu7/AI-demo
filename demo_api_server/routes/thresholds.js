@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const configStore = require('../services/configStore');
 const runtimeSettings = require('../config/runtimeSettings');
+const { logEvent, EVENT_CATEGORIES } = require('../services/appEventService');
 
 const DEFAULT_CONFIRM = 250; // HITL (Human-In-Loop) consent threshold
 const DEFAULT_MFA = 500;     // MFA step-up threshold
@@ -67,7 +68,9 @@ router.post('/', async (req, res) => {
     }
 
     await configStore.setConfig(update);
-    console.log('[Thresholds] Updated:', update);
+    logEvent(EVENT_CATEGORIES.THRESHOLD, 'info',
+      `Thresholds updated — confirm=$${update.confirm_threshold_usd || '(unchanged)'} mfa=$${update.mfa_threshold_usd || '(unchanged)'}`,
+      { tag: 'threshold/updated', metadata: update });
     res.json({ ok: true, ...readThresholds() });
   } catch (err) {
     console.error('[Thresholds] Error:', err.message);

@@ -35,6 +35,7 @@ jest.mock('../../middleware/auth', () => ({
 const mockLogEvent = jest.fn();
 jest.mock('../../services/appEventService', () => ({
   logEvent: mockLogEvent,
+  EVENT_CATEGORIES: { AUTHORIZE: 'authorize', HITL: 'hitl', THRESHOLD: 'threshold' },
 }));
 
 // ─── Mock bankingDb (not used by /identity but must not throw on require) ─────

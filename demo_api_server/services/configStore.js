@@ -41,6 +41,7 @@ const _SECRET_KEYS_RAW = [
   'demo_password',
   'demo_admin_password',
   'mcp_gw_client_secret',
+  'RECOGNIZE_API_KEY',
 ];
 // Membership is UPPER-canonical: config keys are stored UPPER everywhere
 // (in-memory cache + SQLite rows), so secret detection must match regardless
@@ -370,6 +371,10 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
 
   // Phase 266 — Path A demo: service API key the gateway swaps in (masked last-4 shown on info page)
   demo_apikey_backend_service_key:       { public: false, default: 'demo-api-key-0000' },
+
+  // PingOne Recognize — biometric / device intelligence
+  RECOGNIZE_API_KEY:    { public: false, default: '' },
+  RECOGNIZE_TENANT_NAME: { public: true,  default: '' },
 };
 
 // ---------------------------------------------------------------------------

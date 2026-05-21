@@ -24,6 +24,7 @@ Add PingOne Recognize WebSDK support to the Super Banking demo as a fourth `hitl
 - New `recognizeService.js` BFF service
 - New `/api/recognize/enroll` BFF route
 - New `/consent-challenge/:id/verify-recognize` route
+- New `/consent-challenge/:id/recognize-fallback` route (UI signals SDK failure; BFF pivots challenge to one-time OTP path)
 
 **Out of scope:**
 - Login step-up via Recognize
@@ -90,8 +91,8 @@ User initiates transfer
 
 | File | Change |
 |------|--------|
-| `demo_api_server/services/transactionConsentChallenge.js` | Add `recognize` branch in `confirmChallenge` MFA dispatch. Add exported `verifyRecognize(req, challengeId, sessionResult)` function that calls `recognizeService.verifySession` and advances challenge to `'confirmed'`. |
-| `demo_api_server/server.js` | Register `recognize.js` router at `/api/recognize`. Add `POST /consent-challenge/:challengeId/verify-recognize` route (same auth middleware pattern as `verify-otp`). |
+| `demo_api_server/services/transactionConsentChallenge.js` | Add `recognize` branch in `confirmChallenge` MFA dispatch. Add `verifyRecognize(req, challengeId, sessionResult)` — on success advances to `'confirmed'`; on failure falls back by calling the existing `onetime` initiation path inline. Add `recognizeFallback(req, challengeId)` that pivots an in-progress recognize challenge to one-time OTP. |
+| `demo_api_server/server.js` | Register `recognize.js` router at `/api/recognize`. Add `POST /consent-challenge/:challengeId/verify-recognize` and `POST /consent-challenge/:challengeId/recognize-fallback` routes (same auth middleware pattern as `verify-otp`). |
 | `demo_api_server/routes/featureFlags.js` | Add `'recognize'` to `hitl_consent_mfa_mode` options array and description. |
 | `demo_api_ui/src/components/Profile.js` | Add `RecognizeEnrollCard` as a third card below MFA Devices. |
 | `demo_api_ui/src/components/TransactionConsentModal.js` (or equivalent) | Handle `mode: 'recognize'` in confirm response — mount `RecognizeOverlay`, call `verify-recognize` on success, resume transaction. |
@@ -120,12 +121,12 @@ All three vars are required. `recognizeService.js` throws a clear error at call 
 
 | Failure | BFF response | UI behaviour |
 |---------|-------------|-------------|
-| `recognizeService.initiateSession` fails | `502 recognize_init_failed` | Modal shows error toast, stays open |
-| User not enrolled when `recognize` mode active | SDK fires errorEvent immediately | Overlay shows: "Face ID not set up. Enroll from your Profile page first." Dismisses after 3000ms |
-| SDK errorEvent during face-auth | `onError` callback fires | Overlay shows error message, dismisses after 3000ms (matching Recognize doc recommendation) |
-| `verifySession` rejects | `401 recognize_verify_failed` | Overlay shows failure message, challenge is not consumed, user can retry |
+| `recognizeService.initiateSession` fails | BFF falls back: runs `onetime` OTP initiation inline, returns `{ mode: 'onetime', ... }` | Modal shows "Face ID unavailable — sending a one-time code instead", then OTP entry screen |
+| User not enrolled when face-auth attempted | SDK fires errorEvent; UI signals fallback to BFF | Overlay dismisses after 3000ms ("Face ID not set up"); BFF initiates one-time OTP; modal shows OTP entry |
+| SDK errorEvent during face-auth | `onError` callback fires; UI signals fallback to BFF via `POST /consent-challenge/:id/recognize-fallback` | Same fallback path as above — one-time OTP initiated, modal pivots to OTP entry |
+| `verifySession` rejects | BFF initiates one-time OTP as fallback, returns `{ mode: 'onetime', ... }` | Overlay shows failure message briefly, then modal presents OTP entry |
 
-No silent fallback to OTP when `recognize` mode is active — the failure is intentional demo story.
+**Fallback to one-time OTP:** If Recognize fails at any point during the HITL consent flow (init failure, SDK error, or verify rejection), the BFF/UI automatically falls back to the `onetime` path — `confirmChallenge` initiates a PingOne one-time OTP and the modal presents the standard OTP entry screen. The fallback is transparent to the user aside from a brief status message ("Face ID unavailable — sending a one-time code instead"). This ensures transfers are never blocked by a Recognize outage or unenrolled user.
 
 ---
 

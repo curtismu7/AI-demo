@@ -308,7 +308,7 @@ function parseBanking(t) {
 
   // Phase 266 — Access + ID-Token path demo (Path B)
   // Trigger: "show my profile card", "use the access-and-id-token path", "dual token path"
-  if (/(?:show|view|my)?\s*profile\s*card|\baccess[- ]?and[- ]?id[- ]?token\s+path\b|\bdual[- ]?token\s+path\b/i.test(t)) {
+  if (/(?:show|view|my)?\s*profile\s*card|\baccess[- ]?(?:and[- ]?)?id[- ]?token\s+path\b|\bdual[- ]?token\s+path\b/i.test(t)) {
     return { kind: 'banking', banking: { action: 'dual_token_demo' } };
   }
 
@@ -384,10 +384,11 @@ function parseHeuristic(message, vertical = 'banking') {
     return { kind: 'none', message: 'Say what you want to do or which topic to learn.' };
   }
 
-  // Hard fast-path: "list/show/get mcp tools" is ALWAYS a banking action, never education.
-  // Runs before the what-is/explain guard and before parseEducation so that phrases like
-  // "list of mcp tools" are never swallowed by the broad \bmcp\b education regex.
-  if (/\b(list|show|get|what).*(mcp.*tools?|tools?.*available|available.*tools?)\b|\btools?\s*(list|available)\b/.test(t)) {
+  // Hard fast-path: "list/show/get mcp tools" and the bare chip label "mcp tools" are
+  // ALWAYS a banking action, never education. Runs before the what-is/explain guard and
+  // before parseEducation so that phrases like "list of mcp tools" or the bare chip label
+  // "MCP Tools" are never swallowed by the broad \bmcp\b education regex.
+  if (/\b(list|show|get|what).*(mcp.*tools?|tools?.*available|available.*tools?)\b|\btools?\s*(list|available)\b|\bmcp\s+tools?\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'mcp_tools' } };
   }
 

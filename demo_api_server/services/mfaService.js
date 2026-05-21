@@ -781,18 +781,7 @@ async function completeFido2Registration(userId, deviceId, attestation, requestO
 	}
 }
 
-/**
- * Initiate a one-time OTP challenge via PingOne — no device enrollment required.
- * PingOne sends the OTP directly to the supplied email or phone.
- *
- * Token rule: uses user access token to POST /deviceAuthentications.
- * Returns { id (daId), status: 'OTP_REQUIRED', _embedded: { devices[{ type, email|phone }] }, _debug }
- *
- * @param {string} userId           PingOne user id
- * @param {'EMAIL'|'SMS'} deliveryType
- * @param {string} contact          Email address or E.164 phone number
- * @param {string} userAccessToken  User's access token from session
- */
+// initiateOneTimeOtp — user token to POST /deviceAuthentications (worker token rejected at initiation)
 async function initiateOneTimeOtp(userId, deliveryType, contact, userAccessToken) {
 	const authBase = _authBaseUrl();
 	const oneTime = deliveryType === 'EMAIL'
@@ -815,14 +804,7 @@ async function initiateOneTimeOtp(userId, deliveryType, contact, userAccessToken
 	}
 }
 
-/**
- * Verify the OTP submitted by the user for a one-time OTP challenge.
- * Token rule: uses worker token (user tokens rejected with INVALID_TOKEN on verify).
- *
- * @param {string} daId  deviceAuthentications transaction id from initiateOneTimeOtp
- * @param {string} otp   6-digit code entered by the user
- * Returns { status: 'COMPLETED'|'FAILED', _debug }
- */
+// verifyOneTimeOtp — worker token required (PingOne rejects user tokens with INVALID_TOKEN on verify)
 async function verifyOneTimeOtp(daId, otp) {
 	const authBase = _authBaseUrl();
 	const workerToken = await _getWorkerToken();
@@ -843,11 +825,6 @@ async function verifyOneTimeOtp(daId, otp) {
 	}
 }
 
-/**
- * Look up a PingOne user's email and mobilePhone by userId via Management API (worker token).
- * Used by confirmChallenge to resolve the contact for one-time OTP delivery.
- * Returns { email, mobilePhone } — either may be null.
- */
 async function getPingOneUserContact(userId) {
 	const workerToken = await _getWorkerToken();
 	const url = `${_apiBaseUrl()}/users/${userId}`;

@@ -45,6 +45,7 @@ jest.mock('../../services/configStore', () => ({
 
 jest.mock('../../services/appEventService', () => ({
   logEvent: jest.fn(),
+  EVENT_CATEGORIES: { AUTHORIZE: 'authorize', HITL: 'hitl', THRESHOLD: 'threshold' },
 }));
 
 // ─── App builder ──────────────────────────────────────────────────────────────

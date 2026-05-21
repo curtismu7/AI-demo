@@ -1,10 +1,49 @@
-// banking_api_ui/src/components/Profile.js
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import bffAxios from '../services/bffAxios';
 import './Profile.css';
 
-export default function Profile({ user, onLogout }) {
+function DeviceIcon({ type }) {
+  const t = (type || '').toUpperCase();
+  if (t === 'EMAIL') {
+    return (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <title>Email device</title>
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+        <polyline points="22,6 12,13 2,6" />
+      </svg>
+    );
+  }
+  if (t === 'TOTP') {
+    return (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <title>Authenticator app device</title>
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12,6 12,12 16,14" />
+      </svg>
+    );
+  }
+  if (t === 'FIDO2') {
+    return (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <title>Security key device</title>
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <title>Mobile device</title>
+      <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+      <line x1="12" y1="18" x2="12.01" y2="18" />
+    </svg>
+  );
+}
+
+export default function Profile({ user }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
@@ -12,34 +51,38 @@ export default function Profile({ user, onLogout }) {
     phone: user?.phone || '',
   });
 
+  const [devices, setDevices] = useState([]);
+  const [devicesLoading, setDevicesLoading] = useState(true);
+  const [removingId, setRemovingId] = useState(null);
+
+  const loadDevices = useCallback(async () => {
+    setDevicesLoading(true);
+    try {
+      const res = await bffAxios.get('/api/auth/mfa/devices');
+      setDevices(res.data.devices || []);
+    } catch {
+      setDevices([]);
+    } finally {
+      setDevicesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadDevices(); }, [loadDevices]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
-
-  const [isSaving, setIsSaving] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      const response = await fetch('/api/self-service/users/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(formData),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error_description || data.error || 'Failed to update profile');
-      }
+      await bffAxios.patch('/api/self-service/users/me', formData);
       toast.success('Profile updated successfully');
       setIsEditing(false);
     } catch (err) {
-      toast.error(err.message || 'Failed to update profile');
+      toast.error(err.response?.data?.error_description || err.message || 'Failed to update profile');
     } finally {
       setIsSaving(false);
     }
@@ -55,363 +98,165 @@ export default function Profile({ user, onLogout }) {
     setIsEditing(false);
   };
 
+  const handleRemoveDevice = async (deviceId) => {
+    setRemovingId(deviceId);
+    try {
+      await bffAxios.delete(`/api/auth/mfa/devices/${deviceId}`);
+      toast.success('Device removed');
+      setDevices(prev => prev.filter(d => d.id !== deviceId));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to remove device');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  const accountStatus = user?.enabled === false ? 'DISABLED' : 'ACCOUNT OK';
+  const mfaEnabled = devices.length > 0 ? 'Yes' : 'No';
+
   return (
-    <div className="profile-container">
-      <div className="profile-header">
-        <h2>Profile Settings</h2>
-        <p>Manage your personal information and preferences</p>
+    <div className="up-page">
+      <div className="up-heading">
+        <h1>User Portal</h1>
+        <p>Manage your profile and multi-factor authentication devices.</p>
       </div>
 
-      <div className="profile-card">
-        <div className="profile-avatar">
-          <div className="avatar-circle">
-            {(user?.firstName?.[0] || '?').toUpperCase()}
-          </div>
-        </div>
-
-        <div className="profile-content">
-          {isEditing ? (
-            <form onSubmit={handleSubmit} className="profile-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="firstName">First Name</label>
-                  <input
-                    type="text"
-                    id="firstName"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="lastName">Last Name</label>
-                  <input
-                    type="text"
-                    id="lastName"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="email">Email Address</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="phone">Phone Number</label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="(555) 123-4567"
-                />
-              </div>
-
-              <div className="form-actions">
-                <button type="button" onClick={handleCancel} className="btn btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={isSaving}>
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="profile-display">
-              <div className="profile-info">
-                <div className="info-row">
-                  <span className="info-label">Name:</span>
-                  <span className="info-value">
-                    {user?.firstName} {user?.lastName}
-                  </span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Email:</span>
-                  <span className="info-value">{user?.email}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Phone:</span>
-                  <span className="info-value">{user?.phone || 'Not provided'}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Role:</span>
-                  <span className="info-value">
-                    {user?.role === 'admin' ? '👑 Administrator' : '👤 Customer'}
-                  </span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Account Status:</span>
-                  <span className="info-value status-active">✅ Active</span>
-                </div>
-              </div>
-
-              <div className="profile-actions">
-                <button 
-                  onClick={() => setIsEditing(true)} 
-                  className="btn btn-primary"
-                >
-                  Edit Profile
-                </button>
-              </div>
-            </div>
+      {/* Profile Information */}
+      <div className="up-card">
+        <div className="up-card__header">
+          <span className="up-card__title">Profile Information</span>
+          {!isEditing && (
+            <button type="button" className="up-btn up-btn--edit" onClick={() => setIsEditing(true)}>
+              Edit Profile
+            </button>
           )}
         </div>
+
+        {isEditing ? (
+          <form onSubmit={handleSubmit} className="up-form">
+            <div className="up-form__row">
+              <div className="up-form__field">
+                <label htmlFor="firstName">FIRST NAME</label>
+                <input id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} required />
+              </div>
+              <div className="up-form__field">
+                <label htmlFor="lastName">LAST NAME</label>
+                <input id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} required />
+              </div>
+              <div className="up-form__field">
+                <label htmlFor="email">EMAIL</label>
+                <input id="email" type="email" name="email" value={formData.email} onChange={handleChange} required />
+              </div>
+            </div>
+            <div className="up-form__row">
+              <div className="up-form__field">
+                <label htmlFor="phone">PHONE</label>
+                <input id="phone" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="—" />
+              </div>
+            </div>
+            <div className="up-form__actions">
+              <button type="button" className="up-btn up-btn--secondary" onClick={handleCancel}>Cancel</button>
+              <button type="submit" className="up-btn up-btn--edit" disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="up-fields">
+            <div className="up-field">
+              <span className="up-field__label">FIRST NAME</span>
+              <span className="up-field__value">{user?.firstName || '—'}</span>
+            </div>
+            <div className="up-field">
+              <span className="up-field__label">LAST NAME</span>
+              <span className="up-field__value">{user?.lastName || '—'}</span>
+            </div>
+            <div className="up-field">
+              <span className="up-field__label">EMAIL</span>
+              <span className="up-field__value">{user?.email || '—'}</span>
+            </div>
+            <div className="up-field">
+              <span className="up-field__label">USERNAME</span>
+              <span className="up-field__value">{user?.username || '—'}</span>
+            </div>
+            <div className="up-field">
+              <span className="up-field__label">PHONE</span>
+              <span className="up-field__value">{user?.phone || '—'}</span>
+            </div>
+            <div className="up-field">
+              <span className="up-field__label">ACCOUNT STATUS</span>
+              <span className={`up-field__value up-field__value--status${accountStatus === 'ACCOUNT OK' ? ' ok' : ' disabled'}`}>
+                {accountStatus}
+              </span>
+            </div>
+            <div className="up-field">
+              <span className="up-field__label">MFA ENABLED</span>
+              <span className={`up-field__value up-field__value--status${mfaEnabled === 'Yes' ? ' ok' : ''}`}>
+                {devicesLoading ? '…' : mfaEnabled}
+              </span>
+            </div>
+            <div className="up-field up-field--wide">
+              <span className="up-field__label">USER ID</span>
+              <span className="up-field__value up-field__value--mono">{user?.oauthId || user?.id || '—'}</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="profile-sections">
-        <div className="profile-section">
-          <h3>Security Settings</h3>
-          <p>Manage your password, two-factor authentication, and security preferences.</p>
-          <button className="btn btn-outline">Manage Security</button>
+      {/* MFA Devices */}
+      <div className="up-card">
+        <div className="up-card__header">
+          <span className="up-card__title">MFA Devices</span>
         </div>
 
-        <div className="profile-section">
-          <h3>Notification Preferences</h3>
-          <p>Control how you receive alerts and updates about your account.</p>
-          <button className="btn btn-outline">Manage Notifications</button>
-        </div>
+        <div className="up-mfa-layout">
+          <div className="up-device-list">
+            <span className="up-device-list__label">Your Devices</span>
 
-        <div className="profile-section">
-          <h3>Privacy Settings</h3>
-          <p>Manage your data privacy and sharing preferences.</p>
-          <button className="btn btn-outline">Manage Privacy</button>
+            {devicesLoading && (
+              <div className="up-device-empty">Loading devices…</div>
+            )}
+            {!devicesLoading && devices.length === 0 && (
+              <div className="up-device-empty">No MFA devices enrolled.</div>
+            )}
+            {!devicesLoading && devices.map(device => (
+              <div key={device.id} className="up-device">
+                <div className="up-device__icon">
+                  <DeviceIcon type={device.type} />
+                </div>
+                <div className="up-device__info">
+                  <span className="up-device__name">{device.type}</span>
+                  <span className="up-device__sub">
+                    {device.type}{device.maskedContact ? ` • ${device.maskedContact}` : ''}
+                  </span>
+                </div>
+                <span className="up-device__badge">
+                  ✅ Verified
+                </span>
+                <button
+                  type="button"
+                  className="up-btn up-btn--remove"
+                  onClick={() => handleRemoveDevice(device.id)}
+                  disabled={removingId === device.id}
+                >
+                  {removingId === device.id ? '…' : 'Remove'}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="up-manage-panel">
+            <span className="up-manage-panel__label">Manage Devices</span>
+            <p className="up-manage-panel__desc">Add a new MFA device to your account</p>
+            <button type="button" className="up-btn up-btn--add" onClick={() => toast.info('Device enrollment coming soon')}>
+              + Add New Device
+            </button>
+            <button type="button" className="up-btn up-btn--refresh" onClick={loadDevices} disabled={devicesLoading}>
+              ↻ Refresh
+            </button>
+          </div>
         </div>
       </div>
-
-      <style jsx>{`
-        .profile-container {
-          max-width: 800px;
-          margin: 0 auto;
-          padding: 2rem;
-        }
-
-        .profile-header {
-          margin-bottom: 2rem;
-        }
-
-        .profile-header h2 {
-          margin: 0 0 0.5rem 0;
-          color: #333;
-        }
-
-        .profile-header p {
-          margin: 0;
-          color: #666;
-        }
-
-        .profile-card {
-          display: flex;
-          gap: 2rem;
-          background: white;
-          border-radius: 8px;
-          padding: 2rem;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-          margin-bottom: 2rem;
-        }
-
-        .profile-avatar {
-          flex-shrink: 0;
-        }
-
-        .avatar-circle {
-          width: 80px;
-          height: 80px;
-          border-radius: 50%;
-          background: #4f46e5;
-          color: white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 2rem;
-          font-weight: bold;
-        }
-
-        .profile-content {
-          flex: 1;
-        }
-
-        .profile-form .form-row {
-          display: flex;
-          gap: 1rem;
-          margin-bottom: 1rem;
-        }
-
-        .form-group {
-          flex: 1;
-        }
-
-        .form-group label {
-          display: block;
-          margin-bottom: 0.5rem;
-          font-weight: 500;
-          color: #333;
-        }
-
-        .form-group input {
-          width: 100%;
-          padding: 0.75rem;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 1rem;
-        }
-
-        .form-group input:focus {
-          outline: none;
-          border-color: #4f46e5;
-          box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
-        }
-
-        .form-actions {
-          display: flex;
-          gap: 1rem;
-          margin-top: 1.5rem;
-        }
-
-        .profile-display {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-        }
-
-        .profile-info {
-          flex: 1;
-        }
-
-        .info-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.75rem 0;
-          border-bottom: 1px solid #f0f0f0;
-        }
-
-        .info-row:last-child {
-          border-bottom: none;
-        }
-
-        .info-label {
-          font-weight: 500;
-          color: #666;
-        }
-
-        .info-value {
-          color: #333;
-        }
-
-        .status-active {
-          color: #10b981;
-          font-weight: 500;
-        }
-
-        .profile-actions {
-          flex-shrink: 0;
-        }
-
-        .profile-sections {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .profile-section {
-          background: white;
-          border-radius: 8px;
-          padding: 1.5rem;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .profile-section h3 {
-          margin: 0 0 0.5rem 0;
-          color: #333;
-        }
-
-        .profile-section p {
-          margin: 0 0 1rem 0;
-          color: #666;
-        }
-
-        .btn {
-          padding: 0.75rem 1.5rem;
-          border: none;
-          border-radius: 4px;
-          font-size: 1rem;
-          cursor: pointer;
-          text-decoration: none;
-          display: inline-block;
-          text-align: center;
-          transition: all 0.2s;
-        }
-
-        .btn-primary {
-          background: #4f46e5;
-          color: white;
-        }
-
-        .btn-primary:hover {
-          background: #4338ca;
-        }
-
-        .btn-secondary {
-          background: #6b7280;
-          color: white;
-        }
-
-        .btn-secondary:hover {
-          background: #4b5563;
-        }
-
-        .btn-outline {
-          background: transparent;
-          color: #4f46e5;
-          border: 1px solid #4f46e5;
-        }
-
-        .btn-outline:hover {
-          background: #4f46e5;
-          color: white;
-        }
-
-        @media (max-width: 768px) {
-          .profile-container {
-            padding: 1rem;
-          }
-
-          .profile-card {
-            flex-direction: column;
-            text-align: center;
-            gap: 1.5rem;
-          }
-
-          .profile-display {
-            flex-direction: column;
-            gap: 1rem;
-          }
-
-          .form-row {
-            flex-direction: column;
-          }
-
-          .info-row {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.25rem;
-          }
-        }
-      `}</style>
     </div>
   );
 }
