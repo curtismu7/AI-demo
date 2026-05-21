@@ -170,6 +170,7 @@ last-resort floor" guarantee is the *entire* path, not merely the floor.
   exchange the `bff` wiring retains).
 
 
+
 ---
 
 ## T-4 — PingOne performs token exchange; the Gateway, agents, and MCP servers only *request* it

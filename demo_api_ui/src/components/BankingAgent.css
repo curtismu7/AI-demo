@@ -4512,22 +4512,6 @@ html[data-theme="dark"]
 .ba-llm-mode-cb {
   accent-color: #d97706;
 }
-.ba-llm-provider-label {
-  gap: 6px;
-}
-.ba-llm-provider-select {
-  font: inherit;
-  font-size: 12px;
-  padding: 1px 4px;
-  border-radius: 4px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  cursor: pointer;
-}
-.ba-llm-provider-select:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
 
 .ba-typing-indicator {
   display: flex;
