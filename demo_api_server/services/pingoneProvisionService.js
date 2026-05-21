@@ -1216,19 +1216,20 @@ class PingOneProvisionService {
       `AGENT_CLIENT_ID=${provisioned.agentApp?.clientId || ''}`,
       `AGENT_CLIENT_SECRET=${provisioned.agentApp?.clientSecret || '<set-in-pingone-console>'}`,
       '',
-      '# ─── RFC 8693 Single-Exchange Delegation ───────────────────────────────',
-      '# The BFF performs ONE token exchange: user (subject) + AI Agent (actor)',
-      '# -> token audienced to the MCP Gateway. The gateway re-exchanges to the',
-      '# MCP server, and the MCP server re-exchanges to the resource server. The',
-      '# >=2-exchange security property is satisfied chain-wide (BFF + gateway +',
-      '# MCP server), so the BFF never performs a second exchange itself.',
+      '# ─── RFC 8693 Two-Exchange Delegation ─────────────────────────────────',
+      '# Exchange #1: AI Agent exchanges user token (aud=enduser.ping.demo) +',
+      '#              AI Agent actor CC (aud=agentgateway.ping.demo)',
+      '#              -> intermediate token (aud=agentgateway.ping.demo).',
+      '# Exchange #2: MCP Exchanger exchanges intermediate token (aud=agentgateway) +',
+      '#              MCP Exchanger actor CC (aud=mcpgateway.ping.demo)',
+      '#              -> final MCP token (aud=mcpgateway.ping.demo).',
       `PINGONE_AI_AGENT_CLIENT_ID=${provisioned.aiAgentApp?.clientId || ''}`,
       `PINGONE_AI_AGENT_CLIENT_SECRET=${provisioned.aiAgentApp?.clientSecret || '<set-in-pingone-console>'}`,
       `PINGONE_RESOURCE_AGENT_GATEWAY_URI=${provisioned.agentGwResourceServer?.audience?.[0] || 'agentgateway.ping.demo'}`,
       `PINGONE_RESOURCE_MCP_GATEWAY_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcpgateway.ping.demo'}`,
       `# Two-Exchange Delegation audiences (Exchange #1 intermediate + Exchange #2 final)`,
       `AI_AGENT_INTERMEDIATE_AUDIENCE=${provisioned.agentGwResourceServer?.audience?.[0] || 'agentgateway.ping.demo'}`,
-      `PINGONE_RESOURCE_TWO_EXCHANGE_URI=${provisioned.mcpResourceServer?.audience?.[0] || 'https://mcp-server.pingdemo.com'}`,
+      `PINGONE_RESOURCE_TWO_EXCHANGE_URI=${provisioned.mcpGwResourceServer?.audience?.[0] || 'mcpgateway.ping.demo'}`,
       `# Exchange #1 scope — must match the scope granted to AI Agent on the Agent Gateway resource`,
       `TWO_EXCHANGE_INTERMEDIATE_SCOPE=agent:invoke`,
       '# AGENT_OAUTH_CLIENT_ID/SECRET aliases — same MCP Token Exchanger app as',
@@ -2196,69 +2197,80 @@ class PingOneProvisionService {
         onStep(steps[steps.length - 1]);
       }
 
-      // Step 37a: Grant scopes the AI Agent needs as the RFC 8693 ACTOR.
+      // Step 37a: Grant scopes the AI Agent needs for the two-exchange delegation chain.
       //
-      // Canonical chain: the AI Agent mints a client-credentials actor token
-      // bound to the Agent Gateway audience; the BFF uses it as actor_token in
-      // its single subject+actor exchange. The AI Agent does NOT itself perform
-      // an exchange, so it only needs agent:invoke on the Agent Gateway
-      // resource.
-      steps.push({ step: 'ai-agent-grants', icon: '🔑', message: 'Granting scopes to AI Agent application (Agent Gateway actor)...' });
+      // Two-exchange chain:
+      //   Exchange #1: AI Agent exchanges user token (aud=enduser.ping.demo) +
+      //                AI Agent actor CC (aud=agentgateway.ping.demo) →
+      //                intermediate token (aud=agentgateway.ping.demo).
+      //   Exchange #2: MCP Exchanger exchanges intermediate token (aud=agentgateway) +
+      //                MCP Exchanger actor CC (aud=mcpgateway.ping.demo) →
+      //                final MCP token (aud=mcpgateway.ping.demo).
+      //
+      // AI Agent needs:
+      //   - agent:invoke on Agent Gateway (actor CC token for Exchange #1)
+      //   - read/write/transfer/ai:agent:read/mortgage:read on Demo API / enduser resource
+      //     so PingOne allows Exchange #1 to accept a user subject token with
+      //     aud=enduser.ping.demo (PingOne requires the exchanging client to have
+      //     a grant on the subject token's audience resource).
+      steps.push({ step: 'ai-agent-grants', icon: '✅', message: 'Granting scopes to AI Agent application (Agent Gateway actor + Demo API subject)...' });
       onStep(steps[steps.length - 1]);
-      // SYNC: the Agent-Gateway scope below is what the AI Agent actor CC
-      // token requests at runtime. If you change it, also update configStore
-      // default `agent_gateway_cc_scope`. They MUST match or PingOne rejects
-      // the CC request with invalid_scope.
       try {
-        const aiAgentGwGrant = await this.grantScopesToApplication(
-          aiAgentAppResult.application.id,
-          agentGwResourceResult.resource.id,
-          ['agent:invoke'],
-        );
-        pushGrantResultStep(steps, 'ai-agent-grants', 'AI Agent scope grants', [aiAgentGwGrant]);
+        // SYNC: agent:invoke scope matches configStore default `agent_gateway_cc_scope`.
+        // Enduser grant lets Exchange #1 accept a subject token with aud=enduser.ping.demo.
+        const [aiAgentGwGrant, aiAgentEndUserGrant] = await Promise.all([
+          this.grantScopesToApplication(
+            aiAgentAppResult.application.id,
+            agentGwResourceResult.resource.id,
+            ['agent:invoke'],
+          ),
+          this.grantScopesToApplication(
+            aiAgentAppResult.application.id,
+            resourceResult.resource.id,
+            ['read', 'write', 'transfer', 'ai:agent:read', 'mortgage:read'],
+          ),
+        ]);
+        pushGrantResultStep(steps, 'ai-agent-grants', 'AI Agent scope grants', [aiAgentGwGrant, aiAgentEndUserGrant]);
       } catch (e) {
         steps.push({ step: 'ai-agent-grants', icon: '⚠️', message: `AI Agent grant skipped: ${e.message}` });
       }
       onStep(steps[steps.length - 1]);
 
-      // Step 37b: Grant scopes the MCP Exchanger needs for the single
-      // subject+actor RFC 8693 exchange.
+      // Step 37b: Grant scopes the MCP Exchanger needs for Exchange #2.
       //
-      // Canonical chain: the BFF's ONE exchange (authenticated by the MCP
-      // Exchanger client) is audienced to the MCP GATEWAY and requests the
-      // tool scopes (read / write) plus mcp:invoke.
-      // PingOne checks the exchanging client's grants against the target
-      // resource, so read/write/mcp:invoke MUST be granted on the MCP
-      // Gateway resource. PingOne enforces ONE scope-name per app across all
-      // its grants — so these names live ONLY here (granted FIRST so the
-      // cross-resource one-name filter in grantScopesToApplication keeps them
-      // on the Gateway resource, not a later one). The MCP Server resource
-      // grant keeps only the names not already claimed by the Gateway grant
-      // (the gateway re-exchanges to mcp-server with its OWN client).
-      // SYNC: the MCP-Gateway scopes below are what the MCP Exchanger actor CC
-      // token + the BFF single exchange request at runtime — keep in sync with
-      // configStore defaults `mcp_gateway_cc_scope` / mcp_token_exchange_scopes.
-      steps.push({ step: 'mcp-exchanger-grants', icon: '🔑', message: 'Granting scopes to MCP Exchanger application (MCP Gateway + MCP Server)...' });
+      // MCP Exchanger needs:
+      //   - agent:invoke on Agent Gateway — PingOne requires the exchanging client to
+      //     have a grant on the subject token's audience resource so it can accept an
+      //     intermediate subject token with aud=agentgateway.ping.demo.
+      //   - Tool scopes on MCP Gateway (FINAL audience). Grant first — PingOne enforces
+      //     one scope-name per app across all grants, so these names must land on the
+      //     Gateway resource before the MCP Server grant runs.
+      //   - Admin-only scopes on MCP Server (unique to that resource).
+      // SYNC: MCP-Gateway scopes match configStore defaults `mcp_gateway_cc_scope` /
+      // mcp_token_exchange_scopes.
+      steps.push({ step: 'mcp-exchanger-grants', icon: '✅', message: 'Granting scopes to MCP Exchanger application (Agent Gateway + MCP Gateway + MCP Server)...' });
       onStep(steps[steps.length - 1]);
       try {
-        // The MCP Exchanger mints the BFF RFC 8693 exchange #1 token, so it
-        // must be granted EVERY scope a gateway-surface tool can require on
-        // the gateway resource — otherwise PingOne silently drops the
-        // unrequestable scope from the exchanged token and the gateway denies
-        // with insufficient_scope. That set == the gateway resource's full
-        // topology scope list (native + RFC 8693 mirrored). Same reasoning
-        // for the MCP-server resource. Derived from scope-topology.json.
-        const mcpExGwGrant = await this.grantScopesToApplication(
-          mcpExchangerResult.application.id,
-          mcpGwResourceResult.resource.id,
-          scopeTopology.resourceScopes('Super Banking MCP Gateway'),
-        );
+        // Agent GW and MCP GW grants are independent; MCP Server grant must come after
+        // MCP GW so the cross-resource one-name filter assigns shared names to GW first.
+        const [mcpExAgentGwGrant, mcpExGwGrant] = await Promise.all([
+          this.grantScopesToApplication(
+            mcpExchangerResult.application.id,
+            agentGwResourceResult.resource.id,
+            ['agent:invoke'],
+          ),
+          this.grantScopesToApplication(
+            mcpExchangerResult.application.id,
+            mcpGwResourceResult.resource.id,
+            scopeTopology.resourceScopes('Super Banking MCP Gateway'),
+          ),
+        ]);
         const mcpExServerGrant = await this.grantScopesToApplication(
           mcpExchangerResult.application.id,
           mcpResourceResult.resource.id,
           scopeTopology.resourceScopes('Super Banking MCP Server'),
         );
-        pushGrantResultStep(steps, 'mcp-exchanger-grants', 'MCP Exchanger scope grants', [mcpExGwGrant, mcpExServerGrant]);
+        pushGrantResultStep(steps, 'mcp-exchanger-grants', 'MCP Exchanger scope grants', [mcpExAgentGwGrant, mcpExGwGrant, mcpExServerGrant]);
       } catch (e) {
         steps.push({ step: 'mcp-exchanger-grants', icon: '⚠️', message: `MCP Exchanger grant skipped: ${e.message}` });
       }

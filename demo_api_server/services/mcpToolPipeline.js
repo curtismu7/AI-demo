@@ -121,6 +121,7 @@ async function runMcpToolPipeline(ctx) {
     let mcpAccessToken; // RFC 8693 §3.2: MCP-scoped access token (result of exchange)
     let userSub = null;
     let tokenEvents = [];
+    let tratContextHeader = null;
     try {
         deps.emit({
             phase: 'resolving_access_token'
@@ -133,7 +134,7 @@ async function runMcpToolPipeline(ctx) {
         mcpAccessToken = resolved.token;
         tokenEvents = resolved.tokenEvents;
         userSub = resolved.userSub || null;
-        const tratContextHeader = resolved.tratContextHeader || null;
+        tratContextHeader = resolved.tratContextHeader || null;
         // Publish token events to SSE hub for real-time Token Chain display
         deps.publishTokenEventsToSse(flowTraceId, tokenEvents);
         const evs = tokenEvents || [];
