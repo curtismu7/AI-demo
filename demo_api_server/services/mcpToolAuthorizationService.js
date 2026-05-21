@@ -107,16 +107,20 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
   // against the bearer token's `aud` to catch step-skipping (an attacker
   // sending an intermediate-step token directly to MCP). The expected aud
   // depends on which exchange flow is active:
+  //   Gateway mode (MCP_GATEWAY_HTTP_URL set) → pingone_resource_mcp_gateway_uri (gateway audience)
   //   Single-Exchange (FF off) → mcp_resource_uri (e.g. "mcpserver.ping.demo")
   //   Two-Exchange (FF on)     → pingone_resource_two_exchange_uri (e.g. "final.2x.ping.demo")
   // Both authorization-server implementations (simulated + PingOne) receive
   // the same expected aud and must enforce the same audience-match rule.
   const twoExchangeOn = configStore.getEffective('ff_two_exchange_delegation') !== 'false';
-  const mcpResourceUri = twoExchangeOn
-    ? (configStore.getEffective('pingone_resource_two_exchange_uri')
-        || configStore.getEffective('mcp_resource_uri')
-        || '')
-    : (configStore.getEffective('mcp_resource_uri') || '');
+  const useGateway = !!(process.env.MCP_GATEWAY_HTTP_URL || configStore.getEffective('mcp_gateway_http_url'));
+  const mcpResourceUri = useGateway
+    ? (configStore.getEffective('pingone_resource_mcp_gateway_uri') || '')
+    : twoExchangeOn
+      ? (configStore.getEffective('pingone_resource_two_exchange_uri')
+          || configStore.getEffective('mcp_resource_uri')
+          || '')
+      : (configStore.getEffective('mcp_resource_uri') || '');
 
   try {
     if (USE_SIMULATED) {

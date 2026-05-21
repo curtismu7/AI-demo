@@ -127,10 +127,22 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
         }
     }
 
+    // JSON-RPC error envelope in a 200 response (e.g. gateway api_key dispatch
+    // failed to reach the backend). Surface as a structured error so callers
+    // get a meaningful message rather than an opaque { error: {...} } object.
+    if (response.data?.error != null && response.data?.result === undefined) {
+        const rpcErr = response.data.error;
+        const msg = (typeof rpcErr === 'object' ? rpcErr.message : String(rpcErr)) || 'MCP tool call failed';
+        throw Object.assign(
+            new Error(msg),
+            { code: 'mcp_tool_error', httpStatus: 200, rpcCode: typeof rpcErr === 'object' ? rpcErr.code : undefined },
+        );
+    }
+
     // JSON-RPC responses: prefer .result, fall through to full body for
     // non-standard / direct responses from the upstream MCP server.
     const result = response.data?.result ?? response.data;
-    
+
     return { result, gwAuditTrail };
 }
 
