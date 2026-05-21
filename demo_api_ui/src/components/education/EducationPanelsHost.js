@@ -42,193 +42,51 @@ import ElicitationPanel from "./ElicitationPanel";
 import AgentRestrictionsPanel from "./AgentRestrictionsPanel";
 import TransactionTokensPanel from "./TransactionTokensPanel";
 
-/**
- * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
- */
+const PANEL_MAP = {
+  [EDU.LOGIN_FLOW]: LoginFlowPanel,
+  [EDU.TOKEN_EXCHANGE]: TokenExchangePanel,
+  [EDU.MAY_ACT]: MayActPanel,
+  [EDU.MCP_PROTOCOL]: McpProtocolPanel,
+  [EDU.INTROSPECTION]: IntrospectionPanel,
+  [EDU.AGENT_GATEWAY]: AgentGatewayPanel,
+  [EDU.RFC_INDEX]: RFCIndexPanel,
+  [EDU.STEP_UP]: StepUpPanel,
+  [EDU.PINGONE_AUTHORIZE]: PingOneAuthorizePanel,
+  [EDU.CIMD]: CimdPanel,
+  [EDU.CUA]: ComputerUseAgentPanel,
+  [EDU.HUMAN_IN_LOOP]: HumanInLoopPanel,
+  [EDU.BEST_PRACTICES]: BestPracticesPanel,
+  [EDU.PAR]: PARPanel,
+  [EDU.RAR]: RARPanel,
+  [EDU.JWT_CLIENT_AUTH]: JwtClientAuthPanel,
+  [EDU.AGENTIC_MATURITY]: AgenticMaturityPanel,
+  [EDU.OIDC_21]: Oidc21Panel,
+  [EDU.LANGCHAIN]: LangChainPanel,
+  [EDU.AGENT_BUILDER_LANDSCAPE]: AgentBuilderLandscapePanel,
+  [EDU.LLM_LANDSCAPE]: LlmLandscapePanel,
+  [EDU.AI_PLATFORM_LANDSCAPE]: AiPlatformLandscapePanel,
+  [EDU.SENSITIVE_DATA]: SensitiveDataPanel,
+  [EDU.PINGGATEWAY_MCP]: PingGatewayMcpPanel,
+  [EDU.ARCHITECTURE_DIAGRAM]: ArchitectureDiagramPanel,
+  [EDU.TOKEN_CHAIN]: TokenChainEducationPanel,
+  [EDU.RFC_8693]: RFC8693Panel,
+  [EDU.FLOW_DIAGRAMS]: FlowDiagramsPanel,
+  [EDU.IETF_STANDARDS]: IETFStandardsPanel,
+  [EDU.TOKEN_FLOW]: TokenFlowPanel,
+  [EDU.AI_PRIMER]: AiPrimerPanel,
+  [EDU.ID_JAG]: IdJagPanel,
+  [EDU.GLEAN]: GleanPanel,
+  [EDU.INTENT_DELEGATION]: IntentDelegationPanel,
+  [EDU.AUTHZEN]: AuthZenPanel,
+  [EDU.WEB_MCP]: WebMcpEduPanel,
+  [EDU.MCP_ELICITATION]: ElicitationPanel,
+  [EDU.AGENT_RESTRICTIONS]: AgentRestrictionsPanel,
+  [EDU.TRANSACTION_TOKENS]: TransactionTokensPanel,
+};
+
 export default function EducationPanelsHost() {
   const { panel, tab, close } = useEducationUI();
-
-  return (
-    <>
-      <LoginFlowPanel
-        isOpen={panel === EDU.LOGIN_FLOW}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <TokenExchangePanel
-        isOpen={panel === EDU.TOKEN_EXCHANGE}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <MayActPanel
-        isOpen={panel === EDU.MAY_ACT}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <McpProtocolPanel
-        isOpen={panel === EDU.MCP_PROTOCOL}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <IntrospectionPanel
-        isOpen={panel === EDU.INTROSPECTION}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <AgentGatewayPanel
-        isOpen={panel === EDU.AGENT_GATEWAY}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <RFCIndexPanel
-        isOpen={panel === EDU.RFC_INDEX}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <StepUpPanel
-        isOpen={panel === EDU.STEP_UP}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <PingOneAuthorizePanel
-        isOpen={panel === EDU.PINGONE_AUTHORIZE}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <CimdPanel
-        isOpen={panel === EDU.CIMD}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <ComputerUseAgentPanel
-        isOpen={panel === EDU.CUA}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <HumanInLoopPanel
-        isOpen={panel === EDU.HUMAN_IN_LOOP}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <BestPracticesPanel
-        isOpen={panel === EDU.BEST_PRACTICES}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <PARPanel isOpen={panel === EDU.PAR} onClose={close} initialTabId={tab} />
-      <RARPanel isOpen={panel === EDU.RAR} onClose={close} initialTabId={tab} />
-      <JwtClientAuthPanel
-        isOpen={panel === EDU.JWT_CLIENT_AUTH}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <AgenticMaturityPanel
-        isOpen={panel === EDU.AGENTIC_MATURITY}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <Oidc21Panel
-        isOpen={panel === EDU.OIDC_21}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <LangChainPanel
-        isOpen={panel === EDU.LANGCHAIN}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <AgentBuilderLandscapePanel
-        isOpen={panel === EDU.AGENT_BUILDER_LANDSCAPE}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <LlmLandscapePanel
-        isOpen={panel === EDU.LLM_LANDSCAPE}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <AiPlatformLandscapePanel
-        isOpen={panel === EDU.AI_PLATFORM_LANDSCAPE}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <SensitiveDataPanel
-        isOpen={panel === EDU.SENSITIVE_DATA}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <PingGatewayMcpPanel
-        isOpen={panel === EDU.PINGGATEWAY_MCP}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <ArchitectureDiagramPanel
-        isOpen={panel === EDU.ARCHITECTURE_DIAGRAM}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <TokenChainEducationPanel
-        isOpen={panel === EDU.TOKEN_CHAIN}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <RFC8693Panel
-        isOpen={panel === EDU.RFC_8693}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <FlowDiagramsPanel
-        isOpen={panel === EDU.FLOW_DIAGRAMS}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <IETFStandardsPanel
-        isOpen={panel === EDU.IETF_STANDARDS}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <TokenFlowPanel
-        isOpen={panel === EDU.TOKEN_FLOW}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <AiPrimerPanel
-        isOpen={panel === EDU.AI_PRIMER}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <IdJagPanel
-        isOpen={panel === EDU.ID_JAG}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <GleanPanel
-        isOpen={panel === EDU.GLEAN}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <IntentDelegationPanel
-        isOpen={panel === EDU.INTENT_DELEGATION}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <AuthZenPanel
-        isOpen={panel === EDU.AUTHZEN}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <WebMcpEduPanel
-        isOpen={panel === EDU.WEB_MCP}
-        onClose={close}
-        initialTabId={tab}
-      />
-      <ElicitationPanel isOpen={panel === EDU.MCP_ELICITATION} onClose={close} initialTabId={tab} />
-      <AgentRestrictionsPanel isOpen={panel === EDU.AGENT_RESTRICTIONS} onClose={close} initialTabId={tab} />
-      <TransactionTokensPanel
-        isOpen={panel === EDU.TRANSACTION_TOKENS}
-        onClose={close}
-        initialTabId={tab}
-      />
-    </>
-  );
+  const ActivePanel = panel ? PANEL_MAP[panel] : null;
+  if (!ActivePanel) return null;
+  return <ActivePanel isOpen onClose={close} initialTabId={tab} />;
 }

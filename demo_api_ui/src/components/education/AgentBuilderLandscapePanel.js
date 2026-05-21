@@ -614,24 +614,7 @@ const CHECK = "✅";
 const WARN = "⚠️";
 const CROSS = "❌";
 
-function ComparisonContent() {
-  const thStyle = {
-    background: "#1e3a5f",
-    color: "#fff",
-    padding: "8px 12px",
-    textAlign: "left",
-    fontSize: "0.78rem",
-    whiteSpace: "nowrap",
-  };
-  const tdStyle = {
-    padding: "7px 12px",
-    borderBottom: "1px solid #e2e8f0",
-    fontSize: "0.8rem",
-    verticalAlign: "top",
-  };
-  const tdAltStyle = { ...tdStyle, background: "#f8fafc" };
-
-  const osFW = [
+const osFW = [
     [
       "LangChain / LangGraph",
       "General purpose",
@@ -690,7 +673,7 @@ function ComparisonContent() {
     ],
   ];
 
-  const commFW = [
+const commFW = [
     [
       "Bedrock Agents",
       "AWS",
@@ -740,6 +723,23 @@ function ComparisonContent() {
       "Ops automation + AI agents",
     ],
   ];
+
+function ComparisonContent() {
+  const thStyle = {
+    background: "#1e3a5f",
+    color: "#fff",
+    padding: "8px 12px",
+    textAlign: "left",
+    fontSize: "0.78rem",
+    whiteSpace: "nowrap",
+  };
+  const tdStyle = {
+    padding: "7px 12px",
+    borderBottom: "1px solid #e2e8f0",
+    fontSize: "0.8rem",
+    verticalAlign: "top",
+  };
+  const tdAltStyle = { ...tdStyle, background: "#f8fafc" };
 
   return (
     <>
