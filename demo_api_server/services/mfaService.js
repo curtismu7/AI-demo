@@ -292,16 +292,14 @@ async function selectDevice(daId, deviceId, _userAccessToken) {
  * Body: { selectedDevice: { id: deviceId, otp: "123456" } }
  * Status transitions: OTP_REQUIRED → COMPLETED | FAILED
  */
-async function submitOtp(daId, deviceId, otp, userAccessToken) {
-	// OTP verification requires the user's access token (not worker token)
-	// The /otp endpoint validates user context in the token
-	if (!userAccessToken) {
-		throw new Error("submitOtp requires userAccessToken (user context required for OTP verification)");
-	}
+async function submitOtp(daId, deviceId, otp, _userAccessToken) {
+	// PingOne otp.check requires a worker token — user tokens are rejected with INVALID_TOKEN.
+	// Ref: pingone-mfa skill §3 token rules; device-authentications-api.md "Token rules (critical)"
+	const token = await _getWorkerToken();
 
-	// OTP validation endpoint: POST to /otp path, not the deviceAuthentications root
-	const url = `${_authBaseUrl()}/deviceAuthentications/${daId}/otp`;
-	// OTP submission body is simple: just the OTP code
+	// OTP check endpoint: POST to deviceAuthentications/{daId} with otp.check content-type.
+	// Note: NOT a /otp sub-path — same root resource URL as device.select and assertion.check.
+	const url = `${_authBaseUrl()}/deviceAuthentications/${daId}`;
 	const reqBody = { otp: String(otp) };
 	const contentType = "application/vnd.pingidentity.otp.check+json";
 
@@ -313,24 +311,21 @@ async function submitOtp(daId, deviceId, otp, userAccessToken) {
 	console.log(`[submitOtp] OTP: ${String(otp).charAt(0)}${'*'.repeat(Math.max(0, String(otp).length - 2))}${String(otp).charAt(String(otp).length - 1)} (masked for security)`);
 	console.log(`[submitOtp] Full URL: ${url}`);
 	console.log(`[submitOtp] Method: POST`);
-	console.log(`[submitOtp] Using user access token (len=${userAccessToken?.length || 0})`);
+	console.log(`[submitOtp] Using worker token (len=${token?.length || 0})`);
 
 	const debugRequest = {
 		method: "POST",
 		url: url,
 		body: reqBody,
 		contentType: contentType,
-		headers: _debugHeaders(userAccessToken, contentType),
+		headers: _debugHeaders(token, contentType),
 	};
 	try {
 		let data;
 		try {
-			const authHeader = `Bearer ${userAccessToken}`;
-			console.log(`[submitOtp] Authorization header ready (Bearer token present)`);
-
 			const resp = await axios.post(url, reqBody, {
 				headers: {
-					Authorization: authHeader,
+					Authorization: `Bearer ${token}`,
 					"Content-Type": contentType,
 				},
 				timeout: 10000,
