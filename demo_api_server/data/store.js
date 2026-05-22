@@ -46,6 +46,8 @@ class DataStore {
       if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
       const db = new Database(BANKING_DB_PATH);
+      db.exec('PRAGMA journal_mode=WAL');
+      db.exec('PRAGMA busy_timeout=5000');
 
       // Create transactions table if not exists
       db.exec(`
