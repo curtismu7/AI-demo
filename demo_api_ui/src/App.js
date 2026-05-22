@@ -35,6 +35,7 @@ import ArchitectureTokenFlowPage from "./components/ArchitectureTokenFlowPage";
 import Phase266ArchitecturePage from "./components/Phase266ArchitecturePage";
 import HitlSequencePage from "./components/HitlSequencePage";
 import MortgagePathPage from "./components/MortgagePathPage";
+import VerticalFeaturePage from "./components/VerticalFeaturePage";
 import ApiKeyPathPage from "./components/ApiKeyPathPage";
 import AccessIdTokenPathPage from "./components/AccessIdTokenPathPage";
 import ApiTrafficPage from "./components/ApiTrafficPage";
@@ -99,6 +100,7 @@ import UnifiedTokenFlowInspector from "./components/UnifiedTokenFlowInspector";
 import UserAccounts from "./components/UserAccounts";
 import UserDashboard from "./components/UserDashboard";
 import Users from "./components/Users";
+import UserDetailPage from "./components/UserDetailPage";
 import UserTransactions from "./components/UserTransactions";
 import WebMcpPanel from "./components/WebMcpPanel";
 import {
@@ -1029,6 +1031,14 @@ function AppWithAuth() {
                             }
                           />
                           <Route
+                            path="/users/:userId"
+                            element={
+                              <AdminRoute user={user}>
+                                <UserDetailPage />
+                              </AdminRoute>
+                            }
+                          />
+                          <Route
                             path="/accounts"
                             element={
                               user?.role === "admin" ? (
@@ -1331,6 +1341,16 @@ function AppWithAuth() {
                             element={
                               user ? (
                                 <MortgagePathPage />
+                              ) : (
+                                <Navigate to="/" replace />
+                              )
+                            }
+                          />
+                          <Route
+                            path="/path/feature"
+                            element={
+                              user ? (
+                                <VerticalFeaturePage />
                               ) : (
                                 <Navigate to="/" replace />
                               )
