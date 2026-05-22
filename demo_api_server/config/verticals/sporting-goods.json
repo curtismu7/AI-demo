@@ -81,8 +81,7 @@
     ],
     "sectionTitle": "Order details",
     "emptyPrompt": "show gear order",
-    "scopeError": "The agent's access token does not carry the gear:read scope. Sign out and sign back in to consent to gear order access, then try \"Show Gear Order\" again.",
-    "payloadStateKey": "featurePayload"
+    "scopeError": "The agent's access token does not carry the gear:read scope. Sign out and sign back in to consent to gear order access, then try \"Show Gear Order\" again."
   },
   "demoUsers": {
     "customer": { "hint": "demoUser",  "passwordHint": "Tigers7&" },

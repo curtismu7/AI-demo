@@ -81,8 +81,7 @@
     ],
     "sectionTitle": "Loan details",
     "emptyPrompt": "show mortgage data",
-    "scopeError": "The agent's access token does not carry the mortgage:read scope, so the gateway refused the API key swap. Sign out and sign back in to consent to mortgage access, then try \"Show Mortgage Data\" again.",
-    "payloadStateKey": "featurePayload"
+    "scopeError": "The agent's access token does not carry the mortgage:read scope, so the gateway refused the API key swap. Sign out and sign back in to consent to mortgage access, then try \"Show Mortgage Data\" again."
   },
   "demoUsers": {
     "customer": { "hint": "demoUser", "passwordHint": "Tigers7&" },

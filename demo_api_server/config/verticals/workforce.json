@@ -80,8 +80,7 @@
     ],
     "sectionTitle": "Report details",
     "emptyPrompt": "show expense report",
-    "scopeError": "The agent's access token does not carry the expense:read scope. Sign out and sign back in to consent to expense report access, then try \"Show Expense Report\" again.",
-    "payloadStateKey": "featurePayload"
+    "scopeError": "The agent's access token does not carry the expense:read scope. Sign out and sign back in to consent to expense report access, then try \"Show Expense Report\" again."
   },
   "demoUsers": {
     "customer": { "hint": "demoUser", "passwordHint": "Tigers7&" },

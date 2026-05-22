@@ -104,8 +104,7 @@
     ],
     "sectionTitle": "Purchase details",
     "emptyPrompt": "show large purchase",
-    "scopeError": "The agent's access token does not carry the largepurchase:read scope. Sign out and sign back in to consent to large purchase access, then try \"Show Large Purchase\" again.",
-    "payloadStateKey": "featurePayload"
+    "scopeError": "The agent's access token does not carry the largepurchase:read scope. Sign out and sign back in to consent to large purchase access, then try \"Show Large Purchase\" again."
   },
   "demoUsers": {
     "customer": { "hint": "demoUser", "passwordHint": "Tigers7&" },

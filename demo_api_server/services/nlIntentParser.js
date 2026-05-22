@@ -5,6 +5,8 @@
  */
 'use strict';
 
+const VERTICAL_FEATURE_RE = /\b(show|view|see|get|my)\s*(large\s*purchase|big\s*purchase|recent\s*purchase|health\s*records?|medical\s*records?|gear\s*order|equipment\s*order|sports?\s*order|expense\s*report|expenses?\s*report)\b|^(large|big)\s*purchase$|^health\s*record$|^gear\s*order$|^expense\s*report$|\bshow\s+vertical\s+feature\b/;
+
 const EDU = {
   // existing — keep exactly as-is
   LOGIN_FLOW: 'login-flow',
@@ -234,7 +236,7 @@ function parseBanking(t) {
     return { kind: 'banking', banking: { action: 'mortgage_demo' } };
   }
   // Vertical feature phrases (retail/healthcare/sporting-goods/workforce) plus the generic chip message
-  if (/\b(show|view|see|get|my)\s*(large\s*purchase|big\s*purchase|recent\s*purchase|health\s*records?|medical\s*records?|gear\s*order|equipment\s*order|sports?\s*order|expense\s*report|expenses?\s*report)\b|^(large|big)\s*purchase$|^health\s*record$|^gear\s*order$|^expense\s*report$|\bshow\s+vertical\s+feature\b/.test(t)) {
+  if (VERTICAL_FEATURE_RE.test(t)) {
     return { kind: 'banking', banking: { action: 'vertical_feature_demo' } };
   }
   // Balance: explicit account id, or phrases like "my balance", "current balance", "check balance" — MUST precede accounts check
@@ -394,6 +396,13 @@ function parseHeuristic(message, vertical = 'banking') {
   // "MCP Tools" are never swallowed by the broad \bmcp\b education regex.
   if (/\b(list|show|get|what).*(mcp.*tools?|tools?.*available|available.*tools?)\b|\btools?\s*(list|available)\b|\bmcp\s+tools?\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'mcp_tools' } };
+  }
+
+  // Vertical feature chip phrases — must precede parseTheme because theme vocabs
+  // have broad rules (e.g. healthcare "records?" → accounts) that would swallow
+  // these more specific vertical-feature intents first.
+  if (VERTICAL_FEATURE_RE.test(t)) {
+    return { kind: 'banking', banking: { action: 'vertical_feature_demo' } };
   }
 
   // Theme-aware vocabulary — runs before banking/education so themed phrases

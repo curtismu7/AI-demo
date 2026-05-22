@@ -82,8 +82,7 @@
     ],
     "sectionTitle": "Record details",
     "emptyPrompt": "show health record",
-    "scopeError": "The agent's access token does not carry the records:read scope. Sign out and sign back in to consent to health record access, then try \"Show Health Record\" again.",
-    "payloadStateKey": "featurePayload"
+    "scopeError": "The agent's access token does not carry the records:read scope. Sign out and sign back in to consent to health record access, then try \"Show Health Record\" again."
   },
   "demoUsers": {
     "customer": { "hint": "demoUser", "passwordHint": "Tigers7&" },
