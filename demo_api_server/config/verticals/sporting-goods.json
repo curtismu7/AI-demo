@@ -47,7 +47,8 @@
       { "key": "balance",      "label": "Reward Points" },
       { "key": "accounts",     "label": "My Gear" },
       { "key": "transactions", "label": "Purchase History" },
-      { "key": "transfer",     "label": "Place Order" }
+      { "key": "transfer",     "label": "Place Order" },
+      { "key": "feature",      "label": "Show Gear Order" }
     ],
     "mockData": null
   },
@@ -56,6 +57,32 @@
     "write":        "write",
     "transfer":     "transfer",
     "featureScope": "gear:read"
+  },
+  "featurePage": {
+    "mcpTool": "show_gear_order",
+    "pageTitle": "Gear Order",
+    "badgeLabel": "API-KEY PATH",
+    "accentColor": "#b91c1c",
+    "accentBg": "rgba(185, 28, 28, 0.06)",
+    "accentLight": "#fff1f2",
+    "accentCode": "#ffe4e6",
+    "accentText": "#7f1d1d",
+    "accentAccentText": "#b91c1c",
+    "dataKey": "gearOrder",
+    "fields": [
+      { "label": "Order ID",         "path": "orderId" },
+      { "label": "Item",             "path": "item" },
+      { "label": "Category",         "path": "category" },
+      { "label": "Amount",           "path": "amount",              "format": "money", "accent": true },
+      { "label": "Status",           "path": "status" },
+      { "label": "Delivered",        "path": "deliveredDate" },
+      { "label": "Loyalty points",   "path": "loyaltyPointsEarned" },
+      { "label": "Member tier",      "path": "memberTier" }
+    ],
+    "sectionTitle": "Order details",
+    "emptyPrompt": "show gear order",
+    "scopeError": "The agent's access token does not carry the gear:read scope. Sign out and sign back in to consent to gear order access, then try \"Show Gear Order\" again.",
+    "payloadStateKey": "featurePayload"
   },
   "demoUsers": {
     "customer": { "hint": "demoUser",  "passwordHint": "Tigers7&" },

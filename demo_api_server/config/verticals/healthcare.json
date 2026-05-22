@@ -47,7 +47,8 @@
       { "key": "balance", "label": "Check Coverage" },
       { "key": "accounts", "label": "My Records" },
       { "key": "transactions", "label": "Appointments" },
-      { "key": "transfer", "label": "Release Records" }
+      { "key": "transfer", "label": "Release Records" },
+      { "key": "feature", "label": "Show Health Record" }
     ],
     "mockData": null
   },
@@ -56,6 +57,33 @@
     "write": "write",
     "transfer": "transfer",
     "featureScope": "records:read"
+  },
+  "featurePage": {
+    "mcpTool": "show_health_record",
+    "pageTitle": "Health Record",
+    "badgeLabel": "API-KEY PATH",
+    "accentColor": "#0f766e",
+    "accentBg": "rgba(15, 118, 110, 0.06)",
+    "accentLight": "#f0fdfa",
+    "accentCode": "#ccfbf1",
+    "accentText": "#134e4a",
+    "accentAccentText": "#0f766e",
+    "dataKey": "healthRecord",
+    "fields": [
+      { "label": "Record ID",      "path": "recordId" },
+      { "label": "Record type",    "path": "recordType" },
+      { "label": "Provider",       "path": "provider" },
+      { "label": "Facility",       "path": "facility" },
+      { "label": "Visit date",     "path": "visitDate" },
+      { "label": "Covered amount", "path": "coveredAmount", "format": "money", "accent": true },
+      { "label": "Copay",          "path": "copay",         "format": "money" },
+      { "label": "Status",         "path": "status" },
+      { "label": "Coverage plan",  "path": "coveragePlan" }
+    ],
+    "sectionTitle": "Record details",
+    "emptyPrompt": "show health record",
+    "scopeError": "The agent's access token does not carry the records:read scope. Sign out and sign back in to consent to health record access, then try \"Show Health Record\" again.",
+    "payloadStateKey": "featurePayload"
   },
   "demoUsers": {
     "customer": { "hint": "demoUser", "passwordHint": "Tigers7&" },

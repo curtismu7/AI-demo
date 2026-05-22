@@ -1575,7 +1575,7 @@ class PingOneProvisionService {
       const userGrantResult = await this.grantScopesToApplication(
         userAppResult.application.id,
         resourceResult.resource.id,
-        ['ai:agent:read', 'read', 'write', 'transfer', 'mortgage:read']
+        ['ai:agent:read', 'read', 'write', 'transfer', 'mortgage:read', 'largepurchase:read', 'records:read', 'gear:read', 'expense:read']
       );
       
       pushGrantResultStep(steps, 'user-grants', 'User scope grants', userGrantResult);

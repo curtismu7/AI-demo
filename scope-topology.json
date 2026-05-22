@@ -26,7 +26,11 @@
     "transfer":          { "description": "Execute fund transfers", "riskLevel": "high", "resource": "Super Banking API", "category": "data" },
     "accounts:read":     { "description": "Read account information and balances", "riskLevel": "low", "resource": "Super Banking API", "category": "data" },
     "transactions:read": { "description": "Read transaction history and details", "riskLevel": "low", "resource": "Super Banking API", "category": "data" },
-    "mortgage:read":     { "description": "Read mortgage/feature-specific data (banking vertical)", "riskLevel": "low", "resource": "Super Banking API", "category": "feature" },
+    "mortgage:read":       { "description": "Read mortgage/feature-specific data (banking vertical)", "riskLevel": "low", "resource": "Super Banking API", "category": "feature" },
+    "largepurchase:read":  { "description": "Read large purchase data (retail vertical)", "riskLevel": "low", "resource": "Super Banking API", "category": "feature" },
+    "records:read":        { "description": "Read health record data (healthcare vertical)", "riskLevel": "low", "resource": "Super Banking API", "category": "feature" },
+    "gear:read":           { "description": "Read gear order data (sporting-goods vertical)", "riskLevel": "low", "resource": "Super Banking API", "category": "feature" },
+    "expense:read":        { "description": "Read expense report data (workforce vertical)", "riskLevel": "low", "resource": "Super Banking API", "category": "feature" },
     "ai:agent:read":     { "description": "Agent invocation permission", "riskLevel": "medium", "resource": "Super Banking API", "category": "agent" },
     "mcp:invoke":        { "description": "Invoke MCP tools via the gateway (RFC 8693 exchange)", "riskLevel": "medium", "resource": "Super Banking MCP Server", "category": "infra" },
     "agent:invoke":      { "description": "Invoke the Agent Gateway (Two-Exchange Step 1 audience)", "riskLevel": "medium", "resource": "Super Banking Agent Gateway", "category": "infra" },
@@ -40,17 +44,17 @@
   "resources": {
     "Super Banking API": {
       "uri": "enduser.ping.demo",
-      "scopes": ["read", "write", "transfer", "accounts:read", "transactions:read", "mortgage:read", "ai:agent:read", "ai_agent", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
+      "scopes": ["read", "write", "transfer", "accounts:read", "transactions:read", "mortgage:read", "largepurchase:read", "records:read", "gear:read", "expense:read", "ai:agent:read", "ai_agent", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
     },
     "Super Banking MCP Server": {
       "uri": "mcpserver.ping.demo",
       "scopes": ["mcp:invoke"],
-      "mirroredScopes": ["read", "write", "mortgage:read", "ai:agent:read", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
+      "mirroredScopes": ["read", "write", "mortgage:read", "largepurchase:read", "records:read", "gear:read", "expense:read", "ai:agent:read", "admin:read", "admin:write", "admin:delete", "users:read", "users:manage"]
     },
     "Super Banking MCP Gateway": {
       "uri": "mcpgateway.ping.demo",
       "scopes": ["mcp:invoke"],
-      "mirroredScopes": ["read", "write", "transfer", "mortgage:read"]
+      "mirroredScopes": ["read", "write", "transfer", "mortgage:read", "largepurchase:read", "records:read", "gear:read", "expense:read"]
     },
     "Super Banking Agent Gateway": {
       "uri": "agentgateway.ping.demo",
@@ -61,7 +65,7 @@
     "Super Banking User App": {
       "type": "WEB_APP",
       "grantTypes": ["authorization_code", "refresh_token", "token_exchange"],
-      "grantedScopes": ["ai:agent:read", "read", "write", "transfer", "mortgage:read"]
+      "grantedScopes": ["ai:agent:read", "read", "write", "transfer", "mortgage:read", "largepurchase:read", "records:read", "gear:read", "expense:read"]
     },
     "Super Banking Admin App": {
       "type": "WEB_APP",
@@ -136,7 +140,11 @@
     "get_investment_balance":        { "requiredScopes": ["read"], "surface": "gateway" },
     "get_investment_accounts":       { "requiredScopes": ["read"], "surface": "gateway" },
     "get_portfolio_summary":         { "requiredScopes": ["read"], "surface": "gateway" },
-    "show_mortgage":                 { "requiredScopes": ["mortgage:read"], "surface": "gateway" },
+    "show_mortgage":                 { "requiredScopes": ["mortgage:read"],      "surface": "gateway" },
+    "show_large_purchase":           { "requiredScopes": ["largepurchase:read"],  "surface": "gateway" },
+    "show_health_record":            { "requiredScopes": ["records:read"],         "surface": "gateway" },
+    "show_gear_order":               { "requiredScopes": ["gear:read"],            "surface": "gateway" },
+    "show_expense_report":           { "requiredScopes": ["expense:read"],         "surface": "gateway" },
     "create_deposit":                { "requiredScopes": ["write"], "surface": "gateway", "challengeType": "step_up" },
     "create_withdrawal":             { "requiredScopes": ["write"], "surface": "gateway", "challengeType": "step_up" },
     "create_transfer":               { "requiredScopes": ["write", "transfer"], "surface": "gateway", "challengeType": "step_up" },

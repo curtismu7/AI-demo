@@ -8,6 +8,7 @@
 const configStore = require('../services/configStore');
 const { getScopesForUserType, BANKING_SCOPES, COMPOUND_SCOPES } = require('./scopes');
 const endpointResolver = require('../services/oauthEndpointResolver');
+const { getActiveManifest } = require('../services/verticalConfigService');
 
 const config = {
   get environmentId()         { return configStore.getEffective('pingone_environment_id'); },
@@ -58,7 +59,11 @@ const config = {
       // is intentionally kept as-is to match the working agent flow; the
       // topology's ai:agent:read naming reconciliation is a separate
       // follow-up — see REGRESSION_PLAN §4.)
-      return ['openid', 'profile', 'email', 'offline_access', 'read', 'write', 'transfer', BANKING_SCOPES.AI_AGENT, COMPOUND_SCOPES.MORTGAGE_READ];
+      const bankingScopes = ['openid', 'profile', 'email', 'offline_access', 'read', 'write', 'transfer', BANKING_SCOPES.AI_AGENT, COMPOUND_SCOPES.MORTGAGE_READ];
+      // The active vertical may grant one extra resource-server scope (e.g. a
+      // sporting-goods or workforce feature scope) — append it if present.
+      const featureScope = getActiveManifest()?.scopes?.featureScope;
+      return featureScope ? [...new Set([...bankingScopes, featureScope])] : bankingScopes;
     }
     const role = configStore.getEffective('user_role') || 'customer';
     const banking = getScopesForUserType(role);
