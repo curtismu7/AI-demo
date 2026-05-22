@@ -55,6 +55,8 @@ function _openDb() {
     const { DatabaseSync } = require('node:sqlite');
     db = new DatabaseSync(DB_PATH);
   }
+  db.exec('PRAGMA journal_mode=WAL');
+  db.exec('PRAGMA busy_timeout=5000');
   _db = db;
   return db;
 }
