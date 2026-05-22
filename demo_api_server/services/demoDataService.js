@@ -19,7 +19,9 @@ if (useSQLite) {
     }
     const dbPath = path.join(dbDir, 'demoAccounts.db');
     db = new Database(dbPath);
-    
+    db.exec('PRAGMA journal_mode=WAL');
+    db.exec('PRAGMA busy_timeout=5000');
+
     // Create table if not exists
     db.exec(`
       CREATE TABLE IF NOT EXISTS demo_accounts (
