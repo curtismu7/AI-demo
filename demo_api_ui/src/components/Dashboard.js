@@ -261,7 +261,7 @@ const Dashboard = ({ user, onLogout }) => {
             if (still?.role === "admin") {
               notifyWarning(
                 "Could not load admin data yet. Try refreshing the page, or use Refresh access token in the Banking Agent.",
-                { autoClose: 14000 },
+                { autoClose: 14000, toastId: "admin-data-warn" },
               );
             } else {
               toastAdminSessionError(
