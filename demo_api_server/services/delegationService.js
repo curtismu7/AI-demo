@@ -37,6 +37,8 @@ function getStorage() {
     if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
     const Database = require('better-sqlite3');
     _db = new Database(path.join(dbDir, 'delegations.db'));
+    _db.exec('PRAGMA journal_mode=WAL');
+    _db.exec('PRAGMA busy_timeout=5000');
     _db.exec(`
       CREATE TABLE IF NOT EXISTS delegations (
         id TEXT PRIMARY KEY,
