@@ -30,7 +30,115 @@ banking_mcp_server               ← TypeScript MCP server, both transports on o
     └─ BankingAPIClient          → calls banking_api_server HTTP endpoints
 ```
 
-> **Important:** the MCP server exposes **two transports** — WebSocket (always on) and HTTP (`POST /mcp` Streamable HTTP + RFC 9728 metadata, controlled by `HTTP_MCP_TRANSPORT_ENABLED`, default `true`). Both run on the same port simultaneously. The service cannot run on stateless serverless platforms (Lambda, Cloud Run with default settings) because WebSocket connections are stateful. Locally it binds to `localhost:8080` via `run-bank.sh` — the MCP server uses plain HTTP/WS internally (no `api.ping.demo` cert needed); the BFF on `api.ping.demo:3001` is what dials it. For remote hosting use an always-on platform: Railway, Render, or Fly.io. Set `PINGONE_MCP_SERVER_URL=wss://your-mcp-host` in the BFF's env (`banking_api_server/.env`, default `ws://localhost:8080`) so `banking_api_server` can dial it.
+> **Important:** the MCP server exposes **two transports** — WebSocket (always on) and HTTP (`POST /mcp` Streamable HTTP + RFC 9728 metadata, controlled by `HTTP_MCP_TRANSPORT_ENABLED`, default `true`). Both run on the same port simultaneously. The service cannot run on stateless serverless platforms (Lambda, Cloud Run with default settings) because WebSocket connections are stateful. Locally it binds to `localhost:8080` via `run.sh` — the MCP server uses plain HTTP/WS internally (no `api.ping.demo` cert needed); the **gateway** on `api.ping.demo:3005` is what the BFF dials. For remote hosting use an always-on platform: Railway, Render, or Fly.io.
+
+---
+
+## Ports, Schemes, and Audience Values — Source of Truth
+
+All three are owned by **`demo_api_server/services/configStore.js`**. Values survive restarts because configStore persists to SQLite (`config.db`). `.env` values are the *bootstrap* layer — they seed configStore on first run; configStore is the runtime SoT.
+
+### Ports
+
+| Service | Port | Persisted in configStore? | Key |
+|---|---|---|---|
+| BFF API Server | `3001` | ✅ `port` (default `'3001'`) | `configStore.getEffective('port')` |
+| UI (React CRA) | `4000` | No — hardcoded in `run.sh` | n/a |
+| MCP Server | `8080` | Partial — embedded in `mcp_server_url` | `configStore.getEffective('mcp_server_url')` |
+| MCP Gateway | `3005` | ✅ embedded in `mcp_gateway_http_url` | `configStore.getEffective('mcp_gateway_http_url')` |
+| HITL Service | `3009` | No — run.sh only | n/a |
+| Agent Service | `3006` | No — run.sh only | n/a |
+
+### HTTP vs HTTPS Scheme
+
+Scheme is **part of the URL value** in configStore — not a separate flag. The canonical keys:
+
+| Key | Default (local dev) | Env var alias |
+|---|---|---|
+| `mcp_server_url` | `ws://localhost:8080` | `MCP_SERVER_URL` |
+| `mcp_gateway_http_url` | `https://api.ping.demo:3005` | `MCP_GATEWAY_HTTP_URL` |
+
+The BFF's `mcpGatewayClient.js` reads `MCP_GATEWAY_HTTP_URL` (env) at startup; `mcpWebSocketClient.js` calls `configStore.getEffective('mcp_server_url')`. The health endpoint (`routes/health.js`) also reads `MCP_GATEWAY_HTTP_URL` and applies an HTTPS fallback with a dev `Agent({ rejectUnauthorized: false })` so the mkcert cert on `api.ping.demo:3005` is accepted.
+
+> For local dev the gateway runs **HTTPS on `api.ping.demo:3005`** (mkcert). Always use `https://api.ping.demo:3005` as the default — never `http://localhost:3005`.
+
+### Audience (aud) Values
+
+All audience/resource-URI values are FIELD_DEFS entries in configStore — they persist to SQLite and can be set via the `/config` admin UI:
+
+| configStore key | Purpose | Default |
+|---|---|---|
+| `PINGONE_RESOURCE_MCP_GATEWAY_URI` | T1→T2 exchange target (BFF → gateway) | `https://banking-mcp-gateway.banking-demo.com` |
+| `PINGONE_RESOURCE_AGENT_GATEWAY_URI` | AI Agent actor CC token audience | `https://banking-agent-gateway.banking-demo.com` |
+| `PINGONE_RESOURCE_MCP_SERVER_URI` | Gateway → MCP server re-exchange target | `''` (set in PingOne) |
+| `enduser_audience` | BFF user token audience (T1) | `''` (set in PingOne) |
+| `mcp_gw_resource_uri` | Alias of MCP gateway URI (used by gateway-side config) | `''` |
+| `mcp_token_exchange_scopes` | Scopes requested in RFC 8693 exchange | `'read write mcp:invoke mortgage:read'` |
+
+Reading pattern (always use `getEffective`, never `process.env` directly in route handlers):
+```javascript
+const gatewayAud = configStore.getEffective('pingone_resource_mcp_gateway_uri');
+const mcpServerUrl = configStore.getEffective('mcp_server_url');       // ws(s)://...
+const gatewayHttpUrl = configStore.getEffective('mcp_gateway_http_url'); // http(s)://...
+```
+
+Env vars (`PINGONE_RESOURCE_MCP_GATEWAY_URI`, `MCP_SERVER_URL`, `MCP_GATEWAY_HTTP_URL`) are bootstrap seeds — configStore reads them as fallbacks but the SQLite value takes precedence once set. Set values permanently via `/config` admin page or `configStore.setConfig({...})`.
+
+---
+
+## PingOne Identity — Authoritative Config
+
+> Full details in [`docs/PINGONE_CONFIG.md`](../../../docs/PINGONE_CONFIG.md). Key facts reproduced here for quick reference.
+
+### Applications (client IDs)
+
+| Role | App Name | Client ID |
+|---|---|---|
+| User/customer login | Demo User App | `b7d00976-405f-4c55-914a-a3ebe8f369d8` |
+| Admin login | Demo Admin App | `3937cbfd-8824-4f0d-adb2-178702fe9518` |
+| RFC 8693 actor (Exchange #1) | Demo AI Agent | `d21c5124-8ac5-43d1-81f2-31a7ec649b96` |
+| MCP Gateway CC actor (Exchange #2) | Demo MCP Gateway | `3fc5ec99-48dd-42d2-b5fd-ec34055769d2` |
+| Management API worker | Demo Worker Token App | `15881ac7-4d83-4cbf-9ab0-4d7cda31fab8` |
+| _(legacy — do not use as actor)_ | Demo MCP Exchanger | `d3f8fead-b81d-46f9-bba5-051e493cea0e` |
+
+### Resource Servers (audience values)
+
+| Token hop | Resource Name | Audience (`aud`) |
+|---|---|---|
+| T1 — user access token | Demo API | `enduser.ping.demo` |
+| T2 — gateway-scoped (Exchange #1 output) | Demo MCP Gateway | `mcpgateway.ping.demo` |
+| T3 — MCP-scoped (Exchange #2 output) | Demo MCP Server | `mcpserver.ping.demo` |
+| Actor CC token (Exchange #1 actor) | Demo Agent Gateway | `agentgateway.ping.demo` |
+
+### may_act — Critical Rules
+
+`may_act` on T1 (user token) authorises the RFC 8693 exchange. Two invariants that MUST hold:
+
+1. **Correct actor:** `may_act.sub` MUST equal `d21c5124-8ac5-43d1-81f2-31a7ec649b96` (Demo AI Agent). The old value `d3f8fead` (Demo MCP Exchanger) is wrong — do not revert.
+2. **Must be a JSON object:** PingOne SpEL value MUST use map literal syntax `#{'sub': 'd21c5124...'}`. A JSON string like `{"sub":"..."}` causes double-encoding in the JWT (`"may_act": "{\"sub\":\"...\"}"`) which fails RFC 8693 §4.1.
+
+Both `Demo API` and `Demo MCP Server` resources have this attribute. Both must be identical.
+
+To fix in PingOne via management API (worker token uses CLIENT_SECRET_BASIC):
+```bash
+ENV=d02d2305-f445-406d-82ee-7cdbf6eeabfd
+MGT_TOKEN=$(curl -s -X POST "https://auth.pingone.com/${ENV}/as/token" \
+  -u "15881ac7-4d83-4cbf-9ab0-4d7cda31fab8:<worker_secret>" \
+  -d "grant_type=client_credentials" \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['access_token'])")
+
+# Demo API (enduser.ping.demo) — attribute 92e68eb5
+curl -X PUT "https://api.pingone.com/v1/environments/${ENV}/resources/9b0f9ae4-463c-458e-9c5e-7e1dd8e6323d/attributes/92e68eb5-0d49-4273-ba20-0c529f5cfa0e" \
+  -H "Authorization: Bearer $MGT_TOKEN" -H "Content-Type: application/json" \
+  -d '{"name":"may_act","value":"#{'\''sub'\'': '\''d21c5124-8ac5-43d1-81f2-31a7ec649b96'\''}"}'
+
+# Demo MCP Server (mcpserver.ping.demo) — attribute 077c586f
+curl -X PUT "https://api.pingone.com/v1/environments/${ENV}/resources/8fb4d1a8-3896-4a26-bf56-b678f2fcf15e/attributes/077c586f-dfdb-42a6-acc9-cb5836a7adad" \
+  -H "Authorization: Bearer $MGT_TOKEN" -H "Content-Type: application/json" \
+  -d '{"name":"may_act","value":"#{'\''sub'\'': '\''d21c5124-8ac5-43d1-81f2-31a7ec649b96'\''}"}'
+```
+
+After any PingOne change: sign out and sign back in to get a fresh token.
 
 ---
 

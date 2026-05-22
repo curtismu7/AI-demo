@@ -388,13 +388,16 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
 // Encryption helpers
 // ---------------------------------------------------------------------------
 
+let _encryptionKeyCache = null;
+
 function _getEncryptionKey() {
+  if (_encryptionKeyCache) return _encryptionKeyCache;
   const rawKey = process.env.CONFIG_ENCRYPTION_KEY || process.env.SESSION_SECRET || 'dev-fallback-key-do-not-use-in-production';
   if (!process.env.CONFIG_ENCRYPTION_KEY && !process.env.SESSION_SECRET) {
     console.error('[ConfigStore] CRITICAL: No CONFIG_ENCRYPTION_KEY or SESSION_SECRET set — using insecure dev fallback key. Set one of these env vars in production.');
   }
-  // Derive a stable 32-byte key using scrypt with a fixed salt
-  return crypto.scryptSync(rawKey, 'banking-config-salt-v1', 32);
+  _encryptionKeyCache = crypto.scryptSync(rawKey, 'banking-config-salt-v1', 32);
+  return _encryptionKeyCache;
 }
 
 function _encrypt(plaintext) {
@@ -521,6 +524,59 @@ class ConfigStore {
     } catch (err) {
       console.warn('[ConfigStore] SQLite initialization failed, using in-memory fallback:', err.message);
     }
+    // Seed SQLite from .env — fills gaps on cold-start; idempotent.
+    try {
+      this._seedFromEnv();
+    } catch (err) {
+      console.warn('[ConfigStore] env-to-SQLite seed failed (non-fatal):', err.message);
+    }
+  }
+
+  /**
+   * Write every FIELD_DEFS key whose env var has a value but SQLite does not.
+   * Safe to call repeatedly — only fills gaps, never overwrites existing SQLite rows.
+   * BOOTSTRAP_ALLOWLIST keys are skipped (env is always authoritative for them).
+   *
+   * Synchronous by design: called from _initialize() without going through
+   * ensureInitialized() to avoid re-entrant deadlock on the init promise.
+   */
+  _seedFromEnv() {
+    const updates = {};
+    const cacheUpdates = {};
+
+    for (const fieldKey of Object.keys(FIELD_DEFS)) {
+      const lk = fieldKey.toLowerCase();
+      if (BOOTSTRAP_ALLOWLIST.has(lk)) continue;
+      if (this.get(fieldKey)) continue;
+      const val = this.getEffective(lk);
+      const def = FIELD_DEFS[fieldKey]?.default;
+      // Only seed non-empty values that differ from the hardcoded default —
+      // no point persisting defaults that are already in code.
+      if (!val || val === String(def)) continue;
+      updates[fieldKey]      = SECRET_KEYS.has(String(fieldKey).toUpperCase()) ? _encrypt(val) : val;
+      cacheUpdates[fieldKey] = val;
+    }
+
+    if (Object.keys(updates).length === 0) return;
+
+    console.log(`[ConfigStore] Seeding ${Object.keys(updates).length} keys from env into SQLite`);
+    try {
+      const db = _getSQLite();
+      const upsert = db.prepare(
+        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)'
+      );
+      const now = new Date().toISOString();
+      db.transaction(() => {
+        for (const [key, value] of Object.entries(updates)) {
+          upsert.run(String(key).toUpperCase(), value, now);
+        }
+      })();
+    } catch (err) {
+      console.warn('[ConfigStore] SQLite seed write failed:', err.message);
+    }
+    // Cache is always updated even if SQLite write failed — self-healing: on
+    // the next cold-start, this.get() will be empty and seeding runs again.
+    this._setCache(cacheUpdates, 'sqlite');
   }
 
   _loadFromSQLite() {
@@ -737,15 +793,18 @@ class ConfigStore {
       react_app_client_url:   ['REACT_APP_CLIENT_URL', 'FRONTEND_ADMIN_URL'],
       public_app_url:         ['PUBLIC_APP_URL'],
       mcp_server_url:                   ['MCP_SERVER_URL'],
-      pingone_resource_mcp_server_uri:  ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI'],
-      // Alias of the line above. routes/tokens.js (Token Chain), routes/mcpInspector.js,
-      // and services/mcpToolAuthorizationService.js read getEffective('mcp_resource_uri'),
-      // while the real RFC 8693 exchange path (agentMcpTokenService.js) reads
-      // 'pingone_resource_mcp_server_uri'. Without this alias the former resolved
-      // to '' on .env-only setups (no Config-UI/SQLite value), making the Token
-      // Chain falsely report "MCP resource URI not configured" even though the
-      // exchange itself was fully configured. Same env vars — keeps both keys identical.
-      mcp_resource_uri:                 ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI'],
+      // MCP_SERVER_RESOURCE_URI is the authoritative env var for the MCP server audience.
+      // MCP_RESOURCE_URI is kept as a fallback AFTER MCP_SERVER_RESOURCE_URI so that
+      // MCP_RESOURCE_URI=mcpgateway.ping.demo (gateway audience) does not shadow the
+      // MCP server audience when both are set. PINGONE_RESOURCE_MCP_SERVER_URI wins first.
+      pingone_resource_mcp_server_uri:  ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_SERVER_RESOURCE_URI', 'MCP_RESOURCE_URI'],
+      // Alias of the line above for Token Chain / mcpInspector callers that use 'mcp_resource_uri'.
+      // MCP_SERVER_RESOURCE_URI before MCP_RESOURCE_URI — same priority fix as above.
+      mcp_resource_uri:                 ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_SERVER_RESOURCE_URI', 'MCP_RESOURCE_URI'],
+      // Direct alias so getEffective('pingone_user_client_id') and getEffective('PINGONE_USER_CLIENT_ID') both work.
+      pingone_user_client_id:           ['PINGONE_USER_CLIENT_ID', 'PINGONE_AI_CORE_USER_CLIENT_ID', 'PINGONE_CORE_USER_CLIENT_ID'],
+      // Direct alias so getEffective('pingone_admin_client_id') and getEffective('PINGONE_ADMIN_CLIENT_ID') both work.
+      pingone_admin_client_id:          ['PINGONE_ADMIN_CLIENT_ID', 'PINGONE_AI_CORE_CLIENT_ID', 'PINGONE_CORE_CLIENT_ID'],
       pingone_resource_langchain_agent_uri: ['PINGONE_RESOURCE_LANGCHAIN_AGENT_URI'],
       authorize_decision_endpoint_id:   ['PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID'],
       authorize_mcp_decision_endpoint_id: ['PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID'],
