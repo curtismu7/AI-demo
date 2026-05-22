@@ -120,7 +120,14 @@ const FIELD_DEFS = {
   // Server / misc
   PINGONE_SESSION_SECRET:         { public: false, default: '' },
   FRONTEND_URL:           { public: true,  default: '' },
-  PINGONE_MCP_SERVER_URL:         { public: true,  default: 'http://localhost:8000' },
+  // MCP server WebSocket/HTTP URL — BFF dials this to reach the MCP server (or gateway).
+  // Scheme is part of the value: ws:// / wss:// for direct MCP; kept for backwards-compat alias.
+  // Canonical persisted key is mcp_server_url (lowercase, env alias: MCP_SERVER_URL).
+  PINGONE_MCP_SERVER_URL:         { public: true,  default: 'ws://localhost:8080' },
+  mcp_server_url:                 { public: true,  default: 'ws://localhost:8080' },
+  // MCP Gateway HTTP base URL — scheme + host + port for the BFF → gateway HTTP channel.
+  // Local dev: https://api.ping.demo:3005 (TLS via mkcert). Env alias: MCP_GATEWAY_HTTP_URL.
+  mcp_gateway_http_url:           { public: true,  default: 'https://api.ping.demo:3005' },
   PINGONE_DEBUG_OAUTH:            { public: true,  default: 'false' },
 
   // PingOne Authorize (policy decision point for transfers/withdrawals)
@@ -442,6 +449,9 @@ function _getSQLite() {
     const { DatabaseSync } = require('node:sqlite');
     db = new DatabaseSync(dbPath);
   }
+
+  db.exec('PRAGMA journal_mode=WAL');
+  db.exec('PRAGMA busy_timeout=5000');
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS config (
