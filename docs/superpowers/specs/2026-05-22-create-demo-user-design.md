@@ -60,7 +60,7 @@ New Express route in `demo_api_server/routes/adminDemoUsers.js`. Mounted under t
 3. **Set `may_act`** (if delegation enabled) — `pingoneUserService.updateUserAttributes(pingoneId, { 'urn:pingidentity:may_act': { sub: targetUserId } })`
 4. **Pre-enroll email OTP** (if checked) — new `mfaService.enrollEmailDevice(pingoneId, email)`
 5. **Pre-enroll SMS OTP** (if checked) — new `mfaService.enrollSmsDevice(pingoneId, cell)`
-6. **Seed banking data** (if checked) — new `dataStore.seedAccountsForUser(pingoneId)` — creates one checking and one savings account with sample transactions
+6. **Seed demo data** (if checked) — new `dataStore.seedAccountsForUser(pingoneId)` — reads the active vertical from `configStore` and creates two accounts + five transactions using vertical-native terminology (e.g. "Pro Member Account" + "Nike Running Shoes — In-Store" for sporting-goods, not generic banking descriptions). `SEED_PROFILES` in `store.js` is the source of truth for all five verticals.
 
 ### Response
 

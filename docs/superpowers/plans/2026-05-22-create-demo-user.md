@@ -29,88 +29,153 @@
 
 ## Task 1: Add `seedAccountsForUser` to store.js
 
+Seeding must be vertical-aware: account names and transaction descriptions should match
+the active vertical's terminology so the data looks native in the UI (e.g. "Pro Member
+Account" + "Nike Running Shoes — In-Store" for sporting-goods, not "Primary Checking" +
+"Coffee Shop").
+
 **Files:**
 - Modify: `demo_api_server/data/store.js`
 
-- [ ] **Step 1.1: Locate the createAccount method in store.js**
+- [ ] **Step 1.1: Locate the createAccount and createTransaction methods in store.js**
 
-Open `demo_api_server/data/store.js` and find the `createAccount` method. It accepts an object with these fields: `userId`, `accountType`, `name`, `balance`, `currency`, `accountNumberFull`, `accountNumber`, `routingNumber`, `swiftCode`, `iban`, `branchName`, `branchCode`, `openedDate`, `accountHolderName`. It auto-adds `id` (UUID), `createdAt`, `isActive: true`.
+Open `demo_api_server/data/store.js` and find `createAccount` and `createTransaction`.
 
-Also find `createTransaction`. It accepts: `userId`, `fromAccountId`, `toAccountId`, `description`, `type`. It auto-adds `id`, `createdAt`, `status: 'completed'`.
+`createAccount` accepts: `userId`, `accountType`, `name`, `balance`, `currency`,
+`accountNumberFull`, `accountNumber`, `routingNumber`, `swiftCode`, `iban`,
+`branchName`, `branchCode`, `openedDate`, `accountHolderName`. Auto-adds `id`, `createdAt`, `isActive: true`.
 
-- [ ] **Step 1.2: Add seedAccountsForUser method**
+`createTransaction` accepts: `userId`, `fromAccountId`, `toAccountId`, `description`, `type`.
+Auto-adds `id`, `createdAt`, `status: 'completed'`.
 
-Find the end of the class body in `store.js` (before the closing `}` of the class and the `module.exports` line). Add this method:
+- [ ] **Step 1.2: Add SEED_PROFILES constant above the class**
+
+Add this constant above the `class DataStore {` line. It holds vertical-specific account and
+transaction data so descriptions look native in each theme's UI.
+
+```javascript
+const SEED_PROFILES = {
+  banking: {
+    primary:   { accountType: 'CHECKING', name: 'Primary Checking', balanceBase: 2500, balanceRange: 700 },
+    secondary: { accountType: 'SAVINGS',  name: 'Savings Account',  balanceBase: 8500, balanceRange: 6500 },
+    transactions: [
+      { description: 'Payroll Deposit',        type: 'deposit',  toSecondary: false },
+      { description: 'Grocery Store',          type: 'purchase', toSecondary: false },
+      { description: 'Transfer to Savings',    type: 'transfer', toSecondary: true  },
+      { description: 'Coffee Shop',            type: 'purchase', toSecondary: false },
+      { description: 'Utility Bill',           type: 'purchase', toSecondary: false },
+    ],
+  },
+  'sporting-goods': {
+    primary:   { accountType: 'Pro Member',   name: 'Pro Member Account', balanceBase: 1200, balanceRange: 800 },
+    secondary: { accountType: 'Elite Member', name: 'Elite Rewards',      balanceBase: 4500, balanceRange: 3000 },
+    transactions: [
+      { description: 'Nike Running Shoes — In-Store',   type: 'In-Store', toSecondary: false },
+      { description: 'Patagonia Jacket — Online',       type: 'Online',   toSecondary: false },
+      { description: 'Team Jersey Bulk Order',          type: 'Team Order', toSecondary: true },
+      { description: 'Titleist Golf Balls — In-Store',  type: 'In-Store', toSecondary: false },
+      { description: 'Gear Return — Faulty Helmet',     type: 'Return',   toSecondary: false },
+    ],
+  },
+  healthcare: {
+    primary:   { accountType: 'Primary Care',  name: 'Primary Care Record',  balanceBase: 500,  balanceRange: 300 },
+    secondary: { accountType: 'Specialist',    name: 'Specialist Coverage',  balanceBase: 2000, balanceRange: 1000 },
+    transactions: [
+      { description: 'Annual Physical Check-in',       type: 'Check-in',        toSecondary: false },
+      { description: 'Cardiology Consultation',        type: 'Consultation',     toSecondary: true  },
+      { description: 'Lab Results Records Release',    type: 'Records Release',  toSecondary: false },
+      { description: 'Dermatology Referral',           type: 'Referral',         toSecondary: false },
+      { description: 'Telehealth Consultation',        type: 'Consultation',     toSecondary: false },
+    ],
+  },
+  retail: {
+    primary:   { accountType: 'Rewards Points', name: 'Rewards Account',  balanceBase: 850,  balanceRange: 500 },
+    secondary: { accountType: 'Store Credit',   name: 'Store Credit',     balanceBase: 200,  balanceRange: 150 },
+    transactions: [
+      { description: 'Electronics — Laptop Purchase',  type: 'Purchase',          toSecondary: false },
+      { description: 'Points Redemption — Discount',   type: 'Points Redemption', toSecondary: true  },
+      { description: 'Clothing Return',                type: 'Return',            toSecondary: false },
+      { description: 'Home Goods Purchase',            type: 'Purchase',          toSecondary: false },
+      { description: 'Refund — Cancelled Order',       type: 'Refund',            toSecondary: false },
+    ],
+  },
+  workforce: {
+    primary:   { accountType: 'PTO Balance',        name: 'PTO Account',       balanceBase: 15,  balanceRange: 10 },
+    secondary: { accountType: 'Benefits Allowance', name: 'Benefits Allowance', balanceBase: 3000, balanceRange: 1000 },
+    transactions: [
+      { description: 'Vacation — 3 days',              type: 'Time Off Request', toSecondary: false },
+      { description: 'Team Offsite Expense Report',    type: 'Expense Report',   toSecondary: true  },
+      { description: 'Dental Benefits Claim',          type: 'Benefits Claim',   toSecondary: false },
+      { description: 'Conference Travel Reimbursement',type: 'Reimbursement',    toSecondary: false },
+      { description: 'Sick Day — 1 day',               type: 'Time Off Request', toSecondary: false },
+    ],
+  },
+};
+```
+
+- [ ] **Step 1.3: Add seedAccountsForUser method**
+
+Find the end of the class body (before the closing `}` of the class). Add:
 
 ```javascript
 async seedAccountsForUser(userId) {
-  const now = new Date();
-  const checkingFull = `01${Math.floor(Math.random() * 1e10).toString().padStart(10, '0')}`;
-  const savingsFull  = `02${Math.floor(Math.random() * 1e10).toString().padStart(10, '0')}`;
+  const configStore = require('../services/configStore');
+  const vertical = configStore.getEffective('active_vertical') || 'banking';
+  const profile = SEED_PROFILES[vertical] || SEED_PROFILES.banking;
 
-  const checking = await this.createAccount({
+  const now = new Date().toISOString().split('T')[0];
+  const acct1Full = `01${Math.floor(Math.random() * 1e10).toString().padStart(10, '0')}`;
+  const acct2Full = `02${Math.floor(Math.random() * 1e10).toString().padStart(10, '0')}`;
+
+  const primary = await this.createAccount({
     userId,
-    accountType: 'CHECKING',
-    name: 'Primary Checking',
-    balance: 2500 + Math.floor(Math.random() * 700),
+    accountType: profile.primary.accountType,
+    name: profile.primary.name,
+    balance: profile.primary.balanceBase + Math.floor(Math.random() * profile.primary.balanceRange),
     currency: 'USD',
-    accountNumberFull: checkingFull,
-    accountNumber: `****${checkingFull.slice(-4)}`,
+    accountNumberFull: acct1Full,
+    accountNumber: `****${acct1Full.slice(-4)}`,
     routingNumber: '021000021',
     swiftCode: 'CHASUS33',
-    iban: `US${checkingFull}`,
+    iban: `US${acct1Full}`,
     branchName: 'Main Branch',
     branchCode: '001',
-    openedDate: now.toISOString().split('T')[0],
+    openedDate: now,
     accountHolderName: '',
   });
 
-  const savings = await this.createAccount({
+  const secondary = await this.createAccount({
     userId,
-    accountType: 'SAVINGS',
-    name: 'Savings Account',
-    balance: 8500 + Math.floor(Math.random() * 6500),
+    accountType: profile.secondary.accountType,
+    name: profile.secondary.name,
+    balance: profile.secondary.balanceBase + Math.floor(Math.random() * profile.secondary.balanceRange),
     currency: 'USD',
-    accountNumberFull: savingsFull,
-    accountNumber: `****${savingsFull.slice(-4)}`,
+    accountNumberFull: acct2Full,
+    accountNumber: `****${acct2Full.slice(-4)}`,
     routingNumber: '021000021',
     swiftCode: 'CHASUS33',
-    iban: `US${savingsFull}`,
+    iban: `US${acct2Full}`,
     branchName: 'Main Branch',
     branchCode: '001',
-    openedDate: now.toISOString().split('T')[0],
+    openedDate: now,
     accountHolderName: '',
   });
 
-  await this.createTransaction({
-    userId,
-    fromAccountId: null,
-    toAccountId: checking.id,
-    description: 'Opening deposit',
-    type: 'deposit',
-  });
+  for (const tx of profile.transactions) {
+    await this.createTransaction({
+      userId,
+      fromAccountId: tx.toSecondary ? primary.id : null,
+      toAccountId:   tx.toSecondary ? secondary.id : primary.id,
+      description:   tx.description,
+      type:          tx.type,
+    });
+  }
 
-  await this.createTransaction({
-    userId,
-    fromAccountId: checking.id,
-    toAccountId: null,
-    description: 'Coffee Shop',
-    type: 'purchase',
-  });
-
-  await this.createTransaction({
-    userId,
-    fromAccountId: null,
-    toAccountId: savings.id,
-    description: 'Initial savings transfer',
-    type: 'transfer',
-  });
-
-  return { checking, savings };
+  return { primary, secondary, vertical };
 }
 ```
 
-- [ ] **Step 1.3: Verify the server still starts**
+- [ ] **Step 1.4: Verify the server still starts**
 
 ```bash
 cd demo_api_server && node -e "const s = require('./data/store'); console.log(typeof s.seedAccountsForUser)"
@@ -118,11 +183,11 @@ cd demo_api_server && node -e "const s = require('./data/store'); console.log(ty
 
 Expected output: `function`
 
-- [ ] **Step 1.4: Commit**
+- [ ] **Step 1.5: Commit**
 
 ```bash
 git add demo_api_server/data/store.js
-git commit -m "feat(store): add seedAccountsForUser for demo user provisioning"
+git commit -m "feat(store): add vertical-aware seedAccountsForUser for demo user provisioning"
 ```
 
 ---
