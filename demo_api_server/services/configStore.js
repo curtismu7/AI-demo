@@ -1,7 +1,7 @@
 /**
  * ConfigStore — persists app configuration across server/browser restarts.
  *
- * Uses SQLite via better-sqlite3 → data/config.db
+ * Uses LMDB via services/lmdb/configStore.lmdb.js → data/persistent/lmdb/
  *
  * Secrets (clientSecret, sessionSecret) are encrypted with AES-256-GCM before
  * being written to storage, using a key derived from CONFIG_ENCRYPTION_KEY or
@@ -17,8 +17,6 @@
 'use strict';
 
 const crypto = require('crypto');
-const path   = require('path');
-const fs     = require('fs');
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -432,40 +430,10 @@ function _decrypt(ciphertext) {
 }
 
 // ---------------------------------------------------------------------------
-// SQLite helpers (local only)
+// LMDB helpers
 // ---------------------------------------------------------------------------
 
-let _sqliteDB = null;
-
-function _getSQLite() {
-  if (_sqliteDB) return _sqliteDB;
-  const dbDir  = path.join(__dirname, '..', 'data', 'persistent');
-  const dbPath = path.join(dbDir, 'config.db');
-  fs.mkdirSync(dbDir, { recursive: true });
-
-  let db;
-  try {
-    const Database = require('better-sqlite3');
-    db = new Database(dbPath);
-  } catch {
-    // better-sqlite3 unavailable (e.g. Node 25) — fall back to built-in node:sqlite
-    const { DatabaseSync } = require('node:sqlite');
-    db = new DatabaseSync(dbPath);
-  }
-
-  db.exec('PRAGMA journal_mode=WAL');
-  db.exec('PRAGMA busy_timeout=5000');
-
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS config (
-      key        TEXT PRIMARY KEY,
-      value      TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    )
-  `);
-  _sqliteDB = db;
-  return db;
-}
+const _lmdbConfig = require('./lmdb/configStore.lmdb');
 
 // ---------------------------------------------------------------------------
 // ConfigStore class
@@ -520,15 +488,14 @@ class ConfigStore {
 
   async _initialize() {
     try {
-      this._loadFromSQLite();
+      this._loadFromLmdb();
     } catch (err) {
-      console.warn('[ConfigStore] SQLite initialization failed, using in-memory fallback:', err.message);
+      console.warn('[ConfigStore] LMDB initialization failed, using in-memory fallback:', err.message);
     }
-    // Seed SQLite from .env — fills gaps on cold-start; idempotent.
     try {
       this._seedFromEnv();
     } catch (err) {
-      console.warn('[ConfigStore] env-to-SQLite seed failed (non-fatal):', err.message);
+      console.warn('[ConfigStore] env-to-LMDB seed failed (non-fatal):', err.message);
     }
   }
 
@@ -550,8 +517,6 @@ class ConfigStore {
       if (this.get(fieldKey)) continue;
       const val = this.getEffective(lk);
       const def = FIELD_DEFS[fieldKey]?.default;
-      // Only seed non-empty values that differ from the hardcoded default —
-      // no point persisting defaults that are already in code.
       if (!val || val === String(def)) continue;
       updates[fieldKey]      = SECRET_KEYS.has(String(fieldKey).toUpperCase()) ? _encrypt(val) : val;
       cacheUpdates[fieldKey] = val;
@@ -559,29 +524,19 @@ class ConfigStore {
 
     if (Object.keys(updates).length === 0) return;
 
-    console.log(`[ConfigStore] Seeding ${Object.keys(updates).length} keys from env into SQLite`);
+    console.log(`[ConfigStore] Seeding ${Object.keys(updates).length} keys from env into LMDB`);
     try {
-      const db = _getSQLite();
-      const upsert = db.prepare(
-        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)'
-      );
-      const now = new Date().toISOString();
-      db.transaction(() => {
-        for (const [key, value] of Object.entries(updates)) {
-          upsert.run(String(key).toUpperCase(), value, now);
-        }
-      })();
+      for (const [key, value] of Object.entries(updates)) {
+        _lmdbConfig.upsert(String(key).toUpperCase(), value);
+      }
     } catch (err) {
-      console.warn('[ConfigStore] SQLite seed write failed:', err.message);
+      console.warn('[ConfigStore] LMDB seed write failed:', err.message);
     }
-    // Cache is always updated even if SQLite write failed — self-healing: on
-    // the next cold-start, this.get() will be empty and seeding runs again.
     this._setCache(cacheUpdates, 'sqlite');
   }
 
-  _loadFromSQLite() {
-    const db   = _getSQLite();
-    const rows = db.prepare('SELECT key, value FROM config').all();
+  _loadFromLmdb() {
+    const rows = _lmdbConfig.loadAll();
     const decoded = {};
     for (const row of rows) {
       decoded[row.key] = SECRET_KEYS.has(String(row.key).toUpperCase()) ? _decrypt(row.value) : row.value;
@@ -637,22 +592,13 @@ class ConfigStore {
     if (Object.keys(updates).length === 0) return;
 
     try {
-      const db = _getSQLite();
-      const upsert = db.prepare(
-        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)'
-      );
-      const now = new Date().toISOString();
-      db.transaction(() => {
-        for (const [key, value] of Object.entries(updates)) {
-          upsert.run(String(key).toUpperCase(), value, now);
-        }
-      })();
+      for (const [key, value] of Object.entries(updates)) {
+        _lmdbConfig.upsert(String(key).toUpperCase(), value);
+      }
     } catch (err) {
-      console.warn('[ConfigStore] SQLite write failed, config will be in-memory only:', err.message);
+      console.warn('[ConfigStore] LMDB write failed, config will be in-memory only:', err.message);
     }
 
-    // Update cache last, so failures above leave cache consistent
-    // setConfig persists to SQLite — provenance is 'sqlite'.
     this._setCache(cacheUpdates, 'sqlite');
   }
 
@@ -674,18 +620,11 @@ class ConfigStore {
     const shouldPersist = opts.persist !== false;
     if (shouldPersist) {
       try {
-        const db = _getSQLite();
-        const upsert = db.prepare(
-          'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)'
-        );
-        const now = new Date().toISOString();
-        db.transaction(() => {
-          for (const [key, value] of Object.entries(data)) {
-            upsert.run(String(key).toUpperCase(), String(value), now);
-          }
-        })();
+        for (const [key, value] of Object.entries(data)) {
+          _lmdbConfig.upsert(String(key).toUpperCase(), String(value));
+        }
       } catch (err) {
-        console.warn('[ConfigStore] SQLite write failed, raw config will be in-memory only:', err.message);
+        console.warn('[ConfigStore] LMDB write failed, raw config will be in-memory only:', err.message);
       }
     }
     // Update cache regardless of SQLite outcome (or skip)
@@ -1032,7 +971,7 @@ class ConfigStore {
 
   /** Storage type. */
   getStorageType() {
-    return 'sqlite';
+    return 'lmdb';
   }
 
   /**
@@ -1063,14 +1002,14 @@ class ConfigStore {
     }
     await this.ensureInitialized();
     delete this._cache[String(key).toUpperCase()];
-    const db = _getSQLite();
-    db.prepare('DELETE FROM config WHERE key = ?').run(String(key).toUpperCase());
+    _lmdbConfig.remove(String(key).toUpperCase());
   }
 
-  /** Wipe stored config (SQLite). */
+  /** Wipe stored config (LMDB). */
   async resetConfig() {
-    const db = _getSQLite();
-    db.prepare('DELETE FROM config').run();
+    for (const row of _lmdbConfig.loadAll()) {
+      _lmdbConfig.remove(row.key);
+    }
     this._cache = {};
     this._initPromise = null;
   }

@@ -1641,8 +1641,10 @@ let _warnedInsecureProbe = false;
  * @returns {Promise<string>}
  */
 async function _resolveFinalMcpAudience(gatewayAud, mcpServerAud) {
-  // Direct mode: gateway not configured — always use mcp-server aud
-  const gatewayBaseUrl = process.env.MCP_GATEWAY_HTTP_URL;
+  // Direct mode: gateway not configured — always use mcp-server aud.
+  // Use configStore.get() (not getEffective) so a FIELD_DEFS default doesn't
+  // falsely trigger gateway mode when the gateway isn't deployed.
+  const gatewayBaseUrl = process.env.MCP_GATEWAY_HTTP_URL || configStore.get('mcp_gateway_http_url');
   if (!gatewayBaseUrl) {
     return mcpServerAud;
   }
