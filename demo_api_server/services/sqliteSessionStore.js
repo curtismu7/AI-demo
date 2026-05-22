@@ -89,6 +89,8 @@ class SqliteSessionStore extends Store {
 
     this._reconnecting = false;
     this.db = new Database(this.options.dbPath);
+    this.db.exec('PRAGMA journal_mode=WAL');
+    this.db.exec('PRAGMA busy_timeout=5000');
     this.initDatabase();
     this.cleanupInterval = setInterval(() => this.cleanupExpiredSessions(), 60 * 60 * 1000); // Cleanup every hour
   }
@@ -127,6 +129,8 @@ class SqliteSessionStore extends Store {
         fs.mkdirSync(dir, { recursive: true });
       }
       this.db = new Database(this.options.dbPath);
+      this.db.exec('PRAGMA journal_mode=WAL');
+      this.db.exec('PRAGMA busy_timeout=5000');
       this.initDatabase();
       console.log('[sqlite-session-store] Reconnected to SQLite after DBMOVED error');
       return true;
