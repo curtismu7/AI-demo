@@ -684,6 +684,16 @@ function StepInfoPanel({
   );
 }
 
+// SVG layout constants
+const BASE_X = 100;
+const PARTICIPANT_SPACING = 160;
+const BASE_Y = 140;
+const STEP_HEIGHT = 22;
+
+// Path styling — fill and stroke for each consent path background rect
+const PATH_COLORS = { homegrown: "#e8f5e9", onetime: "#e8f0ff", device: "#fff3e0" };
+const PATH_STROKES = { homegrown: "#a5d6a7", onetime: "#9fa8da", device: "#ffe082" };
+
 // HITL_PARTICIPANTS — matches hitl-sequence.mmd participant declarations
 const HITL_PARTICIPANTS = [
   { id: "B",   label: "Browser" },
@@ -1979,8 +1989,8 @@ export default function HitlSequenceDiagram() {
         <div style={{ flex: 1, overflow: "auto", background: "#f8fafc", padding: "1.5rem" }}>
           <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top left", transition: "transform 0.15s" }}>
             <svg
-              width={100 + HITL_PARTICIPANTS.length * 160}
-              style={{ display: "block", minHeight: `${140 + steps.length * 22 + 60}px` }}
+              width={BASE_X + HITL_PARTICIPANTS.length * PARTICIPANT_SPACING}
+              style={{ display: "block", minHeight: `${BASE_Y + steps.length * STEP_HEIGHT + 60}px` }}
               aria-label="HITL consent sequence diagram"
               role="img"
             >
@@ -2002,24 +2012,26 @@ export default function HitlSequenceDiagram() {
 
               {/* Path background rects — drawn before lifelines so arrows appear on top */}
               {["homegrown", "onetime", "device"].map((pathKey) => {
-                const pathColor = { homegrown: "#e8f5e9", onetime: "#e8f0ff", device: "#fff3e0" }[pathKey];
-                const pathStroke = { homegrown: "#a5d6a7", onetime: "#9fa8da", device: "#ffe082" }[pathKey];
-                const pathSteps = steps.filter((s) => s.path === pathKey);
-                if (pathSteps.length === 0) return null;
-                const firstIdx = steps.indexOf(pathSteps[0]);
-                const lastIdx = steps.indexOf(pathSteps[pathSteps.length - 1]);
-                const y1 = 140 + firstIdx * 22 - 14;
-                const y2 = 140 + lastIdx * 22 + 14;
+                let firstIdx = -1;
+                let lastIdx = -1;
+                steps.forEach((s, i) => {
+                  if (s.path !== pathKey) return;
+                  if (firstIdx === -1) firstIdx = i;
+                  lastIdx = i;
+                });
+                if (firstIdx === -1) return null;
+                const y1 = BASE_Y + firstIdx * STEP_HEIGHT - 14;
+                const y2 = BASE_Y + lastIdx * STEP_HEIGHT + 14;
                 return (
                   <rect
                     key={pathKey}
                     x={60}
                     y={y1}
-                    width={100 + (HITL_PARTICIPANTS.length - 1) * 160 - 20}
+                    width={BASE_X + (HITL_PARTICIPANTS.length - 1) * PARTICIPANT_SPACING - 20}
                     height={y2 - y1}
                     rx={4}
-                    fill={pathColor}
-                    stroke={pathStroke}
+                    fill={PATH_COLORS[pathKey]}
+                    stroke={PATH_STROKES[pathKey]}
                     strokeWidth={1}
                     opacity={0.5}
                   />
@@ -2028,7 +2040,7 @@ export default function HitlSequenceDiagram() {
 
               {/* Participant boxes and lifelines */}
               {HITL_PARTICIPANTS.map((p, i) => {
-                const x = 100 + i * 160;
+                const x = BASE_X + i * PARTICIPANT_SPACING;
                 const words = p.label.split(" ");
                 const lines = [];
                 let cur = "";
@@ -2043,7 +2055,7 @@ export default function HitlSequenceDiagram() {
                     {lines.map((line, li) => (
                       <text key={`${p.id}-${line}`} x={x} y={40 + li * 16} textAnchor="middle" fontSize={11} fontWeight="600" fill="#0f172a">{line}</text>
                     ))}
-                    <line x1={x} y1={20 + lines.length * 16 + 10} x2={x} y2={140 + steps.length * 22 + 40} stroke="#cbd5e1" strokeDasharray="4" strokeWidth={1} />
+                    <line x1={x} y1={20 + lines.length * 16 + 10} x2={x} y2={BASE_Y + steps.length * STEP_HEIGHT + 40} stroke="#cbd5e1" strokeDasharray="4" strokeWidth={1} />
                   </g>
                 );
               })}
@@ -2052,14 +2064,14 @@ export default function HitlSequenceDiagram() {
               {steps.map((step, idx) => {
                 const isActive = idx === currentStepIdx;
                 const isPastStep = idx < currentStepIdx;
-                const y = 140 + idx * 22;
+                const y = BASE_Y + idx * STEP_HEIGHT;
                 const opacity = isPastStep ? 0.35 : 1;
 
                 if (step.type === "note") {
                   const partIdxs = step.participants.map(participantIndex).filter((i) => i >= 0);
                   if (partIdxs.length === 0) return null;
-                  const minX = 100 + Math.min(...partIdxs) * 160 - 50;
-                  const maxX = 100 + Math.max(...partIdxs) * 160 + 50;
+                  const minX = BASE_X + Math.min(...partIdxs) * PARTICIPANT_SPACING - 50;
+                  const maxX = BASE_X + Math.max(...partIdxs) * PARTICIPANT_SPACING + 50;
                   return (
                     <g key={`note-${step.path}-${step.description}`} opacity={opacity}>
                       <rect x={minX} y={y - 13} width={maxX - minX} height={26} rx={5}
@@ -2071,8 +2083,8 @@ export default function HitlSequenceDiagram() {
                   );
                 }
 
-                const fromX = 100 + participantIndex(step.from) * 160;
-                const toX = 100 + participantIndex(step.to) * 160;
+                const fromX = BASE_X + participantIndex(step.from) * PARTICIPANT_SPACING;
+                const toX = BASE_X + participantIndex(step.to) * PARTICIPANT_SPACING;
                 const midX = (Math.min(fromX, toX) + Math.max(fromX, toX)) / 2;
                 const isDashed = step.type === "response";
                 const markerId = isActive
