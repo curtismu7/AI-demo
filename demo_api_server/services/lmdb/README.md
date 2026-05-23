@@ -1,30 +1,33 @@
 # LMDB Storage Layer
 
-Drop-in replacements for all 6 SQLite databases. **Not wired into the app.**
-Run migration first, then swap imports per the table below.
-
-## Migration
-
-Stop the server, then:
-
-```bash
-node demo_api_server/services/lmdb/migrate.js
-```
-
-Idempotent — safe to re-run. Does not modify SQLite files.
-
-## Wire-in guide (when ready)
-
-| SQLite module | LMDB replacement | Change in |
-|---|---|---|
-| `services/configStore.js` `_getSQLite()` | `configStore.lmdb.js` `{ loadAll, upsert, remove }` | `configStore.js` ~line 430 |
-| `services/sqliteSessionStore.js` | `sessionStore.lmdb.js` `{ LmdbSessionStore }` | `server.js` ~line 54 |
-| `services/bankingDb.js` | `bankingDb.lmdb.js` same API | all `require('./bankingDb')` callers |
-| `data/store.js` SQLite layer | `transactionStore.lmdb.js` `{ persistTransaction, loadTransactions }` | `data/store.js` `_initializeSQLiteTransactions()` |
-| `services/delegationService.js` SQLite branch | `delegationStore.lmdb.js` same API | `delegationService.js` `getStorage()` |
-| `services/demoDataService.js` | `demoAccountStore.lmdb.js` same API | `demoDataService.js` module-level init |
+All persistent data for this service uses LMDB (via the `lmdb` npm package).
+Sessions, config, banking data, transactions, delegations, and demo accounts
+are stored in `data/persistent/lmdb/` as named sub-databases.
 
 ## Data directory
 
 All LMDB data lives in `demo_api_server/data/persistent/lmdb/` (two files: `data.mdb`, `lock.mdb`).
-Add this path to backups alongside the existing `.db` files.
+Back this up alongside any other persistent data.
+
+## File map
+
+| File | Role | Status |
+|------|------|--------|
+| `openEnv.js` | Shared LMDB environment + named sub-DB accessor | Wired in (used by all adapters) |
+| `sessionStore.js` | `express-session` Store backed by LMDB `sessions` sub-DB | **Wired in** — imported by `server.js` |
+| `configStore.lmdb.js` | Config persistence (`config` sub-DB) | Wired in via `configStore.js` |
+| `bankingDb.lmdb.js` | Banking resource server accounts + transactions | Wired in via `bankingDb.js` |
+| `transactionStore.lmdb.js` | In-memory store transaction persistence | Wired in via `data/store.js` |
+| `delegationStore.lmdb.js` | Delegation grants and revocations | Wired in via `delegationService.js` |
+| `demoAccountStore.lmdb.js` | Demo account CRUD | Wired in via `demoDataService.js` |
+| `migrate.js` | One-shot SQLite → LMDB migration script (run once, offline) | Standalone script |
+
+## Migration (already done for existing installs)
+
+If setting up a brand-new install from scratch, LMDB is seeded automatically on first boot.
+If migrating from an older SQLite install:
+
+```bash
+# Stop the server first, then:
+node demo_api_server/services/lmdb/migrate.js
+```

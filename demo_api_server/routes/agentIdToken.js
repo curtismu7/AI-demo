@@ -101,8 +101,8 @@ router.get('/id-token', (req, res) => {
     return res.status(503).json({ error: 'session_store_unavailable' });
   }
 
-  // sqliteSessionStore.all(cb) signature: cb(err, sessions[]) where sessions is an
-  // ARRAY of parsed session objects (JSON.parse already applied by the store).
+  // sessionStore.all(cb) signature: cb(err, sessions[]) where sessions is an
+  // ARRAY of parsed session objects (deserialized by the store).
   //
   // W5 NOTE (performance): this enumerates EVERY session per gateway tool call.
   // For the Phase 266 demo (<100 sessions) the cost is negligible. For any realistic

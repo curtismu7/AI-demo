@@ -1,13 +1,12 @@
 'use strict';
 /**
- * sessionStore.lmdb.js — LMDB-backed express-session store.
+ * sessionStore.js — LMDB-backed express-session store.
  *
- * Implements the express-session Store interface (same surface as
- * sqliteSessionStore.js). Entries are stored as { sess, expire } objects.
- * Expired sessions are pruned on get() and by an hourly cleanup interval.
+ * Implements the express-session Store interface. Entries are stored as
+ * { sess, expire } objects. Expired sessions are pruned on get() and by
+ * an hourly cleanup interval.
  *
- * NOT wired into server.js. Replace SqliteSessionStore with LmdbSessionStore
- * in server.js to activate.
+ * Imported by server.js as the sole session store.
  */
 const { Store } = require('express-session');
 const { openEnv } = require('./openEnv');
