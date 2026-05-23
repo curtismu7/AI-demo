@@ -82,6 +82,7 @@ const authorizeConfigRoutes = require('./routes/authorizeConfig');
 const setupRoutes = require('./routes/setup');
 const setupWizardRoutes = require('./routes/setupWizard');
 const diagramsRoutes = require('./routes/diagrams');
+const archEventsRoutes = require('./routes/archEvents');
 const devToolsRoutes = require('./routes/devTools');
 const selfServiceUsersRoutes = require('./routes/selfServiceUsers');
 const {
@@ -960,6 +961,7 @@ app.use('/api/admin/management', adminManagementRoutes);
 app.use('/api/admin/setup', setupWizardRoutes);
 app.use('/api/admin/vault', authenticateToken, require('./routes/adminVault'));
 app.use('/api/admin/diagrams', authenticateToken, diagramsRoutes);
+app.use('/api/arch-events', authenticateToken, archEventsRoutes);
 app.use('/api/dev', devToolsRoutes);
 app.use('/api/clients', authenticateToken, clientRegistrationRoutes);
 app.use('/api/oauth/clients', authenticateToken, oauthClientsRoutes);
