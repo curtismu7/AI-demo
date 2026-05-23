@@ -423,14 +423,13 @@ function AppWithAuth() {
       new URLSearchParams(window.location.search || "").get("oauth") ===
         "success";
 
-    // NOTE: do NOT clear bx-dashboard-reauth on oauth=success.
-    // The REAUTH_KEY guard is intentional: redirect once automatically (seamless
-    // SSO re-auth), then show the banner if still failing.  Clearing the key
-    // here re-enables the redirect on the very next 401, creating an infinite loop:
-    //   accounts/my 401 → set key → redirect → oauth=success → key cleared →
-    //   accounts/my 401 → set key → redirect → …
-    // The key is cleared correctly in UserDashboard's fetchUserData try-block
-    // when data actually loads successfully.
+    // On a successful OAuth return, clear the reauth guard so a fresh 401 (if the
+    // new session is also broken) can trigger one more automatic redirect rather than
+    // showing the error toast immediately.  The URL param is stripped by replaceState
+    // (line ~539) so oauthSuccess will be false on the next render — no loop risk.
+    if (oauthSuccess) {
+      sessionStorage.removeItem("bx-dashboard-reauth");
+    }
 
     const RETRY_DELAYS_MS = [450, 950, 1900, 3000];
     let retryIndex = 0;
@@ -548,7 +547,7 @@ function AppWithAuth() {
 
   // Routes where UserDashboard is rendered (handles its own middle FAB + split layout).
   // Admin uses Dashboard.js on /admin — those routes need the global float/dock from App.
-  // / now renders LandingPage for non-admin logged-in users; UserDashboard lives at /dashboard.
+  // / renders LandingPage for all users; /admin has the admin Dashboard; /dashboard has UserDashboard.
   const onUserDashboardRoute = Boolean(user) && pathname === "/dashboard";
 
   // Landing home (/): show floating agent even when signed out.
@@ -874,11 +873,7 @@ function AppWithAuth() {
                       <TopNav user={user} onLogout={logout} />
                       {user && <AdminSideNav user={user} />}
                       <main className="main-content">
-                        {user?.role === "admin" ? (
-                          <Dashboard user={user} onLogout={logout} />
-                        ) : (
-                          <LandingPage user={user} onLogout={logout} />
-                        )}
+                        <LandingPage user={user} onLogout={logout} />
                       </main>
                     </>
                   )
@@ -947,13 +942,7 @@ function AppWithAuth() {
                         <Routes location={backgroundLocation || fullLocation}>
                           <Route
                             path="/"
-                            element={
-                              user?.role === "admin" ? (
-                                <Dashboard user={user} onLogout={logout} />
-                              ) : (
-                                <LandingPage user={user} onLogout={logout} />
-                              )
-                            }
+                            element={<LandingPage user={user} onLogout={logout} />}
                           />
                           <Route
                             path="/admin"
@@ -1412,11 +1401,7 @@ function AppWithAuth() {
                             path="*"
                             element={
                               <Navigate
-                                to={
-                                  user?.role === "admin"
-                                    ? "/admin"
-                                    : "/dashboard"
-                                }
+                                to="/dashboard"
                                 replace
                               />
                             }

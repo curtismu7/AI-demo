@@ -121,7 +121,7 @@ export default function AdminSideNav({ user }) {
   // Items with adminOnly: true are hidden for non-admin users
   const allNavItems = [
     { label: "Home", path: "/", icon: "~" },
-    { label: "Dashboard", path: isAdmin ? "/admin" : "/dashboard", icon: "≡" },
+    { label: "Dashboard", path: "/dashboard", icon: "≡" },
     {
       label: "Agent Demo Guide",
       icon: "doc",

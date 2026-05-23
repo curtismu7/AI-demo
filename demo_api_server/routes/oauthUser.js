@@ -11,8 +11,11 @@ const { v4: uuidv4 } = require('uuid');
 const { getFrontendOrigin, getUserRedirectUri, validateRedirectUriOrigin, getExpectedFrontendOrigin } = require('../services/oauthRedirectUris');
 const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/pkceStateCookie');
 const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie');
+const { clearAllAuthCookies, buildPingOneSignoffUrl } = require('../services/sessionCookies');
 const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAuthorizeResource');
 const { getRoleFromClaims } = require('../services/roleClaimResolver');
+const appEventService = require('../services/appEventService');
+const tokenIntrospectionService = require('../services/tokenIntrospectionService');
 
 const STEP_UP_TTL_MS = 5 * 60 * 1000; // 5 min step-up validity
 
@@ -607,9 +610,7 @@ router.get('/callback', async (req, res) => {
         }
 
         const ssoParam = silentSso ? '&sso_silent=1' : '';
-        if (authedUser.role === 'admin') {
-          res.redirect(`${origin}/admin?oauth=success${ssoParam}`);
-        } else if (postLoginReturnToPath) {
+        if (postLoginReturnToPath) {
           res.redirect(`${origin}${postLoginReturnToPath}?oauth=success${ssoParam}`);
         } else {
           res.redirect(`${origin}/dashboard?oauth=success${ssoParam}`);
@@ -809,34 +810,20 @@ router.get('/logout', (req, res) => {
   try {
     const { clearTokenChain } = require('../services/tokenChainService');
     const mcpAudit = require('../services/mcpToolAuditStore');
-    const appEvt = require('../services/appEventService');
     if (userId) clearTokenChain(userId);
     mcpAudit.clearToolCalls();
-    appEvt.clearEvents();
+    appEventService.clearEvents();
     if (global.pendingConsents) global.pendingConsents = {};
   } catch (_) { /* non-fatal */ }
-
-  // Clear any stale PKCE cookie so re-login doesn't hit invalid_state
-  clearPkceCookie(res, _isProd());
 
   req.session.destroy((err) => {
     if (err) {
       console.error('Session destruction error:', err);
     }
 
-    // Redirect to PingOne RP-Initiated Logout so the SSO session is cleared.
-    const envId = process.env.PINGONE_ENVIRONMENT_ID;
-    const region = process.env.PINGONE_REGION || 'com';
-    const pingoneSignoff = `https://auth.pingone.${region}/${envId}/as/signoff`;
+    clearAllAuthCookies(res, _isProd());
 
-    const params = new URLSearchParams({
-      post_logout_redirect_uri: postLogoutUri
-    });
-    if (idToken) {
-      params.set('id_token_hint', idToken);
-    }
-
-    res.redirect(`${pingoneSignoff}?${params.toString()}`);
+    res.redirect(buildPingOneSignoffUrl(postLogoutUri, 'pingone_user_client_id', idToken));
   });
 });
 
@@ -1026,11 +1013,3 @@ router.post('/verify-otp', (req, res) => {
 });
 
 module.exports = router;
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Phase 161: App Event Service Integration
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Note: Full instrumentation will be completed in Phase 161-02.
-// This section provides the foundation for event capture.
-
-const appEventService = require('../services/appEventService');
-const tokenIntrospectionService = require('../services/tokenIntrospectionService');

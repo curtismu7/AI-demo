@@ -1658,6 +1658,7 @@ export default function BankingAgent({
     setAgentAppearance,
     effectiveAgentTheme,
     agent: themeAgent,
+    manifest: themeManifest,
   } = useTheme();
   // Always start collapsed on page load — never restore open state from localStorage.
   const [isOpen, setIsOpen] = useState(false);
@@ -2731,12 +2732,8 @@ export default function BankingAgent({
 
   useEffect(() => {
     if (!isOpen) return;
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ block: "end" });
-    } else {
-      const el = messagesContainerRef.current;
-      if (el) el.scrollTop = el.scrollHeight;
-    }
+    const el = messagesContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, isOpen, loading, nlLoading]);
 
@@ -3309,6 +3306,68 @@ export default function BankingAgent({
           setLoading(false);
           toolProgressIdRef.current = null;
           navigate("/path/mortgage", { state: { mortgagePayload } });
+          return;
+        }
+        case "vertical_feature_demo": {
+          // Path A — api_key disposition for all non-banking verticals.
+          // The active vertical's featurePage config drives tool name, scope error message,
+          // and field rendering on VerticalFeaturePage. Falls back to show_mortgage so the
+          // chip never silently does nothing on the banking vertical.
+          const fp = themeManifest?.featurePage;
+          const featureTool = fp?.mcpTool || "show_mortgage";
+          const featureRoute = "/path/feature";
+          const scopeName = themeManifest?.scopes?.featureScope || "feature";
+          toast.update(toastId, {
+            render: ` Routing to feature path (gateway swaps OAuth bearer for service API key)…`,
+          });
+          let featureResp;
+          try {
+            featureResp = await callMcpTool(featureTool, {});
+          } catch (e) {
+            console.error("[BankingAgent] vertical_feature_demo dispatch failed:", e?.message);
+            toast.dismiss(toastId);
+            setLoading(false);
+            toolProgressIdRef.current = null;
+            addMessage("assistant", `Could not load feature data: ${e?.message || "gateway call failed"}.`, actionId, resultExtra);
+            return;
+          }
+          const featureMcp  = featureResp?.result;
+          const featureNorm = normalizeAgentToolResult(featureMcp);
+          if (isAgentToolErrorResult(featureNorm)) {
+            toast.dismiss(toastId);
+            setLoading(false);
+            toolProgressIdRef.current = null;
+            const insufficient =
+              featureNorm.error === "insufficient_scope" ||
+              /scope/i.test(featureNorm.message || "");
+            addMessage(
+              "assistant",
+              insufficient
+                ? (fp?.scopeError || `The agent's access token does not carry the ${scopeName} scope. Sign out and sign back in to consent, then try again.`)
+                : `Could not load feature data: ${featureNorm.message || "backend error"}.`,
+              actionId,
+              resultExtra,
+            );
+            return;
+          }
+          const featureMeta = featureMcp?._meta || {};
+          const featurePayload = {
+            ...(featureMcp || {}),
+            apiKeyMaskedLast4: featureMeta.apiKeyMaskedLast4,
+            message: featureNorm.note || featureMeta.note,
+            backend: {
+              source: featureNorm.source,
+              authMechanism: featureNorm.authMechanism,
+              note: featureNorm.note,
+            },
+          };
+          if (tokenChain && Array.isArray(featureResp?.tokenEvents)) {
+            tokenChain.setTokenEvents(actionId, featureResp.tokenEvents);
+          }
+          toast.dismiss(toastId);
+          setLoading(false);
+          toolProgressIdRef.current = null;
+          navigate(featureRoute, { state: { featurePayload } });
           return;
         }
         case "transactions":
@@ -4899,9 +4958,10 @@ export default function BankingAgent({
           " You need to sign in first to perform banking operations. Tap Customer Sign In in the left panel to get started.",
         );
       } else if (
-        err?.statusCode === 401 ||
-        err?.code === "authentication_required" ||
-        /sign in to use the banking agent/i.test(String(err?.message || ""))
+        (err?.statusCode === 401 ||
+          err?.code === "authentication_required" ||
+          /sign in to use the banking agent/i.test(String(err?.message || ""))) &&
+        !isLoggedIn
       ) {
         setShowLoginModal(true);
       } else if (err?.code === "missing_exchange_scopes") {
@@ -8817,7 +8877,7 @@ export default function BankingAgent({
         onClose={() => setShowTokenChain(false)}
       />
       {showLoginModal && (
-        <QuickLoginModal pathname={window.location.pathname} />
+        <QuickLoginModal pathname={window.location.pathname} onClose={() => setShowLoginModal(false)} />
       )}
     </div>
   );
