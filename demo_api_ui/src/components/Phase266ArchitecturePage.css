@@ -40,51 +40,6 @@
   max-width: 760px;
 }
 
-.p266-arch-legend-row {
-  max-width: 1280px;
-  margin: 0 auto 1.5rem;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-}
-
-@media (max-width: 900px) {
-  .p266-arch-legend-row { grid-template-columns: 1fr; }
-}
-
-.p266-arch-legend-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 14px 16px;
-}
-
-.p266-arch-legend-swatch {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  margin-top: 3px;
-  flex-shrink: 0;
-}
-
-.p266-arch-legend-card strong {
-  display: block;
-  font-size: 14px;
-  color: #111827;
-  margin-bottom: 4px;
-}
-
-.p266-arch-legend-card p {
-  font-size: 13px;
-  color: #4b5563;
-  margin: 0;
-  line-height: 1.45;
-}
-
 .p266-arch-diagram-wrapper {
   max-width: 1480px;
   margin: 0 auto 2rem;
@@ -192,4 +147,87 @@
   font-size: 12px;
   padding: 1px 5px;
   border-radius: 3px;
+}
+
+/* ── PathFilterBar ─────────────────────────────────────────────── */
+
+.p266-filter-bar {
+  max-width: 1280px;
+  margin: 0 auto 1.5rem;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.p266-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  font-family: inherit;
+  line-height: 1;
+}
+
+.p266-filter-btn:hover {
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+/* "All" button active */
+.p266-filter-btn--all-active {
+  background: #1f2937;
+  border-color: #1f2937;
+  color: #ffffff;
+}
+
+/* Path A active */
+.p266-filter-btn--A-active {
+  background: #fef3c7;
+  border-color: #b45309;
+  color: #78350f;
+}
+
+/* Path B active */
+.p266-filter-btn--B-active {
+  background: #ccfbf1;
+  border-color: #0f766e;
+  color: #134e4a;
+}
+
+/* Path C active */
+.p266-filter-btn--C-active {
+  background: #eff6ff;
+  border-color: #1e40af;
+  color: #1e3a8a;
+}
+
+.p266-filter-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Path dimming ───────────────────────────────────────────────── */
+
+/* When a path is selected, dim all tagged nodes that are NOT shared */
+.p266-path-active [data-path]:not([data-path="shared"]) {
+  opacity: 0.15;
+  transition: opacity 0.2s ease;
+}
+
+/* Un-dim nodes that belong to the selected path */
+.p266-path-active[data-selected-path="A"] [data-path="A"],
+.p266-path-active[data-selected-path="B"] [data-path="B"],
+.p266-path-active[data-selected-path="C"] [data-path="C"] {
+  opacity: 1;
 }
