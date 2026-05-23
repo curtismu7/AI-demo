@@ -1975,10 +1975,133 @@ export default function HitlSequenceDiagram() {
           onMouseDown={handleMouseDownResize}
           style={{ width: 4, cursor: "col-resize", background: "#e2e8f0", flexShrink: 0, border: "none", padding: 0, outline: "none" }}
         />
-        {/* SVG area — rendered in Task 6 */}
+        {/* SVG area */}
         <div style={{ flex: 1, overflow: "auto", background: "#f8fafc", padding: "1.5rem" }}>
           <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top left", transition: "transform 0.15s" }}>
-            <p style={{ color: "#94a3b8", fontSize: "0.8rem" }}>SVG diagram — Task 6</p>
+            <svg
+              width={100 + HITL_PARTICIPANTS.length * 160}
+              style={{ display: "block", minHeight: `${140 + steps.length * 22 + 60}px` }}
+              aria-label="HITL consent sequence diagram"
+              role="img"
+            >
+              <title>HITL consent flow sequence diagram</title>
+              <defs>
+                <marker id="hitl-solid" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L0,6 L8,3 z" fill="#475569" />
+                </marker>
+                <marker id="hitl-solid-active" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L0,6 L8,3 z" fill="#004687" />
+                </marker>
+                <marker id="hitl-dashed" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L0,6 L8,3 z" fill="#475569" />
+                </marker>
+                <marker id="hitl-dashed-active" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L0,6 L8,3 z" fill="#004687" />
+                </marker>
+              </defs>
+
+              {/* Path background rects — drawn before lifelines so arrows appear on top */}
+              {["homegrown", "onetime", "device"].map((pathKey) => {
+                const pathColor = { homegrown: "#e8f5e9", onetime: "#e8f0ff", device: "#fff3e0" }[pathKey];
+                const pathStroke = { homegrown: "#a5d6a7", onetime: "#9fa8da", device: "#ffe082" }[pathKey];
+                const pathSteps = steps.filter((s) => s.path === pathKey);
+                if (pathSteps.length === 0) return null;
+                const firstIdx = steps.indexOf(pathSteps[0]);
+                const lastIdx = steps.indexOf(pathSteps[pathSteps.length - 1]);
+                const y1 = 140 + firstIdx * 22 - 14;
+                const y2 = 140 + lastIdx * 22 + 14;
+                return (
+                  <rect
+                    key={pathKey}
+                    x={60}
+                    y={y1}
+                    width={100 + (HITL_PARTICIPANTS.length - 1) * 160 - 20}
+                    height={y2 - y1}
+                    rx={4}
+                    fill={pathColor}
+                    stroke={pathStroke}
+                    strokeWidth={1}
+                    opacity={0.5}
+                  />
+                );
+              })}
+
+              {/* Participant boxes and lifelines */}
+              {HITL_PARTICIPANTS.map((p, i) => {
+                const x = 100 + i * 160;
+                const words = p.label.split(" ");
+                const lines = [];
+                let cur = "";
+                words.forEach((w) => {
+                  if ((cur + w).length > 14) { if (cur) lines.push(cur.trim()); cur = w; }
+                  else { cur += (cur ? " " : "") + w; }
+                });
+                if (cur) lines.push(cur.trim());
+                return (
+                  <g key={p.id}>
+                    <rect x={x - 60} y={20} width={120} height={20 + lines.length * 16} fill="#f1f5f9" stroke="#cbd5e1" strokeWidth={1} rx={4} />
+                    {lines.map((line, li) => (
+                      <text key={`${p.id}-${line}`} x={x} y={40 + li * 16} textAnchor="middle" fontSize={11} fontWeight="600" fill="#0f172a">{line}</text>
+                    ))}
+                    <line x1={x} y1={20 + lines.length * 16 + 10} x2={x} y2={140 + steps.length * 22 + 40} stroke="#cbd5e1" strokeDasharray="4" strokeWidth={1} />
+                  </g>
+                );
+              })}
+
+              {/* Steps */}
+              {steps.map((step, idx) => {
+                const isActive = idx === currentStepIdx;
+                const isPastStep = idx < currentStepIdx;
+                const y = 140 + idx * 22;
+                const opacity = isPastStep ? 0.35 : 1;
+
+                if (step.type === "note") {
+                  const partIdxs = step.participants.map(participantIndex).filter((i) => i >= 0);
+                  if (partIdxs.length === 0) return null;
+                  const minX = 100 + Math.min(...partIdxs) * 160 - 50;
+                  const maxX = 100 + Math.max(...partIdxs) * 160 + 50;
+                  return (
+                    <g key={`note-${step.path}-${step.description}`} opacity={opacity}>
+                      <rect x={minX} y={y - 13} width={maxX - minX} height={26} rx={5}
+                        fill={isActive ? "#fef08a" : "#fef9c3"} stroke="#d97706" strokeWidth={isActive ? 2 : 1} />
+                      <text x={(minX + maxX) / 2} y={y + 4} textAnchor="middle" fontSize={10} fill="#451a03" fontWeight="600">
+                        {step.text.length > 70 ? step.text.slice(0, 68) + "…" : step.text}
+                      </text>
+                    </g>
+                  );
+                }
+
+                const fromX = 100 + participantIndex(step.from) * 160;
+                const toX = 100 + participantIndex(step.to) * 160;
+                const midX = (Math.min(fromX, toX) + Math.max(fromX, toX)) / 2;
+                const isDashed = step.type === "response";
+                const markerId = isActive
+                  ? (isDashed ? "hitl-dashed-active" : "hitl-solid-active")
+                  : (isDashed ? "hitl-dashed" : "hitl-solid");
+
+                return (
+                  <g key={`step-${step.step}-${idx}`} opacity={opacity}>
+                    <line
+                      x1={fromX} y1={y} x2={toX} y2={y}
+                      stroke={isActive ? "#004687" : "#cbd5e1"}
+                      strokeWidth={isActive ? 3 : 1.5}
+                      strokeDasharray={isDashed ? "6 3" : undefined}
+                      markerEnd={`url(#${markerId})`}
+                    />
+                    <text x={midX} y={y - 4} textAnchor="middle" fontSize={9.5}
+                      fill={isActive ? "#004687" : "#475569"} fontWeight={isActive ? 700 : 400}>
+                      {step.step ? `${step.step}. ` : ""}{step.label.length > 55 ? step.label.slice(0, 53) + "…" : step.label}
+                    </text>
+                    {isActive && (
+                      <g>
+                        <circle cx={fromX} cy={y} r={9} fill="#1d4ed8" />
+                        <text x={fromX} y={y + 4} textAnchor="middle" fontSize={8} fill="#fff" fontWeight="700">{step.step}</text>
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
           </div>
         </div>
       </div>
