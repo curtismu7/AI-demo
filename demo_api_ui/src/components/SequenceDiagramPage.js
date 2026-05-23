@@ -2239,123 +2239,22 @@ const ALL_STEPS = [
       "Latency spike — first decision can be slow; warm the policy cache at startup",
     ],
   },
-  // Note over AG,PID: Exchange token for MCP
-  {
-    type: "note",
-    participants: ["AG", "PID"],
-    text: "Exchange token for MCP",
-    description: "Exchange token — MCP",
-    why: "Even though the gateway has a valid token, that token is audienced for the gateway itself, not MCP. To call MCP correctly the gateway exchanges it for a fresh token audienced to MCP — preserving the user/agent identity chain.",
-    onError: [
-      "Skipping this exchange and passing the gateway-audienced token to MCP — MCP should reject on aud mismatch",
-      "Exchange runs but with the agent's CC token as subject — loses the user identity; never reuse the wrong subject",
-    ],
-  },
-  // AG->>PID: Token exchange (TX token → aud: mcp)
-  {
-    step: 31,
-    from: "AG",
-    to: "PID",
-    label: "Token exchange (TX token → aud: mcp)",
-    type: "request",
-    description: "RFC 8693 Exchange #2",
-    scopes: ["mcp:invoke"],
-    tokenChanges: [
-      "Keep act claim (agent1)",
-      "Change aud to mcp",
-      "Keep scope: read",
-    ],
-    why: "Second RFC 8693 hop. The gateway uses its own credentials to ask PingOne to re-audience the token to mcp while keeping the act delegation chain intact. Each segment of the call gets a purpose-built token.",
-    request: {
-      method: "POST",
-      url: "https://auth.pingone.com/{ENV_ID}/as/token",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: "Basic {BASE64(GATEWAY_CLIENT_ID:SECRET)}",
-      },
-      body: "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&subject_token=eyJhbGciOi...TxTokenGW...&subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&resource=mcp&scope=banking%3Aread%20banking%3Amcp%3Ainvoke",
-    },
-    response: {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-      body: {
-        access_token: "eyJhbGciOi...McpToken...",
-        issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
-        token_type: "Bearer",
-        expires_in: 600,
-        scope: "read mcp:invoke",
-      },
-    },
-    onError: [
-      "400 invalid_target — mcp resource indicator not registered in PingOne",
-      "act claim dropped during chain — PingOne resource policy needs to preserve actor through exchange",
-      "Gateway lacks token-exchange grant — enable it on the gateway's PingOne app",
-    ],
-  },
-  // PID-->>AG: MCP token (sub: user, act: {sub: agent1}, aud: mcp, scope: balance)
-  {
-    step: 32,
-    from: "PID",
-    to: "AG",
-    label:
-      "MCP token (sub: user, act: {sub: agent1}, aud: mcp, scope: balance)",
-    type: "response",
-    description: "MCP Token",
-    scopes: ["mcp:invoke"],
-    tokenChanges: [
-      "Keep act claim (agent1)",
-      "Change aud to mcp",
-      "Keep scope: read",
-    ],
-    why: "PingOne returns the MCP-audienced token, still carrying sub=user and act=agent1. The gateway can now talk to MCP without ever giving up the user-identity context.",
-    request: {
-      frame: "token-exchange-response",
-      payload: { resource: "mcp" },
-    },
-    response: {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-store",
-      },
-      body: {
-        access_token: "eyJhbGciOi...McpToken...",
-        issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
-        token_type: "Bearer",
-        expires_in: 600,
-        scope: "read mcp:invoke",
-        claims: {
-          sub: "user_jane_doe",
-          aud: "mcp",
-          iss: "https://auth.pingone.com/{ENV_ID}",
-          scope: "read mcp:invoke",
-          act: { sub: "agent1-cc-client" },
-          iat: 1778000000,
-          exp: 1778000600,
-        },
-      },
-    },
-    onError: [
-      "aud still says mcp-gw — resource indicator wasn't honored; check PingOne",
-      "Extra scope appeared — review default scope policy on the gateway's app",
-      "exp shorter than the gateway → MCP call latency — risk of in-flight expiry; bump expires_in modestly",
-    ],
-  },
-  // AG->>MCP: tools/call check_balance (JSON-RPC) with MCP token
+  // AG->>MCP: tools/call check_balance (JSON-RPC) with TX token (passthrough)
   {
     step: 33,
     from: "AG",
     to: "MCP",
-    label: "tools/call check_balance (JSON-RPC) with MCP token",
+    label: "tools/call check_balance (JSON-RPC) with TX token (passthrough)",
     type: "request",
     description: "Tool Call to MCP",
-    why: "The gateway forwards the tool call to the MCP server with the MCP-audienced token. MCP will use this token both to authenticate the call and as the subject for its own downstream exchange to the resource server.",
+    why: "The gateway forwards the tool call to the MCP server with the original TX token unchanged — no RFC 8693 re-exchange on this hop. The TX token is audienced to the shared ping.demo resource URI, valid at both the gateway and the downstream MCP server. mTLS between gateway and MCP enforces that this token cannot be used to reach MCP directly from outside.",
     request: {
       method: "POST",
-      url: "ws://mcp.ping.demo:8080/jsonrpc",
+      url: "https://mcp.ping.demo:8080/mcp",
       headers: {
-        Authorization: "Bearer eyJhbGciOi...McpToken...",
+        Authorization: "Bearer eyJhbGciOi...TxToken...",
         "Content-Type": "application/json",
+        "MCP-Protocol-Version": "2025-11-25",
       },
       body: {
         jsonrpc: "2.0",
@@ -2370,7 +2269,7 @@ const ALL_STEPS = [
       body: { jsonrpc: "2.0", id: 4, result: { balance: 2450.32 } },
     },
     onError: [
-      "401 invalid_token — MCP saw aud != mcp; verify the resource indicator on the gateway's exchange",
+      "401 invalid_token — MCP rejected the TX token; verify shared audience URI between gateway and MCP",
       "WebSocket connection refused — MCP not up, or TLS chain broken on mcp.ping.demo",
       "Tool name not registered in MCP — BankingToolRegistry missing this tool",
     ],
@@ -2381,26 +2280,26 @@ const ALL_STEPS = [
     participants: ["MCP", "PID"],
     text: "Exchange token for Resource Server",
     description: "Exchange token — Resource Server",
-    why: "MCP can't call the banking API with a token audienced to MCP itself — the API would reject it. One more exchange re-audiences to the resource server, completing the delegation chain end-to-end.",
+    why: "MCP received the TX token (aud: ping.demo). It can't call the banking API with that token — the API only accepts tokens audienced to its own resource URI. MCP exchanges the TX token for a fresh token narrowed to the resource server, completing the delegation chain end-to-end.",
     onError: [
-      "MCP reuses its own token to call the API — API rejects on aud mismatch (correct behavior)",
+      "MCP reuses the TX token to call the API — API rejects on aud mismatch (correct behavior)",
       "MCP forgets to forward act — RS-side audit shows the call as 'user' without agent attribution",
     ],
   },
-  // MCP->>PID: Token exchange (MCP token → aud: resource-server)
+  // MCP->>PID: Token exchange (TX token → aud: resource-server)
   {
     step: 34,
     from: "MCP",
     to: "PID",
-    label: "Token exchange (MCP token → aud: resource-server)",
+    label: "Token exchange (TX token → aud: resource-server)",
     type: "request",
-    description: "RFC 8693 Exchange #3",
+    description: "RFC 8693 Exchange #2",
     tokenChanges: [
       "Keep act claim (agent1)",
       "Change aud to resource-server",
       "Keep scope: read",
     ],
-    why: "Third and final RFC 8693 hop. MCP uses its own credentials to mint a resource-server-audienced token, still carrying the same user subject and act chain.",
+    why: "Second and final RFC 8693 hop. MCP uses its own credentials to exchange the TX token (aud: ping.demo) for a resource-server-audienced token, still carrying the same user subject and act chain.",
     request: {
       method: "POST",
       url: "https://auth.pingone.com/{ENV_ID}/as/token",
@@ -2408,7 +2307,7 @@ const ALL_STEPS = [
         "Content-Type": "application/x-www-form-urlencoded",
         Authorization: "Basic {BASE64(MCP_CLIENT_ID:SECRET)}",
       },
-      body: "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&subject_token=eyJhbGciOi...McpToken...&subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&resource=https%3A%2F%2Fapi.ping.demo&scope=banking%3Aread",
+      body: "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&subject_token=eyJhbGciOi...TxToken...&subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&resource=https%3A%2F%2Fapi.ping.demo&scope=banking%3Aread",
     },
     response: {
       status: 200,
@@ -2922,7 +2821,7 @@ const SCENARIOS = {
   "token-exchanges": ALL_STEPS.filter(
     (s) =>
       s.step &&
-      ([24, 25, 31, 32, 34, 35].includes(s.step) ||
+      ([24, 25, 34, 35].includes(s.step) ||
         (s.step >= 26 && s.step <= 30)),
   ),
   "full-auth": ALL_STEPS.filter((s) => s.step && s.step >= 26 && s.step <= 30),
@@ -3512,7 +3411,7 @@ export default function SequenceDiagramPage() {
   };
 
   return (
-    <div style={{ padding: "1rem", background: "#fff" }}>
+    <div style={{ padding: "1rem", background: "#fff", display: "flex", flexDirection: "column", height: "100%" }}>
       {showMermaid && (
         <MermaidSourceModal onClose={() => setShowMermaid(false)} />
       )}
@@ -3861,9 +3760,9 @@ export default function SequenceDiagramPage() {
           border: "1px solid #e2e8f0",
           borderRadius: 8,
           background: "#f8fafc",
-          minHeight: "800px",
+          flex: 1,
+          minHeight: 0,
           position: "relative",
-          maxHeight: "90vh",
           overflow: "hidden",
         }}
       >
@@ -4128,16 +4027,18 @@ export default function SequenceDiagramPage() {
                       y1={y}
                       x2={toX}
                       y2={y}
-                      stroke={
-                        isActive ? "#004687" : isPast ? "#dbeafe" : "#cbd5e1"
-                      }
+                      stroke={isActive ? "#004687" : "#cbd5e1"}
                       strokeWidth={isActive ? 3 : 1.5}
                       markerEnd={
-                        step.type === "response"
-                          ? "url(#markerDashed)"
-                          : "url(#markerSolid)"
+                        isActive
+                          ? step.type === "response"
+                            ? "url(#markerDashedActive)"
+                            : "url(#markerSolidActive)"
+                          : step.type === "response"
+                            ? "url(#markerDashed)"
+                            : "url(#markerSolid)"
                       }
-                      opacity={isPast ? 0.5 : 1}
+                      opacity={isPast ? 0.35 : 1}
                     />
                     {/* Label */}
                     <text
@@ -4157,29 +4058,19 @@ export default function SequenceDiagramPage() {
                 );
               })}
 
-              {/* Arrow markers */}
+              {/* Arrow markers — idle and active variants */}
               <defs>
-                <marker
-                  id="markerSolid"
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="9"
-                  refY="3"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <path d="M0,0 L0,6 L9,3 z" fill="#cbd5e1" />
+                <marker id="markerSolid" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L0,6 L9,3 z" fill="#475569" />
                 </marker>
-                <marker
-                  id="markerDashed"
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="9"
-                  refY="3"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <path d="M0,0 L0,6 L9,3 z" fill="#cbd5e1" />
+                <marker id="markerDashed" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L0,6 L9,3 z" fill="#475569" />
+                </marker>
+                <marker id="markerSolidActive" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L0,6 L9,3 z" fill="#004687" />
+                </marker>
+                <marker id="markerDashedActive" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L0,6 L9,3 z" fill="#004687" />
                 </marker>
               </defs>
             </svg>

@@ -45,24 +45,18 @@ if (process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true' && isProduction) {
 }
 
 // ── Session store ──
-// Priority: SQLite (persistent, local) → Memory (last resort).
-/** 'sqlite' | 'memory' */
+/** 'lmdb' | 'memory' */
 let sessionStoreType = 'memory';
 let sessionStore;
 
-// ── Priority 3: SQLite store (local development fallback) ───────────────────
-if (!sessionStore) {
-    try {
-        const SqliteSessionStore = require('./services/sqliteSessionStore');
-        sessionStore = new SqliteSessionStore({
-            dbPath: path.join(__dirname, 'data/sessions.db'),
-            ttl: 24 * 60 * 60 * 1000, // 24 hours
-        });
-        sessionStoreType = 'sqlite';
-        console.log('[session-store] Using SQLite store for local development — sessions persist across restarts');
-    } catch (err) {
-        console.warn('[session-store] SQLite store init failed, falling back to memory store:', err.message);
-    }
+// ── LMDB store (no native ABI dependency — works across all Node versions) ──
+try {
+    const { LmdbSessionStore } = require('./services/lmdb/sessionStore');
+    sessionStore = new LmdbSessionStore({ ttl: 24 * 60 * 60 * 1000 });
+    sessionStoreType = 'lmdb';
+    console.log('[session-store] Using LMDB store — sessions persist across restarts without native ABI dependency');
+} catch (err) {
+    console.warn('[session-store] LMDB store init failed, falling back to memory store:', err.message);
 }
 
 // Import routes
@@ -100,6 +94,7 @@ const mcpGatewayConfigRouter = require('./routes/mcpGatewayConfig');
 const mcpAuditRouter = require('./routes/mcpAudit');
 const agentIdentityRoutes = require('./routes/agentIdentity');
 const agentDelegationRoutes = require('./routes/agentDelegation');
+const adminDemoUsersRoutes = require('./routes/adminDemoUsers');
 const mcpDecisionPollingRoutes = require('./routes/mcpDecisionPolling');
 const bankingAgentRoutes = require('./routes/bankingAgentRoutes');
 const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
@@ -127,6 +122,7 @@ const {
     clearAuthCookie,
     readAuthCookie
 } = require('./services/authStateCookie');
+const { clearAllAuthCookies } = require('./services/sessionCookies');
 const {
     migrateAccounts
 } = require('./services/demoDataService');
@@ -557,18 +553,17 @@ app.post('/api/auth/switch', (req, res) => {
 // cookie is cleared even if the 302-redirect Set-Cookie header was not honoured
 // by an intermediate redirect (e.g. PingOne signoff without id_token_hint).
 app.post('/api/auth/clear-session', (req, res) => {
-    clearAuthCookie(res, isProduction);
+    clearAllAuthCookies(res, isProduction);
     if (req.session) {
         req.session.destroy(() => {});
     }
-    res.json({
-        ok: true
-    });
+    res.json({ ok: true });
 });
 
-// Unified logout — destroys whichever session is active and redirects
-// browser → PingOne RP-Initiated Logout → post_logout_redirect_uri (/logout).
-// Called as a full page navigation (window.location.href), NOT via axios.
+// Unified logout — destroys whichever session is active and returns a JSON
+// body with the PingOne signoff URL. The SPA navigates there directly so the
+// cookie-clearing Set-Cookie headers are delivered on the /api/auth/logout
+// response (not on a 302 redirect that gets proxied away without cookies).
 app.get('/api/auth/logout', async (req, res) => {
     const idToken = req.session.oauthTokens?.idToken
         // Fallback: auth-state cookie carries the id_token for RP-Initiated Logout
@@ -625,19 +620,11 @@ app.get('/api/auth/logout', async (req, res) => {
             console.error('Session destruction error during unified logout:', err);
         }
 
-        // Clear the auth-state cookie so the session-restore middleware does not
-        // keep the user signed in on the next request.
-        clearAuthCookie(res, isProduction);
-
-        // Explicitly expire the session cookie — session.destroy() removes the
-        // server-side data but the browser retains the connect.sid value until
-        // the cookie is overwritten with Max-Age=0.
-        res.clearCookie('connect.sid', {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? 'none' : 'lax',
-            path: '/',
-        });
+        // Expire all auth-related cookies — session.destroy() removes server-side
+        // data but the browser retains cookie values until overwritten. Clearing
+        // the _auth cookie also stops the session-restore middleware from keeping
+        // the user signed in on the next request.
+        clearAllAuthCookies(res, isProduction);
 
         const envId = configStore.getEffective('pingone_environment_id');
         const region = configStore.getEffective('pingone_region') || 'com';
@@ -663,8 +650,22 @@ app.get('/api/auth/logout', async (req, res) => {
             console.warn('[logout] No client_id resolved — PingOne may not identify the RP for signoff.');
         }
 
-        console.info(`[logout] Redirecting to PingOne signoff (id_token_hint: ${idToken ? 'yes' : 'NO'}, client_id: ${clientId || 'none'})`);
-        res.redirect(`${pingoneSignoff}?${params.toString()}`);
+        const signoffUrl = `${pingoneSignoff}?${params.toString()}`;
+        console.info(`[logout] Signoff URL built (id_token_hint: ${idToken ? 'yes' : 'NO'}, client_id: ${clientId || 'none'})`);
+
+        // Detect whether the caller expects a redirect (window.location.href navigation)
+        // or a JSON body (fetch from the SPA). Accept header contains 'text/html' for
+        // direct browser navigations; fetch() sends 'application/json' or '*/*'.
+        const acceptsHtml = (req.get('accept') || '').includes('text/html');
+        if (acceptsHtml) {
+            // Direct browser navigation — redirect as before (keeps backward compat
+            // for any tool or test that calls this endpoint directly).
+            res.redirect(signoffUrl);
+        } else {
+            // Fetch from SPA — return JSON so the SPA can navigate after receiving
+            // the Set-Cookie headers that clear connect.sid and _auth.
+            res.json({ logoutUrl: signoffUrl });
+        }
     });
 });
 
@@ -952,6 +953,7 @@ app.get('/api/demo-scenario', (req, res, next) => {
     });
 });
 app.use('/api/demo-scenario', authenticateToken, demoScenarioRoutes);
+app.use('/api/admin/demo-users', adminDemoUsersRoutes);
 app.use('/api/admin/agent', authenticateToken, adminAgentToolsRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/admin/management', adminManagementRoutes);
@@ -1397,6 +1399,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         phase: 'request_accepted'
     });
 
+    const gatewayUrl = process.env.MCP_GATEWAY_HTTP_URL || configStore.get('mcp_gateway_http_url');
     const ctx = {
       tool, params, flowTraceId, startTime, req,
       deps: {
@@ -1419,14 +1422,11 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         emit,
         config: {
           introspectionConfigured: !!process.env.PINGONE_INTROSPECTION_ENDPOINT,
-          useGateway: !!process.env.MCP_GATEWAY_HTTP_URL,
+          useGateway: !!gatewayUrl,
           gatewayHttpUrl: mcpGatewayClient.getMcpGatewayHttpUrl(),
           mcpUrl: getMcpServerUrl(),
           mcpServerUrlEnv: process.env.MCP_SERVER_URL,
-          useHttp2: (() => {
-            const u = getMcpServerUrl();
-            return !process.env.MCP_GATEWAY_HTTP_URL && (u.startsWith('http://') || u.startsWith('https://'));
-          })(),
+          useHttp2: !gatewayUrl && (() => { const u = getMcpServerUrl(); return u.startsWith('http://') || u.startsWith('https://'); })(),
           pingoneAdminEnabled: configStore.get('mcp_use_pingone_server') === 'true',
           pingoneAdminTools: PINGONE_ADMIN_TOOLS,
         },

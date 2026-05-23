@@ -7,12 +7,14 @@ import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import { resolveSessionUser } from '../services/sessionResolver';
 import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
+import CreateUserPanel from './CreateUserPanel';
 
 const Users = ({ user, onLogout }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [agentRestrictionsUpdating, setAgentRestrictionsUpdating] = useState({});
+  const [showCreatePanel, setShowCreatePanel] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -172,10 +174,26 @@ const Users = ({ user, onLogout }) => {
       <div className="app-page-card">
         <div className="card-header">
           <h2 className="card-title">User Management</h2>
-          <span style={{ color: '#374151', fontSize: '0.875rem' }}>
-            {users.length} users found
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ color: '#374151', fontSize: '0.875rem' }}>
+              {users.length} users found
+            </span>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setShowCreatePanel(true)}
+            >
+              + Create Demo User
+            </button>
+          </div>
         </div>
+
+        {showCreatePanel && (
+          <CreateUserPanel
+            onClose={() => setShowCreatePanel(false)}
+            onCreated={() => { fetchUsers(); }}
+          />
+        )}
 
         {users.length > 0 ? (
           <div className="table-container">

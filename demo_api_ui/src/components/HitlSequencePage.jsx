@@ -8,41 +8,40 @@
 import HitlSequenceDiagram from "./HitlSequenceDiagram";
 
 const PATHS = [
-  { key: "homegrown", label: "Path 1 — Homegrown OTP",              color: "rgb(232,245,233)", desc: "BFF-generated HMAC OTP emailed directly. Feature flag: mode=homegrown." },
-  { key: "onetime",   label: "Path 2 — PingOne One-Time (default)", color: "rgb(232,240,255)", desc: "PingOne sends OTP to user's email/phone on file. No enrolled device required. Feature flag: mode=onetime." },
-  { key: "device",    label: "Path 3 — PingOne Device Picker",      color: "rgb(255,243,224)", desc: "User picks from enrolled devices (EMAIL, SMS, FIDO2). Requires amount >= $500. Feature flag: mode=device_picker." },
+  { key: "homegrown", label: "Path 1 — Homegrown OTP",              color: "#bbf7d0", desc: "BFF-generated HMAC OTP emailed directly. Feature flag: mode=homegrown." },
+  { key: "onetime",   label: "Path 2 — PingOne One-Time (default)", color: "#bfdbfe", desc: "PingOne sends OTP to user's email/phone on file. No enrolled device required. Feature flag: mode=onetime." },
+  { key: "device",    label: "Path 3 — PingOne Device Picker",      color: "#fed7aa", desc: "User picks from enrolled devices (EMAIL, SMS, FIDO2). Requires amount >= $500. Feature flag: mode=device_picker." },
 ];
 
 export default function HitlSequencePage() {
   return (
-    <div style={{ padding: "2rem", maxWidth: "100%", overflowX: "auto" }}>
-      <header style={{ marginBottom: "1.5rem" }}>
-        <p style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#6b7280", marginBottom: "0.25rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      <div style={{ padding: "1rem 1.5rem 0.75rem", flexShrink: 0 }}>
+        <p style={{ fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#6b7280", margin: "0 0 0.2rem" }}>
           HITL Consent Challenge
         </p>
-        <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#111827", margin: 0 }}>
+        <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#111827", margin: "0 0 0.4rem" }}>
           Sequence Diagram — All Paths
         </h1>
-        <p style={{ color: "#6b7280", marginTop: "0.5rem", fontSize: "0.9rem" }}>
+        <p style={{ color: "#6b7280", fontSize: "0.82rem", margin: "0 0 0.6rem" }}>
           Full request/response flow for the three HITL consent modes. Controlled by{" "}
           <code style={{ background: "#f3f4f6", padding: "0.1em 0.3em", borderRadius: 4 }}>hitl_consent_mfa_mode</code>{" "}
           config flag.
         </p>
-      </header>
-
-      <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1.5rem" }}>
-        {PATHS.map((p) => (
-          <div key={p.key} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, padding: "0.6rem 0.9rem", maxWidth: 280 }}>
-            <span style={{ display: "inline-block", width: 14, height: 14, borderRadius: 3, background: p.color, flexShrink: 0, marginTop: 3 }} />
-            <div>
-              <div style={{ fontWeight: 600, fontSize: "0.82rem", color: "#111827" }}>{p.label}</div>
-              <div style={{ fontSize: "0.78rem", color: "#6b7280", marginTop: 2 }}>{p.desc}</div>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          {PATHS.map((p) => (
+            <div key={p.key} style={{ display: "flex", alignItems: "center", gap: "0.4rem", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 6, padding: "0.35rem 0.6rem" }}>
+              <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: p.color, flexShrink: 0 }} />
+              <span style={{ fontWeight: 600, fontSize: "0.78rem", color: "#111827" }}>{p.label}</span>
+              <span style={{ fontSize: "0.74rem", color: "#6b7280" }}>— {p.desc}</span>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      <HitlSequenceDiagram />
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <HitlSequenceDiagram />
+      </div>
     </div>
   );
 }

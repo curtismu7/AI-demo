@@ -264,4 +264,29 @@ router.get('/search/:query', authenticateToken, requireScopes(['read']), require
   }
 });
 
+// PATCH /api/users/:userId/attributes — update PingOne custom attributes (may_act). Admin only.
+router.patch('/:userId/attributes', authenticateToken, requireScopes(['write']), requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { mayAct } = req.body;
+
+    pingOneUserService.initialize();
+
+    if (mayAct !== undefined) {
+      if (mayAct === null) {
+        await pingOneUserService.setMayActAttribute(userId, null);
+      } else {
+        const { sub } = mayAct;
+        if (!sub) return res.status(400).json({ error: 'mayAct.sub is required' });
+        await pingOneUserService.setMayActAttribute(userId, { sub });
+      }
+    }
+
+    res.json({ success: true, userId });
+  } catch (error) {
+    console.error('PATCH user attributes error:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
 module.exports = router;

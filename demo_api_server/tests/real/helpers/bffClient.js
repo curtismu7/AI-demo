@@ -36,6 +36,7 @@ async function setVertical(client, verticalId) {
 }
 
 async function restoreVertical(client) {
+  if (!client) return; // beforeAll threw (no session) — nothing to restore
   const prev = verticalStack.pop() || 'banking';
   await client.put('/api/config/vertical', { verticalId: prev });
 }

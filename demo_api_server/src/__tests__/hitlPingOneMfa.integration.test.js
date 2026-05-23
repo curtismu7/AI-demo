@@ -72,6 +72,7 @@ function spyMfaFlags(realGetEffective) {
     if (key === 'ff_hitl_pingone_mfa_enabled') return 'true';
     if (key === 'confirm_stepup_threshold_usd') return '500';
     if (key === 'confirm_threshold_usd') return '250';
+    if (key === 'hitl_consent_mfa_mode') return 'device_picker';
     return realGetEffective(key);
   });
 }

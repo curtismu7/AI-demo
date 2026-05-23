@@ -240,6 +240,49 @@ Net: sidebar simplified, toolbar added with zoom, consistent with other simulati
 
 ---
 
+## Colour Palette
+
+All diagram pages must use the same colour tokens. These are already consistent for token cards (`FLOW_ACCENT`) across every page — the gap is **control button colours**. `DiagramControls.css` defines these as the canonical values.
+
+### Token card accent colours (FLOW_ACCENT — already consistent, do not change)
+
+| Token type | Colour |
+|---|---|
+| `oauth` | `#2563eb` |
+| `exchange` | `#7c3aed` |
+| `permit` | `#16a34a` |
+| `hitl` | `#d97706` |
+| `idtoken` | `#0891b2` |
+| `mcp` | `#475569` |
+| `error` | `#dc2626` |
+
+These are defined as `FLOW_ACCENT` constants in HitlSequenceDiagram.js, SequenceDiagramPage.js, and ArchitectureFlowPage.js. They must not be changed — they are already in sync.
+
+### Control button semantic colours (DiagramControls.css — canonical)
+
+These are the ArchitectureDiagramPage reference values. HitlSequenceDiagram's `ctrlBtn()` helper currently uses plain grey for all buttons — adopting `DiagramControls` brings it in line.
+
+| Button | Background | Text | Hover |
+|---|---|---|---|
+| Simulate | `#004687` (brand navy) | `#fff` | `#003366` |
+| Pause | `#f59e0b` (amber) | `#fff` | `#d97706` |
+| Resume | `#22c55e` (green) | `#fff` | `#16a34a` |
+| Next | `#004687` (brand navy) | `#fff` | `#003366` |
+| Stop | `#e2e8f0` (light grey) | `#475569` | `#cbd5e1` |
+| Prev | `#fff` (white) | `#334155` | `#f1f5f9` |
+| Zoom −/+/↺ | `none` (transparent) | `#334155` | `#e2e8f0` |
+| Disabled | `#f1f5f9` | `#94a3b8` | — |
+
+### SVG active state colour
+
+All pages use `#004687` (brand navy) for the active/highlighted arrow or region. This is consistent across ArchitectureDiagramPage, ArchitectureFlowPage, and HitlSequenceDiagram — do not change.
+
+### PathFilterBar active swatch colours (Phase266 — intentional, do not normalise)
+
+Phase266 paths use path-specific colours (amber/teal/blue) for their filter buttons. These are correct semantic colours that map to each credential path — they are intentionally different from the control button palette.
+
+---
+
 ## Styling Conventions
 
 All shared styles live in `DiagramControls.css` with three namespaced prefixes:
@@ -256,10 +299,9 @@ Source styles come from `ArchitectureDiagramPage.css` `.arch-zoom-*` and `.arch-
 
 The HITL step-panel plan (2026-05-23) and this spec touch overlapping files. Ordering:
 
-- Tasks 1–5 of the HITL plan are **complete**.
-- Tasks 6–8 (SVG renderer, HitlSequencePage.jsx update, final build) are **pending**.
-- This spec's HitlSequenceDiagram change (inline controls → DiagramControls) **must land after** Task 5 and **can land before or after** Tasks 6–8.
-- If Tasks 6–8 land first, the HitlSequencePage.jsx DiagramLegend change is a one-line follow-up. If this spec lands first, Tasks 6–8 adopt DiagramLegend as part of the Task 7 HitlSequencePage rewrite.
+- All 8 tasks of the HITL step-panel plan are **complete** as of 2026-05-23.
+- `HitlSequenceDiagram.js` has inline `ctrlBtn()` controls (Task 5). `HitlSequencePage.jsx` has inline PATHS legend chips (Task 7).
+- This spec replaces both with shared components. No coordination needed — clean sequential work.
 - No merge conflicts possible — changes are additive or replacing inline code.
 
 ---

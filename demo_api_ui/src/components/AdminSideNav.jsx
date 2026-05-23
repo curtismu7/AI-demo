@@ -121,7 +121,7 @@ export default function AdminSideNav({ user }) {
   // Items with adminOnly: true are hidden for non-admin users
   const allNavItems = [
     { label: "Home", path: "/", icon: "~" },
-    { label: "Dashboard", path: isAdmin ? "/admin" : "/dashboard", icon: "≡" },
+    { label: "Dashboard", path: "/dashboard", icon: "≡" },
     {
       label: "Agent Demo Guide",
       icon: "doc",
@@ -589,17 +589,11 @@ export default function AdminSideNav({ user }) {
         credentials: "include",
       });
     } catch (_) {}
-    try {
-      localStorage.removeItem("tokenChainHistory");
-    } catch (_) {}
-    try {
-      localStorage.removeItem("api-traffic-store");
-    } catch (_) {}
-    window.dispatchEvent(new CustomEvent("demo-reset-complete"));
-    navigate(location.pathname, {
-      replace: true,
-      state: { resetDemoSuccess: true },
-    });
+    try { localStorage.removeItem("tokenChainHistory"); } catch (_) {}
+    try { localStorage.removeItem("api-traffic-store"); } catch (_) {}
+    try { localStorage.removeItem("banking_ui_theme"); } catch (_) {}
+    try { sessionStorage.removeItem("banking_ui_theme"); } catch (_) {}
+    window.location.href = "/api/auth/logout";
   };
 
   const handleKillSwitchConfirm = useCallback(
@@ -964,7 +958,7 @@ export default function AdminSideNav({ user }) {
       <ConfirmModal
         isOpen={showResetModal}
         title="Reset Demo"
-        message="Clear all agent history, token chain events, and MCP audit logs? You will stay logged in."
+        message="Clear all agent history, token chain events, and MCP audit logs? You will be logged out and the theme will reset to default."
         confirmLabel="Reset"
         danger
         onConfirm={handleResetConfirm}

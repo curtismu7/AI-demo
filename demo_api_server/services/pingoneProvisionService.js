@@ -1079,6 +1079,19 @@ class PingOneProvisionService {
 
     const envContent = this.generateEnvContent(config, provisioned, preserved);
     await fs.writeFile(envPath, envContent, 'utf8');
+
+    // Mirror the newly-written .env into SQLite so the database is immediately
+    // populated — the server can then start without any env file present.
+    try {
+      require('dotenv').config({ path: envPath, override: true });
+      const configStore = require('./configStore');
+      await configStore.ensureInitialized();
+      configStore._seedFromEnv();
+      console.log('[Bootstrap] .env values seeded into SQLite config.db');
+    } catch (err) {
+      console.warn('[Bootstrap] SQLite seed after writeEnvFile failed (non-fatal):', err.message);
+    }
+
     return envPath;
   }
 
@@ -1562,7 +1575,7 @@ class PingOneProvisionService {
       const userGrantResult = await this.grantScopesToApplication(
         userAppResult.application.id,
         resourceResult.resource.id,
-        ['ai:agent:read', 'read', 'write', 'transfer', 'mortgage:read']
+        ['ai:agent:read', 'read', 'write', 'transfer', 'mortgage:read', 'largepurchase:read', 'records:read', 'gear:read', 'expense:read']
       );
       
       pushGrantResultStep(steps, 'user-grants', 'User scope grants', userGrantResult);

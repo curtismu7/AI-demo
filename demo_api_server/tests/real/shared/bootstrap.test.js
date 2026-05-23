@@ -37,7 +37,7 @@ describe('Bootstrap contract (real)', () => {
   });
 
   afterAll(async () => {
-    await client.put('/api/config/vertical', { verticalId: 'banking' });
+    if (client) await client.put('/api/config/vertical', { verticalId: 'banking' });
   });
 
   it('GET /api/auth/oauth/status returns authenticated: true', async () => {
@@ -53,7 +53,7 @@ describe('Bootstrap contract (real)', () => {
   it('GET /api/accounts/my returns accounts array', async () => {
     const r = await client.get('/api/accounts/my');
     expect(r.status).toBe(200);
-    expect(Array.isArray(r.data)).toBe(true);
-    expect(r.data.length).toBeGreaterThan(0);
+    expect(Array.isArray(r.data.accounts)).toBe(true);
+    expect(r.data.accounts.length).toBeGreaterThan(0);
   });
 });

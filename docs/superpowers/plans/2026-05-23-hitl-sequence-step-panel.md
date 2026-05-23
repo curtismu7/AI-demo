@@ -1848,6 +1848,90 @@ git status
 
 ---
 
+## Task 9: Cross-diagram color + responsive layout consistency
+
+**Goal:** All custom SVG diagrams use the same color palette and fill available viewport height on large monitors.
+
+**Files:**
+- Modify: `demo_api_ui/src/components/SequenceDiagramPage.js`
+- Modify: `demo_api_ui/src/components/HitlSequenceDiagram.js` (colors already done in Tasks 6–8; responsive layout)
+- Modify: `demo_api_ui/src/components/HitlSequencePage.jsx` (full-height wrapper)
+- Modify: `demo_api_ui/src/App.css` (`main-content` flex chain)
+
+### Color token reference (canonical — all diagrams must use these)
+
+| Token | Value | Usage |
+|---|---|---|
+| Participant box fill | `#f1f5f9` | All participant header rects |
+| Participant box stroke | `#cbd5e1` | All participant header rect borders |
+| Lifeline stroke | `#cbd5e1` dashed | All vertical lifelines |
+| Arrow idle | `#cbd5e1` | Non-active, non-past arrows |
+| Arrow active | `#004687` | Currently highlighted arrow + label |
+| Arrow past | `#cbd5e1` at 0.35 opacity | Already-passed steps |
+| Arrow marker idle fill | `#475569` | Arrowhead fill when idle |
+| Arrow marker active fill | `#004687` | Arrowhead fill when active |
+| Step label idle | `#475569` | Non-active step text |
+| Step label active | `#004687` bold | Active step text |
+| Step label past | `#94a3b8` | Past step text |
+| Active step badge | `#1d4ed8` fill, `#fff` text | Step number badge on active source node |
+| Note fill | `#fef9c3` | Note/annotation background |
+| Note fill active | `#fef08a` | Note background when active |
+| Note stroke | `#d97706` | Note border |
+| Note text | `#451a03` | Note label |
+| Path band — homegrown/green | `#bbf7d0` fill / `#4ade80` stroke | HITL Path 1 section band |
+| Path band — onetime/blue | `#bfdbfe` fill / `#60a5fa` stroke | HITL Path 2 section band |
+| Path band — device/orange | `#fed7aa` fill / `#fb923c` stroke | HITL Path 3 section band |
+| SVG background | `#f8fafc` | Scroll area behind diagram |
+
+### Responsive layout pattern (all diagram pages)
+
+All diagram pages must fill the available viewport height rather than being content-tall:
+
+```
+App (flex column, min-height: 100vh)
+  └── main-content (flex: 1, display: flex, flex-direction: column)
+        └── DiagramPage (display: flex, flex-direction: column, height: 100%)
+              ├── page header (flex-shrink: 0)
+              └── DiagramComponent (flex: 1, min-height: 0)
+                    ├── controls bar (flex-shrink: 0)
+                    └── split pane (flex: 1, min-height: 0)
+                          ├── StepInfoPanel (overflow-y: auto)
+                          └── SVG area (flex: 1, overflow: auto)
+                                └── svg[viewBox, width="100%"]
+```
+
+**Key rules:**
+- SVG must use `viewBox` + `width="100%"` — not a fixed pixel width — so it scales to the container
+- `flex: 1; min-height: 0` on every flex child that should grow to fill (without `min-height: 0`, flex overflow is clipped rather than scrolled)
+- Page header uses `flex-shrink: 0` so it never gets squeezed
+
+### Changes needed in SequenceDiagramPage.js
+
+- [ ] **Step 1: Fix arrow past color** — change `isPast ? "#dbeafe"` to `isPast ? "#cbd5e1"` (line ~4132). `#dbeafe` is a blue tint; HITL uses neutral `#cbd5e1` at 0.35 opacity for past arrows.
+
+- [ ] **Step 2: Fix arrow marker fill** — markers `#markerSolid` and `#markerDashed` use static `fill="#cbd5e1"`. Add active variants (`#markerSolidActive`, `#markerDashedActive`) with `fill="#004687"` and switch `markerEnd` based on `isActive`.
+
+- [ ] **Step 3: Fix outer wrapper** — change `return (<div style={{ padding: "1rem", background: "#fff" }}>` to `display: flex; flex-direction: column; height: 100%`.
+
+- [ ] **Step 4: Fix diagram+panel container** — change `minHeight: "800px"` and `maxHeight: "90vh"` to `flex: 1; min-height: 0` so the pane grows to fill the viewport on large screens without being capped.
+
+- [ ] **Step 5: Add `display: flex; flex-direction: column` to `.main-content` in `App.css`** so `height: 100%` in child pages resolves through the flex chain.
+
+- [ ] **Step 6: Build passes**
+
+```bash
+cd demo_api_ui && npm run build 2>&1 | grep -E "ERROR|Failed" | head -5
+```
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add demo_api_ui/src/components/SequenceDiagramPage.js demo_api_ui/src/App.css
+git commit -m "feat(diagrams): cross-diagram color consistency + full-height responsive layout"
+```
+
+---
+
 ## Self-Review
 
 **Spec coverage check:**

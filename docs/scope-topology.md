@@ -12,6 +12,10 @@
 | `accounts:read` | low | Super Banking API | Read account information and balances |
 | `transactions:read` | low | Super Banking API | Read transaction history and details |
 | `mortgage:read` | low | Super Banking API | Read mortgage/feature-specific data (banking vertical) |
+| `largepurchase:read` | low | Super Banking API | Read large purchase data (retail vertical) |
+| `records:read` | low | Super Banking API | Read health record data (healthcare vertical) |
+| `gear:read` | low | Super Banking API | Read gear order data (sporting-goods vertical) |
+| `expense:read` | low | Super Banking API | Read expense report data (workforce vertical) |
 | `ai:agent:read` | medium | Super Banking API | Agent invocation permission |
 | `mcp:invoke` | medium | Super Banking MCP Server | Invoke MCP tools via the gateway (RFC 8693 exchange) |
 | `agent:invoke` | medium | Super Banking Agent Gateway | Invoke the Agent Gateway (Two-Exchange Step 1 audience) |
@@ -28,7 +32,7 @@
 
 Audience: `enduser.ping.demo`
 
-Native scopes: `read`, `write`, `transfer`, `accounts:read`, `transactions:read`, `mortgage:read`, `ai:agent:read`, `ai_agent`, `admin:read`, `admin:write`, `admin:delete`, `users:read`, `users:manage`
+Native scopes: `read`, `write`, `transfer`, `accounts:read`, `transactions:read`, `mortgage:read`, `largepurchase:read`, `records:read`, `gear:read`, `expense:read`, `ai:agent:read`, `ai_agent`, `admin:read`, `admin:write`, `admin:delete`, `users:read`, `users:manage`
 
 ### Super Banking MCP Server
 
@@ -36,7 +40,7 @@ Audience: `mcpserver.ping.demo`
 
 Native scopes: `mcp:invoke`
 
-Mirrored scopes (RFC 8693 exchange-hop, ARCHITECTURE-TRUTHS T-10): `read`, `write`, `mortgage:read`, `ai:agent:read`, `admin:read`, `admin:write`, `admin:delete`, `users:read`, `users:manage`
+Mirrored scopes (RFC 8693 exchange-hop, ARCHITECTURE-TRUTHS T-10): `read`, `write`, `mortgage:read`, `largepurchase:read`, `records:read`, `gear:read`, `expense:read`, `ai:agent:read`, `admin:read`, `admin:write`, `admin:delete`, `users:read`, `users:manage`
 
 ### Super Banking MCP Gateway
 
@@ -44,7 +48,7 @@ Audience: `mcpgateway.ping.demo`
 
 Native scopes: `mcp:invoke`
 
-Mirrored scopes (RFC 8693 exchange-hop, ARCHITECTURE-TRUTHS T-10): `read`, `write`, `transfer`, `mortgage:read`
+Mirrored scopes (RFC 8693 exchange-hop, ARCHITECTURE-TRUTHS T-10): `read`, `write`, `transfer`, `mortgage:read`, `largepurchase:read`, `records:read`, `gear:read`, `expense:read`
 
 ### Super Banking Agent Gateway
 
@@ -67,7 +71,7 @@ Native scopes: `agent:invoke`
 
 Type: `WEB_APP`  ·  Grants: `authorization_code`, `refresh_token`, `token_exchange`
 
-Granted scopes: `ai:agent:read`, `read`, `write`, `transfer`, `mortgage:read`
+Granted scopes: `ai:agent:read`, `read`, `write`, `transfer`, `mortgage:read`, `largepurchase:read`, `records:read`, `gear:read`, `expense:read`
 
 ### Super Banking Admin App
 
@@ -128,6 +132,10 @@ Granted scopes: — (none; resource-server or worker app)
 | `get_investment_accounts` | gateway | `read` | — |
 | `get_portfolio_summary` | gateway | `read` | — |
 | `show_mortgage` | gateway | `mortgage:read` | — |
+| `show_large_purchase` | gateway | `largepurchase:read` | — |
+| `show_health_record` | gateway | `records:read` | — |
+| `show_gear_order` | gateway | `gear:read` | — |
+| `show_expense_report` | gateway | `expense:read` | — |
 | `create_deposit` | gateway | `write` | step_up |
 | `create_withdrawal` | gateway | `write` | step_up |
 | `create_transfer` | gateway | `write` `transfer` | step_up |

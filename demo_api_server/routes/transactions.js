@@ -532,13 +532,21 @@ router.post('/', authenticateToken, async (req, res) => {
     /** @type {object|null} */
     let authorizeEvaluation = null;
 
+    // If the user completed step-up MFA via email OTP in this session, treat as strong acr.
+    // Consume the flag (single-use) so subsequent transactions still enforce the gate.
+    let effectiveAcr = req.user.acr;
+    if (req.session?.stepUpVerified > Date.now()) {
+      effectiveAcr = 'Multi_Factor';
+      req.session.stepUpVerified = 0;
+    }
+
     const authz = await transactionAuthorizationService.evaluateTransactionPolicy({
       runtimeSettings,
       userRole: req.user.role,
       userId: req.user.id,
       amount: parseFloat(amount),
       type,
-      acr: req.user.acr,
+      acr: effectiveAcr,
     });
 
     if (authz.ran) {

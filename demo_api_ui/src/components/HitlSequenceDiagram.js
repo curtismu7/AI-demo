@@ -691,8 +691,8 @@ const BASE_Y = 140;
 const STEP_HEIGHT = 22;
 
 // Path styling — fill and stroke for each consent path background rect
-const PATH_COLORS = { homegrown: "#e8f5e9", onetime: "#e8f0ff", device: "#fff3e0" };
-const PATH_STROKES = { homegrown: "#a5d6a7", onetime: "#9fa8da", device: "#ffe082" };
+const PATH_COLORS = { homegrown: "#bbf7d0", onetime: "#bfdbfe", device: "#fed7aa" };
+const PATH_STROKES = { homegrown: "#4ade80", onetime: "#60a5fa", device: "#fb923c" };
 
 // HITL_PARTICIPANTS — matches hitl-sequence.mmd participant declarations
 const HITL_PARTICIPANTS = [
@@ -1932,9 +1932,9 @@ export default function HitlSequenceDiagram() {
     : `${arrowSteps.length} steps · ${scenarioLabel}`;
 
   return (
-    <div style={{ background: "#fff" }}>
+    <div style={{ background: "#fff", display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Controls bar */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 1rem", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 1rem", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap", flexShrink: 0 }}>
         <label htmlFor="hitl-scenario-select" style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>Scenario:</label>
         <select
           id="hitl-scenario-select"
@@ -1969,7 +1969,7 @@ export default function HitlSequenceDiagram() {
       </div>
 
       {/* Split layout */}
-      <div style={{ display: "flex" }}>
+      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <StepInfoPanel
           activeStep={activeStep}
           currentStepIdx={currentStepIdx}
@@ -1986,11 +1986,12 @@ export default function HitlSequenceDiagram() {
           style={{ width: 4, cursor: "col-resize", background: "#e2e8f0", flexShrink: 0, border: "none", padding: 0, outline: "none" }}
         />
         {/* SVG area */}
-        <div style={{ flex: 1, overflow: "auto", background: "#f8fafc", padding: "1.5rem" }}>
-          <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top left", transition: "transform 0.15s" }}>
+        <div style={{ flex: 1, overflow: "auto", background: "#f8fafc", padding: "1rem" }}>
+          <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top left", transition: "transform 0.15s", width: zoomLevel === 100 ? "100%" : `${BASE_X + HITL_PARTICIPANTS.length * PARTICIPANT_SPACING}px` }}>
             <svg
-              width={BASE_X + HITL_PARTICIPANTS.length * PARTICIPANT_SPACING}
-              style={{ display: "block", minHeight: `${BASE_Y + steps.length * STEP_HEIGHT + 60}px` }}
+              viewBox={`0 0 ${BASE_X + HITL_PARTICIPANTS.length * PARTICIPANT_SPACING} ${BASE_Y + steps.length * STEP_HEIGHT + 60}`}
+              width="100%"
+              style={{ display: "block" }}
               aria-label="HITL consent sequence diagram"
               role="img"
             >

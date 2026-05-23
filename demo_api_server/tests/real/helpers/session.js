@@ -8,7 +8,7 @@ const { BFF_BASE, httpsAgent } = require('./constants');
 
 const SESSION_CACHE = path.resolve(__dirname, '../../../.test-session.json');
 
-async function loginViaBff({ envId, region, username, password }) {
+async function loginViaBff({ envId, region, username, password, loginPath, callbackPath }) {
   const bff = axios.create({ baseURL: BFF_BASE, httpsAgent, maxRedirects: 0, validateStatus: () => true });
   let bffCookies = '';
 
@@ -23,10 +23,10 @@ async function loginViaBff({ envId, region, username, password }) {
     return [...map.entries()].map(([k,v])=>`${k}=${v}`).join('; ');
   }
 
-  const r1 = await bff.get('/api/auth/oauth/login', { headers: { Cookie: bffCookies } });
+  const r1 = await bff.get(loginPath, { headers: { Cookie: bffCookies } });
   bffCookies = merge(bffCookies, extractBffCookies(r1));
   const pingLoc = r1.headers.location || '';
-  if (!pingLoc) throw new Error('BFF /login did not redirect to PingOne');
+  if (!pingLoc) throw new Error(`BFF ${loginPath} did not redirect to PingOne`);
 
   let pCookies = '';
   const r2 = await axios.get(pingLoc, { maxRedirects: 0, validateStatus: () => true, httpsAgent });
@@ -59,7 +59,7 @@ async function loginViaBff({ envId, region, username, password }) {
   if (errR) throw new Error(`loginViaBff: PingOne error: ${errR}`);
   if (!code) throw new Error('loginViaBff: no code in resume redirect');
 
-  const callbackUrl = `/api/auth/oauth/callback?code=${code}&state=${new URL(resumeLoc).searchParams.get('state')||''}`;
+  const callbackUrl = `${callbackPath}?code=${code}&state=${new URL(resumeLoc).searchParams.get('state')||''}`;
   const r4 = await bff.get(callbackUrl, { headers: { Cookie: bffCookies } });
   bffCookies = merge(bffCookies, extractBffCookies(r4));
 
@@ -68,7 +68,51 @@ async function loginViaBff({ envId, region, username, password }) {
   return sidEntry;
 }
 
-function loadFromSessionsDb() {
+// Per-persona BFF routes: enduser uses the user OAuth client; admin uses the admin client.
+const PERSONA_ROUTES = {
+  enduser: {
+    loginPath:    '/api/auth/oauth/user/login',
+    callbackPath: '/api/auth/oauth/user/callback',
+    oauthType:    'user',
+  },
+  admin: {
+    loginPath:    '/api/auth/oauth/login',
+    callbackPath: '/api/auth/oauth/callback',
+    oauthType:    'admin',
+  },
+};
+
+function loadFromLmdb(oauthType) {
+  try {
+    const { open } = require('lmdb');
+    const lmdbPath = path.resolve(__dirname, '../../../data/persistent/lmdb');
+    if (!fs.existsSync(lmdbPath)) return null;
+    const env = open({ path: lmdbPath, maxDbs: 16, encoding: 'json', readOnly: true });
+    const db = env.openDB('sessions', { encoding: 'json' });
+    const now = Date.now();
+    const nowSec = Math.floor(now / 1000);
+    for (const { key, value } of db.getRange()) {
+      try {
+        if (!value || value.expire <= now) continue;
+        const sess = value.sess;
+        const at = sess?.oauthTokens?.accessToken;
+        if (!at) continue;
+        if (oauthType && sess.oauthType && sess.oauthType !== oauthType) continue;
+        const payload = JSON.parse(Buffer.from(at.split('.')[1], 'base64url').toString());
+        if (payload.exp > nowSec) {
+          env.close();
+          return `connect.sid=${encodeURIComponent(`s:${key}`)}`;
+        }
+      } catch (_) { /* skip malformed */ }
+    }
+    env.close();
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function loadFromSessionsDb(oauthType) {
   try {
     const Database = require('better-sqlite3');
     const dbPath = path.resolve(__dirname, '../../../data/sessions.db');
@@ -82,6 +126,8 @@ function loadFromSessionsDb() {
         const sess = JSON.parse(row.sess);
         const at = sess?.oauthTokens?.accessToken;
         if (!at) continue;
+        // Filter by oauthType when specified so enduser doesn't reuse an admin session
+        if (oauthType && sess.oauthType && sess.oauthType !== oauthType) continue;
         const payload = JSON.parse(Buffer.from(at.split('.')[1], 'base64url').toString());
         if (payload.exp > now) {
           return `connect.sid=${encodeURIComponent(`s:${row.sid}`)}`;
@@ -100,11 +146,16 @@ async function resolveSession(persona = 'enduser') {
 
   const envId  = process.env.PINGONE_ENVIRONMENT_ID;
   const region = process.env.PINGONE_REGION || 'com';
+  const routes  = PERSONA_ROUTES[persona] || PERSONA_ROUTES.admin;
 
   if (persona === 'enduser' && process.env.PINGONE_TEST_USER && process.env.PINGONE_TEST_PASSWORD) {
     try {
       return await loginViaBff({ envId, region,
-        username: process.env.PINGONE_TEST_USER, password: process.env.PINGONE_TEST_PASSWORD });
+        username: process.env.PINGONE_TEST_USER,
+        password: process.env.PINGONE_TEST_PASSWORD,
+        loginPath:    routes.loginPath,
+        callbackPath: routes.callbackPath,
+      });
     } catch (e) {
       console.warn(`[session] Headless enduser login failed: ${e.message} — trying sessions.db`);
     }
@@ -113,13 +164,20 @@ async function resolveSession(persona = 'enduser') {
   if (persona === 'admin' && process.env.PINGONE_TEST_ADMIN_USER && process.env.PINGONE_TEST_ADMIN_PASSWORD) {
     try {
       return await loginViaBff({ envId, region,
-        username: process.env.PINGONE_TEST_ADMIN_USER, password: process.env.PINGONE_TEST_ADMIN_PASSWORD });
+        username: process.env.PINGONE_TEST_ADMIN_USER,
+        password: process.env.PINGONE_TEST_ADMIN_PASSWORD,
+        loginPath:    routes.loginPath,
+        callbackPath: routes.callbackPath,
+      });
     } catch (e) {
       console.warn(`[session] Headless admin login failed: ${e.message} — trying sessions.db`);
     }
   }
 
-  const dbCookie = loadFromSessionsDb();
+  const lmdbCookie = loadFromLmdb(routes.oauthType);
+  if (lmdbCookie) return lmdbCookie;
+
+  const dbCookie = loadFromSessionsDb(routes.oauthType);
   if (dbCookie) return dbCookie;
 
   return null;

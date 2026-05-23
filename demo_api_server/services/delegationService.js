@@ -1,7 +1,5 @@
 'use strict';
 
-const path    = require('path');
-const fs      = require('fs');
 const crypto  = require('crypto');
 const axios   = require('axios');
 const configStore = require('./configStore');
@@ -11,7 +9,7 @@ const { fetchPingOneUserByUsername } = require('./pingOneUserLookupService');
 const { fetchFirstPopulationId } = require('./pingoneBootstrapService');
 
 // ---------------------------------------------------------------------------
-// Storage — SQLite locally, in-memory on Vercel
+// Storage — LMDB
 // ---------------------------------------------------------------------------
 
 const VALID_SCOPES = [
@@ -22,44 +20,15 @@ const VALID_SCOPES = [
   'create_transfer',
 ];
 
-let _db = null;       // SQLite instance (non-Vercel)
-let _mem = null;      // Map (Vercel / test)
+const { getDb } = require('./lmdb/openEnv');
 
-const IS_VERCEL = process.env.VERCEL === '1';
-
-function getStorage() {
-  if (IS_VERCEL) {
-    if (!_mem) _mem = new Map();
-    return { type: 'memory', map: _mem };
-  }
-  if (!_db) {
-    const dbDir = path.join(__dirname, '../data/persistent');
-    if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
-    const Database = require('better-sqlite3');
-    _db = new Database(path.join(dbDir, 'delegations.db'));
-    _db.exec(`
-      CREATE TABLE IF NOT EXISTS delegations (
-        id TEXT PRIMARY KEY,
-        delegator_user_id TEXT NOT NULL,
-        delegate_user_id TEXT,
-        delegate_email TEXT NOT NULL,
-        delegator_email TEXT,
-        scopes TEXT NOT NULL DEFAULT '[]',
-        status TEXT NOT NULL DEFAULT 'active',
-        granted_at TEXT NOT NULL,
-        revoked_at TEXT
-      );
-      CREATE INDEX IF NOT EXISTS idx_del_delegator ON delegations(delegator_user_id);
-    `);
-  }
-  return { type: 'sqlite', db: _db };
-}
+function _db() { return getDb('delegations'); }
 
 function toRecord(row) {
   if (!row) return null;
   return {
     ...row,
-    scopes: typeof row.scopes === 'string' ? JSON.parse(row.scopes) : (row.scopes || []),
+    scopes: Array.isArray(row.scopes) ? row.scopes : (typeof row.scopes === 'string' ? JSON.parse(row.scopes) : []),
   };
 }
 
@@ -132,23 +101,12 @@ async function grantDelegation({ delegatorUserId, delegatorEmail, delegateEmail,
     return { ok: false, error: 'self_delegation', message: 'Cannot delegate to yourself.' };
   }
 
-  const storage = getStorage();
-
   // Prevent duplicate active delegation
-  if (storage.type === 'sqlite') {
-    const existing = storage.db.prepare(
-      'SELECT id FROM delegations WHERE delegator_user_id = ? AND delegate_email = ? AND status = ?'
-    ).get(delegatorUserId, delegateEmail.toLowerCase(), 'active');
-    if (existing) {
+  for (const { value: rec } of _db().getRange()) {
+    if (rec.delegator_user_id === delegatorUserId &&
+        rec.delegate_email.toLowerCase() === delegateEmail.toLowerCase() &&
+        rec.status === 'active') {
       return { ok: false, error: 'duplicate_delegation', message: 'Active delegation already exists for this email.' };
-    }
-  } else {
-    for (const rec of storage.map.values()) {
-      if (rec.delegator_user_id === delegatorUserId &&
-          rec.delegate_email.toLowerCase() === delegateEmail.toLowerCase() &&
-          rec.status === 'active') {
-        return { ok: false, error: 'duplicate_delegation', message: 'Active delegation already exists for this email.' };
-      }
     }
   }
 
@@ -206,21 +164,13 @@ async function grantDelegation({ delegatorUserId, delegatorEmail, delegateEmail,
     delegator_email: delegatorEmail || '',
     delegate_email: delegateEmail.toLowerCase(),
     delegate_user_id: delegateUserId,
-    scopes: JSON.stringify(scopes),
+    scopes,
     status: 'active',
     granted_at: now,
     revoked_at: null,
   };
 
-  // Persist
-  if (storage.type === 'sqlite') {
-    storage.db.prepare(`
-      INSERT INTO delegations (id, delegator_user_id, delegator_email, delegate_email, delegate_user_id, scopes, status, granted_at, revoked_at)
-      VALUES (@id, @delegator_user_id, @delegator_email, @delegate_email, @delegate_user_id, @scopes, @status, @granted_at, @revoked_at)
-    `).run(record);
-  } else {
-    storage.map.set(record.id, record);
-  }
+  _db().putSync(record.id, record);
 
   // Send grant email (best-effort, non-blocking)
   setImmediate(() =>
@@ -238,45 +188,18 @@ async function grantDelegation({ delegatorUserId, delegatorEmail, delegateEmail,
 // ---------------------------------------------------------------------------
 
 async function revokeDelegation(id, delegatorUserId) {
-  const storage = getStorage();
   const now = new Date().toISOString();
-
-  if (storage.type === 'sqlite') {
-    const row = storage.db.prepare(
-      'SELECT * FROM delegations WHERE id = ? AND delegator_user_id = ?'
-    ).get(id, delegatorUserId);
-    if (!row || row.status === 'revoked') {
-      logAppEvent('auth_lifecycle', 'warning', 'Delegation revoke failed — not found or already revoked',
-        { tag: 'delegation/revoke-not-found', metadata: { delegationId: id, delegatorUserId } }
-      );
-      return { ok: false, error: 'not_found' };
-    }
-    storage.db.prepare(
-      'UPDATE delegations SET status = ?, revoked_at = ? WHERE id = ?'
-    ).run('revoked', now, id);
-
-    // Send revoke email (best-effort)
-    const delegateUserId = row.delegate_user_id;
-    const delegatorEmail = row.delegator_email;
-    setImmediate(() =>
-      _sendDelegationEmail(delegateUserId, 'revoke', delegatorEmail).catch(() => {})
+  const rec = _db().get(id);
+  if (!rec || rec.delegator_user_id !== delegatorUserId || rec.status === 'revoked') {
+    logAppEvent('auth_lifecycle', 'warning', 'Delegation revoke failed — not found or already revoked',
+      { tag: 'delegation/revoke-not-found', metadata: { delegationId: id, delegatorUserId } }
     );
-  } else {
-    const rec = storage.map.get(id);
-    if (!rec || rec.delegator_user_id !== delegatorUserId || rec.status === 'revoked') {
-      logAppEvent('auth_lifecycle', 'warning', 'Delegation revoke failed — not found or already revoked',
-        { tag: 'delegation/revoke-not-found', metadata: { delegationId: id, delegatorUserId } }
-      );
-      return { ok: false, error: 'not_found' };
-    }
-    rec.status = 'revoked';
-    rec.revoked_at = now;
-    storage.map.set(id, rec);
-
-    setImmediate(() =>
-      _sendDelegationEmail(rec.delegate_user_id, 'revoke', rec.delegator_email).catch(() => {})
-    );
+    return { ok: false, error: 'not_found' };
   }
+  _db().putSync(id, { ...rec, status: 'revoked', revoked_at: now });
+  setImmediate(() =>
+    _sendDelegationEmail(rec.delegate_user_id, 'revoke', rec.delegator_email).catch(() => {})
+  );
 
   logAppEvent('auth_lifecycle', 'info', `Delegation revoked: id=${id}`,
     { tag: 'delegation/revoke-success', metadata: { delegationId: id, delegatorUserId } }
@@ -289,17 +212,10 @@ async function revokeDelegation(id, delegatorUserId) {
 // ---------------------------------------------------------------------------
 
 async function listDelegations(delegatorUserId) {
-  const storage = getStorage();
-  if (storage.type === 'sqlite') {
-    const rows = storage.db.prepare(
-      'SELECT * FROM delegations WHERE delegator_user_id = ? AND status = ? ORDER BY granted_at DESC'
-    ).all(delegatorUserId, 'active');
-    return rows.map(toRecord);
-  }
   const result = [];
-  for (const rec of storage.map.values()) {
-    if (rec.delegator_user_id === delegatorUserId && rec.status === 'active') {
-      result.push(toRecord(rec));
+  for (const { value } of _db().getRange()) {
+    if (value.delegator_user_id === delegatorUserId && value.status === 'active') {
+      result.push(toRecord(value));
     }
   }
   return result.sort((a, b) => b.granted_at.localeCompare(a.granted_at));
@@ -310,18 +226,9 @@ async function listDelegations(delegatorUserId) {
 // ---------------------------------------------------------------------------
 
 async function getDelegationHistory(delegatorUserId) {
-  const storage = getStorage();
-  if (storage.type === 'sqlite') {
-    const rows = storage.db.prepare(
-      'SELECT * FROM delegations WHERE delegator_user_id = ? ORDER BY granted_at DESC'
-    ).all(delegatorUserId);
-    return rows.map(toRecord);
-  }
   const result = [];
-  for (const rec of storage.map.values()) {
-    if (rec.delegator_user_id === delegatorUserId) {
-      result.push(toRecord(rec));
-    }
+  for (const { value } of _db().getRange()) {
+    if (value.delegator_user_id === delegatorUserId) result.push(toRecord(value));
   }
   return result.sort((a, b) => b.granted_at.localeCompare(a.granted_at));
 }
@@ -331,23 +238,9 @@ async function getDelegationHistory(delegatorUserId) {
 // ---------------------------------------------------------------------------
 
 async function listAllDelegations({ status } = {}) {
-  const storage = getStorage();
-  if (storage.type === 'sqlite') {
-    let sql = 'SELECT * FROM delegations';
-    const params = [];
-    if (status && status !== 'all') {
-      sql += ' WHERE status = ?';
-      params.push(status);
-    }
-    sql += ' ORDER BY granted_at DESC';
-    const rows = storage.db.prepare(sql).all(...params);
-    return rows.map(toRecord);
-  }
   const result = [];
-  for (const rec of storage.map.values()) {
-    if (!status || status === 'all' || rec.status === status) {
-      result.push(toRecord(rec));
-    }
+  for (const { value } of _db().getRange()) {
+    if (!status || status === 'all' || value.status === status) result.push(toRecord(value));
   }
   return result.sort((a, b) => b.granted_at.localeCompare(a.granted_at));
 }
@@ -357,26 +250,13 @@ async function listAllDelegations({ status } = {}) {
 // ---------------------------------------------------------------------------
 
 async function adminRevokeDelegation(id) {
-  const storage = getStorage();
   const now = new Date().toISOString();
-
-  if (storage.type === 'sqlite') {
-    const row = storage.db.prepare('SELECT * FROM delegations WHERE id = ?').get(id);
-    if (!row || row.status === 'revoked') {
-      return { ok: false, error: 'not_found' };
-    }
-    storage.db.prepare('UPDATE delegations SET status = ?, revoked_at = ? WHERE id = ?').run('revoked', now, id);
-    setImmediate(() => _sendDelegationEmail(row.delegate_user_id, 'revoke', row.delegator_email).catch(() => {}));
-  } else {
-    const rec = storage.map.get(id);
-    if (!rec || rec.status === 'revoked') {
-      return { ok: false, error: 'not_found' };
-    }
-    rec.status = 'revoked';
-    rec.revoked_at = now;
-    storage.map.set(id, rec);
-    setImmediate(() => _sendDelegationEmail(rec.delegate_user_id, 'revoke', rec.delegator_email).catch(() => {}));
+  const rec = _db().get(id);
+  if (!rec || rec.status === 'revoked') {
+    return { ok: false, error: 'not_found' };
   }
+  _db().putSync(id, { ...rec, status: 'revoked', revoked_at: now });
+  setImmediate(() => _sendDelegationEmail(rec.delegate_user_id, 'revoke', rec.delegator_email).catch(() => {}));
 
   logAppEvent('auth_lifecycle', 'info', `Admin delegation revoke: id=${id}`,
     { tag: 'delegation/admin-revoke', metadata: { delegationId: id } }

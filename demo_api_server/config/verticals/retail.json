@@ -51,7 +51,8 @@
       { "key": "balance", "label": "Rewards Points" },
       { "key": "accounts", "label": "List My Orders" },
       { "key": "transactions", "label": "Purchase History" },
-      { "key": "transfer", "label": "Checkout" }
+      { "key": "transfer", "label": "Checkout" },
+      { "key": "feature", "label": "Show Large Purchase" }
     ],
     "mockData": {
       "products": [
@@ -78,6 +79,32 @@
     "write": "write",
     "transfer": "transfer",
     "featureScope": "largepurchase:read"
+  },
+  "featurePage": {
+    "mcpTool": "show_large_purchase",
+    "pageTitle": "Large Purchase",
+    "badgeLabel": "API-KEY PATH",
+    "accentColor": "#1D1D1B",
+    "accentBg": "rgba(29, 29, 27, 0.06)",
+    "accentLight": "#fafafa",
+    "accentCode": "#f5f5f5",
+    "accentText": "#1D1D1B",
+    "accentAccentText": "#1D1D1B",
+    "dataKey": "largePurchase",
+    "fields": [
+      { "label": "Order ID",           "path": "orderId" },
+      { "label": "Product",            "path": "product" },
+      { "label": "SKU",                "path": "sku" },
+      { "label": "Category",           "path": "category" },
+      { "label": "Amount",             "path": "amount",   "format": "money", "accent": true },
+      { "label": "Status",             "path": "status" },
+      { "label": "Estimated delivery", "path": "estimatedDelivery" },
+      { "label": "Rewards points",     "path": "rewardsPointsEarned" },
+      { "label": "Retailer",           "path": "retailer" }
+    ],
+    "sectionTitle": "Purchase details",
+    "emptyPrompt": "show large purchase",
+    "scopeError": "The agent's access token does not carry the largepurchase:read scope. Sign out and sign back in to consent to large purchase access, then try \"Show Large Purchase\" again."
   },
   "demoUsers": {
     "customer": { "hint": "demoUser", "passwordHint": "Tigers7&" },

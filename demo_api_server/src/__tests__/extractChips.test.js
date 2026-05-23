@@ -3,9 +3,9 @@
 const { heuristicChips, llmChips, allChips } = require('../../scripts/extractChips');
 
 describe('extractChips', () => {
-  test('heuristicChips contains the 6 known built-in chips with exact messages', () => {
+  test('heuristicChips contains the 7 known built-in chips with exact messages', () => {
     const byId = Object.fromEntries(heuristicChips.map((c) => [c.id, c]));
-    expect(heuristicChips).toHaveLength(6);
+    expect(heuristicChips).toHaveLength(7);
     expect(byId.balance.message).toBe('balance');
     expect(byId.accounts.message).toBe('accounts');
     expect(byId.transactions.message).toBe('transactions');
@@ -14,6 +14,7 @@ describe('extractChips', () => {
       'transfer $600 from my savings account to checking',
     );
     expect(byId.mortgage.message).toBe('show mortgage data');
+    expect(byId.feature.message).toBe('show vertical feature');
   });
 
   test('llmChips are extracted with id/label/message and a group', () => {

@@ -41,7 +41,7 @@ describe('Admin endpoints (real)', () => {
 
   describe('GET /api/admin/banking/lookup', () => {
     it('returns user lookup data for admin', async () => {
-      const r = await admin.get('/api/admin/banking/lookup');
+      const r = await admin.get('/api/admin/banking/lookup?q=chk');
       expect(r.status).toBe(200);
     });
   });

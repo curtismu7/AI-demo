@@ -154,6 +154,13 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
   const heuristicEnabled = configStore.getEffective('ff_heuristic_enabled') !== 'false';
   const activeVertical = getActiveVertical();
   const heuristicResult = parseHeuristic(message, activeVertical);
+
+  // provider:"heuristic" = heuristic-only mode (Quick Action chips, no LLM configured).
+  // Skip LLM entirely — return immediately with heuristic result whatever it is.
+  if (provider === 'heuristic') {
+    return { source: 'heuristic', result: heuristicResult };
+  }
+
   if (heuristicEnabled && heuristicResult && heuristicResult.kind !== 'none') {
     return { source: 'heuristic', result: heuristicResult };
   }
@@ -182,6 +189,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
       // Check if Helix is configured
       if (!helixConfig.helix_base_url || !helixConfig.helix_api_key) {
         console.warn('[nlIntent] Helix not configured; falling back to Ollama');
+        return { source: 'heuristic', result: heuristicResult, llm_attempted: false, llm_not_configured: true };
       } else {
         const helixResult = await callHelixAgent(helixConfig, [
           { role: 'system', content: systemWithCtx },
@@ -230,9 +238,11 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
           }
         }
         // kind:'none' or still non-JSON — fall through to conversational Helix answer
+        return { source: 'heuristic', result: heuristicResult, llm_attempted: true };
       }
     } catch (err) {
       console.warn('[nlIntent] Helix error:', err.message);
+      return { source: 'heuristic', result: heuristicResult, llm_attempted: true };
     }
   }
 

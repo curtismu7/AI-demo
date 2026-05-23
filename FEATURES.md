@@ -238,7 +238,7 @@ git checkout <last-version-tag> -- <key-file>
 | Vercel serverless deployment | active | `api/handler.js`, `vercel.json` | — |
 | Global rate limit — BFF dashboard paths excluded (demo-scenario, tokens, OAuth status, session) | active | `banking_api_server/server.js` (`shouldSkipGlobalRateLimit`) | — |
 | Demo scenario / user preference store (Redis-backed) | active | `banking_api_server/services/demoScenarioStore.js`, `banking_api_server/routes/demoScenario.js` | `s:demo-scenario-api.test.js` |
-| Runtime config store (PingOne env vars overrideable at runtime) | active | `banking_api_server/services/configStore.js` | `s:configStore-saas.test.js` |
+| Runtime config store — .env seeded into SQLite at bootstrap + cold-start; encrypted-at-rest backup survives .env loss; runtime UI overrides take precedence | active | `demo_api_server/services/configStore.js`, `demo_api_server/services/pingoneProvisionService.js` | `s:configStore-saas.test.js` |
 | Export / Import migration bundle | active | `banking_api_server/scripts/exportMigrationBundle.js`, `banking_api_ui/src/components/MigrationPanel.js` | — |
 | Audit logger | active | `banking_api_server/services/auditLogger.js` | `s:auditLogger.test.js` |
 | Health check endpoint | active | `banking_api_server/routes/health.js` | `s:health.test.js` |

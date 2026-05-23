@@ -4,8 +4,12 @@
  */
 
 const express = require('express');
+const https = require('node:https');
 const router = express.Router();
 const axios = require('axios');
+
+// Dev HTTPS agent — mirrors mcpGatewayClient.js; allows self-signed mkcert certs on loopback
+const _devHttpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 /**
  * Liveness probe - checks if the application is alive
@@ -388,9 +392,13 @@ router.get('/startup', (_req, res) => {
  * No auth required — called before the user may have logged in.
  */
 router.get('/demo-status', async (_req, res) => {
-  // Normalise WebSocket URLs (ws:// / wss://) to HTTP so axios health check works
-  const _rawMcpUrl = process.env.MCP_SERVER_URL || 'http://localhost:8080';
-  const mcpServerUrl = _rawMcpUrl.replace(/^ws:\/\//, 'http://').replace(/^wss:\/\//, 'https://');
+  // Prefer MCP_GATEWAY_HTTP_URL when the gateway is active; fall back to
+  // normalising MCP_SERVER_URL (ws/wss → http/https).
+  const _rawMcpUrl = process.env.MCP_GATEWAY_HTTP_URL
+    || (process.env.MCP_SERVER_URL || 'http://localhost:8080')
+        .replace(/^ws:\/\//, 'http://')
+        .replace(/^wss:\/\//, 'https://');
+  const mcpServerUrl = _rawMcpUrl;
   const servers = [];
 
   // ── BFF API Server ─────────────────────────────────────────────────────────
@@ -404,14 +412,24 @@ router.get('/demo-status', async (_req, res) => {
     port: process.env.PORT || 3001,
   });
 
-  // ── MCP Tool Server ─────────────────────────────────────────────────────────
+  // ── MCP Tool Server / Gateway ─────────────────────────────────────────────
   let mcpUp = false;
   let mcpError = null;
   try {
-    await axios.get(`${mcpServerUrl}/health`, { timeout: 2500 });
+    await axios.get(`${mcpServerUrl}/health`, { timeout: 2500, httpsAgent: _devHttpsAgent });
     mcpUp = true;
   } catch (e) {
-    mcpError = e.code || e.message;
+    // If http:// failed, retry as https:// (gateway uses TLS with mkcert in local dev)
+    if (!mcpUp && mcpServerUrl.startsWith('http://')) {
+      try {
+        await axios.get(`${mcpServerUrl.replace('http://', 'https://')}/health`, { timeout: 2500, httpsAgent: _devHttpsAgent });
+        mcpUp = true;
+      } catch (e2) {
+        mcpError = e2.code || e2.message;
+      }
+    } else {
+      mcpError = e.code || e.message;
+    }
   }
   servers.push({
     name: 'Banking MCP Server',
@@ -473,23 +491,8 @@ router.get('/packages', (_req, res) => {
   // tar loadable
   try { require('tar'); checks.tar = true; } catch { checks.tar = false; }
 
-  // sqlite driver
-  let sqliteDriver = null;
-  try { require('better-sqlite3'); sqliteDriver = 'better-sqlite3'; } catch {
-    try { require('node:sqlite'); sqliteDriver = 'node:sqlite'; } catch { sqliteDriver = null; }
-  }
-  checks.sqlite_driver = sqliteDriver;
-
-  // better-sqlite3 native binary (in-memory open)
-  checks.sqlite_native_ok = null;
-  if (sqliteDriver === 'better-sqlite3') {
-    try {
-      const Database = require('better-sqlite3');
-      const db = new Database(':memory:');
-      db.close();
-      checks.sqlite_native_ok = true;
-    } catch { checks.sqlite_native_ok = false; }
-  }
+  // lmdb driver
+  try { require('lmdb'); checks.lmdb_ok = true; } catch { checks.lmdb_ok = false; }
 
   // TLS certs (machine-bound — not in migration archive)
   const REPO_ROOT = nodePath.resolve(SERVER_ROOT, '..');
@@ -504,8 +507,7 @@ router.get('/packages', (_req, res) => {
   const ready =
     checks.node_modules &&
     checks.tar &&
-    checks.sqlite_driver !== null &&
-    checks.sqlite_native_ok !== false;
+    checks.lmdb_ok !== false;
 
   res.json({
     ready,
@@ -513,7 +515,7 @@ router.get('/packages', (_req, res) => {
     remediation: {
       node_modules: 'cd demo_api_server && npm install',
       tar: 'cd demo_api_server && npm install',
-      sqlite_native_ok: 'cd demo_api_server && npm rebuild better-sqlite3',
+      lmdb_ok: 'cd demo_api_server && npm install',
       tls_certs: 'mkdir -p certs && cd certs && mkcert api.ping.demo localhost 127.0.0.1',
       mkcert: 'brew install mkcert && mkcert -install',
     },

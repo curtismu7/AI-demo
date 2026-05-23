@@ -107,16 +107,23 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
   // against the bearer token's `aud` to catch step-skipping (an attacker
   // sending an intermediate-step token directly to MCP). The expected aud
   // depends on which exchange flow is active:
+  //   Gateway mode (MCP_GATEWAY_HTTP_URL set) → pingone_resource_mcp_gateway_uri (gateway audience)
   //   Single-Exchange (FF off) → mcp_resource_uri (e.g. "mcpserver.ping.demo")
   //   Two-Exchange (FF on)     → pingone_resource_two_exchange_uri (e.g. "final.2x.ping.demo")
   // Both authorization-server implementations (simulated + PingOne) receive
   // the same expected aud and must enforce the same audience-match rule.
   const twoExchangeOn = configStore.getEffective('ff_two_exchange_delegation') !== 'false';
-  const mcpResourceUri = twoExchangeOn
-    ? (configStore.getEffective('pingone_resource_two_exchange_uri')
-        || configStore.getEffective('mcp_resource_uri')
-        || '')
-    : (configStore.getEffective('mcp_resource_uri') || '');
+  // useGateway: only true when explicitly configured (env var or persisted SQLite value).
+  // Intentionally excludes FIELD_DEFS defaults — a default gateway URL doesn't mean the
+  // gateway is deployed, so we must not switch audience resolution based on it.
+  const useGateway = !!(process.env.MCP_GATEWAY_HTTP_URL || configStore.get('mcp_gateway_http_url'));
+  const mcpResourceUri = useGateway
+    ? (configStore.getEffective('pingone_resource_mcp_gateway_uri') || '')
+    : twoExchangeOn
+      ? (configStore.getEffective('pingone_resource_two_exchange_uri')
+          || configStore.getEffective('mcp_resource_uri')
+          || '')
+      : (configStore.getEffective('mcp_resource_uri') || '');
 
   try {
     if (USE_SIMULATED) {
@@ -178,6 +185,8 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
               authorize_engine: 'simulated',
               decisionContext: 'McpFirstTool',
               decisionId: r.decisionId,
+              deny_reason: r.raw?.reason || null,
+              deny_parameters: r.raw?.parameters || null,
             },
           },
         };
@@ -262,6 +271,8 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
             authorize_engine: 'pingone',
             decisionContext: 'McpFirstTool',
             decisionId: r.decisionId,
+            deny_reason: r.raw?.reason || null,
+            deny_parameters: r.raw?.parameters || null,
           },
         },
       };

@@ -456,6 +456,26 @@ async function main() {
         }
       };
       copyTree(persistentSrc, DATA_PERSISTENT);
+
+      // Strip bootstrap keys from the imported LMDB. These keys must remain
+      // .env-authoritative — an archive from a different environment will have
+      // wrong values (stale issuer, wrong env ID, wrong management client) that
+      // would silently shadow the correct values in the new .env. Removing them
+      // here lets configStore fall through to process.env at runtime.
+      const lmdbDir = path.join(DATA_PERSISTENT, 'lmdb');
+      if (fs.existsSync(lmdbDir)) {
+        try {
+          const lmdb = require('../services/lmdb/configStore.lmdb');
+          const { BOOTSTRAP_ALLOWLIST } = require('../services/configStore');
+          let removed = 0;
+          for (const key of [...BOOTSTRAP_ALLOWLIST].map(k => k.toUpperCase())) {
+            try { lmdb.remove(key); removed++; } catch (_) { /* key absent — fine */ }
+          }
+          if (removed > 0) console.log(`  Stripped ${removed} bootstrap key(s) from imported LMDB (env will supply correct values).`);
+        } catch (lmdbErr) {
+          console.warn('  Could not strip bootstrap keys from LMDB:', lmdbErr.message);
+        }
+      }
     }
 
     // Write .env — MERGE strategy: existing keys win, archive fills gaps.

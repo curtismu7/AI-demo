@@ -35,6 +35,7 @@ import ArchitectureTokenFlowPage from "./components/ArchitectureTokenFlowPage";
 import Phase266ArchitecturePage from "./components/Phase266ArchitecturePage";
 import HitlSequencePage from "./components/HitlSequencePage";
 import MortgagePathPage from "./components/MortgagePathPage";
+import VerticalFeaturePage from "./components/VerticalFeaturePage";
 import ApiKeyPathPage from "./components/ApiKeyPathPage";
 import AccessIdTokenPathPage from "./components/AccessIdTokenPathPage";
 import ApiTrafficPage from "./components/ApiTrafficPage";
@@ -99,6 +100,7 @@ import UnifiedTokenFlowInspector from "./components/UnifiedTokenFlowInspector";
 import UserAccounts from "./components/UserAccounts";
 import UserDashboard from "./components/UserDashboard";
 import Users from "./components/Users";
+import UserDetailPage from "./components/UserDetailPage";
 import UserTransactions from "./components/UserTransactions";
 import WebMcpPanel from "./components/WebMcpPanel";
 import {
@@ -421,14 +423,13 @@ function AppWithAuth() {
       new URLSearchParams(window.location.search || "").get("oauth") ===
         "success";
 
-    // NOTE: do NOT clear bx-dashboard-reauth on oauth=success.
-    // The REAUTH_KEY guard is intentional: redirect once automatically (seamless
-    // SSO re-auth), then show the banner if still failing.  Clearing the key
-    // here re-enables the redirect on the very next 401, creating an infinite loop:
-    //   accounts/my 401 → set key → redirect → oauth=success → key cleared →
-    //   accounts/my 401 → set key → redirect → …
-    // The key is cleared correctly in UserDashboard's fetchUserData try-block
-    // when data actually loads successfully.
+    // On a successful OAuth return, clear the reauth guard so a fresh 401 (if the
+    // new session is also broken) can trigger one more automatic redirect rather than
+    // showing the error toast immediately.  The URL param is stripped by replaceState
+    // (line ~539) so oauthSuccess will be false on the next render — no loop risk.
+    if (oauthSuccess) {
+      sessionStorage.removeItem("bx-dashboard-reauth");
+    }
 
     const RETRY_DELAYS_MS = [450, 950, 1900, 3000];
     let retryIndex = 0;
@@ -546,7 +547,7 @@ function AppWithAuth() {
 
   // Routes where UserDashboard is rendered (handles its own middle FAB + split layout).
   // Admin uses Dashboard.js on /admin — those routes need the global float/dock from App.
-  // / now renders LandingPage for non-admin logged-in users; UserDashboard lives at /dashboard.
+  // / renders LandingPage for all users; /admin has the admin Dashboard; /dashboard has UserDashboard.
   const onUserDashboardRoute = Boolean(user) && pathname === "/dashboard";
 
   // Landing home (/): show floating agent even when signed out.
@@ -588,7 +589,7 @@ function AppWithAuth() {
     !user && isPublicMarketingAgentPath(pathname) ? 12000 : 4000;
 
   const logout = () => {
-    console.info("Starting logout — navigating to /api/auth/logout");
+    console.info("Starting logout — calling /api/auth/logout via fetch");
 
     localStorage.setItem("userLoggedOut", "true");
 
@@ -601,7 +602,26 @@ function AppWithAuth() {
     window.dispatchEvent(new CustomEvent("userLoggedOut"));
 
     localStorage.removeItem("tokenChainHistory");
-    window.location.href = "/api/auth/logout";
+
+    // Fetch the logout endpoint so the BFF can set cookie-clearing headers
+    // (Set-Cookie: connect.sid=; Max-Age=0) on this response directly — if we
+    // navigate via window.location.href the 302→PingOne redirect loses those
+    // headers at the proxy layer and cookies are not cleared in the browser.
+    // The BFF returns { logoutUrl } instead of redirecting when called via fetch.
+    fetch("/api/auth/logout", { credentials: "include" })
+      .then((r) => r.json())
+      .then(({ logoutUrl }) => {
+        if (logoutUrl) {
+          window.location.href = logoutUrl;
+        } else {
+          // Fallback: BFF returned HTML redirect (shouldn't happen with fetch)
+          window.location.href = "/";
+        }
+      })
+      .catch(() => {
+        // Network error — clear what we can and go home
+        window.location.href = "/";
+      });
   };
 
   return (
@@ -872,11 +892,7 @@ function AppWithAuth() {
                       <TopNav user={user} onLogout={logout} />
                       {user && <AdminSideNav user={user} />}
                       <main className="main-content">
-                        {user?.role === "admin" ? (
-                          <Dashboard user={user} onLogout={logout} />
-                        ) : (
-                          <LandingPage user={user} onLogout={logout} />
-                        )}
+                        <LandingPage user={user} onLogout={logout} />
                       </main>
                     </>
                   )
@@ -945,13 +961,7 @@ function AppWithAuth() {
                         <Routes location={backgroundLocation || fullLocation}>
                           <Route
                             path="/"
-                            element={
-                              user?.role === "admin" ? (
-                                <Dashboard user={user} onLogout={logout} />
-                              ) : (
-                                <LandingPage user={user} onLogout={logout} />
-                              )
-                            }
+                            element={<LandingPage user={user} onLogout={logout} />}
                           />
                           <Route
                             path="/admin"
@@ -1025,6 +1035,14 @@ function AppWithAuth() {
                             element={
                               <AdminRoute user={user}>
                                 <Users user={user} onLogout={logout} />
+                              </AdminRoute>
+                            }
+                          />
+                          <Route
+                            path="/users/:userId"
+                            element={
+                              <AdminRoute user={user}>
+                                <UserDetailPage />
                               </AdminRoute>
                             }
                           />
@@ -1337,6 +1355,16 @@ function AppWithAuth() {
                             }
                           />
                           <Route
+                            path="/path/feature"
+                            element={
+                              user ? (
+                                <VerticalFeaturePage />
+                              ) : (
+                                <Navigate to="/" replace />
+                              )
+                            }
+                          />
+                          <Route
                             path="/path/apikey-info"
                             element={
                               user ? (
@@ -1392,11 +1420,7 @@ function AppWithAuth() {
                             path="*"
                             element={
                               <Navigate
-                                to={
-                                  user?.role === "admin"
-                                    ? "/admin"
-                                    : "/dashboard"
-                                }
+                                to="/dashboard"
                                 replace
                               />
                             }

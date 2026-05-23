@@ -37,8 +37,7 @@ describe('configStore SaaS / Vercel', () => {
     delete process.env.KV_REST_API_URL;
     delete process.env.KV_REST_API_TOKEN;
     const configStore = require('../../services/configStore');
-    // SQLite configStore always returns false for isReadOnly
     expect(configStore.isReadOnly()).toBe(false);
-    expect(configStore.getStorageType()).toBe('sqlite');
+    expect(configStore.getStorageType()).toBe('lmdb');
   });
 });

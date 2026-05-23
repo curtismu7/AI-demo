@@ -1,7 +1,7 @@
 /**
  * ConfigStore — persists app configuration across server/browser restarts.
  *
- * Uses SQLite via better-sqlite3 → data/config.db
+ * Uses LMDB via services/lmdb/configStore.lmdb.js → data/persistent/lmdb/
  *
  * Secrets (clientSecret, sessionSecret) are encrypted with AES-256-GCM before
  * being written to storage, using a key derived from CONFIG_ENCRYPTION_KEY or
@@ -17,8 +17,6 @@
 'use strict';
 
 const crypto = require('crypto');
-const path   = require('path');
-const fs     = require('fs');
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -66,6 +64,15 @@ const BOOTSTRAP_ALLOWLIST = new Set([
   'port',
   'pingone_environment_id',
   'pingone_region',
+  // OAuth issuer and management credentials are identity-critical: a stale LMDB
+  // value for these causes JWT validation failures or Management API auth errors
+  // even when .env has the correct values. Treat them as bootstrap-authoritative
+  // so .env always wins when set.
+  'oauth_issuer',
+  'pingone_mgmt_client_id',
+  'pingone_mgmt_client_secret',
+  'pingone_management_client_id',
+  'pingone_management_client_secret',
 ]);
 
 // All known config keys with their defaults and whether they are public
@@ -120,7 +127,14 @@ const FIELD_DEFS = {
   // Server / misc
   PINGONE_SESSION_SECRET:         { public: false, default: '' },
   FRONTEND_URL:           { public: true,  default: '' },
-  PINGONE_MCP_SERVER_URL:         { public: true,  default: 'http://localhost:8000' },
+  // MCP server WebSocket/HTTP URL — BFF dials this to reach the MCP server (or gateway).
+  // Scheme is part of the value: ws:// / wss:// for direct MCP; kept for backwards-compat alias.
+  // Canonical persisted key is mcp_server_url (lowercase, env alias: MCP_SERVER_URL).
+  PINGONE_MCP_SERVER_URL:         { public: true,  default: 'ws://localhost:8080' },
+  mcp_server_url:                 { public: true,  default: 'ws://localhost:8080' },
+  // MCP Gateway HTTP base URL — scheme + host + port for the BFF → gateway HTTP channel.
+  // Local dev: https://api.ping.demo:3005 (TLS via mkcert). Env alias: MCP_GATEWAY_HTTP_URL.
+  mcp_gateway_http_url:           { public: true,  default: 'https://api.ping.demo:3005' },
   PINGONE_DEBUG_OAUTH:            { public: true,  default: 'false' },
 
   // PingOne Authorize (policy decision point for transfers/withdrawals)
@@ -381,13 +395,16 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
 // Encryption helpers
 // ---------------------------------------------------------------------------
 
+let _encryptionKeyCache = null;
+
 function _getEncryptionKey() {
+  if (_encryptionKeyCache) return _encryptionKeyCache;
   const rawKey = process.env.CONFIG_ENCRYPTION_KEY || process.env.SESSION_SECRET || 'dev-fallback-key-do-not-use-in-production';
   if (!process.env.CONFIG_ENCRYPTION_KEY && !process.env.SESSION_SECRET) {
     console.error('[ConfigStore] CRITICAL: No CONFIG_ENCRYPTION_KEY or SESSION_SECRET set — using insecure dev fallback key. Set one of these env vars in production.');
   }
-  // Derive a stable 32-byte key using scrypt with a fixed salt
-  return crypto.scryptSync(rawKey, 'banking-config-salt-v1', 32);
+  _encryptionKeyCache = crypto.scryptSync(rawKey, 'banking-config-salt-v1', 32);
+  return _encryptionKeyCache;
 }
 
 function _encrypt(plaintext) {
@@ -422,37 +439,10 @@ function _decrypt(ciphertext) {
 }
 
 // ---------------------------------------------------------------------------
-// SQLite helpers (local only)
+// LMDB helpers
 // ---------------------------------------------------------------------------
 
-let _sqliteDB = null;
-
-function _getSQLite() {
-  if (_sqliteDB) return _sqliteDB;
-  const dbDir  = path.join(__dirname, '..', 'data', 'persistent');
-  const dbPath = path.join(dbDir, 'config.db');
-  fs.mkdirSync(dbDir, { recursive: true });
-
-  let db;
-  try {
-    const Database = require('better-sqlite3');
-    db = new Database(dbPath);
-  } catch {
-    // better-sqlite3 unavailable (e.g. Node 25) — fall back to built-in node:sqlite
-    const { DatabaseSync } = require('node:sqlite');
-    db = new DatabaseSync(dbPath);
-  }
-
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS config (
-      key        TEXT PRIMARY KEY,
-      value      TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    )
-  `);
-  _sqliteDB = db;
-  return db;
-}
+const _lmdbConfig = require('./lmdb/configStore.lmdb');
 
 // ---------------------------------------------------------------------------
 // ConfigStore class
@@ -507,17 +497,64 @@ class ConfigStore {
 
   async _initialize() {
     try {
-      this._loadFromSQLite();
+      this._loadFromLmdb();
     } catch (err) {
-      console.warn('[ConfigStore] SQLite initialization failed, using in-memory fallback:', err.message);
+      console.warn('[ConfigStore] LMDB initialization failed, using in-memory fallback:', err.message);
+    }
+    try {
+      this._seedFromEnv();
+    } catch (err) {
+      console.warn('[ConfigStore] env-to-LMDB seed failed (non-fatal):', err.message);
     }
   }
 
-  _loadFromSQLite() {
-    const db   = _getSQLite();
-    const rows = db.prepare('SELECT key, value FROM config').all();
+  /**
+   * Write every FIELD_DEFS key whose env var has a value but SQLite does not.
+   * Safe to call repeatedly — only fills gaps, never overwrites existing SQLite rows.
+   * BOOTSTRAP_ALLOWLIST keys are skipped (env is always authoritative for them).
+   *
+   * Synchronous by design: called from _initialize() without going through
+   * ensureInitialized() to avoid re-entrant deadlock on the init promise.
+   */
+  _seedFromEnv() {
+    const updates = {};
+    const cacheUpdates = {};
+
+    for (const fieldKey of Object.keys(FIELD_DEFS)) {
+      const lk = fieldKey.toLowerCase();
+      if (BOOTSTRAP_ALLOWLIST.has(lk)) continue;
+      if (this.get(fieldKey)) continue;
+      const val = this.getEffective(lk);
+      const def = FIELD_DEFS[fieldKey]?.default;
+      if (!val || val === String(def)) continue;
+      updates[fieldKey]      = SECRET_KEYS.has(String(fieldKey).toUpperCase()) ? _encrypt(val) : val;
+      cacheUpdates[fieldKey] = val;
+    }
+
+    if (Object.keys(updates).length === 0) return;
+
+    console.log(`[ConfigStore] Seeding ${Object.keys(updates).length} keys from env into LMDB`);
+    try {
+      for (const [key, value] of Object.entries(updates)) {
+        _lmdbConfig.upsert(String(key).toUpperCase(), value);
+      }
+    } catch (err) {
+      console.warn('[ConfigStore] LMDB seed write failed:', err.message);
+    }
+    this._setCache(cacheUpdates, 'sqlite');
+  }
+
+  _loadFromLmdb() {
+    const rows = _lmdbConfig.loadAll();
     const decoded = {};
     for (const row of rows) {
+      const lk = String(row.key).toLowerCase();
+      // Bootstrap keys are always resolved live by getEffective() (env wins).
+      // Never load them into the cache — a stale LMDB value would silently
+      // override the correct .env value because _setCache runs before
+      // process.env is consulted in the non-bootstrap path. See REGRESSION_PLAN §4
+      // (2026-05-23 LMDB bootstrap-key protection).
+      if (BOOTSTRAP_ALLOWLIST.has(lk)) continue;
       decoded[row.key] = SECRET_KEYS.has(String(row.key).toUpperCase()) ? _decrypt(row.value) : row.value;
     }
     this._setCache(decoded, 'sqlite');
@@ -540,7 +577,6 @@ class ConfigStore {
    * Persist new configuration values.
    * Accepts partial updates — only sets keys that are provided and non-empty.
    * Secrets are encrypted before writing to storage.
-   * Persists config values to SQLite.
    */
   async setConfig(data) {
     await this.ensureInitialized();
@@ -560,6 +596,7 @@ class ConfigStore {
     const allowEmptyStringKeys = new Set(['marketing_demo_username_hint', 'marketing_demo_password_hint', 'demo_accounts']);
     for (const [key, value] of Object.entries(data)) {
       if (!(key in FIELD_DEFS)) continue;          // ignore unknown keys
+      if (BOOTSTRAP_ALLOWLIST.has(String(key).toLowerCase())) continue; // .env is authoritative
       if (value === null || value === undefined) continue;
       if (value === '' && !allowEmptyStringKeys.has(key)) continue;
       // Value is a non-empty string
@@ -571,32 +608,23 @@ class ConfigStore {
     if (Object.keys(updates).length === 0) return;
 
     try {
-      const db = _getSQLite();
-      const upsert = db.prepare(
-        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)'
-      );
-      const now = new Date().toISOString();
-      db.transaction(() => {
-        for (const [key, value] of Object.entries(updates)) {
-          upsert.run(String(key).toUpperCase(), value, now);
-        }
-      })();
+      for (const [key, value] of Object.entries(updates)) {
+        _lmdbConfig.upsert(String(key).toUpperCase(), value);
+      }
     } catch (err) {
-      console.warn('[ConfigStore] SQLite write failed, config will be in-memory only:', err.message);
+      console.warn('[ConfigStore] LMDB write failed, config will be in-memory only:', err.message);
     }
 
-    // Update cache last, so failures above leave cache consistent
-    // setConfig persists to SQLite — provenance is 'sqlite'.
     this._setCache(cacheUpdates, 'sqlite');
   }
 
   /**
-   * Persist arbitrary key-value pairs to SQLite and cache without FIELD_DEFS validation.
+   * Persist arbitrary key-value pairs to LMDB and cache without FIELD_DEFS validation.
    * Used by feature flags, which have their own flag-ID namespace (not in FIELD_DEFS).
    *
-   * Phase 269: opts.persist (boolean, default true) — when explicitly false,
-   * skip the SQLite upsert and update only the in-memory cache. The vault
-   * loader uses this so secrets never get duplicated at rest in config.db
+   * opts.persist (boolean, default true) — when explicitly false,
+   * skip the LMDB write and update only the in-memory cache. The vault
+   * loader uses this so secrets never get duplicated at rest
    * (the vault is already the encrypted-at-rest source of truth).
    */
   async setRaw(data, opts = {}) {
@@ -608,23 +636,17 @@ class ConfigStore {
     const shouldPersist = opts.persist !== false;
     if (shouldPersist) {
       try {
-        const db = _getSQLite();
-        const upsert = db.prepare(
-          'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)'
-        );
-        const now = new Date().toISOString();
-        db.transaction(() => {
-          for (const [key, value] of Object.entries(data)) {
-            upsert.run(String(key).toUpperCase(), String(value), now);
-          }
-        })();
+        for (const [key, value] of Object.entries(data)) {
+          if (BOOTSTRAP_ALLOWLIST.has(String(key).toLowerCase())) continue; // .env is authoritative
+          _lmdbConfig.upsert(String(key).toUpperCase(), String(value));
+        }
       } catch (err) {
-        console.warn('[ConfigStore] SQLite write failed, raw config will be in-memory only:', err.message);
+        console.warn('[ConfigStore] LMDB write failed, raw config will be in-memory only:', err.message);
       }
     }
     // Update cache regardless of SQLite outcome (or skip)
     // persist:false is the vault loader's path → provenance 'vault';
-    // persist:true (or default) is a SQLite-backed write → 'sqlite'.
+    // persist:true (or default) is an LMDB-backed write → 'sqlite' provenance.
     this._setCache(data, shouldPersist ? 'sqlite' : 'vault');
   }
 
@@ -650,7 +672,7 @@ class ConfigStore {
 
   /**
    * Returns the effective value for a key:
-   * - With persisted store (SQLite): cache first, then env fallbacks, then default.
+   * - With persisted store (LMDB): cache first, then env fallbacks, then default.
    * - Without persistence: env vars only (no runtime persistence).
    * This is what config/oauth.js getters call.
    *
@@ -727,15 +749,18 @@ class ConfigStore {
       react_app_client_url:   ['REACT_APP_CLIENT_URL', 'FRONTEND_ADMIN_URL'],
       public_app_url:         ['PUBLIC_APP_URL'],
       mcp_server_url:                   ['MCP_SERVER_URL'],
-      pingone_resource_mcp_server_uri:  ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI'],
-      // Alias of the line above. routes/tokens.js (Token Chain), routes/mcpInspector.js,
-      // and services/mcpToolAuthorizationService.js read getEffective('mcp_resource_uri'),
-      // while the real RFC 8693 exchange path (agentMcpTokenService.js) reads
-      // 'pingone_resource_mcp_server_uri'. Without this alias the former resolved
-      // to '' on .env-only setups (no Config-UI/SQLite value), making the Token
-      // Chain falsely report "MCP resource URI not configured" even though the
-      // exchange itself was fully configured. Same env vars — keeps both keys identical.
-      mcp_resource_uri:                 ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI'],
+      // MCP_SERVER_RESOURCE_URI is the authoritative env var for the MCP server audience.
+      // MCP_RESOURCE_URI is kept as a fallback AFTER MCP_SERVER_RESOURCE_URI so that
+      // MCP_RESOURCE_URI=mcpgateway.ping.demo (gateway audience) does not shadow the
+      // MCP server audience when both are set. PINGONE_RESOURCE_MCP_SERVER_URI wins first.
+      pingone_resource_mcp_server_uri:  ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_SERVER_RESOURCE_URI', 'MCP_RESOURCE_URI'],
+      // Alias of the line above for Token Chain / mcpInspector callers that use 'mcp_resource_uri'.
+      // MCP_SERVER_RESOURCE_URI before MCP_RESOURCE_URI — same priority fix as above.
+      mcp_resource_uri:                 ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_SERVER_RESOURCE_URI', 'MCP_RESOURCE_URI'],
+      // Direct alias so getEffective('pingone_user_client_id') and getEffective('PINGONE_USER_CLIENT_ID') both work.
+      pingone_user_client_id:           ['PINGONE_USER_CLIENT_ID', 'PINGONE_AI_CORE_USER_CLIENT_ID', 'PINGONE_CORE_USER_CLIENT_ID'],
+      // Direct alias so getEffective('pingone_admin_client_id') and getEffective('PINGONE_ADMIN_CLIENT_ID') both work.
+      pingone_admin_client_id:          ['PINGONE_ADMIN_CLIENT_ID', 'PINGONE_AI_CORE_CLIENT_ID', 'PINGONE_CORE_CLIENT_ID'],
       pingone_resource_langchain_agent_uri: ['PINGONE_RESOURCE_LANGCHAIN_AGENT_URI'],
       authorize_decision_endpoint_id:   ['PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID'],
       authorize_mcp_decision_endpoint_id: ['PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID'],
@@ -963,7 +988,7 @@ class ConfigStore {
 
   /** Storage type. */
   getStorageType() {
-    return 'sqlite';
+    return 'lmdb';
   }
 
   /**
@@ -994,14 +1019,14 @@ class ConfigStore {
     }
     await this.ensureInitialized();
     delete this._cache[String(key).toUpperCase()];
-    const db = _getSQLite();
-    db.prepare('DELETE FROM config WHERE key = ?').run(String(key).toUpperCase());
+    _lmdbConfig.remove(String(key).toUpperCase());
   }
 
-  /** Wipe stored config (SQLite). */
+  /** Wipe stored config (LMDB). */
   async resetConfig() {
-    const db = _getSQLite();
-    db.prepare('DELETE FROM config').run();
+    for (const row of _lmdbConfig.loadAll()) {
+      _lmdbConfig.remove(row.key);
+    }
     this._cache = {};
     this._initPromise = null;
   }
@@ -1398,6 +1423,7 @@ const configStore = new ConfigStore();
 module.exports = configStore;
 module.exports.FIELD_DEFS = FIELD_DEFS;
 module.exports.SECRET_KEYS = SECRET_KEYS;
+module.exports.BOOTSTRAP_ALLOWLIST = BOOTSTRAP_ALLOWLIST;
 module.exports.validateTwoExchangeConfig = validateTwoExchangeConfig;
 module.exports.buildAllowedScopesByAudience = buildAllowedScopesByAudience;
 module.exports.validateScopeAudience = validateScopeAudience;

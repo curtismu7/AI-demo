@@ -57,7 +57,7 @@ function requireApiKey(req, res, next) {
   next();
 }
 
-// GET /mortgage — single dummy mortgage record.
+// GET /mortgage — banking vertical: home loan record.
 app.get('/mortgage', requireApiKey, (_req, res) => {
   res.json({
     mortgage: {
@@ -71,6 +71,88 @@ app.get('/mortgage', requireApiKey, (_req, res) => {
       term: '30-year fixed',
       originationDate: '2023-04-15',
       currency: 'USD',
+    },
+    source: 'banking_mortgage_service',
+    authMechanism: 'X-API-Key (shared secret)',
+    note: 'This data was returned because the gateway presented a valid service API key. No OAuth bearer was involved on this hop.',
+  });
+});
+
+// GET /retail — Great Buy vertical: large purchase record.
+app.get('/retail', requireApiKey, (_req, res) => {
+  res.json({
+    largePurchase: {
+      orderId: 'ORD-20260501-8821',
+      product: 'Samsung 65" QLED TV',
+      sku: 'BB-65QLED',
+      category: 'TV',
+      amount: 1299.00,
+      currency: 'USD',
+      status: 'Shipped',
+      estimatedDelivery: '2026-06-03',
+      rewardsPointsEarned: 1299,
+      retailer: 'Great Buy',
+    },
+    source: 'banking_mortgage_service',
+    authMechanism: 'X-API-Key (shared secret)',
+    note: 'This data was returned because the gateway presented a valid service API key. No OAuth bearer was involved on this hop.',
+  });
+});
+
+// GET /healthcare — CareConnect vertical: health record summary.
+app.get('/healthcare', requireApiKey, (_req, res) => {
+  res.json({
+    healthRecord: {
+      recordId: 'REC-2026-04881',
+      recordType: 'Annual Wellness Visit',
+      provider: 'Dr. Sarah Mitchell, MD',
+      facility: 'Springfield Family Health',
+      visitDate: '2026-04-18',
+      coveredAmount: 380.00,
+      copay: 20.00,
+      currency: 'USD',
+      status: 'Processed',
+      coveragePlan: 'BlueShield PPO Gold',
+    },
+    source: 'banking_mortgage_service',
+    authMechanism: 'X-API-Key (shared secret)',
+    note: 'This data was returned because the gateway presented a valid service API key. No OAuth bearer was involved on this hop.',
+  });
+});
+
+// GET /gear — Super Sports vertical: gear order record.
+app.get('/gear', requireApiKey, (_req, res) => {
+  res.json({
+    gearOrder: {
+      orderId: 'SS-20260419-4471',
+      item: 'Garmin Fenix 8 GPS Watch',
+      category: 'Wearable',
+      amount: 799.00,
+      currency: 'USD',
+      status: 'Delivered',
+      deliveredDate: '2026-04-22',
+      loyaltyPointsEarned: 1598,
+      memberTier: 'Elite Member',
+    },
+    source: 'banking_mortgage_service',
+    authMechanism: 'X-API-Key (shared secret)',
+    note: 'This data was returned because the gateway presented a valid service API key. No OAuth bearer was involved on this hop.',
+  });
+});
+
+// GET /expense — WX Workforce vertical: expense report record.
+app.get('/expense', requireApiKey, (_req, res) => {
+  res.json({
+    expenseReport: {
+      reportId: 'EXP-2026-00312',
+      category: 'Travel & Accommodation',
+      description: 'Q2 Sales Summit — Chicago, IL',
+      amount: 1847.50,
+      currency: 'USD',
+      submittedDate: '2026-05-02',
+      status: 'Approved',
+      approver: 'Jordan Lee (Finance)',
+      reimbursementDate: '2026-05-15',
     },
     source: 'banking_mortgage_service',
     authMechanism: 'X-API-Key (shared secret)',

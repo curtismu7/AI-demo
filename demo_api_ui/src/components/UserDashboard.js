@@ -30,7 +30,6 @@ import { toastCustomerError } from "../utils/dashboardToast";
 import AgentUiModeToggle from "./AgentUiModeToggle";
 import ThresholdControls from "./ThresholdControls";
 import ExchangeModeToggle from "./ExchangeModeToggle";
-import { EDU } from "./education/educationIds";
 import Fido2Challenge from "./Fido2Challenge";
 import TokenChainDisplay from "./TokenChainDisplay";
 import ConfirmModal from "./ConfirmModal";
@@ -38,6 +37,8 @@ import TransactionConsentModal from "./TransactionConsentModal";
 import FloatingPanel from "./FloatingPanel";
 import "./UserDashboard.css";
 import DashboardHeader from "./DashboardHeader";
+import UserTokenStatusBar from "./UserTokenStatusBar";
+import OAuthTokenDisplayPage from "./OAuthTokenDisplayPage";
 import { useTheme } from "../context/ThemeContext";
 import RetailDashboard from "./RetailDashboard";
 import ThemePicker from "./ThemePicker";
@@ -189,7 +190,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [accounts, setAccounts] = useState([]);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
-  const [tokenData, setTokenData] = useState(null);
   const [tokenExpiresAt, setTokenExpiresAt] = useState(null);
   const [tokenSecondsLeft, setTokenSecondsLeft] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -297,7 +297,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               setTokenExpiresAt(userRes.data.expiresAt);
           } else {
             const adminRes = await getCachedJson("/api/auth/oauth/status");
-            if (adminRes.data.authenticated) sessionUser = adminRes.data.user;
+            if (adminRes.data.authenticated) {
+              sessionUser = adminRes.data.user;
+              if (adminRes.data.expiresAt)
+                setTokenExpiresAt(adminRes.data.expiresAt);
+            }
           }
         } catch (sessionErr) {
           console.warn("Session check failed:", sessionErr.message);
@@ -532,27 +536,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       console.error("Error decoding token:", error);
       return null;
     }
-  };
-
-  // Function to fetch current OAuth tokens
-  const fetchTokenData = async () => {
-    try {
-      const { data } = await axios.get("/api/auth/oauth/token-claims");
-      if (data.authenticated && data.decoded) {
-        setTokenData(data);
-      } else {
-        setTokenData(null);
-      }
-    } catch (error) {
-      console.error("❌ Error fetching token data:", error);
-      setTokenData(null);
-    }
-  };
-
-  // Function to open token modal
-  const openTokenModal = () => {
-    fetchTokenData();
-    setShowTokenModal(true);
   };
 
   useEffect(() => {
@@ -2538,6 +2521,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         Skip to main content
       </a>
       <DashboardHeader variant="customer" />
+      <UserTokenStatusBar
+        user={user}
+        tokenSecondsLeft={tokenSecondsLeft}
+        onOpenModal={() => setShowTokenModal(true)}
+      />
       {/* ── Toolbar row with additional actions ────────────────────── */}
       <div className="dashboard-header-stack" style={{ marginTop: 0 }}>
         <div
@@ -2548,14 +2536,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <ThemePicker variant="toolbar" />
           <AgentUiModeToggle variant="config" />
           <ThresholdControls />
-          <button
-            type="button"
-            onClick={openTokenModal}
-            className="dashboard-toolbar-btn"
-            title="View OAuth Token Info"
-          >
-            Token Info
-          </button>
           <button
             type="button"
             className="dashboard-toolbar-btn"
@@ -2636,9 +2616,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                 color: "#fff",
                 border: "none",
               }}
-              onClick={() => {
-                window.location.href = "/api/auth/oauth/login";
-              }}
+              onClick={navigateToCustomerOAuthLogin}
             >
               Sign In
             </button>
@@ -2868,7 +2846,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       <ConfirmModal
         isOpen={showResetModal}
         title="Reset Demo"
-        message="Clear all agent history, token chain events, and MCP audit logs? You will stay logged in."
+        message="Clear all agent history, token chain events, and MCP audit logs? You will be logged out and the theme will reset to default."
         confirmLabel="Reset"
         danger
         onConfirm={async () => {
@@ -2879,13 +2857,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               credentials: "include",
             });
           } catch (_) {}
-          try {
-            localStorage.removeItem("tokenChainHistory");
-          } catch (_) {}
-          try {
-            localStorage.removeItem("api-traffic-store");
-          } catch (_) {}
-          navigate("/dashboard", { replace: true, state: { resetDemo: true } });
+          try { localStorage.removeItem("tokenChainHistory"); } catch (_) {}
+          try { localStorage.removeItem("api-traffic-store"); } catch (_) {}
+          try { localStorage.removeItem("banking_ui_theme"); } catch (_) {}
+          try { sessionStorage.removeItem("banking_ui_theme"); } catch (_) {}
+          window.location.href = "/api/auth/logout";
         }}
         onCancel={() => setShowResetModal(false)}
       />
@@ -3316,312 +3292,20 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         </div>
       )}
 
-      {/* OAuth Token Info Modal */}
+      {/* User Session Token Modal */}
       {showTokenModal && (
         <FloatingPanel
-          title="Your Token Chain"
+          title="User Session Token"
           onClose={() => setShowTokenModal(false)}
-          defaultWidth={780}
-          defaultHeight={Math.min(window.innerHeight - 80, 900)}
-          defaultX={Math.max(0, Math.round((window.innerWidth - 780) / 2))}
+          defaultWidth={820}
+          defaultHeight={Math.min(window.innerHeight - 80, 940)}
+          defaultX={Math.max(0, Math.round((window.innerWidth - 820) / 2))}
           defaultY={60}
-          minWidth={340}
+          minWidth={360}
           minHeight={200}
         >
-          <div
-            style={{ overflowY: "auto", height: "100%", padding: "20px 30px" }}
-          >
-            {tokenData ? (
-              (() => {
-                const { decoded, user, tokenType, expiresAt, hasRefreshToken } =
-                  tokenData;
-                const payload = decoded?.payload || {};
-                const header = decoded?.header || {};
-                const mayAct = payload.may_act;
-                return (
-                  <div className="token-info">
-                    {/* Session summary */}
-                    <div className="token-section">
-                      <h4>Session</h4>
-                      <div className="session-info-grid">
-                        <div className="session-row">
-                          <span className="session-label">User:</span>
-                          <span className="session-value">
-                            {user?.firstName} {user?.lastName} ({user?.email})
-                          </span>
-                        </div>
-                        <div className="session-row">
-                          <div style={{ display: "flex", gap: "2rem" }}>
-                            <div>
-                              <span className="session-label">Role:</span>
-                              <span className="session-value">
-                                {user?.role}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="session-label">Type:</span>
-                              <span className="session-value">
-                                {tokenType || "Bearer"}
-                              </span>
-                            </div>
-                          </div>
-                          {hasRefreshToken && (
-                            <div style={{ width: "100%", marginTop: "0.5rem" }}>
-                              <span
-                                className="session-value"
-                                style={{
-                                  color: "#22c55e",
-                                  display: "inline-block",
-                                }}
-                              >
-                                ✓ refresh token
-                              </span>
-                              <div
-                                style={{
-                                  fontSize: "0.85em",
-                                  color: "#94a3b8",
-                                  marginTop: "4px",
-                                }}
-                              >
-                                Refresh token available — can extend session
-                                without re-login (renews for another 24 hours)
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <div className="session-row">
-                          <span className="session-label">Expires:</span>
-                          <span className="session-value">
-                            {expiresAt
-                              ? (() => {
-                                  const now = Date.now();
-                                  const exp = new Date(expiresAt).getTime();
-                                  const msUntilExpiry = exp - now;
-                                  const hoursUntilExpiry = Math.floor(
-                                    msUntilExpiry / (1000 * 60 * 60),
-                                  );
-                                  const minutesUntilExpiry = Math.floor(
-                                    (msUntilExpiry % (1000 * 60 * 60)) /
-                                      (1000 * 60),
-                                  );
-                                  const isExpired = msUntilExpiry <= 0;
-
-                                  return (
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "1rem",
-                                      }}
-                                    >
-                                      <span>
-                                        {new Date(expiresAt).toLocaleString()}
-                                      </span>
-                                      <span
-                                        style={{
-                                          color: isExpired
-                                            ? "#ef4444"
-                                            : "#22c55e",
-                                        }}
-                                      >
-                                        {isExpired
-                                          ? "Expired"
-                                          : `${hoursUntilExpiry > 0 ? `${hoursUntilExpiry}h ` : ""}${minutesUntilExpiry}m remaining`}
-                                      </span>
-                                    </div>
-                                  );
-                                })()
-                              : "N/A"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Key claims */}
-                    <div className="token-section">
-                      <h4
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}
-                      >
-                        <span
-                          style={{
-                            background: "#1e3a5f",
-                            border: "1px solid var(--brand-navy)",
-                            borderRadius: "4px",
-                            padding: "2px 8px",
-                            fontSize: "0.75rem",
-                            color: "#93c5fd",
-                          }}
-                        >
-                          Access Token Claims
-                        </span>
-                        <button
-                          type="button"
-                          className="token-payload-hint"
-                          title="Learn about tokens"
-                          onClick={() => open(EDU.LOGIN_FLOW, "tokens")}
-                        >
-                          ⓘ
-                        </button>
-                      </h4>
-                      <div
-                        style={{
-                          background: "#0f172a",
-                          border: "1px solid #1e3a5f",
-                          borderRadius: "6px",
-                          padding: "10px 14px",
-                          fontSize: "0.8rem",
-                          marginBottom: "8px",
-                        }}
-                      >
-                        <table
-                          style={{
-                            width: "100%",
-                            borderCollapse: "collapse",
-                          }}
-                        >
-                          <tbody>
-                            {[
-                              ["alg", header.alg],
-                              ["sub", payload.sub],
-                              [
-                                "aud",
-                                Array.isArray(payload.aud)
-                                  ? payload.aud.join(", ")
-                                  : payload.aud,
-                              ],
-                              ["scope", payload.scope],
-                              ["iss", payload.iss],
-                              [
-                                "exp",
-                                payload.exp
-                                  ? new Date(
-                                      payload.exp * 1000,
-                                    ).toLocaleString()
-                                  : null,
-                              ],
-                            ]
-                              .filter(([, v]) => v)
-                              .map(([k, v]) => (
-                                <tr
-                                  key={k}
-                                  style={{
-                                    borderBottom: "1px solid #1e2d3d",
-                                  }}
-                                >
-                                  <td
-                                    style={{
-                                      padding: "3px 8px",
-                                      color: "#94a3b8",
-                                      fontFamily: "inherit",
-                                      width: "5rem",
-                                    }}
-                                  >
-                                    {k}
-                                  </td>
-                                  <td
-                                    style={{
-                                      padding: "3px 8px",
-                                      color: "#e2e8f0",
-                                      fontFamily: "inherit",
-                                      wordBreak: "break-all",
-                                    }}
-                                  >
-                                    {String(v)}
-                                  </td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {mayAct ? (
-                        <div
-                          style={{
-                            background: "#1e3a5f",
-                            borderRadius: "6px",
-                            padding: "8px 12px",
-                            fontSize: "0.8rem",
-                            color: "#93c5fd",
-                            marginBottom: "8px",
-                          }}
-                        >
-                          ✅ <strong>may_act present</strong> — BFF can exchange
-                          this token (RFC 8693)
-                          <pre
-                            style={{
-                              margin: "4px 0 0",
-                              background: "none",
-                              fontSize: "0.75rem",
-                            }}
-                          >
-                            {JSON.stringify(mayAct, null, 2)}
-                          </pre>
-                        </div>
-                      ) : (
-                        <div
-                          style={{
-                            background: "#7f1d1d",
-                            borderRadius: "6px",
-                            padding: "8px 12px",
-                            fontSize: "0.8rem",
-                            color: "#fca5a5",
-                            marginBottom: "8px",
-                          }}
-                        >
-                          ⚠️ <strong>may_act absent</strong> — add the may_act
-                          claim in your PingOne token policy to enable token
-                          exchange
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Full payload */}
-                    <div className="token-section">
-                      <h4>Full JWT Payload</h4>
-                      <pre
-                        className="token-json"
-                        style={{
-                          background: "#0f172a",
-                          color: "#e2e8f0",
-                          borderRadius: "6px",
-                          padding: "10px",
-                          fontSize: "0.73rem",
-                          overflowX: "auto",
-                          border: "1px solid #1e3a5f",
-                        }}
-                      >
-                        {JSON.stringify(payload, null, 2)}
-                      </pre>
-                    </div>
-                  </div>
-                );
-              })()
-            ) : (
-              <div className="no-token">
-                <p>
-                  No OAuth token data available — make sure you are signed in.
-                </p>
-              </div>
-            )}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                padding: "12px 0 4px",
-              }}
-            >
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setShowTokenModal(false)}
-              >
-                Close
-              </button>
-            </div>
+          <div style={{ overflowY: "auto", height: "100%" }}>
+            <OAuthTokenDisplayPage />
           </div>
         </FloatingPanel>
       )}

@@ -5,6 +5,8 @@
  */
 'use strict';
 
+const VERTICAL_FEATURE_RE = /\b(show|view|see|get|my)\s*(large\s*purchase|big\s*purchase|recent\s*purchase|health\s*records?|medical\s*records?|gear\s*order|equipment\s*order|sports?\s*order|expense\s*report|expenses?\s*report)\b|^(large|big)\s*purchase$|^health\s*record$|^gear\s*order$|^expense\s*report$|\bshow\s+vertical\s+feature\b/;
+
 const EDU = {
   // existing — keep exactly as-is
   LOGIN_FLOW: 'login-flow',
@@ -225,13 +227,17 @@ function parseBanking(t) {
   if (/\b(sensitive account details|full account|routing number|account number|account details)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'sensitive_account_details' } };
   }
-  // Phase 266 — Path A demo: mortgage data via api-key-gated backend.
-  // Trigger: "show mortgage data", "show my mortgage", "mortgage", "home loan".
-  // MUST precede the balance check so "what's my home loan balance" /
-  // "mortgage balance" routes to the mortgage demo widget rather than the
-  // generic balance flow (which has no record of mortgage/loan accounts).
+  // Phase 266/267 — Path A demo: vertical feature data via api-key-gated backend.
+  // mortgage_demo kept for backward compat; all vertical feature chips route through
+  // vertical_feature_demo in the client. NL phrases for non-banking verticals also
+  // map to vertical_feature_demo so the client can dispatch the right tool.
+  // MUST precede the balance check so "home loan balance" doesn't fall to generic balance.
   if (/\b(show|view|see|get|my|whats?|what is)\s*(mortgage|home\s*loan)\b|\b(mortgage|home\s*loan)\s*(data|info|details|balance|summary|payment)\b|^mortgage$|^home\s*loan$/.test(t)) {
     return { kind: 'banking', banking: { action: 'mortgage_demo' } };
+  }
+  // Vertical feature phrases (retail/healthcare/sporting-goods/workforce) plus the generic chip message
+  if (VERTICAL_FEATURE_RE.test(t)) {
+    return { kind: 'banking', banking: { action: 'vertical_feature_demo' } };
   }
   // Balance: explicit account id, or phrases like "my balance", "current balance", "check balance" — MUST precede accounts check
   if (/\bbalances?\b/.test(t)) {
@@ -390,6 +396,13 @@ function parseHeuristic(message, vertical = 'banking') {
   // "MCP Tools" are never swallowed by the broad \bmcp\b education regex.
   if (/\b(list|show|get|what).*(mcp.*tools?|tools?.*available|available.*tools?)\b|\btools?\s*(list|available)\b|\bmcp\s+tools?\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'mcp_tools' } };
+  }
+
+  // Vertical feature chip phrases — must precede parseTheme because theme vocabs
+  // have broad rules (e.g. healthcare "records?" → accounts) that would swallow
+  // these more specific vertical-feature intents first.
+  if (VERTICAL_FEATURE_RE.test(t)) {
+    return { kind: 'banking', banking: { action: 'vertical_feature_demo' } };
   }
 
   // Theme-aware vocabulary — runs before banking/education so themed phrases

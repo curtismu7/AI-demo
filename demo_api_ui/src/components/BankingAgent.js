@@ -1658,6 +1658,7 @@ export default function BankingAgent({
     setAgentAppearance,
     effectiveAgentTheme,
     agent: themeAgent,
+    manifest: themeManifest,
   } = useTheme();
   // Always start collapsed on page load — never restore open state from localStorage.
   const [isOpen, setIsOpen] = useState(false);
@@ -1724,7 +1725,7 @@ export default function BankingAgent({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
-  const [selectedLlmProvider] = useState("helix");
+  const activeLlmProvider = nlMeta?.activeLlmProvider ?? null;
   // Degraded-mode banner: true when the user selected an LLM provider (Helix)
   // but routing fell back to the heuristic parser (Helix unreachable / not
   // configured). Drives a persistent banner in the panel header. Cleared as
@@ -2086,6 +2087,9 @@ export default function BankingAgent({
     let groupsToRender = { ...ACTION_GROUPS, ...customGroupMap };
     if (isConfigEmbeddedFocus) {
       groupsToRender = { admin: ACTION_GROUPS.admin || [] };
+    } else if (effectiveUser?.role !== "admin") {
+      const { admin: _admin, ...rest } = groupsToRender;
+      groupsToRender = rest;
     }
 
     return (
@@ -2731,12 +2735,8 @@ export default function BankingAgent({
 
   useEffect(() => {
     if (!isOpen) return;
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ block: "end" });
-    } else {
-      const el = messagesContainerRef.current;
-      if (el) el.scrollTop = el.scrollHeight;
-    }
+    const el = messagesContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, isOpen, loading, nlLoading]);
 
@@ -3309,6 +3309,68 @@ export default function BankingAgent({
           setLoading(false);
           toolProgressIdRef.current = null;
           navigate("/path/mortgage", { state: { mortgagePayload } });
+          return;
+        }
+        case "vertical_feature_demo": {
+          // Path A — api_key disposition for all non-banking verticals.
+          // The active vertical's featurePage config drives tool name, scope error message,
+          // and field rendering on VerticalFeaturePage. Falls back to show_mortgage so the
+          // chip never silently does nothing on the banking vertical.
+          const fp = themeManifest?.featurePage;
+          const featureTool = fp?.mcpTool || "show_mortgage";
+          const featureRoute = "/path/feature";
+          const scopeName = themeManifest?.scopes?.featureScope || "feature";
+          toast.update(toastId, {
+            render: ` Routing to feature path (gateway swaps OAuth bearer for service API key)…`,
+          });
+          let featureResp;
+          try {
+            featureResp = await callMcpTool(featureTool, {});
+          } catch (e) {
+            console.error("[BankingAgent] vertical_feature_demo dispatch failed:", e?.message);
+            toast.dismiss(toastId);
+            setLoading(false);
+            toolProgressIdRef.current = null;
+            addMessage("assistant", `Could not load feature data: ${e?.message || "gateway call failed"}.`, actionId, resultExtra);
+            return;
+          }
+          const featureMcp  = featureResp?.result;
+          const featureNorm = normalizeAgentToolResult(featureMcp);
+          if (isAgentToolErrorResult(featureNorm)) {
+            toast.dismiss(toastId);
+            setLoading(false);
+            toolProgressIdRef.current = null;
+            const insufficient =
+              featureNorm.error === "insufficient_scope" ||
+              /scope/i.test(featureNorm.message || "");
+            addMessage(
+              "assistant",
+              insufficient
+                ? (fp?.scopeError || `The agent's access token does not carry the ${scopeName} scope. Sign out and sign back in to consent, then try again.`)
+                : `Could not load feature data: ${featureNorm.message || "backend error"}.`,
+              actionId,
+              resultExtra,
+            );
+            return;
+          }
+          const featureMeta = featureMcp?._meta || {};
+          const featurePayload = {
+            ...(featureMcp || {}),
+            apiKeyMaskedLast4: featureMeta.apiKeyMaskedLast4,
+            message: featureNorm.note || featureMeta.note,
+            backend: {
+              source: featureNorm.source,
+              authMechanism: featureNorm.authMechanism,
+              note: featureNorm.note,
+            },
+          };
+          if (tokenChain && Array.isArray(featureResp?.tokenEvents)) {
+            tokenChain.setTokenEvents(actionId, featureResp.tokenEvents);
+          }
+          toast.dismiss(toastId);
+          setLoading(false);
+          toolProgressIdRef.current = null;
+          navigate(featureRoute, { state: { featurePayload } });
           return;
         }
         case "transactions":
@@ -4899,9 +4961,10 @@ export default function BankingAgent({
           " You need to sign in first to perform banking operations. Tap Customer Sign In in the left panel to get started.",
         );
       } else if (
-        err?.statusCode === 401 ||
-        err?.code === "authentication_required" ||
-        /sign in to use the banking agent/i.test(String(err?.message || ""))
+        (err?.statusCode === 401 ||
+          err?.code === "authentication_required" ||
+          /sign in to use the banking agent/i.test(String(err?.message || ""))) &&
+        !isLoggedIn
       ) {
         setShowLoginModal(true);
       } else if (err?.code === "missing_exchange_scopes") {
@@ -4995,23 +5058,43 @@ export default function BankingAgent({
         // MCP Authorize gate: PingOne (or simulated) denied tool access
         const reason =
           err.message || "MCP tool access was denied by authorization policy";
-        addMessage(
-          "assistant",
-          ` Access Denied\n\n${reason}\n\nYour current session does not have sufficient authorization for this tool. Contact your administrator if you believe this is an error.`,
-          actionId,
+        const engine = err.authorizeEngine || "unknown";
+        const denyLines = ["Access Denied", "", reason];
+        if (err.denyReason) {
+          denyLines.push("", `Rule: ${err.denyReason}`);
+        }
+        if (err.denyParameters) {
+          const relevant = ["TokenAudience", "McpResourceUri", "ActClientId", "ToolName", "UserId"];
+          const pairs = relevant
+            .filter((k) => err.denyParameters[k] !== undefined && err.denyParameters[k] !== "")
+            .map((k) => `  ${k}: ${err.denyParameters[k]}`);
+          if (pairs.length) {
+            denyLines.push("", "Policy inputs:", ...pairs);
+          }
+        }
+        if (err.decisionId) {
+          denyLines.push("", `Decision ID: ${err.decisionId}`);
+        }
+        addMessage("assistant", denyLines.join("\n"), actionId);
+        const tokenEventLines = [
+          ` RFC 6749 §3.1 / RFC 8693 — Authorization Policy Denied (engine: ${engine})`,
+          "   The Authorize policy evaluated the request context (user, agent, action) and returned DENY.",
+          "   This is a dynamic authorization decision — even a valid token can be rejected based on policy.",
+        ];
+        if (err.denyReason) {
+          tokenEventLines.push(`   Deny rule: ${err.denyReason}`);
+        }
+        if (err.denyParameters?.TokenAudience && err.denyParameters?.McpResourceUri) {
+          tokenEventLines.push(
+            `   Token aud: ${err.denyParameters.TokenAudience}`,
+            `   Expected aud (McpResourceUri): ${err.denyParameters.McpResourceUri}`,
+          );
+        }
+        tokenEventLines.push(
+          "",
+          "RFCs: RFC 6749 §3.1 (authorization endpoint) · RFC 8693 §2.1 (exchange claims) · RFC 8707 (resource indicators)",
         );
-        addMessage(
-          "token-event",
-          [
-            " RFC 6749 §3.1 / RFC 8693 — Authorization Policy Denied",
-            "   The PingOne Authorize policy evaluated the request context (user, agent, action) and returned DENY.",
-            "   This is a dynamic authorization decision — even a valid token can be rejected based on policy (time, location, risk score, ABAC attributes).",
-            "   RFC 8693: the exchanged token carries claims that PingOne Authorize uses for policy evaluation.",
-            "",
-            "RFCs: RFC 6749 §3.1 (authorization endpoint) · RFC 8693 §2.1 (exchange claims) · RFC 8707 (resource indicators)",
-          ].join("\n"),
-          actionId,
-        );
+        addMessage("token-event", tokenEventLines.join("\n"), actionId);
       } else if (err?.code === "mcp_hitl_required") {
         // MCP Authorize gate: HITL approval needed before tool can execute
         const reason =
@@ -5382,7 +5465,7 @@ export default function BankingAgent({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
-          provider: selectedLlmProvider,
+          provider: activeLlmProvider || "heuristic",
         }),
         signal: anySignal([AbortSignal.timeout(15000), signal]),
       })
@@ -5535,7 +5618,7 @@ export default function BankingAgent({
     // A Helix-sourced answer (helix / helix_fallback) clears the banner.
     if (_source === "helix" || _source === "helix_fallback") {
       setHelixDegraded(false);
-    } else if (selectedLlmProvider === "helix" && _source === "heuristic") {
+    } else if (activeLlmProvider === "helix" && _source === "heuristic") {
       setHelixDegraded(true);
     }
     if (result.kind === "education" && result.ciba) {
@@ -6007,7 +6090,7 @@ export default function BankingAgent({
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, provider: selectedLlmProvider }),
+        body: JSON.stringify({ message: text, provider: activeLlmProvider || "heuristic" }),
         signal: anySignal([AbortSignal.timeout(15000), signal]),
       });
       const { result: _nlResult, source: _nlSource } = await _nlRes
@@ -6662,7 +6745,7 @@ export default function BankingAgent({
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               message: text,
-                              provider: selectedLlmProvider,
+                              provider: activeLlmProvider || "heuristic",
                             }),
                             signal: AbortSignal.timeout(15000),
                           },
@@ -6692,7 +6775,7 @@ export default function BankingAgent({
                   <BankingChips
                     customChips={customChips}
                     user={user}
-                    onChipClick={({ message, label }) => {
+                    onChipClick={({ message, label, requiresLlm }) => {
                       setShowDiscovery(false);
                       if (isAgentBlockedByConsentDecline()) {
                         addMessage(
@@ -6711,11 +6794,11 @@ export default function BankingAgent({
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               message: message,
-                              provider: selectedLlmProvider,
+                              provider: requiresLlm ? (activeLlmProvider || "heuristic") : "heuristic",
                             }),
                             signal: AbortSignal.timeout(15000),
                           });
-                          const { result, source } = await res
+                          const { result, source, llm_attempted, llm_not_configured } = await res
                             .json()
                             .catch(() => ({
                               result: {
@@ -6724,22 +6807,19 @@ export default function BankingAgent({
                               },
                               source: "heuristic",
                             }));
-                          // Advanced Analysis chips need an LLM provider; when one is
-                          // selected (helix/ollama) but no provider is configured the
-                          // backend falls back to heuristics and returns kind:"none"
-                          // with a generic "didn't recognize" message. Surface a
-                          // clearer hint that points at the actual fix.
-                          if (
-                            result?.kind === "none" &&
-                            selectedLlmProvider &&
-                            selectedLlmProvider !== "heuristic"
-                          ) {
-                            result.message =
-                              `This chip needs an LLM (Helix or Ollama) to interpret freeform questions, ` +
-                              `but no provider is configured.\n\n` +
-                              `Open the Helix tab in the agent and add base_url + api_key + agent_id, ` +
-                              `or pick a different chip from "Quick Actions" — those use the local ` +
-                              `heuristic parser and work without an LLM.`;
+                          if (result?.kind === "none") {
+                            if (llm_not_configured) {
+                              result.message =
+                                `This chip needs an LLM (Helix or Ollama) to interpret freeform questions, ` +
+                                `but no provider is configured.\n\n` +
+                                `Open the Helix tab in the agent and add base_url + api_key + agent_id, ` +
+                                `or pick a different chip from "Quick Actions" — those use the local ` +
+                                `heuristic parser and work without an LLM.`;
+                            } else if (llm_attempted) {
+                              result.message =
+                                `Helix couldn't map this to a banking action. ` +
+                                `Try rephrasing, or pick a chip from "Quick Actions".`;
+                            }
                           }
                           await dispatchNlResult(
                             result,
@@ -8127,7 +8207,7 @@ export default function BankingAgent({
                                   },
                                   body: JSON.stringify({
                                     message: s,
-                                    provider: selectedLlmProvider,
+                                    provider: activeLlmProvider || "heuristic",
                                   }),
                                   signal: AbortSignal.timeout(15000),
                                 },
@@ -8242,7 +8322,7 @@ export default function BankingAgent({
                                       },
                                       body: JSON.stringify({
                                         message: chip.label,
-                                        provider: selectedLlmProvider,
+                                        provider: activeLlmProvider || "heuristic",
                                       }),
                                       signal: AbortSignal.timeout(15000),
                                     },
@@ -8797,7 +8877,7 @@ export default function BankingAgent({
         onClose={() => setShowTokenChain(false)}
       />
       {showLoginModal && (
-        <QuickLoginModal pathname={window.location.pathname} />
+        <QuickLoginModal pathname={window.location.pathname} onClose={() => setShowLoginModal(false)} />
       )}
     </div>
   );

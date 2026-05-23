@@ -8,24 +8,26 @@
  * token exchange to the upstream MCP server — the BFF-issued token is the
  * bearer here and must already be scoped to the gateway audience.
  *
- * Env vars:
- *   MCP_GATEWAY_HTTP_URL   — base URL of banking-mcp-gateway (default: http://localhost:3005)
+ * Source of Truth for gateway URL:
+ *   configStore key: mcp_gateway_http_url  (persisted to SQLite, survives restarts)
+ *   Env var fallback: MCP_GATEWAY_HTTP_URL
+ *   Default: https://api.ping.demo:3005
+ *
+ * Other env vars:
  *   MCP_GATEWAY_TIMEOUT_MS — per-request timeout in ms (default: 30000)
  */
 
 const axios = require('axios');
-const https = require('https');
+const https = require('node:https');
+const configStore = require('./configStore');
 
-// For local dev the gateway runs HTTP on localhost:3005. If a deployment puts it
-// behind HTTPS with a self-signed cert (rare), this agent allows that too.
-// Bypass cert verification only when MCP_GATEWAY_REJECT_UNAUTHORIZED is not
-// explicitly set to '1' and the URL is not a public HTTPS origin.
+// mkcert TLS cert covers api.ping.demo — rejectUnauthorized off for local dev.
+// Set MCP_GATEWAY_REJECT_UNAUTHORIZED=1 to enforce cert validation in prod.
 const _gatewayRejectUnauthorized = process.env.MCP_GATEWAY_REJECT_UNAUTHORIZED === '1';
 const _devHttpsAgent = new https.Agent({ rejectUnauthorized: _gatewayRejectUnauthorized });
 
-// Gateway runs as a sibling service (HTTP, loopback) per run-demo.sh.
-// Override via MCP_GATEWAY_HTTP_URL env var; default matches the gateway's listener (PORT=3005, HOST=0.0.0.0).
-const DEFAULT_GATEWAY_URL = process.env.MCP_GATEWAY_HTTP_URL || 'http://localhost:3005';
+// Fallback used only when configStore has no value and env var is unset.
+const DEFAULT_GATEWAY_URL = 'https://api.ping.demo:3005';
 const DEFAULT_TIMEOUT_MS  = 30_000;
 const MCP_PROTOCOL_VERSION = '2025-11-25';
 
@@ -44,7 +46,7 @@ const MCP_PROTOCOL_VERSION = '2025-11-25';
  * @throws {Error} with `.code` and `.httpStatus` for 401/403/5xx
  */
 async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, opts = {}) {
-    const base = (gatewayUrl || DEFAULT_GATEWAY_URL).replace(/\/$/, '');
+    const base = (gatewayUrl || getMcpGatewayHttpUrl()).replace(/\/$/, '');
     const url  = `${base}/mcp`;
 
     const body = {
@@ -127,19 +129,33 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
         }
     }
 
+    // JSON-RPC error envelope in a 200 response (e.g. gateway api_key dispatch
+    // failed to reach the backend). Surface as a structured error so callers
+    // get a meaningful message rather than an opaque { error: {...} } object.
+    if (response.data?.error != null && response.data?.result === undefined) {
+        const rpcErr = response.data.error;
+        const msg = (typeof rpcErr === 'object' ? rpcErr.message : String(rpcErr)) || 'MCP tool call failed';
+        throw Object.assign(
+            new Error(msg),
+            { code: 'mcp_tool_error', httpStatus: 200, rpcCode: typeof rpcErr === 'object' ? rpcErr.code : undefined },
+        );
+    }
+
     // JSON-RPC responses: prefer .result, fall through to full body for
     // non-standard / direct responses from the upstream MCP server.
     const result = response.data?.result ?? response.data;
-    
+
     return { result, gwAuditTrail };
 }
 
 /**
  * Resolve the configured gateway base URL.
- * Falls back to DEFAULT_GATEWAY_URL when env var is unset.
+ * SoT: configStore key 'mcp_gateway_http_url' (persisted to SQLite).
+ * Fallback chain: configStore → MCP_GATEWAY_HTTP_URL env → DEFAULT_GATEWAY_URL.
  */
 function getMcpGatewayHttpUrl() {
-    return (process.env.MCP_GATEWAY_HTTP_URL || DEFAULT_GATEWAY_URL).replace(/\/$/, '');
+    const stored = configStore.getEffective('mcp_gateway_http_url');
+    return (stored || DEFAULT_GATEWAY_URL).replace(/\/$/, '');
 }
 
 module.exports = { callToolViaGateway, getMcpGatewayHttpUrl };

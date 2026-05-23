@@ -47,7 +47,8 @@
       { "key": "balance", "label": "Check Balance" },
       { "key": "accounts", "label": "My Accounts" },
       { "key": "transactions", "label": "Transactions" },
-      { "key": "transfer", "label": "Transfer Funds" }
+      { "key": "transfer", "label": "Transfer Funds" },
+      { "key": "feature", "label": "Show Mortgage Data" }
     ],
     "mockData": null
   },
@@ -56,6 +57,31 @@
     "write": "write",
     "transfer": "transfer",
     "featureScope": "mortgage:read"
+  },
+  "featurePage": {
+    "mcpTool": "show_mortgage",
+    "pageTitle": "Mortgage Account",
+    "badgeLabel": "API-KEY PATH",
+    "accentColor": "#ca8a04",
+    "accentBg": "rgba(202, 138, 4, 0.06)",
+    "accentLight": "#fef3c7",
+    "accentCode": "#fef9c3",
+    "accentText": "#713f12",
+    "accentAccentText": "#92400e",
+    "dataKey": "mortgage",
+    "fields": [
+      { "label": "Property",           "path": "propertyAddress" },
+      { "label": "Term",               "path": "term" },
+      { "label": "Origination date",   "path": "originationDate" },
+      { "label": "Interest rate",      "path": "interestRate",  "format": "pct" },
+      { "label": "Original loan",      "path": "loanAmount",    "format": "money" },
+      { "label": "Current balance",    "path": "currentBalance","format": "money", "accent": true },
+      { "label": "Monthly payment",    "path": "monthlyPayment","format": "money" },
+      { "label": "Next payment due",   "path": "nextPaymentDate" }
+    ],
+    "sectionTitle": "Loan details",
+    "emptyPrompt": "show mortgage data",
+    "scopeError": "The agent's access token does not carry the mortgage:read scope, so the gateway refused the API key swap. Sign out and sign back in to consent to mortgage access, then try \"Show Mortgage Data\" again."
   },
   "demoUsers": {
     "customer": { "hint": "demoUser", "passwordHint": "Tigers7&" },

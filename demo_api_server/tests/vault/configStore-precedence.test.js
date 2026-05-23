@@ -1,26 +1,18 @@
 'use strict';
 
 /**
- * Config precedence — Vault > SQLite > .env with a bootstrap allowlist.
+ * Config precedence — Vault > LMDB > .env with a bootstrap allowlist.
  *
  * Pattern mirrors tests/vault/configStore-persistFalse.test.js: fresh
  * configStore singleton per test via require-cache reset. We simulate the
  * three tiers with the public API:
  *   - vault tier   → setRaw(data, {persist:false})  (in-memory, provenance=vault)
- *   - sqlite tier  → setRaw(data, {persist:true})   (provenance=sqlite)
+ *   - lmdb tier   → setRaw(data, {persist:true})   (provenance=sqlite/lmdb)
  *   - env tier     → process.env[ENV_NAME]
  */
 
 const path = require('node:path');
-const { ensureValidConfigDb, canUseSQLite } = require('./_ensureValidConfigDb');
-
-// Skip entire suite when better-sqlite3 native addon is incompatible with this
-// Node version (e.g. compiled for Node 20 but running under Node 18).
-const describeSQLite = canUseSQLite() ? describe : describe.skip;
-
-// Full-suite pollution guard: another suite can leave a non-SQLite stub at
-// data/persistent/config.db; remove it so configStore recreates a valid DB.
-beforeAll(() => { if (canUseSQLite()) ensureValidConfigDb(); });
+const fs   = require('node:fs');
 
 function freshConfigStore() {
   const id = require.resolve('../../services/configStore');
@@ -29,32 +21,41 @@ function freshConfigStore() {
   return require('../../services/configStore');
 }
 
-describeSQLite('configStore provenance — vault is not clobbered by SQLite', () => {
-  test('SQLite write of a vault-owned key does NOT overwrite the vault value', async () => {
+function removeFromLmdb(...keys) {
+  try {
+    const { open } = require('lmdb');
+    const lmdbPath = path.join(__dirname, '..', '..', 'data', 'persistent', 'lmdb');
+    if (!fs.existsSync(lmdbPath)) return;
+    const env = open({ path: lmdbPath, maxDbs: 16, encoding: 'json' });
+    const db = env.openDB('config', { encoding: 'json' });
+    for (const key of keys) db.removeSync(key.toUpperCase());
+    env.close();
+  } catch (_) { /* best-effort cleanup */ }
+}
+
+describe('configStore provenance — vault is not clobbered by LMDB', () => {
+  test('LMDB write of a vault-owned key does NOT overwrite the vault value', async () => {
     const c = freshConfigStore();
     await c.ensureInitialized();
     const key = 'ollama_model';
 
-    // 1. Vault tier sets the value (persist:false → provenance=vault)
     await c.setRaw({ [key]: 'VAULT-VALUE' }, { persist: false });
     expect(c.getEffective(key)).toBe('VAULT-VALUE');
 
-    // 2. A later SQLite-tier write of the SAME key must NOT clobber the
-    //    vault value in the resolved result (vault outranks sqlite).
-    await c.setRaw({ [key]: 'SQLITE-VALUE' }, { persist: true });
+    await c.setRaw({ [key]: 'LMDB-VALUE' }, { persist: true });
     expect(c.getEffective(key)).toBe('VAULT-VALUE');
   });
 
-  test('SQLite value is used when the vault did NOT supply that key', async () => {
+  test('LMDB value is used when the vault did NOT supply that key', async () => {
     const c = freshConfigStore();
     await c.ensureInitialized();
     const key = 'ollama_base_url';
-    await c.setRaw({ [key]: 'http://sqlite-only:11434' }, { persist: true });
-    expect(c.getEffective(key)).toBe('http://sqlite-only:11434');
+    await c.setRaw({ [key]: 'http://lmdb-only:11434' }, { persist: true });
+    expect(c.getEffective(key)).toBe('http://lmdb-only:11434');
   });
 });
 
-describeSQLite('configStore key casing — UPPER-canonical regardless of caller/storage case', () => {
+describe('configStore key casing — UPPER-canonical regardless of caller/storage case', () => {
   test('setConfig with an UPPER FIELD_DEFS key is readable via getEffective (both cases)', async () => {
     const c = freshConfigStore();
     await c.ensureInitialized();
@@ -72,50 +73,26 @@ describeSQLite('configStore key casing — UPPER-canonical regardless of caller/
     expect(c.get('FF_AUTHORIZE_FAIL_OPEN')).toBe('true');
   });
 
-  test('vault value still outranks a later SQLite write (provenance preserved) with UPPER keys', async () => {
+  test('vault value still outranks a later LMDB write (provenance preserved) with UPPER keys', async () => {
     const c = freshConfigStore();
     await c.ensureInitialized();
     await c.setRaw({ Pingone_Region: 'vault-region' }, { persist: false });
-    await c.setRaw({ pingone_region: 'sqlite-region' }, { persist: true });
+    await c.setRaw({ pingone_region: 'lmdb-region' }, { persist: true });
     expect(c.get('PINGONE_REGION')).toBe('vault-region');
   });
 });
 
-describeSQLite('configStore secret encrypt/decrypt round-trips regardless of key casing', () => {
+describe('configStore secret encrypt/decrypt round-trips regardless of key casing', () => {
   const SECRET_CASES = [
-    'mcp_gw_client_secret',     // new lowercase secret (Task 1.5)
-    'demo_password',            // pre-existing lowercase secret (regressed by UPPER-case change)
-    'PINGONE_ADMIN_CLIENT_SECRET', // pre-existing UPPER secret (control — must still work)
+    'mcp_gw_client_secret',
+    'demo_password',
+    'PINGONE_ADMIN_CLIENT_SECRET',
   ];
 
-  // Minimal cross-test row hygiene: freshConfigStore() resets the module
-  // cache, NOT the shared on-disk config.db. Delete the specific rows for
-  // these keys (UPPER-cased, matching the storage model) before each test
-  // so a stale row from a sibling test cannot mask the assertion.
   beforeEach(() => {
-    const dbPath = path.join(__dirname, '..', '..', 'data', 'persistent', 'config.db');
-    const fs = require('node:fs');
-    if (!fs.existsSync(dbPath)) return;
-    let Database;
-    try {
-      Database = require('better-sqlite3');
-    } catch {
-      Database = require('node:sqlite').DatabaseSync;
-    }
-    const db = new Database(dbPath);
-    for (const key of SECRET_CASES) {
-      db.prepare('DELETE FROM config WHERE UPPER(key) = ?').run(key.toUpperCase());
-    }
-    db.close();
+    removeFromLmdb(...SECRET_CASES);
   });
 
-  // freshConfigStore() relies on `delete require.cache[id]`, which is a
-  // NO-OP under jest's module registry (it returns the SAME singleton, so
-  // its in-memory cache still holds the plaintext from setConfig and the
-  // SQLite reload never runs — masking this bug). jest.isolateModules
-  // genuinely re-evaluates the module, giving a fresh ConfigStore whose
-  // empty cache forces a real _loadFromSQLite + decrypt — a faithful
-  // process-restart simulation.
   function reloadedConfigStore() {
     let mod;
     jest.isolateModules(() => {
@@ -131,7 +108,6 @@ describeSQLite('configStore secret encrypt/decrypt round-trips regardless of key
       await c.ensureInitialized();
       const plaintext = `RT-${key}-VALUE`;
       await c.setConfig({ [key]: plaintext });
-      // Simulate process restart: fresh module re-reads SQLite + decrypts.
       const c2 = reloadedConfigStore();
       await c2.ensureInitialized();
       expect(c2.getEffective(key)).toBe(plaintext);
@@ -139,7 +115,7 @@ describeSQLite('configStore secret encrypt/decrypt round-trips regardless of key
   }
 });
 
-describeSQLite('getEffective precedence — Vault > SQLite > .env with bootstrap allowlist', () => {
+describe('getEffective precedence — Vault > LMDB > .env with bootstrap allowlist', () => {
   const SAVED = {};
   const ENVV = ['OLLAMA_MODEL', 'OLLAMA_BASE_URL', 'PINGONE_REGION', 'PINGONE_ENVIRONMENT_ID'];
   beforeEach(() => { for (const k of ENVV) SAVED[k] = process.env[k]; });
@@ -150,8 +126,6 @@ describeSQLite('getEffective precedence — Vault > SQLite > .env with bootstrap
     }
   });
 
-  // True fresh module (empty cache) — delete require.cache is a no-op under
-  // jest, so use jest.isolateModules for a genuine re-evaluation.
   function reloadedConfigStore() {
     let mod;
     jest.isolateModules(() => {
@@ -169,36 +143,18 @@ describeSQLite('getEffective precedence — Vault > SQLite > .env with bootstrap
     expect(c.getEffective('ollama_model')).toBe('vault-model');
   });
 
-  test('non-bootstrap key: SQLite (persist:true) beats a conflicting .env value', async () => {
+  test('non-bootstrap key: LMDB (persist:true) beats a conflicting .env value', async () => {
     const c = freshConfigStore();
     await c.ensureInitialized();
     process.env.OLLAMA_BASE_URL = 'http://env:11434';
-    await c.setRaw({ ollama_base_url: 'http://sqlite:11434' }, { persist: true });
-    expect(c.getEffective('ollama_base_url')).toBe('http://sqlite:11434');
+    await c.setRaw({ ollama_base_url: 'http://lmdb:11434' }, { persist: true });
+    expect(c.getEffective('ollama_base_url')).toBe('http://lmdb:11434');
   });
 
-  test('non-bootstrap key: .env used when neither vault nor SQLite set it', async () => {
-    // Determinism: use a genuinely fresh module (empty cache) AND a key with
-    // an envFallbackMap entry but NO FIELD_DEFS default and NO builtin /
-    // pingoneBackendDefaults value, so .env is the only resolvable source.
-    // demo_apikey_backend_service_key → ['DEMO_APIKEY_SERVICE_KEY'] is such a
-    // key (Phase 266 Path A demo key, no FIELD_DEFS default). Clear any
-    // persisted SQLite row first so the cache is truly empty for this key.
-    const dbPath = path.join(__dirname, '..', '..', 'data', 'persistent', 'config.db');
-    const fs = require('node:fs');
-    if (fs.existsSync(dbPath)) {
-      let Database;
-      try {
-        Database = require('better-sqlite3');
-      } catch {
-        Database = require('node:sqlite').DatabaseSync;
-      }
-      const db = new Database(dbPath);
-      db.prepare('DELETE FROM config WHERE UPPER(key) = ?').run('DEMO_APIKEY_BACKEND_SERVICE_KEY');
-      db.close();
-    }
+  test('non-bootstrap key: .env used when neither vault nor LMDB set it', async () => {
+    removeFromLmdb('DEMO_APIKEY_BACKEND_SERVICE_KEY');
     const saved = process.env.DEMO_APIKEY_SERVICE_KEY;
-    const sentinel = 'env-fallback-proof-' + Date.now();
+    const sentinel = `env-fallback-proof-${Date.now()}`;
     process.env.DEMO_APIKEY_SERVICE_KEY = sentinel;
     try {
       const c = reloadedConfigStore();
@@ -218,11 +174,11 @@ describeSQLite('getEffective precedence — Vault > SQLite > .env with bootstrap
     expect(c.getEffective('pingone_region')).toBe('env-region');
   });
 
-  test('BOOTSTRAP key (pingone_environment_id): .env wins over a SQLite value', async () => {
+  test('BOOTSTRAP key (pingone_environment_id): .env wins over a LMDB value', async () => {
     const c = freshConfigStore();
     await c.ensureInitialized();
     process.env.PINGONE_ENVIRONMENT_ID = 'env-eid';
-    await c.setRaw({ pingone_environment_id: 'sqlite-eid' }, { persist: true });
+    await c.setRaw({ pingone_environment_id: 'lmdb-eid' }, { persist: true });
     expect(c.getEffective('pingone_environment_id')).toBe('env-eid');
   });
 
@@ -235,31 +191,14 @@ describeSQLite('getEffective precedence — Vault > SQLite > .env with bootstrap
   });
 });
 
-describeSQLite('configStore FIELD_DEFS defaults reachable for UPPER keys', () => {
+describe('configStore FIELD_DEFS defaults reachable for UPPER keys', () => {
   test('getEffective(UPPER key) returns FIELD_DEFS default when nothing else set', async () => {
-    // "nothing else set" must also mean no stale SQLite row from a sibling
-    // test (freshConfigStore resets the module cache, not the shared
-    // on-disk config.db). Clear any persisted PINGONE_REGION so the
-    // FIELD_DEFS default is the genuine last resort.
-    const dbPath = path.join(__dirname, '..', '..', 'data', 'persistent', 'config.db');
-    const fs = require('node:fs');
-    if (fs.existsSync(dbPath)) {
-      let Database;
-      try {
-        Database = require('better-sqlite3');
-      } catch {
-        Database = require('node:sqlite').DatabaseSync;
-      }
-      const db = new Database(dbPath);
-      db.prepare('DELETE FROM config WHERE UPPER(key) = ?').run('PINGONE_REGION');
-      db.close();
-    }
-    const c2 = freshConfigStore();
-    await c2.ensureInitialized();
-    // PINGONE_REGION has FIELD_DEFS default 'com'. Ensure no env override.
+    removeFromLmdb('PINGONE_REGION');
     const saved = process.env.PINGONE_REGION;
     delete process.env.PINGONE_REGION;
     try {
+      const c2 = freshConfigStore();
+      await c2.ensureInitialized();
       expect(c2.getEffective('PINGONE_REGION')).toBe('com');
       expect(c2.getEffective('pingone_region')).toBe('com');
     } finally {
