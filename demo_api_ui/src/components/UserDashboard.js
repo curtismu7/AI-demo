@@ -534,11 +534,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     }
   };
 
-  // Function to open token modal
-  const openTokenModal = () => {
-    setShowTokenModal(true);
-  };
-
   useEffect(() => {
     // Initial data fetch
     fetchUserData();
@@ -2525,7 +2520,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       <UserTokenStatusBar
         user={user}
         tokenSecondsLeft={tokenSecondsLeft}
-        onOpenModal={openTokenModal}
+        onOpenModal={() => setShowTokenModal(true)}
       />
       {/* ── Toolbar row with additional actions ────────────────────── */}
       <div className="dashboard-header-stack" style={{ marginTop: 0 }}>
