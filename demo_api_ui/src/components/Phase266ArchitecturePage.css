@@ -149,6 +149,53 @@
   border-radius: 3px;
 }
 
+/* ── Legacy legend row (removed in Task 2 with JSX) ─────────────── */
+
+.p266-arch-legend-row {
+  max-width: 1280px;
+  margin: 0 auto 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .p266-arch-legend-row { grid-template-columns: 1fr; }
+}
+
+.p266-arch-legend-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.p266-arch-legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.p266-arch-legend-card strong {
+  display: block;
+  font-size: 14px;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.p266-arch-legend-card p {
+  font-size: 13px;
+  color: #4b5563;
+  margin: 0;
+  line-height: 1.45;
+}
+
 /* ── PathFilterBar ─────────────────────────────────────────────── */
 
 .p266-filter-bar {
@@ -176,7 +223,7 @@
   line-height: 1;
 }
 
-.p266-filter-btn:hover {
+.p266-filter-btn:not(.p266-filter-btn--all-active):not(.p266-filter-btn--A-active):not(.p266-filter-btn--B-active):not(.p266-filter-btn--C-active):hover {
   border-color: #9ca3af;
   color: #374151;
 }
@@ -230,4 +277,9 @@
 .p266-path-active[data-selected-path="B"] [data-path="B"],
 .p266-path-active[data-selected-path="C"] [data-path="C"] {
   opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p266-filter-btn { transition: none; }
+  .p266-path-active [data-path] { transition: none; }
 }
