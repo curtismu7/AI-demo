@@ -51,7 +51,7 @@ let sessionStore;
 
 // ── LMDB store (no native ABI dependency — works across all Node versions) ──
 try {
-    const { LmdbSessionStore } = require('./services/lmdb/sessionStore.lmdb');
+    const { LmdbSessionStore } = require('./services/lmdb/sessionStore');
     sessionStore = new LmdbSessionStore({ ttl: 24 * 60 * 60 * 1000 });
     sessionStoreType = 'lmdb';
     console.log('[session-store] Using LMDB store — sessions persist across restarts without native ABI dependency');
@@ -560,9 +560,10 @@ app.post('/api/auth/clear-session', (req, res) => {
     res.json({ ok: true });
 });
 
-// Unified logout — destroys whichever session is active and redirects
-// browser → PingOne RP-Initiated Logout → post_logout_redirect_uri (/logout).
-// Called as a full page navigation (window.location.href), NOT via axios.
+// Unified logout — destroys whichever session is active and returns a JSON
+// body with the PingOne signoff URL. The SPA navigates there directly so the
+// cookie-clearing Set-Cookie headers are delivered on the /api/auth/logout
+// response (not on a 302 redirect that gets proxied away without cookies).
 app.get('/api/auth/logout', async (req, res) => {
     const idToken = req.session.oauthTokens?.idToken
         // Fallback: auth-state cookie carries the id_token for RP-Initiated Logout
@@ -649,8 +650,22 @@ app.get('/api/auth/logout', async (req, res) => {
             console.warn('[logout] No client_id resolved — PingOne may not identify the RP for signoff.');
         }
 
-        console.info(`[logout] Redirecting to PingOne signoff (id_token_hint: ${idToken ? 'yes' : 'NO'}, client_id: ${clientId || 'none'})`);
-        res.redirect(`${pingoneSignoff}?${params.toString()}`);
+        const signoffUrl = `${pingoneSignoff}?${params.toString()}`;
+        console.info(`[logout] Signoff URL built (id_token_hint: ${idToken ? 'yes' : 'NO'}, client_id: ${clientId || 'none'})`);
+
+        // Detect whether the caller expects a redirect (window.location.href navigation)
+        // or a JSON body (fetch from the SPA). Accept header contains 'text/html' for
+        // direct browser navigations; fetch() sends 'application/json' or '*/*'.
+        const acceptsHtml = (req.get('accept') || '').includes('text/html');
+        if (acceptsHtml) {
+            // Direct browser navigation — redirect as before (keeps backward compat
+            // for any tool or test that calls this endpoint directly).
+            res.redirect(signoffUrl);
+        } else {
+            // Fetch from SPA — return JSON so the SPA can navigate after receiving
+            // the Set-Cookie headers that clear connect.sid and _auth.
+            res.json({ logoutUrl: signoffUrl });
+        }
     });
 });
 

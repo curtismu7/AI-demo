@@ -45,7 +45,10 @@ class LmdbSessionStore extends Store {
 
   set(sid, sess, cb) {
     try {
-      const maxAge = sess.cookie && sess.cookie.maxAge ? sess.cookie.maxAge * 1000 : this.ttl;
+      // sess.cookie.maxAge is already in milliseconds (express-session stores
+      // remaining ms, not seconds). Do NOT multiply by 1000 — that produced
+      // ~3-year expiry (86 400 000 ms * 1000 ≈ 2 740 years).
+      const maxAge = sess.cookie && sess.cookie.maxAge ? sess.cookie.maxAge : this.ttl;
       const expire = Date.now() + maxAge;
       this._db.putSync(sid, { sess, expire });
       cb(null);
