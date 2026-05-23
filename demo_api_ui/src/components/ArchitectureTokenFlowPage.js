@@ -101,18 +101,21 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["olb-application"],
     colorClass: "active",
     label: "User sends request",
+    stepArrow: { yPct: 8.2, xMinPct: 3.7, xMaxPct: 19.5 },
     token: null,
   },
   {
     regionIds: ["olb-application", "chatbot"],
     colorClass: "active",
     label: "Chatbot receives message",
+    stepArrow: { yPct: 9.0, xMinPct: 19.7, xMaxPct: 28.0 },
     token: null,
   },
   {
     regionIds: ["olb-application", "pingone-aic"],
     colorClass: "active",
     label: "OAuth 2.0 PKCE login",
+    stepArrow: { yPct: 39.3, xMinPct: 12.2, xMaxPct: 40.4 },
     token: {
       type: "Authorization Code Request",
       _type: "oauth",
@@ -127,6 +130,7 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["pingone-aic", "chatbot"],
     colorClass: "active",
     label: "IdP issues ID Token + Access Token (with may_act)",
+    stepArrow: { yPct: 40.2, xMinPct: 12.1, xMaxPct: 40.6 },
     token: {
       type: "ID Token (OIDC)",
       _type: "idtoken",
@@ -153,6 +157,7 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["chatbot", "agent1"],
     colorClass: "active",
     label: "Agent takes over — BFF holds access token",
+    stepArrow: { yPct: 41.9, xMinPct: 19.7, xMaxPct: 28.0 },
     token: {
       type: "Access Token (held by BFF)",
       _type: "oauth",
@@ -168,6 +173,7 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["agent1", "llm"],
     colorClass: "active",
     label: "LLM processes intent → selects tool",
+    stepArrow: { yPct: 28.4, xMinPct: 28.2, xMaxPct: 35.6 },
     token: {
       type: "LLM Reasoning",
       _type: "mcp",
@@ -182,6 +188,7 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     colorClass: "active",
     label: "RFC 8693 Exchange #1: user token → delegation token",
     isTokenExchange: true,
+    stepArrow: { yPct: 43.7, xMinPct: 28.2, xMaxPct: 40.4 },
     token: {
       type: "User Access Token (subject)",
       _type: "oauth",
@@ -207,6 +214,7 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["pingone-aic", "token-exchange-box"],
     colorClass: "active",
     label: "Delegation token in transit",
+    stepArrow: { yPct: 44.6, xMinPct: 28.1, xMaxPct: 40.6 },
     token: {
       type: "Delegated Token (active)",
       _type: "oauth",
@@ -222,6 +230,7 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["token-exchange-box", "mcp-gateway-tf"],
     colorClass: "active",
     label: "Delegated token arrives at MCP Gateway",
+    stepArrow: { yPct: 47.8, xMinPct: 28.2, xMaxPct: 54.1 },
     token: {
       type: "Delegated Token (inbound at gateway)",
       _type: "oauth",
@@ -237,6 +246,7 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["mcp-gateway-tf", "pingauthorize-tf"],
     colorClass: "active",
     label: "PingAuthorize: McpToolsList + McpToolCall checks",
+    stepArrow: { yPct: 49.6, xMinPct: 54.3, xMaxPct: 66.7 },
     token: {
       type: "PingAuthorize Request",
       _type: "mcp",
@@ -253,6 +263,7 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["pingauthorize-tf"],
     colorClass: "active-permit",
     label: "PERMIT — tool call allowed",
+    stepArrow: { yPct: 59.6, xMinPct: 54.3, xMaxPct: 66.8 },
     token: {
       type: "Authorization Decision",
       _type: "permit",
@@ -267,6 +278,7 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     colorClass: "active",
     label: "RFC 8693 Exchange #2: scope-narrowed → MCP Server",
     isTokenExchange: true,
+    stepArrow: { yPct: 77.3, xMinPct: 40.6, xMaxPct: 54.3 },
     token: {
       type: "Delegated Token (subject)",
       _type: "exchange",
@@ -292,6 +304,7 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["mcp-olb", "oauth-rs"],
     colorClass: "active",
     label: "MCP Server validates token → calls Banking API",
+    stepArrow: { yPct: 80.3, xMinPct: 54.3, xMaxPct: 77.0 },
     token: {
       type: "Resource Token (Banking API)",
       _type: "oauth",
@@ -307,6 +320,7 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["mcp-invest", "oauth-rs"],
     colorClass: "active",
     label: "Investments API called (same token)",
+    stepArrow: { yPct: 83.9, xMinPct: 77.3, xMaxPct: 91.9 },
     token: {
       type: "Resource Token (Investments API)",
       _type: "oauth",
@@ -322,6 +336,7 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["chatbot"],
     colorClass: "active",
     label: "Results returned to user",
+    stepArrow: { yPct: 92.1, xMinPct: 19.7, xMaxPct: 28.1 },
     token: {
       type: "API Response",
       _type: "mcp",
@@ -1115,6 +1130,7 @@ export default function ArchitectureTokenFlowPage({ user }) {
   const [stepDetailOut, setStepDetailOut] = useState(null);
   const [isTokenExch, setIsTokenExch] = useState(false);
   const [isHitl, setIsHitl] = useState(false);
+  const [stepArrow, setStepArrow] = useState(null);
   const [history, setHistory] = useState([]);
   const [selectedScenario, setSelectedScenario] = useState("full-flow");
   const [totalSteps, setTotalSteps] = useState(
@@ -1204,6 +1220,7 @@ export default function ArchitectureTokenFlowPage({ user }) {
     setStepDetailOut(step.tokenOut || null);
     setIsTokenExch(Boolean(step.isTokenExchange));
     setIsHitl(Boolean(step.isHitl));
+    setStepArrow(step.stepArrow ? { ...step.stepArrow, colorClass: step.colorClass } : null);
 
     const regions = {};
     const labels = {};
@@ -1256,6 +1273,7 @@ export default function ArchitectureTokenFlowPage({ user }) {
                 setStepDetail(null);
                 setStepDetail2(null);
                 setStepDetailOut(null);
+                setStepArrow(null);
               }, HIGHLIGHT_MS);
               simTimeouts.current.push(done);
             }
@@ -1326,6 +1344,7 @@ export default function ArchitectureTokenFlowPage({ user }) {
     setStepDetail(null);
     setStepDetail2(null);
     setStepDetailOut(null);
+    setStepArrow(null);
     pausedStep.current = -1;
   }, []);
 
@@ -1403,6 +1422,7 @@ export default function ArchitectureTokenFlowPage({ user }) {
       stepDetailOut={stepDetailOut}
       isTokenExchange={isTokenExch}
       isHitl={isHitl}
+      stepArrow={stepArrow}
       audHops={TOKEN_FLOW_AUD_HOPS}
       tokenHistory={history}
       onClearHistory={clearHistory}

@@ -158,6 +158,47 @@
   100% { stroke-width: 0.5; opacity: 1; }
 }
 
+/* ── Step arrow highlight — thin horizontal band on the active message ── */
+
+.diagram-step-arrow {
+  fill: transparent;
+  stroke: transparent;
+  pointer-events: none;
+}
+.diagram-step-arrow--active {
+  fill: rgba(0, 70, 135, 0.22);
+  stroke: #004687;
+  stroke-width: 0.5;
+  animation: step-arrow-pulse 1.0s ease-in-out infinite;
+  filter: drop-shadow(0 0 1px rgba(0, 102, 204, 0.8));
+}
+.diagram-step-arrow--active-error {
+  fill: rgba(239, 68, 68, 0.22);
+  stroke: #ef4444;
+  stroke-width: 0.5;
+  animation: step-arrow-pulse 1.0s ease-in-out infinite;
+  filter: drop-shadow(0 0 1px rgba(239, 68, 68, 0.8));
+}
+.diagram-step-arrow--active-permit {
+  fill: rgba(76, 175, 80, 0.22);
+  stroke: #4CAF50;
+  stroke-width: 0.5;
+  animation: step-arrow-pulse 1.0s ease-in-out infinite;
+  filter: drop-shadow(0 0 1px rgba(76, 175, 80, 0.8));
+}
+.diagram-step-arrow--active-hitl {
+  fill: rgba(217, 119, 6, 0.22);
+  stroke: #d97706;
+  stroke-width: 0.5;
+  animation: step-arrow-pulse 1.0s ease-in-out infinite;
+  filter: drop-shadow(0 0 1px rgba(217, 119, 6, 0.8));
+}
+@keyframes step-arrow-pulse {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
 /* ── Explanation text inside boxes ───────────────────── */
 
 .diagram-region-text {

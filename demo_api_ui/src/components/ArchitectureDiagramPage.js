@@ -98,6 +98,19 @@ function HighlightRect({ region, colorVariant, label }) {
   );
 }
 
+// Thin horizontal band highlighting the active message arrow
+function StepArrowHighlight({ arrow, colorVariant }) {
+  if (!arrow) return null;
+  const { yPct, xMinPct, xMaxPct } = arrow;
+  const h = 1.5;
+  const y = yPct - h / 2;
+  const w = xMaxPct - xMinPct;
+  const cls = colorVariant
+    ? `diagram-step-arrow diagram-step-arrow--${colorVariant}`
+    : 'diagram-step-arrow diagram-step-arrow--active';
+  return <rect x={xMinPct} y={y} width={w} height={h} rx={0.4} className={cls} />;
+}
+
 // ─── Aud Trail ────────────────────────────────────────────────────────────────
 
 function AudTrail({ audHops, currentStep }) {
@@ -279,6 +292,7 @@ export default function ArchitectureDiagramPage({
   stepDetailOut,
   isTokenExchange,
   isHitl,
+  stepArrow,
   audHops,
   tokenHistory,
   onClearHistory,
@@ -346,6 +360,7 @@ export default function ArchitectureDiagramPage({
                     label={regionLabels[region.id] || null}
                   />
                 ))}
+                <StepArrowHighlight arrow={stepArrow || null} colorVariant={stepArrow?.colorClass || null} />
               </svg>
             </div>
           </div>
