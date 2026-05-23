@@ -13,6 +13,7 @@ import { useEducationUI } from "../context/EducationUIContext";
 import { useCurrentUserTokenEvent } from "../hooks/useCurrentUserTokenEvent";
 import apiClient from "../services/apiClient";
 import { getCachedJson } from "../services/cachedStatusService";
+import { performLogout } from "../services/logout";
 import {
   notifyError,
   notifyInfo,
@@ -2861,7 +2862,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           try { localStorage.removeItem("api-traffic-store"); } catch (_) {}
           try { localStorage.removeItem("banking_ui_theme"); } catch (_) {}
           try { sessionStorage.removeItem("banking_ui_theme"); } catch (_) {}
-          window.location.href = "/api/auth/logout";
+          performLogout();
         }}
         onCancel={() => setShowResetModal(false)}
       />

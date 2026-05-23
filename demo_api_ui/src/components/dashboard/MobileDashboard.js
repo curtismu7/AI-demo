@@ -1,5 +1,6 @@
 // banking_api_ui/src/components/dashboard/MobileDashboard.js
 import React, { useState, useEffect } from 'react';
+import { performLogout } from '../../services/logout';
 import { useAuth } from '../auth/AuthContext';
 import { useVertical } from '../../context/VerticalContext';
 import DashboardHero from './DashboardHero';
@@ -135,7 +136,7 @@ const MobileDashboard = ({
                   <button
                     type="button"
                     className="mobile-dashboard__more-item mobile-dashboard__more-item--danger"
-                    onClick={() => window.location.hash = '#logout'}
+                    onClick={performLogout}
                   >
                     <span className="mobile-dashboard__more-icon">🚪</span>
                     <span>Sign Out</span>
@@ -264,7 +265,7 @@ const MobileDashboard = ({
                 <button
                   type="button"
                   className="mobile-dashboard__slide-menu-signout"
-                  onClick={() => window.location.hash = '#logout'}
+                  onClick={performLogout}
                 >
                   Sign Out
                 </button>

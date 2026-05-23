@@ -4,6 +4,7 @@ import { useAgentUiMode } from "../context/AgentUiModeContext";
 import { useDemoTour } from "../context/DemoTourContext";
 import { useEducationUI } from "../context/EducationUIContext";
 import { persistBankingAgentUi } from "../services/demoScenarioService";
+import { performLogout } from "../services/logout";
 import { setDashboardLayout } from "../utils/dashboardLayout";
 import { EDU } from "./education/educationIds";
 import ConfirmModal from "./ConfirmModal";
@@ -567,7 +568,7 @@ export default function AdminSideNav({ user }) {
         break;
       }
       case "logout":
-        window.location.href = "/api/auth/logout";
+        performLogout();
         break;
       case "reset-demo":
         setShowResetModal(true);
@@ -593,7 +594,7 @@ export default function AdminSideNav({ user }) {
     try { localStorage.removeItem("api-traffic-store"); } catch (_) {}
     try { localStorage.removeItem("banking_ui_theme"); } catch (_) {}
     try { sessionStorage.removeItem("banking_ui_theme"); } catch (_) {}
-    window.location.href = "/api/auth/logout";
+    performLogout();
   };
 
   const handleKillSwitchConfirm = useCallback(

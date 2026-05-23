@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import bffAxios from "../services/bffAxios";
 import { isEducationalPath } from "../utils/educationalPages";
+import { performLogout } from "../services/logout";
 import { useTheme } from "../context/ThemeContext";
 import "./SessionExpiryTimer.css";
 
@@ -118,16 +119,6 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
     return () => clearInterval(interval);
   }, [expiresAt, updateTimeRemaining]);
 
-  const handleLogout = async () => {
-    try {
-      await bffAxios.post("/api/auth/logout");
-      navigate("/");
-    } catch (err) {
-      console.error("Logout error:", err.message);
-      navigate("/");
-    }
-  };
-
   if (shouldHide) {
     return null;
   }
@@ -227,7 +218,7 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
 
           <button
             className="banking-header__logout-btn"
-            onClick={handleLogout}
+            onClick={performLogout}
             title="Logout"
             aria-label="Logout"
           >

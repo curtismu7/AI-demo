@@ -8,6 +8,7 @@ import { notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/
 import axios from 'axios';
 import apiClient from '../services/apiClient';
 import { fetchDemoScenario, saveDemoScenario } from '../services/demoScenarioService';
+import { performLogout } from '../services/logout';
 import { AGENT_MCP_SCOPE_CATALOG, DEFAULT_AGENT_MCP_ALLOWED_SCOPES } from '../config/agentMcpScopes';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { useVertical } from '../context/VerticalContext';
@@ -90,7 +91,7 @@ export default function DemoSetupPanel() {
     try { localStorage.removeItem('api-traffic-store'); } catch (_) {}
     try { localStorage.removeItem('banking_ui_theme'); } catch (_) {}
     try { sessionStorage.removeItem('banking_ui_theme'); } catch (_) {}
-    window.location.href = '/api/auth/logout';
+    performLogout();
   };
 
   const [loading, setLoading] = useState(true);
