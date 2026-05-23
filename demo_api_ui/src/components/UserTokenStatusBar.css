@@ -1,0 +1,99 @@
+/* UserTokenStatusBar — status strip below DashboardHeader */
+
+.utsb {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 32px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 13px;
+  min-height: 40px;
+}
+
+/* Active state — clickable pill */
+.utsb__active {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 20px;
+  color: #15803d;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.utsb__active:hover,
+.utsb__active:focus-visible {
+  background: #dcfce7;
+  border-color: #86efac;
+  outline: 2px solid #4ade80;
+  outline-offset: 2px;
+}
+
+.utsb__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #16a34a;
+  flex-shrink: 0;
+}
+
+/* Expired state */
+.utsb__expired {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #b45309;
+  font-weight: 500;
+}
+
+/* Not logged in state */
+.utsb__anonymous {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+}
+
+/* Login / re-login button */
+.utsb__login-btn {
+  padding: 4px 12px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  line-height: 1.4;
+}
+
+.utsb__login-btn:hover,
+.utsb__login-btn:focus-visible {
+  background: #1d4ed8;
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+/* Loading shimmer */
+.utsb__shimmer {
+  width: 180px;
+  height: 20px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: utsb-shimmer 1.4s infinite;
+}
+
+@keyframes utsb-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
