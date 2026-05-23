@@ -124,7 +124,7 @@ export default function ArchitectureOverviewPage() {
       playTimerRef.current = setTimeout(() => dispatch({ type: 'TICK' }), delay);
     }
     return () => clearTimeout(playTimerRef.current);
-  }, [sim.playing, sim.mode, sim.speed]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sim.playing, sim.mode, sim.speed]);
 
   // SSE connection for Live Trace mode
   useEffect(() => {

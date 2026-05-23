@@ -85,11 +85,11 @@ function ArchitectureSimControls({
         style={ctrlBtn(playing ? '#f59e0b' : '#004687')}
         disabled={mode === 'live' && atEnd}
       >
-        {playing ? '⏸ Pause' : '▶ Play'}
+        {playing ? 'Pause' : '▶ Play'}
       </button>
       {mode !== 'live' && (
         <button type="button" onClick={onStep} style={ctrlBtn('#004687')} disabled={playing || atEnd}>
-          ⏭ Step
+          Step
         </button>
       )}
       <button type="button" onClick={onReset} style={ctrlBtn(null)}>

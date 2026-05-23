@@ -192,14 +192,14 @@ function ArchitectureSimSvg({ nodeStates = {}, edgeStates = {} }) {
         x2={COL.services}      y2={cy(ROW.top)}
         state={es('e-mcpgw-mcpserver')} markerId={arrowId(es('e-mcpgw-mcpserver'))} />
 
-      {/* mcp-gw → mortgage (lower row) */}
+      {/* mcp-gw → mortgage (skips mcp-invest row, terminates at n-mortgage) */}
       <SimEdge id="e-mcpgw-mortgage"
         x1={cx(COL.mcpGw)}  y1={ROW.top + NH}
-        x2={cx(COL.mcpGw)}  y2={ROW.mid}
+        x2={cx(COL.mcpGw)}  y2={ROW.mid + NH + 10}
         state={es('e-mcpgw-mortgage')} markerId={arrowId(es('e-mcpgw-mortgage'))} />
       <SimEdge id="e-mcpgw-mortgage-h"
-        x1={cx(COL.mcpGw)}  y1={cy(ROW.mid)}
-        x2={COL.services}   y2={cy(ROW.mid)}
+        x1={cx(COL.mcpGw)}  y1={cy(ROW.mid + NH + 10)}
+        x2={COL.services}   y2={cy(ROW.mid + NH + 10)}
         state={es('e-mcpgw-mortgage')} markerId={arrowId(es('e-mcpgw-mortgage'))} />
 
       {/* mcp-gw → resource-server */}
@@ -262,7 +262,7 @@ function ArchitectureSimSvg({ nodeStates = {}, edgeStates = {} }) {
       <SimNode id="n-pingone"    x={COL.external} y={ROW.mid} label="PingOne"        sub="OAuth AS"              state={ns('n-pingone')} />
 
       {/* Row 3: lower services */}
-      <SimNode id="n-resource-server" x={COL.services} y={ROW.lower} label="Resource Server" sub=":3001"        state={ns('n-resource-server')} />
+      <SimNode id="n-resource-server" x={COL.services} y={ROW.lower} label="Resource Server" sub="/api/resource-server" state={ns('n-resource-server')} />
       <SimNode id="n-pingauthorize"   x={COL.external} y={ROW.lower} label="PingAuthorize"   sub="PDP"          state={ns('n-pingauthorize')} />
 
       {/* Row 4: HITL */}
