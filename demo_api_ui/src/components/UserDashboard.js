@@ -297,7 +297,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               setTokenExpiresAt(userRes.data.expiresAt);
           } else {
             const adminRes = await getCachedJson("/api/auth/oauth/status");
-            if (adminRes.data.authenticated) sessionUser = adminRes.data.user;
+            if (adminRes.data.authenticated) {
+              sessionUser = adminRes.data.user;
+              if (adminRes.data.expiresAt)
+                setTokenExpiresAt(adminRes.data.expiresAt);
+            }
           }
         } catch (sessionErr) {
           console.warn("Session check failed:", sessionErr.message);
