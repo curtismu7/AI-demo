@@ -12,53 +12,7 @@
   flex-wrap: wrap;
 }
 
-.arch-diagram-zoom-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 0.25rem 0.5rem;
-}
-
-.arch-zoom-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 0.2rem 0.45rem;
-  border-radius: 4px;
-  color: #334155;
-  transition: background 0.15s;
-}
-.arch-zoom-btn:hover { background: #e2e8f0; }
-
-.arch-zoom-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #475569;
-  min-width: 2.8rem;
-  text-align: center;
-}
-
-.arch-zoom-reset { font-size: 0.95rem; color: #64748b; }
-
-.arch-simulate-btn {
-  padding: 0.4rem 1rem;
-  border: none;
-  border-radius: 6px;
-  background: #004687;
-  color: #fff;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
-}
-.arch-simulate-btn:hover:not(:disabled) { background: #003366; }
-.arch-simulate-btn:disabled,
-.arch-simulate-btn--running { opacity: 0.65; cursor: not-allowed; }
+/* zoom + step controls migrated to DiagramControls.css (.dc-*) */
 
 .arch-diagram-scroll-wrapper {
   overflow: auto;
@@ -326,47 +280,7 @@
 .arch-aud-trail__hop--on .arch-aud-trail__act    { color: #86efac; }
 .arch-aud-trail__hop--on .arch-aud-trail__mayact { color: #fde68a; }
 
-/* ── Step controls ────────────────────────────────────── */
-
-.arch-step-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-.arch-step-label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #004687;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 5px;
-  padding: 0.25rem 0.6rem;
-}
-.arch-step-label--paused {
-  color: #92400e;
-  background: #fffbeb;
-  border-color: #fde68a;
-}
-
-.arch-ctrl-btn {
-  padding: 0.25rem 0.7rem;
-  border: none;
-  border-radius: 5px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.arch-ctrl-btn--pause  { background: #f59e0b; color: #fff; }
-.arch-ctrl-btn--pause:hover  { background: #d97706; }
-.arch-ctrl-btn--resume { background: #22c55e; color: #fff; }
-.arch-ctrl-btn--resume:hover { background: #16a34a; }
-.arch-ctrl-btn--next   { background: #004687; color: #fff; }
-.arch-ctrl-btn--next:hover   { background: #003366; }
-.arch-ctrl-btn--stop   { background: #e2e8f0; color: #475569; }
-.arch-ctrl-btn--stop:hover   { background: #cbd5e1; }
+/* step controls migrated to DiagramControls.css (.dc-*) */
 
 /* ── Token panel (wrapper for 1 or 2 stacked cards) ──── */
 

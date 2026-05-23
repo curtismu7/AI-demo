@@ -11,7 +11,16 @@
  */
 import { useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
+import { PathFilterBar } from "./diagram";
 import "./Phase266ArchitecturePage.css";
+
+// Module-level paths constant — consumed by the shared PathFilterBar component
+const P266_PATHS = [
+  { key: null,  label: "All",                  color: null      },
+  { key: "A",   label: "Path A — API-key",      color: "#b45309" },
+  { key: "B",   label: "Path B — Dual Token",   color: "#0f766e" },
+  { key: "C",   label: "Path C — OAuth Bearer", color: "#1e40af" },
+];
 
 const MERMAID_SOURCE = `flowchart TB
     classDef user fill:#e0e7ff,stroke:#3730a3,color:#1e1b4b,stroke-width:2px
@@ -120,43 +129,6 @@ function tagPathNodes(container) {
   });
 }
 
-function PathFilterBar({ selectedPath, onSelect }) {
-  const paths = [
-    { key: null, label: "All", swatch: null },
-    { key: "A", label: "Path A — API-key", swatch: "#b45309" },
-    { key: "B", label: "Path B — Dual Token", swatch: "#0f766e" },
-    { key: "C", label: "Path C — OAuth Bearer", swatch: "#1e40af" },
-  ];
-
-  return (
-    <div className="p266-filter-bar">
-      {paths.map(({ key, label, swatch }) => {
-        const isActive = selectedPath === key;
-        let activeClass = "";
-        if (isActive) {
-          activeClass = key === null ? "p266-filter-btn--all-active" : `p266-filter-btn--${key}-active`;
-        }
-        return (
-          <button
-            key={String(key)}
-            type="button"
-            className={`p266-filter-btn ${activeClass}`}
-            onClick={() => onSelect(key)}
-            aria-pressed={isActive}
-          >
-            {swatch && (
-              <span
-                className="p266-filter-swatch"
-                style={{ background: swatch }}
-              />
-            )}
-            {label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 const SPEC_HOPS = [
   { label: "OIDC Core 1.0", summary: "id_token issuance + claims (§3.1.3.7)" },
@@ -254,7 +226,7 @@ export default function Phase266ArchitecturePage() {
         </p>
       </header>
 
-      <PathFilterBar selectedPath={selectedPath} onSelect={setSelectedPath} />
+      <PathFilterBar paths={P266_PATHS} selectedPath={selectedPath} onSelect={setSelectedPath} className="p266-filter-bar" />
 
       <section
         className={wrapperClass}

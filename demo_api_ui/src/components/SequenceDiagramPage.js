@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { DiagramControls } from "./diagram";
 /**
 
 /**
@@ -3267,7 +3268,7 @@ export default function SequenceDiagramPage() {
   const [showMermaid, setShowMermaid] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState("full-flow");
   const [authScenario, setAuthScenario] = useState("authenticated"); // 'authenticated' or 'not-authenticated'
-  const [simulateMode, setSimulateMode] = useState("auto"); // 'auto' or 'step'
+
   const [isSimulating, setIsSimulating] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [currentStepIdx, setCurrentStepIdx] = useState(-1);
@@ -3557,199 +3558,24 @@ export default function SequenceDiagramPage() {
             User NOT Authenticated
           </button>
         </div>
-        {!isSimulating && (
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <div
-              style={{
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                color: "#475569",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Mode:
-            </div>
-            <button
-              type="button"
-              onClick={() => setSimulateMode("auto")}
-              style={{
-                padding: "0.4rem 0.8rem",
-                borderRadius: 6,
-                fontSize: "0.78rem",
-                fontWeight: 600,
-                border:
-                  simulateMode === "auto"
-                    ? "2px solid #004687"
-                    : "1px solid #cbd5e1",
-                background: simulateMode === "auto" ? "#dbeafe" : "#fff",
-                color: simulateMode === "auto" ? "#004687" : "#475569",
-                cursor: "pointer",
-              }}
-            >
-              Auto
-            </button>
-            <button
-              type="button"
-              onClick={() => setSimulateMode("step")}
-              style={{
-                padding: "0.4rem 0.8rem",
-                borderRadius: 6,
-                fontSize: "0.78rem",
-                fontWeight: 600,
-                border:
-                  simulateMode === "step"
-                    ? "2px solid #004687"
-                    : "1px solid #cbd5e1",
-                background: simulateMode === "step" ? "#dbeafe" : "#fff",
-                color: simulateMode === "step" ? "#004687" : "#475569",
-                cursor: "pointer",
-              }}
-            >
-              Step
-            </button>
-            <button
-              type="button"
-              onClick={runSimulation}
-              style={{
-                padding: "0.4rem 0.8rem",
-                border: "none",
-                borderRadius: 6,
-                background: "#004687",
-                color: "#fff",
-                fontSize: "0.82rem",
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
-            >
-              ▶ Simulate
-            </button>
-          </div>
-        )}
-        {isSimulating && !isPaused && (
-          <>
-            <button
-              type="button"
-              disabled
-              style={{
-                padding: "0.4rem 0.8rem",
-                borderRadius: 6,
-                background: "#004687",
-                color: "#fff",
-                fontSize: "0.82rem",
-                fontWeight: 600,
-                opacity: 0.6,
-              }}
-            >
-              ▶ Step {currentStepIdx + 1} / {steps.length}
-            </button>
-            <button
-              type="button"
-              onClick={pause}
-              style={{
-                padding: "0.4rem 0.8rem",
-                border: "1px solid #94a3b8",
-                borderRadius: 6,
-                background: "#fff",
-                fontSize: "0.82rem",
-                cursor: "pointer",
-                fontWeight: 600,
-                color: "#475569",
-              }}
-            >
-              ⏸ Pause
-            </button>
-          </>
-        )}
-        {isSimulating && isPaused && (
-          <>
-            <button
-              type="button"
-              onClick={prevStep}
-              disabled={currentStepIdx <= 0}
-              style={{
-                padding: "0.4rem 0.8rem",
-                border: "1px solid #94a3b8",
-                borderRadius: 6,
-                background: "#fff",
-                fontSize: "0.82rem",
-                cursor: "pointer",
-                fontWeight: 600,
-                color: "#475569",
-                opacity: currentStepIdx <= 0 ? 0.4 : 1,
-              }}
-            >
-              ← Prev
-            </button>
-            <button
-              type="button"
-              onClick={resume}
-              style={{
-                padding: "0.4rem 1rem",
-                border: "none",
-                borderRadius: 6,
-                background: "#004687",
-                color: "#fff",
-                fontSize: "0.82rem",
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
-            >
-              ▶ Resume
-            </button>
-            <button
-              type="button"
-              onClick={nextStep}
-              style={{
-                padding: "0.4rem 0.9rem",
-                border: "1px solid #004687",
-                borderRadius: 6,
-                background: "#fff",
-                color: "#004687",
-                fontSize: "0.82rem",
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
-            >
-              Next →
-            </button>
-          </>
-        )}
-        {isSimulating && (
-          <>
-            <button
-              type="button"
-              onClick={stopSim}
-              style={{
-                padding: "0.4rem 0.8rem",
-                border: "1px solid #e2e8f0",
-                borderRadius: 6,
-                background: "#fff",
-                fontSize: "0.82rem",
-                cursor: "pointer",
-                color: "#94a3b8",
-              }}
-            >
-              ✕ Stop
-            </button>
-            <button
-              type="button"
-              onClick={stopSim}
-              style={{
-                padding: "0.4rem 0.8rem",
-                border: "1px solid #cbd5e1",
-                borderRadius: 6,
-                background: "#fff",
-                fontSize: "0.82rem",
-                cursor: "pointer",
-                fontWeight: 600,
-                color: "#475569",
-              }}
-              title="Reset and start over"
-            >
-              ↻ Restart
-            </button>
-          </>
-        )}
+        <DiagramControls
+          zoom={zoomLevel / 100}
+          onZoomIn={() => handleZoom(10)}
+          onZoomOut={() => handleZoom(-10)}
+          onZoomReset={handleResetZoom}
+          zoomMin={0.5}
+          zoomMax={2.0}
+          currentStep={currentStepIdx + 1}
+          totalSteps={steps.length}
+          isSimulating={isSimulating}
+          isPaused={isPaused}
+          onSimulate={runSimulation}
+          onPrev={prevStep}
+          onPause={pause}
+          onResume={resume}
+          onNext={nextStep}
+          onStop={stopSim}
+        />
       </div>
 
       {/* Diagram + Left Panel Flex Row */}
@@ -3813,87 +3639,7 @@ export default function SequenceDiagramPage() {
             flexDirection: "column",
           }}
         >
-          {/* Zoom Controls */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              marginBottom: "1rem",
-              padding: "0.5rem",
-              background: "#f1f5f9",
-              borderRadius: 6,
-              width: "fit-content",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => handleZoom(-10)}
-              style={{
-                padding: "0.35rem 0.7rem",
-                fontSize: "0.8rem",
-                border: "1px solid #cbd5e1",
-                borderRadius: 4,
-                background: "#fff",
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
-            >
-              −
-            </button>
-            <span
-              style={{
-                fontSize: "0.8rem",
-                fontWeight: 600,
-                color: "#475569",
-                minWidth: "50px",
-                textAlign: "center",
-              }}
-            >
-              {zoomLevel}%
-            </span>
-            <button
-              type="button"
-              onClick={() => handleZoom(10)}
-              style={{
-                padding: "0.35rem 0.7rem",
-                fontSize: "0.8rem",
-                border: "1px solid #cbd5e1",
-                borderRadius: 4,
-                background: "#fff",
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
-            >
-              +
-            </button>
-            <div
-              style={{
-                width: "1px",
-                height: "20px",
-                background: "#cbd5e1",
-                margin: "0 0.25rem",
-              }}
-            />
-            <button
-              type="button"
-              onClick={handleResetZoom}
-              style={{
-                padding: "0.35rem 0.7rem",
-                fontSize: "0.75rem",
-                border: "1px solid #cbd5e1",
-                borderRadius: 4,
-                background: "#fff",
-                cursor: "pointer",
-                fontWeight: 600,
-                color: zoomLevel === 100 ? "#cbd5e1" : "#475569",
-              }}
-            >
-              Reset
-            </button>
-          </div>
-
-          {/* SVG Diagram with Zoom */}
+          {/* SVG Diagram with Zoom — zoom controls are in the toolbar above */}
           <div
             style={{
               transform: `scale(${zoomLevel / 100})`,

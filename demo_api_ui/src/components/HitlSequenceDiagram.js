@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { DiagramControls } from "./diagram";
 
 // ─── Token card components (copied from SequenceDiagramPage.js) ─────────────
 
@@ -1919,53 +1920,45 @@ export default function HitlSequenceDiagram() {
     document.addEventListener("mouseup", onUp);
   };
 
-  const scenarioLabel = {
-    all: "All Paths",
-    homegrown: "Path 1 — Homegrown OTP",
-    onetime: "Path 2 — PingOne One-Time",
-    device: "Path 3 — Device Picker",
-  }[selectedScenario] || "All Paths";
-
   const arrowSteps = steps.filter((s) => s.step);
-  const stepCounter = activeStep?.step
-    ? `Step ${activeStep.step} of ${arrowSteps.length} · ${scenarioLabel}`
-    : `${arrowSteps.length} steps · ${scenarioLabel}`;
-
   return (
     <div style={{ background: "#fff", display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Controls bar */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 1rem", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap", flexShrink: 0 }}>
-        <label htmlFor="hitl-scenario-select" style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>Scenario:</label>
-        <select
-          id="hitl-scenario-select"
-          value={selectedScenario}
-          onChange={(e) => { stopSim(); setSelectedScenario(e.target.value); }}
-          style={{ fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: 4, padding: "0.25rem 0.4rem" }}
-        >
-          <option value="all">All Paths</option>
-          <option value="homegrown">Path 1 — Homegrown OTP</option>
-          <option value="onetime">Path 2 — PingOne One-Time</option>
-          <option value="device">Path 3 — Device Picker</option>
-        </select>
-        {!isSimulating && (
-          <button type="button" onClick={runSimulation} style={ctrlBtn(false)}>Simulate</button>
-        )}
-        {isSimulating && !isPaused && (
-          <button type="button" onClick={pause} style={ctrlBtn(false)}>Pause</button>
-        )}
-        {isSimulating && isPaused && (
-          <button type="button" onClick={resume} style={ctrlBtn(false)}>Resume</button>
-        )}
-        {isSimulating && (
-          <button type="button" onClick={stopSim} style={ctrlBtn(false)}>Stop</button>
-        )}
-        <button type="button" onClick={prevStep} disabled={!isPaused} style={ctrlBtn(!isPaused)}>Prev</button>
-        <button type="button" onClick={nextStep} disabled={!isPaused} style={ctrlBtn(!isPaused)}>Next</button>
-        <button type="button" onClick={() => setZoomLevel((z) => Math.max(50, z - 25))} style={ctrlBtn(false)}>- Zoom</button>
-        <button type="button" onClick={() => setZoomLevel((z) => Math.min(200, z + 25))} style={ctrlBtn(false)}>+ Zoom</button>
-        <span style={{ fontSize: "0.8rem", color: "#475569", fontWeight: 600 }}>{zoomLevel}%</span>
-        <div style={{ flex: 1 }} />
-        <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{stepCounter}</span>
+      <div style={{ padding: "0.5rem 1rem", borderBottom: "1px solid #e2e8f0", flexShrink: 0 }}>
+        <DiagramControls
+          zoom={zoomLevel / 100}
+          onZoomIn={() => setZoomLevel((z) => Math.min(200, z + 25))}
+          onZoomOut={() => setZoomLevel((z) => Math.max(50, z - 25))}
+          onZoomReset={() => setZoomLevel(100)}
+          zoomMin={0.5}
+          zoomMax={2.0}
+          currentStep={activeStep?.step ?? 0}
+          totalSteps={arrowSteps.length}
+          isSimulating={isSimulating}
+          isPaused={isPaused}
+          onSimulate={runSimulation}
+          onPrev={prevStep}
+          onPause={pause}
+          onResume={resume}
+          onNext={nextStep}
+          onStop={stopSim}
+          extra={
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+              <label htmlFor="hitl-scenario-select" style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>Scenario:</label>
+              <select
+                id="hitl-scenario-select"
+                value={selectedScenario}
+                onChange={(e) => { stopSim(); setSelectedScenario(e.target.value); }}
+                style={{ fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: 4, padding: "0.25rem 0.4rem" }}
+              >
+                <option value="all">All Paths</option>
+                <option value="homegrown">Path 1 — Homegrown OTP</option>
+                <option value="onetime">Path 2 — PingOne One-Time</option>
+                <option value="device">Path 3 — Device Picker</option>
+              </select>
+            </span>
+          }
+        />
       </div>
 
       {/* Split layout */}
@@ -2122,13 +2115,3 @@ export default function HitlSequenceDiagram() {
   );
 }
 
-function ctrlBtn(disabled) {
-  return {
-    fontSize: "0.8rem", fontWeight: 600,
-    border: "1px solid #cbd5e1", borderRadius: 4,
-    padding: "0.3rem 0.6rem",
-    background: disabled ? "#f1f5f9" : "#fff",
-    color: disabled ? "#94a3b8" : "#0f172a",
-    cursor: disabled ? "not-allowed" : "pointer",
-  };
-}

@@ -24,6 +24,7 @@
 import React, { useState } from 'react';
 import AdminSubPageShell from './AdminSubPageShell';
 import HistoryModal from './HistoryModal';
+import { DiagramControls } from './diagram';
 import './ArchitectureDiagramPage.css';
 
 const ZOOM_STEP = 0.25;
@@ -311,32 +312,23 @@ export default function ArchitectureDiagramPage({
 
         {/* Toolbar */}
         <div className="arch-diagram-toolbar">
-          {toolbarExtra}
-          <div className="arch-diagram-zoom-controls">
-            <button className="arch-zoom-btn" onClick={zoomOut} title="Zoom out">−</button>
-            <span className="arch-zoom-label">{Math.round(zoom * 100)}%</span>
-            <button className="arch-zoom-btn" onClick={zoomIn}  title="Zoom in">+</button>
-            <button className="arch-zoom-btn arch-zoom-reset" onClick={zoomReset} title="Reset zoom">↺</button>
-          </div>
-
-          {isSimulating && stepNum != null && (
-            <div className="arch-step-controls">
-              <span className={`arch-step-label${isPaused ? ' arch-step-label--paused' : ''}`}>
-                {isPaused ? '⏸' : '▶'} Step {stepNum}/{totalSteps}
-              </span>
-              <button className="arch-ctrl-btn arch-ctrl-btn--prev"  onClick={onPrevStep}  disabled={stepNum <= 1}>← Prev</button>
-              {!isPaused && <button className="arch-ctrl-btn arch-ctrl-btn--pause"  onClick={onPause}>Pause</button>}
-              {isPaused  && <button className="arch-ctrl-btn arch-ctrl-btn--resume" onClick={onResume}>Resume</button>}
-              <button className="arch-ctrl-btn arch-ctrl-btn--next"  onClick={onNextStep}  disabled={!isPaused}>Next →</button>
-              <button className="arch-ctrl-btn arch-ctrl-btn--stop"  onClick={onStop}>Stop</button>
-            </div>
-          )}
-
-          {onSimulate && !isSimulating && (
-            <button className="arch-simulate-btn" onClick={onSimulate}>
-              ▶ Simulate Flow
-            </button>
-          )}
+          <DiagramControls
+            zoom={zoom}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            onZoomReset={zoomReset}
+            currentStep={onSimulate ? (stepNum ?? 0) : undefined}
+            totalSteps={totalSteps}
+            isSimulating={isSimulating}
+            isPaused={isPaused}
+            onSimulate={onSimulate}
+            onPrev={onPrevStep}
+            onPause={onPause}
+            onResume={onResume}
+            onNext={onNextStep}
+            onStop={onStop}
+            extra={toolbarExtra}
+          />
         </div>
 
         {/* Aud trail */}
