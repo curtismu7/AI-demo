@@ -129,11 +129,20 @@ export default function OAuthTokenDisplayPage() {
 
         const previewRes = await bffAxios.get('/api/tokens/session-preview');
         const events = previewRes.data?.tokenEvents || [];
+        // Server shape: { id, claims, jwtFullDecode: { header, claims } }
+        // Render code expects: { header, payload: { sub, scope, aud, ... } }
+        // Map the first user-token event to that shape.
         const userTokenEvent = events.find(
-          (e) => e.decoded && (e.id === 'user-token' || e.label?.toLowerCase().includes('user'))
+          (e) => e.id === 'user-token' || e.label?.toLowerCase().includes('user access')
         );
         if (!cancelled) {
-          setTokenClaims(userTokenEvent?.decoded || null);
+          if (userTokenEvent) {
+            // Prefer jwtFullDecode (richer) but fall back to the top-level claims field
+            const src = userTokenEvent.jwtFullDecode || { header: null, claims: userTokenEvent.claims };
+            setTokenClaims({ header: src.header || {}, payload: src.claims || {} });
+          } else {
+            setTokenClaims(null);
+          }
           setLoading(false);
         }
       } catch (err) {

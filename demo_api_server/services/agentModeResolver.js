@@ -14,7 +14,7 @@
  */
 const AGENT_MODES = [
   { id: 'heuristics',       label: 'Heuristics only',          provider: null,        heuristicRouting: true,  external: false },
-  { id: 'helix_google',     label: 'Helix only',               provider: 'helix',     heuristicRouting: false, external: false },
+  { id: 'helix_google',     label: 'Helix only',               provider: 'helix',     heuristicRouting: false, external: true  },
   { id: 'heuristics_helix', label: 'Heuristics + Helix',       provider: 'helix',     heuristicRouting: true,  external: false },
   { id: 'chatgpt',          label: 'Just ChatGPT',             provider: 'openai',    heuristicRouting: false, external: true },
   { id: 'claude',           label: 'Just Claude',              provider: 'anthropic', heuristicRouting: false, external: true },

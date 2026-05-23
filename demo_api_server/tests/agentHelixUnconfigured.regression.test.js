@@ -42,11 +42,18 @@ jest.mock('../middleware/delegationAuditLogger', () => ({
   logDelegationEvent: jest.fn(),
 }));
 
-// agentBuilder just needs to return something iterable
+// agentBuilder: return an empty tool list (no tools means executeBffTool can't
+// match any tool name, so heuristic read actions gracefully error — but these
+// tests send non-banking messages that skip the heuristic entirely).
 jest.mock('../services/agentBuilder', () => ({
   getBankingToolDefinitions: jest.fn(() => []),
   buildToolSchemasForAgent: jest.fn(() => []),
   MAX_TOOL_ITERATIONS: 5,
+}));
+
+// executeBffTool needs token resolution — stub so it never touches the network.
+jest.mock('../services/agentMcpTokenService', () => ({
+  resolveMcpAccessTokenWithEvents: jest.fn().mockResolvedValue({ token: 'mock-tok', tokenEvents: [] }),
 }));
 
 const { processAgentMessage } = require('../services/bankingAgentLangGraphService');
@@ -73,8 +80,10 @@ describe('processAgentMessage — Helix unconfigured fallback', () => {
   });
 
   test('returns catalog message when langchainConfig.helix_api_key is empty string', async () => {
+    // Use a non-banking message so the heuristic returns kind:'none' and
+    // the message falls through to the Helix provider check.
     const result = await processAgentMessage({
-      message: 'show me my balance',
+      message: 'explain token exchange to me',
       userId: 'u1',
       userToken: 'tok',
       sessionId: 'sess2',

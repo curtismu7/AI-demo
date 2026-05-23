@@ -34,8 +34,11 @@ export default function AgentModeSelector({ compact = false, onChange }) {
 
   if (loading || modeOptions.length === 0) return null;
 
-  // Show only the three Helix/Heuristics modes (exclude external provider modes).
-  const coreOptions = modeOptions.filter((m) => !m.external);
+  // Show only the three Helix/Heuristics modes.
+  // Filtering by id is more robust than filtering by the external flag
+  // (which controls wiring sub-selector, not visibility here).
+  const CORE_MODE_IDS = ['heuristics', 'helix_google', 'heuristics_helix'];
+  const coreOptions = modeOptions.filter((m) => CORE_MODE_IDS.includes(m.id));
 
   const current = modeOptions.find((m) => m.id === mode);
   const isExternal = !!current && current.external;
